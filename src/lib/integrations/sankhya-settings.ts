@@ -104,7 +104,7 @@ export function decryptSecret(value: string, key: Buffer): string | null {
 
 /* ---- Leitura e gravação na tabela settings ---- */
 
-async function readSetting<T>(key: string): Promise<T | null> {
+export async function readSetting<T>(key: string): Promise<T | null> {
   const [row] = await getStore().list("settings", {
     filter: { key },
     limit: 1,
@@ -112,7 +112,7 @@ async function readSetting<T>(key: string): Promise<T | null> {
   return (row?.value as T | undefined) ?? null;
 }
 
-async function writeSetting(key: string, value: unknown) {
+export async function writeSetting(key: string, value: unknown) {
   const store = getStore();
   const [existing] = await store.list("settings", {
     filter: { key },
@@ -268,47 +268,93 @@ export async function getSankhyaConfigStatus(env: Env = process.env) {
 export interface SankhyaErpSettings {
   /** Pedidos do portal vão ao ERP (desligado: número manual, como hoje). */
   ordersEnabled: boolean;
-  /** 1. Empresa que emite o pedido (CODEMP). */
+  /** Empresa que emite o pedido de compra (CODEMP): sempre 3, WELLMIX - SC. */
   codEmp: number | null;
-  /** 2. TOP do pedido de compra e da cotação (CODTIPOPER). */
+  /** TOP do pedido de compra e da cotação (CODTIPOPER). */
   topOrder: number | null;
   topQuote: number | null;
-  /** 3. Tipo de negociação padrão (CODTIPVENDA). */
+  /** Condição de pagamento padrão (CODTIPVENDA; tabela Condições de pagamento). */
   codTipVenda: number | null;
-  /** 3. Usar o prazo do fornecedor quando ele tiver um tipo de negociação próprio. */
+  /** Usar a condição do fornecedor quando ele tiver uma própria. */
   paymentFromSupplier: boolean;
-  /** 4. Comprador (CODVEND; 0 = sem vendedor) e local de estoque (CODLOCAL). */
+  /** Comprador (CODVEND; 0 = sem vendedor). */
   codVend: number | null;
-  codLocal: number | null;
-  /** Volume: o do produto no Sankhya ou um fixo (ex.: UN). */
+  /**
+   * Local de estoque (CODLOCAL): não usado. Quem cuida dele é o WMS; o portal
+   * não envia nem mostra (fica só por compatibilidade com o que foi gravado).
+   */
+  codLocal?: number | null;
+  /** Volume do item: sempre UN (fixo). */
   volumeMode: "product" | "fixed";
   codVol: string;
-  /** 5. Ligar fornecedor (CODPARC) e produto (CODPROD) do portal ao Sankhya. */
+  /** Ligar fornecedor (CODPARC) e produto (CODPROD) do portal ao Sankhya. */
   autoLink: boolean;
+  /** Natureza (CODNAT), centro de resultado (CODCENCUS) e projeto (CODPROJ). */
+  codNat: number | null;
+  codCenCus: number | null;
+  codProj: number | null;
+  /** Moeda do pedido (sigla) e o código dela no Sankhya (CODMOEDA, TSIMOE). */
+  currency: string;
+  codMoeda: number | null;
+  /** Número de referência do pedido no portal: NUNOTA (único do sistema) ou NUMNOTA. */
+  erpNumberField: "NUNOTA" | "NUMNOTA";
+  /**
+   * Sincronização portal → Sankhya (fase 3): só cadastros criados a partir
+   * desta data vão como novos (o que veio da carga nunca volta duplicado).
+   * Gravada quando a execução no Sankhya é ligada pela primeira vez.
+   */
+  syncSince?: string | null;
+  /** Campos fixos ao incluir parceiro e produto no Sankhya (ex.: {"USOPROD": "R"}). */
+  partnerDefaults?: Record<string, string | number>;
+  productDefaults?: Record<string, string | number>;
+  /** Versão das respostas da Wellmix aplicadas (migração dos padrões). */
+  version?: number;
   updatedAt?: string | null;
   updatedBy?: string | null;
 }
 
-/** Sugestões a partir do ERP da Wellmix (docs/SANKHYA.md); a tela confirma. */
+/** Respostas da Wellmix (10/11/2026; docs/SANKHYA.md). A tela permite ajustar. */
 export const DEFAULT_SANKHYA_ERP: SankhyaErpSettings = {
   ordersEnabled: false,
-  codEmp: null,
+  codEmp: 3,
   topOrder: 1101,
   topQuote: 1002,
   codTipVenda: 33,
   paymentFromSupplier: false,
   codVend: 0,
-  codLocal: null,
-  volumeMode: "product",
+  volumeMode: "fixed",
   codVol: "UN",
   autoLink: true,
+  codNat: 203005,
+  codCenCus: 101006,
+  codProj: 0,
+  currency: "USD",
+  codMoeda: null,
+  erpNumberField: "NUNOTA",
+  version: 2,
 };
 
+/**
+ * Lê os códigos gravados. Gravações anteriores às respostas da Wellmix
+ * (sem `version`) recebem os valores respondidos: empresa 3 e volume UN fixo.
+ */
+export function mergeErpSettings(
+  stored: Partial<SankhyaErpSettings> | null,
+): SankhyaErpSettings {
+  const merged = { ...DEFAULT_SANKHYA_ERP, ...(stored ?? {}) };
+  if (!stored?.version || stored.version < 2) {
+    merged.codEmp = DEFAULT_SANKHYA_ERP.codEmp;
+    merged.volumeMode = "fixed";
+    merged.codVol = "UN";
+    merged.version = 2;
+  }
+  return merged;
+}
+
 export async function getSankhyaErpSettings(): Promise<SankhyaErpSettings> {
-  return {
-    ...DEFAULT_SANKHYA_ERP,
-    ...((await readSetting<Partial<SankhyaErpSettings>>(ERP_KEY)) ?? {}),
-  };
+  return mergeErpSettings(
+    await readSetting<Partial<SankhyaErpSettings>>(ERP_KEY),
+  );
 }
 
 export async function saveSankhyaErpSettings(
@@ -317,6 +363,7 @@ export async function saveSankhyaErpSettings(
 ) {
   await writeSetting(ERP_KEY, {
     ...value,
+    version: 2,
     updatedAt: new Date().toISOString(),
     updatedBy: by,
   });
@@ -332,7 +379,8 @@ export function erpMissing(
   if ((kind === "order" ? erp.topOrder : erp.topQuote) == null)
     out.push("CODTIPOPER");
   if (erp.codTipVenda == null) out.push("CODTIPVENDA");
-  if (erp.codLocal == null) out.push("CODLOCAL");
+  if (erp.codNat == null) out.push("CODNAT");
+  if (erp.codCenCus == null) out.push("CODCENCUS");
   if (erp.volumeMode === "fixed" && !erp.codVol.trim()) out.push("CODVOL");
   return out;
 }
@@ -370,6 +418,10 @@ export function buildTestNote(
       CODVEND: erp.codVend ?? 0,
       TIPMOV: input.tipMov,
       DTNEG: input.date,
+      CODNAT: erp.codNat,
+      CODCENCUS: erp.codCenCus,
+      CODPROJ: erp.codProj ?? 0,
+      CODMOEDA: erp.codMoeda ?? undefined,
       OBSERVACAO: input.note ?? "Teste de integração do portal Wellmix",
     },
     items: [
@@ -377,7 +429,6 @@ export function buildTestNote(
         CODPROD: input.codProd,
         QTDNEG: input.quantity,
         CODVOL: codVol,
-        CODLOCALORIG: erp.codLocal,
         VLRUNIT: input.unitPrice,
         PERCDESC: 0,
       },

@@ -1,3 +1,4 @@
+import { registerOrderInvoiceAction } from "../../actions/order-invoice";
 import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
 import { ImportFlowCard } from "@/components/import-flow-card";
@@ -670,6 +671,29 @@ export default async function OrderPage({
                   {t(`erpStatus.${order.erpSyncStatus}`)}
                 </Badge>
               )),
+          ] as [string, ReactNode],
+          [
+            t("orderInvoice.label"),
+            order.invoicedAt ? (
+              formatDate(order.invoicedAt, t)
+            ) : isCancelled ? (
+              "—"
+            ) : (
+              <form
+                key="invoice"
+                action={registerOrderInvoiceAction}
+                className="inline"
+              >
+                <input type="hidden" name="orderId" value={order.id} />
+                <SubmitButton
+                  variant="secondary"
+                  pendingText="…"
+                  confirmText={t("orderInvoice.confirm")}
+                >
+                  {t("orderInvoice.register")}
+                </SubmitButton>
+              </form>
+            ),
           ] as [string, ReactNode],
         ]
       : []),

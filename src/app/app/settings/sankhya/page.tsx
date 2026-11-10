@@ -22,6 +22,9 @@ import {
 import { getSankhyaConfigStatus } from "@/lib/integrations/sankhya-settings";
 import { SettingsTabs } from "../_tabs";
 import { IntegrationTab } from "./_integration";
+import { LoadTab } from "./_load";
+import { PaymentConditionsTab } from "./_payment";
+import { ProcessTab } from "./_process";
 import {
   describeTable,
   searchTables,
@@ -40,6 +43,7 @@ export const maxDuration = 60;
  * Configurações → Sankhya (só o administrador; docs/SANKHYA.md), em duas abas:
  * - Integração (padrão; _integration.tsx): credenciais, códigos do ERP e
  *   testes de autenticação, consultas e pedido;
+ * - Carga (?tab=load; _load.tsx): mapeamento Sankhya → portal e amostra;
  * - Explorar (?tab=explore): teste da conexão, dicionário de dados (tabelas, entidades, campos e ligações), consulta
  * de qualquer entidade com ligações, SQL somente leitura e escrita no ERP
  * (registro, pedido/orçamento/cotação, cancelamento). Leituras são GET (o
@@ -104,6 +108,57 @@ export default async function SankhyaPage({
     exploreSk.includes(one(q.sk))
       ? "explore"
       : "integration";
+
+  if (one(q.tab) === "process")
+    return (
+      <>
+        <PageHeader
+          title={t("processes.title")}
+          subtitle={t("processes.subtitle")}
+          actions={
+            <TextLink href="/app/settings" className="text-sm">
+              {t("sankhya.back")}
+            </TextLink>
+          }
+        />
+        <SettingsTabs t={t} active="process" admin />
+        <ProcessTab t={t} q={q} />
+      </>
+    );
+
+  if (one(q.tab) === "payment")
+    return (
+      <>
+        <PageHeader
+          title={t("paymentConditions.title")}
+          subtitle={t("paymentConditions.subtitle")}
+          actions={
+            <TextLink href="/app/settings" className="text-sm">
+              {t("sankhya.back")}
+            </TextLink>
+          }
+        />
+        <SettingsTabs t={t} active="payment" admin />
+        <PaymentConditionsTab t={t} q={q} />
+      </>
+    );
+
+  if (one(q.tab) === "load")
+    return (
+      <>
+        <PageHeader
+          title={t("sankhyaInt.tab.load")}
+          subtitle={t("sankhyaLoad.title")}
+          actions={
+            <TextLink href="/app/settings" className="text-sm">
+              {t("sankhya.back")}
+            </TextLink>
+          }
+        />
+        <SettingsTabs t={t} active="load" admin />
+        <LoadTab t={t} q={q} />
+      </>
+    );
 
   if (tab === "integration")
     return (
