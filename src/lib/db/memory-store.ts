@@ -223,8 +223,13 @@ export class MemoryStore implements Store {
       this.memFiles.delete(key);
       return;
     }
-    const path = join(this.filesDir, key);
-    for (const f of [path, `${path}.json`]) if (existsSync(f)) unlinkSync(f);
+    // Caminhos montados direto em cada chamada: com um laço sobre a lista, o
+    // Turbopack não sabe quais arquivos são tocados e rastreia o projeto
+    // inteiro no build da Vercel ("Dynamic filesystem access").
+    const file = join(this.filesDir, key);
+    if (existsSync(file)) unlinkSync(file);
+    const meta = join(this.filesDir, `${key}.json`);
+    if (existsSync(meta)) unlinkSync(meta);
   }
 
   async nextNumber(key: string) {
