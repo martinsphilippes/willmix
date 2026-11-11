@@ -112,15 +112,13 @@ export async function searchAudit(
   };
 }
 
-/** Link da entrada (pedido/solicitação/cotação), quando houver tela. */
+/** Link da entrada (pedido/solicitação), quando houver tela (a cotação saiu). */
 export function auditLink(e: Pick<AuditEntry, "entity" | "entityId">) {
   switch (e.entity) {
     case "order":
       return `/app/orders/${e.entityId}`;
     case "request":
       return `/app/requests/${e.entityId}`;
-    case "quote":
-      return `/app/quotes/${e.entityId}`;
     case "product":
       return `/app/products/${e.entityId}`;
     case "party":
