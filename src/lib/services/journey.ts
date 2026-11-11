@@ -36,11 +36,9 @@ export const JOURNEY_STEPS = [
   "reqApproval",
   "reqProposal",
   "reqDown",
-  "ordConference",
-  "ordSheet",
-  "ordValidation",
-  "ordArt",
-  "ordArtApproval",
+  "ordCreated",
+  "ordPrep",
+  "ordContract",
   "ordInspection",
   "ordBooking",
   "ordWaitingShip",
@@ -78,8 +76,6 @@ export const stepOfCard = (card: OrderCard | RequestCard): JourneyStep =>
 
 /** Itens das etapas que dividem os passos. */
 export const JOURNEY_REQUIREMENT_KEYS = [
-  "purchase_sheet",
-  "art",
   "inspection_review",
   "ship_date",
   "vessel",
@@ -173,19 +169,18 @@ export function journeyIndex(input: JourneyInput) {
     stageKey: StageKey = o.status as StageKey,
   ): OrderCard => {
     switch (stageKey) {
+      // Pedido de compra: "Pedido criado" conclui na hora; a Preparação, arte
+      // e certificação reúne as três raias (docs/PURCHASE_ORDER.md). Pedido
+      // importado do Sankhya (sem fluxo no portal): a TOP define a etapa.
       case "ORDER_CREATED":
-        return "ordConference";
-      case "PREPARATION": {
-        const sheet = req(o.id, "purchase_sheet", stageKey);
-        return sheet && sheet.status !== "done" ? "ordSheet" : "ordValidation";
-      }
-      // Etapa antiga, fora do fluxo: o pedido segue para a Embalagem sozinho.
+        return "ordCreated";
+      // SUPPLIER_PAYMENT é etapa antiga, fora do fluxo: segue para o contrato sozinha.
+      case "PREPARATION":
       case "SUPPLIER_PAYMENT":
-        return "ordArt";
-      case "PACKAGING": {
-        const art = req(o.id, "art", stageKey);
-        return art && art.status !== "done" ? "ordArt" : "ordArtApproval";
-      }
+        return "ordPrep";
+      // Contrato assinado pelas duas partes (a etapa "Arte e embalagem" de antes).
+      case "PACKAGING":
+        return "ordContract";
       case "INSPECTION": {
         const review = req(o.id, "inspection_review", stageKey);
         return (o.status === "INSPECTION" && blocked.has(o.id)) ||

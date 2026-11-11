@@ -11,21 +11,27 @@ import {
 } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
 import { ChatOpenButton } from "./chat-open-button";
+import type { TowerRow } from "@/lib/services/control-tower";
 import {
   loadControlTower,
   loadTowerTotals,
   type TowerTotals,
 } from "@/lib/services/control-tower";
 import { isBoardCardKey, loadTowerBoard } from "@/lib/services/tower-board";
+import {
+  actionCardsFor,
+  buildTowerStages,
+  findGroupOfCard,
+  isActionCardKey,
+} from "@/lib/tower-stages";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { TowerBoardView } from "./tower-board";
+import { ActionStrip, StageBoard } from "./tower-stages";
 import {
   Alert,
   Badge,
   Card,
   cx,
   Empty,
-  LinkButton,
   PageHeader,
   Progress,
   Stat,
@@ -216,12 +222,17 @@ export async function ControlTower({
   user,
   filter,
   card,
+  stage,
+  group,
   denied,
 }: {
   user: User;
   filter?: string;
-  /** Quadrado escolhido nos quadros da operação (?card=…). */
+  /** Ponto de ação escolhido (?card=…); chave antiga de quadrado também vale. */
   card?: string;
+  /** Etapa aberta (?stage=…) e o passo escolhido dentro dela (?group=CHAVE_DO_QUADRADO). */
+  stage?: string;
+  group?: string;
   /** Tela que o login tentou abrir sem acesso (?denied=…): aviso no início. */
   denied?: string;
 }) {
@@ -229,8 +240,6 @@ export async function ControlTower({
   const wellmix = isWellmix(user);
   const finance = canOpen(user, "finance");
   const operations = canOpen(user, "orders");
-  // Criar solicitação direto da Control Tower (quadrado "Solicitação nova").
-  const newRequestHref = canOpen(user, "requests") ? "/app/requests/new" : null;
   const deniedScreen = (SCREENS as readonly string[]).includes(denied ?? "")
     ? (denied as Screen)
     : null;
@@ -239,11 +248,45 @@ export async function ControlTower({
     wellmix ? loadTowerTotals() : Promise.resolve(null),
     wellmix && operations ? loadTowerBoard({ finance }) : Promise.resolve(null),
   ]);
-  // Quadrado escolhido (os que levam a outra tela não filtram a lista).
-  const boardCard =
-    board && isBoardCardKey(card)
-      ? (board.cards.find((c) => c.key === card && !c.href) ?? null)
-      : null;
+  const stages = board ? buildTowerStages(board) : null;
+  const actionCards = board
+    ? actionCardsFor(board, (screen) => canOpen(user, screen))
+    : [];
+
+  /* O que foi escolhido: ponto de ação ou passo da etapa. Link antigo
+     (?card=CHAVE): ponto de ação do perfil, senão o passo que contém o quadrado. */
+  let actionKey: string | null = null;
+  let stageKey: string | null = null;
+  let groupKey: string | null = null;
+  if (isBoardCardKey(card)) {
+    if (isActionCardKey(card) && actionCards.some((c) => c.key === card))
+      actionKey = card;
+    else {
+      const found = findGroupOfCard(card);
+      if (found) {
+        stageKey = found.stage;
+        groupKey = found.group;
+      }
+    }
+  }
+  const openStage = stages?.find((s) => s.key === (stageKey ?? stage)) ?? null;
+  if (openStage) {
+    stageKey = openStage.key;
+    const wanted = groupKey ?? group;
+    groupKey =
+      openStage.groups.find((g) => g.key === wanted)?.key ??
+      openStage.single ??
+      null;
+  } else groupKey = null;
+  // Uma lista por vez: o ponto de ação tem prioridade sobre o passo.
+  if (actionKey) {
+    stageKey = null;
+    groupKey = null;
+  }
+  const actionCard = actionKey
+    ? (board?.cards.find((c) => c.key === actionKey && !c.href) ?? null)
+    : null;
+  const groupDef = openStage?.groups.find((g) => g.key === groupKey) ?? null;
   const cards: Array<{
     key: keyof typeof data.buckets;
     label: string;
@@ -262,45 +305,28 @@ export async function ControlTower({
     { key: "problems", label: t("ct.problems"), tone: "warning" },
     { key: "closed", label: t("ct.closed") },
   ];
-  // Nada escolhido: nenhuma lista (ela aparece ao tocar num quadrado, logo
-  // abaixo do grupo dele; tocar de novo fecha).
+  // Visões gerais: nada escolhido, nenhuma lista (ela aparece ao tocar num
+  // quadrado, logo abaixo do grupo dele; tocar de novo fecha).
+  const picked = !!(actionCard || groupDef);
   const selected =
-    !boardCard && filter && filter in data.buckets
+    !picked && filter && filter in data.buckets
       ? (filter as keyof typeof data.buckets)
       : null;
   // Quadrados que abrem um cartão (não uma lista): exceções e visão comercial.
   const extra =
-    !boardCard && (filter === "exceptions" || filter === "commercial")
+    !picked && (filter === "exceptions" || filter === "commercial")
       ? filter
       : null;
-  const rows = boardCard
-    ? boardCard.rows
-    : selected
-      ? data.buckets[selected]
-      : null;
-  const listTitle = boardCard
-    ? t(`board.card.${boardCard.key}` as DictionaryKey)
-    : cards.find((c) => c.key === selected)?.label;
 
-  /* Lista do quadrado escolhido: aparece logo abaixo do grupo dele. */
-  const list = rows ? (
+  /* Lista do escolhido: aparece logo abaixo dele. */
+  const renderList = (
+    rows: TowerRow[],
+    title: string | undefined,
+    key: string,
+  ) => (
     <div className="mb-4 mt-2 scroll-mt-24" id="tower-list">
-      <Card
-        className="min-w-0"
-        title={listTitle}
-        actions={
-          boardCard?.key === "reqNew" && newRequestHref ? (
-            <LinkButton
-              href={newRequestHref}
-              variant="primary"
-              data-board-new-request
-            >
-              + {t("requests.new")}
-            </LinkButton>
-          ) : undefined
-        }
-      >
-        <div data-tower-list={boardCard?.key ?? selected ?? ""}>
+      <Card className="min-w-0" title={title}>
+        <div data-tower-list={key}>
           {rows.length === 0 ? (
             <Empty>{t("common.none")}</Empty>
           ) : (
@@ -308,7 +334,7 @@ export async function ControlTower({
               <thead>
                 <tr>
                   <Th>#</Th>
-                  <Th>{t("common.customer")}</Th>
+                  <Th>{t("tower.col.party")}</Th>
                   <Th>{t("common.product")}</Th>
                   <Th>{t("orders.stage")}</Th>
                   <Th>{t("common.responsible")}</Th>
@@ -318,7 +344,7 @@ export async function ControlTower({
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id} className={rowClass}>
+                  <tr key={`${row.kind ?? ""}${row.id}`} className={rowClass}>
                     <Td className="whitespace-nowrap">
                       <TextLink href={row.link}>{row.number}</TextLink>
                     </Td>
@@ -327,6 +353,10 @@ export async function ControlTower({
                     <Td className="whitespace-nowrap">
                       {row.kind === "cert" ? (
                         <Badge tone="warning">{t("board.cert")}</Badge>
+                      ) : row.statusKey ? (
+                        <Badge tone="info">
+                          {t(row.statusKey as DictionaryKey)}
+                        </Badge>
                       ) : row.cancelled ? (
                         <Badge tone="danger">
                           {t("board.cancelled")}
@@ -350,6 +380,15 @@ export async function ControlTower({
                           {row.blocked ? ` · ${t("stageStatus.blocked")}` : ""}
                         </Badge>
                       )}
+                      {row.origin === "sankhya" ? (
+                        <span
+                          className="ml-1.5 text-[11px] font-medium text-zinc-500"
+                          title={t("tower.origin.sankhyaHint")}
+                          data-origin="sankhya"
+                        >
+                          {t("tower.origin.sankhya")}
+                        </span>
+                      ) : null}
                     </Td>
                     <Td>
                       {row.responsible ? t(`role.${row.responsible}`) : "—"}
@@ -365,7 +404,9 @@ export async function ControlTower({
                     </Td>
                     {/* Conversa daquele pedido/solicitação: sempre na última coluna. */}
                     <Td className="whitespace-nowrap text-right">
-                      {row.kind === "cert" ? null : (
+                      {row.kind === "cert" ||
+                      row.kind === "booking" ||
+                      row.kind === "supplier_request" ? null : (
                         <ChatOpenButton
                           target={
                             row.kind === "request" ||
@@ -385,7 +426,24 @@ export async function ControlTower({
         </div>
       </Card>
     </div>
-  ) : null;
+  );
+  const cardTitle = (key: string) => t(`board.card.${key}` as DictionaryKey);
+  const actionList = actionCard
+    ? renderList(actionCard.rows, cardTitle(actionCard.key), actionCard.key)
+    : null;
+  const groupList = groupDef
+    ? renderList(groupDef.rows, cardTitle(groupDef.key), groupDef.key)
+    : null;
+  const filterList =
+    selected && !picked
+      ? renderList(
+          data.buckets[selected],
+          cards.find((c) => c.key === selected)?.label,
+          selected,
+        )
+      : null;
+  // "Mais visões" abre sozinho quando o escolhido está lá dentro.
+  const moreOpen = !!(selected || extra);
 
   return (
     <>
@@ -410,108 +468,118 @@ export async function ControlTower({
       {totals && operations && finance ? (
         <FinanceStrip totals={totals} t={t} />
       ) : null}
-      {board ? (
-        <section aria-label={t("ct.operation.title")} className="mb-2">
-          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            {t("ct.operation.title")}
-          </h2>
-          <TowerBoardView
-            board={board}
+      {board && stages ? (
+        <>
+          <ActionStrip
+            cards={actionCards}
             t={t}
-            selected={boardCard?.key ?? null}
-            detail={boardCard ? list : null}
-            newRequestHref={newRequestHref}
-            occupancy={
-              totals?.containers.avgOccupancyPercent !== null &&
-              totals?.containers.avgOccupancyPercent !== undefined
-                ? t("board.occupancy", {
-                    pct: percent(totals.containers.avgOccupancyPercent, t.intl),
-                  })
-                : null
-            }
+            selected={actionCard?.key ?? null}
+            detail={actionList}
           />
-        </section>
+          <StageBoard
+            stages={stages}
+            t={t}
+            stage={stageKey}
+            group={groupKey}
+            detail={groupList}
+            currency={board.currency}
+          />
+        </>
       ) : null}
       {operations ? (
-        <>
-          {board ? (
+        <details
+          className="group mb-4 rounded-xl border border-zinc-200/80 bg-white/60 p-3"
+          open={moreOpen}
+          data-tower-more
+        >
+          <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-2 text-xs font-semibold uppercase tracking-wide text-zinc-600">
+            {t("tower.more.title")}
+            <span className="font-normal normal-case tracking-normal text-zinc-500">
+              {t("tower.more.hint")}
+            </span>
+          </summary>
+          <div className="mt-4">
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
               {t("board.general")}
             </h2>
-          ) : null}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {cards.map((c) => (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {cards.map((c) => (
+                <Stat
+                  key={c.key}
+                  label={c.label}
+                  value={data.buckets[c.key].length}
+                  // Tocar no escolhido fecha a lista.
+                  href={c.key === selected ? "/app" : `/app?filter=${c.key}`}
+                  tone={data.buckets[c.key].length > 0 ? c.tone : undefined}
+                  active={c.key === selected}
+                />
+              ))}
+              {/* Exceções e visão comercial abrem pelo quadrado de cada uma;
+                  tocar de novo fecha. */}
               <Stat
-                key={c.key}
-                label={c.label}
-                value={data.buckets[c.key].length}
-                // Tocar no escolhido fecha a lista.
-                href={c.key === selected ? "/app" : `/app?filter=${c.key}`}
-                tone={data.buckets[c.key].length > 0 ? c.tone : undefined}
-                active={c.key === selected}
-              />
-            ))}
-            {/* Exceções e visão comercial: ficam escondidas (pedido do dono) e
-                abrem pelo quadrado de cada uma; tocar de novo fecha. */}
-            <Stat
-              label={t("ct.exceptions")}
-              value={data.exceptions.length}
-              href={extra === "exceptions" ? "/app" : "/app?filter=exceptions"}
-              tone={data.exceptions.length > 0 ? "warning" : undefined}
-              active={extra === "exceptions"}
-            />
-            {totals && finance ? (
-              <Stat
-                label={t("ct.commercial.title")}
-                value={totals.commercial.length}
+                label={t("ct.exceptions")}
+                value={data.exceptions.length}
                 href={
-                  extra === "commercial" ? "/app" : "/app?filter=commercial"
+                  extra === "exceptions" ? "/app" : "/app?filter=exceptions"
                 }
-                active={extra === "commercial"}
+                tone={data.exceptions.length > 0 ? "warning" : undefined}
+                active={extra === "exceptions"}
               />
+              {totals && finance ? (
+                <Stat
+                  label={t("ct.commercial.title")}
+                  value={totals.commercial.length}
+                  href={
+                    extra === "commercial" ? "/app" : "/app?filter=commercial"
+                  }
+                  active={extra === "commercial"}
+                />
+              ) : null}
+            </div>
+            {filterList}
+
+            {extra === "exceptions" ? (
+              <div className="mt-4" data-tower-extra="exceptions">
+                <Card className="min-w-0" title={t("ct.exceptions")}>
+                  {data.exceptions.length === 0 ? (
+                    <Empty>{t("common.none")}</Empty>
+                  ) : (
+                    <ul className="space-y-2 text-sm">
+                      {data.exceptions.map((e, i) => (
+                        <li
+                          key={i}
+                          className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200/80 px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <Badge
+                              tone={
+                                e.severity === "high" ? "danger" : "warning"
+                              }
+                            >
+                              {t(`ct.exception.${e.kind}`)}
+                            </Badge>
+                            <p className="mt-1 text-zinc-700">{e.detail}</p>
+                          </div>
+                          <TextLink
+                            href={e.link}
+                            className="whitespace-nowrap text-xs"
+                          >
+                            {t("tasks.open")}
+                          </TextLink>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card>
+              </div>
+            ) : null}
+            {totals && finance && extra === "commercial" ? (
+              <div data-tower-extra="commercial">
+                <CommercialCard totals={totals} t={t} />
+              </div>
             ) : null}
           </div>
-          {selected ? list : null}
-
-          {extra === "exceptions" ? (
-            <div className="mt-4" data-tower-extra="exceptions">
-              <Card className="min-w-0" title={t("ct.exceptions")}>
-                {data.exceptions.length === 0 ? (
-                  <Empty>{t("common.none")}</Empty>
-                ) : (
-                  <ul className="space-y-2 text-sm">
-                    {data.exceptions.map((e, i) => (
-                      <li
-                        key={i}
-                        className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200/80 px-3 py-2"
-                      >
-                        <div className="min-w-0">
-                          <Badge
-                            tone={e.severity === "high" ? "danger" : "warning"}
-                          >
-                            {t(`ct.exception.${e.kind}`)}
-                          </Badge>
-                          <p className="mt-1 text-zinc-700">{e.detail}</p>
-                        </div>
-                        <TextLink
-                          href={e.link}
-                          className="whitespace-nowrap text-xs"
-                        >
-                          {t("tasks.open")}
-                        </TextLink>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
-            </div>
-          ) : null}
-        </>
-      ) : null}
-      {totals && finance && operations && extra === "commercial" ? (
-        <div data-tower-extra="commercial">
-          <CommercialCard totals={totals} t={t} />
-        </div>
+        </details>
       ) : null}
     </>
   );

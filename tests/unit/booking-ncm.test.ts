@@ -249,3 +249,83 @@ describe("no booking", () => {
     expect(fresh.ncmMatchProductIds).toEqual([p.id]);
   });
 });
+
+describe("sugestões e estimar de novo", () => {
+  const cand = (
+    productId: string,
+    name: string,
+    ncmCode: string,
+    codes: string[] = [],
+  ) => ({
+    productId,
+    ncm: ncmCode,
+    names: [name],
+    codes,
+  });
+
+  it("sugere pela tradução do inglês, com nota mínima e desempate pelo material", () => {
+    const index = match.buildNcmIndex([
+      cand("p1", "TABUA RETANGULAR PLASTICO MARMORE 19CM", "39241000"),
+      cand("p2", "TABUA REDONDA PLASTICO MARMORE 30CM", "39241000"),
+      cand("p3", "BANDEJA MARMORE CERAMICA", "69120000"),
+      cand("p4", "SACOLA LISTRAS 38CM", "42022220"),
+      cand("p5", "VASO DECORATIVO", "69139000", ["MY-059A"]),
+    ]);
+    // "Stone marble" (inglês) acha "MARMORE" (português): metade das palavras.
+    const marble = match.suggestNcms(
+      { names: ["STONE MARBLE"], code: null, material: "PS+PVC" },
+      index,
+    );
+    expect(marble.map((s) => s.ncm)).toEqual(["39241000", "69120000"]);
+    expect(marble[0]).toMatchObject({ score: 0.5, products: 2 });
+    // Material de cerâmica inverte o desempate.
+    expect(
+      match
+        .suggestNcms(
+          { names: ["Marble"], code: null, material: "ceramic" },
+          index,
+        )
+        .map((s) => s.ncm)[0],
+    ).toBe("69120000");
+    // Código de fábrica igual: 100%.
+    expect(
+      match.suggestNcms({ names: ["WD STRIBY VERT"], code: "MY-059A" }, index),
+    ).toEqual([
+      { ncm: "69139000", score: 1, products: 1, example: "VASO DECORATIVO" },
+    ]);
+    // Uma palavra de três: abaixo de 50%, nada.
+    expect(
+      match.suggestNcms({ names: ["blue marble lamp"], code: null }, index),
+    ).toEqual([]);
+  });
+
+  it("estimar de novo preenche o que o cadastro passou a ter", async () => {
+    const store = getStore();
+    const lot = await lots.createBookingLotFromSheet(
+      admin,
+      file([row("ZX-1", "Zircon tumbler"), row("ZX-2", "Quartzite hanger")]),
+    );
+    let items = await store.list("booking_items", {
+      filter: { lotId: lot.id },
+    });
+    expect(items.every((i) => !i.ncm)).toBe(true);
+    await product("Zircon tumbler", "70133700");
+    await expect(ncm.reclassifyBookingLot(supplierA, lot.id)).rejects.toThrow(
+      "forbidden",
+    );
+    expect(await ncm.reclassifyBookingLot(admin, lot.id)).toEqual({
+      matched: 1,
+      toBroker: 1,
+    });
+    items = await store.list("booking_items", { filter: { lotId: lot.id } });
+    expect(items.find((i) => i.factoryItemCode === "ZX-1")).toMatchObject({
+      ncm: "70133700",
+      ncmSource: "match",
+    });
+    // Sugestões só para os que continuam sem NCM.
+    const suggestions = await ncm.bookingNcmSuggestions(items);
+    expect(
+      suggestions.has(items.find((i) => i.factoryItemCode === "ZX-1")!.id),
+    ).toBe(false);
+  });
+});

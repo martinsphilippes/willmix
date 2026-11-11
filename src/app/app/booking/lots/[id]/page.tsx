@@ -57,6 +57,8 @@ import {
   registerBookingLotSupplierAction,
   setBookingLotNoteAction,
 } from "../../../actions/booking-lots";
+import { reclassifyBookingNcmAction } from "../../../actions/booking-ncm";
+import type { NcmSuggestion } from "@/lib/ncm-match";
 
 /*
  * Detalhamento de um booking (docs/BOOKING.md, "Booking por planilha"):
@@ -147,8 +149,17 @@ export default async function BookingLotPage({
   const ncmWithBroker = items.filter(
     (i) => !i.ncm && !!i.ncmRequestedAt,
   ).length;
-  const { hasBroker } = await import("@/lib/services/booking-ncm");
+  const { hasBroker, bookingNcmSuggestions } =
+    await import("@/lib/services/booking-ncm");
   const brokerExists = ncmWithBroker ? await hasBroker() : true;
+  const ncmMissing = items.filter((i) => !i.ncm).length;
+  // Sugestões de NCM (até 3 por item, um clique grava) para os itens sem NCM.
+  const ncmSuggestions = ncmEditable
+    ? await bookingNcmSuggestions(items).catch((error: unknown) => {
+        console.error("[booking-ncm] sugestões", error);
+        return new Map();
+      })
+    : new Map();
   const pending = bookingLotPending(lot, items);
   const ready = bookingLotReady(pending);
   const businessTypes = await superplanBusinessTypes();
@@ -187,6 +198,14 @@ export default async function BookingLotPage({
     notices.push([
       "success",
       t("bookingLots.detail.created", { n: items.length }),
+    ]);
+  if (one("ncmMatched"))
+    notices.push([
+      "info",
+      t("bookingNcm.reclassified", {
+        n: Number(one("ncmMatched")) || 0,
+        left: Number(one("ncmLeft")) || 0,
+      }),
     ]);
   if (one("closed")) notices.push(["success", t("bookingLots.detail.closed")]);
   if (one("analyzed"))
@@ -378,6 +397,22 @@ export default async function BookingLotPage({
             {text}
           </Alert>
         ))}
+        {ncmEditable && ncmMissing ? (
+          <form
+            action={reclassifyBookingNcmAction}
+            className="flex flex-wrap items-center gap-2 text-sm text-zinc-600"
+            data-booking-lot-ncm-reclassify
+          >
+            <input type="hidden" name="lotId" value={lot.id} />
+            <span>{t("bookingNcm.reclassifyHint", { n: ncmMissing })}</span>
+            <SubmitButton
+              variant="secondary"
+              pendingText={t("bookingNcm.reclassifyPending")}
+            >
+              {t("bookingNcm.reclassify")}
+            </SubmitButton>
+          </form>
+        ) : null}
         {ncmWithBroker ? (
           <Alert tone="warning">
             <span data-booking-lot-ncm-pending={ncmWithBroker}>
@@ -761,6 +796,21 @@ export default async function BookingLotPage({
                                     String(item.position + 1),
                                 }),
                               )}
+                              suggestions={
+                                item.ncm
+                                  ? []
+                                  : (ncmSuggestions.get(item.id) ?? []).map(
+                                      (sg: NcmSuggestion) => ({
+                                        ncm: sg.ncm,
+                                        title: t("bookingNcm.suggestion", {
+                                          pct: Math.round(sg.score * 100),
+                                          n: sg.products,
+                                          example: sg.example,
+                                        }),
+                                      }),
+                                    )
+                              }
+                              suggestLabel={t("bookingNcm.suggestions")}
                             />
                           ) : (
                             <span className="tabular-nums">

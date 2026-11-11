@@ -6,7 +6,12 @@ import {
   type BoardInput,
 } from "@/lib/services/tower-board";
 
-/* Quadros da operação na Control Tower: em qual quadrado cada pedido cai. */
+/*
+ * Quadros da operação na Control Tower: o processo de hoje (Booking,
+ * solicitação ao fornecedor, pedido de compra com três raias e contrato,
+ * depois produção, embarque e entrega). Pedido sem `flow` é o importado do
+ * Sankhya: só visibilidade.
+ */
 
 type Order = import("@/lib/db").Order;
 
@@ -15,11 +20,13 @@ const PAST = "2026-11-01T12:00:00.000Z";
 const FUTURE = "2026-12-01T12:00:00.000Z";
 
 let seq = 0;
+/** Pedido de compra (fluxo do portal). */
 const order = (status: string, extra: Partial<Order> = {}): Order =>
   ({
     id: `o${++seq}`,
     number: seq,
     status,
+    flow: "supplier_request",
     customerId: "c1",
     closedAt: null,
     cancelledAt: null,
@@ -29,29 +36,32 @@ const order = (status: string, extra: Partial<Order> = {}): Order =>
     cancelRequestStatus: null,
     ...extra,
   }) as unknown as Order;
+/** Pedido importado do Sankhya (sem fluxo no portal). */
+const imported = (status: string, extra: Partial<Order> = {}) =>
+  order(status, { flow: null, ...extra });
 
 function input(over: Partial<BoardInput> = {}): BoardInput {
   return {
     now: NOW,
     finance: false,
     orders: [],
-    parties: [{ id: "c1", name: "Loja Um" }],
+    parties: [
+      { id: "c1", name: "Wellmix" },
+      { id: "f1", name: "Fábrica Um" },
+    ],
     items: [],
     products: [],
     activeStages: [],
     stages: [],
     requirements: [],
-    requests: [],
-    quotes: [],
-    approvals: [],
-    rfqDays: 3,
-    briefRequestIds: [],
+    laneRequirements: [],
+    lots: [],
+    supplierRequests: [],
     steps: [],
     tracks: [],
     skus: [],
     artIssues: [],
     receivings: [],
-    certificationOrderIds: [],
     penalties: [],
     rejected: [],
     reviews: [],
@@ -105,14 +115,13 @@ const step = (o: Order, key: string, status = "submitted", value = "") =>
 const ids = (board: ReturnType<typeof buildTowerBoard>, key: BoardCardKey) =>
   board.cards.find((c) => c.key === key)?.rows.map((r) => r.id) ?? null;
 
-describe("bloco 2: onde o pedido está agora", () => {
+describe("pedido: onde está agora", () => {
   it("cada pedido em andamento cai num quadrado só, dividido pelo que já foi feito na etapa", () => {
     const o = {
-      conference: order("ORDER_CREATED"),
-      sheet: order("PREPARATION"),
-      validation: order("PREPARATION"),
-      art: order("PACKAGING"),
-      approval: order("PACKAGING"),
+      created: order("ORDER_CREATED"),
+      prep: order("PREPARATION"),
+      contractW: order("PACKAGING"),
+      contractS: order("PACKAGING"),
       inspection: order("INSPECTION"),
       blocked: order("INSPECTION"),
       booking: order("SHIPPING"),
@@ -125,11 +134,10 @@ describe("bloco 2: onde o pedido está agora", () => {
       delivered: order("DELIVERED"),
     };
     const s = [
-      stage(o.conference),
-      stage(o.sheet, { reqs: { purchase_sheet: "pending" } }),
-      stage(o.validation, { reqs: { purchase_sheet: "done" } }),
-      stage(o.art, { reqs: { art: "pending" } }),
-      stage(o.approval, { reqs: { art: "done" } }),
+      stage(o.created),
+      stage(o.prep),
+      stage(o.contractW),
+      stage(o.contractS),
       stage(o.inspection),
       stage(o.blocked, { status: "blocked" }),
       stage(o.booking),
@@ -155,6 +163,8 @@ describe("bloco 2: onde o pedido está agora", () => {
     const [seaStage, seaEta] = eta(o.sea, FUTURE.slice(0, 10));
     const [pastStage, pastEta] = eta(o.etaPassed, "2026-11-05");
     const [presStage, presEta] = eta(o.presence, FUTURE.slice(0, 10));
+    // Contrato: a Wellmix já assinou o do contractS.
+    const signed = s[3].stage;
     const board = buildTowerBoard(
       input({
         orders: Object.values(o),
@@ -171,6 +181,20 @@ describe("bloco 2: onde o pedido está agora", () => {
           pastEta,
           presEta,
         ] as BoardInput["requirements"],
+        laneRequirements: [
+          {
+            orderId: o.contractS.id,
+            stageId: signed.id,
+            key: "order_signed_wellmix",
+            status: "done",
+          },
+          {
+            orderId: o.contractW.id,
+            stageId: s[2].stage.id,
+            key: "order_signed_wellmix",
+            status: "pending",
+          },
+        ] as BoardInput["laneRequirements"],
         steps: [
           step(o.booked, "booking", "validated"),
           step(o.presence, "cargo_presence"),
@@ -178,11 +202,10 @@ describe("bloco 2: onde o pedido está agora", () => {
       }),
     );
     const expected: Record<string, BoardCardKey> = {
-      conference: "ordConference",
-      sheet: "ordSheet",
-      validation: "ordValidation",
-      art: "ordArt",
-      approval: "ordArtApproval",
+      created: "ordPrepPortal",
+      prep: "ordPrepPortal",
+      contractW: "ordContractWellmix",
+      contractS: "ordContractSupplier",
       inspection: "ordInspection",
       blocked: "ordInspectionIssue",
       booking: "ordBooking",
@@ -203,7 +226,34 @@ describe("bloco 2: onde o pedido está agora", () => {
         c.key !== "ordClosedMonth" &&
         c.key !== "ordCancelledMonth",
     );
-    expect(main.reduce((n, c) => n + c.count, 0)).toBe(15);
+    expect(main.reduce((n, c) => n + c.count, 0)).toBe(14);
+  });
+
+  it("pedido importado do Sankhya entra pela etapa da TOP, num quadrado próprio, sem atraso nem bloqueio", () => {
+    const prep = imported("PREPARATION");
+    const contract = imported("PACKAGING");
+    const sea = imported("CUSTOMS");
+    const s = [
+      stage(prep, { dueAt: PAST }),
+      stage(contract, { status: "blocked" }),
+      stage(sea, { dueAt: PAST }),
+    ];
+    const board = buildTowerBoard(
+      input({
+        orders: [prep, contract, sea],
+        activeStages: s.map((x) => x.active),
+        stages: s.map((x) => x.stage),
+      }),
+    );
+    expect(ids(board, "ordPrepSankhya")).toEqual([prep.id]);
+    expect(ids(board, "ordPrepPortal")).toEqual([]);
+    expect(ids(board, "ordContractSankhya")).toEqual([contract.id]);
+    expect(ids(board, "ordAtSea")).toEqual([sea.id]);
+    // Sem o fluxo do portal, prazo vencido e bloqueio não valem.
+    expect(ids(board, "probOverdue")).toEqual([]);
+    expect(ids(board, "probBlocked")).toEqual([]);
+    const row = board.cards.find((c) => c.key === "ordPrepSankhya")!.rows[0];
+    expect(row).toMatchObject({ origin: "sankhya", overdue: false });
   });
 
   it("encerrados e cancelados contam só no mês", () => {
@@ -224,9 +274,9 @@ describe("bloco 2: onde o pedido está agora", () => {
     expect(row).toMatchObject({ cancelled: true, stageKey: "SHIPPING" });
   });
 
-  it("atrasado: conta no quadrado e no bloco de problemas", () => {
+  it("atrasado (pedido de compra): conta no quadrado e no bloco de problemas", () => {
     const late = order("PACKAGING");
-    const s = stage(late, { dueAt: PAST, reqs: { art: "pending" } });
+    const s = stage(late, { dueAt: PAST });
     const board = buildTowerBoard(
       input({
         orders: [late],
@@ -235,370 +285,183 @@ describe("bloco 2: onde o pedido está agora", () => {
         requirements: s.reqs,
       }),
     );
-    const art = board.cards.find((c) => c.key === "ordArt")!;
-    expect(art).toMatchObject({ count: 1, overdue: 1 });
+    const card = board.cards.find((c) => c.key === "ordContractWellmix")!;
+    expect(card).toMatchObject({ count: 1, overdue: 1 });
     expect(ids(board, "probOverdue")).toEqual([late.id]);
   });
 });
 
-describe("faca (die-cut) no bloco do pedido", () => {
-  it("Arte e embalagem sem a faca: o pedido fica em Faca; com a faca, em Arte da embalagem", () => {
-    const waiting = order("PACKAGING");
-    const drawing = order("PACKAGING");
-    const a = stage(waiting, { reqs: { art: "pending" } });
-    const b = stage(drawing, { reqs: { art: "pending" } });
+describe("as três raias da Preparação, arte e certificação", () => {
+  const lane = (
+    o: Order,
+    s: ReturnType<typeof stage>,
+    key: string,
+    done = false,
+  ) => ({
+    orderId: o.id,
+    stageId: s.stage.id,
+    key,
+    status: done ? "done" : "pending",
+  });
+
+  it("cada raia conta o pedido que tem item liberado e pendente nela", () => {
+    const a = order("PREPARATION"); // tudo pendente: fornecedor, arte, certificado
+    const b = order("PREPARATION"); // arte enviada: a Wellmix valida
+    const c = order("PREPARATION"); // arte validada e certificado: arte final
+    const sa = stage(a);
+    const sb = stage(b);
+    const sc = stage(c);
     const board = buildTowerBoard(
       input({
-        orders: [waiting, drawing],
-        activeStages: [a.active, b.active],
-        stages: [a.stage, b.stage],
-        requirements: [...a.reqs, ...b.reqs],
-        dielineOrderIds: [waiting.id],
+        orders: [a, b, c],
+        activeStages: [sa.active, sb.active, sc.active],
+        stages: [sa.stage, sb.stage, sc.stage],
+        laneRequirements: [
+          lane(a, sa, "die_cut__i1"),
+          lane(a, sa, "art__i1"),
+          lane(a, sa, "art_review__i1"),
+          lane(a, sa, "certificate__i1"),
+          lane(a, sa, "art_final__i1"),
+          lane(b, sb, "die_cut__i2", true),
+          lane(b, sb, "art__i2", true),
+          lane(b, sb, "art_review__i2"),
+          lane(b, sb, "certificate__i2", true),
+          lane(b, sb, "art_final__i2"),
+          lane(c, sc, "die_cut__i3", true),
+          lane(c, sc, "art__i3", true),
+          lane(c, sc, "art_review__i3", true),
+          lane(c, sc, "certificate__i3", true),
+          lane(c, sc, "art_final__i3"),
+        ] as BoardInput["laneRequirements"],
       }),
     );
-    expect(ids(board, "ordDieline")).toEqual([waiting.id]);
-    expect(ids(board, "ordArt")).toEqual([drawing.id]);
-    // O quadrado fica no bloco do pedido, entre a validação da ficha e a arte.
-    const order2 = board.cards
-      .filter((c) => c.block === "order")
-      .map((c) => c.key);
-    expect(order2.slice(2, 5)).toEqual([
-      "ordValidation",
-      "ordDieline",
-      "ordArt",
-    ]);
-    expect(board.cards.some((c) => (c.key as string) === "reqDieline")).toBe(
-      false,
-    );
+    // A arte final só é pedida quando validada e certificada (não conta antes).
+    expect(ids(board, "lnSupplier")).toEqual([a.id]);
+    expect(ids(board, "lnArt")?.sort()).toEqual([a.id, c.id].sort());
+    expect(ids(board, "lnArtReview")).toEqual([b.id]);
+    expect(ids(board, "lnCert")).toEqual([a.id]);
+    // As raias não mudam a posição: os três ficam em "Pedidos de compra".
+    expect(ids(board, "ordPrepPortal")?.length).toBe(3);
   });
 });
 
-describe("bloco 1: antes de virar pedido", () => {
-  const request = (status: string, extra: Record<string, unknown> = {}) =>
-    ({
-      id: `r-${++seq}`,
-      status,
-      customerId: "c1",
-      productName: "Copo",
-      deadline: null,
-      selectedQuoteId: null,
-      sellPrice: null,
-      sellCurrency: null,
-      ...extra,
-    }) as unknown as BoardInput["requests"][number];
-
-  it("usa o mesmo próximo passo da tela Solicitações", () => {
-    const fresh = request("REQUESTED");
-    const quoting = request("RFQ_OPEN");
-    const answered = request("RFQ_OPEN");
-    // 1 de 2 respondeu, dentro do prazo da RFQ: ainda chegando cotações.
-    const partial = request("QUOTATION_RECEIVED");
-    const approving = request("QUOTATION_RECEIVED");
-    // Proposta enviada, sem aprovação do cliente: "Proposta ao cliente".
-    const proposing = request("WAITING_DOWN_PAYMENT", {
-      selectedQuoteId: "q-sel",
-    });
-    const down = request("WAITING_DOWN_PAYMENT", {
-      sellPrice: 1000,
-      sellCurrency: "BRL",
-      proposalApprovedAt: PAST,
-    });
-    const quote = (
-      r: { id: string },
-      status: string,
-      createdAt = "2026-11-06T12:00:00.000Z",
-    ) => ({
-      id: `q-${++seq}`,
-      requestId: r.id,
-      status,
-      price: status === "answered" ? 2 : null,
-      currency: "USD",
-      leadTimeDays: null,
-      answeredAt: status === "answered" ? createdAt : null,
-      createdAt,
-    });
+describe("booking e solicitação ao fornecedor", () => {
+  it("lotes por situação; encerrados ficam de fora", () => {
+    const lot = (status: string) =>
+      ({
+        id: `l${++seq}`,
+        number: seq,
+        status,
+        supplierId: "f1",
+        fileName: "plan.xlsx",
+        itemCount: 12,
+      }) as unknown as NonNullable<BoardInput["lots"]>[number];
+    const draft = lot("draft");
+    const closed = lot("closed");
+    const progress = lot("in_progress");
+    const done = lot("done");
     const board = buildTowerBoard(
-      input({
-        finance: true,
-        requests: [
-          fresh,
-          quoting,
-          answered,
-          partial,
-          approving,
-          proposing,
-          down,
-        ],
-        quotes: [
-          quote(quoting, "invited"),
-          quote(answered, "answered"),
-          quote(partial, "answered"),
-          quote(partial, "invited"),
-          quote(approving, "answered"),
-        ] as BoardInput["quotes"],
-        approvals: [
-          {
-            requestId: approving.id,
-            status: "pending",
-            currentLevel: "planner",
-          },
-        ] as BoardInput["approvals"],
-        briefRequestIds: [quoting.id],
-      }),
+      input({ lots: [draft, closed, progress, done] }),
     );
-    expect(ids(board, "reqNew")).toEqual([fresh.id]);
-    expect(ids(board, "reqRfq")).toEqual([quoting.id]);
-    expect(ids(board, "reqQuotes")).toEqual([partial.id]);
-    expect(ids(board, "reqChoose")).toEqual([answered.id]);
-    expect(ids(board, "reqApproval")).toEqual([approving.id]);
-    expect(ids(board, "reqProposal")).toEqual([proposing.id]);
-    expect(ids(board, "reqDown")).toEqual([down.id]);
-    expect(ids(board, "reqPackaging")).toEqual([quoting.id]);
-    expect(board.cards.find((c) => c.key === "reqDown")!.value).toBe(1000);
+    expect(ids(board, "bkDraft")).toEqual([draft.id]);
+    expect(ids(board, "bkClosed")).toEqual([closed.id]);
+    expect(ids(board, "bkProgress")).toEqual([progress.id]);
+    expect(
+      board.cards.find((c) => c.key === "bkClosed")!.rows[0],
+    ).toMatchObject({
+      kind: "booking",
+      link: `/app/booking/lots/${closed.id}`,
+    });
   });
 
-  it("prazo da RFQ vencido com cotação: vai para a comparação", () => {
-    const late = request("QUOTATION_RECEIVED");
-    const q = (status: string) => ({
-      id: `q-${++seq}`,
-      requestId: late.id,
-      status,
-      price: status === "answered" ? 2 : null,
-      currency: "USD",
-      leadTimeDays: null,
-      answeredAt: status === "answered" ? "2026-10-20T12:00:00.000Z" : null,
-      createdAt: "2026-10-20T12:00:00.000Z",
-    });
-    const board = buildTowerBoard(
-      input({
-        requests: [late],
-        quotes: [q("answered"), q("invited")] as BoardInput["quotes"],
-      }),
-    );
-    expect(ids(board, "reqChoose")).toEqual([late.id]);
-    expect(ids(board, "reqQuotes")).toEqual([]);
-  });
-});
-
-describe("bloco 3: acontece ao mesmo tempo", () => {
-  it("produção, inspeção por SKU, arte, certificação, documentos, numerário, canal e recebimento", () => {
-    const making = order("PACKAGING", { ocpId: "ocp1" });
-    const customs = order("CUSTOMS");
-    const receiving = order("DELIVERED");
-    const s = [stage(making), stage(customs), stage(receiving)];
-    const board = buildTowerBoard(
-      input({
-        orders: [making, customs, receiving],
-        activeStages: s.map((x) => x.active),
-        stages: s.map((x) => x.stage),
-        tracks: [
-          {
-            orderId: making.id,
-            productionStartAt: "2026-10-01T00:00:00Z",
-            etd: FUTURE,
-            followups: [
-              {
-                day: 5,
-                status: "delayed",
-                note: "x",
-                at: PAST,
-                byUserId: "u",
-              },
-            ],
-          },
-        ] as unknown as BoardInput["tracks"],
-        skus: [
-          {
-            orderId: making.id,
-            orderItemId: "i1",
-            round: 1,
-            result: "rejected",
-          },
-        ] as unknown as BoardInput["skus"],
-        artIssues: [{ orderId: making.id, status: "open" }],
-        steps: [
-          step(customs, "draft_bl"),
-          step(customs, "numerario", "validated"),
-          step(customs, "channel", "submitted", "red"),
-        ],
-        receivings: [
-          {
-            orderId: receiving.id,
-            sealNumber: "L1",
-            checklist: [],
-            items: [
-              {
-                orderItemId: "i1",
-                expected: 10,
-                received: 9,
-                damaged: 0,
-                note: null,
-              },
-            ],
-            containerReturnedAt: null,
-            closedAt: null,
-          },
-        ] as unknown as BoardInput["receivings"],
-      }),
-    );
-    expect(ids(board, "parProduction")).toEqual([making.id]);
-    expect(ids(board, "parProductionLate")).toEqual([making.id]);
-    // Começou em 1/10: os follows de 5, 15 e 25 dias já venceram (o de 5 foi feito).
-    expect(ids(board, "parFollowupDue")).toEqual([making.id]);
-    expect(ids(board, "parSkuRejected")).toEqual([making.id]);
-    expect(ids(board, "parArtIssue")).toEqual([making.id]);
-    // Todo pedido precisa do selo de certificação: os três estão sem ele.
-    expect(ids(board, "parCertification")).toEqual([
-      making.id,
-      customs.id,
-      receiving.id,
-    ]);
-    expect(ids(board, "parDocsToValidate")).toEqual([customs.id]);
-    expect(ids(board, "parNumerario")).toEqual([customs.id]);
-    expect(ids(board, "parChannel")).toEqual([customs.id]);
-    expect(ids(board, "parReceiving")).toEqual([receiving.id]);
-    expect(ids(board, "parReceivingDiff")).toEqual([receiving.id]);
-    expect(ids(board, "parContainerReturn")).toEqual([receiving.id]);
-  });
-
-  it("selo de certificação: todo pedido fica em Certificação pendente até a arte com o selo ser conferida, e não vira documento para validar", () => {
-    const born = order("ORDER_CREATED", { ocpId: "ocp1" });
-    const sealed = order("PACKAGING", { ocpId: "ocp1" });
-    const done = order("PACKAGING", { ocpId: "ocp1" });
-    // Sem certificadora designada: o selo vale do mesmo jeito.
-    const noOcp = order("PREPARATION");
-    const noOcpDone = order("PREPARATION");
-    // Memorial, laudo e registro concluídos, mas ainda sem o selo.
-    const classicOnly = order("PACKAGING", { ocpId: "ocp1" });
-    const s = [born, sealed, done, noOcp, noOcpDone, classicOnly].map((o) =>
-      stage(o),
-    );
-    const board = buildTowerBoard(
-      input({
-        orders: [born, sealed, done, noOcp, noOcpDone, classicOnly],
-        activeStages: s.map((x) => x.active),
-        stages: s.map((x) => x.stage),
-        steps: [
-          // Selo enviado; a arte com o selo aguarda a conferência da Wellmix.
-          step(sealed, "cert_seal"),
-          step(sealed, "cert_seal_art"),
-          // Tudo da certificação concluído.
-          step(done, "cert_memorial", "validated"),
-          step(done, "cert_lab"),
-          step(done, "cert_registration", "validated"),
-          step(done, "cert_seal"),
-          step(done, "cert_seal_art", "validated"),
-          // Sem certificadora: só o selo conta (memorial, laudo e registro não).
-          step(noOcpDone, "cert_seal"),
-          step(noOcpDone, "cert_seal_art", "validated"),
-          step(classicOnly, "cert_memorial", "validated"),
-          step(classicOnly, "cert_lab"),
-          step(classicOnly, "cert_registration", "validated"),
-        ],
-      }),
-    );
-    expect(ids(board, "parCertification")).toEqual([
-      born.id,
-      sealed.id,
-      noOcp.id,
-      classicOnly.id,
-    ]);
-    expect(ids(board, "parDocsToValidate")).toEqual([]);
-  });
-
-  it("parcelas, a receber e valores: só para quem abre Finanças", () => {
-    const o = order("SHIPPING");
-    const s = stage(o);
-    const base = {
-      orders: [o],
-      activeStages: [s.active],
-      stages: [s.stage],
-      installments: [
-        { orderId: o.id, status: "overdue" as const },
-        { orderId: o.id, status: "due_soon" as const },
+  it("solicitação: de quem é a vez; aprovada espera produto e depois o pedido", () => {
+    const sr = (status: string, extra: Record<string, unknown> = {}) =>
+      ({
+        id: `sr${++seq}`,
+        number: seq,
+        status,
+        supplierId: "f1",
+        item: { description: "Copo", productName: null },
+        createdAt: NOW.toISOString(),
+        negotiation: null,
+        productId: null,
+        orderId: null,
+        ...extra,
+      }) as unknown as NonNullable<BoardInput["supplierRequests"]>[number];
+    const open = sr("open");
+    const answered = sr("answered");
+    const counter = sr("answered", {
+      negotiation: [
+        {
+          kind: "proposal",
+          at: NOW.toISOString(),
+          by: "wellmix",
+          userId: "u1",
+          price: 1,
+          comment: "baixa",
+        },
       ],
-      money: new Map([
-        [o.id, { sell: 5000, currency: "BRL", receivable: 1500 }],
-      ]),
-    };
-    const closed = buildTowerBoard(input({ ...base, finance: false }));
-    const keys = closed.cards.map((c) => c.key);
-    for (const k of [
-      "parInstallmentOverdue",
-      "parInstallmentDueSoon",
-      "parInstallmentRequested",
-      "parReceivable",
-    ] as const)
-      expect(keys).not.toContain(k);
-    expect(closed.cards.every((c) => c.value === null)).toBe(true);
-
-    const open = buildTowerBoard(input({ ...base, finance: true }));
-    expect(ids(open, "parInstallmentOverdue")).toEqual([o.id]);
-    expect(ids(open, "parInstallmentDueSoon")).toEqual([o.id]);
-    expect(ids(open, "parInstallmentRequested")).toEqual([]);
-    expect(open.cards.find((c) => c.key === "parReceivable")).toMatchObject({
-      count: 1,
-      value: 1500,
     });
-    expect(open.cards.find((c) => c.key === "ordBooking")!.value).toBe(5000);
-    expect(open.cards.map((c) => c.key)).toEqual(BOARD_CARDS.map((c) => c.key));
+    const approved = sr("approved");
+    const toOrder = sr("approved", { productId: "p1" });
+    const ordered = sr("approved", { productId: "p1", orderId: "o9" });
+    const declined = sr("declined");
+    const late = sr("open", { createdAt: PAST });
+    const board = buildTowerBoard(
+      input({
+        supplierRequests: [
+          open,
+          answered,
+          counter,
+          approved,
+          toOrder,
+          ordered,
+          declined,
+          late,
+        ],
+      }),
+    );
+    expect(ids(board, "srWaitingSupplier")?.sort()).toEqual(
+      [open.id, counter.id, late.id].sort(),
+    );
+    expect(ids(board, "srWaitingWellmix")).toEqual([answered.id]);
+    expect(ids(board, "srApproved")).toEqual([approved.id]);
+    expect(ids(board, "srToOrder")).toEqual([toOrder.id]);
+    // SLA da negociação (30 min): a aberta há dias está atrasada.
+    expect(
+      board.cards.find((c) => c.key === "srWaitingSupplier")!.overdue,
+    ).toBe(1);
   });
 });
 
-describe("bloco 4: problemas", () => {
-  it("bloqueado, documento rejeitado, Sankhya, multa, cancelamento, revisão e certificação vencendo", () => {
-    const blocked = order("INSPECTION", {
-      erpSyncStatus: "pending",
-      cancelRequestStatus: "requested",
-    });
-    const fine = order("TRANSPORT");
-    const gone = order("CANCELLED");
-    const s = [stage(blocked, { status: "blocked" }), stage(fine)];
+describe("em paralelo e problemas", () => {
+  it("documento rejeitado, bloqueado, multa e numerário", () => {
+    const o = order("INSPECTION");
+    const s = stage(o, { status: "blocked" });
     const board = buildTowerBoard(
       input({
-        orders: [blocked, fine, gone],
-        activeStages: s.map((x) => x.active),
-        stages: s.map((x) => x.stage),
-        steps: [step(fine, "bl", "rejected")],
-        penalties: [{ orderId: fine.id }, { orderId: gone.id }],
-        reviews: [
-          { orderId: blocked.id, rule: "inspection.weight", entity: "order" },
-          { orderId: gone.id, rule: "x", entity: "order" },
-        ] as unknown as BoardInput["reviews"],
-        products: [{ id: "p1", name: "Boneca" }],
-        certifications: [
-          {
-            id: "cert1",
-            entity: "product",
-            entityId: "p1",
-            kind: "Inmetro",
-            validUntil: FUTURE,
-          },
-        ] as unknown as BoardInput["certifications"],
-        containers: { open: 3 },
+        orders: [o],
+        activeStages: [s.active],
+        stages: [s.stage],
+        rejected: [{ orderId: o.id }],
+        penalties: [{ orderId: o.id }],
+        steps: [
+          step(o, "numerario", "submitted"),
+          step(o, "numerario_paid", "pending"),
+        ],
       }),
     );
-    expect(ids(board, "probBlocked")).toEqual([blocked.id]);
-    expect(ids(board, "ordInspectionIssue")).toEqual([blocked.id]);
-    expect(ids(board, "probDocRejected")).toEqual([fine.id]);
-    expect(ids(board, "probErp")).toEqual([blocked.id]);
-    expect(ids(board, "probCancelRequest")).toEqual([blocked.id]);
-    // Multa de pedido cancelado não conta.
-    expect(ids(board, "probPenalty")).toEqual([fine.id]);
-    // Revisão de pedido cancelado não conta; quadrado leva à tela de revisão.
-    expect(board.cards.find((c) => c.key === "probReviews")).toMatchObject({
-      count: 1,
-      href: "/app/reviews",
-    });
-    expect(board.cards.find((c) => c.key === "parContainers")).toMatchObject({
-      count: 3,
-      href: "/app/containers",
-    });
-    const cert = board.cards.find((c) => c.key === "probCertExpiring")!;
-    expect(cert.rows[0]).toMatchObject({
-      kind: "cert",
-      product: "Boneca",
-      link: "/app/products/p1",
-    });
+    expect(ids(board, "probBlocked")).toEqual([o.id]);
+    expect(ids(board, "probDocRejected")).toEqual([o.id]);
+    expect(ids(board, "probPenalty")).toEqual([o.id]);
+    expect(ids(board, "parNumerario")).toEqual([o.id]);
+  });
+
+  it("quadrados de dinheiro só com Finanças", () => {
+    const keys = (finance: boolean) =>
+      buildTowerBoard(input({ finance })).cards.map((c) => c.key);
+    expect(keys(true)).toEqual(BOARD_CARDS.map((c) => c.key));
+    expect(keys(false)).not.toContain("parReceivable");
+    expect(keys(false)).not.toContain("parInstallmentOverdue");
   });
 });
