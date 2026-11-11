@@ -28,8 +28,8 @@ import { audit } from "./audit";
 /*
  * Pedido de compra (docs/PURCHASE_ORDER.md). Depois da solicitação ao
  * fornecedor aprovada e do produto vencedor cadastrado, a Wellmix junta num
- * pedido os produtos aprovados do mesmo fornecedor. O cliente é a Wellmix SC
- * (Configurações, pelo CNPJ). O pedido nasce com o fluxo "supplier_request":
+ * pedido os produtos aprovados do mesmo fornecedor. O comprador é a própria
+ * Wellmix (CODEMP do Sankhya, a WELLMIX - SC). O pedido nasce com o fluxo "supplier_request":
  * "Pedido criado" conclui na hora e a Preparação traz as três raias em
  * paralelo (fornecedor, agência de arte, certificadora); depois, o contrato
  * assinado e carimbado pelas duas partes.
@@ -96,15 +96,19 @@ export async function listPurchaseCandidates(
   );
 }
 
-/** O cliente dos pedidos de compra: a empresa com o CNPJ das Configurações. */
+/**
+ * O comprador (cliente do pedido): a própria Wellmix, a empresa que emite o
+ * pedido de compra no Sankhya (CODEMP, hoje 3: WELLMIX - SC). É o cadastro
+ * de cliente com esse código do Sankhya. Clientes terceiros só virão com a
+ * vitrine.
+ */
 export async function purchaseOrderCustomer(): Promise<Party | null> {
-  const { getSettings } = await import("@/lib/settings");
-  const taxId = (await getSettings()).purchaseOrderCustomerTaxId.replace(
-    /\D/g,
-    "",
-  );
-  if (!taxId) return null;
-  const rows = await getStore().list("parties", { filter: { taxId } });
+  const { getSankhyaErpSettings } =
+    await import("@/lib/integrations/sankhya-settings");
+  const codEmp = (await getSankhyaErpSettings()).codEmp ?? 3;
+  const rows = await getStore().list("parties", {
+    filter: { type: "customer", sankhyaCode: String(codEmp) },
+  });
   return (
     rows
       .filter((p) => p.active)

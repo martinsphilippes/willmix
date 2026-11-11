@@ -19,7 +19,7 @@ A solicitação do cliente (vitrine, tabela `requests`) e a reposição pedida p
 - **Limites e recusas:**
   - no máximo 30 produtos por pedido;
   - produto já em outro pedido é recusado (`purchase_order_taken`).
-- **Cliente:** a **Wellmix SC**, a empresa ativa com o CNPJ de Configurações (`purchaseOrderCustomerTaxId`, padrão 09517464000306; com mais de uma, vale a mais antiga). Sem ela, a geração é recusada (`purchase_order_customer_missing`).
+- **Comprador (cliente do pedido):** a própria Wellmix, a empresa que emite o pedido de compra no Sankhya (CODEMP das configurações do Sankhya, hoje 3: WELLMIX - SC). É o cadastro de **cliente** com esse código do Sankhya; o cadastro de fornecedor da mesma empresa não entra. Sem ele, a geração é recusada (`purchase_order_customer_missing`). Clientes terceiros só virão com a vitrine.
 - **O que fica no banco:**
   - o pedido grava `orders.flow = "supplier_request"` e uma solicitação própria (`requests.origin = "supplier_request"`, já "pedido"), porque todo pedido tem uma;
   - cada produto vira um item do pedido, com quantidade e preço negociado;

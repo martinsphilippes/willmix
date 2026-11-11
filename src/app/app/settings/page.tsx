@@ -502,18 +502,6 @@ export default async function SettingsPage({
                       defaultValue={s.purchaseArtReviewSlaDays}
                     />
                   </Field>
-                  <Field
-                    label={t("purchaseOrder.settings.customer")}
-                    hint={t("purchaseOrder.settings.customerHint")}
-                  >
-                    <Input
-                      name="purchaseOrderCustomerTaxId"
-                      inputMode="numeric"
-                      maxLength={18}
-                      required
-                      defaultValue={s.purchaseOrderCustomerTaxId}
-                    />
-                  </Field>
                 </div>
               </div>
 

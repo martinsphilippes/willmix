@@ -12,7 +12,7 @@ export const pt = {
   "purchaseOrder.card.title": "Gerar pedido de compra",
   "purchaseOrder.card.hint":
     "Produtos aprovados com o fornecedor e já cadastrados, ainda fora de pedido. Um pedido por fornecedor: marque os produtos, ajuste a quantidade e gere. O pedido abre as três raias juntas: fornecedor (preparação), agência de arte e certificadora.",
-  "purchaseOrder.card.customer": "Cliente do pedido: {name}",
+  "purchaseOrder.card.customer": "Comprador: {name}",
   "purchaseOrder.card.submit": "Gerar pedido de compra",
   "purchaseOrder.card.pending": "Gerando…",
   "purchaseOrder.col.include": "Incluir",
@@ -41,7 +41,7 @@ export const pt = {
   "purchaseOrder.error.purchase_order_currency_mixed":
     "Os produtos do pedido precisam estar na mesma moeda.",
   "purchaseOrder.error.purchase_order_customer_missing":
-    "Cliente dos pedidos de compra não encontrado: confira o CNPJ em Configurações (empresa ativa com esse CNPJ).",
+    "Comprador não encontrado: falta o cadastro de cliente da Wellmix com o código da empresa do Sankhya (CODEMP, hoje 3).",
   "purchaseOrder.error.purchase_order_qty_invalid":
     "Quantidade inválida: informe as peças (número inteiro maior que zero).",
   "orders.error.lane_prerequisite":
@@ -58,13 +58,8 @@ export const pt = {
     "Pedido de compra: dias da agência para a arte",
   "purchaseOrder.settings.reviewDays":
     "Pedido de compra: dias da Wellmix para validar a arte",
-  "purchaseOrder.settings.customer": "CNPJ do cliente dos pedidos de compra",
-  "purchaseOrder.settings.customerHint":
-    "A empresa ativa com este CNPJ entra como cliente dos pedidos de compra (hoje, a Wellmix SC).",
   "settings.error.purchase_sla_invalid":
     "Informe os prazos do pedido de compra em dias (de 1 a 365).",
-  "settings.error.purchase_customer_tax_invalid":
-    "Informe o CNPJ com 14 dígitos.",
 
   "purchaseOrder.notify.lane.supplier.subject":
     "Pedido de compra #{n}: preparação",
@@ -95,7 +90,7 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseOrder.card.title": "Create purchase order",
   "purchaseOrder.card.hint":
     "Products approved with the supplier and already registered, not yet in an order. One order per supplier: tick the products, adjust the quantity and create it. The order opens the three lanes together: supplier (preparation), artwork agency and certifier.",
-  "purchaseOrder.card.customer": "Order customer: {name}",
+  "purchaseOrder.card.customer": "Buyer: {name}",
   "purchaseOrder.card.submit": "Create purchase order",
   "purchaseOrder.card.pending": "Creating…",
   "purchaseOrder.col.include": "Include",
@@ -124,7 +119,7 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseOrder.error.purchase_order_currency_mixed":
     "The products in the order must be in the same currency.",
   "purchaseOrder.error.purchase_order_customer_missing":
-    "Purchase order customer not found: check the tax ID (CNPJ) in Settings (an active company with that CNPJ).",
+    "Buyer not found: the Wellmix customer record with the Sankhya company code (CODEMP, today 3) is missing.",
   "purchaseOrder.error.purchase_order_qty_invalid":
     "Invalid quantity: enter the pieces (a whole number above zero).",
   "orders.error.lane_prerequisite":
@@ -143,12 +138,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Purchase order: agency days for the artwork",
   "purchaseOrder.settings.reviewDays":
     "Purchase order: Wellmix days to review the artwork",
-  "purchaseOrder.settings.customer": "Purchase order customer tax ID (CNPJ)",
-  "purchaseOrder.settings.customerHint":
-    "The active company with this CNPJ is the customer of purchase orders (today, Wellmix SC).",
   "settings.error.purchase_sla_invalid":
     "Enter the purchase order deadlines in days (1 to 365).",
-  "settings.error.purchase_customer_tax_invalid": "Enter the 14-digit CNPJ.",
 
   "purchaseOrder.notify.lane.supplier.subject":
     "Purchase order #{n}: preparation",
@@ -179,7 +170,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseOrder.card.title": "生成采购订单",
   "purchaseOrder.card.hint":
     "已与供应商确认并已建档、尚未下单的产品。每个供应商一张订单：勾选产品、调整数量后生成。订单会同时开启三条流程：供应商（准备）、设计公司和认证机构。",
-  "purchaseOrder.card.customer": "订单客户：{name}",
+  "purchaseOrder.card.customer": "采购方：{name}",
   "purchaseOrder.card.submit": "生成采购订单",
   "purchaseOrder.card.pending": "生成中…",
   "purchaseOrder.col.include": "包含",
@@ -204,7 +195,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseOrder.error.purchase_order_currency_mixed":
     "订单中的产品必须使用同一币种。",
   "purchaseOrder.error.purchase_order_customer_missing":
-    "未找到采购订单客户：请在设置中检查 CNPJ（需有该 CNPJ 的有效公司）。",
+    "未找到采购方：缺少带有 Sankhya 公司代码（CODEMP，目前为 3）的 Wellmix 客户档案。",
   "purchaseOrder.error.purchase_order_qty_invalid":
     "数量无效：请填写件数（大于零的整数）。",
   "orders.error.lane_prerequisite":
@@ -219,11 +210,7 @@ export const zh: Record<keyof typeof pt, string> = {
 
   "purchaseOrder.settings.artDays": "采购订单：设计公司完成设计稿的天数",
   "purchaseOrder.settings.reviewDays": "采购订单：Wellmix 审核设计稿的天数",
-  "purchaseOrder.settings.customer": "采购订单客户 CNPJ",
-  "purchaseOrder.settings.customerHint":
-    "具有此 CNPJ 的有效公司作为采购订单客户（目前为 Wellmix SC）。",
   "settings.error.purchase_sla_invalid": "请填写采购订单期限天数（1 至 365）。",
-  "settings.error.purchase_customer_tax_invalid": "请填写 14 位 CNPJ。",
 
   "purchaseOrder.notify.lane.supplier.subject": "采购订单 #{n}：准备",
   "purchaseOrder.notify.lane.supplier.body":

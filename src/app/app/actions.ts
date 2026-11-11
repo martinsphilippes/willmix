@@ -1250,10 +1250,6 @@ export async function saveSettingsAction(form: FormData) {
         if (!Number.isInteger(n) || n < 1 || n > 365)
           throw new Error("purchase_sla_invalid");
         value = n;
-      } else if (key === "purchaseOrderCustomerTaxId") {
-        const v = String(raw).replace(/\D/g, "");
-        if (v.length !== 14) throw new Error("purchase_customer_tax_invalid");
-        value = v;
       } else if (key === "supplierRequestSlaMinutes") {
         const n = Number(raw);
         if (

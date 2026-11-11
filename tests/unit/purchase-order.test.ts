@@ -188,7 +188,8 @@ describe("pedido de compra", () => {
     expect(order.agencyId).toBeTruthy();
     expect(order.ocpId).toBeTruthy();
     const customer = await store.get("parties", order.customerId);
-    expect(customer?.taxId).toBe("09517464000306");
+    // Comprador: o cadastro de cliente da Wellmix com o CODEMP do Sankhya (3).
+    expect(customer).toMatchObject({ type: "customer", sankhyaCode: "3" });
     const items = await store.list("order_items", {
       filter: { orderId: order.id },
     });
@@ -306,6 +307,24 @@ describe("pedido de compra", () => {
     });
     const signed = (await store.get("orders", order.id))!;
     expect(signed.status).toBe("INSPECTION");
+  });
+
+  it("o comprador é o cliente com o CODEMP, nunca o cadastro de fornecedor da mesma empresa", async () => {
+    const store = getStore();
+    // A mesma empresa também cadastrada como fornecedor (como vem do Sankhya), mais antiga.
+    await store.create("parties", {
+      type: "supplier",
+      name: "WELLMIX (fornecedor)",
+      country: "BR",
+      email: null,
+      phone: null,
+      taxId: "09517464000306",
+      notes: null,
+      active: true,
+      sankhyaCode: "3",
+    } as never);
+    const buyer = await po.purchaseOrderCustomer();
+    expect(buyer).toMatchObject({ id: "wellmix-sc", type: "customer" });
   });
 
   it("recusa produtos de fornecedores ou moedas diferentes e solicitação sem produto", async () => {

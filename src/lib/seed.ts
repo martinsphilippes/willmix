@@ -227,8 +227,9 @@ export async function seedDemo(): Promise<{
   }
 
   for (const party of DEMO_PARTIES) await createDemoParty(party);
-  // Cliente dos pedidos de compra (docs/PURCHASE_ORDER.md): a Wellmix SC,
-  // achada pelo CNPJ das Configurações. Só na demonstração (sem login).
+  // Comprador dos pedidos de compra (docs/PURCHASE_ORDER.md): a própria
+  // Wellmix, o cliente com o código da empresa do Sankhya (CODEMP 3, WELLMIX
+  // - SC). Só na demonstração (sem login).
   await at("parties", () =>
     getStore().create("parties", {
       ...PARTY_EXTRA_DEFAULTS,
@@ -243,6 +244,7 @@ export async function seedDemo(): Promise<{
       notes: null,
       active: true,
       city: "NAVEGANTES - SC",
+      sankhyaCode: "3",
     } as never),
   );
 
