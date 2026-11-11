@@ -291,7 +291,7 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.goto("/app/tasks");
   // Fornecedor: as etapas dele aparecem em cartões (do Booking ao embarque)
   // e a cotação a responder fica na primeira etapa.
-  await expect(page.locator("[data-supplier-step]")).toHaveCount(7);
+  await expect(page.locator("[data-supplier-step]")).toHaveCount(8);
   await expect(page.locator("[data-supplier-step=booking]")).toHaveAttribute(
     "data-supplier-step-count",
     /^[1-9]/,
