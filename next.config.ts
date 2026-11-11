@@ -8,6 +8,25 @@ const nextConfig: NextConfig = {
   // Na Vercel o corpo da requisição tem teto próprio (~4,5 MB): o PhotoInput
   // comprime as fotos no aparelho antes de enviar.
   experimental: { serverActions: { bodySizeLimit: "10mb" } },
+  async headers() {
+    return [
+      {
+        // Service worker do PWA: o navegador sempre confere a versão nova.
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/javascript; charset=utf-8",
+          },
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       {

@@ -800,3 +800,10 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 ## Tela inicial (login) sem a explicação do fluxo
 
 - **Pedido do dono** (10/11/2026): a tela de login deixa de mostrar "O fluxo de importação" (os dois parágrafos, os passos numerados, "Quem usa o portal" e a nota das etapas). O painel da marca fica só com o logotipo, o nome do portal e o lema. Os textos continuam no dicionário (`src/i18n/help.ts`) e nada mudou no login. Código em `src/app/login/page.tsx`.
+
+## Aplicativo (PWA) e responsividade em qualquer aparelho
+
+- **Pedido do dono** (10/11/2026): transformar o sistema em PWA, responsivo em notebook, MacBook, iPad, iPhone e Galaxy. Especificação em `docs/PWA.md`.
+- **Novo**: service worker (`public/sw.js`, só arquivos públicos e a tela sem conexão), tela "Sem conexão" (`public/offline.html`), convite para instalar (`src/components/pwa-install.tsx`), atalhos do ícone e janela própria no manifesto, viewport de tela toda com margens seguras e campos de 16 px no iPhone/iPad.
+- **Correção**: a tabela de blocos da ficha de compra estourava a página no celular (`purchase-sheet-fields.tsx`).
+- Nada foi removido; dados do portal nunca ficam guardados no aparelho. Teste: `tests/unit/pwa.test.ts`.

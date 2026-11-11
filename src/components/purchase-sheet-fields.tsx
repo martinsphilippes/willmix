@@ -172,7 +172,7 @@ export function PurchaseSheetFields({
       {/* Quem só lê para certificar vê a ficha inteira de uma vez (sem a
           tabela de blocos, que serve a quem preenche). */}
       {certifier ? null : (
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           <SheetSectionsNav
             sections={nav.sections}
             labels={nav.labels}
