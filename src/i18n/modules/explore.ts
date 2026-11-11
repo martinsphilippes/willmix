@@ -70,8 +70,8 @@ export const pt = {
   "explore.preview.banner":
     "Você está vendo a vitrine como o cliente vê (com a margem padrão). Só o cliente adiciona produtos ao carrinho.",
   "explore.booking.hidden":
-    "Em Booking: o cliente ainda não vê este produto. Ele entra na vitrine quando for aprovado no Booking.",
-  "explore.booking.open": "Abrir o Booking",
+    "Ainda não liberado: o cliente não vê este produto. Ele entra na vitrine quando for liberado na solicitação ao fornecedor.",
+  "explore.booking.open": "Abrir as solicitações ao fornecedor",
   "explore.missing.title": "Para o preço aparecer, falta:",
   "explore.missing.price": "preço do fornecedor",
   "explore.missing.fx": "câmbio da moeda",
@@ -234,8 +234,8 @@ export const en: Record<keyof typeof pt, string> = {
   "explore.preview.banner":
     "You are seeing the storefront as the customer sees it (with the default margin). Only the customer adds products to the cart.",
   "explore.booking.hidden":
-    "In Booking: the customer does not see this product yet. It enters the storefront when it is approved in Booking.",
-  "explore.booking.open": "Open Booking",
+    "Not released yet: the customer does not see this product. It enters the storefront when it is released in the supplier request.",
+  "explore.booking.open": "Open the supplier requests",
   "explore.missing.title": "For the price to show, missing:",
   "explore.missing.price": "supplier price",
   "explore.missing.fx": "currency exchange rate",
@@ -389,8 +389,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "explore.preview.banner":
     "您正在以客户视角查看商品橱窗（默认利润率）。只有客户可以加入购物车。",
   "explore.booking.hidden":
-    "在 Booking 中：客户还看不到该产品。在 Booking 中批准后，它才会进入商品橱窗。",
-  "explore.booking.open": "打开 Booking",
+    "尚未发布：客户还看不到该产品。在供应商申请中发布后，它才会进入商品橱窗。",
+  "explore.booking.open": "打开供应商申请",
   "explore.missing.title": "显示价格还缺少：",
   "explore.missing.price": "供应商价格",
   "explore.missing.fx": "汇率",

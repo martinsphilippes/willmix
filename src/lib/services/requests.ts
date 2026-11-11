@@ -34,7 +34,6 @@ import {
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
 import { emitProcessEvent } from "./process-engine";
-import { releaseBookingsOfRequests } from "./booking-intake";
 import { isHiddenByBooking } from "./booking-visibility";
 import { notify, notifyWellmix, requesterTarget } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
@@ -120,8 +119,7 @@ export async function createRequestBatch(
   /**
    * Só para chamadas do próprio servidor (nunca vem do formulário): `ids` =
    * o id de cada solicitação, escolhido antes por quem chama, na ordem dos
-   * produtos (o Booking grava a ligação na linha antes de a solicitação
-   * nascer; docs/BOOKING.md).
+   * produtos.
    */
   internal: { ids?: string[] } = {},
 ): Promise<Request[]> {
@@ -367,7 +365,7 @@ export async function createRequest(
   /**
    * Só para chamadas do próprio servidor (nunca vem do formulário):
    * `ownOrder` = recompra, o produto é o de um pedido que o cliente já tem;
-   * `id` = o id que a solicitação vai ter, escolhido antes (Booking).
+   * `id` = o id que a solicitação vai ter, escolhido antes.
    */
   internal: { ownOrder?: boolean; id?: string } = {},
 ): Promise<Request> {
@@ -380,7 +378,7 @@ export async function createRequest(
     throw new ForbiddenError();
   }
   // Cliente só pede produto do catálogo que ele pode ver: existe, está ativo
-  // e não está escondido pelo Booking (docs/BOOKING.md). A mesma recusa nos
+  // e não está escondido (docs/SUPPLIER_REQUESTS.md). A mesma recusa nos
   // três casos (não dá para descobrir se um produto existe), antes de olhar
   // variação, mínimo ou nome do produto. A Wellmix segue como antes.
   // A recompra de um pedido do próprio cliente (createFollowUpRequest) fica
@@ -661,10 +659,6 @@ export async function openRfq(
   validUntil.setDate(validUntil.getDate() + settings.quotationExpirationDays);
 
   const existing = await store.list("quotes", { filter: { requestId } });
-  // Produto que veio do Booking: o fornecedor recebe como "Booking para
-  // analisar" (é o Booking dele, não uma disputa de preço).
-  const fromBooking =
-    options.notify !== false ? await isBookingRequest(requestId) : false;
   const invited: Quote[] = [];
   for (const supplierId of new Set(supplierIds)) {
     if (existing.some((q) => q.supplierId === supplierId)) continue;
@@ -681,8 +675,8 @@ export async function openRfq(
     });
     invited.push(quote);
     options.collect?.push(quote);
-    // Cartão do fabricante que veio na planilha do Booking: já entra
-    // confirmado na cotação do fornecedor do produto (ninguém envia de novo).
+    // Cartão do fabricante já apresentado para o produto: entra confirmado
+    // na cotação do fornecedor do produto (ninguém envia de novo).
     if (request.productId) {
       const { bringCardToQuote } = await import("./manufacturer-cards");
       await bringCardToQuote(user, quote, request.productId);
@@ -694,19 +688,14 @@ export async function openRfq(
           kind: "action",
           link: `/app/quotes/${quote.id}`,
           text: (t) => ({
-            subject: t(
-              fromBooking
-                ? "notif.bookingAnalysis.subject"
-                : "notif.rfq.subject",
-              { product: request.productName, ref: "" },
-            ),
-            body: t(
-              fromBooking ? "notif.bookingAnalysis.body" : "notif.rfq.body",
-              {
-                qty: request.quantity.toLocaleString(t.intl),
-                unit: request.unit,
-              },
-            ),
+            subject: t("notif.rfq.subject", {
+              product: request.productName,
+              ref: "",
+            }),
+            body: t("notif.rfq.body", {
+              qty: request.quantity.toLocaleString(t.intl),
+              unit: request.unit,
+            }),
           }),
         },
       );
@@ -732,25 +721,12 @@ export async function openRfq(
   return invited;
 }
 
-/** A solicitação nasceu de uma linha do Booking (tabela opcional: sem ela, não). */
-export async function isBookingRequest(requestId: string): Promise<boolean> {
-  try {
-    const rows = await getStore().list("bookings", {
-      filter: { requestId },
-      limit: 1,
-    });
-    return rows.length > 0;
-  } catch {
-    return false;
-  }
-}
-
 /**
  * RFQ em espera (`settings.rfqEnabled` desligado, docs/RFQ_STANDBY.md): cada
  * produto vai para um fornecedor só, sem disputa. Recusa mais de um
  * fornecedor de uma vez e um segundo fornecedor em solicitação que já foi
  * enviada a outro. Com a RFQ ligada não faz nada. As ações da tela chamam
- * isto antes de `openRfq`/`openBatchRfq` (o Superplan e o Booking já mandam
+ * isto antes de `openRfq`/`openBatchRfq` (o Superplan já manda
  * um fornecedor só).
  */
 export async function assertRfqStandby(
@@ -1598,8 +1574,6 @@ export async function deleteRequests(
       { status: request.status },
       { status: "CANCELLED" },
     );
-    // Nasceu do Booking: a linha volta para antes da solicitação.
-    await releaseBookingsOfRequests(user, [request.id]);
     deleted++;
   }
   return { deleted, skipped: unique.length - deleted };

@@ -1451,35 +1451,6 @@ create index if not exists "stock_reservations_by_customer" on public."stock_res
 create index if not exists "stock_reservations_by_status" on public."stock_reservations" ("status");
 create index if not exists "stock_reservations_created" on public."stock_reservations" ("createdAt");
 
-create table if not exists public."bookings" (
-  "id" text primary key,
-  "createdAt" timestamptz not null default now(),
-  "updatedAt" timestamptz not null default now()
-);
-alter table public."bookings" enable row level security;
-alter table public."bookings" add column if not exists "productId" text;
-alter table public."bookings" add column if not exists "status" text;
-alter table public."bookings" add column if not exists "importBatchId" text;
-alter table public."bookings" add column if not exists "sourceFileName" text;
-alter table public."bookings" add column if not exists "sourceRows" text;
-alter table public."bookings" add column if not exists "sourceOrder" bigint;
-alter table public."bookings" add column if not exists "customerId" text;
-alter table public."bookings" add column if not exists "reservedQty" bigint;
-alter table public."bookings" add column if not exists "ownerUserId" text;
-alter table public."bookings" add column if not exists "note" text;
-alter table public."bookings" add column if not exists "analysis" jsonb;
-alter table public."bookings" add column if not exists "plan" jsonb;
-alter table public."bookings" add column if not exists "requestId" text;
-alter table public."bookings" add column if not exists "requestGroupId" text;
-alter table public."bookings" add column if not exists "requestNumber" bigint;
-alter table public."bookings" add column if not exists "statusChangedAt" timestamptz;
-alter table public."bookings" add column if not exists "statusChangedByUserId" text;
-alter table public."bookings" add column if not exists "createdByUserId" text;
-create unique index if not exists "bookings_product_unique" on public."bookings" ("productId");
-create index if not exists "bookings_by_status" on public."bookings" ("status");
-create index if not exists "bookings_by_batch" on public."bookings" ("importBatchId");
-create index if not exists "bookings_created" on public."bookings" ("createdAt");
-
 create table if not exists public."booking_lots" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

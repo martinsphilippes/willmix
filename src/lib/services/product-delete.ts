@@ -62,8 +62,6 @@ const OWNED_TABLES = [
   "tax_classifications",
   "marketing_kits",
   "cart_items",
-  // Linha do Booking do produto (docs/BOOKING.md): sai com ele.
-  "bookings",
 ] as const;
 
 async function safeList<
