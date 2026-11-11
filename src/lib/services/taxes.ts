@@ -711,6 +711,10 @@ export async function validateTaxClassification(user: User, id: string) {
     validatedAt: now,
   });
   await store.update("products", row.productId, { ncm: row.ncm });
+  // A ficha mestre (de onde pedidos e cotações nascem) acompanha: o NCM só
+  // é definido por aqui (a caixa de digitação direta saiu da tela do produto).
+  const { syncMasterFromProduct } = await import("./product-sheet");
+  await syncMasterFromProduct(row.productId);
   await audit(
     user,
     "tax.validate",

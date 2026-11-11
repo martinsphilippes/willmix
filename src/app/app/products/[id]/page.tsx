@@ -13,7 +13,6 @@ import {
   getStore,
   MEASUREMENT_KINDS,
   PHOTO_KINDS,
-  SCHEDULE_STATUSES,
   type ProductPhoto,
 } from "@/lib/db";
 import { cbmFromDimensions } from "@/lib/logistics/cbm";
@@ -80,17 +79,14 @@ import {
   formatMoney,
   linkClass,
   rowClass,
-  type Tone,
 } from "@/components/ui";
 import { CurrencySelect } from "@/components/currency-select";
 import { PhotoInput } from "@/components/photo-input";
 import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import {
   addProductMeasurementAction,
-  savePurchaseScheduleAction,
   saveProductPriceTiersAction,
   setPrimaryPhotoAction,
-  setScheduleStatusAction,
   updateProductSheetAction,
 } from "../../actions/catalog";
 import { CertificationsSection } from "../_components/certifications-section";
@@ -120,12 +116,6 @@ const sourceTone = {
   sourcing: "brand",
   import: "info",
 } as const;
-const scheduleTone: Record<string, Tone> = {
-  planned: "neutral",
-  confirmed: "info",
-  ordered: "success",
-  cancelled: "danger",
-};
 
 function NumberInput({
   integer = false,
@@ -193,18 +183,13 @@ export default async function ProductSheetPage({
   } = sheet;
   const t = await getT();
   const store = getStore();
-  const [lines, suppliers, customers, users] = await Promise.all([
+  const [lines, suppliers, users] = await Promise.all([
     store.list("product_lines", { orderBy: "name" }),
     store.list("parties", { filter: { type: "supplier" }, orderBy: "name" }),
-    store.list("parties", { filter: { type: "customer" }, orderBy: "name" }),
     store.list("users"),
   ]);
   const userName = (uid: string | null) =>
     uid ? (users.find((u) => u.id === uid)?.name ?? "—") : "—";
-  const partyName = (pid: string | null) =>
-    pid
-      ? ([...suppliers, ...customers].find((p) => p.id === pid)?.name ?? "—")
-      : "—";
   const cbmComputed = cbmFromDimensions(
     product.boxLengthCm,
     product.boxWidthCm,
@@ -217,8 +202,6 @@ export default async function ProductSheetPage({
       .filter((p) => p.kind === kind)
       .sort((a, b) => (a.takenAt ?? "").localeCompare(b.takenAt ?? "")),
   })).filter((g) => g.items.length > 0);
-  const nextSequence =
-    schedules.reduce((max, s) => Math.max(max, s.sequence), 0) + 1;
 
   /* Segunda Onda: NCM, certificações/compliance e oportunidade de compra. */
   const [
@@ -1234,217 +1217,9 @@ export default async function ProductSheetPage({
         </Card>
       </div>
 
-      {/* ---- Programação de compra ---- */}
-      <Card title={t("catalog.schedules")} className="mt-4">
-        <div id="schedules" />
-        {schedules.length === 0 ? (
-          <Empty>{t("catalog.schedules.empty")}</Empty>
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <Th>{t("catalog.schedules.sequence")}</Th>
-                <Th className="text-right">{t("common.quantity")}</Th>
-                <Th>{t("catalog.schedules.period")}</Th>
-                <Th>{t("common.supplier")}</Th>
-                <Th>{t("common.customer")}</Th>
-                <Th className="text-right">{t("common.price")}</Th>
-                <Th>{t("common.status")}</Th>
-                <Th>{t("common.note")}</Th>
-                <Th>{t("common.actions")}</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {schedules.map((s) => (
-                <tr key={s.id} className={rowClass}>
-                  <Td className="font-medium tabular-nums">#{s.sequence}</Td>
-                  <Td className="whitespace-nowrap text-right tabular-nums">
-                    {s.quantity} {s.unit}
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    {[
-                      s.periodLabel,
-                      s.scheduledFor ? formatDate(s.scheduledFor, t) : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || "—"}
-                  </Td>
-                  <Td>{partyName(s.supplierId)}</Td>
-                  <Td>{partyName(s.customerId)}</Td>
-                  <Td className="whitespace-nowrap text-right tabular-nums">
-                    {s.price !== null
-                      ? formatMoney(s.price, s.currency, t)
-                      : "—"}
-                  </Td>
-                  <Td>
-                    <Badge tone={scheduleTone[scheduleStatus(s)] ?? "neutral"}>
-                      {t(
-                        `catalog.scheduleStatus.${scheduleStatus(s)}` as DictionaryKey,
-                      )}
-                    </Badge>
-                  </Td>
-                  <Td className="max-w-[14rem] text-xs text-zinc-600">
-                    {s.notes ?? "—"}
-                  </Td>
-                  <Td>
-                    <div className="flex min-w-[14rem] flex-col gap-2">
-                      {s.orderId ? (
-                        <TextLink href={`/app/orders/${s.orderId}`}>
-                          {t("catalog.schedules.order")}
-                        </TextLink>
-                      ) : s.requestId ? (
-                        <TextLink href={`/app/requests/${s.requestId}`}>
-                          {t("catalog.schedules.request")}
-                        </TextLink>
-                      ) : s.status !== "cancelled" ? (
-                        <LinkButton
-                          href={`/app/requests/new?productId=${product.id}&quantity=${s.quantity}&scheduleId=${s.id}${s.customerId ? `&customerId=${s.customerId}` : ""}`}
-                          variant="primary"
-                          className="w-fit px-3 py-1.5 text-xs"
-                        >
-                          {t("catalog.schedules.createRequest")}
-                        </LinkButton>
-                      ) : null}
-                      {!s.orderId ? (
-                        <form
-                          action={setScheduleStatusAction}
-                          className="flex items-center gap-1.5"
-                        >
-                          <input
-                            type="hidden"
-                            name="productId"
-                            value={product.id}
-                          />
-                          <input type="hidden" name="scheduleId" value={s.id} />
-                          <Select
-                            name="status"
-                            defaultValue={s.status}
-                            aria-label={t("catalog.schedules.changeStatus")}
-                            className="py-1.5 text-xs"
-                          >
-                            {SCHEDULE_STATUSES.map((st) => (
-                              <option key={st} value={st}>
-                                {t(
-                                  `catalog.scheduleStatus.${st}` as DictionaryKey,
-                                )}
-                              </option>
-                            ))}
-                          </Select>
-                          <SubmitButton
-                            variant="secondary"
-                            className="shrink-0 px-2.5 py-1.5 text-xs"
-                          >
-                            {t("common.save")}
-                          </SubmitButton>
-                        </form>
-                      ) : null}
-                    </div>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-        <form
-          action={savePurchaseScheduleAction}
-          className="@container mt-3 space-y-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3"
-        >
-          <input type="hidden" name="productId" value={product.id} />
-          <h3 className="text-sm font-semibold text-zinc-900">
-            {t("catalog.schedules.new")}
-          </h3>
-          {/* Campos curtos em colunas estreitas: duas linhas na tela larga. */}
-          <div className="grid grid-cols-2 gap-2 @xl:grid-cols-4 @4xl:grid-cols-6">
-            <Field label={t("catalog.schedules.sequence")}>
-              <NumberInput
-                name="sequence"
-                integer
-                defaultValue={nextSequence}
-              />
-            </Field>
-            <Field label={t("common.quantity")}>
-              <NumberInput name="quantity" required min={0.01} />
-            </Field>
-            <Field label={t("requests.unit")}>
-              <Input name="unit" defaultValue="un" dense />
-            </Field>
-            <Field label={t("catalog.schedules.scheduledFor")}>
-              <Input name="scheduledFor" type="date" dense />
-            </Field>
-            <Field label={t("catalog.schedules.periodLabel")}>
-              <Input name="periodLabel" maxLength={60} dense />
-            </Field>
-            <Field label={t("common.status")}>
-              <Select name="status" defaultValue="planned" dense>
-                {SCHEDULE_STATUSES.filter((s) => s !== "ordered").map((st) => (
-                  <option key={st} value={st}>
-                    {t(`catalog.scheduleStatus.${st}` as DictionaryKey)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label={t("common.price")}>
-              <MoneyInput
-                locale={t.intl}
-                size="sm"
-                name="price"
-                watchField="currency"
-                defaultAmount={product.price ?? null}
-                decimals={4}
-              />
-            </Field>
-            <Field label={t("common.currency")}>
-              <CurrencySelect
-                name="currency"
-                value={product.currency}
-                t={t}
-                allowEmpty
-                dense
-              />
-            </Field>
-            <div className="col-span-2 @xl:col-span-1">
-              <Field label={t("common.supplier")}>
-                <Select
-                  name="supplierId"
-                  defaultValue={product.supplierId ?? ""}
-                  dense
-                >
-                  <option value="">{t("catalog.noSupplier")}</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <div className="col-span-2 @xl:col-span-1">
-              <Field
-                label={t("common.customer")}
-                hint={t("catalog.schedules.customerHint")}
-              >
-                <Select name="customerId" defaultValue="" dense>
-                  <option value="">—</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <div className="col-span-2">
-              <Field label={t("common.note")}>
-                <Input name="notes" dense />
-              </Field>
-            </div>
-          </div>
-          <SubmitButton variant="secondary" className="w-full sm:w-auto">
-            + {t("catalog.schedules.new")}
-          </SubmitButton>
-        </form>
-      </Card>
-
+      {/* A programação de compra saiu do cadastro (dono, 11/11/2026): é da
+          operação de um produto já comprado, não do cadastro. As programações
+          gravadas continuam no banco. */}
       {/* ---- Oportunidade de compra (faixas + container); preço FOB é interno ---- */}
       <Card title={t("catalog.opp.title")} className="mt-4">
         <div id="opportunity" className="scroll-mt-4" />

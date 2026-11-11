@@ -36,8 +36,8 @@ describe("campos que ficam só no cadastro", () => {
     expect(
       SHEET_REQUIRED_FIELDS.filter((f) => !isRegistrationField(f)),
     ).toEqual(["incoterm", "packageType"]);
-    // O NCM não entrou: continua nos dois lugares até o dono decidir.
-    expect(isRegistrationField("ncm")).toBe(false);
+    // NCM: só pelo quadro "Classificação fiscal" (incluir e validar).
+    expect(isRegistrationField("ncm")).toBe(true);
     expect(new Set(REGISTRATION_SHEET_FIELDS).size).toBe(
       REGISTRATION_SHEET_FIELDS.length,
     );
@@ -117,6 +117,22 @@ describe("ficha mestre salva sem os campos do cadastro", () => {
       incoterm: "EXW",
       packageType: "Gift box",
     });
+  });
+});
+
+describe("NCM só pelo fluxo de incluir e validar", () => {
+  it("o NCM validado vai para o produto e para a ficha mestre", async () => {
+    const taxes = await import("@/lib/services/taxes");
+    const store = getStore();
+    const row = await store.create("tax_classifications", {
+      productId: "prod-jarra",
+      ncm: "7013.37.00",
+      description: "Jarra de vidro",
+      status: "suggested",
+    } as never);
+    await taxes.validateTaxClassification(admin, row.id);
+    expect((await store.get("products", "prod-jarra"))!.ncm).toBe("7013.37.00");
+    expect((await ps.getProductSheet("prod-jarra"))!.ncm).toBe("7013.37.00");
   });
 });
 

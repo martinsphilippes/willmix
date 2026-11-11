@@ -30,6 +30,8 @@ export const REGISTRATION_SHEET_FIELDS = [
   "widthCm",
   "lengthCm",
   "cbmPerCarton",
+  // NCM: só pelo quadro "Classificação fiscal" (incluir e validar)
+  "ncm",
   // Observações (um texto só, com a caixa "Vai para o e-commerce")
   "ecommerceDescription",
   "notes",

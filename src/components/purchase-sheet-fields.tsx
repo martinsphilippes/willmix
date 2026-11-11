@@ -172,7 +172,9 @@ export function PurchaseSheetFields({
   const own = (key: string) => !exclude.includes(key);
   // Programação de compra: quem faz é a Wellmix; o fornecedor não a vê
   // (a ficha mestre do produto continua como era).
-  const noSchedule = hideSchedule || (supplierOnly && !master);
+  // Tela do produto: a programação é da operação (pedido), não do cadastro.
+  const noSchedule =
+    hideSchedule || (supplierOnly && !master) || omitRegistration;
   const nav = sheetSectionsView(t, sectionsMissing, {
     master,
     photosHref,
@@ -916,28 +918,31 @@ export function PurchaseSheetFields({
         <Section open={open} all={certifier} k="customs" order="lg:order-5">
           <Card title={t("sheet.section.customs")} dense>
             <Rows>
-              <F
-                t={t}
-                m={missing}
-                k="ncm"
-                size="sm"
-                hint={
-                  !access.editCustoms && sheet.ncm
-                    ? t("ncm.sheet.readOnly")
-                    : undefined
-                }
-              >
-                <input
-                  name="ncm"
-                  inputMode="decimal"
-                  maxLength={12}
-                  placeholder={t("ph.ncm")}
-                  defaultValue={sheet.ncm ?? ""}
-                  disabled={!access.editCustoms}
-                  className={inputDenseClass}
-                />
-              </F>
-              {access.editCustoms && ncmSuggestions.length ? (
+              {own("ncm") ? (
+                <F
+                  t={t}
+                  m={missing}
+                  k="ncm"
+                  size="sm"
+                  hint={
+                    !access.editCustoms && sheet.ncm
+                      ? t("ncm.sheet.readOnly")
+                      : undefined
+                  }
+                >
+                  <input
+                    name="ncm"
+                    inputMode="decimal"
+                    maxLength={12}
+                    placeholder={t("ph.ncm")}
+                    defaultValue={sheet.ncm ?? ""}
+                    disabled={!access.editCustoms}
+                    className={inputDenseClass}
+                  />
+                </F>
+              ) : null}
+              {!own("ncm") ? null : access.editCustoms &&
+                ncmSuggestions.length ? (
                 <div className="sm:pl-[11.75rem]">
                   <NcmSuggestions
                     items={ncmSuggestions}
