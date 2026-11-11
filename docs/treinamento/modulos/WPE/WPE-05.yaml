@@ -1,0 +1,137 @@
+episodio: WPE-05
+titulo: Embarque e desembaraço pela Wellmix
+serie: WPE
+papel: operador
+duracao: "5:00"
+idiomas: [pt]
+capitulos:
+  - id: WPE-05-C1
+    titulo: Designar os parceiros e ler o frete
+    inicio: "0:00"
+    fim: "1:25"
+    cenas: [1, 4]
+    resumo: "Em Parceiros do pedido você designa quem atua no pedido, e no Embarque lê o frete das tabelas, do mais barato ao mais caro."
+  - id: WPE-05-C2
+    titulo: Acompanhar o embarque e os passos
+    inicio: "1:25"
+    fim: "2:45"
+    cenas: [5, 6]
+    resumo: "A companhia marítima confirma o embarque, e o cartão Embarque e desembaraço mostra quem faz e quem valida cada um dos passos."
+  - id: WPE-05-C3
+    titulo: Validar passos e acompanhar o numerário
+    inicio: "2:45"
+    fim: "3:58"
+    cenas: [7, 8]
+    resumo: "Valide ou recuse o que é da Wellmix, sempre com motivo na recusa, e saiba que o numerário é do financeiro ou do administrador."
+  - id: WPE-05-C4
+    titulo: Enviar o DANFE e ver o desembaraço
+    inicio: "3:58"
+    fim: "5:00"
+    cenas: [9, 10]
+    resumo: "O DANFE é da Wellmix e só abre depois do DI/DUIMP e XML; com a liberação do despachante, o Transporte abre."
+perguntas:
+  - id: WPE-05-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-05-C1
+    cena: 3
+    enunciado: "Onde você define quem atua no pedido como agência, despachante, companhia marítima, transportador, comex, agente de carga e OCP?"
+    opcoes:
+      a: "Em **Parceiros do pedido**, com **Designar**"
+      b: "Em Cadastros → Outros parceiros, no cadastro de cada empresa do pedido"
+      c: "Em Gestão → Equipe e divisões, na função de cada login de parceiro"
+      d: "Em Pedidos → Fretes, na linha do pedido de frete da carga"
+    correta: [a]
+    explicacao: "Em **Parceiros do pedido** há uma linha por tipo de parceiro, com uma lista e o botão **Designar**. Sem parceiro designado, a Wellmix faz a parte dele; cada parceiro vê só a etapa dele."
+  - id: WPE-05-Q2
+    tipo: unica
+    nivel: 2
+    capitulo: WPE-05-C1
+    cena: 4
+    enunciado: "No cartão **Embarque**, o quadro \"Frete pelo tarifário\" mostra o quê?"
+    opcoes:
+      a: "Só o frete da companhia marítima designada, já que as outras não importam"
+      b: "O frete das tabelas de todas as companhias na rota, do mais barato ao mais caro"
+      c: "O frete que o cliente aceitou na proposta, em reais por container"
+      d: "O valor do numerário que o comex pediu para cobrir o desembaraço"
+    correta: [b]
+    explicacao: "A Wellmix vê o comparativo de todas as companhias para a rota, com a companhia do pedido marcada. A companhia marítima não vê esse comparativo: só o botão de enviar a tabela dela."
+  - id: WPE-05-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WPE-05-C2
+    cena: 5
+    enunciado: "No cartão do Embarque, a data de embarque, a previsão de chegada, o navio e o BL são opcionais. Qual item conclui a etapa Embarque?"
+    opcoes:
+      a: "Bill of Lading (BL)"
+      b: "Data de embarque"
+      c: "Previsão de chegada"
+      d: "Embarque confirmado"
+    correta: [d]
+    explicacao: "O que conclui a etapa é **Embarque confirmado**, que a companhia marítima confirma com **Confirmar**. Data, chegada, navio e BL entram se houver, e a chegada nunca pode ser antes da data de embarque."
+  - id: WPE-05-Q4
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-05-C2
+    cena: 6
+    enunciado: "Qual link, na linha \"Invoice e packing list\", monta o PDF com os itens, o preço da cotação e a ficha de compra para o comex conferir?"
+    opcoes:
+      a: "**Gerar invoice e packing list**"
+      b: "**Ver tarifário completo**"
+      c: "**Importar planilha da companhia marítima**"
+      d: "**Abrir e assinar o documento**"
+    correta: [a]
+    explicacao: "**Gerar invoice e packing list** abre a página com a invoice comercial e o packing list montados com os itens e a ficha de compra; dali dá para imprimir e salvar como PDF."
+  - id: WPE-05-Q5
+    tipo: multipla
+    nivel: 2
+    capitulo: WPE-05-C2
+    cena: 6
+    enunciado: "No cartão **Embarque e desembaraço**, quais destes passos o agente de carga faz? Marque todos os certos."
+    opcoes:
+      a: "Booking (a reserva no navio)"
+      b: "Numerário"
+      c: "Draft do BL"
+      d: "DANFE (nota de entrada)"
+      e: "BL (original)"
+    correta: [a, c, e]
+    explicacao: "O agente de carga envia a reserva no navio, o rascunho do BL e o BL original. O numerário é do comex (validado pelo financeiro) e o DANFE é da Wellmix."
+  - id: WPE-05-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-05-C3
+    cena: 7
+    enunciado: "O passo Booking (a reserva no navio) chegou \"Enviado, aguardando validação\", mas o número informado não bate com o que o agente de carga combinou. O que você faz?"
+    opcoes:
+      a: "Clica em **Recusar** sem escrever nada, porque o erro é óbvio para todos"
+      b: "Clica em **Validar** e corrige o número na etapa seguinte do cartão"
+      c: "Escreve o motivo e clica em **Recusar**"
+      d: "Apaga o passo e envia você mesmo outra reserva no navio, no lugar do agente"
+    correta: [c]
+    explicacao: "Recusar exige o motivo; quem fez recebe o aviso \"Recusado; quem fez foi avisado.\" e envia de novo. Sem motivo o portal responde \"Escreva o motivo para recusar.\""
+  - id: WPE-05-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-05-C3
+    cena: 8
+    enunciado: "O comex enviou o Numerário e você, operador, abre a linha, mas não vê o botão **Validar**. Por quê, e o que faz?"
+    opcoes:
+      a: "O comex enviou o arquivo errado; peça a ele que envie o numerário de novo"
+      b: "O passo ainda não abriu; espere o BL (original) ser concluído pelo agente"
+      c: "O portal está com erro; recarregue a página e tente mais tarde"
+      d: "Quem valida é o financeiro ou o administrador; peça a um deles"
+    correta: [d]
+    explicacao: "O numerário é o valor em reais que o comex pede para o desembaraço. Quem valida e paga é o financeiro, ou o administrador, que anexa o comprovante em Numerário pago. O operador não vê esse botão."
+  - id: WPE-05-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-05-C4
+    cena: 9
+    enunciado: "Você quer enviar o DANFE (nota de entrada), mas o portal responde \"Conclua antes o passo anterior.\" Qual passo está faltando?"
+    opcoes:
+      a: "Numerário pago, do financeiro"
+      b: "DI/DUIMP e XML, do comex"
+      c: "Invoice e packing assinados, do fornecedor"
+      d: "Presença de carga, do comex"
+    correta: [b]
+    explicacao: "O DANFE é da Wellmix e vem \"Depois de: DI/DUIMP e XML\". Concluído esse passo do comex, digite o Nº da nota fiscal, anexe o arquivo e clique em **Enviar**."

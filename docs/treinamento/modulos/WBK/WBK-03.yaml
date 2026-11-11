@@ -1,0 +1,137 @@
+episodio: WBK-03
+titulo: Seleção de itens e solicitação ao fornecedor
+serie: WBK
+papel: operador (comprador) / administrador
+duracao: "5:00"
+idiomas: [pt]
+capitulos:
+  - id: WBK-03-C1
+    titulo: Filtrar e achar itens parecidos
+    inicio: "0:00"
+    fim: "1:30"
+    cenas: [1, 5]
+    resumo: Abra a Seleção de itens, busque por parte da descrição e use ver parecidos para reunir itens do mesmo tipo.
+  - id: WBK-03-C2
+    titulo: Comparar e escolher o item
+    inicio: "1:30"
+    fim: "2:50"
+    cenas: [6, 7]
+    resumo: Compare as colunas lado a lado, escolha um único item e marque as alternativas.
+  - id: WBK-03-C3
+    titulo: Preencher e abrir a solicitação ao fornecedor
+    inicio: "2:50"
+    fim: "4:05"
+    cenas: [8, 9]
+    resumo: Informe a quantidade e o que a Wellmix precisa, abra a solicitação e saiba o que o fornecedor vê.
+  - id: WBK-03-C4
+    titulo: Tratar o fornecedor sem acesso e acompanhar a solicitação
+    inicio: "4:05"
+    fim: "5:00"
+    cenas: [10, 12]
+    resumo: Resolva o caso do fornecedor sem login e acompanhe a solicitação na lista Solicitações ao fornecedor.
+perguntas:
+  - id: WBK-03-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WBK-03-C1
+    cena: 3
+    enunciado: "Quais itens aparecem na **Seleção de itens**?"
+    opcoes:
+      a: "Itens de bookings em **Rascunho**, assim que são importados"
+      b: "Só produtos que já estão no cadastro da Wellmix"
+      c: "Itens de pedidos que os clientes já fizeram"
+      d: "Itens de bookings fechados, em andamento ou concluídos"
+    correta: [d]
+    explicacao: "A Seleção de itens mostra os itens dos bookings fechados, em andamento ou concluídos. Um booking em Rascunho ainda não aparece."
+  - id: WBK-03-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WBK-03-C1
+    cena: 5
+    enunciado: "O que faz o link **ver parecidos**, abaixo de um item?"
+    opcoes:
+      a: "Abre a página do booking onde o item está"
+      b: "Busca pelas duas primeiras palavras da descrição do item"
+      c: "Marca o item como alternativa da escolha"
+      d: "Abre direto a solicitação ao fornecedor do item"
+    correta: [b]
+    explicacao: "O link preenche a busca com as duas primeiras palavras da descrição (por exemplo, 'jarra vidro') e mostra os itens do mesmo tipo, para comparar."
+  - id: WBK-03-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WBK-03-C2
+    cena: 7
+    enunciado: "Qual a diferença entre a coluna **Escolher** e a coluna **Alternativa**?"
+    opcoes:
+      a: "**Escolher** aceita um só item e a solicitação vai ao fornecedor dele; **Alternativa** aceita vários e fica só com a Wellmix"
+      b: "As duas colunas aceitam um só item, mas **Alternativa** é a que vai ao fornecedor"
+      c: "**Alternativa** é a que vai ao fornecedor; **Escolher** guarda os parecidos só para a Wellmix"
+      d: "**Escolher** aceita vários itens, e **Alternativa** aceita um só, que vira a solicitação"
+    correta: [a]
+    explicacao: "Marque um só item em **Escolher**: a solicitação vai ao fornecedor dele. Marque em **Alternativa** os parecidos que quer guardar (até 30); eles ficam só com a Wellmix."
+  - id: WBK-03-Q4
+    tipo: multipla
+    nivel: 2
+    capitulo: WBK-03-C3
+    cena: 9
+    enunciado: "O fornecedor abre a solicitação que você criou. O que ele vê? Marque todas as certas."
+    opcoes:
+      a: "O item e a quantidade pedida"
+      b: "O texto de 'O que a Wellmix precisa no produto'"
+      c: "O preço que ele mesmo pôs na planilha (**Preço do booking**)"
+      d: "As alternativas de outros fornecedores"
+      e: "O Superplan do item"
+    correta: [a, b, c]
+    explicacao: "O fornecedor vê só o item, a quantidade, o preço do booking e o seu texto. As alternativas, o Superplan e os outros fornecedores ficam só com a Wellmix."
+  - id: WBK-03-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: WBK-03-C4
+    cena: 12
+    enunciado: "Coloque na ordem os passos para abrir uma solicitação ao fornecedor."
+    opcoes:
+      a: "Escrever a **Quantidade (peças)** e **O que a Wellmix precisa no produto**"
+      b: "Filtrar por parte da descrição e comparar os itens"
+      c: "Clicar em **Abrir solicitação**"
+      d: "Marcar o item em **Escolher** e os parecidos em **Alternativa**"
+    correta: [b, d, a, c]
+    explicacao: "Filtre e compare, marque o escolhido e as alternativas, preencha quantidade e o que a Wellmix precisa e só então clique em **Abrir solicitação**."
+  - id: WBK-03-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-03-C3
+    cena: 8
+    enunciado: "A tela avisa 'A planilha não traz quantidade para este item: digite a quantidade.' O que você faz?"
+    opcoes:
+      a: "Marca outro item como **Alternativa** para a tela aceitar"
+      b: "Deixa em branco e espera o fornecedor definir a quantidade"
+      c: "Preenche **Quantidade (peças)** e clica em **Abrir solicitação** de novo"
+      d: "Fecha o booking de novo para a planilha trazer a quantidade"
+    correta: [c]
+    explicacao: "Em branco, vale a quantidade da planilha. Se a planilha não traz quantidade para o item, digite a quantidade (um número maior que zero) em **Quantidade (peças)**."
+  - id: WBK-03-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-03-C2
+    cena: 7
+    enunciado: "Na coluna **Situação** de uma jarra aparece o link 'Solicitação nº 2' e o botão de escolha está desligado. O que isso diz?"
+    opcoes:
+      a: "O fornecedor recusou a jarra e ela não pode mais ser pedida"
+      b: "O item já tem uma solicitação em andamento: abra a que existe"
+      c: "O booking dessa jarra ainda está em Rascunho"
+      d: "A jarra foi marcada como alternativa de outro item"
+    correta: [b]
+    explicacao: "Item com solicitação Aberta ou Respondida não abre outra: use o link da coluna. Depois que a Wellmix decide (aprova, recusa ou cancela), o item pode ter outra solicitação."
+  - id: WBK-03-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-03-C4
+    cena: 10
+    enunciado: "Você abriu a solicitação do copo do Yiwu e o aviso diz 'Fornecedor sem acesso ao portal: ele não vê nem responde esta solicitação.' O que faz?"
+    opcoes:
+      a: "Espera: o fornecedor vê a solicitação quando o booking for concluído"
+      b: "Cancela a solicitação, porque esse fornecedor nunca vai responder"
+      c: "Escolhe o item de outro booking, porque este não tem como andar"
+      d: "Cria o acesso dele por **Criar acesso →** ou registra a resposta que ele mandar por fora"
+    correta: [d]
+    explicacao: "Sem login, a solicitação abre, mas não chega a ninguém. Crie o acesso no cadastro dele ou registre aqui a resposta que ele der por fora (WeChat, e-mail)."

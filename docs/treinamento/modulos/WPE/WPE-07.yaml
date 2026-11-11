@@ -1,0 +1,130 @@
+episodio: WPE-07
+titulo: Pedidos parados, atrasos e cancelamento
+serie: WPE
+papel: operador
+duracao: "4:45"
+idiomas: [pt]
+capitulos:
+  - id: WPE-07-C1
+    titulo: Achar o que está atrasado ou bloqueado
+    inicio: "0:00"
+    fim: "1:30"
+    cenas: [1, 4]
+    resumo: "No bloco Problemas da Control Tower, em Pendências e no Painel de SLA você vê o que venceu e com quem está parado."
+  - id: WPE-07-C2
+    titulo: Entender os lembretes e destravar a etapa
+    inicio: "1:30"
+    fim: "2:40"
+    cenas: [5, 6]
+    resumo: "O portal avisa quando o prazo está perto ou venceu, e uma etapa bloqueada espera a decisão da Wellmix no pedido."
+  - id: WPE-07-C3
+    titulo: Tratar o pedido de cancelamento
+    inicio: "2:40"
+    fim: "4:45"
+    cenas: [7, 10]
+    resumo: "O cliente pede o cancelamento até a produção começar; a Wellmix vê o alerta e quem decide, recusando ou cancelando, é o administrador."
+perguntas:
+  - id: WPE-07-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-07-C1
+    cena: 3
+    enunciado: "Em qual bloco da Control Tower ficam os quadrados Atrasados, Bloqueados e Pedido de cancelamento?"
+    opcoes:
+      a: "Onde o pedido está agora"
+      b: "Problemas"
+      c: "Acontece ao mesmo tempo"
+      d: "Encerrados no mês"
+    correta: [b]
+    explicacao: "O bloco **Problemas** reúne Atrasados, Bloqueados, Documento rejeitado, Sem número no Sankhya, Multa aberta, Itens para revisão, Certificação vencendo e Pedido de cancelamento."
+  - id: WPE-07-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-07-C1
+    cena: 3
+    enunciado: "O que o quadrado **Atrasados** conta?"
+    opcoes:
+      a: "Etapas ativas com o prazo vencido"
+      b: "Pedidos que o cliente ainda não pagou por inteiro"
+      c: "Etapas paradas por uma divergência"
+      d: "Pedidos sem número no Sankhya"
+    correta: [a]
+    explicacao: "Atrasados é a etapa ativa com prazo vencido; ao tocar no quadrado, a lista mostra o pedido, a etapa, o responsável e o prazo em vermelho. As etapas paradas por divergência são os Bloqueados."
+  - id: WPE-07-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WPE-07-C1
+    cena: 4
+    enunciado: "Em Início → Pendências, como você mostra só o que já venceu?"
+    opcoes:
+      a: "No filtro Tipo, escolhendo \"Atrasadas\""
+      b: "No filtro Prazo, escolhendo \"Atrasadas\""
+      c: "No filtro Prazo, escolhendo \"Vencem hoje\""
+      d: "Abrindo o Painel de SLA, que lista só as vencidas"
+    correta: [b]
+    explicacao: "O filtro **Prazo** tem Todas, Atrasadas, Vencem hoje e Até 7 dias; cada linha mostra \"atrasada há N dias\" ou \"vence amanhã\". O Painel de SLA é outra tela, com a visão por analista."
+  - id: WPE-07-Q4
+    tipo: multipla
+    nivel: 2
+    capitulo: WPE-07-C2
+    cena: 5
+    enunciado: "Sobre os lembretes por prazo, o que está certo? Marque todas as certas."
+    opcoes:
+      a: "\"Vence em breve\" avisa o responsável quando falta pouco para o prazo (padrão: até 1 dia)"
+      b: "\"Atrasado\" avisa quando o prazo da etapa já venceu"
+      c: "O e-mail e o WhatsApp também avisam o responsável de verdade"
+      d: "Os prazos por etapa e o \"Lembrete antes do vencimento (dias)\" são do administrador, em Configurações"
+    correta: [a, b, d]
+    explicacao: "O portal confere os prazos todo dia e avisa pelo sino. E-mail e WhatsApp são de demonstração: só o sino e as Notificações do portal avisam. Mudar os prazos é só do administrador."
+  - id: WPE-07-Q5
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-07-C2
+    cena: 6
+    enunciado: "O Pedido #3 está com \"Inspeção · Bloqueada\" e a faixa vermelha \"Revisão necessária\". O que você faz?"
+    opcoes:
+      a: "Espera o fornecedor reenviar as fotos; o bloqueio some sozinho"
+      b: "Cancela o pedido, que é a única forma de destravar"
+      c: "Abre o pedido e decide em \"Revisão da divergência na inspeção (Wellmix)\": **Aprovar** ou **Reprovar**"
+      d: "Pede ao cliente que aprove a divergência"
+    correta: [c]
+    explicacao: "Etapa bloqueada espera a Wellmix. **Aprovar** aceita a divergência com o motivo; **Reprovar** pede nova medição ao fornecedor (o caminho completo está no vídeo da inspeção)."
+  - id: WPE-07-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-07-C3
+    cena: 7
+    enunciado: "Você, operador, abre um pedido e vê no alto o alerta amarelo \"Cliente pediu o cancelamento\", sem formulário para responder. O que você faz?"
+    opcoes:
+      a: "Cancela o pedido pelo cartão **Cancelar pedido**, no fim da página"
+      b: "Leva o pedido ao administrador, que é quem decide o cancelamento"
+      c: "Responde ao cliente pelo campo **Resposta ao cliente**"
+      d: "Ignora o alerta: o cliente pode desistir sozinho do pedido"
+    correta: [b]
+    explicacao: "O operador vê o alerta e a Control Tower soma o pedido em **Pedido de cancelamento**, mas quem responde é o administrador. O cartão Cancelar pedido também não existe na tela do operador."
+  - id: WPE-07-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-07-C3
+    cena: 8
+    enunciado: "Como administrador, você analisou o pedido de cancelamento e decidiu manter o pedido. O que faz?"
+    opcoes:
+      a: "Escreve a **Resposta ao cliente** e clica em **Recusar pedido de cancelamento**"
+      b: "Clica em **Cancelar pedido** e depois reativa o pedido"
+      c: "Deixa o alerta sem resposta até o cliente desistir do pedido"
+      d: "Apaga o alerta pela Control Tower, em Pedido de cancelamento"
+    correta: [a]
+    explicacao: "Recusar exige a resposta ao cliente, que passa a ver \"A Wellmix recusou o cancelamento: …\". Não escolha **Cancelar pedido** para testar: o portal não tem botão de desfazer."
+  - id: WPE-07-Q8
+    tipo: unica
+    nivel: 2
+    capitulo: WPE-07-C3
+    cena: 9
+    enunciado: "O administrador cancelou um pedido. O que é verdade depois disso?"
+    opcoes:
+      a: "O pedido é apagado do portal, junto com o histórico"
+      b: "Só o cliente é avisado, e as etapas continuam abertas"
+      c: "O pedido volta à etapa Pedido pré-aprovado, para ser refeito"
+      d: "O pedido fica Cancelado com o histórico, sai dos containers e dos fretes em aberto, e todos são avisados"
+    correta: [d]
+    explicacao: "Nada é apagado: o pedido fica \"Cancelado\", com a etapa em que parou e o motivo, as etapas abertas se encerram e cliente, fornecedor e parceiros são avisados. Se já tem número no Sankhya, cancele lá também."

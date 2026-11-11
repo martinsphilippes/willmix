@@ -1,0 +1,130 @@
+episodio: WBK-05
+titulo: Ligar ao Sankhya e liberar na vitrine
+serie: WBK
+papel: operador (comprador) / administrador
+duracao: "3:30"
+idiomas: [pt]
+capitulos:
+  - id: WBK-05-C1
+    titulo: Entender o produto escondido e o CODPROD
+    inicio: "0:00"
+    fim: "1:20"
+    cenas: [1, 4]
+    resumo: Veja por que o produto criado pelo booking nasce fora da vitrine e o que é o CODPROD do Sankhya.
+  - id: WBK-05-C2
+    titulo: Buscar e gravar o CODPROD
+    inicio: "1:20"
+    fim: "2:30"
+    cenas: [5, 6]
+    resumo: Busque o produto no Sankhya ou digite o CODPROD e grave o código, que fica não conferido sem credencial.
+  - id: WBK-05-C3
+    titulo: Liberar na vitrine e conferir como o cliente
+    inicio: "2:30"
+    fim: "3:30"
+    cenas: [7, 9]
+    resumo: Clique em Liberar na vitrine e confira, na conta do cliente, que o produto já aparece em Explorar.
+perguntas:
+  - id: WBK-05-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WBK-05-C1
+    cena: 4
+    enunciado: "O que é o **CODPROD**?"
+    opcoes:
+      a: "O código do produto na fábrica do fornecedor"
+      b: "O número do booking de onde o item veio"
+      c: "O código do produto no Sankhya, o ERP da Wellmix"
+      d: "O SKU que o cliente vê na vitrine"
+    correta: [c]
+    explicacao: "CODPROD é o código do produto no Sankhya, o ERP da Wellmix. O portal só liga o produto a esse código."
+  - id: WBK-05-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WBK-05-C3
+    cena: 7
+    enunciado: "Qual botão deixa o produto visível para o cliente?"
+    opcoes:
+      a: "**Liberar na vitrine**"
+      b: "**Gravar código**"
+      c: "**Buscar**, no cartão Sankhya"
+      d: "**Usar**, na lista de resultados"
+    correta: [a]
+    explicacao: "**Liberar na vitrine**, no bloco Produto, passa o produto para a vitrine. O bloco passa a mostrar 'Na vitrine desde' e a data."
+  - id: WBK-05-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WBK-05-C1
+    cena: 3
+    enunciado: "O produto criado pelo booking ainda não foi liberado. O que o cliente consegue?"
+    opcoes:
+      a: "Ver o produto na vitrine, mas sem conseguir pedir"
+      b: "Ver o produto só se abrir o endereço direto dele"
+      c: "Ver o produto na vitrine, com 'Preço sob consulta'"
+      d: "Não achar o produto na vitrine, na página dele nem no carrinho"
+    correta: [d]
+    explicacao: "Enquanto não for liberado, o produto fica escondido do cliente: vitrine, página do produto, carrinho, nova solicitação e kit de marketing."
+  - id: WBK-05-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: WBK-05-C3
+    cena: 9
+    enunciado: "Coloque na ordem os passos para deixar o produto pronto para o cliente."
+    opcoes:
+      a: "Gravar o código com **Gravar código**"
+      b: "Liberar o produto com **Liberar na vitrine**"
+      c: "Buscar ou digitar o CODPROD"
+      d: "Conferir a ficha do produto"
+    correta: [c, a, d, b]
+    explicacao: "Ache ou digite o CODPROD, grave, confira a ficha (nome, linha, preço, medidas) e só então libere na vitrine."
+  - id: WBK-05-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WBK-05-C2
+    cena: 5
+    enunciado: "O portal está sem credencial do Sankhya. Como você liga o produto ao ERP?"
+    opcoes:
+      a: "Clica em **Buscar** e depois em **Usar** no resultado da lista"
+      b: "Digita o CODPROD e grava; ele fica como não conferido"
+      c: "Pede o CODPROD ao fornecedor, que cadastrou o item na fábrica"
+      d: "Espera a credencial: sem ela não dá para gravar o código"
+    correta: [b]
+    explicacao: "Sem credencial, a busca só mostra o aviso 'Sankhya sem credencial: digite o CODPROD; ele fica gravado como não conferido.' A lista e o botão **Usar** vêm com a integração ligada."
+  - id: WBK-05-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-05-C2
+    cena: 6
+    enunciado: "Você digitou letras junto com o número em **CODPROD** e clicou em **Gravar código**. A tela diz 'O CODPROD é um número (até 10 dígitos).' O que faz?"
+    opcoes:
+      a: "Clica em **Usar** na lista de resultados da busca"
+      b: "Libera o produto na vitrine e grava o código depois"
+      c: "Digita só números, no máximo 10 dígitos, e grava de novo"
+      d: "Digita o SKU do produto no lugar do código"
+    correta: [c]
+    explicacao: "O CODPROD aceita só números, até 10 dígitos. Corrija o valor e clique em **Gravar código** de novo."
+  - id: WBK-05-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-05-C3
+    cena: 8
+    enunciado: "Na conta do cliente, o produto liberado aparece com 'Preço sob consulta'. Isso é um erro da liberação?"
+    opcoes:
+      a: "Não: o preço estimado só aparece quando o cadastro tem câmbio, frete e impostos"
+      b: "Sim: o produto precisa ser liberado de novo com o preço"
+      c: "Sim: falta gravar o CODPROD para o preço aparecer"
+      d: "Não: o cliente só vê o preço depois de fazer o pedido"
+    correta: [a]
+    explicacao: "O produto já está na vitrine e o cliente já pode pedir. O preço estimado só aparece quando o cadastro tem câmbio, frete e impostos, então não prometa preço."
+  - id: WBK-05-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-05-C1
+    cena: 4
+    enunciado: "O produto ainda não existe no Sankhya. Você tenta criá-lo pelo cartão **Sankhya** do portal. O que acontece?"
+    opcoes:
+      a: "O portal cria o produto no ERP e grava o CODPROD sozinho"
+      b: "O portal cria o produto no ERP, mas só depois de liberar na vitrine"
+      c: "O portal cria o produto no ERP quando a solicitação é aprovada"
+      d: "Não dá: o portal só liga a um código que já existe no Sankhya"
+    correta: [d]
+    explicacao: "O portal não cria produto no Sankhya: ele só liga o produto ao código que já existe. O produto precisa estar cadastrado no ERP antes."

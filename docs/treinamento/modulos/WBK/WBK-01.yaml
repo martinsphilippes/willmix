@@ -1,0 +1,131 @@
+episodio: WBK-01
+titulo: Importar um booking (planilha do fornecedor)
+serie: WBK
+papel: operador (comprador) / administrador
+duracao: "3:30"
+idiomas: [pt]
+capitulos:
+  - id: WBK-01-C1
+    titulo: Abrir a tela Importar booking
+    inicio: "0:00"
+    fim: "1:05"
+    cenas: [1, 4]
+    resumo: Chegue à tela Importar booking pelo menu Pedidos e conheça os campos Arquivo, link e moeda.
+  - id: WBK-01-C2
+    titulo: Conferir as colunas e importar a planilha
+    inicio: "1:05"
+    fim: "2:00"
+    cenas: [5, 6]
+    resumo: Confira as colunas obrigatórias do cartão Colunas lidas e importe a planilha do fornecedor.
+  - id: WBK-01-C3
+    titulo: Conferir o booking que nasceu em rascunho
+    inicio: "2:00"
+    fim: "3:30"
+    cenas: [7, 10]
+    resumo: Confira fornecedor, data e o que falta no Booking nº 1, que nasce em Rascunho sem criar produto.
+perguntas:
+  - id: WBK-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WBK-01-C1
+    cena: 3
+    enunciado: "Qual é o caminho para subir a planilha de um fornecedor?"
+    opcoes:
+      a: "**Cadastros** → **Produtos** → **Importar CSV**"
+      b: "**Pedidos** → **Booking** → **Importar booking**"
+      c: "**Pedidos** → **Seleção de itens** → **Importar booking**"
+      d: "**Início** → **Pendências** → **Abrir**"
+    correta: [b]
+    explicacao: "No menu, abra **Pedidos**, clique em **Booking** e depois em **Importar booking**. A importação de produtos em Cadastros é outra tela."
+  - id: WBK-01-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WBK-01-C1
+    cena: 3
+    enunciado: "Nesta tela, o que é um **booking**?"
+    opcoes:
+      a: "A reserva de espaço no navio para a carga do pedido"
+      b: "O pedido que o cliente fez à Wellmix"
+      c: "A solicitação que a Wellmix manda ao fornecedor"
+      d: "A lista de produtos de uma planilha do fornecedor"
+    correta: [d]
+    explicacao: "Aqui, booking é a lista de produtos da planilha do fornecedor, guardada na Wellmix. Não é a reserva no navio."
+  - id: WBK-01-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WBK-01-C1
+    cena: 4
+    enunciado: "A planilha tem preços sem a moeda escrita. Qual campo da tela decide a moeda deles?"
+    opcoes:
+      a: "**Moeda quando a planilha não diz**, só para preços sem moeda"
+      b: "**Arquivo**, que traz a moeda junto com a planilha"
+      c: "**Ou o link de uma planilha do Google Sheets**, que define a moeda"
+      d: "Nenhum: a moeda é escolhida depois, dentro do booking"
+    correta: [a]
+    explicacao: "A lista **Moeda quando a planilha não diz** (padrão USD) vale só para os preços que vierem sem moeda. Quando a planilha traz a moeda, ela é respeitada."
+  - id: WBK-01-Q4
+    tipo: multipla
+    nivel: 2
+    capitulo: WBK-01-C2
+    cena: 5
+    enunciado: "Quais colunas são obrigatórias para fechar o booking (marcadas com asterisco em **Colunas lidas**)? Marque todas as certas."
+    opcoes:
+      a: "MOQ, o pedido mínimo"
+      b: "CBM"
+      c: "Material"
+      d: "Cor / sortimento"
+      e: "Foto do item"
+    correta: [a, b, c]
+    explicacao: "Preço, moeda, caixa, pesos, medidas, capacidade, embalagem, material, CBM e MOQ têm asterisco. Qualquer outra coluna fica guardada só como informação."
+  - id: WBK-01-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: WBK-01-C3
+    cena: 10
+    enunciado: "Coloque na ordem os passos para importar uma planilha."
+    opcoes:
+      a: "Escolher o arquivo e conferir a moeda"
+      b: "Clicar em **Importar booking** para a planilha ser lida"
+      c: "Abrir **Pedidos** → **Booking** e clicar em **Importar booking**"
+      d: "Conferir fornecedor, data e o que falta no booking aberto"
+    correta: [c, a, b, d]
+    explicacao: "Abra a tela de importação, escolha o arquivo e a moeda, clique em **Importar booking** e só então confira o booking que nasceu em Rascunho."
+  - id: WBK-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-01-C2
+    cena: 5
+    enunciado: "A importação recusa o arquivo com 'Não achei o cabeçalho da ficha (DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX…). Confira se é o modelo.' O que você faz?"
+    opcoes:
+      a: "Divide a planilha em duas, de até 40 itens cada uma"
+      b: "Tira os asteriscos dos nomes das colunas e importa de novo"
+      c: "Usa a planilha no modelo, com o cabeçalho na primeira linha"
+      d: "Troca a moeda em **Moeda quando a planilha não diz**"
+    correta: [c]
+    explicacao: "O cabeçalho tem de ser o do modelo (DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX…), na primeira linha da planilha. Os asteriscos e a moeda não têm relação com o erro."
+  - id: WBK-01-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-01-C3
+    cena: 9
+    enunciado: "O Booking nº 1 acabou de nascer em **Rascunho**, com 6 itens. Um colega pergunta se os produtos já estão no cadastro. O que você responde?"
+    opcoes:
+      a: "Não: são só linhas do booking; o produto nasce depois da seleção"
+      b: "Sim: cada item da planilha já virou um produto no cadastro da Wellmix"
+      c: "Sim, mas só no Sankhya, que é o ERP da Wellmix"
+      d: "Não: só vira produto depois de o cliente fazer um pedido"
+    correta: [a]
+    explicacao: "Importar não cria produto, cliente nem estoque. O booking em Rascunho fica só com a Wellmix, e o cadastro de produtos só é tocado depois da seleção."
+  - id: WBK-01-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-01-C3
+    cena: 8
+    enunciado: "O booking mostra 'Falta para fechar: itens incompletos (2).' e, na coluna **Conferência**, 'Falta: CBM, MOQ' num item. O que fazer?"
+    opcoes:
+      a: "Fechar o booking assim mesmo: o Superplan completa os dados sozinho"
+      b: "Apagar os dois itens incompletos da planilha original"
+      c: "Completar os campos obrigatórios vazios (borda âmbar)"
+      d: "Escolher outra moeda em **Moeda quando a planilha não diz**"
+    correta: [c]
+    explicacao: "Os campos obrigatórios vazios ficam com borda âmbar, e a coluna **Conferência** diz qual falta. Eles precisam ser preenchidos antes de fechar o booking."

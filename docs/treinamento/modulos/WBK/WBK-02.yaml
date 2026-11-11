@@ -1,0 +1,131 @@
+episodio: WBK-02
+titulo: Fechar o booking e ler a análise do Superplan
+serie: WBK
+papel: operador (comprador) / administrador
+duracao: "4:30"
+idiomas: [pt]
+capitulos:
+  - id: WBK-02-C1
+    titulo: Abrir o booking e conferir fornecedor e data
+    inicio: "0:00"
+    fim: "1:35"
+    cenas: [1, 5]
+    resumo: Abra o booking em Rascunho, confira fornecedor e data e cadastre o fornecedor da planilha, se ele não existir.
+  - id: WBK-02-C2
+    titulo: Completar os itens e fechar o booking
+    inicio: "1:35"
+    fim: "2:50"
+    cenas: [6, 7]
+    resumo: Complete os campos obrigatórios, escolha o tipo de negócio e feche com Fechar e analisar.
+  - id: WBK-02-C3
+    titulo: Ler a análise do Superplan e acompanhar o status
+    inicio: "2:50"
+    fim: "4:30"
+    cenas: [8, 11]
+    resumo: Leia o selo e o preço mínimo de cada item, refaça a análise quando preciso e acompanhe o status do booking.
+perguntas:
+  - id: WBK-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WBK-02-C3
+    cena: 8
+    enunciado: "Na coluna **Superplan**, o que quer dizer o selo **Falta dado**?"
+    opcoes:
+      a: "O lucro do item bate a meta do tipo de negócio"
+      b: "O lucro do item está abaixo da meta"
+      c: "Falta preço ou câmbio para calcular o item"
+      d: "O item dá prejuízo no preço mínimo"
+    correta: [c]
+    explicacao: "Verde é viável, amarelo é abaixo da meta, vermelho é prejuízo, e **Falta dado** aparece quando falta preço ou câmbio. Compare os itens pelo valor do **Mínimo**."
+  - id: WBK-02-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WBK-02-C2
+    cena: 7
+    enunciado: "Qual botão fecha o booking e pede a análise do Superplan?"
+    opcoes:
+      a: "**Fechar e analisar**"
+      b: "**Refazer a análise**"
+      c: "**Mudar status**"
+      d: "**Cadastrar e usar neste booking**"
+    correta: [a]
+    explicacao: "No cartão **Fechar o booking**, o botão é **Fechar e analisar**. **Refazer a análise** só aparece depois, no cartão do Superplan."
+  - id: WBK-02-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WBK-02-C1
+    cena: 4
+    enunciado: "No rascunho, você escolhe outro **Fornecedor** na lista. Como a mudança é gravada?"
+    opcoes:
+      a: "Só quando você fecha o booking, no fim"
+      b: "Sozinha: a célula mostra 'Gravando…' e depois 'Gravado ✓'"
+      c: "Ao clicar em **Salvar**, no alto da página"
+      d: "Só o administrador consegue gravar a mudança"
+    correta: [b]
+    explicacao: "No rascunho, fornecedor e data gravam sozinhos, sem botão Salvar. A origem acompanha a cidade do fornecedor. Depois de fechado, o booking deixa de ser editável."
+  - id: WBK-02-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: WBK-02-C3
+    cena: 11
+    enunciado: "Coloque na ordem o trabalho com um booking em Rascunho."
+    opcoes:
+      a: "Completar os campos obrigatórios com borda âmbar"
+      b: "Clicar em **Fechar e analisar**"
+      c: "Conferir **Fornecedor** e **Data** em **Dados do booking**"
+      d: "Ler o selo e o **Mínimo** de cada item"
+      e: "Escolher o **Tipo de negócio do Superplan**"
+    correta: [c, a, e, b, d]
+    explicacao: "Confira fornecedor e data, complete os itens, escolha o tipo de negócio, feche e só então leia o selo e o preço mínimo."
+  - id: WBK-02-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WBK-02-C2
+    cena: 6
+    enunciado: "Você digita 'abc' em **Capacidade (ml)** e aperta Enter. O que a célula mostra?"
+    opcoes:
+      a: "'Gravado ✓', com o valor zero"
+      b: "A célula apaga o 'abc' sem avisar"
+      c: "O item sai da tabela de itens do booking"
+      d: "O aviso 'Valor que não dá para ler. Use número maior que zero…'"
+    correta: [d]
+    explicacao: "Cada campo grava sozinho ao sair dele ou no Enter, e valor ilegível é recusado ali mesmo. Digite um número maior que zero; a célula confirma com 'Gravado ✓'."
+  - id: WBK-02-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-02-C1
+    cena: 5
+    enunciado: "O Booking nº 3 mostra o cartão 'Fornecedor da planilha sem cadastro', com Yiwu Glassware Co., Ltd. O que você faz?"
+    opcoes:
+      a: "Fecha o booking assim mesmo: o fornecedor é cadastrado ao fechar"
+      b: "Escolhe qualquer fornecedor parecido na lista de Fornecedor"
+      c: "Confere os dados e clica em **Cadastrar e usar neste booking**"
+      d: "Importa a planilha de novo com outro nome de fornecedor"
+    correta: [c]
+    explicacao: "O fornecedor entra em Cadastros, mas sem login: por isso aparece o aviso de que ele não tem acesso ao portal. Sem fornecedor, o booking não fecha."
+  - id: WBK-02-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-02-C2
+    cena: 7
+    enunciado: "Ao clicar em **Fechar e analisar**, aparece 'Há itens com campos obrigatórios vazios. Complete os campos marcados em cada item e feche de novo.' O que faz?"
+    opcoes:
+      a: "Preenche os campos com borda âmbar (a coluna **Conferência** diz quais) e fecha de novo"
+      b: "Clica em **Refazer a análise** para o sistema completar os campos"
+      c: "Muda o **Tipo de negócio do Superplan** e fecha de novo"
+      d: "Muda o status para **Em andamento** e continua"
+    correta: [a]
+    explicacao: "O booking só fecha com todos os campos obrigatórios preenchidos. Ache os campos pela borda âmbar e pela coluna **Conferência**."
+  - id: WBK-02-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-02-C3
+    cena: 9
+    enunciado: "O câmbio do dia mudou depois do fechamento e você vai comparar itens de bookings diferentes. O que faz?"
+    opcoes:
+      a: "Reabre o booking e corrige o câmbio nos itens"
+      b: "Clica em **Refazer a análise** no cartão do Superplan"
+      c: "Importa a planilha de novo para recalcular os preços"
+      d: "Espera: a análise se atualiza sozinha todo dia"
+    correta: [b]
+    explicacao: "Depois de fechado, os itens não mudam mais. Com câmbio ou parâmetros novos, use **Refazer a análise** (dá para trocar o tipo de negócio) e compare itens com o mesmo tipo de negócio."

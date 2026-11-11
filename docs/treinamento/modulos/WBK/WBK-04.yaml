@@ -1,0 +1,130 @@
+episodio: WBK-04
+titulo: Decidir a resposta do fornecedor e criar o produto
+serie: WBK
+papel: operador (comprador) / administrador
+duracao: "5:00"
+idiomas: [pt]
+capitulos:
+  - id: WBK-04-C1
+    titulo: Ler a resposta do fornecedor e decidir
+    inicio: "0:00"
+    fim: "1:50"
+    cenas: [1, 5]
+    resumo: Abra o aviso, leia a resposta (ou registre a que veio por fora) e aprove ou recuse no cartão Decisão da Wellmix.
+  - id: WBK-04-C2
+    titulo: Ligar os itens iguais e criar o produto
+    inicio: "1:50"
+    fim: "3:10"
+    cenas: [6, 7]
+    resumo: Marque só os itens iguais e crie o produto novo, que nasce fora da vitrine do cliente.
+  - id: WBK-04-C3
+    titulo: Associar a um produto existente e conferir a ficha
+    inicio: "3:10"
+    fim: "5:00"
+    cenas: [8, 11]
+    resumo: Associe o item a um produto que já existe quando for o caso, confira a ficha criada e veja o próximo passo.
+perguntas:
+  - id: WBK-04-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WBK-04-C1
+    cena: 3
+    enunciado: "Qual selo a solicitação ganha quando o fornecedor responde?"
+    opcoes:
+      a: "Aprovada"
+      b: "Aberta"
+      c: "Decidida"
+      d: "Respondida"
+    correta: [d]
+    explicacao: "Quando o fornecedor responde, a solicitação fica **Respondida** e falta a sua decisão. Só depois de aprovar ou recusar ela muda de novo."
+  - id: WBK-04-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WBK-04-C2
+    cena: 7
+    enunciado: "Depois de clicar em **Criar produto**, o cliente já vê o produto na vitrine?"
+    opcoes:
+      a: "Sim, assim que o produto é criado"
+      b: "Não: ele nasce fora da vitrine do cliente até ser liberado"
+      c: "Sim, mas só o cliente que pediu aquela jarra"
+      d: "Não: ele só nasce quando o cliente fizer um pedido"
+    correta: [b]
+    explicacao: "O produto criado pelo booking nasce fora da vitrine. Os próximos passos, o CODPROD do Sankhya e **Liberar na vitrine**, vêm no episódio seguinte."
+  - id: WBK-04-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WBK-04-C1
+    cena: 5
+    enunciado: "O fornecedor respondeu que **não faz** o item. Quais botões o cartão **Decisão da Wellmix** oferece?"
+    opcoes:
+      a: "**Aprovar** e **Recusar**"
+      b: "**Cancelar a solicitação** e **Recusar**"
+      c: "Só **Recusar**"
+      d: "Só **Aprovar**, para a Wellmix pedir de novo"
+    correta: [c]
+    explicacao: "Numa solicitação Respondida em que o fornecedor faz, os botões são **Aprovar** e **Recusar**; se ele disse que não faz, só dá para recusar. **Cancelar a solicitação** vale enquanto ela está Aberta."
+  - id: WBK-04-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: WBK-04-C1
+    cena: 4
+    enunciado: "O fornecedor mandou o preço por WeChat e a solicitação continua **Aberta**. Como você registra a resposta?"
+    opcoes:
+      a: "Preenche o cartão **Resposta do fornecedor** e clica em **Registrar a resposta do fornecedor**"
+      b: "Clica em **Aprovar** direto, sem registrar a resposta dele"
+      c: "Abre outra solicitação ao mesmo fornecedor, com o preço novo"
+      d: "Cria o produto e pergunta o preço ao fornecedor depois"
+    correta: [a]
+    explicacao: "Para resposta que veio por fora, registre por ele: 'Faz o que foi pedido?', preço por peça, moeda, pedido mínimo, prazo e observação. A solicitação passa a **Respondida**."
+  - id: WBK-04-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: WBK-04-C3
+    cena: 11
+    enunciado: "Coloque na ordem o trabalho com a resposta de um fornecedor."
+    opcoes:
+      a: "Marcar os itens de booking que são iguais"
+      b: "Ler a resposta do fornecedor"
+      c: "Criar o produto novo ou associar a um que já existe"
+      d: "Clicar em **Aprovar**"
+    correta: [b, d, a, c]
+    explicacao: "Leia a resposta, aprove, marque os itens iguais no bloco Produto e só então crie o produto ou associe a um existente."
+  - id: WBK-04-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-04-C2
+    cena: 6
+    enunciado: "No bloco **Produto**, as alternativas já vêm marcadas, mas a jarra 'com bico dosador' do Yiwu não é o mesmo produto. O que você faz?"
+    opcoes:
+      a: "Deixa marcada: todas as alternativas viram o mesmo produto"
+      b: "Desmarca o item escolhido, que é o que difere"
+      c: "Desmarca essa alternativa; o item escolhido sempre entra"
+      d: "Cria um produto novo para cada alternativa marcada"
+    correta: [c]
+    explicacao: "Em itens de booking ligados ao produto, o escolhido sempre entra e as alternativas já vêm marcadas. Desmarque as que não são o mesmo produto."
+  - id: WBK-04-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-04-C3
+    cena: 8
+    enunciado: "Você aprovou a solicitação da panela, e o catálogo já tem 'Jogo de panelas antiaderentes 5 pçs'. O que faz?"
+    opcoes:
+      a: "Cria um produto novo com o mesmo nome"
+      b: "Busca o produto no catálogo, marca-o e clica em **Associar ao produto marcado**"
+      c: "Recusa a solicitação para não duplicar o produto"
+      d: "Usa **Ligar mais itens** sem escolher nenhum produto"
+    correta: [b]
+    explicacao: "Se o produto já existe, não crie outro: busque por nome ou código e use **Associar ao produto marcado**. O cadastro dele não muda; só ganha o novo fornecedor."
+  - id: WBK-04-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WBK-04-C1
+    cena: 5
+    enunciado: "Você já clicou em **Aprovar**. O fornecedor pede para mudar o preço e você tenta registrar uma nova resposta. O que acontece?"
+    opcoes:
+      a: "A resposta muda e a solicitação volta a Respondida"
+      b: "A solicitação volta a Aberta e o fornecedor responde de novo"
+      c: "A Wellmix ainda pode mudar a resposta, mas o fornecedor não"
+      d: "A tela recusa: a Wellmix já decidiu e a resposta não muda mais"
+    correta: [d]
+    explicacao: "O fornecedor e a Wellmix podem mudar a resposta só até a decisão. Depois, aparece 'A Wellmix já decidiu esta solicitação: a resposta não muda mais.'"

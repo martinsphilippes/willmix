@@ -1,0 +1,130 @@
+episodio: WPE-06
+titulo: Transporte, entrega e encerramento
+serie: WPE
+papel: operador
+duracao: "4:15"
+idiomas: [pt]
+capitulos:
+  - id: WPE-06-C1
+    titulo: Acompanhar o caminhão
+    inicio: "0:00"
+    fim: "1:25"
+    cenas: [1, 4]
+    resumo: "O transportador informa a placa e a previsão de entrega, e a Control Tower põe cada pedido em um quadrado só."
+  - id: WPE-06-C2
+    titulo: Confirmar o recebimento e preencher o Recebimento
+    inicio: "1:25"
+    fim: "2:40"
+    cenas: [5, 6]
+    resumo: "O cliente confirma o recebimento e a Wellmix pode confirmar por ele; o cartão Recebimento, só da Wellmix, guarda a conferência no armazém."
+  - id: WPE-06-C3
+    titulo: Ver o pedido encerrar e acompanhar o pós-venda
+    inicio: "2:40"
+    fim: "4:15"
+    cenas: [7, 9]
+    resumo: "Com a confirmação a Entrega conclui e o Encerramento acontece sozinho; depois abre o pós-venda, com a avaliação e a recompra."
+perguntas:
+  - id: WPE-06-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-06-C1
+    cena: 3
+    enunciado: "O transportador tem acesso ao pedido para informar placa, previsão de entrega e situação. Qual destas informações ele não vê?"
+    opcoes:
+      a: "A mercadoria e o volume total da carga"
+      b: "Onde entregar"
+      c: "O fornecedor e os valores"
+      d: "A chegada do navio e a liberação aduaneira"
+    correta: [c]
+    explicacao: "No cartão **Carga e entrega** o transportador vê a mercadoria, os volumes, o peso, a chegada do navio, a liberação aduaneira e onde entregar. Fornecedor e valores ele nunca vê."
+  - id: WPE-06-Q2
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-06-C1
+    cena: 3
+    enunciado: "Ao informar a previsão de entrega, o transportador recebe \"A previsão de entrega não pode ser antes da previsão de chegada do navio.\" O que ele precisa fazer?"
+    opcoes:
+      a: "Escolher uma data igual ou depois da chegada do navio"
+      b: "Pedir à Wellmix que antecipe a chegada do navio"
+      c: "Deixar o campo em branco até o navio chegar de fato"
+      d: "Informar só a placa, porque a previsão é opcional para o pedido encerrar"
+    correta: [a]
+    explicacao: "A previsão de entrega nunca fica antes da chegada do navio: use uma data igual ou posterior. No sentido contrário também há limite, já que a chegada não pode ser depois da entrega prevista."
+  - id: WPE-06-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: WPE-06-C1
+    cena: 4
+    enunciado: "Na Control Tower, em que ordem um pedido passa pelos quadrados conforme o transporte anda?"
+    opcoes:
+      a: "A caminho do cliente"
+      b: "Entregue, falta confirmar"
+      c: "Esperando caminhão"
+    correta: [c, a, b]
+    explicacao: "Sem placa o pedido está em Esperando caminhão; com a placa vai para A caminho do cliente; feita a entrega, para Entregue, falta confirmar. Cada pedido aparece em um quadrado só."
+  - id: WPE-06-Q4
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-06-C2
+    cena: 5
+    enunciado: "A carga chegou, o pedido está em \"Entregue, falta confirmar\" e o cliente não responde. O que a Wellmix pode fazer?"
+    opcoes:
+      a: "Esperar: só o cliente pode confirmar o recebimento"
+      b: "Abrir a etapa Entrega e confirmar por ele, com **Confirmar** em \"Recebimento confirmado\""
+      c: "Cancelar o pedido e abrir outro, para o cliente confirmar de novo"
+      d: "Clicar em **Encerrar recebimento**, que também fecha a entrega"
+    correta: [b]
+    explicacao: "O recebimento é do cliente, mas a Wellmix pode confirmar por ele, por exemplo quando ele não responde. Com a confirmação o pedido é encerrado."
+  - id: WPE-06-Q5
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-06-C2
+    cena: 6
+    enunciado: "Quem vê o cartão **Recebimento** (lacre, fotos, checklist, conferência por SKU, RIC e devolução do container)?"
+    opcoes:
+      a: "Só a Wellmix"
+      b: "A Wellmix e o cliente"
+      c: "A Wellmix e o transportador"
+      d: "Todos os parceiros do pedido"
+    correta: [a]
+    explicacao: "O cartão Recebimento é a conferência no armazém e é só da Wellmix."
+  - id: WPE-06-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-06-C2
+    cena: 6
+    enunciado: "Você clica em **Encerrar recebimento** e o portal diz \"Ainda falta conferir algo antes de encerrar.\" O Fechamento mostra \"Falta: …\". O que você faz?"
+    opcoes:
+      a: "Clica em **Encerrar recebimento** de novo, até o portal aceitar"
+      b: "Completa e salva cada parte que falta, como lacre, checklist, conferência por SKU, RIC e devolução"
+      c: "Pede ao cliente que confirme o recebimento primeiro"
+      d: "Ignora o aviso: o pedido encerra mesmo assim com a entrega confirmada"
+    correta: [b]
+    explicacao: "O Fechamento lista o que ainda falta; só quando tudo está preenchido e salvo o recebimento encerra. Depois de encerrado, o cartão vira só leitura."
+  - id: WPE-06-Q7
+    tipo: unica
+    nivel: 2
+    capitulo: WPE-06-C3
+    cena: 7
+    enunciado: "O recebimento foi confirmado e a etapa Entrega concluiu. O que acontece com a etapa Encerramento?"
+    opcoes:
+      a: "Espera a Wellmix clicar em **Confirmar** no item de encerramento"
+      b: "Espera o fornecedor receber o pagamento final"
+      c: "Conclui sozinha, porque não tem item a fazer, e o pedido passa a contar em Encerrados no mês"
+      d: "Só conclui quando o cliente responder ao pós-venda"
+    correta: [c]
+    explicacao: "O Encerramento não tem item a fazer: com a confirmação da Entrega o pedido se encerra sozinho e entra em **Encerrados no mês** na Control Tower."
+  - id: WPE-06-Q8
+    tipo: multipla
+    nivel: 2
+    capitulo: WPE-06-C3
+    cena: 8
+    enunciado: "Sobre o pós-venda do pedido encerrado, o que está certo? Marque todas as certas."
+    opcoes:
+      a: "O cliente recebe a pendência \"Avalie a compra\""
+      b: "A Wellmix pode escrever a Observação da Wellmix e clicar em **Encerrar pós-venda**"
+      c: "O pós-venda se encerra sozinho quando o cliente responde"
+      d: "Do pedido encerrado saem **Comprar de novo** e **Quero nova proposta**"
+      e: "O fornecedor também vê a avaliação do cliente"
+    correta: [a, b, d]
+    explicacao: "O cliente avalia, e a Wellmix usa as respostas e encerra o pós-venda: ele não se encerra sozinho quando o cliente responde. A recompra já vem pré-preenchida. A avaliação é só do cliente e da Wellmix."
