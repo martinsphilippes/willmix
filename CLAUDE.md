@@ -8,7 +8,7 @@ Portal Operacional de Importações. Next.js 16 na Vercel; Supabase em produçã
 - `docs/ARQUITETURA.md`: decisões, módulos e convenções.
 - `docs/APPWRITE.md` e `docs/AMBIENTE.md`: esquema, permissões, variáveis e limitações da sessão cloud.
 - `docs/SUPABASE.md`: troca do Appwrite pelo Supabase (etapas, esquema gerado, publicação).
-- `docs/BOOKING.md`, `docs/SUPPLIER_REQUESTS.md`, `docs/SUPERPLAN.md`, `docs/QUOTE_FLOW.md`, `docs/ORDER_SIGNATURE.md` e `docs/PURCHASE_ORDER.md`: do Booking ao pedido (bookings por planilha, seleção de itens e solicitação ao fornecedor, análise, RFQ, negociação, embalagem, documento com as duas assinaturas).
+- `docs/BOOKING.md`, `docs/SUPPLIER_REQUESTS.md`, `docs/SUPERPLAN.md`, `docs/ORDER_SIGNATURE.md` e `docs/PURCHASE_ORDER.md`: do Booking ao pedido (bookings por planilha, seleção de itens e solicitação ao fornecedor, análise, negociação, documento com as duas assinaturas). A RFQ e a cotação saíram em 11/11/2026 (`docs/QUOTE_FLOW.md`).
 - `docs/PWA.md`: aplicativo instalável (manifesto, service worker, tela sem conexão) e responsividade.
 - `docs/INTEGRATIONS.md`: adaptadores mock/manual e dependências externas pendentes; `docs/SANKHYA.md` para o ERP.
 - Skills `.claude/skills/appwrite-cli` e `.claude/skills/appwrite-typescript` antes de rodar o CLI ou escrever código com o SDK.

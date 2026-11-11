@@ -61,6 +61,16 @@ Regras:
 - As duas partes **baixam o PDF, assinam, carimbam e sobem o arquivo**: primeiro a Wellmix, depois o fornecedor. Nestes pedidos não há o aceite no portal, só o arquivo (`signature_file_required`).
 - **Com os dois arquivos a etapa conclui.** O pedido vai ao Sankhya (como no documento assinado de sempre) e segue.
 
+## 3a. Frete marítimo (11/11/2026)
+
+- **Onde:** no pedido, cartão "Frete marítimo" (só a Wellmix). Até 11/11/2026 o frete nascia da cotação do fornecedor, que saiu.
+- **Pedir o frete:** "Pedir frete às companhias marítimas" manda a carga do pedido a cada companhia marítima ativa (pendência + aviso). A carga é a soma dos itens: caixas, volume e peso da ficha de compra do pedido (pedido de um item) e do cadastro do produto (`orderCargo`).
+- **Pedir de novo:** com a carga mudada, o frete já informado volta a "Aguardando valor" para a companhia revisar; sem mudança, nada muda.
+- **Recusas:** sem companhia marítima ativa (`no_carriers`); sem caixas nem volume conhecidos (`no_cargo`).
+- **Resposta:** a companhia informa valor, moeda, trânsito, validade e observação na tela do frete (`/app/freight/[id]`); a Wellmix é avisada no pedido. A companhia vê o número do pedido e os itens, nunca preço, fornecedor ou cliente.
+- **Pedido cancelado:** os pedidos de frete em aberto são encerrados.
+- **Dados:** `freight_quotes.orderId` (no lugar de `quoteId`).
+
 ## 4. Depois
 
 Pagamento do sinal ao fornecedor e produção seguem como já estão no portal. O pagamento é a etapa fora do fluxo, pela condição do fornecedor. Depois vem a inspeção, e o resto do fluxo é igual. Revisar o sinal e a produção é a próxima etapa (ponto 9 do dono).
