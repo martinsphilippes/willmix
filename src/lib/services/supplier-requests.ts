@@ -1,4 +1,5 @@
 import "server-only";
+import { assertCan } from "@/lib/auth/function-access";
 
 import { assertWellmix, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
@@ -568,6 +569,7 @@ export async function decideSupplierRequest(
 ): Promise<SupplierRequest> {
   assertWellmix(user);
   assertScreen(user, "quotes");
+  assertCan(user, "supplierRequest.decide");
   const store = getStore();
   const request = await withSchema(() => store.get("supplier_requests", id));
   if (!request) throw new SupplierRequestError("not_found");

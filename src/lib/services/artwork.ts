@@ -1,4 +1,6 @@
 import "server-only";
+import { holdersOf } from "@/lib/auth/function-access";
+import { loadFunctionDefs } from "./team-functions";
 
 import {
   getStore,
@@ -54,7 +56,7 @@ export async function designerCandidates(order: Order): Promise<User[]> {
       : Promise.resolve([] as User[]),
   ]);
   return [
-    ...team.filter((u) => (u.functions ?? []).includes("designer")),
+    ...holdersOf(team, "art.design", await loadFunctionDefs()),
     ...agency,
   ];
 }
@@ -126,9 +128,7 @@ async function designerTarget(order: Order): Promise<NotifyTarget> {
   const team = await getStore().list("users", {
     filter: { role: ["admin", "operator"], active: true },
   });
-  const designers = team.filter((u) =>
-    (u.functions ?? []).includes("designer"),
-  );
+  const designers = holdersOf(team, "art.design", await loadFunctionDefs());
   return {
     userIds: (designers.length ? designers : team.filter(isAdmin)).map(
       (u) => u.id,

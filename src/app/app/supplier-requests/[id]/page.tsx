@@ -53,6 +53,7 @@ import {
   supplierRequestSlaMinutes,
 } from "@/lib/services/supplier-request-negotiation";
 import { NegotiationCard, SlaBadge } from "../_components/negotiation";
+import { can } from "@/lib/auth/function-access";
 import { SupplierRequestTable } from "../_components/supplier-table";
 
 /*
@@ -252,9 +253,11 @@ export default async function SupplierRequestPage({
 
   const proposalPending = !!pendingProposal(r.negotiation);
   const canAnswer = supplierCanAnswer(r.status) && !proposalPending;
-  const decisions = wellmix
-    ? supplierRequestDecisions(r.status, r.supplierCanDo, proposalPending)
-    : [];
+  // Decidir (aprovar, recusar, cancelar): só com a permissão (Equipe → Funções e acessos).
+  const decisions =
+    wellmix && can(user, "supplierRequest.decide")
+      ? supplierRequestDecisions(r.status, r.supplierCanDo, proposalPending)
+      : [];
   const sla = slaOf(r, await supplierRequestSlaMinutes());
   const decimal = intl.startsWith("pt") ? "," : ".";
   const raw = (n: number | null) =>

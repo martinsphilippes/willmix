@@ -1,4 +1,6 @@
 import "server-only";
+import { can, holdersOf, type ActionKey } from "@/lib/auth/function-access";
+import { loadFunctionDefs } from "./team-functions";
 
 import { after } from "next/server";
 import {
@@ -7,7 +9,6 @@ import {
   type Approval,
   type ApprovalLevel,
   type User,
-  type WellmixFunction,
 } from "@/lib/db";
 import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
@@ -33,11 +34,11 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 
 export class ApprovalError extends Error {}
 
-/** Função da Equipe exigida para decidir cada nível. */
-const LEVEL_FUNCTION: Record<ApprovalLevel, WellmixFunction> = {
-  planner: "planner",
-  purchasing_director: "purchasing_director",
-  executive_director: "executive_director",
+/** Permissão exigida para decidir cada nível (Equipe → Funções e acessos). */
+const LEVEL_ACTION: Record<ApprovalLevel, ActionKey> = {
+  planner: "approval.planner",
+  purchasing_director: "approval.purchasing_director",
+  executive_director: "approval.executive_director",
 };
 
 /** Níveis exigidos para o valor: a executiva só a partir do limite (ou sem câmbio). */
@@ -65,7 +66,7 @@ export function canDecide(user: User, approval: Approval): boolean {
   const level = approval.currentLevel;
   if (!level) return false;
   if (isAdmin(user)) return true;
-  if (!(user.functions ?? []).includes(LEVEL_FUNCTION[level])) return false;
+  if (!can(user, LEVEL_ACTION[level])) return false;
   // Segregação: não aprova a própria escolha nem decide dois níveis.
   if (approval.requestedByUserId === user.id) return false;
   return !approval.steps.some((s) => s.userId === user.id);
@@ -102,8 +103,10 @@ async function deciders(level: ApprovalLevel): Promise<User[]> {
   const team = await getStore().list("users", {
     filter: { role: ["admin", "operator"], active: true },
   });
-  const withFunction = team.filter((u) =>
-    (u.functions ?? []).includes(LEVEL_FUNCTION[level]),
+  const withFunction = holdersOf(
+    team,
+    LEVEL_ACTION[level],
+    await loadFunctionDefs(),
   );
   return withFunction.length ? withFunction : team.filter(isAdmin);
 }

@@ -92,3 +92,44 @@ Operadores já cadastrados em produção não têm função: ao entrar, veem só
 ## Idioma na tela de entrada (pedido do dono, 11/11/2026)
 
 A tela de entrada (`/login`) mostra o seletor de idioma com o ícone do globo: Português, English e 中文. Um toque troca na hora e fica guardado em cookie, então o portal já abre no idioma escolhido depois do login. É o mesmo componente do cabeçalho (`src/components/locale-switcher.tsx`, ação `setLocaleAction`).
+
+## Funções e acessos configuráveis (decisão do dono, 11/11/2026)
+
+Gestão → Equipe (`/app/team`, só o administrador) ganhou três abas:
+
+1. **Equipe**: a equipe interna da Wellmix em linhas (como antes) e o botão **Novo usuário**, que abre o formulário de novo login num modal (`?tab=team&new=1`; erro volta para o modal).
+2. **Funções e acessos** (`?tab=functions&fn=CHAVE&view=screens|actions`): as funções à esquerda (2/12 da largura) e, no resto, a função escolhida em duas abas:
+   - **Telas e links**: as telas que a função abre, nos grupos do menu. O básico (Control Tower, Pendências, Painel de SLA, Notificações, Mensagens) fica sempre marcado. O que não estiver marcado não aparece no menu e não abre: a página volta ao início com o aviso e as Server Actions recusam (`requireScreen`/`assertScreen`, como antes). As telas "normalmente só do administrador" (Financeiro, Contas a pagar, Conta corrente, Configurações, Equipe, Superplan) podem ser liberadas por função, como já era possível login a login.
+   - **Ações**: o que a função pode fazer dentro das telas. Sem a permissão, o botão some e o servidor recusa (`can`/`assertCan`).
+   - Criar função (chave `fn_<nome>`), renomear (a de fábrica volta ao nome original com o campo vazio), voltar ao padrão (as de fábrica) e desativar ou reativar (as criadas; desativada não libera nada, a marca continua no cadastro do login).
+3. **Linha de produto e divisão**: a divisão de cada linha e a distribuição das pendências (o mesmo de antes).
+
+### Ações (catálogo em `src/lib/auth/function-access.ts`)
+
+| Ação                                                          | Onde é conferida                                                                                                                          | Padrão (igual ao de antes)    |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| Decidir a solicitação ao fornecedor                           | `decideSupplierRequest`; botões na solicitação                                                                                            | quem abre Cotações            |
+| Liberar dumping                                               | `canReleaseDumping`                                                                                                                       | gerente de produto, comprador |
+| Aprovar o pré-custo (planner / dir. compras / dir. executiva) | `approvals.ts` (quem decide e quem é avisado)                                                                                             | a função de mesmo nome        |
+| Gerar pedido de compra                                        | `createPurchaseOrder`; quadro em Solicitações ao fornecedor                                                                               | quem abre Cotações e Pedidos  |
+| Validar a arte (pedido de compra)                             | `canSubmitRequirement` (`art_review__item`)                                                                                               | quem abre Pedidos             |
+| Fazer as artes (designer)                                     | avisos e candidatos a designer (`artwork.ts`, `import-flow.ts`)                                                                           | designer                      |
+| Assinar o contrato pela Wellmix                               | `canSubmitRequirement` e `signOrderDocument`                                                                                              | quem abre Pedidos             |
+| Cancelar pedido                                               | `cancelOrder`, `rejectCancelRequest`; cartão no pedido                                                                                    | ninguém (só o admin)          |
+| Numerário e financeiro do pedido                              | `isFinance` (numerário) e avisos de recebimento encerrado                                                                                 | financeiro                    |
+| Acompanhar o recebimento                                      | avisos da conferência no armazém                                                                                                          | comprador                     |
+| Ver valores e margem                                          | `canSeeMoney`: Control Tower (faixa Financeiro e valores), Solicitações, Estoque, Clientes/Fornecedores (conta e vendas) e as exportações | ninguém (só o admin)          |
+
+Registrar e confirmar pagamentos (sinal, pagamento ao fornecedor, marketing) continua exigindo a tela Financeiro.
+
+### Onde fica
+
+- Configuração: tabela `settings`, chave `teamFunctions` (`src/lib/services/team-functions.ts`; sem coluna nova, sem publicar esquema). Função de fábrica sem nada gravado segue o padrão do código (`FUNCTION_SCREENS` e o padrão das ações). Cada mudança vai para a auditoria (`team.function_*`).
+- `getCurrentUser` resolve as telas e ações das funções do login uma vez por requisição (`src/lib/auth/access-cache.ts`); `screensFor`, `canOpen` e `can` leem dali. Para outro login (lista da equipe, avisos), quem chama passa a configuração.
+- `users.functions` aceita as chaves das funções criadas; só funções existentes e ativas são gravadas (`setTeamMember`).
+- O administrador continua abrindo e fazendo tudo. A lista de telas marcada login a login (Editar acessos → Personalizado) continua valendo por cima das funções.
+
+### Fica para depois
+
+- Bloqueio por política no banco (RLS por usuário no Supabase): hoje o banco já é fechado e só o servidor do portal lê e grava; a conferência é no servidor (decisão do dono: não agora).
+- Pendências: um login sem a permissão de validar a arte ou assinar o contrato ainda pode ver a pendência em Minhas pendências; ao abrir, o botão não aparece.

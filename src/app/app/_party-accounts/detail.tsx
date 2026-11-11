@@ -4,7 +4,6 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { loadSupplierScores } from "@/lib/services/supplier-score-load";
-import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -46,6 +45,7 @@ import {
   PORTAL_MIN_PASSWORD,
   suggestPassword,
 } from "@/lib/services/portal-access";
+import { canSeeMoney } from "@/lib/auth/function-access";
 
 /*
  * Ficha do cliente: barra de contas a receber (contrato, entregue,
@@ -99,7 +99,7 @@ export async function PartyAccountDetail({
   const supplier = side === "supplier";
   // Pagamento ao fornecedor fica numa parte própria do pedido.
   const payAnchor = supplier ? "#supplier-payment" : "#payments";
-  const money = canOpen(user, "finance");
+  const money = canSeeMoney(user);
   const tab: Tab = TABS.includes(param(sp.tab) as Tab)
     ? (param(sp.tab) as Tab)
     : "sales";

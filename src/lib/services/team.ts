@@ -1,13 +1,7 @@
 import "server-only";
+import { loadFunctionDefs } from "./team-functions";
 
-import {
-  WELLMIX_FUNCTIONS,
-  getStore,
-  type Division,
-  type JobLevel,
-  type User,
-  type WellmixFunction,
-} from "@/lib/db";
+import { getStore, type Division, type JobLevel, type User } from "@/lib/db";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
 import { WELLMIX_BASE, validScreens } from "@/lib/auth/screens";
 import { audit } from "./audit";
@@ -64,8 +58,8 @@ export async function setTeamMember(
     jobLevel: JobLevel | null;
     managerUserId: string | null;
     division: Division | null;
-    /** Funções (comprador, planner, diretoria…); ausente = não muda. */
-    functions?: WellmixFunction[];
+    /** Funções (de fábrica ou criadas); ausente = não muda. */
+    functions?: string[];
     /**
      * Telas marcadas uma a uma (docs/ACCESS.md): lista = personalizado;
      * null = volta ao padrão das funções; ausente = não muda.
@@ -93,8 +87,12 @@ export async function setTeamMember(
     functions: target.functions ?? [],
     screens: target.screens ?? null,
   };
+  // Só funções existentes e ativas, na ordem da lista (Equipe → Funções e acessos).
+  const defs = input.functions ? await loadFunctionDefs() : [];
   const functions = input.functions
-    ? WELLMIX_FUNCTIONS.filter((f) => input.functions!.includes(f))
+    ? defs
+        .filter((d) => !d.archived && input.functions!.includes(d.key))
+        .map((d) => d.key)
     : undefined;
   // Telas: só chaves válidas, sem o básico (que todo login da Wellmix já tem).
   const screens =

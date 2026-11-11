@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
-import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -46,6 +45,7 @@ import {
   readInventoryFilter,
   valueByCurrency,
 } from "./_data";
+import { canSeeMoney } from "@/lib/auth/function-access";
 
 const LIMIT_TONE = {
   ok: "success",
@@ -69,7 +69,7 @@ export default async function InventoryPage({
   const sp = await searchParams;
   const filter = readInventoryFilter(sp);
   const { situation, q } = filter;
-  const money = canOpen(user, "finance");
+  const money = canSeeMoney(user);
   const { lines, counts, hasAny } = await inventoryData(filter);
   // Locais de estoque (CODLOCAL do Sankhya); banco sem a tabela = nenhum.
   const locations = await getStore()

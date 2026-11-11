@@ -9,6 +9,7 @@ import {
   emptyTotals,
   type AccountSide,
 } from "@/lib/services/customer-accounts";
+import { canSeeMoney } from "@/lib/auth/function-access";
 
 /** Mesmo CSV dos dois lados (cliente ou fornecedor). */
 export async function exportAccounts(request: NextRequest, side: AccountSide) {
@@ -25,7 +26,7 @@ export async function exportAccounts(request: NextRequest, side: AccountSide) {
     },
     side,
   );
-  const money = canOpen(user, "finance");
+  const money = canSeeMoney(user);
   const csv = customersCsv(
     money ? rows : rows.map((r) => ({ ...r, totals: emptyTotals() })),
     t(side === "supplier" ? "supp.csv.header" : "cust.csv.header").split(";"),

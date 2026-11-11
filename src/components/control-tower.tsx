@@ -45,6 +45,7 @@ import {
   rowClass,
   stageTone,
 } from "./ui";
+import { canSeeMoney } from "@/lib/auth/function-access";
 
 /** Valores por moeda ("USD 1.000,00 · CNY 500,00"); zero na moeda de venda quando não há nada. */
 function moneyByCurrency(
@@ -283,7 +284,7 @@ export async function ControlTower({
 }) {
   const t = await getT();
   const wellmix = isWellmix(user);
-  const finance = canOpen(user, "finance");
+  const finance = canSeeMoney(user);
   const operations = canOpen(user, "orders");
   const deniedScreen = (SCREENS as readonly string[]).includes(denied ?? "")
     ? (denied as Screen)

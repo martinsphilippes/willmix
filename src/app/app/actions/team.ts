@@ -2,7 +2,8 @@
 
 import { z } from "zod";
 import { assertRole } from "@/lib/auth/permissions";
-import { DIVISIONS, JOB_LEVELS, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
+import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
+import { ACTION_KEYS } from "@/lib/auth/function-access";
 import { SCREENS } from "@/lib/auth/screens";
 import { LOCALES } from "@/lib/db/schema";
 import { loginLabel } from "@/lib/auth/login-id";
@@ -37,8 +38,8 @@ export async function saveTeamMemberAction(form: FormData) {
       ...(form.has("functions.__form")
         ? {
             functions: z
-              .array(z.enum(WELLMIX_FUNCTIONS))
-              .max(WELLMIX_FUNCTIONS.length)
+              .array(z.string().regex(/^[a-z0-9_]{1,48}$/))
+              .max(60)
               .parse(
                 form
                   .getAll("functions")
@@ -77,7 +78,7 @@ export async function saveTeamMemberAction(form: FormData) {
  */
 export async function createTeamLoginAction(form: FormData) {
   const user = await requireUser();
-  await run("/app/team#new-login", async () => {
+  await run("/app/team?tab=team&new=1", async () => {
     assertRole(user, ["admin"]);
     const { PORTAL_MIN_PASSWORD, createPortalLogin } =
       await import("@/lib/services/portal-access");
@@ -105,8 +106,8 @@ export async function createTeamLoginAction(form: FormData) {
       managerUserId: optionalId.parse(str(form, "managerUserId")),
       division: division.parse(str(form, "division")),
       functions: z
-        .array(z.enum(WELLMIX_FUNCTIONS))
-        .max(WELLMIX_FUNCTIONS.length)
+        .array(z.string().regex(/^[a-z0-9_]{1,48}$/))
+        .max(60)
         .parse(
           form
             .getAll("functions")
@@ -128,22 +129,124 @@ export async function createTeamLoginAction(form: FormData) {
 
 export async function setLineDivisionAction(form: FormData) {
   const user = await requireUser();
-  await run("/app/team#lines", async () => {
+  await run("/app/team?tab=lines#lines", async () => {
     assertRole(user, ["admin"]);
     const lineId = ID.parse(str(form, "lineId"));
     const { setLineDivision } = await import("@/lib/services/team");
     await setLineDivision(user, lineId, division.parse(str(form, "division")));
-    return `/app/team?saved=line#l-${lineId}`;
+    return `/app/team?tab=lines&saved=line#l-${lineId}`;
   });
 }
 
 /** Distribui as pendências sem responsável pela divisão da linha. */
 export async function distributeUnassignedAction() {
   const user = await requireUser();
-  await run("/app/team", async () => {
+  await run("/app/team?tab=lines", async () => {
     assertRole(user, ["admin"]);
     const { distributeUnassigned } = await import("@/lib/services/team");
     const done = await distributeUnassigned(user);
-    return `/app/team?distributed=${done.requests + done.orders}`;
+    return `/app/team?tab=lines&distributed=${done.requests + done.orders}`;
+  });
+}
+
+/* ---- Funções e acessos (Equipe → Funções e acessos; só o administrador) ---- */
+
+const FN_KEY = z.string().regex(/^[a-z0-9_]{1,48}$/);
+const fnBack = (key: string, view = "screens") =>
+  `/app/team?tab=functions&fn=${encodeURIComponent(key)}&view=${view}`;
+
+export async function createFunctionAction(form: FormData) {
+  const user = await requireUser();
+  await run("/app/team?tab=functions", async () => {
+    assertRole(user, ["admin"]);
+    const name = z.string().trim().min(2).max(60).parse(str(form, "name"));
+    const { createFunction } = await import("@/lib/services/team-functions");
+    const def = await createFunction(user, name);
+    return `${fnBack(def.key)}&saved=created`;
+  });
+}
+
+export async function renameFunctionAction(form: FormData) {
+  const user = await requireUser();
+  const key = str(form, "key");
+  await run(fnBack(key), async () => {
+    assertRole(user, ["admin"]);
+    FN_KEY.parse(key);
+    const name = z.string().trim().max(60).parse(str(form, "name"));
+    const { renameFunction } = await import("@/lib/services/team-functions");
+    await renameFunction(user, key, name);
+    return `${fnBack(key)}&saved=renamed`;
+  });
+}
+
+export async function saveFunctionScreensAction(form: FormData) {
+  const user = await requireUser();
+  const key = str(form, "key");
+  await run(fnBack(key), async () => {
+    assertRole(user, ["admin"]);
+    FN_KEY.parse(key);
+    const screens = z
+      .array(z.enum(SCREENS))
+      .max(SCREENS.length)
+      .parse(
+        form
+          .getAll("screens")
+          .filter((v): v is string => typeof v === "string"),
+      );
+    const { setFunctionScreens } =
+      await import("@/lib/services/team-functions");
+    await setFunctionScreens(user, key, screens);
+    return `${fnBack(key)}&saved=screens`;
+  });
+}
+
+export async function saveFunctionActionsAction(form: FormData) {
+  const user = await requireUser();
+  const key = str(form, "key");
+  await run(fnBack(key, "actions"), async () => {
+    assertRole(user, ["admin"]);
+    FN_KEY.parse(key);
+    const actions = z
+      .array(z.enum(ACTION_KEYS as [string, ...string[]]))
+      .max(ACTION_KEYS.length)
+      .parse(
+        form
+          .getAll("actions")
+          .filter((v): v is string => typeof v === "string"),
+      );
+    const { setFunctionActions } =
+      await import("@/lib/services/team-functions");
+    await setFunctionActions(
+      user,
+      key,
+      actions as (typeof ACTION_KEYS)[number][],
+    );
+    return `${fnBack(key, "actions")}&saved=actions`;
+  });
+}
+
+export async function resetFunctionAction(form: FormData) {
+  const user = await requireUser();
+  const key = str(form, "key");
+  await run(fnBack(key), async () => {
+    assertRole(user, ["admin"]);
+    FN_KEY.parse(key);
+    const { resetFunction } = await import("@/lib/services/team-functions");
+    await resetFunction(user, key);
+    return `${fnBack(key)}&saved=reset`;
+  });
+}
+
+export async function archiveFunctionAction(form: FormData) {
+  const user = await requireUser();
+  const key = str(form, "key");
+  await run(fnBack(key), async () => {
+    assertRole(user, ["admin"]);
+    FN_KEY.parse(key);
+    const archived = str(form, "archived") === "1";
+    const { setFunctionArchived } =
+      await import("@/lib/services/team-functions");
+    await setFunctionArchived(user, key, archived);
+    return `${fnBack(key)}&saved=${archived ? "archived" : "restored"}`;
   });
 }

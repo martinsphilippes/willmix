@@ -1,4 +1,5 @@
 import "server-only";
+import { can } from "@/lib/auth/function-access";
 
 import { getStore, type PurchaseSheet, type User } from "@/lib/db";
 import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
@@ -26,12 +27,13 @@ export async function dumpingHold(quoteId: string): Promise<boolean> {
   return !!sheet && sheet.dumping === "yes" && !sheet.dumpingReleasedAt;
 }
 
-/** Quem libera o dumping: gerente de produto, comprador ou admin. */
+/**
+ * Quem libera o dumping: quem tem a permissão "Liberar dumping" (padrão:
+ * gerente de produto e comprador; Equipe → Funções e acessos) ou o admin.
+ */
 export function canReleaseDumping(user: User): boolean {
   if (!isWellmix(user)) return false;
-  if (isAdmin(user)) return true;
-  const fns = user.functions ?? [];
-  return fns.includes("product_manager") || fns.includes("buyer");
+  return can(user, "dumping.release");
 }
 
 /** Libera o dumping da ficha da cotação (registra quem e quando). */
