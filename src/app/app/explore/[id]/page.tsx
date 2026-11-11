@@ -107,16 +107,16 @@ export default async function ExploreProductPage({
       {wellmix ? (
         <Alert tone="info">{t("explore.preview.banner")}</Alert>
       ) : null}
-      {/* Só a Wellmix chega aqui com o produto ainda no Booking (para o
+      {/* Só a Wellmix chega aqui com o produto ainda não liberado (para o
         cliente a página não abre): avisa que ele está fora da vitrine. */}
       {product.hiddenByBooking ? (
         <div data-explore-booking-hidden="">
           <Alert tone="warning">
             {t("explore.booking.hidden")}
-            {canOpen(user, "booking") ? (
+            {canOpen(user, "quotes") ? (
               <>
                 {" "}
-                <TextLink href="/app/booking/products">
+                <TextLink href="/app/supplier-requests">
                   {t("explore.booking.open")}
                 </TextLink>
               </>

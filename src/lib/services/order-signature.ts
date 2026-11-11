@@ -40,6 +40,9 @@ export interface OrderDocumentItem {
   unit: string;
   unitPrice: number | null;
   total: number | null;
+  /** Pedido de compra: MOQ e prazo negociados com o fornecedor, por produto. */
+  moq?: number | null;
+  leadTimeDays?: number | null;
 }
 
 /** O conteúdo que as partes assinam. Mudou qualquer campo, muda a versão. */
@@ -57,6 +60,12 @@ export interface OrderDocument {
   paymentTerms: PaymentTermInstallment[];
   /** A proposta de embalagem com o OK do fornecedor na cotação (versão). */
   packagingOkVersion: number | null;
+  /**
+   * Pedido de compra (docs/PURCHASE_ORDER.md): a arte final com o selo de
+   * cada produto entra no contrato. Só nesses pedidos (nos outros a chave
+   * não existe e a versão assinada não muda).
+   */
+  finalArts?: Array<{ name: string; documentId: string }>;
 }
 
 export interface OrderSignature {
@@ -138,6 +147,41 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
         total: unitPrice === null ? null : round(unitPrice * item.quantity, 2),
       };
     });
+  // Pedido de compra: MOQ e prazo negociados de cada produto, o incoterm da
+  // planilha do booking e a arte final com o selo.
+  let purchase: Pick<OrderDocument, "finalArts"> & {
+    incoterm?: string | null;
+  } = {};
+  if (order.flow === "supplier_request") {
+    const [requests, requirements] = await Promise.all([
+      store.list("supplier_requests", { filter: { orderId: order.id } }),
+      store.list("requirements", { filter: { orderId: order.id } }),
+    ]);
+    const sorted = [...items].sort((a, b) =>
+      a.createdAt.localeCompare(b.createdAt),
+    );
+    sorted.forEach((item, i) => {
+      const r = requests.find((x) => x.productId === item.productId);
+      rows[i] = {
+        ...rows[i],
+        moq: r?.supplierMoq ?? r?.item.moq ?? null,
+        leadTimeDays: r?.supplierLeadTimeDays ?? null,
+      };
+    });
+    purchase = {
+      incoterm: requests.find((r) => r.item.incoterm)?.item.incoterm ?? null,
+      finalArts: sorted
+        .map((item) => {
+          const art = requirements.find(
+            (r) => r.key === `art_final__${item.id}` && r.status === "done",
+          );
+          return art?.documentId
+            ? { name: item.name, documentId: art.documentId }
+            : null;
+        })
+        .filter((x): x is { name: string; documentId: string } => !!x),
+    };
+  }
   const total = rows.every((r) => r.total !== null)
     ? round(
         rows.reduce((sum, r) => sum + (r.total ?? 0), 0),
@@ -159,6 +203,12 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
       packagingProposalState(quote?.packagingProposal) === "ok"
         ? (quote?.packagingProposal?.version ?? null)
         : null,
+    ...(purchase.finalArts
+      ? {
+          incoterm: sheet?.incoterm ?? purchase.incoterm ?? null,
+          finalArts: purchase.finalArts,
+        }
+      : {}),
   };
 }
 
@@ -511,6 +561,9 @@ export async function signOrderDocument(
     });
     documentId = doc.id;
   }
+  // Pedido de compra: as duas partes sobem o contrato assinado e carimbado.
+  if (order.flow === "supplier_request" && !documentId)
+    throw new OrderSignatureError("signature_file_required");
   const signature: OrderSignature = {
     side,
     name,

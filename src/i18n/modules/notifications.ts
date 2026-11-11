@@ -52,12 +52,8 @@ export const pt = {
   "notif.quoteSelected.body":
     "Sua cotação foi escolhida. Agora é com o cliente: o pedido nasce quando o sinal for confirmado.",
   "notif.bookingAnalysis.subject": "Booking para analisar: {product}{ref}",
-  "notif.bookingAnalysis.body":
-    "{qty} {unit}. Analise o produto do seu Booking e responda com preço, prazo, pedido mínimo e fotos.",
   "notif.bookingAnalysis.many.subject":
     "Booking para analisar: {count} produtos{ref}",
-  "notif.bookingAnalysis.many.body":
-    "{items}. Analise cada produto do seu Booking e responda com preço, prazo, pedido mínimo e fotos.",
   "notif.rfq.subject": "Cotação pedida: {product}{ref}",
   "notif.rfq.body": "{qty} {unit}. Responda com preço, prazo e condições.",
   "notif.rfq.many.subject": "Cotação pedida: {count} produtos{ref}",
@@ -148,12 +144,8 @@ export const en = {
   "notif.quoteSelected.body":
     "Your quote was chosen. Now with the customer: the order is created once the down payment is confirmed.",
   "notif.bookingAnalysis.subject": "Booking to review: {product}{ref}",
-  "notif.bookingAnalysis.body":
-    "{qty} {unit}. Review the product from your Booking and reply with price, lead time, minimum order and photos.",
   "notif.bookingAnalysis.many.subject":
     "Booking to review: {count} products{ref}",
-  "notif.bookingAnalysis.many.body":
-    "{items}. Review each product from your Booking and reply with price, lead time, minimum order and photos.",
   "notif.rfq.subject": "Quote requested: {product}{ref}",
   "notif.rfq.body": "{qty} {unit}. Reply with price, lead time and terms.",
   "notif.rfq.many.subject": "Quote requested: {count} products{ref}",
@@ -240,11 +232,7 @@ export const zh = {
   "notif.quoteSelected.body":
     "您的报价已中选。现在等待客户：定金确认后即生成订单。",
   "notif.bookingAnalysis.subject": "待分析的 Booking：{product}{ref}",
-  "notif.bookingAnalysis.body":
-    "{qty} {unit}。请分析您 Booking 中的产品，并回复价格、交期、起订量和照片。",
   "notif.bookingAnalysis.many.subject": "待分析的 Booking：{count} 个产品{ref}",
-  "notif.bookingAnalysis.many.body":
-    "{items}。请逐一分析您 Booking 中的产品，并回复价格、交期、起订量和照片。",
   "notif.rfq.subject": "询价：{product}{ref}",
   "notif.rfq.body": "{qty} {unit}。请回复价格、交期和条件。",
   "notif.rfq.many.subject": "询价：{count} 个产品{ref}",

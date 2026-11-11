@@ -1242,6 +1242,14 @@ export async function saveSettingsAction(form: FormData) {
         if (!(Number.isFinite(n) && n >= 0 && n <= 1_000_000_000))
           throw new Error("approval_threshold_invalid");
         value = n;
+      } else if (
+        key === "purchaseArtSlaDays" ||
+        key === "purchaseArtReviewSlaDays"
+      ) {
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 1 || n > 365)
+          throw new Error("purchase_sla_invalid");
+        value = n;
       } else if (key === "supplierRequestSlaMinutes") {
         const n = Number(raw);
         if (

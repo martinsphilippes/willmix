@@ -3,7 +3,7 @@ import { withTempStore } from "./setup";
 import { PNG_1X1, xlsxBytes } from "./xlsx-fixture";
 
 /*
- * Cartão do fabricante que vem na planilha do Booking (coluna do cartão,
+ * Cartão do fabricante que vem na planilha da ficha técnica (coluna do cartão,
  * guardada no produto como foto "business_card"): entra sozinho na cotação
  * do fornecedor do produto, já confirmado. Nunca na de outro fornecedor.
  */
@@ -16,8 +16,6 @@ const cards = await import("@/lib/services/manufacturer-cards");
 const { addPhotos } = await import("@/lib/services/sourcing");
 const { canAccessDocument } = await import("@/lib/services/documents");
 const sheetImport = await import("@/lib/services/product-sheet-import");
-const booking = await import("@/lib/services/booking");
-const { translator } = await import("@/i18n");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -59,7 +57,7 @@ const quotesOf = async (requestId: string) => {
   return (s: string) => quotes.find((q) => q.supplierId === s)!;
 };
 
-describe("cartão do fabricante da planilha do Booking", () => {
+describe("cartão do fabricante da planilha da ficha técnica", () => {
   it("cotação aberta antes de o produto ter o cartão: nada entra; ao abrir a cotação depois, entra", async () => {
     const req = await request(PRODUCT);
     await r.openRfq(admin, req.id, ["fornecedor-a"]);
@@ -97,7 +95,7 @@ describe("cartão do fabricante da planilha do Booking", () => {
     expect(await canAccessDocument(joao, doc)).toBe(false);
   });
 
-  it("ao mandar ao fornecedor (Booking ou RFQ), o cartão já entra confirmado; o concorrente não recebe", async () => {
+  it("ao mandar ao fornecedor (RFQ), o cartão já entra confirmado; o concorrente não recebe", async () => {
     const req = await request(PRODUCT);
     await r.openRfq(admin, req.id, ["fornecedor-a", "fornecedor-b"]);
     const of = await quotesOf(req.id);
@@ -157,7 +155,7 @@ describe("cartão do fabricante da planilha do Booking", () => {
     ).toBeNull();
     expect(await cards.bringCardToQuote(supplierA, quote, null)).toBeNull();
   });
-  it("caminho inteiro: planilha com a coluna do cartão → Booking → cotação do fornecedor já com o cartão", async () => {
+  it("caminho inteiro: planilha com a coluna do cartão → solicitação → cotação do fornecedor já com o cartão", async () => {
     const store = getStore();
     const lineId = (await store.list("product_lines", { orderBy: "name" }))[0]
       .id;
@@ -203,25 +201,20 @@ describe("cartão do fabricante da planilha do Booking", () => {
           },
         ),
       ],
-      "booking.xlsx",
+      "ficha.xlsx",
       {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       },
     );
     const result = await sheetImport.importProductSheet(admin, file, {
       lineId,
-      mode: "booking",
+      mode: "products",
       supplierId: "fornecedor-a",
     });
     expect(result.summary).toMatchObject({ created: 1, errors: 0 });
     const productId = result.results[0].productId!;
-    const [row] = await store.list("bookings", { filter: { productId } });
-    const [created] = await booking.generateRequestFromBooking(
-      admin,
-      { ids: [row.id] },
-      translator("pt"),
-    );
-    // RFQ em espera: o Booking vai direto ao fornecedor do produto.
+    const created = await request(productId);
+    await r.openRfq(admin, created.id, ["fornecedor-a"]);
     const [quote] = await store.list("quotes", {
       filter: { requestId: created.id },
     });

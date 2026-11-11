@@ -14,6 +14,13 @@ import {
   supplierRequestSlaMinutes,
 } from "@/lib/services/supplier-request-negotiation";
 import { negotiationTurn } from "@/lib/supplier-requests";
+import { dictionaries } from "@/i18n/dictionaries";
+import { fallbackError } from "@/i18n/error-text";
+import {
+  listPurchaseCandidates,
+  purchaseOrderCustomer,
+} from "@/lib/services/purchase-order";
+import { PurchaseOrderCard } from "./_components/purchase-order";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -35,7 +42,9 @@ import {
  * o fornecedor, só as do próprio cadastro.
  */
 
-export default async function SupplierRequestsPage() {
+export default async function SupplierRequestsPage({
+  searchParams,
+}: PageProps<"/app/supplier-requests">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/supplier-requests");
   requireScreen(user, "quotes");
@@ -48,6 +57,27 @@ export default async function SupplierRequestsPage() {
   const wellmix = isWellmix(user);
   const slaMinutes = await supplierRequestSlaMinutes();
   const now = new Date();
+  const query = await searchParams;
+  const error = typeof query.error === "string" ? query.error : "";
+  const errorKey = [
+    `purchaseOrder.error.${error}`,
+    `supplierRequests.error.${error}`,
+    `common.${error}`,
+  ].find((k) => k in dictionaries.pt) as DictionaryKey | undefined;
+  const errorText = !error
+    ? null
+    : errorKey
+      ? t(errorKey)
+      : fallbackError(t, error);
+  // Pedido de compra (docs/PURCHASE_ORDER.md): os produtos aprovados de cada
+  // fornecedor que ainda não estão em pedido.
+  const purchase =
+    wellmix && canOpen(user, "orders")
+      ? await listPurchaseCandidates(user)
+      : null;
+  const purchaseCustomer = purchase?.length
+    ? await purchaseOrderCustomer()
+    : null;
 
   return (
     <>
@@ -67,6 +97,20 @@ export default async function SupplierRequestsPage() {
           ) : null
         }
       />
+      {errorText ? (
+        <div className="mb-3">
+          <Alert tone="danger">{errorText}</Alert>
+        </div>
+      ) : null}
+      {purchase?.length ? (
+        <div className="mb-4" id="pedido-de-compra">
+          <PurchaseOrderCard
+            groups={purchase}
+            customer={purchaseCustomer}
+            t={t}
+          />
+        </div>
+      ) : null}
       {entries === null ? (
         <Alert tone="warning">
           {t("supplierRequests.selection.schemaMissing")}
@@ -131,7 +175,18 @@ export default async function SupplierRequestsPage() {
                       n: r.quantity.toLocaleString(t.intl),
                     })}
                   </Td>
-                  <Td>{answerText(t, r)}</Td>
+                  <Td>
+                    {answerText(t, r)}
+                    {r.orderId ? (
+                      <Link
+                        href={`/app/orders/${r.orderId}`}
+                        className={`${linkClass} block text-xs`}
+                        data-supplier-request-order={r.orderId}
+                      >
+                        {t("purchaseOrder.list.order")}
+                      </Link>
+                    ) : null}
+                  </Td>
                   <Td>{formatDate(r.createdAt, t)}</Td>
                 </tr>
               ))}

@@ -2,19 +2,13 @@
 
 import { useId, useState, useSyncExternalStore, useTransition } from "react";
 import { cx, inputDenseClass } from "@/components/ui";
-import {
-  setBookingCustomerAction,
-  setBookingProductFieldAction,
-  setBookingQuantityAction,
-} from "@/app/app/actions/booking";
 
 /*
- * Booking: os campos direto na tabela (cliente, quantidade reservada e os
- * dados do produto: preço, MOQ, pesos, medidas, fornecedor...). Cada um grava
- * sozinho (escolheu na lista; digitou e saiu do campo, ou Enter), sem marcar
- * a linha nem ir à barra de cima, e avisa na própria célula: gravando,
- * gravado ou por que não gravou. A tela é só atualizada, não recarregada: o
- * que a pessoa digitou nas outras linhas continua lá.
+ * Campos que gravam sozinhos direto na tabela (o booking por planilha usa
+ * nos campos do rascunho). Cada um grava ao escolher na lista ou ao sair do
+ * campo (ou Enter), sem ir a uma barra de cima, e avisa na própria célula:
+ * gravando, gravado ou por que não gravou. A tela é só atualizada, não
+ * recarregada: o que a pessoa digitou nas outras linhas continua lá.
  */
 
 export interface BookingRowFieldLabels {
@@ -231,126 +225,6 @@ export function SaveInput({
       />
       <RowNote note={note} pending={pending} saving={labels.saving} />
     </span>
-  );
-}
-
-export function BookingCustomerSelect({
-  bookingId,
-  current,
-  options,
-  labels,
-}: {
-  bookingId: string;
-  /** Cliente gravado na linha ("-" quando não há). */
-  current: string;
-  options: { value: string; label: string }[];
-  labels: BookingRowFieldLabels;
-}) {
-  return (
-    <SaveSelect
-      send={(value) => setBookingCustomerAction(bookingId, value)}
-      current={current}
-      options={options}
-      labels={labels}
-      width="w-40"
-      data-booking-customer={bookingId}
-    />
-  );
-}
-
-/**
- * A quantidade reservada da linha. Continua sendo um campo do formulário da
- * barra (`qty_<id>`): numa ação em várias linhas, vale o que está digitado.
- */
-export function BookingQuantityInput({
-  bookingId,
-  formId,
-  saved,
-  placeholder,
-  labels,
-}: {
-  bookingId: string;
-  formId: string;
-  /** Quantidade gravada na linha ("" quando não há). */
-  saved: string;
-  placeholder: string;
-  labels: BookingRowFieldLabels;
-}) {
-  return (
-    <SaveInput
-      send={(value) => setBookingQuantityAction(bookingId, value)}
-      saved={saved}
-      labels={labels}
-      width="w-24 min-w-24"
-      numeric
-      placeholder={placeholder}
-      form={formId}
-      name={`qty_${bookingId}`}
-      data-booking-qty={bookingId}
-    />
-  );
-}
-
-/** Um dado do produto (preço, MOQ, pesos, medidas, código, cores...). */
-export function BookingProductInput({
-  productId,
-  field,
-  saved,
-  labels,
-  width = "w-24",
-  numeric,
-  type,
-  wrap,
-}: {
-  productId: string;
-  /** Nome do campo que a ação recebe (os mesmos do "Salvar dados"). */
-  field: string;
-  saved: string;
-  labels: BookingRowFieldLabels;
-  width?: string;
-  numeric?: boolean;
-  type?: string;
-  wrap?: boolean;
-}) {
-  return (
-    <SaveInput
-      send={(value) => setBookingProductFieldAction(productId, field, value)}
-      saved={saved}
-      labels={labels}
-      width={width}
-      numeric={numeric}
-      type={type}
-      wrap={wrap}
-      data-booking-edit={field}
-    />
-  );
-}
-
-/** Um dado do produto escolhido em lista (fornecedor, moeda). */
-export function BookingProductSelect({
-  productId,
-  field,
-  current,
-  options,
-  labels,
-  width,
-}: {
-  productId: string;
-  field: string;
-  current: string;
-  options: { value: string; label: string }[];
-  labels: BookingRowFieldLabels;
-  width: string;
-}) {
-  return (
-    <SaveSelect
-      send={(value) => setBookingProductFieldAction(productId, field, value)}
-      current={current}
-      options={options}
-      labels={labels}
-      width={width}
-      data-booking-edit={field}
-    />
   );
 }
 

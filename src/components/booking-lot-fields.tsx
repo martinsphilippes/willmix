@@ -16,7 +16,7 @@ import { setBookingItemNcmAction } from "@/app/app/actions/booking-ncm";
 /*
  * Booking por planilha: os campos do rascunho que gravam sozinhos (o
  * fornecedor e a data do booking e cada campo dos itens), com o aviso na
- * própria célula, como na fila de produtos do Booking.
+ * própria célula.
  */
 
 export function BookingLotSupplierSelect({

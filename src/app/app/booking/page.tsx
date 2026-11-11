@@ -22,26 +22,13 @@ import { BookingLotsTable } from "./_components/booking-lots-table";
 /*
  * Booking (docs/BOOKING.md, "Booking por planilha"): os bookings já
  * carregados (planilhas de fornecedor), com busca e ordenação em qualquer
- * coluna, e o botão "Importar booking". A fila de produtos que existia aqui
- * mora em /app/booking/products; endereço antigo com filtros vai para lá.
+ * coluna, e o botão "Importar booking".
  */
 
-export default async function BookingLotsPage({
-  searchParams,
-}: PageProps<"/app/booking">) {
+export default async function BookingLotsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/booking");
   requireScreen(user, "booking");
-  const query = await searchParams;
-  // Endereço antigo da fila de produtos (filtros, avisos de uma ação): segue para lá.
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) {
-    for (const v of Array.isArray(value) ? value : [value])
-      if (typeof v === "string") params.append(key, v);
-  }
-  if ([...params.keys()].length)
-    redirect(`/app/booking/products?${params.toString()}`);
-
   const t = await getT();
   const entries = await listBookingLots(user);
   const statusLabel = (s: string) =>
@@ -81,8 +68,6 @@ export default async function BookingLotsPage({
         subtitle={t("bookingLots.subtitle")}
         actions={
           <>
-            {/* A Seleção de itens substitui a fila de produtos (a rota
-                /app/booking/products continua, sem link). */}
             <LinkButton href="/app/booking/selection" variant="secondary">
               {t("nav.bookingSelection")}
             </LinkButton>

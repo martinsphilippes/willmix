@@ -1,6 +1,6 @@
 # Cotação: negociação e proposta de embalagem
 
-Racional do dono (10/11/2026) para o caminho Booking → Superplan → RFQ → pedido. Este documento cobre o que acontece **na cotação**, entre a resposta do fornecedor e a escolha dele. Tudo é aditivo: cotação sem negociação nem proposta segue como sempre.
+Racional do dono (10/11/2026) para o caminho Booking → Superplan → RFQ → pedido (hoje, Booking por planilha → Seleção de itens → solicitação ao fornecedor; docs/SUPPLIER_REQUESTS.md). Este documento cobre o que acontece **na cotação**, entre a resposta do fornecedor e a escolha dele. Tudo é aditivo: cotação sem negociação nem proposta segue como sempre.
 
 ## 1. Problema
 
@@ -21,31 +21,9 @@ Registrar, na própria cotação, a negociação de preço e o OK do fornecedor 
 5. Enquanto a devolução espera resposta, **a escolha do fornecedor fica parada** (`negotiation_pending`), na seleção direta e no envio para aprovação.
 6. O chat da solicitação continua no alto da página para conversar antes de responder.
 
-## 3a. Preço desejado: a solicitação que nasce do Booking
+## 3a. Preço desejado e fotos do Booking antigo (removidos em 11/11/2026)
 
-Pedido do dono (10/11/2026): pelo Booking, o lançamento já tem o preço que a Wellmix quer pagar. O fornecedor não precisa preencher a cotação inteira (pesos, fotos, cartão do fabricante): ele recebe o preço e **confirma** ou **manda o dele**.
-
-1. **Quando vale** (`quoteOfferFor`): a solicitação tem uma linha do Booking ligada a ela, a cotação ainda espera a primeira resposta (`invited`, sem rodadas) e o fornecedor da cotação é o **principal do produto**. O preço é o da ficha do produto (o que a equipe ajusta na tabela do Booking), na moeda da ficha. Sem preço ou moeda na ficha, a cotação segue como sempre.
-2. **Só o fornecedor do produto vê o preço.** Outros fornecedores convidados para a mesma RFQ cotam do jeito de sempre e não veem o valor (o preço da ficha é do fornecedor dela: isolamento entre fornecedores).
-3. **É lido na hora.** Nada é gravado até o fornecedor responder; por isso a RFQ aberta antes desta regra também mostra o preço, e uma mudança de preço no Booking antes da resposta é a que ele recebe.
-4. **Na cotação**, o fornecedor (ou a Wellmix, registrando por ele) vê o cartão "Preço desejado pela Wellmix" com o preço, a quantidade e três campos: prazo de produção em dias (obrigatório), outro preço e comentário.
-   - **Confirmar**: a cotação fica **respondida** com o preço desejado e o prazo, pelo mesmo `answerQuote` de sempre (situação da solicitação, vínculo do fornecedor com o produto, auditoria, aviso à Wellmix). A ficha da cotação continua disponível, mas não é exigida.
-   - **Enviar outro preço**: a cotação fica respondida com o preço **dele**; a Wellmix recebe o aviso "Preço diferente do desejado" e os dois lados veem, no cartão da negociação, a diferença e o botão das mensagens. A Wellmix pode **devolver com comentário**, e o campo do preço proposto já vem com o **preço desejado** (em vez dos 10% a menos). Daí em diante é a negociação da seção 3.
-   - Outro preço igual ao desejado conta como confirmação.
-   - **Não aceito este preço** (um toque, sem pedir prazo nem preço; o comentário é opcional): a cotação **continua sem resposta** (nenhum preço gravado), a recusa fica no histórico (rodada `decline`) e a Wellmix recebe o aviso "Preço desejado não aceito". O cartão continua na cotação, com o aviso da recusa e o botão das mensagens: depois da conversa o fornecedor ainda pode confirmar ou mandar o preço dele. Se a Wellmix mudar o preço do produto no Booking, é o novo valor que aparece, e ele pode responder de novo (inclusive recusar outra vez); o mesmo preço não é recusado duas vezes (`offer_already_declined`). Na lista de cotações, a etiqueta "Preço desejado: fornecedor não aceitou".
-5. **Histórico**: duas rodadas por resposta em `quotes.negotiation`: `offer` (Wellmix, com `targetPrice`) e `confirm`, `counter` ou `decline` (fornecedor, com `previousPrice` e `price`). Depois de um `decline`, a resposta seguinte acrescenta as rodadas dela. Auditoria `quote.offer_reply`.
-6. **Erros**: `offer_none` (não há preço desejado esperando), `offer_lead_time_required`, `offer_price_required`.
-7. **Código**: `quoteOfferFor` e `replyQuoteOffer` (`src/lib/services/quote-flow.ts`), `replyQuoteOfferAction`, `QuoteOfferCard` (`src/components/quote-flow-cards.tsx`), `offerRoundOf` e `suggestedReturnPrice` (`src/lib/quote-flow.ts`). Sem coluna nova.
-
-## 3b. Fotos que já vieram com o produto no Booking
-
-Pedido do dono (10/11/2026): na cotação que nasce do Booking, as fotos também têm de vir preenchidas, como o preço e os outros dados.
-
-1. **Quando vale**: a mesma condição do preço desejado, sem depender da situação da cotação (`bookingProductOf`: a solicitação tem linha do Booking e o fornecedor da cotação é o principal do produto), e o produto tem ao menos uma foto no cadastro (a da coluna PHOTO da ficha técnica, por exemplo).
-2. **O que muda na cotação**: o bloco Fotos mostra, no alto, as fotos que vieram com o produto, e aparece como "Completo". As cinco fotos de conferência (balança, régua, lado, outro ângulo e original) ficam **opcionais nesta cotação** (`waivedPhotoKinds`); quem quiser já pode enviá-las.
-3. **O que não muda**: a foto da planilha continua sendo "foto do fornecedor", não vira foto de balança nem original (nada é copiado nem reclassificado). As cinco fotos de conferência **continuam obrigatórias na Preparação do pedido**, como sempre. Outro fornecedor convidado para a mesma RFQ e a solicitação comum não mudam: as cinco fotos seguem exigidas.
-4. **Acesso ao arquivo**: a miniatura só aparece para quem já podia abrir aquele arquivo (`canAccessDocument`); nenhuma permissão nova. Quem não pode abrir vê só o aviso de que o produto já veio com foto.
-5. **Código**: `bookingGivenPhotos` e `quotePhotoCoverage` (`src/lib/services/quote-sheet.ts`), `SheetPhotosCard` (`given`, `waivedKinds`).
+O "preço desejado" (o fornecedor do produto confirmava, mandava outro ou não aceitava o preço da ficha) e as "fotos que já vieram com o produto" só valiam para a solicitação nascida do **Booking antigo** (fila de produtos). Saíram junto com ele (docs/BOOKING.md): `quoteOfferFor`, `replyQuoteOffer`, `replyQuoteOfferAction`, `QuoteOfferCard` e a dispensa das fotos de conferência na cotação. As rodadas `offer`, `confirm` e `decline` já gravadas em `quotes.negotiation` continuam aparecendo no histórico da negociação e na etiqueta "Preço desejado: fornecedor não aceitou".
 
 ## 4. Proposta de embalagem (o OK do fornecedor)
 

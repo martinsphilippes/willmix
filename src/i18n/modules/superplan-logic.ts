@@ -95,7 +95,7 @@ export const pt = {
     "Preço para bater a meta: o preço em que o lucro % fica igual à meta. O markup necessário é esse preço ÷ custo por peça. Quando impostos e despesas passam da margem possível, esse preço não existe.",
   "superplanLogic.sources.title": "De onde vêm os números",
   "superplanLogic.sources.a":
-    "Do produto (ficha do Booking): preço, moeda, peças por caixa, pesos, volume da caixa e o NCM (II e IPI).",
+    "Do produto (ficha técnica): preço, moeda, peças por caixa, pesos, volume da caixa e o NCM (II e IPI).",
   "superplanLogic.sources.b":
     "Do sistema: dólar oficial do dia, RMB por dólar, containers e os tributos da importação (seguro, PIS, COFINS e ICMS).",
   "superplanLogic.sources.c":
@@ -193,7 +193,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Price to hit the target: the price at which profit % equals the target. The markup needed is that price ÷ cost per piece. When taxes and expenses exceed the possible margin, that price does not exist.",
   "superplanLogic.sources.title": "Where the numbers come from",
   "superplanLogic.sources.a":
-    "From the product (Booking sheet): price, currency, pieces per carton, weights, carton volume and the NCM (II and IPI).",
+    "From the product (technical sheet): price, currency, pieces per carton, weights, carton volume and the NCM (II and IPI).",
   "superplanLogic.sources.b":
     "From the system: official dollar of the day, RMB per dollar, containers and the import taxes (insurance, PIS, COFINS and ICMS).",
   "superplanLogic.sources.c":
@@ -281,7 +281,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "达到目标所需的价格：利润率等于目标时的售价。所需加价倍数 = 该价格 ÷ 单件成本。当税费超过可能的利润空间时，该价格不存在。",
   "superplanLogic.sources.title": "数据来源",
   "superplanLogic.sources.a":
-    "来自产品（Booking 资料表）：价格、币种、每箱件数、重量、外箱体积和 NCM（II 和 IPI）。",
+    "来自产品（技术资料表）：价格、币种、每箱件数、重量、外箱体积和 NCM（II 和 IPI）。",
   "superplanLogic.sources.b":
     "来自系统：当日官方美元、人民币兑美元、货柜和进口税费（保险、PIS、COFINS 和 ICMS）。",
   "superplanLogic.sources.c":

@@ -91,6 +91,9 @@ export async function normalizePackagingStage(
     store.list("requirements", { filter: { stageId } }),
   ]);
   if (!order || order.status === "CANCELLED") return false;
+  // Pedido de compra: a etapa é o contrato com as duas assinaturas (a arte
+  // fica nas raias da Preparação, docs/PURCHASE_ORDER.md).
+  if (order.flow === "supplier_request") return false;
   const input = await planInput(order, !!opts.reassign);
   const plan = planFor(requirements, input);
   if (!needsChange(plan)) return false;

@@ -142,6 +142,9 @@ export default async function PurchaseOrderPage({
   // O fornecedor tem as duas opções lado a lado (portal ou arquivo); o
   // administrador, registrando por ele, anexa o arquivo no mesmo formulário.
   const supplierTurn = view.canSign === "supplier";
+  // Pedido de compra (docs/PURCHASE_ORDER.md): as duas partes baixam o
+  // contrato, assinam, carimbam e sobem o arquivo (sem o aceite no portal).
+  const purchase = order.flow === "supplier_request";
   const signForm = (onBehalf: boolean) => (
     <form
       action={signOrderDocumentAction}
@@ -264,14 +267,20 @@ export default async function PurchaseOrderPage({
         data-order-sign-turn={view.canSign}
       >
         <p className="text-sm text-zinc-700">
-          {supplierTurn
-            ? t("orderSign.turn.hint.supplier")
-            : t("orderSign.turn.hint.wellmix")}
+          {purchase
+            ? t("purchaseOrder.sign.hint")
+            : supplierTurn
+              ? t("orderSign.turn.hint.supplier")
+              : t("orderSign.turn.hint.wellmix")}
         </p>
-        <div className={supplierTurn ? "grid gap-3 md:grid-cols-2" : ""}>
-          {signForm(false)}
-          {supplierTurn ? fileForm : null}
-        </div>
+        {purchase ? (
+          fileForm
+        ) : (
+          <div className={supplierTurn ? "grid gap-3 md:grid-cols-2" : ""}>
+            {signForm(false)}
+            {supplierTurn ? fileForm : null}
+          </div>
+        )}
       </div>
     </Card>
   ) : null;
@@ -292,6 +301,30 @@ export default async function PurchaseOrderPage({
         }
       />
       <ActionError t={t} code={errorCode} text={errorText} fields={null} />
+      {purchase && view.document.finalArts ? (
+        <Card title={t("purchaseOrder.contract.arts")} dense>
+          {view.document.finalArts.length ? (
+            <ul className="flex flex-wrap gap-3" data-contract-final-arts>
+              {view.document.finalArts.map((a) => (
+                <li key={a.documentId} className="text-sm">
+                  <a
+                    href={`/api/files/${a.documentId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={linkClass}
+                  >
+                    {a.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-zinc-500">
+              {t("purchaseOrder.contract.artsPending")}
+            </p>
+          )}
+        </Card>
+      ) : null}
       {signed ? <Alert tone="success">{t("orderSign.done")}</Alert> : null}
       {sent ? <Alert tone="success">{t("orderSign.send.done")}</Alert> : null}
       {reopened ? (

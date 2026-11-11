@@ -1058,7 +1058,8 @@
             "replenishment",
             "proposal",
             "sourcing_demand",
-            "superplan"
+            "superplan",
+            "supplier_request"
           ]
         },
         {
@@ -1785,6 +1786,17 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "flow",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "supplier_request"
+          ]
         },
         {
           "key": "fxRate",
@@ -9064,195 +9076,6 @@
       ]
     },
     {
-      "$id": "bookings",
-      "databaseId": "willmix",
-      "name": "Booking (produtos antes da solicitação)",
-      "enabled": true,
-      "rowSecurity": false,
-      "$permissions": [],
-      "columns": [
-        {
-          "key": "productId",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "status",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "format": "enum",
-          "elements": [
-            "new",
-            "analysis",
-            "approved",
-            "offered",
-            "reserved",
-            "requested",
-            "discarded"
-          ]
-        },
-        {
-          "key": "importBatchId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "sourceFileName",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 200
-        },
-        {
-          "key": "sourceRows",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 40
-        },
-        {
-          "key": "sourceOrder",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "integer"
-        },
-        {
-          "key": "customerId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "reservedQty",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "integer"
-        },
-        {
-          "key": "ownerUserId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "note",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 500
-        },
-        {
-          "key": "analysis",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "text"
-        },
-        {
-          "key": "plan",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "text"
-        },
-        {
-          "key": "requestId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "requestGroupId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "requestNumber",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "integer"
-        },
-        {
-          "key": "statusChangedAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
-          "key": "statusChangedByUserId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "createdByUserId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        }
-      ],
-      "indexes": [
-        {
-          "key": "product_unique",
-          "type": "unique",
-          "columns": [
-            "productId"
-          ],
-          "orders": [
-            "ASC"
-          ]
-        },
-        {
-          "key": "by_status",
-          "type": "key",
-          "columns": [
-            "status"
-          ],
-          "orders": [
-            "ASC"
-          ]
-        },
-        {
-          "key": "by_batch",
-          "type": "key",
-          "columns": [
-            "importBatchId"
-          ],
-          "orders": [
-            "ASC"
-          ]
-        }
-      ]
-    },
-    {
       "$id": "booking_lots",
       "databaseId": "willmix",
       "name": "Bookings (planilhas de fornecedor)",
@@ -10081,6 +9904,14 @@
           "array": false,
           "default": null,
           "type": "datetime"
+        },
+        {
+          "key": "orderId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -10119,6 +9950,16 @@
           "type": "key",
           "columns": [
             "productId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
           ],
           "orders": [
             "ASC"

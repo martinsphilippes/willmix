@@ -3,8 +3,8 @@ import { withTempStore } from "./setup";
 
 /*
  * Acesso ao portal preso ao cadastro (src/lib/services/portal-access.ts):
- * fornecedor que entrou pela planilha do Booking e não tem login aparece no
- * Booking como "sem acesso"; o login nasce dentro do cadastro dele, com o
+ * fornecedor que entrou pela planilha e não tem login aparece como "sem
+ * acesso"; o login nasce dentro do cadastro dele, com o
  * papel do tipo do cadastro, e enxerga o que já tinha sido enviado.
  */
 withTempStore();
@@ -21,9 +21,6 @@ vi.mock("next/headers", () => ({
 const { getStore, PARTY_EXTRA_DEFAULTS, PRODUCT_EXTRA_DEFAULTS } =
   await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
-const { listBookingRows } = await import("@/lib/services/booking");
-const { ensureBookingForProduct } =
-  await import("@/lib/services/booking-intake");
 const { saveProductSheet } = await import("@/lib/services/product-sheet");
 const {
   createPortalLogin,
@@ -102,22 +99,11 @@ beforeAll(async () => {
       moq: 120,
       masterCartonQty: 12,
     });
-    await ensureBookingForProduct(admin, {
-      productId: product.id,
-      importBatchId: "lote-1",
-      sourceFileName: "feira.xls",
-      sourceRows: "2-4",
-      sourceOrder: 1,
-    });
   }
 });
 
 describe("acesso ao portal preso ao cadastro", () => {
-  it("Booking aponta o fornecedor da planilha que não tem login (e só ele)", async () => {
-    const data = await listBookingRows(admin);
-    expect(data.options.suppliersWithoutLogin).toEqual([
-      { id: factory.id, label: "Fábrica Nova" },
-    ]);
+  it("aponta o fornecedor da planilha que não tem login (e só ele)", async () => {
     expect(await partiesWithoutLogin([factory.id, "fornecedor-a"])).toEqual(
       new Set([factory.id]),
     );
@@ -158,7 +144,7 @@ describe("acesso ao portal preso ao cadastro", () => {
     ).toBe(0);
   });
 
-  it("cria o login preso ao fornecedor: some do aviso do Booking e fica na auditoria", async () => {
+  it("cria o login preso ao fornecedor: some do aviso e fica na auditoria", async () => {
     const created = await createPortalLogin(
       operator,
       login({ email: "  Li@Fabrica-Nova.CN " }),
@@ -173,8 +159,9 @@ describe("acesso ao portal preso ao cadastro", () => {
     expect(verifyPassword("senha-forte-1", created.passwordHash ?? "")).toBe(
       true,
     );
-    const data = await listBookingRows(admin);
-    expect(data.options.suppliersWithoutLogin).toEqual([]);
+    expect(await partiesWithoutLogin([factory.id, "fornecedor-a"])).toEqual(
+      new Set(),
+    );
     const log = await getStore().list("audit_log", {
       filter: { action: "user.create", entityId: created.id },
     });

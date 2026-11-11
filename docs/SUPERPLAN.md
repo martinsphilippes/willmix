@@ -74,15 +74,14 @@ A mesma lógica fica escrita na própria tela, sempre à vista, no quadro "Como 
 
 ### 5.1 Os "pesos": líquido, bruto, médio e a média
 
-O **peso médio por peça** (`purchase_sheets.averageWeightPcKg`, kg) aparece na Compra, ao lado do bruto, **só para leitura**: vem da ficha do produto e muda-se lá ou no Booking. Não entra na conta (o container continua limitado pelo bruto ou pelo bruto estimado).
-
+O **peso médio por peça** (`purchase_sheets.averageWeightPcKg`, kg) aparece na Compra, ao lado do bruto, **só para leitura**: vem da ficha do produto e muda-se lá. Não entra na conta (o container continua limitado pelo bruto ou pelo bruto estimado).
 
 A ficha técnica traz o **peso líquido** (N.W PC) e o **peso bruto** (G.W PC) por peça; a maioria das planilhas só preenche o líquido. A tela tem os dois campos, lado a lado, e cada um lê só a sua coluna: **o líquido nunca é lido como bruto**.
 
 - **Peso bruto informado**: é ele que limita o container, como sempre.
 - **Peso bruto vazio e líquido informado**: a conta usa um **peso bruto estimado** = líquido × (1 + folga da embalagem). A folga é o parâmetro "Folga da embalagem no peso (%)" (`grossEstimatePct`, padrão 8, de 0 a 100). O campo do peso bruto **continua vazio** e a tela mostra, logo abaixo, "Peso bruto estimado: 0,243 kg (líquido + 8%)"; o resultado do container também diz que o peso é estimado (`container.weightEstimated`). Digitar o peso bruto troca a estimativa pelo valor real.
 - **Os dois vazios**: só o volume limita o container, com o aviso de sempre (`container.weightUnknown`).
-- A estimativa é só da conta: **nunca é gravada** no produto nem na ficha mestre. A regra está em `estimatedGrossKg` (`src/lib/weights.ts`), a mesma que o Booking usa na coluna "peso estimado".
+- A estimativa é só da conta: **nunca é gravada** no produto nem na ficha mestre. A regra está em `estimatedGrossKg` (`src/lib/weights.ts`), a mesma da análise dos itens do booking.
 
 A **média** é o valor em US$ que o despachante informa na ficha mestre do produto (`purchase_sheets.averagePrice`, campo "Média (US$)"). No Superplan ela aparece **só como informação**, ao lado dos pesos: "Média do despachante: US$ 3,20"; vazia, "ainda não informada". Ela **não entra em conta nenhuma**: não faz parte de `SuperplanInput`, de `computeSuperplan` nem de imposto ou custo algum. Os impostos da importação continuam sobre o **valor real da compra** (passo 4). Não existe, e não deve ser criado, cálculo, campo ou dica de "valor declarado = peso líquido × média": declarar valor diferente do pago é subfaturamento (seção 10). Os testes `tests/unit/superplan-weights.test.ts` travam isso (a conta não tem campo de média; duas contas iguais, uma com média "a mais", dão o mesmo resultado).
 
@@ -100,21 +99,20 @@ No servidor, `src/lib/services/superplan-analysis.ts` (só leitura; quem chama c
 
 - `loadSuperplanContext()`: parâmetros, containers, câmbio do dia e tributos da importação;
 - `superplanPrefillsFor(ids)`: os dados de vários produtos de uma vez (uma consulta de produtos, uma de fichas mestre e uma busca na tabela fiscal por NCM distinto). Produto desativado ou que não existe fica fora; a tela do Superplan pede `includeInactive` para continuar abrindo um produto desativado pelo endereço;
-- `analyzeProductsWithDefaults(ids)`: para cada produto, o retrato da simulação padrão. É o "Analisar no Superplan" em várias linhas do Booking (`docs/BOOKING.md`).
+- `analyzeProductsWithDefaults(ids)`: para cada produto, o retrato da simulação padrão (análise em lote);
+- `analyzeBookingItems(items)`: o mesmo retrato para os itens de um booking, ao fechar (`docs/BOOKING.md`, "Booking por planilha").
 
-A página do Superplan usa as mesmas duas primeiras funções: um caminho só, os números da tela e os da análise em lote batem (teste em `tests/unit/superplan-analysis.test.ts`). `ncmFound` no retrato quer dizer "II e IPI conhecidos" (ficha mestre ou tabela fiscal); sem eles a conta usa 0 no que falta e o custo sai menor (o Booking marca a linha com "II/IPI 0").
+A página do Superplan usa as mesmas duas primeiras funções: um caminho só, os números da tela e os da análise em lote batem (teste em `tests/unit/superplan-analysis.test.ts`). `ncmFound` no retrato quer dizer "II e IPI conhecidos" (ficha mestre ou tabela fiscal); sem eles a conta usa 0 no que falta e o custo sai menor.
 
-**Um jeito só de ler o produto.** Preço, moeda, peças por caixa, CBM e pesos saem de `productPurchaseView` (`src/lib/services/product-sheet.ts`). O Superplan faz a conta com esses números e o Booking mostra os mesmos na linha (teste em `tests/unit/booking-service.test.ts`). Regras: preço e moeda andam juntos, da **mesma fonte** (o cadastro do produto; cadastro sem preço, a ficha mestre; a moeda da outra fonte só entra quando a do preço escolhido está vazia; sem preço em nenhuma das duas, a moeda marcada é a do cadastro); peças por caixa e volume, os do cadastro e, sem eles, os da ficha; zero ou negativo numa fonte não conta; pesos, os do cadastro e, sem eles, os da ficha mestre (cada um do seu campo). O cadastro vem primeiro porque é o gravado por último: salvar a ficha mestre espelha no cadastro, e a importação de produtos e o sourcing gravam só nele.
+**Um jeito só de ler o produto.** Preço, moeda, peças por caixa, CBM e pesos saem de `productPurchaseView` (`src/lib/services/product-sheet.ts`). O Superplan faz a conta com esses números (teste em `tests/unit/superplan-analysis.test.ts`). Regras: preço e moeda andam juntos, da **mesma fonte** (o cadastro do produto; cadastro sem preço, a ficha mestre; a moeda da outra fonte só entra quando a do preço escolhido está vazia; sem preço em nenhuma das duas, a moeda marcada é a do cadastro); peças por caixa e volume, os do cadastro e, sem eles, os da ficha; zero ou negativo numa fonte não conta; pesos, os do cadastro e, sem eles, os da ficha mestre (cada um do seu campo). O cadastro vem primeiro porque é o gravado por último: salvar a ficha mestre espelha no cadastro, e a importação de produtos e o sourcing gravam só nele.
 
 **Preço em outra moeda.** A conta só aceita RMB ou US$. Produto com preço em EUR ou BRL: a análise em lote diz que falta o preço em RMB ou US$ (`missing: ["currency"]`), e não que falta o preço.
 
-**Sinal só com preço testado.** Sem preço de venda a conta é feita no preço mínimo (custo × fator do tipo de negócio); nesse preço o lucro depende quase só dos parâmetros, e todo produto daria o mesmo sinal. Por isso a análise em lote do Booking não mostra verde/amarelo/vermelho: mostra "No preço mínimo", com o custo e o preço para a meta. O sinal aparece quando alguém testa um preço e grava.
+**Sinal só com preço testado.** Sem preço de venda a conta é feita no preço mínimo (custo × fator do tipo de negócio); nesse preço o lucro depende quase só dos parâmetros, e todo produto daria o mesmo sinal. Por isso a análise em lote não dá sinal de preço testado: a conta é a do preço mínimo, com o custo e o preço para a meta.
 
 ### 5.3 Gravar a simulação (opcional)
 
-A calculadora aceita a propriedade opcional `save` (`action`, `hidden`, `title`, `hint`, `submit`). Com ela, aparece junto do sinal um formulário com um botão que envia à Server Action indicada: os campos escondidos de quem pediu (`hidden`), mais `input` (a conta que está na tela, em JSON), `businessType` (o tipo escolhido), `container` (o código do container, ou vazio) e `ncmFound` ("1" quando II e IPI estão preenchidos, "0" quando contam 0). O resultado não vai junto: a ação confere a conta com `superplanInputSchema` e refaz o cálculo no servidor. A calculadora não sabe para que a simulação será gravada (hoje, o "Gravar no Booking"); sem `save`, nada muda e nada é gravado.
-
-**Aberto pelo Booking** (`/app/superplan?booking=<id>`, só para quem abre as duas telas): a tela vem com o produto da linha (o do endereço não conta), mostra a faixa "Analisando para o Booking" com o link de volta e passa `save` para `saveBookingAnalysisAction` (`src/app/app/actions/booking.ts`), que confere a conta, refaz o cálculo e grava o retrato na linha (`bookings.analysis`). Linha que não existe mais ou produto fora do cadastro: aviso e nenhum botão. Escolher outro produto no seletor sai do modo Booking. Ver `docs/BOOKING.md`.
+A calculadora aceita a propriedade opcional `save` (`action`, `hidden`, `title`, `hint`, `submit`). Com ela, aparece junto do sinal um formulário com um botão que envia à Server Action indicada: os campos escondidos de quem pediu (`hidden`), mais `input` (a conta que está na tela, em JSON), `businessType` (o tipo escolhido), `container` (o código do container, ou vazio) e `ncmFound` ("1" quando II e IPI estão preenchidos, "0" quando contam 0). O resultado não vai junto: a ação confere a conta com `superplanInputSchema` e refaz o cálculo no servidor. A calculadora não sabe para que a simulação será gravada; hoje nenhuma tela passa `save` (o "Gravar no Booking" saiu com o Booking antigo, 11/11/2026), e sem ele nada é gravado.
 
 ### Exemplo (o da planilha)
 
@@ -136,7 +134,6 @@ Jarra a 24,90 RMB, 12 peças por caixa, 1,13 kg por peça, 0,069 m³ por caixa, 
 - Média do despachante vazia: a tela diz "ainda não informada" (é só informação).
 - Cadastro sem preço, caixa ou volume (ou com zero): vêm da ficha mestre do produto, quando ela tem.
 - Preço em EUR ou BRL: "falta o preço em RMB ou US$".
-- "Gravar no Booking" recusado (número fora do limite): a mensagem diz que há um valor inválido na simulação; a calculadora ainda não marca qual campo.
 - Frete zero vale (produto já posto no Brasil).
 - Falta dado: a tela diz o quê e não mostra conta pela metade.
 

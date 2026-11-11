@@ -12,7 +12,7 @@ O dono também registrou que a "Solicitação" que já existia (a do cliente, `r
 | Solicitações ao fornecedor (lista) | `/app/supplier-requests`      | Wellmix e fornecedor com a tela Cotações (`quotes`) |
 | Uma solicitação                    | `/app/supplier-requests/[id]` | idem; o fornecedor só a própria                     |
 
-A Seleção de itens **substitui a fila de produtos** do Booking: o botão da tela `/app/booking` agora leva a ela. A rota `/app/booking/products` continua existindo (evolução aditiva), sem link na tela principal. No menu, Pedidos ganhou "Seleção de itens" e "Solicitações ao fornecedor"; o fornecedor ganhou "Solicitações ao fornecedor" ao lado de Cotações.
+A Seleção de itens **substituiu a fila de produtos** do Booking antigo: o botão da tela `/app/booking` leva a ela. A fila antiga (`/app/booking/products`) foi removida em 11/11/2026 (docs/BOOKING.md). No menu, Pedidos ganhou "Seleção de itens" e "Solicitações ao fornecedor"; o fornecedor ganhou "Solicitações ao fornecedor" ao lado de Cotações.
 
 ### Seleção de itens
 
@@ -103,11 +103,11 @@ Na solicitação **Aprovada**, a Wellmix que abre Cotações e Produtos vê o bl
    - O fornecedor de cada item entra na lista de fornecedores do produto (`product_suppliers`): o da solicitação com preço, moeda, MOQ e prazo da resposta (`source` "quote"); o de uma alternativa com código e preço do booking ("manual").
    - Item já ligado a outro produto recusa (`request_product_item_taken`).
    - Depois de criado ou associado, "Ligar mais itens" acrescenta outros.
-4. **Vitrine**: o produto **criado** nasce **fora da vitrine do cliente** (vitrine, página do produto, carrinho, nova solicitação e kit de marketing) até "Liberar na vitrine". O produto **associado** já existia e não muda. A regra fica em `booking-visibility.ts`, junto com a do Booking.
+4. **Vitrine**: o produto **criado** nasce **fora da vitrine do cliente** (vitrine, página do produto, carrinho, nova solicitação e kit de marketing) até "Liberar na vitrine". O produto **associado** já existia e não muda. A regra fica em `booking-visibility.ts`.
 5. **Sankhya**: só **ligar ao CODPROD que já existe**; o produto não é criado no ERP. O código aparece no cabeçalho da página do produto ("CODPROD …"; sem código, "CODPROD —").
    - A busca usa a descrição (parte) ou a referência do fornecedor (`Produto`: CODPROD, DESCRPROD, REFFORN) e um botão "Usar" em cada resultado.
    - O código também pode ser digitado. Ele é gravado em `products.sankhyaCode`, o mesmo campo do vínculo da carga do Sankhya (docs/SANKHYA.md).
    - Com o Sankhya configurado, o código é **conferido** no ERP (inexistente recusa). Sem credencial, ou com o ERP fora do ar, fica gravado como **não conferido**, e a tela diz isso.
-6. **Depois**: o pedido de compra ao fornecedor é outra etapa (ainda não construída).
+6. **Depois**: o pedido de compra ao fornecedor junta os produtos aprovados do mesmo fornecedor (docs/PURCHASE_ORDER.md).
 
 Tudo fica na auditoria: `product.create`, `product.link_booking`, `product.showcase_release` e `product.erp_code`.

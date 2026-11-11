@@ -345,23 +345,6 @@ export const PRODUCT_SUPPLIER_SOURCES = ["catalog", "quote", "manual"] as const;
 export type ProductSupplierSource = (typeof PRODUCT_SUPPLIER_SOURCES)[number];
 
 /**
- * Booking (docs/BOOKING.md): etapa de um produto que chegou pela ficha
- * técnica, antes de virar solicitação. `requested` só é gravada pelo "Gerar
- * solicitação"; `discarded` fica fora da fila. Não confundir com o passo
- * "booking" do embarque (reserva no navio, `IMPORT_STEP_KEYS`).
- */
-export const BOOKING_STATUSES = [
-  "new",
-  "analysis",
-  "approved",
-  "offered",
-  "reserved",
-  "requested",
-  "discarded",
-] as const;
-export type BookingStatus = (typeof BOOKING_STATUSES)[number];
-
-/**
  * Booking como planilha (docs/BOOKING.md, "Booking por planilha"): a lista de
  * itens que um fornecedor mandou, antes de existir produto. Rascunho
  * (editável) → Fechado (importação concluída, análise do Superplan feita) →
@@ -419,6 +402,8 @@ export const REQUEST_ORIGINS = [
   "proposal",
   "sourcing_demand",
   "superplan",
+  /** Pedido de compra gerado das solicitações ao fornecedor aprovadas (docs/PURCHASE_ORDER.md). */
+  "supplier_request",
 ] as const;
 export type RequestOrigin = (typeof REQUEST_ORIGINS)[number];
 
@@ -997,6 +982,13 @@ export interface Order extends BaseRow {
   incoterm?: string | null;
   /** Condição de pagamento (payment_conditions; CODTIPVENDA no Sankhya). */
   paymentConditionId?: string | null;
+  /**
+   * Fluxo do pedido. "supplier_request": pedido de compra gerado das
+   * solicitações ao fornecedor aprovadas (docs/PURCHASE_ORDER.md), com as
+   * raias do fornecedor, da agência de arte e da certificadora em paralelo e
+   * o contrato assinado pelas duas partes. Vazio: o fluxo de sempre.
+   */
+  flow?: "supplier_request" | null;
   /** Câmbio do pedido (moeda do pedido → R$; TGFCAB.VLRMOEDA). */
   fxRate?: number | null;
   /**
@@ -2288,7 +2280,7 @@ export type StockReservationStatus =
  * venda), cancelada ou vencer (`expiresAt` passado = vencida, sem gravar).
  */
 /**
- * Retrato da análise do Superplan guardado na linha do Booking: o que foi
+ * Retrato da análise do Superplan guardado no item do booking: o que foi
  * analisado, com que pressupostos e o resultado. A lista mostra o retrato com
  * a data (não recalcula sozinha). `verdict` nulo = faltou dado (`missing`).
  */
@@ -2309,11 +2301,6 @@ export interface BookingAnalysis {
   targetPriceBrl: number | null;
   /** O que faltou para calcular (chaves do Superplan: price, fx, cbm…). */
   missing: string[];
-  /**
-   * Simulação gravada à mão pelo Superplan ("Gravar no Booking"): a análise
-   * em várias linhas não a substitui.
-   */
-  manual?: boolean;
   /** Pressupostos da conta, para conferência. */
   inputs?: {
     /** O que a conta usou do produto (para conferir com a linha). */
@@ -2333,50 +2320,6 @@ export interface BookingAnalysis {
     /** Peso bruto estimado pelo líquido (a ficha não trouxe o bruto). */
     grossEstimated?: boolean;
   } | null;
-}
-
-/**
- * Linha do Booking: um produto do cadastro que chegou pela ficha técnica,
- * com a etapa, a reserva e a análise. Uma por produto.
- */
-/**
- * Plano da linha do Booking (docs/BOOKING.md, "Quantidade e previsão"): as
- * peças planejadas (vêm da planilha, coluna "TT PCS", e podem ser digitadas)
- * e a previsão de vendas por canal, digitada pela equipe.
- */
-export interface BookingPlan {
-  plannedQty?: number | null;
-  forecastOrder?: number | null;
-  forecastDistribution?: number | null;
-  forecastEcommerce?: number | null;
-}
-
-export interface Booking extends BaseRow {
-  productId: string;
-  status: BookingStatus;
-  /** Lote da importação (`import_batches`) e a planilha de origem. */
-  importBatchId: string | null;
-  sourceFileName: string | null;
-  /** Linhas da planilha ("3-5") e a primeira delas (ordem da planilha). */
-  sourceRows: string | null;
-  sourceOrder: number | null;
-  /** Cliente da oferta ou da reserva. */
-  customerId: string | null;
-  /** Peças reservadas (nunca abaixo do pedido mínimo). */
-  reservedQty: number | null;
-  /** Responsável na Wellmix (quem importou, até alguém trocar). */
-  ownerUserId: string | null;
-  note: string | null;
-  analysis: BookingAnalysis | null;
-  /** Peças planejadas e previsão de vendas. Opcional: linhas antigas ficam sem. */
-  plan?: BookingPlan | null;
-  /** Solicitação gerada a partir desta linha (uma por produto do lote). */
-  requestId: string | null;
-  requestGroupId: string | null;
-  requestNumber: number | null;
-  statusChangedAt: string | null;
-  statusChangedByUserId: string | null;
-  createdByUserId: string | null;
 }
 
 /**
@@ -2475,7 +2418,7 @@ export interface BookingItem extends BaseRow {
   cardDocumentId: string | null;
   /** Colunas da planilha sem campo próprio: cabeçalho → valor. Não aparecem na tela. */
   extras: Record<string, string> | null;
-  /** Retrato da análise do Superplan (o mesmo formato da linha do Booking). */
+  /** Retrato da análise do Superplan (`BookingAnalysis`). */
   analysis: BookingAnalysis | null;
   /** Produto do cadastro a que o item foi ligado (seleção de itens, depois). */
   productId: string | null;
@@ -2607,6 +2550,8 @@ export interface SupplierRequest extends BaseRow {
   negotiation?: SupplierRequestEvent[] | null;
   /** Quando o aviso de SLA estourado foi enviado (uma vez só). */
   slaNotifiedAt?: string | null;
+  /** Pedido de compra em que o produto desta solicitação entrou (docs/PURCHASE_ORDER.md). */
+  orderId?: string | null;
 }
 
 export interface StockReservation extends BaseRow {
@@ -2727,7 +2672,6 @@ export interface Tables {
   stock_counts: StockCount;
   stock_count_items: StockCountItem;
   stock_reservations: StockReservation;
-  bookings: Booking;
   booking_lots: BookingLot;
   booking_items: BookingItem;
   supplier_requests: SupplierRequest;
@@ -3056,6 +3000,7 @@ export const TABLES: Record<TableName, TableDef> = {
       sankhyaSyncedAt: datetime(),
       incoterm: str(10),
       paymentConditionId: id(false),
+      flow: enumOf(["supplier_request"], false),
       fxRate: float(),
       sankhyaRefs: json(),
     },
@@ -4205,34 +4150,6 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_status", type: "key", columns: ["status"] },
     ],
   },
-  bookings: {
-    label: "Booking (produtos antes da solicitação)",
-    columns: {
-      productId: id(),
-      status: enumOf(BOOKING_STATUSES),
-      importBatchId: id(false),
-      sourceFileName: str(200),
-      sourceRows: str(40),
-      sourceOrder: int(),
-      customerId: id(false),
-      reservedQty: int(),
-      ownerUserId: id(false),
-      note: str(500),
-      analysis: json(),
-      plan: json(),
-      requestId: id(false),
-      requestGroupId: id(false),
-      requestNumber: int(),
-      statusChangedAt: datetime(),
-      statusChangedByUserId: id(false),
-      createdByUserId: id(false),
-    },
-    indexes: [
-      { key: "product_unique", type: "unique", columns: ["productId"] },
-      { key: "by_status", type: "key", columns: ["status"] },
-      { key: "by_batch", type: "key", columns: ["importBatchId"] },
-    ],
-  },
   booking_lots: {
     label: "Bookings (planilhas de fornecedor)",
     columns: {
@@ -4349,12 +4266,14 @@ export const TABLES: Record<TableName, TableDef> = {
       erpCheckedAt: datetime(),
       negotiation: jsonLarge(),
       slaNotifiedAt: datetime(),
+      orderId: id(false),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
       { key: "by_item", type: "key", columns: ["bookingItemId"] },
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_product", type: "key", columns: ["productId"] },
+      { key: "by_order", type: "key", columns: ["orderId"] },
     ],
   },
   stock_locations: {

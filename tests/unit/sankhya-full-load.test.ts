@@ -118,8 +118,10 @@ describe("carga completa", () => {
       progress = (await runFullLoad(admin, "partners", 1)).progress;
     expect(progress.done).toBe(true);
 
+    // A Wellmix SC da demonstração (comprador dos pedidos de compra) já nasce
+    // com o código do Sankhya e não vem desta carga.
     const parties = (await getStore().list("parties")).filter(
-      (p) => p.sankhyaCode,
+      (p) => p.sankhyaCode && p.id !== "wellmix-sc",
     );
     const suppliers = parties.filter((p) => p.type === "supplier");
     const customers = parties.filter((p) => p.type === "customer");
@@ -140,7 +142,9 @@ describe("carga completa", () => {
     expect(again.progress.done).toBe(true);
     expect(again.progress.counts.created ?? 0).toBe(0);
     expect(
-      (await getStore().list("parties")).filter((p) => p.sankhyaCode),
+      (await getStore().list("parties")).filter(
+        (p) => p.sankhyaCode && p.id !== "wellmix-sc",
+      ),
     ).toHaveLength(25);
     expect((await getFullLoadProgress("partners")).done).toBe(true);
   });

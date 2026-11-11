@@ -110,12 +110,12 @@ import * as quoteFlow from "./quote-flow";
 import * as orderSignature from "./order-signature";
 import * as booking from "./booking";
 import * as bookingScreen from "./booking-screen";
-import * as bookingDetail from "./booking-detail";
 import * as bookingLots from "./booking-lots";
 import * as supplierRequests from "./supplier-requests";
 import * as supplierRequestProduct from "./supplier-request-product";
 import * as bookingNcm from "./booking-ncm";
 import * as supplierRequestNegotiation from "./supplier-request-negotiation";
+import * as purchaseOrder from "./purchase-order";
 import * as notifications from "./notifications";
 import * as productSheetImport from "./product-sheet-import";
 import * as productVariants from "./product-variants";
@@ -232,12 +232,12 @@ export const modulesPt = {
   ...orderSignature.pt,
   ...booking.pt,
   ...bookingScreen.pt,
-  ...bookingDetail.pt,
   ...bookingLots.pt,
   ...supplierRequests.pt,
   ...supplierRequestProduct.pt,
   ...bookingNcm.pt,
   ...supplierRequestNegotiation.pt,
+  ...purchaseOrder.pt,
   ...intro.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
@@ -351,12 +351,12 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...orderSignature.en,
   ...booking.en,
   ...bookingScreen.en,
-  ...bookingDetail.en,
   ...bookingLots.en,
   ...supplierRequests.en,
   ...supplierRequestProduct.en,
   ...bookingNcm.en,
   ...supplierRequestNegotiation.en,
+  ...purchaseOrder.en,
   ...intro.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
@@ -470,11 +470,11 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...orderSignature.zh,
   ...booking.zh,
   ...bookingScreen.zh,
-  ...bookingDetail.zh,
   ...bookingLots.zh,
   ...supplierRequests.zh,
   ...supplierRequestProduct.zh,
   ...bookingNcm.zh,
   ...supplierRequestNegotiation.zh,
+  ...purchaseOrder.zh,
   ...intro.zh,
 };

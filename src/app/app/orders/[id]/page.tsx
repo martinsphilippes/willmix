@@ -220,6 +220,13 @@ export default async function OrderPage({
     progress = (await loadOrderProgress(id)) ?? progress;
   }
   const t = await getT();
+  // Pedido de compra (docs/PURCHASE_ORDER.md): a Preparação traz as três
+  // raias e "Arte e embalagem" é o contrato com as duas assinaturas.
+  const purchaseFlow = progress.order.flow === "supplier_request";
+  const stageName = (key: string) =>
+    purchaseFlow && (key === "PREPARATION" || key === "PACKAGING")
+      ? t(`purchaseOrder.stage.${key}` as DictionaryKey)
+      : t(`stage.${key}` as DictionaryKey);
   const store = getStore();
   const wellmix = isWellmix(user);
   /* Certificadora (OCP) do pedido: vê tudo do pedido para gerar o selo
@@ -1043,7 +1050,7 @@ export default async function OrderPage({
                     )
               }
             >
-              {t(`stage.${order.status}`)}
+              {stageName(order.status)}
               {currentStage?.status === "blocked"
                 ? ` · ${t("stageStatus.blocked")}`
                 : ""}
@@ -1403,10 +1410,10 @@ export default async function OrderPage({
                               href={stageHref(s)}
                               className="transition hover:text-brand-700"
                             >
-                              {t(`stage.${s.key}`)}
+                              {stageName(s.key)}
                             </a>
                           ) : (
-                            t(`stage.${s.key}`)
+                            stageName(s.key)
                           )}
                         </span>
                       </Td>
@@ -1428,7 +1435,7 @@ export default async function OrderPage({
                                 wellmix,
                               );
                               const draft = t("orderView.stage.chatDraft", {
-                                stage: t(`stage.${s.key}`),
+                                stage: stageName(s.key),
                               });
                               if (!chat) return null;
                               if (chat.kind === "unassigned")
@@ -1641,7 +1648,7 @@ export default async function OrderPage({
                       id={`stage-${stage.id}`}
                       className="flex scroll-mt-24 flex-wrap items-center gap-2"
                     >
-                      {t(`stage.${stage.key}`)}
+                      {stageName(stage.key)}
                       <Badge tone={stageTone(stage.status)}>
                         {t(`stageStatus.${stage.status}`)}
                       </Badge>

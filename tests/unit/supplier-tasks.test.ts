@@ -10,7 +10,7 @@ import { reachSignature, signOrderAs, withTempStore } from "./setup";
  */
 withTempStore();
 
-const { getStore, PRODUCT_EXTRA_DEFAULTS } = await import("@/lib/db");
+const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const r = await import("@/lib/services/requests");
 const {
@@ -21,8 +21,6 @@ const {
   supplierStepOfGroup,
   taskGroups,
 } = await import("@/lib/services/tasks");
-const { ensureBookingForProduct } =
-  await import("@/lib/services/booking-intake");
 const { translator } = await import("@/i18n");
 type User = import("@/lib/db").User;
 
@@ -101,38 +99,8 @@ describe("pendências do fornecedor por etapa", () => {
     expect(supplierStepOfGroup("PACKAGING")).toBeNull();
   });
 
-  it("produto do Booking enviado ao fornecedor: etapa Analisar o Booking, com a data em que chegou e a do carregamento", async () => {
-    const store = getStore();
-    const [line] = await store.list("product_lines", { limit: 1 });
-    const product = await store.create("products", {
-      ...PRODUCT_EXTRA_DEFAULTS,
-      lineId: line.id,
-      name: "Porta-retrato do Booking",
-      sku: null,
-      specification: null,
-      active: true,
-      source: "import",
-      supplierId: "fornecedor-a",
-    } as never);
-    const { booking } = await ensureBookingForProduct(admin, {
-      productId: product.id,
-      importBatchId: "lote-1",
-      sourceFileName: "feira.xls",
-      sourceRows: "2-4",
-      sourceOrder: 1,
-    });
-    // (a solicitação nasce pelo cliente sem o produto: no Booking ele
-    // ainda está escondido da vitrine; o vínculo é a linha do Booking.)
-    const req = await request("Porta-retrato do Booking");
-    await store.update("bookings", booking.id, {
-      status: "requested",
-      requestId: req.id,
-    });
-    // A linha do Booking foi carregada dias antes de ir ao fornecedor.
-    const loaded = "2026-10-20T12:00:00.000Z";
-    await store.update("bookings", booking.id, {
-      createdAt: loaded,
-    } as never);
+  it("cotação enviada ao fornecedor: etapa Booking, com a data em que chegou e a do carregamento", async () => {
+    const req = await request("Porta-retrato da cotação");
     const [quote] = await r.openRfq(admin, req.id, ["fornecedor-a"]);
     const task = (await mine()).find(
       (t) => t.link === `/app/quotes/${quote.id}`,
@@ -141,8 +109,7 @@ describe("pendências do fornecedor por etapa", () => {
     expect(task.group).toBe("supplier.booking");
     expect(task.supplierStep).toBe("booking");
     expect(task.sinceAt).toBe(quote.createdAt);
-    const row = await store.get("bookings", booking.id);
-    expect(task.loadedAt).toBe(row!.createdAt);
+    expect(task.loadedAt).toBe(req.createdAt);
     // O filtro da etapa acha a pendência; o de outra etapa, não.
     const links = (group: string, all: Awaited<ReturnType<typeof mine>>) =>
       filterTasks(all, { group }).map((t) => t.link);

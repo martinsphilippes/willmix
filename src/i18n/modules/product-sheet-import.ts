@@ -12,12 +12,8 @@ export const pt = {
     "O modelo com as colunas PHOTO, DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX, N.W, G.W, CBM, SIZE, COLOR, MATERIAL e MOQ. Aceita o Excel atual (.xlsx) e o antigo (.xls). Com fotos a planilha fica grande: o envio é feito direto ao armazenamento (até 50 MB).",
   "sheetImport.supplier": "Fornecedor",
   "sheetImport.supplierNone": "Selecione o fornecedor",
-  "sheetImport.supplierHint":
-    "Todos os produtos desta planilha ficam ligados a este fornecedor, e é ele quem vai analisar o Booking. O fornecedor não está na lista? Cadastre antes em Cadastros → Fornecedores.",
   "sheetImport.supplierHintOptional":
     "Em branco vale o nome do fornecedor escrito na planilha.",
-  "sheetImport.error.supplier_required":
-    "Escolha o fornecedor: cada Booking que sobe precisa estar ligado a um fornecedor.",
   "sheetImport.error.supplier_invalid":
     "O fornecedor escolhido não existe mais ou está inativo. Escolha outro.",
   "sheetImport.line": "Linha do produto",
@@ -28,7 +24,7 @@ export const pt = {
     'Usada só quando o cabeçalho não diz ("PRICE / U$" já diz dólar).',
   "sheetImport.prefix": "Nome base (opcional)",
   "sheetImport.prefixHint":
-    'Mandar para o Booking e Um produto por linha: entra antes da descrição e do tamanho ("Porta-retrato STONE MARBLE A4"). Um produto com variações: é o nome do produto ("Porta-retrato"; sem ele, vale o nome da primeira linha).',
+    'Um produto por linha: entra antes da descrição e do tamanho ("Porta-retrato STONE MARBLE A4"). Um produto com variações: é o nome do produto ("Porta-retrato"; sem ele, vale o nome da primeira linha).',
   "sheetImport.prefixPlaceholder": "ex.: Porta-retrato",
   "sheetImport.submit": "Importar e cadastrar",
   "sheetImport.pending": "Lendo a planilha…",
@@ -38,19 +34,17 @@ export const pt = {
   "sheetImport.how.columns":
     "Preço, caixa master, inner, pesos, CBM, embalagem, cor, material, função e MOQ vão para a ficha mestre do produto; as medidas vão para o cadastro do produto.",
   "sheetImport.how.groups":
-    'Cada linha é uma cor; linhas seguidas com o mesmo código, descrição, tamanho e preço formam um grupo, com as cores juntas. Em "Mandar para o Booking" e em "Um produto por linha", cada grupo vira um produto. Em "Um produto com variações", a planilha inteira é um produto e cada grupo vira uma variação dele (preço, MOQ, caixa, medidas e foto próprios).',
+    'Cada linha é uma cor; linhas seguidas com o mesmo código, descrição, tamanho e preço formam um grupo, com as cores juntas. Em "Um produto por linha", cada grupo vira um produto. Em "Um produto com variações", a planilha inteira é um produto e cada grupo vira uma variação dele (preço, MOQ, caixa, medidas e foto próprios).',
   "sheetImport.how.photos":
     "A foto da coluna PHOTO entra como foto do fornecedor: é a imagem do produto no catálogo até a equipe tirar a foto original, que continua pendente na ficha. A foto do cartão vira o cartão do fornecedor.",
   "sheetImport.how.supplier":
-    "Os produtos ficam ligados ao fornecedor escolhido no formulário. Sem escolha (quem não usa o Booking), vale o nome da planilha: fornecedor que ainda não existe é cadastrado com nome, nº da loja e telefone.",
+    "Os produtos ficam ligados ao fornecedor escolhido no formulário. Sem escolha, vale o nome da planilha: fornecedor que ainda não existe é cadastrado com nome, nº da loja e telefone.",
   "sheetImport.how.missing":
     "No fim, cada produto mostra o que ainda falta na ficha mestre (medidas da caixa, as outras fotos da ficha…).",
   "sheetImport.previous": "Importações anteriores",
   "sheetImport.previous.empty": "Nenhuma importação de ficha técnica ainda.",
   "sheetImport.previous.line":
     "{created} criado(s) · {updated} atualizado(s) · {errors} erro(s)",
-  "sheetImport.previous.lineKept":
-    "{created} criado(s) · {updated} já existia(m), não alterado(s) · {errors} erro(s)",
   "sheetImport.result.title": "Importação: {file}",
   "sheetImport.result.summary":
     "{created} produto(s) criado(s), {updated} atualizado(s), {errors} com erro · {suppliers} fornecedor(es) novo(s) · {photos} foto(s)",
@@ -68,11 +62,6 @@ export const pt = {
   "sheetImport.result.goList": "Ver produtos",
   "sheetImport.status.created": "Criado",
   "sheetImport.status.updated": "Atualizado",
-  "sheetImport.status.kept": "Já existia (não alterado)",
-  "sheetImport.result.summaryKept":
-    "{created} produto(s) criado(s), {updated} que já existia(m) e não foi(ram) alterado(s), {errors} com erro · {suppliers} fornecedor(es) novo(s) · {photos} foto(s)",
-  "sheetImport.result.bookingNoteKept":
-    "Os produtos desta planilha estão no Booking. Como a planilha é de uma importação antiga, o produto que já existia não foi alterado por ela (preço, pedido mínimo, cores e fotos ficam como estão hoje): ele só ganhou a linha do Booking, como Aprovado. Os novos só aparecem na vitrine do cliente depois de aprovados lá.",
   "sheetImport.status.error": "Erro",
   "sheetImport.error.xls_format":
     "Arquivo .xls muito antigo (Excel 95 ou anterior): abra no Excel e salve como .xlsx.",
@@ -129,36 +118,13 @@ export const pt = {
     "{n} variação(ões) com erro: veja o motivo na lista e importe de novo depois de corrigir.",
   "sheetImport.error.schema_outdated":
     'A tabela de variações ainda não foi publicada no Appwrite (Action "Publicar esquema Appwrite"). O produto ficou cadastrado sem variações; publique o esquema e importe de novo, ou use "Um produto por linha".',
-  "sheetImport.mode.booking": "Mandar para o Booking (um produto por linha)",
-  "sheetImport.mode.bookingHint":
-    "Cada grupo de linhas vira um produto do cadastro, com ficha mestre e fotos, e entra no Booking na etapa Novo. O produto novo fica fora da vitrine do cliente até ser aprovado no Booking. Produto que já estava no cadastro entra como Aprovado e continua na vitrine (o que estava excluído entra como Novo). Reimportar a mesma planilha atualiza os mesmos produtos, sem duplicar e sem mudar a etapa.",
-  "sheetImport.previous.booking": "No Booking",
-  "sheetImport.result.goBooking": "Ver no Booking",
-  "sheetImport.result.bookingSummary":
-    "{created} produto(s) novo(s) no Booking, {kept} que já estava(m) lá (a etapa deles não muda)",
-  "sheetImport.result.bookingNote":
-    "Os produtos desta planilha estão no Booking. Os novos só aparecem na vitrine do cliente depois de aprovados lá; os que já estavam no cadastro entraram como Aprovado (os que estavam excluídos, como Novo).",
-  "sheetImport.toBooking.submit": "Mandar para o Booking",
-  "sheetImport.toBooking.pending": "Lendo a planilha guardada…",
-  "sheetImport.toBooking.hint":
-    "Lê de novo a planilha guardada desta importação e cria um produto por linha no Booking. O produto com variações fica como está, e o produto que já existe com o mesmo nome não é alterado: só ganha a linha do Booking.",
-  "sheetImport.toBooking.hintProducts":
-    "Coloca os produtos desta importação no Booking (os mesmos, ainda que tenham mudado de nome). Eles não são alterados (preço, pedido mínimo, cores e fotos ficam como estão hoje): só ganham a linha do Booking, como Aprovado, e continuam na vitrine do cliente. O que estiver excluído entra como Novo; o que foi apagado de vez é criado de novo, como Novo.",
-  "sheetImport.toBooking.confirmProducts":
-    "Os produtos desta importação vão para o Booking como Aprovado (continuam na vitrine do cliente) e não são alterados. Continuar?",
-  "sheetImport.toBooking.noFile":
-    'A planilha desta importação não ficou guardada. Para mandar ao Booking, importe a planilha de novo com a opção "Mandar para o Booking".',
-  "sheetImport.error.booking_schema_outdated":
-    'A tabela do Booking ainda não foi publicada no Appwrite (Action "Publicar esquema Appwrite"). Nada foi cadastrado: publique o esquema e tente de novo.',
-  "sheetImport.error.booking_failed":
-    "O produto não entrou no Booking desta vez e não foi cadastrado. Importe a planilha de novo.",
   "sheetImport.error.file_gone":
-    'A planilha desta importação não está mais guardada. Importe a planilha de novo com a opção "Mandar para o Booking".',
+    "A planilha desta importação não está mais guardada. Importe a planilha de novo.",
   "sheetImport.error.batch_not_found": "Importação não encontrada.",
   "sheetImport.error.line_gone":
     "A linha de produto desta importação não existe mais. Importe a planilha de novo e escolha a linha.",
   "sheetImport.error.forbidden":
-    "Seu login não pode fazer isso. Mandar para o Booking é só para quem abre a tela Booking (o administrador libera em Gestão → Equipe e divisões).",
+    "Seu login não pode fazer isso (o administrador libera em Gestão → Equipe e divisões).",
 };
 
 export const en = {
@@ -171,12 +137,8 @@ export const en = {
     "The template with the columns PHOTO, DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX, N.W, G.W, CBM, SIZE, COLOR, MATERIAL and MOQ. Current Excel (.xlsx) and the old format (.xls) are accepted. With photos the file gets big: it is uploaded straight to storage (up to 50 MB).",
   "sheetImport.supplier": "Supplier",
   "sheetImport.supplierNone": "Select the supplier",
-  "sheetImport.supplierHint":
-    "Every product in this spreadsheet is linked to this supplier, and they are the one who will review the Booking. Supplier not in the list? Register it first in Records → Suppliers.",
   "sheetImport.supplierHintOptional":
     "Blank means the supplier name written in the spreadsheet.",
-  "sheetImport.error.supplier_required":
-    "Choose the supplier: every Booking uploaded must be linked to a supplier.",
   "sheetImport.error.supplier_invalid":
     "The chosen supplier no longer exists or is inactive. Choose another one.",
   "sheetImport.line": "Product line",
@@ -187,7 +149,7 @@ export const en = {
     'Used only when the header does not say it ("PRICE / U$" already means dollars).',
   "sheetImport.prefix": "Base name (optional)",
   "sheetImport.prefixHint":
-    'Send to Booking and One product per row: goes before the description and the size ("Photo frame STONE MARBLE A4"). One product with variations: it is the product name ("Photo frame"; without it, the first row\'s name is used).',
+    'One product per row: goes before the description and the size ("Photo frame STONE MARBLE A4"). One product with variations: it is the product name ("Photo frame"; without it, the first row\'s name is used).',
   "sheetImport.prefixPlaceholder": "e.g. Photo frame",
   "sheetImport.submit": "Import and register",
   "sheetImport.pending": "Reading the spreadsheet…",
@@ -197,19 +159,17 @@ export const en = {
   "sheetImport.how.columns":
     "Price, master carton, inner, weights, CBM, packaging, colour, material, function and MOQ go to the product's master sheet; the size goes to the product record.",
   "sheetImport.how.groups":
-    'Each row is a colour; consecutive rows with the same code, description, size and price form a group, with the colours together. With "Send to Booking" and "One product per row", each group becomes a product. With "One product with variations", the whole sheet is one product and each group becomes a variation of it (own price, MOQ, carton, size and photo).',
+    'Each row is a colour; consecutive rows with the same code, description, size and price form a group, with the colours together. With "One product per row", each group becomes a product. With "One product with variations", the whole sheet is one product and each group becomes a variation of it (own price, MOQ, carton, size and photo).',
   "sheetImport.how.photos":
     "The picture in the PHOTO column comes in as the supplier's photo: it is the product's catalog image until the team takes the original photo, which stays pending on the product's master sheet. The card picture becomes the supplier's business card.",
   "sheetImport.how.supplier":
-    "Products are linked to the supplier chosen in the form. With no choice (for those who do not use the Booking), the spreadsheet name applies: a supplier that does not exist yet is registered with name, store number and phone.",
+    "Products are linked to the supplier chosen in the form. With no choice, the spreadsheet name applies: a supplier that does not exist yet is registered with name, store number and phone.",
   "sheetImport.how.missing":
     "At the end, each product shows what is still missing in the master sheet (carton size, the other sheet photos…).",
   "sheetImport.previous": "Previous imports",
   "sheetImport.previous.empty": "No technical-sheet import yet.",
   "sheetImport.previous.line":
     "{created} created · {updated} updated · {errors} error(s)",
-  "sheetImport.previous.lineKept":
-    "{created} created · {updated} already existed, not changed · {errors} error(s)",
   "sheetImport.result.title": "Import: {file}",
   "sheetImport.result.summary":
     "{created} product(s) created, {updated} updated, {errors} with errors · {suppliers} new supplier(s) · {photos} photo(s)",
@@ -227,11 +187,6 @@ export const en = {
   "sheetImport.result.goList": "See products",
   "sheetImport.status.created": "Created",
   "sheetImport.status.updated": "Updated",
-  "sheetImport.status.kept": "Already existed (not changed)",
-  "sheetImport.result.summaryKept":
-    "{created} product(s) created, {updated} already existed and were not changed, {errors} with errors · {suppliers} new supplier(s) · {photos} photo(s)",
-  "sheetImport.result.bookingNoteKept":
-    "The products from this sheet are in the Booking. As the sheet comes from an old import, a product that already existed was not changed by it (price, minimum order, colours and photos stay as they are today): it only got its Booking row, as Approved. New ones only show in the customer showcase after being approved there.",
   "sheetImport.status.error": "Error",
   "sheetImport.error.xls_format":
     "Very old .xls file (Excel 95 or earlier): open it in Excel and save as .xlsx.",
@@ -287,36 +242,13 @@ export const en = {
     "{n} variation(s) with errors: see the reason in the list and import again after fixing.",
   "sheetImport.error.schema_outdated":
     'The variations table has not been published to Appwrite yet ("Publish Appwrite schema" Action). The product was registered without variations; publish the schema and import again, or use "One product per row".',
-  "sheetImport.mode.booking": "Send to Booking (one product per row)",
-  "sheetImport.mode.bookingHint":
-    "Each group of rows becomes a registered product, with master sheet and photos, and enters the Booking at the New stage. A new product stays out of the customer showcase until it is approved in the Booking. A product that was already registered enters as Approved and stays in the showcase (one that was excluded enters as New). Importing the same sheet again updates the same products, without duplicates and without changing the stage.",
-  "sheetImport.previous.booking": "In the Booking",
-  "sheetImport.result.goBooking": "See in the Booking",
-  "sheetImport.result.bookingSummary":
-    "{created} new product(s) in the Booking, {kept} already there (their stage does not change)",
-  "sheetImport.result.bookingNote":
-    "The products from this sheet are in the Booking. New ones only show in the customer showcase after being approved there; those already registered entered as Approved (excluded ones, as New).",
-  "sheetImport.toBooking.submit": "Send to Booking",
-  "sheetImport.toBooking.pending": "Reading the stored spreadsheet…",
-  "sheetImport.toBooking.hint":
-    "Reads the stored spreadsheet of this import again and creates one product per row in the Booking. The product with variations stays as it is, and a product that already exists with the same name is not changed: it only gets its Booking row.",
-  "sheetImport.toBooking.hintProducts":
-    "Puts this import's products in the Booking (the same ones, even if renamed since). They are not changed (price, minimum order, colours and photos stay as they are today): they only get their Booking row, as Approved, and stay in the customer showcase. An excluded product enters as New; one that was permanently deleted is created again, as New.",
-  "sheetImport.toBooking.confirmProducts":
-    "This import's products go to the Booking as Approved (they stay in the customer showcase) and are not changed. Continue?",
-  "sheetImport.toBooking.noFile":
-    'The spreadsheet of this import was not kept. To send it to the Booking, import the spreadsheet again with the "Send to Booking" option.',
-  "sheetImport.error.booking_schema_outdated":
-    'The Booking table has not been published to Appwrite yet ("Publish Appwrite schema" Action). Nothing was registered: publish the schema and try again.',
-  "sheetImport.error.booking_failed":
-    "The product did not enter the Booking this time and was not registered. Import the sheet again.",
   "sheetImport.error.file_gone":
-    'The spreadsheet of this import is no longer stored. Import the spreadsheet again with the "Send to Booking" option.',
+    "The spreadsheet of this import is no longer stored. Import the spreadsheet again.",
   "sheetImport.error.batch_not_found": "Import not found.",
   "sheetImport.error.line_gone":
     "The product line of this import no longer exists. Import the spreadsheet again and choose the line.",
   "sheetImport.error.forbidden":
-    "Your login cannot do this. Sending to the Booking is only for logins that open the Booking screen (the administrator grants it under Management → Team and divisions).",
+    "Your login cannot do this (the administrator grants it under Management → Team and divisions).",
 };
 
 export const zh = {
@@ -329,11 +261,7 @@ export const zh = {
     "包含 PHOTO、DATE、SUPPLIER NAME、SKU、PRICE、QTY/BOX、N.W、G.W、CBM、SIZE、COLOR、MATERIAL 和 MOQ 列的模板。支持新版 Excel（.xlsx）和旧版（.xls）。含照片的文件较大：将直接上传到存储（最大 50 MB）。",
   "sheetImport.supplier": "供应商",
   "sheetImport.supplierNone": "请选择供应商",
-  "sheetImport.supplierHint":
-    "此表格中的所有产品都归属该供应商，由该供应商分析 Booking。列表里没有该供应商？请先在“资料 → 供应商”中登记。",
   "sheetImport.supplierHintOptional": "留空则使用表格中填写的供应商名称。",
-  "sheetImport.error.supplier_required":
-    "请选择供应商：每个上传的 Booking 都必须关联一个供应商。",
   "sheetImport.error.supplier_invalid": "所选供应商已不存在或已停用，请另选。",
   "sheetImport.line": "产品线",
   "sheetImport.lineHint":
@@ -343,7 +271,7 @@ export const zh = {
     '仅在表头未注明时使用（"PRICE / U$" 已表示美元）。',
   "sheetImport.prefix": "基础名称（可选）",
   "sheetImport.prefixHint":
-    "“发送到 Booking”和“每行一个产品”：放在描述和尺寸之前（“相框 STONE MARBLE A4”）。“一个产品，多种款式”：即产品名称（“相框”；留空则用第一行的名称）。",
+    "“每行一个产品”：放在描述和尺寸之前（“相框 STONE MARBLE A4”）。“一个产品，多种款式”：即产品名称（“相框”；留空则用第一行的名称）。",
   "sheetImport.prefixPlaceholder": "例如：相框",
   "sheetImport.submit": "导入并建档",
   "sheetImport.pending": "正在读取表格…",
@@ -353,19 +281,17 @@ export const zh = {
   "sheetImport.how.columns":
     "价格、外箱装量、内盒、重量、CBM、包装、颜色、材质、功能和起订量写入产品主表；尺寸写入产品档案。",
   "sheetImport.how.groups":
-    "每行是一种颜色；编码、描述、尺寸和价格相同的连续行组成一组，颜色一并记录。选择“发送到 Booking”或“每行一个产品”时，每组成为一个产品。选择“一个产品，多种款式”时，整张表格是一个产品，每组成为该产品的一个款式（各自的价格、起订量、装箱、尺寸和照片）。",
+    "每行是一种颜色；编码、描述、尺寸和价格相同的连续行组成一组，颜色一并记录。选择“每行一个产品”时，每组成为一个产品。选择“一个产品，多种款式”时，整张表格是一个产品，每组成为该产品的一个款式（各自的价格、起订量、装箱、尺寸和照片）。",
   "sheetImport.how.photos":
     "PHOTO 列的图片作为供应商照片导入：在团队拍摄原始照片之前，它是产品在目录中的图片；原始照片在产品主表中仍为待办。名片图片成为供应商名片。",
   "sheetImport.how.supplier":
-    "产品归属表单中选择的供应商。未选择时（不使用 Booking 的用户）以表格中的名称为准：尚未建档的供应商将按名称、店铺号和电话自动建档。",
+    "产品归属表单中选择的供应商。未选择时以表格中的名称为准：尚未建档的供应商将按名称、店铺号和电话自动建档。",
   "sheetImport.how.missing":
     "最后，每个产品都会显示主表还缺什么（外箱尺寸、主表其他照片等）。",
   "sheetImport.previous": "历史导入",
   "sheetImport.previous.empty": "尚无技术表导入记录。",
   "sheetImport.previous.line":
     "新建 {created} · 更新 {updated} · 错误 {errors}",
-  "sheetImport.previous.lineKept":
-    "新建 {created} · 已存在且未改动 {updated} · 错误 {errors}",
   "sheetImport.result.title": "导入：{file}",
   "sheetImport.result.summary":
     "新建 {created} 个产品，更新 {updated} 个，{errors} 个出错 · 新增供应商 {suppliers} 个 · 照片 {photos} 张",
@@ -382,11 +308,6 @@ export const zh = {
   "sheetImport.result.goList": "查看产品",
   "sheetImport.status.created": "已新建",
   "sheetImport.status.updated": "已更新",
-  "sheetImport.status.kept": "已存在（未改动）",
-  "sheetImport.result.summaryKept":
-    "新建 {created} 个产品，{updated} 个已存在且未改动，{errors} 个出错 · 新增供应商 {suppliers} 个 · 照片 {photos} 张",
-  "sheetImport.result.bookingNoteKept":
-    "本表格中的产品已进入 Booking。由于表格来自旧的导入，已存在的产品不会被它改动（价格、起订量、颜色和照片保持现状）：只是以“已批准”获得 Booking 行。新产品在那里获批后才会出现在客户展示页。",
   "sheetImport.status.error": "错误",
   "sheetImport.error.xls_format":
     "过旧的 .xls 文件（Excel 95 或更早）：请在 Excel 中打开并另存为 .xlsx。",
@@ -436,34 +357,10 @@ export const zh = {
     "{n} 个款式出错：查看列表中的原因，修正后重新导入。",
   "sheetImport.error.schema_outdated":
     "款式表尚未发布到 Appwrite（“发布 Appwrite 架构”Action）。产品已建档但没有款式；请发布架构后重新导入，或使用“每行一个产品”。",
-  "sheetImport.mode.booking": "发送到 Booking（每行一个产品）",
-  "sheetImport.mode.bookingHint":
-    "每组行生成一个已登记的产品（含主表和照片），并以“新增”阶段进入 Booking。新产品在 Booking 中获批之前不会出现在客户展示页。目录中已有的产品以“已批准”进入，继续留在展示页（已删除的产品以“新增”进入）。再次导入同一表格只会更新相同的产品，不会重复，也不会改变阶段。",
-  "sheetImport.previous.booking": "在 Booking 中",
-  "sheetImport.result.goBooking": "在 Booking 中查看",
-  "sheetImport.result.bookingSummary":
-    "Booking 中新增 {created} 个产品，{kept} 个原本已在其中（它们的阶段不变）",
-  "sheetImport.result.bookingNote":
-    "本表格中的产品已进入 Booking。新产品在那里获批后才会出现在客户展示页；目录中已有的产品以“已批准”进入（已删除的以“新增”进入）。",
-  "sheetImport.toBooking.submit": "发送到 Booking",
-  "sheetImport.toBooking.pending": "正在读取已保存的表格…",
-  "sheetImport.toBooking.hint":
-    "重新读取本次导入保存的表格，并在 Booking 中每行创建一个产品。带款式的产品保持不变；同名的已有产品不会被改动，只获得 Booking 行。",
-  "sheetImport.toBooking.hintProducts":
-    "把本次导入的产品放入 Booking（即使之后改过名称，也是同一批产品）。它们不会被改动（价格、起订量、颜色和照片保持现状）：只是以“已批准”获得 Booking 行，继续留在客户展示页。已停用的产品以“新增”进入；已彻底删除的产品会重新创建，阶段为“新增”。",
-  "sheetImport.toBooking.confirmProducts":
-    "本次导入的产品将以“已批准”进入 Booking（继续留在客户展示页），且不会被改动。是否继续？",
-  "sheetImport.toBooking.noFile":
-    "本次导入的表格没有保存。如需发送到 Booking，请选择“发送到 Booking”选项重新导入表格。",
-  "sheetImport.error.booking_schema_outdated":
-    "Booking 表尚未发布到 Appwrite（“发布 Appwrite 架构”Action）。没有建档任何内容：请发布架构后重试。",
-  "sheetImport.error.booking_failed":
-    "该产品这次未能进入 Booking，也未登记。请重新导入表格。",
-  "sheetImport.error.file_gone":
-    "本次导入的表格已不再保存。请选择“发送到 Booking”选项重新导入表格。",
+  "sheetImport.error.file_gone": "本次导入的表格已不再保存。请重新导入表格。",
   "sheetImport.error.batch_not_found": "未找到该导入记录。",
   "sheetImport.error.line_gone":
     "本次导入的产品线已不存在。请重新导入表格并选择产品线。",
   "sheetImport.error.forbidden":
-    "您的账号无法执行此操作。只有可以打开 Booking 页面的账号才能发送到 Booking（由管理员在“管理 → 团队与事业部”中开通）。",
+    "您的账号无法执行此操作（由管理员在“管理 → 团队与事业部”中开通）。",
 };

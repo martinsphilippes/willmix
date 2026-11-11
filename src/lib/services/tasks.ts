@@ -81,13 +81,13 @@ export interface Task {
   customerId?: string | null;
   /** Analista responsável (da solicitação/do pedido): dono no painel de SLA. */
   ownerUserId?: string | null;
-  /** Solicitação de origem (acha a linha do Booking do produto). */
+  /** Solicitação de origem. */
   requestId?: string | null;
   /** Pedido do requisito de etapa. */
   orderId?: string | null;
   /** Desde quando a pendência está com quem a vê (ISO); nulo: não se sabe. */
   sinceAt?: string | null;
-  /** Quando o produto foi carregado no sistema (linha do Booking; senão, a solicitação). */
+  /** Quando o produto foi carregado no sistema (a data da solicitação). */
   loadedAt?: string | null;
   /** Etapa do caminho do fornecedor (só nas pendências do fornecedor). */
   supplierStep?: SupplierStep;
@@ -467,6 +467,21 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       : [],
   );
 
+  // Pedido de compra (docs/PURCHASE_ORDER.md): prazos da arte e da validação
+  // (Configurações) e a ordem dentro das raias.
+  const { isPurchaseFlow } = await import("@/lib/workflow/stages");
+  const lanes = orders.some((o) => isPurchaseFlow(o))
+    ? {
+        ...(await import("@/lib/purchase-lanes")),
+        sla: await (await import("./purchase-order")).purchaseLaneSla(),
+        all: await store.list("requirements", {
+          filter: {
+            orderId: orders.filter((o) => isPurchaseFlow(o)).map((o) => o.id),
+          },
+        }),
+      }
+    : null;
+
   // Requisitos pendentes em etapas ativas/bloqueadas.
   for (const stage of stages) {
     // Pagamento ao fornecedor não é pendência de etapa (vira parcela abaixo).
@@ -494,9 +509,33 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
               (x) => x.stageId === stage.id && x.key === before,
             ),
         ) &&
-        !(r.key === ORDER_SIGN_SEND && !sealApplied.has(r.orderId)),
+        !(r.key === ORDER_SIGN_SEND && !sealApplied.has(r.orderId)) &&
+        // Raias do pedido de compra: só o que já está liberado.
+        !(
+          lanes &&
+          isPurchaseFlow(order) &&
+          lanes.blockedBy(
+            r.key,
+            lanes.all.filter((x) => x.stageId === stage.id),
+          ).length
+        ),
     );
     if (mine.length === 0) continue;
+    // Prazo das raias: o mais próximo entre a arte e a validação pendentes.
+    const laneDue =
+      lanes && isPurchaseFlow(order)
+        ? (mine
+            .map((r) =>
+              lanes.laneDueAt(
+                r.key,
+                order.createdAt,
+                lanes.all.filter((x) => x.stageId === stage.id),
+                lanes.sla,
+              ),
+            )
+            .filter((d): d is string => !!d)
+            .sort()[0] ?? null)
+        : null;
     // Fornecedor: a assinatura do documento é uma etapa dele à parte dos
     // outros itens da etapa do pedido (ficha, arte, inspeção).
     const sign = supplier
@@ -520,7 +559,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
               step === "sign"
                 ? `/app/orders/${order.id}/purchase-order`
                 : `/app/orders/${order.id}`,
-            dueAt: stage.dueAt,
+            dueAt: laneDue ?? stage.dueAt,
             orderNumber: order.number,
             stageKey: stage.key,
             customerId: order.customerId,
@@ -536,24 +575,11 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     }
   }
 
-  // Fase de solicitação. RFQ em espera (docs/RFQ_STANDBY.md): o que veio do
-  // Booking é "analisar o Booking" para o fornecedor, e a Wellmix "envia ao
-  // fornecedor" em vez de abrir a RFQ.
+  // Fase de solicitação. RFQ em espera (docs/RFQ_STANDBY.md): a Wellmix
+  // "envia ao fornecedor" em vez de abrir a RFQ.
   const { getSettings } = await import("@/lib/settings");
   const flowSettings = await getSettings();
   const rfqOn = flowSettings.rfqEnabled;
-  const fromBooking = new Set(
-    quotes.length
-      ? (
-          await store
-            .list("bookings", {
-              filter: { requestId: quotes.map((q) => q.requestId) },
-            })
-            // Tabela ainda não publicada: nenhum veio do Booking.
-            .catch(() => [])
-        ).map((b) => b.requestId)
-      : [],
-  );
   for (const quote of quotes) {
     const request = quoteRequests.find((r) => r.id === quote.requestId);
     if (!request) continue;
@@ -561,15 +587,11 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       finish(
         {
           kind: "quote",
-          title: fromBooking.has(request.id)
-            ? `Analisar o Booking: ${request.productName}`
-            : `RFQ: ${request.productName}`,
+          title: `RFQ: ${request.productName}`,
           detail: `${request.quantity} ${request.unit}`,
           // Traduzido na tela (o fornecedor costuma usar outro idioma).
           text: {
-            title: fromBooking.has(request.id)
-              ? "supplierTasks.booking.title"
-              : "supplierTasks.rfq.title",
+            title: "supplierTasks.rfq.title",
             detail: "supplierTasks.booking.detail",
             values: {
               product: request.productName,
@@ -1004,6 +1026,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     for (const p of await importTasks(user, orders)) {
       const step = IMPORT_STEP_LABEL[p.key] ?? p.key;
       const cert = p.kind === "cert_step" || p.kind === "cert_validate";
+      // Pedido de compra: a certificação é a raia da certificadora (o
+      // certificado de cada produto), não os passos do selo.
+      if (cert && p.order.flow === "supplier_request") continue;
       const validate =
         p.kind === "import_validate" || p.kind === "cert_validate";
       // Selo sem certificadora no pedido: a pendência é da Wellmix, que
@@ -1178,7 +1203,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
 
 /**
  * Datas das pendências do fornecedor: quando o produto foi carregado no
- * sistema (a linha do Booking da solicitação; sem ela, a própria solicitação)
+ * sistema (a data da solicitação)
  * e, na arte e na assinatura, desde quando o item está com ele (a arte
  * enviada; o documento assinado pela Wellmix).
  */
@@ -1190,19 +1215,13 @@ async function datesForSupplier(tasks: Task[]): Promise<void> {
     ),
   ];
   if (requestIds.length) {
-    const [bookings, requests] = await Promise.all([
-      store
-        .list("bookings", { filter: { requestId: requestIds } })
-        // Tabela ainda não publicada: vale a data da solicitação.
-        .catch(() => []),
-      store.list("requests", { filter: { id: requestIds } }),
-    ]);
+    const requests = await store.list("requests", {
+      filter: { id: requestIds },
+    });
     for (const task of tasks) {
       if (!task.requestId) continue;
       task.loadedAt =
-        bookings.find((b) => b.requestId === task.requestId)?.createdAt ??
-        requests.find((r) => r.id === task.requestId)?.createdAt ??
-        null;
+        requests.find((r) => r.id === task.requestId)?.createdAt ?? null;
     }
   }
   const waiting = tasks.filter(

@@ -227,6 +227,26 @@ export async function seedDemo(): Promise<{
   }
 
   for (const party of DEMO_PARTIES) await createDemoParty(party);
+  // Comprador dos pedidos de compra (docs/PURCHASE_ORDER.md): a própria
+  // Wellmix, o cliente com o código da empresa do Sankhya (CODEMP 3, WELLMIX
+  // - SC). Só na demonstração (sem login).
+  await at("parties", () =>
+    getStore().create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
+      id: "wellmix-sc",
+      type: "customer",
+      name: "Wellmix SC",
+      legalName: "WELLMIX IMPORTACAO DE UTILIDADES LTDA",
+      country: "BR",
+      email: null,
+      phone: null,
+      taxId: "09517464000306",
+      notes: null,
+      active: true,
+      city: "NAVEGANTES - SC",
+      sankhyaCode: "3",
+    } as never),
+  );
 
   // Uma conta que falhe (ex.: login já existia no Appwrite Auth) não
   // interrompe a carga: linhas, produtos e o resto ainda são criados, e a

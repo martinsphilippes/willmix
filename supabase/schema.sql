@@ -255,6 +255,7 @@ alter table public."orders" add column if not exists "invoicedByUserId" text;
 alter table public."orders" add column if not exists "sankhyaSyncedAt" timestamptz;
 alter table public."orders" add column if not exists "incoterm" text;
 alter table public."orders" add column if not exists "paymentConditionId" text;
+alter table public."orders" add column if not exists "flow" text;
 alter table public."orders" add column if not exists "fxRate" double precision;
 alter table public."orders" add column if not exists "sankhyaRefs" jsonb;
 create unique index if not exists "orders_number_unique" on public."orders" ("number");
@@ -1450,35 +1451,6 @@ create index if not exists "stock_reservations_by_customer" on public."stock_res
 create index if not exists "stock_reservations_by_status" on public."stock_reservations" ("status");
 create index if not exists "stock_reservations_created" on public."stock_reservations" ("createdAt");
 
-create table if not exists public."bookings" (
-  "id" text primary key,
-  "createdAt" timestamptz not null default now(),
-  "updatedAt" timestamptz not null default now()
-);
-alter table public."bookings" enable row level security;
-alter table public."bookings" add column if not exists "productId" text;
-alter table public."bookings" add column if not exists "status" text;
-alter table public."bookings" add column if not exists "importBatchId" text;
-alter table public."bookings" add column if not exists "sourceFileName" text;
-alter table public."bookings" add column if not exists "sourceRows" text;
-alter table public."bookings" add column if not exists "sourceOrder" bigint;
-alter table public."bookings" add column if not exists "customerId" text;
-alter table public."bookings" add column if not exists "reservedQty" bigint;
-alter table public."bookings" add column if not exists "ownerUserId" text;
-alter table public."bookings" add column if not exists "note" text;
-alter table public."bookings" add column if not exists "analysis" jsonb;
-alter table public."bookings" add column if not exists "plan" jsonb;
-alter table public."bookings" add column if not exists "requestId" text;
-alter table public."bookings" add column if not exists "requestGroupId" text;
-alter table public."bookings" add column if not exists "requestNumber" bigint;
-alter table public."bookings" add column if not exists "statusChangedAt" timestamptz;
-alter table public."bookings" add column if not exists "statusChangedByUserId" text;
-alter table public."bookings" add column if not exists "createdByUserId" text;
-create unique index if not exists "bookings_product_unique" on public."bookings" ("productId");
-create index if not exists "bookings_by_status" on public."bookings" ("status");
-create index if not exists "bookings_by_batch" on public."bookings" ("importBatchId");
-create index if not exists "bookings_created" on public."bookings" ("createdAt");
-
 create table if not exists public."booking_lots" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),
@@ -1600,10 +1572,12 @@ alter table public."supplier_requests" add column if not exists "showcaseRelease
 alter table public."supplier_requests" add column if not exists "erpCheckedAt" timestamptz;
 alter table public."supplier_requests" add column if not exists "negotiation" jsonb;
 alter table public."supplier_requests" add column if not exists "slaNotifiedAt" timestamptz;
+alter table public."supplier_requests" add column if not exists "orderId" text;
 create index if not exists "supplier_requests_by_supplier" on public."supplier_requests" ("supplierId");
 create index if not exists "supplier_requests_by_item" on public."supplier_requests" ("bookingItemId");
 create index if not exists "supplier_requests_by_status" on public."supplier_requests" ("status");
 create index if not exists "supplier_requests_by_product" on public."supplier_requests" ("productId");
+create index if not exists "supplier_requests_by_order" on public."supplier_requests" ("orderId");
 create index if not exists "supplier_requests_created" on public."supplier_requests" ("createdAt");
 
 create table if not exists public."stock_locations" (

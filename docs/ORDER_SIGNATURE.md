@@ -56,7 +56,6 @@ Decisão do dono: a assinatura do documento sai do começo do pedido e vai para 
 - Quem envia: o papel do item "Arte" (`artRole`: a agência do pedido; sem agência, a Wellmix). A Wellmix sempre pode. Ao enviar, a Wellmix recebe o aviso para assinar.
 - Pendências: o envio só vira pendência com a arte enviada e o selo aplicado; a assinatura da Wellmix, depois do envio; a do fornecedor, depois da Wellmix.
 - Tabela "Etapas do pedido": a linha "Documento do pedido (assinaturas)" fica debaixo de "Arte e embalagem", depois de "Artes da embalagem" e antes de "Produção e inspeção".
-- Booking: linha que virou pedido mostra "Pedido: arte e selo" (`prepare_document`) até o envio; depois, "assinar documento".
 - O pedido só vai ao Sankhya depois das duas assinaturas (como antes), agora mais adiante no fluxo.
 - **Pedidos criados antes desta decisão** guardam os itens onde nasceram (Wellmix em "Pedido pré-aprovado", fornecedor na Preparação), não têm o item de envio e seguem como eram, inclusive a liberação automática da seção 2b.
 - Sem mudança de esquema: os itens são linhas de `requirements` criadas quando o pedido nasce.

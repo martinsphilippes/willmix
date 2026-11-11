@@ -1,80 +1,54 @@
-# RFQ em espera e Booking do fornecedor
+# RFQ em espera
 
-Decisão do dono (10/11/2026): a RFQ (pedido de preço a vários fornecedores, com comparação e disputa) **sai do caminho principal por um tempo**. Ela fica guardada, inteira, e volta quando o dono ligar. No lugar dela, cada produto do Booking é de **um fornecedor específico**, que recebe o produto como **análise do Booking**, sem disputa.
+Decisão do dono (10/11/2026): a RFQ (pedido de preço a vários fornecedores, com comparação e disputa) **sai do caminho principal por um tempo**. Ela fica guardada, inteira, e volta quando o dono ligar. No lugar dela, cada produto vai para **um fornecedor só**, sem disputa.
 
 Nada foi removido: telas, rotas, tabelas e dados da RFQ continuam como estavam. O que muda é o que aparece no caminho do dia a dia.
 
-## 1. Problema
+**Booking antigo removido (11/11/2026).** O envio automático da solicitação nascida do Booking antigo ao fornecedor do produto ("Gerar solicitação", "Analisar o Booking", `isBookingRequest`) saiu com a fila antiga de produtos (docs/BOOKING.md). O caminho de hoje é a solicitação ao fornecedor aberta na Seleção de itens (docs/SUPPLIER_REQUESTS.md).
 
-- O Booking que sobe pela ficha técnica já vem de um fornecedor (a planilha é dele). Tratar esse produto como disputa entre fornecedores não corresponde ao negócio.
-- A RFQ pedia um passo manual (escolher fornecedores) que, neste fluxo, sempre tinha a mesma resposta.
+## 1. Como funciona
 
-## 2. Objetivo
+|                         | RFQ em espera (padrão)                                                                                                                                                                                                        | RFQ ativa                                 |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Configuração            | `settings.rfqEnabled = false`                                                                                                                                                                                                 | `true`                                    |
+| Solicitação sem cotação | Sem cartão na tela da solicitação (pedido do dono): só o aviso "ainda não foi enviado" com o atalho. O envio é na tela **Pedidos → RFQ**: uma lista com o fornecedor do produto já escolhido e o botão "Enviar ao fornecedor" | Cartão **Abrir RFQ**: vários fornecedores |
+| Depois de enviada       | Sem "Convidar mais"                                                                                                                                                                                                           | "Convidar mais fornecedores"              |
+| Lote                    | Sem cartão no lote; cada produto é enviado pela tela Pedidos → RFQ                                                                                                                                                            | Vários                                    |
+| Disputa de fornecedores | Não aparece (só existe com duas ou mais cotações)                                                                                                                                                                             | Aparece                                   |
+| Pendência da Wellmix    | "Enviar ao fornecedor: produto"                                                                                                                                                                                               | "Abrir RFQ: produto"                      |
 
-- Escolher o fornecedor **uma vez**, ao importar a ficha (docs/BOOKING.md, "Booking do fornecedor").
-- O produto ir **sozinho** para esse fornecedor quando a solicitação nasce do Booking.
-- O fornecedor ver o produto como **análise do Booking** dele.
-- A RFQ ficar em espera numa tela própria, com um interruptor.
-
-## 3. Como funciona
-
-|                                              | RFQ em espera (padrão)                                                                                                                                                                                                        | RFQ ativa                                                                  |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Configuração                                 | `settings.rfqEnabled = false`                                                                                                                                                                                                 | `true`                                                                     |
-| Booking → "Gerar solicitação"                | A solicitação já vai para o fornecedor do produto (`sendToBookingSuppliers` em `services/booking.ts`): uma cotação convidada, situação "RFQ aberta", um aviso só por fornecedor ("Booking para analisar")                     | A solicitação fica em "Solicitado" esperando a abertura da RFQ, como antes |
-| Solicitação sem cotação                      | Sem cartão na tela da solicitação (pedido do dono): só o aviso "ainda não foi enviado" com o atalho. O envio é na tela **Pedidos → RFQ**: uma lista com o fornecedor do produto já escolhido e o botão "Enviar ao fornecedor" | Cartão **Abrir RFQ**: vários fornecedores                                  |
-| Depois de enviada                            | Sem "Convidar mais"                                                                                                                                                                                                           | "Convidar mais fornecedores"                                               |
-| Lote                                         | Sem cartão no lote; cada produto é enviado pela tela Pedidos → RFQ                                                                                                                                                            | Vários                                                                     |
-| Disputa de fornecedores                      | Não aparece (só existe com duas ou mais cotações)                                                                                                                                                                             | Aparece                                                                    |
-| Pendência da Wellmix                         | "Enviar ao fornecedor: produto"                                                                                                                                                                                               | "Abrir RFQ: produto"                                                       |
-| Pendência do fornecedor (produto do Booking) | "Analisar o Booking: produto"                                                                                                                                                                                                 | igual                                                                      |
-
-Produto do Booking **sem fornecedor** no cadastro: a solicitação nasce em "Solicitado" e a linha do Booking mostra "Enviar ao fornecedor".
-
-## 4. Regras de negócio
+## 2. Regras de negócio
 
 - **Um fornecedor por produto** com a RFQ em espera. As ações da tela (`openRfqAction`, `openBatchRfqAction`) chamam `assertRfqStandby` (`services/requests.ts`) antes de abrir: mais de um fornecedor de uma vez → `rfq_standby_one`; segundo fornecedor numa solicitação já enviada a outro → `rfq_standby_sent`.
 - O Superplan ("Abrir faca e RFQ") já manda um fornecedor só e segue igual.
 - RFQs abertas antes de colocar em espera continuam valendo: as cotações recebidas aparecem na comparação e podem ser escolhidas.
 - O fornecedor nunca vê outros fornecedores nem o cliente (já era assim).
 
-## 5. Visão do fornecedor
-
-Nada de tela nova: é a mesma tela de Cotações, com o texto do Booking quando a solicitação nasceu de uma linha do Booking (`isBookingRequest`):
-
-- aviso "Booking para analisar: produto" (`notif.bookingAnalysis.*`);
-- pendência "Analisar o Booking: produto";
-- título "Análise do Booking: produto" e o aviso de que não há outros fornecedores no produto;
-- selo "Booking" na lista de cotações;
-- o que ele responde é o de sempre (docs/QUOTE_FLOW.md): preço desejado (confirmar, mudar ou não aceitar), ficha, fotos, prazo e pedido mínimo.
-
-## 6. Tela Pedidos → RFQ (`/app/rfq`)
+## 3. Tela Pedidos → RFQ (`/app/rfq`)
 
 Abre para o administrador e para as funções que abrem Solicitações (comprador, gerente de produto, planejamento). Mostra: a situação (Em espera / Ativa), como o fluxo está funcionando, o que está guardado, o interruptor e as solicitações em cotação (nº, produto, situação, fornecedores, quantos responderam).
 
-Na lista, a solicitação que ainda não foi a nenhum fornecedor tem o envio ali mesmo (`sendRequestToSupplierAction`: um fornecedor, com a trava `assertRfqStandby`). A pendência "Enviar ao fornecedor" e a linha do Booking levam a esta tela (`/app/rfq#req-<id>`).
+Na lista, a solicitação que ainda não foi a nenhum fornecedor tem o envio ali mesmo (`sendRequestToSupplierAction`: um fornecedor, com a trava `assertRfqStandby`). A pendência "Enviar ao fornecedor" leva a esta tela (`/app/rfq#req-<id>`).
 
 O interruptor é só do administrador (`setRfqEnabledAction`, `src/app/app/actions/rfq.ts`): grava `settings.rfqEnabled` e registra na auditoria (`settings.rfq`). A tela de Configurações não mexe nessa chave.
 
-## 7. Onde está cada parte
+## 4. Onde está cada parte
 
 | Parte                           | Arquivo                                                                               |
 | ------------------------------- | ------------------------------------------------------------------------------------- |
 | Configuração                    | `src/lib/settings.ts` (`rfqEnabled`)                                                  |
-| Envio do Booking ao fornecedor  | `src/lib/services/booking.ts` (`sendToBookingSuppliers`)                              |
-| Trava de um fornecedor só       | `src/lib/services/requests.ts` (`assertRfqStandby`, `isBookingRequest`)               |
+| Trava de um fornecedor só       | `src/lib/services/requests.ts` (`assertRfqStandby`)                                   |
 | Tela e ação                     | `src/app/app/rfq/page.tsx`, `src/app/app/actions/rfq.ts`                              |
 | Cartão da solicitação e do lote | `src/app/app/requests/[id]/page.tsx`, `src/app/app/requests/batch/[groupId]/page.tsx` |
 | Textos                          | `src/i18n/modules/rfq-standby.ts`, `notifications.ts`                                 |
 | Testes                          | `tests/unit/rfq-standby.test.ts`; o E2E liga a RFQ e segue pelo caminho da disputa    |
 
-## 8. Limites conhecidos e próximos passos
+## 5. Limites conhecidos e próximos passos
 
 - A situação da solicitação continua se chamando "RFQ aberta" nas listas e na Control Tower (é o nome da etapa no banco). Trocar o rótulo para "Com o fornecedor" é uma mudança só de texto, se o dono quiser.
-- O fornecedor vê o produto quando a Wellmix gera a solicitação pelo Booking, não na hora em que a ficha sobe (antes disso a Wellmix ainda está analisando preço e margem). Mostrar ao fornecedor já na importação é possível, se for a decisão.
 - Certificação e selo (docs/CERTIFICATION.md): a certificadora recebe quando o pedido é criado, envia o selo, quem faz a arte aplica e a Wellmix confere. A faca continua sendo pedida ao fornecedor depois da confirmação da cotação. As duas decisões são do dono (10/11/2026).
 
-## 9. Tela da solicitação (pedido do dono, 10/11/2026)
+## 6. Tela da solicitação (pedido do dono, 10/11/2026)
 
 Saíram da tela da solicitação, como cartões:
 
@@ -83,18 +57,17 @@ Saíram da tela da solicitação, como cartões:
 
 ## Sourcing em espera (10/11/2026)
 
-Decisão do dono: o Sourcing fica em espera, igual à RFQ. Os produtos chegam pela ficha técnica do Booking, já com o fornecedor; o Sourcing (visitas, itens encontrados, sourcing sob demanda) sai do dia a dia e fica guardado.
+Decisão do dono: o Sourcing fica em espera, igual à RFQ. Os produtos chegam pelos bookings (planilhas de fornecedor), já com o fornecedor; o Sourcing (visitas, itens encontrados, sourcing sob demanda) sai do dia a dia e fica guardado.
 
-|                                         | Sourcing em espera (padrão)                                                                                                  | Sourcing ativo                                                        |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Configuração                            | `settings.sourcingEnabled = false`                                                                                           | `true`                                                                |
-| Menu                                    | "Sourcing (em espera)", no fim do grupo Pedidos, junto da RFQ                                                                | o mesmo item                                                          |
-| Pedido de produto fora do catálogo      | A solicitação nasce igual (origem `sourcing_demand` guardada), mas **não** abre item de Sourcing nem o aviso "Sourcing sob demanda" | Abre o item de Sourcing em rascunho e avisa a equipe (como antes)     |
-| Pendência "Sourcing sob demanda"        | Não aparece                                                                                                                  | Aparece                                                               |
-| Tela Pedidos → Sourcing                 | Quadro no alto com a situação, o que está guardado e o interruptor; as visitas e os itens continuam embaixo, utilizáveis     | igual, com a situação "Ativo"                                         |
+|                                    | Sourcing em espera (padrão)                                                                                                         | Sourcing ativo                                                    |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Configuração                       | `settings.sourcingEnabled = false`                                                                                                  | `true`                                                            |
+| Menu                               | "Sourcing (em espera)", no fim do grupo Pedidos, junto da RFQ                                                                       | o mesmo item                                                      |
+| Pedido de produto fora do catálogo | A solicitação nasce igual (origem `sourcing_demand` guardada), mas **não** abre item de Sourcing nem o aviso "Sourcing sob demanda" | Abre o item de Sourcing em rascunho e avisa a equipe (como antes) |
+| Pendência "Sourcing sob demanda"   | Não aparece                                                                                                                         | Aparece                                                           |
+| Tela Pedidos → Sourcing            | Quadro no alto com a situação, o que está guardado e o interruptor; as visitas e os itens continuam embaixo, utilizáveis            | igual, com a situação "Ativo"                                     |
 
 - O interruptor é só do administrador (`setSourcingEnabledAction`, `src/app/app/actions/sourcing.ts`): grava `settings.sourcingEnabled` e registra na auditoria (`settings.sourcing`).
 - Nada foi removido: telas, rotas, tabelas e dados do Sourcing continuam. Busca por foto ou link, promoção de item a produto e os atalhos nas páginas de produto não mudam.
 - Solicitação fora do catálogo criada em espera não ganha item de Sourcing depois, ao ativar (o item pode ser cadastrado à mão na tela).
 - Textos em `src/i18n/modules/sourcing-standby.ts`; o nome no menu, em `dictionaries.ts` (`nav.sourcing`).
-

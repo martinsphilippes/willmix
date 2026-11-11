@@ -76,7 +76,7 @@ export function navFor(
       ...group(
         "nav.group.orders",
         pick(has, [
-          // Produtos que chegaram pela ficha técnica, antes da solicitação.
+          // Bookings: as planilhas de fornecedor (docs/BOOKING.md).
           ["booking", { href: "/app/booking", key: "nav.booking" }],
           ["requests", { href: "/app/requests", key: "nav.requests" }],
           // Itens dos bookings comparados e a solicitação ao fornecedor do escolhido.
