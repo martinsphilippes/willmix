@@ -808,3 +808,9 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Novo**: service worker (`public/sw.js`, só arquivos públicos e a tela sem conexão), tela "Sem conexão" (`public/offline.html`), convite para instalar (`src/components/pwa-install.tsx`), atalhos do ícone e janela própria no manifesto, viewport de tela toda com margens seguras e campos de 16 px no iPhone/iPad.
 - **Correção**: a tabela de blocos da ficha de compra estourava a página no celular (`purchase-sheet-fields.tsx`).
 - Nada foi removido; dados do portal nunca ficam guardados no aparelho. Teste: `tests/unit/pwa.test.ts`.
+
+## Control Tower pelo processo de hoje (11/11/2026)
+
+- **Pedido do dono**: a torre mostra o processo verificado em código (Booking, seleção e solicitação ao fornecedor, pedido de compra com três raias, contrato com as duas assinaturas, produção e inspeção, embarque, porto, entrega e encerrado), por etapa e com os pontos de ação em cima, cada perfil vendo só o que pode resolver. O fluxo antigo (solicitação do cliente, RFQ, ficha de compra) saiu da torre; o Financeiro continua acima de tudo.
+- **Pedidos importados do Sankhya** (sem `orders.flow`): aparecem pela etapa da TOP, só como visibilidade (sem raias, contrato, atraso nem bloqueio do portal).
+- **Substituição autorizada** (exceção à evolução aditiva, decisão do dono): os 50 quadrados passo a passo e o componente `tower-board.tsx` saíram; o Progresso da lista de Pedidos passou a usar os mesmos passos (`journey.ts`: pedido criado, preparação, contrato; as solicitações do cliente continuam com os passos de antes). Nenhuma tabela, rota ou coluna mudou. Detalhes em docs/WORKFLOW.md ("Control Tower: por etapa").

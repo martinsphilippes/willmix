@@ -58,19 +58,8 @@ async function placeOrder() {
 }
 
 describe("quadros da operação lidos do banco", () => {
-  it("todos os pedidos em andamento entram no bloco 2, um quadrado cada", async () => {
+  it("todos os pedidos em andamento entram no bloco do pedido, um quadrado cada", async () => {
     const placed = await placeOrder();
-    const waiting = await r.createRequest(joao, {
-      customerId: "cliente-joao",
-      productId: null,
-      productName: "Copo novo",
-      description: "Solicitação nova",
-      specification: null,
-      quantity: 1000,
-      unit: "un",
-      deadline: null,
-      notes: null,
-    });
 
     // Com Finanças: todos os quadrados.
     const board = await loadTowerBoard({ finance: true });
@@ -89,13 +78,8 @@ describe("quadros da operação lidos do banco", () => {
     expect(main.reduce((n, c) => n + c.count, 0)).toBe(live.length);
     const where = main.filter((c) => c.rows.some((x) => x.id === placed.id));
     expect(where).toHaveLength(1);
-    // Pedido recém-criado: conferência da Wellmix e número no Sankhya.
-    expect(where[0].key).toBe("ordConference");
-    expect(
-      board.cards
-        .find((c) => c.key === "reqNew")!
-        .rows.some((x) => x.id === waiting.id),
-    ).toBe(true);
+    // Pedido sem o fluxo do portal (como os do Sankhya): na etapa de preparação, só visibilidade.
+    expect(where[0].key).toBe("ordPrepSankhya");
 
     // Sem Finanças: sem parcelas, sem "a receber" e sem valores.
     const operator = await loadTowerBoard({ finance: false });

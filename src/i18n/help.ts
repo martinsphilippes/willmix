@@ -22,9 +22,9 @@ export const helpPt = {
   "help.tasks.steps":
     "Toque em Abrir para ir direto ao pedido ou à solicitação.\nPreencha o requisito (arquivo, número, data ou confirmação). A etapa avança sozinha quando tudo estiver completo.\nSe a lista estiver vazia, não há nada pendente para o seu papel.",
   "help.ct.body":
-    "A Control Tower responde: o que precisa de ação agora (só o que o seu perfil resolve) e onde cada pedido está no processo, etapa por etapa. Toque numa etapa para ver os passos dela e toque no passo para listar os pedidos; toque no número do pedido para abrir os detalhes.",
+    "A Control Tower responde: o que precisa de ação agora (só o que o seu perfil resolve) e onde cada lote, solicitação ou pedido está no processo, etapa por etapa. Toque numa etapa para ver os passos dela e toque no passo para listar os itens; toque no número para abrir os detalhes.",
   "help.ct.cards":
-    "Precisa de ação agora: atrasados, bloqueados, documentos, numerário, canal, certificação, parcelas e solicitações esperando a Wellmix. Zero quer dizer nada pendente.\nProcesso por etapa: solicitação e cotação, pedido e preparação, produção e inspeção, embarque e mar, porto e alfândega, entrega e encerrado. Cada pedido está em uma etapa só; zero também aparece.\nPassos em paralelo (produção, arte e faca em preparo, recebimento) acontecem ao lado e não somam na etapa.\nMais visões: visões gerais, exceções e os quadros detalhados passo a passo.",
+    "Financeiro: o que foi lançado (vendido, recebido, comprado, pago), no alto.\nPrecisa de ação agora: o que está com a Wellmix (decidir, assinar, gerar o pedido), atrasados, bloqueados, documentos, numerário, canal, parcelas. Zero quer dizer nada pendente.\nProcesso por etapa: Booking, solicitação ao fornecedor, preparação, arte e certificação (três raias), contrato e assinaturas, produção e inspeção, embarque e mar, porto e alfândega, entrega e encerrado. Cada um está em uma etapa só; zero também aparece.\nRaias e produção acontecem ao lado e não somam na etapa. Pedido do Sankhya aparece só pela etapa dele (visibilidade, sem fluxo no portal ainda).\nMais visões: visões gerais, exceções e a visão comercial.",
   "help.requests.body":
     "Solicitação é o pedido de cotação do cliente. Ela passa por RFQ, cotações, seleção do fornecedor e sinal; quando o sinal é confirmado, vira um pedido com etapas.",
   "help.requests.steps":
@@ -118,9 +118,9 @@ export const helpEn: Record<HelpKey, string> = {
   "help.tasks.steps":
     "Tap Open to go straight to the order or request.\nFill the requirement (file, number, date or confirmation). The stage advances by itself once complete.\nAn empty list means nothing is pending for your role.",
   "help.ct.body":
-    "The Control Tower answers: what needs action now (only what your profile can resolve) and where each order is in the process, stage by stage. Tap a stage to see its steps and tap a step to list the orders; tap the order number to open details.",
+    "The Control Tower answers: what needs action now (only what your profile can resolve) and where each booking, request or order is in the process, stage by stage. Tap a stage to see its steps and tap a step to list the items; tap the number to open details.",
   "help.ct.cards":
-    "Needs action now: overdue, blocked, documents, customs advance, channel, certification, installments and requests waiting for Wellmix. Zero means nothing pending.\nProcess by stage: request and quoting, order and preparation, production and inspection, shipping and sea, port and customs, delivery and closed. Each order is in one stage only; zero shows too.\nParallel steps (production, art and die-cut in preparation, receiving) happen alongside and do not add to the stage.\nMore views: general views, exceptions and the detailed step-by-step tiles.",
+    "Finance: what has been posted (sold, received, purchased, paid), at the top.\nNeeds action now: what is with Wellmix (decide, sign, generate the order), overdue, blocked, documents, customs advance, channel, installments. Zero means nothing pending.\nProcess by stage: Booking, supplier request, preparation, art and certification (three lanes), contract and signatures, production and inspection, shipping and sea, port and customs, delivery and closed. Each one is in one stage only; zero shows too.\nLanes and production happen alongside and do not add to the stage. Sankhya orders show only by their stage (visibility, no portal flow yet).\nMore views: general views, exceptions and the commercial view.",
   "help.requests.body":
     "A request is the customer's quotation request. It goes through RFQ, quotations, supplier selection and down payment; once the down payment is confirmed it becomes an order with stages.",
   "help.requests.steps":
@@ -211,9 +211,9 @@ export const helpZh: Record<HelpKey, string> = {
   "help.tasks.steps":
     "点击“打开”直接进入订单或需求单。\n填写要求（文件、数字、日期或确认）。全部完成后阶段自动推进。\n列表为空表示您的角色没有待办。",
   "help.ct.body":
-    "控制塔回答：现在需要处理什么（只显示您的角色能处理的）以及每个订单在流程中的位置，按阶段查看。点击阶段查看步骤，点击步骤列出订单；点击订单号打开详情。",
+    "控制塔回答：现在需要处理什么（只显示您的角色能处理的）以及每个订舱表、询价或订单在流程中的位置，按阶段查看。点击阶段查看步骤，点击步骤列出条目；点击编号打开详情。",
   "help.ct.cards":
-    "现在需要处理：逾期、阻塞、文件、清关预付款、通道、认证、付款和等待 Wellmix 的需求。0 表示没有待办。\n按阶段查看流程：需求与报价、订单与准备、生产与验货、出运与海运、港口与清关、交付、已结案。每个订单只在一个阶段；0 也会显示。\n同时进行的步骤（生产、设计与刀模准备、收货）在一旁进行，不计入阶段。\n更多视图：总体视图、异常和逐步详细方块。",
+    "财务：已登记的金额（销售、已收、采购、已付），在最上方。\n现在需要处理：在 Wellmix 手上的事项（决定、签署、生成采购单）、逾期、阻塞、文件、清关预付款、通道、付款。0 表示没有待办。\n按阶段查看流程：订舱表、供应商询价、准备/设计/认证（三条线）、合同与签署、生产与验货、出运与海运、港口与清关、交付、已结案。每项只在一个阶段；0 也会显示。\n三条线和生产在一旁进行，不计入阶段。Sankhya 的订单只按其阶段显示（仅供查看，门户尚无流程）。\n更多视图：总体视图、异常和商业视图。",
   "help.requests.body":
     "需求单是客户的询价请求。它经过询价、报价、选定供应商和定金；定金确认后转为带阶段的订单。",
   "help.requests.steps":

@@ -25,7 +25,6 @@ import {
   isActionCardKey,
 } from "@/lib/tower-stages";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { TowerBoardView } from "./tower-board";
 import { ActionStrip, StageBoard } from "./tower-stages";
 import {
   Alert,
@@ -33,7 +32,6 @@ import {
   Card,
   cx,
   Empty,
-  LinkButton,
   PageHeader,
   Progress,
   Stat,
@@ -226,18 +224,15 @@ export async function ControlTower({
   card,
   stage,
   group,
-  tile,
   denied,
 }: {
   user: User;
   filter?: string;
   /** Ponto de ação escolhido (?card=…); chave antiga de quadrado também vale. */
   card?: string;
-  /** Etapa aberta (?stage=…) e o passo escolhido dentro dela (?group=…). */
+  /** Etapa aberta (?stage=…) e o passo escolhido dentro dela (?group=CHAVE_DO_QUADRADO). */
   stage?: string;
   group?: string;
-  /** Quadrado escolhido nos quadros detalhados (?tile=…). */
-  tile?: string;
   /** Tela que o login tentou abrir sem acesso (?denied=…): aviso no início. */
   denied?: string;
 }) {
@@ -245,8 +240,6 @@ export async function ControlTower({
   const wellmix = isWellmix(user);
   const finance = canOpen(user, "finance");
   const operations = canOpen(user, "orders");
-  // Criar solicitação direto da Control Tower (passo "Cotação com fornecedores").
-  const newRequestHref = canOpen(user, "requests") ? "/app/requests/new" : null;
   const deniedScreen = (SCREENS as readonly string[]).includes(denied ?? "")
     ? (denied as Screen)
     : null;
@@ -260,13 +253,11 @@ export async function ControlTower({
     ? actionCardsFor(board, (screen) => canOpen(user, screen))
     : [];
 
-  /* O que foi escolhido: ponto de ação, passo da etapa ou quadrado detalhado.
-     Link antigo (?card=CHAVE) continua: ponto de ação do perfil, senão o passo
-     que contém o quadrado, senão o quadro detalhado. */
+  /* O que foi escolhido: ponto de ação ou passo da etapa. Link antigo
+     (?card=CHAVE): ponto de ação do perfil, senão o passo que contém o quadrado. */
   let actionKey: string | null = null;
   let stageKey: string | null = null;
   let groupKey: string | null = null;
-  let tileKey: string | null = null;
   if (isBoardCardKey(card)) {
     if (isActionCardKey(card) && actionCards.some((c) => c.key === card))
       actionKey = card;
@@ -275,10 +266,9 @@ export async function ControlTower({
       if (found) {
         stageKey = found.stage;
         groupKey = found.group;
-      } else tileKey = card;
+      }
     }
   }
-  if (isBoardCardKey(tile)) tileKey = tile;
   const openStage = stages?.find((s) => s.key === (stageKey ?? stage)) ?? null;
   if (openStage) {
     stageKey = openStage.key;
@@ -288,20 +278,15 @@ export async function ControlTower({
       openStage.single ??
       null;
   } else groupKey = null;
-  // Uma lista por vez: ponto de ação, depois passo, depois quadrado detalhado.
+  // Uma lista por vez: o ponto de ação tem prioridade sobre o passo.
   if (actionKey) {
     stageKey = null;
     groupKey = null;
-    tileKey = null;
-  } else if (groupKey) tileKey = null;
+  }
   const actionCard = actionKey
     ? (board?.cards.find((c) => c.key === actionKey && !c.href) ?? null)
     : null;
   const groupDef = openStage?.groups.find((g) => g.key === groupKey) ?? null;
-  const tileCard =
-    board && tileKey
-      ? (board.cards.find((c) => c.key === tileKey && !c.href) ?? null)
-      : null;
   const cards: Array<{
     key: keyof typeof data.buckets;
     label: string;
@@ -322,7 +307,7 @@ export async function ControlTower({
   ];
   // Visões gerais: nada escolhido, nenhuma lista (ela aparece ao tocar num
   // quadrado, logo abaixo do grupo dele; tocar de novo fecha).
-  const picked = !!(actionCard || groupDef || tileCard);
+  const picked = !!(actionCard || groupDef);
   const selected =
     !picked && filter && filter in data.buckets
       ? (filter as keyof typeof data.buckets)
@@ -338,24 +323,9 @@ export async function ControlTower({
     rows: TowerRow[],
     title: string | undefined,
     key: string,
-    withNew: boolean,
   ) => (
     <div className="mb-4 mt-2 scroll-mt-24" id="tower-list">
-      <Card
-        className="min-w-0"
-        title={title}
-        actions={
-          withNew && newRequestHref ? (
-            <LinkButton
-              href={newRequestHref}
-              variant="primary"
-              data-board-new-request
-            >
-              + {t("requests.new")}
-            </LinkButton>
-          ) : undefined
-        }
-      >
+      <Card className="min-w-0" title={title}>
         <div data-tower-list={key}>
           {rows.length === 0 ? (
             <Empty>{t("common.none")}</Empty>
@@ -364,7 +334,7 @@ export async function ControlTower({
               <thead>
                 <tr>
                   <Th>#</Th>
-                  <Th>{t("common.customer")}</Th>
+                  <Th>{t("tower.col.party")}</Th>
                   <Th>{t("common.product")}</Th>
                   <Th>{t("orders.stage")}</Th>
                   <Th>{t("common.responsible")}</Th>
@@ -383,6 +353,10 @@ export async function ControlTower({
                     <Td className="whitespace-nowrap">
                       {row.kind === "cert" ? (
                         <Badge tone="warning">{t("board.cert")}</Badge>
+                      ) : row.statusKey ? (
+                        <Badge tone="info">
+                          {t(row.statusKey as DictionaryKey)}
+                        </Badge>
                       ) : row.cancelled ? (
                         <Badge tone="danger">
                           {t("board.cancelled")}
@@ -406,6 +380,15 @@ export async function ControlTower({
                           {row.blocked ? ` · ${t("stageStatus.blocked")}` : ""}
                         </Badge>
                       )}
+                      {row.origin === "sankhya" ? (
+                        <span
+                          className="ml-1.5 text-[11px] font-medium text-zinc-500"
+                          title={t("tower.origin.sankhyaHint")}
+                          data-origin="sankhya"
+                        >
+                          {t("tower.origin.sankhya")}
+                        </span>
+                      ) : null}
                     </Td>
                     <Td>
                       {row.responsible ? t(`role.${row.responsible}`) : "—"}
@@ -421,7 +404,9 @@ export async function ControlTower({
                     </Td>
                     {/* Conversa daquele pedido/solicitação: sempre na última coluna. */}
                     <Td className="whitespace-nowrap text-right">
-                      {row.kind === "cert" ? null : (
+                      {row.kind === "cert" ||
+                      row.kind === "booking" ||
+                      row.kind === "supplier_request" ? null : (
                         <ChatOpenButton
                           target={
                             row.kind === "request" ||
@@ -444,28 +429,10 @@ export async function ControlTower({
   );
   const cardTitle = (key: string) => t(`board.card.${key}` as DictionaryKey);
   const actionList = actionCard
-    ? renderList(
-        actionCard.rows,
-        cardTitle(actionCard.key),
-        actionCard.key,
-        actionCard.key === "reqNew",
-      )
+    ? renderList(actionCard.rows, cardTitle(actionCard.key), actionCard.key)
     : null;
   const groupList = groupDef
-    ? renderList(
-        groupDef.rows,
-        t(`tower.group.${groupDef.key}` as DictionaryKey),
-        groupDef.key,
-        groupDef.key === "quoting",
-      )
-    : null;
-  const tileList = tileCard
-    ? renderList(
-        tileCard.rows,
-        cardTitle(tileCard.key),
-        tileCard.key,
-        tileCard.key === "reqNew",
-      )
+    ? renderList(groupDef.rows, cardTitle(groupDef.key), groupDef.key)
     : null;
   const filterList =
     selected && !picked
@@ -473,11 +440,10 @@ export async function ControlTower({
           data.buckets[selected],
           cards.find((c) => c.key === selected)?.label,
           selected,
-          false,
         )
       : null;
   // "Mais visões" abre sozinho quando o escolhido está lá dentro.
-  const moreOpen = !!(tileCard || selected || extra);
+  const moreOpen = !!(selected || extra);
 
   return (
     <>
@@ -517,7 +483,6 @@ export async function ControlTower({
             group={groupKey}
             detail={groupList}
             currency={board.currency}
-            newRequestHref={newRequestHref}
           />
         </>
       ) : null}
@@ -534,32 +499,6 @@ export async function ControlTower({
             </span>
           </summary>
           <div className="mt-4">
-            {board ? (
-              <section aria-label={t("tower.detail.title")} className="mb-2">
-                <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  {t("tower.detail.title")}
-                </h2>
-                <TowerBoardView
-                  board={board}
-                  t={t}
-                  param="tile"
-                  selected={tileCard?.key ?? null}
-                  detail={tileList}
-                  newRequestHref={newRequestHref}
-                  occupancy={
-                    totals?.containers.avgOccupancyPercent !== null &&
-                    totals?.containers.avgOccupancyPercent !== undefined
-                      ? t("board.occupancy", {
-                          pct: percent(
-                            totals.containers.avgOccupancyPercent,
-                            t.intl,
-                          ),
-                        })
-                      : null
-                  }
-                />
-              </section>
-            ) : null}
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
               {t("board.general")}
             </h2>

@@ -29,9 +29,13 @@ export interface TowerRow {
    * Quadros da operação (tower-board.ts): o que a linha é, para o selo da
    * etapa e a conversa. Sem ele vale a regra antiga (solicitação pela situação).
    */
-  kind?: "order" | "request" | "cert";
+  kind?: "order" | "request" | "cert" | "booking" | "supplier_request";
   /** Pedido cancelado (selo "Cancelado" com a etapa em que parou). */
   cancelled?: boolean;
+  /** Pedido do portal (fluxo do pedido de compra) ou importado do Sankhya (só visibilidade). */
+  origin?: "portal" | "sankhya";
+  /** Chave de texto do selo da linha (lote e solicitação ao fornecedor, que não têm etapa). */
+  statusKey?: string;
 }
 
 export interface TowerException {

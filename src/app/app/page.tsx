@@ -11,7 +11,7 @@ import { TaskList } from "@/components/task-list";
 export default async function AppHome({ searchParams }: PageProps<"/app">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app");
-  const { filter, card, stage, group, tile, sent, denied } = await searchParams;
+  const { filter, card, stage, group, sent, denied } = await searchParams;
   if (isWellmix(user)) {
     return (
       <ControlTower
@@ -20,7 +20,6 @@ export default async function AppHome({ searchParams }: PageProps<"/app">) {
         card={typeof card === "string" ? card : undefined}
         stage={typeof stage === "string" ? stage : undefined}
         group={typeof group === "string" ? group : undefined}
-        tile={typeof tile === "string" ? tile : undefined}
         denied={typeof denied === "string" ? denied : undefined}
       />
     );

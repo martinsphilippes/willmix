@@ -2,57 +2,65 @@ import "server-only";
 
 import {
   getStore,
-  type Approval,
   type ArtIssue,
+  type BookingLot,
   type Certification,
   type ImportStep,
   type Order,
-  type PackagingBrief,
   type OrderItem,
   type Party,
   type Penalty,
   type Product,
   type ProductionTrack,
-  type PurchaseSheet,
-  type Quote,
   type Receiving,
-  type Request,
   type Requirement,
   type ReviewItem,
   type SkuInspection,
   type Stage,
   type StageKey,
+  type SupplierRequest,
 } from "@/lib/db";
 import type { InstallmentStatus } from "@/lib/supplier-terms";
 import { brazilDay } from "@/lib/supplier-terms";
 import { reviewOrderId, type TowerRow } from "./control-tower";
-import { importStepDone, stepTemplate } from "./import-flow";
+import { stepTemplate } from "./import-flow";
 import { JOURNEY_REQUIREMENT_KEYS, journeyIndex } from "./journey";
 import { isSchemaMissing } from "./packaging-brief";
 import { followupsDue, latestByItem } from "./production";
 import { getSettings } from "@/lib/settings";
-import { requestStepDays } from "@/lib/request-stages";
+import { ORDER_SIGNED_WELLMIX } from "@/lib/workflow/stages";
+import { LANE_KEYS, baseKeyOf, blockedBy, laneOf } from "@/lib/purchase-lanes";
+import {
+  negotiationTurn,
+  supplierRequestLate,
+  supplierRequestSlaDue,
+} from "@/lib/supplier-requests";
 
 /*
- * Quadros da operação na Control Tower: o pedido de ponta a ponta, em quatro
- * blocos escolhidos pelo dono (docs/WORKFLOW.md, "Control Tower: quadros da
- * operação").
+ * Quadros da operação na Control Tower: o processo de hoje, de ponta a ponta
+ * (docs/WORKFLOW.md, "Control Tower: por etapa"):
  *
- * 1. Antes de virar pedido: a solicitação, pelo mesmo "próximo passo" da
- *    tela Solicitações.
- * 2. Onde o pedido está agora: cada pedido em andamento cai em um quadrado
- *    só (a etapa, dividida pelo que já foi feito dentro dela); encerrados e
- *    cancelados contam só no mês.
- * 3. Acontece ao mesmo tempo: produção, parcelas, arte, certificação,
- *    documentos, numerário, canal, recebimento; o mesmo pedido pode estar em
- *    vários.
- * 4. Problemas.
+ * Booking (as planilhas) → seleção e solicitação ao fornecedor (negociação) →
+ * aprovação e produto → pedido de compra → Preparação, arte e certificação
+ * (três raias em paralelo) → contrato assinado pelas duas partes → produção e
+ * inspeção → embarque e mar → porto e alfândega → entrega → encerrado.
+ *
+ * - Posição: cada lote, solicitação ou pedido em andamento cai em um quadrado
+ *   só; encerrados e cancelados contam só no mês.
+ * - Em paralelo: raias, produção, parcelas, documentos, numerário, canal,
+ *   recebimento; o mesmo pedido pode estar em vários.
+ * - Problemas.
+ *
+ * Pedido importado do Sankhya (sem `flow`) entra só pela etapa que a TOP
+ * definiu, para dar visibilidade: sem raias, contrato, atraso nem bloqueio do
+ * portal (ainda não há fluxo dele no portal).
  *
  * Só leitura: nada aqui grava. Quantidade sempre; valor e os quadrados de
  * dinheiro (parcelas, a receber) só para quem abre Finanças.
  */
 
-export type BoardBlock = "request" | "order" | "parallel" | "problem";
+export type BoardBlock =
+  "booking" | "request" | "order" | "parallel" | "problem";
 
 interface CardDef {
   key: string;
@@ -65,23 +73,21 @@ interface CardDef {
 
 /** Quadrados na ordem da tela. */
 export const BOARD_CARDS = [
-  { key: "reqNew", block: "request" },
-  { key: "reqRfq", block: "request" },
-  { key: "reqQuotes", block: "request" },
-  { key: "reqChoose", block: "request" },
-  { key: "reqApproval", block: "request" },
-  { key: "reqProposal", block: "request" },
-  { key: "reqDown", block: "request" },
-  // Correm ao lado (a mesma solicitação também está num dos de cima).
-  { key: "reqPackaging", block: "request" },
-  { key: "ordConference", block: "order" },
-  { key: "ordSheet", block: "order" },
-  { key: "ordValidation", block: "order" },
-  // Faca (die-cut): o fornecedor manda no começo de "Arte e embalagem",
-  // antes de a agência fazer a arte (decisão do dono).
-  { key: "ordDieline", block: "order" },
-  { key: "ordArt", block: "order" },
-  { key: "ordArtApproval", block: "order" },
+  // Booking: as planilhas dos fornecedores.
+  { key: "bkDraft", block: "booking" },
+  { key: "bkClosed", block: "booking" },
+  { key: "bkProgress", block: "booking" },
+  // Solicitação ao fornecedor: negociação até virar produto e pedido.
+  { key: "srWaitingSupplier", block: "request" },
+  { key: "srWaitingWellmix", block: "request" },
+  { key: "srApproved", block: "request" },
+  { key: "srToOrder", block: "request" },
+  // Pedido: onde está agora.
+  { key: "ordPrepPortal", block: "order" },
+  { key: "ordPrepSankhya", block: "order" },
+  { key: "ordContractWellmix", block: "order" },
+  { key: "ordContractSupplier", block: "order" },
+  { key: "ordContractSankhya", block: "order" },
   { key: "ordInspection", block: "order" },
   { key: "ordInspectionIssue", block: "order" },
   { key: "ordBooking", block: "order" },
@@ -93,6 +99,11 @@ export const BOARD_CARDS = [
   { key: "ordDelivered", block: "order" },
   { key: "ordClosedMonth", block: "order" },
   { key: "ordCancelledMonth", block: "order" },
+  // Em paralelo: as três raias da Preparação e o que anda junto.
+  { key: "lnSupplier", block: "parallel" },
+  { key: "lnArt", block: "parallel" },
+  { key: "lnArtReview", block: "parallel" },
+  { key: "lnCert", block: "parallel" },
   { key: "parProduction", block: "parallel" },
   { key: "parProductionLate", block: "parallel" },
   { key: "parFollowupDue", block: "parallel" },
@@ -101,7 +112,6 @@ export const BOARD_CARDS = [
   { key: "parInstallmentDueSoon", block: "parallel", finance: true },
   { key: "parInstallmentRequested", block: "parallel", finance: true },
   { key: "parArtIssue", block: "parallel" },
-  { key: "parCertification", block: "parallel" },
   { key: "parDocsToValidate", block: "parallel" },
   { key: "parNumerario", block: "parallel" },
   { key: "parChannel", block: "parallel" },
@@ -130,7 +140,7 @@ export interface BoardCard {
   block: BoardBlock;
   /** Quadrado que leva a outra tela (containers, revisão). */
   href: string | null;
-  /** Pedidos, solicitações ou certificações do quadrado (a lista de baixo). */
+  /** Lotes, solicitações, pedidos ou certificações do quadrado (a lista de baixo). */
   rows: TowerRow[];
   count: number;
   /** Quantos do quadrado estão com o prazo vencido. */
@@ -145,15 +155,6 @@ export interface TowerBoard {
   currency: string;
 }
 
-/** Situações da solicitação ainda aberta (as mesmas da Control Tower). */
-const OPEN_REQUESTS: Request["status"][] = [
-  "REQUESTED",
-  "RFQ_OPEN",
-  "QUOTATION_RECEIVED",
-  "SUPPLIER_SELECTED",
-  "WAITING_DOWN_PAYMENT",
-];
-
 /** Etapas antes do embarque: a produção ainda conta. */
 const BEFORE_SHIPPING: StageKey[] = [
   "ORDER_CREATED",
@@ -163,21 +164,23 @@ const BEFORE_SHIPPING: StageKey[] = [
   "INSPECTION",
 ];
 
-/** Itens das etapas que dividem os quadrados do bloco 2 (journey.ts). */
+/** Itens das etapas que dividem os quadrados de posição (journey.ts). */
 export const BOARD_REQUIREMENT_KEYS = JOURNEY_REQUIREMENT_KEYS;
 
 /** Documentos de embarque validados por alguém (numerário tem quadrado próprio). */
 const NOT_DOCUMENTS: ImportStep["key"][] = ["numerario", "numerario_paid"];
-/** Memorial, laudo e registro: com OCP, ficha pedindo ou passo começado. */
-const CLASSIC_CERT_STEPS: ImportStep["key"][] = [
+/** Passos da certificação do cartão antigo: não são "documento para validar" (a certificação é a raia da certificadora). */
+const CERT_STEPS: ImportStep["key"][] = [
   "cert_memorial",
   "cert_lab",
   "cert_registration",
+  "cert_seal",
+  "cert_seal_art",
 ];
-/** Selo de certificação e selo aplicado na arte: todo pedido precisa. */
-const SEAL_STEPS: ImportStep["key"][] = ["cert_seal", "cert_seal_art"];
-const CERT_STEPS = [...CLASSIC_CERT_STEPS, ...SEAL_STEPS];
 const ALERT_CHANNELS = ["yellow", "red", "grey"];
+
+/** Pedido de compra (tem o fluxo do portal); o importado do Sankhya não tem. */
+const isPortalOrder = (o: Pick<Order, "flow">) => o.flow === "supplier_request";
 
 export interface BoardInput {
   now: Date;
@@ -195,32 +198,36 @@ export interface BoardInput {
     Requirement,
     "orderId" | "stageId" | "key" | "status" | "value"
   >[];
-  requests: Request[];
-  quotes: Pick<
-    Quote,
-    | "id"
-    | "requestId"
-    | "status"
-    | "price"
-    | "currency"
-    | "leadTimeDays"
-    | "answeredAt"
-    | "createdAt"
+  /** Todos os itens dos pedidos de compra (raias e contrato). */
+  laneRequirements?: Pick<
+    Requirement,
+    "orderId" | "stageId" | "key" | "status"
   >[];
-  approvals: Pick<Approval, "requestId" | "status" | "currentLevel">[];
-  /** Prazo da RFQ em dias úteis (Configurações → requestStepDays.rfq). */
-  rfqDays: number;
-  /** Briefings de embalagem abertos (ainda sendo feitos). */
-  briefRequestIds: string[];
-  /** Pedidos cuja faca (die-cut) obrigatória ainda não chegou. */
-  dielineOrderIds?: string[];
+  /** Bookings (planilhas) ainda em andamento: rascunho, fechado ou em andamento. */
+  lots?: Pick<
+    BookingLot,
+    "id" | "number" | "status" | "supplierId" | "fileName" | "itemCount"
+  >[];
+  /** Solicitações ao fornecedor abertas, respondidas ou aprovadas. */
+  supplierRequests?: Pick<
+    SupplierRequest,
+    | "id"
+    | "number"
+    | "status"
+    | "supplierId"
+    | "item"
+    | "createdAt"
+    | "negotiation"
+    | "productId"
+    | "orderId"
+  >[];
+  /** SLA da negociação com o fornecedor, em minutos. */
+  supplierRequestSlaMinutes?: number;
   steps: ImportStep[];
   tracks: ProductionTrack[];
   skus: SkuInspection[];
   artIssues: Pick<ArtIssue, "orderId" | "status">[];
   receivings: Receiving[];
-  /** Pedidos cuja ficha pede certificação. */
-  certificationOrderIds: string[];
   penalties: Pick<Penalty, "orderId">[];
   rejected: Pick<Requirement, "orderId">[];
   reviews: ReviewItem[];
@@ -257,15 +264,25 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   const skusBy = by(input.skus);
   const trackOf = new Map(input.tracks.map((t) => [t.orderId, t]));
   const receivingOf = new Map(input.receivings.map((r) => [r.orderId, r]));
+  const stageKeyById = new Map(input.stages.map((s) => [s.id, s.key]));
+  const laneReqsBy = by(input.laneRequirements ?? []);
 
-  // Passo da viagem (blocos 1 e 2): a mesma regra do Progresso de Pedidos.
-  const journey = journeyIndex(input);
+  // Passo do pedido: a mesma regra do Progresso de Pedidos (journey.ts).
+  const journey = journeyIndex({
+    ...input,
+    reviews: input.reviews,
+    quotes: [],
+    approvals: [],
+    rfqDays: 0,
+  });
   const step = (o: Order, key: ImportStep["key"]) =>
     (stepsBy.get(o.id) ?? []).find((s) => s.key === key);
   const informed = (s: ImportStep | undefined) =>
     s?.status === "submitted" || s?.status === "validated";
 
+  // Prazo vencido e bloqueio são do fluxo do portal; o pedido importado só dá visibilidade.
   const isOverdue = (o: Order) => {
+    if (!isPortalOrder(o)) return false;
     const stage = stageOf.get(o.id);
     return !!stage?.dueAt && Date.parse(stage.dueAt) < now;
   };
@@ -273,6 +290,7 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     const stage = stageOf.get(o.id);
     const closed = o.status === "CLOSED";
     const cancelled = o.status === "CANCELLED";
+    const portal = isPortalOrder(o);
     return {
       id: o.id,
       number: `#${o.number}`,
@@ -281,38 +299,24 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
       stageKey: cancelled ? (o.cancelStageKey ?? null) : (o.status as StageKey),
       requestStatus: null,
       responsible:
-        closed || cancelled ? null : (stage?.responsibleRole ?? null),
+        closed || cancelled || !portal
+          ? null
+          : (stage?.responsibleRole ?? null),
       dueAt: closed
         ? o.closedAt
         : cancelled
           ? (o.cancelledAt ?? null)
-          : (stage?.dueAt ?? null),
+          : portal
+            ? (stage?.dueAt ?? null)
+            : null,
       overdue: !closed && !cancelled && isOverdue(o),
-      blocked: !closed && !cancelled && stage?.status === "blocked",
+      blocked: !closed && !cancelled && portal && stage?.status === "blocked",
       link: `/app/orders/${o.id}`,
       kind: "order",
       cancelled,
+      origin: portal ? "portal" : "sankhya",
     };
   };
-  const requestRow = (r: Request): TowerRow => ({
-    id: r.id,
-    number: "S",
-    customer: partyName(r.customerId),
-    product: r.productName,
-    stageKey: null,
-    requestStatus: r.status,
-    responsible:
-      r.status === "RFQ_OPEN"
-        ? "supplier"
-        : r.status === "WAITING_DOWN_PAYMENT"
-          ? "customer"
-          : "operator",
-    dueAt: r.deadline,
-    overdue: !!r.deadline && r.deadline.slice(0, 10) < today,
-    blocked: false,
-    link: `/app/requests/${r.id}`,
-    kind: "request",
-  });
 
   const rows = new Map<BoardCardKey, TowerRow[]>(
     BOARD_CARDS.map((c) => [c.key, []]),
@@ -327,34 +331,86 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     values.set(key, (values.get(key) ?? 0) + value);
   };
 
-  /* Bloco 1: a solicitação, pelo próximo passo da tela Solicitações. */
-  const openRequests = input.requests.filter((r) =>
-    OPEN_REQUESTS.includes(r.status),
-  );
-  for (const r of openRequests) {
-    const key = journey.requestCard(r);
+  /* Booking: as planilhas ainda em andamento. */
+  const LOT_CARD = {
+    draft: "bkDraft",
+    closed: "bkClosed",
+    in_progress: "bkProgress",
+  } as const;
+  for (const lot of input.lots ?? []) {
+    const key = LOT_CARD[lot.status as keyof typeof LOT_CARD];
     if (!key) continue;
-    rows.get(key)!.push(requestRow(r));
-    if (r.sellPrice !== null && r.sellCurrency === input.currency)
-      values.set(key, (values.get(key) ?? 0) + r.sellPrice);
+    rows.get(key)!.push({
+      id: lot.id,
+      number: `B${lot.number}`,
+      customer: partyName(lot.supplierId),
+      product: `${lot.fileName} · ${lot.itemCount}`,
+      stageKey: null,
+      requestStatus: null,
+      responsible: "operator",
+      dueAt: null,
+      overdue: false,
+      blocked: false,
+      link: `/app/booking/lots/${lot.id}`,
+      kind: "booking",
+      statusKey: `board.card.${key}`,
+    });
   }
-  const briefs = new Set(input.briefRequestIds);
-  for (const r of openRequests)
-    if (briefs.has(r.id)) rows.get("reqPackaging")!.push(requestRow(r));
 
-  /* Bloco 2: cada pedido em andamento num quadrado só. */
+  /* Solicitação ao fornecedor: de quem é a vez; aprovada espera produto e pedido. */
+  const slaMinutes = input.supplierRequestSlaMinutes ?? 30;
+  for (const r of input.supplierRequests ?? []) {
+    let key: BoardCardKey | null = null;
+    if (r.status === "open" || r.status === "answered") {
+      key =
+        negotiationTurn(r) === "supplier"
+          ? "srWaitingSupplier"
+          : "srWaitingWellmix";
+    } else if (r.status === "approved" && !r.orderId) {
+      key = r.productId ? "srToOrder" : "srApproved";
+    }
+    if (!key) continue;
+    const active = r.status === "open" || r.status === "answered";
+    rows.get(key)!.push({
+      id: r.id,
+      number: `SF${r.number}`,
+      customer: partyName(r.supplierId),
+      product: r.item.description ?? r.item.productName ?? "—",
+      stageKey: null,
+      requestStatus: null,
+      responsible: key === "srWaitingSupplier" ? "supplier" : "operator",
+      dueAt: active ? supplierRequestSlaDue(r, slaMinutes) : null,
+      overdue: active && supplierRequestLate(r, slaMinutes, input.now),
+      blocked: false,
+      link: `/app/supplier-requests/${r.id}`,
+      kind: "supplier_request",
+      statusKey: `board.card.${key}`,
+    });
+  }
+
+  /* Pedido: cada pedido em andamento num quadrado só. */
   const live = input.orders.filter(
     (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
   );
-  // Arte e embalagem sem a faca do fornecedor: o pedido espera a faca (a
-  // agência faz a arte em cima dela); com a faca, vai para "Arte da embalagem".
-  const waitingDieline = new Set(input.dielineOrderIds ?? []);
+  const signedByWellmix = (o: Order) =>
+    (laneReqsBy.get(o.id) ?? []).some(
+      (r) => r.key === ORDER_SIGNED_WELLMIX && r.status === "done",
+    );
   for (const o of live) {
     const card = journey.orderCard(o);
-    addOrder(
-      card === "ordArt" && waitingDieline.has(o.id) ? "ordDieline" : card,
-      o,
-    );
+    const portal = isPortalOrder(o);
+    if (card === "ordCreated" || card === "ordPrep")
+      addOrder(portal ? "ordPrepPortal" : "ordPrepSankhya", o);
+    else if (card === "ordContract")
+      addOrder(
+        !portal
+          ? "ordContractSankhya"
+          : signedByWellmix(o)
+            ? "ordContractSupplier"
+            : "ordContractWellmix",
+        o,
+      );
+    else addOrder(card, o);
   }
   for (const o of input.orders) {
     if (o.status === "CLOSED" && brazilDay(o.closedAt)?.slice(0, 7) === month)
@@ -366,14 +422,30 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
       addOrder("ordCancelledMonth", o);
   }
 
-  /* Bloco 3: o que anda junto (o mesmo pedido pode estar em vários). */
-  const certSheet = new Set(input.certificationOrderIds);
+  /* Em paralelo: as raias da Preparação e o que anda junto (o mesmo pedido pode estar em vários). */
   const artIssue = new Set(
     input.artIssues
       .filter((i) => i.status !== "accepted")
       .map((i) => i.orderId),
   );
   for (const o of live) {
+    // Raias (pedido de compra, etapa Preparação): o que ainda falta e já está liberado.
+    if (isPortalOrder(o) && o.status === "PREPARATION") {
+      const mine = (laneReqsBy.get(o.id) ?? []).filter(
+        (r) => stageKeyById.get(r.stageId) === "PREPARATION",
+      );
+      const open = mine.filter(
+        (r) => r.status !== "done" && blockedBy(r.key, mine).length === 0,
+      );
+      const has = (pred: (base: string, lane: string) => boolean) =>
+        open.some((r) => pred(baseKeyOf(r.key), laneOf(r.key)));
+      if (has((_, lane) => lane === "supplier")) addOrder("lnSupplier", o);
+      if (has((base) => base === LANE_KEYS.art || base === LANE_KEYS.artFinal))
+        addOrder("lnArt", o);
+      if (has((base) => base === LANE_KEYS.artReview))
+        addOrder("lnArtReview", o);
+      if (has((base) => base === LANE_KEYS.certificate)) addOrder("lnCert", o);
+    }
     const track = trackOf.get(o.id) ?? null;
     const preShipping = BEFORE_SHIPPING.includes(o.status as StageKey);
     if (preShipping && track?.productionStartAt) {
@@ -390,16 +462,6 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     if (skus.some((s) => s.result === "rejected"))
       addOrder("parSkuRejected", o);
     if (artIssue.has(o.id)) addOrder("parArtIssue", o);
-    const classic = CLASSIC_CERT_STEPS.map((k) => step(o, k));
-    const withCert =
-      !!o.ocpId || certSheet.has(o.id) || classic.some((s) => !!s);
-    // Certificação pendente: o selo (todo pedido) ou, com certificação
-    // pedida, memorial, laudo e registro.
-    if (
-      SEAL_STEPS.some((k) => !importStepDone(step(o, k))) ||
-      (withCert && classic.some((s) => !importStepDone(s)))
-    )
-      addOrder("parCertification", o);
     if (
       (stepsBy.get(o.id) ?? []).some(
         (s) =>
@@ -464,12 +526,13 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     }
   }
 
-  /* Bloco 4: problemas. */
+  /* Problemas. */
   const rejected = new Set(input.rejected.map((r) => r.orderId));
   const penalties = new Set(input.penalties.map((p) => p.orderId));
   for (const o of live) {
     if (isOverdue(o)) addOrder("probOverdue", o);
-    if (stageOf.get(o.id)?.status === "blocked") addOrder("probBlocked", o);
+    if (isPortalOrder(o) && stageOf.get(o.id)?.status === "blocked")
+      addOrder("probBlocked", o);
     if (
       rejected.has(o.id) ||
       (stepsBy.get(o.id) ?? []).some((s) => s.status === "rejected")
@@ -543,8 +606,8 @@ const safe = <T>(p: Promise<T[]>): Promise<T[]> =>
 
 /**
  * Lê o que os quadrados precisam. As leituras iguais às da Control Tower
- * (pedidos, etapas, solicitações, multas, revisão) saem do cache da
- * requisição, sem ir de novo ao banco.
+ * (pedidos, etapas, multas, revisão) saem do cache da requisição, sem ir de
+ * novo ao banco.
  */
 export async function loadTowerBoard(options: {
   finance: boolean;
@@ -558,23 +621,20 @@ export async function loadTowerBoard(options: {
     items,
     products,
     activeStages,
-    requests,
-    approvals,
-    briefs,
     penalties,
     rejected,
     reviews,
     certifications,
     containers,
+    lots,
+    supplierRequests,
+    settings,
   ] = await Promise.all([
     store.list("orders", { orderBy: "number", direction: "desc" }),
     store.list("parties"),
     store.list("order_items"),
     store.list("products"),
     store.list("stages", { filter: { status: ["active", "blocked"] } }),
-    store.list("requests", { filter: { status: OPEN_REQUESTS } }),
-    safe(store.list("approvals", { filter: { status: "pending" } })),
-    safe(store.list("packaging_briefs", { filter: { status: "open" } })),
     store.list("penalties", { filter: { status: ["open", "disputed"] } }),
     store.list("requirements", { filter: { status: "rejected" } }),
     store.list("review_items", {
@@ -584,27 +644,36 @@ export async function loadTowerBoard(options: {
     }),
     import("./compliance").then((m) => m.expiringCertifications()),
     store.list("containers"),
+    safe(
+      store.list("booking_lots", {
+        filter: { status: ["draft", "closed", "in_progress"] },
+      }),
+    ),
+    safe(
+      store.list("supplier_requests", {
+        filter: { status: ["open", "answered", "approved"] },
+      }),
+    ),
+    getSettings(),
   ]);
   const live = orders.filter(
     (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
   );
   const ids = live.map((o) => o.id);
+  const portalIds = live.filter(isPortalOrder).map((o) => o.id);
   const liveIds = new Set(ids);
-  const requestIds = requests.map((r) => r.id);
   const none = <T>() => Promise.resolve([] as T[]);
   const [
     stages,
     requirements,
+    laneRequirements,
     steps,
     tracks,
     skus,
     artIssues,
     receivings,
-    sheets,
-    quotes,
     payables,
     finance,
-    orderBriefs,
   ] = await Promise.all([
     ids.length
       ? store.list("stages", { filter: { orderId: ids } })
@@ -613,6 +682,9 @@ export async function loadTowerBoard(options: {
       ? store.list("requirements", {
           filter: { orderId: ids, key: BOARD_REQUIREMENT_KEYS },
         })
+      : none<Requirement>(),
+    portalIds.length
+      ? store.list("requirements", { filter: { orderId: portalIds } })
       : none<Requirement>(),
     ids.length
       ? safe(store.list("import_steps", { filter: { orderId: ids } }))
@@ -633,21 +705,12 @@ export async function loadTowerBoard(options: {
     ids.length
       ? safe(store.list("receivings", { filter: { orderId: ids } }))
       : none<Receiving>(),
-    ids.length
-      ? safe(store.list("purchase_sheets", { filter: { orderId: ids } }))
-      : none<PurchaseSheet>(),
-    requestIds.length
-      ? store.list("quotes", { filter: { requestId: requestIds } })
-      : none<Quote>(),
     options.finance
       ? import("./supplier-terms").then((m) => m.listPayables())
       : Promise.resolve([]),
     options.finance
       ? import("./finance").then((m) => m.loadFinance({ estimate: false }))
       : Promise.resolve(null),
-    ids.length
-      ? safe(store.list("packaging_briefs", { filter: { orderId: ids } }))
-      : none<PackagingBrief>(),
   ]);
   const money = new Map(
     (finance?.rows ?? []).map((r) => [
@@ -665,29 +728,15 @@ export async function loadTowerBoard(options: {
     activeStages,
     stages,
     requirements,
-    requests,
-    quotes,
-    approvals,
-    rfqDays: requestStepDays((await getSettings()).requestStepDays).rfq,
-    briefRequestIds: briefs.map((b) => b.requestId),
-    // Faca obrigatória do pedido ainda não enviada pelo fornecedor.
-    dielineOrderIds: orderBriefs
-      .filter(
-        (b) =>
-          b.status !== "cancelled" &&
-          b.requiredKeys.includes("dieline") &&
-          !b.dielineDocumentId,
-      )
-      .map((b) => b.orderId)
-      .filter((id): id is string => !!id),
+    laneRequirements,
+    lots,
+    supplierRequests,
+    supplierRequestSlaMinutes: settings.supplierRequestSlaMinutes,
     steps,
     tracks,
     skus,
     artIssues,
     receivings,
-    certificationOrderIds: sheets
-      .filter((s) => s.certificationRequired === "yes")
-      .map((s) => s.orderId),
     penalties,
     rejected: rejected.filter((r) => liveIds.has(r.orderId)),
     reviews,
