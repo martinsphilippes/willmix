@@ -12,6 +12,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const {
   SUPPLIER_STEPS,
@@ -33,8 +34,6 @@ beforeAll(async () => {
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
   supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
-  const { setSetting } = await import("@/lib/settings");
-  await setSetting("approvalsEnabled", false);
 });
 
 async function request(name: string, productId: string | null = null) {
@@ -52,24 +51,12 @@ async function request(name: string, productId: string | null = null) {
 }
 
 async function newOrder(name: string) {
-  const store = getStore();
   const req = await request(name);
-  await r.openRfq(admin, req.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: req.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
+  return orderFromRequest(admin, req, {
     price: 3.6,
-    currency: "USD",
-    leadTimeDays: 45,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
     sellPrice: 10_000,
-    sellCurrency: "BRL",
     downPaymentAmount: 3000,
   });
-  return r.confirmDownPayment(admin, req.id);
 }
 
 const mine = async () => pendingTasksFor(supplierA);
@@ -100,29 +87,6 @@ describe("pendências do fornecedor por etapa", () => {
     expect(supplierStepOfGroup("PACKAGING")).toBeNull();
   });
 
-  it("cotação enviada ao fornecedor: etapa Booking, com a data em que chegou e a do carregamento", async () => {
-    const req = await request("Porta-retrato da cotação");
-    const [quote] = await r.openRfq(admin, req.id, ["fornecedor-a"]);
-    const task = (await mine()).find(
-      (t) => t.link === `/app/quotes/${quote.id}`,
-    )!;
-    expect(task.kind).toBe("quote");
-    expect(task.group).toBe("supplier.booking");
-    expect(task.supplierStep).toBe("booking");
-    expect(task.sinceAt).toBe(quote.createdAt);
-    expect(task.loadedAt).toBe(req.createdAt);
-    // O filtro da etapa acha a pendência; o de outra etapa, não.
-    const links = (group: string, all: Awaited<ReturnType<typeof mine>>) =>
-      filterTasks(all, { group }).map((t) => t.link);
-    const all = await mine();
-    expect(links("supplier.booking", all)).toContain(task.link);
-    expect(links("supplier.sign", all)).not.toContain(task.link);
-    // A Wellmix continua com os grupos dela (nenhum "supplier.*").
-    expect(
-      (await pendingTasksFor(admin)).some((t) => supplierStepOfGroup(t.group)),
-    ).toBe(false);
-  });
-
   it("pedido: ficha de compra, aprovar a arte e assinar são etapas separadas, na ordem do caminho", async () => {
     const order = await newOrder("Pedido das etapas");
     const ofOrder = async () =>
@@ -141,6 +105,15 @@ describe("pendências do fornecedor por etapa", () => {
     expect(art.kind).toBe("requirement");
     expect(art.link).toBe(`/app/orders/${order.id}`);
     expect(tasks.some((t) => t.group === "supplier.sign")).toBe(false);
+    // O filtro da etapa acha a pendência; o de outra etapa, não.
+    const links = (group: string) =>
+      filterTasks(tasks, { group }).map((t) => t.link);
+    expect(links("supplier.art")).toContain(art.link);
+    expect(links("supplier.sign")).not.toContain(art.link);
+    // A Wellmix continua com os grupos dela (nenhum "supplier.*").
+    expect(
+      (await pendingTasksFor(admin)).some((t) => supplierStepOfGroup(t.group)),
+    ).toBe(false);
     // Está com ele desde que a arte foi enviada.
     const [artRow] = await getStore().list("requirements", {
       filter: { orderId: order.id, key: "art" },

@@ -28,6 +28,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const sp = await import("@/lib/services/supplier-payment");
 const { loadFinance } = await import("@/lib/services/finance");
@@ -52,8 +53,7 @@ beforeAll(async () => {
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   operator = users.find((u) => u.email === "operador@wellmix.com")!;
   const joao = users.find((u) => u.email === "joao@lojista.com")!;
-  const supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
-  // Pedido de verdade: solicitação → RFQ → cotação → proposta → sinal.
+  // Pedido de verdade: solicitação → pedido com sinal.
   const request = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: "prod-jarra",
@@ -65,22 +65,11 @@ beforeAll(async () => {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, request.id, ["fornecedor-a"]);
-  const [quote] = await getStore().list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
+  order = await orderFromRequest(admin, request, {
     price: 10,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
     sellPrice: 9000,
-    sellCurrency: "BRL",
     downPaymentAmount: 2700,
   });
-  order = await r.confirmDownPayment(admin, request.id);
 });
 
 describe("informar câmbio pela tela Financeiro", () => {

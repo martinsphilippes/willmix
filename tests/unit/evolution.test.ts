@@ -7,11 +7,12 @@ import { sendForSignature, withTempStore } from "./setup";
  */
 const { getStore, PRODUCT_EXTRA_DEFAULTS } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
-const { createRequest, openRfq, answerQuote, selectQuote, confirmDownPayment } =
-  await import("@/lib/services/requests");
+const { orderFromRequest } = await import("./helpers/order");
+const { createRequest } = await import("@/lib/services/requests");
 const { submitRequirement, decideRequirement, loadOrderProgress } =
   await import("@/lib/workflow/engine");
-const { getSnapshotForOrder } = await import("@/lib/services/snapshots");
+const { getSnapshotForOrder, ensureSnapshot } =
+  await import("@/lib/services/snapshots");
 const { compareWithSnapshot, summarizeResult, latestInspectionResult } =
   await import("@/lib/services/inspection");
 const { listOpenReviews } = await import("@/lib/services/reviews");
@@ -71,22 +72,13 @@ beforeAll(async () => {
     deadline: null,
     notes: null,
   });
-  await openRfq(admin, request.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await answerQuote(supplierA, quote.id, {
+  const order = await orderFromRequest(admin, request, {
     price: 9.5,
-    currency: "USD",
-    leadTimeDays: 30,
-    conditions: "FOB Shenzhen",
-  });
-  await selectQuote(admin, quote.id, {
     sellPrice: 40000,
-    sellCurrency: "BRL",
     downPaymentAmount: 12000,
   });
-  const order = await confirmDownPayment(admin, request.id);
+  // Snapshot da compra tirado ao nascer o pedido.
+  await ensureSnapshot(admin, order);
   orderId = order.id;
 });
 

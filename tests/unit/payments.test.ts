@@ -1,32 +1,21 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
 
-/* Sinal por Pix copia e cola (BR Code) e comprovante enviado pelo cliente. */
+/* Sinal por Pix copia e cola (BR Code). */
 withTempStore();
 
-const { getStore, USER_EXTRA_DEFAULTS } = await import("@/lib/db");
+const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const { setSetting } = await import("@/lib/settings");
 const { crc16, normalizePixKey, buildPixPayload } =
   await import("@/lib/services/pix");
-const { pixForRequest, submitDownPaymentProof } =
-  await import("@/lib/services/down-payment");
-const { canAccessDocument } = await import("@/lib/services/documents");
-const { pendingTasksFor } = await import("@/lib/services/tasks");
+const { pixForRequest } = await import("@/lib/services/down-payment");
 const r = await import("@/lib/services/requests");
 type User = import("@/lib/db").User;
 
-let admin: User;
 let joao: User;
-let maria: User;
-let supplier: User;
 
-const proofFile = () =>
-  new File([new Uint8Array([37, 80, 68, 70, 45, 49])], "comprovante.pdf", {
-    type: "application/pdf",
-  });
-
-/** Solicitação do João até "aguardando sinal". */
+/** Solicitação do João "aguardando sinal" (gravada direto: a proposta saiu com a cotação). */
 async function waitingRequest(currency = "BRL") {
   const store = getStore();
   const request = await r.createRequest(joao, {
@@ -40,39 +29,17 @@ async function waitingRequest(currency = "BRL") {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, request.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await r.answerQuote(supplier, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
+  return store.update("requests", request.id, {
+    status: "WAITING_DOWN_PAYMENT",
     sellPrice: 1000,
     sellCurrency: currency,
     downPaymentAmount: 300,
   });
-  return (await store.get("requests", request.id))!;
 }
 
 beforeAll(async () => {
   const { users } = await seedDemo();
-  admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
-  supplier = users.find((u) => u.email === "supplier.a@china.com")!;
-  maria = await getStore().create("users", {
-    ...USER_EXTRA_DEFAULTS,
-    email: "maria@lojista.com",
-    name: "Maria (Loja do João)",
-    role: "customer",
-    partyId: "cliente-joao",
-    locale: "pt",
-    passwordHash: null,
-    active: true,
-  });
 });
 
 describe("Pix copia e cola (BR Code)", () => {
@@ -147,59 +114,5 @@ describe("sinal da solicitação", () => {
     );
     const usd = await waitingRequest("USD");
     expect(await pixForRequest(usd)).toEqual({ unavailable: "not_brl" });
-  });
-
-  it("cliente anexa o comprovante; outro login e fornecedor não; Wellmix confirma", async () => {
-    const request = await waitingRequest();
-    const store = getStore();
-
-    // Primeiro o cliente aprova a proposta; depois a pendência é o sinal.
-    expect(
-      (await pendingTasksFor(joao)).some((t) => t.kind === "approve_proposal"),
-    ).toBe(true);
-    const { approveProposal } =
-      await import("@/lib/services/proposal-approval");
-    await approveProposal(joao, request.id);
-    expect((await pendingTasksFor(joao)).some((t) => t.kind === "pay")).toBe(
-      true,
-    );
-    await expect(
-      submitDownPaymentProof(maria, request.id, proofFile()),
-    ).rejects.toThrow("not_found");
-    await expect(
-      submitDownPaymentProof(supplier, request.id, proofFile()),
-    ).rejects.toThrow("forbidden");
-    await expect(
-      submitDownPaymentProof(admin, request.id, proofFile()),
-    ).rejects.toThrow("forbidden");
-
-    const payment = await submitDownPaymentProof(joao, request.id, proofFile());
-    expect(payment.status).toBe("pending");
-    const doc = (await store.get("documents", payment.proofDocumentId!))!;
-    expect(doc.requestId).toBe(request.id);
-    expect(await canAccessDocument(joao, doc)).toBe(true);
-    expect(await canAccessDocument(admin, doc)).toBe(true);
-    expect(await canAccessDocument(maria, doc)).toBe(false);
-    expect(await canAccessDocument(supplier, doc)).toBe(false);
-
-    // Pendências: sai do cliente; a Wellmix vê que o comprovante chegou.
-    expect(
-      (await pendingTasksFor(joao)).some(
-        (t) => t.kind === "pay" && t.link.includes(request.id),
-      ),
-    ).toBe(false);
-    const wellmixTask = (await pendingTasksFor(admin)).find(
-      (t) => t.kind === "confirm_payment" && t.link.includes(request.id),
-    );
-    expect(wellmixTask?.detail).toMatch(/Comprovante enviado/);
-
-    // A Wellmix confirma usando o comprovante do cliente; depois não aceita mais envio.
-    await r.confirmDownPayment(admin, request.id);
-    const confirmed = (await store.get("payments", payment.id))!;
-    expect(confirmed.status).toBe("confirmed");
-    expect(confirmed.proofDocumentId).toBe(doc.id);
-    await expect(
-      submitDownPaymentProof(joao, request.id, proofFile()),
-    ).rejects.toThrow("invalid_status");
   });
 });

@@ -15,13 +15,14 @@ withTempStore();
 
 const { getStore, PRODUCT_EXTRA_DEFAULTS } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const pv = await import("@/lib/services/product-variants");
-const qs = await import("@/lib/services/quote-sheet");
 const ps = await import("@/lib/services/purchase-sheet");
 const pm = await import("@/lib/services/product-sheet");
 const vs = await import("@/lib/services/variant-sales");
-const { getSnapshotForOrder } = await import("@/lib/services/snapshots");
+const { getSnapshotForOrder, ensureSnapshot } =
+  await import("@/lib/services/snapshots");
 const { parseRequestItems } = await import("@/app/app/actions/request-items");
 type User = import("@/lib/db").User;
 type ProductVariant = import("@/lib/db").ProductVariant;
@@ -29,7 +30,6 @@ type ProductVariant = import("@/lib/db").ProductVariant;
 let admin: User;
 let joao: User;
 let supplierA: User;
-let supplierB: User;
 let productId: string;
 let a: ProductVariant;
 let b: ProductVariant;
@@ -56,7 +56,6 @@ beforeAll(async () => {
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
   supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
-  supplierB = users.find((u) => u.email === "supplier.b@china.com")!;
   const store = getStore();
   const product = await store.create("products", {
     ...PRODUCT_EXTRA_DEFAULTS,
@@ -335,64 +334,18 @@ describe("solicitação com variação", () => {
   });
 });
 
-describe("cotação, pedido, adoção e recompra", () => {
+describe("pedido, adoção e recompra", () => {
   let orderId: string;
 
-  it("ficha de cotação nasce com os dados físicos da variação; preço, MOQ e código só para o fornecedor de referência", async () => {
+  it("pedido e snapshot levam a variação; a ficha do pedido grava na variação", async () => {
     const store = getStore();
-    // FOB/EXW na ficha mestre: vai só para o fornecedor de referência.
-    await pm.saveProductSheet(admin, productId, { incoterm: "EXW" });
     const request = await r.createRequest(joao, input(b.id, 1200));
-    await r.openRfq(admin, request.id, ["fornecedor-a", "fornecedor-b"]);
-    const quotes = await store.list("quotes", {
-      filter: { requestId: request.id },
-    });
-    const qa = quotes.find((q) => q.supplierId === "fornecedor-a")!;
-    const qb = quotes.find((q) => q.supplierId === "fornecedor-b")!;
-    const viewA = (await qs.getQuoteSheetForUser(supplierA, qa.id))!;
-    expect(viewA.sheet).toMatchObject({
-      masterCartonQty: 24,
-      innerQty: 6,
-      netWeightPcKg: 0.186,
-      grossWeightPcKg: 0.25,
-      cbmPerCarton: 0.0267,
-      colorAssortment: "Bege / Carvalho",
-      material: "MDF",
-      packageType: "Shrink + OPP",
-      price: 3.15,
-      currency: "USD",
-      moq: 1200,
-      factoryItemCode: "MY-059A",
-      incoterm: "EXW",
-    });
-    const viewB = (await qs.getQuoteSheetForUser(supplierB, qb.id))!;
-    expect(viewB.sheet).toMatchObject({
-      masterCartonQty: 24,
-      innerQty: 6,
-      cbmPerCarton: 0.0267,
-      material: "MDF",
-      packageType: "Shrink + OPP",
-    });
-    expect(viewB.sheet.price ?? null).toBeNull();
-    expect(viewB.sheet.moq ?? null).toBeNull();
-    expect(viewB.sheet.incoterm ?? null).toBeNull();
-    expect(viewB.sheet.factoryItemCode ?? null).not.toBe("MY-059A");
-
-    // A (referência) responde com a ficha: preço e caixa diferentes da variação.
-    await qs.saveQuoteSheet(supplierA, qa.id, {
+    const order = await orderFromRequest(admin, request, {
       price: 3.4,
-      currency: "USD",
-      masterCartonQty: 36,
-      packageType: "GIFT BOX",
+      sellPrice: 9000,
     });
-    await r.answerQuote(supplierA, qa.id, {
-      price: 3.4,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-    await r.selectQuote(admin, qa.id, { sellPrice: 9000, sellCurrency: "BRL" });
-    const order = await r.confirmDownPayment(admin, request.id);
     orderId = order.id;
+    await ensureSnapshot(admin, order);
 
     // O item e o snapshot de compra levam a variação.
     const [item] = await store.list("order_items", {
@@ -418,6 +371,13 @@ describe("cotação, pedido, adoção e recompra", () => {
       supplierSku: "MY-059A",
     });
 
+    // A Wellmix grava a ficha do pedido: preço e caixa diferentes da variação.
+    await ps.saveSheet(admin, order.id, {
+      price: 3.4,
+      currency: "USD",
+      masterCartonQty: 36,
+      packageType: "GIFT BOX",
+    });
     // Adoção: a ficha do pedido grava na VARIAÇÃO (fornecedor de referência:
     // preço também); a outra variação não muda; o produto espelha a referência.
     const bNow = (await pv.getProductVariant(b.id))!;
@@ -486,11 +446,13 @@ describe("cotação, pedido, adoção e recompra", () => {
   it("compra com outro fornecedor: a variação só completa o que falta, sem preço nem MOQ", async () => {
     const store = getStore();
     const request = await r.createRequest(joao, input(a.id, 2400));
-    await r.openRfq(admin, request.id, ["fornecedor-b"]);
-    const [qb] = await store.list("quotes", {
-      filter: { requestId: request.id },
+    const order = await orderFromRequest(admin, request, {
+      supplierId: "fornecedor-b",
+      price: 9,
+      sellPrice: 30000,
     });
-    await qs.saveQuoteSheet(supplierB, qb.id, {
+    // A Wellmix grava a ficha da compra com B (vai ao cadastro).
+    await ps.saveSheet(admin, order.id, {
       price: 9,
       currency: "USD",
       moq: 50,
@@ -498,16 +460,6 @@ describe("cotação, pedido, adoção e recompra", () => {
       material: "PLASTIC B",
       packageType: "BOX B",
     });
-    await r.answerQuote(supplierB, qb.id, {
-      price: 9,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-    await r.selectQuote(admin, qb.id, {
-      sellPrice: 30000,
-      sellCurrency: "BRL",
-    });
-    await r.confirmDownPayment(admin, request.id);
     const aNow = (await pv.getProductVariant(a.id))!;
     // Preço, MOQ, caixa e material de A ficam; a embalagem (em branco) é completada.
     expect(aNow).toMatchObject({

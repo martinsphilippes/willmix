@@ -11,6 +11,7 @@ withTempStore();
 
 const { getStore, DOCUMENT_EXTRA_DEFAULTS } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const { submitRequirement, decideRequirement } =
   await import("@/lib/workflow/engine");
@@ -39,22 +40,9 @@ async function inPackaging(): Promise<Order> {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, request.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 1000,
-    sellCurrency: "BRL",
+  const order = await orderFromRequest(admin, request, {
     downPaymentAmount: 300,
   });
-  const order = await r.confirmDownPayment(admin, request.id);
   for (const key of ["ORDER_CREATED", "PREPARATION"]) {
     const [stage] = await store.list("stages", {
       filter: { orderId: order.id, key: key as never },

@@ -18,6 +18,12 @@ const view = (user: Parameters<typeof navFor>[0]) =>
       ? { group: e.key, items: e.items.map((i) => i.href) }
       : { link: e.href },
   );
+/** Telas que saem com a RFQ e a cotação (11/11/2026): fora das comparações. */
+const GONE = ["/app/rfq", "/app/quotes", "/app/packaging"];
+const hrefsOf = (user: Parameters<typeof navFor>[0]) =>
+  flattenNav(navFor(user))
+    .map((l) => l.href)
+    .filter((h) => !GONE.includes(h));
 
 describe("menu principal", () => {
   it("admin: tudo em quatro grupos, sem links soltos na barra", () => {
@@ -46,13 +52,10 @@ describe("menu principal", () => {
       "/app/booking",
       "/app/requests",
     ]);
-    // RFQ e Sourcing, os dois em espera, ficam juntos no fim de Pedidos.
-    const ordersEnd = hrefs.indexOf("/app/rfq");
-    expect(hrefs.slice(ordersEnd, ordersEnd + 2)).toEqual([
-      "/app/rfq",
-      "/app/sourcing",
-    ]);
-    expect(hrefs.indexOf("/app/superplan")).toBeLessThan(ordersEnd);
+    // Sourcing (em espera) fica depois do Superplan.
+    expect(hrefs.indexOf("/app/superplan")).toBeLessThan(
+      hrefs.indexOf("/app/sourcing"),
+    );
     for (const href of [
       "/app",
       "/app/tasks",
@@ -62,7 +65,6 @@ describe("menu principal", () => {
       "/app/sourcing",
       "/app/freight",
       "/app/freight/tariff",
-      "/app/packaging",
       "/app/containers",
       "/app/superplan",
       "/app/parties",
@@ -129,24 +131,18 @@ describe("menu principal", () => {
     expect(buyer).not.toContain("/app/lines");
     expect(buyer).not.toContain("/app/finance");
     expect(buyer).not.toContain("/app/payables");
-    // Designer: um grupo de Pedidos com duas telas e Cadastros com Produtos e Vitrine.
-    expect(view({ role: "operator", functions: ["designer"] })).toEqual([
-      {
-        group: "nav.group.home",
-        items: [
-          "/app",
-          "/app/tasks",
-          "/app/sla",
-          "/app/notifications",
-          "/app/messages",
-        ],
-      },
-      { group: "nav.group.orders", items: ["/app/orders", "/app/packaging"] },
-      {
-        group: "nav.group.registry",
-        items: ["/app/products", "/app/inventory", "/app/explore"],
-      },
-      { link: "/app/marketing" },
+    // Designer: Início, Pedidos, Cadastros com Produtos e Vitrine e Marketing.
+    expect(hrefsOf({ role: "operator", functions: ["designer"] })).toEqual([
+      "/app",
+      "/app/tasks",
+      "/app/sla",
+      "/app/notifications",
+      "/app/messages",
+      "/app/orders",
+      "/app/products",
+      "/app/inventory",
+      "/app/explore",
+      "/app/marketing",
     ]);
   });
 
@@ -174,17 +170,11 @@ describe("menu principal", () => {
       group: "nav.group.home",
       items: ["/app", "/app/notifications", "/app/messages"],
     };
-    expect(view({ role: "supplier" })).toEqual([
-      home,
-      {
-        group: "nav.group.orders",
-        items: [
-          "/app/quotes",
-          "/app/supplier-requests",
-          "/app/orders",
-          "/app/account",
-        ],
-      },
+    expect(hrefsOf({ role: "supplier" })).toEqual([
+      ...home.items,
+      "/app/supplier-requests",
+      "/app/orders",
+      "/app/account",
     ]);
     expect(view({ role: "shipping_line" })).toEqual([
       home,
@@ -205,14 +195,8 @@ describe("menu principal", () => {
       home,
       { group: "nav.group.orders", items: ["/app/orders", "/app/ncm-items"] },
     ]);
-    // A agência tem os briefings de embalagem (faca e arte na RFQ) e os pedidos.
-    expect(view({ role: "agency" })).toEqual([
-      home,
-      {
-        group: "nav.group.orders",
-        items: ["/app/packaging", "/app/orders"],
-      },
-    ]);
+    // A agência tem os pedidos.
+    expect(hrefsOf({ role: "agency" })).toEqual([...home.items, "/app/orders"]);
     // Nenhuma tela some nem se repete; o início continua nas pendências.
     for (const role of ROLES.filter(
       (r) => r !== "admin" && r !== "operator" && r !== "customer",

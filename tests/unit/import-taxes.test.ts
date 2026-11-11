@@ -12,22 +12,10 @@ const fiscal = await import("@/lib/fiscal");
 const fs = await import("@/lib/services/fiscal");
 const rn = await import("@/lib/services/request-ncm");
 const r = await import("@/lib/services/requests");
-const qs = await import("@/lib/services/quote-sheet");
-const { quotePricing } = await import("@/lib/services/quote-pricing");
 type User = import("@/lib/db").User;
 
 let admin: User;
 let joao: User;
-let supplierA: User;
-
-const fx = {
-  rates: { USD: 5 },
-  status: "manual" as const,
-  day: null,
-  quotedAt: {},
-  source: null,
-  lastError: null,
-};
 
 /** 600 NCMs sintéticos + os usados nos testes (vidro e smartphone). */
 function tecCsv(overrides: Record<string, string> = {}) {
@@ -131,7 +119,6 @@ beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
-  supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
   await setSetting("aiMode", "MANUAL");
 });
 
@@ -292,7 +279,7 @@ async function newRequest(productId: string | null, name = "Jarra de vidro") {
 }
 
 describe("NCM da solicitação", () => {
-  it("sem cadastro: sugere pela tabela, Wellmix confirma e II/IPI entram na conta", async () => {
+  it("sem cadastro: sugere pela tabela e a Wellmix confirma, com II/IPI da tabela", async () => {
     await setSetting("icmsPercent", 18);
     const request = await newRequest(null);
     expect((await rn.requestNcm(request)).status).toBe("none");
@@ -317,51 +304,11 @@ describe("NCM da solicitação", () => {
     ).rejects.toThrow("ncm_not_in_table");
     await rn.confirmRequestNcm(admin, request.id, "7013.37.00", "table");
 
-    await r.openRfq(admin, request.id, ["fornecedor-a"]);
-    const [quote] = await getStore().list("quotes", {
-      filter: { requestId: request.id },
-    });
-    await qs.saveQuoteSheet(supplierA, quote.id, {
-      price: 10,
-      currency: "USD",
-      incoterm: "FOB",
-    });
-    await r.answerQuote(supplierA, quote.id, {
-      price: 10,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-    const req = (await getStore().get("requests", request.id))!;
-    const ctx = await quotePricing(req, [{ ...quote, status: "answered" }], {
-      fx,
-    });
-    const p = ctx.quotes[0];
-    expect(p.tax).toMatchObject({
+    const confirmed = (await getStore().get("requests", request.id))!;
+    expect(await rn.requestNcm(confirmed)).toMatchObject({
       ncm: "70133700",
-      ncmStatus: "confirmed",
-      iiSource: "table",
-      ipiSource: "table",
-    });
-    expect(p.input).toMatchObject({
-      importTaxPercent: 18,
-      ipiPercent: 9.75,
-      pisPercent: 2.1,
-      cofinsPercent: 9.65,
-      icmsPercent: 18,
-    });
-    expect(p.result.icmsBrl).toBeGreaterThan(0);
-
-    // Escolhido: NCM, II e IPI vão para a ficha (e dela para o pedido).
-    await r.selectQuote(admin, quote.id, {
-      sellPrice: 100000,
-      sellCurrency: "BRL",
-      pricing: { quoteId: quote.id, input: p.input, ncm: p.tax.ncm },
-    });
-    const sheet = await qs.getQuoteSheet(quote.id);
-    expect(sheet).toMatchObject({
-      ncm: "7013.37.00",
-      importTaxPercent: 18,
-      ipiPercent: 9.75,
+      status: "confirmed",
+      rates: { ii: 18, ipi: 9.75 },
     });
   });
 

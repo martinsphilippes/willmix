@@ -42,6 +42,5 @@ describe("voltar para a tela anterior", () => {
       "/app/freight/tariff",
     );
     expect(parentFor("/app/orders", menu)).toBe("/app");
-    expect(parentFor("/app/quotes/q1", menu)).toBe("/app");
   });
 });

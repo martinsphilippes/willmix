@@ -76,7 +76,6 @@ describe("carga e entrega do transportador", () => {
     } as never);
     await store.create("purchase_sheets", {
       orderId: order.id,
-      quoteId: null,
       supplierId: "fornecedor-a",
       masterCartonQty: 24,
       cbmPerCarton: 0.062,

@@ -12,7 +12,8 @@ const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const { setSetting } = await import("@/lib/settings");
 const r = await import("@/lib/services/requests");
-const qs = await import("@/lib/services/quote-sheet");
+const ps = await import("@/lib/services/purchase-sheet");
+const { orderFromRequest } = await import("./helpers/order");
 const reading = await import("@/lib/services/sheet-reading");
 const calc = await import("@/lib/services/sheet-reading-calc");
 const { canAccessDocument } = await import("@/lib/services/documents");
@@ -99,7 +100,7 @@ describe("leitura do quadro (sem IA)", () => {
   });
 });
 
-describe("ficha da cotação pela foto do quadro", () => {
+describe("ficha do pedido pela foto do quadro", () => {
   it("fornecedor lê, ficha preenchida, MOQ divergente; só a Wellmix decide", async () => {
     const store = getStore();
     await setSetting("aiMode", "MOCK");
@@ -113,25 +114,26 @@ describe("ficha da cotação pela foto do quadro", () => {
       unit: "un",
       deadline: null,
     });
-    await r.openRfq(admin, request.id, ["fornecedor-a"]);
-    const [quote] = await store.list("quotes", {
-      filter: { requestId: request.id, supplierId: "fornecedor-a" },
-    });
+    const order = await orderFromRequest(admin, request);
     // O fornecedor já tinha digitado MOQ 2400 na ficha.
-    await qs.saveQuoteSheet(supplierA, quote.id, { moq: 2400 });
+    await ps.saveSheet(supplierA, order.id, { moq: 2400 });
+    const sheetOf = async () =>
+      (
+        await store.list("purchase_sheets", { filter: { orderId: order.id } })
+      )[0];
 
     // Quem não edita a ficha não lê o quadro.
     await expect(
-      reading.readSheetBoard(supplierB, "quote", quote.id, boardPhoto()),
+      reading.readSheetBoard(supplierB, "order", order.id, boardPhoto()),
     ).rejects.toThrow("forbidden");
     await expect(
-      reading.readSheetBoard(joao, "quote", quote.id, boardPhoto()),
+      reading.readSheetBoard(joao, "order", order.id, boardPhoto()),
     ).rejects.toThrow("forbidden");
 
     const done = await reading.readSheetBoard(
       supplierA,
-      "quote",
-      quote.id,
+      "order",
+      order.id,
       boardPhoto(),
     );
     // Mock: quadro com MOQ 12000, caixa 12, EXW, RMB 4 e material.
@@ -145,7 +147,7 @@ describe("ficha da cotação pela foto do quadro", () => {
       ]),
     );
     expect(done.divergent).toContain("moq");
-    const sheet = (await qs.getQuoteSheet(quote.id))!;
+    const sheet = (await sheetOf())!;
     expect(sheet).toMatchObject({
       moq: 2400,
       masterCartonQty: 12,
@@ -162,7 +164,7 @@ describe("ficha da cotação pela foto do quadro", () => {
     expect(await canAccessDocument(supplierB, doc)).toBe(false);
     expect(await canAccessDocument(joao, doc)).toBe(false);
 
-    const view = (await reading.sheetReadingView(quote.id, sheet))!;
+    const view = (await reading.sheetReadingView(order.id, sheet))!;
     expect(view.divergences.map((d) => d.field)).toContain("moq");
 
     // O fornecedor não decide; a Wellmix decide pelo quadro.
@@ -180,9 +182,9 @@ describe("ficha da cotação pela foto do quadro", () => {
       "moq",
       "photo",
     );
-    const after = (await qs.getQuoteSheet(quote.id))!;
+    const after = (await sheetOf())!;
     expect(after.moq).toBe(12000);
-    const view2 = (await reading.sheetReadingView(quote.id, after))!;
+    const view2 = (await reading.sheetReadingView(order.id, after))!;
     expect(view2.divergences.map((d) => d.field)).not.toContain("moq");
     const history = await store.list("audit_log", {
       filter: { action: "sheet.resolve_divergence" },
@@ -202,12 +204,9 @@ describe("ficha da cotação pela foto do quadro", () => {
       unit: "un",
       deadline: null,
     });
-    await r.openRfq(admin, request.id, ["fornecedor-a"]);
-    const [quote] = await getStore().list("quotes", {
-      filter: { requestId: request.id },
-    });
+    const order = await orderFromRequest(admin, request);
     await expect(
-      reading.readSheetBoard(supplierA, "quote", quote.id, boardPhoto()),
+      reading.readSheetBoard(supplierA, "order", order.id, boardPhoto()),
     ).rejects.toThrow("ai_unavailable");
   });
 });

@@ -21,7 +21,6 @@ let joao: User;
 let supplierA: User;
 
 async function newOrder(): Promise<Order> {
-  const store = getStore();
   const request = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: "prod-jarra",

@@ -196,7 +196,8 @@ const escher = (ver: number, inst: number, type: number, data: Uint8Array) =>
   cat(u16((inst << 4) | ver, type), u32(data.length), data);
 
 /** Identificador de 16 bytes determinístico para o blip `n`. */
-const uid = (n: number) => Uint8Array.from({ length: 16 }, (_, i) => (n * 7 + i) & 0xff);
+const uid = (n: number) =>
+  Uint8Array.from({ length: 16 }, (_, i) => (n * 7 + i) & 0xff);
 
 /** BSE do BStoreContainer com o blip embutido (PNG, JPEG ou EMF). */
 function bse(image: XlsFixtureImage, index: number): Uint8Array {
@@ -206,10 +207,20 @@ function bse(image: XlsFixtureImage, index: number): Uint8Array {
   let type: number;
   if (image.kind === "png") {
     type = 6;
-    blip = escher(0, uids === 2 ? 0x6e1 : 0x6e0, 0xf01e, cat(ids, u8(0xff), image.bytes));
+    blip = escher(
+      0,
+      uids === 2 ? 0x6e1 : 0x6e0,
+      0xf01e,
+      cat(ids, u8(0xff), image.bytes),
+    );
   } else if (image.kind === "jpeg") {
     type = 5;
-    blip = escher(0, uids === 2 ? 0x46b : 0x46a, 0xf01d, cat(ids, u8(0xff), image.bytes));
+    blip = escher(
+      0,
+      uids === 2 ? 0x46b : 0x46a,
+      0xf01d,
+      cat(ids, u8(0xff), image.bytes),
+    );
   } else {
     type = 2;
     blip = escher(0, 0x3d4, 0xf01a, cat(ids, zeros(34), image.bytes));
@@ -262,22 +273,43 @@ function sheetDrawing(
       cat(
         escher(2, 75, 0xf00a, u32(1025 + i, 0x0a00)),
         // pib (0x0104, com a marca de blip) e fNoFillHitTest, em ordem de id.
-        escher(3, 2, 0xf00b, cat(u16(0x4104), u32(blip), u16(0x01bf), u32(0x00110000))),
+        escher(
+          3,
+          2,
+          0xf00b,
+          cat(u16(0x4104), u32(blip), u16(0x01bf), u32(0x00110000)),
+        ),
         escher(
           0,
           0,
           0xf010,
-          u16(2, image.col, 0, image.row, 0, image.col + 1, 0, image.row + 1, 0),
+          u16(
+            2,
+            image.col,
+            0,
+            image.row,
+            0,
+            image.col + 1,
+            0,
+            image.row + 1,
+            0,
+          ),
         ),
         escher(0, 0, 0xf011, new Uint8Array(0)),
       ),
     ),
   );
-  const fdg = escher(0, 1, 0xf008, u32(images.length + 1, 1024 + images.length));
+  const fdg = escher(
+    0,
+    1,
+    0xf008,
+    u32(images.length + 1, 1024 + images.length),
+  );
   const spgr = escher(15, 0, 0xf003, cat(group, ...shapes));
   const dg = escher(15, 0, 0xf002, cat(fdg, spgr));
   // Primeiro fragmento: cabeçalhos, FDG, grupo e a primeira forma; depois uma forma por fragmento.
-  const firstLen = dg.length - shapes.slice(1).reduce((n, s) => n + s.length, 0);
+  const firstLen =
+    dg.length - shapes.slice(1).reduce((n, s) => n + s.length, 0);
   const fragments = [dg.subarray(0, firstLen)];
   let off = firstLen;
   for (const shape of shapes.slice(1)) {
@@ -313,28 +345,38 @@ function sheetDrawing(
 
 /* ---- fluxo Workbook (BIFF8) ---- */
 
-function cellRecords(cells: XlsFixtureCell[], sstIndex: Map<string, number>): Uint8Array {
+function cellRecords(
+  cells: XlsFixtureCell[],
+  sstIndex: Map<string, number>,
+): Uint8Array {
   const out: Uint8Array[] = [];
   const sorted = [...cells].sort((a, b) => a.row - b.row || a.col - b.col);
   for (const { row, col, cell } of sorted) {
     const head = u16(row, col, 15);
     switch (cell.kind) {
       case "sst":
-        out.push(biffRecord(0x00fd, cat(head, u32(sstIndex.get(cell.value) ?? 0))));
+        out.push(
+          biffRecord(0x00fd, cat(head, u32(sstIndex.get(cell.value) ?? 0))),
+        );
         break;
       case "label":
         out.push(biffRecord(0x0204, cat(head, unicodeString(cell.value))));
         break;
       case "rstring":
         out.push(
-          biffRecord(0x00d6, cat(head, unicodeString(cell.value), u16(1), u16(0, 0))),
+          biffRecord(
+            0x00d6,
+            cat(head, unicodeString(cell.value), u16(1), u16(0, 0)),
+          ),
         );
         break;
       case "number":
         out.push(biffRecord(0x0203, cat(head, f64(cell.value))));
         break;
       case "rk":
-        out.push(biffRecord(0x027e, cat(head, u32(rkEncode(cell.value, cell.x100)))));
+        out.push(
+          biffRecord(0x027e, cat(head, u32(rkEncode(cell.value, cell.x100)))),
+        );
         break;
       case "mulrk":
         out.push(
@@ -363,9 +405,13 @@ function cellRecords(cells: XlsFixtureCell[], sstIndex: Map<string, number>): Ui
               : f64(cell.number);
         // grbit, chn, tamanho da fórmula e um ptgInt(1) como fórmula.
         out.push(
-          biffRecord(0x0006, cat(head, result, u16(0), u32(0), u16(3), u8(0x1e), u16(1))),
+          biffRecord(
+            0x0006,
+            cat(head, result, u16(0), u32(0), u16(3), u8(0x1e), u16(1)),
+          ),
         );
-        if ("text" in cell) out.push(biffRecord(0x0207, unicodeString(cell.text)));
+        if ("text" in cell)
+          out.push(biffRecord(0x0207, unicodeString(cell.text)));
         break;
       }
     }
@@ -403,7 +449,11 @@ export function biffBytes(
     return cat(
       bof(0x0010),
       cellRecords(sheet.cells, sstIndex),
-      sheetDrawing(own, options.drawingContinue ?? false, options.textbox ?? false),
+      sheetDrawing(
+        own,
+        options.drawingContinue ?? false,
+        options.textbox ?? false,
+      ),
       eof,
     );
   });
@@ -427,7 +477,10 @@ export function biffBytes(
     const data = drawingGroup(images, images.length);
     for (let off = 0; off < data.length; off += limit)
       group.push(
-        biffRecord(off === 0 ? 0x00eb : 0x003c, data.subarray(off, off + limit)),
+        biffRecord(
+          off === 0 ? 0x00eb : 0x003c,
+          data.subarray(off, off + limit),
+        ),
       );
   }
   const tail = cat(...group, ...sst, eof);
@@ -451,7 +504,10 @@ export function biffBytes(
  * início, diretório, e o fluxo no mini stream (com mini FAT) quando tem
  * menos de 4096 bytes ou em setores regulares quando é maior.
  */
-export function cfbBytes(streamName: string, stream: Uint8Array): Uint8Array<ArrayBuffer> {
+export function cfbBytes(
+  streamName: string,
+  stream: Uint8Array,
+): Uint8Array<ArrayBuffer> {
   const SS = 512;
   const MS = 64;
   const mini = stream.length < 4096;
@@ -470,7 +526,12 @@ export function cfbBytes(streamName: string, stream: Uint8Array): Uint8Array<Arr
   for (;;) {
     difatSectors = fatSectors > 109 ? Math.ceil((fatSectors - 109) / 127) : 0;
     const total =
-      fatSectors + difatSectors + 1 + miniFatSectors + miniStreamSectors + streamSectors;
+      fatSectors +
+      difatSectors +
+      1 +
+      miniFatSectors +
+      miniStreamSectors +
+      streamSectors;
     const need = Math.ceil(total / (SS / 4));
     if (need <= fatSectors) break;
     fatSectors = need;
@@ -507,14 +568,23 @@ export function cfbBytes(streamName: string, stream: Uint8Array): Uint8Array<Arr
       const k = 109 + d * 127 + i;
       view.setUint32(off + i * 4, k < fatSectors ? k : FREESECT, true);
     }
-    view.setUint32(off + 127 * 4, d + 1 < difatSectors ? difatStart + d + 1 : ENDOFCHAIN, true);
+    view.setUint32(
+      off + 127 * 4,
+      d + 1 < difatSectors ? difatStart + d + 1 : ENDOFCHAIN,
+      true,
+    );
   }
 
   // FAT.
   const fat = (s: number, v: number) =>
-    view.setUint32(SS * (1 + Math.floor(s / (SS / 4))) + (s % (SS / 4)) * 4, v, true);
+    view.setUint32(
+      SS * (1 + Math.floor(s / (SS / 4))) + (s % (SS / 4)) * 4,
+      v,
+      true,
+    );
   const chain = (start: number, n: number) => {
-    for (let i = 0; i < n; i++) fat(start + i, i === n - 1 ? ENDOFCHAIN : start + i + 1);
+    for (let i = 0; i < n; i++)
+      fat(start + i, i === n - 1 ? ENDOFCHAIN : start + i + 1);
   };
   for (let s = 0; s < fatSectors * (SS / 4); s++) fat(s, FREESECT);
   for (let s = 0; s < fatSectors; s++) fat(s, FATSECT);
@@ -575,5 +645,8 @@ export function xlsBytes(
   images: XlsFixtureImage[] = [],
   options: XlsFixtureOptions = {},
 ): Uint8Array<ArrayBuffer> {
-  return cfbBytes(options.streamName ?? "Workbook", biffBytes(sheets, images, options));
+  return cfbBytes(
+    options.streamName ?? "Workbook",
+    biffBytes(sheets, images, options),
+  );
 }

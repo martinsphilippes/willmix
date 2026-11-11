@@ -10,23 +10,12 @@ const {
   USER_EXTRA_DEFAULTS,
 } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
-const {
-  createRequest,
-  openRfq,
-  answerQuote,
-  selectQuote,
-  confirmDownPayment,
-  getRequestForUser,
-} = await import("@/lib/services/requests");
-const {
-  canViewOrder,
-  canViewQuote,
-  canSeeInternalCosts,
-  canSeeSupplier,
-  canSeeSellPrice,
-} = await import("@/lib/auth/permissions");
+const { createRequest, getRequestForUser } =
+  await import("@/lib/services/requests");
+const { canViewOrder, canSeeInternalCosts, canSeeSupplier, canSeeSellPrice } =
+  await import("@/lib/auth/permissions");
+const { orderFromRequest } = await import("./helpers/order");
 const { canAccessDocument } = await import("@/lib/services/documents");
-const { pendingTasksFor } = await import("@/lib/services/tasks");
 type User = import("@/lib/db").User;
 
 let users: User[] = [];
@@ -90,39 +79,10 @@ describe("isolamento entre papéis", () => {
     expect(await getRequestForUser(customer, request.id)).not.toBeNull();
     expect(await getRequestForUser(operator, request.id)).not.toBeNull();
 
-    await openRfq(operator, request.id, ["fornecedor-a", "fornecedor-b"]);
-    const [quoteA] = await store.list("quotes", {
-      filter: { requestId: request.id, supplierId: "fornecedor-a" },
-    });
-    expect(canViewQuote(by("supplier", "fornecedor-a"), quoteA)).toBe(true);
-    expect(canViewQuote(by("supplier", "fornecedor-b"), quoteA)).toBe(false);
-    expect(canViewQuote(by("supplier", "fornecedor-c"), quoteA)).toBe(false);
-    // fornecedor C (não convidado) não tem pendência de cotação
-    expect(
-      (await pendingTasksFor(by("supplier", "fornecedor-c"))).filter(
-        (t) => t.kind === "quote",
-      ),
-    ).toHaveLength(0);
-
-    await answerQuote(by("supplier", "fornecedor-a"), quoteA.id, {
+    const order = await orderFromRequest(operator, request, {
       price: 3,
-      currency: "USD",
-      leadTimeDays: 20,
-    });
-    // fornecedor não seleciona cotação
-    await expect(
-      selectQuote(by("supplier", "fornecedor-a"), quoteA.id, {
-        sellPrice: 100,
-        sellCurrency: "BRL",
-      }),
-    ).rejects.toThrow();
-    await selectQuote(operator, quoteA.id, {
       sellPrice: 9000,
-      sellCurrency: "BRL",
     });
-    // cliente não confirma o próprio sinal (modo manual é da Wellmix)
-    await expect(confirmDownPayment(customer, request.id)).rejects.toThrow();
-    const order = await confirmDownPayment(operator, request.id);
 
     // visibilidade do pedido
     expect(canViewOrder(customer, order)).toBe(true);

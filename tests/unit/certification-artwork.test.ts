@@ -11,12 +11,12 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const f = await import("@/lib/services/import-flow");
 const art = await import("@/lib/services/artwork");
 const pt = await import("@/lib/services/price-table");
 const { zipStream, safeZipNames } = await import("@/lib/zip-stream");
-const { setSetting } = await import("@/lib/settings");
 const { canViewOrder } = await import("@/lib/auth/permissions");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
@@ -55,7 +55,6 @@ beforeAll(async () => {
   ocp = by("ocp@certifica.com");
   comex = by("comex@assessoria.com");
   agency = users.find((u) => u.role === "agency")!;
-  await setSetting("approvalsEnabled", false);
   const req = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: "prod-jarra",
@@ -67,21 +66,7 @@ beforeAll(async () => {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, req.id, ["fornecedor-a"]);
-  const [quote] = await getStore().list("quotes", {
-    filter: { requestId: req.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 50_000,
-    sellCurrency: "BRL",
-  });
-  order = await r.confirmDownPayment(admin, req.id);
+  order = await orderFromRequest(admin, req, { sellPrice: 50_000 });
   order = await getStore().update("orders", order.id, {
     status: "PREPARATION",
     ocpId: ocp.partyId,
