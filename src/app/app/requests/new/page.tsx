@@ -46,6 +46,10 @@ export default async function NewRequestPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "requests");
+  // Só o cliente e a Wellmix criam solicitação. Outro login que receba a tela
+  // (Gestão de telas) fica na lista, vazia para ele: o catálogo de produtos
+  // deste formulário não vai para quem não compra.
+  if (!isWellmix(user) && user.role !== "customer") redirect("/app/requests");
   const {
     error,
     productId,
@@ -71,8 +75,9 @@ export default async function NewRequestPage({
     ? await store.get("parties", addToRequest.customerId)
     : null;
   // Pré-preenchimento vindo da ficha do produto ou de uma programação de compra.
+  // A programação de compra é da Wellmix: só ela abre o formulário por uma.
   const schedule =
-    typeof scheduleId === "string"
+    typeof scheduleId === "string" && isWellmix(user)
       ? await store.get("purchase_schedules", scheduleId)
       : null;
   const presetProductId =

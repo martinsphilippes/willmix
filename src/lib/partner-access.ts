@@ -61,9 +61,9 @@ const OWN_DATA_SCREENS: readonly Screen[] = [
 
 /**
  * A tela foi feita para outro papel e o conteúdo dela ainda é só dos
- * registros daquele papel (ex.: a vitrine é do cliente; cotações, do
- * fornecedor): liberada a este perfil, abre vazia ou volta ao início, até
- * ser adaptada para os dados dele.
+ * registros daquele papel (ex.: a vitrine é do cliente; as solicitações ao
+ * fornecedor, do fornecedor): liberada a este perfil, abre vazia ou volta ao
+ * início, até ser adaptada para os dados dele.
  */
 export const isLimitedFor = (screen: Screen, profileKey: string) =>
   isGrantable(screen) &&
@@ -124,7 +124,8 @@ export function resolveProfile(
       custom: false,
     };
   }
-  // O gravado nunca vale mais que o permitido ao papel do perfil.
+  // O gravado nunca vale mais que as telas de login externo (as internas da
+  // Wellmix saem, mesmo que estejam gravadas).
   const screens = [
     ...new Set([...ALWAYS_OPEN, ...valid(stored.screens)]),
   ].filter(isGrantable);

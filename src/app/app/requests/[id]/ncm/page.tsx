@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import {
   canClassifyNcm,
@@ -34,6 +35,9 @@ export default async function RequestNcmPage({
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) notFound();
   if (isWellmix(user)) redirect(`/app/requests/${id}#ncm`);
   if (!canClassifyNcm(user)) redirect("/app?denied=requests");
+  // Despachante: a fila do NCM está nas Pendências; sem essa tela no perfil
+  // (Gestão de telas), a classificação também não abre.
+  requireScreen(user, "tasks");
   const { error, ncmConfirmed, ncmSuggested, ncmAi } = await searchParams;
   const work = await ncmWorkFor(user, id);
   if (!work) notFound();

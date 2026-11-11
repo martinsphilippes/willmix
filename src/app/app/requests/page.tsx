@@ -2,6 +2,7 @@ import { LiveSearch } from "@/components/live-search";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { SCREENS, SCREEN_LABEL, type Screen } from "@/lib/auth/screens";
 import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
 import { canDeleteRequest } from "@/lib/services/requests";
 import {
@@ -70,13 +71,19 @@ export default async function RequestsPage({
   searchParams,
 }: PageProps<"/app/requests">) {
   const sp = await searchParams;
-  const { view, deleted, skipped, error, group, created } = sp;
+  const { view, deleted, skipped, error, group, created, denied } = sp;
   // Lote: ?group=<groupId> mostra só as solicitações criadas juntas.
   const groupId = typeof group === "string" && group ? group : null;
   const showDeleted = view === "deleted";
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "requests");
+  // Tela negada no caminho até aqui (?denied=…): aviso, só com chave conhecida.
+  const deniedScreen =
+    typeof denied === "string" &&
+    (SCREENS as readonly string[]).includes(denied)
+      ? (denied as Screen)
+      : null;
   const t = await getT();
   const store = getStore();
   // Cliente: só as solicitações do próprio login (canViewRequest).
@@ -268,12 +275,14 @@ export default async function RequestsPage({
         // Cliente: "Orçamentos", como no menu "Meus pedidos" (a vitrine é o início).
         title={customer ? t("nav.myQuotes") : t("requests.title")}
         subtitle={customer ? t("home.welcome", { name: user.name }) : undefined}
+        // O cliente cria pela vitrine (cartão abaixo). Outro login que receba
+        // a tela (Gestão de telas) só consulta: não cria solicitação.
         actions={
-          customer ? undefined : (
+          wellmix ? (
             <LinkButton href="/app/requests/new" variant="primary">
               + {t("requests.new")}
             </LinkButton>
-          )
+          ) : undefined
         }
       />
       {customer ? (
@@ -420,6 +429,13 @@ export default async function RequestsPage({
           <h2 className="text-base font-semibold text-zinc-900">
             {t("customerHome.requests.title")}
           </h2>
+        </div>
+      ) : null}
+      {deniedScreen ? (
+        <div className="mb-3">
+          <Alert tone="warning">
+            {t("access.denied", { screen: t(SCREEN_LABEL[deniedScreen]) })}
+          </Alert>
         </div>
       ) : null}
       {count(created) > 1 ? (

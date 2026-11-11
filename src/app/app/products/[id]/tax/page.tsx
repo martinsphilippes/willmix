@@ -29,8 +29,9 @@ export default async function ProductTaxPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   assertRole(user, ["admin", "operator", "broker"]);
-  // Wellmix: só quem abre Produtos; o despachante entra pelo pedido.
-  if (user.role !== "broker") requireScreen(user, "products");
+  // Wellmix: só quem abre Produtos; o despachante entra pelo pedido (e
+  // precisa da tela Pedidos no perfil).
+  requireScreen(user, user.role === "broker" ? "orders" : "products");
   const { id } = await params;
   const { error } = await searchParams;
   const store = getStore();

@@ -19,11 +19,15 @@ import { field, files, requireUser, run, str } from "./helpers";
 const ncmBack = (user: User, requestId: string) =>
   `/app/requests/${encodeURIComponent(requestId)}${isWellmix(user) ? "" : "/ncm"}`;
 
-/** Wellmix: precisa abrir Solicitações. Despachante: o serviço confere o papel. */
+/**
+ * Wellmix: precisa abrir Solicitações. Despachante: o serviço confere o papel
+ * e o perfil precisa ter as Pendências (é onde está a fila do NCM).
+ */
 async function assertNcmAccess(user: User) {
   if (isWellmix(user)) return assertScreen(user, "requests");
   const { assertNcmClassifier } = await import("@/lib/services/request-ncm");
   assertNcmClassifier(user);
+  assertScreen(user, "tasks");
 }
 
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);

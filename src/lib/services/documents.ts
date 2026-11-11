@@ -128,6 +128,15 @@ export async function uploadDocument(
   return createDocumentRow(user, stored, input, bytes);
 }
 
+/** O arquivo (chave no armazenamento) já pertence a um documento registrado. */
+async function fileKeyTaken(fileKey: string): Promise<boolean> {
+  const taken = await getStore().list("documents", {
+    filter: { storageKey: fileKey },
+    limit: 1,
+  });
+  return taken.length > 0;
+}
+
 /**
  * Documento cujo arquivo o navegador já subiu direto ao armazenamento (token
  * de upload): o servidor só confere que existe, tamanho e tipo, e registra.
@@ -142,6 +151,9 @@ export async function registerUploadedDocument(
   const store = getStore();
   const stored = await store.statFile(fileKey);
   if (!stored) throw new DocumentError("upload_missing");
+  // Arquivo que já é de um documento: recusa antes de qualquer limpeza, para
+  // nunca apagar o arquivo de um documento registrado.
+  if (await fileKeyTaken(fileKey)) throw new DocumentError("upload_missing");
   if (stored.size === 0) throw new DocumentError("empty");
   if (stored.size > MAX_BYTES) {
     await store.removeFile(fileKey);
@@ -152,11 +164,6 @@ export async function registerUploadedDocument(
     await store.removeFile(fileKey);
     throw new DocumentError("mime");
   }
-  const taken = await store.list("documents", {
-    filter: { storageKey: fileKey },
-    limit: 1,
-  });
-  if (taken.length) throw new DocumentError("upload_missing");
   return createDocumentRow(user, { ...stored, mime }, input, null);
 }
 
@@ -171,6 +178,7 @@ export async function registerUploadedPhoto(
 ): Promise<Document> {
   const stored = await getStore().statFile(fileKey);
   if (!stored) throw new DocumentError("upload_missing");
+  if (await fileKeyTaken(fileKey)) throw new DocumentError("upload_missing");
   if (!(stored.mime ?? "").startsWith("image/")) {
     await getStore().removeFile(fileKey);
     throw new DocumentError("mime");

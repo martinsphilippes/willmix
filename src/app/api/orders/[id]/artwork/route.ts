@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getStore } from "@/lib/db";
 import { canViewOrder } from "@/lib/auth/permissions";
+import { canOpen } from "@/lib/auth/screens";
 import { artworkDocuments } from "@/lib/services/artwork";
 import { audit } from "@/lib/services/audit";
 import { safeZipNames, zipStream } from "@/lib/zip-stream";
@@ -19,7 +20,8 @@ export async function GET(
   const { id } = await context.params;
   const store = getStore();
   const order = await store.get("orders", id);
-  if (!order || !canViewOrder(user, order))
+  // Sem a tela Pedidos no perfil, o zip também não sai (como no pedido de compra).
+  if (!order || !canOpen(user, "orders") || !canViewOrder(user, order))
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   const docs = await artworkDocuments(user, order);
   if (!docs.length)

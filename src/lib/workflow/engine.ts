@@ -360,7 +360,8 @@ export function canSubmitRequirement(
   if (user.role === "customer" && order.requestedByUserId !== user.id)
     return false;
   const partyField = ROLE_PARTY_FIELD[user.role];
-  if (!partyField) return false;
+  // Login sem empresa não casa com pedido que ainda não tem esse parceiro.
+  if (!partyField || !user.partyId) return false;
   return order[partyField] === user.partyId;
 }
 

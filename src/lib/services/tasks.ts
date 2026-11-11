@@ -1125,6 +1125,7 @@ export function isInvolved(user: User, order: Order): boolean {
       order.customerId === user.partyId && order.requestedByUserId === user.id
     );
   const field = ROLE_PARTY_FIELD[user.role];
-  if (!field) return false;
+  // Login sem empresa não casa com pedido que ainda não tem esse parceiro.
+  if (!field || !user.partyId) return false;
   return order[field] === user.partyId;
 }

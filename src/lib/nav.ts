@@ -1,6 +1,6 @@
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { isWellmix } from "@/lib/auth/permissions";
-import { menuScreensFor, type Screen } from "@/lib/auth/screens";
+import { canOpen, menuScreensFor, type Screen } from "@/lib/auth/screens";
 import type { User } from "@/lib/db/schema";
 
 /*
@@ -64,10 +64,7 @@ const GRANTED_FROM_CUSTOMER: Entry[] = [
   ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
 ];
 const GRANTED_FROM_PARTNERS: Entry[] = [
-  [
-    "quotes",
-    { href: "/app/supplier-requests", key: "nav.supplierRequests" },
-  ],
+  ["quotes", { href: "/app/supplier-requests", key: "nav.supplierRequests" }],
   ["freight", { href: "/app/freight", key: "nav.freight" }],
   [
     "freightTariff",
@@ -201,7 +198,14 @@ export function navFor(
     ...group(
       "nav.group.home",
       pick(has, [
-        ["home", { href: "/app", key: "nav.tasks" }],
+        // O início são as Pendências; sem elas no perfil, é só "Início".
+        [
+          "home",
+          {
+            href: "/app",
+            key: canOpen(user, "tasks") ? "nav.tasks" : "nav.home",
+          },
+        ],
         [
           "notifications",
           { href: "/app/notifications", key: "nav.notifications" },

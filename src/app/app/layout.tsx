@@ -7,6 +7,7 @@ import { getLocale, getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
 import { flattenNav, isNavGroup, navFor, type NavLink } from "@/lib/nav";
 import { isWellmix } from "@/lib/auth/permissions";
+import { canOpen } from "@/lib/auth/screens";
 import {
   topicLabel,
   unreadCountFor,
@@ -27,6 +28,7 @@ import { dataMode } from "@/lib/env";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { ChatDrawer } from "@/components/chat-drawer";
+import { ChatAccess } from "@/components/chat-access";
 import {
   chatReplyLabels,
   chatUploadLabels,
@@ -198,18 +200,24 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
   // Mensagens não lidas (selo do item "Mensagens" e do balão do cabeçalho);
   // quem é de fora também ganha a faixa com a mais recente. Falha aqui não
   // derruba o portal.
-  const digest = isWellmix(user)
-    ? null
-    : await unreadDigest(user, locale).catch((error: unknown) => {
-        console.error("unreadDigest failed", error);
-        return null;
-      });
+  // Sem a tela Mensagens no perfil (Gestão de telas), o cabeçalho não traz
+  // mensagens: nem a faixa da mais recente, nem os ícones e o painel de chat.
+  const seesMessages = canOpen(user, "messages");
+  const digest =
+    isWellmix(user) || !seesMessages
+      ? null
+      : await unreadDigest(user, locale).catch((error: unknown) => {
+          console.error("unreadDigest failed", error);
+          return null;
+        });
   const unreadMessages = digest
     ? digest.total
-    : await unreadCountFor(user).catch((error: unknown) => {
-        console.error("unreadCountFor failed", error);
-        return 0;
-      });
+    : !seesMessages
+      ? 0
+      : await unreadCountFor(user).catch((error: unknown) => {
+          console.error("unreadCountFor failed", error);
+          return 0;
+        });
   const link = (l: NavLink) => ({
     href: l.href,
     label: t(l.key),
@@ -239,22 +247,26 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
       )
     : [];
   const roleLabel = t(`role.${user.role}`);
-  // Não lidas no sino (até 100: o que a caixa de entrada mostra).
-  const unread = (
-    await getStore().list("notifications", {
-      filter: { userId: user.id, channel: "inapp" },
-      orderBy: "createdAt",
-      direction: "desc",
-      limit: 100,
-    })
-  ).filter((n) => !n.readAt).length;
-  const bell = (
+  // Não lidas no sino (até 100: o que a caixa de entrada mostra). Sem a tela
+  // Notificações no perfil, o sino não aparece (ele levaria a uma tela negada).
+  const seesNotifications = canOpen(user, "notifications");
+  const unread = seesNotifications
+    ? (
+        await getStore().list("notifications", {
+          filter: { userId: user.id, channel: "inapp" },
+          orderBy: "createdAt",
+          direction: "desc",
+          limit: 100,
+        })
+      ).filter((n) => !n.readAt).length
+    : 0;
+  const bell = seesNotifications ? (
     <NotificationsBell
       unread={unread}
       label={t("nav.notifications")}
       unreadLabel={t("nav.notifications.unread", { n: String(unread) })}
     />
-  );
+  ) : null;
   const hasMessages = flattenNav(nav).some((l) => l.href === "/app/messages");
 
   return (
@@ -412,35 +424,37 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         {user.mustChangePassword ? (
           <PasswordChangeCard t={t} firstAccess />
         ) : (
-          children
+          <ChatAccess enabled={seesMessages}>{children}</ChatAccess>
         )}
       </main>
       {/* Painel lateral de chat: abre de qualquer linha com o ícone de conversa. */}
-      <ChatDrawer
-        labels={{
-          title: t("chat.title"),
-          with: t("chat.with"),
-          about: t("chat.about"),
-          wholeOrder: t("chat.whole.order"),
-          wholeRequest: t("chat.whole.request"),
-          openFull: t("chat.openFull"),
-          close: t("chat.close"),
-          loading: t("chat.loading"),
-          noParticipants: t("chat.noParticipants"),
-          error: t("chat.error"),
-          attachHint: t("chat.attachHint"),
-          send: t("messages.send"),
-          sending: t("messages.sending"),
-          placeholder: t("messages.body.placeholder"),
-          you: t("messages.you"),
-          wellmix: t("messages.side.wellmix"),
-          empty: t("messages.empty.thread"),
-          intl: t.intl,
-          attach: chatUploadLabels(t),
-          reply: chatReplyLabels(t),
-          videoDownload: t("messages.video.download"),
-        }}
-      />
+      {seesMessages ? (
+        <ChatDrawer
+          labels={{
+            title: t("chat.title"),
+            with: t("chat.with"),
+            about: t("chat.about"),
+            wholeOrder: t("chat.whole.order"),
+            wholeRequest: t("chat.whole.request"),
+            openFull: t("chat.openFull"),
+            close: t("chat.close"),
+            loading: t("chat.loading"),
+            noParticipants: t("chat.noParticipants"),
+            error: t("chat.error"),
+            attachHint: t("chat.attachHint"),
+            send: t("messages.send"),
+            sending: t("messages.sending"),
+            placeholder: t("messages.body.placeholder"),
+            you: t("messages.you"),
+            wellmix: t("messages.side.wellmix"),
+            empty: t("messages.empty.thread"),
+            intl: t.intl,
+            attach: chatUploadLabels(t),
+            reply: chatReplyLabels(t),
+            videoDownload: t("messages.video.download"),
+          }}
+        />
+      ) : null}
       <footer className="border-t border-zinc-200 bg-white">
         <div className="mx-auto flex w-full portal-wide flex-wrap items-center justify-between gap-3 px-4 py-4 text-xs text-zinc-500">
           <div className="flex items-center gap-3">
