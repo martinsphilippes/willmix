@@ -9,7 +9,7 @@ export const maxDuration = 60;
 
 /**
  * Carga do Sankhya no servidor (docs/SANKHYA.md): uma rodada de ~30 s da fila
- * ligada em Configurações → Sankhya. Chamada a cada minuto pelo agendador do
+ * ligada em Configurações → Sankhya. Chamada a cada 30 segundos pelo agendador do
  * Supabase (pg_cron, com a chave guardada no banco) ou com CRON_SECRET.
  * Sem fila ativa, não faz nada.
  */
