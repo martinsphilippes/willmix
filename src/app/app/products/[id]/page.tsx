@@ -60,7 +60,6 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
   Badge,
-  Card,
   DescriptionList,
   Empty,
   Field,
@@ -104,6 +103,8 @@ import { VariantsCard } from "../_components/variants-card";
 import { listProductVariants } from "@/lib/services/product-variants";
 import { SheetPhotoChecklist } from "../_components/sheet-photo-checklist";
 import { MissingFields } from "@/components/missing-fields";
+import { FoldSection } from "@/components/fold-section";
+import { FoldMemory } from "@/components/fold-memory";
 import { missingFieldsView } from "@/components/missing-fields-view";
 import { productSuppliersView } from "@/lib/services/product-suppliers";
 import { unifiedProductNotes } from "@/lib/sheet-registration";
@@ -884,7 +885,13 @@ export default async function ProductSheetPage({
       </form>
 
       {/* ---- Fornecedores deste produto (vários; quem cota entra sozinho) ---- */}
-      <section className="mt-4">
+      <FoldMemory storageKey={`product:${product.id}`} />
+      <FoldSection
+        title={t("productSuppliers.title")}
+        fold="suppliers"
+        className="mt-4"
+        bare
+      >
         <SuppliersCard
           t={t}
           productId={product.id}
@@ -892,10 +899,15 @@ export default async function ProductSheetPage({
           suppliers={suppliers}
           done={typeof suppliersDone === "string" ? suppliersDone : null}
         />
-      </section>
+      </FoldSection>
 
       {/* ---- Variações (modelo, tamanho, acabamento): o produto espelha a de referência ---- */}
-      <section className="mt-4">
+      <FoldSection
+        title={t("productVariants.title")}
+        fold="variants"
+        className="mt-2"
+        bare
+      >
         <VariantsCard
           t={t}
           productId={product.id}
@@ -903,15 +915,16 @@ export default async function ProductSheetPage({
           done={typeof variantsDone === "string" ? variantsDone : null}
           errorText={errorFrom === "variants" ? errorText : null}
         />
-      </section>
+      </FoldSection>
 
       {/* ---- Ficha de compra mestre: a mesma ficha do pedido; pedidos e cotações deste produto nascem dela ---- */}
-      <section id="product-sheet" className="mt-4 scroll-mt-4 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold tracking-tight text-zinc-900">
-            {t("productSheet.title")}
-          </h2>
-          {masterMissing.length === 0 ? (
+      <FoldSection
+        id="product-sheet"
+        title={t("productSheet.title")}
+        fold="sheet"
+        className="mt-2"
+        badge={
+          masterMissing.length === 0 ? (
             <Badge tone="success">{t("productSheet.complete")}</Badge>
           ) : masterSheet ? (
             <Badge tone="warning">
@@ -919,122 +932,125 @@ export default async function ProductSheetPage({
             </Badge>
           ) : (
             <Badge tone="neutral">{t("productSheet.none")}</Badge>
-          )}
-        </div>
-        <p className="max-w-3xl text-sm leading-relaxed text-zinc-600">
-          {t("productSheet.hint")}
-        </p>
-        {/* Foto do quadro: preenche a ficha mestre e aponta divergências. */}
-        <SheetBoardReader
-          t={t}
-          scope="product"
-          sheetKey={product.id}
-          view={await sheetReadingView(product.id, masterView)}
-          canRead
-          canResolve
-          error={error}
-          board={board}
-        />
-        {/* Quem fabrica este produto (cartões por fornecedor). */}
-        <ProductManufacturerCards
-          t={t}
-          productId={product.id}
-          rows={await productCards(user, product.id)}
-        />
-        {sheetSaved === "complete" ? (
-          <Alert tone="success">{t("productSheet.saved")}</Alert>
-        ) : masterMissing.length ? (
-          // Cada campo que falta é clicável e leva até ele; logo depois de
-          // salvar, a tela já vai para o primeiro.
-          <MissingFields
-            // Cada salvamento com pendência remonta o aviso e leva de novo ao campo.
-            key={typeof saveToken === "string" ? saveToken : "idle"}
-            {...missingFieldsView(
-              t,
-              sheetSaved === "partial"
-                ? "productSheet.savedPartial"
-                : "productSheet.missing",
-              masterMissing,
-            )}
-            tone={sheetSaved === "partial" ? "warning" : "neutral"}
-            autoFocus={sheetSaved === "partial"}
-          />
-        ) : null}
-        <SheetSafety
-          // Refeito junto com a ficha (abaixo): devolve o digitado e não salvo.
-          key={`guard|${masterFormKey}`}
-          t={t}
-          formId="product-sheet-form"
-          storageKey={`product:${id}`}
-          userId={user.id}
-          // Erro que veio deste formulário (a página tem outros formulários).
-          error={
-            typeof error === "string" &&
-            (error === "invalid_fields" || typeof sheetSaved !== "string")
-              ? error
-              : undefined
-          }
-          fields={invalidFields}
-          saved={typeof sheetSaved === "string" && !!sheetSaved}
-          token={saveToken}
-        />
-        <p className="text-xs text-zinc-500" data-master-photos>
-          {t("productSheet.photos", { n: masterPhotoKinds.length })}
-          {masterPhotoKinds.length < 5 ? (
-            <>
-              {" "}
-              <TextLink href="#sheet-photos" className="font-medium">
-                {t("productSheet.photosLink")}
-              </TextLink>
-            </>
-          ) : null}
-        </p>
-        <form
-          // Refeita quando a ficha ou o produto mudam no servidor (ex.: material
-          // e cor da sugestão da IA): sem isto mostrava o valor antigo.
-          key={masterFormKey}
-          id="product-sheet-form"
-          action={saveProductSheetAction}
-          // Mesma grade de 2 colunas da ficha do pedido: cards pequenos lado a lado.
-          className="grid gap-4 lg:grid-cols-2"
-          data-sheet-sections-root
-        >
-          <input type="hidden" name="productId" value={product.id} />
-          <PurchaseSheetFields
-            t={t}
-            sheet={masterView}
-            plan={masterPlan}
-            containerType={masterContainer.code}
-            containerTypes={settings.containerTypes}
-            editSupplier
-            editCustoms
-            lotRequired={false}
-            master
-            missing={masterMissing}
-            photosHref="#photos"
-            // Caixas repetidas ficam só no cadastro, acima.
-            omitRegistration
-            registrationSupplierName={
-              suppliers.find((s) => s.id === product.supplierId)?.name ?? null
-            }
-            supplierId={product.supplierId}
-            ncmSuggestions={ncmChipsView(
-              t,
-              await ncmSuggestionsFor(product.id),
-            )}
-          />
-          <p className="text-xs text-zinc-500 lg:order-7 lg:col-span-2">
-            {t("productSheet.photosHint")}
+          )
+        }
+      >
+        <div className="space-y-3">
+          <p className="max-w-3xl text-sm leading-relaxed text-zinc-600">
+            {t("productSheet.hint")}
           </p>
-          <div className="lg:order-7 lg:col-span-2">
-            <SubmitButton>{t("productSheet.save")}</SubmitButton>
-          </div>
-        </form>
-      </section>
+          {/* Foto do quadro: preenche a ficha mestre e aponta divergências. */}
+          <SheetBoardReader
+            t={t}
+            scope="product"
+            sheetKey={product.id}
+            view={await sheetReadingView(product.id, masterView)}
+            canRead
+            canResolve
+            error={error}
+            board={board}
+          />
+          {/* Quem fabrica este produto (cartões por fornecedor). */}
+          <ProductManufacturerCards
+            t={t}
+            productId={product.id}
+            rows={await productCards(user, product.id)}
+          />
+          {sheetSaved === "complete" ? (
+            <Alert tone="success">{t("productSheet.saved")}</Alert>
+          ) : masterMissing.length ? (
+            // Cada campo que falta é clicável e leva até ele; logo depois de
+            // salvar, a tela já vai para o primeiro.
+            <MissingFields
+              // Cada salvamento com pendência remonta o aviso e leva de novo ao campo.
+              key={typeof saveToken === "string" ? saveToken : "idle"}
+              {...missingFieldsView(
+                t,
+                sheetSaved === "partial"
+                  ? "productSheet.savedPartial"
+                  : "productSheet.missing",
+                masterMissing,
+              )}
+              tone={sheetSaved === "partial" ? "warning" : "neutral"}
+              autoFocus={sheetSaved === "partial"}
+            />
+          ) : null}
+          <SheetSafety
+            // Refeito junto com a ficha (abaixo): devolve o digitado e não salvo.
+            key={`guard|${masterFormKey}`}
+            t={t}
+            formId="product-sheet-form"
+            storageKey={`product:${id}`}
+            userId={user.id}
+            // Erro que veio deste formulário (a página tem outros formulários).
+            error={
+              typeof error === "string" &&
+              (error === "invalid_fields" || typeof sheetSaved !== "string")
+                ? error
+                : undefined
+            }
+            fields={invalidFields}
+            saved={typeof sheetSaved === "string" && !!sheetSaved}
+            token={saveToken}
+          />
+          <p className="text-xs text-zinc-500" data-master-photos>
+            {t("productSheet.photos", { n: masterPhotoKinds.length })}
+            {masterPhotoKinds.length < 5 ? (
+              <>
+                {" "}
+                <TextLink href="#sheet-photos" className="font-medium">
+                  {t("productSheet.photosLink")}
+                </TextLink>
+              </>
+            ) : null}
+          </p>
+          <form
+            // Refeita quando a ficha ou o produto mudam no servidor (ex.: material
+            // e cor da sugestão da IA): sem isto mostrava o valor antigo.
+            key={masterFormKey}
+            id="product-sheet-form"
+            action={saveProductSheetAction}
+            // Mesma grade de 2 colunas da ficha do pedido: cards pequenos lado a lado.
+            className="grid gap-4 lg:grid-cols-2"
+            data-sheet-sections-root
+          >
+            <input type="hidden" name="productId" value={product.id} />
+            <PurchaseSheetFields
+              t={t}
+              sheet={masterView}
+              plan={masterPlan}
+              containerType={masterContainer.code}
+              containerTypes={settings.containerTypes}
+              editSupplier
+              editCustoms
+              lotRequired={false}
+              master
+              missing={masterMissing}
+              photosHref="#photos"
+              // Caixas repetidas ficam só no cadastro, acima.
+              omitRegistration
+              registrationSupplierName={
+                suppliers.find((s) => s.id === product.supplierId)?.name ?? null
+              }
+              supplierId={product.supplierId}
+              ncmSuggestions={ncmChipsView(
+                t,
+                await ncmSuggestionsFor(product.id),
+              )}
+            />
+            <p className="text-xs text-zinc-500 lg:order-7 lg:col-span-2">
+              {t("productSheet.photosHint")}
+            </p>
+            <div className="lg:order-7 lg:col-span-2">
+              <SubmitButton>{t("productSheet.save")}</SubmitButton>
+            </div>
+          </form>
+        </div>
+      </FoldSection>
 
       {/* ---- Fotos e medições ---- */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-start">
-        <Card title={t("catalog.photos")} className="scroll-mt-4">
+      <div className="mt-2 grid gap-2 lg:grid-cols-2 lg:items-start">
+        <FoldSection title={t("catalog.photos")} fold="photos">
           <div id="photos" className="scroll-mt-24" />
           {/* Erro do envio de fotos aparece aqui, onde a pessoa está. */}
           {errorFrom === "photos" && errorText ? (
@@ -1104,9 +1120,9 @@ export default async function ProductSheetPage({
               ))}
             </div>
           )}
-        </Card>
+        </FoldSection>
 
-        <Card title={t("catalog.measurements")}>
+        <FoldSection title={t("catalog.measurements")} fold="measurements">
           <div id="measurements" />
           {measurements.length === 0 ? (
             <Empty>{t("catalog.measurements.empty")}</Empty>
@@ -1207,14 +1223,18 @@ export default async function ProductSheetPage({
               {t("catalog.measurements.add")}
             </SubmitButton>
           </form>
-        </Card>
+        </FoldSection>
       </div>
 
       {/* A programação de compra saiu do cadastro (dono, 11/11/2026): é da
           operação de um produto já comprado, não do cadastro. As programações
           gravadas continuam no banco. */}
       {/* ---- Oportunidade de compra (faixas + container); preço FOB é interno ---- */}
-      <Card title={t("catalog.opp.title")} className="mt-4">
+      <FoldSection
+        title={t("catalog.opp.title")}
+        fold="opportunity"
+        className="mt-2"
+      >
         <div id="opportunity" className="scroll-mt-4" />
         <div className="grid gap-4 md:grid-cols-2">
           <div className="min-w-0 space-y-2">
@@ -1404,12 +1424,12 @@ export default async function ProductSheetPage({
             </p>
           </div>
         ) : null}
-      </Card>
+      </FoldSection>
 
       {/* ---- NCM e certificações lado a lado (o que a linha exige para importar) ---- */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-start">
+      <div className="mt-2 grid gap-2 lg:grid-cols-2 lg:items-start">
         {/* ---- Segunda Onda: classificação fiscal (NCM) ---- */}
-        <Card title={t("catalog.tax.title")}>
+        <FoldSection title={t("catalog.tax.title")} fold="tax">
           <TaxSection
             product={product}
             rows={taxRows}
@@ -1418,9 +1438,9 @@ export default async function ProductSheetPage({
             t={t}
             back="sheet"
           />
-        </Card>
+        </FoldSection>
         {/* ---- Certificações e compliance ---- */}
-        <Card title={t("catalog.cert.title")}>
+        <FoldSection title={t("catalog.cert.title")} fold="certifications">
           <CertificationsSection
             entity="product"
             entityId={product.id}
@@ -1432,13 +1452,13 @@ export default async function ProductSheetPage({
             t={t}
             warningDays={settings.certificationExpiryWarningDays}
           />
-        </Card>
+        </FoldSection>
       </div>
 
       {/* ---- Atributos da linha e sugestão por foto lado a lado ---- */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-start">
+      <div className="mt-2 grid gap-2 lg:grid-cols-2 lg:items-start">
         {/* ---- Visão de Produto: atributos exigidos pela linha (determinístico) ---- */}
-        <Card title={t("vision.attrs.title")}>
+        <FoldSection title={t("vision.attrs.title")} fold="attributes">
           <div id="attributes" className="scroll-mt-4" />
           <p className="mb-2 text-sm text-zinc-600">{t("vision.attrs.hint")}</p>
           {attributeCheck.required.length === 0 ? (
@@ -1512,9 +1532,9 @@ export default async function ProductSheetPage({
               {t("vision.attrs.allPresent")}
             </p>
           ) : null}
-        </Card>
+        </FoldSection>
         {/* ---- Sugestão por foto (IA): humano confirma campo a campo ---- */}
-        <Card title={t("vision.ai.title")}>
+        <FoldSection title={t("vision.ai.title")} fold="ai">
           <AiSection
             entity="product"
             entityId={product.id}
@@ -1535,14 +1555,18 @@ export default async function ProductSheetPage({
             notice={aiNotice === "applied" ? "applied" : null}
             error={errorFrom === "ai" ? errorText : null}
           />
-        </Card>
+        </FoldSection>
       </div>
 
       {/* ---- Ciclo contínuo do produto ---- */}
       {cycle ? (
-        <Card title={t("vision.cycle.title")} className="mt-4">
+        <FoldSection
+          title={t("vision.cycle.title")}
+          fold="cycle"
+          className="mt-2"
+        >
           <CycleCard cycle={cycle} productId={product.id} t={t} />
-        </Card>
+        </FoldSection>
       ) : null}
     </>
   );

@@ -190,3 +190,16 @@ html[data-wm-intro="done"] body {
     transition: none;
   }
 }
+
+/* Seção recolhível com um cartão dentro (`FoldSection bare`): o cartão perde
+   a moldura e o título, que já está na barra da seção. */
+[data-fold-bare] > section {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+}
+[data-fold-bare] > section > header:first-child {
+  display: none;
+}
