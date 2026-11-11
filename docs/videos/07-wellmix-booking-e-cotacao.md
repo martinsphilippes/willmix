@@ -548,7 +548,7 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 **Cena 7 · 2:25–3:10 · Criar produto novo · `/app/supplier-requests/[id]`**
 
-- 🎬 Imagem: no cartão "Criar produto novo": "Nome do produto" (já vem da descrição do item; o nome sugerido é a descrição da planilha, "Jarra de vidro 1,5 L com tampa de bambu"; digitar o nome correto, "Jarra de vidro 1,5 L"), "Linha de produto" (escolher "Utilidades domésticas") e a dica "Preço, moeda e MOQ vêm da resposta do fornecedor; medidas, caixa, material e foto vêm do item. O produto nasce fora da vitrine do cliente." Clicar em **Criar produto** (o botão mostra "Gravando…"). Aparece "Produto criado e itens ligados. Ele está fora da vitrine até ser liberado." e o bloco mostra "Produto criado", o nome do produto como link e "2 itens de booking ligados".
+- 🎬 Imagem: no cartão "Criar produto novo": "Nome do produto" (já vem preenchido com a descrição da planilha, "Jarra de vidro 1,5 L com tampa de bambu"; digitar o nome correto, "Jarra de vidro 1,5 L"), "Linha de produto" (escolher "Utilidades domésticas") e a dica "Preço, moeda e MOQ vêm da resposta do fornecedor; medidas, caixa, material e foto vêm do item. O produto nasce fora da vitrine do cliente." Clicar em **Criar produto** (o botão mostra "Gravando…"). Aparece "Produto criado e itens ligados. Ele está fora da vitrine até ser liberado." e o bloco mostra "Produto criado", o nome do produto como link e "2 itens de booking ligados".
 - 🎙 Narração: "Em Criar produto novo, escreva o nome correto e escolha a linha de produto. O preço, a moeda e o MOQ vêm da resposta do fornecedor; medidas, caixa e material vêm do item. O produto nasce fora da vitrine do cliente."
 - 🔤 Na tela: `[PASSO 5/8] Dê o nome e escolha a linha`; `[BOTÃO] "Criar produto"`; `[SETA]` "Preço, moeda e MOQ: da resposta do fornecedor"; `[ATENÇÃO]` "O produto nasce fora da vitrine do cliente"; `[ERRO COMUM]` "Informe o nome do produto."
 - ✂️ Edição: `[ZOOM 150 %]` na dica do cartão; manter 2 s no aviso verde.
@@ -802,7 +802,7 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 **Cena 7 · 2:25–3:00 · Escolher e enviar · `/app/rfq`**
 
-- 🎬 Imagem: na linha da jarra, abrir a lista "Escolha o fornecedor". Num produto criado pelo Booking (WBK-04), o fornecedor principal já vem marcado ("O fornecedor do produto já vem marcado."); para a jarra do catálogo (UTL-001, sem fornecedor principal), escolher **Shenzhen Supplier A**. Clicar em **Enviar ao fornecedor**. Aparece "Produto enviado ao fornecedor." e a linha passa a "RFQ aberta", fornecedor "Shenzhen Supplier A", "Responderam" "0 / 1".
+- 🎬 Imagem: na linha da jarra, abrir a lista "Escolha o fornecedor". A lista já vem com **Shenzhen Supplier A** marcado, porque ele é o fornecedor principal do produto criado no WBK-04 ("O fornecedor do produto já vem marcado."); se vier vazia, como na jarra da carga de demonstração, abrir a lista e escolher Shenzhen Supplier A. Clicar em **Enviar ao fornecedor**. Aparece "Produto enviado ao fornecedor." e a linha passa a "RFQ aberta", fornecedor "Shenzhen Supplier A", "Responderam" "0 / 1".
 - 🎙 Narração: "Escolha o fornecedor que vai analisar o produto. Se o produto veio do Booking, o fornecedor dele já vem marcado. Clique em Enviar ao fornecedor. Pronto: a solicitação ganhou uma cotação, esperando resposta."
 - 🔤 Na tela: `[PASSO 5/7] Escolha o fornecedor`; `[PASSO 6/7] Clique em Enviar ao fornecedor`; `[BOTÃO] "Enviar ao fornecedor"`; `[DICA]` "Produto do Booking: o fornecedor principal já vem marcado"; `[ERRO COMUM]` "Este produto já foi enviado a outro fornecedor. A RFQ para vários fornecedores está em espera."
 - ✂️ Edição: `[CORTE]` na confirmação; manter o clique com onda.
@@ -848,7 +848,7 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 ### Notas de gravação
 
-- Para a base de demonstração, a jarra "Jarra de vidro 1,5 L" (UTL-001) **não tem fornecedor principal**: a lista "Escolha o fornecedor" começa vazia e a gravação escolhe "Shenzhen Supplier A". Se a solicitação for de um produto criado pelo Booking (WBK-04), a lista já vem com o fornecedor da solicitação marcado; mostre essa variação com uma frase na cena 7.
+- A jarra desta jornada é a criada no WBK-04 (fornecedor principal Shenzhen Supplier A): a lista "Escolha o fornecedor" já vem marcada. Na jarra da **carga de demonstração** (UTL-001, sem fornecedor principal), a lista começa vazia ("Escolha o fornecedor") e a gravação escolhe "Shenzhen Supplier A"; mostre essa variação com uma frase na cena 7 se gravar sem o WBK-04.
 - A pendência e o aviso da cena 3 usam textos fixos em português (não existem em en e zh): grave em pt mesmo.
 - A cena 4 usa o menu **Pedidos**; o cliente vê a mesma lista em "Meus pedidos → Orçamentos".
 - Na cena 9, o fornecedor A abre as Pendências (em chinês) e a etapa dele é "审核 Booking" (em pt, "Analisar o Booking"), com a linha "RFQ：Jarra de vidro 1,5 L". O sino mostra "询价：Jarra de vidro 1,5 L" (em pt, "Cotação pedida: …").
@@ -860,7 +860,7 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 - ⚠ O item de menu continua "RFQ (em espera)" mesmo com a RFQ ligada (`nav.rfq` é um texto fixo; o mesmo vale para "Sourcing (em espera)").
 - ⚠ O texto do cartão "Como está funcionando agora" fala do Booking pela **ficha técnica** ("Cada produto do Booking é do fornecedor escolhido ao subir a ficha técnica…"), que não é mais o caminho principal (docs/BOOKING.md, seção 0). Não leia esse parágrafo na narração.
 - ⚠ A coluna "Próximo passo" diz "Abrir a cotação com fornecedores" (`reqList.next.rfq`), texto da época da RFQ com vários fornecedores.
-- ⚠ O briefing sai para a "Agência Criativa" com "Falta enviar: Faca (die-cut), Arte da embalagem"; o aviso "Embalagem sem medidas: {produto}" também pode chegar ao sino da Wellmix (a jarra do catálogo não tem medidas da caixa). Conferir o texto na gravação.
+- ⚠ O briefing sai para a "Agência Criativa" com "Falta enviar: Faca (die-cut), Arte da embalagem"; o aviso "Embalagem sem medidas: {produto}" chega ao sino da Wellmix quando o produto não tem as medidas da caixa (aconteceu com a jarra da carga de demonstração). Conferir na gravação.
 
 ---
 
