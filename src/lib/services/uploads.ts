@@ -27,10 +27,14 @@ export type UploadToken =
       jwt: string;
       maxBytes: number;
     }
+  /** Supabase: o navegador pede um link assinado por arquivo e sobe nele. */
+  | { mode: "signed"; maxBytes: number }
   | { mode: "server"; maxBytes: number };
 
 /** Token para o usuário logado subir um arquivo direto; sem Appwrite, envio só pelo servidor. */
 export async function createUploadToken(user: User): Promise<UploadToken> {
+  if (dataMode() === "supabase")
+    return { mode: "signed", maxBytes: MAX_DOCUMENT_BYTES };
   if (dataMode() === "memory" || !publicEnv)
     return { mode: "server", maxBytes: SERVER_UPLOAD_BYTES };
   const { createAdminClient, createSessionClient } =
@@ -53,4 +57,13 @@ export async function createUploadToken(user: User): Promise<UploadToken> {
     jwt: token.jwt,
     maxBytes: MAX_DOCUMENT_BYTES,
   };
+}
+
+/** Link assinado (Supabase) para o usuário logado subir um arquivo direto. */
+export async function createSignedUpload(user: User, name: string) {
+  void user; // quem chama já conferiu a sessão (requireUser)
+  const { getStore } = await import("@/lib/db");
+  const sign = getStore().createSignedUpload;
+  if (!sign) throw new Error("signed_upload_unavailable");
+  return sign(name);
 }

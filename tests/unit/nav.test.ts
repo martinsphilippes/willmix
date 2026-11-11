@@ -198,14 +198,13 @@ describe("menu principal", () => {
       { group: "nav.group.orders", items: ["/app/orders", "/app/penalties"] },
     ]);
     // Grupo com uma tela só vira link direto (sem lista de um item).
-    for (const role of [
-      "broker",
-      "carrier",
-      "comex",
-      "logistics",
-      "ocp",
-    ] as const)
+    for (const role of ["carrier", "comex", "logistics", "ocp"] as const)
       expect(view({ role })).toEqual([home, { link: "/app/orders" }]);
+    // O despachante tem também o NCM dos itens de booking (docs/BOOKING.md).
+    expect(view({ role: "broker" })).toEqual([
+      home,
+      { group: "nav.group.orders", items: ["/app/orders", "/app/ncm-items"] },
+    ]);
     // A agência tem os briefings de embalagem (faca e arte na RFQ) e os pedidos.
     expect(view({ role: "agency" })).toEqual([
       home,

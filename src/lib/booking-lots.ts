@@ -31,6 +31,8 @@ export const BOOKING_ITEM_REQUIRED = [
   "packageType",
   "material",
   "moq",
+  // NCM: por aproximação com o cadastro ou preenchido pelo despachante.
+  "ncm",
 ] as const satisfies readonly (keyof BookingItem)[];
 export type BookingItemRequiredField = (typeof BOOKING_ITEM_REQUIRED)[number];
 

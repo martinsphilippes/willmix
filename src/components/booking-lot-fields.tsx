@@ -10,6 +10,7 @@ import {
   setBookingLotDateAction,
   setBookingLotSupplierAction,
 } from "@/app/app/actions/booking-lots";
+import { setBookingItemNcmAction } from "@/app/app/actions/booking-ncm";
 
 /*
  * Booking por planilha: os campos do rascunho que gravam sozinhos (o
@@ -134,6 +135,39 @@ export function BookingItemSelect({
         labels={labels}
         width="w-20"
         data-booking-item-field={`${itemId}:${field}`}
+      />
+    </span>
+  );
+}
+
+/**
+ * NCM do item (docs/BOOKING.md, "NCM do item"): grava ao sair do campo,
+ * também com o booking fechado (a análise do item é refeita).
+ */
+export function BookingItemNcmInput({
+  lotId,
+  itemId,
+  saved,
+  labels,
+}: {
+  lotId: string;
+  itemId: string;
+  saved: string;
+  labels: BookingRowFieldLabels;
+}) {
+  return (
+    <span
+      className={
+        saved ? "block" : "block rounded-md ring-2 ring-amber-300 ring-offset-1"
+      }
+    >
+      <SaveInput
+        send={(value) => setBookingItemNcmAction(lotId, itemId, value)}
+        saved={saved}
+        numeric
+        labels={labels}
+        width="w-28"
+        data-booking-item-ncm={itemId}
       />
     </span>
   );

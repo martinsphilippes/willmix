@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SupabaseStore } from "@/lib/db/supabase-store";
+import {
+  SupabaseStore,
+  fileKeyFor,
+  nameFromKey,
+} from "@/lib/db/supabase-store";
 import { schemaSql } from "@/lib/db/supabase-sql";
 import { TABLES } from "@/lib/db/schema";
 
@@ -94,6 +98,19 @@ function fakeSupabase() {
       const offset = Number(params.get("offset") ?? 0);
       const limit = Number(params.get("limit") ?? 1000);
       return json(hit.slice(offset, offset + limit));
+    }
+    if (url.pathname.startsWith("/storage/v1/object/upload/sign/arquivos/")) {
+      const key = url.pathname.split("/").pop()!;
+      if (method === "POST")
+        return json({ url: `/object/upload/sign/arquivos/${key}?token=t1` });
+      if (method === "PUT" && url.searchParams.get("token") === "t1") {
+        files.set(key, {
+          bytes: new Uint8Array(init.body as Buffer),
+          mime: (init.headers as Record<string, string>)["Content-Type"],
+        });
+        return json({ Key: key });
+      }
+      return new Response("{}", { status: 400 });
     }
     if (url.pathname.startsWith("/storage/v1/object/arquivos")) {
       const key = decodeURIComponent(
@@ -303,11 +320,13 @@ describe("SupabaseStore", () => {
       "Arte Final Ç.PDF",
       "application/pdf",
     );
-    expect(put.key).toMatch(/^[0-9a-f-]{36}\/Arte_Final_C\.pdf$/);
+    expect(put.key).toMatch(/^[0-9a-f]{32}_Arte-Final-C_pdf$/);
+    // Mesmo formato dos ids do Appwrite que as ações conferem.
+    expect(put.key).toMatch(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/);
     expect(await store.statFile(put.key)).toMatchObject({
       size: 10,
       mime: "application/pdf",
-      name: "Arte_Final_C.pdf",
+      name: "Arte-Final-C.pdf",
     });
     expect(
       new TextDecoder().decode((await store.getFile(put.key))!.bytes),
@@ -321,5 +340,48 @@ describe("SupabaseStore", () => {
     expect(await store.statFile(put.key)).toBeNull();
     expect(await store.getFile(put.key)).toBeNull();
     await store.removeFile(put.key);
+  });
+});
+
+describe("arquivos no Supabase", () => {
+  it("chave no formato dos ids e nome de volta, com ou sem extensão", () => {
+    const id = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+    for (const name of [
+      "foto.JPG",
+      "sem extensão",
+      "Planilha de preços — fornecedor 2026 (versão final revisada).xlsx",
+      "a".repeat(300) + ".pdf",
+      "../../etc/passwd",
+    ]) {
+      const key = fileKeyFor(name);
+      expect(key).toMatch(id);
+      expect(nameFromKey(key)).not.toContain("/");
+    }
+    expect(nameFromKey(fileKeyFor("foto.JPG"))).toBe("foto.jpg");
+    expect(nameFromKey(fileKeyFor("sem extensão"))).toBe("sem-extensao");
+    expect(nameFromKey(fileKeyFor("a".repeat(300) + ".pdf"))).toMatch(
+      /^a+\.pdf$/,
+    );
+  });
+
+  it("link assinado: o servidor escolhe a chave e o navegador sobe com PUT", async () => {
+    fakeSupabase();
+    const store = new SupabaseStore("https://x.supabase.co", "service");
+    const { key, url } = await store.createSignedUpload("Arte.PDF");
+    expect(key).toMatch(/^[0-9a-f]{32}_Arte_pdf$/);
+    expect(url).toBe(
+      `https://x.supabase.co/storage/v1/object/upload/sign/arquivos/${key}?token=t1`,
+    );
+    const put = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/pdf" },
+      body: Buffer.from("abc"),
+    });
+    expect(put.ok).toBe(true);
+    expect(await store.statFile(key)).toMatchObject({
+      name: "Arte.pdf",
+      mime: "application/pdf",
+      size: 3,
+    });
   });
 });

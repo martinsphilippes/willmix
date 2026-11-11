@@ -277,6 +277,11 @@ export async function createBookingLotFromSheet(
       updatedByUserId: null,
     });
   }
+  // NCM por aproximação; sem correspondência, vai para o despachante.
+  const { classifyBookingItems } = await import("./booking-ncm");
+  await classifyBookingItems(
+    await store.list("booking_items", { filter: { lotId: lot.id } }),
+  );
   await audit(
     user,
     "booking_lot.create",
@@ -578,6 +583,12 @@ export async function closeBookingLot(
   assertBooking(user);
   const lot = await editableLot(lotId);
   const store = getStore();
+  // Itens ainda sem NCM: tenta de novo a aproximação (o cadastro pode ter
+  // ganhado produtos com NCM desde a importação).
+  const { classifyBookingItems } = await import("./booking-ncm");
+  await classifyBookingItems(
+    await store.list("booking_items", { filter: { lotId: lot.id } }),
+  );
   const items = await store.list("booking_items", {
     filter: { lotId: lot.id },
   });

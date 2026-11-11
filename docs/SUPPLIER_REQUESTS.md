@@ -70,7 +70,7 @@ Na solicitação **Aprovada**, a Wellmix que abre Cotações e Produtos vê o bl
 1. **Criar produto novo**: o analista dá o **nome correto** e escolhe a **linha de produto**. O resto vem preenchido:
    - **Preço, moeda e MOQ da resposta do fornecedor** (os negociados). Sem preço na resposta, valem os do booking.
    - Código da fábrica, medidas, caixa, pesos, CBM, capacidade, embalagem, material, cores e função vêm do item. A ficha mestre é gravada com esses valores (`sheetFromRequest`).
-   - O fornecedor da solicitação entra como **principal**. A foto do item é copiada para o produto ("foto do fornecedor").
+   - O fornecedor da solicitação entra como **principal**. O produto herda o **NCM** do item escolhido (docs/BOOKING.md, "NCM do item"). A foto do item é copiada para o produto ("foto do fornecedor").
    - O que a Wellmix pediu ("needs") vai para as observações da ficha.
 2. **Associar a um produto existente**: busca no catálogo por nome, código, código da fábrica ou CODPROD, e escolha de um produto ativo. O cadastro dele não muda.
 3. **Itens iguais**: o item escolhido sempre entra. As alternativas da solicitação já vêm marcadas, e a busca acha mais itens nos bookings fechados que ainda não têm produto.
