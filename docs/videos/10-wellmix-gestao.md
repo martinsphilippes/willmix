@@ -1334,3 +1334,119 @@ A função **Financeiro** abre só **Pedidos** (valida e paga o numerário dentr
 - ⚠ O Painel de SLA recebe o administrador na escolha automática do dono se ele tiver divisão (visto na execução). O roteiro recomenda deixar a Ana sem divisão.
 - ⚠ O caminho para criar um login "Operador Wellmix" (Cadastros → Outros parceiros → parceiro → "Acesso ao portal") foi lido no código (a lista de papéis traz "Operador Wellmix" para o administrador) e visto na tela, mas **não foi executado**. Confirmar os nomes dos campos e que o login nasce preso a um parceiro (`partyId`) sem efeito no isolamento.
 - ⚠ Em docs/ACCESS.md (seção 6) o texto fala em "Editar acessos → /app/team/[id]"; confere. Já a seção 3 diz que a função financeiro "não vê valores"; na execução o resumo do pedido mostra o FOB e a venda a qualquer login da Wellmix (ver WGE-01).
+
+---
+
+## WGE-11 · Auditoria e dados de demonstração
+
+> **Promessa:** ao final do vídeo você encontra na Auditoria quem fez o quê e quando, com o antes e o depois, e sabe usar (e quando não usar) a limpeza de dados de teste.
+
+| Ficha                 |                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Série e papel         | Wellmix, administrador (a Auditoria também abre para a diretoria de compras e a diretoria executiva)                                                          |
+| Conta de gravação     | `admin@wellmix.com`, tela em pt                                                                                                                              |
+| Duração-alvo          | 3:30                                                                                                                                                         |
+| Ponto da jornada      | Todas as etapas: tudo o que se grava nelas fica na trilha                                                                                                    |
+| Telas e rotas         | `/app/audit` (Gestão → Auditoria), `/app/settings` (botão "Limpar dados de teste" e cartão "Contas de demonstração"), `/app/settings/reset` (limpeza)          |
+| Dados antes de gravar | O pedido #1 da Jarra com vários lançamentos (sinal, pagamento ao fornecedor, câmbio informado), uma mudança de configuração e uma de equipe. Ponto `antes-WGE-11`. **A limpeza apaga as vendas: grave esta cena em cópia descartável e por último na série** |
+| Depois deste vídeo    | A Auditoria só lê. Se a limpeza for executada, as vendas somem e a numeração volta ao #1; fica uma linha "data.reset" na Auditoria                              |
+| Antes · Próximo       | WGE-10 · (fim da série WGE)                                                                                                                                   |
+| Idiomas               | pt (base)                                                                                                                                                    |
+
+### Roteiro
+
+**Cena 1 · 0:00–0:10 · Gancho · `/app/audit`**
+
+- 🎬 Imagem: a tela Auditoria: filtros no alto e a lista de ações, com data, pessoa, código da ação e resumo.
+- 🎙 Narração: "Quem mudou esta configuração? Quem confirmou aquele pagamento? A Auditoria guarda quem fez o quê e quando, com o antes e o depois."
+- 🔤 Na tela: `[TÍTULO]` "WGE-11 · Auditoria e dados de demonstração"; `[ZOOM 150 %]` na lista.
+- ✂️ Edição: vinheta antes; título em 2 s.
+
+**Cena 2 · 0:10–0:24 · Onde estou · menu Gestão → Auditoria**
+
+- 🎬 Imagem: o cursor abre **Gestão** e clica em **Auditoria**. O título e a frase "Quem fez o quê e quando, com o antes e o depois. Só leitura; vê admin e diretorias." O atalho "Auditoria" também no alto de Painéis por área.
+- 🎙 Narração: "Em Gestão, abra Auditoria. É só leitura. Quem vê é o administrador e quem tem a função de diretoria de compras ou executiva."
+- 🔤 Na tela: `[MAPA etapas 1 a 9]`; `[PASSO 1/6] Abra Gestão → Auditoria`; `[QUEM VÊ]` "Administrador e diretorias (compras e executiva). O operador comprador e planner não abre."
+- ✂️ Edição: o mapa sai em 8 s.
+
+**Cena 3 · 0:24–1:00 · A tela e os filtros · `/app/audit`**
+
+- 🎬 Imagem: os filtros "De", "Até", "Módulo" (Todos, Solicitações, Cotações, Aprovações, Pedidos, Pagamentos, Documentos, Dumping, Produção, Embarque e desembaraço, Recebimento, Artes, Equipe, Configurações), "Pessoa", "Pedido nº" e "Texto", com os botões **Filtrar** e **Limpar** e a contagem "N registro(s)". Abaixo, a tabela com "Quando", "Quem", "Ação" e "O quê".
+- 🎙 Narração: "Filtre por período, por módulo, por pessoa, pelo número do pedido ou por um texto. A tabela mostra quando, quem, o código da ação e o quê. Os resumos com link levam à tela do assunto."
+- 🔤 Na tela: `[PASSO 2/6] Use os filtros`; `[BOTÃO] "Filtrar"`; `[BOTÃO] "Limpar"`; `[SETA]` "Ação: o código (order.create, payment.fx…)"; `[SETA]` "O quê: o resumo; o link abre a tela".
+- ✂️ Edição: `[ZOOM 150 %]` nos filtros; as datas saem em dd/mm/aaaa com o Chrome em pt-BR.
+
+**Cena 4 · 1:00–1:42 · Ler uma linha com o antes e o depois · `/app/audit?module=payment`**
+
+- 🎬 Imagem: escolher o módulo **Pagamentos** e clicar em **Filtrar**. Aparecem, da mais nova para a mais antiga: "payment.fx · USD 846: câmbio 5.4 (R$ por 1 USD)", "payment.register", "payment.paid · USD 846 pago (era pedido ao banco/financeiro)", "payment.customer · BRL 8400" e "payment.confirm · Sinal confirmado (manual)". Abrir "Antes / depois" de uma linha: duas caixas, a de antes (cinza) e a de depois (verde). Depois, limpar e filtrar por **Pedido nº** 1: tudo do pedido e da solicitação dele.
+- 🎙 Narração: "Em Pagamentos, cada passo do dinheiro aparece, de quem registrou até o câmbio. Clique em Antes e depois para ver o que mudou: à esquerda, como estava; à direita, como ficou. Filtrando pelo número do pedido, você vê tudo que aconteceu com ele."
+- 🔤 Na tela: `[PASSO 3/6] Abra "Antes / depois"`; `[SETA]` "Cinza: antes. Verde: depois."; `[SETA]` "Pedido nº: traz o pedido e a solicitação"; `[DICA]` "Para achar quem mexeu numa configuração: Módulo → Configurações."
+- ✂️ Edição: `[ZOOM 150 %]` nas duas caixas do antes e depois.
+
+**Cena 5 · 1:42–2:12 · Limites e cuidados · `/app/audit`**
+
+- 🎬 Imagem: o rodapé da lista com "1 / N", "Anterior" e "Próxima" (100 por página). Mostrar, se existir na gravação, o aviso "Mostrando só os registros mais recentes. Use período, pessoa ou pedido para buscar os mais antigos." Mostrar a linha "settings.update · Configurações atualizadas", sem "Antes / depois".
+- 🎙 Narração: "A tela lê os registros mais recentes. Se aparecer o aviso de limite, use período, pessoa ou pedido para buscar os antigos. Repare que uma mudança em Configurações diz que houve alteração, mas não mostra qual valor mudou."
+- 🔤 Na tela: `[ATENÇÃO]` "Só leitura: nada se corrige aqui."; `[SETA]` "Anterior · Próxima: 100 por página"; `[SETA]` "Configurações atualizadas: sem o antes e o depois".
+- ✂️ Edição: `[ZOOM 150 %]` no aviso, se aparecer; senão, no "1 / N".
+
+**Cena 6 · 2:12–2:58 · Limpar dados de teste · `/app/settings/reset`**
+
+- 🎬 Imagem: em **Configurações**, clicar no botão vermelho **Limpar dados de teste**. A tela **Limpar dados de teste**: "Apaga para sempre as vendas feitas nos testes, para começar de novo. Não tem como desfazer." Duas colunas: "Vai ser apagado" ("Solicitações", "Cotações", "Pedidos", "Pagamentos", "Documentos e arquivos de venda", "Notificações", "Kits de marketing", "Etapas, itens, fichas de pedido e cotação, buscas por foto ou link, inspeções, revisões e histórico", "Total") e "Fica como está" (catálogo, clientes, fornecedores, usuários, configurações e tabela fiscal), e a nota "A numeração recomeça: a próxima solicitação e o próximo pedido serão o #1." Digitar uma palavra errada: "Digite APAGAR para confirmar. Nada foi apagado." Em **cópia descartável**, digitar APAGAR e clicar em **Apagar dados de teste**: "Pronto: as vendas de teste foram apagadas. Pode começar os testes de novo."
+- 🎙 Narração: "Para recomeçar os testes, Configurações tem Limpar dados de teste. A tela mostra quanto de cada venda será apagado e o que fica. Para confirmar, digite APAGAR. Não tem volta, então use só em ambiente de teste, nunca com vendas reais."
+- 🔤 Na tela: `[PASSO 4/6] Leia o que vai ser apagado`; `[BOTÃO] "Apagar dados de teste"`; `[ATENÇÃO]` "Apaga para sempre. Só em teste, nunca com vendas reais."; `[ERRO COMUM]` "Digite APAGAR para confirmar. Nada foi apagado."; `[DEPOIS]` "A numeração volta ao #1 e a Auditoria guarda a linha 'data.reset'."
+- ✂️ Edição: `[ZOOM 150 %]` em "Fica como está" e na palavra APAGAR; a confirmação final só na cópia descartável, com o selo "Cópia descartável" na imagem.
+
+**Cena 7 · 2:58–3:18 · Os cadastros e as contas de demonstração · `/app/settings`**
+
+- 🎬 Imagem: embaixo, o cartão **Apagar também os cadastros que vêm do Sankhya (migração)**: texto vermelho "…Não tem volta." e, com vendas ainda existentes, o aviso "Apague as vendas primeiro (botão acima): nenhuma venda pode ficar apontando para um cadastro apagado." Voltar a Configurações: o cartão **Contas de demonstração**, com a lista (selo "Criada") e "Todas as contas de demonstração existem."
+- 🎙 Narração: "Mais abaixo, há uma limpeza ainda mais forte, dos cadastros do Sankhya, só para a migração. Não use. Já Contas de demonstração cria os logins de teste que faltam, e só existe em ambiente de demonstração."
+- 🔤 Na tela: `[ATENÇÃO]` "Limpeza dos cadastros: só para a migração do Sankhya; não tem volta."; `[QUEM VÊ]` "Limpeza e contas de demonstração: só o administrador"; `[BOTÃO] "Criar as contas que faltam"`.
+- ✂️ Edição: `[CORTE]` seco entre as duas telas; mostre o cartão sem apertar o botão da limpeza dos cadastros.
+
+**Cena 8 · 3:18–3:30 · Resumo e fim da série**
+
+- 🎬 Imagem: fundo vermelho com a lista; no fim, o cartão final da série "Gestão e administração".
+- 🎙 Narração: "Resumindo: a Auditoria mostra quem fez o quê, e a limpeza recomeça os testes, sem volta. Com isso, você conhece a gestão do portal."
+- 🔤 Na tela: `[RESUMO]` "1 Auditoria: quem, o quê, quando · 2 Filtros: período, módulo, pessoa, pedido, texto · 3 Antes e depois · 4 Limpar dados de teste: só em teste · 5 Contas de demonstração"; `[PASSO 6/6] Conclua`; chamada "Fim da série WGE".
+- ✂️ Edição: fade para a vinheta de encerramento.
+
+### Erros comuns
+
+- **Erro:** palavra de confirmação errada na limpeza. A tela mostra "Digite APAGAR para confirmar. Nada foi apagado." (aceita maiúscula ou minúscula, sem outros caracteres). → **Correção:** digitar APAGAR.
+- **Erro:** a limpeza não começou. A tela mostra "Não deu para começar a limpeza ({código}). Nada foi apagado." → **Correção:** conferir o login (só o administrador) e tentar de novo.
+- **Erro:** a limpeza parou no meio. A tela mostra "A limpeza parou no meio ({código}). O que deve ficar continua; toque em Apagar de novo para terminar." → **Correção:** clicar em **Apagar dados de teste** de novo.
+- **Aviso:** "Ainda restam {n} registros (há um limite por vez). Toque em Apagar de novo para terminar." → **Correção:** repetir até acabar.
+- **Aviso:** "Existem {n} registros de venda criados depois da limpeza. Podem ser vendas reais: confira antes de apagar de novo." e "A numeração não recomeçou porque surgiram vendas novas durante a limpeza." → **Correção:** não apagar de novo sem conferir.
+- **Aviso:** "Apague as vendas primeiro (botão acima): nenhuma venda pode ficar apontando para um cadastro apagado." (limpeza dos cadastros). → **Correção:** esta segunda limpeza só vale depois da primeira, e só para a migração.
+- **Estado:** "Nenhum registro com esses filtros." (Auditoria) → **Correção:** limpar os filtros. E "Não há vendas para apagar." (limpeza) → **Correção:** nada a fazer.
+- **Acesso:** quem não é administrador nem diretoria não abre a Auditoria: volta ao início com "Você não tem acesso a Auditoria. Peça ao administrador em Gestão → Equipe e divisões." (ou, com a tela marcada sem a função, página "não encontrada": ⚠).
+
+### Passo a passo em texto
+
+1. No menu **Gestão**, abra **Auditoria** (administrador, diretoria de compras ou diretoria executiva).
+2. Use **De**, **Até**, **Módulo**, **Pessoa**, **Pedido nº** e **Texto** e clique em **Filtrar**. **Limpar** zera os filtros.
+3. Leia **Quando**, **Quem**, **Ação** e **O quê**. Em **Antes / depois**, veja o que estava e o que ficou.
+4. Se aparecer "Mostrando só os registros mais recentes…", restrinja por período, pessoa ou pedido.
+5. Para recomeçar os testes (só em ambiente de teste), abra **Configurações** → **Limpar dados de teste**. Leia **Vai ser apagado** e **Fica como está**, digite **APAGAR** e clique em **Apagar dados de teste**. Se parar no meio, clique de novo.
+6. **Contas de demonstração** (em Configurações) cria os logins de teste que faltam; só existe em ambiente de demonstração.
+
+### Notas de gravação
+
+- Grave a limpeza **por último** de toda a série, numa **cópia descartável** (GUIA, seção 7.2): restaure o ponto `antes-WGE-11` e suba um servidor à parte. A limpeza apaga as vendas e **o histórico delas na Auditoria**; só sobra uma linha "data.reset" com o resumo (por exemplo "Limpeza dos dados de teste (vendas): 255 registros apagados, 2 desligados").
+- O botão da limpeza dos **cadastros** (segundo cartão) **nunca** deve ser apertado na gravação. Mostre só o cartão.
+- Os horários da Auditoria saem no fuso de Brasília (dia e hora).
+- O campo de data da Auditoria segue o idioma do navegador: com o Chrome em pt-BR, dd/mm/aaaa.
+- Mostre os filtros em ordem: Módulo → Pedido nº → Texto. O módulo "Multas" e o de "Pós-venda" não existem no filtro; para achá-los, use o filtro "Texto".
+- No aviso de limite (3.000 registros), o ambiente de demonstração não chega lá; mostre só o texto ou omita a cena.
+
+### Pontos a confirmar
+
+- ⚠ **Possível bug (repetido do WGE-10):** marcar "Auditoria" no acesso Personalizado de um login sem função de diretoria leva a "página não encontrada" (404); docs/ACCESS.md diz que o personalizado vale para a Auditoria.
+- ⚠ A coluna "Ação" mostra o código técnico em inglês (`order.create`, `payment.fx`, `team.member`) e muitos resumos misturam texto técnico: "Aprovado no nível planner; segue para purchasing_director", "BRL 8400", "USD 846". Sem tradução (docs/EVOLUTION_PLAN.md diz que o texto gravado em dados continua em português por ser registro). Confirmar se o dono quer algo mais legível para a diretoria.
+- ⚠ "Configurações atualizadas" (`settings.update`) não grava o antes e o depois; só a RFQ ativada tem. Para um controle de quem mudou qual chave, falta o diff. Confirmar se é aceitável.
+- ⚠ O filtro "Módulo" não tem Multas, Pós-venda, Marketing nem a limpeza de dados (`data.reset`): essas ações aparecem só sem filtro de módulo ou pelo "Texto".
+- ⚠ A limpeza de dados de teste fica disponível a **todo administrador, em qualquer ambiente**, inclusive produção (só pede a palavra APAGAR). Confirmar com o dono se deve haver uma trava (por exemplo, esconder quando o ambiente não é de demonstração).
+- ⚠ A limpeza apaga também o que a Auditoria guarda das vendas apagadas (`data-reset.ts`); só fica a linha "data.reset". Para uma trilha completa de produção, isso é perda de histórico.
+- ⚠ O cartão "Apagar também os cadastros que vêm do Sankhya (migração)" lista nomes técnicos de tabelas na tela (`marketing_kits`, `product_suppliers`, `products`, `product_lines`). Texto técnico a confirmar.
+- ⚠ Os campos de data da Auditoria saem como "mm/dd/yyyy" no navegador de teste (en-US); em Chrome pt-BR devem sair "dd/mm/aaaa". Confirmar na gravação.
