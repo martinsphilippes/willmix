@@ -112,7 +112,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 **Cena 7 · 2:08–2:30 · Atalhos: "+" e quadrados que levam a outra tela · `/app`**
 
 - 🎬 Imagem: o cursor aponta o "+" no canto do quadrado **Solicitação nova** (aparece quando há uma solicitação nova; clicar nele abre a tela de nova solicitação) e o botão "+ Nova solicitação" na lista aberta. Depois passa em **Containers abertos** e **Itens para revisão**, que abrem as telas deles em vez de uma lista. Passa nos quadrados do Booking ("Novo", "Em análise", "Aprovado", "Oferecido ao cliente", "Reservado pelo cliente", "Virou solicitação", "Descartado"): cada um abre o Booking na etapa.
-- 🎙 Narração: "O mais, no quadrado Solicitação nova, abre uma nova solicitação. Quem abre o Booking só vê esse quadrado quando existe solicitação do cliente. Containers abertos, Itens para revisão e os do Booking levam direto às telas deles."
+- 🎙 Narração: "O sinal de mais, no quadrado Solicitação nova, abre uma nova solicitação. Quem abre o Booking só vê esse quadrado quando existe solicitação do cliente. Containers abertos, Itens para revisão e os do Booking levam direto às telas deles."
 - 🔤 Na tela: `[BOTÃO] "+ Nova solicitação"`; `[SETA]` "Abre outra tela, não uma lista"; `[DICA]` "Para quem tem o Booking, 'Solicitação nova' só aparece enquanto houver alguma."
 - ✂️ Edição: `[CORTE]` seco ao abrir cada tela e voltar.
 
@@ -492,7 +492,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 
 - 🎬 Imagem: abrir "Pagar a parcela 2/2" e a linha recolhida **Já pagou? Registrar com valor, câmbio e comprovante**: "Valor", "Moeda", "Câmbio do banco (R$ por 1 unidade)", "Comprovante (opcional)" e o botão **Registrar pagamento ao fornecedor**.
 - 🎙 Narração: "Pagou por fora do portal? Abra Já pagou e registre com valor, câmbio e comprovante. Serve também para pedido sem valor FOB."
-- 🔤 Na tela: `[PASSO 5/7] Registre o que já foi pago`; `[BOTÃO] "Registrar pagamento ao fornecedor"`; `[ERRO COMUM]` "Esta parcela já foi registrada (por outra pessoa ou por um clique duplo). Confira o cronograma."
+- 🔤 Na tela: `[PASSO 5/7] Registre o que já foi pago`; `[BOTÃO] "Registrar pagamento ao fornecedor"`; `[ERRO COMUM]` "Esta parcela já foi registrada (por outra pessoa ou por um clique duplo). Confira o cronograma."; `[DEPOIS]` "O fornecedor recebe o aviso 'Pedido #n: pagamento registrado, confirme quando entrar'."
 - ✂️ Edição: manter 2 s o formulário aberto, sem preencher.
 
 **Cena 9 · 4:00–4:40 · A conta do fornecedor, dos dois lados · `/app/suppliers/[id]` e `/app/account`**
@@ -599,7 +599,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 
 - 🎬 Imagem: a segunda linha de cartões: "Estoque (valor de custo)" (com "N produto(s) abaixo do limite" e "N parado(s) há 90+ dias"), "Perdas no último inventário" (ou "Nenhum inventário fechado ainda"), "Solicitações em aberto", "Aguardando sinal" e "Pedidos em andamento".
 - 🎙 Narração: "Na linha de baixo, o estoque no Brasil, a custo, com os produtos abaixo do limite e os parados há noventa dias. Depois, as perdas do último inventário, as solicitações abertas, as que esperam sinal e os pedidos em andamento."
-- 🔤 Na tela: `[SETA]` "Estoque: valor de custo"; `[SETA]` "Parado há 90+ dias"; `[SETA]` "Aguardando sinal: já com proposta aprovada"; `[ATENÇÃO]` "Compras para estoque não contam como venda."
+- 🔤 Na tela: `[SETA]` "Estoque: valor de custo"; `[SETA]` "Parado há 90+ dias"; `[SETA]` "Aguardando sinal: a proposta já foi enviada ao cliente"; `[ATENÇÃO]` "Compras para estoque não contam como venda."
 - ✂️ Edição: `[ZOOM 150 %]` no cartão do estoque.
 
 **Cena 5 · 1:28–1:58 · Gráfico e listas · `/app/dashboards/owner`**
@@ -778,6 +778,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 ### Pontos a confirmar
 
 - ⚠ Mensagens de erro do pós-venda saem com o código técnico entre parênteses ("(already_answered)", "(already_closed)", "(order_not_delivered)", "(already_open)", "(after_sales_disabled)"): não há texto traduzido para eles (`fallbackError`). Confirmar se o dono quer textos próprios.
+- ⚠ O aviso à Wellmix "Pedido #n: avaliação de pós-venda recebida" (e o corpo "Nota 5. Problemas: …") está escrito direto no código, em português, sem passar pelos dicionários pt/en/zh. Quem usa a tela em outro idioma o vê em português.
 - ⚠ Em **Histórico**, os botões "Comprar de novo" e "Nova proposta" da linha levam ao mesmo endereço (`/app/orders/[id]#followup`); a escolha acontece no card do pedido. O roteiro diz isso; confirmar se é o desejado.
 - ⚠ O mesmo card permite à Wellmix responder pelo cliente (o serviço aceita, docs/WORKFLOW.md fala só em "Wellmix encerra"); na tela do administrador, com o pós-venda aguardando, só apareceu "Encerrar pós-venda", sem formulário de resposta. Confirmar se existe o formulário de resposta para a Wellmix.
 - ⚠ Os itens 34 (análise de oportunidade) e 36 (nova proposta com preços negociados) de docs/EVOLUTION_PLAN.md não aparecem nestas telas; este episódio não os cobre. Confirmar se haverá vídeo próprio.
