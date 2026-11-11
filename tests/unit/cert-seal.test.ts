@@ -167,18 +167,18 @@ describe("pedido novo: cai no login da certificadora", () => {
       expect(f.canSeeStep(agency, order, key)).toBe(false);
   });
 
-  it("pedido recém-criado: a Wellmix não ganha pendência de certificação; o memorial só a partir da Preparação", async () => {
+  it("a Wellmix não ganha pendência de certificação: nem recém-criado, nem na Preparação", async () => {
     expect(await certTasks(admin, order)).toHaveLength(0);
     await getStore().update("orders", order.id, { status: "PREPARATION" });
-    const tasks = await certTasks(admin, order);
-    expect(tasks.map((t) => t.kind)).toEqual(["cert_step"]);
-    expect(tasks[0].title).toContain("Memorial");
+    // O memorial deixou de ser pendência de começar: o PDF do selo/memorial
+    // basta para o pedido seguir (dono, 10/11/2026).
+    expect(await certTasks(admin, order)).toHaveLength(0);
     // A pendência do selo continua com a certificadora.
     expect(await certTasks(ocp, order)).toHaveLength(1);
     await getStore().update("orders", order.id, { status: "ORDER_CREATED" });
   });
 
-  it("memorial começado pelo cartão com o pedido recém-criado: validar e o passo seguinte viram pendência", async () => {
+  it("memorial enviado pela Wellmix com o pedido recém-criado: a certificadora valida", async () => {
     const other = await newOrder();
     expect(other.status).toBe("ORDER_CREATED");
     await f.submitStep(admin, other.id, "cert_memorial", {
@@ -189,11 +189,36 @@ describe("pedido novo: cai no login da certificadora", () => {
       "cert_validate",
     ]);
     await f.validateStep(ocp, other.id, "cert_memorial", "validated", null);
-    // Selo e laudo: os dois passos da certificadora.
+    // Só o selo: o laudo não vira pendência de começar.
     expect((await certTasks(ocp, other)).map((t) => t.kind)).toEqual([
       "cert_step",
+    ]);
+  });
+
+  it("a certificadora também anexa o memorial em PDF, que já vale; outra certificadora não", async () => {
+    const other = await newOrder();
+    const sent = await f.submitStep(ocp, other.id, "cert_memorial", {
+      documentId: (await doc(ocp, other, "memorial.pdf")).id,
+    });
+    expect([sent.status, sent.validatedByUserId]).toEqual([
+      "validated",
+      ocp.id,
+    ]);
+    await expect(
+      f.submitStep(
+        { ...ocp, id: "ocp-outra", partyId: "ocp-outra" },
+        other.id,
+        "cert_memorial",
+        {
+          documentId: sent.documentId,
+        },
+      ),
+    ).rejects.toThrow();
+    // Não gera pendência de validar nem de laudo para ninguém.
+    expect((await certTasks(ocp, other)).map((t) => t.kind)).toEqual([
       "cert_step",
     ]);
+    expect(await certTasks(admin, other)).toHaveLength(0);
   });
 
   it("pedido cancelado ou encerrado não deixa pendência", async () => {

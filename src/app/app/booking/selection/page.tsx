@@ -1,3 +1,4 @@
+import { LiveSearch } from "@/components/live-search";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -156,6 +157,7 @@ export default async function BookingSelectionPage({
                     maxLength={200}
                   />
                 </Field>
+                <LiveSearch />
               </div>
               <SubmitButton variant="secondary">
                 {t("supplierRequests.selection.filter")}

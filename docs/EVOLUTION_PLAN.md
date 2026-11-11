@@ -770,3 +770,24 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (10/11/2026): no cartão Produção do pedido, quando o fornecedor é a fábrica, o nome e o endereço da fábrica não precisam ser digitados: só o ETD. O nome vem do cadastro do fornecedor; o endereço, do cartão do fabricante confirmado na cotação e, sem ele, do cadastro (endereço, cidade, país). `supplierFactory` em `src/lib/services/production.ts`.
 - Os campos já aparecem preenchidos na tela e continuam editáveis; salvar como "Fábrica" com eles em branco grava os do fornecedor. Passar a "Trade" limpa o que era do próprio fornecedor (a fábrica é outra empresa e tem de ser informada; a inspeção continua exigindo o endereço).
+
+## Pendências da agência: filtros por etapa, como os do fornecedor
+
+- **Pedido do dono** (10/11/2026): a tela "Minhas pendências" da agência ganha a mesma faixa de etapas do fornecedor (quadrados em fluxo, cores por situação, legenda). O caminho dela tem três etapas: **Arte na cotação** (briefing de embalagem), **Arte do pedido** (item de arte da etapa Arte e embalagem) e **Selo na arte** (selo de certificação a aplicar). O grupo da pendência da agência vira `agency.<etapa>` (`AGENCY_STEPS` em `tasks.ts`); só a lista da própria agência muda. O componente da faixa (`SupplierSteps` em `task-list.tsx`) passou a receber o caminho de quem vê.
+- Teste: `tests/unit/packaging-brief.test.ts`.
+
+## Aprovação do pré-custo: administrador aprova todos os níveis de uma vez
+
+- **Pedido do dono** (10/11/2026): com a conta do administrador, dá para aprovar todas as etapas da aprovação do pré-custo num clique. No cartão "Aprovação do pré-custo", quando ainda há mais de um nível pela frente, o administrador vê o botão "Aprovar todos os níveis" (o "Aprovar" continua, para um nível só). Cada nível fica registrado no nome dele e na auditoria; o último segue o caminho normal (grava a escolha do fornecedor). Só o administrador pode (`decideApproval` com `allLevels`, `decideAllLevelsAction`).
+- Teste: `tests/unit/approval-deferred.test.ts`.
+
+## Certificação: quadro em destaque "Memorial (selo)"
+
+- **Pedido do dono** (10/11/2026): no cartão Certificação do pedido, o envio do selo ganha um quadro em destaque no alto, com o nome **Memorial (selo)** (o passo `cert_seal` mudou de rótulo; o dado é o mesmo). O quadro diz que, ao anexar, o arquivo fica vinculado ao pedido, o pedido segue e a agência passa a ver o selo. Depois de enviado, o quadro fica verde, com o link do arquivo; a certificadora ainda pode enviar de novo. Na tabela, as linhas do selo vêm primeiro e a linha do passo aponta para o quadro.
+- `ImportFlowCard` ganhou `featured` e `featuredHint`. O texto da certificadora que ainda dizia "sem preço" foi corrigido (ela vê o preço desde a decisão anterior).
+- O E2E envia o selo pelo quadro.
+- **Selo e memorial no mesmo quadro** (dono, 10/11/2026): o quadro em destaque passou a ter dois campos, **Selo** (`cert_seal`, o que libera o pedido e vai para a agência) e **Memorial descritivo** em PDF (`cert_memorial`, opcional). A certificadora do pedido também anexa o memorial, e o que ela anexa já vale (não pede validação). Laudo e registro saíram da tela e ninguém ganha mais pendência de começar memorial, laudo ou registro: o PDF basta para a próxima etapa. Pedido antigo com laudo ou registro já preenchidos continua mostrando e seguindo o caminho dele (nenhum dado some).
+
+## Busca enquanto digita nas listas
+
+- **Pedido do dono** (10/11/2026): o campo de busca filtra sozinho a cada pausa na digitação, sem apertar "Buscar". Componente `LiveSearch` (`src/components/live-search.tsx`), colocado dentro do formulário de busca (GET): o resultado continua no endereço, o botão continua valendo e a paginação volta ao início. Ligado em Fornecedores e Clientes (`_party-accounts/list.tsx`), Produtos, Solicitações, Estoque, Seleção do Booking e Vitrine. Ficou de fora a tela de produtos do Booking (o campo dela é recriado a cada busca e perderia o cursor).

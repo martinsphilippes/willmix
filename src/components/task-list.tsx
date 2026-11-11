@@ -2,7 +2,9 @@ import Link from "next/link";
 import type { User } from "@/lib/db";
 import { SCREENS, SCREEN_LABEL, type Screen } from "@/lib/auth/screens";
 import {
+  AGENCY_STEPS,
   SUPPLIER_STEPS,
+  agencyGroup,
   TASK_DUE_FILTERS,
   daysUntil,
   filterTasks,
@@ -63,6 +65,8 @@ export async function TaskList({
   // Fornecedor: os filtros são as etapas dele (do Booking ao embarque), cada
   // uma explicada, e a tabela ganha a data em que a pendência chegou a ele.
   const supplier = user.role === "supplier";
+  // Agência: os mesmos filtros por etapa, com o caminho dela.
+  const agency = user.role === "agency";
   // Cliente tem poucas ações próprias: a ajuda fala só delas.
   const help =
     user.role === "customer"
@@ -91,7 +95,38 @@ export async function TaskList({
         <QuoteSentNotice user={user} quoteId={sent} tasks={tasks} t={t} />
       ) : null}
       {supplier ? (
-        <SupplierSteps tasks={tasks} due={due} group={group} t={t} />
+        <SupplierSteps
+          tasks={tasks}
+          due={due}
+          group={group}
+          t={t}
+          flow={{
+            steps: SUPPLIER_STEPS.map((step) => ({
+              id: step,
+              group: supplierGroup(step),
+              help: `supplierTasks.help.${step}` as DictionaryKey,
+            })),
+            intro: "supplierTasks.intro",
+            after: "supplierTasks.after",
+          }}
+        />
+      ) : null}
+      {agency ? (
+        <SupplierSteps
+          tasks={tasks}
+          due={due}
+          group={group}
+          t={t}
+          flow={{
+            steps: AGENCY_STEPS.map((step) => ({
+              id: step,
+              group: agencyGroup(step),
+              help: `agencyTasks.help.${step}` as DictionaryKey,
+            })),
+            intro: "agencyTasks.intro",
+            after: "agencyTasks.after",
+          }}
+        />
       ) : null}
       {tasks.length === 0 ? (
         <Empty>{t(supplier ? "supplierTasks.empty" : "tasks.empty")}</Empty>
@@ -102,7 +137,7 @@ export async function TaskList({
             due={due}
             group={group}
             t={t}
-            supplier={supplier}
+            supplier={supplier || agency}
           />
           {shown.length === 0 ? (
             <Empty>
@@ -150,11 +185,18 @@ function SupplierSteps({
   due,
   group,
   t,
+  flow,
 }: {
   tasks: Task[];
   due: string | null;
   group: string | null;
   t: Translate;
+  /** O caminho de quem vê (fornecedor ou agência): etapas e textos. */
+  flow: {
+    steps: { id: string; group: string; help: DictionaryKey }[];
+    intro: DictionaryKey;
+    after: DictionaryKey;
+  };
 }) {
   const counts = new Map<string, number>();
   for (const task of tasks)
@@ -178,11 +220,10 @@ function SupplierSteps({
       dot: "bg-emerald-600 text-white",
     },
   } as const;
-  const activeStep =
-    SUPPLIER_STEPS.find((step) => supplierGroup(step) === group) ?? null;
+  const activeStep = flow.steps.find((step) => step.group === group) ?? null;
   return (
     <section className="mb-4" data-supplier-steps>
-      <p className="mb-3 text-sm text-zinc-600">{t("supplierTasks.intro")}</p>
+      <p className="mb-3 text-sm text-zinc-600">{t(flow.intro)}</p>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
           {t("supplierTasks.steps.title")}
@@ -208,8 +249,7 @@ function SupplierSteps({
         className="flex items-stretch gap-1 overflow-x-auto pb-1"
         data-supplier-flow
       >
-        {SUPPLIER_STEPS.map((step, i) => {
-          const key = supplierGroup(step);
+        {flow.steps.map(({ id: step, group: key, help }, i) => {
           const n = counts.get(key) ?? 0;
           const active = group === key;
           const tone = toneOf(key, n);
@@ -223,7 +263,7 @@ function SupplierSteps({
               <Link
                 href={tasksHref(due, active ? null : key)}
                 aria-pressed={active}
-                title={t(`supplierTasks.help.${step}` as DictionaryKey)}
+                title={t(help)}
                 data-task-filter={`type:${key}`}
                 data-supplier-step={step}
                 data-supplier-step-count={n}
@@ -282,10 +322,10 @@ function SupplierSteps({
       </p>
       {activeStep ? (
         <p className="mt-1 text-sm text-zinc-700" data-supplier-step-help>
-          {t(`supplierTasks.help.${activeStep}` as DictionaryKey)}
+          {t(activeStep.help)}
         </p>
       ) : null}
-      <p className="mt-2 text-xs text-zinc-500">{t("supplierTasks.after")}</p>
+      <p className="mt-2 text-xs text-zinc-500">{t(flow.after)}</p>
     </section>
   );
 }
@@ -307,7 +347,9 @@ function TaskFilters({
 }) {
   // Fora das etapas do fornecedor (não deve haver): continuam filtráveis.
   const groups = taskGroups(tasks).filter(
-    (g) => !supplier || !supplierStepOfGroup(g.group),
+    (g) =>
+      !supplier ||
+      !(supplierStepOfGroup(g.group) || g.group.startsWith("agency.")),
   );
   const dueCounts = new Map<string, number>();
   for (const task of tasks)

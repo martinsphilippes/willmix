@@ -1,3 +1,4 @@
+import { LiveSearch } from "@/components/live-search";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -254,6 +255,7 @@ export default async function InventoryPage({
               aria-label={t("inv.search")}
               className="w-full max-w-md"
             />
+            <LiveSearch />
             <Button type="submit" variant="primary">
               {t("inv.searchButton")}
             </Button>
