@@ -791,3 +791,7 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 ## Busca enquanto digita nas listas
 
 - **Pedido do dono** (10/11/2026): o campo de busca filtra sozinho a cada pausa na digitação, sem apertar "Buscar". Componente `LiveSearch` (`src/components/live-search.tsx`), colocado dentro do formulário de busca (GET): o resultado continua no endereço, o botão continua valendo e a paginação volta ao início. Ligado em Fornecedores e Clientes (`_party-accounts/list.tsx`), Produtos, Solicitações, Estoque, Seleção do Booking e Vitrine. Ficou de fora a tela de produtos do Booking (o campo dela é recriado a cada busca e perderia o cursor).
+
+## Tela inicial (login) sem a explicação do fluxo
+
+- **Pedido do dono** (10/11/2026): a tela de login deixa de mostrar "O fluxo de importação" (os dois parágrafos, os passos numerados, "Quem usa o portal" e a nota das etapas). O painel da marca fica só com o logotipo, o nome do portal e o lema. Os textos continuam no dicionário (`src/i18n/help.ts`) e nada mudou no login. Código em `src/app/login/page.tsx`.
