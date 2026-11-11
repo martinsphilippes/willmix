@@ -107,6 +107,11 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.goto(itemUrl);
   await page.click("[data-supplier-decide=approved]");
   await page.waitForURL(/[?&]decided=approved/);
+  // A busca no catálogo fica na tela do produto (não volta à tabela).
+  await page.fill("[data-request-product-search=pq]", "garrafa");
+  await page.press("[data-request-product-search=pq]", "Enter");
+  await page.waitForURL(/[?&]pq=garrafa/);
+  expect(page.url()).toContain("view=item");
   await page.fill("[data-request-product-name]", productName);
   await page.selectOption("[data-request-product-line]", { index: 1 });
   await page.click("[data-request-product-create]");

@@ -239,16 +239,22 @@ export default async function SupplierRequestPage({
       products: one("pq").slice(0, 80),
       erp: one("eq").slice(0, 80),
     };
-    const [product, lines, choices, catalog, erp] = await Promise.all([
-      r.productId ? store.get("products", r.productId) : null,
-      store.list("product_lines", {
-        filter: { active: true },
-        orderBy: "name",
-      }),
-      svc.requestItemChoices(r, q.items),
-      r.productId ? Promise.resolve([]) : svc.searchCatalogProducts(q.products),
-      r.productId && q.erp ? svc.searchSankhyaProducts(q.erp) : null,
-    ]);
+    const [product, lines, choices, catalog, erp, chosenItem] =
+      await Promise.all([
+        r.productId ? store.get("products", r.productId) : null,
+        store.list("product_lines", {
+          filter: { active: true },
+          orderBy: "name",
+        }),
+        svc.requestItemChoices(r, q.items),
+        r.productId
+          ? Promise.resolve([])
+          : q.products
+            ? svc.searchCatalogProducts(q.products)
+            : svc.suggestCatalogProducts(r),
+        r.productId && q.erp ? svc.searchSankhyaProducts(q.erp) : null,
+        r.productId ? null : store.get("booking_items", r.bookingItemId),
+      ]);
     const linkedCount = product
       ? (
           await store.list("booking_items", {
@@ -256,6 +262,10 @@ export default async function SupplierRequestPage({
           })
         ).length
       : 0;
+    const suggestedName = (it.productName ?? it.description ?? "").slice(
+      0,
+      160,
+    );
     productData = {
       request: r,
       product,
@@ -265,7 +275,9 @@ export default async function SupplierRequestPage({
       catalog,
       erp,
       query: q,
-      suggestedName: (it.productName ?? it.description ?? "").slice(0, 160),
+      suggestedName,
+      deal: svc.agreedConditions(r),
+      readiness: product ? [] : svc.erpReadiness(r, chosenItem, suggestedName),
     };
   }
 

@@ -5,6 +5,8 @@ import { assertScreen } from "@/lib/auth/screens";
 import {
   getStore,
   PRODUCT_EXTRA_DEFAULTS,
+  SHEET_CURRENCIES,
+  SHEET_INCOTERMS,
   type BookingItem,
   type BookingLot,
   type Product,
@@ -12,6 +14,7 @@ import {
   type User,
 } from "@/lib/db";
 import {
+  finalConditions,
   itemSearchText,
   matchesItemSearch,
   searchWords,
@@ -66,40 +69,71 @@ export interface ItemChoice {
 }
 
 /**
- * Itens que podem ser ligados ao produto: o escolhido e as alternativas da
- * solicitação, mais os que a busca achar nos bookings fechados (os já
- * ligados a outro produto ficam de fora).
+ * Itens da seleção do escolhido: as alternativas desta solicitação, os itens
+ * dos grupos da Seleção de itens em que ele está (o grupo comparado, de
+ * vários bookings) e as alternativas de outras solicitações do mesmo item
+ * (a escolha gravada depois de a solicitação já existir abre outra). O
+ * escolhido primeiro.
+ */
+export async function selectionItemIds(
+  request: SupplierRequest,
+): Promise<string[]> {
+  const store = getStore();
+  const chosen = request.bookingItemId;
+  const [groups, siblings] = await Promise.all([
+    store.list("selection_groups", {
+      filter: { status: ["saved", "requested"] },
+    }),
+    store.list("supplier_requests", { filter: { bookingItemId: chosen } }),
+  ]);
+  const ids = [
+    chosen,
+    ...(request.alternativeItemIds ?? []),
+    ...groups
+      .filter((g) => g.chosenItemId === chosen || g.itemIds.includes(chosen))
+      .flatMap((g) => g.itemIds),
+    ...siblings
+      .filter((s) => s.id !== request.id)
+      .flatMap((s) => s.alternativeItemIds ?? []),
+  ];
+  return [...new Set(ids)].slice(0, MAX_ITEMS);
+}
+
+/**
+ * Itens que podem ser ligados ao produto: o escolhido e os da seleção dele
+ * (`selectionItemIds`), mais os que a busca achar nos bookings (sem busca,
+ * os de mesmo código da fábrica); os já ligados a outro produto ficam de
+ * fora da busca.
  */
 export async function requestItemChoices(
   request: SupplierRequest,
   query: string,
 ): Promise<{ suggested: ItemChoice[]; found: ItemChoice[] }> {
   const store = getStore();
-  const baseIds = [
-    request.bookingItemId,
-    ...(request.alternativeItemIds ?? []),
-  ];
+  const baseIds = await selectionItemIds(request);
   const base = await store.list("booking_items", { filter: { id: baseIds } });
   let found: BookingItem[] = [];
   const words = searchWords(query);
-  if (words.length) {
+  const code = (request.item.factoryItemCode ?? "").trim().toUpperCase();
+  if (words.length || code) {
     const lots = await store.list("booking_lots", {
-      filter: { status: ["closed", "in_progress", "done"] },
+      filter: { status: ["draft", "closed", "in_progress", "done"] },
     });
-    found = lots.length
+    const candidates = lots.length
       ? (
           await store.list("booking_items", {
             filter: { lotId: lots.map((l) => l.id) },
           })
-        )
-          .filter(
-            (i) =>
-              !baseIds.includes(i.id) &&
-              !i.productId &&
-              matchesItemSearch(itemSearchText(i), words),
-          )
-          .slice(0, ITEM_SEARCH_MAX)
+        ).filter((i) => !baseIds.includes(i.id) && !i.productId)
       : [];
+    // Sem busca: os itens com o mesmo código da fábrica em outros bookings.
+    found = candidates
+      .filter((i) =>
+        words.length
+          ? matchesItemSearch(itemSearchText(i), words)
+          : (i.factoryItemCode ?? "").trim().toUpperCase() === code,
+      )
+      .slice(0, ITEM_SEARCH_MAX);
   }
   const all = [...base, ...found];
   const lotIds = [...new Set(all.map((i) => i.lotId))];
@@ -134,22 +168,44 @@ export async function requestItemChoices(
   };
 }
 
+const fold = (s: string) =>
+  s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const productText = (p: Product) =>
+  fold([p.name, p.sku, p.supplierSku, p.sankhyaCode].filter(Boolean).join(" "));
+
 /** Produtos do catálogo pelo nome, código ou código da fábrica (para associar). */
 export async function searchCatalogProducts(query: string): Promise<Product[]> {
   const words = searchWords(query);
   if (!words.length) return [];
   const products = await getStore().list("products", { orderBy: "name" });
-  const fold = (s: string) =>
-    s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   return products
-    .filter((p) =>
-      matchesItemSearch(
-        fold(
-          [p.name, p.sku, p.supplierSku, p.sankhyaCode].filter(Boolean).join(" "),
-        ),
-        words,
-      ),
-    )
+    .filter((p) => p.active && matchesItemSearch(productText(p), words))
+    .slice(0, PRODUCT_SEARCH_MAX);
+}
+
+/**
+ * Sugestões para associar, sem busca digitada: produtos com o código da
+ * fábrica do item (SKU ou código do fornecedor) ou com todas as palavras
+ * da descrição.
+ */
+export async function suggestCatalogProducts(
+  request: SupplierRequest,
+): Promise<Product[]> {
+  const it = request.item;
+  const code = fold((it.factoryItemCode ?? "").trim());
+  const words = searchWords(it.description ?? it.productName ?? "");
+  if (!code && !words.length) return [];
+  const products = await getStore().list("products", { orderBy: "name" });
+  return products
+    .filter((p) => {
+      if (!p.active) return false;
+      if (
+        code &&
+        [p.sku, p.supplierSku].some((v) => v && fold(v.trim()) === code)
+      )
+        return true;
+      return words.length > 0 && matchesItemSearch(productText(p), words);
+    })
     .slice(0, PRODUCT_SEARCH_MAX);
 }
 
@@ -157,23 +213,55 @@ export async function searchCatalogProducts(query: string): Promise<Product[]> {
 /* Criar ou associar                                                         */
 /* ------------------------------------------------------------------------ */
 
-/** Ficha mestre do produto: o item do booking, com preço, moeda e MOQ da resposta. */
+/**
+ * Condições combinadas na solicitação aprovada: as finais da negociação
+ * (resposta do fornecedor, contraproposta aceita ou nova proposta dele);
+ * contraproposta recusada ou sem resposta no histórico ficam com a resposta
+ * gravada do fornecedor; o que faltar vem do booking.
+ */
+export function agreedConditions(request: SupplierRequest): {
+  price: number | null;
+  currency: string | null;
+  moq: number | null;
+  incoterm: string | null;
+  leadTimeDays: number | null;
+} {
+  const it = request.item;
+  const final = finalConditions(request);
+  const answered = request.supplierPrice !== null;
+  const base = {
+    price: answered ? request.supplierPrice : (it.price ?? null),
+    currency: answered ? request.supplierCurrency : (it.currency ?? null),
+    moq: request.supplierMoq ?? it.moq ?? null,
+    incoterm: request.supplierIncoterm ?? it.incoterm ?? null,
+    leadTimeDays: request.supplierLeadTimeDays ?? null,
+  };
+  if (!final || final.state === "rejected" || final.state === "pending")
+    return base;
+  return {
+    price: final.price ?? base.price,
+    currency: final.price !== null ? final.currency : base.currency,
+    moq: final.moq ?? base.moq,
+    incoterm: final.incoterm ?? base.incoterm,
+    leadTimeDays: final.leadTimeDays ?? base.leadTimeDays,
+  };
+}
+
+/** Ficha mestre do produto: o item do booking, com as condições combinadas (preço, moeda, MOQ, entrega). */
 export function sheetFromRequest(
   request: SupplierRequest,
   item: BookingItem | null,
   supplierName: string | null,
 ): SheetInput {
   const it = request.item;
-  const price = request.supplierPrice ?? it.price;
-  const currency =
-    request.supplierPrice !== null ? request.supplierCurrency : it.currency;
+  const deal = agreedConditions(request);
   const out: SheetInput = {
     supplierName: supplierName ?? undefined,
     factoryItemCode: it.factoryItemCode ?? undefined,
-    incoterm: it.incoterm ?? undefined,
-    currency: currency ?? undefined,
-    price: price ?? undefined,
-    moq: request.supplierMoq ?? it.moq ?? undefined,
+    incoterm: SHEET_INCOTERMS.find((v) => v === deal.incoterm),
+    currency: SHEET_CURRENCIES.find((v) => v === deal.currency),
+    price: deal.price ?? undefined,
+    moq: deal.moq ?? undefined,
     masterCartonQty: it.masterCartonQty ?? undefined,
     innerQty: it.innerQty ?? undefined,
     netWeightPcKg: it.netWeightPcKg ?? undefined,
@@ -228,6 +316,7 @@ async function linkItems(
     : [];
   const lotOf = new Map(lots.map((l) => [l.id, l]));
   const { linkSupplierFromBooking } = await import("./product-suppliers");
+  const deal = agreedConditions(request);
   for (const item of items) {
     if (item.productId !== product.id)
       await store.update("booking_items", item.id, {
@@ -244,13 +333,10 @@ async function linkItems(
       isChosen
         ? {
             supplierSku: item.factoryItemCode,
-            price: request.supplierPrice ?? item.price,
-            currency:
-              request.supplierPrice !== null
-                ? request.supplierCurrency
-                : item.currency,
-            moq: request.supplierMoq ?? item.moq,
-            leadTimeDays: request.supplierLeadTimeDays,
+            price: deal.price ?? item.price,
+            currency: deal.price !== null ? deal.currency : item.currency,
+            moq: deal.moq ?? item.moq,
+            leadTimeDays: deal.leadTimeDays,
           }
         : {
             supplierSku: item.factoryItemCode,
@@ -318,7 +404,9 @@ export async function createProductFromRequest(
     ...PRODUCT_EXTRA_DEFAULTS,
     lineId: line.id,
     name,
-    sku: null,
+    // REFFORN no Sankhya (a carga lê o SKU dele): o código da fábrica, que
+    // também liga ao produto do ERP que já tiver essa referência.
+    sku: clip(it.factoryItemCode, 60),
     specification: null,
     active: true,
     supplierId: request.supplierId,
@@ -546,4 +634,51 @@ export async function unreleasedRequestProductIds(): Promise<Set<string>> {
       .filter((r) => r.productId && !r.showcaseReleasedAt)
       .map((r) => r.productId as string),
   );
+}
+
+/* ------------------------------------------------------------------------ */
+/* O que o Sankhya pede para incluir o produto                               */
+/* ------------------------------------------------------------------------ */
+
+export type ErpField =
+  | "DESCRPROD"
+  | "REFFORN"
+  | "NCM"
+  | "PESOBRUTO"
+  | "PESOLIQ"
+  | "MEDIDAS";
+
+export interface ErpReadiness {
+  field: ErpField;
+  /** O valor que vai (texto curto), ou nulo quando falta. */
+  value: string | null;
+  /** Sem ele o Sankhya recusa ou o portal não acha o CODPROD depois. */
+  required: boolean;
+}
+
+/**
+ * Puro: o que o produto criado desta solicitação leva ao Sankhya
+ * (`productValues` em sankhya-sync.ts). O grupo (CODGRUPOPROD) é o da linha
+ * escolhida no formulário (a tela marca as linhas sem grupo).
+ */
+export function erpReadiness(
+  request: SupplierRequest,
+  item: BookingItem | null,
+  name: string,
+): ErpReadiness[] {
+  const it = request.item;
+  const n = (v: number | null | undefined) => (v == null ? null : String(v));
+  const size = [it.lengthCm, it.widthCm, it.heightCm];
+  return [
+    { field: "DESCRPROD", value: clip(name, 160), required: true },
+    { field: "REFFORN", value: clip(it.factoryItemCode, 60), required: true },
+    { field: "NCM", value: normalizeNcm(item?.ncm) ?? null, required: true },
+    { field: "PESOBRUTO", value: n(it.grossWeightPcKg), required: false },
+    { field: "PESOLIQ", value: n(it.netWeightPcKg), required: false },
+    {
+      field: "MEDIDAS",
+      value: size.every((v) => v != null) ? size.join(" × ") : null,
+      required: false,
+    },
+  ];
 }
