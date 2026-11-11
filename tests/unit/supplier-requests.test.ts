@@ -80,6 +80,16 @@ const file = (rows: string[][]) =>
 async function closedLot(supplierName: string, rows: string[][]) {
   const lot = await lots.createBookingLotFromSheet(admin, file(rows));
   expect(lot.supplierId).toBeTruthy();
+  // NCM é obrigatório para fechar (docs/BOOKING.md, "NCM do item").
+  const { setBookingItemsNcm } = await import("@/lib/services/booking-ncm");
+  const items = await getStore().list("booking_items", {
+    filter: { lotId: lot.id },
+  });
+  await setBookingItemsNcm(
+    admin,
+    items.map((i) => i.id),
+    "7013.37.00",
+  );
   return lots.closeBookingLot(admin, lot.id, null);
 }
 
@@ -372,6 +382,8 @@ describe("produto da solicitação aprovada", () => {
       supplierId: lotA.supplierId,
       supplierSku: "PX-A",
       active: true,
+      // Herda o NCM do item escolhido.
+      ncm: "70133700",
     });
     // Ficha mestre com preço, moeda e MOQ da resposta.
     const [master] = await store.list("purchase_sheets", {
@@ -420,7 +432,9 @@ describe("produto da solicitação aprovada", () => {
       "40123",
     );
     expect(res.checked).toBe(false);
-    expect((await store.get("products", created.id))!.sankhyaCode).toBe("40123");
+    expect((await store.get("products", created.id))!.sankhyaCode).toBe(
+      "40123",
+    );
     expect(
       (await store.get("supplier_requests", request.id))!.erpCheckedAt,
     ).toBeNull();

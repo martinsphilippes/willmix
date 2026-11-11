@@ -212,13 +212,19 @@ export async function analyzeProductsWithDefaults(
 
 /**
  * Dados de um item de booking (docs/BOOKING.md, "Booking por planilha") para
- * a simulação. O item não é produto e não tem NCM: II e IPI ficam fora
- * (`ncmFound` falso, a conta usa 0, como num produto sem NCM).
+ * a simulação. II e IPI vêm da tabela fiscal pelo NCM do item ("NCM do
+ * item"); sem NCM ou fora da tabela, ficam fora (`ncmFound` falso, a conta
+ * usa 0, como num produto sem NCM).
  */
-export function bookingItemPrefill(item: BookingItem): SuperplanProductPrefill {
+export function bookingItemPrefill(
+  item: BookingItem,
+  rates: NcmRates | null = null,
+): SuperplanProductPrefill {
   const currency = (item.currency ?? "").toUpperCase();
   const known = currency === "USD" || currency === "RMB";
   const price = positive(item.price);
+  const iiPct = rates?.ii ?? null;
+  const ipiPct = rates ? (rates.ipiNt ? 0 : (rates.ipi ?? null)) : null;
   return {
     productId: null,
     productName:
@@ -232,10 +238,10 @@ export function bookingItemPrefill(item: BookingItem): SuperplanProductPrefill {
     netWeightPcKg: positive(item.netWeightPcKg),
     grossWeightPcKg: positive(item.grossWeightPcKg),
     cbmPerCarton: positive(item.cbmPerCarton),
-    ncm: null,
-    iiPct: null,
-    ipiPct: null,
-    ncmFound: false,
+    ncm: text(item.ncm),
+    iiPct,
+    ipiPct,
+    ncmFound: iiPct !== null && ipiPct !== null,
     averageUsd: null,
     averageWeightKg: null,
   };
@@ -244,16 +250,26 @@ export function bookingItemPrefill(item: BookingItem): SuperplanProductPrefill {
 /**
  * Análise dos itens de um booking com os valores padrão do Superplan (a
  * mesma conta de `analyzeProductsWithDefaults`); `businessType` vazio ou
- * desconhecido = o padrão dos parâmetros.
+ * desconhecido = o padrão dos parâmetros. II e IPI pelo NCM de cada item.
  */
 export async function analyzeBookingItems(
   items: BookingItem[],
   options: { businessType?: string | null } = {},
 ): Promise<Map<string, SuperplanSnapshot>> {
   const ctx = await loadSuperplanContext();
+  const ncms = [
+    ...new Set(items.map((i) => text(i.ncm)).filter((n): n is string => !!n)),
+  ];
+  const rates = new Map(
+    await Promise.all(ncms.map(async (n) => [n, await lookupNcm(n)] as const)),
+  );
   const out = new Map<string, SuperplanSnapshot>();
   for (const item of items) {
-    const prefill = bookingItemPrefill(item);
+    const ncm = text(item.ncm);
+    const prefill = bookingItemPrefill(
+      item,
+      ncm ? (rates.get(ncm) ?? null) : null,
+    );
     const { input, businessType, container } = defaultSuperplanInput(
       prefill,
       ctx,
@@ -262,7 +278,7 @@ export async function analyzeBookingItems(
     const snapshot = snapshotOf(input, computeSuperplan(input), {
       businessType,
       container,
-      ncmFound: false,
+      ncmFound: prefill.ncmFound,
     });
     if (prefill.otherCurrency)
       snapshot.missing = snapshot.missing.map((m) =>

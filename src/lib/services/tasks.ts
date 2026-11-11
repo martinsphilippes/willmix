@@ -1142,6 +1142,28 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
         ),
       );
     }
+    // Itens de booking sem produto parecido no cadastro: um por grupo de
+    // parecidos (docs/BOOKING.md, "NCM do item"). Só o produto.
+    const { pendingNcmGroups } = await import("./booking-ncm");
+    for (const group of await pendingNcmGroups(user)) {
+      tasks.push(
+        finish(
+          {
+            kind: "ncm_classify",
+            title: `Classificar NCM: ${group.key}`,
+            detail: `Itens de booking sem NCM: ${group.items.length}`,
+            text: {
+              title: "bookingNcm.task.title",
+              detail: "bookingNcm.task.detail",
+              values: { group: group.key, n: group.items.length },
+            },
+            link: "/app/ncm-items",
+            dueAt: null,
+          },
+          now,
+        ),
+      );
+    }
   }
   if (supplier) await datesForSupplier(tasks);
   // Pelo prazo: as mais urgentes primeiro; sem prazo por último.

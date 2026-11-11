@@ -91,6 +91,18 @@ async function importAndClose(page: Page, file: ReturnType<typeof sheet>) {
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   // Fornecedor do cadastro (tem login): nenhum aviso de "sem acesso".
   await expect(page.locator("[data-supplier-no-login]")).toHaveCount(0);
+  // NCM obrigatório (docs/BOOKING.md, "NCM do item"): sem produto parecido
+  // no cadastro, o item fica com o despachante; a Wellmix preenche aqui.
+  const ncmInputs = page.locator("input[data-booking-item-ncm]");
+  for (let i = 0; i < (await ncmInputs.count()); i++) {
+    const input = ncmInputs.nth(i);
+    if (await input.inputValue()) continue;
+    await input.fill("7013.37.00");
+    await input.press("Enter");
+    await expect(
+      page.locator('[data-booking-row-note="saved"]').nth(i),
+    ).toBeVisible();
+  }
   await page.click("[data-booking-lot-close-submit]");
   await page.waitForURL(/[?&]closed=1/);
   await expect(page.locator("[data-booking-item-analysis]")).toHaveCount(1);

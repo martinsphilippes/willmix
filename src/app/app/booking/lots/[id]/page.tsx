@@ -45,6 +45,7 @@ import { canOpen } from "@/lib/auth/screens";
 import { partiesWithoutLogin } from "@/lib/services/portal-access";
 import {
   BookingItemInput,
+  BookingItemNcmInput,
   BookingItemSelect,
   BookingLotDateInput,
   BookingLotSupplierSelect,
@@ -141,6 +142,13 @@ export default async function BookingLotPage({
       ? [{ id: supplier.id, name: supplier.name }]
       : [];
   const editable = bookingLotEditable(lot.status);
+  // NCM: editável em qualquer situação menos Cancelado (docs/BOOKING.md, "NCM do item").
+  const ncmEditable = lot.status !== "cancelled";
+  const ncmWithBroker = items.filter(
+    (i) => !i.ncm && !!i.ncmRequestedAt,
+  ).length;
+  const { hasBroker } = await import("@/lib/services/booking-ncm");
+  const brokerExists = ncmWithBroker ? await hasBroker() : true;
   const pending = bookingLotPending(lot, items);
   const ready = bookingLotReady(pending);
   const businessTypes = await superplanBusinessTypes();
@@ -370,6 +378,21 @@ export default async function BookingLotPage({
             {text}
           </Alert>
         ))}
+        {ncmWithBroker ? (
+          <Alert tone="warning">
+            <span data-booking-lot-ncm-pending={ncmWithBroker}>
+              {t("bookingNcm.lotPending", { n: ncmWithBroker })}{" "}
+              <a href="/app/ncm-items" className={linkClass}>
+                {t("bookingNcm.lotPendingLink")}
+              </a>
+              {!brokerExists ? (
+                <span className="mt-1 block text-xs">
+                  {t("bookingNcm.noBroker")}
+                </span>
+              ) : null}
+            </span>
+          </Alert>
+        ) : null}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
@@ -630,7 +653,7 @@ export default async function BookingLotPage({
               ? t("bookingLots.detail.itemsHint")
               : t("bookingLots.detail.itemsLocked", {
                   status: statusLabel(lot.status).toLowerCase(),
-                })}
+                }) + (ncmEditable ? ` ${t("bookingNcm.closedHint")}` : "")}
           </p>
           {items.length ? (
             <div className="relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border">
@@ -645,6 +668,10 @@ export default async function BookingLotPage({
                         {colLabel(k)}
                       </th>
                     ))}
+                    <th className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-500">
+                      {t("bookingNcm.col")}
+                      <span className="text-brand-700"> *</span>
+                    </th>
                     {COLUMNS.map((c) => (
                       <th
                         key={c.field}
@@ -711,6 +738,54 @@ export default async function BookingLotPage({
                             {!item.photoDocumentId && !item.cardDocumentId
                               ? muted
                               : null}
+                          </span>
+                        </td>
+                        <td
+                          className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
+                          data-booking-item-ncm-cell={
+                            item.ncmSource ??
+                            (item.ncmRequestedAt ? "broker_pending" : "none")
+                          }
+                        >
+                          {ncmEditable ? (
+                            <BookingItemNcmInput
+                              lotId={lot.id}
+                              itemId={item.id}
+                              saved={item.ncm ?? ""}
+                              labels={cellLabels(
+                                t("bookingNcm.edit", {
+                                  n:
+                                    item.itemNumber ??
+                                    String(item.position + 1),
+                                }),
+                              )}
+                            />
+                          ) : (
+                            <span className="tabular-nums">
+                              {item.ncm ?? "—"}
+                            </span>
+                          )}
+                          <span className="mt-0.5 block">
+                            {item.ncm && item.ncmSource ? (
+                              <Badge
+                                tone={
+                                  item.ncmSource === "match"
+                                    ? "info"
+                                    : "neutral"
+                                }
+                              >
+                                {t(
+                                  `bookingNcm.source.${item.ncmSource}` as DictionaryKey,
+                                  {
+                                    pct: Math.round((item.ncmScore ?? 0) * 100),
+                                  },
+                                )}
+                              </Badge>
+                            ) : !item.ncm && item.ncmRequestedAt ? (
+                              <Badge tone="warning">
+                                {t("bookingNcm.pending")}
+                              </Badge>
+                            ) : null}
                           </span>
                         </td>
                         {COLUMNS.map((c) => (

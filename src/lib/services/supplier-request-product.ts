@@ -16,6 +16,7 @@ import {
   matchesItemSearch,
   searchWords,
 } from "@/lib/supplier-requests";
+import { normalizeNcm } from "@/lib/fiscal";
 import { audit } from "./audit";
 import type { SheetInput } from "./purchase-sheet";
 
@@ -186,6 +187,7 @@ export function sheetFromRequest(
     colorAssortment: it.colorAssortment ?? undefined,
     material: it.material ?? undefined,
     powerDetail: it.powerDetail ?? undefined,
+    ncm: normalizeNcm(item?.ncm) ?? undefined,
   };
   if (item?.purchaseSchedule || request.needs)
     out.notes = [
@@ -326,6 +328,8 @@ export async function createProductFromRequest(
     widthCm: it.widthCm,
     heightCm: it.heightCm,
     source: "import",
+    // NCM do item escolhido (aproximação, despachante ou Wellmix).
+    ncm: normalizeNcm(item?.ncm) ?? null,
   });
   // Fora da vitrine já: a marca vai na solicitação antes de qualquer outra gravação.
   const now = new Date().toISOString();
