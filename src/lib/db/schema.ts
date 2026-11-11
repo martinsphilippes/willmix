@@ -769,6 +769,12 @@ export interface Product extends BaseRow {
   pantone: string | null;
   /** Cores Pantone escolhidas no seletor (código + hex); `pantone` guarda o texto. Nulo nos cadastros antigos. */
   colorPantones?: PantoneColorRef[] | null;
+  /**
+   * O texto de `notes` vai para o e-commerce (é a descrição do produto lá)?
+   * Falso: só observação interna. Ausente ou nulo: produto ainda não gravado
+   * pelo cadastro unificado (src/lib/sheet-registration.ts).
+   */
+  notesToEcommerce?: boolean | null;
   moq: number | null;
   price: number | null;
   currency: string | null;
@@ -2864,6 +2870,7 @@ export const TABLES: Record<TableName, TableDef> = {
       boxHeightCm: float(),
       cbm: float(),
       notes: text(),
+      notesToEcommerce: bool(),
       source: enumOf(PRODUCT_SOURCES, false),
       negotiatedAt: datetime(),
       sourcingItemId: id(false),

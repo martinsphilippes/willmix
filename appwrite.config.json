@@ -779,6 +779,13 @@
           "type": "text"
         },
         {
+          "key": "notesToEcommerce",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
           "key": "source",
           "required": false,
           "array": false,

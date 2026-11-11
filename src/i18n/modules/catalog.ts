@@ -286,6 +286,9 @@ export const pt = {
   "catalog.error.request_not_found": "Solicitação não encontrada.",
   "catalog.error.request_has_product":
     "A solicitação já tem um produto do catálogo; escolha uma solicitação sem produto.",
+  "catalog.notes.ecommerce": "Vai para o e-commerce",
+  "catalog.notes.ecommerceHint":
+    "Marcado: este texto é a descrição do produto no e-commerce. Desmarcado: é só observação interna.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -563,6 +566,9 @@ export const en: Record<keyof typeof pt, string> = {
   "catalog.error.request_not_found": "Request not found.",
   "catalog.error.request_has_product":
     "The request already has a catalogue product; choose a request without one.",
+  "catalog.notes.ecommerce": "Goes to e-commerce",
+  "catalog.notes.ecommerceHint":
+    "Checked: this text is the product description in e-commerce. Unchecked: it is an internal note only.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -828,4 +834,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "catalog.error.request_not_found": "未找到需求单。",
   "catalog.error.request_has_product":
     "该需求单已有目录产品；请选择尚无产品的需求单。",
+  "catalog.notes.ecommerce": "用于电商",
+  "catalog.notes.ecommerceHint":
+    "勾选：此文本作为电商的产品描述。不勾选：仅作为内部备注。",
 };

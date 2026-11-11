@@ -35,6 +35,7 @@ import {
   withBoxCbm,
   type SheetMissing,
 } from "./purchase-sheet-calc";
+import { sheetNotesFromProduct } from "@/lib/sheet-registration";
 import {
   adoptSheetIntoVariant,
   masterInputFromVariant,
@@ -158,6 +159,8 @@ export function productSheetDraft(
     colorPantones: product.colorPantones ?? null,
     material: product.material ?? null,
     ncm: product.ncm ?? null,
+    // Observações do cadastro unificado: a ficha mestre nasce com elas.
+    ...(sheetNotesFromProduct(product) ?? {}),
     lots: normalizeLots(null),
   };
 }
@@ -423,6 +426,10 @@ function sheetPatchFromProduct(product: Product): Partial<PurchaseSheet> {
     ...(product.colorPantones !== undefined
       ? { colorPantones: product.colorPantones }
       : {}),
+    // Observações: texto único do cadastro (descrição para e-commerce quando
+    // marcado; observação quando não). Produto ainda não gravado pelo
+    // cadastro unificado não mexe nos textos da ficha.
+    ...(sheetNotesFromProduct(product) ?? {}),
   };
 }
 
