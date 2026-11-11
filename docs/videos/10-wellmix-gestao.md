@@ -1023,3 +1023,312 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 - ⚠ A tela Multas lista **todas** as multas a quem a abre; docs/WORKFLOW.md diz que "o parceiro vê só as dele" (só se aplica ao bloco de multas do pedido). O jurídico vê todas. Confirmar se é o esperado.
 - ⚠ A palavra "aberta": o quadrado "Multa aberta" e a exceção "Multa em aberto" contam também as **Contestada** (`status: ["open","disputed"]`). O roteiro diz isso; confirmar com o dono.
 - ⚠ Quem pode registrar multa: o código exige a tela Multas (diretorias e administrador); docs/ACCESS.md diz o mesmo. A frase "Registrar: administrador e diretorias" vem daí.
+
+---
+
+## WGE-09 · Configurações: os parâmetros do sistema
+
+> **Promessa:** ao final do vídeo você sabe onde ajustar as regras do portal (quem cria solicitação, tolerâncias, prazos, sinal, Pix, IA, câmbio e tributos), o que cada chave muda e que ela só vale para pedidos novos.
+
+| Ficha                 |                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Série e papel         | Wellmix, administrador                                                                                                                                       |
+| Conta de gravação     | `admin@wellmix.com`, tela em pt                                                                                                                              |
+| Duração-alvo          | 5:30                                                                                                                                                         |
+| Ponto da jornada      | Todas as etapas: cada parâmetro vale numa etapa (docs/OPEN_DECISIONS.md)                                                                                      |
+| Telas e rotas         | `/app/settings` (Gestão → Configurações, aba "Geral"), `/app/settings/sankhya` (só citado), `/app/settings/reset` (WGE-11)                                    |
+| Dados antes de gravar | Os padrões de fábrica (nenhuma chave mexida). Ponto `antes-WGE-09`. Para a cena do cliente, o João sem solicitações em andamento. **Nunca grave com chaves de IA, Pix ou Sankhya reais** |
+| Depois deste vídeo    | "Configurações salvas." Cada salvamento vai para a Auditoria ("Configurações atualizadas"). Os valores valem para pedidos e solicitações **novos**             |
+| Antes · Próximo       | WGE-08 · WGE-10                                                                                                                                               |
+| Idiomas               | pt (base)                                                                                                                                                    |
+
+### Roteiro
+
+**Cena 1 · 0:00–0:10 · Gancho · `/app/settings`**
+
+- 🎬 Imagem: a tela Configurações inteira, rolando devagar: duas colunas de campos e caixas, com os cartões "Contas de demonstração", "Tabela fiscal (TEC e TIPI)" e "Testar IA" no fim.
+- 🎙 Narração: "Quem pode criar solicitação? Qual a tolerância de peso? Quanto é o sinal? Tudo isso se ajusta em Configurações, sem mexer no código."
+- 🔤 Na tela: `[TÍTULO]` "WGE-09 · Configurações: os parâmetros do sistema"; `[ZOOM 150 %]` nos campos do topo.
+- ✂️ Edição: vinheta antes; título em 2 s.
+
+**Cena 2 · 0:10–0:26 · Onde estou · menu Gestão → Configurações**
+
+- 🎬 Imagem: o cursor abre **Gestão** e clica em **Configurações**. Em destaque as abas "Geral", "Integração Sankhya", "Carga do Sankhya", "Condições de pagamento", "Processos" e "Sankhya: explorar dados", e os botões "Abrir Sankhya" e "Limpar dados de teste" no canto.
+- 🎙 Narração: "Em Gestão, abra Configurações. Só o administrador entra aqui. As abas do Sankhya ficam ao lado, e o que você muda vale para os pedidos novos, não para os que já nasceram."
+- 🔤 Na tela: `[MAPA etapas 1 a 9]` com um engrenagem; `[PASSO 1/8] Abra Gestão → Configurações`; `[QUEM VÊ]` "Só o administrador (ou quem ele liberar)"; `[ATENÇÃO]` "Vale para pedidos novos."
+- ✂️ Edição: o mapa sai em 8 s.
+
+**Cena 3 · 0:26–1:08 · Fluxo e prazos · coluna da esquerda**
+
+- 🎬 Imagem: o bloco **Fluxo e prazos**, campo a campo: "Cliente pode criar solicitação" (Sim), "Arte da embalagem feita pela agência" (Sim), "Quando a embalagem (faca e arte) começa" ("Ao abrir a RFQ (em paralelo com a cotação)"), "Agência padrão da embalagem" ("Automático (única agência ativa, senão Wellmix)"), "Entregáveis obrigatórios da embalagem" (caixas "Faca (die-cut)" e "Arte da embalagem" marcadas; "Arquivos para a gráfica" e "Foto da embalagem física" livres), "Prazo do briefing de embalagem (dias)" (7), "Agência vê o nome do cliente" (Não), "Quem confirma a entrega" ("Ambos"), "Tolerância de peso (%)" (3), "Sinal (%)" (30), "Validade da cotação (dias)" (15), "Lembrete antes do vencimento (dias)" (1), "Integração Sankhya" ("Simulado"). Mudar "Cliente pode criar solicitação" para "Não" e mostrar, no perfil do cliente, o aviso "Para pedir orçamento, fale com a Wellmix: os pedidos pela vitrine estão desligados no momento." (voltar a "Sim" depois).
+- 🎙 Narração: "Em Fluxo e prazos ficam as decisões do dia a dia. Cliente pode criar solicitação: com Não, o cliente vê um aviso e tem de falar com a Wellmix. Daqui saem também o sinal, a validade da cotação, a tolerância de peso e quem confirma a entrega."
+- 🔤 Na tela: `[PASSO 2/8] Fluxo e prazos`; `[SETA]` "Sinal (%): 30 por padrão; editável em cada seleção"; `[SETA]` "Tolerância de peso (%): acima disso a inspeção é bloqueada"; `[SETA]` "Quem confirma a entrega: Ambos, Cliente ou Wellmix"; `[ATENÇÃO]` "Agência vê o nome do cliente: Não (isolamento)."
+- ✂️ Edição: `[ZOOM 150 %]` em "Cliente pode criar solicitação"; corte para o perfil do cliente (3 s) e volta.
+
+**Cena 4 · 1:08–1:46 · Aprovação, SLA e prazos da solicitação · coluna da esquerda**
+
+- 🎬 Imagem: os blocos seguintes: **Aprovação do pré-custo** ("Exigir aprovação" Sim e "Diretoria executiva a partir de (R$)" 100000, com o texto "A escolha do fornecedor passa pelo planner e pela diretoria de compras; a partir do valor abaixo, também pela diretoria executiva…"), **SLA de resposta da cotação** ("Dias úteis para responder" 5) e **Prazos das etapas da solicitação** ("Abrir a RFQ", "Fornecedores responderem", "Comparar e escolher", "Cada nível da aprovação", "Cliente aprovar a proposta").
+- 🎙 Narração: "A aprovação do pré-custo passa pelo planner e pela diretoria de compras; acima do valor definido, também pela executiva. O SLA diz em quantos dias úteis a Wellmix responde ao cliente. E os prazos das etapas da solicitação marcam o atraso."
+- 🔤 Na tela: `[PASSO 3/8] Aprovação e prazos`; `[SETA]` "Exigir aprovação: Sim = a escolha só vale depois de aprovada"; `[SETA]` "SLA: dias úteis, de 1 a 60"; `[SETA]` "Prazos das etapas: dias úteis, de 0 a 60".
+- ✂️ Edição: `[ZOOM 150 %]` no valor da diretoria executiva e no SLA.
+
+**Cena 5 · 1:46–2:26 · Inspeção, containers e conformidade · coluna da esquerda**
+
+- 🎬 Imagem: os blocos **Inspeção e fila de revisão** ("Tolerância de dimensões (%)" 5, "Tolerância de CBM e peso (%)" 5, "Tolerância de quantidade (%)" 0, com as dicas; as caixas "Checagens estendidas na inspeção" e "Revisar pedidos com FOB zero"), **Containers** ("Ocupação máxima do container (%)" 95, "Container com vários clientes", "Tipos de container": "20GP;28;21700", "40GP;58;26500", "40HC;68;26500") e **Conformidade e pós-venda** ("Aviso de vencimento de certificação (dias)" 30, "Bloqueio por conformidade", "Pós-venda ativo").
+- 🎙 Narração: "Na inspeção, as tolerâncias dizem quanto a medida do fornecedor pode diferir da compra: zero em quantidade é exato. Em containers, acima da ocupação máxima o item cai na fila de revisão. E Pós-venda ativo abre a avaliação ao entregar."
+- 🔤 Na tela: `[PASSO 4/8] Inspeção, containers, conformidade`; `[SETA]` "Tolerância de quantidade: 0 = exato"; `[SETA]` "Tipos de container: código;m³;kg"; `[SETA]` "Pós-venda ativo: abre a avaliação ao entregar (WGE-06)".
+- ✂️ Edição: `[ZOOM 150 %]` nas dicas; destaque nas três caixas de marcação.
+
+**Cena 6 · 2:26–3:04 · Pagamento ao fornecedor e Pix do sinal · coluna da esquerda**
+
+- 🎬 Imagem: os blocos **Pagamento ao fornecedor** ("E-mail do financeiro" e "WhatsApp do financeiro", com "Com DDI e DDD, ex.: 55 11 99999-8888.") e **Pagamento do sinal por Pix** ("Chave Pix", com "CPF, CNPJ, e-mail, celular com +55 ou chave aleatória."). No pé do formulário a linha cinza "Pagamento: MANUAL · WhatsApp: MOCK · E-mail: MOCK (fixos até haver integração)". Clicar em **Salvar**: "Configurações salvas."
+- 🎙 Narração: "Em Pagamento ao fornecedor, informe para onde vai o pedido ao financeiro. Com a Chave Pix preenchida, o cliente vê o Pix copia e cola e o QR Code na proposta. A confirmação do recebimento continua manual, com a Wellmix."
+- 🔤 Na tela: `[PASSO 5/8] Financeiro e Pix`; `[BOTÃO] "Salvar"`; `[ATENÇÃO]` "Pagamento, WhatsApp e e-mail são fixos: manual e simulado."; `[ERRO COMUM]` "Chave Pix inválida. Use CPF ou CNPJ válidos, e-mail, celular com +55 ou chave aleatória."
+- ✂️ Edição: não mostre uma chave real: use um e-mail de demonstração; `[ZOOM 150 %]` na linha cinza.
+
+**Cena 7 · 3:04–3:48 · IA, marketing e operação · coluna da direita**
+
+- 🎬 Imagem: a coluna da direita, no alto: **IA, marketing e operação**. "Modo da IA" ("Automático", "Simulado" ou "Manual") com o selo "modo efetivo: manual · sem sugestão"; "Modelo da IA" (claude-sonnet-5-5); "Preço padrão do kit de marketing" (200) e "Moeda do kit de marketing"; "Importadora" (Wellmix); as caixas "Marketing studio ativo", "Bloqueio por RADAR" e "Busca automática pausada". Descer até o cartão **Testar IA** e clicar em **Testar IA**: aparece "IA desligada: modo MANUAL ou nenhuma credencial disponível."
+- 🎙 Narração: "Do lado direito, a IA. O selo mostra o modo efetivo: sem credencial, ela fica manual e só sugere quando há chave. Testar IA faz uma chamada curta e diz se funcionou. Aqui também ficam o preço do kit de marketing e a pausa da busca por foto."
+- 🔤 Na tela: `[PASSO 6/8] IA e operação`; `[BOTÃO] "Testar IA"`; `[SETA]` "Modo efetivo: o que está valendo de fato"; `[SETA]` "Busca automática pausada: ligada hoje (aguarda cartão de crédito)"; `[QUEM VÊ]` "A chave da IA nunca aparece na tela."
+- ✂️ Edição: `[ZOOM 150 %]` no selo "modo efetivo" e no resultado do teste.
+
+**Cena 8 · 3:48–4:36 · Preço ao cliente e tributos · coluna da direita**
+
+- 🎬 Imagem: o bloco **Preço ao cliente** ("Margem geral (%)", "Frete marítimo estimado por CBM", "Moeda do frete marítimo", "Câmbio do dia" com o selo "Cotação de hoje", os campos "USD → R$", "RMB → R$", "EUR → R$" e o botão **Buscar cotações**, e as listas "Margem por linha de produto (facultativa)" e "Margem por cliente (facultativa)"). Depois **Tributos da importação** ("PIS-importação (%)" 2,1, "COFINS-importação (%)" 9,65, "ICMS da importação (%)", "Seguro internacional (% do FOB)") e os links "Link oficial da planilha da TEC" e "da TIPI". Citar, em uma frase, "Disputa de fornecedores (pesos)" como guardada.
+- 🎙 Narração: "Em Preço ao cliente, a margem geral, o frete por metro cúbico e o câmbio do dia: clique em Buscar cotações. A margem por cliente vale mais que a da linha. Em Tributos, PIS, COFINS, ICMS e seguro entram no custo importado; sem ICMS, ele fica fora da conta, com aviso."
+- 🔤 Na tela: `[PASSO 7/8] Preço e tributos`; `[BOTÃO] "Buscar cotações"`; `[SETA]` "Margem: cliente > linha > geral"; `[ATENÇÃO]` "A disputa de fornecedores está em espera: não é usada hoje."; `[ERRO COMUM]` "Margem inválida: use um número de 0 a 1000."
+- ✂️ Edição: `[ZOOM 150 %]` em "Câmbio do dia" e "Margem por cliente".
+
+**Cena 9 · 4:36–5:02 · Salvar e conferir · `/app/settings`**
+
+- 🎬 Imagem: no fim do formulário, o botão vermelho **Salvar**. Clicar: no alto, "Configurações salvas." Mostrar um erro, por exemplo deixar "Dias úteis para responder" fora do limite (o campo avisa) ou escrever um texto inválido em "Prazo por etapa (JSON, dias)": "JSON inválido em stageDueDays."
+- 🎙 Narração: "Quando terminar, clique em Salvar. Aparece Configurações salvas. Se algum campo estiver fora da regra, a tela diz qual, e nada é gravado pela metade. Lembre: o novo valor vale para os pedidos novos."
+- 🔤 Na tela: `[PASSO 8/8] Clique em "Salvar"`; `[BOTÃO] "Salvar"`; `[ERRO COMUM]` "JSON inválido em stageDueDays."; `[DEPOIS]` "O salvamento vai para a Auditoria: 'Configurações atualizadas'."
+- ✂️ Edição: `[CORTE]` seco para o aviso de sucesso.
+
+**Cena 10 · 5:02–5:20 · Contas de demonstração e o que não está aqui · `/app/settings`**
+
+- 🎬 Imagem: rolar até **Contas de demonstração**: "Logins de teste, todos com a senha …", a lista com o selo "Criada" ou "Falta criar" e o botão **Criar as contas que faltam** (quando há alguma). Em seguida, mostrar o menu Pedidos → "RFQ (em espera)" e "Sourcing (em espera)": os interruptores deles ficam lá.
+- 🎙 Narração: "Em ambiente de demonstração, Contas de demonstração cria os logins de teste que faltam. E atenção: os interruptores da RFQ e do Sourcing não ficam aqui, e sim nas telas deles, em Pedidos."
+- 🔤 Na tela: `[BOTÃO] "Criar as contas que faltam"`; `[QUEM VÊ]` "Contas de demonstração: só em ambiente de demonstração"; `[SETA]` "RFQ e Sourcing: interruptor na própria tela".
+- ✂️ Edição: `[CORTE]` seco para o menu Pedidos.
+
+**Cena 11 · 5:20–5:30 · Resumo e próximo vídeo**
+
+- 🎬 Imagem: fundo vermelho com a lista; no fim, a miniatura do WGE-10.
+- 🎙 Narração: "Resumindo: cada regra tem um campo, vale para o que é novo e fica na auditoria. A seguir, Equipe e divisões."
+- 🔤 Na tela: `[RESUMO]` "1 Gestão → Configurações · 2 Fluxo, prazos, aprovação e SLA · 3 Tolerâncias, containers, Pix e IA · 4 Preço, câmbio e tributos · 5 Salvar"; "Próximo: WGE-10 · Equipe e divisões".
+- ✂️ Edição: fade para a vinheta de encerramento.
+
+### Erros comuns
+
+- **Erro:** "JSON inválido em stageDueDays." (campo "Prazo por etapa (JSON, dias)"). → **Correção:** corrigir o JSON (chaves entre aspas, números sem texto) ou restaurar o padrão.
+- **Erro:** "Tipos de container inválidos: use código;capacidade;peso por linha." → **Correção:** uma linha por tipo, como `40HC;68;26500`.
+- **Erro:** "Margem inválida: use um número de 0 a 1000.", "Frete por CBM inválido.", "Câmbio manual inválido." e "Alíquota inválida: use um número de 0 a 99,99." → **Correção:** digitar números válidos.
+- **Erro:** "O SLA deve ser um número inteiro de 1 a 60 dias úteis." e "Prazos das etapas da solicitação: use números inteiros de 0 a 60 dias úteis." → **Correção:** corrigir os dias.
+- **Erro:** "Informe um valor em reais (0 ou mais)." (Diretoria executiva a partir de). → **Correção:** informar o valor.
+- **Erro:** "Chave Pix inválida. Use CPF ou CNPJ válidos, e-mail, celular com +55 ou chave aleatória." → **Correção:** conferir a chave. Também: "Recebedor até 25 caracteres e cidade até 15." (⚠ ver pontos a confirmar).
+- **Erro:** "E-mail do financeiro inválido." e "WhatsApp do financeiro inválido: informe DDI, DDD e número." → **Correção:** corrigir.
+- **Erro:** "Marque pelo menos um entregável obrigatório da embalagem." → **Correção:** deixar ao menos "Faca (die-cut)" ou "Arte da embalagem" marcado.
+- **Erro:** "Link inválido: use o endereço completo começando com https://." (links da TEC e da TIPI). → **Correção:** colar o endereço completo.
+- **Erro:** "Pesos da disputa inválidos: use números de 0 a 100, com pelo menos um acima de zero." → **Correção:** ajustar os pesos (a disputa está em espera).
+- **Aviso:** "IA desligada: modo MANUAL ou nenhuma credencial disponível." (Testar IA). → **Correção:** não é erro; sem chave a IA só sugere se estiver em "Simulado" (exemplo rotulado).
+
+### Passo a passo em texto
+
+1. No menu **Gestão**, abra **Configurações** (só o administrador). Tudo o que mudar vale para pedidos e solicitações novos.
+2. Em **Fluxo e prazos**: **Cliente pode criar solicitação** (com Não, o cliente vê o aviso para falar com a Wellmix), **Arte da embalagem feita pela agência**, **Quando a embalagem (faca e arte) começa**, **Agência padrão da embalagem**, **Entregáveis obrigatórios da embalagem**, **Prazo do briefing de embalagem (dias)**, **Agência vê o nome do cliente**, **Quem confirma a entrega**, **Tolerância de peso (%)**, **Sinal (%)**, **Validade da cotação (dias)**, **Lembrete antes do vencimento (dias)**, **Integração Sankhya** e **Prazo por etapa (JSON, dias)**.
+3. **Aprovação do pré-custo**: **Exigir aprovação** e **Diretoria executiva a partir de (R$)**. **SLA de resposta da cotação**: **Dias úteis para responder**. **Prazos das etapas da solicitação**.
+4. **Inspeção e fila de revisão**: tolerâncias de dimensões, de CBM e peso e de quantidade; **Checagens estendidas na inspeção**; **Revisar pedidos com FOB zero**. **Containers**: **Ocupação máxima do container (%)**, **Container com vários clientes** e **Tipos de container**. **Conformidade e pós-venda**: **Aviso de vencimento de certificação (dias)**, **Bloqueio por conformidade** e **Pós-venda ativo**.
+5. **Pagamento ao fornecedor**: **E-mail do financeiro** e **WhatsApp do financeiro**. **Pagamento do sinal por Pix**: **Chave Pix**.
+6. Na coluna da direita, **IA, marketing e operação**: **Modo da IA**, **Modelo da IA**, **Preço padrão do kit de marketing**, **Moeda do kit de marketing**, **Importadora**, **Marketing studio ativo**, **Bloqueio por RADAR** e **Busca automática pausada**. Use **Testar IA** para conferir.
+7. **Preço ao cliente**: **Margem geral (%)**, **Frete marítimo estimado por CBM**, **Moeda do frete marítimo**, **Câmbio do dia** (**Buscar cotações**) e as margens por linha e por cliente. **Tributos da importação**: **PIS-importação (%)**, **COFINS-importação (%)**, **ICMS da importação (%)** e **Seguro internacional (% do FOB)**.
+8. Clique em **Salvar**. Deve aparecer "Configurações salvas."
+
+### O que cada chave muda (resumo para a descrição do vídeo)
+
+| Campo na tela                                  | O que muda                                                                                                   | Padrão |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------ |
+| Cliente pode criar solicitação                 | Com Não, o cliente não envia solicitação (a vitrine e o formulário avisam)                                    | Sim    |
+| Arte da embalagem feita pela agência           | Sim: a agência designada faz a arte; Não: a Wellmix envia                                                     | Sim    |
+| Quando a embalagem (faca e arte) começa        | Com a RFQ, ao escolher o fornecedor ou só no pedido                                                           | Com a RFQ |
+| Agência padrão da embalagem                    | Vazio: a única agência ativa, senão a Wellmix                                                                 | Automático |
+| Entregáveis obrigatórios da embalagem          | O que torna o briefing "pronto": faca, arte, arquivos para a gráfica, foto da embalagem física                | Faca e arte |
+| Prazo do briefing de embalagem (dias)          | Prazo do briefing quando a solicitação não tem prazo                                                          | 7      |
+| Agência vê o nome do cliente                   | A agência vê (ou não) o cliente no briefing                                                                   | Não    |
+| Quem confirma a entrega                        | Cliente, Wellmix ou Ambos                                                                                     | Ambos  |
+| Tolerância de peso (%)                         | Divergência de peso acima disso bloqueia a inspeção                                                           | 3      |
+| Sinal (%)                                      | Sinal sugerido sobre o valor ao cliente (editável na seleção)                                                 | 30     |
+| Validade da cotação (dias)                     | Validade padrão da cotação                                                                                    | 15     |
+| Lembrete antes do vencimento (dias)            | Quando o responsável é avisado de etapa a vencer                                                              | 1      |
+| Integração Sankhya                             | Simulado ou Manual: o pedido nasce com o ERP pendente e o número é informado à mão                            | Simulado |
+| Exigir aprovação / Diretoria executiva a partir de (R$) | A escolha do fornecedor só vale depois de aprovada; a diretoria executiva entra a partir do valor | Sim / R$ 100.000 |
+| Dias úteis para responder (SLA)                | Prazo de resposta que o cliente vê na solicitação                                                             | 5      |
+| Tolerâncias de dimensões / CBM e peso / quantidade (%) | Divergência aceita entre a compra e a inspeção                                                        | 5 / 5 / 0 |
+| Ocupação máxima do container (%)               | Acima disso, o container entra na fila de revisão                                                             | 95     |
+| Container com vários clientes                  | Permite juntar clientes diferentes no mesmo container, manualmente                                            | Não    |
+| Pós-venda ativo                                | Abre a avaliação ao concluir a entrega                                                                        | Sim    |
+| Bloqueio por conformidade                      | Produto sem a certificação exigida pela linha entra na fila de revisão                                        | Sim    |
+| Modo da IA / Modelo da IA                      | Automático usa a IA real com credencial; Simulado dá exemplo rotulado; Manual desliga                          | Automático / claude-sonnet-5-5 |
+| Preço padrão do kit de marketing               | Preço sugerido ao criar um kit (editável em cada kit)                                                         | 200 (BRL) |
+| Margem geral / por linha / por cliente (%)     | Margem sobre o custo importado no valor ao cliente; cliente vence linha, que vence a geral                     | 0      |
+| PIS / COFINS / ICMS / seguro                   | Entram no custo importado; sem ICMS, ele fica fora da conta, com aviso                                         | 2,1 / 9,65 / vazio / 0 |
+
+### Notas de gravação
+
+- Grave com os padrões de fábrica: se o ambiente já foi mexido, restaure o ponto `antes-WGE-09`. Os valores da tabela acima são os do código (`src/lib/settings.ts`); confira na tela antes de gravar.
+- Não faça uma alteração real na gravação: mude "Cliente pode criar solicitação" só na cena do aviso e volte a "Sim" no mesmo plano. Todo salvamento vai para a Auditoria (WGE-11).
+- "Testar IA" no ambiente de demonstração devolve "IA desligada…". Se houver IA real (Vercel AI Gateway ou chave), a mensagem é "IA funcionando (modelo)": não mostre a chave nem o provedor.
+- "Prazo por etapa (JSON, dias)" é um campo de código; mostre sem explicar cada chave.
+- A tela é longa. Grave em planos por bloco, com rolagem lenta, e use o navegador em 125 % para as letras ficarem legíveis em 1080p.
+- O cartão "Contas de demonstração" só existe em ambiente de demonstração (modo memória ou chave de demonstração ligada); não aparece em produção. Não mostre as senhas.
+
+### Pontos a confirmar
+
+- ⚠ Pix: o dicionário traz os campos "Nome do recebedor" e "Cidade do recebedor" e a mensagem "Para ligar o Pix, preencha também o nome e a cidade do recebedor.", e docs/OPEN_DECISIONS.md lista `pixReceiverName` e `pixReceiverCity`; mas a tela só mostra "Chave Pix". O nome sai da "Importadora" e a cidade vira "BRASIL" (`down-payment.ts`). Confirmar se os dois campos voltam à tela.
+- ⚠ Não existe campo na tela para `wellmixCanCreateRequest` ("Wellmix cria em nome do cliente", docs/OPEN_DECISIONS.md): a chave só existe em `settings.ts`. O roteiro não a cita.
+- ⚠ O rótulo de "Início da produção: dias depois do contrato assinado, padrão para fornecedor sem prazo próprio (0 = no dia)" é muito longo para a tela; a gravação deve cortar o texto, e o roteiro o chama só de "Início da produção".
+- ⚠ A dica do "Modo da IA" cita nomes de variáveis técnicas (ANTHROPIC_API_KEY, AI_GATEWAY_API_KEY, "AI Gateway"). Está na tela e aparece no vídeo; confirmar se o dono quer outro texto.
+- ⚠ O que "Tolerância de peso (%)" bloqueia ("Divergência acima disso bloqueia a inspeção", docs/OPEN_DECISIONS.md) foi lido na regra da etapa (`engine.ts`: "Peso divergente ... REVISÃO NECESSÁRIA"); confirmar a frase com o dono.
+- ⚠ Os valores padrão da tabela vêm de `src/lib/settings.ts`. Docs/OPEN_DECISIONS.md traz os mesmos números, com uma exceção: o campo "Sinal (%)" aparece como "Sinal sugerido sobre o valor ao cliente (editável na seleção)" e, na execução com a RFQ ligada, a seleção abriu com 30; confirmar com o dono se o sinal de 40 usado pelo E2E é só teste.
+- ⚠ Sankhya: este episódio só cita as abas e o botão "Abrir Sankhya" e o campo "Integração Sankhya" (Simulado ou Manual). O conteúdo das abas (credenciais, carga, processos) não está roteirizado; docs/SANKHYA.md tem o detalhe. Confirmar se haverá uma série própria.
+- ⚠ A pausa "Busca automática pausada" liga a mensagem "aguarda Cartão de Crédito" do CLI-02 (cena 4); desmarcar reativa a busca por foto e link. Confirmar se o dono quer isso no vídeo.
+
+---
+
+## WGE-10 · Equipe e divisões: funções e telas por login
+
+> **Promessa:** ao final do vídeo você define cargo, divisão e chefe de cada pessoa, marca as funções (comprador, planner, diretoria…) e libera as telas do login: padrão das funções ou uma a uma.
+
+| Ficha                 |                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Série e papel         | Wellmix, administrador (e o operador, que sente o efeito)                                                                                                    |
+| Conta de gravação     | `admin@wellmix.com`, tela em pt; `operador@wellmix.com` para conferir o efeito                                                                               |
+| Duração-alvo          | 5:00                                                                                                                                                         |
+| Ponto da jornada      | Todas as etapas: as funções mandam em quem aprova, valida e paga; as telas mandam no que abre (docs/ACCESS.md)                                                |
+| Telas e rotas         | `/app/team` (Gestão → Equipe e divisões), `/app/team/[id]` ("Editar acessos")                                                                                  |
+| Dados antes de gravar | O operador de demonstração (Otávio) com as funções "Comprador" e "Planner", sem cargo, sem divisão e sem chefe (como vem da carga). Ponto `antes-WGE-10`; este episódio **grava** (cargo, funções, telas) |
+| Depois deste vídeo    | As telas valem "na próxima tela que a pessoa abrir"; cada salvamento vai para a Auditoria (`team.member`). O Painel de SLA passa a mostrar a pessoa com cargo e divisão |
+| Antes · Próximo       | WGE-09 · WGE-11                                                                                                                                               |
+| Idiomas               | pt (base)                                                                                                                                                    |
+
+### Roteiro
+
+**Cena 1 · 0:00–0:10 · Gancho · `/app/team`**
+
+- 🎬 Imagem: a tela Equipe e divisões: a tabela da equipe com as colunas de funções e telas ("Padrão das funções (16 telas)", "Todas (administrador)").
+- 🎙 Narração: "Quem pode ver o financeiro? Quem aprova o pré-custo? Em Equipe e divisões, você decide pessoa por pessoa."
+- 🔤 Na tela: `[TÍTULO]` "WGE-10 · Equipe e divisões: funções e telas por login"; `[ZOOM 150 %]` na coluna "Telas".
+- ✂️ Edição: vinheta antes; título em 2 s.
+
+**Cena 2 · 0:10–0:25 · Onde estou · menu Gestão → Equipe e divisões**
+
+- 🎬 Imagem: o cursor abre **Gestão** e clica em **Equipe e divisões**. O título e a frase "Defina o cargo, a divisão (Wellmix ou WellKids) e a quem cada login responde, e a divisão de cada linha de produto…".
+- 🎙 Narração: "Em Gestão, abra Equipe e divisões. Só o administrador entra. Aqui você diz o que cada pessoa faz no processo e quais telas ela abre."
+- 🔤 Na tela: `[MAPA etapas 1 a 9]`; `[PASSO 1/8] Abra Gestão → Equipe e divisões`; `[QUEM VÊ]` "Só o administrador (ou quem ele liberar)".
+- ✂️ Edição: o mapa sai em 8 s.
+
+**Cena 3 · 0:25–1:00 · A lista da equipe · `/app/team`**
+
+- 🎬 Imagem: o cartão **Equipe** com a frase "As telas seguem as funções marcadas, ou a lista marcada uma a uma em Editar acessos. Financeiro, Contas a pagar, Configurações e Equipe só abrem para o administrador ou para quem ele liberar." A tabela: "Nome", "Cargo", "Divisão", "Responde a", "Funções" (selos "Comprador", "Planner") e "Telas" ("Todas (administrador)", "Padrão das funções (16 telas)", "Personalizado (N telas)" ou "Só o básico (Pendências, Painel de SLA, Notificações, Mensagens)") e o link "Editar acessos" em cada linha. Se houver login sem função, o aviso âmbar "N login(ns) sem função nem tela: veem só o básico. Abra Editar acessos para liberar."
+- 🎙 Narração: "A lista mostra cargo, divisão, a quem a pessoa responde, as funções e quantas telas ela abre. Todas, padrão das funções, personalizado ou só o básico. Se um login não tem função nem tela, aparece um aviso."
+- 🔤 Na tela: `[PASSO 2/8] Leia a lista`; `[SETA]` "Telas: Todas, Padrão, Personalizado ou Só o básico"; `[SETA]` "Aviso: login sem função"; `[BOTÃO] "Editar acessos"`.
+- ✂️ Edição: `[ZOOM 150 %]` na coluna "Telas".
+
+**Cena 4 · 1:00–1:32 · Dados: cargo, divisão e chefe · `/app/team/[id]`**
+
+- 🎬 Imagem: clicar em **Editar acessos** na linha do Otávio. Título "Acessos de Otávio Operador". O cartão **Dados**: "Cargo" (Analista, Coordenador, Supervisor, Gerente, Diretor), "Divisão" (Wellmix ou WellKids) e "Responde a" (a lista não traz ele mesmo nem quem está abaixo). Escolher "Analista", "Wellmix" e "Ana Admin".
+- 🎙 Narração: "Em Editar acessos, o primeiro bloco são os Dados: cargo, divisão e a quem a pessoa responde. A divisão decide quem recebe cada solicitação nova, e o chefe vê o painel de SLA de quem está abaixo."
+- 🔤 Na tela: `[PASSO 3/8] Cargo, divisão e "Responde a"`; `[SETA]` "Divisão: Wellmix ou WellKids"; `[ERRO COMUM]` "Uma pessoa não pode responder a ela mesma."; `[DEPOIS]` "Aparece no Painel de SLA (WGE-02)."
+- ✂️ Edição: `[CORTE]` seco para a tela da pessoa.
+
+**Cena 5 · 1:32–2:30 · As funções · `/app/team/[id]`**
+
+- 🎬 Imagem: o cartão **Funções (o que a pessoa faz no processo)**, com oito caixas, cada uma com o texto de apoio: "Comprador" (abre RFQ, escolhe fornecedor, valida ficha e imagens, acompanha produção e recebimento), "Gerente de produto" (libera dumping; cuida de produto, linha, vitrine, marketing e pós-venda), "Planner" (aprova o pré-custo (1º nível), acompanha ETD, follow, containers e fretes), "Cadastro" (valida o cadastro do produto no pedido, importa fichas e planilhas), "Financeiro" (valida e paga o numerário dentro do pedido), "Diretoria de compras" (aprova o pré-custo (2º nível), painéis e auditoria), "Diretoria executiva" (aprova o pré-custo acima do limite (3º nível), painéis e auditoria) e "Designer" (artes, embalagem, fotos e marketing). O cursor lê cada uma. Marcar "Comprador" e "Planner".
+- 🎙 Narração: "São oito funções. Comprador abre RFQ e acompanha produção. Gerente de produto cuida de linha, vitrine e marketing. Planner aprova o primeiro nível do pré-custo. Cadastro valida o produto. Financeiro valida o numerário. As diretorias aprovam, e o designer cuida das artes."
+- 🔤 Na tela: `[PASSO 4/8] Marque as funções`; `[SETA]` com cada função e seu texto de apoio; `[ATENÇÃO]` "A função manda no comportamento dentro das telas: quem aprova, quem libera dumping, quem valida numerário."
+- ✂️ Edição: realce de cada caixa por 2 s; `[ZOOM 150 %]` em "Planner".
+
+**Cena 6 · 2:30–3:30 · As telas · `/app/team/[id]`**
+
+- 🎬 Imagem: o cartão **Telas que o login abre**. "Padrão das funções" (com a lista das telas que as funções marcadas liberam, por exemplo "Booking, Solicitações, RFQ (em espera), Cotações, Pedidos…") e "Personalizado (marcar uma a uma)". As caixas por grupo do menu: **Início** (Control Tower, Pendências, Painel de SLA, Notificações, Mensagens, todas com "(sempre)"), **Pedidos**, **Cadastros** e **Gestão**. Marcar "Personalizado" e a caixa "Financeiro". Clicar em **Salvar**: "Equipe atualizada." e a nota "As telas valem na próxima tela que a pessoa abrir."
+- 🎙 Narração: "No bloco Telas, o padrão das funções libera as telas de cada função. Se quiser, escolha Personalizado e marque as telas uma a uma. O básico fica sempre: Control Tower, Pendências, SLA, Notificações e Mensagens. Clique em Salvar."
+- 🔤 Na tela: `[PASSO 5/8] Padrão ou personalizado`; `[BOTÃO] "Salvar"`; `[SETA]` "(sempre) = o básico de todo login da Wellmix"; `[ATENÇÃO]` "Financeiro, Contas a pagar, Configurações e Equipe: só o administrador ou quem você liberar aqui."; `[ERRO COMUM]` "Essa escolha cria um ciclo: o chefe escolhido está abaixo dessa pessoa."
+- ✂️ Edição: `[ZOOM 150 %]` nas caixas do grupo Gestão; o aviso "Equipe atualizada." por 2 s.
+
+**Cena 7 · 3:30–4:10 · O efeito no login · `/app` (Otávio)**
+
+- 🎬 Imagem: troca de perfil para o Otávio, agora com "Financeiro" marcado: a Control Tower dele mostra a faixa **Financeiro** e os valores. Voltar ao administrador, escolher "Padrão das funções" e Salvar: o Otávio volta a não ver a faixa. Em seguida, um login sem função: aviso "Seu login ainda não tem função nem tela liberada. Por enquanto você vê só o básico: Pendências, Painel de SLA, Notificações e Mensagens. Peça ao administrador para liberar seus acessos em Gestão → Equipe e divisões." E o aviso de tela fora do permitido: "Você não tem acesso a Financeiro. Peça ao administrador em Gestão → Equipe e divisões."
+- 🎙 Narração: "Veja o efeito. Com Financeiro marcado, o Otávio passa a ver a faixa de valores. Voltando ao padrão das funções, ela some. Sem função nem tela, o login vê só o básico, com um aviso. E tela não liberada volta ao início, com outro aviso."
+- 🔤 Na tela: `[PASSO 6/8] Confira o efeito no login`; `[SETA]` "Faixa Financeiro: só com a tela Financeiro"; `[QUEM VÊ]` "Padrão das funções apaga a lista e volta à regra das funções"; `[ATENÇÃO]` "O aviso não é erro técnico: é a regra de acesso."
+- ✂️ Edição: tela dividida por 5 s (admin e operador).
+
+**Cena 8 · 4:10–4:42 · Linhas de produto e Distribuir agora · `/app/team`**
+
+- 🎬 Imagem: voltar à lista e rolar até **Linhas de produto e divisão**: "A divisão da linha decide o analista da solicitação. Wellmix: Limpeza, Organização, Cutelaria, Cerâmica, Vidros, Mesa posta, Decoração, Eletro e Presentes. WellKids: Brinquedos, Primeira idade e Funs (infláveis, casa e lazer)." Escolher a divisão de "Utilidades domésticas" e clicar em **Salvar**; depois **Distribuir agora**: "N solicitação(ões)/pedido(s) distribuído(s)."
+- 🎙 Narração: "Cada linha de produto também tem uma divisão. É ela que escolhe o analista da solicitação. Depois de ajustar, clique em Distribuir agora para dar dono ao que está aberto e ainda sem responsável."
+- 🔤 Na tela: `[PASSO 7/8] Divisão da linha e Distribuir agora`; `[BOTÃO] "Salvar"`; `[BOTÃO] "Distribuir agora"`; `[SETA]` "Escolha: divisão da linha → analista com menos pendências".
+- ✂️ Edição: `[ZOOM 150 %]` na mensagem de distribuição.
+
+**Cena 9 · 4:42–5:00 · Resumo e próximo vídeo**
+
+- 🎬 Imagem: fundo vermelho com a lista; no fim, a miniatura do WGE-11.
+- 🎙 Narração: "Resumindo: dados, funções e telas, por login. A função manda no que a pessoa faz; a tela, no que ela abre. A seguir, a Auditoria."
+- 🔤 Na tela: `[RESUMO]` "1 Dados: cargo, divisão, chefe · 2 Oito funções · 3 Telas: padrão ou personalizado · 4 O básico fica sempre · 5 Distribuir agora"; `[PASSO 8/8] Conclua`; "Próximo: WGE-11 · Auditoria e dados de demonstração".
+- ✂️ Edição: fade para a vinheta de encerramento.
+
+### Erros comuns
+
+- **Erro:** "Uma pessoa não pode responder a ela mesma." → **Correção:** escolher outro chefe em "Responde a".
+- **Erro:** "Essa escolha cria um ciclo: o chefe escolhido está abaixo dessa pessoa." → **Correção:** escolher alguém que não responda (direta ou indiretamente) à pessoa.
+- **Erro:** "Escolha um chefe da equipe Wellmix." → **Correção:** o chefe tem de ser um login ativo da Wellmix (administrador ou operador).
+- **Erro:** "Registro não encontrado." → **Correção:** a pessoa saiu da lista (login inativo); recarregar.
+- **Aviso:** "N login(ns) sem função nem tela: veem só o básico. Abra Editar acessos para liberar." → **Correção:** marcar as funções do login.
+- **Aviso (no login):** "Você não tem acesso a {tela}. Peça ao administrador em Gestão → Equipe e divisões." e "Seu login ainda não tem função nem tela liberada…". → **Correção:** o administrador libera a tela (função ou Personalizado).
+- **Estado normal:** "Administrador: abre todas as telas; não há o que marcar." (na própria ficha do administrador).
+
+### Passo a passo em texto
+
+1. No menu **Gestão**, abra **Equipe e divisões**.
+2. Na linha da pessoa, clique em **Editar acessos**.
+3. Em **Dados**, escolha **Cargo** (Analista, Coordenador, Supervisor, Gerente ou Diretor), **Divisão** (Wellmix ou WellKids) e **Responde a**.
+4. Em **Funções (o que a pessoa faz no processo)**, marque uma ou mais: **Comprador**, **Gerente de produto**, **Planner**, **Cadastro**, **Financeiro**, **Diretoria de compras**, **Diretoria executiva** e **Designer**.
+5. Em **Telas que o login abre**, deixe **Padrão das funções** (as telas seguem as funções) ou escolha **Personalizado (marcar uma a uma)** e marque as telas por grupo (Início, Pedidos, Cadastros, Gestão). O básico (Control Tower, Pendências, Painel de SLA, Notificações e Mensagens) fica sempre.
+6. Clique em **Salvar**. As telas valem na próxima tela que a pessoa abrir. **Padrão das funções** apaga a lista personalizada.
+7. Em **Linhas de produto e divisão**, escolha a divisão de cada linha, clique em **Salvar** e depois em **Distribuir agora** para dar dono ao que está aberto e sem responsável.
+
+### Quem abre o quê (matriz do padrão das funções, docs/ACCESS.md)
+
+| Tela                                             | Comprador | Ger. produto | Planner | Cadastro | Dir. compras | Dir. executiva | Designer |
+| ------------------------------------------------ | :-------: | :----------: | :-----: | :------: | :----------: | :------------: | :------: |
+| Booking                                          |     ✓     |      ✓       |    ✓    |    ✓     |      ✓       |       ✓        |          |
+| Solicitações e cotações                          |     ✓     |      ✓       |    ✓    |          |      ✓       |       ✓        |          |
+| Pedidos                                          |     ✓     |      ✓       |    ✓    |    ✓     |      ✓       |       ✓        |    ✓     |
+| Painéis por área (sem o Financeiro)              |           |              |    ✓    |          |      ✓       |       ✓        |          |
+| Multas                                           |           |              |         |          |      ✓       |       ✓        |          |
+| Pós-venda                                        |     ✓     |      ✓       |         |          |      ✓       |       ✓        |          |
+| Marketing                                        |           |      ✓       |         |          |      ✓       |       ✓        |    ✓     |
+| Histórico comercial                              |     ✓     |      ✓       |    ✓    |          |      ✓       |       ✓        |          |
+| Auditoria                                        |           |              |         |          |      ✓       |       ✓        |          |
+| Financeiro, Contas a pagar, Configurações, Equipe, Superplan | só admin |         |         |          |              |                |          |
+
+A função **Financeiro** abre só **Pedidos** (valida e paga o numerário dentro do pedido, sem ver pagamentos, valores nem margem; ⚠ ver pontos a confirmar do WGE-01).
+
+### Notas de gravação
+
+- O ambiente de demonstração tem **um só login interno com função**: o Otávio (comprador e planner). Para mostrar o efeito de outra função, marque a função nele, confira e **volte ao estado de antes** (restaure o ponto `antes-WGE-10` entre as tomadas).
+- **Criar mais um login interno** (para uma conta de financeiro, de diretoria ou de designer): Cadastros → Outros parceiros → abrir um parceiro → cartão **Acesso ao portal** → escolher o papel **Operador Wellmix** (só o administrador vê essa opção) → **Criar acesso**. Nenhum login novo nasce na tela Equipe e divisões. Depois, marque as funções dele aqui. Não foi testado na verificação (⚠).
+- O GUIA (seção 2) diz que essas contas "são criadas em Gestão → Equipe e divisões": a tela não cria logins; ajustar o GUIA.
+- A tela **Equipe e divisões** só lista logins **ativos** com papel administrador ou operador. O jurídico (`juridico@wellmix.com`) tem outro papel e não aparece.
+- Não marque **Auditoria** em "Personalizado" na demonstração com um login sem função de diretoria: a página não abre (⚠ abaixo).
+- Na gravação do "efeito", use o botão **Salvar** e aguarde o aviso "Equipe atualizada." antes de trocar de perfil.
+
+### Pontos a confirmar
+
+- ⚠ **Possível bug:** marcar "Auditoria" no acesso Personalizado de um login que não é administrador nem tem a função "Diretoria de compras" ou "Diretoria executiva" **não abre a tela**: `requireScreen` passa, mas `canSeeAudit` exige a função e a página devolve 404 (conferido com o Otávio). docs/ACCESS.md (regra 2) diz que o personalizado vale "inclusive … Auditoria". Decidir qual das duas muda.
+- ⚠ **Possível inconsistência:** "Painel do dono" e "Fluxo de caixa" aparecem no menu para quem tem só a tela Financeiro, mas as páginas exigem também "Painéis por área" (ver WGE-05).
+- ⚠ A lista de telas traz "Conta corrente" (a tela do fornecedor) e "Parceiros" (que no menu aparece como "Clientes", "Fornecedores" e "Outros parceiros"); o nome pode confundir. A tela "Conta corrente" não abre para o administrador (volta ao início).
+- ⚠ O Painel de SLA recebe o administrador na escolha automática do dono se ele tiver divisão (visto na execução). O roteiro recomenda deixar a Ana sem divisão.
+- ⚠ O caminho para criar um login "Operador Wellmix" (Cadastros → Outros parceiros → parceiro → "Acesso ao portal") foi lido no código (a lista de papéis traz "Operador Wellmix" para o administrador) e visto na tela, mas **não foi executado**. Confirmar os nomes dos campos e que o login nasce preso a um parceiro (`partyId`) sem efeito no isolamento.
+- ⚠ Em docs/ACCESS.md (seção 6) o texto fala em "Editar acessos → /app/team/[id]"; confere. Já a seção 3 diz que a função financeiro "não vê valores"; na execução o resumo do pedido mostra o FOB e a venda a qualquer login da Wellmix (ver WGE-01).
