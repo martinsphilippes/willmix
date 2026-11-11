@@ -312,9 +312,10 @@ describe("seleção de itens e solicitação ao fornecedor", () => {
       first.id,
       second.id,
     ]);
-    // A Wellmix recebe só a própria; outro fornecedor, nada.
+    // A Wellmix vê os mesmos produtos; outro fornecedor, nada.
     expect(ids(await svc.supplierRequestGroup(admin, first))).toEqual([
       first.id,
+      second.id,
     ]);
     expect(await svc.supplierRequestGroup(supplierB, first)).toEqual([]);
   });

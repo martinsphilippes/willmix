@@ -10,9 +10,13 @@ import {
   type SupplierRequest,
   type User,
 } from "@/lib/db";
-import { sheetQuantity } from "@/lib/supplier-requests";
+import { groupRequests, sheetQuantity } from "@/lib/supplier-requests";
 import { audit } from "./audit";
-import { SupplierRequestError, openSupplierRequest } from "./supplier-requests";
+import {
+  SupplierRequestError,
+  openSupplierRequest,
+  type SupplierRequestBatch,
+} from "./supplier-requests";
 
 /*
  * Escolha por grupo (docs/SUPPLIER_REQUESTS.md, "Escolha por grupo"): na
@@ -189,17 +193,23 @@ export async function openGroupRequests(
     groupIds === "all" ? saved : saved.filter((g) => groupIds.includes(g.id));
   if (!wanted.length) throw new SupplierRequestError("selection_group_none");
   const result: OpenGroupRequestsResult = { opened: [], failed: [] };
+  // Uma solicitação por fornecedor: os produtos abertos juntos entram nela.
+  const batches = new Map<string, SupplierRequestBatch>();
   for (const group of wanted.sort((a, b) =>
     a.createdAt.localeCompare(b.createdAt),
   )) {
     try {
-      const request = await openSupplierRequest(user, {
-        itemId: group.chosenItemId,
-        alternativeIds: group.itemIds.filter((i) => i !== group.chosenItemId),
-        quantity: group.quantity,
-        needs: group.needs,
-        searchQuery: null,
-      });
+      const request = await openSupplierRequest(
+        user,
+        {
+          itemId: group.chosenItemId,
+          alternativeIds: group.itemIds.filter((i) => i !== group.chosenItemId),
+          quantity: group.quantity,
+          needs: group.needs,
+          searchQuery: null,
+        },
+        batches,
+      );
       await store.update("selection_groups", group.id, {
         status: "requested",
         supplierRequestId: request.id,
@@ -211,6 +221,37 @@ export async function openGroupRequests(
       if (!(error instanceof SupplierRequestError)) throw error;
       result.failed.push({ groupId: group.id, error: error.message });
     }
+  }
+  // Um aviso por fornecedor, com todos os produtos da solicitação dele.
+  const { notify } = await import("./notifications");
+  for (const products of groupRequests(result.opened)) {
+    const [first] = products;
+    const pieces = products.reduce((sum, r) => sum + r.quantity, 0);
+    await notify(
+      { role: "supplier", partyId: first.supplierId },
+      {
+        link: `/app/supplier-requests/${first.id}`,
+        kind: "action",
+        text: (t) => ({
+          subject: t("supplierRequests.notify.open.subject", {
+            n: first.number,
+          }),
+          body:
+            products.length === 1
+              ? t("supplierRequests.notify.open.body", {
+                  n: first.number,
+                  code:
+                    first.item.factoryItemCode ?? first.item.description ?? "",
+                  qty: first.quantity,
+                })
+              : t("supplierRequests.notify.open.bodyMany", {
+                  n: first.number,
+                  products: products.length,
+                  qty: pieces,
+                }),
+        }),
+      },
+    ).catch((error) => console.error("notify(supplier_request.open)", error));
   }
   return result;
 }

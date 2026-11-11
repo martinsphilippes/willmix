@@ -129,10 +129,15 @@ export async function openGroupRequestsAction(form: FormData) {
     const { openGroupRequests } =
       await import("@/lib/services/selection-groups");
     const result = await openGroupRequests(user, all ? "all" : ids);
-    // Uma só, sem falha: direto na solicitação aberta.
-    if (result.opened.length === 1 && !result.failed.length)
+    // Uma solicitação só (um fornecedor), sem falha: direto nela.
+    const { groupRequests } = await import("@/lib/supplier-requests");
+    if (groupRequests(result.opened).length === 1 && !result.failed.length)
       return withQuery(detail(result.opened[0].id), "created", "1");
-    let to = withQuery(back, "opened", String(result.opened.length));
+    let to = withQuery(
+      back,
+      "opened",
+      String(groupRequests(result.opened).length),
+    );
     if (result.failed.length) {
       to = withQuery(to, "failed", String(result.failed.length));
       to = withQuery(to, "why", result.failed[0].error);
