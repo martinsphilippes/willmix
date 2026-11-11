@@ -863,3 +863,7 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Correção**: o Novo parceiro aberto por Outros parceiros vinha com "Fornecedor" marcado (padrão do formulário compartilhado). Agora vem o tipo do filtro, ou nada marcado; Cliente e Fornecedor só aparecem quando a tela é aberta por eles.
 - **Segurança**: telas internas e telas de outra classe de login ficam no catálogo, mas não podem ser liberadas a um perfil para o qual não foram revistas (algumas não filtram os dados para outro papel).
 - Aditivo: tabela `partner_types`, `parties.partnerTypeId`, valores novos em `parties.type`; a configuração de telas fica em `settings` (`partnerAccess`). Acordos comerciais e comissões: só o levantamento (docs/PARTNER_TYPES.md).
+
+## Outros parceiros: gerar login de acesso à vista
+
+- **Pedido do dono** (11/11/2026): a criação do login já existia no cadastro do parceiro, mas ficava escondida no meio da tela. Agora há o botão "Gerar login de acesso" no topo do cadastro, a coluna "Login de acesso" na lista (quantos logins o parceiro tem, ou o link para gerar) e o cadastro novo abre direto no quadro de acesso. Sem mudança no servidor nem no banco.

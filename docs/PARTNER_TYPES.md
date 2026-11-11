@@ -24,7 +24,8 @@ Pedido do dono (11/11/2026): quatro tipos novos em Outros parceiros (**Trading, 
 7. **Quem**: ler, a Wellmix com a tela Cadastros; criar e alterar, só o administrador (o serviço confere). Auditoria: `partner_type.create` e `partner_type.update`, com antes e depois.
 8. **Login** (`loginRoleOfParty`): os tipos de sempre entram com o papel de sempre. Trading, Factory, Supplier e GP entram **como o Fornecedor entra** (papel `supplier`, com o perfil de telas do próprio tipo: `type:trading`…). O tipo criado no painel tem a caixa "Os usuários deste tipo podem ter login" (marcada na criação pela tela de tipos; o atalho do formulário cria sem login): com ela, entra como os quatro; sem ela, o cadastro mostra o aviso em vez do formulário de acesso e o servidor recusa (`user_role_mismatch`).
 9. **Dados**: o login vê só os registros da própria empresa (`partyId`). Como esses tipos não são escolhidos como fornecedor em nenhuma operação, **as telas abrem vazias** até existir um vínculo deles com pedidos (decisão pendente: como uma Trading ou um GP é ligado a um pedido).
-10. **Novo parceiro a partir de um filtro**: com um tipo filtrado na lista, o botão já abre o formulário com ele marcado.
+10. **Gerar login de acesso** (pedido do dono, 11/11/2026): o login nasce no quadro "Logins de acesso ao portal" do cadastro do parceiro (nome, login, senha sugerida, idioma). Para ficar à vista: botão **Gerar login de acesso** no topo do cadastro, coluna "Login de acesso" na lista de Outros parceiros (quantos logins tem, ou o link para gerar) e, depois de cadastrar um parceiro novo, a tela já abre nesse quadro.
+11. **Novo parceiro a partir de um filtro**: com um tipo filtrado na lista, o botão já abre o formulário com ele marcado.
 
 ## Banco
 
