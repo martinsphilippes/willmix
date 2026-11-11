@@ -8,14 +8,10 @@ name: Publicar esquema Appwrite
 # Com a opção "Criar contas de demonstração" marcada, cria também as empresas e
 # os logins de demonstração que faltam (scripts/appwrite-demo-accounts.ts), com
 # o erro inteiro do Appwrite no registro quando alguma não puder ser criada.
+#
+# Desde 11/11/2026 o banco de produção é o Supabase (docs/SUPABASE.md): o
+# Appwrite ficou parado e este workflow só roda pelo botão manual.
 on:
-  push:
-    branches: [wellmix]
-    paths:
-      - src/lib/db/schema.ts
-      - appwrite.config.json
-      - scripts/appwrite-push.ts
-      - .github/workflows/appwrite-schema.yml
   workflow_dispatch:
     inputs:
       demo_accounts:
