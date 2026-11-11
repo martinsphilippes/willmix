@@ -835,3 +835,7 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (11/11/2026): na tela do produto (`/app/products/[id]`), as outras caixas ficam minimizadas como as quatro do cadastro: Fornecedores, Variações, Ficha de compra (mestre, com o selo da situação na barra), Fotos, Medições, Oportunidade de compra, NCM, Certificações, Atributos, Sugestão por foto e Ciclo. Nada saiu da tela; só mudou a forma de ver.
 - `FoldSection` (`src/components/fold-section.tsx`) é a caixa; `FoldMemory` (`src/components/fold-memory.tsx`) lembra as abertas por produto na aba do navegador (a tela volta igual depois de salvar) e abre a caixa quando um link (#âncora) ou um campo que falta leva para dentro dela. Sem mudança no servidor nem no banco. E2E: `gotoProduct` abre as caixas antes de usar a tela.
+
+## Solicitação ao fornecedor: conversa na coluna da direita, embaixo do Booking
+
+- **Pedido do dono** (11/11/2026): na tela da solicitação ao fornecedor (`/app/supplier-requests/<id>`), o cartão "Negociação e conversa" sai da coluna larga e vai para a coluna da direita, embaixo do cartão Booking, em formato compacto (formulários um embaixo do outro). Para o fornecedor, que não tem o cartão Booking, a conversa fica no fim da mesma coluna. Nada mudou na negociação em si. Código em `supplier-requests/[id]/page.tsx` e `_components/negotiation.tsx`.
