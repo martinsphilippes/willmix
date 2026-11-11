@@ -419,18 +419,18 @@ export function finishedLate(
 
 /**
  * A que solicitação o produto pertence: os abertos juntos para o mesmo
- * fornecedor (`batchId`) são uma solicitação só. As antigas, sem `batchId`,
- * agrupam por fornecedor e booking, como a tabela sempre fez.
+ * fornecedor (`batchId`) são uma solicitação só. A antiga, sem `batchId`, é
+ * uma solicitação sozinha.
  */
 export function requestGroupKey(
-  r: Pick<SupplierRequest, "supplierId" | "bookingLotId" | "batchId">,
+  r: Pick<SupplierRequest, "id" | "batchId">,
 ): string {
-  return r.batchId ? `batch:${r.batchId}` : `${r.supplierId}:${r.bookingLotId}`;
+  return r.batchId ? `batch:${r.batchId}` : `single:${r.id}`;
 }
 
 /** As solicitações, cada uma com os seus produtos (na ordem em que chegam). */
 export function groupRequests<
-  T extends Pick<SupplierRequest, "supplierId" | "bookingLotId" | "batchId">,
+  T extends Pick<SupplierRequest, "id" | "batchId">,
 >(requests: T[]): T[][] {
   const groups = new Map<string, T[]>();
   for (const r of requests) {
@@ -443,18 +443,18 @@ export function groupRequests<
 }
 
 /**
- * Produtos distintos de cada solicitação (`requestGroupKey`): quantos itens
- * diferentes foram pedidos.
+ * Produtos distintos por fornecedor e booking: quantos itens diferentes
+ * foram pedidos.
  */
 export function distinctProductsByGroup(
   requests: Pick<
     SupplierRequest,
-    "supplierId" | "bookingLotId" | "bookingItemId" | "batchId"
+    "supplierId" | "bookingLotId" | "bookingItemId"
   >[],
 ): Map<string, number> {
   const sets = new Map<string, Set<string>>();
   for (const r of requests) {
-    const key = requestGroupKey(r);
+    const key = `${r.supplierId}:${r.bookingLotId}`;
     const set = sets.get(key) ?? new Set<string>();
     set.add(r.bookingItemId);
     sets.set(key, set);

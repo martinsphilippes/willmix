@@ -847,4 +847,4 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 ## Solicitação ao fornecedor: uma solicitação só, com vários produtos
 
 - **Pedido do dono** (11/11/2026): ao abrir a solicitação de um ou de vários grupos na Seleção, chegavam ao fornecedor várias solicitações (uma por produto). Agora os produtos abertos juntos para o mesmo fornecedor viram **uma solicitação só**: um número, uma linha na lista, um aviso, e os produtos dentro (2.1, 2.2…).
-- Aditivo: `supplier_requests.batchId` (novo, opcional). O registro continua um por produto, com a sua resposta, negociação e decisão. As antigas, sem `batchId`, agrupam por fornecedor e booking (o que a tabela já fazia), também na lista. Detalhes em docs/SUPPLIER_REQUESTS.md ("Uma solicitação, vários produtos").
+- Aditivo: `supplier_requests.batchId` (novo, opcional). O registro continua um por produto, com a sua resposta, negociação e decisão. As antigas, sem `batchId`, continuam uma por produto (nenhum dado muda). Detalhes em docs/SUPPLIER_REQUESTS.md ("Uma solicitação, vários produtos").

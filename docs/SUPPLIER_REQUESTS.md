@@ -52,14 +52,14 @@ Abrir a solicitação de um ou de vários grupos de uma vez gera **uma solicita�
 
 - No banco continua um registro `supplier_requests` **por produto** (cada produto tem a sua resposta, negociação, decisão e produto criado). Os abertos juntos para o mesmo fornecedor levam o mesmo `number` e o mesmo `batchId`; na tabela aparecem como 2.1, 2.2, 2.3…
 - Itens de **bookings diferentes** do mesmo fornecedor entram na mesma solicitação. Fornecedores diferentes: uma solicitação para cada um.
-- `requestGroupKey` diz a que solicitação o produto pertence: o `batchId`; nas antigas (sem `batchId`), fornecedor + booking, como a tabela já agrupava. `groupRequests` monta a lista.
+- `requestGroupKey` diz a que solicitação o produto pertence: o `batchId`. A antiga (sem `batchId`) é uma solicitação sozinha, como a tabela já mostrava. `groupRequests` monta a lista.
 - **Lista**: uma linha por solicitação, com os produtos, a soma das peças, as situações (com a contagem), "N de M respondidos", o pior SLA e de quem é a vez. "Finalizada em" só quando todos os produtos foram decididos.
 - **Aviso** ao fornecedor: um por solicitação ("{products} produtos"), com o link dela.
 - As regras por produto (responder, negociar, decidir, criar o produto) não mudaram.
 
 ## Tabela da solicitação (decisão do dono, 11/11/2026)
 
-Quem abre `/app/supplier-requests/[id]` (o fornecedor e, desde a segunda rodada, também a Wellmix) vê **primeiro uma tabela** com os produtos pedidos ao mesmo fornecedor a partir do **mesmo booking** da solicitação, em ordem de número, com a do link destacada ("Esta solicitação"; `supplierRequestGroup`).
+Quem abre `/app/supplier-requests/[id]` (o fornecedor e, desde a segunda rodada, também a Wellmix) vê **primeiro uma tabela** com o produto **desta solicitação** (`supplierRequestGroup`). Até 11/11/2026 a tabela juntava as outras solicitações do mesmo fornecedor e booking; o dono pediu que a tela mostre só a solicitação aberta.
 
 - **Uma informação por coluna**: foto (miniatura que amplia, `PhotoGallery`), nº, produto, código da fábrica, nº do item, material, quantidade, MOQ, preço, moeda e entrega do booking, o que a Wellmix precisa, "faz?", as **condições iniciais** (a primeira resposta "faz": preço, moeda, MOQ, FOB/EXW e prazo; `initialConditions`) e as **condições finais** (as que valem hoje, depois da negociação; `finalConditions`), situação, SLA (prazo com data e hora, "Atrasada"), de quem é a vez, **aberta em**, **1ª resposta** e **última resposta** (data e hora; `answerTimes`).
 - Ações rápidas por linha, **só ícones** (o nome fica na dica e no `aria-label`), cada uma numa caixa pequena (`QuickDialog`):

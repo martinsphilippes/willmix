@@ -469,15 +469,16 @@ export async function getSupplierRequest(
 
 /**
  * Produtos da solicitação (a tabela que se vê primeiro): os que foram
- * abertos juntos para o fornecedor (`batchId`); nas antigas, os do mesmo
- * fornecedor e booking. Em ordem de abertura. A própria sempre entra; quem
- * não vê, nada.
+ * abertos juntos para o fornecedor (`batchId`), em ordem de abertura. A
+ * antiga, sem `batchId`, é só ela mesma (decisão do dono, 11/11/2026: a tela
+ * não mostra as outras do mesmo fornecedor e booking). Quem não vê, nada.
  */
 export async function supplierRequestGroup(
   user: User,
   request: SupplierRequest,
 ): Promise<SupplierRequest[]> {
   if (!canSee(user, request)) return [];
+  if (!request.batchId) return [request];
   const rows = await getStore().list("supplier_requests", {
     filter: { supplierId: request.supplierId },
   });

@@ -119,17 +119,62 @@ export interface ImportContext {
   products: Product[];
 }
 
+/**
+ * Só os cadastros destes códigos do Sankhya (mais os nascidos no portal, sem
+ * código, que a carga pode ligar por CNPJ, nome ou referência). Sem escopo, as
+ * tabelas inteiras.
+ */
+export interface ContextScope {
+  parties: string[];
+  products: string[];
+  lines: string[];
+}
+
 export async function importContext(
   user: User,
   update: boolean,
+  scope?: ContextScope,
 ): Promise<ImportContext> {
   const store = getStore();
+  if (!scope) {
+    const [lines, parties, products] = await Promise.all([
+      store.list("product_lines"),
+      store.list("parties"),
+      store.list("products"),
+    ]);
+    return { user, out: [], update, lines, parties, products };
+  }
+  // Uma nota do histórico usa poucos parceiros e produtos: ler as tabelas
+  // inteiras (dezenas de milhares de linhas) a cada nota estourava os 60 s
+  // da Vercel.
+  const byCodes = async <K extends "product_lines" | "parties" | "products">(
+    table: K,
+    codes: string[],
+  ) => {
+    const unique = [...new Set(codes.filter(Boolean))];
+    const [coded, portal] = await Promise.all([
+      unique.length
+        ? store.list(table, {
+            filter: { sankhyaCode: unique } as never,
+          })
+        : Promise.resolve([]),
+      store.list(table, { filter: { sankhyaCode: null } as never }),
+    ]);
+    return [...coded, ...portal];
+  };
   const [lines, parties, products] = await Promise.all([
-    store.list("product_lines"),
-    store.list("parties"),
-    store.list("products"),
+    byCodes("product_lines", scope.lines),
+    byCodes("parties", scope.parties),
+    byCodes("products", scope.products),
   ]);
-  return { user, out: [], update, lines, parties, products };
+  return {
+    user,
+    out: [],
+    update,
+    lines: lines as ProductLine[],
+    parties: parties as Party[],
+    products: products as Product[],
+  };
 }
 
 /* ---- Linhas de produto (grupos) ---- */
@@ -564,7 +609,17 @@ export async function importSankhyaSet(
   auditLabel: string | null = "sample",
 ): Promise<ImportLine[]> {
   const store = getStore();
-  const ctx = await importContext(user, false);
+  const ctx = await importContext(user, false, {
+    parties: [
+      ...[...set.partners, ...(set.carriers ?? [])].map((r) => code(r.CODPARC)),
+      // Empresas (TSIEMP) são gravadas com o código "EMP-<CODEMP>".
+      ...[...(set.companies ?? []), ...set.orders].map(
+        (c) => `EMP-${code(c.CODEMP)}`,
+      ),
+    ],
+    products: set.products.map((r) => code(r.CODPROD)),
+    lines: set.groups.map((r) => code(r.CODGRUPOPROD)),
+  });
 
   // Parceiros antes dos produtos: o fornecedor da última compra do produto
   // é ligado pelo código do parceiro.

@@ -85,7 +85,7 @@ export default async function SupplierRequestsPage({
     : null;
 
   // Uma linha por solicitação: os produtos abertos juntos para o fornecedor
-  // ficam dentro dela (as antigas agrupam por fornecedor e booking).
+  // ficam dentro dela (a antiga, sem batchId, é uma linha sozinha).
   const rows = entries ?? [];
   const distinctTotal = new Set(rows.map((e) => e.request.bookingItemId)).size;
   const supplierOf = new Map(rows.map((e) => [e.request.id, e.supplier]));
