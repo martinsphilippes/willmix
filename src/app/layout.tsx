@@ -5,6 +5,7 @@ import { getLocale, getT } from "@/i18n/server";
 import { INTL_TAG } from "@/i18n";
 import { IntroPlayer } from "@/components/intro-player";
 import { INTRO_BOOT } from "@/lib/intro";
+import { PwaInstall } from "@/components/pwa-install";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +36,11 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Barra do navegador (Safari/Chrome mobile) na cor da marca. */
 export const viewport: Viewport = {
   themeColor: "#bf2026",
+  width: "device-width",
+  initialScale: 1,
+  // Aplicativo instalado em aparelho com recorte na tela: usa a tela toda
+  // (as margens seguras ficam no globals.css).
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -54,6 +60,16 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="flex min-h-full flex-col bg-[#f5f5f6] text-zinc-900">
         {children}
+        <PwaInstall
+          labels={{
+            title: t("pwa.install.title"),
+            body: t("pwa.install.body"),
+            button: t("pwa.install.button"),
+            ios: t("pwa.install.ios"),
+            mac: t("pwa.install.mac"),
+            dismiss: t("pwa.install.dismiss"),
+          }}
+        />
         <IntroPlayer
           labels={{
             title: t("intro.title"),

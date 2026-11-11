@@ -42,6 +42,36 @@ body {
     sans-serif;
 }
 
+/*
+ * Aplicativo (PWA) em qualquer aparelho.
+ * - Margens seguras: com a tela toda em uso (viewport-fit=cover), o conteúdo
+ *   não fica atrás do recorte da câmera nem da barra de início do iPhone.
+ * - Toque: sem o realce cinza do navegador ao tocar em links e botões.
+ * - Texto: o navegador não aumenta a letra sozinho ao girar o aparelho.
+ */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* iPhone e iPad: campo com letra menor que 16px faz o Safari dar zoom ao
+   tocar (e a tela fica deslocada). Em aparelho de toque da Apple os campos
+   usam 16px. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 /* Seleção de texto e foco de teclado na cor da marca. */
 ::selection {
   background: var(--color-brand-100);
