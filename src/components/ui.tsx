@@ -485,19 +485,30 @@ export function Table({
   );
 }
 
+/** Atributos `data-*` repassados à célula (seletores de teste e da tela). */
+type DataAttrs = { [key: `data-${string}`]: string | undefined };
+
 export function Th({
   children,
   className,
+  colSpan,
+  rowSpan,
+  ...rest
 }: {
   children?: ReactNode;
   className?: string;
-}) {
+  colSpan?: number;
+  rowSpan?: number;
+} & DataAttrs) {
   return (
     <th
+      colSpan={colSpan}
+      rowSpan={rowSpan}
       className={cx(
         "border-b border-zinc-200 bg-zinc-50/80 px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500",
         className,
       )}
+      {...rest}
     >
       {children}
     </th>
@@ -508,11 +519,12 @@ export function Td({
   children,
   className,
   colSpan,
+  ...rest
 }: {
   children?: ReactNode;
   className?: string;
   colSpan?: number;
-}) {
+} & DataAttrs) {
   return (
     <td
       colSpan={colSpan}
@@ -520,6 +532,7 @@ export function Td({
         "border-b border-zinc-100 px-2.5 py-2 align-top text-[13px] text-zinc-800",
         className,
       )}
+      {...rest}
     >
       {children}
     </td>

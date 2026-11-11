@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
-import { SHEET_CURRENCIES } from "@/lib/db/schema";
+import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
 import {
   pendingProposal,
   supplierCanAnswer,
@@ -28,7 +28,6 @@ import {
   Select,
   Textarea,
   cx,
-  formatDate,
   formatMoney,
   linkClass,
   type Tone,
@@ -54,6 +53,10 @@ import {
 } from "@/lib/services/supplier-request-negotiation";
 import { NegotiationCard, SlaBadge } from "../_components/negotiation";
 import { SupplierRequestTable } from "../_components/supplier-table";
+import { RequestTimeline } from "../_components/timeline";
+import { RequestChat, type ChatMessage } from "../_components/request-chat";
+import { dateTime } from "../_components/negotiation";
+import { canPostMessage } from "@/lib/supplier-requests";
 
 /*
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
@@ -160,9 +163,10 @@ export default async function SupplierRequestPage({
   const noLogin =
     noLoginNow && supplier ? [{ id: supplier.id, name: supplier.name }] : [];
 
-  // O fornecedor vê primeiro a tabela dos produtos da solicitação (mesmo
-  // booking); "Abrir produto" leva à tela completa (view=item).
-  const itemView = wellmix || one("view") === "item";
+  // Quem abre o link vê primeiro a tabela dos produtos da solicitação
+  // (mesmo fornecedor e booking); "Abrir produto" leva à tela completa
+  // (view=item).
+  const itemView = one("view") === "item";
   const noticeBlock = (
     <div className="mb-3 space-y-2" data-supplier-request-notices>
       <SupplierNoLoginAlert
@@ -190,7 +194,17 @@ export default async function SupplierRequestPage({
         <PageHeader
           t={t}
           title={t("supplierRequests.detail.title", { n: r.number })}
-          subtitle={t("supplierRequests.table.subtitle", { n: rows.length })}
+          subtitle={[
+            wellmix ? supplier?.name : null,
+            t(
+              wellmix
+                ? "supplierRequests.table.subtitleWellmix"
+                : "supplierRequests.table.subtitle",
+              { n: rows.length },
+            ),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
           actions={
             <LinkButton href="/app/supplier-requests">
               {t("supplierRequests.detail.back")}
@@ -203,6 +217,7 @@ export default async function SupplierRequestPage({
             rows={rows}
             currentId={r.id}
             slaMinutes={slaMinutes}
+            wellmix={wellmix}
             t={t}
           />
         </div>
@@ -260,6 +275,20 @@ export default async function SupplierRequestPage({
   const raw = (n: number | null) =>
     n === null ? "" : String(n).replace(".", decimal);
 
+  // Conversa no chat flutuante: as mensagens livres, de quem é cada uma.
+  const mySide = wellmix ? "wellmix" : "supplier";
+  const chatMessages: ChatMessage[] = (r.negotiation ?? [])
+    .filter((e) => e.kind === "message")
+    .map((e) => ({
+      id: e.id,
+      mine: e.side === mySide,
+      sideLabel: t(`supplierRequests.negotiation.side.${e.side}`),
+      at: dateTime(e.at, t),
+      text: e.text ?? null,
+      documentId: e.documentId ?? null,
+      fileName: e.fileName ?? null,
+    }));
+
   return (
     <>
       <PageHeader
@@ -275,18 +304,12 @@ export default async function SupplierRequestPage({
           </span>
         }
         actions={
-          wellmix ? (
-            <LinkButton href="/app/supplier-requests">
-              {t("supplierRequests.detail.back")}
-            </LinkButton>
-          ) : (
-            <LinkButton
-              href={`/app/supplier-requests/${r.id}`}
-              data-supplier-table-back
-            >
-              {t("supplierRequests.table.back")}
-            </LinkButton>
-          )
+          <LinkButton
+            href={`/app/supplier-requests/${r.id}`}
+            data-supplier-table-back
+          >
+            {t("supplierRequests.table.back")}
+          </LinkButton>
         }
       />
       {noticeBlock}
@@ -381,6 +404,8 @@ export default async function SupplierRequestPage({
 
           <NegotiationCard request={r} wellmix={wellmix} t={t} />
 
+          <RequestTimeline request={r} t={t} />
+
           {wellmix ? (
             <Card
               title={t("supplierRequests.detail.alternatives", {
@@ -461,6 +486,12 @@ export default async function SupplierRequestPage({
                     {num(r.supplierLeadTimeDays, 0)}
                   </p>
                 ) : null}
+                {r.supplierIncoterm ? (
+                  <p data-supplier-answer-incoterm-value>
+                    {t("supplierRequests.detail.answer.incoterm")}:{" "}
+                    {r.supplierIncoterm}
+                  </p>
+                ) : null}
                 {r.supplierNote ? (
                   <p className="whitespace-pre-wrap text-zinc-700">
                     {r.supplierNote}
@@ -469,7 +500,7 @@ export default async function SupplierRequestPage({
                 {r.respondedAt ? (
                   <p className="text-xs text-zinc-500">
                     {t("supplierRequests.detail.answer.at", {
-                      date: formatDate(r.respondedAt, t),
+                      date: dateTime(r.respondedAt, t),
                     })}
                   </p>
                 ) : null}
@@ -486,9 +517,6 @@ export default async function SupplierRequestPage({
                 data-supplier-answer-form
               >
                 <input type="hidden" name="id" value={r.id} />
-                {wellmix ? null : (
-                  <input type="hidden" name="view" value="item" />
-                )}
                 {wellmix ? (
                   <p className="text-xs text-zinc-500">
                     {t("supplierRequests.detail.answer.wellmixHint")}
@@ -551,6 +579,19 @@ export default async function SupplierRequestPage({
                       defaultValue={raw(r.supplierLeadTimeDays)}
                     />
                   </Field>
+                  <Field label={t("supplierRequests.detail.answer.incoterm")}>
+                    <Select
+                      name="incoterm"
+                      defaultValue={r.supplierIncoterm ?? it.incoterm ?? "FOB"}
+                      data-supplier-answer-incoterm
+                    >
+                      {SHEET_INCOTERMS.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
                 </div>
                 <Field label={t("supplierRequests.detail.answer.note")}>
                   <Textarea
@@ -580,7 +621,7 @@ export default async function SupplierRequestPage({
               {r.decidedAt ? (
                 <p className="mb-2 text-sm text-zinc-600">
                   {t("supplierRequests.detail.decide.at", {
-                    date: formatDate(r.decidedAt, t),
+                    date: dateTime(r.decidedAt, t),
                   })}
                   {r.decisionNote ? ` · ${r.decisionNote}` : ""}
                 </p>
@@ -704,6 +745,24 @@ export default async function SupplierRequestPage({
           <RequestProductCard data={productData} t={t} />
         </div>
       ) : null}
+      <RequestChat
+        requestId={r.id}
+        messages={chatMessages}
+        canPost={canPostMessage(r.status)}
+        defaultOpen={negotiationNotice === "message"}
+        labels={{
+          open: t("supplierRequests.chat.open"),
+          title: t("supplierRequests.chat.title", { n: r.number }),
+          close: t("supplierRequests.chat.close"),
+          empty: t("supplierRequests.chat.empty"),
+          placeholder: t("supplierRequests.chat.placeholder"),
+          attach: t("supplierRequests.negotiation.attach"),
+          send: t("supplierRequests.chat.send"),
+          sending: t("supplierRequests.negotiation.sending"),
+          file: t("supplierRequests.negotiation.file"),
+          closed: t("supplierRequests.chat.closed"),
+        }}
+      />
     </>
   );
 }

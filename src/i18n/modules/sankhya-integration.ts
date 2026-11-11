@@ -49,10 +49,13 @@ export const pt = {
     "Histórico de pedidos (notas de importação)",
   "sankhyaLoad.full.auto": "Rodar até o fim",
   "sankhyaLoad.server.on": "Rodando no servidor",
-  "sankhyaLoad.server.queue": "Fila: {list}. Última rodada: {last}. Pode fechar o navegador.",
+  "sankhyaLoad.server.queue":
+    "Fila: {list}. Última rodada: {last}. Pode fechar o navegador.",
   "sankhyaLoad.server.finished": "Carga no servidor concluída em {at}.",
-  "sankhyaLoad.server.hint": "Rodar no servidor: o portal continua a carga sozinho, a cada 30 segundos, mesmo com o navegador fechado.",
-  "sankhyaLoad.server.error": "Erro na última rodada ({n} seguidos; com 5 a fila para): {error}",
+  "sankhyaLoad.server.hint":
+    "Rodar no servidor: o portal continua a carga sozinho, a cada 30 segundos, mesmo com o navegador fechado.",
+  "sankhyaLoad.server.error":
+    "Erro na última rodada ({n} seguidos; com 5 a fila para): {error}",
   "sankhyaLoad.server.stop": "Parar no servidor",
   "sankhyaLoad.server.startAll": "Rodar tudo no servidor",
   "sankhyaLoad.server.one": "No servidor",
@@ -363,10 +366,13 @@ export const en: Record<keyof typeof pt, string> = {
   "sankhyaLoad.full.entity.orders": "Order history (import notes)",
   "sankhyaLoad.full.auto": "Run to the end",
   "sankhyaLoad.server.on": "Running on the server",
-  "sankhyaLoad.server.queue": "Queue: {list}. Last round: {last}. You can close the browser.",
+  "sankhyaLoad.server.queue":
+    "Queue: {list}. Last round: {last}. You can close the browser.",
   "sankhyaLoad.server.finished": "Server load finished at {at}.",
-  "sankhyaLoad.server.hint": "Run on the server: the portal keeps loading by itself, every 30 seconds, even with the browser closed.",
-  "sankhyaLoad.server.error": "Error in the last round ({n} in a row; the queue stops at 5): {error}",
+  "sankhyaLoad.server.hint":
+    "Run on the server: the portal keeps loading by itself, every 30 seconds, even with the browser closed.",
+  "sankhyaLoad.server.error":
+    "Error in the last round ({n} in a row; the queue stops at 5): {error}",
   "sankhyaLoad.server.stop": "Stop on the server",
   "sankhyaLoad.server.startAll": "Run all on the server",
   "sankhyaLoad.server.one": "On the server",
@@ -674,8 +680,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "sankhyaLoad.server.on": "正在服务器上运行",
   "sankhyaLoad.server.queue": "队列：{list}。上一轮：{last}。可以关闭浏览器。",
   "sankhyaLoad.server.finished": "服务器加载已于 {at} 完成。",
-  "sankhyaLoad.server.hint": "在服务器上运行：门户每 30 秒自动继续加载，即使关闭浏览器。",
-  "sankhyaLoad.server.error": "上一轮出错（连续 {n} 次；达到 5 次队列停止）：{error}",
+  "sankhyaLoad.server.hint":
+    "在服务器上运行：门户每 30 秒自动继续加载，即使关闭浏览器。",
+  "sankhyaLoad.server.error":
+    "上一轮出错（连续 {n} 次；达到 5 次队列停止）：{error}",
   "sankhyaLoad.server.stop": "停止服务器运行",
   "sankhyaLoad.server.startAll": "全部在服务器上运行",
   "sankhyaLoad.server.one": "在服务器上",

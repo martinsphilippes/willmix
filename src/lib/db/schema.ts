@@ -2498,6 +2498,8 @@ export const SUPPLIER_REQUEST_EVENT_KINDS = [
   "reject",
   /** Mensagem livre, com ou sem arquivo (foto, PDF ou Excel). */
   "message",
+  /** Resposta do fornecedor (faz ou não e as condições), ou registrada pela Wellmix por ele. */
+  "answer",
 ] as const;
 export type SupplierRequestEventKind =
   (typeof SUPPLIER_REQUEST_EVENT_KINDS)[number];
@@ -2516,6 +2518,11 @@ export interface SupplierRequestEvent {
   text?: string | null;
   documentId?: string | null;
   fileName?: string | null;
+  /** Resposta ("answer"): faz ou não e a modalidade de entrega. */
+  canDo?: YesNo | null;
+  incoterm?: SheetIncoterm | null;
+  /** Resposta registrada pela Wellmix em nome do fornecedor. */
+  onBehalf?: boolean | null;
 }
 
 export interface SupplierRequest extends BaseRow {
@@ -2540,6 +2547,8 @@ export interface SupplierRequest extends BaseRow {
   supplierCurrency: SheetCurrency | null;
   supplierMoq: number | null;
   supplierLeadTimeDays: number | null;
+  /** Modalidade de entrega da resposta (FOB/EXW). */
+  supplierIncoterm?: SheetIncoterm | null;
   supplierNote: string | null;
   respondedAt: string | null;
   respondedByUserId: string | null;
@@ -4286,6 +4295,7 @@ export const TABLES: Record<TableName, TableDef> = {
       supplierCurrency: enumOf(SHEET_CURRENCIES, false),
       supplierMoq: int(),
       supplierLeadTimeDays: int(),
+      supplierIncoterm: enumOf(SHEET_INCOTERMS, false),
       supplierNote: text(),
       respondedAt: datetime(),
       respondedByUserId: id(false),

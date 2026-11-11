@@ -196,7 +196,9 @@ describe("contraproposta", () => {
       supplierLeadTimeDays: 25,
     });
     expect(lib.negotiationTurn(accepted)).toBe("wellmix");
+    // A primeira resposta também fica no histórico (linha do tempo).
     expect(accepted.negotiation!.map((e) => e.kind)).toEqual([
+      "answer",
       "proposal",
       "accept",
     ]);
@@ -247,6 +249,7 @@ describe("contraproposta", () => {
     r = (await store.get("supplier_requests", request.id))!;
     expect(r.supplierPrice).toBe(1.3);
     expect(r.negotiation!.map((e) => e.kind)).toEqual([
+      "answer",
       "proposal",
       "counter",
       "proposal",
