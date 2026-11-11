@@ -12,18 +12,20 @@ Este diretório traz o **conteúdo e as regras**; a programação é separada. O
 | `modulos/<SÉRIE>/<ID>.yaml`                                                | Um arquivo por episódio: capítulos e banco de perguntas (e traduções en/zh no fornecedor e na companhia marítima). |
 | [`scripts/treinamento-validar.mjs`](../../scripts/treinamento-validar.mjs) | Valida todos os módulos (`node scripts/treinamento-validar.mjs`).                                                  |
 | [BANCO-DE-PERGUNTAS.md](BANCO-DE-PERGUNTAS.md)                             | Resumo do que foi escrito (contagens por série) e o que revisar.                                                   |
+| [PLANO-DE-PRODUCAO.md](PLANO-DE-PRODUCAO.md)                               | Para cada vídeo: telas e rotas, dados a preparar, conta de gravação, capítulos e quem assiste.                     |
+| [livro/](livro/)                                                           | As perguntas e os capítulos de cada série, em texto legível, para revisar e organizar (gerado dos YAML).           |
 
 Os roteiros, a narração e o texto na tela dos vídeos continuam em [docs/videos](../videos/README.md). **Este conteúdo deve acompanhar os vídeos**: se um episódio for regravado ou mudar, revise os capítulos e as perguntas dele (seção 9).
 
 ## Decisões já tomadas (11/11/2026)
 
-| Tema                    | Decisão do dono                                                                                                                   |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Percentual              | Cada vídeo (módulo) tem o seu percentual de completude; a trilha mostra o conjunto.                                               |
-| Nota de aprovação       | **80 %** na prova (4 de 5 certas).                                                                                                |
-| Obrigatoriedade         | **Obrigatório.** (O que acontece com quem não conclui está em aberto: seção 8, itens 1 e 2.)                                      |
-| Onde ficam os vídeos    | **No próprio portal**, tocando direto (sem YouTube nem Vimeo). Seção 6.                                                           |
-| Certificado e premiação | **Nenhum certificado.** Só o OK de completude no sistema. Sem selos, títulos nem sequência de dias (podem vir depois, se quiser). |
+| Tema                    | Decisão do dono                                                                                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Percentual              | Cada vídeo (módulo) tem o seu percentual de completude; a trilha mostra o conjunto.                                                                                |
+| Nota de aprovação       | **80 %** na prova (4 de 5 certas).                                                                                                                                 |
+| Obrigatoriedade         | **Obrigatório para todos os novos usuários.** Quem não conclui recebe uma **pendência** (e aviso no sino); **nada é bloqueado**. O **prazo** será definido depois. |
+| Onde ficam os vídeos    | **No próprio portal**, tocando direto (sem YouTube nem Vimeo). Seção 6.                                                                                            |
+| Certificado e premiação | **Nenhum certificado.** Só o OK de completude no sistema. Sem selos, títulos nem sequência de dias (podem vir depois, se quiser).                                  |
 
 ---
 
@@ -82,7 +84,7 @@ Assim "100 %" só existe quando a pessoa **passou na prova**. Assistir sozinho n
 
 - Uma tela **Treinamento** com a sua trilha (ou trilhas): um cartão por vídeo com o **percentual** (0, 50 ou 100 %), a marca **OK** quando concluído, os capítulos com um tique quando assistidos e o botão "Continuar de onde parei".
 - O **percentual da trilha** no topo e, discreto, no menu.
-- Treinamento pendente aparece como **pendência** e no sino, como as demais pendências do portal (sugestão: reaproveita um mecanismo que o usuário já conhece).
+- O treinamento pendente aparece como **pendência** e no sino, como as demais pendências do portal. Não bloqueia nenhuma tela.
 
 **O gestor (administrador; diretoria vê a equipe)**
 
@@ -98,57 +100,29 @@ Tom do texto: direto e respeitoso, sem infantilizar. É treinamento de trabalho.
 - A página de treinamento de uma pessoa só mostra a trilha do seu papel (mais o que o administrador liberar).
 - Um mesmo login pode acumular mais de uma trilha (ex.: operador comprador + designer). O percentual de cada uma é separado.
 
-## 6. Os vídeos no próprio portal
+## 6. Entrega dos vídeos (para quem produz)
 
-O vídeo toca dentro do portal, em um player próprio (tag `<video>` com controles do projeto), sem serviço externo. Pontos a resolver na programação:
+Os vídeos tocam dentro do portal. Para o dev não ter de reprocessar nada, entregue cada vídeo assim:
 
-**Arquivo e formato**
+- **Um arquivo por episódio e por idioma**: `FOR-02.pt.mp4`, `FOR-02.en.mp4`, `FOR-02.zh.mp4`. Os capítulos **não** são arquivos separados: são os tempos `inicio` e `fim` do YAML, dentro do arquivo do episódio. Por isso o tempo dos capítulos precisa ser conferido depois da edição final.
+- **MP4, H.264 + AAC**, 1080p, exportado com `-movflags +faststart`. Cerca de 2,5 Mbps basta para gravação de tela (≈ 5,8 GB os 74 episódios em pt, mais ≈ 1,7 GB em en e zh para o fornecedor e a companhia marítima).
+- Um **pôster** (`FOR-02.jpg`, um quadro bom do vídeo) e **legendas em WebVTT**, uma por idioma (`FOR-02.pt.vtt`, `.en.vtt`, `.zh.vtt`), que saem das legendas dos roteiros.
 
-- **Um arquivo por episódio e por idioma**: `FOR-02.pt.mp4`, `FOR-02.en.mp4`, `FOR-02.zh.mp4`. Os capítulos **não** são arquivos separados: são faixas de tempo (`inicio` e `fim`) dentro do arquivo do episódio, como nos YAML.
-- **MP4, H.264 + AAC**, 1080p (ou 720p), com `moov` no início (`-movflags +faststart`) para começar a tocar logo. Cada episódio ganha um pôster (`.jpg`) e **legendas em WebVTT** (`.pt.vtt`, `.en.vtt`, `.zh.vtt`), que saem das legendas dos roteiros.
-- **Tamanho**: os 74 episódios somam 5 h 11 min. A cerca de 2,5 Mbps (bom para gravação de tela), são **≈ 5,8 GB** em pt; os episódios do fornecedor e da companhia marítima em en e zh (46 min em cada idioma) somam **≈ 1,7 GB** a mais. Com 1,5 Mbps, cai para cerca de 60 % disso. Confirme o bitrate com uma gravação-piloto.
+## 7. Nota para a programação
 
-**Onde guardar** (decisão da programação)
+A construção (telas do aluno, player, armazenamento, cálculo no servidor) é do dev. O que ele precisa saber, em resumo:
 
-- Não dá para pôr esse volume em `public/` no repositório nem no deploy da Vercel. A sugestão é um **bucket privado do Supabase Storage** (o banco de produção já é o Supabase), com a leitura liberada só a quem está logado e tem o episódio na trilha, via **URL assinada de curta duração**. Confira antes o limite de tamanho por arquivo e de armazenamento e de tráfego do plano do projeto; outra opção é o Vercel Blob.
-- O servidor de arquivos precisa aceitar **requisições por faixa de bytes (Range)** para a pessoa poder avançar e voltar.
-
-**Player e acompanhamento**
-
-- O player começa e para nos tempos do capítulo (`currentTime` e `timeupdate`) e oferece "capítulo anterior / próximo".
-- A cada poucos segundos o navegador envia ao servidor "estou no segundo N do episódio X". O **servidor** soma os trechos realmente vistos de cada capítulo e decide se passou dos 90 % (seção 2). O navegador não manda "assisti", manda só a posição.
-- Vídeo que falha ao carregar não pode travar a pessoa: mostrar o erro e um botão de tentar de novo, e **não** contar o capítulo como assistido.
-- No celular (transportador e fornecedor em campo): `playsInline`, controles grandes e retomar do ponto onde parou.
-
-## 7. O que o programa precisa guardar (sugestão de dados)
-
-Só para a programação se orientar; o desenho final é do dono.
-
-| Dado                  | Campos principais                                                                                         |
-| --------------------- | --------------------------------------------------------------------------------------------------------- |
-| Progresso de capítulo | usuário, módulo, capítulo, trechos vistos (faixas em segundos), `assistido_em`, versão do vídeo           |
-| Tentativa de prova    | usuário, módulo, `iniciada_em`, `terminada_em`, perguntas sorteadas, respostas, nota, aprovada (sim/não)  |
-| Resposta              | tentativa, pergunta, resposta dada, certa (sim/não), tempo                                                |
-| Conclusão do módulo   | usuário, módulo, versão, `concluido_em`, nota da aprovação, como concluiu ("assistindo" ou "já sei isso") |
-
-- **Versão do conteúdo**: cada módulo tem uma versão (a do vídeo + a do banco). Se o vídeo for regravado de forma que mude o que se faz na tela, aumente a versão: quem já tinha o OK **mantém o OK**, mas ganha o aviso "Este vídeo foi atualizado" e a opção de rever sem perder nada. (Sugestão; ver seção 8, item 4.)
-- **Leitura só no servidor e escrita por Server Action com checagem de papel** (regra do projeto). O percentual é calculado no servidor; o navegador só envia a posição do vídeo e as respostas, nunca a nota.
-- **Gabarito nunca vai ao navegador antes da resposta.** A tela recebe enunciado e opções; a correção é feita no servidor, que devolve `correta` e `explicacao` depois.
-- **Dados de demonstração**: o modo memória precisa de uma pessoa por papel já com progresso parcial, para os vídeos de treinamento e os testes.
-- Esquema novo em `src/lib/db/schema.ts` é **aditivo** (docs/EVOLUTION_PLAN.md) e, quando o PR mexer nele, publicar no Supabase (docs/SUPABASE.md).
+- Os dados estão em `modulos/` (YAML, formato em [FORMATO.md](FORMATO.md)) e as trilhas em `trilhas.yaml`. O percentual e a prova seguem as seções 2 e 3.
+- O percentual e a correção são calculados **no servidor**; o gabarito não vai ao navegador antes da resposta; o "assistido" vem das posições do vídeo que o navegador envia, não de um "assisti" avisado pelo navegador.
+- Regras do projeto: escrita por Server Action com checagem de papel; esquema novo aditivo em `src/lib/db/schema.ts` (docs/EVOLUTION_PLAN.md); textos em `src/i18n/modules/*.ts` (pt, en, zh).
 
 ## 8. O que ainda está em aberto
 
-Os arquivos funcionam com qualquer escolha; a sugestão vai na coluna da direita.
-
-| #   | Em aberto                           | Sugestão                                                                                                                                                                                 |
-| --- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Obrigatório significa bloquear?** | Não bloquear o portal: vira pendência e aviso, e o gestor acompanha. Bloquear um cliente ou fornecedor que precisa de uma cotação urgente costuma custar mais do que o treinamento vale. |
-| 2   | **Prazo e lembrete**                | Equipe Wellmix: 30 dias a partir do primeiro login. Cliente e parceiro: sem prazo fixo, lembrete pelo sino a cada 7 dias parado. O que o gestor faz quando o prazo vence é decisão sua.  |
-| 3   | **Quem vê o progresso**             | Administrador vê todos; diretoria vê a equipe; cada pessoa vê o seu. Cliente e parceiro: a Wellmix vê o percentual e a data do OK, não as respostas.                                     |
-| 4   | **Quando um vídeo é regravado**     | Quem já tem o OK mantém, com aviso e opção de rever (seção 7).                                                                                                                           |
-| 5   | **Quem é obrigado**                 | Quem tem a trilha, ou só a equipe e os parceiros que operam (fornecedor, agência, despachante…) e o cliente fica convidado? Hoje a trilha do cliente tem 10 vídeos.                      |
-| 6   | **Idiomas da prova**                | pt para a equipe e o cliente; pt, en e zh para o fornecedor e a companhia marítima. As traduções em zh precisam de revisão por quem fala a língua.                                       |
+| #   | Em aberto               | Sugestão                                                                                                                                             |
+| --- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Prazo**               | A definir depois (decidido).                                                                                                                         |
+| 2   | **Quem vê o progresso** | Administrador vê todos; diretoria vê a equipe; cada pessoa vê o seu. Cliente e parceiro: a Wellmix vê o percentual e a data do OK, não as respostas. |
+| 3   | **Idiomas da prova**    | pt para a equipe e o cliente; pt, en e zh para o fornecedor e a companhia marítima. As traduções em zh precisam de revisão por quem fala a língua.   |
 
 ## 9. Manter o conteúdo atualizado
 
