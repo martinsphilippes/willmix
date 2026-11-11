@@ -6,13 +6,13 @@ Projeto: **wellmix** (`rokbtrvkzllowyqzcauq`), região São Paulo (sa-east-1). L
 
 ## Etapas
 
-| #   | Etapa                                                                                                                                                                                     | Situação |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 1   | Banco: `SupabaseStore` (PostgREST + Storage, chave service_role) e esquema gerado do `schema.ts` (`supabase/schema.sql`, `npm run supabase:sql`), com o botão "Publicar esquema Supabase" | feito    |
-| 2   | Arquivos: envio direto do navegador ao Supabase Storage por link assinado (`createSignedUpload`, PUT com progresso); chave no formato dos ids do Appwrite, então as ações não mudam       | feito    |
-| 3   | Login pelo Supabase Auth: contas criadas na virada, convite/troca de senha por e-mail, sessão em cookie                                                                                   | a fazer  |
-| 4   | Cópia Appwrite → Supabase: todas as tabelas com o mesmo id e as datas de origem (`upsertRaw`), arquivos e contadores; pode rodar de novo                                                  | a fazer  |
-| 5   | Virada: janela sem uso, cópia, `DATA_MODE=supabase` na Vercel, publicar                                                                                                                   | a fazer  |
+| #   | Etapa                                                                                                                                                                                                       | Situação |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 1   | Banco: `SupabaseStore` (PostgREST + Storage, chave service_role) e esquema gerado do `schema.ts` (`supabase/schema.sql`, `npm run supabase:sql`), com o botão "Publicar esquema Supabase"                   | feito    |
+| 2   | Arquivos: envio direto do navegador ao Supabase Storage por link assinado (`createSignedUpload`, PUT com progresso); chave no formato dos ids do Appwrite, então as ações não mudam                         | feito    |
+| 3   | Login pelo Supabase Auth: o Supabase confere a senha, a sessão é o cookie assinado do portal; acesso novo cria a conta no Auth; "Esqueci minha senha" (/login/forgot) e "Definir nova senha" (/login/reset) | feito    |
+| 4   | Cópia Appwrite → Supabase: todas as tabelas com o mesmo id e as datas de origem (`upsertRaw`), arquivos e contadores; pode rodar de novo                                                                    | a fazer  |
+| 5   | Virada: janela sem uso, cópia, `DATA_MODE=supabase` na Vercel, publicar                                                                                                                                     | a fazer  |
 
 ## Como o banco fica
 
@@ -39,7 +39,22 @@ Toda mudança no `schema.ts` passa a exigir as duas publicações (Appwrite e Su
 
 Sem `DATA_MODE=supabase` o portal continua no Appwrite.
 
-## Pendências que a etapa 3 (login) precisa cobrir
+## Login (Supabase Auth)
 
-- **Troca de senha e primeiro acesso** (`docs/ACCESS.md`): `changeOwnPassword` hoje troca no Appwrite ou no modo memória; no modo Supabase recusa (`password_change_unavailable`). O login pelo Supabase Auth precisa trazer a troca da própria senha e respeitar `users.mustChangePassword`.
+- `src/lib/auth/supabase-auth.ts`: conferir senha (`/auth/v1/token?grant_type=password`), criar e apagar conta (admin), mandar o link de senha (`/auth/v1/recover`) e gravar a nova senha com o token do link (`PUT /auth/v1/user`).
+- Sessão: o mesmo cookie assinado do modo memória (`wm_session`, 7 dias). Segredo = `SESSION_SECRET`; sem ele, derivado da chave service_role (nunca o padrão de desenvolvimento). Conta desativada no portal perde o acesso na hora (a cada página o usuário é lido do banco).
+- Acesso novo (Equipe/Parceiros): cria a conta no Supabase Auth com a senha que o admin definiu; se o cadastro do portal falhar, a conta é apagada.
+- "Esqueci minha senha": `/login/forgot` manda o link; o link abre `/login/reset`, que lê o token (depois do "#", só no navegador) e grava a nova senha.
+
+**Configurar no painel do Supabase antes da virada** (Authentication):
+
+1. URL Configuration → Site URL = endereço de produção do portal; Redirect URLs = `https://<endereço>/login/reset` (e o dos previews da Vercel, se quiser testar lá).
+2. E-mails: o envio padrão do Supabase só entrega para membros da equipe do projeto e com limite baixo por hora. Para mandar o link a todos os usuários, configure um SMTP próprio (Authentication → Emails → SMTP Settings, ex.: Resend, SendGrid ou o e-mail da empresa).
+3. Templates (opcional): o texto do e-mail de "Reset password" em português.
+
+As contas dos usuários de hoje são criadas na etapa 4 (cópia), e cada um recebe o link para definir a senha.
+
+## Troca de senha e primeiro acesso
+
+- **Trocar senha** (`/app/password`, `docs/ACCESS.md`): no Supabase, `supabaseChangePassword` confere a senha atual pelo próprio login (`/auth/v1/token`) e grava a nova com o token dessa conferência (`PUT /auth/v1/user`). `users.mustChangePassword` (senha provisória) vale igual nos três modos.
 - **Login master** (`well_wellmix@wellmix.com`, administrador): na virada cada usuário define a senha pelo link recebido por e-mail, então esse endereço precisa ser uma caixa de e-mail que alguém lê, ou a conta precisa ser criada à mão no Supabase.

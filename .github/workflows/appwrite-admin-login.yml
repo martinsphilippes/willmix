@@ -1,0 +1,50 @@
+name: Criar login de administrador
+
+# Botão manual (Actions → "Criar login de administrador" → Run workflow): cria
+# em produção um login de administrador da Wellmix com senha provisória, que
+# o portal obriga a trocar no primeiro acesso (scripts/appwrite-admin-login.ts,
+# docs/ACCESS.md). Só cria: se o e-mail já existe, para sem alterar nada. A
+# senha digitada aqui é provisória e fica visível nos dados desta execução.
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: "E-mail do login"
+        type: string
+        required: true
+      name:
+        description: "Nome que aparece no portal"
+        type: string
+        required: true
+      password:
+        description: "Senha provisória (8 ou mais caracteres; trocada no primeiro acesso)"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appwrite-schema
+  cancel-in-progress: false
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+      NEXT_PUBLIC_APPWRITE_ENDPOINT: ${{ vars.NEXT_PUBLIC_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1' }}
+      NEXT_PUBLIC_APPWRITE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_APPWRITE_PROJECT_ID || '6ab41ae700396f0409b8' }}
+      ADMIN_EMAIL: ${{ inputs.email }}
+      ADMIN_NAME: ${{ inputs.name }}
+      ADMIN_PASSWORD: ${{ inputs.password }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Criar o login (só cria; senha provisória)
+        run: node scripts/appwrite-admin-login.ts

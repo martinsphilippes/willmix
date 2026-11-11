@@ -241,6 +241,38 @@ describe("bloco 2: onde o pedido está agora", () => {
   });
 });
 
+describe("faca (die-cut) no bloco do pedido", () => {
+  it("Arte e embalagem sem a faca: o pedido fica em Faca; com a faca, em Arte da embalagem", () => {
+    const waiting = order("PACKAGING");
+    const drawing = order("PACKAGING");
+    const a = stage(waiting, { reqs: { art: "pending" } });
+    const b = stage(drawing, { reqs: { art: "pending" } });
+    const board = buildTowerBoard(
+      input({
+        orders: [waiting, drawing],
+        activeStages: [a.active, b.active],
+        stages: [a.stage, b.stage],
+        requirements: [...a.reqs, ...b.reqs],
+        dielineOrderIds: [waiting.id],
+      }),
+    );
+    expect(ids(board, "ordDieline")).toEqual([waiting.id]);
+    expect(ids(board, "ordArt")).toEqual([drawing.id]);
+    // O quadrado fica no bloco do pedido, entre a validação da ficha e a arte.
+    const order2 = board.cards
+      .filter((c) => c.block === "order")
+      .map((c) => c.key);
+    expect(order2.slice(2, 5)).toEqual([
+      "ordValidation",
+      "ordDieline",
+      "ordArt",
+    ]);
+    expect(board.cards.some((c) => (c.key as string) === "reqDieline")).toBe(
+      false,
+    );
+  });
+});
+
 describe("bloco 1: antes de virar pedido", () => {
   const request = (status: string, extra: Record<string, unknown> = {}) =>
     ({
@@ -312,7 +344,6 @@ describe("bloco 1: antes de virar pedido", () => {
           },
         ] as BoardInput["approvals"],
         briefRequestIds: [quoting.id],
-        dielineRequestIds: [proposing.id, quoting.id],
       }),
     );
     expect(ids(board, "reqNew")).toEqual([fresh.id]);
@@ -322,8 +353,6 @@ describe("bloco 1: antes de virar pedido", () => {
     expect(ids(board, "reqApproval")).toEqual([approving.id]);
     expect(ids(board, "reqProposal")).toEqual([proposing.id]);
     expect(ids(board, "reqDown")).toEqual([down.id]);
-    // Faca só depois da escolha do fornecedor (a de cotação não entra).
-    expect(ids(board, "reqDieline")).toEqual([proposing.id]);
     expect(ids(board, "reqPackaging")).toEqual([quoting.id]);
     expect(board.cards.find((c) => c.key === "reqDown")!.value).toBe(1000);
   });

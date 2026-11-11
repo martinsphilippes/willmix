@@ -36,7 +36,9 @@ describe("motivo da falha ao criar conta", () => {
     expect(
       seed.demoFailureReason(
         Object.assign(
-          new Error('Invalid document structure: Missing required attribute "jobLevel"'),
+          new Error(
+            'Invalid document structure: Missing required attribute "jobLevel"',
+          ),
           { type: "row_invalid_structure" },
         ),
       ),

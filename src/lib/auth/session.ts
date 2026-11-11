@@ -4,7 +4,11 @@ import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { getStore, type User } from "@/lib/db";
-import { dataMode, sessionSecret } from "@/lib/env";
+import {
+  dataMode,
+  sessionSecret as envSessionSecret,
+  supabaseEnv,
+} from "@/lib/env";
 import { loginToEmail } from "./login-id";
 import { verifyPassword } from "./password";
 import { signToken, verifyToken } from "./token";
@@ -13,6 +17,21 @@ export const MEMORY_COOKIE = "wm_session";
 const SESSION_DAYS = 7;
 
 export class AuthError extends Error {}
+
+/**
+ * Segredo do cookie de sessão. Supabase sem SESSION_SECRET: derivado da chave
+ * service_role (secreta e só no servidor), nunca o padrão de desenvolvimento.
+ */
+function sessionSecret() {
+  if (process.env.SESSION_SECRET || dataMode() !== "supabase")
+    return envSessionSecret();
+  const supa = supabaseEnv();
+  return supa
+    ? createHash("sha256")
+        .update(`wellmix-session:${supa.key}`)
+        .digest("base64url")
+    : envSessionSecret();
+}
 
 /** Tamanho mínimo de senha no Appwrite (contas sempre criadas com 8+). */
 const APPWRITE_MIN_PASSWORD = 8;
@@ -36,8 +55,15 @@ export async function signIn(email: string, password: string): Promise<User> {
   const jar = await cookies();
   const secure = process.env.NODE_ENV === "production";
 
-  if (dataMode() === "memory") {
-    if (!verifyPassword(password, user.passwordHash))
+  // Supabase: o Supabase Auth confere a senha; a sessão é o cookie assinado
+  // do portal (o mesmo do modo memória).
+  const own = dataMode() === "memory" || dataMode() === "supabase";
+  if (own) {
+    if (dataMode() === "supabase") {
+      const { supabasePasswordOk } = await import("./supabase-auth");
+      if (!(await supabasePasswordOk(normalized, password)))
+        throw new AuthError("invalid");
+    } else if (!verifyPassword(password, user.passwordHash))
       throw new AuthError("invalid");
     const exp = Date.now() + SESSION_DAYS * 86_400_000;
     jar.set(
@@ -81,7 +107,7 @@ export async function signIn(email: string, password: string): Promise<User> {
 
 export async function signOut() {
   const jar = await cookies();
-  if (dataMode() === "memory") {
+  if (dataMode() === "memory" || dataMode() === "supabase") {
     jar.delete(MEMORY_COOKIE);
     return;
   }
@@ -120,7 +146,8 @@ function rememberSession(key: string, user: User) {
  * no banco (depois da troca de senha, o aviso de primeiro acesso some na hora).
  */
 export async function forgetCurrentSession() {
-  if (dataMode() === "memory") return;
+  // Só o Appwrite guarda a sessão conferida; os outros leem o banco a cada página.
+  if (dataMode() !== "appwrite") return;
   const { sessionCookieName } = await import("@/lib/appwrite/server");
   const secret = (await cookies()).get(sessionCookieName())?.value;
   if (secret) recentSessions.delete(sessionKey(secret));
@@ -131,7 +158,7 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   try {
     const store = getStore();
     const jar = await cookies();
-    if (dataMode() === "memory") {
+    if (dataMode() === "memory" || dataMode() === "supabase") {
       const payload = verifyToken(
         jar.get(MEMORY_COOKIE)?.value,
         sessionSecret(),

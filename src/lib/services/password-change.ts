@@ -60,9 +60,17 @@ export async function changeOwnPassword(
       await store.update("users", user.id, { mustChangePassword: false });
     await forgetCurrentSession();
   } else {
-    // Supabase: o login pelo Supabase Auth ainda não existe (docs/SUPABASE.md,
-    // etapa 3). A troca de senha entra junto com ele.
-    throw new Error("password_change_unavailable");
+    // Supabase Auth: o login confere a senha atual e autoriza a nova.
+    const { supabaseChangePassword } = await import("@/lib/auth/supabase-auth");
+    const result = await supabaseChangePassword(
+      user.email,
+      input.current,
+      input.next,
+    );
+    if (result === "wrong") throw new PasswordChangeError("password_wrong");
+    if (result === "weak") throw new PasswordChangeError("password_short");
+    if (user.mustChangePassword)
+      await store.update("users", user.id, { mustChangePassword: false });
   }
   await audit(user, "user.password_change", "user", user.id, user.email);
 }

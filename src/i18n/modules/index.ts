@@ -50,6 +50,7 @@ import * as dateOrder from "./date-order";
 import * as financeFx from "./finance-fx";
 import * as pageHelp from "./page-help";
 import * as dataReset from "./data-reset";
+import * as passwordReset from "./password-reset";
 import * as sheetReading from "./sheet-reading";
 import * as manufacturerCards from "./manufacturer-cards";
 import * as supplierRanking from "./supplier-ranking";
@@ -147,6 +148,7 @@ export const modulesPt = {
   ...financeFx.pt,
   ...pageHelp.pt,
   ...dataReset.pt,
+  ...passwordReset.pt,
   ...sheetReading.pt,
   ...manufacturerCards.pt,
   ...supplierRanking.pt,
@@ -263,6 +265,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...financeFx.en,
   ...pageHelp.en,
   ...dataReset.en,
+  ...passwordReset.en,
   ...sheetReading.en,
   ...manufacturerCards.en,
   ...supplierRanking.en,
@@ -379,6 +382,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...financeFx.zh,
   ...pageHelp.zh,
   ...dataReset.zh,
+  ...passwordReset.zh,
   ...sheetReading.zh,
   ...manufacturerCards.zh,
   ...supplierRanking.zh,

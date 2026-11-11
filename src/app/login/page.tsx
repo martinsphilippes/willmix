@@ -4,7 +4,6 @@ import { WellmixLogo } from "@/components/brand";
 import { LoginForm } from "@/components/login-form";
 import { getCurrentUser } from "@/lib/auth/session";
 import { dataMode } from "@/lib/env";
-import { STAGE_KEYS } from "@/lib/db";
 import {
   DEMO_PASSWORD,
   DEMO_USERS,
@@ -13,7 +12,6 @@ import {
 } from "@/lib/seed";
 import { demoAccountsEnabled } from "@/lib/demo";
 import { getT } from "@/i18n/server";
-import { OFF_FLOW_STAGES } from "@/lib/workflow/stages";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -37,75 +35,24 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const demoExisting = showDemo
     ? await existingDemoAccounts().catch(() => new Set<string>())
     : new Set<string>();
-  const roles = t("help.login.roles").split("\n").filter(Boolean);
-  const flow = t("help.flow.steps").split("\n").filter(Boolean);
-
   return (
-    <main className="grid flex-1 [grid-template-areas:'intro'_'form'_'flow'] lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:grid-rows-[auto_1fr] lg:[grid-template-areas:'intro_form'_'flow_form']">
-      {/* Painel da marca: apresentação (em cima) e fluxo (embaixo). No celular o formulário fica entre os dois. */}
-      <section className="bg-gradient-to-b from-brand-700 to-brand-600 px-6 pb-8 pt-8 text-white [grid-area:intro] sm:px-10 lg:pt-12 xl:px-16">
-        <WellmixLogo variant="white" className="h-10 sm:h-12" />
-        <p className="mt-8 text-sm font-semibold uppercase tracking-wider text-white/80">
-          {t("app.name")} · {t("app.tagline")}
-        </p>
-        <h1 className="mt-2 max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl">
-          {t("help.flow.title")}
+    <main className="grid flex-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+      {/* Painel da marca: só a identidade. A explicação do fluxo saiu da
+          tela inicial (pedido do dono, 10/11/2026). */}
+      <section
+        className="flex flex-col justify-center bg-gradient-to-b from-brand-700 to-brand-600 px-6 py-8 text-white sm:px-10 lg:py-12 xl:px-16"
+        data-login-brand
+      >
+        <WellmixLogo variant="white" className="h-10 self-start sm:h-12" />
+        <h1 className="mt-6 max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl">
+          {t("app.name")}
         </h1>
-        <p className="mt-4 max-w-2xl leading-relaxed text-white/90">
-          {t("help.login.body")}
-        </p>
-        <p className="mt-2 max-w-2xl leading-relaxed text-white/90">
-          {t("help.rule")}
+        <p className="mt-2 text-sm font-semibold uppercase tracking-wider text-white/80">
+          {t("app.tagline")}
         </p>
       </section>
 
-      <section className="bg-gradient-to-b from-brand-600 to-brand-700 px-6 pb-10 pt-2 text-white [grid-area:flow] sm:px-10 lg:pb-12 xl:px-16">
-        <ol className="grid max-w-3xl gap-2 sm:grid-cols-2">
-          {flow.map((line, i) => {
-            const [label, ...rest] = line.split(":");
-            return (
-              <li
-                key={i}
-                className="flex gap-3 rounded-xl bg-white/10 p-3 text-sm ring-1 ring-inset ring-white/15"
-              >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold text-brand-700">
-                  {i + 1}
-                </span>
-                <span>
-                  <strong className="font-semibold text-white">{label}</strong>
-                  <span className="text-white/85">
-                    {rest.length ? `:${rest.join(":")}` : ""}
-                  </span>
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-
-        <details className="mt-4 max-w-3xl rounded-xl bg-white/10 p-4 text-sm ring-1 ring-inset ring-white/15">
-          <summary className="cursor-pointer font-semibold text-white">
-            {t("login.roles")}
-          </summary>
-          <ul className="mt-3 space-y-1.5 text-white/90">
-            {roles.map((line, i) => {
-              const [label, ...rest] = line.split(":");
-              return (
-                <li key={i}>
-                  <strong className="text-white">{label}:</strong>
-                  {rest.join(":")}
-                </li>
-              );
-            })}
-          </ul>
-        </details>
-        <p className="mt-4 text-xs text-white/75">
-          {t("login.stagesNote", {
-            n: STAGE_KEYS.length - OFF_FLOW_STAGES.length,
-          })}
-        </p>
-      </section>
-
-      <section className="flex flex-col justify-center bg-white px-6 py-10 [grid-area:form] sm:px-10 lg:row-span-2 lg:border-l lg:border-zinc-200 xl:px-14">
+      <section className="flex flex-col justify-center bg-white px-6 py-10 sm:px-10 lg:border-l lg:border-zinc-200 xl:px-14">
         <div className="mx-auto w-full max-w-md">
           <WellmixLogo className="mb-6 hidden h-9 lg:block" />
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900">
@@ -138,6 +85,16 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
                 : []
             }
           />
+          {dataMode() === "supabase" ? (
+            <p className="mt-4 text-sm">
+              <a
+                href="/login/forgot"
+                className="font-medium text-brand-700 underline"
+              >
+                {t("pwReset.forgotLink")}
+              </a>
+            </p>
+          ) : null}
         </div>
       </section>
     </main>
