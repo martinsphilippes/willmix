@@ -5,7 +5,10 @@ const port = process.env.E2E_PORT ?? "3100";
 /** E2E do caminho principal contra o servidor em modo memória com dados isolados. */
 export default defineConfig({
   testDir: "tests/e2e",
-  timeout: Number(process.env.E2E_TIMEOUT ?? 90_000),
+  // O cenário principal (solicitação → entrega) leva ~2,5 min contra o
+  // servidor de desenvolvimento, que compila cada tela na primeira visita:
+  // 90 s estourava sem nenhuma conferência falhar. E2E_TIMEOUT ainda vale.
+  timeout: Number(process.env.E2E_TIMEOUT ?? 300_000),
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
