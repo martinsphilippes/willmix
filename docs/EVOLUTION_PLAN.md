@@ -825,3 +825,8 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Pedido do dono** (11/11/2026): a tela Gestão → Equipe e divisões só listava os logins que já existiam; não havia onde criar um. Novo cartão "Novo login da equipe" (só o administrador): nome, login (e-mail ou nome de usuário), senha (vem uma sugestão), tipo de acesso (equipe ou administrador) e o lugar na hierarquia (cargo, divisão, a quem responde e funções). Opção de pedir a troca da senha no primeiro acesso (marcada por padrão).
 - Depois de criar, abre "Editar acessos" da pessoa, onde as telas podem ser marcadas uma a uma (docs/ACCESS.md). A hierarquia e as regras de acesso já existiam (cargo, chefe, divisão, funções, telas personalizadas); faltava criar o login.
 - `createTeamLoginAction` (`src/app/app/actions/team.ts`) usa `createPortalLogin` (a mesma criação dos acessos de fornecedor e cliente: conta de login + cadastro, desfeita se uma das duas falhar) e `setTeamMember`. Login repetido, login inválido e senha curta voltam com o motivo. Auditoria: `user.create` e `team.member`. Sem mudança no banco.
+
+## Seleção de itens: a aba Itens só agrupa
+
+- **Pedido do dono** (11/11/2026): a aba Itens da Seleção (`/app/booking/selection`) é a tela de agrupamento; não deve abrir solicitação. Saíram dela o quadro "Abrir solicitação ao fornecedor" e as colunas "Escolher" e "Alternativa" (que só serviam a ele). Ficam a busca, os filtros, a caixa "Agrupar" e a cesta "Agrupar para seleção".
+- A solicitação ao fornecedor continua abrindo na aba Seleção, com o grupo (item escolhido, alternativas, quantidade e o que a Wellmix precisa). Nada mudou no servidor nem no banco. E2E: `booking-selection.spec.ts` e `booking-supplier-request.spec.ts` agrupam antes de abrir.

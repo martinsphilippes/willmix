@@ -181,15 +181,13 @@ export default async function BookingSelectionPage({
     !!filters.supplierId ||
     !!filters.origin;
 
-  /** Tabela de comparação e o formulário da solicitação. */
-  const comparison = (list: SelectionRow[], basket: boolean) => (
-    <form
-      id={FORM}
-      action={openSupplierRequestAction}
-      className="space-y-4"
-      data-selection-form
-    >
-      <input type="hidden" name="q" value={q} />
+  /**
+   * Tabela dos itens. Na aba Itens (`basket`) ela só agrupa: sem "Escolher",
+   * sem "Alternativa" e sem o quadro de abrir a solicitação (decisão do dono:
+   * a solicitação abre só na aba Seleção, com o grupo).
+   */
+  const comparison = (list: SelectionRow[], basket: boolean) => {
+    const table = (
       <div className="relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border">
         <table className="w-full text-left text-sm" data-selection-items>
           <thead>
@@ -205,8 +203,7 @@ export default async function BookingSelectionPage({
                 ) : null}
               </th>
               {[
-                "choose",
-                "alternative",
+                ...(basket ? [] : ["choose", "alternative"]),
                 "photo",
                 "item",
                 "supplier",
@@ -255,30 +252,34 @@ export default async function BookingSelectionPage({
                       />
                     ) : null}
                   </td>
-                  <td className={cx(td, "text-center")}>
-                    <input
-                      type="radio"
-                      name="chosen"
-                      value={item.id}
-                      disabled={busy}
-                      title={
-                        draft
-                          ? t("supplierRequests.selection.draftHint")
-                          : undefined
-                      }
-                      aria-label={`${col("choose")} ${item.description ?? item.factoryItemCode ?? ""}`}
-                      data-selection-choose={item.id}
-                    />
-                  </td>
-                  <td className={cx(td, "text-center")}>
-                    <input
-                      type="checkbox"
-                      name="alternatives"
-                      value={item.id}
-                      aria-label={`${col("alternative")} ${item.description ?? item.factoryItemCode ?? ""}`}
-                      data-selection-alternative={item.id}
-                    />
-                  </td>
+                  {basket ? null : (
+                    <>
+                      <td className={cx(td, "text-center")}>
+                        <input
+                          type="radio"
+                          name="chosen"
+                          value={item.id}
+                          disabled={busy}
+                          title={
+                            draft
+                              ? t("supplierRequests.selection.draftHint")
+                              : undefined
+                          }
+                          aria-label={`${col("choose")} ${item.description ?? item.factoryItemCode ?? ""}`}
+                          data-selection-choose={item.id}
+                        />
+                      </td>
+                      <td className={cx(td, "text-center")}>
+                        <input
+                          type="checkbox"
+                          name="alternatives"
+                          value={item.id}
+                          aria-label={`${col("alternative")} ${item.description ?? item.factoryItemCode ?? ""}`}
+                          data-selection-alternative={item.id}
+                        />
+                      </td>
+                    </>
+                  )}
                   <td className={td}>
                     {item.photoDocumentId ? (
                       <a
@@ -444,48 +445,65 @@ export default async function BookingSelectionPage({
           </tbody>
         </table>
       </div>
+    );
+    if (basket)
+      return (
+        <div className="space-y-4" data-selection-list>
+          {table}
+        </div>
+      );
+    return (
+      <form
+        id={FORM}
+        action={openSupplierRequestAction}
+        className="space-y-4"
+        data-selection-form
+      >
+        <input type="hidden" name="q" value={q} />
+        {table}
 
-      <Card title={t("supplierRequests.selection.form.title")}>
-        <p className="mb-3 text-sm text-zinc-600">
-          {t("supplierRequests.selection.form.body")}
-        </p>
-        <div className="grid gap-3 md:grid-cols-3">
-          <Field
-            label={t("supplierRequests.selection.form.quantity")}
-            hint={t("supplierRequests.selection.form.quantityHint")}
-          >
-            <Input
-              name="quantity"
-              inputMode="numeric"
-              autoComplete="off"
-              data-selection-quantity
-            />
-          </Field>
-          <div className="md:col-span-2">
+        <Card title={t("supplierRequests.selection.form.title")}>
+          <p className="mb-3 text-sm text-zinc-600">
+            {t("supplierRequests.selection.form.body")}
+          </p>
+          <div className="grid gap-3 md:grid-cols-3">
             <Field
-              label={t("supplierRequests.selection.form.needs")}
-              hint={t("supplierRequests.selection.form.needsHint")}
+              label={t("supplierRequests.selection.form.quantity")}
+              hint={t("supplierRequests.selection.form.quantityHint")}
             >
-              <Textarea
-                name="needs"
-                rows={3}
-                maxLength={4000}
-                data-selection-needs
+              <Input
+                name="quantity"
+                inputMode="numeric"
+                autoComplete="off"
+                data-selection-quantity
               />
             </Field>
+            <div className="md:col-span-2">
+              <Field
+                label={t("supplierRequests.selection.form.needs")}
+                hint={t("supplierRequests.selection.form.needsHint")}
+              >
+                <Textarea
+                  name="needs"
+                  rows={3}
+                  maxLength={4000}
+                  data-selection-needs
+                />
+              </Field>
+            </div>
           </div>
-        </div>
-        <div className="mt-3">
-          <SubmitButton
-            pendingText={t("supplierRequests.selection.form.pending")}
-            data-selection-submit
-          >
-            {t("supplierRequests.selection.form.submit")}
-          </SubmitButton>
-        </div>
-      </Card>
-    </form>
-  );
+          <div className="mt-3">
+            <SubmitButton
+              pendingText={t("supplierRequests.selection.form.pending")}
+              data-selection-submit
+            >
+              {t("supplierRequests.selection.form.submit")}
+            </SubmitButton>
+          </div>
+        </Card>
+      </form>
+    );
+  };
 
   return (
     <>

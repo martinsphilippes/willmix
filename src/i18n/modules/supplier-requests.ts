@@ -17,7 +17,8 @@ export const pt = {
   "supplierRequests.selection.title": "Seleção de itens",
   "supplierRequests.selection.subtitle":
     "Itens dos bookings, inclusive os rascunhos. Filtre, agrupe itens de vários fornecedores, compare os parecidos e abra a solicitação ao fornecedor do melhor (booking fechado).",
-  "supplierRequests.selection.search": "Buscar em qualquer campo (descrição, código, material, fornecedor, origem…)",
+  "supplierRequests.selection.search":
+    "Buscar em qualquer campo (descrição, código, material, fornecedor, origem…)",
   "supplierRequests.selection.searchPlaceholder":
     "Ex.: copo vidro, garrafa térmica, 350",
   "supplierRequests.selection.filter": "Filtrar",
@@ -38,7 +39,7 @@ export const pt = {
   "supplierRequests.selection.pick": "Agrupar",
   "supplierRequests.selection.pickAll": "Marcar todos os da tela",
   "supplierRequests.selection.pickHint":
-    'Marque os itens (um a um ou todos os da tela, com filtro e busca) e clique em "Agrupar para seleção" para comparar itens de vários fornecedores.',
+    'Esta aba é só para agrupar: marque os itens (um a um ou todos os da tela, com filtro e busca) e clique em "Agrupar para seleção". A solicitação ao fornecedor abre na aba Seleção, com o grupo.',
   "supplierRequests.selection.draftHint":
     "Feche o booking para abrir a solicitação deste item",
   "supplierRequests.selection.filter.period": "Período do booking",
@@ -236,7 +237,8 @@ export const en: typeof pt = {
   "supplierRequests.selection.title": "Item selection",
   "supplierRequests.selection.subtitle":
     "Items from the bookings, drafts included. Filter, group items from several suppliers, compare similar ones and open a request to the best one's supplier (closed booking).",
-  "supplierRequests.selection.search": "Search any field (description, code, material, supplier, origin…)",
+  "supplierRequests.selection.search":
+    "Search any field (description, code, material, supplier, origin…)",
   "supplierRequests.selection.searchPlaceholder":
     "E.g.: glass cup, thermos, 350",
   "supplierRequests.selection.filter": "Filter",
@@ -257,7 +259,7 @@ export const en: typeof pt = {
   "supplierRequests.selection.pick": "Group",
   "supplierRequests.selection.pickAll": "Select all on screen",
   "supplierRequests.selection.pickHint":
-    'Tick the items (one by one or all on screen, with filters and search) and click "Group for selection" to compare items from several suppliers.',
+    'This tab is only for grouping: tick the items (one by one or all on screen, with filter and search) and click "Group for selection". The supplier request is opened in the Selection tab, with the group.',
   "supplierRequests.selection.draftHint":
     "Close the booking to open the request for this item",
   "supplierRequests.selection.filter.period": "Booking period",
@@ -453,7 +455,8 @@ export const zh: typeof pt = {
   "supplierRequests.selection.title": "条目筛选",
   "supplierRequests.selection.subtitle":
     "所有 booking 的条目（包括草稿）。筛选、将多个供应商的条目分组、比较相似条目，并向最佳条目的供应商发起询单（booking 须已关闭）。",
-  "supplierRequests.selection.search": "搜索任意字段（描述、编码、材质、供应商、产地…）",
+  "supplierRequests.selection.search":
+    "搜索任意字段（描述、编码、材质、供应商、产地…）",
   "supplierRequests.selection.searchPlaceholder": "例如：玻璃杯、保温瓶、350",
   "supplierRequests.selection.filter": "筛选",
   "supplierRequests.selection.clear": "清除",
@@ -472,7 +475,7 @@ export const zh: typeof pt = {
   "supplierRequests.selection.pick": "分组",
   "supplierRequests.selection.pickAll": "全选本页",
   "supplierRequests.selection.pickHint":
-    "勾选项目（逐个或全选本页，可配合筛选和搜索），点击“分组选择”以比较多个供应商的项目。",
+    "此页签仅用于分组：勾选产品（逐个或勾选当前页全部，可配合筛选和搜索），然后点击“分组以便选择”。供应商申请在“选择”页签中按分组发起。",
   "supplierRequests.selection.draftHint":
     "关闭该 booking 后才能为此项目发起请求",
   "supplierRequests.selection.filter.period": "Booking 日期范围",

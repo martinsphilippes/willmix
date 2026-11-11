@@ -165,6 +165,11 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   // 2. Seleção: a busca por parte da descrição traz os dois lado a lado.
   await page.goto(`/app/booking/selection?q=${encodeURIComponent(TAG)}`);
   await expect(page.locator("[data-selection-item]")).toHaveCount(2);
+  // A aba Itens só agrupa; a solicitação abre no grupo (aba Seleção).
+  await page.locator("input[data-basket-all]").check();
+  await page.click("[data-selection-group]");
+  await page.waitForURL(/tab=selection&ids=/);
+  await expect(page.locator("[data-selection-item]")).toHaveCount(2);
   const rowA = page.locator("[data-selection-item]", { hasText: codeA });
   const rowB = page.locator("[data-selection-item]", { hasText: codeB });
   await rowA.locator("input[data-selection-choose]").check();
