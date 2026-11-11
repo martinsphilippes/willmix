@@ -34,7 +34,7 @@ export interface StoredFile {
 }
 
 export interface Store {
-  readonly mode: "memory" | "appwrite";
+  readonly mode: "memory" | "appwrite" | "supabase";
   list<K extends TableName>(
     table: K,
     options?: ListOptions<Tables[K]>,
