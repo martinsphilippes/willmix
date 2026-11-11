@@ -117,6 +117,20 @@ async function fillQuoteSheet(page: Page, price: string) {
   }
 }
 
+/**
+ * Tela do produto: as seções vêm recolhidas. Abre todas (a tela lembra as
+ * abertas na aba e reabre sozinha depois de cada salvamento).
+ */
+async function gotoProduct(page: Page, id: string) {
+  await page.goto(`/app/products/${id}`);
+  const folds = page.locator("details[data-fold-section]");
+  await expect(folds.first()).toBeAttached();
+  await page.waitForLoadState("networkidle");
+  await folds.evaluateAll((els) =>
+    els.forEach((el) => ((el as HTMLDetailsElement).open = true)),
+  );
+}
+
 async function login(page: Page, email: string) {
   await page.context().clearCookies();
   await page.goto("/login");
@@ -344,7 +358,7 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // Quem respondeu a cotação entra sozinho nos fornecedores do produto. O
   // fornecedor principal é escolhido só no cadastro (dono, 11/11/2026): a
   // ficha mestre não tem mais o seletor nem as caixas repetidas.
-  await page.goto("/app/products/prod-jarra");
+  await gotoProduct(page, "prod-jarra");
   const productSuppliers = page.locator("[data-product-suppliers]");
   await expect(
     productSuppliers.locator('[data-product-supplier="fornecedor-a"]'),
@@ -944,7 +958,7 @@ test("sugestão da IA: a opção marcada desmarca e escolher já marca o Aplicar
   await mode.selectOption("MOCK");
   await mode.evaluate((el) => (el as HTMLSelectElement).form!.requestSubmit());
   await page.waitForURL(/\/app\/settings\?ok=1/);
-  await page.goto("/app/products/prod-panela");
+  await gotoProduct(page, "prod-panela");
   await page
     .locator('form:has(textarea[name="context"]) button[type="submit"]')
     .click();
@@ -1006,7 +1020,7 @@ test("ficha pela foto do quadro: preenche e a Wellmix decide a divergência", as
   await mode.selectOption("MOCK");
   await mode.evaluate((el) => (el as HTMLSelectElement).form!.requestSubmit());
   await page.waitForURL(/\/app\/settings\?ok=1/);
-  await page.goto("/app/products/prod-jarra");
+  await gotoProduct(page, "prod-jarra");
   const board = page.locator('[data-sheet-board="product"]');
   // Um toque: escolhida a foto, a leitura começa sozinha.
   await board.locator('input[name="photo"]').setInputFiles(png);
