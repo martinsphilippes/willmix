@@ -91,6 +91,9 @@ export function matchesFilter<T extends object>(
     const actual = (row as Record<string, unknown>)[key];
     if (Array.isArray(expected)) {
       if (!expected.includes(actual as string | number)) return false;
+    } else if (expected === null) {
+      // Como o "is null" do banco: campo ausente também é vazio.
+      if (actual != null) return false;
     } else if (actual !== expected) {
       return false;
     }

@@ -149,7 +149,12 @@ export async function runFullLoad(
   progress.startedAt ??= new Date().toISOString();
   const erp = await getSankhyaErpSettings();
   const codEmp = erp.codEmp ?? null;
-  const ctx = await importContext(user, true);
+  // O histórico de notas monta o próprio contexto (só os códigos da nota).
+  const ctx = await importContext(
+    user,
+    true,
+    entity === "orders" ? { parties: [], products: [], lines: [] } : undefined,
+  );
   const key = FULL_LOAD_KEY[entity];
   const limit = ROWS[entity];
 
