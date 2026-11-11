@@ -352,6 +352,10 @@ export const SUPPLIER_REQUEST_STATUSES = [
 ] as const;
 export type SupplierRequestStatus = (typeof SUPPLIER_REQUEST_STATUSES)[number];
 
+/** Convite para booking concorrente: aberto → respondido (booking enviado) | cancelado. */
+export const BOOKING_INVITE_STATUSES = ["open", "answered", "cancelled"] as const;
+export type BookingInviteStatus = (typeof BOOKING_INVITE_STATUSES)[number];
+
 /** Escolha gravada de um grupo da seleção: gravada, com solicitação aberta, ou trocada por outra. */
 export const SELECTION_GROUP_STATUSES = [
   "saved",
@@ -2339,6 +2343,47 @@ export interface SupplierRequestEvent {
   onBehalf?: boolean | null;
 }
 
+/**
+ * Convite para booking concorrente (decisão do dono, 11/11/2026): a Wellmix,
+ * ao avaliar um item de booking, convida fornecedores e tradings a subir um
+ * booking concorrente. Um registro por parceiro convidado; os do mesmo envio
+ * têm o mesmo `groupId`. O parceiro responde subindo a planilha do booking
+ * (que nasce com ele como responsável) até `dueAt` (SLA em Configurações).
+ */
+export interface BookingInvite extends BaseRow {
+  number: number;
+  groupId: string;
+  status: BookingInviteStatus;
+  /** Item avaliado e o booking dele (só a Wellmix vê o booking de origem). */
+  bookingItemId: string;
+  bookingLotId: string;
+  /** Cópia do que o parceiro vê: descrição, código, medidas, quantidade e foto. */
+  item: Pick<
+    BookingItem,
+    | "description"
+    | "productName"
+    | "factoryItemCode"
+    | "material"
+    | "capacityMl"
+    | "lengthCm"
+    | "widthCm"
+    | "heightCm"
+    | "packageType"
+    | "colorAssortment"
+    | "photoDocumentId"
+  > & { quantity: number | null };
+  partnerId: string;
+  /** O que a Wellmix precisa (o parceiro lê). */
+  message: string | null;
+  dueAt: string;
+  answeredAt: string | null;
+  answeredByUserId: string | null;
+  /** Booking que o parceiro subiu em resposta. */
+  answeredLotId: string | null;
+  cancelledAt: string | null;
+  createdByUserId: string;
+}
+
 export interface SupplierRequest extends BaseRow {
   /** Número sequencial (contador `supplier_request_number`). */
   number: number;
@@ -2671,6 +2716,7 @@ export interface Tables {
   booking_lots: BookingLot;
   booking_items: BookingItem;
   supplier_requests: SupplierRequest;
+  booking_invites: BookingInvite;
   selection_groups: SelectionGroup;
   payment_conditions: PaymentCondition;
   stock_locations: StockLocation;
@@ -4127,6 +4173,30 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_lot", type: "key", columns: ["lotId"] },
       { key: "by_product", type: "key", columns: ["productId"] },
+    ],
+  },
+  booking_invites: {
+    label: "Convites para booking concorrente",
+    columns: {
+      number: int(true),
+      groupId: id(),
+      status: enumOf(BOOKING_INVITE_STATUSES),
+      bookingItemId: id(),
+      bookingLotId: id(),
+      item: json(),
+      partnerId: id(),
+      message: text(),
+      dueAt: datetime(),
+      answeredAt: datetime(),
+      answeredByUserId: id(false),
+      answeredLotId: id(false),
+      cancelledAt: datetime(),
+      createdByUserId: id(),
+    },
+    indexes: [
+      { key: "by_item", type: "key", columns: ["bookingItemId"] },
+      { key: "by_partner", type: "key", columns: ["partnerId"] },
+      { key: "by_group", type: "key", columns: ["groupId"] },
     ],
   },
   supplier_requests: {

@@ -220,6 +220,24 @@ export async function createBookingLotFromSheet(
   } = {},
 ): Promise<BookingLot> {
   assertBooking(user);
+  return createLotFromSheet(user, source, options);
+}
+
+/**
+ * O mesmo, sem conferir o papel (quem chama confere): o booking concorrente
+ * que o parceiro convidado sobe (services/booking-invites.ts) nasce com ele
+ * como responsável e com a Wellmix que convidou como dona.
+ */
+export async function createLotFromSheet(
+  user: User,
+  source: SheetSource,
+  options: {
+    defaultCurrency?: SheetCurrency | null;
+    sheet?: string | null;
+    partnerId?: string | null;
+    ownerUserId?: string | null;
+  } = {},
+): Promise<BookingLot> {
   const file = await sheetBytes(source);
   const parsed = parseProductSheet(file.bytes, {
     sheet: options.sheet ?? null,
@@ -258,8 +276,10 @@ export async function createBookingLotFromSheet(
       statusChangedAt: null,
       statusChangedByUserId: null,
       note: null,
-      ownerUserId: user.id,
+      ownerUserId: options.ownerUserId ?? user.id,
       createdByUserId: user.id,
+      // Coluna opcional: só vai quando há responsável.
+      ...(options.partnerId ? { partnerId: options.partnerId } : {}),
     }),
   );
   for (const group of parsed.groups) {
