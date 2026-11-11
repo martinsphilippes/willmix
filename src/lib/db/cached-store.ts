@@ -23,6 +23,10 @@ const enabled = process.env.DB_CACHE !== "0";
 export class CachedStore implements Store {
   constructor(private readonly base: Store) {}
 
+  get createSignedUpload() {
+    return this.base.createSignedUpload?.bind(this.base);
+  }
+
   get mode() {
     return this.base.mode;
   }

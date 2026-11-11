@@ -208,16 +208,33 @@ export class SupabaseStore implements Store {
       .join("/")}`;
   }
 
-  /** Chave = pasta única + nome do arquivo (o nome sai da chave). */
+  /**
+   * Chave no formato dos ids do Appwrite (letras, números, "_" e "-", até 64
+   * caracteres; as ações conferem esse formato): 32 hex únicos + nome + extensão,
+   * separados por "_". O nome do arquivo volta da chave (nameFromKey).
+   */
   static fileKey(name: string) {
-    const safe =
-      storageFileName(name)
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
-        .replace(/[^A-Za-z0-9._-]+/g, "_")
-        .replace(/^_+|_+$/g, "")
-        .slice(-120) || "arquivo";
-    return `${randomUUID()}/${safe}`;
+    return fileKeyFor(name);
+  }
+
+  /**
+   * Link assinado para o navegador subir um arquivo direto (PUT), sem passar
+   * pelo limite de corpo da Vercel. A chave é escolhida aqui (servidor).
+   */
+  async createSignedUpload(name: string) {
+    const key = fileKeyFor(name);
+    const res = await fetch(
+      `${this.url}/storage/v1/object/upload/sign/${this.bucket}/${key}`,
+      {
+        method: "POST",
+        headers: this.headers({ "Content-Type": "application/json" }),
+        body: "{}",
+      },
+    );
+    const text = await res.text();
+    if (!res.ok) throw new SupabaseError(res.status, text);
+    const { url } = JSON.parse(text) as { url: string };
+    return { key, url: `${this.url}/storage/v1${url}` };
   }
 
   async putFile(
@@ -247,7 +264,7 @@ export class SupabaseStore implements Store {
     if (!res.ok) throw new SupabaseError(res.status, "head");
     return {
       key,
-      name: decodeURIComponent(key.split("/").pop() ?? key),
+      name: nameFromKey(key),
       mime: res.headers.get("content-type") ?? "application/octet-stream",
       size: Number(res.headers.get("content-length") ?? 0),
     };
@@ -259,7 +276,7 @@ export class SupabaseStore implements Store {
     if (!res.ok) throw new SupabaseError(res.status, await res.text());
     return {
       bytes: new Uint8Array(await res.arrayBuffer()),
-      name: decodeURIComponent(key.split("/").pop() ?? key),
+      name: nameFromKey(key),
       mime: res.headers.get("content-type") ?? "application/octet-stream",
     };
   }
@@ -312,6 +329,32 @@ export class SupabaseStore implements Store {
 }
 
 const enc = encodeURIComponent;
+
+const ascii = (v: string) =>
+  v
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^A-Za-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+/** Chave do arquivo: <32 hex>_<nome>_<extensão>, até 64 caracteres. */
+export function fileKeyFor(name: string) {
+  const lower = storageFileName(name);
+  const dot = lower.lastIndexOf(".");
+  const ext = dot > 0 ? ascii(lower.slice(dot + 1)).slice(0, 10) : "";
+  const base = ascii(dot > 0 ? lower.slice(0, dot) : lower) || "arquivo";
+  const id = randomUUID().replace(/-/g, "");
+  const room = 64 - id.length - 1 - (ext ? ext.length + 1 : 0);
+  return `${id}_${base.slice(0, room).replace(/-+$/, "") || "arquivo"}${ext ? `_${ext}` : ""}`;
+}
+
+/** Nome do arquivo guardado na chave ("Arte-Final_pdf" → "Arte-Final.pdf"). */
+export function nameFromKey(key: string) {
+  const parts = key.split("_");
+  if (parts.length < 2) return key;
+  const [, base, ext] = parts;
+  return ext ? `${base}.${ext}` : base;
+}
 
 /** Valor dentro de in.(...): texto entre aspas, com aspas e barras escapadas. */
 function inValue(v: string | number) {

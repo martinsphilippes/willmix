@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createUploadTokenAction } from "@/app/app/actions/uploads";
+import { uploadOne } from "@/components/direct-upload";
 
 /** Teto do envio pela Server Action na Vercel (~4,5 MB); acima disso o arquivo sobe direto ao armazenamento. */
 const SERVER_MAX_BYTES = 4 * 1024 * 1024;
@@ -66,23 +67,16 @@ export function FileAutoInput({
         input.value = "";
         return;
       }
-      const { Client, ID, Storage } = await import("appwrite");
-      const client = new Client()
-        .setEndpoint(token.endpoint)
-        .setProject(token.project)
-        .setJWT(token.jwt);
-      const created = await new Storage(client).createFile({
-        bucketId: token.bucket,
-        fileId: ID.unique(),
-        file,
-        onProgress: (p) => setProgress(Math.min(99, Math.round(p.progress))),
-      });
+      // Appwrite ou Supabase (link assinado), conforme o token.
+      const key = await uploadOne(token, file, (fraction) =>
+        setProgress(Math.min(99, Math.round(fraction * 100))),
+      );
       // O arquivo não vai no corpo da requisição: só o id do que já subiu.
       input.value = "";
       const hidden = document.createElement("input");
       hidden.type = "hidden";
       hidden.name = "uploadedFileId";
-      hidden.value = created.$id;
+      hidden.value = key;
       form.appendChild(hidden);
       form.requestSubmit();
     } catch (err) {
