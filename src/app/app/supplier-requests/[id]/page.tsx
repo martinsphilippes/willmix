@@ -379,8 +379,6 @@ export default async function SupplierRequestPage({
             </div>
           </Card>
 
-          <NegotiationCard request={r} wellmix={wellmix} t={t} />
-
           {wellmix ? (
             <Card
               title={t("supplierRequests.detail.alternatives", {
@@ -677,6 +675,9 @@ export default async function SupplierRequestPage({
               </div>
             </Card>
           ) : null}
+
+          {/* Conversa: na coluna da direita, embaixo do Booking. */}
+          <NegotiationCard request={r} wellmix={wellmix} t={t} />
         </div>
       </div>
       {wellmix && r.orderId ? (

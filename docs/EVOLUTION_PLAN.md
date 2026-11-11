@@ -830,3 +830,7 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (11/11/2026): a aba Itens da Seleção (`/app/booking/selection`) é a tela de agrupamento; não deve abrir solicitação. Saíram dela o quadro "Abrir solicitação ao fornecedor" e as colunas "Escolher" e "Alternativa" (que só serviam a ele). Ficam a busca, os filtros, a caixa "Agrupar" e a cesta "Agrupar para seleção".
 - A solicitação ao fornecedor continua abrindo na aba Seleção, com o grupo (item escolhido, alternativas, quantidade e o que a Wellmix precisa). Nada mudou no servidor nem no banco. E2E: `booking-selection.spec.ts` e `booking-supplier-request.spec.ts` agrupam antes de abrir.
+
+## Solicitação ao fornecedor: conversa na coluna da direita, embaixo do Booking
+
+- **Pedido do dono** (11/11/2026): na tela da solicitação ao fornecedor (`/app/supplier-requests/<id>`), o cartão "Negociação e conversa" sai da coluna larga e vai para a coluna da direita, embaixo do cartão Booking, em formato compacto (formulários um embaixo do outro). Para o fornecedor, que não tem o cartão Booking, a conversa fica no fim da mesma coluna. Nada mudou na negociação em si. Código em `supplier-requests/[id]/page.tsx` e `_components/negotiation.tsx`.
