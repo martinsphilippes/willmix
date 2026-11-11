@@ -51,7 +51,7 @@ perguntas:
     enunciado: "Qual é a diferença entre uma pendência e uma notificação?"
     opcoes:
       a: "Pendência é o que você precisa fazer; notificação é o aviso de que algo aconteceu ou de que chegou a sua vez"
-      b: "Pendência é um aviso antigo; notificação é um aviso novo"
+      b: "Pendência é um aviso antigo que já foi lido; notificação é um aviso novo, ainda não lido"
       c: "Pendência é só da Wellmix; notificação é só do cliente"
       d: "Não há diferença: as duas telas mostram a mesma lista"
     correta: [a]
@@ -114,7 +114,7 @@ perguntas:
     cena: 6
     enunciado: "Você digitou uma pergunta no campo **Mensagem** e escolheu um PDF pelo botão **Arquivo**. O que acontece, e o que evitar?"
     opcoes:
-      a: "O PDF espera você clicar em **Enviar**; clique uma vez"
+      a: "O PDF espera você clicar em **Enviar**; clique uma vez para mandar texto e arquivo juntos"
       b: "O PDF já vai na hora, com o texto; não clique em **Enviar** com o campo vazio"
       c: "O PDF só vai se for escolhido antes de digitar o texto"
       d: "O PDF não vai junto; envie primeiro o texto e depois o arquivo"

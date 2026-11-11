@@ -104,7 +104,7 @@ perguntas:
     enunciado: "Na página da Piscina, João quer pedir o orçamento só dela, sem passar pelo carrinho. Qual botão usa?"
     opcoes:
       a: "**Solicitar orçamento agora**"
-      b: "**Adicionar ao carrinho**"
+      b: "**Adicionar ao carrinho**, para pedir junto com outros produtos depois"
       c: "**Atualizar**"
       d: "**Remover**"
     correta: [a]
@@ -116,10 +116,10 @@ perguntas:
     cena: 9
     enunciado: "João preenche \"Quando você precisa?\" com 20/12/2026 esperando que a proposta chegue antes disso. Isso funciona?"
     opcoes:
-      a: "Sim, a Wellmix adianta a proposta para essa data"
-      b: "Sim, mas só se ele escrever o motivo em Observações"
-      c: "Não, o campo muda o prazo do fornecedor, não o da Wellmix"
-      d: "Não: a data é só um aviso para a Wellmix planejar, e a proposta chega no prazo combinado"
+      a: "Sim, a Wellmix passa a entregar a proposta até a data que João escolheu no campo"
+      b: "Sim, mas só se ele escrever o motivo do pedido no campo Observações antes de enviar"
+      c: "Não, o campo muda só o prazo do fornecedor para responder, e não o da Wellmix"
+      d: "Não: é só um aviso para a Wellmix planejar; a proposta segue o prazo combinado"
     correta: [d]
     explicacao: "A data é só um aviso para a Wellmix planejar; ela não muda o prazo da proposta. Use as observações para outros detalhes, como o endereço de entrega."
   - id: CLI-01-Q8
@@ -129,7 +129,7 @@ perguntas:
     cena: 10
     enunciado: "O carrinho tem a Piscina e a Jarra de vidro. João clica em **Solicitar orçamento**. O que nasce?"
     opcoes:
-      a: "Uma única solicitação com os dois produtos juntos"
+      a: "Uma única solicitação com os dois produtos juntos, enviada ao mesmo fornecedor"
       b: "Uma solicitação para cada produto, ambas Solicitado e no mesmo lote"
       c: "Só a solicitação do primeiro produto da lista"
       d: "Dois pedidos já aprovados"

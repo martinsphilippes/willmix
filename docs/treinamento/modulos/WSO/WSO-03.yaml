@@ -10,19 +10,19 @@ capitulos:
     inicio: "0:00"
     fim: "1:25"
     cenas: [1, 4]
-    resumo: Depois da aprovação do pré-custo a proposta vai ao cliente; se ele aprovar por fora do portal, a Wellmix registra a aprovação.
+    resumo: "Depois da aprovação do pré-custo a proposta vai ao cliente; se ele aprovar por fora do portal, a Wellmix registra a aprovação."
   - id: WSO-03-C2
     titulo: Conferir o comprovante e confirmar o sinal
     inicio: "1:25"
     fim: "2:40"
     cenas: [5, 6]
-    resumo: O cliente paga e envia o comprovante; a Wellmix confere o recebimento e o administrador confirma o sinal.
+    resumo: "O cliente paga e envia o comprovante; a Wellmix confere o recebimento e o administrador confirma o sinal."
   - id: WSO-03-C3
     titulo: Conferir o pedido que nasceu
     inicio: "2:40"
     fim: "4:30"
     cenas: [7, 9]
-    resumo: Veja as nove etapas, quem enxerga os cartões financeiros, a primeira etapa a confirmar e quem recebe cada aviso.
+    resumo: "Veja as nove etapas, quem enxerga os cartões financeiros, a primeira etapa a confirmar e quem recebe cada aviso."
 perguntas:
   - id: WSO-03-Q1
     tipo: unica

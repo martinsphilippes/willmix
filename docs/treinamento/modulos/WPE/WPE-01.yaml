@@ -10,19 +10,19 @@ capitulos:
     inicio: "0:00"
     fim: "1:08"
     cenas: [1, 4]
-    resumo: Abra o pedido pelo número em Pedidos → Pedidos e leia o Resumo do pedido, incluindo a coluna Sankhya.
+    resumo: "Abra o pedido pelo número em Pedidos → Pedidos e leia o Resumo do pedido, incluindo a coluna Sankhya."
   - id: WPE-01-C2
     titulo: Ler as etapas e o que foi comprado
     inicio: "1:08"
     fim: "2:00"
     cenas: [5, 6]
-    resumo: Veja a etapa em andamento, as partes que andam em paralelo e o cartão Comprado, a cópia congelada da compra.
+    resumo: "Veja a etapa em andamento, as partes que andam em paralelo e o cartão Comprado, a cópia congelada da compra."
   - id: WPE-01-C3
     titulo: Informar o Sankhya e liberar o pedido
     inicio: "2:00"
     fim: "3:45"
     cenas: [7, 10]
-    resumo: Digite o número do Sankhya, veja o aviso de conformidade e clique em **Confirmar** para liberar o pedido ao fornecedor.
+    resumo: "Digite o número do Sankhya, veja o aviso de conformidade e clique em **Confirmar** para liberar o pedido ao fornecedor."
 perguntas:
   - id: WPE-01-Q1
     tipo: unica

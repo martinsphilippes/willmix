@@ -10,25 +10,25 @@ capitulos:
     inicio: "0:00"
     fim: "1:22"
     cenas: [1, 4]
-    resumo: Em Pedidos → Embalagens há um briefing por solicitação, com o produto, as medidas da caixa e os entregáveis (faca e arte).
+    resumo: "Em Pedidos → Embalagens há um briefing por solicitação, com o produto, as medidas da caixa e os entregáveis (faca e arte)."
   - id: WPE-03-C2
     titulo: Acompanhar a arte, o selo e a agência
     inicio: "1:22"
     fim: "3:15"
     cenas: [5, 8]
-    resumo: Veja os cinco itens da etapa Arte e embalagem, valide o selo, acompanhe a aprovação do fornecedor e troque a agência quando precisar.
+    resumo: "Veja os cinco itens da etapa Arte e embalagem, valide o selo, acompanhe a aprovação do fornecedor e troque a agência quando precisar."
   - id: WPE-03-C3
     titulo: Enviar para assinatura e assinar pela Wellmix
     inicio: "3:15"
     fim: "4:25"
     cenas: [9, 10]
-    resumo: O documento só vai para assinatura com a arte e o selo aplicado; a Wellmix assina primeiro, marcando o aceite.
+    resumo: "O documento só vai para assinatura com a arte e o selo aplicado; a Wellmix assina primeiro, marcando o aceite."
   - id: WPE-03-C4
     titulo: Ver as duas assinaturas e a etapa concluir
     inicio: "4:25"
     fim: "5:45"
     cenas: [11, 13]
-    resumo: O fornecedor assina em seguida; com a arte aprovada a etapa conclui, o início da produção entra sozinho e a Inspeção abre.
+    resumo: "O fornecedor assina em seguida; com a arte aprovada a etapa conclui, o início da produção entra sozinho e a Inspeção abre."
 perguntas:
   - id: WPE-03-Q1
     tipo: unica

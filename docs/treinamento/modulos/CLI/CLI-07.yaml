@@ -51,8 +51,8 @@ perguntas:
     cena: 4
     enunciado: "No Histórico, João clica em **Comprar de novo** na linha da Jarra. Para onde ele vai?"
     opcoes:
-      a: "Direto para uma nova solicitação já enviada"
-      b: "Para Explorar, na página do produto"
+      a: "Direto para uma nova solicitação, já enviada à Wellmix com a mesma quantidade"
+      b: "Para Explorar, na página do produto, onde escolhe a quantidade de novo"
       c: "Para o cartão Comprar de novo / Nova proposta do último pedido"
       d: "Para Mensagens, para falar com a Wellmix"
     correta: [c]
@@ -88,10 +88,10 @@ perguntas:
     cena: 5
     enunciado: "João abre Marketing e vê \"Nenhum kit oferecido a você ainda.\" Ele quer um kit para a jarra. O que faz?"
     opcoes:
-      a: "Espera: o portal gera o kit sozinho em alguns dias"
+      a: "Espera: o portal gera o kit sozinho depois de alguns dias, sem ajuda de ninguém"
       b: "Pede o kit pela conversa com a Wellmix, que é quem oferece"
-      c: "Clica em **Comprar kit** na vitrine"
-      d: "Cria uma Nova solicitação do tipo kit"
+      c: "Clica em **Comprar kit** na vitrine de Explorar, no cartão do produto"
+      d: "Cria uma Nova solicitação do tipo kit, descrevendo as imagens que quer"
     correta: [b]
     explicacao: "Quem oferece o kit é a Wellmix. A lista vazia só quer dizer que nenhum kit foi oferecido a você; peça pela conversa com a Wellmix."
   - id: CLI-07-Q7
@@ -101,10 +101,10 @@ perguntas:
     cena: 7
     enunciado: "João clicou em **Comprar kit** e a tela diz \"Compra registrada. Aguardando a confirmação do pagamento pela Wellmix.\" Ele não vê arquivos em Arquivos finais. Por quê?"
     opcoes:
-      a: "Os arquivos foram enviados por e-mail"
+      a: "Os arquivos foram enviados para o e-mail cadastrado da Loja do João, no mesmo dia"
       b: "O kit foi recusado e precisa ser comprado de novo"
-      c: "Os arquivos finais só aparecem depois que a Wellmix confirma o pagamento e libera o kit"
-      d: "Só a prévia pode ser baixada pelo cliente"
+      c: "Só aparecem depois que a Wellmix confirma o pagamento e libera o kit"
+      d: "Só a prévia pode ser baixada pelo cliente em qualquer momento"
     correta: [c]
     explicacao: "O cartão \"Arquivos finais\" avisa que eles são liberados após a confirmação do pagamento. Quando a Wellmix libera, você é avisado no sino."
   - id: CLI-07-Q8

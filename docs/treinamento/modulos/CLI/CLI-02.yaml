@@ -102,9 +102,9 @@ perguntas:
     cena: 8
     enunciado: "João quer pedir a Jarra e a Piscina na mesma vez. O que faz?"
     opcoes:
-      a: "Escreve os dois nomes no campo Descrição do Produto 1"
-      b: "Envia a solicitação da Jarra e, depois, outra da Piscina"
-      c: "Clica em **+ Adicionar outro produto**; cada produto vira uma solicitação, todas num lote"
+      a: "Escreve os dois nomes no campo Descrição do Produto 1 e informa a quantidade somada"
+      b: "Envia a solicitação da Jarra e, depois, abre outra solicitação só para a Piscina"
+      c: "Clica em **+ Adicionar outro produto**: cada um vira uma solicitação, num só lote"
       d: "Só dá para pedir um produto por vez"
     correta: [c]
     explicacao: "**+ Adicionar outro produto** cria o Produto 2 no mesmo formulário. Cada produto vira uma solicitação própria, mas todas nascem juntas, num lote."
@@ -128,9 +128,9 @@ perguntas:
     cena: 12
     enunciado: "João enviou a solicitação ontem e, em Orçamentos, ela está como Solicitado. Ele precisa fazer algo agora?"
     opcoes:
-      a: "Sim, enviar o comprovante do sinal"
-      b: "Sim, escolher o fornecedor"
-      c: "Sim, clicar em Enviar de novo para a Wellmix ver"
-      d: "Não: a Wellmix cuida do resto, e o que for para ele fazer aparece em Pendências e no sino"
+      a: "Sim, enviar o comprovante do sinal para que a Wellmix confira o pagamento hoje"
+      b: "Sim, escolher o fornecedor que vai responder à solicitação do lote"
+      c: "Sim, clicar em Enviar de novo para a Wellmix ver a solicitação mais depressa"
+      d: "Não: a Wellmix cuida do resto, e o que for dele aparece em Pendências e no sino"
     correta: [d]
     explicacao: "Depois do **Enviar**, a Wellmix envia ao fornecedor e traz a proposta. Quando houver algo para você fazer, aparece em Pendências e no sino."

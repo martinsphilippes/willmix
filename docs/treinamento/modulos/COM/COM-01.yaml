@@ -1,0 +1,138 @@
+episodio: COM-01
+titulo: "Comex (assessoria): documentos, numerário e DI"
+serie: COM
+papel: comex
+duracao: "5:20"
+idiomas: [pt]
+capitulos:
+  - id: COM-01-C1
+    titulo: "Ler o cartão Embarque e desembaraço"
+    inicio: "0:00"
+    fim: "1:35"
+    cenas: [1, 4]
+    resumo: "Abra o pedido por um aviso ou pendência e leia, em cada linha do cartão, quem faz, quem valida e o que vem antes."
+  - id: COM-01-C2
+    titulo: "Gerar a invoice e validar os documentos"
+    inicio: "1:35"
+    fim: "3:00"
+    cenas: [5, 6]
+    resumo: "Gere a invoice e o packing list, envie e valide ou recuse o Draft do BL, o BL original e a invoice assinada."
+  - id: COM-01-C3
+    titulo: "Informar a presença de carga e o numerário"
+    inicio: "3:00"
+    fim: "4:10"
+    cenas: [7, 8]
+    resumo: "Informe a **Presença de carga** depois do BL validado e envie o **Numerário**, que o financeiro valida e paga."
+  - id: COM-01-C4
+    titulo: "Fechar com canal, DI, CE Mercante, CI e DANFE"
+    inicio: "4:10"
+    fim: "5:20"
+    cenas: [9, 11]
+    resumo: "Informe os passos do desembaraço que são seus e saiba que o DANFE é da Wellmix."
+perguntas:
+  - id: COM-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: COM-01-C1
+    cena: 4
+    enunciado: "No cartão, a linha do **Numerário** mostra \"Faz: comex · valida: …\". Quem valida?"
+    opcoes:
+      a: "O fornecedor"
+      b: "O agente de carga"
+      c: "O financeiro da Wellmix"
+      d: "O despachante"
+    correta: [c]
+    explicacao: "O Numerário é o valor em reais para cobrir os custos do desembaraço. Você envia; quem valida e paga é o financeiro da Wellmix. O fornecedor nunca vê este passo."
+  - id: COM-01-Q2
+    tipo: ordem
+    nivel: 2
+    capitulo: COM-01-C2
+    cena: 5
+    enunciado: "Coloque na ordem o caminho da invoice e do packing list."
+    opcoes:
+      a: "Escolher o PDF no passo e clicar em **Enviar**"
+      b: "Clicar em **Gerar invoice e packing list**"
+      c: "O fornecedor valida e envia \"Invoice e packing assinados\""
+      d: "Conferir os documentos e salvar em PDF"
+      e: "Você valida a invoice assinada"
+    correta: [b, d, a, c, e]
+    explicacao: "O portal monta os dois documentos com o pedido e a ficha de compra. Você confere, salva em PDF e envia no passo. O fornecedor valida e devolve assinado, e então você valida o assinado."
+  - id: COM-01-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: COM-01-C2
+    cena: 6
+    enunciado: "Quais destes passos você valida?"
+    opcoes:
+      a: "Draft do BL"
+      b: "Numerário"
+      c: "BL (original)"
+      d: "Invoice e packing assinados"
+      e: "Canal de parametrização"
+    correta: [a, c, d]
+    explicacao: "Você valida o Draft do BL, o BL original e a invoice assinada. O Numerário é validado pelo financeiro, e o Canal de parametrização é um passo seu, sem validação."
+  - id: COM-01-Q4
+    tipo: unica
+    nivel: 3
+    capitulo: COM-01-C2
+    cena: 6
+    enunciado: "O Draft do BL enviado pelo agente traz um peso bruto diferente da invoice. Você clica em **Recusar** e o portal responde \"Escreva o motivo para recusar.\" O que faz?"
+    opcoes:
+      a: "Clica em **Validar** e avisa o agente depois"
+      b: "Preenche o campo \"Motivo (obrigatório para recusar)\" e clica em **Recusar**"
+      c: "Escolhe um arquivo novo e clica em **Enviar**"
+      d: "Escreve o motivo em Mensagens e clica em **Recusar** de novo"
+    correta: [b]
+    explicacao: "Recusar exige o motivo no campo do próprio passo. Com ele, o passo volta a quem enviou, com aviso. Quem enviou não valida o próprio passo."
+  - id: COM-01-Q5
+    tipo: unica
+    nivel: 3
+    capitulo: COM-01-C3
+    cena: 7
+    enunciado: "O passo **Presença de carga** mostra \"Depois de: BL (original)\" e ainda não deixa enviar. O que você faz?"
+    opcoes:
+      a: "Espera o BL (original) ser enviado e validado"
+      b: "Pede ao financeiro que valide a Presença de carga"
+      c: "Informa o Numerário antes, para destravar o passo"
+      d: "Clica em **Enviar** mesmo assim"
+    correta: [a]
+    explicacao: "\"Depois de\" indica o passo que precisa vir antes; fora de ordem o portal responde \"Conclua antes o passo anterior.\" Com o BL validado, o passo libera: informe a data e clique em **Enviar**. Ele não tem validação."
+  - id: COM-01-Q6
+    tipo: unica
+    nivel: 2
+    capitulo: COM-01-C3
+    cena: 8
+    enunciado: "Você enviou o **Numerário** (valor em R$ e demonstrativo em PDF). Depois que o financeiro valida e paga, o que você vê?"
+    opcoes:
+      a: "O Numerário Concluído e o passo \"Numerário pago\" Concluído, com o comprovante do financeiro"
+      b: "Só o Numerário Concluído; o pagamento não aparece"
+      c: "O Numerário Recusado, até você anexar o comprovante"
+      d: "O passo \"Numerário pago\" para você enviar o comprovante"
+    correta: [a]
+    explicacao: "O financeiro valida o Numerário e, depois do pagamento, anexa o comprovante em \"Numerário pago\". Você só acompanha."
+  - id: COM-01-Q7
+    tipo: unica
+    nivel: 1
+    capitulo: COM-01-C4
+    cena: 9
+    enunciado: "No passo **Canal de parametrização**, quais opções de cor você escolhe?"
+    opcoes:
+      a: "Verde e vermelho"
+      b: "Azul, verde e vermelho"
+      c: "Verde, amarelo, vermelho e cinza"
+      d: "Branco, verde e cinza"
+    correta: [c]
+    explicacao: "O menu traz Verde, Amarelo, Vermelho e Cinza. Outro valor gera \"Canal inválido.\" Escolha a cor e clique em **Enviar**."
+  - id: COM-01-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: COM-01-C4
+    cena: 10
+    enunciado: "Todos os seus passos estão Concluídos, e só falta o **DANFE (nota de entrada)**, com \"Depois de: DI/DUIMP e XML\". O que você faz?"
+    opcoes:
+      a: "Envia o DANFE com o Comprovante de importação (CI)"
+      b: "Pede ao despachante que envie o DANFE"
+      c: "Valida o DANFE depois que o financeiro enviar"
+      d: "Nada: o DANFE é da Wellmix e você só acompanha"
+    correta: [d]
+    explicacao: "O DANFE, a nota de entrada, é um passo da Wellmix e vem depois da DI. Você vê a linha, mas quem faz é a Wellmix."

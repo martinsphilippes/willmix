@@ -1,0 +1,128 @@
+episodio: OCP-02
+titulo: Enviar o selo e o memorial e acompanhar a validação
+serie: OCP
+papel: ocp
+duracao: "3:14"
+idiomas: [pt]
+capitulos:
+  - id: OCP-02-C1
+    titulo: Enviar o selo de certificação
+    inicio: "0:00"
+    fim: "1:16"
+    cenas: [1, 4]
+    resumo: Abra o cartão Certificação, entenda quem faz e quem valida cada passo e envie o arquivo do selo.
+  - id: OCP-02-C2
+    titulo: Anexar o memorial e acompanhar a arte com o selo
+    inicio: "1:16"
+    fim: "2:22"
+    cenas: [5, 7]
+    resumo: Use Validar e Recusar no memorial e acompanhe a linha Selo aplicado na arte até a Wellmix conferir.
+  - id: OCP-02-C3
+    titulo: Trocar o selo, se precisar
+    inicio: "2:22"
+    fim: "3:14"
+    cenas: [8, 10]
+    resumo: Corrija o selo com Enviar de novo e saiba quando a arte volta para a agência.
+perguntas:
+  - id: OCP-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: OCP-02-C1
+    cena: 4
+    enunciado: "Você escolheu o arquivo do selo e clicou em **Enviar**. O que a tela mostra?"
+    opcoes:
+      a: "O selo **Enviado, aguardando validação**, até a Wellmix conferir o arquivo"
+      b: "A faixa 'Enviado.', o selo **Concluído** e o botão **Enviar de novo**"
+      c: "O selo **Recusado**, com um motivo escrito pela Wellmix"
+      d: "Nada muda no cartão até a agência abrir a arte e aplicar o selo"
+    correta: [b]
+    explicacao: "Depois do envio, o quadro avisa 'Enviado.', o selo vira **Concluído** e o botão passa a ser **Enviar de novo**. A pendência sai da sua lista."
+  - id: OCP-02-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: OCP-02-C1
+    cena: 3
+    enunciado: "No cartão **Certificação**, quem faz e quem valida o passo **Selo aplicado na arte**?"
+    opcoes:
+      a: "Faz a OCP; valida a Wellmix"
+      b: "Faz a Wellmix; valida a OCP"
+      c: "Faz a agência; valida a certificadora (OCP)"
+      d: "Faz a agência; valida a Wellmix"
+    correta: [d]
+    explicacao: "O selo é seu; o selo na arte é da agência, validado pela Wellmix; o memorial é da Wellmix, validado por você."
+  - id: OCP-02-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: OCP-02-C1
+    cena: 4
+    enunciado: "Coloque na ordem os passos para enviar o selo."
+    opcoes:
+      a: "Escolher o arquivo do selo"
+      b: "Clicar em **Enviar**"
+      c: "Abrir a pendência Gerar o selo de certificação e entrar no cartão **Certificação**"
+      d: "Digitar o número do selo ou do registro, se tiver (opcional)"
+    correta: [c, d, a, b]
+    explicacao: "Abra a pendência, escreva o número do selo se tiver, escolha o arquivo e só então clique em **Enviar**."
+  - id: OCP-02-Q4
+    tipo: vf
+    nivel: 2
+    capitulo: OCP-02-C3
+    cena: 8
+    enunciado: "Você clica em **Enviar de novo** sem mudar o arquivo nem o número do selo. A arte da agência volta para ela com o aviso de troca."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "Reenviar sem mudar nada não reabre a arte nem avisa ninguém. A arte só volta para a agência quando o arquivo ou o número do selo muda."
+  - id: OCP-02-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: OCP-02-C2
+    cena: 5
+    enunciado: "A Wellmix enviou o memorial descritivo e a linha mostra 'Enviado, aguardando validação'. O que você vê para agir?"
+    opcoes:
+      a: "Os botões **Validar** e **Recusar**, com um campo de motivo"
+      b: "Só o botão **Enviar de novo**, para trocar o memorial da Wellmix"
+      c: "Os botões **Aprovar** e **Cancelar**, sem nenhum campo de motivo"
+      d: "Nada: quem valida o memorial descritivo é a agência do pedido"
+    correta: [a]
+    explicacao: "O memorial é da Wellmix, validado por você: use **Validar** ou **Recusar**. Para recusar, o motivo é obrigatório."
+  - id: OCP-02-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: OCP-02-C2
+    cena: 5
+    enunciado: "Você vai recusar o memorial e esquece de preencher o campo de motivo. O que acontece ao clicar em **Recusar**?"
+    opcoes:
+      a: "O memorial é recusado sem motivo e a Wellmix é avisada em seguida"
+      b: "O memorial é validado automaticamente"
+      c: "A tela mostra 'Escreva o motivo para recusar.' e não recusa"
+      d: "A Wellmix recebe um pedido para escrever o motivo por você"
+    correta: [c]
+    explicacao: "O motivo é obrigatório para recusar. Escreva no campo 'Motivo (obrigatório para recusar)' e clique em **Recusar** de novo."
+  - id: OCP-02-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: OCP-02-C2
+    cena: 7
+    enunciado: "Na linha **Selo aplicado na arte** aparece 'Recusado: O selo ficou cortado na lateral da caixa.' O que isso significa?"
+    opcoes:
+      a: "A Wellmix recusou o seu selo e você precisa enviar outro arquivo"
+      b: "A Wellmix recusou a arte da agência e deu o motivo"
+      c: "A agência desistiu de aplicar o selo na arte do pedido"
+      d: "O arquivo do selo passou do tamanho máximo de envio"
+    correta: [b]
+    explicacao: "A Wellmix valida a arte com o selo. Ao recusar, ela escreve o motivo, e a agência refaz e reenvia. Você só acompanha pela linha da tabela e pelo link **Arquivo**."
+  - id: OCP-02-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: OCP-02-C3
+    cena: 8
+    enunciado: "Você enviou o arquivo errado do selo, e a agência já tinha enviado a arte com ele. O que faz?"
+    opcoes:
+      a: "Espera a Wellmix validar a arte com o selo errado e só então troca o selo"
+      b: "Aplica o selo certo na arte você mesma e envia a arte à Wellmix"
+      c: "Pede à agência que ignore o aviso e mantenha a arte"
+      d: "Escolhe o arquivo certo em **Selo** e clica em **Enviar de novo**"
+    correta: [d]
+    explicacao: "Ao trocar o arquivo ou o número, a arte volta para a agência com o aviso 'A certificadora trocou o selo', para ela aplicar o selo atual e enviar a arte de novo."

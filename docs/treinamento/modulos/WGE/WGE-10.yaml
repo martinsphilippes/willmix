@@ -1,0 +1,137 @@
+episodio: WGE-10
+titulo: Equipe e divisões, funções e telas por login
+serie: WGE
+papel: administrador
+duracao: "5:00"
+idiomas: [pt]
+capitulos:
+  - id: WGE-10-C1
+    titulo: Ler a lista da equipe e definir cargo, divisão e chefe
+    inicio: "0:00"
+    fim: "1:32"
+    cenas: [1, 4]
+    resumo: Abra Gestão → Equipe e divisões, leia a coluna Telas e preencha os Dados de cada pessoa em Editar acessos.
+  - id: WGE-10-C2
+    titulo: Marcar as funções da pessoa
+    inicio: "1:32"
+    fim: "2:30"
+    cenas: [5, 5]
+    resumo: Marque o que a pessoa faz no processo, entre as oito funções.
+  - id: WGE-10-C3
+    titulo: Liberar as telas e conferir o efeito no login
+    inicio: "2:30"
+    fim: "4:10"
+    cenas: [6, 7]
+    resumo: Escolha entre Padrão das funções e Personalizado, salve e confira o que o login passa a ver.
+  - id: WGE-10-C4
+    titulo: Dar divisão às linhas de produto e distribuir
+    inicio: "4:10"
+    fim: "5:00"
+    cenas: [8, 9]
+    resumo: Defina a divisão de cada linha de produto e use Distribuir agora para dar dono ao que está aberto.
+perguntas:
+  - id: WGE-10-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-10-C1
+    cena: 3
+    enunciado: "Em Equipe e divisões, qual link da linha da pessoa abre os acessos dela?"
+    opcoes:
+      a: "Editar cadastro"
+      b: "Editar acessos"
+      c: "Distribuir agora"
+      d: "Salvar"
+    correta: [b]
+    explicacao: "Cada linha da tabela tem o link **Editar acessos**, que abre a página da pessoa com Dados, Funções e Telas."
+  - id: WGE-10-Q2
+    tipo: multipla
+    nivel: 1
+    capitulo: WGE-10-C1
+    cena: 4
+    enunciado: "O que se define no bloco **Dados** da página Editar acessos? Marque todos."
+    opcoes:
+      a: "Cargo"
+      b: "Divisão"
+      c: "Responde a"
+      d: "Funções"
+      e: "Telas"
+    correta: [a, b, c]
+    explicacao: "**Dados** traz **Cargo**, **Divisão** (Wellmix ou WellKids) e **Responde a**. Funções e Telas são dois blocos à parte."
+  - id: WGE-10-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-10-C1
+    cena: 4
+    enunciado: "Para que serve a divisão que você define para uma pessoa?"
+    opcoes:
+      a: "Define em qual idioma ela vê o portal"
+      b: "Define as telas que ela abre"
+      c: "Define quem aprova o pré-custo dela"
+      d: "Ajuda a decidir quem recebe cada solicitação nova"
+    correta: [d]
+    explicacao: "A divisão (junto com a divisão da linha do produto) decide quem recebe a solicitação nova. O campo 'Responde a' faz o chefe ver o painel de SLA de quem está abaixo."
+  - id: WGE-10-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-10-C2
+    cena: 5
+    enunciado: "Você quer que a pessoa aprove o pré-custo só quando o valor passa do limite, o terceiro nível. Qual função marca?"
+    opcoes:
+      a: "Planner"
+      b: "Diretoria de compras"
+      c: "Diretoria executiva"
+      d: "Comprador"
+    correta: [c]
+    explicacao: "O planner aprova o primeiro nível, a **Diretoria de compras** o segundo e a **Diretoria executiva** o terceiro, acima do limite de valor."
+  - id: WGE-10-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: WGE-10-C3
+    cena: 6
+    enunciado: "Coloque na ordem os passos para liberar a tela Financeiro só para o Otávio."
+    opcoes:
+      a: "Marcar a caixa **Financeiro**"
+      b: "Clicar em **Salvar**"
+      c: "Abrir **Editar acessos** na linha dele"
+      d: "Escolher **Personalizado (marcar uma a uma)**"
+    correta: [c, d, a, b]
+    explicacao: "Abra os acessos dele, troque de Padrão das funções para Personalizado, marque a tela e salve. As telas valem na próxima tela que ele abrir."
+  - id: WGE-10-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-10-C3
+    cena: 7
+    enunciado: "Você liberou o Financeiro em Personalizado para o Otávio e agora quer que ele volte a seguir só as funções. O que faz?"
+    opcoes:
+      a: "Escolhe **Padrão das funções** e salva"
+      b: "Desmarca as funções Comprador e Planner"
+      c: "Apaga o login dele e cria outro"
+      d: "Marca todas as telas, menos o Financeiro"
+    correta: [a]
+    explicacao: "**Padrão das funções** apaga a lista personalizada e volta à regra das funções. A faixa Financeiro some da Control Tower dele."
+  - id: WGE-10-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-10-C3
+    cena: 7
+    enunciado: "Um login novo só enxerga Pendências, Painel de SLA, Notificações e Mensagens, com um aviso no alto. O que falta?"
+    opcoes:
+      a: "Ele precisa de outro navegador"
+      b: "A senha dele deve ser trocada"
+      c: "O administrador marcar as funções ou telas dele"
+      d: "Esperar o Painel de SLA liberar as demais telas"
+    correta: [c]
+    explicacao: "Esse é o básico que todo login da Wellmix tem. Quem libera o resto é o administrador, em Editar acessos, marcando funções ou telas."
+  - id: WGE-10-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-10-C4
+    cena: 8
+    enunciado: "Você escolheu a divisão de uma linha de produto e clicou em **Salvar**. Qual botão dá dono ao que está aberto e sem responsável?"
+    opcoes:
+      a: "Padrão das funções"
+      b: "Distribuir agora"
+      c: "Editar acessos"
+      d: "Salvar na ficha do Otávio"
+    correta: [b]
+    explicacao: "**Distribuir agora** entrega ao analista, pela divisão da linha e com menos pendências, o que já está aberto e sem responsável. A mensagem diz quantas solicitações ou pedidos foram distribuídos."

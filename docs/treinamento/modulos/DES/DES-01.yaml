@@ -50,7 +50,7 @@ perguntas:
       c: "Embarque e desembaraço"
       d: "Transporte"
     correta: [b]
-    explicacao: "A etapa **Desembaraço** é a sua. O **Embarque** já está concluído (é da companhia marítima), e **Embarque e desembaraço** é o cartão dos passos de documentos."
+    explicacao: "A etapa **Desembaraço** é a sua. O **Embarque** já está concluído (é da companhia marítima), e **Embarque e desembaraço** é o cartão com os passos de documentos do embarque."
   - id: DES-01-Q3
     tipo: unica
     nivel: 2
@@ -58,10 +58,10 @@ perguntas:
     cena: 6
     enunciado: "Na etapa **Desembaraço**, como você registra o **Número do processo** e os **Documentos aduaneiros**?"
     opcoes:
-      a: "Digita o número e clica em **Enviar**; no documento, usa **Escolher arquivo** (ou uma foto)"
-      b: "Clica em **Confirmar** nos dois itens"
-      c: "Usa **Escolher arquivo** nos dois itens"
-      d: "Escreve os dois na conversa com a Wellmix"
+      a: "Digita o número e clica em **Enviar**; o documento vai em arquivo"
+      b: "Clica em **Confirmar** nos dois itens, um depois do outro"
+      c: "Usa **Escolher arquivo** nos dois itens, sem digitar nada"
+      d: "Escreve os dois na conversa com a Wellmix, por mensagem"
     correta: [a]
     explicacao: "O número do processo é digitado e enviado com **Enviar**; os documentos aduaneiros vão em arquivo (**Escolher arquivo**) ou foto. Os dois são obrigatórios. **Confirmar** é só da Liberação aduaneira."
   - id: DES-01-Q4
@@ -72,9 +72,9 @@ perguntas:
     enunciado: "Você quer conferir o número e o arquivo do BL original antes de registrar o processo. Onde olha?"
     opcoes:
       a: "No item **Documentos aduaneiros** da etapa Desembaraço"
-      b: "No cartão **Embarque e desembaraço**, no passo \"BL (original)\""
+      b: "No cartão **Embarque e desembaraço**, passo \"BL (original)\""
       c: "Em Mensagens, na conversa com a companhia marítima"
-      d: "Na lista Pendências, na coluna Prazo"
+      d: "Na lista de Pendências, na coluna do prazo da linha"
     correta: [b]
     explicacao: "Do cartão Embarque e desembaraço, o despachante vê só o passo **BL (original)**, com o número e o link **Arquivo**. Numerário, DI e CI são da comex. Os dados do embarque (data, chegada, navio e BL) também estão na linha **Embarque**, em **Ver detalhes**."
   - id: DES-01-Q5
@@ -85,9 +85,9 @@ perguntas:
     enunciado: "Sobre os custos da etapa Desembaraço, o que é obrigatório?"
     opcoes:
       a: "Só os custos realizados; os previstos são opcionais"
-      b: "Os dois, previstos e realizados"
+      b: "Os dois, previstos e realizados, sempre juntos"
       c: "Só os custos previstos; os realizados são opcionais"
-      d: "Nenhum dos dois"
+      d: "Nenhum dos dois, ambos são opcionais"
     correta: [a]
     explicacao: "**Custos previstos** é opcional: dá para informar uma estimativa. **Custos realizados** é obrigatório. Em ambos você escolhe a moeda, digita o valor e clica em **Enviar**."
   - id: DES-01-Q6
@@ -97,10 +97,10 @@ perguntas:
     cena: 7
     enunciado: "Você clica em **Enviar** em **Custos realizados** sem digitar nada e o portal diz \"Informe o valor (ex.: 1.234,56).\" O que faz?"
     opcoes:
-      a: "Clica em **Confirmar** na Liberação aduaneira para seguir"
-      b: "Marca o item como opcional"
-      c: "Escolhe um arquivo no lugar do valor"
-      d: "Escolhe a moeda, digita o valor com vírgula nos centavos e envia de novo"
+      a: "Clica em **Confirmar** na Liberação aduaneira para seguir em frente"
+      b: "Marca o item como opcional para o portal aceitar o envio"
+      c: "Escolhe um arquivo no lugar do valor e clica em **Enviar**"
+      d: "Escolhe a moeda, digita o valor com vírgula e envia de novo"
     correta: [d]
     explicacao: "O custo precisa de moeda (em geral Real) e de um valor, como 5.480,35. Com o campo vazio, o portal pede que você informe o valor."
   - id: DES-01-Q7
@@ -110,9 +110,9 @@ perguntas:
     cena: 8
     enunciado: "Você clica em **Confirmar** na **Liberação aduaneira** e os itens obrigatórios estão feitos. O que acontece?"
     opcoes:
-      a: "O pedido volta para o Embarque"
+      a: "O pedido volta para o Embarque para uma nova conferência"
       b: "A Wellmix precisa aprovar antes de qualquer mudança"
-      c: "O pedido pula para Entrega e pós-venda"
+      c: "O pedido pula para Entrega e pós-venda sem passar por nada"
       d: "A etapa Desembaraço conclui e o pedido segue para o Transporte"
     correta: [d]
     explicacao: "Com todos os obrigatórios feitos, a etapa Desembaraço fica Concluída (100 %) e o título do pedido muda para Transporte."

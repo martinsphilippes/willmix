@@ -1,0 +1,137 @@
+episodio: WGE-09
+titulo: Configurações, os parâmetros do sistema
+serie: WGE
+papel: administrador
+duracao: "5:30"
+idiomas: [pt]
+capitulos:
+  - id: WGE-09-C1
+    titulo: Abrir as Configurações e ajustar Fluxo e prazos
+    inicio: "0:00"
+    fim: "1:08"
+    cenas: [1, 3]
+    resumo: Abra Gestão → Configurações e veja como as chaves de Fluxo e prazos mudam o dia a dia, só para o que for novo.
+  - id: WGE-09-C2
+    titulo: Aprovação, inspeção, containers e conformidade
+    inicio: "1:08"
+    fim: "2:26"
+    cenas: [4, 5]
+    resumo: Ajuste a aprovação do pré-custo, o SLA e as tolerâncias de inspeção e de containers.
+  - id: WGE-09-C3
+    titulo: Pagamento ao fornecedor, Pix e IA
+    inicio: "2:26"
+    fim: "3:48"
+    cenas: [6, 7]
+    resumo: Informe os contatos do financeiro e a Chave Pix, e confira o modo da IA com Testar IA.
+  - id: WGE-09-C4
+    titulo: Preço, tributos e como salvar
+    inicio: "3:48"
+    fim: "5:30"
+    cenas: [8, 11]
+    resumo: Defina margens, câmbio e tributos, clique em Salvar e saiba ler os avisos de erro.
+perguntas:
+  - id: WGE-09-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-09-C1
+    cena: 2
+    enunciado: "Você muda uma regra em Configurações. A quais solicitações e pedidos o novo valor vale?"
+    opcoes:
+      a: "A todos, inclusive os que já estavam em andamento"
+      b: "Só aos novos, não aos que já nasceram"
+      c: "Só aos pedidos do mês em que a mudança foi feita"
+      d: "Só aos clientes que forem avisados pela Wellmix"
+    correta: [b]
+    explicacao: "O que você muda em Configurações vale para solicitações e pedidos novos. Os que já nasceram guardam as regras com que nasceram."
+  - id: WGE-09-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-09-C4
+    cena: 9
+    enunciado: "Depois de clicar em **Salvar**, qual aviso aparece no alto da tela?"
+    opcoes:
+      a: "Configurações salvas."
+      b: "Equipe atualizada."
+      c: "Câmbio salvo; custo e margem recalculados."
+      d: "Pronto: as vendas de teste foram apagadas."
+    correta: [a]
+    explicacao: "A confirmação das Configurações é 'Configurações salvas.' As outras mensagens pertencem a Equipe e divisões, ao Financeiro e à limpeza de dados de teste."
+  - id: WGE-09-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-09-C1
+    cena: 3
+    enunciado: "Com **Cliente pode criar solicitação** em Não, o que o cliente vê ao tentar pedir um orçamento?"
+    opcoes:
+      a: "Um formulário em modo leitura, que ele só pode preencher depois"
+      b: "A vitrine vazia, sem nenhum produto"
+      c: "Um aviso para falar com a Wellmix: os pedidos pela vitrine estão desligados"
+      d: "Um erro técnico no formulário de solicitação"
+    correta: [c]
+    explicacao: "Com Não, o cliente vê o aviso 'Para pedir orçamento, fale com a Wellmix: os pedidos pela vitrine estão desligados no momento.' Volte a Sim quando quiser reabrir."
+  - id: WGE-09-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-09-C2
+    cena: 5
+    enunciado: "Na inspeção, a **Tolerância de quantidade (%)** está em 0. O que isso significa?"
+    opcoes:
+      a: "Não há limite: qualquer quantidade é aceita"
+      b: "A inspeção de quantidade é pulada"
+      c: "Aceita-se até 5% de diferença"
+      d: "A quantidade tem de ser exata"
+    correta: [d]
+    explicacao: "As tolerâncias dizem quanto a medida do fornecedor pode diferir da compra. Zero em quantidade é exato."
+  - id: WGE-09-Q5
+    tipo: multipla
+    nivel: 2
+    capitulo: WGE-09-C3
+    cena: 6
+    enunciado: "Quais destes campos ficam nos blocos **Pagamento ao fornecedor** e **Pagamento do sinal por Pix**? Marque todos."
+    opcoes:
+      a: "E-mail do financeiro"
+      b: "WhatsApp do financeiro"
+      c: "Chave Pix"
+      d: "Sinal (%)"
+      e: "Margem geral (%)"
+    correta: [a, b, c]
+    explicacao: "Esses blocos pedem o **E-mail do financeiro**, o **WhatsApp do financeiro** (com DDI e DDD) e a **Chave Pix**. O **Sinal (%)** fica em Fluxo e prazos, e a margem em Preço ao cliente."
+  - id: WGE-09-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-09-C4
+    cena: 8
+    enunciado: "A Loja do João tem uma margem própria em **Margem por cliente** e a linha do produto também tem margem. Qual vale na proposta dela?"
+    opcoes:
+      a: "A da linha do produto"
+      b: "A maior das duas"
+      c: "A margem geral, sempre"
+      d: "A do cliente"
+    correta: [d]
+    explicacao: "A ordem é cliente, depois linha, depois a margem geral: a margem por cliente vence a da linha, que vence a geral."
+  - id: WGE-09-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-09-C4
+    cena: 9
+    enunciado: "Ao clicar em **Salvar**, aparece 'JSON inválido em stageDueDays.' O que acontece e o que você faz?"
+    opcoes:
+      a: "Salvou tudo, menos esse campo; basta ignorar o aviso"
+      b: "Nada foi gravado pela metade; corrige o campo **Prazo por etapa (JSON, dias)** e salva de novo"
+      c: "Os outros campos foram perdidos; refaz todas as Configurações"
+      d: "Chama o suporte, pois o erro é da Wellmix"
+    correta: [b]
+    explicacao: "Se um campo estiver fora da regra, a tela diz qual e nada é gravado pela metade. Corrija o texto do campo (chaves entre aspas, números sem texto) e salve de novo."
+  - id: WGE-09-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-09-C3
+    cena: 7
+    enunciado: "Você clica em **Testar IA** e aparece 'IA desligada: modo MANUAL ou nenhuma credencial disponível.' O que isso quer dizer?"
+    opcoes:
+      a: "O portal está com defeito: acione o suporte"
+      b: "Sem credencial ou em modo Manual, a IA não sugere nada; não é um erro"
+      c: "A chave da IA expirou e precisa ser colada na tela"
+      d: "Falta clicar em **Salvar** antes de testar"
+    correta: [b]
+    explicacao: "O selo 'modo efetivo' mostra o que vale de fato. Sem chave, a IA fica manual (ou só dá exemplo rotulado, em Simulado). A chave da IA nunca aparece na tela."

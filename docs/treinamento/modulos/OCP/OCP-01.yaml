@@ -1,0 +1,132 @@
+episodio: OCP-01
+titulo: Receber o pedido de certificação e a ficha
+serie: OCP
+papel: ocp
+duracao: "3:45"
+idiomas: [pt]
+capitulos:
+  - id: OCP-01-C1
+    titulo: Abrir a pendência de certificação
+    inicio: "0:00"
+    fim: "0:59"
+    cenas: [1, 4]
+    resumo: Entenda onde a certificação entra na jornada e abra a pendência Gerar o selo de certificação.
+  - id: OCP-01-C2
+    titulo: Ler o resumo, os itens e a ficha de compra
+    inicio: "0:59"
+    fim: "2:27"
+    cenas: [5, 7]
+    resumo: Consulte, só para ler, o resumo do pedido, os itens com fotos e a ficha de compra preenchida pelo fornecedor.
+  - id: OCP-01-C3
+    titulo: Consultar fotos, documento e certificações registradas
+    inicio: "2:27"
+    fim: "3:45"
+    cenas: [8, 12]
+    resumo: Veja as fotos da ficha, o documento do pedido e as certificações já registradas antes de gerar o selo.
+perguntas:
+  - id: OCP-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: OCP-01-C1
+    cena: 4
+    enunciado: "Qual pendência indica que a certificação depende de você?"
+    opcoes:
+      a: "Aplicar o selo de certificação na arte"
+      b: "Validar a arte da embalagem do pedido"
+      c: "Gerar o selo de certificação: pedido #n"
+      d: "Preencher a ficha de compra do pedido"
+    correta: [c]
+    explicacao: "Sua pendência é **Gerar o selo de certificação**, com o número do pedido. Aplicar o selo na arte é da agência, e a ficha de compra é do fornecedor."
+  - id: OCP-01-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: OCP-01-C1
+    cena: 3
+    enunciado: "Quais pedidos aparecem para a OCP no menu **Pedidos**?"
+    opcoes:
+      a: "Todos os pedidos da Wellmix, de qualquer fornecedor"
+      b: "Só os pedidos em que ela foi designada"
+      c: "Só os pedidos que já têm o selo enviado"
+      d: "Só os pedidos da fase de embarque"
+    correta: [b]
+    explicacao: "A OCP vê só os pedidos em que foi designada. Um pedido de outra certificadora não abre."
+  - id: OCP-01-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: OCP-01-C1
+    cena: 2
+    enunciado: "Em que momento da jornada a certificação começa?"
+    opcoes:
+      a: "Depois que a arte da embalagem fica pronta e aprovada"
+      b: "Só depois que o pedido é assinado pelo fornecedor e pela Wellmix"
+      c: "Quando o navio embarca a carga e o BL é emitido"
+      d: "Assim que o pedido nasce, junto com a arte da embalagem"
+    correta: [d]
+    explicacao: "A certificação começa na etapa 4, quando o pedido nasce, ao mesmo tempo que a arte da embalagem. Ela não espera a etapa anterior."
+  - id: OCP-01-Q4
+    tipo: multipla
+    nivel: 2
+    capitulo: OCP-01-C2
+    cena: 7
+    enunciado: "O que a OCP pode fazer no pedido e na ficha de compra? Marque todas as certas."
+    opcoes:
+      a: "Abrir a ficha de compra para consultar"
+      b: "Clicar na foto de um item para ver todas as fotos"
+      c: "Ler o resumo do pedido"
+      d: "Editar os campos da ficha de compra"
+      e: "Assinar o documento do pedido"
+    correta: [a, b, c]
+    explicacao: "O pedido é todo só para ler. A ficha de compra mostra os campos desabilitados, e quem assina o documento do pedido é a Wellmix e o fornecedor."
+  - id: OCP-01-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: OCP-01-C3
+    cena: 12
+    enunciado: "Coloque na ordem o que a OCP consulta antes de gerar o selo."
+    opcoes:
+      a: "Abrir o documento do pedido"
+      b: "Abrir a pendência Gerar o selo de certificação"
+      c: "Ver as certificações já registradas do produto e do fornecedor"
+      d: "Consultar a ficha de compra"
+      e: "Ler o resumo e os itens do pedido"
+    correta: [b, e, d, a, c]
+    explicacao: "O roteiro vai da pendência ao resumo e aos itens, depois à ficha de compra, ao documento do pedido e, por fim, às certificações já registradas."
+  - id: OCP-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: OCP-01-C2
+    cena: 7
+    enunciado: "Na ficha de compra você nota um dado que parece errado. Os campos estão desabilitados e a faixa diz 'Você pode ver a ficha, mas não editar esta parte.' O que faz?"
+    opcoes:
+      a: "Procura o botão **Editar** no alto da ficha"
+      b: "Leva a dúvida à Wellmix por **Conversar com a Wellmix**"
+      c: "Pede ao fornecedor que corrija a ficha diretamente"
+      d: "Gera o selo mesmo assim, sem avisar ninguém"
+    correta: [b]
+    explicacao: "A ficha é só para consulta. Dúvidas vão para a Wellmix pelo botão **Conversar com a Wellmix**."
+  - id: OCP-01-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: OCP-01-C1
+    cena: 3
+    enunciado: "A Wellmix recebeu o aviso 'Pedido #1: sem certificadora para o selo' e você não recebeu nada. Por quê?"
+    opcoes:
+      a: "Você não tem acesso à tela Pendências"
+      b: "O fornecedor ainda não enviou a ficha de compra"
+      c: "O pedido não tem certificadora: ao designar a OCP, você é avisada"
+      d: "Outra certificadora já enviou o selo desse pedido"
+    correta: [c]
+    explicacao: "Sem certificadora designada, a OCP não recebe o aviso. A Wellmix designa a OCP em Parceiros do pedido e você é avisada na hora."
+  - id: OCP-01-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: OCP-01-C3
+    cena: 9
+    enunciado: "O documento do pedido mostra o selo 'Em preparação: vai para assinatura depois da arte e do selo' e as assinaturas em branco. É um erro?"
+    opcoes:
+      a: "Não: ele só vai para assinatura depois da arte e do selo"
+      b: "Sim: o documento foi aberto antes da hora e precisa ser refeito"
+      c: "Sim: falta você assinar para o documento seguir"
+      d: "Não: a Wellmix já assinou e falta só o fornecedor"
+    correta: [a]
+    explicacao: "É normal: o documento só segue para assinatura depois que a arte leva o selo. Quem assina é a Wellmix e o fornecedor; você só lê ou baixa o PDF."

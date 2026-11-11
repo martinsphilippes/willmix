@@ -1,0 +1,129 @@
+episodio: WGE-11
+titulo: Auditoria e dados de demonstração
+serie: WGE
+papel: administrador
+duracao: "3:30"
+idiomas: [pt]
+capitulos:
+  - id: WGE-11-C1
+    titulo: Abrir a Auditoria e usar os filtros
+    inicio: "0:00"
+    fim: "1:00"
+    cenas: [1, 3]
+    resumo: Abra Gestão → Auditoria, veja quem pode abrir e filtre por período, módulo, pessoa, pedido e texto.
+  - id: WGE-11-C2
+    titulo: Ler o antes e o depois de uma ação
+    inicio: "1:00"
+    fim: "2:12"
+    cenas: [4, 5]
+    resumo: Filtre os Pagamentos, abra Antes / depois e busque tudo de um pedido pelo número.
+  - id: WGE-11-C3
+    titulo: Limpar dados de teste com segurança
+    inicio: "2:12"
+    fim: "3:30"
+    cenas: [6, 8]
+    resumo: Saiba o que a limpeza apaga, como confirmá-la e por que nunca usar com vendas reais.
+perguntas:
+  - id: WGE-11-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-11-C1
+    cena: 2
+    enunciado: "Quem abre a Auditoria?"
+    opcoes:
+      a: "Todo operador da Wellmix, inclusive comprador e planner"
+      b: "O administrador e as diretorias de compras e executiva"
+      c: "Somente o jurídico e o administrador"
+      d: "Qualquer login que o administrador indicar na hora"
+    correta: [b]
+    explicacao: "A Auditoria é só leitura e abre para o administrador e para as diretorias (compras e executiva). O operador comprador e planner não abre."
+  - id: WGE-11-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-11-C3
+    cena: 6
+    enunciado: "Qual palavra você digita para confirmar a limpeza de dados de teste?"
+    opcoes:
+      a: "LIMPAR"
+      b: "CONFIRMAR"
+      c: "APAGAR"
+      d: "ZERAR"
+    correta: [c]
+    explicacao: "Sem a palavra **APAGAR** a tela responde 'Digite APAGAR para confirmar. Nada foi apagado.' Depois da palavra, o botão é **Apagar dados de teste**."
+  - id: WGE-11-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: WGE-11-C1
+    cena: 3
+    enunciado: "Quais destes filtros existem na Auditoria? Marque todos."
+    opcoes:
+      a: "De e Até, o período"
+      b: "Pessoa"
+      c: "Pedido nº"
+      d: "Cliente"
+      e: "Fornecedor"
+    correta: [a, b, c]
+    explicacao: "A Auditoria filtra por **De / Até**, **Módulo**, **Pessoa**, **Pedido nº** e **Texto**. Não há filtro por cliente nem por fornecedor."
+  - id: WGE-11-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-11-C2
+    cena: 4
+    enunciado: "O que você vê ao abrir **Antes / depois** numa linha da Auditoria?"
+    opcoes:
+      a: "Quem abriu a tela antes e depois da ação registrada"
+      b: "Os pagamentos anteriores e posteriores do mesmo pedido"
+      c: "Como estava (cinza) e como ficou (verde)"
+      d: "A data de abertura e a de encerramento do pedido"
+    correta: [c]
+    explicacao: "A caixa cinza traz o que estava antes e a verde o que ficou depois. Assim você vê exatamente o que a ação mudou."
+  - id: WGE-11-Q5
+    tipo: vf
+    nivel: 2
+    capitulo: WGE-11-C2
+    cena: 4
+    enunciado: "Verdadeiro ou falso: ao filtrar por **Pedido nº**, a Auditoria traz também os registros da solicitação que deu origem ao pedido."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [a]
+    explicacao: "O filtro **Pedido nº** traz o pedido e a solicitação dele, o que mostra a história inteira do pedido de uma vez."
+  - id: WGE-11-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-11-C3
+    cena: 6
+    enunciado: "Um colega quer usar **Limpar dados de teste** num ambiente que já tem vendas reais, 'só para organizar'. O que você responde?"
+    opcoes:
+      a: "Pode, porque dá para desfazer depois pela Auditoria"
+      b: "Pode, desde que ele digite a palavra de confirmação"
+      c: "Pode, porque a numeração dos pedidos é preservada"
+      d: "Não: apaga as vendas para sempre; é só para teste"
+    correta: [d]
+    explicacao: "A limpeza apaga para sempre as vendas de teste e a numeração recomeça no #1. Não tem como desfazer, então nunca se usa com vendas reais."
+  - id: WGE-11-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-11-C3
+    cena: 6
+    enunciado: "Na limpeza aparece 'A limpeza parou no meio... O que deve ficar continua; toque em Apagar de novo para terminar.' O que você faz?"
+    opcoes:
+      a: "Restaura um backup antes de continuar"
+      b: "Clica de novo em **Apagar dados de teste** até terminar"
+      c: "Apaga os cadastros do Sankhya para completar a limpeza"
+      d: "Cria uma conta de demonstração nova"
+    correta: [b]
+    explicacao: "Se a limpeza parar no meio, o que deve ficar continua intacto. Clique em **Apagar dados de teste** de novo, quantas vezes for preciso, até terminar."
+  - id: WGE-11-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-11-C3
+    cena: 7
+    enunciado: "Um colega quer usar o cartão **Apagar também os cadastros que vêm do Sankhya (migração)** para limpar cadastros de teste. O que você diz?"
+    opcoes:
+      a: "Pode usar quando quiser, como a limpeza das vendas de teste"
+      b: "Só depois de exportar a Auditoria para uma planilha"
+      c: "Pode, desde que apague as contas de demonstração antes disso"
+      d: "Não use: é só da migração e não tem volta"
+    correta: [d]
+    explicacao: "Essa limpeza é mais forte que a de vendas, serve só à migração do Sankhya e não tem volta. Ela ainda exige que as vendas já tenham sido apagadas."

@@ -44,9 +44,9 @@ perguntas:
     cena: 6
     enunciado: "Onde você cria o login de uma empresa que ainda não tem acesso ao portal?"
     opcoes:
-      a: "Em Gestão → Equipe e divisões"
-      b: "Na tela /login, em 'Criar conta'"
-      c: "No quadro Usuários, dentro do cadastro da empresa"
+      a: "Em Gestão → Equipe e divisões, na lista da equipe"
+      b: "Na tela /login, no link 'Criar conta'"
+      c: "No quadro Usuários do cadastro da empresa"
       d: "Em Configurações"
     correta: [c]
     explicacao: "Ninguém entra sozinho: a Wellmix cria o acesso no quadro **Usuários** do cadastro. No Perfil, o selo 'Sem acesso' tem o atalho **Criar acesso →** que leva até lá."
@@ -97,8 +97,8 @@ perguntas:
     cena: 10
     enunciado: "Você digita o login 'maria silva' e clica em **+ Criar acesso**: 'Login inválido. Use de 3 a 40 letras minúsculas, números, ponto ou hífen, sem espaços.' O que faz?"
     opcoes:
-      a: "Troca o espaço por uma vírgula e cria de novo"
-      b: "Usa um nome de usuário simples, como maria.silva, e cria de novo"
+      a: "Troca o espaço por uma vírgula e cria de novo o acesso"
+      b: "Usa um nome simples, como maria.silva, e cria de novo"
       c: "Pede ao administrador para liberar logins com espaço"
       d: "Cria o acesso com o e-mail da empresa, mesmo que seja o de outra pessoa"
     correta: [b]
@@ -110,10 +110,10 @@ perguntas:
     cena: 9
     enunciado: "Depois de criar o acesso da Yiwu Glass Factory, uma segunda pessoa da mesma empresa também precisa entrar. O que faz?"
     opcoes:
-      a: "Passa o mesmo login e a mesma senha para a segunda pessoa"
+      a: "Passa o mesmo login e a mesma senha para a segunda pessoa também"
       b: "Cadastra outro fornecedor com o nome da empresa mais um número"
       c: "Pede ao administrador para ativar um segundo acesso na equipe da Wellmix"
-      d: "Cria um segundo login no mesmo quadro Usuários, com outro nome e login"
+      d: "Cria um segundo login no mesmo quadro Usuários"
     correta: [d]
     explicacao: "Cada cadastro pode ter mais de um login. Depois de criar o primeiro, o formulário já vem com outro login sugerido (como yiwu.glass.factory2) para a segunda pessoa."
   - id: WCA-02-Q8

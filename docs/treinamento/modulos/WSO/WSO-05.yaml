@@ -10,25 +10,25 @@ capitulos:
     inicio: "0:00"
     fim: "1:10"
     cenas: [1, 4]
-    resumo: O Superplan é só do administrador; escolha o produto do cadastro e clique em **Carregar** para preencher a simulação.
+    resumo: "O Superplan é só do administrador; escolha o produto do cadastro e clique em **Carregar** para preencher a simulação."
   - id: WSO-05-C2
     titulo: Conferir compra, container e tipo de negócio
     inicio: "1:10"
     fim: "2:20"
     cenas: [5, 6]
-    resumo: Confira preço, caixa e impostos da compra, depois container, câmbio e o tipo de negócio que preenche markup, comissão, despesas e meta de lucro.
+    resumo: "Confira preço, caixa e impostos da compra, depois container, câmbio e o tipo de negócio que preenche markup, comissão, despesas e meta de lucro."
   - id: WSO-05-C3
     titulo: Ler o preço mínimo e o sinal do lucro
     inicio: "2:20"
     fim: "3:40"
     cenas: [7, 8]
-    resumo: Leia o custo por peça e o preço mínimo e use o aviso verde, amarelo ou vermelho para saber se o lucro bate a meta.
+    resumo: "Leia o custo por peça e o preço mínimo e use o aviso verde, amarelo ou vermelho para saber se o lucro bate a meta."
   - id: WSO-05-C4
     titulo: Abrir a faca e a RFQ
     inicio: "3:40"
     fim: "5:00"
     cenas: [9, 11]
-    resumo: Se for viável, **Abrir faca e RFQ** cria a solicitação e a cotação só com o fornecedor ganho.
+    resumo: "Se for viável, **Abrir faca e RFQ** cria a solicitação e a cotação só com o fornecedor ganho."
 perguntas:
   - id: WSO-05-Q1
     tipo: unica

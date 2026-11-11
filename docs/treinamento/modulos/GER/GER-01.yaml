@@ -44,7 +44,7 @@ perguntas:
     cena: 4
     enunciado: "Você clica em **Entrar** e aparece em vermelho \"Credenciais inválidas\". O que faz?"
     opcoes:
-      a: "Espera alguns minutos, porque o portal está fora do ar"
+      a: "Espera alguns minutos, porque o banco de dados do portal não está respondendo"
       b: "Pede ao administrador para liberar a tela"
       c: "Clica em **Pular** e tenta de novo"
       d: "Confere o e-mail ou nome de usuário e a senha e tenta de novo"
@@ -58,8 +58,8 @@ perguntas:
     enunciado: "Ao entrar, aparece: \"Não foi possível entrar agora: o banco de dados do portal não está respondendo. Sua senha não é o problema.\" O que faz?"
     opcoes:
       a: "Espera alguns minutos e tenta de novo; se continuar, avisa a Wellmix"
-      b: "Troca a senha e entra de novo"
-      c: "Confere se digitou o e-mail certo"
+      b: "Troca a senha por uma nova e entra de novo, porque a antiga deve ter expirado"
+      c: "Confere se digitou o e-mail certo, porque o endereço pode estar com erro de digitação"
       d: "Pede ao administrador para liberar o acesso"
     correta: [a]
     explicacao: "Essa mensagem é do portal, não do seu login. Tente de novo em alguns minutos e, se o problema continuar, avise a Wellmix."
@@ -83,7 +83,7 @@ perguntas:
     cena: 6
     enunciado: "No menu do despachante, **Pedidos** aparece como um link direto, sem lista de telas. Por quê?"
     opcoes:
-      a: "Faltou acesso, e o administrador precisa liberar"
+      a: "Faltou acesso, e o administrador precisa liberar a tela para o despachante"
       b: "O grupo tem uma tela só, e grupo com uma tela só vira link direto"
       c: "O despachante não tem os grupos Início e Pedidos"
       d: "É um erro do menu, que volta ao normal no dia seguinte"
@@ -109,8 +109,8 @@ perguntas:
     cena: 10
     enunciado: "Você é cliente, digita o endereço de /app/booking e o portal volta ao início com a faixa âmbar \"Você não tem acesso a Booking\". O que isso significa?"
     opcoes:
-      a: "A senha está errada e é preciso trocá-la"
-      b: "O portal está com defeito e é preciso tentar mais tarde"
+      a: "A senha está errada e é preciso trocá-la antes de entrar de novo no portal"
+      b: "O portal está com defeito, e é preciso tentar de novo mais tarde, quando voltar"
       c: "A tela é de outro papel; se precisar dela, fale com a Wellmix"
       d: "Sua conta foi bloqueada e precisa ser recriada"
     correta: [c]

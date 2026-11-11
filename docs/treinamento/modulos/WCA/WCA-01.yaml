@@ -37,9 +37,9 @@ perguntas:
     cena: 3
     enunciado: "Em que menu fica a lista de clientes da Wellmix?"
     opcoes:
-      a: "Pedidos → Clientes"
+      a: "Pedidos → Clientes e contratos"
       b: "Cadastros → Clientes"
-      c: "Gestão → Clientes"
+      c: "Gestão → Clientes e acessos"
     correta: [b]
     explicacao: "Clientes fica em **Cadastros → Clientes**. Se o seu login não vê o item, peça ao administrador: ele libera por função."
   - id: WCA-01-Q2
@@ -88,10 +88,10 @@ perguntas:
     cena: 8
     enunciado: "O que faz o botão **Desativar marcados** na lista de Clientes?"
     opcoes:
-      a: "Apaga os clientes marcados do sistema"
-      b: "Cancela os pedidos dos clientes marcados"
-      c: "Exclui os clientes depois de 30 dias"
-      d: "Deixa os marcados Inativos, sem apagar nada, e a mudança vai para a auditoria"
+      a: "Apaga os clientes marcados do sistema, sem como voltar"
+      b: "Cancela os pedidos em andamento dos clientes marcados"
+      c: "Exclui os clientes marcados depois de 30 dias parados"
+      d: "Deixa os marcados Inativos; nada é apagado"
     correta: [d]
     explicacao: "Ativar e desativar em lote muda a situação do cadastro, mas nada é apagado e a mudança fica na auditoria. Para ver os inativos, use o filtro **Inativos** ou **Todos**."
   - id: WCA-01-Q6
@@ -101,10 +101,10 @@ perguntas:
     cena: 5
     enunciado: "O operador comprador abre Clientes e vê só o aviso 'Valores só para quem tem acesso a Finanças.', sem os cartões. O que você responde?"
     opcoes:
-      a: "O cadastro dele está inativo; ative-o"
-      b: "É normal: dinheiro só aparece para quem abre Finanças, ou seja, o administrador"
+      a: "O cadastro dele está inativo; ative-o e peça que entre de novo"
+      b: "É normal: dinheiro só aparece para quem abre Finanças"
       c: "Faltam pedidos entregues; os cartões voltam depois da entrega"
-      d: "Ele precisa trocar o filtro para Todos"
+      d: "Ele precisa trocar o filtro para Todos, para somar os cadastros"
     correta: [b]
     explicacao: "Os valores em reais ou dólar só aparecem para quem abre Finanças (o administrador, ou quem ele liberar em Gestão → Equipe e divisões). Para os outros logins, os cartões somem."
   - id: WCA-01-Q7
@@ -114,9 +114,9 @@ perguntas:
     cena: 6
     enunciado: "Um cliente que você sabe que existe não aparece na lista de Clientes. O que você olha primeiro?"
     opcoes:
-      a: "Pede ao administrador para cadastrar de novo"
-      b: "Clica em **Exportar a lista (CSV)** e procura na planilha"
-      c: "Troca o filtro de **Ativos** para **Inativos** ou **Todos**"
+      a: "Pede ao administrador para cadastrar o cliente de novo"
+      b: "Clica em **Exportar a lista (CSV)** e procura na planilha baixada"
+      c: "Troca o filtro para **Inativos** ou **Todos**"
       d: "Clica em **Buscar** com o campo vazio"
     correta: [c]
     explicacao: "Por padrão, só os ativos aparecem. Se um cliente sumiu, olhe em **Inativos** ou em **Todos**: ele pode estar desativado, e nada é apagado."
@@ -127,9 +127,9 @@ perguntas:
     cena: 13
     enunciado: "O comprador pede para mudar a condição de pagamento ao fornecedor Shenzhen Supplier A. Onde isso se edita e quem pode?"
     opcoes:
-      a: "Na aba Pagamentos da ficha; qualquer login da Wellmix"
-      b: "Em **Editar cadastro** do fornecedor, no cartão da condição de pagamento; só o administrador"
-      c: "Em **Avaliação**, na linha do fornecedor; o comprador"
-      d: "Em **Registrar pagamento**; o financeiro"
+      a: "Na aba Pagamentos da ficha; qualquer login da Wellmix pode"
+      b: "Em **Editar cadastro** do fornecedor; só o administrador"
+      c: "Em **Avaliação**, na linha do fornecedor; o comprador pode"
+      d: "Em **Registrar pagamento**, no cartão do financeiro"
     correta: [b]
     explicacao: "O cartão 'Condição de pagamento ao fornecedor' fica em **Editar cadastro** e só o administrador o vê. **Registrar pagamento** e **Avaliação** têm outro objetivo."

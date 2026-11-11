@@ -70,10 +70,10 @@ perguntas:
     cena: 4
     enunciado: "Um produto tem duas variações. O que o cartão dele mostra na vitrine?"
     opcoes:
-      a: "Um cartão separado para cada variação"
-      b: "O preço mais alto entre as variações"
-      c: "O preço FOB do fornecedor, em dólar"
-      d: "O selo de variações e o preço 'a partir de', o menor entre elas"
+      a: "Um cartão separado para cada variação do produto"
+      b: "O preço mais alto entre as variações do produto"
+      c: "O preço FOB do fornecedor, em dólar, para a Wellmix"
+      d: "O selo de variações e o preço 'a partir de'"
     correta: [d]
     explicacao: "Com variações aparecem o selo de variações e o preço a partir de, o menor entre elas. O cliente nunca vê fornecedor, FOB nem moeda de compra."
   - id: WCA-06-Q5
@@ -85,8 +85,8 @@ perguntas:
     opcoes:
       a: "Clica em **Adicionar ao carrinho** na prévia, na sua conta"
       b: "Pede ao administrador para liberar o carrinho para a Wellmix"
-      c: "Entra como o cliente, em outro perfil: só ele vê a escolha de variação e o carrinho"
-      d: "Mexe na ordem da vitrine para o seletor aparecer"
+      c: "Entra como o cliente, em outro perfil"
+      d: "Muda a ordem da vitrine para o seletor de variação aparecer"
     correta: [c]
     explicacao: "Na prévia a Wellmix vê o selo de variações, mas não o seletor 'Escolha a variação', a quantidade nem o botão **Adicionar ao carrinho**. Isso é só do cliente. A Wellmix pode testar busca, categorias (as linhas) e ordem."
   - id: WCA-06-Q6
@@ -96,7 +96,7 @@ perguntas:
     cena: 6
     enunciado: "O aviso da jarra lista: preço do fornecedor, frete marítimo por CBM e ICMS. Você tem acesso a Produtos, mas não é administrador. O que faz?"
     opcoes:
-      a: "Preenche o preço na ficha e pede ao administrador o frete e o ICMS, em Configurações"
+      a: "Preenche o preço na ficha e pede ao administrador o frete e o ICMS"
       b: "Preenche os três na ficha do produto"
       c: "Espera: o preço aparece sozinho quando o cliente pedir"
       d: "Pede ao fornecedor para informar o frete e o ICMS"
@@ -112,7 +112,7 @@ perguntas:
       a: "Falta preço: o cartão mostraria 'Preço sob consulta'"
       b: "Falta foto: o cartão mostraria 'Sem foto'"
       c: "O copo está excluído do cadastro"
-      d: "Ele está em Novo no Booking; só entra na vitrine depois de aprovado lá"
+      d: "Está em Novo no Booking; só entra depois de aprovado lá"
     correta: [d]
     explicacao: "Produto de planilha em Novo, Em análise ou Descartado fica fora da vitrine, até para a Wellmix. Do estado Aprovado em diante ele aparece. Produto sem preço ou sem foto continua na grade."
   - id: WCA-06-Q8

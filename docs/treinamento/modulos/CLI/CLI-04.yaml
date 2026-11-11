@@ -31,7 +31,7 @@ perguntas:
     cena: 3
     enunciado: "No cartão **Pedidos em andamento**, o Próximo passo diz \"Com a Wellmix\". O que isso quer dizer para você?"
     opcoes:
-      a: "A sua vez de agir"
+      a: "A sua vez de agir: o pedido está parado esperando por você"
       b: "O pedido foi cancelado"
       c: "Você precisa pagar o sinal"
       d: "Nada a fazer: o pedido está com a Wellmix"
@@ -44,7 +44,7 @@ perguntas:
     cena: 4
     enunciado: "Onde você vê todos os seus pedidos, em andamento ou encerrados?"
     opcoes:
-      a: "Em Explorar"
+      a: "Em Explorar, a vitrine onde ficam os produtos para comprar"
       b: "Em **Pedidos**, no grupo Meus pedidos"
       c: "Em Notificações"
       d: "Em Marketing"
@@ -57,7 +57,7 @@ perguntas:
     cena: 3
     enunciado: "João enviou a solicitação ontem e não acha o pedido em Pedidos. A solicitação mostra \"Aguardando sinal\". O que isso explica?"
     opcoes:
-      a: "O pedido existe, mas está escondido pelos filtros"
+      a: "O pedido existe, mas está escondido pelos filtros da lista de Pedidos"
       b: "O pedido só nasce depois que a Wellmix confirma o sinal"
       c: "O pedido foi cancelado pelo fornecedor"
       d: "O pedido só aparece quando o navio sai"
@@ -97,8 +97,8 @@ perguntas:
     cena: 6
     enunciado: "Uma etapa do pedido aparece como \"Bloqueada\". João precisa fazer alguma coisa?"
     opcoes:
-      a: "Sim, pagar o saldo para destravar"
-      b: "Não: a Wellmix está resolvendo, e em caso de dúvida ele usa Conversar com a Wellmix"
+      a: "Sim, pagar o saldo que falta para a Wellmix destravar a etapa bloqueada do pedido"
+      b: "Não: a Wellmix resolve, e em caso de dúvida ele usa Conversar com a Wellmix"
       c: "Sim, cancelar o pedido e pedir outro"
       d: "Sim, enviar o comprovante de novo"
     correta: [b]

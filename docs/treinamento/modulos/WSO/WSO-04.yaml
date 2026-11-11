@@ -10,19 +10,19 @@ capitulos:
     inicio: "0:00"
     fim: "1:10"
     cenas: [1, 4]
-    resumo: O interruptor da RFQ vale para todas as solicitações; o operador vê a situação e só o administrador clica em **Ativar a RFQ**.
+    resumo: "O interruptor da RFQ vale para todas as solicitações; o operador vê a situação e só o administrador clica em **Ativar a RFQ**."
   - id: WSO-04-C2
     titulo: Usar a RFQ ativa e ler a disputa
     inicio: "1:10"
     fim: "2:25"
     cenas: [5, 6]
-    resumo: Com a RFQ ativa a solicitação abre para vários fornecedores, e com duas ou mais cotações respondidas aparece a Disputa de fornecedores.
+    resumo: "Com a RFQ ativa a solicitação abre para vários fornecedores, e com duas ou mais cotações respondidas aparece a Disputa de fornecedores."
   - id: WSO-04-C3
     titulo: Voltar à espera, o Sourcing e a auditoria
     inicio: "2:25"
     fim: "3:30"
     cenas: [7, 9]
-    resumo: Colocar a RFQ em espera não derruba o que já está aberto; o Sourcing tem o mesmo interruptor e cada mudança fica na Auditoria.
+    resumo: "Colocar a RFQ em espera não derruba o que já está aberto; o Sourcing tem o mesmo interruptor e cada mudança fica na Auditoria."
 perguntas:
   - id: WSO-04-Q1
     tipo: unica

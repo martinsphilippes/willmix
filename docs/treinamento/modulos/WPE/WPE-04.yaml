@@ -1,0 +1,130 @@
+episodio: WPE-04
+titulo: Inspeção cega e fila de revisão
+serie: WPE
+papel: operador
+duracao: "4:30"
+idiomas: [pt]
+capitulos:
+  - id: WPE-04-C1
+    titulo: Ler o Resultado da inspeção
+    inicio: "0:00"
+    fim: "1:25"
+    cenas: [1, 4]
+    resumo: "A inspeção é cega: o fornecedor informa o que encontrou e o portal compara com o que foi comprado, mostrando esperado, encontrado e tolerância."
+  - id: WPE-04-C2
+    titulo: Ver o que bloqueou e abrir a fila de revisão
+    inicio: "1:25"
+    fim: "2:40"
+    cenas: [5, 6]
+    resumo: "Uma divergência fora da tolerância bloqueia a etapa e abre itens de revisão; a decisão é sua, no pedido."
+  - id: WPE-04-C3
+    titulo: Aprovar ou pedir nova medição
+    inicio: "2:40"
+    fim: "4:30"
+    cenas: [7, 10]
+    resumo: "Aprovar com motivo libera o Embarque; Reprovar devolve as medidas ao fornecedor, e dentro da tolerância a etapa libera sozinha."
+perguntas:
+  - id: WPE-04-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-04-C1
+    cena: 3
+    enunciado: "Na inspeção cega, o fornecedor informa peso e medidas. Quem compara o que ele encontrou com o que foi comprado?"
+    opcoes:
+      a: "O próprio fornecedor, ao enviar as medidas"
+      b: "O portal, usando a ficha de compra e o Comprado do pedido"
+      c: "A certificadora, antes de liberar o selo"
+      d: "O cliente, ao confirmar o recebimento"
+    correta: [b]
+    explicacao: "O fornecedor nunca vê o valor esperado: ele informa só o que encontrou, e quem compara é o portal."
+  - id: WPE-04-Q2
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-04-C1
+    cena: 3
+    enunciado: "O fornecedor escreve pedindo o peso líquido que a ficha prevê para a jarra, \"para medir certo\". O que você responde?"
+    opcoes:
+      a: "Envia o valor da ficha, para a medição sair certa"
+      b: "Manda a ficha de compra inteira por mensagem"
+      c: "Não envia: a inspeção é cega, e ele deve informar exatamente o que encontrou"
+      d: "Pede que ele espere a Wellmix abrir a etapa Embarque"
+    correta: [c]
+    explicacao: "Passar o valor esperado tira o sentido da inspeção cega, que existe para o portal comparar o que foi encontrado, sem influência, com a ficha congelada no pedido."
+  - id: WPE-04-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WPE-04-C1
+    cena: 4
+    enunciado: "Na tabela \"O que o fornecedor mediu\", o Peso líquido tem Esperado 0,4, Encontrado 0.55 e Situação \"Divergente\", enquanto o Peso bruto está \"OK\". O que torna o peso líquido divergente?"
+    opcoes:
+      a: "O valor encontrado está fora da tolerância daquele atributo"
+      b: "Falta a foto na balança desse atributo"
+      c: "A ficha não tem referência para esse atributo"
+      d: "O fornecedor enviou o peso na unidade errada"
+    correta: [a]
+    explicacao: "Cada linha tem sua tolerância, definida em Configurações pelo administrador. Fora dela a situação é \"Divergente\". Quando a ficha não tem o valor, a linha mostra \"Sem referência\", como acontece com a Cor."
+  - id: WPE-04-Q4
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-04-C2
+    cena: 5
+    enunciado: "A etapa Inspeção está \"Bloqueada\". Em qual item do cartão da etapa a Wellmix decide, com os botões **Aprovar** e **Reprovar**?"
+    opcoes:
+      a: "Foto na balança"
+      b: "Peso medido (kg)"
+      c: "Divergências registradas"
+      d: "Revisão da divergência na inspeção (Wellmix)"
+    correta: [d]
+    explicacao: "A decisão fica no item **Revisão da divergência na inspeção (Wellmix)**, com o campo Observação e os botões **Aprovar** e **Reprovar**. Os outros itens são do fornecedor ou só informativos."
+  - id: WPE-04-Q5
+    tipo: multipla
+    nivel: 2
+    capitulo: WPE-04-C2
+    cena: 6
+    enunciado: "A fila de Pedidos → Revisão (Itens para revisão) recebe itens que violaram uma regra. Quais destas situações viram item na fila? Marque todas as certas."
+    opcoes:
+      a: "Divergência na inspeção"
+      b: "Preço zerado"
+      c: "Container cheio demais"
+      d: "Certificação que falta"
+      e: "Cliente que ainda não pagou o sinal"
+    correta: [a, b, c, d]
+    explicacao: "A fila reúne inspeção, preço zerado, container cheio demais e certificação que falta. Cada cartão mostra o esperado, o encontrado, quem resolve e a ação necessária. Falta de sinal é tratada na solicitação, não aqui."
+  - id: WPE-04-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-04-C3
+    cena: 7
+    enunciado: "O peso a mais da jarra é só da tampa de bambu, e você aceita a divergência. Como registra isso para o pedido seguir?"
+    opcoes:
+      a: "Escreve o motivo no campo Observação do item de revisão e clica em **Aprovar**"
+      b: "Clica em **Reprovar**, porque a medida já foi conferida"
+      c: "Pede ao fornecedor que meça de novo até ficar na tolerância"
+      d: "Espera o prazo da etapa vencer, para ela liberar sozinha"
+    correta: [a]
+    explicacao: "**Aprovar** aceita a divergência: a etapa conclui, o Embarque abre, e a decisão fica registrada com seu nome, a data e o motivo (\"Divergência aceita\"). Os itens da fila passam a Resolvidos."
+  - id: WPE-04-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-04-C3
+    cena: 8
+    enunciado: "O peso líquido veio errado e você quer que o fornecedor meça de novo. O que você faz no item de revisão?"
+    opcoes:
+      a: "Clica em **Aprovar**, com a observação de que o peso deve ser refeito"
+      b: "Escreve a observação, por exemplo \"Meça de novo o peso líquido por peça\", e clica em **Reprovar**"
+      c: "Cancela o pedido e abre outro com a medida certa"
+      d: "Escreve ao fornecedor por fora e deixa a etapa bloqueada"
+    correta: [b]
+    explicacao: "**Reprovar** devolve as medidas e a foto na balança ao fornecedor, que passa a ser o responsável da etapa, com a sua observação. Aprovar aceitaria o valor errado."
+  - id: WPE-04-Q8
+    tipo: ordem
+    nivel: 2
+    capitulo: WPE-04-C3
+    cena: 8
+    enunciado: "Ponha em ordem o que acontece quando você reprova a divergência."
+    opcoes:
+      a: "O fornecedor reenvia as medidas em **Nova medição**"
+      b: "A etapa é liberada automaticamente"
+      c: "Você escreve a observação e clica em **Reprovar**"
+    correta: [c, a, b]
+    explicacao: "Reprovar devolve as medidas ao fornecedor; se o novo valor ficar dentro da tolerância, a etapa libera sozinha, sem você precisar aprovar."

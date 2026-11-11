@@ -1,0 +1,131 @@
+episodio: JUR-01
+titulo: "Multas: visualizar e mudar o status"
+serie: JUR
+papel: jurídico
+duracao: "3:16"
+idiomas: [pt]
+capitulos:
+  - id: JUR-01-C1
+    titulo: Receber o aviso e abrir a tela Multas
+    inicio: "0:00"
+    fim: "1:14"
+    cenas: [1, 5]
+    resumo: Entenda o que é uma multa, receba o aviso no sino e abra a tela Multas pelo menu Pedidos.
+  - id: JUR-01-C2
+    titulo: Ler a tabela e conhecer as situações
+    inicio: "1:14"
+    fim: "2:06"
+    cenas: [6, 7]
+    resumo: Leia o pedido, o responsável, o motivo, o valor e a evidência de cada multa e conheça as quatro situações.
+  - id: JUR-01-C3
+    titulo: Mudar a situação e conferir o pedido
+    inicio: "2:06"
+    fim: "3:16"
+    cenas: [8, 11]
+    resumo: Mude a situação da multa com um clique, confira o contexto no pedido e saiba o que fica registrado.
+perguntas:
+  - id: JUR-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: JUR-01-C1
+    cena: 5
+    enunciado: "Em qual caminho do menu você abre a tela com todas as multas?"
+    opcoes:
+      a: "**Início** → **Pendências**, na linha do pedido"
+      b: "**Pedidos** → **Multas**"
+      c: "**Início** → **Notificações**, no aviso mais antigo"
+      d: "**Pedidos** → **Pedidos**, no pedido com multa"
+    correta: [b]
+    explicacao: "No menu, abra **Pedidos** e clique em **Multas**: a tela lista todas as multas, as mais novas primeiro."
+  - id: JUR-01-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: JUR-01-C1
+    cena: 3
+    enunciado: "Quem registra uma multa num pedido?"
+    opcoes:
+      a: "O jurídico, pelo botão **Registrar multa**"
+      b: "O parceiro responsável, ao reconhecer o atraso ou a avaria"
+      c: "A Wellmix (diretorias e administrador), no pedido"
+      d: "A certificadora, ao conferir o selo do pedido"
+    correta: [c]
+    explicacao: "Registrar multa é só da Wellmix (diretorias e administrador), por atraso, avaria ou descumprimento. O jurídico acompanha e altera a situação."
+  - id: JUR-01-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: JUR-01-C2
+    cena: 6
+    enunciado: "Na tela **Multas**, o que você consegue ver ou fazer? Marque todas as certas."
+    opcoes:
+      a: "Ler o responsável, o motivo, o valor e a data de cada multa"
+      b: "Abrir o arquivo de evidência pelo link **Evidência**, ao lado do motivo"
+      c: "Abrir o pedido clicando no número dele"
+      d: "Registrar uma multa nova"
+      e: "Ver o preço de venda do pedido"
+    correta: [a, b, c]
+    explicacao: "A tabela traz Pedido, Responsável, Motivo, Valor, Data e Situação. O link **Evidência** abre o arquivo e o número do pedido leva ao pedido. Registrar multa é da Wellmix, e o jurídico não vê preços."
+  - id: JUR-01-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: JUR-01-C3
+    cena: 11
+    enunciado: "Coloque na ordem o trabalho do jurídico com uma multa nova."
+    opcoes:
+      a: "Ler o motivo, o valor e a evidência na linha da multa"
+      b: "Clicar em **Resolver** no aviso do sino"
+      c: "Abrir **Pedidos** → **Multas**"
+      d: "Clicar no botão da nova situação"
+    correta: [b, c, a, d]
+    explicacao: "O aviso chega no sino; depois você abre Multas, lê o motivo, o valor e a evidência e, só então, muda a situação."
+  - id: JUR-01-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: JUR-01-C3
+    cena: 8
+    enunciado: "Você clica em **Contestada** na linha de uma multa. O que acontece?"
+    opcoes:
+      a: "A tela pede uma confirmação e um motivo antes de gravar"
+      b: "A linha só muda depois que você clica em **Salvar**"
+      c: "A multa sai da lista da tela Multas"
+      d: "A situação muda na hora, sem confirmação, e a linha mostra as outras opções"
+    correta: [d]
+    explicacao: "Cada botão da linha muda a situação na hora, sem confirmação. Por isso, pense antes de clicar e escolha a situação certa."
+  - id: JUR-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: JUR-01-C1
+    cena: 5
+    enunciado: "Você abre a tela **Multas** e lê 'Nenhuma multa registrada.' O que isso quer dizer?"
+    opcoes:
+      a: "Ainda não há multa: a Wellmix registra no pedido e você recebe o aviso no sino"
+      b: "Você não tem acesso à tela e precisa pedir ao administrador"
+      c: "As multas só aparecem depois que você abre cada pedido, um a um"
+      d: "Todas as multas já foram canceladas pela Wellmix"
+    correta: [a]
+    explicacao: "A mensagem só diz que ainda não existe multa. Quando a Wellmix registrar uma no pedido, o aviso chega ao sino."
+  - id: JUR-01-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: JUR-01-C3
+    cena: 9
+    enunciado: "Você está na seção **Multas** de um pedido e quer mudar a situação de uma multa, mas não vê os botões. O que faz?"
+    opcoes:
+      a: "Pede à Wellmix que mude a situação por você"
+      b: "Volta a **Pedidos** → **Multas** e usa os botões da linha"
+      c: "Recarrega a página do pedido até os botões aparecerem"
+      d: "Clica em **Evidência** dentro da seção do pedido"
+    correta: [b]
+    explicacao: "A seção Multas do pedido é só para leitura. Os botões de situação e o link **Evidência** existem na tela Pedidos → Multas."
+  - id: JUR-01-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: JUR-01-C3
+    cena: 9
+    enunciado: "Ao abrir o pedido pelo número, você procura o preço de compra e os pagamentos para entender a multa. O que acontece?"
+    opcoes:
+      a: "Aparecem, mas só para leitura, dentro da seção Multas"
+      b: "Aparecem depois que você clica em **Conversar com a Wellmix**"
+      c: "Não aparecem: o jurídico não vê preços nem pagamentos"
+      d: "Aparecem só nos pedidos cuja multa está **Paga**"
+    correta: [c]
+    explicacao: "O jurídico vê o contexto do pedido (resumo, itens sem preço, etapa em andamento e multas), mas não vê preços nem pagamentos."

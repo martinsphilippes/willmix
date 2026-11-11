@@ -84,10 +84,10 @@ perguntas:
     cena: 6
     enunciado: "A solicitação já virou pedido. Como você chega à classificação do produto?"
     opcoes:
-      a: "Pelo menu Pedidos → Embalagens"
-      b: "No pedido, clicando no link de **Classificação fiscal (NCM)** do Resumo do pedido"
-      c: "Na etapa Desembaraço, no item Documentos aduaneiros"
-      d: "Reabrindo a pendência Classificar NCM da solicitação"
+      a: "Pelo menu Pedidos → Embalagens, abrindo o briefing do produto"
+      b: "No Resumo do pedido, pelo link de **Classificação fiscal (NCM)**"
+      c: "Na etapa Desembaraço, no item Documentos aduaneiros do pedido"
+      d: "Reabrindo a pendência Classificar NCM da solicitação antiga"
     correta: [b]
     explicacao: "No **Resumo do pedido**, o link de **Classificação fiscal (NCM)** (por exemplo, \"Não classificado\") abre a tela do produto. A tela Classificar NCM da solicitação fecha quando ela vira pedido: \"Esta solicitação já virou pedido ou foi encerrada\"."
   - id: DES-02-Q6
@@ -113,9 +113,9 @@ perguntas:
       a: "Clica em **Validar** e depois em **Alterar NCM**"
       b: "Ignora a candidata, ela some sozinha"
       c: "Clica em **Rejeitar** e escreve o motivo"
-      d: "Valida outra candidata, que apaga todas as demais"
+      d: "Valida outra candidata no lugar dela, sem escrever nada"
     correta: [c]
-    explicacao: "**Rejeitar** guarda o motivo (campo opcional), para ninguém repetir o erro. Validar outra candidata substitui a classificação validada, mas não rejeita nem apaga as demais."
+    explicacao: "**Rejeitar** guarda o motivo (campo opcional), para ninguém repetir o erro. Validar outra candidata só troca a classificação validada atual; não registra por que a errada foi descartada."
   - id: DES-02-Q8
     tipo: unica
     nivel: 3
@@ -123,9 +123,9 @@ perguntas:
     cena: 8
     enunciado: "Nenhuma sugestão serve, mas você conhece o código certo e a fonte (a tabela TEC). O que faz na tela do produto?"
     opcoes:
-      a: "Clica em **Validar** sem candidata"
-      b: "Preenche **Adicionar candidata** com NCM, descrição e fonte e depois valida"
-      c: "Espera a IA sugerir o código certo"
-      d: "Pede à Wellmix que digite o código"
+      a: "Clica em **Validar** mesmo sem nenhuma candidata na lista"
+      b: "Preenche **Adicionar candidata** com NCM e fonte e depois valida"
+      c: "Espera a IA sugerir o código certo, sem fazer nada antes"
+      d: "Pede à Wellmix que digite o código no lugar do despachante"
     correta: [b]
     explicacao: "Em **Adicionar candidata**, informe o NCM, a descrição, as alíquotas (se souber) e a fonte, e clique em **+ Adicionar candidata**. Ela entra como Sugerida, com fonte Despachante, e você valida depois. Sempre registre a fonte."

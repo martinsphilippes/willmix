@@ -10,25 +10,25 @@ capitulos:
     inicio: "0:00"
     fim: "1:25"
     cenas: [1, 4]
-    resumo: Quando o fornecedor responde, a pendência "Escolher fornecedor" leva à Comparação de cotações, onde você escolhe o fornecedor e confere o NCM.
+    resumo: "Quando o fornecedor responde, a pendência \"Escolher fornecedor\" leva à Comparação de cotações, onde você escolhe o fornecedor e confere o NCM."
   - id: WSO-02-C2
     titulo: Conferir a conta e definir valor e sinal
     inicio: "1:25"
     fim: "2:40"
     cenas: [5, 6]
-    resumo: Leia a memória de cálculo do valor ao cliente, digite o valor final e confira o sinal em porcentagem.
+    resumo: "Leia a memória de cálculo do valor ao cliente, digite o valor final e confira o sinal em porcentagem."
   - id: WSO-02-C3
     titulo: Enviar para aprovação e acompanhar os níveis
     inicio: "2:40"
     fim: "3:55"
     cenas: [7, 8]
-    resumo: Clique em **Enviar para aprovação** e veja como Planner, Diretoria de compras e Diretoria executiva aprovam nível a nível.
+    resumo: "Clique em **Enviar para aprovação** e veja como Planner, Diretoria de compras e Diretoria executiva aprovam nível a nível."
   - id: WSO-02-C4
     titulo: Reprovar com motivo e ver o que vem depois
     inicio: "3:55"
     fim: "5:00"
     cenas: [9, 11]
-    resumo: Reprovar exige motivo e devolve a pendência ao comprador; aprovada no último nível, a proposta segue ao cliente.
+    resumo: "Reprovar exige motivo e devolve a pendência ao comprador; aprovada no último nível, a proposta segue ao cliente."
 perguntas:
   - id: WSO-02-Q1
     tipo: unica

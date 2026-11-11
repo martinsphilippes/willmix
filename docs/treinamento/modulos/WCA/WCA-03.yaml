@@ -77,10 +77,10 @@ perguntas:
     cena: 8
     enunciado: "A ficha mestre mostra 'Faltam: …' com vários itens. Como você chega ao campo que falta?"
     opcoes:
-      a: "Abre a Vitrine do cliente e procura o produto"
-      b: "Clica em **Exportar (CSV)** e confere a planilha"
-      c: "Espera o fornecedor responder a cotação"
-      d: "Clica no item em 'Faltam: …': a página leva até o campo"
+      a: "Abre a Vitrine do cliente e procura o produto lá"
+      b: "Clica em **Exportar (CSV)** e confere a planilha baixada"
+      c: "Espera o fornecedor responder a cotação do produto"
+      d: "Clica no item em 'Faltam: …'"
     correta: [d]
     explicacao: "Cada item do aviso é clicável e leva ao campo. Ao completar, clique em **Salvar ficha mestre**. Preço, MOQ, caixa, medidas, cor e material são o mesmo dado dos cartões do alto."
   - id: WCA-03-Q5
@@ -103,10 +103,10 @@ perguntas:
     cena: 11
     enunciado: "Um produto tem duas variações ativas com preços diferentes. Qual vira a Referência e o que a lista de Produtos passa a mostrar?"
     opcoes:
-      a: "A de menor preço; o selo de variações e o preço 'a partir de'"
-      b: "A cadastrada primeiro; só o selo de variações"
-      c: "A de maior preço; o preço mais alto"
-      d: "Nenhuma até a Wellmix escolher; o preço em branco"
+      a: "A de menor preço; selo de variações e preço 'a partir de'"
+      b: "A cadastrada primeiro; só o selo de variações na lista"
+      c: "A de maior preço; o preço mais alto aparece na lista"
+      d: "Nenhuma até a Wellmix escolher; o preço fica em branco"
     correta: [a]
     explicacao: "A variação de menor preço é a **Referência**, e o produto mostra os valores dela. Na lista aparece o selo de variações e o preço 'a partir de'. Quem pede ou compra precisa escolher a variação."
   - id: WCA-03-Q7
@@ -129,9 +129,9 @@ perguntas:
     cena: 6
     enunciado: "Você quer tirar de uso três produtos descontinuados sem perder os pedidos e o histórico deles. O que faz?"
     opcoes:
-      a: "Abre cada ficha e apaga os dados"
-      b: "Marca os três na lista e clica em **Excluir selecionados**; dá para restaurar em Ver excluídos"
+      a: "Abre cada ficha e apaga os dados, um por um"
+      b: "Marca os três na lista e clica em **Excluir selecionados**"
       c: "Pede ao administrador o **Excluir definitivamente**, o único jeito"
-      d: "Exporta a lista em CSV e remove as linhas"
+      d: "Exporta a lista em CSV e remove as linhas dela"
     correta: [b]
     explicacao: "**Excluir selecionados** tira o produto do cadastro, da vitrine e da nova solicitação, mas pedidos e histórico continuam. Em **Ver excluídos** você marca e usa **Restaurar selecionados**."
