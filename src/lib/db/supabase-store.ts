@@ -20,8 +20,9 @@ import {
  * voltam em ISO com "Z" (como no modo memória); bool vazio vira false.
  */
 const PAGE = 1000;
-const MAX_ROWS = 10_000;
 const MAX_IN = 100;
+/** Páginas pedidas ao mesmo tempo numa lista grande. */
+const PARALLEL = 8;
 
 export class SupabaseError extends Error {
   constructor(
@@ -68,6 +69,27 @@ export class SupabaseStore implements Store {
     return text ? (JSON.parse(text) as Row[]) : [];
   }
 
+  /** Uma página e o total de linhas da consulta (cabeçalho Content-Range). */
+  private async restCounted(
+    path: string,
+  ): Promise<{ rows: Row[]; total: number | null }> {
+    const res = await fetch(`${this.url}/rest/v1/${path}`, {
+      headers: this.headers({
+        "Content-Type": "application/json",
+        Prefer: "count=exact",
+      }),
+      cache: "no-store",
+    });
+    const text = await res.text();
+    if (!res.ok) throw new SupabaseError(res.status, text);
+    const range = res.headers.get("content-range") ?? "";
+    const total = Number(range.split("/")[1]);
+    return {
+      rows: text ? (JSON.parse(text) as Row[]) : [],
+      total: Number.isFinite(total) ? total : null,
+    };
+  }
+
   async list<K extends TableName>(
     table: K,
     options: ListOptions<Tables[K]> = {},
@@ -79,17 +101,18 @@ export class SupabaseStore implements Store {
     );
     if (big) {
       const [field, values] = big as [string, Array<string | number>];
-      const parts: Tables[K][][] = [];
+      const chunks: Array<Array<string | number>> = [];
       for (let i = 0; i < values.length; i += MAX_IN)
-        parts.push(
-          await this.list(table, {
-            ...options,
-            filter: {
-              ...options.filter,
-              [field]: values.slice(i, i + MAX_IN),
-            } as ListOptions<Tables[K]>["filter"],
-          }),
-        );
+        chunks.push(values.slice(i, i + MAX_IN));
+      const parts = await inBatches(chunks, PARALLEL, (chunk) =>
+        this.list(table, {
+          ...options,
+          filter: {
+            ...options.filter,
+            [field]: chunk,
+          } as ListOptions<Tables[K]>["filter"],
+        }),
+      );
       const orderBy = (options.orderBy ?? "createdAt") as string;
       const dir = options.direction === "desc" ? -1 : 1;
       const merged = parts.flat().sort((a, b) => {
@@ -111,15 +134,37 @@ export class SupabaseStore implements Store {
     params.push(
       `order=${enc(options.orderBy ?? "createdAt")}.${dir},id.${dir}`,
     );
-    const wanted = options.limit ?? MAX_ROWS;
-    const rows: Row[] = [];
-    while (rows.length < wanted) {
-      const take = Math.min(PAGE, wanted - rows.length);
-      const page = await this.rest(
-        `${table}?${params.join("&")}&limit=${take}&offset=${rows.length}`,
-      );
-      rows.push(...page);
-      if (page.length < take) break;
+    // Sem limite: a tabela inteira (até 11/11/2026 parava em 10 mil linhas
+    // sem avisar, e a carga do Sankhya duplicava cadastros por não achar os
+    // que já existiam). A primeira página traz o total; as outras vêm em
+    // paralelo.
+    const wanted = options.limit ?? Infinity;
+    const query = params.join("&");
+    const first = await this.restCounted(
+      `${table}?${query}&limit=${Math.min(PAGE, wanted)}&offset=0`,
+    );
+    const rows: Row[] = [...first.rows];
+    const total = Math.min(wanted, first.total ?? wanted);
+    if (first.rows.length === PAGE && rows.length < total) {
+      if (Number.isFinite(total)) {
+        const offsets: number[] = [];
+        for (let o = PAGE; o < total; o += PAGE) offsets.push(o);
+        const pages = await inBatches(offsets, PARALLEL, (o) =>
+          this.rest(
+            `${table}?${query}&limit=${Math.min(PAGE, total - o)}&offset=${o}`,
+          ),
+        );
+        for (const page of pages) rows.push(...page);
+      } else {
+        // Sem total (não deveria acontecer): uma página por vez até o fim.
+        for (;;) {
+          const page = await this.rest(
+            `${table}?${query}&limit=${PAGE}&offset=${rows.length}`,
+          );
+          rows.push(...page);
+          if (page.length < PAGE) break;
+        }
+      }
     }
     return rows.map((r) => fromRow<Tables[K]>(table, r));
   }
@@ -406,4 +451,16 @@ export function fromRow<T>(table: TableName, row: Row): T {
     else out[key] = value ?? null;
   }
   return out as T;
+}
+
+/** `fn` em cada item, `size` por vez, mantendo a ordem. */
+async function inBatches<T, R>(
+  items: T[],
+  size: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < items.length; i += size)
+    out.push(...(await Promise.all(items.slice(i, i + size).map(fn))));
+  return out;
 }
