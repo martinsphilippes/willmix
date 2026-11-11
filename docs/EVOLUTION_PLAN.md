@@ -791,3 +791,8 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 ## Busca enquanto digita nas listas
 
 - **Pedido do dono** (10/11/2026): o campo de busca filtra sozinho a cada pausa na digitação, sem apertar "Buscar". Componente `LiveSearch` (`src/components/live-search.tsx`), colocado dentro do formulário de busca (GET): o resultado continua no endereço, o botão continua valendo e a paginação volta ao início. Ligado em Fornecedores e Clientes (`_party-accounts/list.tsx`), Produtos, Solicitações, Estoque, Seleção do Booking e Vitrine. Ficou de fora a tela de produtos do Booking (o campo dela é recriado a cada busca e perderia o cursor).
+
+## Control Tower: a faca (die-cut) vai para o bloco do pedido
+
+- **Pedido do dono** (11/11/2026): o quadrado "Faca (die-cut)" estava em "Antes de virar pedido" e contava solicitações. No fluxo novo a faca é do pedido: o fornecedor manda no começo de "Arte e embalagem", antes de a agência fazer a arte. O quadrado passa para "Onde o pedido está agora", entre "Validação da ficha" e "Arte da embalagem" (`ordDieline` no lugar de `reqDieline`).
+- Conta os pedidos em "Arte e embalagem" cuja faca obrigatória ainda não chegou (briefing do pedido); com a faca, o pedido passa a "Arte da embalagem". Cada pedido continua num quadrado só. Solicitação esperando a faca aparece só no quadrado da etapa dela (decisão do dono: sem quadrado de faca na cotação). O Progresso da lista de Pedidos não muda (a faca conta no passo "Arte da embalagem").

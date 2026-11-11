@@ -8,6 +8,7 @@ import {
   type Certification,
   type ImportStep,
   type Order,
+  type PackagingBrief,
   type OrderItem,
   type Party,
   type Penalty,
@@ -103,11 +104,13 @@ export const BOARD_CARDS = [
   { key: "reqProposal", block: "request" },
   { key: "reqDown", block: "request" },
   // Correm ao lado (a mesma solicitação também está num dos de cima).
-  { key: "reqDieline", block: "request" },
   { key: "reqPackaging", block: "request" },
   { key: "ordConference", block: "order" },
   { key: "ordSheet", block: "order" },
   { key: "ordValidation", block: "order" },
+  // Faca (die-cut): o fornecedor manda no começo de "Arte e embalagem",
+  // antes de a agência fazer a arte (decisão do dono).
+  { key: "ordDieline", block: "order" },
   { key: "ordArt", block: "order" },
   { key: "ordArtApproval", block: "order" },
   { key: "ordInspection", block: "order" },
@@ -251,8 +254,8 @@ export interface BoardInput {
   rfqDays: number;
   /** Briefings de embalagem abertos (ainda sendo feitos). */
   briefRequestIds: string[];
-  /** Solicitações cuja faca (die-cut) obrigatória ainda não chegou. */
-  dielineRequestIds?: string[];
+  /** Pedidos cuja faca (die-cut) obrigatória ainda não chegou. */
+  dielineOrderIds?: string[];
   steps: ImportStep[];
   tracks: ProductionTrack[];
   skus: SkuInspection[];
@@ -385,17 +388,21 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   const briefs = new Set(input.briefRequestIds);
   for (const r of openRequests)
     if (briefs.has(r.id)) rows.get("reqPackaging")!.push(requestRow(r));
-  // Faca (die-cut): depois da escolha, o fornecedor escolhido envia.
-  const dielines = new Set(input.dielineRequestIds ?? []);
-  for (const r of openRequests)
-    if (r.selectedQuoteId && dielines.has(r.id))
-      rows.get("reqDieline")!.push(requestRow(r));
 
   /* Bloco 2: cada pedido em andamento num quadrado só. */
   const live = input.orders.filter(
     (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
   );
-  for (const o of live) addOrder(journey.orderCard(o), o);
+  // Arte e embalagem sem a faca do fornecedor: o pedido espera a faca (a
+  // agência faz a arte em cima dela); com a faca, vai para "Arte da embalagem".
+  const waitingDieline = new Set(input.dielineOrderIds ?? []);
+  for (const o of live) {
+    const card = journey.orderCard(o);
+    addOrder(
+      card === "ordArt" && waitingDieline.has(o.id) ? "ordDieline" : card,
+      o,
+    );
+  }
   for (const o of input.orders) {
     if (o.status === "CLOSED" && brazilDay(o.closedAt)?.slice(0, 7) === month)
       addOrder("ordClosedMonth", o);
@@ -655,6 +662,7 @@ export async function loadTowerBoard(options: {
     quotes,
     payables,
     finance,
+    orderBriefs,
   ] = await Promise.all([
     ids.length
       ? store.list("stages", { filter: { orderId: ids } })
@@ -695,6 +703,9 @@ export async function loadTowerBoard(options: {
     options.finance
       ? import("./finance").then((m) => m.loadFinance({ estimate: false }))
       : Promise.resolve(null),
+    ids.length
+      ? safe(store.list("packaging_briefs", { filter: { orderId: ids } }))
+      : none<PackagingBrief>(),
   ]);
   const money = new Map(
     (finance?.rows ?? []).map((r) => [
@@ -717,10 +728,16 @@ export async function loadTowerBoard(options: {
     approvals,
     rfqDays: requestStepDays((await getSettings()).requestStepDays).rfq,
     briefRequestIds: briefs.map((b) => b.requestId),
-    // Faca obrigatória ainda não enviada (o fornecedor escolhido manda).
-    dielineRequestIds: briefs
-      .filter((b) => b.requiredKeys.includes("dieline") && !b.dielineDocumentId)
-      .map((b) => b.requestId),
+    // Faca obrigatória do pedido ainda não enviada pelo fornecedor.
+    dielineOrderIds: orderBriefs
+      .filter(
+        (b) =>
+          b.status !== "cancelled" &&
+          b.requiredKeys.includes("dieline") &&
+          !b.dielineDocumentId,
+      )
+      .map((b) => b.orderId)
+      .filter((id): id is string => !!id),
     steps,
     tracks,
     skus,
