@@ -1,0 +1,137 @@
+episodio: WPE-03
+titulo: Arte e embalagem vistas pela Wellmix
+serie: WPE
+papel: operador
+duracao: "5:45"
+idiomas: [pt]
+capitulos:
+  - id: WPE-03-C1
+    titulo: Abrir o briefing da embalagem
+    inicio: "0:00"
+    fim: "1:22"
+    cenas: [1, 4]
+    resumo: Em Pedidos → Embalagens há um briefing por solicitação, com o produto, as medidas da caixa e os entregáveis (faca e arte).
+  - id: WPE-03-C2
+    titulo: Acompanhar a arte, o selo e a agência
+    inicio: "1:22"
+    fim: "3:15"
+    cenas: [5, 8]
+    resumo: Veja os cinco itens da etapa Arte e embalagem, valide o selo, acompanhe a aprovação do fornecedor e troque a agência quando precisar.
+  - id: WPE-03-C3
+    titulo: Enviar para assinatura e assinar pela Wellmix
+    inicio: "3:15"
+    fim: "4:25"
+    cenas: [9, 10]
+    resumo: O documento só vai para assinatura com a arte e o selo aplicado; a Wellmix assina primeiro, marcando o aceite.
+  - id: WPE-03-C4
+    titulo: Ver as duas assinaturas e a etapa concluir
+    inicio: "4:25"
+    fim: "5:45"
+    cenas: [11, 13]
+    resumo: O fornecedor assina em seguida; com a arte aprovada a etapa conclui, o início da produção entra sozinho e a Inspeção abre.
+perguntas:
+  - id: WPE-03-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-03-C1
+    cena: 3
+    enunciado: "Onde você acompanha a faca e a arte de cada produto, com Responsável, Entregáveis, Prazo e Situação?"
+    opcoes:
+      a: "Em Pedidos → Booking"
+      b: "Em Pedidos → Solicitações, na coluna Cotações"
+      c: "Em Cadastros → Produtos"
+      d: "Em Pedidos → Embalagens"
+    correta: [d]
+    explicacao: "Em Pedidos → Embalagens há um briefing por solicitação, aberto quando ela vai ao fornecedor. A situação diz se a venda já foi confirmada: \"Em preparação\" ou \"No pedido\"."
+  - id: WPE-03-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-03-C1
+    cena: 4
+    enunciado: "No briefing da Jarra de vidro, quem envia a faca (die-cut)?"
+    opcoes:
+      a: "A agência, junto com a arte"
+      b: "O fornecedor escolhido"
+      c: "O cliente, ao aprovar a proposta"
+      d: "A certificadora, junto com o selo"
+    correta: [b]
+    explicacao: "A faca vem só do fornecedor escolhido; a arte é da agência (ou da Wellmix, sem agência). A tela mostra \"com o fornecedor\" ao lado da faca."
+  - id: WPE-03-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: WPE-03-C2
+    cena: 5
+    enunciado: "O cartão **Arte e embalagem** do pedido tem cinco itens. Quais destes são itens dele? Marque todos os certos."
+    opcoes:
+      a: "Arte da embalagem"
+      b: "Aprovação da arte pelo fornecedor"
+      c: "Documento do pedido assinado pela Wellmix"
+      d: "Resultado da inspeção"
+      e: "Documento do pedido assinado pelo fornecedor"
+    correta: [a, b, c, e]
+    explicacao: "Os cinco itens são a arte, a aprovação do fornecedor, o envio do documento para assinatura e as duas assinaturas. O resultado da inspeção é da etapa seguinte."
+  - id: WPE-03-Q4
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-03-C2
+    cena: 6
+    enunciado: "A linha \"Selo aplicado na arte\" chega como \"Enviado, aguardando validação\", mas o selo está fora do lugar combinado. O que você faz?"
+    opcoes:
+      a: "Clica em **Recusar** direto, sem escrever nada, para a agência refazer o selo"
+      b: "Clica em **Validar** e avisa a agência por fora, porque é só um detalhe"
+      c: "Escreve o \"Motivo (obrigatório para recusar)\" e clica em **Recusar**"
+      d: "Espera o fornecedor reprovar a arte"
+    correta: [c]
+    explicacao: "Recusar exige o motivo (sem ele aparece \"Escreva o motivo para recusar.\"), e quem fez a arte recebe o aviso. Quem enviou a arte não valida a própria."
+  - id: WPE-03-Q5
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-03-C2
+    cena: 7
+    enunciado: "O fornecedor reprovou a arte com uma observação. O que você vê no pedido e o que acontece quando a agência reenviar?"
+    opcoes:
+      a: "Fica \"Reprovado\" com a observação; no reenvio, a aprovação volta a \"Pendente\""
+      b: "O item some da lista até a agência reenviar, e a observação do fornecedor não chega à Wellmix"
+      c: "A etapa Arte e embalagem é cancelada e o pedido inteiro volta à Preparação"
+      d: "A aprovação já vira \"Aprovada\", porque a agência corrigiu tudo o que foi pedido"
+    correta: [a]
+    explicacao: "A arte volta para quem a fez, com aviso e com a observação do fornecedor à vista. Quando é reenviada, a aprovação volta a \"Pendente\" para ele decidir de novo."
+  - id: WPE-03-Q6
+    tipo: unica
+    nivel: 2
+    capitulo: WPE-03-C2
+    cena: 8
+    enunciado: "Você precisa trocar a agência que faz a arte de um pedido. Onde isso se faz?"
+    opcoes:
+      a: "Em Parceiros do pedido, na linha Agência, com **Designar**"
+      b: "Em Pedidos → Embalagens, apagando o briefing e abrindo outro para a nova agência"
+      c: "Em Cadastros → Fornecedores, trocando o fornecedor principal do produto"
+      d: "Em Configurações, que o operador abre sem restrição"
+    correta: [a]
+    explicacao: "Em **Parceiros do pedido**, a linha **Agência** tem uma lista e o botão **Designar**. A arte ainda não enviada passa para a nova agência (ou para a Wellmix, se você escolher \"—\"), e o novo responsável é avisado."
+  - id: WPE-03-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-03-C3
+    cena: 9
+    enunciado: "Você tenta enviar o documento do pedido para assinatura e a tela diz: \"Aguardando o selo da certificadora aplicado na arte: o documento só vai para assinatura depois dele.\" O que isso pede?"
+    opcoes:
+      a: "Que o administrador assine o documento antes de qualquer outra pessoa"
+      b: "Que o fornecedor aprove a arte antes de qualquer envio para assinatura"
+      c: "Que o cliente confirme o recebimento da arte"
+      d: "Que o selo seja aplicado na arte e a arte já esteja enviada"
+    correta: [d]
+    explicacao: "O documento só vai para assinatura com a arte enviada e o selo da certificadora aplicado nela. Sem isso o envio é recusado, e **Enviar para assinatura** só aparece depois."
+  - id: WPE-03-Q8
+    tipo: ordem
+    nivel: 2
+    capitulo: WPE-03-C4
+    cena: 11
+    enunciado: "Ponha em ordem o caminho do selo até as duas assinaturas."
+    opcoes:
+      a: "O fornecedor assina no portal ou anexa o PDF assinado"
+      b: "Validar o selo aplicado na arte"
+      c: "A Wellmix assina em **Assinar o documento**, com o aceite marcado"
+      d: "Clicar em **Enviar para assinatura**"
+    correta: [b, d, c, a]
+    explicacao: "Com o selo validado o documento vai para assinatura. A Wellmix assina primeiro (sem isso aparece \"A Wellmix assina primeiro. Aguarde a assinatura dela.\") e depois o fornecedor."

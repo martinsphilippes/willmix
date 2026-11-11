@@ -1,0 +1,266 @@
+episodio: FOR-04
+titulo: "Die Cut (faca da caixa), pedido mínimo e foto em alta"
+serie: FOR
+papel: fornecedor
+duracao: "3:30"
+idiomas: [pt, en, zh]
+capitulos:
+  - id: FOR-04-C1
+    titulo: "Abrir a etapa e enviar o die-cut"
+    titulo_en: "Open the step and send the die-cut"
+    titulo_zh: "打开环节并上传刀模"
+    inicio: "0:00"
+    fim: "1:10"
+    cenas: [1, 3]
+    resumo: "Com a cotação escolhida, a etapa Die Cut tem quatro itens; o primeiro é enviar o die-cut, e quem faz a arte é avisado na hora."
+    resumo_en: "With your quotation chosen, the Die Cut step has four items; the first is sending the die-cut, and whoever makes the artwork is told right away."
+    resumo_zh: "报价被选中后，刀模环节有四项；第一项是上传刀模，负责设计稿的一方会立即收到通知。"
+  - id: FOR-04-C2
+    titulo: "Enviar a foto em alta e confirmar pedido mínimo e prazo"
+    titulo_en: "Send the high-resolution photo and confirm minimum order and lead time"
+    titulo_zh: "上传高清照片并确认起订量和交期"
+    inicio: "1:10"
+    fim: "2:40"
+    cenas: [4, 5]
+    resumo: "Mande a foto original em alta e confira o pedido mínimo e o prazo de entrega; se mudaram, corrija e confirme, e a Wellmix é avisada."
+    resumo_en: "Send the original high-resolution photo and check the minimum order and lead time; if they changed, correct and confirm, and Wellmix is told."
+    resumo_zh: "上传原始高清照片，核对起订量和交期；如有变化，修改后确认，Wellmix 会收到通知。"
+  - id: FOR-04-C3
+    titulo: "Evitar os erros e completar a etapa"
+    titulo_en: "Avoid the errors and complete the step"
+    titulo_zh: "避免常见错误并完成环节"
+    inicio: "2:40"
+    fim: "3:30"
+    cenas: [6, 7]
+    resumo: "Pedido mínimo é inteiro maior que zero, prazo vai de 1 a 720 dias e a foto precisa de um arquivo; com os quatro itens feitos, a Wellmix é avisada."
+    resumo_en: "Minimum order is a whole number above zero, lead time goes from 1 to 720 days and the photo needs a file; with all four items done, Wellmix is notified."
+    resumo_zh: "起订量必须是大于零的整数，交期为 1 到 720 天，照片至少要有一个文件；四项都完成后，Wellmix 会收到通知。"
+perguntas:
+  - id: FOR-04-Q1
+    tipo: multipla
+    nivel: 1
+    capitulo: FOR-04-C1
+    cena: 2
+    enunciado: "Quais são os itens da etapa **Die Cut**? Marque todos os certos."
+    opcoes:
+      a: "Die Cut"
+      b: "Foto em alta"
+      c: "Ficha de compra"
+      d: "Pedido mínimo (MOQ)"
+      e: "Prazo de entrega"
+    correta: [a, b, d, e]
+    explicacao: "A etapa tem quatro itens: o die-cut, a foto em alta, o pedido mínimo (MOQ) e o prazo de entrega. A ficha de compra é outra etapa, com o próprio cartão no pedido."
+    traducoes:
+      en:
+        enunciado: "Which are the items of the **Die Cut** step? Select all that apply."
+        opcoes:
+          a: "Die Cut"
+          b: "High-resolution photo"
+          c: "Purchase sheet"
+          d: "Minimum order (MOQ)"
+          e: "Lead time"
+        explicacao: "The step has four items: the die-cut, the high-resolution photo, the minimum order (MOQ) and the lead time. The purchase sheet is another step, with its own card in the order."
+      zh:
+        enunciado: "“刀模 (Die Cut)”环节包含哪些项目？请选出所有正确项。"
+        opcoes:
+          a: "刀模 (Die Cut)"
+          b: "高清照片"
+          c: "采购表"
+          d: "起订量 (MOQ)"
+          e: "交期"
+        explicacao: "这个环节有四项：刀模、高清照片、起订量 (MOQ) 和交期。采购表是另一个环节，在订单里有自己的卡片。"
+  - id: FOR-04-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-04-C3
+    cena: 7
+    enunciado: "Quando os quatro itens da etapa estão **Feito**, o que o cartão **Die Cut** mostra?"
+    opcoes:
+      a: "\"Falta: Foto em alta, Pedido mínimo (MOQ).\""
+      b: "\"Os quatro itens estão feitos. Obrigado!\""
+      c: "\"Aguardando a arte (agência ou Wellmix)\""
+    correta: [b]
+    explicacao: "Com os quatro itens feitos, o cartão mostra \"Os quatro itens estão feitos. Obrigado!\" e a etiqueta **Feito**; a pendência sai da faixa e a Wellmix é avisada."
+    traducoes:
+      en:
+        enunciado: "When the four items of the step are **Done**, what does the **Die Cut** card show?"
+        opcoes:
+          a: "\"Missing: High-resolution photo, Minimum order (MOQ).\""
+          b: "\"All four items are done. Thank you!\""
+          c: "\"Waiting for the artwork (agency or Wellmix)\""
+        explicacao: "With the four items done, the card shows \"All four items are done. Thank you!\" and the **Done** tag; the task leaves the strip and Wellmix is notified."
+      zh:
+        enunciado: "当环节的四项都显示“已完成”时，“刀模 (Die Cut)”卡片会显示什么？"
+        opcoes:
+          a: "“尚缺：高清照片、起订量 (MOQ)。”"
+          b: "“四项均已完成，谢谢！”"
+          c: "“等待设计稿（设计公司或 Wellmix）”"
+        explicacao: "四项都完成后，卡片显示“四项均已完成，谢谢！”和“已完成”标签；待办从环节条中消失，Wellmix 也会收到通知。"
+  - id: FOR-04-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: FOR-04-C1
+    cena: 2
+    enunciado: "Coloque na ordem em que você faz a etapa Die Cut."
+    opcoes:
+      a: "Confirmar pedido mínimo e prazo"
+      b: "Enviar o die-cut"
+      c: "Abrir a etapa **Die Cut**, em Pendências"
+      d: "Enviar a foto em alta"
+    correta: [c, b, d, a]
+    explicacao: "Abra a etapa em Pendências e siga os itens na ordem do cartão: 1 die-cut, 2 foto em alta, 3 e 4 pedido mínimo e prazo, com **Confirmar pedido mínimo e prazo**."
+    traducoes:
+      en:
+        enunciado: "Put in order how you do the Die Cut step."
+        opcoes:
+          a: "Confirm minimum order and lead time"
+          b: "Send the die-cut"
+          c: "Open the **Die Cut** step, in Tasks"
+          d: "Send the high-resolution photo"
+        explicacao: "Open the step in Tasks and follow the items in the order of the card: 1 die-cut, 2 high-resolution photo, 3 and 4 minimum order and lead time, with **Confirm minimum order and lead time**."
+      zh:
+        enunciado: "请把完成“刀模 (Die Cut)”环节的步骤按顺序排列。"
+        opcoes:
+          a: "确认起订量和交期"
+          b: "上传刀模"
+          c: "在待办中打开“刀模 (Die Cut)”环节"
+          d: "上传高清照片"
+        explicacao: "先在待办中打开该环节，再按卡片上的顺序处理：1 刀模，2 高清照片，3 和 4 起订量和交期，用“确认起订量和交期”完成。"
+  - id: FOR-04-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: FOR-04-C1
+    cena: 3
+    enunciado: "Você já enviou o die-cut, mas corrigiu o arquivo e envia outro no mesmo item. O que acontece?"
+    opcoes:
+      a: "O sistema recusa, porque o item já está **Feito**"
+      b: "A Wellmix precisa apagar o primeiro arquivo antes"
+      c: "Cria uma nova versão (v2) do die-cut"
+    correta: [c]
+    explicacao: "Enviar de novo cria uma nova versão (v2), sem apagar nada: o item mostra o nome do arquivo e a versão."
+    traducoes:
+      en:
+        enunciado: "You already sent the die-cut, but you corrected the file and send another one in the same item. What happens?"
+        opcoes:
+          a: "The system refuses, because the item is already **Done**"
+          b: "Wellmix has to delete the first file beforehand"
+          c: "It creates a new version (v2) of the die-cut"
+        explicacao: "Sending again creates a new version (v2), without erasing anything: the item shows the file name and the version."
+      zh:
+        enunciado: "您已经上传了刀模，但修改了文件，又在同一项里上传另一个。会发生什么？"
+        opcoes:
+          a: "系统拒绝，因为该项已经“已完成”"
+          b: "Wellmix 必须先删除第一个文件"
+          c: "生成刀模的新版本（v2）"
+        explicacao: "再次上传会生成新版本（v2），不会删除任何内容：该项显示文件名和版本。"
+  - id: FOR-04-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: FOR-04-C2
+    cena: 5
+    enunciado: "Os campos **Pedido mínimo (peças)** e **Prazo de entrega (dias)** já vêm preenchidos. Qual é o passo certo?"
+    opcoes:
+      a: "Conferir, corrigir se mudou e clicar em **Confirmar pedido mínimo e prazo**"
+      b: "Apagar os dois campos e digitar tudo de novo, mesmo que os valores estejam certos"
+      c: "Ignorar os campos, porque só o die-cut e a foto em alta são obrigatórios"
+    correta: [a]
+    explicacao: "Os campos vêm com o que o sistema conhece. Se estão certos, só confirme; se mudaram, corrija e confirme com **Confirmar pedido mínimo e prazo**. Os itens 3 e 4 fazem parte da etapa."
+    traducoes:
+      en:
+        enunciado: "The fields **Minimum order (pieces)** and **Lead time (days)** come prefilled. What is the right step?"
+        opcoes:
+          a: "Check them, correct if changed and click **Confirm minimum order and lead time**"
+          b: "Erase both fields and type everything again, even if the values are right"
+          c: "Ignore the fields, because only the die-cut and the high-resolution photo are required"
+        explicacao: "The fields come with what the system knows. If they are right, just confirm; if they changed, correct and confirm with **Confirm minimum order and lead time**. Items 3 and 4 are part of the step."
+      zh:
+        enunciado: "“起订量（件）”和“交期（天）”两个字段已经预填。正确的做法是什么？"
+        opcoes:
+          a: "核对，有变化就修改，然后点击“确认起订量和交期”"
+          b: "删掉两个字段重新输入，即使数值是对的"
+          c: "忽略这两个字段，因为只有刀模和高清照片是必需的"
+        explicacao: "字段里是系统已掌握的数据。如果正确，直接确认；如果有变化，修改后点击“确认起订量和交期”。第 3、4 项也是这个环节的一部分。"
+  - id: FOR-04-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-04-C2
+    cena: 5
+    enunciado: "O pedido mínimo mudou de 1000 para 800 peças. O que você faz?"
+    opcoes:
+      a: "Avisa a Wellmix pelas Mensagens e deixa o campo como está, em 1000, para não bagunçar"
+      b: "Corrige para 800 e clica em **Confirmar pedido mínimo e prazo**: a Wellmix é avisada da mudança"
+      c: "Mantém 1000 até a Wellmix perguntar sobre a diferença"
+    correta: [b]
+    explicacao: "Corrija o campo e confirme: mudar o pedido mínimo ou o prazo avisa a Wellmix automaticamente, com o valor de antes. O campo deve refletir o valor real."
+    traducoes:
+      en:
+        enunciado: "The minimum order changed from 1000 to 800 pieces. What do you do?"
+        opcoes:
+          a: "Warn Wellmix in the Messages and leave the field as it is, at 1000, to avoid confusion"
+          b: "Correct it to 800 and click **Confirm minimum order and lead time**: Wellmix is told about the change"
+          c: "Keep 1000 until Wellmix asks about the difference"
+        explicacao: "Correct the field and confirm: changing the minimum order or the lead time notifies Wellmix automatically, with the previous value. The field must reflect the real value."
+      zh:
+        enunciado: "起订量从 1000 件变成了 800 件。您该怎么做？"
+        opcoes:
+          a: "通过消息告诉 Wellmix，字段保持 1000 不变，以免混乱"
+          b: "改成 800 并点击“确认起订量和交期”：Wellmix 会收到变更通知"
+          c: "保持 1000，等 Wellmix 来问差别"
+        explicacao: "修改字段并确认：起订量或交期一变，Wellmix 会自动收到通知，并附上原来的数值。字段应反映真实数值。"
+  - id: FOR-04-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-04-C3
+    cena: 6
+    enunciado: "Você digitou 0,5 em **Pedido mínimo (peças)** e clicou em **Confirmar pedido mínimo e prazo**. Aparece \"Pedido mínimo inválido…\". O que fazer?"
+    opcoes:
+      a: "Digitar 0, para a Wellmix definir o pedido mínimo"
+      b: "Mudar o prazo para 720 dias e confirmar de novo"
+      c: "Enviar o die-cut mais uma vez"
+      d: "Digitar um número inteiro de peças, maior que zero, e confirmar de novo"
+    correta: [d]
+    explicacao: "O pedido mínimo é um número inteiro de peças, maior que zero; zero e decimais são recusados. O prazo é outro campo: vai de 1 a 720 dias."
+    traducoes:
+      en:
+        enunciado: "You typed 0.5 in **Minimum order (pieces)** and clicked **Confirm minimum order and lead time**. \"Invalid minimum order…\" appears. What do you do?"
+        opcoes:
+          a: "Type 0, so Wellmix sets the minimum order"
+          b: "Change the lead time to 720 days and confirm again"
+          c: "Send the die-cut once more"
+          d: "Type a whole number of pieces, above zero, and confirm again"
+        explicacao: "The minimum order is a whole number of pieces, above zero; zero and decimals are refused. The lead time is another field: it goes from 1 to 720 days."
+      zh:
+        enunciado: "您在“起订量（件）”中填了 0.5 并点击“确认起订量和交期”，出现“起订量无效……”。该怎么办？"
+        opcoes:
+          a: "填 0，让 Wellmix 来定起订量"
+          b: "把交期改成 720 天，再确认一次"
+          c: "再上传一次刀模"
+          d: "填写大于零的整数件数，再确认一次"
+        explicacao: "起订量必须是大于零的整数件数；零和小数都会被拒绝。交期是另一个字段，范围是 1 到 720 天。"
+  - id: FOR-04-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-04-C2
+    cena: 4
+    enunciado: "A única foto do produto que você tem chegou por aplicativo de mensagem, e a agência precisa de qualidade. O que fazer?"
+    opcoes:
+      a: "Enviar essa mesma foto em **Adicionar foto em alta**: a Wellmix melhora depois"
+      b: "Colocar a foto dentro do arquivo do die-cut, para a agência abrir"
+      c: "Enviar a foto original, direto da câmera ou do arquivo de origem, em **Adicionar foto em alta**"
+    correta: [c]
+    explicacao: "A foto em alta tem de ser a original: aplicativos de mensagem reduzem a qualidade. Use **Adicionar foto em alta** e pode enviar mais de uma."
+    traducoes:
+      en:
+        enunciado: "The only photo of the product you have came through a messaging app, and the agency needs quality. What do you do?"
+        opcoes:
+          a: "Send that same photo in **Add high-resolution photo**: Wellmix improves it later"
+          b: "Put the photo inside the die-cut file, for the agency to open"
+          c: "Send the original photo, straight from the camera or the source file, in **Add high-resolution photo**"
+        explicacao: "The high-resolution photo must be the original: messaging apps reduce quality. Use **Add high-resolution photo**; you can send more than one."
+      zh:
+        enunciado: "您手上唯一的产品照片是通过聊天软件收到的，而设计公司需要高质量图片。该怎么办？"
+        opcoes:
+          a: "用“添加高清照片”上传这张照片：Wellmix 之后会处理画质"
+          b: "把照片放进刀模文件里，让设计公司打开查看"
+          c: "用“添加高清照片”上传原图，直接来自相机或原始文件"
+        explicacao: "高清照片必须是原图：聊天软件会降低画质。请使用“添加高清照片”，可以上传多张。"

@@ -71,10 +71,10 @@ perguntas:
     cena: 4
     enunciado: "De onde vem o selo **Sim**, **Talvez** ou **Não** na coluna Recompra da tela Pós-venda?"
     opcoes:
-      a: "Do interesse em nova compra que o cliente respondeu na avaliação"
-      b: "Da nota em estrelas que o cliente deu"
-      c: "De um cálculo do sistema pelo número de compras"
-      d: "Da Observação da Wellmix"
+      a: "Do interesse em nova compra respondido pelo cliente"
+      b: "Da nota em estrelas que o cliente deu à compra"
+      c: "De um cálculo do sistema pelo número de compras feitas"
+      d: "Da Observação da Wellmix ao encerrar o caso"
     correta: [a]
     explicacao: "O cliente responde 'Interesse em nova compra' (Sim, Talvez ou Não) ao avaliar. Esse é o selo de Recompra, ao lado da nota e dos problemas relatados."
   - id: WGE-06-Q5
@@ -84,10 +84,10 @@ perguntas:
     cena: 6
     enunciado: "No Histórico comercial, a **Frequência média** da Jarra aparece como '—'. Por quê?"
     opcoes:
-      a: "Faltou o pós-venda do pedido"
-      b: "O cliente está inativo"
-      c: "O FOB do produto não foi informado"
-      d: "Só há uma compra; a frequência precisa de duas ou mais"
+      a: "Faltou abrir o pós-venda do pedido da Jarra"
+      b: "O cadastro do cliente está inativo no portal"
+      c: "O FOB do produto não foi informado no cadastro"
+      d: "Só há uma compra; precisa de duas ou mais"
     correta: [d]
     explicacao: "A frequência média é a média de dias entre as compras do mesmo produto pelo mesmo cliente, então só existe com duas ou mais compras. Com uma só, o '—' é o esperado."
   - id: WGE-06-Q6
@@ -97,10 +97,10 @@ perguntas:
     cena: 5
     enunciado: "O cliente ainda não respondeu e você quer fechar o caso. Dá para fazer isso?"
     opcoes:
-      a: "Não, só depois da resposta do cliente"
+      a: "Não, só é possível encerrar depois da resposta do cliente"
       b: "Sim: escreve a observação e clica em **Encerrar pós-venda**"
       c: "Só depois de reabrir o pedido na aba Aguardando cliente"
-      d: "Sim, mas apenas o jurídico pode encerrar"
+      d: "Sim, mas apenas o jurídico pode encerrar o pós-venda"
     correta: [b]
     explicacao: "Dá para encerrar também sem a resposta. A tela avisa 'O cliente ainda não respondeu. Ele foi avisado por notificação.' e você registra a observação da Wellmix."
   - id: WGE-06-Q7
@@ -123,9 +123,9 @@ perguntas:
     cena: 8
     enunciado: "O cliente abre o Histórico no portal dele. O que ele vê?"
     opcoes:
-      a: "O histórico de todos os clientes, com o FOB"
-      b: "Só o próprio histórico, sem a coluna **Último FOB unit.**"
-      c: "Só o próprio histórico, com o FOB"
-      d: "Nada: o Histórico é só da Wellmix"
+      a: "O histórico de todos os clientes, com o FOB incluído"
+      b: "Só o dele, sem a coluna **Último FOB unit.**"
+      c: "Só o próprio histórico, com o FOB de cada compra"
+      d: "Nada: o Histórico é uma tela só da Wellmix"
     correta: [b]
     explicacao: "A Wellmix vê todos os clientes e o FOB. O cliente vê só o histórico dele, sem custo e sem fornecedor."

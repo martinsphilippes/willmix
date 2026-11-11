@@ -1,0 +1,129 @@
+episodio: WGE-07
+titulo: Marketing, kits e tabela de preços
+serie: WGE
+papel: administrador
+duracao: "4:30"
+idiomas: [pt]
+capitulos:
+  - id: WGE-07-C1
+    titulo: Criar um kit de marketing para o produto
+    inicio: "0:00"
+    fim: "1:22"
+    cenas: [1, 4]
+    resumo: Abra Gestão → Marketing, leia os cartões por situação e crie o kit com produto, cliente e preço.
+  - id: WGE-07-C2
+    titulo: Escrever os textos, enviar prévias e oferecer ao cliente
+    inicio: "1:22"
+    fim: "2:32"
+    cenas: [5, 6]
+    resumo: Preencha os textos no studio, envie as prévias e clique em Oferecer ao cliente.
+  - id: WGE-07-C3
+    titulo: Confirmar o pagamento, liberar os arquivos e consultar a Tabela de preços
+    inicio: "2:32"
+    fim: "4:30"
+    cenas: [7, 11]
+    resumo: Depois da compra do cliente, confirme o pagamento, envie os arquivos finais, libere e consulte os preços.
+perguntas:
+  - id: WGE-07-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-07-C1
+    cena: 3
+    enunciado: "Qual botão no topo da lista de Marketing começa um kit novo?"
+    opcoes:
+      a: "Tabela de preços"
+      b: "Criar kit"
+      c: "+ Novo kit"
+      d: "Filtrar"
+    correta: [c]
+    explicacao: "Em Gestão → Marketing, **+ Novo kit** abre o formulário. **Criar kit** é o botão que grava o formulário, e **Tabela de preços** abre outra tela."
+  - id: WGE-07-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-07-C3
+    cena: 9
+    enunciado: "O que a **Tabela de preços** mostra para cada produto ativo?"
+    opcoes:
+      a: "O preço do kit de cada cliente"
+      b: "O último preço vendido e o FOB"
+      c: "Os preços que o cliente vê na vitrine"
+      d: "A cotação do dia do dólar"
+    correta: [b]
+    explicacao: "A tabela traz o último preço praticado (valor ao cliente dividido pela quantidade) e o FOB unitário. É só para a Wellmix e tem o botão **Baixar CSV**."
+  - id: WGE-07-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: WGE-07-C1
+    cena: 2
+    enunciado: "Coloque na ordem os passos do kit de marketing, do primeiro ao último."
+    opcoes:
+      a: "Pagamento"
+      b: "Oferta"
+      c: "Liberação"
+      d: "Prévia"
+      e: "Compra"
+    correta: [d, b, e, a, c]
+    explicacao: "O kit anda por rascunho, **prévia**, **oferta**, **compra**, **pagamento** e **liberação**. O cliente só compra depois da oferta, e só baixa depois da liberação."
+  - id: WGE-07-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-07-C2
+    cena: 6
+    enunciado: "A partir de que momento o cliente passa a ver as prévias e o preço do kit?"
+    opcoes:
+      a: "Assim que o kit é criado"
+      b: "Assim que você envia as prévias"
+      c: "Depois de **Confirmar pagamento**"
+      d: "Depois de **Oferecer ao cliente**"
+    correta: [d]
+    explicacao: "As prévias ficam escondidas até a oferta. Ao clicar em **Oferecer ao cliente**, o cliente vê prévias e preço; o preço continua editável até a compra."
+  - id: WGE-07-Q5
+    tipo: vf
+    nivel: 2
+    capitulo: WGE-07-C2
+    cena: 5
+    enunciado: "Verdadeiro ou falso: no studio do kit, você pode editar o nome, a linha e o material do produto no cartão **Produto**."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "O cartão **Produto** é alimentado pela ficha do produto e é somente leitura. Os textos do kit (conceito, slogan, campanha) é que são seus."
+  - id: WGE-07-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-07-C2
+    cena: 6
+    enunciado: "O botão **Oferecer ao cliente** está desabilitado e aparece 'Defina o cliente antes de oferecer o kit.' O que você faz?"
+    opcoes:
+      a: "Escolhe o cliente no card **Textos do kit** e salva"
+      b: "Envia as prévias de novo, para liberar o botão"
+      c: "Clica em **Confirmar pagamento** para adiantar o kit"
+      d: "Cria um kit novo, porque este já não serve mais"
+    correta: [a]
+    explicacao: "O cliente é opcional ao criar, mas obrigatório para oferecer. Escolha-o em **Textos do kit**, salve, e o botão passa a funcionar."
+  - id: WGE-07-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-07-C3
+    cena: 8
+    enunciado: "Você clica em **Liberar arquivos** e aparece 'Envie ao menos um arquivo final antes de liberar.' O que falta?"
+    opcoes:
+      a: "Confirmar o pagamento de novo"
+      b: "Enviar os arquivos finais, em **Enviar arquivos finais**"
+      c: "Enviar as prévias do kit para o cliente"
+      d: "Oferecer o kit ao cliente outra vez"
+    correta: [b]
+    explicacao: "A liberação exige pelo menos um arquivo final. Use **Enviar arquivos finais** e, com o pagamento confirmado, **Liberar arquivos**."
+  - id: WGE-07-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-07-C3
+    cena: 8
+    enunciado: "O cliente diz que comprou o kit, mas não consegue baixar os arquivos finais. O que você confere primeiro?"
+    opcoes:
+      a: "Se o navegador dele está configurado em português"
+      b: "Se a prévia foi enviada antes de o kit ser oferecido"
+      c: "Se o pagamento foi confirmado e os arquivos liberados"
+      d: "Se o kit tem um nome preenchido nos textos"
+    correta: [c]
+    explicacao: "A compra só registra um pagamento pendente. Os arquivos finais ficam escondidos até a Wellmix confirmar o pagamento, enviar os finais e liberar."

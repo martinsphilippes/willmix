@@ -1,0 +1,131 @@
+episodio: WPE-02
+titulo: "Preparação: a ficha de compra e a validação"
+serie: WPE
+papel: operador
+duracao: "3:45"
+idiomas: [pt]
+capitulos:
+  - id: WPE-02-C1
+    titulo: Abrir a ficha de compra e ler os blocos
+    inicio: "0:00"
+    fim: "1:12"
+    cenas: [1, 4]
+    resumo: A pendência "Preparação" leva ao pedido e à ficha de compra, onde cada bloco mostra se está completo ou o que falta.
+  - id: WPE-02-C2
+    titulo: Fazer a programação e salvar a ficha
+    inicio: "1:12"
+    fim: "2:12"
+    cenas: [5, 6]
+    resumo: Preencha o primeiro lote da programação de compra e clique em **Salvar ficha** até aparecer "Ficha salva e completa."
+  - id: WPE-02-C3
+    titulo: Validar a ficha e o cadastro do produto
+    inicio: "2:12"
+    fim: "3:45"
+    cenas: [7, 10]
+    resumo: Confirme a ficha com as imagens e o cadastro do produto; com os três itens feitos a Preparação conclui e a arte abre.
+perguntas:
+  - id: WPE-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-02-C1
+    cena: 3
+    enunciado: "No pedido, o cartão **Preparação** mostra a Ficha de compra do fornecedor como \"Concluído\". Qual botão você clica para conferi-la?"
+    opcoes:
+      a: "**Ver ficha de compra**"
+      b: "**Confirmar**"
+      c: "**Salvar ficha**"
+      d: "**Gerar programação**"
+    correta: [a]
+    explicacao: "**Ver ficha de compra** abre a ficha, a referência que a inspeção vai usar. Quando falta algo do fornecedor, o botão vira **Completar ficha (faltam N)**."
+  - id: WPE-02-Q2
+    tipo: multipla
+    nivel: 2
+    capitulo: WPE-02-C1
+    cena: 4
+    enunciado: "Na ficha de compra, quais blocos o fornecedor não vê, porque são da Wellmix? Marque todos os certos."
+    opcoes:
+      a: "Programação de compra"
+      b: "Fotos"
+      c: "Despachante (NCM e impostos)"
+      d: "Caixa e embalagem"
+      e: "Descrição para e-commerce"
+    correta: [a, c, e]
+    explicacao: "A Programação de compra, o Despachante e a Descrição para e-commerce são da Wellmix. Fotos e Caixa e embalagem fazem parte do que o fornecedor preenche na ficha."
+  - id: WPE-02-Q3
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-02-C1
+    cena: 4
+    enunciado: "A ficha mostra o aviso \"Falta para concluir: 1º lote da programação.\" Todos os outros blocos estão \"Completo\", vindos da cotação. Quem faz o que falta?"
+    opcoes:
+      a: "O fornecedor, que deve completar a ficha pelo portal dele"
+      b: "A Wellmix: a programação de compra é sua"
+      c: "A agência, junto com a arte da embalagem"
+      d: "O cliente, ao confirmar o recebimento"
+    correta: [b]
+    explicacao: "Não é erro: a programação é da Wellmix e costuma ser a única coisa que falta quando a cotação já trouxe tudo. O fornecedor nem enxerga esse bloco."
+  - id: WPE-02-Q4
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-02-C2
+    cena: 5
+    enunciado: "Na linha 1 da Programação de compra, quais dois campos você preenche?"
+    opcoes:
+      a: "Início da produção e Saída prevista"
+      b: "Peças e CBM"
+      c: "Container para o cálculo e Peças"
+      d: "Saída em (dias) e Caixas master"
+    correta: [d]
+    explicacao: "Você informa **Saída em (dias)** e **Caixas master**; Peças, CBM e containers o portal calcula enquanto você digita. O Início da produção é um campo cinza, automático depois da assinatura."
+  - id: WPE-02-Q5
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-02-C2
+    cena: 5
+    enunciado: "Depois de digitar a programação, o quadro amarelo \"Fechar o container\" sugere aumentar as caixas. Você só quer registrar o primeiro lote do pedido como ele está. O que faz?"
+    opcoes:
+      a: "Aplica a sugestão, porque o container precisa fechar"
+      b: "Ignora a sugestão, que é opcional, e segue para **Salvar ficha**"
+      c: "Apaga a programação e volta a preencher só depois do container fechado"
+      d: "Pede ao fornecedor que feche o container na ficha dele"
+    correta: [b]
+    explicacao: "A sugestão de fechar o container é opcional. Aplicá-la muda as caixas e a quantidade do pedido, então só use quando for essa a sua intenção."
+  - id: WPE-02-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-02-C3
+    cena: 7
+    enunciado: "Você clica em **Confirmar** em \"Ficha e imagens validadas pelo comprador\" e o portal responde: \"Antes de validar a ficha, faça a Programação de compra (1º lote) na ficha de compra do pedido.\" O que você faz?"
+    opcoes:
+      a: "Clica em **Confirmar** de novo até o portal aceitar"
+      b: "Valida primeiro o Cadastro do produto, que destrava a ficha"
+      c: "Volta à ficha, preenche a programação e clica em **Salvar ficha**"
+      d: "Pede ao fornecedor que valide a ficha no lugar da Wellmix"
+    correta: [c]
+    explicacao: "O portal só deixa validar a ficha depois que o 1º lote da programação está salvo. Volte à ficha, preencha **Saída em (dias)** e **Caixas master** e salve."
+  - id: WPE-02-Q7
+    tipo: ordem
+    nivel: 2
+    capitulo: WPE-02-C3
+    cena: 7
+    enunciado: "Ponha em ordem o caminho até validar a ficha de compra."
+    opcoes:
+      a: "Clicar em **Confirmar** em \"Ficha e imagens validadas pelo comprador\""
+      b: "Clicar em **Salvar ficha**"
+      c: "Clicar em **Ver ficha de compra** no cartão Preparação"
+      d: "Preencher a Programação de compra na ficha"
+    correta: [c, d, b, a]
+    explicacao: "Abra a ficha, faça a programação e salve; só então o portal aceita a validação da ficha e das imagens. Sem a programação salva ele recusa e avisa o que falta."
+  - id: WPE-02-Q8
+    tipo: unica
+    nivel: 2
+    capitulo: WPE-02-C3
+    cena: 9
+    enunciado: "Os três itens da Preparação estão concluídos. O que muda na tabela \"Etapas do pedido\"?"
+    opcoes:
+      a: "A Preparação conclui e a Arte e embalagem passa a Em andamento, com a agência como responsável"
+      b: "A Preparação conclui e o pedido vai direto para a Inspeção"
+      c: "A Preparação continua aberta até as duas assinaturas do documento do pedido"
+      d: "A Preparação conclui e o Embarque abre para a companhia marítima"
+    correta: [a]
+    explicacao: "Concluída a Preparação, abre a Arte e embalagem, e a agência recebe a pendência \"Arte do pedido\". O início da produção só entra sozinho depois das duas assinaturas."

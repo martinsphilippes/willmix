@@ -1,0 +1,124 @@
+episodio: WGE-08
+titulo: Multas, visão da Wellmix
+serie: WGE
+papel: administrador
+duracao: "3:00"
+idiomas: [pt]
+capitulos:
+  - id: WGE-08-C1
+    titulo: Registrar a multa no pedido e ler a lista de Multas
+    inicio: "0:00"
+    fim: "1:40"
+    cenas: [1, 4]
+    resumo: No pedido, registre a multa com motivo, valor e responsável; depois acompanhe em Gestão → Multas.
+  - id: WGE-08-C2
+    titulo: Deixar o jurídico atualizar a situação e acompanhar na Control Tower
+    inicio: "1:40"
+    fim: "3:00"
+    cenas: [5, 7]
+    resumo: O jurídico muda a situação para Contestada, Paga ou Cancelada e você vê a multa na Control Tower.
+perguntas:
+  - id: WGE-08-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-08-C1
+    cena: 3
+    enunciado: "Onde você registra uma multa nova?"
+    opcoes:
+      a: "Em Gestão → Multas"
+      b: "No bloco **Multas** do próprio pedido"
+      c: "Em Notificações, pelo botão **Resolver**"
+      d: "Na Control Tower, no quadrado **Multa aberta**"
+    correta: [b]
+    explicacao: "A multa é um registro do pedido: abra o pedido, desça até **Multas** e clique em **Registrar multa**. Gestão → Multas só lista as que já existem."
+  - id: WGE-08-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-08-C1
+    cena: 4
+    enunciado: "Em que situação uma multa nasce?"
+    opcoes:
+      a: "Contestada"
+      b: "Paga"
+      c: "Em aberto"
+      d: "Cancelada"
+    correta: [c]
+    explicacao: "Toda multa nasce **Em aberto**. Depois, na linha, os botões mudam para **Contestada**, **Paga** ou **Cancelada**."
+  - id: WGE-08-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: WGE-08-C1
+    cena: 3
+    enunciado: "Quais destes campos fazem parte do formulário **Registrar multa**? Marque todos."
+    opcoes:
+      a: "Motivo"
+      b: "Responsável"
+      c: "Evidência"
+      d: "Prazo para pagar"
+      e: "Número no Sankhya"
+    correta: [a, b, c]
+    explicacao: "O formulário pede **Motivo**, **Valor**, **Moeda**, **Responsável** e **Evidência** (foto ou arquivo, se houver). Não há prazo de pagamento nem número do Sankhya nele."
+  - id: WGE-08-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-08-C1
+    cena: 3
+    enunciado: "Quem pode ser escolhido como **Responsável** pela multa?"
+    opcoes:
+      a: "Qualquer parceiro cadastrado no portal"
+      b: "O cliente dono do pedido"
+      c: "Somente o fornecedor do pedido"
+      d: "Um parceiro designado a este pedido"
+    correta: [d]
+    explicacao: "A lista traz só os parceiros do pedido: fornecedor, agência, despachante, companhia marítima e transportador."
+  - id: WGE-08-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: WGE-08-C2
+    cena: 5
+    enunciado: "Coloque na ordem o que acontece com uma multa nova até o jurídico atualizá-la."
+    opcoes:
+      a: "O jurídico abre a lista de Multas"
+      b: "O jurídico recebe o aviso 'Multa registrada no pedido' no sino"
+      c: "O jurídico clica na nova situação na linha da multa"
+    correta: [b, a, c]
+    explicacao: "O aviso chega ao sino do jurídico (não às Pendências). Ele abre a lista de Multas e muda a situação na linha; cada mudança fica na auditoria."
+  - id: WGE-08-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-08-C2
+    cena: 5
+    enunciado: "O fornecedor discorda de uma multa em aberto. Qual botão o jurídico clica na linha?"
+    opcoes:
+      a: "Paga"
+      b: "Contestada"
+      c: "Cancelada"
+      d: "Resolver"
+    correta: [b]
+    explicacao: "**Contestada** marca que o responsável discorda. **Paga** vale quando o valor é acertado e **Cancelada** quando a multa não vale. **Resolver** é o botão do aviso em Notificações."
+  - id: WGE-08-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-08-C2
+    cena: 5
+    enunciado: "O jurídico diz que não encontra a multa em Pendências. Onde ela está?"
+    opcoes:
+      a: "No Painel de SLA, em Parceiros atrasados"
+      b: "A multa só é enviada a quem a registrou"
+      c: "No sino e em Notificações, com o botão **Resolver**"
+      d: "Na Control Tower, em Visões gerais"
+    correta: [c]
+    explicacao: "O aviso 'Multa registrada no pedido' vai para o sino e para Notificações, em 'Precisa de você', e não para as Pendências. A lista completa fica na tela Multas."
+  - id: WGE-08-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-08-C2
+    cena: 6
+    enunciado: "Você registrou a multa e quer acompanhá-la na Control Tower. Onde ela aparece?"
+    opcoes:
+      a: "No quadrado **Multa aberta**, em Problemas, e no cartão **Exceções**"
+      b: "No quadrado **Numerário para pagar**, em Acontece ao mesmo tempo"
+      c: "No cartão **Concluídos**, em Visões gerais"
+      d: "No quadrado **Entregue, falta confirmar**, em Onde o pedido está agora"
+    correta: [a]
+    explicacao: "A multa aparece no quadrado **Multa aberta** (bloco Problemas) e, em Exceções, com o selo 'Multa em aberto'. Ela sai de lá quando vira Paga ou Cancelada."

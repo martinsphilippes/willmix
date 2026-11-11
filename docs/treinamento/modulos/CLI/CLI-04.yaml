@@ -1,0 +1,131 @@
+episodio: CLI-04
+titulo: "Acompanhar o pedido"
+serie: CLI
+papel: cliente
+duracao: "4:00"
+idiomas: [pt]
+capitulos:
+  - id: CLI-04-C1
+    titulo: "Achar o seu pedido"
+    inicio: "0:00"
+    fim: "1:30"
+    cenas: [1, 4]
+    resumo: "Em Orçamentos, o cartão Pedidos em andamento mostra o próximo passo; em Pedidos estão todos, com filtros."
+  - id: CLI-04-C2
+    titulo: "Ler os valores e as etapas"
+    inicio: "1:30"
+    fim: "3:00"
+    cenas: [5, 6]
+    resumo: "No alto, os valores de venda; abaixo, as etapas do pedido com situação, responsável e prazo."
+  - id: CLI-04-C3
+    titulo: "Conferir pagamentos e documentos e tirar dúvidas"
+    inicio: "3:00"
+    fim: "4:00"
+    cenas: [7, 9]
+    resumo: "Veja o que já foi pago, abra os documentos e converse com a Wellmix no assunto do pedido."
+perguntas:
+  - id: CLI-04-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: CLI-04-C1
+    cena: 3
+    enunciado: "No cartão **Pedidos em andamento**, o Próximo passo diz \"Com a Wellmix\". O que isso quer dizer para você?"
+    opcoes:
+      a: "A sua vez de agir"
+      b: "O pedido foi cancelado"
+      c: "Você precisa pagar o sinal"
+      d: "Nada a fazer: o pedido está com a Wellmix"
+    correta: [d]
+    explicacao: "\"Com a Wellmix\" quer dizer que você não precisa fazer nada. \"Com você\" é a sua vez. Clique em **Acompanhar** para abrir o pedido."
+  - id: CLI-04-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: CLI-04-C1
+    cena: 4
+    enunciado: "Onde você vê todos os seus pedidos, em andamento ou encerrados?"
+    opcoes:
+      a: "Em Explorar"
+      b: "Em **Pedidos**, no grupo Meus pedidos"
+      c: "Em Notificações"
+      d: "Em Marketing"
+    correta: [b]
+    explicacao: "A tela **Pedidos** traz uma linha por pedido, com etapa, situação, progresso e prazo, e filtros em cada coluna. O cartão em Orçamentos mostra os que estão em andamento."
+  - id: CLI-04-Q3
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-04-C1
+    cena: 3
+    enunciado: "João enviou a solicitação ontem e não acha o pedido em Pedidos. A solicitação mostra \"Aguardando sinal\". O que isso explica?"
+    opcoes:
+      a: "O pedido existe, mas está escondido pelos filtros"
+      b: "O pedido só nasce depois que a Wellmix confirma o sinal"
+      c: "O pedido foi cancelado pelo fornecedor"
+      d: "O pedido só aparece quando o navio sai"
+    correta: [b]
+    explicacao: "Até a Wellmix confirmar o sinal, só existe a solicitação. Acompanhe em Orçamentos; o aviso \"Pedido #N criado\" marca o nascimento do pedido."
+  - id: CLI-04-Q4
+    tipo: multipla
+    nivel: 2
+    capitulo: CLI-04-C2
+    cena: 5
+    enunciado: "Quais destas informações o cliente vê na tela do pedido?"
+    opcoes:
+      a: "O valor de venda"
+      b: "O nome do fornecedor"
+      c: "Quanto já foi pago (Recebido do cliente)"
+      d: "O preço de compra do fornecedor"
+      e: "A margem da Wellmix"
+    correta: [a, c]
+    explicacao: "O cliente vê só o preço de venda, o que pagou e o andamento. Fornecedor, preço de compra e margem não aparecem: é a regra do portal."
+  - id: CLI-04-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: CLI-04-C2
+    cena: 6
+    enunciado: "Como você reconhece, em **Etapas do pedido**, a etapa em que o pedido está agora?"
+    opcoes:
+      a: "É a primeira etapa marcada como Pendente"
+      b: "É a última etapa com círculo verde"
+      c: "É a etapa em vermelho, aberta embaixo com os itens e quem os faz"
+      d: "É a etapa marcada como Bloqueada"
+    correta: [c]
+    explicacao: "Verde é concluída; vermelho é em andamento, e a etapa atual abre embaixo. Pendente é a etapa que ainda não começou."
+  - id: CLI-04-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-04-C2
+    cena: 6
+    enunciado: "Uma etapa do pedido aparece como \"Bloqueada\". João precisa fazer alguma coisa?"
+    opcoes:
+      a: "Sim, pagar o saldo para destravar"
+      b: "Não: a Wellmix está resolvendo, e em caso de dúvida ele usa Conversar com a Wellmix"
+      c: "Sim, cancelar o pedido e pedir outro"
+      d: "Sim, enviar o comprovante de novo"
+    correta: [b]
+    explicacao: "O bloqueio é da Wellmix, por exemplo uma divergência de peso na inspeção. Ela resolve e o pedido segue."
+  - id: CLI-04-Q7
+    tipo: unica
+    nivel: 2
+    capitulo: CLI-04-C3
+    cena: 7
+    enunciado: "Na tabela **Documentos**, qual é a diferença entre abrir um arquivo e clicar em **Confirmar leitura**?"
+    opcoes:
+      a: "Abrir registra que você viu; Confirmar leitura registra que você concorda"
+      b: "Abrir apaga o arquivo; Confirmar leitura o devolve"
+      c: "As duas ações registram o mesmo, e uma pode substituir a outra"
+      d: "Abrir só vale para a Wellmix; Confirmar leitura, só para você"
+    correta: [a]
+    explicacao: "Visualizar é registrado automaticamente ao abrir; confirmar é um ato explícito. Um nunca vale pelo outro."
+  - id: CLI-04-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-04-C3
+    cena: 8
+    enunciado: "João tem uma dúvida sobre o pedido e quer a resposta no assunto desse pedido. O que faz?"
+    opcoes:
+      a: "Escreve em Mensagens, no assunto Geral"
+      b: "Abre Notificações e responde ao aviso"
+      c: "Clica em **Conversar com a Wellmix** na tela do pedido"
+      d: "Cancela o pedido e abre uma nova solicitação"
+    correta: [c]
+    explicacao: "**Conversar com a Wellmix** abre a conversa já no assunto \"Pedido #1\", em Mensagens, e todos os logins da sua empresa veem a mesma conversa."

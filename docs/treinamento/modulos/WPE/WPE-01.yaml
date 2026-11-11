@@ -1,0 +1,130 @@
+episodio: WPE-01
+titulo: Conferir o pedido e o Sankhya
+serie: WPE
+papel: operador
+duracao: "3:45"
+idiomas: [pt]
+capitulos:
+  - id: WPE-01-C1
+    titulo: Abrir o pedido e ler o Resumo
+    inicio: "0:00"
+    fim: "1:08"
+    cenas: [1, 4]
+    resumo: Abra o pedido pelo número em Pedidos → Pedidos e leia o Resumo do pedido, incluindo a coluna Sankhya.
+  - id: WPE-01-C2
+    titulo: Ler as etapas e o que foi comprado
+    inicio: "1:08"
+    fim: "2:00"
+    cenas: [5, 6]
+    resumo: Veja a etapa em andamento, as partes que andam em paralelo e o cartão Comprado, a cópia congelada da compra.
+  - id: WPE-01-C3
+    titulo: Informar o Sankhya e liberar o pedido
+    inicio: "2:00"
+    fim: "3:45"
+    cenas: [7, 10]
+    resumo: Digite o número do Sankhya, veja o aviso de conformidade e clique em **Confirmar** para liberar o pedido ao fornecedor.
+perguntas:
+  - id: WPE-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-01-C1
+    cena: 3
+    enunciado: "O Pedido #1 acabou de nascer. Como você chega à tela dele?"
+    opcoes:
+      a: "Em Pedidos → Solicitações, clicando em **Abrir** na linha"
+      b: "Em Cadastros → Produtos, abrindo o produto da jarra"
+      c: "Em Pedidos → Embalagens, clicando no briefing"
+      d: "Em Pedidos → Pedidos, clicando no número do pedido"
+    correta: [d]
+    explicacao: "O pedido está em Pedidos → Pedidos: clique no número (#1) e a coluna Progresso já diz em que ponto da viagem ele está. Solicitações é a lista de antes do pedido."
+  - id: WPE-01-Q2
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-01-C1
+    cena: 4
+    enunciado: "Você tenta abrir Contas a pagar e o portal volta ao início com \"Você não tem acesso a Contas a pagar. Peça ao administrador em Gestão → Equipe e divisões.\" O que isso significa?"
+    opcoes:
+      a: "O portal está com erro; tente de novo mais tarde"
+      b: "Seu login ainda não terminou de carregar"
+      c: "A tela é do administrador, ou ele precisa marcar a função em Equipe e divisões"
+      d: "É preciso concluir antes a etapa do pedido que está aberta"
+    correta: [c]
+    explicacao: "Valores e pagamentos são do administrador. O aviso não é falha: quem tem a função certa em Equipe e divisões passa a ver a tela."
+  - id: WPE-01-Q3
+    tipo: unica
+    nivel: 1
+    capitulo: WPE-01-C2
+    cena: 5
+    enunciado: "Na tabela \"Etapas do pedido\", qual botão mostra todas as etapas de uma vez, e não só a que está em andamento?"
+    opcoes:
+      a: "**Ver detalhes**"
+      b: "**Abrir todas as etapas**"
+      c: "**Mostrar só a etapa em andamento**"
+      d: "**Designar**"
+    correta: [b]
+    explicacao: "**Ver detalhes** abre uma etapa só; **Abrir todas as etapas** mostra tudo e, depois do clique, o botão passa a ser **Mostrar só a etapa em andamento**."
+  - id: WPE-01-Q4
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-01-C2
+    cena: 5
+    enunciado: "Na tabela de etapas há uma linha recuada \"↳ Certificação\" com o selo \"ao mesmo tempo\". Um colega diz que ela só começa depois que o Pedido pré-aprovado for confirmado. Quem está certo?"
+    opcoes:
+      a: "Ele, porque nenhuma etapa começa antes da anterior concluir"
+      b: "Ele, porque a certificação sempre vem depois da Preparação"
+      c: "Ninguém: a Certificação só começa depois da inspeção"
+      d: "Você: as linhas recuadas andam em paralelo, sem esperar a etapa anterior"
+    correta: [d]
+    explicacao: "As linhas recuadas são partes que andam em paralelo, como a Certificação: o selo \"ao mesmo tempo\" quer dizer que ela não espera a etapa anterior."
+  - id: WPE-01-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WPE-01-C2
+    cena: 6
+    enunciado: "O que é o cartão \"Comprado (snapshot)\" no fim da página do pedido?"
+    opcoes:
+      a: "Uma cópia congelada da ficha e da cotação no dia em que o pedido nasceu"
+      b: "O histórico de pagamentos do cliente"
+      c: "A ficha do produto, que acompanha qualquer mudança do cadastro"
+      d: "A lista de itens que o cliente pediu na vitrine"
+    correta: [a]
+    explicacao: "O Comprado guarda a compra como ela era no nascimento do pedido: o cadastro pode mudar depois, mas essa cópia não. É com ela que a inspeção vai comparar, e só a Wellmix a vê."
+  - id: WPE-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WPE-01-C3
+    cena: 7
+    enunciado: "No Resumo do pedido, a coluna Sankhya mostra \"ERP pendente\" e a tela avisa \"Sincronização com o ERP pendente (modo mock). Informe o número manualmente.\" O que você faz?"
+    opcoes:
+      a: "Gera o pedido no Sankhya, digita o número em **Número no Sankhya** e clica em **Enviar**"
+      b: "Espera: a integração preenche o número sozinha em algumas horas"
+      c: "Pede ao fornecedor que informe o número do pedido no Sankhya"
+      d: "Clica em **Confirmar**, que já grava o número gerado pelo portal"
+    correta: [a]
+    explicacao: "Sem a integração ligada, o número é digitado à mão: não é falha. Depois de **Enviar**, a coluna Sankhya troca \"ERP pendente\" pelo número."
+  - id: WPE-01-Q7
+    tipo: unica
+    nivel: 2
+    capitulo: WPE-01-C3
+    cena: 8
+    enunciado: "O pedido da Piscina inflável mostra o item \"Conformidade: certificação obrigatória conferida\" com \"Faltam: Inmetro\". Onde aparece o aviso correspondente, com Esperado \"Inmetro\" e Encontrado \"nenhuma\"?"
+    opcoes:
+      a: "Em Início → Painel de SLA"
+      b: "Em Pedidos → Revisão (Itens para revisão)"
+      c: "Em Início → Notificações, no grupo \"Precisa de você\""
+      d: "Em Cadastros → Fornecedores, na ficha do fornecedor"
+    correta: [b]
+    explicacao: "Linhas como Infláveis exigem certificação (aqui, o Inmetro). Se o produto não tem certificado válido, o pedido ganha o item Conformidade e um cartão na fila de Pedidos → Revisão."
+  - id: WPE-01-Q8
+    tipo: ordem
+    nivel: 2
+    capitulo: WPE-01-C3
+    cena: 9
+    enunciado: "Ponha em ordem o trabalho da Wellmix na etapa \"Pedido pré-aprovado\"."
+    opcoes:
+      a: "Conferir a etapa em andamento em **Etapas do pedido**"
+      b: "Clicar em **Confirmar** em \"Pedido conferido e liberado ao fornecedor\""
+      c: "Abrir o pedido pelo número em Pedidos → Pedidos"
+      d: "Ler o **Resumo do pedido**"
+    correta: [c, d, a, b]
+    explicacao: "Abra o pedido, leia o Resumo, confira a etapa em andamento e só então confirme: ao concluir a etapa, a Preparação abre."

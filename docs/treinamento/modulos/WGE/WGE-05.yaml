@@ -71,10 +71,10 @@ perguntas:
     cena: 6
     enunciado: "O que entra como **Saída** no Fluxo de caixa previsto?"
     opcoes:
-      a: "O sinal que ainda espera pagamento"
-      b: "As parcelas dos fornecedores, pelo vencimento"
+      a: "O sinal que ainda espera o pagamento do cliente"
+      b: "As parcelas dos fornecedores"
       c: "O saldo de cada pedido, na entrega prevista"
-      d: "As multas abertas dos pedidos"
+      d: "As multas abertas dos pedidos em andamento"
     correta: [b]
     explicacao: "Saem as parcelas aos fornecedores, pelo vencimento. Entram o sinal que ainda espera pagamento e o saldo de cada pedido, na data prevista da entrega."
   - id: WGE-05-Q5
@@ -95,10 +95,10 @@ perguntas:
     cena: 7
     enunciado: "No Fluxo de caixa aparece o alerta vermelho 'Atenção: o saldo acumulado fica negativo...'. O que ele indica?"
     opcoes:
-      a: "Há uma multa aberta na semana citada"
-      b: "O cliente não pagou o sinal"
-      c: "É a primeira semana em que as saídas passam das entradas"
-      d: "O câmbio do dia está faltando"
+      a: "Há uma multa aberta no pedido dessa semana específica"
+      b: "O cliente ainda não pagou o sinal de nenhum pedido"
+      c: "Aponta a primeira semana com mais saída que entrada"
+      d: "O câmbio do dia está faltando para algum pagamento"
     correta: [c]
     explicacao: "O alerta aponta a primeira semana em que o saldo acumulado fica abaixo de zero, isto é, em que as saídas passam das entradas. Falta de câmbio tem outro aviso, em âmbar."
   - id: WGE-05-Q7
@@ -108,9 +108,9 @@ perguntas:
     cena: 7
     enunciado: "Aparece o aviso âmbar 'Sem câmbio do dia para USD: essas saídas aparecem na moeda delas, mas ficam fora do saldo em reais.' O que você faz?"
     opcoes:
-      a: "Em Configurações → Preço ao cliente, clica em **Buscar cotações**"
-      b: "Registra um recebimento do cliente em dólar"
-      c: "Marca as parcelas como pagas"
+      a: "Clica em **Buscar cotações**, em Configurações"
+      b: "Registra um recebimento do cliente em dólar no pedido"
+      c: "Marca todas as parcelas dessa semana como pagas"
       d: "Cria um fluxo de caixa novo para o dólar"
     correta: [a]
     explicacao: "O saldo em reais usa o câmbio do dia. Buscar as cotações em Configurações → Preço ao cliente resolve; sem câmbio, o portal não inventa valor."
@@ -121,9 +121,9 @@ perguntas:
     cena: 8
     enunciado: "O Otávio, operador planner, digita o endereço do Painel do dono. O que acontece?"
     opcoes:
-      a: "O painel abre, mas sem os valores"
-      b: "Ele volta para os Painéis por área"
-      c: "Aparece uma página não encontrada"
-      d: "Só o Fluxo de caixa abre"
+      a: "O painel abre, mas sem os valores em reais"
+      b: "Volta aos Painéis por área"
+      c: "Aparece uma página não encontrada no navegador"
+      d: "Só o Fluxo de caixa abre, sem o painel"
     correta: [b]
     explicacao: "O Painel do dono e o Fluxo de caixa são só de quem abre o Financeiro. Quem força o endereço volta aos Painéis por área."

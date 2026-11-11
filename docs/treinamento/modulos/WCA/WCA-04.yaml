@@ -1,0 +1,136 @@
+episodio: WCA-04
+titulo: "Importar a ficha técnica (planilha) e o CSV"
+serie: WCA
+papel: cadastro
+duracao: "5:15"
+idiomas: [pt]
+capitulos:
+  - id: WCA-04-C1
+    titulo: "Escolher a planilha, o fornecedor e a linha"
+    inicio: "0:00"
+    fim: "1:32"
+    cenas: [1, 5]
+    resumo: "Abrir Importar ficha técnica, escolher a planilha e ligar os produtos a um fornecedor e a uma linha."
+  - id: WCA-04-C2
+    titulo: "Escolher o resultado e importar"
+    inicio: "1:32"
+    fim: "2:40"
+    cenas: [6, 7]
+    resumo: "Entender os três tipos de Resultado e clicar em Importar e cadastrar."
+  - id: WCA-04-C3
+    titulo: "Ler o que falta e importar de novo"
+    inicio: "2:40"
+    fim: "3:38"
+    cenas: [8, 9]
+    resumo: "Ler a tabela do resultado, completar o que falta na ficha mestre e entender a reimportação."
+  - id: WCA-04-C4
+    titulo: "Usar a Importação de cadastros"
+    inicio: "3:38"
+    fim: "5:15"
+    cenas: [10, 13]
+    resumo: "Ler uma planilha com mapeamento e conferência, e saber quando o CSV direto é seguro."
+perguntas:
+  - id: WCA-04-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WCA-04-C1
+    cena: 3
+    enunciado: "Em Cadastros → Produtos, qual botão lê a planilha de ficha técnica que o fornecedor mandou?"
+    opcoes:
+      a: "Importar CSV"
+      b: "Importar ficha técnica"
+      c: "Importar e cadastrar"
+      d: "Ler planilha"
+    correta: [b]
+    explicacao: "**Importar ficha técnica** abre a tela da planilha do fornecedor. **Importar CSV** leva à Importação de cadastros, outro caminho; **Importar e cadastrar** é o botão que grava, já dentro da tela."
+  - id: WCA-04-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WCA-04-C2
+    cena: 7
+    enunciado: "Com planilha, fornecedor, linha e resultado escolhidos, qual botão cadastra os produtos?"
+    opcoes:
+      a: "Importar CSV"
+      b: "Ler planilha"
+      c: "Importar e cadastrar"
+      d: "Ver conferência"
+    correta: [c]
+    explicacao: "Na tela de ficha técnica o botão final é **Importar e cadastrar**. **Ler planilha** e **Ver conferência** pertencem à Importação de cadastros."
+  - id: WCA-04-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WCA-04-C2
+    cena: 6
+    enunciado: "Qual **Resultado** faz cada grupo de linhas virar um produto que fica fora da vitrine até ser aprovado no Booking?"
+    opcoes:
+      a: "Mandar para o Booking (um produto por linha)"
+      b: "Um produto com variações (uma por linha da planilha)"
+      c: "Um produto por linha (como antes)"
+    correta: [a]
+    explicacao: "No Booking, o produto novo só entra na vitrine depois de aprovado lá; o que já existia entra como Aprovado. As outras duas opções cadastram direto: uma com variações, outra com um produto por grupo."
+  - id: WCA-04-Q4
+    tipo: multipla
+    nivel: 2
+    capitulo: WCA-04-C1
+    cena: 5
+    enunciado: "Marque o que é verdade sobre os campos Fornecedor, Linha do produto e Moeda do preço."
+    opcoes:
+      a: "Todos os produtos da planilha ficam ligados ao Fornecedor escolhido"
+      b: "A planilha não diz a linha, então todos os produtos entram na Linha do produto escolhida"
+      c: "A Moeda do preço sempre vale, mesmo que o cabeçalho diga dólar"
+      d: "Se o fornecedor não está na lista, cadastre-o antes em Cadastros → Fornecedores"
+      e: "O Nome base é obrigatório"
+    correta: [a, b, d]
+    explicacao: "O fornecedor e a linha valem para todos os produtos. A Moeda só vale quando o cabeçalho não diz a moeda (por exemplo 'PRICE / U$' já diz dólar). O Nome base é opcional."
+  - id: WCA-04-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WCA-04-C3
+    cena: 9
+    enunciado: "Você corrigiu a planilha e a importa de novo. O que acontece com os produtos que já tinham sido importados?"
+    opcoes:
+      a: "São duplicados, um conjunto novo ao lado do antigo"
+      b: "O portal recusa, porque a planilha já foi importada"
+      c: "São apagados e criados de novo"
+      d: "São atualizados, sem duplicar"
+    correta: [d]
+    explicacao: "Importar a mesma planilha atualiza os mesmos produtos, sem duplicar. Os lotes ficam listados em **Importações anteriores**, e você pode reabrir o resultado de cada um."
+  - id: WCA-04-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-04-C4
+    cena: 12
+    enunciado: "Você recebeu um CSV de produtos que ninguém conferiu. Que caminho da Importação de cadastros usa?"
+    opcoes:
+      a: "O **CSV direto (sem conferência)**: é mais rápido"
+      b: "Nenhum: o CSV só pode ser importado pelo administrador"
+      c: "A **Planilha do sistema chinês (XLSX/CSV)**, que tem Mapeamento e Conferência antes de gravar"
+      d: "O **CSV direto**, e depois confere a lista de produtos"
+    correta: [c]
+    explicacao: "O CSV direto grava na hora e só conta as linhas inválidas como ignoradas; use só com arquivo já conferido. O outro cartão mostra o mapeamento e a conferência, e nada é gravado até clicar em **Importar**."
+  - id: WCA-04-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-04-C3
+    cena: 8
+    enunciado: "No resultado da importação, o copo aparece como 'Criado' e a jarra como 'Atualizado', ambos com selos amarelos em 'O que falta'. O que fazer?"
+    opcoes:
+      a: "Importar a planilha de novo até os selos sumirem"
+      b: "Clicar no nome do produto e completar na ficha o que está marcado"
+      c: "Ignorar: os selos amarelos são erros que cancelam o produto"
+      d: "Esperar o fornecedor enviar as fotos pelo portal"
+    correta: [b]
+    explicacao: "Os selos mostram o que falta na ficha mestre (por exemplo 'Foto na balança'). Clique no produto e complete a ficha. 'Criado' e 'Atualizado' só dizem o que a importação fez com cada um."
+  - id: WCA-04-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-04-C4
+    cena: 11
+    enunciado: "Na Conferência, todas as linhas mostram 'Linha não encontrada' e a decisão sugerida é Ignorar. O que faz?"
+    opcoes:
+      a: "Clica em **Importar** assim mesmo: o portal cria a linha"
+      b: "Muda a decisão de cada linha para Atualizar"
+      c: "Usa o CSV direto para pular a conferência"
+      d: "Corrige a Linha padrão no Mapeamento e confere de novo"
+    correta: [d]
+    explicacao: "Sem a Linha padrão, as linhas ficam 'Linha não encontrada' e o sugerido é Ignorar. Escolha a Linha padrão (e a Moeda padrão) no Mapeamento, veja a conferência e só então clique em **Importar**."

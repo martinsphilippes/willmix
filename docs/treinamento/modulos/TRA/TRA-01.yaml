@@ -1,0 +1,130 @@
+episodio: TRA-01
+titulo: Registrar o transporte e a entrega
+serie: TRA
+papel: transportador
+duracao: "3:33"
+idiomas: [pt]
+capitulos:
+  - id: TRA-01-C1
+    titulo: Abrir a pendência e conferir a carga e o endereço
+    inicio: "0:00"
+    fim: "1:08"
+    cenas: [1, 4]
+    resumo: Entre no pedido pela pendência de Transporte e confira, no cartão Carga e entrega, o que levar e para onde.
+  - id: TRA-01-C2
+    titulo: Informar a placa e a previsão de entrega
+    inicio: "1:08"
+    fim: "2:16"
+    cenas: [5, 7]
+    resumo: Na etapa Transporte, envie a placa do veículo e a previsão de chegada ao cliente, respeitando a ordem das datas.
+  - id: TRA-01-C3
+    titulo: Contar a situação e confirmar a entrega
+    inicio: "2:16"
+    fim: "3:33"
+    cenas: [8, 11]
+    resumo: Avise onde a carga está, confirme a entrega só depois de entregar e veja o que acontece em seguida.
+perguntas:
+  - id: TRA-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: TRA-01-C1
+    cena: 3
+    enunciado: "Como você fica sabendo que o transporte de um pedido começou?"
+    opcoes:
+      a: "Por e-mail da Wellmix, com o pedido e os dados da carga em anexo"
+      b: "Só quando abre o menu **Pedidos** e procura o pedido sozinho"
+      c: "Por um aviso no sino e uma pendência em **Pendências**"
+      d: "Pelo fornecedor, que liga para combinar a retirada da carga"
+    correta: [c]
+    explicacao: "Quando o transporte começa, o portal manda um aviso no sino e cria uma pendência em Pendências. Clique em **Abrir**, ou no título do pedido, para entrar nele."
+  - id: TRA-01-Q2
+    tipo: multipla
+    nivel: 1
+    capitulo: TRA-01-C1
+    cena: 4
+    enunciado: "O que o cartão **Carga e entrega** mostra ao transportador? Marque todas as certas."
+    opcoes:
+      a: "A mercadoria, as caixas, o volume e o peso previstos"
+      b: "A chegada do navio e a liberação aduaneira"
+      c: "Onde entregar: cliente, endereço e contato"
+      d: "O fornecedor e o preço de compra"
+      e: "As etapas dos outros parceiros"
+    correta: [a, b, c]
+    explicacao: "O cartão traz o que levar (mercadoria, caixas, volume, peso), a chegada do navio, a liberação aduaneira e onde entregar. O transportador não vê o fornecedor, os valores nem as etapas dos outros parceiros."
+  - id: TRA-01-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: TRA-01-C3
+    cena: 11
+    enunciado: "Coloque na ordem o trabalho do transportador, do aviso à entrega."
+    opcoes:
+      a: "Confirmar a entrega em **Entrega realizada**"
+      b: "Abrir a pendência com **Abrir**"
+      c: "Informar a placa e a previsão de entrega"
+      d: "Conferir o cartão **Carga e entrega**"
+    correta: [b, d, c, a]
+    explicacao: "Primeiro abra a pendência, depois confira a carga e o endereço, informe a placa e a previsão e, só no fim, confirme a entrega."
+  - id: TRA-01-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: TRA-01-C3
+    cena: 10
+    enunciado: "Você confirmou a entrega. O que acontece com o pedido em seguida?"
+    opcoes:
+      a: "O pedido é encerrado na hora, sem esperar o cliente"
+      b: "A etapa Entrega abre e o cliente é avisado"
+      c: "A etapa Transporte reabre até a Wellmix conferir a carga"
+      d: "Você recebe outra pendência para repetir a confirmação"
+    correta: [b]
+    explicacao: "A etapa Entrega abre para o cliente, que recebe o aviso para confirmar o recebimento; com a confirmação dele o pedido é encerrado. Para você, a lista fica com 'Nenhuma pendência. Bom trabalho.'"
+  - id: TRA-01-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: TRA-01-C3
+    cena: 8
+    enunciado: "Sobre o item **Situação do transporte**, qual afirmação está certa?"
+    opcoes:
+      a: "É opcional e, depois de enviada, não pode ser editada na tela"
+      b: "É obrigatória: sem ela a etapa não conclui"
+      c: "Pode ser editada quantas vezes você quiser durante a viagem"
+    correta: [a]
+    explicacao: "Use a situação para avisar onde a carga está, por exemplo que o caminhão saiu do porto. O item recebe um único envio; para novidades depois, use **Conversar com a Wellmix**."
+  - id: TRA-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: TRA-01-C1
+    cena: 4
+    enunciado: "O cartão **Carga e entrega** mostra 'Endereço de entrega não cadastrado: combine com a Wellmix.' O que você faz?"
+    opcoes:
+      a: "Usa o endereço da última entrega que fez para esse cliente"
+      b: "Pede o local à Wellmix, por **Conversar com a Wellmix**"
+      c: "Espera: o endereço aparece sozinho depois de confirmar a entrega"
+      d: "Confirma a entrega e informa o endereço depois"
+    correta: [b]
+    explicacao: "Sem o endereço cadastrado, o local de entrega precisa ser combinado com a Wellmix pelo botão **Conversar com a Wellmix**. Não saia com a carga sem saber para onde ir."
+  - id: TRA-01-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: TRA-01-C3
+    cena: 9
+    enunciado: "A carga ainda está no caminhão, a caminho do cliente. Quando você toca em **Confirmar**, em **Entrega realizada**?"
+    opcoes:
+      a: "Já: se for engano, a tela tem um botão para desfazer"
+      b: "Já: é assim que a Wellmix acompanha a viagem pelo portal"
+      c: "Só depois de entregar: a tela não tem botão para desfazer"
+      d: "Assim que a placa e a previsão de entrega estiverem enviadas"
+    correta: [c]
+    explicacao: "Confirme só com a carga entregue: a tela não tem botão para desfazer. Para acompanhar a viagem, use a **Situação do transporte**."
+  - id: TRA-01-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: TRA-01-C2
+    cena: 7
+    enunciado: "O navio chega em 18/12/2026. Ao escolher 15/12 em **Previsão de chegada**, o campo fica com borda vermelha. O que você faz?"
+    opcoes:
+      a: "Escolhe, pelo calendário, uma data igual ou posterior a 18/12/2026"
+      b: "Envia assim mesmo; a Wellmix ajusta a data depois"
+      c: "Digita a mesma data de novo, sem as barras"
+      d: "Troca a data do navio no cartão **Carga e entrega**"
+    correta: [a]
+    explicacao: "A previsão de entrega nunca pode ser antes da chegada do navio: o campo avisa na hora e bloqueia o envio. O calendário já bloqueia os dias anteriores."

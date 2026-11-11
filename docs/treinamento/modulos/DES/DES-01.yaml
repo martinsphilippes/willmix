@@ -1,0 +1,131 @@
+episodio: DES-01
+titulo: "Desembaraço no pedido"
+serie: DES
+papel: despachante
+duracao: "4:40"
+idiomas: [pt]
+capitulos:
+  - id: DES-01-C1
+    titulo: "Abrir a pendência e achar a sua etapa"
+    inicio: "0:00"
+    fim: "1:25"
+    cenas: [1, 4]
+    resumo: "Entre por Minhas pendências, abra o pedido e reconheça a etapa Desembaraço, que é a sua."
+  - id: DES-01-C2
+    titulo: "Conferir o embarque e registrar processo e documentos"
+    inicio: "1:25"
+    fim: "2:45"
+    cenas: [5, 6]
+    resumo: "Veja o que o embarque já traz e registre o **Número do processo** e os **Documentos aduaneiros**."
+  - id: DES-01-C3
+    titulo: "Informar os custos e confirmar a liberação"
+    inicio: "2:45"
+    fim: "4:40"
+    cenas: [7, 10]
+    resumo: "Informe os custos, clique em **Confirmar** na liberação aduaneira e saiba o que você não vê no pedido."
+perguntas:
+  - id: DES-01-Q1
+    tipo: multipla
+    nivel: 1
+    capitulo: DES-01-C1
+    cena: 3
+    enunciado: "Marque as telas do menu que o despachante abre."
+    opcoes:
+      a: "Pendências"
+      b: "Financeiro"
+      c: "Mensagens"
+      d: "Solicitações"
+      e: "Pedidos"
+    correta: [a, c, e]
+    explicacao: "O despachante abre só Pendências, Notificações, Mensagens e Pedidos. Financeiro e Solicitações não são dele: o portal volta ao início com \"Você não tem acesso a Financeiro. Peça ao administrador em Gestão → Equipe e divisões.\""
+  - id: DES-01-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: DES-01-C1
+    cena: 4
+    enunciado: "Em \"Etapas do pedido\", qual linha mostra \"Responsável: Despachante\" e está **Em andamento**?"
+    opcoes:
+      a: "Embarque"
+      b: "Desembaraço"
+      c: "Embarque e desembaraço"
+      d: "Transporte"
+    correta: [b]
+    explicacao: "A etapa **Desembaraço** é a sua. O **Embarque** já está concluído (é da companhia marítima), e **Embarque e desembaraço** é o cartão dos passos de documentos."
+  - id: DES-01-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: DES-01-C2
+    cena: 6
+    enunciado: "Na etapa **Desembaraço**, como você registra o **Número do processo** e os **Documentos aduaneiros**?"
+    opcoes:
+      a: "Digita o número e clica em **Enviar**; no documento, usa **Escolher arquivo** (ou uma foto)"
+      b: "Clica em **Confirmar** nos dois itens"
+      c: "Usa **Escolher arquivo** nos dois itens"
+      d: "Escreve os dois na conversa com a Wellmix"
+    correta: [a]
+    explicacao: "O número do processo é digitado e enviado com **Enviar**; os documentos aduaneiros vão em arquivo (**Escolher arquivo**) ou foto. Os dois são obrigatórios. **Confirmar** é só da Liberação aduaneira."
+  - id: DES-01-Q4
+    tipo: unica
+    nivel: 3
+    capitulo: DES-01-C2
+    cena: 5
+    enunciado: "Você quer conferir o número e o arquivo do BL original antes de registrar o processo. Onde olha?"
+    opcoes:
+      a: "No item **Documentos aduaneiros** da etapa Desembaraço"
+      b: "No cartão **Embarque e desembaraço**, no passo \"BL (original)\""
+      c: "Em Mensagens, na conversa com a companhia marítima"
+      d: "Na lista Pendências, na coluna Prazo"
+    correta: [b]
+    explicacao: "Do cartão Embarque e desembaraço, o despachante vê só o passo **BL (original)**, com o número e o link **Arquivo**. Numerário, DI e CI são da comex. Os dados do embarque (data, chegada, navio e BL) também estão na linha **Embarque**, em **Ver detalhes**."
+  - id: DES-01-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: DES-01-C3
+    cena: 7
+    enunciado: "Sobre os custos da etapa Desembaraço, o que é obrigatório?"
+    opcoes:
+      a: "Só os custos realizados; os previstos são opcionais"
+      b: "Os dois, previstos e realizados"
+      c: "Só os custos previstos; os realizados são opcionais"
+      d: "Nenhum dos dois"
+    correta: [a]
+    explicacao: "**Custos previstos** é opcional: dá para informar uma estimativa. **Custos realizados** é obrigatório. Em ambos você escolhe a moeda, digita o valor e clica em **Enviar**."
+  - id: DES-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: DES-01-C3
+    cena: 7
+    enunciado: "Você clica em **Enviar** em **Custos realizados** sem digitar nada e o portal diz \"Informe o valor (ex.: 1.234,56).\" O que faz?"
+    opcoes:
+      a: "Clica em **Confirmar** na Liberação aduaneira para seguir"
+      b: "Marca o item como opcional"
+      c: "Escolhe um arquivo no lugar do valor"
+      d: "Escolhe a moeda, digita o valor com vírgula nos centavos e envia de novo"
+    correta: [d]
+    explicacao: "O custo precisa de moeda (em geral Real) e de um valor, como 5.480,35. Com o campo vazio, o portal pede que você informe o valor."
+  - id: DES-01-Q7
+    tipo: unica
+    nivel: 2
+    capitulo: DES-01-C3
+    cena: 8
+    enunciado: "Você clica em **Confirmar** na **Liberação aduaneira** e os itens obrigatórios estão feitos. O que acontece?"
+    opcoes:
+      a: "O pedido volta para o Embarque"
+      b: "A Wellmix precisa aprovar antes de qualquer mudança"
+      c: "O pedido pula para Entrega e pós-venda"
+      d: "A etapa Desembaraço conclui e o pedido segue para o Transporte"
+    correta: [d]
+    explicacao: "Com todos os obrigatórios feitos, a etapa Desembaraço fica Concluída (100 %) e o título do pedido muda para Transporte."
+  - id: DES-01-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: DES-01-C3
+    cena: 9
+    enunciado: "Para conferir os custos, você quer ver o valor de venda e o nome do cliente do pedido, mas não aparecem. O que faz?"
+    opcoes:
+      a: "Abre o Financeiro pelo menu"
+      b: "Procura os valores na tabela Documentos"
+      c: "Usa **Conversar com a Wellmix**"
+      d: "Clica em **Ver detalhes** na linha Embarque"
+    correta: [c]
+    explicacao: "O despachante não vê preços, margem, pagamentos nem o nome do cliente, e também não vê as etapas dos outros. Dúvidas vão para a Wellmix pelo botão **Conversar com a Wellmix**."

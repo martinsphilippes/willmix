@@ -1,0 +1,129 @@
+episodio: WCA-05
+titulo: "Linhas de produto"
+serie: WCA
+papel: cadastro
+duracao: "3:40"
+idiomas: [pt]
+capitulos:
+  - id: WCA-05-C1
+    titulo: "Abrir Linhas e escrever o checklist"
+    inicio: "0:00"
+    fim: "1:20"
+    cenas: [1, 4]
+    resumo: "Ler a tabela de Linhas e criar uma linha nova com o checklist que o fornecedor cumpre."
+  - id: WCA-05-C2
+    titulo: "Salvar a linha e definir as certificações"
+    inicio: "1:20"
+    fim: "2:25"
+    cenas: [5, 6]
+    resumo: "Salvar a linha, ler os itens opcionais e exigir certificações como o Inmetro."
+  - id: WCA-05-C3
+    titulo: "Configurar prompts e atributos"
+    inicio: "2:25"
+    fim: "3:40"
+    cenas: [7, 9]
+    resumo: "Preencher os prompts e os atributos exigidos e conferi-los na ficha do produto."
+perguntas:
+  - id: WCA-05-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WCA-05-C1
+    cena: 3
+    enunciado: "Na tabela de Linhas, o que abre o número da coluna **Produtos**?"
+    opcoes:
+      a: "A lista de produtos da linha"
+      b: "Um formulário de produto novo"
+      c: "O manual em PDF da linha"
+      d: "O estoque da linha"
+    correta: [a]
+    explicacao: "O número em **Produtos** é um link para a lista de produtos daquela linha (só os ativos são contados). O manual em PDF tem coluna própria."
+  - id: WCA-05-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WCA-05-C2
+    cena: 6
+    enunciado: "Qual botão da linha abre os cartões Certificações obrigatórias e Prompts e regras (IA)?"
+    opcoes:
+      a: "Salvar"
+      b: "Fechar"
+      c: "Editar"
+      d: "+ Nova linha de produto"
+    correta: [c]
+    explicacao: "**Editar** abre três cartões: Editar: {linha}, Certificações obrigatórias e Prompts e regras (IA). **Fechar** recolhe esses cartões."
+  - id: WCA-05-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WCA-05-C1
+    cena: 4
+    enunciado: "No Checklist de preparação, qual linha deixa o item 'Manual de uso' opcional?"
+    opcoes:
+      a: "manual_pdf | Manual de uso | file | 0"
+      b: "manual_pdf | Manual de uso | opcional | 1"
+      c: "manual_pdf | Manual de uso | file | 1"
+    correta: [a]
+    explicacao: "O formato é chave | rótulo | tipo | obrigatório. 1 é obrigatório e só 0 deixa o item opcional. Depois de salvar, o item opcional aparece na tabela com asterisco."
+  - id: WCA-05-Q4
+    tipo: multipla
+    nivel: 2
+    capitulo: WCA-05-C1
+    cena: 4
+    enunciado: "Marque os tipos válidos de item do checklist."
+    opcoes:
+      a: "photo"
+      b: "confirm"
+      c: "foto"
+      d: "obrigatorio"
+      e: "date"
+    correta: [a, b, e]
+    explicacao: "Os tipos são file, photo, text, number, date e confirm. Se você escrever um tipo errado, como 'foto', o portal não avisa: o item vira file."
+  - id: WCA-05-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: WCA-05-C2
+    cena: 6
+    enunciado: "Você vai exigir Inmetro em uma linha que ainda não exige nada. Coloque os passos na ordem."
+    opcoes:
+      a: "Digitar Inmetro em Certificações obrigatórias"
+      b: "Clicar em **Salvar** no cartão das certificações"
+      c: "Clicar em **Editar** na linha"
+    correta: [c, a, b]
+    explicacao: "Clique em **Editar**, escreva as certificações separadas por vírgula (ex.: Inmetro, Anvisa) e salve. Sem certificação válida no produto, o pedido entra na fila de revisão."
+  - id: WCA-05-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-05-C2
+    cena: 6
+    enunciado: "A linha Infláveis exige 'Inmetro'. Você registrou no produto a certificação 'Inmetro 2026', e a ficha ainda mostra 'Faltantes: Inmetro'. Por quê?"
+    opcoes:
+      a: "A linha ainda não foi salva com **Salvar prompts e regras**"
+      b: "O pedido já saiu da fila de revisão, então o aviso é antigo"
+      c: "O Inmetro só vale se o fornecedor registrar a certificação"
+      d: "O nome da certificação tem de ser igual ao exigido pela linha; use 'Inmetro' e confira a validade"
+    correta: [d]
+    explicacao: "Maiúsculas e espaços nas pontas não contam, mas o resto do nome tem de ser igual ao da linha, e certificação vencida não vale. Registre como 'Inmetro' em **+ Registrar certificação**."
+  - id: WCA-05-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-05-C3
+    cena: 7
+    enunciado: "Você quer que toda ficha da linha Utilidades domésticas tenha material, cor e dimensões. Onde isso se configura?"
+    opcoes:
+      a: "No Checklist de preparação, com tipo text"
+      b: "Em Certificações obrigatórias, separado por vírgula"
+      c: "Em 'Atributos exigidos', no cartão Prompts e regras (IA), e **Salvar prompts e regras**"
+      d: "No Manual (PDF) da linha"
+    correta: [c]
+    explicacao: "Os atributos exigidos ficam no cartão **Prompts e regras (IA)**, um por linha ou separados por vírgula. A conferência é por código, sem IA. O checklist é o que o fornecedor cumpre na Preparação."
+  - id: WCA-05-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-05-C3
+    cena: 8
+    enunciado: "Na ficha da jarra, o cartão **Atributos exigidos pela linha** mostra 'Faltando (1)' com a cor. O que faz?"
+    opcoes:
+      a: "Edita a linha para tirar a cor dos atributos exigidos"
+      b: "Clica em **Preencher na ficha** e completa o campo"
+      c: "Espera a IA sugerir a cor"
+      d: "Registra uma certificação para o produto"
+    correta: [b]
+    explicacao: "O cartão separa o que está Presente, Faltando e em Conferência manual. Para o que falta, o link **Preencher na ficha** leva ao campo. A IA só sugere; a confirmação é sempre humana."

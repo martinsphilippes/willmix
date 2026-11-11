@@ -44,10 +44,10 @@ perguntas:
     cena: 4
     enunciado: "Quem envia a faca (o molde da caixa)?"
     opcoes:
-      a: "O fornecedor escolhido, depois da comparação das cotações (ou a Wellmix no lugar dele)"
-      b: "A agência, no cartão Entregáveis"
-      c: "O cliente, junto com a solicitação"
-      d: "A gráfica, depois de receber a arte"
+      a: "O fornecedor escolhido, ou a Wellmix no lugar dele"
+      b: "A agência, em Entregáveis, com **Escolher arquivo**"
+      c: "O cliente, junto com a solicitação ao fornecedor"
+      d: "A gráfica, depois de receber a arte da agência"
     correta: [a]
     explicacao: "É o fornecedor escolhido quem fabrica a caixa e envia a faca; a Wellmix pode enviar no lugar dele. A linha da faca não tem botão de envio para a agência: ela só recebe e baixa o arquivo."
   - id: AGE-02-Q3
@@ -71,9 +71,9 @@ perguntas:
     enunciado: "Como você envia a arte da embalagem?"
     opcoes:
       a: "Clica em **Escolher arquivo**; o arquivo sobe sozinho"
-      b: "Escolhe o arquivo e clica em **Salvar observações**"
-      c: "Escolhe o arquivo e clica em **Enviar**"
-      d: "Cola o texto da arte no cartão Entregáveis"
+      b: "Escolhe o arquivo e clica em **Salvar observações** para enviar"
+      c: "Escolhe o arquivo e clica em **Enviar** na linha da arte"
+      d: "Cola o texto da arte no cartão Entregáveis e salva"
     correta: [a]
     explicacao: "Na linha **Arte da embalagem**, o envio é automático ao escolher o arquivo: não existe botão de enviar. A linha passa a mostrar o nome, a versão (v1) e a data. Se for foto, use **Tirar ou escolher foto**."
   - id: AGE-02-Q5
@@ -83,10 +83,10 @@ perguntas:
     cena: 6
     enunciado: "O briefing está **Pronta**. Você clica em **Excluir** na arte atual e confirma. O que acontece?"
     opcoes:
-      a: "A arte volta para a v1 e o briefing continua Pronta"
+      a: "A arte volta para a versão anterior e o briefing continua Pronta"
       b: "O briefing volta a Em preparação e a arte volta a Falta enviar"
-      c: "A arte passa a ser a v2 automaticamente"
-      d: "O briefing é cancelado"
+      c: "A arte vira a v2 e o briefing fica Pronta com ela"
+      d: "O briefing é cancelado e a Wellmix é avisada"
     correta: [b]
     explicacao: "**Excluir** apaga o arquivo atual: o item volta a Falta enviar e, se o briefing estava Pronta, volta a Em preparação. Para só ajustar a arte, envie de novo: cada envio vira uma versão nova (v2, v3)."
   - id: AGE-02-Q6
@@ -96,10 +96,10 @@ perguntas:
     cena: 7
     enunciado: "A gráfica precisa de uma prova de cor antes da impressão. Onde você deixa esse recado?"
     opcoes:
-      a: "No cartão **Observações (gráfica, fornecedor)**, com **Salvar observações**"
-      b: "No item **Arquivos para a gráfica**, no nome do arquivo"
-      c: "Em uma nova versão da **Arte da embalagem**"
-      d: "No item **Foto da embalagem física**"
+      a: "Em **Observações (gráfica, fornecedor)**, e **Salvar observações**"
+      b: "No item **Arquivos para a gráfica**, no nome do arquivo enviado"
+      c: "Em uma nova versão da **Arte da embalagem**, dentro do PDF"
+      d: "No item **Foto da embalagem física**, como legenda da foto"
     correta: [a]
     explicacao: "Recados para a gráfica e para o fornecedor, como a prova de cor, vão em **Observações (gráfica, fornecedor)**. Depois de digitar, clique em **Salvar observações**."
   - id: AGE-02-Q7
@@ -109,9 +109,9 @@ perguntas:
     cena: 8
     enunciado: "Você enviou a arte, os arquivos para a gráfica e a foto, mas o briefing continua **Em preparação**. O que provavelmente falta?"
     opcoes:
-      a: "A Wellmix aprovar a arte"
-      b: "Salvar as observações da gráfica"
-      c: "Enviar um segundo arquivo da foto"
+      a: "A Wellmix aprovar a arte do briefing"
+      b: "Salvar as observações da gráfica no briefing"
+      c: "Enviar um segundo arquivo na Foto da embalagem física"
       d: "O fornecedor escolhido enviar a faca"
     correta: [d]
     explicacao: "O briefing só fica **Pronta** com a faca e a arte enviadas. Arquivos para a gráfica e foto são opcionais e não seguram nada. Quando a faca chega, o selo muda e a Wellmix recebe \"Embalagem pronta\"."
@@ -122,9 +122,9 @@ perguntas:
     cena: 9
     enunciado: "O fornecedor já aprovou a arte no pedido e você tenta enviar outra. O portal diz: \"A arte já foi aprovada no pedido: para trocar, a Wellmix reabre o item pelo pedido.\" O que você faz?"
     opcoes:
-      a: "Exclui a arte e envia de novo pelo briefing"
+      a: "Exclui a arte e envia de novo pelo briefing mesmo assim"
       b: "Pede à Wellmix que reabra o item pelo pedido"
-      c: "Envia o arquivo com outro nome"
+      c: "Envia o mesmo arquivo com outro nome"
       d: "Espera o cliente pagar o sinal"
     correta: [b]
     explicacao: "Arte aprovada fica travada. Só a Wellmix reabre o item pelo pedido. Antes da aprovação, uma arte nova faz o fornecedor aprovar de novo."

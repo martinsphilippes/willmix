@@ -1,0 +1,137 @@
+episodio: WCA-03
+titulo: "Produtos: a ficha, as fotos e as variações"
+serie: WCA
+papel: cadastro
+duracao: "5:30"
+idiomas: [pt]
+capitulos:
+  - id: WCA-03-C1
+    titulo: "Achar e cadastrar um produto"
+    inicio: "0:00"
+    fim: "1:15"
+    cenas: [1, 4]
+    resumo: "Abrir Cadastros → Produtos, ler a lista, buscar e cadastrar um produto novo à mão."
+  - id: WCA-03-C2
+    titulo: "Completar a ficha e os fornecedores"
+    inicio: "1:15"
+    fim: "2:40"
+    cenas: [5, 7]
+    resumo: "Abrir a ficha, salvar os cinco cartões, tirar produtos de uso e escolher o fornecedor principal."
+  - id: WCA-03-C3
+    titulo: "Completar a ficha mestre e as fotos"
+    inicio: "2:40"
+    fim: "4:05"
+    cenas: [8, 10]
+    resumo: "Ler o que falta na ficha mestre, enviar as cinco fotos e escolher a foto principal."
+  - id: WCA-03-C4
+    titulo: "Criar variações e conferir a vitrine"
+    inicio: "4:05"
+    fim: "5:30"
+    cenas: [11, 13]
+    resumo: "Criar variações com preço e pedido mínimo próprios e conferir o produto na vitrine."
+perguntas:
+  - id: WCA-03-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WCA-03-C1
+    cena: 3
+    enunciado: "Na lista de Produtos, que coluna mostra se a ficha de compra do produto está completa?"
+    opcoes:
+      a: "Linhas"
+      b: "MOQ"
+      c: "Ficha mestre"
+      d: "Origem"
+    correta: [c]
+    explicacao: "A coluna **Ficha mestre** mostra 'Completa', 'Parcial' ou '—'. Ao lado dela a lista traz foto, nome, SKU, linha, preço, pedido mínimo e fornecedor."
+  - id: WCA-03-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WCA-03-C2
+    cena: 5
+    enunciado: "Qual botão da ficha do produto salva juntos os cinco cartões Identificação, Fornecedor e negociação, Produto, Embalagem e Observações?"
+    opcoes:
+      a: "Salvar ficha mestre"
+      b: "Salvar ficha"
+      c: "Incluir"
+      d: "Salvar código"
+    correta: [b]
+    explicacao: "Os cinco cartões do alto se salvam juntos em **Salvar ficha**. **Salvar ficha mestre** é outro botão, da Ficha de compra do produto mais abaixo."
+  - id: WCA-03-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: WCA-03-C3
+    cena: 9
+    enunciado: "Marque as fotos que a ficha mestre pede no cartão Fotos."
+    opcoes:
+      a: "Balança (peso)"
+      b: "Medida: com escala"
+      c: "Foto do cliente usando o produto"
+      d: "Original (evidência)"
+      e: "Foto da caixa aberta no armazém"
+    correta: [a, b, d]
+    explicacao: "São cinco: Balança (peso), Medida: com escala, Medida: lado, Outro ângulo e Original (evidência). Com as cinco enviadas, os pedidos do produto não pedem as fotos de novo."
+  - id: WCA-03-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: WCA-03-C3
+    cena: 8
+    enunciado: "A ficha mestre mostra 'Faltam: …' com vários itens. Como você chega ao campo que falta?"
+    opcoes:
+      a: "Abre a Vitrine do cliente e procura o produto"
+      b: "Clica em **Exportar (CSV)** e confere a planilha"
+      c: "Espera o fornecedor responder a cotação"
+      d: "Clica no item em 'Faltam: …': a página leva até o campo"
+    correta: [d]
+    explicacao: "Cada item do aviso é clicável e leva ao campo. Ao completar, clique em **Salvar ficha mestre**. Preço, MOQ, caixa, medidas, cor e material são o mesmo dado dos cartões do alto."
+  - id: WCA-03-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: WCA-03-C4
+    cena: 11
+    enunciado: "Você vai criar a variação 'Tampa de bambu' de um produto. Coloque os passos na ordem."
+    opcoes:
+      a: "Clicar em **Adicionar variação** para abrir o formulário"
+      b: "Clicar no botão **Adicionar variação** do formulário"
+      c: "Descer até o cartão **Variações** da ficha"
+      d: "Preencher nome, preço, moeda, pedido mínimo e caixa"
+    correta: [c, a, d, b]
+    explicacao: "Desça até **Variações**, abra o formulário, preencha os dados e confirme no botão do formulário. A de menor preço vira a Referência."
+  - id: WCA-03-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-03-C4
+    cena: 11
+    enunciado: "Um produto tem duas variações ativas com preços diferentes. Qual vira a Referência e o que a lista de Produtos passa a mostrar?"
+    opcoes:
+      a: "A de menor preço; o selo de variações e o preço 'a partir de'"
+      b: "A cadastrada primeiro; só o selo de variações"
+      c: "A de maior preço; o preço mais alto"
+      d: "Nenhuma até a Wellmix escolher; o preço em branco"
+    correta: [a]
+    explicacao: "A variação de menor preço é a **Referência**, e o produto mostra os valores dela. Na lista aparece o selo de variações e o preço 'a partir de'. Quem pede ou compra precisa escolher a variação."
+  - id: WCA-03-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-03-C2
+    cena: 7
+    enunciado: "O Shenzhen Supplier A respondeu a cotação da jarra e apareceu em 'Fornecedores deste produto'. Como você o deixa como fornecedor principal?"
+    opcoes:
+      a: "Clica em **Incluir**"
+      b: "Clica em **Cadastrar novo fornecedor**"
+      c: "Clica em **Tornar principal**, na linha dele"
+      d: "Clica em **Retirar** nos outros fornecedores"
+    correta: [c]
+    explicacao: "Quem responde a cotação entra sozinho em 'Fornecedores deste produto'. Para escolher o principal, use **Tornar principal**. **Incluir** serve para adicionar à mão um fornecedor já cadastrado."
+  - id: WCA-03-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-03-C2
+    cena: 6
+    enunciado: "Você quer tirar de uso três produtos descontinuados sem perder os pedidos e o histórico deles. O que faz?"
+    opcoes:
+      a: "Abre cada ficha e apaga os dados"
+      b: "Marca os três na lista e clica em **Excluir selecionados**; dá para restaurar em Ver excluídos"
+      c: "Pede ao administrador o **Excluir definitivamente**, o único jeito"
+      d: "Exporta a lista em CSV e remove as linhas"
+    correta: [b]
+    explicacao: "**Excluir selecionados** tira o produto do cadastro, da vitrine e da nova solicitação, mas pedidos e histórico continuam. Em **Ver excluídos** você marca e usa **Restaurar selecionados**."

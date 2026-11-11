@@ -44,10 +44,10 @@ perguntas:
     cena: 3
     enunciado: "O briefing mostra: \"Selo de certificação: aguardando a certificadora. Deixe o espaço do selo na arte.\" O que você faz?"
     opcoes:
-      a: "Espera o selo chegar para começar a arte"
+      a: "Espera o selo chegar para só então começar a arte"
       b: "Deixa o espaço do selo na arte e segue com ela"
-      c: "Clica em **Enviar para assinatura**"
-      d: "Pede o selo à Wellmix pelo botão de conversa"
+      c: "Clica em **Enviar para assinatura** para adiantar o pedido"
+      d: "Pede o selo à Wellmix pelo botão de conversa e espera"
     correta: [b]
     explicacao: "O selo corre ao lado da arte. Enquanto ele não chega, deixe o espaço reservado; quando chegar, o aviso muda e pede para baixar o selo no pedido, aplicar na arte e enviar a arte com o selo."
   - id: AGE-05-Q3
@@ -57,10 +57,10 @@ perguntas:
     cena: 5
     enunciado: "Como você baixa o selo enviado pela certificadora?"
     opcoes:
-      a: "No cartão **Certificação** do pedido, pelo link **Arquivo** da linha Selo"
-      b: "Em Pedidos → Embalagens, no cartão Entregáveis"
+      a: "No cartão **Certificação**, pelo link **Arquivo** da linha Selo"
+      b: "Em Pedidos → Embalagens, no cartão Entregáveis do briefing"
       c: "Pelo botão **Escolher arquivo** da linha Selo aplicado na arte"
-      d: "Pelo aviso Sua vez, com o botão Resolver"
+      d: "Pelo aviso Sua vez, com o botão Resolver, no sino"
     correta: [a]
     explicacao: "Na linha **Selo**, que já está Concluído e é feita pela OCP, o link **Arquivo** baixa o selo. A linha de baixo, **Selo aplicado na arte**, é a sua."
   - id: AGE-05-Q4
@@ -83,10 +83,10 @@ perguntas:
     cena: 6
     enunciado: "Você escolheu um arquivo de arte grande na linha **Selo aplicado na arte** e clicou em **Enviar** na hora. O portal respondeu \"Envie o arquivo.\" O que fazer?"
     opcoes:
-      a: "Esperar aparecer \"Arquivo pronto…\" e só então clicar em **Enviar**"
-      b: "Pedir à Wellmix que envie a arte no seu lugar"
+      a: "Esperar aparecer \"Arquivo pronto…\" e então clicar em **Enviar**"
+      b: "Pedir à Wellmix que envie a arte no seu lugar, pela conversa"
       c: "Trocar o arquivo por um menor e clicar em **Enviar** na hora"
-      d: "Clicar em **Enviar de novo**"
+      d: "Clicar em **Enviar de novo**, que aparece em toda linha"
     correta: [a]
     explicacao: "Em arquivo grande, o envio só funciona depois que o arquivo termina de subir: espere o aviso \"Arquivo pronto: {nome} ({tamanho}). Agora clique no botão para enviar.\" e então clique em **Enviar**."
   - id: AGE-05-Q6
@@ -109,10 +109,10 @@ perguntas:
     cena: 8
     enunciado: "Na etapa **Arte e embalagem**, o botão **Enviar para assinatura** não aparece. Qual destes motivos explica isso?"
     opcoes:
-      a: "Falta a arte da embalagem ou o selo aplicado na arte"
-      b: "A Wellmix ainda não assinou o documento"
-      c: "O fornecedor ainda não assinou o documento"
-      d: "A certificadora ainda não assinou o documento"
+      a: "Falta a arte da embalagem ou o selo aplicado"
+      b: "A Wellmix ainda não assinou o documento do pedido"
+      c: "O fornecedor ainda não assinou o documento do pedido"
+      d: "A certificadora ainda não assinou o documento do pedido"
     correta: [a]
     explicacao: "Sem a arte ou sem o selo aplicado, o botão não aparece, e o portal avisa o que falta (por exemplo, \"Aguardando o selo da certificadora aplicado na arte\"). As assinaturas vêm depois do envio."
   - id: AGE-05-Q8

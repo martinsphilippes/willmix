@@ -58,10 +58,10 @@ perguntas:
     cena: 5
     enunciado: "Na etapa **Arte e embalagem** do pedido, o item \"Aprovação da arte pelo fornecedor\" está **Pendente**. O que isso quer dizer?"
     opcoes:
-      a: "Você precisa reenviar a arte agora"
-      b: "A Wellmix ainda vai aprovar a arte"
-      c: "O fornecedor ainda vai conferir a arte e aprovar ou reprovar"
-      d: "O briefing foi cancelado"
+      a: "Você precisa reenviar a arte agora, antes do prazo"
+      b: "A Wellmix ainda vai conferir e aprovar a arte"
+      c: "O fornecedor ainda vai conferir a arte"
+      d: "O briefing foi cancelado e não há mais o que fazer"
     correta: [c]
     explicacao: "Com o pedido criado, a arte do briefing já conta como enviada, e agora o fornecedor confere. Você vê a etapa, mas só os itens da sua parte pedem ação."
   - id: AGE-04-Q4
@@ -97,10 +97,10 @@ perguntas:
     cena: 7
     enunciado: "Você reenviou a arte (v3) e o item voltou a **Concluído**. \"Aprovação da arte pelo fornecedor\" está **Pendente** de novo. O que você faz?"
     opcoes:
-      a: "Exclui a v2 para o fornecedor ver só a v3"
-      b: "Pede à Wellmix que reabra o item"
-      c: "Aguarda: o fornecedor foi avisado e aprova de novo"
-      d: "Reenvia a v3 para ele receber o aviso"
+      a: "Exclui a v2 para o fornecedor ver só a v3 do item"
+      b: "Pede à Wellmix que reabra o item pelo pedido"
+      c: "Aguarda: o fornecedor já foi avisado"
+      d: "Reenvia a v3 para ele receber o aviso de novo"
     correta: [c]
     explicacao: "O reenvio já avisa o fornecedor, e a aprovação volta a ficar pendente. Não há nada a fazer além de esperar a nova decisão. A Wellmix só reabre o item quando a arte já foi aprovada."
   - id: AGE-04-Q7
@@ -110,9 +110,9 @@ perguntas:
     cena: 7
     enunciado: "Com a arte reprovada, você tenta enviar o documento do pedido para assinatura. O que o portal mostra?"
     opcoes:
-      a: "O documento segue e o fornecedor assina assim mesmo"
-      b: "A Wellmix assina primeiro para liberar"
-      c: "O documento vai, mas sem a arte"
+      a: "O documento segue e o fornecedor assina assim mesmo, com a arte antiga"
+      b: "A Wellmix assina primeiro e libera o envio ao fornecedor"
+      c: "O documento vai para assinatura, mas sem a arte da embalagem"
       d: "\"Aguardando a arte da embalagem: o documento só vai para assinatura depois dela.\""
     correta: [d]
     explicacao: "Enquanto a arte está reprovada, o documento do pedido não pode ir para assinatura. Reenvie a arte primeiro; a dica some quando ela volta a Concluído."

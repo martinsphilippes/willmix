@@ -1,0 +1,131 @@
+episodio: DES-02
+titulo: "Classificação fiscal (NCM) do produto"
+serie: DES
+papel: despachante
+duracao: "4:00"
+idiomas: [pt]
+capitulos:
+  - id: DES-02-C1
+    titulo: "Abrir a pendência e ler o produto"
+    inicio: "0:00"
+    fim: "1:40"
+    cenas: [1, 4]
+    resumo: "Entenda por que o NCM importa, abra **Classificar NCM** pela pendência e leia o produto que você vai classificar."
+  - id: DES-02-C2
+    titulo: "Confirmar o NCM e abrir a classificação pelo pedido"
+    inicio: "1:40"
+    fim: "2:50"
+    cenas: [5, 6]
+    resumo: "Confirme o NCM na tela da solicitação e saiba chegar à classificação do produto a partir do pedido."
+  - id: DES-02-C3
+    titulo: "Validar a candidata e registrar a fonte"
+    inicio: "2:50"
+    fim: "4:00"
+    cenas: [7, 9]
+    resumo: "Valide ou rejeite as candidatas, lembrando que a sugestão nunca vale sozinha, e adicione a sua com a fonte."
+perguntas:
+  - id: DES-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: DES-02-C1
+    cena: 1
+    enunciado: "Um produto está sem NCM confirmado. O que acontece com o valor ao cliente?"
+    opcoes:
+      a: "O valor sai sem II e sem IPI (0 %)"
+      b: "A proposta fica bloqueada até alguém classificar"
+      c: "O portal usa o NCM do fornecedor"
+      d: "O valor sobe com um imposto estimado"
+    correta: [a]
+    explicacao: "O aviso da tela diz: \"Sem NCM confirmado, II e IPI ficam em 0% no valor ao cliente.\" Por isso a classificação é importante, e quem classifica é você."
+  - id: DES-02-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: DES-02-C1
+    cena: 3
+    enunciado: "Chegou um produto novo sem NCM. Que pendência aparece em Minhas pendências?"
+    opcoes:
+      a: "Desembaraço"
+      b: "Numerário"
+      c: "Classificar NCM"
+      d: "Selo na arte"
+    correta: [c]
+    explicacao: "A pendência **Classificar NCM** (\"Solicitação nº N · confira as sugestões e confirme o NCM\") aparece junto com um aviso no sino. Clique em **Abrir** para ir à tela de classificação."
+  - id: DES-02-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: DES-02-C1
+    cena: 4
+    enunciado: "Na tela **Classificar NCM**, o que você encontra no cartão **Produto**, à direita?"
+    opcoes:
+      a: "Nome, material e cor do produto"
+      b: "O nome do cliente"
+      c: "Descrição e especificação do produto"
+      d: "O preço da cotação"
+      e: "A quantidade pedida"
+    correta: [a, c]
+    explicacao: "O cartão Produto traz os dados para classificar: nome, categoria, material, cor, descrição e especificação. Você não vê cliente, quantidade, fornecedor nem preço."
+  - id: DES-02-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: DES-02-C2
+    cena: 5
+    enunciado: "Você confirmou o NCM na tela da solicitação e percebeu que digitou o código errado. Qual botão usa para corrigir?"
+    opcoes:
+      a: "Alterar NCM"
+      b: "Sugerir com IA"
+      c: "Rejeitar"
+      d: "Validar"
+    correta: [a]
+    explicacao: "Depois de **Confirmar**, o bloco \"NCM confirmado\" mostra o código e o botão **Alterar NCM**, que serve para corrigir. **Rejeitar** e **Validar** são da tela do produto, para as candidatas."
+  - id: DES-02-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: DES-02-C2
+    cena: 6
+    enunciado: "A solicitação já virou pedido. Como você chega à classificação do produto?"
+    opcoes:
+      a: "Pelo menu Pedidos → Embalagens"
+      b: "No pedido, clicando no link de **Classificação fiscal (NCM)** do Resumo do pedido"
+      c: "Na etapa Desembaraço, no item Documentos aduaneiros"
+      d: "Reabrindo a pendência Classificar NCM da solicitação"
+    correta: [b]
+    explicacao: "No **Resumo do pedido**, o link de **Classificação fiscal (NCM)** (por exemplo, \"Não classificado\") abre a tela do produto. A tela Classificar NCM da solicitação fecha quando ela vira pedido: \"Esta solicitação já virou pedido ou foi encerrada\"."
+  - id: DES-02-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: DES-02-C3
+    cena: 7
+    enunciado: "A tela do produto mostra a candidata \"7013.37\" com o selo **Sugerida**. Um colega diz que, como o portal sugeriu, o NCM já vale. O que você responde?"
+    opcoes:
+      a: "Vale, porque a origem é Heurística (palavras-chave)"
+      b: "Só vale depois que uma pessoa clicar em **Validar**"
+      c: "Vale depois de 24 horas sem ninguém rejeitar"
+      d: "Vale se a Wellmix abrir o pedido"
+    correta: [b]
+    explicacao: "A sugestão nunca vale sozinha: precisa de uma pessoa clicando em **Validar**. Aí o topo mostra \"NCM validado\", com quem validou e quando. Só uma classificação validada vale por produto; validar outra substitui a atual."
+  - id: DES-02-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: DES-02-C3
+    cena: 7
+    enunciado: "Uma candidata está errada para o produto e você quer que ninguém a sugira de novo sem motivo. O que faz?"
+    opcoes:
+      a: "Clica em **Validar** e depois em **Alterar NCM**"
+      b: "Ignora a candidata, ela some sozinha"
+      c: "Clica em **Rejeitar** e escreve o motivo"
+      d: "Valida outra candidata, que apaga todas as demais"
+    correta: [c]
+    explicacao: "**Rejeitar** guarda o motivo (campo opcional), para ninguém repetir o erro. Validar outra candidata substitui a classificação validada, mas não rejeita nem apaga as demais."
+  - id: DES-02-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: DES-02-C3
+    cena: 8
+    enunciado: "Nenhuma sugestão serve, mas você conhece o código certo e a fonte (a tabela TEC). O que faz na tela do produto?"
+    opcoes:
+      a: "Clica em **Validar** sem candidata"
+      b: "Preenche **Adicionar candidata** com NCM, descrição e fonte e depois valida"
+      c: "Espera a IA sugerir o código certo"
+      d: "Pede à Wellmix que digite o código"
+    correta: [b]
+    explicacao: "Em **Adicionar candidata**, informe o NCM, a descrição, as alíquotas (se souber) e a fonte, e clique em **+ Adicionar candidata**. Ela entra como Sugerida, com fonte Despachante, e você valida depois. Sempre registre a fonte."

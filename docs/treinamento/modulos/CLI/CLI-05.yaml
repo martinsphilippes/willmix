@@ -1,0 +1,131 @@
+episodio: CLI-05
+titulo: "Receber a carga e avaliar a compra"
+serie: CLI
+papel: cliente
+duracao: "3:30"
+idiomas: [pt]
+capitulos:
+  - id: CLI-05-C1
+    titulo: "Abrir a pendência da entrega"
+    inicio: "0:00"
+    fim: "0:55"
+    cenas: [1, 3]
+    resumo: "Quando a carga chega, o pedido entra na etapa Entrega e a vez é sua: o sino avisa e a pendência aparece."
+  - id: CLI-05-C2
+    titulo: "Conferir a carga e confirmar o recebimento"
+    inicio: "0:55"
+    fim: "1:50"
+    cenas: [4, 5]
+    resumo: "Confira a carga, clique em Confirmar e o pedido é encerrado."
+  - id: CLI-05-C3
+    titulo: "Avaliar a compra"
+    inicio: "1:50"
+    fim: "3:30"
+    cenas: [6, 9]
+    resumo: "No cartão Pós-venda, dê a nota, conte como foi e clique em Enviar avaliação."
+perguntas:
+  - id: CLI-05-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: CLI-05-C1
+    cena: 3
+    enunciado: "A carga chegou. Qual linha de **Pendências** leva você à confirmação do recebimento?"
+    opcoes:
+      a: "Aprovar proposta: Jarra de vidro 1,5 L"
+      b: "Pedido #1: Entrega"
+      c: "Avalie a compra: pedido #1"
+      d: "Responder mensagem"
+    correta: [b]
+    explicacao: "Na etapa Entrega, a pendência \"Pedido #N: Entrega\" mostra \"Recebimento confirmado\" e o prazo. No sino, o aviso equivalente é \"Entrega precisa de você\", com **Resolver**."
+  - id: CLI-05-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: CLI-05-C2
+    cena: 5
+    enunciado: "Na etapa **Entrega**, qual botão confirma que você recebeu a carga?"
+    opcoes:
+      a: "**Confirmar**"
+      b: "**Enviar avaliação**"
+      c: "**Comprar de novo**"
+      d: "**Conversar com a Wellmix**"
+    correta: [a]
+    explicacao: "O botão vermelho **Confirmar**, ao lado de \"Recebimento confirmado\", registra o recebimento."
+  - id: CLI-05-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: CLI-05-C2
+    cena: 5
+    enunciado: "João conferiu a carga e clicou em **Confirmar**. O que acontece com o pedido?"
+    opcoes:
+      a: "Continua em Entrega até a Wellmix aprovar"
+      b: "Volta para a etapa Transporte"
+      c: "Abre automaticamente uma nova solicitação"
+      d: "É encerrado: todas as etapas ficam concluídas e aparece \"Pedido encerrado\""
+    correta: [d]
+    explicacao: "Com a confirmação, o pedido é encerrado e a tabela mostra as nove etapas como Concluída. Por isso, confira a carga antes de clicar."
+  - id: CLI-05-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: CLI-05-C3
+    cena: 6
+    enunciado: "O pedido foi encerrado. Por onde chega o convite para avaliar a compra?"
+    opcoes:
+      a: "Por e-mail"
+      b: "Por WhatsApp"
+      c: "No sino e em Pendências (\"Avalie a compra: pedido #N\")"
+      d: "Só se João abrir Histórico"
+    correta: [c]
+    explicacao: "O convite chega no sino (\"como foi a sua compra?\") e em Pendências, tipo Pós-venda. E-mail e WhatsApp não avisam."
+  - id: CLI-05-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: CLI-05-C3
+    cena: 7
+    enunciado: "Coloque na ordem o caminho do cliente quando a carga chega."
+    opcoes:
+      a: "Abrir a pendência \"Pedido #N: Entrega\""
+      b: "Conferir a carga"
+      c: "Clicar em **Confirmar**"
+      d: "Abrir \"Avalie a compra\""
+      e: "Clicar em **Enviar avaliação**"
+    correta: [a, b, c, d, e]
+    explicacao: "Primeiro se confirma o recebimento, e o pedido é encerrado. Só então o pós-venda é aberto, e a avaliação termina em **Enviar avaliação**."
+  - id: CLI-05-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-05-C1
+    cena: 3
+    enunciado: "O pedido de João ainda está em Transporte e ele não vê o botão **Confirmar**. Por quê?"
+    opcoes:
+      a: "A etapa Entrega só abre quando o Transporte termina"
+      b: "O botão só aparece depois de avaliar a compra"
+      c: "O portal tem um erro e é preciso sair e entrar"
+      d: "Só a Wellmix pode ver o botão"
+    correta: [a]
+    explicacao: "Enquanto a etapa Entrega está Pendente, ainda não é a sua vez. Quando o Transporte termina, a Entrega abre e o sino e Pendências avisam."
+  - id: CLI-05-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-05-C3
+    cena: 7
+    enunciado: "A compra teve um problema de prazo e João quer que a Wellmix saiba. Onde escreve?"
+    opcoes:
+      a: "No campo Sugestões"
+      b: "No campo \"Houve problemas? (produto, prazo, embalagem, transporte)\""
+      c: "Em Observação, ao confirmar a entrega"
+      d: "Em Notificações"
+    correta: [b]
+    explicacao: "Com texto em \"Houve problemas?\", a Wellmix recebe o aviso com destaque de atenção. Sem problema, o aviso sai como informativo."
+  - id: CLI-05-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-05-C3
+    cena: 7
+    enunciado: "João marcou só a Nota da compra 5 e deixou todos os textos em branco. Ele pode clicar em **Enviar avaliação**?"
+    opcoes:
+      a: "Não: todos os campos são obrigatórios"
+      b: "Não: falta marcar o Interesse em nova compra"
+      c: "Sim: só a nota é obrigatória"
+      d: "Sim, mas só depois que a Wellmix liberar o cartão"
+    correta: [c]
+    explicacao: "Só a nota (1 a 5) é obrigatória. Interesse em nova compra e os campos de texto são opcionais. Depois do envio, o cartão passa a Respondido."

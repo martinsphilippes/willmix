@@ -1,0 +1,136 @@
+episodio: CLI-06
+titulo: "Comprar de novo, pedir nova proposta e cancelar"
+serie: CLI
+papel: cliente
+duracao: "4:30"
+idiomas: [pt]
+capitulos:
+  - id: CLI-06-C1
+    titulo: "Achar o cartão Comprar de novo"
+    inicio: "0:00"
+    fim: "1:00"
+    cenas: [1, 3]
+    resumo: "O cartão Comprar de novo / Nova proposta está no pedido e tem botões na linha do produto, no Histórico."
+  - id: CLI-06-C2
+    titulo: "Repetir a compra ou renegociar"
+    inicio: "1:00"
+    fim: "2:10"
+    cenas: [4, 5]
+    resumo: "Comprar de novo copia a especificação com nova quantidade; Quero nova proposta pede à Wellmix outro preço ou prazo."
+  - id: CLI-06-C3
+    titulo: "Excluir antes de virar pedido"
+    inicio: "2:10"
+    fim: "3:20"
+    cenas: [6, 7]
+    resumo: "Antes de virar pedido, exclua a solicitação pela lixeira em Orçamentos; nada é apagado de verdade."
+  - id: CLI-06-C4
+    titulo: "Cancelar o pedido até a produção"
+    inicio: "3:20"
+    fim: "4:30"
+    cenas: [8, 10]
+    resumo: "Depois de virar pedido, peça o cancelamento em Solicitar cancelamento; a Wellmix aceita ou recusa."
+perguntas:
+  - id: CLI-06-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: CLI-06-C1
+    cena: 3
+    enunciado: "Além da tela do pedido, onde há botões que levam ao cartão **Comprar de novo / Nova proposta**?"
+    opcoes:
+      a: "No Histórico, na linha do produto"
+      b: "Em Explorar, no cartão do produto"
+      c: "Em Notificações"
+      d: "Em Marketing"
+    correta: [a]
+    explicacao: "No Histórico, a coluna \"Último pedido\" traz **Comprar de novo** e **Nova proposta**. Os dois botões levam ao mesmo cartão do pedido."
+  - id: CLI-06-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: CLI-06-C2
+    cena: 4
+    enunciado: "João quer a mesma jarra, com a mesma especificação, só mudando a quantidade. Qual botão do cartão usa?"
+    opcoes:
+      a: "**Quero nova proposta**"
+      b: "**Solicitar cancelamento**"
+      c: "**Excluir solicitação**"
+      d: "**Comprar de novo**"
+    correta: [d]
+    explicacao: "**Comprar de novo** mantém a especificação e você só define a nova quantidade (nunca abaixo do pedido mínimo)."
+  - id: CLI-06-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: CLI-06-C2
+    cena: 4
+    enunciado: "Depois de clicar em **Comprar de novo**, o que nasce?"
+    opcoes:
+      a: "Um pedido novo, já aprovado e pago"
+      b: "Uma solicitação Solicitado, já preenchida, com o selo Recompra e o link para o pedido de origem"
+      c: "Uma proposta pronta para aprovar"
+      d: "Nada: é preciso preencher o formulário de Nova solicitação"
+    correta: [b]
+    explicacao: "Nasce uma solicitação já preenchida, ligada ao pedido de origem. Daí em diante segue o caminho de sempre: cotação, proposta e sinal."
+  - id: CLI-06-Q4
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-06-C2
+    cena: 5
+    enunciado: "O pedido da Jarra foi entregue, mas João acha o preço alto e quer que a Wellmix busque outro preço ou outro prazo. O que faz?"
+    opcoes:
+      a: "Clica em **Comprar de novo**, que renegocia sozinho"
+      b: "Clica em **Quero nova proposta** no cartão do pedido"
+      c: "Exclui o pedido e cria outro do zero"
+      d: "Clica em **Solicitar cancelamento**"
+    correta: [b]
+    explicacao: "**Quero nova proposta** é para renegociar: a Wellmix busca outro preço, prazo ou condições. A solicitação nasce igual, com o selo Nova proposta."
+  - id: CLI-06-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: CLI-06-C3
+    cena: 7
+    enunciado: "João exclui uma solicitação Solicitado pela lixeira. O que acontece com ela?"
+    opcoes:
+      a: "É apagada para sempre e não dá para ver mais"
+      b: "Vira pedido cancelado, com acerto de sinal"
+      c: "Sai da lista e fica em \"Ver canceladas e excluídas\", com a situação Excluída"
+      d: "Continua na lista, com um aviso vermelho"
+    correta: [c]
+    explicacao: "Nada é apagado de verdade. A solicitação sai da lista e as cotações em aberto são encerradas; ela fica em \"Ver canceladas e excluídas\"."
+  - id: CLI-06-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-06-C3
+    cena: 7
+    enunciado: "João tenta excluir uma solicitação e aparece \"Já virou pedido: não pode ser excluída aqui (o pedido continua).\" O que faz?"
+    opcoes:
+      a: "Tenta excluir de novo até conseguir"
+      b: "Pede ao fornecedor para cancelar"
+      c: "Não faz nada: o pedido não pode mais ser desfeito"
+      d: "Abre o pedido e usa **Solicitar cancelamento**"
+    correta: [d]
+    explicacao: "Depois que vira pedido, a exclusão não vale mais. O caminho é o cartão **Solicitar cancelamento**, no pedido, que só vale até o produto entrar em produção."
+  - id: CLI-06-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-06-C4
+    cena: 8
+    enunciado: "João pediu o cancelamento de um pedido e viu \"O produto já entrou em produção: o cancelamento só pode ser tratado diretamente com a Wellmix.\" O que faz?"
+    opcoes:
+      a: "Insiste no botão até o portal aceitar"
+      b: "Conversa com a Wellmix pelo botão de conversa"
+      c: "Espera o pedido ser entregue e exclui"
+      d: "Cria uma nova solicitação para anular a anterior"
+    correta: [b]
+    explicacao: "Passado o ponto de produção, o portal não cancela mais. O cancelamento é tratado direto com a Wellmix, pelo botão **Conversar com a Wellmix**."
+  - id: CLI-06-Q8
+    tipo: ordem
+    nivel: 2
+    capitulo: CLI-06-C4
+    cena: 8
+    enunciado: "Coloque na ordem os passos para pedir o cancelamento de um pedido."
+    opcoes:
+      a: "Abrir o pedido e rolar até o cartão **Solicitar cancelamento**"
+      b: "Escrever o motivo em \"Por que deseja cancelar?\""
+      c: "Clicar em **Solicitar cancelamento**"
+      d: "Aguardar a análise da Wellmix, que aceita ou recusa"
+    correta: [a, b, c, d]
+    explicacao: "Só o administrador da Wellmix cancela ou recusa. Se aceitar, o pedido fica Cancelado; se recusar, a resposta aparece e você pode pedir de novo."

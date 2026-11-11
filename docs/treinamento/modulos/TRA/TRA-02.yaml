@@ -1,0 +1,122 @@
+episodio: TRA-02
+titulo: Versão no celular
+serie: TRA
+papel: transportador
+duracao: "2:16"
+idiomas: [pt]
+capitulos:
+  - id: TRA-02-C1
+    titulo: Navegar pelo celular e abrir o pedido
+    inicio: "0:00"
+    fim: "1:14"
+    cenas: [1, 5]
+    resumo: Reconheça o alto da tela, o Menu, as tabelas que deslizam e o cartão Carga e entrega no celular.
+  - id: TRA-02-C2
+    titulo: Preencher os blocos e confirmar a entrega
+    inicio: "1:14"
+    fim: "2:16"
+    cenas: [6, 9]
+    resumo: Preencha cada bloco da etapa Transporte, confirme a entrega e use os avisos e as mensagens.
+perguntas:
+  - id: TRA-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: TRA-02-C1
+    cena: 3
+    enunciado: "No celular, qual botão abre a lista com **Pendências**, **Notificações**, **Mensagens** e **Pedidos**?"
+    opcoes:
+      a: "O sino, que mostra o número de avisos novos"
+      b: "O ícone de Mensagens, ao lado do sino"
+      c: "O logotipo da Wellmix, no alto da tela"
+      d: "O botão **Menu**, de três linhas"
+    correta: [d]
+    explicacao: "O botão **Menu** abre o painel com Pendências, Notificações, Mensagens e Pedidos. O sino mostra os avisos e o ícone de Mensagens abre a conversa."
+  - id: TRA-02-Q2
+    tipo: vf
+    nivel: 1
+    capitulo: TRA-02-C1
+    cena: 3
+    enunciado: "No celular, o seletor de idioma (PT, EN, ZH) e o botão **Sair** ficam dentro do painel do **Menu**."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [a]
+    explicacao: "Ao tocar em **Menu**, o painel mostra embaixo o seu nome, os idiomas PT, EN e ZH e o botão **Sair**."
+  - id: TRA-02-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: TRA-02-C1
+    cena: 4
+    enunciado: "A tabela de **Pendências** é mais larga que a tela e você não vê o botão **Abrir**. Como abrir o pedido sem deslizar a tabela?"
+    opcoes:
+      a: "Tocando no título em vermelho da pendência"
+      b: "Tocando no sino e depois em **Resolver**"
+      c: "Girando o celular para o lado e esperando a tabela encaixar"
+      d: "Tocando em **Conversar com a Wellmix** e pedindo o pedido"
+    correta: [a]
+    explicacao: "O título em vermelho da pendência abre o pedido, sem precisar deslizar. Deslizar a tabela para o lado também funciona: mostra as outras colunas e o botão **Abrir**."
+  - id: TRA-02-Q4
+    tipo: unica
+    nivel: 3
+    capitulo: TRA-02-C1
+    cena: 5
+    enunciado: "No cartão **Carga e entrega**, o endereço de entrega aparece cortado à direita. O que você faz?"
+    opcoes:
+      a: "Recarrega a página, porque o endereço veio com erro de carregamento"
+      b: "Entende que o endereço do cliente não foi cadastrado na Wellmix"
+      c: "Desliza a tabela do cartão para o lado e lê o endereço"
+      d: "Confirma a entrega e confere o endereço depois, com o cliente"
+    correta: [c]
+    explicacao: "Valores longos ficam cortados na tela estreita, mas não é erro: as tabelas rolam para o lado dentro da própria caixa. Se ainda ficar em dúvida, pergunte pelo botão **Conversar com a Wellmix**."
+  - id: TRA-02-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: TRA-02-C2
+    cena: 9
+    enunciado: "Coloque na ordem o trabalho no celular, da lista de pendências à entrega."
+    opcoes:
+      a: "Conferir o cartão **Carga e entrega**"
+      b: "Tocar em **Confirmar**, em **Entrega realizada**"
+      c: "Tocar no título em vermelho da pendência"
+      d: "Preencher cada bloco da etapa **Transporte** e tocar em **Enviar**"
+    correta: [c, a, d, b]
+    explicacao: "Abra o pedido pelo título, confira a carga e o endereço, preencha os blocos da etapa Transporte e só então confirme a entrega."
+  - id: TRA-02-Q6
+    tipo: unica
+    nivel: 2
+    capitulo: TRA-02-C2
+    cena: 6
+    enunciado: "Como é cada item da etapa **Transporte** no celular?"
+    opcoes:
+      a: "Uma linha de tabela que só se preenche deslizando para o lado"
+      b: "Um bloco: nome e situação em cima, campo e **Enviar** embaixo"
+      c: "Uma janela separada que abre ao tocar no nome do item"
+      d: "Um formulário único, com um só **Enviar** no fim da página"
+    correta: [b]
+    explicacao: "No celular cada item vira um bloco, com o nome e a situação em cima e o campo com o botão **Enviar** embaixo. A data abre o calendário do próprio celular."
+  - id: TRA-02-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: TRA-02-C2
+    cena: 6
+    enunciado: "Você escolhe no calendário uma data antes da chegada do navio e aparece o aviso vermelho 'A previsão de entrega não pode ser antes da previsão de chegada do navio (18/12/2026).' O que faz?"
+    opcoes:
+      a: "Escolhe uma data igual ou posterior à do navio e toca em **Enviar**"
+      b: "Toca em **Enviar** assim mesmo; o aviso é só um lembrete para você"
+      c: "Muda a data de chegada do navio no cartão **Carga e entrega**"
+      d: "Digita a data com barras para o campo aceitar"
+    correta: [a]
+    explicacao: "O aviso aparece na hora e o envio fica bloqueado até a data ser igual ou posterior à chegada do navio."
+  - id: TRA-02-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: TRA-02-C2
+    cena: 8
+    enunciado: "No meio da viagem, surge uma dúvida sobre o local de entrega. Onde perguntar à Wellmix?"
+    opcoes:
+      a: "No botão **Resolver** do aviso, dentro das Notificações do sino"
+      b: "Na tabela **Documentos**, no fim da página do pedido"
+      c: "Em **Pendências**, tocando em **Abrir** na linha do pedido"
+      d: "No ícone de Mensagens ou em **Conversar com a Wellmix**"
+    correta: [d]
+    explicacao: "Para falar com a Wellmix, toque no ícone de Mensagens ou em **Conversar com a Wellmix**. O sino só lista os avisos novos, com o botão **Resolver**."

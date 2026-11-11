@@ -1,0 +1,266 @@
+episodio: FOR-05
+titulo: "Ficha de compra"
+serie: FOR
+papel: fornecedor
+duracao: "4:30"
+idiomas: [pt, en, zh]
+capitulos:
+  - id: FOR-05-C1
+    titulo: "Abrir a ficha e ver o que falta"
+    titulo_en: "Open the sheet and see what is missing"
+    titulo_zh: "打开采购单并查看缺少什么"
+    inicio: "0:00"
+    fim: "1:30"
+    cenas: [1, 3]
+    resumo: "No pedido, na Preparação, abra a ficha de compra; ela já vem preenchida e mostra em vermelho o que falta, bloco por bloco."
+    resumo_en: "In the order, under Preparation, open the purchase sheet; it comes prefilled and shows in red what is missing, block by block."
+    resumo_zh: "在订单的“备货准备”里打开采购单；它已预填，并按区块用红色标出缺少的内容。"
+  - id: FOR-05-C2
+    titulo: "Preencher os campos com asterisco"
+    titulo_en: "Fill in the fields with an asterisk"
+    titulo_zh: "填写带星号的字段"
+    inicio: "1:30"
+    fim: "2:50"
+    cenas: [4, 4]
+    resumo: "Preencha incoterm, moeda, preço, pedido mínimo, peças por caixa, cubagem, embalagem, pesos, cor e material; o peso líquido é o comparado na inspeção."
+    resumo_en: "Fill in incoterm, currency, price, minimum order, pieces per carton, volume, packaging, weights, color and material; the net weight is the one compared at inspection."
+    resumo_zh: "填写贸易术语、币种、单价、起订量、每箱件数、体积、包装、重量、颜色和材质；净重是验货时比对的重量。"
+  - id: FOR-05-C3
+    titulo: "Enviar as cinco fotos e salvar a ficha"
+    titulo_en: "Send the five photos and save the sheet"
+    titulo_zh: "上传五张照片并保存采购单"
+    inicio: "2:50"
+    fim: "4:30"
+    cenas: [5, 6]
+    resumo: "Envie as cinco fotos, que sobem na hora, e clique em Salvar ficha; completa, o item fica concluído e a Wellmix valida."
+    resumo_en: "Send the five photos, which upload right away, and click Save sheet; when complete, the item is done and Wellmix validates it."
+    resumo_zh: "上传五张照片（立即上传），然后点击“保存采购单”；填写完整后该项即完成，Wellmix 随后核对。"
+perguntas:
+  - id: FOR-05-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-05-C1
+    cena: 2
+    enunciado: "No pedido, na etapa Preparação, a ficha de compra ainda não foi começada. Qual botão abre a ficha?"
+    opcoes:
+      a: "Salvar ficha"
+      b: "Preencher ficha de compra"
+      c: "Adicionar fotos"
+      d: "Completar ficha (faltam N)"
+    correta: [b]
+    explicacao: "Na primeira vez o botão é **Preencher ficha de compra**. **Completar ficha (faltam N)** só aparece quando você já começou e diz quantos itens faltam."
+    traducoes:
+      en:
+        enunciado: "In the order, in the Preparation step, the purchase sheet has not been started yet. Which button opens the sheet?"
+        opcoes:
+          a: "Save sheet"
+          b: "Fill in purchase sheet"
+          c: "Add photos"
+          d: "Complete sheet (N missing)"
+        explicacao: "The first time, the button is **Fill in purchase sheet**. **Complete sheet (N missing)** only appears once you have started, and it says how many items are missing."
+      zh:
+        enunciado: "在订单的“备货准备”环节里，采购单还没有开始填写。哪个按钮可以打开采购单？"
+        opcoes:
+          a: "保存采购单"
+          b: "填写采购单"
+          c: "添加照片"
+          d: "补全采购单（还缺 N 项）"
+        explicacao: "第一次的按钮是“填写采购单”。“补全采购单（还缺 N 项）”只有在您已经开始填写后才出现，并告诉您还缺几项。"
+  - id: FOR-05-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-05-C3
+    cena: 5
+    enunciado: "Qual destas fotos é uma das cinco que a ficha de compra pede?"
+    opcoes:
+      a: "Foto com régua (medida com escala)"
+      b: "Foto do produto carregado dentro do container"
+      c: "Foto do selo de certificação na caixa master"
+    correta: [a]
+    explicacao: "As cinco fotos são: balança, régua (medida com escala), medida de lado, outro ângulo e a original (evidência). Cada uma tem a sua linha no quadro **Fotos**."
+    traducoes:
+      en:
+        enunciado: "Which of these photos is one of the five the purchase sheet asks for?"
+        opcoes:
+          a: "Photo with ruler (measure with scale)"
+          b: "Photo of the product loaded inside the container"
+          c: "Photo of the certification seal on the master carton"
+        explicacao: "The five photos are: scale, ruler (measure with scale), side measurement, another angle and the original (evidence). Each has its own row in the **Photos** box."
+      zh:
+        enunciado: "以下哪张照片是采购单要求的五张照片之一？"
+        opcoes:
+          a: "带尺子的照片（带刻度测量）"
+          b: "产品装进集装箱的照片"
+          c: "外箱上认证标志的照片"
+        explicacao: "五张照片是：称重、带尺子（带刻度测量）、侧面尺寸、其他角度和原始照片（证据）。每张在“照片”区域里都有自己的一行。"
+  - id: FOR-05-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: FOR-05-C1
+    cena: 3
+    enunciado: "Quais destes blocos aparecem na tabela **Blocos da ficha** que você preenche? Marque todos os certos."
+    opcoes:
+      a: "Despachante (NCM e impostos)"
+      b: "Fornecedor"
+      c: "Caixa e embalagem"
+      d: "Descrição para e-commerce"
+      e: "Fotos"
+    correta: [b, c, e]
+    explicacao: "Para o fornecedor a ficha tem os blocos Fornecedor, Produto, Caixa e embalagem, Preço e condições e Fotos. Os blocos do despachante e do e-commerce são da Wellmix e não aparecem para você."
+    traducoes:
+      en:
+        enunciado: "Which of these blocks appear in the **Sheet blocks** table that you fill in? Select all that apply."
+        opcoes:
+          a: "Customs broker (NCM and taxes)"
+          b: "Supplier"
+          c: "Carton and packaging"
+          d: "E-commerce description"
+          e: "Photos"
+        explicacao: "For the supplier the sheet has the blocks Supplier, Product, Carton and packaging, Price and terms and Photos. The customs broker and e-commerce blocks belong to Wellmix and do not appear to you."
+      zh:
+        enunciado: "以下哪些区块会出现在您要填写的“采购单区块”表格中？请选出所有正确项。"
+        opcoes:
+          a: "报关行（NCM 和税费）"
+          b: "供应商"
+          c: "外箱和包装"
+          d: "电商描述"
+          e: "照片"
+        explicacao: "对供应商来说，采购单包含供应商、产品、外箱和包装、价格和条款以及照片这些区块。报关行和电商区块属于 Wellmix，不会显示给您。"
+  - id: FOR-05-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: FOR-05-C2
+    cena: 4
+    enunciado: "O que acontece com o **Peso líquido por peça (kg)** que você informa na ficha?"
+    opcoes:
+      a: "É o peso que o cliente vê na vitrine"
+      b: "É o peso total que entra no container"
+      c: "Vira o peso comparado na inspeção"
+    correta: [c]
+    explicacao: "O peso líquido informado será o peso comparado na inspeção, por isso meça com cuidado. Um valor errado vira divergência lá na frente."
+    traducoes:
+      en:
+        enunciado: "What happens to the **Net weight per piece (kg)** you enter in the sheet?"
+        opcoes:
+          a: "It is the weight the customer sees in the showcase"
+          b: "It is the total weight that goes into the container"
+          c: "It becomes the weight compared at inspection"
+        explicacao: "The net weight you enter will be the weight compared at inspection, so measure carefully. A wrong value becomes a divergence later on."
+      zh:
+        enunciado: "您在采购单中填写的 **每件净重（千克）** 会用在哪里？"
+        opcoes:
+          a: "它是客户在商品展示页看到的重量"
+          b: "它是装进集装箱的总重量"
+          c: "它会成为验货时比对的重量"
+        explicacao: "您填写的净重会作为验货时的比对重量，请认真称量。填错的数值之后会变成差异。"
+  - id: FOR-05-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: FOR-05-C3
+    cena: 6
+    enunciado: "Coloque na ordem os passos para preencher a ficha de compra."
+    opcoes:
+      a: "Clicar em **Salvar ficha**"
+      b: "Preencher os campos com asterisco"
+      c: "Abrir a ficha com **Preencher ficha de compra**"
+      d: "Ver o que falta no aviso e na tabela **Blocos da ficha**"
+    correta: [c, d, b, a]
+    explicacao: "Abra a ficha, veja o que falta, preencha os campos com asterisco (e as fotos) e clique em **Salvar ficha**. Pode salvar quantas vezes quiser."
+    traducoes:
+      en:
+        enunciado: "Put the steps to fill in the purchase sheet in order."
+        opcoes:
+          a: "Click **Save sheet**"
+          b: "Fill in the fields with an asterisk"
+          c: "Open the sheet with **Fill in purchase sheet**"
+          d: "See what is missing in the warning and in the **Sheet blocks** table"
+        explicacao: "Open the sheet, see what is missing, fill in the fields with an asterisk (and the photos) and click **Save sheet**. You can save as often as you like."
+      zh:
+        enunciado: "请把填写采购单的步骤按顺序排列。"
+        opcoes:
+          a: "点击“保存采购单”"
+          b: "填写带星号的字段"
+          c: "用“填写采购单”打开采购单"
+          d: "在提示和“采购单区块”表格中查看缺少什么"
+        explicacao: "先打开采购单，看缺少什么，填写带星号的字段（以及照片），最后点击“保存采购单”。可以随时保存。"
+  - id: FOR-05-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-05-C1
+    cena: 3
+    enunciado: "A ficha abre com o aviso \"Para concluir, falta: …\" listando vários itens. Como chegar mais rápido ao campo que falta?"
+    opcoes:
+      a: "Clicar no item do aviso: a tela leva você ao campo"
+      b: "Salvar a ficha vazia para o sistema preencher sozinho"
+      c: "Pedir à Wellmix que preencha por você"
+    correta: [a]
+    explicacao: "Cada item do aviso é clicável e leva ao campo. A ficha já vem com o que a Wellmix sabe do produto; o vermelho mostra só o que falta, bloco por bloco."
+    traducoes:
+      en:
+        enunciado: "The sheet opens with the warning \"To finish, missing: …\" listing several items. How do you get to the missing field faster?"
+        opcoes:
+          a: "Click the item in the warning: the screen takes you to the field"
+          b: "Save the empty sheet so the system fills it in by itself"
+          c: "Ask Wellmix to fill it in for you"
+        explicacao: "Each item in the warning is clickable and leads to the field. The sheet already comes with what Wellmix knows about the product; red shows only what is missing, block by block."
+      zh:
+        enunciado: "采购单打开时有提示“要完成，还缺：……”，列出了好几项。怎样最快到达缺少的字段？"
+        opcoes:
+          a: "点击提示中的某一项：页面会带您到对应字段"
+          b: "保存空白采购单，让系统自己填好"
+          c: "请 Wellmix 替您填写"
+        explicacao: "提示里的每一项都可以点击，并会带您到对应字段。采购单已按 Wellmix 掌握的产品资料预填；红色只标出缺少的内容，按区块列出。"
+  - id: FOR-05-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-05-C3
+    cena: 5
+    enunciado: "Você já digitou vários campos, ainda não salvou, e vai enviar a foto da balança. Perde o que digitou?"
+    opcoes:
+      a: "Sim, salve a ficha antes de enviar cada foto, senão perde tudo"
+      b: "Não: a foto sobe na hora e o que você digitou fica"
+      c: "Sim, mas só os campos de peso e medidas"
+    correta: [b]
+    explicacao: "Cada foto sobe na hora, sem apagar o que você digitou. Mesmo assim, clique em **Salvar ficha** no fim para gravar os campos."
+    traducoes:
+      en:
+        enunciado: "You already typed several fields, have not saved yet, and are about to send the photo on the scale. Do you lose what you typed?"
+        opcoes:
+          a: "Yes, save the sheet before sending each photo, or you lose everything"
+          b: "No: the photo uploads right away and what you typed stays"
+          c: "Yes, but only the weight and measurement fields"
+        explicacao: "Each photo uploads right away, without erasing what you typed. Even so, click **Save sheet** at the end to store the fields."
+      zh:
+        enunciado: "您已经填了好几个字段，还没有保存，现在要上传称重照片。已填的内容会丢失吗？"
+        opcoes:
+          a: "会，每次上传照片前都要先保存，否则全部丢失"
+          b: "不会：照片立即上传，已填内容保留"
+          c: "会，但只丢失重量和尺寸字段"
+        explicacao: "每张照片都立即上传，不会清除您已填的内容。即便如此，最后仍要点击“保存采购单”来保存字段。"
+  - id: FOR-05-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-05-C3
+    cena: 6
+    enunciado: "Você clicou em **Salvar ficha** e apareceu \"Ficha salva. Ainda falta: …\". O que isso significa e o que fazer?"
+    opcoes:
+      a: "A ficha foi perdida; recomece do zero"
+      b: "A ficha está concluída; a Wellmix preenche o que falta"
+      c: "Foi salva, mas está incompleta: preencha o que está em vermelho e salve de novo"
+    correta: [c]
+    explicacao: "O que você preencheu ficou guardado, mas o item \"Ficha de compra\" só é concluído com a ficha completa. Preencha o que falta e clique em **Salvar ficha** de novo: aparece \"Ficha salva e completa.\""
+    traducoes:
+      en:
+        enunciado: "You clicked **Save sheet** and \"Sheet saved. Still missing: …\" appeared. What does it mean and what do you do?"
+        opcoes:
+          a: "The sheet was lost; start again from scratch"
+          b: "The sheet is complete; Wellmix fills in what is missing"
+          c: "It was saved but is incomplete: fill in what is red and save again"
+        explicacao: "What you filled in was kept, but the item \"Purchase sheet\" is only done with the complete sheet. Fill in what is missing and click **Save sheet** again: \"Sheet saved and complete.\" appears."
+      zh:
+        enunciado: "您点击了“保存采购单”，出现“采购单已保存。仍缺少：……”。这是什么意思，该怎么做？"
+        opcoes:
+          a: "采购单丢失了，需要从头再填"
+          b: "采购单已完成，缺少的由 Wellmix 来填"
+          c: "已保存但不完整：补全标红的内容，再保存一次"
+        explicacao: "您填写的内容已保存，但只有采购单填写完整，“采购表”这一项才算完成。补上缺少的内容，再点击“保存采购单”，会出现“采购单已保存并完成。”"

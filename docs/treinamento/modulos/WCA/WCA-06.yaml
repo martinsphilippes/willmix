@@ -1,0 +1,129 @@
+episodio: WCA-06
+titulo: "A vitrine como o cliente vê"
+serie: WCA
+papel: cadastro
+duracao: "3:30"
+idiomas: [pt]
+capitulos:
+  - id: WCA-06-C1
+    titulo: "Abrir a prévia e ler o cartão"
+    inicio: "0:00"
+    fim: "1:15"
+    cenas: [1, 4]
+    resumo: "Abrir Cadastros → Vitrine do cliente e ler o cartão do produto, com foto, preço estimado e variações."
+  - id: WCA-06-C2
+    titulo: "Ler o que falta e corrigir o preço"
+    inicio: "1:15"
+    fim: "2:25"
+    cenas: [5, 6]
+    resumo: "Entender 'Para o preço aparecer, falta' e corrigir cada item no lugar certo."
+  - id: WCA-06-C3
+    titulo: "Entender o Booking e testar como o cliente"
+    inicio: "2:25"
+    fim: "3:30"
+    cenas: [7, 9]
+    resumo: "Saber por que um produto do Booking não aparece e o que só o cliente faz na vitrine."
+perguntas:
+  - id: WCA-06-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WCA-06-C1
+    cena: 3
+    enunciado: "Qual item do menu Cadastros mostra a vitrine como o cliente a vê?"
+    opcoes:
+      a: "Produtos"
+      b: "Vitrine do cliente"
+      c: "Linhas"
+      d: "Estoque"
+    correta: [b]
+    explicacao: "Em **Cadastros → Vitrine do cliente** o aviso azul lembra que você vê a vitrine como o cliente vê. Só o cliente adiciona produtos ao carrinho."
+  - id: WCA-06-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WCA-06-C2
+    cena: 5
+    enunciado: "Que texto o cliente vê no cartão de um produto que ainda não tem preço?"
+    opcoes:
+      a: "Para o preço aparecer, falta: …"
+      b: "Em Booking"
+      c: "Preço sob consulta"
+    correta: [c]
+    explicacao: "O cliente vê apenas 'Preço sob consulta'. O aviso amarelo 'Para o preço aparecer, falta: …' é só da Wellmix."
+  - id: WCA-06-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: WCA-06-C2
+    cena: 5
+    enunciado: "Marque os itens do aviso 'Para o preço aparecer, falta' que o administrador corrige em Configurações."
+    opcoes:
+      a: "Frete marítimo por CBM"
+      b: "ICMS"
+      c: "Preço do fornecedor"
+      d: "Caixa master e CBM"
+      e: "II (NCM)"
+    correta: [a, b]
+    explicacao: "Frete marítimo por CBM e ICMS são do administrador, em Configurações. O preço do fornecedor e a caixa master com CBM se corrigem na ficha do produto; II e IPI vêm do NCM ou da ficha mestre."
+  - id: WCA-06-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: WCA-06-C1
+    cena: 4
+    enunciado: "Um produto tem duas variações. O que o cartão dele mostra na vitrine?"
+    opcoes:
+      a: "Um cartão separado para cada variação"
+      b: "O preço mais alto entre as variações"
+      c: "O preço FOB do fornecedor, em dólar"
+      d: "O selo de variações e o preço 'a partir de', o menor entre elas"
+    correta: [d]
+    explicacao: "Com variações aparecem o selo de variações e o preço a partir de, o menor entre elas. O cliente nunca vê fornecedor, FOB nem moeda de compra."
+  - id: WCA-06-Q5
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-06-C3
+    cena: 8
+    enunciado: "Você quer testar a escolha de variação e o carrinho da jarra. O que faz?"
+    opcoes:
+      a: "Clica em **Adicionar ao carrinho** na prévia, na sua conta"
+      b: "Pede ao administrador para liberar o carrinho para a Wellmix"
+      c: "Entra como o cliente, em outro perfil: só ele vê a escolha de variação e o carrinho"
+      d: "Mexe na ordem da vitrine para o seletor aparecer"
+    correta: [c]
+    explicacao: "Na prévia a Wellmix vê o selo de variações, mas não o seletor 'Escolha a variação', a quantidade nem o botão **Adicionar ao carrinho**. Isso é só do cliente. A Wellmix pode testar busca, categorias (as linhas) e ordem."
+  - id: WCA-06-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-06-C2
+    cena: 6
+    enunciado: "O aviso da jarra lista: preço do fornecedor, frete marítimo por CBM e ICMS. Você tem acesso a Produtos, mas não é administrador. O que faz?"
+    opcoes:
+      a: "Preenche o preço na ficha e pede ao administrador o frete e o ICMS, em Configurações"
+      b: "Preenche os três na ficha do produto"
+      c: "Espera: o preço aparece sozinho quando o cliente pedir"
+      d: "Pede ao fornecedor para informar o frete e o ICMS"
+    correta: [a]
+    explicacao: "Preço e caixa vêm da ficha do produto. Frete marítimo por CBM e ICMS são do administrador, em Configurações. Cada correção vale para todos os produtos que dependem dela."
+  - id: WCA-06-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-06-C3
+    cena: 7
+    enunciado: "O Copo de vidro 300 ml foi importado para o Booking e o cliente ainda não o vê na vitrine. O que você responde?"
+    opcoes:
+      a: "Falta preço: o cartão mostraria 'Preço sob consulta'"
+      b: "Falta foto: o cartão mostraria 'Sem foto'"
+      c: "O copo está excluído do cadastro"
+      d: "Ele está em Novo no Booking; só entra na vitrine depois de aprovado lá"
+    correta: [d]
+    explicacao: "Produto de planilha em Novo, Em análise ou Descartado fica fora da vitrine, até para a Wellmix. Do estado Aprovado em diante ele aparece. Produto sem preço ou sem foto continua na grade."
+  - id: WCA-06-Q8
+    tipo: ordem
+    nivel: 2
+    capitulo: WCA-06-C2
+    cena: 6
+    enunciado: "O cartão de um produto mostra 'Preço sob consulta'. Coloque os passos na ordem."
+    opcoes:
+      a: "Corrigir cada item no lugar indicado"
+      b: "Voltar à vitrine e conferir o preço"
+      c: "Ler o aviso 'Para o preço aparecer, falta: …'"
+    correta: [c, a, b]
+    explicacao: "Leia o aviso, corrija cada item (ficha, ficha mestre ou Configurações) e volte à vitrine: o preço aparece sem outro passo."

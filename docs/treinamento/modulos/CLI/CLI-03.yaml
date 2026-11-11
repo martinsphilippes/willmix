@@ -1,0 +1,129 @@
+episodio: CLI-03
+titulo: "Proposta e sinal"
+serie: CLI
+papel: cliente
+duracao: "4:30"
+idiomas: [pt]
+capitulos:
+  - id: CLI-03-C1
+    titulo: "Entender as situações da solicitação"
+    inicio: "0:00"
+    fim: "1:00"
+    cenas: [1, 3]
+    resumo: "Solicitado, RFQ aberta e Cotações recebidas não pedem nada de você; Aguardando sinal é a sua vez."
+  - id: CLI-03-C2
+    titulo: "Abrir, conferir e aprovar a proposta"
+    inicio: "1:00"
+    fim: "2:45"
+    cenas: [4, 6]
+    resumo: "Do aviso ou da pendência ao cartão Proposta: confira o Valor ao cliente e o Sinal e clique em Aprovar proposta."
+  - id: CLI-03-C3
+    titulo: "Pagar o sinal e enviar o comprovante"
+    inicio: "2:45"
+    fim: "4:30"
+    cenas: [7, 10]
+    resumo: "Pague pelo Pix, anexe o comprovante e a Wellmix confirma: o pedido nasce como Pedido pré-aprovado."
+perguntas:
+  - id: CLI-03-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: CLI-03-C1
+    cena: 3
+    enunciado: "Em Orçamentos, qual situação da solicitação quer dizer que agora é com você?"
+    opcoes:
+      a: "Solicitado"
+      b: "Cotações recebidas"
+      c: "Aguardando sinal"
+      d: "RFQ aberta"
+    correta: [c]
+    explicacao: "Solicitado, RFQ aberta e Cotações recebidas não pedem nada de você. Em **Aguardando sinal** a proposta está pronta e a vez é sua."
+  - id: CLI-03-Q2
+    tipo: vf
+    nivel: 2
+    capitulo: CLI-03-C1
+    cena: 3
+    enunciado: "Quando a situação é Cotações recebidas, João pode abrir a resposta do fornecedor e ver o preço e o prazo que ele deu."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "O cliente não vê a cotação do fornecedor, só a situação. Nessa fase a Wellmix compara as cotações e você não precisa fazer nada."
+  - id: CLI-03-Q3
+    tipo: unica
+    nivel: 1
+    capitulo: CLI-03-C2
+    cena: 5
+    enunciado: "No cartão **Proposta**, o que é o **Sinal**?"
+    opcoes:
+      a: "O total do pedido"
+      b: "O que o fornecedor cobra pelo produto"
+      c: "O saldo que falta depois da entrega"
+      d: "A entrada que faz o pedido nascer"
+    correta: [d]
+    explicacao: "**Valor ao cliente** é o total do pedido; o **Sinal** é a entrada que inicia o pedido. O preço de compra e a margem não aparecem para você."
+  - id: CLI-03-Q4
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-03-C2
+    cena: 6
+    enunciado: "O cartão Proposta mostra R$ 28.000,00, mas João quer conversar sobre o valor antes de aprovar. O que faz?"
+    opcoes:
+      a: "Clica em **Aprovar proposta** e negocia depois do sinal"
+      b: "Usa **Conversar com a Wellmix** antes de aprovar"
+      c: "Paga o sinal e só então pede ajuste"
+      d: "Espera o fornecedor entrar em contato"
+    correta: [b]
+    explicacao: "Se preferir negociar, converse antes de aprovar, com **Conversar com a Wellmix**. Aprovar registra quem aprovou e quando, e só então aparecem os dados para pagar o sinal."
+  - id: CLI-03-Q5
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-03-C3
+    cena: 7
+    enunciado: "Depois de aprovar, João vê \"A Wellmix vai informar os dados para pagamento\" em vez do Pix. O que faz?"
+    opcoes:
+      a: "Aguarda a orientação da Wellmix para pagar e depois anexa o comprovante"
+      b: "Paga por uma chave Pix que achou na internet"
+      c: "Clica em **Aprovar proposta** de novo"
+      d: "Cancela a solicitação e começa outra"
+    correta: [a]
+    explicacao: "Sem Pix, a Wellmix informa como pagar. Depois de pagar, você anexa o comprovante no mesmo lugar."
+  - id: CLI-03-Q6
+    tipo: ordem
+    nivel: 2
+    capitulo: CLI-03-C3
+    cena: 8
+    enunciado: "Coloque na ordem os passos do cliente, do aviso da proposta até o comprovante."
+    opcoes:
+      a: "Abrir o aviso (**Resolver**) ou a pendência (**Abrir**) e ir ao cartão Proposta"
+      b: "Conferir o **Valor ao cliente** e o **Sinal**"
+      c: "Clicar em **Aprovar proposta**"
+      d: "Pagar o sinal pelo Pix"
+      e: "Clicar em **Enviar comprovante**"
+    correta: [a, b, c, d, e]
+    explicacao: "Os dados do Pix só aparecem depois de aprovar a proposta. O comprovante é enviado depois de pagar."
+  - id: CLI-03-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-03-C3
+    cena: 8
+    enunciado: "João pagou o sinal, mas anexou o arquivo errado e já clicou em **Enviar comprovante**. O que faz?"
+    opcoes:
+      a: "Usa **Enviar outro comprovante**"
+      b: "Clica em **Aprovar proposta** de novo"
+      c: "Espera a Wellmix corrigir o arquivo"
+      d: "Exclui a solicitação e começa outra"
+    correta: [a]
+    explicacao: "Depois de enviar, o portal mostra o link **Enviar outro comprovante** para trocar o arquivo. O comprovante deve ser uma foto ou um PDF."
+  - id: CLI-03-Q8
+    tipo: unica
+    nivel: 2
+    capitulo: CLI-03-C3
+    cena: 9
+    enunciado: "João enviou o comprovante. O que faz o pedido nascer?"
+    opcoes:
+      a: "O envio do comprovante cria o pedido na hora"
+      b: "A Wellmix confirma o recebimento do sinal; a solicitação vira Pedido pré-aprovado"
+      c: "O fornecedor aprova o comprovante"
+      d: "O portal cobra o Pix e confirma sozinho"
+    correta: [b]
+    explicacao: "O portal não processa o pagamento: a Wellmix confere e confirma o sinal à mão. Então a solicitação passa a Pedido pré-aprovado, o botão **Ver pedido** aparece e o fornecedor é avisado para preencher a ficha de compra."
