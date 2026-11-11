@@ -69,7 +69,7 @@ O **GER-00** (A Jornada completa) é gravado **por último**: usa as imagens dos
 | **Operador · Comprador** | GER-01, GER-02, WBK-01 a WBK-05, WSO-01 a WSO-03, WPE-01 a WPE-07, WLO-01, WLO-02, WCA-01, WCA-03, WGE-06                     |
 | **Operador · Gerente de produto** | GER-01, GER-02, WBK-03 a WBK-05, WSO-01, WSO-02, WPE-03, WPE-04, WCA-03, WCA-05, WCA-06, WGE-06, WGE-07                |
 | **Operador · Planner**   | GER-01, GER-02, WBK-01 a WBK-03, WSO-01, WSO-02, WPE-05 a WPE-07, WLO-01 a WLO-04, WGE-02                                     |
-| **Operador · Cadastro**  | GER-01, GER-02, WCA-01 a WCA-06, WBK-04, WBK-05, WPE-01                                                                       |
+| **Operador · Cadastro**  | GER-01, GER-02, WCA-01 a WCA-06, WBK-01, WBK-02, WPE-01                                                                       |
 | **Operador · Financeiro**| GER-01, GER-02, WPE-05 (o numerário), COM-01 (de onde ele vem)                                                                |
 | **Diretorias**           | GER-01, GER-02, WGE-01, WGE-02, WGE-06, WGE-07, WGE-08, WGE-11 (financeiro e configurações são só do administrador)           |
 | **Operador · Designer**  | GER-01, GER-02, WPE-03, AGE-01 a AGE-04 (o mesmo briefing, pelo lado da Wellmix), WCA-03, WGE-07                              |
