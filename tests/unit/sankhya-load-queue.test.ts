@@ -40,7 +40,10 @@ beforeAll(async () => {
 describe("carga do Sankhya no servidor", () => {
   it("enfileira na ordem, roda uma rodada por chamada e desliga no fim", async () => {
     await expect(q.startServerLoad(joao)).rejects.toThrow("forbidden");
-    expect(await q.runServerLoadTick()).toEqual({ ran: false, reason: "idle" });
+    expect(await q.runServerLoadTick({ settleMs: 0 })).toEqual({
+      ran: false,
+      reason: "idle",
+    });
 
     const s = await q.startServerLoad(admin, ["products", "stockLocations"]);
     // Ordem fixa (locais antes de produtos); condições já terminadas não entram.
@@ -52,7 +55,7 @@ describe("carga do Sankhya no servidor", () => {
     expect(await q.cronTokenOk("errado")).toBe(false);
     expect(await q.cronTokenOk(null)).toBe(false);
 
-    for (let i = 0; i < 4; i++) await q.runServerLoadTick();
+    for (let i = 0; i < 4; i++) await q.runServerLoadTick({ settleMs: 0 });
     expect(runs).toEqual([
       "stockLocations",
       "stockLocations",
@@ -63,7 +66,10 @@ describe("carga do Sankhya no servidor", () => {
     expect(end.active).toBe(false);
     expect(end.queue).toEqual([]);
     expect(end.finishedAt).not.toBeNull();
-    expect(await q.runServerLoadTick()).toEqual({ ran: false, reason: "idle" });
+    expect(await q.runServerLoadTick({ settleMs: 0 })).toEqual({
+      ran: false,
+      reason: "idle",
+    });
   });
 
   it("não roda duas ao mesmo tempo, para quando pedem e com 5 erros", async () => {
@@ -77,21 +83,42 @@ describe("carga do Sankhya no servidor", () => {
       ...s,
       lockUntil: new Date(Date.now() + 60_000).toISOString(),
     });
-    expect(await q.runServerLoadTick()).toEqual({ ran: false, reason: "busy" });
+    expect(await q.runServerLoadTick({ settleMs: 0 })).toEqual({
+      ran: false,
+      reason: "busy",
+    });
     await writeSetting("sankhya.load.server", { ...s, lockUntil: null });
 
     await q.stopServerLoad(admin);
-    expect(await q.runServerLoadTick()).toEqual({ ran: false, reason: "idle" });
+    expect(await q.runServerLoadTick({ settleMs: 0 })).toEqual({
+      ran: false,
+      reason: "idle",
+    });
     expect(runs).toEqual([]);
 
     await q.startServerLoad(admin, ["orders"]);
     fail.next = true;
-    for (let i = 0; i < 5; i++) await q.runServerLoadTick();
+    for (let i = 0; i < 5; i++) await q.runServerLoadTick({ settleMs: 0 });
     fail.next = false;
     const end = await q.getServerLoad();
     expect(end.active).toBe(false);
     expect(end.failures).toBe(5);
     expect(end.lastError).toBe("ERP fora");
     expect(end.queue).toEqual(["orders"]);
+  });
+
+  it("duas chamadas no mesmo instante: só uma roda", async () => {
+    runs.length = 0;
+    fail.next = false;
+    await q.startServerLoad(admin, ["orders"]);
+    const [a, b] = await Promise.all([
+      q.runServerLoadTick({ settleMs: 30 }),
+      q.runServerLoadTick({ settleMs: 30 }),
+    ]);
+    expect([a.ran, b.ran].sort()).toEqual([false, true]);
+    expect(runs).toEqual(["orders"]);
+    const after = await q.getServerLoad();
+    expect(after.lockToken ?? null).toBeNull();
+    expect(after.lockUntil).toBeNull();
   });
 });
