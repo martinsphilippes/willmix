@@ -371,7 +371,7 @@ export default async function RequestBatchPage({
                 /* Nenhum fornecedor ativo: diz o que fazer em vez de um cartão vazio. */
                 <p className="text-sm text-zinc-600" data-batch-rfq-empty>
                   {t("reqBatch.rfqNoSuppliers")}{" "}
-                  <TextLink href="/app/parties?type=supplier">
+                  <TextLink href="/app/suppliers">
                     {t("reqBatch.rfqNoSuppliersLink")}
                   </TextLink>
                 </p>

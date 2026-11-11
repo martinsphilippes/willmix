@@ -113,7 +113,8 @@ export function navFor(
           // Clientes com a conta de cada um (contratado, entregue, a receber).
           ["parties", { href: "/app/customers", key: "nav.customers" }],
           ["parties", { href: "/app/suppliers", key: "nav.suppliers" }],
-          ["parties", { href: "/app/parties", key: "nav.parties" }],
+          // Só os demais parceiros: clientes e fornecedores estão logo acima.
+          ["parties", { href: "/app/parties", key: "nav.partiesOther" }],
           ["products", { href: "/app/products", key: "nav.products" }],
           // Estoque: no Brasil, em trânsito e em produção (compras para estoque).
           ["products", { href: "/app/inventory", key: "nav.inventory" }],

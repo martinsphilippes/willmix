@@ -101,6 +101,10 @@ export const pt = {
     "Cliente;CNPJ;Telefone;E-mail;Cidade;País;Pedidos;Valor do contrato;Entregue;Pagamento antecipado;A receber;Recebido;Ativo",
   "cust.yes": "Sim",
   "cust.no": "Não",
+  "nav.partiesOther": "Outros parceiros",
+  "parties.other.title": "Outros parceiros",
+  "parties.other.subtitle":
+    "Agências, despachantes, armadores, transportadoras, jurídico, comex, logística e OCP. Clientes e fornecedores têm telas próprias:",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -201,6 +205,10 @@ export const en: Record<keyof typeof pt, string> = {
     "Customer;Tax ID;Phone;E-mail;City;Country;Orders;Contract value;Delivered;Prepayment;To receive;Received;Active",
   "cust.yes": "Yes",
   "cust.no": "No",
+  "nav.partiesOther": "Other partners",
+  "parties.other.title": "Other partners",
+  "parties.other.subtitle":
+    "Agencies, customs brokers, shipping lines, carriers, legal, trade, logistics and certification bodies. Customers and suppliers have their own screens:",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -298,4 +306,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "客户;税号;电话;邮箱;城市;国家;订单;合同金额;已送货;预收款;未收款;已收款;启用",
   "cust.yes": "是",
   "cust.no": "否",
+  "nav.partiesOther": "其他合作方",
+  "parties.other.title": "其他合作方",
+  "parties.other.subtitle":
+    "设计公司、报关行、船公司、运输公司、法务、外贸、物流和认证机构。客户和供应商有各自的页面：",
 };
