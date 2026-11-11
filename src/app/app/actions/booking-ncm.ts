@@ -74,3 +74,18 @@ export async function applyNcmGroupAction(form: FormData) {
     return withQuery(NCM_PAGE, "done", String(updated));
   });
 }
+
+/** "Estimar o NCM de novo": refaz a aproximação dos itens sem NCM do booking. */
+export async function reclassifyBookingNcmAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success
+    ? `/app/booking/lots/${raw}`
+    : "/app/booking";
+  await run(back, async () => {
+    const lotId = ID.parse(raw);
+    const { reclassifyBookingLot } = await import("@/lib/services/booking-ncm");
+    const { matched, toBroker } = await reclassifyBookingLot(user, lotId);
+    return `${back}?ncmMatched=${matched}&ncmLeft=${toBroker}`;
+  });
+}

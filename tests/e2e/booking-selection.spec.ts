@@ -142,6 +142,9 @@ async function importDraft(page: Page, file: ReturnType<typeof sheet>) {
     .setInputFiles(file);
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
+  // Sem NCM: "Estimar o NCM de novo" refaz a aproximação e avisa o resultado.
+  await page.click("[data-booking-lot-ncm-reclassify] button[type=submit]");
+  await page.waitForURL(/ncmMatched=\d+&ncmLeft=\d+/);
 }
 
 test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({

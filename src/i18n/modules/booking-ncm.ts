@@ -11,6 +11,15 @@ export const pt = {
   "bookingNcm.source.match": "Aproximação ({pct}%)",
   "bookingNcm.source.broker": "Despachante",
   "bookingNcm.source.manual": "Wellmix",
+  "bookingNcm.reclassify": "Estimar o NCM de novo",
+  "bookingNcm.reclassifyPending": "Estimando…",
+  "bookingNcm.reclassifyHint":
+    "{n} itens sem NCM. O cadastro mudou desde a importação?",
+  "bookingNcm.reclassified":
+    "NCM estimado de novo: {n} itens preenchidos por aproximação; {left} continuam sem NCM.",
+  "bookingNcm.suggestions": "Sugestões",
+  "bookingNcm.suggestion":
+    "{pct}% das palavras batem com {n} produto(s), ex.: {example}. Clique para usar.",
   "bookingNcm.pending": "Com o despachante",
   "bookingNcm.lotPending":
     "Itens sem produto parecido no cadastro foram para o despachante classificar o NCM ({n}). O booking só fecha com o NCM de todos os itens.",
@@ -61,6 +70,15 @@ export const en: typeof pt = {
   "bookingNcm.source.match": "Approximation ({pct}%)",
   "bookingNcm.source.broker": "Customs broker",
   "bookingNcm.source.manual": "Wellmix",
+  "bookingNcm.reclassify": "Estimate NCM again",
+  "bookingNcm.reclassifyPending": "Estimating…",
+  "bookingNcm.reclassifyHint":
+    "{n} items without NCM. Has the catalog changed since the import?",
+  "bookingNcm.reclassified":
+    "NCM estimated again: {n} items filled by approximation; {left} still without NCM.",
+  "bookingNcm.suggestions": "Suggestions",
+  "bookingNcm.suggestion":
+    "{pct}% of the words match {n} product(s), e.g. {example}. Click to use.",
   "bookingNcm.pending": "With the customs broker",
   "bookingNcm.lotPending":
     "Items with no similar product in the catalog went to the customs broker for the NCM ({n}). The booking only closes with every item's NCM.",
@@ -112,6 +130,14 @@ export const zh: typeof pt = {
   "bookingNcm.source.match": "近似匹配（{pct}%）",
   "bookingNcm.source.broker": "报关行",
   "bookingNcm.source.manual": "Wellmix",
+  "bookingNcm.reclassify": "重新估算 NCM",
+  "bookingNcm.reclassifyPending": "估算中…",
+  "bookingNcm.reclassifyHint": "{n} 个项目没有 NCM。导入后商品目录有变化吗？",
+  "bookingNcm.reclassified":
+    "已重新估算 NCM：{n} 个项目通过近似填写；{left} 个仍无 NCM。",
+  "bookingNcm.suggestions": "建议",
+  "bookingNcm.suggestion":
+    "{pct}% 的词与 {n} 个商品匹配，例如：{example}。点击使用。",
   "bookingNcm.pending": "报关行处理中",
   "bookingNcm.lotPending":
     "{n} 个条目在产品目录中没有相似产品，已交给报关行归类 NCM。所有条目都有 NCM 后 booking 才能关闭。",
