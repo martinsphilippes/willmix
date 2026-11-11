@@ -21,7 +21,7 @@ import {
   todayBrazil,
   type RequestSituation,
 } from "@/lib/services/request-list";
-import { isSchemaMissing } from "@/lib/services/packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 import type { Approval } from "@/lib/db";
 import { canSeeMoney } from "@/lib/auth/function-access";
 

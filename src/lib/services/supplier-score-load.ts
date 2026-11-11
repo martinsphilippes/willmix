@@ -3,7 +3,7 @@ import "server-only";
 import { getStore, type Party } from "@/lib/db";
 import { scoreSupplier, type SupplierScore } from "./supplier-score";
 import { brazilDay } from "@/lib/supplier-terms";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 
 async function optional<T>(p: Promise<T[]>): Promise<T[]> {
   try {

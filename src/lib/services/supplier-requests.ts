@@ -58,7 +58,7 @@ const clip = (s: string | null | undefined, max: number) => {
 };
 
 async function withSchema<T>(fn: () => Promise<T>): Promise<T> {
-  const { isSchemaMissing } = await import("./packaging-brief");
+  const { isSchemaMissing } = await import("@/lib/db/errors");
   try {
     return await fn();
   } catch (error) {
@@ -147,7 +147,7 @@ export async function listSelectionItems(
         })
       : [];
   } catch (error) {
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     if (isSchemaMissing(error)) return null;
     throw error;
   }
@@ -391,7 +391,7 @@ export async function listSupplierRequests(
       });
     else rows = [];
   } catch (error) {
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     if (isSchemaMissing(error)) return null;
     throw error;
   }

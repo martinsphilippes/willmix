@@ -4,7 +4,7 @@ import { getStore, type Order, type User } from "@/lib/db";
 import type { TableName, Tables } from "@/lib/db/schema";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { IMPORT_STEPS, groupOf, importStepDone } from "./import-flow";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 import { followupsDue } from "./production";
 
 /*

@@ -7,7 +7,8 @@ import {
   requestStepDays,
   type RequestStageRow,
 } from "@/lib/request-stages";
-import { briefForRequest, isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
+import { briefForRequest } from "./packaging-brief";
 
 /*
  * Lê o que as etapas da solicitação precisam (src/lib/request-stages.ts):

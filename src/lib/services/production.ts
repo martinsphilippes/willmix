@@ -17,7 +17,7 @@ import {
 import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
 import { notify } from "./notifications";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 
 /*
  * Produção (Fase C, docs/PRODUCTION.md), fora das etapas do pedido:

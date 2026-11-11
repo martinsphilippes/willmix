@@ -3,7 +3,7 @@ import "server-only";
 import { getStore, type TableName, type User } from "@/lib/db";
 import { isAdmin } from "@/lib/auth/permissions";
 import { audit } from "./audit";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 
 /*
  * Limpar dados de teste: apaga as VENDAS (solicitações, cotações, pedidos,

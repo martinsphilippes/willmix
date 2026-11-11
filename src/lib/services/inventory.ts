@@ -13,8 +13,8 @@ import type {
   StockReservation,
 } from "@/lib/db";
 import { boxesFor } from "@/lib/logistics/cbm";
-import { STOCK_PARTY_ID } from "./purchase-flow";
-import { isSchemaMissing } from "./packaging-brief";
+import { STOCK_PARTY_ID } from "./stock-party";
+import { isSchemaMissing } from "@/lib/db/errors";
 
 /*
  * Estoque da Wellmix (tela Estoque), por produto, a partir do que já existe:

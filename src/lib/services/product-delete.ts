@@ -73,7 +73,7 @@ async function safeList<
       ...(limit ? { limit } : {}),
     } as never);
   } catch (error) {
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     if (isSchemaMissing(error)) return [];
     throw error;
   }

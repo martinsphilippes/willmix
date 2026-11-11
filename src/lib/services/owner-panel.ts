@@ -9,7 +9,7 @@ import {
   limitStatus,
 } from "./inventory";
 import { safeList } from "./stock";
-import { STOCK_PARTY_ID } from "./purchase-flow";
+import { STOCK_PARTY_ID } from "./stock-party";
 
 /*
  * Painel do dono: os números do negócio numa tela só (só quem abre

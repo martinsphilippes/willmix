@@ -14,7 +14,7 @@ import {
   variantSnapshot,
 } from "@/lib/variants";
 import { audit } from "./audit";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 import { mirrorMasterSheetFromVariant, sheetCurrency } from "./product-sheet";
 import type { SheetInput } from "./purchase-sheet";
 

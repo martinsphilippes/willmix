@@ -17,7 +17,7 @@ import { addBusinessDays } from "@/lib/sla";
 import { getSettings } from "@/lib/settings";
 import { requestStepDays } from "@/lib/request-stages";
 import { reviewOrderId } from "./control-tower";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 import { quoteSummary, requestNextStep } from "./request-list";
 
 /*

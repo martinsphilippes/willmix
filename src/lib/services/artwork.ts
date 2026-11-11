@@ -19,7 +19,7 @@ import {
 import { audit } from "./audit";
 import { canAccessDocument } from "./documents";
 import { notify, type NotifyTarget } from "./notifications";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 
 /*
  * Marketing das artes do pedido (Fase F, docs/ARTWORK.md):

@@ -1022,7 +1022,7 @@ export async function selectQuote(
   if (!Number.isFinite(percent) || percent < 0 || percent > 100)
     throw new RequestError("invalid_down_payment");
   // Compra para estoque: sem cliente, sem sinal; o pedido nasce já.
-  const { isStockCustomer } = await import("./purchase-flow");
+  const { isStockCustomer } = await import("./stock-party");
   const stock = isStockCustomer(request.customerId);
   // Valor informado (quem chama já calculou) ou a % do valor ao cliente.
   const downPayment = stock

@@ -176,7 +176,7 @@ export async function createRequestAction(form: FormData) {
       }
       // Compra para estoque (Wellmix, sem cliente): empresa interna.
       const { STOCK_OPTION, ensureStockParty } =
-        await import("@/lib/services/purchase-flow");
+        await import("@/lib/services/stock-party");
       const forStock =
         isWellmix(user) && str(form, "customerId") === STOCK_OPTION;
       const stockId = forStock ? (await ensureStockParty(user)).id : null;

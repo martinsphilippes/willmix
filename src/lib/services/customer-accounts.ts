@@ -8,7 +8,7 @@ import {
   type Request,
 } from "@/lib/db";
 import { loadFinance, type OrderFinance } from "./finance";
-import { STOCK_PARTY_ID } from "./purchase-flow";
+import { STOCK_PARTY_ID } from "./stock-party";
 
 /*
  * Conta do cliente (tela Clientes, docs/CUSTOMERS.md): por cliente, o que foi

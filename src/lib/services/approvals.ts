@@ -14,7 +14,7 @@ import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
 import { notify } from "./notifications";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 import type { SelectQuoteInput } from "./requests";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 

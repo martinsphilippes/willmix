@@ -993,7 +993,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       : null;
   if (wellmix || supplier || (importRole && user.partyId)) {
     const { importTasks } = await import("./import-flow");
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     let orders: Order[] = [];
     try {
       orders = await store.list("orders", {
@@ -1343,7 +1343,7 @@ async function supplierRequestTasks(user: User, now: Date): Promise<Task[]> {
       filter: { supplierId: user.partyId!, status: ["open", "answered"] },
     });
   } catch (error) {
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     if (isSchemaMissing(error)) return [];
     throw error;
   }

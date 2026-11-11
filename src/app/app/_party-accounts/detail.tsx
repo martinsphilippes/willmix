@@ -33,7 +33,7 @@ import { AccountBar, IconLink, TabLink } from "@/components/customer-account";
 import { describeTerms } from "@/components/supplier-terms-text";
 import { parseTerms } from "@/lib/supplier-terms";
 import { accountBase, accountLabels } from "./labels";
-import { STOCK_OPTION } from "@/lib/services/purchase-flow";
+import { STOCK_OPTION } from "@/lib/services/stock-party";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { createUserAction } from "../actions";
 import { Alert, Field, Input, Select } from "@/components/ui";

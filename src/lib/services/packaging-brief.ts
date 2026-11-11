@@ -60,29 +60,15 @@ import {
  * ele só aprova.
  */
 
+import { isSchemaMissing } from "@/lib/db/errors";
+
+export { isSchemaMissing };
+
 export class PackagingBriefError extends Error {}
 
 const LIVE: PackagingBriefStatus[] = ["open", "ready", "transferred"];
 const BEFORE_ORDER: PackagingBriefStatus[] = ["open", "ready"];
 const WELLMIX_TARGET: NotifyTarget = { role: ["admin", "operator"] };
-
-/** Tabela ou coluna ainda não publicada no Appwrite: o fluxo segue sem o briefing. */
-export function isSchemaMissing(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  return (
-    /unknown attribute/i.test(error.message) ||
-    /attribute not found|not found in schema/i.test(error.message) ||
-    /^(table|collection) with the requested id\b.*could not be found/i.test(
-      error.message,
-    ) ||
-    [
-      "table_not_found",
-      "collection_not_found",
-      "attribute_not_found",
-      "column_not_found",
-    ].includes(String((error as { type?: unknown }).type ?? ""))
-  );
-}
 
 export function canViewPackagingBrief(
   user: Pick<User, "role" | "partyId">,

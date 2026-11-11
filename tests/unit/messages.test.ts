@@ -341,7 +341,7 @@ describe("assunto por item do pedido", () => {
     // Compra para estoque: escolhido o fornecedor, o pedido nasce na hora.
     const { setSetting } = await import("@/lib/settings");
     await setSetting("approvalsEnabled", false);
-    const pf = await import("@/lib/services/purchase-flow");
+    const pf = await import("@/lib/services/stock-party");
     const r = await import("@/lib/services/requests");
     await pf.ensureStockParty(admin);
     const req = await r.createRequest(operator, {

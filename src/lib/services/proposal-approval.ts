@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth/permissions";
 import { audit } from "./audit";
 import { notifyWellmix } from "./notifications";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 
 /*
  * Etapa "Proposta ao cliente" (src/lib/request-stages.ts): depois da escolha

@@ -66,7 +66,7 @@ import {
   type RequestSituation,
 } from "@/lib/services/request-list";
 import { productPhotoList } from "@/lib/services/product-list";
-import { isSchemaMissing } from "@/lib/services/packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { galleryProps } from "@/components/photo-gallery-props";
 import { ColorCards } from "@/components/color-cards";

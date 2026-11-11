@@ -32,7 +32,7 @@ import {
   type MessageTranslationState,
   type TranslationDisplay,
 } from "@/lib/message-translation";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 import { isPlayableVideo, isPreviewImage } from "@/lib/file-kinds";
 import { notify } from "./notifications";
 import {

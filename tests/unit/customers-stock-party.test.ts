@@ -9,7 +9,7 @@ import { withTempStore } from "./setup";
 withTempStore();
 
 const { seedDemo } = await import("@/lib/seed");
-const pf = await import("@/lib/services/purchase-flow");
+const pf = await import("@/lib/services/stock-party");
 const ca = await import("@/lib/services/customer-accounts");
 type User = import("@/lib/db").User;
 

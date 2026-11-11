@@ -1,6 +1,6 @@
 import "server-only";
 
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 
 /*
  * Booking e a vitrine (docs/SUPPLIER_REQUESTS.md, "Produto"): o produto

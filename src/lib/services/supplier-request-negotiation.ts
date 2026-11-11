@@ -65,7 +65,7 @@ function sideOf(user: User, request: SupplierRequest) {
 
 async function load(user: User, id: string) {
   assertScreen(user, "quotes");
-  const { isSchemaMissing } = await import("./packaging-brief");
+  const { isSchemaMissing } = await import("@/lib/db/errors");
   let request: SupplierRequest | null;
   try {
     request = await getStore().get("supplier_requests", id);

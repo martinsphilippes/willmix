@@ -5,7 +5,7 @@ import { rateFor } from "@/lib/pricing";
 import { brazilDay, addDays } from "@/lib/supplier-terms";
 import { loadFinance } from "./finance";
 import { listPayables, payableRows } from "./supplier-terms";
-import { STOCK_PARTY_ID } from "./purchase-flow";
+import { STOCK_PARTY_ID } from "./stock-party";
 
 /*
  * Fluxo de caixa previsto (só quem abre Finanças), semana a semana:

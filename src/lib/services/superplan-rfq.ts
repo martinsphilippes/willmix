@@ -185,7 +185,7 @@ export async function openSuperplanRfq(
   if (!Number.isInteger(input.quantity) || input.quantity < 1)
     throw new SuperplanRfqError("invalid_quantity");
 
-  const { ensureStockParty, STOCK_PARTY_ID } = await import("./purchase-flow");
+  const { ensureStockParty, STOCK_PARTY_ID } = await import("./stock-party");
   let customerId = input.customerId;
   if (!customerId) {
     await ensureStockParty(user);

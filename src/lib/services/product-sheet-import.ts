@@ -16,7 +16,7 @@ import { randomUUID } from "node:crypto";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
 import { registerUploadedDocument, uploadDocument } from "./documents";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 import {
   getProductSheet,
   productSheetMissing,

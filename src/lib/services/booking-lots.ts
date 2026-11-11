@@ -71,7 +71,7 @@ const asInt = (v: unknown): number | null => {
 
 /** Tabela nova sem publicar: avisa "esquema desatualizado" em vez de falha técnica. */
 async function withSchema<T>(fn: () => Promise<T>): Promise<T> {
-  const { isSchemaMissing } = await import("./packaging-brief");
+  const { isSchemaMissing } = await import("@/lib/db/errors");
   try {
     return await fn();
   } catch (error) {
@@ -321,7 +321,7 @@ export async function listBookingLots(
       store.list("booking_items"),
     ]);
   } catch (error) {
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     if (isSchemaMissing(error)) return null;
     throw error;
   }

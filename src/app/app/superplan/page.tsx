@@ -28,7 +28,7 @@ import {
   type SuperplanLabels,
 } from "@/components/superplan-calculator";
 import { superplanSupplierOptions } from "@/lib/services/superplan-rfq";
-import { STOCK_PARTY_ID } from "@/lib/services/purchase-flow";
+import { STOCK_PARTY_ID } from "@/lib/services/stock-party";
 import { SuperplanParamsForm } from "./_components/params-form";
 import { SuperplanLogic } from "./_components/logic";
 

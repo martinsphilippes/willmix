@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { isStockCustomer } from "@/lib/services/purchase-flow";
+import { isStockCustomer } from "@/lib/services/stock-party";
 import {
   superplanQuoteOf,
   superplanQuoteView,
