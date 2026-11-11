@@ -50,10 +50,10 @@ perguntas:
     cena: 5
     enunciado: "O que faz o link **ver parecidos**, abaixo de um item?"
     opcoes:
-      a: "Abre a página do booking onde o item está"
-      b: "Busca pelas duas primeiras palavras da descrição do item"
-      c: "Marca o item como alternativa da escolha"
-      d: "Abre direto a solicitação ao fornecedor do item"
+      a: "Abre a página do booking onde o item está e mostra a planilha"
+      b: "Busca pelas duas primeiras palavras da descrição"
+      c: "Marca o item como alternativa da escolha atual"
+      d: "Abre direto a solicitação ao fornecedor desse item"
     correta: [b]
     explicacao: "O link preenche a busca com as duas primeiras palavras da descrição (por exemplo, 'jarra vidro') e mostra os itens do mesmo tipo, para comparar."
   - id: WBK-03-Q3
@@ -63,10 +63,10 @@ perguntas:
     cena: 7
     enunciado: "Qual a diferença entre a coluna **Escolher** e a coluna **Alternativa**?"
     opcoes:
-      a: "**Escolher** aceita um só item e a solicitação vai ao fornecedor dele; **Alternativa** aceita vários e fica só com a Wellmix"
-      b: "As duas colunas aceitam um só item, mas **Alternativa** é a que vai ao fornecedor"
-      c: "**Alternativa** é a que vai ao fornecedor; **Escolher** guarda os parecidos só para a Wellmix"
-      d: "**Escolher** aceita vários itens, e **Alternativa** aceita um só, que vira a solicitação"
+      a: "**Escolher** aceita um item só, que vai ao fornecedor; **Alternativa** aceita vários, só para a Wellmix"
+      b: "As duas colunas aceitam um só item, mas **Alternativa** é a que vai ao fornecedor da escolha"
+      c: "**Alternativa** é a que vai ao fornecedor; **Escolher** guarda os parecidos só para a Wellmix, como lista"
+      d: "**Escolher** aceita vários itens, e **Alternativa** aceita um só, que vira a solicitação ao fornecedor"
     correta: [a]
     explicacao: "Marque um só item em **Escolher**: a solicitação vai ao fornecedor dele. Marque em **Alternativa** os parecidos que quer guardar (até 30); eles ficam só com a Wellmix."
   - id: WBK-03-Q4
@@ -103,9 +103,9 @@ perguntas:
     cena: 8
     enunciado: "A tela avisa 'A planilha não traz quantidade para este item: digite a quantidade.' O que você faz?"
     opcoes:
-      a: "Marca outro item como **Alternativa** para a tela aceitar"
+      a: "Marca outro item como **Alternativa** para a tela aceitar o pedido"
       b: "Deixa em branco e espera o fornecedor definir a quantidade"
-      c: "Preenche **Quantidade (peças)** e clica em **Abrir solicitação** de novo"
+      c: "Preenche **Quantidade (peças)** e abre a solicitação de novo"
       d: "Fecha o booking de novo para a planilha trazer a quantidade"
     correta: [c]
     explicacao: "Em branco, vale a quantidade da planilha. Se a planilha não traz quantidade para o item, digite a quantidade (um número maior que zero) em **Quantidade (peças)**."
@@ -118,8 +118,8 @@ perguntas:
     opcoes:
       a: "O fornecedor recusou a jarra e ela não pode mais ser pedida"
       b: "O item já tem uma solicitação em andamento: abra a que existe"
-      c: "O booking dessa jarra ainda está em Rascunho"
-      d: "A jarra foi marcada como alternativa de outro item"
+      c: "O booking dessa jarra ainda está em Rascunho, sem fornecedor"
+      d: "A jarra foi marcada como alternativa de outro item da busca"
     correta: [b]
     explicacao: "Item com solicitação Aberta ou Respondida não abre outra: use o link da coluna. Depois que a Wellmix decide (aprova, recusa ou cancela), o item pode ter outra solicitação."
   - id: WBK-03-Q8
@@ -129,9 +129,9 @@ perguntas:
     cena: 10
     enunciado: "Você abriu a solicitação do copo do Yiwu e o aviso diz 'Fornecedor sem acesso ao portal: ele não vê nem responde esta solicitação.' O que faz?"
     opcoes:
-      a: "Espera: o fornecedor vê a solicitação quando o booking for concluído"
+      a: "Espera: o fornecedor passa a ver a solicitação quando o booking for concluído"
       b: "Cancela a solicitação, porque esse fornecedor nunca vai responder"
       c: "Escolhe o item de outro booking, porque este não tem como andar"
-      d: "Cria o acesso dele por **Criar acesso →** ou registra a resposta que ele mandar por fora"
+      d: "Cria o acesso por **Criar acesso →** ou registra a resposta dele aqui"
     correta: [d]
     explicacao: "Sem login, a solicitação abre, mas não chega a ninguém. Crie o acesso no cadastro dele ou registre aqui a resposta que ele der por fora (WeChat, e-mail)."

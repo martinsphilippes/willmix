@@ -1,0 +1,272 @@
+episodio: MAR-01
+titulo: "Confirmar o embarque"
+serie: MAR
+papel: "companhia marítima"
+duracao: "3:50"
+idiomas: [pt, en, zh]
+capitulos:
+  - id: MAR-01-C1
+    titulo: "Abrir a pendência e ver o pedido"
+    titulo_en: "Open the task and see the order"
+    titulo_zh: "打开待办并查看订单"
+    inicio: "0:00"
+    fim: "1:34"
+    cenas: [1, 6]
+    resumo: "Abra a pendência, veja o que a companhia marítima enxerga no pedido e quais itens do cartão **Embarque** são opcionais."
+    resumo_en: "Open the task, see what the shipping line sees on the order and which items of the Shipping card are optional."
+    resumo_zh: "打开待办，了解船公司在订单中能看到什么，以及“装运”卡片中哪些项目是可选的。"
+  - id: MAR-01-C2
+    titulo: "Informar as datas, o navio e o BL"
+    titulo_en: "Enter the dates, the vessel and the BL"
+    titulo_zh: "填写日期、船名和提单"
+    inicio: "1:34"
+    fim: "2:55"
+    cenas: [7, 9]
+    resumo: "Envie a data de embarque, depois a previsão de chegada (nunca antes dela), o navio e o BL."
+    resumo_en: "Send the shipping date, then the estimated arrival (never before it), the vessel and the BL."
+    resumo_zh: "先提交装运日期，再提交预计到达（不能早于装运日期），然后是船名和提单。"
+  - id: MAR-01-C3
+    titulo: "Confirmar o embarque"
+    titulo_en: "Confirm the shipment"
+    titulo_zh: "确认装运"
+    inicio: "2:55"
+    fim: "3:50"
+    cenas: [10, 12]
+    resumo: "Clique em **Confirmar** para concluir a etapa e abrir o Desembaraço para o despachante."
+    resumo_en: "Click Confirm to close the stage and open Customs clearance for the customs broker."
+    resumo_zh: "点击“确认”完成本阶段，并为报关行开启清关阶段。"
+perguntas:
+  - id: MAR-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: MAR-01-C1
+    cena: 3
+    enunciado: "Em Minhas pendências, qual botão da linha \"Pedido #1: Embarque\" leva ao pedido?"
+    opcoes:
+      a: "Confirmar"
+      b: "Abrir"
+      c: "Enviar"
+      d: "Resolver"
+    correta: [b]
+    explicacao: "A linha mostra o pedido, o tipo e o prazo, e o botão **Abrir** leva à página do pedido. A mesma pendência também aparece no sino de notificações."
+    traducoes:
+      en:
+        enunciado: "In My tasks, which button on the row \"Order #1: Shipping\" takes you to the order?"
+        opcoes:
+          a: "Confirm"
+          b: "Open"
+          c: "Send"
+          d: "Resolve"
+        explicacao: "The row shows the order, the type and the due date, and the Open button takes you to the order page. The same task also shows up in the notification bell."
+      zh:
+        enunciado: "在“我的待办”中，“订单 #1：装运”这一行的哪个按钮可以进入订单？"
+        opcoes:
+          a: "确认"
+          b: "打开"
+          c: "提交"
+          d: "解决"
+        explicacao: "这一行显示订单、类型和截止日期，点击“打开”即可进入订单页面。同一条待办也会出现在通知铃铛里。"
+  - id: MAR-01-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: MAR-01-C1
+    cena: 6
+    enunciado: "No cartão **Embarque**, qual é o único item obrigatório, o que conclui a etapa?"
+    opcoes:
+      a: "Data de embarque, o dia em que o navio sai do porto"
+      b: "Navio / viagem, com o nome da embarcação e a viagem"
+      c: "Embarque confirmado (data, chegada, navio e BL são opcionais)"
+      d: "Bill of Lading (BL), com o arquivo do conhecimento de embarque"
+    correta: [c]
+    explicacao: "Data de embarque, previsão de chegada, navio e BL são opcionais: preencha só o que já tiver. O item de confirmação é o único obrigatório, e é ele que conclui a etapa."
+    traducoes:
+      en:
+        enunciado: "On the Shipping card, which is the only required item, the one that closes the stage?"
+        opcoes:
+          a: "Shipping date, the day the vessel sails from the port"
+          b: "Vessel / voyage, with the name of the ship and the voyage"
+          c: "Shipment confirmed (date, arrival, vessel and BL are optional)"
+          d: "Bill of Lading (BL), with the bill of lading file attached"
+        explicacao: "Shipping date, estimated arrival, vessel and BL are optional: fill in only what you already have. The confirmation item is the only required one, and it is what closes the stage."
+      zh:
+        enunciado: "在“装运”卡片中，哪一项是唯一必填、可以完成本阶段的项目？"
+        opcoes:
+          a: "装运日期，即船从港口开出的日期"
+          b: "船名 / 航次，填写船的名称和航次"
+          c: "确认已装运（日期、到达、船名和提单可选）"
+          d: "提单（BL），上传装运提单文件"
+        explicacao: "装运日期、预计到达、船名和提单都是可选的，有什么填什么。确认项是唯一必填的，它会完成本阶段。"
+  - id: MAR-01-Q3
+    tipo: unica
+    nivel: 3
+    capitulo: MAR-01-C1
+    cena: 4
+    enunciado: "Para planejar, você quer saber o nome do cliente e o preço do pedido, mas eles não aparecem. O que faz?"
+    opcoes:
+      a: "Abre o Financeiro pelo menu"
+      b: "Olha o Resumo do pedido, que traz o cliente"
+      c: "Procura os valores na tabela Documentos"
+      d: "Usa o botão **Conversar com a Wellmix**"
+    correta: [d]
+    explicacao: "A companhia marítima não vê o cliente nem os preços: no pedido aparecem só o fornecedor, os itens e a etapa Embarque. Em caso de dúvida, use **Conversar com a Wellmix**."
+    traducoes:
+      en:
+        enunciado: "To plan, you want to know the customer's name and the order price, but they do not appear. What do you do?"
+        opcoes:
+          a: "Open Finance from the menu"
+          b: "Look at the order summary, which shows the customer"
+          c: "Look for the values in the Documents table"
+          d: "Use the \"Chat with Wellmix\" button"
+        explicacao: "The shipping line does not see the customer or the prices: the order shows only the supplier, the items and the Shipping stage. Any question, use \"Chat with Wellmix\"."
+      zh:
+        enunciado: "为了做计划，你想知道订单的客户名称和价格，但页面上没有显示。你该怎么做？"
+        opcoes:
+          a: "从菜单打开“财务”"
+          b: "查看订单摘要，里面有客户"
+          c: "在“文件”表格里找金额"
+          d: "使用“联系 Wellmix”按钮"
+        explicacao: "船公司看不到客户和价格：订单中只显示供应商、产品和装运阶段。有疑问请点“联系 Wellmix”。"
+  - id: MAR-01-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: MAR-01-C2
+    cena: 7
+    enunciado: "O item **Previsão de chegada** mostra \"Aguardando a data de embarque\". Por quê?"
+    opcoes:
+      a: "Ela só abre depois que a data de embarque é enviada"
+      b: "O BL ainda não foi enviado, e ele vem antes da chegada no cartão"
+      c: "A Wellmix ainda não validou o navio que você informou"
+      d: "O pedido ainda não chegou à etapa Embarque do fluxo"
+    correta: [a]
+    explicacao: "A previsão de chegada é conferida com a data de embarque, por isso só abre depois dela. Envie primeiro a **Data de embarque**; o item muda para Concluído e mostra quem enviou e quando."
+    traducoes:
+      en:
+        enunciado: "The Estimated arrival item shows \"Waiting for the shipping date\". Why?"
+        opcoes:
+          a: "It only opens after the shipping date is sent"
+          b: "The BL has not been sent yet, and it comes before the arrival on the card"
+          c: "Wellmix has not yet validated the vessel you entered"
+          d: "The order has not reached the Shipping stage of the flow yet"
+        explicacao: "The estimated arrival is checked against the shipping date, so it only opens after it. Send the Shipping date first; the item changes to Done and shows who sent it and when."
+      zh:
+        enunciado: "“预计到达”项显示“等待装船日期”。这是为什么？"
+        opcoes:
+          a: "提交装运日期之后才会开放"
+          b: "提单还没有提交，而且提单在卡片中排在到达之前"
+          c: "Wellmix 还没有核实你填写的船名"
+          d: "订单还没有进入流程中的装运阶段"
+        explicacao: "预计到达需要与装运日期核对，所以要在装运日期之后才能填。请先提交“装运日期”；该项会变为“已完成”，并显示提交人和时间。"
+  - id: MAR-01-Q5
+    tipo: unica
+    nivel: 3
+    capitulo: MAR-01-C2
+    cena: 8
+    enunciado: "Você digitou em **Previsão de chegada** uma data anterior ao embarque. O campo ficou com borda vermelha e o envio está bloqueado. O que faz?"
+    opcoes:
+      a: "Clica em **Enviar** de novo, várias vezes, até o portal aceitar"
+      b: "Confirma o embarque para o portal ajustar a data sozinho"
+      c: "Escolhe o mesmo dia do embarque ou um posterior e envia"
+      d: "Deixa o campo em branco e segue para preencher o navio"
+    correta: [c]
+    explicacao: "A previsão de chegada nunca pode ficar antes da data de embarque. O calendário já bloqueia os dias anteriores; se você digita uma data menor, aparece o aviso vermelho e o envio fica bloqueado. Escolha o mesmo dia ou um posterior."
+    traducoes:
+      en:
+        enunciado: "You typed an Estimated arrival earlier than the shipping date. The field has a red border and sending is blocked. What do you do?"
+        opcoes:
+          a: "Click Send again, several times, until the portal accepts it"
+          b: "Confirm the shipment so the portal adjusts the date by itself"
+          c: "Pick the same day as shipping or later and send it"
+          d: "Leave the field empty and move on to filling in the vessel"
+        explicacao: "The estimated arrival can never be earlier than the shipping date. The calendar already blocks earlier days; if you type an earlier date, a red warning appears and sending is blocked. Choose the same day or later."
+      zh:
+        enunciado: "你在“预计到达”中输入了早于装运日期的日期。输入框出现红色边框，无法提交。你该怎么做？"
+        opcoes:
+          a: "反复多次点击“提交”，直到门户接受为止"
+          b: "确认装运，让门户自动帮你调整日期"
+          c: "选择与装运同一天或更晚的日期并提交"
+          d: "把输入框留空，继续去填写船名"
+        explicacao: "预计到达不能早于装运日期。日历会自动禁用更早的日期；如果手动输入更早的日期，会出现红色提示，并且无法提交。请选择同一天或更晚的日期。"
+  - id: MAR-01-Q6
+    tipo: vf
+    nivel: 3
+    capitulo: MAR-01-C2
+    cena: 9
+    enunciado: "Você ainda não tem o PDF do BL. Só é possível confirmar o embarque depois de enviá-lo."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "O BL é opcional. Se ainda não tiver, deixe para depois: navio, BL e as datas pendentes ainda podem ser enviados mesmo com a etapa concluída."
+    traducoes:
+      en:
+        enunciado: "You do not have the BL PDF yet. You can only confirm the shipment after sending it."
+        opcoes:
+          a: "True"
+          b: "False"
+        explicacao: "The BL is optional. If you do not have it yet, leave it for later: the vessel, the BL and any pending dates can still be sent after the stage is done."
+      zh:
+        enunciado: "你还没有提单（BL）的 PDF。只有先提交提单，才能确认装运。"
+        opcoes:
+          a: "正确"
+          b: "错误"
+        explicacao: "提单是可选的。如果还没有，可以稍后补交：船名、提单和尚未提交的日期，在阶段完成后仍可提交。"
+  - id: MAR-01-Q7
+    tipo: ordem
+    nivel: 2
+    capitulo: MAR-01-C3
+    cena: 10
+    enunciado: "Coloque na ordem os passos do embarque."
+    opcoes:
+      a: "Enviar a previsão de chegada"
+      b: "Clicar em **Confirmar** no item de confirmação"
+      c: "Abrir a pendência"
+      d: "Enviar a data de embarque"
+    correta: [c, d, a, b]
+    explicacao: "Abra a pendência, envie a data de embarque, depois a previsão de chegada (que depende dela) e, por fim, clique em **Confirmar**, que conclui a etapa."
+    traducoes:
+      en:
+        enunciado: "Put the shipping steps in order."
+        opcoes:
+          a: "Send the estimated arrival"
+          b: "Click Confirm on the confirmation item"
+          c: "Open the task"
+          d: "Send the shipping date"
+        explicacao: "Open the task, send the shipping date, then the estimated arrival (which depends on it) and, last, click Confirm, which closes the stage."
+      zh:
+        enunciado: "请把装运的步骤按正确顺序排列。"
+        opcoes:
+          a: "提交预计到达"
+          b: "在确认项上点击“确认”"
+          c: "打开待办"
+          d: "提交装运日期"
+        explicacao: "先打开待办，提交装运日期，再提交预计到达（它依赖装运日期），最后点击“确认”，完成本阶段。"
+  - id: MAR-01-Q8
+    tipo: unica
+    nivel: 2
+    capitulo: MAR-01-C3
+    cena: 10
+    enunciado: "O que acontece quando você clica em **Confirmar** no item de embarque confirmado?"
+    opcoes:
+      a: "A etapa conclui, o Desembaraço abre e o despachante é avisado"
+      b: "O pedido vai direto para o Transporte, sem passar pelo Desembaraço"
+      c: "A etapa só conclui depois que o BL for enviado e validado"
+      d: "A Wellmix precisa validar a confirmação antes de a etapa mudar"
+    correta: [a]
+    explicacao: "**Confirmar** conclui a etapa Embarque (100 %), o pedido passa para o Desembaraço e o despachante recebe o aviso no sino e em Pendências. A sua pendência sai da lista."
+    traducoes:
+      en:
+        enunciado: "What happens when you click Confirm on the shipment confirmed item?"
+        opcoes:
+          a: "The stage closes, Customs clearance opens and the customs broker is notified"
+          b: "The order goes straight to Transport, skipping Customs clearance"
+          c: "The stage only closes after the BL is sent and validated"
+          d: "Wellmix has to validate the confirmation before the stage changes"
+        explicacao: "Confirm closes the Shipping stage (100%), the order moves to Customs clearance and the customs broker gets the notice in the bell and in My tasks. Your task leaves the list."
+      zh:
+        enunciado: "在“确认已装运”这一项上点击“确认”后会发生什么？"
+        opcoes:
+          a: "阶段完成，清关阶段开启，报关行收到通知"
+          b: "订单直接进入运输阶段，跳过清关阶段"
+          c: "只有提交并核实提单之后阶段才会完成"
+          d: "Wellmix 需要先核实确认，阶段才会变化"
+        explicacao: "点击“确认”后，装运阶段完成（100%），订单进入清关，报关行会在铃铛和待办中收到通知。你的待办也会从列表中消失。"

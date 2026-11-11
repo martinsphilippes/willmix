@@ -31,9 +31,9 @@ perguntas:
     cena: 3
     enunciado: "Qual selo a solicitação ganha quando o fornecedor responde?"
     opcoes:
-      a: "Aprovada"
-      b: "Aberta"
-      c: "Decidida"
+      a: "Aprovada pelo fornecedor"
+      b: "Aberta, esperando o fornecedor"
+      c: "Em análise pela Wellmix"
       d: "Respondida"
     correta: [d]
     explicacao: "Quando o fornecedor responde, a solicitação fica **Respondida** e falta a sua decisão. Só depois de aprovar ou recusar ela muda de novo."
@@ -44,9 +44,9 @@ perguntas:
     cena: 7
     enunciado: "Depois de clicar em **Criar produto**, o cliente já vê o produto na vitrine?"
     opcoes:
-      a: "Sim, assim que o produto é criado"
-      b: "Não: ele nasce fora da vitrine do cliente até ser liberado"
-      c: "Sim, mas só o cliente que pediu aquela jarra"
+      a: "Sim, assim que o produto é criado e ligado aos itens"
+      b: "Não: ele nasce fora da vitrine até ser liberado"
+      c: "Sim, mas só o cliente que pediu aquela jarra antes"
       d: "Não: ele só nasce quando o cliente fizer um pedido"
     correta: [b]
     explicacao: "O produto criado pelo booking nasce fora da vitrine. Os próximos passos, o CODPROD do Sankhya e **Liberar na vitrine**, vêm no episódio seguinte."
@@ -70,10 +70,10 @@ perguntas:
     cena: 4
     enunciado: "O fornecedor mandou o preço por WeChat e a solicitação continua **Aberta**. Como você registra a resposta?"
     opcoes:
-      a: "Preenche o cartão **Resposta do fornecedor** e clica em **Registrar a resposta do fornecedor**"
-      b: "Clica em **Aprovar** direto, sem registrar a resposta dele"
-      c: "Abre outra solicitação ao mesmo fornecedor, com o preço novo"
-      d: "Cria o produto e pergunta o preço ao fornecedor depois"
+      a: "Preenche o cartão e clica em **Registrar a resposta do fornecedor**"
+      b: "Clica em **Aprovar** direto, sem registrar a resposta que ele mandou por fora"
+      c: "Abre outra solicitação ao mesmo fornecedor, com o preço novo informado"
+      d: "Cria o produto agora e pergunta o preço ao fornecedor depois, por fora"
     correta: [a]
     explicacao: "Para resposta que veio por fora, registre por ele: 'Faz o que foi pedido?', preço por peça, moeda, pedido mínimo, prazo e observação. A solicitação passa a **Respondida**."
   - id: WBK-04-Q5
@@ -109,8 +109,8 @@ perguntas:
     cena: 8
     enunciado: "Você aprovou a solicitação da panela, e o catálogo já tem 'Jogo de panelas antiaderentes 5 pçs'. O que faz?"
     opcoes:
-      a: "Cria um produto novo com o mesmo nome"
-      b: "Busca o produto no catálogo, marca-o e clica em **Associar ao produto marcado**"
+      a: "Cria um produto novo com o mesmo nome e depois liga os itens iguais"
+      b: "Busca e marca o produto, e clica em **Associar ao produto marcado**"
       c: "Recusa a solicitação para não duplicar o produto"
       d: "Usa **Ligar mais itens** sem escolher nenhum produto"
     correta: [b]
@@ -122,8 +122,8 @@ perguntas:
     cena: 5
     enunciado: "Você já clicou em **Aprovar**. O fornecedor pede para mudar o preço e você tenta registrar uma nova resposta. O que acontece?"
     opcoes:
-      a: "A resposta muda e a solicitação volta a Respondida"
-      b: "A solicitação volta a Aberta e o fornecedor responde de novo"
+      a: "A resposta muda e a solicitação volta a ficar Respondida"
+      b: "A solicitação volta a ficar Aberta e o fornecedor responde de novo"
       c: "A Wellmix ainda pode mudar a resposta, mas o fornecedor não"
       d: "A tela recusa: a Wellmix já decidiu e a resposta não muda mais"
     correta: [d]
