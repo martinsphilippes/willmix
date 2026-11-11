@@ -268,7 +268,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
       {/* Cabeçalho em duas faixas: marca e conta em cima; menu embaixo (no
           celular o menu vira um painel aberto pelo botão). */}
       <header className="bg-brand-700 text-white shadow-md shadow-brand-900/20">
-        <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-3 px-4">
+        <div className="mx-auto flex h-14 w-full portal-wide items-center gap-3 px-4">
           <Link
             href="/app"
             className="flex items-center gap-2.5 rounded-md focus-visible:outline-white"
@@ -383,7 +383,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           </div>
         </div>
         <div className="hidden border-t border-white/10 bg-black/10 md:block">
-          <div className="mx-auto w-full max-w-7xl px-2">
+          <div className="mx-auto w-full portal-wide px-2">
             <AppNav entries={entries} label={t("nav.main")} />
           </div>
         </div>
@@ -394,7 +394,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           {t("app.demoBanner")}
         </div>
       ) : null}
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-8">
+      <main className="mx-auto w-full portal-wide flex-1 px-4 py-6 sm:py-8">
         {/* "Voltar" em todas as telas: para a tela anterior desta aba. */}
         <Suspense fallback={null}>
           <BackButton
@@ -436,7 +436,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         }}
       />
       <footer className="border-t border-zinc-200 bg-white">
-        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 text-xs text-zinc-500">
+        <div className="mx-auto flex w-full portal-wide flex-wrap items-center justify-between gap-3 px-4 py-4 text-xs text-zinc-500">
           <div className="flex items-center gap-3">
             <WellmixLogo className="h-5" />
             <span>

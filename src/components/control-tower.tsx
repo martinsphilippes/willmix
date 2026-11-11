@@ -1,4 +1,5 @@
 import type { Translate } from "@/i18n";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import type { User } from "@/lib/db";
 import { isWellmix } from "@/lib/auth/permissions";
@@ -25,7 +26,7 @@ import {
   isActionCardKey,
 } from "@/lib/tower-stages";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { ActionStrip, StageBoard } from "./tower-stages";
+import { ActionList, ProcessBoard } from "./tower-stages";
 import {
   Alert,
   Badge,
@@ -215,6 +216,50 @@ function CommercialCard({
         </Table>
       )}
     </Card>
+  );
+}
+
+/** Visão geral em linha de card (coluna da direita): nome e número, de cima a baixo. */
+function SideStat({
+  label,
+  value,
+  href,
+  tone,
+  active,
+}: {
+  label: string;
+  value: number;
+  href: string;
+  tone?: "danger" | "warning";
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      scroll={false}
+      aria-current={active ? "true" : undefined}
+      className={cx(
+        "flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-[13px] shadow-sm transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900",
+        active
+          ? "border-brand-600 bg-white ring-2 ring-brand-600"
+          : tone === "danger"
+            ? "border-red-200 bg-red-50/60"
+            : tone === "warning"
+              ? "border-amber-200 bg-amber-50/60"
+              : "border-zinc-200/80 bg-white",
+      )}
+      data-side-stat
+    >
+      <span className="leading-tight text-zinc-700">{label}</span>
+      <span
+        className={cx(
+          "text-base font-bold tabular-nums",
+          value === 0 && "text-zinc-300",
+        )}
+      >
+        {value}
+      </span>
+    </Link>
   );
 }
 
@@ -442,9 +487,6 @@ export async function ControlTower({
           selected,
         )
       : null;
-  // "Mais visões" abre sozinho quando o escolhido está lá dentro.
-  const moreOpen = !!(selected || extra);
-
   return (
     <>
       <PageHeader
@@ -468,78 +510,89 @@ export async function ControlTower({
       {totals && operations && finance ? (
         <FinanceStrip totals={totals} t={t} />
       ) : null}
-      {board && stages ? (
-        <>
-          <ActionStrip
-            cards={actionCards}
-            t={t}
-            selected={actionCard?.key ?? null}
-            detail={actionList}
-          />
-          <StageBoard
-            stages={stages}
-            t={t}
-            stage={stageKey}
-            group={groupKey}
-            detail={groupList}
-            currency={board.currency}
-          />
-        </>
-      ) : null}
       {operations ? (
-        <details
-          className="group mb-4 rounded-xl border border-zinc-200/80 bg-white/60 p-3"
-          open={moreOpen}
-          data-tower-more
+        /* Esquerda (3/4): o processo por etapa e a lista escolhida. Direita
+           (1/4, fixa ao rolar): o que precisa de ação para quem está logado e as
+           visões gerais, de cima a baixo. No celular a ação vem primeiro. */
+        <div
+          className="flex flex-col gap-4 lg:grid lg:grid-cols-4 lg:items-start"
+          data-tower-layout
         >
-          <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-2 text-xs font-semibold uppercase tracking-wide text-zinc-600">
-            {t("tower.more.title")}
-            <span className="font-normal normal-case tracking-normal text-zinc-500">
-              {t("tower.more.hint")}
-            </span>
-          </summary>
-          <div className="mt-4">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              {t("board.general")}
-            </h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              {cards.map((c) => (
-                <Stat
-                  key={c.key}
-                  label={c.label}
-                  value={data.buckets[c.key].length}
-                  // Tocar no escolhido fecha a lista.
-                  href={c.key === selected ? "/app" : `/app?filter=${c.key}`}
-                  tone={data.buckets[c.key].length > 0 ? c.tone : undefined}
-                  active={c.key === selected}
+          <aside
+            className="contents lg:col-start-4 lg:row-start-1 lg:sticky lg:top-4 lg:block lg:max-h-[calc(100vh-2rem)] lg:space-y-4 lg:overflow-y-auto lg:px-1 lg:pb-1"
+            data-tower-side
+          >
+            {board ? (
+              <div className="order-1 lg:order-none">
+                <ActionList
+                  cards={actionCards}
+                  t={t}
+                  selected={actionCard?.key ?? null}
                 />
-              ))}
-              {/* Exceções e visão comercial abrem pelo quadrado de cada uma;
-                  tocar de novo fecha. */}
-              <Stat
-                label={t("ct.exceptions")}
-                value={data.exceptions.length}
-                href={
-                  extra === "exceptions" ? "/app" : "/app?filter=exceptions"
-                }
-                tone={data.exceptions.length > 0 ? "warning" : undefined}
-                active={extra === "exceptions"}
-              />
-              {totals && finance ? (
-                <Stat
-                  label={t("ct.commercial.title")}
-                  value={totals.commercial.length}
+              </div>
+            ) : null}
+            <section
+              aria-label={t("board.general")}
+              className="order-3 rounded-xl border border-zinc-200/80 bg-white p-3 shadow-sm lg:order-none"
+              data-tower-views
+            >
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-600">
+                {t("board.general")}
+              </h2>
+              <div className="space-y-1.5">
+                {cards.map((c) => (
+                  <SideStat
+                    key={c.key}
+                    label={c.label}
+                    value={data.buckets[c.key].length}
+                    // Tocar no escolhido fecha a lista.
+                    href={c.key === selected ? "/app" : `/app?filter=${c.key}`}
+                    tone={data.buckets[c.key].length > 0 ? c.tone : undefined}
+                    active={c.key === selected}
+                  />
+                ))}
+                {/* Exceções e visão comercial abrem pelo quadrado de cada uma;
+                    tocar de novo fecha. */}
+                <SideStat
+                  label={t("ct.exceptions")}
+                  value={data.exceptions.length}
                   href={
-                    extra === "commercial" ? "/app" : "/app?filter=commercial"
+                    extra === "exceptions" ? "/app" : "/app?filter=exceptions"
                   }
-                  active={extra === "commercial"}
+                  tone={data.exceptions.length > 0 ? "warning" : undefined}
+                  active={extra === "exceptions"}
                 />
-              ) : null}
-            </div>
+                {totals && finance ? (
+                  <SideStat
+                    label={t("ct.commercial.title")}
+                    value={totals.commercial.length}
+                    href={
+                      extra === "commercial" ? "/app" : "/app?filter=commercial"
+                    }
+                    active={extra === "commercial"}
+                  />
+                ) : null}
+              </div>
+            </section>
+          </aside>
+          <div
+            className="order-2 min-w-0 space-y-4 lg:col-span-3 lg:col-start-1 lg:row-start-1 lg:order-none"
+            data-tower-main
+          >
+            {board && stages ? (
+              <ProcessBoard
+                stages={stages}
+                t={t}
+                stage={stageKey}
+                group={groupKey}
+                detail={groupList}
+                currency={board.currency}
+              />
+            ) : null}
+            {actionList}
             {filterList}
-
             {extra === "exceptions" ? (
-              <div className="mt-4" data-tower-extra="exceptions">
+              <div data-tower-extra="exceptions">
                 <Card className="min-w-0" title={t("ct.exceptions")}>
                   {data.exceptions.length === 0 ? (
                     <Empty>{t("common.none")}</Empty>
@@ -579,7 +632,7 @@ export async function ControlTower({
               </div>
             ) : null}
           </div>
-        </details>
+        </div>
       ) : null}
     </>
   );

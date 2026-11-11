@@ -41,7 +41,7 @@ export function UnreadMessagesBar({
       role="status"
       data-unread-bar={count}
     >
-      <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-2.5">
+      <div className="mx-auto flex w-full portal-wide items-center gap-3 px-4 py-2.5">
         <span
           aria-hidden
           className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white"
