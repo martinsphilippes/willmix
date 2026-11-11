@@ -30,7 +30,7 @@ Decisões:
 3. **Um fornecedor por booking**, estimado pela planilha (o nome mais frequente na coluna SUPPLIER NAME) e ajustado pelo usuário. A planilha casa com o cadastro pelo nome (sem pontuação nem "Co., Ltd."), senão pelo telefone (8 últimos dígitos), senão, só quando a planilha não traz nome, pelo nº da loja (`matchSheetSupplier`). Sem correspondência, o detalhamento sugere cadastrar o fornecedor com nome, nº da loja, telefone e cidade da planilha (Cadastros → Fornecedores, sem login).
 4. **Data** do booking: a da coluna DATE (a mais frequente), ajustável. A data como veio fica guardada para conferência (`sheetDate`).
 5. **Colunas**. Lidas com campo próprio: product number list, SKU/factory item code, description, FOB/EXW\*, coin US$/RMB\*, price\*, qty/box\*, qty/inner\*, N.W./pc\*, G.W./pc\*, CBM\*, size (cm) length\*, width\* e height\*, capacity (ml)\*, package\*, material\*, MOQ\* (\* = obrigatório para fechar, `BOOKING_ITEM_REQUIRED`). Informativas: color assortment, function/battery/110/220, purchase schedule, departure interval in days, purchase qty in pcs, TT PCS, foto e supplier business card. **Qualquer outra coluna** fica guardada no item (`extras`, cabeçalho → valor) e não aparece na tela; os nomes dessas colunas ficam em `booking_lots.extraHeaders`. Linhas seguidas iguais com só a cor diferente continuam sendo um item só (regra 4 da seção 3).
-6. **Fechar** confere fornecedor, data e os campos obrigatórios de todos os itens e roda o **Superplan em todos os itens** com os valores padrão (câmbio do dia, container e frete padrão, preço mínimo), gravando o retrato em `booking_items.analysis` (mesmo formato de `bookings.analysis`). O item não tem NCM: II e IPI contam 0 (`ncmFound` falso). Um seletor acima do botão escolhe o **tipo de negócio** do Superplan (vazio = o padrão dos parâmetros). Num booking fechado, "Refazer a análise" roda de novo (câmbio ou parâmetros mudaram).
+6. **Fechar** confere fornecedor, data e os campos obrigatórios de todos os itens e roda o **Superplan em todos os itens** com os valores padrão (câmbio do dia, container e frete padrão, preço mínimo), gravando o retrato em `booking_items.analysis` (mesmo formato de `bookings.analysis`). II e IPI vêm da tabela fiscal pelo NCM do item (veja "NCM do item", abaixo). Um seletor acima do botão escolhe o **tipo de negócio** do Superplan (vazio = o padrão dos parâmetros). Num booking fechado, "Refazer a análise" roda de novo (câmbio ou parâmetros mudaram).
 
 Telas:
 
@@ -43,6 +43,27 @@ Onde está: regras puras em `src/lib/booking-lots.ts`; serviço em `src/lib/serv
 Banco: tabelas `booking_lots` e `booking_items` (docs/APPWRITE.md). Antes da publicação (`npm run appwrite:push`), a lista avisa "esquema desatualizado" e não oferece a importação.
 
 Permissões: só a Wellmix com a tela Booking (como a fila de produtos). Cadastrar o fornecedor sugerido também é dessa tela. Cliente, fornecedor e parceiros não veem bookings, itens, fotos nem a planilha guardada (documentos internos).
+
+### NCM do item (decisão do dono, 11/11/2026)
+
+O NCM é **obrigatório para fechar o booking** e entra na análise do Superplan (II e IPI da tabela fiscal).
+
+1. **Aproximação com o cadastro**, na importação e de novo ao fechar, para os itens ainda sem NCM (`classifyBookingItems`, `src/lib/services/booking-ncm.ts`; regra em `src/lib/ncm-match.ts`).
+   - O nome do item (descrição e nome) é comparado, palavra a palavra (sem números, medidas e palavras vazias), com os produtos do cadastro que têm NCM (o do produto; sem ele, o da ficha mestre).
+   - Cada produto é reconhecido pelo próprio nome e pelas descrições dos itens de booking já ligados a ele. Assim o produto com nome em português aprende o nome em inglês da planilha.
+   - Código de fábrica igual (do produto, dos fornecedores dele ou dos itens ligados) vale como certo.
+   - Semelhança mínima de 50% (`NCM_MATCH_MIN`). Vale o NCM do produto mais provável; com vários igualmente prováveis, a **moda** entre eles; empate na moda conta como sem correspondência.
+   - O item guarda a origem ("Aproximação" com a %), os produtos que deram o NCM (`ncmMatchProductIds`) e a semelhança (`ncmScore`).
+2. **Sem correspondência: o despachante.** O item é marcado (`ncmRequestedAt`) e os despachantes com login recebem um aviso.
+   - Na tela **NCM dos bookings** (`/app/ncm-items`, menu do despachante e Pendências, um item por grupo), os itens ficam agrupados pelos parecidos (as duas palavras principais do nome, `ncmGroupKey`).
+   - O despachante marca os itens do grupo, informa o NCM e aplica a todos de uma vez.
+   - Ele vê só o produto: descrição, código, material, embalagem, capacidade, medidas, cores e função. Nunca o fornecedor nem o preço.
+   - O detalhe do booking avisa quantos itens estão com o despachante, com o link para a tela. Sem despachante com login, o aviso pede que a Wellmix preencha.
+3. **A Wellmix também preenche**, na coluna NCM da tabela de itens. A coluna grava sozinha e continua **editável depois de fechado** (menos no Cancelado). Ao trocar o NCM de um item de booking fechado, a análise do Superplan daquele item é refeita na hora. Apagar o NCM só no rascunho.
+4. Com a tabela fiscal carregada, o NCM tem de estar nela (`booking_ncm_not_in_table`).
+5. O produto criado na solicitação ao fornecedor aprovada **herda o NCM** do item escolhido (cadastro e ficha mestre; docs/SUPPLIER_REQUESTS.md).
+
+Origem do NCM (`ncmSource`): `match` (aproximação), `broker` (despachante) ou `manual` (Wellmix). Tudo fica na auditoria (`booking_item.ncm`). Testes em `tests/unit/booking-ncm.test.ts`.
 
 ## 1. Problema
 

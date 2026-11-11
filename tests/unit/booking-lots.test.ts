@@ -147,8 +147,10 @@ describe("booking por planilha", () => {
       productId: null,
     });
     expect(cup.extras).toEqual({ CERTIFICATE: "CE" });
-    expect(lib.missingItemFields(cup)).toEqual([]);
-    expect(lib.missingItemFields(jar)).toEqual(["heightCm"]);
+    // Sem produto parecido no cadastro: o NCM fica para o despachante.
+    expect(lib.missingItemFields(cup)).toEqual(["ncm"]);
+    expect(cup.ncmRequestedAt).toBeTruthy();
+    expect(lib.missingItemFields(jar)).toEqual(["heightCm", "ncm"]);
   });
 
   it("reconhece o fornecedor já cadastrado pelo nome", async () => {
@@ -231,6 +233,18 @@ describe("booking por planilha", () => {
       "21,5",
     );
     expect(saved.heightCm).toBe(21.5);
+    // Sem NCM, ainda não fecha; com o NCM (Wellmix), fecha.
+    await expect(svc.closeBookingLot(admin, lot.id, null)).rejects.toThrow(
+      "booking_items_incomplete",
+    );
+    const { setBookingItemsNcm } = await import("@/lib/services/booking-ncm");
+    await setBookingItemsNcm(
+      admin,
+      (await store.list("booking_items", { filter: { lotId: lot.id } })).map(
+        (i) => i.id,
+      ),
+      "7013.37.00",
+    );
 
     const closed = await svc.closeBookingLot(admin, lot.id, null);
     expect(closed.status).toBe("closed");

@@ -376,6 +376,10 @@ export const BOOKING_LOT_STATUSES = [
 ] as const;
 export type BookingLotStatus = (typeof BOOKING_LOT_STATUSES)[number];
 
+/** De onde veio o NCM do item do booking: aproximação, despachante ou a Wellmix. */
+export const BOOKING_ITEM_NCM_SOURCES = ["match", "broker", "manual"] as const;
+export type BookingItemNcmSource = (typeof BOOKING_ITEM_NCM_SOURCES)[number];
+
 /**
  * Solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md): nasce na Seleção de
  * itens. Aberta (esperando o fornecedor) → Respondida (ele disse se faz e em
@@ -2466,6 +2470,21 @@ export interface BookingItem extends BaseRow {
   /** Produto do cadastro a que o item foi ligado (seleção de itens, depois). */
   productId: string | null;
   updatedByUserId: string | null;
+  /*
+   * NCM do item (docs/BOOKING.md, "NCM do item"): por aproximação com os
+   * produtos do cadastro (o mais provável, ou a moda entre os igualmente
+   * prováveis); sem correspondência, o despachante preenche. Obrigatório
+   * para fechar. Opcionais: itens antigos ficam sem.
+   */
+  ncm?: string | null;
+  ncmSource?: BookingItemNcmSource | null;
+  /** Produtos que deram o NCM por aproximação e a semelhança (0 a 1). */
+  ncmMatchProductIds?: string[] | null;
+  ncmScore?: number | null;
+  /** Quando o item foi para o despachante (sem correspondência). */
+  ncmRequestedAt?: string | null;
+  ncmAt?: string | null;
+  ncmByUserId?: string | null;
 }
 
 /** Cópia do item do booking no momento da solicitação (o que o fornecedor vê). */
@@ -4234,6 +4253,13 @@ export const TABLES: Record<TableName, TableDef> = {
       analysis: json(),
       productId: id(false),
       updatedByUserId: id(false),
+      ncm: str(10),
+      ncmSource: enumOf(BOOKING_ITEM_NCM_SOURCES, false),
+      ncmMatchProductIds: json(),
+      ncmScore: float(),
+      ncmRequestedAt: datetime(),
+      ncmAt: datetime(),
+      ncmByUserId: id(false),
     },
     indexes: [
       { key: "by_lot", type: "key", columns: ["lotId"] },

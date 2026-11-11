@@ -204,6 +204,12 @@ export function navFor(
         // A agência começa pelos briefings de embalagem (faca e arte na RFQ).
         ["packaging", { href: "/app/packaging", key: "nav.packaging" }],
         ["orders", { href: "/app/orders", key: "nav.orders" }],
+        // Despachante: NCM dos itens de booking sem produto parecido.
+        ...(user.role === "broker"
+          ? ([
+              ["tasks", { href: "/app/ncm-items", key: "nav.ncmItems" }],
+            ] as Entry[])
+          : []),
         ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
         ["account", { href: "/app/account", key: "nav.account" }],
       ]),

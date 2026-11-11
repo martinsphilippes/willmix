@@ -88,6 +88,8 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/audit", "audit"],
   ["/app/sla", "sla"],
   ["/app/tasks", "tasks"],
+  // NCM dos itens de booking: o despachante (e a Wellmix) pelas pendências.
+  ["/app/ncm-items", "tasks"],
   ["/app/notifications", "notifications"],
   ["/app/messages", "messages"],
   ["/app", "home"],

@@ -111,6 +111,7 @@ import * as bookingDetail from "./booking-detail";
 import * as bookingLots from "./booking-lots";
 import * as supplierRequests from "./supplier-requests";
 import * as supplierRequestProduct from "./supplier-request-product";
+import * as bookingNcm from "./booking-ncm";
 import * as notifications from "./notifications";
 import * as productSheetImport from "./product-sheet-import";
 import * as productVariants from "./product-variants";
@@ -228,6 +229,7 @@ export const modulesPt = {
   ...bookingLots.pt,
   ...supplierRequests.pt,
   ...supplierRequestProduct.pt,
+  ...bookingNcm.pt,
   ...intro.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
@@ -342,6 +344,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...bookingLots.en,
   ...supplierRequests.en,
   ...supplierRequestProduct.en,
+  ...bookingNcm.en,
   ...intro.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
@@ -456,5 +459,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...bookingLots.zh,
   ...supplierRequests.zh,
   ...supplierRequestProduct.zh,
+  ...bookingNcm.zh,
   ...intro.zh,
 };
