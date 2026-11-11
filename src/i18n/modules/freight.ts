@@ -22,7 +22,8 @@ export const pt = {
   "freight.order.again": "Pedir de novo (carga atualizada)",
   "freight.order.none": "Nenhum pedido de frete ainda.",
   "freight.order.sent": "Frete pedido a {n} companhia(s) marítima(s).",
-  "freight.order.unchanged": "A carga não mudou: os pedidos de frete seguem como estavam.",
+  "freight.order.unchanged":
+    "A carga não mudou: os pedidos de frete seguem como estavam.",
   "freight.error.no_carriers": "Não há companhia marítima ativa cadastrada.",
   "freight.error.no_cargo":
     "Sem caixas nem volume conhecidos: preencha a ficha de compra ou o cadastro do produto.",
@@ -100,7 +101,8 @@ export const en: Record<keyof typeof pt, string> = {
   "freight.order.again": "Request again (updated cargo)",
   "freight.order.none": "No freight requests yet.",
   "freight.order.sent": "Freight requested from {n} shipping line(s).",
-  "freight.order.unchanged": "The cargo has not changed: the freight requests stay as they were.",
+  "freight.order.unchanged":
+    "The cargo has not changed: the freight requests stay as they were.",
   "freight.error.no_carriers": "No active shipping line is registered.",
   "freight.error.no_cargo":
     "No known cartons or volume: fill in the purchase sheet or the product catalog.",
@@ -143,8 +145,7 @@ export const en: Record<keyof typeof pt, string> = {
   "freight.sent.none": "No other freight request waiting for a value.",
   "freight.sent.pending": "{n} freight requests waiting for a value.",
   "freight.sent.view": "View the sent freight",
-  "freight.closed":
-    "This freight request is closed (the order was cancelled).",
+  "freight.closed": "This freight request is closed (the order was cancelled).",
   "freight.answeredAt": "Provided on {date}",
   "freight.error.closed": "This freight request is already closed.",
   "freight.error.invalid_amount": "Enter a freight value greater than zero.",

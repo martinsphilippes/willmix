@@ -6,10 +6,7 @@ import {
   canViewRequest,
   isWellmix,
 } from "@/lib/auth/permissions";
-import {
-  canAddProducts,
-  canDeleteRequest,
-} from "@/lib/services/requests";
+import { canAddProducts, canDeleteRequest } from "@/lib/services/requests";
 import {
   cancelledOrderIds,
   requestDisplayStatus,

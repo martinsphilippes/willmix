@@ -84,18 +84,17 @@ export default async function RequestsPage({
   const customer = user.role === "customer";
   // Tudo numa rodada só: lista, parceiros, pendências e pedidos em andamento.
   const wellmix = isWellmix(user);
-  const [allRequests, parties, tasks, inProgress, team] =
-    await Promise.all([
-      store.list("requests", {
-        filter: customer ? { customerId: user.partyId! } : undefined,
-        orderBy: "createdAt",
-        direction: "desc",
-      }),
-      store.list("parties", { filter: { type: "customer" } }),
-      customer ? pendingTasksFor(user) : Promise.resolve([]),
-      customer ? customerOrdersInProgress(user) : Promise.resolve([]),
-      wellmix ? store.list("users") : Promise.resolve([]),
-    ]);
+  const [allRequests, parties, tasks, inProgress, team] = await Promise.all([
+    store.list("requests", {
+      filter: customer ? { customerId: user.partyId! } : undefined,
+      orderBy: "createdAt",
+      direction: "desc",
+    }),
+    store.list("parties", { filter: { type: "customer" } }),
+    customer ? pendingTasksFor(user) : Promise.resolve([]),
+    customer ? customerOrdersInProgress(user) : Promise.resolve([]),
+    wellmix ? store.list("users") : Promise.resolve([]),
+  ]);
   const visible = allRequests.filter((r) => canViewRequest(user, r));
   // Pedido cancelado: a solicitação segue ORDERED no banco, mas o selo mostra
   // "Pedido cancelado" em vez de "Pedido criado".

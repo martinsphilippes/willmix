@@ -13,7 +13,11 @@ import {
   type User,
 } from "@/lib/db";
 import { boxCbm } from "@/lib/logistics/cbm";
-import { ForbiddenError, assertWellmix, isWellmix } from "@/lib/auth/permissions";
+import {
+  ForbiddenError,
+  assertWellmix,
+  isWellmix,
+} from "@/lib/auth/permissions";
 import { totalCbmFor } from "@/lib/pricing";
 import { audit } from "./audit";
 import { notify, notifyWellmix } from "./notifications";
@@ -141,7 +145,9 @@ export async function orderCargo(order: Pick<Order, "id">): Promise<Cargo> {
     store.list("purchase_sheets", { filter: { orderId: order.id }, limit: 1 }),
   ]);
   const productIds = [
-    ...new Set(items.map((i) => i.productId).filter((id): id is string => !!id)),
+    ...new Set(
+      items.map((i) => i.productId).filter((id): id is string => !!id),
+    ),
   ];
   const products = productIds.length
     ? await store.list("products", { filter: { id: productIds } })
@@ -305,8 +311,7 @@ export async function answerFreight(
   if (!canViewFreight(user, fq)) throw new ForbiddenError();
   if (fq.status === "cancelled") throw new FreightError("closed");
   const order = await store.get("orders", fq.orderId);
-  if (!order || order.status === "CANCELLED")
-    throw new FreightError("closed");
+  if (!order || order.status === "CANCELLED") throw new FreightError("closed");
   if (!(input.amount > 0)) throw new FreightError("invalid_amount");
   const updated = await store.update("freight_quotes", freightId, {
     status: "answered",

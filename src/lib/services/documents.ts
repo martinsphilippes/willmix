@@ -520,9 +520,9 @@ async function agencyHasOrderWithProduct(
   productId: string,
 ): Promise<boolean> {
   const store = getStore();
-  const orders = (
-    await store.list("orders", { filter: { agencyId } })
-  ).filter((o) => o.status !== "CANCELLED");
+  const orders = (await store.list("orders", { filter: { agencyId } })).filter(
+    (o) => o.status !== "CANCELLED",
+  );
   if (!orders.length) return false;
   const items = await store.list("order_items", {
     filter: { orderId: orders.map((o) => o.id), productId },

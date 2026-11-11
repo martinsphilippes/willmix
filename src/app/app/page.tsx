@@ -35,9 +35,6 @@ export default async function AppHome({ searchParams }: PageProps<"/app">) {
       user.partyId ? `/app/explore${deniedQs}` : `/app/requests${deniedQs}`,
     );
   return (
-    <TaskList
-      user={user}
-      denied={typeof denied === "string" ? denied : null}
-    />
+    <TaskList user={user} denied={typeof denied === "string" ? denied : null} />
   );
 }

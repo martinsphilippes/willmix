@@ -57,7 +57,8 @@ export const pt = {
   "dash.erpNote":
     "Integração com o Sankhya: em modo manual até as credenciais serem configuradas; o número do pedido no ERP é informado no próprio pedido.",
   "dash.metric.openRequests": "Solicitações abertas",
-  "dash.metric.supplierRequestsOpen": "Solicitações ao fornecedor esperando resposta",
+  "dash.metric.supplierRequestsOpen":
+    "Solicitações ao fornecedor esperando resposta",
   "dash.metric.supplierRequestsAnswered": "Respondidas, a Wellmix decide",
   "dash.metric.awaitingQuotes": "Aguardando cotação",
   "dash.metric.toSelect": "Cotadas, escolher fornecedor",

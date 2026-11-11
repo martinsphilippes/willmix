@@ -98,17 +98,16 @@ export default async function SettingsPage({
     demoFailed,
   } = await searchParams;
   const t = await getT();
-  const [s, lineRows, customerRows, fx, fiscalInfo] =
-    await Promise.all([
-      getSettings(),
-      getStore().list("product_lines", { orderBy: "name" }),
-      getStore().list("parties", {
-        filter: { type: "customer" },
-        orderBy: "name",
-      }),
-      getFxRates(),
-      fiscalStatus(),
-    ]);
+  const [s, lineRows, customerRows, fx, fiscalInfo] = await Promise.all([
+    getSettings(),
+    getStore().list("product_lines", { orderBy: "name" }),
+    getStore().list("parties", {
+      filter: { type: "customer" },
+      orderBy: "name",
+    }),
+    getFxRates(),
+    fiscalStatus(),
+  ]);
   // "?fiscal=tec-10412-3": planilha carregada (tabela, NCMs, alíquotas alteradas).
   const fiscalMatch =
     typeof fiscal === "string" ? /^(tec|tipi)-(\d+)-(\d+)$/.exec(fiscal) : null;

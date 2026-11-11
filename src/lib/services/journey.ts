@@ -176,7 +176,9 @@ export function journeyIndex(input: JourneyInput) {
   };
 
   /** Quadrado do bloco 1: a solicitação ainda sem pedido. */
-  const requestCard = (r: Pick<Request, "id" | "status">): RequestCard | null =>
+  const requestCard = (
+    r: Pick<Request, "id" | "status">,
+  ): RequestCard | null =>
     r.status === "ORDERED" || r.status === "CANCELLED" ? null : "reqNew";
   /** Passo do pedido: encerrado = 100%; cancelado = onde parou (nulo se não se sabe). */
   const orderStep = (
@@ -220,31 +222,26 @@ export async function loadJourneyInput(
 ): Promise<JourneyInput> {
   const store = getStore();
   const none = <T>() => Promise.resolve([] as T[]);
-  const [
-    activeStages,
-    stages,
-    requirements,
-    steps,
-    reviews,
-  ] = await Promise.all([
-    store.list("stages", { filter: { status: ["active", "blocked"] } }),
-    orderIds.length
-      ? store.list("stages", { filter: { orderId: orderIds } })
-      : none<Stage>(),
-    orderIds.length
-      ? store.list("requirements", {
-          filter: { orderId: orderIds, key: JOURNEY_REQUIREMENT_KEYS },
-        })
-      : none<Requirement>(),
-    orderIds.length
-      ? safe(store.list("import_steps", { filter: { orderId: orderIds } }))
-      : none<ImportStep>(),
-    store.list("review_items", {
-      filter: { status: "open" },
-      orderBy: "createdAt",
-      direction: "desc",
-    }),
-  ]);
+  const [activeStages, stages, requirements, steps, reviews] =
+    await Promise.all([
+      store.list("stages", { filter: { status: ["active", "blocked"] } }),
+      orderIds.length
+        ? store.list("stages", { filter: { orderId: orderIds } })
+        : none<Stage>(),
+      orderIds.length
+        ? store.list("requirements", {
+            filter: { orderId: orderIds, key: JOURNEY_REQUIREMENT_KEYS },
+          })
+        : none<Requirement>(),
+      orderIds.length
+        ? safe(store.list("import_steps", { filter: { orderId: orderIds } }))
+        : none<ImportStep>(),
+      store.list("review_items", {
+        filter: { status: "open" },
+        orderBy: "createdAt",
+        direction: "desc",
+      }),
+    ]);
   return {
     now,
     activeStages,

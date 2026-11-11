@@ -14,10 +14,7 @@ import {
 } from "@/lib/db";
 import { variantSnapshot } from "@/lib/variants";
 import { getProductVariant, listProductVariants } from "./product-variants";
-import {
-  requestProductName,
-  variantSpecification,
-} from "./variant-sales";
+import { requestProductName, variantSpecification } from "./variant-sales";
 import {
   ForbiddenError,
   assertWellmix,
@@ -421,7 +418,6 @@ export async function createRequest(
     unit: input.unit,
     deadline,
     status: "REQUESTED",
-    selectedQuoteId: null,
     orderId: null,
     sellPrice: null,
     sellCurrency: null,

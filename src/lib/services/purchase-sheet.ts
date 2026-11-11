@@ -369,10 +369,7 @@ async function prefillBase(
   if (earlier) {
     const reused = dropEmptyOptional(
       Object.fromEntries(
-        reusableFields().map((k) => [
-          k,
-          earlier.sheet[k] ?? null,
-        ]),
+        reusableFields().map((k) => [k, earlier.sheet[k] ?? null]),
       ),
     ) as SheetInput;
     if (master) {
@@ -393,11 +390,8 @@ async function prefillBase(
     prefillSource: "catalog",
     productId: product?.id ?? null,
     ...records,
-    currency: currencyOf(
-      link?.currency ?? (own ? product?.currency : null),
-    ),
-    price:
-      link?.price ?? (own ? (product?.price ?? null) : null),
+    currency: currencyOf(link?.currency ?? (own ? product?.currency : null)),
+    price: link?.price ?? (own ? (product?.price ?? null) : null),
     moq: link?.moq ?? (own ? (product?.moq ?? null) : null),
     masterCartonQty: product?.masterBoxQty ?? null,
     innerQty: product?.innerBoxQty ?? null,

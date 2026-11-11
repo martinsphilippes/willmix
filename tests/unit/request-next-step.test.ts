@@ -10,10 +10,6 @@ const t = translator("pt");
 describe("próximo passo da solicitação", () => {
   const base = {
     display: "ORDERED" as never,
-    // Campos da cotação (saem com a RFQ): vazios.
-    quotes: { invited: 0, answered: 0 },
-    approval: null,
-    proposalApproved: true,
     order: null,
     today: "2026-11-08",
   };

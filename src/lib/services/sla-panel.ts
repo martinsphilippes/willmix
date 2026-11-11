@@ -37,10 +37,7 @@ export const ALL = "all";
 export interface SlaItem {
   /** "task": a Wellmix deve; "partner": um parceiro está atrasado. */
   source: "task" | "partner";
-  kind:
-    | TaskKind
-    | "partner_stage"
-    | "supplier_request";
+  kind: TaskKind | "partner_stage" | "supplier_request";
   title: string;
   detail: string;
   link: string;

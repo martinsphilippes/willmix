@@ -301,7 +301,6 @@ export const FREIGHT_QUOTE_STATUSES = [
 ] as const;
 export type FreightQuoteStatus = (typeof FREIGHT_QUOTE_STATUSES)[number];
 
-
 /**
  * Como o fornecedor entrou na lista do produto: cadastro (principal), condições
  * negociadas ("quote": solicitação ao fornecedor ou ficha do pedido) ou à mão.

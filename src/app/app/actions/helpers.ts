@@ -158,4 +158,3 @@ export function withQuery(target: string, key: string, value: string): string {
   url.searchParams.set(key, value);
   return url.pathname + url.search + url.hash;
 }
-

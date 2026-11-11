@@ -89,18 +89,17 @@ export default async function RequestDetailPage({
           t.intl,
         )
       : null;
-  const [customer, documents, customerLogins] =
-    await Promise.all([
-      store.get("parties", request.customerId),
-      store.list("documents", { filter: { requestId: request.id } }),
-      // Logins deste cliente, para a Wellmix indicar o solicitante.
-      wellmix
-        ? store.list("users", {
-            filter: { role: "customer", partyId: request.customerId },
-            orderBy: "name",
-          })
-        : Promise.resolve([]),
-    ]);
+  const [customer, documents, customerLogins] = await Promise.all([
+    store.get("parties", request.customerId),
+    store.list("documents", { filter: { requestId: request.id } }),
+    // Logins deste cliente, para a Wellmix indicar o solicitante.
+    wellmix
+      ? store.list("users", {
+          filter: { role: "customer", partyId: request.customerId },
+          orderBy: "name",
+        })
+      : Promise.resolve([]),
+  ]);
   /* Pedido cancelado: a solicitação segue ORDERED (histórico), mas o selo, a
      linha do tempo e o aviso mostram o cancelamento. */
   const order = request.orderId
@@ -462,7 +461,6 @@ export default async function RequestDetailPage({
             ) : null}
           </div>
         ) : null}
-
       </div>
     </>
   );

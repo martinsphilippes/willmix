@@ -2994,8 +2994,7 @@ function RequirementRow({
         ) : null}
         {isSheet && r.status !== "done" && sheetHint ? (
           <p className="mt-0.5 text-xs text-zinc-600">
-            {sheetHint.source === "previous" ||
-            sheetHint.source === "master"
+            {sheetHint.source === "previous" || sheetHint.source === "master"
               ? `${t(`sheet.prefilled.${sheetHint.source}`)} `
               : ""}
             {sheetHint.count > 0 ? (
