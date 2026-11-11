@@ -261,6 +261,40 @@ describe("seleção de itens e solicitação ao fornecedor", () => {
     expect(again.quantity).toBe(500);
   });
 
+  it("tabela do fornecedor: as solicitações dele do mesmo booking", async () => {
+    const lot = await closedLot("Shenzhen Supplier A", [
+      row("Shenzhen Supplier A", "G-1", "Group mug one"),
+      row("Shenzhen Supplier A", "G-2", "Group mug two"),
+    ]);
+    const other = await closedLot("Shenzhen Supplier A", [
+      row("Shenzhen Supplier A", "G-3", "Group mug three"),
+    ]);
+    const items = await getStore().list("booking_items", {
+      filter: { lotId: [lot.id, other.id] },
+    });
+    const open = (code: string) =>
+      svc.openSupplierRequest(admin, {
+        itemId: items.find((i) => i.factoryItemCode === code)!.id,
+        alternativeIds: [],
+        quantity: 100,
+        needs: null,
+        searchQuery: null,
+      });
+    const first = await open("G-1");
+    const second = await open("G-2");
+    await open("G-3");
+    const ids = (rows: { id: string }[]) => rows.map((r) => r.id);
+    expect(ids(await svc.supplierRequestGroup(supplierA, second))).toEqual([
+      first.id,
+      second.id,
+    ]);
+    // A Wellmix recebe só a própria; outro fornecedor, nada.
+    expect(ids(await svc.supplierRequestGroup(admin, first))).toEqual([
+      first.id,
+    ]);
+    expect(await svc.supplierRequestGroup(supplierB, first)).toEqual([]);
+  });
+
   it("foto do item: o fornecedor dono abre, outro não", async () => {
     const store = getStore();
     const doc = await store.create("documents", {

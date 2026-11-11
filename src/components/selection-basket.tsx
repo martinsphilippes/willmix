@@ -49,6 +49,7 @@ export function SelectionBasket({
   const router = useRouter();
   const [ids, setIds] = useState<string[]>([]);
   const idsRef = useRef<string[]>([]);
+  const mounted = useRef(false);
 
   useEffect(() => {
     const boxes = () => [
@@ -70,7 +71,16 @@ export function SelectionBasket({
         head.indeterminate = on > 0 && on < list.length;
       }
     };
-    sync(read());
+    // Na primeira montagem, vale também o que foi marcado antes de a página
+    // ficar pronta (conexão lenta): sem isto a caixa marcada desmarcava.
+    const initial = new Set(read());
+    if (!mounted.current) {
+      mounted.current = true;
+      const list = boxes();
+      if (all()?.checked) for (const b of list) initial.add(b.value);
+      for (const b of list) if (b.checked) initial.add(b.value);
+    }
+    sync([...initial].slice(0, MAX));
     const onChange = (e: Event) => {
       const el = e.target as HTMLInputElement | null;
       if (!el) return;

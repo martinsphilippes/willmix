@@ -14,7 +14,14 @@ import { requireUser, run, str, withQuery } from "./helpers";
 
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const SELECTION = "/app/booking/selection";
-const detail = (id: string) => `/app/supplier-requests/${id}`;
+/**
+ * Detalhe da solicitação. O fornecedor abre primeiro a tabela dos produtos;
+ * o formulário da tela do produto (`view=item`) volta para ela mesma.
+ */
+const detail = (id: string, form?: FormData) =>
+  form && str(form, "view") === "item"
+    ? `/app/supplier-requests/${id}?view=item`
+    : `/app/supplier-requests/${id}`;
 
 /** Número digitado (vírgula ou ponto); vazio = nulo; ilegível recusa. */
 function number(form: FormData, key: string, int = false): number | null {
@@ -60,7 +67,7 @@ export async function answerSupplierRequestAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "id");
   const back = ID.safeParse(raw).success
-    ? detail(raw)
+    ? detail(raw, form)
     : "/app/supplier-requests";
   await run(back, async () => {
     const input = z
@@ -94,7 +101,7 @@ export async function decideSupplierRequestAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "id");
   const back = ID.safeParse(raw).success
-    ? detail(raw)
+    ? detail(raw, form)
     : "/app/supplier-requests";
   await run(back, async () => {
     const input = z
@@ -230,7 +237,11 @@ function offerOf(form: FormData) {
 function backOf(form: FormData) {
   const raw = str(form, "id");
   const ok = ID.safeParse(raw).success;
-  return { id: raw, back: ok ? detail(raw) : "/app/supplier-requests", ok };
+  return {
+    id: raw,
+    back: ok ? detail(raw, form) : "/app/supplier-requests",
+    ok,
+  };
 }
 
 /** A Wellmix devolve com contraproposta (comentário obrigatório). */

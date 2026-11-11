@@ -143,8 +143,17 @@ async function importDraft(page: Page, file: ReturnType<typeof sheet>) {
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   // Sem NCM: "Estimar o NCM de novo" refaz a aproximação e avisa o resultado.
-  await page.click("[data-booking-lot-ncm-reclassify] button[type=submit]");
-  await page.waitForURL(/ncmMatched=\d+&ncmLeft=\d+/);
+  // Com bookings de execuções anteriores (DATA_DIR reaproveitado), o item já
+  // nasce com o NCM do parecido e o botão não aparece: aí todos têm NCM.
+  const reclassify = page.locator("[data-booking-lot-ncm-reclassify]");
+  if (await reclassify.count()) {
+    await reclassify.locator("button[type=submit]").click();
+    await page.waitForURL(/ncmMatched=\d+&ncmLeft=\d+/);
+  } else {
+    const ncm = page.locator("input[data-booking-item-ncm]");
+    for (let i = 0; i < (await ncm.count()); i++)
+      await expect(ncm.nth(i)).not.toHaveValue("");
+  }
 }
 
 test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
