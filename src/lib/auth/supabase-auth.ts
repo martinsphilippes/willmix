@@ -142,3 +142,33 @@ export async function supabaseSetPassword(
   });
   return String(user.email ?? "");
 }
+
+/**
+ * Conta sem senha (cópia dos usuários na virada): a pessoa define a senha
+ * pelo link. Já existe = nada a fazer.
+ */
+export async function supabaseEnsureUser(
+  email: string,
+  name: string,
+): Promise<"created" | "existing"> {
+  const { service } = env();
+  try {
+    await call("admin/users", {
+      method: "POST",
+      key: service,
+      body: JSON.stringify({
+        email,
+        email_confirm: true,
+        user_metadata: { name },
+      }),
+    });
+    return "created";
+  } catch (error) {
+    if (
+      error instanceof SupabaseAuthError &&
+      (error.status === 422 || error.code === "email_exists")
+    )
+      return "existing";
+    throw error;
+  }
+}
