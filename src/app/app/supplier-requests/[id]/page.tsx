@@ -9,7 +9,10 @@ import {
   supplierCanAnswer,
   supplierRequestDecisions,
 } from "@/lib/supplier-requests";
-import { getSupplierRequest } from "@/lib/services/supplier-requests";
+import {
+  getSupplierRequest,
+  supplierRequestGroup,
+} from "@/lib/services/supplier-requests";
 import { getT } from "@/i18n/server";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
@@ -51,6 +54,7 @@ import {
 } from "@/lib/services/supplier-request-negotiation";
 import { NegotiationCard, SlaBadge } from "../_components/negotiation";
 import { can } from "@/lib/auth/function-access";
+import { SupplierRequestTable } from "../_components/supplier-table";
 
 /*
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
@@ -157,6 +161,56 @@ export default async function SupplierRequestPage({
   const noLogin =
     noLoginNow && supplier ? [{ id: supplier.id, name: supplier.name }] : [];
 
+  // O fornecedor vê primeiro a tabela dos produtos da solicitação (mesmo
+  // booking); "Abrir produto" leva à tela completa (view=item).
+  const itemView = wellmix || one("view") === "item";
+  const noticeBlock = (
+    <div className="mb-3 space-y-2" data-supplier-request-notices>
+      <SupplierNoLoginAlert
+        suppliers={noLogin}
+        canParties={canOpen(user, "parties")}
+        t={t}
+        title="supplierRequests.noLogin.request"
+        hint="supplierRequests.noLogin.requestHint"
+      />
+      {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+      {notices.map((n) => (
+        <Alert key={n} tone="success">
+          {n}
+        </Alert>
+      ))}
+    </div>
+  );
+  if (!itemView) {
+    const [rows, slaMinutes] = await Promise.all([
+      supplierRequestGroup(user, r),
+      supplierRequestSlaMinutes(),
+    ]);
+    return (
+      <>
+        <PageHeader
+          t={t}
+          title={t("supplierRequests.detail.title", { n: r.number })}
+          subtitle={t("supplierRequests.table.subtitle", { n: rows.length })}
+          actions={
+            <LinkButton href="/app/supplier-requests">
+              {t("supplierRequests.detail.back")}
+            </LinkButton>
+          }
+        />
+        {noticeBlock}
+        <div data-supplier-table>
+          <SupplierRequestTable
+            rows={rows}
+            currentId={r.id}
+            slaMinutes={slaMinutes}
+            t={t}
+          />
+        </div>
+      </>
+    );
+  }
+
   // Bloco "Produto": a Wellmix que abre Produtos, na solicitação aprovada.
   let productData: RequestProductData | null = null;
   if (wellmix && r.status === "approved" && canOpen(user, "products")) {
@@ -224,26 +278,21 @@ export default async function SupplierRequestPage({
           </span>
         }
         actions={
-          <LinkButton href="/app/supplier-requests">
-            {t("supplierRequests.detail.back")}
-          </LinkButton>
+          wellmix ? (
+            <LinkButton href="/app/supplier-requests">
+              {t("supplierRequests.detail.back")}
+            </LinkButton>
+          ) : (
+            <LinkButton
+              href={`/app/supplier-requests/${r.id}`}
+              data-supplier-table-back
+            >
+              {t("supplierRequests.table.back")}
+            </LinkButton>
+          )
         }
       />
-      <div className="mb-3 space-y-2" data-supplier-request-notices>
-        <SupplierNoLoginAlert
-          suppliers={noLogin}
-          canParties={canOpen(user, "parties")}
-          t={t}
-          title="supplierRequests.noLogin.request"
-          hint="supplierRequests.noLogin.requestHint"
-        />
-        {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
-        {notices.map((n) => (
-          <Alert key={n} tone="success">
-            {n}
-          </Alert>
-        ))}
-      </div>
+      {noticeBlock}
 
       <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
         <div className="space-y-4 lg:col-span-2">
@@ -440,6 +489,9 @@ export default async function SupplierRequestPage({
                 data-supplier-answer-form
               >
                 <input type="hidden" name="id" value={r.id} />
+                {wellmix ? null : (
+                  <input type="hidden" name="view" value="item" />
+                )}
                 {wellmix ? (
                   <p className="text-xs text-zinc-500">
                     {t("supplierRequests.detail.answer.wellmixHint")}

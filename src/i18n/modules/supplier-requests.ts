@@ -17,7 +17,8 @@ export const pt = {
   "supplierRequests.selection.title": "Seleção de itens",
   "supplierRequests.selection.subtitle":
     "Itens dos bookings, inclusive os rascunhos. Filtre, agrupe itens de vários fornecedores, compare os parecidos e abra a solicitação ao fornecedor do melhor (booking fechado).",
-  "supplierRequests.selection.search": "Buscar em qualquer campo (descrição, código, material, fornecedor, origem…)",
+  "supplierRequests.selection.search":
+    "Buscar em qualquer campo (descrição, código, material, fornecedor, origem…)",
   "supplierRequests.selection.searchPlaceholder":
     "Ex.: copo vidro, garrafa térmica, 350",
   "supplierRequests.selection.filter": "Filtrar",
@@ -38,7 +39,7 @@ export const pt = {
   "supplierRequests.selection.pick": "Agrupar",
   "supplierRequests.selection.pickAll": "Marcar todos os da tela",
   "supplierRequests.selection.pickHint":
-    'Marque os itens (um a um ou todos os da tela, com filtro e busca) e clique em "Agrupar para seleção" para comparar itens de vários fornecedores.',
+    'Esta aba é só para agrupar: marque os itens (um a um ou todos os da tela, com filtro e busca) e clique em "Agrupar para seleção". A solicitação ao fornecedor abre na aba Seleção, com o grupo.',
   "supplierRequests.selection.draftHint":
     "Feche o booking para abrir a solicitação deste item",
   "supplierRequests.selection.filter.period": "Período do booking",
@@ -91,17 +92,17 @@ export const pt = {
   "supplierRequests.selection.col.sheetQty": "Qtd da planilha",
   "supplierRequests.selection.col.superplan": "Superplan",
   "supplierRequests.selection.col.situation": "Situação",
-  "supplierRequests.selection.form.title": "Abrir solicitação ao fornecedor",
+  "supplierRequests.selection.form.title": "Gravar a escolha do grupo",
   "supplierRequests.selection.form.body":
-    "Marque o item escolhido (um só) e os parecidos que ficam como alternativas. A solicitação vai ao fornecedor do item escolhido, que vê e responde no portal. As alternativas e o Superplan ficam só com a Wellmix.",
+    "Marque o item que ganhou (um só) e informe a quantidade de peças. O botão só grava a escolha: nada vai ao fornecedor agora. A solicitação é aberta depois, nos blocos, só do item que ganhou de cada grupo.",
   "supplierRequests.selection.form.quantity": "Quantidade (peças)",
   "supplierRequests.selection.form.quantityHint":
     "Em branco: a quantidade da planilha do item escolhido.",
   "supplierRequests.selection.form.needs": "O que a Wellmix precisa no produto",
   "supplierRequests.selection.form.needsHint":
     "Cor, embalagem, logo, ajuste… O fornecedor lê este texto.",
-  "supplierRequests.selection.form.submit": "Abrir solicitação",
-  "supplierRequests.selection.form.pending": "Abrindo…",
+  "supplierRequests.selection.form.submit": "Gravar escolha",
+  "supplierRequests.selection.form.pending": "Gravando…",
 
   "supplierRequests.list.title": "Solicitações ao fornecedor",
   "supplierRequests.list.subtitle":
@@ -219,6 +220,64 @@ export const pt = {
   "supplierRequests.notify.cancelled.subject": "Solicitação nº {n} cancelada",
   "supplierRequests.notify.cancelled.body":
     "A Wellmix cancelou a solicitação nº {n}. Não é preciso responder.",
+  "supplierRequests.table.title": "Produtos desta solicitação",
+  "supplierRequests.table.subtitle":
+    "{n} produto(s) que a Wellmix pediu a você neste booking",
+  "supplierRequests.table.hint":
+    "Responda direto na linha (mensagem ou resposta sim/não) ou abra a tela do produto para ver a ficha completa e negociar.",
+  "supplierRequests.table.col.photo": "Foto",
+  "supplierRequests.table.col.item": "Produto",
+  "supplierRequests.table.col.quantity": "Quantidade",
+  "supplierRequests.table.col.bookingPrice": "Preço do booking",
+  "supplierRequests.table.col.answer": "Sua resposta",
+  "supplierRequests.table.col.status": "Situação",
+  "supplierRequests.table.col.actions": "Ações",
+  "supplierRequests.table.photo": "Ampliar a foto",
+  "supplierRequests.table.photoOpen": "Abrir a foto em tamanho real",
+  "supplierRequests.table.noPhoto": "Sem foto",
+  "supplierRequests.table.close": "Fechar",
+  "supplierRequests.table.needs": "A Wellmix precisa",
+  "supplierRequests.table.current": "Esta solicitação",
+  "supplierRequests.table.proposalPending":
+    "Contraproposta esperando você: abra o produto para responder.",
+  "supplierRequests.table.message": "Mensagem",
+  "supplierRequests.table.messageTitle":
+    "Mensagem à Wellmix · solicitação nº {n}",
+  "supplierRequests.table.messageText": "Mensagem",
+  "supplierRequests.table.send": "Enviar",
+  "supplierRequests.table.sending": "Enviando…",
+  "supplierRequests.table.answer": "Sim / Não",
+  "supplierRequests.table.answerTitle":
+    "Resposta definitiva · solicitação nº {n}",
+  "supplierRequests.table.answerHint":
+    "Para responder sim, informe o preço por peça. Pedido mínimo e prazo ficam como estão (mude na tela do produto).",
+  "supplierRequests.table.yes": "Sim, faço",
+  "supplierRequests.table.no": "Não faço",
+  "supplierRequests.table.open": "Abrir produto",
+  "supplierRequests.table.back": "Ver todos os produtos",
+  "supplierRequests.selection.saved":
+    "Escolha gravada. O grupo aparece abaixo como resolvido, com o item escolhido em verde. Nada foi enviado ao fornecedor ainda.",
+  "supplierRequests.selection.opened":
+    "Solicitações abertas e enviadas aos fornecedores: {n}.",
+  "supplierRequests.selection.openFailed":
+    "Não abriram e continuam gravadas: {n}.",
+  "supplierRequests.selection.open.ready":
+    "Grupos resolvidos esperando a solicitação: {n}. Vai ao fornecedor só o item escolhido de cada um.",
+  "supplierRequests.selection.open.none":
+    "Nenhum grupo resolvido esperando. Abra um bloco, compare e grave a escolha.",
+  "supplierRequests.selection.open.marked": "Abrir solicitação dos marcados",
+  "supplierRequests.selection.open.all": "Abrir solicitação de todos ({n})",
+  "supplierRequests.selection.open.mark": "Marcar para abrir a solicitação",
+  "supplierRequests.selection.resolved": "Resolvido",
+  "supplierRequests.selection.requested": "Solicitação nº {n} aberta",
+  "supplierRequests.selection.requestedNoLink": "Solicitação aberta",
+  "supplierRequests.selection.winner": "Escolhido · {qty} peças",
+  "supplierRequests.selection.blocks.reopen": "Rever a escolha",
+  "supplierRequests.selection.blocks.sizeManual": "{n} itens comparados",
+  "supplierRequests.error.selection_group_pick":
+    "Marque ao menos um grupo resolvido, ou use o botão de abrir todos.",
+  "supplierRequests.error.selection_group_none":
+    "Nenhum grupo resolvido esperando a solicitação.",
 };
 
 export const en: typeof pt = {
@@ -236,7 +295,8 @@ export const en: typeof pt = {
   "supplierRequests.selection.title": "Item selection",
   "supplierRequests.selection.subtitle":
     "Items from the bookings, drafts included. Filter, group items from several suppliers, compare similar ones and open a request to the best one's supplier (closed booking).",
-  "supplierRequests.selection.search": "Search any field (description, code, material, supplier, origin…)",
+  "supplierRequests.selection.search":
+    "Search any field (description, code, material, supplier, origin…)",
   "supplierRequests.selection.searchPlaceholder":
     "E.g.: glass cup, thermos, 350",
   "supplierRequests.selection.filter": "Filter",
@@ -257,7 +317,7 @@ export const en: typeof pt = {
   "supplierRequests.selection.pick": "Group",
   "supplierRequests.selection.pickAll": "Select all on screen",
   "supplierRequests.selection.pickHint":
-    'Tick the items (one by one or all on screen, with filters and search) and click "Group for selection" to compare items from several suppliers.',
+    'This tab is only for grouping: tick the items (one by one or all on screen, with filter and search) and click "Group for selection". The supplier request is opened in the Selection tab, with the group.',
   "supplierRequests.selection.draftHint":
     "Close the booking to open the request for this item",
   "supplierRequests.selection.filter.period": "Booking period",
@@ -308,17 +368,17 @@ export const en: typeof pt = {
   "supplierRequests.selection.col.sheetQty": "Spreadsheet qty",
   "supplierRequests.selection.col.superplan": "Superplan",
   "supplierRequests.selection.col.situation": "Status",
-  "supplierRequests.selection.form.title": "Open a supplier request",
+  "supplierRequests.selection.form.title": "Save the group's choice",
   "supplierRequests.selection.form.body":
-    "Mark the chosen item (just one) and the similar ones kept as alternatives. The request goes to the chosen item's supplier, who sees and answers it in the portal. Alternatives and Superplan stay with Wellmix only.",
+    "Mark the winning item (only one) and enter the quantity in pieces. The button only saves the choice: nothing goes to the supplier now. The request is opened later, in the blocks, only for the winning item of each group.",
   "supplierRequests.selection.form.quantity": "Quantity (pieces)",
   "supplierRequests.selection.form.quantityHint":
     "Blank: the chosen item's spreadsheet quantity.",
   "supplierRequests.selection.form.needs": "What Wellmix needs in the product",
   "supplierRequests.selection.form.needsHint":
     "Color, package, logo, adjustment… The supplier reads this text.",
-  "supplierRequests.selection.form.submit": "Open request",
-  "supplierRequests.selection.form.pending": "Opening…",
+  "supplierRequests.selection.form.submit": "Save choice",
+  "supplierRequests.selection.form.pending": "Saving…",
 
   "supplierRequests.list.title": "Supplier requests",
   "supplierRequests.list.subtitle":
@@ -436,6 +496,62 @@ export const en: typeof pt = {
   "supplierRequests.notify.cancelled.subject": "Request no. {n} cancelled",
   "supplierRequests.notify.cancelled.body":
     "Wellmix cancelled request no. {n}. No answer is needed.",
+  "supplierRequests.table.title": "Products in this request",
+  "supplierRequests.table.subtitle":
+    "{n} product(s) Wellmix requested from you in this booking",
+  "supplierRequests.table.hint":
+    "Reply right on the row (message or yes/no answer) or open the product screen to see the full sheet and negotiate.",
+  "supplierRequests.table.col.photo": "Photo",
+  "supplierRequests.table.col.item": "Product",
+  "supplierRequests.table.col.quantity": "Quantity",
+  "supplierRequests.table.col.bookingPrice": "Booking price",
+  "supplierRequests.table.col.answer": "Your answer",
+  "supplierRequests.table.col.status": "Status",
+  "supplierRequests.table.col.actions": "Actions",
+  "supplierRequests.table.photo": "Enlarge photo",
+  "supplierRequests.table.photoOpen": "Open photo at full size",
+  "supplierRequests.table.noPhoto": "No photo",
+  "supplierRequests.table.close": "Close",
+  "supplierRequests.table.needs": "Wellmix needs",
+  "supplierRequests.table.current": "This request",
+  "supplierRequests.table.proposalPending":
+    "Counter-offer waiting for you: open the product to reply.",
+  "supplierRequests.table.message": "Message",
+  "supplierRequests.table.messageTitle": "Message to Wellmix · request no. {n}",
+  "supplierRequests.table.messageText": "Message",
+  "supplierRequests.table.send": "Send",
+  "supplierRequests.table.sending": "Sending…",
+  "supplierRequests.table.answer": "Yes / No",
+  "supplierRequests.table.answerTitle": "Final answer · request no. {n}",
+  "supplierRequests.table.answerHint":
+    "To answer yes, enter the price per piece. Minimum order and lead time stay as they are (change them on the product screen).",
+  "supplierRequests.table.yes": "Yes, I can",
+  "supplierRequests.table.no": "No, I can't",
+  "supplierRequests.table.open": "Open product",
+  "supplierRequests.table.back": "See all products",
+  "supplierRequests.selection.saved":
+    "Choice saved. The group appears below as resolved, with the chosen item in green. Nothing was sent to the supplier yet.",
+  "supplierRequests.selection.opened":
+    "Requests opened and sent to the suppliers: {n}.",
+  "supplierRequests.selection.openFailed":
+    "Did not open and remain saved: {n}.",
+  "supplierRequests.selection.open.ready":
+    "Resolved groups waiting for the request: {n}. Only the chosen item of each goes to the supplier.",
+  "supplierRequests.selection.open.none":
+    "No resolved group waiting. Open a block, compare and save the choice.",
+  "supplierRequests.selection.open.marked": "Open request for the marked ones",
+  "supplierRequests.selection.open.all": "Open request for all ({n})",
+  "supplierRequests.selection.open.mark": "Mark to open the request",
+  "supplierRequests.selection.resolved": "Resolved",
+  "supplierRequests.selection.requested": "Request no. {n} opened",
+  "supplierRequests.selection.requestedNoLink": "Request opened",
+  "supplierRequests.selection.winner": "Chosen · {qty} pieces",
+  "supplierRequests.selection.blocks.reopen": "Review the choice",
+  "supplierRequests.selection.blocks.sizeManual": "{n} items compared",
+  "supplierRequests.error.selection_group_pick":
+    "Mark at least one resolved group, or use the open-all button.",
+  "supplierRequests.error.selection_group_none":
+    "No resolved group waiting for the request.",
 };
 
 export const zh: typeof pt = {
@@ -453,7 +569,8 @@ export const zh: typeof pt = {
   "supplierRequests.selection.title": "条目筛选",
   "supplierRequests.selection.subtitle":
     "所有 booking 的条目（包括草稿）。筛选、将多个供应商的条目分组、比较相似条目，并向最佳条目的供应商发起询单（booking 须已关闭）。",
-  "supplierRequests.selection.search": "搜索任意字段（描述、编码、材质、供应商、产地…）",
+  "supplierRequests.selection.search":
+    "搜索任意字段（描述、编码、材质、供应商、产地…）",
   "supplierRequests.selection.searchPlaceholder": "例如：玻璃杯、保温瓶、350",
   "supplierRequests.selection.filter": "筛选",
   "supplierRequests.selection.clear": "清除",
@@ -472,7 +589,7 @@ export const zh: typeof pt = {
   "supplierRequests.selection.pick": "分组",
   "supplierRequests.selection.pickAll": "全选本页",
   "supplierRequests.selection.pickHint":
-    "勾选项目（逐个或全选本页，可配合筛选和搜索），点击“分组选择”以比较多个供应商的项目。",
+    "此页签仅用于分组：勾选产品（逐个或勾选当前页全部，可配合筛选和搜索），然后点击“分组以便选择”。供应商申请在“选择”页签中按分组发起。",
   "supplierRequests.selection.draftHint":
     "关闭该 booking 后才能为此项目发起请求",
   "supplierRequests.selection.filter.period": "Booking 日期范围",
@@ -522,17 +639,17 @@ export const zh: typeof pt = {
   "supplierRequests.selection.col.sheetQty": "表格数量",
   "supplierRequests.selection.col.superplan": "Superplan",
   "supplierRequests.selection.col.situation": "状态",
-  "supplierRequests.selection.form.title": "向供应商发起询单",
+  "supplierRequests.selection.form.title": "保存本组的选择",
   "supplierRequests.selection.form.body":
-    "勾选选中的条目（仅一个）以及作为备选的相似条目。询单发给选中条目的供应商，供应商在门户中查看并回复。备选条目和 Superplan 仅 Wellmix 可见。",
+    "勾选胜出的产品（仅一个）并填写数量（件）。此按钮只保存选择：现在不会发给供应商。询问稍后在分组中打开，只发送每组胜出的产品。",
   "supplierRequests.selection.form.quantity": "数量（件）",
   "supplierRequests.selection.form.quantityHint":
     "留空：使用选中条目的表格数量。",
   "supplierRequests.selection.form.needs": "Wellmix 对产品的要求",
   "supplierRequests.selection.form.needsHint":
     "颜色、包装、标志、调整……供应商会阅读这段文字。",
-  "supplierRequests.selection.form.submit": "发起询单",
-  "supplierRequests.selection.form.pending": "正在发起…",
+  "supplierRequests.selection.form.submit": "保存选择",
+  "supplierRequests.selection.form.pending": "保存中…",
 
   "supplierRequests.list.title": "供应商询单",
   "supplierRequests.list.subtitle":
@@ -647,4 +764,56 @@ export const zh: typeof pt = {
   "supplierRequests.notify.cancelled.subject": "询单第 {n} 号已取消",
   "supplierRequests.notify.cancelled.body":
     "Wellmix 已取消询单第 {n} 号。无需回复。",
+  "supplierRequests.table.title": "本次询单的产品",
+  "supplierRequests.table.subtitle": "Wellmix 在此订舱中向您询问的 {n} 个产品",
+  "supplierRequests.table.hint":
+    "可直接在行内回复（留言或是/否答复），或打开产品页面查看完整资料并议价。",
+  "supplierRequests.table.col.photo": "图片",
+  "supplierRequests.table.col.item": "产品",
+  "supplierRequests.table.col.quantity": "数量",
+  "supplierRequests.table.col.bookingPrice": "订舱价格",
+  "supplierRequests.table.col.answer": "您的答复",
+  "supplierRequests.table.col.status": "状态",
+  "supplierRequests.table.col.actions": "操作",
+  "supplierRequests.table.photo": "放大图片",
+  "supplierRequests.table.photoOpen": "以原尺寸打开图片",
+  "supplierRequests.table.noPhoto": "无图片",
+  "supplierRequests.table.close": "关闭",
+  "supplierRequests.table.needs": "Wellmix 需要",
+  "supplierRequests.table.current": "本询单",
+  "supplierRequests.table.proposalPending":
+    "有还价等待您答复：请打开产品页面回复。",
+  "supplierRequests.table.message": "留言",
+  "supplierRequests.table.messageTitle": "给 Wellmix 的留言 · 询单 {n} 号",
+  "supplierRequests.table.messageText": "留言",
+  "supplierRequests.table.send": "发送",
+  "supplierRequests.table.sending": "发送中…",
+  "supplierRequests.table.answer": "是 / 否",
+  "supplierRequests.table.answerTitle": "最终答复 · 询单 {n} 号",
+  "supplierRequests.table.answerHint":
+    "答复“是”时请填写单价。起订量和交期保持不变（可在产品页面修改）。",
+  "supplierRequests.table.yes": "是，可以做",
+  "supplierRequests.table.no": "不能做",
+  "supplierRequests.table.open": "打开产品",
+  "supplierRequests.table.back": "查看全部产品",
+  "supplierRequests.selection.saved":
+    "选择已保存。该组在下方显示为已解决，所选产品为绿色。尚未发送给供应商。",
+  "supplierRequests.selection.opened": "已打开 {n} 个询问并发送给供应商。",
+  "supplierRequests.selection.openFailed": "{n} 个未能打开，仍保持已保存：",
+  "supplierRequests.selection.open.ready":
+    "{n} 个已解决的组等待询问。只把每组所选产品发给供应商。",
+  "supplierRequests.selection.open.none":
+    "没有等待中的已解决组。请打开一个分组，比较并保存选择。",
+  "supplierRequests.selection.open.marked": "为已勾选的打开询问",
+  "supplierRequests.selection.open.all": "为全部打开询问（{n}）",
+  "supplierRequests.selection.open.mark": "勾选以打开询问",
+  "supplierRequests.selection.resolved": "已解决",
+  "supplierRequests.selection.requested": "询问 {n} 号已打开",
+  "supplierRequests.selection.requestedNoLink": "询问已打开",
+  "supplierRequests.selection.winner": "已选 · {qty} 件",
+  "supplierRequests.selection.blocks.reopen": "重新选择",
+  "supplierRequests.selection.blocks.sizeManual": "比较了 {n} 个产品",
+  "supplierRequests.error.selection_group_pick":
+    "请至少勾选一个已解决的组，或使用全部打开按钮。",
+  "supplierRequests.error.selection_group_none": "没有等待询问的已解决组。",
 };

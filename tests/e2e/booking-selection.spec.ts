@@ -143,8 +143,17 @@ async function importDraft(page: Page, file: ReturnType<typeof sheet>) {
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   // Sem NCM: "Estimar o NCM de novo" refaz a aproximação e avisa o resultado.
-  await page.click("[data-booking-lot-ncm-reclassify] button[type=submit]");
-  await page.waitForURL(/ncmMatched=\d+&ncmLeft=\d+/);
+  // Com bookings de execuções anteriores (DATA_DIR reaproveitado), o item já
+  // nasce com o NCM do parecido e o botão não aparece: aí todos têm NCM.
+  const reclassify = page.locator("[data-booking-lot-ncm-reclassify]");
+  if (await reclassify.count()) {
+    await reclassify.locator("button[type=submit]").click();
+    await page.waitForURL(/ncmMatched=\d+&ncmLeft=\d+/);
+  } else {
+    const ncm = page.locator("input[data-booking-item-ncm]");
+    for (let i = 0; i < (await ncm.count()); i++)
+      await expect(ncm.nth(i)).not.toHaveValue("");
+  }
 }
 
 test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
@@ -175,7 +184,9 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(
     draftRow.locator('[data-selection-lot-status="draft"]'),
   ).toBeVisible();
-  await expect(draftRow.locator("[data-selection-choose]")).toBeDisabled();
+  // A aba Itens só agrupa: sem escolher nem abrir solicitação.
+  await expect(page.locator("[data-selection-choose]")).toHaveCount(0);
+  await expect(page.locator("[data-selection-submit]")).toHaveCount(0);
 
   // 2. Filtro de status: sem o rascunho, sobram os dois fechados.
   await page.locator('[data-selection-filter-status="draft"]').uncheck();
@@ -220,6 +231,13 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
     "data-selection-group-view",
     "3",
   );
+  // No grupo (aba Seleção) é que se escolhe; o item de rascunho não pode.
+  await expect(
+    page
+      .locator("[data-selection-item]", { hasText: `${TAG}-C` })
+      .locator("[data-selection-choose]"),
+  ).toBeDisabled();
+  await expect(page.locator("[data-selection-submit]")).toBeVisible();
   await expect(page.locator("[data-selection-item]")).toHaveCount(3);
 
   // 6. Seleção: o bloco sugerido junta os três copos de dois fornecedores.

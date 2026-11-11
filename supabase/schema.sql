@@ -1581,6 +1581,25 @@ create index if not exists "supplier_requests_by_product" on public."supplier_re
 create index if not exists "supplier_requests_by_order" on public."supplier_requests" ("orderId");
 create index if not exists "supplier_requests_created" on public."supplier_requests" ("createdAt");
 
+create table if not exists public."selection_groups" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."selection_groups" enable row level security;
+alter table public."selection_groups" add column if not exists "status" text;
+alter table public."selection_groups" add column if not exists "itemIds" jsonb;
+alter table public."selection_groups" add column if not exists "chosenItemId" text;
+alter table public."selection_groups" add column if not exists "quantity" bigint;
+alter table public."selection_groups" add column if not exists "needs" text;
+alter table public."selection_groups" add column if not exists "supplierRequestId" text;
+alter table public."selection_groups" add column if not exists "requestedAt" timestamptz;
+alter table public."selection_groups" add column if not exists "createdByUserId" text;
+alter table public."selection_groups" add column if not exists "updatedByUserId" text;
+create index if not exists "selection_groups_by_status" on public."selection_groups" ("status");
+create index if not exists "selection_groups_by_chosen" on public."selection_groups" ("chosenItemId");
+create index if not exists "selection_groups_created" on public."selection_groups" ("createdAt");
+
 create table if not exists public."stock_locations" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

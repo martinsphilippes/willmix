@@ -244,6 +244,9 @@ export function NegotiationCard({
                 {t("supplierRequests.negotiation.proposeHint")}
               </p>
               <input type="hidden" name="id" value={r.id} />
+              {wellmix ? null : (
+                <input type="hidden" name="view" value="item" />
+              )}
               <OfferFields
                 t={t}
                 values={{
@@ -290,6 +293,9 @@ export function NegotiationCard({
                 )}
               </p>
               <input type="hidden" name="id" value={r.id} />
+              {wellmix ? null : (
+                <input type="hidden" name="view" value="item" />
+              )}
               <OfferFields
                 t={t}
                 values={proposal}
@@ -337,6 +343,9 @@ export function NegotiationCard({
                 {t("supplierRequests.negotiation.message")}
               </h3>
               <input type="hidden" name="id" value={r.id} />
+              {wellmix ? null : (
+                <input type="hidden" name="view" value="item" />
+              )}
               <Field label={t("supplierRequests.negotiation.messageText")}>
                 <Textarea
                   name="text"

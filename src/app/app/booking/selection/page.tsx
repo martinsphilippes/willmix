@@ -17,6 +17,7 @@ import {
   DEFAULT_SELECTION_STATUSES,
   SELECTION_STATUSES,
   filtersToParams,
+  groupForBlock,
   parseGroupIds,
   parseSelectionFilters,
   searchSuggestions,
@@ -47,7 +48,11 @@ import {
   type Tone,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
-import { openSupplierRequestAction } from "../../actions/supplier-requests";
+import {
+  openGroupRequestsAction,
+  saveSelectionGroupAction,
+} from "../../actions/supplier-requests";
+import { listSelectionGroups } from "@/lib/services/selection-groups";
 import { SupplierNoLoginAlert } from "@/components/supplier-no-login";
 import { canOpen } from "@/lib/auth/screens";
 import { partiesWithoutLogin } from "@/lib/services/portal-access";
@@ -84,12 +89,13 @@ export default async function BookingSelectionPage({
   const filters = parseSelectionFilters(query);
   const groupIds = parseGroupIds(query.ids);
   const t = await getT();
-  const [result, group, fx] = await Promise.all([
+  const [result, group, fx, savedGroups] = await Promise.all([
     listSelectionItems(user, q, { filters }),
     groupIds.length
       ? listSelectionItems(user, "", { ids: groupIds })
       : Promise.resolve(null),
     getFxRates(),
+    tab === "selection" ? listSelectionGroups(user) : Promise.resolve([]),
   ]);
   const usd = fx.rates.USD ?? null;
   const rmb = fx.rates.RMB ?? null;
@@ -126,6 +132,62 @@ export default async function BookingSelectionPage({
         )
       : [];
   const rowById = new Map((result?.all ?? []).map((r) => [r.item.id, r]));
+  // Escolha gravada (ainda não enviada) do grupo aberto: volta preenchida.
+  const current =
+    tab === "selection" && groupIds.length
+      ? groupForBlock(
+          groupIds,
+          savedGroups.map((e) => e.group).filter((g) => g.status === "saved"),
+        )
+      : null;
+  // Blocos sugeridos com a escolha de cada um; depois, as escolhas de grupos
+  // montados à mão (que não batem com nenhum bloco).
+  const blockCards = blocks.map((b) => ({
+    key: b.ids.join(","),
+    label: b.label.join(" ") || "—",
+    ids: b.ids,
+    suppliers: b.suppliers as number | null,
+    entry:
+      savedGroups.find(
+        (e) =>
+          e.group ===
+          groupForBlock(
+            b.ids,
+            savedGroups.map((x) => x.group),
+          ),
+      ) ?? null,
+  }));
+  const usedGroups = new Set(blockCards.map((c) => c.entry?.group.id));
+  const cards = [
+    ...blockCards,
+    ...savedGroups
+      .filter((e) => !usedGroups.has(e.group.id))
+      .map((e) => ({
+        key: e.group.id,
+        label:
+          e.chosen?.description ??
+          e.chosen?.productName ??
+          e.chosen?.factoryItemCode ??
+          "—",
+        ids: e.group.itemIds,
+        suppliers: null as number | null,
+        entry: e as (typeof savedGroups)[number] | null,
+      })),
+  ];
+  const savedCount = savedGroups.filter(
+    (e) => e.group.status === "saved",
+  ).length;
+  const savedNotice = query.saved === "1";
+  const openedCount =
+    typeof query.opened === "string" ? Number(query.opened) || 0 : null;
+  const failedCount =
+    typeof query.failed === "string" ? Number(query.failed) || 0 : 0;
+  const why = typeof query.why === "string" ? query.why : "";
+  const whyKey = `supplierRequests.error.${why}`;
+  const whyText =
+    failedCount && whyKey in dictionaries.pt
+      ? t(whyKey as DictionaryKey)
+      : null;
   // Fornecedores sem login: a solicitação aberta a eles fica parada.
   const rowSuppliers = new Map(
     rows
@@ -181,15 +243,13 @@ export default async function BookingSelectionPage({
     !!filters.supplierId ||
     !!filters.origin;
 
-  /** Tabela de comparação e o formulário da solicitação. */
-  const comparison = (list: SelectionRow[], basket: boolean) => (
-    <form
-      id={FORM}
-      action={openSupplierRequestAction}
-      className="space-y-4"
-      data-selection-form
-    >
-      <input type="hidden" name="q" value={q} />
+  /**
+   * Tabela dos itens. Na aba Itens (`basket`) ela só agrupa: sem "Escolher",
+   * sem "Alternativa" e sem o quadro de abrir a solicitação (decisão do dono:
+   * a solicitação abre só na aba Seleção, com o grupo).
+   */
+  const comparison = (list: SelectionRow[], basket: boolean) => {
+    const table = (
       <div className="relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border">
         <table className="w-full text-left text-sm" data-selection-items>
           <thead>
@@ -205,8 +265,7 @@ export default async function BookingSelectionPage({
                 ) : null}
               </th>
               {[
-                "choose",
-                "alternative",
+                ...(basket ? [] : ["choose", "alternative"]),
                 "photo",
                 "item",
                 "supplier",
@@ -255,30 +314,37 @@ export default async function BookingSelectionPage({
                       />
                     ) : null}
                   </td>
-                  <td className={cx(td, "text-center")}>
-                    <input
-                      type="radio"
-                      name="chosen"
-                      value={item.id}
-                      disabled={busy}
-                      title={
-                        draft
-                          ? t("supplierRequests.selection.draftHint")
-                          : undefined
-                      }
-                      aria-label={`${col("choose")} ${item.description ?? item.factoryItemCode ?? ""}`}
-                      data-selection-choose={item.id}
-                    />
-                  </td>
-                  <td className={cx(td, "text-center")}>
-                    <input
-                      type="checkbox"
-                      name="alternatives"
-                      value={item.id}
-                      aria-label={`${col("alternative")} ${item.description ?? item.factoryItemCode ?? ""}`}
-                      data-selection-alternative={item.id}
-                    />
-                  </td>
+                  {basket ? null : (
+                    <>
+                      <td className={cx(td, "text-center")}>
+                        <input
+                          type="radio"
+                          name="chosen"
+                          value={item.id}
+                          disabled={busy}
+                          defaultChecked={
+                            !busy && current?.chosenItemId === item.id
+                          }
+                          title={
+                            draft
+                              ? t("supplierRequests.selection.draftHint")
+                              : undefined
+                          }
+                          aria-label={`${col("choose")} ${item.description ?? item.factoryItemCode ?? ""}`}
+                          data-selection-choose={item.id}
+                        />
+                      </td>
+                      <td className={cx(td, "text-center")}>
+                        <input
+                          type="checkbox"
+                          name="alternatives"
+                          value={item.id}
+                          aria-label={`${col("alternative")} ${item.description ?? item.factoryItemCode ?? ""}`}
+                          data-selection-alternative={item.id}
+                        />
+                      </td>
+                    </>
+                  )}
                   <td className={td}>
                     {item.photoDocumentId ? (
                       <a
@@ -444,48 +510,72 @@ export default async function BookingSelectionPage({
           </tbody>
         </table>
       </div>
+    );
+    if (basket)
+      return (
+        <div className="space-y-4" data-selection-list>
+          {table}
+        </div>
+      );
+    return (
+      <form
+        id={FORM}
+        action={saveSelectionGroupAction}
+        className="space-y-4"
+        data-selection-form
+      >
+        <input type="hidden" name="filters" value={filterParams.toString()} />
+        <input
+          type="hidden"
+          name="group"
+          value={list.map((r) => r.item.id).join(",")}
+        />
+        {table}
 
-      <Card title={t("supplierRequests.selection.form.title")}>
-        <p className="mb-3 text-sm text-zinc-600">
-          {t("supplierRequests.selection.form.body")}
-        </p>
-        <div className="grid gap-3 md:grid-cols-3">
-          <Field
-            label={t("supplierRequests.selection.form.quantity")}
-            hint={t("supplierRequests.selection.form.quantityHint")}
-          >
-            <Input
-              name="quantity"
-              inputMode="numeric"
-              autoComplete="off"
-              data-selection-quantity
-            />
-          </Field>
-          <div className="md:col-span-2">
+        <Card title={t("supplierRequests.selection.form.title")}>
+          <p className="mb-3 text-sm text-zinc-600">
+            {t("supplierRequests.selection.form.body")}
+          </p>
+          <div className="grid gap-3 md:grid-cols-3">
             <Field
-              label={t("supplierRequests.selection.form.needs")}
-              hint={t("supplierRequests.selection.form.needsHint")}
+              label={t("supplierRequests.selection.form.quantity")}
+              hint={t("supplierRequests.selection.form.quantityHint")}
             >
-              <Textarea
-                name="needs"
-                rows={3}
-                maxLength={4000}
-                data-selection-needs
+              <Input
+                name="quantity"
+                inputMode="numeric"
+                autoComplete="off"
+                defaultValue={current?.quantity ?? undefined}
+                data-selection-quantity
               />
             </Field>
+            <div className="md:col-span-2">
+              <Field
+                label={t("supplierRequests.selection.form.needs")}
+                hint={t("supplierRequests.selection.form.needsHint")}
+              >
+                <Textarea
+                  name="needs"
+                  rows={3}
+                  maxLength={4000}
+                  defaultValue={current?.needs ?? undefined}
+                  data-selection-needs
+                />
+              </Field>
+            </div>
           </div>
-        </div>
-        <div className="mt-3">
-          <SubmitButton
-            pendingText={t("supplierRequests.selection.form.pending")}
-            data-selection-submit
-          >
-            {t("supplierRequests.selection.form.submit")}
-          </SubmitButton>
-        </div>
-      </Card>
-    </form>
-  );
+          <div className="mt-3">
+            <SubmitButton
+              pendingText={t("supplierRequests.selection.form.pending")}
+              data-selection-submit
+            >
+              {t("supplierRequests.selection.form.submit")}
+            </SubmitButton>
+          </div>
+        </Card>
+      </form>
+    );
+  };
 
   return (
     <>
@@ -507,6 +597,21 @@ export default async function BookingSelectionPage({
       {errorText ? (
         <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
+        </div>
+      ) : null}
+      {savedNotice ? (
+        <div className="mb-3" data-selection-saved>
+          <Alert tone="success">{t("supplierRequests.selection.saved")}</Alert>
+        </div>
+      ) : null}
+      {openedCount !== null ? (
+        <div className="mb-3" data-selection-opened={openedCount}>
+          <Alert tone={failedCount ? "warning" : "success"}>
+            {t("supplierRequests.selection.opened", { n: openedCount })}
+            {failedCount
+              ? ` ${t("supplierRequests.selection.openFailed", { n: failedCount })}${whyText ? ` ${whyText}` : ""}`
+              : ""}
+          </Alert>
         </div>
       ) : null}
       {noLogin.length ? (
@@ -738,76 +843,216 @@ export default async function BookingSelectionPage({
                   </p>
                 </Card>
               ) : null}
+              <span id="blocks" className="block scroll-mt-24" />
               <Card title={t("supplierRequests.selection.blocks.title")}>
                 <p className="mb-3 text-sm text-zinc-600">
                   {t("supplierRequests.selection.blocks.hint")}
                 </p>
-                {blocks.length ? (
-                  <div
-                    className="grid gap-3 lg:grid-cols-2"
-                    data-selection-blocks
+                {cards.length ? (
+                  <form
+                    action={openGroupRequestsAction}
+                    data-selection-open-form
                   >
-                    {blocks.map((b) => (
-                      <div
-                        key={b.ids.join(",")}
-                        className="rounded-xl border border-zinc-200 p-3"
-                        data-selection-block={b.ids.length}
+                    <input
+                      type="hidden"
+                      name="filters"
+                      value={filterParams.toString()}
+                    />
+                    <div
+                      className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3"
+                      data-selection-open-bar={savedCount}
+                    >
+                      <span className="mr-auto text-sm text-zinc-700">
+                        {savedCount
+                          ? t("supplierRequests.selection.open.ready", {
+                              n: savedCount,
+                            })
+                          : t("supplierRequests.selection.open.none")}
+                      </span>
+                      <SubmitButton
+                        name="scope"
+                        value="marked"
+                        variant="secondary"
+                        disabled={!savedCount}
+                        pendingText={t(
+                          "supplierRequests.selection.form.pending",
+                        )}
+                        data-selection-open-marked
                       >
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <span className="font-semibold capitalize text-zinc-900">
-                            {b.label.join(" ") || "—"}
-                          </span>
-                          <Badge tone="info">
-                            {t("supplierRequests.selection.blocks.size", {
-                              n: b.ids.length,
-                              suppliers: b.suppliers,
-                            })}
-                          </Badge>
-                        </div>
-                        <ul className="mb-3 space-y-1 text-[13px] text-zinc-700">
-                          {b.ids.slice(0, 6).map((id) => {
-                            const r = rowById.get(id);
-                            if (!r) return null;
-                            const usdPrice = priceInUsd(
-                              r.item.price,
-                              r.item.currency,
-                              rmbPerUsd,
-                            );
-                            return (
-                              <li key={id} className="flex gap-2">
-                                <span className="min-w-0 flex-1 truncate">
-                                  {r.item.description ??
-                                    r.item.productName ??
-                                    "—"}
-                                </span>
-                                <span className="shrink-0 text-zinc-500">
-                                  {r.supplier?.name ?? "—"}
-                                </span>
-                                <span className="w-20 shrink-0 text-right tabular-nums">
-                                  {usdPrice === null
-                                    ? "—"
-                                    : `US$ ${num(usdPrice, 3)}`}
-                                </span>
-                              </li>
-                            );
-                          })}
-                          {b.ids.length > 6 ? (
-                            <li className="text-xs text-zinc-500">
-                              {t("supplierRequests.selection.blocks.more", {
-                                n: b.ids.length - 6,
+                        {t("supplierRequests.selection.open.marked")}
+                      </SubmitButton>
+                      <SubmitButton
+                        name="scope"
+                        value="all"
+                        disabled={!savedCount}
+                        pendingText={t(
+                          "supplierRequests.selection.form.pending",
+                        )}
+                        data-selection-open-all
+                      >
+                        {t("supplierRequests.selection.open.all", {
+                          n: savedCount,
+                        })}
+                      </SubmitButton>
+                    </div>
+                    <div
+                      className="grid gap-3 lg:grid-cols-2"
+                      data-selection-blocks
+                    >
+                      {cards.map((b) => {
+                        const g = b.entry?.group ?? null;
+                        const saved = g?.status === "saved";
+                        const request = b.entry?.request ?? null;
+                        // O ganhador primeiro, para aparecer sempre.
+                        const ids = g
+                          ? [
+                              g.chosenItemId,
+                              ...b.ids.filter((i) => i !== g.chosenItemId),
+                            ]
+                          : b.ids;
+                        return (
+                          <div
+                            key={b.key}
+                            className={cx(
+                              "rounded-xl border p-3",
+                              g
+                                ? "border-emerald-300 bg-emerald-50/40"
+                                : "border-zinc-200",
+                            )}
+                            data-selection-block={b.ids.length}
+                            data-selection-resolved={g?.status ?? undefined}
+                          >
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                              {saved ? (
+                                <input
+                                  type="checkbox"
+                                  name="groups"
+                                  value={g!.id}
+                                  defaultChecked
+                                  className="h-5 w-5"
+                                  aria-label={t(
+                                    "supplierRequests.selection.open.mark",
+                                  )}
+                                  data-selection-group-mark={g!.id}
+                                />
+                              ) : null}
+                              <span className="font-semibold capitalize text-zinc-900">
+                                {b.label}
+                              </span>
+                              <Badge tone="info">
+                                {b.suppliers === null
+                                  ? t(
+                                      "supplierRequests.selection.blocks.sizeManual",
+                                      { n: b.ids.length },
+                                    )
+                                  : t(
+                                      "supplierRequests.selection.blocks.size",
+                                      {
+                                        n: b.ids.length,
+                                        suppliers: b.suppliers,
+                                      },
+                                    )}
+                              </Badge>
+                              {saved ? (
+                                <Badge tone="success">
+                                  {t("supplierRequests.selection.resolved")}
+                                </Badge>
+                              ) : null}
+                              {g?.status === "requested" ? (
+                                request ? (
+                                  <Link
+                                    href={`/app/supplier-requests/${request.id}`}
+                                    className={linkClass}
+                                    data-selection-request-link
+                                  >
+                                    {t("supplierRequests.selection.requested", {
+                                      n: request.number,
+                                    })}
+                                  </Link>
+                                ) : (
+                                  <Badge tone="success">
+                                    {t(
+                                      "supplierRequests.selection.requestedNoLink",
+                                    )}
+                                  </Badge>
+                                )
+                              ) : null}
+                            </div>
+                            <ul className="mb-3 space-y-1 text-[13px] text-zinc-700">
+                              {ids.slice(0, 6).map((id) => {
+                                const item =
+                                  rowById.get(id)?.item ??
+                                  (b.entry?.chosen?.id === id
+                                    ? b.entry.chosen
+                                    : null);
+                                if (!item) return null;
+                                const winner = g?.chosenItemId === id;
+                                const usdPrice = priceInUsd(
+                                  item.price,
+                                  item.currency,
+                                  rmbPerUsd,
+                                );
+                                return (
+                                  <li
+                                    key={id}
+                                    className={cx(
+                                      "flex items-center gap-2",
+                                      winner &&
+                                        "rounded-md bg-emerald-100 px-1.5 py-1 font-semibold text-emerald-900",
+                                    )}
+                                    data-selection-winner={winner || undefined}
+                                  >
+                                    <span className="min-w-0 flex-1 truncate">
+                                      {winner ? "✓ " : ""}
+                                      {item.description ??
+                                        item.productName ??
+                                        "—"}
+                                    </span>
+                                    {winner ? (
+                                      <span className="shrink-0 text-xs">
+                                        {t(
+                                          "supplierRequests.selection.winner",
+                                          {
+                                            qty: g!.quantity.toLocaleString(
+                                              intl,
+                                            ),
+                                          },
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <span className="shrink-0 text-zinc-500">
+                                        {rowById.get(id)?.supplier?.name ?? "—"}
+                                      </span>
+                                    )}
+                                    <span className="w-20 shrink-0 text-right tabular-nums">
+                                      {usdPrice === null
+                                        ? "—"
+                                        : `US$ ${num(usdPrice, 3)}`}
+                                    </span>
+                                  </li>
+                                );
                               })}
-                            </li>
-                          ) : null}
-                        </ul>
-                        <LinkButton
-                          href={groupHref(b.ids)}
-                          data-selection-block-open
-                        >
-                          {t("supplierRequests.selection.blocks.open")}
-                        </LinkButton>
-                      </div>
-                    ))}
-                  </div>
+                              {ids.length > 6 ? (
+                                <li className="text-xs text-zinc-500">
+                                  {t("supplierRequests.selection.blocks.more", {
+                                    n: ids.length - 6,
+                                  })}
+                                </li>
+                              ) : null}
+                            </ul>
+                            <LinkButton
+                              href={groupHref(b.ids)}
+                              data-selection-block-open
+                            >
+                              {g
+                                ? t("supplierRequests.selection.blocks.reopen")
+                                : t("supplierRequests.selection.blocks.open")}
+                            </LinkButton>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </form>
                 ) : (
                   <Empty>{t("supplierRequests.selection.blocks.empty")}</Empty>
                 )}

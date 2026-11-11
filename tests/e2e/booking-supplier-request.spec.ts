@@ -165,12 +165,25 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   // 2. Seleção: a busca por parte da descrição traz os dois lado a lado.
   await page.goto(`/app/booking/selection?q=${encodeURIComponent(TAG)}`);
   await expect(page.locator("[data-selection-item]")).toHaveCount(2);
+  // A aba Itens só agrupa; a solicitação abre no grupo (aba Seleção).
+  await page.locator("input[data-basket-all]").check();
+  await page.click("[data-selection-group]");
+  await page.waitForURL(/tab=selection&ids=/);
+  await expect(page.locator("[data-selection-item]")).toHaveCount(2);
   const rowA = page.locator("[data-selection-item]", { hasText: codeA });
   const rowB = page.locator("[data-selection-item]", { hasText: codeB });
   await rowA.locator("input[data-selection-choose]").check();
   await rowB.locator("input[data-selection-alternative]").check();
   await page.fill("[data-selection-needs]", "Cor âmbar e caixa com a marca");
+  // Gravar só guarda a escolha (nada vai ao fornecedor); o grupo aparece
+  // resolvido, com o ganhador em verde, e a solicitação abre dali.
   await page.click("[data-selection-submit]");
+  await page.waitForURL(/[?&]saved=1/);
+  await expect(page.locator("[data-selection-saved]")).toBeVisible();
+  const resolved = page.locator("[data-selection-resolved=saved]");
+  await expect(resolved).toHaveCount(1);
+  await expect(resolved.locator("[data-selection-winner]")).toContainText(TAG);
+  await page.click("[data-selection-open-all]");
   await page.waitForURL(/\/app\/supplier-requests\/[^/?]+\?created=1/);
   const requestUrl = page.url().split("?")[0];
   await expect(page.locator("[data-supplier-request-alternative]")).toHaveCount(
@@ -180,17 +193,21 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     "Cor âmbar",
   );
 
-  // 3. O fornecedor A vê e responde, sem a alternativa; o B não abre.
+  // 3. O fornecedor A vê primeiro a tabela dos produtos da solicitação e
+  // responde "sim" na caixa rápida da linha, sem a alternativa; o B não abre.
   await login(page, "supplier.a@china.com");
   await page.goto(requestUrl);
+  await expect(page.locator("[data-supplier-table-row]")).toHaveCount(1);
   await expect(page.locator("[data-supplier-request-alternative]")).toHaveCount(
     0,
   );
-  await page.selectOption("[data-supplier-answer-cando]", "yes");
-  await page.fill("[data-supplier-answer-price]", "1,40");
-  await page.click("[data-supplier-answer-submit]");
+  await page.locator("[data-supplier-table-answer-open]").click();
+  await page.fill("[data-supplier-table-answer-price]", "1,40");
+  await page.click("[data-supplier-table-answer=yes]");
   await page.waitForURL(/[?&]answered=1/);
-  await expect(page.locator("[data-supplier-answer]")).toBeVisible();
+  await expect(page.locator("[data-supplier-table-answer-text]")).toContainText(
+    /1[.,]4\b/,
+  );
 
   await login(page, "supplier.b@china.com");
   const other = await page.goto(requestUrl);
@@ -210,14 +227,20 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-decide-blocked]")).toBeVisible();
 
   // O fornecedor manda uma mensagem e aceita: o preço proposto vira a resposta.
+  // A mensagem sai pela caixa rápida da tabela; "Abrir produto" leva à tela
+  // completa, onde ele aceita a contraproposta.
   await login(page, "supplier.a@china.com");
   await page.goto(requestUrl);
+  await expect(page.locator("[data-supplier-table-pending]")).toBeVisible();
+  await page.locator("[data-supplier-table-message]").click();
+  await page.fill("[data-supplier-table-message-text]", "Ok, segue a caixa.");
+  await page.click("[data-supplier-table-message-submit]");
+  await page.waitForURL(/[?&]negotiation=message/);
+  await page.locator("[data-supplier-table-open]").click();
+  await page.waitForURL(/[?&]view=item/);
   await expect(
     page.locator('[data-negotiation-event="proposal"]'),
   ).toContainText("Fechamos a 1,30?");
-  await page.fill("[data-negotiation-message-text]", "Ok, segue a caixa.");
-  await page.click("[data-negotiation-message-submit]");
-  await page.waitForURL(/[?&]negotiation=message/);
   await page.click("[data-negotiation-respond=accept]");
   await page.waitForURL(/[?&]negotiation=accept/);
   await expect(page.locator("[data-negotiation-event]")).toHaveCount(3);

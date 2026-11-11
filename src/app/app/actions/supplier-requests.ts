@@ -14,7 +14,14 @@ import { requireUser, run, str, withQuery } from "./helpers";
 
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const SELECTION = "/app/booking/selection";
-const detail = (id: string) => `/app/supplier-requests/${id}`;
+/**
+ * Detalhe da solicitação. O fornecedor abre primeiro a tabela dos produtos;
+ * o formulário da tela do produto (`view=item`) volta para ela mesma.
+ */
+const detail = (id: string, form?: FormData) =>
+  form && str(form, "view") === "item"
+    ? `/app/supplier-requests/${id}?view=item`
+    : `/app/supplier-requests/${id}`;
 
 /** Número digitado (vírgula ou ponto); vazio = nulo; ilegível recusa. */
 function number(form: FormData, key: string, int = false): number | null {
@@ -56,11 +63,88 @@ export async function openSupplierRequestAction(form: FormData) {
   });
 }
 
+/** Volta para a aba Seleção com os filtros que a tela tinha. */
+async function selectionBack(form: FormData) {
+  const { filtersToParams, parseSelectionFilters } =
+    await import("@/lib/booking-selection");
+  const raw = new URLSearchParams(str(form, "filters").slice(0, 2000));
+  const query: Record<string, string[]> = {};
+  for (const [k, v] of raw) (query[k] ??= []).push(v);
+  const p = filtersToParams(
+    parseSelectionFilters(query),
+    (raw.get("q") ?? "").slice(0, 200),
+  );
+  p.set("tab", "selection");
+  return `${SELECTION}?${p.toString()}`;
+}
+
+/** Grava a escolha do grupo comparado (o ganhador e a quantidade); nada vai ao fornecedor. */
+export async function saveSelectionGroupAction(form: FormData) {
+  const user = await requireUser();
+  const back = await selectionBack(form);
+  const group = str(form, "group");
+  await run(group ? withQuery(back, "ids", group) : back, async () => {
+    const chosen = str(form, "chosen");
+    if (!chosen) throw new Error("supplier_request_choose");
+    const input = z
+      .object({
+        chosenItemId: ID,
+        itemIds: z.array(ID).max(200),
+        needs: z.string().max(4000).nullable(),
+      })
+      .parse({
+        chosenItemId: chosen,
+        itemIds: [
+          ...group.split(",").filter(Boolean),
+          ...form
+            .getAll("alternatives")
+            .filter((v): v is string => typeof v === "string"),
+        ],
+        needs: str(form, "needs") || null,
+      });
+    const { saveSelectionGroup } =
+      await import("@/lib/services/selection-groups");
+    await saveSelectionGroup(user, {
+      ...input,
+      quantity: number(form, "quantity", true),
+    });
+    return `${withQuery(back, "saved", "1")}#blocks`;
+  });
+}
+
+/** Abre a solicitação ao fornecedor dos grupos resolvidos (os marcados ou todos). */
+export async function openGroupRequestsAction(form: FormData) {
+  const user = await requireUser();
+  const back = await selectionBack(form);
+  await run(`${back}#blocks`, async () => {
+    const all = str(form, "scope") === "all";
+    const ids = z
+      .array(ID)
+      .max(500)
+      .parse(
+        form.getAll("groups").filter((v): v is string => typeof v === "string"),
+      );
+    if (!all && !ids.length) throw new Error("selection_group_pick");
+    const { openGroupRequests } =
+      await import("@/lib/services/selection-groups");
+    const result = await openGroupRequests(user, all ? "all" : ids);
+    // Uma só, sem falha: direto na solicitação aberta.
+    if (result.opened.length === 1 && !result.failed.length)
+      return withQuery(detail(result.opened[0].id), "created", "1");
+    let to = withQuery(back, "opened", String(result.opened.length));
+    if (result.failed.length) {
+      to = withQuery(to, "failed", String(result.failed.length));
+      to = withQuery(to, "why", result.failed[0].error);
+    }
+    return `${to}#blocks`;
+  });
+}
+
 export async function answerSupplierRequestAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "id");
   const back = ID.safeParse(raw).success
-    ? detail(raw)
+    ? detail(raw, form)
     : "/app/supplier-requests";
   await run(back, async () => {
     const input = z
@@ -94,7 +178,7 @@ export async function decideSupplierRequestAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "id");
   const back = ID.safeParse(raw).success
-    ? detail(raw)
+    ? detail(raw, form)
     : "/app/supplier-requests";
   await run(back, async () => {
     const input = z
@@ -230,7 +314,11 @@ function offerOf(form: FormData) {
 function backOf(form: FormData) {
   const raw = str(form, "id");
   const ok = ID.safeParse(raw).success;
-  return { id: raw, back: ok ? detail(raw) : "/app/supplier-requests", ok };
+  return {
+    id: raw,
+    back: ok ? detail(raw, form) : "/app/supplier-requests",
+    ok,
+  };
 }
 
 /** A Wellmix devolve com contraproposta (comentário obrigatório). */
