@@ -779,7 +779,6 @@ export async function importSankhyaSet(
       unit: text(first, "CODVOL") ?? "UN",
       deadline: null,
       status: "ORDERED",
-      selectedQuoteId: null,
       orderId: null,
       sellPrice: null,
       sellCurrency: null,

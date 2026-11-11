@@ -9,6 +9,7 @@ import { withTempStore } from "./setup";
  */
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const { setSetting } = await import("@/lib/settings");
 const { buildPrompt, checkRequiredAttributes, parseList } =
   await import("@/lib/ai/prompts");
@@ -37,8 +38,7 @@ const { setCustomerOperation, radarProblem } =
   await import("@/lib/services/operations");
 const { loadProductCycle } = await import("@/lib/services/product-cycle");
 const { listOpenReviews } = await import("@/lib/services/reviews");
-const { createRequest, openRfq, answerQuote, selectQuote, confirmDownPayment } =
-  await import("@/lib/services/requests");
+const { createRequest } = await import("@/lib/services/requests");
 type User = import("@/lib/db").User;
 
 withTempStore();
@@ -351,22 +351,14 @@ describe("cliente com ou sem RADAR", () => {
       deadline: null,
       notes: null,
     });
-    await openRfq(admin, request.id, ["fornecedor-a"]);
-    const [quote] = await store.list("quotes", {
-      filter: { requestId: request.id },
-    });
-    await answerQuote(supplierA, quote.id, {
+    const order = await orderFromRequest(admin, request, {
       price: 9.5,
-      currency: "USD",
-      leadTimeDays: 30,
-      conditions: null,
-    });
-    await selectQuote(admin, quote.id, {
       sellPrice: 40000,
-      sellCurrency: "BRL",
       downPaymentAmount: 12000,
     });
-    const order = await confirmDownPayment(admin, request.id);
+    // Ao nascer o pedido: modalidade do cliente e revisão do RADAR.
+    const { runOperationGate } = await import("@/lib/services/operations");
+    await runOperationGate(admin, order);
     expect((await store.get("orders", order.id))!.operationMode).toBe(
       "own_import",
     );

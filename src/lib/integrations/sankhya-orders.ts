@@ -24,11 +24,8 @@ export async function buildPortalNote(
   request: Request | null,
 ): Promise<BuiltNote> {
   const store = getStore();
-  const quote =
-    !order && request?.selectedQuoteId
-      ? await store.get("quotes", request.selectedQuoteId)
-      : null;
-  const supplierId = order?.supplierId ?? quote?.supplierId ?? null;
+  // Sem pedido não há fornecedor escolhido (a cotação saiu em 11/11/2026).
+  const supplierId = order?.supplierId ?? null;
   if (!supplierId) return { ok: false, reason: "sem fornecedor escolhido" };
   const supplier = await store.get("parties", supplierId);
   if (!supplier?.sankhyaCode)
@@ -52,7 +49,7 @@ export async function buildPortalNote(
             productId: request.productId,
             name: request.productName,
             quantity: request.quantity,
-            price: quote?.price ?? null,
+            price: null,
           },
         ]
       : [];

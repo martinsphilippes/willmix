@@ -6,6 +6,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const { uploadDocument } = await import("@/lib/services/documents");
 const engine = await import("@/lib/workflow/engine");
@@ -25,7 +26,6 @@ beforeAll(async () => {
 });
 
 async function newOrder() {
-  const store = getStore();
   const request = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: "prod-jarra",
@@ -36,20 +36,7 @@ async function newOrder() {
     unit: "un",
     deadline: null,
   });
-  await r.openRfq(admin, request.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await r.answerQuote(admin, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 20,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 5000,
-    sellCurrency: "BRL",
-  });
-  return r.confirmDownPayment(admin, request.id);
+  return orderFromRequest(admin, request, { sellPrice: 5000 });
 }
 
 const photo = () =>

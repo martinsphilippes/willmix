@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
@@ -11,18 +11,14 @@ import { withTempStore } from "./setup";
  */
 withTempStore();
 
-const { getStore } = await import("@/lib/db");
-const { seedDemo } = await import("@/lib/seed");
-const { setSetting } = await import("@/lib/settings");
-const r = await import("@/lib/services/requests");
 const f = await import("@/lib/services/finance");
-const { brazilDay } = await import("@/lib/services/fx");
 const { translator } = await import("@/i18n");
 const text = await import("@/components/finance-fx-text");
-type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
 type Payment = import("@/lib/db").Payment;
-type PricingRecord = import("@/lib/services/quote-pricing").PricingRecord;
+type PricingRecord = NonNullable<
+  Parameters<typeof import("@/lib/services/finance").saleFxFromRecord>[0]
+>;
 
 const names = { customer: "", supplier: "", product: "" };
 const order = (patch: Partial<Order> = {}) =>
@@ -552,98 +548,6 @@ describe("achados da revisão", () => {
   });
 });
 
-describe("pedido de verdade", () => {
-  let admin: User;
-  let joao: User;
-  let supplierA: User;
-
-  beforeAll(async () => {
-    const { users } = await seedDemo();
-    admin = users.find((u) => u.email === "admin@wellmix.com")!;
-    joao = users.find((u) => u.email === "joao@lojista.com")!;
-    supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
-  });
-
-  it("câmbio da venda na proposta, câmbio de hoje no saldo", async () => {
-    const store = getStore();
-    const day = brazilDay();
-    const fx = (usd: number) => ({
-      day,
-      fetchedAt: `${day}T12:00:00.000Z`,
-      rates: { USD: usd, RMB: 0.75, EUR: 6 },
-      quotedAt: {},
-    });
-    await setSetting("fxPtax", fx(5.3));
-    const request = await r.createRequest(joao, {
-      customerId: "cliente-joao",
-      productId: "prod-jarra",
-      productName: "Jarra",
-      description: "Teste do câmbio na margem",
-      specification: null,
-      quantity: 100,
-      unit: "un",
-      deadline: null,
-      notes: null,
-    });
-    await r.openRfq(admin, request.id, ["fornecedor-a"]);
-    const [quote] = await store.list("quotes", {
-      filter: { requestId: request.id },
-    });
-    await r.answerQuote(supplierA, quote.id, {
-      price: 10,
-      currency: "USD",
-      leadTimeDays: 10,
-      conditions: null,
-    });
-    await r.selectQuote(admin, quote.id, {
-      sellPrice: 9000,
-      sellCurrency: "BRL",
-      downPaymentAmount: 2700,
-      pricing: {
-        quoteId: quote.id,
-        input: { currency: "USD", unitPrice: 10, quantity: 100 },
-        result: { fxRate: 5.3 },
-        marginSource: "default",
-        fxStatus: "today",
-        fxDay: day,
-        sellPrice: 9000,
-        sellCurrency: "BRL",
-      },
-    });
-    const placed = await r.confirmDownPayment(admin, request.id);
-    expect(placed.fobTotal).toBe(1000);
-
-    // O dólar subiu para 5,40 depois da venda.
-    await setSetting("fxPtax", fx(5.4));
-    const finance = await f.loadOrderFinance(placed);
-    expect(finance.saleFx).toBeCloseTo(5.3, 6);
-    expect(finance.fxBasis).toBe("estimate");
-    expect(finance.estimateRate).toBe(5.4);
-    expect(finance.estimateFrom).toBe("today");
-    expect(finance.cost).toBeCloseTo(5400, 6);
-    expect(finance.fxEffect).toBe(-100);
-
-    const all = await f.loadFinance();
-    const row = all.rows.find((x) => x.order.id === placed.id)!;
-    expect(row.fxEffect).toBe(-100);
-    expect(all.summary.estimated).toBeGreaterThanOrEqual(1);
-    expect(all.summary.fxEffect).not.toBeNull();
-
-    expect(all.summary.fxEffectEstimated).toBe(true);
-    // Para o cliente a tela do pedido não busca câmbio nem lê a auditoria.
-    const forCustomer = await f.loadOrderFinance(placed, { estimate: false });
-    expect(forCustomer.fxBasis).toBeNull();
-    expect(forCustomer.saleFx).toBeNull();
-    expect(forCustomer.receivable).toBe(finance.receivable);
-
-    // A Control Tower não busca câmbio (só totais): sem estimativa.
-    const tower = await f.loadFinance({ estimate: false });
-    expect(
-      tower.rows.find((x) => x.order.id === placed.id)!.fxBasis,
-    ).toBeNull();
-  });
-});
-
 describe("falta o câmbio do banco", () => {
   const pt = translator("pt");
 
@@ -750,5 +654,39 @@ describe("falta o câmbio do banco", () => {
         expect(s, s).not.toMatch(/\{\w+\}/);
       }
     }
+  });
+});
+
+/* Valor a receber em centavos (duas parcelas não deixam 0,00000000000005 em aberto). */
+describe("valor a receber em centavos", () => {
+  it("30% de sinal + saldo pré-preenchido zera o que falta receber", () => {
+    const order = {
+      status: "PREPARATION",
+      sellPrice: 500.56,
+      sellCurrency: "BRL",
+      fobTotal: 100.1,
+      fobCurrency: "USD",
+    } as unknown as Order;
+    const pay = (amount: number, direction: Payment["direction"]) =>
+      ({ amount, direction, status: "confirmed", fxRate: null }) as Payment;
+    const down = Math.round(500.56 * 0.3 * 100) / 100; // 150.17
+    const first = f.computeOrderFinance(order, [pay(down, "customer_in")], {
+      customer: "",
+      supplier: "",
+      product: "",
+    });
+    expect(first.receivable).toBe(350.39);
+    const done = f.computeOrderFinance(
+      order,
+      [pay(down, "customer_in"), pay(first.receivable, "customer_in")],
+      { customer: "", supplier: "", product: "" },
+    );
+    expect(done.receivable).toBe(0);
+    const paid = f.computeOrderFinance(
+      order,
+      [pay(30.03, "supplier_out"), pay(70.07, "supplier_out")],
+      { customer: "", supplier: "", product: "" },
+    );
+    expect(paid.payable).toBe(0);
   });
 });

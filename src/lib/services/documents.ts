@@ -93,12 +93,8 @@ export interface UploadInput {
   sourcingItemId?: string | null;
   /** Arquivo de kit de marketing (prévia ou final). */
   kitId?: string | null;
-  /** Entregável de um briefing de embalagem (faca, arte, gráfica, foto). */
-  packagingBriefId?: string | null;
   /** Anexo do chat: o acesso segue o assunto da conversa. */
   conversationTopicId?: string | null;
-  /** Arquivo de uma cotação (proposta de embalagem): acesso só do fornecedor dela. */
-  quoteId?: string | null;
   /** Arquivo da conversa de uma solicitação ao fornecedor: só a Wellmix e esse fornecedor. */
   supplierRequestId?: string | null;
   type: DocumentType;
@@ -205,13 +201,10 @@ async function createDocumentRow(
   const { name, mime } = stored;
   let version = 1;
   let previousDocumentId: string | null = null;
-  // Cadeia de versões: por requisito do pedido ou, no briefing de embalagem,
-  // por entregável (faca v1/v2, arte v1/v2/v3).
+  // Cadeia de versões: por requisito do pedido.
   const chain = input.requirementId
     ? { requirementId: input.requirementId }
-    : input.packagingBriefId
-      ? { packagingBriefId: input.packagingBriefId, type: input.type }
-      : null;
+    : null;
   if (chain) {
     const previous = await store.list("documents", {
       filter: chain,
@@ -240,15 +233,9 @@ async function createDocumentRow(
     productId: input.productId ?? null,
     sourcingItemId: input.sourcingItemId ?? null,
     kitId: input.kitId ?? null,
-    // Só quando há briefing: a coluna nova não vai ao Appwrite nos outros documentos
-    // (antes de o esquema ser publicado ela seria recusada).
-    ...(input.packagingBriefId
-      ? { packagingBriefId: input.packagingBriefId }
-      : {}),
     ...(input.conversationTopicId
       ? { conversationTopicId: input.conversationTopicId }
       : {}),
-    ...(input.quoteId ? { quoteId: input.quoteId } : {}),
     ...(input.supplierRequestId
       ? { supplierRequestId: input.supplierRequestId }
       : {}),
@@ -311,44 +298,11 @@ export async function canAccessDocument(
       await import("./supplier-request-negotiation");
     return canOpenRequestFile(user, doc.supplierRequestId);
   }
-  if (doc.quoteId) {
-    // Arquivo de uma cotação (proposta de embalagem): além da Wellmix, só o
-    // fornecedor daquela cotação. Outros fornecedores da mesma RFQ, o
-    // cliente e os demais parceiros nunca.
-    const quote = await store.get("quotes", doc.quoteId);
-    return (
-      !!quote &&
-      user.role === "supplier" &&
-      !!user.partyId &&
-      quote.supplierId === user.partyId
-    );
-  }
   if (doc.kitId) {
     // Kit de marketing: prévia a partir da oferta, arquivo final só depois de liberado.
     const { canViewKitDocument } = await import("./marketing");
     const kit = await store.get("marketing_kits", doc.kitId);
     return !!kit && canViewKitDocument(user, kit, doc.id);
-  }
-  if (doc.packagingBriefId) {
-    // Briefing de embalagem (faca, arte, gráfica, foto): a agência dona sempre;
-    // o fornecedor só o do pedido, depois que o pedido existe (a faca, que é
-    // dele, desde a escolha da cotação); cliente e concorrentes nunca.
-    // Decidido aqui, antes do pedido/solicitação, para que a solicitação não
-    // conceda nada a quem não é dono.
-    const brief = await store.get("packaging_briefs", doc.packagingBriefId);
-    if (!brief) return false;
-    if (user.role === "agency")
-      return !!user.partyId && brief.agencyId === user.partyId;
-    if (user.role === "supplier") {
-      if (doc.type === "dieline" && doc.id === brief.dielineDocumentId) {
-        const { isBriefSupplier } = await import("./packaging-brief");
-        if (await isBriefSupplier(user, brief)) return true;
-      }
-      if (!brief.orderId) return false;
-      const order = await store.get("orders", brief.orderId);
-      return !!order && canViewOrder(user, order);
-    }
-    return false;
   }
   if (doc.type === "import_step") {
     // Embarque e desembaraço: só quem vê o passo (numerário e DI ficam com a
@@ -388,13 +342,13 @@ export async function canAccessDocument(
       (await isShowcaseDocument(doc.productId, doc.id))
     )
       return true;
-    // Agência: as mesmas fotos de vitrine, só dos produtos de que tem briefing
-    // de embalagem (a arte precisa ver o produto).
+    // Agência: as mesmas fotos de vitrine, só dos produtos de pedidos em que
+    // ela é a agência (a arte precisa ver o produto).
     if (
       doc.productId &&
       user.role === "agency" &&
       !!user.partyId &&
-      (await agencyHasBriefFor(user.partyId, doc.productId)) &&
+      (await agencyHasOrderWithProduct(user.partyId, doc.productId)) &&
       (await isCatalogShowcasePhoto(doc.productId, doc.id))
     )
       return true;
@@ -560,20 +514,21 @@ async function isCatalogShowcasePhoto(
   );
 }
 
-/** A agência tem briefing de embalagem (vivo) deste produto? */
-async function agencyHasBriefFor(
+/** A agência é a do pedido de algum pedido com este produto? */
+async function agencyHasOrderWithProduct(
   agencyId: string,
   productId: string,
 ): Promise<boolean> {
-  try {
-    const rows = await getStore().list("packaging_briefs", {
-      filter: { agencyId, productId },
-    });
-    return rows.some((b) => b.status !== "cancelled");
-  } catch {
-    // Tabela ainda não publicada: nada a conceder.
-    return false;
-  }
+  const store = getStore();
+  const orders = (await store.list("orders", { filter: { agencyId } })).filter(
+    (o) => o.status !== "CANCELLED",
+  );
+  if (!orders.length) return false;
+  const items = await store.list("order_items", {
+    filter: { orderId: orders.map((o) => o.id), productId },
+    limit: 1,
+  });
+  return items.length > 0;
 }
 
 /*

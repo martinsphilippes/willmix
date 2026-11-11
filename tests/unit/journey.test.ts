@@ -11,29 +11,26 @@ import { BOARD_CARDS } from "@/lib/services/tower-board";
 
 const NOW = new Date("2026-11-08T15:00:00Z");
 
-const input = (over: Partial<JourneyInput> = {}): JourneyInput => ({
-  now: NOW,
-  activeStages: [],
-  stages: [],
-  requirements: [],
-  steps: [],
-  reviews: [],
-  quotes: [],
-  approvals: [],
-  rfqDays: 3,
-  ...over,
-});
+const input = (over: Partial<JourneyInput> = {}): JourneyInput =>
+  ({
+    now: NOW,
+    activeStages: [],
+    stages: [],
+    requirements: [],
+    steps: [],
+    reviews: [],
+    ...over,
+  }) as unknown as JourneyInput;
 
 describe("passos e percentuais", () => {
   it("vai da solicitação nova (0%) ao encerrado (100%)", () => {
     expect(journeyPercent("reqNew")).toBe(0);
-    expect(journeyPercent("reqDown")).toBe(33);
-    expect(journeyPercent("ordCreated")).toBe(39);
-    expect(journeyPercent("ordPrep")).toBe(44);
-    expect(journeyPercent("ordContract")).toBe(50);
-    expect(journeyPercent("ordInspection")).toBe(56);
-    expect(journeyPercent("ordAtSea")).toBe(72);
-    expect(journeyPercent("ordDelivered")).toBe(94);
+    expect(journeyPercent("ordCreated")).toBe(8);
+    expect(journeyPercent("ordPrep")).toBe(17);
+    expect(journeyPercent("ordContract")).toBe(25);
+    expect(journeyPercent("ordInspection")).toBe(33);
+    expect(journeyPercent("ordAtSea")).toBe(58);
+    expect(journeyPercent("ordDelivered")).toBe(92);
     expect(journeyPercent("ordClosed")).toBe(100);
   });
 
@@ -89,38 +86,9 @@ describe("passo de cada pedido e solicitação", () => {
   });
 
   it("solicitação: o próximo passo da tela Solicitações; cancelada não tem passo", () => {
-    const req = (id: string, status: string) =>
-      ({ id, status, selectedQuoteId: null }) as never;
-    const j = journeyIndex(
-      input({
-        quotes: [
-          {
-            id: "q1",
-            requestId: "rfq",
-            status: "invited",
-            price: null,
-            currency: null,
-            leadTimeDays: null,
-            answeredAt: null,
-            createdAt: "2026-11-06T12:00:00.000Z",
-          },
-        ],
-      }),
-    );
+    const req = (id: string, status: string) => ({ id, status }) as never;
+    const j = journeyIndex(input());
     expect(j.requestStep(req("new", "REQUESTED"))).toBe("reqNew");
-    expect(j.requestStep(req("rfq", "RFQ_OPEN"))).toBe("reqRfq");
-    // Proposta enviada: o cliente aprova; aprovada, espera o sinal.
-    expect(j.requestStep(req("down", "WAITING_DOWN_PAYMENT"))).toBe(
-      "reqProposal",
-    );
-    expect(
-      j.requestStep({
-        id: "down",
-        status: "WAITING_DOWN_PAYMENT",
-        selectedQuoteId: null,
-        proposalApprovedAt: "2026-11-07T12:00:00.000Z",
-      }),
-    ).toBe("reqDown");
     expect(j.requestStep(req("x", "CANCELLED"))).toBeNull();
   });
 });

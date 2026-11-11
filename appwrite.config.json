@@ -1022,14 +1022,6 @@
           ]
         },
         {
-          "key": "selectedQuoteId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
           "key": "orderId",
           "required": false,
           "array": false,
@@ -1188,21 +1180,6 @@
           "size": 36
         },
         {
-          "key": "proposalApprovedAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
-          "key": "proposalApprovedByUserId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
           "key": "sankhyaCode",
           "required": false,
           "array": false,
@@ -1257,155 +1234,6 @@
           "type": "key",
           "columns": [
             "ownerUserId"
-          ],
-          "orders": [
-            "ASC"
-          ]
-        }
-      ]
-    },
-    {
-      "$id": "quotes",
-      "databaseId": "willmix",
-      "name": "Cotações",
-      "enabled": true,
-      "rowSecurity": false,
-      "$permissions": [],
-      "columns": [
-        {
-          "key": "requestId",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "supplierId",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "status",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "format": "enum",
-          "elements": [
-            "invited",
-            "answered",
-            "selected",
-            "rejected"
-          ]
-        },
-        {
-          "key": "price",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "double"
-        },
-        {
-          "key": "currency",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 3
-        },
-        {
-          "key": "leadTimeDays",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "integer"
-        },
-        {
-          "key": "conditions",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "text"
-        },
-        {
-          "key": "validUntil",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
-          "key": "answeredAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
-          "key": "manufacturerCardId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "manufacturerCardConfirmedAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
-          "key": "manufacturerCardConfirmedByUserId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "moq",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "integer"
-        },
-        {
-          "key": "negotiation",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "text"
-        },
-        {
-          "key": "packagingProposal",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "text"
-        }
-      ],
-      "indexes": [
-        {
-          "key": "by_request",
-          "type": "key",
-          "columns": [
-            "requestId"
-          ],
-          "orders": [
-            "ASC"
-          ]
-        },
-        {
-          "key": "by_supplier",
-          "type": "key",
-          "columns": [
-            "supplierId"
           ],
           "orders": [
             "ASC"
@@ -2465,23 +2293,7 @@
           "size": 32
         },
         {
-          "key": "packagingBriefId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
           "key": "conversationTopicId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "quoteId",
           "required": false,
           "array": false,
           "default": null,
@@ -2523,16 +2335,6 @@
           "type": "key",
           "columns": [
             "productId"
-          ],
-          "orders": [
-            "ASC"
-          ]
-        },
-        {
-          "key": "by_packaging_brief",
-          "type": "key",
-          "columns": [
-            "packagingBriefId"
           ],
           "orders": [
             "ASC"
@@ -3867,14 +3669,6 @@
         {
           "key": "supplierId",
           "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "quoteId",
-          "required": false,
           "array": false,
           "default": null,
           "type": "varchar",
@@ -6257,7 +6051,7 @@
           "size": 36
         },
         {
-          "key": "quoteId",
+          "key": "orderId",
           "required": true,
           "array": false,
           "default": null,
@@ -6360,10 +6154,10 @@
       ],
       "indexes": [
         {
-          "key": "by_quote",
+          "key": "by_order",
           "type": "key",
           "columns": [
-            "quoteId"
+            "orderId"
           ],
           "orders": [
             "ASC"
@@ -6388,305 +6182,6 @@
           ],
           "orders": [
             "ASC",
-            "ASC"
-          ]
-        }
-      ]
-    },
-    {
-      "$id": "packaging_briefs",
-      "databaseId": "willmix",
-      "name": "Briefings de embalagem (faca e arte na RFQ)",
-      "enabled": true,
-      "rowSecurity": false,
-      "$permissions": [],
-      "columns": [
-        {
-          "key": "requestId",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "productId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "customerId",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "agencyId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "ownerSource",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "format": "enum",
-          "elements": [
-            "chosen",
-            "settings_default",
-            "only_active",
-            "wellmix"
-          ]
-        },
-        {
-          "key": "status",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "format": "enum",
-          "elements": [
-            "open",
-            "ready",
-            "transferred",
-            "cancelled"
-          ]
-        },
-        {
-          "key": "requiredKeys",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "text"
-        },
-        {
-          "key": "dielineDocumentId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "artDocumentId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "printReadyDocumentId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "sampleDocumentId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "dims",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "text"
-        },
-        {
-          "key": "dimsSource",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "format": "enum",
-          "elements": [
-            "master",
-            "quote",
-            "manual"
-          ]
-        },
-        {
-          "key": "dimsQuoteId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "dimsProvisional",
-          "required": false,
-          "array": false,
-          "default": false,
-          "type": "boolean"
-        },
-        {
-          "key": "dimsChangedAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
-          "key": "brief",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "text"
-        },
-        {
-          "key": "agencyNotes",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "text"
-        },
-        {
-          "key": "agencyItemPrice",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "double"
-        },
-        {
-          "key": "agencyItemCurrency",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 3
-        },
-        {
-          "key": "dueAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
-          "key": "readyAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
-          "key": "orderId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "orderArtRequirementId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "transferredAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
-          "key": "cancelledAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
-          "key": "cancelReason",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 60
-        },
-        {
-          "key": "reminderSentAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
-          "key": "createdByUserId",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "updatedByUserId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        }
-      ],
-      "indexes": [
-        {
-          "key": "by_request",
-          "type": "key",
-          "columns": [
-            "requestId"
-          ],
-          "orders": [
-            "ASC"
-          ]
-        },
-        {
-          "key": "by_agency_status",
-          "type": "key",
-          "columns": [
-            "agencyId",
-            "status"
-          ],
-          "orders": [
-            "ASC",
-            "ASC"
-          ]
-        },
-        {
-          "key": "by_status",
-          "type": "key",
-          "columns": [
-            "status"
-          ],
-          "orders": [
-            "ASC"
-          ]
-        },
-        {
-          "key": "by_order",
-          "type": "key",
-          "columns": [
-            "orderId"
-          ],
-          "orders": [
             "ASC"
           ]
         }
@@ -6767,42 +6262,6 @@
           ]
         },
         {
-          "key": "lastQuoteId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "lastQuotedAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
-          "key": "quoteCount",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "integer"
-        },
-        {
-          "key": "selectedCount",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "integer"
-        },
-        {
-          "key": "lastSelectedAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        },
-        {
           "key": "createdByUserId",
           "required": false,
           "array": false,
@@ -6852,7 +6311,6 @@
           "type": "varchar",
           "format": "enum",
           "elements": [
-            "quote",
             "order",
             "product"
           ]
@@ -7042,14 +6500,6 @@
           "default": null,
           "type": "varchar",
           "size": 10
-        },
-        {
-          "key": "quoteId",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
         },
         {
           "key": "createdByUserId",
@@ -7781,132 +7231,6 @@
           "type": "key",
           "columns": [
             "conversationId"
-          ],
-          "orders": [
-            "ASC"
-          ]
-        }
-      ]
-    },
-    {
-      "$id": "approvals",
-      "databaseId": "willmix",
-      "name": "Aprovações",
-      "enabled": true,
-      "rowSecurity": false,
-      "$permissions": [],
-      "columns": [
-        {
-          "key": "requestId",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "quoteId",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "requestedByUserId",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "size": 36
-        },
-        {
-          "key": "status",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "format": "enum",
-          "elements": [
-            "pending",
-            "approved",
-            "rejected",
-            "cancelled",
-            "failed"
-          ]
-        },
-        {
-          "key": "input",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "longtext"
-        },
-        {
-          "key": "valueBrl",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "double"
-        },
-        {
-          "key": "levels",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "text"
-        },
-        {
-          "key": "steps",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "text"
-        },
-        {
-          "key": "currentLevel",
-          "required": true,
-          "array": false,
-          "default": null,
-          "type": "varchar",
-          "format": "enum",
-          "elements": [
-            "planner",
-            "purchasing_director",
-            "executive_director"
-          ]
-        },
-        {
-          "key": "reason",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "text"
-        },
-        {
-          "key": "decidedAt",
-          "required": false,
-          "array": false,
-          "default": null,
-          "type": "datetime"
-        }
-      ],
-      "indexes": [
-        {
-          "key": "by_request",
-          "type": "key",
-          "columns": [
-            "requestId"
-          ],
-          "orders": [
-            "ASC"
-          ]
-        },
-        {
-          "key": "by_status",
-          "type": "key",
-          "columns": [
-            "status"
           ],
           "orders": [
             "ASC"

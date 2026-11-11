@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { requestStepDays, type RequestStepDays } from "@/lib/request-stages";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
 import {
   SUPPLIER_REQUEST_SLA_MAX,
@@ -11,10 +10,6 @@ import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
 import { getStore } from "@/lib/db";
 import { getFxRates } from "@/lib/services/fx";
 import { PricingSettings } from "@/components/pricing-settings";
-import {
-  RANKING_CRITERIA,
-  normalizeWeights,
-} from "@/lib/services/supplier-ranking-calc";
 import { FiscalTableCard, TaxRateFields } from "@/components/fiscal-settings";
 import { SettingsTabs } from "./_tabs";
 import { fiscalStatus } from "@/lib/services/fiscal";
@@ -103,22 +98,16 @@ export default async function SettingsPage({
     demoFailed,
   } = await searchParams;
   const t = await getT();
-  const [s, lineRows, customerRows, fx, fiscalInfo, agencies] =
-    await Promise.all([
-      getSettings(),
-      getStore().list("product_lines", { orderBy: "name" }),
-      getStore().list("parties", {
-        filter: { type: "customer" },
-        orderBy: "name",
-      }),
-      getFxRates(),
-      fiscalStatus(),
-      // Agência padrão dos briefings de embalagem (faca e arte na RFQ).
-      getStore().list("parties", {
-        filter: { type: "agency", active: true },
-        orderBy: "name",
-      }),
-    ]);
+  const [s, lineRows, customerRows, fx, fiscalInfo] = await Promise.all([
+    getSettings(),
+    getStore().list("product_lines", { orderBy: "name" }),
+    getStore().list("parties", {
+      filter: { type: "customer" },
+      orderBy: "name",
+    }),
+    getFxRates(),
+    fiscalStatus(),
+  ]);
   // "?fiscal=tec-10412-3": planilha carregada (tabela, NCMs, alíquotas alteradas).
   const fiscalMatch =
     typeof fiscal === "string" ? /^(tec|tipi)-(\d+)-(\d+)$/.exec(fiscal) : null;
@@ -262,79 +251,6 @@ export default async function SettingsPage({
                       <option value="false">{t("common.no")}</option>
                     </Select>
                   </Field>
-                  {/* Embalagem (faca e arte) aberta junto com a RFQ para a agência. */}
-                  <Field label={t("settings.label.packagingBriefAt")}>
-                    <Select
-                      name="packagingBriefAt"
-                      defaultValue={s.packagingBriefAt}
-                      data-setting="packagingBriefAt"
-                    >
-                      <option value="rfq">
-                        {t("settings.option.packagingBriefAt.rfq")}
-                      </option>
-                      <option value="selection">
-                        {t("settings.option.packagingBriefAt.selection")}
-                      </option>
-                      <option value="order">
-                        {t("settings.option.packagingBriefAt.order")}
-                      </option>
-                    </Select>
-                  </Field>
-                  <Field label={t("settings.label.packagingDefaultAgencyId")}>
-                    <Select
-                      name="packagingDefaultAgencyId"
-                      defaultValue={s.packagingDefaultAgencyId}
-                    >
-                      <option value="">
-                        {t("settings.option.packagingAgencyAuto")}
-                      </option>
-                      {agencies.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                  <Field label={t("settings.label.packagingBriefRequired")}>
-                    <input
-                      type="hidden"
-                      name="packagingBriefRequired.__form"
-                      value="1"
-                    />
-                    <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
-                      {(
-                        [
-                          "dieline",
-                          "art",
-                          "print_ready",
-                          "packaging_sample",
-                        ] as const
-                      ).map((key) => (
-                        <label key={key} className="flex items-center gap-1.5">
-                          <input
-                            type="checkbox"
-                            name="packagingBriefRequired"
-                            value={key}
-                            defaultChecked={s.packagingBriefRequired.includes(
-                              key,
-                            )}
-                            className="h-4 w-4 accent-brand-600"
-                          />
-                          {t(`packBrief.item.${key}`)}
-                        </label>
-                      ))}
-                    </span>
-                  </Field>
-                  <Field label={t("settings.label.packagingBriefDueDays")}>
-                    <Input
-                      name="packagingBriefDueDays"
-                      type="number"
-                      step="1"
-                      min="1"
-                      max="365"
-                      defaultValue={s.packagingBriefDueDays}
-                    />
-                  </Field>
                   <Field label={t("settings.label.productionStartDays")}>
                     <Input
                       name="productionStartDays"
@@ -344,15 +260,6 @@ export default async function SettingsPage({
                       max="365"
                       defaultValue={s.productionStartDays}
                     />
-                  </Field>
-                  <Field label={t("settings.label.agencyShowsCustomer")}>
-                    <Select
-                      name="agencyShowsCustomer"
-                      defaultValue={String(s.agencyShowsCustomer)}
-                    >
-                      <option value="true">{t("common.yes")}</option>
-                      <option value="false">{t("common.no")}</option>
-                    </Select>
                   </Field>
                   <Field label={t("settings.label.deliveryConfirmationMode")}>
                     <Select
@@ -375,24 +282,6 @@ export default async function SettingsPage({
                       step="0.1"
                       min="0"
                       defaultValue={s.weightTolerancePercent}
-                    />
-                  </Field>
-                  <Field label={t("settings.label.downPaymentPercent")}>
-                    <Input
-                      name="downPaymentPercent"
-                      type="number"
-                      step="1"
-                      min="0"
-                      max="100"
-                      defaultValue={s.downPaymentPercent}
-                    />
-                  </Field>
-                  <Field label={t("settings.label.quotationExpirationDays")}>
-                    <Input
-                      name="quotationExpirationDays"
-                      type="number"
-                      min="1"
-                      defaultValue={s.quotationExpirationDays}
                     />
                   </Field>
                   <Field label={t("settings.label.reminderDaysBeforeDue")}>
@@ -420,33 +309,6 @@ export default async function SettingsPage({
                     defaultValue={JSON.stringify(s.stageDueDays, null, 2)}
                   />
                 </Field>
-              </div>
-
-              {/* Aprovação do pré-custo: níveis antes de a escolha do fornecedor valer. */}
-              <div className={section}>
-                <h3 className={h3}>{t("settings.approvals.title")}</h3>
-                <p className={hintP}>{t("settings.approvals.hint")}</p>
-                <div className="grid gap-3 @sm:grid-cols-2 @xl:grid-cols-4">
-                  <Field label={t("settings.approvals.enabled")}>
-                    <Select
-                      name="approvalsEnabled"
-                      defaultValue={String(s.approvalsEnabled)}
-                    >
-                      <option value="true">{t("common.yes")}</option>
-                      <option value="false">{t("common.no")}</option>
-                    </Select>
-                  </Field>
-                  <Field label={t("settings.approvals.threshold")}>
-                    <Input
-                      name="approvalExecutiveThresholdBrl"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      required
-                      defaultValue={s.approvalExecutiveThresholdBrl}
-                    />
-                  </Field>
-                </div>
               </div>
 
               {/* SLA de resposta da cotação: prazo de toda nova solicitação. */}
@@ -502,32 +364,6 @@ export default async function SettingsPage({
                       defaultValue={s.purchaseArtReviewSlaDays}
                     />
                   </Field>
-                </div>
-              </div>
-
-              {/* Prazos das etapas da solicitação (src/lib/request-stages.ts). */}
-              <div className={section} data-request-step-days>
-                <h3 className={h3}>{t("reqStage.settings.title")}</h3>
-                <p className={hintP}>{t("reqStage.settings.hint")}</p>
-                <input type="hidden" name="requestStepDays.__form" value="1" />
-                <div className="grid items-end gap-3 @sm:grid-cols-2 @xl:grid-cols-5">
-                  {(
-                    Object.keys(
-                      requestStepDays(s.requestStepDays),
-                    ) as (keyof RequestStepDays)[]
-                  ).map((step) => (
-                    <Field key={step} label={t(`reqStage.settings.${step}`)}>
-                      <Input
-                        name={`requestStepDays.${step}`}
-                        type="number"
-                        min={0}
-                        max={60}
-                        step="1"
-                        required
-                        defaultValue={requestStepDays(s.requestStepDays)[step]}
-                      />
-                    </Field>
-                  ))}
                 </div>
               </div>
 
@@ -681,24 +517,6 @@ export default async function SettingsPage({
                   </Field>
                 </div>
               </div>
-
-              {/* Pix do sinal: a chave do recebedor que aparece para o cliente pagar. */}
-              <div className={section}>
-                <h3 className={h3}>{t("payments.settings.title")}</h3>
-                <p className={hintP}>{t("payments.settings.hint")}</p>
-                <Field
-                  label={t("payments.settings.key")}
-                  hint={t("payments.settings.keyHint")}
-                >
-                  <Input
-                    name="pixKey"
-                    maxLength={77}
-                    defaultValue={s.pixKey}
-                    autoComplete="off"
-                    className="font-mono text-sm"
-                  />
-                </Field>
-              </div>
             </div>
 
             {/* Coluna 2: IA e importadora, preço ao cliente e tributos. */}
@@ -813,45 +631,6 @@ export default async function SettingsPage({
                     {t("superplan.settingsLink")}
                   </TextLink>
                 </p>
-              </div>
-              {/* Disputa de fornecedores: peso de cada critério na nota. */}
-              <div
-                id="ranking"
-                className="scroll-mt-24 space-y-2 rounded-xl border border-zinc-200 p-3"
-              >
-                <h3 className="text-sm font-semibold text-zinc-900">
-                  {t("ranking.settings.title")}
-                </h3>
-                <p className="text-xs text-zinc-600">
-                  {t("ranking.settings.hint")}
-                </p>
-                <input
-                  type="hidden"
-                  name="supplierRankingWeights.__form"
-                  value="1"
-                />
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {RANKING_CRITERIA.map((c) => (
-                    <label
-                      key={c}
-                      className="flex items-center justify-between gap-3 text-sm text-zinc-700"
-                    >
-                      <span>{t(`ranking.settings.${c}`)}</span>
-                      <input
-                        name={`supplierRankingWeights.${c}`}
-                        type="number"
-                        min={0}
-                        max={100}
-                        step={1}
-                        defaultValue={
-                          normalizeWeights(s.supplierRankingWeights)[c]
-                        }
-                        className="w-20 rounded-md border border-zinc-300 px-2 py-1 text-right tabular-nums"
-                        data-ranking-weight={c}
-                      />
-                    </label>
-                  ))}
-                </div>
               </div>
             </div>
           </div>

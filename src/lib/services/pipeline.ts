@@ -89,15 +89,12 @@ const STATE_ORDER: Record<PipelineState, number> = {
 export async function pipelineFor(user: User): Promise<PipelineRow[]> {
   const store = getStore();
   const wellmix = isWellmix(user);
-  const [orders, parties, stages, items, requests, quotes] = await Promise.all([
+  const [orders, parties, stages, items, requests] = await Promise.all([
     store.list("orders", { orderBy: "number", direction: "desc" }),
     store.list("parties"),
     store.list("stages", { filter: { status: ["active", "blocked"] } }),
     store.list("order_items"),
     wellmix ? store.list("requests") : Promise.resolve([]),
-    wellmix
-      ? store.list("quotes", { filter: { status: "selected" } })
-      : Promise.resolve([]),
   ]);
   const name = (id: string | null | undefined) =>
     (id && parties.find((p) => p.id === id)?.name) || null;
@@ -210,9 +207,6 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
   // aparecem pelo pedido).
   for (const r of requests) {
     if (r.status === "ORDERED") continue;
-    const selected = r.selectedQuoteId
-      ? quotes.find((q) => q.id === r.selectedQuoteId)
-      : null;
     rows.push({
       key: `request:${r.id}`,
       kind: "request",
@@ -225,8 +219,8 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
           variant: r.variant?.name ?? null,
           quantity: r.quantity,
           unit: r.unit,
-          unitPrice: selected?.price ?? null,
-          currency: selected?.currency ?? null,
+          unitPrice: null,
+          currency: null,
           // Solicitações só entram para a Wellmix.
           productId: r.productId,
           variantData: r.variant ?? null,
@@ -236,7 +230,7 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
       ...group(r, `request:${r.id}`),
       requestNumber: r.number ?? null,
       customer: name(r.customerId),
-      supplier: selected ? name(selected.supplierId) : null,
+      supplier: null,
       phase: { kind: "request", key: r.status },
       state: r.status === "CANCELLED" ? "cancelled" : "active",
       progress: null,

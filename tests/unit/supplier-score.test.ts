@@ -77,17 +77,14 @@ describe("avaliação de fornecedores", () => {
       quotes: [
         // Convite de ontem, sem resposta: ainda no prazo, não conta.
         {
-          status: "invited",
           createdAt: "2026-11-05T10:00:00.000Z",
           answeredAt: null,
         },
         {
-          status: "answered",
           createdAt: "2026-08-01T10:00:00.000Z",
           answeredAt: "2026-08-03T10:00:00.000Z",
         },
         {
-          status: "invited",
           createdAt: "2026-08-01T10:00:00.000Z",
           answeredAt: null,
         },

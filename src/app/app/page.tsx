@@ -12,7 +12,7 @@ import { TaskList } from "@/components/task-list";
 export default async function AppHome({ searchParams }: PageProps<"/app">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app");
-  const { filter, card, stage, group, sent, denied } = await searchParams;
+  const { filter, card, stage, group, denied } = await searchParams;
   if (isWellmix(user)) {
     return (
       <ControlTower
@@ -38,17 +38,7 @@ export default async function AppHome({ searchParams }: PageProps<"/app">) {
       redirect(`/app/explore${deniedQs}`);
     if (canOpen(user, "requests")) redirect(`/app/requests${deniedQs}`);
   }
-  // Cotação recém-enviada pelo fornecedor: confirmação e próxima a responder.
   return (
-    <TaskList
-      user={user}
-      denied={typeof denied === "string" ? denied : null}
-      sent={
-        typeof sent === "string" &&
-        /^[A-Za-z0-9][A-Za-z0-9_-]{0,35}$/.test(sent)
-          ? sent
-          : null
-      }
-    />
+    <TaskList user={user} denied={typeof denied === "string" ? denied : null} />
   );
 }

@@ -6,9 +6,9 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const ps = await import("@/lib/services/product-sheet");
 const r = await import("@/lib/services/requests");
-const qs = await import("@/lib/services/quote-sheet");
 const sheets = await import("@/lib/services/purchase-sheet");
 type User = import("@/lib/db").User;
 
@@ -129,7 +129,7 @@ describe("ficha mestre do produto", () => {
     expect(await ps.getProductSheet("prod-panela")).toBeNull();
   });
 
-  it("cotação e pedido do produto nascem com a ficha mestre e com as fotos do cadastro", async () => {
+  it("pedido do produto nasce com a ficha mestre e com as fotos do cadastro", async () => {
     const store = getStore();
     await ps.saveProductSheet(admin, "prod-jarra", master);
     // Fotos do cadastro: 5 tipos da ficha.
@@ -178,53 +178,9 @@ describe("ficha mestre do produto", () => {
       deadline: null,
       notes: null,
     });
-    await r.openRfq(admin, request.id, ["fornecedor-a"]);
-    const [quote] = await store.list("quotes", {
-      filter: { requestId: request.id },
-    });
-    const view = (await qs.getQuoteSheetForUser(supplierA, quote.id))!;
-    expect(view.saved).toBe(false);
-    // Dados do produto vêm da ficha mestre…
-    expect(view.sheet.packageType).toBe("COLOR BOX");
-    expect(view.sheet.colorPantones).toEqual([
-      { code: "185 C", hex: "#e4002b" },
-    ]);
-    expect(view.sheet.ecommerceDescription).toBe(
-      "Jarra de vidro com tampa de bambu",
-    );
-    expect(view.sheet.masterCartonQty).toBe(24);
-    // …mas nada comercial do fornecedor de referência (isolamento entre fornecedores).
-    expect(view.sheet.incoterm ?? null).toBeNull();
-    expect(view.sheet.price ?? null).toBeNull();
-    expect(view.sheet.moq ?? null).toBeNull();
-    // Local e nº da loja vêm do cadastro do próprio fornecedor, não da mestre.
-    expect(view.sheet.location).toBe("Shenzhen");
-    expect(view.sheet.supplierStore).toBe("A 154678");
-    expect(view.sheet.supplierName).toBe("Shenzhen Supplier A");
-    // Fotos do cadastro contam como enviadas, sem copiar documentos para a cotação.
-    expect(view.photos).toEqual([]);
-    expect(view.catalogPhotoKinds.sort()).toEqual(
-      [...sheets.SHEET_PHOTO_KINDS].sort(),
-    );
-    expect(view.missing).not.toContain("scalePhoto");
-    expect(view.missing).not.toContain("originalPhoto");
-    expect(
-      await store.list("product_photos", { filter: { orderId: quote.id } }),
-    ).toEqual([]);
-
-    // Pedido: a ficha da Preparação também nasce da mestre quando não há ficha de cotação.
-    await r.answerQuote(supplierA, quote.id, {
-      price: 2,
-      currency: "USD",
-      leadTimeDays: 10,
-      conditions: null,
-    });
-    await r.selectQuote(admin, quote.id, {
-      sellPrice: 1000,
-      sellCurrency: "BRL",
+    const order = await orderFromRequest(admin, request, {
       downPaymentAmount: 300,
     });
-    const order = await r.confirmDownPayment(admin, request.id);
     const sheetView = (await sheets.getSheetForUser(admin, order.id))!;
     expect(sheetView.sheet.packageType).toBe("COLOR BOX");
     expect(sheetView.sheet.incoterm ?? null).toBeNull();
@@ -248,11 +204,8 @@ describe("ficha mestre do produto", () => {
       deadline: null,
       notes: null,
     });
-    await r.openRfq(admin, request.id, ["fornecedor-a"]);
-    const [quote] = await store.list("quotes", {
-      filter: { requestId: request.id },
-    });
-    await qs.saveQuoteSheet(supplierA, quote.id, {
+    const order = await orderFromRequest(admin, request, { price: 30 });
+    await sheets.saveSheet(supplierA, order.id, {
       supplierName: "Panela Factory",
       incoterm: "EXW",
       currency: "RMB",
@@ -266,12 +219,12 @@ describe("ficha mestre do produto", () => {
       productionStartAt: "2026-11-02T00:00:00.000Z",
       lots: [{ departureIntervalDays: 30, masterCartons: 10 }],
     });
-    await expect(ps.adoptSheetIntoProduct(joao, quote.id)).rejects.toThrow(
+    await expect(ps.adoptSheetIntoProduct(joao, order.id)).rejects.toThrow(
       "forbidden",
     );
     const { productId, copiedPhotos } = await ps.adoptSheetIntoProduct(
       admin,
-      quote.id,
+      order.id,
     );
     expect(productId).toBe("prod-panela");
     expect(copiedPhotos).toBe(0);
@@ -287,12 +240,12 @@ describe("ficha mestre do produto", () => {
     expect(product.currency).toBe("CNY");
     expect(product.material).toBe("ALUMINUM");
     // Campos em branco na ficha adotada não apagam o que a mestre já tem.
-    await qs.saveQuoteSheet(supplierA, quote.id, {
+    await sheets.saveSheet(supplierA, order.id, {
       material: null,
       packageType: null,
       colorAssortment: "RED",
     });
-    await ps.adoptSheetIntoProduct(admin, quote.id);
+    await ps.adoptSheetIntoProduct(admin, order.id);
     const m2 = (await ps.getProductSheet("prod-panela"))!;
     expect(m2.material).toBe("ALUMINUM");
     expect(m2.packageType).toBe("BROWN BOX");
@@ -309,13 +262,10 @@ describe("ficha mestre do produto", () => {
       deadline: null,
       notes: null,
     });
-    await r.openRfq(admin, loose.id, ["fornecedor-a"]);
-    const [q2] = await store.list("quotes", {
-      filter: { requestId: loose.id },
-    });
-    await qs.saveQuoteSheet(supplierA, q2.id, { supplierName: "X" });
-    await expect(ps.adoptSheetIntoProduct(admin, q2.id)).rejects.toThrow(
-      "no_product",
-    );
+    const looseOrder = await orderFromRequest(admin, loose);
+    await sheets.saveSheet(supplierA, looseOrder.id, { supplierName: "X" });
+    await expect(
+      ps.adoptSheetIntoProduct(admin, looseOrder.id),
+    ).rejects.toThrow("no_product");
   });
 });

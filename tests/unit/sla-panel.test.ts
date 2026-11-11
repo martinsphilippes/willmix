@@ -6,13 +6,13 @@ import { withTempStore } from "./setup";
  * WellKids; a solicitação nova cai sozinha no analista da divisão da linha
  * com menos pendências, e o pedido herda. Cada um vê o próprio painel e o de
  * quem está abaixo; o admin vê todos e o "sem responsável". Só o admin muda
- * equipe e linhas; ciclo é recusado. RFQ sem resposta depois do prazo
- * aparece como atraso de parceiro para o dono.
+ * equipe e linhas; ciclo é recusado.
  */
 withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const team = await import("@/lib/services/team");
 const { slaBoardFor, UNASSIGNED, ALL } =
@@ -155,46 +155,10 @@ describe("painel de SLA por divisão", () => {
 
   it("o pedido herda o analista da solicitação", async () => {
     const req = await request("Jarra pedida", "prod-jarra");
-    await r.openRfq(admin, req.id, ["fornecedor-a"]);
-    const [quote] = await getStore().list("quotes", {
-      filter: { requestId: req.id },
-    });
-    const supplierA = (
-      await getStore().list("users", {
-        filter: { email: "supplier.a@china.com" },
-      })
-    )[0];
-    await r.answerQuote(supplierA, quote.id, {
-      price: 2,
-      currency: "USD",
-      leadTimeDays: 10,
-      conditions: null,
-    });
-    await r.selectQuote(admin, quote.id, {
-      sellPrice: 1000,
-      sellCurrency: "BRL",
+    const order = await orderFromRequest(admin, req, {
       downPaymentAmount: 300,
     });
-    const order = await r.confirmDownPayment(admin, req.id);
     expect(order.ownerUserId).toBe(req.ownerUserId);
-  });
-
-  it("RFQ sem resposta depois do prazo vira atraso de parceiro para o dono", async () => {
-    const late = await request("Jarra atrasada", "prod-jarra");
-    await r.openRfq(admin, late.id, ["fornecedor-a"]);
-    await getStore().update("requests", late.id, { deadline: "2020-01-10" });
-    const owner = (await getStore().get("requests", late.id))!.ownerUserId!;
-    const board = await slaBoardFor(admin, owner);
-    expect(
-      board.items.find(
-        (i) => i.source === "partner" && i.title.includes("Jarra atrasada"),
-      ),
-    ).toMatchObject({
-      kind: "partner_quote",
-      waitingOn: ["supplier"],
-      waitingParty: "Shenzhen Supplier A",
-      due: "overdue",
-    });
   });
 
   it("só o admin muda equipe e linhas; ciclo e chefe de si mesmo são recusados; de fora não abre", async () => {

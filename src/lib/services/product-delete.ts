@@ -50,7 +50,6 @@ const HISTORY_TABLES = [
   "order_items",
   "purchase_snapshots",
   "container_items",
-  "packaging_briefs",
 ] as const;
 
 /** O que é só do cadastro do produto e sai junto com ele. */
@@ -73,7 +72,7 @@ async function safeList<
       ...(limit ? { limit } : {}),
     } as never);
   } catch (error) {
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     if (isSchemaMissing(error)) return [];
     throw error;
   }

@@ -33,7 +33,7 @@ async function schemaSafe<T>(fn: () => Promise<T>, missing: () => T) {
   try {
     return await fn();
   } catch (error) {
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     if (isSchemaMissing(error)) return missing();
     throw error;
   }

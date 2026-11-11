@@ -50,7 +50,6 @@ async function base(name: string) {
 describe("adicionar produtos à solicitação", () => {
   it("solicitação sozinha vira lote; o novo produto tem o mesmo número, cliente e solicitante", async () => {
     const first = await base("Vaso grande");
-    await r.openRfq(admin, first.id, ["fornecedor-a"]);
     const { groupId, created } = await r.addProductsToRequest(admin, first.id, [
       item("Vaso pequeno"),
       item("Prato"),
@@ -59,7 +58,7 @@ describe("adicionar produtos à solicitação", () => {
     const store = getStore();
     const updated = (await store.get("requests", first.id))!;
     expect(updated.groupId).toBe(groupId);
-    expect(updated.status).toBe("RFQ_OPEN");
+    expect(updated.status).toBe("REQUESTED");
     for (const c of created) {
       expect(c).toMatchObject({
         groupId,

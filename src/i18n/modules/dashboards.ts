@@ -57,6 +57,9 @@ export const pt = {
   "dash.erpNote":
     "Integração com o Sankhya: em modo manual até as credenciais serem configuradas; o número do pedido no ERP é informado no próprio pedido.",
   "dash.metric.openRequests": "Solicitações abertas",
+  "dash.metric.supplierRequestsOpen":
+    "Solicitações ao fornecedor esperando resposta",
+  "dash.metric.supplierRequestsAnswered": "Respondidas, a Wellmix decide",
   "dash.metric.awaitingQuotes": "Aguardando cotação",
   "dash.metric.toSelect": "Cotadas, escolher fornecedor",
   "dash.metric.pendingApprovals": "Aprovações pendentes",
@@ -146,6 +149,8 @@ export const en: Record<keyof typeof pt, string> = {
   "dash.erpNote":
     "Sankhya integration: manual mode until credentials are configured; the ERP order number is entered on the order itself.",
   "dash.metric.openRequests": "Open requests",
+  "dash.metric.supplierRequestsOpen": "Supplier requests awaiting an answer",
+  "dash.metric.supplierRequestsAnswered": "Answered, Wellmix decides",
   "dash.metric.awaitingQuotes": "Awaiting quotes",
   "dash.metric.toSelect": "Quoted, choose supplier",
   "dash.metric.pendingApprovals": "Pending approvals",
@@ -232,6 +237,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "dash.erpNote":
     "Sankhya 集成：在配置凭证前为手动模式；ERP 订单号在订单中填写。",
   "dash.metric.openRequests": "未结需求",
+  "dash.metric.supplierRequestsOpen": "等待供应商答复的询价",
+  "dash.metric.supplierRequestsAnswered": "已答复，待 Wellmix 决定",
   "dash.metric.awaitingQuotes": "等待报价",
   "dash.metric.toSelect": "已报价，待选供应商",
   "dash.metric.pendingApprovals": "待审批",

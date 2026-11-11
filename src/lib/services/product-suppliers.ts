@@ -145,11 +145,6 @@ async function upsertLink(
       moq: null,
       leadTimeDays: null,
       source,
-      lastQuoteId: null,
-      lastQuotedAt: null,
-      quoteCount: 0,
-      selectedCount: 0,
-      lastSelectedAt: null,
       createdByUserId: user?.id ?? null,
       ...definedOnly(patchOf(null)),
     });
@@ -166,90 +161,6 @@ function definedOnly(patch: LinkPatch): LinkPatch {
   return Object.fromEntries(
     Object.entries(patch).filter(([, v]) => v !== undefined),
   ) as LinkPatch;
-}
-
-/**
- * Fornecedor respondeu a cotação de um produto do catálogo: entra (ou é
- * atualizado) na lista do produto com preço, moeda, prazo, MOQ e código do
- * item que ele mesmo informou. Falha aqui não derruba a cotação.
- */
-export async function linkSupplierFromQuote(
-  user: User | null,
-  quoteId: string,
-  firstAnswer: boolean,
-): Promise<void> {
-  try {
-    const store = getStore();
-    const quote = await store.get("quotes", quoteId);
-    if (!quote) return;
-    const request = await store.get("requests", quote.requestId);
-    const productId = request?.productId;
-    if (!productId) return;
-    const [product, supplier, sheets] = await Promise.all([
-      store.get("products", productId),
-      store.get("parties", quote.supplierId),
-      store.list("purchase_sheets", {
-        filter: { orderId: quote.id },
-        limit: 1,
-      }),
-    ]);
-    if (!product || !supplier || supplier.type !== "supplier") return;
-    const sheet = sheets[0];
-    const code = clean(sheet?.factoryItemCode)?.slice(0, 60) ?? null;
-    const { created } = await upsertLink(
-      user,
-      productId,
-      supplier.id,
-      "quote",
-      (prev) => ({
-        price: quote.price ?? prev?.price ?? null,
-        currency: quote.currency ?? prev?.currency ?? null,
-        leadTimeDays: quote.leadTimeDays ?? prev?.leadTimeDays ?? null,
-        moq: sheet?.moq ?? prev?.moq ?? null,
-        supplierSku: code ?? prev?.supplierSku ?? null,
-        lastQuoteId: quote.id,
-        lastQuotedAt: quote.answeredAt ?? new Date().toISOString(),
-        quoteCount: (prev?.quoteCount ?? 0) + (firstAnswer || !prev ? 1 : 0),
-      }),
-    );
-    if (created)
-      await audit(
-        user,
-        "product.supplier_from_quote",
-        "product",
-        productId,
-        `Fornecedor ${supplier.name} entrou no produto pela cotação`,
-      );
-  } catch (error) {
-    console.warn("[product-suppliers] link from quote failed", error);
-  }
-}
-
-/** Cotação escolhida: conta como compra deste fornecedor para o produto. */
-export async function markSupplierSelected(
-  user: User | null,
-  quoteId: string,
-): Promise<void> {
-  try {
-    const store = getStore();
-    const quote = await store.get("quotes", quoteId);
-    if (!quote) return;
-    const request = await store.get("requests", quote.requestId);
-    if (!request?.productId) return;
-    if (!(await store.get("products", request.productId))) return;
-    await upsertLink(
-      user,
-      request.productId,
-      quote.supplierId,
-      "quote",
-      (prev) => ({
-        selectedCount: (prev?.selectedCount ?? 0) + 1,
-        lastSelectedAt: new Date().toISOString(),
-      }),
-    );
-  } catch (error) {
-    console.warn("[product-suppliers] mark selected failed", error);
-  }
 }
 
 /** Linha da lista "Fornecedores deste produto". */
@@ -304,9 +215,6 @@ export async function productSuppliersView(
   }
   return rows.sort((a, b) => {
     if (a.main !== b.main) return a.main ? -1 : 1;
-    const x = a.link?.lastQuotedAt ?? "";
-    const y = b.link?.lastQuotedAt ?? "";
-    if (x !== y) return x < y ? 1 : -1;
     return a.supplier.name.localeCompare(b.supplier.name);
   });
 }

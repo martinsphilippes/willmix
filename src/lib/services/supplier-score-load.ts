@@ -3,7 +3,7 @@ import "server-only";
 import { getStore, type Party } from "@/lib/db";
 import { scoreSupplier, type SupplierScore } from "./supplier-score";
 import { brazilDay } from "@/lib/supplier-terms";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 
 async function optional<T>(p: Promise<T[]>): Promise<T[]> {
   try {
@@ -24,7 +24,7 @@ export async function loadSupplierScores(): Promise<
     await Promise.all([
       store.list("parties", { filter: { type: "supplier" } }),
       store.list("orders"),
-      store.list("quotes"),
+      optional(store.list("supplier_requests")),
       optional(store.list("production_tracks")),
       optional(store.list("sku_inspections")),
       optional(store.list("receivings")),
@@ -42,7 +42,14 @@ export async function loadSupplierScores(): Promise<
           inspections: inspections.filter((i) => ids.has(i.orderId)),
           receivings: receivings.filter((r) => ids.has(r.orderId)),
           artIssues: art.filter((a) => ids.has(a.orderId)),
-          quotes: quotes.filter((q) => q.supplierId === supplier.id),
+          quotes: quotes
+            .filter(
+              (q) => q.supplierId === supplier.id && q.status !== "cancelled",
+            )
+            .map((q) => ({
+              createdAt: q.createdAt,
+              answeredAt: q.respondedAt,
+            })),
           today,
         }),
       };

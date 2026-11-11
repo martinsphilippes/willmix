@@ -15,6 +15,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const sig = await import("@/lib/services/order-signature");
 const { submitRequirement } = await import("@/lib/workflow/engine");
@@ -38,12 +39,9 @@ beforeAll(async () => {
     email: "supplier.b@china.test",
     partyId: "fornecedor-b",
   };
-  const { setSetting } = await import("@/lib/settings");
-  await setSetting("approvalsEnabled", false);
 });
 
 async function newOrder(name: string) {
-  const store = getStore();
   const req = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: null,
@@ -55,22 +53,11 @@ async function newOrder(name: string) {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, req.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: req.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
+  const order = await orderFromRequest(admin, req, {
     price: 3.6,
-    currency: "USD",
-    leadTimeDays: 45,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
     sellPrice: 10_000,
-    sellCurrency: "BRL",
     downPaymentAmount: 3000,
   });
-  const order = await r.confirmDownPayment(admin, req.id);
   return order;
 }
 
@@ -289,7 +276,6 @@ describe("documento do pedido com duas assinaturas", () => {
     expect(view.document).toMatchObject({
       orderNumber: order.number,
       currency: "USD",
-      leadTimeDays: 45,
       total: 3600,
       items: [
         { name: "Quadro visível", quantity: 1000, unitPrice: 3.6, total: 3600 },

@@ -18,7 +18,7 @@ import { getSettings } from "@/lib/settings";
 import { artRole } from "@/lib/workflow/stages";
 import { audit } from "./audit";
 import { notify, type NotifyTarget } from "./notifications";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 
 /*
  * Embarque e desembaraço (Fase D, docs/IMPORT_FLOW.md): passos do processo de

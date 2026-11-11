@@ -148,14 +148,6 @@ export type RequirementType = (typeof REQUIREMENT_TYPES)[number];
 export const REQUIREMENT_STATUSES = ["pending", "done", "rejected"] as const;
 export type RequirementStatus = (typeof REQUIREMENT_STATUSES)[number];
 
-export const QUOTE_STATUSES = [
-  "invited",
-  "answered",
-  "selected",
-  "rejected",
-] as const;
-export type QuoteStatus = (typeof QUOTE_STATUSES)[number];
-
 export const PAYMENT_DIRECTIONS = ["customer_in", "supplier_out"] as const;
 export type PaymentDirection = (typeof PAYMENT_DIRECTIONS)[number];
 export const PAYMENT_STATUSES = ["pending", "confirmed", "received"] as const;
@@ -311,7 +303,7 @@ export type ContainerStatus = (typeof CONTAINER_STATUSES)[number];
 export const ACK_EVENTS = ["viewed", "confirmed"] as const;
 export type AckEvent = (typeof ACK_EVENTS)[number];
 
-/** Cotação de frete da companhia marítima para a cotação de um fornecedor. */
+/** Cotação de frete da companhia marítima para um pedido. */
 export const FREIGHT_QUOTE_STATUSES = [
   "invited",
   "answered",
@@ -319,38 +311,10 @@ export const FREIGHT_QUOTE_STATUSES = [
 ] as const;
 export type FreightQuoteStatus = (typeof FREIGHT_QUOTE_STATUSES)[number];
 
-/*
- * Briefing de embalagem (faca/die-cut, arte, arquivos para a gráfica e foto
- * da embalagem física) aberto para a agência (ou o marketing da Wellmix)
- * junto com a RFQ. open → ready (obrigatórios enviados) → transferred
- * (pedido criado: a arte segue para a aprovação do fornecedor) | cancelled.
+/**
+ * Como o fornecedor entrou na lista do produto: cadastro (principal), condições
+ * negociadas ("quote": solicitação ao fornecedor ou ficha do pedido) ou à mão.
  */
-export const PACKAGING_BRIEF_STATUSES = [
-  "open",
-  "ready",
-  "transferred",
-  "cancelled",
-] as const;
-export type PackagingBriefStatus = (typeof PACKAGING_BRIEF_STATUSES)[number];
-export const PACKAGING_ITEM_KEYS = [
-  "dieline",
-  "art",
-  "print_ready",
-  "packaging_sample",
-] as const;
-export type PackagingItemKey = (typeof PACKAGING_ITEM_KEYS)[number];
-/** Como o dono do briefing foi definido (auditoria): escolhido na RFQ, padrão das configurações, única agência ativa ou Wellmix por falta de agência. */
-export const PACKAGING_OWNER_SOURCES = [
-  "chosen",
-  "settings_default",
-  "only_active",
-  "wellmix",
-] as const;
-export type PackagingOwnerSource = (typeof PACKAGING_OWNER_SOURCES)[number];
-export const PACKAGING_DIMS_SOURCES = ["master", "quote", "manual"] as const;
-export type PackagingDimsSource = (typeof PACKAGING_DIMS_SOURCES)[number];
-
-/** Como o fornecedor entrou na lista do produto: cadastro (principal), cotação respondida ou à mão. */
 export const PRODUCT_SUPPLIER_SOURCES = ["catalog", "quote", "manual"] as const;
 export type ProductSupplierSource = (typeof PRODUCT_SUPPLIER_SOURCES)[number];
 
@@ -547,22 +511,6 @@ export const WELLMIX_FUNCTIONS = [
   "designer",
 ] as const;
 export type WellmixFunction = (typeof WELLMIX_FUNCTIONS)[number];
-
-/** Níveis de aprovação do pré-custo, na ordem. */
-export const APPROVAL_LEVELS = [
-  "planner",
-  "purchasing_director",
-  "executive_director",
-] as const;
-export type ApprovalLevel = (typeof APPROVAL_LEVELS)[number];
-export const APPROVAL_STATUSES = [
-  "pending",
-  "approved",
-  "rejected",
-  "cancelled",
-  "failed",
-] as const;
-export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
 
 /*
  * Produção (Fase C, docs/PRODUCTION.md): fornecedor fábrica ou trade, follow
@@ -856,7 +804,6 @@ export interface Request extends BaseRow {
   unit: string;
   deadline: string | null;
   status: RequestStatus;
-  selectedQuoteId: string | null;
   orderId: string | null;
   /** Preço de venda ao cliente definido pela Wellmix ao selecionar fornecedor. */
   sellPrice: number | null;
@@ -906,43 +853,8 @@ export interface Request extends BaseRow {
    * docs/SLA_PANEL.md). O pedido herda. Nulo = sem responsável.
    */
   ownerUserId?: string | null;
-  /**
-   * O cliente aprovou a proposta (etapa "Proposta ao cliente"); só depois o
-   * sinal é pedido. A Wellmix confirmar o sinal também conta como aprovação.
-   * Nulos enquanto não aprovou (e nas antigas).
-   */
-  proposalApprovedAt?: string | null;
-  proposalApprovedByUserId?: string | null;
   /** NUNOTA da nota no Sankhya enquanto ainda não há pedido (cotação, pre-order). */
   sankhyaCode?: string | null;
-}
-
-export interface Quote extends BaseRow {
-  requestId: string;
-  supplierId: string;
-  status: QuoteStatus;
-  price: number | null;
-  currency: string | null;
-  leadTimeDays: number | null;
-  conditions: string | null;
-  validUntil: string | null;
-  answeredAt: string | null;
-  /** Cartão do fabricante confirmado nesta negociação (manufacturer_cards). */
-  manufacturerCardId?: string | null;
-  manufacturerCardConfirmedAt?: string | null;
-  manufacturerCardConfirmedByUserId?: string | null;
-  /**
-   * Pedido mínimo confirmado pelo fornecedor (RFQ aberta do Superplan).
-   * Coluna opcional: só vai ao banco nesse fluxo.
-   */
-  moq?: number | null;
-  /**
-   * Negociação (docs/QUOTE_FLOW.md): rodadas de "devolver com comentário" da
-   * Wellmix e a resposta do fornecedor. Opcional: só gravada nesse fluxo.
-   */
-  negotiation?: import("@/lib/quote-flow").NegotiationRound[] | null;
-  /** Proposta de embalagem enviada ao fornecedor e o OK dele. Opcional. */
-  packagingProposal?: import("@/lib/quote-flow").PackagingProposal | null;
 }
 
 export interface Order extends BaseRow {
@@ -1100,21 +1012,10 @@ export interface Document extends BaseRow {
   /** Impressão digital visual (dHash, 16 hex) para achar a mesma foto no catálogo; "-" = não é imagem legível. */
   imageHash: string | null;
   /**
-   * Arquivo de um briefing de embalagem (faca, arte, gráfica, foto): chave do
-   * isolamento (só a agência dona e, depois do pedido, o fornecedor escolhido).
-   * Opcional: documentos antigos ficam sem.
-   */
-  packagingBriefId?: string | null;
-  /**
    * Anexo de uma mensagem do chat: só abre quem vê aquele assunto da conversa
    * (a empresa da conversa e a Wellmix). Opcional: documentos antigos ficam sem.
    */
   conversationTopicId?: string | null;
-  /**
-   * Arquivo de uma cotação (imagem da proposta de embalagem): só a Wellmix e
-   * o fornecedor daquela cotação abrem. Opcional: documentos antigos ficam sem.
-   */
-  quoteId?: string | null;
   /**
    * Arquivo da conversa de uma solicitação ao fornecedor: só a Wellmix e o
    * fornecedor dela abrem. Opcional: documentos antigos ficam sem.
@@ -1294,7 +1195,6 @@ export interface PurchaseSnapshot extends BaseRow {
   productId: string | null;
   sourcingItemId: string | null;
   supplierId: string;
-  quoteId: string | null;
   name: string;
   supplierSku: string | null;
   material: string | null;
@@ -1680,19 +1580,14 @@ export interface ProductSupplier extends BaseRow {
   moq: number | null;
   leadTimeDays: number | null;
   source: ProductSupplierSource;
-  lastQuoteId: string | null;
-  lastQuotedAt: string | null;
-  /** Cotações respondidas e escolhidas para este produto. */
-  quoteCount: number | null;
-  selectedCount: number | null;
-  lastSelectedAt: string | null;
   createdByUserId: string | null;
 }
 
 export interface FreightQuote extends BaseRow {
+  /** Solicitação do pedido (todo pedido tem uma). */
   requestId: string;
-  /** Cotação do fornecedor a que este frete se refere. */
-  quoteId: string;
+  /** Pedido a que este frete se refere (até 11/11/2026 era a cotação do fornecedor). */
+  orderId: string;
   /** Companhia marítima (parceiro do tipo shipping_line). */
   carrierId: string;
   status: FreightQuoteStatus;
@@ -1708,73 +1603,6 @@ export interface FreightQuote extends BaseRow {
   notes: string | null;
   answeredByUserId: string | null;
   answeredAt: string | null;
-}
-
-/** Medidas que a faca e a arte usam (da ficha mestre, da cotação ou à mão). */
-export interface PackagingDims {
-  lengthCm: number | null;
-  widthCm: number | null;
-  heightCm: number | null;
-  masterCartonQty: number | null;
-  innerQty: number | null;
-  cbmPerCarton: number | null;
-  packageType: string | null;
-  material: string | null;
-  colorPantones: PantoneColorRef[] | null;
-  capacityMl: number | null;
-}
-
-/**
- * Briefing de embalagem: nasce com a RFQ (ou na escolha do fornecedor,
- * conforme `packagingBriefAt`), um por solicitação. A agência (ou o marketing
- * da Wellmix, `agencyId` nulo) envia faca, arte, arquivos para a gráfica e a
- * foto da embalagem física; quando o pedido nasce, a arte já enviada conclui
- * o item "Arte" da etapa Arte e embalagem e o fornecedor aprova.
- */
-export interface PackagingBrief extends BaseRow {
-  requestId: string;
-  productId: string | null;
-  customerId: string;
-  /** Agência dona; nulo = marketing da Wellmix. */
-  agencyId: string | null;
-  ownerSource: PackagingOwnerSource;
-  status: PackagingBriefStatus;
-  /** Entregáveis obrigatórios para ficar "pronto" (congelados na abertura). */
-  requiredKeys: PackagingItemKey[];
-  /** Versão vigente de cada entregável. */
-  dielineDocumentId: string | null;
-  artDocumentId: string | null;
-  printReadyDocumentId: string | null;
-  sampleDocumentId: string | null;
-  dims: PackagingDims | null;
-  dimsSource: PackagingDimsSource | null;
-  /** Cotação de onde as medidas vieram. */
-  dimsQuoteId: string | null;
-  /** Medidas de uma cotação ainda não escolhida. */
-  dimsProvisional: boolean;
-  dimsChangedAt: string | null;
-  /** Instruções da Wellmix à agência. */
-  brief: string | null;
-  /** Observações da agência (gráfica, fornecedor). */
-  agencyNotes: string | null;
-  /**
-   * Valor que a agência cobra por este item (criação e finalização da arte)
-   * e a moeda. Opcionais: só gravados quando informados.
-   */
-  agencyItemPrice?: number | null;
-  agencyItemCurrency?: string | null;
-  dueAt: string | null;
-  readyAt: string | null;
-  /** Depois da transferência: o pedido e o item "Arte" dele. */
-  orderId: string | null;
-  orderArtRequirementId: string | null;
-  transferredAt: string | null;
-  cancelledAt: string | null;
-  /** request_deleted | wellmix */
-  cancelReason: string | null;
-  reminderSentAt: string | null;
-  createdByUserId: string;
-  updatedByUserId: string | null;
 }
 
 /**
@@ -1801,8 +1629,6 @@ export interface ManufacturerCard extends BaseRow {
   isFactory: boolean | null;
   notes: string | null;
   source: string | null;
-  /** Cotação em que o cartão foi apresentado (produto ainda sem cadastro). */
-  quoteId: string | null;
   createdByUserId: string;
 }
 
@@ -1935,7 +1761,7 @@ export interface FreightTariff extends BaseRow {
 }
 
 /** Onde a ficha lida pela foto do quadro mora. */
-export const SHEET_READING_SCOPES = ["quote", "order", "product"] as const;
+export const SHEET_READING_SCOPES = ["order", "product"] as const;
 export type SheetReadingScope = (typeof SHEET_READING_SCOPES)[number];
 
 /**
@@ -2065,40 +1891,6 @@ export type MessageTranslation =
       at: string;
     }
   | { status: "failed"; error: string; at: string };
-
-/** Até onde cada login leu cada assunto (uma linha por login e assunto). */
-/** Uma decisão de um nível da aprovação. */
-export interface ApprovalStep {
-  level: ApprovalLevel;
-  decision: "approved" | "rejected";
-  userId: string;
-  at: string;
-  note: string | null;
-}
-
-/**
- * Aprovação do pré-custo (docs/APPROVALS.md): a escolha do fornecedor e o
- * valor ao cliente propostos pelo comprador só valem depois de aprovados,
- * nível a nível. Reprovada: volta ao comprador com o motivo.
- */
-export interface Approval extends BaseRow {
-  requestId: string;
-  quoteId: string;
-  requestedByUserId: string;
-  status: ApprovalStatus;
-  /** Escolha proposta (o que a seleção do fornecedor grava quando aprovada). */
-  input: Record<string, unknown>;
-  /** Valor ao cliente em BRL (nulo sem câmbio: vai até a diretoria executiva). */
-  valueBrl: number | null;
-  /** Níveis exigidos, na ordem. */
-  levels: ApprovalLevel[];
-  steps: ApprovalStep[];
-  /** Próximo nível a decidir (nulo quando terminou). */
-  currentLevel: ApprovalLevel | null;
-  /** Motivo da reprovação, do cancelamento ou da falha. */
-  reason: string | null;
-  decidedAt: string | null;
-}
 
 export interface EtdChange {
   from: string | null;
@@ -2819,7 +2611,6 @@ export interface Tables {
   product_lines: ProductLine;
   products: Product;
   requests: Request;
-  quotes: Quote;
   orders: Order;
   order_items: OrderItem;
   stages: Stage;
@@ -2851,7 +2642,6 @@ export interface Tables {
   product_lookups: ProductLookup;
   purchase_sheets: PurchaseSheet;
   freight_quotes: FreightQuote;
-  packaging_briefs: PackagingBrief;
   product_suppliers: ProductSupplier;
   sheet_readings: SheetReading;
   manufacturer_cards: ManufacturerCard;
@@ -2862,7 +2652,6 @@ export interface Tables {
   conversation_topics: ConversationTopic;
   messages: Message;
   message_reads: MessageRead;
-  approvals: Approval;
   production_tracks: ProductionTrack;
   sku_inspections: SkuInspection;
   import_steps: ImportStep;
@@ -3099,7 +2888,6 @@ export const TABLES: Record<TableName, TableDef> = {
       unit: str(20, true),
       deadline: datetime(),
       status: enumOf(REQUEST_STATUSES),
-      selectedQuoteId: id(false),
       orderId: id(false),
       sellPrice: float(),
       sellCurrency: str(3),
@@ -3120,8 +2908,6 @@ export const TABLES: Record<TableName, TableDef> = {
       variant: json(),
       ownerUserId: id(false),
       // Etapa "Proposta ao cliente" (opcionais; só gravados na aprovação).
-      proposalApprovedAt: datetime(),
-      proposalApprovedByUserId: id(false),
       sankhyaCode: str(40),
     },
     indexes: [
@@ -3130,30 +2916,6 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_group", type: "key", columns: ["groupId"] },
       { key: "by_number", type: "key", columns: ["number"] },
       { key: "by_owner", type: "key", columns: ["ownerUserId"] },
-    ],
-  },
-  quotes: {
-    label: "Cotações",
-    columns: {
-      requestId: id(),
-      supplierId: id(),
-      status: enumOf(QUOTE_STATUSES),
-      price: float(),
-      currency: str(3),
-      leadTimeDays: int(),
-      conditions: text(),
-      validUntil: datetime(),
-      answeredAt: datetime(),
-      manufacturerCardId: id(false),
-      manufacturerCardConfirmedAt: datetime(),
-      manufacturerCardConfirmedByUserId: id(false),
-      moq: int(),
-      negotiation: json(),
-      packagingProposal: json(),
-    },
-    indexes: [
-      { key: "by_request", type: "key", columns: ["requestId"] },
-      { key: "by_supplier", type: "key", columns: ["supplierId"] },
     ],
   },
   orders: {
@@ -3294,20 +3056,13 @@ export const TABLES: Record<TableName, TableDef> = {
       sourcingItemId: id(false),
       kitId: id(false),
       imageHash: str(32),
-      packagingBriefId: id(false),
       conversationTopicId: id(false),
-      quoteId: id(false),
       supplierRequestId: id(false),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_request", type: "key", columns: ["requestId"] },
       { key: "by_product", type: "key", columns: ["productId"] },
-      {
-        key: "by_packaging_brief",
-        type: "key",
-        columns: ["packagingBriefId"],
-      },
     ],
   },
   payments: {
@@ -3515,7 +3270,6 @@ export const TABLES: Record<TableName, TableDef> = {
       productId: id(false),
       sourcingItemId: id(false),
       supplierId: id(),
-      quoteId: id(false),
       name: str(160, true),
       supplierSku: str(60),
       material: str(120),
@@ -3874,7 +3628,7 @@ export const TABLES: Record<TableName, TableDef> = {
     label: "Cotações de frete (companhia marítima)",
     columns: {
       requestId: id(),
-      quoteId: id(),
+      orderId: id(),
       carrierId: id(),
       status: enumOf(FREIGHT_QUOTE_STATUSES),
       totalCbm: float(),
@@ -3889,54 +3643,13 @@ export const TABLES: Record<TableName, TableDef> = {
       answeredAt: datetime(),
     },
     indexes: [
-      { key: "by_quote", type: "key", columns: ["quoteId"] },
+      { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_request", type: "key", columns: ["requestId"] },
       {
         key: "by_carrier_status",
         type: "key",
         columns: ["carrierId", "status"],
       },
-    ],
-  },
-  packaging_briefs: {
-    label: "Briefings de embalagem (faca e arte na RFQ)",
-    columns: {
-      requestId: id(),
-      productId: id(false),
-      customerId: id(),
-      agencyId: id(false),
-      ownerSource: enumOf(PACKAGING_OWNER_SOURCES),
-      status: enumOf(PACKAGING_BRIEF_STATUSES),
-      requiredKeys: json(),
-      dielineDocumentId: id(false),
-      artDocumentId: id(false),
-      printReadyDocumentId: id(false),
-      sampleDocumentId: id(false),
-      dims: json(),
-      dimsSource: enumOf(PACKAGING_DIMS_SOURCES, false),
-      dimsQuoteId: id(false),
-      dimsProvisional: bool(),
-      dimsChangedAt: datetime(),
-      brief: text(),
-      agencyNotes: text(),
-      agencyItemPrice: float(),
-      agencyItemCurrency: str(3),
-      dueAt: datetime(),
-      readyAt: datetime(),
-      orderId: id(false),
-      orderArtRequirementId: id(false),
-      transferredAt: datetime(),
-      cancelledAt: datetime(),
-      cancelReason: str(60),
-      reminderSentAt: datetime(),
-      createdByUserId: id(),
-      updatedByUserId: id(false),
-    },
-    indexes: [
-      { key: "by_request", type: "key", columns: ["requestId"] },
-      { key: "by_agency_status", type: "key", columns: ["agencyId", "status"] },
-      { key: "by_status", type: "key", columns: ["status"] },
-      { key: "by_order", type: "key", columns: ["orderId"] },
     ],
   },
   product_suppliers: {
@@ -3950,11 +3663,6 @@ export const TABLES: Record<TableName, TableDef> = {
       moq: int(),
       leadTimeDays: int(),
       source: enumOf(PRODUCT_SUPPLIER_SOURCES),
-      lastQuoteId: id(false),
-      lastQuotedAt: datetime(),
-      quoteCount: int(),
-      selectedCount: int(),
-      lastSelectedAt: datetime(),
       createdByUserId: id(false),
     },
     indexes: [
@@ -3997,7 +3705,6 @@ export const TABLES: Record<TableName, TableDef> = {
       isFactory: bool(),
       notes: text(),
       source: str(10),
-      quoteId: id(false),
       createdByUserId: id(),
     },
     indexes: [
@@ -4136,26 +3843,6 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_topic", type: "key", columns: ["topicId"] },
       { key: "by_conversation", type: "key", columns: ["conversationId"] },
-    ],
-  },
-  approvals: {
-    label: "Aprovações",
-    columns: {
-      requestId: id(),
-      quoteId: id(),
-      requestedByUserId: id(),
-      status: enumOf(APPROVAL_STATUSES),
-      input: jsonLarge(),
-      valueBrl: float(),
-      levels: json(),
-      steps: json(),
-      currentLevel: enumOf(APPROVAL_LEVELS),
-      reason: text(),
-      decidedAt: datetime(),
-    },
-    indexes: [
-      { key: "by_request", type: "key", columns: ["requestId"] },
-      { key: "by_status", type: "key", columns: ["status"] },
     ],
   },
   production_tracks: {

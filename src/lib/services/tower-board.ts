@@ -25,7 +25,7 @@ import { brazilDay } from "@/lib/supplier-terms";
 import { reviewOrderId, type TowerRow } from "./control-tower";
 import { stepTemplate } from "./import-flow";
 import { JOURNEY_REQUIREMENT_KEYS, journeyIndex } from "./journey";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 import { followupsDue, latestByItem } from "./production";
 import { getSettings } from "@/lib/settings";
 import { ORDER_SIGNED_WELLMIX } from "@/lib/workflow/stages";
@@ -271,9 +271,6 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   const journey = journeyIndex({
     ...input,
     reviews: input.reviews,
-    quotes: [],
-    approvals: [],
-    rfqDays: 0,
   });
   const step = (o: Order, key: ImportStep["key"]) =>
     (stepsBy.get(o.id) ?? []).find((s) => s.key === key);

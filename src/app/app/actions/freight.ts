@@ -62,3 +62,18 @@ export async function answerFreightAction(form: FormData) {
     return `${back}?saved=1`;
   });
 }
+
+/** A Wellmix pede (ou pede de novo) o frete do pedido às companhias marítimas. */
+export async function requestOrderFreightAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId").slice(0, 64);
+  const back = `/app/orders/${encodeURIComponent(orderId)}`;
+  await run(`${back}#freight`, async () => {
+    ID.parse(orderId);
+    if (!isWellmix(user)) throw new ForbiddenError();
+    assertScreen(user, "orders");
+    const { inviteFreightForOrder } = await import("@/lib/services/freight");
+    const n = await inviteFreightForOrder(user, orderId);
+    return `${back}?freight=${n ? `sent&freightN=${n}` : "unchanged"}#freight`;
+  });
+}

@@ -67,11 +67,13 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
 
   // Como Factory: as mesmas telas do Fornecedor (o menu é conferido nos testes unitários).
   await login(page, userLogin);
-  await page.goto("/app/quotes");
-  await expect(page).toHaveURL(/\/app\/quotes/);
-  await expect(page.getByRole("heading", { name: "Cotações" })).toBeVisible();
+  await page.goto("/app/supplier-requests");
+  await expect(page).toHaveURL(/\/app\/supplier-requests/);
+  await expect(
+    page.getByRole("heading", { name: "Solicitações ao fornecedor" }),
+  ).toBeVisible();
 
-  // Administrador: tira Cotações da Factory na Gestão de telas.
+  // Administrador: tira Solicitações ao fornecedor da Factory na Gestão de telas.
   await login(page, "admin@wellmix.com");
   await page.goto("/app/parties/access?profile=type:factory");
   await expect(page.locator("[data-access-users]")).toHaveAttribute(
@@ -101,7 +103,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await expect(page.locator('[data-access-limited="explore"]')).toBeVisible();
   await expect(page.locator('[data-access-limited="orders"]')).toHaveCount(0);
 
-  // Comparar Factory com o Fornecedor: a diferença é Cotações.
+  // Comparar Factory com o Fornecedor: a diferença é Solicitações ao fornecedor.
   await page.goto(
     "/app/parties/access?view=compare&a=type:factory&b=role:supplier",
   );
@@ -114,15 +116,15 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
     "1",
   );
 
-  // Como Factory: Cotações recusa, mesmo pelo endereço; a Gestão de telas
+  // Como Factory: Solicitações ao fornecedor recusa, mesmo pelo endereço; a Gestão de telas
   // não abre para quem não é administrador.
   await login(page, userLogin);
-  await page.goto("/app/quotes");
+  await page.goto("/app/supplier-requests");
   await expect(page).toHaveURL(/denied=quotes/);
   await page.goto("/app/parties/access");
   await expect(page).toHaveURL(/denied=parties/);
 
-  // Administrador: copia Cotações do Fornecedor de volta para a Factory, com prévia.
+  // Administrador: copia Solicitações ao fornecedor do Fornecedor de volta para a Factory, com prévia.
   await login(page, "admin@wellmix.com");
   await page.goto("/app/parties/access?view=copy");
   await page.selectOption('select[name="from"]', "role:supplier");
@@ -138,7 +140,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
     "data-access-state",
     "open",
   );
-  // Por tela: quem abre Cotações.
+  // Por tela: quem abre Solicitações ao fornecedor.
   await page.goto("/app/parties/access?view=screen&screen=quotes");
   await expect(
     page.locator('[data-access-holder="type:factory"]'),
@@ -156,10 +158,12 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await page.locator("[data-access-copy-apply]").click();
   await page.waitForURL(/saved=1/);
 
-  // Como Factory de novo: Cotações voltou a abrir.
+  // Como Factory de novo: Solicitações ao fornecedor voltou a abrir.
   await login(page, userLogin);
-  await page.goto("/app/quotes");
-  await expect(page.getByRole("heading", { name: "Cotações" })).toBeVisible();
+  await page.goto("/app/supplier-requests");
+  await expect(
+    page.getByRole("heading", { name: "Solicitações ao fornecedor" }),
+  ).toBeVisible();
   // Multas abre para a Factory e mostra só as da própria empresa (nenhuma).
   await page.goto("/app/penalties");
   await expect(page).toHaveURL(/\/app\/penalties/);

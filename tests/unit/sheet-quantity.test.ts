@@ -11,9 +11,8 @@ const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const calc = await import("@/lib/services/purchase-sheet-calc");
 const r = await import("@/lib/services/requests");
-const qs = await import("@/lib/services/quote-sheet");
 const ps = await import("@/lib/services/purchase-sheet");
-const { quotePricing } = await import("@/lib/services/quote-pricing");
+const { orderFromRequest } = await import("./helpers/order");
 type User = import("@/lib/db").User;
 
 const plan = (cartons: number[], cbmPerCarton: number, capacity: number) =>
@@ -100,21 +99,21 @@ describe("quantidade do pedido acompanha as caixas", () => {
     supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
   });
 
-  it("cotação → proposta → pedido → ficha do pedido: a quantidade segue a programação", async () => {
+  it("pedido → ficha do pedido: a quantidade segue a programação", async () => {
     const store = getStore();
     const request = await r.createRequest(joao, {
       customerId: "cliente-joao",
       productName: "Boneca",
       description: "Boneca de vinil",
-      quantity: 3000,
+      quantity: 2750,
       unit: "un",
     });
-    await r.openRfq(admin, request.id, ["fornecedor-a"]);
-    const [quote] = await store.list("quotes", {
-      filter: { requestId: request.id },
+    const order = await orderFromRequest(admin, request, {
+      price: 2,
+      sellPrice: 27500,
     });
-    // Fornecedor programa 20 + 20 + 15 caixas de 50 peças = 2.750 peças.
-    await qs.saveQuoteSheet(supplierA, quote.id, {
+    // Programação: 20 + 20 + 15 caixas de 50 peças = 2.750 peças.
+    await ps.saveSheet(admin, order.id, {
       price: 2,
       currency: "USD",
       masterCartonQty: 50,
@@ -125,26 +124,6 @@ describe("quantidade do pedido acompanha as caixas", () => {
         { departureIntervalDays: 45, masterCartons: 15 },
       ],
     });
-    await r.answerQuote(supplierA, quote.id, {
-      price: 2,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-
-    // A conta do valor ao cliente usa as 2.750 peças da programação.
-    const fresh = (await store.get("requests", request.id))!;
-    const ctx = await quotePricing(fresh, [
-      (await store.get("quotes", quote.id))!,
-    ]);
-    expect(ctx.quotes[0].input.quantity).toBe(2750);
-
-    // Ao escolher, a solicitação passa a valer 2.750 (e o pedido nasce assim).
-    await r.selectQuote(admin, quote.id, {
-      sellPrice: 27500,
-      sellCurrency: "BRL",
-    });
-    expect((await store.get("requests", request.id))!.quantity).toBe(2750);
-    const order = await r.confirmDownPayment(admin, request.id);
     const [item] = await store.list("order_items", {
       filter: { orderId: order.id },
     });
@@ -210,20 +189,20 @@ describe("quantidade da programação: segurança (revisão)", () => {
   const lots = (...cartons: number[]) =>
     cartons.map((c) => ({ departureIntervalDays: 45, masterCartons: c }));
 
-  async function quoted(unit = "un") {
-    const store = getStore();
+  /** Pedido com a programação 20 + 20 + 15 caixas de 50 peças. */
+  async function ordered(unit = "un", quantity = 2750) {
     const request = await r.createRequest(joao, {
       customerId: "cliente-joao",
       productName: `Item ${unit}`,
       description: "Teste",
-      quantity: 3000,
+      quantity,
       unit,
     });
-    await r.openRfq(admin, request.id, ["fornecedor-a"]);
-    const [quote] = await store.list("quotes", {
-      filter: { requestId: request.id },
+    const order = await orderFromRequest(admin, request, {
+      price: 2,
+      sellPrice: 27500,
     });
-    await qs.saveQuoteSheet(supplierA, quote.id, {
+    await ps.saveSheet(admin, order.id, {
       price: 2,
       currency: "USD",
       masterCartonQty: 50,
@@ -231,61 +210,12 @@ describe("quantidade da programação: segurança (revisão)", () => {
       grossWeightPcKg: 0.1,
       lots: lots(20, 20, 15),
     });
-    await r.answerQuote(supplierA, quote.id, {
-      price: 2,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-    return { request, quote };
+    return { request, order };
   }
-
-  it("frete pedido à companhia marítima usa a mesma carga do preço (a da programação)", async () => {
-    const { cargoFor } = await import("@/lib/services/freight");
-    const { request, quote } = await quoted();
-    const sheet = await qs.getQuoteSheet(quote.id);
-    expect(cargoFor(request, sheet)).toEqual({
-      totalCbm: 2.75,
-      cartons: 55,
-      grossWeightKg: 275,
-    });
-    // Unidade que não é peça: fica a quantidade pedida.
-    expect(cargoFor({ ...request, unit: "cx" }, sheet).cartons).toBe(60);
-  });
-
-  it("a ficha mudou depois da conta: a escolha é recusada antes de gravar qualquer coisa", async () => {
-    const store = getStore();
-    const { request, quote } = await quoted();
-    // A conta da tela usou 2.750; o fornecedor muda para 2.700 antes do clique.
-    await qs.saveQuoteSheet(supplierA, quote.id, { lots: lots(20, 20, 14) });
-    await expect(
-      r.selectQuote(admin, quote.id, {
-        sellPrice: 27500,
-        sellCurrency: "BRL",
-        pricedQuantity: 2750,
-      }),
-    ).rejects.toThrow("sheet_changed");
-    expect((await store.get("quotes", quote.id))!.status).toBe("answered");
-    expect((await store.get("requests", request.id))!.status).not.toBe(
-      "WAITING_DOWN_PAYMENT",
-    );
-    // Com a quantidade certa, vai.
-    await r.selectQuote(admin, quote.id, {
-      sellPrice: 27000,
-      sellCurrency: "BRL",
-      pricedQuantity: 2700,
-    });
-    expect((await store.get("requests", request.id))!.quantity).toBe(2700);
-  });
 
   it("unidade que não é peça (cx): a quantidade não vira peças", async () => {
     const store = getStore();
-    const { request, quote } = await quoted("cx");
-    await r.selectQuote(admin, quote.id, {
-      sellPrice: 1000,
-      sellCurrency: "BRL",
-    });
-    expect((await store.get("requests", request.id))!.quantity).toBe(3000);
-    const order = await r.confirmDownPayment(admin, request.id);
+    const { order } = await ordered("cx", 3000);
     await ps.saveSheet(admin, order.id, { lots: lots(20, 20, 14) });
     const [item] = await store.list("order_items", {
       filter: { orderId: order.id },
@@ -296,12 +226,7 @@ describe("quantidade da programação: segurança (revisão)", () => {
   it("fornecedor já pago: não muda valores sozinho, abre revisão; fornecedor que muda caixas avisa a Wellmix", async () => {
     const store = getStore();
     const { PAYMENT_EXTRA_DEFAULTS } = await import("@/lib/db");
-    const { request, quote } = await quoted();
-    await r.selectQuote(admin, quote.id, {
-      sellPrice: 27500,
-      sellCurrency: "BRL",
-    });
-    const order = await r.confirmDownPayment(admin, request.id);
+    const { order } = await ordered();
 
     // Fornecedor muda as caixas: a Wellmix é avisada (uma vez), o pedido fica.
     const wellmixInbox = async () =>
@@ -400,24 +325,6 @@ describe("quantidade da programação: segurança (revisão)", () => {
         })
       ).filter((r) => r.status === "open"),
     ).toHaveLength(1);
-  });
-
-  it("cotação respondida: mudar as caixas pede o frete de novo com a carga nova", async () => {
-    const store = getStore();
-    const { inviteFreightForQuote } = await import("@/lib/services/freight");
-    const { quote } = await quoted();
-    await inviteFreightForQuote(admin, quote.id);
-    const before = await store.list("freight_quotes", {
-      filter: { quoteId: quote.id },
-    });
-    expect(before.length).toBeGreaterThan(0);
-    expect(before[0].cartons).toBe(55);
-    // Rascunho (sem reenviar): "Reduzir" tira uma caixa da última programação.
-    await qs.saveQuoteSheet(supplierA, quote.id, { lots: lots(20, 20, 14) });
-    const after = await store.list("freight_quotes", {
-      filter: { quoteId: quote.id },
-    });
-    expect(after.every((f) => f.cartons === 54)).toBe(true);
   });
 });
 

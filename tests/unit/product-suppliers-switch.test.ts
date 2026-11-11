@@ -27,8 +27,6 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
-const r = await import("@/lib/services/requests");
-const qs = await import("@/lib/services/quote-sheet");
 const ps = await import("@/lib/services/product-suppliers");
 const pss = await import("@/lib/services/product-sheet");
 const catalog = await import("@/app/app/actions/catalog");
@@ -38,14 +36,10 @@ type User = import("@/lib/db").User;
 type Product = import("@/lib/db").Product;
 
 let admin: User;
-let joao: User;
-let supplierB: User;
 
 beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
-  joao = users.find((u) => u.email === "joao@lojista.com")!;
-  supplierB = users.find((u) => u.email === "supplier.b@china.com")!;
   h.current = admin;
 });
 
@@ -87,27 +81,6 @@ function productForm(p: Product, change: Record<string, string> = {}) {
   return f;
 }
 
-async function quoteSheetFor(productId: string, supplierId: string) {
-  const store = getStore();
-  const request = await r.createRequest(joao, {
-    customerId: "cliente-joao",
-    productId,
-    productName: "Produto",
-    description: "Teste",
-    specification: null,
-    // Acima de qualquer pedido mínimo do seed (500, 2000, 300).
-    quantity: 2000,
-    unit: "un",
-    deadline: null,
-    notes: null,
-  });
-  await r.openRfq(admin, request.id, [supplierId]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  return quote;
-}
-
 describe("troca do fornecedor principal", () => {
   it("botão: o novo principal não herda preço, moeda nem MOQ do antigo", async () => {
     const store = getStore();
@@ -130,12 +103,6 @@ describe("troca do fornecedor principal", () => {
       "USD",
       500,
     ]);
-    // A ficha da cotação de B não traz nada de A.
-    const quote = await quoteSheetFor("prod-panela", "fornecedor-b");
-    const b = (await qs.getQuoteSheetForUser(supplierB, quote.id))!;
-    expect(b.sheet.price ?? null).toBeNull();
-    expect(b.sheet.moq ?? null).toBeNull();
-    expect(b.sheet.factoryItemCode).toBe("GZB-OWN");
     // De volta para A: os dados dele voltam do vínculo.
     await ps.setMainSupplier(admin, "prod-panela", "fornecedor-a");
     const back = (await store.get("products", "prod-panela"))!;
@@ -407,33 +374,6 @@ describe("troca do fornecedor principal", () => {
       "RMB",
       50,
     ]);
-  });
-
-  it("adotar a ficha de outro fornecedor não muda os dados do principal", async () => {
-    const store = getStore();
-    const before = (await store.get("products", "prod-boneca"))!;
-    const quote = await quoteSheetFor("prod-boneca", "fornecedor-c");
-    await store.update("parties", "fornecedor-c", { type: "supplier" });
-    await qs.saveQuoteSheet(admin, quote.id, {
-      supplierName: "Ningbo Supplier C",
-      factoryItemCode: "C-CODE",
-      price: 1.11,
-      currency: "USD",
-      moq: 77,
-      material: "PVC novo",
-    });
-    await pss.adoptSheetIntoProduct(admin, quote.id);
-    const after = (await store.get("products", "prod-boneca"))!;
-    expect(after.supplierId).toBe(before.supplierId);
-    expect([after.supplierSku, after.price, after.moq]).toEqual([
-      before.supplierSku,
-      before.price,
-      before.moq,
-    ]);
-    // Dado do produto (material) vem; as condições de C ficam no vínculo dele.
-    expect(after.material).toBe("PVC novo");
-    const c = (await ps.productSupplierLink("prod-boneca", "fornecedor-c"))!;
-    expect([c.supplierSku, c.price, c.moq]).toEqual(["C-CODE", 1.11, 77]);
   });
 
   it("trocar o principal guarda no vínculo dele o preço atual do produto", async () => {

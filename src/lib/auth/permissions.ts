@@ -48,15 +48,6 @@ export function canViewRequest(user: User, request: Request): boolean {
   return false;
 }
 
-/** Fornecedor vê uma solicitação apenas por meio da própria cotação. */
-export function canViewQuote(
-  user: User,
-  quote: { supplierId: string },
-): boolean {
-  if (isWellmix(user)) return true;
-  return user.role === "supplier" && quote.supplierId === user.partyId;
-}
-
 /**
  * Quem pode abrir um pedido:
  * - Wellmix: todos;

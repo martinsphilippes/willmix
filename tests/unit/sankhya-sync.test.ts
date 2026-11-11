@@ -369,7 +369,6 @@ async function linkedOrder(nunota: string | null) {
     unit: "UN",
     deadline: null,
     status: "ORDERED",
-    selectedQuoteId: null,
     orderId: null,
     sellPrice: null,
     sellCurrency: null,

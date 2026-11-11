@@ -11,6 +11,7 @@ const r = await import("@/lib/services/requests");
 const { submitRequirement } = await import("@/lib/workflow/engine");
 const { computeOrderFinance } = await import("@/lib/services/finance");
 const c = await import("@/lib/services/order-cancel");
+const { orderFromRequest } = await import("./helpers/order");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
 
@@ -20,7 +21,6 @@ let joao: User;
 let supplierA: User;
 
 async function newOrder(): Promise<Order> {
-  const store = getStore();
   const request = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: "prod-jarra",
@@ -32,22 +32,7 @@ async function newOrder(): Promise<Order> {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, request.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 1000,
-    sellCurrency: "BRL",
-    downPaymentAmount: 300,
-  });
-  return r.confirmDownPayment(admin, request.id);
+  return orderFromRequest(admin, request, { downPaymentAmount: 300 });
 }
 
 /** Conclui as etapas até a indicada (exclusive). */

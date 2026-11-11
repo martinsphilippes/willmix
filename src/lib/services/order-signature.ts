@@ -17,7 +17,6 @@ import {
   ORDER_SIGNED_WELLMIX,
 } from "@/lib/workflow/stages";
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
-import { packagingProposalState } from "@/lib/quote-flow";
 import { audit } from "./audit";
 import { notify, notifyWellmix } from "./notifications";
 
@@ -59,8 +58,6 @@ export interface OrderDocument {
   moq: number | null;
   leadTimeDays: number | null;
   paymentTerms: PaymentTermInstallment[];
-  /** A proposta de embalagem com o OK do fornecedor na cotação (versão). */
-  packagingOkVersion: number | null;
   /**
    * Pedido de compra (docs/PURCHASE_ORDER.md): a arte final com o selo de
    * cada produto entra no contrato. Só nesses pedidos (nos outros a chave
@@ -123,22 +120,17 @@ export function canViewOrderDocument(
 export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
   const store = getStore();
   const { getSettings } = await import("@/lib/settings");
-  const [items, supplier, [sheet], request, settings] = await Promise.all([
+  const [items, supplier, [sheet], settings] = await Promise.all([
     store.list("order_items", { filter: { orderId: order.id } }),
     store.get("parties", order.supplierId),
     store.list("purchase_sheets", { filter: { orderId: order.id }, limit: 1 }),
-    store.get("requests", order.requestId),
     getSettings(),
   ]);
-  const quote = request?.selectedQuoteId
-    ? await store.get("quotes", request.selectedQuoteId)
-    : null;
-  const currency =
-    order.fobCurrency ?? quote?.currency ?? sheet?.currency ?? "USD";
+  const currency = order.fobCurrency ?? sheet?.currency ?? "USD";
   const rows: OrderDocumentItem[] = [...items]
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .map((item) => {
-      const unitPrice = item.unitPrice ?? quote?.price ?? sheet?.price ?? null;
+      const unitPrice = item.unitPrice ?? sheet?.price ?? null;
       return {
         name: item.name,
         variant: item.variant?.name ?? null,
@@ -197,13 +189,9 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
     incoterm: sheet?.incoterm ?? null,
     items: rows,
     total,
-    moq: quote?.moq ?? sheet?.moq ?? null,
-    leadTimeDays: quote?.leadTimeDays ?? null,
+    moq: sheet?.moq ?? null,
+    leadTimeDays: null,
     paymentTerms: order.supplierPaymentTerms ?? [],
-    packagingOkVersion:
-      packagingProposalState(quote?.packagingProposal) === "ok"
-        ? (quote?.packagingProposal?.version ?? null)
-        : null,
     ...(purchase.finalArts
       ? {
           incoterm: sheet?.incoterm ?? purchase.incoterm ?? null,

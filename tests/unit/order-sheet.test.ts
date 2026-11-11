@@ -11,6 +11,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const sig = await import("@/lib/services/order-signature");
 const { buildOrderSheet } = await import("@/lib/services/order-sheet");
@@ -19,19 +20,14 @@ type User = import("@/lib/db").User;
 
 let admin: User;
 let joao: User;
-let supplierA: User;
 
 beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
-  supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
-  const { setSetting } = await import("@/lib/settings");
-  await setSetting("approvalsEnabled", false);
 });
 
 async function newOrder(productId: string | null, quantity = 1850) {
-  const store = getStore();
   const req = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId,
@@ -43,22 +39,12 @@ async function newOrder(productId: string | null, quantity = 1850) {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, req.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: req.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
+  return orderFromRequest(admin, req, {
     price: 22.96,
     currency: "CNY",
-    leadTimeDays: 45,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
     sellPrice: 100_000,
-    sellCurrency: "BRL",
     downPaymentAmount: 30_000,
   });
-  return r.confirmDownPayment(admin, req.id);
 }
 
 /** Ficha do pedido com os dados que a folha usa. */
@@ -156,7 +142,6 @@ describe("folha do pedido no modelo da Wellmix", () => {
       grossKg: 222,
       value: 42476,
     });
-    expect(sheet.leadTimeDays).toBe(45);
 
     // As células saem na ordem das colunas do modelo, com os números em pt-BR.
     const a = layout.orderSheetValuesA(sheet.items[0]);

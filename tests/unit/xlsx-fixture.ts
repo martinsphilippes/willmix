@@ -92,7 +92,10 @@ export function xlsxBytes(
   let mediaCount = 0;
   sheets.forEach((s, i) => {
     const mine = images.filter((img) => img.sheet === i);
-    files.push([`xl/worksheets/sheet${i + 1}.xml`, sheetXml(s.cells, mine.length > 0)]);
+    files.push([
+      `xl/worksheets/sheet${i + 1}.xml`,
+      sheetXml(s.cells, mine.length > 0),
+    ]);
     if (!mine.length) return;
     files.push([
       `xl/worksheets/_rels/sheet${i + 1}.xml.rels`,

@@ -12,7 +12,8 @@ withTempStore();
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const r = await import("@/lib/services/requests");
-const qs = await import("@/lib/services/quote-sheet");
+const ps = await import("@/lib/services/purchase-sheet");
+const { orderFromRequest } = await import("./helpers/order");
 const sr = await import("@/lib/services/sheet-records");
 type User = import("@/lib/db").User;
 
@@ -29,34 +30,33 @@ beforeAll(async () => {
   supplierB = users.find((u) => u.email === "supplier.b@china.com")!;
 });
 
-async function rfqFor(productId: string) {
-  const store = getStore();
-  const request = await r.createRequest(joao, {
-    customerId: "cliente-joao",
-    productId,
-    productName: "Panela",
-    description: "Jogo de panelas",
-    specification: null,
-    // Pedido mínimo da panela (500).
-    quantity: 500,
-    unit: "un",
-    deadline: null,
-    notes: null,
-  });
-  await r.openRfq(admin, request.id, ["fornecedor-a", "fornecedor-b"]);
-  const quotes = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
+/** Um pedido por fornecedor (A e B) do mesmo produto. */
+async function ordersFor(productId: string) {
+  const order = async (supplierId: string) => {
+    const request = await r.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId,
+      productName: "Panela",
+      description: "Jogo de panelas",
+      specification: null,
+      // Pedido mínimo da panela (500).
+      quantity: 500,
+      unit: "un",
+      deadline: null,
+      notes: null,
+    });
+    return orderFromRequest(admin, request, { supplierId });
+  };
   return {
-    quoteA: quotes.find((q) => q.supplierId === "fornecedor-a")!,
-    quoteB: quotes.find((q) => q.supplierId === "fornecedor-b")!,
+    orderA: await order("fornecedor-a"),
+    orderB: await order("fornecedor-b"),
   };
 }
 
 describe("ficha: bloco Fornecedor vem dos cadastros", () => {
   it("rascunho traz cidade, nº da loja, telefone e código do produto; o que falta é listado", async () => {
-    const { quoteA, quoteB } = await rfqFor("prod-panela");
-    const a = (await qs.getQuoteSheetForUser(supplierA, quoteA.id))!;
+    const { orderA, orderB } = await ordersFor("prod-panela");
+    const a = (await ps.getSheetForUser(supplierA, orderA.id))!;
     expect(a.sheet.location).toBe("Shenzhen");
     expect(a.sheet.supplierStore).toBe("A 154678");
     expect(a.sheet.supplierPhone).toBe("+86 755 1234 5678");
@@ -65,20 +65,20 @@ describe("ficha: bloco Fornecedor vem dos cadastros", () => {
     expect(a.records.canEdit).toBe(false);
     // Fornecedor B: tem cidade, não tem loja nem telefone; o código na
     // fábrica é do fornecedor A e não vai para a ficha dele.
-    const b = (await qs.getQuoteSheetForUser(supplierB, quoteB.id))!;
+    const b = (await ps.getSheetForUser(supplierB, orderB.id))!;
     expect(b.sheet.location).toBe("Guangzhou");
     expect(b.sheet.supplierStore ?? null).toBeNull();
     expect(b.sheet.factoryItemCode ?? null).toBeNull();
     expect(b.records.missing).toEqual(["supplierStore", "supplierPhone"]);
-    const bAdmin = (await qs.getQuoteSheetForUser(admin, quoteB.id))!;
+    const bAdmin = (await ps.getSheetForUser(admin, orderB.id))!;
     expect(bAdmin.records.canEdit).toBe(true);
     expect(bAdmin.records.supplierId).toBe("fornecedor-b");
   });
 
   it("salvar a ficha completa o cadastro sem sobrescrever nem vazar", async () => {
     const store = getStore();
-    const { quoteA, quoteB } = await rfqFor("prod-panela");
-    await qs.saveQuoteSheet(supplierB, quoteB.id, {
+    const { orderA, orderB } = await ordersFor("prod-panela");
+    await ps.saveSheet(supplierB, orderB.id, {
       supplierName: "Guangzhou Supplier B",
       location: "YIWU",
       supplierStore: "B 777",
@@ -95,7 +95,7 @@ describe("ficha: bloco Fornecedor vem dos cadastros", () => {
     );
     // Produto sem código: o fornecedor dono preenche ao salvar a ficha.
     await store.update("products", "prod-panela", { supplierSku: null });
-    await qs.saveQuoteSheet(supplierA, quoteA.id, {
+    await ps.saveSheet(supplierA, orderA.id, {
       supplierName: "Shenzhen Supplier A",
       factoryItemCode: "SZA-NEW",
     });
@@ -104,11 +104,11 @@ describe("ficha: bloco Fornecedor vem dos cadastros", () => {
     );
     // Nem a Wellmix grava na ficha de B o código no produto de A.
     await store.update("products", "prod-panela", { supplierSku: null });
-    await qs.saveQuoteSheet(admin, quoteB.id, { factoryItemCode: "ADMIN-B" });
+    await ps.saveSheet(admin, orderB.id, { factoryItemCode: "ADMIN-B" });
     expect(
       (await store.get("products", "prod-panela"))!.supplierSku ?? null,
     ).toBeNull();
-    const after = (await qs.getQuoteSheetForUser(supplierB, quoteB.id))!;
+    const after = (await ps.getSheetForUser(supplierB, orderB.id))!;
     expect(after.records.missing).toEqual([]);
   });
 
@@ -118,19 +118,20 @@ describe("ficha: bloco Fornecedor vem dos cadastros", () => {
       supplierId: null,
       supplierSku: null,
     });
-    const { quoteA, quoteB } = await rfqFor("prod-panela");
-    const b0 = (await qs.getQuoteSheetForUser(supplierB, quoteB.id))!;
+    const { orderA, orderB } = await ordersFor("prod-panela");
+    const b0 = (await ps.getSheetForUser(supplierB, orderB.id))!;
     expect(b0.records.missing).not.toContain("factoryItemCode");
     expect(b0.records.productApplies).toBe(false);
-    await qs.saveQuoteSheet(supplierA, quoteA.id, {
+    await ps.saveSheet(supplierA, orderA.id, {
       supplierName: "Shenzhen Supplier A",
       factoryItemCode: "A-SECRET-123",
     });
     expect(
       (await store.get("products", "prod-panela"))!.supplierSku ?? null,
     ).toBeNull();
-    const b = (await qs.getQuoteSheetForUser(supplierB, quoteB.id))!;
-    expect(b.sheet.factoryItemCode ?? null).toBeNull();
+    const b = (await ps.getSheetForUser(supplierB, orderB.id))!;
+    // A ficha de B (pedido novo; pode reaproveitar a compra anterior de B) não traz o código de A.
+    expect(b.sheet.factoryItemCode ?? null).not.toBe("A-SECRET-123");
     await store.update("products", "prod-panela", {
       supplierId: "fornecedor-a",
       supplierSku: "SZA-PAN5",
@@ -139,13 +140,13 @@ describe("ficha: bloco Fornecedor vem dos cadastros", () => {
 
   it("ficha gravada com campo em branco mostra o valor do cadastro", async () => {
     const store = getStore();
-    const { quoteB } = await rfqFor("prod-panela");
-    await qs.saveQuoteSheet(supplierB, quoteB.id, {
+    const { orderB } = await ordersFor("prod-panela");
+    await ps.saveSheet(supplierB, orderB.id, {
       supplierName: "Guangzhou Supplier B",
       location: null,
     });
     await store.update("parties", "fornecedor-b", { city: "Yiwu" });
-    const view = (await qs.getQuoteSheetForUser(supplierB, quoteB.id))!;
+    const view = (await ps.getSheetForUser(supplierB, orderB.id))!;
     expect(view.saved).toBe(true);
     expect(view.sheet.location).toBe("Yiwu");
     await store.update("parties", "fornecedor-b", { city: "Guangzhou" });

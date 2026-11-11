@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
- * Limpar dados de teste (só vendas): apaga solicitações, cotações, pedidos,
+ * Limpar dados de teste (só vendas): apaga solicitações, pedidos,
  * pagamentos, documentos de venda (com o arquivo), notificações, sugestões da
  * IA e o histórico delas; mantém catálogo, sourcing, programações e cadastros
  * (só desliga o que apontava para uma venda) e recomeça a numeração do #1.
@@ -11,6 +11,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const { setSetting } = await import("@/lib/settings");
 const r = await import("@/lib/services/requests");
 const { uploadDocument } = await import("@/lib/services/documents");
@@ -41,9 +42,8 @@ beforeAll(async () => {
   supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
 });
 
-/** Venda completa: solicitação → cotação → pedido, pagamento e documento. */
+/** Venda completa: solicitação → pedido, pagamento e documento. */
 async function sale() {
-  const store = getStore();
   const request = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: "prod-jarra",
@@ -55,23 +55,10 @@ async function sale() {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, request.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 1000,
-    sellCurrency: "BRL",
+  const order = await orderFromRequest(admin, request, {
     downPaymentAmount: 300,
   });
-  const order = await r.confirmDownPayment(admin, request.id);
-  return { request, quote, order };
+  return { request, order };
 }
 
 describe("limpar dados de teste (vendas)", () => {
@@ -221,29 +208,6 @@ describe("limpar dados de teste (vendas)", () => {
       method: "transfer_copied",
     });
     await requestProductSuggestion(admin, "product", "prod-jarra");
-    // Foto que o fornecedor mandou na cotação (documento sem pedido).
-    const [quoteOfSale] = await store.list("quotes", {
-      filter: { requestId: request.id },
-    });
-    // (Mesmo formato que addQuoteSheetPhotos grava: documento sem pedido,
-    // foto ligada à cotação.)
-    const quoteFile = await uploadDocument(
-      supplierA,
-      new File([new Uint8Array([7, 8, 9])], "q.png", { type: "image/png" }),
-      { type: "photo", visibility: "internal" } as never,
-    );
-    const quotePhoto = await store.create("product_photos", {
-      productId: null,
-      sourcingItemId: null,
-      orderId: quoteOfSale.id,
-      documentId: quoteFile.id,
-      kind: SHEET_PHOTO_KINDS[0],
-      caption: null,
-      takenByUserId: supplierA.id,
-      derivedFromPhotoId: null,
-      isPrimary: false,
-    } as never);
-    const quoteDoc = (await store.get("documents", quotePhoto.documentId))!;
     // Sourcing sob demanda criado pela solicitação de teste.
     const demand = await r.createRequest(joao, {
       customerId: "cliente-joao",
@@ -306,7 +270,6 @@ describe("limpar dados de teste (vendas)", () => {
     // Vendas: nada sobra.
     for (const table of [
       "requests",
-      "quotes",
       "orders",
       "order_items",
       "stages",
@@ -323,10 +286,7 @@ describe("limpar dados de teste (vendas)", () => {
     expect(await store.get("documents", orderDoc.id)).toBeNull();
     expect(await store.statFile(orderDoc.storageKey)).toBeNull();
     expect(await store.get("product_photos", orderPhoto.id)).toBeNull();
-    // Foto da cotação, item de sourcing sob demanda, arte do kit e ficha que
-    // sobrou: também saem.
-    expect(await store.get("documents", quoteDoc.id)).toBeNull();
-    expect(await store.statFile(quoteDoc.storageKey)).toBeNull();
+    // Item de sourcing sob demanda, arte do kit e ficha que sobrou: também saem.
     expect(await store.get("sourcing_items", demandItem.id)).toBeNull();
     expect(await store.get("measurements", demandMeasurement.id)).toBeNull();
     const measurementDoc = demandMeasurement.photoDocumentId!;
@@ -371,15 +331,6 @@ describe("limpar dados de teste (vendas)", () => {
       requestId: null,
     });
     expect(await store.statFile(freeFile.storageKey)).not.toBeNull();
-    const links = await store.list("product_suppliers", {
-      filter: { productId: "prod-jarra" },
-    });
-    expect(links.length).toBeGreaterThan(0);
-    for (const link of links) {
-      expect(link.lastQuoteId ?? null).toBeNull();
-      expect(link.quoteCount).toBe(0);
-    }
-
     // Histórico: sai o das vendas; a limpeza fica registrada.
     const history = await store.list("audit_log");
     expect(history.some((a) => a.entityId === order.id)).toBe(false);
@@ -392,22 +343,19 @@ describe("limpar dados de teste (vendas)", () => {
     expect(nextOrder.number).toBe(1);
   });
 
-  it("se parar no meio, a próxima rodada termina (foto da cotação inclusive)", async () => {
+  it("se parar no meio, a próxima rodada termina (foto do pedido inclusive)", async () => {
     const store = getStore();
-    const { request } = await sale();
-    const [quote] = await store.list("quotes", {
-      filter: { requestId: request.id },
-    });
-    const quoteFile = await uploadDocument(
+    const { order } = await sale();
+    const photoFile = await uploadDocument(
       supplierA,
       new File([new Uint8Array([5])], "q2.png", { type: "image/png" }),
-      { type: "photo", visibility: "internal" } as never,
+      { orderId: order.id, type: "photo", visibility: "internal" } as never,
     );
-    const quotePhoto = await store.create("product_photos", {
+    const orderPhoto = await store.create("product_photos", {
       productId: null,
       sourcingItemId: null,
-      orderId: quote.id,
-      documentId: quoteFile.id,
+      orderId: order.id,
+      documentId: photoFile.id,
       kind: SHEET_PHOTO_KINDS[0],
       caption: null,
       takenByUserId: supplierA.id,
@@ -428,17 +376,17 @@ describe("limpar dados de teste (vendas)", () => {
       await expect(reset.resetSalesData(admin, "APAGAR")).rejects.toThrow(
         "falha simulada",
       );
-      // A foto da cotação ainda aponta para o documento: nada se perdeu.
-      expect(await store.get("product_photos", quotePhoto.id)).not.toBeNull();
+      // A foto do pedido ainda aponta para o documento: nada se perdeu.
+      expect(await store.get("product_photos", orderPhoto.id)).not.toBeNull();
       expect((await store.list("requests")).length).toBeGreaterThan(0);
     } finally {
       store.remove = realRemove;
     }
     const done = await reset.resetSalesData(admin, "APAGAR");
     expect(done.finished).toBe(true);
-    expect(await store.get("product_photos", quotePhoto.id)).toBeNull();
-    expect(await store.get("documents", quoteFile.id)).toBeNull();
-    expect(await store.statFile(quoteFile.storageKey)).toBeNull();
+    expect(await store.get("product_photos", orderPhoto.id)).toBeNull();
+    expect(await store.get("documents", photoFile.id)).toBeNull();
+    expect(await store.statFile(photoFile.storageKey)).toBeNull();
     expect(await store.list("requests")).toHaveLength(0);
     expect((await reset.planSalesReset(admin)).total).toBe(0);
   });
@@ -547,57 +495,5 @@ describe("limpar dados de teste (vendas)", () => {
     await expect(reset.resetSalesData(admin, "APAGAR")).resolves.toMatchObject({
       total: 0,
     });
-  });
-  it("briefing de embalagem e arquivos da cotação saem com a venda de teste", async () => {
-    const store = getStore();
-    const { request, quote } = await sale();
-    const brief = await store.create("packaging_briefs", {
-      requestId: request.id,
-      productId: "prod-jarra",
-      customerId: "cliente-joao",
-      agencyId: null,
-      ownerSource: "chosen",
-      status: "open",
-      requiredKeys: ["dieline", "art"],
-      dielineDocumentId: null,
-      artDocumentId: null,
-    } as never);
-    const file = (extra: Record<string, unknown>) =>
-      store.create("documents", {
-        orderId: null,
-        requestId: null,
-        requirementId: null,
-        type: "other",
-        name: "arquivo-de-teste.pdf",
-        storageKey: null,
-        mimeType: "application/pdf",
-        size: 10,
-        visibility: "internal",
-        version: 1,
-        previousDocumentId: null,
-        uploadedByUserId: admin.id,
-        productId: null,
-        sourcingItemId: null,
-        kitId: null,
-        ...extra,
-      } as never);
-    // Só ligados ao briefing e à cotação (sem pedido nem solicitação).
-    const briefDoc = await file({ packagingBriefId: brief.id });
-    const quoteDoc = await file({ quoteId: quote.id });
-    // Do catálogo, mas com a ligação da cotação: fica e perde a ligação.
-    const catalogDoc = await file({
-      productId: "prod-jarra",
-      quoteId: quote.id,
-    });
-
-    await reset.resetSalesData(admin, "APAGAR");
-
-    expect(await store.list("packaging_briefs")).toHaveLength(0);
-    expect(await store.get("documents", briefDoc.id)).toBeNull();
-    expect(await store.get("documents", quoteDoc.id)).toBeNull();
-    const kept = await store.get("documents", catalogDoc.id);
-    expect(kept).toMatchObject({ productId: "prod-jarra", quoteId: null });
-    expect(await store.list("requests")).toHaveLength(0);
-    expect(await store.list("orders")).toHaveLength(0);
   });
 });

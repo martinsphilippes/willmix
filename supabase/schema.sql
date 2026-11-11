@@ -152,7 +152,6 @@ alter table public."requests" add column if not exists "quantity" double precisi
 alter table public."requests" add column if not exists "unit" text;
 alter table public."requests" add column if not exists "deadline" timestamptz;
 alter table public."requests" add column if not exists "status" text;
-alter table public."requests" add column if not exists "selectedQuoteId" text;
 alter table public."requests" add column if not exists "orderId" text;
 alter table public."requests" add column if not exists "sellPrice" double precision;
 alter table public."requests" add column if not exists "sellCurrency" text;
@@ -172,8 +171,6 @@ alter table public."requests" add column if not exists "number" bigint;
 alter table public."requests" add column if not exists "variantId" text;
 alter table public."requests" add column if not exists "variant" jsonb;
 alter table public."requests" add column if not exists "ownerUserId" text;
-alter table public."requests" add column if not exists "proposalApprovedAt" timestamptz;
-alter table public."requests" add column if not exists "proposalApprovedByUserId" text;
 alter table public."requests" add column if not exists "sankhyaCode" text;
 create index if not exists "requests_by_customer" on public."requests" ("customerId");
 create index if not exists "requests_by_status" on public."requests" ("status");
@@ -181,31 +178,6 @@ create index if not exists "requests_by_group" on public."requests" ("groupId");
 create index if not exists "requests_by_number" on public."requests" ("number");
 create index if not exists "requests_by_owner" on public."requests" ("ownerUserId");
 create index if not exists "requests_created" on public."requests" ("createdAt");
-
-create table if not exists public."quotes" (
-  "id" text primary key,
-  "createdAt" timestamptz not null default now(),
-  "updatedAt" timestamptz not null default now()
-);
-alter table public."quotes" enable row level security;
-alter table public."quotes" add column if not exists "requestId" text;
-alter table public."quotes" add column if not exists "supplierId" text;
-alter table public."quotes" add column if not exists "status" text;
-alter table public."quotes" add column if not exists "price" double precision;
-alter table public."quotes" add column if not exists "currency" text;
-alter table public."quotes" add column if not exists "leadTimeDays" bigint;
-alter table public."quotes" add column if not exists "conditions" text;
-alter table public."quotes" add column if not exists "validUntil" timestamptz;
-alter table public."quotes" add column if not exists "answeredAt" timestamptz;
-alter table public."quotes" add column if not exists "manufacturerCardId" text;
-alter table public."quotes" add column if not exists "manufacturerCardConfirmedAt" timestamptz;
-alter table public."quotes" add column if not exists "manufacturerCardConfirmedByUserId" text;
-alter table public."quotes" add column if not exists "moq" bigint;
-alter table public."quotes" add column if not exists "negotiation" jsonb;
-alter table public."quotes" add column if not exists "packagingProposal" jsonb;
-create index if not exists "quotes_by_request" on public."quotes" ("requestId");
-create index if not exists "quotes_by_supplier" on public."quotes" ("supplierId");
-create index if not exists "quotes_created" on public."quotes" ("createdAt");
 
 create table if not exists public."orders" (
   "id" text primary key,
@@ -354,14 +326,11 @@ alter table public."documents" add column if not exists "productId" text;
 alter table public."documents" add column if not exists "sourcingItemId" text;
 alter table public."documents" add column if not exists "kitId" text;
 alter table public."documents" add column if not exists "imageHash" text;
-alter table public."documents" add column if not exists "packagingBriefId" text;
 alter table public."documents" add column if not exists "conversationTopicId" text;
-alter table public."documents" add column if not exists "quoteId" text;
 alter table public."documents" add column if not exists "supplierRequestId" text;
 create index if not exists "documents_by_order" on public."documents" ("orderId");
 create index if not exists "documents_by_request" on public."documents" ("requestId");
 create index if not exists "documents_by_product" on public."documents" ("productId");
-create index if not exists "documents_by_packaging_brief" on public."documents" ("packagingBriefId");
 create index if not exists "documents_created" on public."documents" ("createdAt");
 
 create table if not exists public."payments" (
@@ -590,7 +559,6 @@ alter table public."purchase_snapshots" add column if not exists "requestId" tex
 alter table public."purchase_snapshots" add column if not exists "productId" text;
 alter table public."purchase_snapshots" add column if not exists "sourcingItemId" text;
 alter table public."purchase_snapshots" add column if not exists "supplierId" text;
-alter table public."purchase_snapshots" add column if not exists "quoteId" text;
 alter table public."purchase_snapshots" add column if not exists "name" text;
 alter table public."purchase_snapshots" add column if not exists "supplierSku" text;
 alter table public."purchase_snapshots" add column if not exists "material" text;
@@ -976,7 +944,7 @@ create table if not exists public."freight_quotes" (
 );
 alter table public."freight_quotes" enable row level security;
 alter table public."freight_quotes" add column if not exists "requestId" text;
-alter table public."freight_quotes" add column if not exists "quoteId" text;
+alter table public."freight_quotes" add column if not exists "orderId" text;
 alter table public."freight_quotes" add column if not exists "carrierId" text;
 alter table public."freight_quotes" add column if not exists "status" text;
 alter table public."freight_quotes" add column if not exists "totalCbm" double precision;
@@ -989,52 +957,10 @@ alter table public."freight_quotes" add column if not exists "validUntil" timest
 alter table public."freight_quotes" add column if not exists "notes" text;
 alter table public."freight_quotes" add column if not exists "answeredByUserId" text;
 alter table public."freight_quotes" add column if not exists "answeredAt" timestamptz;
-create index if not exists "freight_quotes_by_quote" on public."freight_quotes" ("quoteId");
+create index if not exists "freight_quotes_by_order" on public."freight_quotes" ("orderId");
 create index if not exists "freight_quotes_by_request" on public."freight_quotes" ("requestId");
 create index if not exists "freight_quotes_by_carrier_status" on public."freight_quotes" ("carrierId", "status");
 create index if not exists "freight_quotes_created" on public."freight_quotes" ("createdAt");
-
-create table if not exists public."packaging_briefs" (
-  "id" text primary key,
-  "createdAt" timestamptz not null default now(),
-  "updatedAt" timestamptz not null default now()
-);
-alter table public."packaging_briefs" enable row level security;
-alter table public."packaging_briefs" add column if not exists "requestId" text;
-alter table public."packaging_briefs" add column if not exists "productId" text;
-alter table public."packaging_briefs" add column if not exists "customerId" text;
-alter table public."packaging_briefs" add column if not exists "agencyId" text;
-alter table public."packaging_briefs" add column if not exists "ownerSource" text;
-alter table public."packaging_briefs" add column if not exists "status" text;
-alter table public."packaging_briefs" add column if not exists "requiredKeys" jsonb;
-alter table public."packaging_briefs" add column if not exists "dielineDocumentId" text;
-alter table public."packaging_briefs" add column if not exists "artDocumentId" text;
-alter table public."packaging_briefs" add column if not exists "printReadyDocumentId" text;
-alter table public."packaging_briefs" add column if not exists "sampleDocumentId" text;
-alter table public."packaging_briefs" add column if not exists "dims" jsonb;
-alter table public."packaging_briefs" add column if not exists "dimsSource" text;
-alter table public."packaging_briefs" add column if not exists "dimsQuoteId" text;
-alter table public."packaging_briefs" add column if not exists "dimsProvisional" boolean;
-alter table public."packaging_briefs" add column if not exists "dimsChangedAt" timestamptz;
-alter table public."packaging_briefs" add column if not exists "brief" text;
-alter table public."packaging_briefs" add column if not exists "agencyNotes" text;
-alter table public."packaging_briefs" add column if not exists "agencyItemPrice" double precision;
-alter table public."packaging_briefs" add column if not exists "agencyItemCurrency" text;
-alter table public."packaging_briefs" add column if not exists "dueAt" timestamptz;
-alter table public."packaging_briefs" add column if not exists "readyAt" timestamptz;
-alter table public."packaging_briefs" add column if not exists "orderId" text;
-alter table public."packaging_briefs" add column if not exists "orderArtRequirementId" text;
-alter table public."packaging_briefs" add column if not exists "transferredAt" timestamptz;
-alter table public."packaging_briefs" add column if not exists "cancelledAt" timestamptz;
-alter table public."packaging_briefs" add column if not exists "cancelReason" text;
-alter table public."packaging_briefs" add column if not exists "reminderSentAt" timestamptz;
-alter table public."packaging_briefs" add column if not exists "createdByUserId" text;
-alter table public."packaging_briefs" add column if not exists "updatedByUserId" text;
-create index if not exists "packaging_briefs_by_request" on public."packaging_briefs" ("requestId");
-create index if not exists "packaging_briefs_by_agency_status" on public."packaging_briefs" ("agencyId", "status");
-create index if not exists "packaging_briefs_by_status" on public."packaging_briefs" ("status");
-create index if not exists "packaging_briefs_by_order" on public."packaging_briefs" ("orderId");
-create index if not exists "packaging_briefs_created" on public."packaging_briefs" ("createdAt");
 
 create table if not exists public."product_suppliers" (
   "id" text primary key,
@@ -1050,11 +976,6 @@ alter table public."product_suppliers" add column if not exists "currency" text;
 alter table public."product_suppliers" add column if not exists "moq" bigint;
 alter table public."product_suppliers" add column if not exists "leadTimeDays" bigint;
 alter table public."product_suppliers" add column if not exists "source" text;
-alter table public."product_suppliers" add column if not exists "lastQuoteId" text;
-alter table public."product_suppliers" add column if not exists "lastQuotedAt" timestamptz;
-alter table public."product_suppliers" add column if not exists "quoteCount" bigint;
-alter table public."product_suppliers" add column if not exists "selectedCount" bigint;
-alter table public."product_suppliers" add column if not exists "lastSelectedAt" timestamptz;
 alter table public."product_suppliers" add column if not exists "createdByUserId" text;
 create unique index if not exists "product_suppliers_product_supplier_unique" on public."product_suppliers" ("productId", "supplierId");
 create index if not exists "product_suppliers_by_supplier" on public."product_suppliers" ("supplierId");
@@ -1097,7 +1018,6 @@ alter table public."manufacturer_cards" add column if not exists "factoryAddress
 alter table public."manufacturer_cards" add column if not exists "isFactory" boolean;
 alter table public."manufacturer_cards" add column if not exists "notes" text;
 alter table public."manufacturer_cards" add column if not exists "source" text;
-alter table public."manufacturer_cards" add column if not exists "quoteId" text;
 alter table public."manufacturer_cards" add column if not exists "createdByUserId" text;
 create index if not exists "manufacturer_cards_by_product" on public."manufacturer_cards" ("productId");
 create index if not exists "manufacturer_cards_by_supplier" on public."manufacturer_cards" ("supplierId");
@@ -1226,27 +1146,6 @@ alter table public."messages" add column if not exists "replyToMessageId" text;
 create index if not exists "messages_by_topic" on public."messages" ("topicId");
 create index if not exists "messages_by_conversation" on public."messages" ("conversationId");
 create index if not exists "messages_created" on public."messages" ("createdAt");
-
-create table if not exists public."approvals" (
-  "id" text primary key,
-  "createdAt" timestamptz not null default now(),
-  "updatedAt" timestamptz not null default now()
-);
-alter table public."approvals" enable row level security;
-alter table public."approvals" add column if not exists "requestId" text;
-alter table public."approvals" add column if not exists "quoteId" text;
-alter table public."approvals" add column if not exists "requestedByUserId" text;
-alter table public."approvals" add column if not exists "status" text;
-alter table public."approvals" add column if not exists "input" jsonb;
-alter table public."approvals" add column if not exists "valueBrl" double precision;
-alter table public."approvals" add column if not exists "levels" jsonb;
-alter table public."approvals" add column if not exists "steps" jsonb;
-alter table public."approvals" add column if not exists "currentLevel" text;
-alter table public."approvals" add column if not exists "reason" text;
-alter table public."approvals" add column if not exists "decidedAt" timestamptz;
-create index if not exists "approvals_by_request" on public."approvals" ("requestId");
-create index if not exists "approvals_by_status" on public."approvals" ("status");
-create index if not exists "approvals_created" on public."approvals" ("createdAt");
 
 create table if not exists public."production_tracks" (
   "id" text primary key,

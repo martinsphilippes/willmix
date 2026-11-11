@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { STOCK_OPTION, isStockCustomer } from "@/lib/services/purchase-flow";
+import { STOCK_OPTION, isStockCustomer } from "@/lib/services/stock-party";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";

@@ -94,7 +94,6 @@ import * as sheetPhotos from "./sheet-photos";
 import * as orderCancel from "./order-cancel";
 import * as requestBatch from "./request-batch";
 import * as tasksFilter from "./tasks-filter";
-import * as requestStages from "./request-stages";
 import * as pantone from "./pantone";
 import * as sheetFill from "./sheet-fill";
 import * as productSheet from "./product-sheet";
@@ -198,7 +197,6 @@ export const modulesPt = {
   ...orderCancel.pt,
   ...requestBatch.pt,
   ...tasksFilter.pt,
-  ...requestStages.pt,
   ...pantone.pt,
   ...sheetFill.pt,
   ...productSheet.pt,
@@ -321,7 +319,6 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...orderCancel.en,
   ...requestBatch.en,
   ...tasksFilter.en,
-  ...requestStages.en,
   ...pantone.en,
   ...sheetFill.en,
   ...productSheet.en,
@@ -444,7 +441,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...orderCancel.zh,
   ...requestBatch.zh,
   ...tasksFilter.zh,
-  ...requestStages.zh,
   ...pantone.zh,
   ...sheetFill.zh,
   ...productSheet.zh,

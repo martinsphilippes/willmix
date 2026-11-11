@@ -7,6 +7,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const { submitRequirement } = await import("@/lib/workflow/engine");
 const { planSheet, missingForCompletion } =
@@ -18,6 +19,7 @@ const {
   removeSheetPhoto,
   sheetProgress,
   syncPreparationFromSheet,
+  ADDABLE_SHEET_PHOTO_KINDS,
 } = await import("@/lib/services/purchase-sheet");
 const { canAccessDocument, catalogShowcasePhotos } =
   await import("@/lib/services/documents");
@@ -58,22 +60,10 @@ async function orderInPreparation() {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, request.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
+  const order = await orderFromRequest(admin, request, {
     price: 8.5,
-    currency: "USD",
-    leadTimeDays: 30,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 1000,
-    sellCurrency: "BRL",
     downPaymentAmount: 300,
   });
-  const order = await r.confirmDownPayment(admin, request.id);
   await store.update("orders", order.id, { brokerId: "despachante" });
   const [created] = await store.list("stages", {
     filter: { orderId: order.id, key: "ORDER_CREATED" },
@@ -169,10 +159,18 @@ describe("contas da planilha", () => {
 describe("ficha no pedido", () => {
   it("acesso: fornecedor do pedido e despachante veem; cliente e outro fornecedor não", async () => {
     const { order } = await orderInPreparation();
+    // Preço e moeda do fornecedor no cadastro do produto (vínculo).
+    const ps = await import("@/lib/services/product-suppliers");
+    await ps.addProductSupplier(admin, "prod-jarra", "fornecedor-a", null);
+    const link = (await ps.productSupplierLink("prod-jarra", "fornecedor-a"))!;
+    await getStore().update("product_suppliers", link.id, {
+      price: 8.5,
+      currency: "USD",
+    });
     const view = await getSheetForUser(supplierA, order.id);
     expect(view?.access.editSupplier).toBe(true);
     expect(view?.saved).toBe(false);
-    // Rascunho vem do cadastro e da cotação.
+    // Rascunho vem do cadastro.
     expect(view?.sheet.price).toBe(8.5);
     expect(view?.sheet.currency).toBe("USD");
     expect(await getSheetForUser(joao, order.id)).toBeNull();
@@ -452,5 +450,12 @@ describe("ficha completa com a Preparação parada", () => {
     } as never);
     await validatePrep(admin, prep.id);
     expect((await getStore().get("stages", prep.id))!.status).toBe("done");
+  });
+});
+
+describe("fotos da ficha", () => {
+  it("fotos HD e faca (die cut) podem ser enviadas na ficha", () => {
+    expect(ADDABLE_SHEET_PHOTO_KINDS).toContain("hd");
+    expect(ADDABLE_SHEET_PHOTO_KINDS).toContain("die_cut");
   });
 });

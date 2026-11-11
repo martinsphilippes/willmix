@@ -30,10 +30,8 @@ describe("padrão (sem nada gravado)", () => {
   });
 
   it("as ações seguem quem já fazia antes", () => {
-    expect(can(op(["planner"]), "approval.planner")).toBe(true);
-    expect(can(op(["buyer"]), "approval.planner")).toBe(false);
-    expect(can(op(["product_manager"]), "dumping.release")).toBe(true);
-    expect(can(op(["buyer"]), "dumping.release")).toBe(true);
+    expect(can(op(["buyer"]), "receiving.follow")).toBe(true);
+    expect(can(op(["planner"]), "receiving.follow")).toBe(false);
     expect(can(op(["finance"]), "numerario.manage")).toBe(true);
     expect(can(op(["designer"]), "art.design")).toBe(true);
     // Quem abria Cotações decidia a solicitação; o designer não abre.

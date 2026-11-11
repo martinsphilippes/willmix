@@ -9,13 +9,13 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const av = await import("@/lib/services/audit-view");
 const dash = await import("@/lib/services/dashboards");
 const pr = await import("@/lib/services/production");
 const team = await import("@/lib/services/team");
 const { audit } = await import("@/lib/services/audit");
-const { setSetting } = await import("@/lib/settings");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
 
@@ -50,7 +50,6 @@ beforeAll(async () => {
     functions: ["executive_director"],
   });
   director = (await getStore().get("users", director.id))!;
-  await setSetting("approvalsEnabled", false);
   const req = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: null,
@@ -62,21 +61,7 @@ beforeAll(async () => {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, req.id, ["fornecedor-a"]);
-  const [quote] = await getStore().list("quotes", {
-    filter: { requestId: req.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 10_000,
-    sellCurrency: "BRL",
-  });
-  order = await r.confirmDownPayment(admin, req.id);
+  order = await orderFromRequest(admin, req, { sellPrice: 10_000 });
 });
 
 /** Início da produção é automático (contrato assinado): o teste recua a data direto no banco. */

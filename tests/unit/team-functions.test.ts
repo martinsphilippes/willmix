@@ -39,14 +39,14 @@ describe("funções gravadas", () => {
     defs = await tf.loadFunctionDefs();
     expect(defs.find((d) => d.key === "buyer")!.name).toBe("Compras");
     expect(
-      can({ role: "operator", functions: ["buyer"] }, "dumping.release", defs),
+      can({ role: "operator", functions: ["buyer"] }, "receiving.follow", defs),
     ).toBe(false);
 
     await tf.resetFunction(admin, "buyer");
     defs = await tf.loadFunctionDefs();
     def = defs.find((d) => d.key === "buyer")!;
     expect(def.name).toBeNull();
-    expect(def.actions).toContain("dumping.release");
+    expect(def.actions).toContain("receiving.follow");
     // A criada continua lá depois de voltar a de fábrica ao padrão.
     expect(defs.some((d) => d.key === created.key)).toBe(true);
 

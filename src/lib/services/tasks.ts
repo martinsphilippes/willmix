@@ -2,14 +2,8 @@ import "server-only";
 
 import { translator } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import {
-  getStore,
-  type Order,
-  type Request,
-  type StageKey,
-  type User,
-} from "@/lib/db";
-import { canViewRequest, isAdmin, isWellmix } from "@/lib/auth/permissions";
+import { getStore, type Order, type StageKey, type User } from "@/lib/db";
+import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import {
   ORDER_SIGN_SEND,
   ORDER_SIGNED_SUPPLIER,
@@ -20,21 +14,14 @@ import {
 } from "@/lib/workflow/stages";
 
 export type TaskKind =
-  | "approve_proposal"
+  | "new_request"
   | "requirement"
-  | "quote"
-  | "select_supplier"
-  | "confirm_payment"
-  | "pay"
-  | "rfq"
   | "review"
   | "after_sales"
   | "sourcing_demand"
   | "freight_quote"
   | "supplier_payment"
   | "confirm_receipt"
-  | "packaging_brief"
-  | "approval"
   | "production_follow"
   | "sku_inspection"
   | "sku_fix"
@@ -233,13 +220,8 @@ const SIGN_AFTER: ReadonlyArray<[string, string]> = [
   [ORDER_SIGNED_SUPPLIER, ORDER_SIGNED_WELLMIX],
 ];
 const KIND_ORDER: string[] = [
-  "rfq",
-  "quote",
+  "new_request",
   "supplier_request",
-  "packaging_brief",
-  "select_supplier",
-  "confirm_payment",
-  "pay",
   "freight_quote",
   "supplier_payment",
   "confirm_receipt",
@@ -250,14 +232,13 @@ const KIND_ORDER: string[] = [
 /*
  * Caminho da agência: o que chega na mão dela, na ordem em que acontece. É o
  * filtro "Etapa" da tela de pendências da agência (o grupo da pendência vira
- * `agency.<etapa>`): a arte pedida na cotação (briefing), a arte do pedido e
+ * `agency.<etapa>`): a arte do pedido e
  * o selo de certificação a aplicar na arte.
  */
-export const AGENCY_STEPS = ["brief", "art", "seal"] as const;
+export const AGENCY_STEPS = ["art", "seal"] as const;
 export type AgencyStep = (typeof AGENCY_STEPS)[number];
 export const agencyGroup = (step: AgencyStep) => `agency.${step}`;
 const AGENCY_STEP_OF_KIND: Partial<Record<TaskKind, AgencyStep>> = {
-  packaging_brief: "brief",
   requirement: "art",
   cert_step: "seal",
 };
@@ -324,70 +305,42 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
 
   // Todas as consultas independentes saem juntas (cada ida ao banco custa uma
   // viagem de rede); os detalhes vêm depois, em lote.
-  const [
-    stages,
-    quotes,
-    wellmixRequests,
-    pendingPayments,
-    demands,
-    reviews,
-    waitingRequests,
-    openAfterSales,
-    openBriefs,
-  ] = await Promise.all([
-    store.list("stages", { filter: { status: ["active", "blocked"] } }),
-    supplier
-      ? store.list("quotes", {
-          filter: { supplierId: user.partyId!, status: "invited" },
-        })
-      : none,
-    wellmix
-      ? store.list("requests", {
-          filter: {
-            status: ["REQUESTED", "QUOTATION_RECEIVED", "WAITING_DOWN_PAYMENT"],
-          },
-        })
-      : none,
-    wellmix || customer
-      ? store.list("payments", {
-          filter: { direction: "customer_in", status: "pending" },
-        })
-      : none,
-    wellmix
-      ? store.list("sourcing_items", {
-          filter: { status: ["draft", "negotiating"] },
-        })
-      : none,
-    wellmix
-      ? store.list("review_items", {
-          filter: { status: "open" },
-          orderBy: "createdAt",
-          direction: "desc",
-        })
-      : none,
-    customer
-      ? store.list("requests", {
-          filter: { customerId: user.partyId!, status: "WAITING_DOWN_PAYMENT" },
-        })
-      : none,
-    customer
-      ? store.list("after_sales", {
-          filter: { customerId: user.partyId!, status: "open" },
-        })
-      : none,
-    // Briefings de embalagem em preparação: da agência (os dela) ou do
-    // marketing da Wellmix (sem agência). Tabela ainda não publicada: nenhum.
-    agency || wellmix
-      ? store
-          .list("packaging_briefs", {
+  const [stages, newRequests, demands, reviews, openAfterSales] =
+    await Promise.all([
+      store.list("stages", { filter: { status: ["active", "blocked"] } }),
+      // Solicitação do cliente ainda sem pedido (as situações da RFQ e do sinal
+      // só existem nas antigas): a Wellmix dá o próximo passo.
+      wellmix
+        ? store.list("requests", {
             filter: {
-              status: ["open", "transferred"],
-              agencyId: agency ? user.partyId! : null,
+              status: [
+                "REQUESTED",
+                "RFQ_OPEN",
+                "QUOTATION_RECEIVED",
+                "SUPPLIER_SELECTED",
+                "WAITING_DOWN_PAYMENT",
+              ],
             },
           })
-          .catch(() => [])
-      : none,
-  ]);
+        : none,
+      wellmix
+        ? store.list("sourcing_items", {
+            filter: { status: ["draft", "negotiating"] },
+          })
+        : none,
+      wellmix
+        ? store.list("review_items", {
+            filter: { status: "open" },
+            orderBy: "createdAt",
+            direction: "desc",
+          })
+        : none,
+      customer
+        ? store.list("after_sales", {
+            filter: { customerId: user.partyId!, status: "open" },
+          })
+        : none,
+    ]);
 
   // Pedidos, requisitos e solicitações citados acima, em uma rodada paralela.
   // Os pedidos dos itens de revisão entram para pular os de pedido cancelado.
@@ -398,38 +351,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       ...reviews.map((r) => r.orderId).filter((id): id is string => !!id),
     ]),
   ];
-  // Antes do pedido: briefing aberto. Depois do pedido: só a arte ainda por
-  // enviar e só enquanto a etapa Arte e embalagem não começou (depois, a
-  // etapa cobra). Briefing "aberto" de solicitação já pedida (transferência
-  // que falhou) não cobra ninguém.
-  const transferredOpen = openBriefs.filter(
-    (b) => b.status === "transferred" && b.orderId && !b.artDocumentId,
-  );
-  const packagingStages = transferredOpen.length
-    ? await store
-        .list("stages", {
-          filter: {
-            orderId: [...new Set(transferredOpen.map((b) => b.orderId!))],
-            key: "PACKAGING",
-          },
-        })
-        .catch(() => [])
-    : [];
-  const briefs = [
-    ...openBriefs.filter((b) => b.status === "open" && !b.orderId),
-    ...transferredOpen.filter((b) =>
-      packagingStages.some(
-        (s) => s.orderId === b.orderId && s.status === "pending",
-      ),
-    ),
-  ];
-  const quoteRequestIds = [
-    ...new Set([
-      ...quotes.map((q) => q.requestId),
-      ...briefs.map((b) => b.requestId),
-    ]),
-  ];
-  const [orders, openRequirements, quoteRequests] = await Promise.all([
+  const [orders, openRequirements] = await Promise.all([
     orderIds.length ? store.list("orders", { filter: { id: orderIds } }) : none,
     stages.length
       ? store.list("requirements", {
@@ -438,9 +360,6 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             status: ["pending", "rejected"],
           },
         })
-      : none,
-    quoteRequestIds.length
-      ? store.list("requests", { filter: { id: quoteRequestIds } })
       : none,
   ]);
   const orderById = new Map(orders.map((o) => [o.id, o]));
@@ -578,183 +497,25 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     }
   }
 
-  // Fase de solicitação. RFQ em espera (docs/RFQ_STANDBY.md): a Wellmix
-  // "envia ao fornecedor" em vez de abrir a RFQ.
   const { getSettings } = await import("@/lib/settings");
   const flowSettings = await getSettings();
-  const rfqOn = flowSettings.rfqEnabled;
-  for (const quote of quotes) {
-    const request = quoteRequests.find((r) => r.id === quote.requestId);
-    if (!request) continue;
+  // Solicitação nova do cliente (a RFQ e a cotação saíram em 11/11/2026).
+  for (const request of newRequests)
     tasks.push(
       finish(
         {
-          kind: "quote",
-          title: `RFQ: ${request.productName}`,
-          detail: `${request.quantity} ${request.unit}`,
-          // Traduzido na tela (o fornecedor costuma usar outro idioma).
-          text: {
-            title: "supplierTasks.rfq.title",
-            detail: "supplierTasks.booking.detail",
-            values: {
-              product: request.productName,
-              qty: request.quantity,
-              unit: request.unit,
-            },
-          },
-          link: `/app/quotes/${quote.id}`,
-          chat: { requestId: request.id },
-          dueAt: quote.validUntil,
-          requestId: request.id,
-          // Devolvida pela Wellmix: está com o fornecedor desde a devolução.
-          sinceAt:
-            quote.negotiation?.at(-1)?.side === "wellmix"
-              ? quote.negotiation.at(-1)!.at
-              : quote.createdAt,
-          supplierStep: "booking",
-        },
-        now,
-      ),
-    );
-  }
-  if (supplier) tasks.push(...(await supplierRequestTasks(user, now)));
-  // Embalagem (faca e arte) a preparar junto com a cotação: a pendência da
-  // agência nasce no mesmo instante em que a do fornecedor.
-  for (const brief of briefs) {
-    const request = quoteRequests.find((r) => r.id === brief.requestId);
-    if (!request || request.status === "CANCELLED") continue;
-    if (brief.status === "open" && request.status === "ORDERED") continue;
-    // A faca é do fornecedor escolhido: a agência é cobrada só do que é dela.
-    const { missingOwnerItems, dielineMissing } =
-      await import("./packaging-brief-calc");
-    const missing = missingOwnerItems(brief).map(
-      (k) => PACKAGING_ITEM_LABEL[k],
-    );
-    const inOrder = brief.status === "transferred";
-    tasks.push(
-      finish(
-        {
-          kind: "packaging_brief",
-          title: `${request.number ? `Solicitação nº ${request.number}: ` : ""}embalagem (faca e arte): ${request.productName}`,
-          detail: [
-            missing.length
-              ? `Faltam: ${missing.join(", ")}`
-              : "Obrigatórios enviados",
-            ...(dielineMissing(brief)
-              ? ["faca (die-cut): com o fornecedor escolhido"]
-              : []),
-            `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
-            inOrder
-              ? "pedido pré-aprovado: a arte é pedida antes de a etapa Arte e embalagem começar"
-              : request.status === "WAITING_DOWN_PAYMENT"
-                ? "aguardando o sinal do cliente"
-                : "venda ainda não confirmada",
-          ].join(" · "),
-          link: `/app/packaging/${brief.id}`,
-          chat: { requestId: request.id },
-          dueAt: brief.dueAt,
-          stageKey: "PACKAGING",
+          kind: "new_request",
+          title: `Solicitação nova: ${request.productName}`,
+          detail: `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
+          link: `/app/requests/${request.id}`,
+          dueAt: request.deadline,
           customerId: request.customerId,
           ownerUserId: request.ownerUserId ?? null,
         },
         now,
       ),
     );
-  }
-  // Faca (die-cut) da embalagem: é do fornecedor escolhido, depois da
-  // comparação das cotações (envia pela cotação escolhida ou pelo pedido).
-  if (supplier) tasks.push(...(await supplierDielineTasks(user, now)));
-  const withProof = new Set(
-    pendingPayments
-      .filter((p) => p.requestId && p.proofDocumentId)
-      .map((p) => p.requestId as string),
-  );
-  // Aprovação do pré-custo: a escolha do fornecedor aguarda os aprovadores;
-  // a solicitação não pede mais "escolher fornecedor" enquanto isso.
-  const { approvalsToDecide, pendingApprovalsAll } =
-    await import("./approvals");
-  const awaitingApproval = wellmix
-    ? new Set((await pendingApprovalsAll()).map((a) => a.requestId))
-    : new Set<string>();
-  if (wellmix) {
-    const mineToDecide = await approvalsToDecide(user);
-    const approvalRequests = mineToDecide.length
-      ? await store.list("requests", {
-          filter: { id: [...new Set(mineToDecide.map((a) => a.requestId))] },
-        })
-      : [];
-    for (const a of mineToDecide) {
-      const r = approvalRequests.find((x) => x.id === a.requestId);
-      if (!r) continue;
-      const input = a.input as { sellPrice?: number; sellCurrency?: string };
-      tasks.push(
-        finish(
-          {
-            kind: "approval",
-            title: `Aprovar pré-custo (${APPROVAL_LEVEL_LABEL[a.currentLevel ?? "planner"]}): ${r.productName}`,
-            detail: `Valor ao cliente ${input.sellCurrency ?? ""} ${(input.sellPrice ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            link: `/app/requests/${r.id}#approval`,
-            dueAt: r.deadline,
-            customerId: r.customerId,
-            ownerUserId: r.ownerUserId ?? null,
-          },
-          now,
-        ),
-      );
-    }
-  }
-  for (const request of wellmixRequests) {
-    if (awaitingApproval.has(request.id)) continue;
-    const task = requestTask(request, rfqOn);
-    if (task.kind === "confirm_payment" && withProof.has(request.id))
-      task.detail = "Comprovante enviado pelo cliente: conferir e confirmar";
-    tasks.push(finish(task, now));
-  }
-  for (const request of waitingRequests.filter((r) =>
-    canViewRequest(user, r),
-  )) {
-    // Comprovante já enviado: agora depende da Wellmix confirmar, não do cliente.
-    if (withProof.has(request.id)) continue;
-    // Primeiro o cliente aprova a proposta; o sinal vem depois.
-    if (!request.proposalApprovedAt) {
-      const money = (n: number | null) =>
-        n === null ? "" : `${request.sellCurrency ?? ""} ${n.toFixed(2)}`;
-      tasks.push(
-        finish(
-          {
-            kind: "approve_proposal",
-            title: `Aprovar proposta: ${request.productName}`,
-            detail: `${money(request.sellPrice)} · depois de aprovar, o sinal de ${money(request.downPaymentAmount)}`,
-            text: {
-              title: "tasks.proposal.title",
-              detail: "tasks.proposal.detail",
-              values: {
-                product: request.productName,
-                total: money(request.sellPrice),
-                down: money(request.downPaymentAmount),
-              },
-            },
-            link: `/app/requests/${request.id}#proposal`,
-            dueAt: null,
-          },
-          now,
-        ),
-      );
-      continue;
-    }
-    tasks.push(
-      finish(
-        {
-          kind: "pay",
-          title: `Sinal pendente: ${request.productName}`,
-          detail: `${request.sellCurrency ?? ""} ${request.downPaymentAmount?.toFixed(2) ?? ""}`,
-          link: `/app/requests/${request.id}`,
-          dueAt: null,
-        },
-        now,
-      ),
-    );
-  }
+  if (supplier) tasks.push(...(await supplierRequestTasks(user, now)));
   // Pós-venda aberto: o cliente avalia a compra (pedido cancelado não conta;
   // os cancelados antes de o cancelamento encerrar o pós-venda ainda o têm aberto).
   for (const a of openAfterSales) {
@@ -844,22 +605,22 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     const freights = await store.list("freight_quotes", {
       filter: { carrierId: user.partyId, status: "invited" },
     });
-    const requestIds = [...new Set(freights.map((f) => f.requestId))];
-    const requests = requestIds.length
-      ? await store.list("requests", { filter: { id: requestIds } })
+    const freightOrderIds = [...new Set(freights.map((f) => f.orderId))];
+    const freightOrders = freightOrderIds.length
+      ? await store.list("orders", { filter: { id: freightOrderIds } })
       : [];
     for (const f of freights) {
-      const request = requests.find((r) => r.id === f.requestId);
-      if (!request) continue;
+      const order = freightOrders.find((o) => o.id === f.orderId);
+      if (!order || order.status === "CANCELLED") continue;
       tasks.push(
         finish(
           {
             kind: "freight_quote",
-            title: `Frete: ${request.productName}`,
+            title: `Frete: pedido #${order.number}`,
             detail: `${f.totalCbm ?? "?"} m³ · ${f.cartons ?? "?"} cx · ${f.grossWeightKg ?? "?"} kg`,
             link: `/app/freight/${f.id}`,
-            chat: { requestId: request.id },
-            dueAt: request.deadline,
+            chat: { orderId: order.id },
+            dueAt: null,
           },
           now,
         ),
@@ -993,7 +754,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       : null;
   if (wellmix || supplier || (importRole && user.partyId)) {
     const { importTasks } = await import("./import-flow");
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     let orders: Order[] = [];
     try {
       orders = await store.list("orders", {
@@ -1251,8 +1012,6 @@ async function datesForSupplier(tasks: Task[]): Promise<void> {
   }
 }
 
-type DraftTask = Omit<Task, "overdue" | "group" | "due" | "daysLeft">;
-
 /** Passos do embarque/desembaraço (pendências saem em português, como as demais). */
 const IMPORT_STEP_LABEL: Record<string, string> = {
   booking: "Booking",
@@ -1298,37 +1057,6 @@ const SEAL_TASK_TEXT: Record<
   },
 };
 
-/** Nível da aprovação do pré-custo (pendências saem em português, como as demais). */
-const APPROVAL_LEVEL_LABEL: Record<string, string> = {
-  planner: "planner",
-  purchasing_director: "diretoria de compras",
-  executive_director: "diretoria executiva",
-};
-
-/** Entregáveis do briefing de embalagem (pendências saem em português, como as demais). */
-/** Situações do pedido em que a etapa "Die Cut" ainda cobra os quatro itens. */
-const DIE_CUT_STEP_ORDER_STATUSES: string[] = [
-  "ORDER_CREATED",
-  "PREPARATION",
-  "SUPPLIER_PAYMENT",
-  "PACKAGING",
-];
-
-/** Ordem dos itens na etapa "Die Cut" (a mesma do cartão do fornecedor). */
-const DIE_CUT_ITEM_ORDER = ["dieline", "hd", "moq", "leadTime"];
-
-/** Itens da etapa "Die Cut" (pendências saem em português, como as demais). */
-const DIE_CUT_ITEM_LABEL: Record<string, string> = {
-  dieline: "die-cut",
-  hd: "foto em alta",
-  moq: "pedido mínimo",
-  leadTime: "prazo de entrega",
-};
-
-/**
- * Pendências da etapa "Die Cut" do fornecedor escolhido: die-cut, foto em
- * alta, pedido mínimo e prazo de entrega (src/lib/services/die-cut-step.ts).
- */
 /*
  * Solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md): fica na etapa
  * "Responder a solicitação" enquanto a vez é dele: aberta (dizer se faz e em
@@ -1343,7 +1071,7 @@ async function supplierRequestTasks(user: User, now: Date): Promise<Task[]> {
       filter: { supplierId: user.partyId!, status: ["open", "answered"] },
     });
   } catch (error) {
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     if (isSchemaMissing(error)) return [];
     throw error;
   }
@@ -1387,177 +1115,6 @@ async function supplierRequestTasks(user: User, now: Date): Promise<Task[]> {
         now,
       );
     });
-}
-
-async function supplierDielineTasks(user: User, now: Date): Promise<Task[]> {
-  const store = getStore();
-  const selected = await store.list("quotes", {
-    filter: { supplierId: user.partyId!, status: "selected" },
-  });
-  if (!selected.length) return [];
-  const { dielineMissing } = await import("./packaging-brief-calc");
-  const briefs = (
-    await store
-      .list("packaging_briefs", {
-        filter: {
-          requestId: [...new Set(selected.map((q) => q.requestId))],
-          status: ["open", "ready", "transferred"],
-        },
-      })
-      .catch(() => [])
-  )
-    // Etapa "Die Cut": só onde o die-cut é um entregável do briefing.
-    .filter((b) => b.requiredKeys.includes("dieline"));
-  if (!briefs.length) return [];
-  const { superplanMissing } = await import("@/lib/superplan-rfq");
-  // Foto em alta: fica na ficha da cotação escolhida.
-  const hdQuoteIds = new Set(
-    (
-      await store
-        .list("product_photos", {
-          filter: { orderId: selected.map((q) => q.id), kind: "hd" },
-        })
-        .catch(() => [])
-    ).map((p) => p.orderId),
-  );
-  const orderIds = briefs
-    .map((b) => b.orderId)
-    .filter((id): id is string => !!id);
-  const [requests, orders] = await Promise.all([
-    store.list("requests", {
-      filter: { id: [...new Set(briefs.map((b) => b.requestId))] },
-    }),
-    orderIds.length
-      ? store.list("orders", { filter: { id: orderIds } })
-      : Promise.resolve([]),
-  ]);
-  const out: Task[] = [];
-  for (const brief of briefs) {
-    const request = requests.find((r) => r.id === brief.requestId);
-    if (!request || request.status === "CANCELLED") continue;
-    // Só a cotação escolhida desta solicitação (e o pedido dela) cobra a faca.
-    if (!selected.some((q) => q.id === request.selectedQuoteId)) continue;
-    const order = brief.orderId
-      ? orders.find((o) => o.id === brief.orderId)
-      : null;
-    if (brief.orderId && (!order || order.supplierId !== user.partyId))
-      continue;
-    // Os quatro itens da etapa: die-cut, foto em alta, MOQ e prazo. Pedido
-    // que já passou da arte (produção em diante) só cobra o die-cut que
-    // ficou faltando: os outros três não voltam a cobrar pedido antigo.
-    const quote = selected.find((q) => q.id === request.selectedQuoteId)!;
-    const early = !order || DIE_CUT_STEP_ORDER_STATUSES.includes(order.status);
-    const missing = early
-      ? superplanMissing({
-          dieline: !dielineMissing(brief),
-          moq: quote.moq ?? null,
-          leadTimeDays: quote.leadTimeDays,
-          hd: hdQuoteIds.has(quote.id),
-        })
-      : dielineMissing(brief)
-        ? ["dieline" as const]
-        : [];
-    if (!missing.length) continue;
-    out.push(
-      finish(
-        {
-          kind: "packaging_brief",
-          title: `Die Cut: ${request.productName}`,
-          text: {
-            title: "tasks.dieline.title",
-            detail: order
-              ? "tasks.dieline.detailOrder"
-              : request.number
-                ? "tasks.dieline.detailRequest"
-                : "tasks.dieline.detail",
-            values: {
-              product: request.productName,
-              n: order?.number ?? request.number ?? "",
-            },
-          },
-          detail: [
-            order
-              ? `Pedido #${order.number}`
-              : request.number
-                ? `Solicitação nº ${request.number}`
-                : null,
-            `falta: ${DIE_CUT_ITEM_ORDER.filter((m) =>
-              (missing as string[]).includes(m),
-            )
-              .map((m) => DIE_CUT_ITEM_LABEL[m])
-              .join(", ")}`,
-          ]
-            .filter(Boolean)
-            .join(" · "),
-          link: order
-            ? `/app/orders/${order.id}#die-cut`
-            : `/app/quotes/${request.selectedQuoteId}#die-cut`,
-          chat: order ? { orderId: order.id } : { requestId: request.id },
-          dueAt: brief.dueAt,
-          orderNumber: order?.number,
-          requestId: request.id,
-          // A faca passa a ser dele quando a cotação é escolhida (ou o pedido nasce).
-          sinceAt:
-            order?.createdAt ??
-            selected.find((q) => q.id === request.selectedQuoteId)?.updatedAt ??
-            brief.createdAt,
-          supplierStep: "dieline",
-        },
-        now,
-      ),
-    );
-  }
-  return out;
-}
-
-const PACKAGING_ITEM_LABEL: Record<string, string> = {
-  dieline: "faca (die-cut)",
-  art: "arte",
-  print_ready: "arquivos para a gráfica",
-  packaging_sample: "foto da embalagem física",
-};
-
-function requestTask(request: Request, rfqOn = true): DraftTask {
-  const base = {
-    // RFQ em espera: o envio ao fornecedor é na tela Pedidos → RFQ.
-    link:
-      !rfqOn && request.status === "REQUESTED"
-        ? `/app/rfq#req-${request.id}`
-        : `/app/requests/${request.id}`,
-    dueAt: request.deadline,
-    customerId: request.customerId,
-    ownerUserId: request.ownerUserId ?? null,
-  };
-  switch (request.status) {
-    case "REQUESTED":
-      return {
-        kind: "rfq",
-        title: rfqOn
-          ? `Abrir RFQ: ${request.productName}`
-          : `Enviar ao fornecedor: ${request.productName}`,
-        detail: rfqOn
-          ? "Selecione fornecedores"
-          : "Escolha o fornecedor que vai analisar o produto",
-        ...base,
-      };
-    case "QUOTATION_RECEIVED":
-      return {
-        kind: "select_supplier",
-        title: `Escolher fornecedor: ${request.productName}`,
-        detail: "Cotações recebidas",
-        ...base,
-      };
-    default:
-      return {
-        kind: "confirm_payment",
-        title: `Confirmar sinal: ${request.productName}`,
-        // Etapa "Proposta ao cliente": antes do sinal, o cliente aprova.
-        detail: request.proposalApprovedAt
-          ? "Aguardando pagamento do cliente"
-          : "Aguardando o cliente aprovar a proposta",
-        ...base,
-      };
-  }
 }
 
 export function isInvolved(user: User, order: Order): boolean {

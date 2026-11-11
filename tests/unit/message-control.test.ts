@@ -9,7 +9,7 @@ import { withTempStore } from "./setup";
 withTempStore();
 
 const { seedDemo } = await import("@/lib/seed");
-const { createRequest, openRfq } = await import("@/lib/services/requests");
+const { createRequest } = await import("@/lib/services/requests");
 const msg = await import("@/lib/services/messages");
 const ctl = await import("@/lib/services/message-control");
 const { businessDeadline } = await import("@/lib/sla");
@@ -38,7 +38,6 @@ beforeAll(async () => {
     unit: "un",
   });
   requestId = request.id;
-  await openRfq(admin, request.id, ["fornecedor-a"]);
 });
 
 describe("prazo em dias úteis", () => {
@@ -56,9 +55,9 @@ describe("prazo em dias úteis", () => {
 
 describe("controladoria", () => {
   it("bola, prazo, analista, produto e pendência", async () => {
-    // Fornecedor escreve sobre a solicitação: bola na Wellmix, sem analista.
-    const topic = await msg.openTopic(supplierA, { requestId });
-    await msg.postMessage(supplierA, topic.topicId, "Qual a quantidade?");
+    // Cliente escreve sobre a solicitação: bola na Wellmix, sem analista.
+    const topic = await msg.openTopic(joao, { requestId });
+    await msg.postMessage(joao, topic.topicId, "Qual a quantidade?");
     let view = await ctl.messageControlFor(admin);
     let row = view.rows.find((r) => r.topicId === topic.topicId)!;
     expect(row.ball).toBe("wellmix");
