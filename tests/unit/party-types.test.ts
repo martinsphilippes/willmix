@@ -17,6 +17,10 @@ describe("Outros parceiros", () => {
 
   it("os demais tipos continuam listados", () => {
     expect([...OTHER_PARTY_TYPES]).toEqual([
+      "trading",
+      "factory",
+      "supplier_partner",
+      "gp",
       "agency",
       "broker",
       "shipping_line",
@@ -29,5 +33,7 @@ describe("Outros parceiros", () => {
     expect(isOtherPartyType("agency")).toBe(true);
     expect(isOtherPartyType("supplier")).toBe(false);
     expect(isOtherPartyType("qualquer")).toBe(false);
+    // Tipo criado no painel (docs/PARTNER_TYPES.md) também fica na tela.
+    expect(isOtherPartyType("partner")).toBe(true);
   });
 });

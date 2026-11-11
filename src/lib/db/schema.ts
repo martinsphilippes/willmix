@@ -41,6 +41,16 @@ export const PARTY_TYPES = [
   "comex",
   "logistics",
   "ocp",
+  // Parceiros à parte (decisão do dono, 11/11/2026; docs/PARTNER_TYPES.md):
+  // não entram em cotação nem pedido como fornecedor. "supplier_partner" é o
+  // tipo "Supplier" de Outros parceiros (a chave "supplier" é do Fornecedor).
+  "trading",
+  "factory",
+  "supplier_partner",
+  "gp",
+  // Parceiro de um tipo criado no painel (`partner_types`): o tipo de verdade
+  // está em `parties.partnerTypeId`. Não é papel de login.
+  "partner",
 ] as const;
 export type PartyType = (typeof PARTY_TYPES)[number];
 
@@ -624,6 +634,8 @@ export interface User extends BaseRow {
 
 export interface Party extends BaseRow {
   type: PartyType;
+  /** Tipo criado no painel (`partner_types`), quando `type` é "partner". */
+  partnerTypeId?: string | null;
   name: string;
   country: string | null;
   email: string | null;
@@ -2457,7 +2469,33 @@ export interface PaymentCondition extends BaseRow {
   updatedByUserId: string | null;
 }
 
+/**
+ * Tipo de parceiro administrável (docs/PARTNER_TYPES.md). Dois usos:
+ * `builtin` nulo = tipo criado no painel (o parceiro aponta para ele em
+ * `parties.partnerTypeId`); `builtin` preenchido = nome novo ou inativação de
+ * um tipo de fábrica (agência, despachante...), sem mexer nos cadastros.
+ */
+export interface PartnerType extends BaseRow {
+  /** Identificador estável (não muda ao renomear). */
+  key: string;
+  /** Tipo de fábrica a que esta linha se refere; nulo nos criados no painel. */
+  builtin: string | null;
+  name: string;
+  nameEn: string | null;
+  nameZh: string | null;
+  description: string | null;
+  active: boolean;
+  /**
+   * Classe de login dos usuários deste tipo (só nos criados no painel):
+   * "supplier" = entra como o Fornecedor entra; nulo = cadastro sem login.
+   */
+  loginClass?: string | null;
+  createdByUserId: string | null;
+  updatedByUserId: string | null;
+}
+
 export interface Tables {
+  partner_types: PartnerType;
   users: User;
   parties: Party;
   product_lines: ProductLine;
@@ -2625,6 +2663,7 @@ export const TABLES: Record<TableName, TableDef> = {
     label: "Parceiros",
     columns: {
       type: enumOf(PARTY_TYPES),
+      partnerTypeId: id(false),
       name: str(160, true),
       country: str(60),
       email: str(254),
@@ -4047,6 +4086,22 @@ export const TABLES: Record<TableName, TableDef> = {
       sankhyaCode: str(40),
     },
     indexes: [{ key: "code_unique", type: "unique", columns: ["code"] }],
+  },
+  partner_types: {
+    label: "Tipos de parceiro (catálogo administrável)",
+    columns: {
+      key: str(80, true),
+      builtin: str(40),
+      name: str(120, true),
+      nameEn: str(120),
+      nameZh: str(120),
+      description: str(500),
+      active: bool(),
+      loginClass: str(40),
+      createdByUserId: id(false),
+      updatedByUserId: id(false),
+    },
+    indexes: [{ key: "key_unique", type: "unique", columns: ["key"] }],
   },
   payment_conditions: {
     label: "Condições de pagamento (Sankhya TGFTPV)",

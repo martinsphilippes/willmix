@@ -4,10 +4,8 @@ import {
   getStore,
   PARTY_EXTRA_DEFAULTS,
   LINE_EXTRA_DEFAULTS,
-  PARTY_TYPES,
   PRODUCT_EXTRA_DEFAULTS,
   type ImportBatch,
-  type PartyType,
   type Product,
   type SourcingItem,
   type User,
@@ -464,6 +462,8 @@ export interface PreviewRow {
 export async function previewBatch(batch: ImportBatch): Promise<PreviewRow[]> {
   const store = getStore();
   const entity = batch.entity as ImportEntity;
+  const { importPartyType } = await import("./partner-types");
+  const partyTypeOf = await importPartyType();
   const [products, parties, lines, sourcing] = await Promise.all([
     entity === "products"
       ? store.list("products")
@@ -569,12 +569,16 @@ export async function previewBatch(batch: ImportBatch): Promise<PreviewRow[]> {
           label: found.name,
           reason: taxId ? "taxId" : email ? "email" : "name",
         };
-      const type = (
-        (fields.type as string | undefined) ?? "supplier"
-      ).toLowerCase();
-      if (!(PARTY_TYPES as readonly string[]).includes(type))
-        problems.push("invalid_type");
-      fields.type = type;
+      // Tipo do catálogo (docs/PARTNER_TYPES.md): chave legada ou nome;
+      // sem a coluna, fornecedor (como antes).
+      const typed = partyTypeOf(
+        (fields.type as string | undefined) ?? "supplier",
+      );
+      if (typed.ok) fields.type = typed.value;
+      else
+        problems.push(
+          typed.reason === "unknown" ? "invalid_type" : `${typed.reason}_type`,
+        );
     } else if (entity === "lines") {
       const name = fields.name as string | undefined;
       const found = name ? byFold(lines, name) : null;
@@ -585,7 +589,9 @@ export async function previewBatch(batch: ImportBatch): Promise<PreviewRow[]> {
       (p) =>
         p.startsWith("missing:") ||
         p === "line_not_found" ||
-        p === "invalid_type",
+        p === "invalid_type" ||
+        p === "ambiguous_type" ||
+        p === "inactive_type",
     );
     const suggested: PreviewRow["suggested"] = blocking
       ? "skip"
@@ -657,6 +663,8 @@ export async function applyImportBatch(
   if (!batch || batch.status === "imported") throw new Error("invalid_batch");
   const entity = batch.entity as ImportEntity;
   const preview = await previewBatch(batch);
+  const { importPartyType } = await import("./partner-types");
+  const partyTypeOf = await importPartyType();
   const summary = { created: 0, updated: 0, skipped: 0, errors: 0 };
 
   for (const row of preview) {
@@ -740,8 +748,10 @@ export async function applyImportBatch(
       } else if (entity === "parties") {
         const s = (k: string) =>
           typeof f[k] === "string" && f[k] !== "" ? (f[k] as string) : null;
+        const typed = partyTypeOf((f.type as string | undefined) ?? "supplier");
+        if (!typed.ok) throw new Error("partner_type_invalid");
         const data = {
-          type: (f.type as PartyType) ?? "supplier",
+          ...typed.party,
           name,
           country: s("country"),
           email: s("email"),

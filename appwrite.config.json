@@ -204,8 +204,21 @@
             "legal",
             "comex",
             "logistics",
-            "ocp"
+            "ocp",
+            "trading",
+            "factory",
+            "supplier_partner",
+            "gp",
+            "partner"
           ]
+        },
+        {
+          "key": "partnerTypeId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         },
         {
           "key": "name",
@@ -9475,6 +9488,107 @@
           "type": "unique",
           "columns": [
             "code"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "partner_types",
+      "databaseId": "willmix",
+      "name": "Tipos de parceiro (catálogo administrável)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "key",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "builtin",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "nameEn",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "nameZh",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "description",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 500
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "loginClass",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "createdByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "updatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "key_unique",
+          "type": "unique",
+          "columns": [
+            "key"
           ],
           "orders": [
             "ASC"
