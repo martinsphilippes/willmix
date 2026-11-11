@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
@@ -282,5 +282,21 @@ describe("carga da amostra do Sankhya", () => {
       payments: (await store.list("payments")).length,
       lines: (await store.list("product_lines")).length,
     }).toEqual(before);
+  });
+
+  it("lê só os cadastros dos códigos da nota, não as tabelas inteiras", async () => {
+    const store = getStore();
+    const spy = vi.spyOn(store, "list");
+    try {
+      await importSankhyaSet(admin, set);
+      const whole = spy.mock.calls.filter(
+        ([table, options]) =>
+          ["parties", "products", "product_lines"].includes(table) &&
+          !options?.filter,
+      );
+      expect(whole).toEqual([]);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
