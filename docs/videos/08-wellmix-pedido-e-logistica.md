@@ -1227,3 +1227,132 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 
 ---
 
+## WLO-03 · Estoque
+
+> **Promessa:** ao final do vídeo você lê o estoque da Wellmix (no Brasil, a caminho e em produção), dá baixa por venda, define o limite mínimo, reserva para um cliente e participa do inventário às cegas.
+
+| Ficha                 |                                                                                                                                                                       |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Série e papel         | Wellmix · operador (a tela Estoque abre com a tela Produtos: comprador, gerente de produto, cadastro, diretorias e designer)                                          |
+| Conta de gravação     | `operador@wellmix.com`, tela em pt; um corte com `admin@wellmix.com` na cena 8 (abrir e fechar o inventário, aprovar a contagem final)                                  |
+| Duração-alvo          | 4:45                                                                                                                                                                  |
+| Ponto da jornada      | Fora da jornada de um pedido: apoia a etapa 9 (o que sobra depois da entrega) e a compra para estoque                                                                  |
+| Telas e rotas         | `/app/inventory` (Estoque), `/app/inventory/reservations` (Reservas), `/app/inventory/counts` e `/app/inventory/counts/[id]` (Inventário), `/app/inventory/movements` (Movimentações e perdas) |
+| Dados antes de gravar | Ponto `antes-WLO-03`: um container de estoque em "Chegou" (WLO-02) com Jogo de panelas (2.000 un) e Piscina inflável (1.200 un); nenhum limite, reserva nem inventário; a jarra com pedido de cliente (para a baixa "Pedido do cliente") |
+| Depois deste vídeo    | O estoque fica com limite, uma reserva ativa e um inventário fechado, com a perda registrada em "Movimentações e perdas"                                                |
+| Antes · Próximo       | WLO-02 · WLO-04                                                                                                                                                       |
+| Idiomas               | pt (base)                                                                                                                                                             |
+
+### Roteiro
+
+**Cena 1 · 0:00–0:10 · Gancho · `/app/inventory`**
+
+- 🎬 Imagem: a tela **Estoque**. O cartão **Abaixo do limite** mostra 1 e, na linha do Jogo de panelas, o selo vermelho **Repor** com o botão **Comprar 504**.
+- 🎙 Narração: "Quanto temos no Brasil, o que vem a caminho, o que precisa repor? Uma tela responde, produto por produto."
+- 🔤 Na tela: `[TÍTULO]` "WLO-03 · Estoque"; `[ZOOM 150 %]` no selo "Repor".
+- ✂️ Edição: vinheta de 6,5 s antes; título em 2 s; música baixa para −28 dB ao começar a voz. Use a imagem do fim da gravação como abertura.
+
+**Cena 2 · 0:10–0:22 · Onde estou · `/app/inventory`**
+
+- 🎬 Imagem: a mesma tela; o mapa da jornada aparece sobre ela, com a etapa 9 e uma legenda "mercadoria sem cliente".
+- 🎙 Narração: "O estoque não pertence a um pedido de cliente. É a mercadoria da Wellmix, que chega em container ou vem de uma compra para estoque."
+- 🔤 Na tela: `[MAPA etapa 9]` com "Entrega e pós-venda" em destaque suave; `[SETA]` "Sem cliente".
+- ✂️ Edição: o mapa sai em 8 s, deslizando para cima.
+
+**Cena 3 · 0:22–0:55 · A tela Estoque · menu Cadastros → Estoque → `/app/inventory`**
+
+- 🎬 Imagem: o cursor abre **Cadastros** e clica em **Estoque**. Os botões do alto: **Inventário (contagem)**, **Reservas**, **Movimentações e perdas**, **+ Compra para estoque**, e a linha **− Baixa por venda**. Os cartões-filtro: **Todos**, **No Brasil**, **Em trânsito**, **Em produção**, **Abaixo do limite** e **Parados (90+ dias)**. A busca ("Buscar por nome, SKU, código do fornecedor, categoria ou cor"), o botão **Exportar (CSV)**, "Total de caixas" e "Total de unidades". A tabela: Foto, Categoria, Nome, Especificação, Cor, Cód. do fornecedor, Caixas, No Brasil, Reservado, Em trânsito, Em produção, Total, Limite.
+- 🎙 Narração: "Em Cadastros, Estoque. Cada linha é um produto, com as caixas e as quantidades no Brasil, reservadas, em trânsito e em produção. Os cartões filtram, a busca acha por nome ou código, e dá para exportar em planilha."
+- 🔤 Na tela: `[PASSO 1/7] Abra Cadastros → Estoque`; `[SETA]` "No Brasil: container que chegou" na coluna; `[QUEM VÊ]` "Preço de compra e valor total só aparecem para quem abre Finanças"; `[DICA]` "A busca filtra enquanto você digita."
+- ✂️ Edição: `[CORTE]` seco para a tela; `[ZOOM 150 %]` nos cartões; 3 s na tabela.
+
+**Cena 4 · 0:55–1:30 · De onde vem cada número · `/app/inventory`**
+
+- 🎬 Imagem: sobre a tabela, três cartões explicativos do vídeo (não da tela) com as regras: "No Brasil = container que chegou, sem pedido de cliente · ou compra para estoque entregue"; "Em trânsito = container planejado, carregando ou embarcado"; "Em produção = compra para estoque ainda na fábrica". Depois, o botão **+ Compra para estoque** abre a **Nova solicitação** com o cliente "Compra para estoque (sem cliente)" já escolhido.
+- 🎙 Narração: "No Brasil é o que chegou em container sem pedido de cliente. Em trânsito é o que está em container planejado, carregando ou no mar. Em produção é a compra para estoque ainda na fábrica. Mercadoria vendida e pedido cancelado não contam."
+- 🔤 Na tela: `[PASSO 2/7] Entenda as colunas`; `[BOTÃO] "+ Compra para estoque"`; `[SETA]` "Compra para estoque: sem sinal e sem proposta; o pedido nasce na hora" no botão; `[SETA]` "Container chegou: entra em No Brasil".
+- ✂️ Edição: as três regras são cartões fixos do vídeo, 3 s cada; `[CORTE]` para a Nova solicitação e volta.
+
+**Cena 5 · 1:30–2:00 · Baixa por venda · `/app/inventory`**
+
+- 🎬 Imagem: clicar em **− Baixa por venda**. O formulário: "Produto" (a lista mostra "· 2.000 no Brasil"), "Quantidade", "Pedido do cliente (opcional)", "Observação (NF, cliente, motivo)". Escolher o Jogo de panelas, digitar `400`, escolher um pedido, escrever "Venda balcão NF 18732" e clicar em **Dar baixa**. A tela mostra "Baixa registrada." e o produto cai de 2.000 para 1.600.
+- 🎙 Narração: "Vendeu do estoque? Em Baixa por venda, escolha o produto, a quantidade, o pedido do cliente, se houver, e a nota. O portal tira do Brasil e não deixa sair mais do que existe."
+- 🔤 Na tela: `[PASSO 3/7] Dê baixa por venda`; `[BOTÃO] "Dar baixa"`; `[ERRO COMUM]` "Quantidade maior do que o estoque no Brasil." → "Baixe no máximo o que há no Brasil."
+- ✂️ Edição: digitação em tempo real; `[ZOOM 150 %]` no número que cai; pausa de 1 s.
+
+**Cena 6 · 2:00–2:40 · O limite mínimo · `/app/inventory`**
+
+- 🎬 Imagem: na coluna **Limite**, o campo ao lado de cada produto. Digitar `1800` no Jogo de panelas e clicar no ✓ (salvar). Com 1.600 no Brasil, o selo vira **Repor** (vermelho) e aparece **Comprar 504**. Na Piscina, `1000` e o selo "Acima do limite" (verde). Mostrar o selo "Abaixo · a caminho" (amarelo) quando há carga em trânsito. Clicar em **Comprar 504**: abre uma compra para estoque com o produto e a quantidade.
+- 🎙 Narração: "Defina o estoque mínimo de cada produto. Acima do limite, verde. Abaixo, mas com carga a caminho, amarelo. Abaixo e sem nada a caminho, vermelho: Repor. O botão Comprar abre a compra com a quantidade que falta, em caixas inteiras e no mínimo o pedido mínimo."
+- 🔤 Na tela: `[PASSO 4/7] Defina o limite`; `[SETA]` "Repor: abaixo do limite e nada a caminho" no selo vermelho; `[SETA]` "Comprar N: o que falta, em caixas master, no mínimo o MOQ" no botão; `[QUEM VÊ]` "O administrador é avisado quando a baixa cruza o limite."
+- ✂️ Edição: `[ZOOM 150 %]` nos três selos; não concluir a compra sugerida.
+
+**Cena 7 · 2:40–3:10 · Reservas · `/app/inventory/reservations`**
+
+- 🎬 Imagem: clicar em **Reservas**. A tela **Reservas para clientes**: "Separe parte do estoque no Brasil para um cliente. O reservado sai do livre (vitrine e baixa para outros) até ser usado, cancelado ou vencer." Abrir **+ Nova reserva**: "Produto" ("· 1.600 livre(s)"), "Cliente", "Quantidade", "Validade (dias)", "Observação". Preencher e clicar em **Reservar**: "Reserva criada." As abas **Ativas**, **Vencidas**, **Usadas** e **Canceladas**; na linha, **Usar (dar baixa)** e **Cancelar**.
+- 🎙 Narração: "Reserva separa parte do estoque para um cliente, por alguns dias. O reservado sai do livre: a vitrine não oferece e a baixa comum não passa dele. Usar vira baixa por venda; Cancelar devolve ao livre; vencida deixa de segurar sozinha."
+- 🔤 Na tela: `[PASSO 5/7] Reserve para um cliente`; `[BOTÃO] "Reservar"`; `[ERRO COMUM]` "Validade entre 1 e 120 dias." → "Use de 1 a 120 dias (o padrão é 15)."; `[SETA]` "Reservado: sai do livre" na coluna da tela Estoque.
+- ✂️ Edição: `[CORTE]` de volta ao Estoque para mostrar a coluna **Reservado**; 2 s.
+
+**Cena 8 · 3:10–4:00 · Inventário às cegas · `/app/inventory/counts`**
+
+- 🎬 Imagem: clicar em **Inventário (contagem)**. Conta do administrador: **Abrir inventário** ("Lista todos os produtos com estoque no Brasil agora. Só um inventário aberto por vez."). Conta do operador: a tela **Inventário #1** com "Contagem às cegas: a quantidade do sistema não aparece para quem conta." Em cada produto, "Quantidade contada" e **Gravar contagem**. Contar o Jogo de panelas com `1500`: "A contagem não confere. Você tem mais 1 chance: conte de novo com atenção e grave." Contar de novo `1550`: "A contagem não confere de novo. O administrador foi avisado e vai aprovar a quantidade." A piscina, `1200`: "Confere". Conta do administrador: **Aprovar quantidade** com "Motivo / observação" e, no fim, **Fechar inventário**.
+- 🎙 Narração: "No inventário, quem conta não vê a quantidade do sistema. Errou? Tem mais uma chance. Errou de novo, o administrador aprova a quantidade final, e a diferença vira perda. O inventário só fecha com todos os itens resolvidos."
+- 🔤 Na tela: `[PASSO 6/7] Conte às cegas`; `[BOTÃO] "Gravar contagem"`; `[BOTÃO] "Aprovar quantidade"`; `[BOTÃO] "Fechar inventário"`; `[QUEM VÊ]` "Abrir e fechar o inventário e aprovar a contagem são só do administrador; a coluna 'Sistema' e a diferença só ele vê."; `[ERRO COMUM]` "Ainda há itens a contar ou aguardando aprovação." → "Resolva todos os itens para fechar."
+- ✂️ Edição: três cortes de conta com legenda "Administrador" e "Operador"; 3 s em cada mensagem; `[ZOOM 150 %]` na coluna Tentativas.
+
+**Cena 9 · 4:00–4:30 · Movimentações, perdas e parados · `/app/inventory/movements`**
+
+- 🎬 Imagem: clicar em **Movimentações e perdas**. As abas **Todas**, **Baixas por venda**, **Produtos perdidos**, **Sobras**, **Entradas por processo**, **Saídas por processo** e **Saldos do Sankhya**. As linhas: "Baixa por venda · −400 un · #3 · Venda balcão NF 18732" e "Perda no inventário · −50 un · Inventário #1". De volta ao Estoque, o cartão **Parados (90+ dias)** e, num produto parado, o selo "Parado há N dias" e "Nunca vendido desde a chegada".
+- 🎙 Narração: "Em Movimentações e perdas ficam as baixas, as perdas e as sobras de cada inventário, com quem fez e quando. Produto com estoque e sem venda há noventa dias ou mais aparece em Parados: hora de pensar em oferta."
+- 🔤 Na tela: `[PASSO 7/7] Confira movimentações e perdas`; `[SETA]` "Perda no inventário: a diferença da contagem" na linha; `[SETA]` "Parado há N dias" no selo; `[QUEM VÊ]` "O valor de custo da perda só aparece para quem abre Finanças."
+- ✂️ Edição: `[CORTE]` entre telas; manter 3 s na tabela.
+
+**Cena 10 · 4:30–4:45 · Resumo e próximo vídeo**
+
+- 🎬 Imagem: fundo vermelho com a lista; no fim, a miniatura do WLO-04.
+- 🎙 Narração: "Resumindo: leia as colunas, dê baixa, defina o limite, reserve e conte às cegas. Agora, a produção na fábrica."
+- 🔤 Na tela: `[RESUMO]` "1 Leia No Brasil, Em trânsito e Em produção · 2 Dê baixa por venda · 3 Defina o limite · 4 Reserve para o cliente · 5 Inventário às cegas"; chamada "Próximo: WLO-04 · Produção: follow e ETD".
+- ✂️ Edição: fade para a vinheta de encerramento (logo Wellmix, 3 s).
+
+### Erros comuns
+
+- **Erro:** baixa maior que o estoque. O portal mostra "Quantidade maior do que o estoque no Brasil." → **Correção:** baixe no máximo o que há no Brasil.
+- **Erro:** baixa de estoque reservado. O portal mostra "Parte deste estoque está reservada para clientes. Dê baixa pela reserva (Estoque → Reservas → Usar) ou cancele a reserva." → **Correção:** use "Usar (dar baixa)" na reserva, ou cancele-a.
+- **Erro:** quantidade em branco ou zero. O portal mostra "Informe uma quantidade válida." → **Correção:** digite um número maior que zero.
+- **Erro:** reserva com validade fora da faixa. O portal mostra "Validade entre 1 e 120 dias." → **Correção:** use de 1 a 120 dias.
+- **Erro:** mexer numa reserva encerrada. O portal mostra "Esta reserva já foi usada, cancelada ou venceu." → **Correção:** crie outra reserva.
+- **Erro:** abrir um segundo inventário. O portal mostra "Já existe um inventário aberto." → **Correção:** feche o aberto primeiro.
+- **Erro:** abrir inventário sem estoque. O portal mostra "Não há estoque no Brasil para contar." → **Correção:** espere um container chegar ou registre estoque.
+- **Erro:** fechar o inventário com itens abertos. O portal mostra "Ainda há itens a contar ou aguardando aprovação." → **Correção:** conte os itens e peça ao administrador para aprovar os que errou duas vezes.
+- **Erro:** contar de novo um item resolvido. O portal mostra "Este item já foi resolvido." → **Correção:** nada a fazer; o item está fechado.
+
+### Passo a passo em texto
+
+1. No menu **Cadastros**, clique em **Estoque**. Leia as colunas **No Brasil**, **Reservado**, **Em trânsito**, **Em produção** e **Total**. Use os cartões-filtro, a busca e **Exportar (CSV)**.
+2. Para uma compra para estoque, clique em **+ Compra para estoque**: a Nova solicitação abre com "Compra para estoque (sem cliente)". Sem sinal e sem proposta, o pedido nasce quando o fornecedor é escolhido (e aprovado, se a aprovação estiver ligada).
+3. Para dar baixa por venda, abra **− Baixa por venda**, escolha o produto, a **Quantidade**, o **Pedido do cliente (opcional)** e a observação, e clique em **Dar baixa**.
+4. Na coluna **Limite**, digite o estoque mínimo e salve. Acima, "Acima do limite"; abaixo com carga a caminho, "Abaixo · a caminho"; sem nada a caminho, "Repor", com **Comprar N**.
+5. Em **Reservas**, clique em **+ Nova reserva**, escolha o produto, o cliente, a quantidade e a validade (padrão 15 dias, de 1 a 120) e clique em **Reservar**. **Usar (dar baixa)** transforma em baixa; **Cancelar** devolve ao livre.
+6. Em **Inventário (contagem)**, o administrador clica em **Abrir inventário**. Quem conta digita a **Quantidade contada** e clica em **Gravar contagem**; erra duas vezes, o administrador usa **Aprovar quantidade**. Com todos os itens resolvidos, o administrador clica em **Fechar inventário**.
+7. Em **Movimentações e perdas**, veja as baixas por venda, as perdas e as sobras dos inventários, com quem fez e quando.
+
+### Notas de gravação
+
+- Os números do estoque (2.000 un, 1.200 un, "Comprar 504") dependem do MOQ e da caixa master dos produtos de demonstração. Se a carga mudar, mostre os números sem citá-los.
+- A especificação dos produtos de estoque (material, cor, caixa master) vem da ficha adotada na cotação; na carga de demonstração ela pode sair igual para produtos diferentes. Esconda a coluna "Especificação" (zoom no restante) ou ajuste os produtos antes de gravar.
+- A cena 4 usa cartões do vídeo para as regras de "No Brasil", "Em trânsito" e "Em produção". A tela não tem esses textos.
+- Grave o inventário em três contas, na ordem: administrador abre, operador conta duas vezes errado, administrador aprova e fecha. Guarde um ponto de salvamento antes de abrir.
+- "Valor de custo" e "Preço de compra" só aparecem na conta do administrador; mantenha a gravação na conta do operador sem esses campos.
+- A coluna "Última movimentação" e o selo "Parado há N dias" só mostram dias depois de 90 dias; na demonstração a tela mostra "Nunca vendido desde a chegada". Grave o selo "Parado há N dias" em dados envelhecidos (ver WPE-07, notas) ou deixe só a frase.
+
+### Pontos a confirmar
+
+- ⚠ O texto do cabeçalho da coluna "Reservado" e do selo "Parado há N dias" só foram verificados pelo dicionário e pela tela sem dados envelhecidos. Confirmar a cena 9 em dados com mais de 90 dias.
+- ⚠ A baixa por venda aceita o pedido do cliente de qualquer cliente, mesmo de um pedido já encerrado ou de outro container; a lista da gravação mostrou pedidos encerrados. Confirmar se a lista deve ter só pedidos ativos.
+- ⚠ "Comprar N" arredonda para caixas master inteiras e usa o MOQ do produto (aqui, 504 = 21 caixas de 24). Se a caixa master do produto for outra, o número muda.
+- ⚠ O administrador é avisado quando a baixa cruza o limite (docs/INVENTORY.md); o aviso não foi capturado na gravação de verificação.
+- ⚠ Quem é "Wellmix com a tela Produtos" para contar o inventário: o operador comprador conta; o planner sozinho, não. Confirmar na conta de gravação do operador (comprador e planner).
+
+---
+
