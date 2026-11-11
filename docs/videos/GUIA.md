@@ -34,7 +34,7 @@ A tela do portal muda de idioma com o login (botões PT / EN / ZH). O texto que 
 
 - O roteiro-base é em **pt-BR**. Os episódios do fornecedor e da companhia marítima trazem também a narração e as legendas em **en** e **zh**.
 - Os nomes de botões, menus e campos vêm **sempre do dicionário do sistema** (`src/i18n/dictionaries.ts` e `src/i18n/modules/*.ts`), na língua da gravação. Não traduza rótulo de tela à mão: copie o valor da mesma chave em `en` ou `zh`.
-- As contas de demonstração de papéis da Wellmix sem função (financeiro, diretorias, designer, cadastro, gerente de produto) são criadas em **Gestão → Equipe e divisões** antes da gravação (docs/ACCESS.md).
+- Só existe um login interno de demonstração com função: `operador@wellmix.com` (comprador e planner). Para gravar os papéis de financeiro, diretorias, designer, cadastro e gerente de produto, **crie antes um login interno para cada um** e depois marque as funções dele em **Gestão → Equipe e divisões → Editar acessos** (docs/ACCESS.md). A tela de Equipe só marca funções e telas; ela **não cria login**. A tela de acesso ao portal, dentro de um cadastro, oferece o papel "Operador Wellmix" (o roteiro WGE-10 explica o caminho; ⚠ confirmar na primeira gravação).
 
 ## 3. Formato técnico
 
