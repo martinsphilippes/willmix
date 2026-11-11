@@ -276,11 +276,23 @@ export default async function PartyPage({
           </span>
         }
         actions={
-          party.type === "supplier" ? (
-            <LinkButton href={`/app/account?supplier=${party.id}`}>
-              {t("nav.account")}
-            </LinkButton>
-          ) : null
+          <>
+            {/* O login nasce no quadro de acesso desta tela: atalho à vista. */}
+            {loginRole ? (
+              <LinkButton
+                href="#access"
+                variant="primary"
+                data-party-login-jump
+              >
+                {t("partnerAccess.login.create")}
+              </LinkButton>
+            ) : null}
+            {party.type === "supplier" ? (
+              <LinkButton href={`/app/account?supplier=${party.id}`}>
+                {t("nav.account")}
+              </LinkButton>
+            ) : null}
+          </>
         }
       />
       {saved && saved !== "terms" && saved !== "user" ? (
@@ -313,7 +325,7 @@ export default async function PartyPage({
           {/* Acesso ao portal: o login nasce aqui, preso a este cadastro
               (o Booking traz para cá o fornecedor sem login). */}
           <div id="access" className="scroll-mt-24" data-party-access>
-            <Card title={t("parties.users")}>
+            <Card title={t("partnerAccess.login.card")}>
               {saved === "user" ? (
                 <div className="mb-3" data-party-access-saved>
                   <Alert tone="success">

@@ -44,6 +44,9 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await page.getByRole("button", { name: "Salvar" }).first().click();
   await page.waitForURL(/\/app\/parties\/[^/?]+$/);
 
+  // Depois de cadastrar, a tela já abre no quadro de acesso, com o atalho no topo.
+  await expect(page).toHaveURL(/#access$/);
+  await expect(page.locator("[data-party-login-jump]")).toBeVisible();
   // Usuário vinculado: entra com o papel do Fornecedor.
   const access = page.locator("[data-party-access]");
   await expect(access.locator('select[name="role"]')).toHaveValue("supplier");
@@ -55,6 +58,12 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await expect(page.locator("[data-party-access-profile]")).toContainText(
     "Factory",
   );
+
+  // Na lista, a coluna do login mostra que o parceiro já tem acesso.
+  await page.goto("/app/parties?type=factory");
+  await expect(
+    page.locator("tr", { hasText: factoryName }).locator("[data-party-logins]"),
+  ).toHaveAttribute("data-party-logins", "1");
 
   // Como Factory: as mesmas telas do Fornecedor (o menu é conferido nos testes unitários).
   await login(page, userLogin);

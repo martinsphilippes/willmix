@@ -52,10 +52,16 @@ export default async function PartiesPage({
   const store = getStore();
   // Só os outros parceiros (agência, despachante, transportadora, OCP… e os
   // tipos criados no painel).
-  const [all, catalog] = await Promise.all([
+  const [all, catalog, users] = await Promise.all([
     store.list("parties", { orderBy: "name" }),
     getPartnerTypeCatalog(),
+    store.list("users"),
   ]);
+  // Logins ativos de cada parceiro (a coluna leva ao quadro de acesso).
+  const logins = new Map<string, number>();
+  for (const u of users)
+    if (u.active && u.partyId)
+      logins.set(u.partyId, (logins.get(u.partyId) ?? 0) + 1);
   const parties = all.filter((p) => isOtherPartyType(p.type));
   // Filtros: os tipos ativos e os inativos que ainda têm cadastro.
   const inUse = new Set(parties.map(partyTypeValue));
@@ -143,6 +149,7 @@ export default async function PartiesPage({
               <Th>{t("parties.type")}</Th>
               <Th>{t("parties.country")}</Th>
               <Th>{t("common.email")}</Th>
+              <Th>{t("partnerAccess.login.col")}</Th>
               <Th>{t("common.status")}</Th>
             </tr>
           </thead>
@@ -156,6 +163,17 @@ export default async function PartiesPage({
                 <Td>{p.country ?? "—"}</Td>
                 <Td>
                   <span className="text-zinc-600">{p.email ?? "—"}</span>
+                </Td>
+                <Td>
+                  <TextLink href={`/app/parties/${p.id}#access`}>
+                    <span data-party-logins={logins.get(p.id) ?? 0}>
+                      {logins.get(p.id)
+                        ? t("partnerAccess.login.count", {
+                            n: logins.get(p.id) ?? 0,
+                          })
+                        : t("partnerAccess.login.create")}
+                    </span>
+                  </TextLink>
                 </Td>
                 <Td>
                   <Badge tone={p.active ? "success" : "neutral"}>
