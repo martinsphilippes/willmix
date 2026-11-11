@@ -106,6 +106,8 @@ describe("menu principal", () => {
         (h) =>
           ![
             "/app/finance",
+            // Acordos e comissões: quem abre o Financeiro (só o admin).
+            "/app/commissions",
             "/app/payables",
             "/app/settings",
             "/app/team",

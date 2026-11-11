@@ -96,6 +96,12 @@ export async function emitProcessEvent(
   event: ProcessEventKey,
   refs: ProcessRefs,
 ): Promise<void> {
+  // Comissões (docs/COMMISSIONS.md): cada evento do pedido reapura as dele.
+  // Uma apuração por pedido, acordo e beneficiário; nunca derruba o fluxo.
+  if (refs.orderId) {
+    const { accrueOrderQuietly } = await import("./commissions");
+    await accrueOrderQuietly(refs.orderId);
+  }
   try {
     const rule = (await getProcessRules()).find((r) => r.event === event);
     if (!rule || !ruleDoesSomething(rule)) return;
