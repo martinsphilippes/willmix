@@ -13,7 +13,6 @@ import {
   getStore,
   MEASUREMENT_KINDS,
   PHOTO_KINDS,
-  SCHEDULE_STATUSES,
   type ProductPhoto,
 } from "@/lib/db";
 import { cbmFromDimensions } from "@/lib/logistics/cbm";
@@ -80,17 +79,14 @@ import {
   formatMoney,
   linkClass,
   rowClass,
-  type Tone,
 } from "@/components/ui";
 import { CurrencySelect } from "@/components/currency-select";
 import { PhotoInput } from "@/components/photo-input";
 import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import {
   addProductMeasurementAction,
-  savePurchaseScheduleAction,
   saveProductPriceTiersAction,
   setPrimaryPhotoAction,
-  setScheduleStatusAction,
   updateProductSheetAction,
 } from "../../actions/catalog";
 import { CertificationsSection } from "../_components/certifications-section";
@@ -109,7 +105,7 @@ import { SheetPhotoChecklist } from "../_components/sheet-photo-checklist";
 import { MissingFields } from "@/components/missing-fields";
 import { missingFieldsView } from "@/components/missing-fields-view";
 import { productSuppliersView } from "@/lib/services/product-suppliers";
-import type { SupplierOption } from "@/components/supplier-picker";
+import { unifiedProductNotes } from "@/lib/sheet-registration";
 import { MoneyInput } from "@/components/money-input";
 import { CartonSizeWarning, InnerQtyHints } from "@/components/carton-hints";
 import { cartonSizeTexts, innerQtyTexts } from "@/components/carton-texts";
@@ -120,12 +116,6 @@ const sourceTone = {
   sourcing: "brand",
   import: "info",
 } as const;
-const scheduleTone: Record<string, Tone> = {
-  planned: "neutral",
-  confirmed: "info",
-  ordered: "success",
-  cancelled: "danger",
-};
 
 function NumberInput({
   integer = false,
@@ -193,18 +183,13 @@ export default async function ProductSheetPage({
   } = sheet;
   const t = await getT();
   const store = getStore();
-  const [lines, suppliers, customers, users] = await Promise.all([
+  const [lines, suppliers, users] = await Promise.all([
     store.list("product_lines", { orderBy: "name" }),
     store.list("parties", { filter: { type: "supplier" }, orderBy: "name" }),
-    store.list("parties", { filter: { type: "customer" }, orderBy: "name" }),
     store.list("users"),
   ]);
   const userName = (uid: string | null) =>
     uid ? (users.find((u) => u.id === uid)?.name ?? "—") : "—";
-  const partyName = (pid: string | null) =>
-    pid
-      ? ([...suppliers, ...customers].find((p) => p.id === pid)?.name ?? "—")
-      : "—";
   const cbmComputed = cbmFromDimensions(
     product.boxLengthCm,
     product.boxWidthCm,
@@ -217,8 +202,6 @@ export default async function ProductSheetPage({
       .filter((p) => p.kind === kind)
       .sort((a, b) => (a.takenAt ?? "").localeCompare(b.takenAt ?? "")),
   })).filter((g) => g.items.length > 0);
-  const nextSequence =
-    schedules.reduce((max, s) => Math.max(max, s.sequence), 0) + 1;
 
   /* Segunda Onda: NCM, certificações/compliance e oportunidade de compra. */
   const [
@@ -264,21 +247,21 @@ export default async function ProductSheetPage({
   const variants = await listProductVariants(product.id, {
     includeInactive: true,
   });
-  const supplierOptions: SupplierOption[] = suppliers
-    .filter((s) => s.active || s.id === product.supplierId)
-    .map((s) => {
-      const row = supplierRows.find((r) => r.supplier.id === s.id);
-      return {
-        id: s.id,
-        name: s.name,
-        city: s.city ?? null,
-        storeNumber: s.storeNumber ?? null,
-        phone: s.phone ?? null,
-        code: row?.supplierSku ?? null,
-        linked: !!row,
-      };
-    });
   const masterMissing = await productSheetMissing(product.id, masterView);
+  // Campo do cadastro que também é da ficha mestre (src/lib/sheet-registration.ts):
+  // a caixa fica só aqui; o aviso "faltam" da ficha leva até ele.
+  const sheetField = (...keys: string[]) => ({ anchor: keys.join(" ") });
+  // Os que a ficha mestre exige para ficar completa: asterisco e vermelho
+  // enquanto estão vazios, como eram na ficha.
+  const sheetRequired = (...keys: string[]) => ({
+    anchor: keys.join(" "),
+    required: true,
+    requiredTitle: t("sheet.required"),
+    missing: keys.some((k) => (masterMissing as readonly string[]).includes(k)),
+    missingText: t("sheet.fillThis"),
+  });
+  // Observações: um texto só (cadastro, ficha mestre e e-commerce).
+  const notesView = unifiedProductNotes(product, masterSheet);
   const masterPhotoKinds = await catalogPhotoKinds(product.id);
   const masterContainer =
     settings.containerTypes.find(
@@ -521,6 +504,7 @@ export default async function ProductSheetPage({
               <FieldRow
                 label={t("common.supplier")}
                 size="lg"
+                {...sheetRequired("supplierName")}
                 hint={
                   supplier ? (
                     <TextLink href={`/app/parties/${supplier.id}`}>
@@ -542,7 +526,11 @@ export default async function ProductSheetPage({
                   ))}
                 </Select>
               </FieldRow>
-              <FieldRow label={t("catalog.supplierSku")} size="md">
+              <FieldRow
+                label={t("catalog.supplierSku")}
+                size="md"
+                {...sheetField("factoryItemCode")}
+              >
                 <Input
                   name="supplierSku"
                   maxLength={60}
@@ -550,14 +538,22 @@ export default async function ProductSheetPage({
                   dense
                 />
               </FieldRow>
-              <FieldRow label={t("catalog.moq")} size="sm">
+              <FieldRow
+                label={t("catalog.moq")}
+                size="sm"
+                {...sheetRequired("moq")}
+              >
                 <NumberInput
                   name="moq"
                   integer
                   defaultValue={product.moq ?? ""}
                 />
               </FieldRow>
-              <FieldRow label={t("common.price")} size="md">
+              <FieldRow
+                label={t("common.price")}
+                size="md"
+                {...sheetRequired("price")}
+              >
                 <MoneyInput
                   locale={t.intl}
                   name="price"
@@ -567,7 +563,11 @@ export default async function ProductSheetPage({
                   size="sm"
                 />
               </FieldRow>
-              <FieldRow label={t("common.currency")} size="sm">
+              <FieldRow
+                label={t("common.currency")}
+                size="sm"
+                {...sheetRequired("currency")}
+              >
                 <CurrencySelect
                   name="currency"
                   value={product.currency}
@@ -620,7 +620,11 @@ export default async function ProductSheetPage({
 
           <Card title={t("catalog.section.product")} dense>
             <div className="space-y-2">
-              <FieldRow label={t("catalog.material")} size="md">
+              <FieldRow
+                label={t("catalog.material")}
+                size="md"
+                {...sheetRequired("material")}
+              >
                 <Input
                   name="material"
                   maxLength={120}
@@ -669,7 +673,11 @@ export default async function ProductSheetPage({
                 />
               </FieldRow>
               {/* Cor depois do Pantone: as cores escolhidas já entram no texto. */}
-              <FieldRow label={t("catalog.color")} size="md">
+              <FieldRow
+                label={t("catalog.color")}
+                size="md"
+                {...sheetRequired("colorAssortment")}
+              >
                 <Input
                   name="color"
                   maxLength={60}
@@ -704,13 +712,21 @@ export default async function ProductSheetPage({
                   />
                 </div>
               </FieldRow>
-              <FieldRow label={t("catalog.netWeight")} size="xs">
+              <FieldRow
+                label={t("catalog.netWeight")}
+                size="xs"
+                {...sheetRequired("netWeightPcKg")}
+              >
                 <NumberInput
                   name="netWeightKg"
                   defaultValue={product.netWeightKg ?? ""}
                 />
               </FieldRow>
-              <FieldRow label={t("catalog.grossWeight")} size="xs">
+              <FieldRow
+                label={t("catalog.grossWeight")}
+                size="xs"
+                {...sheetRequired("grossWeightPcKg")}
+              >
                 <NumberInput
                   name="grossWeightKg"
                   defaultValue={product.grossWeightKg ?? ""}
@@ -723,7 +739,11 @@ export default async function ProductSheetPage({
           <div className="flex min-w-0 flex-col gap-4">
             <Card title={t("catalog.section.packaging")} dense>
               <div className="space-y-2">
-                <FieldRow label={t("catalog.masterBoxQty")} size="xs">
+                <FieldRow
+                  label={t("catalog.masterBoxQty")}
+                  size="xs"
+                  {...sheetRequired("masterCartonQty")}
+                >
                   <NumberInput
                     name="masterBoxQty"
                     integer
@@ -733,6 +753,7 @@ export default async function ProductSheetPage({
                 <FieldRow
                   label={t("catalog.innerBoxQty")}
                   size="xs"
+                  {...sheetField("innerQty")}
                   hint={
                     <InnerQtyHints
                       masterName="masterBoxQty"
@@ -753,6 +774,7 @@ export default async function ProductSheetPage({
                 <FieldRow
                   label={t("catalog.boxDimensions")}
                   size="full"
+                  {...sheetRequired("heightCm", "widthCm", "lengthCm")}
                   hint={
                     <CartonSizeWarning
                       sideNames={["boxLengthCm", "boxWidthCm", "boxHeightCm"]}
@@ -801,6 +823,7 @@ export default async function ProductSheetPage({
                 <FieldRow
                   label={t("catalog.cbmPerBox")}
                   size="xs"
+                  {...sheetRequired("cbmPerCarton")}
                   hint={
                     <>
                       <strong className="text-zinc-800">
@@ -824,13 +847,37 @@ export default async function ProductSheetPage({
               </div>
             </Card>
 
+            {/* Um texto só: as observações do cadastro, as da ficha mestre e a
+                descrição para e-commerce (a caixa diz se vai para lá). */}
             <Card title={t("catalog.section.notes")} className="flex-1" dense>
-              <Textarea
-                name="notes"
-                rows={3}
-                defaultValue={product.notes ?? ""}
-                dense
-              />
+              <div data-field-anchor="notes ecommerceDescription">
+                <Textarea
+                  name="notes"
+                  rows={4}
+                  maxLength={4000}
+                  defaultValue={notesView.text}
+                  dense
+                />
+                <label className="mt-2 flex items-start gap-2 text-sm text-zinc-800">
+                  <input type="hidden" name="notesToEcommerce" value="off" />
+                  <input
+                    type="checkbox"
+                    name="notesToEcommerce"
+                    value="on"
+                    defaultChecked={notesView.toEcommerce}
+                    className="mt-0.5 h-4 w-4 accent-brand-600"
+                    data-notes-ecommerce
+                  />
+                  <span>
+                    <span className="font-medium">
+                      {t("catalog.notes.ecommerce")}
+                    </span>
+                    <span className="block text-xs text-zinc-500">
+                      {t("catalog.notes.ecommerceHint")}
+                    </span>
+                  </span>
+                </label>
+              </div>
             </Card>
           </div>
         </div>
@@ -972,7 +1019,11 @@ export default async function ProductSheetPage({
             master
             missing={masterMissing}
             photosHref="#photos"
-            supplierOptions={supplierOptions}
+            // Caixas repetidas ficam só no cadastro, acima.
+            omitRegistration
+            registrationSupplierName={
+              suppliers.find((s) => s.id === product.supplierId)?.name ?? null
+            }
             supplierId={product.supplierId}
             ncmSuggestions={ncmChipsView(
               t,
@@ -1166,217 +1217,9 @@ export default async function ProductSheetPage({
         </Card>
       </div>
 
-      {/* ---- Programação de compra ---- */}
-      <Card title={t("catalog.schedules")} className="mt-4">
-        <div id="schedules" />
-        {schedules.length === 0 ? (
-          <Empty>{t("catalog.schedules.empty")}</Empty>
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <Th>{t("catalog.schedules.sequence")}</Th>
-                <Th className="text-right">{t("common.quantity")}</Th>
-                <Th>{t("catalog.schedules.period")}</Th>
-                <Th>{t("common.supplier")}</Th>
-                <Th>{t("common.customer")}</Th>
-                <Th className="text-right">{t("common.price")}</Th>
-                <Th>{t("common.status")}</Th>
-                <Th>{t("common.note")}</Th>
-                <Th>{t("common.actions")}</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {schedules.map((s) => (
-                <tr key={s.id} className={rowClass}>
-                  <Td className="font-medium tabular-nums">#{s.sequence}</Td>
-                  <Td className="whitespace-nowrap text-right tabular-nums">
-                    {s.quantity} {s.unit}
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    {[
-                      s.periodLabel,
-                      s.scheduledFor ? formatDate(s.scheduledFor, t) : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || "—"}
-                  </Td>
-                  <Td>{partyName(s.supplierId)}</Td>
-                  <Td>{partyName(s.customerId)}</Td>
-                  <Td className="whitespace-nowrap text-right tabular-nums">
-                    {s.price !== null
-                      ? formatMoney(s.price, s.currency, t)
-                      : "—"}
-                  </Td>
-                  <Td>
-                    <Badge tone={scheduleTone[scheduleStatus(s)] ?? "neutral"}>
-                      {t(
-                        `catalog.scheduleStatus.${scheduleStatus(s)}` as DictionaryKey,
-                      )}
-                    </Badge>
-                  </Td>
-                  <Td className="max-w-[14rem] text-xs text-zinc-600">
-                    {s.notes ?? "—"}
-                  </Td>
-                  <Td>
-                    <div className="flex min-w-[14rem] flex-col gap-2">
-                      {s.orderId ? (
-                        <TextLink href={`/app/orders/${s.orderId}`}>
-                          {t("catalog.schedules.order")}
-                        </TextLink>
-                      ) : s.requestId ? (
-                        <TextLink href={`/app/requests/${s.requestId}`}>
-                          {t("catalog.schedules.request")}
-                        </TextLink>
-                      ) : s.status !== "cancelled" ? (
-                        <LinkButton
-                          href={`/app/requests/new?productId=${product.id}&quantity=${s.quantity}&scheduleId=${s.id}${s.customerId ? `&customerId=${s.customerId}` : ""}`}
-                          variant="primary"
-                          className="w-fit px-3 py-1.5 text-xs"
-                        >
-                          {t("catalog.schedules.createRequest")}
-                        </LinkButton>
-                      ) : null}
-                      {!s.orderId ? (
-                        <form
-                          action={setScheduleStatusAction}
-                          className="flex items-center gap-1.5"
-                        >
-                          <input
-                            type="hidden"
-                            name="productId"
-                            value={product.id}
-                          />
-                          <input type="hidden" name="scheduleId" value={s.id} />
-                          <Select
-                            name="status"
-                            defaultValue={s.status}
-                            aria-label={t("catalog.schedules.changeStatus")}
-                            className="py-1.5 text-xs"
-                          >
-                            {SCHEDULE_STATUSES.map((st) => (
-                              <option key={st} value={st}>
-                                {t(
-                                  `catalog.scheduleStatus.${st}` as DictionaryKey,
-                                )}
-                              </option>
-                            ))}
-                          </Select>
-                          <SubmitButton
-                            variant="secondary"
-                            className="shrink-0 px-2.5 py-1.5 text-xs"
-                          >
-                            {t("common.save")}
-                          </SubmitButton>
-                        </form>
-                      ) : null}
-                    </div>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-        <form
-          action={savePurchaseScheduleAction}
-          className="@container mt-3 space-y-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3"
-        >
-          <input type="hidden" name="productId" value={product.id} />
-          <h3 className="text-sm font-semibold text-zinc-900">
-            {t("catalog.schedules.new")}
-          </h3>
-          {/* Campos curtos em colunas estreitas: duas linhas na tela larga. */}
-          <div className="grid grid-cols-2 gap-2 @xl:grid-cols-4 @4xl:grid-cols-6">
-            <Field label={t("catalog.schedules.sequence")}>
-              <NumberInput
-                name="sequence"
-                integer
-                defaultValue={nextSequence}
-              />
-            </Field>
-            <Field label={t("common.quantity")}>
-              <NumberInput name="quantity" required min={0.01} />
-            </Field>
-            <Field label={t("requests.unit")}>
-              <Input name="unit" defaultValue="un" dense />
-            </Field>
-            <Field label={t("catalog.schedules.scheduledFor")}>
-              <Input name="scheduledFor" type="date" dense />
-            </Field>
-            <Field label={t("catalog.schedules.periodLabel")}>
-              <Input name="periodLabel" maxLength={60} dense />
-            </Field>
-            <Field label={t("common.status")}>
-              <Select name="status" defaultValue="planned" dense>
-                {SCHEDULE_STATUSES.filter((s) => s !== "ordered").map((st) => (
-                  <option key={st} value={st}>
-                    {t(`catalog.scheduleStatus.${st}` as DictionaryKey)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label={t("common.price")}>
-              <MoneyInput
-                locale={t.intl}
-                size="sm"
-                name="price"
-                watchField="currency"
-                defaultAmount={product.price ?? null}
-                decimals={4}
-              />
-            </Field>
-            <Field label={t("common.currency")}>
-              <CurrencySelect
-                name="currency"
-                value={product.currency}
-                t={t}
-                allowEmpty
-                dense
-              />
-            </Field>
-            <div className="col-span-2 @xl:col-span-1">
-              <Field label={t("common.supplier")}>
-                <Select
-                  name="supplierId"
-                  defaultValue={product.supplierId ?? ""}
-                  dense
-                >
-                  <option value="">{t("catalog.noSupplier")}</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <div className="col-span-2 @xl:col-span-1">
-              <Field
-                label={t("common.customer")}
-                hint={t("catalog.schedules.customerHint")}
-              >
-                <Select name="customerId" defaultValue="" dense>
-                  <option value="">—</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <div className="col-span-2">
-              <Field label={t("common.note")}>
-                <Input name="notes" dense />
-              </Field>
-            </div>
-          </div>
-          <SubmitButton variant="secondary" className="w-full sm:w-auto">
-            + {t("catalog.schedules.new")}
-          </SubmitButton>
-        </form>
-      </Card>
-
+      {/* A programação de compra saiu do cadastro (dono, 11/11/2026): é da
+          operação de um produto já comprado, não do cadastro. As programações
+          gravadas continuam no banco. */}
       {/* ---- Oportunidade de compra (faixas + container); preço FOB é interno ---- */}
       <Card title={t("catalog.opp.title")} className="mt-4">
         <div id="opportunity" className="scroll-mt-4" />

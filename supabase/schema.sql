@@ -117,6 +117,7 @@ alter table public."products" add column if not exists "boxWidthCm" double preci
 alter table public."products" add column if not exists "boxHeightCm" double precision;
 alter table public."products" add column if not exists "cbm" double precision;
 alter table public."products" add column if not exists "notes" text;
+alter table public."products" add column if not exists "notesToEcommerce" boolean;
 alter table public."products" add column if not exists "source" text;
 alter table public."products" add column if not exists "negotiatedAt" timestamptz;
 alter table public."products" add column if not exists "sourcingItemId" text;

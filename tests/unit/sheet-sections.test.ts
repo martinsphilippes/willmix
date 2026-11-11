@@ -67,6 +67,44 @@ describe("ficha em blocos", () => {
     expect(by.photos.optional).toBe(false);
   });
 
+  it("tela do produto: campos do cadastro não contam nos blocos e bloco vazio some", () => {
+    const exclude = [
+      "supplierName",
+      "currency",
+      "price",
+      "moq",
+      "ecommerceDescription",
+      "notes",
+    ];
+    const { sections } = sheetSectionsView(
+      t,
+      ["supplierName", "price", "moq", "incoterm"],
+      { master: true, photosHref: "#photos", exclude },
+    );
+    const by = Object.fromEntries(sections.map((s) => [s.key, s]));
+    // O bloco E-commerce ficou sem campo nenhum: não aparece.
+    expect(sections.map((s) => s.key)).not.toContain("ecommerce");
+    // Fornecedor sem o nome não tem mais campo obrigatório.
+    expect(by.supplier.missing).toEqual([]);
+    expect(by.supplier.optional).toBe(true);
+    // Preço e condições: só o FOB/EXW é da ficha.
+    expect(by.price.missing.map((m) => m.key)).toEqual(["incoterm"]);
+    expect(by.price.optional).toBe(false);
+    // O bloco aberto de início é o primeiro com pendência DA FICHA.
+    expect(
+      initialSheetSection(["supplierName", "price", "incoterm"], {
+        photosHref: "#photos",
+        exclude,
+      }),
+    ).toBe("price");
+    expect(
+      initialSheetSection(["supplierName", "price"], {
+        photosHref: "#photos",
+        exclude,
+      }),
+    ).toBe("supplier");
+  });
+
   it("fornecedor: sem Despachante nem E-commerce na tabela de blocos", () => {
     const { sections } = sheetSectionsView(t, [], {
       omit: ["customs", "ecommerce"],

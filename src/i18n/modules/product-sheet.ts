@@ -5,7 +5,7 @@
 export const pt = {
   "productSheet.title": "Ficha de compra do produto (mestre)",
   "productSheet.hint":
-    "Pedidos e cotações deste produto já nascem com os dados do produto desta ficha (caixa, medidas, pesos, embalagem, cor, material, NCM) e com as fotos do cadastro; fornecedor, preço, MOQ e condições ficam só aqui, como referência da Wellmix. Preço, moeda, MOQ, caixa, medidas, pesos, cor e material são o mesmo dado dos campos acima: salvar aqui atualiza lá, e vice-versa.",
+    "Pedidos e cotações deste produto já nascem com os dados dele (caixa, medidas, pesos, embalagem, cor, material, NCM) e com as fotos do cadastro. Fornecedor, preço, moeda, MOQ, caixa, medidas, pesos, cor, material e observações são preenchidos só no cadastro, acima. Aqui fica o que só existe na ficha: local de saída, loja e telefone do fornecedor, FOB/EXW, embalagem, capacidade, energia, container e impostos.",
   "productSheet.complete": "Ficha mestre completa",
   "productSheet.partial": "Ficha mestre: faltam {n} item(ns)",
   "productSheet.none": "Sem ficha mestre",
@@ -31,12 +31,17 @@ export const pt = {
   "productSheet.badge.none": "—",
   "productSheet.error.no_product":
     "Esta ficha não está ligada a um produto do catálogo.",
+  "productSheet.supplierFromRegistration":
+    "Fornecedor: {name}. Escolhido no cadastro, acima.",
+  "productSheet.supplierMissing":
+    "Nenhum fornecedor escolhido no cadastro, acima.",
+  "productSheet.supplierChange": "Ir para o cadastro",
 };
 
 export const en: Record<keyof typeof pt, string> = {
   "productSheet.title": "Product purchase sheet (master)",
   "productSheet.hint":
-    "Orders and quotes for this product start with the product data of this sheet (carton, dimensions, weights, packaging, color, material, NCM) and with the catalog photos; supplier, price, MOQ and terms stay here as Wellmix's reference. Price, currency, MOQ, carton, dimensions, weights, color and material are the same data as the fields above: saving here updates them, and vice versa.",
+    "Orders and quotes for this product start with its data (carton, dimensions, weights, packaging, color, material, NCM) and with the catalog photos. Supplier, price, currency, MOQ, carton, dimensions, weights, color, material and notes are filled only in the registration above. This sheet keeps what exists only here: place of departure, supplier store and phone, FOB/EXW, packaging, capacity, power, container and taxes.",
   "productSheet.complete": "Master sheet complete",
   "productSheet.partial": "Master sheet: {n} item(s) missing",
   "productSheet.none": "No master sheet",
@@ -62,12 +67,17 @@ export const en: Record<keyof typeof pt, string> = {
   "productSheet.badge.none": "—",
   "productSheet.error.no_product":
     "This sheet is not linked to a catalog product.",
+  "productSheet.supplierFromRegistration":
+    "Supplier: {name}. Chosen in the registration above.",
+  "productSheet.supplierMissing":
+    "No supplier chosen in the registration above.",
+  "productSheet.supplierChange": "Go to the registration",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
   "productSheet.title": "产品采购单（主档）",
   "productSheet.hint":
-    "该产品的订单和报价将以此采购单的产品数据（外箱、尺寸、重量、包装、颜色、材质、NCM）和产品照片预填；供应商、价格、起订量和条件仅保留在此，作为 Wellmix 的参考。价格、币种、起订量、外箱、尺寸、重量、颜色和材质与上方字段是同一数据：在此保存会同步上方，反之亦然。",
+    "该产品的订单和报价会带上它的数据（外箱、尺寸、重量、包装、颜色、材质、NCM）以及产品照片。供应商、价格、币种、起订量、外箱、尺寸、重量、颜色、材质和备注只在上方的产品资料中填写。此表只保留这里独有的内容：发货地、供应商店铺和电话、FOB/EXW、包装、容量、供电、集装箱和税费。",
   "productSheet.complete": "主档采购单已完整",
   "productSheet.partial": "主档采购单：缺 {n} 项",
   "productSheet.none": "尚无主档采购单",
@@ -92,4 +102,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "productSheet.badge.partial": "部分",
   "productSheet.badge.none": "—",
   "productSheet.error.no_product": "此采购单未关联产品库中的产品。",
+  "productSheet.supplierFromRegistration":
+    "供应商：{name}。在上方的产品资料中选择。",
+  "productSheet.supplierMissing": "上方的产品资料中尚未选择供应商。",
+  "productSheet.supplierChange": "前往产品资料",
 };
