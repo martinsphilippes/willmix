@@ -1147,7 +1147,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 7. **Preço ao cliente**: **Margem geral (%)**, **Frete marítimo estimado por CBM**, **Moeda do frete marítimo**, **Câmbio do dia** (**Buscar cotações**) e as margens por linha e por cliente. **Tributos da importação**: **PIS-importação (%)**, **COFINS-importação (%)**, **ICMS da importação (%)** e **Seguro internacional (% do FOB)**.
 8. Clique em **Salvar**. Deve aparecer "Configurações salvas."
 
-### O que cada chave muda (resumo para a descrição do vídeo)
+**Tabela de apoio: o que cada chave muda (para a descrição do vídeo)**
 
 | Campo na tela                                  | O que muda                                                                                                   | Padrão |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------ |
@@ -1301,7 +1301,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 6. Clique em **Salvar**. As telas valem na próxima tela que a pessoa abrir. **Padrão das funções** apaga a lista personalizada.
 7. Em **Linhas de produto e divisão**, escolha a divisão de cada linha, clique em **Salvar** e depois em **Distribuir agora** para dar dono ao que está aberto e sem responsável.
 
-### Quem abre o quê (matriz do padrão das funções, docs/ACCESS.md)
+**Tabela de apoio: quem abre o quê (padrão das funções, docs/ACCESS.md)**
 
 | Tela                                             | Comprador | Ger. produto | Planner | Cadastro | Dir. compras | Dir. executiva | Designer |
 | ------------------------------------------------ | :-------: | :----------: | :-----: | :------: | :----------: | :------------: | :------: |
