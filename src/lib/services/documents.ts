@@ -99,6 +99,8 @@ export interface UploadInput {
   conversationTopicId?: string | null;
   /** Arquivo de uma cotação (proposta de embalagem): acesso só do fornecedor dela. */
   quoteId?: string | null;
+  /** Arquivo da conversa de uma solicitação ao fornecedor: só a Wellmix e esse fornecedor. */
+  supplierRequestId?: string | null;
   type: DocumentType;
   visibility?: Visibility;
 }
@@ -247,6 +249,9 @@ async function createDocumentRow(
       ? { conversationTopicId: input.conversationTopicId }
       : {}),
     ...(input.quoteId ? { quoteId: input.quoteId } : {}),
+    ...(input.supplierRequestId
+      ? { supplierRequestId: input.supplierRequestId }
+      : {}),
     // Fotos de catálogo já nascem com a impressão digital (busca por foto).
     imageHash:
       bytes &&
@@ -298,6 +303,13 @@ export async function canAccessDocument(
     // de solicitação/pedido, só quem vê a solicitação/o pedido).
     const { canOpenTopic } = await import("./messages");
     return canOpenTopic(user, doc.conversationTopicId);
+  }
+  if (doc.supplierRequestId) {
+    // Arquivo da negociação de uma solicitação ao fornecedor: além da
+    // Wellmix, só o fornecedor dela.
+    const { canOpenRequestFile } =
+      await import("./supplier-request-negotiation");
+    return canOpenRequestFile(user, doc.supplierRequestId);
   }
   if (doc.quoteId) {
     // Arquivo de uma cotação (proposta de embalagem): além da Wellmix, só o

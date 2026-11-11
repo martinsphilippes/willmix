@@ -8,6 +8,10 @@ import { rateFor } from "@/lib/pricing";
 import { formatAmount, moneyValue, parseAmount } from "@/lib/workflow/money";
 import { CURRENCIES, isCurrency, parseCurrency } from "@/lib/currencies";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
+import {
+  SUPPLIER_REQUEST_SLA_MAX,
+  SUPPLIER_REQUEST_SLA_MIN,
+} from "@/lib/supplier-requests";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertRole, assertWellmix, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
@@ -1235,6 +1239,15 @@ export async function saveSettingsAction(form: FormData) {
         const n = Number(String(raw).trim().replace(",", "."));
         if (!(Number.isFinite(n) && n >= 0 && n <= 1_000_000_000))
           throw new Error("approval_threshold_invalid");
+        value = n;
+      } else if (key === "supplierRequestSlaMinutes") {
+        const n = Number(raw);
+        if (
+          !Number.isInteger(n) ||
+          n < SUPPLIER_REQUEST_SLA_MIN ||
+          n > SUPPLIER_REQUEST_SLA_MAX
+        )
+          throw new Error("supplier_request_sla_invalid");
         value = n;
       } else if (key === "quoteSlaBusinessDays") {
         const days = Number(raw);

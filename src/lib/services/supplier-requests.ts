@@ -15,6 +15,7 @@ import {
 import {
   itemSearchText,
   matchesItemSearch,
+  pendingProposal,
   searchWords,
   sheetQuantity,
   supplierCanAnswer,
@@ -418,6 +419,9 @@ export async function answerSupplierRequest(
     throw new SupplierRequestError("not_found");
   if (!supplierCanAnswer(request.status))
     throw new SupplierRequestError("supplier_request_closed");
+  // Com contraproposta esperando: aceitar, outra proposta ou recusar.
+  if (pendingProposal(request.negotiation))
+    throw new SupplierRequestError("supplier_request_proposal_pending");
   if (input.canDo === "yes" && input.price === null)
     throw new SupplierRequestError("supplier_request_price_required");
   const updated = await store.update("supplier_requests", request.id, {
@@ -479,9 +483,11 @@ export async function decideSupplierRequest(
   const request = await withSchema(() => store.get("supplier_requests", id));
   if (!request) throw new SupplierRequestError("not_found");
   if (
-    !supplierRequestDecisions(request.status, request.supplierCanDo).includes(
-      decision,
-    )
+    !supplierRequestDecisions(
+      request.status,
+      request.supplierCanDo,
+      !!pendingProposal(request.negotiation),
+    ).includes(decision)
   )
     throw new SupplierRequestError("supplier_request_decision_invalid");
   const updated = await store.update("supplier_requests", request.id, {

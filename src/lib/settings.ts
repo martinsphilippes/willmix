@@ -64,6 +64,13 @@ export const DEFAULT_SETTINGS = {
   /** SLA de resposta da cotação: dias úteis para a Wellmix responder uma solicitação. */
   quoteSlaBusinessDays: 5,
   /**
+   * SLA da negociação com o fornecedor, em minutos: da abertura da
+   * solicitação ao fornecedor até a decisão da Wellmix. Estourado, a
+   * solicitação fica "Atrasada" e a Wellmix e o fornecedor são avisados
+   * (docs/SUPPLIER_REQUESTS.md, "SLA da negociação").
+   */
+  supplierRequestSlaMinutes: 30,
+  /**
    * Prazos das etapas da solicitação, em dias úteis (src/lib/request-stages.ts):
    * abrir a RFQ, os fornecedores responderem, comparar, cada nível da
    * aprovação do pré-custo e o cliente aprovar a proposta.
