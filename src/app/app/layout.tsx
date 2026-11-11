@@ -4,8 +4,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getStore, type User } from "@/lib/db";
 import { getLocale, getT } from "@/i18n/server";
-import { LOCALE_NAMES, type Translate } from "@/i18n";
-import { LOCALES, type Locale } from "@/lib/db/schema";
+import type { Translate } from "@/i18n";
 import { flattenNav, isNavGroup, navFor, type NavLink } from "@/lib/nav";
 import { isWellmix } from "@/lib/auth/permissions";
 import {
@@ -23,7 +22,7 @@ import { PasswordChangeCard } from "@/components/password-change-card";
 import { DemoSwitcher } from "@/components/demo-switcher";
 import { DEMO_PASSWORD, DEMO_USERS, existingDemoAccounts } from "@/lib/seed";
 import { demoAccountsEnabled } from "@/lib/demo";
-import { setLocaleAction } from "./actions";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { dataMode } from "@/lib/env";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
@@ -36,51 +35,6 @@ import { SelectOnFocus } from "@/components/select-on-focus";
 import { SubmitTracker } from "@/components/field-errors";
 import { MissingLive } from "@/components/missing-live";
 import { BackButton } from "@/components/back-button";
-
-/** PT / EN / ZH: um toque troca o idioma (Server Action). `dark` para o cabeçalho, claro no painel do celular. */
-function LocaleSwitcher({
-  locale,
-  dark,
-  label,
-}: {
-  locale: Locale;
-  dark: boolean;
-  label: string;
-}) {
-  return (
-    <form
-      action={setLocaleAction}
-      aria-label={label}
-      className={`inline-flex rounded-lg p-0.5 ${dark ? "bg-black/15" : "bg-zinc-100"}`}
-    >
-      {LOCALES.map((l) => (
-        <button
-          key={l}
-          name="locale"
-          value={l}
-          type="submit"
-          aria-label={LOCALE_NAMES[l]}
-          aria-pressed={l === locale}
-          className={`rounded-md font-semibold transition ${
-            dark
-              ? `px-2 py-0.5 text-xs focus-visible:outline-white ${
-                  l === locale
-                    ? "bg-white text-brand-700 shadow-sm"
-                    : "text-white/80 hover:text-white"
-                }`
-              : `px-3 py-1.5 text-sm ${
-                  l === locale
-                    ? "bg-white text-brand-700 shadow-sm"
-                    : "text-zinc-600 hover:text-zinc-900"
-                }`
-          }`}
-        >
-          {l.toUpperCase()}
-        </button>
-      ))}
-    </form>
-  );
-}
 
 /** Sino com as notificações não lidas (link para a caixa de entrada). */
 function NotificationsBell({

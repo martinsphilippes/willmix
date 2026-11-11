@@ -88,3 +88,7 @@ Operadores já cadastrados em produção não têm função: ao entrar, veem só
 - **Senha provisória** (`users.mustChangePassword`, coluna opcional): enquanto a marca existir, o portal mostra **só a troca de senha** no lugar de qualquer tela (`src/app/app/layout.tsx`), e a marca some ao trocar. A senha provisória não pode ser mantida. Login sem a marca (todos os anteriores) entra normalmente.
 - **Login de administrador com senha provisória**: `scripts/appwrite-admin-login.ts` cria a conta no Appwrite e o cadastro com papel `admin` e a marca ligada. E-mail, nome e senha vêm de variáveis de ambiente (`ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD`); a senha não fica no repositório. Pelo GitHub, sem terminal: Actions → "Criar login de administrador" (`.github/workflows/appwrite-admin-login.yml`), informando e-mail, nome e a senha provisória. Só cria: se o e-mail já existe, para sem alterar nada. `createPortalLogin` aceita `mustChangePassword` para os logins criados pelo portal.
 - **Limite conhecido**: o bloqueio é da tela. As Server Actions e `/api` não recusam um login com senha provisória; ele só não tem como chegar a elas pelo portal antes de trocar.
+
+## Idioma na tela de entrada (pedido do dono, 11/11/2026)
+
+A tela de entrada (`/login`) mostra o seletor de idioma com o ícone do globo: Português, English e 中文. Um toque troca na hora e fica guardado em cookie, então o portal já abre no idioma escolhido depois do login. É o mesmo componente do cabeçalho (`src/components/locale-switcher.tsx`, ação `setLocaleAction`).

@@ -11,7 +11,8 @@ import {
   seedDemo,
 } from "@/lib/seed";
 import { demoAccountsEnabled } from "@/lib/demo";
-import { getT } from "@/i18n/server";
+import { getLocale, getT } from "@/i18n/server";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -54,6 +55,15 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
       <section className="flex flex-col justify-center bg-white px-6 py-10 sm:px-10 lg:border-l lg:border-zinc-200 xl:px-14">
         <div className="mx-auto w-full max-w-md">
+          {/* Idioma já na entrada (pedido do dono): PT, EN ou 中文. */}
+          <div className="mb-6 flex justify-end" data-login-locale>
+            <LocaleSwitcher
+              locale={await getLocale()}
+              dark={false}
+              full
+              label={t("common.language")}
+            />
+          </div>
           <WellmixLogo className="mb-6 hidden h-9 lg:block" />
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900">
             {t("login.title")}
