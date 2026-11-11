@@ -85,6 +85,34 @@ export const pt = {
   "team.distributeHint":
     "Dá um analista às solicitações e pedidos em aberto que estão sem responsável, pela mesma regra (divisão da linha, quem tem menos pendências).",
   "team.distributed": "{n} solicitação(ões)/pedido(s) distribuído(s).",
+  "team.new.title": "Novo login da equipe",
+  "team.new.hint":
+    "Crie o login de quem vai entrar no portal pela Wellmix e já diga o lugar dele na equipe. Depois de criar, abre Editar acessos da pessoa, para marcar as telas uma a uma se precisar.",
+  "team.new.name": "Nome",
+  "team.new.login": "E-mail ou nome de usuário",
+  "team.new.login.hint":
+    "É com ele que a pessoa entra. E-mail ou um nome de usuário (ex.: maria.silva).",
+  "team.new.password": "Senha",
+  "team.new.password.hint":
+    "Pelo menos {n} caracteres. Já vem uma sugestão; pode trocar.",
+  "team.new.role": "Tipo de acesso",
+  "team.new.role.operator": "Equipe (só as telas liberadas)",
+  "team.new.role.admin": "Administrador (todas as telas)",
+  "team.new.functions.hint":
+    "As funções decidem as telas que o login abre e o que ele faz nelas (aprovar, liberar, validar). Sem função, abre só o básico.",
+  "team.new.mustChange": "Pedir para trocar a senha no primeiro acesso",
+  "team.new.submit": "Criar login",
+  "team.new.created":
+    "Login criado: {login}. Passe para a pessoa o endereço do portal, o login e a senha. Confira abaixo as funções e as telas.",
+  "team.error.user_login_invalid":
+    "Login inválido. Use um e-mail ou de 3 a 40 letras minúsculas, números, ponto ou hífen, sem espaços.",
+  "team.error.user_email_taken":
+    "Este login já existe no portal. Use outro e-mail ou nome de usuário.",
+  "team.error.user_password_short":
+    "A senha precisa ter pelo menos 8 caracteres.",
+  "team.error.invalid_input":
+    "Confira os campos: nome, login e senha são obrigatórios.",
+  "team.error.forbidden": "Só o administrador cria logins da equipe.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -170,6 +198,33 @@ export const en: Record<keyof typeof pt, string> = {
   "team.distributeHint":
     "Gives an analyst to open requests and orders without one, using the same rule (line's division, fewest open tasks).",
   "team.distributed": "{n} request(s)/order(s) distributed.",
+  "team.new.title": "New team login",
+  "team.new.hint":
+    "Create the login for someone who will use the portal as Wellmix and set their place in the team. After creating, the person's Edit access page opens, to tick screens one by one if needed.",
+  "team.new.name": "Name",
+  "team.new.login": "Email or username",
+  "team.new.login.hint":
+    "The person signs in with it. An email or a username (e.g. maria.silva).",
+  "team.new.password": "Password",
+  "team.new.password.hint":
+    "At least {n} characters. A suggestion is prefilled; you can change it.",
+  "team.new.role": "Access type",
+  "team.new.role.operator": "Team (only the released screens)",
+  "team.new.role.admin": "Administrator (all screens)",
+  "team.new.functions.hint":
+    "Functions decide which screens the login opens and what it does in them (approve, release, validate). With no function, only the basics open.",
+  "team.new.mustChange": "Ask to change the password on first sign-in",
+  "team.new.submit": "Create login",
+  "team.new.created":
+    "Login created: {login}. Give the person the portal address, the login and the password. Check the functions and screens below.",
+  "team.error.user_login_invalid":
+    "Invalid login. Use an email or 3 to 40 lowercase letters, numbers, dot or hyphen, no spaces.",
+  "team.error.user_email_taken":
+    "This login already exists in the portal. Use another email or username.",
+  "team.error.user_password_short": "The password needs at least 8 characters.",
+  "team.error.invalid_input":
+    "Check the fields: name, login and password are required.",
+  "team.error.forbidden": "Only the administrator creates team logins.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -253,4 +308,27 @@ export const zh: Record<keyof typeof pt, string> = {
   "team.distributeHint":
     "按同样规则（产品线事业部、待办最少）为没有负责人的未结需求和订单分配分析员。",
   "team.distributed": "已分配 {n} 个需求/订单。",
+  "team.new.title": "新建团队登录",
+  "team.new.hint":
+    "为以 Wellmix 身份使用门户的人创建登录，并设定其在团队中的位置。创建后会打开该人员的“编辑权限”页面，可按需逐个勾选页面。",
+  "team.new.name": "姓名",
+  "team.new.login": "邮箱或用户名",
+  "team.new.login.hint": "用它登录。可以是邮箱或用户名（例如 maria.silva）。",
+  "team.new.password": "密码",
+  "team.new.password.hint": "至少 {n} 个字符。已预填建议密码，可修改。",
+  "team.new.role": "访问类型",
+  "team.new.role.operator": "团队成员（仅已开放的页面）",
+  "team.new.role.admin": "管理员（全部页面）",
+  "team.new.functions.hint":
+    "职能决定该登录可打开的页面以及在其中的操作（审批、放行、验证）。没有职能时只能打开基础页面。",
+  "team.new.mustChange": "首次登录时要求修改密码",
+  "team.new.submit": "创建登录",
+  "team.new.created":
+    "登录已创建：{login}。请把门户地址、登录名和密码告知本人。请在下方核对职能和页面。",
+  "team.error.user_login_invalid":
+    "登录名无效。请使用邮箱，或 3 至 40 个小写字母、数字、点或连字符，不含空格。",
+  "team.error.user_email_taken": "该登录名已存在。请使用其他邮箱或用户名。",
+  "team.error.user_password_short": "密码至少需要 8 个字符。",
+  "team.error.invalid_input": "请检查字段：姓名、登录名和密码为必填。",
+  "team.error.forbidden": "只有管理员可以创建团队登录。",
 };

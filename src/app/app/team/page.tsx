@@ -9,13 +9,20 @@ import {
   screensFor,
 } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
-import { DIVISIONS } from "@/lib/db/schema";
+import { loginLabel } from "@/lib/auth/login-id";
+import { DIVISIONS, JOB_LEVELS, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
+import {
+  PORTAL_MIN_PASSWORD,
+  suggestPassword,
+} from "@/lib/services/portal-access";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
   Badge,
   Card,
+  Field,
+  Input,
   PageHeader,
   Select,
   Table,
@@ -27,6 +34,7 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { wellmixTeam } from "@/lib/services/team";
 import {
+  createTeamLoginAction,
   distributeUnassignedAction,
   setLineDivisionAction,
 } from "../actions/team";
@@ -34,8 +42,9 @@ import {
 /*
  * Equipe e divisões (só o administrador): a lista da equipe em linhas (cargo,
  * divisão, chefe, funções e quantas telas cada login abre) com "Editar
- * acessos" para a página da pessoa (/app/team/[id]); e a divisão de cada
- * linha de produto. A solicitação nova cai sozinha no analista da divisão da
+ * acessos" para a página da pessoa (/app/team/[id]); o formulário "Novo
+ * login da equipe" (nome, login, senha e o lugar na hierarquia); e a divisão
+ * de cada linha de produto. A solicitação nova cai sozinha no analista da divisão da
  * linha (o de menos pendências); é o que monta o Painel de SLA.
  */
 
@@ -157,7 +166,7 @@ export default async function TeamPage({
                     </TextLink>
                     <div className="text-xs text-zinc-500">
                       {t(`role.${member.role}` as DictionaryKey)} ·{" "}
-                      {member.email}
+                      {loginLabel(member.email)}
                     </div>
                   </Td>
                   <Td className="whitespace-nowrap">
@@ -215,6 +224,124 @@ export default async function TeamPage({
             </tbody>
           </Table>
         </Card>
+
+        {/* Novo login da equipe: só o administrador cria. */}
+        {isAdmin(user) ? (
+          <Card title={t("team.new.title")}>
+            <span id="new-login" className="block scroll-mt-24" />
+            <p className="mb-3 text-sm text-zinc-600">{t("team.new.hint")}</p>
+            <form
+              action={createTeamLoginAction}
+              className="space-y-4"
+              data-team-new-login
+            >
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Field label={t("team.new.name")}>
+                  <Input name="name" required minLength={2} maxLength={120} />
+                </Field>
+                <Field
+                  label={t("team.new.login")}
+                  hint={t("team.new.login.hint")}
+                >
+                  <Input
+                    name="login"
+                    required
+                    minLength={3}
+                    maxLength={254}
+                    autoComplete="off"
+                    autoCapitalize="none"
+                  />
+                </Field>
+                <Field
+                  label={t("team.new.password")}
+                  hint={t("team.new.password.hint", {
+                    n: PORTAL_MIN_PASSWORD,
+                  })}
+                >
+                  <Input
+                    name="password"
+                    required
+                    minLength={PORTAL_MIN_PASSWORD}
+                    maxLength={128}
+                    autoComplete="off"
+                    defaultValue={suggestPassword()}
+                  />
+                </Field>
+                <Field label={t("team.new.role")}>
+                  <Select name="role" defaultValue="operator">
+                    <option value="operator">
+                      {t("team.new.role.operator")}
+                    </option>
+                    <option value="admin">{t("team.new.role.admin")}</option>
+                  </Select>
+                </Field>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label={t("team.col.level")}>
+                  <Select name="jobLevel" defaultValue="">
+                    <option value="">{t("team.none")}</option>
+                    {JOB_LEVELS.map((l) => (
+                      <option key={l} value={l}>
+                        {t(`level.${l}` as DictionaryKey)}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label={t("team.col.division")}>
+                  <Select name="division" defaultValue="">
+                    {divisionOptions}
+                  </Select>
+                </Field>
+                <Field label={t("team.col.manager")}>
+                  <Select name="managerUserId" defaultValue="">
+                    <option value="">{t("team.none")}</option>
+                    {team.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <fieldset>
+                <legend className="mb-1.5 text-sm font-medium text-zinc-800">
+                  {t("team.col.functions")}
+                </legend>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {WELLMIX_FUNCTIONS.map((f) => (
+                    <label
+                      key={f}
+                      className="inline-flex items-start gap-2 text-sm text-zinc-800"
+                    >
+                      <input
+                        type="checkbox"
+                        name="functions"
+                        value={f}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
+                      />
+                      <span>{t(`function.${f}` as DictionaryKey)}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-zinc-500">
+                  {t("team.new.functions.hint")}
+                </p>
+              </fieldset>
+              <label className="inline-flex items-start gap-2 text-sm text-zinc-800">
+                <input
+                  type="checkbox"
+                  name="mustChange"
+                  defaultChecked
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
+                />
+                <span>{t("team.new.mustChange")}</span>
+              </label>
+              <div>
+                <SubmitButton>{t("team.new.submit")}</SubmitButton>
+              </div>
+            </form>
+          </Card>
+        ) : null}
 
         <Card title={t("team.lines")}>
           <div id="lines" className="scroll-mt-4" />
