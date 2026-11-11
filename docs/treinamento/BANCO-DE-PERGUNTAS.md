@@ -84,7 +84,7 @@ Gerado a partir de `modulos/`. **74 módulos, 234 capítulos (mini vídeos), 594
 1. **Chinês (zh) por falante nativo**: FOR-01 a FOR-10 e MAR-01 e MAR-02. As traduções foram escritas a partir das legendas dos roteiros e dos dicionários do portal; algumas mensagens do sistema (por exemplo, erros do FOR-07) só existem em pt nos roteiros e foram traduzidas. Confira com o texto real do portal em zh.
 2. **Alternativas erradas**: foram escritas para parecer plausíveis e contradizer o roteiro. Algumas afirmam regras que o sistema não tem (por exemplo "a senha antiga deve ter expirado"). Estão marcadas como erradas e explicadas; só vale conferir se alguma pode ser confundida com uma regra real que o dono queira adotar.
 3. **Uma amostra de 10 perguntas por série**, lendo com o vídeo roteirizado ao lado: a cena indicada em `cena` realmente mostra a resposta?
-4. **Primeira rodada com pessoas reais**: peça a 2 ou 3 usuários de cada papel que façam a prova. Pergunta que quase todos erram costuma estar mal escrita; pergunta que todos acertam sem ver o vídeo é fácil demais (README, seção 8).
+4. **Primeira rodada com pessoas reais**: peça a 2 ou 3 usuários de cada papel que façam a prova. Pergunta que quase todos erram costuma estar mal escrita; pergunta que todos acertam sem ver o vídeo é fácil demais (README, seção 9).
 5. **Tempos dos capítulos**: vêm dos tempos-alvo do roteiro. Depois da gravação e da edição, ajuste `inicio` e `fim` ao vídeo final (a soma dos capítulos tem de fechar com a duração).
 
 ## O que ficou de fora de propósito
