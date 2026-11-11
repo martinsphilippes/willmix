@@ -19,6 +19,8 @@ type IntroInfo = { played: boolean; skipped: boolean; reduced: boolean };
 /** API global de public/intro/wellmix-intro.js (só o que o portal usa). */
 type IntroApi = {
   play(opts: {
+    /** false: a regra de repetição é do script inline (src/lib/intro.ts), não do sessionStorage da peça. */
+    once?: boolean;
     skipLabel?: string;
     ariaLabel?: string;
     labels?: { brazil?: string; china?: string; caption?: string };
@@ -72,6 +74,7 @@ export function IntroPlayer({ labels }: { labels: IntroLabels }) {
       }
       try {
         void api.play({
+          once: false,
           skipLabel: labels.skip,
           ariaLabel: labels.title,
           labels: {
