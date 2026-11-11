@@ -303,7 +303,11 @@ export async function updateCardInfo(
   const store = getStore();
   const card = await store.get("manufacturer_cards", cardId);
   if (!card) throw new ManufacturerCardError("not_found");
-  if (!isWellmix(user) && user.partyId !== card.supplierId)
+  // Só a Wellmix e o login de fornecedor da própria empresa do cartão.
+  if (
+    !isWellmix(user) &&
+    (user.role !== "supplier" || user.partyId !== card.supplierId)
+  )
     throw new ManufacturerCardError("forbidden");
   const data = editSchema.parse(input);
   const patch = {

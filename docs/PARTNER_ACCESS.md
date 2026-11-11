@@ -22,11 +22,13 @@ Pedido do dono (11/11/2026): administrar, em Cadastros → Outros parceiros, que
 
 ## Regras
 
-1. **Bloqueio por padrão**: o login abre só as telas do perfil; o resto recusa na página, no endereço direto e nas ações do servidor (`requireScreen`, `assertScreen`, as mesmas guardas de sempre).
+1. **Bloqueio por padrão**: o login abre só as telas do perfil; o resto recusa na página, no endereço direto e nas ações do servidor (`requireScreen`, `assertScreen`, as mesmas guardas de sempre). Pendências, Mensagens e Notificações passaram a conferir a tela (antes abriam para qualquer login, mesmo tirada do perfil).
 2. **Abrir e mostrar no menu são separados**: a tela fora do menu continua abrindo por link.
 3. **O início fica sempre aberto** (sem ele o login não entra em lugar nenhum).
 4. **Telas internas da Wellmix** (Financeiro, Cadastros, Configurações…) aparecem no catálogo como internas e **não podem ser liberadas** a um login externo: elas mostram dados de todos.
-5. **Tela de outra classe de login** (ex.: a vitrine do Cliente para uma Trading; Multas, do jurídico): aparece no catálogo como "De outra classe de login" e **só libera depois de adaptada** (`ADAPTED` em `src/lib/partner-access.ts`). Motivo: várias telas foram escritas contando com o papel de quem as abria e não filtram os dados para outro papel (Multas lista todas). Liberar sem revisar mostraria dados de outras empresas. Hoje a lista de telas adaptadas está vazia.
+5. **Tela de outra classe de login** (decisão do dono, 11/11/2026: tem de dar para liberar): qualquer tela de login externo pode ir para qualquer perfil. Antes de destravar, cada tela foi conferida aberta por outro papel: nenhuma mostra dados de outra empresa. O que acontece em cada uma:
+   - **Funcionam inteiras**, com os dados da empresa de quem abre: Início, Pendências, Notificações, Mensagens, Pedidos e **Multas** (a Wellmix e o jurídico veem todas; qualquer outro login vê só as multas da própria empresa; antes a tela listava todas, porque só o jurídico a abria).
+   - **Abrem sem dados** (ou voltam ao início) em outro perfil, até serem adaptadas: Vitrine, Solicitações, Histórico e Marketing (do cliente); Cotações e Conta corrente (do fornecedor); Embalagens (da agência); Fretes e Tarifário (da companhia marítima). O serviço de cada uma só entrega registros ao papel de origem. A Gestão de telas avisa na linha ("Feita para …: neste perfil abre sem dados").
 6. **Copiar**: leva o estado das telas escolhidas (abre ou não; no menu ou não). "Adicionar" só acrescenta; "Substituir" iguala cada tela à origem (pode tirar). A origem não muda; o destino fica editável. A prévia usa o mesmo cálculo da aplicação.
 7. **Dados**: liberar uma tela não muda o escopo. Cada login vê só os registros da própria empresa (`partyId`), como o Fornecedor.
 8. **Revogação**: a sessão lê o perfil a cada requisição (`externalAccessFor` em `getCurrentUser`); o que foi tirado deixa de abrir na operação seguinte.
@@ -53,5 +55,5 @@ Sem tabela nova: a configuração fica em `settings` (chave `partnerAccess`), um
 - **Ações por tela** para logins externos (consultar, anexar, aprovar…): hoje as ações de cada papel externo são as da tela, fixas no código. O catálogo de ações configuráveis existe só para a equipe.
 - **Escopo por registro configurável** (pedidos atribuídos, unidades) e **campos, documentos e seções protegidos** por perfil.
 - **Exceções por empresa e por usuário**, herança entre perfis, vigência e bloqueio explícito.
-- **Adaptar telas de outra classe de login**, uma a uma (item 5).
+- **Adaptar o conteúdo** das telas que abrem sem dados em outro perfil (item 5): decidir, tela a tela, que registros cada tipo de login vê.
 - Vínculo de um login com mais de uma empresa, delegação a gestores do parceiro e simulação somente leitura.

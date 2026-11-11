@@ -92,34 +92,51 @@ describe("regras puras", () => {
         menuHidden: [],
       }),
     ).toThrow("partner_access_internal_screen");
-    // Tela de outra classe de login (a vitrine do Cliente): no catálogo, mas
-    // só libera depois de adaptada. O próprio Cliente continua podendo.
-    expect(lib.isGrantableFor("explore", "role:customer")).toBe(true);
-    expect(lib.isGrantableFor("explore", "type:trading")).toBe(false);
-    expect(lib.isGrantableFor("penalties", "type:gp")).toBe(false);
-    expect(lib.isGrantableFor("quotes", "type:gp")).toBe(true);
-    expect(() =>
+    // Tela de outra classe de login (a vitrine do Cliente): pode ser liberada
+    // a qualquer perfil; fica marcada como "sem dados neste perfil" até ser
+    // adaptada. As que mostram os dados da própria empresa valem inteiras.
+    expect(lib.isLimitedFor("explore", "role:customer")).toBe(false);
+    expect(lib.isLimitedFor("explore", "type:trading")).toBe(true);
+    expect(lib.isLimitedFor("quotes", "role:customer")).toBe(true);
+    expect(lib.isLimitedFor("quotes", "type:gp")).toBe(false);
+    for (const own of ["orders", "penalties", "messages"] as const)
+      expect(lib.isLimitedFor(own, "type:gp")).toBe(false);
+    expect(lib.isLimitedFor("finance" as never, "type:gp")).toBe(false);
+    const granted = lib.resolveProfile(
       lib.setProfileScreens({}, "type:trading", {
-        screens: ["orders", "explore"],
+        screens: ["orders", "explore", "penalties"],
         menuHidden: [],
       }),
-    ).toThrow("partner_access_not_adapted");
-    expect(() =>
-      lib.copyScreens({}, "role:customer", "type:factory", ["explore"], "add"),
-    ).toThrow("partner_access_not_adapted");
-    // Um gravado antigo com tela não permitida não vale.
+      "type:trading",
+    );
+    expect(granted.screens).toEqual(
+      expect.arrayContaining(["explore", "penalties"]),
+    );
+    expect(granted.sources.explore).toBe("manual");
+    // Copiar a vitrine do Cliente para a Factory vale.
+    const copied = lib.copyScreens(
+      {},
+      "role:customer",
+      "type:factory",
+      ["explore"],
+      "add",
+    );
+    expect(lib.resolveProfile(copied, "type:factory").sources.explore).toBe(
+      "copy:role:customer",
+    );
+    // Um gravado antigo com tela interna não vale.
     expect(
       lib.resolveProfile(
         {
           "type:gp": {
-            screens: ["orders", "penalties"],
+            screens: ["orders", "finance"],
             menuHidden: [],
             sources: {},
           },
         },
         "type:gp",
       ).screens,
-    ).not.toContain("penalties");
+    ).not.toContain("finance");
   });
 
   it("conceder: o início fica sempre; tirar e devolver marca a tela como liberada à mão", () => {
@@ -256,12 +273,6 @@ describe("serviço e sessão", () => {
   });
 
   it("revogar vale na leitura seguinte, só para o perfil mexido; tela fora do menu continua abrindo", async () => {
-    await expect(
-      svc.saveProfileScreens(admin, "type:trading", {
-        screens: ["orders", "explore"],
-        menuHidden: [],
-      }),
-    ).rejects.toThrow("partner_access_not_adapted");
     const changes = await svc.saveProfileScreens(admin, "type:trading", {
       screens: ["tasks", "notifications", "messages", "orders"],
       menuHidden: ["orders"],
@@ -332,16 +343,18 @@ describe("serviço e sessão", () => {
     const fornecedor = await screensNow(supplier);
     expect(fornecedor.open).toContain("orders");
     expect(fornecedor.links).not.toContain("/app/orders");
-    // Tela de outra classe de login: recusa, e nada muda.
-    await expect(
-      svc.copyProfileScreens(
-        admin,
-        "role:customer",
-        "type:trading",
-        ["explore"],
-        "add",
-      ),
-    ).rejects.toThrow("partner_access_not_adapted");
+    // Tela de outra classe de login (a vitrine do Cliente) → Trading: vale,
+    // e entra no menu de quem recebeu.
+    await svc.copyProfileScreens(
+      admin,
+      "role:customer",
+      "type:trading",
+      ["explore"],
+      "add",
+    );
+    const withShowcase = await screensNow(trader);
+    expect(withShowcase.open).toContain("explore");
+    expect(withShowcase.links).toContain("/app/explore");
     await expect(
       svc.copyProfileScreens(
         trader,
@@ -354,7 +367,7 @@ describe("serviço e sessão", () => {
     const audits = await getStore().list("audit_log", {
       filter: { action: "partner_access.copy" },
     });
-    expect(audits).toHaveLength(3);
+    expect(audits).toHaveLength(4);
     expect(
       audits.some(
         (a) =>

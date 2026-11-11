@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { canOpen } from "@/lib/auth/screens";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
 import { ControlTower } from "@/components/control-tower";
@@ -30,10 +31,13 @@ export default async function AppHome({ searchParams }: PageProps<"/app">) {
       ? `?denied=${denied}`
       : "";
   // Cliente: a vitrine; sem empresa vinculada, a lista de solicitações.
-  if (user.role === "customer")
-    redirect(
-      user.partyId ? `/app/explore${deniedQs}` : `/app/requests${deniedQs}`,
-    );
+  // Sem a vitrine no perfil (Gestão de telas), vai às solicitações; sem as
+  // duas, fica aqui, nas pendências (não entra em ciclo).
+  if (user.role === "customer") {
+    if (user.partyId && canOpen(user, "explore"))
+      redirect(`/app/explore${deniedQs}`);
+    if (canOpen(user, "requests")) redirect(`/app/requests${deniedQs}`);
+  }
   // Cotação recém-enviada pelo fornecedor: confirmação e próxima a responder.
   return (
     <TaskList

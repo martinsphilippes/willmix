@@ -39,26 +39,36 @@ export function baseRoleOf(profileKey: string): ExternalRole {
 }
 
 /**
- * Pares (tela, papel de login) já revistos para abrir a tela de outro papel
- * com os dados filtrados pelo vínculo de quem abre. Vazio por enquanto: cada
- * tela entra aqui depois de revista (ex.: Multas hoje lista tudo para quem a
- * abre, porque só o jurídico e a Wellmix a abriam).
+ * Telas que mostram a qualquer login os dados da empresa dele (início,
+ * pendências, notificações, mensagens, pedidos e multas): funcionam inteiras
+ * para qualquer perfil.
  */
-const ADAPTED: Partial<Record<Screen, readonly ExternalRole[]>> = {};
+const OWN_DATA_SCREENS: readonly Screen[] = [
+  "home",
+  "tasks",
+  "notifications",
+  "messages",
+  "orders",
+  "penalties",
+];
+
+/*
+ * Qualquer tela de login externo pode ir para qualquer perfil (conferência
+ * de 11/11/2026: aberta por outro papel, cada uma mostra só os dados da
+ * empresa de quem abre, vem vazia ou recusa; nenhuma mostra dados de outra
+ * empresa). As internas da Wellmix continuam fora (`isGrantable`).
+ */
 
 /**
- * O perfil pode receber a tela? Só as que já foram feitas (ou revistas) para
- * o papel de login dele: aí os dados já saem filtrados pela empresa de quem
- * abre. Tela de outra classe de login fica no catálogo, bloqueada, até ser
- * adaptada.
+ * A tela foi feita para outro papel e o conteúdo dela ainda é só dos
+ * registros daquele papel (ex.: a vitrine é do cliente; cotações, do
+ * fornecedor): liberada a este perfil, abre vazia ou volta ao início, até
+ * ser adaptada para os dados dele.
  */
-export const isGrantableFor = (screen: Screen, profileKey: string) => {
-  const role = baseRoleOf(profileKey);
-  return (
-    (ROLE_SCREENS[role] ?? []).includes(screen) ||
-    (ADAPTED[screen] ?? []).includes(role)
-  );
-};
+export const isLimitedFor = (screen: Screen, profileKey: string) =>
+  isGrantable(screen) &&
+  !OWN_DATA_SCREENS.includes(screen) &&
+  !(ROLE_SCREENS[baseRoleOf(profileKey)] ?? []).includes(screen);
 
 /** Papéis externos que têm a tela de fábrica (o "tipo de origem" no catálogo). */
 export const originRoles = (screen: Screen): ExternalRole[] =>
@@ -117,7 +127,7 @@ export function resolveProfile(
   // O gravado nunca vale mais que o permitido ao papel do perfil.
   const screens = [
     ...new Set([...ALWAYS_OPEN, ...valid(stored.screens)]),
-  ].filter((s) => isGrantableFor(s, profileKey));
+  ].filter(isGrantable);
   const sources: ProfileAccess["sources"] = {};
   for (const s of screens)
     sources[s] = (stored.sources?.[s] as ScreenSource) ?? "default";
@@ -173,12 +183,9 @@ export function setProfileScreens(
   input: { screens: string[]; menuHidden: string[] },
 ): PartnerAccessConfig {
   if (!isProfileKey(profileKey)) throw new Error("partner_access_profile");
-  for (const s of input.screens) {
+  for (const s of input.screens)
     if (!isScreen(s) || !isGrantable(s as Screen))
       throw new Error("partner_access_internal_screen");
-    if (!isGrantableFor(s as Screen, profileKey))
-      throw new Error("partner_access_not_adapted");
-  }
   const before = resolveProfile(config, profileKey);
   const screens = [...new Set([...ALWAYS_OPEN, ...valid(input.screens)])];
   const sources: ProfileAccess["sources"] = {};
@@ -215,9 +222,6 @@ export function copyScreens(
     throw new Error("partner_access_profile");
   const picked = valid(screens);
   if (!picked.length) throw new Error("partner_access_pick");
-  // Tela feita para outra classe de login, ainda não adaptada ao destino.
-  if (picked.some((s) => !isGrantableFor(s, to)))
-    throw new Error("partner_access_not_adapted");
   const source = resolveProfile(config, from);
   const before = resolveProfile(config, to);
   const open = new Set(before.screens);

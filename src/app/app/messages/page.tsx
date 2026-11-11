@@ -1,3 +1,4 @@
+import { requireScreen } from "@/lib/auth/guard";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -119,6 +120,7 @@ export default async function MessagesPage({
 }: PageProps<"/app/messages">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "messages");
   const t = await getT();
   const sp = await searchParams;
   const { error, fields: invalidFields, at: errorToken } = sp;

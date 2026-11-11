@@ -1,3 +1,4 @@
+import { requireScreen } from "@/lib/auth/guard";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getStore, type Notification, type NotificationKind } from "@/lib/db";
@@ -62,6 +63,7 @@ export default async function NotificationsPage({
   const { deleted, error, read } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "notifications");
   const t = await getT();
   const showRead = read === "1";
   const items = await getStore().list("notifications", {

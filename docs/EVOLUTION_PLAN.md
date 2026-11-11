@@ -872,3 +872,9 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (11/11/2026): Gestão → Acordos e comissões. Acordo padrão por tipo de parceiro e exceção individual; regras combináveis (percentual por linha, sobre venda, custo ou recebido, com faixas; fixo; por unidade; bônus por sucesso; piso e teto); precedência com conflito bloqueando a ativação; versões com vigência; simulador com o mesmo cálculo da apuração; apuração única por pedido, acordo e beneficiário, disparada pelos eventos do pedido; aprovação; liquidação manual parcial ou total; estorno ligado ao original no cancelamento; auditoria. Só o administrador.
 - Aditivo: tabelas `commission_agreements`, `commission_entries`, `commission_payments`, `commission_events`; rota `/app/commissions` (tela Financeiro). O que ficou de fora está em docs/COMMISSIONS.md ("Ainda não").
+
+## Gestão de telas: liberar telas de outro tipo de login
+
+- **Pedido do dono** (11/11/2026): a Gestão de telas não deixava liberar a um perfil uma tela feita para outro tipo de login. Destravado: qualquer tela de login externo vai para qualquer perfil (conceder e copiar). Antes, cada tela foi conferida aberta por outro papel; só Multas mostrava dados de todos e foi corrigida (fora a Wellmix e o jurídico, cada login vê só as multas da própria empresa).
+- As telas cujo conteúdo é só do papel de origem (vitrine, solicitações, cotações, fretes…) abrem sem dados em outro perfil; a Gestão de telas avisa na linha. Adaptar o conteúdo é decisão tela a tela (docs/PARTNER_ACCESS.md).
+- Pontas fechadas: Pendências, Mensagens e Notificações conferem a tela do perfil; o cliente sem a vitrine não entra em ciclo de redirecionamento; o tarifário não quebra para login sem empresa; o cartão do fabricante só é editado por login de fornecedor da própria empresa.

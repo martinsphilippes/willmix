@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -26,11 +27,19 @@ export default async function PenaltiesPage() {
   requireScreen(user, "penalties");
   const t = await getT();
   const store = getStore();
-  const [penalties, orders, parties] = await Promise.all([
+  const [allPenalties, orders, parties] = await Promise.all([
     store.list("penalties", { orderBy: "createdAt", direction: "desc" }),
     store.list("orders"),
     store.list("parties"),
   ]);
+  // A Wellmix e o jurídico veem todas. Qualquer outro login que receba a tela
+  // (Gestão de telas) vê só as multas da própria empresa.
+  const seesAll = isWellmix(user) || user.role === "legal";
+  const penalties = seesAll
+    ? allPenalties
+    : allPenalties.filter(
+        (p) => !!user.partyId && p.responsiblePartyId === user.partyId,
+      );
 
   return (
     <>

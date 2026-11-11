@@ -212,9 +212,10 @@ export default async function FreightTariffPage({
   const userName = (uid: string) =>
     users.find((u) => u.id === uid)?.name ?? "—";
   // Companhia marítima: a planilha vai sempre para a dela (o formulário diz qual).
-  const ownLine = wellmix
-    ? null
-    : ((await store.get("parties", user.partyId!))?.name ?? null);
+  const ownLine =
+    wellmix || !user.partyId
+      ? null
+      : ((await store.get("parties", user.partyId))?.name ?? null);
   const companyName = (lineId: string | null | undefined) =>
     lineId ? (lines.find((p) => p.id === lineId)?.name ?? null) : null;
   const qs = (extra: Record<string, string>) => {

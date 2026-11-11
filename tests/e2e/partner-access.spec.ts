@@ -4,8 +4,8 @@ import { expect, test, type Page } from "@playwright/test";
  * Tipos em destaque e Gestão de telas (docs/PARTNER_ACCESS.md): Trading,
  * Factory, Supplier e GP nos filtros; uma Factory com login entra com as
  * telas do Fornecedor; o administrador tira uma tela (vale na hora), compara
- * dois perfis e copia a tela de volta com prévia; tela de outra classe de
- * login fica no catálogo, bloqueada.
+ * dois perfis e copia a tela de volta com prévia; uma tela de outra classe
+ * de login (Multas) é liberada e mostra só os dados da própria empresa.
  */
 const PASSWORD = "wellmix123";
 
@@ -92,12 +92,14 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
     "blocked",
   );
 
-  // A vitrine é de outra classe de login: no catálogo, sem caixa para liberar.
+  // A vitrine é de outra classe de login: pode ser liberada, com o aviso de
+  // que neste perfil ainda abre sem dados.
   await expect(page.locator('[data-access-screen="explore"]')).toHaveAttribute(
     "data-access-state",
-    "other",
+    "blocked",
   );
-  await expect(page.locator('[data-access-open="explore"]')).toHaveCount(0);
+  await expect(page.locator('[data-access-limited="explore"]')).toBeVisible();
+  await expect(page.locator('[data-access-limited="orders"]')).toHaveCount(0);
 
   // Comparar Factory com o Fornecedor: a diferença é Cotações.
   await page.goto(
@@ -144,17 +146,24 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await expect(
     page.locator('[data-access-holder="role:customer"]'),
   ).toHaveAttribute("data-access-open", "0");
-  // Copiar a vitrine do Cliente para a Factory: a prévia recusa (não adaptada).
+  // Copiar Multas (do jurídico) para a Factory: vale, com prévia.
   await page.goto(
-    "/app/parties/access?view=copy&preview=1&from=role:customer&to=type:factory&screens=explore&mode=add",
+    "/app/parties/access?view=copy&preview=1&from=role:legal&to=type:factory&screens=penalties&mode=add",
   );
-  await expect(page.locator("[data-access-copy-result]")).toHaveCount(0);
-  await expect(page.getByText(/ainda não foi adaptada/)).toBeVisible();
+  await expect(page.locator("[data-access-copy-result]")).toContainText(
+    "Passa a abrir",
+  );
+  await page.locator("[data-access-copy-apply]").click();
+  await page.waitForURL(/saved=1/);
 
   // Como Factory de novo: Cotações voltou a abrir.
   await login(page, userLogin);
   await page.goto("/app/quotes");
   await expect(page.getByRole("heading", { name: "Cotações" })).toBeVisible();
+  // Multas abre para a Factory e mostra só as da própria empresa (nenhuma).
+  await page.goto("/app/penalties");
+  await expect(page).toHaveURL(/\/app\/penalties/);
+  await expect(page.locator("tbody tr")).toHaveCount(0);
 
   // Deixa o perfil como estava para os outros testes.
   await login(page, "admin@wellmix.com");
