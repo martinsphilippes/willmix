@@ -35,6 +35,7 @@ import {
 import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
 import { SupplierPicker, type SupplierOption } from "./supplier-picker";
 import { SheetSectionsNav } from "./sheet-sections";
+import { REGISTRATION_SHEET_FIELDS } from "@/lib/sheet-registration";
 import {
   initialSheetSection,
   sheetSectionsView,
@@ -76,6 +77,8 @@ export function PurchaseSheetFields({
   targetQuantity = null,
   ncmRates = null,
   ncmHelpLink = null,
+  omitRegistration = false,
+  registrationSupplierName = null,
 }: {
   t: Translate;
   sheet: Partial<PurchaseSheet>;
@@ -129,6 +132,14 @@ export function PurchaseSheetFields({
   /** Sem NCM nem sugestão: onde a IA sugere (card de NCM da solicitação). */
   ncmHelpLink?: string | null;
   /**
+   * Tela do produto: os campos que também existem no cadastro ficam só lá
+   * (src/lib/sheet-registration.ts). A ficha não os mostra nem envia; o
+   * servidor trata campo ausente como "não mexe".
+   */
+  omitRegistration?: boolean;
+  /** Fornecedor principal escolhido no cadastro (só para dizer de quem é o bloco). */
+  registrationSupplierName?: string | null;
+  /**
    * Quantidade pedida hoje (item do pedido ou solicitação), sempre que houver:
    * dá o total de caixas do atalho "Gerar programação" (÷ peças por caixa).
    */
@@ -154,18 +165,24 @@ export function PurchaseSheetFields({
   // tem o "Mostrar tudo". Os blocos são os `[data-sheet-section]` da grade.
   const supplierOnly = audience === "supplier";
   const certifier = audience === "certifier";
+  // Campo que nesta tela é do cadastro do produto não aparece na ficha.
+  const exclude: readonly string[] = omitRegistration
+    ? REGISTRATION_SHEET_FIELDS
+    : [];
+  const own = (key: string) => !exclude.includes(key);
   // Programação de compra: quem faz é a Wellmix; o fornecedor não a vê
   // (a ficha mestre do produto continua como era).
   const noSchedule = hideSchedule || (supplierOnly && !master);
   const nav = sheetSectionsView(t, sectionsMissing, {
     master,
     photosHref,
+    exclude,
     omit: [
       ...(supplierOnly ? (["customs", "ecommerce"] as const) : []),
       ...(noSchedule ? (["schedule"] as const) : []),
     ],
   });
-  const open = initialSheetSection(sectionsMissing, { photosHref });
+  const open = initialSheetSection(sectionsMissing, { photosHref, exclude });
   const Section = SheetSection;
   return (
     <>
@@ -185,6 +202,30 @@ export function PurchaseSheetFields({
           display: contents): daí as classes de ordem e de largura dos blocos. */}
       <Section open={open} all={certifier} k="supplier" order="lg:order-1">
         <Card title={t("sheet.section.supplier")} dense>
+          {!own("supplierName") ? (
+            // Fornecedor escolhido no cadastro: aqui só se diz de quem é o
+            // bloco. O id vai escondido, para o que for digitado em local,
+            // loja e telefone completar o cadastro dele, como antes.
+            <p
+              className="mb-3 text-xs text-zinc-600"
+              data-sheet-registration-supplier={supplierId ?? ""}
+            >
+              {supplierId ? (
+                <input type="hidden" name="supplierId" value={supplierId} />
+              ) : null}
+              {registrationSupplierName
+                ? t("productSheet.supplierFromRegistration", {
+                    name: registrationSupplierName,
+                  })
+                : t("productSheet.supplierMissing")}{" "}
+              <a
+                href="#product-form"
+                className="font-medium text-brand-700 underline-offset-2 hover:underline"
+              >
+                {t("productSheet.supplierChange")}
+              </a>
+            </p>
+          ) : null}
           <Rows>
             <F t={t} m={missing} k="sheetDate" size="sm">
               <input
@@ -205,7 +246,7 @@ export function PurchaseSheetFields({
                 className={inputDenseClass}
               />
             </F>
-            {master && supplierOptions && !sup ? (
+            {!own("supplierName") ? null : master && supplierOptions && !sup ? (
               <F
                 t={t}
                 m={missing}
@@ -258,15 +299,17 @@ export function PurchaseSheetFields({
                 className={inputDenseClass}
               />
             </F>
-            <F t={t} m={missing} k="factoryItemCode" size="md">
-              <input
-                name="factoryItemCode"
-                maxLength={60}
-                defaultValue={sheet.factoryItemCode ?? ""}
-                disabled={sup}
-                className={inputDenseClass}
-              />
-            </F>
+            {own("factoryItemCode") ? (
+              <F t={t} m={missing} k="factoryItemCode" size="md">
+                <input
+                  name="factoryItemCode"
+                  maxLength={60}
+                  defaultValue={sheet.factoryItemCode ?? ""}
+                  disabled={sup}
+                  className={inputDenseClass}
+                />
+              </F>
+            ) : null}
           </Rows>
           {records ? (
             <div
@@ -331,20 +374,24 @@ export function PurchaseSheetFields({
       <Section open={open} all={certifier} k="product" order="lg:order-1">
         <Card title={t("sheet.section.product")} dense>
           <Rows>
-            <F t={t} m={missing} k="netWeightPcKg" size="xs" req>
-              <Num
-                name="netWeightPcKg"
-                value={numValue(sheet.netWeightPcKg)}
-                disabled={sup}
-              />
-            </F>
-            <F t={t} m={missing} k="grossWeightPcKg" size="xs" req>
-              <Num
-                name="grossWeightPcKg"
-                value={numValue(sheet.grossWeightPcKg)}
-                disabled={sup}
-              />
-            </F>
+            {own("netWeightPcKg") ? (
+              <F t={t} m={missing} k="netWeightPcKg" size="xs" req>
+                <Num
+                  name="netWeightPcKg"
+                  value={numValue(sheet.netWeightPcKg)}
+                  disabled={sup}
+                />
+              </F>
+            ) : null}
+            {own("grossWeightPcKg") ? (
+              <F t={t} m={missing} k="grossWeightPcKg" size="xs" req>
+                <Num
+                  name="grossWeightPcKg"
+                  value={numValue(sheet.grossWeightPcKg)}
+                  disabled={sup}
+                />
+              </F>
+            ) : null}
             <F t={t} m={missing} k="averageWeightPcKg" size="xs">
               <Num
                 name="averageWeightPcKg"
@@ -359,58 +406,62 @@ export function PurchaseSheetFields({
                 disabled={sup}
               />
             </F>
-            <FieldRow
-              label={t("pantone.label")}
-              size="full"
-              hint={t("pantone.hint")}
-            >
-              <PantonePicker
-                name="colorPantones"
-                initial={sheet.colorPantones ?? []}
-                disabled={sup}
-                max={MAX_PANTONE_PER_SHEET}
-                syncName="colorAssortment"
-                syncMax={200}
-                labels={{
-                  search: t("pantone.search"),
-                  scaleAll: t("pantone.scale.all"),
-                  scales: {
-                    C: t("pantone.scale.C"),
-                    U: t("pantone.scale.U"),
-                    M: t("pantone.scale.M"),
-                    P: t("pantone.scale.P"),
-                    TCX: t("pantone.scale.TCX"),
-                  },
-                  loading: t("pantone.loading"),
-                  none: t("pantone.none"),
-                  more: t("pantone.more"),
-                  remove: t("pantone.remove"),
-                  max: t("pantone.max"),
-                  empty: t("pantone.empty"),
-                }}
-              />
-            </FieldRow>
-            {/* Cor depois do Pantone: as cores escolhidas já entram no texto. */}
-            <F t={t} m={missing} k="colorAssortment" size="lg" req>
-              <input
-                name="colorAssortment"
-                maxLength={200}
-                placeholder={t("ph.sheet.colorAssortment")}
-                defaultValue={sheet.colorAssortment ?? ""}
-                disabled={sup}
-                className={inputDenseClass}
-              />
-            </F>
-            <F t={t} m={missing} k="material" size="lg" req>
-              <input
-                name="material"
-                maxLength={200}
-                placeholder={t("ph.sheet.material")}
-                defaultValue={sheet.material ?? ""}
-                disabled={sup}
-                className={inputDenseClass}
-              />
-            </F>
+            {own("colorAssortment") ? (
+              <>
+                <FieldRow
+                  label={t("pantone.label")}
+                  size="full"
+                  hint={t("pantone.hint")}
+                >
+                  <PantonePicker
+                    name="colorPantones"
+                    initial={sheet.colorPantones ?? []}
+                    disabled={sup}
+                    max={MAX_PANTONE_PER_SHEET}
+                    syncName="colorAssortment"
+                    syncMax={200}
+                    labels={{
+                      search: t("pantone.search"),
+                      scaleAll: t("pantone.scale.all"),
+                      scales: {
+                        C: t("pantone.scale.C"),
+                        U: t("pantone.scale.U"),
+                        M: t("pantone.scale.M"),
+                        P: t("pantone.scale.P"),
+                        TCX: t("pantone.scale.TCX"),
+                      },
+                      loading: t("pantone.loading"),
+                      none: t("pantone.none"),
+                      more: t("pantone.more"),
+                      remove: t("pantone.remove"),
+                      max: t("pantone.max"),
+                      empty: t("pantone.empty"),
+                    }}
+                  />
+                </FieldRow>
+                {/* Cor depois do Pantone: as cores escolhidas já entram no texto. */}
+                <F t={t} m={missing} k="colorAssortment" size="lg" req>
+                  <input
+                    name="colorAssortment"
+                    maxLength={200}
+                    placeholder={t("ph.sheet.colorAssortment")}
+                    defaultValue={sheet.colorAssortment ?? ""}
+                    disabled={sup}
+                    className={inputDenseClass}
+                  />
+                </F>
+                <F t={t} m={missing} k="material" size="lg" req>
+                  <input
+                    name="material"
+                    maxLength={200}
+                    placeholder={t("ph.sheet.material")}
+                    defaultValue={sheet.material ?? ""}
+                    disabled={sup}
+                    className={inputDenseClass}
+                  />
+                </F>
+              </>
+            ) : null}
             <F t={t} m={missing} k="powerSource" size="sm">
               <select
                 name="powerSource"
@@ -444,39 +495,43 @@ export function PurchaseSheetFields({
       <Section open={open} all={certifier} k="carton" order="lg:order-2">
         <Card title={t("sheet.section.carton")} dense>
           <Rows>
-            <F t={t} m={missing} k="masterCartonQty" size="xs" req>
-              <Num
-                name="masterCartonQty"
-                value={numValue(sheet.masterCartonQty)}
-                disabled={sup}
-                int
-              />
-            </F>
-            {/* Opções que fecham a master, "Sem caixa inner" (0) e a conferência. */}
-            <F
-              t={t}
-              m={missing}
-              k="innerQty"
-              size="xs"
-              hint={
-                <InnerQtyHints
-                  masterName="masterCartonQty"
-                  innerName="innerQty"
-                  initialMaster={sheet.masterCartonQty ?? null}
-                  initialInner={sheet.innerQty ?? null}
-                  disabled={sup}
-                  intl={t.intl}
-                  texts={innerQtyTexts(t)}
-                />
-              }
-            >
-              <Num
-                name="innerQty"
-                value={numValue(sheet.innerQty)}
-                disabled={sup}
-                int
-              />
-            </F>
+            {own("masterCartonQty") ? (
+              <>
+                <F t={t} m={missing} k="masterCartonQty" size="xs" req>
+                  <Num
+                    name="masterCartonQty"
+                    value={numValue(sheet.masterCartonQty)}
+                    disabled={sup}
+                    int
+                  />
+                </F>
+                {/* Opções que fecham a master, "Sem caixa inner" (0) e a conferência. */}
+                <F
+                  t={t}
+                  m={missing}
+                  k="innerQty"
+                  size="xs"
+                  hint={
+                    <InnerQtyHints
+                      masterName="masterCartonQty"
+                      innerName="innerQty"
+                      initialMaster={sheet.masterCartonQty ?? null}
+                      initialInner={sheet.innerQty ?? null}
+                      disabled={sup}
+                      intl={t.intl}
+                      texts={innerQtyTexts(t)}
+                    />
+                  }
+                >
+                  <Num
+                    name="innerQty"
+                    value={numValue(sheet.innerQty)}
+                    disabled={sup}
+                    int
+                  />
+                </F>
+              </>
+            ) : null}
             {/* Tipos comuns em um toque; aviso se o texto for uma cor. */}
             <F
               t={t}
@@ -502,87 +557,95 @@ export function PurchaseSheetFields({
                 className={inputDenseClass}
               />
             </F>
-            {/* Altura × Largura × Comprimento numa linha só. */}
-            <FieldRow
-              label={t("sheet.field.size")}
-              required
-              requiredTitle={required}
-              size="full"
-              hint={
-                <CartonSizeWarning
-                  sideNames={["heightCm", "widthCm", "lengthCm"]}
-                  cbmName="cbmPerCarton"
-                  initialSides={[sheet.heightCm, sheet.widthCm, sheet.lengthCm]}
-                  initialCbm={sheet.cbmPerCarton ?? null}
-                  containerName="containerType"
-                  initialContainer={view.containerType}
-                  containers={view.containerTypes}
-                  intl={t.intl}
-                  texts={cartonSizeTexts(t)}
-                />
-              }
-              anchor="heightCm widthCm lengthCm"
-              missing={["heightCm", "widthCm", "lengthCm"].some((k) =>
-                missing.includes(k),
-              )}
-              missingText={t("sheet.fillThis")}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                {(
-                  [
-                    ["heightCm", sheet.heightCm],
-                    ["widthCm", sheet.widthCm],
-                    ["lengthCm", sheet.lengthCm],
-                  ] as const
-                ).map(([name, value], i) => (
-                  <label key={name} className="flex items-center gap-1.5">
-                    {i > 0 ? (
-                      <span aria-hidden className="text-xs text-zinc-400">
-                        ×
-                      </span>
-                    ) : null}
-                    <span className="text-xs text-zinc-600">
-                      {t(`sheet.field.${name}` as DictionaryKey)}
-                    </span>
-                    <Num
-                      name={name}
-                      value={numValue(value)}
-                      disabled={sup}
-                      className="w-20"
+            {own("cbmPerCarton") ? (
+              <>
+                {/* Altura × Largura × Comprimento numa linha só. */}
+                <FieldRow
+                  label={t("sheet.field.size")}
+                  required
+                  requiredTitle={required}
+                  size="full"
+                  hint={
+                    <CartonSizeWarning
+                      sideNames={["heightCm", "widthCm", "lengthCm"]}
+                      cbmName="cbmPerCarton"
+                      initialSides={[
+                        sheet.heightCm,
+                        sheet.widthCm,
+                        sheet.lengthCm,
+                      ]}
+                      initialCbm={sheet.cbmPerCarton ?? null}
+                      containerName="containerType"
+                      initialContainer={view.containerType}
+                      containers={view.containerTypes}
+                      intl={t.intl}
+                      texts={cartonSizeTexts(t)}
                     />
-                  </label>
-                ))}
-              </div>
-            </FieldRow>
-            {/* CBM da caixa: calculado pelas medidas acima (C × L × A), como o
+                  }
+                  anchor="heightCm widthCm lengthCm"
+                  missing={["heightCm", "widthCm", "lengthCm"].some((k) =>
+                    missing.includes(k),
+                  )}
+                  missingText={t("sheet.fillThis")}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    {(
+                      [
+                        ["heightCm", sheet.heightCm],
+                        ["widthCm", sheet.widthCm],
+                        ["lengthCm", sheet.lengthCm],
+                      ] as const
+                    ).map(([name, value], i) => (
+                      <label key={name} className="flex items-center gap-1.5">
+                        {i > 0 ? (
+                          <span aria-hidden className="text-xs text-zinc-400">
+                            ×
+                          </span>
+                        ) : null}
+                        <span className="text-xs text-zinc-600">
+                          {t(`sheet.field.${name}` as DictionaryKey)}
+                        </span>
+                        <Num
+                          name={name}
+                          value={numValue(value)}
+                          disabled={sup}
+                          className="w-20"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </FieldRow>
+                {/* CBM da caixa: calculado pelas medidas acima (C × L × A), como o
                 servidor grava; sem as três medidas, digita-se. */}
-            <F
-              t={t}
-              m={missing}
-              k="cbmPerCarton"
-              size="xs"
-              req
-              hint={
-                <BoxCbmHint
-                  initialCbm={plan.cbmFromSize}
-                  stored={sheet.cbmPerCarton ?? null}
-                  disabled={sup}
-                  texts={{
-                    auto: t("sheet.cbmAuto"),
-                    manual: t("sheet.cbmManual"),
-                    willUpdate: t("sheet.cbmWillUpdate"),
-                    fromSize: t("sheet.cbmFromSize"),
-                  }}
-                />
-              }
-            >
-              <BoxCbmInput
-                name="cbmPerCarton"
-                defaultValue={numValue(sheet.cbmPerCarton)}
-                initialCbm={plan.cbmFromSize}
-                disabled={sup}
-              />
-            </F>
+                <F
+                  t={t}
+                  m={missing}
+                  k="cbmPerCarton"
+                  size="xs"
+                  req
+                  hint={
+                    <BoxCbmHint
+                      initialCbm={plan.cbmFromSize}
+                      stored={sheet.cbmPerCarton ?? null}
+                      disabled={sup}
+                      texts={{
+                        auto: t("sheet.cbmAuto"),
+                        manual: t("sheet.cbmManual"),
+                        willUpdate: t("sheet.cbmWillUpdate"),
+                        fromSize: t("sheet.cbmFromSize"),
+                      }}
+                    />
+                  }
+                >
+                  <BoxCbmInput
+                    name="cbmPerCarton"
+                    defaultValue={numValue(sheet.cbmPerCarton)}
+                    initialCbm={plan.cbmFromSize}
+                    disabled={sup}
+                  />
+                </F>
+              </>
+            ) : null}
           </Rows>
         </Card>
       </Section>
@@ -605,40 +668,44 @@ export function PurchaseSheetFields({
                   ))}
                 </select>
               </F>
-              <F t={t} m={missing} k="currency" size="sm" req>
-                <select
-                  name="currency"
-                  defaultValue={sheet.currency ?? ""}
-                  disabled={sup}
-                  className={inputDenseClass}
-                >
-                  <option value="">—</option>
-                  {SHEET_CURRENCIES.map((v) => (
-                    <option key={v} value={v}>
-                      {t(`currency.name.${v}` as DictionaryKey)}
-                    </option>
-                  ))}
-                </select>
-              </F>
-              <F t={t} m={missing} k="price" size="sm" req>
-                <MoneyInput
-                  locale={t.intl}
-                  name="price"
-                  watchField="currency"
-                  defaultAmount={numValue(sheet.price) || null}
-                  disabled={sup}
-                  decimals={4}
-                  size="sm"
-                />
-              </F>
-              <F t={t} m={missing} k="moq" size="xs" req>
-                <Num
-                  name="moq"
-                  value={numValue(sheet.moq)}
-                  disabled={sup}
-                  int
-                />
-              </F>
+              {own("price") ? (
+                <>
+                  <F t={t} m={missing} k="currency" size="sm" req>
+                    <select
+                      name="currency"
+                      defaultValue={sheet.currency ?? ""}
+                      disabled={sup}
+                      className={inputDenseClass}
+                    >
+                      <option value="">—</option>
+                      {SHEET_CURRENCIES.map((v) => (
+                        <option key={v} value={v}>
+                          {t(`currency.name.${v}` as DictionaryKey)}
+                        </option>
+                      ))}
+                    </select>
+                  </F>
+                  <F t={t} m={missing} k="price" size="sm" req>
+                    <MoneyInput
+                      locale={t.intl}
+                      name="price"
+                      watchField="currency"
+                      defaultAmount={numValue(sheet.price) || null}
+                      disabled={sup}
+                      decimals={4}
+                      size="sm"
+                    />
+                  </F>
+                  <F t={t} m={missing} k="moq" size="xs" req>
+                    <Num
+                      name="moq"
+                      value={numValue(sheet.moq)}
+                      disabled={sup}
+                      int
+                    />
+                  </F>
+                </>
+              ) : null}
             </Rows>
           </Card>
         </Section>
@@ -991,7 +1058,7 @@ export function PurchaseSheetFields({
           </Card>
         </Section>
       )}
-      {supplierOnly ? null : (
+      {supplierOnly || !own("ecommerceDescription") ? null : (
         <Section open={open} all={certifier} k="ecommerce" order="lg:order-6">
           <Card title={t("sheet.section.ecommerce")} dense>
             <Rows>

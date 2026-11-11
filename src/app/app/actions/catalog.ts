@@ -80,7 +80,9 @@ const sheetSchema = z.object({
   boxWidthCm: optionalNumber,
   boxHeightCm: optionalNumber,
   cbm: optionalNumber,
-  notes: z.string().nullable(),
+  notes: z.string().max(4000).nullable(),
+  // Texto único das observações: vai ou não para o e-commerce.
+  notesToEcommerce: z.boolean().nullable(),
 });
 
 export async function updateProductSheetAction(form: FormData) {
@@ -127,6 +129,11 @@ export async function updateProductSheetAction(form: FormData) {
       boxHeightCm: num(form, "boxHeightCm"),
       cbm: num(form, "cbm"),
       notes: str(form, "notes") || null,
+      // Hidden "off" antes do checkbox "on" (como em `active`). Formulário
+      // sem o campo: fica como estava.
+      notesToEcommerce: form.has("notesToEcommerce")
+        ? form.getAll("notesToEcommerce").includes("on")
+        : (product.notesToEcommerce ?? null),
     });
     if (!(await store.get("product_lines", parsed.lineId)))
       throw new Error("line_not_found");
@@ -165,6 +172,9 @@ export async function updateProductSheetAction(form: FormData) {
       cbm,
       ...pantoneField,
     };
+    // Formulário sem a caixa e produto que nunca a teve: a coluna não é gravada.
+    if (next.notesToEcommerce === null)
+      delete (next as { notesToEcommerce?: boolean | null }).notesToEcommerce;
     // Especificação: vazia ou ainda a automática de antes → montada com os
     // dados enviados agora; escrita à mão fica como veio.
     {

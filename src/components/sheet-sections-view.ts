@@ -114,11 +114,17 @@ export function sheetSectionsView(
     master = false,
     photosHref,
     omit = [],
+    exclude = [],
   }: {
     master?: boolean;
     photosHref?: string;
     /** Blocos que não aparecem para quem preenche (ex.: fornecedor sem Despachante). */
     omit?: readonly SheetSectionKey[];
+    /**
+     * Campos que não estão nesta ficha (tela do produto: os que ficam só no
+     * cadastro). Não contam nas linhas; bloco que fica sem campo nenhum some.
+     */
+    exclude?: readonly string[];
   } = {},
 ): { sections: SheetSectionRow[]; labels: SheetSectionsLabels } {
   const required = new Set<string>([
@@ -130,23 +136,25 @@ export function sheetSectionsView(
     required.delete("productionStartAt");
     required.delete("lot1");
   }
-  const sections = SHEET_SECTIONS.filter((k) => !omit.includes(k)).map(
-    (key): SheetSectionRow => {
-      const fields = SHEET_SECTION_FIELDS[key];
-      return {
-        key,
-        label: t(`sheet.section.${key}` as DictionaryKey),
-        missing: fields
-          .filter((f) => missing.includes(f))
-          .map((f) => ({
-            key: f,
-            label: t(`sheet.field.${f}` as DictionaryKey),
-          })),
-        optional: !fields.some((f) => required.has(f)),
-        href: key === "photos" ? photosHref : undefined,
-      };
-    },
-  );
+  const fieldsOf = (key: SheetSectionKey) =>
+    SHEET_SECTION_FIELDS[key].filter((f) => !exclude.includes(f));
+  const sections = SHEET_SECTIONS.filter(
+    (k) => !omit.includes(k) && fieldsOf(k).length > 0,
+  ).map((key): SheetSectionRow => {
+    const fields = fieldsOf(key);
+    return {
+      key,
+      label: t(`sheet.section.${key}` as DictionaryKey),
+      missing: fields
+        .filter((f) => missing.includes(f))
+        .map((f) => ({
+          key: f,
+          label: t(`sheet.field.${f}` as DictionaryKey),
+        })),
+      optional: !fields.some((f) => required.has(f)),
+      href: key === "photos" ? photosHref : undefined,
+    };
+  });
   const marker = "\u0001";
   const [missingBefore, missingAfter = ""] = t("sheet.sections.missing", {
     fields: marker,
@@ -175,11 +183,22 @@ export function sheetSectionsView(
  */
 export function initialSheetSection(
   missing: readonly string[],
-  { photosHref }: { photosHref?: string } = {},
+  {
+    photosHref,
+    exclude = [],
+  }: {
+    photosHref?: string;
+    /** Campos fora desta ficha (ficam no cadastro): não abrem bloco. */
+    exclude?: readonly string[];
+  } = {},
 ): SheetSectionKey {
   for (const section of SHEET_SECTIONS) {
     if (section === "photos" && photosHref) continue;
-    if (SHEET_SECTION_FIELDS[section].some((f) => missing.includes(f)))
+    if (
+      SHEET_SECTION_FIELDS[section].some(
+        (f) => missing.includes(f) && !exclude.includes(f),
+      )
+    )
       return section;
   }
   return "supplier";

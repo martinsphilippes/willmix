@@ -109,7 +109,7 @@ import { SheetPhotoChecklist } from "../_components/sheet-photo-checklist";
 import { MissingFields } from "@/components/missing-fields";
 import { missingFieldsView } from "@/components/missing-fields-view";
 import { productSuppliersView } from "@/lib/services/product-suppliers";
-import type { SupplierOption } from "@/components/supplier-picker";
+import { unifiedProductNotes } from "@/lib/sheet-registration";
 import { MoneyInput } from "@/components/money-input";
 import { CartonSizeWarning, InnerQtyHints } from "@/components/carton-hints";
 import { cartonSizeTexts, innerQtyTexts } from "@/components/carton-texts";
@@ -264,21 +264,21 @@ export default async function ProductSheetPage({
   const variants = await listProductVariants(product.id, {
     includeInactive: true,
   });
-  const supplierOptions: SupplierOption[] = suppliers
-    .filter((s) => s.active || s.id === product.supplierId)
-    .map((s) => {
-      const row = supplierRows.find((r) => r.supplier.id === s.id);
-      return {
-        id: s.id,
-        name: s.name,
-        city: s.city ?? null,
-        storeNumber: s.storeNumber ?? null,
-        phone: s.phone ?? null,
-        code: row?.supplierSku ?? null,
-        linked: !!row,
-      };
-    });
   const masterMissing = await productSheetMissing(product.id, masterView);
+  // Campo do cadastro que também é da ficha mestre (src/lib/sheet-registration.ts):
+  // a caixa fica só aqui; o aviso "faltam" da ficha leva até ele.
+  const sheetField = (...keys: string[]) => ({ anchor: keys.join(" ") });
+  // Os que a ficha mestre exige para ficar completa: asterisco e vermelho
+  // enquanto estão vazios, como eram na ficha.
+  const sheetRequired = (...keys: string[]) => ({
+    anchor: keys.join(" "),
+    required: true,
+    requiredTitle: t("sheet.required"),
+    missing: keys.some((k) => (masterMissing as readonly string[]).includes(k)),
+    missingText: t("sheet.fillThis"),
+  });
+  // Observações: um texto só (cadastro, ficha mestre e e-commerce).
+  const notesView = unifiedProductNotes(product, masterSheet);
   const masterPhotoKinds = await catalogPhotoKinds(product.id);
   const masterContainer =
     settings.containerTypes.find(
@@ -521,6 +521,7 @@ export default async function ProductSheetPage({
               <FieldRow
                 label={t("common.supplier")}
                 size="lg"
+                {...sheetRequired("supplierName")}
                 hint={
                   supplier ? (
                     <TextLink href={`/app/parties/${supplier.id}`}>
@@ -542,7 +543,11 @@ export default async function ProductSheetPage({
                   ))}
                 </Select>
               </FieldRow>
-              <FieldRow label={t("catalog.supplierSku")} size="md">
+              <FieldRow
+                label={t("catalog.supplierSku")}
+                size="md"
+                {...sheetField("factoryItemCode")}
+              >
                 <Input
                   name="supplierSku"
                   maxLength={60}
@@ -550,14 +555,22 @@ export default async function ProductSheetPage({
                   dense
                 />
               </FieldRow>
-              <FieldRow label={t("catalog.moq")} size="sm">
+              <FieldRow
+                label={t("catalog.moq")}
+                size="sm"
+                {...sheetRequired("moq")}
+              >
                 <NumberInput
                   name="moq"
                   integer
                   defaultValue={product.moq ?? ""}
                 />
               </FieldRow>
-              <FieldRow label={t("common.price")} size="md">
+              <FieldRow
+                label={t("common.price")}
+                size="md"
+                {...sheetRequired("price")}
+              >
                 <MoneyInput
                   locale={t.intl}
                   name="price"
@@ -567,7 +580,11 @@ export default async function ProductSheetPage({
                   size="sm"
                 />
               </FieldRow>
-              <FieldRow label={t("common.currency")} size="sm">
+              <FieldRow
+                label={t("common.currency")}
+                size="sm"
+                {...sheetRequired("currency")}
+              >
                 <CurrencySelect
                   name="currency"
                   value={product.currency}
@@ -620,7 +637,11 @@ export default async function ProductSheetPage({
 
           <Card title={t("catalog.section.product")} dense>
             <div className="space-y-2">
-              <FieldRow label={t("catalog.material")} size="md">
+              <FieldRow
+                label={t("catalog.material")}
+                size="md"
+                {...sheetRequired("material")}
+              >
                 <Input
                   name="material"
                   maxLength={120}
@@ -669,7 +690,11 @@ export default async function ProductSheetPage({
                 />
               </FieldRow>
               {/* Cor depois do Pantone: as cores escolhidas já entram no texto. */}
-              <FieldRow label={t("catalog.color")} size="md">
+              <FieldRow
+                label={t("catalog.color")}
+                size="md"
+                {...sheetRequired("colorAssortment")}
+              >
                 <Input
                   name="color"
                   maxLength={60}
@@ -704,13 +729,21 @@ export default async function ProductSheetPage({
                   />
                 </div>
               </FieldRow>
-              <FieldRow label={t("catalog.netWeight")} size="xs">
+              <FieldRow
+                label={t("catalog.netWeight")}
+                size="xs"
+                {...sheetRequired("netWeightPcKg")}
+              >
                 <NumberInput
                   name="netWeightKg"
                   defaultValue={product.netWeightKg ?? ""}
                 />
               </FieldRow>
-              <FieldRow label={t("catalog.grossWeight")} size="xs">
+              <FieldRow
+                label={t("catalog.grossWeight")}
+                size="xs"
+                {...sheetRequired("grossWeightPcKg")}
+              >
                 <NumberInput
                   name="grossWeightKg"
                   defaultValue={product.grossWeightKg ?? ""}
@@ -723,7 +756,11 @@ export default async function ProductSheetPage({
           <div className="flex min-w-0 flex-col gap-4">
             <Card title={t("catalog.section.packaging")} dense>
               <div className="space-y-2">
-                <FieldRow label={t("catalog.masterBoxQty")} size="xs">
+                <FieldRow
+                  label={t("catalog.masterBoxQty")}
+                  size="xs"
+                  {...sheetRequired("masterCartonQty")}
+                >
                   <NumberInput
                     name="masterBoxQty"
                     integer
@@ -733,6 +770,7 @@ export default async function ProductSheetPage({
                 <FieldRow
                   label={t("catalog.innerBoxQty")}
                   size="xs"
+                  {...sheetField("innerQty")}
                   hint={
                     <InnerQtyHints
                       masterName="masterBoxQty"
@@ -753,6 +791,7 @@ export default async function ProductSheetPage({
                 <FieldRow
                   label={t("catalog.boxDimensions")}
                   size="full"
+                  {...sheetRequired("heightCm", "widthCm", "lengthCm")}
                   hint={
                     <CartonSizeWarning
                       sideNames={["boxLengthCm", "boxWidthCm", "boxHeightCm"]}
@@ -801,6 +840,7 @@ export default async function ProductSheetPage({
                 <FieldRow
                   label={t("catalog.cbmPerBox")}
                   size="xs"
+                  {...sheetRequired("cbmPerCarton")}
                   hint={
                     <>
                       <strong className="text-zinc-800">
@@ -824,13 +864,37 @@ export default async function ProductSheetPage({
               </div>
             </Card>
 
+            {/* Um texto só: as observações do cadastro, as da ficha mestre e a
+                descrição para e-commerce (a caixa diz se vai para lá). */}
             <Card title={t("catalog.section.notes")} className="flex-1" dense>
-              <Textarea
-                name="notes"
-                rows={3}
-                defaultValue={product.notes ?? ""}
-                dense
-              />
+              <div data-field-anchor="notes ecommerceDescription">
+                <Textarea
+                  name="notes"
+                  rows={4}
+                  maxLength={4000}
+                  defaultValue={notesView.text}
+                  dense
+                />
+                <label className="mt-2 flex items-start gap-2 text-sm text-zinc-800">
+                  <input type="hidden" name="notesToEcommerce" value="off" />
+                  <input
+                    type="checkbox"
+                    name="notesToEcommerce"
+                    value="on"
+                    defaultChecked={notesView.toEcommerce}
+                    className="mt-0.5 h-4 w-4 accent-brand-600"
+                    data-notes-ecommerce
+                  />
+                  <span>
+                    <span className="font-medium">
+                      {t("catalog.notes.ecommerce")}
+                    </span>
+                    <span className="block text-xs text-zinc-500">
+                      {t("catalog.notes.ecommerceHint")}
+                    </span>
+                  </span>
+                </label>
+              </div>
             </Card>
           </div>
         </div>
@@ -972,7 +1036,11 @@ export default async function ProductSheetPage({
             master
             missing={masterMissing}
             photosHref="#photos"
-            supplierOptions={supplierOptions}
+            // Caixas repetidas ficam só no cadastro, acima.
+            omitRegistration
+            registrationSupplierName={
+              suppliers.find((s) => s.id === product.supplierId)?.name ?? null
+            }
             supplierId={product.supplierId}
             ncmSuggestions={ncmChipsView(
               t,

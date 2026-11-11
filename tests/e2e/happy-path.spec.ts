@@ -341,8 +341,9 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
 
   // 4. Wellmix compara e seleciona A com preço ao cliente
   await login(page, "operador@wellmix.com");
-  // Quem respondeu a cotação entra sozinho nos fornecedores do produto; a
-  // ficha mestre escolhe o fornecedor entre os cadastrados.
+  // Quem respondeu a cotação entra sozinho nos fornecedores do produto. O
+  // fornecedor principal é escolhido só no cadastro (dono, 11/11/2026): a
+  // ficha mestre não tem mais o seletor nem as caixas repetidas.
   await page.goto("/app/products/prod-jarra");
   const productSuppliers = page.locator("[data-product-suppliers]");
   await expect(
@@ -351,9 +352,23 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(
     productSuppliers.locator('[data-product-supplier="fornecedor-b"]'),
   ).toBeVisible();
+  await expect(page.locator("[data-supplier-picker]")).toHaveCount(0);
   await expect(
-    page.locator("[data-supplier-picker] select[name=supplierId] optgroup"),
-  ).toHaveCount(2);
+    page.locator("[data-sheet-registration-supplier]"),
+  ).toBeVisible();
+  await expect(
+    page.locator(
+      '#product-form select[name="supplierId"] option[value="fornecedor-a"]',
+    ),
+  ).toHaveCount(1);
+  for (const name of ["price", "moq", "material", "masterCartonQty", "notes"])
+    await expect(
+      page.locator(`#product-sheet-form [name="${name}"]`),
+    ).toHaveCount(0);
+  // O que só existe na ficha continua nela.
+  await expect(
+    page.locator('#product-sheet-form select[name="incoterm"]'),
+  ).toHaveCount(1);
   await page.goto(requestUrl);
   await expect(page.getByText("Shenzhen Supplier A").first()).toBeVisible();
   await expect(page.getByText("Guangzhou Supplier B").first()).toBeVisible();
