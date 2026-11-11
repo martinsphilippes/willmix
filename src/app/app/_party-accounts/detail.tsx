@@ -36,6 +36,16 @@ import { parseTerms } from "@/lib/supplier-terms";
 import { accountBase, accountLabels } from "./labels";
 import { STOCK_OPTION } from "@/lib/services/purchase-flow";
 import { ChatOpenButton } from "@/components/chat-open-button";
+import { createUserAction } from "../actions";
+import { Alert, Field, Input, Select } from "@/components/ui";
+import { SubmitButton } from "@/components/submit-button";
+import { catalogError } from "../products/_components/shared";
+import { LOCALE_NAMES } from "@/i18n";
+import { LOCALES } from "@/lib/db/schema";
+import {
+  PORTAL_MIN_PASSWORD,
+  suggestPassword,
+} from "@/lib/services/portal-access";
 
 /*
  * Ficha do cliente: barra de contas a receber (contrato, entregue,
@@ -470,7 +480,28 @@ export async function PartyAccountDetail({
               ]}
             />
           </Card>
-          <Card title={L("info.users")}>
+          <Card
+            title={
+              <span id="access" className="scroll-mt-24">
+                {L("info.users")}
+              </span>
+            }
+          >
+            {param(sp.saved) === "user" ? (
+              <div className="mb-3" data-login-created>
+                <Alert tone="success">
+                  {t("portalAccess.saved.login", {
+                    name: party.name,
+                    login: param(sp.login) ?? "",
+                  })}
+                </Alert>
+              </div>
+            ) : null}
+            {param(sp.error) ? (
+              <div className="mb-3">
+                <Alert tone="danger">{catalogError(t, param(sp.error))}</Alert>
+              </div>
+            ) : null}
             {users.length === 0 ? (
               <Empty>{L("info.noUsers")}</Empty>
             ) : (
@@ -495,6 +526,93 @@ export async function PartyAccountDetail({
                 ))}
               </ul>
             )}
+            {/* Criar o acesso deste cadastro ao portal: e-mail (ou nome de
+                usuário) e senha. Só a Wellmix; o login nasce preso a este
+                fornecedor/cliente e só vê o que é dele. */}
+            {isWellmix(user) ? (
+              <form
+                action={createUserAction}
+                className="mt-4 space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
+                data-account-login-form
+              >
+                <input type="hidden" name="partyId" value={party.id} />
+                <input
+                  type="hidden"
+                  name="from"
+                  value={`${accountBase(side)}/${party.id}`}
+                />
+                <input
+                  type="hidden"
+                  name="role"
+                  value={supplier ? "supplier" : "customer"}
+                />
+                <p className="text-sm font-semibold text-zinc-900">
+                  {t("portalAccess.create")}
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label={t("common.name")}>
+                    <Input
+                      name="name"
+                      defaultValue={
+                        users.length ? "" : (party.contactName ?? party.name)
+                      }
+                      required
+                    />
+                  </Field>
+                  <Field
+                    label={t("portalAccess.login.field")}
+                    hint={t("portalAccess.login.hint")}
+                  >
+                    <Input
+                      name="login"
+                      defaultValue={users.length ? "" : (party.email ?? "")}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      autoComplete="off"
+                      maxLength={254}
+                      required
+                    />
+                  </Field>
+                  <Field
+                    label={t("login.password")}
+                    hint={t("portalAccess.password.hint", {
+                      n: PORTAL_MIN_PASSWORD,
+                    })}
+                  >
+                    <Input
+                      name="password"
+                      type="text"
+                      minLength={PORTAL_MIN_PASSWORD}
+                      maxLength={128}
+                      defaultValue={suggestPassword()}
+                      autoComplete="off"
+                      required
+                    />
+                  </Field>
+                  <Field label={t("common.language")}>
+                    <Select
+                      name="locale"
+                      defaultValue={
+                        /^(cn|china|中国)$/i.test((party.country ?? "").trim())
+                          ? "zh"
+                          : "pt"
+                      }
+                    >
+                      {LOCALES.map((l) => (
+                        <option key={l} value={l}>
+                          {LOCALE_NAMES[l]}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+                <p className="text-xs text-zinc-500">
+                  {t("portalAccess.copy.hint")}
+                </p>
+                <SubmitButton>{t("portalAccess.create")}</SubmitButton>
+              </form>
+            ) : null}
           </Card>
         </section>
       ) : null}

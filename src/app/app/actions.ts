@@ -947,7 +947,18 @@ export async function savePartyAction(form: FormData) {
 export async function createUserAction(form: FormData) {
   const user = await requireUser();
   const partyId = str(form, "partyId") || null;
-  const back = partyId ? `/app/parties/${partyId}` : "/app/parties";
+  // Veio da tela do fornecedor/cliente (Logins da empresa): volta para ela,
+  // na aba de informações. Só esses dois endereços são aceitos.
+  const from = str(form, "from");
+  const account =
+    /^\/app\/(suppliers|customers)\/[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(from)
+      ? from
+      : null;
+  const back = account
+    ? `${account}?tab=info`
+    : partyId
+      ? `/app/parties/${partyId}`
+      : "/app/parties";
   await run(`${back}#access`, async () => {
     assertWellmix(user);
     assertScreen(user, "parties");
@@ -971,7 +982,7 @@ export async function createUserAction(form: FormData) {
     const created = await createPortalLogin(user, { ...parsed, partyId });
     // O login (não a senha) volta na confirmação, para conferir o que passar.
     const login = encodeURIComponent(loginLabel(created.email));
-    return `${back}?saved=user&login=${login}#access`;
+    return `${back}${account ? "&" : "?"}saved=user&login=${login}#access`;
   });
 }
 

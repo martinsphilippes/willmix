@@ -973,6 +973,10 @@ test("sugestão da IA: a opção marcada desmarca e escolher já marca o Aplicar
   const active = page.locator(
     '#product-form input[type="checkbox"][name="active"]',
   );
+  // Os quadros do cadastro começam recolhidos (linha fina): um toque abre.
+  const productFold = page.locator('#product-form [data-fold-card="product"]');
+  await expect(productFold).not.toHaveAttribute("open", "");
+  await productFold.locator("summary").click();
   await active.uncheck();
   const spec = page.locator("#product-form [data-product-spec]");
   const specMode = (await spec.getAttribute("data-product-spec")) ?? "";

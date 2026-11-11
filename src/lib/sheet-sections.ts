@@ -17,5 +17,15 @@ export function revealSheetField(key: string): HTMLElement | null {
   window.dispatchEvent(
     new CustomEvent<SheetRevealDetail>(SHEET_REVEAL_EVENT, { detail: { key } }),
   );
-  return document.querySelector<HTMLElement>(`[data-field-anchor~="${key}"]`);
+  const el = document.querySelector<HTMLElement>(
+    `[data-field-anchor~="${key}"]`,
+  );
+  // Quadro recolhido (<details> fechado): abre para o campo aparecer.
+  for (
+    let d = el?.closest("details");
+    d;
+    d = d.parentElement?.closest("details")
+  )
+    d.open = true;
+  return el;
 }

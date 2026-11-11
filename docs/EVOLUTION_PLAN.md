@@ -815,6 +815,11 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Pedidos importados do Sankhya** (sem `orders.flow`): aparecem pela etapa da TOP, só como visibilidade (sem raias, contrato, atraso nem bloqueio do portal).
 - **Substituição autorizada** (exceção à evolução aditiva, decisão do dono): os 50 quadrados passo a passo e o componente `tower-board.tsx` saíram; o Progresso da lista de Pedidos passou a usar os mesmos passos (`journey.ts`: pedido criado, preparação, contrato; as solicitações do cliente continuam com os passos de antes). Nenhuma tabela, rota ou coluna mudou. Detalhes em docs/WORKFLOW.md ("Control Tower: por etapa").
 
+## Fornecedores e Clientes: criar o acesso no cartão "Logins da empresa"
+
+- **Pedido do dono** (11/11/2026): na tela do fornecedor (e do cliente), aba Informações, o cartão "Logins da empresa" ganha o formulário "Criar acesso": nome, login ou e-mail, senha (já vem uma sugestão) e idioma. O login nasce preso àquele cadastro, com o papel dele (fornecedor ou cliente), pela mesma regra de sempre (`createPortalLogin`). Só a Wellmix vê o formulário. Depois de criar, a tela volta para o mesmo cartão com a confirmação; login repetido ou inválido mostra o aviso ali.
+- `createUserAction` aceita o campo `from` (só `/app/suppliers/<id>` ou `/app/customers/<id>`) para voltar à tela de origem. O formulário de `/app/parties/<id>` continua igual.
+
 ## Equipe: criar logins novos da equipe Wellmix
 
 - **Pedido do dono** (11/11/2026): a tela Gestão → Equipe e divisões só listava os logins que já existiam; não havia onde criar um. Novo cartão "Novo login da equipe" (só o administrador): nome, login (e-mail ou nome de usuário), senha (vem uma sugestão), tipo de acesso (equipe ou administrador) e o lugar na hierarquia (cargo, divisão, a quem responde e funções). Opção de pedir a troca da senha no primeiro acesso (marcada por padrão).
