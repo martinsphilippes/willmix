@@ -12,7 +12,7 @@ import { readSetting, writeSetting } from "./sankhya-settings";
  * Carga completa "no servidor" (docs/SANKHYA.md): a pessoa enfileira as
  * entidades e pode fechar o navegador. Um agendador (pg_cron do Supabase, a
  * cada minuto, só enquanto a fila está ativa) chama /api/jobs/sankhya-load,
- * que roda uma rodada de ~40 s da primeira entidade da fila. Terminada a
+ * que roda uma rodada de ~30 s da primeira entidade da fila. Terminada a
  * entidade, passa para a próxima; a fila vazia desliga sozinha.
  *
  * A rodada usa a pessoa que ligou a fila (precisa continuar admin e ativa).
@@ -144,7 +144,7 @@ export type ServerTick =
 
 /** Uma rodada da fila (chamada pelo agendador). */
 export async function runServerLoadTick({
-  budgetMs = 40_000,
+  budgetMs = 30_000,
   now = () => Date.now(),
 }: { budgetMs?: number; now?: () => number } = {}): Promise<ServerTick> {
   const state = await getServerLoad();
