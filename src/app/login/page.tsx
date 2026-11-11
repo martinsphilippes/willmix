@@ -138,6 +138,16 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
                 : []
             }
           />
+          {dataMode() === "supabase" ? (
+            <p className="mt-4 text-sm">
+              <a
+                href="/login/forgot"
+                className="font-medium text-brand-700 underline"
+              >
+                {t("pwReset.forgotLink")}
+              </a>
+            </p>
+          ) : null}
         </div>
       </section>
     </main>
