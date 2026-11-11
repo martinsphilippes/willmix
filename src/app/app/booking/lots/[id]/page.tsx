@@ -40,6 +40,9 @@ import {
   type Tone,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { SupplierNoLoginAlert } from "@/components/supplier-no-login";
+import { canOpen } from "@/lib/auth/screens";
+import { partiesWithoutLogin } from "@/lib/services/portal-access";
 import {
   BookingItemInput,
   BookingItemSelect,
@@ -132,6 +135,11 @@ export default async function BookingLotPage({
     return <Alert tone="warning">{t("bookingLots.schemaMissing")}</Alert>;
   if (!detail) notFound();
   const { lot, items, supplier, suppliers, owner } = detail;
+  // Fornecedor sem login: a solicitação aberta a partir deste booking fica parada.
+  const noLogin =
+    supplier && (await partiesWithoutLogin([supplier.id])).has(supplier.id)
+      ? [{ id: supplier.id, name: supplier.name }]
+      : [];
   const editable = bookingLotEditable(lot.status);
   const pending = bookingLotPending(lot, items);
   const ready = bookingLotReady(pending);
@@ -351,6 +359,11 @@ export default async function BookingLotPage({
       />
 
       <div className="mb-3 space-y-2" data-booking-lot-notices>
+        <SupplierNoLoginAlert
+          suppliers={noLogin}
+          canParties={canOpen(user, "parties")}
+          t={t}
+        />
         {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
         {notices.map(([tone, text]) => (
           <Alert key={text} tone={tone}>
