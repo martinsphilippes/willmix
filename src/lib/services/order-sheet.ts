@@ -82,6 +82,8 @@ export interface OrderSheet {
   /** Do documento assinado: pedido mínimo e prazo. */
   moq: number | null;
   leadTimeDays: number | null;
+  /** Fábrica que produz, quando não é o fornecedor do pedido (trading). */
+  manufacturers: string[];
 }
 
 const round = (n: number, digits: number) =>
@@ -277,5 +279,6 @@ export async function buildOrderSheet(
     },
     moq: doc.moq,
     leadTimeDays: doc.leadTimeDays,
+    manufacturers: doc.manufacturers ?? [],
   };
 }

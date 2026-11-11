@@ -50,6 +50,7 @@ Permissões: só a Wellmix com a tela Booking. Cadastrar o fornecedor sugerido t
 
 - Cada booking tem um **parceiro responsável** (`booking_lots.partnerId`): o fornecedor dos itens ou outro parceiro (Trading, Factory, Supplier, GP ou tipo criado no painel), ativo.
 - **Toda solicitação** aberta de um item do booking vai para ele (aviso, tela e resposta), e o pedido de compra gerado dessas solicitações sai em nome dele. Vazio (e nos bookings antigos): vale o fornecedor do booking.
+- **Pedido e contrato** (decisão do dono, 11/11/2026): o pedido sai em nome do responsável (ex.: a trading), mas o contrato traz a **fábrica** que executa a produção, o fornecedor do booking (`OrderDocument.manufacturers`, também na planilha do pedido). Na Produção, ao marcar "trade", a fábrica do booking entra sozinha (`bookingFactory`).
 - Muda na tela do booking, campo "Responsável pelo booking", em qualquer situação menos cancelado; as solicitações já abertas ficam com quem as recebeu. Auditoria: `booking_lot.partner`.
 - Quem é: a Wellmix com a tela Booking (`setBookingLotPartner`); o parceiro tem de ser de um dos tipos acima (`booking_partner_invalid`).
 

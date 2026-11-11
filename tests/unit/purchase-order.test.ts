@@ -86,12 +86,16 @@ const pdf = (name: string) =>
   });
 
 /** Duas solicitações aprovadas do fornecedor A, cada uma com o produto cadastrado. */
-async function approvedProducts() {
+async function approvedProducts(
+  partnerId: string | null = null,
+  codes: [string, string] = ["PO-1", "PO-2"],
+) {
   const store = getStore();
   const lot = await lots.createBookingLotFromSheet(
     admin,
-    sheet([row("PO-1", "Glass jar 350ml"), row("PO-2", "Glass cup tall")]),
+    sheet([row(codes[0], "Glass jar 350ml"), row(codes[1], "Glass cup tall")]),
   );
+  if (partnerId) await lots.setBookingLotPartner(admin, lot.id, partnerId);
   const { setBookingItemsNcm } = await import("@/lib/services/booking-ncm");
   const items = await store.list("booking_items", {
     filter: { lotId: lot.id },
@@ -112,7 +116,7 @@ async function approvedProducts() {
       needs: null,
       searchQuery: null,
     });
-    await svc.answerSupplierRequest(supplierA, request.id, {
+    await svc.answerSupplierRequest(partnerId ? admin : supplierA, request.id, {
       canDo: "yes",
       price: 1.1 + i,
       currency: "USD",
@@ -334,5 +338,50 @@ describe("pedido de compra", () => {
     await expect(
       po.createPurchaseOrder(supplierA, [{ requestId: "x", quantity: null }]),
     ).rejects.toThrow();
+  });
+});
+
+describe("pedido em nome do responsável pelo booking (trading)", () => {
+  it("o pedido sai em nome da trading e o contrato traz a fábrica do booking", async () => {
+    const store = getStore();
+    const { PARTY_EXTRA_DEFAULTS } = await import("@/lib/db/schema");
+    const trading = await store.create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
+      type: "trading",
+      name: "Trading Ningbo PO",
+      country: "CN",
+      email: null,
+      phone: null,
+      taxId: null,
+      notes: null,
+      active: true,
+      city: "Ningbo",
+      contactName: null,
+      wechat: null,
+      operationMode: null,
+      radar: null,
+    });
+    const [r1, r2] = await approvedProducts(trading.id, ["TR-1", "TR-2"]);
+    expect(r1.supplierId).toBe(trading.id);
+    const order = await po.createPurchaseOrder(admin, [
+      { requestId: r1.id, quantity: null },
+      { requestId: r2.id, quantity: null },
+    ]);
+    expect(order.supplierId).toBe(trading.id);
+    const doc = await signature.buildOrderDocument(order);
+    expect(doc.supplierName).toBe("Trading Ningbo PO");
+    expect(doc.manufacturers).toEqual(["Shenzhen Supplier A"]);
+    // Na Produção, "trade": a fábrica do booking entra sozinha.
+    const { bookingFactory } = await import("@/lib/services/production");
+    expect((await bookingFactory(order))?.name).toBe("Shenzhen Supplier A");
+  });
+
+  it("pedido do próprio fornecedor: o contrato não ganha a chave da fábrica", async () => {
+    const [r1] = await approvedProducts(null, ["SF-1", "SF-2"]);
+    const order = await po.createPurchaseOrder(admin, [
+      { requestId: r1.id, quantity: null },
+    ]);
+    const doc = await signature.buildOrderDocument(order);
+    expect("manufacturers" in doc).toBe(false);
   });
 });
