@@ -2,17 +2,18 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
- * Vários fornecedores por produto: quem responde a cotação entra na lista do
- * produto com o código, preço e MOQ dele; cada fornecedor só recebe, na
- * própria ficha, os próprios dados (isolamento entre fornecedores); a
- * Wellmix inclui, retira e troca o principal.
+ * Vários fornecedores por produto: cada um na lista do produto com o código,
+ * preço e MOQ dele; cada fornecedor só recebe, na própria ficha do pedido,
+ * os próprios dados (isolamento entre fornecedores); a Wellmix inclui,
+ * retira e troca o principal.
  */
 withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const r = await import("@/lib/services/requests");
-const qs = await import("@/lib/services/quote-sheet");
+const sheets = await import("@/lib/services/purchase-sheet");
+const { orderFromRequest } = await import("./helpers/order");
 const ps = await import("@/lib/services/product-suppliers");
 const pss = await import("@/lib/services/product-sheet");
 type User = import("@/lib/db").User;
@@ -30,8 +31,8 @@ beforeAll(async () => {
   supplierB = users.find((u) => u.email === "supplier.b@china.com")!;
 });
 
-async function rfqFor(productId: string) {
-  const store = getStore();
+/** Pedido do produto com o fornecedor indicado. */
+async function orderWith(productId: string, supplierId: string) {
   const request = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId,
@@ -44,46 +45,28 @@ async function rfqFor(productId: string) {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, request.id, ["fornecedor-a", "fornecedor-b"]);
-  const quotes = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  return {
-    request,
-    quoteA: quotes.find((q) => q.supplierId === "fornecedor-a")!,
-    quoteB: quotes.find((q) => q.supplierId === "fornecedor-b")!,
-  };
+  return orderFromRequest(admin, request, { supplierId });
 }
 
 describe("vários fornecedores por produto", () => {
-  it("quem responde a cotação entra na lista do produto, sem duplicar", async () => {
-    const { quoteB } = await rfqFor("prod-panela");
-    await qs.saveQuoteSheet(supplierB, quoteB.id, {
-      supplierName: "Guangzhou Supplier B",
-      factoryItemCode: "GZB-PAN",
-      moq: 800,
-    });
-    await r.answerQuote(supplierB, quoteB.id, {
-      price: 8.75,
-      currency: "USD",
-      leadTimeDays: 40,
-    });
+  it("Wellmix inclui o fornecedor na lista do produto, sem duplicar", async () => {
+    await ps.addProductSupplier(
+      admin,
+      "prod-panela",
+      "fornecedor-b",
+      "GZB-PAN",
+    );
     let link = (await ps.productSupplierLink("prod-panela", "fornecedor-b"))!;
-    expect(link.source).toBe("quote");
-    expect(link.supplierSku).toBe("GZB-PAN");
-    expect(link.price).toBe(8.75);
-    expect(link.moq).toBe(800);
-    expect(link.leadTimeDays).toBe(40);
-    expect(link.quoteCount).toBe(1);
-    // Responder de novo a mesma cotação atualiza, não conta outra.
-    await r.answerQuote(supplierB, quoteB.id, {
+    await getStore().update("product_suppliers", link.id, {
       price: 8.5,
       currency: "USD",
-      leadTimeDays: 35,
+      moq: 800,
     });
+    // Incluir de novo não duplica nem apaga o código.
+    await ps.addProductSupplier(admin, "prod-panela", "fornecedor-b", null);
     link = (await ps.productSupplierLink("prod-panela", "fornecedor-b"))!;
+    expect(link.supplierSku).toBe("GZB-PAN");
     expect(link.price).toBe(8.5);
-    expect(link.quoteCount).toBe(1);
     const rows = await getStore().list("product_suppliers", {
       filter: { productId: "prod-panela", supplierId: "fornecedor-b" },
     });
@@ -100,15 +83,16 @@ describe("vários fornecedores por produto", () => {
   });
 
   it("cada fornecedor só recebe os próprios dados na ficha (isolamento)", async () => {
-    const { quoteA, quoteB } = await rfqFor("prod-panela");
-    // B (vinculado pela cotação anterior): código, preço e MOQ dele.
-    const b = (await qs.getQuoteSheetForUser(supplierB, quoteB.id))!;
+    const orderA = await orderWith("prod-panela", "fornecedor-a");
+    const orderB = await orderWith("prod-panela", "fornecedor-b");
+    // B (vinculado antes): código, preço e MOQ dele.
+    const b = (await sheets.getSheetForUser(supplierB, orderB.id))!;
     expect(b.sheet.factoryItemCode).toBe("GZB-PAN");
     expect(b.sheet.price).toBe(8.5);
     expect(b.sheet.moq).toBe(800);
     expect(b.records.productApplies).toBe(true);
     // A (principal): código e preço do produto; nunca os de B.
-    const a = (await qs.getQuoteSheetForUser(supplierA, quoteA.id))!;
+    const a = (await sheets.getSheetForUser(supplierA, orderA.id))!;
     expect(a.sheet.factoryItemCode).toBe("SZA-PAN5");
     expect(a.sheet.price).toBe(9.5);
     expect(a.sheet.moq).toBe(500);
@@ -128,31 +112,13 @@ describe("vários fornecedores por produto", () => {
       deadline: null,
       notes: null,
     });
-    await r.openRfq(admin, request.id, ["fornecedor-c"]);
-    const [quoteC] = await store.list("quotes", {
-      filter: { requestId: request.id },
+    const order = await orderFromRequest(admin, request, {
+      supplierId: "fornecedor-c",
     });
-    const c = (await qs.getQuoteSheetForUser(admin, quoteC.id))!;
+    const c = (await sheets.getSheetForUser(admin, order.id))!;
     expect(c.sheet.price ?? null).toBeNull();
     expect(c.sheet.moq ?? null).toBeNull();
     expect(c.sheet.factoryItemCode ?? null).toBeNull();
-  });
-
-  it("escolher a cotação conta no histórico do fornecedor", async () => {
-    const { quoteB } = await rfqFor("prod-panela");
-    await r.answerQuote(supplierB, quoteB.id, {
-      price: 8.4,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-    await r.selectQuote(admin, quoteB.id, {
-      sellPrice: 20000,
-      sellCurrency: "BRL",
-    });
-    const link = (await ps.productSupplierLink("prod-panela", "fornecedor-b"))!;
-    expect(link.quoteCount).toBe(2);
-    expect(link.selectedCount).toBe(1);
-    expect(link.lastSelectedAt).toBeTruthy();
   });
 
   it("Wellmix inclui, troca o principal e retira; o código de cada um fica com ele", async () => {
@@ -217,8 +183,8 @@ describe("vários fornecedores por produto", () => {
   it("ficha de outro fornecedor do produto completa o código no vínculo dele", async () => {
     const store = getStore();
     await ps.addProductSupplier(admin, "prod-jarra", "fornecedor-a", null);
-    const { quoteA } = await rfqFor("prod-jarra");
-    await qs.saveQuoteSheet(supplierA, quoteA.id, {
+    const orderA = await orderWith("prod-jarra", "fornecedor-a");
+    await sheets.saveSheet(supplierA, orderA.id, {
       supplierName: "Shenzhen Supplier A",
       factoryItemCode: "A-FROM-SHEET",
     });

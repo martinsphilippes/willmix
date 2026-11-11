@@ -6,6 +6,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const tasks = await import("@/lib/services/tasks");
 type User = import("@/lib/db").User;
 type Task = import("@/lib/services/tasks").Task;
@@ -69,7 +70,12 @@ describe("ordem e filtros", () => {
     mk({ dueAt: "2026-10-20", title: "B depois", stageKey: "SHIPPING" }),
     mk({ dueAt: "2026-10-05", title: "C hoje", stageKey: "PREPARATION" }),
     mk({ dueAt: "2026-10-01", title: "D atrasada", stageKey: "INSPECTION" }),
-    mk({ dueAt: null, title: "E sem prazo", kind: "rfq", group: "rfq" }),
+    mk({
+      dueAt: null,
+      title: "E sem prazo",
+      kind: "supplier_request",
+      group: "supplier_request",
+    }),
     mk({ dueAt: "2026-10-08", title: "F semana", stageKey: "PREPARATION" }),
     mk({ dueAt: "2026-10-01", title: "G atrasada 2", stageKey: "PREPARATION" }),
   ];
@@ -123,7 +129,7 @@ describe("ordem e filtros", () => {
       { group: "PREPARATION", stage: true, count: 3 },
       { group: "INSPECTION", stage: true, count: 1 },
       { group: "SHIPPING", stage: true, count: 1 },
-      { group: "rfq", stage: false, count: 1 },
+      { group: "supplier_request", stage: false, count: 1 },
       { group: "review", stage: false, count: 1 },
     ]);
   });
@@ -133,10 +139,7 @@ describe("pendências reais", () => {
   it("saem ordenadas pelo prazo e com etapa/grupo preenchidos", async () => {
     const store = getStore();
     const r = await import("@/lib/services/requests");
-    const supplierA = (await store.list("users", {})).find(
-      (u) => u.email === "supplier.a@china.com",
-    )!;
-    // Dois pedidos: etapas com prazo (requisito) e uma solicitação aberta (RFQ, prazo da SLA).
+    // Dois pedidos: etapas com prazo (requisito) e uma solicitação aberta.
     for (const name of ["Jarra", "Copo"]) {
       const request = await r.createRequest(joao, {
         customerId: "cliente-joao",
@@ -149,28 +152,13 @@ describe("pendências reais", () => {
         deadline: null,
         notes: null,
       });
-      await r.openRfq(admin, request.id, ["fornecedor-a"]);
-      const [quote] = await store.list("quotes", {
-        filter: { requestId: request.id },
-      });
-      await r.answerQuote(supplierA, quote.id, {
-        price: 2,
-        currency: "USD",
-        leadTimeDays: 10,
-        conditions: null,
-      });
-      await r.selectQuote(admin, quote.id, {
-        sellPrice: 1000,
-        sellCurrency: "BRL",
-        downPaymentAmount: 300,
-      });
-      await r.confirmDownPayment(admin, request.id);
+      await orderFromRequest(admin, request, { downPaymentAmount: 300 });
     }
     await r.createRequest(joao, {
       customerId: "cliente-joao",
       productId: null,
       productName: "Sem fornecedor ainda",
-      description: "Abrir RFQ",
+      description: "Solicitação aberta",
       specification: null,
       quantity: 1,
       unit: "un",
@@ -196,7 +184,6 @@ describe("pendências reais", () => {
       } else expect(t.group).toBe(t.kind);
     }
     expect(mine.some((t) => t.kind === "requirement")).toBe(true);
-    expect(mine.some((t) => t.kind === "rfq")).toBe(true);
 
     // Etapa com prazo de ontem: fica atrasada e vai para o topo.
     const [stage] = await store.list("stages", {
@@ -214,7 +201,6 @@ describe("pendências reais", () => {
     );
     // Cliente: só as próprias (nenhuma da Wellmix), mesma regra de ordem.
     const his = await tasks.pendingTasksFor(joao);
-    expect(his.some((t) => t.kind === "rfq")).toBe(false);
     for (const t of his) expect(t.group).toBeTruthy();
   });
 });

@@ -12,6 +12,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const c = await import("@/lib/services/order-cancel");
 const os = await import("@/lib/services/order-status");
@@ -21,34 +22,16 @@ type Request = import("@/lib/db").Request;
 
 let admin: User;
 let joao: User;
-let supplierA: User;
 
 /** Leva a solicitação até virar pedido (sinal confirmado). */
 async function toOrder(request: Request): Promise<Order> {
-  const store = getStore();
-  await r.openRfq(admin, request.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 1000,
-    sellCurrency: "BRL",
-    downPaymentAmount: 300,
-  });
-  return r.confirmDownPayment(admin, request.id);
+  return orderFromRequest(admin, request, { downPaymentAmount: 300 });
 }
 
 beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
-  supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
 });
 
 describe("página do pedido com pedido cancelado", () => {

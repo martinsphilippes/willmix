@@ -6,7 +6,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
-const { createRequest, openRfq, deleteRequests } =
+const { createRequest, deleteRequests } =
   await import("@/lib/services/requests");
 type User = import("@/lib/db").User;
 
@@ -34,16 +34,14 @@ const newRequest = (user: User) =>
   });
 
 describe("excluir solicitações", () => {
-  it("cancela várias de uma vez, encerra cotações e guarda auditoria", async () => {
+  it("cancela várias de uma vez e guarda auditoria", async () => {
     const store = getStore();
     const a = await newRequest(joao);
     const b = await newRequest(joao);
-    await openRfq(admin, b.id, ["fornecedor-a"]);
     const result = await deleteRequests(admin, [a.id, b.id]);
     expect(result).toEqual({ deleted: 2, skipped: 0 });
     expect((await store.get("requests", a.id))!.status).toBe("CANCELLED");
-    const quotes = await store.list("quotes", { filter: { requestId: b.id } });
-    expect(quotes.every((q) => q.status === "rejected")).toBe(true);
+    expect((await store.get("requests", b.id))!.status).toBe("CANCELLED");
     const audit = await store.list("audit_log", {
       filter: { action: "request.delete", entityId: [a.id, b.id] },
     });

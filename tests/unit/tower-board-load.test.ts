@@ -10,6 +10,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const { loadTowerBoard, BOARD_CARDS } =
   await import("@/lib/services/tower-board");
@@ -17,17 +18,14 @@ type User = import("@/lib/db").User;
 
 let admin: User;
 let joao: User;
-let supplierA: User;
 
 beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
-  supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
 });
 
 async function placeOrder() {
-  const store = getStore();
   const request = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: null,
@@ -39,22 +37,7 @@ async function placeOrder() {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, request.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 1000,
-    sellCurrency: "BRL",
-    downPaymentAmount: 300,
-  });
-  return r.confirmDownPayment(admin, request.id);
+  return orderFromRequest(admin, request, { downPaymentAmount: 300 });
 }
 
 describe("quadros da operação lidos do banco", () => {

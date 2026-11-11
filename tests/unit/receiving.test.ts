@@ -10,9 +10,9 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const rc = await import("@/lib/services/receiving");
-const { setSetting } = await import("@/lib/settings");
 const { RECEIVING_CHECKS } = await import("@/lib/db/schema");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
@@ -27,7 +27,6 @@ beforeAll(async () => {
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
   supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
-  await setSetting("approvalsEnabled", false);
   const req = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: null,
@@ -39,22 +38,10 @@ beforeAll(async () => {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, req.id, ["fornecedor-a"]);
-  const [quote] = await getStore().list("quotes", {
-    filter: { requestId: req.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
+  order = await orderFromRequest(admin, req, {
     sellPrice: 10_000,
-    sellCurrency: "BRL",
     downPaymentAmount: 3_000,
   });
-  order = await r.confirmDownPayment(admin, req.id);
   order = await getStore().update("orders", order.id, { status: "TRANSPORT" });
 });
 

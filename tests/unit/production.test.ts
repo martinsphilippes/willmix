@@ -10,10 +10,10 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const pr = await import("@/lib/services/production");
 const { pendingTasksFor } = await import("@/lib/services/tasks");
-const { setSetting } = await import("@/lib/settings");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
 
@@ -34,7 +34,6 @@ beforeAll(async () => {
   supplierB = users.find(
     (u) => u.role === "supplier" && u.partyId !== supplierA.partyId,
   )!;
-  await setSetting("approvalsEnabled", false);
   const req = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: null,
@@ -46,21 +45,7 @@ beforeAll(async () => {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, req.id, ["fornecedor-a"]);
-  const [quote] = await getStore().list("quotes", {
-    filter: { requestId: req.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 10_000,
-    sellCurrency: "BRL",
-  });
-  order = await r.confirmDownPayment(admin, req.id);
+  order = await orderFromRequest(admin, req, { sellPrice: 10_000 });
 });
 
 const daysAgo = (n: number) =>

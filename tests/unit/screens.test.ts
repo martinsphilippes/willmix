@@ -90,7 +90,6 @@ describe("telas por papel e por função", () => {
     expect(has("supplier", "quotes")).toBe(true);
     expect(has("supplier", "account")).toBe(true);
     expect(has("supplier", "requests")).toBe(false);
-    expect(has("agency", "packaging")).toBe(true);
     expect(has("shipping_line", "freightTariff")).toBe(true);
     expect(has("legal", "penalties")).toBe(true);
     for (const role of [

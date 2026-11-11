@@ -9,6 +9,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const { setSetting } = await import("@/lib/settings");
 const r = await import("@/lib/services/requests");
 const { submitRequirement } = await import("@/lib/workflow/engine");
@@ -29,7 +30,6 @@ let supplierB: User;
 /** Pedido (USD 2 × 100 = 200) depois da Preparação, com o fornecedor indicado. */
 async function orderAfterPreparation(supplierId = "fornecedor-a") {
   const store = getStore();
-  const supplier = supplierId === "fornecedor-a" ? supplierA : supplierB;
   const request = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: "prod-jarra",
@@ -41,22 +41,10 @@ async function orderAfterPreparation(supplierId = "fornecedor-a") {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, request.id, [supplierId]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await r.answerQuote(supplier, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 1000,
-    sellCurrency: "BRL",
+  const order = await orderFromRequest(admin, request, {
+    supplierId,
     downPaymentAmount: 300,
   });
-  const order = await r.confirmDownPayment(admin, request.id);
   // Avança Pedido criado e Preparação.
   for (const key of ["ORDER_CREATED", "PREPARATION"]) {
     const [stage] = await store.list("stages", {

@@ -9,11 +9,10 @@ withTempStore();
 
 const { getStore, DOCUMENT_EXTRA_DEFAULTS } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
-const { createRequest, openRfq, answerQuote, selectQuote, confirmDownPayment } =
-  await import("@/lib/services/requests");
+const { orderFromRequest } = await import("./helpers/order");
+const { createRequest } = await import("@/lib/services/requests");
 const { submitRequirement, decideRequirement, loadOrderProgress } =
   await import("@/lib/workflow/engine");
-const { pendingTasksFor } = await import("@/lib/services/tasks");
 const { canViewOrder } = await import("@/lib/auth/permissions");
 const { saveSheet } = await import("@/lib/services/purchase-sheet");
 const { inspectionReport } = await import("@/lib/services/inspection-report");
@@ -103,45 +102,10 @@ describe("fluxo completo: solicitação → entrega", () => {
     });
     expect(request.status).toBe("REQUESTED");
 
-    await openRfq(operator, request.id, ["fornecedor-a", "fornecedor-b"]);
-    expect(
-      (await pendingTasksFor(supplierA)).some((t) => t.kind === "quote"),
-    ).toBe(true);
-
-    const [quoteA] = await store.list("quotes", {
-      filter: { requestId: request.id, supplierId: "fornecedor-a" },
-    });
-    const [quoteB] = await store.list("quotes", {
-      filter: { requestId: request.id, supplierId: "fornecedor-b" },
-    });
-    await answerQuote(supplierA, quoteA.id, {
+    const order = await orderFromRequest(operator, request, {
       price: 2.5,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-    await answerQuote(supplierB, quoteB.id, {
-      price: 2.8,
-      currency: "USD",
-      leadTimeDays: 25,
-    });
-    // fornecedor B não responde a cotação de A
-    await expect(
-      answerQuote(supplierB, quoteA.id, {
-        price: 1,
-        currency: "USD",
-        leadTimeDays: 1,
-      }),
-    ).rejects.toThrow();
-
-    await selectQuote(operator, quoteA.id, {
       sellPrice: 25000,
-      sellCurrency: "BRL",
     });
-    const updated = (await store.get("requests", request.id))!;
-    expect(updated.status).toBe("WAITING_DOWN_PAYMENT");
-    expect(updated.downPaymentAmount).toBe(7500);
-
-    const order = await confirmDownPayment(operator, request.id);
     expect(order.status).toBe("ORDER_CREATED");
     expect(order.erpSyncStatus).toBe("pending");
     expect(order.agencyId).toBe("agencia");

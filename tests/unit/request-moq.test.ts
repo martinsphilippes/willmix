@@ -10,6 +10,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const { createRequest, createRequestBatch, productMoq, createFollowUpRequest } =
   await import("@/lib/services/requests");
 const { saveProductSheet } = await import("@/lib/services/product-sheet");
@@ -131,27 +132,11 @@ describe("pedido mínimo ao criar a solicitação", () => {
 
   it("recompra a partir de um pedido também respeita o mínimo", async () => {
     const store = getStore();
-    const r = await import("@/lib/services/requests");
-    const users = await store.list("users");
-    const supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
     // Pedido da jarra (sem mínimo na hora da compra).
     const request = await createRequest(joao, base("prod-jarra", 100));
-    await r.openRfq(admin, request.id, ["fornecedor-a"]);
-    const [quote] = await store.list("quotes", {
-      filter: { requestId: request.id },
-    });
-    await r.answerQuote(supplierA, quote.id, {
-      price: 2,
-      currency: "USD",
-      leadTimeDays: 10,
-      conditions: null,
-    });
-    await r.selectQuote(admin, quote.id, {
-      sellPrice: 1000,
-      sellCurrency: "BRL",
+    const order = await orderFromRequest(admin, request, {
       downPaymentAmount: 300,
     });
-    const order = await r.confirmDownPayment(admin, request.id);
     // Depois o cadastro ganhou mínimo: a recompra abaixo dele é recusada.
     await store.update("products", "prod-jarra", { moq: 1000 });
     await expect(
