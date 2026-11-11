@@ -9,7 +9,15 @@ import {
   type User,
 } from "@/lib/db";
 import { normalizeNcm } from "@/lib/fiscal";
-import { matchNcm, ncmGroupKey, type NcmCandidate } from "@/lib/ncm-match";
+import {
+  buildNcmIndex,
+  matchNcm,
+  ncmGroupKey,
+  suggestNcms,
+  type NcmCandidate,
+  type NcmIndex,
+  type NcmSuggestion,
+} from "@/lib/ncm-match";
 import { audit } from "./audit";
 
 /*
@@ -50,13 +58,18 @@ export const canFillBookingNcm = (user: User) =>
  * Produtos do cadastro com NCM (o do produto; sem ele, o da ficha mestre),
  * com os nomes e códigos pelos quais são reconhecidos.
  */
+const ALL = 500_000;
+
 export async function loadNcmCandidates(): Promise<NcmCandidate[]> {
   const store = getStore();
   const [products, sheets, linked, links] = await Promise.all([
-    store.list("products"),
-    store.list("purchase_sheets"),
-    store.list("booking_items").catch(() => [] as BookingItem[]),
-    store.list("product_suppliers").catch(() => []),
+    // Sem o teto padrão de 10 mil linhas: o cadastro do Sankhya passa disso.
+    store.list("products", { limit: ALL }),
+    store.list("purchase_sheets", { limit: ALL }),
+    store
+      .list("booking_items", { limit: ALL })
+      .catch(() => [] as BookingItem[]),
+    store.list("product_suppliers", { limit: ALL }).catch(() => []),
   ]);
   const sheetNcm = new Map<string, string>();
   for (const s of sheets) {
@@ -366,4 +379,68 @@ export async function pendingNcmCount(): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Estimar de novo e sugestões                                               */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * "Estimar o NCM de novo" no booking: refaz a aproximação dos itens sem NCM
+ * (o cadastro pode ter ganhado produtos desde a importação). Rascunho ou
+ * fechado; cancelado não.
+ */
+export async function reclassifyBookingLot(
+  user: User,
+  lotId: string,
+): Promise<{ matched: number; toBroker: number }> {
+  if (!isWellmix(user)) throw new BookingNcmError("forbidden");
+  assertScreen(user, "booking");
+  const store = getStore();
+  const lot = await store.get("booking_lots", lotId);
+  if (!lot) throw new BookingNcmError("not_found");
+  if (lot.status === "cancelled")
+    throw new BookingNcmError("booking_lot_locked");
+  const items = await store.list("booking_items", { filter: { lotId } });
+  const result = await classifyBookingItems(items);
+  await audit(
+    user,
+    "booking_item.ncm",
+    "booking_lot",
+    lotId,
+    `NCM estimado de novo no booking nº ${lot.number}: ${result.matched} por aproximação, ${result.toBroker} sem correspondência`,
+  );
+  return result;
+}
+
+let cachedIndex: { at: number; index: NcmIndex } | null = null;
+const INDEX_TTL_MS = 120_000;
+
+/**
+ * Sugestões de NCM (até 3) para os itens sem NCM, para a Wellmix escolher
+ * com um clique na tabela do booking. Nada é gravado aqui.
+ */
+export async function bookingNcmSuggestions(
+  items: BookingItem[],
+): Promise<Map<string, NcmSuggestion[]>> {
+  const out = new Map<string, NcmSuggestion[]>();
+  const pending = items.filter((i) => !normalizeNcm(i.ncm));
+  if (!pending.length) return out;
+  if (!cachedIndex || Date.now() - cachedIndex.at > INDEX_TTL_MS)
+    cachedIndex = {
+      at: Date.now(),
+      index: buildNcmIndex(await loadNcmCandidates()),
+    };
+  for (const item of pending) {
+    const list = suggestNcms(
+      {
+        names: [item.description, item.productName],
+        code: item.factoryItemCode,
+        material: item.material,
+      },
+      cachedIndex.index,
+    );
+    if (list.length) out.set(item.id, list);
+  }
+  return out;
 }

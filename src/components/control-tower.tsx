@@ -499,6 +499,35 @@ export async function ControlTower({
             </span>
           </summary>
           <div className="mt-4">
+<<<<<<< HEAD
+=======
+            {board ? (
+              <section aria-label={t("tower.detail.title")} className="mb-2">
+                <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  {t("tower.detail.title")}
+                </h2>
+                <TowerBoardView
+                  board={board}
+                  t={t}
+                  param="tile"
+                  selected={tileCard?.key ?? null}
+                  detail={tileList}
+                  newRequestHref={newRequestHref}
+                  occupancy={
+                    totals?.containers.avgOccupancyPercent !== null &&
+                    totals?.containers.avgOccupancyPercent !== undefined
+                      ? t("board.occupancy", {
+                          pct: percent(
+                            totals.containers.avgOccupancyPercent,
+                            t.intl,
+                          ),
+                        })
+                      : null
+                  }
+                />
+              </section>
+            ) : null}
+>>>>>>> origin/wellmix
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
               {t("board.general")}
             </h2>
