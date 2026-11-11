@@ -68,6 +68,7 @@ import {
   LinkButton,
   PageHeader,
   FieldRow,
+  FoldCard,
   Select,
   Table,
   Td,
@@ -411,10 +412,10 @@ export default async function ProductSheetPage({
         className="mt-4 space-y-4"
       >
         <input type="hidden" name="id" value={product.id} />
-        {/* Cadastro denso, no padrão da ficha de compra: rótulo à esquerda,
-            caixa do tamanho do que se digita, um campo abaixo do outro. */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card title={t("catalog.section.identification")} dense>
+        {/* Cadastro em quadros recolhidos (linha fina; um toque abre ou fecha),
+            com letra menor. Identificação e produto são um quadro só. */}
+        <div className="grid items-start gap-2 lg:grid-cols-2">
+          <FoldCard title={t("catalog.section.product")} fold="product">
             <div className="space-y-2">
               <FieldRow label={t("common.name")} size="full" required>
                 <Input
@@ -496,10 +497,122 @@ export default async function ProductSheetPage({
                   }}
                 />
               </FieldRow>
+              <FieldRow
+                label={t("catalog.material")}
+                size="md"
+                {...sheetRequired("material")}
+              >
+                <Input
+                  name="material"
+                  maxLength={120}
+                  defaultValue={product.material ?? ""}
+                  dense
+                />
+              </FieldRow>
+              <FieldRow label={t("catalog.brand")} size="md">
+                <Input
+                  name="brand"
+                  maxLength={80}
+                  defaultValue={product.brand ?? ""}
+                  dense
+                />
+              </FieldRow>
+              <FieldRow
+                label={t("catalog.pantone")}
+                size="full"
+                hint={t("pantone.productHint")}
+              >
+                <PantonePicker
+                  name="colorPantones"
+                  initial={
+                    product.colorPantones ?? masterSheet?.colorPantones ?? []
+                  }
+                  max={MAX_PANTONE_PER_SHEET}
+                  syncName="color"
+                  syncMax={60}
+                  labels={{
+                    search: t("pantone.search"),
+                    scaleAll: t("pantone.scale.all"),
+                    scales: {
+                      C: t("pantone.scale.C"),
+                      U: t("pantone.scale.U"),
+                      M: t("pantone.scale.M"),
+                      P: t("pantone.scale.P"),
+                      TCX: t("pantone.scale.TCX"),
+                    },
+                    loading: t("pantone.loading"),
+                    none: t("pantone.none"),
+                    more: t("pantone.more"),
+                    remove: t("pantone.remove"),
+                    max: t("pantone.max"),
+                    empty: t("pantone.empty"),
+                  }}
+                />
+              </FieldRow>
+              {/* Cor depois do Pantone: as cores escolhidas já entram no texto. */}
+              <FieldRow
+                label={t("catalog.color")}
+                size="md"
+                {...sheetRequired("colorAssortment")}
+              >
+                <Input
+                  name="color"
+                  maxLength={60}
+                  defaultValue={product.color ?? ""}
+                  dense
+                />
+              </FieldRow>
+              <FieldRow label={t("catalog.dimensions")} size="full">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+                  <span>{t("catalog.length")}</span>
+                  <NumberInput
+                    name="lengthCm"
+                    defaultValue={product.lengthCm ?? ""}
+                    aria-label={t("catalog.length")}
+                    className="w-16"
+                  />
+                  <span aria-hidden>×</span>
+                  <span>{t("catalog.width")}</span>
+                  <NumberInput
+                    name="widthCm"
+                    defaultValue={product.widthCm ?? ""}
+                    aria-label={t("catalog.width")}
+                    className="w-16"
+                  />
+                  <span aria-hidden>×</span>
+                  <span>{t("catalog.height")}</span>
+                  <NumberInput
+                    name="heightCm"
+                    defaultValue={product.heightCm ?? ""}
+                    aria-label={t("catalog.height")}
+                    className="w-16"
+                  />
+                </div>
+              </FieldRow>
+              <FieldRow
+                label={t("catalog.netWeight")}
+                size="xs"
+                {...sheetRequired("netWeightPcKg")}
+              >
+                <NumberInput
+                  name="netWeightKg"
+                  defaultValue={product.netWeightKg ?? ""}
+                />
+              </FieldRow>
+              <FieldRow
+                label={t("catalog.grossWeight")}
+                size="xs"
+                {...sheetRequired("grossWeightPcKg")}
+              >
+                <NumberInput
+                  name="grossWeightKg"
+                  defaultValue={product.grossWeightKg ?? ""}
+                />
+              </FieldRow>
             </div>
-          </Card>
+          </FoldCard>
 
-          <Card title={t("catalog.section.supplier")} dense>
+          <FoldCard title={t("catalog.section.supplier")} fold="supplier">
             <div className="space-y-2">
               <FieldRow
                 label={t("common.supplier")}
@@ -616,270 +729,150 @@ export default async function ProductSheetPage({
                 </p>
               ) : null}
             </div>
-          </Card>
+          </FoldCard>
 
-          <Card title={t("catalog.section.product")} dense>
+          <FoldCard title={t("catalog.section.packaging")} fold="packaging">
             <div className="space-y-2">
               <FieldRow
-                label={t("catalog.material")}
-                size="md"
-                {...sheetRequired("material")}
+                label={t("catalog.masterBoxQty")}
+                size="xs"
+                {...sheetRequired("masterCartonQty")}
               >
-                <Input
-                  name="material"
-                  maxLength={120}
-                  defaultValue={product.material ?? ""}
-                  dense
-                />
-              </FieldRow>
-              <FieldRow label={t("catalog.brand")} size="md">
-                <Input
-                  name="brand"
-                  maxLength={80}
-                  defaultValue={product.brand ?? ""}
-                  dense
+                <NumberInput
+                  name="masterBoxQty"
+                  integer
+                  defaultValue={product.masterBoxQty ?? ""}
                 />
               </FieldRow>
               <FieldRow
-                label={t("catalog.pantone")}
+                label={t("catalog.innerBoxQty")}
+                size="xs"
+                {...sheetField("innerQty")}
+                hint={
+                  <InnerQtyHints
+                    masterName="masterBoxQty"
+                    innerName="innerBoxQty"
+                    initialMaster={product.masterBoxQty ?? null}
+                    initialInner={product.innerBoxQty ?? null}
+                    intl={t.intl}
+                    texts={innerQtyTexts(t)}
+                  />
+                }
+              >
+                <NumberInput
+                  name="innerBoxQty"
+                  integer
+                  defaultValue={product.innerBoxQty ?? ""}
+                />
+              </FieldRow>
+              <FieldRow
+                label={t("catalog.boxDimensions")}
                 size="full"
-                hint={t("pantone.productHint")}
+                {...sheetRequired("heightCm", "widthCm", "lengthCm")}
+                hint={
+                  <CartonSizeWarning
+                    sideNames={["boxLengthCm", "boxWidthCm", "boxHeightCm"]}
+                    cbmName="cbm"
+                    initialSides={[
+                      product.boxLengthCm,
+                      product.boxWidthCm,
+                      product.boxHeightCm,
+                    ]}
+                    // CBM desabilitado (vem das medidas salvas) não vai no envio.
+                    initialCbm={
+                      cbmComputed !== null ? null : (product.cbm ?? null)
+                    }
+                    cbmIgnoreDisabled
+                    intl={t.intl}
+                    texts={cartonSizeTexts(t)}
+                  />
+                }
               >
-                <PantonePicker
-                  name="colorPantones"
-                  initial={
-                    product.colorPantones ?? masterSheet?.colorPantones ?? []
-                  }
-                  max={MAX_PANTONE_PER_SHEET}
-                  syncName="color"
-                  syncMax={60}
-                  labels={{
-                    search: t("pantone.search"),
-                    scaleAll: t("pantone.scale.all"),
-                    scales: {
-                      C: t("pantone.scale.C"),
-                      U: t("pantone.scale.U"),
-                      M: t("pantone.scale.M"),
-                      P: t("pantone.scale.P"),
-                      TCX: t("pantone.scale.TCX"),
-                    },
-                    loading: t("pantone.loading"),
-                    none: t("pantone.none"),
-                    more: t("pantone.more"),
-                    remove: t("pantone.remove"),
-                    max: t("pantone.max"),
-                    empty: t("pantone.empty"),
-                  }}
-                />
-              </FieldRow>
-              {/* Cor depois do Pantone: as cores escolhidas já entram no texto. */}
-              <FieldRow
-                label={t("catalog.color")}
-                size="md"
-                {...sheetRequired("colorAssortment")}
-              >
-                <Input
-                  name="color"
-                  maxLength={60}
-                  defaultValue={product.color ?? ""}
-                  dense
-                />
-              </FieldRow>
-              <FieldRow label={t("catalog.dimensions")} size="full">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
                   <span>{t("catalog.length")}</span>
                   <NumberInput
-                    name="lengthCm"
-                    defaultValue={product.lengthCm ?? ""}
+                    name="boxLengthCm"
+                    defaultValue={product.boxLengthCm ?? ""}
                     aria-label={t("catalog.length")}
                     className="w-16"
                   />
                   <span aria-hidden>×</span>
                   <span>{t("catalog.width")}</span>
                   <NumberInput
-                    name="widthCm"
-                    defaultValue={product.widthCm ?? ""}
+                    name="boxWidthCm"
+                    defaultValue={product.boxWidthCm ?? ""}
                     aria-label={t("catalog.width")}
                     className="w-16"
                   />
                   <span aria-hidden>×</span>
                   <span>{t("catalog.height")}</span>
                   <NumberInput
-                    name="heightCm"
-                    defaultValue={product.heightCm ?? ""}
+                    name="boxHeightCm"
+                    defaultValue={product.boxHeightCm ?? ""}
                     aria-label={t("catalog.height")}
                     className="w-16"
                   />
                 </div>
               </FieldRow>
               <FieldRow
-                label={t("catalog.netWeight")}
+                label={t("catalog.cbmPerBox")}
                 size="xs"
-                {...sheetRequired("netWeightPcKg")}
+                {...sheetRequired("cbmPerCarton")}
+                hint={
+                  <>
+                    <strong className="text-zinc-800">
+                      {cbmShown !== null
+                        ? `${cbmShown.toLocaleString(t.intl, { maximumFractionDigits: 4 })} m³`
+                        : "—"}
+                    </strong>
+                    {cbmComputed !== null
+                      ? ` · ${t("catalog.cbmComputed")}`
+                      : ` · ${t("catalog.cbmHint")}`}
+                  </>
+                }
               >
                 <NumberInput
-                  name="netWeightKg"
-                  defaultValue={product.netWeightKg ?? ""}
-                />
-              </FieldRow>
-              <FieldRow
-                label={t("catalog.grossWeight")}
-                size="xs"
-                {...sheetRequired("grossWeightPcKg")}
-              >
-                <NumberInput
-                  name="grossWeightKg"
-                  defaultValue={product.grossWeightKg ?? ""}
+                  name="cbm"
+                  defaultValue={product.cbm ?? ""}
+                  disabled={cbmComputed !== null}
+                  className={cbmComputed !== null ? "bg-zinc-50" : undefined}
                 />
               </FieldRow>
             </div>
-          </Card>
+          </FoldCard>
 
-          {/* Embalagem e observações na mesma coluna: sem linha extra. */}
-          <div className="flex min-w-0 flex-col gap-4">
-            <Card title={t("catalog.section.packaging")} dense>
-              <div className="space-y-2">
-                <FieldRow
-                  label={t("catalog.masterBoxQty")}
-                  size="xs"
-                  {...sheetRequired("masterCartonQty")}
-                >
-                  <NumberInput
-                    name="masterBoxQty"
-                    integer
-                    defaultValue={product.masterBoxQty ?? ""}
-                  />
-                </FieldRow>
-                <FieldRow
-                  label={t("catalog.innerBoxQty")}
-                  size="xs"
-                  {...sheetField("innerQty")}
-                  hint={
-                    <InnerQtyHints
-                      masterName="masterBoxQty"
-                      innerName="innerBoxQty"
-                      initialMaster={product.masterBoxQty ?? null}
-                      initialInner={product.innerBoxQty ?? null}
-                      intl={t.intl}
-                      texts={innerQtyTexts(t)}
-                    />
-                  }
-                >
-                  <NumberInput
-                    name="innerBoxQty"
-                    integer
-                    defaultValue={product.innerBoxQty ?? ""}
-                  />
-                </FieldRow>
-                <FieldRow
-                  label={t("catalog.boxDimensions")}
-                  size="full"
-                  {...sheetRequired("heightCm", "widthCm", "lengthCm")}
-                  hint={
-                    <CartonSizeWarning
-                      sideNames={["boxLengthCm", "boxWidthCm", "boxHeightCm"]}
-                      cbmName="cbm"
-                      initialSides={[
-                        product.boxLengthCm,
-                        product.boxWidthCm,
-                        product.boxHeightCm,
-                      ]}
-                      // CBM desabilitado (vem das medidas salvas) não vai no envio.
-                      initialCbm={
-                        cbmComputed !== null ? null : (product.cbm ?? null)
-                      }
-                      cbmIgnoreDisabled
-                      intl={t.intl}
-                      texts={cartonSizeTexts(t)}
-                    />
-                  }
-                >
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-                    <span>{t("catalog.length")}</span>
-                    <NumberInput
-                      name="boxLengthCm"
-                      defaultValue={product.boxLengthCm ?? ""}
-                      aria-label={t("catalog.length")}
-                      className="w-16"
-                    />
-                    <span aria-hidden>×</span>
-                    <span>{t("catalog.width")}</span>
-                    <NumberInput
-                      name="boxWidthCm"
-                      defaultValue={product.boxWidthCm ?? ""}
-                      aria-label={t("catalog.width")}
-                      className="w-16"
-                    />
-                    <span aria-hidden>×</span>
-                    <span>{t("catalog.height")}</span>
-                    <NumberInput
-                      name="boxHeightCm"
-                      defaultValue={product.boxHeightCm ?? ""}
-                      aria-label={t("catalog.height")}
-                      className="w-16"
-                    />
-                  </div>
-                </FieldRow>
-                <FieldRow
-                  label={t("catalog.cbmPerBox")}
-                  size="xs"
-                  {...sheetRequired("cbmPerCarton")}
-                  hint={
-                    <>
-                      <strong className="text-zinc-800">
-                        {cbmShown !== null
-                          ? `${cbmShown.toLocaleString(t.intl, { maximumFractionDigits: 4 })} m³`
-                          : "—"}
-                      </strong>
-                      {cbmComputed !== null
-                        ? ` · ${t("catalog.cbmComputed")}`
-                        : ` · ${t("catalog.cbmHint")}`}
-                    </>
-                  }
-                >
-                  <NumberInput
-                    name="cbm"
-                    defaultValue={product.cbm ?? ""}
-                    disabled={cbmComputed !== null}
-                    className={cbmComputed !== null ? "bg-zinc-50" : undefined}
-                  />
-                </FieldRow>
-              </div>
-            </Card>
-
-            {/* Um texto só: as observações do cadastro, as da ficha mestre e a
+          {/* Um texto só: as observações do cadastro, as da ficha mestre e a
                 descrição para e-commerce (a caixa diz se vai para lá). */}
-            <Card title={t("catalog.section.notes")} className="flex-1" dense>
-              <div data-field-anchor="notes ecommerceDescription">
-                <Textarea
-                  name="notes"
-                  rows={4}
-                  maxLength={4000}
-                  defaultValue={notesView.text}
-                  dense
+          <FoldCard title={t("catalog.section.notes")} fold="notes">
+            <div data-field-anchor="notes ecommerceDescription">
+              <Textarea
+                name="notes"
+                rows={4}
+                maxLength={4000}
+                defaultValue={notesView.text}
+                dense
+              />
+              <label className="mt-2 flex items-start gap-2 text-sm text-zinc-800">
+                <input type="hidden" name="notesToEcommerce" value="off" />
+                <input
+                  type="checkbox"
+                  name="notesToEcommerce"
+                  value="on"
+                  defaultChecked={notesView.toEcommerce}
+                  className="mt-0.5 h-4 w-4 accent-brand-600"
+                  data-notes-ecommerce
                 />
-                <label className="mt-2 flex items-start gap-2 text-sm text-zinc-800">
-                  <input type="hidden" name="notesToEcommerce" value="off" />
-                  <input
-                    type="checkbox"
-                    name="notesToEcommerce"
-                    value="on"
-                    defaultChecked={notesView.toEcommerce}
-                    className="mt-0.5 h-4 w-4 accent-brand-600"
-                    data-notes-ecommerce
-                  />
-                  <span>
-                    <span className="font-medium">
-                      {t("catalog.notes.ecommerce")}
-                    </span>
-                    <span className="block text-xs text-zinc-500">
-                      {t("catalog.notes.ecommerceHint")}
-                    </span>
+                <span>
+                  <span className="font-medium">
+                    {t("catalog.notes.ecommerce")}
                   </span>
-                </label>
-              </div>
-            </Card>
-          </div>
+                  <span className="block text-xs text-zinc-500">
+                    {t("catalog.notes.ecommerceHint")}
+                  </span>
+                </span>
+              </label>
+            </div>
+          </FoldCard>
         </div>
 
         {/* Botão principal no fim, fixo ao alcance do polegar no celular. */}

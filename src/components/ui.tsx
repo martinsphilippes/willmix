@@ -119,6 +119,49 @@ export function Card({
   );
 }
 
+/**
+ * Quadro recolhível: fechado é uma linha fina com o título; um toque abre ou
+ * fecha. O conteúdo usa letra menor (regra `[data-fold-card]` no CSS global).
+ * Os campos de um quadro fechado continuam indo no envio do formulário.
+ */
+export function FoldCard({
+  title,
+  fold,
+  defaultOpen,
+  children,
+}: {
+  title: ReactNode;
+  /** Nome do quadro (para testes e para abrir pelo aviso de campo que falta). */
+  fold?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details
+      className="group/fold min-w-0 rounded-lg border border-zinc-200/80 bg-white shadow-sm shadow-zinc-900/[0.03]"
+      data-fold-card={fold ?? ""}
+      open={defaultOpen}
+    >
+      <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-1 text-xs font-semibold tracking-tight text-zinc-900 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 [&::-webkit-details-marker]:hidden">
+        <span>{title}</span>
+        <svg
+          aria-hidden
+          viewBox="0 0 20 20"
+          className="h-4 w-4 shrink-0 text-zinc-500 transition-transform group-open/fold:rotate-180"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M5 8l5 5 5-5" />
+        </svg>
+      </summary>
+      <div className="border-t border-zinc-100 px-3 pb-3 pt-2">{children}</div>
+    </details>
+  );
+}
+
 export function PageHeader({
   title,
   subtitle,
