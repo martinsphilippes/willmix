@@ -33,7 +33,7 @@ export async function listPartnerTypeRows(): Promise<PartnerType[]> {
   try {
     return await getStore().list("partner_types");
   } catch (error) {
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     if (isSchemaMissing(error)) return [];
     throw error;
   }

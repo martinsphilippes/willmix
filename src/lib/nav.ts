@@ -64,13 +64,15 @@ const GRANTED_FROM_CUSTOMER: Entry[] = [
   ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
 ];
 const GRANTED_FROM_PARTNERS: Entry[] = [
-  ["quotes", { href: "/app/quotes", key: "nav.quotes" }],
+  [
+    "quotes",
+    { href: "/app/supplier-requests", key: "nav.supplierRequests" },
+  ],
   ["freight", { href: "/app/freight", key: "nav.freight" }],
   [
     "freightTariff",
     { href: "/app/freight/tariff", key: "nav.myFreightTariff" },
   ],
-  ["packaging", { href: "/app/packaging", key: "nav.packaging" }],
   ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
   ["account", { href: "/app/account", key: "nav.account" }],
 ];

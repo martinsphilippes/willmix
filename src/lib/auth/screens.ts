@@ -58,7 +58,6 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/inventory", "products"],
   ["/app/booking", "booking"],
   ["/app/requests", "requests"],
-  ["/app/quotes", "quotes"],
   // Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): quem abre Cotações.
   ["/app/supplier-requests", "quotes"],
   ["/app/orders", "orders"],
