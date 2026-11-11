@@ -2,7 +2,6 @@ import type {
   ArtIssue,
   Order,
   ProductionTrack,
-  Quote,
   Receiving,
   SkuInspection,
 } from "@/lib/db/schema";
@@ -14,8 +13,9 @@ import type {
  * - recebimento: unidades que chegaram boas (recebido − avaria) sobre o esperado,
  *   nos recebimentos fechados;
  * - arte: pedidos sem não conformidade de arte;
- * - cotação: convites respondidos (e em quantos dias, em média); convite
- *   sem resposta só conta depois de QUOTE_GRACE_DAYS dias.
+ * - resposta: solicitações ao fornecedor respondidas (e em quantos dias, em
+ *   média); a sem resposta só conta depois de QUOTE_GRACE_DAYS dias. (Até
+ *   11/11/2026 eram os convites da cotação, que saiu.)
  * A nota é a média simples dos critérios com dados (0 a 100); sem nenhum
  * dado, não há nota (nada é inventado).
  */
@@ -63,7 +63,8 @@ export function scoreSupplier(input: {
   inspections: Pick<SkuInspection, "orderId" | "round" | "result">[];
   receivings: Pick<Receiving, "orderId" | "closedAt" | "items">[];
   artIssues: Pick<ArtIssue, "orderId">[];
-  quotes: Pick<Quote, "status" | "answeredAt" | "createdAt">[];
+  /** Solicitações ao fornecedor: quando abriram e a 1ª resposta dele. */
+  quotes: { answeredAt: string | null; createdAt: string }[];
   /** Hoje (AAAA-MM-DD): convite mais novo que o prazo e sem resposta não conta. */
   today: string;
 }): SupplierScore {

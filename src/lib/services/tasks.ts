@@ -2,12 +2,7 @@ import "server-only";
 
 import { translator } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import {
-  getStore,
-  type Order,
-  type StageKey,
-  type User,
-} from "@/lib/db";
+import { getStore, type Order, type StageKey, type User } from "@/lib/db";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import {
   ORDER_SIGN_SEND,
@@ -19,6 +14,7 @@ import {
 } from "@/lib/workflow/stages";
 
 export type TaskKind =
+  | "new_request"
   | "requirement"
   | "review"
   | "after_sales"
@@ -224,6 +220,7 @@ const SIGN_AFTER: ReadonlyArray<[string, string]> = [
   [ORDER_SIGNED_SUPPLIER, ORDER_SIGNED_WELLMIX],
 ];
 const KIND_ORDER: string[] = [
+  "new_request",
   "supplier_request",
   "freight_quote",
   "supplier_payment",
@@ -308,26 +305,42 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
 
   // Todas as consultas independentes saem juntas (cada ida ao banco custa uma
   // viagem de rede); os detalhes vêm depois, em lote.
-  const [stages, demands, reviews, openAfterSales] = await Promise.all([
-    store.list("stages", { filter: { status: ["active", "blocked"] } }),
-    wellmix
-      ? store.list("sourcing_items", {
-          filter: { status: ["draft", "negotiating"] },
-        })
-      : none,
-    wellmix
-      ? store.list("review_items", {
-          filter: { status: "open" },
-          orderBy: "createdAt",
-          direction: "desc",
-        })
-      : none,
-    customer
-      ? store.list("after_sales", {
-          filter: { customerId: user.partyId!, status: "open" },
-        })
-      : none,
-  ]);
+  const [stages, newRequests, demands, reviews, openAfterSales] =
+    await Promise.all([
+      store.list("stages", { filter: { status: ["active", "blocked"] } }),
+      // Solicitação do cliente ainda sem pedido (as situações da RFQ e do sinal
+      // só existem nas antigas): a Wellmix dá o próximo passo.
+      wellmix
+        ? store.list("requests", {
+            filter: {
+              status: [
+                "REQUESTED",
+                "RFQ_OPEN",
+                "QUOTATION_RECEIVED",
+                "SUPPLIER_SELECTED",
+                "WAITING_DOWN_PAYMENT",
+              ],
+            },
+          })
+        : none,
+      wellmix
+        ? store.list("sourcing_items", {
+            filter: { status: ["draft", "negotiating"] },
+          })
+        : none,
+      wellmix
+        ? store.list("review_items", {
+            filter: { status: "open" },
+            orderBy: "createdAt",
+            direction: "desc",
+          })
+        : none,
+      customer
+        ? store.list("after_sales", {
+            filter: { customerId: user.partyId!, status: "open" },
+          })
+        : none,
+    ]);
 
   // Pedidos, requisitos e solicitações citados acima, em uma rodada paralela.
   // Os pedidos dos itens de revisão entram para pular os de pedido cancelado.
@@ -486,6 +499,22 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
 
   const { getSettings } = await import("@/lib/settings");
   const flowSettings = await getSettings();
+  // Solicitação nova do cliente (a RFQ e a cotação saíram em 11/11/2026).
+  for (const request of newRequests)
+    tasks.push(
+      finish(
+        {
+          kind: "new_request",
+          title: `Solicitação nova: ${request.productName}`,
+          detail: `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
+          link: `/app/requests/${request.id}`,
+          dueAt: request.deadline,
+          customerId: request.customerId,
+          ownerUserId: request.ownerUserId ?? null,
+        },
+        now,
+      ),
+    );
   if (supplier) tasks.push(...(await supplierRequestTasks(user, now)));
   // Pós-venda aberto: o cliente avalia a compra (pedido cancelado não conta;
   // os cancelados antes de o cancelamento encerrar o pós-venda ainda o têm aberto).

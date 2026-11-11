@@ -49,8 +49,7 @@ beforeAll(async () => {
     factoryAddress: null,
     isFactory: null,
     notes: null,
-    source: cards.SHEET_CARD_SOURCE,
-    quoteId: null,
+    source: "sheet",
     createdByUserId: admin.id,
   } as never);
 });

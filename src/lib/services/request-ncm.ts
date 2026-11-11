@@ -94,12 +94,9 @@ export interface SuggestionView extends NcmSuggestion {
 /** Fatos do produto para a IA: nome, descrição, especificação e o material da ficha. */
 async function factsFor(request: Request) {
   const store = getStore();
-  const quotes = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  const sheets = quotes.length
+  const sheets = request.orderId
     ? await store.list("purchase_sheets", {
-        filter: { orderId: quotes.map((q) => q.id) },
+        filter: { orderId: request.orderId },
       })
     : [];
   const sheet = sheets.find((s) => s.material) ?? sheets[0] ?? null;

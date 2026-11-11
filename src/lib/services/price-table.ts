@@ -33,21 +33,12 @@ export async function priceTable(user: User): Promise<PriceRow[]> {
     store.list("product_lines", {}),
     store.list("requests", { filter: { status: SOLD as never } }),
   ]);
-  const quoteIds = requests
-    .map((r) => r.selectedQuoteId)
-    .filter((id): id is string => !!id);
-  const quotes = quoteIds.length
-    ? await store.list("quotes", { filter: { id: quoteIds } })
-    : [];
   return products.map((p) => {
     const last = requests
       .filter(
         (r) => r.productId === p.id && r.sellPrice !== null && r.quantity > 0,
       )
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
-    const quote = last
-      ? quotes.find((q) => q.id === last.selectedQuoteId)
-      : undefined;
     return {
       productId: p.id,
       sku: p.sku,
@@ -58,8 +49,8 @@ export async function priceTable(user: User): Promise<PriceRow[]> {
         ? Math.round(((last.sellPrice ?? 0) / last.quantity) * 10000) / 10000
         : null,
       currency: last?.sellCurrency ?? null,
-      fobUnit: quote?.price ?? p.price ?? null,
-      fobCurrency: quote?.currency ?? p.currency ?? null,
+      fobUnit: p.price ?? null,
+      fobCurrency: p.currency ?? null,
       soldAt: last?.updatedAt ?? null,
     };
   });

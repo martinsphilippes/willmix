@@ -330,16 +330,9 @@ export async function artworkDocuments(
   if (!canViewOrder(user, order)) throw new ForbiddenError();
   const store = getStore();
   const types = [...ART_DOC_TYPES] as string[];
-  const [byOrder, briefs] = await Promise.all([
-    store.list("documents", { filter: { orderId: order.id } }),
-    store.list("packaging_briefs", { filter: { orderId: order.id } }),
-  ]);
-  const byBrief = briefs.length
-    ? await store.list("documents", {
-        filter: { packagingBriefId: briefs.map((b) => b.id) },
-      })
-    : [];
-  const all = [...byOrder, ...byBrief];
+  const all = await store.list("documents", {
+    filter: { orderId: order.id },
+  });
   // Só a versão mais nova de cada arquivo.
   const superseded = new Set(
     all.map((d) => d.previousDocumentId).filter((id): id is string => !!id),

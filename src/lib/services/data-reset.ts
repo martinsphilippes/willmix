@@ -33,7 +33,6 @@ export const RESET_CONFIRM_WORD = "APAGAR";
 /** Tabelas de venda: tudo é apagado. */
 const SALES_TABLES = [
   "requests",
-  "quotes",
   "orders",
   "order_items",
   "stages",
@@ -55,10 +54,6 @@ const SALES_TABLES = [
   "message_reads",
   "conversation_topics",
   "conversations",
-  // Aprovações do pré-custo das solicitações de teste.
-  "approvals",
-  // Briefings de embalagem (faca e arte) das solicitações de teste.
-  "packaging_briefs",
   // Produção (follow, ETD) e inspeção por SKU dos pedidos de teste.
   "production_tracks",
   "sku_inspections",
@@ -78,8 +73,6 @@ const SALES_TABLES = [
 
 /** Tabelas que podem ainda não existir no Appwrite (esquema não publicado). */
 const OPTIONAL_TABLES = new Set<TableName>([
-  "approvals",
-  "packaging_briefs",
   "import_steps",
   "receivings",
   "production_tracks",
@@ -134,7 +127,6 @@ const DELETE_ORDER: Partial<Record<TableName, number>> = {
   sourcing_items: 4,
   containers: 6,
   orders: 7,
-  quotes: 8,
   requests: 9,
 };
 /** Demais tabelas de venda (itens, etapas, pagamentos…): antes dos pais. */
@@ -170,7 +162,6 @@ export interface ResetPlan {
   /** Quantos registros de cada tipo vão ser apagados. */
   remove: {
     requests: number;
-    quotes: number;
     orders: number;
     payments: number;
     containers: number;
@@ -228,7 +219,6 @@ async function buildWork(): Promise<Work> {
     sourcing,
     lookups,
     schedules,
-    productSuppliers,
     importBatches,
     counters,
     readings,
@@ -247,7 +237,6 @@ async function buildWork(): Promise<Work> {
     list("sourcing_items"),
     list("product_lookups"),
     list("purchase_schedules"),
-    list("product_suppliers"),
     list("import_batches"),
     list("counters"),
     list("sheet_readings"),
@@ -270,13 +259,12 @@ async function buildWork(): Promise<Work> {
   const saleIds = (t: (typeof SALES_TABLES)[number]) =>
     new Set(byTable[t].map((r) => r.id));
   const requestIds = saleIds("requests");
-  const quoteIds = saleIds("quotes");
   const orderIds = saleIds("orders");
   const productIds = new Set(products.map((p) => p.id));
-  // Ligação com venda: pedido/solicitação/cotação que existe (ou existia) e
+  // Ligação com venda: pedido/solicitação que existe (ou existia) e
   // não é produto do catálogo (a ficha mestre usa orderId = id do produto).
   const isSale = (id: string | null | undefined) =>
-    !!id && (requestIds.has(id) || quoteIds.has(id) || orderIds.has(id));
+    !!id && (requestIds.has(id) || orderIds.has(id));
 
   // Fichas de compra: só existem as do produto (mestre, orderId = id do
   // produto), da cotação e do pedido. Tudo que não é mestre sai (mesmo que a
@@ -362,18 +350,12 @@ async function buildWork(): Promise<Work> {
     }
   }
 
-  // Cartões do fabricante: os do produto ficam (quem fabrica, catálogo) e só
-  // perdem a ligação com a cotação de teste; os de cotação sem produto saem.
+  // Cartões do fabricante: os do produto ficam (quem fabrica, catálogo); os
+  // sem produto saem.
   const keptCards = [];
   for (const c of cards) {
     if (c.productId) {
       keptCards.push(c);
-      if (c.quoteId)
-        updates.push({
-          table: "manufacturer_cards",
-          id: c.id,
-          patch: { quoteId: null },
-        });
     } else {
       drop("manufacturer_cards", c.id);
       droppedPhotoDocs.add(c.documentId);
@@ -409,10 +391,6 @@ async function buildWork(): Promise<Work> {
       !!(d.orderId || d.requestId || d.requirementId || d.kitId) ||
       // Anexo do chat (sai junto com as mensagens).
       !!d.conversationTopicId ||
-      // Arquivo do briefing de embalagem ou da cotação (negociação, proposta
-      // de embalagem): saem com eles, mesmo sem pedido nem solicitação.
-      !!d.packagingBriefId ||
-      !!d.quoteId ||
       droppedPhotoDocs.has(d.id) ||
       (!!d.sourcingItemId && sourcingGone.has(d.sourcingItemId));
     // Do catálogo: usado por algo que fica, ou do produto/sourcing que fica
@@ -433,8 +411,6 @@ async function buildWork(): Promise<Work> {
     if (d.requestId) patch.requestId = null;
     if (d.requirementId) patch.requirementId = null;
     if (d.kitId) patch.kitId = null;
-    if (d.packagingBriefId) patch.packagingBriefId = null;
-    if (d.quoteId) patch.quoteId = null;
     if (d.previousDocumentId && deleted.has(d.previousDocumentId))
       patch.previousDocumentId = null;
     if (Object.keys(patch).length)
@@ -474,25 +450,6 @@ async function buildWork(): Promise<Work> {
             : {}),
         },
       });
-  for (const link of productSuppliers)
-    if (
-      link.lastQuoteId ||
-      link.quoteCount ||
-      link.selectedCount ||
-      link.lastSelectedAt
-    )
-      updates.push({
-        table: "product_suppliers",
-        id: link.id,
-        // Código, preço, moeda, MOQ e prazo ficam; o histórico de cotações sai.
-        patch: {
-          lastQuoteId: null,
-          lastQuotedAt: null,
-          quoteCount: 0,
-          selectedCount: 0,
-          lastSelectedAt: null,
-        },
-      });
 
   // Dependente antes do que é dependido (ver DELETE_ORDER).
   deletes.sort((a, b) => deleteRank(a.table) - deleteRank(b.table));
@@ -505,7 +462,6 @@ async function buildWork(): Promise<Work> {
     deletes.filter((d) => d.table === table).length;
   const remove = {
     requests: count("requests"),
-    quotes: count("quotes"),
     orders: count("orders"),
     payments: count("payments"),
     containers: count("containers"),

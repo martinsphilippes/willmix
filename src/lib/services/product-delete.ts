@@ -50,7 +50,6 @@ const HISTORY_TABLES = [
   "order_items",
   "purchase_snapshots",
   "container_items",
-  "packaging_briefs",
 ] as const;
 
 /** O que é só do cadastro do produto e sai junto com ele. */

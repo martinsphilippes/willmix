@@ -19,23 +19,18 @@ const input = (over: Partial<JourneyInput> = {}): JourneyInput =>
     requirements: [],
     steps: [],
     reviews: [],
-    // Campos da cotação (saem com a RFQ): vazios.
-    quotes: [],
-    approvals: [],
-    rfqDays: 3,
     ...over,
   }) as unknown as JourneyInput;
 
 describe("passos e percentuais", () => {
   it("vai da solicitação nova (0%) ao encerrado (100%)", () => {
     expect(journeyPercent("reqNew")).toBe(0);
-    expect(journeyPercent("reqDown")).toBe(33);
-    expect(journeyPercent("ordCreated")).toBe(39);
-    expect(journeyPercent("ordPrep")).toBe(44);
-    expect(journeyPercent("ordContract")).toBe(50);
-    expect(journeyPercent("ordInspection")).toBe(56);
-    expect(journeyPercent("ordAtSea")).toBe(72);
-    expect(journeyPercent("ordDelivered")).toBe(94);
+    expect(journeyPercent("ordCreated")).toBe(8);
+    expect(journeyPercent("ordPrep")).toBe(17);
+    expect(journeyPercent("ordContract")).toBe(25);
+    expect(journeyPercent("ordInspection")).toBe(33);
+    expect(journeyPercent("ordAtSea")).toBe(58);
+    expect(journeyPercent("ordDelivered")).toBe(92);
     expect(journeyPercent("ordClosed")).toBe(100);
   });
 

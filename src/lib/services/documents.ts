@@ -342,13 +342,13 @@ export async function canAccessDocument(
       (await isShowcaseDocument(doc.productId, doc.id))
     )
       return true;
-    // Agência: as mesmas fotos de vitrine, só dos produtos de que tem briefing
-    // de embalagem (a arte precisa ver o produto).
+    // Agência: as mesmas fotos de vitrine, só dos produtos de pedidos em que
+    // ela é a agência (a arte precisa ver o produto).
     if (
       doc.productId &&
       user.role === "agency" &&
       !!user.partyId &&
-      (await agencyHasBriefFor(user.partyId, doc.productId)) &&
+      (await agencyHasOrderWithProduct(user.partyId, doc.productId)) &&
       (await isCatalogShowcasePhoto(doc.productId, doc.id))
     )
       return true;
@@ -514,20 +514,21 @@ async function isCatalogShowcasePhoto(
   );
 }
 
-/** A agência tem briefing de embalagem (vivo) deste produto? */
-async function agencyHasBriefFor(
+/** A agência é a do pedido de algum pedido com este produto? */
+async function agencyHasOrderWithProduct(
   agencyId: string,
   productId: string,
 ): Promise<boolean> {
-  try {
-    const rows = await getStore().list("packaging_briefs", {
-      filter: { agencyId, productId },
-    });
-    return rows.some((b) => b.status !== "cancelled");
-  } catch {
-    // Tabela ainda não publicada: nada a conceder.
-    return false;
-  }
+  const store = getStore();
+  const orders = (
+    await store.list("orders", { filter: { agencyId } })
+  ).filter((o) => o.status !== "CANCELLED");
+  if (!orders.length) return false;
+  const items = await store.list("order_items", {
+    filter: { orderId: orders.map((o) => o.id), productId },
+    limit: 1,
+  });
+  return items.length > 0;
 }
 
 /*

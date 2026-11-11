@@ -31,7 +31,6 @@ const storage = new Storage(client);
 
 const TRANSACTIONAL: TableName[] = [
   "requests",
-  "quotes",
   "orders",
   "order_items",
   "stages",

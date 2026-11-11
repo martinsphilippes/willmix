@@ -69,8 +69,9 @@ export async function getTrack(
 
 /**
  * A fábrica quando o próprio fornecedor fabrica: o nome do cadastro dele e o
- * endereço da fábrica (o do cartão do fabricante confirmado na cotação;
- * senão, o endereço do cadastro). Entra sozinho no cartão Produção.
+ * endereço da fábrica (o do cartão do fabricante mais novo do produto com
+ * esse fornecedor; senão, o endereço do cadastro). Entra sozinho no cartão
+ * Produção.
  */
 export async function supplierFactory(
   order: Pick<Order, "supplierId" | "requestId">,
@@ -82,12 +83,17 @@ export async function supplierFactory(
     const request = order.requestId
       ? await store.get("requests", order.requestId)
       : null;
-    const quote = request?.selectedQuoteId
-      ? await store.get("quotes", request.selectedQuoteId)
-      : null;
-    const card = quote?.manufacturerCardId
-      ? await store.get("manufacturer_cards", quote.manufacturerCardId)
-      : null;
+    const cards = request?.productId
+      ? await store.list("manufacturer_cards", {
+          filter: {
+            productId: request.productId,
+            supplierId: order.supplierId,
+          },
+          orderBy: "createdAt",
+          direction: "desc",
+        })
+      : [];
+    const card = cards.find((c) => c.factoryAddress?.trim()) ?? null;
     cardAddress = card?.factoryAddress?.trim() || null;
   } catch (error) {
     if (!isSchemaMissing(error)) throw error;

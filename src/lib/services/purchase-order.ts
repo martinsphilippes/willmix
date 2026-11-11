@@ -200,7 +200,6 @@ export async function createPurchaseOrder(
     unit: "pcs",
     deadline: null,
     status: "ORDERED",
-    selectedQuoteId: null,
     orderId: null,
     sellPrice: null,
     sellCurrency: null,

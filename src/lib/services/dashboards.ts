@@ -94,19 +94,15 @@ export async function areaPanel(
 
   switch (area) {
     case "purchasing": {
-      const [requests, approvals, sheets] = await Promise.all([
+      // A RFQ e a cotação saíram (11/11/2026): a compra é a solicitação ao
+      // fornecedor (docs/SUPPLIER_REQUESTS.md).
+      const [requests, supplierRequests] = await Promise.all([
         safeList("requests", {
           status: ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"],
         }),
-        safeList("approvals"),
-        safeList("purchase_sheets", { dumping: "yes" }),
+        safeList("supplier_requests", { status: ["open", "answered"] }),
       ]);
-      const pending = approvals.filter((a) => a.status === "pending");
-      const decided = approvals.filter(
-        (a) =>
-          a.decidedAt && (a.status === "approved" || a.status === "rejected"),
-      );
-      const held = sheets.filter((s) => !s.dumpingReleasedAt);
+      const answered = supplierRequests.filter((r) => r.status === "answered");
       return {
         area,
         metrics: [
@@ -116,39 +112,15 @@ export async function areaPanel(
             href: "/app/requests",
           },
           {
-            key: "awaitingQuotes",
-            value: requests.filter((r) => r.status === "RFQ_OPEN").length,
+            key: "supplierRequestsOpen",
+            value: supplierRequests.length - answered.length,
+            href: "/app/supplier-requests",
           },
           {
-            key: "toSelect",
-            value: requests.filter((r) => r.status === "QUOTATION_RECEIVED")
-              .length,
-            tone: "warning",
-          },
-          {
-            key: "pendingApprovals",
-            value: pending.length,
-            tone: pending.length ? "warning" : "neutral",
-            href: "/app/tasks",
-          },
-          {
-            key: "approvalDays",
-            value: avg(
-              decided.map((a) =>
-                days(Date.parse(a.decidedAt!) - Date.parse(a.createdAt)),
-              ),
-            ),
-          },
-          {
-            key: "rejectionRate",
-            value: decided.length
-              ? `${Math.round((decided.filter((a) => a.status === "rejected").length / decided.length) * 100)}%`
-              : "—",
-          },
-          {
-            key: "dumpingHeld",
-            value: held.length,
-            tone: held.length ? "danger" : "neutral",
+            key: "supplierRequestsAnswered",
+            value: answered.length,
+            tone: answered.length ? "warning" : "neutral",
+            href: "/app/supplier-requests",
           },
         ],
         attention: [],

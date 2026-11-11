@@ -21,7 +21,6 @@ import {
   ForbiddenError,
   WELLMIX_ROLES,
   canViewOrder,
-  canViewQuote,
   canViewRequest,
   isWellmix,
 } from "@/lib/auth/permissions";
@@ -126,18 +125,9 @@ function isMember(user: User, conversation: Conversation): boolean {
 const canAccessConversation = (user: User, conversation: Conversation) =>
   isWellmix(user) || isMember(user, conversation);
 
-/**
- * Quem pode ver a solicitação: as regras de sempre (cliente: o login
- * solicitante) e o fornecedor por meio da própria cotação.
- */
+/** Quem pode ver a solicitação: as regras de sempre (cliente: o login solicitante). */
 async function canSeeRequest(user: User, request: Request): Promise<boolean> {
-  if (canViewRequest(user, request)) return true;
-  if (user.role !== "supplier" || !user.partyId) return false;
-  const quotes = await getStore().list("quotes", {
-    filter: { requestId: request.id, supplierId: user.partyId },
-    limit: 1,
-  });
-  return quotes.some((q) => canViewQuote(user, q));
+  return canViewRequest(user, request);
 }
 
 /** Empresas do pedido (cliente, fornecedor e parceiros designados). */
@@ -161,19 +151,12 @@ async function conversationOwner(conversation: Conversation) {
   return getStore().get("users", conversation.userId);
 }
 
-/** A empresa da conversa participa da solicitação (cliente ou cotou)? */
+/** A empresa da conversa participa da solicitação (é o cliente)? */
 async function companyInRequest(
   conversation: Conversation,
   request: Request,
 ): Promise<boolean> {
-  if (conversation.partyId) {
-    if (request.customerId === conversation.partyId) return true;
-    const quotes = await getStore().list("quotes", {
-      filter: { requestId: request.id, supplierId: conversation.partyId },
-      limit: 1,
-    });
-    return quotes.length > 0;
-  }
+  if (conversation.partyId) return request.customerId === conversation.partyId;
   const owner = await conversationOwner(conversation);
   return !!owner && (await canSeeRequest(owner, request));
 }
@@ -1185,12 +1168,7 @@ export async function chatContext(
       throw new ForbiddenError();
     let participants: ChatContext["participants"] = [];
     if (wellmix) {
-      const quotes = await store.list("quotes", {
-        filter: { requestId: request.id },
-      });
-      const ids = [
-        ...new Set([request.customerId, ...quotes.map((q) => q.supplierId)]),
-      ].filter((id): id is string => !!id);
+      const ids = [request.customerId].filter((id): id is string => !!id);
       const parties = ids.length
         ? await store.list("parties", { filter: { id: ids } })
         : [];
