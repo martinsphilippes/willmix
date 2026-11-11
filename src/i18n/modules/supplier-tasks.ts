@@ -44,6 +44,14 @@ export const pt = {
   "agencyTasks.help.seal":
     "Aplique na arte o selo enviado pela certificadora e envie a arte com o selo para a Wellmix conferir.",
   "tasks.group.supplier.booking": "Analisar o Booking",
+  "tasks.group.supplier.request": "Responder a solicitação",
+  "supplierTasks.help.request":
+    "Diga se faz o item pedido pela Wellmix e em que condições (preço, pedido mínimo e prazo); se vier contraproposta, aceite, proponha de novo ou recuse.",
+  "supplierTasks.request.title": "Solicitação nº {n}: {product}",
+  "supplierTasks.request.detail":
+    "{qty} {unit} · diga se faz o item e em que condições",
+  "supplierTasks.request.counter":
+    "A Wellmix enviou uma contraproposta: aceite, proponha de novo ou recuse",
   "tasks.group.supplier.dieline": "Die Cut",
   "tasks.group.supplier.sheet": "Ficha de compra",
   "tasks.group.supplier.art": "Aprovar a arte",
@@ -106,6 +114,14 @@ export const en: Record<keyof typeof pt, string> = {
   "agencyTasks.help.seal":
     "Apply the seal sent by the certifier to the artwork and upload it for Wellmix to check.",
   "tasks.group.supplier.booking": "Review the Booking",
+  "tasks.group.supplier.request": "Answer the request",
+  "supplierTasks.help.request":
+    "Say whether you make the item Wellmix asked for and on what terms (price, minimum order and lead time); if a counter-proposal arrives, accept it, propose again or decline.",
+  "supplierTasks.request.title": "Request no. {n}: {product}",
+  "supplierTasks.request.detail":
+    "{qty} {unit} · say whether you make the item and on what terms",
+  "supplierTasks.request.counter":
+    "Wellmix sent a counter-proposal: accept, propose again or decline",
   "tasks.group.supplier.dieline": "Die Cut",
   "tasks.group.supplier.sheet": "Purchase sheet",
   "tasks.group.supplier.art": "Approve the artwork",
@@ -166,6 +182,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "agencyTasks.help.seal":
     "把认证机构发送的认证标志加到设计稿上，并上传给 Wellmix 核对。",
   "tasks.group.supplier.booking": "审核 Booking",
+  "tasks.group.supplier.request": "答复询问",
+  "supplierTasks.help.request":
+    "请说明是否能做 Wellmix 询问的产品以及条件（价格、起订量和交期）；如收到还价，请接受、重新报价或拒绝。",
+  "supplierTasks.request.title": "询问 {n} 号：{product}",
+  "supplierTasks.request.detail": "{qty} {unit} · 请说明是否能做及条件",
+  "supplierTasks.request.counter": "Wellmix 已还价：请接受、重新报价或拒绝",
   "tasks.group.supplier.dieline": "刀模 (Die Cut)",
   "tasks.group.supplier.sheet": "采购表",
   "tasks.group.supplier.art": "确认设计稿",

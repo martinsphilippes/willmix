@@ -78,6 +78,7 @@ describe("pendências do fornecedor por etapa", () => {
   it("toda etapa do caminho tem nome e explicação nos três idiomas", () => {
     expect([...SUPPLIER_STEPS]).toEqual([
       "booking",
+      "request",
       "dieline",
       "sheet",
       "art",

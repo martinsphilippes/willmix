@@ -44,7 +44,8 @@ export type TaskKind =
   | "cert_validate"
   | "message_reply"
   | "ncm_classify"
-  | "purchase_schedule";
+  | "purchase_schedule"
+  | "supplier_request";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -101,6 +102,7 @@ export interface Task {
  */
 export const SUPPLIER_STEPS = [
   "booking",
+  "request",
   "dieline",
   "sheet",
   "art",
@@ -233,6 +235,7 @@ const SIGN_AFTER: ReadonlyArray<[string, string]> = [
 const KIND_ORDER: string[] = [
   "rfq",
   "quote",
+  "supplier_request",
   "packaging_brief",
   "select_supplier",
   "confirm_payment",
@@ -614,6 +617,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       ),
     );
   }
+  if (supplier) tasks.push(...(await supplierRequestTasks(user, now)));
   // Embalagem (faca e arte) a preparar junto com a cotação: a pendência da
   // agência nasce no mesmo instante em que a do fornecedor.
   for (const brief of briefs) {
@@ -1325,6 +1329,66 @@ const DIE_CUT_ITEM_LABEL: Record<string, string> = {
  * Pendências da etapa "Die Cut" do fornecedor escolhido: die-cut, foto em
  * alta, pedido mínimo e prazo de entrega (src/lib/services/die-cut-step.ts).
  */
+/*
+ * Solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md): fica na etapa
+ * "Responder a solicitação" enquanto a vez é dele: aberta (dizer se faz e em
+ * que condições) ou com contraproposta da Wellmix esperando. O prazo é o SLA
+ * da negociação. Banco sem a tabela (esquema antigo): nenhuma pendência.
+ */
+async function supplierRequestTasks(user: User, now: Date): Promise<Task[]> {
+  const store = getStore();
+  let rows;
+  try {
+    rows = await store.list("supplier_requests", {
+      filter: { supplierId: user.partyId!, status: ["open", "answered"] },
+    });
+  } catch (error) {
+    const { isSchemaMissing } = await import("./packaging-brief");
+    if (isSchemaMissing(error)) return [];
+    throw error;
+  }
+  if (!rows.length) return [];
+  const { negotiationTurn, pendingProposal, supplierRequestSlaDue } =
+    await import("@/lib/supplier-requests");
+  const { supplierRequestSlaMinutes } =
+    await import("./supplier-request-negotiation");
+  const minutes = await supplierRequestSlaMinutes();
+  return rows
+    .filter((r) => negotiationTurn(r) === "supplier")
+    .sort((a, b) => a.number - b.number)
+    .map((r) => {
+      const proposal = pendingProposal(r.negotiation);
+      const product =
+        r.item.description ??
+        r.item.productName ??
+        r.item.factoryItemCode ??
+        "—";
+      return finish(
+        {
+          kind: "supplier_request",
+          title: `Solicitação nº ${r.number}: ${product}`,
+          detail: proposal
+            ? "A Wellmix enviou uma contraproposta: aceite, proponha de novo ou recuse"
+            : `${r.quantity} ${r.unit} · diga se faz o item e em que condições`,
+          // Traduzido na tela (o fornecedor costuma usar outro idioma).
+          text: {
+            title: "supplierTasks.request.title",
+            detail: proposal
+              ? "supplierTasks.request.counter"
+              : "supplierTasks.request.detail",
+            values: { n: r.number, product, qty: r.quantity, unit: r.unit },
+          },
+          link: `/app/supplier-requests/${r.id}`,
+          dueAt: supplierRequestSlaDue(r, minutes),
+          sinceAt: proposal?.at ?? r.createdAt,
+          loadedAt: r.createdAt,
+          supplierStep: "request",
+        },
+        now,
+      );
+    });
+}
+
 async function supplierDielineTasks(user: User, now: Date): Promise<Task[]> {
   const store = getStore();
   const selected = await store.list("quotes", {

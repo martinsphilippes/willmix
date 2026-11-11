@@ -50,6 +50,10 @@ No detalhe da solicitação, o bloco **Negociação e conversa** guarda o histó
 5. **Avisos**: cada contraproposta vai ao fornecedor; cada aceite, nova proposta ou recusa, a quem abriu; cada mensagem ou arquivo, ao outro lado.
 6. A lista mostra de quem é a vez ("Esperando o fornecedor" / "Esperando a Wellmix", `negotiationTurn`).
 
+## Pendências do fornecedor
+
+A solicitação aparece em "Minhas pendências" do fornecedor, na etapa **Responder a solicitação** (`supplier.request`, a segunda do caminho, depois de "Analisar o Booking"), enquanto a vez é dele (`negotiationTurn` = fornecedor): Aberta, ou Respondida com contraproposta da Wellmix esperando. O prazo é o SLA da negociação; "Com você desde" é a abertura ou a contraproposta. Sai quando ele responde ou a Wellmix decide (`supplierRequestTasks` em `src/lib/services/tasks.ts`).
+
 ## SLA da negociação
 
 - **Configurações → SLA**: "SLA da negociação com o fornecedor (minutos)", `supplierRequestSlaMinutes`, padrão **30** (de 1 a 86.400).

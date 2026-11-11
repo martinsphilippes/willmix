@@ -392,3 +392,53 @@ describe("SLA da negociação", () => {
     ]);
   });
 });
+
+describe("pendências do fornecedor", () => {
+  it("a solicitação fica na etapa Responder a solicitação enquanto a vez é dele", async () => {
+    const { pendingTasksFor, supplierGroup } =
+      await import("@/lib/services/tasks");
+    const mine = async (user: User, id: string) =>
+      (await pendingTasksFor(user)).filter(
+        (t) => t.link === `/app/supplier-requests/${id}`,
+      );
+    const request = await answeredRequest("TASK-1");
+    // Respondida: a vez é da Wellmix, nada com o fornecedor.
+    expect(await mine(supplierA, request.id)).toEqual([]);
+
+    // Contraproposta da Wellmix: volta para ele, desde a contraproposta.
+    await neg.proposeCounter(
+      admin,
+      request.id,
+      offer({ price: 1.2, text: "Fechamos assim?" }),
+    );
+    const [counter] = await mine(supplierA, request.id);
+    expect(counter).toMatchObject({
+      kind: "supplier_request",
+      group: supplierGroup("request"),
+      supplierStep: "request",
+    });
+    expect(counter.text?.detail).toBe("supplierTasks.request.counter");
+    expect(counter.dueAt).toBeTruthy();
+    expect(counter.sinceAt).not.toBe(counter.loadedAt);
+    // Outro fornecedor não recebe a pendência.
+    expect(await mine(supplierB, request.id)).toEqual([]);
+
+    await neg.respondToProposal(supplierA, request.id, "accept", offer({}));
+    expect(await mine(supplierA, request.id)).toEqual([]);
+
+    // Aberta (ainda sem resposta): com ele desde a abertura.
+    const store = getStore();
+    await store.update("supplier_requests", request.id, {
+      status: "open",
+      supplierCanDo: null,
+      negotiation: [],
+    });
+    const [open] = await mine(supplierA, request.id);
+    expect(open.text?.detail).toBe("supplierTasks.request.detail");
+    expect(open.sinceAt).toBe(open.loadedAt);
+
+    // Decidida: sai das pendências.
+    await svc.decideSupplierRequest(admin, request.id, "declined", null);
+    expect(await mine(supplierA, request.id)).toEqual([]);
+  });
+});
