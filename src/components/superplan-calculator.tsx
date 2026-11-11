@@ -581,7 +581,7 @@ export function SuperplanCalculator({
           ) : null}
         </div>
 
-        <div className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:self-start">
+        <div className="min-w-0 space-y-4 lg:sticky lg:top-[calc(var(--wm-header)+1rem)] lg:self-start">
           <div className="hidden space-y-2 lg:block">
             <VerdictBox
               r={r}

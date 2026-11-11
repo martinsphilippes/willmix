@@ -520,7 +520,7 @@ export async function ControlTower({
           data-tower-layout
         >
           <aside
-            className="contents lg:col-start-4 lg:row-start-1 lg:sticky lg:top-4 lg:block lg:max-h-[calc(100vh-2rem)] lg:space-y-4 lg:overflow-y-auto lg:px-1 lg:pb-1"
+            className="contents lg:col-start-4 lg:row-start-1 lg:sticky lg:top-[calc(var(--wm-header)+1rem)] lg:block lg:max-h-[calc(100vh-var(--wm-header)-2rem)] lg:space-y-4 lg:overflow-y-auto lg:px-1 lg:pb-1"
             data-tower-side
           >
             {board ? (
