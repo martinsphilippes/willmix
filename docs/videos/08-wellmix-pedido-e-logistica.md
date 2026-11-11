@@ -7,7 +7,7 @@ Antes de gravar: leia o [GUIA.md](GUIA.md) (formato, ambiente, elementos de tela
 ## Quem é este papel e o que ele vê
 
 - **A Wellmix vê tudo do pedido**: itens com foto, código e preço FOB, as nove etapas, o cartão de cada parte (produção, embarque e desembaraço, certificação, recebimento, artes), os parceiros designados e o "Comprado (snapshot)". Os **parceiros veem só a etapa deles**; o cliente vê o andamento (docs/WORKFLOW.md, "Quem vê o quê no pedido").
-- **O menu do operador** é montado pelas funções (docs/ACCESS.md): o básico (Control Tower, Pendências, Painel de SLA, Notificações, Mensagens) mais as telas do comprador e do planner. Em **Pedidos**: Solicitações, Pedidos, Revisão, Fretes, Tarifário de frete, Embalagens, Containers (e RFQ e Sourcing, que estão em espera). Em **Cadastros**: Produtos e **Estoque**. O nome da tela aberta pelo item "Revisão" é "Itens para revisão" (o glossário do guia a chama de fila de revisão).
+- **O menu do operador** é montado pelas funções (docs/ACCESS.md). Na conta de gravação (comprador e planner) ele mostra: em **Início**, Control Tower, Pendências, Painel de SLA, Notificações e Mensagens; em **Pedidos**, Booking, Solicitações, Seleção de itens, Solicitações ao fornecedor, Pedidos, Revisão, Fretes, Tarifário de frete, Embalagens, Containers, RFQ (em espera) e Sourcing (em espera); em **Cadastros**, Clientes, Fornecedores, Outros parceiros, Produtos e **Estoque**; em **Gestão**, Painéis por área, Pós-venda e Histórico. O nome da tela aberta pelo item "Revisão" é "Itens para revisão" (o glossário do guia a chama de fila de revisão).
 - **O que o operador não vê**: Financeiro, Contas a pagar, conta corrente do fornecedor, Configurações, Equipe, Auditoria; no pedido, os cartões coloridos de valores (venda, recebido, a receber, compra, pago, a pagar, margem), o "Financeiro do pedido", os pagamentos, o pagamento ao fornecedor e o cartão "Cancelar pedido". Ele **vê** FOB e valor de venda na linha do "Resumo do pedido", porque são o trabalho de compra (docs/ACCESS.md, regra 6). Tentar abrir uma tela fora das funções devolve ao início com o aviso "Você não tem acesso a {tela}. Peça ao administrador em Gestão → Equipe e divisões."
 - **O que só o administrador faz** neste roteiro: cancelar o pedido e responder ao pedido de cancelamento do cliente; validar e pagar o numerário (ou quem tem a função financeiro); abrir o inventário às cegas e aprovar a contagem final; mudar tolerâncias, prazos por etapa, "Quem confirma a entrega", "Container com vários clientes" e "Ocupação máxima do container (%)" em Configurações.
 
@@ -18,6 +18,13 @@ Antes de gravar: leia o [GUIA.md](GUIA.md) (formato, ambiente, elementos de tela
 - **E-mail e WhatsApp são mock**: só o sino e as Notificações do portal avisam de verdade. Nenhum episódio promete outro aviso.
 - **Pagamento ao fornecedor** corre fora do fluxo do pedido (só o administrador mexe); aparece aqui apenas como selo "paralelo".
 - Booking aparece com dois sentidos: a **tela Booking** (produtos antes da solicitação) e o passo "Booking" do cartão "Embarque e desembaraço", que é a **reserva no navio**. Nos vídeos de embarque diga sempre "reserva no navio" e cite o rótulo "Booking" só como o nome do passo na tela.
+
+## Documentos lidos e como o roteiro foi conferido
+
+- **Documentos:** docs/SCOPE.md, WORKFLOW.md (inteiro), ACCESS.md, PURCHASE_FLOW.md, ORDER_SIGNATURE.md, PRODUCTION.md, IMPORT_FLOW.md, CERTIFICATION.md (lado Wellmix), INVENTORY.md, RECEIVING.md, PROCESSES.md, SANKHYA.md, SLA_PANEL.md, RFQ_STANDBY.md e EVOLUTION_PLAN.md (itens 18 a 20 e as decisões de 10/11/2026).
+- **Código e dicionários:** `src/app/app/orders`, `reviews`, `containers`, `freight`, `inventory`, `packaging`, `src/lib/order-view.ts`, `src/lib/workflow/stages.ts`, `src/lib/services/tower-board.ts`, `import-flow.ts`, `inspection.ts`, `production.ts`, `reminders.ts` e os dicionários `src/i18n/dictionaries.ts` e `src/i18n/modules/*.ts` (em pt). Todo botão, campo, selo e mensagem entre aspas foi copiado do dicionário pt e conferido por busca; o que não existe no dicionário (frases compostas pela tela, como "Falta: …") está marcado no texto.
+- **Testes:** `tests/e2e/happy-path.spec.ts` e `tests/e2e/booking-supplier-request.spec.ts` (ordem real dos cliques entre papéis).
+- **Tela real:** um servidor do build de produção em modo memória, com a Jornada da Jarra refeita pelas contas certas (cliente, operador, fornecedor, agência, certificadora, agente de carga, comex, financeiro/administrador, companhia marítima, despachante, transportador). As telas descritas foram abertas e lidas; o que não foi possível ver na tela está em "Pontos a confirmar" de cada episódio, com ⚠.
 
 ## Dados do cenário e pontos de salvamento
 
@@ -35,7 +42,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 | ------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `antes-WPE-01`      | Sinal confirmado: pedido recém-nascido, etapa "Pedido pré-aprovado" aberta; pedido da piscina na mesma etapa |
 | `antes-WPE-02`      | Pedido conferido; "Preparação" em andamento, ficha vinda da cotação, sem a programação de compra              |
-| `antes-WPE-03`      | Preparação concluída; "Arte e embalagem" aberta; selo enviado pela certificadora; fornecedor e agência prontos |
+| `antes-WPE-03`      | Preparação concluída; "Arte e embalagem" aberta; selo enviado pela certificadora e já aplicado na arte pela agência (aguardando a validação da Wellmix); fornecedor e agência prontos |
 | `antes-WPE-04`      | Documento assinado, arte aprovada; "Inspeção" aberta; o fornecedor vai enviar peso e medidas fora da tolerância |
 | `antes-WLO-01`      | Inspeção concluída; "Embarque" aberta; Fretes com o pedido de frete da jarra; nenhuma planilha de tarifário    |
 | `antes-WPE-05`      | Tarifário importado; passos de "Embarque e desembaraço" sem nenhum enviado; companhia, agente, comex e despachante designados |
@@ -106,7 +113,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 
 - 🎬 Imagem: a tela do pedido, uma coluna só. O cursor desce pelo cabeçalho "Pedido #1 · Jarra de vidro 1,5 L · 1200 un" com o selo "Pedido pré-aprovado" e para no **Resumo do pedido**: Cliente, Fornecedor, FOB, Valor de venda, Sankhya ("ERP pendente"), Faturamento, Data, Modalidade de operação, Classificação fiscal (NCM). Em seguida, a tabela **Itens do pedido**.
 - 🎙 Narração: "A tela é uma coluna só, em tabelas. No Resumo do pedido estão cliente, fornecedor, valor de compra e de venda, o Sankhya, a data e a classificação fiscal. Abaixo, os itens do pedido."
-- 🔤 Na tela: `[PASSO 2/6] Leia o Resumo do pedido`; `[ZOOM 150 %]` no Resumo; `[SETA]` "ERP pendente: ainda sem número no Sankhya" na coluna Sankhya; `[QUEM VÊ]` "Os cartões coloridos de venda, recebido e margem são só do administrador"; `[CORTE]` rápido para o admin mostrando os cartões (2 s).
+- 🔤 Na tela: `[PASSO 2/6] Leia o Resumo do pedido`; `[ZOOM 150 %]` no Resumo; `[SETA]` "ERP pendente: ainda sem número no Sankhya" na coluna Sankhya; `[QUEM VÊ]` "Os cartões coloridos de venda, recebido e margem são só do administrador"; `[ERRO COMUM]` "Você não tem acesso a Contas a pagar. Peça ao administrador em Gestão → Equipe e divisões." → "Valores e pagamentos são do administrador"; `[CORTE]` rápido para o admin mostrando os cartões (2 s).
 - ✂️ Edição: manter o Resumo 3 s em tela. O operador vê FOB e Valor de venda nesta linha; os cartões coloridos acima dela só aparecem na gravação do administrador.
 
 **Cena 5 · 1:08–1:35 · Etapas do pedido · `/app/orders/[id]`**
@@ -148,7 +155,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 
 - 🎬 Imagem: cartão `[DEPOIS]` e, em seguida, fundo vermelho com a lista.
 - 🎙 Narração: "Resumindo: abra o pedido, leia o Resumo, informe o Sankhya, veja a conformidade e confirme. Em seguida, a ficha de compra."
-- 🔤 Na tela: `[DEPOIS]` "A Preparação abre. A Wellmix valida a ficha e as fotos (WPE-02). A certificadora já tem o selo para gerar."; `[RESUMO]` "1 Abra o pedido pelo número · 2 Leia o Resumo · 3 Informe o Sankhya · 4 Veja a conformidade · 5 Confirme"; chamada "Próximo: WPE-02 · Preparação".
+- 🔤 Na tela: `[DEPOIS]` "A Preparação abre e aparece em Pendências (WPE-02). A certificadora recebe, no sino e em Pendências, o aviso para gerar o selo."; `[RESUMO]` "1 Abra o pedido pelo número · 2 Leia o Resumo · 3 Informe o Sankhya · 4 Veja a conformidade · 5 Confirme"; chamada "Próximo: WPE-02 · Preparação".
 - ✂️ Edição: `[DEPOIS]` 4 s em tela cheia; fade para a vinheta de encerramento (logo Wellmix, 3 s).
 
 ### Erros comuns
@@ -181,7 +188,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 
 - ⚠ **O número do Sankhya some depois de confirmar o pedido.** O campo é o item opcional `erp_number` da etapa "Pedido pré-aprovado"; ao concluir a etapa ele deixa de aparecer. Mesmo assim, o aviso da segunda assinatura diz "Pedido autorizado: gere-o no Sankhya e informe o número no pedido" (docs/ORDER_SIGNATURE.md, seção 2, item 5). Confirmar com o dono onde o número deve ser informado depois; se mudar, regravar a cena 7.
 - ⚠ Se registrar a certificação no produto realmente fecha o item de conformidade e o aviso da fila sozinho (docs/WORKFLOW.md, "Conformidade"). Não foi executado na verificação; a narração da cena 8 segue o documento.
-- ⚠ A rota "Conformidade" mostra na fila de revisão o código da regra ("compliance.missingCertification") no lugar de um nome em português. Se for traduzido, atualizar a cena 8.
+- ⚠ A fila de revisão mostra, no cartão da conformidade, o código da regra ("compliance.missingCertification") no lugar de um nome em português (as regras de inspeção e de container já saem traduzidas). Se for traduzido, atualizar a cena 8.
 - ⚠ Quem recebe aviso quando a Preparação abre (a ficha vem completa da cotação, então o fornecedor pode não ter nada a fazer). A cena 9 diz só que a Preparação abre.
 
 ---
@@ -207,7 +214,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 **Cena 1 · 0:00–0:10 · Gancho · `/app/tasks`**
 
 - 🎬 Imagem: a tela **Minhas pendências**. A linha "Pedido #1: Preparação" mostra o detalhe "Ficha e imagens validadas pelo comprador, Cadastro do produto validado (cadastro)", o tipo "Preparação" e o prazo.
-- 🎙 Narração: "O fornecedor já mandou a ficha de compra. Agora é a sua vez: conferir a ficha e as fotos e validar o cadastro do produto."
+- 🎙 Narração: "O fornecedor mandou a ficha de compra. Agora é a sua vez: conferir ficha e fotos e validar o cadastro do produto."
 - 🔤 Na tela: `[TÍTULO]` "WPE-02 · Preparação: a ficha de compra e a validação"; `[ZOOM 150 %]` na linha da pendência.
 - ✂️ Edição: vinheta de 6,5 s antes; título em 2 s; música baixa para −28 dB ao começar a voz.
 
@@ -264,7 +271,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 
 - 🎬 Imagem: a tabela de etapas: **Preparação** vira "Concluída" (100 %, 3 de 3) e **Arte e embalagem** passa a "Em andamento" com prazo e responsável "Agência".
 - 🎙 Narração: "Pronto. A Preparação concluiu e a Arte e embalagem abriu, com a agência como responsável."
-- 🔤 Na tela: `[SETA]` "Preparação: Concluída" e `[SETA]` "Arte e embalagem: Em andamento"; `[DEPOIS]` "A Arte e embalagem abre (WPE-03). O início da produção entra sozinho depois das duas assinaturas."
+- 🔤 Na tela: `[SETA]` "Preparação: Concluída" e `[SETA]` "Arte e embalagem: Em andamento"; `[DEPOIS]` "A Arte e embalagem abre e a agência recebe a pendência 'Arte do pedido' (WPE-03). O início da produção entra sozinho depois das duas assinaturas."
 - ✂️ Edição: `[CORTE]` para a tabela atualizada; `[DEPOIS]` por 4 s.
 
 **Cena 10 · 3:35–3:45 · Resumo e próximo vídeo**
@@ -284,7 +291,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 ### Passo a passo em texto
 
 1. Em **Minhas pendências**, abra "Pedido #N: Preparação" (ou abra o pedido pelo menu Pedidos).
-2. No cartão **Preparação**, clique em **Ver ficha de compra** (ou **Completar ficha** quando faltar algo do fornecedor).
+2. No cartão **Preparação**, clique em **Ver ficha de compra** (ou em **Completar ficha (faltam N)**, quando faltar algo do fornecedor).
 3. Confira a tabela de blocos: Fornecedor, Produto, Caixa e embalagem, Preço e condições, Programação de compra, Fotos. Em vermelho está o que falta.
 4. Em **Programação de compra**, informe **Saída em (dias)** e **Caixas master** na linha 1. Use **+ Programação** para mais saídas ou **Gerar programação** para dividir as caixas. O **Início da produção** entra sozinho depois da assinatura do contrato.
 5. Clique em **Salvar ficha**. Com todos os blocos completos, a tela mostra "Ficha salva e completa."
@@ -320,7 +327,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 | Duração-alvo          | 5:45 (dois capítulos: arte e selo até 3:15; documento e assinaturas depois; dá para cortar em dois vídeos sem mudar o texto)                                  |
 | Ponto da jornada      | Etapa 5 de 9: Preparação (arte e embalagem, assinatura do pedido)                                                                                          |
 | Telas e rotas         | `/app/packaging` (Embalagens), `/app/packaging/[id]` (briefing), `/app/orders/[id]` (cartões Arte e embalagem, Certificação e Parceiros do pedido), `/app/orders/[id]/purchase-order` (Documento do pedido) |
-| Dados antes de gravar | Ponto `antes-WPE-03`: Preparação concluída (WPE-02); selo já enviado pela certificadora (OCP-01); briefing da jarra "No pedido"; fornecedor A e a agência com login; a faca ainda "com o fornecedor" |
+| Dados antes de gravar | Ponto `antes-WPE-03`: Preparação concluída (WPE-02); selo enviado pela certificadora (OCP-01) e "Selo aplicado na arte" enviado pela agência, aguardando a validação da Wellmix; briefing da jarra "No pedido"; fornecedor A e a agência com login; a faca ainda "com o fornecedor" |
 | Depois deste vídeo    | Arte aprovada e documento assinado pelos dois: a "Arte e embalagem" conclui, o início da produção entra sozinho e a "Inspeção" abre (WPE-04). A Wellmix recebe o aviso de gerar o pedido no Sankhya |
 | Antes · Próximo       | WPE-02 (e AGE-04, FOR-06, FOR-07 na ordem de gravação) · WPE-04                                                                                            |
 | Idiomas               | pt (base)                                                                                                                                                  |
@@ -330,7 +337,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 **Cena 1 · 0:00–0:10 · Gancho · `/app/packaging`**
 
 - 🎬 Imagem: a tela **Embalagens (faca e arte)**. A linha da Jarra de vidro 1,5 L mostra o selo azul "No pedido". O cursor repousa nela.
-- 🎙 Narração: "A embalagem não espera o pedido: a agência começa a faca e a arte junto com a cotação. Veja como a Wellmix acompanha tudo até a assinatura."
+- 🎙 Narração: "A embalagem não espera o pedido: a agência começa faca e arte junto com a cotação. Veja como a Wellmix acompanha até a assinatura."
 - 🔤 Na tela: `[TÍTULO]` "WPE-03 · Arte e embalagem vistas pela Wellmix"; `[ZOOM 150 %]` na linha da jarra.
 - ✂️ Edição: vinheta de 6,5 s antes; título em 2 s; música baixa para −28 dB ao começar a voz.
 
@@ -343,7 +350,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 
 **Cena 3 · 0:22–0:48 · A lista de embalagens · menu Pedidos → Embalagens → `/app/packaging`**
 
-- 🎬 Imagem: o cursor abre **Pedidos** e clica em **Embalagens**. A tabela mostra Produto, Solicitação, Responsável (Agência Criativa), Entregáveis, Prazo e Situação. Três linhas: "Em preparação" com o selo "Venda ainda não confirmada" (a piscina, ainda em cotação), "No pedido" (a piscina cancelada ou outra) e "No pedido" (a jarra).
+- 🎬 Imagem: o cursor abre **Pedidos** e clica em **Embalagens**. A tabela mostra Produto, Solicitação, Responsável (Agência Criativa), Entregáveis, Prazo e Situação. Na carga de demonstração, o produto ainda em cotação mostra a situação "Em preparação" com o selo "Venda ainda não confirmada"; os que já viraram pedido, como a jarra, mostram "No pedido".
 - 🎙 Narração: "Em Pedidos, Embalagens: um briefing por solicitação. Ele abre quando a solicitação vai ao fornecedor. O responsável é a agência ou, sem agência, o marketing da Wellmix. A situação diz se a venda já foi confirmada."
 - 🔤 Na tela: `[PASSO 1/9] Abra Pedidos → Embalagens`; `[SETA]` "Venda ainda não confirmada: a cotação corre junto" no selo amarelo; `[SETA]` "No pedido: a arte já está no pedido" no selo azul.
 - ✂️ Edição: `[CORTE]` seco para a tela de Embalagens; manter a tabela 3 s.
@@ -408,7 +415,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 
 - 🎬 Imagem: o fornecedor clica em **Aprovar** na aprovação da arte. Na conta do operador, o cartão **Arte e embalagem** vira "Concluída" (5 de 5) e a **Inspeção** passa a "Em andamento". O cartão Produção mostra o "Início da produção" automático preenchido e os follows de 5, 15 e 25 dias.
 - 🎙 Narração: "O fornecedor aprova a arte, e a etapa conclui. A Inspeção abre, e o início da produção entra sozinho, no dia do contrato assinado."
-- 🔤 Na tela: `[BOTÃO] "Aprovar"`; `[SETA]` "Início da produção: automático" no cartão Produção; `[DEPOIS]` "A Inspeção abre (WPE-04). A Wellmix gera o pedido no Sankhya e informa o número."
+- 🔤 Na tela: `[BOTÃO] "Aprovar"`; `[SETA]` "Início da produção: automático" no cartão Produção; `[DEPOIS]` "A Inspeção abre (WPE-04). A Wellmix recebe o aviso no sino para gerar o pedido no Sankhya."
 - ✂️ Edição: `[DEPOIS]` por 4 s.
 
 **Cena 13 · 5:30–5:45 · Resumo e próximo vídeo**
@@ -424,7 +431,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 - **Erro:** tentar enviar o documento para assinatura sem a arte ou sem o selo. O portal mostra "Falta a arte da embalagem para enviar o documento para assinatura." ou "Falta o selo da certificadora aplicado na arte para enviar o documento para assinatura." → **Correção:** envie a arte, aguarde o selo e a validação, e só então envie.
 - **Erro:** assinar sem marcar o aceite. O portal mostra "Marque que leu e concorda para assinar." → **Correção:** marque "Li o documento acima…" e assine.
 - **Erro:** o fornecedor tenta assinar antes da Wellmix. O portal mostra "A Wellmix assina primeiro. Aguarde a assinatura dela." → **Correção:** assine pela Wellmix primeiro.
-- **Erro:** o pedido muda enquanto a pessoa lê o documento. O portal mostra "O pedido mudou enquanto você leu. Confira o documento de novo e assine." → **Correção:** releia a versão nova e assine de novo. Uma assinatura de versão anterior aparece como "Assinou uma versão anterior deste documento (o pedido mudou depois)."
+- **Erro:** o pedido muda enquanto a pessoa lê o documento. O portal mostra "O pedido mudou enquanto você lia. Confira o documento de novo e assine." → **Correção:** releia a versão nova e assine de novo. Uma assinatura de versão anterior aparece como "Assinou uma versão anterior deste documento (o pedido mudou depois)."
 - **Erro:** recusar o selo sem motivo. O portal mostra "Escreva o motivo para recusar." → **Correção:** escreva o motivo; quem fez a arte recebe o aviso.
 - **Erro:** tentar refazer uma aprovação já decidida. O portal mostra "Esta aprovação já foi decidida; só a Wellmix pode refazer." → **Correção:** peça à Wellmix.
 
@@ -442,6 +449,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 
 ### Notas de gravação
 
+- **Ordem das tomadas** (o episódio mistura contas): 1) briefing e lista, na conta do operador; 2) a agência envia a arte, e o operador valida o "Selo aplicado na arte"; 3) o fornecedor reprova a arte com observação; 4) a agência reenvia e clica em "Enviar para assinatura"; 5) o operador assina; 6) o fornecedor anexa o PDF assinado e aprova a arte. Guarde um ponto de salvamento depois de cada tomada.
 - A cena 3 precisa de três briefings na lista, um deles "Em preparação" com "Venda ainda não confirmada". Se a carga tiver só a jarra, mostre a lista com ela e cite o selo apenas no texto.
 - Na cena 7 a observação do fornecedor aparece na tela da Wellmix exatamente como foi escrita, sem tradução. Escreva-a em pt no vídeo (por exemplo, "Pantone da tampa diferente do aprovado") para o espectador entender.
 - A cena 9 mostra duas situações do mesmo botão. Grave a mensagem "Aguardando o selo…" num pedido ainda sem selo validado (o pedido de apoio) e o botão "Enviar para assinatura" no pedido da jarra.
@@ -480,7 +488,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 **Cena 1 · 0:00–0:10 · Gancho · `/app`**
 
 - 🎬 Imagem: a Control Tower. O quadrado **Inspeção com problema** mostra 1 e, no bloco "Problemas", **Bloqueados** mostra 1. O cursor toca em "Inspeção com problema" e a lista logo abaixo mostra o pedido.
-- 🎙 Narração: "O fornecedor mediu a jarra e o peso não bate com o que foi comprado. O pedido parou, e agora quem decide é a Wellmix."
+- 🎙 Narração: "O fornecedor mediu a jarra e o peso não bate. O pedido parou, e agora quem decide é a Wellmix."
 - 🔤 Na tela: `[TÍTULO]` "WPE-04 · Inspeção cega e fila de revisão"; `[ZOOM 150 %]` no quadrado.
 - ✂️ Edição: vinheta de 6,5 s antes; título em 2 s; música baixa para −28 dB ao começar a voz.
 
@@ -516,7 +524,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 
 - 🎬 Imagem: clicar em "Abrir fila de revisão →" (ou no menu **Pedidos → Revisão**). A tela **Itens para revisão**: filtros **Abertos**, **Resolvidos** e **Dispensados**, cada um com a contagem. Dois cartões do Pedido #N: "Inspeção: peso líquido" e "Inspeção: un/caixa master", cada um com Esperado, Encontrado, Responsável ("Operador Wellmix") e Ação necessária ("Revisar com o fornecedor; aprovar a divergência ou pedir nova medição."), o campo "Observação opcional (motivo da decisão)" e os botões **Resolver** e **Dispensar**. O link **Abrir** leva ao pedido.
 - 🎙 Narração: "Todo item que violou uma regra vai para esta fila: inspeção, preço zerado, container cheio demais, certificação que falta. Cada cartão mostra o esperado, o encontrado, quem resolve e o que fazer."
-- 🔤 Na tela: `[PASSO 4/6] Abra Pedidos → Revisão`; `[SETA]` "Esperado × encontrado" nos campos; `[BOTÃO] "Resolver"`; `[BOTÃO] "Dispensar"`; `[ATENÇÃO]` "Resolver e Dispensar só marcam o item na fila: não liberam a etapa bloqueada do pedido."
+- 🔤 Na tela: `[PASSO 4/6] Abra Pedidos → Revisão`; `[SETA]` "Esperado × encontrado" nos campos; `[BOTÃO] "Resolver"`; `[BOTÃO] "Dispensar"`; `[ATENÇÃO]` "Resolver e Dispensar só marcam o item na fila: não liberam a etapa bloqueada do pedido."; `[ERRO COMUM]` "Item de revisão não encontrado." → "Recarregue a fila: outro login pode ter decidido o item."
 - ✂️ Edição: manter o `[ATENÇÃO]` 4 s em tela; não clicar em Resolver nesta cena.
 
 **Cena 7 · 2:40–3:15 · Aprovar libera · `/app/orders/[id]`**
@@ -607,7 +615,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 **Cena 1 · 0:00–0:10 · Gancho · `/app/orders/[id]`**
 
 - 🎬 Imagem: o cartão **Embarque e desembaraço** do pedido, com "13 de 13 concluídos" no canto e a tabela de passos toda "Concluído".
-- 🎙 Narração: "Treze passos, cinco parceiros, uma tela só. Aqui a Wellmix vê quem faz cada passo, quem valida e o que ainda falta."
+- 🎙 Narração: "Treze passos, vários parceiros, uma tela só. Aqui a Wellmix vê quem faz cada passo, quem valida e o que ainda falta."
 - 🔤 Na tela: `[TÍTULO]` "WPE-05 · Embarque e desembaraço pela Wellmix"; `[ZOOM 150 %]` em "13 de 13 concluídos".
 - ✂️ Edição: vinheta de 6,5 s antes; título em 2 s. Esta imagem é do fim da gravação (grave por último e use como abertura).
 
@@ -823,7 +831,6 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 - **Erro:** conferência com avariado maior que o recebido. O portal mostra "Quantidade inválida (avariado não pode passar do recebido)." → **Correção:** corrija os números e salve a conferência.
 - **Erro:** encerrar o recebimento com itens faltando. O portal mostra "Ainda falta conferir algo antes de encerrar." e, no Fechamento, "Falta: lacre, fotos do lacre e do container, checklist completo, conferência de todos os SKUs, RIC, devolução do container." → **Correção:** complete cada parte e salve.
 - **Erro:** mexer num recebimento já encerrado. O portal mostra "O recebimento já foi encerrado." → **Correção:** depois de encerrado, o cartão é só leitura.
-- **Erro:** confirmar o recebimento sem poder. O portal recusa se o login não é o do cliente do pedido nem da Wellmix. → **Correção:** quem confirma é o cliente do pedido ou a Wellmix.
 - **Aviso:** a avaliação ainda aparece como "Aguardando cliente". → **Correção:** não é erro: o cliente foi avisado por notificação; o pós-venda só encerra quando a Wellmix o encerra.
 
 ### Passo a passo em texto
@@ -963,6 +970,8 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 ### Notas de gravação
 
 - **Como envelhecer os prazos** (só em dados de demonstração): o portal não deixa mudar o prazo de uma etapa pela tela. Para a gravação, pare o servidor da gravação, edite as datas `dueAt` das etapas no arquivo `db.json` do diretório de dados (`DATA_DIR`), suba o servidor de novo e acione o job diário de lembretes uma vez. Nunca faça isso em dados de produção.
+- Para acionar o lembrete em demonstração, abra `/api/jobs/reminders` no servidor da gravação (sem `CRON_SECRET` definido ele responde sem senha; em produção, só o agendador da Vercel). A resposta é um JSON com `checked` e `sent`. Não mostre essa URL no vídeo.
+- O aviso do fornecedor sai no idioma dele (zh na conta de Li Wei, en na de Chen Yu): mostre a conta com a legenda "Fornecedor" e use legenda pt na imagem.
 - O lembrete "Atrasado" chega ao responsável da etapa (aqui, o fornecedor da inspeção); "Vence em breve" chega a quem tem o item pendente (aqui, a Wellmix na conferência). Para mostrar os dois, grave os avisos em duas contas.
 - A lista de Pendências da Wellmix também inclui itens que são do fornecedor ou de parceiros (por exemplo, as fotos da inspeção); isso é esperado, porque a Wellmix pode preencher qualquer requisito. Não use essa tela para explicar "o que é só seu".
 - O Painel de SLA só mostra pendências para quem tem divisão (Equipe e divisões). Grave-o na conta do administrador, que enxerga "Sem responsável" com as pendências sem dono.
@@ -1305,7 +1314,7 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 
 - 🎬 Imagem: clicar em **Movimentações e perdas**. As abas **Todas**, **Baixas por venda**, **Produtos perdidos**, **Sobras**, **Entradas por processo**, **Saídas por processo** e **Saldos do Sankhya**. As linhas: "Baixa por venda · −400 un · #3 · Venda balcão NF 18732" e "Perda no inventário · −50 un · Inventário #1". De volta ao Estoque, o cartão **Parados (90+ dias)** e, num produto parado, o selo "Parado há N dias" e "Nunca vendido desde a chegada".
 - 🎙 Narração: "Em Movimentações e perdas ficam as baixas, as perdas e as sobras de cada inventário, com quem fez e quando. Produto com estoque e sem venda há noventa dias ou mais aparece em Parados: hora de pensar em oferta."
-- 🔤 Na tela: `[PASSO 7/7] Confira movimentações e perdas`; `[SETA]` "Perda no inventário: a diferença da contagem" na linha; `[SETA]` "Parado há N dias" no selo; `[QUEM VÊ]` "O valor de custo da perda só aparece para quem abre Finanças."
+- 🔤 Na tela: `[PASSO 7/7] Confira movimentações e perdas`; `[SETA]` "Perda no inventário: a diferença da contagem" na linha; `[SETA]` "Parado há N dias" no selo; `[QUEM VÊ]` "O valor de custo da perda só aparece para quem abre Finanças."; `[DEPOIS]` "O estoque fica com limite, reserva e inventário registrados; o administrador é avisado quando uma baixa cruza o limite."
 - ✂️ Edição: `[CORTE]` entre telas; manter 3 s na tabela.
 
 **Cena 10 · 4:30–4:45 · Resumo e próximo vídeo**

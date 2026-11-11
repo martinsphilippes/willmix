@@ -8,6 +8,8 @@ Roteiros completos, cena a cena, para produzir os vídeos que ensinam **cada pap
 
 ## Arquivos
 
+Além dos roteiros, [ACHADOS.md](ACHADOS.md) lista o que os redatores encontraram de estranho na interface enquanto conferiam cada tela (possíveis bugs, textos crus, traduções). Vale ler **antes de gravar**, porque alguns itens mudam o que o vídeo mostra.
+
 | Arquivo                                                                    | Séries                                                                  |
 | -------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | [01-primeiros-passos.md](01-primeiros-passos.md)                           | GER · A Jornada completa, entrar no portal, pendências e mensagens       |
@@ -20,6 +22,89 @@ Roteiros completos, cena a cena, para produzir os vídeos que ensinam **cada pap
 | [08-wellmix-pedido-e-logistica.md](08-wellmix-pedido-e-logistica.md)       | WPE · Pedido da Wellmix, WLO · Logística e estoque                       |
 | [09-wellmix-cadastros.md](09-wellmix-cadastros.md)                         | WCA · Cadastros                                                          |
 | [10-wellmix-gestao.md](10-wellmix-gestao.md)                               | WGE · Gestão, finanças e administração                                   |
+
+## Catálogo de episódios
+
+A coluna **Arquivo** é o prefixo do arquivo da série (tabela acima). As durações são o alvo de cada episódio.
+
+| Arquivo | ID | Episódio | Duração-alvo |
+| ------- | -- | -------- | ------------ |
+| 01 | GER-00 | A Jornada completa do portal | 4:30 |
+| 01 | GER-01 | Entrar no portal e se localizar | 4:30 |
+| 01 | GER-02 | Pendências, notificações e mensagens | 4:15 |
+| 02 | CLI-01 | Explorar a vitrine e montar o carrinho | 4:30 |
+| 02 | CLI-02 | Fazer uma nova solicitação | 4:30 |
+| 02 | CLI-03 | Proposta e sinal | 4:30 |
+| 02 | CLI-04 | Acompanhar o pedido | 4:00 |
+| 02 | CLI-05 | Receber a carga e avaliar a compra | 3:30 |
+| 02 | CLI-06 | Comprar de novo, pedir nova proposta e cancelar | 4:30 |
+| 02 | CLI-07 | Histórico e Marketing | 3:30 |
+| 03 | FOR-01 | Seu painel: as pendências por etapa | 4:00 |
+| 03 | FOR-02 | Responder à solicitação do Booking | 3:30 |
+| 03 | FOR-03 | Responder à cotação (Análise do Booking) | 4:30 |
+| 03 | FOR-04 | Die Cut (faca da caixa), pedido mínimo e foto em alta | 3:30 |
+| 03 | FOR-05 | Ficha de compra | 4:30 |
+| 03 | FOR-06 | Aprovar ou reprovar a arte | 3:00 |
+| 03 | FOR-07 | Assinar o documento do pedido | 4:00 |
+| 03 | FOR-08 | Produção e inspeção | 4:30 |
+| 03 | FOR-09 | Embarque e documentos | 3:30 |
+| 03 | FOR-10 | Conta corrente e pagamentos | 3:30 |
+| 04 | AGE-01 | Receber o briefing de embalagem | 3:50 |
+| 04 | AGE-02 | Enviar a arte e os arquivos para a gráfica (a faca vem do fornecedor) | 4:20 |
+| 04 | AGE-03 | Prompt para criar a arte (ChatGPT) | 2:55 |
+| 04 | AGE-04 | Arte reprovada, prazo e valor por item | 4:40 |
+| 04 | AGE-05 | Selo de certificação na arte | 4:10 |
+| 05 | DES-01 | Desembaraço no pedido | 4:40 |
+| 05 | DES-02 | Classificação fiscal (NCM) do produto | 4:00 |
+| 05 | COM-01 | Comex (assessoria): documentos, numerário e DI | 5:20 |
+| 05 | LOG-01 | Agente de carga: reserva no navio e BL | 3:40 |
+| 06 | MAR-01 | Confirmar o embarque | 3:50 |
+| 06 | MAR-02 | Enviar a tabela de frete | 4:14 |
+| 06 | TRA-01 | Registrar o transporte e a entrega | 3:33 |
+| 06 | TRA-02 | Versão no celular | 2:16 |
+| 06 | JUR-01 | Multas: visualizar e mudar o status | 3:16 |
+| 06 | OCP-01 | Receber o pedido de certificação e a ficha | 3:45 |
+| 06 | OCP-02 | Enviar o selo e o memorial e acompanhar a validação | 3:14 |
+| 07 | WBK-01 | Importar um booking (planilha do fornecedor) | 3:30 |
+| 07 | WBK-02 | Fechar o booking e ler a análise do Superplan | 4:30 |
+| 07 | WBK-03 | Seleção de itens e solicitação ao fornecedor | 5:00 |
+| 07 | WBK-04 | Decidir a resposta do fornecedor e criar o produto | 5:00 |
+| 07 | WBK-05 | Ligar ao Sankhya e liberar na vitrine | 3:30 |
+| 07 | WSO-01 | Receber a solicitação do cliente e enviar ao fornecedor | 4:00 |
+| 07 | WSO-02 | Comparar a cotação e fechar o preço ao cliente | 5:00 |
+| 07 | WSO-03 | Proposta, sinal e nascimento do pedido | 4:30 |
+| 07 | WSO-04 | RFQ em espera: o interruptor | 3:30 |
+| 07 | WSO-05 | Superplan: a viabilidade do produto | 5:00 |
+| 08 | WPE-01 | Conferir o pedido e o Sankhya | 3:45 |
+| 08 | WPE-02 | Preparação: a ficha de compra e a validação | 3:45 |
+| 08 | WPE-03 | Arte e embalagem vistas pela Wellmix | 5:45 |
+| 08 | WPE-04 | Inspeção cega e fila de revisão | 4:30 |
+| 08 | WPE-05 | Embarque e desembaraço pela Wellmix | 5:00 |
+| 08 | WPE-06 | Transporte, entrega e encerramento | 4:15 |
+| 08 | WPE-07 | Pedidos parados, atrasos e cancelamento | 4:45 |
+| 08 | WLO-01 | Fretes e tarifário de frete | 4:15 |
+| 08 | WLO-02 | Containers: CBM, mix e ocupação | 4:15 |
+| 08 | WLO-03 | Estoque | 4:45 |
+| 08 | WLO-04 | Produção: follow e ETD | 4:15 |
+| 09 | WCA-01 | Clientes e fornecedores: a ficha e a conta | 5:30 |
+| 09 | WCA-02 | Dar acesso ao portal: criar o login de um parceiro | 5:05 |
+| 09 | WCA-03 | Produtos: a ficha, as fotos e as variações | 5:30 |
+| 09 | WCA-04 | Importar a ficha técnica (planilha) e o CSV | 5:15 |
+| 09 | WCA-05 | Linhas de produto | 3:40 |
+| 09 | WCA-06 | A vitrine como o cliente vê | 3:30 |
+| 10 | WGE-01 | Control Tower: o painel de comando | 4:30 |
+| 10 | WGE-02 | Painel de SLA e painéis por área | 4:00 |
+| 10 | WGE-03 | Financeiro: vendido, recebido e a receber | 4:30 |
+| 10 | WGE-04 | Contas a pagar e a conta corrente do fornecedor | 5:00 |
+| 10 | WGE-05 | Painel do dono e fluxo de caixa | 3:30 |
+| 10 | WGE-06 | Pós-venda e histórico comercial | 4:00 |
+| 10 | WGE-07 | Marketing: kits e tabela de preços | 4:30 |
+| 10 | WGE-08 | Multas (visão da Wellmix) | 3:00 |
+| 10 | WGE-09 | Configurações: os parâmetros do sistema | 5:30 |
+| 10 | WGE-10 | Equipe e divisões: funções e telas por login | 5:00 |
+| 10 | WGE-11 | Auditoria e dados de demonstração | 3:30 |
+
+74 episódios, cerca de 5 h 10 min de vídeo no total.
 
 ## A Jornada da Jarra (ordem de gravação)
 
@@ -38,7 +123,7 @@ Todos os vídeos acompanham **o mesmo produto**, a Jarra de vidro 1,5 L (UTL-001
 | 8     | 3 · Cotação               | WSO-02                        | operador / admin                           | Preço ao cliente e sinal definidos                                             |
 | 9     | 4 · Sinal e pedido        | CLI-03, WSO-03                | cliente, depois operador                   | Sinal confirmado; pedido nasce                                                 |
 | 10    | 4 · Sinal e pedido        | WPE-01                        | operador                                   | Pedido conferido; número no Sankhya                                            |
-| 11    | 5 · Preparação            | FOR-04, AGE-01, AGE-02, AGE-03| fornecedor, agência                        | Faca e arte enviadas                                                           |
+| 11    | 5 · Preparação            | FOR-04, AGE-01, AGE-02, AGE-03| fornecedor, agência                        | Faca enviada pelo fornecedor; arte e arquivos enviados pela agência            |
 | 12    | 5 · Preparação            | FOR-05, WPE-02                | fornecedor, operador                       | Ficha de compra validada                                                       |
 | 13    | 5 · Preparação            | AGE-04, FOR-06, FOR-07, WPE-03| agência, fornecedor, operador              | Arte aprovada; documento assinado pelos dois lados                             |
 | 14    | 6 · Inspeção              | FOR-08, WPE-04                | fornecedor, operador                       | Inspeção aprovada (e uma divergência mostrada à parte)                         |
