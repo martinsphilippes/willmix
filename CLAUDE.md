@@ -22,7 +22,7 @@ Ao terminar uma tarefa, sem pedir confirmação:
 1. Rodar `npm run lint && npm run typecheck && npm test` e o E2E (`npm run test:e2e`).
 2. Abrir o PR para `wellmix`.
 3. Esperar o CI (`verify`) ficar verde e mesclar o PR.
-4. Se o PR mexeu em `src/lib/db/schema.ts`, publicar o esquema: Actions → "Publicar esquema Appwrite" (a publicação só adiciona, nunca apaga).
+4. Se o PR mexeu em `src/lib/db/schema.ts`, o esquema é publicado sozinho pelo workflow "Publicar esquema Appwrite" logo depois do merge (só adiciona, nunca apaga). Conferir se ele terminou verde; se falhar, avisar o dono com o erro.
 
 Exceções (parar e avisar o dono em vez de mesclar):
 

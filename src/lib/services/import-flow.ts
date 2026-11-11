@@ -259,6 +259,11 @@ export function actsAs(user: User, order: Order, actor: StepActor): boolean {
   return user.role === actor && !!user.partyId && order[field] === user.partyId;
 }
 
+/** A certificadora (OCP) designada no pedido. */
+function isOrderOcp(user: User, order: Order) {
+  return user.role === "ocp" && !!user.partyId && order.ocpId === user.partyId;
+}
+
 /**
  * Pode enviar o passo: quem age por ele. O passo da agência só é dela quando
  * é ela quem faz a arte; com a arte feita pela Wellmix nas configurações, a
@@ -270,6 +275,8 @@ export async function canSubmitStep(
   key: ImportStepKey,
 ): Promise<boolean> {
   const tpl = stepTemplate(key);
+  // Memorial: a certificadora do pedido também anexa (dono, 10/11/2026).
+  if (key === "cert_memorial" && isOrderOcp(user, order)) return true;
   if (!actsAs(user, order, tpl.actor)) return false;
   if (tpl.actor === "agency" && !isWellmix(user)) return agencyDoesArt(order);
   return true;
@@ -437,6 +444,14 @@ export async function submitStep(
     validatedByUserId: null,
     validatedAt: null,
     rejectReason: null,
+    // Memorial anexado pela própria certificadora (quem o validaria): já vale.
+    ...(key === "cert_memorial" && isOrderOcp(user, order)
+      ? {
+          status: "validated" as const,
+          validatedByUserId: user.id,
+          validatedAt: now,
+        }
+      : {}),
   };
   let step: ImportStep;
   try {
@@ -801,7 +816,9 @@ export async function importFlowView(
         open &&
         isReady &&
         !(tpl.validator && step?.status === "validated") &&
-        actsAs(user, order, tpl.actor) &&
+        (actsAs(user, order, tpl.actor) ||
+          // Memorial: a certificadora do pedido também anexa.
+          (tpl.key === "cert_memorial" && isOrderOcp(user, order))) &&
         (tpl.actor !== "agency" || agencyActs),
       canValidate:
         open &&
@@ -886,6 +903,9 @@ export async function importTasks(
       const tpl = stepTemplate(s.key);
       return groupOf(tpl) === "certification" && !tpl.seal;
     });
+    const classicDeep = steps.some(
+      (s) => s.key === "cert_lab" || s.key === "cert_registration",
+    );
     const classicCert =
       order.status === "ORDER_CREATED"
         ? classicStarted
@@ -916,6 +936,10 @@ export async function importTasks(
         });
         continue;
       }
+      // Memorial, laudo e registro não viram pendência de começar: o PDF do
+      // memorial/selo basta (dono, 10/11/2026). Pedido antigo com laudo ou
+      // registro já começados segue o caminho dele.
+      if (cert && !tpl.seal && !classicDeep) continue;
       // Fazer (ou refazer) o passo.
       const todo =
         !step || step.status === "pending" || step.status === "rejected";

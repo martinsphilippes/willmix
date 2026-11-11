@@ -1,3 +1,4 @@
+import { LiveSearch } from "@/components/live-search";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -637,6 +638,7 @@ export default async function RequestsPage({
                 aria-label={t("reqList.search")}
                 className="w-full max-w-md"
               />
+              <LiveSearch />
               <Button type="submit" variant="primary">
                 {t("reqList.searchButton")}
               </Button>

@@ -1,3 +1,4 @@
+import { LiveSearch } from "@/components/live-search";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -31,6 +32,9 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { openSupplierRequestAction } from "../../actions/supplier-requests";
+import { SupplierNoLoginAlert } from "@/components/supplier-no-login";
+import { canOpen } from "@/lib/auth/screens";
+import { partiesWithoutLogin } from "@/lib/services/portal-access";
 
 /*
  * Seleção de itens (docs/SUPPLIER_REQUESTS.md): itens dos bookings fechados,
@@ -82,6 +86,16 @@ export default async function BookingSelectionPage({
     t(`supplierRequests.selection.col.${k}` as DictionaryKey);
   const rows = result?.rows ?? [];
   const best = bestMinimumItem(rows.map((r) => r.item));
+  // Fornecedores sem login: a solicitação aberta a eles fica parada.
+  const rowSuppliers = new Map(
+    rows
+      .filter((r) => r.supplier)
+      .map((r) => [r.supplier!.id, r.supplier!.name] as const),
+  );
+  const noLoginIds = await partiesWithoutLogin([...rowSuppliers.keys()]);
+  const noLogin = [...noLoginIds]
+    .map((id) => ({ id, name: rowSuppliers.get(id) ?? id }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const th =
     "border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-500";
   const td =
@@ -109,6 +123,16 @@ export default async function BookingSelectionPage({
           <Alert tone="danger">{errorText}</Alert>
         </div>
       ) : null}
+      {noLogin.length ? (
+        <div className="mb-3">
+          <SupplierNoLoginAlert
+            suppliers={noLogin}
+            canParties={canOpen(user, "parties")}
+            t={t}
+            title="supplierRequests.noLogin.selection"
+          />
+        </div>
+      ) : null}
       {result === null ? (
         <Alert tone="warning">
           {t("supplierRequests.selection.schemaMissing")}
@@ -133,6 +157,7 @@ export default async function BookingSelectionPage({
                     maxLength={200}
                   />
                 </Field>
+                <LiveSearch />
               </div>
               <SubmitButton variant="secondary">
                 {t("supplierRequests.selection.filter")}
@@ -273,6 +298,13 @@ export default async function BookingSelectionPage({
                             <span className="block max-w-40 min-w-28 whitespace-normal">
                               {supplier?.name ?? "—"}
                             </span>
+                            {supplier && noLoginIds.has(supplier.id) ? (
+                              <span data-selection-no-login={supplier.id}>
+                                <Badge tone="warning">
+                                  {t("portalAccess.none")}
+                                </Badge>
+                              </span>
+                            ) : null}
                             <span className="block text-xs text-zinc-500">
                               {lot.origin ?? ""}
                             </span>

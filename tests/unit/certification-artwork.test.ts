@@ -110,11 +110,7 @@ describe("certificação com o OCP", () => {
   });
 
   it("memorial (Wellmix) → OCP valida → laudo → registro validado pela Wellmix", async () => {
-    await expect(
-      f.submitStep(ocp, order.id, "cert_memorial", {
-        documentId: (await doc(ocp, "m.pdf")).id,
-      }),
-    ).rejects.toThrow();
+    // (A certificadora também pode anexar o memorial: tests/unit/cert-seal.test.ts.)
     await f.submitStep(admin, order.id, "cert_memorial", {
       documentId: (await doc(admin, "memorial.pdf")).id,
     });
