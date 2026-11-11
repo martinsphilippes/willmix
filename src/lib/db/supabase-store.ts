@@ -187,6 +187,24 @@ export class SupabaseStore implements Store {
     });
   }
 
+  /** Apaga todas as linhas da tabela (só a cópia, antes da virada). */
+  async clearTable(table: TableName) {
+    await this.rest(`${table}?id=not.is.null`, { method: "DELETE" });
+  }
+
+  /** Arquivo com a chave de origem (cópia do Appwrite); substitui se existir. */
+  async putFileAt(key: string, bytes: Uint8Array, mime: string) {
+    const res = await fetch(this.object(key), {
+      method: "POST",
+      headers: this.headers({
+        "Content-Type": mime || "application/octet-stream",
+        "x-upsert": "true",
+      }),
+      body: Buffer.from(bytes),
+    });
+    if (!res.ok) throw new SupabaseError(res.status, await res.text());
+  }
+
   async nextNumber(key: string) {
     const res = await fetch(`${this.url}/rest/v1/rpc/next_number`, {
       method: "POST",

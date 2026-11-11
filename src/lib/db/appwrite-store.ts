@@ -113,6 +113,25 @@ export class AppwriteStore implements Store {
     return rows.map((row) => fromAppwrite<Tables[K]>(table, row));
   }
 
+  /**
+   * Uma página na ordem interna do Appwrite, depois do id `after` (cópia para
+   * o Supabase: percorre a tabela inteira em lotes, sem perder linha).
+   */
+  async listPage<K extends TableName>(
+    table: K,
+    after: string | null,
+    limit: number,
+  ): Promise<Tables[K][]> {
+    const queries = [Query.limit(limit)];
+    if (after) queries.push(Query.cursorAfter(after));
+    const result = await this.tables.listRows({
+      databaseId: DATABASE_ID,
+      tableId: table,
+      queries,
+    });
+    return result.rows.map((row) => fromAppwrite<Tables[K]>(table, row));
+  }
+
   async get<K extends TableName>(table: K, id: string) {
     try {
       const row = await this.tables.getRow({
