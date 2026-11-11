@@ -15,8 +15,10 @@ import { cx, formatMoney } from "./ui";
  */
 
 const STAGE_TONE: Record<string, string> = {
+  booking: "from-purple-700 to-violet-500",
   request: "from-violet-700 to-fuchsia-500",
   prep: "from-sky-700 to-blue-500",
+  contract: "from-blue-700 to-indigo-500",
   production: "from-indigo-700 to-sky-500",
   shipping: "from-teal-700 to-emerald-500",
   port: "from-cyan-700 to-teal-500",
@@ -100,7 +102,6 @@ export function StageBoard({
   group,
   detail = null,
   currency,
-  newRequestHref,
 }: {
   stages: Stage[];
   t: Translate;
@@ -110,8 +111,6 @@ export function StageBoard({
   group: string | null;
   detail?: ReactNode;
   currency: string;
-  /** "+" no passo da cotação (só quem cria solicitação). */
-  newRequestHref: string | null;
 }) {
   const open = stages.find((s) => s.key === stage) ?? null;
   return (
@@ -173,7 +172,7 @@ export function StageBoard({
                     className="mt-1 block text-[11px] font-medium opacity-90"
                   >
                     {t("tower.alongside", {
-                      label: t(`tower.group.${a.key}` as DictionaryKey),
+                      label: t(`board.card.${a.key}` as DictionaryKey),
                       n: a.count,
                     })}
                   </span>
@@ -200,11 +199,6 @@ export function StageBoard({
               tone={STAGE_TONE[open.key]}
               active={g.key === group}
               currency={currency}
-              add={
-                g.key === "quoting" && newRequestHref
-                  ? { href: newRequestHref, label: t("requests.new") }
-                  : null
-              }
             />
           ))}
         </div>
@@ -223,7 +217,6 @@ function GroupTile({
   tone,
   active,
   currency,
-  add,
 }: {
   g: StageGroup;
   t: Translate;
@@ -231,10 +224,9 @@ function GroupTile({
   tone: string;
   active: boolean;
   currency: string;
-  add: { href: string; label: string } | null;
 }) {
   const empty = g.count === 0;
-  const label = t(`tower.group.${g.key}` as DictionaryKey);
+  const label = t(`board.card.${g.key}` as DictionaryKey);
   const tile = (
     <Link
       href={`/app?stage=${stage}${active ? "" : `&group=${g.key}`}`}
@@ -278,22 +270,5 @@ function GroupTile({
       </span>
     </Link>
   );
-  if (!add) return tile;
-  return (
-    <div className="relative">
-      {tile}
-      <Link
-        href={add.href}
-        title={add.label}
-        aria-label={add.label}
-        className={cx(
-          "absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full text-lg font-bold leading-none shadow-sm transition hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900",
-          empty ? "bg-violet-700 text-white" : "bg-white text-violet-700",
-        )}
-        data-board-add="reqNew"
-      >
-        +
-      </Link>
-    </div>
-  );
+  return tile;
 }

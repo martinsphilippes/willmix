@@ -27,30 +27,25 @@ const input = (over: Partial<JourneyInput> = {}): JourneyInput => ({
 describe("passos e percentuais", () => {
   it("vai da solicitação nova (0%) ao encerrado (100%)", () => {
     expect(journeyPercent("reqNew")).toBe(0);
-    expect(journeyPercent("reqRfq")).toBe(5);
-    expect(journeyPercent("reqQuotes")).toBe(10);
-    expect(journeyPercent("reqProposal")).toBe(25);
-    expect(journeyPercent("reqDown")).toBe(30);
-    expect(journeyPercent("ordConference")).toBe(35);
-    expect(journeyPercent("ordInspection")).toBe(60);
-    expect(journeyPercent("ordAtSea")).toBe(75);
-    expect(journeyPercent("ordDelivered")).toBe(95);
+    expect(journeyPercent("reqDown")).toBe(33);
+    expect(journeyPercent("ordCreated")).toBe(39);
+    expect(journeyPercent("ordPrep")).toBe(44);
+    expect(journeyPercent("ordContract")).toBe(50);
+    expect(journeyPercent("ordInspection")).toBe(56);
+    expect(journeyPercent("ordAtSea")).toBe(72);
+    expect(journeyPercent("ordDelivered")).toBe(94);
     expect(journeyPercent("ordClosed")).toBe(100);
   });
 
-  it("os passos são os quadrados dos blocos 1 e 2 da Control Tower, na mesma ordem", () => {
-    const board = BOARD_CARDS.filter(
-      (c) =>
-        (c.block === "request" || c.block === "order") &&
-        ![
-          "ordDieline",
-          "reqPackaging",
-          "ordInspectionIssue",
-          "ordClosedMonth",
-          "ordCancelledMonth",
-        ].includes(c.key),
-    ).map((c) => c.key);
-    expect([...JOURNEY_STEPS]).toEqual([...board, "ordClosed"]);
+  it("os passos do pedido são os quadrados da Control Tower (preparação e contrato têm um por origem)", () => {
+    const keys = BOARD_CARDS.map((c) => c.key as string);
+    const folded = ["ordCreated", "ordPrep", "ordContract", "ordClosed"];
+    for (const step of JOURNEY_STEPS)
+      if (step.startsWith("ord") && !folded.includes(step))
+        expect(keys, step).toContain(step);
+    expect(keys).toContain("ordPrepPortal");
+    expect(keys).toContain("ordPrepSankhya");
+    expect(keys).toContain("ordContractSankhya");
   });
 });
 
@@ -79,6 +74,10 @@ describe("passo de cada pedido e solicitação", () => {
       }),
     );
     expect(j.orderStep(order("done", "CLOSED"))).toBe("ordClosed");
+    // Preparação, arte e certificação e o contrato são uma etapa cada (pedido de compra).
+    expect(j.orderStep(order("prep", "PREPARATION"))).toBe("ordPrep");
+    expect(j.orderStep(order("old", "SUPPLIER_PAYMENT"))).toBe("ordPrep");
+    expect(j.orderStep(order("sign", "PACKAGING"))).toBe("ordContract");
     expect(j.orderStep(order("gone", "CANCELLED", "SHIPPING"))).toBe(
       "ordWaitingShip",
     );

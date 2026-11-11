@@ -8,80 +8,97 @@ import type {
 
 /*
  * Control Tower por etapa do processo (docs/WORKFLOW.md, "Control Tower: por
- * etapa"). Camada só de apresentação sobre os quadrados de tower-board.ts:
- * nenhuma regra de classificação muda, os 50 quadrados continuam existindo
- * (em "Mais visões") e as chaves `?card=` antigas continuam valendo.
+ * etapa"). Camada só de apresentação sobre os quadrados de tower-board.ts.
  *
- * - Etapas: 7 quadrados; cada pedido ou solicitação está em uma etapa só (a
- *   soma fecha com o total em andamento).
- * - Passos: dentro da etapa, os quadrados que se resolvem na mesma tela foram
- *   juntos (ficha: preencher e validar; faca e arte; inspeção com ou sem
- *   problema; reserva e saída do navio; caminhão e a caminho). Passo "em
- *   paralelo" (produção, embalagem na cotação, recebimento) não entra na
- *   soma da etapa: o mesmo pedido também está em outro passo.
+ * O processo de hoje (docs/PURCHASE_ORDER.md), em nove etapas:
+ * Booking → Solicitação ao fornecedor → Preparação, arte e certificação →
+ * Contrato e assinaturas → Produção e inspeção → Embarque e mar → Porto e
+ * alfândega → Entrega → Encerrado.
+ *
+ * - Cada lote, solicitação ou pedido está em uma etapa só (a soma fecha).
+ * - Os passos "em paralelo" (as três raias, produção, recebimento) não entram
+ *   na soma da etapa: o mesmo pedido também está em outro passo.
+ * - Pedido importado do Sankhya (sem fluxo no portal) aparece só pela etapa da
+ *   TOP, num passo próprio ("Do Sankhya") nas etapas em que o fluxo do portal
+ *   é diferente (preparação e contrato).
  * - Precisa de ação: o que cada perfil pode resolver (pela tela que abre).
  */
 
-export interface StageGroupDef {
-  key: string;
-  /** Quadrados de tower-board.ts que formam o passo. */
-  cards: readonly BoardCardKey[];
+export interface StageCardDef {
+  key: BoardCardKey;
   /** Acontece ao lado das etapas: não entra na contagem da etapa. */
   parallel?: boolean;
 }
 
 export interface StageDef {
   key: string;
-  groups: readonly StageGroupDef[];
+  cards: readonly StageCardDef[];
 }
+
+const main = (key: BoardCardKey): StageCardDef => ({ key });
+const alongside = (key: BoardCardKey): StageCardDef => ({
+  key,
+  parallel: true,
+});
 
 export const TOWER_STAGES: readonly StageDef[] = [
   {
+    key: "booking",
+    cards: [main("bkDraft"), main("bkClosed"), main("bkProgress")],
+  },
+  {
     key: "request",
-    groups: [
-      { key: "quoting", cards: ["reqNew", "reqRfq", "reqQuotes"] },
-      { key: "choosing", cards: ["reqChoose", "reqApproval"] },
-      { key: "proposal", cards: ["reqProposal", "reqDown"] },
-      { key: "reqPackaging", cards: ["reqPackaging"], parallel: true },
+    cards: [
+      main("srWaitingSupplier"),
+      main("srWaitingWellmix"),
+      main("srApproved"),
+      main("srToOrder"),
     ],
   },
   {
     key: "prep",
-    groups: [
-      { key: "conference", cards: ["ordConference"] },
-      { key: "sheet", cards: ["ordSheet", "ordValidation"] },
-      { key: "art", cards: ["ordDieline", "ordArt", "ordArtApproval"] },
+    cards: [
+      main("ordPrepPortal"),
+      main("ordPrepSankhya"),
+      alongside("lnSupplier"),
+      alongside("lnArt"),
+      alongside("lnArtReview"),
+      alongside("lnCert"),
+    ],
+  },
+  {
+    key: "contract",
+    cards: [
+      main("ordContractWellmix"),
+      main("ordContractSupplier"),
+      main("ordContractSankhya"),
     ],
   },
   {
     key: "production",
-    groups: [
-      { key: "inspection", cards: ["ordInspection", "ordInspectionIssue"] },
-      { key: "factory", cards: ["parProduction"], parallel: true },
+    cards: [
+      main("ordInspection"),
+      main("ordInspectionIssue"),
+      alongside("parProduction"),
     ],
   },
   {
     key: "shipping",
-    groups: [
-      { key: "booking", cards: ["ordBooking", "ordWaitingShip"] },
-      { key: "atSea", cards: ["ordAtSea"] },
-    ],
+    cards: [main("ordBooking"), main("ordWaitingShip"), main("ordAtSea")],
   },
-  { key: "port", groups: [{ key: "port", cards: ["ordPort"] }] },
+  { key: "port", cards: [main("ordPort")] },
   {
     key: "delivery",
-    groups: [
-      { key: "transport", cards: ["ordWaitingTruck", "ordInTransit"] },
-      { key: "delivered", cards: ["ordDelivered"] },
-      { key: "receiving", cards: ["parReceiving"], parallel: true },
+    cards: [
+      main("ordWaitingTruck"),
+      main("ordInTransit"),
+      main("ordDelivered"),
+      alongside("parReceiving"),
     ],
   },
   {
     key: "closed",
-    groups: [
-      { key: "closedMonth", cards: ["ordClosedMonth"] },
-      { key: "cancelledMonth", cards: ["ordCancelledMonth"] },
-    ],
+    cards: [main("ordClosedMonth"), main("ordCancelledMonth")],
   },
 ];
 
@@ -98,6 +115,14 @@ export const ACTION_CARDS: ReadonlyArray<{
   { key: "probOverdue", screen: "orders" },
   { key: "probBlocked", screen: "orders" },
   { key: "probDocRejected", screen: "orders" },
+  // Do começo do processo: o que espera a Wellmix.
+  { key: "bkClosed", screen: "booking" },
+  { key: "srWaitingWellmix", screen: "quotes" },
+  { key: "srApproved", screen: "quotes" },
+  { key: "srToOrder", screen: "orders" },
+  { key: "lnArtReview", screen: "orders" },
+  { key: "ordContractWellmix", screen: "orders" },
+  // Do pedido em andamento.
   { key: "parDocsToValidate", screen: "orders" },
   { key: "parNumerario", screen: "orders" },
   { key: "parChannel", screen: "orders" },
@@ -105,7 +130,6 @@ export const ACTION_CARDS: ReadonlyArray<{
   { key: "parArtIssue", screen: "orders" },
   { key: "parProductionLate", screen: "orders" },
   { key: "parFollowupDue", screen: "orders" },
-  { key: "parCertification", screen: "orders" },
   { key: "parReceivingDiff", screen: "orders" },
   { key: "parContainerReturn", screen: "containers" },
   { key: "probErp", screen: "orders" },
@@ -113,9 +137,6 @@ export const ACTION_CARDS: ReadonlyArray<{
   { key: "probCertExpiring", screen: "products" },
   { key: "probPenalty", screen: "penalties" },
   { key: "probReviews", screen: "reviews" },
-  { key: "reqNew", screen: "requests" },
-  { key: "reqChoose", screen: "requests" },
-  { key: "reqApproval", screen: "requests" },
   { key: "parInstallmentOverdue", screen: "payables" },
   { key: "parInstallmentDueSoon", screen: "payables" },
   { key: "parInstallmentRequested", screen: "payables" },
@@ -125,10 +146,11 @@ export const ACTION_CARDS: ReadonlyArray<{
 export const isActionCardKey = (key: string | undefined) =>
   !!key && ACTION_CARDS.some((a) => a.key === key);
 
+/** Um passo da etapa: o mesmo quadrado do tower-board, com a lista dele. */
 export interface StageGroup {
-  key: string;
+  /** Chave do quadrado (o texto vem de `board.card.<chave>`). */
+  key: BoardCardKey;
   parallel: boolean;
-  cards: BoardCardKey[];
   rows: TowerRow[];
   count: number;
   overdue: number;
@@ -138,16 +160,16 @@ export interface StageGroup {
 export interface Stage {
   key: string;
   groups: StageGroup[];
-  /** Pedidos e solicitações da etapa (sem os passos em paralelo). */
+  /** Lotes, solicitações e pedidos da etapa (sem os passos em paralelo). */
   count: number;
   overdue: number;
   /** Passos em paralelo, com a contagem de cada um (linha pequena do quadrado). */
-  alongside: Array<{ key: string; count: number }>;
+  alongside: Array<{ key: BoardCardKey; count: number }>;
   /** Etapa com um passo só: tocar abre a lista direto. */
-  single: string | null;
+  single: BoardCardKey | null;
 }
 
-/** Junta as linhas de vários quadrados sem repetir (a mesma solicitação pode estar em dois). */
+/** Junta as linhas de vários quadrados sem repetir. */
 function uniqueRows(cards: BoardCard[]): TowerRow[] {
   const seen = new Set<string>();
   const rows: TowerRow[] = [];
@@ -164,27 +186,24 @@ function uniqueRows(cards: BoardCard[]): TowerRow[] {
 /** Monta as etapas a partir dos quadrados já calculados (função pura). */
 export function buildTowerStages(board: TowerBoard): Stage[] {
   const byKey = new Map(board.cards.map((c) => [c.key, c]));
-  const pick = (keys: readonly BoardCardKey[]) =>
-    keys.map((k) => byKey.get(k)).filter((c): c is BoardCard => !!c);
   return TOWER_STAGES.map((def) => {
-    const groups = def.groups.map((g): StageGroup => {
-      const cards = pick(g.cards);
-      const rows = uniqueRows(cards);
-      const values = cards
-        .map((c) => c.value)
-        .filter((v): v is number => v !== null);
+    // Quadrado que o tower-board não calculou (ex.: parcela sem Finanças) some.
+    const present = def.cards.filter((c) => byKey.has(c.key));
+    const groups = present.map((c): StageGroup => {
+      const card = byKey.get(c.key)!;
       return {
-        key: g.key,
-        parallel: !!g.parallel,
-        cards: cards.map((c) => c.key),
-        rows,
-        count: rows.length,
-        overdue: rows.filter((r) => r.overdue).length,
-        value: values.length ? values.reduce((a, b) => a + b, 0) : null,
+        key: c.key,
+        parallel: !!c.parallel,
+        rows: card.rows,
+        count: card.rows.length,
+        overdue: card.overdue,
+        value: card.value,
       };
     });
-    const main = groups.filter((g) => !g.parallel);
-    const rows = uniqueRows(pick(main.flatMap((g) => g.cards)));
+    const exclusive = present
+      .filter((c) => !c.parallel)
+      .map((c) => byKey.get(c.key)!);
+    const rows = uniqueRows(exclusive);
     return {
       key: def.key,
       groups,
@@ -193,19 +212,18 @@ export function buildTowerStages(board: TowerBoard): Stage[] {
       alongside: groups
         .filter((g) => g.parallel)
         .map((g) => ({ key: g.key, count: g.count })),
-      single: groups.length === 1 ? groups[0].key : null,
+      single: groups.length === 1 && !groups[0].parallel ? groups[0].key : null,
     };
   });
 }
 
-/** Passo (e etapa) que contém o quadrado; nulo para quadrado que não está nas etapas. */
+/** Etapa e passo que contêm o quadrado; nulo para quadrado que não está nas etapas. */
 export function findGroupOfCard(
   key: string,
-): { stage: string; group: string } | null {
+): { stage: string; group: BoardCardKey } | null {
   for (const stage of TOWER_STAGES)
-    for (const group of stage.groups)
-      if ((group.cards as readonly string[]).includes(key))
-        return { stage: stage.key, group: group.key };
+    for (const card of stage.cards)
+      if (card.key === key) return { stage: stage.key, group: card.key };
   return null;
 }
 

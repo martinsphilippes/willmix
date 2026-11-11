@@ -188,15 +188,15 @@ describe("painel de pedidos", () => {
 
     const rows = await pipelineFor(admin);
     const step = (key: string) => rows.find((x) => x.key === key)?.journey;
-    expect(step(`order:${placed.id}`)).toBe("ordConference");
+    expect(step(`order:${placed.id}`)).toBe("ordCreated");
     expect(step(`request:${fresh.id}`)).toBe("reqNew");
     expect(step(`request:${quoting.id}`)).toBe("reqRfq");
     // Cancelado: o passo em que parou (a etapa guardada no cancelamento).
-    expect(step(`order:${stopped.id}`)).toBe("ordConference");
+    expect(step(`order:${stopped.id}`)).toBe("ordCreated");
     // O cliente vê o passo dos pedidos dele.
     const mine = await pipelineFor(joao);
     expect(mine.find((x) => x.key === `order:${placed.id}`)?.journey).toBe(
-      "ordConference",
+      "ordCreated",
     );
   });
 });
