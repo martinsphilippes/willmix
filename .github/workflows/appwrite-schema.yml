@@ -1,13 +1,21 @@
 name: Publicar esquema Appwrite
 
-# Botão manual (Actions → "Publicar esquema Appwrite" → Run workflow): publica
-# no banco de produção as tabelas, colunas e índices novos de
-# src/lib/db/schema.ts. Só ADICIONA (scripts/appwrite-push.ts nunca apaga nem
+# Publica no banco de produção as tabelas, colunas e índices novos de
+# src/lib/db/schema.ts. Roda SOZINHO a cada merge no `wellmix` que mexa no
+# esquema (ou no script que publica), e continua como botão manual (Actions →
+# "Publicar esquema Appwrite" → Run workflow). Só ADICIONA (scripts/appwrite-push.ts nunca apaga nem
 # altera o que existe). A chave fica em Settings → Secrets → APPWRITE_API_KEY.
 # Com a opção "Criar contas de demonstração" marcada, cria também as empresas e
 # os logins de demonstração que faltam (scripts/appwrite-demo-accounts.ts), com
 # o erro inteiro do Appwrite no registro quando alguma não puder ser criada.
 on:
+  push:
+    branches: [wellmix]
+    paths:
+      - src/lib/db/schema.ts
+      - appwrite.config.json
+      - scripts/appwrite-push.ts
+      - .github/workflows/appwrite-schema.yml
   workflow_dispatch:
     inputs:
       demo_accounts:
