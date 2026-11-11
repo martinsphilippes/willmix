@@ -46,6 +46,8 @@ export interface ServerLoadState {
   failures: number;
   /** Rodada em andamento até esta hora (evita duas ao mesmo tempo). */
   lockUntil: string | null;
+  /** Marca da rodada que tem a trava (duas chamadas juntas: só uma segue). */
+  lockToken?: string | null;
 }
 
 const EMPTY: ServerLoadState = {
@@ -146,7 +148,13 @@ export type ServerTick =
 export async function runServerLoadTick({
   budgetMs = 30_000,
   now = () => Date.now(),
-}: { budgetMs?: number; now?: () => number } = {}): Promise<ServerTick> {
+  settleMs = 1_500,
+}: {
+  budgetMs?: number;
+  now?: () => number;
+  /** Espera antes de reler a trava (as duas gravações já aconteceram). */
+  settleMs?: number;
+} = {}): Promise<ServerTick> {
   const state = await getServerLoad();
   if (!state.active || !state.queue.length)
     return { ran: false, reason: "idle" };
@@ -167,7 +175,19 @@ export async function runServerLoadTick({
   }
 
   const entity = state.queue[0];
-  await save({ ...state, lockUntil: new Date(now() + LOCK_MS).toISOString() });
+  // Trava: o agendador às vezes entrega duas chamadas no mesmo instante, e as
+  // duas liam a fila livre e rodavam a mesma nota juntas (cadastro criado em
+  // dobro). Cada uma grava a própria marca, espera e relê: só segue a que
+  // encontrar a sua (a última gravação vence).
+  const token = randomBytes(8).toString("hex");
+  await save({
+    ...state,
+    lockUntil: new Date(now() + LOCK_MS).toISOString(),
+    lockToken: token,
+  });
+  if (settleMs > 0) await new Promise((r) => setTimeout(r, settleMs));
+  if ((await getServerLoad()).lockToken !== token)
+    return { ran: false, reason: "busy" };
   let done = false;
   let error: string | null = null;
   try {
@@ -194,6 +214,7 @@ export async function runServerLoadTick({
         ? new Date(now()).toISOString()
         : fresh.finishedAt,
     lockUntil: null,
+    lockToken: null,
   });
   return { ran: true, entity, done, error, queue };
 }
