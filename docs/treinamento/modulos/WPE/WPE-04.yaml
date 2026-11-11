@@ -31,10 +31,10 @@ perguntas:
     cena: 3
     enunciado: "Na inspeção cega, o fornecedor informa peso e medidas. Quem compara o que ele encontrou com o que foi comprado?"
     opcoes:
-      a: "O próprio fornecedor, ao enviar as medidas"
-      b: "O portal, usando a ficha de compra e o Comprado do pedido"
-      c: "A certificadora, antes de liberar o selo"
-      d: "O cliente, ao confirmar o recebimento"
+      a: "O próprio fornecedor, ao enviar as medidas e as fotos da balança"
+      b: "O portal, com a ficha e o Comprado"
+      c: "A certificadora, antes de liberar o selo da embalagem"
+      d: "O cliente, ao confirmar o recebimento da carga"
     correta: [b]
     explicacao: "O fornecedor nunca vê o valor esperado: ele informa só o que encontrou, e quem compara é o portal."
   - id: WPE-04-Q2
@@ -44,10 +44,10 @@ perguntas:
     cena: 3
     enunciado: "O fornecedor escreve pedindo o peso líquido que a ficha prevê para a jarra, \"para medir certo\". O que você responde?"
     opcoes:
-      a: "Envia o valor da ficha, para a medição sair certa"
-      b: "Manda a ficha de compra inteira por mensagem"
-      c: "Não envia: a inspeção é cega, e ele deve informar exatamente o que encontrou"
-      d: "Pede que ele espere a Wellmix abrir a etapa Embarque"
+      a: "Envia o valor da ficha, para a medição dele sair certa na primeira vez"
+      b: "Manda a ficha de compra inteira por mensagem, com o peso previsto"
+      c: "Não envia: a inspeção é cega e ele informa o que encontrou"
+      d: "Pede que ele espere a Wellmix abrir a etapa Embarque para medir"
     correta: [c]
     explicacao: "Passar o valor esperado tira o sentido da inspeção cega, que existe para o portal comparar o que foi encontrado, sem influência, com a ficha congelada no pedido."
   - id: WPE-04-Q3
@@ -57,10 +57,10 @@ perguntas:
     cena: 4
     enunciado: "Na tabela \"O que o fornecedor mediu\", o Peso líquido tem Esperado 0,4, Encontrado 0.55 e Situação \"Divergente\", enquanto o Peso bruto está \"OK\". O que torna o peso líquido divergente?"
     opcoes:
-      a: "O valor encontrado está fora da tolerância daquele atributo"
-      b: "Falta a foto na balança desse atributo"
-      c: "A ficha não tem referência para esse atributo"
-      d: "O fornecedor enviou o peso na unidade errada"
+      a: "O valor está fora da tolerância do atributo"
+      b: "Falta a foto na balança, que o portal exige para esse atributo"
+      c: "A ficha de compra não traz referência para esse atributo"
+      d: "O fornecedor enviou o peso em outra unidade que não o quilo"
     correta: [a]
     explicacao: "Cada linha tem sua tolerância, definida em Configurações pelo administrador. Fora dela a situação é \"Divergente\". Quando a ficha não tem o valor, a linha mostra \"Sem referência\", como acontece com a Cor."
   - id: WPE-04-Q4
@@ -70,10 +70,10 @@ perguntas:
     cena: 5
     enunciado: "A etapa Inspeção está \"Bloqueada\". Em qual item do cartão da etapa a Wellmix decide, com os botões **Aprovar** e **Reprovar**?"
     opcoes:
-      a: "Foto na balança"
-      b: "Peso medido (kg)"
-      c: "Divergências registradas"
-      d: "Revisão da divergência na inspeção (Wellmix)"
+      a: "Foto na balança, enviada pelo fornecedor"
+      b: "Peso medido (kg), informado pelo fornecedor"
+      c: "Divergências registradas, no resultado da inspeção"
+      d: "Revisão da divergência na inspeção"
     correta: [d]
     explicacao: "A decisão fica no item **Revisão da divergência na inspeção (Wellmix)**, com o campo Observação e os botões **Aprovar** e **Reprovar**. Os outros itens são do fornecedor ou só informativos."
   - id: WPE-04-Q5
@@ -97,10 +97,10 @@ perguntas:
     cena: 7
     enunciado: "O peso a mais da jarra é só da tampa de bambu, e você aceita a divergência. Como registra isso para o pedido seguir?"
     opcoes:
-      a: "Escreve o motivo no campo Observação do item de revisão e clica em **Aprovar**"
-      b: "Clica em **Reprovar**, porque a medida já foi conferida"
-      c: "Pede ao fornecedor que meça de novo até ficar na tolerância"
-      d: "Espera o prazo da etapa vencer, para ela liberar sozinha"
+      a: "Escreve o motivo em Observação e clica em **Aprovar**"
+      b: "Clica em **Reprovar**, porque a medida já foi conferida pelo portal"
+      c: "Pede ao fornecedor que meça de novo até ficar dentro da tolerância"
+      d: "Espera o prazo da etapa vencer, para ela se liberar sozinha"
     correta: [a]
     explicacao: "**Aprovar** aceita a divergência: a etapa conclui, o Embarque abre, e a decisão fica registrada com seu nome, a data e o motivo (\"Divergência aceita\"). Os itens da fila passam a Resolvidos."
   - id: WPE-04-Q7
@@ -110,10 +110,10 @@ perguntas:
     cena: 8
     enunciado: "O peso líquido veio errado e você quer que o fornecedor meça de novo. O que você faz no item de revisão?"
     opcoes:
-      a: "Clica em **Aprovar**, com a observação de que o peso deve ser refeito"
-      b: "Escreve a observação, por exemplo \"Meça de novo o peso líquido por peça\", e clica em **Reprovar**"
-      c: "Cancela o pedido e abre outro com a medida certa"
-      d: "Escreve ao fornecedor por fora e deixa a etapa bloqueada"
+      a: "Clica em **Aprovar**, com a observação de que o peso deve ser refeito depois"
+      b: "Escreve a observação pedindo nova medição e clica em **Reprovar**"
+      c: "Cancela o pedido e abre outro com a medida certa da jarra"
+      d: "Escreve ao fornecedor por fora do portal e deixa a etapa bloqueada"
     correta: [b]
     explicacao: "**Reprovar** devolve as medidas e a foto na balança ao fornecedor, que passa a ser o responsável da etapa, com a sua observação. Aprovar aceitaria o valor errado."
   - id: WPE-04-Q8

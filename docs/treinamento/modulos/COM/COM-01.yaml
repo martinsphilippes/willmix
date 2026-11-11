@@ -37,10 +37,10 @@ perguntas:
     cena: 4
     enunciado: "No cartão, a linha do **Numerário** mostra \"Faz: comex · valida: …\". Quem valida?"
     opcoes:
-      a: "O fornecedor"
+      a: "O fornecedor da carga"
       b: "O agente de carga"
       c: "O financeiro da Wellmix"
-      d: "O despachante"
+      d: "O despachante aduaneiro"
     correta: [c]
     explicacao: "O Numerário é o valor em reais para cobrir os custos do desembaraço. Você envia; quem valida e paga é o financeiro da Wellmix. O fornecedor nunca vê este passo."
   - id: COM-01-Q2
@@ -70,7 +70,7 @@ perguntas:
       d: "Invoice e packing assinados"
       e: "Canal de parametrização"
     correta: [a, c, d]
-    explicacao: "Você valida o Draft do BL, o BL original e a invoice assinada. O Numerário é validado pelo financeiro, e o Canal de parametrização é um passo seu, sem validação."
+    explicacao: "Você valida o Draft do BL, o BL original e a invoice assinada. O Numerário é validado pelo financeiro da Wellmix, e o Canal de parametrização você apenas informa."
   - id: COM-01-Q4
     tipo: unica
     nivel: 3
@@ -78,9 +78,9 @@ perguntas:
     cena: 6
     enunciado: "O Draft do BL enviado pelo agente traz um peso bruto diferente da invoice. Você clica em **Recusar** e o portal responde \"Escreva o motivo para recusar.\" O que faz?"
     opcoes:
-      a: "Clica em **Validar** e avisa o agente depois"
-      b: "Preenche o campo \"Motivo (obrigatório para recusar)\" e clica em **Recusar**"
-      c: "Escolhe um arquivo novo e clica em **Enviar**"
+      a: "Clica em **Validar** e avisa o agente depois, por Mensagens"
+      b: "Preenche o \"Motivo (obrigatório para recusar)\" e clica em **Recusar**"
+      c: "Escolhe um arquivo novo e clica em **Enviar**, no lugar do agente"
       d: "Escreve o motivo em Mensagens e clica em **Recusar** de novo"
     correta: [b]
     explicacao: "Recusar exige o motivo no campo do próprio passo. Com ele, o passo volta a quem enviou, com aviso. Quem enviou não valida o próprio passo."
@@ -104,10 +104,10 @@ perguntas:
     cena: 8
     enunciado: "Você enviou o **Numerário** (valor em R$ e demonstrativo em PDF). Depois que o financeiro valida e paga, o que você vê?"
     opcoes:
-      a: "O Numerário Concluído e o passo \"Numerário pago\" Concluído, com o comprovante do financeiro"
-      b: "Só o Numerário Concluído; o pagamento não aparece"
-      c: "O Numerário Recusado, até você anexar o comprovante"
-      d: "O passo \"Numerário pago\" para você enviar o comprovante"
+      a: "Numerário e \"Numerário pago\" Concluídos, com o comprovante do financeiro"
+      b: "Só o Numerário Concluído; o pagamento não aparece em nenhum passo"
+      c: "O Numerário Recusado, até você mesmo anexar o comprovante do pagamento"
+      d: "O passo \"Numerário pago\" aberto para você enviar o comprovante"
     correta: [a]
     explicacao: "O financeiro valida o Numerário e, depois do pagamento, anexa o comprovante em \"Numerário pago\". Você só acompanha."
   - id: COM-01-Q7
@@ -117,10 +117,10 @@ perguntas:
     cena: 9
     enunciado: "No passo **Canal de parametrização**, quais opções de cor você escolhe?"
     opcoes:
-      a: "Verde e vermelho"
-      b: "Azul, verde e vermelho"
+      a: "Verde, amarelo e vermelho, apenas"
+      b: "Azul, verde, amarelo e vermelho"
       c: "Verde, amarelo, vermelho e cinza"
-      d: "Branco, verde e cinza"
+      d: "Branco, verde, vermelho e cinza"
     correta: [c]
     explicacao: "O menu traz Verde, Amarelo, Vermelho e Cinza. Outro valor gera \"Canal inválido.\" Escolha a cor e clique em **Enviar**."
   - id: COM-01-Q8
