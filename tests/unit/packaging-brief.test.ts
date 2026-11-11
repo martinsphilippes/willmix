@@ -190,7 +190,8 @@ describe("abertura junto com a RFQ", () => {
     const mine = agencyTasks.find((t) => t.kind === "packaging_brief");
     expect(mine).toBeDefined();
     expect(mine!.link).toBe(`/app/packaging/${brief!.id}`);
-    expect(mine!.group).toBe("PACKAGING");
+    // A agência filtra pelas etapas dela: o briefing é "Arte na cotação".
+    expect(mine!.group).toBe("agency.brief");
     expect(mine!.detail).toContain("venda ainda não confirmada");
     const supplierTasks = await pendingTasksFor(supplierA);
     expect(supplierTasks.some((t) => t.kind === "quote")).toBe(true);

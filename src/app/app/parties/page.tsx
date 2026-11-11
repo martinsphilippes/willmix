@@ -2,9 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
-import { getStore, PARTY_TYPES } from "@/lib/db";
+import { getStore } from "@/lib/db";
+import {
+  OTHER_PARTY_TYPES,
+  PARTY_TYPE_SCREEN,
+  isOtherPartyType,
+} from "@/lib/party-types";
 import { getT } from "@/i18n/server";
-import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Badge,
   Empty,
@@ -33,21 +37,38 @@ export default async function PartiesPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "parties");
-  const { type } = await searchParams;
+  const { type: rawType } = await searchParams;
+  // Clientes e fornecedores têm telas próprias: o endereço antigo
+  // (?type=supplier, ?type=customer) leva para lá.
+  const own =
+    typeof rawType === "string"
+      ? PARTY_TYPE_SCREEN[rawType as keyof typeof PARTY_TYPE_SCREEN]
+      : undefined;
+  if (own) redirect(own);
+  const type =
+    typeof rawType === "string" && isOtherPartyType(rawType) ? rawType : "";
   const t = await getT();
   const store = getStore();
-  const parties = await store.list("parties", { orderBy: "name" });
-  const filtered =
-    typeof type === "string" && type
-      ? parties.filter((p) => p.type === type)
-      : parties;
+  // Só os outros parceiros (agência, despachante, transportadora, OCP…).
+  const parties = (await store.list("parties", { orderBy: "name" })).filter(
+    (p) => isOtherPartyType(p.type),
+  );
+  const filtered = type ? parties.filter((p) => p.type === type) : parties;
 
   return (
     <>
       <PageHeader
         help={{ body: "help.parties.body", steps: "help.parties.steps" }}
         t={t}
-        title={t("parties.title")}
+        title={t("parties.other.title")}
+        subtitle={
+          <span data-parties-other>
+            {t("parties.other.subtitle")}{" "}
+            <TextLink href="/app/customers">{t("nav.customers")}</TextLink>
+            {" · "}
+            <TextLink href="/app/suppliers">{t("nav.suppliers")}</TextLink>
+          </span>
+        }
         actions={
           <>
             <LinkButton href="/app/import?entity=parties">
@@ -67,7 +88,7 @@ export default async function PartiesPage({
         >
           {t("common.all")}
         </Link>
-        {PARTY_TYPES.map((pt) => (
+        {OTHER_PARTY_TYPES.map((pt) => (
           <Link
             key={pt}
             href={`/app/parties?type=${pt}`}
@@ -97,19 +118,7 @@ export default async function PartiesPage({
                 <Td>
                   <TextLink href={`/app/parties/${p.id}`}>{p.name}</TextLink>
                 </Td>
-                <Td>
-                  {t(`party.${p.type}`)}
-                  {/* Visão de Produto: modalidade de operação do cliente (badge discreto, sem coluna nova). */}
-                  {p.type === "customer" && p.operationMode ? (
-                    <span className="ml-2 inline-flex">
-                      <Badge tone="info">
-                        {t(
-                          `operations.mode.badge.${p.operationMode}` as DictionaryKey,
-                        )}
-                      </Badge>
-                    </span>
-                  ) : null}
-                </Td>
+                <Td>{t(`party.${p.type}`)}</Td>
                 <Td>{p.country ?? "—"}</Td>
                 <Td>
                   <span className="text-zinc-600">{p.email ?? "—"}</span>

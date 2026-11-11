@@ -1,3 +1,4 @@
+import { LiveSearch } from "@/components/live-search";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -224,6 +225,7 @@ export default async function ProductsPage({
             aria-label={t("prodList.search")}
             className="w-full max-w-md"
           />
+          <LiveSearch />
           <Select
             name="line"
             defaultValue={filter.lineId}

@@ -7,3 +7,5 @@ package-lock.json
 .data*
 test-results
 playwright-report
+# Abertura do portal: peça vendorizada (estilo próprio)
+public/intro

@@ -34,7 +34,7 @@ export interface StoredFile {
 }
 
 export interface Store {
-  readonly mode: "memory" | "appwrite";
+  readonly mode: "memory" | "appwrite" | "supabase";
   list<K extends TableName>(
     table: K,
     options?: ListOptions<Tables[K]>,
@@ -73,6 +73,11 @@ export interface Store {
   ): Promise<{ bytes: Uint8Array; name: string; mime: string } | null>;
   /** Apaga o arquivo do armazenamento (sem erro se já não existir). */
   removeFile(key: string): Promise<void>;
+  /**
+   * Link assinado para o navegador subir um arquivo direto (só Supabase; os
+   * outros stores não têm).
+   */
+  createSignedUpload?(name: string): Promise<{ key: string; url: string }>;
   /** Próximo valor de um contador sequencial (ex.: número do pedido). */
   nextNumber(key: string): Promise<number>;
 }

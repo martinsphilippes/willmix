@@ -300,7 +300,10 @@ export default async function OrderPage({
     !!order.ocpId ||
     certAll.some((v) => v.step && !v.template.seal) ||
     certSheet?.certificationRequired === "yes";
-  const certSteps = certAll.filter((v) => v.template.seal || classicCert);
+  // O memorial (PDF) fica sempre junto do selo, no quadro em destaque.
+  const certSteps = certAll.filter(
+    (v) => v.template.seal || classicCert || v.template.key === "cert_memorial",
+  );
   for (const v of [...importSteps, ...certSteps]) {
     if (v.step?.submittedByUserId)
       productionUserIds.add(v.step.submittedByUserId);
@@ -1926,10 +1929,24 @@ export default async function OrderPage({
         <ImportFlowCard
           t={t}
           order={order}
-          steps={certSteps}
+          // O selo e a arte com o selo vêm primeiro (é o que libera o pedido).
+          // Laudo e registro saíram da tela (o PDF do memorial/selo basta,
+          // dono 10/11/2026); pedido antigo que já os preencheu continua
+          // mostrando, para o dado não sumir.
+          steps={[
+            ...certSteps.filter((v) => v.template.key.startsWith("cert_seal")),
+            ...certSteps.filter(
+              (v) =>
+                !v.template.key.startsWith("cert_seal") &&
+                (v.template.key === "cert_memorial" ||
+                  (v.step && v.step.status !== "pending")),
+            ),
+          ]}
           names={productionNames}
           title={t("certFlow.title")}
           anchor="certification"
+          featured={["cert_seal", "cert_memorial"]}
+          featuredHint={t("certFlow.featured.hint")}
           error={stepCard === "certification" ? stepError : null}
           hints={[
             ...(certSteps.some((v) => v.template.key === "cert_seal")

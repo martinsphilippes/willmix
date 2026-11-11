@@ -29,11 +29,21 @@ export async function decideApprovalAction(form: FormData) {
       .parse(str(form, "decision"));
     const note = field(form, "note", z.string().trim().max(1000));
     const { decideApproval } = await import("@/lib/services/approvals");
-    await decideApproval(user, approvalId, decision, note || null);
+    // Administrador: botão "Aprovar todos os níveis" (o serviço confere).
+    await decideApproval(user, approvalId, decision, note || null, {
+      allLevels: str(form, "allLevels") === "1",
+    });
     // Endereço diferente a cada decisão: a tela sempre é recarregada (duas
     // aprovações seguidas voltariam para o mesmo endereço).
     return `${to}?decided=${decision}&at=${Date.now()}#approval`;
   });
+}
+
+/** Administrador: aprova o nível atual e todos os que faltam, de uma vez. */
+export async function decideAllLevelsAction(form: FormData) {
+  form.set("decision", "approved");
+  form.set("allLevels", "1");
+  return decideApprovalAction(form);
 }
 
 export async function cancelApprovalAction(form: FormData) {
