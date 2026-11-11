@@ -236,7 +236,7 @@ Rótulos de tela citados (copiados do dicionário, mesma chave em en e zh): "Con
 
 **Cena 1 · 0:00–0:12 · Gancho · `/login`**
 
-- 🎬 Imagem: a abertura animada começa em tela cheia: mapa-múndi escuro, Brasil e China em vermelho, a rota entre os dois países se desenha e a legenda "BRASIL ↔ CHINA · DESDE 2010" aparece.
+- 🎬 Imagem: a abertura animada começa em tela cheia: mapa-múndi escuro, o Brasil em verde e a China em vermelho, as rotas que saem do Brasil se desenham pelo mundo e a legenda "IMPORTAÇÃO DIRETA · DESDE 2010" aparece.
 - 🎙 Narração: "Em segundos você entra no portal e vê só o que é seu. Vamos entrar, escolher o idioma e conhecer o menu do seu papel."
 - 🔤 Na tela: `[TÍTULO]` "GER-01 · Entrar no portal e se localizar".
 - ✂️ Edição: a vinheta do vídeo (6,5 s) e o título (2 s) vêm antes; aqui já é a abertura **do portal**, gravada de verdade (única do curso).
@@ -250,7 +250,7 @@ Rótulos de tela citados (copiados do dicionário, mesma chave em en e zh): "Con
 
 **Cena 3 · 0:20–0:50 · A abertura animada · `/login`**
 
-- 🎬 Imagem: refaça a abertura em câmera lenta com o cursor parado: o mapa, a rota Santos ↔ Guangzhou, o vermelho tomando o mundo e a marca Wellmix atravessando a tela e revelando a página. Em seguida, no canto inferior direito, o botão "Pular".
+- 🎬 Imagem: refaça a abertura em câmera lenta com o cursor parado: o mapa, as rotas saindo do Brasil, o vermelho tomando o mundo e a marca Wellmix se abrindo em letras até revelar a página. Em seguida, no canto inferior direito, o botão "Pular".
 - 🎙 Narração: "Na primeira abertura do dia, o portal toca uma animação de uns seis segundos: o mapa, a rota entre o Brasil e a China e a marca Wellmix. Ela só aparece no computador. Quem tem pressa clica em Pular."
 - 🔤 Na tela: `[SETA]` "Só no computador, na primeira abertura do dia" apontando a animação; `[BOTÃO] "Pular"`; `[DICA]` "Esc, Enter ou espaço também encerram a animação."
 - ✂️ Edição: `[ZOOM 150 %]` no botão "Pular" por 2 s; a animação toca inteira na primeira vez e é cortada em "Pular" na segunda.

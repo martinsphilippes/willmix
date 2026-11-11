@@ -54,7 +54,7 @@ A tela do portal muda de idioma com o login (botões PT / EN / ZH). O texto que 
 
 ## 4. Identidade visual dos vídeos
 
-- **Abertura (vinheta):** use o arquivo `wellmix-intro-desktop.mp4` (6,5 s, 1920 × 1080, 60 fps), o mesmo da abertura do portal. Guarde-o com os arquivos de edição; ele não fica no repositório por causa do tamanho. Depois dele, um cartão de título de 2 s.
+- **Abertura (vinheta):** use o vídeo da abertura do portal, `public/intro/wellmix-intro.mp4` (6,8 s, 1920 × 1080, 60 fps, sem som; também em `.webm`). Ele termina em fundo liso claro (`#f5f5f6`), o que casa com o cartão de título que vem depois (2 s).
 - **Cores:** vermelho Wellmix `#BF2026` (cor do portal), branco, grafite `#17181C`. A abertura animada usa `#DF1A21`, um pouco mais vivo; use o da peça só na vinheta.
 - **Fonte dos textos sobrepostos:** Montserrat 600 e 700 (a mesma da abertura); em chinês, Noto Sans SC.
 - **Elementos de tela** (sempre os mesmos, em todos os vídeos). No roteiro aparecem assim:

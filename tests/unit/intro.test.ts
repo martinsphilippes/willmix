@@ -5,6 +5,7 @@ import {
   INTRO_BOOT,
   INTRO_DAY_KEY,
   INTRO_MEDIA,
+  INTRO_REDUCED_MEDIA,
 } from "@/lib/intro";
 
 /*
@@ -25,6 +26,7 @@ function boot(env: {
   playedOn?: string;
   reload?: boolean;
   webdriver?: boolean;
+  reducedMotion?: boolean;
   storageBroken?: boolean;
 }) {
   const attrs = new Map<string, string>();
@@ -36,7 +38,9 @@ function boot(env: {
     location: { search: env.search ?? "", pathname: env.pathname ?? "/app" },
     navigator: { webdriver: env.webdriver ?? false },
     matchMedia: (query: string) => ({
-      matches: query === INTRO_MEDIA && (env.width ?? 1440) >= 1024,
+      matches:
+        (query === INTRO_MEDIA && (env.width ?? 1440) >= 1024) ||
+        (query === INTRO_REDUCED_MEDIA && !!env.reducedMotion),
     }),
     localStorage: {
       getItem: (key: string) => {
@@ -103,6 +107,14 @@ describe("abertura do portal: quando cobrir a tela", () => {
     expect(boot({ webdriver: true }).attr).toBeNull();
   });
 
+  it("quem pede menos movimento não vê a abertura, nem marca o dia", () => {
+    expect(boot({ reducedMotion: true }).attr).toBeNull();
+    expect(
+      boot({ reducedMotion: true, reload: true, playedOn: TODAY }).attr,
+    ).toBeNull();
+    expect(boot({ reducedMotion: true }).day).toBeUndefined();
+  });
+
   it("?intro=always força mesmo no celular, repetida ou automatizada, sem marcar o dia", () => {
     expect(
       boot({
@@ -113,7 +125,7 @@ describe("abertura do portal: quando cobrir a tela", () => {
       }),
     ).toEqual({ attr: "pending", day: TODAY });
     expect(boot({ search: "?intro=always" }).day).toBeUndefined();
-    expect(boot({ search: "?intro=manual", playedOn: TODAY }).attr).toBe(
+    expect(boot({ search: "?intro=always", playedOn: TODAY }).attr).toBe(
       "pending",
     );
   });
