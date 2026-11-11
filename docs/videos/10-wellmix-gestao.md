@@ -31,6 +31,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 - Entre por `/login?intro=off` e esconda a faixa de demonstração e o seletor DEMO (GUIA, seção 7.3).
 - **A RFQ com vários fornecedores está em espera** (docs/RFQ_STANDBY.md). Grave com o interruptor **desligado** (padrão). Os quadrados "RFQ aberta" e "Comparação de cotações" da Control Tower continuam existindo, mas hoje a solicitação vai a **um fornecedor** (Pedidos → RFQ, "Enviar ao fornecedor").
 - **Só um login interno de demonstração** existe com função: o Otávio. Não há conta pronta de financeiro, diretoria ou designer. O WGE-10 mostra como criar mais um acesso interno (Cadastros → Outros parceiros → um parceiro → "Acesso ao portal", papel "Operador Wellmix").
+- **Ordem de gravação** (README, "A Jornada da Jarra"): WGE-03 e WGE-04 no passo 18 (depois de FOR-10), WGE-01 e WGE-02 no passo 19; WGE-05 a WGE-11 são avulsos. O WGE-06 precisa do pedido da Jarra já entregue (passo 17). O WGE-11 vai por último de todos (a limpeza apaga as vendas).
 - Sugestão de pontos de salvamento (GUIA, seção 7.2): `antes-WGE-01`, `antes-WGE-03`, `antes-WGE-04`, `antes-WGE-06`, `antes-WGE-07`, `antes-WGE-08`, `antes-WGE-11`. Os episódios 03, 04, 06 e 11 **gravam dados** (recebimento, pagamento, encerramento, limpeza).
 
 | ID     | Episódio                                           | Duração-alvo | Situação      |
@@ -60,9 +61,9 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 | Duração-alvo          | 4:30                                                                                                                                                   |
 | Ponto da jornada      | As 9 etapas, vistas de cima (a Control Tower é o mapa vivo da jornada)                                                                                 |
 | Telas e rotas         | `/app` (Control Tower), `/app?card=CHAVE` (lista de um quadrado), `/app?filter=exceptions` (Exceções), `/app/finance` (ao tocar a faixa Financeiro)      |
-| Dados antes de gravar | Jarra (pedido #1) criada com o sinal confirmado e um pagamento ao fornecedor pedido; de preferência mais 2 ou 3 pedidos em etapas diferentes (com só a Jarra, quase todo quadrado fica cinza). Ponto `antes-WGE-01` |
+| Dados antes de gravar | A Jornada da Jarra até o passo 19 do README (a jarra, pedido #1, e o pagamento ao fornecedor já pedido); de preferência mais 2 ou 3 pedidos em etapas diferentes (com só a Jarra, quase todo quadrado fica cinza). Ponto `antes-WGE-01` |
 | Depois deste vídeo    | Nada é gravado: a Control Tower é só leitura. O próximo passo é ver por pessoa e por prazo (WGE-02)                                                      |
-| Antes · Próximo       | GER-01 (Primeiros passos) · WGE-02                                                                                                                      |
+| Antes · Próximo       | GER-01 (Entrar no portal e se localizar) · WGE-02                                                                                                       |
 | Idiomas               | pt (base)                                                                                                                                              |
 
 ### Roteiro
@@ -174,7 +175,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 - ⚠ O pedido do código diz "quatro blocos"; a tela traz um quinto, **Booking**, para quem abre a tela Booking (o administrador abre). O roteiro diz "quatro blocos e, antes, o Booking". Confirmar com o dono se prefere esse texto.
 - ⚠ No **Resumo do pedido** e em **Itens do pedido**, o operador vê "FOB" e "Valor de venda" (`canSeeInternalCosts` é verdadeiro para toda a Wellmix), embora docs/ACCESS.md (regra 3) diga que a função financeiro "não vê valores". Conferido na tela com o Otávio. É decisão de negócio: manter ou esconder.
 - ⚠ O selo de atrasados ("1 atrasado", "N atrasados") só foi lido no código (`board.late.one` e `board.late.many`); confirmar na gravação com um pedido vencido.
-- ⚠ O ID do episódio anterior ("GER-01 · Primeiros passos") vem do GUIA, seção 7.4; confirmar o código no README.
+- ⚠ O README diz que a Control Tower grava com "a jarra em cada quadrado" (passo 19). Um pedido só ocupa **um** quadrado do bloco "Onde o pedido está agora"; para ver a Jarra em vários, só com pedidos em etapas diferentes ou com tomadas gravadas em momentos diferentes da jornada. Combinar com a produção.
 
 ---
 
@@ -189,7 +190,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 | Duração-alvo          | 4:00                                                                                                                                                    |
 | Ponto da jornada      | As 9 etapas: o prazo de cada etapa e de cada pendência (docs/SLA_PANEL.md)                                                                               |
 | Telas e rotas         | `/app/sla` (Início → Painel de SLA), `/app/sla?show=week`, `/app/sla?u=...`, `/app/dashboards` (Gestão → Painéis por área), `/app/dashboards?area=...`    |
-| Dados antes de gravar | Em Equipe e divisões (WGE-10): o Otávio com cargo "Analista", divisão "Wellmix" e "Responde a" Ana Admin; a linha "Utilidades domésticas" na divisão "Wellmix"; **a Ana sem divisão** (com divisão ela também recebe pendências). Uma solicitação nova da Loja do João (Jogo de panelas) e a Jarra já como pedido. Ponto `antes-WGE-02` |
+| Dados antes de gravar | Em Equipe e divisões (WGE-10): o Otávio com cargo "Analista", divisão "Wellmix" e "Responde a" Ana Admin; a linha "Utilidades domésticas" na divisão "Wellmix"; **a Ana sem divisão** (com divisão ela também recebe pendências). Uma solicitação nova da Loja do João (Jogo de panelas) e a Jarra já como pedido (passo 19 do README). Ponto `antes-WGE-02` |
 | Depois deste vídeo    | Nada é gravado. O que se acompanha aqui é cobrado nas telas de cada área                                                                                |
 | Antes · Próximo       | WGE-01 · WGE-03                                                                                                                                          |
 | Idiomas               | pt (base)                                                                                                                                               |
@@ -310,7 +311,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 | Duração-alvo          | 4:30                                                                                                                                                     |
 | Ponto da jornada      | Etapa 4 de 9 (Sinal e pedido) até a 9: o dinheiro acompanha o pedido. O pagamento ao fornecedor é o selo "paralelo" (WGE-04)                              |
 | Telas e rotas         | `/app/finance` (Gestão → Financeiro), `/app/orders/[id]` (cartão "Financeiro do pedido" e tabela "Pagamentos"), `/app/requests/[id]` (botão "Confirmar sinal recebido") |
-| Dados antes de gravar | Pedido #1 da Jarra criado, com o **sinal já confirmado** (cliente com comprovante enviado no CLI-03; a Wellmix confirmou), saldo a receber e um pagamento ao fornecedor **feito sem câmbio** (para o fim do episódio). Ponto `antes-WGE-03` |
+| Dados antes de gravar | Pedido #1 da Jarra criado, com o **sinal já confirmado** (o cliente paga no CLI-03; a Wellmix confirma no WSO-03), saldo a receber e um pagamento ao fornecedor **feito sem câmbio** (para o fim do episódio). Ponto `antes-WGE-03` |
 | Depois deste vídeo    | O recebimento registrado vai para a conta do cliente e para os totais; o cliente é avisado ("Pedido #n: pagamento recebido"). O câmbio informado recalcula custo e margem na hora |
 | Antes · Próximo       | WGE-02 · WGE-04                                                                                                                                           |
 | Idiomas               | pt (base)                                                                                                                                                |
@@ -434,7 +435,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 | Telas e rotas         | `/app/suppliers` e `/app/suppliers/[id]` (conta do fornecedor), `/app/parties/[id]#payment-terms` (condição), `/app/payables` (Contas a pagar), `/app/orders/[id]#supplier-payment` (card "Pagamento ao fornecedor"), `/app/account` (conta corrente, vista pelo fornecedor) |
 | Dados antes de gravar | Shenzhen Supplier A com a condição que já vem na carga (30% no pedido + 70% 90 dias após a entrega); **dados bancários do fornecedor preenchidos** (Beneficiário, Banco, Conta / IBAN, SWIFT); pedido #1 com parcela 1/2 vencendo. Ponto `antes-WGE-04` |
 | Depois deste vídeo    | A parcela vira "Solicitado ao banco/financeiro" e depois "Pago · falta o fornecedor confirmar"; o fornecedor recebe o aviso "Pedido #n: pagamento enviado, confirme o recebimento"; o Financeiro e a Control Tower se atualizam |
-| Antes · Próximo       | WGE-03 · WGE-05                                                                                                                                               |
+| Antes · Próximo       | WGE-03 (e, do lado do fornecedor, FOR-10 · Conta corrente e pagamentos) · WGE-05                                                                                |
 | Idiomas               | pt (base). A cena do fornecedor mostra a tela dele; se gravada em zh ou en, use os rótulos do próprio idioma (GUIA, seção 2)                                   |
 
 ### Roteiro
@@ -497,7 +498,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 
 **Cena 9 · 4:00–4:40 · A conta do fornecedor, dos dois lados · `/app/suppliers/[id]` e `/app/account`**
 
-- 🎬 Imagem: do lado da Wellmix, **Cadastros → Fornecedores**: os cartões "Valor do contrato", "Mercadoria entregue", "Pagamento antecipado", "A pagar" e "Pago", e na ficha as abas "Registros de compras", "Pagamentos" e "Informações do fornecedor", com o botão "Registrar pagamento". Corte para o perfil do fornecedor (Li Wei): a tela **Conta corrente** com "Previsão de pagamentos" e, na lista, o botão **Confirmar recebimento** ao lado do pagamento enviado.
+- 🎬 Imagem: do lado da Wellmix, **Cadastros → Fornecedores**: os cartões "Valor do contrato", "Mercadoria entregue", "Pagamento antecipado", "A pagar" e "Pago", e na ficha as abas "Registros de compras", "Pagamentos" e "Informações do fornecedor", com o botão "Registrar pagamento". Corte para o perfil do fornecedor (Li Wei; o FOR-10 mostra essa tela por inteiro): a tela **Conta corrente** com "Previsão de pagamentos" e, na lista, o botão **Confirmar recebimento** ao lado do pagamento enviado.
 - 🎙 Narração: "A conta de cada fornecedor está em Cadastros, em Fornecedores: contratado, entregue, a pagar e pago. Do outro lado, o fornecedor vê a previsão de pagamentos dele na Conta corrente e confirma o recebimento quando o dinheiro chega."
 - 🔤 Na tela: `[PASSO 6/7] Veja a conta do fornecedor`; `[QUEM VÊ]` "O fornecedor vê a previsão dele, sem os dados do banco da Wellmix nem as ações"; `[BOTÃO] "Confirmar recebimento"`; `[SETA]` "Condição combinada: a observação que você escreveu aparece aqui".
 - ✂️ Edição: `[CORTE]` entre os perfis; tela dividida por 4 s.
@@ -681,7 +682,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 | Duração-alvo          | 4:00                                                                                                                                                         |
 | Ponto da jornada      | Etapa 9 de 9: Entrega e pós-venda; o histórico fecha o ciclo e leva à nova compra                                                                             |
 | Telas e rotas         | `/app/after-sales` (Gestão → Pós-venda), `/app/orders/[id]#after-sales` (card "Pós-venda"), `/app/history` (Gestão → Histórico), `/app/orders/[id]#followup` ("Comprar de novo / Nova proposta") |
-| Dados antes de gravar | Pedido #1 da Jarra **entregue** (etapa Entrega concluída; o pós-venda abre sozinho e o cliente recebe a pendência "Avalie a compra"). Ponto `antes-WGE-06`. Para repetir "Respondidos", grave outro ponto depois da avaliação do cliente |
+| Dados antes de gravar | Pedido #1 da Jarra **entregue** (passo 17 do README: CLI-04 a CLI-06 e WPE-06; ao concluir a entrega, o pós-venda abre sozinho e o cliente recebe a pendência "Avalie a compra"). Ponto `antes-WGE-06`. Para repetir "Respondidos", grave outro ponto depois da avaliação do cliente |
 | Depois deste vídeo    | O pós-venda vira "Encerrado" com a observação da Wellmix; "Comprar de novo" cria uma solicitação pré-preenchida ligada ao pedido (origem reposição) e a Wellmix recebe a pendência de enviá-la ao fornecedor |
 | Antes · Próximo       | WGE-05 · WGE-07                                                                                                                                               |
 | Idiomas               | pt (base)                                                                                                                                                    |
