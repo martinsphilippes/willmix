@@ -11,7 +11,9 @@ import {
   hasCustomScreens,
   screensFor,
 } from "@/lib/auth/screens";
-import { DIVISIONS, JOB_LEVELS, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
+import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
+import { accessFromFunctions, functionLabel } from "@/lib/auth/function-access";
+import { loadFunctionDefs } from "@/lib/services/team-functions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -46,14 +48,16 @@ export default async function TeamMemberPage({
   const t = await getT();
   const { id } = await params;
   const { error, created } = await searchParams;
-  const team = await wellmixTeam();
+  const [team, defs] = await Promise.all([wellmixTeam(), loadFunctionDefs()]);
   const member = team.find((m) => m.id === id);
   if (!member) notFound();
   const below = descendantsOf(member.id, team);
   const admin = isAdmin(member);
   const custom = hasCustomScreens(member);
-  const effective = screensFor(member);
-  const byFunctions = functionScreensFor(member);
+  // Telas pelas funções, com a configuração de Equipe → Funções e acessos.
+  const access = accessFromFunctions(member.functions, defs);
+  const effective = screensFor(member, access);
+  const byFunctions = functionScreensFor(member, access);
   const errorKey = `team.error.${typeof error === "string" ? error : ""}`;
   const errorText =
     typeof error === "string" && error
@@ -131,26 +135,30 @@ export default async function TeamMemberPage({
         <Card title={t("team.block.functions")}>
           <input type="hidden" name="functions.__form" value="1" />
           <div className={cx(block, "grid gap-2 sm:grid-cols-2")}>
-            {WELLMIX_FUNCTIONS.map((f) => (
-              <label key={f} className={option}>
-                <input
-                  type="checkbox"
-                  name="functions"
-                  value={f}
-                  defaultChecked={(member.functions ?? []).includes(f)}
-                  className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
-                  data-team-function={f}
-                />
-                <span>
-                  <span className="font-medium">
-                    {t(`function.${f}` as DictionaryKey)}
+            {defs
+              .filter((d) => !d.archived)
+              .map((d) => (
+                <label key={d.key} className={option}>
+                  <input
+                    type="checkbox"
+                    name="functions"
+                    value={d.key}
+                    defaultChecked={(member.functions ?? []).includes(d.key)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
+                    data-team-function={d.key}
+                  />
+                  <span>
+                    <span className="font-medium">
+                      {functionLabel(d.key, defs, (k) => t(k as DictionaryKey))}
+                    </span>
+                    {d.builtin ? (
+                      <span className="block text-xs text-zinc-500">
+                        {t(`function.desc.${d.key}` as DictionaryKey)}
+                      </span>
+                    ) : null}
                   </span>
-                  <span className="block text-xs text-zinc-500">
-                    {t(`function.desc.${f}` as DictionaryKey)}
-                  </span>
-                </span>
-              </label>
-            ))}
+                </label>
+              ))}
           </div>
         </Card>
 

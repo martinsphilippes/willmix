@@ -1,4 +1,5 @@
 import "server-only";
+import { can } from "@/lib/auth/function-access";
 
 import {
   getStore,
@@ -28,6 +29,7 @@ import {
   isOrderDocumentKey,
   isOrderSignatureKey,
   ORDER_SIGN_SEND,
+  ORDER_SIGNED_WELLMIX,
   nextStageKey,
   isPurchaseFlow,
 } from "./stages";
@@ -41,6 +43,7 @@ import { openAfterSales } from "@/lib/services/after-sales";
 import { isMoneyRequirement, parseMoneyValue } from "./money";
 import {
   approvalSourceOf,
+  LANE_KEYS,
   baseKeyOf,
   blockedBy,
   prerequisitesOf,
@@ -341,9 +344,17 @@ export interface SubmitInput {
 export function canSubmitRequirement(
   user: User,
   order: Order,
-  requirement: Pick<Requirement, "role">,
+  requirement: Pick<Requirement, "role"> & Partial<Pick<Requirement, "key">>,
 ): boolean {
-  if (isWellmix(user)) return true;
+  if (isWellmix(user)) {
+    // Ações que dependem de permissão (Equipe → Funções e acessos): validar
+    // a arte do pedido de compra e assinar o contrato pela Wellmix.
+    const key = requirement.key ?? "";
+    if (baseKeyOf(key) === LANE_KEYS.artReview)
+      return can(user, "art.validate");
+    if (key === ORDER_SIGNED_WELLMIX) return can(user, "contract.sign");
+    return true;
+  }
   if (user.role !== requirement.role) return false;
   // Cliente: só o login solicitante do pedido.
   if (user.role === "customer" && order.requestedByUserId !== user.id)

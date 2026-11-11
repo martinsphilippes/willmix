@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
-import { canOpen } from "@/lib/auth/screens";
 import {
   getStore,
   STOCK_MOVEMENT_KINDS,
@@ -27,6 +26,7 @@ import {
   rowClass,
 } from "@/components/ui";
 import { TabLink } from "@/components/customer-account";
+import { canSeeMoney } from "@/lib/auth/function-access";
 
 const KIND_TONE = {
   sale_out: "info",
@@ -59,7 +59,7 @@ export default async function StockMovementsPage({
   )
     ? (sp.kind as Tab)
     : "all";
-  const money = canOpen(user, "finance");
+  const money = canSeeMoney(user);
   const store = getStore();
   const all = (await listStockMovements()).sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt),

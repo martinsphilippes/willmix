@@ -648,8 +648,11 @@ export interface User extends BaseRow {
   managerUserId?: string | null;
   /** Divisão que o analista atende (as solicitações das linhas dela caem nele). */
   division?: Division | null;
-  /** Funções do login da Wellmix (comprador, planner, diretoria…). */
-  functions?: WellmixFunction[] | null;
+  /**
+   * Funções do login da Wellmix: as de fábrica (comprador, planner,
+   * diretoria…) e as criadas pelo administrador (chave "fn_…").
+   */
+  functions?: string[] | null;
   /**
    * Senha provisória: no próximo acesso o portal só mostra a troca de senha
    * (src/lib/services/password-change.ts). Ausente ou falso: acesso normal.

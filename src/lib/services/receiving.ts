@@ -1,4 +1,6 @@
 import "server-only";
+import { holdersOf } from "@/lib/auth/function-access";
+import { loadFunctionDefs } from "./team-functions";
 
 import {
   getStore,
@@ -226,8 +228,12 @@ export async function saveCounts(
     });
     const ids = new Set<string>();
     if (order.ownerUserId) ids.add(order.ownerUserId);
-    for (const u of team)
-      if ((u.functions ?? []).includes("buyer")) ids.add(u.id);
+    for (const u of holdersOf(
+      team,
+      "receiving.follow",
+      await loadFunctionDefs(),
+    ))
+      ids.add(u.id);
     if (!ids.size) for (const u of team.filter(isAdmin)) ids.add(u.id);
     await notify(
       { userIds: [...ids] },
@@ -356,7 +362,7 @@ export async function closeReceiving(
   const team = await getStore().list("users", {
     filter: { role: ["admin", "operator"], active: true },
   });
-  const finance = team.filter((u) => (u.functions ?? []).includes("finance"));
+  const finance = holdersOf(team, "numerario.manage", await loadFunctionDefs());
   await notify(
     {
       userIds: (finance.length ? finance : team.filter(isAdmin)).map(
