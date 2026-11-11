@@ -92,17 +92,17 @@ export const pt = {
   "supplierRequests.selection.col.sheetQty": "Qtd da planilha",
   "supplierRequests.selection.col.superplan": "Superplan",
   "supplierRequests.selection.col.situation": "Situação",
-  "supplierRequests.selection.form.title": "Abrir solicitação ao fornecedor",
+  "supplierRequests.selection.form.title": "Gravar a escolha do grupo",
   "supplierRequests.selection.form.body":
-    "Marque o item escolhido (um só) e os parecidos que ficam como alternativas. A solicitação vai ao fornecedor do item escolhido, que vê e responde no portal. As alternativas e o Superplan ficam só com a Wellmix.",
+    "Marque o item que ganhou (um só) e informe a quantidade de peças. O botão só grava a escolha: nada vai ao fornecedor agora. A solicitação é aberta depois, nos blocos, só do item que ganhou de cada grupo.",
   "supplierRequests.selection.form.quantity": "Quantidade (peças)",
   "supplierRequests.selection.form.quantityHint":
     "Em branco: a quantidade da planilha do item escolhido.",
   "supplierRequests.selection.form.needs": "O que a Wellmix precisa no produto",
   "supplierRequests.selection.form.needsHint":
     "Cor, embalagem, logo, ajuste… O fornecedor lê este texto.",
-  "supplierRequests.selection.form.submit": "Abrir solicitação",
-  "supplierRequests.selection.form.pending": "Abrindo…",
+  "supplierRequests.selection.form.submit": "Gravar escolha",
+  "supplierRequests.selection.form.pending": "Gravando…",
 
   "supplierRequests.list.title": "Solicitações ao fornecedor",
   "supplierRequests.list.subtitle":
@@ -255,6 +255,29 @@ export const pt = {
   "supplierRequests.table.no": "Não faço",
   "supplierRequests.table.open": "Abrir produto",
   "supplierRequests.table.back": "Ver todos os produtos",
+  "supplierRequests.selection.saved":
+    "Escolha gravada. O grupo aparece abaixo como resolvido, com o item escolhido em verde. Nada foi enviado ao fornecedor ainda.",
+  "supplierRequests.selection.opened":
+    "Solicitações abertas e enviadas aos fornecedores: {n}.",
+  "supplierRequests.selection.openFailed":
+    "Não abriram e continuam gravadas: {n}.",
+  "supplierRequests.selection.open.ready":
+    "Grupos resolvidos esperando a solicitação: {n}. Vai ao fornecedor só o item escolhido de cada um.",
+  "supplierRequests.selection.open.none":
+    "Nenhum grupo resolvido esperando. Abra um bloco, compare e grave a escolha.",
+  "supplierRequests.selection.open.marked": "Abrir solicitação dos marcados",
+  "supplierRequests.selection.open.all": "Abrir solicitação de todos ({n})",
+  "supplierRequests.selection.open.mark": "Marcar para abrir a solicitação",
+  "supplierRequests.selection.resolved": "Resolvido",
+  "supplierRequests.selection.requested": "Solicitação nº {n} aberta",
+  "supplierRequests.selection.requestedNoLink": "Solicitação aberta",
+  "supplierRequests.selection.winner": "Escolhido · {qty} peças",
+  "supplierRequests.selection.blocks.reopen": "Rever a escolha",
+  "supplierRequests.selection.blocks.sizeManual": "{n} itens comparados",
+  "supplierRequests.error.selection_group_pick":
+    "Marque ao menos um grupo resolvido, ou use o botão de abrir todos.",
+  "supplierRequests.error.selection_group_none":
+    "Nenhum grupo resolvido esperando a solicitação.",
 };
 
 export const en: typeof pt = {
@@ -345,17 +368,17 @@ export const en: typeof pt = {
   "supplierRequests.selection.col.sheetQty": "Spreadsheet qty",
   "supplierRequests.selection.col.superplan": "Superplan",
   "supplierRequests.selection.col.situation": "Status",
-  "supplierRequests.selection.form.title": "Open a supplier request",
+  "supplierRequests.selection.form.title": "Save the group's choice",
   "supplierRequests.selection.form.body":
-    "Mark the chosen item (just one) and the similar ones kept as alternatives. The request goes to the chosen item's supplier, who sees and answers it in the portal. Alternatives and Superplan stay with Wellmix only.",
+    "Mark the winning item (only one) and enter the quantity in pieces. The button only saves the choice: nothing goes to the supplier now. The request is opened later, in the blocks, only for the winning item of each group.",
   "supplierRequests.selection.form.quantity": "Quantity (pieces)",
   "supplierRequests.selection.form.quantityHint":
     "Blank: the chosen item's spreadsheet quantity.",
   "supplierRequests.selection.form.needs": "What Wellmix needs in the product",
   "supplierRequests.selection.form.needsHint":
     "Color, package, logo, adjustment… The supplier reads this text.",
-  "supplierRequests.selection.form.submit": "Open request",
-  "supplierRequests.selection.form.pending": "Opening…",
+  "supplierRequests.selection.form.submit": "Save choice",
+  "supplierRequests.selection.form.pending": "Saving…",
 
   "supplierRequests.list.title": "Supplier requests",
   "supplierRequests.list.subtitle":
@@ -506,6 +529,29 @@ export const en: typeof pt = {
   "supplierRequests.table.no": "No, I can't",
   "supplierRequests.table.open": "Open product",
   "supplierRequests.table.back": "See all products",
+  "supplierRequests.selection.saved":
+    "Choice saved. The group appears below as resolved, with the chosen item in green. Nothing was sent to the supplier yet.",
+  "supplierRequests.selection.opened":
+    "Requests opened and sent to the suppliers: {n}.",
+  "supplierRequests.selection.openFailed":
+    "Did not open and remain saved: {n}.",
+  "supplierRequests.selection.open.ready":
+    "Resolved groups waiting for the request: {n}. Only the chosen item of each goes to the supplier.",
+  "supplierRequests.selection.open.none":
+    "No resolved group waiting. Open a block, compare and save the choice.",
+  "supplierRequests.selection.open.marked": "Open request for the marked ones",
+  "supplierRequests.selection.open.all": "Open request for all ({n})",
+  "supplierRequests.selection.open.mark": "Mark to open the request",
+  "supplierRequests.selection.resolved": "Resolved",
+  "supplierRequests.selection.requested": "Request no. {n} opened",
+  "supplierRequests.selection.requestedNoLink": "Request opened",
+  "supplierRequests.selection.winner": "Chosen · {qty} pieces",
+  "supplierRequests.selection.blocks.reopen": "Review the choice",
+  "supplierRequests.selection.blocks.sizeManual": "{n} items compared",
+  "supplierRequests.error.selection_group_pick":
+    "Mark at least one resolved group, or use the open-all button.",
+  "supplierRequests.error.selection_group_none":
+    "No resolved group waiting for the request.",
 };
 
 export const zh: typeof pt = {
@@ -593,17 +639,17 @@ export const zh: typeof pt = {
   "supplierRequests.selection.col.sheetQty": "表格数量",
   "supplierRequests.selection.col.superplan": "Superplan",
   "supplierRequests.selection.col.situation": "状态",
-  "supplierRequests.selection.form.title": "向供应商发起询单",
+  "supplierRequests.selection.form.title": "保存本组的选择",
   "supplierRequests.selection.form.body":
-    "勾选选中的条目（仅一个）以及作为备选的相似条目。询单发给选中条目的供应商，供应商在门户中查看并回复。备选条目和 Superplan 仅 Wellmix 可见。",
+    "勾选胜出的产品（仅一个）并填写数量（件）。此按钮只保存选择：现在不会发给供应商。询问稍后在分组中打开，只发送每组胜出的产品。",
   "supplierRequests.selection.form.quantity": "数量（件）",
   "supplierRequests.selection.form.quantityHint":
     "留空：使用选中条目的表格数量。",
   "supplierRequests.selection.form.needs": "Wellmix 对产品的要求",
   "supplierRequests.selection.form.needsHint":
     "颜色、包装、标志、调整……供应商会阅读这段文字。",
-  "supplierRequests.selection.form.submit": "发起询单",
-  "supplierRequests.selection.form.pending": "正在发起…",
+  "supplierRequests.selection.form.submit": "保存选择",
+  "supplierRequests.selection.form.pending": "保存中…",
 
   "supplierRequests.list.title": "供应商询单",
   "supplierRequests.list.subtitle":
@@ -750,4 +796,24 @@ export const zh: typeof pt = {
   "supplierRequests.table.no": "不能做",
   "supplierRequests.table.open": "打开产品",
   "supplierRequests.table.back": "查看全部产品",
+  "supplierRequests.selection.saved":
+    "选择已保存。该组在下方显示为已解决，所选产品为绿色。尚未发送给供应商。",
+  "supplierRequests.selection.opened": "已打开 {n} 个询问并发送给供应商。",
+  "supplierRequests.selection.openFailed": "{n} 个未能打开，仍保持已保存：",
+  "supplierRequests.selection.open.ready":
+    "{n} 个已解决的组等待询问。只把每组所选产品发给供应商。",
+  "supplierRequests.selection.open.none":
+    "没有等待中的已解决组。请打开一个分组，比较并保存选择。",
+  "supplierRequests.selection.open.marked": "为已勾选的打开询问",
+  "supplierRequests.selection.open.all": "为全部打开询问（{n}）",
+  "supplierRequests.selection.open.mark": "勾选以打开询问",
+  "supplierRequests.selection.resolved": "已解决",
+  "supplierRequests.selection.requested": "询问 {n} 号已打开",
+  "supplierRequests.selection.requestedNoLink": "询问已打开",
+  "supplierRequests.selection.winner": "已选 · {qty} 件",
+  "supplierRequests.selection.blocks.reopen": "重新选择",
+  "supplierRequests.selection.blocks.sizeManual": "比较了 {n} 个产品",
+  "supplierRequests.error.selection_group_pick":
+    "请至少勾选一个已解决的组，或使用全部打开按钮。",
+  "supplierRequests.error.selection_group_none": "没有等待询问的已解决组。",
 };

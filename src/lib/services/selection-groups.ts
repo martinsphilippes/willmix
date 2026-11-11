@@ -1,0 +1,216 @@
+import "server-only";
+
+import { assertWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
+import { GROUP_MAX } from "@/lib/booking-selection";
+import {
+  getStore,
+  type BookingItem,
+  type SelectionGroup,
+  type SupplierRequest,
+  type User,
+} from "@/lib/db";
+import { sheetQuantity } from "@/lib/supplier-requests";
+import { audit } from "./audit";
+import { SupplierRequestError, openSupplierRequest } from "./supplier-requests";
+
+/*
+ * Escolha por grupo (docs/SUPPLIER_REQUESTS.md, "Escolha por grupo"): na
+ * seleção de itens a Wellmix compara um grupo, grava o item que ganhou com a
+ * quantidade e, depois, abre de uma vez a solicitação ao fornecedor dos
+ * grupos resolvidos (só do ganhador de cada um). Nada chega ao fornecedor
+ * antes de a solicitação abrir.
+ */
+
+/** Booking em que o item pode ganhar (o rascunho não: a solicitação pede o booking fechado). */
+const CHOOSABLE_LOTS = ["closed", "in_progress", "done"];
+
+async function schemaSafe<T>(fn: () => Promise<T>, missing: () => T) {
+  try {
+    return await fn();
+  } catch (error) {
+    const { isSchemaMissing } = await import("./packaging-brief");
+    if (isSchemaMissing(error)) return missing();
+    throw error;
+  }
+}
+const outdated = (): never => {
+  throw new SupplierRequestError("schema_outdated");
+};
+
+export interface SaveSelectionGroupInput {
+  /** Itens do grupo comparado. */
+  itemIds: string[];
+  chosenItemId: string;
+  /** Vazio: a quantidade da planilha do item escolhido. */
+  quantity: number | null;
+  needs: string | null;
+}
+
+/**
+ * Grava a escolha do grupo. A escolha ainda não enviada de um grupo com
+ * algum item em comum é trocada por esta (um item não fica em duas escolhas
+ * esperando).
+ */
+export async function saveSelectionGroup(
+  user: User,
+  input: SaveSelectionGroupInput,
+): Promise<SelectionGroup> {
+  assertWellmix(user);
+  assertScreen(user, "booking");
+  const store = getStore();
+  const ids = [...new Set([input.chosenItemId, ...input.itemIds])].slice(
+    0,
+    GROUP_MAX,
+  );
+  const items = await schemaSafe(
+    () => store.list("booking_items", { filter: { id: ids } }),
+    outdated,
+  );
+  const chosen = items.find((i) => i.id === input.chosenItemId);
+  if (!chosen) throw new SupplierRequestError("not_found");
+  const lot = await store.get("booking_lots", chosen.lotId);
+  if (!lot || !CHOOSABLE_LOTS.includes(lot.status))
+    throw new SupplierRequestError("supplier_request_lot_not_closed");
+  const quantity = input.quantity ?? sheetQuantity(chosen);
+  if (
+    quantity === null ||
+    !Number.isFinite(quantity) ||
+    quantity <= 0 ||
+    quantity > 1e9
+  )
+    throw new SupplierRequestError("supplier_request_qty_required");
+  const itemIds = items.map((i) => i.id);
+  const needs = (input.needs ?? "").trim().slice(0, 4000) || null;
+
+  const waiting = await schemaSafe(
+    () => store.list("selection_groups", { filter: { status: "saved" } }),
+    outdated,
+  );
+  const mine = new Set(itemIds);
+  const overlapping = waiting.filter((g) => g.itemIds.some((i) => mine.has(i)));
+  const values = {
+    status: "saved" as const,
+    itemIds,
+    chosenItemId: chosen.id,
+    quantity: Math.round(quantity),
+    needs,
+    supplierRequestId: null,
+    requestedAt: null,
+    updatedByUserId: user.id,
+  };
+  const [reuse, ...rest] = overlapping;
+  const group = reuse
+    ? await store.update("selection_groups", reuse.id, values)
+    : await store.create("selection_groups", {
+        ...values,
+        createdByUserId: user.id,
+      });
+  for (const old of rest)
+    await store.update("selection_groups", old.id, {
+      status: "replaced",
+      updatedByUserId: user.id,
+    });
+  await audit(
+    user,
+    "selection_group.save",
+    "selection_group",
+    group.id,
+    `Escolha do grupo: ${chosen.description ?? chosen.productName ?? chosen.factoryItemCode ?? chosen.id}, ${group.quantity} pcs (${itemIds.length} itens comparados)`,
+  );
+  return group;
+}
+
+export interface SelectionGroupEntry {
+  group: SelectionGroup;
+  chosen: BookingItem | null;
+  /** A solicitação aberta desta escolha. */
+  request: SupplierRequest | null;
+}
+
+/** As escolhas gravadas e as que já viraram solicitação (as trocadas ficam fora). */
+export async function listSelectionGroups(
+  user: User,
+): Promise<SelectionGroupEntry[]> {
+  assertWellmix(user);
+  assertScreen(user, "booking");
+  const store = getStore();
+  const groups = await schemaSafe(
+    () =>
+      store.list("selection_groups", {
+        filter: { status: ["saved", "requested"] },
+      }),
+    () => [] as SelectionGroup[],
+  );
+  if (!groups.length) return [];
+  const requestIds = groups
+    .map((g) => g.supplierRequestId)
+    .filter((id): id is string => !!id);
+  const [items, requests] = await Promise.all([
+    store.list("booking_items", {
+      filter: { id: [...new Set(groups.map((g) => g.chosenItemId))] },
+    }),
+    requestIds.length
+      ? store.list("supplier_requests", { filter: { id: requestIds } })
+      : Promise.resolve([] as SupplierRequest[]),
+  ]);
+  return groups
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .map((group) => ({
+      group,
+      chosen: items.find((i) => i.id === group.chosenItemId) ?? null,
+      request: requests.find((r) => r.id === group.supplierRequestId) ?? null,
+    }));
+}
+
+export interface OpenGroupRequestsResult {
+  opened: SupplierRequest[];
+  /** Grupos que não abriram, com o motivo (o código do erro). */
+  failed: Array<{ groupId: string; error: string }>;
+}
+
+/**
+ * Abre a solicitação ao fornecedor do ganhador de cada grupo gravado (os
+ * marcados, ou todos). Os outros itens do grupo vão como alternativas (só a
+ * Wellmix vê). Um grupo que não abre não segura os demais.
+ */
+export async function openGroupRequests(
+  user: User,
+  groupIds: string[] | "all",
+): Promise<OpenGroupRequestsResult> {
+  assertWellmix(user);
+  assertScreen(user, "booking");
+  const store = getStore();
+  const saved = await schemaSafe(
+    () => store.list("selection_groups", { filter: { status: "saved" } }),
+    outdated,
+  );
+  const wanted =
+    groupIds === "all" ? saved : saved.filter((g) => groupIds.includes(g.id));
+  if (!wanted.length) throw new SupplierRequestError("selection_group_none");
+  const result: OpenGroupRequestsResult = { opened: [], failed: [] };
+  for (const group of wanted.sort((a, b) =>
+    a.createdAt.localeCompare(b.createdAt),
+  )) {
+    try {
+      const request = await openSupplierRequest(user, {
+        itemId: group.chosenItemId,
+        alternativeIds: group.itemIds.filter((i) => i !== group.chosenItemId),
+        quantity: group.quantity,
+        needs: group.needs,
+        searchQuery: null,
+      });
+      await store.update("selection_groups", group.id, {
+        status: "requested",
+        supplierRequestId: request.id,
+        requestedAt: new Date().toISOString(),
+        updatedByUserId: user.id,
+      });
+      result.opened.push(request);
+    } catch (error) {
+      if (!(error instanceof SupplierRequestError)) throw error;
+      result.failed.push({ groupId: group.id, error: error.message });
+    }
+  }
+  return result;
+}

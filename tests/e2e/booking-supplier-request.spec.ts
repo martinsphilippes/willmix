@@ -175,7 +175,15 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await rowA.locator("input[data-selection-choose]").check();
   await rowB.locator("input[data-selection-alternative]").check();
   await page.fill("[data-selection-needs]", "Cor âmbar e caixa com a marca");
+  // Gravar só guarda a escolha (nada vai ao fornecedor); o grupo aparece
+  // resolvido, com o ganhador em verde, e a solicitação abre dali.
   await page.click("[data-selection-submit]");
+  await page.waitForURL(/[?&]saved=1/);
+  await expect(page.locator("[data-selection-saved]")).toBeVisible();
+  const resolved = page.locator("[data-selection-resolved=saved]");
+  await expect(resolved).toHaveCount(1);
+  await expect(resolved.locator("[data-selection-winner]")).toContainText(TAG);
+  await page.click("[data-selection-open-all]");
   await page.waitForURL(/\/app\/supplier-requests\/[^/?]+\?created=1/);
   const requestUrl = page.url().split("?")[0];
   await expect(page.locator("[data-supplier-request-alternative]")).toHaveCount(

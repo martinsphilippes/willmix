@@ -378,6 +378,14 @@ export const SUPPLIER_REQUEST_STATUSES = [
 ] as const;
 export type SupplierRequestStatus = (typeof SUPPLIER_REQUEST_STATUSES)[number];
 
+/** Escolha gravada de um grupo da seleção: gravada, com solicitação aberta, ou trocada por outra. */
+export const SELECTION_GROUP_STATUSES = [
+  "saved",
+  "requested",
+  "replaced",
+] as const;
+export type SelectionGroupStatus = (typeof SELECTION_GROUP_STATUSES)[number];
+
 export const REVIEW_STATUSES = ["open", "resolved", "dismissed"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
@@ -2560,6 +2568,26 @@ export interface SupplierRequest extends BaseRow {
   orderId?: string | null;
 }
 
+/**
+ * Grupo resolvido da seleção de itens (docs/SUPPLIER_REQUESTS.md, "Escolha
+ * por grupo"): os itens comparados, o que ganhou e a quantidade. Só a
+ * Wellmix vê; a solicitação ao fornecedor nasce depois, do ganhador.
+ */
+export interface SelectionGroup extends BaseRow {
+  status: SelectionGroupStatus;
+  /** Itens do grupo comparado (o ganhador incluído). */
+  itemIds: string[];
+  chosenItemId: string;
+  /** Peças a pedir do ganhador. */
+  quantity: number;
+  needs: string | null;
+  /** Solicitação ao fornecedor aberta desta escolha. */
+  supplierRequestId: string | null;
+  requestedAt: string | null;
+  createdByUserId: string;
+  updatedByUserId: string | null;
+}
+
 export interface StockReservation extends BaseRow {
   productId: string;
   customerId: string;
@@ -2681,6 +2709,7 @@ export interface Tables {
   booking_lots: BookingLot;
   booking_items: BookingItem;
   supplier_requests: SupplierRequest;
+  selection_groups: SelectionGroup;
   payment_conditions: PaymentCondition;
   stock_locations: StockLocation;
   process_events: ProcessEvent;
@@ -4281,6 +4310,24 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_product", type: "key", columns: ["productId"] },
       { key: "by_order", type: "key", columns: ["orderId"] },
+    ],
+  },
+  selection_groups: {
+    label: "Grupos resolvidos da seleção de itens",
+    columns: {
+      status: enumOf(SELECTION_GROUP_STATUSES),
+      itemIds: json(),
+      chosenItemId: id(),
+      quantity: int(true),
+      needs: text(),
+      supplierRequestId: id(false),
+      requestedAt: datetime(),
+      createdByUserId: id(),
+      updatedByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_chosen", type: "key", columns: ["chosenItemId"] },
     ],
   },
   stock_locations: {

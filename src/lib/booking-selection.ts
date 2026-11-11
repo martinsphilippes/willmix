@@ -1,4 +1,8 @@
-import type { BookingItem, BookingLotStatus } from "@/lib/db/schema";
+import type {
+  BookingItem,
+  BookingLotStatus,
+  SelectionGroup,
+} from "@/lib/db/schema";
 import { itemKeywords, searchWords } from "@/lib/supplier-requests";
 
 /*
@@ -232,4 +236,24 @@ export function searchSuggestions(
     if (out.size >= max) break;
   }
   return [...out.values()].sort((a, b) => a.localeCompare(b, "pt"));
+}
+
+/**
+ * A escolha gravada de um bloco: o grupo cujo ganhador está no bloco. Com
+ * mais de um, vale a que ainda não virou solicitação e, entre iguais, a mais
+ * nova.
+ */
+export function groupForBlock<
+  G extends Pick<SelectionGroup, "chosenItemId" | "status" | "updatedAt">,
+>(blockIds: string[], groups: G[]): G | null {
+  const ids = new Set(blockIds);
+  return (
+    groups
+      .filter((g) => ids.has(g.chosenItemId))
+      .sort(
+        (a, b) =>
+          Number(b.status === "saved") - Number(a.status === "saved") ||
+          b.updatedAt.localeCompare(a.updatedAt),
+      )[0] ?? null
+  );
 }
