@@ -19,14 +19,15 @@ import { STOCK_PARTY_ID } from "./purchase-flow";
  * completa traz tudo de novo do Sankhya, que passa a ser a fonte.
  *
  * Só roda com as vendas já apagadas (Limpar dados de teste), para nada de
- * venda ficar apontando para um cadastro apagado. Fica: usuários, parceiros
- * dos outros tipos (agência, despachante, armador, jurídico, comex, logística,
- * certificadora), o cliente "Estoque Wellmix" e as configurações.
+ * venda ficar apontando para um cadastro apagado. Fica: usuários (ativos e
+ * ligados), o parceiro de quem tem usuário (a carga o liga ao Sankhya pelo
+ * CNPJ ou nome), parceiros dos outros tipos (agência, despachante, armador,
+ * jurídico, comex, logística, certificadora), o cliente "Estoque Wellmix" e
+ * as configurações.
  *
  * O que fica e apontava para um cadastro apagado: coluna obrigatória → a
  * linha sai junto (ex.: variação do produto, fornecedor do produto);
  * opcional → só perde a ligação (ex.: item de sourcing, foto de documento).
- * Usuário de um parceiro apagado é desativado e perde a ligação.
  *
  * Pode rodar de novo: se parar no limite de tempo, continua de onde parou.
  */
@@ -80,7 +81,8 @@ export interface CatalogResetPlan {
   salesLeft: number;
   remove: Partial<Record<TableName, number>>;
   unlink: number;
-  usersDisabled: number;
+  /** Fornecedores/clientes mantidos porque têm usuário ligado. */
+  partiesKept: number;
   total: number;
 }
 
@@ -106,6 +108,13 @@ async function safeList(table: TableName) {
 
 async function buildWork(user: User): Promise<Work> {
   const salesLeft = (await planSalesReset(user)).total;
+  // Parceiro com usuário ligado fica (o login continua funcionando).
+  const withUsers = new Set(
+    (await safeList("users"))
+      .flatMap((u) => [u.partyId, u.importerId])
+      .filter((v): v is string => typeof v === "string" && !!v),
+  );
+  let partiesKept = 0;
   const ids: Record<Target, Set<string>> = {
     products: new Set((await safeList("products")).map((r) => r.id)),
     product_lines: new Set((await safeList("product_lines")).map((r) => r.id)),
@@ -119,6 +128,11 @@ async function buildWork(user: User): Promise<Work> {
             p.id !== STOCK_PARTY_ID &&
             SANKHYA_PARTY_TYPES.has(p.type as Party["type"]),
         )
+        .filter((p) => {
+          if (!withUsers.has(p.id)) return true;
+          partiesKept++;
+          return false;
+        })
         .map((p) => p.id),
     ),
   };
@@ -126,7 +140,6 @@ async function buildWork(user: User): Promise<Work> {
   const deletes: Work["deletes"] = [];
   const updates: Work["updates"] = [];
   const doomed = new Set<string>();
-  let usersDisabled = 0;
 
   for (const table of Object.keys(TABLES) as TableName[]) {
     if (TARGETS.includes(table)) continue;
@@ -150,10 +163,6 @@ async function buildWork(user: User): Promise<Work> {
       const patch: Record<string, unknown> = Object.fromEntries(
         hits.map(([c]) => [c, null]),
       );
-      if (table === "users" && hits.some(([c]) => c === "partyId")) {
-        patch.active = false;
-        usersDisabled++;
-      }
       updates.push({ table, id: row.id, patch });
     }
   }
@@ -169,7 +178,7 @@ async function buildWork(user: User): Promise<Work> {
       salesLeft,
       remove,
       unlink: updates.length,
-      usersDisabled,
+      partiesKept,
       total: deletes.length + updates.length,
     },
     deletes,
@@ -246,7 +255,7 @@ export async function resetCatalogData(
     "system",
     "catalog",
     finished
-      ? `Limpeza dos cadastros do Sankhya: ${done.deleted} registros apagados, ${done.unlinked} desligados, ${work.plan.usersDisabled} usuário(s) desativado(s)`
+      ? `Limpeza dos cadastros do Sankhya: ${done.deleted} registros apagados, ${done.unlinked} desligados, ${work.plan.partiesKept} parceiro(s) com usuário mantido(s)`
       : `Limpeza dos cadastros do Sankhya parou no limite de tempo: ${done.deleted} de ${work.deletes.length} apagados; continua na próxima rodada`,
     null,
     { planned: work.plan, ...done, finished },

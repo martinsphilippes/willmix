@@ -7,11 +7,11 @@ export const pt = {
   "reset.catalog.title":
     "Apagar também os cadastros que vêm do Sankhya (migração)",
   "reset.catalog.intro":
-    "Apaga fornecedores, clientes e transportadoras, produtos (com fotos, variações e fornecedores do produto), linhas, condições de pagamento e locais de estoque, para a carga completa trazer tudo de novo do Sankhya. Ficam usuários, os outros parceiros (agência, despachante, armador, jurídico, comex, logística, certificadora), o cliente Estoque Wellmix e as configurações. Usuários ligados a um parceiro apagado são desativados. Não tem volta.",
+    "Apaga fornecedores, clientes e transportadoras, produtos (com fotos, variações e fornecedores do produto), linhas, condições de pagamento e locais de estoque, para a carga completa trazer tudo de novo do Sankhya. Ficam usuários, os outros parceiros (agência, despachante, armador, jurídico, comex, logística, certificadora), o cliente Estoque Wellmix e as configurações. Usuários não são apagados nem desativados: o fornecedor ou cliente que tem usuário fica, e a carga o liga ao Sankhya pelo CNPJ ou pelo nome. Não tem volta.",
   "reset.catalog.salesFirst":
     "Apague as vendas primeiro (botão acima): nenhuma venda pode ficar apontando para um cadastro apagado.",
   "reset.catalog.unlink": "Registros que só perdem a ligação",
-  "reset.catalog.usersDisabled": "Usuários desativados",
+  "reset.catalog.partiesKept": "Fornecedores e clientes mantidos (têm usuário)",
   "reset.catalog.submit": "Apagar os cadastros",
   "reset.catalog.done":
     "Cadastros apagados. Agora rode a carga completa em Configurações → Sankhya → Carga do Sankhya.",
@@ -64,11 +64,11 @@ export const en: Record<keyof typeof pt, string> = {
   "reset.catalog.title":
     "Also delete the master data that comes from Sankhya (migration)",
   "reset.catalog.intro":
-    "Deletes suppliers, customers and carriers, products (with photos, variants and product suppliers), lines, payment terms and stock locations, so the full load brings everything again from Sankhya. Users, the other partners (agency, broker, shipping line, legal, comex, logistics, certifier), the Wellmix Stock customer and the settings stay. Users linked to a deleted partner are deactivated. This cannot be undone.",
+    "Deletes suppliers, customers and carriers, products (with photos, variants and product suppliers), lines, payment terms and stock locations, so the full load brings everything again from Sankhya. Users, the other partners (agency, broker, shipping line, legal, comex, logistics, certifier), the Wellmix Stock customer and the settings stay. Users are neither deleted nor deactivated: a supplier or customer that has users stays, and the load links it to Sankhya by CNPJ or name. This cannot be undone.",
   "reset.catalog.salesFirst":
     "Delete the sales first (button above): no sale may keep pointing to deleted master data.",
   "reset.catalog.unlink": "Records that only lose the link",
-  "reset.catalog.usersDisabled": "Users deactivated",
+  "reset.catalog.partiesKept": "Suppliers and customers kept (they have users)",
   "reset.catalog.submit": "Delete the master data",
   "reset.catalog.done":
     "Master data deleted. Now run the full load in Settings → Sankhya → Sankhya load.",
@@ -120,11 +120,11 @@ export const en: Record<keyof typeof pt, string> = {
 export const zh: Record<keyof typeof pt, string> = {
   "reset.catalog.title": "同时删除来自 Sankhya 的主数据（迁移）",
   "reset.catalog.intro":
-    "删除供应商、客户和承运商、产品（含照片、变体和产品供应商）、产品线、付款条件和库位，以便完整导入从 Sankhya 重新带入全部数据。用户、其他合作方（代理、报关行、船公司、法务、外贸、物流、认证机构）、Wellmix 库存客户和设置会保留。与被删除合作方关联的用户将被停用。此操作无法撤销。",
+    "删除供应商、客户和承运商、产品（含照片、变体和产品供应商）、产品线、付款条件和库位，以便完整导入从 Sankhya 重新带入全部数据。用户、其他合作方（代理、报关行、船公司、法务、外贸、物流、认证机构）、Wellmix 库存客户和设置会保留。用户不会被删除或停用：有关联用户的供应商或客户会保留，导入时按 CNPJ 或名称将其关联到 Sankhya。此操作无法撤销。",
   "reset.catalog.salesFirst":
     "请先删除销售数据（上方按钮）：任何销售都不能指向被删除的主数据。",
   "reset.catalog.unlink": "仅解除关联的记录",
-  "reset.catalog.usersDisabled": "停用的用户",
+  "reset.catalog.partiesKept": "保留的供应商和客户（有关联用户）",
   "reset.catalog.submit": "删除主数据",
   "reset.catalog.done":
     "主数据已删除。现在请在“设置 → Sankhya → Sankhya 导入”中运行完整导入。",

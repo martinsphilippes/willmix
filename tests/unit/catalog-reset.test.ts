@@ -4,8 +4,8 @@ import { withTempStore } from "./setup";
 /*
  * Limpar os cadastros que vêm do Sankhya (migração): só depois das vendas;
  * apaga fornecedores, clientes, transportadoras, produtos, linhas, condições
- * e locais; mantém os outros parceiros, o cliente Estoque Wellmix e os
- * usuários (desativa quem era de um parceiro apagado); zera a carga.
+ * e locais; mantém os outros parceiros, o cliente Estoque Wellmix, os
+ * usuários (ativos) e o parceiro de quem tem usuário; zera a carga.
  */
 withTempStore();
 
@@ -66,7 +66,8 @@ describe("limpeza dos cadastros do Sankhya", () => {
     const plan = await catalog.planCatalogReset(admin);
     expect(plan.salesLeft).toBe(0);
     expect(plan.remove.products).toBeGreaterThan(0);
-    expect(plan.usersDisabled).toBeGreaterThan(0);
+    // O cliente do João tem usuário: fica.
+    expect(plan.partiesKept).toBeGreaterThan(0);
 
     await expect(catalog.resetCatalogData(admin, "errado")).rejects.toThrow(
       "reset_confirm",
@@ -75,22 +76,26 @@ describe("limpeza dos cadastros do Sankhya", () => {
     expect(result.finished).toBe(true);
 
     const parties = await store.list("parties");
-    expect(
-      parties.filter(
-        (p) =>
-          ["supplier", "customer", "carrier"].includes(p.type) &&
-          p.id !== STOCK_PARTY_ID,
-      ),
-    ).toEqual([]);
+    const users = await store.list("users");
+    const withUsers = new Set(users.map((u) => u.partyId).filter(Boolean));
+    // Só ficam os fornecedores/clientes com usuário ligado.
+    const left = parties.filter(
+      (p) =>
+        ["supplier", "customer", "carrier"].includes(p.type) &&
+        p.id !== STOCK_PARTY_ID,
+    );
+    expect(left.length).toBe(plan.partiesKept);
+    expect(left.every((p) => withUsers.has(p.id))).toBe(true);
     expect(parties.filter((p) => p.type === "agency")).toHaveLength(
       agencies.length,
     );
     expect(await store.list("products")).toEqual([]);
     expect(await store.list("product_lines")).toEqual([]);
     expect(await store.list("stock_locations")).toEqual([]);
-    const users = await store.list("users");
+    // Usuários continuam ativos e ligados ao mesmo cadastro.
     const joaoAfter = users.find((u) => u.id === joao.id)!;
-    expect(joaoAfter).toMatchObject({ active: false, partyId: null });
+    expect(joaoAfter).toMatchObject({ active: true, partyId: joao.partyId });
+    expect(parties.some((p) => p.id === joao.partyId)).toBe(true);
     expect(users.find((u) => u.id === admin.id)?.active).toBe(true);
     expect(await readSetting("sankhya.load.orders")).toBeNull();
     expect((await catalog.planCatalogReset(admin)).total).toBe(0);

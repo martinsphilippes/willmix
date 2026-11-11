@@ -22,6 +22,7 @@ const TONE: Record<RequiredStatus, "success" | "info" | "neutral" | "danger"> =
     portal: "success",
     fixed: "info",
     generated: "neutral",
+    auto: "neutral",
     missing: "danger",
   };
 
@@ -36,9 +37,14 @@ export async function RequiredCard({
 }) {
   const run = q.req === "1" && ready;
   const checks = run ? await checkRequired(await getSankhyaErpSettings()) : [];
-  const missing = checks.flatMap((c) =>
-    c.rows.filter((r) => r.status === "missing").map((r) => r.column),
-  );
+  // Só conta o que o portal inclui; as tabelas só lidas não bloqueiam.
+  const missing = checks
+    .filter((c) => c.mode === "create")
+    .flatMap((c) =>
+      c.rows
+        .filter((r) => r.status === "missing")
+        .map((r) => `${c.table}.${r.column}`),
+    );
   return (
     <Card title={t("sankhyaInt.req")}>
       <div id="required" className="scroll-mt-4" />
@@ -67,14 +73,23 @@ export async function RequiredCard({
           ) : null}
           {checks.map((c) => (
             <section key={c.table}>
-              <h3 className="mb-1 text-sm font-semibold text-zinc-800">
-                {c.entity} ({c.table})
+              <h3 className="mb-1 flex flex-wrap items-center gap-2 text-sm font-semibold text-zinc-800">
+                {t(`sankhyaInt.req.table.${c.table}` as DictionaryKey)} (
+                {c.table})
+                <Badge tone={c.mode === "create" ? "success" : "neutral"}>
+                  {t(`sankhyaInt.req.mode.${c.mode}`)}
+                </Badge>
                 {c.source ? (
                   <span className="ml-2 text-xs font-normal text-zinc-500">
                     {c.source}
                   </span>
                 ) : null}
               </h3>
+              {c.mode === "read" ? (
+                <p className="mb-1 text-xs text-zinc-500">
+                  {t(`sankhyaInt.req.why.${c.table}` as DictionaryKey)}
+                </p>
+              ) : null}
               {c.error ? (
                 <Alert tone="danger">
                   {t("sankhyaInt.req.error", { detail: c.error })}
@@ -92,8 +107,18 @@ export async function RequiredCard({
                       <tr key={r.column}>
                         <Td className="font-mono text-xs">{r.column}</Td>
                         <Td>
-                          <Badge tone={TONE[r.status]}>
-                            {t(`sankhyaInt.req.${r.status}` as DictionaryKey)}
+                          <Badge
+                            tone={
+                              c.mode === "read" && r.status === "missing"
+                                ? "neutral"
+                                : TONE[r.status]
+                            }
+                          >
+                            {t(
+                              (c.mode === "read"
+                                ? `sankhyaInt.req.read.${r.status}`
+                                : `sankhyaInt.req.${r.status}`) as DictionaryKey,
+                            )}
                           </Badge>
                         </Td>
                       </tr>

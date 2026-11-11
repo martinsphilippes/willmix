@@ -73,6 +73,8 @@ export async function buildPortalNote(
       CODVOL: erp.codVol || "UN",
       VLRUNIT: line.price ?? 0,
       PERCDESC: 0,
+      // Obrigatória no TGFITE (o serviço copiaria do cabeçalho).
+      CODEMP: erp.codEmp,
     });
   }
 
@@ -97,6 +99,10 @@ export async function buildPortalNote(
     note: {
       header: {
         CODEMP: erp.codEmp,
+        // Obrigatórias no TGFCAB: empresa negociadora = a do pedido; número
+        // 0 = o Sankhya numera ao confirmar.
+        CODEMPNEGOC: erp.codEmp,
+        NUMNOTA: 0,
         CODPARC: supplier.sankhyaCode,
         CODTIPOPER: top,
         TIPMOV: tipMov,

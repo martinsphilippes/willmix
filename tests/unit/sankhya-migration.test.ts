@@ -358,3 +358,84 @@ describe("histórico de pedidos", () => {
     ).toHaveLength(14);
   });
 });
+
+describe("o que o Sankhya exige para incluir", () => {
+  it("classifica as colunas obrigatórias de cada tabela", async () => {
+    const required: Record<string, string[]> = {
+      TGFPAR: ["CODPARC", "DTALTER", "DTCAD", "NOMEPARC", "TIPPESSOA"],
+      TGFPRO: ["CODGRUPOPROD", "CODPROD", "CODVOL", "DESCRPROD", "DTALTER"],
+      TGFCAB: [
+        "CODEMP",
+        "CODEMPNEGOC",
+        "CODTIPOPER",
+        "DHTIPOPER",
+        "DTALTER",
+        "DTNEG",
+        "NUMNOTA",
+        "NUNOTA",
+      ],
+      TGFITE: ["CODEMP", "CODPROD", "NUNOTA", "SEQUENCIA"],
+      TGFFIN: ["NUFIN", "CODEMP", "DHBAIXA"],
+    };
+    vi.stubGlobal("fetch", (async (
+      input: RequestInfo | URL,
+      init: RequestInit = {},
+    ) => {
+      if (String(input).endsWith("/authenticate"))
+        return new Response(
+          JSON.stringify({ access_token: "t", expires_in: 300 }),
+        );
+      const sql = JSON.parse(String(init.body)).requestBody.sql as string;
+      const table = /TABLE_NAME = '(\w+)'/.exec(sql)?.[1] ?? "";
+      const cols = sql.includes("INFORMATION_SCHEMA")
+        ? (required[table] ?? [])
+        : [];
+      return new Response(
+        JSON.stringify({
+          status: "1",
+          responseBody: {
+            fieldsMetadata: [{ name: "COLUMN_NAME" }],
+            rows: cols.map((c) => [c]),
+          },
+        }),
+      );
+    }) as typeof fetch);
+    sk.resetSankhyaTokenCache();
+    const { checkRequired } =
+      await import("@/lib/integrations/sankhya-required");
+    const checks = await checkRequired(st.DEFAULT_SANKHYA_ERP);
+    const status = (table: string) =>
+      Object.fromEntries(
+        checks
+          .find((c) => c.table === table)!
+          .rows.map((r) => [r.column, r.status]),
+      );
+    expect(status("TGFPAR")).toEqual({
+      CODPARC: "generated",
+      DTALTER: "auto",
+      DTCAD: "auto",
+      NOMEPARC: "portal",
+      TIPPESSOA: "portal",
+    });
+    expect(status("TGFCAB")).toMatchObject({
+      CODEMPNEGOC: "fixed",
+      NUMNOTA: "fixed",
+      DHTIPOPER: "auto",
+      NUNOTA: "generated",
+    });
+    expect(status("TGFITE")).toMatchObject({ CODEMP: "portal" });
+    const create = checks.filter((c) => c.mode === "create");
+    expect(
+      create.flatMap((c) => c.rows).filter((r) => r.status === "missing"),
+    ).toEqual([]);
+    // Financeiro: só leitura; o que o portal não tem não bloqueia.
+    const fin = checks.find((c) => c.table === "TGFFIN")!;
+    expect(fin.mode).toBe("read");
+    expect(status("TGFFIN")).toMatchObject({
+      NUFIN: "generated",
+      DHBAIXA: "missing",
+    });
+    // Tabela sem colunas obrigatórias lidas (ex.: TGFGRU aqui) vira erro legível.
+    expect(checks.find((c) => c.table === "TGFGRU")!.error).toBeTruthy();
+  });
+});

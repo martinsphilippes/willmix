@@ -32,6 +32,16 @@ A Seleção de itens **substitui a fila de produtos** do Booking: o botão da te
 6. **Resposta do fornecedor**: faz ou não faz; se faz, preço por peça (obrigatório) e moeda; pedido mínimo, prazo de produção (dias) e observação. Muda até a Wellmix decidir. A Wellmix pode **registrar a resposta** em nome dele quando ela chega por fora (WeChat, e-mail).
 7. Avisos (sino, e-mail e WhatsApp em modo mock): ao fornecedor quando a solicitação abre e quando a Wellmix decide; a quem abriu, quando o fornecedor responde.
 
+## Fornecedor sem acesso ao portal
+
+O fornecedor cadastrado pela planilha do booking nasce sem login. Sem login, a solicitação aberta a ele não chega a ninguém. Por isso a Wellmix vê um aviso (`SupplierNoLoginAlert`, `partiesWithoutLogin`):
+
+- **Detalhe do booking**: quando o fornecedor do booking não tem login ativo.
+- **Seleção de itens**: no topo, os fornecedores dos itens mostrados que não têm login, e o selo "Sem acesso" na coluna Fornecedor.
+- **Solicitação ao fornecedor** (Aberta ou Respondida): "ele não vê nem responde esta solicitação". O aviso lembra que dá para registrar a resposta em nome dele.
+
+Com a tela Cadastros, cada nome leva ao quadro de acesso do cadastro (`/app/parties/{id}#access`). O login criado ali fica preso ao cadastro e passa a ver as solicitações que já estavam abertas. Sem a tela Cadastros, o aviso pede a quem cuida de Cadastros. A solicitação abre normalmente nos dois casos.
+
 ## Isolamento
 
 - O fornecedor vê só as solicitações do próprio cadastro (`supplierId` = `user.partyId`); a de outro dá 404. Não vê as alternativas (outros fornecedores), o Superplan nem o booking.

@@ -3,6 +3,14 @@
  * Mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "supplierRequests.detail.createdNoLogin":
+    "Solicitação aberta. O fornecedor ainda não tem acesso ao portal: crie o acesso ou registre a resposta dele aqui (veja o aviso acima).",
+  "supplierRequests.noLogin.selection":
+    "Fornecedores sem acesso ao portal: a solicitação aberta a eles não chega a ninguém até o login ser criado.",
+  "supplierRequests.noLogin.request":
+    "Fornecedor sem acesso ao portal: ele não vê nem responde esta solicitação.",
+  "supplierRequests.noLogin.requestHint":
+    "Crie o acesso no cadastro dele (ele passa a ver esta solicitação assim que entrar) ou registre aqui a resposta que ele der por fora (WeChat, e-mail).",
   "nav.bookingSelection": "Seleção de itens",
   "nav.supplierRequests": "Solicitações ao fornecedor",
 
@@ -174,6 +182,14 @@ export const pt = {
 };
 
 export const en: typeof pt = {
+  "supplierRequests.detail.createdNoLogin":
+    "Request opened. The supplier has no portal access yet: create the access or record their answer here (see the notice above).",
+  "supplierRequests.noLogin.selection":
+    "Suppliers without portal access: a request opened to them reaches no one until the login is created.",
+  "supplierRequests.noLogin.request":
+    "Supplier without portal access: they cannot see or answer this request.",
+  "supplierRequests.noLogin.requestHint":
+    "Create the access in their record (they see this request as soon as they log in) or record here the answer they give outside the portal (WeChat, e-mail).",
   "nav.bookingSelection": "Item selection",
   "nav.supplierRequests": "Supplier requests",
 
@@ -345,6 +361,14 @@ export const en: typeof pt = {
 };
 
 export const zh: typeof pt = {
+  "supplierRequests.detail.createdNoLogin":
+    "询单已发起。该供应商还没有门户账号：请创建账号或在此记录其回复（见上方提示）。",
+  "supplierRequests.noLogin.selection":
+    "这些供应商没有门户账号：在创建登录之前，发给他们的询单无人接收。",
+  "supplierRequests.noLogin.request":
+    "该供应商没有门户账号：无法查看或回复此询单。",
+  "supplierRequests.noLogin.requestHint":
+    "请在其登记中创建账号（登录后即可看到此询单），或在此记录其在门户之外（微信、邮件）给出的回复。",
   "nav.bookingSelection": "条目筛选",
   "nav.supplierRequests": "供应商询单",
 

@@ -41,6 +41,8 @@ import {
 } from "../_components/request-product";
 import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
+import { SupplierNoLoginAlert } from "@/components/supplier-no-login";
+import { partiesWithoutLogin } from "@/lib/services/portal-access";
 
 /*
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
@@ -83,6 +85,13 @@ export default async function SupplierRequestPage({
   if (!detail) notFound();
   const { request: r, supplier, lot, chosen, alternatives } = detail;
   const wellmix = isWellmix(user);
+  // Fornecedor sem login (só a Wellmix vê o aviso): enquanto a solicitação
+  // está em andamento, ele não vê nem responde; a Wellmix registra por ele.
+  const noLoginNow =
+    wellmix &&
+    !!supplier &&
+    (r.status === "open" || r.status === "answered") &&
+    (await partiesWithoutLogin([supplier.id])).has(supplier.id);
   const it = r.item;
   const intl = t.intl;
   const num = (n: number | null, digits = 4) =>
@@ -101,7 +110,14 @@ export default async function SupplierRequestPage({
       ? t(errorKey)
       : fallbackError(t, error);
   const notices: string[] = [];
-  if (one("created")) notices.push(t("supplierRequests.detail.created"));
+  if (one("created"))
+    notices.push(
+      t(
+        noLoginNow
+          ? "supplierRequests.detail.createdNoLogin"
+          : "supplierRequests.detail.created",
+      ),
+    );
   if (one("answered")) notices.push(t("supplierRequests.detail.answered"));
   const decided = one("decided");
   if (["approved", "declined", "cancelled"].includes(decided))
@@ -114,6 +130,9 @@ export default async function SupplierRequestPage({
   const erpNotice = one("erp");
   if (["checked", "unchecked", "cleared"].includes(erpNotice))
     notices.push(t(`srProduct.notice.erp.${erpNotice}` as DictionaryKey));
+
+  const noLogin =
+    noLoginNow && supplier ? [{ id: supplier.id, name: supplier.name }] : [];
 
   // Bloco "Produto": a Wellmix que abre Produtos, na solicitação aprovada.
   let productData: RequestProductData | null = null;
@@ -183,6 +202,13 @@ export default async function SupplierRequestPage({
         }
       />
       <div className="mb-3 space-y-2" data-supplier-request-notices>
+        <SupplierNoLoginAlert
+          suppliers={noLogin}
+          canParties={canOpen(user, "parties")}
+          t={t}
+          title="supplierRequests.noLogin.request"
+          hint="supplierRequests.noLogin.requestHint"
+        />
         {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
         {notices.map((n) => (
           <Alert key={n} tone="success">

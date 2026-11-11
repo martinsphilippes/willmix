@@ -210,10 +210,10 @@ export default async function ResetPage({
               </div>
               <div className="contents">
                 <dt className="text-zinc-700">
-                  {t("reset.catalog.usersDisabled")}
+                  {t("reset.catalog.partiesKept")}
                 </dt>
                 <dd className="text-right font-medium tabular-nums">
-                  {catalogPlan.usersDisabled.toLocaleString(t.intl)}
+                  {catalogPlan.partiesKept.toLocaleString(t.intl)}
                 </dd>
               </div>
             </dl>
