@@ -146,6 +146,22 @@ export const ACTION_CARDS: ReadonlyArray<{
 export const isActionCardKey = (key: string | undefined) =>
   !!key && ACTION_CARDS.some((a) => a.key === key);
 
+/** Perto do prazo: o prazo da etapa do pedido vence nos próximos dias (alerta âmbar). */
+export const RISK_DAYS = 2;
+
+/**
+ * Linha do pedido em risco: prazo ainda não vencido, mas dentro de RISK_DAYS.
+ * Só pedido em andamento (a solicitação ao fornecedor tem SLA em minutos:
+ * ali só conta o estouro).
+ */
+function atRisk(row: TowerRow, now: number): boolean {
+  if (row.kind !== "order" || row.cancelled || row.stageKey === "CLOSED")
+    return false;
+  if (row.overdue || !row.dueAt) return false;
+  const due = Date.parse(row.dueAt);
+  return due >= now && due - now <= RISK_DAYS * 86_400_000;
+}
+
 /** Um passo da etapa: o mesmo quadrado do tower-board, com a lista dele. */
 export interface StageGroup {
   /** Chave do quadrado (o texto vem de `board.card.<chave>`). */
@@ -153,7 +169,10 @@ export interface StageGroup {
   parallel: boolean;
   rows: TowerRow[];
   count: number;
+  /** Prazo (SLA) estourado. */
   overdue: number;
+  /** Prazo vencendo nos próximos dias, ainda sem estourar. */
+  risk: number;
   value: number | null;
 }
 
@@ -163,6 +182,7 @@ export interface Stage {
   /** Lotes, solicitações e pedidos da etapa (sem os passos em paralelo). */
   count: number;
   overdue: number;
+  risk: number;
   /** Passos em paralelo, com a contagem de cada um (linha pequena do quadrado). */
   alongside: Array<{ key: BoardCardKey; count: number }>;
   /** Etapa com um passo só: tocar abre a lista direto. */
@@ -184,7 +204,11 @@ function uniqueRows(cards: BoardCard[]): TowerRow[] {
 }
 
 /** Monta as etapas a partir dos quadrados já calculados (função pura). */
-export function buildTowerStages(board: TowerBoard): Stage[] {
+export function buildTowerStages(
+  board: TowerBoard,
+  now: Date = new Date(),
+): Stage[] {
+  const at = now.getTime();
   const byKey = new Map(board.cards.map((c) => [c.key, c]));
   return TOWER_STAGES.map((def) => {
     // Quadrado que o tower-board não calculou (ex.: parcela sem Finanças) some.
@@ -197,6 +221,7 @@ export function buildTowerStages(board: TowerBoard): Stage[] {
         rows: card.rows,
         count: card.rows.length,
         overdue: card.overdue,
+        risk: card.rows.filter((r) => atRisk(r, at)).length,
         value: card.value,
       };
     });
@@ -209,6 +234,7 @@ export function buildTowerStages(board: TowerBoard): Stage[] {
       groups,
       count: rows.length,
       overdue: rows.filter((r) => r.overdue).length,
+      risk: rows.filter((r) => atRisk(r, at)).length,
       alongside: groups
         .filter((g) => g.parallel)
         .map((g) => ({ key: g.key, count: g.count })),

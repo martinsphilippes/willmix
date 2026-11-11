@@ -63,15 +63,12 @@ export const pt = {
   "board.stoppedAt": "Parou em: {step}",
   "tower.action.title": "Precisa de ação agora",
   "tower.action.hint":
-    "Só o que o seu perfil consegue resolver. Zero quer dizer nada pendente.",
+    "Só o que o seu perfil consegue resolver e que está pendente agora.",
   "tower.stages.title": "Processo por etapa",
   "tower.stages.hint":
-    "Cada lote, solicitação ou pedido está em uma etapa só. Toque numa etapa para ver os passos dela; zero também aparece, para ver o que não está acontecendo.",
+    "Cada lote, solicitação ou pedido está em uma etapa só. Toque numa etapa para ver os passos dela; zero também aparece, para ver o que não está acontecendo. A cor da borda é o avanço no processo; vermelho e âmbar dentro do card são alerta de prazo (estourado e vencendo).",
   "tower.alongside": "{label}: {n}",
   "tower.parallel": "em paralelo",
-  "tower.more.title": "Mais visões",
-  "tower.more.hint":
-    "Visões gerais, exceções e a visão comercial por container.",
   "tower.stage.booking": "Booking",
   "tower.stage.request": "Solicitação ao fornecedor",
   "tower.stage.prep": "Preparação, arte e certificação",
@@ -104,6 +101,9 @@ export const pt = {
   "board.card.lnArt": "Agência: arte e arte final",
   "board.card.lnArtReview": "Wellmix: validar a arte",
   "board.card.lnCert": "Certificadora: certificado",
+  "tower.action.empty": "Nada pendente para você.",
+  "tower.risk.one": "1 perto do prazo",
+  "tower.risk.many": "{n} perto do prazo",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -166,16 +166,12 @@ export const en: Record<keyof typeof pt, string> = {
   "board.card.ordClosed": "Closed",
   "board.stoppedAt": "Stopped at: {step}",
   "tower.action.title": "Needs action now",
-  "tower.action.hint":
-    "Only what your profile can resolve. Zero means nothing pending.",
+  "tower.action.hint": "Only what your profile can resolve and is pending now.",
   "tower.stages.title": "Process by stage",
   "tower.stages.hint":
-    "Each booking, request or order is in one stage only. Tap a stage to see its steps; zero shows too, so you can see what is not happening.",
+    "Each booking, request or order is in one stage only. Tap a stage to see its steps; zero shows too, so you can see what is not happening. The border color is progress in the process; red and amber inside a card are deadline alerts (breached and nearing).",
   "tower.alongside": "{label}: {n}",
   "tower.parallel": "in parallel",
-  "tower.more.title": "More views",
-  "tower.more.hint":
-    "General views, exceptions and the commercial view by container.",
   "tower.stage.booking": "Booking",
   "tower.stage.request": "Supplier request",
   "tower.stage.prep": "Preparation, art and certification",
@@ -208,6 +204,9 @@ export const en: Record<keyof typeof pt, string> = {
   "board.card.lnArt": "Agency: art and final art",
   "board.card.lnArtReview": "Wellmix: validate the art",
   "board.card.lnCert": "Certifier: certificate",
+  "tower.action.empty": "Nothing pending for you.",
+  "tower.risk.one": "1 near its deadline",
+  "tower.risk.many": "{n} near their deadline",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -269,14 +268,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "board.card.ordClosed": "已结案",
   "board.stoppedAt": "停在：{step}",
   "tower.action.title": "现在需要处理",
-  "tower.action.hint": "只显示您的角色可以处理的事项。0 表示没有待办。",
+  "tower.action.hint": "只显示您的角色可以处理且当前待办的事项。",
   "tower.stages.title": "按阶段查看流程",
   "tower.stages.hint":
-    "每个订舱表、询价或订单只在一个阶段。点击阶段查看其步骤；0 也会显示，便于了解哪些没有发生。",
+    "每个订舱表、询价或订单只在一个阶段。点击阶段查看其步骤；0 也会显示，便于了解哪些没有发生。边框颜色表示流程进度；卡片内的红色和黄色是时限预警（已超时、即将到期）。",
   "tower.alongside": "{label}：{n}",
   "tower.parallel": "同时进行",
-  "tower.more.title": "更多视图",
-  "tower.more.hint": "总体视图、异常和按集装箱的商业视图。",
   "tower.stage.booking": "订舱表",
   "tower.stage.request": "供应商询价",
   "tower.stage.prep": "准备、设计与认证",
@@ -308,4 +305,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "board.card.lnArt": "代理：设计与终稿",
   "board.card.lnArtReview": "Wellmix：审核设计",
   "board.card.lnCert": "认证机构：证书",
+  "tower.action.empty": "您没有待办事项。",
+  "tower.risk.one": "1 个临近截止",
+  "tower.risk.many": "{n} 个临近截止",
 };

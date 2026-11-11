@@ -25,6 +25,16 @@
   --color-brand-950: #3c0808;
 }
 
+/*
+ * Largura do portal: antes um máximo de 80rem (max-w-7xl). Agora ocupa metade
+ * do espaço que sobrava nas laterais: (tela + 80rem) / 2. Até 80rem de tela
+ * não muda nada (w-full limita a 100%); em tela de 1920px vai de 1280px a
+ * 1600px. Cabeçalho, menu, conteúdo e rodapé usam a mesma classe.
+ */
+.portal-wide {
+  max-width: calc((100vw + 80rem) / 2);
+}
+
 /* Tema claro fixo: o portal é usado por parceiros em vários aparelhos e o
    contraste precisa ser previsível. */
 html {

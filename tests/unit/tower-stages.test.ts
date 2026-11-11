@@ -121,6 +121,54 @@ describe("etapas da Control Tower", () => {
   });
 });
 
+describe("alerta de prazo nos cards", () => {
+  const NOW = new Date("2026-11-08T15:00:00Z");
+  const inDays = (d: number) =>
+    new Date(NOW.getTime() + d * 86_400_000).toISOString();
+  const order = (id: string, dueAt: string | null, overdue = false) =>
+    ({
+      ...row(id, overdue),
+      dueAt,
+      stageKey: "PACKAGING",
+    }) as unknown as TowerRow;
+
+  it("separa estourado (vermelho) de vencendo em até 2 dias (âmbar); o resto não alerta", () => {
+    const stages = buildTowerStages(
+      board({
+        ordContractWellmix: [
+          order("a", inDays(-1), true),
+          order("b", inDays(1)),
+          order("c", inDays(5)),
+          order("d", null),
+        ],
+      }),
+      NOW,
+    );
+    const contract = stages.find((s) => s.key === "contract")!;
+    expect(contract.count).toBe(4);
+    expect(contract.overdue).toBe(1);
+    expect(contract.risk).toBe(1);
+    const card = contract.groups.find((g) => g.key === "ordContractWellmix")!;
+    expect(card).toMatchObject({ overdue: 1, risk: 1 });
+  });
+
+  it("encerrado, cancelado e solicitação ao fornecedor não entram como risco", () => {
+    const closed = {
+      ...order("x", inDays(1)),
+      stageKey: "CLOSED",
+    } as unknown as TowerRow;
+    const request = {
+      ...row("sr", false, "supplier_request"),
+      dueAt: inDays(1),
+    } as unknown as TowerRow;
+    const stages = buildTowerStages(
+      board({ ordClosedMonth: [closed], srWaitingSupplier: [request] }),
+      NOW,
+    );
+    expect(stages.every((s) => s.risk === 0)).toBe(true);
+  });
+});
+
 describe("pontos de ação por perfil", () => {
   it("só traz os quadrados das telas que o perfil abre", () => {
     const b = board();
