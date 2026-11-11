@@ -526,3 +526,87 @@ describe("regras puras", () => {
     expect(lib.supplierRequestDecisions("approved", "yes")).toEqual([]);
   });
 });
+
+describe("seleção: rascunhos, filtros e grupo", () => {
+  it("mostra o rascunho, filtra por status, fornecedor, período e origem e abre um grupo por ids", async () => {
+    const closed = await closedLot("Shenzhen Supplier A", [
+      row("Shenzhen Supplier A", "Z-1", "Zebra mug enamel"),
+    ]);
+    const draft = await lots.createBookingLotFromSheet(
+      admin,
+      file([row("Guangzhou Supplier B", "Z-2", "Zebra mug steel")]),
+    );
+    expect(draft.status).toBe("draft");
+    const none = {
+      statuses: [],
+      from: null,
+      to: null,
+      supplierId: null,
+      origin: null,
+    };
+
+    const all = await svc.listSelectionItems(admin, "zebra", {
+      filters: none,
+    });
+    expect(all!.rows.map((r) => r.item.factoryItemCode).sort()).toEqual([
+      "Z-1",
+      "Z-2",
+    ]);
+    expect(all!.suppliers.map((s) => s.id)).toEqual(
+      expect.arrayContaining([closed.supplierId, draft.supplierId]),
+    );
+
+    const closedOnly = await svc.listSelectionItems(admin, "zebra", {
+      filters: { ...none, statuses: ["closed"] },
+    });
+    expect(closedOnly!.rows.map((r) => r.item.factoryItemCode)).toEqual([
+      "Z-1",
+    ]);
+    const bySupplier = await svc.listSelectionItems(admin, "zebra", {
+      filters: { ...none, supplierId: draft.supplierId },
+    });
+    expect(bySupplier!.rows.map((r) => r.item.factoryItemCode)).toEqual([
+      "Z-2",
+    ]);
+    const inOctober = await svc.listSelectionItems(admin, "zebra", {
+      filters: { ...none, from: "2026-10-13", to: "2026-10-13" },
+    });
+    expect(inOctober!.rows).toHaveLength(2);
+    const later = await svc.listSelectionItems(admin, "zebra", {
+      filters: { ...none, from: "2026-10-14", to: null },
+    });
+    expect(later!.rows).toHaveLength(0);
+    const origin = closedOnly!.rows[0].lot.origin;
+    if (origin) {
+      const byOrigin = await svc.listSelectionItems(admin, "zebra", {
+        filters: { ...none, origin: origin.toUpperCase() },
+      });
+      expect(byOrigin!.rows.every((r) => r.lot.origin === origin)).toBe(true);
+    }
+    // Busca pelo nome do fornecedor também acha.
+    const byName = await svc.listSelectionItems(admin, "zebra guangzhou", {
+      filters: none,
+    });
+    expect(byName!.rows.map((r) => r.item.factoryItemCode)).toEqual(["Z-2"]);
+
+    // Grupo: só os ids pedidos, sem os filtros.
+    const ids = all!.rows.map((r) => r.item.id);
+    const group = await svc.listSelectionItems(admin, "", {
+      ids,
+      filters: { ...none, statuses: ["cancelled"] },
+    });
+    expect(group!.rows.map((r) => r.item.id).sort()).toEqual([...ids].sort());
+
+    // O rascunho não vira solicitação.
+    const draftItem = all!.rows.find((r) => r.item.factoryItemCode === "Z-2")!;
+    await expect(
+      svc.openSupplierRequest(admin, {
+        itemId: draftItem.item.id,
+        alternativeIds: [],
+        quantity: 100,
+        needs: null,
+        searchQuery: null,
+      }),
+    ).rejects.toThrow("supplier_request_lot_not_closed");
+  });
+});
