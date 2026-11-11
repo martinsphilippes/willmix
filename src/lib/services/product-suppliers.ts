@@ -82,6 +82,21 @@ export async function listLinksForProducts(
   }
 }
 
+/** Produtos vinculados a um fornecedor (filtro da tela Produtos), numa consulta. */
+export async function listLinksForSupplier(
+  supplierId: string,
+): Promise<ProductSupplier[]> {
+  if (!supplierId) return [];
+  try {
+    return await getStore().list("product_suppliers", {
+      filter: { supplierId },
+    });
+  } catch (error) {
+    console.warn("[product-suppliers] list failed", error);
+    return [];
+  }
+}
+
 export async function productSupplierLink(
   productId: string | null | undefined,
   supplierId: string | null | undefined,

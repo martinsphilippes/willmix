@@ -5,7 +5,10 @@ import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
 import { missingForCompletion } from "@/lib/services/purchase-sheet-calc";
 import { getT } from "@/i18n/server";
-import { listLinksForProducts } from "@/lib/services/product-suppliers";
+import {
+  listLinksForProducts,
+  listLinksForSupplier,
+} from "@/lib/services/product-suppliers";
 import { variantsByProduct } from "@/lib/services/product-variants";
 import { referenceVariant } from "@/lib/variants";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -43,6 +46,7 @@ import { galleryProps } from "@/components/photo-gallery-props";
 import {
   inProductFilter,
   matchesProduct,
+  productPage,
   productPhotoList,
   readProductFilter,
 } from "@/lib/services/product-list";
@@ -79,21 +83,36 @@ export default async function ProductsPage({
   const listed = allProducts.filter((p) =>
     showDeleted ? !p.active : p.active,
   );
-  // Outros fornecedores de cada produto (além do principal), numa consulta.
-  const links = await listLinksForProducts(listed.map((p) => p.id));
+  const supplierNames = new Map(suppliers.map((s) => [s.id, s.name]));
   const supplierName = (id: string | null) =>
-    id ? (suppliers.find((s) => s.id === id)?.name ?? "—") : "—";
+    id ? (supplierNames.get(id) ?? "—") : "—";
+  // Filtro por fornecedor: também os produtos em que ele é vinculado (uma
+  // consulta pelo fornecedor, não pelos produtos todos).
+  const linkedToFilter = new Set(
+    filter.supplierId
+      ? (await listLinksForSupplier(filter.supplierId)).map((l) => l.productId)
+      : [],
+  );
+  const filterSupplier: ReadonlySet<string> = new Set(
+    filter.supplierId ? [filter.supplierId] : [],
+  );
+  const noSupplier: ReadonlySet<string> = new Set();
   // Busca e filtros (linha, fornecedor principal ou vinculado) pela URL.
   const products = listed.filter(
     (p) =>
       inProductFilter(
         p,
         filter,
-        new Set(
-          links.filter((l) => l.productId === p.id).map((l) => l.supplierId),
-        ),
+        linkedToFilter.has(p.id) ? filterSupplier : noSupplier,
       ) && matchesProduct(p, supplierName(p.supplierId), filter.q),
   );
+  // Uma página por vez: ficha, fotos, variações e vínculos só dos produtos
+  // mostrados (o cadastro tem dezenas de milhares de produtos).
+  const paging = productPage(products.length, sp.page);
+  const visible = products.slice(paging.start, paging.end);
+  const visibleIds = visible.map((p) => p.id);
+  // Outros fornecedores de cada produto (além do principal), numa consulta.
+  const links = await listLinksForProducts(visibleIds);
   const listQuery = () => {
     const q = new URLSearchParams();
     if (filter.q) q.set("q", filter.q);
@@ -102,16 +121,24 @@ export default async function ProductsPage({
     const out = q.toString();
     return out ? `?${out}` : "";
   };
+  /** Endereço de outra página, com a busca, os filtros e "Ver excluídos". */
+  const pageHref = (n: number) => {
+    const q = new URLSearchParams(listQuery());
+    if (showDeleted) q.set("view", "deleted");
+    if (n > 1) q.set("page", String(n));
+    const out = q.toString();
+    return `/app/products${out ? `?${out}` : ""}`;
+  };
   // Ficha mestre de cada produto (uma consulta): completa, parcial ou sem ficha.
-  const masters = products.length
+  const masters = visibleIds.length
     ? await store.list("purchase_sheets", {
-        filter: { orderId: products.map((p) => p.id) },
+        filter: { orderId: visibleIds },
       })
     : [];
   // Fotos dos produtos (uma consulta): as 5 da ficha contam para "completa".
-  const productPhotos = products.length
+  const productPhotos = visibleIds.length
     ? await store.list("product_photos", {
-        filter: { productId: products.map((p) => p.id) },
+        filter: { productId: visibleIds },
       })
     : [];
   const masterState = (productId: string) => {
@@ -126,7 +153,7 @@ export default async function ProductsPage({
     return missing.length ? ("partial" as const) : ("complete" as const);
   };
   // Variações ativas (uma consulta): preço "a partir de" e selo "N variações".
-  const variants = await variantsByProduct(products.map((p) => p.id));
+  const variants = await variantsByProduct(visibleIds);
   const otherSuppliers = (p: { id: string; supplierId: string | null }) =>
     new Set(
       links
@@ -382,7 +409,7 @@ export default async function ProductsPage({
                 </tr>
               </thead>
               <tbody>
-                {products.map((p) => (
+                {visible.map((p) => (
                   <tr key={p.id} className={rowClass} data-product-row={p.id}>
                     <Td className="w-10">
                       <input
@@ -543,6 +570,46 @@ export default async function ProductsPage({
               </tbody>
             </Table>
           )}
+          {paging.pages > 1 ? (
+            <nav
+              className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-600"
+              aria-label={t("prodList.page.label")}
+              data-product-pager={paging.page}
+              data-product-pages={paging.pages}
+            >
+              <span>
+                {t("prodList.page.showing", {
+                  from: paging.start + 1,
+                  to: paging.end,
+                  n: products.length,
+                })}
+              </span>
+              <span className="flex items-center gap-2">
+                {paging.page > 1 ? (
+                  <LinkButton
+                    href={pageHref(paging.page - 1)}
+                    data-product-page-prev
+                  >
+                    {t("prodList.page.prev")}
+                  </LinkButton>
+                ) : null}
+                <span>
+                  {t("prodList.page.of", {
+                    page: paging.page,
+                    pages: paging.pages,
+                  })}
+                </span>
+                {paging.page < paging.pages ? (
+                  <LinkButton
+                    href={pageHref(paging.page + 1)}
+                    data-product-page-next
+                  >
+                    {t("prodList.page.next")}
+                  </LinkButton>
+                ) : null}
+              </span>
+            </nav>
+          ) : null}
         </div>
       </div>
     </>

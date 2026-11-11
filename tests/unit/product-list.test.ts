@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import {
+  PRODUCT_PAGE_SIZE,
   inProductFilter,
   matchesProduct,
+  productPage,
   productThumbId,
   readProductFilter,
 } from "@/lib/services/product-list";
@@ -121,5 +123,49 @@ describe("galeria de fotos da linha", () => {
     expect(
       productPhotoList({ id: "p3", primaryPhotoDocumentId: null }, photos),
     ).toEqual([]);
+  });
+});
+
+describe("páginas da lista de produtos", () => {
+  it("mostra 50 por página e diz o intervalo de cada uma", () => {
+    expect(PRODUCT_PAGE_SIZE).toBe(50);
+    expect(productPage(19618, undefined)).toEqual({
+      page: 1,
+      pages: 393,
+      start: 0,
+      end: 50,
+    });
+    expect(productPage(19618, "2")).toMatchObject({ start: 50, end: 100 });
+    // A última página traz só o resto.
+    expect(productPage(19618, "393")).toEqual({
+      page: 393,
+      pages: 393,
+      start: 19600,
+      end: 19618,
+    });
+  });
+
+  it("página fora do intervalo ou ilegível vira a mais próxima válida", () => {
+    expect(productPage(120, "99").page).toBe(3);
+    expect(productPage(120, "0").page).toBe(1);
+    expect(productPage(120, "-4").page).toBe(1);
+    expect(productPage(120, "abc").page).toBe(1);
+    expect(productPage(120, "1.5").page).toBe(1);
+    expect(productPage(120, ["2", "3"]).page).toBe(2);
+  });
+
+  it("lista vazia ou menor que uma página tem uma página só", () => {
+    expect(productPage(0, undefined)).toEqual({
+      page: 1,
+      pages: 1,
+      start: 0,
+      end: 0,
+    });
+    expect(productPage(50, "1")).toEqual({
+      page: 1,
+      pages: 1,
+      start: 0,
+      end: 50,
+    });
   });
 });

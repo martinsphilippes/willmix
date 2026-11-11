@@ -61,6 +61,29 @@ export function readProductFilter(sp: {
   return { q: one(sp.q), lineId: one(sp.line), supplierId: one(sp.supplier) };
 }
 
+/** Produtos por página na tela Produtos. */
+export const PRODUCT_PAGE_SIZE = 50;
+
+/**
+ * Página da lista de produtos. O cadastro passou de 20 mil produtos com a
+ * carga do Sankhya: a tela mostra uma página e só busca ficha, fotos,
+ * variações e fornecedores vinculados dos produtos dela. Página fora do
+ * intervalo ou ilegível vira a mais próxima válida.
+ */
+export function productPage(
+  total: number,
+  raw: string | string[] | undefined,
+  size = PRODUCT_PAGE_SIZE,
+): { page: number; pages: number; start: number; end: number } {
+  const pages = Math.max(1, Math.ceil(total / size));
+  const asked = Number(Array.isArray(raw) ? raw[0] : raw);
+  const page = Number.isInteger(asked)
+    ? Math.min(Math.max(asked, 1), pages)
+    : 1;
+  const start = (page - 1) * size;
+  return { page, pages, start, end: Math.min(start + size, total) };
+}
+
 /** O produto passa nos filtros de linha e fornecedor (principal ou vinculado)? */
 export function inProductFilter(
   p: Pick<Product, "id" | "lineId" | "supplierId">,

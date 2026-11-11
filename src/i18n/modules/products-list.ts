@@ -34,6 +34,11 @@ export const pt = {
   "prodList.boxQty": "{n} un/cx",
   "prodList.csv.header":
     "Nome;SKU;Categoria;Cód. do fornecedor;Linha;Fornecedor;Preço;Moeda;MOQ;Un. por caixa;CBM por caixa;Material;Cor;Observações;NCM;Origem",
+  "prodList.page.label": "Páginas da lista de produtos",
+  "prodList.page.showing": "Mostrando {from} a {to} de {n}",
+  "prodList.page.of": "Página {page} de {pages}",
+  "prodList.page.prev": "Anterior",
+  "prodList.page.next": "Próxima",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -66,6 +71,11 @@ export const en: Record<keyof typeof pt, string> = {
   "prodList.boxQty": "{n} pcs/ctn",
   "prodList.csv.header":
     "Name;SKU;Category;Supplier code;Line;Supplier;Price;Currency;MOQ;Pcs per carton;CBM per carton;Material;Color;Notes;NCM;Source",
+  "prodList.page.label": "Product list pages",
+  "prodList.page.showing": "Showing {from} to {to} of {n}",
+  "prodList.page.of": "Page {page} of {pages}",
+  "prodList.page.prev": "Previous",
+  "prodList.page.next": "Next",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -98,4 +108,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "prodList.boxQty": "{n} 件/箱",
   "prodList.csv.header":
     "名称;SKU;分类;工厂货号;产品线;供应商;价格;币种;起订量;每箱数量;每箱体积;材质;颜色;备注;NCM;来源",
+  "prodList.page.label": "产品列表分页",
+  "prodList.page.showing": "显示第 {from} 至 {to} 条，共 {n} 条",
+  "prodList.page.of": "第 {page} 页，共 {pages} 页",
+  "prodList.page.prev": "上一页",
+  "prodList.page.next": "下一页",
 };
