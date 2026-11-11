@@ -2,7 +2,13 @@
 //   docs/treinamento/livro/<SÉRIE>.md   as perguntas e os capítulos de cada vídeo, legíveis
 //   docs/treinamento/PLANO-DE-PRODUCAO.md   um quadro com tudo o que se precisa para gravar cada vídeo
 // Uso: node scripts/treinamento-livro.mjs   (rode de novo depois de editar módulos ou roteiros)
-import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, join } from "node:path";
 import yaml from "js-yaml";
 
@@ -11,15 +17,22 @@ const LIVRO = "docs/treinamento/livro";
 const VIDEOS = "docs/videos";
 
 const arquivos = (p) =>
-  statSync(p).isFile() ? [p] : readdirSync(p).sort().flatMap((n) => arquivos(join(p, n)));
+  statSync(p).isFile()
+    ? [p]
+    : readdirSync(p)
+        .sort()
+        .flatMap((n) => arquivos(join(p, n)));
 
 const modulos = arquivos(MODULOS)
   .filter((f) => f.endsWith(".yaml"))
   .map((f) => yaml.load(readFileSync(f, "utf8")))
   .sort((a, b) => a.episodio.localeCompare(b.episodio));
 
-const trilhas = yaml.load(readFileSync("docs/treinamento/trilhas.yaml", "utf8"));
-const trilhasDe = (id) => trilhas.filter((t) => t.modulos.includes(id)).map((t) => t.nome);
+const trilhas = yaml.load(
+  readFileSync("docs/treinamento/trilhas.yaml", "utf8"),
+);
+const trilhasDe = (id) =>
+  trilhas.filter((t) => t.modulos.includes(id)).map((t) => t.nome);
 
 // fichas dos roteiros
 const fichas = {};
@@ -29,7 +42,8 @@ for (const f of readdirSync(VIDEOS).filter((n) => /^\d\d-.*\.md$/.test(n))) {
   for (const p of partes) {
     const id = p.slice(0, 6);
     const ficha = {};
-    for (const m of p.matchAll(/^\| ([^|]+?) +\| (.+?) +\|$/gm)) ficha[m[1].trim()] = m[2].trim();
+    for (const m of p.matchAll(/^\| ([^|]+?) +\| (.+?) +\|$/gm))
+      ficha[m[1].trim()] = m[2].trim();
     fichas[id] = { ...ficha, arquivo: f };
   }
 }
@@ -53,7 +67,12 @@ const NOMES = {
   WCA: "Wellmix · Cadastros",
   WGE: "Wellmix · Gestão",
 };
-const TIPO = { unica: "uma resposta", multipla: "várias respostas", vf: "verdadeiro ou falso", ordem: "colocar na ordem" };
+const TIPO = {
+  unica: "uma resposta",
+  multipla: "várias respostas",
+  vf: "verdadeiro ou falso",
+  ordem: "colocar na ordem",
+};
 const NIVEL = { 1: "lembrar", 2: "aplicar", 3: "decidir" };
 const esc = (s) => String(s).replace(/\|/g, "\\|").replace(/\n/g, " ");
 
@@ -64,24 +83,39 @@ for (const s of series) {
   const ms = modulos.filter((m) => m.serie === s);
   let out = `# Livro de perguntas · ${NOMES[s] ?? s}\n\n`;
   out += `> Gerado por \`node scripts/treinamento-livro.mjs\` a partir de \`docs/treinamento/modulos/${s}/\`. **Não edite aqui:** edite o YAML do módulo e gere de novo. A letra marcada com ✔ é a resposta certa.\n\n`;
-  out += ms.map((m) => `- [${m.episodio} · ${m.titulo}](#${m.episodio.toLowerCase()}-${m.titulo.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 -]/g, "").trim().replace(/ +/g, "-")})`).join("\n") + "\n\n";
+  out +=
+    ms
+      .map(
+        (m) =>
+          `- [${m.episodio} · ${m.titulo}](#${m.episodio.toLowerCase()}-${m.titulo
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[̀-ͯ]/g, "")
+            .replace(/[^a-z0-9 -]/g, "")
+            .trim()
+            .replace(/ +/g, "-")})`,
+      )
+      .join("\n") + "\n\n";
   for (const m of ms) {
     out += `---\n\n## ${m.episodio} · ${m.titulo}\n\n`;
     out += `**Duração** ${m.duracao} · **Capítulos** ${m.capitulos.length} · **Perguntas** ${m.perguntas.length} · **Idiomas** ${m.idiomas.join(", ")}\n\n`;
     const tr = trilhasDe(m.episodio);
     out += `**Quem assiste:** ${tr.length ? tr.join("; ") : "(nenhuma trilha)"}\n\n`;
     out += `### Capítulos (mini vídeos)\n\n`;
-    for (const c of m.capitulos) out += `${m.capitulos.indexOf(c) + 1}. \`${c.inicio}–${c.fim}\` · **${c.titulo}** (cenas ${c.cenas[0]} a ${c.cenas[1]}): ${c.resumo}\n`;
+    for (const c of m.capitulos)
+      out += `${m.capitulos.indexOf(c) + 1}. \`${c.inicio}–${c.fim}\` · **${c.titulo}** (cenas ${c.cenas[0]} a ${c.cenas[1]}): ${c.resumo}\n`;
     out += `\n### Perguntas\n\n`;
     for (const p of m.perguntas) {
       const cap = m.capitulos.findIndex((c) => c.id === p.capitulo) + 1;
       out += `**${p.id.replace(`${m.episodio}-`, "")}** · nível ${p.nivel} (${NIVEL[p.nivel]}) · ${TIPO[p.tipo]} · capítulo ${cap}, cena ${p.cena}\n\n${p.enunciado}\n\n`;
       if (p.tipo === "ordem") {
         const certa = p.correta;
-        for (const k of Object.keys(p.opcoes)) out += `- ${k.toUpperCase()}) ${p.opcoes[k]}\n`;
+        for (const k of Object.keys(p.opcoes))
+          out += `- ${k.toUpperCase()}) ${p.opcoes[k]}\n`;
         out += `\nOrdem certa: ${certa.map((k) => k.toUpperCase()).join(" → ")}\n`;
       } else {
-        for (const k of Object.keys(p.opcoes)) out += `- ${p.correta.includes(k) ? "✔ " : ""}${k.toUpperCase()}) ${p.opcoes[k]}\n`;
+        for (const k of Object.keys(p.opcoes))
+          out += `- ${p.correta.includes(k) ? "✔ " : ""}${k.toUpperCase()}) ${p.opcoes[k]}\n`;
       }
       out += `\n> ${p.explicacao}\n\n`;
     }
@@ -92,7 +126,10 @@ for (const s of series) {
 // ---- plano de produção
 let plano = `# Plano de produção dos vídeos de treinamento\n\n`;
 plano += `> Gerado por \`node scripts/treinamento-livro.mjs\` a partir dos módulos e das fichas dos roteiros. Para gravar um vídeo, abra o roteiro dele (coluna **Roteiro**) e o ponto de salvamento indicado. A ordem de gravação da Jornada da Jarra está em [docs/videos/README.md](../videos/README.md).\n\n`;
-const total = modulos.reduce((a, m) => { const [x, y] = m.duracao.split(":"); return a + +x * 60 + +y; }, 0);
+const total = modulos.reduce((a, m) => {
+  const [x, y] = m.duracao.split(":");
+  return a + +x * 60 + +y;
+}, 0);
 plano += `**${modulos.length} vídeos**, ${Math.floor(total / 3600)} h ${Math.round((total % 3600) / 60)} min, ${modulos.reduce((a, m) => a + m.capitulos.length, 0)} capítulos, ${modulos.reduce((a, m) => a + m.perguntas.length, 0)} perguntas.\n\n`;
 plano += `## Quadro geral\n\n| Série | Vídeo | Duração | Cap. | Perg. | Idiomas | Conta de gravação | Quem assiste |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n`;
 for (const m of modulos) {
@@ -106,7 +143,14 @@ for (const s of series) {
     const f = fichas[m.episodio] ?? {};
     plano += `#### ${m.episodio} · ${m.titulo}\n\n`;
     plano += `- **Roteiro:** [${f.arquivo}](../videos/${f.arquivo}) · ${m.duracao}\n`;
-    for (const k of ["Ponto da jornada", "Conta de gravação", "Telas e rotas", "Dados antes de gravar", "Depois deste vídeo", "Antes · Próximo"])
+    for (const k of [
+      "Ponto da jornada",
+      "Conta de gravação",
+      "Telas e rotas",
+      "Dados antes de gravar",
+      "Depois deste vídeo",
+      "Antes · Próximo",
+    ])
       if (f[k]) plano += `- **${k}:** ${f[k]}\n`;
     plano += `- **Capítulos:** ${m.capitulos.map((c) => `${c.inicio} ${c.titulo}`).join(" · ")}\n\n`;
   }
