@@ -9,8 +9,6 @@ import {
   ADDABLE_SHEET_PHOTO_KINDS,
 } from "@/lib/services/purchase-sheet";
 import { invalidTarget, parseSheet } from "./sheet-form";
-import { leadTimeFromLots } from "@/lib/services/purchase-sheet-calc";
-import { parseNumberInput } from "@/lib/number-input";
 import {
   files,
   requireUser,
@@ -69,130 +67,6 @@ export async function removePurchaseSheetPhotoAction(form: FormData) {
     ORDER_ID.parse(orderId);
     const photoId = ORDER_ID.parse(str(form, "photoId"));
     await removeSheetPhoto(user, orderId, photoId);
-  });
-}
-
-/**
- * Resposta da RFQ pela ficha de compra. "Salvar" guarda o rascunho; "Enviar"
- * guarda e, com a ficha completa (fotos opcionais), responde a cotação com o
- * preço e a moeda da própria ficha.
- */
-export async function answerQuoteWithSheetAction(form: FormData) {
-  const user = await requireUser();
-  const quoteId = str(form, "quoteId").slice(0, 64);
-  const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
-  await run(back, async () => {
-    assertScreen(user, "quotes");
-    ORDER_ID.parse(quoteId);
-    const { saveQuoteSheet, saveQuoteTermsDraft } =
-      await import("@/lib/services/quote-sheet");
-    const { input, invalid } = parseSheet(form);
-    const { sheet, missing } = await saveQuoteSheet(user, quoteId, input);
-    // Prazo de produção: informado direto, em dias (a programação de compra
-    // saiu da cotação; ela é do pedido). Formulário sem o campo (ficha de
-    // antes): vale o "Saída em (dias)" da programação 1 já gravada.
-    let leadTimeDays = leadTimeFromLots(sheet.lots);
-    let leadTimeInvalid = false;
-    if (form.has("leadTimeDays")) {
-      const raw = str(form, "leadTimeDays").trim();
-      const n = raw ? parseNumberInput(raw, { int: true }) : null;
-      if (!raw) leadTimeDays = null;
-      else if (n !== null && Number.isInteger(n) && n >= 1 && n <= 3650)
-        leadTimeDays = n;
-      else {
-        leadTimeDays = null;
-        leadTimeInvalid = true;
-      }
-    }
-    // Condições (quebra de linha conta como no navegador).
-    const conditions = str(form, "conditions").replace(/\r\n/g, "\n");
-    const unreadable = [
-      ...invalid,
-      ...(leadTimeInvalid ? ["leadTimeDays"] : []),
-      ...(conditions.length > 2000 ? ["conditions"] : []),
-    ];
-    // Rascunho: prazo e condições ficam guardados na cotação não enviada.
-    if (form.has("conditions"))
-      await saveQuoteTermsDraft(user, quoteId, {
-        leadTimeDays,
-        conditions: conditions.slice(0, 2000) || null,
-      });
-    // Campo ilegível: o resto ficou salvo; não envia e aponta o campo.
-    if (unreadable.length) return invalidTarget(back, unreadable);
-    if (str(form, "intent") !== "send")
-      return `${back}?saved=${missing.length ? `partial&at=${Date.now()}` : "complete"}`;
-    // Cada recusa leva de novo até o primeiro campo vazio (token novo).
-    if (missing.length)
-      return `${back}?error=sheet_incomplete&at=${Date.now()}`;
-    if (leadTimeDays === null)
-      return `${back}?error=lead_time_required&at=${Date.now()}#leadTimeDays`;
-    // Cartão do fabricante confirmado nesta negociação: sem ele não envia.
-    const { getStore } = await import("@/lib/db");
-    const quoteRow = await getStore().get("quotes", quoteId);
-    if (!quoteRow?.manufacturerCardId)
-      return `${back}?error=manufacturer_card_required&at=${Date.now()}#manufacturer-card`;
-    const { answerQuote } = await import("@/lib/services/requests");
-    await answerQuote(user, quoteId, {
-      price: sheet.price!,
-      currency: sheet.currency === "RMB" ? "CNY" : sheet.currency!,
-      leadTimeDays,
-      conditions: conditions || null,
-    });
-    // Companhia marítima recebe o pedido de frete com a carga desta ficha.
-    const { inviteFreightForQuote } = await import("@/lib/services/freight");
-    await inviteFreightForQuote(user, quoteId);
-    // Fornecedor segue para as Pendências: confirmação do envio e a próxima
-    // cotação a responder. A Wellmix (resposta em nome dele) fica na cotação.
-    if (user.role === "supplier")
-      return `/app?sent=${encodeURIComponent(quoteId)}`;
-    return `${back}?saved=sent`;
-  });
-}
-
-/*
- * Os botões da resposta ficam fora do <form> (depois do card de fotos) e apontam
- * para ele pelo atributo `form`. O React só leva nome/valor de botão que está
- * dentro do formulário, por isso cada botão tem a própria ação (formAction).
- */
-export async function sendQuoteWithSheetAction(form: FormData) {
-  form.set("intent", "send");
-  return answerQuoteWithSheetAction(form);
-}
-
-export async function saveQuoteSheetDraftAction(form: FormData) {
-  form.set("intent", "draft");
-  return answerQuoteWithSheetAction(form);
-}
-
-/** Fotos da ficha na resposta da RFQ (as 5 fotos do produto, obrigatórias para enviar). */
-export async function addQuoteSheetPhotosAction(form: FormData) {
-  const user = await requireUser();
-  const quoteId = str(form, "quoteId").slice(0, 64);
-  const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
-  // Fica na tela (sem navegar): a linha da foto muda na hora e os campos digitados não se perdem.
-  await runInPlace(back, async () => {
-    assertScreen(user, "quotes");
-    ORDER_ID.parse(quoteId);
-    const kind = z.enum(ADDABLE_SHEET_PHOTO_KINDS).parse(str(form, "kind"));
-    const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
-    if (!photos.length) throw new Error("photo_required");
-    const { addQuoteSheetPhotos } = await import("@/lib/services/quote-sheet");
-    await addQuoteSheetPhotos(user, quoteId, kind, photos);
-  });
-}
-
-export async function removeQuoteSheetPhotoAction(form: FormData) {
-  const user = await requireUser();
-  const quoteId = str(form, "quoteId").slice(0, 64);
-  const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
-  // Fica na tela (sem navegar): a linha da foto muda na hora e os campos digitados não se perdem.
-  await runInPlace(back, async () => {
-    assertScreen(user, "quotes");
-    ORDER_ID.parse(quoteId);
-    const photoId = ORDER_ID.parse(str(form, "photoId"));
-    const { removeQuoteSheetPhoto } =
-      await import("@/lib/services/quote-sheet");
-    await removeQuoteSheetPhoto(user, quoteId, photoId);
   });
 }
 

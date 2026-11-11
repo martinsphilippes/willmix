@@ -214,8 +214,7 @@ export default async function PurchaseSheetPage({
         />
         {!view.saved && access.editSupplier ? (
           <Alert tone={view.prefillSource === "catalog" ? "neutral" : "info"}>
-            {view.prefillSource === "quote" ||
-            view.prefillSource === "previous" ||
+            {view.prefillSource === "previous" ||
             view.prefillSource === "master"
               ? t(`sheet.prefilledNotice.${view.prefillSource}`)
               : t("sheet.prefilled")}

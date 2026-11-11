@@ -31,7 +31,6 @@ import {
   formatDate,
   rowClass,
 } from "./ui";
-import { QuoteSentNotice } from "./quote-sent-notice";
 import { ChatOpenButton } from "./chat-open-button";
 import { chatTargetFromHref } from "@/lib/chat-target";
 
@@ -44,7 +43,6 @@ export async function TaskList({
   user,
   due = null,
   group = null,
-  sent = null,
   denied = null,
 }: {
   user: User;
@@ -53,7 +51,6 @@ export async function TaskList({
   due?: string | null;
   group?: string | null;
   /** Cotação que o fornecedor acabou de enviar (confirmação no topo). */
-  sent?: string | null;
 }) {
   const t = await getT();
   const tasks = await pendingTasksFor(user);
@@ -90,9 +87,6 @@ export async function TaskList({
         <Alert tone="warning">
           {t("access.denied", { screen: t(SCREEN_LABEL[deniedScreen]) })}
         </Alert>
-      ) : null}
-      {sent ? (
-        <QuoteSentNotice user={user} quoteId={sent} tasks={tasks} t={t} />
       ) : null}
       {supplier ? (
         <SupplierSteps

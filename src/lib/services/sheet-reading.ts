@@ -47,7 +47,7 @@ interface Target {
   sheet: Partial<PurchaseSheet> | null;
   /** Grava campos na ficha pelo caminho normal (que confere o papel). */
   save: (patch: ReadingValues) => Promise<void>;
-  /** Liga o documento da foto (cotação: sem ligação, como as fotos da ficha). */
+  /** Liga o documento da foto. */
   link: { orderId?: string; productId?: string };
 }
 
@@ -58,23 +58,6 @@ async function target(
   key: string,
 ): Promise<Target> {
   const store = getStore();
-  if (scope === "quote") {
-    const qs = await import("./quote-sheet");
-    const quote = await store.get("quotes", key);
-    if (!quote) throw new SheetReadingError("not_found");
-    if (!qs.quoteSheetAccess(user, quote).editSupplier)
-      throw new SheetReadingError("forbidden");
-    const view = await qs.getQuoteSheetForUser(user, key);
-    return {
-      scope,
-      key,
-      sheet: view?.sheet ?? null,
-      save: async (patch) => {
-        await qs.saveQuoteSheet(user, key, patch as never);
-      },
-      link: {},
-    };
-  }
   if (scope === "order") {
     const ps = await import("./purchase-sheet");
     const order = await store.get("orders", key);

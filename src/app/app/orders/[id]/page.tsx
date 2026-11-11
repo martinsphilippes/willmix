@@ -35,7 +35,6 @@ import {
 import { ChatButtons } from "@/components/chat-buttons";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { stageChat } from "@/lib/stage-chat";
-import { DieCutStepCard } from "@/components/die-cut-step-card";
 import type { PartyType } from "@/lib/db/schema";
 import { cargoViewForOrder } from "@/lib/services/order-cargo";
 import { CargoCard } from "@/components/cargo-card";
@@ -127,7 +126,6 @@ import {
 } from "@/components/ui";
 import { CurrencySelect } from "@/components/currency-select";
 import { RequirementForm } from "@/components/requirement-form";
-import { PackagingBriefFiles } from "@/components/packaging-brief-files";
 import { sheetAccess } from "@/lib/services/purchase-sheet";
 import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
@@ -175,6 +173,7 @@ import {
   FreightTariffUploadBox,
 } from "@/components/freight-tariff-box";
 import { myTariffStatus, orderTariffView } from "@/lib/services/freight-tariff";
+import { FreightOrderCard } from "@/components/freight-order-card";
 import { can } from "@/lib/auth/function-access";
 
 export default async function OrderPage({
@@ -205,7 +204,8 @@ export default async function OrderPage({
     receiving: receivingNotice,
     artwork: artworkNotice,
     stage: stageQuery,
-    dieline: dielineNotice,
+    freight: freightNotice,
+    freightN,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
@@ -1713,9 +1713,6 @@ export default async function OrderPage({
                       status={myTariff}
                     />
                   ) : null}
-                  {stage.key === "PACKAGING" && stage.status !== "pending" ? (
-                    <PackagingBriefFiles t={t} user={user} orderId={order.id} />
-                  ) : null}
                   {stage.key === "INSPECTION" && user.role === "supplier" ? (
                     <p className="mb-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs leading-relaxed text-brand-800">
                       {t("orders.inspection.blindHint")}
@@ -1868,15 +1865,21 @@ export default async function OrderPage({
       ) : null}
 
       <div className="mt-6 flex min-w-0 flex-col gap-6">
-        {/* Faca (die-cut) da embalagem: o fornecedor do pedido envia (ou troca). */}
-        <DieCutStepCard
-          t={t}
-          user={user}
-          from={{ orderId: order.id }}
-          back={`/app/orders/${order.id}`}
-          notice={dielineNotice}
-          error={error}
-        />
+        {/* Frete marítimo pedido às companhias (só a Wellmix). */}
+        {wellmix && order.status !== "CANCELLED" ? (
+          <FreightOrderCard
+            t={t}
+            user={user}
+            orderId={order.id}
+            notice={typeof freightNotice === "string" ? freightNotice : null}
+            count={
+              typeof freightN === "string" && /^\d{1,3}$/.test(freightN)
+                ? Number(freightN)
+                : 0
+            }
+            error={typeof error === "string" ? error : null}
+          />
+        ) : null}
         {/* Pagamento ao fornecedor: fora do fluxo das etapas (condição do
             fornecedor, parcelas e, para a Wellmix, o pagamento da vez). */}
         {showSupplierPayment ? (
@@ -2889,7 +2892,7 @@ function RequirementRow({
     missing: string;
     count: number;
     started: boolean;
-    source: "quote" | "previous" | "catalog" | "master" | null;
+    source: "previous" | "catalog" | "master" | null;
   } | null;
 }) {
   const isSheet = r.key === "purchase_sheet";
@@ -2991,8 +2994,7 @@ function RequirementRow({
         ) : null}
         {isSheet && r.status !== "done" && sheetHint ? (
           <p className="mt-0.5 text-xs text-zinc-600">
-            {sheetHint.source === "quote" ||
-            sheetHint.source === "previous" ||
+            {sheetHint.source === "previous" ||
             sheetHint.source === "master"
               ? `${t(`sheet.prefilled.${sheetHint.source}`)} `
               : ""}

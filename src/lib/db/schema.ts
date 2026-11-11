@@ -924,13 +924,6 @@ export interface Quote extends BaseRow {
    * Coluna opcional: só vai ao banco nesse fluxo.
    */
   moq?: number | null;
-  /**
-   * Negociação (docs/QUOTE_FLOW.md): rodadas de "devolver com comentário" da
-   * Wellmix e a resposta do fornecedor. Opcional: só gravada nesse fluxo.
-   */
-  negotiation?: import("@/lib/quote-flow").NegotiationRound[] | null;
-  /** Proposta de embalagem enviada ao fornecedor e o OK dele. Opcional. */
-  packagingProposal?: import("@/lib/quote-flow").PackagingProposal | null;
 }
 
 export interface Order extends BaseRow {
@@ -1678,9 +1671,10 @@ export interface ProductSupplier extends BaseRow {
 }
 
 export interface FreightQuote extends BaseRow {
+  /** Solicitação do pedido (todo pedido tem uma). */
   requestId: string;
-  /** Cotação do fornecedor a que este frete se refere. */
-  quoteId: string;
+  /** Pedido a que este frete se refere (até 11/11/2026 era a cotação do fornecedor). */
+  orderId: string;
   /** Companhia marítima (parceiro do tipo shipping_line). */
   carrierId: string;
   status: FreightQuoteStatus;
@@ -1923,7 +1917,7 @@ export interface FreightTariff extends BaseRow {
 }
 
 /** Onde a ficha lida pela foto do quadro mora. */
-export const SHEET_READING_SCOPES = ["quote", "order", "product"] as const;
+export const SHEET_READING_SCOPES = ["order", "product"] as const;
 export type SheetReadingScope = (typeof SHEET_READING_SCOPES)[number];
 
 /**
@@ -3725,7 +3719,7 @@ export const TABLES: Record<TableName, TableDef> = {
     label: "Cotações de frete (companhia marítima)",
     columns: {
       requestId: id(),
-      quoteId: id(),
+      orderId: id(),
       carrierId: id(),
       status: enumOf(FREIGHT_QUOTE_STATUSES),
       totalCbm: float(),
@@ -3740,7 +3734,7 @@ export const TABLES: Record<TableName, TableDef> = {
       answeredAt: datetime(),
     },
     indexes: [
-      { key: "by_quote", type: "key", columns: ["quoteId"] },
+      { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_request", type: "key", columns: ["requestId"] },
       {
         key: "by_carrier_status",

@@ -1,9 +1,4 @@
 import "server-only";
-import { DEFAULT_RANKING_WEIGHTS } from "@/lib/services/supplier-ranking-calc";
-import {
-  DEFAULT_REQUEST_STEP_DAYS,
-  type RequestStepDays,
-} from "@/lib/request-stages";
 
 import { DEFAULT_SUPERPLAN, type SuperplanParams } from "@/lib/superplan";
 
@@ -16,51 +11,23 @@ import { getStore } from "@/lib/db";
 export const DEFAULT_SETTINGS = {
   customerCanCreateRequest: true,
   /**
-   * RFQ (pedido de preço a vários fornecedores, comparação e disputa). Em
-   * espera por decisão do dono (10/11/2026): cada produto vai direto para o
-   * fornecedor dele (o do Booking), um só, sem disputa. A RFQ continua
-   * guardada e volta ao ligar aqui (tela Pedidos → RFQ, docs/RFQ_STANDBY.md).
-   */
-  rfqEnabled: false,
-  /**
    * Sourcing (visitas, itens encontrados, sourcing sob demanda). Em espera
-   * por decisão do dono (10/11/2026), como a RFQ: os produtos chegam pela
+   * por decisão do dono (10/11/2026): os produtos chegam pela
    * ficha técnica do Booking. Em espera, o pedido de produto fora do
    * catálogo vira só a solicitação (sem item de Sourcing nem pendência). As
    * telas e os dados ficam; volta ao ligar na tela Pedidos → Sourcing.
    */
   sourcingEnabled: false,
-  /* ---- Aprovação do pré-custo (docs/APPROVALS.md) ---- */
-  /** A escolha do fornecedor só vale depois de aprovada (planner → diretoria de compras → diretoria executiva). */
-  approvalsEnabled: true,
-  /** Valor ao cliente (BRL) a partir do qual a diretoria executiva também aprova. */
-  approvalExecutiveThresholdBrl: 100000,
   wellmixCanCreateRequest: true,
   /** CUSTOMER | WELLMIX | BOTH: quem confirma o recebimento da entrega. */
   deliveryConfirmationMode: "BOTH" as "CUSTOMER" | "WELLMIX" | "BOTH",
   agencyValidationEnabled: true,
-  /* ---- Embalagem na RFQ (briefing de faca e arte para a agência) ---- */
-  /**
-   * Quando o briefing de embalagem nasce: "rfq" = junto com a RFQ (a agência
-   * trabalha em paralelo com a cotação; a venda ainda não está confirmada),
-   * "selection" = ao escolher o fornecedor, "order" = só no pedido (como antes).
-   */
-  packagingBriefAt: "rfq" as "rfq" | "selection" | "order",
-  /** Entregáveis obrigatórios para o briefing ficar pronto (dieline, art, print_ready, packaging_sample). */
-  packagingBriefRequired: ["dieline", "art"] as string[],
-  /** Prazo do briefing em dias quando a solicitação não tem prazo. */
-  packagingBriefDueDays: 7,
-  /** Agência padrão dos briefings (id do parceiro). Vazio: a única agência ativa, senão a Wellmix. */
-  packagingDefaultAgencyId: "",
-  /** A agência vê o nome do cliente no briefing (padrão: não, isolamento). */
-  agencyShowsCustomer: false,
   /** Tolerância de divergência de peso entre preparação e inspeção (%). */
   weightTolerancePercent: 3,
   paymentMode: "MANUAL" as const,
   sankhyaMode: "MOCK" as "MOCK" | "MANUAL",
   whatsappMode: "MOCK" as const,
   emailMode: "MOCK" as const,
-  quotationExpirationDays: 15,
   /** SLA de resposta da cotação: dias úteis para a Wellmix responder uma solicitação. */
   quoteSlaBusinessDays: 5,
   /**
@@ -75,14 +42,6 @@ export const DEFAULT_SETTINGS = {
   purchaseArtSlaDays: 5,
   /** Dias da Wellmix para validar a arte (aprovar ou devolver), desde o envio. */
   purchaseArtReviewSlaDays: 2,
-  /**
-   * Prazos das etapas da solicitação, em dias úteis (src/lib/request-stages.ts):
-   * abrir a RFQ, os fornecedores responderem, comparar, cada nível da
-   * aprovação do pré-custo e o cliente aprovar a proposta.
-   */
-  requestStepDays: { ...DEFAULT_REQUEST_STEP_DAYS } as RequestStepDays,
-  /** Percentual do sinal cobrado do cliente. */
-  downPaymentPercent: 30,
   /** Prazos padrão por etapa, em dias. */
   stageDueDays: {
     ORDER_CREATED: 1,
@@ -162,17 +121,6 @@ export const DEFAULT_SETTINGS = {
    * aguarda o cartão de crédito no AI Gateway. Desmarcar em Configurações reativa.
    */
   lookupPaused: true,
-  /* ---- Pagamento do sinal por Pix ---- */
-  /**
-   * Chave Pix da Wellmix (CPF, CNPJ, e-mail, celular +55 ou aleatória). Com chave,
-   * recebedor e cidade preenchidos, o cliente vê o Pix copia e cola e o QR Code do
-   * sinal. Vazia: o cliente vê só a instrução de pagamento. Configura o admin.
-   */
-  pixKey: "",
-  /** Nome do recebedor no Pix (até 25 caracteres, como no banco). */
-  pixReceiverName: "",
-  /** Cidade do recebedor no Pix (até 15 caracteres). */
-  pixReceiverCity: "",
   /* ---- Pagamento ao fornecedor ---- */
   /** E-mail do financeiro: destino do "pedir ao financeiro por e-mail". Vazio: escolhe na hora. */
   financeEmail: "",
@@ -185,14 +133,6 @@ export const DEFAULT_SETTINGS = {
   marginByLine: {} as Record<string, number>,
   /** Margem por cliente (%), por id do parceiro. Facultativa; vence a da linha. */
   marginByCustomer: {} as Record<string, number>,
-  /**
-   * Disputa de fornecedores: peso (0 a 100) de cada critério na nota das
-   * cotações (preço, entrega, produção, frete marítimo, MOQ).
-   */
-  supplierRankingWeights: { ...DEFAULT_RANKING_WEIGHTS } as Record<
-    string,
-    number
-  >,
   /** Frete marítimo estimado por CBM (null = sem estimativa; o operador informa o da companhia marítima). */
   freightPerCbm: null as number | null,
   freightCurrency: "USD",

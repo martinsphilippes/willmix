@@ -66,8 +66,5 @@ export async function runReminders() {
     });
     sent++;
   }
-  // Briefings de embalagem (faca e arte) vencidos ou vencendo.
-  const { remindPackagingBriefs } = await import("./packaging-brief");
-  sent += await remindPackagingBriefs(now, soon);
   return { checked: stages.length, sent };
 }

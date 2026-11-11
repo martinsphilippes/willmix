@@ -261,39 +261,28 @@ export async function containerCapacity(type: string | null): Promise<{
   };
 }
 
-/** Rascunho a partir do cadastro (produto, cotação escolhida, fornecedor): menos digitação. */
+/** Rascunho a partir do cadastro (produto, fornecedor): menos digitação. */
 /** De onde veio o rascunho da ficha ainda não salva no pedido. */
-export type SheetPrefillSource = "quote" | "previous" | "catalog" | "master";
+export type SheetPrefillSource = "previous" | "catalog" | "master";
 
 /**
- * Campos que valem de outra ficha. Da cotação deste pedido vem tudo menos a
- * programação dos lotes; de um pedido anterior, também não vêm a data da
- * ficha nem o início da produção (são deste pedido).
+ * Campos que valem da ficha de um pedido anterior: tudo menos a programação
+ * dos lotes, a data da ficha e o início da produção (são deste pedido).
  */
-const reusableFields = (source: "quote" | "previous") =>
+const reusableFields = () =>
   [...SUPPLIER_FIELDS, ...CUSTOMS_FIELDS].filter(
-    (k) =>
-      k !== "lots" &&
-      (source === "quote" || (k !== "sheetDate" && k !== "productionStartAt")),
+    (k) => k !== "lots" && k !== "sheetDate" && k !== "productionStartAt",
   );
 
 /**
- * Ficha já preenchida antes para este pedido: a da cotação escolhida (pedidos
- * de antes da cópia automática) ou, na recompra, a do último pedido do mesmo
+ * Ficha já preenchida antes: na recompra, a do último pedido do mesmo
  * produto com o mesmo fornecedor.
  */
 async function earlierSheet(
   order: Order,
-  request: { productId: string | null; selectedQuoteId: string | null } | null,
-): Promise<{ sheet: PurchaseSheet; source: "quote" | "previous" } | null> {
+  request: { productId: string | null } | null,
+): Promise<{ sheet: PurchaseSheet; source: "previous" } | null> {
   const store = getStore();
-  if (request?.selectedQuoteId) {
-    const [fromQuote] = await store.list("purchase_sheets", {
-      filter: { orderId: request.selectedQuoteId },
-      limit: 1,
-    });
-    if (fromQuote) return { sheet: fromQuote, source: "quote" };
-  }
   if (!request?.productId) return null;
   const sameProduct = await store.list("requests", {
     filter: { productId: request.productId },
@@ -306,13 +295,8 @@ async function earlierSheet(
     filter: { id: orderIds, supplierId: order.supplierId },
   });
   if (!orders.length) return null;
-  // Ficha do pedido anterior ou, se ainda não salva lá, a da cotação dele.
-  const ids = orders.flatMap((o) => [
-    o.id,
-    sameProduct.find((r) => r.orderId === o.id)?.selectedQuoteId ?? o.id,
-  ]);
   const [last] = await store.list("purchase_sheets", {
-    filter: { orderId: [...new Set(ids)] },
+    filter: { orderId: orders.map((o) => o.id) },
     orderBy: "updatedAt",
     direction: "desc",
     limit: 1,
@@ -340,12 +324,9 @@ async function prefillBase(
 > {
   const store = getStore();
   const request = await store.get("requests", order.requestId);
-  const [product, supplier, quote, link] = await Promise.all([
+  const [product, supplier, link] = await Promise.all([
     request?.productId ? store.get("products", request.productId) : null,
     store.get("parties", order.supplierId),
-    request?.selectedQuoteId
-      ? store.get("quotes", request.selectedQuoteId)
-      : null,
     productSupplierLink(request?.productId, order.supplierId),
   ]);
   // Preço e MOQ do próprio fornecedor do pedido (nunca os do principal, se é outro).
@@ -359,8 +340,8 @@ async function prefillBase(
   // Programação de entregas pedida pelo cliente: as programações da ficha nascem dela.
   const requestLots = (cartonQty: number | null | undefined) =>
     scheduleToLots(request?.schedule, cartonQty ?? null) ?? normalizeLots(null);
-  // Ficha mestre do produto (cadastro): vale quando não há ficha desta compra
-  // (cotação) nem de uma compra anterior com o mesmo fornecedor; na recompra,
+  // Ficha mestre do produto (cadastro): vale quando não há ficha de uma
+  // compra anterior com o mesmo fornecedor; na recompra,
   // só completa o que a ficha dele não tem (a mestre pode ter vindo da compra
   // com outro fornecedor).
   const master = await masterSheetInput(
@@ -379,8 +360,8 @@ async function prefillBase(
       productId: product?.id ?? null,
       supplierName: supplier?.name ?? master.supplierName ?? null,
       supplierPhone: supplier?.phone ?? master.supplierPhone ?? null,
-      currency: currencyOf(quote?.currency) ?? master.currency ?? null,
-      price: quote?.price ?? master.price ?? null,
+      currency: master.currency ?? null,
+      price: master.price ?? null,
       lots: requestLots(master.masterCartonQty),
       ...records,
     };
@@ -388,13 +369,13 @@ async function prefillBase(
   if (earlier) {
     const reused = dropEmptyOptional(
       Object.fromEntries(
-        reusableFields(earlier.source).map((k) => [
+        reusableFields().map((k) => [
           k,
           earlier.sheet[k] ?? null,
         ]),
       ),
     ) as SheetInput;
-    if (earlier.source === "previous" && master) {
+    if (master) {
       const bag = reused as Record<string, unknown>;
       for (const [k, v] of Object.entries(master))
         if (k !== "lots" && (bag[k] === null || bag[k] === undefined))
@@ -403,11 +384,7 @@ async function prefillBase(
     return {
       ...reused,
       productId: product?.id ?? earlier.sheet.productId ?? null,
-      lots:
-        earlier.source === "quote" &&
-        earlier.sheet.lots?.some((l) => l.masterCartons)
-          ? normalizeLots(earlier.sheet.lots)
-          : requestLots(earlier.sheet.masterCartonQty),
+      lots: requestLots(earlier.sheet.masterCartonQty),
       prefillSource: earlier.source,
       ...records,
     };
@@ -417,10 +394,10 @@ async function prefillBase(
     productId: product?.id ?? null,
     ...records,
     currency: currencyOf(
-      quote?.currency ?? link?.currency ?? (own ? product?.currency : null),
+      link?.currency ?? (own ? product?.currency : null),
     ),
     price:
-      quote?.price ?? link?.price ?? (own ? (product?.price ?? null) : null),
+      link?.price ?? (own ? (product?.price ?? null) : null),
     moq: link?.moq ?? (own ? (product?.moq ?? null) : null),
     masterCartonQty: product?.masterBoxQty ?? null,
     innerQty: product?.innerBoxQty ?? null,

@@ -3,8 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
-import { parseNumberInput } from "@/lib/number-input";
-import { rateFor } from "@/lib/pricing";
 import { formatAmount, moneyValue, parseAmount } from "@/lib/workflow/money";
 import { CURRENCIES, isCurrency, parseCurrency } from "@/lib/currencies";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
@@ -29,10 +27,6 @@ import {
 import { isLocale } from "@/i18n";
 import { LOCALE_COOKIE } from "@/i18n/server";
 import {
-  answerQuote,
-  confirmDownPayment,
-  openRfq,
-  selectQuote,
   createRequestBatch,
   addProductsToRequest,
   type RequestBatchItem,
@@ -274,162 +268,6 @@ export async function setRequesterAction(form: FormData) {
   });
 }
 
-export async function openRfqAction(form: FormData) {
-  const user = await requireUser();
-  const requestId = str(form, "requestId");
-  await run(`/app/requests/${requestId}`, async () => {
-    assertScreen(user, "requests");
-    const supplierIds = form.getAll("supplierIds").map(String).filter(Boolean);
-    // Junto com a RFQ, a embalagem: quem faz a faca e a arte e as instruções.
-    const { packagingOptionsFrom } = await import("./actions/helpers");
-    // RFQ em espera: um fornecedor só por produto, sem disputa.
-    const { assertRfqStandby } = await import("@/lib/services/requests");
-    await assertRfqStandby([requestId], supplierIds);
-    await openRfq(user, requestId, supplierIds, {
-      packaging: packagingOptionsFrom(form),
-    });
-  });
-}
-
-export async function answerQuoteAction(form: FormData) {
-  const user = await requireUser();
-  const quoteId = str(form, "quoteId");
-  const back = str(form, "back") || `/app/quotes/${quoteId}`;
-  await run(back, async () => {
-    assertScreen(user, "quotes");
-    const parsed = z
-      .object({
-        price: z.number().positive(),
-        currency: z.enum(CURRENCIES),
-        // Mesmos limites da resposta pela ficha (a cotação reabre com eles).
-        leadTimeDays: z.number().int().positive().max(3650),
-        conditions: z.string().max(2000).optional().nullable(),
-      })
-      .parse({
-        price: num(form, "price"),
-        currency: str(form, "currency").toUpperCase(),
-        leadTimeDays: num(form, "leadTimeDays"),
-        conditions: str(form, "conditions") || null,
-      });
-    await answerQuote(user, quoteId, parsed);
-  });
-}
-
-export async function selectQuoteAction(form: FormData) {
-  const user = await requireUser();
-  const requestId = str(form, "requestId");
-  await run(`/app/requests/${requestId}`, async () => {
-    assertScreen(user, "requests");
-    const parsed = z
-      .object({
-        quoteId: z.string().min(1),
-        sellPrice: z.number().positive(),
-        sellCurrency: z.enum(CURRENCIES),
-        downPaymentAmount: z.number().nonnegative().optional().nullable(),
-        // Sinal em % do valor ao cliente (0 a 100); o valor sai da conta.
-        downPaymentPercent: z.number().min(0).max(100).nullable(),
-      })
-      .parse({
-        quoteId: str(form, "quoteId"),
-        sellPrice: num(form, "sellPrice"),
-        sellCurrency: (str(form, "sellCurrency") || "BRL").toUpperCase(),
-        downPaymentAmount: num(form, "downPaymentAmount"),
-        downPaymentPercent: parseNumberInput(str(form, "downPaymentPercent")),
-      });
-    // Frete marítimo: quem informa é a companhia marítima, no pedido de
-    // frete dela; sem a resposta, a conta usa o estimado. Nada digitado no
-    // formulário da escolha entra na conta (um valor enviado é ignorado).
-    const carrierBrl = null;
-    // Memória do cálculo refeita no servidor (não confia no navegador).
-    const pricing = await pricingRecordFor(
-      requestId,
-      parsed.quoteId,
-      carrierBrl,
-      parsed.sellPrice,
-      parsed.sellCurrency,
-    );
-    const pricedQuantity = z
-      .number()
-      .positive()
-      .max(1_000_000_000)
-      .nullable()
-      .parse(num(form, "pricedQuantity"));
-    const input = { ...parsed, pricing, pricedQuantity };
-    // Com aprovação (Configurações): a escolha vai para os aprovadores e só
-    // vale depois de aprovada (docs/APPROVALS.md).
-    const { approvalsRequired, submitForApproval } =
-      await import("@/lib/services/approvals");
-    if (await approvalsRequired()) {
-      await submitForApproval(user, parsed.quoteId, input);
-      return `/app/requests/${requestId}?approval=sent#approval`;
-    }
-    await selectQuote(user, parsed.quoteId, input);
-  });
-}
-
-async function pricingRecordFor(
-  requestId: string,
-  quoteId: string,
-  carrierBrl: number | null,
-  sellPrice: number,
-  sellCurrency: string,
-) {
-  const store = getStore();
-  const [request, quote] = await Promise.all([
-    store.get("requests", requestId),
-    store.get("quotes", quoteId),
-  ]);
-  if (!request || !quote || quote.requestId !== request.id) return null;
-  const { quotePricing } = await import("@/lib/services/quote-pricing");
-  const ctx = await quotePricing(request, [quote], { carrierBrl });
-  const q = ctx.quotes[0];
-  return {
-    quoteId,
-    input: q.input,
-    result: q.result,
-    marginSource: q.marginSource,
-    fxStatus: ctx.fx.status,
-    fxDay: ctx.fx.day,
-    sellPrice,
-    sellCurrency,
-    sellFxRate: rateFor(ctx.fx.rates, sellCurrency),
-    ncm: q.tax.ncm,
-    tax: q.tax,
-  };
-}
-
-/** Atualiza o valor ao cliente com o câmbio de hoje (antes do comprovante do sinal). */
-export async function refreshProposalAction(form: FormData) {
-  const user = await requireUser();
-  const requestId = str(form, "requestId");
-  await run(`/app/requests/${requestId}`, async () => {
-    assertScreen(user, "requests");
-    const { refreshProposal } = await import("@/lib/services/quote-pricing");
-    await refreshProposal(user, requestId);
-    return `/app/requests/${requestId}?refreshed=1#proposal`;
-  });
-}
-
-export async function confirmDownPaymentAction(form: FormData) {
-  const user = await requireUser();
-  const requestId = str(form, "requestId");
-  await run(`/app/requests/${requestId}`, async () => {
-    assertRole(user, ["admin"]);
-    const proof = form.get("proof");
-    let proofId: string | null = null;
-    if (proof instanceof File && proof.size > 0) {
-      const doc = await uploadDocument(user, proof, {
-        requestId,
-        type: "proof",
-        visibility: "internal",
-      });
-      proofId = doc.id;
-    }
-    const order = await confirmDownPayment(user, requestId, proofId);
-    return `/app/orders/${order.id}`;
-  });
-}
-
 /* ------------------------------------------------------------------------ */
 /* Pedidos: requisitos, aprovações, parceiros, pagamentos                    */
 /* ------------------------------------------------------------------------ */
@@ -622,10 +460,6 @@ export async function assignPartnerAction(form: FormData) {
         await import("@/lib/services/packaging");
       const [pack] = stages.filter((s) => s.key === "PACKAGING");
       if (pack) await normalizePackagingStage(pack.id, { reassign: true });
-      // Briefing de embalagem ligado ao pedido acompanha a agência do pedido.
-      const { syncBriefAgencyFromOrder } =
-        await import("@/lib/services/packaging-brief");
-      await syncBriefAgencyFromOrder(orderId, partyId);
     }
     await audit(
       user,
@@ -1120,42 +954,6 @@ export async function saveSettingsAction(form: FormData) {
         key === "superplan"
       )
         continue;
-      if (key === "requestStepDays") {
-        // Um campo por etapa ("requestStepDays.rfq"…), em dias úteis (0 a 60).
-        if (!form.has(`${key}.__form`)) continue;
-        const { DEFAULT_REQUEST_STEP_DAYS } =
-          await import("@/lib/request-stages");
-        const out: Record<string, number> = {};
-        for (const step of Object.keys(DEFAULT_REQUEST_STEP_DAYS)) {
-          const text = String(form.get(`${key}.${step}`) ?? "").trim();
-          const n = Number(text);
-          if (!text || !Number.isInteger(n) || n < 0 || n > 60)
-            throw new Error("request_step_days_invalid");
-          out[step] = n;
-        }
-        pairs.push([key, out]);
-        continue;
-      }
-      if (key === "supplierRankingWeights") {
-        // Um campo por critério ("supplierRankingWeights.price"…), 0 a 100.
-        if (!form.has(`${key}.__form`)) continue;
-        const { RANKING_CRITERIA } =
-          await import("@/lib/services/supplier-ranking-calc");
-        const out: Record<string, number> = {};
-        for (const c of RANKING_CRITERIA) {
-          const text = String(form.get(`${key}.${c}`) ?? "")
-            .trim()
-            .replace(",", ".");
-          const n = text === "" ? 0 : Number(text);
-          if (!(Number.isFinite(n) && n >= 0 && n <= 100))
-            throw new Error("ranking_weight_invalid");
-          out[c] = Math.round(n);
-        }
-        if (!Object.values(out).some((n) => n > 0))
-          throw new Error("ranking_weight_invalid");
-        pairs.push([key, out]);
-        continue;
-      }
       if (
         key === "marginByLine" ||
         key === "marginByCustomer" ||
@@ -1181,41 +979,15 @@ export async function saveSettingsAction(form: FormData) {
         pairs.push([key, out]);
         continue;
       }
-      if (key === "packagingBriefRequired") {
-        // Caixas de marcação (uma por entregável); pelo menos uma.
-        if (!form.has(`${key}.__form`)) continue;
-        const { normalizeRequiredKeys } =
-          await import("@/lib/services/packaging-brief-calc");
-        const chosen = form
-          .getAll(key)
-          .filter((v): v is string => typeof v === "string");
-        if (!chosen.length) throw new Error("packaging_required_empty");
-        pairs.push([key, normalizeRequiredKeys(chosen)]);
-        continue;
-      }
       if (raw === null) continue;
       const current = DEFAULT_SETTINGS[key];
       let value: unknown = raw;
       if (typeof current === "boolean") value = raw === "on" || raw === "true";
-      else if (key === "packagingBriefAt") {
-        if (!["rfq", "selection", "order"].includes(String(raw)))
-          throw new Error("invalid_input");
-        value = String(raw);
-      } else if (key === "packagingBriefDueDays") {
-        const n = Number(raw);
-        if (!Number.isInteger(n) || n < 1 || n > 365)
-          throw new Error("invalid_input");
-        value = n;
-      } else if (key === "productionStartDays") {
+      else if (key === "productionStartDays") {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 0 || n > 365)
           throw new Error("invalid_input");
         value = n;
-      } else if (key === "packagingDefaultAgencyId") {
-        const v = String(raw).trim();
-        if (v && !/^[A-Za-z0-9_-]{1,64}$/.test(v))
-          throw new Error("invalid_input");
-        value = v;
       } else if (key === "marginPercent") {
         const n = Number(String(raw).replace(",", "."));
         if (!(Number.isFinite(n) && n >= 0 && n <= 1000))
@@ -1248,11 +1020,6 @@ export async function saveSettingsAction(form: FormData) {
         const c = String(raw).toUpperCase();
         if (!isCurrency(c)) throw new Error("invalid_currency");
         value = c;
-      } else if (key === "approvalExecutiveThresholdBrl") {
-        const n = Number(String(raw).trim().replace(",", "."));
-        if (!(Number.isFinite(n) && n >= 0 && n <= 1_000_000_000))
-          throw new Error("approval_threshold_invalid");
-        value = n;
       } else if (
         key === "purchaseArtSlaDays" ||
         key === "purchaseArtReviewSlaDays"
@@ -1288,11 +1055,6 @@ export async function saveSettingsAction(form: FormData) {
         if (!isCurrency(String(raw).toUpperCase()))
           throw new Error("invalid_currency");
         value = String(raw).toUpperCase();
-      } else if (key === "pixKey") {
-        // Chave validada e normalizada no servidor (CPF/CNPJ com dígito, e-mail, +55, aleatória).
-        const { normalizePixKey } = await import("@/lib/services/pix");
-        const trimmed = String(raw).trim();
-        value = trimmed ? normalizePixKey(trimmed).key : "";
       } else if (key === "financeEmail") {
         const v = String(raw).trim();
         if (v && !z.string().email().safeParse(v).success)
@@ -1303,10 +1065,6 @@ export async function saveSettingsAction(form: FormData) {
         if (digits && (digits.length < 10 || digits.length > 15))
           throw new Error("finance_whatsapp_invalid");
         value = digits;
-      } else if (key === "pixReceiverName" || key === "pixReceiverCity") {
-        value = String(raw).trim();
-        const max = key === "pixReceiverName" ? 25 : 15;
-        if ((value as string).length > max) throw new Error("pix_too_long");
       } else if (key === "containerTypes") {
         // Uma linha por tipo ("código;capacidadeCbm;pesoMaxKg"); JSON também é aceito.
         const { parseContainerTypes } =

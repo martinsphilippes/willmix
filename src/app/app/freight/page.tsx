@@ -33,17 +33,19 @@ export default async function FreightListPage({
   const t = await getT();
   const rows = await listFreightFor(user);
   const store = getStore();
-  const requestIds = [...new Set(rows.map((r) => r.requestId))];
+  const orderIds = [...new Set(rows.map((r) => r.orderId))];
   const carrierIds = [...new Set(rows.map((r) => r.carrierId))];
-  const [requests, carriers] = await Promise.all([
-    requestIds.length
-      ? store.list("requests", { filter: { id: requestIds } })
-      : [],
+  const [orders, carriers] = await Promise.all([
+    orderIds.length ? store.list("orders", { filter: { id: orderIds } }) : [],
     wellmix && carrierIds.length
       ? store.list("parties", { filter: { id: carrierIds } })
       : [],
   ]);
-  const requestOf = new Map(requests.map((r) => [r.id, r]));
+  const orderNumberOf = new Map(orders.map((o) => [o.id, o.number]));
+  const labelOf = (orderId: string) =>
+    orderNumberOf.has(orderId)
+      ? t("freight.orderLabel", { n: orderNumberOf.get(orderId)! })
+      : "—";
   const carrierOf = new Map(carriers.map((c) => [c.id, c.name]));
   // Pendentes primeiro; encerrados por último.
   const order = { invited: 0, answered: 1, cancelled: 2 } as const;
@@ -62,7 +64,7 @@ export default async function FreightListPage({
           user={user}
           freightId={sent}
           next={sorted.find((f) => f.status === "invited" && f.id !== sent)}
-          productOf={(id) => requestOf.get(id)?.productName ?? "—"}
+          productOf={labelOf}
           pending={sorted.filter((f) => f.status === "invited").length}
           t={t}
         />
@@ -76,14 +78,13 @@ export default async function FreightListPage({
               <Th>{t("freight.col.product")}</Th>
               {wellmix ? <Th>{t("freight.col.carrier")}</Th> : null}
               <Th>{t("freight.col.cargo")}</Th>
-              <Th>{t("freight.col.deadline")}</Th>
+              <Th>{t("freight.col.requestedAt")}</Th>
               <Th>{t("freight.col.value")}</Th>
               <Th />
             </tr>
           </thead>
           <tbody>
             {sorted.map((f) => {
-              const request = requestOf.get(f.requestId);
               return (
                 <tr
                   key={f.id}
@@ -93,7 +94,7 @@ export default async function FreightListPage({
                 >
                   <Td>
                     <Link href={`/app/freight/${f.id}`} className={linkClass}>
-                      {request?.productName ?? "—"}
+                      {labelOf(f.orderId)}
                     </Link>
                     <span className="mt-1 block">
                       <Badge
@@ -125,7 +126,7 @@ export default async function FreightListPage({
                         }) ?? "?",
                     })}
                   </Td>
-                  <Td>{formatDate(request?.deadline, t)}</Td>
+                  <Td>{formatDate(f.createdAt, t)}</Td>
                   <Td className="tabular-nums">
                     {f.status === "answered"
                       ? formatMoney(f.amount, f.currency, t)
@@ -133,7 +134,7 @@ export default async function FreightListPage({
                   </Td>
                   <Td className="whitespace-nowrap text-right">
                     <ChatOpenButton
-                      target={{ requestId: f.requestId }}
+                      target={{ orderId: f.orderId }}
                       label={t("chat.open")}
                     />
                   </Td>

@@ -27,8 +27,6 @@ import {
   SuperplanCalculator,
   type SuperplanLabels,
 } from "@/components/superplan-calculator";
-import { superplanSupplierOptions } from "@/lib/services/superplan-rfq";
-import { STOCK_PARTY_ID } from "@/lib/services/stock-party";
 import { SuperplanParamsForm } from "./_components/params-form";
 import { SuperplanLogic } from "./_components/logic";
 
@@ -90,26 +88,7 @@ export default async function SuperplanPage({
   const prefill: SuperplanPrefill = loaded ?? EMPTY_SUPERPLAN_PREFILL;
   const decimal = t.intl.startsWith("pt") ? "," : ".";
   const admin = isAdmin(user);
-  // Abrir a faca e a RFQ com o fornecedor ganho: só o administrador, com um
-  // produto do cadastro.
-  const rfq =
-    admin && loaded
-      ? {
-          suppliers: await superplanSupplierOptions(loaded.productId),
-          customers: (
-            await getStore().list("parties", {
-              filter: { type: "customer", active: true },
-              orderBy: "name",
-            })
-          )
-            .filter((c) => c.id !== STOCK_PARTY_ID)
-            .map((c) => ({ id: c.id, name: c.name })),
-        }
-      : null;
-
   const errorCode = typeof query.error === "string" ? query.error : "";
-  // Recusa ao abrir a faca e a RFQ (mostrada em cima, perto da simulação).
-  const fromRfq = query.rfq === "1";
   const errorText = !errorCode
     ? null
     : errorCode === "invalid_input"
@@ -133,11 +112,6 @@ export default async function SuperplanPage({
           </LinkButton>
         }
       />
-      {errorText && fromRfq ? (
-        <div className="mb-4" data-superplan-error>
-          <Alert tone="danger">{errorText}</Alert>
-        </div>
-      ) : null}
       <SuperplanCalculator
         key={`${prefill.productId ?? "none"}:${hash(JSON.stringify(params))}`}
         labels={labelsFor(t)}
@@ -152,7 +126,6 @@ export default async function SuperplanPage({
         // Peso médio (ficha mestre): mostrado na Compra, fora da conta.
         averageWeightKg={loaded ? loaded.averageWeightKg : null}
         ctx={ctx}
-        rfq={rfq}
       />
 
       {/* A lógica da conta, escrita por extenso e sempre à vista. */}
@@ -168,22 +141,19 @@ export default async function SuperplanPage({
               {t("superplan.params.hint")}
             </p>
           </div>
-          {/* Recusa da RFQ: já aparece em cima, junto da simulação. */}
-          {fromRfq ? null : (
-            <ActionError
-              t={t}
-              code={errorCode}
-              text={errorText}
-              fields={query.fields}
-              token={query.at}
-            />
-          )}
+          <ActionError
+            t={t}
+            code={errorCode}
+            text={errorText}
+            fields={query.fields}
+            token={query.at}
+          />
           {query.saved ? (
             <Alert tone="success">{t("superplan.params.saved")}</Alert>
           ) : null}
           <SuperplanParamsForm t={t} params={params} decimal={decimal} />
         </section>
-      ) : errorText && !fromRfq ? (
+      ) : errorText ? (
         <Card className="mt-6">
           <Alert tone="danger">{errorText}</Alert>
         </Card>

@@ -1,9 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import { isStockCustomer } from "@/lib/services/stock-party";
-import {
-  superplanQuoteOf,
-  superplanQuoteView,
-} from "@/lib/services/superplan-rfq";
 import { ActionError } from "@/components/action-error";
 import {
   RequestInfoTable,
@@ -11,15 +7,6 @@ import {
   type InfoColumn,
 } from "@/components/request-info-table";
 import { fallbackError } from "@/i18n/error-text";
-import { SellPriceCalculator } from "@/components/sell-price-calculator";
-import { SupplierRankingCard } from "@/components/supplier-ranking-card";
-import { supplierRanking } from "@/lib/services/supplier-ranking";
-import {
-  fxVariance,
-  latestPricingRecord,
-  quotePricing,
-} from "@/lib/services/quote-pricing";
-import { getFxRates } from "@/lib/services/fx";
 import {
   hasNcmBroker,
   requestNcm,
@@ -27,21 +14,16 @@ import {
   suggestionsView,
 } from "@/lib/services/request-ncm";
 import { hasFiscalTable } from "@/lib/services/fiscal";
-import { formatNcm } from "@/lib/fiscal";
 import { RequestNcmCard } from "@/components/request-ncm-card";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
-import { canOpen } from "@/lib/auth/screens";
 import {
-  canSeeSupplier,
   canViewOrder,
   canViewRequest,
   isWellmix,
 } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
-import { listProductSuppliers } from "@/lib/services/product-suppliers";
 import {
-  RFQ_OPEN_STATUSES,
   batchSiblings,
   getRequestForUser,
   canAddProducts,
@@ -56,51 +38,18 @@ import {
   Alert,
   Badge,
   Card,
-  DescriptionList,
-  Field,
-  Input,
   LinkButton,
   PageHeader,
   Select,
   TextLink,
   cx,
   formatDate,
-  formatMoney,
-  linkClass,
 } from "@/components/ui";
-import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
-import { PixCopy } from "@/components/pix-copy";
-import { pixForRequest } from "@/lib/services/down-payment";
-import {
-  approveProposalAction,
-  submitDownPaymentProofAction,
-} from "../../actions/payments";
-import { proposalApproved } from "@/lib/services/proposal-approval";
-import {
-  confirmDownPaymentAction,
-  openRfqAction,
-  selectQuoteAction,
-  refreshProposalAction,
-  setRequesterAction,
-} from "../../actions";
+import { setRequesterAction } from "../../actions";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { DownPaymentInput } from "@/components/down-payment-input";
-import { getSettings } from "@/lib/settings";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
-import { PackagingRfqFields } from "@/components/packaging-brief-card";
-import { briefForRequest } from "@/lib/services/packaging-brief";
 import { ChatButtons } from "@/components/chat-buttons";
-import { ApprovalCard } from "@/components/approval-card";
-import { RequestStagesCard } from "@/components/request-stages-card";
-import { approvalsFor } from "@/lib/services/approvals";
-
-/*
- * As ações desta página que criam o pedido (aprovar o último nível, escolher
- * o fornecedor na compra para estoque, confirmar o sinal) gravam dezenas de
- * linhas no banco: precisam de mais tempo do que o padrão da função.
- */
-export const maxDuration = 120;
 
 export default async function RequestDetailPage({
   params,
@@ -116,26 +65,16 @@ export default async function RequestDetailPage({
     fields: invalidFields,
     at: errorToken,
     fromCart,
-    superplan: superplanNotice,
   } = await searchParams;
   const request = await getRequestForUser(user, id);
   if (!request) notFound();
   const t = await getT();
-  const settings = await getSettings();
   const store = getStore();
   // Lote: outras solicitações criadas junto com esta (só as que este usuário vê).
   const siblings = (await batchSiblings(request)).filter((r) =>
     canViewRequest(user, r),
   );
   const wellmix = isWellmix(user);
-  // Aberta do Superplan: os quatro itens do fornecedor ganho (só a Wellmix).
-  const superplanQuote =
-    wellmix && request.origin === "superplan"
-      ? await superplanQuoteOf(request.id)
-      : null;
-  const superplanItems = superplanQuote
-    ? await superplanQuoteView(user, superplanQuote.id)
-    : null;
   // Valores da variação pedida (cópia feita na solicitação), só para a Wellmix.
   const variantSummary =
     wellmix && request.variant
@@ -150,23 +89,10 @@ export default async function RequestDetailPage({
           t.intl,
         )
       : null;
-  // Outros produtos do lote ainda em cotação (os que a RFQ do lote alcança).
-  const rfqSiblings = siblings.filter((s) =>
-    RFQ_OPEN_STATUSES.includes(s.status),
-  );
-
-  const [customer, quotes, suppliers, documents, payments, customerLogins] =
+  const [customer, documents, customerLogins] =
     await Promise.all([
       store.get("parties", request.customerId),
-      store.list("quotes", { filter: { requestId: request.id } }),
-      wellmix
-        ? store.list("parties", {
-            filter: { type: "supplier", active: true },
-            orderBy: "name",
-          })
-        : Promise.resolve([]),
       store.list("documents", { filter: { requestId: request.id } }),
-      store.list("payments", { filter: { requestId: request.id } }),
       // Logins deste cliente, para a Wellmix indicar o solicitante.
       wellmix
         ? store.list("users", {
@@ -185,34 +111,6 @@ export default async function RequestDetailPage({
     request,
     new Set(order && orderCancelled ? [order.id] : []),
   );
-  const supplierName = (supplierId: string) =>
-    suppliers.find((s) => s.id === supplierId)?.name ?? supplierId;
-  // RFQ: quem já fornece este produto aparece primeiro (o principal antes).
-  const productForRfq =
-    wellmix && request.productId
-      ? await store.get("products", request.productId)
-      : null;
-  const supplying = new Set(
-    productForRfq
-      ? [
-          ...(productForRfq.supplierId ? [productForRfq.supplierId] : []),
-          ...(await listProductSuppliers(productForRfq.id)).map(
-            (l) => l.supplierId,
-          ),
-        ]
-      : [],
-  );
-  const rfqSuppliers = [...suppliers].sort((a, b) => {
-    const rank = (id: string) =>
-      id === productForRfq?.supplierId ? 0 : supplying.has(id) ? 1 : 2;
-    return rank(a.id) - rank(b.id) || a.name.localeCompare(b.name);
-  });
-  const invited = new Set(quotes.map((q) => q.supplierId));
-  /* RFQ já aberta: o cartão vira "convidar mais"; todos convidados, sem botão. */
-  const rfqOpened = request.status !== "REQUESTED" && quotes.length > 0;
-  const allInvited =
-    suppliers.length > 0 && suppliers.every((s) => invited.has(s.id));
-  /* Frete pedido à companhia marítima por cotação (só a Wellmix vê). */
   /* Segunda Onda: origem (recompra, nova proposta, sourcing sob demanda) e link ao
      pedido de origem só para quem pode abri-lo (mesmo isolamento por papel). */
   const origin =
@@ -224,68 +122,7 @@ export default async function RequestDetailPage({
     sourceOrder && canViewOrder(user, sourceOrder)
       ? `/app/orders/${sourceOrder.id}`
       : null;
-  const selectedQuote = quotes.find((q) => q.id === request.selectedQuoteId);
-  const downPayment = payments.find((p) => p.direction === "customer_in");
-  /* Sinal: Pix copia e cola + QR Code (chave configurada pelo admin) e comprovante. */
-  const waitingPayment = request.status === "WAITING_DOWN_PAYMENT";
-  const pix = waitingPayment
-    ? await pixForRequest(request).catch(() => ({
-        unavailable: "not_configured" as const,
-      }))
-    : null;
-  /* Valor ao cliente calculado (custo importado + margem) para as cotações respondidas. */
-  const selectable =
-    wellmix && ["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status)
-      ? quotes.filter((q) => q.status === "answered")
-      : [];
-  const pricing = selectable.length
-    ? await quotePricing(request, selectable)
-    : null;
-  /* Disputa: com duas ou mais cotações, nota por critério e vencedor. */
-  const ranking =
-    pricing && selectable.length >= 2
-      ? await supplierRanking(request, selectable, pricing)
-      : null;
-  // O vencedor vem primeiro (já selecionado no formulário de seleção).
-  const rankedPricing = pricing
-    ? [...pricing.quotes].sort(
-        (a, b) =>
-          (ranking?.rows.findIndex((r) => r.quoteId === a.quoteId) ?? 0) -
-          (ranking?.rows.findIndex((r) => r.quoteId === b.quoteId) ?? 0),
-      )
-    : [];
-  /* Proposta aguardando sinal: o câmbio mudou desde a proposta? */
-  const pricingRecord =
-    wellmix && waitingPayment ? await latestPricingRecord(request.id) : null;
-  const variance = pricingRecord
-    ? fxVariance(pricingRecord, await getFxRates())
-    : null;
-  const {
-    refreshed,
-    ncmConfirmed,
-    ncmSuggested,
-    ncmAi,
-    approval,
-    decided,
-    proposal: proposalFlag,
-  } = await searchParams;
-  // Aprovação do pré-custo (só a Wellmix): a em aberto e as anteriores.
-  const approvalList = wellmix ? await approvalsFor(request.id) : [];
-  const approvalPending = approvalList.some((a) => a.status === "pending");
-  const approverIds = [
-    ...new Set(
-      approvalList.flatMap((a) => [
-        a.requestedByUserId,
-        ...a.steps.map((s) => s.userId),
-      ]),
-    ),
-  ];
-  const approverNames = new Map(
-    (approverIds.length
-      ? await store.list("users", { filter: { id: approverIds } })
-      : []
-    ).map((u) => [u.id, u.name]),
-  );
+  const { ncmConfirmed, ncmSuggested, ncmAi } = await searchParams;
   /* NCM da solicitação (Wellmix): cadastro ou confirmado; sem ele, sugestões. */
   const ncmInfo =
     wellmix && request.status !== "CANCELLED"
@@ -317,43 +154,8 @@ export default async function RequestDetailPage({
         ? t(`ai.error.${ncmAiCode}` as DictionaryKey)
         : ncmAiCode
     : null;
-  const taxSourceText = (
-    source: "sheet" | "table" | "classification" | null,
-    ncm: string | null,
-  ) =>
-    source === "table"
-      ? t("pricing.calc.taxSource.table", { ncm: ncm ? formatNcm(ncm) : "—" })
-      : source
-        ? t(`pricing.calc.taxSource.${source}`)
-        : null;
-  const proofDoc = downPayment?.proofDocumentId
-    ? documents.find((d) => d.id === downPayment.proofDocumentId)
-    : undefined;
-  // Etapa "Proposta ao cliente": o cliente aprova antes de ver o Pix do sinal
-  // (comprovante já enviado ou sinal confirmado contam como aprovação).
-  const awaitingApproval =
-    request.status === "WAITING_DOWN_PAYMENT" &&
-    !proposalApproved(request, !!downPayment?.proofDocumentId);
-  const approvedBy = request.proposalApprovedByUserId
-    ? await getStore().get("users", request.proposalApprovedByUserId)
-    : null;
-  // Anexos da solicitação: os arquivos do briefing de embalagem têm cartão próprio
-  // (e o cliente nunca os vê).
-  const attachments = documents.filter((d) => !d.packagingBriefId);
-  /* RFQ: Wellmix escolhe fornecedores (antes da proposta). */
-  /* RFQ em espera (docs/RFQ_STANDBY.md): o produto vai para um fornecedor só
-     (o do Booking, já marcado), sem "convidar mais" depois de enviado. */
-  const rfqOn = settings.rfqEnabled;
-  /* O cartão da RFQ saiu desta tela (pedido do dono): com a RFQ em espera,
-     o envio ao fornecedor é automático pelo Booking e, quando não foi, fica
-     na tela Pedidos → RFQ. Só com a RFQ ligada o cartão volta a aparecer. */
-  const showRfq =
-    wellmix &&
-    rfqOn &&
-    ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status);
-  /* Ainda não foi a nenhum fornecedor (RFQ em espera): atalho para enviar. */
-  const toSend =
-    wellmix && !rfqOn && request.status === "REQUESTED" && !quotes.length;
+  // Anexos da solicitação.
+  const attachments = documents;
   /* Solicitante do cliente: também saiu como cartão. Compra para o estoque
      não tem login de cliente; nas outras, é uma linha do cartão da
      solicitação (o isolamento entre logins do cliente continua valendo). */
@@ -361,13 +163,8 @@ export default async function RequestDetailPage({
     wellmix &&
     !isStockCustomer(request.customerId) &&
     (customerLogins.length > 0 || !!request.requestedForUserId);
-  /* Cartões de ação da Wellmix (RFQ, NCM): lado a lado em telas grandes. */
-  const actionCards = [showRfq, !!ncmInfo].filter(Boolean).length;
-  /* Embalagem (faca e arte) aberta junto com a RFQ: campos no formulário e cartão. */
-  const packagingBrief = wellmix ? await briefForRequest(request.id) : null;
-  const hasLiveBrief =
-    !!packagingBrief && packagingBrief.status !== "cancelled";
-
+  /* Cartões de ação da Wellmix (NCM): lado a lado em telas grandes. */
+  const actionCards = [!!ncmInfo].filter(Boolean).length;
   return (
     <>
       {fromCart === "1" ? (
@@ -458,33 +255,6 @@ export default async function RequestDetailPage({
             {t("reqCancelled.banner", { n: order.number })}{" "}
             <TextLink href={`/app/orders/${order.id}`}>
               {t("reqCancelled.open")}
-            </TextLink>
-          </Alert>
-        </div>
-      ) : null}
-      {superplanItems ? (
-        <div className="mb-4" data-superplan-request>
-          <Alert
-            tone={
-              superplanItems.missing.length
-                ? superplanNotice === "opened"
-                  ? "success"
-                  : "warning"
-                : "success"
-            }
-          >
-            {superplanNotice === "opened" ? `${t("spRfq.opened")} ` : null}
-            {t("spRfq.request", {
-              state: superplanItems.missing.length
-                ? t("spRfq.missing", {
-                    list: superplanItems.missing
-                      .map((k) => t(`spRfq.item.${k}`))
-                      .join(", "),
-                  })
-                : t("spRfq.complete"),
-            })}{" "}
-            <TextLink href={`/app/quotes/${superplanItems.quoteId}#superplan`}>
-              {t("spRfq.openQuote")}
             </TextLink>
           </Alert>
         </div>
@@ -614,19 +384,6 @@ export default async function RequestDetailPage({
                 ))}
               </ul>
             ) : null}
-            {toSend ? (
-              <p
-                className="mt-3 border-t border-zinc-100 pt-2.5 text-sm text-zinc-700"
-                data-request-to-send
-              >
-                {t("rfqStandby.request.toSend")}{" "}
-                {canOpen(user, "rfq") ? (
-                  <TextLink href={`/app/rfq#req-${request.id}`}>
-                    {t("rfqStandby.send.submit")}
-                  </TextLink>
-                ) : null}
-              </p>
-            ) : null}
             {showRequester ? (
               <form
                 action={setRequesterAction}
@@ -663,122 +420,12 @@ export default async function RequestDetailPage({
           </Card>
         </div>
 
-        {/* Etapas da solicitação (Wellmix): rastreio até o sinal, com prazos. */}
-        {wellmix ? <RequestStagesCard t={t} request={request} /> : null}
-
         {actionCards > 0 ? (
           <div
             className={cx(
               "contents md:grid md:grid-cols-2 md:items-start md:gap-4",
             )}
           >
-            {/* RFQ: Wellmix escolhe fornecedores */}
-            {showRfq ? (
-              <Card
-                title={
-                  !rfqOn
-                    ? t("rfqStandby.send.title")
-                    : rfqOpened
-                      ? t("rfq.inviteMore")
-                      : t("requests.rfq.open")
-                }
-              >
-                <form
-                  action={openRfqAction}
-                  className="space-y-2.5"
-                  data-rfq-card={rfqOn ? "rfq" : "standby"}
-                >
-                  <input type="hidden" name="requestId" value={request.id} />
-                  <p className="text-sm text-zinc-600">
-                    {!rfqOn
-                      ? t("rfqStandby.send.hint")
-                      : allInvited
-                        ? t("rfq.allInvited")
-                        : rfqOpened
-                          ? t("rfq.inviteMoreHint")
-                          : t("requests.rfq.select")}
-                  </p>
-                  {supplying.size && rfqOn ? (
-                    <p className="text-xs text-zinc-500">
-                      {t("productSuppliers.rfqHint")}
-                    </p>
-                  ) : null}
-                  {/* Lote: o atalho só enquanto algum produto ainda não tem
-                      RFQ (depois de aberta, não se abre de novo). */}
-                  {rfqOn &&
-                  request.groupId &&
-                  rfqSiblings.length > 0 &&
-                  [request, ...rfqSiblings].some(
-                    (r) => r.status === "REQUESTED",
-                  ) ? (
-                    <p className="text-sm">
-                      <TextLink
-                        href={`/app/requests/batch/${encodeURIComponent(request.groupId)}#rfq`}
-                        data-rfq-whole-batch
-                      >
-                        {t("reqBatch.rfqWholeBatch", {
-                          n: rfqSiblings.length + 1,
-                        })}
-                      </TextLink>
-                    </p>
-                  ) : null}
-                  <div className="grid gap-1.5 sm:grid-cols-2 md:grid-cols-1">
-                    {rfqSuppliers.map((s) => (
-                      <label
-                        key={s.id}
-                        className={cx(
-                          "flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5 text-sm transition",
-                          invited.has(s.id)
-                            ? "cursor-not-allowed border-zinc-200 bg-zinc-50 text-zinc-500"
-                            : "cursor-pointer border-zinc-300 bg-white text-zinc-900 hover:border-brand-300 has-checked:border-brand-600 has-checked:bg-brand-50 has-checked:text-brand-900",
-                        )}
-                      >
-                        <input
-                          // RFQ em espera: um fornecedor só (o do produto já
-                          // vem marcado); com a RFQ ligada, vários.
-                          type={rfqOn ? "checkbox" : "radio"}
-                          name="supplierIds"
-                          value={s.id}
-                          required={!rfqOn}
-                          disabled={invited.has(s.id)}
-                          defaultChecked={
-                            rfqOn
-                              ? invited.has(s.id)
-                              : s.id === productForRfq?.supplierId
-                          }
-                          className="h-4 w-4 shrink-0 accent-brand-600"
-                        />
-                        <span>
-                          <span className="font-medium">{s.name}</span>{" "}
-                          <span className="text-zinc-500">· {s.country}</span>
-                          {supplying.has(s.id) ? (
-                            <span
-                              className="ml-1.5 rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700"
-                              data-rfq-supplying
-                            >
-                              {t("productSuppliers.rfqLinked")}
-                            </span>
-                          ) : null}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                  {rfqOpened ? null : (
-                    <PackagingRfqFields t={t} hasBrief={hasLiveBrief} />
-                  )}
-                  {allInvited ? null : (
-                    <SubmitButton>
-                      {!rfqOn
-                        ? t("rfqStandby.send.submit")
-                        : rfqOpened
-                          ? t("rfq.inviteSelected")
-                          : t("requests.rfq.open")}
-                    </SubmitButton>
-                  )}
-                </form>
-              </Card>
-            ) : null}
-
             {/* Classificação fiscal: NCM → II (TEC) e IPI (TIPI) no valor ao cliente.
                 Em 2 colunas (md) ocupa duas linhas: RFQ e solicitante ficam
                 um abaixo do outro, sem buraco. */}
@@ -816,556 +463,6 @@ export default async function RequestDetailPage({
           </div>
         ) : null}
 
-        {/* Embalagem (faca e arte): saiu da tela da solicitação (pedido do
-            dono); o briefing segue em Embalagem (/app/packaging), com a
-            agência, e a faca com o fornecedor escolhido. */}
-
-        {/* Comparação de cotações (só Wellmix): ranking e escolha do
-            fornecedor. A tabela de cotações saiu por decisão do dono (cada
-            cotação continua na própria página e no ranking). */}
-        {wellmix &&
-        (ranking ||
-          (["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status) &&
-            quotes.some((q) => q.status === "answered"))) ? (
-          <Card
-            title={
-              // Âncora do Booking ("Conferir e confirmar a cotação").
-              <span id="quotes-compare" className="scroll-mt-24">
-                {t("requests.quotes.compare")}
-              </span>
-            }
-          >
-            {ranking ? (
-              <div>
-                <SupplierRankingCard
-                  t={t}
-                  ranking={ranking}
-                  supplierOf={(quoteId) =>
-                    supplierName(
-                      quotes.find((q) => q.id === quoteId)?.supplierId ?? "",
-                    )
-                  }
-                  canEditWeights={user.role === "admin"}
-                  decideWith={
-                    // Escolha ainda aberta: "Escolher" na linha seleciona no
-                    // formulário de baixo, onde a decisão é concluída.
-                    ["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
-                      request.status,
-                    ) && quotes.some((q) => q.status === "answered")
-                      ? settings.approvalsEnabled
-                        ? t("approvals.submit")
-                        : t("requests.quotes.select")
-                      : null
-                  }
-                />
-              </div>
-            ) : null}
-            {["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status) &&
-            quotes.some((q) => q.status === "answered") ? (
-              /* Telas médias e grandes: memória de cálculo à esquerda;
-                 fornecedor, fretes, valores e botão à direita (sem rolar). */
-              <form
-                action={selectQuoteAction}
-                className="mt-3 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-2 md:grid-cols-4 md:grid-rows-[auto_auto_auto_auto_1fr]"
-              >
-                <input type="hidden" name="requestId" value={request.id} />
-                <SellPriceCalculator
-                  // Nova ordem (ex.: cotação registrada aqui) remonta com o
-                  // vencedor já selecionado, em vez de manter a escolha antiga.
-                  key={rankedPricing.map((p) => p.quoteId).join(",")}
-                  container={(() => {
-                    // Referência para "≈ N containers": o maior das configurações (40HC).
-                    const types = settings.containerTypes ?? [];
-                    const big = [...types].sort(
-                      (a, b) => b.capacityCbm - a.capacityCbm,
-                    )[0];
-                    return big
-                      ? { code: big.code, capacityCbm: big.capacityCbm }
-                      : null;
-                  })()}
-                  quotes={rankedPricing.map((p) => {
-                    const q = selectable.find((x) => x.id === p.quoteId)!;
-                    return {
-                      quoteId: p.quoteId,
-                      label: `${supplierName(q.supplierId)} · ${formatMoney(q.price, q.currency, t)}`,
-                      hasSheet: p.hasSheet,
-                      input: p.input,
-                      marginSource: p.marginSource,
-                      shippingFreightBrl: p.shippingFreight.brl,
-                      iiSource: taxSourceText(p.tax.iiSource, p.tax.ncm),
-                      ipiSource: taxSourceText(p.tax.ipiSource, p.tax.ncm),
-                      ncmPending:
-                        p.tax.ncmStatus === "none" && p.tax.iiSource === null,
-                      cbmNote:
-                        p.cbm.source === "product"
-                          ? t("pricing.calc.cbmFromProduct", {
-                              per: String(p.cbm.perCarton ?? "—"),
-                              cbm: (p.cbm.cbmPerCarton ?? 0).toLocaleString(
-                                t.intl,
-                                { maximumFractionDigits: 4 },
-                              ),
-                            })
-                          : null,
-                      sheetHref: `/app/quotes/${p.quoteId}#quote-sheet`,
-                      shippingFreightNote:
-                        p.shippingFreight.status === "answered"
-                          ? t("freight.calc.answered", {
-                              carrier: p.shippingFreight.carrierName ?? "—",
-                              amount: formatMoney(
-                                p.shippingFreight.amount,
-                                p.shippingFreight.currency ?? "USD",
-                                t,
-                              ),
-                            })
-                          : p.shippingFreight.status === "waiting"
-                            ? t("freight.calc.waiting")
-                            : null,
-                    };
-                  })}
-                  labels={{
-                    supplier: t("common.supplier"),
-                    sellPrice: t("requests.sellPrice"),
-                    carrierFreight: t("pricing.calc.carrierFreight"),
-                    carrierFreightHint: t("pricing.calc.carrierFreightHint"),
-                    carrierFixed: t("pricing.calc.carrierFixed"),
-                    carrierEstimated: t("pricing.calc.carrierEstimated"),
-                    carrierOpen: t("pricing.calc.carrierOpen"),
-                    title: t("pricing.calc.title"),
-                    fob: t("pricing.calc.fob"),
-                    fx: t("pricing.calc.fx"),
-                    freightCarrier: t("pricing.calc.freightCarrier"),
-                    freightCbm: t("pricing.calc.freightCbm"),
-                    freightNone: t("pricing.calc.freightNone"),
-                    importTax: t("pricing.calc.importTax"),
-                    ipi: t("pricing.calc.ipi"),
-                    insurance: t("pricing.calc.insurance"),
-                    customsValue: t("pricing.calc.customsValue"),
-                    pis: t("pricing.calc.pis"),
-                    cofins: t("pricing.calc.cofins"),
-                    icms: t("pricing.calc.icms"),
-                    ncmPending: t("pricing.calc.ncmPending"),
-                    landed: t("pricing.calc.landed"),
-                    margin: t("pricing.calc.margin"),
-                    sell: t("pricing.calc.sell"),
-                    useCalculated: t("pricing.calc.useCalculated"),
-                    noSheet: t("pricing.calc.noSheet"),
-                    marginZero: t("pricing.calc.marginZero"),
-                    sourceCustomer: t("pricing.calc.source.customer"),
-                    sourceLine: t("pricing.calc.source.line"),
-                    sourceDefault: t("pricing.calc.source.default"),
-                    inCurrency: t("pricing.calc.inCurrency", {
-                      currency: "{currency}",
-                      rate: "{rate}",
-                    }),
-                    noFx: t("pricing.calc.noFx", { currency: "{currency}" }),
-                    cargo: t("pricing.calc.cargo"),
-                    cargoValue: t("pricing.calc.cargoValue", {
-                      cbm: "{cbm}",
-                      n: "{n}",
-                      code: "{code}",
-                    }),
-                    cargoHigh: t("pricing.calc.cargoHigh"),
-                    openSheet: t("pricing.calc.openSheet"),
-                    intl: t.intl,
-                    fxStale:
-                      pricing?.fx.status === "stale"
-                        ? t("pricing.calc.fxStale", {
-                            day: pricing.fx.day ?? "—",
-                          })
-                        : null,
-                    missing: {
-                      price: t("pricing.calc.missing.price"),
-                      fx: t("pricing.calc.missing.fx"),
-                      freight: t("pricing.calc.missing.freight"),
-                      cbm: t("pricing.calc.missing.cbm"),
-                      importTax: t("pricing.calc.missing.importTax"),
-                      ipi: t("pricing.calc.missing.ipi"),
-                      icms: t("pricing.calc.missing.icms"),
-                    },
-                  }}
-                />
-                <Field label={t("common.currency")}>
-                  <CurrencySelect name="sellCurrency" value="BRL" t={t} />
-                </Field>
-                <Field label={t("requests.downPaymentPercent")}>
-                  {/* Porcentagem do valor ao cliente (0 a 100), com o valor ao lado. */}
-                  <DownPaymentInput
-                    name="downPaymentPercent"
-                    defaultPercent={settings.downPaymentPercent}
-                    sellField="sellPrice"
-                    currencyField="sellCurrency"
-                    locale={t.intl}
-                    equals={t("requests.downPayment.equals", {
-                      amount: "{amount}",
-                      percent: "{percent}",
-                      total: "{total}",
-                      rest: "{rest}",
-                    })}
-                  />
-                </Field>
-                <div className="sm:col-span-2 md:col-start-3">
-                  {approvalPending ? (
-                    <p className="mb-2 text-xs text-amber-700">
-                      {t("approvals.blocked")}
-                    </p>
-                  ) : null}
-                  <SubmitButton>
-                    {settings.approvalsEnabled
-                      ? t("approvals.submit")
-                      : t("requests.quotes.select")}
-                  </SubmitButton>
-                </div>
-              </form>
-            ) : null}
-          </Card>
-        ) : null}
-
-        {/* Aprovação do pré-custo (Wellmix): em aberto e anteriores. */}
-        {wellmix ? (
-          <ApprovalCard
-            t={t}
-            user={user}
-            requestId={request.id}
-            approvals={approvalList}
-            names={approverNames}
-            sent={approval === "sent"}
-            decided={typeof decided === "string" ? decided : null}
-          />
-        ) : null}
-
-        {/* Proposta e sinal */}
-        <span id="proposal" className="-mt-4 block scroll-mt-24" />
-        {request.status === "WAITING_DOWN_PAYMENT" ||
-        request.status === "ORDERED" ? (
-          <Card
-            title={t("requests.proposal")}
-            className={cx(
-              request.status === "WAITING_DOWN_PAYMENT" &&
-                "border-brand-300! ring-4 ring-brand-50",
-            )}
-          >
-            {refreshed === "1" ? (
-              <div className="mb-3">
-                <Alert tone="success">{t("pricing.refreshed")}</Alert>
-              </div>
-            ) : null}
-            {proposalFlag === "approved" && !awaitingApproval ? (
-              <div className="mb-3" data-proposal-approved-alert>
-                <Alert tone="success">
-                  {wellmix
-                    ? t("proposal.approve.recorded")
-                    : t("proposal.approve.saved")}
-                </Alert>
-              </div>
-            ) : null}
-            {variance && !downPayment?.proofDocumentId ? (
-              <div className="mb-3 space-y-2">
-                <Alert tone="warning">
-                  {t("pricing.variance", {
-                    pct: `${variance.pct > 0 ? "+" : ""}${variance.pct.toLocaleString(t.intl, { maximumFractionDigits: 2 })}`,
-                    currency: variance.currency,
-                    from: variance.before.toLocaleString(t.intl, {
-                      maximumFractionDigits: 4,
-                    }),
-                    to: variance.now.toLocaleString(t.intl, {
-                      maximumFractionDigits: 4,
-                    }),
-                  })}
-                </Alert>
-                <form action={refreshProposalAction}>
-                  <input type="hidden" name="requestId" value={request.id} />
-                  <SubmitButton variant="secondary">
-                    {t("pricing.refresh")}
-                  </SubmitButton>
-                </form>
-              </div>
-            ) : null}
-            {/* Aguardando sinal, telas grandes: proposta, instruções e
-                comprovante à esquerda; Pix (QR Code e copia e cola) à direita. */}
-            <div
-              className={cx(
-                "grid gap-3",
-                request.status === "WAITING_DOWN_PAYMENT" &&
-                  "lg:grid-cols-2 lg:grid-rows-[auto_auto_auto_auto_1fr] lg:gap-x-5",
-              )}
-            >
-              <div className="min-w-0 lg:col-start-1">
-                <DescriptionList
-                  items={[
-                    [
-                      t("requests.sellPrice"),
-                      <span
-                        key="sellPrice"
-                        className="text-lg font-bold tracking-tight text-zinc-900 tabular-nums"
-                      >
-                        {formatMoney(
-                          request.sellPrice,
-                          request.sellCurrency,
-                          t,
-                        )}
-                      </span>,
-                    ],
-                    [
-                      t("requests.downPayment"),
-                      <span
-                        key="downPayment"
-                        className="text-lg font-bold tracking-tight text-zinc-900 tabular-nums"
-                      >
-                        {formatMoney(
-                          request.downPaymentAmount,
-                          request.sellCurrency,
-                          t,
-                        )}
-                      </span>,
-                    ],
-                    [
-                      t("common.status"),
-                      downPayment ? (
-                        <Badge
-                          tone={
-                            downPayment.status === "pending"
-                              ? "warning"
-                              : "success"
-                          }
-                        >
-                          {t(`paymentStatus.${downPayment.status}`)}
-                        </Badge>
-                      ) : (
-                        "—"
-                      ),
-                    ],
-                    ...(canSeeSupplier(user) && selectedQuote
-                      ? [
-                          [
-                            t("common.supplier"),
-                            supplierName(selectedQuote.supplierId),
-                          ] as [string, string],
-                        ]
-                      : []),
-                  ]}
-                />
-              </div>
-              {/* Proposta ainda sem aprovação: o cliente aprova (e só então
-                  vê o Pix); a Wellmix vê que espera e pode registrar a
-                  aprovação dada fora do portal. */}
-              {awaitingApproval ? (
-                <div
-                  className="min-w-0 space-y-2 rounded-xl border border-brand-200 bg-brand-50/60 p-3 lg:col-start-1"
-                  data-proposal-approval={wellmix ? "wellmix" : "customer"}
-                >
-                  {wellmix ? (
-                    <>
-                      <p className="text-sm font-semibold text-zinc-900">
-                        {t("proposal.approve.waiting")}
-                      </p>
-                      <form
-                        action={approveProposalAction}
-                        className="flex flex-wrap items-center gap-2"
-                      >
-                        <input
-                          type="hidden"
-                          name="requestId"
-                          value={request.id}
-                        />
-                        <SubmitButton variant="secondary" data-proposal-record>
-                          {t("proposal.approve.record")}
-                        </SubmitButton>
-                        <span className="text-xs text-zinc-600">
-                          {t("proposal.approve.recordHint")}
-                        </span>
-                      </form>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm text-zinc-800">
-                        {t("proposal.approve.hint")}
-                      </p>
-                      <form action={approveProposalAction}>
-                        <input
-                          type="hidden"
-                          name="requestId"
-                          value={request.id}
-                        />
-                        <SubmitButton data-proposal-approve>
-                          {t("proposal.approve.button")}
-                        </SubmitButton>
-                      </form>
-                    </>
-                  )}
-                </div>
-              ) : request.proposalApprovedAt &&
-                request.status === "WAITING_DOWN_PAYMENT" ? (
-                <p
-                  className="min-w-0 text-xs text-emerald-800 lg:col-start-1"
-                  data-proposal-approved
-                >
-                  {t("proposal.approve.done", {
-                    date: formatDate(request.proposalApprovedAt, t),
-                    name: approvedBy?.name ?? "—",
-                  })}
-                </p>
-              ) : null}
-              {request.status === "WAITING_DOWN_PAYMENT" &&
-              (wellmix || !awaitingApproval) ? (
-                <>
-                  <div className="min-w-0 border-t border-zinc-100 pt-3 lg:col-start-1">
-                    <Alert tone="warning">
-                      {t("requests.payment.instructions", {
-                        amount: formatMoney(
-                          request.downPaymentAmount,
-                          request.sellCurrency,
-                          t,
-                        ),
-                      })}
-                    </Alert>
-                  </div>
-                  {/* Pix do sinal: copia e cola e QR Code com valor e referência. */}
-                  {pix && "payload" in pix ? (
-                    <div className="min-w-0 space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 lg:col-start-2 lg:row-span-5 lg:row-start-1 lg:self-start">
-                      <div>
-                        <h3 className="text-sm font-semibold text-zinc-900">
-                          {t("payments.pix.title")}
-                        </h3>
-                        <p className="mt-0.5 text-sm leading-relaxed text-zinc-600">
-                          {t("payments.pix.howTo")}
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                        {/* eslint-disable-next-line @next/next/no-img-element -- QR gerado no servidor (data URL) */}
-                        <img
-                          src={pix.qrDataUrl}
-                          alt={t("payments.pix.qrAlt")}
-                          className="mx-auto h-40 w-40 shrink-0 rounded-lg border border-zinc-200 bg-white p-2 sm:mx-0"
-                        />
-                        <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                          <div className="col-span-2">
-                            <dt className="text-xs text-zinc-500">
-                              {t("payments.pix.receiver")}
-                            </dt>
-                            <dd className="font-medium text-zinc-900">
-                              {pix.receiverName} · {pix.receiverCity}
-                            </dd>
-                          </div>
-                          <div className="col-span-2">
-                            <dt className="text-xs text-zinc-500">
-                              {t("payments.pix.key")}
-                            </dt>
-                            <dd className="break-all font-mono text-xs text-zinc-900">
-                              {pix.key}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-zinc-500">
-                              {t("payments.pix.amount")}
-                            </dt>
-                            <dd className="font-semibold tabular-nums text-zinc-900">
-                              {formatMoney(pix.amount, "BRL", t)}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-zinc-500">
-                              {t("payments.pix.reference")}
-                            </dt>
-                            <dd className="break-all font-mono text-xs text-zinc-900">
-                              {pix.reference}
-                            </dd>
-                          </div>
-                        </dl>
-                      </div>
-                      <PixCopy
-                        payload={pix.payload}
-                        labels={{
-                          code: t("payments.pix.code"),
-                          copy: t("payments.pix.copy"),
-                          copied: t("payments.pix.copied"),
-                        }}
-                      />
-                    </div>
-                  ) : pix && "unavailable" in pix ? (
-                    <div className="min-w-0 lg:col-start-2 lg:row-span-5 lg:row-start-1 lg:self-start">
-                      <Alert tone="neutral">
-                        {t(
-                          `payments.pix.unavailable.${pix.unavailable}${wellmix ? "Wellmix" : ""}` as DictionaryKey,
-                        )}
-                      </Alert>
-                    </div>
-                  ) : null}
-
-                  {/* Comprovante: o cliente anexa; a Wellmix confere e confirma. */}
-                  {downPayment?.proofDocumentId ? (
-                    <div className="min-w-0 lg:col-start-1">
-                      <Alert tone={wellmix ? "info" : "success"}>
-                        <span className="block">
-                          {wellmix
-                            ? t("payments.proof.receivedWellmix")
-                            : t("payments.proof.sent")}
-                        </span>
-                        <a
-                          href={`/api/files/${downPayment.proofDocumentId}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={cx(linkClass, "mt-1 inline-block")}
-                        >
-                          {t("payments.proof.view")}
-                          {proofDoc ? ` (${proofDoc.name})` : ""}
-                        </a>
-                      </Alert>
-                    </div>
-                  ) : null}
-                  {!wellmix ? (
-                    <form
-                      action={submitDownPaymentProofAction}
-                      className="min-w-0 space-y-2 rounded-xl border border-zinc-200 p-3 sm:max-w-lg lg:col-start-1 lg:max-w-none"
-                    >
-                      <input
-                        type="hidden"
-                        name="requestId"
-                        value={request.id}
-                      />
-                      <Field
-                        label={
-                          downPayment?.proofDocumentId
-                            ? t("payments.proof.another")
-                            : t("payments.proof.label")
-                        }
-                        hint={t("payments.proof.hint")}
-                      >
-                        <Input
-                          name="proof"
-                          type="file"
-                          accept="image/*,application/pdf"
-                          required
-                        />
-                      </Field>
-                      <SubmitButton className="w-full sm:w-auto">
-                        {t("payments.proof.submit")}
-                      </SubmitButton>
-                    </form>
-                  ) : null}
-                  {/* Confirmar o sinal é do financeiro: só o administrador. */}
-                  {wellmix && canOpen(user, "finance") ? (
-                    <form
-                      action={confirmDownPaymentAction}
-                      className="flex min-w-0 flex-wrap items-end gap-3 lg:col-start-1"
-                    >
-                      <input
-                        type="hidden"
-                        name="requestId"
-                        value={request.id}
-                      />
-                      <Field label={t("requests.payment.proof")}>
-                        <Input name="proof" type="file" />
-                      </Field>
-                      <SubmitButton>
-                        {t("requests.payment.confirm")}
-                      </SubmitButton>
-                    </form>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
-          </Card>
-        ) : null}
       </div>
     </>
   );

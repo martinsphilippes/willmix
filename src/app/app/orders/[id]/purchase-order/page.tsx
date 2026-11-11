@@ -505,14 +505,6 @@ export default async function PurchaseOrderPage({
                   : t("orderSign.payment.none")}
               </dd>
             </div>
-            {doc.packagingOkVersion ? (
-              <div className="sm:col-span-2">
-                <dt className="font-semibold">{t("orderSign.packaging")}</dt>
-                <dd>
-                  {t("orderSign.packaging.ok", { n: doc.packagingOkVersion })}
-                </dd>
-              </div>
-            ) : null}
           </dl>
           <p className="break-all text-xs text-zinc-500">
             {t("orderSign.version", { hash })}

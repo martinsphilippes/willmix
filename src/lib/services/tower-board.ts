@@ -271,9 +271,6 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   const journey = journeyIndex({
     ...input,
     reviews: input.reviews,
-    quotes: [],
-    approvals: [],
-    rfqDays: 0,
   });
   const step = (o: Order, key: ImportStep["key"]) =>
     (stepsBy.get(o.id) ?? []).find((s) => s.key === key);
