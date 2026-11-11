@@ -3,35 +3,53 @@ import { describe, expect, it } from "vitest";
 import {
   INTRO_ATTR,
   INTRO_BOOT,
+  INTRO_DAY_KEY,
   INTRO_MEDIA,
-  INTRO_STORAGE_KEY,
 } from "@/lib/intro";
 
 /*
  * Abertura do portal: o script inline do <head> decide, antes do primeiro
- * quadro, se cobre a tela (html[data-wm-intro="pending"]). Aqui ele roda num
- * navegador de mentira com cada situação.
+ * quadro, se cobre a tela (html[data-wm-intro="pending"]) e marca o dia.
+ * Aqui ele roda num navegador de mentira com cada situação.
  */
+const TODAY = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+})();
+
 function boot(env: {
   search?: string;
+  pathname?: string;
   width?: number;
-  played?: boolean;
+  /** Dia gravado no localStorage (undefined = nunca tocou). */
+  playedOn?: string;
+  reload?: boolean;
   webdriver?: boolean;
   storageBroken?: boolean;
 }) {
   const attrs = new Map<string, string>();
+  const storage = new Map<string, string>();
+  if (env.playedOn) storage.set(INTRO_DAY_KEY, env.playedOn);
   const sandbox = {
     URLSearchParams,
-    location: { search: env.search ?? "" },
+    Date,
+    location: { search: env.search ?? "", pathname: env.pathname ?? "/app" },
     navigator: { webdriver: env.webdriver ?? false },
     matchMedia: (query: string) => ({
       matches: query === INTRO_MEDIA && (env.width ?? 1440) >= 1024,
     }),
-    sessionStorage: {
+    localStorage: {
       getItem: (key: string) => {
         if (env.storageBroken) throw new Error("storage indisponível");
-        return key === INTRO_STORAGE_KEY && env.played ? "1" : null;
+        return storage.get(key) ?? null;
       },
+      setItem: (key: string, value: string) => storage.set(key, value),
+    },
+    performance: {
+      getEntriesByType: (type: string) =>
+        type === "navigation"
+          ? [{ type: env.reload ? "reload" : "navigate" }]
+          : [],
     },
     document: {
       documentElement: {
@@ -40,44 +58,71 @@ function boot(env: {
     },
   };
   runInNewContext(INTRO_BOOT, sandbox);
-  return attrs.get(INTRO_ATTR) ?? null;
+  return {
+    attr: attrs.get(INTRO_ATTR) ?? null,
+    day: storage.get(INTRO_DAY_KEY),
+  };
 }
 
 describe("abertura do portal: quando cobrir a tela", () => {
-  it("desktop, primeira vez na aba: cobre", () => {
-    expect(boot({ width: 1280 })).toBe("pending");
+  it("primeira abertura do dia: cobre e marca o dia", () => {
+    expect(boot({})).toEqual({ attr: "pending", day: TODAY });
+    expect(boot({ playedOn: "2026-1-1", pathname: "/app/orders" })).toEqual({
+      attr: "pending",
+      day: TODAY,
+    });
   });
 
-  it("celular e tablet em pé (menos de 1024 px): não toca", () => {
-    expect(boot({ width: 390 })).toBeNull();
-    expect(boot({ width: 1023 })).toBeNull();
+  it("já tocou hoje: navegar ou abrir outra aba não repete", () => {
+    expect(boot({ playedOn: TODAY, pathname: "/app" }).attr).toBeNull();
+    expect(boot({ playedOn: TODAY, pathname: "/login" }).attr).toBeNull();
+    expect(boot({ playedOn: TODAY, pathname: "/app/orders" }).attr).toBeNull();
   });
 
-  it("já tocou nesta aba: não repete", () => {
-    expect(boot({ played: true })).toBeNull();
+  it("já tocou hoje: F5 na página inicial toca de novo", () => {
+    expect(boot({ playedOn: TODAY, reload: true, pathname: "/app" }).attr).toBe(
+      "pending",
+    );
+    expect(
+      boot({ playedOn: TODAY, reload: true, pathname: "/login" }).attr,
+    ).toBe("pending");
+    // F5 em outra tela, não.
+    expect(
+      boot({ playedOn: TODAY, reload: true, pathname: "/app/orders" }).attr,
+    ).toBeNull();
+  });
+
+  it("celular e tablet em pé (menos de 1024 px): não toca, nem no F5", () => {
+    expect(boot({ width: 390 }).attr).toBeNull();
+    expect(boot({ width: 1023, reload: true }).attr).toBeNull();
+    // E não marca o dia: no desktop ainda é a primeira vez.
+    expect(boot({ width: 390 }).day).toBeUndefined();
   });
 
   it("navegador automatizado (E2E, auditorias): não toca", () => {
-    expect(boot({ webdriver: true })).toBeNull();
+    expect(boot({ webdriver: true }).attr).toBeNull();
   });
 
-  it("?intro=always força mesmo no celular, repetida ou automatizada", () => {
+  it("?intro=always força mesmo no celular, repetida ou automatizada, sem marcar o dia", () => {
     expect(
       boot({
         search: "?intro=always",
         width: 390,
-        played: true,
+        playedOn: TODAY,
         webdriver: true,
       }),
-    ).toBe("pending");
-    expect(boot({ search: "?intro=manual", played: true })).toBe("pending");
+    ).toEqual({ attr: "pending", day: TODAY });
+    expect(boot({ search: "?intro=always" }).day).toBeUndefined();
+    expect(boot({ search: "?intro=manual", playedOn: TODAY }).attr).toBe(
+      "pending",
+    );
   });
 
   it("?intro=off nunca toca", () => {
-    expect(boot({ search: "?intro=off" })).toBeNull();
+    expect(boot({ search: "?intro=off" }).attr).toBeNull();
   });
 
   it("sem storage (navegador restrito): a página aparece normalmente", () => {
-    expect(boot({ storageBroken: true })).toBeNull();
+    expect(boot({ storageBroken: true }).attr).toBeNull();
   });
 });
