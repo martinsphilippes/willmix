@@ -269,6 +269,11 @@ export const pt = {
   "supplierRequests.selection.open.all": "Abrir solicitação de todos ({n})",
   "supplierRequests.selection.open.mark": "Marcar para abrir a solicitação",
   "supplierRequests.selection.resolved": "Resolvido",
+  "supplierRequests.selection.section.saved":
+    "Resolvidos, esperando a solicitação ({n})",
+  "supplierRequests.selection.section.pending": "Por resolver ({n})",
+  "supplierRequests.selection.section.requested":
+    "Com solicitação aberta ({n})",
   "supplierRequests.selection.requested": "Solicitação nº {n} aberta",
   "supplierRequests.selection.requestedNoLink": "Solicitação aberta",
   "supplierRequests.selection.winner": "Escolhido · {qty} peças",
@@ -625,6 +630,10 @@ export const en: typeof pt = {
   "supplierRequests.selection.open.all": "Open request for all ({n})",
   "supplierRequests.selection.open.mark": "Mark to open the request",
   "supplierRequests.selection.resolved": "Resolved",
+  "supplierRequests.selection.section.saved":
+    "Resolved, waiting for the request ({n})",
+  "supplierRequests.selection.section.pending": "To resolve ({n})",
+  "supplierRequests.selection.section.requested": "With an open request ({n})",
   "supplierRequests.selection.requested": "Request no. {n} opened",
   "supplierRequests.selection.requestedNoLink": "Request opened",
   "supplierRequests.selection.winner": "Chosen · {qty} pieces",
@@ -971,6 +980,9 @@ export const zh: typeof pt = {
   "supplierRequests.selection.open.all": "为全部打开询问（{n}）",
   "supplierRequests.selection.open.mark": "勾选以打开询问",
   "supplierRequests.selection.resolved": "已解决",
+  "supplierRequests.selection.section.saved": "已解决，等待询单（{n}）",
+  "supplierRequests.selection.section.pending": "待解决（{n}）",
+  "supplierRequests.selection.section.requested": "已打开询单（{n}）",
   "supplierRequests.selection.requested": "询问 {n} 号已打开",
   "supplierRequests.selection.requestedNoLink": "询问已打开",
   "supplierRequests.selection.winner": "已选 · {qty} 件",

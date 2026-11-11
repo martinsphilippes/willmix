@@ -174,6 +174,14 @@ export default async function BookingSelectionPage({
         entry: e as (typeof savedGroups)[number] | null,
       })),
   ];
+  // Em cima os resolvidos (esperando a solicitação), depois os blocos por
+  // resolver e, separados embaixo, os que já têm solicitação aberta.
+  const cardSections = (["saved", "pending", "requested"] as const).map(
+    (key) => ({
+      key,
+      cards: cards.filter((c) => (c.entry?.group.status ?? "pending") === key),
+    }),
+  );
   const savedCount = savedGroups.filter(
     (e) => e.group.status === "saved",
   ).length;
@@ -895,162 +903,195 @@ export default async function BookingSelectionPage({
                         })}
                       </SubmitButton>
                     </div>
-                    <div
-                      className="grid gap-3 lg:grid-cols-2"
-                      data-selection-blocks
-                    >
-                      {cards.map((b) => {
-                        const g = b.entry?.group ?? null;
-                        const saved = g?.status === "saved";
-                        const request = b.entry?.request ?? null;
-                        // O ganhador primeiro, para aparecer sempre.
-                        const ids = g
-                          ? [
-                              g.chosenItemId,
-                              ...b.ids.filter((i) => i !== g.chosenItemId),
-                            ]
-                          : b.ids;
-                        return (
-                          <div
-                            key={b.key}
-                            className={cx(
-                              "rounded-xl border p-3",
-                              g
-                                ? "border-emerald-300 bg-emerald-50/40"
-                                : "border-zinc-200",
-                            )}
-                            data-selection-block={b.ids.length}
-                            data-selection-resolved={g?.status ?? undefined}
+                    <div className="space-y-5" data-selection-blocks>
+                      {cardSections.map((section) =>
+                        section.cards.length ? (
+                          <section
+                            key={section.key}
+                            data-selection-section={section.key}
                           >
-                            <div className="mb-2 flex flex-wrap items-center gap-2">
-                              {saved ? (
-                                <input
-                                  type="checkbox"
-                                  name="groups"
-                                  value={g!.id}
-                                  defaultChecked
-                                  className="h-5 w-5"
-                                  aria-label={t(
-                                    "supplierRequests.selection.open.mark",
-                                  )}
-                                  data-selection-group-mark={g!.id}
-                                />
-                              ) : null}
-                              <span className="font-semibold capitalize text-zinc-900">
-                                {b.label}
-                              </span>
-                              <Badge tone="info">
-                                {b.suppliers === null
-                                  ? t(
-                                      "supplierRequests.selection.blocks.sizeManual",
-                                      { n: b.ids.length },
-                                    )
-                                  : t(
-                                      "supplierRequests.selection.blocks.size",
-                                      {
-                                        n: b.ids.length,
-                                        suppliers: b.suppliers,
-                                      },
-                                    )}
-                              </Badge>
-                              {saved ? (
-                                <Badge tone="success">
-                                  {t("supplierRequests.selection.resolved")}
-                                </Badge>
-                              ) : null}
-                              {g?.status === "requested" ? (
-                                request ? (
-                                  <Link
-                                    href={`/app/supplier-requests/${request.id}`}
-                                    className={linkClass}
-                                    data-selection-request-link
-                                  >
-                                    {t("supplierRequests.selection.requested", {
-                                      n: request.number,
-                                    })}
-                                  </Link>
-                                ) : (
-                                  <Badge tone="success">
-                                    {t(
-                                      "supplierRequests.selection.requestedNoLink",
-                                    )}
-                                  </Badge>
-                                )
-                              ) : null}
-                            </div>
-                            <ul className="mb-3 space-y-1 text-[13px] text-zinc-700">
-                              {ids.slice(0, 6).map((id) => {
-                                const item =
-                                  rowById.get(id)?.item ??
-                                  (b.entry?.chosen?.id === id
-                                    ? b.entry.chosen
-                                    : null);
-                                if (!item) return null;
-                                const winner = g?.chosenItemId === id;
-                                const usdPrice = priceInUsd(
-                                  item.price,
-                                  item.currency,
-                                  rmbPerUsd,
-                                );
+                            <h3 className="mb-2 text-sm font-semibold text-zinc-800">
+                              {t(
+                                `supplierRequests.selection.section.${section.key}`,
+                                { n: section.cards.length },
+                              )}
+                            </h3>
+                            <div className="grid gap-3 lg:grid-cols-2">
+                              {section.cards.map((b) => {
+                                const g = b.entry?.group ?? null;
+                                const saved = g?.status === "saved";
+                                const request = b.entry?.request ?? null;
+                                // O ganhador primeiro, para aparecer sempre.
+                                const ids = g
+                                  ? [
+                                      g.chosenItemId,
+                                      ...b.ids.filter(
+                                        (i) => i !== g.chosenItemId,
+                                      ),
+                                    ]
+                                  : b.ids;
                                 return (
-                                  <li
-                                    key={id}
+                                  <div
+                                    key={b.key}
                                     className={cx(
-                                      "flex items-center gap-2",
-                                      winner &&
-                                        "rounded-md bg-emerald-100 px-1.5 py-1 font-semibold text-emerald-900",
+                                      "rounded-xl border p-3",
+                                      g
+                                        ? "border-emerald-300 bg-emerald-50/40"
+                                        : "border-zinc-200",
                                     )}
-                                    data-selection-winner={winner || undefined}
+                                    data-selection-block={b.ids.length}
+                                    data-selection-resolved={
+                                      g?.status ?? undefined
+                                    }
                                   >
-                                    <span className="min-w-0 flex-1 truncate">
-                                      {winner ? "✓ " : ""}
-                                      {item.description ??
-                                        item.productName ??
-                                        "—"}
-                                    </span>
-                                    {winner ? (
-                                      <span className="shrink-0 text-xs">
-                                        {t(
-                                          "supplierRequests.selection.winner",
-                                          {
-                                            qty: g!.quantity.toLocaleString(
-                                              intl,
-                                            ),
-                                          },
-                                        )}
+                                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                                      {saved ? (
+                                        <input
+                                          type="checkbox"
+                                          name="groups"
+                                          value={g!.id}
+                                          defaultChecked
+                                          className="h-5 w-5"
+                                          aria-label={t(
+                                            "supplierRequests.selection.open.mark",
+                                          )}
+                                          data-selection-group-mark={g!.id}
+                                        />
+                                      ) : null}
+                                      <span className="font-semibold capitalize text-zinc-900">
+                                        {b.label}
                                       </span>
-                                    ) : (
-                                      <span className="shrink-0 text-zinc-500">
-                                        {rowById.get(id)?.supplier?.name ?? "—"}
-                                      </span>
-                                    )}
-                                    <span className="w-20 shrink-0 text-right tabular-nums">
-                                      {usdPrice === null
-                                        ? "—"
-                                        : `US$ ${num(usdPrice, 3)}`}
-                                    </span>
-                                  </li>
+                                      <Badge tone="info">
+                                        {b.suppliers === null
+                                          ? t(
+                                              "supplierRequests.selection.blocks.sizeManual",
+                                              { n: b.ids.length },
+                                            )
+                                          : t(
+                                              "supplierRequests.selection.blocks.size",
+                                              {
+                                                n: b.ids.length,
+                                                suppliers: b.suppliers,
+                                              },
+                                            )}
+                                      </Badge>
+                                      {saved ? (
+                                        <Badge tone="success">
+                                          {t(
+                                            "supplierRequests.selection.resolved",
+                                          )}
+                                        </Badge>
+                                      ) : null}
+                                      {g?.status === "requested" ? (
+                                        request ? (
+                                          <Link
+                                            href={`/app/supplier-requests/${request.id}`}
+                                            className={linkClass}
+                                            data-selection-request-link
+                                          >
+                                            {t(
+                                              "supplierRequests.selection.requested",
+                                              {
+                                                n: request.number,
+                                              },
+                                            )}
+                                          </Link>
+                                        ) : (
+                                          <Badge tone="success">
+                                            {t(
+                                              "supplierRequests.selection.requestedNoLink",
+                                            )}
+                                          </Badge>
+                                        )
+                                      ) : null}
+                                    </div>
+                                    <ul className="mb-3 space-y-1 text-[13px] text-zinc-700">
+                                      {ids.slice(0, 6).map((id) => {
+                                        const item =
+                                          rowById.get(id)?.item ??
+                                          (b.entry?.chosen?.id === id
+                                            ? b.entry.chosen
+                                            : null);
+                                        if (!item) return null;
+                                        const winner = g?.chosenItemId === id;
+                                        const usdPrice = priceInUsd(
+                                          item.price,
+                                          item.currency,
+                                          rmbPerUsd,
+                                        );
+                                        return (
+                                          <li
+                                            key={id}
+                                            className={cx(
+                                              "flex items-center gap-2",
+                                              winner &&
+                                                "rounded-md bg-emerald-100 px-1.5 py-1 font-semibold text-emerald-900",
+                                            )}
+                                            data-selection-winner={
+                                              winner || undefined
+                                            }
+                                          >
+                                            <span className="min-w-0 flex-1 truncate">
+                                              {winner ? "✓ " : ""}
+                                              {item.description ??
+                                                item.productName ??
+                                                "—"}
+                                            </span>
+                                            {winner ? (
+                                              <span className="shrink-0 text-xs">
+                                                {t(
+                                                  "supplierRequests.selection.winner",
+                                                  {
+                                                    qty: g!.quantity.toLocaleString(
+                                                      intl,
+                                                    ),
+                                                  },
+                                                )}
+                                              </span>
+                                            ) : (
+                                              <span className="shrink-0 text-zinc-500">
+                                                {rowById.get(id)?.supplier
+                                                  ?.name ?? "—"}
+                                              </span>
+                                            )}
+                                            <span className="w-20 shrink-0 text-right tabular-nums">
+                                              {usdPrice === null
+                                                ? "—"
+                                                : `US$ ${num(usdPrice, 3)}`}
+                                            </span>
+                                          </li>
+                                        );
+                                      })}
+                                      {ids.length > 6 ? (
+                                        <li className="text-xs text-zinc-500">
+                                          {t(
+                                            "supplierRequests.selection.blocks.more",
+                                            {
+                                              n: ids.length - 6,
+                                            },
+                                          )}
+                                        </li>
+                                      ) : null}
+                                    </ul>
+                                    <LinkButton
+                                      href={groupHref(b.ids)}
+                                      data-selection-block-open
+                                    >
+                                      {g
+                                        ? t(
+                                            "supplierRequests.selection.blocks.reopen",
+                                          )
+                                        : t(
+                                            "supplierRequests.selection.blocks.open",
+                                          )}
+                                    </LinkButton>
+                                  </div>
                                 );
                               })}
-                              {ids.length > 6 ? (
-                                <li className="text-xs text-zinc-500">
-                                  {t("supplierRequests.selection.blocks.more", {
-                                    n: ids.length - 6,
-                                  })}
-                                </li>
-                              ) : null}
-                            </ul>
-                            <LinkButton
-                              href={groupHref(b.ids)}
-                              data-selection-block-open
-                            >
-                              {g
-                                ? t("supplierRequests.selection.blocks.reopen")
-                                : t("supplierRequests.selection.blocks.open")}
-                            </LinkButton>
-                          </div>
-                        );
-                      })}
+                            </div>
+                          </section>
+                        ) : null,
+                      )}
                     </div>
                   </form>
                 ) : (

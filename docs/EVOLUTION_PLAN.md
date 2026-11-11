@@ -848,3 +848,7 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (11/11/2026): ao abrir a solicitação de um ou de vários grupos na Seleção, chegavam ao fornecedor várias solicitações (uma por produto). Agora os produtos abertos juntos para o mesmo fornecedor viram **uma solicitação só**: um número, uma linha na lista, um aviso, e os produtos dentro (2.1, 2.2…).
 - Aditivo: `supplier_requests.batchId` (novo, opcional). O registro continua um por produto, com a sua resposta, negociação e decisão. As antigas, sem `batchId`, continuam uma por produto (nenhum dado muda). Detalhes em docs/SUPPLIER_REQUESTS.md ("Uma solicitação, vários produtos").
+
+## Seleção de itens: blocos resolvidos em cima, com solicitação aberta embaixo
+
+- **Pedido do dono** (11/11/2026): na aba Seleção, os blocos ficavam misturados. Agora há três partes, cada uma com título e contagem: em cima os resolvidos que esperam a solicitação, depois os blocos por resolver e, separados embaixo, os que já têm solicitação aberta. Só a ordem da tela mudou; nada no servidor nem no banco.
