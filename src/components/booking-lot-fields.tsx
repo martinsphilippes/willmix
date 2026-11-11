@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  SaveCombobox,
   SaveInput,
   SaveSelect,
   type BookingRowFieldLabels,
@@ -23,18 +24,25 @@ export function BookingLotSupplierSelect({
   current,
   options,
   labels,
+  placeholder,
+  noMatch,
 }: {
   lotId: string;
   current: string;
   options: { value: string; label: string }[];
   labels: BookingRowFieldLabels;
+  placeholder: string;
+  noMatch: string;
 }) {
+  // Com busca: clicar abre a lista e digitar vai filtrando os fornecedores.
   return (
-    <SaveSelect
+    <SaveCombobox
       send={(value) => setBookingLotSupplierAction(lotId, value)}
       current={current}
       options={options}
       labels={labels}
+      placeholder={placeholder}
+      noMatch={noMatch}
       width="w-full max-w-sm"
       data-booking-lot-supplier={lotId}
     />

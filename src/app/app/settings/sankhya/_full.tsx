@@ -4,7 +4,11 @@ import { Alert, Badge, Card, Table, Td, Th } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { FULL_LOAD_ENTITIES } from "@/lib/integrations/sankhya-mapping";
 import { getFullLoadProgress } from "@/lib/integrations/sankhya-full-load";
-import { sankhyaFullLoadAction } from "../../actions/sankhya-integration";
+import { getServerLoad } from "@/lib/integrations/sankhya-load-queue";
+import {
+  sankhyaFullLoadAction,
+  sankhyaServerLoadAction,
+} from "../../actions/sankhya-integration";
 import { one } from "./_shared";
 import { AutoContinue } from "./_auto";
 
@@ -23,6 +27,8 @@ export async function FullLoadCard({ t, q }: { t: Translate; q: Params }) {
       progress: await getFullLoadProgress(entity),
     })),
   );
+  const server = await getServerLoad();
+  const queued = new Set(server.active ? server.queue : []);
   const ran = one(q.ran);
   const full = one(q.full);
   const auto = one(q.auto) === "1" && ran === "partial";
@@ -47,6 +53,49 @@ export async function FullLoadCard({ t, q }: { t: Translate; q: Params }) {
           )}
         </Alert>
       ) : null}
+      <div
+        className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm"
+        data-sankhya-server-load={server.active ? "on" : "off"}
+      >
+        <span className="flex-1">
+          {server.active ? (
+            <>
+              <Badge tone="info">{t("sankhyaLoad.server.on")}</Badge>{" "}
+              {t("sankhyaLoad.server.queue", {
+                list: server.queue
+                  .map((e) =>
+                    t(`sankhyaLoad.full.entity.${e}` as DictionaryKey),
+                  )
+                  .join(" → "),
+                last: fmt(server.lastRunAt),
+              })}
+            </>
+          ) : server.finishedAt && !server.lastError ? (
+            t("sankhyaLoad.server.finished", { at: fmt(server.finishedAt) })
+          ) : (
+            t("sankhyaLoad.server.hint")
+          )}
+          {server.lastError ? (
+            <span className="mt-1 block text-xs text-red-700">
+              {t("sankhyaLoad.server.error", {
+                n: server.failures,
+                error: server.lastError,
+              })}
+            </span>
+          ) : null}
+        </span>
+        <form action={sankhyaServerLoadAction}>
+          {server.active ? <input type="hidden" name="stop" value="1" /> : null}
+          <SubmitButton
+            variant={server.active ? "secondary" : "primary"}
+            pendingText="…"
+          >
+            {server.active
+              ? t("sankhyaLoad.server.stop")
+              : t("sankhyaLoad.server.startAll")}
+          </SubmitButton>
+        </form>
+      </div>
       <Table>
         <thead>
           <tr>
@@ -118,6 +167,16 @@ export async function FullLoadCard({ t, q }: { t: Translate; q: Params }) {
                         {t("sankhyaLoad.full.auto")}
                       </SubmitButton>
                     </form>
+                  ) : null}
+                  {!p.done && !queued.has(entity) ? (
+                    <form action={sankhyaServerLoadAction}>
+                      <input type="hidden" name="entity" value={entity} />
+                      <SubmitButton variant="secondary" pendingText="…">
+                        {t("sankhyaLoad.server.one")}
+                      </SubmitButton>
+                    </form>
+                  ) : queued.has(entity) ? (
+                    <Badge tone="info">{t("sankhyaLoad.server.queued")}</Badge>
                   ) : null}
                   {auto && full === entity && !p.done ? (
                     <>
