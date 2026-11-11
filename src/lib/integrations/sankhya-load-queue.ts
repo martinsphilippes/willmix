@@ -11,7 +11,7 @@ import { readSetting, writeSetting } from "./sankhya-settings";
 /*
  * Carga completa "no servidor" (docs/SANKHYA.md): a pessoa enfileira as
  * entidades e pode fechar o navegador. Um agendador (pg_cron do Supabase, a
- * cada minuto, só enquanto a fila está ativa) chama /api/jobs/sankhya-load,
+ * cada 30 segundos, só enquanto a fila está ativa) chama /api/jobs/sankhya-load,
  * que roda uma rodada de ~30 s da primeira entidade da fila. Terminada a
  * entidade, passa para a próxima; a fila vazia desliga sozinha.
  *
