@@ -172,6 +172,28 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
       accessFromFunctions(user.functions, await loadFunctionDefs()),
     );
   }
+  // Externo: as telas do perfil dele na Gestão de telas (o do tipo do
+  // parceiro, ou o do papel). Lido a cada requisição: revogar vale na
+  // próxima operação.
+  if (user && user.role !== "operator" && user.role !== "admin") {
+    try {
+      const [{ externalAccessFor }, { attachAccess }] = await Promise.all([
+        import("@/lib/services/partner-access"),
+        import("@/lib/auth/access-cache"),
+      ]);
+      const access = await externalAccessFor(user);
+      if (access)
+        attachAccess(user, {
+          screens: [],
+          actions: [],
+          external: access.screens,
+          menuHidden: access.menuHidden,
+        });
+    } catch (error) {
+      // Banco fora do ar: o padrão de fábrica do papel.
+      console.error("externalAccessFor", error);
+    }
+  }
   return user;
 });
 

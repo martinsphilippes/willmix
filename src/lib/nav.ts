@@ -1,6 +1,6 @@
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { isWellmix } from "@/lib/auth/permissions";
-import { screensFor, type Screen } from "@/lib/auth/screens";
+import { menuScreensFor, type Screen } from "@/lib/auth/screens";
 import type { User } from "@/lib/db/schema";
 
 /*
@@ -52,10 +52,33 @@ function pick(has: Set<Screen>, entries: Entry[]): NavLink[] {
   return entries.filter(([screen]) => has.has(screen)).map(([, link]) => link);
 }
 
+/*
+ * Gestão de telas (docs/PARTNER_ACCESS.md): um perfil pode receber telas que
+ * nasceram para outro. O menu de quem recebe ganha o link no fim do grupo;
+ * quem não recebeu não vê nada novo.
+ */
+const GRANTED_FROM_CUSTOMER: Entry[] = [
+  ["explore", { href: "/app/explore", key: "nav.explore" }],
+  ["requests", { href: "/app/requests", key: "nav.myQuotes" }],
+  ["history", { href: "/app/history", key: "nav.history" }],
+  ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
+];
+const GRANTED_FROM_PARTNERS: Entry[] = [
+  ["quotes", { href: "/app/quotes", key: "nav.quotes" }],
+  ["freight", { href: "/app/freight", key: "nav.freight" }],
+  [
+    "freightTariff",
+    { href: "/app/freight/tariff", key: "nav.myFreightTariff" },
+  ],
+  ["packaging", { href: "/app/packaging", key: "nav.packaging" }],
+  ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
+  ["account", { href: "/app/account", key: "nav.account" }],
+];
+
 export function navFor(
   user: Pick<User, "role"> & Partial<Pick<User, "functions">>,
 ): NavEntry[] {
-  const has = screensFor(user);
+  const has = menuScreensFor(user);
   if (isWellmix(user)) {
     return [
       ...group(
@@ -154,7 +177,7 @@ export function navFor(
     // Início do cliente é a vitrine (Explorar); o resto (orçamentos, pedidos,
     // pendências) fica num grupo só, "Meus pedidos".
     return [
-      { href: "/app/explore", key: "nav.explore" },
+      ...pick(has, [["explore", { href: "/app/explore", key: "nav.explore" }]]),
       ...group(
         "nav.group.myOrders",
         pick(has, [
@@ -168,6 +191,8 @@ export function navFor(
           ["messages", MESSAGES],
           ["history", { href: "/app/history", key: "nav.history" }],
           ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
+          // Telas de outros perfis liberadas na Gestão de telas.
+          ...GRANTED_FROM_PARTNERS,
         ]),
       ),
     ];
@@ -212,6 +237,8 @@ export function navFor(
           : []),
         ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
         ["account", { href: "/app/account", key: "nav.account" }],
+        // Telas do cliente liberadas na Gestão de telas.
+        ...GRANTED_FROM_CUSTOMER,
       ]),
     ),
   ];

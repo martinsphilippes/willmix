@@ -856,3 +856,10 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 ## Barra da Wellmix fixa no alto em todas as telas
 
 - **Pedido do dono** (11/11/2026): o cabeçalho do portal (marca, idioma, conta e menu) fica fixo no alto e não some ao rolar (`sticky top-0` em `src/app/app/layout.tsx`). A altura dele fica na variável `--wm-header` (`globals.css`: uma faixa no celular, duas a partir do tablet), usada para os saltos de seção caírem abaixo dele (`scroll-padding-top`) e para os painéis laterais que acompanham a rolagem (Control Tower, Superplan, vitrine e carrinho) ficarem abaixo dele. Na impressão o cabeçalho volta a ser comum.
+
+## Outros parceiros: Trading, Factory, Supplier e GP, tipos criados no painel e Gestão de telas
+
+- **Pedido do dono** (11/11/2026): quatro tipos novos em destaque (Trading, Factory, Supplier, GP), criar tipos pelo painel, usuários com login em cada um (entram com as telas do Fornecedor) e a Gestão de telas para liberar, copiar e comparar telas entre tipos de login externo. Decisões do dono: são parceiros à parte (não entram como fornecedor nas operações); o seletor DEMO fica desligado em produção. Detalhes em docs/PARTNER_TYPES.md e docs/PARTNER_ACCESS.md.
+- **Correção**: o Novo parceiro aberto por Outros parceiros vinha com "Fornecedor" marcado (padrão do formulário compartilhado). Agora vem o tipo do filtro, ou nada marcado; Cliente e Fornecedor só aparecem quando a tela é aberta por eles.
+- **Segurança**: telas internas e telas de outra classe de login ficam no catálogo, mas não podem ser liberadas a um perfil para o qual não foram revistas (algumas não filtram os dados para outro papel).
+- Aditivo: tabela `partner_types`, `parties.partnerTypeId`, valores novos em `parties.type`; a configuração de telas fica em `settings` (`partnerAccess`). Acordos comerciais e comissões: só o levantamento (docs/PARTNER_TYPES.md).

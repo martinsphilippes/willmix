@@ -325,7 +325,7 @@ export const SCREEN_GROUPS: ReadonlyArray<{
   },
 ];
 
-const isScreen = (value: unknown): value is Screen =>
+export const isScreen = (value: unknown): value is Screen =>
   typeof value === "string" && (SCREENS as readonly string[]).includes(value);
 
 /** Só chaves de tela válidas (o banco pode ter lixo ou chave antiga). */
@@ -373,7 +373,19 @@ export function screensFor(
       return new Set<Screen>([...WELLMIX_BASE, ...validScreens(user.screens)]);
     return functionScreensFor(user, access);
   }
+  // Externo: o perfil configurado na Gestão de telas (guardado nesta
+  // requisição) ou, sem ele, a lista de fábrica do papel.
+  const resolved = access ?? accessOf(user);
+  if (resolved?.external) return new Set(validScreens(resolved.external));
   return new Set(ROLE_SCREENS[user.role as keyof typeof ROLE_SCREENS] ?? []);
+}
+
+/** Telas que aparecem no menu: as que o login abre, menos as escondidas. */
+export function menuScreensFor(user: Who): Set<Screen> {
+  const has = screensFor(user);
+  for (const screen of validScreens(accessOf(user)?.menuHidden ?? []))
+    has.delete(screen);
+  return has;
 }
 
 export const canOpen = (user: Who, screen: Screen) =>

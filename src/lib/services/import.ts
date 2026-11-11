@@ -4,7 +4,6 @@ import {
   getStore,
   PARTY_EXTRA_DEFAULTS,
   LINE_EXTRA_DEFAULTS,
-  PARTY_TYPES,
   PRODUCT_EXTRA_DEFAULTS,
   type User,
 } from "@/lib/db";
@@ -61,15 +60,19 @@ export async function importCsv(user: User, entity: string, text: string) {
   let skipped = 0;
 
   if (entity === "parties") {
+    // O tipo vem do catálogo (docs/PARTNER_TYPES.md): a chave legada
+    // ("agency") ou o nome; desconhecido, ambíguo ou inativo pula a linha.
+    const { importPartyType } = await import("./partner-types");
+    const resolveType = await importPartyType();
     for (const row of rows) {
-      const type = row.type?.toLowerCase();
-      if (!(PARTY_TYPES as readonly string[]).includes(type) || !row.name) {
+      const resolved = resolveType(row.type ?? "");
+      if (!resolved.ok || !row.name) {
         skipped++;
         continue;
       }
       await store.create("parties", {
         ...PARTY_EXTRA_DEFAULTS,
-        type: type as never,
+        ...resolved.party,
         name: row.name,
         country: row.country || null,
         email: row.email || null,

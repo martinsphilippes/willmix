@@ -88,7 +88,12 @@ export async function createPortalLogin(
   if (input.partyId && !party) throw new Error("not_found");
   if (!wellmixRole) {
     if (!party) throw new Error("user_party_required");
-    if (party.type !== input.role) throw new Error("user_role_mismatch");
+    // O papel do login é o do tipo do cadastro. Os tipos novos de Outros
+    // parceiros (Trading, Factory, Supplier, GP e os criados com login)
+    // entram como o Fornecedor entra (docs/PARTNER_TYPES.md).
+    const { loginRoleOfParty } = await import("./partner-types");
+    if ((await loginRoleOfParty(party)) !== input.role)
+      throw new Error("user_role_mismatch");
   }
   const taken = await store.list("users", { filter: { email }, limit: 1 });
   if (taken.length) throw new Error("user_email_taken");
