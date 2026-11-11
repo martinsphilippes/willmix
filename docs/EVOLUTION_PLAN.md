@@ -787,3 +787,7 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - `ImportFlowCard` ganhou `featured` e `featuredHint`. O texto da certificadora que ainda dizia "sem preço" foi corrigido (ela vê o preço desde a decisão anterior).
 - O E2E envia o selo pelo quadro.
 - **Selo e memorial no mesmo quadro** (dono, 10/11/2026): o quadro em destaque passou a ter dois campos, **Selo** (`cert_seal`, o que libera o pedido e vai para a agência) e **Memorial descritivo** em PDF (`cert_memorial`, opcional). A certificadora do pedido também anexa o memorial, e o que ela anexa já vale (não pede validação). Laudo e registro saíram da tela e ninguém ganha mais pendência de começar memorial, laudo ou registro: o PDF basta para a próxima etapa. Pedido antigo com laudo ou registro já preenchidos continua mostrando e seguindo o caminho dele (nenhum dado some).
+
+## Busca enquanto digita nas listas
+
+- **Pedido do dono** (10/11/2026): o campo de busca filtra sozinho a cada pausa na digitação, sem apertar "Buscar". Componente `LiveSearch` (`src/components/live-search.tsx`), colocado dentro do formulário de busca (GET): o resultado continua no endereço, o botão continua valendo e a paginação volta ao início. Ligado em Fornecedores e Clientes (`_party-accounts/list.tsx`), Produtos, Solicitações, Estoque, Seleção do Booking e Vitrine. Ficou de fora a tela de produtos do Booking (o campo dela é recriado a cada busca e perderia o cursor).

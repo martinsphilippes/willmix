@@ -1,3 +1,4 @@
+import { LiveSearch } from "@/components/live-search";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -157,6 +158,7 @@ export async function PartyAccountList({
           aria-label={L("search")}
           className="w-full max-w-md"
         />
+        <LiveSearch />
         <Button type="submit" variant="primary">
           {L("search.button")}
         </Button>

@@ -1,3 +1,4 @@
+import { LiveSearch } from "@/components/live-search";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
@@ -245,6 +246,7 @@ export function ExploreHero({
             className="h-11 w-full rounded-xl border-0 bg-white pl-10 pr-3 text-[15px] text-zinc-900 shadow-sm outline-none ring-2 ring-transparent placeholder:text-zinc-500 focus:ring-4 focus:ring-zinc-900/40"
             data-explore-search=""
           />
+          <LiveSearch />
         </div>
         <button
           type="submit"
