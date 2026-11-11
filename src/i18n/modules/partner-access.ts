@@ -103,6 +103,10 @@ export const pt = {
     "O login começa com as mesmas telas do Fornecedor e vê só os registros da própria empresa. Ajuste depois na Gestão de telas.",
   "partnerTypes.login.yes": "Com login",
   "partnerTypes.login.no": "Sem login",
+  "partnerAccess.login.create": "Gerar login de acesso",
+  "partnerAccess.login.card": "Logins de acesso ao portal",
+  "partnerAccess.login.col": "Login de acesso",
+  "partnerAccess.login.count": "{n} login(s)",
 };
 
 export const en: typeof pt = {
@@ -208,6 +212,10 @@ export const en: typeof pt = {
     "The login starts with the same screens as the Supplier and sees only its own company's records. Adjust later in Screen management.",
   "partnerTypes.login.yes": "With login",
   "partnerTypes.login.no": "No login",
+  "partnerAccess.login.create": "Create portal login",
+  "partnerAccess.login.card": "Portal logins",
+  "partnerAccess.login.col": "Portal login",
+  "partnerAccess.login.count": "{n} login(s)",
 };
 
 export const zh: typeof pt = {
@@ -307,4 +315,8 @@ export const zh: typeof pt = {
     "登录初始拥有与供应商相同的页面，只能看到本公司的记录。之后可在页面管理中调整。",
   "partnerTypes.login.yes": "可登录",
   "partnerTypes.login.no": "不可登录",
+  "partnerAccess.login.create": "创建登录账号",
+  "partnerAccess.login.card": "门户登录账号",
+  "partnerAccess.login.col": "登录账号",
+  "partnerAccess.login.count": "{n} 个账号",
 };

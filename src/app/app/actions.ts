@@ -955,7 +955,8 @@ export async function savePartyAction(form: FormData) {
     });
     await audit(user, "party.create", "party", party.id, parsed.name);
     await syncSoon(user, "party", party.id);
-    return `/app/parties/${party.id}`;
+    // Cadastro novo: abre já no quadro de acesso, para gerar o login.
+    return `/app/parties/${party.id}#access`;
   });
 }
 
