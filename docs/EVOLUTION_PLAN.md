@@ -839,3 +839,7 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 ## Solicitação ao fornecedor: conversa na coluna da direita, embaixo do Booking
 
 - **Pedido do dono** (11/11/2026): na tela da solicitação ao fornecedor (`/app/supplier-requests/<id>`), o cartão "Negociação e conversa" sai da coluna larga e vai para a coluna da direita, embaixo do cartão Booking, em formato compacto (formulários um embaixo do outro). Para o fornecedor, que não tem o cartão Booking, a conversa fica no fim da mesma coluna. Nada mudou na negociação em si. Código em `supplier-requests/[id]/page.tsx` e `_components/negotiation.tsx`.
+
+## Solicitação ao fornecedor: tabela, linha do tempo e chat flutuante
+
+- **Pedido do dono** (11/11/2026): a tela abre numa tabela dos produtos (fornecedor e Wellmix), com condições iniciais e finais; a conversa sai do cartão "Negociação" e vira um chat flutuante no canto inferior direito; o histórico vira a linha do tempo. O cartão "Negociação" continua na coluna da direita, embaixo do Booking (item acima), só com a contraproposta e a resposta a ela. Detalhes em docs/SUPPLIER_REQUESTS.md.

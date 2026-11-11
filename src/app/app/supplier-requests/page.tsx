@@ -7,13 +7,17 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { listSupplierRequests } from "@/lib/services/supplier-requests";
 import { getT } from "@/i18n/server";
 import { STATUS_TONE, answerText } from "./_components/status";
-import { SlaBadge } from "./_components/negotiation";
+import { SlaBadge, dateTime } from "./_components/negotiation";
 import {
   notifyLateSupplierRequests,
   slaOf,
   supplierRequestSlaMinutes,
 } from "@/lib/services/supplier-request-negotiation";
-import { negotiationTurn } from "@/lib/supplier-requests";
+import {
+  distinctProductsByGroup,
+  finishedLate,
+  negotiationTurn,
+} from "@/lib/supplier-requests";
 import { dictionaries } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import {
@@ -32,7 +36,6 @@ import {
   Table,
   Td,
   Th,
-  formatDate,
   linkClass,
   rowClass,
 } from "@/components/ui";
@@ -80,6 +83,11 @@ export default async function SupplierRequestsPage({
     ? await purchaseOrderCustomer()
     : null;
 
+  // Produtos distintos: na lista toda e em cada grupo (fornecedor + booking).
+  const rows = entries ?? [];
+  const distinctTotal = new Set(rows.map((e) => e.request.bookingItemId)).size;
+  const perGroup = distinctProductsByGroup(rows.map((e) => e.request));
+
   return (
     <>
       <PageHeader
@@ -118,6 +126,12 @@ export default async function SupplierRequestsPage({
         </Alert>
       ) : entries.length ? (
         <Card>
+          <p className="mb-2 text-sm text-zinc-600" data-supplier-request-count>
+            {t("supplierRequests.list.count", {
+              n: entries.length,
+              products: distinctTotal,
+            })}
+          </p>
           <Table>
             <thead>
               <tr>
@@ -126,8 +140,10 @@ export default async function SupplierRequestsPage({
                 {wellmix ? <Th>{t("supplierRequests.col.supplier")}</Th> : null}
                 <Th>{t("supplierRequests.col.item")}</Th>
                 <Th>{t("supplierRequests.col.quantity")}</Th>
+                <Th>{t("supplierRequests.col.products")}</Th>
                 <Th>{t("supplierRequests.col.answer")}</Th>
                 <Th>{t("supplierRequests.col.createdAt")}</Th>
+                <Th>{t("supplierRequests.col.finishedAt")}</Th>
               </tr>
             </thead>
             <tbody>
@@ -176,6 +192,17 @@ export default async function SupplierRequestsPage({
                       n: r.quantity.toLocaleString(t.intl),
                     })}
                   </Td>
+                  <Td
+                    className="tabular-nums"
+                    data-supplier-request-products={r.id}
+                  >
+                    <Link
+                      href={`/app/supplier-requests/${r.id}`}
+                      className={linkClass}
+                    >
+                      {perGroup.get(`${r.supplierId}:${r.bookingLotId}`) ?? 1}
+                    </Link>
+                  </Td>
                   <Td>
                     {answerText(t, r)}
                     {r.orderId ? (
@@ -188,7 +215,36 @@ export default async function SupplierRequestsPage({
                       </Link>
                     ) : null}
                   </Td>
-                  <Td>{formatDate(r.createdAt, t)}</Td>
+                  <Td className="whitespace-nowrap tabular-nums">
+                    {dateTime(r.createdAt, t)}
+                  </Td>
+                  <Td
+                    className="whitespace-nowrap"
+                    data-supplier-request-finished={r.id}
+                  >
+                    {r.decidedAt ? (
+                      <>
+                        <span className="block tabular-nums">
+                          {dateTime(r.decidedAt, t)}
+                        </span>
+                        <span className="mt-0.5 inline-flex">
+                          <Badge
+                            tone={
+                              finishedLate(r, slaMinutes) ? "danger" : "success"
+                            }
+                          >
+                            {t(
+                              finishedLate(r, slaMinutes)
+                                ? "supplierRequests.list.finishedLate"
+                                : "supplierRequests.list.finishedOnTime",
+                            )}
+                          </Badge>
+                        </span>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </Td>
                 </tr>
               ))}
             </tbody>

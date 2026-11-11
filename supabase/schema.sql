@@ -1557,6 +1557,7 @@ alter table public."supplier_requests" add column if not exists "supplierPrice" 
 alter table public."supplier_requests" add column if not exists "supplierCurrency" text;
 alter table public."supplier_requests" add column if not exists "supplierMoq" bigint;
 alter table public."supplier_requests" add column if not exists "supplierLeadTimeDays" bigint;
+alter table public."supplier_requests" add column if not exists "supplierIncoterm" text;
 alter table public."supplier_requests" add column if not exists "supplierNote" text;
 alter table public."supplier_requests" add column if not exists "respondedAt" timestamptz;
 alter table public."supplier_requests" add column if not exists "respondedByUserId" text;

@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { SHEET_CURRENCIES, YES_NO } from "@/lib/db/schema";
+import { SHEET_CURRENCIES, SHEET_INCOTERMS, YES_NO } from "@/lib/db/schema";
 import { parseNumberInput } from "@/lib/number-input";
 import { requireUser, run, str, withQuery } from "./helpers";
 
@@ -15,13 +15,14 @@ import { requireUser, run, str, withQuery } from "./helpers";
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const SELECTION = "/app/booking/selection";
 /**
- * Detalhe da solicitação. O fornecedor abre primeiro a tabela dos produtos;
- * o formulário da tela do produto (`view=item`) volta para ela mesma.
+ * Detalhe da solicitação. Quem abre o link vê primeiro a tabela dos
+ * produtos; as ações rápidas dela (`view=table`) voltam para a tabela e as
+ * da tela do produto voltam para o produto (`view=item`).
  */
 const detail = (id: string, form?: FormData) =>
-  form && str(form, "view") === "item"
-    ? `/app/supplier-requests/${id}?view=item`
-    : `/app/supplier-requests/${id}`;
+  form && str(form, "view") === "table"
+    ? `/app/supplier-requests/${id}`
+    : `/app/supplier-requests/${id}?view=item`;
 
 /** Número digitado (vírgula ou ponto); vazio = nulo; ilegível recusa. */
 function number(form: FormData, key: string, int = false): number | null {
@@ -152,12 +153,14 @@ export async function answerSupplierRequestAction(form: FormData) {
         id: ID,
         canDo: z.enum(YES_NO),
         currency: z.enum(SHEET_CURRENCIES).nullable(),
+        incoterm: z.enum(SHEET_INCOTERMS).nullable(),
         note: z.string().max(4000).nullable(),
       })
       .parse({
         id: raw,
         canDo: str(form, "canDo"),
         currency: str(form, "currency") || null,
+        incoterm: str(form, "incoterm") || null,
         note: str(form, "note") || null,
       });
     const { answerSupplierRequest } =
@@ -165,6 +168,7 @@ export async function answerSupplierRequestAction(form: FormData) {
     await answerSupplierRequest(user, input.id, {
       canDo: input.canDo,
       currency: input.currency,
+      incoterm: input.incoterm,
       note: input.note,
       price: number(form, "price"),
       moq: number(form, "moq", true),

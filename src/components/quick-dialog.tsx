@@ -14,13 +14,16 @@ export function QuickDialog({
   title,
   closeLabel,
   tone = "secondary",
+  hint,
   children,
   ...rest
 }: {
+  /** Texto ou ícone do botão. Só ícone: `hint` vira o nome e a dica dele. */
   label: ReactNode;
   title: string;
   closeLabel: string;
   tone?: "primary" | "secondary";
+  hint?: string;
   children: ReactNode;
 } & { [key: `data-${string}`]: string | undefined }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -29,6 +32,8 @@ export function QuickDialog({
       <button
         type="button"
         onClick={() => dialog.current?.showModal()}
+        title={hint}
+        aria-label={hint}
         className={cx(
           "inline-flex items-center justify-center rounded-md px-2.5 py-1 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-brand-600",
           tone === "primary"
