@@ -72,6 +72,28 @@ body {
   }
 }
 
+/* Quadro recolhível do cadastro: letra menor nos rótulos e nos campos. No
+   iPhone os campos seguem com 16px (senão o Safari dá zoom ao tocar). */
+[data-fold-card] [data-field-row] > :first-child {
+  font-size: 11px;
+}
+[data-fold-card]
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+[data-fold-card] select,
+[data-fold-card] textarea {
+  font-size: 12px;
+}
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 767px) {
+    [data-fold-card]
+      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    [data-fold-card] select,
+    [data-fold-card] textarea {
+      font-size: 16px;
+    }
+  }
+}
+
 /* Seleção de texto e foco de teclado na cor da marca. */
 ::selection {
   background: var(--color-brand-100);
