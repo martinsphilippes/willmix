@@ -19,7 +19,6 @@ const SCOPE = z.enum(SHEET_READING_SCOPES);
 
 function backFor(scope: (typeof SHEET_READING_SCOPES)[number], key: string) {
   const k = encodeURIComponent(key);
-  if (scope === "quote") return `/app/quotes/${k}`;
   if (scope === "order") return `/app/orders/${k}/purchase-sheet`;
   return `/app/products/${k}`;
 }

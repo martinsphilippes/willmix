@@ -68,7 +68,7 @@ export async function listPurchaseCandidates(
       filter: { status: "approved" },
     });
   } catch (error) {
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     if (isSchemaMissing(error)) return null;
     throw error;
   }
@@ -200,7 +200,6 @@ export async function createPurchaseOrder(
     unit: "pcs",
     deadline: null,
     status: "ORDERED",
-    selectedQuoteId: null,
     orderId: null,
     sellPrice: null,
     sellCurrency: null,

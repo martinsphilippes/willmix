@@ -14,7 +14,7 @@ const { seedDemo } = await import("@/lib/seed");
 const r = await import("@/lib/services/requests");
 const sales = await import("@/lib/services/data-reset");
 const catalog = await import("@/lib/services/catalog-reset");
-const { STOCK_PARTY_ID } = await import("@/lib/services/purchase-flow");
+const { STOCK_PARTY_ID } = await import("@/lib/services/stock-party");
 const { writeSetting, readSetting } =
   await import("@/lib/integrations/sankhya-settings");
 type User = import("@/lib/db").User;

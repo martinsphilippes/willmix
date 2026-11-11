@@ -13,7 +13,7 @@ import {
 } from "@/lib/db";
 import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { MESSAGE_SLA_BUSINESS_DAYS, businessDeadline } from "@/lib/sla";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 import { topicHref } from "./messages";
 
 /*

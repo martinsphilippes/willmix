@@ -28,7 +28,6 @@ const TRANSIENT = [
   "restored",
   "purged",
   "skipped",
-  "rfq",
   "done",
   "photos",
   "photoRemoved",

@@ -6,7 +6,6 @@ import {
   type OrderItem,
   type Product,
   type PurchaseSnapshot,
-  type Quote,
   type User,
 } from "@/lib/db";
 import { boxCbm } from "@/lib/logistics/cbm";
@@ -14,14 +13,13 @@ import { audit } from "./audit";
 
 /**
  * Snapshot da negociação: o que foi efetivamente comprado naquele pedido.
- * Copia a ficha do produto e a cotação no momento da compra; alterações
+ * Copia a ficha do produto e o preço do pedido no momento da compra; alterações
  * posteriores no cadastro mestre não o afetam. Base da comparação na inspeção.
  */
 export async function createPurchaseSnapshot(
   user: User | null,
   order: Order,
   item: OrderItem,
-  quote: Quote | null,
   product: Product | null,
   note: string | null = null,
 ): Promise<PurchaseSnapshot> {
@@ -34,7 +32,7 @@ export async function createPurchaseSnapshot(
     : null;
   // Item com variação: caixa, pesos, medidas da peça, CBM, cor, material e
   // MOQ são os da variação pedida (cópia feita na solicitação), não os do
-  // produto (que espelham a variação de referência). Preço vem da cotação.
+  // produto (que espelham a variação de referência). Preço vem do item do pedido.
   const v = item.variant ?? null;
   const snapshot = await store.create("purchase_snapshots", {
     orderId: order.id,
@@ -43,14 +41,13 @@ export async function createPurchaseSnapshot(
     productId: product?.id ?? null,
     sourcingItemId: product?.sourcingItemId ?? null,
     supplierId: order.supplierId,
-    quoteId: quote?.id ?? null,
     name: item.name,
     supplierSku: v?.factoryItemCode ?? product?.supplierSku ?? null,
     material: v ? v.material : (product?.material ?? null),
     color: v ? v.colorAssortment : (product?.color ?? null),
     pantone: product?.pantone ?? null,
-    unitPrice: quote?.price ?? item.unitPrice ?? product?.price ?? null,
-    currency: quote?.currency ?? order.fobCurrency ?? product?.currency ?? null,
+    unitPrice: item.unitPrice ?? product?.price ?? null,
+    currency: order.fobCurrency ?? product?.currency ?? null,
     quantity: item.quantity,
     unit: item.unit,
     moq: v ? v.moq : (product?.moq ?? null),
@@ -66,7 +63,7 @@ export async function createPurchaseSnapshot(
     boxHeightCm: product?.boxHeightCm ?? null,
     cbm: v ? v.cbm : product ? boxCbm(product) : null,
     specification: product?.specification ?? null,
-    conditions: quote?.conditions ?? sourcing?.conditions ?? null,
+    conditions: sourcing?.conditions ?? null,
     photoDocumentIds: photos.map((p) => p.documentId),
     note,
     ncm: product?.ncm ?? null,
@@ -103,10 +100,6 @@ export async function ensureSnapshot(user: User, order: Order) {
     filter: { orderId: order.id },
   });
   if (!item) throw new Error("order_item_missing");
-  const request = await store.get("requests", order.requestId);
-  const quote = request?.selectedQuoteId
-    ? await store.get("quotes", request.selectedQuoteId)
-    : null;
   const product = item.productId
     ? await store.get("products", item.productId)
     : null;
@@ -114,7 +107,6 @@ export async function ensureSnapshot(user: User, order: Order) {
     user,
     order,
     item,
-    quote,
     product,
     "Gerado retroativamente a partir do cadastro atual; pode não refletir a negociação original.",
   );

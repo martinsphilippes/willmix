@@ -10,7 +10,7 @@ import {
 import { isAdmin } from "@/lib/auth/permissions";
 import { audit } from "./audit";
 import { RESET_CONFIRM_WORD, planSalesReset } from "./data-reset";
-import { STOCK_PARTY_ID } from "./purchase-flow";
+import { STOCK_PARTY_ID } from "./stock-party";
 
 /*
  * Limpar os cadastros que vêm do Sankhya (antes da migração; docs/SANKHYA.md):

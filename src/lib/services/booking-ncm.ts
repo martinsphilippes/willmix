@@ -331,7 +331,7 @@ export async function pendingNcmGroups(user: User): Promise<NcmWorkGroup[]> {
         })
       : [];
   } catch (error) {
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     if (isSchemaMissing(error)) return [];
     throw error;
   }

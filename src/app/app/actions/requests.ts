@@ -1,7 +1,6 @@
 "use server";
 
 import { z } from "zod";
-import { assertWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import { deleteRequests } from "@/lib/services/requests";
 import { requireUser, run } from "./helpers";
@@ -36,53 +35,5 @@ export async function deleteRequestsAction(form: FormData) {
     const { deleted, skipped } = await deleteRequests(user, ids);
     if (deleted === 0) throw new Error("nothing_deleted");
     return `${back}?deleted=${deleted}${skipped ? `&skipped=${skipped}` : ""}`;
-  });
-}
-
-/**
- * RFQ do lote inteiro (Wellmix): os fornecedores marcados uma vez valem para
- * todos os produtos do lote ainda em cotação. Volta para a página do lote.
- */
-export async function openBatchRfqAction(form: FormData) {
-  const user = await requireUser();
-  const rawGroup = form.get("groupId");
-  const groupId = groupSchema.safeParse(
-    typeof rawGroup === "string" && rawGroup ? rawGroup : undefined,
-  );
-  const back =
-    groupId.success && groupId.data
-      ? `/app/requests/batch/${encodeURIComponent(groupId.data)}`
-      : "/app/requests";
-  await run(back, async () => {
-    assertWellmix(user);
-    assertScreen(user, "requests");
-    if (!groupId.success || !groupId.data) throw new Error("invalid_input");
-    const parsed = z
-      .array(z.string().min(1).max(64))
-      .max(100)
-      .safeParse(
-        form
-          .getAll("supplierIds")
-          .filter((v): v is string => typeof v === "string" && !!v),
-      );
-    // Código próprio: "invalid_input" na página do lote fala do formulário de produtos.
-    if (!parsed.success) throw new Error("invalid_supplier");
-    const supplierIds = parsed.data;
-    const { openBatchRfq, assertRfqStandby } =
-      await import("@/lib/services/requests");
-    const { packagingOptionsFrom } = await import("./helpers");
-    // RFQ em espera: um fornecedor só por produto, sem disputa.
-    const { getStore } = await import("@/lib/db");
-    const rows = await getStore().list("requests", {
-      filter: { groupId: groupId.data },
-    });
-    await assertRfqStandby(
-      rows.map((r) => r.id),
-      supplierIds,
-    );
-    const result = await openBatchRfq(user, groupId.data, supplierIds, {
-      packaging: packagingOptionsFrom(form),
-    });
-    return `${back}?rfq=${result.requests}`;
   });
 }

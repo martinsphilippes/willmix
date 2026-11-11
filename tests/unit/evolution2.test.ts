@@ -7,14 +7,9 @@ import { sendForSignature, withTempStore } from "./setup";
  */
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
-const {
-  createRequest,
-  openRfq,
-  answerQuote,
-  selectQuote,
-  confirmDownPayment,
-  createFollowUpRequest,
-} = await import("@/lib/services/requests");
+const { orderFromRequest } = await import("./helpers/order");
+const { createRequest, createFollowUpRequest } =
+  await import("@/lib/services/requests");
 const { submitRequirement, decideRequirement, loadOrderProgress } =
   await import("@/lib/workflow/engine");
 const {
@@ -52,7 +47,6 @@ async function orderFor(
   productId: string,
   quantity: number,
   supplierId: string,
-  supplier: User,
 ): Promise<Order> {
   const store = getStore();
   const product = await store.get("products", productId);
@@ -67,22 +61,16 @@ async function orderFor(
     deadline: null,
     notes: null,
   });
-  await openRfq(admin, request.id, [supplierId]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await answerQuote(supplier, quote.id, {
+  const order = await orderFromRequest(admin, request, {
+    supplierId,
     price: 10,
-    currency: "USD",
-    leadTimeDays: 20,
-    conditions: null,
-  });
-  await selectQuote(admin, quote.id, {
     sellPrice: quantity * 60,
-    sellCurrency: "BRL",
     downPaymentAmount: 1000,
   });
-  return confirmDownPayment(admin, request.id);
+  // Ao nascer o pedido: gate de conformidade da linha.
+  const { runComplianceGate } = await import("@/lib/services/compliance");
+  await runComplianceGate(admin, order, product);
+  return (await store.get("orders", order.id)) ?? order;
 }
 
 /** Preenche tudo até encerrar o pedido (Wellmix pode preencher qualquer requisito). */
@@ -177,12 +165,7 @@ describe("certificações e gate de conformidade", () => {
     const piscina = await checkProductCompliance("prod-piscina");
     expect(piscina.missing).toEqual(["Inmetro"]);
 
-    const order = await orderFor(
-      "prod-piscina",
-      300,
-      "fornecedor-c",
-      supplierC,
-    );
+    const order = await orderFor("prod-piscina", 300, "fornecedor-c");
     const open = await listOpenReviews(order.id);
     expect(open.map((r) => r.rule)).toContain(
       "compliance.missingCertification",
@@ -227,7 +210,7 @@ describe("certificações e gate de conformidade", () => {
 
 describe("pós-venda, recompra e histórico", () => {
   it("entrega abre o pós-venda; cliente responde; recompra reaproveita a solicitação", async () => {
-    const order = await orderFor("prod-jarra", 100, "fornecedor-c", supplierC);
+    const order = await orderFor("prod-jarra", 100, "fornecedor-c");
     expect(await getAfterSales(order.id)).toBeNull();
     await completeOrder(order.id);
     expect((await getStore().get("orders", order.id))!.status).toBe("CLOSED");

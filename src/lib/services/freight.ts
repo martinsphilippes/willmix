@@ -6,26 +6,29 @@ import { quotedQuantity } from "./purchase-sheet-calc";
 import {
   getStore,
   type FreightQuote,
+  type Order,
   type Product,
   type PurchaseSheet,
   type Request,
   type User,
 } from "@/lib/db";
 import { boxCbm } from "@/lib/logistics/cbm";
-import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
+import {
+  ForbiddenError,
+  assertWellmix,
+  isWellmix,
+} from "@/lib/auth/permissions";
 import { totalCbmFor } from "@/lib/pricing";
 import { audit } from "./audit";
 import { notify, notifyWellmix } from "./notifications";
-import { getQuoteSheet } from "./quote-sheet";
 
 /*
- * Cotação de frete pela companhia marítima. Quando a cotação do fornecedor é
- * enviada (com a ficha de compra, só confirmando o preço ou registrada pela
- * Wellmix), cada companhia marítima ativa recebe um pedido de frete
- * (pendência + notificação) com a carga: CBM, caixas, peso, medidas, incoterm
- * e local. Quem informa o valor é ela: o valor entra no custo importado do
- * valor ao cliente e fica fixado. Sem a resposta dela, a conta segue com o
- * frete estimado (por CBM). Preço do fornecedor, fornecedor e cliente não
+ * Cotação de frete pela companhia marítima, pelo PEDIDO (até 11/11/2026 era
+ * pela cotação do fornecedor, que saiu). A Wellmix pede o frete no pedido:
+ * cada companhia marítima ativa recebe um pedido de frete (pendência +
+ * notificação) com a carga somada dos itens do pedido: CBM, caixas, peso,
+ * medidas, incoterm e local (da ficha de compra do pedido e do cadastro).
+ * Quem informa o valor é ela. Preço do fornecedor, fornecedor e cliente não
  * aparecem para a companhia.
  */
 
@@ -71,12 +74,11 @@ const positive = (n: number | null | undefined) =>
   typeof n === "number" && n > 0 ? n : null;
 
 /**
- * Carga da cotação para o pedido de frete: a da ficha do fornecedor; o que
- * faltar nela vem do cadastro (variação pedida > produto), a mesma regra do
- * volume no valor ao cliente (`quotePricing`). Assim a companhia marítima
- * recebe o pedido mesmo quando a cotação veio sem a ficha.
+ * Carga de um item para o pedido de frete: a da ficha de compra; o que
+ * faltar nela vem do cadastro (variação pedida > produto). Assim a companhia
+ * marítima recebe o pedido mesmo sem a ficha.
  */
-export function quoteCargo(
+export function itemCargo(
   request: Pick<Request, "quantity" | "unit" | "variant">,
   sheet: Partial<PurchaseSheet> | null,
   product: Pick<
@@ -117,32 +119,87 @@ const sameCargo = (a: Cargo, b: Cargo) =>
   a.cartons === b.cartons &&
   a.grossWeightKg === b.grossWeightKg;
 
+/** Soma das cargas (nulo quando nenhum item tem o valor). */
+function sumCargo(list: Cargo[]): Cargo {
+  const sum = (k: keyof Cargo, digits: number) => {
+    const known = list.map((c) => c[k]).filter((v): v is number => v !== null);
+    if (!known.length) return null;
+    const f = 10 ** digits;
+    return Math.round(known.reduce((a, b) => a + b, 0) * f) / f;
+  };
+  return {
+    totalCbm: sum("totalCbm", 4),
+    cartons: sum("cartons", 0),
+    grossWeightKg: sum("grossWeightKg", 2),
+  };
+}
+
 /**
- * Cotação enviada (ou reenviada): pede frete a cada companhia marítima ativa.
- * Se a carga mudou num reenvio, o frete já informado volta a pendente para a
- * companhia revisar. Sem volume nem caixas conhecidos (nem na ficha, nem no
- * cadastro) não há o que cotar: o pedido sai quando a ficha trouxer a carga.
+ * Carga do pedido: cada item com a ficha de compra do pedido (quando ele tem
+ * um item só, como os pedidos de uma solicitação) e o cadastro do produto.
  */
-export async function inviteFreightForQuote(
-  user: User | null,
-  quoteId: string,
-): Promise<number> {
+export async function orderCargo(order: Pick<Order, "id">): Promise<Cargo> {
   const store = getStore();
-  const quote = await store.get("quotes", quoteId);
-  if (!quote) return 0;
-  const [request, sheet, carriers, existing] = await Promise.all([
-    store.get("requests", quote.requestId),
-    getQuoteSheet(quoteId),
-    store.list("parties", { filter: { type: "shipping_line", active: true } }),
-    store.list("freight_quotes", { filter: { quoteId } }),
+  const [items, [sheet]] = await Promise.all([
+    store.list("order_items", { filter: { orderId: order.id } }),
+    store.list("purchase_sheets", { filter: { orderId: order.id }, limit: 1 }),
   ]);
-  if (!request) return 0;
-  const product = request.productId
-    ? await store.get("products", request.productId)
-    : null;
-  const cargo = quoteCargo(request, sheet, product);
-  if (cargo.totalCbm === null && cargo.cartons === null && !existing.length)
-    return 0;
+  const productIds = [
+    ...new Set(
+      items.map((i) => i.productId).filter((id): id is string => !!id),
+    ),
+  ];
+  const products = productIds.length
+    ? await store.list("products", { filter: { id: productIds } })
+    : [];
+  return sumCargo(
+    items.map((item) =>
+      itemCargo(
+        {
+          quantity: item.quantity,
+          unit: item.unit,
+          variant: (item.variant as Request["variant"]) ?? null,
+        },
+        items.length === 1 ? (sheet ?? null) : null,
+        products.find((p) => p.id === item.productId) ?? null,
+      ),
+    ),
+  );
+}
+
+/** Nome do pedido para a companhia (sem preço, fornecedor nem cliente). */
+async function orderLabel(order: Order): Promise<string> {
+  const items = await getStore().list("order_items", {
+    filter: { orderId: order.id },
+  });
+  const names = items.map((i) => i.name);
+  return `#${order.number}${names.length ? ` ${names.slice(0, 2).join(", ")}${names.length > 2 ? ` +${names.length - 2}` : ""}` : ""}`;
+}
+
+/**
+ * A Wellmix pede (ou pede de novo) o frete do pedido a cada companhia
+ * marítima ativa. Se a carga mudou, o frete já informado volta a pendente
+ * para a companhia revisar. Sem volume nem caixas conhecidos (nem na ficha,
+ * nem no cadastro) não há o que cotar.
+ */
+export async function inviteFreightForOrder(
+  user: User,
+  orderId: string,
+): Promise<number> {
+  assertWellmix(user);
+  const store = getStore();
+  const order = await store.get("orders", orderId);
+  if (!order || order.status === "CANCELLED")
+    throw new FreightError("not_found");
+  const [cargo, carriers, existing, label] = await Promise.all([
+    orderCargo(order),
+    store.list("parties", { filter: { type: "shipping_line", active: true } }),
+    store.list("freight_quotes", { filter: { orderId } }),
+    orderLabel(order),
+  ]);
+  if (!carriers.length) throw new FreightError("no_carriers");
+  if (cargo.totalCbm === null && cargo.cartons === null)
+    throw new FreightError("no_cargo");
   let invited = 0;
   for (const carrier of carriers) {
     const current = existing.find((f) => f.carrierId === carrier.id);
@@ -152,36 +209,46 @@ export async function inviteFreightForQuote(
         cartons: String(cargo.cartons ?? "?"),
         kg: String(cargo.grossWeightKg ?? "?"),
       });
-    if (!current) {
-      const fq = await store.create("freight_quotes", {
-        requestId: request.id,
-        quoteId,
-        carrierId: carrier.id,
-        status: "invited",
-        ...cargo,
-        amount: null,
-        currency: null,
-        transitDays: null,
-        validUntil: null,
-        notes: null,
-        answeredByUserId: null,
-        answeredAt: null,
-      });
+    if (!current || current.status === "cancelled") {
+      const fq = current
+        ? await store.update("freight_quotes", current.id, {
+            ...cargo,
+            status: "invited",
+            amount: null,
+            currency: null,
+            transitDays: null,
+            validUntil: null,
+            notes: null,
+            answeredByUserId: null,
+            answeredAt: null,
+          })
+        : await store.create("freight_quotes", {
+            requestId: order.requestId,
+            orderId,
+            carrierId: carrier.id,
+            status: "invited",
+            ...cargo,
+            amount: null,
+            currency: null,
+            transitDays: null,
+            validUntil: null,
+            notes: null,
+            answeredByUserId: null,
+            answeredAt: null,
+          });
       await notify(
         { role: "shipping_line", partyId: carrier.id },
         {
           kind: "action",
           link: `/app/freight/${fq.id}`,
           text: (t) => ({
-            subject: t("notif.freightQuote.subject", {
-              product: request.productName,
-            }),
+            subject: t("notif.freightQuote.subject", { product: label }),
             body: t("notif.freightQuote.body", { cargo: cargoText(t) }),
           }),
         },
       );
       invited++;
-    } else if (current.status !== "cancelled" && !sameCargo(current, cargo)) {
+    } else if (!sameCargo(current, cargo)) {
       await store.update("freight_quotes", current.id, {
         ...cargo,
         status: "invited",
@@ -192,9 +259,7 @@ export async function inviteFreightForQuote(
           kind: "action",
           link: `/app/freight/${current.id}`,
           text: (t) => ({
-            subject: t("notif.freightChanged.subject", {
-              product: request.productName,
-            }),
+            subject: t("notif.freightChanged.subject", { product: label }),
             body: t("notif.freightChanged.body", { cargo: cargoText(t) }),
           }),
         },
@@ -202,15 +267,28 @@ export async function inviteFreightForQuote(
       invited++;
     }
   }
-  if (invited)
-    await audit(
-      user,
-      "freight.invite",
-      "quote",
-      quoteId,
-      `Frete pedido a ${invited} companhia(s) marítima(s)`,
-    );
+  await audit(
+    user,
+    "freight.invite",
+    "order",
+    orderId,
+    invited
+      ? `Frete pedido a ${invited} companhia(s) marítima(s)`
+      : "Frete pedido de novo: nada mudou na carga",
+  );
   return invited;
+}
+
+/** Pedidos de frete do pedido (todas as companhias), só para a Wellmix. */
+export async function freightForOrder(
+  user: User,
+  orderId: string,
+): Promise<FreightQuote[]> {
+  if (!isWellmix(user)) return [];
+  return getStore().list("freight_quotes", {
+    filter: { orderId },
+    orderBy: "createdAt",
+  });
 }
 
 export interface FreightAnswerInput {
@@ -232,8 +310,8 @@ export async function answerFreight(
   if (!fq) throw new FreightError("not_found");
   if (!canViewFreight(user, fq)) throw new ForbiddenError();
   if (fq.status === "cancelled") throw new FreightError("closed");
-  const quote = await store.get("quotes", fq.quoteId);
-  if (!quote || quote.status === "rejected") throw new FreightError("closed");
+  const order = await store.get("orders", fq.orderId);
+  if (!order || order.status === "CANCELLED") throw new FreightError("closed");
   if (!(input.amount > 0)) throw new FreightError("invalid_amount");
   const updated = await store.update("freight_quotes", freightId, {
     status: "answered",
@@ -252,50 +330,32 @@ export async function answerFreight(
     freightId,
     `${input.currency} ${input.amount}`,
   );
-  const request = await store.get("requests", fq.requestId);
   await notifyWellmix({
     kind: "action",
-    subject: `Frete informado: ${request?.productName ?? ""}`,
+    subject: `Frete informado: pedido #${order.number}`,
     body: `${formatAmount(input.amount, input.currency)}${input.transitDays ? `, ${input.transitDays} dias` : ""}.`,
-    link: `/app/requests/${fq.requestId}`,
+    link: `/app/orders/${order.id}#freight`,
   });
   return updated;
 }
 
-/** Cancela pedidos de frete em aberto da solicitação (exceto o da cotação escolhida). */
-export async function cancelFreightForRequest(
-  requestId: string,
-  keepQuoteId: string | null = null,
-) {
+/** Pedido cancelado: encerra os pedidos de frete em aberto dele. */
+export async function cancelFreightForOrder(orderId: string) {
   const store = getStore();
   const rows = await store.list("freight_quotes", {
-    filter: { requestId, status: ["invited", "answered"] },
+    filter: { orderId, status: ["invited", "answered"] },
   });
   for (const fq of rows)
-    if (fq.quoteId !== keepQuoteId)
-      await store.update("freight_quotes", fq.id, { status: "cancelled" });
-}
-
-/** Fretes das cotações (todas as companhias), por cotação do fornecedor. */
-export async function freightByQuote(quoteIds: string[]) {
-  const map = new Map<string, FreightQuote[]>();
-  if (quoteIds.length === 0) return map;
-  const rows = await getStore().list("freight_quotes", {
-    filter: { quoteId: quoteIds, status: ["invited", "answered"] },
-  });
-  for (const fq of rows) {
-    const list = map.get(fq.quoteId) ?? [];
-    list.push(fq);
-    map.set(fq.quoteId, list);
-  }
-  return map;
+    await store.update("freight_quotes", fq.id, { status: "cancelled" });
 }
 
 export interface FreightView {
   freight: FreightQuote;
-  request: Request;
+  /** Número e itens do pedido (sem preço, fornecedor nem cliente). */
+  orderNumber: number;
+  items: Array<{ name: string; quantity: number; unit: string }>;
   sheet: PurchaseSheet | null;
-  /** Pode responder agora (pedido aberto e cotação do fornecedor não encerrada). */
+  /** Pode responder agora (pedido de frete e pedido em aberto). */
   canAnswer: boolean;
 }
 
@@ -307,18 +367,21 @@ export async function getFreightView(
   const store = getStore();
   const freight = await store.get("freight_quotes", freightId);
   if (!freight || !canViewFreight(user, freight)) return null;
-  const [request, quote, sheet] = await Promise.all([
-    store.get("requests", freight.requestId),
-    store.get("quotes", freight.quoteId),
-    getQuoteSheet(freight.quoteId),
+  const [order, items, [sheet]] = await Promise.all([
+    store.get("orders", freight.orderId),
+    store.list("order_items", { filter: { orderId: freight.orderId } }),
+    store.list("purchase_sheets", {
+      filter: { orderId: freight.orderId },
+      limit: 1,
+    }),
   ]);
-  if (!request) return null;
+  if (!order) return null;
   return {
     freight,
-    request,
-    sheet,
-    canAnswer:
-      freight.status !== "cancelled" && !!quote && quote.status !== "rejected",
+    orderNumber: order.number,
+    items: items.map(({ name, quantity, unit }) => ({ name, quantity, unit })),
+    sheet: items.length === 1 ? (sheet ?? null) : null,
+    canAnswer: freight.status !== "cancelled" && order.status !== "CANCELLED",
   };
 }
 
@@ -344,11 +407,11 @@ export async function sentFreightView(
   const store = getStore();
   const fq = await store.get("freight_quotes", freightId).catch(() => null);
   if (!fq || !canViewFreight(user, fq) || fq.status !== "answered") return null;
-  const request = await store.get("requests", fq.requestId);
-  if (!request) return null;
+  const order = await store.get("orders", fq.orderId);
+  if (!order) return null;
   return {
     id: fq.id,
-    productName: request.productName,
+    productName: await orderLabel(order),
     amount: fq.amount,
     currency: fq.currency,
     transitDays: fq.transitDays,

@@ -2,16 +2,16 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
- * O cadastro do produto acompanha a ficha: a cotação completa o que falta, o
- * pedido (a compra de verdade) atualiza, e produto fora do catálogo vira
- * cadastro com um clique, para a próxima venda já vir preenchida.
+ * O cadastro do produto acompanha a ficha: o pedido (a compra de verdade)
+ * atualiza, e produto fora do catálogo vira cadastro com um clique, para a
+ * próxima venda já vir preenchida.
  */
 withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const r = await import("@/lib/services/requests");
-const qs = await import("@/lib/services/quote-sheet");
+const { orderFromRequest } = await import("./helpers/order");
 const ps = await import("@/lib/services/purchase-sheet");
 const pm = await import("@/lib/services/product-sheet");
 type User = import("@/lib/db").User;
@@ -19,18 +19,26 @@ type User = import("@/lib/db").User;
 let admin: User;
 let joao: User;
 let supplierA: User;
-let supplierB: User;
 
 beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
   supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
-  supplierB = users.find((u) => u.email === "supplier.b@china.com")!;
 });
 
-async function rfq(productId: string | null, name: string) {
-  const store = getStore();
+type SheetInput = Parameters<typeof ps.saveSheet>[2];
+
+/**
+ * Pedido do produto com o fornecedor indicado; a Wellmix grava a ficha da
+ * compra (o cadastro aprende com ela).
+ */
+async function ordered(
+  productId: string | null,
+  name: string,
+  supplierId: string,
+  sheet: SheetInput,
+) {
   const request = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId,
@@ -40,43 +48,27 @@ async function rfq(productId: string | null, name: string) {
     quantity: 2000,
     unit: "un",
   });
-  await r.openRfq(admin, request.id, ["fornecedor-a", "fornecedor-b"]);
-  const quotes = await store.list("quotes", {
-    filter: { requestId: request.id },
+  const order = await orderFromRequest(admin, request, {
+    supplierId,
+    price: sheet.price ?? 2,
   });
-  const quoteOf = (s: string) => quotes.find((q) => q.supplierId === s)!;
-  return { request, qa: quoteOf("fornecedor-a"), qb: quoteOf("fornecedor-b") };
+  await ps.saveSheet(admin, order.id, sheet);
+  return { request, order };
 }
 
 describe("cadastro do produto acompanha a ficha", () => {
-  it("produto do catálogo: a cotação não mexe no cadastro; o pedido atualiza", async () => {
+  it("produto do catálogo: o pedido atualiza o cadastro", async () => {
     const store = getStore();
     const masterBefore = await pm.getProductSheet("prod-jarra");
-    const { request, qa, qb } = await rfq("prod-jarra", "Jarra");
-    await qs.saveQuoteSheet(supplierA, qa.id, {
+    // Pedido fechado: a ficha da compra atualiza o cadastro (produto sem
+    // fornecedor principal: a compra de verdade vale).
+    const { order } = await ordered("prod-jarra", "Jarra", "fornecedor-a", {
       price: 2.5,
       currency: "USD",
       masterCartonQty: 24,
       netWeightPcKg: 0.4,
       packageType: "COLOR BOX",
     });
-    // Isolamento entre fornecedores: a cotação de A não vai para a ficha mestre,
-    // que preenche a cotação de B na mesma RFQ.
-    expect((await pm.getProductSheet("prod-jarra"))?.packageType ?? null).toBe(
-      masterBefore?.packageType ?? null,
-    );
-    const sheetB = await qs.getQuoteSheetForUser(supplierB, qb.id);
-    expect(sheetB?.sheet.packageType ?? null).not.toBe("COLOR BOX");
-
-    // Pedido fechado: a ficha da compra atualiza o cadastro (produto sem
-    // fornecedor principal: a compra de verdade vale).
-    await r.answerQuote(supplierA, qa.id, {
-      price: 2.5,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-    await r.selectQuote(admin, qa.id, { sellPrice: 6000, sellCurrency: "BRL" });
-    const order = await r.confirmDownPayment(admin, request.id);
     const master = (await pm.getProductSheet("prod-jarra"))!;
     expect(master.packageType).toBe("COLOR BOX");
     expect(master.netWeightPcKg).toBe(0.4);
@@ -98,45 +90,32 @@ describe("cadastro do produto acompanha a ficha", () => {
 
   it("produto com fornecedor principal: compra com outro fornecedor não troca os dados do principal", async () => {
     const store = getStore();
-    const panelaBefore = (await pm.getProductSheet("prod-panela")) ?? null;
-    const { request, qb } = await rfq("prod-panela", "Panela");
-    await qs.saveQuoteSheet(supplierB, qb.id, {
+    const { order } = await ordered("prod-panela", "Panela", "fornecedor-b", {
       price: 9,
       currency: "USD",
       material: "AÇO INOX",
     });
-    await r.answerQuote(supplierB, qb.id, {
-      price: 9,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-    await r.selectQuote(admin, qb.id, { sellPrice: 9000, sellCurrency: "BRL" });
-    const order = await r.confirmDownPayment(admin, request.id);
     await ps.saveSheet(admin, order.id, { material: "AÇO INOX 304" });
     const product = (await store.get("products", "prod-panela"))!;
     // O principal (fornecedor A) tinha material: continua o dele.
     expect(product.material).toBe("Alumínio com revestimento antiaderente");
     expect(product.price ?? null).not.toBe(9);
-    void panelaBefore;
   });
 
   it("produto fora do catálogo: cadastra com a ficha do pedido e passa a ser o produto da solicitação", async () => {
     const store = getStore();
-    const { request, qa } = await rfq(null, "Copo térmico");
-    await qs.saveQuoteSheet(supplierA, qa.id, {
-      price: 1.2,
-      currency: "USD",
-      masterCartonQty: 60,
-      netWeightPcKg: 0.2,
-      material: "AÇO INOX",
-    });
-    await r.answerQuote(supplierA, qa.id, {
-      price: 1.2,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-    await r.selectQuote(admin, qa.id, { sellPrice: 3000, sellCurrency: "BRL" });
-    const order = await r.confirmDownPayment(admin, request.id);
+    const { request, order } = await ordered(
+      null,
+      "Copo térmico",
+      "fornecedor-a",
+      {
+        price: 1.2,
+        currency: "USD",
+        masterCartonQty: 60,
+        netWeightPcKg: 0.2,
+        material: "AÇO INOX",
+      },
+    );
     await expect(
       pm.registerProductFromOrderSheet(joao, order.id, "linha-utilidades"),
     ).rejects.toThrow();
@@ -176,21 +155,13 @@ describe("cadastro do produto acompanha a ficha", () => {
     ).toBe(productId);
   });
 
-  it("ficha mestre nasce com o que o produto já tem; a próxima cotação vem completa", async () => {
+  it("ficha mestre nasce com o que o produto já tem; o próximo pedido vem completo", async () => {
     expect(await pm.getProductSheet("prod-boneca")).toBeNull();
-    const { request, qb } = await rfq("prod-boneca", "Boneca");
-    await qs.saveQuoteSheet(supplierB, qb.id, {
+    await ordered("prod-boneca", "Boneca", "fornecedor-b", {
       price: 3.3,
       currency: "USD",
       packageType: "COLOR BOX",
     });
-    await r.answerQuote(supplierB, qb.id, {
-      price: 3.3,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-    await r.selectQuote(admin, qb.id, { sellPrice: 9000, sellCurrency: "BRL" });
-    await r.confirmDownPayment(admin, request.id);
     // A ficha da compra trouxe só a embalagem nova: o resto do cadastro fica.
     expect(await pm.getProductSheet("prod-boneca")).toMatchObject({
       packageType: "COLOR BOX",
@@ -198,28 +169,33 @@ describe("cadastro do produto acompanha a ficha", () => {
       material: "PVC atóxico",
       netWeightPcKg: 0.28,
     });
-    const next = await rfq("prod-boneca", "Boneca");
-    const view = (await qs.getQuoteSheetForUser(supplierA, next.qa.id))!;
+    const nextRequest = await r.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId: "prod-boneca",
+      productName: "Boneca",
+      description: "Boneca para revenda",
+      quantity: 2000,
+      unit: "un",
+    });
+    const next = await orderFromRequest(admin, nextRequest, {
+      supplierId: "fornecedor-a",
+    });
+    const view = (await ps.getSheetForUser(supplierA, next.id))!;
     expect(view.sheet).toMatchObject({
       packageType: "COLOR BOX",
       masterCartonQty: 48,
       material: "PVC atóxico",
     });
-    // Preço do fornecedor principal (B) não vai para a cotação de A.
+    // Preço do fornecedor principal (B) não vai para a ficha de A.
     expect(view.sheet.price ?? null).not.toBe(3.3);
   });
 
   it("salvar um campo na ficha de um pedido antigo não desfaz o cadastro mais novo", async () => {
     const store = getStore();
-    const { request, qa } = await rfq("prod-panela", "Panela");
-    await qs.saveQuoteSheet(supplierA, qa.id, { price: 9.1, currency: "USD" });
-    await r.answerQuote(supplierA, qa.id, {
+    const { order } = await ordered("prod-panela", "Panela", "fornecedor-a", {
       price: 9.1,
       currency: "USD",
-      leadTimeDays: 30,
     });
-    await r.selectQuote(admin, qa.id, { sellPrice: 9000, sellCurrency: "BRL" });
-    const order = await r.confirmDownPayment(admin, request.id);
     expect((await store.get("products", "prod-panela"))!.price).toBe(9.1);
     // A Wellmix atualiza o cadastro depois da compra…
     await pm.saveProductSheet(admin, "prod-panela", { price: 8.2, moq: 2000 });
@@ -237,50 +213,12 @@ describe("cadastro do produto acompanha a ficha", () => {
     expect(product).toMatchObject({ price: 8.2, moq: 2000, ncm: "7323.99.00" });
   });
 
-  it("RFQ decidida: quem perdeu não vê na própria cotação os dados do vencedor", async () => {
-    const { request, qa, qb } = await rfq("prod-jarra", "Jarra");
-    await qs.saveQuoteSheet(supplierA, qa.id, {
-      price: 2.4,
-      currency: "USD",
-      packageType: "SECRET BOX A",
-      material: "VIDRO A",
-      heightCm: 33,
-    });
-    await r.answerQuote(supplierA, qa.id, {
-      price: 2.4,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-    await r.answerQuote(supplierB, qb.id, {
-      price: 2.6,
-      currency: "USD",
-      leadTimeDays: 30,
-    });
-    await r.selectQuote(admin, qa.id, { sellPrice: 6000, sellCurrency: "BRL" });
-    await r.confirmDownPayment(admin, request.id);
-    // O cadastro aprendeu com a compra…
-    expect((await pm.getProductSheet("prod-jarra"))!.packageType).toBe(
-      "SECRET BOX A",
-    );
-    // …mas a cotação recusada de B, sem ficha salva, não mostra nada disso.
-    const view = (await qs.getQuoteSheetForUser(supplierB, qb.id))!;
-    expect(view.sheet.packageType ?? null).not.toBe("SECRET BOX A");
-    expect(view.sheet.material ?? null).not.toBe("VIDRO A");
-    expect(view.sheet.heightCm ?? null).not.toBe(33);
-    expect(view.sheet.price).toBe(2.6);
-  });
-
   it("cadastrar pela ficha duas vezes ao mesmo tempo não duplica o produto", async () => {
     const store = getStore();
-    const { request, qa } = await rfq(null, "Copo duplo");
-    await qs.saveQuoteSheet(supplierA, qa.id, { price: 1.1, currency: "USD" });
-    await r.answerQuote(supplierA, qa.id, {
+    const { order } = await ordered(null, "Copo duplo", "fornecedor-a", {
       price: 1.1,
       currency: "USD",
-      leadTimeDays: 30,
     });
-    await r.selectQuote(admin, qa.id, { sellPrice: 3000, sellCurrency: "BRL" });
-    const order = await r.confirmDownPayment(admin, request.id);
     const [a, b] = await Promise.all([
       pm.registerProductFromOrderSheet(admin, order.id, "linha-utilidades"),
       pm.registerProductFromOrderSheet(admin, order.id, "linha-utilidades"),

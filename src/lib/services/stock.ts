@@ -13,8 +13,8 @@ import { assertScreen } from "@/lib/auth/screens";
 import { audit } from "./audit";
 import { notify } from "./notifications";
 import { loadInventory } from "./inventory";
-import { isSchemaMissing } from "./packaging-brief";
-import { STOCK_PARTY_ID } from "./purchase-flow";
+import { isSchemaMissing } from "@/lib/db/errors";
+import { STOCK_PARTY_ID } from "./stock-party";
 import {
   RESERVATION_MAX_DAYS,
   freeStock,

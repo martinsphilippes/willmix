@@ -79,10 +79,9 @@ export interface OrderSheet {
     grossKg: number | null;
     value: number | null;
   };
-  /** Do documento assinado: pedido mínimo, prazo e proposta de embalagem. */
+  /** Do documento assinado: pedido mínimo e prazo. */
   moq: number | null;
   leadTimeDays: number | null;
-  packagingOkVersion: number | null;
 }
 
 const round = (n: number, digits: number) =>
@@ -196,9 +195,7 @@ export async function buildOrderSheet(
         [clean(sheet?.supplierStore), clean(sheet?.supplierPhone)]
           .filter(Boolean)
           .join(" · ") || null,
-      artwork: doc.packagingOkVersion
-        ? `Packaging proposal ${doc.packagingOkVersion} (portal)`
-        : null,
+      artwork: null,
       pantone: [color, pantones].filter(Boolean).join(" · ") || null,
       factoryCode:
         clean(variant?.factoryItemCode) ??
@@ -280,6 +277,5 @@ export async function buildOrderSheet(
     },
     moq: doc.moq,
     leadTimeDays: doc.leadTimeDays,
-    packagingOkVersion: doc.packagingOkVersion,
   };
 }

@@ -10,6 +10,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const { submitRequirement } = await import("@/lib/workflow/engine");
 const terms = await import("@/lib/services/supplier-terms");
@@ -24,7 +25,6 @@ let supplierA: User;
 let supplierC: User;
 
 async function newOrder(supplier: User, supplierId: string): Promise<Order> {
-  const store = getStore();
   const request = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: "prod-jarra",
@@ -36,22 +36,12 @@ async function newOrder(supplier: User, supplierId: string): Promise<Order> {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, request.id, [supplierId]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await r.answerQuote(supplier, quote.id, {
+  return orderFromRequest(admin, request, {
+    supplierId,
     price: 10,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
     sellPrice: 9000,
-    sellCurrency: "BRL",
     downPaymentAmount: 2700,
   });
-  return r.confirmDownPayment(admin, request.id);
 }
 
 beforeAll(async () => {

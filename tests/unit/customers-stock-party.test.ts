@@ -9,15 +9,19 @@ import { withTempStore } from "./setup";
 withTempStore();
 
 const { seedDemo } = await import("@/lib/seed");
-const pf = await import("@/lib/services/purchase-flow");
+const pf = await import("@/lib/services/stock-party");
 const ca = await import("@/lib/services/customer-accounts");
 type User = import("@/lib/db").User;
 
 let admin: User;
+let operator: User;
+let joao: User;
 
 beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
+  operator = users.find((u) => u.email === "operador@wellmix.com")!;
+  joao = users.find((u) => u.email === "joao@lojista.com")!;
   await pf.ensureStockParty(admin);
 });
 
@@ -35,5 +39,15 @@ describe("clientes e fornecedores separados", () => {
     expect(customers.rows.every((r) => r.party.type === "customer")).toBe(true);
     expect(suppliers.rows.every((r) => r.party.type === "supplier")).toBe(true);
     expect(suppliers.rows.length).toBeGreaterThan(0);
+  });
+});
+
+describe("compra para estoque", () => {
+  it("só a Wellmix cria a empresa interna", async () => {
+    await expect(pf.ensureStockParty(joao)).rejects.toThrow();
+    const party = await pf.ensureStockParty(admin);
+    expect(party.id).toBe(pf.STOCK_PARTY_ID);
+    // Idempotente.
+    expect((await pf.ensureStockParty(operator)).id).toBe(party.id);
   });
 });

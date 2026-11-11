@@ -5,7 +5,7 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { getStore, type StockReservation } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { listStockReservations, loadInventory } from "@/lib/services/inventory";
-import { STOCK_PARTY_ID } from "@/lib/services/purchase-flow";
+import { STOCK_PARTY_ID } from "@/lib/services/stock-party";
 import {
   RESERVATION_DEFAULT_DAYS,
   RESERVATION_MAX_DAYS,

@@ -12,7 +12,7 @@ import {
   reorderQuantity,
 } from "@/lib/services/inventory";
 import { productPhotoList } from "@/lib/services/product-list";
-import { STOCK_OPTION, STOCK_PARTY_ID } from "@/lib/services/purchase-flow";
+import { STOCK_OPTION, STOCK_PARTY_ID } from "@/lib/services/stock-party";
 import { SubmitButton } from "@/components/submit-button";
 import { setMinStockAction, stockOutAction } from "../actions/stock";
 import { stockErrorText } from "./_errors";

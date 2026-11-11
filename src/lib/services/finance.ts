@@ -3,7 +3,17 @@ import "server-only";
 import { getStore, type Order, type Payment } from "@/lib/db";
 import { fxKey, rateFor, type FxRates } from "@/lib/pricing";
 import type { FxStatus } from "./fx";
-import type { PricingRecord } from "./quote-pricing";
+
+/**
+ * Proposta gravada na auditoria quando a escolha do fornecedor ainda era pela
+ * cotação (a cotação saiu em 11/11/2026): só o que o câmbio da venda usa.
+ */
+export interface PricingRecord {
+  input?: { currency?: string | null } | null;
+  result?: { fxRate?: number | null } | null;
+  sellCurrency?: string | null;
+  sellFxRate?: number | null;
+}
 
 /**
  * Visão financeira por pedido, derivada dos lançamentos já existentes:

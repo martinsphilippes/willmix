@@ -64,13 +64,15 @@ const GRANTED_FROM_CUSTOMER: Entry[] = [
   ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
 ];
 const GRANTED_FROM_PARTNERS: Entry[] = [
-  ["quotes", { href: "/app/quotes", key: "nav.quotes" }],
+  [
+    "quotes",
+    { href: "/app/supplier-requests", key: "nav.supplierRequests" },
+  ],
   ["freight", { href: "/app/freight", key: "nav.freight" }],
   [
     "freightTariff",
     { href: "/app/freight/tariff", key: "nav.myFreightTariff" },
   ],
-  ["packaging", { href: "/app/packaging", key: "nav.packaging" }],
   ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
   ["account", { href: "/app/account", key: "nav.account" }],
 ];
@@ -118,15 +120,11 @@ export function navFor(
             "freightTariff",
             { href: "/app/freight/tariff", key: "nav.freightTariff" },
           ],
-          // Briefings de embalagem (faca e arte) abertos com a RFQ.
-          ["packaging", { href: "/app/packaging", key: "nav.packaging" }],
           ["containers", { href: "/app/containers", key: "nav.containers" }],
           // Viabilidade de um produto: custo do container, preço mínimo e
           // lucro contra a meta do tipo de negócio (só o administrador).
           ["superplan", { href: "/app/superplan", key: "nav.superplan" }],
-          // RFQ guardada, em espera: tela própria com o interruptor (admin).
-          ["rfq", { href: "/app/rfq", key: "nav.rfq" }],
-          // Sourcing guardado, em espera, como a RFQ (interruptor na tela).
+          // Sourcing guardado, em espera (interruptor na tela).
           ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],
         ]),
       ),
@@ -214,8 +212,6 @@ export function navFor(
     ...group(
       "nav.group.orders",
       pick(has, [
-        // Cotações primeiro: é por onde o fornecedor começa (e volta às enviadas).
-        ["quotes", { href: "/app/quotes", key: "nav.quotes" }],
         // O que a Wellmix pergunta sobre um item do booking dele.
         [
           "quotes",
@@ -227,8 +223,6 @@ export function navFor(
           "freightTariff",
           { href: "/app/freight/tariff", key: "nav.myFreightTariff" },
         ],
-        // A agência começa pelos briefings de embalagem (faca e arte na RFQ).
-        ["packaging", { href: "/app/packaging", key: "nav.packaging" }],
         ["orders", { href: "/app/orders", key: "nav.orders" }],
         // Despachante: NCM dos itens de booking sem produto parecido.
         ...(user.role === "broker"

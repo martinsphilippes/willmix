@@ -13,7 +13,7 @@ import { getSettings } from "@/lib/settings";
 import { aiErrorCode, getAiAdapter } from "@/lib/integrations/ai";
 import { translationPrompt } from "@/lib/ai/prompts";
 import { baseLang, hasWords } from "@/lib/message-translation";
-import { isSchemaMissing } from "./packaging-brief";
+import { isSchemaMissing } from "@/lib/db/errors";
 
 /*
  * Tradução automática das mensagens do chat (o fornecedor escreve em chinês,

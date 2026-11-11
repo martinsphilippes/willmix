@@ -37,12 +37,7 @@ export const ALL = "all";
 export interface SlaItem {
   /** "task": a Wellmix deve; "partner": um parceiro está atrasado. */
   source: "task" | "partner";
-  kind:
-    | TaskKind
-    | "partner_stage"
-    | "partner_quote"
-    | "partner_packaging"
-    | "supplier_request";
+  kind: TaskKind | "partner_stage" | "supplier_request";
   title: string;
   detail: string;
   link: string;
@@ -335,8 +330,7 @@ export async function slaBoardFor(
 
 /**
  * Atrasos de parceiros (para o operador cobrar): etapa do pedido vencida com
- * pendência de parceiro, RFQ sem resposta depois do prazo da solicitação e
- * embalagem da agência vencida.
+ * pendência de parceiro e solicitação ao fornecedor com o SLA estourado.
  */
 async function partnerDelays(
   now: Date,
@@ -346,12 +340,8 @@ async function partnerDelays(
   >
 > {
   const store = getStore();
-  const [stages, quotes, briefs, parties] = await Promise.all([
+  const [stages, parties] = await Promise.all([
     store.list("stages", { filter: { status: ["active", "blocked"] } }),
-    store.list("quotes", { filter: { status: "invited" } }),
-    store
-      .list("packaging_briefs", { filter: { status: "open" } })
-      .catch(() => []),
     store.list("parties"),
   ]);
   const name = (id: string | null | undefined) =>
@@ -435,34 +425,6 @@ async function partnerDelays(
     }
   }
 
-  // RFQ sem resposta depois do prazo da solicitação.
-  const requestIds = [...new Set(quotes.map((q) => q.requestId))];
-  const requests = requestIds.length
-    ? await store.list("requests", { filter: { id: requestIds } })
-    : [];
-  for (const q of quotes) {
-    const request = requests.find((r) => r.id === q.requestId);
-    if (!request || request.status !== "RFQ_OPEN") continue;
-    const { daysLeft, due } = late(request.deadline);
-    if (due !== "overdue") continue;
-    out.push({
-      source: "partner",
-      kind: "partner_quote",
-      title: request.number
-        ? `Solicitação nº ${request.number}: ${request.productName}`
-        : request.productName,
-      detail: "",
-      link: `/app/requests/${request.id}`,
-      dueAt: request.deadline,
-      due,
-      daysLeft,
-      customerId: request.customerId,
-      ownerUserId: request.ownerUserId ?? null,
-      waitingOn: ["supplier"],
-      waitingParty: name(q.supplierId),
-    });
-  }
-
   // Solicitação ao fornecedor com o SLA da negociação estourado (minutos,
   // desde a abertura): esperando o fornecedor ou a decisão da Wellmix.
   const supplierRequests = await store
@@ -499,35 +461,5 @@ async function partnerDelays(
     }
   }
 
-  // Embalagem da agência vencida (o marketing da Wellmix já é pendência).
-  const briefRequests = briefs.filter((b) => b.agencyId);
-  const briefReqRows = briefRequests.length
-    ? await store.list("requests", {
-        filter: { id: [...new Set(briefRequests.map((b) => b.requestId))] },
-      })
-    : [];
-  for (const b of briefRequests) {
-    const { daysLeft, due } = late(b.dueAt);
-    if (due !== "overdue") continue;
-    const request = briefReqRows.find((r) => r.id === b.requestId);
-    if (!request || request.status === "CANCELLED") continue;
-    out.push({
-      source: "partner",
-      kind: "partner_packaging",
-      title: request.number
-        ? `Solicitação nº ${request.number}: ${request.productName}`
-        : request.productName,
-      detail: "",
-      link: `/app/packaging/${b.id}`,
-      dueAt: b.dueAt,
-      due,
-      daysLeft,
-      customerId: request.customerId,
-      ownerUserId: request.ownerUserId ?? null,
-      stageKey: "PACKAGING",
-      waitingOn: ["agency"],
-      waitingParty: name(b.agencyId),
-    });
-  }
   return out;
 }

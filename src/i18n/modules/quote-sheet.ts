@@ -32,7 +32,7 @@ export const pt = {
   "quoteSent.pending": "{n} cotações esperando resposta.",
   "quoteSent.view": "Ver a cotação enviada",
   "quoteSent.all": "Ver todas as cotações",
-  "nav.quotes": "Cotações",
+  "nav.quotes": "Solicitações ao fornecedor",
   "quotes.list.title": "Cotações",
   "quotes.list.empty":
     "Nenhuma cotação ainda. Quando a Wellmix pedir uma cotação, ela aparece aqui e nas Pendências.",
@@ -90,7 +90,7 @@ export const en: Record<keyof typeof pt, string> = {
   "quoteSent.pending": "{n} quotations waiting for an answer.",
   "quoteSent.view": "View the sent quotation",
   "quoteSent.all": "See all quotations",
-  "nav.quotes": "Quotations",
+  "nav.quotes": "Supplier requests",
   "quotes.list.title": "Quotations",
   "quotes.list.empty":
     "No quotations yet. When Wellmix asks you for a quotation, it shows up here and in your tasks.",
@@ -147,7 +147,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "quoteSent.pending": "还有 {n} 个报价待回复。",
   "quoteSent.view": "查看已提交的报价",
   "quoteSent.all": "查看全部报价",
-  "nav.quotes": "报价",
+  "nav.quotes": "供应商询价",
   "quotes.list.title": "报价",
   "quotes.list.empty": "还没有报价。Wellmix 向您询价时，会显示在这里和待办中。",
   "quotes.list.emptyTab": "没有此状态的报价。",

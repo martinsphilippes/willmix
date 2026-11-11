@@ -6,12 +6,7 @@ import {
   canViewRequest,
   isWellmix,
 } from "@/lib/auth/permissions";
-import {
-  RFQ_OPEN_STATUSES,
-  canAddProducts,
-  canDeleteRequest,
-} from "@/lib/services/requests";
-import { listProductSuppliers } from "@/lib/services/product-suppliers";
+import { canAddProducts, canDeleteRequest } from "@/lib/services/requests";
 import {
   cancelledOrderIds,
   requestDisplayStatus,
@@ -22,40 +17,32 @@ import { getT } from "@/i18n/server";
 import {
   Alert,
   Badge,
-  Card,
   LinkButton,
   PageHeader,
   Table,
   Td,
   TextLink,
   Th,
-  cx,
   formatDate,
   rowClass,
 } from "@/components/ui";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { SubmitButton } from "@/components/submit-button";
-import { PackagingRfqFields } from "@/components/packaging-brief-card";
-import { briefsByRequest } from "@/lib/services/packaging-brief";
-import {
-  deleteRequestsAction,
-  openBatchRfqAction,
-} from "../../../actions/requests";
+import { deleteRequestsAction } from "../../../actions/requests";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
 /*
  * Lote de solicitações: os produtos pedidos juntos (mesmo groupId) numa
- * página só. Cada produto segue com a própria cotação, fornecedor e pedido;
- * daqui se abre cada um. Mesmo isolamento da lista: só aparece o que o
- * usuário pode ver (canViewRequest); nada visível = 404. A Wellmix abre aqui a
- * RFQ do lote inteiro (os mesmos fornecedores para todos os produtos).
+ * página só. Cada produto segue com o próprio pedido; daqui se abre cada
+ * um. Mesmo isolamento da lista: só aparece o que o usuário pode ver
+ * (canViewRequest); nada visível = 404.
  */
 export default async function RequestBatchPage({
   params,
   searchParams,
 }: PageProps<"/app/requests/batch/[groupId]">) {
   const { groupId } = await params;
-  const { created, deleted, skipped, error, rfq, fromCart, added } =
+  const { created, deleted, skipped, error, fromCart, added } =
     await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -83,91 +70,8 @@ export default async function RequestBatchPage({
       : Promise.resolve(null),
   ]);
   const deletable = rows.filter((r) => canDeleteRequest(user, r));
-  const wellmix = isWellmix(user);
   const number = rows.find((r) => r.number)?.number ?? null;
 
-  /* RFQ do lote (só a Wellmix): produtos ainda em cotação, quem já foi
-     convidado em cada um e quem fornece cada produto (vai para o topo). */
-  const rfqRows = wellmix
-    ? rows.filter((r) => RFQ_OPEN_STATUSES.includes(r.status))
-    : [];
-  /* RFQ já aberta em todos os produtos: o cartão só convida mais fornecedores
-     (não "abre" de novo), como na página da solicitação. */
-  const rfqOpened =
-    rfqRows.length > 0 && rfqRows.every((r) => r.status !== "REQUESTED");
-  // RFQ em espera (docs/RFQ_STANDBY.md): um fornecedor só, sem convidar mais.
-  const { getSettings } = await import("@/lib/settings");
-  const rfqOn = (await getSettings()).rfqEnabled;
-  const [quotes, suppliers, products] = wellmix
-    ? await Promise.all([
-        store.list("quotes", { filter: { requestId: rows.map((r) => r.id) } }),
-        rfqRows.length
-          ? store.list("parties", {
-              filter: { type: "supplier", active: true },
-              orderBy: "name",
-            })
-          : Promise.resolve([]),
-        rfqRows.some((r) => r.productId)
-          ? store.list("products", {
-              filter: {
-                id: [
-                  ...new Set(
-                    rfqRows
-                      .map((r) => r.productId)
-                      .filter((id): id is string => !!id),
-                  ),
-                ],
-              },
-            })
-          : Promise.resolve([]),
-      ])
-    : [[], [], []];
-  const productSuppliers = new Map<string, Set<string>>();
-  for (const p of products)
-    productSuppliers.set(
-      p.id,
-      new Set([
-        ...(p.supplierId ? [p.supplierId] : []),
-        ...(await listProductSuppliers(p.id)).map((l) => l.supplierId),
-      ]),
-    );
-  const supplies = (supplierId: string) =>
-    rfqRows.filter(
-      (r) => r.productId && productSuppliers.get(r.productId)?.has(supplierId),
-    ).length;
-  const invitedIn = (supplierId: string) =>
-    rfqRows.filter((r) =>
-      quotes.some((q) => q.requestId === r.id && q.supplierId === supplierId),
-    ).length;
-  const rfqSuppliers = suppliers
-    .map((s) => ({
-      ...s,
-      supplies: supplies(s.id),
-      invited: invitedIn(s.id),
-    }))
-    .sort((a, b) => b.supplies - a.supplies || a.name.localeCompare(b.name));
-  // Embalagem: campos da RFQ só quando algum produto do lote ainda não tem briefing vivo.
-  const batchBriefs = wellmix
-    ? await briefsByRequest(rfqRows.map((r) => r.id))
-    : new Map();
-  const allHaveBriefs =
-    rfqRows.length > 0 &&
-    rfqRows.every((r) => {
-      const b = batchBriefs.get(r.id);
-      return !!b && b.status !== "cancelled";
-    });
-  const allInvited =
-    rfqSuppliers.length > 0 &&
-    rfqSuppliers.every((s) => s.invited === rfqRows.length);
-  const quoteCount = (requestId: string) => {
-    const of = quotes.filter((q) => q.requestId === requestId);
-    return {
-      invited: of.length,
-      // Respondida de fato: rejeitada sem resposta (outra escolhida, produto
-      // excluído) não conta.
-      answered: of.filter((q) => !!q.answeredAt).length,
-    };
-  };
   const count = (v: string | string[] | undefined) =>
     typeof v === "string" && /^\d+$/.test(v) ? Number(v) : 0;
   const createdCount = count(created);
@@ -234,15 +138,6 @@ export default async function RequestBatchPage({
           </Alert>
         </div>
       ) : null}
-      {count(rfq) > 0 ? (
-        <div className="mb-3" data-batch-rfq-done>
-          <Alert tone="success">
-            {count(rfq) === 1
-              ? t("reqBatch.rfqDoneOne")
-              : t("reqBatch.rfqDone", { n: count(rfq) })}
-          </Alert>
-        </div>
-      ) : null}
       {count(added) > 0 ? (
         <div className="mb-3" data-batch-added>
           <Alert tone="success">{t("reqAdd.done", { n: count(added) })}</Alert>
@@ -265,7 +160,6 @@ export default async function RequestBatchPage({
             <Th>{t("common.quantity")}</Th>
             <Th>{t("common.status")}</Th>
             <Th>{t("requests.deadline")}</Th>
-            {wellmix ? <Th>{t("reqBatch.quotes")}</Th> : null}
             <Th>{t("requests.order")}</Th>
             <Th />
           </tr>
@@ -297,15 +191,6 @@ export default async function RequestBatchPage({
                 <Td className="whitespace-nowrap tabular-nums">
                   {formatDate(r.deadline, t)}
                 </Td>
-                {wellmix ? (
-                  <Td className="whitespace-nowrap tabular-nums">
-                    <span data-batch-quotes>
-                      {quoteCount(r.id).invited
-                        ? t("reqBatch.quotesCount", quoteCount(r.id))
-                        : "—"}
-                    </span>
-                  </Td>
-                ) : null}
                 <Td className="whitespace-nowrap">
                   {order && canViewOrder(user, order) ? (
                     <TextLink href={`/app/orders/${order.id}`}>
@@ -351,110 +236,6 @@ export default async function RequestBatchPage({
             {t("reqBatch.deleteAll")}
           </SubmitButton>
         </form>
-      ) : null}
-      {/* O cartão da RFQ saiu desta tela com a RFQ em espera (pedido do
-          dono): o envio ao fornecedor fica na tela Pedidos → RFQ. */}
-      {rfqRows.length && rfqOn ? (
-        <div id="rfq" className="mt-4 max-w-2xl scroll-mt-24" data-batch-rfq>
-          <Card
-            title={
-              !rfqOn
-                ? t("rfqStandby.send.title")
-                : rfqOpened
-                  ? t("rfq.inviteMore")
-                  : t("reqBatch.rfqTitle")
-            }
-          >
-            <form action={openBatchRfqAction} className="space-y-2.5">
-              <input type="hidden" name="groupId" value={groupId} />
-              {!rfqSuppliers.length ? (
-                /* Nenhum fornecedor ativo: diz o que fazer em vez de um cartão vazio. */
-                <p className="text-sm text-zinc-600" data-batch-rfq-empty>
-                  {t("reqBatch.rfqNoSuppliers")}{" "}
-                  <TextLink href="/app/suppliers">
-                    {t("reqBatch.rfqNoSuppliersLink")}
-                  </TextLink>
-                </p>
-              ) : (
-                <p className="text-sm text-zinc-600">
-                  {!rfqOn
-                    ? t("rfqStandby.send.hint")
-                    : allInvited
-                      ? t("rfq.allInvited")
-                      : rfqOpened
-                        ? t("rfq.inviteMoreHint")
-                        : rfqRows.length === 1
-                          ? t("reqBatch.rfqHintOne")
-                          : t("reqBatch.rfqHint", { n: rfqRows.length })}
-                </p>
-              )}
-              <div className="grid gap-1.5 sm:grid-cols-2">
-                {rfqSuppliers.map((s) => {
-                  const done = s.invited === rfqRows.length;
-                  return (
-                    <label
-                      key={s.id}
-                      className={cx(
-                        "flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5 text-sm transition",
-                        done
-                          ? "cursor-not-allowed border-zinc-200 bg-zinc-50 text-zinc-500"
-                          : "cursor-pointer border-zinc-300 bg-white text-zinc-900 hover:border-brand-300 has-checked:border-brand-600 has-checked:bg-brand-50 has-checked:text-brand-900",
-                      )}
-                    >
-                      <input
-                        // RFQ em espera: um fornecedor só para o lote.
-                        type={rfqOn ? "checkbox" : "radio"}
-                        name="supplierIds"
-                        value={s.id}
-                        required={!rfqOn}
-                        disabled={done}
-                        defaultChecked={rfqOn ? done : false}
-                        className="h-4 w-4 shrink-0 accent-brand-600"
-                      />
-                      <span>
-                        <span className="font-medium">{s.name}</span>{" "}
-                        <span className="text-zinc-500">· {s.country}</span>
-                        {s.supplies ? (
-                          <span
-                            className="ml-1.5 rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700"
-                            data-rfq-supplying
-                          >
-                            {t("reqBatch.rfqSupplies", { n: s.supplies })}
-                          </span>
-                        ) : null}
-                        {s.invited ? (
-                          <span className="ml-1.5 text-xs text-zinc-500">
-                            {done
-                              ? t("reqBatch.rfqInvited")
-                              : t("reqBatch.rfqPartial", { n: s.invited })}
-                          </span>
-                        ) : null}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-              {allInvited || rfqOpened || !rfqSuppliers.length ? null : (
-                <PackagingRfqFields
-                  t={t}
-                  withBrief={false}
-                  hasBrief={allHaveBriefs}
-                />
-              )}
-              {allInvited || !rfqSuppliers.length ? null : (
-                <SubmitButton data-batch-rfq-submit>
-                  {!rfqOn
-                    ? t("rfqStandby.send.submit")
-                    : rfqOpened
-                      ? t("rfq.inviteSelected")
-                      : rfqRows.length === 1
-                        ? t("reqBatch.rfqSubmitOne")
-                        : t("reqBatch.rfqSubmit", { n: rfqRows.length })}
-                </SubmitButton>
-              )}
-            </form>
-          </Card>
-        </div>
       ) : null}
     </>
   );

@@ -6,6 +6,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const { cancelOrder } = await import("@/lib/services/order-cancel");
 const { pipelineFor } = await import("@/lib/services/pipeline");
@@ -46,22 +47,7 @@ async function order(
   extra: { productId?: string; specification?: string } = {},
 ) {
   const req = await request(name, extra);
-  await r.openRfq(admin, req.id, ["fornecedor-a"]);
-  const [quote] = await getStore().list("quotes", {
-    filter: { requestId: req.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 1000,
-    sellCurrency: "BRL",
-    downPaymentAmount: 300,
-  });
-  return r.confirmDownPayment(admin, req.id);
+  return orderFromRequest(admin, req, { downPaymentAmount: 300 });
 }
 
 describe("painel de pedidos", () => {
@@ -73,8 +59,7 @@ describe("painel de pedidos", () => {
       note: null,
       settlement: null,
     });
-    const quoting = await request("Copo em cotação");
-    await r.openRfq(admin, quoting.id, ["fornecedor-b"]);
+    const open = await request("Copo aberto");
 
     const rows = await pipelineFor(admin);
     const row = (key: string) => rows.find((x) => x.key === key);
@@ -88,9 +73,9 @@ describe("painel de pedidos", () => {
     const stopped = row(`order:${cancelled.id}`)!;
     expect(stopped.state).toBe("cancelled");
     expect(stopped.phase).toEqual({ kind: "stage", key: cancelled.status });
-    expect(row(`request:${quoting.id}`)).toMatchObject({
+    expect(row(`request:${open.id}`)).toMatchObject({
       kind: "request",
-      phase: { kind: "request", key: "RFQ_OPEN" },
+      phase: { kind: "request", key: "REQUESTED" },
       state: "active",
     });
     // Solicitação que virou pedido aparece pelo pedido, não duas vezes.
@@ -177,8 +162,6 @@ describe("painel de pedidos", () => {
   it("progresso pela viagem: o mesmo passo dos quadrados da Control Tower", async () => {
     const placed = await order("Prato da viagem");
     const fresh = await request("Garfo novo");
-    const quoting = await request("Faca em cotação");
-    await r.openRfq(admin, quoting.id, ["fornecedor-b"]);
     const stopped = await order("Prato cancelado na viagem");
     await cancelOrder(admin, stopped.id, {
       reason: "other",
@@ -190,7 +173,6 @@ describe("painel de pedidos", () => {
     const step = (key: string) => rows.find((x) => x.key === key)?.journey;
     expect(step(`order:${placed.id}`)).toBe("ordCreated");
     expect(step(`request:${fresh.id}`)).toBe("reqNew");
-    expect(step(`request:${quoting.id}`)).toBe("reqRfq");
     // Cancelado: o passo em que parou (a etapa guardada no cancelamento).
     expect(step(`order:${stopped.id}`)).toBe("ordCreated");
     // O cliente vê o passo dos pedidos dele.

@@ -10,15 +10,9 @@ withTempStore();
 
 const { getStore, USER_EXTRA_DEFAULTS } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
-const {
-  createRequest,
-  openRfq,
-  answerQuote,
-  selectQuote,
-  confirmDownPayment,
-  setRequester,
-  getRequestForUser,
-} = await import("@/lib/services/requests");
+const { createRequest, setRequester, getRequestForUser } =
+  await import("@/lib/services/requests");
+const { orderFromRequest } = await import("./helpers/order");
 const { canViewOrder, canViewRequest } = await import("@/lib/auth/permissions");
 const { pendingTasksFor } = await import("@/lib/services/tasks");
 const { loadCommercialHistory } = await import("@/lib/services/history");
@@ -45,22 +39,9 @@ async function fullOrder(creator: User, requestedForUserId?: string | null) {
     notes: null,
     requestedForUserId,
   });
-  await openRfq(admin, request.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await answerQuote(supplier, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await selectQuote(admin, quote.id, {
-    sellPrice: 1000,
-    sellCurrency: "BRL",
+  const order = await orderFromRequest(admin, request, {
     downPaymentAmount: 300,
   });
-  const order = await confirmDownPayment(admin, request.id);
   return {
     request: (await store.get("requests", request.id))!,
     order: (await store.get("orders", order.id))!,

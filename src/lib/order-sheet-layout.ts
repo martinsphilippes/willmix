@@ -205,8 +205,5 @@ export function orderSheetGeneralNotes(sheet: OrderSheet): string[] {
     sheet.leadTimeDays
       ? `Production lead time: ${sheet.leadTimeDays} days`
       : "",
-    sheet.packagingOkVersion
-      ? `Packaging proposal ${sheet.packagingOkVersion} approved by the supplier`
-      : "",
   ].filter(Boolean);
 }

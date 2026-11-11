@@ -1,16 +1,8 @@
 import type { Translate } from "@/i18n";
 import type { ManufacturerCard } from "@/lib/db";
-import type {
-  ProductCardRow,
-  QuoteCardsView,
-} from "@/lib/services/manufacturer-cards";
-import {
-  addManufacturerCardAction,
-  confirmManufacturerCardAction,
-  updateManufacturerCardAction,
-} from "@/app/app/actions/manufacturer-cards";
-import { Alert, Badge, Card, cx } from "@/components/ui";
-import { PhotoInput } from "@/components/photo-input";
+import type { ProductCardRow } from "@/lib/services/manufacturer-cards";
+import { updateManufacturerCardAction } from "@/app/app/actions/manufacturer-cards";
+import { Badge, Card } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 
 const inputClass =
@@ -161,126 +153,6 @@ function CardEdit({
   );
 }
 
-const NOTICES: Record<string, Parameters<Translate>[0]> = {
-  added: "card.added",
-  confirmed: "card.confirmed",
-  saved: "card.saved",
-};
-
-/**
- * Cartão do fabricante na cotação: obrigatório para enviar. O fornecedor
- * envia um novo (fica confirmado) ou escolhe um já enviado para o produto.
- */
-export function QuoteManufacturerCard({
-  t,
-  quoteId,
-  view,
-  notice,
-  className,
-}: {
-  t: Translate;
-  quoteId: string;
-  view: QuoteCardsView;
-  notice?: string | string[];
-  className?: string;
-}) {
-  const selected = view.cards.find((c) => c.id === view.selectedId) ?? null;
-  const others = view.cards.filter((c) => c.id !== view.selectedId);
-  const back = `/app/quotes/${quoteId}`;
-  const noticeKey = typeof notice === "string" ? NOTICES[notice] : undefined;
-  return (
-    <Card
-      title={
-        <span>
-          {t("card.title")}{" "}
-          <span className="text-brand-600" aria-hidden>
-            *
-          </span>
-        </span>
-      }
-      dense
-      className={cx("scroll-mt-24", className)}
-    >
-      <div
-        id="manufacturer-card"
-        className="space-y-3"
-        data-manufacturer-card={selected ? "confirmed" : "missing"}
-      >
-        <p className="text-xs text-zinc-600">{t("card.hint")}</p>
-        {noticeKey ? (
-          <Alert tone="success">
-            <span data-card-notice={notice}>{t(noticeKey)}</span>
-          </Alert>
-        ) : null}
-        {selected ? (
-          <div className="rounded-lg border border-emerald-300 bg-emerald-50/60 p-2.5">
-            <p className="mb-2 text-xs font-semibold text-emerald-800">
-              {t("card.current")}
-            </p>
-            <CardSummary t={t} card={selected} />
-            {selected.source === "sheet" && view.canEdit ? (
-              <p className="mt-2 text-xs text-zinc-600">
-                {t("card.fromSheetHint")}
-              </p>
-            ) : null}
-            {view.canEdit ? (
-              <CardEdit t={t} card={selected} back={back} />
-            ) : null}
-          </div>
-        ) : (
-          <p
-            className="rounded-lg border border-red-300 bg-red-50 px-2.5 py-2 text-sm font-medium text-red-800"
-            data-card-missing=""
-          >
-            {t("card.missing")}
-          </p>
-        )}
-        {others.length ? (
-          <ul className="space-y-2">
-            {others.map((card) => (
-              <li
-                key={card.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 p-2.5"
-                data-card-option={card.id}
-              >
-                <CardSummary t={t} card={card} />
-                {view.canEdit ? (
-                  <form action={confirmManufacturerCardAction}>
-                    <input type="hidden" name="quoteId" value={quoteId} />
-                    <input type="hidden" name="cardId" value={card.id} />
-                    <SubmitButton variant="secondary">
-                      {t("card.use")}
-                    </SubmitButton>
-                  </form>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {view.canEdit ? (
-          <form action={addManufacturerCardAction} data-card-upload="">
-            <input type="hidden" name="quoteId" value={quoteId} />
-            <PhotoInput
-              name="photo"
-              label={t("card.add")}
-              pendingLabel={t("card.adding")}
-              multiple={false}
-              capture={false}
-              maxDimension={1800}
-              quality={0.85}
-              autoSubmit
-              compact
-              direct
-              uploadingLabel={t("photo.uploading")}
-              failedLabel={t("photo.failed")}
-            />
-          </form>
-        ) : null}
-      </div>
-    </Card>
-  );
-}
-
 /** Todos os cartões do produto, por fornecedor (só a Wellmix). */
 export function ProductManufacturerCards({
   t,
@@ -301,7 +173,7 @@ export function ProductManufacturerCards({
           </p>
         ) : (
           <ul className="space-y-2" data-product-cards={rows.length}>
-            {rows.map(({ card, supplierName, quoteIds }) => (
+            {rows.map(({ card, supplierName }) => (
               <li
                 key={card.id}
                 className="rounded-lg border border-zinc-200 p-2.5"
@@ -311,9 +183,6 @@ export function ProductManufacturerCards({
                   <span className="font-medium text-zinc-800">
                     {supplierName}
                   </span>
-                  {quoteIds.length
-                    ? ` · ${t("card.quotes", { n: quoteIds.length })}`
-                    : ""}
                 </p>
                 <CardSummary t={t} card={card} />
                 <CardEdit

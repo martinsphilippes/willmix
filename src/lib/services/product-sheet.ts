@@ -709,13 +709,11 @@ export async function adoptSheetIntoProduct(
   if (!productId) throw new ProductSheetError("no_product");
   const product = await store.get("products", productId);
   if (!product) throw new ProductSheetError("not_found");
-  // De quem é a ficha (cotação ou pedido): só a do fornecedor principal leva
+  // De quem é a ficha (o pedido): só a do fornecedor principal leva
   // os dados comerciais (código, preço, MOQ, loja, telefone…) para a mestre e
   // o produto; a de outro fornecedor leva só os dados do produto, e o código,
   // preço e MOQ dele ficam no vínculo dele (nenhum fornecedor herda de outro).
-  const owner =
-    (await store.get("quotes", ownerId)) ??
-    (await store.get("orders", ownerId));
+  const owner = await store.get("orders", ownerId);
   const ownSupplier =
     !!owner && !!product.supplierId && owner.supplierId === product.supplierId;
   const fields: readonly string[] = ownSupplier
@@ -730,7 +728,7 @@ export async function adoptSheetIntoProduct(
       moq: sheet.moq ?? null,
     });
   }
-  // Pedido ou cotação de um item com variação: preço, MOQ, caixa, pesos, CBM,
+  // Pedido de um item com variação: preço, MOQ, caixa, pesos, CBM,
   // cores, material e embalagem vão para a VARIAÇÃO (e o produto espelha a de
   // referência); para o produto segue só o resto (NCM, energia, container…).
   const variantId = await variantOfSheetOwner(ownerId);
@@ -753,7 +751,7 @@ export async function adoptSheetIntoProduct(
   if (Object.keys(input).length)
     await saveProductSheet(user, productId, input as SheetInput);
   // Fotos ficam onde foram enviadas (as do cadastro sobem na tela do produto):
-  // documentos de pedido/cotação têm acesso próprio e não viram catálogo.
+  // documentos de pedido têm acesso próprio e não viram catálogo.
   const copiedPhotos = 0;
   await audit(
     user,
@@ -765,21 +763,14 @@ export async function adoptSheetIntoProduct(
   return { productId, copiedPhotos };
 }
 
-/**
- * Variação do item de quem é a ficha: a do item do pedido ou a da
- * solicitação da cotação; nula sem variação.
- */
+/** Variação do item de quem é a ficha (o item do pedido); nula sem variação. */
 async function variantOfSheetOwner(ownerId: string): Promise<string | null> {
   const store = getStore();
   const [item] = await store.list("order_items", {
     filter: { orderId: ownerId },
     limit: 1,
   });
-  if (item) return item.variantId ?? null;
-  const quote = await store.get("quotes", ownerId);
-  if (!quote) return null;
-  const request = await store.get("requests", quote.requestId);
-  return request?.variantId ?? null;
+  return item?.variantId ?? null;
 }
 
 /**

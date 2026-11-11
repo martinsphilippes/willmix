@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import { ActionError } from "@/components/action-error";
-import { quotedQuantity } from "@/lib/services/purchase-sheet-calc";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { getFreightView } from "@/lib/services/freight";
@@ -49,7 +48,7 @@ export default async function FreightPage({
   const view = await getFreightView(user, id);
   if (!view) notFound();
   const t = await getT();
-  const { freight, request, sheet, canAnswer } = view;
+  const { freight, orderNumber, items, sheet, canAnswer } = view;
   const errorCode = typeof error === "string" ? error : "";
   const errorText = !errorCode
     ? null
@@ -71,7 +70,9 @@ export default async function FreightPage({
     <>
       <PageHeader
         t={t}
-        title={t("freight.detailTitle", { product: request.productName })}
+        title={t("freight.detailTitle", {
+          product: t("freight.orderLabel", { n: orderNumber }),
+        })}
         subtitle={
           <Badge tone={tone}>{t(`freight.status.${freight.status}`)}</Badge>
         }
@@ -93,8 +94,14 @@ export default async function FreightPage({
             items={[
               [
                 t("freight.cargo.quantity"),
-                // A mesma quantidade do preço e da carga (a da programação).
-                `${quotedQuantity(request, sheet).toLocaleString(t.intl)} ${request.unit}`,
+                items.length
+                  ? items
+                      .map(
+                        (i) =>
+                          `${i.name}: ${i.quantity.toLocaleString(t.intl)} ${i.unit}`,
+                      )
+                      .join(" · ")
+                  : null,
               ],
               [t("freight.cargo.cartons"), num(t.intl, freight.cartons, 0)],
               [
@@ -129,17 +136,8 @@ export default async function FreightPage({
                   : null,
               ],
               [t("freight.cargo.ncm"), sheet?.ncm ?? null],
-              [t("freight.col.deadline"), formatDate(request.deadline, t)],
             ]}
           />
-          {request.description ? (
-            <p className="mt-3 border-t border-zinc-100 pt-3 text-sm text-zinc-700">
-              <span className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                {t("freight.cargo.description")}
-              </span>
-              {request.description}
-            </p>
-          ) : null}
         </Card>
 
         <Card title={t("freight.formTitle")}>

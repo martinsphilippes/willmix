@@ -14,7 +14,6 @@ import {
   Card,
   Empty,
   TextLink,
-  formatDate,
   formatMoney,
   inputDenseClass,
 } from "@/components/ui";
@@ -128,23 +127,12 @@ export function SuppliersCard({
                           {link.moq
                             ? ` · MOQ ${link.moq.toLocaleString(t.intl)}`
                             : ""}
-                          {link.lastQuotedAt
-                            ? ` · ${formatDate(link.lastQuotedAt, t)}`
-                            : ""}
                         </p>
                       ) : (
                         <p className="text-zinc-400">
                           {t("productSuppliers.noQuote")}
                         </p>
                       )}
-                      {link && (link.quoteCount || link.selectedCount) ? (
-                        <p>
-                          {t("productSuppliers.history", {
-                            quotes: link.quoteCount ?? 0,
-                            wins: link.selectedCount ?? 0,
-                          })}
-                        </p>
-                      ) : null}
                     </div>
                   </div>
                   {row.main ? (

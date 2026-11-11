@@ -23,7 +23,7 @@ import {
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { deleteRequestsAction } from "../actions/requests";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { getStore, type Approval, type Quote } from "@/lib/db";
+import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
   Alert,
@@ -40,7 +40,6 @@ import {
   Th,
   cx,
   formatDate,
-  formatMoney,
   Input,
   rowClass,
   Stat,
@@ -52,26 +51,18 @@ import { pendingTasksFor } from "@/lib/services/tasks";
 import { customerOrdersInProgress } from "@/lib/services/customer-home";
 import {
   REQUEST_SITUATIONS,
-  downStatus,
   inSituation,
   matchesRequest,
   nextStepText,
   nextStepWho,
-  quoteSummary,
-  receivedByRequest,
   requestNextStep,
   todayBrazil,
   type NextStep,
-  type QuoteSummary,
   type RequestSituation,
 } from "@/lib/services/request-list";
 import { productPhotoList } from "@/lib/services/product-list";
-import { isSchemaMissing } from "@/lib/services/packaging-brief";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { galleryProps } from "@/components/photo-gallery-props";
-import { ColorCards } from "@/components/color-cards";
-import { MoneyLines } from "@/components/customer-account";
-import { canSeeMoney } from "@/lib/auth/function-access";
 
 const BULK_FORM = "requests-bulk-delete";
 
@@ -93,23 +84,17 @@ export default async function RequestsPage({
   const customer = user.role === "customer";
   // Tudo numa rodada só: lista, parceiros, pendências e pedidos em andamento.
   const wellmix = isWellmix(user);
-  // Wellmix: valores só para quem abre Finanças (o mesmo dinheiro de lá).
-  const money = wellmix && canSeeMoney(user);
-  const [allRequests, parties, tasks, inProgress, team, payments] =
-    await Promise.all([
-      store.list("requests", {
-        filter: customer ? { customerId: user.partyId! } : undefined,
-        orderBy: "createdAt",
-        direction: "desc",
-      }),
-      store.list("parties", { filter: { type: "customer" } }),
-      customer ? pendingTasksFor(user) : Promise.resolve([]),
-      customer ? customerOrdersInProgress(user) : Promise.resolve([]),
-      wellmix ? store.list("users") : Promise.resolve([]),
-      money
-        ? store.list("payments", { filter: { direction: "customer_in" } })
-        : Promise.resolve([]),
-    ]);
+  const [allRequests, parties, tasks, inProgress, team] = await Promise.all([
+    store.list("requests", {
+      filter: customer ? { customerId: user.partyId! } : undefined,
+      orderBy: "createdAt",
+      direction: "desc",
+    }),
+    store.list("parties", { filter: { type: "customer" } }),
+    customer ? pendingTasksFor(user) : Promise.resolve([]),
+    customer ? customerOrdersInProgress(user) : Promise.resolve([]),
+    wellmix ? store.list("users") : Promise.resolve([]),
+  ]);
   const visible = allRequests.filter((r) => canViewRequest(user, r));
   // Pedido cancelado: a solicitação segue ORDERED no banco, mas o selo mostra
   // "Pedido cancelado" em vez de "Pedido criado".
@@ -150,7 +135,6 @@ export default async function RequestsPage({
         (inSituation(r, requestDisplayStatus(r, cancelled), situation, today) &&
           matchesRequest(r, customerName(r.customerId), q)),
     );
-  const received = receivedByRequest(payments);
   const orderIds = [
     ...new Set(requests.map((r) => r.orderId).filter(Boolean)),
   ] as string[];
@@ -160,27 +144,15 @@ export default async function RequestsPage({
       : [];
   const orderNumber = (id: string | null) =>
     id ? (orders.find((o) => o.id === id)?.number ?? null) : null;
-  /* Wellmix: foto do produto, cotações (convites e respostas), aprovação
-     pendente e a etapa atual do pedido, numa rodada só. */
-  const requestIds = requests.map((r) => r.id);
+  /* Wellmix: foto do produto e a etapa atual do pedido, numa rodada só. */
   const productIds = [
     ...new Set(requests.map((r) => r.productId).filter(Boolean)),
   ] as string[];
   const stageIds = orders
     .map((o) => o.currentStageId)
     .filter(Boolean) as string[];
-  const [quotes, approvals, products, photos, stages] = wellmix
+  const [products, photos, stages] = wellmix
     ? await Promise.all([
-        requestIds.length
-          ? store.list("quotes", { filter: { requestId: requestIds } })
-          : Promise.resolve([] as Quote[]),
-        store
-          .list("approvals", { filter: { status: "pending" } })
-          .catch((e: unknown) => {
-            // Aprovações ainda não publicadas no banco: nenhuma pendente.
-            if (isSchemaMissing(e)) return [] as Approval[];
-            throw e;
-          }),
         productIds.length
           ? store.list("products", { filter: { id: productIds } })
           : Promise.resolve([]),
@@ -193,12 +165,7 @@ export default async function RequestsPage({
           ? store.list("stages", { filter: { id: stageIds } })
           : Promise.resolve([]),
       ])
-    : [[], [], [], [], []];
-  const quotesOf = (r: (typeof requests)[number]): QuoteSummary =>
-    quoteSummary(
-      quotes.filter((q) => q.requestId === r.id),
-      r.selectedQuoteId,
-    );
+    : [[], [], []];
   const nextOf = (r: (typeof requests)[number]): NextStep => {
     const order = r.orderId ? orders.find((o) => o.id === r.orderId) : null;
     const stage = order?.currentStageId
@@ -207,9 +174,6 @@ export default async function RequestsPage({
     return requestNextStep({
       status: r.status,
       display: requestDisplayStatus(r, cancelled),
-      quotes: quotesOf(r),
-      approval: approvals.find((a) => a.requestId === r.id) ?? null,
-      proposalApproved: !!r.proposalApprovedAt,
       order: order
         ? {
             status: order.status,
@@ -233,7 +197,7 @@ export default async function RequestsPage({
           <span
             className={cx(
               "block text-xs",
-              n.who === "wellmix" || n.who === "approvers"
+              n.who === "wellmix"
                 ? "font-medium text-amber-700"
                 : "text-zinc-500",
             )}
@@ -257,37 +221,6 @@ export default async function RequestsPage({
       />
     );
   };
-  /* Cartões coloridos (como Clientes e Fornecedores), só para quem abre
-     Finanças, sobre a lista que está na tela (filtro e busca). */
-  const cardMoney = () => {
-    const out = {
-      proposed: {} as Record<string, number>,
-      downDue: {} as Record<string, number>,
-      downReceived: {} as Record<string, number>,
-      ordered: {} as Record<string, number>,
-    };
-    const add = (m: Record<string, number>, c: string | null, v: number) => {
-      if (!(v > 0)) return;
-      const k = c ?? "BRL";
-      m[k] = Math.round(((m[k] ?? 0) + v) * 100) / 100;
-    };
-    for (const r of requests) {
-      const display = requestDisplayStatus(r, cancelled);
-      const got = received.get(r.id) ?? 0;
-      add(out.downReceived, r.sellCurrency, got);
-      if (display === "ORDERED")
-        add(out.ordered, r.sellCurrency, r.sellPrice ?? 0);
-      else if (r.status !== "CANCELLED" && display !== "ORDER_CANCELLED")
-        add(out.proposed, r.sellCurrency, r.sellPrice ?? 0);
-      if (r.status === "WAITING_DOWN_PAYMENT")
-        add(
-          out.downDue,
-          r.sellCurrency,
-          Math.max(0, (r.downPaymentAmount ?? 0) - got),
-        );
-    }
-    return out;
-  };
   const ownerName = (id: string | null | undefined) =>
     id ? (team.find((u) => u.id === id)?.name ?? "—") : "—";
   const listQuery = (patch: Record<string, string | null>) => {
@@ -300,22 +233,6 @@ export default async function RequestsPage({
     for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v);
     const str = p.toString();
     return str ? `?${str}` : "";
-  };
-  const DOWN_TONE = {
-    paid: "success",
-    partial: "warning",
-    pending: "danger",
-    none: "neutral",
-  } as const;
-  /** Soma por moeda (lote): uma moeda só mostra o total; mais de uma, cada uma. */
-  const moneySum = (items: Array<{ v: number | null; c: string | null }>) => {
-    const by = new Map<string, number>();
-    for (const { v, c } of items)
-      if (typeof v === "number")
-        by.set(c ?? "BRL", (by.get(c ?? "BRL") ?? 0) + v);
-    return by.size
-      ? [...by.entries()].map(([c, v]) => formatMoney(v, c, t)).join(" + ")
-      : "—";
   };
   // Tamanho de cada lote (selo da linha que ficou sozinha nesta lista, ex.:
   // o outro produto do lote foi excluído): tudo o que este usuário vê.
@@ -554,49 +471,6 @@ export default async function RequestsPage({
           </TextLink>
         ) : null}
       </div>
-      {filtering && money
-        ? (() => {
-            const m = cardMoney();
-            const cell = (k: keyof typeof m) => (
-              <MoneyLines money={m[k]} t={t} fallback="BRL" />
-            );
-            return (
-              <ColorCards
-                name="requests"
-                items={[
-                  {
-                    key: "proposed",
-                    label: t("reqList.card.proposed"),
-                    hint: t("reqList.card.hint.proposed"),
-                    value: cell("proposed"),
-                    tone: "indigo",
-                  },
-                  {
-                    key: "downDue",
-                    label: t("reqList.card.downDue"),
-                    hint: t("reqList.card.hint.downDue"),
-                    value: cell("downDue"),
-                    tone: "rose",
-                  },
-                  {
-                    key: "downReceived",
-                    label: t("reqList.card.downReceived"),
-                    hint: t("reqList.card.hint.downReceived"),
-                    value: cell("downReceived"),
-                    tone: "emerald",
-                  },
-                  {
-                    key: "ordered",
-                    label: t("reqList.card.ordered"),
-                    hint: t("reqList.card.hint.ordered"),
-                    value: cell("ordered"),
-                    tone: "orange",
-                  },
-                ]}
-              />
-            );
-          })()
-        : null}
       {filtering ? (
         <div className="mb-3 space-y-2" data-request-filters>
           {/* Situação como cartões-filtro (o escolhido fica marcado). */}
@@ -613,9 +487,7 @@ export default async function RequestsPage({
                     ? undefined
                     : k === "late" && situationCounts.late > 0
                       ? "danger"
-                      : k === "waiting" && situationCounts.waiting > 0
-                        ? "warning"
-                        : "neutral"
+                      : "neutral"
                 }
                 active={situation === k}
               />
@@ -696,13 +568,6 @@ export default async function RequestsPage({
               {wellmix ? <Th>{t("reqList.col.next")}</Th> : null}
               <Th>{t("requests.deadline")}</Th>
               {wellmix ? <Th>{t("reqList.col.order")}</Th> : null}
-              {money ? (
-                <>
-                  <Th className="text-right">{t("reqList.col.sell")}</Th>
-                  <Th>{t("reqList.col.down")}</Th>
-                </>
-              ) : null}
-              {wellmix ? <Th>{t("reqList.col.quotes")}</Th> : null}
               {wellmix ? <Th>{t("reqList.col.owner")}</Th> : null}
               {wellmix ? <Th>{t("reqList.col.date")}</Th> : null}
               <Th />
@@ -726,15 +591,6 @@ export default async function RequestsPage({
                       .map((n) => [`${nextText(n)}|${whoText(n)}`, n]),
                   ).values(),
                 ];
-                const batchQuotes = rows
-                  .map((r) => quotesOf(r))
-                  .reduce(
-                    (a, q) => ({
-                      invited: a.invited + q.invited,
-                      answered: a.answered + q.answered,
-                    }),
-                    { invited: 0, answered: 0 },
-                  );
                 return (
                   <tr key={entry.groupId} className={rowClass} data-batch-row>
                     {!showDeleted && anyDeletable ? (
@@ -840,33 +696,6 @@ export default async function RequestsPage({
                           : "—"}
                       </Td>
                     ) : null}
-                    {money ? (
-                      <>
-                        <Td className="whitespace-nowrap text-right tabular-nums">
-                          {moneySum(
-                            rows.map((r) => ({
-                              v: r.sellPrice,
-                              c: r.sellCurrency,
-                            })),
-                          )}
-                        </Td>
-                        <Td className="whitespace-nowrap tabular-nums">
-                          {moneySum(
-                            rows.map((r) => ({
-                              v: r.downPaymentAmount,
-                              c: r.sellCurrency,
-                            })),
-                          )}
-                        </Td>
-                      </>
-                    ) : null}
-                    {wellmix ? (
-                      <Td className="whitespace-nowrap text-xs text-zinc-600">
-                        {batchQuotes.invited
-                          ? t("reqList.quotes.count", batchQuotes)
-                          : t("reqList.quotes.none")}
-                      </Td>
-                    ) : null}
                     {wellmix ? (
                       <Td className="whitespace-nowrap">
                         {ownerName(rows[0].ownerUserId)}
@@ -915,7 +744,6 @@ export default async function RequestsPage({
                 status === "ORDER_CANCELLED"
                   ? t("reqStatusLabel.ORDER_CANCELLED")
                   : t("reqDelete.ordered");
-              const qs = quotesOf(r);
               return (
                 <tr key={r.id} className={rowClass}>
                   {!showDeleted && anyDeletable ? (
@@ -995,83 +823,6 @@ export default async function RequestsPage({
                       ) : (
                         "—"
                       )}
-                    </Td>
-                  ) : null}
-                  {money ? (
-                    <>
-                      <Td className="whitespace-nowrap text-right tabular-nums">
-                        {r.sellPrice !== null
-                          ? formatMoney(r.sellPrice, r.sellCurrency, t)
-                          : "—"}
-                      </Td>
-                      <Td className="whitespace-nowrap">
-                        {(() => {
-                          const got = received.get(r.id) ?? 0;
-                          const st = downStatus(r, got);
-                          if (st === "none") return "—";
-                          return (
-                            <span data-request-down={st}>
-                              <span className="tabular-nums">
-                                {formatMoney(
-                                  r.downPaymentAmount ?? got,
-                                  r.sellCurrency,
-                                  t,
-                                )}
-                              </span>{" "}
-                              <Badge tone={DOWN_TONE[st]}>
-                                {t(`reqList.down.${st}`)}
-                              </Badge>
-                              {st === "partial" ? (
-                                <span className="block text-xs text-zinc-500">
-                                  {t("reqList.down.received", {
-                                    amount: formatMoney(got, r.sellCurrency, t),
-                                  })}
-                                </span>
-                              ) : null}
-                            </span>
-                          );
-                        })()}
-                      </Td>
-                    </>
-                  ) : null}
-                  {wellmix ? (
-                    <Td className="whitespace-nowrap text-xs text-zinc-600">
-                      <span
-                        data-request-quotes={`${qs.answered}/${qs.invited}`}
-                      >
-                        {qs.invited
-                          ? t("reqList.quotes.count", {
-                              answered: qs.answered,
-                              invited: qs.invited,
-                            })
-                          : t("reqList.quotes.none")}
-                      </span>
-                      {qs.best ? (
-                        <span className="block">
-                          {money
-                            ? t(
-                                qs.best.selected
-                                  ? "reqList.quotes.chosen"
-                                  : "reqList.quotes.best",
-                                {
-                                  price: formatMoney(
-                                    qs.best.price,
-                                    qs.best.currency,
-                                    t,
-                                  ),
-                                },
-                              )
-                            : null}
-                          {qs.best.leadTimeDays !== null ? (
-                            <>
-                              {money ? " · " : ""}
-                              {t("reqList.quotes.lead", {
-                                n: qs.best.leadTimeDays,
-                              })}
-                            </>
-                          ) : null}
-                        </span>
-                      ) : null}
                     </Td>
                   ) : null}
                   {wellmix ? (

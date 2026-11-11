@@ -11,6 +11,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const c = await import("@/lib/services/order-cancel");
 const tasks = await import("@/lib/services/tasks");
@@ -21,10 +22,8 @@ type Order = import("@/lib/db").Order;
 
 let admin: User;
 let joao: User;
-let supplierA: User;
 
 async function newOrder(): Promise<Order> {
-  const store = getStore();
   const request = await r.createRequest(joao, {
     customerId: "cliente-joao",
     productId: "prod-jarra",
@@ -36,22 +35,7 @@ async function newOrder(): Promise<Order> {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, request.id, ["fornecedor-a"]);
-  const [quote] = await store.list("quotes", {
-    filter: { requestId: request.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 1000,
-    sellCurrency: "BRL",
-    downPaymentAmount: 300,
-  });
-  return r.confirmDownPayment(admin, request.id);
+  return orderFromRequest(admin, request, { downPaymentAmount: 300 });
 }
 
 /** Pós-venda e item de revisão abertos, como um pedido entregue com divergência. */
@@ -109,7 +93,6 @@ beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
-  supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
 });
 
 describe("pendências de pedido cancelado", () => {

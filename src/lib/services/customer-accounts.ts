@@ -8,7 +8,7 @@ import {
   type Request,
 } from "@/lib/db";
 import { loadFinance, type OrderFinance } from "./finance";
-import { STOCK_PARTY_ID } from "./purchase-flow";
+import { STOCK_PARTY_ID } from "./stock-party";
 
 /*
  * Conta do cliente (tela Clientes, docs/CUSTOMERS.md): por cliente, o que foi
@@ -186,7 +186,7 @@ interface Loaded {
   finance: OrderFinance[];
   requests: Request[];
   requestPayments: Payment[];
-  /** Fornecedor: cotações ainda por responder (convites abertos). */
+  /** Fornecedor: solicitações ao fornecedor em andamento (abertas ou respondidas). */
   openQuotes: Map<string, number>;
 }
 
@@ -204,7 +204,11 @@ async function load(side: AccountSide): Promise<Loaded> {
       ? Promise.resolve([] as Payment[])
       : store.list("payments", { filter: { direction: "customer_in" } }),
     supplier
-      ? store.list("quotes", { filter: { status: "invited" } })
+      ? store
+          .list("supplier_requests", {
+            filter: { status: ["open", "answered"] },
+          })
+          .catch(() => [])
       : Promise.resolve([]),
   ]);
   const openQuotes = new Map<string, number>();

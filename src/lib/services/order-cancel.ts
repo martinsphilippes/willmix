@@ -166,8 +166,8 @@ export async function cancelOrder(
         await store.update("containers", containerId, { customerId: null });
     }
   }
-  const { cancelFreightForRequest } = await import("./freight");
-  await cancelFreightForRequest(order.requestId);
+  const { cancelFreightForOrder } = await import("./freight");
+  await cancelFreightForOrder(order.id);
   // Itens de revisão abertos do pedido saem da fila (Pendências, Control Tower).
   const reviews = await store.list("review_items", {
     filter: { orderId, status: "open" },

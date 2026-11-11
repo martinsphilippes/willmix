@@ -1007,18 +1007,6 @@ export function PurchaseSheetFields({
                   <option value="no">{t("common.no")}</option>
                 </select>
               </F>
-              {sheet.dumping === "yes" ? (
-                <p
-                  className="text-xs font-medium text-amber-800 sm:pl-[11.75rem]"
-                  data-dumping-status={
-                    sheet.dumpingReleasedAt ? "released" : "held"
-                  }
-                >
-                  {sheet.dumpingReleasedAt
-                    ? t("purchaseFlow.dumping.released")
-                    : t("purchaseFlow.dumping.held")}
-                </p>
-              ) : null}
               <F t={t} m={missing} k="dumpingNote" size="lg">
                 <input
                   name="dumpingNote"

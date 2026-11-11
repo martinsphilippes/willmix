@@ -22,7 +22,7 @@ export async function FreightSentNotice({
   freightId: string;
   /** Próximo pedido de frete esperando valor (o primeiro da lista). */
   next: FreightQuote | undefined;
-  productOf: (requestId: string) => string;
+  productOf: (orderId: string) => string;
   pending: number;
   t: Translate;
 }) {
@@ -64,7 +64,7 @@ export async function FreightSentNotice({
                 href={`/app/freight/${next.id}`}
                 data-freight-sent-next
               >
-                {t("freight.sent.next", { product: productOf(next.requestId) })}
+                {t("freight.sent.next", { product: productOf(next.orderId) })}
               </LinkButton>
             ) : (
               <span

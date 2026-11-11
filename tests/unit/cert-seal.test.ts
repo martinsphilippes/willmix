@@ -11,14 +11,13 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
+const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const f = await import("@/lib/services/import-flow");
 const art = await import("@/lib/services/artwork");
 const { pendingTasksFor } = await import("@/lib/services/tasks");
 const { canAccessDocument } = await import("@/lib/services/documents");
 const { areaPanel } = await import("@/lib/services/dashboards");
-const { getPackagingBriefView } =
-  await import("@/lib/services/packaging-brief");
 const { setSetting } = await import("@/lib/settings");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
@@ -31,7 +30,7 @@ let ocp: User;
 let comex: User;
 let agency: User;
 
-/** Pedido novo pelo caminho real: solicitação → RFQ → cotação → escolha → sinal. */
+/** Pedido novo: solicitação → pedido; nasce na mão da certificadora (aviso do selo). */
 async function newOrder(): Promise<Order> {
   const req = await r.createRequest(joao, {
     customerId: "cliente-joao",
@@ -44,21 +43,9 @@ async function newOrder(): Promise<Order> {
     deadline: null,
     notes: null,
   });
-  await r.openRfq(admin, req.id, ["fornecedor-a"]);
-  const [quote] = await getStore().list("quotes", {
-    filter: { requestId: req.id },
-  });
-  await r.answerQuote(supplierA, quote.id, {
-    price: 2,
-    currency: "USD",
-    leadTimeDays: 10,
-    conditions: null,
-  });
-  await r.selectQuote(admin, quote.id, {
-    sellPrice: 50_000,
-    sellCurrency: "BRL",
-  });
-  return r.confirmDownPayment(admin, req.id);
+  const order = await orderFromRequest(admin, req, { sellPrice: 50_000 });
+  await f.notifySealRequested(order);
+  return order;
 }
 
 async function doc(user: User, order: Order, name: string) {
@@ -107,7 +94,6 @@ beforeAll(async () => {
   ocp = by("ocp@certifica.com");
   comex = by("comex@assessoria.com");
   agency = users.find((u) => u.role === "agency")!;
-  await setSetting("approvalsEnabled", false);
 });
 
 describe("pedido novo: cai no login da certificadora", () => {
@@ -288,14 +274,8 @@ describe("selo enviado: vai para a agência aplicar na arte", () => {
     expect(forSupplier.some((d) => d.id === sealDocId)).toBe(false);
   });
 
-  it("a tela do briefing da agência mostra em que pé está o selo", async () => {
-    const [brief] = await getStore().list("packaging_briefs", {
-      filter: { orderId: order.id },
-    });
-    expect(brief).toBeTruthy();
-    expect((await getPackagingBriefView(agency, brief.id))?.orderSeal).toBe(
-      "ready",
-    );
+  it("a agência vê em que pé está o selo", async () => {
+    expect(await f.sealStateFor(agency, order)).toBe("ready");
   });
 
   it("a agência envia a arte com o selo; só a Wellmix valida; recusa volta para a agência", async () => {
@@ -355,12 +335,7 @@ describe("selo enviado: vai para a agência aplicar na arte", () => {
     ).toBe(true);
     for (const user of [admin, operator, ocp, agency])
       expect(await certTasks(user, order)).toHaveLength(0);
-    const [brief] = await getStore().list("packaging_briefs", {
-      filter: { orderId: order.id },
-    });
-    expect((await getPackagingBriefView(agency, brief.id))?.orderSeal).toBe(
-      "done",
-    );
+    expect(await f.sealStateFor(agency, order)).toBe("done");
   });
 });
 
@@ -526,33 +501,6 @@ describe("parceiro designado depois", () => {
     });
     await f.notifySealPartner(order, "agencyId");
     expect(await inbox(agency, order)).toHaveLength(before + 1);
-  });
-
-  it("dono do briefing trocado depois do selo: quem passa a fazer a arte é avisado", async () => {
-    const { assignPackagingBrief } =
-      await import("@/lib/services/packaging-brief");
-    let order = await newOrder();
-    order = await getStore().update("orders", order.id, {
-      ownerUserId: admin.id,
-    });
-    await f.submitStep(ocp, order.id, "cert_seal", {
-      documentId: (await doc(ocp, order, "selo.pdf")).id,
-    });
-    const sealNotes = async (user: User) =>
-      (await inbox(user, order)).filter((n) => n.link === sealLink(order));
-    const [brief] = await getStore().list("packaging_briefs", {
-      filter: { orderId: order.id },
-    });
-    // A Wellmix assume a arte: o selo a aplicar passa a ser dela.
-    const adminBefore = (await sealNotes(admin)).length;
-    await assignPackagingBrief(admin, brief.id, null);
-    expect((await fresh(order)).agencyId).toBeNull();
-    expect(await sealNotes(admin)).toHaveLength(adminBefore + 1);
-    // De volta à agência: ela é avisada do selo que já chegou.
-    const agencyBefore = (await sealNotes(agency)).length;
-    await assignPackagingBrief(admin, brief.id, agency.partyId!);
-    expect(await sealNotes(agency)).toHaveLength(agencyBefore + 1);
-    expect(await certTasks(agency, order)).toHaveLength(1);
   });
 
   it("pedido sem certificadora: todo pedido precisa de selo, então a Wellmix é avisada e fica com a pendência de designar", async () => {

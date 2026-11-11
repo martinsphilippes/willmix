@@ -11,7 +11,8 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
-const { createRequest, openRfq } = await import("@/lib/services/requests");
+const { createRequest } = await import("@/lib/services/requests");
+const { orderFromRequest } = await import("./helpers/order");
 const { ForbiddenError } = await import("@/lib/auth/permissions");
 const msg = await import("@/lib/services/messages");
 type User = import("@/lib/db").User;
@@ -175,7 +176,6 @@ describe("assunto de solicitação", () => {
       unit: "un",
     });
     requestId = request.id;
-    await openRfq(admin, request.id, ["fornecedor-a"]);
   });
 
   it("só a empresa participante (ou a Wellmix) abre o assunto", async () => {
@@ -187,18 +187,14 @@ describe("assunto de solicitação", () => {
     expect((await msg.openTopic(joao, { requestId })).topicId).toBe(
       mine.topicId,
     );
-    // Fornecedor convidado (tem cotação) abre na conversa da empresa dele.
-    const quoted = await msg.openTopic(supplierA, { requestId });
-    expect(quoted.conversationId).not.toBe(mine.conversationId);
-    // Fornecedor não convidado e parceiro de fora: não veem a solicitação.
+    // Fornecedor e parceiro de fora: não veem a solicitação.
     await expect(
       msg.openTopic(supplierB, { requestId }),
     ).rejects.toBeInstanceOf(ForbiddenError);
     await expect(msg.openTopic(armador, { requestId })).rejects.toBeInstanceOf(
       ForbiddenError,
     );
-    // Wellmix: com o cliente (padrão) ou um fornecedor convidado; empresa
-    // que não participa, não.
+    // Wellmix: com o cliente (padrão); empresa que não participa, não.
     expect((await msg.openTopic(admin, { requestId })).topicId).toBe(
       mine.topicId,
     );
@@ -338,10 +334,8 @@ describe("assunto por item do pedido", () => {
   let otherSupplier: User;
 
   beforeAll(async () => {
-    // Compra para estoque: escolhido o fornecedor, o pedido nasce na hora.
-    const { setSetting } = await import("@/lib/settings");
-    await setSetting("approvalsEnabled", false);
-    const pf = await import("@/lib/services/purchase-flow");
+    // Compra para estoque com o fornecedor A.
+    const pf = await import("@/lib/services/stock-party");
     const r = await import("@/lib/services/requests");
     await pf.ensureStockParty(admin);
     const req = await r.createRequest(operator, {
@@ -355,19 +349,10 @@ describe("assunto por item do pedido", () => {
       deadline: null,
       notes: null,
     });
-    await r.openRfq(admin, req.id, [supplierA.partyId!]);
-    const [quote] = await getStore().list("quotes", {
-      filter: { requestId: req.id },
-    });
-    await r.answerQuote(supplierA, quote.id, {
+    await orderFromRequest(admin, req, {
+      supplierId: supplierA.partyId!,
       price: 3,
-      currency: "USD",
-      leadTimeDays: 10,
-      conditions: null,
-    });
-    await r.selectQuote(admin, quote.id, {
       sellPrice: 5_000,
-      sellCurrency: "BRL",
     });
     const [order] = await getStore().list("orders", {
       filter: { requestId: req.id },
@@ -489,16 +474,7 @@ describe("árvore de assuntos", () => {
         unitPrice: null,
       } as never),
     ]);
-    const request = await createRequest(joao, {
-      customerId: joao.partyId!,
-      productName: "Jarra de vidro 1,5 L",
-      description: "Jarra da árvore",
-      quantity: 1000,
-      unit: "un",
-    });
-    await openRfq(admin, request.id, ["fornecedor-a"]);
     const item = await msg.openTopic(supplierA, { orderItemId: i1.id });
-    const req = await msg.openTopic(supplierA, { requestId: request.id });
     const view = (await msg.getConversationView(
       supplierA,
       item.conversationId,
@@ -518,8 +494,5 @@ describe("árvore de assuntos", () => {
     expect(orderNode.children[0].topic?.id).toBe(item.topicId);
     expect(orderNode.children[1].topic).toBeNull();
     expect(orderNode.children[1].orderItemId).toBeTruthy();
-    const reqNode = tree.find((n) => n.topic?.id === req.topicId)!;
-    expect(reqNode.kind).toBe("request");
-    expect(reqNode.sub).toBe("Jarra de vidro 1,5 L");
   });
 });
