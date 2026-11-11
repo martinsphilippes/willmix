@@ -12,7 +12,7 @@ Projeto: **wellmix** (`rokbtrvkzllowyqzcauq`), região São Paulo (sa-east-1). L
 | 2   | Arquivos: envio direto do navegador ao Supabase Storage por link assinado (`createSignedUpload`, PUT com progresso); chave no formato dos ids do Appwrite, então as ações não mudam                                                                                                 | feito    |
 | 3   | Login pelo Supabase Auth: o Supabase confere a senha, a sessão é o cookie assinado do portal; acesso novo cria a conta no Auth; "Esqueci minha senha" (/login/forgot) e "Definir nova senha" (/login/reset)                                                                         | feito    |
 | 4   | Cópia Appwrite → Supabase na tela Configurações → Supabase (`src/lib/services/supabase-copy.ts`): tabelas com o mesmo id e datas, arquivos com a mesma chave e as contas no Supabase Auth; lotes de ~40 s com "Rodar até o fim"; "Recomeçar do zero" esvazia as tabelas do Supabase | feito    |
-| 5   | Virada: janela sem uso, cópia, `DATA_MODE=supabase` na Vercel, publicar                                                                                                                                                                                                             | a fazer  |
+| 5   | Virada: `DATA_MODE=supabase` na Vercel (11/11/2026). A cópia do Appwrite não rodou (cota de leituras do Appwrite esgotada): o Supabase começou sem os dados antigos                                                                                                                 | feito    |
 
 ## Como o banco fica
 
@@ -29,7 +29,13 @@ Projeto: **wellmix** (`rokbtrvkzllowyqzcauq`), região São Paulo (sa-east-1). L
 2. No GitHub: Settings → Secrets and variables → Actions → New secret `SUPABASE_DB_URL` com essa URI (no ambiente production ou no repositório). Ninguém precisa colar a senha em chat.
 3. Actions → "Publicar esquema Supabase" → Run workflow. Só adiciona; rodar de novo não muda nada.
 
-Toda mudança no `schema.ts` passa a exigir as duas publicações (Appwrite e Supabase) até a virada.
+**Sem a senha do banco (como é feito desde a virada):** migração só com o que falta, aplicada pela ferramenta do Supabase (`apply_migration`) no projeto `rokbtrvkzllowyqzcauq`:
+
+1. Colunas que já existem: `select string_agg(table_name || '.' || column_name, ' ') from information_schema.columns where table_schema = 'public';` (salvar a saída num arquivo).
+2. `node scripts/supabase-missing.ts colunas.txt`: imprime as tabelas, colunas e índices do `supabase/schema.sql` que faltam (tudo com "if not exists").
+3. Aplicar essa saída como migração e conferir a contagem de colunas por tabela.
+
+Virada (11/11/2026): o banco de produção é o Supabase. O Appwrite ficou parado (cota de leituras do plano esgotada) e não recebe mais o esquema; o workflow "Publicar esquema Appwrite" só roda pelo botão manual.
 
 ## Variáveis (Vercel, só na virada)
 
