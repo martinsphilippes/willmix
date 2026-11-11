@@ -116,8 +116,10 @@ async function fetchRange(
 /** Linhas por lote: notas são pesadas (pedido, itens, etapas, títulos). */
 const ROWS: Record<FullLoadEntity, { min: number; max: number }> = {
   paymentConditions: { min: 100, max: 400 },
-  partners: { min: 100, max: 300 },
-  products: { min: 100, max: 300 },
+  // Cada parceiro/produto grava várias linhas no banco: lotes menores
+  // cabem na rodada (no Supabase, 300 por lote passava do limite de 60 s).
+  partners: { min: 40, max: 120 },
+  products: { min: 40, max: 120 },
   stockLocations: { min: 100, max: 400 },
   stockBalances: { min: 100, max: 400 },
   orders: { min: 3, max: 10 },
@@ -129,13 +131,14 @@ export interface FullLoadResult {
 }
 
 /**
- * Processa lotes até `budgetMs` (padrão 40 s, abaixo do limite da Vercel) e
+ * Processa lotes até `budgetMs` (padrão 30 s, abaixo do limite de 60 s da
+ * Vercel) e
  * devolve o progresso. Rodar de novo continua de onde parou.
  */
 export async function runFullLoad(
   user: User,
   entity: FullLoadEntity,
-  budgetMs = 40_000,
+  budgetMs = 30_000,
 ): Promise<FullLoadResult> {
   const started = Date.now();
   const progress = await getFullLoadProgress(entity);
@@ -148,8 +151,21 @@ export async function runFullLoad(
   const key = FULL_LOAD_KEY[entity];
   const limit = ROWS[entity];
 
-  // Pelo menos um lote por chamada, depois até acabar o tempo.
+  // O progresso é gravado a cada lote: se a função for cortada no limite de
+  // tempo, a próxima rodada continua do último lote gravado.
+  let counted = 0;
+  const persist = async () => {
+    for (const line of ctx.out.slice(counted))
+      progress.counts[line.outcome] = (progress.counts[line.outcome] ?? 0) + 1;
+    counted = ctx.out.length;
+    progress.updatedAt = new Date().toISOString();
+    await writeSetting(keyOf(entity), progress);
+  };
+  // Pelo menos um lote por chamada; outro só se couber no tempo que falta
+  // (pelo tempo do último lote).
+  let lastBatchMs = 0;
   do {
+    const batchStarted = Date.now();
     const probe = await executeQuery(
       fullLoadProbeSql(entity, progress.after, codEmp),
     );
@@ -223,12 +239,11 @@ export async function runFullLoad(
       progress.span = Math.max(1, Math.floor(progress.span / 2));
     else if (all.length < limit.min)
       progress.span = Math.min(1_000_000, progress.span * 2);
-  } while (Date.now() - started < budgetMs);
+    await persist();
+    lastBatchMs = Date.now() - batchStarted;
+  } while (Date.now() - started + lastBatchMs < budgetMs);
 
-  for (const line of ctx.out)
-    progress.counts[line.outcome] = (progress.counts[line.outcome] ?? 0) + 1;
-  progress.updatedAt = new Date().toISOString();
-  await writeSetting(keyOf(entity), progress);
+  await persist();
   if (ctx.out.length) await auditImport(user, `full:${entity}`, ctx.out);
   return { progress, lines: ctx.out };
 }

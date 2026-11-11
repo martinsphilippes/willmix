@@ -23,6 +23,11 @@ import {
   supplierRequestDecisions,
   supplierRequestItemOf,
 } from "@/lib/supplier-requests";
+import {
+  SELECTION_STATUSES,
+  lotMatchesFilters,
+  type SelectionFilters,
+} from "@/lib/booking-selection";
 import { audit } from "./audit";
 
 /*
@@ -75,32 +80,63 @@ export interface SelectionResult {
   rows: SelectionRow[];
   /** Itens que combinam com a busca (pode passar do que é mostrado). */
   total: number;
+  /** Os que combinam, até SELECTION_SCAN (para os blocos sugeridos). */
+  all: SelectionRow[];
+  /** Opções dos filtros: fornecedores e origens dos bookings. */
+  suppliers: Array<{ id: string; name: string }>;
+  origins: string[];
+}
+
+/** Itens olhados para os blocos sugeridos. */
+export const SELECTION_SCAN = 2000;
+
+export interface SelectionOptions {
+  filters?: SelectionFilters;
+  /** Grupo para comparar: só estes itens (os filtros não valem). */
+  ids?: string[];
 }
 
 /**
- * Itens dos bookings fechados que combinam com a busca (cada palavra em
- * algum lugar: descrição, nome, código, material…), ordenados pela
- * descrição para os parecidos ficarem juntos. `null`: tabelas sem publicar.
+ * Itens dos bookings (rascunho, fechado, em andamento, concluído; o
+ * cancelado só pelo filtro) que combinam com a busca (cada palavra em algum
+ * lugar: descrição, nome, código, material, fornecedor, origem, nº do
+ * booking…) e os filtros, ordenados pela descrição para os parecidos
+ * ficarem juntos. `null`: tabelas sem publicar.
  */
 export async function listSelectionItems(
   user: User,
   query: string,
+  options: SelectionOptions = {},
 ): Promise<SelectionResult | null> {
   assertWellmix(user);
   assertScreen(user, "booking");
   const store = getStore();
+  const filters = options.filters ?? {
+    statuses: [],
+    from: null,
+    to: null,
+    supplierId: null,
+    origin: null,
+  };
   let lots: BookingLot[];
   let items: BookingItem[];
   let requests: SupplierRequest[];
   try {
     lots = await store.list("booking_lots", {
-      filter: { status: [...SELECTABLE_LOTS] },
+      filter: { status: [...SELECTION_STATUSES] },
     });
-    items = lots.length
-      ? await store.list("booking_items", {
-          filter: { lotId: lots.map((l) => l.id) },
-        })
-      : [];
+    const shown = options.ids
+      ? lots
+      : lots.filter((l) => lotMatchesFilters(l, filters));
+    items = options.ids
+      ? options.ids.length
+        ? await store.list("booking_items", { filter: { id: options.ids } })
+        : []
+      : shown.length
+        ? await store.list("booking_items", {
+            filter: { lotId: shown.map((l) => l.id) },
+          })
+        : [];
     requests = items.length
       ? await store.list("supplier_requests", {
           filter: { status: ["open", "answered"] },
@@ -121,27 +157,59 @@ export async function listSelectionItems(
   const partyOf = new Map(suppliers.map((p) => [p.id, p]));
   const activeOf = new Map(requests.map((r) => [r.bookingItemId, r]));
   const words = searchWords(query);
+  const rowOf = (item: BookingItem): SelectionRow | null => {
+    const lot = lotOf.get(item.lotId);
+    if (!lot) return null;
+    return {
+      item,
+      lot,
+      supplier: lot.supplierId ? (partyOf.get(lot.supplierId) ?? null) : null,
+      activeRequest: activeOf.get(item.id) ?? null,
+    };
+  };
   const matched = items
-    .filter((item) => matchesItemSearch(itemSearchText(item), words))
+    .map(rowOf)
+    .filter((r): r is SelectionRow => !!r)
+    .filter((r) =>
+      matchesItemSearch(
+        [
+          itemSearchText(r.item),
+          searchWords(
+            [r.supplier?.name, r.lot.origin, `${r.lot.number}`]
+              .filter(Boolean)
+              .join(" "),
+          ).join(" "),
+        ].join(" "),
+        words,
+      ),
+    )
     .sort(
       (a, b) =>
-        (a.description ?? a.productName ?? "").localeCompare(
-          b.description ?? b.productName ?? "",
+        (a.item.description ?? a.item.productName ?? "").localeCompare(
+          b.item.description ?? b.item.productName ?? "",
           "pt",
           { sensitivity: "base", numeric: true },
-        ) || a.position - b.position,
+        ) || a.item.position - b.item.position,
     );
+  const visibleLots = lots.filter((l) => l.status !== "cancelled");
   return {
     total: matched.length,
-    rows: matched.slice(0, SELECTION_MAX).map((item) => {
-      const lot = lotOf.get(item.lotId)!;
-      return {
-        item,
-        lot,
-        supplier: lot.supplierId ? (partyOf.get(lot.supplierId) ?? null) : null,
-        activeRequest: activeOf.get(item.id) ?? null,
-      };
-    }),
+    rows: matched.slice(0, SELECTION_MAX),
+    all: matched.slice(0, SELECTION_SCAN),
+    suppliers: [
+      ...new Set(visibleLots.map((l) => l.supplierId).filter(Boolean)),
+    ]
+      .map((id) => partyOf.get(id as string))
+      .filter((p): p is Party => !!p)
+      .map((p) => ({ id: p.id, name: p.name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt")),
+    origins: [
+      ...new Set(
+        visibleLots
+          .map((l) => l.origin?.trim())
+          .filter((o): o is string => !!o),
+      ),
+    ].sort((a, b) => a.localeCompare(b, "pt")),
   };
 }
 

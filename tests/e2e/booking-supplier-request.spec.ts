@@ -84,7 +84,11 @@ async function login(page: Page, email: string) {
 }
 
 /** Sobe a planilha e fecha o booking (fornecedor e data vêm dela). */
-async function importAndClose(page: Page, file: ReturnType<typeof sheet>) {
+async function importAndClose(
+  page: Page,
+  file: ReturnType<typeof sheet>,
+  supplierName: string,
+) {
   await page.goto("/app/booking/import");
   await page
     .locator("[data-booking-import-form] input[type=file]")
@@ -93,6 +97,32 @@ async function importAndClose(page: Page, file: ReturnType<typeof sheet>) {
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   // Fornecedor do cadastro (tem login): nenhum aviso de "sem acesso".
   await expect(page.locator("[data-supplier-no-login]")).toHaveCount(0);
+  // Fornecedor com busca: digitar filtra a lista até sobrar o que se quer.
+  const combo = page.locator(
+    "[data-booking-lot-supplier] input[role=combobox]",
+  );
+  await expect(combo).toHaveValue(new RegExp(supplierName));
+  await combo.click();
+  await combo.fill(supplierName.toLowerCase().split(" ").slice(0, 2).join(" "));
+  const options = page.locator("[data-booking-lot-supplier] [role=option]");
+  await expect(options.first()).toContainText(supplierName);
+  await combo.fill("zzz-nada-casa");
+  await expect(options).toHaveCount(0);
+  await combo.press("Escape");
+  await expect(combo).toHaveValue(new RegExp(supplierName));
+  // Trocar e voltar: cada escolha grava sozinha.
+  await combo.click();
+  await options.first().click();
+  await expect(
+    page.locator('[data-booking-lot-supplier] [data-booking-row-note="saved"]'),
+  ).toBeVisible();
+  await combo.click();
+  await combo.fill(supplierName);
+  await options.filter({ hasText: supplierName }).first().click();
+  await expect(combo).toHaveValue(new RegExp(supplierName));
+  await expect(
+    page.locator('[data-booking-lot-supplier] [data-booking-row-note="saved"]'),
+  ).toBeVisible();
   // NCM obrigatório (docs/BOOKING.md, "NCM do item"): sem produto parecido
   // no cadastro, o item fica com o despachante; a Wellmix preenche aqui.
   const ncmInputs = page.locator("input[data-booking-item-ncm]");
@@ -121,10 +151,12 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await importAndClose(
     page,
     sheet("Shenzhen Supplier A", codeA, `Glass cup ${TAG} 350ml`),
+    "Shenzhen Supplier A",
   );
   await importAndClose(
     page,
     sheet("Guangzhou Supplier B", codeB, `Glass cup ${TAG} with handle`),
+    "Guangzhou Supplier B",
   );
   await page.goto("/app/booking");
   await page.fill("[data-booking-lots-search]", codeA.slice(0, 6));

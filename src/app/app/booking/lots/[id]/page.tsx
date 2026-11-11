@@ -408,6 +408,8 @@ export default async function BookingLotPage({
                       current={lot.supplierId ?? ""}
                       options={supplierOptions}
                       labels={cellLabels(t("bookingLots.detail.supplierField"))}
+                      placeholder={t("bookingLots.detail.supplierSearch")}
+                      noMatch={t("bookingLots.detail.supplierNoMatch")}
                     />
                   ) : (
                     (supplier?.name ?? t("bookingLots.supplierNone"))
