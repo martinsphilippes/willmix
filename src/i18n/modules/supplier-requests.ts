@@ -337,8 +337,8 @@ export const pt = {
     "Uma informação por coluna. Pelos ícones: mensagem à Wellmix, resposta sim/não e abrir a tela do produto.",
   "supplierRequests.table.answerHint":
     "Para responder sim, informe o preço por peça. Pedido mínimo e modalidade de entrega (FOB/EXW) vão junto; o prazo fica como está (mude na tela do produto).",
-  "supplierRequests.table.col.initial": "Condições iniciais",
-  "supplierRequests.table.col.final": "Condições finais",
+  "supplierRequests.table.col.initial": "Condições iniciais (booking)",
+  "supplierRequests.table.col.final": "Condições finais (última proposta)",
   "supplierRequests.table.col.cond.price": "Preço",
   "supplierRequests.table.col.cond.currency": "Moeda",
   "supplierRequests.table.col.cond.moq": "MOQ",
@@ -350,6 +350,12 @@ export const pt = {
   "supplierRequests.col.finishedAt": "Finalizada em",
   "supplierRequests.list.finishedLate": "Em atraso",
   "supplierRequests.list.finishedOnTime": "Dentro do SLA",
+  "supplierRequests.table.col.cond.state": "Situação",
+  "supplierRequests.table.state.answer": "Resposta do fornecedor",
+  "supplierRequests.table.state.pending": "Contraproposta enviada",
+  "supplierRequests.table.state.accepted": "Aceita",
+  "supplierRequests.table.state.rejected": "Recusada",
+  "supplierRequests.table.state.counter": "Nova proposta do fornecedor",
 };
 
 export const en: typeof pt = {
@@ -683,8 +689,8 @@ export const en: typeof pt = {
   "supplierRequests.timeline.productLinked": "Linked to an existing product",
   "supplierRequests.timeline.showcase": "Product released to the showcase",
   "supplierRequests.timeline.erp": "CODPROD checked in Sankhya",
-  "supplierRequests.table.col.initial": "Initial terms",
-  "supplierRequests.table.col.final": "Final terms",
+  "supplierRequests.table.col.initial": "Initial terms (booking)",
+  "supplierRequests.table.col.final": "Final terms (last proposal)",
   "supplierRequests.table.col.cond.price": "Price",
   "supplierRequests.table.col.cond.currency": "Currency",
   "supplierRequests.table.col.cond.moq": "MOQ",
@@ -695,6 +701,12 @@ export const en: typeof pt = {
   "supplierRequests.col.finishedAt": "Finished on",
   "supplierRequests.list.finishedLate": "Late",
   "supplierRequests.list.finishedOnTime": "Within SLA",
+  "supplierRequests.table.col.cond.state": "Status",
+  "supplierRequests.table.state.answer": "Supplier's answer",
+  "supplierRequests.table.state.pending": "Counter-offer sent",
+  "supplierRequests.table.state.accepted": "Accepted",
+  "supplierRequests.table.state.rejected": "Declined",
+  "supplierRequests.table.state.counter": "New proposal from the supplier",
 };
 
 export const zh: typeof pt = {
@@ -1013,8 +1025,8 @@ export const zh: typeof pt = {
   "supplierRequests.timeline.productLinked": "已关联现有产品",
   "supplierRequests.timeline.showcase": "产品已上架展示",
   "supplierRequests.timeline.erp": "已在 Sankhya 核对 CODPROD",
-  "supplierRequests.table.col.initial": "初始条件",
-  "supplierRequests.table.col.final": "最终条件",
+  "supplierRequests.table.col.initial": "初始条件（订舱）",
+  "supplierRequests.table.col.final": "最终条件（最近报价）",
   "supplierRequests.table.col.cond.price": "价格",
   "supplierRequests.table.col.cond.currency": "币种",
   "supplierRequests.table.col.cond.moq": "起订量",
@@ -1025,4 +1037,10 @@ export const zh: typeof pt = {
   "supplierRequests.col.finishedAt": "完成时间",
   "supplierRequests.list.finishedLate": "超时",
   "supplierRequests.list.finishedOnTime": "在 SLA 内",
+  "supplierRequests.table.col.cond.state": "状态",
+  "supplierRequests.table.state.answer": "供应商答复",
+  "supplierRequests.table.state.pending": "已发出还价",
+  "supplierRequests.table.state.accepted": "已接受",
+  "supplierRequests.table.state.rejected": "已拒绝",
+  "supplierRequests.table.state.counter": "供应商新报价",
 };

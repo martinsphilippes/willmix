@@ -317,6 +317,33 @@ describe("seleção de itens e solicitação ao fornecedor", () => {
       first.id,
     ]);
     expect(await svc.supplierRequestGroup(supplierB, first)).toEqual([]);
+
+    // Respostas de antes do histórico: a auditoria guarda cada uma.
+    const answer = {
+      canDo: "yes" as const,
+      price: 2,
+      currency: "USD" as const,
+      moq: null,
+      leadTimeDays: null,
+      note: null,
+    };
+    await svc.answerSupplierRequest(supplierA, first.id, answer);
+    const twice = await svc.answerSupplierRequest(supplierA, first.id, {
+      ...answer,
+      price: 1.9,
+    });
+    const legacy = await getStore().update("supplier_requests", first.id, {
+      negotiation: [],
+    });
+    const fromAudit = await svc.legacyAnswers([legacy, second]);
+    expect(fromAudit.get(first.id)?.map((a) => a.canDo)).toEqual([
+      "yes",
+      "yes",
+    ]);
+    expect(fromAudit.has(second.id)).toBe(false);
+    expect(twice.negotiation!.filter((e) => e.kind === "answer")).toHaveLength(
+      2,
+    );
   });
 
   it("foto do item: o fornecedor dono abre, outro não", async () => {
@@ -588,6 +615,128 @@ describe("regras puras", () => {
       first: null,
       last: null,
     });
+  });
+
+  it("condições: iniciais do booking, finais a última proposta enviada", () => {
+    const ev = (
+      kind: string,
+      at: string,
+      fields: Record<string, unknown> = {},
+    ) => ({
+      id: kind + at,
+      at,
+      kind,
+      side: kind === "proposal" ? "wellmix" : "supplier",
+      byUserId: "u",
+      ...fields,
+    });
+    const base = {
+      item: { price: 1.25, currency: "USD", moq: 1000, incoterm: "FOB" },
+      supplierCanDo: "yes",
+      supplierPrice: 1.3,
+      supplierCurrency: "USD",
+      supplierMoq: 2000,
+      supplierLeadTimeDays: 45,
+      supplierIncoterm: "EXW",
+      negotiation: [
+        ev("answer", "1", {
+          canDo: "yes",
+          price: 1.4,
+          currency: "USD",
+          moq: 2000,
+          incoterm: "EXW",
+          leadTimeDays: 45,
+        }),
+      ],
+    } as unknown as Parameters<typeof lib.finalConditions>[0];
+    expect(lib.initialConditions(base)).toEqual({
+      price: 1.25,
+      currency: "USD",
+      moq: 1000,
+      incoterm: "FOB",
+      leadTimeDays: null,
+    });
+    expect(lib.finalConditions(base)).toMatchObject({
+      price: 1.4,
+      incoterm: "EXW",
+      state: "answer",
+    });
+    // Contraproposta só de preço: o resto continua o da resposta.
+    const proposed = {
+      ...base,
+      negotiation: [...base.negotiation!, ev("proposal", "2", { price: 1.3 })],
+    } as typeof base;
+    expect(lib.finalConditions(proposed)).toMatchObject({
+      price: 1.3,
+      moq: 2000,
+      incoterm: "EXW",
+      state: "pending",
+    });
+    // Recusada: continua a última enviada (a contraproposta), recusada.
+    expect(
+      lib.finalConditions({
+        ...proposed,
+        negotiation: [...proposed.negotiation!, ev("reject", "3")],
+      } as typeof base),
+    ).toMatchObject({ price: 1.3, state: "rejected" });
+    expect(
+      lib.finalConditions({
+        ...proposed,
+        negotiation: [...proposed.negotiation!, ev("accept", "3")],
+      } as typeof base),
+    ).toMatchObject({ price: 1.3, state: "accepted" });
+    expect(
+      lib.finalConditions({
+        ...proposed,
+        negotiation: [
+          ...proposed.negotiation!,
+          ev("counter", "3", { price: 1.35, currency: "USD" }),
+        ],
+      } as typeof base),
+    ).toMatchObject({ price: 1.35, state: "counter" });
+    // Sem resposta: nada.
+    expect(
+      lib.finalConditions({
+        ...base,
+        supplierCanDo: null,
+        negotiation: [],
+      } as typeof base),
+    ).toBeNull();
+    // Resposta antiga (sem passo no histórico): a atual.
+    expect(
+      lib.finalConditions({ ...base, negotiation: [] } as typeof base),
+    ).toMatchObject({ price: 1.3, state: "answer" });
+  });
+
+  it("respostas antigas: a auditoria dá a 1ª e a última", () => {
+    const old = {
+      createdAt: "2026-11-11T13:49:59.000Z",
+      status: "approved",
+      quantity: 3000,
+      respondedAt: "2026-11-11T15:00:21.000Z",
+      supplierCanDo: "yes",
+      supplierPrice: 1.5,
+      negotiation: [],
+    } as unknown as Parameters<typeof requestTimeline>[0];
+    const audit = [
+      { at: "2026-11-11T14:55:52.000Z", canDo: "yes" as const },
+      { at: "2026-11-11T15:00:21.600Z", canDo: "yes" as const },
+    ];
+    expect(
+      answerTimes(
+        old,
+        audit.map((a) => a.at),
+      ),
+    ).toEqual({
+      first: "2026-11-11T14:55:52.000Z",
+      last: "2026-11-11T15:00:21.600Z",
+    });
+    const answers = requestTimeline(old, audit).filter(
+      (e) => e.kind === "answer",
+    );
+    expect(answers).toHaveLength(2);
+    expect(answers[0].event?.price).toBeUndefined();
+    expect(answers[1].event?.price).toBe(1.5);
   });
 
   it("busca por parte das palavras e sugere parecidos", () => {

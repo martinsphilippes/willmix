@@ -7,6 +7,7 @@ import {
   canPostMessage,
   finalConditions,
   initialConditions,
+  type ConditionsState,
   type RequestConditions,
   negotiationTurn,
   pendingProposal,
@@ -26,6 +27,7 @@ import {
   Th,
   cx,
   rowClass,
+  type Tone,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoGallery } from "@/components/photo-gallery";
@@ -46,17 +48,28 @@ import { AnswerIcon, ChatBubbleIcon, OpenIcon } from "./icons";
  * O fornecedor responde; a Wellmix registra a resposta em nome dele.
  */
 
+const STATE_TONE: Record<ConditionsState, Tone> = {
+  answer: "info",
+  pending: "warning",
+  accepted: "success",
+  rejected: "danger",
+  counter: "info",
+};
+
 export function SupplierRequestTable({
   rows,
   currentId,
   slaMinutes,
   wellmix,
+  legacy,
   t,
 }: {
   rows: SupplierRequest[];
   currentId: string;
   slaMinutes: number;
   wellmix: boolean;
+  /** Respostas antigas (auditoria), para a 1ª e a última resposta. */
+  legacy: Map<string, Array<{ at: string }>>;
   t: Translate;
 }) {
   const intl = t.intl;
@@ -96,14 +109,17 @@ export function SupplierRequestTable({
   ];
   const nowrap = "whitespace-nowrap";
 
-  /** As cinco colunas de condições (iniciais ou finais) de uma linha. */
+  /**
+   * As colunas de condições de uma linha: as iniciais (do booking) e as
+   * finais (a última proposta enviada, com a situação dela).
+   */
   const conditionCells = (
-    c: RequestConditions | null,
+    c: (RequestConditions & { state?: ConditionsState }) | null,
     group: "initial" | "final",
     id: string,
   ) => {
     const final = group === "final";
-    return [
+    const cells = [
       <Td
         key={`${group}-price`}
         className={cx(nowrap, "border-l border-zinc-100 tabular-nums")}
@@ -129,6 +145,21 @@ export function SupplierRequestTable({
         {c ? num(c.leadTimeDays, 0) : "—"}
       </Td>,
     ];
+    if (final)
+      cells.push(
+        <Td
+          key="final-state"
+          className={nowrap}
+          data-supplier-table-final-state={c?.state ? id : undefined}
+        >
+          {c?.state ? (
+            <Badge tone={STATE_TONE[c.state]}>{k(`state.${c.state}`)}</Badge>
+          ) : (
+            "—"
+          )}
+        </Td>,
+      );
+    return cells;
   };
 
   return (
@@ -152,7 +183,7 @@ export function SupplierRequestTable({
             </Th>
             <Th
               className="border-l border-zinc-200 text-center"
-              colSpan={conditionCols.length}
+              colSpan={conditionCols.length + 1}
             >
               {k("col.final")}
             </Th>
@@ -179,6 +210,7 @@ export function SupplierRequestTable({
                 </Th>
               )),
             )}
+            <Th className={nowrap}>{k("col.cond.state")}</Th>
           </tr>
         </thead>
         <tbody>
@@ -190,7 +222,10 @@ export function SupplierRequestTable({
             const canAnswer = supplierCanAnswer(r.status) && !pending;
             const turn = negotiationTurn(r);
             const sla = slaOf(r, slaMinutes);
-            const times = answerTimes(r);
+            const times = answerTimes(
+              r,
+              (legacy.get(r.id) ?? []).map((a) => a.at),
+            );
             const yes = r.supplierCanDo === "yes";
             const href = `/app/supplier-requests/${r.id}?view=item`;
             return (

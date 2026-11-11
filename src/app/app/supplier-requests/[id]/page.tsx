@@ -11,6 +11,7 @@ import {
 } from "@/lib/supplier-requests";
 import {
   getSupplierRequest,
+  legacyAnswers,
   supplierRequestGroup,
 } from "@/lib/services/supplier-requests";
 import { getT } from "@/i18n/server";
@@ -190,6 +191,7 @@ export default async function SupplierRequestPage({
       supplierRequestGroup(user, r),
       supplierRequestSlaMinutes(),
     ]);
+    const legacy = await legacyAnswers(rows);
     return (
       <>
         <PageHeader
@@ -219,6 +221,7 @@ export default async function SupplierRequestPage({
             currentId={r.id}
             slaMinutes={slaMinutes}
             wellmix={wellmix}
+            legacy={legacy}
             t={t}
           />
         </div>
@@ -277,6 +280,9 @@ export default async function SupplierRequestPage({
   const decimal = intl.startsWith("pt") ? "," : ".";
   const raw = (n: number | null) =>
     n === null ? "" : String(n).replace(".", decimal);
+
+  // Respostas antigas (antes do histórico de respostas): da auditoria.
+  const timelineLegacy = await legacyAnswers([r]);
 
   // Conversa no chat flutuante: as mensagens livres, de quem é cada uma.
   const mySide = wellmix ? "wellmix" : "supplier";
@@ -404,8 +410,6 @@ export default async function SupplierRequestPage({
               />
             </div>
           </Card>
-
-          <RequestTimeline request={r} t={t} />
 
           {wellmix ? (
             <Card
@@ -616,6 +620,13 @@ export default async function SupplierRequestPage({
               </form>
             ) : null}
           </Card>
+
+          {/* Histórico de interações logo abaixo da resposta do fornecedor. */}
+          <RequestTimeline
+            request={r}
+            legacyAnswers={timelineLegacy.get(r.id) ?? []}
+            t={t}
+          />
 
           {wellmix ? (
             <Card title={t("supplierRequests.detail.decide.title")} dense>

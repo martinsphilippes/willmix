@@ -33,12 +33,15 @@ const DECIDED_DOT: Record<string, string> = {
 
 export function RequestTimeline({
   request: r,
+  legacyAnswers = [],
   t,
 }: {
   request: SupplierRequest;
+  /** Respostas antigas (auditoria): hora e se faz. */
+  legacyAnswers?: Array<{ at: string; canDo: "yes" | "no" | null }>;
   t: Translate;
 }) {
-  const entries = requestTimeline(r);
+  const entries = requestTimeline(r, legacyAnswers);
   const k = (key: string, vars?: Record<string, string | number>) =>
     t(`supplierRequests.timeline.${key}` as DictionaryKey, vars);
   const num = (n: number | null | undefined, digits = 4) =>

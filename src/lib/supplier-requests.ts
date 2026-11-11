@@ -253,10 +253,14 @@ const ANSWER_KINDS = new Set(["answer", "accept", "counter", "reject"]);
  */
 export function answerTimes(
   request: Pick<SupplierRequest, "negotiation" | "respondedAt">,
+  /** Respostas antigas (antes do histórico): as horas da auditoria. */
+  legacyTimes: string[] = [],
 ): { first: string | null; last: string | null } {
-  const times = (request.negotiation ?? [])
+  const events = request.negotiation ?? [];
+  const times = events
     .filter((e) => e.side === "supplier" && ANSWER_KINDS.has(e.kind))
     .map((e) => e.at);
+  if (!events.some((e) => e.kind === "answer")) times.push(...legacyTimes);
   if (request.respondedAt) times.push(request.respondedAt);
   if (!times.length) return { first: null, last: null };
   times.sort();
@@ -289,7 +293,11 @@ export interface TimelineEntry {
  * mensagens, decisão e o produto. Resposta antiga sem passo no histórico
  * entra pela `respondedAt`.
  */
-export function requestTimeline(request: SupplierRequest): TimelineEntry[] {
+export function requestTimeline(
+  request: SupplierRequest,
+  /** Respostas antigas tiradas da auditoria (hora e se faz), em ordem. */
+  legacyAnswers: Array<{ at: string; canDo: "yes" | "no" | null }> = [],
+): TimelineEntry[] {
   const out: TimelineEntry[] = [
     {
       key: "opened",
@@ -301,27 +309,46 @@ export function requestTimeline(request: SupplierRequest): TimelineEntry[] {
   const events = request.negotiation ?? [];
   for (const e of events)
     out.push({ key: e.id, at: e.at, kind: e.kind, side: e.side, event: e });
-  if (request.respondedAt && !events.some((e) => e.kind === "answer"))
-    out.push({
-      key: "answer-legacy",
-      at: request.respondedAt,
-      kind: "answer",
-      side: "supplier",
-      event: {
-        id: "answer-legacy",
-        at: request.respondedAt,
+  // Respostas antigas (antes do histórico de respostas): as horas vêm da
+  // auditoria; só a última tem os valores (a resposta atual), e só se nada
+  // foi negociado depois dela.
+  if (!events.some((e) => e.kind === "answer")) {
+    const answers = legacyAnswers.length
+      ? legacyAnswers
+      : request.respondedAt
+        ? [{ at: request.respondedAt, canDo: request.supplierCanDo }]
+        : [];
+    const negotiatedAfter = (at: string) =>
+      events.some((e) => OFFER_KINDS.has(e.kind) && e.at > at);
+    answers.forEach((a, i) => {
+      const last = i === answers.length - 1;
+      const withValues = last && !negotiatedAfter(a.at);
+      out.push({
+        key: `answer-legacy-${i}`,
+        at: a.at,
         kind: "answer",
         side: "supplier",
-        byUserId: request.respondedByUserId ?? "",
-        canDo: request.supplierCanDo,
-        price: request.supplierPrice,
-        currency: request.supplierCurrency,
-        moq: request.supplierMoq,
-        leadTimeDays: request.supplierLeadTimeDays,
-        incoterm: request.supplierIncoterm ?? null,
-        text: request.supplierNote,
-      },
+        event: {
+          id: `answer-legacy-${i}`,
+          at: a.at,
+          kind: "answer",
+          side: "supplier",
+          byUserId: "",
+          canDo: a.canDo,
+          ...(withValues
+            ? {
+                price: request.supplierPrice,
+                currency: request.supplierCurrency,
+                moq: request.supplierMoq,
+                leadTimeDays: request.supplierLeadTimeDays,
+                incoterm: request.supplierIncoterm ?? null,
+                text: request.supplierNote,
+              }
+            : {}),
+        },
+      });
     });
+  }
   if (request.decidedAt)
     out.push({
       key: "decided",
@@ -356,7 +383,7 @@ export function requestTimeline(request: SupplierRequest): TimelineEntry[] {
   return out.sort((a, b) => (a.at === b.at ? 0 : a.at < b.at ? -1 : 1));
 }
 
-/** Condições de uma resposta "faz": preço, moeda, MOQ, entrega e prazo. */
+/** Condições de compra: preço, moeda, MOQ, entrega (FOB/EXW) e prazo. */
 export interface RequestConditions {
   price: number | null;
   currency: string | null;
@@ -366,40 +393,88 @@ export interface RequestConditions {
 }
 
 /**
- * Condições iniciais da negociação: a primeira resposta "faz" do fornecedor.
- * Resposta antiga sem passo no histórico: as atuais, se nada foi negociado
- * depois (sem contraproposta); senão não se sabe (nulo).
+ * Situação das condições finais: a última proposta enviada e o que
+ * aconteceu com ela.
+ * - `answer`: resposta do fornecedor (a Wellmix ainda avalia);
+ * - `pending`: contraproposta da Wellmix esperando o fornecedor;
+ * - `accepted`: o fornecedor aceitou a contraproposta;
+ * - `rejected`: o fornecedor recusou a contraproposta;
+ * - `counter`: nova proposta do fornecedor (a Wellmix reavalia).
+ */
+export type ConditionsState =
+  "answer" | "pending" | "accepted" | "rejected" | "counter";
+
+/**
+ * Condições iniciais: as do booking, com que a Wellmix abre a solicitação
+ * (o booking não traz prazo).
  */
 export function initialConditions(
-  request: SupplierRequest,
-): RequestConditions | null {
-  const events = request.negotiation ?? [];
-  const first = events.find((e) => e.kind === "answer" && e.canDo === "yes");
-  if (first)
-    return {
-      price: first.price ?? null,
-      currency: first.currency ?? null,
-      moq: first.moq ?? null,
-      incoterm: first.incoterm ?? null,
-      leadTimeDays: first.leadTimeDays ?? null,
-    };
-  if (events.some((e) => e.kind === "answer" || OFFER_KINDS.has(e.kind)))
-    return null;
-  return finalConditions(request);
+  request: Pick<SupplierRequest, "item">,
+): RequestConditions {
+  const it = request.item;
+  return {
+    price: it.price ?? null,
+    currency: it.currency ?? null,
+    moq: it.moq ?? null,
+    incoterm: it.incoterm ?? null,
+    leadTimeDays: null,
+  };
 }
 
-/** Condições finais (as que valem hoje): a resposta atual, quando "faz". */
+/**
+ * Condições finais: a última proposta enviada, aceita ou não. Cada passo
+ * da negociação atualiza as condições em ordem: a resposta do fornecedor,
+ * a contraproposta da Wellmix (só os valores que ela mudou), o aceite ou a
+ * recusa e a nova proposta do fornecedor. Sem nenhuma resposta, nulo.
+ * Resposta antiga (antes do histórico de respostas): parte da resposta
+ * atual do fornecedor.
+ */
 export function finalConditions(
   request: SupplierRequest,
-): RequestConditions | null {
-  if (request.supplierCanDo !== "yes") return null;
-  return {
-    price: request.supplierPrice,
-    currency: request.supplierCurrency,
-    moq: request.supplierMoq,
-    incoterm: request.supplierIncoterm ?? null,
-    leadTimeDays: request.supplierLeadTimeDays,
-  };
+): (RequestConditions & { state: ConditionsState }) | null {
+  const events = request.negotiation ?? [];
+  const legacy =
+    request.supplierCanDo === "yes" && !events.some((e) => e.kind === "answer")
+      ? {
+          price: request.supplierPrice,
+          currency: request.supplierCurrency,
+          moq: request.supplierMoq,
+          incoterm: request.supplierIncoterm ?? request.item.incoterm ?? null,
+          leadTimeDays: request.supplierLeadTimeDays,
+        }
+      : null;
+  let cur: RequestConditions | null = legacy;
+  let state: ConditionsState = "answer";
+  const pick = <T>(v: T | null | undefined, old: T | null) =>
+    v === null || v === undefined ? old : v;
+  for (const e of events) {
+    if (e.kind === "answer") {
+      if (e.canDo !== "yes") {
+        cur = null;
+        continue;
+      }
+      cur = {
+        price: e.price ?? null,
+        currency: e.currency ?? null,
+        moq: e.moq ?? null,
+        incoterm: e.incoterm ?? null,
+        leadTimeDays: e.leadTimeDays ?? null,
+      };
+      state = "answer";
+    } else if (e.kind === "proposal" || e.kind === "counter") {
+      const base = cur ?? initialConditions(request);
+      cur = {
+        price: pick(e.price, base.price),
+        currency: pick(e.currency, base.currency),
+        moq: pick(e.moq, base.moq),
+        incoterm: pick(e.incoterm, base.incoterm),
+        leadTimeDays: pick(e.leadTimeDays, base.leadTimeDays),
+      };
+      state = e.kind === "proposal" ? "pending" : "counter";
+    } else if (e.kind === "accept" && cur) state = "accepted";
+    else if (e.kind === "reject" && cur) state = "rejected";
+  }
+  return cur ? { ...cur, state } : null;
 }
 
 /**
