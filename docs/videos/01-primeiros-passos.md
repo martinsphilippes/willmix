@@ -35,6 +35,8 @@ A série GER vale para todos os papéis, então **cada episódio traz as legenda
 
 `docs/SCOPE.md`, `docs/WORKFLOW.md`, `docs/ACCESS.md`, `docs/ARQUITETURA.md` (seção 5, login por nome de usuário; seção 6, a abertura animada), `docs/BOOKING.md`, `docs/SUPPLIER_REQUESTS.md`, `docs/RFQ_STANDBY.md`, `docs/QUOTE_FLOW.md`, `docs/ORDER_SIGNATURE.md`, `docs/RECEIVING.md`, `docs/CUSTOMERS.md`. Código: `src/lib/nav.ts`, `src/lib/auth/screens.ts`, `src/lib/intro.ts`, `src/app/app/layout.tsx`, `src/components/{app-nav,user-menu,back-button,task-list}.tsx`, `src/app/app/{tasks,notifications,messages}/page.tsx`, `src/lib/services/{tasks,messages}.ts`, `src/app/manifest.ts`. Dicionários: `src/i18n/dictionaries.ts` e `src/i18n/modules/*.ts`. Testes: `tests/e2e/happy-path.spec.ts`, `tests/e2e/intro.spec.ts`.
 
+## Episódios
+
 | ID     | Episódio                                  | Duração-alvo | Situação      |
 | ------ | ----------------------------------------- | ------------ | ------------- |
 | GER-00 | A Jornada completa do portal              | 4:30         | roteirizado   |

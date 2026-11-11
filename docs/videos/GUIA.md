@@ -226,7 +226,11 @@ No modo memória o portal mostra uma faixa âmbar ("Modo demonstração: dados e
 ```css
 header label:has(> select) { display: none !important; }
 div.bg-amber-100.text-amber-900 { display: none !important; }
+/* Só na tela de login: o quadro "Contas de demonstração" com e-mails e senha */
+form + div.border-dashed { display: none !important; }
 ```
+
+As duas primeiras regras escondem o seletor DEMO e a faixa âmbar nas telas do portal; a terceira esconde o quadro de contas de demonstração do `/login` (a senha comum aparece ali). Sem ela, o vídeo GER-01 mostraria as contas e a senha.
 
 Sem o seletor, troque de papel abrindo **outro perfil do Chrome** já logado, ou saindo e entrando de novo (o vídeo de "Primeiros passos" mostra o login de verdade).
 
@@ -242,9 +246,9 @@ A carga de demonstração é mínima: quatro produtos **sem foto e sem preço** 
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Fotos dos produtos         | 2 a 3 fotos limpas por produto (própria, comprada ou gerada; nunca imagem de terceiros nem de outra marca), em Produtos → ficha |
 | Preços na vitrine          | Para o preço estimado aparecer, o produto precisa de preço do fornecedor, câmbio da moeda, frete marítimo por CBM (Configurações), caixa master e CBM, II e IPI pelo NCM e ICMS (Configurações). O aviso "Para o preço aparecer, falta:" lista exatamente o que falta |
-| Nome das empresas          | Mantenha os nomes da carga (Loja do João Ltda, Shenzhen Supplier A, Guangzhou Supplier B, Agência Criativa, Diego Despachante, Marítima SA, Trans Rodo)        |
+| Nome das empresas          | Mantenha os nomes da carga: empresas Loja do João Ltda, Shenzhen Supplier A, Guangzhou Supplier B, Agência Criativa, Comex Despachos, Marítima SA, Trans Rodo (Diego Despachante é o **nome da pessoa** no login do despachante, não o da empresa) |
 | Fornecedor com condição de pagamento | Shenzhen Supplier A já vem com 30 % no pedido e 70 % 90 dias após a entrega                                          |
-| Planilha de booking de exemplo | Um `.xlsx` com 6 a 10 itens e a **jarra** entre eles, com as colunas de docs/BOOKING.md (seção 0). O cabeçalho pronto está em `tests/e2e/booking-supplier-request.spec.ts` (`HEADER`: DATE, LOCAL, SUPPLIER NAME, SKU/FACTORY ITEM CODE, DESCRIPTION, FOB/EXW, …). A planilha `tests/fixtures/produtos-china.xlsx` é uma **ficha técnica** em chinês (outro fluxo: Produtos → importar ficha), não um booking |
+| Planilha de booking de exemplo | Um `.xlsx` com 6 a 10 itens e a **jarra** entre eles, com as colunas de docs/BOOKING.md (seção 0). O cabeçalho pronto está em `tests/e2e/booking-supplier-request.spec.ts` (`HEADER`: DATE, LOCAL, SUPPLIER NAME, SKU/FACTORY ITEM CODE, DESCRIPTION, FOB/EXW, …). A planilha `tests/fixtures/produtos-china.xlsx` é uma planilha em chinês da **importação de cadastros** (Cadastros → Importar), outro fluxo, não um booking |
 | Idioma de cada conta       | Confira o idioma de cada login antes de gravar (seção 2)                                                                  |
 
 **Recursos em espera ou manuais. Não apresente como ao vivo:**
