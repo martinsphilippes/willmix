@@ -122,7 +122,9 @@ const ROWS: Record<FullLoadEntity, { min: number; max: number }> = {
   products: { min: 40, max: 120 },
   stockLocations: { min: 100, max: 400 },
   stockBalances: { min: 100, max: 400 },
-  orders: { min: 3, max: 10 },
+  // Uma nota grande (muitos itens e títulos) já ocupa boa parte da rodada:
+  // lotes pequenos gravam o cursor a cada nota ou duas.
+  orders: { min: 1, max: 3 },
 };
 
 export interface FullLoadResult {
