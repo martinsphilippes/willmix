@@ -782,3 +782,244 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 - ⚠ O mesmo card permite à Wellmix responder pelo cliente (o serviço aceita, docs/WORKFLOW.md fala só em "Wellmix encerra"); na tela do administrador, com o pós-venda aguardando, só apareceu "Encerrar pós-venda", sem formulário de resposta. Confirmar se existe o formulário de resposta para a Wellmix.
 - ⚠ Os itens 34 (análise de oportunidade) e 36 (nova proposta com preços negociados) de docs/EVOLUTION_PLAN.md não aparecem nestas telas; este episódio não os cobre. Confirmar se haverá vídeo próprio.
 - ⚠ A pendência "Avalie a compra" do cliente (docs/WORKFLOW.md) e o aviso "Pedido #n: como foi a sua compra?" foram lidos no código e nos dicionários; confirmar o texto exato da pendência na tela do cliente.
+
+---
+
+## WGE-07 · Marketing: kits e tabela de preços
+
+> **Promessa:** ao final do vídeo você cria um kit de marketing para a Jarra, oferece ao cliente, confirma o pagamento, libera os arquivos finais e consulta a tabela de preços.
+
+| Ficha                 |                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Série e papel         | Wellmix, administrador (o cliente aparece para comprar o kit)                                                                                                |
+| Conta de gravação     | `admin@wellmix.com`, tela em pt; `joao@lojista.com` na cena da compra                                                                                        |
+| Duração-alvo          | 4:30                                                                                                                                                         |
+| Ponto da jornada      | Fora das 9 etapas: serviço opcional ligado ao produto (⚠ ver pontos a confirmar)                                                                              |
+| Telas e rotas         | `/app/marketing` (Gestão → Marketing), `/app/marketing/new` (novo kit), `/app/marketing/[id]` (o "studio" do kit), `/app/marketing/price-table` (Tabela de preços) |
+| Dados antes de gravar | Produto "Jarra de vidro 1,5 L (UTL-001)" ativo, **aprovado para o cliente** (fora do Booking) e **com fotos** no cadastro; a Loja do João como cliente; "Marketing studio ativo" ligado e preço padrão do kit R$ 200,00 (Configurações). Ponto `antes-WGE-07` |
+| Depois deste vídeo    | O kit chega a "Liberado" e o cliente baixa os arquivos finais. O cliente recebe os avisos de oferta e liberação; a Wellmix, o aviso da compra (⚠ ver pontos a confirmar) |
+| Antes · Próximo       | WGE-06 · WGE-08                                                                                                                                               |
+| Idiomas               | pt (base)                                                                                                                                                    |
+
+### Roteiro
+
+**Cena 1 · 0:00–0:10 · Gancho · `/app/marketing/[id]`**
+
+- 🎬 Imagem: o studio do kit "Kit de marketing · Jarra de vidro 1,5 L", com a linha do tempo (Rascunho, Prévia, Oferta, Compra, Pagamento, Liberação) e a prévia da arte.
+- 🎙 Narração: "Quer ajudar o cliente a vender melhor a jarra? A Wellmix pode oferecer um kit de marketing pronto, do rascunho à liberação."
+- 🔤 Na tela: `[TÍTULO]` "WGE-07 · Marketing: kits e tabela de preços"; `[ZOOM 150 %]` na linha do tempo.
+- ✂️ Edição: vinheta antes; título em 2 s.
+
+**Cena 2 · 0:10–0:22 · Onde estou · `/app/marketing`**
+
+- 🎬 Imagem: a tela Marketing, com o subtítulo "Kits de marketing por produto: prévia → oferta → compra → pagamento → liberação."
+- 🎙 Narração: "Cada kit nasce da ficha de um produto e anda por seis passos: rascunho, prévia, oferta, compra, pagamento e liberação."
+- 🔤 Na tela: `[MAPA etapa 1]` com "Produto e Booking" acesa (o kit parte do produto da vitrine); `[QUEM VÊ]` "Gerente de produto, designer, diretorias e administrador abrem o Marketing".
+- ✂️ Edição: o mapa sai em 8 s.
+
+**Cena 3 · 0:22–0:48 · A lista de kits · menu Gestão → Marketing**
+
+- 🎬 Imagem: o cursor abre **Gestão** e clica em **Marketing**. No topo, os botões **Tabela de preços** e **+ Novo kit**. Os cartões por situação: "Todos", "Rascunho", "Prévia", "Oferecido", "Comprado", "Pago", "Liberado" e "Cancelado" (cada um com a contagem; "Comprado" em âmbar quando há kit esperando pagamento). O filtro "Situação", "Cliente", "Produto", **Filtrar**, **Limpar filtros**. A tabela: "Kit", "Produto", "Cliente", "Preço", "Situação", "Criado", "Oferta", "Liberação" e o link "Abrir".
+- 🎙 Narração: "Em Gestão, abra Marketing. Os cartões contam os kits por situação, e dá para filtrar por situação, cliente e produto. Comprado em âmbar avisa que há pagamento esperando a sua confirmação."
+- 🔤 Na tela: `[PASSO 1/8] Abra Gestão → Marketing`; `[SETA]` "Cartões por situação"; `[BOTÃO] "+ Novo kit"`; `[BOTÃO] "Tabela de preços"`.
+- ✂️ Edição: `[ZOOM 150 %]` nos cartões.
+
+**Cena 4 · 0:48–1:22 · Criar o kit · `/app/marketing/new`**
+
+- 🎬 Imagem: clicar em **+ Novo kit**. Tela "Novo kit de marketing": "Produto" (escolher "Jarra de vidro 1,5 L (UTL-001)"), "Cliente" ("Opcional agora; obrigatório para oferecer o kit." Escolher Loja do João Ltda), "Nome do kit" (em branco: o sistema gera "Kit de marketing · <produto>"), "Preço do kit" (já com R$ 200,00, o padrão das Configurações) e "Moeda". Clicar em **Criar kit**. Abre o studio.
+- 🎙 Narração: "Clique em Novo kit, escolha o produto e, se já souber, o cliente. O nome pode ficar em branco: o sistema gera um. O preço já vem do padrão das Configurações e pode mudar até a compra. Clique em Criar kit."
+- 🔤 Na tela: `[PASSO 2/8] Escolha produto, cliente e preço`; `[BOTÃO] "Criar kit"`; `[DICA]` "Cliente é opcional agora, mas obrigatório para oferecer."; `[ERRO COMUM]` "Este produto ainda está no Booking e o cliente não o vê. Aprove o produto no Booking antes de criar ou oferecer o kit."
+- ✂️ Edição: `[CORTE]` seco para o studio.
+
+**Cena 5 · 1:22–2:02 · O studio e os textos · `/app/marketing/[id]`**
+
+- 🎬 Imagem: o studio: cartão **Produto** ("Alimentado pela ficha do produto (somente leitura)", com nome, SKU, linha, material, cor, Pantone e especificação). Cartão **Textos do kit**: "Nome do kit", "Cliente", "Preço", "Moeda", "Conceito", "Slogan", "Descrição comercial", "Campanha", "Cores", "Pantone" e "Notas internas". Escrever "Mesa posta sustentável" em Conceito e "Sirva bem, todos os dias." em Slogan e clicar em **Salvar textos**. Mostrar o cartão **Sugestão de textos (IA)** com o aviso "A IA só sugere. Nada entra no kit sem um humano revisar e confirmar os textos pelo botão "Usar estes textos (revisados)"." e, no ambiente sem IA, o aviso âmbar "A IA não está configurada (modo manual)…" com o link "Configurar em Configurações".
+- 🎙 Narração: "No studio, o produto vem da ficha e não se edita. Os textos são seus: conceito, slogan, descrição, campanha e cores. Clique em Salvar textos. A IA só sugere, e nada entra no kit sem você revisar."
+- 🔤 Na tela: `[PASSO 3/8] Preencha os textos e salve`; `[BOTÃO] "Salvar textos"`; `[SETA]` "Produto: só leitura, vem da ficha"; `[ATENÇÃO]` "A IA só sugere: o humano confirma campo a campo."
+- ✂️ Edição: digitação em tempo real; `[ZOOM 150 %]` no aviso da IA.
+
+**Cena 6 · 2:02–2:32 · Prévias e oferta · `/app/marketing/[id]`**
+
+- 🎬 Imagem: rolar até **Prévias** ("Visíveis ao cliente a partir da oferta."): "Arquivos (imagem ou PDF)" e o botão **Enviar prévias**. A prévia aparece em miniatura, com "Baixar"; a linha do tempo marca "Prévia". No cartão "Situação e ações", clicar em **Oferecer ao cliente** (com a nota "O cliente passa a ver as prévias e o preço; o preço continua editável até a compra."). A situação vira "Oferecido".
+- 🎙 Narração: "Envie as prévias: imagem ou PDF. Elas ficam escondidas até a oferta. Depois, clique em Oferecer ao cliente. Daí em diante o cliente vê as prévias e o preço, e o cliente fica travado no kit."
+- 🔤 Na tela: `[PASSO 4/8] Envie prévias e ofereça`; `[BOTÃO] "Enviar prévias"`; `[BOTÃO] "Oferecer ao cliente"`; `[ERRO COMUM]` "Defina o cliente antes de oferecer o kit."; `[DEPOIS]` "O cliente passa a ver a prévia e o preço em Marketing."
+- ✂️ Edição: `[ZOOM 150 %]` na linha do tempo (Prévia → Oferta).
+
+**Cena 7 · 2:32–3:00 · O que o cliente faz · `/app/marketing/[id]` (João)**
+
+- 🎬 Imagem: perfil do cliente: Meus pedidos → **Marketing**: a lista traz o kit "Oferecido". Abrir: os textos, a prévia, "Arquivos finais" com "Os arquivos finais são liberados após a confirmação do pagamento." e, no cartão da direita, "A Wellmix ofereceu este kit a você.", o preço grande e o botão **Comprar kit** ("Ao comprar, um pagamento pendente é registrado; a Wellmix confirma o recebimento (modo manual) e libera os arquivos finais."). Clicar: aparece "Compra registrada. Aguardando a confirmação do pagamento pela Wellmix."
+- 🎙 Narração: "O cliente abre Marketing, vê a prévia e o preço e clica em Comprar kit. Isso registra um pagamento pendente. Os arquivos finais continuam escondidos até a Wellmix confirmar o pagamento."
+- 🔤 Na tela: `[PASSO 5/8] O cliente compra`; `[BOTÃO] "Comprar kit"`; `[QUEM VÊ]` "O cliente vê a prévia e o preço a partir da oferta; nunca o FOB nem o fornecedor"; `[SETA]` "Arquivos finais: só depois da liberação".
+- ✂️ Edição: `[CORTE]` seco entre os perfis; o aviso de compra registrada em zoom.
+
+**Cena 8 · 3:00–3:48 · Confirmar o pagamento e liberar · `/app/marketing/[id]`**
+
+- 🎬 Imagem: de volta ao administrador: o kit está "Comprado" e o cartão traz "Pagamento pendente", com "Valor", "Comprado em", "Situação" ("Pendente") e "Forma" ("Manual"). A nota: "Modo manual: a Wellmix confirma o recebimento; nenhum gateway está conectado." O campo "Comprovante (opcional)" e o botão **Confirmar pagamento**. Depois, em "Arquivos finais", **Enviar arquivos finais**. O kit fica "Pago" ("Pagamento confirmado") e o botão **Liberar arquivos** acende ("1 arquivo(s) final(is) pronto(s) para liberar ao cliente."). Clicar: "Kit liberado. O cliente já pode baixar os arquivos finais."
+- 🎙 Narração: "Chegou o pagamento? Em Comprado, anexe o comprovante, se tiver, e clique em Confirmar pagamento. Envie os arquivos finais e clique em Liberar arquivos. Só então o cliente pode baixar."
+- 🔤 Na tela: `[PASSO 6/8] Confirme o pagamento`; `[BOTÃO] "Confirmar pagamento"`; `[PASSO 7/8] Envie os finais e libere`; `[BOTÃO] "Enviar arquivos finais"`; `[BOTÃO] "Liberar arquivos"`; `[QUEM VÊ]` "Confirmar pagamento: só o administrador (quem abre o Financeiro)"; `[ERRO COMUM]` "Envie ao menos um arquivo final antes de liberar."
+- ✂️ Edição: `[ZOOM 150 %]` nos botões; `[CORTE]` para o cliente baixando (2 s).
+
+**Cena 9 · 3:48–4:12 · A tabela de preços · `/app/marketing/price-table`**
+
+- 🎬 Imagem: voltar a Marketing e clicar em **Tabela de preços**. Título e a frase "Último preço praticado de cada produto ativo (valor ao cliente ÷ quantidade) e o FOB. Só a Wellmix vê." A tabela: "Produto", "Linha", "Pedido mínimo", "Preço unitário", "FOB unitário" e "Última venda". O botão **Baixar CSV**. A Jarra com o preço unitário da última venda.
+- 🎙 Narração: "A Tabela de preços mostra, para cada produto ativo, o último preço vendido e o FOB. É só para a Wellmix. Clique em Baixar CSV para levar a planilha."
+- 🔤 Na tela: `[PASSO 8/8] Consulte a Tabela de preços`; `[BOTÃO] "Baixar CSV"`; `[QUEM VÊ]` "Só a Wellmix: o cliente nunca vê FOB"; `[SETA]` "Preço unitário = valor ao cliente ÷ quantidade".
+- ✂️ Edição: `[ZOOM 150 %]` na linha da Jarra.
+
+**Cena 10 · 4:12–4:20 · O operador vê de menos · `/app/marketing` (Otávio)**
+
+- 🎬 Imagem: o operador (comprador e planner) não tem Marketing no menu; ao abrir o endereço, volta ao início com o aviso de acesso.
+- 🎙 Narração: "O operador comprador e planner não abre Marketing. Só gerente de produto, designer, diretorias e administrador."
+- 🔤 Na tela: `[QUEM VÊ]` "Marketing: gerente de produto, designer, diretorias, administrador"; `[SETA]` "Aviso de acesso".
+- ✂️ Edição: `[CORTE]` seco.
+
+**Cena 11 · 4:20–4:30 · Resumo e próximo vídeo**
+
+- 🎬 Imagem: fundo vermelho com a lista; no fim, a miniatura do WGE-08.
+- 🎙 Narração: "Resumindo: crie, escreva, envie a prévia, ofereça, confirme o pagamento e libere. A seguir, as multas."
+- 🔤 Na tela: `[RESUMO]` "1 Novo kit do produto · 2 Textos e prévias · 3 Oferecer ao cliente · 4 Confirmar pagamento · 5 Liberar arquivos"; "Próximo: WGE-08 · Multas".
+- ✂️ Edição: fade para a vinheta de encerramento.
+
+### Erros comuns
+
+- **Erro:** "Este produto ainda está no Booking e o cliente não o vê. Aprove o produto no Booking antes de criar ou oferecer o kit." → **Correção:** aprovar o produto no Booking (ele passa a aparecer ao cliente) e criar o kit de novo.
+- **Erro:** "Defina o cliente antes de oferecer o kit." O botão **Oferecer ao cliente** fica desabilitado, com a dica "Defina o cliente no card "Textos do kit" para poder oferecer." → **Correção:** escolher o cliente em **Textos do kit** e salvar.
+- **Erro:** "Envie ao menos um arquivo final antes de liberar." → **Correção:** usar **Enviar arquivos finais** antes de **Liberar arquivos**.
+- **Erro:** "Selecione ao menos um arquivo.", "Formato de arquivo não aceito: envie imagem ou PDF.", "Arquivo grande demais." ou "Arquivo vazio." → **Correção:** enviar imagem ou PDF válido.
+- **Erro:** "Preço inválido (use um valor maior ou igual a zero)." → **Correção:** corrigir o preço (editável só até a compra).
+- **Erro:** "A ação não vale para a situação atual do kit." e "Este kit está cancelado; nada pode ser alterado." → **Correção:** conferir a situação do kit na linha do tempo.
+- **Aviso:** "O marketing studio está desligado nas configurações (marketingEnabled). Os kits existentes continuam visíveis, mas nenhuma ação nova é possível." → **Correção:** ligar "Marketing studio ativo" em Configurações (WGE-09).
+- **Aviso:** "A IA não está configurada (modo manual): sem ANTHROPIC_API_KEY ou com aiMode = MANUAL nenhuma sugestão é gerada. Escreva os textos manualmente." → **Correção:** escrever à mão ou configurar a IA (WGE-09, "Testar IA").
+
+### Passo a passo em texto
+
+1. No menu **Gestão**, abra **Marketing**. Use os cartões por situação e os filtros **Situação**, **Cliente** e **Produto**.
+2. Clique em **+ Novo kit**, escolha o **Produto** e, se já souber, o **Cliente**; confira o **Preço do kit** e a **Moeda** e clique em **Criar kit**.
+3. No studio, escreva os **Textos do kit** (**Conceito**, **Slogan**, **Descrição comercial**, **Campanha**, **Cores**, **Pantone**) e clique em **Salvar textos**. A IA só sugere; você revisa.
+4. Em **Prévias**, escolha as imagens ou o PDF e clique em **Enviar prévias**.
+5. Com o cliente definido, clique em **Oferecer ao cliente**. O cliente passa a ver prévias e preço.
+6. O cliente clica em **Comprar kit**. O kit fica **Comprado**, com **Pagamento pendente**.
+7. O administrador confere o recebimento, anexa o **Comprovante (opcional)** e clica em **Confirmar pagamento**.
+8. Em **Arquivos finais**, clique em **Enviar arquivos finais** e depois em **Liberar arquivos**. O cliente baixa em **Arquivos finais**.
+9. Em **Tabela de preços**, consulte o último preço vendido e o FOB de cada produto; use **Baixar CSV**.
+
+### Notas de gravação
+
+- Prepare fotos do produto (GUIA, seção 7.5): sem foto, o cartão Produto mostra "Nenhuma imagem disponível para este kit." e a prévia fica pobre.
+- A carga traz um kit de demonstração ("Kit de marketing · Jogo de panelas antiaderentes 5 pçs", Rascunho, Loja do João Ltda). Esconda-o com o filtro Produto, ou use-o em vez de criar outro.
+- Sem IA configurada, o studio mostra o aviso âmbar do modo manual. Não grave a "Sugestão de textos (IA)" com a IA em modo exemplo (selo "mock", GUIA seção 7.5): mostre só o aviso.
+- O pagamento do kit é manual: diga "a Wellmix confirma o recebimento"; não mostre gateway.
+- O preço do kit vem de "Preço padrão do kit de marketing" (Configurações). Se o padrão mudar, o valor do vídeo muda: não cite o número.
+- Peça ao cliente a prévia em imagem leve (PNG pequeno) para o vídeo carregar rápido.
+
+### Pontos a confirmar
+
+- ⚠ A faixa de rótulos mistura nomes técnicos no texto da tela: "(marketingEnabled)" no aviso de desligado, "(marketingKitDefaultPrice)" na dica do preço e "ANTHROPIC_API_KEY" e "aiMode = MANUAL" no aviso da IA. Confirmar se o dono quer textos sem nomes de chave.
+- ⚠ "Ponto da jornada": o Marketing não é uma das 9 etapas; o roteiro o liga ao produto (etapa 1). Confirmar com o dono onde o kit entra no mapa.
+- ⚠ Quem recebe aviso em cada passo (oferta ao cliente, compra pelo cliente, liberação) não foi conferido nas Notificações; o ponto "Depois deste vídeo" da ficha é o que o código sugere. Conferir o sino do cliente e da Wellmix na gravação.
+- ⚠ A Tabela de preços mostra o **FOB** a todo login que abre Marketing (inclusive o designer, `canSeeInternalCosts` = toda a Wellmix), embora docs/ACCESS.md ligue o Financeiro só ao administrador. Confirmar se o designer deve ver o FOB.
+- ⚠ O botão "Registrar compra pelo cliente" (quando o cliente aceitou fora do portal) não é gravado neste episódio; citar só no texto, se o dono quiser.
+- ⚠ A IA em produção (AI Gateway ou chave) gera sugestões; este roteiro só mostra o modo manual. Se houver gravação com IA real, acrescentar a cena "Pedir sugestão" → "Usar estes textos (revisados)".
+- ⚠ Em Marketing do cliente, a página não mostra a coluna "Cliente"; confirmar se é o desejado (só o cliente dono vê o kit).
+
+---
+
+## WGE-08 · Multas (visão da Wellmix)
+
+> **Promessa:** ao final do vídeo você registra uma multa num pedido, acompanha em Gestão → Multas e entende como o jurídico muda a situação.
+
+| Ficha                 |                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Série e papel         | Wellmix, administrador (e o jurídico, que acompanha)                                                                                                         |
+| Conta de gravação     | `admin@wellmix.com`, tela em pt; `juridico@wellmix.com` na cena da mudança de situação                                                                       |
+| Duração-alvo          | 3:00                                                                                                                                                         |
+| Ponto da jornada      | Qualquer pedido, nas etapas 5 a 9: multa por atraso, avaria ou descumprimento                                                                                |
+| Telas e rotas         | `/app/orders/[id]#order-penalties` (card "Multas" do pedido), `/app/penalties` (Gestão → Multas), `/app/notifications` (o aviso do jurídico)                    |
+| Dados antes de gravar | Pedido #1 da Jarra em andamento, com fornecedor, agência, despachante, companhia marítima e transportador designados; nenhuma multa. Ponto `antes-WGE-08`      |
+| Depois deste vídeo    | A multa aparece no quadrado "Multa aberta" da Control Tower e em "Exceções"; o jurídico recebe o aviso "Multa registrada no pedido" no sino (com o botão "Resolver") |
+| Antes · Próximo       | WGE-07 · WGE-09                                                                                                                                               |
+| Idiomas               | pt (base)                                                                                                                                                    |
+
+### Roteiro
+
+**Cena 1 · 0:00–0:10 · Gancho · `/app/penalties`**
+
+- 🎬 Imagem: a tela Multas com uma multa "Em aberto" e os botões "Contestada", "Paga" e "Cancelada" na linha.
+- 🎙 Narração: "O fornecedor atrasou? A carga chegou avariada? A Wellmix registra a multa, e o jurídico acompanha até o fim."
+- 🔤 Na tela: `[TÍTULO]` "WGE-08 · Multas (visão da Wellmix)"; `[ZOOM 150 %]` nos botões de situação.
+- ✂️ Edição: vinheta antes; título em 2 s.
+
+**Cena 2 · 0:10–0:22 · Onde estou · `/app/orders/[id]`**
+
+- 🎬 Imagem: o mapa da jornada com as etapas 5 a 9 acesas; a tela do pedido ao fundo.
+- 🎙 Narração: "Multa é um registro do pedido. Pode nascer em qualquer ponto da execução: preparação, inspeção, embarque, desembaraço ou transporte."
+- 🔤 Na tela: `[MAPA etapas 5 a 9]`; `[QUEM VÊ]` "Registrar: administrador e diretorias. Acompanhar: administrador, diretorias e jurídico".
+- ✂️ Edição: o mapa sai em 8 s.
+
+**Cena 3 · 0:22–1:05 · Abrir a multa no pedido · `/app/orders/[id]#order-penalties`**
+
+- 🎬 Imagem: abrir o pedido #1 e rolar até o bloco **Multas** ("Nenhuma multa registrada."). Clicar em **Registrar multa**: o formulário abre com "Motivo", "Valor", "Moeda" (Real (BRL)), "Responsável" e "Evidência". Escrever "Atraso na entrega da arte final da caixa", valor 1.500,00, escolher o responsável (a lista traz só os parceiros do pedido: fornecedor, agência, despachante, companhia marítima, transportador) e anexar uma foto de evidência. Clicar no botão **Registrar multa**.
+- 🎙 Narração: "No pedido, desça até Multas e clique em Registrar multa. Escreva o motivo, o valor e a moeda, escolha o responsável entre os parceiros do pedido e anexe a evidência, se tiver. Clique em Registrar multa."
+- 🔤 Na tela: `[PASSO 1/6] Abra o pedido → Multas → Registrar multa`; `[SETA]` "Responsável: só parceiros deste pedido"; `[BOTÃO] "Registrar multa"`; `[ERRO COMUM]` "Confira o valor de: Motivo."
+- ✂️ Edição: digitação em tempo real; `[ZOOM 150 %]` no seletor de responsável.
+
+**Cena 4 · 1:05–1:40 · A lista de Multas · menu Gestão → Multas**
+
+- 🎬 Imagem: no menu **Gestão**, clicar em **Multas**. A tabela: "Pedido" (link #1), "Responsável" (Shenzhen Supplier A), "Motivo" (com o link "Evidência"), "Valor", "Data", "Situação" (selo vermelho "Em aberto") e os botões "Contestada", "Paga" e "Cancelada". No fim da linha, o balão de conversa.
+- 🎙 Narração: "Em Gestão, abra Multas. Cada linha traz o pedido, o responsável, o motivo, o valor e a data. A situação nasce Em aberto, e os botões mudam para Contestada, Paga ou Cancelada. O balão abre a conversa do pedido."
+- 🔤 Na tela: `[PASSO 2/6] Abra Gestão → Multas`; `[SETA]` "Situação: Em aberto"; `[SETA]` "Evidência: abre o arquivo"; `[QUEM VÊ]` "Gestão → Multas: administrador, diretorias e jurídico".
+- ✂️ Edição: `[ZOOM 150 %]` na linha.
+
+**Cena 5 · 1:40–2:20 · O jurídico muda a situação · `/app/penalties` (Júlia)**
+
+- 🎬 Imagem: perfil do jurídico. O sino traz 1 aviso; em Notificações, em "Precisa de você": "Multa registrada no pedido", o motivo e o botão **Resolver**. No menu **Pedidos**, abrir **Multas**. Clicar em **Contestada**: o selo vira âmbar "Contestada" e sobram os botões "Paga" e "Cancelada" (a situação atual some da fileira). Depois clicar em **Paga**: o selo vira cinza "Paga".
+- 🎙 Narração: "O jurídico recebe um aviso no sino e abre Multas. Se o fornecedor discorda, clique em Contestada. Quando o valor for acertado, Paga. Se a multa não vale, Cancelada. Cada mudança fica na auditoria."
+- 🔤 Na tela: `[PASSO 3/6] O jurídico atualiza a situação`; `[BOTÃO] "Contestada"`; `[BOTÃO] "Paga"`; `[BOTÃO] "Cancelada"`; `[ATENÇÃO]` "O aviso vai ao sino do jurídico, não às Pendências."
+- ✂️ Edição: `[CORTE]` seco entre os perfis; o selo muda de cor, zoom de 2 s.
+
+**Cena 6 · 2:20–2:45 · Acompanhar na Control Tower · `/app`**
+
+- 🎬 Imagem: voltar ao administrador. Na Control Tower, o quadrado **Multa aberta** (bloco Problemas) com a contagem, e o cartão **Exceções** com o selo "Multa em aberto" e o texto "#1 · Atraso na entrega da arte final da caixa". Tocar no quadrado: a lista com o pedido.
+- 🎙 Narração: "A multa aparece na Control Tower, no quadrado Multa aberta e em Exceções. Contestada ainda conta como aberta. Some quando vira Paga ou Cancelada."
+- 🔤 Na tela: `[PASSO 4/6] Acompanhe na Control Tower`; `[SETA]` "Multa aberta = Em aberto + Contestada"; `[QUEM VÊ]` "O operador comprador e planner não abre Multas nem registra multa".
+- ✂️ Edição: `[ZOOM 150 %]` no quadrado.
+
+**Cena 7 · 2:45–3:00 · Resumo e próximo vídeo**
+
+- 🎬 Imagem: fundo vermelho com a lista; no fim, a miniatura do WGE-09.
+- 🎙 Narração: "Resumindo: registre no pedido, acompanhe em Multas e deixe o jurídico atualizar. A seguir, as Configurações."
+- 🔤 Na tela: `[RESUMO]` "1 Registrar multa no pedido · 2 Responsável: parceiro do pedido · 3 Jurídico: Contestada, Paga ou Cancelada · 4 Control Tower: Multa aberta"; `[PASSO 5/6] Conclua`; "Próximo: WGE-09 · Configurações".
+- ✂️ Edição: fade para a vinheta de encerramento.
+
+### Erros comuns
+
+- **Erro:** motivo curto demais (menos de 2 caracteres). A tela volta ao pedido com "Confira o valor de: Motivo." e "Toque em um item para ir até ele." → **Correção:** escrever o motivo.
+- **Erro:** valor em branco. A tela mostra "Confira o valor de: Valor." → **Correção:** digitar o valor (zero é aceito; negativo, não).
+- **Erro:** "Você não tem permissão para esta ação." quando um login sem a tela Multas tenta registrar ou mudar a situação. → **Correção:** pedir ao administrador a tela **Multas** (WGE-10).
+- **Dúvida comum:** o jurídico não encontra a multa em Pendências. → **Correção:** o aviso vai para o sino e para Notificações ("Multa registrada no pedido", com **Resolver**); a lista fica em Pedidos → **Multas**.
+- **Dúvida comum:** a multa "Contestada" ainda conta como aberta na Control Tower. → **Correção:** só Paga e Cancelada saem do quadrado.
+
+### Passo a passo em texto
+
+1. Abra o pedido e desça até **Multas**. Clique em **Registrar multa**.
+2. Preencha **Motivo**, **Valor**, **Moeda**, **Responsável** (um parceiro do pedido) e, se tiver, **Evidência**. Clique em **Registrar multa**.
+3. A multa nasce **Em aberto**. O jurídico recebe o aviso "Multa registrada no pedido" no sino.
+4. No menu **Gestão**, abra **Multas** para ver todas: pedido, responsável, motivo, valor, data e situação.
+5. O jurídico (ou o administrador) clica em **Contestada**, **Paga** ou **Cancelada** na linha.
+6. Acompanhe na **Control Tower**: o quadrado **Multa aberta** (Problemas) e a exceção **Multa em aberto**.
+
+### Notas de gravação
+
+- O administrador e as diretorias registram a multa; o jurídico só atualiza a situação. O operador comprador e planner não abre Multas.
+- Não há botão para voltar a "Em aberto": a fileira mostra só as situações diferentes da atual, e "Em aberto" nunca é oferecida (conferido na execução: depois de **Contestada** sobram **Paga** e **Cancelada**; ver ⚠). Grave a sequência Em aberto → Contestada → Paga.
+- O aviso do jurídico usa o texto "Multa registrada no pedido", em português, qualquer que seja o idioma do jurídico (ver ⚠).
+- Para a evidência, use uma foto simples (PNG) sem dados reais.
+- Para repetir a tomada, restaure o ponto `antes-WGE-08`: não há como apagar a multa pela tela.
+
+### Pontos a confirmar
+
+- ⚠ Não existe botão para voltar uma multa a "Em aberto": a linha oferece só as situações diferentes da atual, escolhidas entre `["disputed","paid","cancelled"]`. Quem clica em Paga por engano só consegue mudar para Contestada ou Cancelada. Conferir se é intencional.
+- ⚠ O assunto do aviso ao jurídico ("Multa registrada no pedido") está escrito direto no código, em português, sem passar pelos dicionários pt/en/zh. Um jurídico com a tela em outro idioma o vê em português.
+- ⚠ A tela Multas lista **todas** as multas a quem a abre; docs/WORKFLOW.md diz que "o parceiro vê só as dele" (só se aplica ao bloco de multas do pedido). O jurídico vê todas. Confirmar se é o esperado.
+- ⚠ A palavra "aberta": o quadrado "Multa aberta" e a exceção "Multa em aberto" contam também as **Contestada** (`status: ["open","disputed"]`). O roteiro diz isso; confirmar com o dono.
+- ⚠ Quem pode registrar multa: o código exige a tela Multas (diretorias e administrador); docs/ACCESS.md diz o mesmo. A frase "Registrar: administrador e diretorias" vem daí.
