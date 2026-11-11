@@ -1575,6 +1575,7 @@ alter table public."supplier_requests" add column if not exists "erpCheckedAt" t
 alter table public."supplier_requests" add column if not exists "negotiation" jsonb;
 alter table public."supplier_requests" add column if not exists "slaNotifiedAt" timestamptz;
 alter table public."supplier_requests" add column if not exists "orderId" text;
+alter table public."supplier_requests" add column if not exists "batchId" text;
 create index if not exists "supplier_requests_by_supplier" on public."supplier_requests" ("supplierId");
 create index if not exists "supplier_requests_by_item" on public."supplier_requests" ("bookingItemId");
 create index if not exists "supplier_requests_by_status" on public."supplier_requests" ("status");

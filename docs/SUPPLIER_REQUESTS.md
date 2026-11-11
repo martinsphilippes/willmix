@@ -33,7 +33,7 @@ O quadrante de comparação **não abre a solicitação**: ele grava a escolha d
 1. **Gravar escolha** (`saveSelectionGroup`): o item que ganhou (um só, de booking fechado), a quantidade de peças (em branco = a da planilha do ganhador) e o que a Wellmix precisa. O grupo são os itens comparados na aba Seleção (a aba Itens só agrupa). Nada vai ao fornecedor: nem solicitação, nem aviso.
 2. Fica em `selection_groups` (`status` saved → requested; `replaced` quando outra escolha toma o lugar). Gravar de novo um grupo com algum item em comum com uma escolha ainda não enviada **troca** a anterior (um item não fica em duas escolhas esperando).
 3. **Blocos sugeridos**: o bloco cujo ganhador está nele aparece como **Resolvido**, com o item escolhido em verde e a quantidade (`groupForBlock`). Escolhas de grupos montados à mão (sem bloco sugerido) aparecem como cartões próprios. "Rever a escolha" reabre o grupo com a escolha preenchida.
-4. **Abrir a solicitação** (`openGroupRequests`): "dos marcados" (cada bloco resolvido tem uma caixa, já marcada) ou "de todos". Abre uma solicitação por grupo, **só do ganhador**; os outros itens do grupo vão como alternativas (só a Wellmix vê). O grupo passa a mostrar "Solicitação nº N aberta" com o link. Um grupo que não abre (ex.: item com solicitação em andamento) continua gravado e a tela diz o motivo; os demais abrem. Uma só aberta, sem falha, leva direto à solicitação.
+4. **Abrir a solicitação** (`openGroupRequests`): "dos marcados" (cada bloco resolvido tem uma caixa, já marcada) ou "de todos". Abre **uma solicitação só por fornecedor**, com os ganhadores como produtos dela (ver "Uma solicitação, vários produtos"); de cada grupo vai **só o ganhador**; os outros itens do grupo vão como alternativas (só a Wellmix vê). O grupo passa a mostrar "Solicitação nº N aberta" com o link. Um grupo que não abre (ex.: item com solicitação em andamento) continua gravado e a tela diz o motivo; os demais abrem. Uma solicitação só (um fornecedor), sem falha, leva direto a ela.
 5. Só a Wellmix com a tela Booking grava, lista e abre. O fornecedor não tem acesso a `selection_groups`.
 
 ### Regras da solicitação
@@ -45,6 +45,17 @@ O quadrante de comparação **não abre a solicitação**: ele grava a escolha d
 5. Situações: **Aberta** (esperando o fornecedor) → **Respondida** → **Aprovada** ou **Recusada**; **Cancelada** pela Wellmix. Decisões possíveis (`supplierRequestDecisions`): Aberta → Cancelar ou Recusar; Respondida "faz" → Aprovar ou Recusar; Respondida "não faz" → Recusar.
 6. **Resposta do fornecedor**: faz ou não faz; se faz, preço por peça (obrigatório) e moeda; pedido mínimo, prazo de produção (dias), modalidade de entrega (FOB/EXW) e observação. Muda até a Wellmix decidir. A Wellmix pode **registrar a resposta** em nome dele quando ela chega por fora (WeChat, e-mail).
 7. Avisos (sino, e-mail e WhatsApp em modo mock): ao fornecedor quando a solicitação abre e quando a Wellmix decide; a quem abriu, quando o fornecedor responde.
+
+## Uma solicitação, vários produtos (decisão do dono, 11/11/2026)
+
+Abrir a solicitação de um ou de vários grupos de uma vez gera **uma solicitação só para cada fornecedor**: um número, uma linha na lista (da Wellmix e do fornecedor), um aviso, e os produtos escolhidos dentro dela. Antes, cada produto virava uma solicitação com número próprio.
+
+- No banco continua um registro `supplier_requests` **por produto** (cada produto tem a sua resposta, negociação, decisão e produto criado). Os abertos juntos para o mesmo fornecedor levam o mesmo `number` e o mesmo `batchId`; na tabela aparecem como 2.1, 2.2, 2.3…
+- Itens de **bookings diferentes** do mesmo fornecedor entram na mesma solicitação. Fornecedores diferentes: uma solicitação para cada um.
+- `requestGroupKey` diz a que solicitação o produto pertence: o `batchId`. A antiga (sem `batchId`) é uma solicitação sozinha, como a tabela já mostrava. `groupRequests` monta a lista.
+- **Lista**: uma linha por solicitação, com os produtos, a soma das peças, as situações (com a contagem), "N de M respondidos", o pior SLA e de quem é a vez. "Finalizada em" só quando todos os produtos foram decididos.
+- **Aviso** ao fornecedor: um por solicitação ("{products} produtos"), com o link dela.
+- As regras por produto (responder, negociar, decidir, criar o produto) não mudaram.
 
 ## Tabela da solicitação (decisão do dono, 11/11/2026)
 
@@ -112,7 +123,7 @@ Com a tela Cadastros, cada nome leva ao quadro de acesso do cadastro (`/app/part
 
 ## Banco
 
-Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_request_number`), `status`, `supplierId` (índice `by_supplier`), `bookingItemId` (índice `by_item`), `bookingLotId`, `alternativeItemIds` (JSON), `item` (JSON, cópia do item), `quantity`, `unit`, `needs`, `searchQuery`, a resposta (`supplierCanDo`, `supplierPrice`, `supplierCurrency`, `supplierMoq`, `supplierLeadTimeDays`, `supplierNote`, `respondedAt`, `respondedByUserId`), a decisão (`decidedAt`, `decidedByUserId`, `decisionNote`), `createdByUserId` e o produto (`productId`, com índice `by_product`, `productAction` created/linked, `productLinkedAt`, `productLinkedByUserId`, `showcaseReleasedAt`, `showcaseReleasedByUserId`, `erpCheckedAt`), a negociação (`negotiation`, `slaNotifiedAt`), a modalidade de entrega da resposta (`supplierIncoterm`); índice `by_status`. Arquivos da conversa: `documents.supplierRequestId`. Antes de `npm run appwrite:push`, as telas avisam "esquema desatualizado".
+Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_request_number`; o mesmo nos produtos da mesma solicitação), `batchId` (a solicitação a que o produto pertence), `status`, `supplierId` (índice `by_supplier`), `bookingItemId` (índice `by_item`), `bookingLotId`, `alternativeItemIds` (JSON), `item` (JSON, cópia do item), `quantity`, `unit`, `needs`, `searchQuery`, a resposta (`supplierCanDo`, `supplierPrice`, `supplierCurrency`, `supplierMoq`, `supplierLeadTimeDays`, `supplierNote`, `respondedAt`, `respondedByUserId`), a decisão (`decidedAt`, `decidedByUserId`, `decisionNote`), `createdByUserId` e o produto (`productId`, com índice `by_product`, `productAction` created/linked, `productLinkedAt`, `productLinkedByUserId`, `showcaseReleasedAt`, `showcaseReleasedByUserId`, `erpCheckedAt`), a negociação (`negotiation`, `slaNotifiedAt`), a modalidade de entrega da resposta (`supplierIncoterm`); índice `by_status`. Arquivos da conversa: `documents.supplierRequestId`. Antes de `npm run appwrite:push`, as telas avisam "esquema desatualizado".
 
 Tabela `selection_groups` (escolha por grupo): `status` saved/requested/replaced (índice `by_status`), `itemIds` (JSON), `chosenItemId` (índice `by_chosen`), `quantity`, `needs`, `supplierRequestId`, `requestedAt`, `createdByUserId`, `updatedByUserId`. Serviço em `src/lib/services/selection-groups.ts`; testes em `tests/unit/selection-groups.test.ts`.
 

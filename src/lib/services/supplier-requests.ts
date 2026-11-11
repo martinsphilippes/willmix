@@ -19,6 +19,7 @@ import {
   itemSearchText,
   matchesItemSearch,
   pendingProposal,
+  requestGroupKey,
   searchWords,
   sheetQuantity,
   supplierCanAnswer,
@@ -230,6 +231,19 @@ export interface OpenSupplierRequestInput {
 }
 
 /**
+ * Uma solicitação com vários produtos: os abertos juntos para o mesmo
+ * fornecedor levam o mesmo número e o mesmo `batchId`.
+ */
+export interface SupplierRequestBatch {
+  id: string;
+  number: number;
+}
+
+/**
+ * Com `batches` (um por fornecedor, preenchido aqui), o produto entra na
+ * solicitação do fornecedor em vez de ganhar número próprio, e o aviso ao
+ * fornecedor fica com quem chamou (um só, com todos os produtos).
+ *
  * Abre a solicitação ao fornecedor do item escolhido (uma por item; o item
  * com solicitação em andamento recusa). O booking fechado passa a "Em
  * andamento" e os logins do fornecedor recebem o aviso.
@@ -237,6 +251,7 @@ export interface OpenSupplierRequestInput {
 export async function openSupplierRequest(
   user: User,
   input: OpenSupplierRequestInput,
+  batches?: Map<string, SupplierRequestBatch>,
 ): Promise<SupplierRequest> {
   assertWellmix(user);
   assertScreen(user, "booking");
@@ -273,9 +288,18 @@ export async function openSupplierRequest(
     ? await store.list("booking_items", { filter: { id: altIds } })
     : [];
 
-  const number = await store.nextNumber(COUNTER);
+  let batch = batches?.get(supplier.id) ?? null;
+  if (batches && !batch) {
+    batch = {
+      id: crypto.randomUUID(),
+      number: await store.nextNumber(COUNTER),
+    };
+    batches.set(supplier.id, batch);
+  }
+  const number = batch ? batch.number : await store.nextNumber(COUNTER);
   const request = await store.create("supplier_requests", {
     number,
+    ...(batch ? { batchId: batch.id } : {}),
     status: "open",
     supplierId: supplier.id,
     bookingItemId: item.id,
@@ -314,6 +338,7 @@ export async function openSupplierRequest(
     request.id,
     `Solicitação ao fornecedor nº ${number}: ${supplier.name}, ${request.quantity} pcs (booking nº ${lot.number})`,
   );
+  if (batches) return request;
   const { notify } = await import("./notifications");
   await notify(
     { role: "supplier", partyId: supplier.id },
@@ -443,15 +468,28 @@ export async function getSupplierRequest(
 }
 
 /**
- * Linhas da tabela da solicitação: só a própria solicitação (decisão do dono,
- * 11/11/2026: a tela mostra a solicitação aberta, não as outras do mesmo
- * fornecedor e booking). Quem não vê, nada.
+ * Produtos da solicitação (a tabela que se vê primeiro): os que foram
+ * abertos juntos para o fornecedor (`batchId`), em ordem de abertura. A
+ * antiga, sem `batchId`, é só ela mesma (decisão do dono, 11/11/2026: a tela
+ * não mostra as outras do mesmo fornecedor e booking). Quem não vê, nada.
  */
 export async function supplierRequestGroup(
   user: User,
   request: SupplierRequest,
 ): Promise<SupplierRequest[]> {
-  return canSee(user, request) ? [request] : [];
+  if (!canSee(user, request)) return [];
+  if (!request.batchId) return [request];
+  const rows = await getStore().list("supplier_requests", {
+    filter: { supplierId: request.supplierId },
+  });
+  const key = requestGroupKey(request);
+  const group = rows.filter(
+    (r) => requestGroupKey(r) === key && canSee(user, r),
+  );
+  if (!group.some((r) => r.id === request.id)) group.push(request);
+  return group.sort(
+    (a, b) => a.number - b.number || a.createdAt.localeCompare(b.createdAt),
+  );
 }
 
 /**

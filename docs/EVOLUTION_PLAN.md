@@ -843,3 +843,8 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 ## Solicitação ao fornecedor: tabela, linha do tempo e chat flutuante
 
 - **Pedido do dono** (11/11/2026): a tela abre numa tabela dos produtos (fornecedor e Wellmix), com condições iniciais e finais; a conversa sai do cartão "Negociação" e vira um chat flutuante no canto inferior direito; o histórico vira a linha do tempo. O cartão "Negociação" continua na coluna da direita, embaixo do Booking (item acima), só com a contraproposta e a resposta a ela. Detalhes em docs/SUPPLIER_REQUESTS.md.
+
+## Solicitação ao fornecedor: uma solicitação só, com vários produtos
+
+- **Pedido do dono** (11/11/2026): ao abrir a solicitação de um ou de vários grupos na Seleção, chegavam ao fornecedor várias solicitações (uma por produto). Agora os produtos abertos juntos para o mesmo fornecedor viram **uma solicitação só**: um número, uma linha na lista, um aviso, e os produtos dentro (2.1, 2.2…).
+- Aditivo: `supplier_requests.batchId` (novo, opcional). O registro continua um por produto, com a sua resposta, negociação e decisão. As antigas, sem `batchId`, continuam uma por produto (nenhum dado muda). Detalhes em docs/SUPPLIER_REQUESTS.md ("Uma solicitação, vários produtos").

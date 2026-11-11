@@ -14,11 +14,12 @@ import {
   supplierRequestSlaMinutes,
 } from "@/lib/services/supplier-request-negotiation";
 import {
-  distinctProductsByGroup,
   finishedLate,
+  groupRequests,
   negotiationTurn,
 } from "@/lib/supplier-requests";
 import { dictionaries } from "@/i18n/dictionaries";
+import { SUPPLIER_REQUEST_STATUSES } from "@/lib/db/schema";
 import { fallbackError } from "@/i18n/error-text";
 import {
   listPurchaseCandidates,
@@ -83,10 +84,16 @@ export default async function SupplierRequestsPage({
     ? await purchaseOrderCustomer()
     : null;
 
-  // Produtos distintos: na lista toda e em cada grupo (fornecedor + booking).
+  // Uma linha por solicitação: os produtos abertos juntos para o fornecedor
+  // ficam dentro dela (a antiga, sem batchId, é uma linha sozinha).
   const rows = entries ?? [];
   const distinctTotal = new Set(rows.map((e) => e.request.bookingItemId)).size;
-  const perGroup = distinctProductsByGroup(rows.map((e) => e.request));
+  const supplierOf = new Map(rows.map((e) => [e.request.id, e.supplier]));
+  const requests = groupRequests(rows.map((e) => e.request)).map((list) =>
+    [...list].sort(
+      (a, b) => a.number - b.number || a.createdAt.localeCompare(b.createdAt),
+    ),
+  );
 
   return (
     <>
@@ -128,7 +135,7 @@ export default async function SupplierRequestsPage({
         <Card>
           <p className="mb-2 text-sm text-zinc-600" data-supplier-request-count>
             {t("supplierRequests.list.count", {
-              n: entries.length,
+              n: requests.length,
               products: distinctTotal,
             })}
           </p>
@@ -147,106 +154,163 @@ export default async function SupplierRequestsPage({
               </tr>
             </thead>
             <tbody>
-              {entries.map(({ request: r, supplier }) => (
-                <tr
-                  key={r.id}
-                  className={rowClass}
-                  data-supplier-request-row={r.id}
-                >
-                  <Td>
-                    <Link
-                      href={`/app/supplier-requests/${r.id}`}
-                      className={linkClass}
-                    >
-                      {r.number}
-                    </Link>
-                  </Td>
-                  <Td>
-                    <span className="flex flex-wrap gap-1">
-                      <Badge tone={STATUS_TONE[r.status]}>
-                        {t(
-                          `supplierRequests.status.${r.status}` as DictionaryKey,
-                        )}
-                      </Badge>
-                      <SlaBadge sla={slaOf(r, slaMinutes, now)} t={t} />
-                    </span>
-                    {negotiationTurn(r) ? (
-                      <span className="mt-0.5 block text-xs text-zinc-500">
-                        {t(
-                          `supplierRequests.negotiation.turn.${negotiationTurn(r)}` as DictionaryKey,
-                        )}
-                      </span>
-                    ) : null}
-                  </Td>
-                  {wellmix ? <Td>{supplier?.name ?? "—"}</Td> : null}
-                  <Td>
-                    <span className="block max-w-64 whitespace-normal">
-                      {r.item.description ?? r.item.productName ?? "—"}
-                    </span>
-                    <span className="block text-xs text-zinc-500">
-                      {r.item.factoryItemCode ?? ""}
-                    </span>
-                  </Td>
-                  <Td className="tabular-nums">
-                    {t("supplierRequests.detail.pieces", {
-                      n: r.quantity.toLocaleString(t.intl),
-                    })}
-                  </Td>
-                  <Td
-                    className="tabular-nums"
-                    data-supplier-request-products={r.id}
+              {requests.map((products) => {
+                const r = products[0];
+                const supplier = supplierOf.get(r.id) ?? null;
+                const many = products.length > 1;
+                const statuses = SUPPLIER_REQUEST_STATUSES.filter((status) =>
+                  products.some((p) => p.status === status),
+                );
+                const slas = products.map((p) => slaOf(p, slaMinutes, now));
+                const sla =
+                  slas.find((x) => x?.late) ?? slas.find((x) => x) ?? null;
+                const turns = products.map((p) => negotiationTurn(p));
+                const turn = turns.includes("supplier")
+                  ? "supplier"
+                  : turns.includes("wellmix")
+                    ? "wellmix"
+                    : null;
+                const pieces = products.reduce((sum, p) => sum + p.quantity, 0);
+                const distinct = new Set(products.map((p) => p.bookingItemId))
+                  .size;
+                const answered = products.filter((p) => p.supplierCanDo).length;
+                const orderIds = [
+                  ...new Set(
+                    products
+                      .map((p) => p.orderId)
+                      .filter((id): id is string => !!id),
+                  ),
+                ];
+                // Finalizada: quando todos os produtos foram decididos.
+                const finished = products.every((p) => p.decidedAt)
+                  ? products
+                      .map((p) => p.decidedAt as string)
+                      .sort()
+                      .at(-1)!
+                  : null;
+                const late = products.some((p) => finishedLate(p, slaMinutes));
+                return (
+                  <tr
+                    key={r.id}
+                    className={rowClass}
+                    data-supplier-request-row={r.id}
                   >
-                    <Link
-                      href={`/app/supplier-requests/${r.id}`}
-                      className={linkClass}
-                    >
-                      {perGroup.get(`${r.supplierId}:${r.bookingLotId}`) ?? 1}
-                    </Link>
-                  </Td>
-                  <Td>
-                    {answerText(t, r)}
-                    {r.orderId ? (
+                    <Td>
                       <Link
-                        href={`/app/orders/${r.orderId}`}
-                        className={`${linkClass} block text-xs`}
-                        data-supplier-request-order={r.orderId}
+                        href={`/app/supplier-requests/${r.id}`}
+                        className={linkClass}
                       >
-                        {t("purchaseOrder.list.order")}
+                        {r.number}
                       </Link>
-                    ) : null}
-                  </Td>
-                  <Td className="whitespace-nowrap tabular-nums">
-                    {dateTime(r.createdAt, t)}
-                  </Td>
-                  <Td
-                    className="whitespace-nowrap"
-                    data-supplier-request-finished={r.id}
-                  >
-                    {r.decidedAt ? (
-                      <>
-                        <span className="block tabular-nums">
-                          {dateTime(r.decidedAt, t)}
-                        </span>
-                        <span className="mt-0.5 inline-flex">
-                          <Badge
-                            tone={
-                              finishedLate(r, slaMinutes) ? "danger" : "success"
-                            }
-                          >
+                    </Td>
+                    <Td>
+                      <span className="flex flex-wrap gap-1">
+                        {statuses.map((status) => (
+                          <Badge key={status} tone={STATUS_TONE[status]}>
                             {t(
-                              finishedLate(r, slaMinutes)
-                                ? "supplierRequests.list.finishedLate"
-                                : "supplierRequests.list.finishedOnTime",
+                              `supplierRequests.status.${status}` as DictionaryKey,
                             )}
+                            {many
+                              ? ` · ${products.filter((p) => p.status === status).length}`
+                              : ""}
                           </Badge>
+                        ))}
+                        <SlaBadge sla={sla} t={t} />
+                      </span>
+                      {turn ? (
+                        <span className="mt-0.5 block text-xs text-zinc-500">
+                          {t(
+                            `supplierRequests.negotiation.turn.${turn}` as DictionaryKey,
+                          )}
                         </span>
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </Td>
-                </tr>
-              ))}
+                      ) : null}
+                    </Td>
+                    {wellmix ? <Td>{supplier?.name ?? "—"}</Td> : null}
+                    <Td>
+                      {products.slice(0, 4).map((p) => (
+                        <span
+                          key={p.id}
+                          className="block max-w-64 whitespace-normal"
+                        >
+                          {p.item.description ?? p.item.productName ?? "—"}
+                          {p.item.factoryItemCode ? (
+                            <span className="text-xs text-zinc-500">
+                              {` · ${p.item.factoryItemCode}`}
+                            </span>
+                          ) : null}
+                        </span>
+                      ))}
+                      {products.length > 4 ? (
+                        <span className="block text-xs text-zinc-500">
+                          {t("supplierRequests.list.more", {
+                            n: products.length - 4,
+                          })}
+                        </span>
+                      ) : null}
+                    </Td>
+                    <Td className="tabular-nums">
+                      {t("supplierRequests.detail.pieces", {
+                        n: pieces.toLocaleString(t.intl),
+                      })}
+                    </Td>
+                    <Td
+                      className="tabular-nums"
+                      data-supplier-request-products={r.id}
+                    >
+                      <Link
+                        href={`/app/supplier-requests/${r.id}`}
+                        className={linkClass}
+                      >
+                        {distinct}
+                      </Link>
+                    </Td>
+                    <Td>
+                      {many
+                        ? t("supplierRequests.list.answered", {
+                            n: answered,
+                            total: products.length,
+                          })
+                        : answerText(t, r)}
+                      {orderIds.map((orderId) => (
+                        <Link
+                          key={orderId}
+                          href={`/app/orders/${orderId}`}
+                          className={`${linkClass} block text-xs`}
+                          data-supplier-request-order={orderId}
+                        >
+                          {t("purchaseOrder.list.order")}
+                        </Link>
+                      ))}
+                    </Td>
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {dateTime(r.createdAt, t)}
+                    </Td>
+                    <Td
+                      className="whitespace-nowrap"
+                      data-supplier-request-finished={r.id}
+                    >
+                      {finished ? (
+                        <>
+                          <span className="block tabular-nums">
+                            {dateTime(finished, t)}
+                          </span>
+                          <span className="mt-0.5 inline-flex">
+                            <Badge tone={late ? "danger" : "success"}>
+                              {t(
+                                late
+                                  ? "supplierRequests.list.finishedLate"
+                                  : "supplierRequests.list.finishedOnTime",
+                              )}
+                            </Badge>
+                          </span>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
         </Card>

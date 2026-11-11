@@ -2578,6 +2578,12 @@ export interface SupplierRequest extends BaseRow {
   slaNotifiedAt?: string | null;
   /** Pedido de compra em que o produto desta solicitação entrou (docs/PURCHASE_ORDER.md). */
   orderId?: string | null;
+  /**
+   * Solicitação a que este produto pertence: os produtos abertos juntos para
+   * o mesmo fornecedor têm o mesmo `batchId` e o mesmo `number` (uma
+   * solicitação só, com vários produtos). Nulo nas antigas.
+   */
+  batchId?: string | null;
 }
 
 /**
@@ -4316,6 +4322,7 @@ export const TABLES: Record<TableName, TableDef> = {
       negotiation: jsonLarge(),
       slaNotifiedAt: datetime(),
       orderId: id(false),
+      batchId: id(false),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },

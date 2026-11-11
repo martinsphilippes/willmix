@@ -219,4 +219,59 @@ describe("escolha por grupo", () => {
     ]);
     expect((await store.get("selection_groups", dup.id))!.status).toBe("saved");
   });
+
+  it("abrir vários de uma vez vira uma solicitação só por fornecedor, com os produtos dentro", async () => {
+    const store = getStore();
+    await closedLot("Shenzhen Supplier A", [
+      row("Shenzhen Supplier A", "GB-1", "Blue vase tall", "100"),
+      row("Shenzhen Supplier A", "GB-2", "Green bowl deep", "200"),
+    ]);
+    // Outro booking do mesmo fornecedor: entra na mesma solicitação.
+    await closedLot("Shenzhen Supplier A", [
+      row("Shenzhen Supplier A", "GB-3", "Red plate flat", "300"),
+    ]);
+    const items = await store.list("booking_items");
+    const of = (code: string) => items.find((i) => i.factoryItemCode === code)!;
+    const saved: string[] = [];
+    for (const code of ["GB-1", "GB-2", "GB-3"]) {
+      const group = await groups.saveSelectionGroup(admin, {
+        itemIds: [of(code).id],
+        chosenItemId: of(code).id,
+        quantity: null,
+        needs: null,
+      });
+      saved.push(group.id);
+    }
+    const notes = async () =>
+      (
+        await store.list("notifications", {
+          filter: { userId: supplierA.id, channel: "inapp" },
+        })
+      ).length;
+    const before = await notes();
+    const { opened, failed } = await groups.openGroupRequests(admin, saved);
+    expect(failed).toEqual([]);
+    expect(opened).toHaveLength(3);
+    // Um número e um lote só; um aviso só ao fornecedor.
+    expect(new Set(opened.map((r) => r.number)).size).toBe(1);
+    expect(opened[0].batchId).toBeTruthy();
+    expect(new Set(opened.map((r) => r.batchId)).size).toBe(1);
+    expect(await notes()).toBe(before + 1);
+    const lib = await import("@/lib/supplier-requests");
+    expect(lib.groupRequests(opened)).toHaveLength(1);
+    // O fornecedor e a Wellmix veem os três produtos na mesma solicitação.
+    const svc = await import("@/lib/services/supplier-requests");
+    for (const who of [supplierA, admin])
+      expect(
+        (await svc.supplierRequestGroup(who, opened[2])).map((r) => r.id),
+      ).toEqual(opened.map((r) => r.id));
+    // Na lista, as solicitações de antes não se misturam com a nova.
+    const all = (await svc.listSupplierRequests(supplierA))!.map(
+      (e) => e.request,
+    );
+    const mine = lib
+      .groupRequests(all)
+      .find((list) => list.some((r) => r.id === opened[0].id))!;
+    expect(mine).toHaveLength(3);
+  });
 });

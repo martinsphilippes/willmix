@@ -205,6 +205,10 @@ export const pt = {
   "supplierRequests.notify.open.subject": "Nova solicitação da Wellmix nº {n}",
   "supplierRequests.notify.open.body":
     "A Wellmix quer saber se você faz o item {code} ({qty} peças). Abra a solicitação nº {n} e responda.",
+  "supplierRequests.notify.open.bodyMany":
+    "A Wellmix quer saber se você faz {products} produtos ({qty} peças no total). Abra a solicitação nº {n} e responda cada um.",
+  "supplierRequests.list.more": "+ {n} produto(s)",
+  "supplierRequests.list.answered": "{n} de {total} respondidos",
   "supplierRequests.notify.answer.subject":
     "O fornecedor respondeu a solicitação nº {n}",
   "supplierRequests.notify.answer.yes":
@@ -222,7 +226,7 @@ export const pt = {
     "A Wellmix cancelou a solicitação nº {n}. Não é preciso responder.",
   "supplierRequests.table.title": "Produtos desta solicitação",
   "supplierRequests.table.subtitle":
-    "Produto desta solicitação",
+    "{n} produto(s) que a Wellmix pediu a você nesta solicitação",
   "supplierRequests.table.col.photo": "Foto",
   "supplierRequests.table.col.item": "Produto",
   "supplierRequests.table.col.quantity": "Quantidade",
@@ -275,7 +279,7 @@ export const pt = {
   "supplierRequests.error.selection_group_none":
     "Nenhum grupo resolvido esperando a solicitação.",
   "supplierRequests.table.subtitleWellmix":
-    "Produto desta solicitação",
+    "{n} produto(s) pedidos a este fornecedor nesta solicitação",
   "supplierRequests.table.hintWellmix":
     "Uma informação por coluna. Pelos ícones: mensagem ao fornecedor, registrar a resposta dele (quando chega por fora) e abrir a tela do produto.",
   "supplierRequests.table.answerWellmix": "Registrar a resposta do fornecedor",
@@ -559,6 +563,10 @@ export const en: typeof pt = {
   "supplierRequests.notify.open.subject": "New Wellmix request no. {n}",
   "supplierRequests.notify.open.body":
     "Wellmix wants to know whether you make item {code} ({qty} pieces). Open request no. {n} and answer.",
+  "supplierRequests.notify.open.bodyMany":
+    "Wellmix wants to know whether you make {products} products ({qty} pieces in total). Open request no. {n} and answer each one.",
+  "supplierRequests.list.more": "+ {n} product(s)",
+  "supplierRequests.list.answered": "{n} of {total} answered",
   "supplierRequests.notify.answer.subject":
     "The supplier answered request no. {n}",
   "supplierRequests.notify.answer.yes":
@@ -576,7 +584,7 @@ export const en: typeof pt = {
     "Wellmix cancelled request no. {n}. No answer is needed.",
   "supplierRequests.table.title": "Products in this request",
   "supplierRequests.table.subtitle":
-    "Product in this request",
+    "{n} product(s) Wellmix requested from you in this request",
   "supplierRequests.table.col.photo": "Photo",
   "supplierRequests.table.col.item": "Product",
   "supplierRequests.table.col.quantity": "Quantity",
@@ -627,7 +635,7 @@ export const en: typeof pt = {
   "supplierRequests.error.selection_group_none":
     "No resolved group waiting for the request.",
   "supplierRequests.table.subtitleWellmix":
-    "Product in this request",
+    "{n} product(s) requested from this supplier in this request",
   "supplierRequests.table.hintWellmix":
     "One piece of information per column. Icons: message the supplier, record their answer (when it arrives elsewhere) and open the product screen.",
   "supplierRequests.table.hint":
@@ -905,6 +913,10 @@ export const zh: typeof pt = {
   "supplierRequests.notify.open.subject": "Wellmix 新询单第 {n} 号",
   "supplierRequests.notify.open.body":
     "Wellmix 想了解您是否能生产条目 {code}（{qty} 件）。请打开询单第 {n} 号并回复。",
+  "supplierRequests.notify.open.bodyMany":
+    "Wellmix 想了解您是否能生产 {products} 个产品（共 {qty} 件）。请打开询单第 {n} 号并逐个回复。",
+  "supplierRequests.list.more": "+ {n} 个产品",
+  "supplierRequests.list.answered": "已回复 {n}/{total}",
   "supplierRequests.notify.answer.subject": "供应商已回复询单第 {n} 号",
   "supplierRequests.notify.answer.yes":
     "供应商表示可以生产。请在询单第 {n} 号中核对条件并作出决定。",
@@ -920,7 +932,7 @@ export const zh: typeof pt = {
   "supplierRequests.notify.cancelled.body":
     "Wellmix 已取消询单第 {n} 号。无需回复。",
   "supplierRequests.table.title": "本次询单的产品",
-  "supplierRequests.table.subtitle": "本询价单的产品",
+  "supplierRequests.table.subtitle": "Wellmix 在此询单中向您询问的 {n} 个产品",
   "supplierRequests.table.col.photo": "图片",
   "supplierRequests.table.col.item": "产品",
   "supplierRequests.table.col.quantity": "数量",
@@ -968,7 +980,7 @@ export const zh: typeof pt = {
     "请至少勾选一个已解决的组，或使用全部打开按钮。",
   "supplierRequests.error.selection_group_none": "没有等待询问的已解决组。",
   "supplierRequests.table.subtitleWellmix":
-    "本询价单的产品",
+    "此询单中向该供应商询问的 {n} 个产品",
   "supplierRequests.table.hintWellmix":
     "每列一项信息。图标：给供应商留言、登记供应商的答复（通过其他渠道收到时）、打开产品页面。",
   "supplierRequests.table.hint":

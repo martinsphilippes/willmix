@@ -493,8 +493,33 @@ export function finishedLate(
 }
 
 /**
- * Produtos distintos de cada grupo da tabela da solicitação (mesmo
- * fornecedor e booking): quantos itens diferentes foram pedidos.
+ * A que solicitação o produto pertence: os abertos juntos para o mesmo
+ * fornecedor (`batchId`) são uma solicitação só. A antiga, sem `batchId`, é
+ * uma solicitação sozinha.
+ */
+export function requestGroupKey(
+  r: Pick<SupplierRequest, "id" | "batchId">,
+): string {
+  return r.batchId ? `batch:${r.batchId}` : `single:${r.id}`;
+}
+
+/** As solicitações, cada uma com os seus produtos (na ordem em que chegam). */
+export function groupRequests<
+  T extends Pick<SupplierRequest, "id" | "batchId">,
+>(requests: T[]): T[][] {
+  const groups = new Map<string, T[]>();
+  for (const r of requests) {
+    const key = requestGroupKey(r);
+    const list = groups.get(key);
+    if (list) list.push(r);
+    else groups.set(key, [r]);
+  }
+  return [...groups.values()];
+}
+
+/**
+ * Produtos distintos por fornecedor e booking: quantos itens diferentes
+ * foram pedidos.
  */
 export function distinctProductsByGroup(
   requests: Pick<

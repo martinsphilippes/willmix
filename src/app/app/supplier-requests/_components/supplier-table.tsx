@@ -214,10 +214,12 @@ export function SupplierRequestTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => {
+          {rows.map((r, index) => {
             const it = r.item;
             const name = it.description ?? it.productName ?? "—";
-            const current = r.id === currentId;
+            // Na solicitação com vários produtos, cada linha é um produto dela
+            // (2.1, 2.2…): nenhuma é "esta solicitação".
+            const current = r.id === currentId && !r.batchId;
             const pending = !!pendingProposal(r.negotiation);
             const canAnswer = supplierCanAnswer(r.status) && !pending;
             const turn = negotiationTurn(r);
@@ -256,7 +258,9 @@ export function SupplierRequestTable({
                   />
                 </Td>
                 <Td className={cx(nowrap, "tabular-nums font-medium")}>
-                  {r.number}
+                  {r.batchId && rows.length > 1
+                    ? `${r.number}.${index + 1}`
+                    : r.number}
                   {current ? (
                     <span className="mt-1 block">
                       <Badge tone="info">{k("current")}</Badge>
