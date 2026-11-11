@@ -48,7 +48,7 @@ O quadrante de comparação **não abre a solicitação**: ele grava a escolha d
 
 ## Tabela da solicitação (decisão do dono, 11/11/2026)
 
-Quem abre `/app/supplier-requests/[id]` (o fornecedor e, desde a segunda rodada, também a Wellmix) vê **primeiro uma tabela** com os produtos pedidos ao mesmo fornecedor a partir do **mesmo booking** da solicitação, em ordem de número, com a do link destacada ("Esta solicitação"; `supplierRequestGroup`).
+Quem abre `/app/supplier-requests/[id]` (o fornecedor e, desde a segunda rodada, também a Wellmix) vê **primeiro uma tabela** com o produto **desta solicitação** (`supplierRequestGroup`). Até 11/11/2026 a tabela juntava as outras solicitações do mesmo fornecedor e booking; o dono pediu que a tela mostre só a solicitação aberta.
 
 - **Uma informação por coluna**: foto (miniatura que amplia, `PhotoGallery`), nº, produto, código da fábrica, nº do item, material, quantidade, MOQ, preço, moeda e entrega do booking, o que a Wellmix precisa, "faz?", as **condições iniciais** (a primeira resposta "faz": preço, moeda, MOQ, FOB/EXW e prazo; `initialConditions`) e as **condições finais** (as que valem hoje, depois da negociação; `finalConditions`), situação, SLA (prazo com data e hora, "Atrasada"), de quem é a vez, **aberta em**, **1ª resposta** e **última resposta** (data e hora; `answerTimes`).
 - Ações rápidas por linha, **só ícones** (o nome fica na dica e no `aria-label`), cada uma numa caixa pequena (`QuickDialog`):

@@ -285,7 +285,7 @@ describe("seleção de itens e solicitação ao fornecedor", () => {
     expect(again.quantity).toBe(500);
   });
 
-  it("tabela do fornecedor: as solicitações dele do mesmo booking", async () => {
+  it("tabela da solicitação: só a própria, não as outras do booking", async () => {
     const lot = await closedLot("Shenzhen Supplier A", [
       row("Shenzhen Supplier A", "G-1", "Group mug one"),
       row("Shenzhen Supplier A", "G-2", "Group mug two"),
@@ -309,10 +309,9 @@ describe("seleção de itens e solicitação ao fornecedor", () => {
     await open("G-3");
     const ids = (rows: { id: string }[]) => rows.map((r) => r.id);
     expect(ids(await svc.supplierRequestGroup(supplierA, second))).toEqual([
-      first.id,
       second.id,
     ]);
-    // A Wellmix recebe só a própria; outro fornecedor, nada.
+    // A Wellmix também recebe só a própria; outro fornecedor, nada.
     expect(ids(await svc.supplierRequestGroup(admin, first))).toEqual([
       first.id,
     ]);

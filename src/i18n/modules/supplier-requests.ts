@@ -222,7 +222,7 @@ export const pt = {
     "A Wellmix cancelou a solicitação nº {n}. Não é preciso responder.",
   "supplierRequests.table.title": "Produtos desta solicitação",
   "supplierRequests.table.subtitle":
-    "{n} produto(s) que a Wellmix pediu a você neste booking",
+    "Produto desta solicitação",
   "supplierRequests.table.col.photo": "Foto",
   "supplierRequests.table.col.item": "Produto",
   "supplierRequests.table.col.quantity": "Quantidade",
@@ -275,7 +275,7 @@ export const pt = {
   "supplierRequests.error.selection_group_none":
     "Nenhum grupo resolvido esperando a solicitação.",
   "supplierRequests.table.subtitleWellmix":
-    "{n} produto(s) pedidos a este fornecedor neste booking",
+    "Produto desta solicitação",
   "supplierRequests.table.hintWellmix":
     "Uma informação por coluna. Pelos ícones: mensagem ao fornecedor, registrar a resposta dele (quando chega por fora) e abrir a tela do produto.",
   "supplierRequests.table.answerWellmix": "Registrar a resposta do fornecedor",
@@ -570,7 +570,7 @@ export const en: typeof pt = {
     "Wellmix cancelled request no. {n}. No answer is needed.",
   "supplierRequests.table.title": "Products in this request",
   "supplierRequests.table.subtitle":
-    "{n} product(s) Wellmix requested from you in this booking",
+    "Product in this request",
   "supplierRequests.table.col.photo": "Photo",
   "supplierRequests.table.col.item": "Product",
   "supplierRequests.table.col.quantity": "Quantity",
@@ -621,7 +621,7 @@ export const en: typeof pt = {
   "supplierRequests.error.selection_group_none":
     "No resolved group waiting for the request.",
   "supplierRequests.table.subtitleWellmix":
-    "{n} product(s) requested from this supplier in this booking",
+    "Product in this request",
   "supplierRequests.table.hintWellmix":
     "One piece of information per column. Icons: message the supplier, record their answer (when it arrives elsewhere) and open the product screen.",
   "supplierRequests.table.hint":
@@ -908,7 +908,7 @@ export const zh: typeof pt = {
   "supplierRequests.notify.cancelled.body":
     "Wellmix 已取消询单第 {n} 号。无需回复。",
   "supplierRequests.table.title": "本次询单的产品",
-  "supplierRequests.table.subtitle": "Wellmix 在此订舱中向您询问的 {n} 个产品",
+  "supplierRequests.table.subtitle": "本询价单的产品",
   "supplierRequests.table.col.photo": "图片",
   "supplierRequests.table.col.item": "产品",
   "supplierRequests.table.col.quantity": "数量",
@@ -956,7 +956,7 @@ export const zh: typeof pt = {
     "请至少勾选一个已解决的组，或使用全部打开按钮。",
   "supplierRequests.error.selection_group_none": "没有等待询问的已解决组。",
   "supplierRequests.table.subtitleWellmix":
-    "此订舱中向该供应商询问的 {n} 个产品",
+    "本询价单的产品",
   "supplierRequests.table.hintWellmix":
     "每列一项信息。图标：给供应商留言、登记供应商的答复（通过其他渠道收到时）、打开产品页面。",
   "supplierRequests.table.hint":

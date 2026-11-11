@@ -443,24 +443,15 @@ export async function getSupplierRequest(
 }
 
 /**
- * Produtos da solicitação para o fornecedor (a tabela que ele vê primeiro):
- * as solicitações dele abertas a partir do mesmo booking, em ordem de número.
- * A própria sempre entra. A Wellmix recebe só ela; quem não vê, nada.
+ * Linhas da tabela da solicitação: só a própria solicitação (decisão do dono,
+ * 11/11/2026: a tela mostra a solicitação aberta, não as outras do mesmo
+ * fornecedor e booking). Quem não vê, nada.
  */
 export async function supplierRequestGroup(
   user: User,
   request: SupplierRequest,
 ): Promise<SupplierRequest[]> {
-  if (!canSee(user, request)) return [];
-  if (isWellmix(user)) return [request];
-  const rows = await getStore().list("supplier_requests", {
-    filter: { supplierId: request.supplierId },
-  });
-  const group = rows.filter(
-    (r) => r.bookingLotId === request.bookingLotId && canSee(user, r),
-  );
-  if (!group.some((r) => r.id === request.id)) group.push(request);
-  return group.sort((a, b) => a.number - b.number);
+  return canSee(user, request) ? [request] : [];
 }
 
 /**
