@@ -73,6 +73,8 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/import", "import"],
   ["/app/dashboards", "dashboards"],
   ["/app/finance", "finance"],
+  // Acordos comerciais e comissões (docs/COMMISSIONS.md): quem abre o Financeiro.
+  ["/app/commissions", "finance"],
   ["/app/payables", "payables"],
   ["/app/penalties", "penalties"],
   ["/app/after-sales", "afterSales"],

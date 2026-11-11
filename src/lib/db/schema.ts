@@ -2494,7 +2494,117 @@ export interface PartnerType extends BaseRow {
   updatedByUserId: string | null;
 }
 
+/*
+ * Acordos comerciais e comissões (docs/COMMISSIONS.md). As regras do cálculo
+ * (componentes, eventos) estão em src/lib/commission.ts.
+ */
+export const COMMISSION_AGREEMENT_STATUSES = [
+  "draft",
+  "active",
+  "suspended",
+  "ended",
+] as const;
+export type CommissionAgreementStatus =
+  (typeof COMMISSION_AGREEMENT_STATUSES)[number];
+
+export const COMMISSION_ENTRY_STATUSES = [
+  "estimated",
+  "eligible",
+  "approved",
+  "partially_paid",
+  "paid",
+  "reversed",
+] as const;
+export type CommissionEntryStatus = (typeof COMMISSION_ENTRY_STATUSES)[number];
+
+/** Uma versão de um acordo comercial (as versões do mesmo acordo têm o mesmo rootId). */
+export interface CommissionAgreement extends BaseRow {
+  number: number;
+  rootId: string;
+  version: number;
+  name: string;
+  status: CommissionAgreementStatus;
+  category: string;
+  priority: number;
+  beneficiaryPartyId: string | null;
+  /** Tipo de parceiro beneficiário (valor do catálogo: "carrier", "custom:<id>"...). */
+  beneficiaryType: string | null;
+  /** { customerIds, supplierIds, lineIds } */
+  scope: unknown;
+  /** Vigência, AAAA-MM-DD. */
+  validFrom: string | null;
+  validTo: string | null;
+  currency: string;
+  generateOn: string;
+  releaseOn: string;
+  releaseMode: string;
+  dueDays: number;
+  /** CommissionComponent[] */
+  components: unknown;
+  notes: string | null;
+  createdByUserId: string | null;
+  activatedAt: string | null;
+  activatedByUserId: string | null;
+}
+
+/** Lançamento de comissão: a apuração de um acordo num pedido para um beneficiário, ou um ajuste dela. */
+export interface CommissionEntry extends BaseRow {
+  /** Único: pedido + acordo + beneficiário (o mesmo evento não gera dois). */
+  key: string;
+  kind: "accrual" | "adjustment";
+  originalEntryId: string | null;
+  orderId: string;
+  beneficiaryPartyId: string;
+  agreementId: string;
+  rootId: string;
+  version: number;
+  category: string;
+  currency: string;
+  amount: number;
+  /** Parte liberada para pagamento. */
+  released: number;
+  paidAmount: number;
+  status: CommissionEntryStatus;
+  /** Data usada para escolher a versão do acordo. */
+  referenceDate: string;
+  eligibleAt: string | null;
+  dueAt: string | null;
+  approvedAt: string | null;
+  approvedByUserId: string | null;
+  /** Memória de cálculo: linhas, substituídas, pendências. */
+  memory: unknown;
+  note: string | null;
+}
+
+/** Liquidação: um pagamento ao beneficiário, ligado a um ou vários lançamentos. */
+export interface CommissionPayment extends BaseRow {
+  number: number;
+  beneficiaryPartyId: string;
+  amount: number;
+  currency: string;
+  paidAt: string;
+  reference: string | null;
+  documentId: string | null;
+  note: string | null;
+  /** [{ entryId, amount }] */
+  allocations: unknown;
+  createdByUserId: string | null;
+}
+
+/** Fato confirmado à mão num pedido (sem evento integrado), com a justificativa. */
+export interface CommissionEvent extends BaseRow {
+  orderId: string;
+  event: string;
+  note: string;
+  documentId: string | null;
+  createdByUserId: string | null;
+}
+
 export interface Tables {
+  commission_agreements: CommissionAgreement;
+  commission_entries: CommissionEntry;
+  commission_payments: CommissionPayment;
+  commission_events: CommissionEvent;
   partner_types: PartnerType;
   users: User;
   parties: Party;
@@ -4086,6 +4196,98 @@ export const TABLES: Record<TableName, TableDef> = {
       sankhyaCode: str(40),
     },
     indexes: [{ key: "code_unique", type: "unique", columns: ["code"] }],
+  },
+  commission_agreements: {
+    label: "Acordos comerciais (comissões)",
+    columns: {
+      number: int(true),
+      rootId: id(),
+      version: int(true),
+      name: str(160, true),
+      status: enumOf(COMMISSION_AGREEMENT_STATUSES),
+      category: str(60, true),
+      priority: int(true),
+      beneficiaryPartyId: id(false),
+      beneficiaryType: str(120),
+      scope: json(),
+      validFrom: str(10),
+      validTo: str(10),
+      currency: str(3, true),
+      generateOn: str(40, true),
+      releaseOn: str(40, true),
+      releaseMode: str(20, true),
+      dueDays: int(true),
+      components: jsonLarge(),
+      notes: text(),
+      createdByUserId: id(false),
+      activatedAt: datetime(),
+      activatedByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_root", type: "key", columns: ["rootId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
+    ],
+  },
+  commission_entries: {
+    label: "Lançamentos de comissão (apuração e ajustes)",
+    columns: {
+      key: str(200, true),
+      kind: enumOf(["accrual", "adjustment"] as const),
+      originalEntryId: id(false),
+      orderId: id(),
+      beneficiaryPartyId: id(),
+      agreementId: id(),
+      rootId: id(),
+      version: int(true),
+      category: str(60, true),
+      currency: str(3, true),
+      amount: float(true),
+      released: float(true),
+      paidAmount: float(true),
+      status: enumOf(COMMISSION_ENTRY_STATUSES),
+      referenceDate: datetime(true),
+      eligibleAt: datetime(),
+      dueAt: datetime(),
+      approvedAt: datetime(),
+      approvedByUserId: id(false),
+      memory: jsonLarge(),
+      note: text(),
+    },
+    indexes: [
+      { key: "key_unique", type: "unique", columns: ["key"] },
+      { key: "by_order", type: "key", columns: ["orderId"] },
+      { key: "by_beneficiary", type: "key", columns: ["beneficiaryPartyId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
+    ],
+  },
+  commission_payments: {
+    label: "Liquidações de comissão",
+    columns: {
+      number: int(true),
+      beneficiaryPartyId: id(),
+      amount: float(true),
+      currency: str(3, true),
+      paidAt: datetime(true),
+      reference: str(120),
+      documentId: id(false),
+      note: text(),
+      allocations: json(),
+      createdByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_beneficiary", type: "key", columns: ["beneficiaryPartyId"] },
+    ],
+  },
+  commission_events: {
+    label: "Fatos confirmados à mão para a comissão",
+    columns: {
+      orderId: id(),
+      event: str(40, true),
+      note: text(),
+      documentId: id(false),
+      createdByUserId: id(false),
+    },
+    indexes: [{ key: "by_order", type: "key", columns: ["orderId"] }],
   },
   partner_types: {
     label: "Tipos de parceiro (catálogo administrável)",

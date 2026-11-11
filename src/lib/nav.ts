@@ -157,6 +157,7 @@ export function navFor(
           ],
           ["dashboards", { href: "/app/dashboards", key: "nav.dashboards" }],
           ["finance", { href: "/app/finance", key: "nav.finance" }],
+          ["finance", { href: "/app/commissions", key: "nav.commissions" }],
           ["payables", { href: "/app/payables", key: "nav.payables" }],
           ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
           ["afterSales", { href: "/app/after-sales", key: "nav.afterSales" }],

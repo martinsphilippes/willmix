@@ -867,3 +867,8 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 ## Outros parceiros: gerar login de acesso à vista
 
 - **Pedido do dono** (11/11/2026): a criação do login já existia no cadastro do parceiro, mas ficava escondida no meio da tela. Agora há o botão "Gerar login de acesso" no topo do cadastro, a coluna "Login de acesso" na lista (quantos logins o parceiro tem, ou o link para gerar) e o cadastro novo abre direto no quadro de acesso. Sem mudança no servidor nem no banco.
+
+## Acordos comerciais, comissões e liquidação
+
+- **Pedido do dono** (11/11/2026): Gestão → Acordos e comissões. Acordo padrão por tipo de parceiro e exceção individual; regras combináveis (percentual por linha, sobre venda, custo ou recebido, com faixas; fixo; por unidade; bônus por sucesso; piso e teto); precedência com conflito bloqueando a ativação; versões com vigência; simulador com o mesmo cálculo da apuração; apuração única por pedido, acordo e beneficiário, disparada pelos eventos do pedido; aprovação; liquidação manual parcial ou total; estorno ligado ao original no cancelamento; auditoria. Só o administrador.
+- Aditivo: tabelas `commission_agreements`, `commission_entries`, `commission_payments`, `commission_events`; rota `/app/commissions` (tela Financeiro). O que ficou de fora está em docs/COMMISSIONS.md ("Ainda não").

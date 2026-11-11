@@ -1516,6 +1516,104 @@ alter table public."stock_locations" add column if not exists "sankhyaCode" text
 create unique index if not exists "stock_locations_code_unique" on public."stock_locations" ("code");
 create index if not exists "stock_locations_created" on public."stock_locations" ("createdAt");
 
+create table if not exists public."commission_agreements" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."commission_agreements" enable row level security;
+alter table public."commission_agreements" add column if not exists "number" bigint;
+alter table public."commission_agreements" add column if not exists "rootId" text;
+alter table public."commission_agreements" add column if not exists "version" bigint;
+alter table public."commission_agreements" add column if not exists "name" text;
+alter table public."commission_agreements" add column if not exists "status" text;
+alter table public."commission_agreements" add column if not exists "category" text;
+alter table public."commission_agreements" add column if not exists "priority" bigint;
+alter table public."commission_agreements" add column if not exists "beneficiaryPartyId" text;
+alter table public."commission_agreements" add column if not exists "beneficiaryType" text;
+alter table public."commission_agreements" add column if not exists "scope" jsonb;
+alter table public."commission_agreements" add column if not exists "validFrom" text;
+alter table public."commission_agreements" add column if not exists "validTo" text;
+alter table public."commission_agreements" add column if not exists "currency" text;
+alter table public."commission_agreements" add column if not exists "generateOn" text;
+alter table public."commission_agreements" add column if not exists "releaseOn" text;
+alter table public."commission_agreements" add column if not exists "releaseMode" text;
+alter table public."commission_agreements" add column if not exists "dueDays" bigint;
+alter table public."commission_agreements" add column if not exists "components" jsonb;
+alter table public."commission_agreements" add column if not exists "notes" text;
+alter table public."commission_agreements" add column if not exists "createdByUserId" text;
+alter table public."commission_agreements" add column if not exists "activatedAt" timestamptz;
+alter table public."commission_agreements" add column if not exists "activatedByUserId" text;
+create index if not exists "commission_agreements_by_root" on public."commission_agreements" ("rootId");
+create index if not exists "commission_agreements_by_status" on public."commission_agreements" ("status");
+create index if not exists "commission_agreements_created" on public."commission_agreements" ("createdAt");
+
+create table if not exists public."commission_entries" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."commission_entries" enable row level security;
+alter table public."commission_entries" add column if not exists "key" text;
+alter table public."commission_entries" add column if not exists "kind" text;
+alter table public."commission_entries" add column if not exists "originalEntryId" text;
+alter table public."commission_entries" add column if not exists "orderId" text;
+alter table public."commission_entries" add column if not exists "beneficiaryPartyId" text;
+alter table public."commission_entries" add column if not exists "agreementId" text;
+alter table public."commission_entries" add column if not exists "rootId" text;
+alter table public."commission_entries" add column if not exists "version" bigint;
+alter table public."commission_entries" add column if not exists "category" text;
+alter table public."commission_entries" add column if not exists "currency" text;
+alter table public."commission_entries" add column if not exists "amount" double precision;
+alter table public."commission_entries" add column if not exists "released" double precision;
+alter table public."commission_entries" add column if not exists "paidAmount" double precision;
+alter table public."commission_entries" add column if not exists "status" text;
+alter table public."commission_entries" add column if not exists "referenceDate" timestamptz;
+alter table public."commission_entries" add column if not exists "eligibleAt" timestamptz;
+alter table public."commission_entries" add column if not exists "dueAt" timestamptz;
+alter table public."commission_entries" add column if not exists "approvedAt" timestamptz;
+alter table public."commission_entries" add column if not exists "approvedByUserId" text;
+alter table public."commission_entries" add column if not exists "memory" jsonb;
+alter table public."commission_entries" add column if not exists "note" text;
+create unique index if not exists "commission_entries_key_unique" on public."commission_entries" ("key");
+create index if not exists "commission_entries_by_order" on public."commission_entries" ("orderId");
+create index if not exists "commission_entries_by_beneficiary" on public."commission_entries" ("beneficiaryPartyId");
+create index if not exists "commission_entries_by_status" on public."commission_entries" ("status");
+create index if not exists "commission_entries_created" on public."commission_entries" ("createdAt");
+
+create table if not exists public."commission_payments" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."commission_payments" enable row level security;
+alter table public."commission_payments" add column if not exists "number" bigint;
+alter table public."commission_payments" add column if not exists "beneficiaryPartyId" text;
+alter table public."commission_payments" add column if not exists "amount" double precision;
+alter table public."commission_payments" add column if not exists "currency" text;
+alter table public."commission_payments" add column if not exists "paidAt" timestamptz;
+alter table public."commission_payments" add column if not exists "reference" text;
+alter table public."commission_payments" add column if not exists "documentId" text;
+alter table public."commission_payments" add column if not exists "note" text;
+alter table public."commission_payments" add column if not exists "allocations" jsonb;
+alter table public."commission_payments" add column if not exists "createdByUserId" text;
+create index if not exists "commission_payments_by_beneficiary" on public."commission_payments" ("beneficiaryPartyId");
+create index if not exists "commission_payments_created" on public."commission_payments" ("createdAt");
+
+create table if not exists public."commission_events" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."commission_events" enable row level security;
+alter table public."commission_events" add column if not exists "orderId" text;
+alter table public."commission_events" add column if not exists "event" text;
+alter table public."commission_events" add column if not exists "note" text;
+alter table public."commission_events" add column if not exists "documentId" text;
+alter table public."commission_events" add column if not exists "createdByUserId" text;
+create index if not exists "commission_events_by_order" on public."commission_events" ("orderId");
+create index if not exists "commission_events_created" on public."commission_events" ("createdAt");
+
 create table if not exists public."partner_types" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),
