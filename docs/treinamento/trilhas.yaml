@@ -1,0 +1,99 @@
+# Trilhas de treinamento: quais módulos cada tipo de login deve concluir, na ordem.
+# Fonte: a tabela "Trilhas" de docs/videos/README.md (que segue docs/ACCESS.md).
+# Quando a matriz de telas mudar, ajuste aqui também. Os IDs são os de modulos/<SÉRIE>/<ID>.yaml.
+#
+# chave        : identificador estável da trilha
+# nome         : como aparece para o aluno
+# quem         : login que recebe a trilha (papel do portal; operador:função = função em Equipe e divisões)
+# modulos      : na ordem recomendada; todos contam para o percentual da trilha
+# extras       : módulos que não contam no percentual, só ficam disponíveis (o aluno pode assistir por curiosidade)
+
+- chave: customer
+  nome: "Cliente"
+  quem: "customer"
+  modulos: [GER-00, GER-01, GER-02, CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, CLI-06, CLI-07]
+
+- chave: supplier
+  nome: "Fornecedor"
+  quem: "supplier"
+  modulos: [GER-01, GER-02, FOR-01, FOR-02, FOR-03, FOR-04, FOR-05, FOR-06, FOR-07, FOR-08, FOR-09, FOR-10]
+
+- chave: agency
+  nome: "Agência"
+  quem: "agency"
+  modulos: [GER-01, GER-02, AGE-01, AGE-02, AGE-03, AGE-04, AGE-05]
+
+- chave: broker
+  nome: "Despachante"
+  quem: "broker"
+  modulos: [GER-01, GER-02, DES-01, DES-02]
+
+- chave: comex
+  nome: "Comex (assessoria)"
+  quem: "comex"
+  modulos: [GER-01, GER-02, COM-01]
+
+- chave: logistics
+  nome: "Agente de carga"
+  quem: "logistics"
+  modulos: [GER-01, GER-02, LOG-01]
+
+- chave: shipping_line
+  nome: "Companhia marítima"
+  quem: "shipping_line"
+  modulos: [GER-01, GER-02, MAR-01, MAR-02]
+
+- chave: carrier
+  nome: "Transportador"
+  quem: "carrier"
+  modulos: [GER-01, GER-02, TRA-01, TRA-02]
+
+- chave: legal
+  nome: "Jurídico"
+  quem: "legal"
+  modulos: [GER-01, GER-02, JUR-01]
+
+- chave: ocp
+  nome: "OCP (certificação)"
+  quem: "ocp"
+  modulos: [GER-01, GER-02, OCP-01, OCP-02]
+
+- chave: operator-buyer
+  nome: "Operador · Comprador"
+  quem: "operator:buyer"
+  modulos: [GER-01, GER-02, WBK-01, WBK-02, WBK-03, WBK-04, WBK-05, WSO-01, WSO-02, WSO-03, WPE-01, WPE-02, WPE-03, WPE-04, WPE-05, WPE-06, WPE-07, WLO-01, WLO-02, WCA-01, WCA-03, WGE-06]
+
+- chave: operator-product_manager
+  nome: "Operador · Gerente de produto"
+  quem: "operator:product_manager"
+  modulos: [GER-01, GER-02, WBK-03, WBK-04, WBK-05, WSO-01, WSO-02, WPE-03, WPE-04, WCA-03, WCA-05, WCA-06, WGE-06, WGE-07]
+
+- chave: operator-planner
+  nome: "Operador · Planner"
+  quem: "operator:planner"
+  modulos: [GER-01, GER-02, WBK-01, WBK-02, WBK-03, WSO-01, WSO-02, WPE-05, WPE-06, WPE-07, WLO-01, WLO-02, WLO-03, WLO-04, WGE-02]
+
+- chave: operator-catalog
+  nome: "Operador · Cadastro"
+  quem: "operator:catalog"
+  modulos: [GER-01, GER-02, WCA-01, WCA-02, WCA-03, WCA-04, WCA-05, WCA-06, WBK-01, WBK-02, WPE-01]
+
+- chave: operator-finance
+  nome: "Operador · Financeiro"
+  quem: "operator:finance"
+  modulos: [GER-01, GER-02, WPE-05, COM-01]
+
+- chave: operator-designer
+  nome: "Operador · Designer"
+  quem: "operator:designer"
+  modulos: [GER-01, GER-02, WPE-03, AGE-01, AGE-02, AGE-03, AGE-04, WCA-03, WGE-07]
+
+- chave: director
+  nome: "Diretorias"
+  quem: "operator:purchasing_director / operator:executive_director"
+  modulos: [GER-01, GER-02, WGE-01, WGE-02, WGE-06, WGE-07, WGE-08, WGE-11]
+
+- chave: admin
+  nome: "Administrador"
+  quem: "admin"
+  modulos: [GER-00, GER-01, GER-02, WBK-01, WBK-02, WBK-03, WBK-04, WBK-05, WSO-01, WSO-02, WSO-03, WSO-04, WSO-05, WPE-01, WPE-02, WPE-03, WPE-04, WPE-05, WPE-06, WPE-07, WLO-01, WLO-02, WLO-03, WLO-04, WCA-01, WCA-02, WCA-03, WCA-04, WCA-05, WCA-06, WGE-01, WGE-02, WGE-03, WGE-04, WGE-05, WGE-06, WGE-07, WGE-08, WGE-09, WGE-10, WGE-11]
