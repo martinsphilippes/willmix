@@ -19,6 +19,7 @@ import { AppNav, MobileNav } from "@/components/app-nav";
 import { UserMenu } from "@/components/user-menu";
 import { WellmixLogo } from "@/components/brand";
 import { LogoutButton } from "@/components/logout-button";
+import { PasswordChangeCard } from "@/components/password-change-card";
 import { DemoSwitcher } from "@/components/demo-switcher";
 import { DEMO_PASSWORD, DEMO_USERS, existingDemoAccounts } from "@/lib/seed";
 import { demoAccountsEnabled } from "@/lib/demo";
@@ -357,6 +358,13 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
                 email={loginLabel(user.email)}
                 label={t("nav.user")}
               >
+                <Link
+                  href="/app/password"
+                  className="block rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                  data-password-link
+                >
+                  {t("password.menu")}
+                </Link>
                 <LogoutButton label={t("nav.logout")} variant="light" />
               </UserMenu>
             </div>
@@ -406,6 +414,13 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
                         />
                       ) : null}
                     </div>
+                    <Link
+                      href="/app/password"
+                      className="block rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                      data-password-link
+                    >
+                      {t("password.menu")}
+                    </Link>
                     <LogoutButton label={t("nav.logout")} variant="light" />
                   </>
                 }
@@ -433,7 +448,12 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
             menu={flattenNav(nav).map((l) => l.href)}
           />
         </Suspense>
-        {children}
+        {/* Senha provisória: antes da troca, nenhuma tela abre. */}
+        {user.mustChangePassword ? (
+          <PasswordChangeCard t={t} firstAccess />
+        ) : (
+          children
+        )}
       </main>
       {/* Painel lateral de chat: abre de qualquer linha com o ícone de conversa. */}
       <ChatDrawer

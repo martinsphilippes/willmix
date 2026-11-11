@@ -38,3 +38,8 @@ Toda mudança no `schema.ts` passa a exigir as duas publicações (Appwrite e Su
 - `SUPABASE_SERVICE_ROLE_KEY` (Project Settings → API; secreta, só servidor)
 
 Sem `DATA_MODE=supabase` o portal continua no Appwrite.
+
+## Pendências que a etapa 3 (login) precisa cobrir
+
+- **Troca de senha e primeiro acesso** (`docs/ACCESS.md`): `changeOwnPassword` hoje troca no Appwrite ou no modo memória; no modo Supabase recusa (`password_change_unavailable`). O login pelo Supabase Auth precisa trazer a troca da própria senha e respeitar `users.mustChangePassword`.
+- **Login master** (`well_wellmix@wellmix.com`, administrador): na virada cada usuário define a senha pelo link recebido por e-mail, então esse endereço precisa ser uma caixa de e-mail que alguém lê, ou a conta precisa ser criada à mão no Supabase.

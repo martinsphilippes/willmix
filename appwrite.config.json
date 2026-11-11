@@ -147,6 +147,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "mustChangePassword",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
         }
       ],
       "indexes": [

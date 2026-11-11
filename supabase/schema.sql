@@ -20,6 +20,7 @@ alter table public."users" add column if not exists "managerUserId" text;
 alter table public."users" add column if not exists "division" text;
 alter table public."users" add column if not exists "functions" jsonb;
 alter table public."users" add column if not exists "screens" jsonb;
+alter table public."users" add column if not exists "mustChangePassword" boolean;
 create unique index if not exists "users_email_unique" on public."users" ("email");
 create index if not exists "users_by_manager" on public."users" ("managerUserId");
 create index if not exists "users_created" on public."users" ("createdAt");

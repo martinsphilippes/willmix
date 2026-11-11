@@ -9,6 +9,7 @@ import * as productSuppliers from "./product-suppliers";
 import * as sheetMissing from "./sheet-missing";
 import * as messageControl from "./message-control";
 import * as customers from "./customers";
+import * as passwordChange from "./password-change";
 import * as suppliers from "./suppliers";
 import * as requestsList from "./requests-list";
 import * as productsList from "./products-list";
@@ -198,6 +199,7 @@ export const modulesPt = {
   ...sheetMissing.pt,
   ...messageControl.pt,
   ...customers.pt,
+  ...passwordChange.pt,
   ...suppliers.pt,
   ...requestsList.pt,
   ...productsList.pt,
@@ -313,6 +315,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sheetMissing.en,
   ...messageControl.en,
   ...customers.en,
+  ...passwordChange.en,
   ...suppliers.en,
   ...requestsList.en,
   ...productsList.en,
@@ -428,6 +431,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sheetMissing.zh,
   ...messageControl.zh,
   ...customers.zh,
+  ...passwordChange.zh,
   ...suppliers.zh,
   ...requestsList.zh,
   ...productsList.zh,
