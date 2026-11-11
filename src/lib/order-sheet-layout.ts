@@ -205,5 +205,8 @@ export function orderSheetGeneralNotes(sheet: OrderSheet): string[] {
     sheet.leadTimeDays
       ? `Production lead time: ${sheet.leadTimeDays} days`
       : "",
+    sheet.manufacturers?.length
+      ? `Manufacturer (production): ${sheet.manufacturers.join(", ")}`
+      : "",
   ].filter(Boolean);
 }

@@ -64,6 +64,14 @@ export interface OrderDocument {
    * não existe e a versão assinada não muda).
    */
   finalArts?: Array<{ name: string; documentId: string }>;
+  /**
+   * Fábrica que executa a produção, quando não é o fornecedor do pedido
+   * (decisão do dono, 11/11/2026): o pedido sai em nome do responsável pelo
+   * booking (ex.: a trading) e o contrato traz a fábrica do booking. Só
+   * nesses pedidos (nos outros a chave não existe e a versão assinada não
+   * muda).
+   */
+  manufacturers?: string[];
 }
 
 export interface OrderSignature {
@@ -142,7 +150,7 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
     });
   // Pedido de compra: MOQ e prazo negociados de cada produto, o incoterm da
   // planilha do booking e a arte final com o selo.
-  let purchase: Pick<OrderDocument, "finalArts"> & {
+  let purchase: Pick<OrderDocument, "finalArts" | "manufacturers"> & {
     incoterm?: string | null;
   } = {};
   if (order.flow === "supplier_request") {
@@ -161,7 +169,25 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
         leadTimeDays: r?.supplierLeadTimeDays ?? null,
       };
     });
+    // Fábrica: o fornecedor do booking de cada item, quando o pedido saiu em
+    // nome de outro responsável (trading).
+    const lotIds = [...new Set(requests.map((r) => r.bookingLotId))];
+    const lots = lotIds.length
+      ? await store.list("booking_lots", { filter: { id: lotIds } })
+      : [];
+    const factoryIds = [
+      ...new Set(
+        lots
+          .map((l) => l.supplierId)
+          .filter((id): id is string => !!id && id !== order.supplierId),
+      ),
+    ];
+    const factories = factoryIds.length
+      ? await store.list("parties", { filter: { id: factoryIds } })
+      : [];
+    const manufacturers = factories.map((f) => f.name).sort();
     purchase = {
+      ...(manufacturers.length ? { manufacturers } : {}),
       incoterm: requests.find((r) => r.item.incoterm)?.item.incoterm ?? null,
       finalArts: sorted
         .map((item) => {
@@ -197,6 +223,9 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
           incoterm: sheet?.incoterm ?? purchase.incoterm ?? null,
           finalArts: purchase.finalArts,
         }
+      : {}),
+    ...(purchase.manufacturers
+      ? { manufacturers: purchase.manufacturers }
       : {}),
   };
 }

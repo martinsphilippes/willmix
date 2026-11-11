@@ -61,6 +61,12 @@ Regras:
 - As duas partes **baixam o PDF, assinam, carimbam e sobem o arquivo**: primeiro a Wellmix, depois o fornecedor. Nestes pedidos não há o aceite no portal, só o arquivo (`signature_file_required`).
 - **Com os dois arquivos a etapa conclui.** O pedido vai ao Sankhya (como no documento assinado de sempre) e segue.
 
+## 3b. Responsável pelo booking e fábrica (11/11/2026)
+
+- O pedido sai em nome do **responsável pelo booking** (docs/BOOKING.md, "Responsável pelo booking"), que pode ser uma trading.
+- O **contrato** mostra também a **fábrica que executa a produção**, ou seja, o fornecedor do booking, quando ela não é o fornecedor do pedido. A planilha do pedido traz a mesma linha "Manufacturer (production)".
+- Nos pedidos do próprio fornecedor o documento não muda, e a versão assinada continua a mesma.
+
 ## 3a. Frete marítimo (11/11/2026)
 
 - **Onde:** no pedido, cartão "Frete marítimo" (só a Wellmix). Até 11/11/2026 o frete nascia da cotação do fornecedor, que saiu.
