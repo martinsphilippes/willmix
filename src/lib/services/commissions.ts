@@ -780,7 +780,7 @@ export async function accrueOrderQuietly(orderId: string) {
   try {
     await accrueOrder(null, orderId);
   } catch (error) {
-    const { isSchemaMissing } = await import("./packaging-brief");
+    const { isSchemaMissing } = await import("@/lib/db/errors");
     if (!isSchemaMissing(error)) console.error("[commission]", orderId, error);
   }
 }
