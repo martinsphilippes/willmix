@@ -67,6 +67,7 @@ src/
     services/                  solicitações, documentos, pendências, notificações,
                                auditoria, lembretes, importação, Control Tower
     integrations/              Sankhya (mock) e pagamento (manual)
+public/brand, public/intro     logomarca; abertura do portal no desktop (docs/ARQUITETURA.md, seção 6)
 scripts/                       conexão com o Appwrite e geração do config
 tests/unit, tests/e2e          vitest e Playwright
 docs/                          SCOPE, WORKFLOW, OPEN_DECISIONS, INTEGRATIONS, BACKLOG_FUTURO,
