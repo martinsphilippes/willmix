@@ -455,6 +455,38 @@ export async function supplierRequestGroup(
 }
 
 /**
+ * Respostas gravadas antes do histórico de respostas (só a última ficava na
+ * solicitação): a hora e o "faz/não faz" de cada uma vêm da auditoria
+ * (`supplier_request.answer`). Por solicitação, em ordem. Só serve às
+ * solicitações sem passo `answer` no histórico.
+ */
+export async function legacyAnswers(
+  requests: SupplierRequest[],
+): Promise<Map<string, Array<{ at: string; canDo: YesNo | null }>>> {
+  const ids = requests
+    .filter((r) => !(r.negotiation ?? []).some((e) => e.kind === "answer"))
+    .filter((r) => r.respondedAt)
+    .map((r) => r.id);
+  const out = new Map<string, Array<{ at: string; canDo: YesNo | null }>>();
+  if (!ids.length) return out;
+  const rows = await getStore()
+    .list("audit_log", {
+      filter: { entityId: ids, action: "supplier_request.answer" },
+    })
+    .catch(() => []);
+  rows.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  for (const row of rows) {
+    const list = out.get(row.entityId) ?? [];
+    list.push({
+      at: row.createdAt,
+      canDo: /não faz/.test(row.summary) ? "no" : "yes",
+    });
+    out.set(row.entityId, list);
+  }
+  return out;
+}
+
+/**
  * O fornecedor dono da solicitação vê a foto do item dela (o documento é
  * interno: sem isto só a Wellmix abriria).
  */

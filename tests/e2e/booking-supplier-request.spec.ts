@@ -214,10 +214,11 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     /1[.,]4\b/,
   );
   await expect(row.locator("[data-supplier-table-incoterm]")).toHaveText("EXW");
-  // Condições iniciais = a primeira resposta.
+  // Condições iniciais = as do booking; finais = a última proposta enviada.
   await expect(
     row.locator("[data-supplier-table-initial-price]"),
-  ).toContainText(/1[.,]4\b/);
+  ).toContainText(/1[.,]25\b/);
+  await expect(row.locator("[data-supplier-table-final-state]")).toBeVisible();
 
   await login(page, "supplier.b@china.com");
   const other = await page.goto(requestUrl);
