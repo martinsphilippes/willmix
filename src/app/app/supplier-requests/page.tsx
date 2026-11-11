@@ -7,6 +7,13 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { listSupplierRequests } from "@/lib/services/supplier-requests";
 import { getT } from "@/i18n/server";
 import { STATUS_TONE, answerText } from "./_components/status";
+import { SlaBadge } from "./_components/negotiation";
+import {
+  notifyLateSupplierRequests,
+  slaOf,
+  supplierRequestSlaMinutes,
+} from "@/lib/services/supplier-request-negotiation";
+import { negotiationTurn } from "@/lib/supplier-requests";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -33,8 +40,14 @@ export default async function SupplierRequestsPage() {
   if (!user) redirect("/login?next=/app/supplier-requests");
   requireScreen(user, "quotes");
   const t = await getT();
+  // SLA estourado: avisa uma vez (Wellmix e fornecedor) ao abrir a lista.
+  await notifyLateSupplierRequests().catch((error) =>
+    console.error("notifyLateSupplierRequests", error),
+  );
   const entries = await listSupplierRequests(user);
   const wellmix = isWellmix(user);
+  const slaMinutes = await supplierRequestSlaMinutes();
+  const now = new Date();
 
   return (
     <>
@@ -88,11 +101,21 @@ export default async function SupplierRequestsPage() {
                     </Link>
                   </Td>
                   <Td>
-                    <Badge tone={STATUS_TONE[r.status]}>
-                      {t(
-                        `supplierRequests.status.${r.status}` as DictionaryKey,
-                      )}
-                    </Badge>
+                    <span className="flex flex-wrap gap-1">
+                      <Badge tone={STATUS_TONE[r.status]}>
+                        {t(
+                          `supplierRequests.status.${r.status}` as DictionaryKey,
+                        )}
+                      </Badge>
+                      <SlaBadge sla={slaOf(r, slaMinutes, now)} t={t} />
+                    </span>
+                    {negotiationTurn(r) ? (
+                      <span className="mt-0.5 block text-xs text-zinc-500">
+                        {t(
+                          `supplierRequests.negotiation.turn.${negotiationTurn(r)}` as DictionaryKey,
+                        )}
+                      </span>
+                    ) : null}
                   </Td>
                   {wellmix ? <Td>{supplier?.name ?? "—"}</Td> : null}
                   <Td>

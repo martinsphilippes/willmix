@@ -1,5 +1,7 @@
 import type {
   BookingItem,
+  SupplierRequest,
+  SupplierRequestEvent,
   SupplierRequestItem,
   SupplierRequestStatus,
 } from "@/lib/db/schema";
@@ -149,13 +151,84 @@ export const supplierRequestActive = (status: SupplierRequestStatus) =>
 /** O fornecedor responde (ou muda a resposta) enquanto a Wellmix não decidiu. */
 export const supplierCanAnswer = supplierRequestActive;
 
-/** Decisões da Wellmix em cada status. */
+/**
+ * Decisões da Wellmix em cada status. Com contraproposta esperando o
+ * fornecedor, não aprova (ainda não se sabe o que ele aceita).
+ */
 export function supplierRequestDecisions(
   status: SupplierRequestStatus,
   canDo: "yes" | "no" | null,
+  proposalPending = false,
 ): Array<"approved" | "declined" | "cancelled"> {
   if (status === "open") return ["cancelled", "declined"];
-  if (status === "answered")
+  if (status === "answered") {
+    if (proposalPending) return ["declined"];
     return canDo === "yes" ? ["approved", "declined"] : ["declined"];
+  }
   return [];
+}
+
+/* ---- Negociação (docs/SUPPLIER_REQUESTS.md, "Negociação") ---- */
+
+/** Passos que mudam os valores negociados (as mensagens não contam). */
+const OFFER_KINDS = new Set(["proposal", "accept", "counter", "reject"]);
+
+/**
+ * A contraproposta da Wellmix que ainda espera o fornecedor (o último passo
+ * de valores é uma contraproposta), ou nulo.
+ */
+export function pendingProposal(
+  events: SupplierRequestEvent[] | null | undefined,
+): SupplierRequestEvent | null {
+  const offers = (events ?? []).filter((e) => OFFER_KINDS.has(e.kind));
+  const last = offers.at(-1);
+  return last?.kind === "proposal" ? last : null;
+}
+
+/** De quem é a vez: o fornecedor (responder) ou a Wellmix (decidir); nulo depois de decidida. */
+export function negotiationTurn(
+  request: Pick<SupplierRequest, "status" | "negotiation">,
+): "supplier" | "wellmix" | null {
+  if (request.status === "open") return "supplier";
+  if (request.status !== "answered") return null;
+  return pendingProposal(request.negotiation) ? "supplier" : "wellmix";
+}
+
+/** A Wellmix devolve com contraproposta: na resposta "faz", sem outra esperando. */
+export const canPropose = (
+  request: Pick<SupplierRequest, "status" | "supplierCanDo" | "negotiation">,
+) =>
+  request.status === "answered" &&
+  request.supplierCanDo === "yes" &&
+  !pendingProposal(request.negotiation);
+
+/** Mensagens e arquivos: enquanto a solicitação está em andamento ou aprovada. */
+export const canPostMessage = (status: SupplierRequestStatus) =>
+  status === "open" || status === "answered" || status === "approved";
+
+/** Padrão do SLA da negociação (Configurações), em minutos. */
+export const SUPPLIER_REQUEST_SLA_DEFAULT = 30;
+export const SUPPLIER_REQUEST_SLA_MIN = 1;
+export const SUPPLIER_REQUEST_SLA_MAX = 60 * 24 * 60;
+
+/** Prazo da negociação: da abertura da solicitação até a decisão da Wellmix. */
+export function supplierRequestSlaDue(
+  request: Pick<SupplierRequest, "createdAt">,
+  minutes: number,
+): string {
+  return new Date(
+    new Date(request.createdAt).getTime() + minutes * 60_000,
+  ).toISOString();
+}
+
+/** Atrasada: ainda sem decisão e o prazo passou. */
+export function supplierRequestLate(
+  request: Pick<SupplierRequest, "createdAt" | "status">,
+  minutes: number,
+  now: Date = new Date(),
+): boolean {
+  if (!supplierRequestActive(request.status)) return false;
+  return (
+    now.getTime() > new Date(request.createdAt).getTime() + minutes * 60_000
+  );
 }

@@ -205,3 +205,79 @@ export async function setRequestErpCodeAction(form: FormData) {
     );
   });
 }
+
+/* ---- Negociação (docs/SUPPLIER_REQUESTS.md, "Negociação") ---- */
+
+function offerOf(form: FormData) {
+  const currency = z
+    .enum(SHEET_CURRENCIES)
+    .nullable()
+    .parse(str(form, "currency") || null);
+  const text = z
+    .string()
+    .max(4000)
+    .nullable()
+    .parse(str(form, "text") || null);
+  return {
+    price: number(form, "price"),
+    currency,
+    moq: number(form, "moq", true),
+    leadTimeDays: number(form, "leadTimeDays", true),
+    text,
+  };
+}
+
+function backOf(form: FormData) {
+  const raw = str(form, "id");
+  const ok = ID.safeParse(raw).success;
+  return { id: raw, back: ok ? detail(raw) : "/app/supplier-requests", ok };
+}
+
+/** A Wellmix devolve com contraproposta (comentário obrigatório). */
+export async function proposeSupplierRequestAction(form: FormData) {
+  const user = await requireUser();
+  const { id, back, ok } = backOf(form);
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const { proposeCounter } =
+      await import("@/lib/services/supplier-request-negotiation");
+    await proposeCounter(user, id, offerOf(form));
+    return withQuery(back, "negotiation", "proposal");
+  });
+}
+
+/** O fornecedor (ou a Wellmix por ele) aceita, responde com outra proposta ou recusa. */
+export async function respondProposalAction(form: FormData) {
+  const user = await requireUser();
+  const { id, back, ok } = backOf(form);
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const action = z
+      .enum(["accept", "counter", "reject"])
+      .parse(str(form, "action"));
+    const { respondToProposal } =
+      await import("@/lib/services/supplier-request-negotiation");
+    await respondToProposal(user, id, action, offerOf(form));
+    return withQuery(back, "negotiation", action);
+  });
+}
+
+/** Mensagem livre da conversa, com ou sem arquivo (foto, PDF ou Excel). */
+export async function postSupplierRequestMessageAction(form: FormData) {
+  const user = await requireUser();
+  const { id, back, ok } = backOf(form);
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const text = z
+      .string()
+      .max(4000)
+      .nullable()
+      .parse(str(form, "text") || null);
+    const raw = form.get("file");
+    const file = raw instanceof File && raw.size > 0 ? raw : null;
+    const { postRequestMessage } =
+      await import("@/lib/services/supplier-request-negotiation");
+    await postRequestMessage(user, id, { text, file });
+    return withQuery(back, "negotiation", "message") + "#conversa";
+  });
+}

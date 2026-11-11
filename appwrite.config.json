@@ -2448,6 +2448,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "supplierRequestId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -10048,6 +10056,20 @@
         },
         {
           "key": "erpCheckedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "negotiation",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "longtext"
+        },
+        {
+          "key": "slaNotifiedAt",
           "required": false,
           "array": false,
           "default": null,

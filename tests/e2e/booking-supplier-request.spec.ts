@@ -7,7 +7,8 @@ import { xlsxBytes } from "../unit/xlsx-fixture";
  * Superplan analisa os itens); na Seleção de itens compara os parecidos e
  * abre a solicitação ao fornecedor do escolhido, com o outro de
  * alternativa; o fornecedor responde no portal sem ver a alternativa, o
- * outro fornecedor não abre a solicitação; a Wellmix aprova, cria o produto
+ * outro fornecedor não abre a solicitação; a Wellmix devolve com
+ * contraproposta e o fornecedor aceita; a Wellmix aprova, cria o produto
  * (fora da vitrine até liberar) e grava o CODPROD do Sankhya.
  */
 
@@ -161,6 +162,33 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await login(page, "supplier.b@china.com");
   const other = await page.goto(requestUrl);
   expect(other?.status()).toBe(404);
+
+  // 3b. Negociação (docs/SUPPLIER_REQUESTS.md, "Negociação"): a Wellmix
+  // devolve com contraproposta; até o fornecedor responder, não aprova.
+  await login(page, "admin@wellmix.com");
+  await page.goto(requestUrl);
+  await expect(page.locator("[data-supplier-request-sla]")).toBeVisible();
+  const propose = page.locator("[data-negotiation-propose-form]");
+  await propose.locator("[data-negotiation-price]").fill("1,30");
+  await propose.locator("[data-negotiation-text]").fill("Fechamos a 1,30?");
+  await page.click("[data-negotiation-propose-submit]");
+  await page.waitForURL(/[?&]negotiation=proposal/);
+  await expect(page.locator("[data-supplier-decide=approved]")).toHaveCount(0);
+  await expect(page.locator("[data-supplier-decide-blocked]")).toBeVisible();
+
+  // O fornecedor manda uma mensagem e aceita: o preço proposto vira a resposta.
+  await login(page, "supplier.a@china.com");
+  await page.goto(requestUrl);
+  await expect(
+    page.locator('[data-negotiation-event="proposal"]'),
+  ).toContainText("Fechamos a 1,30?");
+  await page.fill("[data-negotiation-message-text]", "Ok, segue a caixa.");
+  await page.click("[data-negotiation-message-submit]");
+  await page.waitForURL(/[?&]negotiation=message/);
+  await page.click("[data-negotiation-respond=accept]");
+  await page.waitForURL(/[?&]negotiation=accept/);
+  await expect(page.locator("[data-negotiation-event]")).toHaveCount(3);
+  await expect(page.locator("[data-supplier-answer]")).toContainText(/1[.,]3\b/);
 
   // 4. A Wellmix aprova e cria o produto (fora da vitrine até liberar).
   await login(page, "admin@wellmix.com");
