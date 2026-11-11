@@ -1356,3 +1356,122 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 
 ---
 
+## WLO-04 · Produção: follow e ETD
+
+> **Promessa:** ao final do vídeo você acompanha a fábrica pelo cartão Produção: vê o início automático, registra mudanças de ETD com motivo, faz os follows de 5, 15 e 25 dias, agenda a inspeção e acha na Control Tower o que está atrasado.
+
+| Ficha                 |                                                                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Série e papel         | Wellmix · operador (funções comprador e planner: o comprador acompanha produção; o planner aprova o ETD e o follow, docs/ACCESS.md)                                      |
+| Conta de gravação     | `operador@wellmix.com`, tela em pt; um corte curto com `supplier.a@china.com` na cena 5 (o fornecedor também edita o ETD)                                               |
+| Duração-alvo          | 4:15                                                                                                                                                                   |
+| Ponto da jornada      | Etapas 5 e 6 de 9: Preparação e Inspeção (a produção corre fora das etapas, no cartão Produção)                                                                         |
+| Telas e rotas         | `/app/orders/[id]` (cartão Produção), `/app/tasks` (Pendências), `/app` (Control Tower), `/app/dashboards?area=production` (Painéis por área → Produção)                  |
+| Dados antes de gravar | Ponto `antes-WLO-04`: pedido com as duas assinaturas feitas (início da produção automático) e com o início há mais de 5 dias, para o follow de 5 dias estar em "Fazer agora" (ver WPE-07, notas, para envelhecer datas); nenhum follow registrado |
+| Depois deste vídeo    | O pedido tem ETD (com histórico), follows registrados e inspeção agendada; a Control Tower mostra "Produção atrasada" e "Acompanhamento vencido" onde couber                |
+| Antes · Próximo       | WLO-03 · WPE-04 (a inspeção por SKU do cartão é à parte da etapa Inspeção)                                                                                              |
+| Idiomas               | pt (base)                                                                                                                                                              |
+
+### Roteiro
+
+**Cena 1 · 0:00–0:10 · Gancho · `/app`**
+
+- 🎬 Imagem: a Control Tower, bloco "Acontece ao mesmo tempo". **Em produção na fábrica** mostra 2 (com o selo "1 atrasado"), **Produção atrasada** mostra 1 e **Acompanhamento vencido** mostra 2. O cursor toca em "Produção atrasada".
+- 🎙 Narração: "A fábrica prometeu uma data de saída. Aqui você vê quem está no prazo e quem atrasou, antes de a carga perder o navio."
+- 🔤 Na tela: `[TÍTULO]` "WLO-04 · Produção: follow e ETD"; `[ZOOM 150 %]` em "Produção atrasada".
+- ✂️ Edição: vinheta de 6,5 s antes; título em 2 s; música baixa para −28 dB ao começar a voz.
+
+**Cena 2 · 0:10–0:22 · Onde estou na jornada · `/app`**
+
+- 🎬 Imagem: a mesma tela; o mapa da jornada aparece sobre ela.
+- 🎙 Narração: "A produção corre ao lado das etapas Preparação e Inspeção. Por isso ela tem um cartão próprio no pedido: o cartão Produção."
+- 🔤 Na tela: `[MAPA etapa 5]` com "Preparação" acesa e "Inspeção" em destaque suave; `[SETA]` "Produção: cartão à parte, fora das etapas".
+- ✂️ Edição: o mapa sai em 8 s, deslizando para cima.
+
+**Cena 3 · 0:22–0:55 · O cartão Produção · `/app/orders/[id]`**
+
+- 🎬 Imagem: abrir o pedido (Pedidos → número). O cartão **Produção**, com a tabela: "Fornecedor é" (Fábrica ou Trade (revenda)), "Início da produção" (cinza), "ETD (saída prevista)", "Fábrica" (já com "Shenzhen Supplier A"), "Endereço da fábrica" ("Shenzhen, CN") e o botão **Salvar produção**. Abaixo da tabela: "Trade: onde o produto é feito (onde inspecionar)". Escolher "Fábrica".
+- 🎙 Narração: "O cartão Produção tem o tipo do fornecedor, o início, o ETD e a fábrica. Se o fornecedor é fábrica, o nome e o endereço já vêm do cadastro. Se é trade, troque pela fábrica de verdade: é lá que a inspeção acontece."
+- 🔤 Na tela: `[PASSO 1/6] Abra o cartão Produção`; `[SETA]` "Veio do cadastro do fornecedor" nos campos Fábrica e Endereço; `[QUEM VÊ]` "O cartão é da Wellmix e do fornecedor do pedido; o cliente não o vê"; `[BOTÃO] "Salvar produção"`.
+- ✂️ Edição: `[ZOOM 150 %]` na tabela; 3 s em tela.
+
+**Cena 4 · 0:55–1:25 · O início é automático · `/app/orders/[id]`**
+
+- 🎬 Imagem: o campo **Início da produção** cinza, com o texto "Automático: dia do contrato assinado mais 0 dia(s) (prazo do fornecedor)." Antes das assinaturas, a mesma tela mostra "Entra sozinho quando o contrato for assinado (0 dia(s) depois, conforme o prazo do fornecedor). Até lá, as datas de saída ficam em branco." Corte para a conta do administrador: Cadastros → Fornecedores → o fornecedor, cartão **Início da produção**.
+- 🎙 Narração: "Ninguém digita o início da produção. Ele entra no dia em que o contrato fica assinado, a segunda assinatura, mais o prazo do fornecedor. O follow de cinco, quinze e vinte e cinco dias conta a partir dele."
+- 🔤 Na tela: `[PASSO 2/6] Confira o início automático`; `[SETA]` "Contrato assinado = início da produção" no campo; `[QUEM VÊ]` "O prazo por fornecedor é só do administrador (cadastro do fornecedor); sem ele vale o padrão das Configurações."
+- ✂️ Edição: `[CORTE]` entre as duas telas; a data do campo não é citada na narração.
+
+**Cena 5 · 1:25–2:00 · O ETD e a mudança com motivo · `/app/orders/[id]`**
+
+- 🎬 Imagem: no campo "ETD (saída prevista)", escolher uma data e clicar em **Salvar produção**: "Produção salva." Mudar a data e clicar em **Salvar produção** sem motivo: o alerta "Informe o motivo da mudança do ETD." Aparece o campo "Motivo da mudança do ETD (obrigatório ao mudar)": escrever "Atraso na matéria-prima do vidro" e salvar. Abaixo do campo ETD: "Primeiro ETD: {data} ({n} dias de diferença)". Expandir **Mudanças do ETD (2)**: a tabela De, Para, Quem / quando, Quando e Motivo. Corte curto para o fornecedor, que também altera o ETD.
+- 🎙 Narração: "O primeiro ETD não precisa de motivo. Mudou depois, o motivo é obrigatório, e o portal guarda o histórico: de quando, para quando, quem e por quê. Se o fornecedor muda, a Wellmix é avisada; se a Wellmix muda, o fornecedor é avisado."
+- 🔤 Na tela: `[PASSO 3/6] Mude o ETD com motivo`; `[ERRO COMUM]` "Informe o motivo da mudança do ETD." → "Escreva o motivo e salve de novo."; `[SETA]` "Primeiro ETD e a diferença em dias" no campo; `[SETA]` "Histórico: de → para, quem, quando, motivo" na tabela.
+- ✂️ Edição: digitação em tempo real; `[ZOOM 150 %]` em "Mudanças do ETD (2)"; corte de conta com a legenda "Fornecedor".
+
+**Cena 6 · 2:00–2:45 · Follow de 5, 15 e 25 dias · `/app/orders/[id]` e `/app/tasks`**
+
+- 🎬 Imagem: a tabela **Follow da produção** (Follow, Situação, Quem / quando, Observação, Registrar): "5 dias" e "15 dias" em "Fazer agora", "25 dias" em "Ainda não". Em "5 dias", escolher **No prazo** e clicar em **Registrar follow**: a linha vira "No prazo" (verde), com "Otávio Operador · data". Em "15 dias", escolher **Atrasado** e clicar sem observação: o alerta "Escreva a observação." Escrever "Matéria-prima do vidro atrasou 6 dias; fábrica refaz o plano." e registrar: "Atrasado" (vermelho). Corte para **Pendências**: "Follow de 5 dias: pedido #N".
+- 🎙 Narração: "Aos cinco, quinze e vinte e cinco dias do início, vence um follow e vira pendência da Wellmix. Registre No prazo, ou Atrasado: atrasado exige a observação e avisa o analista e o planner."
+- 🔤 Na tela: `[PASSO 4/6] Registre os follows`; `[BOTÃO] "Registrar follow"`; `[ERRO COMUM]` "Escreva a observação." → "Atrasado pede a observação."; `[SETA]` "Fazer agora: venceu e ainda não foi registrado"; `[SETA]` "Follow de N dias: a pendência da Wellmix" em Pendências.
+- ✂️ Edição: `[CORTE]` de tela; 2 s em "No prazo" e "Atrasado"; `[ZOOM 150 %]` na coluna Situação.
+
+**Cena 7 · 2:45–3:15 · Agendar a inspeção · `/app/orders/[id]`**
+
+- 🎬 Imagem: na tabela **Inspeção**, escolher a "Data da inspeção", escrever "Inspetor Zhang, 9h, na fábrica" em "Observação (inspetor, horário)" e clicar em **Agendar inspeção**: "Agendada para …". Abaixo, a tabela **Inspeção por SKU** (SKU, Resultado, Observação, Correção do fornecedor, Ação) com o campo "Observação (obrigatória para reprovar)" e os botões **Aprovar SKU** e **Reprovar SKU**.
+- 🎙 Narração: "Agende a inspeção: o fornecedor é avisado. Em Inspeção por SKU, cada item é aprovado ou reprovado, e reprovado exige o motivo. O fornecedor corrige, a Wellmix inspeciona de novo, e aprovado encerra o item."
+- 🔤 Na tela: `[PASSO 5/6] Agende a inspeção`; `[BOTÃO] "Agendar inspeção"`; `[ERRO COMUM]` "Fornecedor trade: informe o endereço da fábrica antes de agendar." → "Preencha o endereço da fábrica e salve a produção."; `[ATENÇÃO]` "A inspeção por SKU não trava as etapas do pedido."
+- ✂️ Edição: `[ZOOM 150 %]` em "Agendada para …"; não clicar em Aprovar SKU nem Reprovar SKU.
+
+**Cena 8 · 3:15–3:50 · Control Tower e painéis · `/app` e `/app/dashboards`**
+
+- 🎬 Imagem: na Control Tower, os quadrados **Em produção na fábrica**, **Produção atrasada**, **Acompanhamento vencido** e **Produto reprovado**. Tocar em "Acompanhamento vencido": a lista traz o pedido, a etapa, o responsável e o prazo. Corte para **Gestão → Painéis por área**, aba **Produção**: **Pedidos em produção acompanhados**, **Com follow vencido**, **Com atraso informado**, **ETD alterado**, **Variação média do ETD (dias)**, **SKUs reprovados na inspeção**, e a lista "Pedidos que pedem atenção".
+- 🎙 Narração: "Na Control Tower, Produção atrasada é o último follow atrasado ou o ETD vencido. Acompanhamento vencido é follow sem registro. O painel de Produção resume tudo: pedidos acompanhados, ETD alterado e a variação média em dias."
+- 🔤 Na tela: `[PASSO 6/6] Acompanhe na Control Tower`; `[SETA]` "Produção atrasada: ETD vencido ou follow atrasado" no quadrado; `[SETA]` "Acompanhamento vencido: follow sem registro" no quadrado; `[QUEM VÊ]` "Painéis por área: planner, diretorias e administrador".
+- ✂️ Edição: `[ZOOM 150 %]` nos quadrados; 3 s no painel.
+
+**Cena 9 · 3:50–4:15 · Depois e resumo**
+
+- 🎬 Imagem: cartão `[DEPOIS]` e fundo vermelho com a lista; no fim, a miniatura do WPE-04 ou do WPE-05, conforme a trilha.
+- 🎙 Narração: "Resumindo: confira o início automático, mude o ETD com motivo, faça os follows e agende a inspeção. Produção em dia, carga no navio."
+- 🔤 Na tela: `[DEPOIS]` "O fornecedor é avisado do ETD e da inspeção; o analista e o planner, do atraso informado."; `[RESUMO]` "1 Abra o cartão Produção · 2 Início automático · 3 ETD com motivo · 4 Follows de 5, 15 e 25 dias · 5 Agende a inspeção"; chamada "Próximo: WPE-04 · Inspeção cega e fila de revisão".
+- ✂️ Edição: `[DEPOIS]` 4 s; fade para a vinheta de encerramento (logo Wellmix, 3 s).
+
+### Erros comuns
+
+- **Erro:** mudar o ETD sem motivo. O portal mostra "Informe o motivo da mudança do ETD." → **Correção:** preencha "Motivo da mudança do ETD" e salve.
+- **Erro:** follow atrasado sem observação. O portal mostra "Escreva a observação." → **Correção:** escreva o que aconteceu e registre.
+- **Erro:** registrar o mesmo follow duas vezes. O portal mostra "Este follow já foi registrado." → **Correção:** o follow está feito; abra o histórico na linha.
+- **Erro:** agendar a inspeção antes do início da produção. O portal mostra "Informe primeiro o início da produção." → **Correção:** o início entra sozinho com a assinatura do contrato; espere as duas assinaturas.
+- **Erro:** agendar inspeção de fornecedor trade sem endereço. O portal mostra "Fornecedor trade: informe o endereço da fábrica antes de agendar." → **Correção:** preencha o endereço da fábrica e salve a produção.
+- **Erro:** reprovar um SKU sem motivo. O portal mostra "Escreva a observação." → **Correção:** escreva o motivo.
+- **Erro:** inspecionar de novo antes da correção. O portal mostra "Aguarde a correção do fornecedor antes de inspecionar de novo." → **Correção:** espere o fornecedor enviar o que corrigiu.
+- **Erro:** mexer num item aprovado. O portal mostra "Este item já foi aprovado." → **Correção:** o item está encerrado.
+- **Erro:** pedido encerrado ou cancelado. O portal mostra "Pedido encerrado ou cancelado." → **Correção:** nada a fazer.
+
+### Passo a passo em texto
+
+1. Abra o pedido e role até o cartão **Produção**. Em **Fornecedor é**, escolha **Fábrica** ou **Trade (revenda)**. Para trade, informe a fábrica e o endereço (onde se inspeciona).
+2. Confira o **Início da produção**: ele é automático, no dia da assinatura do contrato mais o prazo do fornecedor.
+3. Informe o **ETD (saída prevista)** e clique em **Salvar produção**. Para mudar depois, escreva o **Motivo da mudança do ETD**. O histórico fica em **Mudanças do ETD**.
+4. Em **Follow da produção**, quando "5 dias", "15 dias" ou "25 dias" estiver em **Fazer agora**, escolha **No prazo** ou **Atrasado** (com a observação) e clique em **Registrar follow**.
+5. Em **Inspeção**, escolha a data, escreva a observação e clique em **Agendar inspeção**. Em **Inspeção por SKU**, use **Aprovar SKU** ou **Reprovar SKU** (com o motivo).
+6. Na **Control Tower**, acompanhe **Em produção na fábrica**, **Produção atrasada**, **Acompanhamento vencido** e **Produto reprovado**. Em **Gestão → Painéis por área → Produção**, veja o resumo.
+
+### Notas de gravação
+
+- Para a cena 6, o início da produção precisa estar a mais de 5 dias (e, para "15 dias", a mais de 15). O portal só deixa o início nascer com a assinatura; para a gravação, envelheça a data do início do acompanhamento no `db.json` do diretório de dados, como na nota do WPE-07. Nunca em dados de produção.
+- O cartão mostra datas de campo no formato do Chrome (mm/dd/aaaa em Chrome em inglês). Grave em pt-BR para sair dd/mm/aaaa.
+- A observação do ETD e do follow é texto livre da Wellmix e aparece ao fornecedor e à própria Wellmix sem tradução. Use pt e frases curtas.
+- O aviso do ETD (sino) mostra as datas como aaaa-mm-dd. Se mostrar o sino, não leia as datas.
+- A diferença de dias do "Primeiro ETD" pode sair negativa em dados envelhecidos (ETD no passado). Para a imagem, use ETD no futuro e envelheça só o início.
+- Os painéis só contam pedidos com acompanhamento de produção; mostre o painel depois de salvar o cartão em pelo menos dois pedidos.
+
+### Pontos a confirmar
+
+- ⚠ "Fornecedor é" aparece em "Selecione" num pedido novo, mesmo com a fábrica e o endereço já preenchidos pelo cadastro. A gravação escolheu "Fábrica" antes de salvar. Confirmar se a escolha é obrigatória e se o texto de ajuda deve dizer isso.
+- ⚠ A pendência "Follow de N dias: pedido #M" vem do Painel de SLA e de Pendências da Wellmix; a cena 6 mostrou o texto em Pendências do administrador. Confirmar que o operador comprador e o planner também a recebem (o SLA do operador sem divisão estava vazio).
+- ⚠ O aviso "Pedido #N: produção atrasada" ao registrar um follow atrasado (docs/PRODUCTION.md): o texto chega ao analista e ao planner, e o operador de demonstração tem as duas funções. Não capturei o aviso.
+- ⚠ A inspeção agendada pela Wellmix avisa o fornecedor ("Inspeção agendada; o fornecedor foi avisado."); não capturei o aviso na conta dele.
+- ⚠ Pedidos antigos, sem documento para assinar, continuam com início da produção digitado à mão (docs/EVOLUTION_PLAN.md). O vídeo ensina só o caminho novo.
+
