@@ -1,0 +1,35 @@
+name: Publicar esquema Supabase
+
+# Botão manual (Actions → "Publicar esquema Supabase" → Run workflow): roda
+# supabase/schema.sql (gerado do src/lib/db/schema.ts por npm run supabase:sql)
+# no Postgres do projeto Supabase. Só ADICIONA (tabela, coluna e índice com
+# "if not exists"); nunca apaga nem altera o que existe. A conexão fica em
+# Settings → Secrets → SUPABASE_DB_URL (docs/SUPABASE.md).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-schema
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Conferir a conexão
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Cadastre SUPABASE_DB_URL em Settings → Secrets and variables → Actions (ambiente production ou do repositório)."
+            exit 1
+          fi
+      - name: Publicar (só adiciona)
+        run: psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -f supabase/schema.sql
+      - name: Conferir as tabelas
+        run: psql "$SUPABASE_DB_URL" -At -c "select count(*) || ' tabelas no schema public' from information_schema.tables where table_schema = 'public'"

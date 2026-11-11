@@ -15,6 +15,7 @@
     "appwrite:generate": "appwrite generate",
     "appwrite:connect": "node scripts/appwrite-connect.mjs",
     "appwrite:config": "node scripts/appwrite-config.ts",
+    "supabase:sql": "node scripts/supabase-sql.ts",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "appwrite:reset": "node scripts/appwrite-reset.ts",
