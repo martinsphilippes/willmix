@@ -219,6 +219,10 @@ export default async function SettingsPage({
             <LinkButton href="/app/settings/sankhya" variant="secondary">
               {t("sankhya.open")}
             </LinkButton>
+            {/* Troca do Appwrite pelo Supabase: cópia antes da virada. */}
+            <LinkButton href="/app/settings/supabase" variant="secondary">
+              {t("supaCopy.link")}
+            </LinkButton>
             <LinkButton href="/app/settings/reset" variant="danger">
               {t("reset.link")}
             </LinkButton>

@@ -63,7 +63,8 @@ test("desktop: primeira vez no dia e F5 na página inicial tocam; navegar não r
   // Entrar: a navegação é do app (sem recarregar), sem abertura.
   await page.fill('input[name="email"]', "admin@wellmix.com");
   await page.fill('input[name="password"]', "wellmix123");
-  await page.click('button[type="submit"]');
+  // O botão de entrar do formulário (o seletor de idioma também envia).
+  await page.click('form:has(input[name="email"]) button[type="submit"]');
   await page.waitForURL(/\/app$/);
   await expectNoIntro(page);
 

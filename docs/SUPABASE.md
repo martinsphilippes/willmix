@@ -6,13 +6,13 @@ Projeto: **wellmix** (`rokbtrvkzllowyqzcauq`), região São Paulo (sa-east-1). L
 
 ## Etapas
 
-| #   | Etapa                                                                                                                                                                                                       | Situação |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 1   | Banco: `SupabaseStore` (PostgREST + Storage, chave service_role) e esquema gerado do `schema.ts` (`supabase/schema.sql`, `npm run supabase:sql`), com o botão "Publicar esquema Supabase"                   | feito    |
-| 2   | Arquivos: envio direto do navegador ao Supabase Storage por link assinado (`createSignedUpload`, PUT com progresso); chave no formato dos ids do Appwrite, então as ações não mudam                         | feito    |
-| 3   | Login pelo Supabase Auth: o Supabase confere a senha, a sessão é o cookie assinado do portal; acesso novo cria a conta no Auth; "Esqueci minha senha" (/login/forgot) e "Definir nova senha" (/login/reset) | feito    |
-| 4   | Cópia Appwrite → Supabase: todas as tabelas com o mesmo id e as datas de origem (`upsertRaw`), arquivos e contadores; pode rodar de novo                                                                    | a fazer  |
-| 5   | Virada: janela sem uso, cópia, `DATA_MODE=supabase` na Vercel, publicar                                                                                                                                     | a fazer  |
+| #   | Etapa                                                                                                                                                                                                                                                                               | Situação |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 1   | Banco: `SupabaseStore` (PostgREST + Storage, chave service_role) e esquema gerado do `schema.ts` (`supabase/schema.sql`, `npm run supabase:sql`), com o botão "Publicar esquema Supabase"                                                                                           | feito    |
+| 2   | Arquivos: envio direto do navegador ao Supabase Storage por link assinado (`createSignedUpload`, PUT com progresso); chave no formato dos ids do Appwrite, então as ações não mudam                                                                                                 | feito    |
+| 3   | Login pelo Supabase Auth: o Supabase confere a senha, a sessão é o cookie assinado do portal; acesso novo cria a conta no Auth; "Esqueci minha senha" (/login/forgot) e "Definir nova senha" (/login/reset)                                                                         | feito    |
+| 4   | Cópia Appwrite → Supabase na tela Configurações → Supabase (`src/lib/services/supabase-copy.ts`): tabelas com o mesmo id e datas, arquivos com a mesma chave e as contas no Supabase Auth; lotes de ~40 s com "Rodar até o fim"; "Recomeçar do zero" esvazia as tabelas do Supabase | feito    |
+| 5   | Virada: janela sem uso, cópia, `DATA_MODE=supabase` na Vercel, publicar                                                                                                                                                                                                             | a fazer  |
 
 ## Como o banco fica
 
@@ -53,6 +53,25 @@ Sem `DATA_MODE=supabase` o portal continua no Appwrite.
 3. Templates (opcional): o texto do e-mail de "Reset password" em português.
 
 As contas dos usuários de hoje são criadas na etapa 4 (cópia), e cada um recebe o link para definir a senha.
+
+## Cópia e virada
+
+Tela **Configurações → Supabase** (só admin; desligada quando o portal já está no Supabase). Usa as chaves do Appwrite e do Supabase que já estão na Vercel.
+
+1. **Tabelas**: todas as do `schema.ts`, 500 linhas por lote, na ordem interna do Appwrite (cursor pelo id), gravadas com o mesmo id, `createdAt` e `updatedAt` (`upsertRaw`: rodar de novo atualiza, não duplica). A marcação da própria cópia (`settings.supabase.copy`) não vai.
+2. **Arquivos**: o arquivo de cada documento vai para o Supabase Storage com a mesma chave (o que já está lá é pulado).
+3. **Contas**: cada usuário ativo ganha a conta no Supabase Auth, sem senha.
+
+O andamento fica em `settings.supabase.copy` (no Appwrite). "Recomeçar do zero" (palavra COPIAR) esvazia as tabelas do Supabase e zera o andamento; o Appwrite não é tocado.
+
+**Roteiro da virada**
+
+1. Antes: configurar no Supabase as URLs de retorno e o SMTP (seção Login) e fazer uma cópia de ensaio (dá para conferir os números por tabela).
+2. Janela sem uso do portal (avisar a equipe).
+3. "Recomeçar do zero" e "Rodar até o fim" até Concluída (cópia final, sem nada de ensaio sobrando).
+4. Na Vercel: `DATA_MODE=supabase` e publicar de novo (Redeploy).
+5. Conferir login, pedidos, estoque e um download de arquivo. Cada pessoa usa "Esqueci minha senha" no primeiro acesso para definir a senha (ou o admin pede o link por ela).
+6. Se algo der errado: tirar `DATA_MODE` na Vercel e publicar de novo; o portal volta ao Appwrite intacto.
 
 ## Troca de senha e primeiro acesso
 
