@@ -48,6 +48,7 @@ import {
   BookingItemNcmInput,
   BookingItemSelect,
   BookingLotDateInput,
+  BookingLotPartnerSelect,
   BookingLotSupplierSelect,
 } from "@/components/booking-lot-fields";
 import {
@@ -137,7 +138,8 @@ export default async function BookingLotPage({
   if (detail === "schema")
     return <Alert tone="warning">{t("bookingLots.schemaMissing")}</Alert>;
   if (!detail) notFound();
-  const { lot, items, supplier, suppliers, owner } = detail;
+  const { lot, items, supplier, suppliers, owner, partner, partners } =
+    detail;
   // Fornecedor sem login: a solicitação aberta a partir deste booking fica parada.
   const noLogin =
     supplier && (await partiesWithoutLogin([supplier.id])).has(supplier.id)
@@ -222,6 +224,16 @@ export default async function BookingLotPage({
     ...suppliers.map((s) => ({
       value: s.id,
       label: [s.name, s.storeNumber, s.city].filter(Boolean).join(" · "),
+    })),
+  ];
+  // Responsável pelo booking: para quem vão as solicitações (vazio = o fornecedor).
+  const partnerOptions = [
+    { value: "", label: t("bookingLots.partner.supplier") },
+    ...partners.map((p) => ({
+      value: p.id,
+      label: [p.name, t(`party.${p.type}` as DictionaryKey), p.city]
+        .filter(Boolean)
+        .join(" · "),
     })),
   ];
   const day = lot.bookingDate ? lot.bookingDate.slice(0, 10) : "";
@@ -458,6 +470,26 @@ export default async function BookingLotPage({
                       })}
                     </span>
                   ) : null}
+                </span>,
+              ],
+              [
+                t("bookingLots.partner.title"),
+                <span key="p" className="flex flex-col gap-1">
+                  {lot.status !== "cancelled" ? (
+                    <BookingLotPartnerSelect
+                      lotId={lot.id}
+                      current={lot.partnerId ?? ""}
+                      options={partnerOptions}
+                      labels={cellLabels(t("bookingLots.partner.title"))}
+                      placeholder={t("bookingLots.detail.supplierSearch")}
+                      noMatch={t("bookingLots.detail.supplierNoMatch")}
+                    />
+                  ) : (
+                    (partner?.name ?? t("bookingLots.partner.supplier"))
+                  )}
+                  <span className="text-xs text-zinc-500">
+                    {t("bookingLots.partner.hint")}
+                  </span>
                 </span>,
               ],
               [

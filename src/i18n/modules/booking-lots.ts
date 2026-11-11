@@ -157,6 +157,12 @@ export const pt = {
   "bookingLots.item.profit": "Lucro {pct}%",
   "bookingLots.item.missingData": "Faltou: {list}",
 
+  "bookingLots.partner.title": "Responsável pelo booking",
+  "bookingLots.partner.supplier": "O fornecedor do booking",
+  "bookingLots.partner.hint":
+    "As solicitações dos itens deste booking vão para ele. Vazio: vão para o fornecedor.",
+  "bookingLots.error.booking_partner_invalid":
+    "Escolha um parceiro ativo: fornecedor, Trading, Factory, Supplier, GP ou outro tipo com login.",
   "bookingLots.error.supplier_required":
     "Escolha o fornecedor do booking (ou cadastre o da planilha) antes de fechar.",
   "bookingLots.error.booking_date_required":
@@ -332,6 +338,12 @@ export const en: typeof pt = {
   "bookingLots.item.profit": "Profit {pct}%",
   "bookingLots.item.missingData": "Missing: {list}",
 
+  "bookingLots.partner.title": "Booking owner",
+  "bookingLots.partner.supplier": "The booking supplier",
+  "bookingLots.partner.hint":
+    "Requests for this booking's items go to this partner. Empty: they go to the supplier.",
+  "bookingLots.error.booking_partner_invalid":
+    "Choose an active partner: supplier, Trading, Factory, Supplier, GP or another type with login.",
   "bookingLots.error.supplier_required":
     "Choose the booking's supplier (or register the one from the spreadsheet) before closing.",
   "bookingLots.error.booking_date_required":
@@ -504,6 +516,11 @@ export const zh: typeof pt = {
   "bookingLots.item.profit": "利润 {pct}%",
   "bookingLots.item.missingData": "缺少：{list}",
 
+  "bookingLots.partner.title": "订舱负责人",
+  "bookingLots.partner.supplier": "订舱的供应商",
+  "bookingLots.partner.hint": "此订舱商品的询价都发给该合作方。留空：发给供应商。",
+  "bookingLots.error.booking_partner_invalid":
+    "请选择启用的合作方：供应商、Trading、Factory、Supplier、GP 或其他可登录类型。",
   "bookingLots.error.supplier_required":
     "关闭前请选择 booking 的供应商（或登记表格中的供应商）。",
   "bookingLots.error.booking_date_required": "关闭前请填写 booking 日期。",

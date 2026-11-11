@@ -40,7 +40,7 @@ O quadrante de comparação **não abre a solicitação**: ele grava a escolha d
 ### Regras da solicitação
 
 1. Uma solicitação **por item escolhido**; o item com solicitação Aberta ou Respondida recusa outra (`supplier_request_exists`). Depois de decidida, pode ter outra.
-2. Vai ao **fornecedor do booking** do item (ativo). O booking Fechado passa a Em andamento.
+2. Vai ao **responsável pelo booking** do item (`booking_lots.partnerId`, decisão do dono, 11/11/2026); sem responsável, ao **fornecedor do booking** (ativo). O booking Fechado passa a Em andamento.
 3. A solicitação guarda uma **cópia do item** (`item`), para o fornecedor ver o que foi pedido mesmo que o booking mude.
 4. **Alternativas**: até 30 itens parecidos, guardados por id. Só a Wellmix vê (com fornecedor, origem, preço, mínimo do Superplan e link para o booking).
 5. Situações: **Aberta** (esperando o fornecedor) → **Respondida** → **Aprovada** ou **Recusada**; **Cancelada** pela Wellmix. Decisões possíveis (`supplierRequestDecisions`): Aberta → Cancelar ou Recusar; Respondida "faz" → Aprovar ou Recusar; Respondida "não faz" → Recusar.

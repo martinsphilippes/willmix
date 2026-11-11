@@ -342,6 +342,21 @@ export default async function SettingsPage({
                       data-setting-supplier-request-sla
                     />
                   </Field>
+                  <Field
+                    label={t("bookingInvites.settings.sla")}
+                    hint={t("bookingInvites.settings.slaHint")}
+                  >
+                    <Input
+                      name="bookingInviteSlaDays"
+                      type="number"
+                      min={1}
+                      max={30}
+                      step="1"
+                      required
+                      defaultValue={s.bookingInviteSlaDays}
+                      data-setting-booking-invite-sla
+                    />
+                  </Field>
                   <Field label={t("purchaseOrder.settings.artDays")}>
                     <Input
                       name="purchaseArtSlaDays"
