@@ -207,7 +207,7 @@ Rótulos de tela citados (copiados do dicionário, mesma chave em en e zh): "Con
 
 ### Pontos a confirmar
 
-- ⚠ **Divergência de contagem na tela de login:** a tela de login (`/login`) lista 12 passos do fluxo ("Solicitação", "RFQ", "Seleção", "Sinal", "Preparação", …) e, embaixo, "{n} etapas · Português · English · 中文", onde n é o número de etapas do pedido (9, sem o pagamento ao fornecedor). O mapa deste vídeo tem 9 marcas de outra divisão (guia, seção 6.1). Convém grampear o mapa na narração e **não mostrar** o bloco de 12 passos do login como se fosse o mesmo mapa; o texto "RFQ: a Wellmix escolhe fornecedores; cada um recebe um link e responde" também está desatualizado frente à RFQ em espera.
+- ⚠ **Divergência de contagem na tela de login:** a tela de login (`/login`) lista 12 passos do fluxo ("Solicitação", "RFQ", "Seleção", "Sinal", "Preparação", …) e, embaixo, "{n} etapas · Português · English · 中文", onde n é o número de etapas do pedido (9, sem o pagamento ao fornecedor). O mapa deste vídeo tem 9 marcas de outra divisão (guia, seção 6.1). Convém ancorar a narração no mapa do guia e **não mostrar** o bloco de 12 passos do login como se fosse o mesmo mapa; o texto "RFQ: a Wellmix escolhe fornecedores; cada um recebe um link e responde" também está desatualizado frente à RFQ em espera.
 - ⚠ Em que momento exato um item do Booking chega à vitrine no fluxo novo (Seleção de itens → solicitação ao fornecedor → produto criado → "Liberar na vitrine", docs/SUPPLIER_REQUESTS.md). A narração da cena 3 diz "aprovado, libera o produto na vitrine"; conferir com o dono se a etapa "produto criado/associado" já está ativa na versão gravada.
 - ⚠ Os papéis jurídico, comex, agente de carga e OCP não aparecem nas passagens (o pedido foi: cliente, Wellmix, fornecedor, agência, despachante, companhia marítima e transportador). Se o dono quiser, acrescentar uma frase "e outros parceiros, como jurídico e certificadora" na cena 12.
 - ⚠ O ícone da jarra e o mapa animado são arte nova (não existe peça no repositório): aprovar o estilo com o dono antes da edição final.
@@ -226,7 +226,7 @@ Rótulos de tela citados (copiados do dicionário, mesma chave em en e zh): "Con
 | Ponto da jornada      | Antes da jornada: todo papel começa aqui. `[MAPA]` inteiro apagado                                                                                                                            |
 | Telas e rotas         | `/login`, `/app` (que leva cada papel ao seu início), `/app/explore`, `/app/tasks`, `/app?denied=booking` (aviso de acesso), menu e menu da conta (`UserMenu`), painel do celular, `/manifest.webmanifest` |
 | Dados antes de gravar | Navegador **sem** a marca do dia da abertura: apague o item `wellmix-intro-day` do armazenamento local (ou use `/login?intro=always`). Um login por **nome de usuário** criado pela Wellmix em Cadastros → empresa → quadro de acesso (ex.: `fabrica.nova.yiwu`); a carga de demonstração não traz nenhum |
-| Depois deste vídeo    | Nada muda no sistema; a pessoa sabe se mover. O aviso de que ela entrou não existe: o portal não envia e-mail de login                                                                        |
+| Depois deste vídeo    | Nada muda no sistema; a pessoa sabe se mover e já pode seguir para o vídeo do seu papel                                                                                                        |
 | Antes · Próximo       | GER-00 · GER-02 (Pendências, notificações e mensagens)                                                                                                                                        |
 | Idiomas               | pt (base); legendas na tela em en e zh (tabela no fim)                                                                                                                                         |
 
@@ -284,7 +284,7 @@ Rótulos de tela citados (copiados do dicionário, mesma chave em en e zh): "Con
 **Cena 8 · 2:55–3:15 · Botão Voltar · qualquer tela**
 
 - 🎬 Imagem: do cliente em Explorar, abrir a página de um produto, depois um pedido; clicar em "Voltar" duas vezes e mostrar que a busca e os filtros reaparecem como estavam. Em seguida, abrir um endereço direto (sem tela anterior): o "Voltar" leva à tela mãe do menu.
-- 🎙 Narração: "Em toda tela, o botão Voltar leva à tela anterior, com os filtros que você tinha. Se você abriu um link direto, ele leva à tela mãe do menu. Só o início não tem Voltar."
+- 🎙 Narração: "Em toda tela, o botão Voltar leva à tela anterior, com os filtros que você tinha. Se você abriu um link direto, ele leva à tela mãe do menu."
 - 🔤 Na tela: `[PASSO 4/7] Use o Voltar`; `[BOTÃO] "Voltar"`; `[DICA]` "O Voltar do portal guarda os filtros; o do navegador também funciona."
 - ✂️ Edição: realce de 1 s no botão no canto superior esquerdo do conteúdo.
 
@@ -330,7 +330,7 @@ Rótulos de tela citados (copiados do dicionário, mesma chave em en e zh): "Con
 3. Veja a sua primeira tela: o cliente vê **Explorar**; a Wellmix, a **Control Tower**; fornecedores e parceiros, **Pendências**.
 4. Use o menu do alto: o cliente tem **Explorar** e **Meus pedidos**; a Wellmix tem **Início**, **Pedidos**, **Cadastros** e **Gestão**; fornecedores e parceiros têm **Início** e **Pedidos**. Um grupo com uma tela só vira link.
 5. Troque o idioma em **PT**, **EN** ou **ZH** (no alto, ao lado do sino). O portal lembra a escolha.
-6. Em qualquer tela, clique em **Voltar** para ir à tela anterior (com os filtros). No início não há Voltar.
+6. Em qualquer tela, clique em **Voltar** para ir à tela anterior (com os filtros). Na tela inicial da Wellmix e dos parceiros (`/app`) não há para onde voltar, e o botão não aparece.
 7. Clique no seu nome (canto direito) para ver nome, papel e login. Clique em **Sair** para terminar.
 8. Se aparecer "Você não tem acesso a …", essa tela não é do seu papel. Peça a liberação à Wellmix.
 9. No celular, toque em **Menu**: o painel traz os grupos, o idioma e **Sair**. Para instalar como app, use **Adicionar à tela de início** do navegador (ícone Wellmix; abre em `/app`, em tela cheia).
@@ -448,7 +448,7 @@ Rótulos de tela citados (copiados do dicionário, mesma chave em en e zh): "Con
 **Cena 6 · 2:20–3:30 · Mensagens · `/app/messages`**
 
 - 🎬 Imagem: o cursor clica no balão ou em **Mensagens** (grupo **Meus pedidos**). A tela "Mensagens": "Fale com a equipe Wellmix. Todos os logins da sua empresa veem esta conversa."; à esquerda a lista **Assuntos** ("Geral", "Pedido #…"), à direita o campo **Mensagem** e os botões "Foto ou vídeo", "Arquivo" e "Enviar". Digitar "Olá! Posso aumentar a quantidade para 400 un?", clicar em "Arquivo" e escolher um PDF: ele vai junto, na hora. Mostrar "Conversar com a Wellmix" dentro de um pedido: abre o assunto daquele pedido. Corte para a Wellmix: o cartão **Nova conversa** com **Empresa** e "Abrir conversa" (só a Wellmix escolhe a empresa).
-- 🎙 Narração: "Em Mensagens você fala com a Wellmix, por assunto: Geral, um pedido ou um item. Para começar, use o botão Conversar com a Wellmix dentro do pedido ou da solicitação. Escreva, anexe uma foto ou um arquivo e clique em Enviar. A Wellmix é quem abre conversa com uma empresa nova, por Nova conversa."
+- 🎙 Narração: "Em Mensagens você fala com a Wellmix, por assunto: Geral, um pedido ou um item. Para começar, use o botão Conversar com a Wellmix dentro do pedido ou da solicitação. Escreva, anexe uma foto ou um arquivo e clique em Enviar. A Wellmix começa uma conversa com uma empresa pelo botão Nova conversa."
 - 🔤 Na tela: `[PASSO 3/5] Abra Mensagens`; `[PASSO 4/5] Escreva e anexe`; `[BOTÃO] "Conversar com a Wellmix"`; `[BOTÃO] "Arquivo"`; `[BOTÃO] "Enviar"`; `[DICA]` "Foto, vídeo e arquivo até 50 MB; no computador, arraste para cá ou cole uma imagem (Ctrl+V)."; `[DICA]` "Para responder a uma mensagem, arraste-a para a direita."; `[QUEM VÊ]` "Todos os logins da sua empresa veem esta conversa".
 - ✂️ Edição: digitação em tempo real; `[ZOOM 150 %]` no anexo que aparece dentro da bolha; pausa de 2 s com a mensagem enviada.
 
