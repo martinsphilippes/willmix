@@ -3,11 +3,14 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
+import { PARTY_TYPE_SCREEN, isOtherPartyType } from "@/lib/party-types";
+import { isAdmin } from "@/lib/auth/permissions";
 import {
-  OTHER_PARTY_TYPES,
-  PARTY_TYPE_SCREEN,
-  isOtherPartyType,
-} from "@/lib/party-types";
+  partnerTypeName,
+  partyTypeLabel,
+  partyTypeValue,
+} from "@/lib/partner-types";
+import { getPartnerTypeCatalog } from "@/lib/services/partner-types";
 import { getT } from "@/i18n/server";
 import {
   Badge,
@@ -45,15 +48,25 @@ export default async function PartiesPage({
       ? PARTY_TYPE_SCREEN[rawType as keyof typeof PARTY_TYPE_SCREEN]
       : undefined;
   if (own) redirect(own);
-  const type =
-    typeof rawType === "string" && isOtherPartyType(rawType) ? rawType : "";
   const t = await getT();
   const store = getStore();
-  // Só os outros parceiros (agência, despachante, transportadora, OCP…).
-  const parties = (await store.list("parties", { orderBy: "name" })).filter(
-    (p) => isOtherPartyType(p.type),
-  );
-  const filtered = type ? parties.filter((p) => p.type === type) : parties;
+  // Só os outros parceiros (agência, despachante, transportadora, OCP… e os
+  // tipos criados no painel).
+  const [all, catalog] = await Promise.all([
+    store.list("parties", { orderBy: "name" }),
+    getPartnerTypeCatalog(),
+  ]);
+  const parties = all.filter((p) => isOtherPartyType(p.type));
+  // Filtros: os tipos ativos e os inativos que ainda têm cadastro.
+  const inUse = new Set(parties.map(partyTypeValue));
+  const chips = catalog.filter((e) => e.active || inUse.has(e.value));
+  const type =
+    typeof rawType === "string" && chips.some((e) => e.value === rawType)
+      ? rawType
+      : "";
+  const filtered = type
+    ? parties.filter((p) => partyTypeValue(p) === type)
+    : parties;
 
   return (
     <>
@@ -71,16 +84,35 @@ export default async function PartiesPage({
         }
         actions={
           <>
+            {isAdmin(user) ? (
+              <>
+                <LinkButton href="/app/parties/access" data-partner-access-link>
+                  {t("partnerAccess.link")}
+                </LinkButton>
+                <LinkButton href="/app/parties/types" data-partner-types-link>
+                  {t("partnerTypes.manage")}
+                </LinkButton>
+              </>
+            ) : null}
             <LinkButton href="/app/import?entity=parties">
               {t("parties.import")}
             </LinkButton>
-            <LinkButton href="/app/parties/new" variant="primary">
+            <LinkButton
+              // Aberto com um tipo filtrado: o cadastro novo já vem com ele.
+              href={
+                type
+                  ? `/app/parties/new?type=${encodeURIComponent(type)}`
+                  : "/app/parties/new"
+              }
+              variant="primary"
+              data-party-new
+            >
               + {t("parties.new")}
             </LinkButton>
           </>
         }
       />
-      <div className="mb-3 flex flex-wrap gap-2 text-sm">
+      <div className="mb-3 flex flex-wrap gap-2 text-sm" data-party-type-chips>
         <Link
           href="/app/parties"
           aria-current={!type ? "page" : undefined}
@@ -88,14 +120,16 @@ export default async function PartiesPage({
         >
           {t("common.all")}
         </Link>
-        {OTHER_PARTY_TYPES.map((pt) => (
+        {chips.map((entry) => (
           <Link
-            key={pt}
-            href={`/app/parties?type=${pt}`}
-            aria-current={type === pt ? "page" : undefined}
-            className={chipClass(type === pt)}
+            key={entry.value}
+            href={`/app/parties?type=${encodeURIComponent(entry.value)}`}
+            aria-current={type === entry.value ? "page" : undefined}
+            className={chipClass(type === entry.value)}
+            data-party-type-chip={entry.key}
           >
-            {t(`party.${pt}`)}
+            {partnerTypeName(entry, t.locale)}
+            {entry.active ? "" : ` ${t("partnerTypes.inactiveSuffix")}`}
           </Link>
         ))}
       </div>
@@ -118,7 +152,7 @@ export default async function PartiesPage({
                 <Td>
                   <TextLink href={`/app/parties/${p.id}`}>{p.name}</TextLink>
                 </Td>
-                <Td>{t(`party.${p.type}`)}</Td>
+                <Td>{partyTypeLabel(p, catalog, t)}</Td>
                 <Td>{p.country ?? "—"}</Td>
                 <Td>
                   <span className="text-zinc-600">{p.email ?? "—"}</span>

@@ -32,6 +32,7 @@ create table if not exists public."parties" (
 );
 alter table public."parties" enable row level security;
 alter table public."parties" add column if not exists "type" text;
+alter table public."parties" add column if not exists "partnerTypeId" text;
 alter table public."parties" add column if not exists "name" text;
 alter table public."parties" add column if not exists "country" text;
 alter table public."parties" add column if not exists "email" text;
@@ -1615,6 +1616,25 @@ alter table public."stock_locations" add column if not exists "notes" text;
 alter table public."stock_locations" add column if not exists "sankhyaCode" text;
 create unique index if not exists "stock_locations_code_unique" on public."stock_locations" ("code");
 create index if not exists "stock_locations_created" on public."stock_locations" ("createdAt");
+
+create table if not exists public."partner_types" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."partner_types" enable row level security;
+alter table public."partner_types" add column if not exists "key" text;
+alter table public."partner_types" add column if not exists "builtin" text;
+alter table public."partner_types" add column if not exists "name" text;
+alter table public."partner_types" add column if not exists "nameEn" text;
+alter table public."partner_types" add column if not exists "nameZh" text;
+alter table public."partner_types" add column if not exists "description" text;
+alter table public."partner_types" add column if not exists "active" boolean;
+alter table public."partner_types" add column if not exists "loginClass" text;
+alter table public."partner_types" add column if not exists "createdByUserId" text;
+alter table public."partner_types" add column if not exists "updatedByUserId" text;
+create unique index if not exists "partner_types_key_unique" on public."partner_types" ("key");
+create index if not exists "partner_types_created" on public."partner_types" ("createdAt");
 
 create table if not exists public."payment_conditions" (
   "id" text primary key,

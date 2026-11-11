@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -42,6 +43,15 @@ import {
   rowClass,
 } from "@/components/ui";
 import { PartyForm } from "@/components/party-form";
+import {
+  partnerTypeName,
+  partyTypeLabel,
+  partyTypeValue,
+} from "@/lib/partner-types";
+import {
+  getPartnerTypeCatalog,
+  loginRoleOfParty,
+} from "@/lib/services/partner-types";
 import { SubmitButton } from "@/components/submit-button";
 import { listCertifications } from "@/lib/services/compliance";
 import { radarProblem } from "@/lib/services/operations";
@@ -206,8 +216,37 @@ export default async function PartyPage({
     allUsers.map((u) => u.email),
   );
   const passwordSuggestion = suggestPassword();
+  // Tipos do formulário (docs/PARTNER_TYPES.md): os ativos de "Outros
+  // parceiros" e o do próprio cadastro (cliente, fornecedor ou um inativo).
+  const catalog = await getPartnerTypeCatalog();
+  const ownValue = partyTypeValue(party);
+  const typeOptions = [
+    // Cliente e fornecedor continuam podendo trocar entre si, como antes.
+    ...(["customer", "supplier"] as const).map((type) => ({
+      value: type as string,
+      label: t(`party.${type}`),
+    })),
+    ...catalog
+      .filter((e) => e.active || e.value === ownValue)
+      .map((e) => ({
+        value: e.value,
+        label: `${partnerTypeName(e, t.locale)}${e.active ? "" : ` ${t("partnerTypes.inactiveSuffix")}`}`,
+      })),
+  ];
+  // O papel do login é o do tipo (os tipos novos entram como o Fornecedor).
+  const loginRole = await loginRoleOfParty(party);
+  // Perfil de telas dos logins deste cadastro (Gestão de telas).
+  const typeEntry = catalog.find((e) => e.value === ownValue) ?? null;
+  const accessProfile = loginRole
+    ? {
+        key: typeEntry?.profileKey ?? `role:${loginRole}`,
+        label: typeEntry
+          ? partnerTypeName(typeEntry, t.locale)
+          : t(`role.${loginRole}` as DictionaryKey),
+      }
+    : null;
   const roles = [
-    ...ROLES.filter((r) => r === party.type),
+    ...ROLES.filter((r) => r === loginRole),
     ...ROLES.filter(
       (r) => isAdmin(user) && (r === "admin" || r === "operator"),
     ),
@@ -221,7 +260,7 @@ export default async function PartyPage({
         title={party.name}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            <Badge>{t(`party.${party.type}`)}</Badge>
+            <Badge>{partyTypeLabel(party, catalog, t)}</Badge>
             {isCustomer && party.operationMode ? (
               <Badge tone={radarIssue ? "warning" : "info"}>
                 {t(
@@ -264,7 +303,12 @@ export default async function PartyPage({
       <div className="mt-3 grid items-start gap-4 lg:grid-cols-2">
         <div className="min-w-0 space-y-4">
           <Card title={t("common.edit")}>
-            <PartyForm party={party} t={t} />
+            <PartyForm
+              party={party}
+              t={t}
+              types={typeOptions}
+              selected={partyTypeValue(party)}
+            />
           </Card>
           {/* Acesso ao portal: o login nasce aqui, preso a este cadastro
               (o Booking traz para cá o fornecedor sem login). */}
@@ -295,6 +339,22 @@ export default async function PartyPage({
               <p className="mb-3 text-xs text-zinc-500">
                 {t("portalAccess.party.linked", { name: party.name })}
               </p>
+              {isAdmin(user) && accessProfile ? (
+                <p className="mb-3 text-sm" data-party-access-profile>
+                  <Link
+                    href={`/app/parties/access?profile=${encodeURIComponent(accessProfile.key)}`}
+                    className="font-medium text-brand-700 underline"
+                  >
+                    {t("partnerAccess.configure")}
+                  </Link>{" "}
+                  <span className="text-zinc-600">
+                    ·{" "}
+                    {t("partnerAccess.partyProfile", {
+                      profile: accessProfile.label,
+                    })}
+                  </span>
+                </p>
+              ) : null}
               <ul className="mb-3 divide-y divide-zinc-100 rounded-xl border border-zinc-200/80 text-sm">
                 {users.map((u) => (
                   <li
@@ -325,106 +385,118 @@ export default async function PartyPage({
                   </li>
                 ) : null}
               </ul>
-              <form
-                action={createUserAction}
-                className="@container space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
-              >
-                <input type="hidden" name="partyId" value={party.id} />
-                <div className="grid gap-3 @sm:grid-cols-2 @lg:grid-cols-6">
-                  <div className="min-w-0 @lg:col-span-3">
-                    <Field label={t("common.name")}>
-                      <Input
-                        name="name"
-                        defaultValue={
-                          users.length ? "" : (party.contactName ?? party.name)
-                        }
-                        required
-                      />
-                    </Field>
-                  </div>
-                  <div className="min-w-0 @lg:col-span-3">
-                    <Field
-                      label={t("portalAccess.login.label")}
-                      hint={t("portalAccess.login.hint")}
-                    >
-                      <Input
-                        name="login"
-                        defaultValue={loginSuggestion}
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                        spellCheck={false}
-                        autoComplete="off"
-                        maxLength={254}
-                        required
-                      />
-                    </Field>
-                  </div>
-                  <div className="min-w-0 @lg:col-span-2">
-                    <Field label={t("common.role")}>
-                      <Select
-                        name="role"
-                        defaultValue={roleForType[party.type] ?? "customer"}
-                      >
-                        {roles.map((r) => (
-                          <option key={r} value={r}>
-                            {t(`role.${r}`)}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                  </div>
-                  <div className="min-w-0 @lg:col-span-2">
-                    <Field label={t("common.language")}>
-                      <Select
-                        name="locale"
-                        defaultValue={isChina(party.country) ? "zh" : "pt"}
-                      >
-                        {LOCALES.map((l) => (
-                          <option key={l} value={l}>
-                            {LOCALE_NAMES[l]}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                  </div>
-                  <div className="min-w-0 @lg:col-span-2">
-                    <Field
-                      label={t("login.password")}
-                      hint={t("portalAccess.password.hint", {
-                        n: PORTAL_MIN_PASSWORD,
-                      })}
-                    >
-                      <Input
-                        name="password"
-                        type="text"
-                        minLength={PORTAL_MIN_PASSWORD}
-                        maxLength={128}
-                        defaultValue={passwordSuggestion}
-                        autoComplete="off"
-                        required
-                      />
-                    </Field>
-                  </div>
+              {!loginRole ? (
+                // Tipo criado no painel: ainda sem classe de login (a criação
+                // do acesso recusaria; docs/PARTNER_TYPES.md).
+                <div data-party-no-login-class>
+                  <Alert tone="info">{t("partnerTypes.noLogin")}</Alert>
                 </div>
-                <p className="text-xs text-zinc-500">
-                  {t("portalAccess.copy.hint")}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <AccessCopy
-                    labels={{
-                      copy: t("portalAccess.copy"),
-                      copied: t("portalAccess.copied"),
-                      empty: t("portalAccess.copy.empty"),
-                      portal: t("portalAccess.copy.portal"),
-                      login: t("portalAccess.login.label"),
-                      password: t("login.password"),
-                    }}
-                  />
-                  <SubmitButton variant="primary" data-party-access-create="">
-                    + {t("portalAccess.create")}
-                  </SubmitButton>
-                </div>
-              </form>
+              ) : (
+                <form
+                  action={createUserAction}
+                  className="@container space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
+                >
+                  <input type="hidden" name="partyId" value={party.id} />
+                  <div className="grid gap-3 @sm:grid-cols-2 @lg:grid-cols-6">
+                    <div className="min-w-0 @lg:col-span-3">
+                      <Field label={t("common.name")}>
+                        <Input
+                          name="name"
+                          defaultValue={
+                            users.length
+                              ? ""
+                              : (party.contactName ?? party.name)
+                          }
+                          required
+                        />
+                      </Field>
+                    </div>
+                    <div className="min-w-0 @lg:col-span-3">
+                      <Field
+                        label={t("portalAccess.login.label")}
+                        hint={t("portalAccess.login.hint")}
+                      >
+                        <Input
+                          name="login"
+                          defaultValue={loginSuggestion}
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          autoComplete="off"
+                          maxLength={254}
+                          required
+                        />
+                      </Field>
+                    </div>
+                    <div className="min-w-0 @lg:col-span-2">
+                      <Field label={t("common.role")}>
+                        <Select
+                          name="role"
+                          defaultValue={
+                            loginRole ?? roleForType[party.type] ?? "customer"
+                          }
+                        >
+                          {roles.map((r) => (
+                            <option key={r} value={r}>
+                              {t(`role.${r}`)}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                    </div>
+                    <div className="min-w-0 @lg:col-span-2">
+                      <Field label={t("common.language")}>
+                        <Select
+                          name="locale"
+                          defaultValue={isChina(party.country) ? "zh" : "pt"}
+                        >
+                          {LOCALES.map((l) => (
+                            <option key={l} value={l}>
+                              {LOCALE_NAMES[l]}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                    </div>
+                    <div className="min-w-0 @lg:col-span-2">
+                      <Field
+                        label={t("login.password")}
+                        hint={t("portalAccess.password.hint", {
+                          n: PORTAL_MIN_PASSWORD,
+                        })}
+                      >
+                        <Input
+                          name="password"
+                          type="text"
+                          minLength={PORTAL_MIN_PASSWORD}
+                          maxLength={128}
+                          defaultValue={passwordSuggestion}
+                          autoComplete="off"
+                          required
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    {t("portalAccess.copy.hint")}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AccessCopy
+                      labels={{
+                        copy: t("portalAccess.copy"),
+                        copied: t("portalAccess.copied"),
+                        empty: t("portalAccess.copy.empty"),
+                        portal: t("portalAccess.copy.portal"),
+                        login: t("portalAccess.login.label"),
+                        password: t("login.password"),
+                      }}
+                    />
+                    <SubmitButton variant="primary" data-party-access-create="">
+                      + {t("portalAccess.create")}
+                    </SubmitButton>
+                  </div>
+                </form>
+              )}
             </Card>
           </div>
         </div>

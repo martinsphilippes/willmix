@@ -20,7 +20,6 @@ import {
   PARTY_EXTRA_DEFAULTS,
   PAYMENT_EXTRA_DEFAULTS,
   LINE_EXTRA_DEFAULTS,
-  PARTY_TYPES,
   PRODUCT_EXTRA_DEFAULTS,
   ROLES,
   LOCALES,
@@ -903,9 +902,10 @@ export async function savePartyAction(form: FormData) {
   await run(id ? `/app/parties/${id}` : "/app/parties/new", async () => {
     assertWellmix(user);
     assertScreen(user, "parties");
-    const parsed = z
+    const input = z
       .object({
-        type: z.enum(PARTY_TYPES),
+        // Tipo de fábrica ("agency") ou criado no painel ("custom:<id>").
+        type: z.string().regex(/^(custom:)?[A-Za-z0-9_-]{1,64}$/),
         name: z.string().min(2),
         country: z.string().nullable(),
         email: z.string().email().nullable(),
@@ -926,6 +926,21 @@ export async function savePartyAction(form: FormData) {
         active: form.getAll("active").includes("on"),
       });
     const store = getStore();
+    // O tipo sai do catálogo (docs/PARTNER_TYPES.md): inativo só continua no
+    // cadastro que já o tinha.
+    const { resolvePartyType } = await import("@/lib/services/partner-types");
+    const existing = id ? await store.get("parties", id) : null;
+    if (id && !existing) throw new Error("not_found");
+    const resolved = await resolvePartyType(input.type, existing);
+    // A coluna do tipo criado só vai ao banco quando há o que gravar (o
+    // cadastro continua salvando antes de o esquema ser publicado).
+    const parsed = {
+      ...input,
+      type: resolved.type,
+      ...(resolved.partnerTypeId || existing?.partnerTypeId
+        ? { partnerTypeId: resolved.partnerTypeId }
+        : {}),
+    };
     // Fornecedor/cliente novo ou alterado vai para o Sankhya (fase 3).
     const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
     if (id) {
