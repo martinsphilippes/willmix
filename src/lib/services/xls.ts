@@ -56,8 +56,7 @@ interface Cfb {
 
 function openCfb(bytes: Uint8Array): Cfb {
   if (bytes.length < 512) throw invalid();
-  for (let i = 0; i < 8; i++)
-    if (bytes[i] !== CFB_SIGNATURE[i]) throw invalid();
+  for (let i = 0; i < 8; i++) if (bytes[i] !== CFB_SIGNATURE[i]) throw invalid();
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const major = view.getUint16(0x1a, true);
   if (major !== 3 && major !== 4) throw invalid();
@@ -134,7 +133,7 @@ function openCfb(bytes: Uint8Array): Cfb {
   ): number[] => {
     const out: number[] = [];
     const seen = new Set<number>();
-    for (let s = start; s < MAX_REGULAR_SECTOR && out.length < max;) {
+    for (let s = start; s < MAX_REGULAR_SECTOR && out.length < max; ) {
       if (s >= count || s >= table.length || seen.has(s)) throw invalid();
       seen.add(s);
       out.push(s);
@@ -197,8 +196,7 @@ function openCfb(bytes: Uint8Array): Cfb {
     );
     const table = new Uint32Array(tableSectors.length * perSector);
     tableSectors.forEach((s, k) => {
-      for (let i = 0; i < perSector; i++)
-        table[k * perSector + i] = entryAt(s, i);
+      for (let i = 0; i < perSector; i++) table[k * perSector + i] = entryAt(s, i);
     });
     const data = assemble(
       chain(root.start, Math.ceil(root.size / sectorSize), fat, sectorCount),
@@ -230,12 +228,7 @@ function openCfb(bytes: Uint8Array): Cfb {
         );
       }
       return assemble(
-        chain(
-          entry.start,
-          Math.ceil(entry.size / sectorSize),
-          fat,
-          sectorCount,
-        ),
+        chain(entry.start, Math.ceil(entry.size / sectorSize), fat, sectorCount),
         entry.size,
         sector,
         sectorSize,
@@ -281,11 +274,7 @@ function walk(
   maxBytes: number,
   visit: (id: number, data: Uint8Array) => void,
 ): number {
-  const view = new DataView(
-    stream.buffer,
-    stream.byteOffset,
-    stream.byteLength,
-  );
+  const view = new DataView(stream.buffer, stream.byteOffset, stream.byteLength);
   let depth = 0;
   let pos = start;
   while (pos + 4 <= stream.length) {
@@ -467,11 +456,7 @@ interface Globals {
 
 /** Substream de globais: BOF (versão BIFF8), abas, texto compartilhado e imagens. */
 function readGlobals(stream: Uint8Array): Globals {
-  const view = new DataView(
-    stream.buffer,
-    stream.byteOffset,
-    stream.byteLength,
-  );
+  const view = new DataView(stream.buffer, stream.byteOffset, stream.byteLength);
   const id = stream.length >= 8 ? view.getUint16(0, true) : -1;
   if (id !== BOF) {
     // BOF do BIFF2, 3 e 4 têm outros números de registro.
@@ -534,7 +519,7 @@ function escherRecords(
 ): EscherRecord[] {
   const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
   const out: EscherRecord[] = [];
-  for (let pos = start; pos + 8 <= end;) {
+  for (let pos = start; pos + 8 <= end; ) {
     const vi = view.getUint16(pos, true);
     const len = view.getUint32(pos + 4, true);
     const dataEnd = Math.min(end, pos + 8 + len);
@@ -587,8 +572,7 @@ function blipStore(group: Uint8Array): Array<Blip | null> {
         // BSE: 36 bytes de cabeçalho (o nome tem o tamanho no byte 33), depois o blip.
         const nameLen = fb.end - fb.start >= 36 ? group[fb.start + 33] : 0;
         const at = fb.start + 36 + nameLen;
-        const rec =
-          at + 8 <= fb.end ? escherRecords(group, at, fb.end)[0] : null;
+        const rec = at + 8 <= fb.end ? escherRecords(group, at, fb.end)[0] : null;
         blips.push(rec ? blipOf(rec) : null);
       }
     }
@@ -652,8 +636,7 @@ function shapesOf(dg: Uint8Array): Shape[] {
         continue;
       }
       const at = anchor ?? groupAnchor;
-      if (pib > 0 && at && !deleted)
-        out.push({ pib, row: at.row, col: at.col });
+      if (pib > 0 && at && !deleted) out.push({ pib, row: at.row, col: at.col });
     }
   };
   container(0, dg.length, 0, null);
@@ -806,12 +789,7 @@ export function openXlsWorkbook(
             break;
           case RK:
             if (data.length >= 10)
-              set(
-                row,
-                col,
-                formatNumber(rkNumber(dv.getUint32(6, true))),
-                false,
-              );
+              set(row, col, formatNumber(rkNumber(dv.getUint32(6, true))), false);
             break;
           case MULRK:
             // Linha, primeira coluna, pares (xf, RK) e a última coluna no fim.
@@ -838,8 +816,7 @@ export function openXlsWorkbook(
             if (data[12] === 0xff && data[13] === 0xff) {
               // Resultado que não é número: 0 texto (no STRING), 1 booleano, 2 erro, 3 texto vazio.
               if (data[6] === 0) pending = { row, col };
-              else if (data[6] === 1)
-                set(row, col, data[8] ? "true" : "false", false);
+              else if (data[6] === 1) set(row, col, data[8] ? "true" : "false", false);
               else if (data[6] === 2) set(row, col, errorText(data[8]), false);
             } else set(row, col, formatNumber(dv.getFloat64(6, true)), false);
             break;

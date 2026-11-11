@@ -26,9 +26,7 @@ export function googleSheetId(url: string): string | null {
  * compartilhamento.
  */
 export function isPublishedSheetUrl(url: string): boolean {
-  return /^https:\/\/docs\.google\.com\/spreadsheets\/(?:u\/\d{1,3}\/)?d\/e\//.test(
-    url.trim(),
-  );
+  return /^https:\/\/docs\.google\.com\/spreadsheets\/(?:u\/\d{1,3}\/)?d\/e\//.test(url.trim());
 }
 
 export function isGoogleSheetUrl(url: string): boolean {
@@ -86,10 +84,7 @@ export async function fetchGoogleSheetXlsx(
   const maxBytes = options.maxBytes ?? 50_000_000;
   const doFetch = options.fetchImpl ?? fetch;
   const controller = new AbortController();
-  const timer = setTimeout(
-    () => controller.abort(),
-    options.timeoutMs ?? 25_000,
-  );
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 25_000);
   let response: Response;
   try {
     response = await doFetch(googleSheetExportUrl(id), {
@@ -115,8 +110,7 @@ export async function fetchGoogleSheetXlsx(
       throw new GoogleSheetError("sheet_private");
     if (!response.ok) throw new GoogleSheetError("sheet_fetch_failed");
     // Resposta "ok" com página HTML: é a tela de login servida no lugar do arquivo.
-    if (type.startsWith("text/html"))
-      throw new GoogleSheetError("sheet_private");
+    if (type.startsWith("text/html")) throw new GoogleSheetError("sheet_private");
     const declared = Number(response.headers.get("content-length") ?? "0");
     if (declared > maxBytes) throw new GoogleSheetError("too_large");
     const bytes = await readLimited(response, maxBytes);
@@ -134,10 +128,7 @@ export async function fetchGoogleSheetXlsx(
 }
 
 /** Lê o corpo até o teto; acima dele, `too_large` sem carregar o resto. */
-async function readLimited(
-  response: Response,
-  maxBytes: number,
-): Promise<Uint8Array> {
+async function readLimited(response: Response, maxBytes: number): Promise<Uint8Array> {
   const body = response.body;
   if (!body) {
     const buffer = new Uint8Array(await response.arrayBuffer());

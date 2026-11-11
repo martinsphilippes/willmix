@@ -37,7 +37,8 @@ export const pt = {
   "srProduct.released": "Na vitrine desde {date}.",
   "srProduct.moreItems": "Ligar mais itens",
   "srProduct.moreSubmit": "Ligar os marcados",
-  "srProduct.moreNone": "Busque acima por itens de outros bookings para ligar.",
+  "srProduct.moreNone":
+    "Busque acima por itens de outros bookings para ligar.",
   "srProduct.erp.title": "Sankhya",
   "srProduct.erp.code": "CODPROD",
   "srProduct.erp.none": "Sem código do Sankhya.",
@@ -57,8 +58,10 @@ export const pt = {
     "Solicitação associada ao produto e itens ligados.",
   "srProduct.notice.items": "Itens ligados ao produto.",
   "srProduct.notice.released": "Produto liberado na vitrine.",
-  "srProduct.notice.erp.checked": "CODPROD gravado e conferido no Sankhya.",
-  "srProduct.notice.erp.unchecked": "CODPROD gravado sem conferir no Sankhya.",
+  "srProduct.notice.erp.checked":
+    "CODPROD gravado e conferido no Sankhya.",
+  "srProduct.notice.erp.unchecked":
+    "CODPROD gravado sem conferir no Sankhya.",
   "srProduct.notice.erp.cleared": "CODPROD retirado do produto.",
 
   "supplierRequests.error.request_product_not_approved":
@@ -103,7 +106,8 @@ export const en: typeof pt = {
     "Price, currency and MOQ come from the supplier's answer; sizes, carton, material and photo come from the item. The product starts hidden from the customer showcase.",
   "srProduct.create.submit": "Create product",
   "srProduct.link.title": "Link to an existing product",
-  "srProduct.link.none": "Search by name or code above to choose the product.",
+  "srProduct.link.none":
+    "Search by name or code above to choose the product.",
   "srProduct.link.empty": "No product matches this text.",
   "srProduct.link.submit": "Link to the checked product",
   "srProduct.pending": "Saving…",
@@ -116,7 +120,8 @@ export const en: typeof pt = {
   "srProduct.released": "In the showcase since {date}.",
   "srProduct.moreItems": "Link more items",
   "srProduct.moreSubmit": "Link the checked ones",
-  "srProduct.moreNone": "Search above for items from other bookings to link.",
+  "srProduct.moreNone":
+    "Search above for items from other bookings to link.",
   "srProduct.erp.title": "Sankhya",
   "srProduct.erp.code": "CODPROD",
   "srProduct.erp.none": "No Sankhya code.",
@@ -132,11 +137,13 @@ export const en: typeof pt = {
   "srProduct.erp.empty": "No Sankhya product matches this text.",
   "srProduct.notice.created":
     "Product created and items linked. It stays out of the showcase until released.",
-  "srProduct.notice.linked": "Request linked to the product and items linked.",
+  "srProduct.notice.linked":
+    "Request linked to the product and items linked.",
   "srProduct.notice.items": "Items linked to the product.",
   "srProduct.notice.released": "Product released to the showcase.",
   "srProduct.notice.erp.checked": "CODPROD saved and checked in Sankhya.",
-  "srProduct.notice.erp.unchecked": "CODPROD saved without checking Sankhya.",
+  "srProduct.notice.erp.unchecked":
+    "CODPROD saved without checking Sankhya.",
   "srProduct.notice.erp.cleared": "CODPROD removed from the product.",
 
   "supplierRequests.error.request_product_not_approved":
@@ -205,14 +212,17 @@ export const zh: typeof pt = {
   "srProduct.erp.save": "保存编码",
   "srProduct.erp.notConfigured":
     "Sankhya 未配置凭据：请输入 CODPROD，将保存为未核对。",
-  "srProduct.erp.error": "Sankhya 未响应（{code}）。请输入 CODPROD 或重试。",
+  "srProduct.erp.error":
+    "Sankhya 未响应（{code}）。请输入 CODPROD 或重试。",
   "srProduct.erp.empty": "Sankhya 中没有符合此文字的产品。",
-  "srProduct.notice.created": "产品已创建，条目已关联。发布前不在橱窗中显示。",
+  "srProduct.notice.created":
+    "产品已创建，条目已关联。发布前不在橱窗中显示。",
   "srProduct.notice.linked": "询单已关联到产品，条目已关联。",
   "srProduct.notice.items": "条目已关联到产品。",
   "srProduct.notice.released": "产品已发布到橱窗。",
   "srProduct.notice.erp.checked": "CODPROD 已保存并在 Sankhya 中核对。",
-  "srProduct.notice.erp.unchecked": "CODPROD 已保存，未在 Sankhya 中核对。",
+  "srProduct.notice.erp.unchecked":
+    "CODPROD 已保存，未在 Sankhya 中核对。",
   "srProduct.notice.erp.cleared": "已从产品中移除 CODPROD。",
 
   "supplierRequests.error.request_product_not_approved":

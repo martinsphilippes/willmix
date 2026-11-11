@@ -145,9 +145,7 @@ export async function searchCatalogProducts(query: string): Promise<Product[]> {
     .filter((p) =>
       matchesItemSearch(
         fold(
-          [p.name, p.sku, p.supplierSku, p.sankhyaCode]
-            .filter(Boolean)
-            .join(" "),
+          [p.name, p.sku, p.supplierSku, p.sankhyaCode].filter(Boolean).join(" "),
         ),
         words,
       ),

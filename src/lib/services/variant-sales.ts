@@ -96,10 +96,7 @@ export function variantSpecData(v: SpecSource): ProductSpecData {
  * a do catálogo): tamanho, cores, caixa, pesos, CBM. Vazia sem dados.
  */
 export function variantSpecification(v: SpecSource): string {
-  return buildProductSpec(
-    variantSpecData(v),
-    productSpecLabels(translator("pt")),
-  );
+  return buildProductSpec(variantSpecData(v), productSpecLabels(translator("pt")));
 }
 
 /** Moeda da variação (CNY) na convenção da ficha (RMB); fora da lista, nula. */
@@ -159,9 +156,7 @@ export function variantSnapshotSummary(
   intl: string,
 ): string | null {
   const n = (value: number, digits: number) =>
-    new Intl.NumberFormat(intl, { maximumFractionDigits: digits }).format(
-      value,
-    );
+    new Intl.NumberFormat(intl, { maximumFractionDigits: digits }).format(value);
   const money = (amount: number, currency: string | null) => {
     try {
       return new Intl.NumberFormat(intl, {
