@@ -91,63 +91,63 @@ Este é o vídeo mais cuidado da série: o **mapa animado** conduz tudo. A Jarra
 - 🔤 Na tela: `[MAPA etapa 2]` "Solicitação"; `[QUEM VÊ]` "O cliente não vê fornecedor, FOB nem margem".
 - ✂️ Edição: passagem de 4 s em cada tela; sem mostrar cliques.
 
-**Cena 5 · 1:12–1:38 · Etapa 3 · Cotação · Fornecedor e Wellmix**
+**Cena 5 · 1:12–1:34 · Etapa 3 · Cotação · Fornecedor e Wellmix**
 
 - 🎬 Imagem: `[MAPA etapa 3]`. Conta do fornecedor (tela em zh): **Pendências** com os sete cartões de etapa e a cotação a responder. Corte para a Wellmix: a solicitação com a escolha do fornecedor e o preço ao cliente; depois a tela de Notificações do cliente com "Proposta pronta".
 - 🎙 Narração: "O pedido vai ao fornecedor, que confirma preço, prazo e pedido mínimo. A Wellmix compara, define o preço ao cliente e, depois da aprovação interna, envia a proposta."
 - 🔤 Na tela: `[MAPA etapa 3]` "Cotação"; `[QUEM VÊ]` "O fornecedor não vê o cliente"; legenda em zh ao lado da tela do fornecedor.
 - ✂️ Edição: manter 3 s na tela de Pendências do fornecedor (os sete cartões coloridos).
 
-**Cena 6 · 1:38–2:00 · Etapa 4 · Sinal e pedido · Cliente e Wellmix**
+**Cena 6 · 1:34–1:56 · Etapa 4 · Sinal e pedido · Cliente e Wellmix**
 
 - 🎬 Imagem: `[MAPA etapa 4]`. Cliente: cartão **Proposta** com "Valor ao cliente" e "Sinal" e o botão "Aprovar proposta"; depois "Pague com Pix" (ou o campo do comprovante); Wellmix: "Confirmar sinal recebido"; por fim a tela **Pedido #1** com a situação "Pedido pré-aprovado".
 - 🎙 Narração: "João aprova a proposta e paga o sinal, a entrada. A Wellmix confirma o recebimento e o pedido nasce, já com todas as etapas, responsáveis e prazos."
 - 🔤 Na tela: `[MAPA etapa 4]` "Sinal e pedido"; selo "paralelo" aceso nas marcas 4 a 9.
 - ✂️ Edição: o selo "paralelo" acende aqui, quando o pedido nasce.
 
-**Cena 7 · 2:00–2:28 · Etapa 5 · Preparação · Fornecedor, agência e Wellmix**
+**Cena 7 · 1:56–2:24 · Etapa 5 · Preparação · Fornecedor, agência e Wellmix**
 
 - 🎬 Imagem: `[MAPA etapa 5]`. Fornecedor: a ficha de compra; agência (`/app/packaging`, "Embalagens (faca e arte)"): a lista de briefings; fornecedor: botão de aprovar a arte; tela do **documento do pedido** com as duas assinaturas.
 - 🎙 Narração: "Com o pedido criado, o fornecedor preenche a ficha de compra. A agência cria a arte da embalagem, e o fornecedor a aprova. Por fim, o documento do pedido recebe as duas assinaturas."
 - 🔤 Na tela: `[MAPA etapa 5]` "Preparação"; `[QUEM VÊ]` "A agência não vê valores".
 - ✂️ Edição: três passagens de 5 s (fornecedor, agência, documento).
 
-**Cena 8 · 2:28–2:48 · Etapa 6 · Inspeção · Fornecedor e Wellmix**
+**Cena 8 · 2:24–2:44 · Etapa 6 · Inspeção · Fornecedor e Wellmix**
 
 - 🎬 Imagem: `[MAPA etapa 6]`. Passagem pela etapa **Inspeção** do pedido (fotos, peso e medidas enviados) e, em seguida, o cartão de revisão da Wellmix quando há divergência.
 - 🎙 Narração: "Antes de embarcar, o fornecedor envia fotos, peso e medidas. O portal compara com o que foi comprado. Se algo diverge, a Wellmix decide antes de seguir."
 - 🔤 Na tela: `[MAPA etapa 6]` "Inspeção"; `[SETA]` "Divergência acima da tolerância: a etapa espera a Wellmix".
 - ✂️ Edição: zoom 150 % na linha da etapa "Inspeção".
 
-**Cena 9 · 2:48–3:10 · Etapa 7 · Embarque e mar · Companhia marítima**
+**Cena 9 · 2:44–3:06 · Etapa 7 · Embarque e mar · Companhia marítima**
 
 - 🎬 Imagem: `[MAPA etapa 7]`. Conta da companhia marítima (tela em en): o pedido na etapa **Shipping** com data, navio e BL; a carga no mar sobre o mapa.
 - 🎙 Narração: "A companhia marítima confirma o embarque, com data, navio e o BL, o conhecimento de embarque. A carga está no mar e todos acompanham pelo portal."
 - 🔤 Na tela: `[MAPA etapa 7]` "Embarque e mar"; `[QUEM VÊ]` "A companhia marítima só vê o próprio frete"; legenda em en.
 - ✂️ Edição: a jarra atravessa o mapa-múndi enquanto a tela do embarque fica no canto.
 
-**Cena 10 · 3:10–3:36 · Etapa 8 · Desembaraço e transporte · Despachante e transportador**
+**Cena 10 · 3:06–3:32 · Etapa 8 · Desembaraço e transporte · Despachante e transportador**
 
 - 🎬 Imagem: `[MAPA etapa 8]`. Conta do despachante: a etapa **Desembaraço** do pedido; conta do transportador: o cartão **Carga e entrega** (mercadoria, caixas, volume, peso, chegada do navio, onde entregar) e a etapa **Transporte**.
 - 🎙 Narração: "No Brasil, o despachante cuida da alfândega, dos documentos e da liberação. Depois, o transportador informa a placa e a previsão, e entrega no endereço do cliente."
 - 🔤 Na tela: `[MAPA etapa 8]` "Desembaraço e transporte"; `[QUEM VÊ]` "O transportador não vê o fornecedor".
 - ✂️ Edição: duas passagens de 8 s, uma por papel.
 
-**Cena 11 · 3:36–3:54 · Etapa 9 · Entrega e pós-venda · Cliente**
+**Cena 11 · 3:32–3:50 · Etapa 9 · Entrega e pós-venda · Cliente**
 
 - 🎬 Imagem: `[MAPA etapa 9]`. Cliente: botão "Confirmar" na etapa Entrega, faixa "Pedido encerrado", cartão **Pós-venda** com as notas de 1 a 5 e o cartão **Comprar de novo / Nova proposta**.
 - 🎙 Narração: "O cliente confirma o recebimento e avalia a compra. Gostou? Pode comprar de novo, ou pedir uma nova proposta, com poucos cliques."
 - 🔤 Na tela: `[MAPA etapa 9]` "Entrega e pós-venda"; `[SETA]` "O ciclo recomeça".
 - ✂️ Edição: uma seta curva leva da marca 9 de volta à marca 2.
 
-**Cena 12 · 3:54–4:12 · O que corre junto**
+**Cena 12 · 3:50–4:08 · O que corre junto**
 
 - 🎬 Imagem: o mapa inteiro aceso. Em cima dele, as três janelas rápidas: Pendências (cliente), o sino com número e a tela Notificações, o ícone de balão de Mensagens com o número.
 - 🎙 Narração: "Em paralelo, a Wellmix paga o fornecedor pela condição combinada, sem segurar o pedido. E cada pessoa vê, em Pendências e no sino, só o que depende dela."
 - 🔤 Na tela: selo "paralelo" "Pagamento ao fornecedor"; `[SETA]` "Sino: seus avisos"; `[SETA]` "Pendências: o que você precisa fazer".
 - ✂️ Edição: as três janelas entram em cascata, 1 s cada.
 
-**Cena 13 · 4:12–4:30 · Resumo e próximo vídeo**
+**Cena 13 · 4:08–4:30 · Resumo e próximo vídeo**
 
 - 🎬 Imagem: fundo vermelho `#BF2026` com a lista; no fim, a miniatura do GER-01 e a vinheta de encerramento.
 - 🎙 Narração: "Uma jornada, vários papéis, e cada um vê só o seu. Agora aprenda o seu papel. Comece pelo próximo vídeo: entrar no portal e se localizar."
@@ -256,7 +256,7 @@ Rótulos de tela citados (copiados do dicionário, mesma chave em en e zh): "Con
 **Cena 4 · 0:50–1:25 · Entrar · `/login`**
 
 - 🎬 Imagem: o formulário branco à direita: "Login ou e-mail", "Senha" e o botão vermelho "Entrar". Digitar `joao@lojista.com` e uma senha errada; aparece em vermelho "Credenciais inválidas". Corrigir a senha e clicar em "Entrar".
-- 🎙 Narração: "Digite o seu e-mail ou o nome de usuário que a Wellmix criou para você, depois a senha, e clique em Entrar. Se aparecer Credenciais inválidas, confira os dois campos. Quem não tem e-mail entra pelo nome de usuário."
+- 🎙 Narração: "Digite o seu e-mail ou o nome de usuário que a Wellmix criou para você. Quem não tem e-mail entra só com o nome de usuário. Depois digite a senha e clique em Entrar. Se aparecer Credenciais inválidas, confira os dois campos e tente de novo."
 - 🔤 Na tela: `[PASSO 1/7] Digite o login e a senha`; `[BOTÃO] "Entrar"`; `[SETA]` "E-mail ou nome de usuário" no campo "Login ou e-mail"; `[ERRO COMUM]` "Credenciais inválidas" e a correção.
 - ✂️ Edição: digitação em tempo real, com a senha em pontos; `[CORTE]` na entrada; a barra vermelha de progresso corre no topo.
 
@@ -270,7 +270,7 @@ Rótulos de tela citados (copiados do dicionário, mesma chave em en e zh): "Con
 **Cena 6 · 1:50–2:30 · O menu e os grupos · cabeçalho**
 
 - 🎬 Imagem: na conta do cliente, o cursor abre o grupo **Meus pedidos** e mostra Orçamentos, Pedidos, Pendências, Notificações, Mensagens, Histórico e Marketing. Corte para a Wellmix: os quatro grupos **Início**, **Pedidos**, **Cadastros** e **Gestão**. Corte para o fornecedor: **Início** (Pendências, Notificações, Mensagens) e **Pedidos** (Cotações, Solicitações ao fornecedor, Pedidos, Conta corrente). Por fim, o despachante: **Início** e o link direto **Pedidos**.
-- 🎙 Narração: "Cada papel tem o seu menu. O cliente vê Explorar e o grupo Meus pedidos. A Wellmix tem quatro grupos: Início, Pedidos, Cadastros e Gestão. Fornecedores e parceiros têm Início e Pedidos, só com as telas do papel."
+- 🎙 Narração: "Cada papel tem o seu menu. O cliente vê Explorar e o grupo Meus pedidos. A Wellmix tem quatro grupos: Início, Pedidos, Cadastros e Gestão, e o operador vê só as telas das suas funções. Fornecedores e parceiros têm Início e Pedidos, só com as telas do papel. Grupo com uma tela só vira link direto."
 - 🔤 Na tela: `[PASSO 2/7] Abra o grupo do menu`; `[SETA]` "Grupo com uma tela só vira link direto" no "Pedidos" do despachante; `[QUEM VÊ]` "O operador da Wellmix vê só as telas das suas funções".
 - ✂️ Edição: a lista de cada grupo fica 3 s na tela; contador "1 de 4" no canto.
 
@@ -441,14 +441,14 @@ Rótulos de tela citados (copiados do dicionário, mesma chave em en e zh): "Con
 **Cena 5 · 1:20–2:20 · Notificações · `/app/notifications`**
 
 - 🎬 Imagem: o cursor clica no sino (número branco). A tela "Notificações" mostra três blocos: **Precisa de você** (selo "Sua vez" e "Agora é com você"), **Atenção** e **Novidades** ("Agora é com: Fornecedor"). Clicar em "Resolver" numa linha: o portal leva ao lugar e marca o aviso como lido. Voltar: o aviso saiu da lista; mostrar o link "Mostrar as lidas (N)". Passar pelos botões "Excluir", "✓ N" (marcar todas como lidas) e "Excluir todas".
-- 🎙 Narração: "O sino leva às Notificações, em três blocos. Precisa de você: a sua vez de agir. Atenção: atraso, problema ou cancelamento. Novidades: o que andou no pedido. Clique em Resolver: o portal leva ao lugar e marca o aviso como lido."
+- 🎙 Narração: "O sino leva às Notificações, em três blocos. Precisa de você: é a sua vez de agir. Atenção: atraso, problema ou cancelamento. Novidades: o que andou no seu pedido. Na coluna Com quem, você vê com quem está o assunto agora: com você, com a Wellmix ou com um parceiro. Clique em Resolver: o portal leva ao lugar certo e marca o aviso como lido. Aviso lido sai da lista, mas Mostrar as lidas traz de volta. E lembre: e-mail e WhatsApp ainda não avisam, só o sino."
 - 🔤 Na tela: `[PASSO 2/5] Abra o sino`; `[BOTÃO] "Resolver"`; `[SETA]` "Com quem está o assunto agora" na coluna **Com quem**; `[SETA]` "Aviso resolvido (lido) sai da lista"; `[ATENÇÃO]` "Excluir todas apaga os avisos para sempre: pede confirmação."; `[ATENÇÃO]` "E-mail e WhatsApp ainda não avisam: só o sino do portal."
 - ✂️ Edição: `[ZOOM 150 %]` na linha do aviso; para os "Atenção" e "Novidades", cortes de 4 s por bloco.
 
 **Cena 6 · 2:20–3:30 · Mensagens · `/app/messages`**
 
 - 🎬 Imagem: o cursor clica no balão ou em **Mensagens** (grupo **Meus pedidos**). A tela "Mensagens": "Fale com a equipe Wellmix. Todos os logins da sua empresa veem esta conversa."; à esquerda a lista **Assuntos** ("Geral", "Pedido #…"), à direita o campo **Mensagem** e os botões "Foto ou vídeo", "Arquivo" e "Enviar". Digitar "Olá! Posso aumentar a quantidade para 400 un?", clicar em "Arquivo" e escolher um PDF: ele vai junto, na hora. Mostrar "Conversar com a Wellmix" dentro de um pedido: abre o assunto daquele pedido. Corte para a Wellmix: o cartão **Nova conversa** com **Empresa** e "Abrir conversa" (só a Wellmix escolhe a empresa).
-- 🎙 Narração: "Em Mensagens você fala com a Wellmix, por assunto: Geral, um pedido ou um item. Para começar, use o botão Conversar com a Wellmix dentro do pedido ou da solicitação. Escreva, anexe uma foto ou um arquivo e clique em Enviar. A Wellmix começa uma conversa com uma empresa pelo botão Nova conversa."
+- 🎙 Narração: "Em Mensagens você fala com a Wellmix, organizado por assunto: Geral, um pedido ou um item. Todos os logins da sua empresa veem a mesma conversa. Para começar, use o botão Conversar com a Wellmix dentro do pedido ou da solicitação. Escreva no campo Mensagem e clique em Enviar. Para anexar, use Foto ou vídeo ou Arquivo, até cinquenta megas: ao escolher o arquivo, ele já vai com o texto. A Wellmix começa uma conversa com uma empresa pelo botão Nova conversa."
 - 🔤 Na tela: `[PASSO 3/5] Abra Mensagens`; `[PASSO 4/5] Escreva e anexe`; `[BOTÃO] "Conversar com a Wellmix"`; `[BOTÃO] "Arquivo"`; `[BOTÃO] "Enviar"`; `[DICA]` "Foto, vídeo e arquivo até 50 MB; no computador, arraste para cá ou cole uma imagem (Ctrl+V)."; `[DICA]` "Para responder a uma mensagem, arraste-a para a direita."; `[QUEM VÊ]` "Todos os logins da sua empresa veem esta conversa".
 - ✂️ Edição: digitação em tempo real; `[ZOOM 150 %]` no anexo que aparece dentro da bolha; pausa de 2 s com a mensagem enviada.
 
