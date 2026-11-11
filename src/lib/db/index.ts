@@ -1,9 +1,16 @@
 import "server-only";
 
-import { dataDir, dataMode, publicEnv, serverEnv } from "@/lib/env";
+import {
+  dataDir,
+  dataMode,
+  publicEnv,
+  serverEnv,
+  supabaseEnv,
+} from "@/lib/env";
 import { AppwriteStore } from "./appwrite-store";
 import { CachedStore } from "./cached-store";
 import { MemoryStore } from "./memory-store";
+import { SupabaseStore } from "./supabase-store";
 import type { Store } from "./store";
 
 const globalRef = globalThis as unknown as { __wellmixStore?: Store };
@@ -25,6 +32,15 @@ export function getStore(): Store {
         publicEnv.NEXT_PUBLIC_APPWRITE_PROJECT_ID,
         env.data.APPWRITE_API_KEY,
       ),
+    );
+  } else if (mode === "supabase") {
+    const env = supabaseEnv();
+    if (!env)
+      throw new Error(
+        "DATA_MODE=supabase exige SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.",
+      );
+    globalRef.__wellmixStore = new CachedStore(
+      new SupabaseStore(env.url, env.key),
     );
   } else {
     globalRef.__wellmixStore = new CachedStore(new MemoryStore(dataDir()));

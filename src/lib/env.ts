@@ -28,7 +28,7 @@ export function serverEnv() {
 export const isAppwriteServerConfigured = () =>
   isAppwriteClientConfigured && serverEnv().success;
 
-export type DataMode = "memory" | "appwrite";
+export type DataMode = "memory" | "appwrite" | "supabase";
 
 /**
  * Modo de dados. `DATA_MODE=memory|appwrite` força; sem a variável, usa
@@ -36,8 +36,16 @@ export type DataMode = "memory" | "appwrite";
  */
 export function dataMode(): DataMode {
   const forced = process.env.DATA_MODE;
-  if (forced === "memory" || forced === "appwrite") return forced;
+  if (forced === "memory" || forced === "appwrite" || forced === "supabase")
+    return forced;
   return isAppwriteServerConfigured() ? "appwrite" : "memory";
+}
+
+/** Supabase (DATA_MODE=supabase; docs/SUPABASE.md): URL e chave service_role. */
+export function supabaseEnv() {
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return url && key ? { url, key } : null;
 }
 
 /**

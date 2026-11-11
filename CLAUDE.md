@@ -7,6 +7,7 @@ Portal Operacional de Importações. Next.js 16 na Vercel; Appwrite em produçã
 - `docs/SCOPE.md`, `docs/WORKFLOW.md`, `docs/OPEN_DECISIONS.md`: o que o sistema faz e as regras.
 - `docs/ARQUITETURA.md`: decisões, módulos e convenções.
 - `docs/APPWRITE.md` e `docs/AMBIENTE.md`: esquema, permissões, variáveis e limitações da sessão cloud.
+- `docs/SUPABASE.md`: troca do Appwrite pelo Supabase (etapas, esquema gerado, publicação).
 - `docs/BOOKING.md`, `docs/SUPPLIER_REQUESTS.md`, `docs/SUPERPLAN.md`, `docs/QUOTE_FLOW.md` e `docs/ORDER_SIGNATURE.md`: do Booking ao pedido (bookings por planilha, seleção de itens e solicitação ao fornecedor, análise, RFQ, negociação, embalagem, documento com as duas assinaturas).
 - `docs/INTEGRATIONS.md`: adaptadores mock/manual e dependências externas pendentes; `docs/SANKHYA.md` para o ERP.
 - Skills `.claude/skills/appwrite-cli` e `.claude/skills/appwrite-typescript` antes de rodar o CLI ou escrever código com o SDK.
