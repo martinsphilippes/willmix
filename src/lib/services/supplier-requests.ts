@@ -261,10 +261,18 @@ export async function openSupplierRequest(
   const lot = await store.get("booking_lots", item.lotId);
   if (!lot || !(SELECTABLE_LOTS as readonly string[]).includes(lot.status))
     throw new SupplierRequestError("supplier_request_lot_not_closed");
-  if (!lot.supplierId)
+  // Vai para o responsável pelo booking; sem ele, para o fornecedor do booking.
+  const { bookingRecipientId, BOOKING_PARTNER_TYPES } =
+    await import("./booking-lots");
+  const recipientId = bookingRecipientId(lot);
+  if (!recipientId)
     throw new SupplierRequestError("supplier_request_no_supplier");
-  const supplier = await store.get("parties", lot.supplierId);
-  if (!supplier || supplier.type !== "supplier" || !supplier.active)
+  const supplier = await store.get("parties", recipientId);
+  if (
+    !supplier ||
+    !supplier.active ||
+    !(BOOKING_PARTNER_TYPES as readonly string[]).includes(supplier.type)
+  )
     throw new SupplierRequestError("supplier_invalid");
   const existing = await withSchema(() =>
     store.list("supplier_requests", { filter: { bookingItemId: item.id } }),

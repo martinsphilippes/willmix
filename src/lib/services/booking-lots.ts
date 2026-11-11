@@ -220,6 +220,24 @@ export async function createBookingLotFromSheet(
   } = {},
 ): Promise<BookingLot> {
   assertBooking(user);
+  return createLotFromSheet(user, source, options);
+}
+
+/**
+ * O mesmo, sem conferir o papel (quem chama confere): o booking concorrente
+ * que o parceiro convidado sobe (services/booking-invites.ts) nasce com ele
+ * como responsável e com a Wellmix que convidou como dona.
+ */
+export async function createLotFromSheet(
+  user: User,
+  source: SheetSource,
+  options: {
+    defaultCurrency?: SheetCurrency | null;
+    sheet?: string | null;
+    partnerId?: string | null;
+    ownerUserId?: string | null;
+  } = {},
+): Promise<BookingLot> {
   const file = await sheetBytes(source);
   const parsed = parseProductSheet(file.bytes, {
     sheet: options.sheet ?? null,
@@ -258,8 +276,10 @@ export async function createBookingLotFromSheet(
       statusChangedAt: null,
       statusChangedByUserId: null,
       note: null,
-      ownerUserId: user.id,
+      ownerUserId: options.ownerUserId ?? user.id,
       createdByUserId: user.id,
+      // Coluna opcional: só vai quando há responsável.
+      ...(options.partnerId ? { partnerId: options.partnerId } : {}),
     }),
   );
   for (const group of parsed.groups) {
@@ -362,6 +382,33 @@ export interface BookingLotDetail {
   supplier: Party | null;
   suppliers: Party[];
   owner: User | null;
+  /** Responsável pelo booking (quem recebe as solicitações); nulo = o fornecedor. */
+  partner: Party | null;
+  /** Quem pode ser o responsável: fornecedores e parceiros com login de fornecedor. */
+  partners: Party[];
+}
+
+/**
+ * Tipos que podem ser o responsável pelo booking: o fornecedor, os parceiros
+ * à parte (Trading, Factory, Supplier, GP) e os tipos criados no painel.
+ */
+export const BOOKING_PARTNER_TYPES = [
+  "supplier",
+  "trading",
+  "factory",
+  "supplier_partner",
+  "gp",
+  "partner",
+] as const;
+
+const isBookingPartner = (p: Pick<Party, "type">) =>
+  (BOOKING_PARTNER_TYPES as readonly string[]).includes(p.type);
+
+/** Para quem vão as solicitações do booking: o responsável ou, sem ele, o fornecedor. */
+export function bookingRecipientId(
+  lot: Pick<BookingLot, "supplierId" | "partnerId">,
+): string | null {
+  return lot.partnerId ?? lot.supplierId ?? null;
 }
 
 export async function getBookingLot(
@@ -372,12 +419,22 @@ export async function getBookingLot(
   const store = getStore();
   const lot = await withSchema(() => store.get("booking_lots", id));
   if (!lot) return null;
-  const [items, suppliers, owner] = await Promise.all([
+  const [items, suppliers, owner, partnerRows] = await Promise.all([
     store.list("booking_items", { filter: { lotId: lot.id } }),
     store.list("parties", { filter: { type: "supplier" }, orderBy: "name" }),
     lot.ownerUserId ? store.get("users", lot.ownerUserId) : null,
+    store.list("parties", {
+      filter: {
+        type: BOOKING_PARTNER_TYPES.filter((t) => t !== "supplier") as never,
+      },
+      orderBy: "name",
+    }),
   ]);
   items.sort((a, b) => a.position - b.position);
+  const partnerId = lot.partnerId ?? null;
+  const partners = [...suppliers, ...partnerRows]
+    .filter((p) => p.active || p.id === partnerId)
+    .sort((a, b) => a.name.localeCompare(b.name));
   return {
     lot,
     items,
@@ -386,6 +443,11 @@ export async function getBookingLot(
       : null,
     suppliers: suppliers.filter((s) => s.active || s.id === lot.supplierId),
     owner,
+    partner: partnerId
+      ? (partners.find((p) => p.id === partnerId) ??
+        (await store.get("parties", partnerId)))
+      : null,
+    partners,
   };
 }
 
@@ -429,6 +491,43 @@ export async function setBookingLotSupplier(
     `Booking nº ${lot.number}: fornecedor ${supplierId ?? "-"}`,
     { supplierId: lot.supplierId },
     { supplierId },
+  );
+  return updated;
+}
+
+/**
+ * Responsável pelo booking: para quem vão as solicitações dos itens dele
+ * (decisão do dono, 11/11/2026). Muda em qualquer situação menos cancelado;
+ * as solicitações já abertas continuam com quem as recebeu. Vazio: volta a
+ * valer o fornecedor do booking.
+ */
+export async function setBookingLotPartner(
+  user: User,
+  lotId: string,
+  partnerId: string | null,
+): Promise<BookingLot> {
+  assertBooking(user);
+  const store = getStore();
+  const lot = await withSchema(() => store.get("booking_lots", lotId));
+  if (!lot) throw new BookingLotError("not_found");
+  if (lot.status === "cancelled")
+    throw new BookingLotError("booking_lot_locked");
+  if (partnerId) {
+    const party = await store.get("parties", partnerId);
+    if (!party || !party.active || !isBookingPartner(party))
+      throw new BookingLotError("booking_partner_invalid");
+  }
+  const updated = await withSchema(() =>
+    store.update("booking_lots", lot.id, { partnerId }),
+  );
+  await audit(
+    user,
+    "booking_lot.partner",
+    "booking_lot",
+    lot.id,
+    `Booking nº ${lot.number}: responsável ${partnerId ?? "o fornecedor"}`,
+    { partnerId: lot.partnerId ?? null },
+    { partnerId },
   );
   return updated;
 }

@@ -40,7 +40,7 @@ O quadrante de comparação **não abre a solicitação**: ele grava a escolha d
 ### Regras da solicitação
 
 1. Uma solicitação **por item escolhido**; o item com solicitação Aberta ou Respondida recusa outra (`supplier_request_exists`). Depois de decidida, pode ter outra.
-2. Vai ao **fornecedor do booking** do item (ativo). O booking Fechado passa a Em andamento.
+2. Vai ao **responsável pelo booking** do item (`booking_lots.partnerId`, decisão do dono, 11/11/2026); sem responsável, ao **fornecedor do booking** (ativo). O booking Fechado passa a Em andamento.
 3. A solicitação guarda uma **cópia do item** (`item`), para o fornecedor ver o que foi pedido mesmo que o booking mude.
 4. **Alternativas**: até 30 itens parecidos, guardados por id. Só a Wellmix vê (com fornecedor, origem, preço, mínimo do Superplan e link para o booking).
 5. Situações: **Aberta** (esperando o fornecedor) → **Respondida** → **Aprovada** ou **Recusada**; **Cancelada** pela Wellmix. Decisões possíveis (`supplierRequestDecisions`): Aberta → Cancelar ou Recusar; Respondida "faz" → Aprovar ou Recusar; Respondida "não faz" → Recusar.
@@ -144,12 +144,14 @@ Tabela `selection_groups` (escolha por grupo): `status` saved/requested/replaced
 Na solicitação **Aprovada**, a Wellmix que abre Cotações e Produtos vê o bloco **Produto**, no próprio detalhe da solicitação.
 
 1. **Criar produto novo**: o analista dá o **nome correto** e escolhe a **linha de produto**. O resto vem preenchido:
-   - **Preço, moeda e MOQ da resposta do fornecedor** (os negociados). Sem preço na resposta, valem os do booking.
+   - **Condições combinadas** (`agreedConditions`, mostradas no formulário): as finais da negociação (`finalConditions`: resposta do fornecedor, contraproposta aceita ou nova proposta dele) para preço, moeda, MOQ, entrega (FOB/EXW) e prazo; contraproposta recusada ou ainda pendente fica com a resposta gravada do fornecedor; sem preço na resposta, valem os do booking. Até 11/11/2026 só a resposta gravada valia (a contraproposta aceita não chegava ao produto).
+   - **SKU = código da fábrica** (11/11/2026): é o REFFORN que o Sankhya recebe e pelo qual a sincronização acha ou vincula o CODPROD (`syncProduct`); antes o SKU nascia vazio e a inclusão no ERP não achava o código depois.
+   - **Para incluir no Sankhya** (`erpReadiness`, no formulário): DESCRPROD (nome), REFFORN, NCM, pesos e medidas, com o que falta em vermelho (obrigatório) ou amarelo (completa-se no produto). A lista de linhas mostra o CODGRUPOPROD de cada uma ou "sem grupo do Sankhya" (sem grupo a inclusão no ERP recusa).
    - Código da fábrica, medidas, caixa, pesos, CBM, capacidade, embalagem, material, cores e função vêm do item. A ficha mestre é gravada com esses valores (`sheetFromRequest`).
    - O fornecedor da solicitação entra como **principal**. O produto herda o **NCM** do item escolhido (docs/BOOKING.md, "NCM do item"). A foto do item é copiada para o produto ("foto do fornecedor").
    - O que a Wellmix pediu ("needs") vai para as observações da ficha.
-2. **Associar a um produto existente**: busca no catálogo por nome, código, código da fábrica ou CODPROD, e escolha de um produto ativo. O cadastro dele não muda.
-3. **Itens iguais**: o item escolhido sempre entra. As alternativas da solicitação já vêm marcadas, e a busca acha mais itens nos bookings fechados que ainda não têm produto.
+2. **Associar a um produto existente**: busca no catálogo por nome, código, código da fábrica ou CODPROD, e escolha de um produto ativo. O cadastro dele não muda. Sem busca digitada, a lista já traz **sugestões** (`suggestCatalogProducts`): produtos ativos com o código da fábrica do item no SKU ou no código do fornecedor, ou com todas as palavras da descrição. As buscas da tela (itens, catálogo e Sankhya) são formulários GET que mantêm `view=item`; até 11/11/2026 elas voltavam para a tabela da solicitação.
+3. **Itens iguais**: o item escolhido sempre entra. Vêm marcados os **itens da seleção** (`selectionItemIds`): as alternativas da solicitação, os itens dos grupos da Seleção de itens em que o escolhido está (de vários bookings) e as alternativas de outra solicitação do mesmo item (a escolha gravada depois da solicitação aprovada abre outra, com as alternativas nela). Sem busca, aparecem desmarcados os itens de **mesmo código da fábrica** de outros bookings (rascunho, fechado, em andamento ou concluído) sem produto; a busca acha outros.
    - Todos ficam ligados ao produto (`booking_items.productId`).
    - O fornecedor de cada item entra na lista de fornecedores do produto (`product_suppliers`): o da solicitação com preço, moeda, MOQ e prazo da resposta (`source` "quote"); o de uma alternativa com código e preço do booking ("manual").
    - Item já ligado a outro produto recusa (`request_product_item_taken`).

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { Product, ProductLine, SupplierRequest } from "@/lib/db/schema";
 import type {
+  ErpReadiness,
   ErpSearch,
   ItemChoice,
+  agreedConditions,
 } from "@/lib/services/supplier-request-product";
 import type { Translate } from "@/i18n";
 import {
@@ -41,6 +43,10 @@ export interface RequestProductData {
   query: { items: string; products: string; erp: string };
   /** Nome sugerido para o produto novo. */
   suggestedName: string;
+  /** Condições combinadas (vão para a ficha e o fornecedor do produto). */
+  deal: ReturnType<typeof agreedConditions>;
+  /** O que o produto novo leva ao Sankhya (vazio depois de criado). */
+  readiness: ErpReadiness[];
 }
 
 function SearchForm({
@@ -59,6 +65,8 @@ function SearchForm({
   const keep = { iq: query.items, pq: query.products, eq: query.erp };
   return (
     <form method="get" className="flex flex-wrap items-end gap-2">
+      {/* Fica na tela do produto (sem isso a busca voltava à tabela). */}
+      <input type="hidden" name="view" value="item" />
       {(Object.keys(keep) as Array<keyof typeof keep>)
         .filter((k) => k !== name && keep[k])
         .map((k) => (
@@ -71,6 +79,7 @@ function SearchForm({
             type="search"
             defaultValue={value}
             maxLength={80}
+            data-request-product-search={name}
           />
         </Field>
       </div>
@@ -136,6 +145,65 @@ function ItemList({
   );
 }
 
+function DealSummary({
+  deal,
+  t,
+}: {
+  deal: RequestProductData["deal"];
+  t: Translate;
+}) {
+  const parts = [
+    deal.price !== null ? `${deal.price} ${deal.currency ?? ""}`.trim() : null,
+    deal.incoterm,
+    deal.moq !== null ? `MOQ ${deal.moq}` : null,
+    deal.leadTimeDays !== null
+      ? t("srProduct.deal.days", { n: deal.leadTimeDays })
+      : null,
+  ].filter(Boolean);
+  return (
+    <p className="text-xs text-zinc-700" data-request-product-deal>
+      <span className="font-semibold">{t("srProduct.deal.title")}:</span>{" "}
+      {parts.length ? parts.join(" · ") : "—"}
+    </p>
+  );
+}
+
+function ErpChecklist({ rows, t }: { rows: ErpReadiness[]; t: Translate }) {
+  if (!rows.length) return null;
+  return (
+    <div data-request-product-erp-check>
+      <p className="text-xs font-semibold text-zinc-700">
+        {t("srProduct.erpCheck.title")}
+      </p>
+      <ul className="mt-1 space-y-0.5 text-xs">
+        {rows.map((row) => (
+          <li
+            key={row.field}
+            className={
+              row.value
+                ? "text-zinc-700"
+                : row.required
+                  ? "text-red-700"
+                  : "text-amber-800"
+            }
+            data-request-product-erp-field={row.field}
+          >
+            {row.value ? "✓" : "✗"} {row.field}
+            {": "}
+            {row.value ??
+              t(
+                row.required
+                  ? "srProduct.erpCheck.missing"
+                  : "srProduct.erpCheck.optional",
+              )}
+          </li>
+        ))}
+        <li className="text-zinc-500">{t("srProduct.erpCheck.group")}</li>
+      </ul>
+    </div>
+  );
+}
+
 export function RequestProductCard({
   data,
   t,
@@ -144,7 +212,8 @@ export function RequestProductCard({
   t: Translate;
 }) {
   const { request: r, product, choices, query } = data;
-  const alternatives = new Set(r.alternativeItemIds ?? []);
+  // Os itens da seleção (alternativas e grupo comparado) vêm marcados.
+  const alternatives = new Set(choices.suggested.map((c) => c.item.id));
   const free = (list: ItemChoice[]) =>
     list.filter((c) => !c.item.productId || c.item.productId === product?.id);
 
@@ -212,7 +281,9 @@ export function RequestProductCard({
                     <option value="">{t("common.select")}</option>
                     {data.lines.map((l) => (
                       <option key={l.id} value={l.id}>
-                        {l.name}
+                        {l.sankhyaCode
+                          ? `${l.name} · ${l.sankhyaCode}`
+                          : `${l.name} (${t("srProduct.erpCheck.noGroup")})`}
                       </option>
                     ))}
                   </Select>
@@ -220,6 +291,8 @@ export function RequestProductCard({
                 <p className="text-xs text-zinc-500">
                   {t("srProduct.create.hint")}
                 </p>
+                <DealSummary deal={data.deal} t={t} />
+                <ErpChecklist rows={data.readiness} t={t} />
                 <SubmitButton
                   name="mode"
                   value="create"
@@ -234,12 +307,13 @@ export function RequestProductCard({
               <h3 className="mb-2 text-sm font-semibold text-zinc-900">
                 {t("srProduct.link.title")}
               </h3>
-              {!query.products ? (
-                <p className="text-sm text-zinc-500">
-                  {t("srProduct.link.none")}
-                </p>
-              ) : data.catalog.length ? (
+              {data.catalog.length ? (
                 <div className="space-y-2">
+                  {!query.products ? (
+                    <p className="text-xs text-zinc-500">
+                      {t("srProduct.link.suggested")}
+                    </p>
+                  ) : null}
                   <ul className="max-h-64 divide-y divide-zinc-100 overflow-y-auto rounded-lg border border-zinc-200 text-sm">
                     {data.catalog.map((p) => (
                       <li
@@ -280,7 +354,11 @@ export function RequestProductCard({
                 </div>
               ) : (
                 <p className="text-sm text-zinc-500">
-                  {t("srProduct.link.empty")}
+                  {t(
+                    query.products
+                      ? "srProduct.link.empty"
+                      : "srProduct.link.none",
+                  )}
                 </p>
               )}
             </section>

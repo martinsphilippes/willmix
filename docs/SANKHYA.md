@@ -192,3 +192,9 @@ Aba Carga do Sankhya → **Carga completa** (`src/lib/integrations/sankhya-full-
 2. Fase 2 feita (docs/PROCESSES.md): ligar a execução no Sankhya depois de conferir a simulação.
 3. Fase 3 feita (seção abaixo): conferir os campos que o Sankhya exige ao incluir parceiro e produto (campos fixos) no primeiro uso.
 4. Automatizações candidatas: importar/atualizar produtos, parceiros, estoque e preços do Sankhya (com `logAlteracoesTabelas`); criar no ERP o pedido de compra/venda quando o pedido nasce no portal; enviar a tabela de frete (AD_FREINT, hoje CSV) por `DatasetSP.save`; ler títulos financeiros (a receber/pagar, boletos) e NF-e emitidas para conciliar com o portal.
+
+## Cadastros de teste para apagar no fim do teste do Sankhya
+
+Anotados para apagar no portal **e** no Sankhya quando o teste de inclusão terminar:
+
+- **Produto da solicitação ao fornecedor nº 1** (`supplier_requests.id` `4138bcd8-e113-417a-bdb4-4e51c1c6e1bf`, item "WD STRIBY VERT", código da fábrica/REFFORN `MY-059A`, booking nº 1). O produto é criado na tela `/app/supplier-requests/4138bcd8-e113-417a-bdb4-4e51c1c6e1bf?view=item` (11/11/2026). Para achar o id e o CODPROD: `select "productId" from supplier_requests where id = '4138bcd8-e113-417a-bdb4-4e51c1c6e1bf'` e `select id, name, sku, "sankhyaCode" from products where id = <productId>`. Apagar também: a ligação dos itens (`booking_items.productId`), `product_suppliers`, a ficha mestre (`purchase_sheets.orderId` = id do produto), a foto copiada e, na solicitação, `productId`/`productAction`/`productLinkedAt`; no Sankhya, o TGFPRO com esse CODPROD (ou REFFORN `MY-059A`).

@@ -465,6 +465,8 @@ describe("produto da solicitação aprovada", () => {
       name: "Garrafa térmica 500 ml",
       supplierId: lotA.supplierId,
       supplierSku: "PX-A",
+      // REFFORN do Sankhya.
+      sku: "PX-A",
       active: true,
       // Herda o NCM do item escolhido.
       ncm: "70133700",
@@ -502,6 +504,12 @@ describe("produto da solicitação aprovada", () => {
         itemIds: [],
       }),
     ).rejects.toThrow("request_product_exists");
+    // Sugestão para associar (outra solicitação do mesmo código): o criado.
+    expect(
+      (await product.suggestCatalogProducts(request)).some(
+        (p) => p.id === created.id,
+      ),
+    ).toBe(true);
     await product.releaseRequestProduct(admin, request.id);
     expect(await isHiddenByBooking(created.id)).toBe(false);
     expect((await hiddenBookingProductIds()).has(created.id)).toBe(false);
@@ -567,7 +575,128 @@ describe("produto da solicitação aprovada", () => {
   });
 });
 
+describe("itens da seleção para o produto", () => {
+  it("traz o grupo da seleção, as alternativas de outra solicitação do item e o mesmo código de outros bookings", async () => {
+    const store = getStore();
+    const product = await import("@/lib/services/supplier-request-product");
+    const lotA = await closedLot("Shenzhen Supplier A", [
+      row("Shenzhen Supplier A", "SG-1", "Cup SG one", "2000"),
+    ]);
+    const lotB = await closedLot("Guangzhou Supplier B", [
+      row("Guangzhou Supplier B", "SG-2", "Cup SG two"),
+    ]);
+    const lotC = await closedLot("Guangzhou Supplier B", [
+      row("Guangzhou Supplier B", "SG-3", "Cup SG three"),
+    ]);
+    const lotD = await closedLot("Guangzhou Supplier B", [
+      row("Guangzhou Supplier B", "SG-1", "Same code other booking"),
+    ]);
+    const first = async (lotId: string) =>
+      (await store.list("booking_items", { filter: { lotId } }))[0];
+    const [itemA, itemB, itemC, itemD] = await Promise.all(
+      [lotA, lotB, lotC, lotD].map((l) => first(l.id)),
+    );
+    // Solicitação sem alternativas, aprovada.
+    const request = await svc.openSupplierRequest(admin, {
+      itemId: itemA.id,
+      alternativeIds: [],
+      quantity: 10,
+      needs: null,
+      searchQuery: null,
+    });
+    await svc.answerSupplierRequest(supplierA, request.id, {
+      canDo: "yes",
+      price: 1.5,
+      currency: "USD",
+      moq: 2400,
+      leadTimeDays: 30,
+      note: null,
+    });
+    await svc.decideSupplierRequest(admin, request.id, "approved", null);
+    // Depois, a escolha do grupo abre outra solicitação do mesmo item.
+    await svc.openSupplierRequest(admin, {
+      itemId: itemA.id,
+      alternativeIds: [itemB.id],
+      quantity: 10,
+      needs: null,
+      searchQuery: null,
+    });
+    await store.create("selection_groups", {
+      status: "requested",
+      itemIds: [itemA.id, itemC.id],
+      chosenItemId: itemA.id,
+      quantity: 10,
+      needs: null,
+      supplierRequestId: null,
+      requestedAt: null,
+      createdByUserId: admin.id,
+      updatedByUserId: null,
+    });
+    const saved = (await store.get("supplier_requests", request.id))!;
+    const choices = await product.requestItemChoices(saved, "");
+    expect(choices.suggested.map((c) => c.item.id)).toEqual([
+      itemA.id,
+      itemC.id,
+      itemB.id,
+    ]);
+    // Sem busca: o mesmo código da fábrica de outro booking.
+    expect(choices.found.map((c) => c.item.id)).toEqual([itemD.id]);
+  });
+});
+
 describe("regras puras", () => {
+  it("condições combinadas: a contraproposta aceita vale; a recusada não", async () => {
+    const { agreedConditions } =
+      await import("@/lib/services/supplier-request-product");
+    const base = {
+      item: { price: 2, currency: "USD", moq: 1000, incoterm: "FOB" },
+      supplierCanDo: "yes",
+      supplierPrice: 1.8,
+      supplierCurrency: "USD",
+      supplierMoq: 1500,
+      supplierIncoterm: "FOB",
+      supplierLeadTimeDays: 30,
+    };
+    const answer = {
+      id: "a",
+      kind: "answer",
+      side: "supplier",
+      at: "2026-11-01T10:00:00.000Z",
+      canDo: "yes",
+      price: 1.8,
+      currency: "USD",
+      moq: 1500,
+      incoterm: "FOB",
+      leadTimeDays: 30,
+    };
+    const proposal = {
+      id: "p",
+      kind: "proposal",
+      side: "wellmix",
+      at: "2026-11-01T11:00:00.000Z",
+      price: 1.6,
+      moq: 2000,
+    };
+    const accept = (kind: string) => ({
+      id: kind,
+      kind,
+      side: "supplier",
+      at: "2026-11-01T12:00:00.000Z",
+    });
+    const of = (negotiation: unknown[]) =>
+      agreedConditions({ ...base, negotiation } as never);
+    expect(of([answer, proposal, accept("accept")])).toMatchObject({
+      price: 1.6,
+      moq: 2000,
+      leadTimeDays: 30,
+    });
+    expect(of([answer, proposal, accept("reject")])).toMatchObject({
+      price: 1.8,
+      moq: 1500,
+    });
+    expect(of([])).toMatchObject({ price: 1.8, currency: "USD", moq: 1500 });
+  });
+
   it("linha do tempo e respostas antigas (sem passo no histórico)", () => {
     const legacy = {
       id: "r1",
@@ -862,5 +991,65 @@ describe("seleção: rascunhos, filtros e grupo", () => {
         searchQuery: null,
       }),
     ).rejects.toThrow("supplier_request_lot_not_closed");
+  });
+});
+
+describe("responsável pelo booking (para quem vão as solicitações)", () => {
+  it("a solicitação vai ao responsável; sem ele, ao fornecedor; cliente não pode ser", async () => {
+    const store = getStore();
+    const { PARTY_EXTRA_DEFAULTS } = await import("@/lib/db/schema");
+    const trading = await store.create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
+      type: "trading",
+      name: "Trading Ningbo",
+      country: "CN",
+      email: null,
+      phone: null,
+      taxId: null,
+      notes: null,
+      active: true,
+      city: "Ningbo",
+      contactName: null,
+      wechat: null,
+      operationMode: null,
+      radar: null,
+    });
+    const lot = await closedLot("Shenzhen Supplier A", [
+      row("Shenzhen Supplier A", "T-1", "Trading mug one"),
+      row("Shenzhen Supplier A", "T-2", "Trading mug two"),
+    ]);
+    // Cliente não é responsável de booking.
+    await expect(
+      lots.setBookingLotPartner(admin, lot.id, "cliente-joao"),
+    ).rejects.toThrow("booking_partner_invalid");
+    // Só a Wellmix com a tela Booking muda.
+    await expect(
+      lots.setBookingLotPartner(supplierA, lot.id, trading.id),
+    ).rejects.toThrow();
+    await lots.setBookingLotPartner(admin, lot.id, trading.id);
+    expect(
+      lots.bookingRecipientId((await store.get("booking_lots", lot.id))!),
+    ).toBe(trading.id);
+
+    const items = await store.list("booking_items", {
+      filter: { lotId: lot.id },
+    });
+    const open = (code: string) =>
+      svc.openSupplierRequest(admin, {
+        itemId: items.find((i) => i.factoryItemCode === code)!.id,
+        alternativeIds: [],
+        quantity: 100,
+        needs: null,
+        searchQuery: null,
+      });
+    const toTrading = await open("T-1");
+    expect(toTrading.supplierId).toBe(trading.id);
+    // O fornecedor do booking não vê a solicitação do responsável.
+    expect(await svc.getSupplierRequest(supplierA, toTrading.id)).toBeNull();
+
+    // Vazio: volta a valer o fornecedor do booking.
+    await lots.setBookingLotPartner(admin, lot.id, null);
+    const toSupplier = await open("T-2");
+    expect(toSupplier.supplierId).toBe(lot.supplierId);
   });
 });

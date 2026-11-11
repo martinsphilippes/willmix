@@ -37,6 +37,11 @@ export const DEFAULT_SETTINGS = {
    * (docs/SUPPLIER_REQUESTS.md, "SLA da negociação").
    */
   supplierRequestSlaMinutes: 30,
+  /**
+   * SLA do convite para booking concorrente, em dias corridos: do convite ao
+   * prazo para o parceiro subir o booking (docs/BOOKING_INVITES.md).
+   */
+  bookingInviteSlaDays: 1,
   /* ---- Pedido de compra das solicitações ao fornecedor (docs/PURCHASE_ORDER.md) ---- */
   /** Dias da agência de arte para enviar a arte de cada produto, desde o pedido. */
   purchaseArtSlaDays: 5,

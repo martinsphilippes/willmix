@@ -430,6 +430,12 @@ export default async function PurchaseOrderPage({
               <p className="font-semibold">{t("orderSign.supplier")}</p>
               <p>{doc.supplierName || "—"}</p>
             </div>
+            {doc.manufacturers?.length ? (
+              <div className="sm:col-span-2" data-order-document-manufacturer>
+                <p className="font-semibold">{t("orderSign.manufacturer")}</p>
+                <p>{doc.manufacturers.join(", ")}</p>
+              </div>
+            ) : null}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">

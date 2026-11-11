@@ -109,6 +109,42 @@ export async function supplierFactory(
   };
 }
 
+/**
+ * A fábrica do booking quando o pedido saiu em nome de outro responsável
+ * (ex.: a trading; decisão do dono, 11/11/2026): o fornecedor do booking de
+ * onde vieram os itens. Nulo nos demais pedidos.
+ */
+export async function bookingFactory(
+  order: Pick<Order, "id" | "supplierId">,
+): Promise<{ name: string | null; address: string | null } | null> {
+  const store = getStore();
+  try {
+    const requests = await store.list("supplier_requests", {
+      filter: { orderId: order.id },
+    });
+    const lotIds = [...new Set(requests.map((r) => r.bookingLotId))];
+    if (!lotIds.length) return null;
+    const lots = await store.list("booking_lots", { filter: { id: lotIds } });
+    const factoryId = lots
+      .map((l) => l.supplierId)
+      .find((id): id is string => !!id && id !== order.supplierId);
+    if (!factoryId) return null;
+    const party = await store.get("parties", factoryId);
+    if (!party) return null;
+    return {
+      name: party.name?.trim() || null,
+      address:
+        [party.address, party.city, party.country]
+          .map((v) => v?.trim())
+          .filter(Boolean)
+          .join(", ") || null,
+    };
+  } catch (error) {
+    if (isSchemaMissing(error)) return null;
+    throw error;
+  }
+}
+
 async function ensureTrack(user: User, orderId: string) {
   const existing = await getTrack(orderId);
   if (existing) return existing;
@@ -184,6 +220,18 @@ export async function savePlan(user: User, orderId: string, input: PlanInput) {
     const own = await supplierFactory(order);
     if (name && name === own.name) patch.factoryName = null;
     if (address && address === own.address) patch.factoryAddress = null;
+    // Pedido em nome da trading: a fábrica é a do booking (o que ninguém
+    // digitou vem dela).
+    const factory = await bookingFactory(order);
+    if (factory) {
+      const nextName =
+        patch.factoryName !== undefined ? patch.factoryName : name;
+      const nextAddress =
+        patch.factoryAddress !== undefined ? patch.factoryAddress : address;
+      if (!nextName?.trim() && factory.name) patch.factoryName = factory.name;
+      if (!nextAddress?.trim() && factory.address)
+        patch.factoryAddress = factory.address;
+    }
   }
   // Início automático (contrato assinado): o que vier do formulário não vale.
   if (input.productionStartAt !== undefined) {

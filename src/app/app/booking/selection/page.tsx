@@ -390,6 +390,16 @@ export default async function BookingSelectionPage({
                         {t("supplierRequests.selection.similar")}
                       </Link>
                     ) : null}
+                    {basket && lot.status !== "cancelled" ? (
+                      <Link
+                        href={`/app/booking/invite/${item.id}`}
+                        className={cx(linkClass, "ml-2 text-xs")}
+                        title={t("bookingInvites.selection.inviteHint")}
+                        data-selection-invite={item.id}
+                      >
+                        {t("bookingInvites.selection.invite")}
+                      </Link>
+                    ) : null}
                   </td>
                   <td className={td}>
                     <span className="block max-w-40 min-w-28 whitespace-normal">
