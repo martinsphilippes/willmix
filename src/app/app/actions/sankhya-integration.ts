@@ -26,6 +26,10 @@ import {
   runFullLoad,
 } from "@/lib/integrations/sankhya-full-load";
 import { FULL_LOAD_ENTITIES } from "@/lib/integrations/sankhya-mapping";
+import {
+  startServerLoad,
+  stopServerLoad,
+} from "@/lib/integrations/sankhya-load-queue";
 import { getStore } from "@/lib/db";
 import { requireUser, str } from "./helpers";
 
@@ -468,4 +472,26 @@ export async function savePaymentConditionAction(form: FormData) {
     ).slice(0, 600)}#conditions`;
   }
   redirect(target);
+}
+
+const serverLoadSchema = z.object({
+  entity: z.enum(FULL_LOAD_ENTITIES).optional(),
+  stop: z.boolean(),
+});
+
+/**
+ * Carga completa no servidor: liga a fila (uma entidade ou todas as que
+ * faltam) para o agendador rodar mesmo com o navegador fechado; ou para.
+ */
+export async function sankhyaServerLoadAction(form: FormData) {
+  const user = await admin();
+  const input = serverLoadSchema.parse({
+    entity: str(form, "entity") || undefined,
+    stop: str(form, "stop") === "1",
+  });
+  if (input.stop) await stopServerLoad(user);
+  else await startServerLoad(user, input.entity ? [input.entity] : undefined);
+  redirect(
+    `${BACK}?tab=load&server=${input.stop ? "stopped" : "started"}#full`,
+  );
 }
