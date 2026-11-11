@@ -1,3 +1,4 @@
+import { loginLabel } from "@/lib/auth/login-id";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -44,7 +45,7 @@ export default async function TeamMemberPage({
   requireScreen(user, "team");
   const t = await getT();
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, created } = await searchParams;
   const team = await wellmixTeam();
   const member = team.find((m) => m.id === id);
   if (!member) notFound();
@@ -68,12 +69,19 @@ export default async function TeamMemberPage({
       <PageHeader
         t={t}
         title={t("team.person.title", { name: member.name })}
-        subtitle={`${t(`role.${member.role}` as DictionaryKey)} · ${member.email}`}
+        subtitle={`${t(`role.${member.role}` as DictionaryKey)} · ${loginLabel(member.email)}`}
         actions={<TextLink href="/app/team">{t("team.person.back")}</TextLink>}
       />
       {errorText ? (
         <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
+        </div>
+      ) : null}
+      {typeof created === "string" && created ? (
+        <div className="mb-3" data-team-created>
+          <Alert tone="success">
+            {t("team.new.created", { login: created.slice(0, 254) })}
+          </Alert>
         </div>
       ) : null}
       <form action={saveTeamMemberAction} className="space-y-4" data-team-form>

@@ -4,6 +4,8 @@ import { z } from "zod";
 import { assertRole } from "@/lib/auth/permissions";
 import { DIVISIONS, JOB_LEVELS, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
 import { SCREENS } from "@/lib/auth/screens";
+import { LOCALES } from "@/lib/db/schema";
+import { loginLabel } from "@/lib/auth/login-id";
 import { requireUser, run, str } from "./helpers";
 
 /*
@@ -64,6 +66,63 @@ export async function saveTeamMemberAction(form: FormData) {
         : {}),
     });
     return `/app/team?saved=member#u-${targetId}`;
+  });
+}
+
+/**
+ * Novo login da equipe Wellmix (só o administrador): nome, login (e-mail ou
+ * nome de usuário), senha e o lugar na hierarquia (cargo, divisão, a quem
+ * responde, funções). Depois de criar, abre "Editar acessos" da pessoa, para
+ * conferir as funções e marcar as telas uma a uma, se precisar.
+ */
+export async function createTeamLoginAction(form: FormData) {
+  const user = await requireUser();
+  await run("/app/team#new-login", async () => {
+    assertRole(user, ["admin"]);
+    const { PORTAL_MIN_PASSWORD, createPortalLogin } =
+      await import("@/lib/services/portal-access");
+    // Senha curta: recusa com o motivo certo (não "confira os campos").
+    if (str(form, "password").length < PORTAL_MIN_PASSWORD)
+      throw new Error("user_password_short");
+    const parsed = z
+      .object({
+        name: z.string().min(2).max(120),
+        // Nome de usuário ou e-mail: o formato é conferido no serviço.
+        email: z.string().min(3).max(254),
+        password: z.string().min(PORTAL_MIN_PASSWORD).max(128),
+        role: z.enum(["operator", "admin"]),
+        locale: z.enum(LOCALES),
+      })
+      .parse({
+        name: str(form, "name"),
+        email: str(form, "login").toLowerCase(),
+        password: str(form, "password"),
+        role: str(form, "role") || "operator",
+        locale: str(form, "locale") || "pt",
+      });
+    const place = {
+      jobLevel: level.parse(str(form, "jobLevel")),
+      managerUserId: optionalId.parse(str(form, "managerUserId")),
+      division: division.parse(str(form, "division")),
+      functions: z
+        .array(z.enum(WELLMIX_FUNCTIONS))
+        .max(WELLMIX_FUNCTIONS.length)
+        .parse(
+          form
+            .getAll("functions")
+            .filter((v): v is string => typeof v === "string"),
+        ),
+    };
+    const created = await createPortalLogin(user, {
+      ...parsed,
+      partyId: null,
+      mustChangePassword: form.getAll("mustChange").includes("on"),
+    });
+    const { setTeamMember } = await import("@/lib/services/team");
+    await setTeamMember(user, created.id, place);
+    // O login (não a senha) volta na confirmação, para conferir o que passar.
+    const login = encodeURIComponent(loginLabel(created.email));
+    return `/app/team/${created.id}?created=${login}`;
   });
 }
 
