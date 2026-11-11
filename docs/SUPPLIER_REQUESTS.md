@@ -54,14 +54,14 @@ Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_requ
 
 ## Onde está
 
-| Parte                                                       | Arquivo                                                            |
-| ----------------------------------------------------------- | ------------------------------------------------------------------ |
-| Regras puras (busca, parecidos, US$, melhor caso, decisões) | `src/lib/supplier-requests.ts`                                     |
-| Serviço (seleção, abrir, ler, responder, decidir, foto)     | `src/lib/services/supplier-requests.ts`                            |
-| Ações                                                       | `src/app/app/actions/supplier-requests.ts`                         |
-| Telas                                                       | `src/app/app/booking/selection/`, `src/app/app/supplier-requests/` |
-| Textos                                                      | `src/i18n/modules/supplier-requests.ts`                            |
-| Testes                                                      | `tests/unit/supplier-requests.test.ts`                             |
+| Parte                                                       | Arquivo                                                                                                                                                                                           |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Regras puras (busca, parecidos, US$, melhor caso, decisões) | `src/lib/supplier-requests.ts`                                                                                                                                                                    |
+| Serviço (seleção, abrir, ler, responder, decidir, foto)     | `src/lib/services/supplier-requests.ts`                                                                                                                                                           |
+| Ações                                                       | `src/app/app/actions/supplier-requests.ts`                                                                                                                                                        |
+| Telas                                                       | `src/app/app/booking/selection/`, `src/app/app/supplier-requests/`                                                                                                                                |
+| Textos                                                      | `src/i18n/modules/supplier-requests.ts`                                                                                                                                                           |
+| Testes                                                      | `tests/unit/supplier-requests.test.ts`; de ponta a ponta (booking → seleção → solicitação → resposta do fornecedor → produto → vitrine → CODPROD) em `tests/e2e/booking-supplier-request.spec.ts` |
 
 ## Produto (depois de aprovada; decisão do dono, 10/11/2026)
 
