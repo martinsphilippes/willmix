@@ -36,6 +36,16 @@ A Seleção de itens **substituiu a fila de produtos** do Booking antigo: o bot�
 6. **Resposta do fornecedor**: faz ou não faz; se faz, preço por peça (obrigatório) e moeda; pedido mínimo, prazo de produção (dias) e observação. Muda até a Wellmix decidir. A Wellmix pode **registrar a resposta** em nome dele quando ela chega por fora (WeChat, e-mail).
 7. Avisos (sino, e-mail e WhatsApp em modo mock): ao fornecedor quando a solicitação abre e quando a Wellmix decide; a quem abriu, quando o fornecedor responde.
 
+## Tabela do fornecedor (decisão do dono, 11/11/2026)
+
+O fornecedor que abre `/app/supplier-requests/[id]` vê **primeiro uma tabela** com os produtos que a Wellmix pediu a ele: as solicitações dele abertas a partir do **mesmo booking** da solicitação, em ordem de número, com a do link destacada ("Esta solicitação"; `supplierRequestGroup`). A Wellmix continua vendo direto a tela completa.
+
+- Colunas: foto (miniatura que amplia ao tocar, `PhotoGallery`), produto (descrição, nº da solicitação, código da fábrica, nº do item, material e o que a Wellmix precisa), quantidade e MOQ, preço do booking, a resposta dele (preço, MOQ e prazo) e a situação (selo, SLA, de quem é a vez e "contraproposta esperando você").
+- Ações rápidas por linha, cada uma numa caixa pequena (`QuickDialog`):
+  - **Mensagem**: texto para a conversa da solicitação (mesma ação da conversa).
+  - **Sim / Não**: resposta definitiva. "Sim" pede o preço por peça (e moeda); pedido mínimo e prazo já respondidos ficam como estão. Só enquanto ele pode responder (Aberta ou Respondida, sem contraproposta esperando).
+  - **Abrir produto**: a tela completa que já existia, no mesmo link com `?view=item` (ficha, negociação, arquivos e o formulário completo da resposta). "Ver todos os produtos" volta à tabela, e os formulários dela voltam para ela mesma.
+
 ## Negociação (decisão do dono, 11/11/2026)
 
 No detalhe da solicitação, o bloco **Negociação e conversa** guarda o histórico em ordem (`negotiation`, sem limite de rodadas):
@@ -84,7 +94,7 @@ Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_requ
 | Regras puras (busca, parecidos, US$, melhor caso, decisões) | `src/lib/supplier-requests.ts`; filtros, grupo e blocos sugeridos em `src/lib/booking-selection.ts`                                                                                               |
 | Serviço (seleção, abrir, ler, responder, decidir, foto)     | `src/lib/services/supplier-requests.ts`; negociação e SLA em `src/lib/services/supplier-request-negotiation.ts`                                                                                   |
 | Ações                                                       | `src/app/app/actions/supplier-requests.ts`                                                                                                                                                        |
-| Telas                                                       | `src/app/app/booking/selection/`, `src/app/app/supplier-requests/`                                                                                                                                |
+| Telas                                                       | `src/app/app/booking/selection/`, `src/app/app/supplier-requests/` (tabela do fornecedor em `_components/supplier-table.tsx`)                                                                     |
 | Textos                                                      | `src/i18n/modules/supplier-requests.ts`                                                                                                                                                           |
 | Testes                                                      | `tests/unit/supplier-requests.test.ts`; de ponta a ponta (booking → seleção → solicitação → resposta do fornecedor → produto → vitrine → CODPROD) em `tests/e2e/booking-supplier-request.spec.ts` |
 

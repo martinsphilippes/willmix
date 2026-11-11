@@ -17,7 +17,8 @@ export const pt = {
   "supplierRequests.selection.title": "Seleção de itens",
   "supplierRequests.selection.subtitle":
     "Itens dos bookings, inclusive os rascunhos. Filtre, agrupe itens de vários fornecedores, compare os parecidos e abra a solicitação ao fornecedor do melhor (booking fechado).",
-  "supplierRequests.selection.search": "Buscar em qualquer campo (descrição, código, material, fornecedor, origem…)",
+  "supplierRequests.selection.search":
+    "Buscar em qualquer campo (descrição, código, material, fornecedor, origem…)",
   "supplierRequests.selection.searchPlaceholder":
     "Ex.: copo vidro, garrafa térmica, 350",
   "supplierRequests.selection.filter": "Filtrar",
@@ -219,6 +220,41 @@ export const pt = {
   "supplierRequests.notify.cancelled.subject": "Solicitação nº {n} cancelada",
   "supplierRequests.notify.cancelled.body":
     "A Wellmix cancelou a solicitação nº {n}. Não é preciso responder.",
+  "supplierRequests.table.title": "Produtos desta solicitação",
+  "supplierRequests.table.subtitle":
+    "{n} produto(s) que a Wellmix pediu a você neste booking",
+  "supplierRequests.table.hint":
+    "Responda direto na linha (mensagem ou resposta sim/não) ou abra a tela do produto para ver a ficha completa e negociar.",
+  "supplierRequests.table.col.photo": "Foto",
+  "supplierRequests.table.col.item": "Produto",
+  "supplierRequests.table.col.quantity": "Quantidade",
+  "supplierRequests.table.col.bookingPrice": "Preço do booking",
+  "supplierRequests.table.col.answer": "Sua resposta",
+  "supplierRequests.table.col.status": "Situação",
+  "supplierRequests.table.col.actions": "Ações",
+  "supplierRequests.table.photo": "Ampliar a foto",
+  "supplierRequests.table.photoOpen": "Abrir a foto em tamanho real",
+  "supplierRequests.table.noPhoto": "Sem foto",
+  "supplierRequests.table.close": "Fechar",
+  "supplierRequests.table.needs": "A Wellmix precisa",
+  "supplierRequests.table.current": "Esta solicitação",
+  "supplierRequests.table.proposalPending":
+    "Contraproposta esperando você: abra o produto para responder.",
+  "supplierRequests.table.message": "Mensagem",
+  "supplierRequests.table.messageTitle":
+    "Mensagem à Wellmix · solicitação nº {n}",
+  "supplierRequests.table.messageText": "Mensagem",
+  "supplierRequests.table.send": "Enviar",
+  "supplierRequests.table.sending": "Enviando…",
+  "supplierRequests.table.answer": "Sim / Não",
+  "supplierRequests.table.answerTitle":
+    "Resposta definitiva · solicitação nº {n}",
+  "supplierRequests.table.answerHint":
+    "Para responder sim, informe o preço por peça. Pedido mínimo e prazo ficam como estão (mude na tela do produto).",
+  "supplierRequests.table.yes": "Sim, faço",
+  "supplierRequests.table.no": "Não faço",
+  "supplierRequests.table.open": "Abrir produto",
+  "supplierRequests.table.back": "Ver todos os produtos",
 };
 
 export const en: typeof pt = {
@@ -236,7 +272,8 @@ export const en: typeof pt = {
   "supplierRequests.selection.title": "Item selection",
   "supplierRequests.selection.subtitle":
     "Items from the bookings, drafts included. Filter, group items from several suppliers, compare similar ones and open a request to the best one's supplier (closed booking).",
-  "supplierRequests.selection.search": "Search any field (description, code, material, supplier, origin…)",
+  "supplierRequests.selection.search":
+    "Search any field (description, code, material, supplier, origin…)",
   "supplierRequests.selection.searchPlaceholder":
     "E.g.: glass cup, thermos, 350",
   "supplierRequests.selection.filter": "Filter",
@@ -436,6 +473,39 @@ export const en: typeof pt = {
   "supplierRequests.notify.cancelled.subject": "Request no. {n} cancelled",
   "supplierRequests.notify.cancelled.body":
     "Wellmix cancelled request no. {n}. No answer is needed.",
+  "supplierRequests.table.title": "Products in this request",
+  "supplierRequests.table.subtitle":
+    "{n} product(s) Wellmix requested from you in this booking",
+  "supplierRequests.table.hint":
+    "Reply right on the row (message or yes/no answer) or open the product screen to see the full sheet and negotiate.",
+  "supplierRequests.table.col.photo": "Photo",
+  "supplierRequests.table.col.item": "Product",
+  "supplierRequests.table.col.quantity": "Quantity",
+  "supplierRequests.table.col.bookingPrice": "Booking price",
+  "supplierRequests.table.col.answer": "Your answer",
+  "supplierRequests.table.col.status": "Status",
+  "supplierRequests.table.col.actions": "Actions",
+  "supplierRequests.table.photo": "Enlarge photo",
+  "supplierRequests.table.photoOpen": "Open photo at full size",
+  "supplierRequests.table.noPhoto": "No photo",
+  "supplierRequests.table.close": "Close",
+  "supplierRequests.table.needs": "Wellmix needs",
+  "supplierRequests.table.current": "This request",
+  "supplierRequests.table.proposalPending":
+    "Counter-offer waiting for you: open the product to reply.",
+  "supplierRequests.table.message": "Message",
+  "supplierRequests.table.messageTitle": "Message to Wellmix · request no. {n}",
+  "supplierRequests.table.messageText": "Message",
+  "supplierRequests.table.send": "Send",
+  "supplierRequests.table.sending": "Sending…",
+  "supplierRequests.table.answer": "Yes / No",
+  "supplierRequests.table.answerTitle": "Final answer · request no. {n}",
+  "supplierRequests.table.answerHint":
+    "To answer yes, enter the price per piece. Minimum order and lead time stay as they are (change them on the product screen).",
+  "supplierRequests.table.yes": "Yes, I can",
+  "supplierRequests.table.no": "No, I can't",
+  "supplierRequests.table.open": "Open product",
+  "supplierRequests.table.back": "See all products",
 };
 
 export const zh: typeof pt = {
@@ -453,7 +523,8 @@ export const zh: typeof pt = {
   "supplierRequests.selection.title": "条目筛选",
   "supplierRequests.selection.subtitle":
     "所有 booking 的条目（包括草稿）。筛选、将多个供应商的条目分组、比较相似条目，并向最佳条目的供应商发起询单（booking 须已关闭）。",
-  "supplierRequests.selection.search": "搜索任意字段（描述、编码、材质、供应商、产地…）",
+  "supplierRequests.selection.search":
+    "搜索任意字段（描述、编码、材质、供应商、产地…）",
   "supplierRequests.selection.searchPlaceholder": "例如：玻璃杯、保温瓶、350",
   "supplierRequests.selection.filter": "筛选",
   "supplierRequests.selection.clear": "清除",
@@ -647,4 +718,36 @@ export const zh: typeof pt = {
   "supplierRequests.notify.cancelled.subject": "询单第 {n} 号已取消",
   "supplierRequests.notify.cancelled.body":
     "Wellmix 已取消询单第 {n} 号。无需回复。",
+  "supplierRequests.table.title": "本次询单的产品",
+  "supplierRequests.table.subtitle": "Wellmix 在此订舱中向您询问的 {n} 个产品",
+  "supplierRequests.table.hint":
+    "可直接在行内回复（留言或是/否答复），或打开产品页面查看完整资料并议价。",
+  "supplierRequests.table.col.photo": "图片",
+  "supplierRequests.table.col.item": "产品",
+  "supplierRequests.table.col.quantity": "数量",
+  "supplierRequests.table.col.bookingPrice": "订舱价格",
+  "supplierRequests.table.col.answer": "您的答复",
+  "supplierRequests.table.col.status": "状态",
+  "supplierRequests.table.col.actions": "操作",
+  "supplierRequests.table.photo": "放大图片",
+  "supplierRequests.table.photoOpen": "以原尺寸打开图片",
+  "supplierRequests.table.noPhoto": "无图片",
+  "supplierRequests.table.close": "关闭",
+  "supplierRequests.table.needs": "Wellmix 需要",
+  "supplierRequests.table.current": "本询单",
+  "supplierRequests.table.proposalPending":
+    "有还价等待您答复：请打开产品页面回复。",
+  "supplierRequests.table.message": "留言",
+  "supplierRequests.table.messageTitle": "给 Wellmix 的留言 · 询单 {n} 号",
+  "supplierRequests.table.messageText": "留言",
+  "supplierRequests.table.send": "发送",
+  "supplierRequests.table.sending": "发送中…",
+  "supplierRequests.table.answer": "是 / 否",
+  "supplierRequests.table.answerTitle": "最终答复 · 询单 {n} 号",
+  "supplierRequests.table.answerHint":
+    "答复“是”时请填写单价。起订量和交期保持不变（可在产品页面修改）。",
+  "supplierRequests.table.yes": "是，可以做",
+  "supplierRequests.table.no": "不能做",
+  "supplierRequests.table.open": "打开产品",
+  "supplierRequests.table.back": "查看全部产品",
 };
