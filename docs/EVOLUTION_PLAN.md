@@ -770,3 +770,8 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (10/11/2026): no cartão Produção do pedido, quando o fornecedor é a fábrica, o nome e o endereço da fábrica não precisam ser digitados: só o ETD. O nome vem do cadastro do fornecedor; o endereço, do cartão do fabricante confirmado na cotação e, sem ele, do cadastro (endereço, cidade, país). `supplierFactory` em `src/lib/services/production.ts`.
 - Os campos já aparecem preenchidos na tela e continuam editáveis; salvar como "Fábrica" com eles em branco grava os do fornecedor. Passar a "Trade" limpa o que era do próprio fornecedor (a fábrica é outra empresa e tem de ser informada; a inspeção continua exigindo o endereço).
+
+## Control Tower: a faca (die-cut) vai para o bloco do pedido
+
+- **Pedido do dono** (11/11/2026): o quadrado "Faca (die-cut)" estava em "Antes de virar pedido" e contava solicitações. No fluxo novo a faca é do pedido: o fornecedor manda no começo de "Arte e embalagem", antes de a agência fazer a arte. O quadrado passa para "Onde o pedido está agora", entre "Validação da ficha" e "Arte da embalagem" (`ordDieline` no lugar de `reqDieline`).
+- Conta os pedidos em "Arte e embalagem" cuja faca obrigatória ainda não chegou (briefing do pedido); com a faca, o pedido passa a "Arte da embalagem". Cada pedido continua num quadrado só. Solicitação esperando a faca aparece só no quadrado da etapa dela (decisão do dono: sem quadrado de faca na cotação). O Progresso da lista de Pedidos não muda (a faca conta no passo "Arte da embalagem").
