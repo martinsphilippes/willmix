@@ -499,6 +499,9 @@ export async function ControlTower({
           <Alert tone="info">{t("access.noFunction")}</Alert>
         </div>
       ) : null}
+      {totals && operations && finance ? (
+        <FinanceStrip totals={totals} t={t} />
+      ) : null}
       {board && stages ? (
         <>
           <ActionStrip
@@ -531,7 +534,6 @@ export async function ControlTower({
             </span>
           </summary>
           <div className="mt-4">
-            {totals && finance ? <FinanceStrip totals={totals} t={t} /> : null}
             {board ? (
               <section aria-label={t("tower.detail.title")} className="mb-2">
                 <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
