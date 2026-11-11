@@ -175,6 +175,7 @@ describe("menu principal", () => {
     expect(hrefsOf({ role: "supplier" })).toEqual([
       ...home.items,
       "/app/supplier-requests",
+      "/app/supplier-requests/invites",
       "/app/orders",
       "/app/account",
     ]);

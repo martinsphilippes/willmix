@@ -1379,6 +1379,7 @@ alter table public."booking_lots" add column if not exists "statusChangedByUserI
 alter table public."booking_lots" add column if not exists "note" text;
 alter table public."booking_lots" add column if not exists "ownerUserId" text;
 alter table public."booking_lots" add column if not exists "createdByUserId" text;
+alter table public."booking_lots" add column if not exists "partnerId" text;
 create index if not exists "booking_lots_by_status" on public."booking_lots" ("status");
 create index if not exists "booking_lots_by_supplier" on public."booking_lots" ("supplierId");
 create index if not exists "booking_lots_created" on public."booking_lots" ("createdAt");
@@ -1434,6 +1435,31 @@ alter table public."booking_items" add column if not exists "ncmByUserId" text;
 create index if not exists "booking_items_by_lot" on public."booking_items" ("lotId");
 create index if not exists "booking_items_by_product" on public."booking_items" ("productId");
 create index if not exists "booking_items_created" on public."booking_items" ("createdAt");
+
+create table if not exists public."booking_invites" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."booking_invites" enable row level security;
+alter table public."booking_invites" add column if not exists "number" bigint;
+alter table public."booking_invites" add column if not exists "groupId" text;
+alter table public."booking_invites" add column if not exists "status" text;
+alter table public."booking_invites" add column if not exists "bookingItemId" text;
+alter table public."booking_invites" add column if not exists "bookingLotId" text;
+alter table public."booking_invites" add column if not exists "item" jsonb;
+alter table public."booking_invites" add column if not exists "partnerId" text;
+alter table public."booking_invites" add column if not exists "message" text;
+alter table public."booking_invites" add column if not exists "dueAt" timestamptz;
+alter table public."booking_invites" add column if not exists "answeredAt" timestamptz;
+alter table public."booking_invites" add column if not exists "answeredByUserId" text;
+alter table public."booking_invites" add column if not exists "answeredLotId" text;
+alter table public."booking_invites" add column if not exists "cancelledAt" timestamptz;
+alter table public."booking_invites" add column if not exists "createdByUserId" text;
+create index if not exists "booking_invites_by_item" on public."booking_invites" ("bookingItemId");
+create index if not exists "booking_invites_by_partner" on public."booking_invites" ("partnerId");
+create index if not exists "booking_invites_by_group" on public."booking_invites" ("groupId");
+create index if not exists "booking_invites_created" on public."booking_invites" ("createdAt");
 
 create table if not exists public."supplier_requests" (
   "id" text primary key,

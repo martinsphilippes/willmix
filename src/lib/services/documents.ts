@@ -364,6 +364,9 @@ export async function canAccessDocument(
       // Foto do item de um booking numa solicitação a ele (docs/SUPPLIER_REQUESTS.md).
       const { supplierSeesRequestPhoto } = await import("./supplier-requests");
       if (await supplierSeesRequestPhoto(user, doc.id)) return true;
+      // Convite para booking concorrente: o convidado vê a foto do item.
+      const { partnerSeesInvitePhoto } = await import("./booking-invites");
+      if (await partnerSeesInvitePhoto(user, doc.id)) return true;
     }
     // Foto de produto/sourcing: só a Wellmix, salvo quando marcada como pública ("all").
     if (doc.productId || doc.sourcingItemId) {

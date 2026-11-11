@@ -64,9 +64,10 @@ const GRANTED_FROM_CUSTOMER: Entry[] = [
   ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
 ];
 const GRANTED_FROM_PARTNERS: Entry[] = [
+  ["quotes", { href: "/app/supplier-requests", key: "nav.supplierRequests" }],
   [
     "quotes",
-    { href: "/app/supplier-requests", key: "nav.supplierRequests" },
+    { href: "/app/supplier-requests/invites", key: "nav.bookingInvites" },
   ],
   ["freight", { href: "/app/freight", key: "nav.freight" }],
   [
@@ -112,6 +113,13 @@ export function navFor(
           [
             "quotes",
             { href: "/app/supplier-requests", key: "nav.supplierRequests" },
+          ],
+          [
+            "quotes",
+            {
+              href: "/app/supplier-requests/invites",
+              key: "nav.bookingInvites",
+            },
           ],
           ["orders", { href: "/app/orders", key: "nav.orders" }],
           ["reviews", { href: "/app/reviews", key: "nav.reviews" }],
@@ -217,6 +225,11 @@ export function navFor(
           "quotes",
           { href: "/app/supplier-requests", key: "nav.supplierRequests" },
         ],
+        // Convite para subir um booking concorrente de um item.
+        [
+          "quotes",
+          { href: "/app/supplier-requests/invites", key: "nav.bookingInvites" },
+        ],
         ["freight", { href: "/app/freight", key: "nav.freight" }],
         // A companhia envia a própria tabela de fretes (só vê as dela).
         [
@@ -245,7 +258,10 @@ export function flattenNav(entries: NavEntry[]): NavLink[] {
 }
 
 /** Subpáginas que têm link próprio no menu (o link "pai" não acende nelas). */
-const OWN_LINK_SUBPAGES = ["/app/freight/tariff"];
+const OWN_LINK_SUBPAGES = [
+  "/app/freight/tariff",
+  "/app/supplier-requests/invites",
+];
 
 /** O link vale para a tela atual? "/app" só na própria página; os demais também nas subpáginas. */
 export function isActiveHref(href: string, pathname: string): boolean {

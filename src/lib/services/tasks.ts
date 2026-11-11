@@ -14,6 +14,7 @@ import {
 } from "@/lib/workflow/stages";
 
 export type TaskKind =
+  | "booking_invite"
   | "new_request"
   | "requirement"
   | "review"
@@ -220,6 +221,7 @@ const SIGN_AFTER: ReadonlyArray<[string, string]> = [
   [ORDER_SIGNED_SUPPLIER, ORDER_SIGNED_WELLMIX],
 ];
 const KIND_ORDER: string[] = [
+  "booking_invite",
   "new_request",
   "supplier_request",
   "freight_quote",
@@ -516,6 +518,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       ),
     );
   if (supplier) tasks.push(...(await supplierRequestTasks(user, now)));
+  if (supplier) tasks.push(...(await bookingInviteTasks(user, now)));
   // Pós-venda aberto: o cliente avalia a compra (pedido cancelado não conta;
   // os cancelados antes de o cancelamento encerrar o pós-venda ainda o têm aberto).
   for (const a of openAfterSales) {
@@ -1063,6 +1066,43 @@ const SEAL_TASK_TEXT: Record<
  * que condições) ou com contraproposta da Wellmix esperando. O prazo é o SLA
  * da negociação. Banco sem a tabela (esquema antigo): nenhuma pendência.
  */
+/*
+ * Convite para booking concorrente (docs/BOOKING_INVITES.md): o convidado
+ * sobe a planilha do booking até o prazo do convite.
+ */
+async function bookingInviteTasks(user: User, now: Date): Promise<Task[]> {
+  const { openInvitesFor } = await import("./booking-invites");
+  const rows = await openInvitesFor(user);
+  return rows
+    .sort((a, b) => a.number - b.number)
+    .map((i) => {
+      const item =
+        i.item.description ??
+        i.item.productName ??
+        i.item.factoryItemCode ??
+        "—";
+      const qty = i.item.quantity ?? "?";
+      return finish(
+        {
+          kind: "booking_invite",
+          title: `Enviar booking concorrente: ${item}`,
+          detail: `${qty} peças · convite nº ${i.number}`,
+          text: {
+            title: "bookingInvites.task.title",
+            detail: "bookingInvites.task.detail",
+            values: { item, qty, n: i.number },
+          },
+          link: `/app/supplier-requests/invites/${i.id}`,
+          dueAt: i.dueAt,
+          sinceAt: i.createdAt,
+          loadedAt: i.createdAt,
+          supplierStep: "booking",
+        },
+        now,
+      );
+    });
+}
+
 async function supplierRequestTasks(user: User, now: Date): Promise<Task[]> {
   const store = getStore();
   let rows;
