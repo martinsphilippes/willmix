@@ -56,7 +56,7 @@ export const pt = {
     "Prazos das etapas da solicitação: use números inteiros de 0 a 60 dias úteis.",
   "board.card.reqQuotes": "Cotações recebidas",
   "board.card.reqProposal": "Proposta ao cliente",
-  "board.card.reqDieline": "Faca (die-cut)",
+  "board.card.ordDieline": "Faca (die-cut)",
   "reqList.next.proposal": "Cliente aprovar a proposta",
   "proposal.approve.button": "Aprovar proposta",
   "proposal.approve.hint":
@@ -126,7 +126,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Request step deadlines: use whole numbers from 0 to 60 business days.",
   "board.card.reqQuotes": "Quotes received",
   "board.card.reqProposal": "Proposal to the customer",
-  "board.card.reqDieline": "Die-cut",
+  "board.card.ordDieline": "Die-cut",
   "reqList.next.proposal": "Customer to approve the proposal",
   "proposal.approve.button": "Approve proposal",
   "proposal.approve.hint":
@@ -197,7 +197,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "申请阶段期限：请填写 0 到 60 之间的整数工作日。",
   "board.card.reqQuotes": "已收到报价",
   "board.card.reqProposal": "向客户报价",
-  "board.card.reqDieline": "刀模",
+  "board.card.ordDieline": "刀模",
   "reqList.next.proposal": "客户确认报价",
   "proposal.approve.button": "确认报价",
   "proposal.approve.hint": "请核对数量、金额和交期。确认后将显示定金付款信息。",

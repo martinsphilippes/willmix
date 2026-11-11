@@ -94,6 +94,12 @@ export async function createPortalLogin(
   // Conta de login no Appwrite primeiro; se a linha do portal não gravar, a
   // conta é desfeita (nada de conta sem cadastro).
   let accountId: string | null = null;
+  let supabaseId: string | null = null;
+  if (store.mode === "supabase") {
+    // Conta no Supabase Auth (a senha fica lá); desfeita se o cadastro falhar.
+    const { supabaseCreateUser } = await import("@/lib/auth/supabase-auth");
+    supabaseId = await supabaseCreateUser(email, input.password, input.name);
+  }
   if (store.mode === "appwrite") {
     const { createAdminClient } = await import("@/lib/appwrite/server");
     const { ID } = await import("node-appwrite");
@@ -130,6 +136,12 @@ export async function createPortalLogin(
       active: true,
     });
   } catch (error) {
+    if (supabaseId) {
+      const { supabaseDeleteUser } = await import("@/lib/auth/supabase-auth");
+      await supabaseDeleteUser(supabaseId).catch((undo) =>
+        console.error("[portal-access] conta sem cadastro", email, undo),
+      );
+    }
     if (accountId) {
       const { createAdminClient } = await import("@/lib/appwrite/server");
       await createAdminClient()

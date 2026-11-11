@@ -43,7 +43,7 @@ describe("passos e percentuais", () => {
       (c) =>
         (c.block === "request" || c.block === "order") &&
         ![
-          "reqDieline",
+          "ordDieline",
           "reqPackaging",
           "ordInspectionIssue",
           "ordClosedMonth",
