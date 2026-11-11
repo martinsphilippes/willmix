@@ -541,3 +541,4 @@ O produto ainda não existe no Sankhya. Você tenta criá-lo pelo cartão **Sank
 - ✔ D) Não dá: o portal só liga a um código que já existe no Sankhya
 
 > O portal não cria produto no Sankhya: ele só liga o produto ao código que já existe. O produto precisa estar cadastrado no ERP antes.
+

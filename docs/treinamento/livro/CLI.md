@@ -751,3 +751,4 @@ João quer avaliar o kit antes de comprar. Ele pode baixar alguma coisa?
 - ✔ D) Sim, as prévias, que ficam visíveis desde a oferta, com o link **Baixar**
 
 > As prévias aparecem desde a oferta e podem ser baixadas. Os arquivos finais só aparecem depois da compra e da liberação.
+

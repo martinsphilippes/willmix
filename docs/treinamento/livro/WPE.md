@@ -752,3 +752,4 @@ O administrador cancelou um pedido. O que é verdade depois disso?
 - ✔ D) O pedido fica Cancelado com o histórico, sai dos containers e dos fretes em aberto, e todos são avisados
 
 > Nada é apagado: o pedido fica "Cancelado", com a etapa em que parou e o motivo, as etapas abertas se encerram e cliente, fornecedor e parceiros são avisados. Se já tem número no Sankhya, cancele lá também.
+

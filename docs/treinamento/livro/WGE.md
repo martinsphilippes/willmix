@@ -1175,3 +1175,4 @@ Um colega quer usar o cartão **Apagar também os cadastros que vêm do Sankhya 
 - ✔ D) Não use: é só da migração e não tem volta
 
 > Essa limpeza é mais forte que a de vendas, serve só à migração do Sankhya e não tem volta. Ela ainda exige que as vendas já tenham sido apagadas.
+

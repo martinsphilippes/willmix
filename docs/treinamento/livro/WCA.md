@@ -644,3 +644,4 @@ O cartão de um produto mostra 'Preço sob consulta'. Coloque os passos na ordem
 Ordem certa: C → A → B
 
 > Leia o aviso, corrija cada item (ficha, ficha mestre ou Configurações) e volte à vitrine: o preço aparece sem outro passo.
+

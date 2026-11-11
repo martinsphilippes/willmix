@@ -345,3 +345,4 @@ A Wellmix respondeu a uma conversa sua. Coloque na ordem o que você vê e faz.
 Ordem certa: A → B → C → D
 
 > A mensagem nova aparece no balão, em Mensagens e na faixa amarela. Ao abrir, ela é marcada como lida e os números somem.
+

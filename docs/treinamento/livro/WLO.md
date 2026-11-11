@@ -427,3 +427,4 @@ Na Control Tower, o quadrado **Acompanhamento vencido** mostra 2. O que isso que
 - ✔ D) Follow sem registro; você o registra no cartão Produção
 
 > Acompanhamento vencido é follow sem registro: abra o pedido e registre No prazo ou Atrasado. Produção atrasada é outra coisa: último follow atrasado ou ETD vencido.
+

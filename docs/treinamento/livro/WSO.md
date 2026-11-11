@@ -537,3 +537,4 @@ Depois de **Abrir faca e RFQ** com o fornecedor ganho, o que nasce?
 - D) Uma RFQ aberta para todos os fornecedores cadastrados
 
 > Nasce a solicitação com origem Superplan e a RFQ vai só ao fornecedor ganho, que envia faca (die-cut), MOQ, prazo e foto em alta. A proposta espera esses quatro itens.
+

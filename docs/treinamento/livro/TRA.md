@@ -213,3 +213,4 @@ No meio da viagem, surge uma dúvida sobre o local de entrega. Onde perguntar à
 - ✔ D) No ícone de Mensagens ou em **Conversar com a Wellmix**
 
 > Para falar com a Wellmix, toque no ícone de Mensagens ou em **Conversar com a Wellmix**. O sino só lista os avisos novos, com o botão **Resolver**.
+

@@ -110,3 +110,4 @@ Ao abrir o pedido pelo número, você procura o preço de compra e os pagamentos
 - D) Aparecem só nos pedidos cuja multa está **Paga**
 
 > O jurídico vê o contexto do pedido (resumo, itens sem preço, etapa em andamento e multas), mas não vê preços nem pagamentos.
+

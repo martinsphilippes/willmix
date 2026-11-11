@@ -1049,3 +1049,4 @@ A parcela 2 (70 %) está **Aguardando o marco** e um colega sugere parar a produ
 - D) Cancelar o pedido, porque a parcela não tem data de vencimento
 
 > O pagamento corre em paralelo e não segura o andamento do pedido: a produção segue enquanto a Wellmix paga pela condição combinada. O que você acompanha é a Previsão de pagamentos.
+

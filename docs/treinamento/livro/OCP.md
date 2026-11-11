@@ -216,3 +216,4 @@ Você enviou o arquivo errado do selo, e a agência já tinha enviado a arte com
 - ✔ D) Escolhe o arquivo certo em **Selo** e clica em **Enviar de novo**
 
 > Ao trocar o arquivo ou o número, a arte volta para a agência com o aviso 'A certificadora trocou o selo', para ela aplicar o selo atual e enviar a arte de novo.
+

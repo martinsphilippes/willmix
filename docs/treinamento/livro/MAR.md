@@ -213,3 +213,4 @@ Os preços do seu frete mudaram. O que você faz com a tabela que já está no p
 - D) Envia a nova e as duas ficam Vigente, lado a lado, no histórico
 
 > Quando os preços mudarem, envie uma planilha nova. A nova passa a ser a Vigente e a anterior fica com o selo Substituído, mas continua no histórico, em **Importações**. **Ver** abre uma antiga, com um aviso de que ela não é a vigente.
+

@@ -112,3 +112,4 @@ Todos os seus passos estão Concluídos, e só falta o **DANFE (nota de entrada)
 - ✔ D) Nada: o DANFE é da Wellmix e você só acompanha
 
 > O DANFE, a nota de entrada, é um passo da Wellmix e vem depois da DI. Você vê a linha, mas quem faz é a Wellmix.
+

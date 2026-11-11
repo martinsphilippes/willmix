@@ -9,7 +9,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import yaml from "js-yaml";
 
 const MODULOS = "docs/treinamento/modulos";

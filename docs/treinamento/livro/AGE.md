@@ -534,3 +534,4 @@ Você clicou em **Enviar para assinatura**. Quem assina primeiro?
 - D) O cliente, e depois o fornecedor
 
 > Quem faz a arte aperta o botão. A Wellmix assina primeiro e o fornecedor assina em seguida.
+

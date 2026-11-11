@@ -214,3 +214,4 @@ Nenhuma sugestão serve, mas você conhece o código certo e a fonte (a tabela T
 - D) Pede à Wellmix que digite o código no lugar do despachante
 
 > Em **Adicionar candidata**, informe o NCM, a descrição, as alíquotas (se souber) e a fonte, e clique em **+ Adicionar candidata**. Ela entra como Sugerida, com fonte Despachante, e você valida depois. Sempre registre a fonte.
+

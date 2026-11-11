@@ -110,3 +110,4 @@ Um colega pergunta quem consegue ver o BL (original) depois que você o envia. M
 - ✔ E) O despachante
 
 > Veem o BL o agente de carga, a comex, o fornecedor e o despachante. O cliente não está nessa lista.
+
