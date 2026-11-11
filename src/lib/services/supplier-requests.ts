@@ -9,6 +9,8 @@ import {
   type BookingLot,
   type Party,
   type SheetCurrency,
+  type SheetIncoterm,
+  type SupplierRequestEvent,
   type SupplierRequest,
   type User,
   type YesNo,
@@ -491,6 +493,8 @@ export interface SupplierAnswerInput {
   moq: number | null;
   leadTimeDays: number | null;
   note: string | null;
+  /** Modalidade de entrega (FOB/EXW); sem ela, a do item do booking. */
+  incoterm?: SheetIncoterm | null;
 }
 
 /**
@@ -514,15 +518,39 @@ export async function answerSupplierRequest(
     throw new SupplierRequestError("supplier_request_proposal_pending");
   if (input.canDo === "yes" && input.price === null)
     throw new SupplierRequestError("supplier_request_price_required");
+  const now = new Date().toISOString();
+  const incoterm =
+    input.canDo === "yes"
+      ? (input.incoterm ?? request.item.incoterm ?? null)
+      : (input.incoterm ?? null);
+  const price = input.canDo === "yes" ? input.price : null;
+  // Cada resposta entra no histórico (linha do tempo, primeira e última resposta).
+  const answerEvent: SupplierRequestEvent = {
+    id: crypto.randomUUID(),
+    at: now,
+    kind: "answer",
+    side: "supplier",
+    byUserId: user.id,
+    canDo: input.canDo,
+    price,
+    currency: price === null ? null : (input.currency ?? "USD"),
+    moq: input.moq,
+    leadTimeDays: input.leadTimeDays,
+    incoterm,
+    text: clip(input.note, 4000),
+    onBehalf: isWellmix(user),
+  };
   const updated = await store.update("supplier_requests", request.id, {
     status: "answered",
     supplierCanDo: input.canDo,
+    supplierIncoterm: incoterm,
+    negotiation: [...(request.negotiation ?? []), answerEvent].slice(-500),
     supplierPrice: input.price,
     supplierCurrency: input.price === null ? null : (input.currency ?? "USD"),
     supplierMoq: input.moq,
     supplierLeadTimeDays: input.leadTimeDays,
     supplierNote: clip(input.note, 4000),
-    respondedAt: new Date().toISOString(),
+    respondedAt: now,
     respondedByUserId: user.id,
   });
   await audit(

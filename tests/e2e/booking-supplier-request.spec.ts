@@ -184,8 +184,10 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(resolved).toHaveCount(1);
   await expect(resolved.locator("[data-selection-winner]")).toContainText(TAG);
   await page.click("[data-selection-open-all]");
-  await page.waitForURL(/\/app\/supplier-requests\/[^/?]+\?created=1/);
+  // Recém-aberta, a solicitação abre na tela do produto (view=item).
+  await page.waitForURL(/\/app\/supplier-requests\/[^/?]+\?.*created=1/);
   const requestUrl = page.url().split("?")[0];
+  const itemUrl = `${requestUrl}?view=item`;
   await expect(page.locator("[data-supplier-request-alternative]")).toHaveCount(
     1,
   );
@@ -202,12 +204,20 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     0,
   );
   await page.locator("[data-supplier-table-answer-open]").click();
-  await page.fill("[data-supplier-table-answer-price]", "1,40");
+  await page.fill("[data-supplier-table-answer-price-input]", "1,40");
+  await page.fill("[data-supplier-table-answer-moq]", "2000");
+  await page.selectOption("[data-supplier-table-answer-incoterm]", "EXW");
   await page.click("[data-supplier-table-answer=yes]");
   await page.waitForURL(/[?&]answered=1/);
-  await expect(page.locator("[data-supplier-table-answer-text]")).toContainText(
+  const row = page.locator("[data-supplier-table-row]");
+  await expect(row.locator("[data-supplier-table-answer-price]")).toContainText(
     /1[.,]4\b/,
   );
+  await expect(row.locator("[data-supplier-table-incoterm]")).toHaveText("EXW");
+  // Condições iniciais = a primeira resposta.
+  await expect(
+    row.locator("[data-supplier-table-initial-price]"),
+  ).toContainText(/1[.,]4\b/);
 
   await login(page, "supplier.b@china.com");
   const other = await page.goto(requestUrl);
@@ -215,9 +225,12 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
 
   // 3b. Negociação (docs/SUPPLIER_REQUESTS.md, "Negociação"): a Wellmix
   // devolve com contraproposta; até o fornecedor responder, não aprova.
+  // A Wellmix também vê a tabela primeiro; a contraproposta fica no produto.
   await login(page, "admin@wellmix.com");
   await page.goto(requestUrl);
+  await expect(page.locator("[data-supplier-table-row]")).toHaveCount(1);
   await expect(page.locator("[data-supplier-request-sla]")).toBeVisible();
+  await page.goto(itemUrl);
   const propose = page.locator("[data-negotiation-propose-form]");
   await propose.locator("[data-negotiation-price]").fill("1,30");
   await propose.locator("[data-negotiation-text]").fill("Fechamos a 1,30?");
@@ -238,19 +251,28 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await page.waitForURL(/[?&]negotiation=message/);
   await page.locator("[data-supplier-table-open]").click();
   await page.waitForURL(/[?&]view=item/);
-  await expect(
-    page.locator('[data-negotiation-event="proposal"]'),
-  ).toContainText("Fechamos a 1,30?");
+  // Linha do tempo: abertura, resposta, contraproposta e a mensagem.
+  await expect(page.locator('[data-timeline-entry="proposal"]')).toContainText(
+    "Fechamos a 1,30?",
+  );
+  await expect(page.locator("[data-timeline-entry]")).toHaveCount(4);
+  // Chat flutuante: a mensagem da tabela está lá; manda outra por ele.
+  await page.click("[data-request-chat-toggle]");
+  const chat = page.locator("[data-request-chat]");
+  await expect(chat.locator("[data-request-chat-message]")).toHaveCount(1);
+  await chat.locator("[data-negotiation-message-text]").fill("Foto amanhã.");
+  await chat.locator("[data-negotiation-message-submit]").click();
+  await expect(chat.locator("[data-request-chat-message]")).toHaveCount(2);
   await page.click("[data-negotiation-respond=accept]");
   await page.waitForURL(/[?&]negotiation=accept/);
-  await expect(page.locator("[data-negotiation-event]")).toHaveCount(3);
+  await expect(page.locator('[data-timeline-entry="accept"]')).toBeVisible();
   await expect(page.locator("[data-supplier-answer]")).toContainText(
     /1[.,]3\b/,
   );
 
   // 4. A Wellmix aprova e cria o produto (fora da vitrine até liberar).
   await login(page, "admin@wellmix.com");
-  await page.goto(requestUrl);
+  await page.goto(itemUrl);
   await page.click("[data-supplier-decide=approved]");
   await page.waitForURL(/[?&]decided=approved/);
   await page.fill("[data-request-product-name]", `Copo de vidro ${TAG}`);
@@ -268,7 +290,7 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
 
   // 5. Libera na vitrine e grava o CODPROD (sem Sankhya: "não conferido").
   await login(page, "admin@wellmix.com");
-  await page.goto(requestUrl);
+  await page.goto(itemUrl);
   await page.click("[data-request-product-release]");
   await page.waitForURL(/[?&]product=released/);
   await page.fill("[data-request-product-erp-input]", "40123");
@@ -290,6 +312,13 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   // pedido do fornecedor, que já abre as três raias na Preparação.
   await login(page, "admin@wellmix.com");
   await page.goto("/app/supplier-requests");
+  // Lista: produtos distintos e a finalização (aprovada) com o SLA.
+  await expect(page.locator("[data-supplier-request-count]")).toBeVisible();
+  await expect(
+    page.locator(
+      `[data-supplier-request-finished="${requestUrl.split("/").pop()}"]`,
+    ),
+  ).not.toHaveText("—");
   const requestId = requestUrl.split("/").pop()!;
   const group = page.locator(
     `form:has([data-purchase-candidate="${requestId}"])`,

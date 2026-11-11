@@ -241,3 +241,198 @@ export function supplierRequestLate(
     now.getTime() > new Date(request.createdAt).getTime() + minutes * 60_000
   );
 }
+
+/* ---- Respostas e linha do tempo (docs/SUPPLIER_REQUESTS.md, "Tabela" e "Linha do tempo") ---- */
+
+/** Passos em que o fornecedor responde (a resposta e o que faz com a contraproposta). */
+const ANSWER_KINDS = new Set(["answer", "accept", "counter", "reject"]);
+
+/**
+ * Data e hora da primeira e da última resposta do fornecedor. As respostas
+ * gravadas antes do histórico de respostas só têm `respondedAt` (a última).
+ */
+export function answerTimes(
+  request: Pick<SupplierRequest, "negotiation" | "respondedAt">,
+): { first: string | null; last: string | null } {
+  const times = (request.negotiation ?? [])
+    .filter((e) => e.side === "supplier" && ANSWER_KINDS.has(e.kind))
+    .map((e) => e.at);
+  if (request.respondedAt) times.push(request.respondedAt);
+  if (!times.length) return { first: null, last: null };
+  times.sort();
+  return { first: times[0], last: times[times.length - 1] };
+}
+
+export type TimelineKind =
+  | "opened"
+  | SupplierRequestEvent["kind"]
+  | "decided"
+  | "product"
+  | "showcase"
+  | "erp";
+
+/** Um ponto da linha do tempo: quando, quem e o que ficou resolvido. */
+export interface TimelineEntry {
+  key: string;
+  at: string;
+  kind: TimelineKind;
+  side: "wellmix" | "supplier";
+  /** Passo da negociação (valores, texto, arquivo), quando houver. */
+  event?: SupplierRequestEvent;
+  /** Decisão da Wellmix ou o que foi feito com o produto. */
+  outcome?: string | null;
+  note?: string | null;
+}
+
+/**
+ * Histórico da solicitação em ordem: abertura, respostas, contrapropostas,
+ * mensagens, decisão e o produto. Resposta antiga sem passo no histórico
+ * entra pela `respondedAt`.
+ */
+export function requestTimeline(request: SupplierRequest): TimelineEntry[] {
+  const out: TimelineEntry[] = [
+    {
+      key: "opened",
+      at: request.createdAt,
+      kind: "opened",
+      side: "wellmix",
+    },
+  ];
+  const events = request.negotiation ?? [];
+  for (const e of events)
+    out.push({ key: e.id, at: e.at, kind: e.kind, side: e.side, event: e });
+  if (request.respondedAt && !events.some((e) => e.kind === "answer"))
+    out.push({
+      key: "answer-legacy",
+      at: request.respondedAt,
+      kind: "answer",
+      side: "supplier",
+      event: {
+        id: "answer-legacy",
+        at: request.respondedAt,
+        kind: "answer",
+        side: "supplier",
+        byUserId: request.respondedByUserId ?? "",
+        canDo: request.supplierCanDo,
+        price: request.supplierPrice,
+        currency: request.supplierCurrency,
+        moq: request.supplierMoq,
+        leadTimeDays: request.supplierLeadTimeDays,
+        incoterm: request.supplierIncoterm ?? null,
+        text: request.supplierNote,
+      },
+    });
+  if (request.decidedAt)
+    out.push({
+      key: "decided",
+      at: request.decidedAt,
+      kind: "decided",
+      side: "wellmix",
+      outcome: request.status,
+      note: request.decisionNote,
+    });
+  if (request.productLinkedAt)
+    out.push({
+      key: "product",
+      at: request.productLinkedAt,
+      kind: "product",
+      side: "wellmix",
+      outcome: request.productAction ?? null,
+    });
+  if (request.showcaseReleasedAt)
+    out.push({
+      key: "showcase",
+      at: request.showcaseReleasedAt,
+      kind: "showcase",
+      side: "wellmix",
+    });
+  if (request.erpCheckedAt)
+    out.push({
+      key: "erp",
+      at: request.erpCheckedAt,
+      kind: "erp",
+      side: "wellmix",
+    });
+  return out.sort((a, b) => (a.at === b.at ? 0 : a.at < b.at ? -1 : 1));
+}
+
+/** Condições de uma resposta "faz": preço, moeda, MOQ, entrega e prazo. */
+export interface RequestConditions {
+  price: number | null;
+  currency: string | null;
+  moq: number | null;
+  incoterm: string | null;
+  leadTimeDays: number | null;
+}
+
+/**
+ * Condições iniciais da negociação: a primeira resposta "faz" do fornecedor.
+ * Resposta antiga sem passo no histórico: as atuais, se nada foi negociado
+ * depois (sem contraproposta); senão não se sabe (nulo).
+ */
+export function initialConditions(
+  request: SupplierRequest,
+): RequestConditions | null {
+  const events = request.negotiation ?? [];
+  const first = events.find((e) => e.kind === "answer" && e.canDo === "yes");
+  if (first)
+    return {
+      price: first.price ?? null,
+      currency: first.currency ?? null,
+      moq: first.moq ?? null,
+      incoterm: first.incoterm ?? null,
+      leadTimeDays: first.leadTimeDays ?? null,
+    };
+  if (events.some((e) => e.kind === "answer" || OFFER_KINDS.has(e.kind)))
+    return null;
+  return finalConditions(request);
+}
+
+/** Condições finais (as que valem hoje): a resposta atual, quando "faz". */
+export function finalConditions(
+  request: SupplierRequest,
+): RequestConditions | null {
+  if (request.supplierCanDo !== "yes") return null;
+  return {
+    price: request.supplierPrice,
+    currency: request.supplierCurrency,
+    moq: request.supplierMoq,
+    incoterm: request.supplierIncoterm ?? null,
+    leadTimeDays: request.supplierLeadTimeDays,
+  };
+}
+
+/**
+ * Finalizada (decidida) depois do prazo do SLA? Nulo enquanto não foi
+ * decidida. O prazo é o mesmo do selo "Atrasada": abertura + minutos.
+ */
+export function finishedLate(
+  request: Pick<SupplierRequest, "createdAt" | "decidedAt">,
+  minutes: number,
+): boolean | null {
+  if (!request.decidedAt) return null;
+  return (
+    new Date(request.decidedAt).getTime() >
+    new Date(request.createdAt).getTime() + minutes * 60_000
+  );
+}
+
+/**
+ * Produtos distintos de cada grupo da tabela da solicitação (mesmo
+ * fornecedor e booking): quantos itens diferentes foram pedidos.
+ */
+export function distinctProductsByGroup(
+  requests: Pick<
+    SupplierRequest,
+    "supplierId" | "bookingLotId" | "bookingItemId"
+  >[],
+): Map<string, number> {
+  const sets = new Map<string, Set<string>>();
+  for (const r of requests) {
+    const key = `${r.supplierId}:${r.bookingLotId}`;
+    const set = sets.get(key) ?? new Set<string>();
+    set.add(r.bookingItemId);
+    sets.set(key, set);
+  }
+  return new Map([...sets].map(([k, v]) => [k, v.size]));
+}

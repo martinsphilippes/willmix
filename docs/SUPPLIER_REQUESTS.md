@@ -43,18 +43,31 @@ O quadrante de comparação **não abre a solicitação**: ele grava a escolha d
 3. A solicitação guarda uma **cópia do item** (`item`), para o fornecedor ver o que foi pedido mesmo que o booking mude.
 4. **Alternativas**: até 30 itens parecidos, guardados por id. Só a Wellmix vê (com fornecedor, origem, preço, mínimo do Superplan e link para o booking).
 5. Situações: **Aberta** (esperando o fornecedor) → **Respondida** → **Aprovada** ou **Recusada**; **Cancelada** pela Wellmix. Decisões possíveis (`supplierRequestDecisions`): Aberta → Cancelar ou Recusar; Respondida "faz" → Aprovar ou Recusar; Respondida "não faz" → Recusar.
-6. **Resposta do fornecedor**: faz ou não faz; se faz, preço por peça (obrigatório) e moeda; pedido mínimo, prazo de produção (dias) e observação. Muda até a Wellmix decidir. A Wellmix pode **registrar a resposta** em nome dele quando ela chega por fora (WeChat, e-mail).
+6. **Resposta do fornecedor**: faz ou não faz; se faz, preço por peça (obrigatório) e moeda; pedido mínimo, prazo de produção (dias), modalidade de entrega (FOB/EXW) e observação. Muda até a Wellmix decidir. A Wellmix pode **registrar a resposta** em nome dele quando ela chega por fora (WeChat, e-mail).
 7. Avisos (sino, e-mail e WhatsApp em modo mock): ao fornecedor quando a solicitação abre e quando a Wellmix decide; a quem abriu, quando o fornecedor responde.
 
-## Tabela do fornecedor (decisão do dono, 11/11/2026)
+## Tabela da solicitação (decisão do dono, 11/11/2026)
 
-O fornecedor que abre `/app/supplier-requests/[id]` vê **primeiro uma tabela** com os produtos que a Wellmix pediu a ele: as solicitações dele abertas a partir do **mesmo booking** da solicitação, em ordem de número, com a do link destacada ("Esta solicitação"; `supplierRequestGroup`). A Wellmix continua vendo direto a tela completa.
+Quem abre `/app/supplier-requests/[id]` (o fornecedor e, desde a segunda rodada, também a Wellmix) vê **primeiro uma tabela** com os produtos pedidos ao mesmo fornecedor a partir do **mesmo booking** da solicitação, em ordem de número, com a do link destacada ("Esta solicitação"; `supplierRequestGroup`).
 
-- Colunas: foto (miniatura que amplia ao tocar, `PhotoGallery`), produto (descrição, nº da solicitação, código da fábrica, nº do item, material e o que a Wellmix precisa), quantidade e MOQ, preço do booking, a resposta dele (preço, MOQ e prazo) e a situação (selo, SLA, de quem é a vez e "contraproposta esperando você").
-- Ações rápidas por linha, cada uma numa caixa pequena (`QuickDialog`):
-  - **Mensagem**: texto para a conversa da solicitação (mesma ação da conversa).
-  - **Sim / Não**: resposta definitiva. "Sim" pede o preço por peça (e moeda); pedido mínimo e prazo já respondidos ficam como estão. Só enquanto ele pode responder (Aberta ou Respondida, sem contraproposta esperando).
-  - **Abrir produto**: a tela completa que já existia, no mesmo link com `?view=item` (ficha, negociação, arquivos e o formulário completo da resposta). "Ver todos os produtos" volta à tabela, e os formulários dela voltam para ela mesma.
+- **Uma informação por coluna**: foto (miniatura que amplia, `PhotoGallery`), nº, produto, código da fábrica, nº do item, material, quantidade, MOQ, preço, moeda e entrega do booking, o que a Wellmix precisa, "faz?", as **condições iniciais** (a primeira resposta "faz": preço, moeda, MOQ, FOB/EXW e prazo; `initialConditions`) e as **condições finais** (as que valem hoje, depois da negociação; `finalConditions`), situação, SLA (prazo com data e hora, "Atrasada"), de quem é a vez, **aberta em**, **1ª resposta** e **última resposta** (data e hora; `answerTimes`).
+- Ações rápidas por linha, **só ícones** (o nome fica na dica e no `aria-label`), cada uma numa caixa pequena (`QuickDialog`):
+  - **Mensagem**: texto para a conversa da solicitação.
+  - **Sim / Não**: resposta definitiva com preço e moeda, **MOQ** e **modalidade de entrega (FOB/EXW)**; o prazo já respondido fica como está. A Wellmix registra a resposta em nome do fornecedor. Só enquanto se pode responder (Aberta ou Respondida, sem contraproposta esperando).
+  - **Abrir produto**: a tela completa, no mesmo link com `?view=item`. "Ver todos os produtos" volta à tabela.
+- As ações da tabela voltam para a tabela (`view=table`); as da tela do produto voltam para o produto.
+
+## Tela do produto da solicitação (`?view=item`)
+
+- **Resposta**: o formulário completo tem também a **modalidade de entrega (FOB/EXW)** (`supplierIncoterm`; sem ela, a do item do booking).
+- **Histórico de interações** (linha do tempo, `requestTimeline`): abertura, cada resposta do fornecedor (ou registrada pela Wellmix), contrapropostas, aceites, novas propostas, recusas, mensagens e arquivos, a decisão da Wellmix e o produto (criado/associado, vitrine, CODPROD), cada um com data e hora, quem fez e o que ficou resolvido. Cada resposta passa a ser um passo `answer` no histórico; a resposta antiga sem passo entra pela `respondedAt`.
+- **Conversa**: ícone flutuante de chat no canto inferior direito; abre uma janela pequena com as mensagens e o campo para mandar outra (foto, PDF ou Excel). O cartão Negociação fica só com a contraproposta e a resposta a ela.
+
+## Lista de solicitações
+
+- Datas com hora (aberta em, finalizada em).
+- **Finalizada em**: data e hora da decisão da Wellmix e o selo **Dentro do SLA** ou **Em atraso** (decisão depois de abertura + SLA; `finishedLate`).
+- **Produtos distintos**: no topo, quantas solicitações e quantos itens diferentes; em cada linha, quantos produtos distintos tem a tabela daquela solicitação (mesmo fornecedor e booking; `distinctProductsByGroup`).
 
 ## Negociação (decisão do dono, 11/11/2026)
 
@@ -99,7 +112,7 @@ Com a tela Cadastros, cada nome leva ao quadro de acesso do cadastro (`/app/part
 
 ## Banco
 
-Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_request_number`), `status`, `supplierId` (índice `by_supplier`), `bookingItemId` (índice `by_item`), `bookingLotId`, `alternativeItemIds` (JSON), `item` (JSON, cópia do item), `quantity`, `unit`, `needs`, `searchQuery`, a resposta (`supplierCanDo`, `supplierPrice`, `supplierCurrency`, `supplierMoq`, `supplierLeadTimeDays`, `supplierNote`, `respondedAt`, `respondedByUserId`), a decisão (`decidedAt`, `decidedByUserId`, `decisionNote`), `createdByUserId` e o produto (`productId`, com índice `by_product`, `productAction` created/linked, `productLinkedAt`, `productLinkedByUserId`, `showcaseReleasedAt`, `showcaseReleasedByUserId`, `erpCheckedAt`), a negociação (`negotiation`, `slaNotifiedAt`); índice `by_status`. Arquivos da conversa: `documents.supplierRequestId`. Antes de `npm run appwrite:push`, as telas avisam "esquema desatualizado".
+Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_request_number`), `status`, `supplierId` (índice `by_supplier`), `bookingItemId` (índice `by_item`), `bookingLotId`, `alternativeItemIds` (JSON), `item` (JSON, cópia do item), `quantity`, `unit`, `needs`, `searchQuery`, a resposta (`supplierCanDo`, `supplierPrice`, `supplierCurrency`, `supplierMoq`, `supplierLeadTimeDays`, `supplierNote`, `respondedAt`, `respondedByUserId`), a decisão (`decidedAt`, `decidedByUserId`, `decisionNote`), `createdByUserId` e o produto (`productId`, com índice `by_product`, `productAction` created/linked, `productLinkedAt`, `productLinkedByUserId`, `showcaseReleasedAt`, `showcaseReleasedByUserId`, `erpCheckedAt`), a negociação (`negotiation`, `slaNotifiedAt`), a modalidade de entrega da resposta (`supplierIncoterm`); índice `by_status`. Arquivos da conversa: `documents.supplierRequestId`. Antes de `npm run appwrite:push`, as telas avisam "esquema desatualizado".
 
 Tabela `selection_groups` (escolha por grupo): `status` saved/requested/replaced (índice `by_status`), `itemIds` (JSON), `chosenItemId` (índice `by_chosen`), `quantity`, `needs`, `supplierRequestId`, `requestedAt`, `createdByUserId`, `updatedByUserId`. Serviço em `src/lib/services/selection-groups.ts`; testes em `tests/unit/selection-groups.test.ts`.
 

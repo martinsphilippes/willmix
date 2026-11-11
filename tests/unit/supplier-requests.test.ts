@@ -14,6 +14,8 @@ const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const lots = await import("@/lib/services/booking-lots");
 const svc = await import("@/lib/services/supplier-requests");
+const { answerTimes, requestTimeline } =
+  await import("@/lib/supplier-requests");
 const lib = await import("@/lib/supplier-requests");
 const { canAccessDocument } = await import("@/lib/services/documents");
 type User = import("@/lib/db").User;
@@ -221,6 +223,7 @@ describe("seleção de itens e solicitação ao fornecedor", () => {
       moq: 2000,
       leadTimeDays: 45,
       note: "Âmbar sem custo extra",
+      incoterm: "EXW",
     });
     expect(answered).toMatchObject({
       status: "answered",
@@ -228,7 +231,28 @@ describe("seleção de itens e solicitação ao fornecedor", () => {
       supplierPrice: 1.4,
       supplierMoq: 2000,
       supplierLeadTimeDays: 45,
+      supplierIncoterm: "EXW",
     });
+    // A resposta entra no histórico; a primeira e a última vêm dele.
+    const answerEvents = answered.negotiation!.filter(
+      (e) => e.kind === "answer",
+    );
+    expect(answerEvents).toHaveLength(1);
+    expect(answerEvents[0]).toMatchObject({
+      side: "supplier",
+      canDo: "yes",
+      price: 1.4,
+      moq: 2000,
+      incoterm: "EXW",
+      onBehalf: false,
+    });
+    const times = answerTimes(answered);
+    expect(times.first).toBe(answerEvents[0].at);
+    expect(times.last).toBe(answered.respondedAt);
+    expect(requestTimeline(answered).map((e) => e.kind)).toEqual([
+      "opened",
+      "answer",
+    ]);
     // Fornecedor não decide.
     await expect(
       svc.decideSupplierRequest(supplierA, request.id, "approved", null),
@@ -518,6 +542,54 @@ describe("produto da solicitação aprovada", () => {
 });
 
 describe("regras puras", () => {
+  it("linha do tempo e respostas antigas (sem passo no histórico)", () => {
+    const legacy = {
+      id: "r1",
+      createdAt: "2026-11-01T10:00:00.000Z",
+      updatedAt: "2026-11-01T10:00:00.000Z",
+      number: 1,
+      status: "approved",
+      quantity: 10,
+      respondedAt: "2026-11-01T11:00:00.000Z",
+      respondedByUserId: "u",
+      supplierCanDo: "yes",
+      supplierPrice: 2,
+      supplierCurrency: "USD",
+      supplierMoq: null,
+      supplierLeadTimeDays: null,
+      supplierNote: null,
+      decidedAt: "2026-11-01T12:00:00.000Z",
+      decisionNote: "ok",
+      productLinkedAt: "2026-11-01T13:00:00.000Z",
+      productAction: "created",
+      negotiation: [
+        {
+          id: "m",
+          at: "2026-11-01T10:30:00.000Z",
+          kind: "message",
+          side: "wellmix",
+          byUserId: "u",
+          text: "oi",
+        },
+      ],
+    } as unknown as Parameters<typeof requestTimeline>[0];
+    expect(requestTimeline(legacy).map((e) => e.kind)).toEqual([
+      "opened",
+      "message",
+      "answer",
+      "decided",
+      "product",
+    ]);
+    expect(answerTimes(legacy)).toEqual({
+      first: "2026-11-01T11:00:00.000Z",
+      last: "2026-11-01T11:00:00.000Z",
+    });
+    expect(answerTimes({ negotiation: [], respondedAt: null })).toEqual({
+      first: null,
+      last: null,
+    });
+  });
+
   it("busca por parte das palavras e sugere parecidos", () => {
     const text = lib.itemSearchText({
       description: "Copo de Vidro 350ml",

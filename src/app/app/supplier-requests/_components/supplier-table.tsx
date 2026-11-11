@@ -1,9 +1,13 @@
 import type { SupplierRequest } from "@/lib/db/schema";
-import { SHEET_CURRENCIES } from "@/lib/db/schema";
+import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
+  answerTimes,
   canPostMessage,
+  finalConditions,
+  initialConditions,
+  type RequestConditions,
   negotiationTurn,
   pendingProposal,
   supplierCanAnswer,
@@ -30,30 +34,34 @@ import {
   answerSupplierRequestAction,
   postSupplierRequestMessageAction,
 } from "../../actions/supplier-requests";
-import { STATUS_TONE, answerText } from "./status";
-import { SlaBadge } from "./negotiation";
+import { STATUS_TONE } from "./status";
+import { dateTime } from "./negotiation";
+import { AnswerIcon, ChatBubbleIcon, OpenIcon } from "./icons";
 
 /*
- * O que o fornecedor vê primeiro ao abrir uma solicitação
- * (docs/SUPPLIER_REQUESTS.md, "Tabela do fornecedor"): os produtos que a
- * Wellmix pediu a ele no mesmo booking, com foto, valores e três ações
- * rápidas por linha (mensagem, resposta sim/não e abrir a tela do produto).
+ * O que se vê primeiro ao abrir uma solicitação (docs/SUPPLIER_REQUESTS.md,
+ * "Tabela da solicitação"): os produtos pedidos ao mesmo fornecedor no mesmo
+ * booking, uma informação por coluna, e três ações rápidas por linha
+ * (mensagem, resposta sim/não e abrir a tela do produto), só com ícones.
+ * O fornecedor responde; a Wellmix registra a resposta em nome dele.
  */
 
 export function SupplierRequestTable({
   rows,
   currentId,
   slaMinutes,
+  wellmix,
   t,
 }: {
   rows: SupplierRequest[];
   currentId: string;
   slaMinutes: number;
+  wellmix: boolean;
   t: Translate;
 }) {
   const intl = t.intl;
-  const num = (n: number | null, digits = 4) =>
-    n === null
+  const num = (n: number | null | undefined, digits = 4) =>
+    n === null || n === undefined
       ? "—"
       : n.toLocaleString(intl, { maximumFractionDigits: digits });
   const decimal = intl.startsWith("pt") ? "," : ".";
@@ -61,20 +69,116 @@ export function SupplierRequestTable({
     n === null ? "" : String(n).replace(".", decimal);
   const k = (key: string) =>
     t(`supplierRequests.table.${key}` as DictionaryKey);
+  const before = [
+    "photo",
+    "number",
+    "item",
+    "factoryCode",
+    "itemNumber",
+    "material",
+    "quantity",
+    "bookingMoq",
+    "bookingPrice",
+    "bookingCurrency",
+    "bookingIncoterm",
+    "needs",
+    "canDo",
+  ];
+  // Condições iniciais (primeira resposta) e finais (as que valem hoje).
+  const conditionCols = ["price", "currency", "moq", "incoterm", "leadTime"];
+  const after = [
+    "status",
+    "sla",
+    "turn",
+    "openedAt",
+    "firstAnswerAt",
+    "lastAnswerAt",
+  ];
+  const nowrap = "whitespace-nowrap";
+
+  /** As cinco colunas de condições (iniciais ou finais) de uma linha. */
+  const conditionCells = (
+    c: RequestConditions | null,
+    group: "initial" | "final",
+    id: string,
+  ) => {
+    const final = group === "final";
+    return [
+      <Td
+        key={`${group}-price`}
+        className={cx(nowrap, "border-l border-zinc-100 tabular-nums")}
+        data-supplier-table-answer-price={final ? id : undefined}
+        data-supplier-table-initial-price={final ? undefined : id}
+      >
+        {c ? num(c.price) : "—"}
+      </Td>,
+      <Td key={`${group}-currency`} className={nowrap}>
+        {c?.currency ?? "—"}
+      </Td>,
+      <Td key={`${group}-moq`} className={cx(nowrap, "tabular-nums")}>
+        {c ? num(c.moq, 0) : "—"}
+      </Td>,
+      <Td
+        key={`${group}-incoterm`}
+        className={nowrap}
+        data-supplier-table-incoterm={final ? id : undefined}
+      >
+        {c?.incoterm ?? "—"}
+      </Td>,
+      <Td key={`${group}-lead`} className={cx(nowrap, "tabular-nums")}>
+        {c ? num(c.leadTimeDays, 0) : "—"}
+      </Td>,
+    ];
+  };
 
   return (
     <Card title={k("title")}>
-      <p className="mb-3 text-xs text-zinc-500">{k("hint")}</p>
+      <p className="mb-3 text-xs text-zinc-500">
+        {k(wellmix ? "hintWellmix" : "hint")}
+      </p>
       <Table>
         <thead>
           <tr>
-            <Th>{k("col.photo")}</Th>
-            <Th>{k("col.item")}</Th>
-            <Th>{k("col.quantity")}</Th>
-            <Th>{k("col.bookingPrice")}</Th>
-            <Th>{k("col.answer")}</Th>
-            <Th>{k("col.status")}</Th>
-            <Th className="text-right">{k("col.actions")}</Th>
+            {before.map((c) => (
+              <Th key={c} className={nowrap} rowSpan={2}>
+                {k(`col.${c}`)}
+              </Th>
+            ))}
+            <Th
+              className="border-l border-zinc-200 text-center"
+              colSpan={conditionCols.length}
+            >
+              {k("col.initial")}
+            </Th>
+            <Th
+              className="border-l border-zinc-200 text-center"
+              colSpan={conditionCols.length}
+            >
+              {k("col.final")}
+            </Th>
+            {after.map((c) => (
+              <Th key={c} className={nowrap} rowSpan={2}>
+                {k(`col.${c}`)}
+              </Th>
+            ))}
+            <Th
+              className="sticky right-0 z-10 bg-zinc-50 text-right shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]"
+              rowSpan={2}
+            >
+              {k("col.actions")}
+            </Th>
+          </tr>
+          <tr>
+            {["initial", "final"].flatMap((g) =>
+              conditionCols.map((c, i) => (
+                <Th
+                  key={`${g}-${c}`}
+                  className={cx(nowrap, i === 0 && "border-l border-zinc-200")}
+                >
+                  {k(`col.cond.${c}`)}
+                </Th>
+              )),
+            )}
           </tr>
         </thead>
         <tbody>
@@ -85,6 +189,9 @@ export function SupplierRequestTable({
             const pending = !!pendingProposal(r.negotiation);
             const canAnswer = supplierCanAnswer(r.status) && !pending;
             const turn = negotiationTurn(r);
+            const sla = slaOf(r, slaMinutes);
+            const times = answerTimes(r);
+            const yes = r.supplierCanDo === "yes";
             const href = `/app/supplier-requests/${r.id}?view=item`;
             return (
               <tr
@@ -101,7 +208,7 @@ export function SupplierRequestTable({
                         : []
                     }
                     name={name}
-                    className="h-14 w-14"
+                    className="h-12 w-12"
                     labels={{
                       title: k("photo"),
                       close: k("close"),
@@ -113,98 +220,105 @@ export function SupplierRequestTable({
                     }}
                   />
                 </Td>
-                <Td>
-                  <span className="block max-w-72 whitespace-normal font-medium text-zinc-900">
-                    {name}
-                  </span>
-                  <span className="block text-xs text-zinc-500">
-                    {[
-                      `nº ${r.number}`,
-                      it.factoryItemCode,
-                      it.itemNumber,
-                      it.material,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                  {r.needs ? (
-                    <span
-                      className="mt-0.5 block max-w-72 truncate text-xs text-zinc-600"
-                      title={r.needs}
-                    >
-                      {k("needs")}: {r.needs}
-                    </span>
-                  ) : null}
+                <Td className={cx(nowrap, "tabular-nums font-medium")}>
+                  {r.number}
                   {current ? (
-                    <span className="mt-1 inline-flex">
+                    <span className="mt-1 block">
                       <Badge tone="info">{k("current")}</Badge>
                     </span>
                   ) : null}
                 </Td>
-                <Td className="tabular-nums">
-                  {t("supplierRequests.detail.pieces", {
-                    n: r.quantity.toLocaleString(intl),
-                  })}
-                  <span className="block text-xs text-zinc-500">
-                    MOQ {num(it.moq, 0)}
+                <Td>
+                  <span className="block min-w-48 max-w-72 whitespace-normal font-medium text-zinc-900">
+                    {name}
                   </span>
                 </Td>
-                <Td className="tabular-nums">
-                  {it.price === null
-                    ? "—"
-                    : `${num(it.price)} ${it.currency ?? ""} ${it.incoterm ?? ""}`.trim()}
+                <Td className={nowrap}>{it.factoryItemCode ?? "—"}</Td>
+                <Td className={nowrap}>{it.itemNumber ?? "—"}</Td>
+                <Td className={nowrap}>{it.material ?? "—"}</Td>
+                <Td className={cx(nowrap, "tabular-nums")}>
+                  {r.quantity.toLocaleString(intl)}
                 </Td>
+                <Td className={cx(nowrap, "tabular-nums")}>{num(it.moq, 0)}</Td>
+                <Td className={cx(nowrap, "tabular-nums")}>{num(it.price)}</Td>
+                <Td className={nowrap}>{it.currency ?? "—"}</Td>
+                <Td className={nowrap}>{it.incoterm ?? "—"}</Td>
                 <Td>
+                  <span
+                    className="block max-w-56 truncate text-xs text-zinc-600"
+                    title={r.needs ?? undefined}
+                  >
+                    {r.needs ?? "—"}
+                  </span>
+                </Td>
+                <Td className={nowrap}>
                   <span data-supplier-table-answer-text={r.id}>
-                    {answerText(t, r)}
+                    {r.supplierCanDo ? (
+                      <Badge tone={yes ? "success" : "danger"}>
+                        {k(yes ? "canDoYes" : "canDoNo")}
+                      </Badge>
+                    ) : (
+                      <span className="text-zinc-500">{k("canDoWaiting")}</span>
+                    )}
                   </span>
-                  {r.supplierCanDo === "yes" &&
-                  (r.supplierMoq !== null ||
-                    r.supplierLeadTimeDays !== null) ? (
-                    <span className="block text-xs text-zinc-500">
-                      {[
-                        r.supplierMoq !== null
-                          ? `MOQ ${num(r.supplierMoq, 0)}`
-                          : null,
-                        r.supplierLeadTimeDays !== null
-                          ? `${t("supplierRequests.detail.answer.leadTime")}: ${num(r.supplierLeadTimeDays, 0)}`
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  ) : null}
                 </Td>
-                <Td>
-                  <span className="flex flex-wrap gap-1">
-                    <Badge tone={STATUS_TONE[r.status]}>
-                      {t(
-                        `supplierRequests.status.${r.status}` as DictionaryKey,
-                      )}
-                    </Badge>
-                    <SlaBadge sla={slaOf(r, slaMinutes)} t={t} />
-                  </span>
-                  {turn ? (
-                    <span className="mt-0.5 block text-xs text-zinc-500">
-                      {t(
-                        `supplierRequests.negotiation.turn.${turn}` as DictionaryKey,
-                      )}
+                {conditionCells(initialConditions(r), "initial", r.id)}
+                {conditionCells(finalConditions(r), "final", r.id)}
+                <Td className={nowrap}>
+                  <Badge tone={STATUS_TONE[r.status]}>
+                    {t(`supplierRequests.status.${r.status}` as DictionaryKey)}
+                  </Badge>
+                </Td>
+                <Td className={cx(nowrap, "text-xs")}>
+                  {sla ? (
+                    <span
+                      className={sla.late ? "font-semibold text-red-700" : ""}
+                      data-supplier-request-sla={sla.late ? "late" : "ok"}
+                    >
+                      {sla.late ? `${k("late")} · ` : ""}
+                      {dateTime(sla.dueAt, t)}
                     </span>
-                  ) : null}
+                  ) : (
+                    "—"
+                  )}
+                </Td>
+                <Td className="text-xs">
+                  {turn
+                    ? t(
+                        `supplierRequests.negotiation.turn.${turn}` as DictionaryKey,
+                      )
+                    : "—"}
                   {pending ? (
                     <span
-                      className="mt-0.5 block max-w-48 text-xs text-amber-800"
+                      className="mt-0.5 block max-w-40 text-amber-800"
                       data-supplier-table-pending
                     >
-                      {k("proposalPending")}
+                      {k(
+                        wellmix ? "proposalPendingWellmix" : "proposalPending",
+                      )}
                     </span>
                   ) : null}
                 </Td>
-                <Td>
-                  <span className="flex flex-wrap justify-end gap-1.5">
+                <Td className={cx(nowrap, "text-xs tabular-nums")}>
+                  {dateTime(r.createdAt, t)}
+                </Td>
+                <Td className={cx(nowrap, "text-xs tabular-nums")}>
+                  {dateTime(times.first, t)}
+                </Td>
+                <Td className={cx(nowrap, "text-xs tabular-nums")}>
+                  {dateTime(times.last, t)}
+                </Td>
+                <Td
+                  className={cx(
+                    "sticky right-0 z-10 bg-white shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]",
+                    current && "bg-brand-50",
+                  )}
+                >
+                  <span className="flex justify-end gap-1">
                     {canPostMessage(r.status) ? (
                       <QuickDialog
-                        label={k("message")}
+                        label={<ChatBubbleIcon />}
+                        hint={k("message")}
                         title={t("supplierRequests.table.messageTitle", {
                           n: r.number,
                         })}
@@ -217,6 +331,7 @@ export function SupplierRequestTable({
                           data-supplier-table-message-form
                         >
                           <input type="hidden" name="id" value={r.id} />
+                          <input type="hidden" name="view" value="table" />
                           <Field label={k("messageText")}>
                             <Textarea
                               name="text"
@@ -237,10 +352,14 @@ export function SupplierRequestTable({
                     ) : null}
                     {canAnswer ? (
                       <QuickDialog
-                        label={k("answer")}
-                        title={t("supplierRequests.table.answerTitle", {
-                          n: r.number,
-                        })}
+                        label={<AnswerIcon />}
+                        hint={k(wellmix ? "answerWellmix" : "answer")}
+                        title={t(
+                          wellmix
+                            ? "supplierRequests.table.answerTitleWellmix"
+                            : "supplierRequests.table.answerTitle",
+                          { n: r.number },
+                        )}
                         closeLabel={k("close")}
                         tone="primary"
                         data-supplier-table-answer-open={r.id}
@@ -251,12 +370,8 @@ export function SupplierRequestTable({
                           data-supplier-table-answer-form
                         >
                           <input type="hidden" name="id" value={r.id} />
-                          {/* Mantém o que já foi respondido e não aparece aqui. */}
-                          <input
-                            type="hidden"
-                            name="moq"
-                            value={raw(r.supplierMoq)}
-                          />
+                          <input type="hidden" name="view" value="table" />
+                          {/* Mantém o prazo já respondido (muda na tela do produto). */}
                           <input
                             type="hidden"
                             name="leadTimeDays"
@@ -273,7 +388,7 @@ export function SupplierRequestTable({
                                 name="price"
                                 inputMode="decimal"
                                 defaultValue={raw(r.supplierPrice)}
-                                data-supplier-table-answer-price
+                                data-supplier-table-answer-price-input
                               />
                             </Field>
                             <Field
@@ -288,6 +403,35 @@ export function SupplierRequestTable({
                                 }
                               >
                                 {SHEET_CURRENCIES.map((c) => (
+                                  <option key={c} value={c}>
+                                    {c}
+                                  </option>
+                                ))}
+                              </Select>
+                            </Field>
+                            <Field
+                              label={t("supplierRequests.detail.answer.moq")}
+                            >
+                              <Input
+                                name="moq"
+                                inputMode="numeric"
+                                defaultValue={raw(r.supplierMoq)}
+                                data-supplier-table-answer-moq
+                              />
+                            </Field>
+                            <Field
+                              label={t(
+                                "supplierRequests.detail.answer.incoterm",
+                              )}
+                            >
+                              <Select
+                                name="incoterm"
+                                defaultValue={
+                                  r.supplierIncoterm ?? it.incoterm ?? "FOB"
+                                }
+                                data-supplier-table-answer-incoterm
+                              >
+                                {SHEET_INCOTERMS.map((c) => (
                                   <option key={c} value={c}>
                                     {c}
                                   </option>
@@ -329,10 +473,12 @@ export function SupplierRequestTable({
                     ) : null}
                     <LinkButton
                       href={href}
-                      className="px-2.5 py-1 text-xs"
+                      className="px-2.5 py-1"
+                      title={k("open")}
+                      aria-label={k("open")}
                       data-supplier-table-open={r.id}
                     >
-                      {k("open")}
+                      <OpenIcon />
                     </LinkButton>
                   </span>
                 </Td>

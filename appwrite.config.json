@@ -9789,6 +9789,18 @@
           "type": "integer"
         },
         {
+          "key": "supplierIncoterm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "FOB",
+            "EXW"
+          ]
+        },
+        {
           "key": "supplierNote",
           "required": false,
           "array": false,

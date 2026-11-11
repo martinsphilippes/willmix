@@ -13,6 +13,7 @@ export const pt = {
   "supplierRequests.negotiation.kind.counter": "Nova proposta",
   "supplierRequests.negotiation.kind.reject": "Recusou a contraproposta",
   "supplierRequests.negotiation.kind.message": "Mensagem",
+  "supplierRequests.negotiation.kind.answer": "Resposta",
   "supplierRequests.negotiation.file": "Arquivo",
   "supplierRequests.negotiation.pendingWellmix":
     "Contraproposta esperando o fornecedor. Enquanto ele não responde, a solicitação não pode ser aprovada.",
@@ -111,6 +112,7 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierRequests.negotiation.kind.counter": "New proposal",
   "supplierRequests.negotiation.kind.reject": "Declined the counteroffer",
   "supplierRequests.negotiation.kind.message": "Message",
+  "supplierRequests.negotiation.kind.answer": "Answer",
   "supplierRequests.negotiation.file": "File",
   "supplierRequests.negotiation.pendingWellmix":
     "Counteroffer waiting for the supplier. Until they answer, the request cannot be approved.",
@@ -206,6 +208,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierRequests.negotiation.kind.counter": "新报价",
   "supplierRequests.negotiation.kind.reject": "拒绝了还价",
   "supplierRequests.negotiation.kind.message": "消息",
+  "supplierRequests.negotiation.kind.answer": "答复",
   "supplierRequests.negotiation.file": "文件",
   "supplierRequests.negotiation.pendingWellmix":
     "还价正在等待供应商答复。答复之前，询单无法批准。",
