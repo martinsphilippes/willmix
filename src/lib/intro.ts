@@ -1,9 +1,8 @@
 /**
- * Abertura do portal (animação em canvas, só no desktop). A decisão de tocar
- * é tomada por um script inline no `<head>` (INTRO_BOOT), antes do primeiro
- * quadro: assim a tela já nasce coberta e a página nunca pisca antes da
- * animação. Quem carrega e toca a animação (`public/intro/wellmix-intro.js`,
- * peça autocontida) é `src/components/intro-player.tsx`.
+ * Abertura do portal (vídeo, só no desktop). A decisão de tocar é tomada por
+ * um script inline no `<head>` (INTRO_BOOT), antes do primeiro quadro: assim a
+ * tela já nasce coberta e a página nunca pisca antes da animação. Quem toca o
+ * vídeo (`public/intro/wellmix-intro.*`) é `src/components/intro-player.tsx`.
  *
  * Regras (documentadas em docs/ARQUITETURA.md, seção 6):
  * - só com janela de 1024 px ou mais (breakpoint `lg`): o celular nunca vê;
@@ -13,11 +12,11 @@
  * - "Pular", Esc, Enter ou espaço encerram na hora;
  * - nunca em navegador automatizado (`navigator.webdriver`: Playwright,
  *   Lighthouse), para o E2E e as auditorias não esperarem a animação;
- * - `?intro=always` força (ignora as regras acima e não marca o dia),
- *   `?intro=off` não toca e `?intro=manual` deixa parado para gravar
- *   (`WellmixIntro.seek(ms)`).
+ * - nunca para quem pede menos movimento (`prefers-reduced-motion`);
+ * - `?intro=always` força (ignora as regras acima e não marca o dia) e
+ *   `?intro=off` não toca.
  *
- * Em `<html>`, `data-wm-intro` conta a fase: `pending` (coberta, script a
+ * Em `<html>`, `data-wm-intro` conta a fase: `pending` (coberta, vídeo a
  * caminho) → `playing` → `done` (a página "pousa", transição em globals.css)
  * → atributo removido.
  */
@@ -28,8 +27,22 @@ export const INTRO_DAY_KEY = "wellmix-intro-day";
 export const INTRO_HOME_PATHS = ["/app", "/login"] as const;
 /** Janela mínima: o mesmo `lg` do Tailwind, onde o login vira duas colunas. */
 export const INTRO_MEDIA = "(min-width: 1024px)";
-/** Script da animação, servido estático. */
-export const INTRO_SCRIPT_SRC = "/intro/wellmix-intro.js";
+/** Quem pede menos movimento não vê a abertura. */
+export const INTRO_REDUCED_MEDIA = "(prefers-reduced-motion: reduce)";
+/**
+ * O vídeo, em dois formatos (1920 × 1080, 60 quadros, sem som, ~6,8 s): o MP4
+ * (H.264) para Chrome, Safari, Edge e Firefox, e o WebM (VP9) para o Chromium
+ * sem H.264 (Playwright). O navegador escolhe o primeiro que sabe tocar.
+ */
+export const INTRO_VIDEO = {
+  mp4: {
+    src: "/intro/wellmix-intro.mp4",
+    type: 'video/mp4; codecs="avc1.640032"',
+  },
+  webm: { src: "/intro/wellmix-intro.webm", type: 'video/webm; codecs="vp9"' },
+  /** Primeiro quadro, para a tela não ficar vazia enquanto o vídeo carrega. */
+  poster: "/intro/wellmix-intro-poster.jpg",
+} as const;
 /** Atributo de fase em `<html>`. */
 export const INTRO_ATTR = "data-wm-intro";
 
@@ -42,9 +55,10 @@ export const INTRO_BOOT =
   "(function(){try{" +
   'var q=new URLSearchParams(location.search).get("intro");' +
   'if(q==="off")return;' +
-  'if(q!=="always"&&q!=="manual"){' +
+  'if(q!=="always"){' +
   "if(navigator.webdriver)return;" +
   `if(!matchMedia(${JSON.stringify(INTRO_MEDIA)}).matches)return;` +
+  `if(matchMedia(${JSON.stringify(INTRO_REDUCED_MEDIA)}).matches)return;` +
   'var d=new Date(),today=d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();' +
   `if(localStorage.getItem(${JSON.stringify(INTRO_DAY_KEY)})===today){` +
   "var again=false;" +

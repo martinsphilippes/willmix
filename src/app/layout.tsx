@@ -74,9 +74,6 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           labels={{
             title: t("intro.title"),
             skip: t("intro.skip"),
-            brazil: t("intro.map.brazil"),
-            china: t("intro.map.china"),
-            caption: t("intro.map.caption"),
           }}
         />
       </body>

@@ -4,7 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
  * Abertura do portal (docs/ARQUITETURA.md, seção 6): no desktop a animação
  * cobre a tela antes da página e revela o login ou o início; toca na
  * primeira abertura do dia e ao dar F5 na página inicial, não ao navegar;
- * dá para pular; no celular não toca. O navegador automatizado é ignorado
+ * dá para pular; no celular e com menos movimento não toca. O navegador automatizado é ignorado
  * pela abertura (navigator.webdriver), por isso estes testes se apresentam
  * como navegador comum; os outros E2E seguem sem a animação.
  */
@@ -35,7 +35,7 @@ async function expectIntroAndSkip(page: Page) {
     /pending|playing/,
   );
   const skip = overlay.getByRole("button", { name: "Pular" });
-  await expect(skip).toHaveClass(/is-on/);
+  await expect(skip).toHaveAttribute("data-on", "true");
   await skip.click();
   await expect(overlay).toHaveCount(0);
   await expect(page.locator("html")).not.toHaveAttribute("data-wm-intro", /.*/);
@@ -83,8 +83,29 @@ test("desktop: toca até o fim e devolve a página", async ({ page }) => {
   await page.goto("/login?intro=always");
   const overlay = overlayOf(page);
   await expect(overlay).toBeVisible();
-  // ~6 s de animação e mais o "pouso" da página.
-  await expect(overlay).toHaveCount(0, { timeout: 20_000 });
+  // A camada tem o tamanho exato da janela (não segue o body, que "pousa" com
+  // zoom) e o botão "Pular" fica dentro dela.
+  expect(await overlay.boundingBox()).toEqual({
+    x: 0,
+    y: 0,
+    width: DESKTOP.width,
+    height: DESKTOP.height,
+  });
+  const skipBox = await overlay
+    .getByRole("button", { name: "Pular" })
+    .boundingBox();
+  expect(skipBox!.x + skipBox!.width).toBeLessThanOrEqual(DESKTOP.width);
+  expect(skipBox!.y + skipBox!.height).toBeLessThanOrEqual(DESKTOP.height);
+  // O vídeo toca de verdade (o tempo anda), sem som.
+  const video = overlay.locator("video");
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime), {
+      timeout: 10_000,
+    })
+    .toBeGreaterThan(0.5);
+  expect(await video.evaluate((v: HTMLVideoElement) => v.muted)).toBe(true);
+  // ~7 s de vídeo e mais o "pouso" da página.
+  await expect(overlay).toHaveCount(0, { timeout: 25_000 });
   await expect(page.locator("html")).not.toHaveAttribute("data-wm-intro", /.*/);
   await expect(page.locator('input[name="email"]')).toBeEditable();
 });
@@ -95,6 +116,14 @@ test("celular: não toca, nem no F5", async ({ page }) => {
   await expect(page.locator('input[name="email"]')).toBeVisible();
   await expectNoIntro(page);
   await page.reload();
+  await expect(page.locator('input[name="email"]')).toBeVisible();
+  await expectNoIntro(page);
+});
+
+test("desktop com menos movimento: não toca", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize(DESKTOP);
+  await page.goto("/login");
   await expect(page.locator('input[name="email"]')).toBeVisible();
   await expectNoIntro(page);
 });

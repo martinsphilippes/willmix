@@ -14,8 +14,6 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Worktrees de agentes (sessão do Claude Code): cópias do repositório, nunca lintadas daqui.
     ".claude/worktrees/**",
-    // Abertura do portal: peça vendorizada, servida como está (docs/ARQUITETURA.md, seção 6).
-    "public/intro/**",
   ]),
 ]);
 
