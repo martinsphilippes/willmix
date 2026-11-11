@@ -9,7 +9,7 @@ Projeto: **wellmix** (`rokbtrvkzllowyqzcauq`), região São Paulo (sa-east-1). L
 | #   | Etapa                                                                                                                                                                                     | Situação |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | 1   | Banco: `SupabaseStore` (PostgREST + Storage, chave service_role) e esquema gerado do `schema.ts` (`supabase/schema.sql`, `npm run supabase:sql`), com o botão "Publicar esquema Supabase" | feito    |
-| 2   | Arquivos: envio direto do navegador ao Supabase Storage (URL assinada), no lugar do Appwrite Storage                                                                                      | a fazer  |
+| 2   | Arquivos: envio direto do navegador ao Supabase Storage por link assinado (`createSignedUpload`, PUT com progresso); chave no formato dos ids do Appwrite, então as ações não mudam       | feito    |
 | 3   | Login pelo Supabase Auth: contas criadas na virada, convite/troca de senha por e-mail, sessão em cookie                                                                                   | a fazer  |
 | 4   | Cópia Appwrite → Supabase: todas as tabelas com o mesmo id e as datas de origem (`upsertRaw`), arquivos e contadores; pode rodar de novo                                                  | a fazer  |
 | 5   | Virada: janela sem uso, cópia, `DATA_MODE=supabase` na Vercel, publicar                                                                                                                   | a fazer  |
@@ -20,7 +20,7 @@ Projeto: **wellmix** (`rokbtrvkzllowyqzcauq`), região São Paulo (sa-east-1). L
 - Tipos: texto → `text`; int → `bigint`; float → `double precision`; bool → `boolean`; data → `timestamptz`; json → `jsonb`. Sem NOT NULL além do id (linhas antigas do Appwrite podem ter obrigatórias vazias).
 - RLS ligado em todas as tabelas e nenhuma política: só o servidor, com a chave service_role, lê e grava. Toda escrita continua passando por Server Action com zod e papel.
 - `next_number(chave)`: contador atômico (número de pedido e de solicitação), só para service_role.
-- Arquivos: bucket privado `arquivos` (50 MB por arquivo, como no Appwrite); chave = pasta única + nome do arquivo.
+- Arquivos: bucket privado `arquivos` (50 MB por arquivo, como no Appwrite). Chave `<32 hex>_<nome>_<extensão>` (letras, números, "_" e "-", até 64 caracteres: o mesmo formato que as ações conferem nos ids do Appwrite); o nome do arquivo volta da chave. Arquivo grande: o servidor gera um link assinado (`/storage/v1/object/upload/sign`) e o navegador sobe direto com PUT, sem o limite de 4 MB da Vercel; depois a ação só registra o documento, conferindo tamanho e tipo.
 - Datas voltam em ISO com "Z" (igual ao modo memória).
 
 ## Publicar o esquema
