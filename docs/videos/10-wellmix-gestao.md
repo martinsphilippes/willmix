@@ -1055,7 +1055,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 
 - 🎬 Imagem: o cursor abre **Gestão** e clica em **Configurações**. Em destaque as abas "Geral", "Integração Sankhya", "Carga do Sankhya", "Condições de pagamento", "Processos" e "Sankhya: explorar dados", e os botões "Abrir Sankhya" e "Limpar dados de teste" no canto.
 - 🎙 Narração: "Em Gestão, abra Configurações. Só o administrador entra aqui. As abas do Sankhya ficam ao lado, e o que você muda vale para os pedidos novos, não para os que já nasceram."
-- 🔤 Na tela: `[MAPA etapas 1 a 9]` com um engrenagem; `[PASSO 1/8] Abra Gestão → Configurações`; `[QUEM VÊ]` "Só o administrador (ou quem ele liberar)"; `[ATENÇÃO]` "Vale para pedidos novos."
+- 🔤 Na tela: `[MAPA etapas 1 a 9]` com uma engrenagem; `[PASSO 1/8] Abra Gestão → Configurações`; `[QUEM VÊ]` "Só o administrador (ou quem ele liberar)"; `[ATENÇÃO]` "Vale para pedidos novos."
 - ✂️ Edição: o mapa sai em 8 s.
 
 **Cena 3 · 0:26–1:08 · Fluxo e prazos · coluna da esquerda**
@@ -1191,7 +1191,9 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 - ⚠ O rótulo de "Início da produção: dias depois do contrato assinado, padrão para fornecedor sem prazo próprio (0 = no dia)" é muito longo para a tela; a gravação deve cortar o texto, e o roteiro o chama só de "Início da produção".
 - ⚠ A dica do "Modo da IA" cita nomes de variáveis técnicas (ANTHROPIC_API_KEY, AI_GATEWAY_API_KEY, "AI Gateway"). Está na tela e aparece no vídeo; confirmar se o dono quer outro texto.
 - ⚠ O que "Tolerância de peso (%)" bloqueia ("Divergência acima disso bloqueia a inspeção", docs/OPEN_DECISIONS.md) foi lido na regra da etapa (`engine.ts`: "Peso divergente ... REVISÃO NECESSÁRIA"); confirmar a frase com o dono.
-- ⚠ Os valores padrão da tabela vêm de `src/lib/settings.ts`. Docs/OPEN_DECISIONS.md traz os mesmos números, com uma exceção: o campo "Sinal (%)" aparece como "Sinal sugerido sobre o valor ao cliente (editável na seleção)" e, na execução com a RFQ ligada, a seleção abriu com 30; confirmar com o dono se o sinal de 40 usado pelo E2E é só teste.
+- ⚠ Os valores padrão da tabela vêm de `src/lib/settings.ts` e coincidem com docs/OPEN_DECISIONS.md. Se a Wellmix já mudou algum, a tabela do texto de apoio precisa ser atualizada antes de publicar.
+- ⚠ A opção "Ao abrir a RFQ (em paralelo com a cotação)" de "Quando a embalagem (faca e arte) começa" ainda usa o nome RFQ; com a RFQ em espera, a solicitação vai a um fornecedor. Confirmar o texto com o dono.
+- ⚠ A diferença entre "Simulado" e "Manual" em "Integração Sankhya" não está documentada (docs/OPEN_DECISIONS.md só descreve MOCK: o pedido nasce com o ERP pendente e o operador informa o número). O roteiro só cita as duas opções.
 - ⚠ Sankhya: este episódio só cita as abas e o botão "Abrir Sankhya" e o campo "Integração Sankhya" (Simulado ou Manual). O conteúdo das abas (credenciais, carga, processos) não está roteirizado; docs/SANKHYA.md tem o detalhe. Confirmar se haverá uma série própria.
 - ⚠ A pausa "Busca automática pausada" liga a mensagem "aguarda Cartão de Crédito" do CLI-02 (cena 4); desmarcar reativa a busca por foto e link. Confirmar se o dono quer isso no vídeo.
 
