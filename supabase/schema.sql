@@ -353,6 +353,7 @@ alter table public."documents" add column if not exists "imageHash" text;
 alter table public."documents" add column if not exists "packagingBriefId" text;
 alter table public."documents" add column if not exists "conversationTopicId" text;
 alter table public."documents" add column if not exists "quoteId" text;
+alter table public."documents" add column if not exists "supplierRequestId" text;
 create index if not exists "documents_by_order" on public."documents" ("orderId");
 create index if not exists "documents_by_request" on public."documents" ("requestId");
 create index if not exists "documents_by_product" on public."documents" ("productId");
@@ -1596,6 +1597,8 @@ alter table public."supplier_requests" add column if not exists "productLinkedBy
 alter table public."supplier_requests" add column if not exists "showcaseReleasedAt" timestamptz;
 alter table public."supplier_requests" add column if not exists "showcaseReleasedByUserId" text;
 alter table public."supplier_requests" add column if not exists "erpCheckedAt" timestamptz;
+alter table public."supplier_requests" add column if not exists "negotiation" jsonb;
+alter table public."supplier_requests" add column if not exists "slaNotifiedAt" timestamptz;
 create index if not exists "supplier_requests_by_supplier" on public."supplier_requests" ("supplierId");
 create index if not exists "supplier_requests_by_item" on public."supplier_requests" ("bookingItemId");
 create index if not exists "supplier_requests_by_status" on public."supplier_requests" ("status");

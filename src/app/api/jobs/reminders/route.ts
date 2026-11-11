@@ -38,8 +38,17 @@ export async function GET(request: Request) {
       console.error("[reminders] sankhya-sync", error);
       return null;
     });
+  // Solicitações ao fornecedor que passaram do SLA da negociação.
+  const supplierRequestsLate =
+    await import("@/lib/services/supplier-request-negotiation")
+      .then((m) => m.notifyLateSupplierRequests())
+      .catch((error) => {
+        console.error("[reminders] supplier-request-sla", error);
+        return null;
+      });
   return NextResponse.json({
     ...result,
+    supplierRequestsLate,
     released,
     packaging,
     shipping,

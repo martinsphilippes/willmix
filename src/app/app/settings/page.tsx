@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { requestStepDays, type RequestStepDays } from "@/lib/request-stages";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
+import {
+  SUPPLIER_REQUEST_SLA_MAX,
+  SUPPLIER_REQUEST_SLA_MIN,
+} from "@/lib/supplier-requests";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
@@ -455,6 +459,21 @@ export default async function SettingsPage({
                       step="1"
                       required
                       defaultValue={s.quoteSlaBusinessDays}
+                    />
+                  </Field>
+                  <Field
+                    label={t("supplierRequests.sla.settingLabel")}
+                    hint={t("supplierRequests.sla.settingHint")}
+                  >
+                    <Input
+                      name="supplierRequestSlaMinutes"
+                      type="number"
+                      min={SUPPLIER_REQUEST_SLA_MIN}
+                      max={SUPPLIER_REQUEST_SLA_MAX}
+                      step="1"
+                      required
+                      defaultValue={s.supplierRequestSlaMinutes}
+                      data-setting-supplier-request-sla
                     />
                   </Field>
                 </div>

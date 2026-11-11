@@ -5,6 +5,7 @@ import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { SHEET_CURRENCIES } from "@/lib/db/schema";
 import {
+  pendingProposal,
   supplierCanAnswer,
   supplierRequestDecisions,
 } from "@/lib/supplier-requests";
@@ -43,6 +44,12 @@ import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { SupplierNoLoginAlert } from "@/components/supplier-no-login";
 import { partiesWithoutLogin } from "@/lib/services/portal-access";
+import {
+  notifyLateSupplierRequests,
+  slaOf,
+  supplierRequestSlaMinutes,
+} from "@/lib/services/supplier-request-negotiation";
+import { NegotiationCard, SlaBadge } from "../_components/negotiation";
 
 /*
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
@@ -71,6 +78,10 @@ export default async function SupplierRequestPage({
     return typeof v === "string" ? v : "";
   };
   const t = await getT();
+  // SLA estourado: avisa uma vez (Wellmix e fornecedor) ao abrir a tela.
+  await notifyLateSupplierRequests().catch((error) =>
+    console.error("notifyLateSupplierRequests", error),
+  );
   const detail = await getSupplierRequest(user, id).catch((error: unknown) => {
     if (error instanceof Error && error.message === "schema_outdated")
       return "schema" as const;
@@ -124,6 +135,17 @@ export default async function SupplierRequestPage({
     notices.push(
       t(`supplierRequests.detail.decided.${decided}` as DictionaryKey),
     );
+  const negotiationNotice = one("negotiation");
+  if (
+    ["proposal", "accept", "counter", "reject", "message"].includes(
+      negotiationNotice,
+    )
+  )
+    notices.push(
+      t(
+        `supplierRequests.negotiation.notice.${negotiationNotice}` as DictionaryKey,
+      ),
+    );
   const productNotice = one("product");
   if (["created", "linked", "items", "released"].includes(productNotice))
     notices.push(t(`srProduct.notice.${productNotice}` as DictionaryKey));
@@ -174,10 +196,12 @@ export default async function SupplierRequestPage({
     };
   }
 
-  const canAnswer = supplierCanAnswer(r.status);
+  const proposalPending = !!pendingProposal(r.negotiation);
+  const canAnswer = supplierCanAnswer(r.status) && !proposalPending;
   const decisions = wellmix
-    ? supplierRequestDecisions(r.status, r.supplierCanDo)
+    ? supplierRequestDecisions(r.status, r.supplierCanDo, proposalPending)
     : [];
+  const sla = slaOf(r, await supplierRequestSlaMinutes());
   const decimal = intl.startsWith("pt") ? "," : ".";
   const raw = (n: number | null) =>
     n === null ? "" : String(n).replace(".", decimal);
@@ -192,6 +216,7 @@ export default async function SupplierRequestPage({
             <Badge tone={STATUS_TONE[r.status]}>
               {t(`supplierRequests.status.${r.status}` as DictionaryKey)}
             </Badge>
+            <SlaBadge sla={sla} t={t} />
             {wellmix && supplier ? <span>{supplier.name}</span> : null}
           </span>
         }
@@ -304,6 +329,8 @@ export default async function SupplierRequestPage({
               />
             </div>
           </Card>
+
+          <NegotiationCard request={r} wellmix={wellmix} t={t} />
 
           {wellmix ? (
             <Card
@@ -504,6 +531,14 @@ export default async function SupplierRequestPage({
                     date: formatDate(r.decidedAt, t),
                   })}
                   {r.decisionNote ? ` · ${r.decisionNote}` : ""}
+                </p>
+              ) : null}
+              {proposalPending ? (
+                <p
+                  className="mb-2 text-xs text-amber-800"
+                  data-supplier-decide-blocked
+                >
+                  {t("supplierRequests.negotiation.approveBlocked")}
                 </p>
               ) : null}
               {decisions.length ? (

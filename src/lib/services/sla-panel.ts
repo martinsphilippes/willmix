@@ -37,7 +37,12 @@ export const ALL = "all";
 export interface SlaItem {
   /** "task": a Wellmix deve; "partner": um parceiro está atrasado. */
   source: "task" | "partner";
-  kind: TaskKind | "partner_stage" | "partner_quote" | "partner_packaging";
+  kind:
+    | TaskKind
+    | "partner_stage"
+    | "partner_quote"
+    | "partner_packaging"
+    | "supplier_request";
   title: string;
   detail: string;
   link: string;
@@ -456,6 +461,42 @@ async function partnerDelays(
       waitingOn: ["supplier"],
       waitingParty: name(q.supplierId),
     });
+  }
+
+  // Solicitação ao fornecedor com o SLA da negociação estourado (minutos,
+  // desde a abertura): esperando o fornecedor ou a decisão da Wellmix.
+  const supplierRequests = await store
+    .list("supplier_requests", { filter: { status: ["open", "answered"] } })
+    .catch(() => []);
+  if (supplierRequests.length) {
+    const { getSettings } = await import("@/lib/settings");
+    const { negotiationTurn, supplierRequestLate, supplierRequestSlaDue } =
+      await import("@/lib/supplier-requests");
+    const minutes = (await getSettings()).supplierRequestSlaMinutes;
+    for (const r of supplierRequests) {
+      if (!supplierRequestLate(r, minutes, now)) continue;
+      const dueAt = supplierRequestSlaDue(r, minutes);
+      const waiting = negotiationTurn(r) === "supplier";
+      out.push({
+        source: waiting ? "partner" : "task",
+        kind: "supplier_request",
+        title:
+          `Solicitação ao fornecedor nº ${r.number}: ${r.item.description ?? r.item.productName ?? ""}`.trim(),
+        detail: "",
+        link: `/app/supplier-requests/${r.id}`,
+        dueAt,
+        due: "overdue",
+        daysLeft: daysUntil(dueAt, now),
+        customerId: null,
+        ownerUserId: r.createdByUserId,
+        ...(waiting
+          ? {
+              waitingOn: ["supplier" as Role],
+              waitingParty: name(r.supplierId),
+            }
+          : {}),
+      });
+    }
   }
 
   // Embalagem da agência vencida (o marketing da Wellmix já é pendência).

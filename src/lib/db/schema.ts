@@ -1089,6 +1089,11 @@ export interface Document extends BaseRow {
    * o fornecedor daquela cotação abrem. Opcional: documentos antigos ficam sem.
    */
   quoteId?: string | null;
+  /**
+   * Arquivo da conversa de uma solicitação ao fornecedor: só a Wellmix e o
+   * fornecedor dela abrem. Opcional: documentos antigos ficam sem.
+   */
+  supplierRequestId?: string | null;
 }
 
 export interface Payment extends BaseRow {
@@ -2519,6 +2524,38 @@ export interface SupplierRequestItem {
  * faz o que ela precisa, em que quantidade e condições. O fornecedor vê e
  * responde no portal; nada de produto, cliente ou estoque nasce aqui.
  */
+/** Passos da negociação da solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md, "Negociação"). */
+export const SUPPLIER_REQUEST_EVENT_KINDS = [
+  /** Wellmix devolve com contraproposta (preço, MOQ, prazo e comentário). */
+  "proposal",
+  /** Fornecedor aceita a contraproposta: ela vira a resposta. */
+  "accept",
+  /** Fornecedor responde com outra proposta (novos valores). */
+  "counter",
+  /** Fornecedor recusa a contraproposta: fica a resposta anterior. */
+  "reject",
+  /** Mensagem livre, com ou sem arquivo (foto, PDF ou Excel). */
+  "message",
+] as const;
+export type SupplierRequestEventKind =
+  (typeof SUPPLIER_REQUEST_EVENT_KINDS)[number];
+
+/** Um passo da conversa da solicitação (histórico, na ordem). */
+export interface SupplierRequestEvent {
+  id: string;
+  at: string;
+  kind: SupplierRequestEventKind;
+  side: "wellmix" | "supplier";
+  byUserId: string;
+  price?: number | null;
+  currency?: SheetCurrency | null;
+  moq?: number | null;
+  leadTimeDays?: number | null;
+  text?: string | null;
+  documentId?: string | null;
+  fileName?: string | null;
+}
+
 export interface SupplierRequest extends BaseRow {
   /** Número sequencial (contador `supplier_request_number`). */
   number: number;
@@ -2561,6 +2598,10 @@ export interface SupplierRequest extends BaseRow {
   showcaseReleasedByUserId?: string | null;
   /** Quando o CODPROD do produto foi conferido no Sankhya (nulo: digitado sem conferir). */
   erpCheckedAt?: string | null;
+  /** Negociação: contrapropostas, respostas e mensagens, na ordem (opcional: antigas ficam sem). */
+  negotiation?: SupplierRequestEvent[] | null;
+  /** Quando o aviso de SLA estourado foi enviado (uma vez só). */
+  slaNotifiedAt?: string | null;
 }
 
 export interface StockReservation extends BaseRow {
@@ -3102,6 +3143,7 @@ export const TABLES: Record<TableName, TableDef> = {
       packagingBriefId: id(false),
       conversationTopicId: id(false),
       quoteId: id(false),
+      supplierRequestId: id(false),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
@@ -4299,6 +4341,8 @@ export const TABLES: Record<TableName, TableDef> = {
       showcaseReleasedAt: datetime(),
       showcaseReleasedByUserId: id(false),
       erpCheckedAt: datetime(),
+      negotiation: jsonLarge(),
+      slaNotifiedAt: datetime(),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
