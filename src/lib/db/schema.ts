@@ -2189,6 +2189,13 @@ export interface BookingLot extends BaseRow {
   note: string | null;
   ownerUserId: string | null;
   createdByUserId: string;
+  /**
+   * Parceiro responsável pelo booking (decisão do dono, 11/11/2026): toda
+   * solicitação aberta de um item deste booking vai para ele. Fornecedor,
+   * Trading, Factory, Supplier, GP ou tipo criado no painel. Nulo (e nos
+   * antigos): vale o fornecedor do booking.
+   */
+  partnerId?: string | null;
 }
 
 /**
@@ -4064,6 +4071,7 @@ export const TABLES: Record<TableName, TableDef> = {
       note: str(500),
       ownerUserId: id(false),
       createdByUserId: id(),
+      partnerId: id(false),
     },
     indexes: [
       { key: "by_status", type: "key", columns: ["status"] },

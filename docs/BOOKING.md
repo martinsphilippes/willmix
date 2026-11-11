@@ -46,6 +46,13 @@ Banco: tabelas `booking_lots` e `booking_items` (docs/APPWRITE.md). Antes da pub
 
 Permissões: só a Wellmix com a tela Booking. Cadastrar o fornecedor sugerido também é dessa tela. Cliente, fornecedor e parceiros não veem bookings, itens, fotos nem a planilha guardada (documentos internos).
 
+### Responsável pelo booking (decisão do dono, 11/11/2026)
+
+- Cada booking tem um **parceiro responsável** (`booking_lots.partnerId`): o fornecedor dos itens ou outro parceiro (Trading, Factory, Supplier, GP ou tipo criado no painel), ativo.
+- **Toda solicitação** aberta de um item do booking vai para ele (aviso, tela e resposta), e o pedido de compra gerado dessas solicitações sai em nome dele. Vazio (e nos bookings antigos): vale o fornecedor do booking.
+- Muda na tela do booking, campo "Responsável pelo booking", em qualquer situação menos cancelado; as solicitações já abertas ficam com quem as recebeu. Auditoria: `booking_lot.partner`.
+- Quem é: a Wellmix com a tela Booking (`setBookingLotPartner`); o parceiro tem de ser de um dos tipos acima (`booking_partner_invalid`).
+
 ### NCM do item (decisão do dono, 11/11/2026)
 
 O NCM é **obrigatório para fechar o booking** e entra na análise do Superplan (II e IPI da tabela fiscal).

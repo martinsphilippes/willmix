@@ -1379,6 +1379,7 @@ alter table public."booking_lots" add column if not exists "statusChangedByUserI
 alter table public."booking_lots" add column if not exists "note" text;
 alter table public."booking_lots" add column if not exists "ownerUserId" text;
 alter table public."booking_lots" add column if not exists "createdByUserId" text;
+alter table public."booking_lots" add column if not exists "partnerId" text;
 create index if not exists "booking_lots_by_status" on public."booking_lots" ("status");
 create index if not exists "booking_lots_by_supplier" on public."booking_lots" ("supplierId");
 create index if not exists "booking_lots_created" on public."booking_lots" ("createdAt");

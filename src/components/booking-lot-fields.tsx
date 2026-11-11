@@ -10,6 +10,7 @@ import {
 import {
   setBookingItemFieldAction,
   setBookingLotDateAction,
+  setBookingLotPartnerAction,
   setBookingLotSupplierAction,
 } from "@/app/app/actions/booking-lots";
 import { setBookingItemNcmAction } from "@/app/app/actions/booking-ncm";
@@ -46,6 +47,36 @@ export function BookingLotSupplierSelect({
       noMatch={noMatch}
       width="w-full max-w-sm"
       data-booking-lot-supplier={lotId}
+    />
+  );
+}
+
+/** Responsável pelo booking: com busca, salva ao escolher. */
+export function BookingLotPartnerSelect({
+  lotId,
+  current,
+  options,
+  labels,
+  placeholder,
+  noMatch,
+}: {
+  lotId: string;
+  current: string;
+  options: { value: string; label: string }[];
+  labels: BookingRowFieldLabels;
+  placeholder: string;
+  noMatch: string;
+}) {
+  return (
+    <SaveCombobox
+      send={(value) => setBookingLotPartnerAction(lotId, value)}
+      current={current}
+      options={options}
+      labels={labels}
+      placeholder={placeholder}
+      noMatch={noMatch}
+      width="w-full max-w-sm"
+      data-booking-lot-partner={lotId}
     />
   );
 }

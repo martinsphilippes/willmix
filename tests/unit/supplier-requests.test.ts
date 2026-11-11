@@ -864,3 +864,63 @@ describe("seleção: rascunhos, filtros e grupo", () => {
     ).rejects.toThrow("supplier_request_lot_not_closed");
   });
 });
+
+describe("responsável pelo booking (para quem vão as solicitações)", () => {
+  it("a solicitação vai ao responsável; sem ele, ao fornecedor; cliente não pode ser", async () => {
+    const store = getStore();
+    const { PARTY_EXTRA_DEFAULTS } = await import("@/lib/db/schema");
+    const trading = await store.create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
+      type: "trading",
+      name: "Trading Ningbo",
+      country: "CN",
+      email: null,
+      phone: null,
+      taxId: null,
+      notes: null,
+      active: true,
+      city: "Ningbo",
+      contactName: null,
+      wechat: null,
+      operationMode: null,
+      radar: null,
+    });
+    const lot = await closedLot("Shenzhen Supplier A", [
+      row("Shenzhen Supplier A", "T-1", "Trading mug one"),
+      row("Shenzhen Supplier A", "T-2", "Trading mug two"),
+    ]);
+    // Cliente não é responsável de booking.
+    await expect(
+      lots.setBookingLotPartner(admin, lot.id, "cliente-joao"),
+    ).rejects.toThrow("booking_partner_invalid");
+    // Só a Wellmix com a tela Booking muda.
+    await expect(
+      lots.setBookingLotPartner(supplierA, lot.id, trading.id),
+    ).rejects.toThrow();
+    await lots.setBookingLotPartner(admin, lot.id, trading.id);
+    expect(
+      lots.bookingRecipientId((await store.get("booking_lots", lot.id))!),
+    ).toBe(trading.id);
+
+    const items = await store.list("booking_items", {
+      filter: { lotId: lot.id },
+    });
+    const open = (code: string) =>
+      svc.openSupplierRequest(admin, {
+        itemId: items.find((i) => i.factoryItemCode === code)!.id,
+        alternativeIds: [],
+        quantity: 100,
+        needs: null,
+        searchQuery: null,
+      });
+    const toTrading = await open("T-1");
+    expect(toTrading.supplierId).toBe(trading.id);
+    // O fornecedor do booking não vê a solicitação do responsável.
+    expect(await svc.getSupplierRequest(supplierA, toTrading.id)).toBeNull();
+
+    // Vazio: volta a valer o fornecedor do booking.
+    await lots.setBookingLotPartner(admin, lot.id, null);
+    const toSupplier = await open("T-2");
+    expect(toSupplier.supplierId).toBe(lot.supplierId);
+  });
+});

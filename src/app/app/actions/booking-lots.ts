@@ -114,6 +114,22 @@ export async function setBookingLotSupplierAction(
   });
 }
 
+/** Responsável pelo booking (para quem vão as solicitações); vazio = o fornecedor. */
+export async function setBookingLotPartnerAction(
+  lotId: string,
+  partnerId: string,
+): Promise<InlineResult> {
+  const id = ID.safeParse(lotId);
+  return inline(id.success ? id.data : null, async (user) => {
+    const input = z
+      .object({ lotId: ID, partnerId: z.union([z.literal(""), ID]) })
+      .parse({ lotId, partnerId });
+    const { setBookingLotPartner } =
+      await import("@/lib/services/booking-lots");
+    await setBookingLotPartner(user, input.lotId, input.partnerId || null);
+  });
+}
+
 export async function setBookingLotDateAction(
   lotId: string,
   day: string,

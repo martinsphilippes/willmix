@@ -8593,6 +8593,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "partnerId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
