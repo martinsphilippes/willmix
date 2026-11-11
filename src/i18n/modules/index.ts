@@ -61,6 +61,7 @@ import * as sla from "./sla";
 import * as slaPanel from "./sla-panel";
 import * as partnerTypes from "./partner-types";
 import * as partnerAccess from "./partner-access";
+import * as commissions from "./commissions";
 import * as approvals from "./approvals";
 import * as purchaseFlow from "./purchase-flow";
 import * as production from "./production";
@@ -164,6 +165,7 @@ export const modulesPt = {
   ...slaPanel.pt,
   ...partnerTypes.pt,
   ...partnerAccess.pt,
+  ...commissions.pt,
   ...approvals.pt,
   ...purchaseFlow.pt,
   ...production.pt,
@@ -286,6 +288,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...slaPanel.en,
   ...partnerTypes.en,
   ...partnerAccess.en,
+  ...commissions.en,
   ...approvals.en,
   ...purchaseFlow.en,
   ...production.en,
@@ -408,6 +411,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...slaPanel.zh,
   ...partnerTypes.zh,
   ...partnerAccess.zh,
+  ...commissions.zh,
   ...approvals.zh,
   ...purchaseFlow.zh,
   ...production.zh,
