@@ -459,3 +459,130 @@ Guarde um ponto de salvamento (guia, seção 7.2) com o nome `antes-<ID>` antes 
 
 ---
 
+## WPE-04 · Inspeção cega e fila de revisão
+
+> **Promessa:** ao final do vídeo você lê a comparação entre o que foi comprado e o que o inspetor encontrou, decide uma divergência (aprovar ou pedir nova medição) e sabe usar a tela Itens para revisão sem deixar o pedido parado.
+
+| Ficha                 |                                                                                                                                                                |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Série e papel         | Wellmix · operador (funções comprador e planner; a tela Revisão também abre para gerente de produto e cadastro)                                                  |
+| Conta de gravação     | `operador@wellmix.com`, tela em pt; um corte curto com `supplier.a@china.com` (zh) na cena 3                                                                      |
+| Duração-alvo          | 4:30                                                                                                                                                           |
+| Ponto da jornada      | Etapa 6 de 9: Inspeção                                                                                                                                         |
+| Telas e rotas         | `/app` (Control Tower), `/app/orders/[id]` (etapa Inspeção e "Resultado da inspeção"), `/app/reviews` (Itens para revisão)                                       |
+| Dados antes de gravar | Ponto `antes-WPE-04`: documento do pedido assinado e arte aprovada (WPE-03); "Inspeção" aberta; o fornecedor ainda não enviou. Para a divergência, ele envia as 3 fotos, peso líquido 0,55 e unidades por caixa master 20, contra 0,4 e 24 da ficha |
+| Depois deste vídeo    | Com Aprovar, a Inspeção conclui e o "Embarque" abre. Com Reprovar, o fornecedor mede de novo (FOR-08) e, dentro da tolerância, a etapa libera sozinha          |
+| Antes · Próximo       | WPE-03 (e FOR-08 na ordem de gravação) · WLO-01 e WPE-05                                                                                                       |
+| Idiomas               | pt (base)                                                                                                                                                      |
+
+### Roteiro
+
+**Cena 1 · 0:00–0:10 · Gancho · `/app`**
+
+- 🎬 Imagem: a Control Tower. O quadrado **Inspeção com problema** mostra 1 e, no bloco "Problemas", **Bloqueados** mostra 1. O cursor toca em "Inspeção com problema" e a lista logo abaixo mostra o pedido.
+- 🎙 Narração: "O fornecedor mediu a jarra e o peso não bate com o que foi comprado. O pedido parou, e agora quem decide é a Wellmix."
+- 🔤 Na tela: `[TÍTULO]` "WPE-04 · Inspeção cega e fila de revisão"; `[ZOOM 150 %]` no quadrado.
+- ✂️ Edição: vinheta de 6,5 s antes; título em 2 s; música baixa para −28 dB ao começar a voz.
+
+**Cena 2 · 0:10–0:22 · Onde estou na jornada · `/app`**
+
+- 🎬 Imagem: a mesma tela; o mapa da jornada aparece sobre ela.
+- 🎙 Narração: "Etapa 6, Inspeção. Antes de a carga sair da China, o inspetor mede e fotografa, e o portal compara com o que foi comprado."
+- 🔤 Na tela: `[MAPA etapa 6]` com "Inspeção" acesa.
+- ✂️ Edição: o mapa sai em 8 s, deslizando para cima.
+
+**Cena 3 · 0:22–0:50 · Inspeção cega · `/app/orders/[id]` (conta do fornecedor, depois do operador)**
+
+- 🎬 Imagem: corte curto para a conta do fornecedor A (tela em zh): o cartão da Inspeção traz a faixa com o aviso de inspeção cega e os campos de peso e medidas, sem nenhum valor esperado. Volta para a conta do operador, no cartão **Inspeção**: o fornecedor enviou "Foto sem embalagem", "Foto com embalagem", "Foto na balança", "Peso medido (kg)" e as medidas opcionais.
+- 🎙 Narração: "A inspeção é cega: o inspetor informa o que encontrou, sem ver o valor esperado. Quem compara é o portal, com a ficha de compra e o Comprado do pedido."
+- 🔤 Na tela: `[PASSO 1/6] Abra o pedido da inspeção`; `[QUEM VÊ]` "O fornecedor nunca vê o valor esperado"; `[SETA]` "O inspetor informa só o que encontrou" no aviso do fornecedor.
+- ✂️ Edição: legenda "Fornecedor" e "Wellmix" no canto em cada corte; mostrar o texto do aviso em pt (o aviso é "Inspeção cega: informe exatamente o que encontrou (peso, medidas, caixa, material, cor)…").
+
+**Cena 4 · 0:50–1:25 · O resultado e as tolerâncias · `/app/orders/[id]`**
+
+- 🎬 Imagem: o cartão **Resultado da inspeção**, com o selo "Divergente: aguardando decisão". A tabela **O que o fornecedor mediu** tem Atributo, Esperado, Encontrado, Tolerância e Situação: Peso líquido (kg) 0,4 · 0.55 · 3 % · Divergente; Peso bruto (kg) 0,5 · 0.5 · 5 % · OK; Unidades por caixa master 24 · 20 · 0 % · Divergente; Unidades por inner box 6 · 6 · 0 % · OK; CBM da caixa (m³) 0,06 · 0.06 · 5 % · OK; Material GLASS · GLASS · OK; Cor · "Sem referência". Embaixo, "Fotos da inspeção".
+- 🎙 Narração: "O resultado mostra esperado, encontrado e a tolerância de cada medida. No padrão, são 3% para o peso líquido, 5% para peso bruto, CBM e dimensões, e nenhuma para unidades por caixa. O administrador ajusta isso em Configurações."
+- 🔤 Na tela: `[PASSO 2/6] Leia o Resultado da inspeção`; `[ZOOM 150 %]` na coluna Tolerância; `[SETA]` "Divergente: fora da tolerância" nas linhas vermelhas; `[SETA]` "Sem referência: a ficha não tem esse valor" em Cor; `[QUEM VÊ]` "Mudar tolerância é só do administrador (Configurações)".
+- ✂️ Edição: manter a tabela 4 s em tela. Corte de 3 s para Configurações na conta do admin, mostrando "Tolerância de peso (%)", "Tolerância de dimensões (%)", "Tolerância de CBM e peso (%)" e "Tolerância de quantidade (%)".
+
+**Cena 5 · 1:25–2:00 · A etapa bloqueada · `/app/orders/[id]`**
+
+- 🎬 Imagem: o topo do pedido mostra "Inspeção · Bloqueada" e a faixa vermelha "Revisão necessária: Divergência comprado × inspecionado: Peso líquido (kg) esperado 0.4, encontrado 0.55; Unidades por caixa master esperado 24, encontrado 20. REVISÃO NECESSÁRIA." No cartão da etapa, o último item é **Revisão da divergência na inspeção (Wellmix)**, com o campo "Observação" e os botões **Aprovar** e **Reprovar**; abaixo, **Liberar etapa**. Na parte de baixo do resultado, "Divergências registradas 2" e o link "Abrir fila de revisão →".
+- 🎙 Narração: "Divergência fora da tolerância bloqueia a etapa e abre um item de revisão para cada medida. Você decide aqui, em Revisão da divergência na inspeção: Aprovar, ou Reprovar para pedir nova medição."
+- 🔤 Na tela: `[PASSO 3/6] Decida a divergência`; `[SETA]` "Etapa bloqueada: aguarda a Wellmix" no selo; `[BOTÃO] "Aprovar"`; `[BOTÃO] "Reprovar"`; `[SETA]` "Cada divergência vira um item na fila" em "Divergências registradas".
+- ✂️ Edição: `[ZOOM 150 %]` na faixa vermelha; 2 s na linha "Revisão da divergência…".
+
+**Cena 6 · 2:00–2:40 · Itens para revisão · menu Pedidos → Revisão → `/app/reviews`**
+
+- 🎬 Imagem: clicar em "Abrir fila de revisão →" (ou no menu **Pedidos → Revisão**). A tela **Itens para revisão**: filtros **Abertos**, **Resolvidos** e **Dispensados**, cada um com a contagem. Dois cartões do Pedido #N: "Inspeção: peso líquido" e "Inspeção: un/caixa master", cada um com Esperado, Encontrado, Responsável ("Operador Wellmix") e Ação necessária ("Revisar com o fornecedor; aprovar a divergência ou pedir nova medição."), o campo "Observação opcional (motivo da decisão)" e os botões **Resolver** e **Dispensar**. O link **Abrir** leva ao pedido.
+- 🎙 Narração: "Todo item que violou uma regra vai para esta fila: inspeção, preço zerado, container cheio demais, certificação que falta. Cada cartão mostra o esperado, o encontrado, quem resolve e o que fazer."
+- 🔤 Na tela: `[PASSO 4/6] Abra Pedidos → Revisão`; `[SETA]` "Esperado × encontrado" nos campos; `[BOTÃO] "Resolver"`; `[BOTÃO] "Dispensar"`; `[ATENÇÃO]` "Resolver e Dispensar só marcam o item na fila: não liberam a etapa bloqueada do pedido."
+- ✂️ Edição: manter o `[ATENÇÃO]` 4 s em tela; não clicar em Resolver nesta cena.
+
+**Cena 7 · 2:40–3:15 · Aprovar libera · `/app/orders/[id]`**
+
+- 🎬 Imagem: de volta ao pedido, escrever no campo "Observação" do item "Revisão da divergência na inspeção (Wellmix)" um motivo (por exemplo, "Peso a mais é da tampa de bambu; aceito.") e clicar em **Aprovar**. O pedido sai de "Bloqueada": a etapa Inspeção vira "Concluída" e o **Embarque** passa a "Em andamento". Em "Decisão da Wellmix", aparece "Divergência aceita", com o nome, a data e o motivo. Na fila, os itens do pedido passam a **Resolvidos**.
+- 🎙 Narração: "Aprovar aceita a divergência: escreva o motivo, clique em Aprovar, e a etapa libera. A decisão fica registrada, com seu nome, a data e o motivo, e os itens da fila passam para Resolvidos."
+- 🔤 Na tela: `[PASSO 5/6] Aprove, com o motivo`; `[BOTÃO] "Aprovar"`; `[SETA]` "Divergência aceita" em "Decisão da Wellmix"; `[SETA]` "Embarque: em andamento".
+- ✂️ Edição: clique com onda; `[CORTE]` para a tabela de etapas; 2 s na linha "Decisão da Wellmix".
+
+**Cena 8 · 3:15–3:55 · Reprovar pede nova medição · `/app/orders/[id]`**
+
+- 🎬 Imagem: em outro pedido bloqueado (cópia do ponto de salvamento), escrever "Meça de novo o peso líquido por peça" e clicar em **Reprovar**. A etapa deixa de estar bloqueada e fica "Em andamento", com o fornecedor como responsável: as medidas e a foto na balança voltam para "Reprovado", com a observação ("Nova medição solicitada pela Wellmix: …"). Corte para o fornecedor: link **Nova medição →**, ele reenvia as medidas dentro da tolerância. Volta ao operador: "Liberada automaticamente: nova medição dentro da tolerância".
+- 🎙 Narração: "Reprovar pede nova medição: as medidas voltam para o fornecedor com a sua observação. Se o novo valor ficar dentro da tolerância, a etapa libera sozinha, sem você precisar aprovar."
+- 🔤 Na tela: `[PASSO 6/6] Ou reprove e peça nova medição`; `[BOTÃO] "Reprovar"`; `[SETA]` "Nova medição solicitada" nas linhas reprovadas; `[SETA]` "Liberada automaticamente" em "Decisão da Wellmix".
+- ✂️ Edição: três cortes de conta com legenda no canto; a observação aparece em pt também na tela do fornecedor.
+
+**Cena 9 · 3:55–4:15 · O botão Liberar etapa · `/app/orders/[id]`**
+
+- 🎬 Imagem: no pedido bloqueado, o botão **Liberar etapa** abaixo dos itens. Mostrar o resultado: o selo volta a "Em andamento", os itens de revisão vão para **Dispensados**, mas o item "Revisão da divergência na inspeção (Wellmix)" continua "Pendente".
+- 🎙 Narração: "O botão Liberar etapa só reabre a etapa e dispensa os itens da fila. O item de revisão continua pendente: para concluir, ainda é preciso Aprovar ou Reprovar."
+- 🔤 Na tela: `[ATENÇÃO]` "Liberar etapa não aprova a divergência."; `[BOTÃO] "Liberar etapa"`.
+- ✂️ Edição: `[ZOOM 150 %]` no item pendente; 3 s em tela.
+
+**Cena 10 · 4:15–4:30 · Depois e resumo**
+
+- 🎬 Imagem: cartão `[DEPOIS]` e fundo vermelho com a lista; no fim, a miniatura do WLO-01.
+- 🎙 Narração: "Resumindo: leia o resultado, decida no pedido e use a fila para ver o que está aberto. Agora a carga pode ir para o embarque."
+- 🔤 Na tela: `[DEPOIS]` "Aprovada a inspeção, o Embarque abre. Frete e container são os próximos assuntos (WLO-01 e WLO-02)."; `[RESUMO]` "1 Leia o Resultado da inspeção · 2 Aprove com motivo ou Reprove · 3 Use Pedidos → Revisão para ver o que está aberto · 4 Resolver na fila não libera a etapa"; chamada "Próximo: WLO-01 · Fretes e tarifário de frete".
+- ✂️ Edição: `[DEPOIS]` 4 s; fade para a vinheta de encerramento (logo Wellmix, 3 s).
+
+### Erros comuns
+
+- **Aviso (do fornecedor):** enquanto a divergência está pendente, ele vê "Divergência detectada; aguardando revisão da Wellmix." sem nenhum valor esperado. → **Correção:** nada a fazer do lado dele; a Wellmix decide.
+- **Aviso:** o resultado mostra "Nenhuma comparação ainda: aguardando as medidas do fornecedor (ou o pedido não tem snapshot)." → **Correção:** espere o envio do peso e das medidas; pedido antigo, sem snapshot, só compara o peso.
+- **Erro:** achar que "Resolver" na fila libera o pedido. O item vai para Resolvidos e a etapa continua "Bloqueada". → **Correção:** decida no pedido, em "Aprovar" ou "Reprovar".
+- **Erro:** usar "Liberar etapa" esperando aprovar. A etapa reabre, mas "Revisão da divergência na inspeção (Wellmix)" continua pendente. → **Correção:** clique em "Aprovar" (ou "Reprovar").
+- **Erro:** item de revisão inexistente. A tela mostra "Item de revisão não encontrado." → **Correção:** recarregue a fila; outro login pode ter decidido o item.
+- **Erro:** dados inválidos no formulário da fila. A tela mostra "Dados inválidos. Verifique os campos." → **Correção:** o campo de observação aceita até 2.000 caracteres.
+
+### Passo a passo em texto
+
+1. Na **Control Tower**, toque no quadrado **Inspeção com problema** e abra o pedido (ou use **Pedidos → Pedidos**).
+2. Em **Resultado da inspeção**, leia a tabela **O que o fornecedor mediu**: esperado, encontrado, tolerância e situação. As tolerâncias são as de Configurações.
+3. No cartão **Inspeção**, no item **Revisão da divergência na inspeção (Wellmix)**, escolha:
+   - **Aprovar**, com a observação: a divergência é aceita ("Divergência aceita"), a etapa conclui e o Embarque abre.
+   - **Reprovar**, com a observação: as medidas voltam ao fornecedor (**Nova medição**); dentro da tolerância, a etapa libera sozinha.
+4. Para ver tudo o que está aberto, abra **Pedidos → Revisão** (**Itens para revisão**). Use os filtros **Abertos**, **Resolvidos** e **Dispensados** e o link **Abrir** de cada cartão.
+5. Em um cartão da fila, **Resolver** e **Dispensar** (com a observação opcional) só registram a decisão do item. Eles não liberam a etapa do pedido.
+6. **Liberar etapa** reabre a etapa bloqueada e dispensa os itens da fila, mas o item de revisão continua pendente até você aprovar ou reprovar.
+
+### Notas de gravação
+
+- Para repetir a divergência, o fornecedor envia as 3 fotos, **Peso medido (kg)** = 0,55 e **Unidades por caixa master encontradas** = 20. O peso é por peça (o peso líquido por peça da ficha é o comparado). As demais medidas opcionais podem ser enviadas com os valores da ficha, para aparecerem como "OK".
+- A cena 8 usa um segundo pedido bloqueado ou o ponto de salvamento do pedido antes do Aprovar. Se for gravar Aprovar e Reprovar no mesmo pedido, grave Reprovar primeiro; depois do Reprovar, o fornecedor reenvia e a etapa libera sozinha.
+- A observação do Reprovar chega ao fornecedor com o prefixo "Nova medição solicitada pela Wellmix:" em português, mesmo na tela dele em zh ou en. Use texto curto.
+- No cartão da fila, o nome da regra de inspeção sai em pt ("Inspeção: peso líquido"). O texto do problema e da ação foi gravado em pt pelo sistema.
+- A faixa "Revisão necessária" lista as divergências no topo; o item de revisão do cartão mostra só a primeira. Não leia a faixa e o item como se fossem a mesma frase.
+- O resultado ("Resultado da inspeção") pode continuar com o selo "Nova medição solicitada" depois que a etapa concluiu, se alguma medida opcional não foi reenviada. Termine a gravação reenviando todas as medidas, ou corte a imagem antes dessa tela.
+
+### Pontos a confirmar
+
+- ⚠ **Resolver e Dispensar na fila não liberam a etapa.** Em `decideReviewAction` e `resolveReviewById`, a decisão só atualiza o item de revisão. A tela da fila não avisa disso. Confirmar com o dono se é o comportamento desejado; se mudar, regravar as cenas 6 e 7.
+- ⚠ "Liberar etapa" (`unblockStage`) dispensa os itens "inspection." com a nota "Etapa liberada manualmente pela Wellmix.", mas não conclui o item `inspection_review`. A cena 9 descreve o que a tela mostrou.
+- ⚠ O nome da tela: o menu diz "Revisão", o título da tela diz "Itens para revisão" e o glossário do guia diz "Fila de revisão". A narração usa "a fila" e "Itens para revisão"; escolher um nome único.
+- ⚠ Valores de tolerância (3 %, 5 %, 0 %) são os padrões de `src/lib/settings.ts`. O dono pode tê-los mudado em Configurações; conferir antes de citar os números na narração.
+- ⚠ Se o inspetor é o próprio fornecedor ou um terceiro: o portal registra "Medido por: Li Wei" (o login do fornecedor). A cena 3 diz "inspetor" no sentido de quem informa as medidas.
+
+---
+
