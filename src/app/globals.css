@@ -94,3 +94,37 @@ body {
     padding: 0;
   }
 }
+
+/*
+ * Abertura do portal (src/lib/intro.ts e src/components/intro-player.tsx).
+ * `pending`: o script inline do <head> cobriu a tela e a animação ainda não
+ * desenhou o primeiro quadro; a cor é a do fundo do mapa. Enquanto a abertura
+ * toca, a página fica um pouco maior; no `done` ela "pousa" no tamanho normal
+ * enquanto o logo termina de atravessar a tela.
+ */
+html[data-wm-intro="pending"]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147482999;
+  background: #171920;
+}
+/* Origem em 40 % da janela (não da página): numa tela longa o movimento do
+   pouso continua o mesmo que numa tela do tamanho da janela. */
+html[data-wm-intro] body {
+  transform: scale(1.035);
+  transform-origin: 50% 40vh;
+}
+html[data-wm-intro="done"] {
+  overflow-x: hidden;
+}
+html[data-wm-intro="done"] body {
+  transform: none;
+  transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-wm-intro] body {
+    transform: none;
+    transition: none;
+  }
+}
