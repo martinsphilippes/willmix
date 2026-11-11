@@ -1058,7 +1058,8 @@
             "replenishment",
             "proposal",
             "sourcing_demand",
-            "superplan"
+            "superplan",
+            "supplier_request"
           ]
         },
         {
@@ -1785,6 +1786,17 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "flow",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "supplier_request"
+          ]
         },
         {
           "key": "fxRate",
@@ -10081,6 +10093,14 @@
           "array": false,
           "default": null,
           "type": "datetime"
+        },
+        {
+          "key": "orderId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -10119,6 +10139,16 @@
           "type": "key",
           "columns": [
             "productId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
           ],
           "orders": [
             "ASC"

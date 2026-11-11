@@ -255,6 +255,7 @@ alter table public."orders" add column if not exists "invoicedByUserId" text;
 alter table public."orders" add column if not exists "sankhyaSyncedAt" timestamptz;
 alter table public."orders" add column if not exists "incoterm" text;
 alter table public."orders" add column if not exists "paymentConditionId" text;
+alter table public."orders" add column if not exists "flow" text;
 alter table public."orders" add column if not exists "fxRate" double precision;
 alter table public."orders" add column if not exists "sankhyaRefs" jsonb;
 create unique index if not exists "orders_number_unique" on public."orders" ("number");
@@ -1600,10 +1601,12 @@ alter table public."supplier_requests" add column if not exists "showcaseRelease
 alter table public."supplier_requests" add column if not exists "erpCheckedAt" timestamptz;
 alter table public."supplier_requests" add column if not exists "negotiation" jsonb;
 alter table public."supplier_requests" add column if not exists "slaNotifiedAt" timestamptz;
+alter table public."supplier_requests" add column if not exists "orderId" text;
 create index if not exists "supplier_requests_by_supplier" on public."supplier_requests" ("supplierId");
 create index if not exists "supplier_requests_by_item" on public."supplier_requests" ("bookingItemId");
 create index if not exists "supplier_requests_by_status" on public."supplier_requests" ("status");
 create index if not exists "supplier_requests_by_product" on public."supplier_requests" ("productId");
+create index if not exists "supplier_requests_by_order" on public."supplier_requests" ("orderId");
 create index if not exists "supplier_requests_created" on public."supplier_requests" ("createdAt");
 
 create table if not exists public."stock_locations" (

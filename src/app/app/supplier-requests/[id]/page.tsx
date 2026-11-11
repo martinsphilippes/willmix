@@ -627,6 +627,26 @@ export default async function SupplierRequestPage({
           ) : null}
         </div>
       </div>
+      {wellmix && r.orderId ? (
+        <div className="mt-4" data-supplier-request-order>
+          <Alert tone="info">
+            <Link href={`/app/orders/${r.orderId}`} className={linkClass}>
+              {t("purchaseOrder.detail.inOrder")}
+            </Link>
+          </Alert>
+        </div>
+      ) : wellmix && r.status === "approved" && r.productId ? (
+        <div className="mt-4" data-supplier-request-order-pending>
+          <Alert tone="info">
+            <Link
+              href="/app/supplier-requests#pedido-de-compra"
+              className={linkClass}
+            >
+              {t("purchaseOrder.detail.generate")}
+            </Link>
+          </Alert>
+        </div>
+      ) : null}
       {productData ? (
         <div className="mt-4" data-request-product>
           <RequestProductCard data={productData} t={t} />

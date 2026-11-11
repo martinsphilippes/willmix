@@ -70,6 +70,13 @@ export const DEFAULT_SETTINGS = {
    * (docs/SUPPLIER_REQUESTS.md, "SLA da negociação").
    */
   supplierRequestSlaMinutes: 30,
+  /* ---- Pedido de compra das solicitações ao fornecedor (docs/PURCHASE_ORDER.md) ---- */
+  /** CNPJ do cliente dos pedidos de compra (a Wellmix SC). */
+  purchaseOrderCustomerTaxId: "09517464000306",
+  /** Dias da agência de arte para enviar a arte de cada produto, desde o pedido. */
+  purchaseArtSlaDays: 5,
+  /** Dias da Wellmix para validar a arte (aprovar ou devolver), desde o envio. */
+  purchaseArtReviewSlaDays: 2,
   /**
    * Prazos das etapas da solicitação, em dias úteis (src/lib/request-stages.ts):
    * abrir a RFQ, os fornecedores responderem, comparar, cada nível da

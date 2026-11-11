@@ -9,7 +9,8 @@ import { xlsxBytes } from "../unit/xlsx-fixture";
  * alternativa; o fornecedor responde no portal sem ver a alternativa, o
  * outro fornecedor não abre a solicitação; a Wellmix devolve com
  * contraproposta e o fornecedor aceita; a Wellmix aprova, cria o produto
- * (fora da vitrine até liberar) e grava o CODPROD do Sankhya.
+ * (fora da vitrine até liberar), grava o CODPROD do Sankhya e gera o pedido
+ * de compra (com as três raias na Preparação).
  */
 
 const PASSWORD = "wellmix123";
@@ -188,7 +189,9 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await page.click("[data-negotiation-respond=accept]");
   await page.waitForURL(/[?&]negotiation=accept/);
   await expect(page.locator("[data-negotiation-event]")).toHaveCount(3);
-  await expect(page.locator("[data-supplier-answer]")).toContainText(/1[.,]3\b/);
+  await expect(page.locator("[data-supplier-answer]")).toContainText(
+    /1[.,]3\b/,
+  );
 
   // 4. A Wellmix aprova e cria o produto (fora da vitrine até liberar).
   await login(page, "admin@wellmix.com");
@@ -227,4 +230,20 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
 
   await login(page, "joao@lojista.com");
   expect((await page.goto(showcaseHref))?.status()).toBe(200);
+
+  // 6. Pedido de compra (docs/PURCHASE_ORDER.md): o produto aprovado vira o
+  // pedido do fornecedor, que já abre as três raias na Preparação.
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/supplier-requests");
+  const requestId = requestUrl.split("/").pop()!;
+  const group = page.locator(
+    `form:has([data-purchase-candidate="${requestId}"])`,
+  );
+  await expect(group).toBeVisible();
+  await group.locator("[data-purchase-submit]").click();
+  await page.waitForURL(/\/app\/orders\/[^/?]+\?purchase=created/);
+  await expect(
+    page.getByText("Preparação, arte e certificação").first(),
+  ).toBeVisible();
+  await expect(page.getByText(/Faca \(die cut\)/).first()).toBeVisible();
 });

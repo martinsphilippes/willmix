@@ -104,6 +104,6 @@ Na solicitação **Aprovada**, a Wellmix que abre Cotações e Produtos vê o bl
    - A busca usa a descrição (parte) ou a referência do fornecedor (`Produto`: CODPROD, DESCRPROD, REFFORN) e um botão "Usar" em cada resultado.
    - O código também pode ser digitado. Ele é gravado em `products.sankhyaCode`, o mesmo campo do vínculo da carga do Sankhya (docs/SANKHYA.md).
    - Com o Sankhya configurado, o código é **conferido** no ERP (inexistente recusa). Sem credencial, ou com o ERP fora do ar, fica gravado como **não conferido**, e a tela diz isso.
-6. **Depois**: o pedido de compra ao fornecedor é outra etapa (ainda não construída).
+6. **Depois**: o pedido de compra ao fornecedor junta os produtos aprovados do mesmo fornecedor (docs/PURCHASE_ORDER.md).
 
 Tudo fica na auditoria: `product.create`, `product.link_booking`, `product.showcase_release` e `product.erp_code`.

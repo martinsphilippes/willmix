@@ -29,6 +29,7 @@ import {
   isOrderSignatureKey,
   ORDER_SIGN_SEND,
   nextStageKey,
+  isPurchaseFlow,
 } from "./stages";
 import {
   compareInspection,
@@ -38,6 +39,13 @@ import { openReview, resolveReviews } from "@/lib/services/reviews";
 import { openAfterSales } from "@/lib/services/after-sales";
 
 import { isMoneyRequirement, parseMoneyValue } from "./money";
+import {
+  approvalSourceOf,
+  baseKeyOf,
+  blockedBy,
+  prerequisitesOf,
+  type LaneItem,
+} from "@/lib/purchase-lanes";
 
 export class WorkflowError extends Error {}
 
@@ -213,12 +221,18 @@ export async function createStagesForOrder(order: Order) {
   const line = order.lineId
     ? await store.get("product_lines", order.lineId)
     : null;
+  // Pedido de compra: as raias são produto a produto, com o checklist da
+  // linha de cada produto (docs/PURCHASE_ORDER.md).
+  const items = isPurchaseFlow(order)
+    ? await purchaseLaneItems(order.id)
+    : undefined;
   const ctx = {
     order,
     line,
     agencyValidationEnabled: settings.agencyValidationEnabled,
     deliveryConfirmationMode: settings.deliveryConfirmationMode,
     inspectionExtendedChecks: settings.inspectionExtendedChecks,
+    items,
   };
 
   let firstStageId: string | null = null;
@@ -272,7 +286,40 @@ export async function createStagesForOrder(order: Order) {
     currentStageId: firstStageId,
     status: "ORDER_CREATED",
   });
+  // Pedido de compra: "Pedido criado" não tem itens e conclui na hora; as
+  // raias abrem em seguida.
+  if (isPurchaseFlow(order) && firstStageId && !existingStages.length)
+    await evaluateStage(null, firstStageId);
   return firstStageId;
+}
+
+/** Produtos do pedido de compra, com o checklist da linha de cada um. */
+async function purchaseLaneItems(orderId: string): Promise<LaneItem[]> {
+  const store = getStore();
+  const items = await store.list("order_items", { filter: { orderId } });
+  const productIds = [
+    ...new Set(items.map((i) => i.productId).filter((x): x is string => !!x)),
+  ];
+  const products = productIds.length
+    ? await store.list("products", { filter: { id: productIds } })
+    : [];
+  const lineIds = [...new Set(products.map((p) => p.lineId))];
+  const lines = lineIds.length
+    ? await store.list("product_lines", { filter: { id: lineIds } })
+    : [];
+  return [...items]
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .map((item) => {
+      const product = products.find((p) => p.id === item.productId);
+      const line = product
+        ? lines.find((l) => l.id === product.lineId)
+        : undefined;
+      return {
+        id: item.id,
+        name: item.name,
+        lineRequirements: line?.requirements ?? null,
+      };
+    });
 }
 
 /* ------------------------------------------------------------------------ */
@@ -329,6 +376,15 @@ export async function submitRequirement(
   // Assinatura do documento do pedido: só pela página do documento.
   if (isOrderSignatureKey(requirement.key) && !input.signature)
     throw new WorkflowError("signature_required");
+  // Pedido de compra: a ordem dentro das raias (validar só a arte enviada;
+  // arte final só com a arte validada e o certificado).
+  if (isPurchaseFlow(order) && prerequisitesOf(requirement.key).length) {
+    const siblings = await store.list("requirements", {
+      filter: { stageId: stage.id },
+    });
+    if (blockedBy(requirement.key, siblings).length)
+      throw new WorkflowError("lane_prerequisite");
+  }
   if (
     stage.status !== "active" &&
     stage.status !== "blocked" &&
@@ -413,6 +469,13 @@ export async function submitRequirement(
     );
   }
 
+  // Pedido de compra: o passo seguinte da raia é avisado (validar a arte,
+  // fazer a arte final com o certificado).
+  if (isPurchaseFlow(order)) {
+    const { afterLaneStep } = await import("@/lib/services/purchase-order");
+    await afterLaneStep(order, requirement.key);
+  }
+
   // Documento enviado para assinatura: a vez é da Wellmix (assina primeiro).
   if (requirement.key === ORDER_SIGN_SEND) {
     await notifyWellmix({
@@ -449,6 +512,19 @@ export async function submitRequirement(
     await compareInspection(user, order, fresh ?? stage);
   }
 
+  // Pedido de compra: a arte reenviada volta para a validação da Wellmix.
+  if (isPurchaseFlow(order) && baseKeyOf(requirement.key) === "art") {
+    const reviewKey = requirement.key.replace(/^art__/, "art_review__");
+    const [review] = await store.list("requirements", {
+      filter: { stageId: stage.id, key: reviewKey },
+      limit: 1,
+    });
+    if (review && review.status !== "pending")
+      await store.update("requirements", review.id, {
+        status: "pending",
+        value: null,
+      });
+  }
   // Aprovação de requisito pai (ex.: arte): quando o arquivo é reenviado, a aprovação volta a pendente.
   if (requirement.key === "art") {
     const approvals = await store.list("requirements", {
@@ -611,7 +687,11 @@ export async function decideRequirement(
   if (requirement.status === "done" && !isWellmix(user))
     throw new WorkflowError("already_decided");
   // Aprovação da arte: só depois de a arte ser enviada (nada a aprovar antes).
-  const sourceKey = requirement.key === "art_approval" ? "art" : null;
+  // Pedido de compra: a validação da arte de cada produto confere a arte dele.
+  const sourceKey =
+    requirement.key === "art_approval"
+      ? "art"
+      : approvalSourceOf(requirement.key);
   const [source] = sourceKey
     ? await store.list("requirements", {
         filter: { stageId: stage.id, key: sourceKey },
@@ -649,6 +729,10 @@ export async function decideRequirement(
       requirement.id,
       `${stage.key}: ${requirement.label}`,
     );
+    if (isPurchaseFlow(order)) {
+      const { afterLaneStep } = await import("@/lib/services/purchase-order");
+      await afterLaneStep(order, requirement.key);
+    }
   } else {
     await store.update("requirements", requirement.id, {
       status: "rejected",
@@ -663,7 +747,7 @@ export async function decideRequirement(
     // O requisito que originou a aprovação volta para quem o refaz: a arte,
     // para quem faz a arte hoje (a agência do pedido ou, sem ela, a Wellmix).
     const redoRoleNow: Role | null =
-      source?.key === "art"
+      source?.key === "art" || (source && baseKeyOf(source.key) === "art")
         ? artRole(order, (await getSettings()).agencyValidationEnabled)
         : (source?.role ?? null);
     if (source)
@@ -988,6 +1072,13 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
   });
   await audit(user, "stage.activate", "stage", stage.id, `${key} iniciada`);
   await emitStageEvent(user, order.id, `stage:${key}:start`);
+
+  // Pedido de compra: as três raias começam juntas, cada uma com o seu aviso.
+  if (key === "PREPARATION" && isPurchaseFlow(order) && required.length > 0) {
+    const { notifyLanesOpen } = await import("@/lib/services/purchase-order");
+    await notifyLanesOpen(order, pendingRequired);
+    return;
+  }
 
   // Preparação com a ficha completa desde a cotação: conclui sem pedir nada ao fornecedor.
   if (key === "PREPARATION" && user && required.length > 0) {

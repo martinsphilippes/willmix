@@ -419,6 +419,8 @@ export const REQUEST_ORIGINS = [
   "proposal",
   "sourcing_demand",
   "superplan",
+  /** Pedido de compra gerado das solicitações ao fornecedor aprovadas (docs/PURCHASE_ORDER.md). */
+  "supplier_request",
 ] as const;
 export type RequestOrigin = (typeof REQUEST_ORIGINS)[number];
 
@@ -997,6 +999,13 @@ export interface Order extends BaseRow {
   incoterm?: string | null;
   /** Condição de pagamento (payment_conditions; CODTIPVENDA no Sankhya). */
   paymentConditionId?: string | null;
+  /**
+   * Fluxo do pedido. "supplier_request": pedido de compra gerado das
+   * solicitações ao fornecedor aprovadas (docs/PURCHASE_ORDER.md), com as
+   * raias do fornecedor, da agência de arte e da certificadora em paralelo e
+   * o contrato assinado pelas duas partes. Vazio: o fluxo de sempre.
+   */
+  flow?: "supplier_request" | null;
   /** Câmbio do pedido (moeda do pedido → R$; TGFCAB.VLRMOEDA). */
   fxRate?: number | null;
   /**
@@ -2607,6 +2616,8 @@ export interface SupplierRequest extends BaseRow {
   negotiation?: SupplierRequestEvent[] | null;
   /** Quando o aviso de SLA estourado foi enviado (uma vez só). */
   slaNotifiedAt?: string | null;
+  /** Pedido de compra em que o produto desta solicitação entrou (docs/PURCHASE_ORDER.md). */
+  orderId?: string | null;
 }
 
 export interface StockReservation extends BaseRow {
@@ -3056,6 +3067,7 @@ export const TABLES: Record<TableName, TableDef> = {
       sankhyaSyncedAt: datetime(),
       incoterm: str(10),
       paymentConditionId: id(false),
+      flow: enumOf(["supplier_request"], false),
       fxRate: float(),
       sankhyaRefs: json(),
     },
@@ -4349,12 +4361,14 @@ export const TABLES: Record<TableName, TableDef> = {
       erpCheckedAt: datetime(),
       negotiation: jsonLarge(),
       slaNotifiedAt: datetime(),
+      orderId: id(false),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
       { key: "by_item", type: "key", columns: ["bookingItemId"] },
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_product", type: "key", columns: ["productId"] },
+      { key: "by_order", type: "key", columns: ["orderId"] },
     ],
   },
   stock_locations: {

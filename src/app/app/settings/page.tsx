@@ -480,6 +480,40 @@ export default async function SettingsPage({
                       data-setting-supplier-request-sla
                     />
                   </Field>
+                  <Field label={t("purchaseOrder.settings.artDays")}>
+                    <Input
+                      name="purchaseArtSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseArtSlaDays}
+                    />
+                  </Field>
+                  <Field label={t("purchaseOrder.settings.reviewDays")}>
+                    <Input
+                      name="purchaseArtReviewSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseArtReviewSlaDays}
+                    />
+                  </Field>
+                  <Field
+                    label={t("purchaseOrder.settings.customer")}
+                    hint={t("purchaseOrder.settings.customerHint")}
+                  >
+                    <Input
+                      name="purchaseOrderCustomerTaxId"
+                      inputMode="numeric"
+                      maxLength={18}
+                      required
+                      defaultValue={s.purchaseOrderCustomerTaxId}
+                    />
+                  </Field>
                 </div>
               </div>
 

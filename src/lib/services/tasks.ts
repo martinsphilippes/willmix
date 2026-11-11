@@ -467,6 +467,21 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       : [],
   );
 
+  // Pedido de compra (docs/PURCHASE_ORDER.md): prazos da arte e da validação
+  // (Configurações) e a ordem dentro das raias.
+  const { isPurchaseFlow } = await import("@/lib/workflow/stages");
+  const lanes = orders.some((o) => isPurchaseFlow(o))
+    ? {
+        ...(await import("@/lib/purchase-lanes")),
+        sla: await (await import("./purchase-order")).purchaseLaneSla(),
+        all: await store.list("requirements", {
+          filter: {
+            orderId: orders.filter((o) => isPurchaseFlow(o)).map((o) => o.id),
+          },
+        }),
+      }
+    : null;
+
   // Requisitos pendentes em etapas ativas/bloqueadas.
   for (const stage of stages) {
     // Pagamento ao fornecedor não é pendência de etapa (vira parcela abaixo).
@@ -494,9 +509,33 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
               (x) => x.stageId === stage.id && x.key === before,
             ),
         ) &&
-        !(r.key === ORDER_SIGN_SEND && !sealApplied.has(r.orderId)),
+        !(r.key === ORDER_SIGN_SEND && !sealApplied.has(r.orderId)) &&
+        // Raias do pedido de compra: só o que já está liberado.
+        !(
+          lanes &&
+          isPurchaseFlow(order) &&
+          lanes.blockedBy(
+            r.key,
+            lanes.all.filter((x) => x.stageId === stage.id),
+          ).length
+        ),
     );
     if (mine.length === 0) continue;
+    // Prazo das raias: o mais próximo entre a arte e a validação pendentes.
+    const laneDue =
+      lanes && isPurchaseFlow(order)
+        ? (mine
+            .map((r) =>
+              lanes.laneDueAt(
+                r.key,
+                order.createdAt,
+                lanes.all.filter((x) => x.stageId === stage.id),
+                lanes.sla,
+              ),
+            )
+            .filter((d): d is string => !!d)
+            .sort()[0] ?? null)
+        : null;
     // Fornecedor: a assinatura do documento é uma etapa dele à parte dos
     // outros itens da etapa do pedido (ficha, arte, inspeção).
     const sign = supplier
@@ -520,7 +559,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
               step === "sign"
                 ? `/app/orders/${order.id}/purchase-order`
                 : `/app/orders/${order.id}`,
-            dueAt: stage.dueAt,
+            dueAt: laneDue ?? stage.dueAt,
             orderNumber: order.number,
             stageKey: stage.key,
             customerId: order.customerId,
@@ -1004,6 +1043,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     for (const p of await importTasks(user, orders)) {
       const step = IMPORT_STEP_LABEL[p.key] ?? p.key;
       const cert = p.kind === "cert_step" || p.kind === "cert_validate";
+      // Pedido de compra: a certificação é a raia da certificadora (o
+      // certificado de cada produto), não os passos do selo.
+      if (cert && p.order.flow === "supplier_request") continue;
       const validate =
         p.kind === "import_validate" || p.kind === "cert_validate";
       // Selo sem certificadora no pedido: a pendência é da Wellmix, que

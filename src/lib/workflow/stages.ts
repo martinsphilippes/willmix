@@ -6,6 +6,7 @@ import type {
   StageKey,
 } from "@/lib/db/schema";
 import { STAGE_KEYS } from "@/lib/db/schema";
+import { laneRequirements, type LaneItem } from "@/lib/purchase-lanes";
 
 /** Item que conclui o Embarque (os dados do embarque são opcionais). */
 export const SHIPPED_KEY = "shipped";
@@ -50,7 +51,13 @@ export interface StageContext {
   deliveryConfirmationMode: "CUSTOMER" | "WELLMIX" | "BOTH";
   /** Inspeção cega ampliada: medidas, peso bruto, caixa, material e cor (comparados com o snapshot da compra). */
   inspectionExtendedChecks?: boolean;
+  /** Produtos do pedido (pedido de compra: as raias são item a item). */
+  items?: LaneItem[];
 }
+
+/** Pedido de compra das solicitações ao fornecedor (docs/PURCHASE_ORDER.md). */
+export const isPurchaseFlow = (order: Pick<Order, "flow">) =>
+  order.flow === "supplier_request";
 
 /**
  * Medidas extras da inspeção. Opcionais: só entram na comparação quando o
@@ -198,6 +205,28 @@ export function artRole(
 export const ART_APPROVAL_LABEL = "Aprovação da arte pelo fornecedor";
 
 /**
+ * Pedido de compra: a etapa "Arte e embalagem" vira "Contrato e assinaturas".
+ * O contrato (documento do pedido com a arte final) só conclui com os dois
+ * arquivos assinados e carimbados: o da Wellmix e o do fornecedor.
+ */
+export const PURCHASE_CONTRACT_REQUIREMENTS: RequirementTemplate[] = [
+  {
+    key: ORDER_SIGNED_WELLMIX,
+    label: "Contrato assinado e carimbado pela Wellmix (arquivo)",
+    type: "confirm",
+    required: true,
+    role: "operator",
+  },
+  {
+    key: ORDER_SIGNED_SUPPLIER,
+    label: "Contrato assinado e carimbado pelo fornecedor (arquivo)",
+    type: "confirm",
+    required: true,
+    role: "supplier",
+  },
+];
+
+/**
  * Etapas que não seguram o pedido: concluem na hora em que começam (mesmo nos
  * pedidos antigos, que ainda têm itens nelas) e não aparecem no fluxo.
  */
@@ -211,33 +240,46 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     key: "ORDER_CREATED",
     responsibleRole: "operator",
     partyField: null,
-    requirements: () => [
-      {
-        key: ORDER_CONFIRMED,
-        label: "Pedido conferido e liberado ao fornecedor",
-        type: "confirm",
-        required: true,
-        role: "operator",
-      },
-      {
-        key: "erp_number",
-        label: "Número no Sankhya",
-        type: "text",
-        required: false,
-        role: "operator",
-      },
-    ],
+    // Pedido de compra: a Wellmix gerou o pedido; ele já nasce conferido e as
+    // raias começam na hora (a etapa conclui sozinha, sem itens).
+    requirements: ({ order }) =>
+      isPurchaseFlow(order)
+        ? []
+        : [
+            {
+              key: ORDER_CONFIRMED,
+              label: "Pedido conferido e liberado ao fornecedor",
+              type: "confirm",
+              required: true,
+              role: "operator",
+            },
+            {
+              key: "erp_number",
+              label: "Número no Sankhya",
+              type: "text",
+              required: false,
+              role: "operator",
+            },
+          ],
   },
   {
     key: "PREPARATION",
     responsibleRole: "supplier",
     partyField: "supplierId",
-    requirements: ({ line }) => [
-      ...(line?.requirements?.length
-        ? line.requirements
-        : DEFAULT_PREPARATION_REQUIREMENTS),
-      ...PREPARATION_VALIDATIONS,
-    ],
+    // Pedido de compra: as três raias em paralelo, produto a produto
+    // (fornecedor, agência de arte e certificadora; src/lib/purchase-lanes.ts).
+    requirements: ({ order, line, items, agencyValidationEnabled }) =>
+      isPurchaseFlow(order)
+        ? laneRequirements(items ?? [], {
+            art: artRole(order, agencyValidationEnabled),
+            ocp: order.ocpId ? "ocp" : "operator",
+          })
+        : [
+            ...(line?.requirements?.length
+              ? line.requirements
+              : DEFAULT_PREPARATION_REQUIREMENTS),
+            ...PREPARATION_VALIDATIONS,
+          ],
   },
   {
     /*
@@ -262,45 +304,48 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     key: "PACKAGING",
     responsibleRole: "agency",
     partyField: "agencyId",
-    requirements: ({ order, agencyValidationEnabled }) => [
-      {
-        key: "art",
-        label: "Arte da embalagem",
-        type: "file",
-        required: true,
-        role: artRole(order, agencyValidationEnabled),
-      },
-      {
-        key: "art_approval",
-        label: ART_APPROVAL_LABEL,
-        type: "approval",
-        required: true,
-        role: "supplier",
-      },
-      // Arte enviada e selo aplicado: quem fez a arte manda o documento do
-      // pedido para as duas assinaturas (a Wellmix também pode mandar).
-      {
-        key: ORDER_SIGN_SEND,
-        label: "Documento do pedido enviado para assinatura",
-        type: "confirm",
-        required: true,
-        role: artRole(order, agencyValidationEnabled),
-      },
-      {
-        key: ORDER_SIGNED_WELLMIX,
-        label: "Documento do pedido assinado pela Wellmix",
-        type: "confirm",
-        required: true,
-        role: "operator",
-      },
-      {
-        key: ORDER_SIGNED_SUPPLIER,
-        label: "Documento do pedido assinado pelo fornecedor",
-        type: "confirm",
-        required: true,
-        role: "supplier",
-      },
-    ],
+    requirements: ({ order, agencyValidationEnabled }) =>
+      isPurchaseFlow(order)
+        ? PURCHASE_CONTRACT_REQUIREMENTS
+        : [
+            {
+              key: "art",
+              label: "Arte da embalagem",
+              type: "file",
+              required: true,
+              role: artRole(order, agencyValidationEnabled),
+            },
+            {
+              key: "art_approval",
+              label: ART_APPROVAL_LABEL,
+              type: "approval",
+              required: true,
+              role: "supplier",
+            },
+            // Arte enviada e selo aplicado: quem fez a arte manda o documento do
+            // pedido para as duas assinaturas (a Wellmix também pode mandar).
+            {
+              key: ORDER_SIGN_SEND,
+              label: "Documento do pedido enviado para assinatura",
+              type: "confirm",
+              required: true,
+              role: artRole(order, agencyValidationEnabled),
+            },
+            {
+              key: ORDER_SIGNED_WELLMIX,
+              label: "Documento do pedido assinado pela Wellmix",
+              type: "confirm",
+              required: true,
+              role: "operator",
+            },
+            {
+              key: ORDER_SIGNED_SUPPLIER,
+              label: "Documento do pedido assinado pelo fornecedor",
+              type: "confirm",
+              required: true,
+              role: "supplier",
+            },
+          ],
   },
   {
     key: "INSPECTION",

@@ -1449,7 +1449,7 @@ async function createOrderFromRequest(
  * Parceiros padrão: quando existe exatamente um parceiro ativo de cada tipo,
  * ele é designado automaticamente. Caso contrário o operador designa no pedido.
  */
-async function assignDefaultPartners(
+export async function assignDefaultPartners(
   order: Order,
   options: { skipAgency?: boolean } = {},
 ) {
