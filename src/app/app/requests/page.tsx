@@ -50,7 +50,6 @@ import { TaskItems } from "@/components/task-list";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { pendingTasksFor } from "@/lib/services/tasks";
 import { customerOrdersInProgress } from "@/lib/services/customer-home";
-import { canOpen } from "@/lib/auth/screens";
 import {
   REQUEST_SITUATIONS,
   downStatus,
@@ -72,6 +71,7 @@ import { PhotoGallery } from "@/components/photo-gallery";
 import { galleryProps } from "@/components/photo-gallery-props";
 import { ColorCards } from "@/components/color-cards";
 import { MoneyLines } from "@/components/customer-account";
+import { canSeeMoney } from "@/lib/auth/function-access";
 
 const BULK_FORM = "requests-bulk-delete";
 
@@ -94,7 +94,7 @@ export default async function RequestsPage({
   // Tudo numa rodada só: lista, parceiros, pendências e pedidos em andamento.
   const wellmix = isWellmix(user);
   // Wellmix: valores só para quem abre Finanças (o mesmo dinheiro de lá).
-  const money = wellmix && canOpen(user, "finance");
+  const money = wellmix && canSeeMoney(user);
   const [allRequests, parties, tasks, inProgress, team, payments] =
     await Promise.all([
       store.list("requests", {

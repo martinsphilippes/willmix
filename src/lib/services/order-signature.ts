@@ -1,4 +1,5 @@
 import "server-only";
+import { can } from "@/lib/auth/function-access";
 
 import { createHash } from "node:crypto";
 import {
@@ -388,7 +389,11 @@ export async function getOrderSignatureView(
     supplierBlocked =
       !!wellmix && !!reqs.supplier && !supplier && !supplierOpen;
     if (isWellmix(user)) {
-      if (!awaitingSend && (await stageActive(reqs.wellmix)))
+      if (
+        !awaitingSend &&
+        can(user, "contract.sign") &&
+        (await stageActive(reqs.wellmix))
+      )
         canSign = "wellmix";
       canRegisterSupplier = supplierOpen && isAdmin(user);
     } else if (supplierOpen && isOrderSupplier(user, order)) {
@@ -516,6 +521,9 @@ export async function signOrderDocument(
   if (onBehalf && !isAdmin(user)) throw new ForbiddenError();
   const side: OrderSignature["side"] =
     isWellmix(user) && !onBehalf ? "wellmix" : "supplier";
+  // Assinatura da Wellmix: só quem tem a permissão "Assinar o contrato".
+  if (side === "wellmix" && !can(user, "contract.sign"))
+    throw new ForbiddenError();
   const reqs = await signatureRequirements(order.id);
   const requirement = side === "wellmix" ? reqs.wellmix : reqs.supplier;
   if (!requirement) throw new OrderSignatureError("signature_not_applicable");

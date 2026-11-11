@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
-import { canOpen } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -36,6 +35,7 @@ import { ChatIcon } from "@/components/chat-open-button";
 import { setCustomersActiveAction } from "../actions/customers";
 import { accountBase, accountLabels } from "./labels";
 import { startConversationAction } from "../actions/messages";
+import { canSeeMoney } from "@/lib/auth/function-access";
 
 /*
  * Clientes e Fornecedores (Cadastros), a mesma tela dos dois lados (`side`): cartões com a conta de todos os listados (contrato,
@@ -78,7 +78,7 @@ export async function PartyAccountList({
   const status: Status = STATUSES.includes(param(sp.status) as Status)
     ? (param(sp.status) as Status)
     : "active";
-  const money = canOpen(user, "finance");
+  const money = canSeeMoney(user);
   const { rows, totals } = await customerAccounts({ q, status }, side);
   const fallback = mainCurrency(totals);
 

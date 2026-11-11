@@ -5,6 +5,7 @@ import { canOpen } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
 import { loadSaleSheet } from "@/lib/services/sale-sheet";
 import type { AccountSide } from "@/lib/services/customer-accounts";
+import { canSeeMoney } from "@/lib/auth/function-access";
 
 /**
  * Linhas do pedido em lista em CSV (venda ao cliente ou compra do
@@ -22,7 +23,7 @@ export async function exportSaleSheet(
   const sheet = await loadSaleSheet(id, orderId, side);
   if (!sheet) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const t = await getT();
-  const money = canOpen(user, "finance");
+  const money = canSeeMoney(user);
   const cell = (v: string | number | null | undefined) => {
     const s = v === null || v === undefined ? "" : String(v);
     return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
