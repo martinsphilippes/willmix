@@ -652,6 +652,7 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 - **Vitrine**: produto que a planilha criou fica fora de tudo o que o cliente vê (vitrine, página do produto, carrinho, nova solicitação, busca por foto, fotos e documentos, kit novo) até ser aprovado no Booking. Produto que já existia entra como Aprovado (continua na vitrine). Só acrescenta restrição; produto sem linha no Booking segue igual.
 - **Superplan**: ganhou o peso líquido ao lado do bruto, o peso bruto estimado (líquido + folga da embalagem, parâmetro novo, 8%) quando a ficha não traz o bruto, a Média do despachante como informação (não entra em conta nenhuma) e "Gravar no Booking". A mesma função monta a simulação na tela e na análise de várias linhas.
 - **Banco**: tabela nova `bookings` (aditiva). Nenhuma coluna nova nas tabelas que já existiam; nenhuma tela, rota, campo ou dado saiu.
+- **Removido (decisão do dono, 11/11/2026, exceção autorizada à evolução aditiva)**: o Booking antigo inteiro saiu (telas `/app/booking/products` e `/app/booking/[id]`, "Mandar para o Booking" na importação, "Gravar no Booking" no Superplan, bloco do Booking na Control Tower, preço desejado e fotos do Booking na cotação, tabela `bookings` no esquema). Vale o Booking por planilha (docs/BOOKING.md, docs/SUPPLIER_REQUESTS.md).
 
 ## Adicionar produto a uma solicitação antes do pedido
 

@@ -1,7 +1,7 @@
 /**
  * Dicionário do módulo "rfq-standby" (RFQ em espera, docs/RFQ_STANDBY.md): a
- * tela Pedidos → RFQ, o cartão "Enviar ao fornecedor" da solicitação e a
- * "análise do Booking" na visão do fornecedor. Mesmas chaves em pt, en e zh.
+ * tela Pedidos → RFQ e o cartão "Enviar ao fornecedor" da solicitação.
+ * Mesmas chaves em pt, en e zh.
  */
 export const pt = {
   "nav.rfq": "RFQ (em espera)",
@@ -12,9 +12,9 @@ export const pt = {
   "rfqStandby.state.on": "Ativa",
   "rfqStandby.now.title": "Como está funcionando agora",
   "rfqStandby.now.off":
-    "A RFQ está em espera. Cada produto do Booking é do fornecedor escolhido ao subir a ficha técnica. Ao gerar a solicitação, o produto vai direto para esse fornecedor analisar (preço, prazo, pedido mínimo e fotos). Não há disputa entre fornecedores: um fornecedor por produto.",
+    "A RFQ está em espera. Cada solicitação vai para um fornecedor só, que analisa o produto (preço, prazo, pedido mínimo e fotos). Não há disputa entre fornecedores: um fornecedor por produto.",
   "rfqStandby.now.on":
-    "A RFQ está ativa. Na solicitação você escolhe vários fornecedores, compara as cotações e decide pela disputa. O produto do Booking não vai sozinho para o fornecedor: a RFQ é aberta na solicitação.",
+    "A RFQ está ativa. Na solicitação você escolhe vários fornecedores, compara as cotações e decide pela disputa.",
   "rfqStandby.kept.title": "O que está guardado (nada foi apagado)",
   "rfqStandby.kept.1":
     "Abrir a RFQ para vários fornecedores de uma vez, na solicitação e no lote.",
@@ -25,7 +25,7 @@ export const pt = {
     "Tudo o que já foi cotado antes continua nas solicitações, com o histórico.",
   "rfqStandby.switch.title": "Ligar ou deixar em espera",
   "rfqStandby.switch.hintOff":
-    "Ao ativar, a tela da solicitação volta a oferecer a RFQ para vários fornecedores e o Booking deixa de enviar o produto sozinho ao fornecedor.",
+    "Ao ativar, a tela da solicitação volta a oferecer a RFQ para vários fornecedores.",
   "rfqStandby.switch.hintOn":
     "Ao colocar em espera, cada produto volta a ir para um fornecedor só. As RFQs já abertas continuam valendo até serem concluídas.",
   "rfqStandby.switch.adminOnly":
@@ -50,7 +50,7 @@ export const pt = {
   "rfqStandby.send.choose": "Escolha o fornecedor",
   "rfqStandby.send.done": "Produto enviado ao fornecedor.",
   "rfqStandby.send.listHint":
-    "Produto que ainda não foi a nenhum fornecedor: escolha o fornecedor e toque em Enviar. O que vem do Booking já vai sozinho.",
+    "Produto que ainda não foi a nenhum fornecedor: escolha o fornecedor e toque em Enviar.",
   "rfqStandby.request.toSend":
     "Este produto ainda não foi enviado a nenhum fornecedor.",
   "rfqStandby.send.submit": "Enviar ao fornecedor",
@@ -62,14 +62,6 @@ export const pt = {
     "A RFQ para vários fornecedores está em espera: escolha um fornecedor só.",
   "reqBatch.error.rfq_standby_sent":
     "Há produto deste lote já enviado a outro fornecedor. A RFQ para vários fornecedores está em espera.",
-  "booking.next.send_supplier":
-    "Próximo passo: enviar ao fornecedor do produto, para ele analisar.",
-  "booking.next.label.send_supplier": "Enviar ao fornecedor",
-  "bookingAnalysis.title": "Análise do Booking: {product}",
-  "bookingAnalysis.hint":
-    "Este produto é do seu Booking com a Wellmix. Analise e responda com preço, prazo, pedido mínimo e fotos. Não há outros fornecedores neste produto.",
-  "bookingAnalysis.badge": "Booking",
-  "bookingAnalysis.task": "Analisar o Booking: {product}",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -81,9 +73,9 @@ export const en: Record<keyof typeof pt, string> = {
   "rfqStandby.state.on": "Active",
   "rfqStandby.now.title": "How it works now",
   "rfqStandby.now.off":
-    "The RFQ is on hold. Each Booking product belongs to the supplier chosen when the product sheet was uploaded. When the request is created, the product goes straight to that supplier to review (price, lead time, minimum order and photos). There is no competition between suppliers: one supplier per product.",
+    "The RFQ is on hold. Each request goes to a single supplier, who reviews the product (price, lead time, minimum order and photos). There is no competition between suppliers: one supplier per product.",
   "rfqStandby.now.on":
-    "The RFQ is active. In the request you choose several suppliers, compare the quotes and decide by the competition. The Booking product does not go to the supplier by itself: the RFQ is opened in the request.",
+    "The RFQ is active. In the request you choose several suppliers, compare the quotes and decide by the competition.",
   "rfqStandby.kept.title": "What is stored (nothing was deleted)",
   "rfqStandby.kept.1":
     "Opening the RFQ to several suppliers at once, in the request and in the batch.",
@@ -94,7 +86,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Everything quoted before stays in the requests, with the history.",
   "rfqStandby.switch.title": "Turn on or keep on hold",
   "rfqStandby.switch.hintOff":
-    "When activated, the request screen offers the RFQ to several suppliers again and the Booking stops sending the product to the supplier by itself.",
+    "When activated, the request screen offers the RFQ to several suppliers again.",
   "rfqStandby.switch.hintOn":
     "When put on hold, each product goes to a single supplier again. RFQs already open remain valid until they are finished.",
   "rfqStandby.switch.adminOnly":
@@ -119,7 +111,7 @@ export const en: Record<keyof typeof pt, string> = {
   "rfqStandby.send.choose": "Choose the supplier",
   "rfqStandby.send.done": "Product sent to the supplier.",
   "rfqStandby.send.listHint":
-    "A product that has not gone to any supplier yet: choose the supplier and tap Send. What comes from the Booking goes by itself.",
+    "A product that has not gone to any supplier yet: choose the supplier and tap Send.",
   "rfqStandby.request.toSend":
     "This product has not been sent to any supplier yet.",
   "rfqStandby.send.submit": "Send to the supplier",
@@ -131,14 +123,6 @@ export const en: Record<keyof typeof pt, string> = {
     "The RFQ to several suppliers is on hold: choose one supplier only.",
   "reqBatch.error.rfq_standby_sent":
     "A product in this batch was already sent to another supplier. The RFQ to several suppliers is on hold.",
-  "booking.next.send_supplier":
-    "Next step: send to the product's supplier, for them to review.",
-  "booking.next.label.send_supplier": "Send to the supplier",
-  "bookingAnalysis.title": "Booking review: {product}",
-  "bookingAnalysis.hint":
-    "This product is from your Booking with Wellmix. Review it and reply with price, lead time, minimum order and photos. There are no other suppliers on this product.",
-  "bookingAnalysis.badge": "Booking",
-  "bookingAnalysis.task": "Review the Booking: {product}",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -150,17 +134,16 @@ export const zh: Record<keyof typeof pt, string> = {
   "rfqStandby.state.on": "启用",
   "rfqStandby.now.title": "目前的运作方式",
   "rfqStandby.now.off":
-    "询价已暂停。Booking 中的每个产品都属于上传产品表时选择的供应商。生成询价单后，产品直接发给该供应商分析（价格、交期、起订量和照片）。供应商之间不竞价：每个产品只有一家供应商。",
+    "询价已暂停。每张询价单只发给一家供应商，由其分析产品（价格、交期、起订量和照片）。供应商之间不竞价：每个产品只有一家供应商。",
   "rfqStandby.now.on":
-    "询价已启用。在询价单中可选择多家供应商、比较报价并通过竞价决定。Booking 的产品不会自动发给供应商：需在询价单中发起询价。",
+    "询价已启用。在询价单中可选择多家供应商、比较报价并通过竞价决定。",
   "rfqStandby.kept.title": "已保存的内容（没有删除任何东西）",
   "rfqStandby.kept.1": "在询价单和批次中一次向多家供应商发起询价。",
   "rfqStandby.kept.2": "发起后再邀请更多供应商。",
   "rfqStandby.kept.3": "报价并排比较及供应商竞价（按价格、交期和评分排名）。",
   "rfqStandby.kept.4": "以前的所有报价仍保留在询价单中，并带有历史记录。",
   "rfqStandby.switch.title": "启用或保持暂停",
-  "rfqStandby.switch.hintOff":
-    "启用后，询价单页面将重新提供向多家供应商询价，Booking 不再自动把产品发给供应商。",
+  "rfqStandby.switch.hintOff": "启用后，询价单页面将重新提供向多家供应商询价。",
   "rfqStandby.switch.hintOn":
     "暂停后，每个产品重新只发给一家供应商。已发起的询价在完成前继续有效。",
   "rfqStandby.switch.adminOnly": "只有管理员可以启用或暂停询价。",
@@ -184,7 +167,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "rfqStandby.send.choose": "请选择供应商",
   "rfqStandby.send.done": "产品已发送给供应商。",
   "rfqStandby.send.listHint":
-    "尚未发送给任何供应商的产品：选择供应商并点击发送。来自 Booking 的产品会自动发送。",
+    "尚未发送给任何供应商的产品：选择供应商并点击发送。",
   "rfqStandby.request.toSend": "此产品尚未发送给任何供应商。",
   "rfqStandby.send.submit": "发送给供应商",
   "pricing.error.rfq_standby_one":
@@ -195,11 +178,4 @@ export const zh: Record<keyof typeof pt, string> = {
     "向多家供应商询价的功能已暂停：请只选择一家供应商。",
   "reqBatch.error.rfq_standby_sent":
     "该批次中有产品已发送给另一家供应商。向多家供应商询价的功能已暂停。",
-  "booking.next.send_supplier": "下一步：发送给该产品的供应商进行分析。",
-  "booking.next.label.send_supplier": "发送给供应商",
-  "bookingAnalysis.title": "Booking 分析：{product}",
-  "bookingAnalysis.hint":
-    "此产品来自您与 Wellmix 的 Booking。请分析并回复价格、交期、起订量和照片。此产品没有其他供应商。",
-  "bookingAnalysis.badge": "Booking",
-  "bookingAnalysis.task": "分析 Booking：{product}",
 };

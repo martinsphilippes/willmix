@@ -4,8 +4,8 @@ import { xlsxBytes } from "./xlsx-fixture";
 
 /*
  * Importar a ficha técnica com o fornecedor escolhido no formulário: cada
- * Booking que sobe fica ligado a esse fornecedor (o principal de cada
- * produto), qualquer que seja o nome escrito na planilha; nenhum fornecedor
+ * produto fica ligado a esse fornecedor (o principal), qualquer que seja o
+ * nome escrito na planilha; nenhum fornecedor
  * novo é cadastrado; fornecedor que não existe ou está inativo é recusado.
  */
 withTempStore();
@@ -13,7 +13,6 @@ withTempStore();
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const svc = await import("@/lib/services/product-sheet-import");
-const { listBookingRows } = await import("@/lib/services/booking");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -71,7 +70,7 @@ const suppliers = () =>
   getStore().list("parties", { filter: { type: "supplier" } });
 
 describe("fornecedor escolhido ao importar a ficha", () => {
-  it("liga todos os produtos e as linhas do Booking ao fornecedor escolhido, sem cadastrar o da planilha", async () => {
+  it("liga todos os produtos ao fornecedor escolhido, sem cadastrar o da planilha", async () => {
     const before = (await suppliers()).length;
     const result = await svc.importProductSheet(
       admin,
@@ -79,13 +78,12 @@ describe("fornecedor escolhido ao importar a ficha", () => {
         ["S-1", "Loja Que Nao Existe", "VASE"],
         ["S-2", "Outra Loja Qualquer", "CUP"],
       ]),
-      { lineId, mode: "booking", supplierId: "fornecedor-a" },
+      { lineId, mode: "products", supplierId: "fornecedor-a" },
     );
     expect(result.summary).toMatchObject({
       created: 2,
       errors: 0,
       suppliersCreated: 0,
-      bookingCreated: 2,
     });
     expect((await suppliers()).length).toBe(before);
     const ids = result.results.map((r) => r.productId!);
@@ -93,13 +91,7 @@ describe("fornecedor escolhido ao importar a ficha", () => {
       expect((await getStore().get("products", id))?.supplierId).toBe(
         "fornecedor-a",
       );
-    // A coluna Fornecedor do Booking vem preenchida sozinha.
-    const rows = (await listBookingRows(admin, {})).rows.filter((r) =>
-      ids.includes(r.productId),
-    );
-    expect(rows).toHaveLength(2);
-    expect(rows.every((r) => r.supplierId === "fornecedor-a")).toBe(true);
-    // O lote guarda o fornecedor (reimportar pelo arquivo guardado o mantém).
+    // O lote guarda o fornecedor.
     const batch = await getStore().get("import_batches", result.batchId);
     expect(batch?.mapping?.__supplierId).toBe("fornecedor-a");
   });
@@ -120,7 +112,7 @@ describe("fornecedor escolhido ao importar a ficha", () => {
       try {
         await svc.importProductSheet(admin, sheet([["S-5", "X", "TRAY"]]), {
           lineId,
-          mode: "booking",
+          mode: "products",
           supplierId,
         });
       } catch (error) {

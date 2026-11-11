@@ -81,13 +81,13 @@ export interface Task {
   customerId?: string | null;
   /** Analista responsável (da solicitação/do pedido): dono no painel de SLA. */
   ownerUserId?: string | null;
-  /** Solicitação de origem (acha a linha do Booking do produto). */
+  /** Solicitação de origem. */
   requestId?: string | null;
   /** Pedido do requisito de etapa. */
   orderId?: string | null;
   /** Desde quando a pendência está com quem a vê (ISO); nulo: não se sabe. */
   sinceAt?: string | null;
-  /** Quando o produto foi carregado no sistema (linha do Booking; senão, a solicitação). */
+  /** Quando o produto foi carregado no sistema (a data da solicitação). */
   loadedAt?: string | null;
   /** Etapa do caminho do fornecedor (só nas pendências do fornecedor). */
   supplierStep?: SupplierStep;
@@ -536,24 +536,11 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     }
   }
 
-  // Fase de solicitação. RFQ em espera (docs/RFQ_STANDBY.md): o que veio do
-  // Booking é "analisar o Booking" para o fornecedor, e a Wellmix "envia ao
-  // fornecedor" em vez de abrir a RFQ.
+  // Fase de solicitação. RFQ em espera (docs/RFQ_STANDBY.md): a Wellmix
+  // "envia ao fornecedor" em vez de abrir a RFQ.
   const { getSettings } = await import("@/lib/settings");
   const flowSettings = await getSettings();
   const rfqOn = flowSettings.rfqEnabled;
-  const fromBooking = new Set(
-    quotes.length
-      ? (
-          await store
-            .list("bookings", {
-              filter: { requestId: quotes.map((q) => q.requestId) },
-            })
-            // Tabela ainda não publicada: nenhum veio do Booking.
-            .catch(() => [])
-        ).map((b) => b.requestId)
-      : [],
-  );
   for (const quote of quotes) {
     const request = quoteRequests.find((r) => r.id === quote.requestId);
     if (!request) continue;
@@ -561,15 +548,11 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       finish(
         {
           kind: "quote",
-          title: fromBooking.has(request.id)
-            ? `Analisar o Booking: ${request.productName}`
-            : `RFQ: ${request.productName}`,
+          title: `RFQ: ${request.productName}`,
           detail: `${request.quantity} ${request.unit}`,
           // Traduzido na tela (o fornecedor costuma usar outro idioma).
           text: {
-            title: fromBooking.has(request.id)
-              ? "supplierTasks.booking.title"
-              : "supplierTasks.rfq.title",
+            title: "supplierTasks.rfq.title",
             detail: "supplierTasks.booking.detail",
             values: {
               product: request.productName,
@@ -1178,7 +1161,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
 
 /**
  * Datas das pendências do fornecedor: quando o produto foi carregado no
- * sistema (a linha do Booking da solicitação; sem ela, a própria solicitação)
+ * sistema (a data da solicitação)
  * e, na arte e na assinatura, desde quando o item está com ele (a arte
  * enviada; o documento assinado pela Wellmix).
  */
@@ -1190,19 +1173,13 @@ async function datesForSupplier(tasks: Task[]): Promise<void> {
     ),
   ];
   if (requestIds.length) {
-    const [bookings, requests] = await Promise.all([
-      store
-        .list("bookings", { filter: { requestId: requestIds } })
-        // Tabela ainda não publicada: vale a data da solicitação.
-        .catch(() => []),
-      store.list("requests", { filter: { id: requestIds } }),
-    ]);
+    const requests = await store.list("requests", {
+      filter: { id: requestIds },
+    });
     for (const task of tasks) {
       if (!task.requestId) continue;
       task.loadedAt =
-        bookings.find((b) => b.requestId === task.requestId)?.createdAt ??
-        requests.find((r) => r.id === task.requestId)?.createdAt ??
-        null;
+        requests.find((r) => r.id === task.requestId)?.createdAt ?? null;
     }
   }
   const waiting = tasks.filter(

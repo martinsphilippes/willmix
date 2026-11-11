@@ -27,7 +27,7 @@ O pedido nascia e a certificadora não tinha o que fazer: o primeiro passo (memo
 O pedido, assim que é gerado, cai no login da certificadora para ela gerar o selo. O selo fica anexado ao pedido e vai sozinho para quem faz a arte da embalagem, que o aplica na arte que já está sendo criada em paralelo. A Wellmix acompanha e confere.
 
 ### 3. Como funciona
-1. **Pedido gerado** (sinal confirmado da solicitação cujo fornecedor ganhou a RFQ; o produto já passou antes pelo Booking e pelo Superplan, ver "Booking e Superplan" abaixo): a certificadora do pedido recebe o aviso "gerar o selo de certificação" e a pendência em Minhas pendências, com o pedido ainda em "Conferência".
+1. **Pedido gerado** (sinal confirmado da solicitação cujo fornecedor ganhou a RFQ; ver "Booking e Superplan" abaixo): a certificadora do pedido recebe o aviso "gerar o selo de certificação" e a pendência em Minhas pendências, com o pedido ainda em "Conferência".
 2. **Certificadora** abre o pedido, vê o cartão Certificação e envia o **arquivo do selo** (o número do selo ou do registro é opcional).
 3. **Quem faz a arte** (a agência do pedido) recebe o aviso e a pendência "aplicar o selo de certificação na arte". Baixa o selo no cartão Certificação (ou no zip "Baixar todas as artes"), aplica na arte e envia a **arte com o selo**.
 4. **Wellmix** recebe a pendência "validar o selo aplicado na arte": confere e valida, ou recusa com o motivo (a pendência volta para quem fez).
@@ -96,22 +96,20 @@ As pendências de certificação aparecem com o tipo "Certificação" e abrem di
 - Cada envio, validação, recusa e reabertura fica na auditoria (`import.step_*`, com o texto "Certificação: ...").
 - O servidor confere quem pode antes de gravar o arquivo; a agência nunca abre memorial, laudo ou registro.
 
-### 11. Booking e Superplan (pendente da tela Booking)
-O **Booking** de que o dono fala é a tela nova **Pedidos → Booking** (`docs/BOOKING.md`, em construção em outro ramo): a fila de produtos antes da solicitação, com a análise do Superplan e a aprovação. Não é o booking do navio (passo do embarque).
+### 11. Booking e Superplan
+O **Booking** de que o dono fala é a tela **Pedidos → Booking** (`docs/BOOKING.md`): as planilhas de fornecedor, com a análise do Superplan nos itens, a Seleção de itens e a solicitação ao fornecedor. Não é o booking do navio (passo do embarque). A fila antiga de produtos (tabela `bookings`) foi removida em 11/11/2026.
 
-Na ordem do fluxo, o selo já fica depois dela: Booking e Superplan → solicitação → RFQ → fornecedor escolhido → sinal → **pedido gerado → selo**. Nada no selo depende do Booking hoje.
-
-**Fica aguardando a tela Booking entrar** (decisão do dono, 10/11/2026): se o selo deve depender de alguma etapa do Booking (por exemplo, só produto aprovado no Booking). Quando ela entrar, o ponto único a ajustar é `notifySealRequested` (aviso) e a marca `seal` dos passos em `IMPORT_STEPS` (pendência e cartão), em `src/lib/services/import-flow.ts`.
+Na ordem do fluxo, o selo fica depois dele: Booking e Superplan → solicitação → fornecedor escolhido → sinal → **pedido gerado → selo**. Nada no selo depende do Booking.
 
 ### 11.1 Decisões do dono (10/11/2026)
 1. **Todo pedido precisa de selo**: feito (regra da seção 4).
 2. **Sem trava na aprovação da arte por enquanto**: travas ficam para depois.
-3. **Booking**: decidido (10/11/2026, com a tela Booking no ar): a certificadora recebe **quando o pedido é criado**, não antes (não na análise do Booking pelo fornecedor). O selo não depende de nenhuma etapa do Booking.
+3. **Booking**: decidido (10/11/2026, com a tela Booking no ar): a certificadora recebe **quando o pedido é criado**, não antes. O selo não depende de nenhuma etapa do Booking.
 4. **Quem confere o selo na arte**: a Wellmix (confirmado).
 5. **A certificadora vê o pedido completo**, fotos e tudo o mais: feito (seção 6).
 
 ### 11.2 Ainda em aberto
-0. Registro das respostas do dono de 10/11/2026 sobre o fluxo com o Booking do fornecedor (docs/RFQ_STANDBY.md): a faca continua sendo pedida ao fornecedor **depois da confirmação** da cotação, como hoje (não na análise do Booking); o selo é enviado pela certificadora, aplicado na arte por quem faz a arte e conferido pela Wellmix (o que já está feito aqui).
+0. Registro das respostas do dono de 10/11/2026 sobre o fluxo com a RFQ em espera (docs/RFQ_STANDBY.md): a faca continua sendo pedida ao fornecedor **depois da confirmação** da cotação, como hoje; o selo é enviado pela certificadora, aplicado na arte por quem faz a arte e conferido pela Wellmix (o que já está feito aqui).
 1. **Preço e cliente para a certificadora**: resolvido (dono, 10/11/2026): ela vê **tudo do pedido** (cliente, fornecedor, FOB, preço dos itens, a ficha inteira com o bloco Preço e o documento do pedido, só para ler; não assina). O dono vai pedir depois o que tirar: campo da ficha sai incluindo o nome em `CERTIFIER_HIDDEN_FIELDS` (`purchase-sheet.ts`); o resto, nas condições `certifier` de `orders/[id]/page.tsx` e em `canViewOrderDocument`. Ficam fora o financeiro da Wellmix (preço de venda, margem, pagamentos), que não é dado do pedido para ela.
 2. **Quem gera e quem anexa o selo** (dono, 10/11/2026): a certificadora gera o selo; a agência anexa o selo ao produto/pedido (a arte com o selo) para o pedido seguir. É o que os passos `cert_seal` e `cert_seal_art` já fazem.
 

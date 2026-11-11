@@ -237,9 +237,7 @@ export async function ControlTower({
   const [data, totals, board] = await Promise.all([
     loadControlTower(),
     wellmix ? loadTowerTotals() : Promise.resolve(null),
-    wellmix && operations
-      ? loadTowerBoard({ finance, booking: canOpen(user, "booking") })
-      : Promise.resolve(null),
+    wellmix && operations ? loadTowerBoard({ finance }) : Promise.resolve(null),
   ]);
   // Quadrado escolhido (os que levam a outra tela não filtram a lista).
   const boardCard =

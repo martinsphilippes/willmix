@@ -5,7 +5,6 @@
  * "Com você desde". Mesmas chaves em pt, en e zh.
  */
 export const pt = {
-  "supplierTasks.booking.title": "Analisar o Booking: {product}",
   "supplierTasks.rfq.title": "RFQ: {product}",
   "supplierTasks.booking.detail": "{qty} {unit}",
   "supplierTasks.intro":
@@ -68,7 +67,6 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
-  "supplierTasks.booking.title": "Review the Booking: {product}",
   "supplierTasks.rfq.title": "RFQ: {product}",
   "supplierTasks.booking.detail": "{qty} {unit}",
   "supplierTasks.intro":
@@ -131,7 +129,6 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
-  "supplierTasks.booking.title": "审核 Booking：{product}",
   "supplierTasks.rfq.title": "RFQ：{product}",
   "supplierTasks.booking.detail": "{qty} {unit}",
   "supplierTasks.intro":

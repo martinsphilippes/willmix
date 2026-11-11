@@ -1,4 +1,3 @@
-import { getStore } from "@/lib/db";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -51,20 +50,6 @@ export default async function QuotesPage({
   const active = TABS.find((s) => s === status) ?? null;
   const all = await quotesForUser(user);
   const shown = active ? all.filter((q) => q.status === active) : all;
-  // Produto que veio do Booking: é a análise do Booking do fornecedor (um
-  // fornecedor só, sem disputa; docs/RFQ_STANDBY.md). Tabela ainda não
-  // publicada: nenhum.
-  const fromBooking = new Set(
-    all.length
-      ? (
-          await getStore()
-            .list("bookings", {
-              filter: { requestId: all.map((q) => q.requestId) },
-            })
-            .catch(() => [])
-        ).map((b) => b.requestId)
-      : [],
-  );
   const count = (s: QuoteStatus) => all.filter((q) => q.status === s).length;
   const chip = (on: boolean) =>
     cx(
@@ -152,14 +137,6 @@ export default async function QuotesPage({
                         >
                           {q.productName}
                         </TextLink>
-                        {fromBooking.has(q.requestId) ? (
-                          <span
-                            className="ml-1.5 rounded bg-sky-50 px-1.5 py-0.5 text-xs font-medium text-sky-800 ring-1 ring-inset ring-sky-200"
-                            data-quote-booking
-                          >
-                            {t("bookingAnalysis.badge")}
-                          </span>
-                        ) : null}
                         {q.requestNumber ? (
                           <span className="block text-xs tabular-nums text-zinc-500">
                             {t("requests.numbered", { n: q.requestNumber })}
