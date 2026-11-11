@@ -1,0 +1,137 @@
+episodio: CLI-01
+titulo: "Explorar a vitrine e montar o carrinho"
+serie: CLI
+papel: cliente
+duracao: "4:30"
+idiomas: [pt]
+capitulos:
+  - id: CLI-01-C1
+    titulo: "Conhecer a vitrine Explorar"
+    inicio: "0:00"
+    fim: "0:52"
+    cenas: [1, 3]
+    resumo: "Explorar é a primeira tela do cliente e mostra o preço estimado, já com frete marítimo e impostos."
+  - id: CLI-01-C2
+    titulo: "Buscar, filtrar e ler o cartão"
+    inicio: "0:52"
+    fim: "2:25"
+    cenas: [4, 6]
+    resumo: "Busque pelo nome, filtre por categoria, escolha a ordem e leia o preço e os selos do cartão."
+  - id: CLI-01-C3
+    titulo: "Escolher a quantidade e montar o carrinho"
+    inicio: "2:25"
+    fim: "3:35"
+    cenas: [7, 8]
+    resumo: "Na página do produto, informe quantidade e personalização e decida entre o carrinho e o orçamento direto."
+  - id: CLI-01-C4
+    titulo: "Pedir o orçamento de vários produtos"
+    inicio: "3:35"
+    fim: "4:30"
+    cenas: [9, 11]
+    resumo: "Informe o prazo desejado e as observações e clique em Solicitar orçamento: cada produto vira uma solicitação."
+perguntas:
+  - id: CLI-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: CLI-01-C1
+    cena: 3
+    enunciado: "O que o preço mostrado no cartão de um produto da vitrine representa?"
+    opcoes:
+      a: "O preço de compra do fornecedor, sem frete nem imposto"
+      b: "Um preço estimado por unidade, já com frete marítimo e impostos"
+      c: "O valor total do pedido inteiro"
+      d: "Um preço sem frete, que a Wellmix acrescenta depois"
+    correta: [b]
+    explicacao: "O cartão mostra o preço estimado por unidade (R$ …/un), já com frete marítimo e impostos, pelo câmbio de hoje. O fornecedor e o preço de compra você nunca vê."
+  - id: CLI-01-Q2
+    tipo: multipla
+    nivel: 1
+    capitulo: CLI-01-C2
+    cena: 5
+    enunciado: "Quais destas são opções do grupo **Ordenar por** na vitrine?"
+    opcoes:
+      a: "Mais vendidos"
+      b: "Menor preço"
+      c: "Por fornecedor"
+      d: "Maior preço"
+      e: "Novidades"
+    correta: [b, d, e]
+    explicacao: "Em **Ordenar por** você escolhe Mais relevantes, Menor preço, Maior preço ou Novidades. Não há ordem por fornecedor: o cliente nunca vê o fornecedor."
+  - id: CLI-01-Q3
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-01-C2
+    cena: 5
+    enunciado: "João ordena a vitrine por **Menor preço** e o produto com \"Preço sob consulta\" aparece no fim da lista. O que isso quer dizer?"
+    opcoes:
+      a: "É o produto mais caro da vitrine"
+      b: "O produto saiu do catálogo e vai sumir"
+      c: "É normal: nas ordens por preço, produto sem preço fica no fim"
+      d: "Há um erro no cartão, e é preciso avisar a Wellmix"
+    correta: [c]
+    explicacao: "Nas ordens por preço, o produto sem preço vai para o fim. \"Preço sob consulta\" quer dizer que a Wellmix informa o valor na proposta."
+  - id: CLI-01-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: CLI-01-C3
+    cena: 7
+    enunciado: "O pedido mínimo da Piscina inflável é 300 un. João digita 100 em **Quantidade (un)** e sai do campo. O que acontece?"
+    opcoes:
+      a: "O campo mantém 100 e o orçamento é recusado depois"
+      b: "A quantidade volta para o mínimo, 300"
+      c: "A página fecha e o produto sai do carrinho"
+      d: "A Wellmix recebe um aviso de quantidade baixa"
+    correta: [b]
+    explicacao: "A tela avisa \"Pedido mínimo: 300 un. Ao sair do campo, volta ao mínimo.\" O campo não aceita menos que o mínimo."
+  - id: CLI-01-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: CLI-01-C3
+    cena: 8
+    enunciado: "Coloque na ordem os passos para pedir um produto da vitrine pelo carrinho."
+    opcoes:
+      a: "Abrir o produto e informar a quantidade"
+      b: "Clicar em **Adicionar ao carrinho**"
+      c: "Abrir o **Carrinho** e conferir quantidade e personalização"
+      d: "Clicar em **Solicitar orçamento**"
+    correta: [a, b, c, d]
+    explicacao: "Você escolhe a quantidade na página do produto, adiciona ao carrinho, confere tudo no Carrinho e só então clica em **Solicitar orçamento**."
+  - id: CLI-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-01-C3
+    cena: 8
+    enunciado: "Na página da Piscina, João quer pedir o orçamento só dela, sem passar pelo carrinho. Qual botão usa?"
+    opcoes:
+      a: "**Solicitar orçamento agora**"
+      b: "**Adicionar ao carrinho**"
+      c: "**Atualizar**"
+      d: "**Remover**"
+    correta: [a]
+    explicacao: "**Solicitar orçamento agora** pede só este item. **Adicionar ao carrinho** guarda o produto para pedir junto com outros."
+  - id: CLI-01-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-01-C4
+    cena: 9
+    enunciado: "João preenche \"Quando você precisa?\" com 20/12/2026 esperando que a proposta chegue antes disso. Isso funciona?"
+    opcoes:
+      a: "Sim, a Wellmix adianta a proposta para essa data"
+      b: "Sim, mas só se ele escrever o motivo em Observações"
+      c: "Não, o campo muda o prazo do fornecedor, não o da Wellmix"
+      d: "Não: a data é só um aviso para a Wellmix planejar, e a proposta chega no prazo combinado"
+    correta: [d]
+    explicacao: "A data é só um aviso para a Wellmix planejar; ela não muda o prazo da proposta. Use as observações para outros detalhes, como o endereço de entrega."
+  - id: CLI-01-Q8
+    tipo: unica
+    nivel: 2
+    capitulo: CLI-01-C4
+    cena: 10
+    enunciado: "O carrinho tem a Piscina e a Jarra de vidro. João clica em **Solicitar orçamento**. O que nasce?"
+    opcoes:
+      a: "Uma única solicitação com os dois produtos juntos"
+      b: "Uma solicitação para cada produto, ambas Solicitado e no mesmo lote"
+      c: "Só a solicitação do primeiro produto da lista"
+      d: "Dois pedidos já aprovados"
+    correta: [b]
+    explicacao: "Cada produto vira uma solicitação própria, com a situação Solicitado e o mesmo número de lote. A Wellmix cota com os fornecedores e a proposta chega até a data indicada."

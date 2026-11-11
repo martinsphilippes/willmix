@@ -1,0 +1,129 @@
+episodio: WLO-03
+titulo: "Estoque"
+serie: WLO
+papel: operador
+duracao: "4:45"
+idiomas: [pt]
+capitulos:
+  - id: WLO-03-C1
+    titulo: "Ler o estoque e entender as colunas"
+    inicio: "0:00"
+    fim: "1:30"
+    cenas: [1, 4]
+    resumo: "Abrir Cadastros → Estoque e saber de onde vêm No Brasil, Em trânsito e Em produção."
+  - id: WLO-03-C2
+    titulo: "Dar baixa, definir o limite e reservar"
+    inicio: "1:30"
+    fim: "3:10"
+    cenas: [5, 7]
+    resumo: "Registrar a baixa por venda, definir o estoque mínimo de cada produto e reservar estoque para um cliente."
+  - id: WLO-03-C3
+    titulo: "Contar às cegas e conferir as perdas"
+    inicio: "3:10"
+    fim: "4:45"
+    cenas: [8, 10]
+    resumo: "Participar do inventário às cegas e achar baixas, perdas e produtos parados."
+perguntas:
+  - id: WLO-03-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WLO-03-C1
+    cena: 3
+    enunciado: "Em que menu fica a tela **Estoque**?"
+    opcoes:
+      a: "Pedidos → Containers"
+      b: "Cadastros → Estoque"
+      c: "Gestão → Estoque"
+    correta: [b]
+    explicacao: "O Estoque fica em **Cadastros → Estoque**. É a mercadoria da Wellmix, sem pedido de cliente, produto por produto."
+  - id: WLO-03-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WLO-03-C3
+    cena: 8
+    enunciado: "Quem abre o inventário, aprova a quantidade final de um item e fecha o inventário?"
+    opcoes:
+      a: "O operador que conta"
+      b: "O planner do pedido"
+      c: "O administrador"
+    correta: [c]
+    explicacao: "Abrir inventário, **Aprovar quantidade** e **Fechar inventário** são só do administrador. Quem conta, o operador, não vê a quantidade do sistema."
+  - id: WLO-03-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: WLO-03-C1
+    cena: 4
+    enunciado: "Marque o que conta na coluna **No Brasil**."
+    opcoes:
+      a: "Mercadoria de um container que chegou e não tem pedido de cliente"
+      b: "Compra para estoque já entregue"
+      c: "Carga em container embarcado, ainda no mar"
+      d: "Mercadoria já vendida a um cliente"
+      e: "Compra para estoque ainda na fábrica"
+    correta: [a, b]
+    explicacao: "No Brasil é o que chegou em container sem pedido de cliente, ou compra para estoque entregue. Carga no mar é Em trânsito, e a que ainda está na fábrica é Em produção. Mercadoria vendida e pedido cancelado não contam."
+  - id: WLO-03-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: WLO-03-C2
+    cena: 5
+    enunciado: "Você vendeu 400 un do estoque no balcão. Coloque os passos para registrar a baixa na ordem."
+    opcoes:
+      a: "Escolher o produto e digitar a Quantidade"
+      b: "Clicar em **Dar baixa**"
+      c: "Clicar em **− Baixa por venda**"
+      d: "Escrever a observação (NF, cliente, motivo)"
+    correta: [c, a, d, b]
+    explicacao: "Abra **− Baixa por venda**, escolha o produto e a quantidade (e o pedido do cliente, se houver), escreva a nota na observação e clique em **Dar baixa**. O portal não deixa sair mais do que há no Brasil."
+  - id: WLO-03-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WLO-03-C2
+    cena: 7
+    enunciado: "Na tela de Reservas, o que faz o botão **Usar (dar baixa)** numa reserva ativa?"
+    opcoes:
+      a: "Transforma a reserva em baixa por venda"
+      b: "Devolve a quantidade reservada ao estoque livre"
+      c: "Prorroga a validade da reserva"
+      d: "Cria uma compra para estoque"
+    correta: [a]
+    explicacao: "**Usar (dar baixa)** vira baixa por venda. **Cancelar** é que devolve a quantidade ao livre, e a reserva vencida deixa de segurar sozinha."
+  - id: WLO-03-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WLO-03-C2
+    cena: 6
+    enunciado: "O Jogo de panelas tem 1.600 no Brasil, limite de 1.800 e nada em trânsito. O que a linha mostra e o que você faz?"
+    opcoes:
+      a: "Selo 'Acima do limite'; não faz nada"
+      b: "Selo 'Abaixo · a caminho'; espera a carga chegar"
+      c: "Selo 'Parado há N dias'; faz uma oferta"
+      d: "Selo 'Repor' e **Comprar N**; abre a compra com a quantidade que falta"
+    correta: [d]
+    explicacao: "Abaixo do limite e sem nada a caminho é o selo vermelho **Repor**, com o botão **Comprar N**, que abre a compra para estoque com o produto e a quantidade que falta. 'Abaixo · a caminho' só aparece quando há carga em trânsito."
+  - id: WLO-03-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WLO-03-C3
+    cena: 8
+    enunciado: "No inventário, você conta 1.500 do Jogo de panelas e aparece 'A contagem não confere. Você tem mais 1 chance.' O que faz?"
+    opcoes:
+      a: "Pede ao administrador para aprovar a quantidade já"
+      b: "Conta de novo com atenção e clica em **Gravar contagem**"
+      c: "Corrige o número em **− Baixa por venda**"
+      d: "Fecha o inventário para o administrador resolver"
+    correta: [b]
+    explicacao: "Você tem uma segunda chance: conte de novo e grave. Só se errar outra vez o administrador é avisado e usa **Aprovar quantidade**; a diferença vira perda."
+  - id: WLO-03-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WLO-03-C2
+    cena: 7
+    enunciado: "Ao dar baixa por venda aparece: 'Parte deste estoque está reservada para clientes. Dê baixa pela reserva ou cancele a reserva.' O que você faz?"
+    opcoes:
+      a: "Dá a baixa com uma quantidade menor, ignorando as reservas"
+      b: "Abre um inventário para ajustar o estoque reservado"
+      c: "Vai em Estoque → Reservas e usa **Usar (dar baixa)**, ou cancela a reserva"
+      d: "Cancela o pedido do cliente que fez a reserva"
+    correta: [c]
+    explicacao: "O reservado sai do livre, e a baixa comum não passa dele. Para vender o que está reservado, use **Usar (dar baixa)** na reserva; para liberar, **Cancelar** devolve ao livre."

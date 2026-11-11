@@ -1,0 +1,275 @@
+episodio: FOR-07
+titulo: Assinar o documento do pedido
+serie: FOR
+papel: fornecedor
+duracao: "4:00"
+idiomas: [pt, en, zh]
+capitulos:
+  - id: FOR-07-C1
+    titulo: Esperar a sua vez e conferir o documento
+    titulo_en: Wait for your turn and check the document
+    titulo_zh: 等待轮到您并核对文件
+    inicio: "0:00"
+    fim: "1:25"
+    cenas: [1, 3]
+    resumo: A ordem das assinaturas é fixa (arte, selo, Wellmix, você); quando chegar a sua vez, confira produto, quantidade, preço, MOQ, prazo e pagamento.
+    resumo_en: The signing order is fixed (artwork, seal, Wellmix, you); when your turn comes, check product, quantity, price, MOQ, lead time and payment.
+    resumo_zh: 签署顺序固定（设计稿、认证标志、Wellmix、您）；轮到您时，核对产品、数量、价格、起订量、交期和付款。
+  - id: FOR-07-C2
+    titulo: Assinar no portal
+    titulo_en: Sign in the portal
+    titulo_zh: 在平台上签署
+    inicio: "1:25"
+    fim: "2:25"
+    cenas: [4, 4]
+    resumo: Confira seu nome, marque que leu e concorda e clique em Assinar o documento; é um aceite no portal, não um certificado digital.
+    resumo_en: Check your name, tick that you read and agree, and click Sign the document; it is an acceptance in the portal, not a digital certificate.
+    resumo_zh: 核对姓名，勾选已阅读并同意，点击“签署文件”；这是系统内的确认，不是数字证书。
+  - id: FOR-07-C3
+    titulo: Assinar com o PDF e fechar
+    titulo_en: Sign with the PDF and finish
+    titulo_zh: 用 PDF 签署并完成
+    inicio: "2:25"
+    fim: "4:00"
+    cenas: [5, 6]
+    resumo: Baixe o PDF, assine e carimbe no quadro e envie de volta em PDF ou foto; assinado pelos dois, o pedido está autorizado.
+    resumo_en: Download the PDF, sign and stamp it in the box and send it back as PDF or photo; once both have signed, the order is authorized.
+    resumo_zh: 下载 PDF，在方框内签字盖章，再以 PDF 或照片上传；双方签署后，订单即获授权。
+perguntas:
+  - id: FOR-07-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-07-C1
+    cena: 2
+    enunciado: "Qual é a ordem fixa das assinaturas do documento do pedido?"
+    opcoes:
+      a: "Você, a Wellmix, a arte e o selo"
+      b: "A Wellmix, você, a arte e o selo"
+      c: "Arte, selo, Wellmix e depois você"
+      d: "Selo, arte, você e depois a Wellmix"
+    correta: [c]
+    explicacao: "A agência conclui a arte e aplica o selo; depois a Wellmix assina e só então é a sua vez. Por isso, antes disso a página avisa que ainda não dá para assinar."
+    traducoes:
+      en:
+        enunciado: "What is the fixed order of signatures on the order document?"
+        opcoes:
+          a: "You, Wellmix, the artwork and the seal"
+          b: "Wellmix, you, the artwork and the seal"
+          c: "Artwork, seal, Wellmix and then you"
+          d: "Seal, artwork, you and then Wellmix"
+        explicacao: "The agency finishes the artwork and applies the seal; then Wellmix signs and only then is it your turn. That is why, before that, the page tells you it is not yet possible to sign."
+      zh:
+        enunciado: "订单文件的固定签署顺序是什么？"
+        opcoes:
+          a: "您、Wellmix、设计稿、认证标志"
+          b: "Wellmix、您、设计稿、认证标志"
+          c: "设计稿、认证标志、Wellmix，然后是您"
+          d: "认证标志、设计稿、您，然后是 Wellmix"
+        explicacao: "设计公司先完成设计稿并加上认证标志；然后 Wellmix 签署，之后才轮到您。所以在此之前，页面会提示您还不能签署。"
+  - id: FOR-07-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-07-C2
+    cena: 4
+    enunciado: "Na **Opção 1: assinar aqui no portal**, qual botão grava a sua assinatura?"
+    opcoes:
+      a: "**Assinar o documento**"
+      b: "**Baixar o documento em PDF**"
+      c: "**Validar**"
+      d: "**Enviar o documento assinado (PDF ou foto)**"
+    correta: [a]
+    explicacao: "No portal, você marca o aceite e clica em **Assinar o documento**; aparece \"Assinatura registrada.\" Os botões de PDF e de envio pertencem à Opção 2."
+    traducoes:
+      en:
+        enunciado: "In **Option 1: sign here in the portal**, which button records your signature?"
+        opcoes:
+          a: "**Sign the document**"
+          b: "**Download the document as PDF**"
+          c: "**Validate**"
+          d: "**Send the signed document (PDF or photo)**"
+        explicacao: "In the portal you tick the acceptance and click **Sign the document**; \"Signature registered.\" appears. The PDF and upload buttons belong to Option 2."
+      zh:
+        enunciado: "在“方式一：在平台上直接签署”里，哪个按钮会记录您的签署？"
+        opcoes:
+          a: "“签署文件”"
+          b: "“下载 PDF 文件”"
+          c: "“审核通过”"
+          d: "“上传已签署的文件（PDF 或照片）”"
+        explicacao: "在平台上，您勾选确认后点击“签署文件”，随后会显示“签署已登记。”PDF 和上传按钮属于方式二。"
+  - id: FOR-07-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: FOR-07-C2
+    cena: 4
+    enunciado: "Coloque na ordem os passos para assinar pelo portal (Opção 1)."
+    opcoes:
+      a: "Marcar \"Li o documento acima e concordo…\""
+      b: "Conferir o documento (produto, quantidade, preço, prazo)"
+      c: "Clicar em **Assinar o documento**"
+      d: "Conferir o nome em **Seu nome completo**"
+    correta: [b, d, a, c]
+    explicacao: "Primeiro você confere o documento, depois o seu nome (já vem preenchido), marca o aceite e só então clica em **Assinar o documento**. Sem o aceite, o sistema pede para marcar."
+    traducoes:
+      en:
+        enunciado: "Put in order the steps to sign through the portal (Option 1)."
+        opcoes:
+          a: "Tick \"I have read the document above and agree…\""
+          b: "Check the document (product, quantity, price, lead time)"
+          c: "Click **Sign the document**"
+          d: "Check the name in **Your full name**"
+        explicacao: "First you check the document, then your name (it comes filled in), tick the acceptance and only then click **Sign the document**. Without the acceptance, the system asks you to tick it."
+      zh:
+        enunciado: "请把在平台上签署（方式一）的步骤按顺序排好。"
+        opcoes:
+          a: "勾选“我已阅读上述文件，并同意……”"
+          b: "核对文件（产品、数量、价格、交期）"
+          c: "点击“签署文件”"
+          d: "核对“您的全名”里的姓名"
+        explicacao: "先核对文件，再核对姓名（系统已自动填好），勾选确认，最后才点击“签署文件”。不勾选确认，系统会提示您勾选。"
+  - id: FOR-07-Q4
+    tipo: multipla
+    nivel: 2
+    capitulo: FOR-07-C1
+    cena: 3
+    enunciado: "Antes de assinar, o que você confere no documento do pedido? Marque todas as certas."
+    opcoes:
+      a: "O preço por unidade e o total"
+      b: "O preço de venda ao cliente"
+      c: "O prazo de produção"
+      d: "A margem de lucro da Wellmix"
+      e: "A condição de pagamento"
+    correta: [a, c, e]
+    explicacao: "O documento traz produto, quantidade, preço por unidade, total, pedido mínimo (MOQ), prazo de produção e condição de pagamento. Preço de venda e margem são da Wellmix e você nunca os vê."
+    traducoes:
+      en:
+        enunciado: "Before signing, what do you check in the order document? Mark all that apply."
+        opcoes:
+          a: "The price per unit and the total"
+          b: "The selling price to the customer"
+          c: "The production lead time"
+          d: "Wellmix's profit margin"
+          e: "The payment terms"
+        explicacao: "The document shows product, quantity, price per unit, total, minimum order (MOQ), production lead time and payment terms. Selling price and margin are Wellmix's and you never see them."
+      zh:
+        enunciado: "签署之前，您要在订单文件里核对什么？请选出所有正确项。"
+        opcoes:
+          a: "单价和合计"
+          b: "对客户的售价"
+          c: "生产交期"
+          d: "Wellmix 的利润率"
+          e: "付款条件"
+        explicacao: "文件包含产品、数量、单价、合计、起订量（MOQ）、生产交期和付款条件。售价和利润率属于 Wellmix，您永远看不到。"
+  - id: FOR-07-Q5
+    tipo: vf
+    nivel: 2
+    capitulo: FOR-07-C2
+    cena: 4
+    enunciado: "Verdadeiro ou falso: assinar pelo portal equivale a assinar com certificado digital."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "É um aceite no portal: o sistema grava seu nome, seu login, a data e a versão do documento. Não é um certificado digital."
+    traducoes:
+      en:
+        enunciado: "True or false: signing through the portal is the same as signing with a digital certificate."
+        opcoes:
+          a: "True"
+          b: "False"
+        explicacao: "It is an acceptance in the portal: the system records your name, your login, the date and the document version. It is not a digital certificate."
+      zh:
+        enunciado: "判断题：在平台上签署等同于使用数字证书签署。"
+        opcoes:
+          a: "正确"
+          b: "错误"
+        explicacao: "这是系统内的确认：系统会记录您的姓名、登录账号、日期和文件版本。它不是数字证书。"
+  - id: FOR-07-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-07-C1
+    cena: 2
+    enunciado: "A página do documento mostra \"A Wellmix ainda não assinou. Você assina depois dela.\" Você já conferiu tudo. O que faz?"
+    opcoes:
+      a: "Escreve seu nome e clica em **Assinar o documento** para adiantar"
+      b: "Espera: o quadro **Sua vez de assinar** aparece depois da Wellmix"
+      c: "Pede à Wellmix que assine o documento em seu nome"
+      d: "Avisa a agência para refazer a arte e o selo"
+    correta: [b]
+    explicacao: "A Wellmix assina primeiro; se você tentar antes, o sistema responde \"A Wellmix assina primeiro. Aguarde a assinatura dela.\" Quando chegar a sua vez, aparece o quadro **Sua vez de assinar**."
+    traducoes:
+      en:
+        enunciado: "The document page says \"Wellmix has not signed yet. You sign after them.\" You have already checked everything. What do you do?"
+        opcoes:
+          a: "Write your name and click **Sign the document** to get ahead"
+          b: "Wait: the **Your turn to sign** box appears after Wellmix"
+          c: "Ask Wellmix to sign the document on your behalf"
+          d: "Tell the agency to redo the artwork and the seal"
+        explicacao: "Wellmix signs first; if you try earlier, the system answers \"Wellmix signs first. Wait for their signature.\" When your turn comes, the **Your turn to sign** box appears."
+      zh:
+        enunciado: "文件页面显示“Wellmix 尚未签署。请在其之后签署。”您已核对完毕。您该怎么办？"
+        opcoes:
+          a: "写上姓名并点击“签署文件”，抢先签署"
+          b: "等待：Wellmix 签署后会出现“轮到您签署”框"
+          c: "请 Wellmix 代您签署文件"
+          d: "通知设计公司重做设计稿和认证标志"
+        explicacao: "Wellmix 先签署；如果您提前尝试，系统会回复“Wellmix 先签署，请等待其签署。”轮到您时，会出现“轮到您签署”框。"
+  - id: FOR-07-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-07-C2
+    cena: 4
+    enunciado: "Ao clicar em **Assinar o documento**, aparece \"O pedido mudou enquanto você lia. Confira o documento de novo e assine.\" O que você faz?"
+    opcoes:
+      a: "Confere o documento de novo, na versão atual, e assina"
+      b: "Clica em **Assinar o documento** várias vezes até passar"
+      c: "Baixa o PDF antigo e envia assinado, sem reabrir a página"
+      d: "Cancela o pedido pelas Mensagens"
+    correta: [a]
+    explicacao: "O documento foi alterado enquanto você lia, então a versão que você viu não vale mais. Releia os pontos principais (preço, prazo, pagamento) e assine; a versão fica registrada com a sua assinatura."
+    traducoes:
+      en:
+        enunciado: "When you click **Sign the document**, \"The order changed while you were reading. Check the document again and sign.\" appears. What do you do?"
+        opcoes:
+          a: "Check the document again, in its current version, and sign"
+          b: "Click **Sign the document** several times until it goes through"
+          c: "Download the old PDF and send it signed, without reopening the page"
+          d: "Cancel the order through Messages"
+        explicacao: "The document changed while you were reading, so the version you saw no longer applies. Reread the main points (price, lead time, payment) and sign; the version is recorded with your signature."
+      zh:
+        enunciado: "点击“签署文件”后，出现“订单在您阅读期间发生了变化。请重新核对文件后签署。”您该怎么办？"
+        opcoes:
+          a: "按当前版本重新核对文件，然后签署"
+          b: "多次点击“签署文件”，直到通过为止"
+          c: "下载旧的 PDF 签署后上传，不再重新打开页面"
+          d: "通过“消息”取消订单"
+        explicacao: "文件在您阅读期间已更改，您看到的版本不再有效。请重新核对要点（价格、交期、付款）后签署；版本号会随您的签署一起记录。"
+  - id: FOR-07-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-07-C3
+    cena: 5
+    enunciado: "Você assinou pela Opção 2, mas enviou o arquivo errado. A assinatura já ficou registrada. O que faz?"
+    opcoes:
+      a: "Envia o arquivo certo de novo, sem avisar ninguém"
+      b: "Clica em **Assinar o documento** para substituir o arquivo"
+      c: "Fala com a Wellmix: ela pode devolver o documento para você assinar de novo"
+      d: "Apaga o arquivo e espera o documento voltar sozinho"
+    correta: [c]
+    explicacao: "Ao escolher o arquivo, a assinatura é registrada e o arquivo fica no pedido. Para corrigir, a Wellmix devolve o documento e você assina de novo; se tentar de novo por conta própria, o sistema avisa que este lado já assinou."
+    traducoes:
+      en:
+        enunciado: "You signed through Option 2, but sent the wrong file. The signature is already recorded. What do you do?"
+        opcoes:
+          a: "Send the right file again, without telling anyone"
+          b: "Click **Sign the document** to replace the file"
+          c: "Talk to Wellmix: they can return the document for you to sign again"
+          d: "Delete the file and wait for the document to come back by itself"
+        explicacao: "When you choose the file, the signature is recorded and the file stays on the order. To fix it, Wellmix returns the document and you sign again; if you try again on your own, the system says this side already signed."
+      zh:
+        enunciado: "您用方式二签署，但上传了错误的文件，签署已被记录。您该怎么办？"
+        opcoes:
+          a: "不通知任何人，直接再传正确的文件"
+          b: "点击“签署文件”来替换文件"
+          c: "联系 Wellmix：他们可以退回文件，让您重新签署"
+          d: "删除文件，等文件自己退回"
+        explicacao: "选择文件后，签署即被记录，文件留在订单里。要更正，需由 Wellmix 退回文件，您再重新签署；如果您自己再试，系统会提示该方已签署。"

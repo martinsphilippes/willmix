@@ -1,0 +1,131 @@
+episodio: WCA-02
+titulo: "Dar acesso ao portal: criar o login de um parceiro"
+serie: WCA
+papel: cadastro
+duracao: "5:05"
+idiomas: [pt]
+capitulos:
+  - id: WCA-02-C1
+    titulo: "Cadastrar a empresa nova"
+    inicio: "0:00"
+    fim: "1:40"
+    cenas: [1, 5]
+    resumo: "Entender que o acesso nasce dentro do cadastro da empresa e abrir o Novo fornecedor."
+  - id: WCA-02-C2
+    titulo: "Criar o acesso e copiar a senha"
+    inicio: "1:40"
+    fim: "3:35"
+    cenas: [6, 9]
+    resumo: "Usar o quadro Usuários, conferir login, papel, idioma e senha, copiar e clicar em Criar acesso."
+  - id: WCA-02-C3
+    titulo: "Corrigir erros e ver a pessoa entrar"
+    inicio: "3:35"
+    fim: "5:05"
+    cenas: [10, 13]
+    resumo: "Corrigir os erros de login, ver a pessoa entrar em /login e cadastrar os outros tipos de parceiro."
+perguntas:
+  - id: WCA-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WCA-02-C1
+    cena: 3
+    enunciado: "Em Cadastros → Fornecedores, qual botão abre o cadastro de uma fábrica nova?"
+    opcoes:
+      a: "+ Novo cliente"
+      b: "+ Novo parceiro"
+      c: "+ Criar acesso"
+      d: "+ Novo fornecedor"
+    correta: [d]
+    explicacao: "Em Fornecedores o botão é **+ Novo fornecedor**, e o campo Tipo já vem em Fornecedor. Em Clientes o botão é **+ Novo cliente**; **+ Novo parceiro** é de Outros parceiros."
+  - id: WCA-02-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WCA-02-C2
+    cena: 6
+    enunciado: "Onde você cria o login de uma empresa que ainda não tem acesso ao portal?"
+    opcoes:
+      a: "Em Gestão → Equipe e divisões"
+      b: "Na tela /login, em 'Criar conta'"
+      c: "No quadro Usuários, dentro do cadastro da empresa"
+      d: "Em Configurações"
+    correta: [c]
+    explicacao: "Ninguém entra sozinho: a Wellmix cria o acesso no quadro **Usuários** do cadastro. No Perfil, o selo 'Sem acesso' tem o atalho **Criar acesso →** que leva até lá."
+  - id: WCA-02-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: WCA-02-C2
+    cena: 7
+    enunciado: "Marque o que é verdade sobre o formulário do quadro Usuários."
+    opcoes:
+      a: "O Login pode ser um nome de usuário, sem espaços, e não precisa de e-mail"
+      b: "A Senha já vem sugerida e precisa de pelo menos 8 caracteres"
+      c: "O Papel já vem escolhido pelo tipo do cadastro"
+      d: "O Login precisa ser sempre um e-mail"
+      e: "O Idioma é sempre Português para qualquer país"
+    correta: [a, b, c]
+    explicacao: "Login em letras minúsculas, números, ponto ou hífen basta, e o Papel segue o tipo do cadastro. O Idioma vem em chinês para empresa da China. A Senha tem no mínimo oito caracteres e a sugestão pode ser trocada."
+  - id: WCA-02-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: WCA-02-C2
+    cena: 8
+    enunciado: "Você vai dar acesso a uma fábrica nova e já está no quadro Usuários. Coloque os passos na ordem."
+    opcoes:
+      a: "Mandar à pessoa o endereço do portal, o login e a senha"
+      b: "Clicar em **+ Criar acesso**"
+      c: "Conferir Nome, Login, Papel, Idioma e Senha"
+      d: "Clicar em **Copiar login e senha**"
+    correta: [c, d, b, a]
+    explicacao: "Confira os campos, copie antes de criar, porque a senha não aparece de novo depois, crie o acesso e então mande o texto copiado à pessoa."
+  - id: WCA-02-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WCA-02-C3
+    cena: 12
+    enunciado: "Você vai cadastrar uma agência. Em Cadastros → Outros parceiros, clicou em **+ Novo parceiro**. O que não pode esquecer?"
+    opcoes:
+      a: "Escolher o Tipo: a lista abre em Fornecedor"
+      b: "Escolher o Idioma do parceiro"
+      c: "Preencher o CNPJ / Tax ID"
+      d: "Criar o cliente correspondente antes"
+    correta: [a]
+    explicacao: "Agências, despachantes, companhias marítimas, transportadoras, jurídico, comex, agentes de carga e OCP ficam em Outros parceiros. O campo Tipo abre em Fornecedor: escolha o certo antes de **Salvar**."
+  - id: WCA-02-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-02-C3
+    cena: 10
+    enunciado: "Você digita o login 'maria silva' e clica em **+ Criar acesso**: 'Login inválido. Use de 3 a 40 letras minúsculas, números, ponto ou hífen, sem espaços.' O que faz?"
+    opcoes:
+      a: "Troca o espaço por uma vírgula e cria de novo"
+      b: "Usa um nome de usuário simples, como maria.silva, e cria de novo"
+      c: "Pede ao administrador para liberar logins com espaço"
+      d: "Cria o acesso com o e-mail da empresa, mesmo que seja o de outra pessoa"
+    correta: [b]
+    explicacao: "O login não aceita espaço, acento nem tamanho fora de 3 a 40. Troque por um nome de usuário simples. O formulário volta refeito, então confira de novo o Nome e a Senha."
+  - id: WCA-02-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-02-C2
+    cena: 9
+    enunciado: "Depois de criar o acesso da Yiwu Glass Factory, uma segunda pessoa da mesma empresa também precisa entrar. O que faz?"
+    opcoes:
+      a: "Passa o mesmo login e a mesma senha para a segunda pessoa"
+      b: "Cadastra outro fornecedor com o nome da empresa mais um número"
+      c: "Pede ao administrador para ativar um segundo acesso na equipe da Wellmix"
+      d: "Cria um segundo login no mesmo quadro Usuários, com outro nome e login"
+    correta: [d]
+    explicacao: "Cada cadastro pode ter mais de um login. Depois de criar o primeiro, o formulário já vem com outro login sugerido (como yiwu.glass.factory2) para a segunda pessoa."
+  - id: WCA-02-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-02-C3
+    cena: 11
+    enunciado: "Uma pessoa da Yiwu Glass Factory entra em /login com o login que você criou. O que ela vê no portal?"
+    opcoes:
+      a: "Tudo o que a Wellmix vê, até o preço de venda"
+      b: "Só o que é do cadastro da Yiwu; o fornecedor começa pelas Pendências"
+      c: "Os pedidos de todos os fornecedores da Wellmix"
+      d: "Só a tela de Perfil, sem pedidos nem cotações"
+    correta: [b]
+    explicacao: "O acesso criado dentro do cadastro fica preso à empresa: a pessoa vê só o que é daquele cadastro. O fornecedor começa pelas Pendências e usa Cotações, Pedidos e Conta corrente."

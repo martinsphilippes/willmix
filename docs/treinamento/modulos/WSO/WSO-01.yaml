@@ -1,0 +1,129 @@
+episodio: WSO-01
+titulo: Receber a solicitação do cliente e enviar ao fornecedor
+serie: WSO
+papel: operador
+duracao: "4:00"
+idiomas: [pt]
+capitulos:
+  - id: WSO-01-C1
+    titulo: Achar a solicitação do cliente
+    inicio: "0:00"
+    fim: "1:15"
+    cenas: [1, 4]
+    resumo: O aviso no sino, a pendência "Enviar ao fornecedor" e a lista Pedidos → Solicitações levam à solicitação que acabou de chegar.
+  - id: WSO-01-C2
+    titulo: Conferir o pedido e a situação da RFQ
+    inicio: "1:15"
+    fim: "2:25"
+    cenas: [5, 6]
+    resumo: Confira quantidade, prazo e observação do cliente e entenda por que, com a RFQ em espera, cada produto vai a um fornecedor só.
+  - id: WSO-01-C3
+    titulo: Escolher o fornecedor e enviar
+    inicio: "2:25"
+    fim: "4:00"
+    cenas: [7, 10]
+    resumo: Escolha o fornecedor, clique em **Enviar ao fornecedor** e veja nascer a cotação e o briefing de embalagem.
+perguntas:
+  - id: WSO-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WSO-01-C1
+    cena: 3
+    enunciado: "O cliente acabou de enviar a solicitação da jarra. Onde aparece a sua pendência para mandá-la ao fornecedor?"
+    opcoes:
+      a: "Gestão → Histórico, na linha da solicitação do cliente"
+      b: "Cadastros → Produtos, abrindo o produto que o cliente pediu"
+      c: "Início → Pendências, na linha **Enviar ao fornecedor** (tipo \"Abrir RFQ\")"
+      d: "Pedidos → Embalagens, no briefing da solicitação"
+    correta: [c]
+    explicacao: "O aviso chega no sino e a pendência aparece em Início → Pendências como \"Enviar ao fornecedor: {produto}\", com o botão **Abrir** que leva direto à solicitação."
+  - id: WSO-01-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WSO-01-C1
+    cena: 4
+    enunciado: "Em Pedidos → Solicitações, a solicitação do cliente acabou de chegar e ninguém mexeu nela. Qual Situação aparece na tabela?"
+    opcoes:
+      a: "Solicitado"
+      b: "RFQ aberta"
+      c: "Aguardando sinal"
+      d: "Cotações recebidas"
+    correta: [a]
+    explicacao: "Uma solicitação recém-chegada está em **Solicitado**, e o próximo passo é abrir a cotação com fornecedores. As outras situações vêm depois, conforme o fornecedor responde e o cliente avança."
+  - id: WSO-01-Q3
+    tipo: vf
+    nivel: 2
+    capitulo: WSO-01-C2
+    cena: 5
+    enunciado: "O cliente também vê as \"Etapas da solicitação\" (Solicitação nova, RFQ aberta, Cotações recebidas, e assim por diante) na tela dele."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "Só a Wellmix vê as Etapas da solicitação. O cliente vê a mesma solicitação em Orçamentos, sem fornecedor, cotações nem próximo passo."
+  - id: WSO-01-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: WSO-01-C3
+    cena: 7
+    enunciado: "Ponha em ordem o caminho para enviar a solicitação ao fornecedor, a partir da tela da solicitação."
+    opcoes:
+      a: "Abrir a lista **Escolha o fornecedor** e escolher um"
+      b: "Conferir o briefing em Pedidos → Embalagens"
+      c: "Clicar em **Enviar ao fornecedor** na frase em destaque, que leva a Pedidos → RFQ"
+      d: "Clicar em **Enviar ao fornecedor** na linha do produto"
+    correta: [c, a, d, b]
+    explicacao: "O link da frase leva à tela RFQ; ali você escolhe o fornecedor, clica no botão da linha e só então confere o briefing de embalagem que nasceu junto."
+  - id: WSO-01-Q5
+    tipo: multipla
+    nivel: 2
+    capitulo: WSO-01-C3
+    cena: 9
+    enunciado: "Depois do clique em **Enviar ao fornecedor**, o que passa a valer? Marque todas as certas."
+    opcoes:
+      a: "A solicitação vira **RFQ aberta**"
+      b: "O cliente recebe a proposta com o preço"
+      c: "O fornecedor recebe o aviso \"Cotação pedida\" e a pendência de responder"
+      d: "A coluna **Responderam** mostra 0 / 1"
+      e: "O pedido nasce com as nove etapas"
+    correta: [a, c, d]
+    explicacao: "O envio abre a RFQ para um fornecedor e deixa a cotação esperando resposta (0 de 1). Proposta ao cliente e pedido só vêm bem depois, com a aprovação e o sinal."
+  - id: WSO-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-01-C3
+    cena: 7
+    enunciado: "Você enviou a jarra ao fornecedor A e agora quer mandar o mesmo produto também ao fornecedor B. A tela responde: \"Este produto já foi enviado a outro fornecedor. A RFQ para vários fornecedores está em espera.\" O que você faz?"
+    opcoes:
+      a: "Marca os dois fornecedores na lista e clica de novo"
+      b: "Fala com o administrador, que é quem pode ativar a RFQ para vários fornecedores"
+      c: "Exclui a solicitação e pede ao cliente que envie outra"
+      d: "Espera a cotação do fornecedor A expirar para enviar ao B"
+    correta: [b]
+    explicacao: "Com a RFQ em espera, cada produto vai a um fornecedor só, e quem liga a RFQ é o administrador. Excluir a solicitação ou marcar dois fornecedores não contorna a regra."
+  - id: WSO-01-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-01-C3
+    cena: 8
+    enunciado: "O cliente liga perguntando se pode ver o briefing de embalagem (faca e arte) que nasceu quando você enviou a solicitação. O que você responde?"
+    opcoes:
+      a: "Pode, ele aparece em Orçamentos junto com a solicitação"
+      b: "Pode, mas só depois que ele pagar o sinal"
+      c: "Não, o cliente nunca vê o briefing de embalagem"
+      d: "Pode, se a agência liberar a arte para ele"
+    correta: [c]
+    explicacao: "O briefing de embalagem é interno: a agência trabalha a faca e a arte em paralelo com a cotação, e o cliente nunca o vê. A agência, por sua vez, não vê o nome do cliente."
+  - id: WSO-01-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-01-C3
+    cena: 9
+    enunciado: "Meia hora depois do envio, a solicitação mostra o selo **RFQ aberta** e \"0 de 1 responderam\". O que isso quer dizer e o que você faz?"
+    opcoes:
+      a: "Deu erro no envio; é preciso enviar de novo ao fornecedor"
+      b: "O cliente ainda precisa aprovar a solicitação antes de o fornecedor ver"
+      c: "É preciso escolher outro fornecedor, porque o primeiro não respondeu"
+      d: "Está certo: o fornecedor foi avisado e você será avisado quando a cotação chegar"
+    correta: [d]
+    explicacao: "0 de 1 é o estado normal logo após o envio: o fornecedor recebeu o aviso e a pendência, e a Wellmix é avisada quando ele responde. Não há nada a reenviar."

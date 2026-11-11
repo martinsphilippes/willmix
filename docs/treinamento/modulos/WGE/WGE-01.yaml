@@ -1,0 +1,129 @@
+episodio: WGE-01
+titulo: Control Tower, o painel de comando
+serie: WGE
+papel: administrador
+duracao: "4:30"
+idiomas: [pt]
+capitulos:
+  - id: WGE-01-C1
+    titulo: Ler o alto da Control Tower e os blocos da Operação
+    inicio: "0:00"
+    fim: "1:32"
+    cenas: [1, 5]
+    resumo: Abra Início → Control Tower, confira a faixa Financeiro e leia os blocos de quadrados de cima para baixo.
+  - id: WGE-01-C2
+    titulo: Tocar num quadrado e achar cada pedido
+    inicio: "1:32"
+    fim: "3:05"
+    cenas: [6, 8]
+    resumo: Toque num quadrado para abrir a lista dele, use os atalhos e entenda a diferença entre os blocos.
+  - id: WGE-01-C3
+    titulo: Usar as Visões gerais e entender o que o operador não vê
+    inicio: "3:05"
+    fim: "4:30"
+    cenas: [9, 11]
+    resumo: Abra as Exceções e compare com a tela do operador, que não tem valores nem a faixa Financeiro.
+perguntas:
+  - id: WGE-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-01-C1
+    cena: 3
+    enunciado: "Em qual menu você encontra a Control Tower?"
+    opcoes:
+      a: "Gestão"
+      b: "Pedidos"
+      c: "Início"
+      d: "Cadastros"
+    correta: [c]
+    explicacao: "A Control Tower fica no menu **Início**, junto com Pendências, Painel de SLA, Notificações e Mensagens. É a primeira tela do portal para quem comanda a operação."
+  - id: WGE-01-Q2
+    tipo: multipla
+    nivel: 1
+    capitulo: WGE-01-C1
+    cena: 3
+    enunciado: "Quais destes cartões fazem parte da faixa Financeiro, no alto da Control Tower? Marque todos que estão lá."
+    opcoes:
+      a: "Vendido"
+      b: "Recebido"
+      c: "Comprado (FOB)"
+      d: "Margem"
+      e: "Estoque"
+    correta: [a, b, c]
+    explicacao: "A faixa traz seis cartões: **Vendido**, **Recebido**, **A receber**, **Comprado (FOB)**, **Pago ao fornecedor** e **Saldo a pagar**. Margem e estoque têm outras telas (Financeiro e Painel do dono)."
+  - id: WGE-01-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: WGE-01-C1
+    cena: 4
+    enunciado: "Na Operação, em que ordem os blocos aparecem, de cima para baixo? Deixe de fora o bloco Booking, que vem antes de todos."
+    opcoes:
+      a: "Problemas"
+      b: "Antes de virar pedido"
+      c: "Acontece ao mesmo tempo"
+      d: "Onde o pedido está agora"
+    correta: [b, d, c, a]
+    explicacao: "A leitura segue a vida do pedido: **Antes de virar pedido**, **Onde o pedido está agora**, **Acontece ao mesmo tempo** e, por último, **Problemas**, com o que pede atenção."
+  - id: WGE-01-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-01-C2
+    cena: 6
+    enunciado: "Você toca no quadrado **Conferência e Sankhya**. O que acontece?"
+    opcoes:
+      a: "A página volta ao topo e mostra os pedidos numa janela separada"
+      b: "Os pedidos dele aparecem numa tabela logo abaixo do bloco, sem rolar a página"
+      c: "O primeiro pedido da lista abre direto"
+      d: "A tela Pedidos abre, já filtrada pela etapa"
+    correta: [b]
+    explicacao: "A lista abre logo abaixo do bloco, com número, cliente, produto, etapa, responsável e prazo. Toque de novo no quadrado para fechar; clique no número para abrir o pedido."
+  - id: WGE-01-Q5
+    tipo: vf
+    nivel: 2
+    capitulo: WGE-01-C2
+    cena: 8
+    enunciado: "Verdadeiro ou falso: no bloco **Onde o pedido está agora**, o mesmo pedido pode aparecer em vários quadrados ao mesmo tempo."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "Nesse bloco cada pedido ocupa um quadrado só, o da etapa em que está. Quem pode aparecer em vários quadrados é o pedido em **Acontece ao mesmo tempo**, como produção e certificação."
+  - id: WGE-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-01-C2
+    cena: 7
+    enunciado: "Você toca em **Containers abertos** esperando uma lista logo abaixo, mas a tela troca por outra. O que isso significa?"
+    opcoes:
+      a: "É um erro técnico: recarregue a página"
+      b: "Esses quadrados levam à tela onde se age, em vez de abrir uma lista"
+      c: "Não há containers abertos e o quadrado está em zero"
+      d: "Seu login perdeu o acesso à Control Tower"
+    correta: [b]
+    explicacao: "**Containers abertos**, **Itens para revisão** e os quadrados do Booking abrem a própria tela deles, que é onde se age. Um quadrado em zero apenas mostra a lista vazia."
+  - id: WGE-01-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-01-C2
+    cena: 8
+    enunciado: "Você quer ver de uma vez o que pede atenção: pedidos atrasados, bloqueados e com multa aberta. Em qual bloco da Operação procura?"
+    opcoes:
+      a: "Problemas"
+      b: "Onde o pedido está agora"
+      c: "Antes de virar pedido"
+      d: "Acontece ao mesmo tempo"
+    correta: [a]
+    explicacao: "**Problemas** junta o que pede atenção: Atrasados, Bloqueados, Documento rejeitado, Multa aberta e outros. Os demais blocos mostram onde o pedido está, não o que está com problema."
+  - id: WGE-01-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-01-C3
+    cena: 10
+    enunciado: "O Otávio, operador, tenta abrir o Financeiro e volta ao início com um aviso amarelo. Ele acha que o portal está com defeito. O que você responde?"
+    opcoes:
+      a: "É um erro técnico: peça a ele que recarregue a página"
+      b: "Só a diretoria pode liberar essa tela, nem o administrador consegue"
+      c: "É a regra de acesso: você libera a tela em Gestão → Equipe e divisões, se quiser"
+      d: "Ele precisa trocar de navegador"
+    correta: [c]
+    explicacao: "O aviso 'Você não tem acesso a Financeiro...' não é defeito: é a regra de acesso. Quem libera as telas de cada login é o administrador, em Gestão → Equipe e divisões."

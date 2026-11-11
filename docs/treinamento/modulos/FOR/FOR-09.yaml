@@ -1,0 +1,281 @@
+episodio: FOR-09
+titulo: Embarque e documentos
+serie: FOR
+papel: fornecedor
+duracao: "3:30"
+idiomas: [pt, en, zh]
+capitulos:
+  - id: FOR-09-C1
+    titulo: Abrir o cartão Embarque e desembaraço
+    titulo_en: Open the Shipping and customs card
+    titulo_zh: 打开“装运与清关”卡片
+    inicio: "0:00"
+    fim: "0:50"
+    cenas: [1, 2]
+    resumo: O cartão mostra só os cinco passos do embarque que dizem respeito a você; numerário, DI e CE Mercante você nunca vê.
+    resumo_en: The card shows only the five shipping steps that concern you; you never see the cash advance, DI or CE Mercante.
+    resumo_zh: 卡片只显示与您有关的五个装运步骤；您永远看不到预付款、DI 和 CE Mercante。
+  - id: FOR-09-C2
+    titulo: Validar ou recusar a invoice e o packing list
+    titulo_en: Validate or reject the invoice and packing list
+    titulo_zh: 审核或退回发票和装箱单
+    inicio: "0:50"
+    fim: "1:50"
+    cenas: [3, 3]
+    resumo: O comex envia; você abre o arquivo, confere quantidade, preço, caixas e pesos e clica em Validar ou, com o motivo, em Recusar.
+    resumo_en: The comex sends it; you open the file, check quantity, price, cartons and weights and click Validate or, with the reason, Reject.
+    resumo_zh: Comex 上传；您打开文件，核对数量、单价、箱数和重量，然后点击“审核通过”，或写明原因后点击“退回”。
+  - id: FOR-09-C3
+    titulo: Devolver a invoice assinada
+    titulo_en: Send back the signed invoice
+    titulo_zh: 回传已签署的发票
+    inicio: "1:50"
+    fim: "3:30"
+    cenas: [4, 5]
+    resumo: Depois de validar, assine e carimbe, escolha o arquivo e clique em Enviar; se o comex recusar, corrija e envie de novo. Depois do embarque, nada mais depende de você.
+    resumo_en: After validating, sign and stamp, choose the file and click Send; if the comex rejects it, fix it and send again. After shipment, nothing else depends on you.
+    resumo_zh: 审核通过后，签字盖章，选择文件并点击“提交”；如果 Comex 退回，修改后重新提交。装运之后，不再需要您处理。
+perguntas:
+  - id: FOR-09-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-09-C1
+    cena: 2
+    enunciado: "Qual destes passos você vê no cartão **Embarque e desembaraço**?"
+    opcoes:
+      a: "Numerário"
+      b: "DI"
+      c: "**Draft do BL**"
+      d: "CE Mercante"
+    correta: [c]
+    explicacao: "O fornecedor vê só cinco passos: **Booking** (a reserva no navio), **Draft do BL**, **Invoice e packing list**, **Invoice e packing assinados** e **BL (original)**. Numerário, DI e CE Mercante nunca aparecem para você."
+    traducoes:
+      en:
+        enunciado: "Which of these steps do you see in the **Shipping and customs** card?"
+        opcoes:
+          a: "Cash advance"
+          b: "DI"
+          c: "**Draft BL**"
+          d: "CE Mercante"
+        explicacao: "The supplier sees only five steps: **Booking** (the vessel reservation), **Draft BL**, **Invoice and packing list**, **Signed invoice and packing** and **BL (original)**. Cash advance, DI and CE Mercante never appear to you."
+      zh:
+        enunciado: "在“装运与清关”卡片里，您能看到下面哪个步骤？"
+        opcoes:
+          a: "预付款（numerário）"
+          b: "DI"
+          c: "“提单草稿”"
+          d: "CE Mercante"
+        explicacao: "供应商只能看到五个步骤：“订舱”（船上订位）、“提单草稿”、“发票和装箱单”、“已签署的发票和装箱单”和“提单（正本）”。预付款、DI 和 CE Mercante 永远不会向您显示。"
+  - id: FOR-09-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-09-C2
+    cena: 3
+    enunciado: "Na linha **Invoice e packing list**, quem envia o arquivo e quem valida?"
+    opcoes:
+      a: "O comex envia e você valida"
+      b: "Você envia e o comex valida"
+      c: "A companhia marítima envia e a Wellmix valida"
+      d: "Você envia e você mesmo valida"
+    correta: [a]
+    explicacao: "A linha mostra \"Faz: comex · valida: fornecedor\". Quem enviou não valida o próprio passo: por isso o fornecedor valida o que o comex fez, e o comex valida a invoice assinada que você envia."
+    traducoes:
+      en:
+        enunciado: "In the **Invoice and packing list** line, who sends the file and who validates it?"
+        opcoes:
+          a: "The comex sends it and you validate it"
+          b: "You send it and the comex validates it"
+          c: "The shipping line sends it and Wellmix validates it"
+          d: "You send it and you validate it yourself"
+        explicacao: "The line shows \"Done by: comex · validated by: supplier\". The sender cannot validate their own step: so the supplier validates what the comex did, and the comex validates the signed invoice you send."
+      zh:
+        enunciado: "在“发票和装箱单”这一行，谁上传文件，谁来审核？"
+        opcoes:
+          a: "Comex 上传，您审核"
+          b: "您上传，Comex 审核"
+          c: "船公司上传，Wellmix 审核"
+          d: "您上传，也由您自己审核"
+        explicacao: "该行显示“负责：comex · 审核：供应商”。提交人不能审核自己的步骤：所以供应商审核 Comex 做的，Comex 审核您提交的已签署发票。"
+  - id: FOR-09-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: FOR-09-C3
+    cena: 4
+    enunciado: "Coloque na ordem o que você faz com a invoice e o packing list."
+    opcoes:
+      a: "Clicar em **Enviar** na linha **Invoice e packing assinados**"
+      b: "Abrir o **Arquivo** e conferir"
+      c: "Assinar e carimbar o arquivo"
+      d: "Clicar em **Validar** na linha **Invoice e packing list**"
+    correta: [b, d, c, a]
+    explicacao: "Você confere o arquivo e valida; só então a linha da invoice assinada destrava. Aí você assina e carimba, escolhe o arquivo e clica em **Enviar**."
+    traducoes:
+      en:
+        enunciado: "Put in order what you do with the invoice and packing list."
+        opcoes:
+          a: "Click **Send** on the **Signed invoice and packing** line"
+          b: "Open the **File** and check it"
+          c: "Sign and stamp the file"
+          d: "Click **Validate** on the **Invoice and packing list** line"
+        explicacao: "You check the file and validate; only then does the signed invoice line unlock. Then you sign and stamp, choose the file and click **Send**."
+      zh:
+        enunciado: "请把您处理发票和装箱单的步骤按顺序排好。"
+        opcoes:
+          a: "在“已签署的发票和装箱单”这一行点击“提交”"
+          b: "打开“文件”并核对"
+          c: "在文件上签字盖章"
+          d: "在“发票和装箱单”这一行点击“审核通过”"
+        explicacao: "先核对文件并审核通过，“已签署的发票和装箱单”这一行才会开启。然后您签字盖章，选择文件并点击“提交”。"
+  - id: FOR-09-Q4
+    tipo: multipla
+    nivel: 2
+    capitulo: FOR-09-C2
+    cena: 3
+    enunciado: "Ao abrir o arquivo da invoice e do packing list, o que você confere? Marque todas as certas."
+    opcoes:
+      a: "As quantidades"
+      b: "O número do CE Mercante"
+      c: "Os preços"
+      d: "O preço de venda ao cliente"
+      e: "As caixas e os pesos"
+    correta: [a, c, e]
+    explicacao: "Você confere quantidades, preços, caixas e pesos. CE Mercante é do desembaraço e o preço de venda é da Wellmix: nenhum dos dois aparece para você."
+    traducoes:
+      en:
+        enunciado: "When you open the invoice and packing list file, what do you check? Mark all that apply."
+        opcoes:
+          a: "The quantities"
+          b: "The CE Mercante number"
+          c: "The prices"
+          d: "The selling price to the customer"
+          e: "The cartons and weights"
+        explicacao: "You check quantities, prices, cartons and weights. CE Mercante belongs to customs clearance and the selling price is Wellmix's: neither appears to you."
+      zh:
+        enunciado: "打开发票和装箱单文件时，您要核对什么？请选出所有正确项。"
+        opcoes:
+          a: "数量"
+          b: "CE Mercante 编号"
+          c: "单价"
+          d: "对客户的售价"
+          e: "箱数和重量"
+        explicacao: "您要核对数量、单价、箱数和重量。CE Mercante 属于清关，售价属于 Wellmix：这两项都不会向您显示。"
+  - id: FOR-09-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: FOR-09-C3
+    cena: 4
+    enunciado: "A linha **Invoice e packing assinados** mostra \"Depois de: Invoice e packing list\" e você não consegue enviar. O que falta?"
+    opcoes:
+      a: "Esperar o **BL (original)** chegar"
+      b: "Enviar antes o **Draft do BL**"
+      c: "Validar a **Invoice e packing list**"
+      d: "Pedir ao comex que valide a invoice assinada"
+    correta: [c]
+    explicacao: "A linha da invoice assinada só destrava depois de você validar a **Invoice e packing list**. Se tentar enviar fora de ordem, o sistema diz \"Conclua antes o passo anterior.\""
+    traducoes:
+      en:
+        enunciado: "The **Signed invoice and packing** line shows \"After: Invoice and packing list\" and you cannot send. What is missing?"
+        opcoes:
+          a: "Waiting for the **BL (original)** to arrive"
+          b: "Sending the **Draft BL** first"
+          c: "Validating the **Invoice and packing list**"
+          d: "Asking the comex to validate the signed invoice"
+        explicacao: "The signed invoice line only unlocks after you validate the **Invoice and packing list**. If you try to send out of order, the system says \"Finish the previous step first.\""
+      zh:
+        enunciado: "“已签署的发票和装箱单”这一行显示“需先完成：发票和装箱单”，您无法提交。还缺什么？"
+        opcoes:
+          a: "等待“提单（正本）”到达"
+          b: "先提交“提单草稿”"
+          c: "审核通过“发票和装箱单”"
+          d: "请 Comex 审核已签署的发票"
+        explicacao: "只有您审核通过“发票和装箱单”之后，已签署发票这一行才会开启。如果不按顺序提交，系统会提示“请先完成上一步。”"
+  - id: FOR-09-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-09-C2
+    cena: 3
+    enunciado: "Você abriu a invoice e os pesos das caixas estão errados. O que faz?"
+    opcoes:
+      a: "Clica em **Validar** e avisa o erro depois, pelas Mensagens, à Wellmix"
+      b: "Clica em **Recusar** sem escrever nada, porque o erro dos pesos é óbvio"
+      c: "Escreve o erro em **Motivo (obrigatório para recusar)** e clica em **Recusar**"
+      d: "Baixa o arquivo, corrige os pesos por conta própria e usa **Enviar** na linha"
+    correta: [c]
+    explicacao: "Para recusar, o motivo é obrigatório; sem ele aparece \"Escreva o motivo para recusar.\" Ao recusar, quem enviou é avisado e corrige. Validar significaria aceitar a invoice como está."
+    traducoes:
+      en:
+        enunciado: "You opened the invoice and the carton weights are wrong. What do you do?"
+        opcoes:
+          a: "Click **Validate** and report the error later, through Messages, to Wellmix"
+          b: "Click **Reject** without writing anything, because the weight error is obvious"
+          c: "Write the error in **Reason (required to reject)** and click **Reject**"
+          d: "Download the file, fix the weights on your own and use **Send** on the line"
+        explicacao: "To reject, the reason is required; without it \"Write the reason to reject.\" appears. When you reject, the sender is notified and fixes it. Validating would mean accepting the invoice as it is."
+      zh:
+        enunciado: "您打开发票，发现箱子的重量有误。您该怎么办？"
+        opcoes:
+          a: "点击“审核通过”，以后再通过“消息”向 Wellmix 说明错误"
+          b: "什么都不写直接点击“退回”，因为重量错误很明显"
+          c: "在“原因（退回时必填）”里写明错误，然后点击“退回”"
+          d: "下载文件，自己改正重量后在该行点击“提交”"
+        explicacao: "退回时必须填写原因；否则会提示“退回请填写原因。”退回后，提交人会收到通知并进行修改。审核通过则意味着接受发票现状。"
+  - id: FOR-09-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-09-C3
+    cena: 4
+    enunciado: "Você enviou a invoice assinada e o comex recusou, com o motivo em vermelho. O que você faz?"
+    opcoes:
+      a: "Clica em **Validar** na própria linha da invoice assinada para encerrar"
+      b: "Lê o motivo, corrige o arquivo e clica em **Enviar de novo**"
+      c: "Espera a Wellmix apagar o motivo e liberar o passo outra vez"
+      d: "Clica em **Recusar** para o comex ver o seu motivo e responder"
+    correta: [b]
+    explicacao: "Recusado, o motivo aparece em vermelho e o botão vira **Enviar de novo**. Corrija o que ele apontou, assine e carimbe, e envie. Quem enviou não valida o próprio passo."
+    traducoes:
+      en:
+        enunciado: "You sent the signed invoice and the comex rejected it, with the reason in red. What do you do?"
+        opcoes:
+          a: "Click **Validate** on the very line of the signed invoice to close it"
+          b: "Read the reason, fix the file and click **Send again**"
+          c: "Wait for Wellmix to delete the reason and release the step again"
+          d: "Click **Reject** so the comex sees your reason and answers"
+        explicacao: "When rejected, the reason appears in red and the button becomes **Send again**. Fix what was pointed out, sign and stamp, and send. The sender cannot validate their own step."
+      zh:
+        enunciado: "您提交了已签署的发票，Comex 退回了，原因以红字显示。您该怎么办？"
+        opcoes:
+          a: "在已签署发票的同一行点击“审核通过”来结束"
+          b: "读原因，修改文件后点击“重新提交”"
+          c: "等 Wellmix 删除这条原因并重新开放该步骤"
+          d: "点击“退回”，让 Comex 看到您的原因并回复"
+        explicacao: "被退回后，原因以红字显示，按钮变为“重新提交”。按指出的问题修改，签字盖章后再提交。提交人不能审核自己的步骤。"
+  - id: FOR-09-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-09-C3
+    cena: 5
+    enunciado: "A invoice assinada foi validada e a carga embarcou. Você quer saber se o desembaraço e a entrega ao cliente andam. O que faz?"
+    opcoes:
+      a: "Nada que dependa de você; para acompanhar, abre **Pedidos**"
+      b: "Valida os passos de DI e CE Mercante para acelerar a entrega ao cliente"
+      c: "Preenche o numerário no cartão **Embarque e desembaraço**, para adiantar"
+      d: "Reenvia a invoice assinada para o comex confirmar tudo de novo"
+    correta: [a]
+    explicacao: "Depois do embarque, desembaraço, transporte e entrega são da Wellmix e dos parceiros: nada depende de você. Para acompanhar, abra **Pedidos**. DI, CE Mercante e numerário você nem vê."
+    traducoes:
+      en:
+        enunciado: "The signed invoice was validated and the cargo shipped. You want to know if customs clearance and delivery to the customer are moving. What do you do?"
+        opcoes:
+          a: "Nothing depends on you; to follow up, open **Orders**"
+          b: "Validate the DI and CE Mercante steps to speed up delivery to the customer"
+          c: "Fill in the cash advance in the **Shipping and customs** card, to get ahead"
+          d: "Resend the signed invoice for the comex to confirm everything again"
+        explicacao: "After shipment, customs clearance, transport and delivery belong to Wellmix and the partners: nothing depends on you. To follow up, open **Orders**. You do not even see DI, CE Mercante or the cash advance."
+      zh:
+        enunciado: "已签署的发票审核通过，货物也已装运。您想了解清关和交付客户是否在推进。您该怎么做？"
+        opcoes:
+          a: "没有需要您处理的事；要跟进，请打开“订单”"
+          b: "审核 DI 和 CE Mercante 步骤来加快交付客户的进度"
+          c: "在“装运与清关”卡片里填写预付款，以便提前处理"
+          d: "重新提交已签署的发票，让 Comex 把一切再确认一遍"
+        explicacao: "装运之后，清关、运输和交付由 Wellmix 和合作方负责：不再需要您处理。要跟进，请打开“订单”。DI、CE Mercante 和预付款您本来就看不到。"

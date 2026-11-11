@@ -1,0 +1,272 @@
+episodio: FOR-02
+titulo: "Responder à solicitação do Booking"
+serie: FOR
+papel: fornecedor
+duracao: "3:30"
+idiomas: [pt, en, zh]
+capitulos:
+  - id: FOR-02-C1
+    titulo: "Abrir a solicitação e ler o pedido"
+    titulo_en: "Open the request and read the ask"
+    titulo_zh: "打开询单并阅读要求"
+    inicio: "0:00"
+    fim: "1:25"
+    cenas: [1, 4]
+    resumo: "A solicitação chega pelo sino; clique em Resolver e leia o cartão O que a Wellmix pede antes de responder."
+    resumo_en: "The request arrives through the bell; click Resolve and read the card What Wellmix asks before answering."
+    resumo_zh: "询单通过铃铛送达；点击“去处理”，回复前先阅读“Wellmix 的要求”卡片。"
+  - id: FOR-02-C2
+    titulo: "Dizer se faz e informar preço, pedido mínimo e prazo"
+    titulo_en: "Say if you can do it and give price, minimum order and lead time"
+    titulo_zh: "说明能否生产并填写单价、起订量和交期"
+    inicio: "1:25"
+    fim: "2:35"
+    cenas: [5, 6]
+    resumo: "Escolha Sim, faço, preencha o preço por peça (obrigatório) e envie; sem o preço, o sistema avisa."
+    resumo_en: "Choose Yes, I can, fill in the price per piece (required) and send; without the price, the system warns you."
+    resumo_zh: "选择“可以”，填写单价（必填）并发送；没填单价，系统会提示。"
+  - id: FOR-02-C3
+    titulo: "Mudar a resposta e acompanhar a decisão"
+    titulo_en: "Change your answer and follow the decision"
+    titulo_zh: "修改回复并跟进决定"
+    inicio: "2:35"
+    fim: "3:30"
+    cenas: [7, 9]
+    resumo: "A situação vira Respondida; dá para mudar a resposta até a Wellmix decidir, e a decisão chega pelo sino."
+    resumo_en: "The status becomes Answered; you can change the answer until Wellmix decides, and the decision arrives through the bell."
+    resumo_zh: "状态变为“已回复”；在 Wellmix 作出决定之前可以修改回复，决定会通过铃铛通知您。"
+perguntas:
+  - id: FOR-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-02-C1
+    cena: 3
+    enunciado: "Além do aviso no sino, onde fica a lista com todas as solicitações da Wellmix ao seu cadastro?"
+    opcoes:
+      a: "Cotações, com as abas Para responder e Enviadas"
+      b: "Pedidos → Solicitações ao fornecedor"
+      c: "Conta corrente, com os pagamentos dos pedidos"
+    correta: [b]
+    explicacao: "No menu **Pedidos**, em **Solicitações ao fornecedor**, ficam todas as solicitações. O aviso do sino e o botão **Resolver** abrem a mesma solicitação."
+    traducoes:
+      en:
+        enunciado: "Besides the notice in the bell, where is the list of all Wellmix requests to your company?"
+        opcoes:
+          a: "Quotations, with the tabs To answer and Sent"
+          b: "Orders → Supplier requests"
+          c: "Account statement, with the order payments"
+        explicacao: "In the **Orders** menu, under **Supplier requests**, all the requests are listed. The bell notice and the **Resolve** button open the same request."
+      zh:
+        enunciado: "除了铃铛里的通知，Wellmix 发给您公司的所有询单列表在哪里？"
+        opcoes:
+          a: "报价，带有“待回复”和“已提交”标签页"
+          b: "订单 → 供应商询单"
+          c: "往来账，显示订单的付款"
+        explicacao: "在“订单”菜单的“供应商询单”里可以看到所有询单。铃铛通知和“去处理”按钮打开的是同一张询单。"
+  - id: FOR-02-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-02-C2
+    cena: 5
+    enunciado: "Ao escolher **Sim, faço**, qual campo você é obrigado a preencher?"
+    opcoes:
+      a: "Pedido mínimo (peças)"
+      b: "Prazo de produção (dias)"
+      c: "Preço por peça"
+      d: "Observação"
+    correta: [c]
+    explicacao: "O **Preço por peça** é obrigatório para dizer que faz. Pedido mínimo, prazo e observação são opcionais, mas ajudam a Wellmix a decidir."
+    traducoes:
+      en:
+        enunciado: "When you choose **Yes, I can**, which field must you fill in?"
+        opcoes:
+          a: "Minimum order (pieces)"
+          b: "Production lead time (days)"
+          c: "Price per piece"
+          d: "Note"
+        explicacao: "The **Price per piece** is required to say you can do it. Minimum order, lead time and note are optional, but they help Wellmix decide."
+      zh:
+        enunciado: "选择“可以”时，哪个字段是必填的？"
+        opcoes:
+          a: "最小起订量（件）"
+          b: "生产周期（天）"
+          c: "单价"
+          d: "备注"
+        explicacao: "说明能生产时，**单价** 是必填项。最小起订量、生产周期和备注是选填，但有助于 Wellmix 作出决定。"
+  - id: FOR-02-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: FOR-02-C2
+    cena: 5
+    enunciado: "Coloque na ordem os passos para responder a uma solicitação."
+    opcoes:
+      a: "Clicar em **Enviar resposta**"
+      b: "Abrir o aviso do sino com **Resolver**"
+      c: "Escolher **Sim, faço** e preencher preço, pedido mínimo e prazo"
+      d: "Ler o cartão **O que a Wellmix pede**"
+    correta: [b, d, c, a]
+    explicacao: "Primeiro abra a solicitação pelo sino, depois leia o que a Wellmix pede, só então responda e, por último, clique em **Enviar resposta**."
+    traducoes:
+      en:
+        enunciado: "Put the steps to answer a request in order."
+        opcoes:
+          a: "Click **Send answer**"
+          b: "Open the bell notice with **Resolve**"
+          c: "Choose **Yes, I can** and fill in price, minimum order and lead time"
+          d: "Read the card **What Wellmix asks**"
+        explicacao: "First open the request from the bell, then read what Wellmix asks, only then answer and, last, click **Send answer**."
+      zh:
+        enunciado: "请把回复询单的步骤按顺序排列。"
+        opcoes:
+          a: "点击“发送回复”"
+          b: "用“去处理”打开铃铛里的通知"
+          c: "选择“可以”，填写单价、起订量和生产周期"
+          d: "阅读“Wellmix 的要求”卡片"
+        explicacao: "先通过铃铛打开询单，再阅读 Wellmix 的要求，然后填写回复，最后点击“发送回复”。"
+  - id: FOR-02-Q4
+    tipo: multipla
+    nivel: 2
+    capitulo: FOR-02-C1
+    cena: 4
+    enunciado: "Quais destas informações você encontra no cartão **O que a Wellmix pede**? Marque todas as certas."
+    opcoes:
+      a: "A quantidade pedida"
+      b: "O preço de venda ao cliente"
+      c: "O preço do seu booking"
+      d: "O que a Wellmix precisa no produto"
+      e: "Os outros fornecedores do mesmo item"
+    correta: [a, c, d]
+    explicacao: "O cartão traz o item da sua planilha, a **Quantidade**, o **Preço do booking** e o texto **O que a Wellmix precisa no produto**. O fornecedor não vê o preço de venda nem outros fornecedores."
+    traducoes:
+      en:
+        enunciado: "Which of this information do you find in the card **What Wellmix asks**? Select all that apply."
+        opcoes:
+          a: "The quantity requested"
+          b: "The selling price to the customer"
+          c: "The price in your booking"
+          d: "What Wellmix needs in the product"
+          e: "The other suppliers of the same item"
+        explicacao: "The card shows the item from your spreadsheet, the **Quantity**, the **Booking price** and the text **What Wellmix needs in the product**. The supplier does not see the selling price or other suppliers."
+      zh:
+        enunciado: "以下哪些信息可以在“Wellmix 的要求”卡片中找到？请选出所有正确项。"
+        opcoes:
+          a: "要求的数量"
+          b: "对客户的销售价"
+          c: "您 Booking 中的价格"
+          d: "Wellmix 对产品的要求"
+          e: "同一条目的其他供应商"
+        explicacao: "卡片显示您表格中的条目、**数量**、**Booking 价格** 以及 **Wellmix 对产品的要求**。供应商看不到销售价，也看不到其他供应商。"
+  - id: FOR-02-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: FOR-02-C3
+    cena: 8
+    enunciado: "Como você fica sabendo que a Wellmix aprovou, recusou ou cancelou a solicitação?"
+    opcoes:
+      a: "Pelo sino e na tela Notificações"
+      b: "Por e-mail, na sua caixa de entrada"
+      c: "Por mensagem de WhatsApp, no celular"
+    correta: [a]
+    explicacao: "Hoje só o sino e a tela **Notificações** avisam. Por exemplo, \"Solicitação nº 1 aprovada\" aparece em **Novidades**."
+    traducoes:
+      en:
+        enunciado: "How do you find out that Wellmix approved, declined or cancelled the request?"
+        opcoes:
+          a: "In the bell and on the Notifications screen"
+          b: "By e-mail, in your inbox"
+          c: "By WhatsApp message, on your phone"
+        explicacao: "Today only the bell and the **Notifications** screen warn you. For example, \"Request no. 1 approved\" appears under **Updates**."
+      zh:
+        enunciado: "您如何得知 Wellmix 批准、拒绝或取消了询单？"
+        opcoes:
+          a: "在铃铛和“通知”页面里"
+          b: "通过电子邮件，发到您的邮箱"
+          c: "通过 WhatsApp 消息，发到手机"
+        explicacao: "目前只有铃铛和“通知”页面会提醒您。例如“询单第 1 号已批准”会出现在“动态”里。"
+  - id: FOR-02-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-02-C2
+    cena: 6
+    enunciado: "Você escolheu **Sim, faço**, preencheu pedido mínimo e prazo, mas esqueceu o preço e clicou em **Enviar resposta**. O que acontece e o que fazer?"
+    opcoes:
+      a: "A resposta é registrada com preço zero; edite depois"
+      b: "Aparece \"Informe o preço por peça para dizer que faz.\"; digite o preço e envie de novo"
+      c: "A solicitação é cancelada; peça outra à Wellmix"
+      d: "Aparece \"Resposta registrada.\"; o preço fica para a cotação"
+    correta: [b]
+    explicacao: "Quem diz que faz precisa informar o **Preço por peça**. A faixa vermelha avisa; é só preencher o preço e clicar em **Enviar resposta** de novo."
+    traducoes:
+      en:
+        enunciado: "You chose **Yes, I can**, filled in minimum order and lead time, but forgot the price and clicked **Send answer**. What happens and what should you do?"
+        opcoes:
+          a: "The answer is recorded with a zero price; edit it later"
+          b: "\"Enter the price per piece to say you can do it.\" appears; type the price and send again"
+          c: "The request is cancelled; ask Wellmix for another one"
+          d: "\"Answer recorded.\" appears; the price is left for the quotation"
+        explicacao: "Whoever says they can do it must enter the **Price per piece**. The red banner warns you; just fill in the price and click **Send answer** again."
+      zh:
+        enunciado: "您选择了“可以”，填了起订量和生产周期，却忘了单价，然后点击“发送回复”。会发生什么，该怎么做？"
+        opcoes:
+          a: "回复以单价为零被记录；以后再改"
+          b: "出现“如能生产，请填写单价。”；填写单价后再发送一次"
+          c: "询单被取消；向 Wellmix 另要一张"
+          d: "出现“回复已记录。”；单价留到报价时再填"
+        explicacao: "说明能生产的人必须填写 **单价**。红色提示条会提醒您，补上单价后再点击“发送回复”即可。"
+  - id: FOR-02-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-02-C3
+    cena: 7
+    enunciado: "Você já enviou a resposta e percebeu que errou o prazo. A Wellmix ainda não decidiu a solicitação. O que fazer?"
+    opcoes:
+      a: "Corrigir no formulário da própria solicitação e enviar de novo"
+      b: "Esperar a decisão da Wellmix e pedir a ela que recuse a solicitação"
+      c: "Nada: a resposta não muda mais depois de enviada, só pelas Mensagens"
+    correta: [a]
+    explicacao: "Enquanto a Wellmix não decide, o formulário continua aberto: \"Você pode mudar a resposta até a Wellmix decidir\". Depois da decisão a resposta não muda mais; aí só pelas Mensagens."
+    traducoes:
+      en:
+        enunciado: "You already sent the answer and noticed you got the lead time wrong. Wellmix has not decided the request yet. What do you do?"
+        opcoes:
+          a: "Fix it in the request's own form and send again"
+          b: "Wait for the decision and ask Wellmix to decline"
+          c: "Nothing: the answer no longer changes once sent"
+        explicacao: "While Wellmix has not decided, the form stays open: \"You can change the answer until Wellmix decides\". After the decision the answer no longer changes; then only through Messages."
+      zh:
+        enunciado: "您已经发送了回复，却发现生产周期填错了。Wellmix 还没有对询单作出决定。该怎么办？"
+        opcoes:
+          a: "在这张询单自己的表单里改正，然后再发送一次"
+          b: "等待决定，并请 Wellmix 拒绝"
+          c: "什么也不用做：回复发送后就不能再改了"
+        explicacao: "在 Wellmix 作出决定之前，表单一直开放：“在 Wellmix 决定之前，您可以修改回复。”决定之后回复就不能再改了，那时只能通过消息沟通。"
+  - id: FOR-02-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-02-C3
+    cena: 7
+    enunciado: "Você não fabrica o item que a Wellmix pediu. Qual é a resposta certa?"
+    opcoes:
+      a: "Ignorar o aviso e deixar a solicitação sem resposta até expirar"
+      b: "Escolher **Sim, faço** e digitar preço 0 para mostrar que não vende"
+      c: "Escolher **Não faço** e enviar a resposta, sem preço"
+      d: "Escolher **Sim, faço** e explicar na Observação que não fabrica"
+    correta: [c]
+    explicacao: "Se você não faz o item, escolha **Não faço**: não precisa de preço. Preço zero não é aceito (\"use números maiores que zero\") e **Sim, faço** diria à Wellmix o contrário."
+    traducoes:
+      en:
+        enunciado: "You do not make the item Wellmix asked for. What is the right answer?"
+        opcoes:
+          a: "Ignore the notice so the request expires"
+          b: "Choose **Yes, I can** with price 0"
+          c: "Choose **No, I can't** and send the answer, with no price"
+          d: "Choose **Yes, I can** and explain in the Note"
+        explicacao: "If you do not make the item, choose **No, I can't**: no price needed. A zero price is not accepted (\"use numbers greater than zero\") and **Yes, I can** would tell Wellmix the opposite."
+      zh:
+        enunciado: "您不生产 Wellmix 要求的这个条目。正确的回复是什么？"
+        opcoes:
+          a: "忽略通知，让询单过期"
+          b: "选择“可以”，单价填 0"
+          c: "选择“不可以”并发送回复，不填单价"
+          d: "选择“可以”，并在备注里说明"
+        explicacao: "如果不生产这个条目，选择“不可以”即可，不用填单价。单价为零不会被接受（“请使用大于零的数字”），而选“可以”会向 Wellmix 传达相反的意思。"

@@ -1,0 +1,137 @@
+episodio: WGE-04
+titulo: Contas a pagar e a conta corrente do fornecedor
+serie: WGE
+papel: administrador
+duracao: "5:00"
+idiomas: [pt]
+capitulos:
+  - id: WGE-04-C1
+    titulo: Configurar a condição de pagamento do fornecedor
+    inicio: "0:00"
+    fim: "1:05"
+    cenas: [1, 3]
+    resumo: Em Cadastros → Fornecedores, defina as parcelas do FOB, os marcos e os dias, somando 100%.
+  - id: WGE-04-C2
+    titulo: Acompanhar as parcelas em Contas a pagar
+    inicio: "1:05"
+    fim: "2:10"
+    cenas: [4, 5]
+    resumo: Leia a lista parcela por parcela, filtre por situação e entenda cada selo.
+  - id: WGE-04-C3
+    titulo: Pedir o pagamento e marcar como pago
+    inicio: "2:10"
+    fim: "3:40"
+    cenas: [6, 7]
+    resumo: No card Pagamento ao fornecedor do pedido, peça o pagamento ao banco e marque como pago com o câmbio.
+  - id: WGE-04-C4
+    titulo: Registrar o que foi pago por fora e ver a conta do fornecedor
+    inicio: "3:40"
+    fim: "5:00"
+    cenas: [8, 11]
+    resumo: Registre pagamentos feitos fora do portal e veja o que o fornecedor vê e confirma na Conta corrente.
+perguntas:
+  - id: WGE-04-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-04-C1
+    cena: 3
+    enunciado: "Onde você configura a condição de pagamento de um fornecedor?"
+    opcoes:
+      a: "Em Gestão → Contas a pagar"
+      b: "Em Gestão → Configurações"
+      c: "No card Pagamento ao fornecedor, dentro do pedido"
+      d: "Em Cadastros → Fornecedores, em Editar cadastro"
+    correta: [d]
+    explicacao: "A condição fica no cadastro do fornecedor, em **Condição de pagamento ao fornecedor**, e termina com **Salvar condição**. Os pedidos novos copiam essa condição ao nascer."
+  - id: WGE-04-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-04-C4
+    cena: 9
+    enunciado: "Quando o dinheiro chega à conta dele, qual botão o fornecedor clica na Conta corrente?"
+    opcoes:
+      a: "Marcar como pago"
+      b: "Registrar pagamento ao fornecedor"
+      c: "Confirmar recebimento"
+      d: "Copiar dados para o banco"
+    correta: [c]
+    explicacao: "O fornecedor vê a previsão de pagamentos e clica em **Confirmar recebimento** quando o dinheiro entra. Os outros botões são da Wellmix, no pedido."
+  - id: WGE-04-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: WGE-04-C3
+    cena: 6
+    enunciado: "Quais destes botões registram a parcela como **Solicitado ao banco/financeiro**? Marque todos."
+    opcoes:
+      a: "Copiar dados para o banco"
+      b: "Pedir ao financeiro por e-mail"
+      c: "Pedir ao financeiro por WhatsApp"
+      d: "Marcar como pago"
+      e: "Registrar pagamento ao fornecedor"
+    correta: [a, b, c]
+    explicacao: "Os três jeitos de pedir (copiar os dados, e-mail ou WhatsApp) registram a parcela como solicitada: escolha um só. **Marcar como pago** e **Registrar pagamento ao fornecedor** vêm depois, quando o dinheiro já saiu."
+  - id: WGE-04-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: WGE-04-C3
+    cena: 7
+    enunciado: "Coloque na ordem o caminho de uma parcela, do pedido ao banco até a confirmação do fornecedor."
+    opcoes:
+      a: "Escolher **Copiar dados para o banco**"
+      b: "O fornecedor confirma o recebimento na Conta corrente"
+      c: "Clicar em **Pagar** na parcela, em Contas a pagar"
+      d: "Digitar o câmbio do banco e clicar em **Marcar como pago**"
+    correta: [c, a, d, b]
+    explicacao: "Em Contas a pagar, **Pagar** leva ao pedido; ali você pede o pagamento e a parcela vira solicitada. Quando o dinheiro sai, **Marcar como pago**; o fornecedor é avisado e confirma o recebimento."
+  - id: WGE-04-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-04-C2
+    cena: 5
+    enunciado: "A segunda parcela mostra 'aguardando' no vencimento e o selo **Aguardando o marco**. O que isso quer dizer?"
+    opcoes:
+      a: "O fornecedor ainda não confirmou o recebimento do dinheiro"
+      b: "Ainda falta o embarque ou a entrega para a parcela vencer"
+      c: "A parcela já venceu e ainda ninguém pagou"
+      d: "O financeiro ainda não recebeu o pedido de pagamento"
+    correta: [b]
+    explicacao: "O vencimento é o marco mais os dias combinados. Sem o marco (por exemplo, a entrega ao cliente), a parcela espera e não pode vencer."
+  - id: WGE-04-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-04-C4
+    cena: 8
+    enunciado: "Você pagou a parcela 2/2 direto no banco, fora do portal. Como registra?"
+    opcoes:
+      a: "Abre **Já pagou?** e clica em **Registrar pagamento ao fornecedor**"
+      b: "Clica em **Copiar dados para o banco**, para ela ficar como solicitada"
+      c: "Pede ao fornecedor que registre o pagamento no lugar dele"
+      d: "Muda a condição de pagamento no cadastro do fornecedor"
+    correta: [a]
+    explicacao: "A linha **Já pagou?** serve para o que foi pago por fora do portal: valor, moeda, câmbio e comprovante. O fornecedor recebe o aviso para confirmar quando o dinheiro entrar."
+  - id: WGE-04-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-04-C3
+    cena: 7
+    enunciado: "O pagamento já saiu do banco. Um colega sugere registrar outro pagamento do mesmo valor, 'só para garantir'. O que você faz?"
+    opcoes:
+      a: "Registra o novo pagamento e depois apaga o pedido ao banco"
+      b: "Pede ao fornecedor que marque como pago"
+      c: "Faz as duas coisas e confere depois no Financeiro do mês"
+      d: "Usa **Marcar como pago** na linha do pedido ao banco"
+    correta: [d]
+    explicacao: "O pagamento já está pedido: ele só precisa ser marcado. Registrar outro pagamento do mesmo valor duplica o lançamento. O portal avisa: 'Não registre outro pagamento para o mesmo valor.'"
+  - id: WGE-04-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-04-C1
+    cena: 3
+    enunciado: "Você mudou a condição de pagamento da Shenzhen Supplier A, mas o pedido #1, que já existia, continua com a condição antiga. Por quê?"
+    opcoes:
+      a: "O pedido já gerado guarda a condição dele; mudar o cadastro não mexe nele"
+      b: "Faltou clicar em **Distribuir agora**"
+      c: "O fornecedor precisa aprovar a nova condição"
+      d: "A condição só vale depois de 90 dias"
+    correta: [a]
+    explicacao: "Os pedidos novos copiam a condição do cadastro ao nascer. Pedido já gerado guarda a dele, então a mudança só vale para os próximos."

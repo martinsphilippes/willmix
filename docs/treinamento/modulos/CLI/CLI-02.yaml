@@ -1,0 +1,136 @@
+episodio: CLI-02
+titulo: "Fazer uma nova solicitação"
+serie: CLI
+papel: cliente
+duracao: "4:30"
+idiomas: [pt]
+capitulos:
+  - id: CLI-02-C1
+    titulo: "Abrir o formulário Nova solicitação"
+    inicio: "0:00"
+    fim: "0:52"
+    cenas: [1, 4]
+    resumo: "Em Orçamentos, o botão + Nova solicitação abre o formulário, e a parte que você usa é a da direita."
+  - id: CLI-02-C2
+    titulo: "Escolher o produto e informar a quantidade"
+    inicio: "0:52"
+    fim: "1:40"
+    cenas: [5, 6]
+    resumo: "Escolha o item do catálogo, que preenche o nome, e informe Descrição e Quantidade."
+  - id: CLI-02-C3
+    titulo: "Programar entregas e pedir mais de um produto"
+    inicio: "1:40"
+    fim: "2:50"
+    cenas: [7, 8]
+    resumo: "Divida a quantidade em entregas, junte outros produtos num lote e respeite o pedido mínimo."
+  - id: CLI-02-C4
+    titulo: "Conferir, enviar e acompanhar"
+    inicio: "2:50"
+    fim: "4:30"
+    cenas: [9, 13]
+    resumo: "O prazo de resposta é da Wellmix; ao clicar em Enviar, a solicitação nasce como Solicitado."
+perguntas:
+  - id: CLI-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: CLI-02-C1
+    cena: 3
+    enunciado: "Na tela **Orçamentos**, qual botão abre o formulário para pedir um produto?"
+    opcoes:
+      a: "**Solicitar orçamento**"
+      b: "**Conversar com a Wellmix**"
+      c: "**+ Nova solicitação**"
+      d: "**Enviar**"
+    correta: [c]
+    explicacao: "O botão vermelho **+ Nova solicitação** fica em Orçamentos, no grupo Meus pedidos. Na vitrine, o cartão \"Não encontrou? Peça um produto\" leva ao mesmo formulário."
+  - id: CLI-02-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: CLI-02-C1
+    cena: 4
+    enunciado: "A tela Nova solicitação tem duas partes. Qual delas você usa hoje para fazer o pedido?"
+    opcoes:
+      a: "A busca por foto ou link, à esquerda"
+      b: "O cartão **Produtos**, à direita"
+      c: "As duas, na mesma ordem"
+      d: "Nenhuma: o pedido é feito pela vitrine"
+    correta: [b]
+    explicacao: "A busca por foto ou link, à esquerda, está temporariamente pausada. O pedido é preenchido no cartão **Produtos**, à direita."
+  - id: CLI-02-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: CLI-02-C2
+    cena: 6
+    enunciado: "Quais destes campos de um produto são obrigatórios na solicitação?"
+    opcoes:
+      a: "Especificação"
+      b: "Nome do produto"
+      c: "Descrição"
+      d: "Quantidade"
+    correta: [b, c, d]
+    explicacao: "Se faltar algo, a tela diz \"Confira os produtos: nome, descrição e quantidade são obrigatórios.\" A Especificação é opcional."
+  - id: CLI-02-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: CLI-02-C3
+    cena: 7
+    enunciado: "Coloque na ordem os passos para receber em mais de uma entrega."
+    opcoes:
+      a: "Clicar em **+ Programação de entregas**"
+      b: "Escolher o intervalo (30, 45 ou 60 dias) e a 1ª entrega prevista"
+      c: "Dividir a quantidade entre as programações"
+      d: "Conferir a Previsão de cada entrega e o Total"
+    correta: [a, b, c, d]
+    explicacao: "O sistema calcula a previsão de cada entrega a partir do intervalo e da primeira data, e o total acompanha a divisão. A Wellmix e o fornecedor seguem essa programação na ficha de compra."
+  - id: CLI-02-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: CLI-02-C3
+    cena: 8
+    enunciado: "A Piscina inflável tem pedido mínimo de 300 un. João digita 100 em **Quantidade** e sai do campo. O que a tela faz?"
+    opcoes:
+      a: "Sobe a quantidade para 300 e avisa que estava abaixo do mínimo"
+      b: "Mantém 100 e a Wellmix ajusta depois"
+      c: "Apaga o produto da solicitação"
+      d: "Bloqueia o botão **Enviar** até João ligar para a Wellmix"
+    correta: [a]
+    explicacao: "A tela avisa \"Abaixo do pedido mínimo (300 un). Ao sair do campo, a quantidade sobe para o mínimo.\" Use pelo menos o mínimo que a tela mostra."
+  - id: CLI-02-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-02-C3
+    cena: 8
+    enunciado: "João quer pedir a Jarra e a Piscina na mesma vez. O que faz?"
+    opcoes:
+      a: "Escreve os dois nomes no campo Descrição do Produto 1"
+      b: "Envia a solicitação da Jarra e, depois, outra da Piscina"
+      c: "Clica em **+ Adicionar outro produto**; cada produto vira uma solicitação, todas num lote"
+      d: "Só dá para pedir um produto por vez"
+    correta: [c]
+    explicacao: "**+ Adicionar outro produto** cria o Produto 2 no mesmo formulário. Cada produto vira uma solicitação própria, mas todas nascem juntas, num lote."
+  - id: CLI-02-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-02-C4
+    cena: 9
+    enunciado: "João acha o \"Prazo de resposta (SLA)\" longo e tenta editar o campo para encurtá-lo. O que acontece?"
+    opcoes:
+      a: "O campo aceita datas de até 5 dias úteis"
+      b: "O campo é cinza e só de leitura: o prazo é definido pela Wellmix"
+      c: "O fornecedor recebe o novo prazo e responde nele"
+      d: "A solicitação é enviada com o prazo escolhido por João"
+    correta: [b]
+    explicacao: "O prazo de resposta é definido pela Wellmix (resposta da cotação em até 5 dias úteis) e não pode ser editado. Para detalhes extras, use o campo Observação."
+  - id: CLI-02-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: CLI-02-C4
+    cena: 12
+    enunciado: "João enviou a solicitação ontem e, em Orçamentos, ela está como Solicitado. Ele precisa fazer algo agora?"
+    opcoes:
+      a: "Sim, enviar o comprovante do sinal"
+      b: "Sim, escolher o fornecedor"
+      c: "Sim, clicar em Enviar de novo para a Wellmix ver"
+      d: "Não: a Wellmix cuida do resto, e o que for para ele fazer aparece em Pendências e no sino"
+    correta: [d]
+    explicacao: "Depois do **Enviar**, a Wellmix envia ao fornecedor e traz a proposta. Quando houver algo para você fazer, aparece em Pendências e no sino."

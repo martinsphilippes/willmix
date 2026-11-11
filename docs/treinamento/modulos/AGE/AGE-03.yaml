@@ -1,0 +1,122 @@
+episodio: AGE-03
+titulo: "Prompt para criar a arte (ChatGPT)"
+serie: AGE
+papel: agencia
+duracao: "2:55"
+idiomas: [pt]
+capitulos:
+  - id: AGE-03-C1
+    titulo: "Escrever o que você quer na arte"
+    inicio: "0:00"
+    fim: "1:20"
+    cenas: [1, 4]
+    resumo: "Abra a caixa do prompt no briefing, saiba o que ela leva sozinha e descreva a arte em **O que você quer na arte**."
+  - id: AGE-03-C2
+    titulo: "Gerar, copiar e levar a arte de volta ao portal"
+    inicio: "1:20"
+    fim: "2:55"
+    cenas: [5, 8]
+    resumo: "Gere o prompt, copie, crie a imagem no ChatGPT e envie o resultado em **Arte da embalagem**."
+perguntas:
+  - id: AGE-03-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: AGE-03-C1
+    cena: 1
+    enunciado: "Qual caixa do briefing monta o texto que você leva ao ChatGPT?"
+    opcoes:
+      a: "Observações (gráfica, fornecedor)"
+      b: "Entregáveis"
+      c: "Prompt para criar a arte (ChatGPT)"
+      d: "Instruções da Wellmix"
+    correta: [c]
+    explicacao: "A caixa **Prompt para criar a arte (ChatGPT)** fica no briefing, abaixo dos entregáveis, e monta o texto com os dados do briefing, pronto para copiar e colar."
+  - id: AGE-03-Q2
+    tipo: vf
+    nivel: 2
+    capitulo: AGE-03-C1
+    cena: 3
+    enunciado: "O portal chama uma inteligência artificial e cria a imagem da arte para você."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "O portal só monta o texto do pedido, com o que está no briefing (o que estiver vazio fica de fora; nada é inventado). A imagem é criada no ChatGPT, fora do portal, e você a envia depois em **Arte da embalagem**."
+  - id: AGE-03-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: AGE-03-C1
+    cena: 4
+    enunciado: "O que acontece com o texto que você digita em **O que você quer na arte**?"
+    opcoes:
+      a: "Fica guardado só neste computador, por briefing"
+      b: "Fica gravado no portal e a Wellmix pode ler"
+      c: "Some assim que você sai da tela"
+      d: "É enviado sozinho ao ChatGPT"
+    correta: [a]
+    explicacao: "O texto fica guardado só neste aparelho, para não se perder se você sair da tela. Outro computador não o vê, e o portal não grava o prompt. O limite é de 2.000 caracteres."
+  - id: AGE-03-Q4
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-03-C2
+    cena: 5
+    enunciado: "Você gerou o prompt, ajustou o texto à mão e clicou de novo em **Gerar prompt**. O que acontece?"
+    opcoes:
+      a: "O portal junta o texto novo com os seus ajustes"
+      b: "O texto é refeito e os seus ajustes são apagados"
+      c: "O prompt é copiado sozinho"
+      d: "O ChatGPT abre em outra aba"
+    correta: [b]
+    explicacao: "Gerar de novo refaz o texto com os dados do briefing e com o que está em **O que você quer na arte**. Por isso, ajuste o prompt só depois do último **Gerar prompt**."
+  - id: AGE-03-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: AGE-03-C2
+    cena: 6
+    enunciado: "Coloque na ordem o caminho do briefing até o ChatGPT."
+    opcoes:
+      a: "Clicar em **Gerar prompt**"
+      b: "Escrever em **O que você quer na arte**"
+      c: "Clicar em **Abrir o ChatGPT →** e colar o texto"
+      d: "Clicar em **Copiar prompt**"
+    correta: [b, a, d, c]
+    explicacao: "Primeiro você descreve a arte, depois gera o prompt, copia e abre o ChatGPT para colar o texto e anexar as fotos do produto, que servem de referência."
+  - id: AGE-03-Q6
+    tipo: unica
+    nivel: 1
+    capitulo: AGE-03-C2
+    cena: 6
+    enunciado: "Qual botão copia o texto do prompt?"
+    opcoes:
+      a: "Gerar prompt"
+      b: "Copiar prompt"
+      c: "Abrir o ChatGPT →"
+      d: "Salvar observações"
+    correta: [b]
+    explicacao: "**Copiar prompt** copia o texto, e o botão passa a mostrar \"Copiado ✓\". **Gerar prompt** cria o texto; **Abrir o ChatGPT →** só abre o site em outra aba."
+  - id: AGE-03-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-03-C2
+    cena: 6
+    enunciado: "Você clica em **Copiar prompt** e aparece \"Não deu para copiar sozinho: selecione o texto e copie.\" O que você faz?"
+    opcoes:
+      a: "Clica de novo em **Gerar prompt** para tentar outra vez"
+      b: "Envia o prompt em **Arte da embalagem**"
+      c: "Clica dentro do campo, que seleciona tudo, e copia com Ctrl+C (⌘+C)"
+      d: "Espera: a cópia acontece em alguns minutos"
+    correta: [c]
+    explicacao: "O navegador bloqueou a cópia automática. Clique dentro do campo do prompt (ele seleciona tudo) e copie com Ctrl+C (⌘+C). Gerar de novo só apagaria os seus ajustes."
+  - id: AGE-03-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-03-C2
+    cena: 7
+    enunciado: "O ChatGPT criou uma imagem de que você gostou. Qual é o próximo passo no portal?"
+    opcoes:
+      a: "Colar a imagem no campo \"Prompt pronto\""
+      b: "Esperar: o portal busca a imagem no ChatGPT"
+      c: "Escrever o link da imagem em **Observações**"
+      d: "Baixar a imagem, conferir em cima da faca e enviar em **Arte da embalagem**"
+    correta: [d]
+    explicacao: "A imagem nasce fora do portal. Baixe, confira a arte em cima da faca (o prompt pede que respeite as medidas, mas confira) e envie com **Escolher arquivo** na linha **Arte da embalagem**."

@@ -1,0 +1,131 @@
+episodio: WGE-06
+titulo: Pós-venda e histórico comercial
+serie: WGE
+papel: administrador
+duracao: "4:00"
+idiomas: [pt]
+capitulos:
+  - id: WGE-06-C1
+    titulo: Acompanhar as avaliações em Pós-venda
+    inicio: "0:00"
+    fim: "1:32"
+    cenas: [1, 4]
+    resumo: O pós-venda abre na entrega, o cliente avalia e você lê a nota, a recompra e os problemas em Gestão → Pós-venda.
+  - id: WGE-06-C2
+    titulo: Encerrar o pós-venda e ler o Histórico comercial
+    inicio: "1:32"
+    fim: "3:00"
+    cenas: [5, 6]
+    resumo: Registre a Observação da Wellmix, encerre o pós-venda e leia compras, frequência e recompra no Histórico.
+  - id: WGE-06-C3
+    titulo: Comprar de novo a partir do histórico
+    inicio: "3:00"
+    fim: "4:00"
+    cenas: [7, 9]
+    resumo: Abra uma nova compra ou proposta pelo histórico e saiba o que o cliente enxerga.
+perguntas:
+  - id: WGE-06-Q1
+    tipo: multipla
+    nivel: 1
+    capitulo: WGE-06-C1
+    cena: 4
+    enunciado: "Quais abas existem na tela Pós-venda? Marque todas."
+    opcoes:
+      a: "Aguardando cliente"
+      b: "Respondidos"
+      c: "Encerrados"
+      d: "Em aberto"
+      e: "Cancelados"
+    correta: [a, b, c]
+    explicacao: "A tela separa o pós-venda em **Aguardando cliente**, **Respondidos** e **Encerrados**, cada uma com a contagem."
+  - id: WGE-06-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-06-C1
+    cena: 2
+    enunciado: "Quando o pós-venda de um pedido abre?"
+    opcoes:
+      a: "Quando o cliente pede"
+      b: "Ao confirmar o sinal"
+      c: "Ao concluir a entrega"
+      d: "No fim do mês da compra"
+    correta: [c]
+    explicacao: "Ao concluir a entrega, o pedido abre o pós-venda: o cliente recebe um aviso e uma pendência para avaliar a compra."
+  - id: WGE-06-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: WGE-06-C2
+    cena: 5
+    enunciado: "Chegou uma avaliação respondida. Coloque na ordem os passos para encerrar o pós-venda."
+    opcoes:
+      a: "Escrever a **Observação da Wellmix** com o que foi feito"
+      b: "Abrir **Gestão → Pós-venda** e a aba **Respondidos**"
+      c: "Clicar em **Encerrar pós-venda**"
+      d: "Clicar em **Abrir pedido →** e ler as respostas no card Pós-venda"
+    correta: [b, d, a, c]
+    explicacao: "Leia a avaliação na aba Respondidos, abra o pedido, registre na observação o que foi feito (contato, ajuste, reposição) e então encerre. O registro vai para Encerrados com a sua observação."
+  - id: WGE-06-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-06-C1
+    cena: 4
+    enunciado: "De onde vem o selo **Sim**, **Talvez** ou **Não** na coluna Recompra da tela Pós-venda?"
+    opcoes:
+      a: "Do interesse em nova compra que o cliente respondeu na avaliação"
+      b: "Da nota em estrelas que o cliente deu"
+      c: "De um cálculo do sistema pelo número de compras"
+      d: "Da Observação da Wellmix"
+    correta: [a]
+    explicacao: "O cliente responde 'Interesse em nova compra' (Sim, Talvez ou Não) ao avaliar. Esse é o selo de Recompra, ao lado da nota e dos problemas relatados."
+  - id: WGE-06-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-06-C2
+    cena: 6
+    enunciado: "No Histórico comercial, a **Frequência média** da Jarra aparece como '—'. Por quê?"
+    opcoes:
+      a: "Faltou o pós-venda do pedido"
+      b: "O cliente está inativo"
+      c: "O FOB do produto não foi informado"
+      d: "Só há uma compra; a frequência precisa de duas ou mais"
+    correta: [d]
+    explicacao: "A frequência média é a média de dias entre as compras do mesmo produto pelo mesmo cliente, então só existe com duas ou mais compras. Com uma só, o '—' é o esperado."
+  - id: WGE-06-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-06-C2
+    cena: 5
+    enunciado: "O cliente ainda não respondeu e você quer fechar o caso. Dá para fazer isso?"
+    opcoes:
+      a: "Não, só depois da resposta do cliente"
+      b: "Sim: escreve a observação e clica em **Encerrar pós-venda**"
+      c: "Só depois de reabrir o pedido na aba Aguardando cliente"
+      d: "Sim, mas apenas o jurídico pode encerrar"
+    correta: [b]
+    explicacao: "Dá para encerrar também sem a resposta. A tela avisa 'O cliente ainda não respondeu. Ele foi avisado por notificação.' e você registra a observação da Wellmix."
+  - id: WGE-06-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-06-C3
+    cena: 7
+    enunciado: "A Loja do João quer repetir a compra da Jarra, mas pede para renegociar o preço. Qual botão do card **Comprar de novo / Nova proposta** você usa?"
+    opcoes:
+      a: "Comprar de novo"
+      b: "Encerrar pós-venda"
+      c: "Quero nova proposta"
+      d: "Enviar avaliação"
+    correta: [c]
+    explicacao: "**Comprar de novo** repete a especificação com nova quantidade. Quando o cliente quer renegociar preço, prazo ou condições, é a **nova proposta**."
+  - id: WGE-06-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-06-C3
+    cena: 8
+    enunciado: "O cliente abre o Histórico no portal dele. O que ele vê?"
+    opcoes:
+      a: "O histórico de todos os clientes, com o FOB"
+      b: "Só o próprio histórico, sem a coluna **Último FOB unit.**"
+      c: "Só o próprio histórico, com o FOB"
+      d: "Nada: o Histórico é só da Wellmix"
+    correta: [b]
+    explicacao: "A Wellmix vê todos os clientes e o FOB. O cliente vê só o histórico dele, sem custo e sem fornecedor."

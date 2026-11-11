@@ -1,0 +1,130 @@
+episodio: AGE-05
+titulo: "Selo de certificação na arte"
+serie: AGE
+papel: agencia
+duracao: "4:10"
+idiomas: [pt]
+capitulos:
+  - id: AGE-05-C1
+    titulo: "Saber quando o selo chega"
+    inicio: "0:00"
+    fim: "1:20"
+    cenas: [1, 4]
+    resumo: "Deixe o espaço do selo na arte e reconheça o aviso e a pendência **Selo na arte** quando a certificadora enviar o selo."
+  - id: AGE-05-C2
+    titulo: "Baixar o selo e enviar a arte com ele"
+    inicio: "1:20"
+    fim: "2:50"
+    cenas: [5, 6]
+    resumo: "No cartão **Certificação** do pedido, baixe o selo, aplique na arte e envie na linha **Selo aplicado na arte**."
+  - id: AGE-05-C3
+    titulo: "Corrigir se recusarem e enviar para assinatura"
+    inicio: "2:50"
+    fim: "4:10"
+    cenas: [7, 9]
+    resumo: "Reenvie quando a Wellmix recusar e clique em **Enviar para assinatura** com a arte e o selo aplicado prontos."
+perguntas:
+  - id: AGE-05-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: AGE-05-C1
+    cena: 4
+    enunciado: "A certificadora enviou o selo. Qual quadrado de Minhas pendências fica amarelo com o número 1?"
+    opcoes:
+      a: "Arte na cotação"
+      b: "Arte do pedido"
+      c: "Selo na arte"
+      d: "Certificação"
+    correta: [c]
+    explicacao: "O quadrado **Selo na arte** fica amarelo, e a linha diz \"Aplicar o selo de certificação na arte\". Clique em **Abrir** para ir direto ao cartão Certificação do pedido."
+  - id: AGE-05-Q2
+    tipo: unica
+    nivel: 2
+    capitulo: AGE-05-C1
+    cena: 3
+    enunciado: "O briefing mostra: \"Selo de certificação: aguardando a certificadora. Deixe o espaço do selo na arte.\" O que você faz?"
+    opcoes:
+      a: "Espera o selo chegar para começar a arte"
+      b: "Deixa o espaço do selo na arte e segue com ela"
+      c: "Clica em **Enviar para assinatura**"
+      d: "Pede o selo à Wellmix pelo botão de conversa"
+    correta: [b]
+    explicacao: "O selo corre ao lado da arte. Enquanto ele não chega, deixe o espaço reservado; quando chegar, o aviso muda e pede para baixar o selo no pedido, aplicar na arte e enviar a arte com o selo."
+  - id: AGE-05-Q3
+    tipo: unica
+    nivel: 1
+    capitulo: AGE-05-C2
+    cena: 5
+    enunciado: "Como você baixa o selo enviado pela certificadora?"
+    opcoes:
+      a: "No cartão **Certificação** do pedido, pelo link **Arquivo** da linha Selo"
+      b: "Em Pedidos → Embalagens, no cartão Entregáveis"
+      c: "Pelo botão **Escolher arquivo** da linha Selo aplicado na arte"
+      d: "Pelo aviso Sua vez, com o botão Resolver"
+    correta: [a]
+    explicacao: "Na linha **Selo**, que já está Concluído e é feita pela OCP, o link **Arquivo** baixa o selo. A linha de baixo, **Selo aplicado na arte**, é a sua."
+  - id: AGE-05-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: AGE-05-C2
+    cena: 6
+    enunciado: "Coloque na ordem o envio da arte com o selo."
+    opcoes:
+      a: "Escolher o arquivo na linha **Selo aplicado na arte**"
+      b: "Clicar em **Enviar**"
+      c: "Baixar o selo pelo link **Arquivo**"
+      d: "Aplicar o selo na arte da embalagem"
+    correta: [c, d, a, b]
+    explicacao: "Baixe o selo, aplique na arte, escolha o arquivo da arte com o selo e clique em **Enviar**. A situação vira \"Enviado, aguardando validação\"."
+  - id: AGE-05-Q5
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-05-C2
+    cena: 6
+    enunciado: "Você escolheu um arquivo de arte grande na linha **Selo aplicado na arte** e clicou em **Enviar** na hora. O portal respondeu \"Envie o arquivo.\" O que fazer?"
+    opcoes:
+      a: "Esperar aparecer \"Arquivo pronto…\" e só então clicar em **Enviar**"
+      b: "Pedir à Wellmix que envie a arte no seu lugar"
+      c: "Trocar o arquivo por um menor e clicar em **Enviar** na hora"
+      d: "Clicar em **Enviar de novo**"
+    correta: [a]
+    explicacao: "Em arquivo grande, o envio só funciona depois que o arquivo termina de subir: espere o aviso \"Arquivo pronto: {nome} ({tamanho}). Agora clique no botão para enviar.\" e então clique em **Enviar**."
+  - id: AGE-05-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-05-C3
+    cena: 7
+    enunciado: "Chega o aviso \"Selo aplicado na arte recusado\", com o motivo \"O selo ficou pequeno demais\". O que você faz?"
+    opcoes:
+      a: "Pede à certificadora um selo maior"
+      b: "Sobe uma nova versão em Arte da embalagem no briefing"
+      c: "Aumenta o selo na arte e clica em **Enviar de novo**"
+      d: "Espera: a Wellmix valida sozinha depois de um tempo"
+    correta: [c]
+    explicacao: "Quando a Wellmix recusa, a linha fica **Recusado** com o motivo. Corrija a arte e use **Enviar de novo** na mesma linha; quando a Wellmix validar, a linha fica Concluído."
+  - id: AGE-05-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-05-C3
+    cena: 8
+    enunciado: "Na etapa **Arte e embalagem**, o botão **Enviar para assinatura** não aparece. Qual destes motivos explica isso?"
+    opcoes:
+      a: "Falta a arte da embalagem ou o selo aplicado na arte"
+      b: "A Wellmix ainda não assinou o documento"
+      c: "O fornecedor ainda não assinou o documento"
+      d: "A certificadora ainda não assinou o documento"
+    correta: [a]
+    explicacao: "Sem a arte ou sem o selo aplicado, o botão não aparece, e o portal avisa o que falta (por exemplo, \"Aguardando o selo da certificadora aplicado na arte\"). As assinaturas vêm depois do envio."
+  - id: AGE-05-Q8
+    tipo: unica
+    nivel: 2
+    capitulo: AGE-05-C3
+    cena: 8
+    enunciado: "Você clicou em **Enviar para assinatura**. Quem assina primeiro?"
+    opcoes:
+      a: "O fornecedor, e depois a Wellmix"
+      b: "A Wellmix, e depois o fornecedor"
+      c: "A agência, e depois a Wellmix"
+      d: "O cliente, e depois o fornecedor"
+    correta: [b]
+    explicacao: "Quem faz a arte aperta o botão. A Wellmix assina primeiro e o fornecedor assina em seguida."

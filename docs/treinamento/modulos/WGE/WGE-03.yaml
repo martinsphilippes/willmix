@@ -1,0 +1,130 @@
+episodio: WGE-03
+titulo: Financeiro, vendido, recebido e a receber
+serie: WGE
+papel: administrador
+duracao: "4:30"
+idiomas: [pt]
+capitulos:
+  - id: WGE-03-C1
+    titulo: Ler os cartões e a linha de cada pedido no Financeiro
+    inicio: "0:00"
+    fim: "1:30"
+    cenas: [1, 4]
+    resumo: Abra Gestão → Financeiro e leia venda, recebido, a receber, FOB, pago e a pagar, com reais de um lado e dólares do outro.
+  - id: WGE-03-C2
+    titulo: Registrar o sinal e os recebimentos do cliente
+    inicio: "1:30"
+    fim: "2:50"
+    cenas: [5, 6]
+    resumo: Veja como o sinal entra e registre mais um recebimento no card Financeiro do pedido.
+  - id: WGE-03-C3
+    titulo: Entender a margem e informar o câmbio do banco
+    inicio: "2:50"
+    fim: "4:30"
+    cenas: [7, 10]
+    resumo: Entenda o til da margem estimada, informe o câmbio do banco e saiba o que o operador não vê.
+perguntas:
+  - id: WGE-03-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-03-C1
+    cena: 3
+    enunciado: "Em que moeda ficam os cartões **Pago ao fornecedor** e **A pagar** no Financeiro?"
+    opcoes:
+      a: "Em reais, como a venda"
+      b: "Em yuan, a moeda do fornecedor"
+      c: "Na moeda do FOB, normalmente o dólar"
+      d: "Na moeda que o cliente usou para pagar"
+    correta: [c]
+    explicacao: "Vendido, Recebido e A receber ficam em reais, a moeda da venda. Pago ao fornecedor e A pagar ficam na moeda do FOB. Reais e dólares nunca se misturam."
+  - id: WGE-03-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-03-C2
+    cena: 5
+    enunciado: "O cliente pagou o sinal e anexou o comprovante. Qual botão da solicitação você clica depois de conferir o dinheiro na conta?"
+    opcoes:
+      a: "Registrar recebimento do cliente"
+      b: "Confirmar pagamento"
+      c: "Marcar como pago"
+      d: "Confirmar sinal recebido"
+    correta: [d]
+    explicacao: "A Wellmix confere na conta e clica em **Confirmar sinal recebido**. O pedido nasce e o sinal aparece em Pagamentos como **Confirmado**."
+  - id: WGE-03-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: WGE-03-C2
+    cena: 6
+    enunciado: "Chegou mais dinheiro do cliente. Coloque na ordem os passos para registrar o recebimento."
+    opcoes:
+      a: "Conferir **Valor** e **Moeda** e preencher a **Forma**"
+      b: "Abrir o pedido e rolar até **Financeiro do pedido**"
+      c: "Clicar no botão vermelho que grava o recebimento"
+      d: "Abrir o formulário de recebimento do cliente no card"
+    correta: [b, d, a, c]
+    explicacao: "Abra o pedido, vá a Financeiro do pedido, abra o formulário, confira o valor (já vem com o que falta), a moeda e a forma (PIX, boleto, TED) e só então grave. O Financeiro se atualiza na hora."
+  - id: WGE-03-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-03-C2
+    cena: 6
+    enunciado: "Você registra um recebimento parcial do cliente. O que muda no Financeiro?"
+    opcoes:
+      a: "Recebido sobe e A receber cai"
+      b: "Vendido cai pelo mesmo valor"
+      c: "Só a margem muda"
+      d: "Nada, até alguém confirmar na Control Tower"
+    correta: [a]
+    explicacao: "O recebimento entra na conta do cliente: **Recebido** aumenta e **A receber** diminui na hora. A venda continua a mesma."
+  - id: WGE-03-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-03-C3
+    cena: 7
+    enunciado: "O valor do cartão **Margem** vem com um til (~) na frente. O que isso quer dizer?"
+    opcoes:
+      a: "A margem está negativa"
+      b: "O custo é estimado: parte dele usa a cotação automática do dia"
+      c: "O pedido ainda não foi pago pelo cliente"
+      d: "A margem foi arredondada para cima"
+    correta: [b]
+    explicacao: "O til marca estimativa. O que foi pago com o câmbio do banco é real; o que ainda falta pagar usa a cotação automática do dia. Informar o câmbio do banco tira o til."
+  - id: WGE-03-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-03-C3
+    cena: 8
+    enunciado: "Você pagou o fornecedor sem informar o câmbio e a linha mostra o aviso âmbar 'Falta o câmbio do banco...'. O que faz para custo e margem ficarem mais reais?"
+    opcoes:
+      a: "Registra um novo recebimento do cliente"
+      b: "Apaga o pagamento e registra de novo"
+      c: "Espera a cotação automática do dia fechar"
+      d: "Clica em **Informar câmbio**, digita os reais por dólar que o banco cobrou e clica em **Salvar câmbio**"
+    correta: [d]
+    explicacao: "**Informar câmbio** abre um campo por pagamento ('R$ por 1 USD'). Ao salvar, custo e margem são recalculados na hora."
+  - id: WGE-03-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-03-C3
+    cena: 8
+    enunciado: "Ao salvar o câmbio de uma parcela, aparece 'O câmbio é informado em pagamento já feito (confirmado ou recebido).' O que você faz?"
+    opcoes:
+      a: "Marca a parcela como paga e informa o câmbio depois"
+      b: "Digita o câmbio com ponto em vez de vírgula"
+      c: "Troca a moeda da parcela para reais"
+      d: "Pede ao fornecedor que informe o câmbio"
+    correta: [a]
+    explicacao: "Só se informa câmbio de pagamento que já saiu. Marque a parcela como paga (em Contas a pagar, no episódio seguinte) e depois informe o câmbio. Pagamento em reais não tem câmbio."
+  - id: WGE-03-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-03-C3
+    cena: 9
+    enunciado: "O Otávio, operador, pergunta por que não vê o Financeiro nem os pagamentos no pedido. Qual é a resposta?"
+    opcoes:
+      a: "Há um defeito no cadastro dele: peça a ele que saia e entre de novo"
+      b: "Financeiro, pagamentos e margem são só do administrador, ou de quem ele liberar"
+      c: "Ele só vê esses dados depois que o pedido for entregue"
+      d: "Ele precisa abrir o pedido pelo celular para ver os valores"
+    correta: [b]
+    explicacao: "Financeiro, pagamentos e margem são trabalho do administrador. Ao abrir o endereço do Financeiro, o operador volta ao início com o aviso de acesso: não é erro."

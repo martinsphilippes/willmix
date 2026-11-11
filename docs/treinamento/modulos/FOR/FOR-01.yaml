@@ -1,0 +1,263 @@
+episodio: FOR-01
+titulo: "Seu painel: as pendências por etapa"
+serie: FOR
+papel: fornecedor
+duracao: "4:00"
+idiomas: [pt, en, zh]
+capitulos:
+  - id: FOR-01-C1
+    titulo: "Ler a faixa das sete etapas"
+    titulo_en: "Read the strip of seven steps"
+    titulo_zh: "看懂七个环节条"
+    inicio: "0:00"
+    fim: "1:05"
+    cenas: [1, 3]
+    resumo: "A tela inicial reúne tudo o que a Wellmix espera de você, e a faixa mostra as sete etapas, na ordem, com cores e números."
+    resumo_en: "The home screen gathers everything Wellmix expects from you, and the strip shows the seven steps in order, with colors and numbers."
+    resumo_zh: "首页汇总了 Wellmix 等您处理的所有事项，环节条按顺序显示七个环节，并用颜色和数字标明状态。"
+  - id: FOR-01-C2
+    titulo: "Filtrar por etapa e por prazo"
+    titulo_en: "Filter by step and by due date"
+    titulo_zh: "按环节和截止日期筛选"
+    inicio: "1:05"
+    fim: "2:50"
+    cenas: [4, 6]
+    resumo: "Toque numa etapa para ver só as pendências dela, leia a coluna Com você desde e use os chips de Prazo para priorizar."
+    resumo_en: "Tap a step to see only its tasks, read the With you since column and use the Due chips to prioritize."
+    resumo_zh: "点击一个环节，只看它的待办；查看“到您手上的日期”一栏，并用截止筛选来排优先级。"
+  - id: FOR-01-C3
+    titulo: "Abrir a pendência e acompanhar o sino"
+    titulo_en: "Open the task and follow the bell"
+    titulo_zh: "打开待办并关注铃铛"
+    inicio: "2:50"
+    fim: "4:00"
+    cenas: [7, 9]
+    resumo: "Use Abrir para ir ao lugar de resolver, o balão para falar com a Wellmix e o sino para acompanhar os avisos da sua vez."
+    resumo_en: "Use Open to go where you solve the task, the bubble to talk to Wellmix and the bell to follow the notices that are your turn."
+    resumo_zh: "用“打开”直达处理的地方，用对话图标联系 Wellmix，用铃铛跟进轮到您的通知。"
+perguntas:
+  - id: FOR-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-01-C1
+    cena: 3
+    enunciado: "Na faixa **Etapas que chegam até você**, o que significa uma etapa em vermelho?"
+    opcoes:
+      a: "A fazer, no prazo"
+      b: "Atrasado"
+      c: "Concluído ou nada a fazer"
+    correta: [b]
+    explicacao: "Vermelho é atrasado, amarelo é a fazer no prazo e verde é concluído ou nada a fazer. O número ao lado da etapa diz quantas pendências ela tem."
+    traducoes:
+      en:
+        enunciado: "In the **Steps that reach you** strip, what does a red step mean?"
+        opcoes:
+          a: "To do, on time"
+          b: "Overdue"
+          c: "Done or nothing to do"
+        explicacao: "Red means overdue, amber means to do and on time, and green means done or nothing to do. The number beside a step says how many tasks it has."
+      zh:
+        enunciado: "在“需要您处理的环节”条中，红色环节表示什么？"
+        opcoes:
+          a: "待办，未逾期"
+          b: "已逾期"
+          c: "已完成或无待办"
+        explicacao: "红色表示已逾期，黄色表示待办且未逾期，绿色表示已完成或无待办。环节旁边的数字是这个环节的待办数量。"
+  - id: FOR-01-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-01-C2
+    cena: 5
+    enunciado: "Qual coluna da tabela de Pendências diz quando a tarefa chegou à sua mão?"
+    opcoes:
+      a: "Prazo (quando vence)"
+      b: "Etapa (o passo do fluxo)"
+      c: "Com você desde"
+      d: "Detalhe (o resumo da tarefa)"
+    correta: [c]
+    explicacao: "**Com você desde** mostra a data em que a tarefa chegou até você e, abaixo, desde quando o produto está no sistema. **Prazo** diz só quando ela vence."
+    traducoes:
+      en:
+        enunciado: "Which column of the tasks table says when the task reached you?"
+        opcoes:
+          a: "Due (when it expires)"
+          b: "Step (the stage of the flow)"
+          c: "With you since"
+          d: "Detail (the task summary)"
+        explicacao: "**With you since** shows the date the task reached you and, below it, since when the product has been in the system. **Due** only says when it expires."
+      zh:
+        enunciado: "待办表格中的哪一栏显示任务什么时候到了您手上？"
+        opcoes:
+          a: "截止（何时到期）"
+          b: "环节（流程中的步骤）"
+          c: "到您手上的日期"
+          d: "详情（待办摘要）"
+        explicacao: "**到您手上的日期** 显示任务到达您手上的日期，下面还有产品录入系统的日期。**截止** 只说明什么时候到期。"
+  - id: FOR-01-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: FOR-01-C1
+    cena: 3
+    enunciado: "Coloque estas etapas na ordem em que aparecem na faixa, da esquerda para a direita."
+    opcoes:
+      a: "Embarque"
+      b: "Assinar o pedido"
+      c: "Analisar o Booking"
+      d: "Ficha de compra"
+      e: "Die Cut"
+    correta: [c, e, d, b, a]
+    explicacao: "A faixa segue a ordem do seu trabalho: Analisar o Booking, Die Cut, Ficha de compra, Aprovar a arte, Assinar o pedido, Produção e inspeção e Embarque. Depois do embarque nada mais depende de você."
+    traducoes:
+      en:
+        enunciado: "Put these steps in the order they appear in the strip, from left to right."
+        opcoes:
+          a: "Shipment"
+          b: "Sign the order"
+          c: "Review the Booking"
+          d: "Purchase sheet"
+          e: "Die Cut"
+        explicacao: "The strip follows the order of your work: Review the Booking, Die Cut, Purchase sheet, Approve the artwork, Sign the order, Production and inspection and Shipment. After shipment nothing else depends on you."
+      zh:
+        enunciado: "请把这些环节按它们在环节条中从左到右的顺序排列。"
+        opcoes:
+          a: "装运"
+          b: "签署订单"
+          c: "审核 Booking"
+          d: "采购表"
+          e: "刀模 (Die Cut)"
+        explicacao: "环节条按您的工作顺序排列：审核 Booking、刀模 (Die Cut)、采购表、确认设计稿、签署订单、生产与验货、装运。装运之后就不再需要您处理了。"
+  - id: FOR-01-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: FOR-01-C2
+    cena: 4
+    enunciado: "Você clica na etapa **Analisar o Booking** na faixa. O que acontece?"
+    opcoes:
+      a: "A lista filtra por essa etapa e mostra uma ajuda curta"
+      b: "A cotação do produto abre direto, sem passar pela lista de pendências"
+      c: "A etapa é marcada como concluída e fica verde"
+    correta: [a]
+    explicacao: "Tocar numa etapa filtra a lista e mostra, abaixo da faixa, uma explicação curta do que fazer. Tocar de novo (ou em **Todas as etapas**) limpa o filtro."
+    traducoes:
+      en:
+        enunciado: "You click the step **Review the Booking** in the strip. What happens?"
+        opcoes:
+          a: "The list filters by that step and shows a short help text"
+          b: "The product's quotation opens right away, skipping the task list"
+          c: "The step is marked as done and turns green"
+        explicacao: "Tapping a step filters the list and shows, below the strip, a short explanation of what to do. Tap again (or **All steps**) to clear the filter."
+      zh:
+        enunciado: "您在环节条中点击“审核 Booking”环节，会发生什么？"
+        opcoes:
+          a: "列表按该环节筛选，并显示简短说明"
+          b: "直接打开该产品的报价，不经过待办列表"
+          c: "该环节被标为已完成并变成绿色"
+        explicacao: "点击一个环节会筛选列表，并在环节条下方显示简短的操作说明。再点一次（或点击“全部环节”）即可清除筛选。"
+  - id: FOR-01-Q5
+    tipo: vf
+    nivel: 2
+    capitulo: FOR-01-C2
+    cena: 6
+    enunciado: "Verdadeiro ou falso: os chips de **Prazo** (Atrasadas, Vencem hoje, Até 7 dias…) aparecem sempre todos, mesmo que não haja pendência naquele prazo."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "Só aparecem os chips dos prazos que têm pendência, cada um com a contagem. **Limpar filtros** leva de volta à lista inteira."
+    traducoes:
+      en:
+        enunciado: "True or false: the **Due** chips (Overdue, Due today, Within 7 days…) always all appear, even when there is no task with that deadline."
+        opcoes:
+          a: "True"
+          b: "False"
+        explicacao: "Only the chips for deadlines that have tasks appear, each with its count. **Clear filters** takes you back to the full list."
+      zh:
+        enunciado: "判断对错：“期限”筛选（已逾期、今天到期、7 天内……）总是全部显示，即使该期限下没有待办。"
+        opcoes:
+          a: "正确"
+          b: "错误"
+        explicacao: "只显示有待办的期限，每个都带有数量。点击“清除筛选”可回到完整列表。"
+  - id: FOR-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-01-C2
+    cena: 6
+    enunciado: "Você tem muitas pendências e quer começar pelo que já passou do prazo. Qual é o caminho?"
+    opcoes:
+      a: "Clicar em **Todas as etapas**, na faixa de etapas"
+      b: "Clicar na etapa **Embarque**, no fim da faixa"
+      c: "Clicar em **Resolver** em Notificações, no sino"
+      d: "Escolher o chip **Atrasadas**, em Prazo"
+    correta: [d]
+    explicacao: "Os chips de **Prazo** filtram pelo vencimento: **Atrasadas** mostra só o que já venceu. **Todas as etapas** só tira o filtro de etapa."
+    traducoes:
+      en:
+        enunciado: "You have many tasks and want to start with what is already past due. What is the way?"
+        opcoes:
+          a: "Click **All steps**"
+          b: "Click the step **Shipment**"
+          c: "Click **Resolve** in Notifications"
+          d: "Choose the **Overdue** chip, under Due"
+        explicacao: "The **Due** chips filter by deadline: **Overdue** shows only what has already expired. **All steps** only removes the step filter."
+      zh:
+        enunciado: "您有很多待办，想先处理已经过期的。应该怎么做？"
+        opcoes:
+          a: "点击“全部环节”"
+          b: "点击“装运”环节"
+          c: "在“通知”中点击“去处理”"
+          d: "在“期限”里选择“已逾期”"
+        explicacao: "“期限”筛选按到期时间过滤：“已逾期”只显示已经过期的待办。“全部环节”只是取消环节筛选。"
+  - id: FOR-01-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-01-C3
+    cena: 7
+    enunciado: "Você quer tirar uma dúvida com a Wellmix sobre a pendência **Analisar o Booking**. O que clicar na linha dela?"
+    opcoes:
+      a: "O botão **Abrir**, na mesma linha da pendência"
+      b: "O ícone de balão ao lado de **Abrir**"
+      c: "Um dos chips de **Prazo**, acima da tabela"
+    correta: [b]
+    explicacao: "O balão ao lado de **Abrir** abre a conversa com a Wellmix sobre aquele assunto. **Abrir** leva ao lugar de resolver a pendência, não à conversa."
+    traducoes:
+      en:
+        enunciado: "You want to ask Wellmix a question about the task **Review the Booking**. What do you click on its row?"
+        opcoes:
+          a: "The **Open** button, on the same row as the task"
+          b: "The bubble icon beside **Open**"
+          c: "One of the **Due** chips, above the table"
+        explicacao: "The bubble beside **Open** opens the conversation with Wellmix about that subject. **Open** takes you to where you solve the task, not to the conversation."
+      zh:
+        enunciado: "您想就“审核 Booking”这项待办向 Wellmix 提问。应该点击该行的什么？"
+        opcoes:
+          a: "同一行的“打开”按钮"
+          b: "“打开”旁边的对话图标"
+          c: "表格上方的某个“期限”筛选"
+        explicacao: "“打开”旁边的对话图标会就这件事打开与 Wellmix 的对话。“打开”是带您到处理待办的地方，不是对话。"
+  - id: FOR-01-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-01-C3
+    cena: 8
+    enunciado: "Em **Notificações**, no bloco **Precisa de você**, há um aviso do tipo **Sua vez**. Você clica em **Resolver**. O que acontece?"
+    opcoes:
+      a: "O aviso é apagado e você precisa procurar a tarefa sozinho no menu"
+      b: "O pedido é aprovado automaticamente, sem você abrir nada"
+      c: "O sistema leva você ao lugar certo e marca o aviso como lido"
+    correta: [c]
+    explicacao: "**Resolver** abre o lugar onde a tarefa se resolve e marca o aviso como lido; ele sai da lista, e **Mostrar as lidas** traz de volta."
+    traducoes:
+      en:
+        enunciado: "In **Notifications**, in the **Needs you** block, there is a notice of type **Your turn**. You click **Resolve**. What happens?"
+        opcoes:
+          a: "The notice is erased and you must look for the task yourself"
+          b: "The order is approved automatically"
+          c: "The system takes you to the right place and marks the notice as read"
+        explicacao: "**Resolve** opens the place where the task is solved and marks the notice as read; it leaves the list, and **Show read** brings it back."
+      zh:
+        enunciado: "在“通知”的“需要您处理”区块里，有一条“轮到您”类型的通知。您点击“去处理”，会发生什么？"
+        opcoes:
+          a: "通知被删除，您得自己去找这项待办"
+          b: "订单被自动批准"
+          c: "系统带您到正确的地方，并把通知标为已读"
+        explicacao: "“去处理”会打开处理该事项的地方，并把通知标为已读；通知从列表中消失，点击“显示已读”可以把它找回来。"

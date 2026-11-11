@@ -1,0 +1,131 @@
+episodio: AGE-04
+titulo: "Arte reprovada, prazo e valor por item"
+serie: AGE
+papel: agencia
+duracao: "4:40"
+idiomas: [pt]
+capitulos:
+  - id: AGE-04-C1
+    titulo: "Acompanhar o prazo e informar o valor por item"
+    inicio: "0:00"
+    fim: "1:40"
+    cenas: [1, 4]
+    resumo: "Veja como o prazo do briefing é cobrado e onde informar o valor por item, que só a agência e a Wellmix veem."
+  - id: AGE-04-C2
+    titulo: "Achar a reprovação do fornecedor"
+    inicio: "1:40"
+    fim: "2:55"
+    cenas: [5, 6]
+    resumo: "Entenda a etapa **Arte e embalagem** do pedido e onde a arte reprovada volta para você, com o motivo."
+  - id: AGE-04-C3
+    titulo: "Reenviar a arte e tirar dúvidas"
+    inicio: "2:55"
+    fim: "4:40"
+    cenas: [7, 9]
+    resumo: "Corrija e reenvie a arte, saiba o que o documento do pedido espera e use **Conversar com a Wellmix** na dúvida."
+perguntas:
+  - id: AGE-04-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: AGE-04-C1
+    cena: 4
+    enunciado: "Em que cartão do briefing você informa o **Valor por item (agência)**?"
+    opcoes:
+      a: "Entregáveis"
+      b: "Prompt para criar a arte (ChatGPT)"
+      c: "Observações (gráfica, fornecedor)"
+      d: "Medidas da caixa"
+    correta: [c]
+    explicacao: "O campo fica no cartão **Observações (gráfica, fornecedor)**. Digite o valor, escolha a **Moeda** e clique em **Salvar observações**; a tela volta com \"Salvo.\""
+  - id: AGE-04-Q2
+    tipo: multipla
+    nivel: 2
+    capitulo: AGE-04-C1
+    cena: 4
+    enunciado: "Marque o que é verdade sobre o valor por item."
+    opcoes:
+      a: "É opcional"
+      b: "A moeda pode ser BRL, USD ou CNY"
+      c: "O fornecedor também vê o valor"
+      d: "Só a agência e a Wellmix veem"
+      e: "Sem ele, o briefing não fica Pronta"
+    correta: [a, b, d]
+    explicacao: "É o que a agência cobra pela criação e finalização da arte, é opcional e fica só entre a agência e a Wellmix: o fornecedor e o cliente não veem o briefing. Número inválido gera \"Informe o valor por item como número maior que zero.\""
+  - id: AGE-04-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: AGE-04-C2
+    cena: 5
+    enunciado: "Na etapa **Arte e embalagem** do pedido, o item \"Aprovação da arte pelo fornecedor\" está **Pendente**. O que isso quer dizer?"
+    opcoes:
+      a: "Você precisa reenviar a arte agora"
+      b: "A Wellmix ainda vai aprovar a arte"
+      c: "O fornecedor ainda vai conferir a arte e aprovar ou reprovar"
+      d: "O briefing foi cancelado"
+    correta: [c]
+    explicacao: "Com o pedido criado, a arte do briefing já conta como enviada, e agora o fornecedor confere. Você vê a etapa, mas só os itens da sua parte pedem ação."
+  - id: AGE-04-Q4
+    tipo: unica
+    nivel: 1
+    capitulo: AGE-04-C2
+    cena: 6
+    enunciado: "O fornecedor reprovou a arte. Em qual quadrado de Minhas pendências ela volta para você?"
+    opcoes:
+      a: "Arte na cotação"
+      b: "Selo na arte"
+      c: "Certificação"
+      d: "Arte do pedido"
+    correta: [d]
+    explicacao: "A pendência \"Pedido #N: Arte e embalagem\" aparece em **Arte do pedido** (o quadrado 2). No pedido, a **Arte da embalagem** fica **Reprovado**, com a observação do fornecedor."
+  - id: AGE-04-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: AGE-04-C3
+    cena: 7
+    enunciado: "Coloque na ordem o que fazer quando o fornecedor reprova a arte."
+    opcoes:
+      a: "Abrir o pedido e ler a observação no item **Arte da embalagem**"
+      b: "Corrigir a arte e clicar em **Escolher arquivo**"
+      c: "Receber o aviso e a pendência **Arte do pedido**"
+      d: "A aprovação volta a **Pendente** e o fornecedor é avisado"
+    correta: [c, a, b, d]
+    explicacao: "Você recebe o aviso, abre o pedido, lê o motivo no item **Reprovado**, corrige e reenvia. O envio cria uma versão nova e a aprovação do fornecedor volta a ficar pendente."
+  - id: AGE-04-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-04-C3
+    cena: 7
+    enunciado: "Você reenviou a arte (v3) e o item voltou a **Concluído**. \"Aprovação da arte pelo fornecedor\" está **Pendente** de novo. O que você faz?"
+    opcoes:
+      a: "Exclui a v2 para o fornecedor ver só a v3"
+      b: "Pede à Wellmix que reabra o item"
+      c: "Aguarda: o fornecedor foi avisado e aprova de novo"
+      d: "Reenvia a v3 para ele receber o aviso"
+    correta: [c]
+    explicacao: "O reenvio já avisa o fornecedor, e a aprovação volta a ficar pendente. Não há nada a fazer além de esperar a nova decisão. A Wellmix só reabre o item quando a arte já foi aprovada."
+  - id: AGE-04-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-04-C3
+    cena: 7
+    enunciado: "Com a arte reprovada, você tenta enviar o documento do pedido para assinatura. O que o portal mostra?"
+    opcoes:
+      a: "O documento segue e o fornecedor assina assim mesmo"
+      b: "A Wellmix assina primeiro para liberar"
+      c: "O documento vai, mas sem a arte"
+      d: "\"Aguardando a arte da embalagem: o documento só vai para assinatura depois dela.\""
+    correta: [d]
+    explicacao: "Enquanto a arte está reprovada, o documento do pedido não pode ir para assinatura. Reenvie a arte primeiro; a dica some quando ela volta a Concluído."
+  - id: AGE-04-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-04-C3
+    cena: 8
+    enunciado: "A observação do fornecedor na reprovação não ficou clara para você. Qual botão usa para tirar a dúvida?"
+    opcoes:
+      a: "Escolher arquivo, enviando a mesma arte de novo"
+      b: "Conversar com a Wellmix"
+      c: "Salvar observações"
+      d: "Excluir, para recomeçar a arte"
+    correta: [b]
+    explicacao: "Na dúvida sobre a observação, use **Conversar com a Wellmix**. Reenviar a mesma arte só gera outra versão com o mesmo problema, e **Salvar observações** não fala com o fornecedor."

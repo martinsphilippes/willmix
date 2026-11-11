@@ -1,0 +1,257 @@
+episodio: FOR-03
+titulo: "Responder à cotação (Análise do Booking)"
+serie: FOR
+papel: fornecedor
+duracao: "4:30"
+idiomas: [pt, en, zh]
+capitulos:
+  - id: FOR-03-C1
+    titulo: "Abrir a cotação e ler o preço desejado"
+    titulo_en: "Open the quotation and read the wanted price"
+    titulo_zh: "打开报价并查看期望价格"
+    inicio: "0:00"
+    fim: "1:10"
+    cenas: [1, 3]
+    resumo: "A pendência Analisar o Booking abre a cotação, em que só você e a Wellmix participam; o cartão Preço desejado pela Wellmix mostra preço e quantidade."
+    resumo_en: "The task Review the Booking opens the quotation, where only you and Wellmix take part; the card Price wanted by Wellmix shows price and quantity."
+    resumo_zh: "“审核 Booking”待办会打开报价，只有您和 Wellmix 参与；“Wellmix 的期望价格”卡片显示单价和数量。"
+  - id: FOR-03-C2
+    titulo: "Confirmar, mandar outro preço ou não aceitar"
+    titulo_en: "Confirm, send another price or decline"
+    titulo_zh: "确认价格、发送其他价格或不接受"
+    inicio: "1:10"
+    fim: "3:20"
+    cenas: [4, 6]
+    resumo: "Três respostas possíveis ao preço da Wellmix: Confirmar com o prazo, Enviar outro preço ou Não aceito este preço."
+    resumo_en: "Three possible answers to Wellmix's price: Confirm with the lead time, Send another price or I do not accept this price."
+    resumo_zh: "对 Wellmix 的价格有三种回复：填交期并确认、发送其他价格，或不接受此价格。"
+  - id: FOR-03-C3
+    titulo: "Responder com a ficha completa quando não há preço desejado"
+    titulo_en: "Answer with the full sheet when there is no wanted price"
+    titulo_zh: "没有期望价格时填写完整采购单"
+    inicio: "3:20"
+    fim: "4:30"
+    cenas: [7, 8]
+    resumo: "Sem preço desejado, preencha a ficha, envie o Cartão do fabricante e clique em Enviar cotação; depois ela fica em Enviadas."
+    resumo_en: "With no wanted price, fill in the sheet, send the Manufacturer's card and click Send quotation; afterwards it stays under Sent."
+    resumo_zh: "没有期望价格时，填写采购单、上传工厂名片并点击“提交报价”；之后报价会留在“已提交”里。"
+perguntas:
+  - id: FOR-03-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-03-C1
+    cena: 3
+    enunciado: "Qual cartão da cotação mostra o preço por peça que a Wellmix quer pagar e a quantidade?"
+    opcoes:
+      a: "Negociação, com o histórico da conversa"
+      b: "Preço desejado pela Wellmix"
+      c: "Cartão do fabricante, usado na ficha completa"
+    correta: [b]
+    explicacao: "O cartão **Preço desejado pela Wellmix** traz o preço por peça e a quantidade. É nele que você confirma, manda outro preço ou não aceita."
+    traducoes:
+      en:
+        enunciado: "Which card of the quotation shows the price per piece Wellmix wants to pay and the quantity?"
+        opcoes:
+          a: "Negotiation history, with the conversation record"
+          b: "Price wanted by Wellmix"
+          c: "Manufacturer's card, used in the full sheet"
+        explicacao: "The card **Price wanted by Wellmix** shows the price per piece and the quantity. It is where you confirm, send another price or decline."
+      zh:
+        enunciado: "报价中的哪张卡片显示 Wellmix 想采购的单价和数量？"
+        opcoes:
+          a: "议价记录，显示沟通历史"
+          b: "Wellmix 的期望价格"
+          c: "工厂名片，用于完整采购单"
+        explicacao: "**Wellmix 的期望价格** 卡片显示单价和数量。您在这里确认价格、发送其他价格或不接受。"
+  - id: FOR-03-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-03-C2
+    cena: 4
+    enunciado: "Para confirmar o preço desejado pela Wellmix, qual campo você precisa preencher?"
+    opcoes:
+      a: "Outro preço por peça (USD)"
+      b: "Comentário (opcional)"
+      c: "Prazo de produção (dias)"
+    correta: [c]
+    explicacao: "Para confirmar, informe só o **Prazo de produção (dias)**, um número inteiro. O comentário é opcional e o outro preço é só para quem não vende pelo preço da Wellmix."
+    traducoes:
+      en:
+        enunciado: "To confirm the price Wellmix wants, which field must you fill in?"
+        opcoes:
+          a: "Another price per piece (USD)"
+          b: "Comment (optional)"
+          c: "Production lead time (days)"
+        explicacao: "To confirm, only enter the **Production lead time (days)**, a whole number. The comment is optional and the other price is only for those who do not sell at Wellmix's price."
+      zh:
+        enunciado: "要确认 Wellmix 的期望价格，必须填写哪个字段？"
+        opcoes:
+          a: "其他单价（USD）"
+          b: "备注（选填）"
+          c: "生产周期（天）"
+        explicacao: "确认价格时，只需填写 **生产周期（天）**，必须是整数。备注是选填，“其他单价”只给不能按 Wellmix 价格供货的人。"
+  - id: FOR-03-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: FOR-03-C2
+    cena: 4
+    enunciado: "Coloque na ordem os passos para confirmar o preço desejado."
+    opcoes:
+      a: "Digitar o **Prazo de produção (dias)**"
+      b: "Ler o cartão **Preço desejado pela Wellmix**"
+      c: "Clicar em **Confirmar US$ 1,25**"
+      d: "Abrir a pendência com **Abrir**"
+    correta: [d, b, a, c]
+    explicacao: "Abra a pendência, leia o preço e a quantidade, informe o prazo e só então clique em **Confirmar**. A cotação fica respondida e a Wellmix é avisada."
+    traducoes:
+      en:
+        enunciado: "Put the steps to confirm the wanted price in order."
+        opcoes:
+          a: "Type the **Production lead time (days)**"
+          b: "Read the card **Price wanted by Wellmix**"
+          c: "Click **Confirm US$ 1.25**"
+          d: "Open the task with **Open**"
+        explicacao: "Open the task, read the price and the quantity, enter the lead time and only then click **Confirm**. The quote is answered and Wellmix is notified."
+      zh:
+        enunciado: "请把确认期望价格的步骤按顺序排列。"
+        opcoes:
+          a: "填写 **生产周期（天）**"
+          b: "阅读“Wellmix 的期望价格”卡片"
+          c: "点击“确认 US$ 1.25”"
+          d: "用“打开”打开待办"
+        explicacao: "先打开待办，看价格和数量，填好生产周期，最后再点击“确认”。报价随即完成，Wellmix 会收到通知。"
+  - id: FOR-03-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: FOR-03-C2
+    cena: 4
+    enunciado: "Você confirmou o preço desejado com **Confirmar**. Ainda é preciso preencher a ficha completa que aparece abaixo?"
+    opcoes:
+      a: "Não: a cotação fica respondida e a Wellmix é avisada"
+      b: "Sim, a ficha completa também é obrigatória para a cotação ser respondida"
+      c: "Sim, mas só a parte de fotos, depois da confirmação"
+    correta: [a]
+    explicacao: "Confirmando, a cotação fica respondida e a Wellmix é avisada: você não precisa preencher a ficha abaixo. A ficha completa é para quando não há preço desejado."
+    traducoes:
+      en:
+        enunciado: "You confirmed the wanted price with **Confirm**. Do you still need to fill in the full sheet shown below?"
+        opcoes:
+          a: "No: the quote is answered and Wellmix is notified"
+          b: "Yes, the full sheet is also required for the quote to be answered"
+          c: "Yes, but only the photos part, after confirming"
+        explicacao: "By confirming, the quote is answered and Wellmix is notified: you do not need to fill in the sheet below. The full sheet is for when there is no wanted price."
+      zh:
+        enunciado: "您已用“确认”确认了期望价格。下方的完整采购单还需要填写吗？"
+        opcoes:
+          a: "不用：报价随即完成，Wellmix 会收到通知"
+          b: "需要，报价要完成，完整采购单也必须填写"
+          c: "需要，但只填照片部分，在确认之后"
+        explicacao: "确认价格后，报价随即完成，Wellmix 会收到通知，下方的采购单不用再填。完整采购单用于没有期望价格的情况。"
+  - id: FOR-03-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: FOR-03-C3
+    cena: 8
+    enunciado: "Em **Cotações**, em qual aba fica a cotação que você enviou, enquanto a Wellmix não decide?"
+    opcoes:
+      a: "Para responder"
+      b: "Enviadas"
+      c: "Escolhidas"
+    correta: [b]
+    explicacao: "Enviada a cotação, ela fica em **Enviadas** até a Wellmix decidir. Se for escolhida, passa a **Escolhidas** e você é avisado: \"Sua cotação foi escolhida\"."
+    traducoes:
+      en:
+        enunciado: "In **Quotations**, which tab holds the quotation you sent while Wellmix has not decided?"
+        opcoes:
+          a: "To answer"
+          b: "Sent"
+          c: "Selected"
+        explicacao: "Once sent, the quotation stays under **Sent** until Wellmix decides. If it is chosen, it moves to **Selected** and you are notified: \"Your quotation was chosen\"."
+      zh:
+        enunciado: "在“报价”里，您已提交的报价在 Wellmix 作出决定之前放在哪个标签页？"
+        opcoes:
+          a: "待回复"
+          b: "已提交"
+          c: "已选中"
+        explicacao: "报价提交后会留在“已提交”里，等待 Wellmix 决定。如果被选中，会转到“已选中”，您也会收到通知：“您的报价已被选中”。"
+  - id: FOR-03-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-03-C2
+    cena: 5
+    enunciado: "A Wellmix quer pagar US$ 1,25, mas você só vende a US$ 1,40. O que fazer para ela saber o seu preço?"
+    opcoes:
+      a: "Digitar 1,40 em **Outro preço por peça (USD)** e clicar em **Enviar outro preço**"
+      b: "Clicar em **Confirmar US$ 1,25** e combinar o 1,40 depois, pelas mensagens"
+      c: "Digitar 1,40 em **Comentário** e clicar em **Confirmar US$ 1,25**"
+    correta: [a]
+    explicacao: "O campo **Outro preço por peça (USD)** existe para quem não vende pelo preço da Wellmix: **Enviar outro preço** avisa a Wellmix, e vocês conversam pelas mensagens. **Confirmar** diria que você aceita US$ 1,25."
+    traducoes:
+      en:
+        enunciado: "Wellmix wants to pay US$ 1.25, but you only sell at US$ 1.40. What do you do so it knows your price?"
+        opcoes:
+          a: "Type 1.40 in **Another price per piece (USD)** and click **Send another price**"
+          b: "Click **Confirm US$ 1.25** and agree on the 1.40 later, in the messages"
+          c: "Type 1.40 in **Comment** and click **Confirm US$ 1.25**"
+        explicacao: "The field **Another price per piece (USD)** exists for those who do not sell at Wellmix's price: **Send another price** notifies Wellmix, and you talk through the messages. **Confirm** would say you accept US$ 1.25."
+      zh:
+        enunciado: "Wellmix 想按 US$ 1.25 采购，但您只能按 US$ 1.40 供货。怎样才能让对方知道您的价格？"
+        opcoes:
+          a: "在“其他单价（USD）”中填 1.40，然后点击“发送其他价格”"
+          b: "点击“确认 US$ 1.25”，之后再通过消息商定 1.40"
+          c: "在“备注”中填 1.40，然后点击“确认 US$ 1.25”"
+        explicacao: "“其他单价（USD）”是给不能按 Wellmix 价格供货的人用的：点击“发送其他价格”会通知 Wellmix，双方通过消息沟通。点“确认”则表示您接受 US$ 1.25。"
+  - id: FOR-03-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-03-C2
+    cena: 6
+    enunciado: "Você não aceita o preço da Wellmix e prefere conversar antes de dar um preço. O que fazer?"
+    opcoes:
+      a: "Digitar o prazo de produção e clicar em **Confirmar US$ 1,25** para ganhar tempo"
+      b: "Deixar a cotação sem resposta até a Wellmix escrever no sino"
+      c: "Clicar em **Não aceito este preço**: a Wellmix é avisada e vocês conversam"
+    correta: [c]
+    explicacao: "**Não aceito este preço** é um toque só, sem prazo nem preço. A Wellmix é avisada e vocês conversam pelas mensagens; depois você ainda pode confirmar ou mandar o seu preço."
+    traducoes:
+      en:
+        enunciado: "You do not accept Wellmix's price and prefer to talk before giving a price. What do you do?"
+        opcoes:
+          a: "Type the production lead time and click **Confirm US$ 1.25** to buy time"
+          b: "Leave the quotation unanswered until Wellmix writes in the bell"
+          c: "Click **I do not accept this price**: Wellmix is notified and you talk"
+        explicacao: "**I do not accept this price** is a single tap, with no lead time or price. Wellmix is notified and you talk through the messages; afterwards you can still confirm or send your price."
+      zh:
+        enunciado: "您不接受 Wellmix 的价格，想先沟通再报价。该怎么做？"
+        opcoes:
+          a: "填写生产周期并点击“确认 US$ 1.25”，先拖延时间"
+          b: "不回复报价，等 Wellmix 在铃铛里留言"
+          c: "点击“不接受此价格”：Wellmix 会收到通知，双方沟通"
+        explicacao: "“不接受此价格”点一下即可，不用填交期，也不用填单价。Wellmix 会收到通知，双方通过消息沟通；之后您仍然可以确认价格或发送自己的价格。"
+  - id: FOR-03-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-03-C3
+    cena: 7
+    enunciado: "A cotação que você abriu não tem preço desejado pela Wellmix. Como você responde?"
+    opcoes:
+      a: "Informar só o prazo de produção e clicar em **Confirmar**, como nas outras cotações"
+      b: "Preencher a ficha completa, enviar o Cartão do fabricante e clicar em **Enviar cotação**"
+      c: "Clicar em **Salvar rascunho**, que já envia a cotação à Wellmix para ela avaliar"
+    correta: [b]
+    explicacao: "Sem preço desejado não há o que confirmar: você responde com a ficha completa (campos em vermelho e Cartão do fabricante) e clica em **Enviar cotação**. **Salvar rascunho** só guarda o que você já preencheu."
+    traducoes:
+      en:
+        enunciado: "The quotation you opened has no price wanted by Wellmix. How do you answer?"
+        opcoes:
+          a: "Enter only the production lead time and click **Confirm**, as in other quotations"
+          b: "Fill in the full sheet, send the Manufacturer's card and click **Send quotation**"
+          c: "Click **Save draft**, which already sends the quotation to Wellmix to evaluate"
+        explicacao: "Without a wanted price there is nothing to confirm: you answer with the full sheet (fields in red and the Manufacturer's card) and click **Send quotation**. **Save draft** only keeps what you have filled in."
+      zh:
+        enunciado: "您打开的这份报价没有 Wellmix 的期望价格。您该如何回复？"
+        opcoes:
+          a: "只填写生产周期并点击“确认”，就像其他报价那样"
+          b: "填写完整采购单，上传工厂名片，然后点击“提交报价”"
+          c: "点击“保存草稿”，这样就会把报价发给 Wellmix 评估"
+        explicacao: "没有期望价格就没有可确认的内容：您要用完整采购单回复（补全标红的内容并上传工厂名片），然后点击“提交报价”。“保存草稿”只是保存您已填写的内容。"

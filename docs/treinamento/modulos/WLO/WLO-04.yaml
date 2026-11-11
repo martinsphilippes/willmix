@@ -1,0 +1,130 @@
+episodio: WLO-04
+titulo: "Produção: follow e ETD"
+serie: WLO
+papel: operador
+duracao: "4:15"
+idiomas: [pt]
+capitulos:
+  - id: WLO-04-C1
+    titulo: "Abrir o cartão Produção e conferir o início"
+    inicio: "0:00"
+    fim: "1:25"
+    cenas: [1, 4]
+    resumo: "Achar o cartão Produção no pedido, escolher o tipo de fornecedor e entender o início automático."
+  - id: WLO-04-C2
+    titulo: "Mudar o ETD e registrar os follows"
+    inicio: "1:25"
+    fim: "2:45"
+    cenas: [5, 6]
+    resumo: "Registrar o ETD com motivo nas mudanças e fazer os follows de 5, 15 e 25 dias."
+  - id: WLO-04-C3
+    titulo: "Agendar a inspeção e acompanhar os atrasos"
+    inicio: "2:45"
+    fim: "4:15"
+    cenas: [7, 9]
+    resumo: "Agendar a inspeção, usar a Inspeção por SKU e achar o que está atrasado na Control Tower."
+perguntas:
+  - id: WLO-04-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WLO-04-C1
+    cena: 3
+    enunciado: "Onde você registra o ETD e acompanha a fábrica de um pedido?"
+    opcoes:
+      a: "No cartão **Produção** do pedido"
+      b: "Em Pedidos → Containers, na ficha do container"
+      c: "Em Cadastros → Fornecedores, na ficha do fornecedor"
+      d: "Em Pendências, na lista de tarefas"
+    correta: [a]
+    explicacao: "O cartão **Produção** do pedido reúne o tipo do fornecedor, o início, o ETD e a fábrica. A produção corre ao lado das etapas Preparação e Inspeção, por isso tem um cartão próprio."
+  - id: WLO-04-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WLO-04-C2
+    cena: 6
+    enunciado: "Com quantos dias do início da produção vencem os follows?"
+    opcoes:
+      a: "7, 14 e 21 dias"
+      b: "10, 20 e 30 dias"
+      c: "5, 15 e 25 dias"
+      d: "3, 10, 20 e 30 dias"
+    correta: [c]
+    explicacao: "Os follows vencem aos 5, 15 e 25 dias do início e viram pendência da Wellmix. Em 'Fazer agora' está o que venceu e ainda não foi registrado."
+  - id: WLO-04-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WLO-04-C1
+    cena: 4
+    enunciado: "Como é definido o **Início da produção** de um pedido?"
+    opcoes:
+      a: "Você digita a data no cartão Produção, ao salvar"
+      b: "Sozinho: contrato assinado mais o prazo do fornecedor"
+      c: "No dia em que o sinal do cliente é confirmado"
+      d: "No dia em que a inspeção é agendada pela Wellmix"
+    correta: [b]
+    explicacao: "Ninguém digita o início. Ele entra no dia em que o contrato fica assinado (a segunda assinatura), mais o prazo do fornecedor. O follow de 5, 15 e 25 dias conta a partir dele."
+  - id: WLO-04-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: WLO-04-C2
+    cena: 5
+    enunciado: "O pedido já tem um primeiro ETD salvo e o fornecedor avisou que a data mudou. Coloque os passos na ordem."
+    opcoes:
+      a: "Conferir o histórico em **Mudanças do ETD**"
+      b: "Mudar a data do ETD"
+      c: "Clicar em **Salvar produção**"
+      d: "Escrever o 'Motivo da mudança do ETD'"
+    correta: [b, d, c, a]
+    explicacao: "Mude a data, escreva o motivo (obrigatório ao mudar) e clique em **Salvar produção**. O histórico mostra de quando, para quando, quem e por quê."
+  - id: WLO-04-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WLO-04-C2
+    cena: 6
+    enunciado: "Você escolhe **Atrasado** no follow de 15 dias e clica em **Registrar follow** sem escrever nada. O que acontece?"
+    opcoes:
+      a: "Registra como Atrasado e pede a observação depois, por aviso"
+      b: "Registra como No prazo, por padrão, e segue"
+      c: "Alerta 'Informe o motivo da mudança do ETD.'"
+      d: "Alerta 'Escreva a observação.'"
+    correta: [d]
+    explicacao: "Atrasado exige a observação. Escreva o que aconteceu e registre de novo. O alerta do motivo é do ETD, não do follow."
+  - id: WLO-04-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WLO-04-C2
+    cena: 5
+    enunciado: "O pedido já tinha um ETD salvo. Você troca a data e clica em **Salvar produção**: 'Informe o motivo da mudança do ETD.' O que faz?"
+    opcoes:
+      a: "Escreve o motivo no campo e salva de novo"
+      b: "Apaga o ETD e salva sem data para esconder a mudança"
+      c: "Pede ao fornecedor para mudar no lugar da Wellmix"
+      d: "Registra um follow Atrasado para explicar a mudança"
+    correta: [a]
+    explicacao: "O primeiro ETD não precisa de motivo, mas qualquer mudança depois exige. O campo 'Motivo da mudança do ETD (obrigatório ao mudar)' aparece e o histórico guarda a mudança."
+  - id: WLO-04-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WLO-04-C3
+    cena: 7
+    enunciado: "Ao clicar em **Agendar inspeção** de um fornecedor trade aparece: 'Informe o endereço da fábrica antes de agendar.' O que faz?"
+    opcoes:
+      a: "Escreve o endereço em 'Observação (inspetor, horário)' e agenda de novo"
+      b: "Agenda como está: a observação já diz onde inspecionar"
+      c: "Preenche o endereço da fábrica no cartão Produção, salva a produção e agenda"
+      d: "Troca 'Fornecedor é' para Fábrica sem preencher o endereço"
+    correta: [c]
+    explicacao: "Em fornecedor trade a inspeção acontece na fábrica de verdade. Informe a fábrica e o endereço no cartão Produção, clique em **Salvar produção** e então agende."
+  - id: WLO-04-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WLO-04-C3
+    cena: 8
+    enunciado: "Na Control Tower, o quadrado **Acompanhamento vencido** mostra 2. O que isso quer dizer e o que você faz?"
+    opcoes:
+      a: "São SKUs reprovados na inspeção; você inspeciona de novo"
+      b: "O último follow foi Atrasado ou o ETD venceu; você muda o ETD"
+      c: "São inspeções sem data; você agenda as duas"
+      d: "Follow sem registro; você o registra no cartão Produção"
+    correta: [d]
+    explicacao: "Acompanhamento vencido é follow sem registro: abra o pedido e registre No prazo ou Atrasado. Produção atrasada é outra coisa: último follow atrasado ou ETD vencido."

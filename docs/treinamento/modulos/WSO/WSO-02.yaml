@@ -1,0 +1,136 @@
+episodio: WSO-02
+titulo: Comparar a cotação e fechar o preço ao cliente
+serie: WSO
+papel: operador
+duracao: "5:00"
+idiomas: [pt]
+capitulos:
+  - id: WSO-02-C1
+    titulo: Abrir a cotação e escolher o fornecedor
+    inicio: "0:00"
+    fim: "1:25"
+    cenas: [1, 4]
+    resumo: Quando o fornecedor responde, a pendência "Escolher fornecedor" leva à Comparação de cotações, onde você escolhe o fornecedor e confere o NCM.
+  - id: WSO-02-C2
+    titulo: Conferir a conta e definir valor e sinal
+    inicio: "1:25"
+    fim: "2:40"
+    cenas: [5, 6]
+    resumo: Leia a memória de cálculo do valor ao cliente, digite o valor final e confira o sinal em porcentagem.
+  - id: WSO-02-C3
+    titulo: Enviar para aprovação e acompanhar os níveis
+    inicio: "2:40"
+    fim: "3:55"
+    cenas: [7, 8]
+    resumo: Clique em **Enviar para aprovação** e veja como Planner, Diretoria de compras e Diretoria executiva aprovam nível a nível.
+  - id: WSO-02-C4
+    titulo: Reprovar com motivo e ver o que vem depois
+    inicio: "3:55"
+    fim: "5:00"
+    cenas: [9, 11]
+    resumo: Reprovar exige motivo e devolve a pendência ao comprador; aprovada no último nível, a proposta segue ao cliente.
+perguntas:
+  - id: WSO-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WSO-02-C1
+    cena: 3
+    enunciado: "O fornecedor respondeu à cotação da jarra. Qual pendência aparece para você em Início → Pendências?"
+    opcoes:
+      a: "Enviar ao fornecedor: Jarra de vidro 1,5 L"
+      b: "Aprovar pré-custo (planner): Jarra de vidro 1,5 L"
+      c: "Abrir RFQ: Jarra de vidro 1,5 L"
+      d: "Escolher fornecedor: Jarra de vidro 1,5 L"
+    correta: [d]
+    explicacao: "Com a cotação respondida, o sino avisa \"Cotação recebida\" e a pendência vira **Escolher fornecedor**, com a solicitação em \"Cotações recebidas\". As outras pendências são de etapas anteriores ou posteriores."
+  - id: WSO-02-Q2
+    tipo: unica
+    nivel: 2
+    capitulo: WSO-02-C1
+    cena: 4
+    enunciado: "No cartão \"Classificação fiscal (NCM)\" o NCM do produto ainda não foi confirmado. O que acontece com a conta do valor ao cliente?"
+    opcoes:
+      a: "A conta não aparece até o NCM ser confirmado"
+      b: "O imposto de importação e o IPI ficam em 0% no valor ao cliente"
+      c: "A tela usa o NCM da cotação anterior do mesmo fornecedor"
+      d: "O botão **Enviar para aprovação** fica bloqueado"
+    correta: [b]
+    explicacao: "Sem NCM confirmado, II e IPI ficam em 0% e o valor ao cliente sai menor do que deveria. Por isso confirme o NCM no quadro de classificação fiscal antes de fechar o preço."
+  - id: WSO-02-Q3
+    tipo: unica
+    nivel: 1
+    capitulo: WSO-02-C2
+    cena: 6
+    enunciado: "O campo \"Sinal (% do valor ao cliente)\" é uma porcentagem de quê?"
+    opcoes:
+      a: "Do valor ao cliente, de 0 a 100 (o padrão é 30%)"
+      b: "Do custo importado calculado"
+      c: "Do valor FOB pago ao fornecedor"
+    correta: [a]
+    explicacao: "O sinal é uma porcentagem do valor ao cliente. A tela mostra logo abaixo o valor do sinal e o restante, e corrige sozinha qualquer número acima de 100."
+  - id: WSO-02-Q4
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-02-C2
+    cena: 6
+    enunciado: "Você digitou 28000 em \"Valor ao cliente\", mas mudou de ideia e quer voltar ao valor que o sistema calculou. O que você faz?"
+    opcoes:
+      a: "Troca a lista **Moeda** e volta ao Real"
+      b: "Clica em **Usar valor calculado**"
+      c: "Recarrega a página com F5"
+      d: "Zera o campo **Sinal** para o cálculo recomeçar"
+    correta: [b]
+    explicacao: "Ao digitar um valor, a conta calculada deixa de atualizar e surge o botão **Usar valor calculado (R$ …)**, que devolve o campo ao resultado da memória de cálculo."
+  - id: WSO-02-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: WSO-02-C3
+    cena: 7
+    enunciado: "Ponha em ordem o trabalho do comprador na tela da solicitação em \"Cotações recebidas\"."
+    opcoes:
+      a: "Digitar o **Valor ao cliente** e conferir o **Sinal**"
+      b: "Escolher o **Fornecedor** em Comparação de cotações"
+      c: "Clicar em **Enviar para aprovação**"
+      d: "Conferir o quadro **Valor ao cliente calculado** e seus avisos"
+    correta: [b, d, a, c]
+    explicacao: "Primeiro se escolhe o fornecedor, depois se confere a memória de cálculo e os avisos, então se fecha o valor e o sinal e só no fim se envia para aprovação."
+  - id: WSO-02-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-02-C3
+    cena: 7
+    enunciado: "Você já enviou uma escolha para aprovação e, ao revisar, quer mudar o valor. A tela avisa: \"Há uma escolha aguardando aprovação. Enviar outra substitui a atual.\" O que acontece se você enviar?"
+    opcoes:
+      a: "O envio é recusado até o primeiro nível decidir"
+      b: "As duas escolhas seguem para aprovação, lado a lado"
+      c: "A nova escolha substitui a anterior, que é cancelada"
+      d: "A escolha anterior continua valendo e a nova vai para o histórico"
+    correta: [c]
+    explicacao: "É só um aviso: enviar outra escolha substitui a atual, e a anterior é cancelada. Não existem duas aprovações abertas ao mesmo tempo."
+  - id: WSO-02-Q7
+    tipo: multipla
+    nivel: 2
+    capitulo: WSO-02-C3
+    cena: 8
+    enunciado: "Sobre quem aprova o pré-custo, quais afirmações estão certas? Marque todas as certas."
+    opcoes:
+      a: "Quem enviou a escolha não aprova a própria escolha"
+      b: "A Diretoria executiva só entra quando o valor chega ao limite (padrão R$ 100.000)"
+      c: "A mesma pessoa pode decidir o Planner e a Diretoria de compras"
+      d: "O administrador decide todos os níveis"
+      e: "O cliente aprova o pré-custo antes de ver a proposta"
+    correta: [a, b, d]
+    explicacao: "A aprovação sobe nível a nível: Planner, Diretoria de compras e, acima do limite, Diretoria executiva. Ninguém decide dois níveis, quem enviou não aprova a própria escolha e o cliente nem vê essa etapa."
+  - id: WSO-02-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-02-C4
+    cena: 9
+    enunciado: "O administrador reprovou sua escolha, com o motivo \"Valor acima do que o cliente aceita\". A pendência Escolher fornecedor voltou para você. O que você faz?"
+    opcoes:
+      a: "Espera o administrador reenviar a escolha com o valor menor"
+      b: "Cancela a solicitação e pede ao cliente que envie outra"
+      c: "Pede ao cliente que aprove a proposta mesmo assim"
+      d: "Ajusta o valor e envia outra escolha para aprovação"
+    correta: [d]
+    explicacao: "Reprovar não trava o comprador: o motivo chega no aviso \"Pré-custo reprovado\", a aprovação anterior fica em \"Aprovações anteriores\" e a nova escolha substitui a antiga."

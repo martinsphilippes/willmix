@@ -1,0 +1,129 @@
+episodio: AGE-01
+titulo: "Receber o briefing de embalagem"
+serie: AGE
+papel: agencia
+duracao: "3:50"
+idiomas: [pt]
+capitulos:
+  - id: AGE-01-C1
+    titulo: "Achar o briefing que chegou"
+    inicio: "0:00"
+    fim: "1:30"
+    cenas: [1, 5]
+    resumo: "Veja onde o pedido de embalagem chega: Minhas pendências, o aviso Sua vez no sino e a lista Embalagens."
+  - id: AGE-01-C2
+    titulo: "Ler o briefing e saber o que fica de fora"
+    inicio: "1:30"
+    fim: "2:45"
+    cenas: [6, 7]
+    resumo: "Leia os cartões do briefing e entenda por que a agência não vê preço, cotação nem concorrentes."
+  - id: AGE-01-C3
+    titulo: "Conferir o prazo e as medidas"
+    inicio: "2:45"
+    fim: "3:50"
+    cenas: [8, 10]
+    resumo: "Acompanhe o prazo do briefing e confira as medidas da caixa, que chegam como provisórias."
+perguntas:
+  - id: AGE-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: AGE-01-C1
+    cena: 3
+    enunciado: "Você entrou com a conta da agência. Qual tela abre como seu início?"
+    opcoes:
+      a: "Embalagens"
+      b: "Minhas pendências"
+      c: "Solicitações"
+      d: "Cotações"
+    correta: [b]
+    explicacao: "A conta da agência abre em **Minhas pendências**, com os quadrados da agência e a tabela do que falta. Solicitações e Cotações não são da agência: se tentar abrir, o portal volta ao início com um aviso de que você não tem acesso."
+  - id: AGE-01-Q2
+    tipo: unica
+    nivel: 2
+    capitulo: AGE-01-C1
+    cena: 4
+    enunciado: "No sino, o cartão **Sua vez** traz o aviso \"Embalagem para preparar\". O que o botão **Resolver** faz?"
+    opcoes:
+      a: "Marca a embalagem como Pronta"
+      b: "Cancela o briefing"
+      c: "Marca o aviso como lido e leva você ao briefing"
+      d: "Envia a arte ao fornecedor"
+    correta: [c]
+    explicacao: "**Resolver** tira o aviso da lista de novidades e abre o briefing. Ele não envia nada e não muda a situação da embalagem: a arte e os arquivos você ainda precisa enviar."
+  - id: AGE-01-Q3
+    tipo: unica
+    nivel: 1
+    capitulo: AGE-01-C1
+    cena: 5
+    enunciado: "Onde você vê todos os briefings de embalagem, com produto, o que falta enviar, prazo e situação?"
+    opcoes:
+      a: "Menu Pedidos → Embalagens"
+      b: "Menu Início → Mensagens"
+      c: "Menu Pedidos → Pedidos"
+      d: "Menu Início → Notificações"
+    correta: [a]
+    explicacao: "No menu **Pedidos**, a tela **Embalagens** (faca e arte) tem uma linha por briefing. A lista **Pedidos** mostra os pedidos já criados, não os briefings que ainda estão em preparação."
+  - id: AGE-01-Q4
+    tipo: vf
+    nivel: 3
+    capitulo: AGE-01-C1
+    cena: 5
+    enunciado: "A linha do briefing mostra o selo amarelo **Venda ainda não confirmada**. Você deve esperar a confirmação da venda para começar a arte."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "A cotação com o fornecedor corre em paralelo, então você já pode trabalhar na arte. O selo só lembra que a venda não está fechada; se a solicitação não virar pedido, você é avisado para parar."
+  - id: AGE-01-Q5
+    tipo: multipla
+    nivel: 2
+    capitulo: AGE-01-C2
+    cena: 6
+    enunciado: "Marque o que a agência encontra ao abrir um briefing."
+    opcoes:
+      a: "Produto, quantidade e descrição no cartão **O que é**"
+      b: "O preço da cotação do fornecedor"
+      c: "Tamanho da caixa master e peças por caixa em **Medidas da caixa**"
+      d: "Marca, acabamento e idioma do rótulo em **Instruções da Wellmix**"
+      e: "As cotações dos outros fornecedores"
+    correta: [a, c, d]
+    explicacao: "O briefing traz o que é preciso para a arte: **O que é**, **Medidas da caixa** e **Instruções da Wellmix**, mais o cartão **Entregáveis**. Preço, cotações e concorrentes ficam de fora de propósito."
+  - id: AGE-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-01-C2
+    cena: 7
+    enunciado: "Para escolher o acabamento, você quer saber quanto o cliente vai pagar pela jarra. Não há preço no briefing. O que você faz?"
+    opcoes:
+      a: "Abre **Cotações** no menu para ver o preço"
+      b: "Procura o valor no cartão **Entregáveis**"
+      c: "Olha o fornecedor escolhido no cartão **O que é**"
+      d: "Pergunta à Wellmix pelo botão de conversa"
+    correta: [d]
+    explicacao: "A agência não vê preço, cotações nem cliente, e Cotações não abre para ela (o portal volta ao início). Dúvida sobre preço ou cliente vai para a Wellmix pelo botão de conversa."
+  - id: AGE-01-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-01-C3
+    cena: 8
+    enunciado: "Na lista **Embalagens**, a data da coluna **Prazo** de um briefing está em vermelho. O que isso diz e o que fazer?"
+    opcoes:
+      a: "O briefing foi cancelado; pare o trabalho"
+      b: "A Wellmix ainda não confirmou a venda"
+      c: "O prazo venceu; envie o que falta"
+      d: "É só um destaque, não pede nada"
+    correta: [c]
+    explicacao: "Vermelho é prazo vencido. O sistema lembra você perto do vencimento e quando atrasa, e o lembrete para quando o pendente é resolvido. Briefing cancelado aparece com outro aviso: \"Briefing cancelado: a solicitação não seguiu para pedido. Nada mais a fazer.\""
+  - id: AGE-01-Q8
+    tipo: ordem
+    nivel: 2
+    capitulo: AGE-01-C3
+    cena: 9
+    enunciado: "Coloque na ordem o que acontece com as medidas da caixa."
+    opcoes:
+      a: "As medidas chegam ao briefing como provisórias, e você recebe um aviso"
+      b: "As medidas passam a valer, como as da cotação escolhida"
+      c: "O fornecedor responde a cotação"
+      d: "O fornecedor é escolhido"
+    correta: [c, a, d, b]
+    explicacao: "Quando o fornecedor responde, as medidas chegam como provisórias e você é avisado. Ao escolher o fornecedor, elas passam a valer. Se mudarem depois, o portal avisa para você conferir a faca e a arte."

@@ -1,0 +1,137 @@
+episodio: WSO-05
+titulo: "Superplan: a viabilidade do produto"
+serie: WSO
+papel: administrador
+duracao: "5:00"
+idiomas: [pt]
+capitulos:
+  - id: WSO-05-C1
+    titulo: Abrir o Superplan e carregar o produto
+    inicio: "0:00"
+    fim: "1:10"
+    cenas: [1, 4]
+    resumo: O Superplan é só do administrador; escolha o produto do cadastro e clique em **Carregar** para preencher a simulação.
+  - id: WSO-05-C2
+    titulo: Conferir compra, container e tipo de negócio
+    inicio: "1:10"
+    fim: "2:20"
+    cenas: [5, 6]
+    resumo: Confira preço, caixa e impostos da compra, depois container, câmbio e o tipo de negócio que preenche markup, comissão, despesas e meta de lucro.
+  - id: WSO-05-C3
+    titulo: Ler o preço mínimo e o sinal do lucro
+    inicio: "2:20"
+    fim: "3:40"
+    cenas: [7, 8]
+    resumo: Leia o custo por peça e o preço mínimo e use o aviso verde, amarelo ou vermelho para saber se o lucro bate a meta.
+  - id: WSO-05-C4
+    titulo: Abrir a faca e a RFQ
+    inicio: "3:40"
+    fim: "5:00"
+    cenas: [9, 11]
+    resumo: Se for viável, **Abrir faca e RFQ** cria a solicitação e a cotação só com o fornecedor ganho.
+perguntas:
+  - id: WSO-05-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WSO-05-C1
+    cena: 3
+    enunciado: "Um operador digita o endereço do Superplan e volta ao início com o aviso \"Você não tem acesso a Superplan\". Quem abre essa tela?"
+    opcoes:
+      a: "Qualquer operador com as funções de comprador e planner"
+      b: "Só o gerente de produto"
+      c: "Só o administrador, ou quem ele liberar em Gestão → Equipe e divisões"
+      d: "Também o fornecedor, para ver o custo do container"
+    correta: [c]
+    explicacao: "O Superplan é só do administrador, que pode liberar a tela a um login em Equipe e divisões. O resultado de cada item aparece dentro do Booking para quem abre o Booking."
+  - id: WSO-05-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WSO-05-C1
+    cena: 4
+    enunciado: "Você escolheu \"UTL-001 · Jarra de vidro 1,5 L\" em \"Produto do cadastro\". Qual botão preenche preço, caixa, peso, volume e os impostos do NCM?"
+    opcoes:
+      a: "**Carregar**"
+      b: "**Testar esse preço**"
+      c: "**Abrir faca e RFQ**"
+      d: "**Usar valor calculado**"
+    correta: [a]
+    explicacao: "**Carregar** recarrega a página com os dados do produto, e tudo continua editável. Sem produto, dá para preencher os campos à mão e simular do mesmo jeito."
+  - id: WSO-05-Q3
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-05-C2
+    cena: 5
+    enunciado: "Ao carregar o produto, os campos \"II (%)\" e \"IPI (%)\" ficam vazios, com o aviso \"Produto sem NCM na tabela fiscal: confira II e IPI à mão.\" O que você faz?"
+    opcoes:
+      a: "Deixa vazio: o sistema completa com a média dos produtos parecidos"
+      b: "Digita o II e o IPI do NCM do produto"
+      c: "Apaga o produto e começa a simulação à mão"
+      d: "Deixa vazio, porque o custo do container não leva impostos"
+    correta: [b]
+    explicacao: "Com II e IPI vazios a conta usa 0% e o custo sai menor do que o real, o que faz o produto parecer mais viável do que é. Digite os percentuais do NCM."
+  - id: WSO-05-Q4
+    tipo: multipla
+    nivel: 2
+    capitulo: WSO-05-C2
+    cena: 6
+    enunciado: "Ao escolher o Tipo de negócio, o Superplan preenche sozinho alguns campos. Quais? Marque todos os certos."
+    opcoes:
+      a: "Markup"
+      b: "Comissão (%)"
+      c: "Despesas administrativas (%)"
+      d: "Meta de lucro (%)"
+      e: "Preço por peça"
+    correta: [a, b, c, d]
+    explicacao: "O tipo de negócio traz markup, comissão, despesas administrativas e a meta de lucro. O preço por peça vem do produto carregado, não do tipo de negócio."
+  - id: WSO-05-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WSO-05-C3
+    cena: 7
+    enunciado: "Como o Superplan calcula o \"Preço mínimo\" por peça?"
+    opcoes:
+      a: "Preço do fornecedor mais o frete marítimo"
+      b: "Custo do container dividido pelas peças que cabem nele"
+      c: "Custo por peça vezes o markup do tipo de negócio"
+      d: "Meta de lucro somada ao custo por peça"
+    correta: [c]
+    explicacao: "O preço mínimo é o custo vezes o markup do tipo de negócio. A alternativa do custo do container dividido pelas peças é o Custo por peça, a base dessa conta."
+  - id: WSO-05-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-05-C3
+    cena: 8
+    enunciado: "O aviso no alto está amarelo: o lucro é positivo, mas abaixo da meta, e a tela sugere o preço que daria a meta. Como você vê o lucro nesse preço?"
+    opcoes:
+      a: "Troca o Tipo de negócio até o aviso ficar verde"
+      b: "Aumenta o Markup à mão até a meta aparecer"
+      c: "Clica em **Abrir faca e RFQ** e confere na solicitação"
+      d: "Clica em **Testar esse preço**"
+    correta: [d]
+    explicacao: "**Testar esse preço** simula o preço sugerido, e o aviso vira verde (\"Viável\") quando o lucro alcança a meta. Para outro valor, digite em \"Preço de venda a testar\"; vazio, a conta usa o preço mínimo."
+  - id: WSO-05-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-05-C4
+    cena: 9
+    enunciado: "O aviso do alto está vermelho (Prejuízo). Você tenta clicar em **Abrir faca e RFQ**. O que acontece?"
+    opcoes:
+      a: "Abre normalmente, só marcando a solicitação com um aviso"
+      b: "Não abre: \"Com prejuízo não dá para abrir: ajuste o preço ou os números.\""
+      c: "Abre, mas só para compra com cliente, nunca para estoque"
+      d: "Abre a RFQ para todos os fornecedores do produto"
+    correta: [b]
+    explicacao: "Com prejuízo o botão não abre a RFQ: ajuste o preço de venda ou os números e simule de novo. Também é preciso ter um produto do cadastro carregado."
+  - id: WSO-05-Q8
+    tipo: unica
+    nivel: 2
+    capitulo: WSO-05-C4
+    cena: 10
+    enunciado: "Depois de **Abrir faca e RFQ** com o fornecedor ganho, o que nasce?"
+    opcoes:
+      a: "Um pedido já assinado, pronto para o fornecedor produzir"
+      b: "Uma solicitação com origem Superplan e a RFQ só para o fornecedor ganho"
+      c: "Uma proposta enviada ao cliente com o preço mínimo"
+      d: "Uma RFQ aberta para todos os fornecedores cadastrados"
+    correta: [b]
+    explicacao: "Nasce a solicitação com origem Superplan e a RFQ vai só ao fornecedor ganho, que envia faca (die-cut), MOQ, prazo e foto em alta. A proposta espera esses quatro itens."

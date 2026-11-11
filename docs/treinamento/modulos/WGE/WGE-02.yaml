@@ -1,0 +1,130 @@
+episodio: WGE-02
+titulo: Painel de SLA e painéis por área
+serie: WGE
+papel: administrador
+duracao: "4:00"
+idiomas: [pt]
+capitulos:
+  - id: WGE-02-C1
+    titulo: Descobrir quem deve o quê pelo Painel de SLA
+    inicio: "0:00"
+    fim: "1:20"
+    cenas: [1, 4]
+    resumo: Abra Início → Painel de SLA, veja como cada pendência ganha um dono e leia a tabela Equipe.
+  - id: WGE-02-C2
+    titulo: Filtrar pelos cartões e cobrar os parceiros
+    inicio: "1:20"
+    fim: "2:22"
+    cenas: [5, 6]
+    resumo: Use os cartões como filtros, abra o pedido pelo botão Abrir e separe o atraso do analista do atraso do parceiro.
+  - id: WGE-02-C3
+    titulo: Ver outra pessoa e abrir os Painéis por área
+    inicio: "2:22"
+    fim: "4:00"
+    cenas: [7, 10]
+    resumo: Escolha a pessoa, entenda o painel vazio e navegue pelas abas de Gestão → Painéis por área.
+perguntas:
+  - id: WGE-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WGE-02-C1
+    cena: 2
+    enunciado: "Em que parte do menu fica o Painel de SLA?"
+    opcoes:
+      a: "Gestão → Painel do dono"
+      b: "Início → Painel de SLA"
+      c: "Pedidos → SLA"
+      d: "Cadastros → Equipe"
+    correta: [b]
+    explicacao: "O **Painel de SLA** fica no menu **Início** e todo login da Wellmix abre. Ele mostra o que cada analista deve, pelo prazo."
+  - id: WGE-02-Q2
+    tipo: multipla
+    nivel: 1
+    capitulo: WGE-02-C3
+    cena: 8
+    enunciado: "Quais destas abas existem em Gestão → Painéis por área? Marque todas que existem."
+    opcoes:
+      a: "Compras"
+      b: "Produção"
+      c: "Embarque e desembaraço"
+      d: "Marketing"
+      e: "Pós-venda"
+    correta: [a, b, c]
+    explicacao: "As abas são **Compras**, **Produção**, **Embarque e desembaraço**, **Recebimento**, **Certificação e artes** e **Financeiro**. Marketing e Pós-venda têm telas próprias em Gestão."
+  - id: WGE-02-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-02-C1
+    cena: 3
+    enunciado: "Chegou uma solicitação nova. Quem recebe a pendência dela?"
+    opcoes:
+      a: "O analista da divisão da linha com menos pendências"
+      b: "Quem o administrador escolher à mão, no Painel de SLA, a cada solicitação"
+      c: "Sempre o administrador, até ele repassar a outra pessoa"
+      d: "O primeiro analista da tabela Equipe, em ordem alfabética"
+    correta: [a]
+    explicacao: "O dono é automático: a divisão da linha do produto escolhe o analista com menos pendências abertas, e o pedido herda esse dono. Ninguém escolhe à mão."
+  - id: WGE-02-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: WGE-02-C2
+    cena: 5
+    enunciado: "Você quer ver só o que vence nos próximos sete dias e ir até o pedido. Coloque os passos na ordem."
+    opcoes:
+      a: "Clicar em **Abrir** na linha da pendência"
+      b: "Abrir **Início → Painel de SLA**"
+      c: "Tocar no cartão **Próx. 7 dias**"
+    correta: [b, c, a]
+    explicacao: "Primeiro abra o Painel de SLA, depois toque no cartão (ele funciona como filtro e mostra só aquele grupo embaixo) e, na linha escolhida, use **Abrir** para ir ao pedido. **Todas as pendências** volta à lista inteira."
+  - id: WGE-02-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WGE-02-C2
+    cena: 6
+    enunciado: "O que mostra o cartão **Parceiros atrasados**?"
+    opcoes:
+      a: "Analistas que demoraram a responder a um fornecedor ou agência"
+      b: "Pendências do próprio analista cujo prazo já venceu"
+      c: "O que um parceiro deve, para o analista cobrar"
+      d: "Parceiros que ainda não têm acesso ao portal"
+    correta: [c]
+    explicacao: "É a lista do que um parceiro está devendo, na coluna **Aguardando**. Não conta como atraso do analista, mas é ele quem cobra."
+  - id: WGE-02-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-02-C1
+    cena: 3
+    enunciado: "Você escolhe **Sem responsável** e aparece o aviso 'Pendências sem analista: produto fora do catálogo, linha sem divisão ou divisão sem analista'. O que faz?"
+    opcoes:
+      a: "Espera: o sistema distribui sozinho no dia seguinte, sem ajuste"
+      b: "Atribui cada pendência à mão, uma por uma, no Painel de SLA"
+      c: "Marca as pendências como **Parceiros atrasados** para cobrar"
+      d: "Ajusta a divisão em Equipe e divisões e toca em **Distribuir agora**"
+    correta: [d]
+    explicacao: "Sem divisão ou sem analista a pendência fica sem dono. A saída é definir a divisão da linha e do analista em Equipe e divisões e tocar em **Distribuir agora**."
+  - id: WGE-02-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-02-C3
+    cena: 7
+    enunciado: "O Otávio abre o Painel de SLA e o painel dele está vazio, com o aviso 'Você ainda não tem divisão...'. O que o administrador faz?"
+    opcoes:
+      a: "Apaga as pendências antigas que estão com ele"
+      b: "Define a divisão dele em Equipe e divisões"
+      c: "Libera a tela Financeiro para ele ver mais coisas"
+      d: "Pede que ele abra o painel de outra pessoa da equipe"
+    correta: [b]
+    explicacao: "Painel vazio com esse aviso quer dizer que falta a divisão do login. O administrador define a divisão em Equipe e divisões e as pendências novas passam a chegar."
+  - id: WGE-02-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WGE-02-C3
+    cena: 9
+    enunciado: "O Otávio, planner, digita o endereço da aba Financeiro em Painéis por área. O que acontece?"
+    opcoes:
+      a: "A aba abre, mas só para leitura, sem nenhum botão"
+      b: "A aba abre, mas sem os valores em reais"
+      c: "Volta ao início com o aviso de acesso"
+      d: "Aparece uma página de erro técnico do portal"
+    correta: [c]
+    explicacao: "O planner abre as outras cinco abas, mas não a Financeiro. Se forçar o endereço, volta ao início com o aviso de acesso, que é a regra e não um erro."

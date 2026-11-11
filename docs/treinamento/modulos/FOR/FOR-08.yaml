@@ -1,0 +1,281 @@
+episodio: FOR-08
+titulo: Produção e inspeção
+serie: FOR
+papel: fornecedor
+duracao: "4:30"
+idiomas: [pt, en, zh]
+capitulos:
+  - id: FOR-08-C1
+    titulo: Manter fábrica, ETD e follow em dia
+    titulo_en: Keep factory, ETD and follow-ups up to date
+    titulo_zh: 及时更新工厂、ETD 和跟进
+    inicio: "0:00"
+    fim: "1:50"
+    cenas: [1, 3]
+    resumo: No cartão Produção, informe se é fábrica ou trade, o ETD e o endereço da fábrica; a Wellmix acompanha com follows e agenda a inspeção.
+    resumo_en: In the Production card, say whether you are a factory or a trading company, and enter the ETD and the factory address; Wellmix follows up and schedules the inspection.
+    resumo_zh: 在“生产”卡片里说明是工厂还是贸易公司，并填写 ETD 和工厂地址；Wellmix 负责跟进并安排验货。
+  - id: FOR-08-C2
+    titulo: Enviar as fotos e o peso medido
+    titulo_en: Send the photos and the measured weight
+    titulo_zh: 上传照片和实测重量
+    inicio: "1:50"
+    fim: "3:20"
+    cenas: [4, 4]
+    resumo: Na etapa Inspeção, envie as três fotos e digite o peso medido; informe o que encontrou, sem consultar a ficha.
+    resumo_en: In the Inspection step, send the three photos and type the measured weight; report what you found, without checking the sheet.
+    resumo_zh: 在“验货”环节上传三张照片并填写实测重量；如实填写您看到的，不用对照资料表。
+  - id: FOR-08-C3
+    titulo: Responder à divergência e ao SKU reprovado
+    titulo_en: Answer a divergence and a rejected SKU
+    titulo_zh: 处理差异和不通过的 SKU
+    inicio: "3:20"
+    fim: "4:30"
+    cenas: [5, 6]
+    resumo: Fora da tolerância, a etapa bloqueia até a Wellmix revisar; se um SKU for reprovado, diga o que corrigiu e envie a correção.
+    resumo_en: Outside the tolerance, the step is blocked until Wellmix reviews it; if an SKU is rejected, say what you fixed and send the fix.
+    resumo_zh: 超出容差时，环节会被锁定，直到 Wellmix 复核；如果某个 SKU 不通过，请说明整改内容并提交。
+perguntas:
+  - id: FOR-08-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-08-C1
+    cena: 2
+    enunciado: "No cartão **Produção**, em qual campo você diz se a sua empresa é fábrica ou trade?"
+    opcoes:
+      a: "**Fábrica**"
+      b: "**Fornecedor é**"
+      c: "**Início da produção**"
+      d: "**Endereço da fábrica**"
+    correta: [b]
+    explicacao: "O campo **Fornecedor é** tem as opções Fábrica ou Trade. **Fábrica** e **Endereço da fábrica** vêm depois, para dizer onde se produz e onde se inspeciona."
+    traducoes:
+      en:
+        enunciado: "In the **Production** card, in which field do you say whether your company is a factory or a trading company?"
+        opcoes:
+          a: "**Factory**"
+          b: "**Supplier is**"
+          c: "**Production start**"
+          d: "**Factory address**"
+        explicacao: "The **Supplier is** field has the options Factory or Trading company. **Factory** and **Factory address** come next, to say where it is made and where it is inspected."
+      zh:
+        enunciado: "在“生产”卡片里，您在哪个字段说明公司是工厂还是贸易公司？"
+        opcoes:
+          a: "“工厂”"
+          b: "“供应商类型”"
+          c: "“开始生产”"
+          d: "“工厂地址”"
+        explicacao: "“供应商类型”字段有“工厂”或“贸易公司”两个选项。“工厂”和“工厂地址”随后用来说明在哪里生产、在哪里验货。"
+  - id: FOR-08-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-08-C1
+    cena: 3
+    enunciado: "Quem registra os follows da produção (5, 15 e 25 dias) e agenda a inspeção?"
+    opcoes:
+      a: "Você, no cartão **Produção**"
+      b: "O cliente final"
+      c: "O fornecedor concorrente"
+      d: "A Wellmix"
+    correta: [d]
+    explicacao: "O follow e a data da inspeção são registrados pela Wellmix. Você só acompanha a tabela **Follow da produção** e é avisado da data."
+    traducoes:
+      en:
+        enunciado: "Who records the production follow-ups (5, 15 and 25 days) and schedules the inspection?"
+        opcoes:
+          a: "You, in the **Production** card"
+          b: "The end customer"
+          c: "The competing supplier"
+          d: "Wellmix"
+        explicacao: "The follow-up and the inspection date are recorded by Wellmix. You only watch the **Production follow-up** table and are told the date."
+      zh:
+        enunciado: "谁负责登记生产跟进（第 5、15、25 天）并安排验货？"
+        opcoes:
+          a: "您，在“生产”卡片里"
+          b: "最终客户"
+          c: "竞争的供应商"
+          d: "Wellmix"
+        explicacao: "跟进和验货日期由 Wellmix 登记。您只需查看“生产跟进”表格，并会收到验货日期的通知。"
+  - id: FOR-08-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: FOR-08-C2
+    cena: 4
+    enunciado: "Quais são os itens obrigatórios que você envia na etapa **Inspeção**? Marque todos."
+    opcoes:
+      a: "**Foto sem embalagem**"
+      b: "**Peso esperado** conforme a ficha de compra"
+      c: "**Foto com embalagem**"
+      d: "**Foto na balança**"
+      e: "**Peso medido (kg)**"
+    correta: [a, c, d, e]
+    explicacao: "São quatro itens: as fotos sem embalagem, com embalagem e na balança, e o **Peso medido (kg)**. A inspeção é cega: você informa o que encontrou e nunca vê o valor esperado."
+    traducoes:
+      en:
+        enunciado: "Which are the required items you send in the **Inspection** step? Mark all."
+        opcoes:
+          a: "**Photo without packaging**"
+          b: "**Expected weight** from the purchase sheet"
+          c: "**Photo with packaging**"
+          d: "**Photo on the scale**"
+          e: "**Measured weight (kg)**"
+        explicacao: "There are four items: the photos without packaging, with packaging and on the scale, and the **Measured weight (kg)**. The inspection is blind: you report what you found and never see the expected value."
+      zh:
+        enunciado: "在“验货”环节，您必须上传哪些项目？请全部选出。"
+        opcoes:
+          a: "“无包装照片”"
+          b: "按采购资料表填写“期望重量”"
+          c: "“带包装照片”"
+          d: "“称重照片”"
+          e: "“实测重量（kg）”"
+        explicacao: "共四项：无包装照片、带包装照片、称重照片，以及“实测重量（kg）”。验货是盲检：您填写实际看到的，永远看不到期望值。"
+  - id: FOR-08-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: FOR-08-C1
+    cena: 2
+    enunciado: "O ETD (saída prevista) mudou. Além de alterar a data, o que o cartão **Produção** exige?"
+    opcoes:
+      a: "Que a Wellmix aprove a nova data antes de você salvar a produção"
+      b: "Escrever o **Motivo da mudança do ETD**"
+      c: "Enviar de novo a **Foto na balança** do produto pronto"
+      d: "Trocar **Fornecedor é** para Trade e informar a fábrica"
+    correta: [b]
+    explicacao: "Mudar o ETD pede o **Motivo da mudança do ETD**; sem ele aparece \"Informe o motivo da mudança do ETD.\" Com o motivo, a Wellmix é avisada, e o cartão mostra o primeiro ETD e a diferença em dias."
+    traducoes:
+      en:
+        enunciado: "The ETD (estimated departure) changed. Besides changing the date, what does the **Production** card require?"
+        opcoes:
+          a: "That Wellmix approves the new date before you save the production"
+          b: "Writing the **Reason for the ETD change**"
+          c: "Sending the **Photo on the scale** of the finished product again"
+          d: "Switching **Supplier is** to Trading company and entering the factory"
+        explicacao: "Changing the ETD requires the **Reason for the ETD change**; without it, \"Enter the reason for the ETD change.\" appears. With the reason, Wellmix is notified, and the card shows the first ETD and the difference in days."
+      zh:
+        enunciado: "ETD（预计离港日）变了。除了修改日期，“生产”卡片还要求什么？"
+        opcoes:
+          a: "保存生产信息之前，先由 Wellmix 批准新日期"
+          b: "填写“ETD 变更原因”"
+          c: "重新上传成品的“称重照片”"
+          d: "把“供应商类型”改为贸易公司并填写工厂"
+        explicacao: "修改 ETD 需要填写“ETD 变更原因”；否则会提示“请填写 ETD 变更原因。”填写后 Wellmix 会收到通知，卡片还会显示第一个 ETD 及相差天数。"
+  - id: FOR-08-Q5
+    tipo: ordem
+    nivel: 2
+    capitulo: FOR-08-C1
+    cena: 2
+    enunciado: "Coloque na ordem o que você faz para atualizar um ETD que mudou."
+    opcoes:
+      a: "Clicar em **Salvar produção**"
+      b: "Escrever o **Motivo da mudança do ETD**"
+      c: "Em Pendências, clicar em **Abrir** na etapa **Produção e inspeção**"
+      d: "Alterar o **ETD (saída prevista)** no cartão **Produção**"
+    correta: [c, d, b, a]
+    explicacao: "Você abre o pedido pela pendência, altera o ETD, escreve o motivo e só então clica em **Salvar produção**. Sem o motivo, o ETD novo não é salvo."
+    traducoes:
+      en:
+        enunciado: "Put in order what you do to update an ETD that changed."
+        opcoes:
+          a: "Click **Save production**"
+          b: "Write the **Reason for the ETD change**"
+          c: "In Pendencies, click **Open** on the **Production and inspection** step"
+          d: "Change the **ETD (estimated departure)** in the **Production** card"
+        explicacao: "You open the order from the pending item, change the ETD, write the reason and only then click **Save production**. Without the reason, the new ETD is not saved."
+      zh:
+        enunciado: "请把更新已变更 ETD 的步骤按顺序排好。"
+        opcoes:
+          a: "点击“保存生产信息”"
+          b: "填写“ETD 变更原因”"
+          c: "在待办中，点击“生产与验货”环节的“打开”"
+          d: "在“生产”卡片里修改“预计离港日（ETD）”"
+        explicacao: "先从待办打开订单，修改 ETD，写明原因，最后才点击“保存生产信息”。没有原因，新的 ETD 不会保存。"
+  - id: FOR-08-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-08-C1
+    cena: 2
+    enunciado: "Você é uma empresa trade. Ao tentar agendar, aparece \"Fornecedor trade: informe o endereço da fábrica antes de agendar.\" O que faz?"
+    opcoes:
+      a: "Muda **Fornecedor é** para Fábrica, só para o aviso sumir da tela"
+      b: "Preenche **Fábrica** e **Endereço da fábrica** e clica em **Salvar produção**"
+      c: "Espera a Wellmix preencher o endereço da fábrica por você"
+      d: "Envia as fotos da inspeção antes de pedir o agendamento"
+    correta: [b]
+    explicacao: "A Wellmix precisa saber onde inspecionar. Quem é trade informa a fábrica e o endereço onde se inspeciona e salva. Mudar para Fábrica só para escapar do aviso seria informar o dado errado."
+    traducoes:
+      en:
+        enunciado: "You are a trading company. When trying to schedule, \"Trading supplier: enter the factory address before scheduling.\" appears. What do you do?"
+        opcoes:
+          a: "Change **Supplier is** to Factory, just so the message goes away from the screen"
+          b: "Fill in **Factory** and **Factory address** and click **Save production**"
+          c: "Wait for Wellmix to fill in the factory address for you"
+          d: "Send the inspection photos before asking for the scheduling"
+        explicacao: "Wellmix needs to know where to inspect. A trading company enters the factory and the address where it is inspected, and saves. Switching to Factory just to avoid the message would be entering the wrong data."
+      zh:
+        enunciado: "您是贸易公司。尝试安排验货时，出现“贸易公司：安排验货前请填写工厂地址。”您该怎么办？"
+        opcoes:
+          a: "把“供应商类型”改为工厂，只为让提示从屏幕上消失"
+          b: "填写“工厂”和“工厂地址”，然后点击“保存生产信息”"
+          c: "等 Wellmix 替您填写工厂地址"
+          d: "在申请安排验货之前，先上传验货照片"
+        explicacao: "Wellmix 需要知道在哪里验货。贸易公司要填写工厂以及验货地点的地址并保存。仅为避开提示而改成工厂，等于填错了信息。"
+  - id: FOR-08-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-08-C3
+    cena: 5
+    enunciado: "Você mediu um peso muito diferente do esperado e a etapa mostra \"Divergência detectada; aguardando revisão da Wellmix.\" O que acontece?"
+    opcoes:
+      a: "A etapa conclui e abre o Embarque mesmo com a divergência"
+      b: "A tela mostra o peso esperado para você ajustar o número enviado"
+      c: "A etapa fica bloqueada até a Wellmix revisar; o valor esperado não aparece"
+      d: "Você precisa clicar em **Enviar correção** para destravar a etapa"
+    correta: [c]
+    explicacao: "Fora da tolerância, a etapa bloqueia até a Wellmix revisar, e o valor esperado nunca é mostrado a você. **Enviar correção** é só para SKU reprovado."
+    traducoes:
+      en:
+        enunciado: "You measured a weight very different from the expected one and the step shows \"Divergence detected; waiting for Wellmix review.\" What happens?"
+        opcoes:
+          a: "The step finishes and opens Shipment even with the divergence"
+          b: "The screen shows the expected weight so you can adjust the number you sent"
+          c: "The step stays blocked until Wellmix reviews it; the expected value does not appear"
+          d: "You must click **Send fix** to unblock the step"
+        explicacao: "Outside the tolerance, the step is blocked until Wellmix reviews it, and the expected value is never shown to you. **Send fix** is only for a rejected SKU."
+      zh:
+        enunciado: "您测得的重量与期望值相差很大，环节显示“检测到差异，等待 Wellmix 复核。”会发生什么？"
+        opcoes:
+          a: "即使有差异，环节也照常完成并开启装运"
+          b: "屏幕显示期望重量，让您调整已提交的数字"
+          c: "环节被锁定，直到 Wellmix 复核；期望值不会显示"
+          d: "您必须点击“提交整改”才能解锁该环节"
+        explicacao: "超出容差时，环节会被锁定，直到 Wellmix 复核，而且永远不会向您显示期望值。“提交整改”只用于不通过的 SKU。"
+  - id: FOR-08-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-08-C3
+    cena: 5
+    enunciado: "No cartão aparece um SKU **Reprovado**, com a observação da Wellmix. O que você faz para pedir nova inspeção?"
+    opcoes:
+      a: "Escreve **O que foi corrigido** e clica em **Enviar correção**"
+      b: "Clica em **Salvar produção** com a mesma fábrica e o mesmo ETD"
+      c: "Envia de novo a **Foto na balança** e as outras fotos, sem nenhum texto"
+      d: "Espera: a Wellmix reinspeciona o SKU sozinha, sem nada de você"
+    correta: [a]
+    explicacao: "O campo **O que foi corrigido** é obrigatório e a tela não envia vazio. Ao clicar em **Enviar correção**, aparece \"Correção enviada à Wellmix.\" e o SKU vai para nova inspeção."
+    traducoes:
+      en:
+        enunciado: "A **Rejected** SKU appears in the card, with Wellmix's note. What do you do to ask for a new inspection?"
+        opcoes:
+          a: "Write **What was fixed** and click **Send fix**"
+          b: "Click **Save production** with the same factory and the same ETD"
+          c: "Send the **Photo on the scale** and the other photos again, with no text"
+          d: "Wait: Wellmix reinspects the SKU by itself, with nothing from you"
+        explicacao: "The **What was fixed** field is required and the screen does not send it empty. When you click **Send fix**, \"Fix sent to Wellmix.\" appears and the SKU goes for a new inspection."
+      zh:
+        enunciado: "卡片里出现一个“不通过”的 SKU，附有 Wellmix 的备注。要申请再次验货，您该怎么做？"
+        opcoes:
+          a: "填写“整改内容”并点击“提交整改”"
+          b: "用同一家工厂和同一个 ETD 点击“保存生产信息”"
+          c: "不写任何文字，重新上传“称重照片”和其他照片"
+          d: "等待：Wellmix 会自己重新验货该 SKU，无需您操作"
+        explicacao: "“整改内容”为必填项，页面不会提交空内容。点击“提交整改”后会显示“整改已提交给 Wellmix。”该 SKU 即进入再次验货。"

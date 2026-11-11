@@ -1,0 +1,161 @@
+episodio: GER-00
+titulo: "A Jornada completa do portal"
+serie: GER
+papel: todos
+duracao: "4:30"
+idiomas: [pt]
+capitulos:
+  - id: GER-00-C1
+    titulo: "Ver o mapa das nove etapas"
+    inicio: "0:00"
+    fim: "0:52"
+    cenas: [1, 3]
+    resumo: "A viagem de uma jarra da China ao Brasil se divide em nove etapas, e a próxima abre sozinha quando a anterior termina."
+  - id: GER-00-C2
+    titulo: "Seguir o pedido do cliente até a preparação"
+    inicio: "0:52"
+    fim: "2:24"
+    cenas: [4, 7]
+    resumo: "O cliente pede, o fornecedor cota, a Wellmix envia a proposta, o sinal faz o pedido nascer e começa a preparação."
+  - id: GER-00-C3
+    titulo: "Acompanhar a inspeção, o mar e a alfândega"
+    inicio: "2:24"
+    fim: "3:32"
+    cenas: [8, 10]
+    resumo: "Inspeção na fábrica, embarque pela companhia marítima e, no Brasil, desembaraço e transporte até o cliente."
+  - id: GER-00-C4
+    titulo: "Fechar o ciclo e ver o que corre junto"
+    inicio: "3:32"
+    fim: "4:30"
+    cenas: [11, 13]
+    resumo: "O cliente confirma e avalia; o pagamento ao fornecedor corre em paralelo e os avisos chegam em Pendências e no sino."
+perguntas:
+  - id: GER-00-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: GER-00-C1
+    cena: 2
+    enunciado: "Quando tudo o que é obrigatório numa etapa termina, o que o portal faz?"
+    opcoes:
+      a: "Espera a Wellmix abrir a próxima etapa à mão"
+      b: "Abre a próxima etapa sozinho e avisa o próximo responsável"
+      c: "Pede ao cliente que confirme a mudança de etapa"
+      d: "Encerra o pedido até alguém reabrir"
+    correta: [b]
+    explicacao: "Cada etapa tem requisitos e um responsável. Cumpridos os obrigatórios, a próxima etapa abre sozinha e quem vem depois é avisado."
+  - id: GER-00-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: GER-00-C1
+    cena: 3
+    enunciado: "Na etapa 1, Produto e Booking, o que é o Booking?"
+    opcoes:
+      a: "A reserva de lugar no navio"
+      b: "O pedido de orçamento do cliente"
+      c: "A planilha de produtos que o fornecedor manda para a Wellmix"
+      d: "O documento de embarque da carga"
+    correta: [c]
+    explicacao: "Booking é a lista de produtos da planilha do fornecedor, na Wellmix, antes de existir solicitação. Só a Wellmix vê. A reserva no navio é outra coisa, na etapa de embarque."
+  - id: GER-00-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: GER-00-C2
+    cena: 5
+    enunciado: "Coloque na ordem o caminho do pedido, da vitrine até o pedido nascer."
+    opcoes:
+      a: "O cliente escolhe o produto e pede o orçamento"
+      b: "O fornecedor responde com preço, prazo e pedido mínimo"
+      c: "A Wellmix define o preço ao cliente e envia a proposta"
+      d: "O cliente paga o sinal e a Wellmix confirma"
+    correta: [a, b, c, d]
+    explicacao: "Solicitação, cotação, proposta e sinal: é nessa ordem que o pedido se forma. O pedido só nasce depois que a Wellmix confirma o sinal."
+  - id: GER-00-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: GER-00-C2
+    cena: 6
+    enunciado: "João aprovou a proposta e pagou o sinal. Quem confirma que o dinheiro chegou, e o que acontece depois?"
+    opcoes:
+      a: "A Wellmix confirma o recebimento e o pedido nasce com etapas, responsáveis e prazos"
+      b: "O próprio portal confirma o pix e o fornecedor já embarca"
+      c: "O fornecedor confirma e o pedido nasce sem etapas"
+      d: "O cliente confirma sozinho e o pedido nasce"
+    correta: [a]
+    explicacao: "A Wellmix confirma o pagamento à mão. Só então o pedido nasce, como Pedido pré-aprovado, já com todas as etapas, responsáveis e prazos."
+  - id: GER-00-Q5
+    tipo: unica
+    nivel: 3
+    capitulo: GER-00-C3
+    cena: 8
+    enunciado: "Na inspeção, o fornecedor enviou peso e medidas e o portal achou uma divergência acima da tolerância. O que acontece com a etapa?"
+    opcoes:
+      a: "Segue para o embarque, e a divergência é vista depois"
+      b: "O cliente decide se aceita a carga"
+      c: "O fornecedor corrige sozinho e a etapa segue"
+      d: "Ela espera a Wellmix decidir antes de seguir"
+    correta: [d]
+    explicacao: "O portal compara o que o fornecedor enviou com o que foi comprado. Se a divergência passa da tolerância, a Wellmix decide antes de a etapa seguir."
+  - id: GER-00-Q6
+    tipo: multipla
+    nivel: 2
+    capitulo: GER-00-C3
+    cena: 9
+    enunciado: "Ao confirmar o embarque, o que a companhia marítima informa no portal?"
+    opcoes:
+      a: "A placa do caminhão"
+      b: "A data de embarque"
+      c: "O navio"
+      d: "O BL, o conhecimento de embarque"
+      e: "A nota da compra, de 1 a 5"
+    correta: [b, c, d]
+    explicacao: "A companhia marítima confirma o embarque com data, navio e BL. A placa do caminhão é do transportador, no Brasil, e a nota da compra é do cliente, no pós-venda."
+  - id: GER-00-Q7
+    tipo: unica
+    nivel: 2
+    capitulo: GER-00-C4
+    cena: 11
+    enunciado: "O cliente já confirmou o recebimento e avaliou a compra. O que ele pode fazer para comprar a jarra outra vez?"
+    opcoes:
+      a: "Esperar o fornecedor mandar uma nova oferta"
+      b: "Começar tudo do zero, procurando o fornecedor"
+      c: "Usar Comprar de novo, ou pedir uma nova proposta, com poucos cliques"
+      d: "Pedir ao despachante que reabra o pedido"
+    correta: [c]
+    explicacao: "No pós-venda o cliente vê Comprar de novo e Quero nova proposta. O ciclo recomeça na solicitação, sem refazer tudo."
+  - id: GER-00-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: GER-00-C2
+    cena: 5
+    enunciado: "Um colega diz que a RFQ, o pedido de cotação, vai a vários fornecedores e o portal escolhe o melhor. O que você corrige?"
+    opcoes:
+      a: "Está certo: o portal compara todos e escolhe sozinho"
+      b: "Hoje a solicitação vai a um fornecedor por produto"
+      c: "A RFQ vai ao cliente, que escolhe o fornecedor"
+      d: "A RFQ vai a todos, mas o fornecedor vê o preço dos outros"
+    correta: [b]
+    explicacao: "Hoje cada produto é pedido a um fornecedor, que confirma preço, prazo e pedido mínimo. A disputa entre vários fornecedores está em espera."
+  - id: GER-00-Q9
+    tipo: unica
+    nivel: 3
+    capitulo: GER-00-C4
+    cena: 12
+    enunciado: "Você esperava um e-mail ou um WhatsApp avisando que algo depende de você, e nada chegou. Onde olhar?"
+    opcoes:
+      a: "No sino e em Pendências do portal"
+      b: "Na caixa de spam do e-mail"
+      c: "Só em Mensagens, esperando a Wellmix escrever"
+      d: "Nada: o portal só avisa por WhatsApp"
+    correta: [a]
+    explicacao: "Só o sino e a lista de Notificações avisam de verdade; e-mail e WhatsApp ainda são simulados. Em Pendências fica o que depende de você agora."
+  - id: GER-00-Q10
+    tipo: vf
+    nivel: 3
+    capitulo: GER-00-C4
+    cena: 12
+    enunciado: "O fornecedor ainda não foi pago pela condição combinada. Por isso o pedido do cliente fica parado esperando esse pagamento."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "O pagamento ao fornecedor corre em paralelo, fora do fluxo do pedido. Ele segue a condição do cadastro do fornecedor e não segura o pedido."

@@ -1,0 +1,272 @@
+episodio: FOR-10
+titulo: Conta corrente e pagamentos
+serie: FOR
+papel: fornecedor
+duracao: "3:30"
+idiomas: [pt, en, zh]
+capitulos:
+  - id: FOR-10-C1
+    titulo: Abrir a Conta corrente e ler os totais
+    titulo_en: Open the Account statement and read the totals
+    titulo_zh: 打开往来账并查看合计
+    inicio: "0:00"
+    fim: "1:10"
+    cenas: [1, 3]
+    resumo: No menu Pedidos, abra Conta corrente; no alto estão Total, Recebido e Saldo, e o pagamento não segura o andamento do pedido.
+    resumo_en: Under the Orders menu, open Account statement; at the top are Total, Received and Balance, and payment does not hold up the order.
+    resumo_zh: 在“订单”菜单里打开“往来账”；顶部是合计、已收和余额，付款不会影响订单进度。
+  - id: FOR-10-C2
+    titulo: Ler a previsão de pagamentos
+    titulo_en: Read the payment forecast
+    titulo_zh: 查看付款预计
+    inicio: "1:10"
+    fim: "2:10"
+    cenas: [4, 4]
+    resumo: A Previsão de pagamentos mostra a condição combinada e, por parcela, vencimento, valor e situação.
+    resumo_en: The Payment forecast shows the agreed terms and, per installment, due date, amount and status.
+    resumo_zh: “付款预计”显示约定条件，以及每一期的到期日、金额和状态。
+  - id: FOR-10-C3
+    titulo: Confirmar o recebimento
+    titulo_en: Confirm receipt
+    titulo_zh: 确认收款
+    inicio: "2:10"
+    fim: "3:30"
+    cenas: [5, 6]
+    resumo: Quando o dinheiro entrar no banco, clique em Confirmar recebimento na linha do pagamento; só confirme depois de receber.
+    resumo_en: When the money arrives in your bank, click Confirm receipt on the payment line; only confirm after you receive it.
+    resumo_zh: 款项到账后，在这笔付款的那一行点击“确认收款”；收到后再确认。
+perguntas:
+  - id: FOR-10-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-10-C1
+    cena: 2
+    enunciado: "Onde você abre a tela com os seus pagamentos e a previsão da Wellmix?"
+    opcoes:
+      a: "No menu **Cotações**"
+      b: "Em **Mensagens**"
+      c: "Em **Solicitações ao fornecedor**"
+      d: "No menu **Pedidos**, em **Conta corrente**"
+    correta: [d]
+    explicacao: "A **Conta corrente** fica no menu **Pedidos**. Nela você vê só os seus pedidos e pagamentos."
+    traducoes:
+      en:
+        enunciado: "Where do you open the screen with your payments and Wellmix's forecast?"
+        opcoes:
+          a: "In the **Quotes** menu"
+          b: "In **Messages**"
+          c: "In **Supplier requests**"
+          d: "In the **Orders** menu, in **Account statement**"
+        explicacao: "The **Account statement** is in the **Orders** menu. There you see only your own orders and payments."
+      zh:
+        enunciado: "在哪里可以打开显示您的付款和 Wellmix 付款预计的页面？"
+        opcoes:
+          a: "在“报价”菜单里"
+          b: "在“消息”里"
+          c: "在“供应商申请”里"
+          d: "在“订单”菜单的“往来账”里"
+        explicacao: "“往来账”在“订单”菜单里。您在那里只能看到自己的订单和付款。"
+  - id: FOR-10-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-10-C1
+    cena: 3
+    enunciado: "Dos três números no alto da **Conta corrente**, qual mostra quanto você já recebeu?"
+    opcoes:
+      a: "**Total**"
+      b: "**Recebido**"
+      c: "**Saldo**"
+      d: "**Contratado**"
+    correta: [b]
+    explicacao: "**Total** é o valor FOB dos seus pedidos, **Recebido** é o que você já recebeu e **Saldo** é o que falta. Pedido cancelado não entra na conta. **Contratado** é do Resumo por pedido."
+    traducoes:
+      en:
+        enunciado: "Of the three numbers at the top of the **Account statement**, which one shows how much you have already received?"
+        opcoes:
+          a: "**Total**"
+          b: "**Received**"
+          c: "**Balance**"
+          d: "**Contracted**"
+        explicacao: "**Total** is the FOB value of your orders, **Received** is what you already received and **Balance** is what is left. A cancelled order does not count. **Contracted** belongs to the Summary per order."
+      zh:
+        enunciado: "“往来账”顶部的三个数字里，哪一个显示您已经收到多少？"
+        opcoes:
+          a: "“合计”"
+          b: "“已收”"
+          c: "“余额”"
+          d: "“合同金额”"
+        explicacao: "“合计”是您订单的 FOB 金额，“已收”是您已经收到的金额，“余额”是还差的金额。已取消的订单不计入。“合同金额”属于“按订单汇总”。"
+  - id: FOR-10-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: FOR-10-C2
+    cena: 4
+    enunciado: "Na **Previsão de pagamentos**, uma parcela está como **Aguardando o marco**. O que isso quer dizer?"
+    opcoes:
+      a: "A Wellmix recusou pagar a parcela"
+      b: "Já foi paga e falta você confirmar"
+      c: "Ainda falta acontecer o evento da condição, como a entrega"
+      d: "A data de vencimento já passou"
+    correta: [c]
+    explicacao: "\"Aguardando o marco\" quer dizer que ainda falta o evento combinado, como a entrega, para a parcela vencer. Parcela paga mostra \"Pago · falta o fornecedor confirmar\", e passada do prazo mostra \"Vencida\"."
+    traducoes:
+      en:
+        enunciado: "In the **Payment forecast**, an installment shows **Waiting for milestone**. What does that mean?"
+        opcoes:
+          a: "Wellmix refused to pay the installment"
+          b: "It was already paid and you still have to confirm"
+          c: "The event in the terms, such as delivery, has not happened yet"
+          d: "The due date has already passed"
+        explicacao: "\"Waiting for milestone\" means the agreed event, such as delivery, is still missing for the installment to fall due. A paid installment shows \"Paid · awaiting supplier confirmation\", and a late one shows \"Overdue\"."
+      zh:
+        enunciado: "在“付款预计”里，某一期显示“等待节点”。这是什么意思？"
+        opcoes:
+          a: "Wellmix 拒绝支付这一期"
+          b: "已经付款，只差您确认"
+          c: "条件中的节点（例如交付）还没有发生"
+          d: "到期日已经过了"
+        explicacao: "“等待节点”表示约定的节点（例如交付）还没有发生，这一期还没到期。已付款的一期显示“已付款 · 待供应商确认”，逾期的显示“已逾期”。"
+  - id: FOR-10-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: FOR-10-C3
+    cena: 5
+    enunciado: "Coloque na ordem o que você faz para confirmar um pagamento da Wellmix."
+    opcoes:
+      a: "Achar a linha do pagamento, indentada sob o pedido"
+      b: "Esperar o dinheiro entrar na sua conta no banco"
+      c: "Clicar em **Confirmar recebimento**"
+      d: "Abrir **Conta corrente**, no menu **Pedidos**"
+    correta: [b, d, a, c]
+    explicacao: "Só confirme depois que o dinheiro estiver no banco. Aí você abre a **Conta corrente**, acha a linha do pagamento e clica em **Confirmar recebimento**: a situação vira \"Recebido\" e o histórico registra \"Recebimento confirmado\"."
+    traducoes:
+      en:
+        enunciado: "Put in order what you do to confirm a payment from Wellmix."
+        opcoes:
+          a: "Find the payment line, indented under the order"
+          b: "Wait for the money to arrive in your bank account"
+          c: "Click **Confirm receipt**"
+          d: "Open **Account statement**, in the **Orders** menu"
+        explicacao: "Only confirm after the money is in the bank. Then you open the **Account statement**, find the payment line and click **Confirm receipt**: the status becomes \"Received\" and the history records \"Receipt confirmed\"."
+      zh:
+        enunciado: "请把您确认 Wellmix 付款的步骤按顺序排好。"
+        opcoes:
+          a: "找到订单下方缩进的那一行付款"
+          b: "等款项到达您的银行账户"
+          c: "点击“确认收款”"
+          d: "在“订单”菜单里打开“往来账”"
+        explicacao: "款项到账后才能确认。然后打开“往来账”，找到这笔付款的那一行并点击“确认收款”：状态变为“已收到”，历史记录会显示“已确认收款”。"
+  - id: FOR-10-Q5
+    tipo: vf
+    nivel: 2
+    capitulo: FOR-10-C3
+    cena: 5
+    enunciado: "Verdadeiro ou falso: abrir a **Conta corrente** e ver a linha do pagamento não confirma o recebimento; só o botão **Confirmar recebimento** confirma."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [a]
+    explicacao: "Ao abrir a Conta corrente, a trilha só registra \"visualizado\". Confirmar é um ato seu e a parcela fica pendente (\"Pago · falta o fornecedor confirmar\") até você clicar no botão."
+    traducoes:
+      en:
+        enunciado: "True or false: opening the **Account statement** and seeing the payment line does not confirm receipt; only the **Confirm receipt** button does."
+        opcoes:
+          a: "True"
+          b: "False"
+        explicacao: "When you open the Account statement, the trail only records \"viewed on\". Confirming is your own act and the installment stays pending (\"Paid · awaiting supplier confirmation\") until you click the button."
+      zh:
+        enunciado: "判断题：打开“往来账”并看到付款那一行并不会确认收款；只有“确认收款”按钮才会确认。"
+        opcoes:
+          a: "正确"
+          b: "错误"
+        explicacao: "打开往来账时，跟踪记录只会登记“查看时间”。确认是您自己的操作，在您点击按钮之前，这一期一直处于待确认状态（“已付款 · 待供应商确认”）。"
+  - id: FOR-10-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-10-C3
+    cena: 5
+    enunciado: "Chegou o aviso \"pagamento enviado, confirme o recebimento\", mas o dinheiro ainda não apareceu no seu banco. O que faz?"
+    opcoes:
+      a: "Espera o dinheiro entrar e só então clica em **Confirmar recebimento**"
+      b: "Clica em **Confirmar recebimento** para o aviso sair"
+      c: "Clica em **Confirmar recebimento** e corrige depois, se o dinheiro não vier"
+      d: "Pede à Wellmix que confirme por você"
+    correta: [a]
+    explicacao: "Só confirme depois de receber. Não há como desfazer a confirmação: só a Wellmix consegue ajustar. A parcela fica como \"Pago · falta o fornecedor confirmar\" até você confirmar."
+    traducoes:
+      en:
+        enunciado: "The notice \"payment sent, please confirm receipt\" arrived, but the money has not shown up in your bank yet. What do you do?"
+        opcoes:
+          a: "Wait for the money to arrive and only then click **Confirm receipt**"
+          b: "Click **Confirm receipt** so the notice goes away"
+          c: "Click **Confirm receipt** and fix it later if the money does not come"
+          d: "Ask Wellmix to confirm for you"
+        explicacao: "Only confirm after you receive it. There is no undo: only Wellmix can adjust it. The installment stays as \"Paid · awaiting supplier confirmation\" until you confirm."
+      zh:
+        enunciado: "您收到了“款项已汇出，请确认收款”的通知，但钱还没有到您的银行账户。您该怎么办？"
+        opcoes:
+          a: "等款项到账后，再点击“确认收款”"
+          b: "点击“确认收款”，让通知消失"
+          c: "先点击“确认收款”，如果钱没到再更正"
+          d: "请 Wellmix 替您确认"
+        explicacao: "收到款项后再确认。确认无法撤销：只有 Wellmix 可以调整。在您确认之前，这一期一直显示“已付款 · 待供应商确认”。"
+  - id: FOR-10-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-10-C2
+    cena: 4
+    enunciado: "Ao abrir a **Previsão de pagamentos**, aparece \"A condição de pagamento ainda não foi configurada pela Wellmix.\" O que você faz?"
+    opcoes:
+      a: "Confirma o recebimento da parcela 1 para liberar a condição"
+      b: "Espera: a condição aparece sozinha quando o pedido é entregue"
+      c: "Escreve a condição que você combinou em **Observação**"
+      d: "Fala com a Wellmix pelas **Mensagens**"
+    correta: [d]
+    explicacao: "A condição de pagamento é configurada pela Wellmix. Se ela ainda não está lá, o caminho é falar com a Wellmix pelas **Mensagens**."
+    traducoes:
+      en:
+        enunciado: "When you open the **Payment forecast**, \"Wellmix has not set the payment terms yet.\" appears. What do you do?"
+        opcoes:
+          a: "Confirm receipt of installment 1 to release the terms"
+          b: "Wait: the terms appear by themselves when the order is delivered"
+          c: "Write the terms you agreed on in **Note**"
+          d: "Talk to Wellmix through **Messages**"
+        explicacao: "The payment terms are set by Wellmix. If they are not there yet, the way is to talk to Wellmix through **Messages**."
+      zh:
+        enunciado: "打开“付款预计”时，显示“Wellmix 尚未设置付款条件。”您该怎么办？"
+        opcoes:
+          a: "确认收到第 1 期款项，以释放付款条件"
+          b: "等待：订单交付后付款条件会自动出现"
+          c: "把您约定的条件写在“备注”里"
+          d: "通过“消息”联系 Wellmix"
+        explicacao: "付款条件由 Wellmix 设置。如果还没有，请通过“消息”联系 Wellmix。"
+  - id: FOR-10-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-10-C1
+    cena: 2
+    enunciado: "A parcela 2 (70 %) está **Aguardando o marco** e um colega sugere parar a produção até o dinheiro chegar. O que o portal ensina?"
+    opcoes:
+      a: "Parar a produção, porque o pedido só anda depois do pagamento"
+      b: "Pedir à Wellmix para antecipar a parcela 2 antes de produzir"
+      c: "Seguir produzindo: o pagamento não segura o pedido, e a Wellmix paga pela condição combinada"
+      d: "Cancelar o pedido, porque a parcela não tem data de vencimento"
+    correta: [c]
+    explicacao: "O pagamento corre em paralelo e não segura o andamento do pedido: a produção segue enquanto a Wellmix paga pela condição combinada. O que você acompanha é a Previsão de pagamentos."
+    traducoes:
+      en:
+        enunciado: "Installment 2 (70 %) is **Waiting for milestone** and a colleague suggests stopping production until the money arrives. What does the portal teach?"
+        opcoes:
+          a: "Stop production, because the order only moves after payment"
+          b: "Ask Wellmix to bring forward installment 2 before producing"
+          c: "Keep producing: payment does not hold up the order, and Wellmix pays under the agreed terms"
+          d: "Cancel the order, because the installment has no due date"
+        explicacao: "Payment runs in parallel and does not hold up the order: production goes on while Wellmix pays under the agreed terms. What you follow is the Payment forecast."
+      zh:
+        enunciado: "第 2 期（70 %）显示“等待节点”，同事建议在款项到账前先停产。平台是怎么教的？"
+        opcoes:
+          a: "停产，因为订单要付款后才推进"
+          b: "生产前先请 Wellmix 提前支付第 2 期"
+          c: "继续生产：付款不影响订单进度，Wellmix 按约定条件付款"
+          d: "取消订单，因为这一期没有到期日"
+        explicacao: "付款与订单并行，不会影响订单进度：Wellmix 按约定条件付款，生产照常进行。您要关注的是“付款预计”。"

@@ -1,0 +1,135 @@
+episodio: GER-02
+titulo: "Pendências, notificações e mensagens"
+serie: GER
+papel: todos
+duracao: "4:15"
+idiomas: [pt]
+capitulos:
+  - id: GER-02-C1
+    titulo: "Ver o que espera por você"
+    inicio: "0:00"
+    fim: "1:20"
+    cenas: [1, 4]
+    resumo: "Pendências mostra o que você precisa fazer, ordenado pelo prazo, e não se confunde com os avisos."
+  - id: GER-02-C2
+    titulo: "Resolver os avisos do sino"
+    inicio: "1:20"
+    fim: "2:20"
+    cenas: [5, 5]
+    resumo: "As Notificações têm três blocos, e Resolver leva ao lugar certo e marca o aviso como lido."
+  - id: GER-02-C3
+    titulo: "Falar com a Wellmix pelas Mensagens"
+    inicio: "2:20"
+    fim: "3:30"
+    cenas: [6, 6]
+    resumo: "Escreva no campo Mensagem, anexe foto, vídeo ou arquivo e converse por assunto."
+  - id: GER-02-C4
+    titulo: "Responder pela faixa amarela"
+    inicio: "3:30"
+    fim: "4:15"
+    cenas: [7, 8]
+    resumo: "O número de não lidas aparece no balão, em Mensagens e numa faixa com Abrir e responder."
+perguntas:
+  - id: GER-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: GER-02-C1
+    cena: 3
+    enunciado: "O que fica na tela **Pendências**?"
+    opcoes:
+      a: "Tudo o que aconteceu nos seus pedidos"
+      b: "As conversas com a Wellmix, por assunto"
+      c: "Tudo o que depende de você agora, ordenado pelo prazo"
+      d: "Os pedidos encerrados"
+    correta: [c]
+    explicacao: "Em Pendências fica o que você precisa fazer, com as mais urgentes primeiro. O botão **Abrir** leva direto ao pedido ou à solicitação."
+  - id: GER-02-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: GER-02-C1
+    cena: 4
+    enunciado: "Qual é a diferença entre uma pendência e uma notificação?"
+    opcoes:
+      a: "Pendência é o que você precisa fazer; notificação é o aviso de que algo aconteceu ou de que chegou a sua vez"
+      b: "Pendência é um aviso antigo; notificação é um aviso novo"
+      c: "Pendência é só da Wellmix; notificação é só do cliente"
+      d: "Não há diferença: as duas telas mostram a mesma lista"
+    correta: [a]
+    explicacao: "Pendências é a lista do que fazer. Notificações é a caixa de avisos, aberta pelo sino."
+  - id: GER-02-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: GER-02-C2
+    cena: 5
+    enunciado: "Quais destes avisos ficam no bloco **Atenção** das Notificações?"
+    opcoes:
+      a: "Um atraso"
+      b: "Um cancelamento"
+      c: "\"Pedido #1 criado\""
+      d: "Um problema no pedido"
+      e: "Um aviso com o selo \"Sua vez\""
+    correta: [a, b, d]
+    explicacao: "Atenção reúne atraso, problema e cancelamento. O que pede a sua ação fica em **Precisa de você**, e o que andou no pedido, em **Novidades**."
+  - id: GER-02-Q4
+    tipo: unica
+    nivel: 3
+    capitulo: GER-02-C2
+    cena: 5
+    enunciado: "No sino há um aviso com o selo \"Sua vez\". Você quer ir ao lugar certo e já marcá-lo como lido. Qual botão usa?"
+    opcoes:
+      a: "**Excluir todas**"
+      b: "**Resolver**"
+      c: "O botão com ✓ (marcar todas como lidas)"
+      d: "**Excluir**"
+    correta: [b]
+    explicacao: "**Resolver** leva ao lugar certo e marca o aviso como lido. **Excluir todas** apaga os avisos para sempre e pede confirmação."
+  - id: GER-02-Q5
+    tipo: vf
+    nivel: 2
+    capitulo: GER-02-C2
+    cena: 5
+    enunciado: "Um aviso lido sai da lista de Notificações e não há como vê-lo de novo."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "O aviso lido sai da lista, mas o link **Mostrar as lidas (N)** traz de volta. Só **Excluir** e **Excluir todas** apagam."
+  - id: GER-02-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: GER-02-C2
+    cena: 5
+    enunciado: "Você esperava um e-mail ou um WhatsApp dizendo que algo depende de você, e nada chegou. Onde confiar?"
+    opcoes:
+      a: "No e-mail, que só atrasa"
+      b: "No WhatsApp da Wellmix"
+      c: "Em Mensagens, que mostra todos os avisos"
+      d: "No sino e nas Notificações, que são a fonte confiável"
+    correta: [d]
+    explicacao: "E-mail e WhatsApp ainda estão em modo simulado. Só o sino e a lista de Notificações do portal avisam de verdade."
+  - id: GER-02-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: GER-02-C3
+    cena: 6
+    enunciado: "Você digitou uma pergunta no campo **Mensagem** e escolheu um PDF pelo botão **Arquivo**. O que acontece, e o que evitar?"
+    opcoes:
+      a: "O PDF espera você clicar em **Enviar**; clique uma vez"
+      b: "O PDF já vai na hora, com o texto; não clique em **Enviar** com o campo vazio"
+      c: "O PDF só vai se for escolhido antes de digitar o texto"
+      d: "O PDF não vai junto; envie primeiro o texto e depois o arquivo"
+    correta: [b]
+    explicacao: "Ao escolher o arquivo, ele é enviado na hora, junto com o texto digitado. Clicar em **Enviar** depois, com o campo vazio, mostra \"Confira o valor de: Mensagem.\""
+  - id: GER-02-Q8
+    tipo: ordem
+    nivel: 2
+    capitulo: GER-02-C4
+    cena: 7
+    enunciado: "A Wellmix respondeu a uma conversa sua. Coloque na ordem o que você vê e faz."
+    opcoes:
+      a: "A Wellmix responde na conversa"
+      b: "O balão ganha o número e aparece a faixa amarela \"Nova mensagem da Wellmix\""
+      c: "Você clica em **Abrir e responder**"
+      d: "A conversa abre no assunto e os números somem"
+    correta: [a, b, c, d]
+    explicacao: "A mensagem nova aparece no balão, em Mensagens e na faixa amarela. Ao abrir, ela é marcada como lida e os números somem."

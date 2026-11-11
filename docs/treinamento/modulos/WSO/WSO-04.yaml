@@ -1,0 +1,131 @@
+episodio: WSO-04
+titulo: "RFQ em espera: o interruptor"
+serie: WSO
+papel: administrador
+duracao: "3:30"
+idiomas: [pt]
+capitulos:
+  - id: WSO-04-C1
+    titulo: Ligar a RFQ
+    inicio: "0:00"
+    fim: "1:10"
+    cenas: [1, 4]
+    resumo: O interruptor da RFQ vale para todas as solicitações; o operador vê a situação e só o administrador clica em **Ativar a RFQ**.
+  - id: WSO-04-C2
+    titulo: Usar a RFQ ativa e ler a disputa
+    inicio: "1:10"
+    fim: "2:25"
+    cenas: [5, 6]
+    resumo: Com a RFQ ativa a solicitação abre para vários fornecedores, e com duas ou mais cotações respondidas aparece a Disputa de fornecedores.
+  - id: WSO-04-C3
+    titulo: Voltar à espera, o Sourcing e a auditoria
+    inicio: "2:25"
+    fim: "3:30"
+    cenas: [7, 9]
+    resumo: Colocar a RFQ em espera não derruba o que já está aberto; o Sourcing tem o mesmo interruptor e cada mudança fica na Auditoria.
+perguntas:
+  - id: WSO-04-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WSO-04-C1
+    cena: 3
+    enunciado: "Um operador com a tela RFQ abre Pedidos → RFQ para ligar a RFQ e não encontra nenhum botão. Quem liga ou coloca a RFQ em espera?"
+    opcoes:
+      a: "Qualquer operador que abra a tela RFQ"
+      b: "Só quem tem a função de comprador"
+      c: "Só o administrador"
+      d: "O fornecedor, ao responder a primeira cotação"
+    correta: [c]
+    explicacao: "O cartão \"Ligar ou deixar em espera\" mostra ao operador apenas o aviso \"Só o administrador liga ou coloca a RFQ em espera.\" O operador vê a situação, mas o interruptor é do administrador."
+  - id: WSO-04-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WSO-04-C1
+    cena: 4
+    enunciado: "A RFQ está em espera e você, administrador, quer que as solicitações possam ir a vários fornecedores. Qual botão você clica na tela RFQ?"
+    opcoes:
+      a: "**Ativar a RFQ**"
+      b: "**Abrir RFQ**"
+      c: "**Colocar a RFQ em espera**"
+      d: "**Enviar ao fornecedor**"
+    correta: [a]
+    explicacao: "**Ativar a RFQ** muda o selo para \"Ativa\" e mostra \"RFQ ativada.\" **Abrir RFQ** é o botão da solicitação, já com a RFQ ativa, e **Colocar a RFQ em espera** faz o caminho contrário."
+  - id: WSO-04-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: WSO-04-C2
+    cena: 5
+    enunciado: "Ponha na ordem o caminho para abrir uma solicitação ainda em \"Solicitado\" a dois fornecedores."
+    opcoes:
+      a: "Abrir a solicitação e marcar os fornecedores no cartão **Abrir RFQ**"
+      b: "Abrir Pedidos → RFQ"
+      c: "Clicar em **Abrir RFQ**"
+      d: "Clicar em **Ativar a RFQ**"
+    correta: [b, d, a, c]
+    explicacao: "O cartão **Abrir RFQ** só existe na solicitação depois que a RFQ está ativa. Os fornecedores que já vendem o produto aparecem primeiro, com o selo \"já fornece\"."
+  - id: WSO-04-Q4
+    tipo: multipla
+    nivel: 2
+    capitulo: WSO-04-C2
+    cena: 6
+    enunciado: "A Disputa de fornecedores dá nota a cada cotação. Quais critérios entram na nota? Marque todos os certos."
+    opcoes:
+      a: "Preço"
+      b: "Entrega"
+      c: "Produção"
+      d: "Margem do cliente"
+      e: "Pedido mínimo (MOQ)"
+    correta: [a, b, c, e]
+    explicacao: "A nota combina preço, entrega, produção e MOQ, com os pesos das Configurações. A margem é do cliente e não entra na disputa, que é só da Wellmix: um fornecedor nunca vê o outro."
+  - id: WSO-04-Q5
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-04-C2
+    cena: 6
+    enunciado: "A RFQ está ativa, mas na solicitação que você abriu não aparece o quadro \"Disputa de fornecedores\". Só um fornecedor respondeu. Por quê?"
+    opcoes:
+      a: "A disputa só aparece quando a solicitação é de compra para estoque"
+      b: "A disputa só aparece depois que o cliente aprova a proposta"
+      c: "O quadro fica escondido até o administrador atualizar a página"
+      d: "A disputa só existe com duas ou mais cotações respondidas"
+    correta: [d]
+    explicacao: "Com uma cotação só não há o que comparar. A Disputa de fornecedores aparece dentro de \"Comparação de cotações\" quando duas ou mais cotações foram respondidas."
+  - id: WSO-04-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-04-C3
+    cena: 7
+    enunciado: "Uma solicitação já tem a RFQ aberta para dois fornecedores. Você clica em **Colocar a RFQ em espera**. O que acontece com ela?"
+    opcoes:
+      a: "É cancelada, e as cotações recebidas são descartadas"
+      b: "Volta para \"Solicitado\", sem a disputa"
+      c: "Fica parada até alguém ativar a RFQ de novo"
+      d: "Continua valendo, com a disputa e tudo, até ser concluída"
+    correta: [d]
+    explicacao: "Colocar em espera só muda o caminho das solicitações novas: cada produto volta a ir a um fornecedor só. As RFQs já abertas continuam valendo até serem concluídas."
+  - id: WSO-04-Q7
+    tipo: unica
+    nivel: 2
+    capitulo: WSO-04-C3
+    cena: 8
+    enunciado: "Com o Sourcing ativo, o que acontece quando chega um pedido de produto fora do catálogo?"
+    opcoes:
+      a: "Vira só uma solicitação, como acontece com o Sourcing em espera"
+      b: "O pedido é recusado automaticamente"
+      c: "Abre um item de Sourcing e uma pendência para a equipe"
+      d: "O produto entra direto na vitrine do cliente"
+    correta: [c]
+    explicacao: "O Sourcing é a busca de produtos na China e tem o mesmo interruptor da RFQ. Em espera, o pedido fora do catálogo vira apenas uma solicitação; ativo, abre um item de Sourcing e uma pendência."
+  - id: WSO-04-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-04-C3
+    cena: 9
+    enunciado: "Um colega pergunta quem ativou a RFQ ontem e quando. Onde você confere?"
+    opcoes:
+      a: "Em Gestão → Auditoria, filtrando o módulo \"Configurações\""
+      b: "Em Início → Notificações, onde todos foram avisados"
+      c: "Em Pedidos → RFQ, no histórico do cartão \"Como está funcionando agora\""
+      d: "Em Início → Painel de SLA, na tabela Equipe"
+    correta: [a]
+    explicacao: "Cada mudança do interruptor (\"RFQ ativada\", \"RFQ colocada em espera\") fica registrada na Auditoria, módulo Configurações. Ninguém recebe aviso quando o administrador muda o interruptor, por isso as Notificações não ajudam."

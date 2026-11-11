@@ -1,0 +1,132 @@
+episodio: WLO-02
+titulo: "Containers: CBM, mix e ocupação"
+serie: WLO
+papel: operador
+duracao: "4:15"
+idiomas: [pt]
+capitulos:
+  - id: WLO-02-C1
+    titulo: "Criar o container e adicionar os itens"
+    inicio: "0:00"
+    fim: "1:30"
+    cenas: [1, 4]
+    resumo: "Criar o container em Pedidos → Containers e adicionar os itens por pedido, com caixas, CBM e peso."
+  - id: WLO-02-C2
+    titulo: "Respeitar o cliente e vigiar a ocupação"
+    inicio: "1:30"
+    fim: "2:45"
+    cenas: [5, 6]
+    resumo: "Entender a regra de um cliente por container e reagir aos avisos de ocupação e peso."
+  - id: WLO-02-C3
+    titulo: "Ler o vendido e avançar a situação"
+    inicio: "2:45"
+    fim: "4:15"
+    cenas: [7, 9]
+    resumo: "Separar o que é vendido do que é disponível e mudar a situação do container ao longo da viagem."
+perguntas:
+  - id: WLO-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WLO-02-C1
+    cena: 3
+    enunciado: "Qual botão do cartão **Novo container** grava o container novo?"
+    opcoes:
+      a: "Salvar"
+      b: "Adicionar ao container"
+      c: "Criar container"
+      d: "Mudar situação"
+    correta: [c]
+    explicacao: "No cartão **Novo container** você preenche código, tipo, cliente (opcional), ETD e ETA e clica em **Criar container**. **Adicionar ao container** é do cartão de itens, já dentro do container."
+  - id: WLO-02-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WLO-02-C2
+    cena: 6
+    enunciado: "A partir de que ocupação o cartão **Ocupação** mostra o aviso amarelo 'Ocupação acima do máximo recomendado'?"
+    opcoes:
+      a: "95%"
+      b: "100%"
+      c: "80%"
+      d: "90%"
+    correta: [a]
+    explicacao: "Acima de 95% (parâmetro 'Ocupação máxima do container (%)', do administrador) o portal avisa e abre um item em Pedidos → Revisão. Passar da capacidade ou do peso máximo também gera aviso."
+  - id: WLO-02-Q3
+    tipo: unica
+    nivel: 2
+    capitulo: WLO-02-C1
+    cena: 4
+    enunciado: "No cartão **Adicionar item · Por pedido** você escolhe o pedido e deixa a **Quantidade** vazia. De onde vêm quantidade, caixas, CBM e peso?"
+    opcoes:
+      a: "Nenhuma: o portal exige que você digite a quantidade e as caixas"
+      b: "Da quantidade total do cliente; CBM e peso vêm do tipo do container"
+      c: "Do pedido mínimo do produto; as caixas você preenche à mão"
+      d: "A do item do pedido; caixas, CBM e peso vêm da ficha do produto"
+    correta: [d]
+    explicacao: "A quantidade padrão é a do item do pedido, e caixas, CBM e peso vêm da ficha do produto. Se a ficha não tiver a caixa, o portal pede 'Un/caixa', 'CBM/caixa' e 'Peso (kg)'."
+  - id: WLO-02-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: WLO-02-C3
+    cena: 8
+    enunciado: "Coloque as situações do container na ordem da viagem, da primeira à última."
+    opcoes:
+      a: "Embarcado"
+      b: "Planejamento"
+      c: "Chegou"
+      d: "Encerrado"
+      e: "Em carregamento"
+    correta: [b, e, a, c, d]
+    explicacao: "A situação segue a viagem: Planejamento, Em carregamento, Embarcado, Chegou e Encerrado. Use **Mudar situação** para avançar; container encerrado não aceita mais itens."
+  - id: WLO-02-Q5
+    tipo: multipla
+    nivel: 2
+    capitulo: WLO-02-C2
+    cena: 6
+    enunciado: "Marque o que faz o portal avisar e abrir um item em Pedidos → Revisão para um container."
+    opcoes:
+      a: "Ocupação acima do máximo recomendado (95%)"
+      b: "Peso acima do máximo do tipo de container"
+      c: "Dois pedidos do mesmo cliente no mesmo container"
+      d: "Ocupação acima da capacidade em m³"
+      e: "Um container com um só pedido"
+    correta: [a, b, d]
+    explicacao: "Ocupação acima de 95%, acima da capacidade ou acima do peso máximo geram aviso e item em Revisão (sem bloquear). Vários pedidos do mesmo cliente são exatamente o que o container aceita."
+  - id: WLO-02-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WLO-02-C2
+    cena: 5
+    enunciado: "O container já é da Loja do João. Ao adicionar o pedido da compra para estoque aparece 'Regra de consolidação: este container já é de outro cliente.' O que você faz?"
+    opcoes:
+      a: "Apaga o primeiro pedido para o container mudar de cliente e tenta de novo"
+      b: "Muda o tipo do container para um maior, que aceite mais clientes"
+      c: "Usa outro container, ou pede ao administrador para liberar 'Container com vários clientes'"
+      d: "Clica em **Adicionar ao container** de novo até o portal aceitar"
+    correta: [c]
+    explicacao: "O primeiro pedido define o cliente do container, e clientes diferentes não são juntados automaticamente. Só o administrador libera uma consolidação manual, em Configurações."
+  - id: WLO-02-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WLO-02-C2
+    cena: 6
+    enunciado: "O cartão **Ocupação** mostra 96,4% e há um item novo em Pedidos → Revisão sobre o container. Como você resolve?"
+    opcoes:
+      a: "Apaga o item da fila de Revisão"
+      b: "Clica em **Remover** no maior item (ou troca o tipo de container)"
+      c: "Muda a situação para Embarcado"
+      d: "Espera: o aviso some quando o container chegar"
+    correta: [b]
+    explicacao: "A ação indicada é remover itens ou trocar o tipo de container. Ao fazer isso o aviso se resolve sozinho e o cartão da fila vai para Resolvidos."
+  - id: WLO-02-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WLO-02-C3
+    cena: 7
+    enunciado: "Você adiciona um produto pelo cartão **Adicionar item · Estoque / produto**, sem pedido. Como ele aparece na tabela e na Visão comercial?"
+    opcoes:
+      a: "Como 'Vendido', porque está dentro do container"
+      b: "Como 'Reservado', até o container chegar"
+      c: "Como 'Em trânsito', só no Estoque"
+      d: "Como 'Disponível': estoque no container"
+    correta: [d]
+    explicacao: "Item com pedido é Vendido; item sem pedido é Disponível. A Visão comercial só soma o que foi lançado, sem estimar nada."

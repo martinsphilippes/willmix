@@ -1,0 +1,126 @@
+episodio: WLO-01
+titulo: "Fretes e tarifário de frete"
+serie: WLO
+papel: operador
+duracao: "4:15"
+idiomas: [pt]
+capitulos:
+  - id: WLO-01-C1
+    titulo: "Responder o pedido de frete"
+    inicio: "0:00"
+    fim: "1:30"
+    cenas: [1, 4]
+    resumo: "Achar os pedidos de frete em Pedidos → Fretes e registrar o valor em nome da companhia marítima."
+  - id: WLO-01-C2
+    titulo: "Importar a planilha e ler a conferência"
+    inicio: "1:30"
+    fim: "2:40"
+    cenas: [5, 6]
+    resumo: "Importar a planilha de cada companhia no Tarifário de frete e entender os avisos da conferência."
+  - id: WLO-01-C3
+    titulo: "Comparar por porto e usar o frete no pedido"
+    inicio: "2:40"
+    fim: "4:15"
+    cenas: [7, 10]
+    resumo: "Ler o comparativo de menor custo, o frete por m³ e onde o frete aparece no pedido."
+perguntas:
+  - id: WLO-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WLO-01-C1
+    cena: 3
+    enunciado: "Na tela Fretes, que selo mostra que a companhia marítima ainda não respondeu o pedido de frete?"
+    opcoes:
+      a: "Frete enviado à Wellmix"
+      b: "Responder até"
+      c: "Aguardando valor"
+    correta: [c]
+    explicacao: "O selo 'Aguardando valor' fica no produto enquanto a companhia não responde. Sem a resposta dela, o preço usa um frete estimado por metro cúbico."
+  - id: WLO-01-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WLO-01-C2
+    cena: 5
+    enunciado: "Em **Importar planilha da companhia marítima**, que tipo de arquivo você escolhe?"
+    opcoes:
+      a: "Um .xlsx ou .xlsm"
+      b: "Um .xls antigo, salvo do Excel 95"
+      c: "Um PDF com a tabela da companhia"
+    correta: [a]
+    explicacao: "O portal lê .xlsx ou .xlsm. Se vier no formato .xls antigo, o portal pede para abrir no Excel e salvar de novo no formato novo."
+  - id: WLO-01-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: WLO-01-C1
+    cena: 4
+    enunciado: "A companhia mandou o frete por e-mail e você vai registrá-lo em nome dela. Coloque os passos na ordem."
+    opcoes:
+      a: "Preencher Valor do frete, Moeda, Tempo de trânsito (dias) e Válido até"
+      b: "Clicar em **Enviar frete**"
+      c: "Abrir Pedidos → Fretes e clicar no produto"
+    correta: [c, a, b]
+    explicacao: "Você abre o pedido de frete pelo produto, preenche valor, moeda, dias de trânsito e validade, e só então clica em **Enviar frete**. O valor entra no custo da cotação e fica na auditoria."
+  - id: WLO-01-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: WLO-01-C2
+    cena: 5
+    enunciado: "Você já importou uma planilha da Marítima SA e agora importa outra, também de 'De quem é a planilha' = Marítima SA. O que acontece com a tabela anterior?"
+    opcoes:
+      a: "Todas as planilhas de todas as companhias são apagadas"
+      b: "A nova é somada à anterior da mesma companhia"
+      c: "A nova só vale depois de a anterior vencer"
+      d: "A nova substitui só a anterior daquela companhia"
+    correta: [d]
+    explicacao: "Cada importação substitui apenas a planilha anterior da companhia escolhida em 'De quem é a planilha'. As planilhas das outras companhias ficam como estão."
+  - id: WLO-01-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WLO-01-C3
+    cena: 7
+    enunciado: "No comparativo do Tarifário de frete, o que a célula verde da tabela Porto de origem × companhia indica?"
+    opcoes:
+      a: "A companhia que a Wellmix já escolheu para o pedido"
+      b: "O menor custo daquele porto de origem, em reais"
+      c: "A tarifa mais recente importada"
+    correta: [b]
+    explicacao: "Em verde fica o **Menor custo** de cada porto: o custo total de um container de 40 pés em reais, com o mesmo câmbio para todas as companhias."
+  - id: WLO-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WLO-01-C2
+    cena: 6
+    enunciado: "Na **Conferência da planilha** aparece: 'o total em R$ de BETA CARGO soma as taxas de ALFA LINES. O portal recalculou com as taxas da própria BETA CARGO.' O que você faz?"
+    opcoes:
+      a: "Pede à BETA CARGO outra planilha antes de olhar o comparativo"
+      b: "Corrige a fórmula na planilha do Excel e importa tudo de novo"
+      c: "Segue: o portal recalculou e o comparativo usa a conta dele"
+    correta: [c]
+    explicacao: "Onde há erro de conta, o portal recalcula, avisa e usa a conta dele. A conferência serve para você saber o que parecia estranho na planilha."
+  - id: WLO-01-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WLO-01-C1
+    cena: 4
+    enunciado: "Você abre o pedido de frete da jarra, deixa o Valor do frete zerado e clica em **Enviar frete**. O que o portal mostra e o que você faz?"
+    opcoes:
+      a: "'Informe um valor de frete maior que zero.' Você digita o valor."
+      b: "'Frete enviado à Wellmix.' Você segue, pois o preço usa o frete estimado."
+      c: "'Este pedido de frete já foi encerrado.' Você cria outro pedido de frete."
+      d: "Nada: o portal guarda o frete em branco até a companhia responder."
+    correta: [a]
+    explicacao: "O valor de frete precisa ser maior que zero. Digite o valor total e envie de novo. A mensagem de 'já foi encerrado' é outra: aparece quando outro fornecedor foi escolhido ou a solicitação foi cancelada."
+  - id: WLO-01-Q8
+    tipo: multipla
+    nivel: 3
+    capitulo: WLO-01-C3
+    cena: 9
+    enunciado: "Marque o que é verdade sobre onde o frete aparece e quem vê o quê."
+    opcoes:
+      a: "No cartão Embarque do pedido, a Wellmix vê o 'Frete pelo tarifário' da rota da carga"
+      b: "A companhia marítima vê o comparativo com as tarifas das outras companhias"
+      c: "Em 'Minha tabela de frete', a companhia só vê o botão para enviar a tabela dela"
+      d: "A companhia vê o preço, o fornecedor e o cliente da compra"
+      e: "No pedido de frete, a companhia vê só a carga: caixas, volume e peso"
+    correta: [a, c, e]
+    explicacao: "A companhia vê só a carga e a própria tabela, nunca preço, fornecedor, cliente nem as tarifas das outras. O tarifário é só da Wellmix; no pedido, o cartão Embarque mostra o frete da rota."

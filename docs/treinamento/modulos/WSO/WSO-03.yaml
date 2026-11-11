@@ -1,0 +1,129 @@
+episodio: WSO-03
+titulo: Proposta, sinal e nascimento do pedido
+serie: WSO
+papel: operador
+duracao: "4:30"
+idiomas: [pt]
+capitulos:
+  - id: WSO-03-C1
+    titulo: Acompanhar a proposta e a aprovação do cliente
+    inicio: "0:00"
+    fim: "1:25"
+    cenas: [1, 4]
+    resumo: Depois da aprovação do pré-custo a proposta vai ao cliente; se ele aprovar por fora do portal, a Wellmix registra a aprovação.
+  - id: WSO-03-C2
+    titulo: Conferir o comprovante e confirmar o sinal
+    inicio: "1:25"
+    fim: "2:40"
+    cenas: [5, 6]
+    resumo: O cliente paga e envia o comprovante; a Wellmix confere o recebimento e o administrador confirma o sinal.
+  - id: WSO-03-C3
+    titulo: Conferir o pedido que nasceu
+    inicio: "2:40"
+    fim: "4:30"
+    cenas: [7, 9]
+    resumo: Veja as nove etapas, quem enxerga os cartões financeiros, a primeira etapa a confirmar e quem recebe cada aviso.
+perguntas:
+  - id: WSO-03-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WSO-03-C1
+    cena: 3
+    enunciado: "No cartão \"Proposta\" da solicitação em Aguardando sinal, qual informação só a Wellmix vê e o cliente não?"
+    opcoes:
+      a: "O valor ao cliente"
+      b: "O valor do sinal"
+      c: "O fornecedor"
+      d: "A situação da proposta"
+    correta: [c]
+    explicacao: "O cliente vê valor, sinal e situação. Fornecedor, custo e margem são só da Wellmix."
+  - id: WSO-03-Q2
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-03-C1
+    cena: 4
+    enunciado: "O cliente avisou por WhatsApp que aprova a proposta, mas não entrou no portal. Como a Wellmix deixa isso registrado?"
+    opcoes:
+      a: "Clica em **Aprovar proposta** na conta do operador"
+      b: "Clica em **Registrar aprovação do cliente**"
+      c: "Clica em **Confirmar sinal recebido**"
+      d: "Não precisa registrar: o pedido nasce quando o sinal chegar"
+    correta: [b]
+    explicacao: "Só o cliente da solicitação aprova a proposta pelo portal. Quando ele aprova por telefone, e-mail ou WhatsApp, a Wellmix usa **Registrar aprovação do cliente**, e a tela mostra \"Aprovação do cliente registrada.\""
+  - id: WSO-03-Q3
+    tipo: vf
+    nivel: 2
+    capitulo: WSO-03-C2
+    cena: 5
+    enunciado: "O pedido nasce automaticamente assim que o cliente envia o comprovante do sinal."
+    opcoes:
+      a: "Verdadeiro"
+      b: "Falso"
+    correta: [b]
+    explicacao: "O pagamento do sinal é manual, sem gateway: o cliente anexa o comprovante, a Wellmix confere o recebimento na conta e só quando o sinal é confirmado o pedido nasce."
+  - id: WSO-03-Q4
+    tipo: unica
+    nivel: 1
+    capitulo: WSO-03-C2
+    cena: 6
+    enunciado: "Qual botão o administrador usa para dizer que o sinal foi recebido na conta?"
+    opcoes:
+      a: "**Enviar comprovante**"
+      b: "**Registrar aprovação do cliente**"
+      c: "**Aprovar proposta**"
+      d: "**Confirmar sinal recebido**"
+    correta: [d]
+    explicacao: "**Confirmar sinal recebido** está no cartão Proposta e é do administrador, porque o financeiro é só dele. **Enviar comprovante** e **Aprovar proposta** são do cliente."
+  - id: WSO-03-Q5
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-03-C2
+    cena: 6
+    enunciado: "O cliente enviou o comprovante. Você, operador, abre o cartão Proposta, lê que é preciso conferir o recebimento, mas não vê o botão **Confirmar sinal recebido**. O que fazer?"
+    opcoes:
+      a: "Pedir ao administrador, que é quem vê o botão e confirma o sinal"
+      b: "Clicar em **Registrar aprovação do cliente** para liberar o botão"
+      c: "Recarregar a página até o botão aparecer"
+      d: "Reenviar a proposta ao cliente"
+    correta: [a]
+    explicacao: "Confirmar o sinal é só do administrador (ou de quem ele liberar). O operador vê o texto sobre o comprovante, mas não o botão, e não há atalho para contornar isso."
+  - id: WSO-03-Q6
+    tipo: ordem
+    nivel: 2
+    capitulo: WSO-03-C3
+    cena: 7
+    enunciado: "Ponha na ordem o caminho da proposta até o nascimento do pedido."
+    opcoes:
+      a: "O administrador clica em **Confirmar sinal recebido**"
+      b: "O cliente clica em **Aprovar proposta**"
+      c: "O Pedido #N nasce com as nove etapas"
+      d: "O cliente anexa o comprovante em **Enviar comprovante**"
+    correta: [b, d, a, c]
+    explicacao: "O cliente aprova, paga e anexa o comprovante; a Wellmix confere e o administrador confirma; só então o pedido nasce, já com as etapas até a entrega."
+  - id: WSO-03-Q7
+    tipo: multipla
+    nivel: 2
+    capitulo: WSO-03-C3
+    cena: 7
+    enunciado: "Na página do pedido recém-nascido, quais destes cartões são só do administrador? Marque todos os certos."
+    opcoes:
+      a: "Recebido do cliente"
+      b: "Etapas do pedido"
+      c: "Margem"
+      d: "Resumo do pedido"
+      e: "A receber do cliente"
+    correta: [a, c, e]
+    explicacao: "Os cartões de valor de venda, recebido, a receber e margem são só do administrador. O operador vê o pedido, o resumo e as nove Etapas do pedido."
+  - id: WSO-03-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WSO-03-C3
+    cena: 8
+    enunciado: "O Pedido #1 acabou de nascer e em Pendências aparece \"Pedido pré-aprovado\" para você. Qual é o seu primeiro passo?"
+    opcoes:
+      a: "Esperar o fornecedor, que é o responsável pela primeira etapa"
+      b: "Confirmar o sinal de novo, para o pedido ficar liberado"
+      c: "Abrir o pedido e clicar em **Confirmar** em \"Pedido conferido e liberado ao fornecedor\""
+      d: "Clicar em **Registrar aprovação do cliente** na solicitação"
+    correta: [c]
+    explicacao: "Na primeira etapa a Wellmix confere o pedido e o libera ao fornecedor com **Confirmar**; o número no Sankhya é opcional."

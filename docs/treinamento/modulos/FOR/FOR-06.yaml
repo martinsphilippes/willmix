@@ -1,0 +1,271 @@
+episodio: FOR-06
+titulo: Aprovar ou reprovar a arte
+serie: FOR
+papel: fornecedor
+duracao: "3:00"
+idiomas: [pt, en, zh]
+capitulos:
+  - id: FOR-06-C1
+    titulo: Esperar a arte e conferi-la
+    titulo_en: Wait for the artwork and check it
+    titulo_zh: 等待设计稿并核对
+    inicio: "0:00"
+    fim: "1:25"
+    cenas: [1, 3]
+    resumo: Enquanto a arte não chega você não faz nada; quando chega, abra o arquivo e confira faca, textos e selo.
+    resumo_en: Until the artwork arrives you do nothing; when it does, open the file and check the die-cut, texts and seal.
+    resumo_zh: 设计稿到达之前无需操作；到达后打开文件，核对刀模、文字和认证标志。
+  - id: FOR-06-C2
+    titulo: Aprovar ou reprovar com observação
+    titulo_en: Approve, or reject with a note
+    titulo_zh: 批准，或附备注驳回
+    inicio: "1:25"
+    fim: "3:00"
+    cenas: [4, 6]
+    resumo: Aprove se está tudo certo; se não, escreva em Observação o que mudar e reprove. A decisão só a Wellmix refaz.
+    resumo_en: Approve if all is right; if not, write in Note what to change and reject. Only Wellmix can redo a decision.
+    resumo_zh: 一切无误就批准；否则在“备注”里写明修改内容并驳回。决定一旦作出，只有 Wellmix 可以重新处理。
+perguntas:
+  - id: FOR-06-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-06-C1
+    cena: 3
+    enunciado: "Você recebeu o aviso \"arte da embalagem para aprovar\". Em que item do pedido você abre o arquivo da arte para conferir?"
+    opcoes:
+      a: "Em **Aprovação da arte pelo fornecedor**, na etapa Arte e embalagem"
+      b: "Em **Arte da embalagem**, na etapa Arte e embalagem"
+      c: "Na tela **Conta corrente**"
+      d: "No quadro **Sua vez de assinar**"
+    correta: [b]
+    explicacao: "O arquivo da arte (nome e versão, por exemplo arte.pdf v1) fica no item **Arte da embalagem**. O item **Aprovação da arte pelo fornecedor** é onde você decide, depois de conferir."
+    traducoes:
+      en:
+        enunciado: "You got the notice \"packaging artwork to approve\". In which item of the order do you open the artwork file to check it?"
+        opcoes:
+          a: "In **Artwork approval by supplier**, in the Artwork and packaging step"
+          b: "In **Packaging artwork**, in the Artwork and packaging step"
+          c: "In the **Account statement** screen"
+          d: "In the **Your turn to sign** box"
+        explicacao: "The artwork file (name and version, for example arte.pdf v1) is in the **Packaging artwork** item. **Artwork approval by supplier** is where you decide, after checking."
+      zh:
+        enunciado: "您收到了“包装稿待审批”的通知。要核对设计稿，应该在订单的哪一项里打开文件？"
+        opcoes:
+          a: "在“设计与包装”环节的“供应商审核设计稿”里"
+          b: "在“设计与包装”环节的“包装设计稿”里"
+          c: "在“往来账”页面里"
+          d: "在“轮到您签署”框里"
+        explicacao: "设计稿文件（名称和版本，例如 arte.pdf v1）在“包装设计稿”这一项里。“供应商审核设计稿”是核对之后您作决定的地方。"
+  - id: FOR-06-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: FOR-06-C2
+    cena: 4
+    enunciado: "No item **Aprovação da arte pelo fornecedor**, onde você escreve o que precisa mudar na arte?"
+    opcoes:
+      a: "Nas **Mensagens**, antes de abrir o pedido"
+      b: "No nome do arquivo da arte"
+      c: "No campo **Observação** (opcional)"
+      d: "Na **Notificações**, no aviso da arte"
+    correta: [c]
+    explicacao: "O campo **Observação** fica ao lado dos botões **Aprovar** e **Reprovar**. O que você escreve ali vai junto com a arte para quem a fez."
+    traducoes:
+      en:
+        enunciado: "In the **Artwork approval by supplier** item, where do you write what must change in the artwork?"
+        opcoes:
+          a: "In **Messages**, before opening the order"
+          b: "In the artwork file name"
+          c: "In the **Note** field (optional)"
+          d: "In **Notifications**, on the artwork notice"
+        explicacao: "The **Note** field sits next to the **Approve** and **Reject** buttons. What you write there goes back with the artwork to whoever made it."
+      zh:
+        enunciado: "在“供应商审核设计稿”这一项里，您在哪里写明设计稿要修改的内容？"
+        opcoes:
+          a: "在打开订单之前，写在“消息”里"
+          b: "写在设计稿的文件名里"
+          c: "写在“备注”栏（选填）"
+          d: "写在“通知”里这条设计稿通知上"
+        explicacao: "“备注”栏就在“批准”和“驳回”按钮旁边。您在那里写的内容会随设计稿一起退回给制作方。"
+  - id: FOR-06-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: FOR-06-C2
+    cena: 5
+    enunciado: "A arte chegou e o logo da tampa está pequeno. Coloque na ordem o que você faz para reprovar."
+    opcoes:
+      a: "Escrever em **Observação** o que mudar"
+      b: "Abrir o arquivo em **Arte da embalagem**"
+      c: "Clicar em **Reprovar**"
+      d: "Conferir faca, textos e selo de certificação"
+    correta: [b, d, a, c]
+    explicacao: "Primeiro você abre e confere a arte, depois escreve o recado em **Observação** e só então clica em **Reprovar**. A arte volta a quem a fez já com o seu recado."
+    traducoes:
+      en:
+        enunciado: "The artwork arrived and the logo on the lid is too small. Put in order what you do to reject it."
+        opcoes:
+          a: "Write in **Note** what to change"
+          b: "Open the file in **Packaging artwork**"
+          c: "Click **Reject**"
+          d: "Check die-cut, texts and certification seal"
+        explicacao: "First you open and check the artwork, then write the message in **Note**, and only then click **Reject**. The artwork goes back to whoever made it with your message."
+      zh:
+        enunciado: "设计稿到了，但瓶盖上的标志太小。请把驳回时您要做的事按顺序排好。"
+        opcoes:
+          a: "在“备注”里写明要修改的内容"
+          b: "在“包装设计稿”里打开文件"
+          c: "点击“驳回”"
+          d: "核对刀模、文字和认证标志"
+        explicacao: "先打开并核对设计稿，再在“备注”里写下意见，最后才点击“驳回”。设计稿会带着您的意见退回给制作方。"
+  - id: FOR-06-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: FOR-06-C2
+    cena: 5
+    enunciado: "Você clicou em **Reprovar**. O que acontece com a arte?"
+    opcoes:
+      a: "Ela volta para quem a fez, com o seu recado, e você é avisado quando chegar a nova versão"
+      b: "O pedido é cancelado e a Wellmix procura outro fornecedor para a jarra"
+      c: "A produção começa com a arte antiga, e você corrige tudo depois"
+      d: "Você mesmo envia a arte corrigida no pedido, na etapa Arte e embalagem"
+    correta: [a]
+    explicacao: "Quem faz a arte é a agência ou a Wellmix, não o fornecedor. Ao reprovar, o item fica **Reprovado**, a arte volta com a sua observação e você é avisado quando a nova versão chegar."
+    traducoes:
+      en:
+        enunciado: "You clicked **Reject**. What happens to the artwork?"
+        opcoes:
+          a: "It goes back to whoever made it, with your message, and you are notified when the new version arrives"
+          b: "The order is cancelled and Wellmix looks for another supplier for the jar"
+          c: "Production starts with the old artwork, and you fix everything later"
+          d: "You send the corrected artwork on the order yourself, in the Artwork and packaging step"
+        explicacao: "The artwork is made by the agency or Wellmix, not by the supplier. When you reject, the item becomes **Rejected**, the artwork goes back with your note, and you are notified when the new version arrives."
+      zh:
+        enunciado: "您点击了“驳回”。设计稿会怎样？"
+        opcoes:
+          a: "带着您的意见退回制作方，新版本到达时您会收到通知"
+          b: "订单被取消，Wellmix 为这款玻璃罐另找供应商"
+          c: "按旧设计稿开始生产，您以后再统一修改"
+          d: "由您自己在“设计与包装”环节里上传修改后的设计稿"
+        explicacao: "设计稿由设计公司或 Wellmix 制作，不是供应商。驳回后，该项变为“已驳回”，设计稿带着您的备注退回，新版本到达时您会收到通知。"
+  - id: FOR-06-Q5
+    tipo: multipla
+    nivel: 2
+    capitulo: FOR-06-C1
+    cena: 3
+    enunciado: "Ao conferir a arte antes de aprovar, o que você verifica? Marque todas as certas."
+    opcoes:
+      a: "Se ela segue a faca que você mandou"
+      b: "Se o preço de venda ao cliente está certo"
+      c: "Se os textos estão corretos"
+      d: "Se o selo de certificação aparece"
+      e: "Se a condição de pagamento da parcela 2 está certa"
+    correta: [a, c, d]
+    explicacao: "A arte é o que você vai imprimir: confira a faca, os textos e o selo de certificação. Preço de venda e pagamento não fazem parte da arte (e o preço de venda você nem vê)."
+    traducoes:
+      en:
+        enunciado: "When checking the artwork before approving, what do you verify? Mark all that apply."
+        opcoes:
+          a: "That it follows the die-cut you sent"
+          b: "That the selling price to the customer is right"
+          c: "That the texts are correct"
+          d: "That the certification seal appears"
+          e: "That the payment terms of installment 2 are right"
+        explicacao: "The artwork is what you will print: check the die-cut, the texts and the certification seal. Selling price and payment are not part of the artwork (and you never see the selling price anyway)."
+      zh:
+        enunciado: "批准之前核对设计稿时，您要检查什么？请选出所有正确项。"
+        opcoes:
+          a: "是否按您上传的刀模制作"
+          b: "对客户的售价是否正确"
+          c: "文字是否正确"
+          d: "认证标志是否出现"
+          e: "第 2 期的付款条件是否正确"
+        explicacao: "设计稿就是您要印刷的内容：核对刀模、文字和认证标志。售价和付款不属于设计稿（而且您本来就看不到售价）。"
+  - id: FOR-06-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-06-C2
+    cena: 4
+    enunciado: "Você clicou em **Aprovar** e só depois viu um erro de texto na arte. O item já está **Concluído**. O que você faz?"
+    opcoes:
+      a: "Clica em **Reprovar** no mesmo item"
+      b: "Clica em **Aprovar** de novo para atualizar"
+      c: "Espera a nova versão da arte chegar sozinha"
+      d: "Avisa a Wellmix, porque só ela pode refazer a decisão"
+    correta: [d]
+    explicacao: "Depois de decidir, o sistema mostra \"Esta aprovação já foi decidida; só a Wellmix pode refazer.\" Por isso, confira com calma antes de aprovar; se já aprovou, fale com a Wellmix."
+    traducoes:
+      en:
+        enunciado: "You clicked **Approve** and only afterwards saw a text error in the artwork. The item is already **Done**. What do you do?"
+        opcoes:
+          a: "Click **Reject** on the same item"
+          b: "Click **Approve** again to update it"
+          c: "Wait for the new artwork version to arrive by itself"
+          d: "Tell Wellmix, because only Wellmix can redo the decision"
+        explicacao: "After you decide, the system says \"This approval was already decided; only Wellmix can redo it.\" So check calmly before approving; if you already approved, talk to Wellmix."
+      zh:
+        enunciado: "您点击了“批准”，之后才发现设计稿上有文字错误。该项已是“已完成”。您该怎么办？"
+        opcoes:
+          a: "在同一项里点击“驳回”"
+          b: "再点一次“批准”来更新"
+          c: "等新版设计稿自己到达"
+          d: "告诉 Wellmix，因为只有 Wellmix 可以重新处理该决定"
+        explicacao: "作出决定后，系统会提示“该审批已作出决定；只有 Wellmix 可以重新处理。”所以批准前要仔细核对；已经批准的话，请联系 Wellmix。"
+  - id: FOR-06-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-06-C2
+    cena: 5
+    enunciado: "O logo na tampa da arte está pequeno demais. Qual é o jeito certo de pedir o ajuste?"
+    opcoes:
+      a: "Aprovar agora para não atrasar e pedir o ajuste depois, nas Mensagens"
+      b: "Escrever \"Aumentar o logo na tampa\" em **Observação** e clicar em **Reprovar**"
+      c: "Deixar o item como está e esperar que a Wellmix perceba o problema"
+      d: "Clicar em **Aprovar** e escrever o recado em **Observação** mesmo assim"
+    correta: [b]
+    explicacao: "Quem faz a arte só recebe o seu recado se você reprovar. Escreva sempre o que mudar em **Observação** e clique em **Reprovar**; aprovar significa que você aceita a arte para produzir."
+    traducoes:
+      en:
+        enunciado: "The logo on the lid of the artwork is too small. What is the right way to ask for the change?"
+        opcoes:
+          a: "Approve now so as not to delay, and ask for the change later, in Messages"
+          b: "Write \"Make the logo on the lid bigger\" in **Note** and click **Reject**"
+          c: "Leave the item as it is and wait for Wellmix to notice the problem"
+          d: "Click **Approve** and write the message in **Note** anyway"
+        explicacao: "Whoever makes the artwork only gets your message if you reject. Always write what to change in **Note** and click **Reject**; approving means you accept the artwork for production."
+      zh:
+        enunciado: "设计稿瓶盖上的标志太小了。请求修改的正确做法是什么？"
+        opcoes:
+          a: "为了不耽误先批准，以后再通过“消息”要求修改"
+          b: "在“备注”里写“放大瓶盖上的标志”，然后点击“驳回”"
+          c: "保持原样，等 Wellmix 自己发现这个问题"
+          d: "点击“批准”，同时在“备注”里写下意见"
+        explicacao: "只有驳回，制作方才会收到您的意见。务必在“备注”里写明要修改的内容并点击“驳回”；批准则表示您接受设计稿投产。"
+  - id: FOR-06-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: FOR-06-C2
+    cena: 5
+    enunciado: "Você reprovou a arte ontem. Hoje chegou o aviso de nova arte e o arquivo aparece como v2. O que você faz?"
+    opcoes:
+      a: "Nada: a Wellmix aprova a v2 no seu lugar, porque a decisão é dela"
+      b: "Pede à Wellmix para refazer a decisão antes mesmo de abrir a v2"
+      c: "Abre a v2, confere e decide de novo: **Aprovar** ou **Reprovar**"
+      d: "Clica em **Reprovar** de novo, para a Wellmix revisar mais uma vez a arte"
+    correta: [c]
+    explicacao: "Quando a arte volta corrigida, a versão sobe (v2) e você é avisado. Confira a nova versão como na primeira vez e decida: aprovar leva a etapa para a assinatura."
+    traducoes:
+      en:
+        enunciado: "You rejected the artwork yesterday. Today you got the notice of a new artwork and the file shows as v2. What do you do?"
+        opcoes:
+          a: "Nothing: Wellmix approves v2 in your place"
+          b: "Ask Wellmix to redo the decision before opening v2"
+          c: "Open v2, check it and decide again: **Approve** or **Reject**"
+          d: "Click **Reject** again, so Wellmix reviews once more"
+        explicacao: "When the artwork comes back corrected, the version goes up (v2) and you are notified. Check the new version as you did the first time and decide: approving moves the step on to signature."
+      zh:
+        enunciado: "您昨天驳回了设计稿。今天收到新设计稿的通知，文件显示为 v2。您该怎么办？"
+        opcoes:
+          a: "什么都不做：Wellmix 会替您批准 v2"
+          b: "先请 Wellmix 重新处理决定，再打开 v2"
+          c: "打开 v2，核对后再次决定：“批准”或“驳回”"
+          d: "再次点击“驳回”，让 Wellmix 再复核一次"
+        explicacao: "设计稿修改后退回时，版本号会升级（v2），您会收到通知。像第一次那样核对新版本并作决定：批准后，该环节进入签署。"

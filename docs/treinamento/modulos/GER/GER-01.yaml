@@ -1,0 +1,130 @@
+episodio: GER-01
+titulo: "Entrar no portal e se localizar"
+serie: GER
+papel: todos
+duracao: "4:30"
+idiomas: [pt]
+capitulos:
+  - id: GER-01-C1
+    titulo: "Entrar com o seu login"
+    inicio: "0:00"
+    fim: "1:25"
+    cenas: [1, 4]
+    resumo: "Pule a abertura animada se tiver pressa, digite e-mail ou nome de usuário e a senha, e saiba o que fazer se o login falhar."
+  - id: GER-01-C2
+    titulo: "Achar a sua tela, o menu e o idioma"
+    inicio: "1:25"
+    fim: "2:55"
+    cenas: [5, 7]
+    resumo: "Cada papel cai na sua primeira tela e tem o seu menu em grupos; o idioma troca em PT, EN ou ZH."
+  - id: GER-01-C3
+    titulo: "Voltar, sair e usar no celular"
+    inicio: "2:55"
+    fim: "4:30"
+    cenas: [8, 12]
+    resumo: "Use Voltar com os filtros, saia pelo menu da conta, entenda o aviso de acesso e leve o portal no celular."
+perguntas:
+  - id: GER-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: GER-01-C1
+    cena: 3
+    enunciado: "No computador, a abertura animada começou e você tem pressa. O que faz?"
+    opcoes:
+      a: "Clica em Sair"
+      b: "Clica em **Pular**"
+      c: "Clica em Voltar"
+      d: "Espera: não dá para interromper"
+    correta: [b]
+    explicacao: "O botão **Pular**, no canto inferior direito, encerra a animação. Esc, Enter ou espaço também servem."
+  - id: GER-01-Q2
+    tipo: unica
+    nivel: 3
+    capitulo: GER-01-C1
+    cena: 4
+    enunciado: "Você clica em **Entrar** e aparece em vermelho \"Credenciais inválidas\". O que faz?"
+    opcoes:
+      a: "Espera alguns minutos, porque o portal está fora do ar"
+      b: "Pede ao administrador para liberar a tela"
+      c: "Clica em **Pular** e tenta de novo"
+      d: "Confere o e-mail ou nome de usuário e a senha e tenta de novo"
+    correta: [d]
+    explicacao: "\"Credenciais inválidas\" quer dizer que o login ou a senha não batem. O campo Login ou e-mail aceita e-mail ou nome de usuário; confira os dois campos."
+  - id: GER-01-Q3
+    tipo: unica
+    nivel: 3
+    capitulo: GER-01-C1
+    cena: 4
+    enunciado: "Ao entrar, aparece: \"Não foi possível entrar agora: o banco de dados do portal não está respondendo. Sua senha não é o problema.\" O que faz?"
+    opcoes:
+      a: "Espera alguns minutos e tenta de novo; se continuar, avisa a Wellmix"
+      b: "Troca a senha e entra de novo"
+      c: "Confere se digitou o e-mail certo"
+      d: "Pede ao administrador para liberar o acesso"
+    correta: [a]
+    explicacao: "Essa mensagem é do portal, não do seu login. Tente de novo em alguns minutos e, se o problema continuar, avise a Wellmix."
+  - id: GER-01-Q4
+    tipo: unica
+    nivel: 1
+    capitulo: GER-01-C2
+    cena: 5
+    enunciado: "Qual é a primeira tela do cliente depois do login?"
+    opcoes:
+      a: "Control Tower"
+      b: "Pendências"
+      c: "Explorar, a vitrine"
+      d: "Mensagens"
+    correta: [c]
+    explicacao: "O cliente começa em **Explorar**. A Wellmix começa na Control Tower, e fornecedores e parceiros, em Pendências."
+  - id: GER-01-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: GER-01-C2
+    cena: 6
+    enunciado: "No menu do despachante, **Pedidos** aparece como um link direto, sem lista de telas. Por quê?"
+    opcoes:
+      a: "Faltou acesso, e o administrador precisa liberar"
+      b: "O grupo tem uma tela só, e grupo com uma tela só vira link direto"
+      c: "O despachante não tem os grupos Início e Pedidos"
+      d: "É um erro do menu, que volta ao normal no dia seguinte"
+    correta: [b]
+    explicacao: "Despachante, transportador, comex, agente de carga e OCP têm Início e o link direto **Pedidos**, porque o grupo tem uma tela só."
+  - id: GER-01-Q6
+    tipo: ordem
+    nivel: 2
+    capitulo: GER-01-C3
+    cena: 9
+    enunciado: "Coloque na ordem os passos para sair do portal com segurança."
+    opcoes:
+      a: "Clicar no seu nome, no canto direito"
+      b: "Ver o cartão com nome, papel e login"
+      c: "Clicar em **Sair**"
+      d: "Voltar à tela de login"
+    correta: [a, b, c, d]
+    explicacao: "O seu nome abre o cartão da conta, com nome, papel e login. Em **Sair** você volta ao login. É importante em computador compartilhado."
+  - id: GER-01-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: GER-01-C3
+    cena: 10
+    enunciado: "Você é cliente, digita o endereço de /app/booking e o portal volta ao início com a faixa âmbar \"Você não tem acesso a Booking\". O que isso significa?"
+    opcoes:
+      a: "A senha está errada e é preciso trocá-la"
+      b: "O portal está com defeito e é preciso tentar mais tarde"
+      c: "A tela é de outro papel; se precisar dela, fale com a Wellmix"
+      d: "Sua conta foi bloqueada e precisa ser recriada"
+    correta: [c]
+    explicacao: "Não é erro: é a regra de quem vê o quê. Booking é tela da Wellmix. Se precisar dela, fale com a Wellmix."
+  - id: GER-01-Q8
+    tipo: multipla
+    nivel: 2
+    capitulo: GER-01-C3
+    cena: 11
+    enunciado: "No celular, você toca em **Menu**. O que aparece no painel?"
+    opcoes:
+      a: "A abertura animada com o mapa-múndi"
+      b: "Os grupos do menu, como títulos"
+      c: "O seletor PT, EN e ZH"
+      d: "O botão **Sair**"
+    correta: [b, c, d]
+    explicacao: "O painel do celular traz os grupos, o idioma e **Sair** no fim. A abertura animada nunca toca no celular."

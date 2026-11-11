@@ -1,0 +1,135 @@
+episodio: WCA-01
+titulo: "Clientes e fornecedores: a ficha e a conta"
+serie: WCA
+papel: administrador
+duracao: "5:30"
+idiomas: [pt]
+capitulos:
+  - id: WCA-01-C1
+    titulo: "Abrir Clientes e ler os cinco cartões"
+    inicio: "0:00"
+    fim: "1:32"
+    cenas: [1, 5]
+    resumo: "Abrir Cadastros → Clientes, ler a conta nos cinco cartões e saber quem enxerga os valores."
+  - id: WCA-01-C2
+    titulo: "Buscar, usar os atalhos e agir em lote"
+    inicio: "1:32"
+    fim: "2:55"
+    cenas: [6, 8]
+    resumo: "Buscar e filtrar a lista, usar os atalhos da linha e ativar ou desativar vários cadastros de uma vez."
+  - id: WCA-01-C3
+    titulo: "Abrir a ficha e o pedido em lista"
+    inicio: "2:55"
+    fim: "4:20"
+    cenas: [9, 11]
+    resumo: "Ler a ficha do cliente com suas três abas e abrir o pedido de venda em lista."
+  - id: WCA-01-C4
+    titulo: "Ler o fornecedor e a avaliação"
+    inicio: "4:20"
+    fim: "5:30"
+    cenas: [12, 14]
+    resumo: "Ver o lado da compra em Fornecedores, consultar a avaliação e saber quem edita a condição de pagamento."
+perguntas:
+  - id: WCA-01-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: WCA-01-C1
+    cena: 3
+    enunciado: "Em que menu fica a lista de clientes da Wellmix?"
+    opcoes:
+      a: "Pedidos → Clientes"
+      b: "Cadastros → Clientes"
+      c: "Gestão → Clientes"
+    correta: [b]
+    explicacao: "Clientes fica em **Cadastros → Clientes**. Se o seu login não vê o item, peça ao administrador: ele libera por função."
+  - id: WCA-01-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: WCA-01-C1
+    cena: 4
+    enunciado: "O que mostra o cartão **A receber** da tela Clientes?"
+    opcoes:
+      a: "A venda menos o que já foi recebido"
+      b: "A venda dos pedidos já entregues ou encerrados"
+      c: "Tudo o que entrou, inclusive o sinal"
+      d: "A venda dos pedidos não cancelados"
+    correta: [a]
+    explicacao: "**A receber** é a venda menos o que já foi recebido. Os outros cartões são Valor do contrato, Entregue, Pagamento antecipado e Recebido."
+  - id: WCA-01-Q3
+    tipo: multipla
+    nivel: 2
+    capitulo: WCA-01-C2
+    cena: 6
+    enunciado: "Marque o que você pode digitar no campo de busca da lista de Clientes."
+    opcoes:
+      a: "O nome"
+      b: "O CNPJ"
+      c: "A cidade"
+      d: "O número do pedido"
+      e: "O valor do contrato"
+    correta: [a, b, c]
+    explicacao: "A busca procura por nome, CNPJ, telefone, e-mail ou cidade. Digite e clique em **Buscar**; os filtros Ativos, Inativos e Todos separam os grupos."
+  - id: WCA-01-Q4
+    tipo: ordem
+    nivel: 2
+    capitulo: WCA-01-C3
+    cena: 11
+    enunciado: "Você quer ver o pedido de venda de um cliente em lista, um produto por linha. Coloque os passos na ordem."
+    opcoes:
+      a: "Clicar no nome do cliente para abrir a ficha"
+      b: "Em **Registros de vendas**, clicar no número do pedido"
+      c: "Abrir Cadastros → Clientes"
+    correta: [c, a, b]
+    explicacao: "Da lista de Clientes você abre a ficha pelo nome, e na aba **Registros de vendas** clica no número do pedido. O pedido em lista é só leitura; para mexer, use **Abrir pedido completo**."
+  - id: WCA-01-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: WCA-01-C2
+    cena: 8
+    enunciado: "O que faz o botão **Desativar marcados** na lista de Clientes?"
+    opcoes:
+      a: "Apaga os clientes marcados do sistema"
+      b: "Cancela os pedidos dos clientes marcados"
+      c: "Exclui os clientes depois de 30 dias"
+      d: "Deixa os marcados Inativos, sem apagar nada, e a mudança vai para a auditoria"
+    correta: [d]
+    explicacao: "Ativar e desativar em lote muda a situação do cadastro, mas nada é apagado e a mudança fica na auditoria. Para ver os inativos, use o filtro **Inativos** ou **Todos**."
+  - id: WCA-01-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-01-C1
+    cena: 5
+    enunciado: "O operador comprador abre Clientes e vê só o aviso 'Valores só para quem tem acesso a Finanças.', sem os cartões. O que você responde?"
+    opcoes:
+      a: "O cadastro dele está inativo; ative-o"
+      b: "É normal: dinheiro só aparece para quem abre Finanças, ou seja, o administrador"
+      c: "Faltam pedidos entregues; os cartões voltam depois da entrega"
+      d: "Ele precisa trocar o filtro para Todos"
+    correta: [b]
+    explicacao: "Os valores em reais ou dólar só aparecem para quem abre Finanças (o administrador, ou quem ele liberar em Gestão → Equipe e divisões). Para os outros logins, os cartões somem."
+  - id: WCA-01-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-01-C2
+    cena: 6
+    enunciado: "Um cliente que você sabe que existe não aparece na lista de Clientes. O que você olha primeiro?"
+    opcoes:
+      a: "Pede ao administrador para cadastrar de novo"
+      b: "Clica em **Exportar a lista (CSV)** e procura na planilha"
+      c: "Troca o filtro de **Ativos** para **Inativos** ou **Todos**"
+      d: "Clica em **Buscar** com o campo vazio"
+    correta: [c]
+    explicacao: "Por padrão, só os ativos aparecem. Se um cliente sumiu, olhe em **Inativos** ou em **Todos**: ele pode estar desativado, e nada é apagado."
+  - id: WCA-01-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: WCA-01-C4
+    cena: 13
+    enunciado: "O comprador pede para mudar a condição de pagamento ao fornecedor Shenzhen Supplier A. Onde isso se edita e quem pode?"
+    opcoes:
+      a: "Na aba Pagamentos da ficha; qualquer login da Wellmix"
+      b: "Em **Editar cadastro** do fornecedor, no cartão da condição de pagamento; só o administrador"
+      c: "Em **Avaliação**, na linha do fornecedor; o comprador"
+      d: "Em **Registrar pagamento**; o financeiro"
+    correta: [b]
+    explicacao: "O cartão 'Condição de pagamento ao fornecedor' fica em **Editar cadastro** e só o administrador o vê. **Registrar pagamento** e **Avaliação** têm outro objetivo."

@@ -1,0 +1,130 @@
+episodio: AGE-02
+titulo: "Enviar a arte e os arquivos para a gráfica (a faca vem do fornecedor)"
+serie: AGE
+papel: agencia
+duracao: "4:20"
+idiomas: [pt]
+capitulos:
+  - id: AGE-02-C1
+    titulo: "Entender os entregáveis e de quem é a faca"
+    inicio: "0:00"
+    fim: "1:25"
+    cenas: [1, 4]
+    resumo: "Veja os quatro entregáveis do briefing e entenda que a faca é enviada pelo fornecedor escolhido, não por você."
+  - id: AGE-02-C2
+    titulo: "Enviar a arte e trocar por uma nova versão"
+    inicio: "1:25"
+    fim: "2:30"
+    cenas: [5, 6]
+    resumo: "Envie a arte com **Escolher arquivo**, mande uma versão nova quando ajustar e saiba o que **Excluir** faz."
+  - id: AGE-02-C3
+    titulo: "Completar o briefing e acompanhar o pedido"
+    inicio: "2:30"
+    fim: "4:20"
+    cenas: [7, 10]
+    resumo: "Envie os opcionais, deixe recados nas observações e veja quando o briefing fica Pronta e o que muda depois do sinal."
+perguntas:
+  - id: AGE-02-Q1
+    tipo: unica
+    nivel: 1
+    capitulo: AGE-02-C1
+    cena: 3
+    enunciado: "No cartão **Entregáveis**, quais são os dois itens obrigatórios?"
+    opcoes:
+      a: "Arte da embalagem e Arquivos para a gráfica"
+      b: "Faca (die-cut) e Foto da embalagem física"
+      c: "Arquivos para a gráfica e Foto da embalagem física"
+      d: "Faca (die-cut) e Arte da embalagem"
+    correta: [d]
+    explicacao: "Faca e Arte da embalagem são obrigatórios. Arquivos para a gráfica e Foto da embalagem física são opcionais e não seguram o briefing."
+  - id: AGE-02-Q2
+    tipo: unica
+    nivel: 1
+    capitulo: AGE-02-C1
+    cena: 4
+    enunciado: "Quem envia a faca (o molde da caixa)?"
+    opcoes:
+      a: "O fornecedor escolhido, depois da comparação das cotações (ou a Wellmix no lugar dele)"
+      b: "A agência, no cartão Entregáveis"
+      c: "O cliente, junto com a solicitação"
+      d: "A gráfica, depois de receber a arte"
+    correta: [a]
+    explicacao: "É o fornecedor escolhido quem fabrica a caixa e envia a faca; a Wellmix pode enviar no lugar dele. A linha da faca não tem botão de envio para a agência: ela só recebe e baixa o arquivo."
+  - id: AGE-02-Q3
+    tipo: ordem
+    nivel: 2
+    capitulo: AGE-02-C1
+    cena: 4
+    enunciado: "Coloque na ordem o caminho da faca até a sua arte."
+    opcoes:
+      a: "Você recebe o aviso \"Faca (die-cut) recebida\""
+      b: "Você baixa a faca e faz a arte em cima dela"
+      c: "As cotações são comparadas e o fornecedor é escolhido"
+      d: "O fornecedor escolhido envia a faca"
+    correta: [c, d, a, b]
+    explicacao: "Enquanto o fornecedor não é escolhido, a linha diz \"Aguardando o fornecedor escolhido enviar\". Quando ele envia, você recebe o aviso e baixa o arquivo para fazer a arte em cima dele."
+  - id: AGE-02-Q4
+    tipo: unica
+    nivel: 2
+    capitulo: AGE-02-C2
+    cena: 5
+    enunciado: "Como você envia a arte da embalagem?"
+    opcoes:
+      a: "Clica em **Escolher arquivo**; o arquivo sobe sozinho"
+      b: "Escolhe o arquivo e clica em **Salvar observações**"
+      c: "Escolhe o arquivo e clica em **Enviar**"
+      d: "Cola o texto da arte no cartão Entregáveis"
+    correta: [a]
+    explicacao: "Na linha **Arte da embalagem**, o envio é automático ao escolher o arquivo: não existe botão de enviar. A linha passa a mostrar o nome, a versão (v1) e a data. Se for foto, use **Tirar ou escolher foto**."
+  - id: AGE-02-Q5
+    tipo: unica
+    nivel: 2
+    capitulo: AGE-02-C2
+    cena: 6
+    enunciado: "O briefing está **Pronta**. Você clica em **Excluir** na arte atual e confirma. O que acontece?"
+    opcoes:
+      a: "A arte volta para a v1 e o briefing continua Pronta"
+      b: "O briefing volta a Em preparação e a arte volta a Falta enviar"
+      c: "A arte passa a ser a v2 automaticamente"
+      d: "O briefing é cancelado"
+    correta: [b]
+    explicacao: "**Excluir** apaga o arquivo atual: o item volta a Falta enviar e, se o briefing estava Pronta, volta a Em preparação. Para só ajustar a arte, envie de novo: cada envio vira uma versão nova (v2, v3)."
+  - id: AGE-02-Q6
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-02-C3
+    cena: 7
+    enunciado: "A gráfica precisa de uma prova de cor antes da impressão. Onde você deixa esse recado?"
+    opcoes:
+      a: "No cartão **Observações (gráfica, fornecedor)**, com **Salvar observações**"
+      b: "No item **Arquivos para a gráfica**, no nome do arquivo"
+      c: "Em uma nova versão da **Arte da embalagem**"
+      d: "No item **Foto da embalagem física**"
+    correta: [a]
+    explicacao: "Recados para a gráfica e para o fornecedor, como a prova de cor, vão em **Observações (gráfica, fornecedor)**. Depois de digitar, clique em **Salvar observações**."
+  - id: AGE-02-Q7
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-02-C3
+    cena: 8
+    enunciado: "Você enviou a arte, os arquivos para a gráfica e a foto, mas o briefing continua **Em preparação**. O que provavelmente falta?"
+    opcoes:
+      a: "A Wellmix aprovar a arte"
+      b: "Salvar as observações da gráfica"
+      c: "Enviar um segundo arquivo da foto"
+      d: "O fornecedor escolhido enviar a faca"
+    correta: [d]
+    explicacao: "O briefing só fica **Pronta** com a faca e a arte enviadas. Arquivos para a gráfica e foto são opcionais e não seguram nada. Quando a faca chega, o selo muda e a Wellmix recebe \"Embalagem pronta\"."
+  - id: AGE-02-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: AGE-02-C3
+    cena: 9
+    enunciado: "O fornecedor já aprovou a arte no pedido e você tenta enviar outra. O portal diz: \"A arte já foi aprovada no pedido: para trocar, a Wellmix reabre o item pelo pedido.\" O que você faz?"
+    opcoes:
+      a: "Exclui a arte e envia de novo pelo briefing"
+      b: "Pede à Wellmix que reabra o item pelo pedido"
+      c: "Envia o arquivo com outro nome"
+      d: "Espera o cliente pagar o sinal"
+    correta: [b]
+    explicacao: "Arte aprovada fica travada. Só a Wellmix reabre o item pelo pedido. Antes da aprovação, uma arte nova faz o fornecedor aprovar de novo."
