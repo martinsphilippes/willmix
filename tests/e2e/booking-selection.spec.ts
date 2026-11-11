@@ -175,7 +175,9 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(
     draftRow.locator('[data-selection-lot-status="draft"]'),
   ).toBeVisible();
-  await expect(draftRow.locator("[data-selection-choose]")).toBeDisabled();
+  // A aba Itens só agrupa: sem escolher nem abrir solicitação.
+  await expect(page.locator("[data-selection-choose]")).toHaveCount(0);
+  await expect(page.locator("[data-selection-submit]")).toHaveCount(0);
 
   // 2. Filtro de status: sem o rascunho, sobram os dois fechados.
   await page.locator('[data-selection-filter-status="draft"]').uncheck();
@@ -220,6 +222,13 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
     "data-selection-group-view",
     "3",
   );
+  // No grupo (aba Seleção) é que se escolhe; o item de rascunho não pode.
+  await expect(
+    page
+      .locator("[data-selection-item]", { hasText: `${TAG}-C` })
+      .locator("[data-selection-choose]"),
+  ).toBeDisabled();
+  await expect(page.locator("[data-selection-submit]")).toBeVisible();
   await expect(page.locator("[data-selection-item]")).toHaveCount(3);
 
   // 6. Seleção: o bloco sugerido junta os três copos de dois fornecedores.
