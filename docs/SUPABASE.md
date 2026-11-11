@@ -72,3 +72,8 @@ O andamento fica em `settings.supabase.copy` (no Appwrite). "Recomeçar do zero"
 4. Na Vercel: `DATA_MODE=supabase` e publicar de novo (Redeploy).
 5. Conferir login, pedidos, estoque e um download de arquivo. Cada pessoa usa "Esqueci minha senha" no primeiro acesso para definir a senha (ou o admin pede o link por ela).
 6. Se algo der errado: tirar `DATA_MODE` na Vercel e publicar de novo; o portal volta ao Appwrite intacto.
+
+## Troca de senha e primeiro acesso
+
+- **Trocar senha** (`/app/password`, `docs/ACCESS.md`): no Supabase, `supabaseChangePassword` confere a senha atual pelo próprio login (`/auth/v1/token`) e grava a nova com o token dessa conferência (`PUT /auth/v1/user`). `users.mustChangePassword` (senha provisória) vale igual nos três modos.
+- **Login master** (`well_wellmix@wellmix.com`, administrador): na virada cada usuário define a senha pelo link recebido por e-mail, então esse endereço precisa ser uma caixa de e-mail que alguém lê, ou a conta precisa ser criada à mão no Supabase.

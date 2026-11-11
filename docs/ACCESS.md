@@ -52,15 +52,15 @@ Motivos (das especificações já escritas): comprador abre RFQ, escolhe fornece
 
 ## 5. Papéis de fora da Wellmix (sem mudança de conteúdo)
 
-| Papel                                      | Telas                                                                                                           |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Cliente                                    | Explorar (vitrine e carrinho), Solicitações, Pedidos, Pendências, Notificações, Mensagens, Histórico, Marketing |
-| Fornecedor                                 | Pendências, Notificações, Mensagens, Cotações, Pedidos, Conta corrente                                          |
-| Agência                                    | Pendências, Notificações, Mensagens, Embalagem, Pedidos                                                         |
-| Despachante                                | Pendências, Notificações, Mensagens, Pedidos (e a classificação fiscal do produto a partir do pedido)           |
-| Companhia marítima                         | Pendências, Notificações, Mensagens, Fretes, Tarifário (o seu), Pedidos                                         |
+| Papel                                      | Telas                                                                                                                                              |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cliente                                    | Explorar (vitrine e carrinho), Solicitações, Pedidos, Pendências, Notificações, Mensagens, Histórico, Marketing                                    |
+| Fornecedor                                 | Pendências, Notificações, Mensagens, Cotações, Pedidos, Conta corrente                                                                             |
+| Agência                                    | Pendências, Notificações, Mensagens, Embalagem, Pedidos                                                                                            |
+| Despachante                                | Pendências, Notificações, Mensagens, Pedidos (e a classificação fiscal do produto a partir do pedido)                                              |
+| Companhia marítima                         | Pendências, Notificações, Mensagens, Fretes, Tarifário (o seu), Pedidos                                                                            |
 | Transportador, Comex, Agente de carga, OCP | Pendências, Notificações, Mensagens, Pedidos (a OCP abre também a ficha de compra e o documento do pedido dos pedidos dela, só leitura, com preço) |
-| Jurídico                                   | Pendências, Notificações, Mensagens, Pedidos, Multas                                                            |
+| Jurídico                                   | Pendências, Notificações, Mensagens, Pedidos, Multas                                                                                               |
 
 ## 6. Onde fica no código
 
@@ -81,3 +81,14 @@ Operadores já cadastrados em produção não têm função: ao entrar, veem só
 
 - Esconder, dentro das páginas, os links para telas que o login não abre (hoje o destino avisa e volta ao início).
 - Dono da pendência por função (compras × logística), já listado em docs/SLA_PANEL.md.
+
+## Troca de senha e primeiro acesso (decisão do dono, 11/11/2026)
+
+- **Trocar senha** (`/app/password`, no menu do usuário): qualquer login troca a própria senha informando a atual, a nova e a confirmação. A nova tem pelo menos 8 caracteres e é diferente da atual (`src/lib/password-rules.ts`). No Appwrite a troca é feita na identidade de quem está logado (`account.updatePassword`), que confere a senha atual; no modo memória, pelo hash. No Supabase, o login confere a senha atual e o token dele grava a nova (`supabaseChangePassword`). A auditoria registra só que houve troca (`user.password_change`), nunca a senha.
+- **Senha provisória** (`users.mustChangePassword`, coluna opcional): enquanto a marca existir, o portal mostra **só a troca de senha** no lugar de qualquer tela (`src/app/app/layout.tsx`), e a marca some ao trocar. A senha provisória não pode ser mantida. Login sem a marca (todos os anteriores) entra normalmente.
+- **Login de administrador com senha provisória**: `scripts/appwrite-admin-login.ts` cria a conta no Appwrite e o cadastro com papel `admin` e a marca ligada. E-mail, nome e senha vêm de variáveis de ambiente (`ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD`); a senha não fica no repositório. Pelo GitHub, sem terminal: Actions → "Criar login de administrador" (`.github/workflows/appwrite-admin-login.yml`), informando e-mail, nome e a senha provisória. Só cria: se o e-mail já existe, para sem alterar nada. `createPortalLogin` aceita `mustChangePassword` para os logins criados pelo portal.
+- **Limite conhecido**: o bloqueio é da tela. As Server Actions e `/api` não recusam um login com senha provisória; ele só não tem como chegar a elas pelo portal antes de trocar.
+
+## Idioma na tela de entrada (pedido do dono, 11/11/2026)
+
+A tela de entrada (`/login`) mostra o seletor de idioma com o ícone do globo: Português, English e 中文. Um toque troca na hora e fica guardado em cookie, então o portal já abre no idioma escolhido depois do login. É o mesmo componente do cabeçalho (`src/components/locale-switcher.tsx`, ação `setLocaleAction`).

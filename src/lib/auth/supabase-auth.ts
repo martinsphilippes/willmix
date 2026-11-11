@@ -78,6 +78,42 @@ export async function supabasePasswordOk(
   }
 }
 
+/**
+ * Troca da própria senha: a senha atual é conferida pelo login (o token dele
+ * autoriza a gravação da nova). Devolve "wrong" (senha atual errada), "weak"
+ * (o Supabase recusou a nova) ou "ok".
+ */
+export async function supabaseChangePassword(
+  email: string,
+  current: string,
+  next: string,
+): Promise<"ok" | "wrong" | "weak"> {
+  const { anon } = env();
+  const refused = (error: unknown) =>
+    error instanceof SupabaseAuthError &&
+    (error.status === 400 || error.status === 401 || error.status === 422);
+  let token: string;
+  try {
+    const session = await call("token?grant_type=password", {
+      method: "POST",
+      key: anon,
+      body: JSON.stringify({ email, password: current }),
+    });
+    token = String(session.access_token ?? "");
+  } catch (error) {
+    if (refused(error)) return "wrong";
+    throw error;
+  }
+  if (!token) return "wrong";
+  try {
+    await supabaseSetPassword(token, next);
+  } catch (error) {
+    if (refused(error)) return "weak";
+    throw error;
+  }
+  return "ok";
+}
+
 /** Conta nova já confirmada (o admin criou o acesso com a senha). */
 export async function supabaseCreateUser(
   email: string,

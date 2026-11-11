@@ -60,6 +60,8 @@ export interface PortalLoginInput {
   role: Role;
   locale: Locale;
   password: string;
+  /** Senha provisória: o login troca a senha no primeiro acesso. */
+  mustChangePassword?: boolean;
 }
 
 /**
@@ -134,6 +136,8 @@ export async function createPortalLogin(
       passwordHash:
         store.mode === "memory" ? hashPassword(input.password) : null,
       active: true,
+      // Só grava a coluna quando pedida (esquema antigo não a conhece).
+      ...(input.mustChangePassword ? { mustChangePassword: true } : {}),
     });
   } catch (error) {
     if (supabaseId) {

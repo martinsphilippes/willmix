@@ -141,6 +141,18 @@ function rememberSession(key: string, user: User) {
   recentSessions.set(key, { user, expires: Date.now() + SESSION_RECHECK_MS });
 }
 
+/**
+ * Esquece a sessão conferida deste navegador: a próxima página relê o usuário
+ * no banco (depois da troca de senha, o aviso de primeiro acesso some na hora).
+ */
+export async function forgetCurrentSession() {
+  // Só o Appwrite guarda a sessão conferida; os outros leem o banco a cada página.
+  if (dataMode() !== "appwrite") return;
+  const { sessionCookieName } = await import("@/lib/appwrite/server");
+  const secret = (await cookies()).get(sessionCookieName())?.value;
+  if (secret) recentSessions.delete(sessionKey(secret));
+}
+
 /** Usuário autenticado ou null. Nunca lança. Memoizado por requisição. */
 export const getCurrentUser = cache(async (): Promise<User | null> => {
   try {

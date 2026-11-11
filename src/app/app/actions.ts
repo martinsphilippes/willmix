@@ -81,6 +81,8 @@ export async function setLocaleAction(form: FormData) {
     if (user) await getStore().update("users", user.id, { locale });
   }
   revalidatePath("/app", "layout");
+  // A tela de entrada também troca de idioma (antes do login).
+  revalidatePath("/login", "layout");
 }
 
 /* ------------------------------------------------------------------------ */
