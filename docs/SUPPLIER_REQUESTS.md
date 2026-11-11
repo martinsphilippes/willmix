@@ -22,9 +22,19 @@ A Seleção de itens **substituiu a fila de produtos** do Booking antigo: o bot�
 - O item de **menor preço mínimo do Superplan** entre os mostrados fica destacado ("Melhor preço mínimo", `bestMinimumItem`).
 - **Filtros dos bookings** (`src/lib/booking-selection.ts`, no endereço): status (Rascunho, Fechado, Em andamento, Concluído, Cancelado; padrão: todos menos Cancelado), **período** da data do booking num calendário de intervalo só (dois cliques, atalhos últimos 7/30 dias, este mês, mês passado; `DateRangePicker`), fornecedor e origem (cidade do fornecedor). Mudar status, fornecedor ou origem já filtra.
 - **Abas Itens e Seleção** (decisão do dono, 11/11/2026):
-  - **Itens**: aba só de agrupamento (decisão do dono, 11/11/2026): sem as colunas "Escolher" e "Alternativa" e sem o quadro "Abrir solicitação ao fornecedor"; a solicitação abre só na aba Seleção, com o grupo. Cada linha tem a caixa "Agrupar"; a do cabeçalho marca todos os da tela (o que o filtro e a busca mostram). A cesta (`SelectionBasket`, guardada na aba do navegador) continua entre buscas; "Agrupar para seleção" leva até 60 itens, de vários fornecedores, para a aba Seleção (`?tab=selection&ids=…`).
+  - **Itens**: aba só de agrupamento (decisão do dono, 11/11/2026): sem as colunas "Escolher" e "Alternativa" e sem o quadro "Abrir solicitação ao fornecedor"; a escolha é gravada só na aba Seleção, com o grupo (ver "Escolha por grupo"). Cada linha tem a caixa "Agrupar"; a do cabeçalho marca todos os da tela (o que o filtro e a busca mostram). A cesta (`SelectionBasket`, guardada na aba do navegador) continua entre buscas; "Agrupar para seleção" leva até 60 itens, de vários fornecedores, para a aba Seleção (`?tab=selection&ids=…`).
   - **Seleção**: o grupo para comparar (mesma tabela e formulário de abrir a solicitação, só com os itens do grupo; os filtros não valem para o grupo) e os **blocos sugeridos**: itens dos bookings do filtro com nomes parecidos (palavras significativas com Jaccard ≥ 0,5, ligação transitiva; palavra presente em mais de 400 itens não liga), primeiro os blocos com mais fornecedores (`suggestBlocks`). "Comparar e selecionar" abre o bloco como grupo.
-- Abrir: o item escolhido, as alternativas, a **quantidade** (em branco = a da planilha: PURCHASE QTY IN PCS, senão TT PCS; sem nenhuma, a tela pede a digitada) e **o que a Wellmix precisa no produto** (texto livre que o fornecedor lê).
+- Gravar a escolha (ver "Escolha por grupo"): o item escolhido, as alternativas, a **quantidade** (em branco = a da planilha: PURCHASE QTY IN PCS, senão TT PCS; sem nenhuma, a tela pede a digitada) e **o que a Wellmix precisa no produto** (texto livre que o fornecedor lê).
+
+### Escolha por grupo (decisão do dono, 11/11/2026)
+
+O quadrante de comparação **não abre a solicitação**: ele grava a escolha do grupo. A solicitação nasce depois, dos blocos.
+
+1. **Gravar escolha** (`saveSelectionGroup`): o item que ganhou (um só, de booking fechado), a quantidade de peças (em branco = a da planilha do ganhador) e o que a Wellmix precisa. O grupo são os itens comparados na aba Seleção (a aba Itens só agrupa). Nada vai ao fornecedor: nem solicitação, nem aviso.
+2. Fica em `selection_groups` (`status` saved → requested; `replaced` quando outra escolha toma o lugar). Gravar de novo um grupo com algum item em comum com uma escolha ainda não enviada **troca** a anterior (um item não fica em duas escolhas esperando).
+3. **Blocos sugeridos**: o bloco cujo ganhador está nele aparece como **Resolvido**, com o item escolhido em verde e a quantidade (`groupForBlock`). Escolhas de grupos montados à mão (sem bloco sugerido) aparecem como cartões próprios. "Rever a escolha" reabre o grupo com a escolha preenchida.
+4. **Abrir a solicitação** (`openGroupRequests`): "dos marcados" (cada bloco resolvido tem uma caixa, já marcada) ou "de todos". Abre uma solicitação por grupo, **só do ganhador**; os outros itens do grupo vão como alternativas (só a Wellmix vê). O grupo passa a mostrar "Solicitação nº N aberta" com o link. Um grupo que não abre (ex.: item com solicitação em andamento) continua gravado e a tela diz o motivo; os demais abrem. Uma só aberta, sem falha, leva direto à solicitação.
+5. Só a Wellmix com a tela Booking grava, lista e abre. O fornecedor não tem acesso a `selection_groups`.
 
 ### Regras da solicitação
 
@@ -90,6 +100,8 @@ Com a tela Cadastros, cada nome leva ao quadro de acesso do cadastro (`/app/part
 ## Banco
 
 Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_request_number`), `status`, `supplierId` (índice `by_supplier`), `bookingItemId` (índice `by_item`), `bookingLotId`, `alternativeItemIds` (JSON), `item` (JSON, cópia do item), `quantity`, `unit`, `needs`, `searchQuery`, a resposta (`supplierCanDo`, `supplierPrice`, `supplierCurrency`, `supplierMoq`, `supplierLeadTimeDays`, `supplierNote`, `respondedAt`, `respondedByUserId`), a decisão (`decidedAt`, `decidedByUserId`, `decisionNote`), `createdByUserId` e o produto (`productId`, com índice `by_product`, `productAction` created/linked, `productLinkedAt`, `productLinkedByUserId`, `showcaseReleasedAt`, `showcaseReleasedByUserId`, `erpCheckedAt`), a negociação (`negotiation`, `slaNotifiedAt`); índice `by_status`. Arquivos da conversa: `documents.supplierRequestId`. Antes de `npm run appwrite:push`, as telas avisam "esquema desatualizado".
+
+Tabela `selection_groups` (escolha por grupo): `status` saved/requested/replaced (índice `by_status`), `itemIds` (JSON), `chosenItemId` (índice `by_chosen`), `quantity`, `needs`, `supplierRequestId`, `requestedAt`, `createdByUserId`, `updatedByUserId`. Serviço em `src/lib/services/selection-groups.ts`; testes em `tests/unit/selection-groups.test.ts`.
 
 ## Onde está
 
