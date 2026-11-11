@@ -11,6 +11,7 @@ import {
   updateCancelSettlement,
 } from "@/lib/services/order-cancel";
 import { field, requireUser, run, str } from "./helpers";
+import { assertCan } from "@/lib/auth/function-access";
 
 /*
  * Cancelamento de pedido. Só o administrador cancela (o serviço confere o
@@ -33,7 +34,8 @@ export async function cancelOrderAction(form: FormData) {
   const user = await requireUser();
   const { orderId, back } = orderBack(form);
   await run(back, async () => {
-    assertRole(user, ["admin"]);
+    // Admin ou a permissão "Cancelar pedido"; o serviço confere de novo.
+    assertCan(user, "order.cancel");
     id.parse(orderId);
     if (str(form, "confirm") !== "1") throw new Error("confirm_required");
     await cancelOrder(user, orderId, {
@@ -76,7 +78,7 @@ export async function rejectCancelRequestAction(form: FormData) {
   const user = await requireUser();
   const { orderId, back } = orderBack(form);
   await run(back, async () => {
-    assertRole(user, ["admin"]);
+    assertCan(user, "order.cancel");
     id.parse(orderId);
     const response = field(form, "response", z.string().min(3).max(1000));
     await rejectCancelRequest(user, orderId, response);

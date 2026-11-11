@@ -130,7 +130,9 @@ export function NegotiationCard({
   // só a contraproposta e a resposta a ela.
   if (!proposal && !showPropose) return null;
   return (
-    <Card title={t("supplierRequests.negotiation.title")}>
+    // Fica na coluna estreita da direita, embaixo do Booking (pedido do
+    // dono): cartão compacto e os formulários um embaixo do outro.
+    <Card title={t("supplierRequests.negotiation.title")} dense>
       <div id="conversa" data-negotiation>
         {proposal ? (
           <p
@@ -145,7 +147,7 @@ export function NegotiationCard({
           </p>
         ) : null}
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4">
           {showPropose ? (
             <form
               action={proposeSupplierRequestAction}

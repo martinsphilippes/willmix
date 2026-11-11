@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
-import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -31,6 +30,7 @@ import { PrintButton } from "@/components/print-button";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { RowMoreDetails, RowMoreToggle, oneLine } from "@/components/row-more";
 import { galleryProps } from "@/components/photo-gallery-props";
+import { canSeeMoney } from "@/lib/auth/function-access";
 
 const PAYMENT_TONE = {
   pending: "warning",
@@ -59,7 +59,7 @@ export async function PartySaleSheet({
   const sheet = await loadSaleSheet(id, orderId, side);
   if (!sheet || !sheet.party) notFound();
   const t = await getT();
-  const money = canOpen(user, "finance");
+  const money = canSeeMoney(user);
   const supplier = side === "supplier";
   const base = accountBase(side);
   // Pagamento ao fornecedor fica numa parte própria do pedido.

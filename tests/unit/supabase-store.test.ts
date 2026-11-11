@@ -97,7 +97,18 @@ function fakeSupabase() {
       });
       const offset = Number(params.get("offset") ?? 0);
       const limit = Number(params.get("limit") ?? 1000);
-      return json(hit.slice(offset, offset + limit));
+      const page = hit.slice(offset, offset + limit);
+      // Prefer: count=exact → total no Content-Range, como o PostgREST.
+      const prefer = (init.headers as Record<string, string> | undefined)
+        ?.Prefer;
+      if (prefer === "count=exact")
+        return new Response(JSON.stringify(page), {
+          status: 200,
+          headers: {
+            "content-range": `${offset}-${offset + page.length - 1}/${hit.length}`,
+          },
+        });
+      return json(page);
     }
     if (url.pathname.startsWith("/storage/v1/object/upload/sign/arquivos/")) {
       const key = url.pathname.split("/").pop()!;
@@ -383,5 +394,27 @@ describe("arquivos no Supabase", () => {
       mime: "application/pdf",
       size: 3,
     });
+  });
+});
+
+describe("listas grandes", () => {
+  it("lê a tabela inteira (sem o teto antigo de 10 mil), com páginas em paralelo", async () => {
+    const fake = fakeSupabase();
+    const store = new SupabaseStore("https://x.supabase.co", "key");
+    const rows = Array.from({ length: 12_345 }, (_, i) => ({
+      id: `p${String(i).padStart(6, "0")}`,
+      createdAt: "2026-11-11T00:00:00.000Z",
+      updatedAt: "2026-11-11T00:00:00.000Z",
+      name: `Produto ${i}`,
+    }));
+    fake.db.product_lines = rows;
+    const all = await store.list("product_lines");
+    expect(all).toHaveLength(12_345);
+    expect(new Set(all.map((r) => r.id)).size).toBe(12_345);
+    expect(all[12_344].id).toBe("p012344");
+    // Com limite, para nele.
+    expect(await store.list("product_lines", { limit: 1500 })).toHaveLength(
+      1500,
+    );
   });
 });

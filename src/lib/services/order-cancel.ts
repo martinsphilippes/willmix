@@ -1,4 +1,5 @@
 import "server-only";
+import { assertCan } from "@/lib/auth/function-access";
 
 import type { Translate } from "@/i18n";
 import {
@@ -8,7 +9,11 @@ import {
   type StageKey,
   type User,
 } from "@/lib/db";
-import { assertRole, canViewOrder } from "@/lib/auth/permissions";
+import {
+  assertRole,
+  assertWellmix,
+  canViewOrder,
+} from "@/lib/auth/permissions";
 import { audit } from "./audit";
 import {
   notify,
@@ -125,7 +130,9 @@ export async function cancelOrder(
   orderId: string,
   input: CancelInput,
 ) {
-  assertRole(user, ["admin"]);
+  // Admin, ou quem tem a permissão "Cancelar pedido" (Equipe → Funções e acessos).
+  assertWellmix(user);
+  assertCan(user, "order.cancel");
   const store = getStore();
   const order = await store.get("orders", orderId);
   if (!order) throw new OrderCancelError("not_found");
@@ -306,7 +313,8 @@ export async function rejectCancelRequest(
   orderId: string,
   response: string,
 ) {
-  assertRole(user, ["admin"]);
+  assertWellmix(user);
+  assertCan(user, "order.cancel");
   const store = getStore();
   const order = await store.get("orders", orderId);
   if (!order) throw new OrderCancelError("not_found");

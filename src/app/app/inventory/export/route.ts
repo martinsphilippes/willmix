@@ -9,6 +9,7 @@ import {
   qtyFor,
   readInventoryFilter,
 } from "../_data";
+import { canSeeMoney } from "@/lib/auth/function-access";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
   const t = await getT();
   const sp = request.nextUrl.searchParams;
   const filter = readInventoryFilter({ situ: sp.get("situ"), q: sp.get("q") });
-  const money = canOpen(user, "finance");
+  const money = canSeeMoney(user);
   const { lines } = await inventoryData(filter);
   const cell = (v: string | number | null | undefined) => {
     const s = v === null || v === undefined ? "" : String(v);

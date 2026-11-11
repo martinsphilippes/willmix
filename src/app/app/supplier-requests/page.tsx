@@ -39,6 +39,7 @@ import {
   linkClass,
   rowClass,
 } from "@/components/ui";
+import { can } from "@/lib/auth/function-access";
 
 /*
  * Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): a Wellmix vê todas;
@@ -75,7 +76,7 @@ export default async function SupplierRequestsPage({
   // Pedido de compra (docs/PURCHASE_ORDER.md): os produtos aprovados de cada
   // fornecedor que ainda não estão em pedido.
   const purchase =
-    wellmix && canOpen(user, "orders")
+    wellmix && canOpen(user, "orders") && can(user, "purchaseOrder.generate")
       ? await listPurchaseCandidates(user)
       : null;
   const purchaseCustomer = purchase?.length

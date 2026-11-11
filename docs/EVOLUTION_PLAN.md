@@ -830,3 +830,16 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (11/11/2026): a aba Itens da Seleção (`/app/booking/selection`) é a tela de agrupamento; não deve abrir solicitação. Saíram dela o quadro "Abrir solicitação ao fornecedor" e as colunas "Escolher" e "Alternativa" (que só serviam a ele). Ficam a busca, os filtros, a caixa "Agrupar" e a cesta "Agrupar para seleção".
 - A solicitação ao fornecedor continua abrindo na aba Seleção, com o grupo (item escolhido, alternativas, quantidade e o que a Wellmix precisa). Nada mudou no servidor nem no banco. E2E: `booking-selection.spec.ts` e `booking-supplier-request.spec.ts` agrupam antes de abrir.
+
+## Produto: todas as caixas recolhidas
+
+- **Pedido do dono** (11/11/2026): na tela do produto (`/app/products/[id]`), as outras caixas ficam minimizadas como as quatro do cadastro: Fornecedores, Variações, Ficha de compra (mestre, com o selo da situação na barra), Fotos, Medições, Oportunidade de compra, NCM, Certificações, Atributos, Sugestão por foto e Ciclo. Nada saiu da tela; só mudou a forma de ver.
+- `FoldSection` (`src/components/fold-section.tsx`) é a caixa; `FoldMemory` (`src/components/fold-memory.tsx`) lembra as abertas por produto na aba do navegador (a tela volta igual depois de salvar) e abre a caixa quando um link (#âncora) ou um campo que falta leva para dentro dela. Sem mudança no servidor nem no banco. E2E: `gotoProduct` abre as caixas antes de usar a tela.
+
+## Solicitação ao fornecedor: conversa na coluna da direita, embaixo do Booking
+
+- **Pedido do dono** (11/11/2026): na tela da solicitação ao fornecedor (`/app/supplier-requests/<id>`), o cartão "Negociação e conversa" sai da coluna larga e vai para a coluna da direita, embaixo do cartão Booking, em formato compacto (formulários um embaixo do outro). Para o fornecedor, que não tem o cartão Booking, a conversa fica no fim da mesma coluna. Nada mudou na negociação em si. Código em `supplier-requests/[id]/page.tsx` e `_components/negotiation.tsx`.
+
+## Solicitação ao fornecedor: tabela, linha do tempo e chat flutuante
+
+- **Pedido do dono** (11/11/2026): a tela abre numa tabela dos produtos (fornecedor e Wellmix), com condições iniciais e finais; a conversa sai do cartão "Negociação" e vira um chat flutuante no canto inferior direito; o histórico vira a linha do tempo. O cartão "Negociação" continua na coluna da direita, embaixo do Booking (item acima), só com a contraproposta e a resposta a ela. Detalhes em docs/SUPPLIER_REQUESTS.md.

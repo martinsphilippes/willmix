@@ -1,6 +1,7 @@
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { Role, User, WellmixFunction } from "@/lib/db/schema";
 import { ForbiddenError, isAdmin, isWellmix } from "./permissions";
+import { accessOf, type ResolvedAccess } from "./access-cache";
 
 /*
  * Telas por papel e por função (docs/ACCESS.md). Uma lista só de telas e uma
@@ -331,11 +332,25 @@ const isScreen = (value: unknown): value is Screen =>
 export const validScreens = (list: unknown): Screen[] =>
   Array.isArray(list) ? list.filter(isScreen) : [];
 
-/** Padrão das funções: o básico mais as telas de cada função marcada. */
-export function functionScreensFor(user: Who): Set<Screen> {
+/**
+ * Padrão das funções: o básico mais as telas de cada função marcada. As telas
+ * de cada função vêm da configuração do administrador (Equipe → Funções e
+ * acessos): a passada em `access` (outro login, calculado por quem chama), a
+ * guardada nesta requisição para o login atual, ou o padrão do código.
+ */
+export function functionScreensFor(
+  user: Who,
+  access?: ResolvedAccess | null,
+): Set<Screen> {
   const set = new Set<Screen>(WELLMIX_BASE);
+  const resolved = access ?? accessOf(user);
+  if (resolved) {
+    for (const screen of validScreens(resolved.screens)) set.add(screen);
+    return set;
+  }
   for (const fn of user.functions ?? [])
-    for (const screen of FUNCTION_SCREENS[fn] ?? []) set.add(screen);
+    for (const screen of FUNCTION_SCREENS[fn as WellmixFunction] ?? [])
+      set.add(screen);
   return set;
 }
 
@@ -348,12 +363,15 @@ export const hasCustomScreens = (user: Who) =>
  * Operador: a lista marcada pelo administrador (mais o básico), se houver;
  * senão o padrão das funções. Cliente, fornecedor e parceiros: a lista do papel.
  */
-export function screensFor(user: Who): Set<Screen> {
+export function screensFor(
+  user: Who,
+  access?: ResolvedAccess | null,
+): Set<Screen> {
   if (isAdmin(user)) return new Set(SCREENS);
   if (isWellmix(user)) {
     if (Array.isArray(user.screens))
       return new Set<Screen>([...WELLMIX_BASE, ...validScreens(user.screens)]);
-    return functionScreensFor(user);
+    return functionScreensFor(user, access);
   }
   return new Set(ROLE_SCREENS[user.role as keyof typeof ROLE_SCREENS] ?? []);
 }

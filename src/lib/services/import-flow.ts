@@ -1,4 +1,6 @@
 import "server-only";
+import { can, holdersOf } from "@/lib/auth/function-access";
+import { loadFunctionDefs } from "./team-functions";
 
 import { getStore, type ImportStep, type Order, type User } from "@/lib/db";
 import {
@@ -245,10 +247,9 @@ const anchorOf = (tpl: StepTemplate) =>
 const auditLabel = (tpl: StepTemplate) =>
   groupOf(tpl) === "certification" ? "Certificação" : "Embarque/desembaraço";
 
-/** Financeiro: função da Wellmix (ou admin). */
+/** Financeiro do pedido: permissão "Numerário" (padrão: função financeiro) ou admin. */
 export const isFinance = (user: User) =>
-  isAdmin(user) ||
-  (isWellmix(user) && (user.functions ?? []).includes("finance"));
+  isAdmin(user) || (isWellmix(user) && can(user, "numerario.manage"));
 
 /** O usuário é quem age (ou valida) por esse papel neste pedido? */
 export function actsAs(user: User, order: Order, actor: StepActor): boolean {
@@ -345,9 +346,7 @@ async function wellmixArtTarget(order: Order): Promise<NotifyTarget> {
   });
   const designer = team.find((u) => u.id === order.designerUserId);
   if (designer) return { userIds: [designer.id] };
-  const designers = team.filter((u) =>
-    (u.functions ?? []).includes("designer"),
-  );
+  const designers = holdersOf(team, "art.design", await loadFunctionDefs());
   if (designers.length) return { userIds: designers.map((u) => u.id) };
   return order.ownerUserId
     ? { userIds: [order.ownerUserId] }
@@ -368,7 +367,11 @@ async function targetFor(
     const team = await getStore().list("users", {
       filter: { role: ["admin", "operator"], active: true },
     });
-    const finance = team.filter((u) => (u.functions ?? []).includes("finance"));
+    const finance = holdersOf(
+      team,
+      "numerario.manage",
+      await loadFunctionDefs(),
+    );
     return {
       userIds: (finance.length ? finance : team.filter(isAdmin)).map(
         (u) => u.id,

@@ -175,6 +175,7 @@ import {
   FreightTariffUploadBox,
 } from "@/components/freight-tariff-box";
 import { myTariffStatus, orderTariffView } from "@/lib/services/freight-tariff";
+import { can } from "@/lib/auth/function-access";
 
 export default async function OrderPage({
   params,
@@ -589,9 +590,12 @@ export default async function OrderPage({
           ? t(`orders.error.${error}` as DictionaryKey)
           : fallbackError(t, error)
       : null;
-  /* Cancelamento: só o admin cancela; o cliente pede até a produção começar. */
+  /* Cancelamento: o admin e quem tem a permissão "Cancelar pedido" (Equipe →
+     Funções e acessos); o acerto financeiro continua só do admin. O cliente
+     pede até a produção começar. */
   const isCancelled = order.status === "CANCELLED";
   const admin = user.role === "admin";
+  const canCancel = can(user, "order.cancel");
   const canRequestCancel =
     user.role === "customer" && !isCancelled
       ? await customerCanRequestCancel(order)
@@ -1172,7 +1176,7 @@ export default async function OrderPage({
         customer={user.role === "customer"}
       />
       {wellmix ? (
-        <CancelRequestAlert t={t} order={order} admin={admin} />
+        <CancelRequestAlert t={t} order={order} admin={canCancel} />
       ) : null}
       {currentStage?.status === "blocked" ? (
         <div className="mb-3">
@@ -2746,9 +2750,9 @@ export default async function OrderPage({
         </div>
       ) : null}
 
-      {admin || user.role === "customer" ? (
+      {canCancel || user.role === "customer" ? (
         <div className="mt-6 flex min-w-0 flex-col gap-6">
-          {admin ? (
+          {canCancel ? (
             <AdminCancelCard
               t={t}
               order={order}

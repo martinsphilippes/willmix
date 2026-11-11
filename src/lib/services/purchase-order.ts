@@ -1,4 +1,5 @@
 import "server-only";
+import { assertCan } from "@/lib/auth/function-access";
 
 import { assertWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
@@ -132,6 +133,7 @@ export async function createPurchaseOrder(
 ): Promise<Order> {
   assertWellmix(user);
   assertScreen(user, "orders");
+  assertCan(user, "purchaseOrder.generate");
   if (!lines.length)
     throw new PurchaseOrderError("purchase_order_choose_items");
   if (lines.length > PURCHASE_ORDER_MAX_ITEMS)

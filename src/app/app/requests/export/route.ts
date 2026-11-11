@@ -23,6 +23,7 @@ import {
 } from "@/lib/services/request-list";
 import { isSchemaMissing } from "@/lib/services/packaging-brief";
 import type { Approval } from "@/lib/db";
+import { canSeeMoney } from "@/lib/auth/function-access";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
     ? (sp.get("situ") as RequestSituation)
     : "all";
   const q = (sp.get("q") ?? "").slice(0, 120);
-  const money = canOpen(user, "finance");
+  const money = canSeeMoney(user);
   const store = getStore();
   const [all, parties, users, payments] = await Promise.all([
     store.list("requests", { orderBy: "createdAt", direction: "desc" }),

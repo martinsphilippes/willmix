@@ -154,7 +154,28 @@ export async function forgetCurrentSession() {
 }
 
 /** Usuário autenticado ou null. Nunca lança. Memoizado por requisição. */
+/**
+ * Login da requisição, com as telas e ações das funções já resolvidas pela
+ * configuração do administrador (Equipe → Funções e acessos).
+ */
 export const getCurrentUser = cache(async (): Promise<User | null> => {
+  const user = await loadCurrentUser();
+  if (user && user.role === "operator") {
+    const [{ loadFunctionDefs }, { accessFromFunctions }, { attachAccess }] =
+      await Promise.all([
+        import("@/lib/services/team-functions"),
+        import("@/lib/auth/function-access"),
+        import("@/lib/auth/access-cache"),
+      ]);
+    attachAccess(
+      user,
+      accessFromFunctions(user.functions, await loadFunctionDefs()),
+    );
+  }
+  return user;
+});
+
+async function loadCurrentUser(): Promise<User | null> {
   try {
     const store = getStore();
     const jar = await cookies();
@@ -189,4 +210,4 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   } catch {
     return null;
   }
-});
+}
