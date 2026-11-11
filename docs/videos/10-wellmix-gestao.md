@@ -551,5 +551,234 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 - ⚠ Em `/app/account`, a tela "Conta corrente" é do **fornecedor**. Para o administrador a rota volta ao início (conferido), apesar de a lista de telas do administrador trazer "Conta corrente". A conta do fornecedor pela Wellmix é Cadastros → Fornecedores. O roteiro segue assim.
 - ⚠ O campo "Câmbio do banco" é numérico: na automação só o ponto funcionou ("5.4"); no Chrome em pt-BR deve aceitar a vírgula. Confirmar na gravação.
 - ⚠ O que "Pedir ao financeiro por e-mail" e "por WhatsApp" abrem na tela (cliente de e-mail, WhatsApp Web) e se o destino já vem de Configurações. Não foi gravado na verificação.
-- ⚠ O jobs diário (lembrete ao fornecedor de pagamento feito há mais de 3 dias sem confirmação, e resumo à Wellmix) não aparece na tela; só descrito em docs/WORKFLOW.md. Confirmar se entra na narração.
+- ⚠ O job diário (lembrete ao fornecedor de pagamento feito há mais de 3 dias sem confirmação, e resumo à Wellmix) não aparece na tela; só descrito em docs/WORKFLOW.md. Confirmar se entra na narração.
 - ⚠ O "Pagar fornecedor: pedido #1" também aparece como pendência da Wellmix (Painel de SLA, "Pagar fornecedor: pedido #1"), com o valor escrito "USD 846.00". Ver ⚠ do WGE-02.
+
+---
+
+## WGE-05 · Painel do dono e fluxo de caixa
+
+> **Promessa:** ao final do vídeo você lê o Painel do dono (vendas, margem, a receber e a pagar, estoque e operação) e o Fluxo de caixa previsto, semana a semana, e sabe quando o saldo fica negativo.
+
+| Ficha                 |                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Série e papel         | Wellmix, administrador                                                                                                                                  |
+| Conta de gravação     | `admin@wellmix.com`, tela em pt                                                                                                                         |
+| Duração-alvo          | 3:30                                                                                                                                                    |
+| Ponto da jornada      | Visão do dono sobre as 9 etapas: vendas e margem (etapas 4 a 9), dinheiro a receber e a pagar (paralelo)                                                 |
+| Telas e rotas         | `/app/dashboards/owner` (Gestão → Painel do dono), `/app/dashboards/cashflow` (Gestão → Fluxo de caixa)                                                  |
+| Dados antes de gravar | Pedido #1 da Jarra com sinal recebido e parcela 1/2 ao fornecedor vencendo; câmbio do dia disponível (Configurações → "Preço ao cliente"). Para a lista de "Vendas dos últimos 6 meses" ficar com mais de uma barra, pedidos em meses diferentes (⚠ ver notas). Ponto `antes-WGE-05` |
+| Depois deste vídeo    | Nada é gravado. Cada número leva à tela onde se age (Financeiro, Clientes, Contas a pagar, Solicitações, Pedidos, Estoque)                                |
+| Antes · Próximo       | WGE-04 · WGE-06                                                                                                                                          |
+| Idiomas               | pt (base)                                                                                                                                               |
+
+### Roteiro
+
+**Cena 1 · 0:00–0:10 · Gancho · `/app/dashboards/owner`**
+
+- 🎬 Imagem: o Painel do dono inteiro: quatro cartões de dinheiro no alto, cinco de operação embaixo, gráfico de barras vermelhas e as listas de maiores clientes e fornecedores.
+- 🎙 Narração: "Como está o negócio hoje? Vendas, margem, o que entra, o que sai e o estoque, numa tela só: o Painel do dono."
+- 🔤 Na tela: `[TÍTULO]` "WGE-05 · Painel do dono e fluxo de caixa"; `[ZOOM 150 %]` nos quatro cartões do alto.
+- ✂️ Edição: vinheta antes; título em 2 s.
+
+**Cena 2 · 0:10–0:22 · Onde estou na jornada · `/app/dashboards/owner`**
+
+- 🎬 Imagem: tela parada; o mapa da jornada aparece com todas as etapas e o selo "paralelo" sobre o pagamento ao fornecedor.
+- 🎙 Narração: "Este painel resume a jornada em dinheiro: o que foi vendido, o que ainda falta receber do cliente e o que falta pagar ao fornecedor."
+- 🔤 Na tela: `[MAPA etapas 4 a 9]` com o selo "paralelo"; `[QUEM VÊ]` "Só o administrador (ou quem ele liberar)".
+- ✂️ Edição: o mapa sai em 8 s.
+
+**Cena 3 · 0:22–0:58 · Os quatro cartões do alto · menu Gestão → Painel do dono**
+
+- 🎬 Imagem: o cursor abre **Gestão** e clica em **Painel do dono**. Título "Painel do dono" e a frase "Mês de nov. de 26". Os quatro cartões: "Vendas do mês" (com "sem vendas no mês anterior · 1 pedido(s)" ou "+N% vs mês anterior"), "Margem do mês" (valor e percentual), "Recebido no mês" (com "A receber (total): …") e "Pago a fornecedores no mês" (com "A pagar a fornecedores: …"). Passar o cursor em cada um; o cartão inteiro é um link.
+- 🎙 Narração: "Em Gestão, abra Painel do dono. Vendas do mês são os pedidos criados no mês, comparadas com o mês anterior. Logo ao lado, a margem. Depois, o que entrou dos clientes e o que saiu para os fornecedores no mês, cada um com o total ainda por receber ou por pagar."
+- 🔤 Na tela: `[PASSO 1/6] Abra Gestão → Painel do dono`; `[SETA]` "Vendas: pedidos criados no mês"; `[SETA]` "Recebido e pago: pagamentos confirmados no mês"; `[DICA]` "Cada cartão leva à tela onde se age: Financeiro, Clientes, Contas a pagar."
+- ✂️ Edição: `[ZOOM 150 %]` em cada cartão por 2 s.
+
+**Cena 4 · 0:58–1:28 · Estoque e operação · `/app/dashboards/owner`**
+
+- 🎬 Imagem: a segunda linha de cartões: "Estoque (valor de custo)" (com "N produto(s) abaixo do limite" e "N parado(s) há 90+ dias"), "Perdas no último inventário" (ou "Nenhum inventário fechado ainda"), "Solicitações em aberto", "Aguardando sinal" e "Pedidos em andamento".
+- 🎙 Narração: "Na linha de baixo, o estoque no Brasil, a custo, com os produtos abaixo do limite e os parados há noventa dias. Depois, as perdas do último inventário, as solicitações abertas, as que esperam sinal e os pedidos em andamento."
+- 🔤 Na tela: `[SETA]` "Estoque: valor de custo"; `[SETA]` "Parado há 90+ dias"; `[SETA]` "Aguardando sinal: já com proposta aprovada"; `[ATENÇÃO]` "Compras para estoque não contam como venda."
+- ✂️ Edição: `[ZOOM 150 %]` no cartão do estoque.
+
+**Cena 5 · 1:28–1:58 · Gráfico e listas · `/app/dashboards/owner`**
+
+- 🎬 Imagem: o cartão "Vendas dos últimos 6 meses": uma barra por mês (a do mês atual em vermelho mais forte), o valor e "margem R$ …" ao lado. Ao lado, "Pedidos em andamento por etapa" ("Pedido pré-aprovado: 1"). Embaixo, "Maiores clientes (12 meses)" e "Maiores fornecedores (12 meses, FOB)", cada um com o número de pedidos e o valor; os nomes são links.
+- 🎙 Narração: "O gráfico mostra as vendas dos últimos seis meses, com a margem de cada um. Ao lado, os pedidos em andamento por etapa. Embaixo, os maiores clientes e os maiores fornecedores dos últimos doze meses. Os nomes levam à ficha."
+- 🔤 Na tela: `[SETA]` "Barra vermelha forte: mês atual"; `[SETA]` "Margem do mês, abaixo do valor"; `[SETA]` "Nome = link para a ficha".
+- ✂️ Edição: `[ZOOM 150 %]` na barra do mês atual.
+
+**Cena 6 · 1:58–2:38 · O fluxo de caixa · `/app/dashboards/cashflow`**
+
+- 🎬 Imagem: clicar no botão **Fluxo de caixa** (no alto do painel, ou no menu Gestão → Fluxo de caixa). Título "Fluxo de caixa previsto" e a frase de entradas e saídas. A tabela: "Semana", "Entradas", "Saídas", "Saldo da semana (R$)" e "Saldo acumulado (R$)". A primeira linha "09/11 a 15/11 (esta semana)" com o link "Ver 1 lançamento(s)"; abrir: "11/11 Parcela ao fornecedor … −US$ 846,00". As linhas seguintes semana a semana, e no fim "Sem data (aguarda embarque ou entrega)".
+- 🎙 Narração: "O Fluxo de caixa previsto vai semana a semana. Entram o sinal que ainda espera pagamento e o saldo de cada pedido, na data prevista da entrega. Saem as parcelas dos fornecedores, pelo vencimento. Clique em Ver lançamentos para abrir cada um."
+- 🔤 Na tela: `[PASSO 2/6] Abra Fluxo de caixa`; `[BOTÃO] "Fluxo de caixa"`; `[SETA]` "Entradas: sinal e saldo do pedido"; `[SETA]` "Saídas: parcelas ao fornecedor"; `[SETA]` "Ver N lançamento(s)".
+- ✂️ Edição: `[ZOOM 150 %]` nos cabeçalhos; abrir "Ver 1 lançamento(s)" e manter 3 s.
+
+**Cena 7 · 2:38–3:08 · Saldo negativo e linhas especiais · `/app/dashboards/cashflow`**
+
+- 🎬 Imagem: o alerta vermelho "Atenção: o saldo acumulado fica negativo em 09/11 a 15/11." As linhas "Atrasado" (em vermelho, quando há), "Depois de …" e "Sem data (aguarda embarque ou entrega)", onde o saldo acumulado é "—". Se faltar câmbio, o aviso âmbar "Sem câmbio do dia para …: essas saídas aparecem na moeda delas, mas ficam fora do saldo em reais."
+- 🎙 Narração: "Se o saldo acumulado ficar negativo, o painel avisa em qual semana. A linha Atrasado junta o que já devia ter entrado ou saído. Sem data é o que espera embarque ou entrega. Sem câmbio do dia, a saída fica de fora do saldo em reais."
+- 🔤 Na tela: `[SETA]` "Alerta: primeira semana negativa"; `[SETA]` "Sem data: aguarda embarque ou entrega"; `[ATENÇÃO]` "O saldo em reais usa o câmbio do dia; sem câmbio, nada é inventado."
+- ✂️ Edição: `[ZOOM 150 %]` no alerta, 2 s.
+
+**Cena 8 · 3:08–3:22 · O operador vê de menos · `/app/dashboards/owner` (Otávio)**
+
+- 🎬 Imagem: perfil do operador (planner): em Gestão não há "Painel do dono" nem "Fluxo de caixa". Digitar o endereço do painel: volta para Painéis por área.
+- 🎙 Narração: "O operador não vê o Painel do dono nem o Fluxo de caixa. Se forçar o endereço, volta aos Painéis por área."
+- 🔤 Na tela: `[QUEM VÊ]` "Painel do dono e Fluxo de caixa: só quem abre o Financeiro"; `[SETA]` "Volta para Painéis por área".
+- ✂️ Edição: `[CORTE]` seco.
+
+**Cena 9 · 3:22–3:30 · Resumo**
+
+- 🎬 Imagem: fundo vermelho com a lista; no fim, a miniatura do WGE-06.
+- 🎙 Narração: "Resumindo: vendas, margem, a receber e a pagar, e o caixa por semana. Agora, o pós-venda e o histórico."
+- 🔤 Na tela: `[RESUMO]` "1 Painel do dono: negócio numa tela · 2 Cada número leva à ação · 3 Fluxo de caixa semana a semana · 4 Alerta de saldo negativo"; `[PASSO 6/6] Conclua`; "Próximo: WGE-06 · Pós-venda e histórico comercial".
+- ✂️ Edição: fade para a vinheta de encerramento.
+
+### Erros comuns
+
+- **Estado (não é erro):** "Margem do mês" mostra "—" e "sem câmbio para calcular" quando falta o câmbio. → **Correção:** informar o câmbio do banco nos pagamentos (WGE-03) ou conferir o câmbio do dia em Configurações (WGE-09).
+- **Aviso:** "Sem câmbio do dia para {moedas}: essas saídas aparecem na moeda delas, mas ficam fora do saldo em reais." → **Correção:** buscar as cotações em Configurações → "Preço ao cliente" → **Buscar cotações**.
+- **Estado:** "Nada a receber nem a pagar por enquanto." (Fluxo de caixa vazio), "Nenhum pedido em andamento." e "Sem pedidos nos últimos 12 meses." → **Correção:** não é erro; ainda não há lançamentos.
+- **Aviso de acesso:** quem não tem a tela Financeiro volta aos Painéis por área; quem tem o Financeiro mas não "Painéis por área" recebe "Você não tem acesso a Painéis por área. Peça ao administrador em Gestão → Equipe e divisões." → **Correção:** liberar as duas telas (WGE-10).
+
+### Passo a passo em texto
+
+1. No menu **Gestão**, abra **Painel do dono**.
+2. No alto, leia **Vendas do mês** (pedidos criados no mês, comparados com o mês anterior), **Margem do mês**, **Recebido no mês** (com **A receber (total)**) e **Pago a fornecedores no mês** (com **A pagar a fornecedores**). Clique num cartão para ir à tela onde se age.
+3. Na linha de baixo: **Estoque (valor de custo)**, **Perdas no último inventário**, **Solicitações em aberto**, **Aguardando sinal** e **Pedidos em andamento**.
+4. Veja **Vendas dos últimos 6 meses**, **Pedidos em andamento por etapa**, **Maiores clientes (12 meses)** e **Maiores fornecedores (12 meses, FOB)**.
+5. Clique em **Fluxo de caixa** (ou em Gestão → **Fluxo de caixa**). A tabela traz as próximas semanas com **Entradas**, **Saídas**, **Saldo da semana (R$)** e **Saldo acumulado (R$)**; abra **Ver N lançamento(s)** para detalhar. As linhas **Atrasado**, **Depois de…** e **Sem data (aguarda embarque ou entrega)** completam o quadro.
+6. Se aparecer "Atenção: o saldo acumulado fica negativo em…", é a primeira semana em que as saídas passam das entradas.
+
+### Notas de gravação
+
+- Não cite valores: eles mudam com o dia e com o câmbio. Mostre só as telas.
+- O gráfico só fica interessante com vendas em vários meses; o ambiente de demonstração tem só o mês corrente (todas as barras de meses anteriores ficam em R$ 0,00). Mostre assim, ou grave com pedidos antigos.
+- As 12 semanas do fluxo começam na segunda-feira da semana atual (o código usa 12 semanas, docs/INVENTORY.md). Não diga "doze semanas" na narração: o roteiro diz "semana a semana".
+- O botão "Fluxo de caixa" fica no alto do Painel do dono e também no menu Gestão; use um dos dois e mantenha igual nas gravações.
+- Para o alerta de saldo negativo, o ponto de salvamento precisa de uma parcela ao fornecedor vencendo e nenhuma entrada na mesma semana.
+
+### Pontos a confirmar
+
+- ⚠ A frase "Mês de nov. de 26" (cabeçalho do Painel do dono) e os rótulos "jun. de 26", "jul. de 26"… do gráfico usam mês abreviado e ano com 2 dígitos; texto estranho. Confirmar se o formato é o desejado.
+- ⚠ O menu mostra "Painel do dono" e "Fluxo de caixa" para quem tem a tela **Financeiro**, mas as duas páginas exigem também **Painéis por área** (`requireScreen(user, "dashboards")`). Com acesso personalizado (WGE-10) só com o Financeiro, o clique leva ao início com aviso de acesso negado. Inconsistência possível; lida no código, não gravada.
+- ⚠ "Vendas do mês" usa a data de criação do pedido (`order.createdAt`), não a da entrega nem a do sinal. Confirmar se é a intenção do dono (docs/INVENTORY.md diz só "vendas do mês").
+- ⚠ O cartão "Recebido no mês" leva a Cadastros → Clientes (`/app/customers`) e "Pago a fornecedores no mês" a Contas a pagar; "Vendas do mês" e "Margem do mês" levam ao Financeiro. Conferir se é o destino esperado.
+
+---
+
+## WGE-06 · Pós-venda e histórico comercial
+
+> **Promessa:** ao final do vídeo você acompanha as avaliações dos clientes, encerra um pós-venda, lê o Histórico comercial (compras, frequência e interesse em recompra) e abre uma nova compra a partir dele.
+
+| Ficha                 |                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Série e papel         | Wellmix, administrador (e o operador, com as mesmas telas); o cliente só aparece para responder                                                              |
+| Conta de gravação     | `admin@wellmix.com`, tela em pt; `joao@lojista.com` na cena em que ele avalia                                                                                |
+| Duração-alvo          | 4:00                                                                                                                                                         |
+| Ponto da jornada      | Etapa 9 de 9: Entrega e pós-venda; o histórico fecha o ciclo e leva à nova compra                                                                             |
+| Telas e rotas         | `/app/after-sales` (Gestão → Pós-venda), `/app/orders/[id]#after-sales` (card "Pós-venda"), `/app/history` (Gestão → Histórico), `/app/orders/[id]#followup` ("Comprar de novo / Nova proposta") |
+| Dados antes de gravar | Pedido #1 da Jarra **entregue** (etapa Entrega concluída; o pós-venda abre sozinho e o cliente recebe a pendência "Avalie a compra"). Ponto `antes-WGE-06`. Para repetir "Respondidos", grave outro ponto depois da avaliação do cliente |
+| Depois deste vídeo    | O pós-venda vira "Encerrado" com a observação da Wellmix; "Comprar de novo" cria uma solicitação pré-preenchida ligada ao pedido (origem reposição) e a Wellmix recebe a pendência de enviá-la ao fornecedor |
+| Antes · Próximo       | WGE-05 · WGE-07                                                                                                                                               |
+| Idiomas               | pt (base)                                                                                                                                                    |
+
+### Roteiro
+
+**Cena 1 · 0:00–0:10 · Gancho · `/app/after-sales`**
+
+- 🎬 Imagem: a tela Pós-venda com um registro "Respondido": estrelas, o selo "Sim" em Recompra e o texto dos problemas.
+- 🎙 Narração: "O cliente gostou da compra? Vai comprar de novo? O pós-venda responde, com as palavras do próprio cliente."
+- 🔤 Na tela: `[TÍTULO]` "WGE-06 · Pós-venda e histórico comercial"; `[ZOOM 150 %]` nas cinco estrelas.
+- ✂️ Edição: vinheta antes; título em 2 s.
+
+**Cena 2 · 0:10–0:26 · Onde estou na jornada · `/app/orders/[id]`**
+
+- 🎬 Imagem: o mapa da jornada com a etapa 9 acesa. Em seguida, a notificação do cliente: "Pedido #1: como foi a sua compra?" com "Avalie a experiência, conte problemas e diga se quer repor. Leva um minuto."
+- 🎙 Narração: "O processo não termina na entrega. Ao concluir a entrega, o pedido abre um pós-venda e o cliente é convidado a avaliar a compra. Ele recebe um aviso e uma pendência."
+- 🔤 Na tela: `[MAPA etapa 9]` "Entrega e pós-venda"; `[DEPOIS]` "O cliente recebe o aviso e a pendência 'Avalie a compra'."
+- ✂️ Edição: o mapa sai em 8 s.
+
+**Cena 3 · 0:26–0:52 · O que o cliente responde · `/app/orders/[id]#after-sales` (João)**
+
+- 🎬 Imagem: no perfil do cliente, o card **Pós-venda** do pedido, com o selo "Aguardando cliente": "Nota da compra (1 a 5)" com os botões 1 a 5 e "1 = muito ruim · 5 = excelente"; "Interesse em nova compra" com "Sim", "Talvez" e "Não"; os campos "Como foi a experiência?", "Houve problemas? (produto, prazo, embalagem, transporte)", "Custos percebidos (impostos, frete, extras)" e "Sugestões". Escolher 5 e "Sim", escrever os textos e clicar em **Enviar avaliação**. Aparece "Obrigado pela avaliação. A Wellmix vai analisar as respostas."
+- 🎙 Narração: "O cliente dá uma nota de um a cinco, diz se tem interesse em comprar de novo e conta como foi: experiência, problemas, custos e sugestões. Ao enviar, a Wellmix é avisada, e se houve problema o aviso vem como alerta."
+- 🔤 Na tela: `[QUEM VÊ]` "Quem responde: o cliente dono do pedido (a Wellmix também pode responder por ele)"; `[BOTÃO] "Enviar avaliação"`; `[DEPOIS]` "A Wellmix recebe o aviso 'Pedido #1: avaliação de pós-venda recebida'."
+- ✂️ Edição: digitação acelerada 2×; `[CORTE]` para o admin.
+
+**Cena 4 · 0:52–1:32 · A tela Pós-venda · menu Gestão → Pós-venda**
+
+- 🎬 Imagem: no menu **Gestão**, clicar em **Pós-venda**. Título e a frase "Avaliações dos clientes após a entrega: nota, problemas e interesse em recompra." As abas "Aguardando cliente", "Respondidos" e "Encerrados", cada uma com a contagem. Clicar em **Respondidos**: o registro com o selo "Respondido", o link "Pedido #1", o cliente, "Aberto em … · Respondido em …", "Nota" (estrelas e 5/5), "Recompra" (selo "Sim") e "Problemas" (o texto, ou "Sem problemas relatados"). À direita, o link "Abrir pedido →".
+- 🎙 Narração: "Em Gestão, abra Pós-venda. As abas separam quem ainda não respondeu, quem respondeu e o que já foi encerrado. Cada registro mostra a nota, o interesse em recompra e os problemas relatados. Clique em Abrir pedido para tratar."
+- 🔤 Na tela: `[PASSO 1/6] Abra Gestão → Pós-venda`; `[BOTÃO] "Respondidos"`; `[SETA]` "Nota em estrelas"; `[SETA]` "Recompra: Sim, Talvez ou Não"; `[QUEM VÊ]` "Comprador, gerente de produto, diretorias e administrador".
+- ✂️ Edição: `[ZOOM 150 %]` no registro respondido.
+
+**Cena 5 · 1:32–2:20 · Encerrar o pós-venda · `/app/orders/[id]#after-sales`**
+
+- 🎬 Imagem: clicar em "Abrir pedido →". No card **Pós-venda**, com o selo "Respondido", a tabela com as respostas ("Nota da compra (1 a 5)", "Interesse em nova compra", "Como foi a experiência?", "Houve problemas?", "Custos percebidos", "Sugestões", "Respondido em"). Embaixo, **Observação da Wellmix** com a dica "Registre o que foi feito com o retorno do cliente (ação, contato, ajuste)." Escrever "Ligamos para o cliente e enviamos 2 tampas de reposição." e clicar em **Encerrar pós-venda**. O selo vira "Encerrado". Voltar à lista: aba "Encerrados".
+- 🎙 Narração: "No pedido, leia as respostas e registre na Observação da Wellmix o que foi feito: contato, ajuste, reposição. Clique em Encerrar pós-venda. O registro passa para Encerrados, com a sua observação."
+- 🔤 Na tela: `[PASSO 2/6] Escreva o que foi feito`; `[BOTÃO] "Encerrar pós-venda"`; `[DICA]` "Dá para encerrar também sem a resposta do cliente."; `[DEPOIS]` "O registro vai para 'Encerrados' e a observação fica no histórico."
+- ✂️ Edição: digitação em tempo real; `[CORTE]` para a lista.
+
+**Cena 6 · 2:20–3:00 · O Histórico comercial · menu Gestão → Histórico**
+
+- 🎬 Imagem: no menu **Gestão**, clicar em **Histórico**. Título "Histórico comercial" e a frase "Cliente → produto → compras → quantidade → preço → data → frequência → reposição." O filtro "Cliente" ("Todos os clientes") e o botão **Filtrar**. A tabela: "Cliente", "Produto", "Compras", "Qtd. total", "Última qtd.", "Último preço unit. (venda)", "Último FOB unit.", "Primeira / última compra", "Frequência média", "Reposições", "Recompra" e "Último pedido". Linha: Loja do João Ltda, Jarra de vidro 1,5 L, 1, 1200 un, R$ 23,33, US$ 2,35, "—" na frequência, selo "Sim" em Recompra.
+- 🎙 Narração: "Em Gestão, abra Histórico. Para cada cliente e produto, você vê quantas vezes comprou, quanto, a que preço e quando. A frequência é a média de dias entre as compras. A recompra vem da última avaliação respondida."
+- 🔤 Na tela: `[PASSO 3/6] Abra Gestão → Histórico`; `[BOTÃO] "Filtrar"`; `[SETA]` "Frequência média: só com 2 ou mais compras"; `[SETA]` "Recompra: do último pós-venda"; `[QUEM VÊ]` "Wellmix: todos os clientes e o FOB. Cliente: só o próprio histórico, sem custo."
+- ✂️ Edição: `[ZOOM 150 %]` nas colunas "Frequência média" e "Recompra".
+
+**Cena 7 · 3:00–3:36 · Comprar de novo ou Nova proposta · `/app/orders/[id]#followup`**
+
+- 🎬 Imagem: na linha do histórico, os botões **Comprar de novo** (vermelho) e **Nova proposta**. Clicar: abre o pedido no card **Comprar de novo / Nova proposta** com "Produto", "Última quantidade", "Último preço unitário de venda" e "Data da compra"; os campos "Nova quantidade", "Prazo de resposta (SLA)" e "Observação para a Wellmix"; os botões **Comprar de novo** e **Quero nova proposta**. A dica: "Comprar de novo: mesma especificação, nova quantidade. Nova proposta: a Wellmix renegocia preço, prazo ou condições." Clicar em **Comprar de novo**: nasce uma solicitação pré-preenchida.
+- 🎙 Narração: "Na linha do histórico, clique em Comprar de novo ou em Nova proposta. As duas levam ao pedido, onde você ajusta a quantidade e o prazo. Comprar de novo repete a especificação; nova proposta renegocia preço, prazo ou condições. Nasce uma solicitação já preenchida."
+- 🔤 Na tela: `[PASSO 4/6] Clique em "Comprar de novo" ou "Nova proposta"`; `[BOTÃO] "Comprar de novo"`; `[BOTÃO] "Quero nova proposta"`; `[ATENÇÃO]` "Os dois botões da linha levam ao mesmo card do pedido."; `[DEPOIS]` "A solicitação segue o fluxo normal (a Wellmix a envia ao fornecedor)."
+- ✂️ Edição: `[CORTE]` seco para a solicitação criada.
+
+**Cena 8 · 3:36–3:50 · O operador e o cliente · `/app/history`**
+
+- 🎬 Imagem: perfil do operador: mesmo menu Gestão com "Pós-venda" e "Histórico" (sem os demais). Depois o cliente: Meus pedidos → **Histórico**, só com o histórico dele e sem a coluna de FOB.
+- 🎙 Narração: "O operador comprador e planner abre Pós-venda e Histórico. O cliente vê só o histórico dele, sem custo e sem fornecedor."
+- 🔤 Na tela: `[QUEM VÊ]` "Operador: Pós-venda e Histórico. Cliente: só o próprio histórico, sem FOB"; `[SETA]` "Sem a coluna 'Último FOB unit.'".
+- ✂️ Edição: `[CORTE]` entre os perfis.
+
+**Cena 9 · 3:50–4:00 · Resumo e próximo vídeo**
+
+- 🎬 Imagem: fundo vermelho com a lista; no fim, a miniatura do WGE-07.
+- 🎙 Narração: "Resumindo: leia a avaliação, encerre com uma observação e use o histórico para vender de novo. A seguir, o Marketing."
+- 🔤 Na tela: `[RESUMO]` "1 Pós-venda abre na entrega · 2 Leia nota, problemas e recompra · 3 Encerre com observação · 4 Histórico: frequência e reposição · 5 Comprar de novo"; `[PASSO 5/6] Conclua`; "Próximo: WGE-07 · Marketing".
+- ✂️ Edição: fade para a vinheta de encerramento.
+
+### Erros comuns
+
+- **Erro:** enviar a avaliação de novo depois de respondida. A tela mostra "Não foi possível concluir. Verifique os dados. (already_answered)". → **Correção:** a avaliação já foi enviada; use **Encerrar pós-venda** na Wellmix.
+- **Erro:** tentar abrir o pós-venda de um pedido que ainda não foi entregue (botão **Abrir pós-venda**, só para pedido encerrado antes do recurso). A tela mostra "Não foi possível concluir. Verifique os dados. (order_not_delivered)". → **Correção:** esperar a entrega.
+- **Erro:** "Não foi possível concluir. Verifique os dados. (already_closed)" ao encerrar duas vezes, e "(after_sales_disabled)" quando "Pós-venda ativo" está desligado em Configurações. → **Correção:** conferir o registro; ligar "Pós-venda ativo" (WGE-09).
+- **Estado (não é erro):** "Nenhum pós-venda nesta situação." (aba vazia) e "Nenhuma compra registrada ainda." (Histórico vazio).
+- **Aviso:** "O cliente ainda não respondeu. Ele foi avisado por notificação." → **Correção:** aguardar, ou encerrar com uma observação.
+
+### Passo a passo em texto
+
+1. Ao concluir a entrega, o pedido abre o pós-venda; o cliente recebe o aviso e a pendência para avaliar a compra.
+2. No menu **Gestão**, abra **Pós-venda**. Use as abas **Aguardando cliente**, **Respondidos** e **Encerrados**.
+3. Em **Respondidos**, leia **Nota**, **Recompra** e **Problemas**. Clique em **Abrir pedido →**.
+4. No card **Pós-venda** do pedido, escreva a **Observação da Wellmix** (o que foi feito com o retorno do cliente) e clique em **Encerrar pós-venda**.
+5. No menu **Gestão**, abra **Histórico**. Filtre por **Cliente** e **Filtrar**. Leia **Compras**, **Última qtd.**, **Último preço unit. (venda)**, **Frequência média**, **Reposições** e **Recompra**.
+6. Para vender de novo, clique em **Comprar de novo** (mesma especificação, nova quantidade) ou **Nova proposta** (renegociar) e confirme no card **Comprar de novo / Nova proposta** do pedido.
+
+### Notas de gravação
+
+- O pós-venda só abre com a etapa de Entrega concluída. Para gravar a partir do pedido #1, conclua as etapas da Jarra (outros episódios) até a entrega; no ambiente de verificação este caminho não foi percorrido: o pedido foi marcado como encerrado e o pós-venda foi aberto à mão com "Abrir pós-venda" (que só existe para pedido já entregue ou encerrado).
+- "Frequência média" só aparece com **duas ou mais** compras do mesmo produto pelo mesmo cliente; com uma compra só, o campo fica "—" (é o esperado; mostre assim).
+- As estrelas e os selos "Sim", "Talvez" e "Não" vêm do que o cliente respondeu; combine o texto do cliente antes (a cena 3 usa um problema pequeno: "Duas jarras com a tampa de bambu arranhada.").
+- "Comprar de novo" cria uma solicitação nova; guarde um ponto de salvamento antes, para repetir a tomada.
+
+### Pontos a confirmar
+
+- ⚠ Mensagens de erro do pós-venda saem com o código técnico entre parênteses ("(already_answered)", "(already_closed)", "(order_not_delivered)", "(already_open)", "(after_sales_disabled)"): não há texto traduzido para eles (`fallbackError`). Confirmar se o dono quer textos próprios.
+- ⚠ Em **Histórico**, os botões "Comprar de novo" e "Nova proposta" da linha levam ao mesmo endereço (`/app/orders/[id]#followup`); a escolha acontece no card do pedido. O roteiro diz isso; confirmar se é o desejado.
+- ⚠ O mesmo card permite à Wellmix responder pelo cliente (o serviço aceita, docs/WORKFLOW.md fala só em "Wellmix encerra"); na tela do administrador, com o pós-venda aguardando, só apareceu "Encerrar pós-venda", sem formulário de resposta. Confirmar se existe o formulário de resposta para a Wellmix.
+- ⚠ Os itens 34 (análise de oportunidade) e 36 (nova proposta com preços negociados) de docs/EVOLUTION_PLAN.md não aparecem nestas telas; este episódio não os cobre. Confirmar se haverá vídeo próprio.
+- ⚠ A pendência "Avalie a compra" do cliente (docs/WORKFLOW.md) e o aviso "Pedido #n: como foi a sua compra?" foram lidos no código e nos dicionários; confirmar o texto exato da pendência na tela do cliente.
