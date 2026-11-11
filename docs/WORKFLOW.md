@@ -124,6 +124,16 @@ A faixa "Operação" mostra o pedido de ponta a ponta em quatro blocos de quadra
 
 No quadrado "Solicitação nova", um "+" no canto abre a tela de nova solicitação, e com o quadrado escolhido a lista ganha o botão "+ Nova solicitação" (só para quem abre Solicitações). Os doze cartões de antes continuam embaixo em "Visões gerais" (`/app?filter=…`). Regras puras em `src/lib/services/tower-board.ts` (`buildTowerBoard`); `loadTowerBoard` lê os dados (as leituras iguais às da Control Tower saem do cache da requisição).
 
+## Control Tower: por etapa, com os pontos de ação em cima (`/app`)
+
+Decisão do dono (novembro/2026): a Control Tower tinha ~70 quadrados (50 passo a passo, 12 visões gerais, 6 financeiros) e virou três níveis, sem remover nada (`src/lib/tower-stages.ts`, `src/components/tower-stages.tsx`; só apresentação, a regra de cada quadrado continua em `tower-board.ts`):
+
+1. **Precisa de ação agora** (no topo): chips com o que alguém precisa resolver: atrasados, bloqueados, documento rejeitado ou para validar, numerário, canal, produto reprovado, arte com problema, produção atrasada, acompanhamento vencido, certificação, recebido com diferença, container para devolver, sem número no Sankhya, cancelamento, multa, revisão, solicitação nova, comparação de cotações, aprovação do pré-custo e (com Finanças) parcelas e a receber. **Cada perfil vê só o que pode resolver**: cada chip tem a tela onde se resolve (`ACTION_CARDS`) e só aparece para quem a abre (`canOpen`). Zero fica cinza e à vista (`?card=CHAVE`).
+2. **Processo por etapa**: sete quadrados (Solicitação e cotação; Pedido e preparação; Produção e inspeção; Embarque e mar; Porto e alfândega; Entrega; Encerrado). Cada pedido ou solicitação está em uma etapa só (a soma fecha com o total em andamento) e a etapa mostra a contagem e os atrasados. Tocar abre os **passos** dela (`?stage=ETAPA&group=PASSO`), e a lista do passo aparece logo abaixo; etapa de um passo só abre a lista direto. Zero também aparece: ver o que não está acontecendo faz parte do processo. Os passos que se resolvem na mesma tela foram juntos: cotação com fornecedores (solicitação nova, RFQ aberta, cotações recebidas), comparar e aprovar o preço, proposta e sinal, ficha de compra (preencher e validar), faca e arte da embalagem (faca, arte, aprovação), inspeção (com ou sem problema), reserva e saída do navio, transporte até o cliente (esperando caminhão e a caminho). Passos **em paralelo** (embalagem na cotação, produção na fábrica, recebimento no armazém) não entram na soma da etapa e aparecem numa linha pequena do quadrado e como passo marcado "em paralelo".
+3. **Mais visões** (recolhido; abre sozinho quando o escolhido está lá dentro): faixa Financeiro, os 50 quadrados passo a passo de antes (`?tile=CHAVE`), as visões gerais (`?filter=`), exceções e a visão comercial.
+
+Links antigos continuam: `?card=CHAVE` de um ponto de ação abre o chip; de qualquer outro quadrado abre o passo que o contém.
+
 ## Inspeção cega e comparação comprado × inspecionado
 
 - Ao nascer, o pedido recebe um **snapshot da compra** (`purchase_snapshots`): ficha do produto + cotação congeladas. O cadastro mestre pode mudar depois; o snapshot não.

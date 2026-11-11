@@ -22,9 +22,9 @@ export const helpPt = {
   "help.tasks.steps":
     "Toque em Abrir para ir direto ao pedido ou à solicitação.\nPreencha o requisito (arquivo, número, data ou confirmação). A etapa avança sozinha quando tudo estiver completo.\nSe a lista estiver vazia, não há nada pendente para o seu papel.",
   "help.ct.body":
-    "A Control Tower responde: quantos pedidos estão ativos, onde cada um está parado, quem precisa agir, quais estão atrasados e quais têm problema. Toque em um card para filtrar a lista; toque no número do pedido para abrir os detalhes.",
+    "A Control Tower responde: o que precisa de ação agora (só o que o seu perfil resolve) e onde cada pedido está no processo, etapa por etapa. Toque numa etapa para ver os passos dela e toque no passo para listar os pedidos; toque no número do pedido para abrir os detalhes.",
   "help.ct.cards":
-    "Pedidos ativos: tudo que ainda não foi encerrado.\nSolicitações em aberto: pedidos que ainda não nasceram (RFQ, cotação, sinal).\nAguardando fornecedor / cliente: a próxima ação é de um deles.\nAtrasados: etapa ativa com prazo vencido. Um lembrete é enviado ao responsável todos os dias.\nCom problema: etapa bloqueada (peso divergente), documento reprovado, ERP pendente ou multa em aberto.\nExceções: a lista à direita detalha cada problema com atalho para o pedido.",
+    "Precisa de ação agora: atrasados, bloqueados, documentos, numerário, canal, certificação, parcelas e solicitações esperando a Wellmix. Zero quer dizer nada pendente.\nProcesso por etapa: solicitação e cotação, pedido e preparação, produção e inspeção, embarque e mar, porto e alfândega, entrega e encerrado. Cada pedido está em uma etapa só; zero também aparece.\nPassos em paralelo (produção, embalagem na cotação, recebimento) acontecem ao lado e não somam na etapa.\nMais visões: financeiro, visões gerais, exceções e os quadros detalhados passo a passo.",
   "help.requests.body":
     "Solicitação é o pedido de cotação do cliente. Ela passa por RFQ, cotações, seleção do fornecedor e sinal; quando o sinal é confirmado, vira um pedido com etapas.",
   "help.requests.steps":
@@ -118,9 +118,9 @@ export const helpEn: Record<HelpKey, string> = {
   "help.tasks.steps":
     "Tap Open to go straight to the order or request.\nFill the requirement (file, number, date or confirmation). The stage advances by itself once complete.\nAn empty list means nothing is pending for your role.",
   "help.ct.body":
-    "The Control Tower answers: how many orders are active, where each one is stuck, who needs to act, which are overdue and which have issues. Tap a card to filter the list; tap the order number to open details.",
+    "The Control Tower answers: what needs action now (only what your profile can resolve) and where each order is in the process, stage by stage. Tap a stage to see its steps and tap a step to list the orders; tap the order number to open details.",
   "help.ct.cards":
-    "Active orders: everything not yet closed.\nOpen requests: orders not born yet (RFQ, quotation, down payment).\nWaiting for supplier / customer: the next action is theirs.\nOverdue: active stage past its due date. A reminder goes to the owner every day.\nWith issues: blocked stage (weight divergence), rejected document, ERP pending or open penalty.\nExceptions: the list on the right details each issue with a shortcut to the order.",
+    "Needs action now: overdue, blocked, documents, customs advance, channel, certification, installments and requests waiting for Wellmix. Zero means nothing pending.\nProcess by stage: request and quoting, order and preparation, production and inspection, shipping and sea, port and customs, delivery and closed. Each order is in one stage only; zero shows too.\nParallel steps (production, packaging during quoting, receiving) happen alongside and do not add to the stage.\nMore views: finance, general views, exceptions and the detailed step-by-step tiles.",
   "help.requests.body":
     "A request is the customer's quotation request. It goes through RFQ, quotations, supplier selection and down payment; once the down payment is confirmed it becomes an order with stages.",
   "help.requests.steps":
@@ -211,9 +211,9 @@ export const helpZh: Record<HelpKey, string> = {
   "help.tasks.steps":
     "点击“打开”直接进入订单或需求单。\n填写要求（文件、数字、日期或确认）。全部完成后阶段自动推进。\n列表为空表示您的角色没有待办。",
   "help.ct.body":
-    "控制塔回答：有多少订单进行中、每单卡在哪里、谁需要行动、哪些逾期、哪些有问题。点击卡片筛选列表；点击订单号打开详情。",
+    "控制塔回答：现在需要处理什么（只显示您的角色能处理的）以及每个订单在流程中的位置，按阶段查看。点击阶段查看步骤，点击步骤列出订单；点击订单号打开详情。",
   "help.ct.cards":
-    "进行中订单：尚未结案的全部订单。\n未结需求：尚未生成订单的需求（询价、报价、定金）。\n等待供应商 / 客户：下一步由他们执行。\n已逾期：进行中阶段已过截止日。系统每天提醒负责人。\n有问题：阶段被阻塞（重量差异）、文件被驳回、ERP 待处理或有未结罚款。\n异常：右侧列表逐项说明并提供订单快捷入口。",
+    "现在需要处理：逾期、阻塞、文件、清关预付款、通道、认证、付款和等待 Wellmix 的需求。0 表示没有待办。\n按阶段查看流程：需求与报价、订单与准备、生产与验货、出运与海运、港口与清关、交付、已结案。每个订单只在一个阶段；0 也会显示。\n同时进行的步骤（生产、报价阶段的包装、收货）在一旁进行，不计入阶段。\n更多视图：财务、总体视图、异常和逐步详细方块。",
   "help.requests.body":
     "需求单是客户的询价请求。它经过询价、报价、选定供应商和定金；定金确认后转为带阶段的订单。",
   "help.requests.steps":

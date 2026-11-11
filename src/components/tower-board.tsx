@@ -32,6 +32,7 @@ export function TowerBoardView({
   occupancy,
   newRequestHref,
   detail = null,
+  param = "card",
 }: {
   board: TowerBoard;
   t: Translate;
@@ -43,6 +44,8 @@ export function TowerBoardView({
   newRequestHref: string | null;
   /** Lista do quadrado escolhido: aparece logo abaixo do bloco dele. */
   detail?: ReactNode;
+  /** Parâmetro da URL do quadrado escolhido ("card" ou "tile"). */
+  param?: string;
 }) {
   return (
     <div data-tower-board>
@@ -68,6 +71,7 @@ export function TowerBoardView({
                   t={t}
                   active={selected === card.key}
                   currency={board.currency}
+                  param={param}
                   sub={card.key === "parContainers" ? occupancy : null}
                   add={
                     card.key === "reqNew" && newRequestHref
@@ -90,6 +94,7 @@ function BoardTile({
   t,
   active,
   currency,
+  param,
   sub,
   add,
 }: {
@@ -97,6 +102,7 @@ function BoardTile({
   t: Translate;
   active: boolean;
   currency: string;
+  param: string;
   sub: string | null;
   /** Atalho "+" no canto (ex.: nova solicitação), fora do link do quadrado. */
   add: { href: string; label: string } | null;
@@ -113,7 +119,7 @@ function BoardTile({
   const tile = (
     <Link
       // Tocar no escolhido fecha a lista.
-      href={card.href ?? (active ? "/app" : `/app?card=${card.key}`)}
+      href={card.href ?? (active ? "/app" : `/app?${param}=${card.key}`)}
       // Filtro na mesma tela: a lista muda embaixo, sem voltar ao topo.
       scroll={card.href ? undefined : false}
       aria-current={active ? "true" : undefined}
