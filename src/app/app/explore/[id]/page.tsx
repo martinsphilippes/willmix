@@ -154,7 +154,7 @@ export default async function ExploreProductPage({
           />
         </div>
 
-        <div className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
+        <div className="min-w-0 space-y-4 lg:sticky lg:top-[calc(var(--wm-header)+1rem)] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
           <section className="rounded-3xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] sm:p-6">
             <div className="flex flex-wrap gap-1.5">
               {product.inStock ? (

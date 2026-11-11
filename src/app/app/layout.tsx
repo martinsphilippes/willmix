@@ -267,7 +267,13 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
       </Suspense>
       {/* Cabeçalho em duas faixas: marca e conta em cima; menu embaixo (no
           celular o menu vira um painel aberto pelo botão). */}
-      <header className="bg-brand-700 text-white shadow-md shadow-brand-900/20">
+      {/* Fixo no alto em todas as telas (pedido do dono): não some ao rolar.
+          A altura fica em --wm-header (globals.css), usada pelos painéis
+          laterais fixos e pelos saltos para uma seção. */}
+      <header
+        className="sticky top-0 z-40 bg-brand-700 text-white shadow-md shadow-brand-900/20 print:static"
+        data-app-header
+      >
         <div className="mx-auto flex h-14 w-full portal-wide items-center gap-3 px-4">
           <Link
             href="/app"

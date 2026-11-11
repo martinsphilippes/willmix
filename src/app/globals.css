@@ -104,6 +104,24 @@ body {
   }
 }
 
+/*
+ * Cabeçalho do portal fixo no alto (src/app/app/layout.tsx). --wm-header é a
+ * altura dele: uma faixa no celular, duas (marca e menu) a partir do tablet.
+ * - Saltar para uma seção (#certification, #access...) para abaixo dele.
+ * - Painéis laterais que acompanham a rolagem ficam abaixo dele.
+ */
+:root {
+  --wm-header: 3.5rem;
+}
+@media (min-width: 48rem) {
+  :root {
+    --wm-header: 6.5rem;
+  }
+}
+html {
+  scroll-padding-top: var(--wm-header);
+}
+
 /* Seleção de texto e foco de teclado na cor da marca. */
 ::selection {
   background: var(--color-brand-100);

@@ -232,7 +232,7 @@ export default async function CartPage({
             </p>
           </div>
 
-          <aside className="min-w-0 lg:sticky lg:top-4 lg:self-start">
+          <aside className="min-w-0 lg:sticky lg:top-[calc(var(--wm-header)+1rem)] lg:self-start">
             <section className="rounded-3xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] sm:p-5">
               <h2 className="text-base font-semibold text-zinc-900">
                 {t("explore.cart.summary")}

@@ -852,3 +852,7 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 ## Seleção de itens: blocos resolvidos em cima, com solicitação aberta embaixo
 
 - **Pedido do dono** (11/11/2026): na aba Seleção, os blocos ficavam misturados. Agora há três partes, cada uma com título e contagem: em cima os resolvidos que esperam a solicitação, depois os blocos por resolver e, separados embaixo, os que já têm solicitação aberta. Só a ordem da tela mudou; nada no servidor nem no banco.
+
+## Barra da Wellmix fixa no alto em todas as telas
+
+- **Pedido do dono** (11/11/2026): o cabeçalho do portal (marca, idioma, conta e menu) fica fixo no alto e não some ao rolar (`sticky top-0` em `src/app/app/layout.tsx`). A altura dele fica na variável `--wm-header` (`globals.css`: uma faixa no celular, duas a partir do tablet), usada para os saltos de seção caírem abaixo dele (`scroll-padding-top`) e para os painéis laterais que acompanham a rolagem (Control Tower, Superplan, vitrine e carrinho) ficarem abaixo dele. Na impressão o cabeçalho volta a ser comum.
