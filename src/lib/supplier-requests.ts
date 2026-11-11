@@ -78,6 +78,15 @@ const STOP = new Set([
  * Busca para "ver parecidos": as duas primeiras palavras significativas da
  * descrição (ou do nome), sem números, medidas nem palavras vazias.
  */
+/** Palavras significativas da descrição (ou do nome): sem números nem palavras vazias. */
+export function itemKeywords(
+  item: Pick<BookingItem, "description" | "productName">,
+): string[] {
+  return searchWords(item.description ?? item.productName ?? "").filter(
+    (w) => w.length >= 3 && !/\d/.test(w) && !STOP.has(w),
+  );
+}
+
 export function similarQuery(
   item: Pick<BookingItem, "description" | "productName">,
 ): string {
