@@ -42,7 +42,7 @@ perguntas:
     nivel: 3
     capitulo: WPE-06-C1
     cena: 3
-    enunciado: "Ao informar a previsão de entrega, o transportador recebe \"A previsão de entrega não pode ser antes da previsão de chegada do navio.\" O que ele precisa fazer?"
+    enunciado: 'Ao informar a previsão de entrega, o transportador recebe "A previsão de entrega não pode ser antes da previsão de chegada do navio." O que ele precisa fazer?'
     opcoes:
       a: "Escolher uma data igual ou depois da chegada do navio"
       b: "Pedir à Wellmix que antecipe a chegada do navio"
@@ -67,10 +67,10 @@ perguntas:
     nivel: 3
     capitulo: WPE-06-C2
     cena: 5
-    enunciado: "A carga chegou, o pedido está em \"Entregue, falta confirmar\" e o cliente não responde. O que a Wellmix pode fazer?"
+    enunciado: 'A carga chegou, o pedido está em "Entregue, falta confirmar" e o cliente não responde. O que a Wellmix pode fazer?'
     opcoes:
       a: "Esperar: só o cliente pode confirmar o recebimento"
-      b: "Abrir a etapa Entrega e confirmar por ele, com **Confirmar** em \"Recebimento confirmado\""
+      b: 'Abrir a etapa Entrega e confirmar por ele, com **Confirmar** em "Recebimento confirmado"'
       c: "Cancelar o pedido e abrir outro, para o cliente confirmar de novo"
       d: "Clicar em **Encerrar recebimento**, que também fecha a entrega"
     correta: [b]
@@ -93,7 +93,7 @@ perguntas:
     nivel: 3
     capitulo: WPE-06-C2
     cena: 6
-    enunciado: "Você clica em **Encerrar recebimento** e o portal diz \"Ainda falta conferir algo antes de encerrar.\" O Fechamento mostra \"Falta: …\". O que você faz?"
+    enunciado: 'Você clica em **Encerrar recebimento** e o portal diz "Ainda falta conferir algo antes de encerrar." O Fechamento mostra "Falta: …". O que você faz?'
     opcoes:
       a: "Clica em **Encerrar recebimento** de novo, até o portal aceitar"
       b: "Completa e salva cada parte que falta, como lacre, checklist, conferência por SKU, RIC e devolução"
@@ -121,7 +121,7 @@ perguntas:
     cena: 8
     enunciado: "Sobre o pós-venda do pedido encerrado, o que está certo? Marque todas as certas."
     opcoes:
-      a: "O cliente recebe a pendência \"Avalie a compra\""
+      a: 'O cliente recebe a pendência "Avalie a compra"'
       b: "A Wellmix pode escrever a Observação da Wellmix e clicar em **Encerrar pós-venda**"
       c: "O pós-venda se encerra sozinho quando o cliente responde"
       d: "Do pedido encerrado saem **Comprar de novo** e **Quero nova proposta**"

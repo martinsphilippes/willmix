@@ -188,7 +188,7 @@ perguntas:
     nivel: 3
     capitulo: FOR-05-C1
     cena: 3
-    enunciado: "A ficha abre com o aviso \"Para concluir, falta: …\" listando vários itens. Como chegar mais rápido ao campo que falta?"
+    enunciado: 'A ficha abre com o aviso "Para concluir, falta: …" listando vários itens. Como chegar mais rápido ao campo que falta?'
     opcoes:
       a: "Clicar no item do aviso: a tela leva você ao campo"
       b: "Salvar a ficha vazia para o sistema preencher sozinho"
@@ -197,7 +197,7 @@ perguntas:
     explicacao: "Cada item do aviso é clicável e leva ao campo. A ficha já vem com o que a Wellmix sabe do produto; o vermelho mostra só o que falta, bloco por bloco."
     traducoes:
       en:
-        enunciado: "The sheet opens with the warning \"To finish, missing: …\" listing several items. How do you get to the missing field faster?"
+        enunciado: 'The sheet opens with the warning "To finish, missing: …" listing several items. How do you get to the missing field faster?'
         opcoes:
           a: "Click the item in the warning: the screen takes you to the field"
           b: "Save the empty sheet so the system fills it in by itself"
@@ -242,21 +242,21 @@ perguntas:
     nivel: 3
     capitulo: FOR-05-C3
     cena: 6
-    enunciado: "Você clicou em **Salvar ficha** e apareceu \"Ficha salva. Ainda falta: …\". O que isso significa e o que fazer?"
+    enunciado: 'Você clicou em **Salvar ficha** e apareceu "Ficha salva. Ainda falta: …". O que isso significa e o que fazer?'
     opcoes:
       a: "A ficha foi perdida; recomece do zero"
       b: "A ficha está concluída; a Wellmix preenche o que falta"
       c: "Foi salva, mas está incompleta: preencha o que está em vermelho e salve de novo"
     correta: [c]
-    explicacao: "O que você preencheu ficou guardado, mas o item \"Ficha de compra\" só é concluído com a ficha completa. Preencha o que falta e clique em **Salvar ficha** de novo: aparece \"Ficha salva e completa.\""
+    explicacao: 'O que você preencheu ficou guardado, mas o item "Ficha de compra" só é concluído com a ficha completa. Preencha o que falta e clique em **Salvar ficha** de novo: aparece "Ficha salva e completa."'
     traducoes:
       en:
-        enunciado: "You clicked **Save sheet** and \"Sheet saved. Still missing: …\" appeared. What does it mean and what do you do?"
+        enunciado: 'You clicked **Save sheet** and "Sheet saved. Still missing: …" appeared. What does it mean and what do you do?'
         opcoes:
           a: "The sheet was lost; start again from scratch"
           b: "The sheet is complete; Wellmix fills in what is missing"
           c: "It was saved but is incomplete: fill in what is red and save again"
-        explicacao: "What you filled in was kept, but the item \"Purchase sheet\" is only done with the complete sheet. Fill in what is missing and click **Save sheet** again: \"Sheet saved and complete.\" appears."
+        explicacao: 'What you filled in was kept, but the item "Purchase sheet" is only done with the complete sheet. Fill in what is missing and click **Save sheet** again: "Sheet saved and complete." appears.'
       zh:
         enunciado: "您点击了“保存采购单”，出现“采购单已保存。仍缺少：……”。这是什么意思，该怎么做？"
         opcoes:

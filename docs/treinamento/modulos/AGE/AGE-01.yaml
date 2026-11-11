@@ -42,7 +42,7 @@ perguntas:
     nivel: 2
     capitulo: AGE-01-C1
     cena: 4
-    enunciado: "No sino, o cartão **Sua vez** traz o aviso \"Embalagem para preparar\". O que o botão **Resolver** faz?"
+    enunciado: 'No sino, o cartão **Sua vez** traz o aviso "Embalagem para preparar". O que o botão **Resolver** faz?'
     opcoes:
       a: "Marca a embalagem como Pronta"
       b: "Cancela o briefing"
@@ -113,7 +113,7 @@ perguntas:
       c: "O prazo venceu; envie o que falta"
       d: "É só um destaque, não pede nada"
     correta: [c]
-    explicacao: "Vermelho é prazo vencido. O sistema lembra você perto do vencimento e quando atrasa, e o lembrete para quando o pendente é resolvido. Briefing cancelado aparece com outro aviso: \"Briefing cancelado: a solicitação não seguiu para pedido. Nada mais a fazer.\""
+    explicacao: 'Vermelho é prazo vencido. O sistema lembra você perto do vencimento e quando atrasa, e o lembrete para quando o pendente é resolvido. Briefing cancelado aparece com outro aviso: "Briefing cancelado: a solicitação não seguiu para pedido. Nada mais a fazer."'
   - id: AGE-01-Q8
     tipo: ordem
     nivel: 2

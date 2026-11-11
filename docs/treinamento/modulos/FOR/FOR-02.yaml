@@ -167,7 +167,7 @@ perguntas:
       b: "Por e-mail, na sua caixa de entrada"
       c: "Por mensagem de WhatsApp, no celular"
     correta: [a]
-    explicacao: "Hoje só o sino e a tela **Notificações** avisam. Por exemplo, \"Solicitação nº 1 aprovada\" aparece em **Novidades**."
+    explicacao: 'Hoje só o sino e a tela **Notificações** avisam. Por exemplo, "Solicitação nº 1 aprovada" aparece em **Novidades**.'
     traducoes:
       en:
         enunciado: "How do you find out that Wellmix approved, declined or cancelled the request?"
@@ -175,7 +175,7 @@ perguntas:
           a: "In the bell and on the Notifications screen"
           b: "By e-mail, in your inbox"
           c: "By WhatsApp message, on your phone"
-        explicacao: "Today only the bell and the **Notifications** screen warn you. For example, \"Request no. 1 approved\" appears under **Updates**."
+        explicacao: 'Today only the bell and the **Notifications** screen warn you. For example, "Request no. 1 approved" appears under **Updates**.'
       zh:
         enunciado: "您如何得知 Wellmix 批准、拒绝或取消了询单？"
         opcoes:
@@ -191,9 +191,9 @@ perguntas:
     enunciado: "Você escolheu **Sim, faço**, preencheu pedido mínimo e prazo, mas esqueceu o preço e clicou em **Enviar resposta**. O que acontece e o que fazer?"
     opcoes:
       a: "A resposta é registrada com preço zero; edite depois"
-      b: "Aparece \"Informe o preço por peça para dizer que faz.\"; digite o preço e envie de novo"
+      b: 'Aparece "Informe o preço por peça para dizer que faz."; digite o preço e envie de novo'
       c: "A solicitação é cancelada; peça outra à Wellmix"
-      d: "Aparece \"Resposta registrada.\"; o preço fica para a cotação"
+      d: 'Aparece "Resposta registrada."; o preço fica para a cotação'
     correta: [b]
     explicacao: "Quem diz que faz precisa informar o **Preço por peça**. A faixa vermelha avisa; é só preencher o preço e clicar em **Enviar resposta** de novo."
     traducoes:
@@ -201,9 +201,9 @@ perguntas:
         enunciado: "You chose **Yes, I can**, filled in minimum order and lead time, but forgot the price and clicked **Send answer**. What happens and what should you do?"
         opcoes:
           a: "The answer is recorded with a zero price; edit it later"
-          b: "\"Enter the price per piece to say you can do it.\" appears; type the price and send again"
+          b: '"Enter the price per piece to say you can do it." appears; type the price and send again'
           c: "The request is cancelled; ask Wellmix for another one"
-          d: "\"Answer recorded.\" appears; the price is left for the quotation"
+          d: '"Answer recorded." appears; the price is left for the quotation'
         explicacao: "Whoever says they can do it must enter the **Price per piece**. The red banner warns you; just fill in the price and click **Send answer** again."
       zh:
         enunciado: "您选择了“可以”，填了起订量和生产周期，却忘了单价，然后点击“发送回复”。会发生什么，该怎么做？"
@@ -224,7 +224,7 @@ perguntas:
       b: "Esperar a decisão da Wellmix e pedir a ela que recuse a solicitação"
       c: "Nada: a resposta não muda mais depois de enviada, só pelas Mensagens"
     correta: [a]
-    explicacao: "Enquanto a Wellmix não decide, o formulário continua aberto: \"Você pode mudar a resposta até a Wellmix decidir\". Depois da decisão a resposta não muda mais; aí só pelas Mensagens."
+    explicacao: 'Enquanto a Wellmix não decide, o formulário continua aberto: "Você pode mudar a resposta até a Wellmix decidir". Depois da decisão a resposta não muda mais; aí só pelas Mensagens.'
     traducoes:
       en:
         enunciado: "You already sent the answer and noticed you got the lead time wrong. Wellmix has not decided the request yet. What do you do?"
@@ -232,7 +232,7 @@ perguntas:
           a: "Fix it in the request's own form and send again"
           b: "Wait for the decision and ask Wellmix to decline"
           c: "Nothing: the answer no longer changes once sent"
-        explicacao: "While Wellmix has not decided, the form stays open: \"You can change the answer until Wellmix decides\". After the decision the answer no longer changes; then only through Messages."
+        explicacao: 'While Wellmix has not decided, the form stays open: "You can change the answer until Wellmix decides". After the decision the answer no longer changes; then only through Messages.'
       zh:
         enunciado: "您已经发送了回复，却发现生产周期填错了。Wellmix 还没有对询单作出决定。该怎么办？"
         opcoes:
@@ -252,7 +252,7 @@ perguntas:
       c: "Escolher **Não faço** e enviar a resposta, sem preço"
       d: "Escolher **Sim, faço** e explicar na Observação que não fabrica"
     correta: [c]
-    explicacao: "Se você não faz o item, escolha **Não faço**: não precisa de preço. Preço zero não é aceito (\"use números maiores que zero\") e **Sim, faço** diria à Wellmix o contrário."
+    explicacao: 'Se você não faz o item, escolha **Não faço**: não precisa de preço. Preço zero não é aceito ("use números maiores que zero") e **Sim, faço** diria à Wellmix o contrário.'
     traducoes:
       en:
         enunciado: "You do not make the item Wellmix asked for. What is the right answer?"
@@ -261,7 +261,7 @@ perguntas:
           b: "Choose **Yes, I can** with price 0"
           c: "Choose **No, I can't** and send the answer, with no price"
           d: "Choose **Yes, I can** and explain in the Note"
-        explicacao: "If you do not make the item, choose **No, I can't**: no price needed. A zero price is not accepted (\"use numbers greater than zero\") and **Yes, I can** would tell Wellmix the opposite."
+        explicacao: 'If you do not make the item, choose **No, I can''t**: no price needed. A zero price is not accepted ("use numbers greater than zero") and **Yes, I can** would tell Wellmix the opposite.'
       zh:
         enunciado: "您不生产 Wellmix 要求的这个条目。正确的回复是什么？"
         opcoes:

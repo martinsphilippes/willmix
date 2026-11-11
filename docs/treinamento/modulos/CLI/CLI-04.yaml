@@ -29,14 +29,14 @@ perguntas:
     nivel: 1
     capitulo: CLI-04-C1
     cena: 3
-    enunciado: "No cartão **Pedidos em andamento**, o Próximo passo diz \"Com a Wellmix\". O que isso quer dizer para você?"
+    enunciado: 'No cartão **Pedidos em andamento**, o Próximo passo diz "Com a Wellmix". O que isso quer dizer para você?'
     opcoes:
       a: "A sua vez de agir: o pedido está parado esperando por você"
       b: "O pedido foi cancelado"
       c: "Você precisa pagar o sinal"
       d: "Nada a fazer: o pedido está com a Wellmix"
     correta: [d]
-    explicacao: "\"Com a Wellmix\" quer dizer que você não precisa fazer nada. \"Com você\" é a sua vez. Clique em **Acompanhar** para abrir o pedido."
+    explicacao: '"Com a Wellmix" quer dizer que você não precisa fazer nada. "Com você" é a sua vez. Clique em **Acompanhar** para abrir o pedido.'
   - id: CLI-04-Q2
     tipo: unica
     nivel: 1
@@ -55,14 +55,14 @@ perguntas:
     nivel: 3
     capitulo: CLI-04-C1
     cena: 3
-    enunciado: "João enviou a solicitação ontem e não acha o pedido em Pedidos. A solicitação mostra \"Aguardando sinal\". O que isso explica?"
+    enunciado: 'João enviou a solicitação ontem e não acha o pedido em Pedidos. A solicitação mostra "Aguardando sinal". O que isso explica?'
     opcoes:
       a: "O pedido existe, mas está escondido pelos filtros da lista de Pedidos"
       b: "O pedido só nasce depois que a Wellmix confirma o sinal"
       c: "O pedido foi cancelado pelo fornecedor"
       d: "O pedido só aparece quando o navio sai"
     correta: [b]
-    explicacao: "Até a Wellmix confirmar o sinal, só existe a solicitação. Acompanhe em Orçamentos; o aviso \"Pedido #N criado\" marca o nascimento do pedido."
+    explicacao: 'Até a Wellmix confirmar o sinal, só existe a solicitação. Acompanhe em Orçamentos; o aviso "Pedido #N criado" marca o nascimento do pedido.'
   - id: CLI-04-Q4
     tipo: multipla
     nivel: 2
@@ -95,7 +95,7 @@ perguntas:
     nivel: 3
     capitulo: CLI-04-C2
     cena: 6
-    enunciado: "Uma etapa do pedido aparece como \"Bloqueada\". João precisa fazer alguma coisa?"
+    enunciado: 'Uma etapa do pedido aparece como "Bloqueada". João precisa fazer alguma coisa?'
     opcoes:
       a: "Sim, pagar o saldo que falta para a Wellmix destravar a etapa bloqueada do pedido"
       b: "Não: a Wellmix resolve, e em caso de dúvida ele usa Conversar com a Wellmix"
@@ -128,4 +128,4 @@ perguntas:
       c: "Clica em **Conversar com a Wellmix** na tela do pedido"
       d: "Cancela o pedido e abre uma nova solicitação"
     correta: [c]
-    explicacao: "**Conversar com a Wellmix** abre a conversa já no assunto \"Pedido #1\", em Mensagens, e todos os logins da sua empresa veem a mesma conversa."
+    explicacao: '**Conversar com a Wellmix** abre a conversa já no assunto "Pedido #1", em Mensagens, e todos os logins da sua empresa veem a mesma conversa.'

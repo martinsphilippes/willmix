@@ -42,7 +42,7 @@ perguntas:
     nivel: 3
     capitulo: WPE-04-C1
     cena: 3
-    enunciado: "O fornecedor escreve pedindo o peso líquido que a ficha prevê para a jarra, \"para medir certo\". O que você responde?"
+    enunciado: 'O fornecedor escreve pedindo o peso líquido que a ficha prevê para a jarra, "para medir certo". O que você responde?'
     opcoes:
       a: "Envia o valor da ficha, para a medição dele sair certa na primeira vez"
       b: "Manda a ficha de compra inteira por mensagem, com o peso previsto"
@@ -55,20 +55,20 @@ perguntas:
     nivel: 2
     capitulo: WPE-04-C1
     cena: 4
-    enunciado: "Na tabela \"O que o fornecedor mediu\", o Peso líquido tem Esperado 0,4, Encontrado 0.55 e Situação \"Divergente\", enquanto o Peso bruto está \"OK\". O que torna o peso líquido divergente?"
+    enunciado: 'Na tabela "O que o fornecedor mediu", o Peso líquido tem Esperado 0,4, Encontrado 0.55 e Situação "Divergente", enquanto o Peso bruto está "OK". O que torna o peso líquido divergente?'
     opcoes:
       a: "O valor está fora da tolerância do atributo"
       b: "Falta a foto na balança, que o portal exige para esse atributo"
       c: "A ficha de compra não traz referência para esse atributo"
       d: "O fornecedor enviou o peso em outra unidade que não o quilo"
     correta: [a]
-    explicacao: "Cada linha tem sua tolerância, definida em Configurações pelo administrador. Fora dela a situação é \"Divergente\". Quando a ficha não tem o valor, a linha mostra \"Sem referência\", como acontece com a Cor."
+    explicacao: 'Cada linha tem sua tolerância, definida em Configurações pelo administrador. Fora dela a situação é "Divergente". Quando a ficha não tem o valor, a linha mostra "Sem referência", como acontece com a Cor.'
   - id: WPE-04-Q4
     tipo: unica
     nivel: 1
     capitulo: WPE-04-C2
     cena: 5
-    enunciado: "A etapa Inspeção está \"Bloqueada\". Em qual item do cartão da etapa a Wellmix decide, com os botões **Aprovar** e **Reprovar**?"
+    enunciado: 'A etapa Inspeção está "Bloqueada". Em qual item do cartão da etapa a Wellmix decide, com os botões **Aprovar** e **Reprovar**?'
     opcoes:
       a: "Foto na balança, enviada pelo fornecedor"
       b: "Peso medido (kg), informado pelo fornecedor"
@@ -102,7 +102,7 @@ perguntas:
       c: "Pede ao fornecedor que meça de novo até ficar dentro da tolerância"
       d: "Espera o prazo da etapa vencer, para ela se liberar sozinha"
     correta: [a]
-    explicacao: "**Aprovar** aceita a divergência: a etapa conclui, o Embarque abre, e a decisão fica registrada com seu nome, a data e o motivo (\"Divergência aceita\"). Os itens da fila passam a Resolvidos."
+    explicacao: '**Aprovar** aceita a divergência: a etapa conclui, o Embarque abre, e a decisão fica registrada com seu nome, a data e o motivo ("Divergência aceita"). Os itens da fila passam a Resolvidos.'
   - id: WPE-04-Q7
     tipo: unica
     nivel: 3

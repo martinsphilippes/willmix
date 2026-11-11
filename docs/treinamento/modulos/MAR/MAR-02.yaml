@@ -1,0 +1,281 @@
+episodio: MAR-02
+titulo: "Enviar a tabela de frete"
+serie: MAR
+papel: "companhia marítima"
+duracao: "4:14"
+idiomas: [pt, en, zh]
+capitulos:
+  - id: MAR-02-C1
+    titulo: "Abrir a tela da tabela e preparar a planilha"
+    titulo_en: "Open the table screen and prepare the spreadsheet"
+    titulo_zh: "打开运价表页面并准备表格"
+    inicio: "0:00"
+    fim: "1:34"
+    cenas: [1, 5]
+    resumo: "Veja para que serve a sua tabela, os dois caminhos até a tela e como preparar a planilha no modelo da Wellmix."
+    resumo_en: "See what your table is for, the two ways to the screen and how to prepare the spreadsheet in the Wellmix template."
+    resumo_zh: "了解运价表的用途、进入页面的两种方式，以及如何按 Wellmix 模板准备表格。"
+  - id: MAR-02-C2
+    titulo: "Enviar a planilha e ler o resultado"
+    titulo_en: "Send the spreadsheet and read the result"
+    titulo_zh: "上传表格并查看结果"
+    inicio: "1:34"
+    fim: "2:54"
+    cenas: [6, 8]
+    resumo: "Escolha o arquivo e a data de referência, clique em **Enviar planilha** e leia a conferência."
+    resumo_en: "Choose the file and the reference date, click Send spreadsheet and read the check."
+    resumo_zh: "选择文件和参考日期，点击“上传表格”，并查看核对结果。"
+  - id: MAR-02-C3
+    titulo: "Entender as visões e trocar a tabela"
+    titulo_en: "Understand the views and replace the table"
+    titulo_zh: "了解两种视图并更换运价表"
+    inicio: "2:54"
+    fim: "4:14"
+    cenas: [9, 12]
+    resumo: "Use as duas visões da planilha e envie uma nova quando os preços mudarem: a anterior fica no histórico."
+    resumo_en: "Use the two views of the spreadsheet and send a new one when prices change: the previous one stays in the history."
+    resumo_zh: "使用表格的两种视图；价格变化时再上传一张新表，旧表会保留在历史记录中。"
+perguntas:
+  - id: MAR-02-Q1
+    tipo: multipla
+    nivel: 1
+    capitulo: MAR-02-C1
+    cena: 3
+    enunciado: "Quais são os dois caminhos até a tela da sua tabela de frete?"
+    opcoes:
+      a: "Menu Pedidos → Minha tabela de frete"
+      b: "Menu Pedidos → Fretes"
+      c: 'No pedido em Embarque, o botão **Importar planilha** do quadro "Sua tabela de frete"'
+      d: "Menu Início → Mensagens"
+    correta: [a, c]
+    explicacao: 'Os dois caminhos levam à mesma tela, e o do pedido traz o link "← Voltar ao pedido". O item **Fretes** é outro assunto: são os pedidos de cotação de frete por produto.'
+    traducoes:
+      en:
+        enunciado: "Which are the two ways to reach your freight table screen?"
+        opcoes:
+          a: "Orders menu → My freight table"
+          b: "Orders menu → Freight"
+          c: 'On an order in Shipping, the Import spreadsheet button in the "Your freight table" box'
+          d: "Home menu → Messages"
+        explicacao: 'Both ways lead to the same screen, and the one from the order has the "← Back to the order" link. The Freight item is a different matter: it holds the freight requests per product.'
+      zh:
+        enunciado: "进入你的运价表页面有哪两种方式？"
+        opcoes:
+          a: "“订单”菜单 → “我的运价表”"
+          b: "“订单”菜单 → “运费”"
+          c: "在装运阶段的订单里，点击“你的运价表”框中的“导入表格”按钮"
+          d: "“首页”菜单 → “消息”"
+        explicacao: "两种方式进入的是同一个页面，从订单进入时还带有“← 返回订单”链接。“运费”是另一回事：那里是按产品的运费询价。"
+  - id: MAR-02-Q2
+    tipo: multipla
+    nivel: 2
+    capitulo: MAR-02-C1
+    cena: 5
+    enunciado: "Na planilha no modelo da Wellmix, o que você preenche?"
+    opcoes:
+      a: "O frete por container 40HQ de cada porto de origem"
+      b: "O nome do cliente de cada pedido"
+      c: "As taxas, o PTAX, o IOF e o prazo de pagamento"
+      d: "O preço de venda dos produtos"
+      e: "O número do pedido a que a tabela se aplica"
+    correta: [a, c]
+    explicacao: "A tabela é a sua lista de preços, não de um pedido só: o frete por container 40HQ de cada porto de origem, as taxas, o PTAX, o IOF e o prazo de pagamento. Cliente e preço de venda não fazem parte dela."
+    traducoes:
+      en:
+        enunciado: "On the spreadsheet in the Wellmix template, what do you fill in?"
+        opcoes:
+          a: "The freight per 40HQ container for each origin port"
+          b: "The customer name of each order"
+          c: "The fees, PTAX, IOF and payment terms"
+          d: "The selling price of the products"
+          e: "The number of the order the table applies to"
+        explicacao: "The table is your price list, not for a single order: the freight per 40HQ container for each origin port, the fees, PTAX, IOF and payment terms. The customer and the selling price are not part of it."
+      zh:
+        enunciado: "在 Wellmix 模板的表格中，你需要填写什么？"
+        opcoes:
+          a: "每个起运港每个 40HQ 集装箱的运费"
+          b: "每个订单的客户名称"
+          c: "各项费用、PTAX、IOF 和付款期限"
+          d: "产品的销售价格"
+          e: "这张运价表所适用的订单编号"
+        explicacao: "运价表不属于某一个订单，而是你的价格表：每个起运港每个 40HQ 集装箱的运费、各项费用、PTAX、IOF 和付款期限。客户和销售价格不在其中。"
+  - id: MAR-02-Q3
+    tipo: unica
+    nivel: 3
+    capitulo: MAR-02-C1
+    cena: 5
+    enunciado: 'Ao enviar, o portal responde: "A planilha está protegida por senha. Abra no Excel, tire a senha de abertura … e envie de novo." O que você faz?'
+    opcoes:
+      a: "Renomeia o arquivo para .xlsm e envia de novo"
+      b: "Pede a senha à Wellmix para ela abrir o arquivo"
+      c: "Envia a planilha em PDF no lugar do xlsx"
+      d: "Tira a senha de abertura no Excel e envia"
+    correta: [d]
+    explicacao: "Planilha com senha de abertura não é lida. No Excel, use Arquivo → Informações → Proteger pasta de trabalho para tirar a senha e envie de novo, em .xlsx ou .xlsm."
+    traducoes:
+      en:
+        enunciado: 'When you send it, the portal answers: "The spreadsheet is password-protected. Open it in Excel, remove the opening password … and send it again." What do you do?'
+        opcoes:
+          a: "Rename the file to .xlsm and send it again"
+          b: "Ask Wellmix for the password so it can open the file"
+          c: "Send the spreadsheet as a PDF instead of xlsx"
+          d: "Remove the opening password in Excel and send it again"
+        explicacao: "A spreadsheet with an opening password cannot be read. In Excel, use File → Info → Protect Workbook to remove the password and send it again, as .xlsx or .xlsm."
+      zh:
+        enunciado: "上传时，门户提示：“表格设有打开密码。请在 Excel 中取消打开密码……后重新上传。”你该怎么做？"
+        opcoes:
+          a: "把文件改名为 .xlsm 后重新上传"
+          b: "向 Wellmix 索要密码，让她们来打开文件"
+          c: "改传 PDF 格式，代替 xlsx"
+          d: "在 Excel 中取消打开密码，然后重新上传"
+        explicacao: "带打开密码的表格无法读取。请在 Excel 中通过“文件 → 信息 → 保护工作簿”取消密码，再以 .xlsx 或 .xlsm 格式重新上传。"
+  - id: MAR-02-Q4
+    tipo: unica
+    nivel: 3
+    capitulo: MAR-02-C2
+    cena: 6
+    enunciado: "A cotação de frete que você preencheu é de alguns dias atrás, mas a **Data de referência** já vem com a data de hoje. O que faz?"
+    opcoes:
+      a: "Deixa a de hoje, porque o portal ajusta sozinho"
+      b: "Envia a planilha duas vezes, uma para cada data"
+      c: "Troca pela data da sua cotação"
+      d: "Muda o nome do arquivo para a data da cotação"
+    correta: [c]
+    explicacao: "A Data de referência já vem preenchida com o dia de hoje: mude para a data da sua cotação, se for outra. Depois confira e clique em **Enviar planilha**."
+    traducoes:
+      en:
+        enunciado: "The freight quotation you filled in is from a few days ago, but the Reference date already shows today. What do you do?"
+        opcoes:
+          a: "Keep today's, because the portal adjusts it by itself"
+          b: "Send the spreadsheet twice, once for each date"
+          c: "Change it to the date of your quotation"
+          d: "Rename the file with the quotation date"
+        explicacao: "The Reference date is already filled in with today: change it to the date of your quotation if it is a different one. Then check it and click Send spreadsheet."
+      zh:
+        enunciado: "你填写的运费报价是几天前的，但“参考日期”默认是今天。你该怎么做？"
+        opcoes:
+          a: "保留今天的日期，门户会自动调整"
+          b: "上传两次表格，每个日期各一次"
+          c: "改成你的报价日期"
+          d: "把文件名改成报价日期"
+        explicacao: "“参考日期”默认是今天：如果你的报价是另一天，请改成报价日期。核对后点击“上传表格”。"
+  - id: MAR-02-Q5
+    tipo: unica
+    nivel: 1
+    capitulo: MAR-02-C2
+    cena: 6
+    enunciado: "Na tela da tabela, depois de escolher o arquivo e a data, qual botão envia a planilha?"
+    opcoes:
+      a: "Importar planilha"
+      b: "Enviar planilha"
+      c: "Confirmar"
+      d: "Ver"
+    correta: [b]
+    explicacao: "O botão da tela é **Enviar planilha**. **Importar planilha** é o botão do quadro no pedido, que só leva a esta tela; **Ver** abre uma importação antiga do histórico."
+    traducoes:
+      en:
+        enunciado: "On the table screen, after choosing the file and the date, which button sends the spreadsheet?"
+        opcoes:
+          a: "Import spreadsheet"
+          b: "Send spreadsheet"
+          c: "Confirm"
+          d: "View"
+        explicacao: "The button on the screen is Send spreadsheet. Import spreadsheet is the button of the box on the order, which only takes you to this screen; View opens an old import from the history."
+      zh:
+        enunciado: "在运价表页面，选好文件和日期后，哪个按钮用来上传表格？"
+        opcoes:
+          a: "导入表格"
+          b: "上传表格"
+          c: "确认"
+          d: "查看"
+        explicacao: "页面上的按钮是“上传表格”。“导入表格”是订单页面方框里的按钮，只是带你进入这个页面；“查看”用来打开历史记录中的旧导入。"
+  - id: MAR-02-Q6
+    tipo: unica
+    nivel: 2
+    capitulo: MAR-02-C2
+    cena: 8
+    enunciado: 'Depois do envio, a faixa mostra "Conferência sem avisos: os totais da planilha batem com a conta." O que isso quer dizer?'
+    opcoes:
+      a: "Os totais da planilha conferem com o cálculo do portal"
+      b: "A Wellmix já aprovou e passou a usar os seus preços"
+      c: "A planilha enviada foi descartada e a antiga continua vigente"
+      d: "O portal ainda não terminou de ler as tarifas"
+    correta: [a]
+    explicacao: "É o resultado esperado da conferência: nada a corrigir. Se aparecer um aviso que pede correção, ajuste a planilha e envie de novo; os avisos em **Para saber** são só informação."
+    traducoes:
+      en:
+        enunciado: 'After sending, the banner shows "Check passed: the spreadsheet totals match the calculation." What does it mean?'
+        opcoes:
+          a: "The spreadsheet totals match the portal's calculation"
+          b: "Wellmix has already approved and started using your prices"
+          c: "The sent spreadsheet was discarded and the old one stays current"
+          d: "The portal has not finished reading the rates yet"
+        explicacao: "This is the expected result of the check: nothing to correct. If a notice asks for a correction, fix the spreadsheet and send it again; the notices under Good to know are just information."
+      zh:
+        enunciado: "上传后，横幅显示“核对无提示：表格总额与计算一致。”这是什么意思？"
+        opcoes:
+          a: "表格总额与门户的计算一致"
+          b: "Wellmix 已经批准并开始使用你的价格"
+          c: "上传的表格已被丢弃，旧表仍然是当前运价表"
+          d: "门户还没有读完全部运价"
+        explicacao: "这是核对的预期结果：无需更正。如果出现要求更正的提示，请修改表格后重新上传；“提示”中的内容只是信息。"
+  - id: MAR-02-Q7
+    tipo: unica
+    nivel: 2
+    capitulo: MAR-02-C3
+    cena: 9
+    enunciado: "Por que os totais de **Resumo (com PTAX e IOF)** ficam maiores que os de **Como na planilha**?"
+    opcoes:
+      a: "Porque o resumo soma as tarifas das outras companhias"
+      b: "Porque o resumo soma uma tarifa antiga do histórico"
+      c: "Porque o resumo usa a data de hoje, e não a de referência"
+      d: "Porque o portal calcula os totais com PTAX e IOF"
+    correta: [d]
+    explicacao: "**Como na planilha** mostra os valores como você os digitou. O **Resumo (com PTAX e IOF)** mostra os totais que o portal calcula, com PTAX e IOF, e por isso eles ficam maiores."
+    traducoes:
+      en:
+        enunciado: "Why are the totals in Summary (with PTAX and IOF) higher than those in As in the spreadsheet?"
+        opcoes:
+          a: "Because the summary adds up the other lines' rates"
+          b: "Because the summary adds up an old rate from the history"
+          c: "Because the summary uses today's date, not the reference date"
+          d: "Because the portal calculates the totals with PTAX and IOF"
+        explicacao: "As in the spreadsheet shows the values as you entered them. Summary (with PTAX and IOF) shows the totals the portal calculates, with PTAX and IOF, so they are higher."
+      zh:
+        enunciado: "为什么“摘要（含 PTAX 和 IOF）”中的总额比“与表格相同”中的更高？"
+        opcoes:
+          a: "因为摘要累加了其他船公司的运价"
+          b: "因为摘要累加了历史记录中的旧运价"
+          c: "因为摘要使用今天的日期，而不是参考日期"
+          d: "因为门户计算的总额含 PTAX 和 IOF"
+        explicacao: "“与表格相同”显示你填写的原始数值。“摘要（含 PTAX 和 IOF）”显示门户计算的总额，其中包含 PTAX 和 IOF，所以更高。"
+  - id: MAR-02-Q8
+    tipo: unica
+    nivel: 3
+    capitulo: MAR-02-C3
+    cena: 10
+    enunciado: "Os preços do seu frete mudaram. O que você faz com a tabela que já está no portal?"
+    opcoes:
+      a: "Edita a planilha antiga direto na lista Importações, sem enviar outra"
+      b: "Envia uma planilha nova; a anterior fica Substituído no histórico"
+      c: "Pede à Wellmix que apague a antiga antes de você enviar a nova"
+      d: "Envia a nova e as duas ficam Vigente, lado a lado, no histórico"
+    correta: [b]
+    explicacao: "Quando os preços mudarem, envie uma planilha nova. A nova passa a ser a Vigente e a anterior fica com o selo Substituído, mas continua no histórico, em **Importações**. **Ver** abre uma antiga, com um aviso de que ela não é a vigente."
+    traducoes:
+      en:
+        enunciado: "Your freight prices have changed. What do you do with the table that is already in the portal?"
+        opcoes:
+          a: "Edit the old spreadsheet directly in the Imports list, without sending another"
+          b: "Send a new spreadsheet; the previous one becomes Replaced in the history"
+          c: "Ask Wellmix to delete the old one before you send the new one"
+          d: "Send the new one and both stay Current, side by side, in the history"
+        explicacao: "When your prices change, send a new spreadsheet. The new one becomes the Current one and the previous one becomes Replaced, but stays in the history, under Imports. View opens an old one, with a notice that it is not the current one."
+      zh:
+        enunciado: "你的运价发生了变化。对于门户中已有的运价表，你该怎么做？"
+        opcoes:
+          a: "不上传新表，直接在“导入记录”列表中编辑旧表格"
+          b: "上传一张新表；旧表变为“已替换”并保留在历史记录中"
+          c: "先请 Wellmix 删除旧表，然后再上传新表"
+          d: "上传新表，两张表在历史记录中并排都是“当前”"
+        explicacao: "价格变化时，请上传新表。新表成为“当前”，旧表变为“已替换”，但仍保留在“导入记录”里。点击“查看”可打开旧表，页面会提示它不是当前运价表。"

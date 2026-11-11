@@ -35,7 +35,7 @@ perguntas:
     nivel: 1
     capitulo: WSO-05-C1
     cena: 3
-    enunciado: "Um operador digita o endereço do Superplan e volta ao início com o aviso \"Você não tem acesso a Superplan\". Quem abre essa tela?"
+    enunciado: 'Um operador digita o endereço do Superplan e volta ao início com o aviso "Você não tem acesso a Superplan". Quem abre essa tela?'
     opcoes:
       a: "Qualquer operador com as funções de comprador e planner"
       b: "Só o gerente de produto"
@@ -48,7 +48,7 @@ perguntas:
     nivel: 1
     capitulo: WSO-05-C1
     cena: 4
-    enunciado: "Você escolheu \"UTL-001 · Jarra de vidro 1,5 L\" em \"Produto do cadastro\". Qual botão preenche preço, caixa, peso, volume e os impostos do NCM?"
+    enunciado: 'Você escolheu "UTL-001 · Jarra de vidro 1,5 L" em "Produto do cadastro". Qual botão preenche preço, caixa, peso, volume e os impostos do NCM?'
     opcoes:
       a: "**Carregar**"
       b: "**Testar esse preço**"
@@ -61,7 +61,7 @@ perguntas:
     nivel: 3
     capitulo: WSO-05-C2
     cena: 5
-    enunciado: "Ao carregar o produto, os campos \"II (%)\" e \"IPI (%)\" ficam vazios, com o aviso \"Produto sem NCM na tabela fiscal: confira II e IPI à mão.\" O que você faz?"
+    enunciado: 'Ao carregar o produto, os campos "II (%)" e "IPI (%)" ficam vazios, com o aviso "Produto sem NCM na tabela fiscal: confira II e IPI à mão." O que você faz?'
     opcoes:
       a: "Deixa vazio: o sistema completa com a média dos produtos parecidos"
       b: "Digita o II e o IPI do NCM do produto"
@@ -88,7 +88,7 @@ perguntas:
     nivel: 2
     capitulo: WSO-05-C3
     cena: 7
-    enunciado: "Como o Superplan calcula o \"Preço mínimo\" por peça?"
+    enunciado: 'Como o Superplan calcula o "Preço mínimo" por peça?'
     opcoes:
       a: "Preço do fornecedor mais o frete marítimo"
       b: "Custo do container dividido pelas peças que cabem nele"
@@ -108,7 +108,7 @@ perguntas:
       c: "Clica em **Abrir faca e RFQ** e confere na solicitação"
       d: "Clica em **Testar esse preço**"
     correta: [d]
-    explicacao: "**Testar esse preço** simula o preço sugerido, e o aviso vira verde (\"Viável\") quando o lucro alcança a meta. Para outro valor, digite em \"Preço de venda a testar\"; vazio, a conta usa o preço mínimo."
+    explicacao: '**Testar esse preço** simula o preço sugerido, e o aviso vira verde ("Viável") quando o lucro alcança a meta. Para outro valor, digite em "Preço de venda a testar"; vazio, a conta usa o preço mínimo.'
   - id: WSO-05-Q7
     tipo: unica
     nivel: 3
@@ -117,7 +117,7 @@ perguntas:
     enunciado: "O aviso do alto está vermelho (Prejuízo). Você tenta clicar em **Abrir faca e RFQ**. O que acontece?"
     opcoes:
       a: "Abre normalmente, só marcando a solicitação com um aviso"
-      b: "Não abre: \"Com prejuízo não dá para abrir: ajuste o preço ou os números.\""
+      b: 'Não abre: "Com prejuízo não dá para abrir: ajuste o preço ou os números."'
       c: "Abre, mas só para compra com cliente, nunca para estoque"
       d: "Abre a RFQ para todos os fornecedores do produto"
     correta: [b]

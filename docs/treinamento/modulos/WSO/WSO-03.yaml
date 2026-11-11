@@ -29,7 +29,7 @@ perguntas:
     nivel: 1
     capitulo: WSO-03-C1
     cena: 3
-    enunciado: "No cartão \"Proposta\" da solicitação em Aguardando sinal, qual informação só a Wellmix vê e o cliente não?"
+    enunciado: 'No cartão "Proposta" da solicitação em Aguardando sinal, qual informação só a Wellmix vê e o cliente não?'
     opcoes:
       a: "O valor ao cliente"
       b: "O valor do sinal"
@@ -49,7 +49,7 @@ perguntas:
       c: "Clica em **Confirmar sinal recebido**"
       d: "Não precisa registrar: o pedido nasce quando o sinal chegar"
     correta: [b]
-    explicacao: "Só o cliente da solicitação aprova a proposta pelo portal. Quando ele aprova por telefone, e-mail ou WhatsApp, a Wellmix usa **Registrar aprovação do cliente**, e a tela mostra \"Aprovação do cliente registrada.\""
+    explicacao: 'Só o cliente da solicitação aprova a proposta pelo portal. Quando ele aprova por telefone, e-mail ou WhatsApp, a Wellmix usa **Registrar aprovação do cliente**, e a tela mostra "Aprovação do cliente registrada."'
   - id: WSO-03-Q3
     tipo: vf
     nivel: 2
@@ -119,11 +119,11 @@ perguntas:
     nivel: 3
     capitulo: WSO-03-C3
     cena: 8
-    enunciado: "O Pedido #1 acabou de nascer e em Pendências aparece \"Pedido pré-aprovado\" para você. Qual é o seu primeiro passo?"
+    enunciado: 'O Pedido #1 acabou de nascer e em Pendências aparece "Pedido pré-aprovado" para você. Qual é o seu primeiro passo?'
     opcoes:
       a: "Esperar o fornecedor, que é o responsável pela primeira etapa"
       b: "Confirmar o sinal de novo, para o pedido ficar liberado"
-      c: "Abrir o pedido e clicar em **Confirmar** em \"Pedido conferido e liberado ao fornecedor\""
+      c: 'Abrir o pedido e clicar em **Confirmar** em "Pedido conferido e liberado ao fornecedor"'
       d: "Clicar em **Registrar aprovação do cliente** na solicitação"
     correta: [c]
     explicacao: "Na primeira etapa a Wellmix confere o pedido e o libera ao fornecedor com **Confirmar**; o número no Sankhya é opcional."

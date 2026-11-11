@@ -158,7 +158,7 @@ perguntas:
       b: "Enviadas"
       c: "Escolhidas"
     correta: [b]
-    explicacao: "Enviada a cotação, ela fica em **Enviadas** até a Wellmix decidir. Se for escolhida, passa a **Escolhidas** e você é avisado: \"Sua cotação foi escolhida\"."
+    explicacao: 'Enviada a cotação, ela fica em **Enviadas** até a Wellmix decidir. Se for escolhida, passa a **Escolhidas** e você é avisado: "Sua cotação foi escolhida".'
     traducoes:
       en:
         enunciado: "In **Quotations**, which tab holds the quotation you sent while Wellmix has not decided?"
@@ -166,7 +166,7 @@ perguntas:
           a: "To answer"
           b: "Sent"
           c: "Selected"
-        explicacao: "Once sent, the quotation stays under **Sent** until Wellmix decides. If it is chosen, it moves to **Selected** and you are notified: \"Your quotation was chosen\"."
+        explicacao: 'Once sent, the quotation stays under **Sent** until Wellmix decides. If it is chosen, it moves to **Selected** and you are notified: "Your quotation was chosen".'
       zh:
         enunciado: "在“报价”里，您已提交的报价在 Wellmix 作出决定之前放在哪个标签页？"
         opcoes:

@@ -42,7 +42,7 @@ perguntas:
     nivel: 3
     capitulo: WPE-01-C1
     cena: 4
-    enunciado: "Você tenta abrir Contas a pagar e o portal volta ao início com \"Você não tem acesso a Contas a pagar. Peça ao administrador em Gestão → Equipe e divisões.\" O que isso significa?"
+    enunciado: 'Você tenta abrir Contas a pagar e o portal volta ao início com "Você não tem acesso a Contas a pagar. Peça ao administrador em Gestão → Equipe e divisões." O que isso significa?'
     opcoes:
       a: "O portal está com erro; tente de novo mais tarde"
       b: "Seu login ainda não terminou de carregar"
@@ -55,7 +55,7 @@ perguntas:
     nivel: 1
     capitulo: WPE-01-C2
     cena: 5
-    enunciado: "Na tabela \"Etapas do pedido\", qual botão mostra todas as etapas de uma vez, e não só a que está em andamento?"
+    enunciado: 'Na tabela "Etapas do pedido", qual botão mostra todas as etapas de uma vez, e não só a que está em andamento?'
     opcoes:
       a: "**Ver detalhes**"
       b: "**Abrir todas as etapas**"
@@ -68,20 +68,20 @@ perguntas:
     nivel: 3
     capitulo: WPE-01-C2
     cena: 5
-    enunciado: "Na tabela de etapas há uma linha recuada \"↳ Certificação\" com o selo \"ao mesmo tempo\". Um colega diz que ela só começa depois que o Pedido pré-aprovado for confirmado. Quem está certo?"
+    enunciado: 'Na tabela de etapas há uma linha recuada "↳ Certificação" com o selo "ao mesmo tempo". Um colega diz que ela só começa depois que o Pedido pré-aprovado for confirmado. Quem está certo?'
     opcoes:
       a: "Ele, porque nenhuma etapa começa antes da anterior concluir"
       b: "Ele, porque a certificação sempre vem depois da Preparação"
       c: "Ninguém: a Certificação só começa depois da inspeção"
       d: "Você: as linhas recuadas andam em paralelo, sem esperar a etapa anterior"
     correta: [d]
-    explicacao: "As linhas recuadas são partes que andam em paralelo, como a Certificação: o selo \"ao mesmo tempo\" quer dizer que ela não espera a etapa anterior."
+    explicacao: 'As linhas recuadas são partes que andam em paralelo, como a Certificação: o selo "ao mesmo tempo" quer dizer que ela não espera a etapa anterior.'
   - id: WPE-01-Q5
     tipo: unica
     nivel: 2
     capitulo: WPE-01-C2
     cena: 6
-    enunciado: "O que é o cartão \"Comprado (snapshot)\" no fim da página do pedido?"
+    enunciado: 'O que é o cartão "Comprado (snapshot)" no fim da página do pedido?'
     opcoes:
       a: "Uma cópia congelada da ficha e da cotação no dia em que o pedido nasceu"
       b: "O histórico de pagamentos do cliente"
@@ -94,24 +94,24 @@ perguntas:
     nivel: 3
     capitulo: WPE-01-C3
     cena: 7
-    enunciado: "No Resumo do pedido, a coluna Sankhya mostra \"ERP pendente\" e a tela avisa \"Sincronização com o ERP pendente (modo mock). Informe o número manualmente.\" O que você faz?"
+    enunciado: 'No Resumo do pedido, a coluna Sankhya mostra "ERP pendente" e a tela avisa "Sincronização com o ERP pendente (modo mock). Informe o número manualmente." O que você faz?'
     opcoes:
       a: "Gera o pedido no Sankhya, digita o número em **Número no Sankhya** e clica em **Enviar**"
       b: "Espera: a integração preenche o número sozinha em algumas horas"
       c: "Pede ao fornecedor que informe o número do pedido no Sankhya"
       d: "Clica em **Confirmar**, que já grava o número gerado pelo portal"
     correta: [a]
-    explicacao: "Sem a integração ligada, o número é digitado à mão: não é falha. Depois de **Enviar**, a coluna Sankhya troca \"ERP pendente\" pelo número."
+    explicacao: 'Sem a integração ligada, o número é digitado à mão: não é falha. Depois de **Enviar**, a coluna Sankhya troca "ERP pendente" pelo número.'
   - id: WPE-01-Q7
     tipo: unica
     nivel: 2
     capitulo: WPE-01-C3
     cena: 8
-    enunciado: "O pedido da Piscina inflável mostra o item \"Conformidade: certificação obrigatória conferida\" com \"Faltam: Inmetro\". Onde aparece o aviso correspondente, com Esperado \"Inmetro\" e Encontrado \"nenhuma\"?"
+    enunciado: 'O pedido da Piscina inflável mostra o item "Conformidade: certificação obrigatória conferida" com "Faltam: Inmetro". Onde aparece o aviso correspondente, com Esperado "Inmetro" e Encontrado "nenhuma"?'
     opcoes:
       a: "Em Início → Painel de SLA"
       b: "Em Pedidos → Revisão (Itens para revisão)"
-      c: "Em Início → Notificações, no grupo \"Precisa de você\""
+      c: 'Em Início → Notificações, no grupo "Precisa de você"'
       d: "Em Cadastros → Fornecedores, na ficha do fornecedor"
     correta: [b]
     explicacao: "Linhas como Infláveis exigem certificação (aqui, o Inmetro). Se o produto não tem certificado válido, o pedido ganha o item Conformidade e um cartão na fila de Pedidos → Revisão."
@@ -120,10 +120,10 @@ perguntas:
     nivel: 2
     capitulo: WPE-01-C3
     cena: 9
-    enunciado: "Ponha em ordem o trabalho da Wellmix na etapa \"Pedido pré-aprovado\"."
+    enunciado: 'Ponha em ordem o trabalho da Wellmix na etapa "Pedido pré-aprovado".'
     opcoes:
       a: "Conferir a etapa em andamento em **Etapas do pedido**"
-      b: "Clicar em **Confirmar** em \"Pedido conferido e liberado ao fornecedor\""
+      b: 'Clicar em **Confirmar** em "Pedido conferido e liberado ao fornecedor"'
       c: "Abrir o pedido pelo número em Pedidos → Pedidos"
       d: "Ler o **Resumo do pedido**"
     correta: [c, d, a, b]

@@ -86,7 +86,7 @@ perguntas:
     nivel: 3
     capitulo: CLI-07-C2
     cena: 5
-    enunciado: "João abre Marketing e vê \"Nenhum kit oferecido a você ainda.\" Ele quer um kit para a jarra. O que faz?"
+    enunciado: 'João abre Marketing e vê "Nenhum kit oferecido a você ainda." Ele quer um kit para a jarra. O que faz?'
     opcoes:
       a: "Espera: o portal gera o kit sozinho depois de alguns dias, sem ajuda de ninguém"
       b: "Pede o kit pela conversa com a Wellmix, que é quem oferece"
@@ -99,14 +99,14 @@ perguntas:
     nivel: 3
     capitulo: CLI-07-C2
     cena: 7
-    enunciado: "João clicou em **Comprar kit** e a tela diz \"Compra registrada. Aguardando a confirmação do pagamento pela Wellmix.\" Ele não vê arquivos em Arquivos finais. Por quê?"
+    enunciado: 'João clicou em **Comprar kit** e a tela diz "Compra registrada. Aguardando a confirmação do pagamento pela Wellmix." Ele não vê arquivos em Arquivos finais. Por quê?'
     opcoes:
       a: "Os arquivos foram enviados para o e-mail cadastrado da Loja do João, no mesmo dia"
       b: "O kit foi recusado e precisa ser comprado de novo"
       c: "Só aparecem depois que a Wellmix confirma o pagamento e libera o kit"
       d: "Só a prévia pode ser baixada pelo cliente em qualquer momento"
     correta: [c]
-    explicacao: "O cartão \"Arquivos finais\" avisa que eles são liberados após a confirmação do pagamento. Quando a Wellmix libera, você é avisado no sino."
+    explicacao: 'O cartão "Arquivos finais" avisa que eles são liberados após a confirmação do pagamento. Quando a Wellmix libera, você é avisado no sino.'
   - id: CLI-07-Q8
     tipo: unica
     nivel: 3

@@ -24,7 +24,9 @@ let perguntasTotal = 0;
 let modulos = 0;
 const ids = new Set();
 
-for (const f of arquivos(root).filter((x) => x.endsWith(".yaml")).sort()) {
+for (const f of arquivos(root)
+  .filter((x) => x.endsWith(".yaml"))
+  .sort()) {
   const err = [];
   const aviso = [];
   const e = (m) => err.push(m);
@@ -38,10 +40,12 @@ for (const f of arquivos(root).filter((x) => x.endsWith(".yaml")).sort()) {
   }
   modulos++;
   const id = basename(f, ".yaml");
-  if (d?.episodio !== id) e(`episodio "${d?.episodio}" != nome do arquivo "${id}"`);
+  if (d?.episodio !== id)
+    e(`episodio "${d?.episodio}" != nome do arquivo "${id}"`);
   for (const c of ["titulo", "serie", "papel", "duracao"])
     if (!d?.[c]) e(`falta ${c}`);
-  if (d?.serie && !id.startsWith(d.serie + "-")) e(`serie ${d.serie} não bate com ${id}`);
+  if (d?.serie && !id.startsWith(d.serie + "-"))
+    e(`serie ${d.serie} não bate com ${id}`);
   const dur = seg(d?.duracao);
   if (dur === null) e(`duracao "${d?.duracao}" fora de m:ss`);
   const idiomas = d?.idiomas ?? [];
@@ -50,11 +54,13 @@ for (const f of arquivos(root).filter((x) => x.endsWith(".yaml")).sort()) {
 
   // capítulos
   const caps = d?.capitulos ?? [];
-  if (caps.length < 2 || caps.length > 4) e(`${caps.length} capítulos (devem ser de 2 a 4)`);
+  if (caps.length < 2 || caps.length > 4)
+    e(`${caps.length} capítulos (devem ser de 2 a 4)`);
   const capIds = new Set();
   let ultimo = 0;
   caps.forEach((c, i) => {
-    if (!c.id?.startsWith(`${id}-C`)) e(`capítulo ${i + 1}: id "${c.id}" deve começar com ${id}-C`);
+    if (!c.id?.startsWith(`${id}-C`))
+      e(`capítulo ${i + 1}: id "${c.id}" deve começar com ${id}-C`);
     if (capIds.has(c.id)) e(`capítulo repetido ${c.id}`);
     capIds.add(c.id);
     if (!c.titulo) e(`${c.id}: falta titulo`);
@@ -66,22 +72,32 @@ for (const f of arquivos(root).filter((x) => x.endsWith(".yaml")).sort()) {
     if (b - a < 30) aviso.push(`${c.id}: capítulo de ${b - a}s (curto)`);
     if (b - a > 150) aviso.push(`${c.id}: capítulo de ${b - a}s (longo)`);
     if (i === 0 && a !== 0) e(`${c.id}: o primeiro capítulo começa em 0:00`);
-    if (i > 0 && a !== ultimo) e(`${c.id}: começa em ${c.inicio}, mas o anterior termina em ${Math.floor(ultimo / 60)}:${String(ultimo % 60).padStart(2, "0")}`);
+    if (i > 0 && a !== ultimo)
+      e(
+        `${c.id}: começa em ${c.inicio}, mas o anterior termina em ${Math.floor(ultimo / 60)}:${String(ultimo % 60).padStart(2, "0")}`,
+      );
     ultimo = b;
-    if (!Array.isArray(c.cenas) || c.cenas.length !== 2 || c.cenas[0] > c.cenas[1])
+    if (
+      !Array.isArray(c.cenas) ||
+      c.cenas.length !== 2 ||
+      c.cenas[0] > c.cenas[1]
+    )
       e(`${c.id}: cenas deve ser [de, até]`);
     for (const l of multi)
       for (const k of ["titulo", "resumo"])
         if (!c[`${k}_${l}`]) e(`${c.id}: falta ${k}_${l}`);
   });
   if (dur !== null && caps.length && Math.abs(ultimo - dur) > 20)
-    e(`capítulos terminam em ${ultimo}s, mas a duração é ${dur}s (diferença maior que 20 s)`);
+    e(
+      `capítulos terminam em ${ultimo}s, mas a duração é ${dur}s (diferença maior que 20 s)`,
+    );
   const cenaMax = Math.max(0, ...caps.map((c) => c.cenas?.[1] ?? 0));
 
   // perguntas
   const ps = d?.perguntas ?? [];
   const esperado = id === "GER-00" ? 10 : 8;
-  if (ps.length !== esperado) e(`${ps.length} perguntas (devem ser ${esperado})`);
+  if (ps.length !== esperado)
+    e(`${ps.length} perguntas (devem ser ${esperado})`);
   const nivel = { 1: 0, 2: 0, 3: 0 };
   let longest = 0;
   const posicao = {};
@@ -97,24 +113,40 @@ for (const f of arquivos(root).filter((x) => x.endsWith(".yaml")).sort()) {
     if (!capIds.has(p.capitulo)) e(`${q}: capitulo "${p.capitulo}" não existe`);
     const cap = caps.find((c) => c.id === p.capitulo);
     if (cap && (p.cena < cap.cenas?.[0] || p.cena > cap.cenas?.[1]))
-      e(`${q}: cena ${p.cena} fora das cenas do capítulo ${p.capitulo} (${cap.cenas})`);
-    if (!Number.isInteger(p.cena) || p.cena < 1 || p.cena > cenaMax) e(`${q}: cena "${p.cena}" inválida`);
-    if (!p.enunciado || String(p.enunciado).length < 10) e(`${q}: enunciado ausente`);
-    if (!p.explicacao || String(p.explicacao).length < 20) e(`${q}: explicacao ausente ou curta`);
+      e(
+        `${q}: cena ${p.cena} fora das cenas do capítulo ${p.capitulo} (${cap.cenas})`,
+      );
+    if (!Number.isInteger(p.cena) || p.cena < 1 || p.cena > cenaMax)
+      e(`${q}: cena "${p.cena}" inválida`);
+    if (!p.enunciado || String(p.enunciado).length < 10)
+      e(`${q}: enunciado ausente`);
+    if (!p.explicacao || String(p.explicacao).length < 20)
+      e(`${q}: explicacao ausente ou curta`);
     const ops = p.opcoes ?? {};
     const letras = Object.keys(ops);
     const n = letras.length;
-    if (letras.some((l, k) => l !== LETRAS[k])) e(`${q}: opcoes devem ser a, b, c… em ordem`);
-    if (letras.some((l) => !String(ops[l] ?? "").trim())) e(`${q}: opção vazia`);
+    if (letras.some((l, k) => l !== LETRAS[k]))
+      e(`${q}: opcoes devem ser a, b, c… em ordem`);
+    if (letras.some((l) => !String(ops[l] ?? "").trim()))
+      e(`${q}: opção vazia`);
     const c = p.correta ?? [];
     if (!Array.isArray(c) || !c.length) e(`${q}: correta vazia`);
-    else if (c.some((l) => !letras.includes(l))) e(`${q}: correta cita letra inexistente`);
+    else if (c.some((l) => !letras.includes(l)))
+      e(`${q}: correta cita letra inexistente`);
     else if (new Set(c).size !== c.length) e(`${q}: correta repete letra`);
-    if (p.tipo === "unica" && (n < 3 || n > 4 || c.length !== 1)) e(`${q}: unica pede 3-4 opções e 1 correta`);
-    if (p.tipo === "multipla" && (n < 4 || n > 5 || c.length < 2 || c.length >= n)) e(`${q}: multipla pede 4-5 opções e 2 ou mais corretas (não todas)`);
-    if (p.tipo === "vf" && (n !== 2 || c.length !== 1)) e(`${q}: vf pede 2 opções e 1 correta`);
-    if (p.tipo === "ordem" && (n < 3 || n > 5 || c.length !== n)) e(`${q}: ordem pede 3-5 passos e a sequência completa`);
-    if (/todas as anteriores|nenhuma das anteriores/i.test(JSON.stringify(ops))) e(`${q}: "todas/nenhuma das anteriores" não vale`);
+    if (p.tipo === "unica" && (n < 3 || n > 4 || c.length !== 1))
+      e(`${q}: unica pede 3-4 opções e 1 correta`);
+    if (
+      p.tipo === "multipla" &&
+      (n < 4 || n > 5 || c.length < 2 || c.length >= n)
+    )
+      e(`${q}: multipla pede 4-5 opções e 2 ou mais corretas (não todas)`);
+    if (p.tipo === "vf" && (n !== 2 || c.length !== 1))
+      e(`${q}: vf pede 2 opções e 1 correta`);
+    if (p.tipo === "ordem" && (n < 3 || n > 5 || c.length !== n))
+      e(`${q}: ordem pede 3-5 passos e a sequência completa`);
+    if (/todas as anteriores|nenhuma das anteriores/i.test(JSON.stringify(ops)))
+      e(`${q}: "todas/nenhuma das anteriores" não vale`);
     if (p.tipo === "unica" && c.length === 1) {
       posicao[c[0]] = (posicao[c[0]] ?? 0) + 1;
       const maior = Math.max(...letras.map((l) => String(ops[l]).length));
@@ -124,8 +156,10 @@ for (const f of arquivos(root).filter((x) => x.endsWith(".yaml")).sort()) {
       const t = p.traducoes?.[l];
       if (!t) e(`${q}: falta traducoes.${l}`);
       else {
-        if (!t.enunciado || !t.explicacao) e(`${q}: traducoes.${l} sem enunciado/explicacao`);
-        if (letras.some((k) => !String(t.opcoes?.[k] ?? "").trim())) e(`${q}: traducoes.${l} sem todas as opções`);
+        if (!t.enunciado || !t.explicacao)
+          e(`${q}: traducoes.${l} sem enunciado/explicacao`);
+        if (letras.some((k) => !String(t.opcoes?.[k] ?? "").trim()))
+          e(`${q}: traducoes.${l} sem todas as opções`);
       }
     }
   });
@@ -135,8 +169,14 @@ for (const f of arquivos(root).filter((x) => x.endsWith(".yaml")).sort()) {
   }
   const unicas = Object.values(posicao).reduce((a, b) => a + b, 0);
   if (unicas >= 4) {
-    if (Math.max(...Object.values(posicao)) / unicas > 0.6) aviso.push(`a mesma letra é a certa em mais de 60% das perguntas únicas (${JSON.stringify(posicao)})`);
-    if (longest / unicas > 0.6) aviso.push(`a certa é a mais longa em ${longest} de ${unicas} perguntas únicas`);
+    if (Math.max(...Object.values(posicao)) / unicas > 0.6)
+      aviso.push(
+        `a mesma letra é a certa em mais de 60% das perguntas únicas (${JSON.stringify(posicao)})`,
+      );
+    if (longest / unicas > 0.6)
+      aviso.push(
+        `a certa é a mais longa em ${longest} de ${unicas} perguntas únicas`,
+      );
   }
 
   if (err.length) {
@@ -153,9 +193,12 @@ for (const f of arquivos(root).filter((x) => x.endsWith(".yaml")).sort()) {
 
 // trilhas: todo módulo citado precisa existir; avisa os módulos fora de qualquer trilha
 if (root === "docs/treinamento/modulos") {
-  const trilhas = yaml.load(readFileSync("docs/treinamento/trilhas.yaml", "utf8")) ?? [];
+  const trilhas =
+    yaml.load(readFileSync("docs/treinamento/trilhas.yaml", "utf8")) ?? [];
   const existentes = new Set(
-    arquivos(root).filter((x) => x.endsWith(".yaml")).map((x) => basename(x, ".yaml")),
+    arquivos(root)
+      .filter((x) => x.endsWith(".yaml"))
+      .map((x) => basename(x, ".yaml")),
   );
   const usados = new Set();
   for (const t of trilhas) {
@@ -179,5 +222,7 @@ if (root === "docs/treinamento/modulos") {
   console.log(`${trilhas.length} trilhas conferidas.`);
 }
 
-console.log(`\n${modulos} módulos, ${perguntasTotal} perguntas, ${erros} erro(s), ${avisos} aviso(s).`);
+console.log(
+  `\n${modulos} módulos, ${perguntasTotal} perguntas, ${erros} erro(s), ${avisos} aviso(s).`,
+);
 process.exit(erros ? 1 : 0);

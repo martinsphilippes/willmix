@@ -35,7 +35,7 @@ perguntas:
     nivel: 1
     capitulo: COM-01-C1
     cena: 4
-    enunciado: "No cartão, a linha do **Numerário** mostra \"Faz: comex · valida: …\". Quem valida?"
+    enunciado: 'No cartão, a linha do **Numerário** mostra "Faz: comex · valida: …". Quem valida?'
     opcoes:
       a: "O fornecedor da carga"
       b: "O agente de carga"
@@ -52,7 +52,7 @@ perguntas:
     opcoes:
       a: "Escolher o PDF no passo e clicar em **Enviar**"
       b: "Clicar em **Gerar invoice e packing list**"
-      c: "O fornecedor valida e envia \"Invoice e packing assinados\""
+      c: 'O fornecedor valida e envia "Invoice e packing assinados"'
       d: "Conferir os documentos e salvar em PDF"
       e: "Você valida a invoice assinada"
     correta: [b, d, a, c, e]
@@ -76,10 +76,10 @@ perguntas:
     nivel: 3
     capitulo: COM-01-C2
     cena: 6
-    enunciado: "O Draft do BL enviado pelo agente traz um peso bruto diferente da invoice. Você clica em **Recusar** e o portal responde \"Escreva o motivo para recusar.\" O que faz?"
+    enunciado: 'O Draft do BL enviado pelo agente traz um peso bruto diferente da invoice. Você clica em **Recusar** e o portal responde "Escreva o motivo para recusar." O que faz?'
     opcoes:
       a: "Clica em **Validar** e avisa o agente depois, por Mensagens"
-      b: "Preenche o \"Motivo (obrigatório para recusar)\" e clica em **Recusar**"
+      b: 'Preenche o "Motivo (obrigatório para recusar)" e clica em **Recusar**'
       c: "Escolhe um arquivo novo e clica em **Enviar**, no lugar do agente"
       d: "Escreve o motivo em Mensagens e clica em **Recusar** de novo"
     correta: [b]
@@ -89,14 +89,14 @@ perguntas:
     nivel: 3
     capitulo: COM-01-C3
     cena: 7
-    enunciado: "O passo **Presença de carga** mostra \"Depois de: BL (original)\" e ainda não deixa enviar. O que você faz?"
+    enunciado: 'O passo **Presença de carga** mostra "Depois de: BL (original)" e ainda não deixa enviar. O que você faz?'
     opcoes:
       a: "Espera o BL (original) ser enviado e validado"
       b: "Pede ao financeiro que valide a Presença de carga"
       c: "Informa o Numerário antes, para destravar o passo"
       d: "Clica em **Enviar** mesmo assim"
     correta: [a]
-    explicacao: "\"Depois de\" indica o passo que precisa vir antes; fora de ordem o portal responde \"Conclua antes o passo anterior.\" Com o BL validado, o passo libera: informe a data e clique em **Enviar**. Ele não tem validação."
+    explicacao: '"Depois de" indica o passo que precisa vir antes; fora de ordem o portal responde "Conclua antes o passo anterior." Com o BL validado, o passo libera: informe a data e clique em **Enviar**. Ele não tem validação.'
   - id: COM-01-Q6
     tipo: unica
     nivel: 2
@@ -104,12 +104,12 @@ perguntas:
     cena: 8
     enunciado: "Você enviou o **Numerário** (valor em R$ e demonstrativo em PDF). Depois que o financeiro valida e paga, o que você vê?"
     opcoes:
-      a: "Numerário e \"Numerário pago\" Concluídos, com o comprovante do financeiro"
+      a: 'Numerário e "Numerário pago" Concluídos, com o comprovante do financeiro'
       b: "Só o Numerário Concluído; o pagamento não aparece em nenhum passo"
       c: "O Numerário Recusado, até você mesmo anexar o comprovante do pagamento"
-      d: "O passo \"Numerário pago\" aberto para você enviar o comprovante"
+      d: 'O passo "Numerário pago" aberto para você enviar o comprovante'
     correta: [a]
-    explicacao: "O financeiro valida o Numerário e, depois do pagamento, anexa o comprovante em \"Numerário pago\". Você só acompanha."
+    explicacao: 'O financeiro valida o Numerário e, depois do pagamento, anexa o comprovante em "Numerário pago". Você só acompanha.'
   - id: COM-01-Q7
     tipo: unica
     nivel: 1
@@ -122,13 +122,13 @@ perguntas:
       c: "Verde, amarelo, vermelho e cinza"
       d: "Branco, verde, vermelho e cinza"
     correta: [c]
-    explicacao: "O menu traz Verde, Amarelo, Vermelho e Cinza. Outro valor gera \"Canal inválido.\" Escolha a cor e clique em **Enviar**."
+    explicacao: 'O menu traz Verde, Amarelo, Vermelho e Cinza. Outro valor gera "Canal inválido." Escolha a cor e clique em **Enviar**.'
   - id: COM-01-Q8
     tipo: unica
     nivel: 3
     capitulo: COM-01-C4
     cena: 10
-    enunciado: "Todos os seus passos estão Concluídos, e só falta o **DANFE (nota de entrada)**, com \"Depois de: DI/DUIMP e XML\". O que você faz?"
+    enunciado: 'Todos os seus passos estão Concluídos, e só falta o **DANFE (nota de entrada)**, com "Depois de: DI/DUIMP e XML". O que você faz?'
     opcoes:
       a: "Envia o DANFE com o Comprovante de importação (CI)"
       b: "Pede ao despachante que envie o DANFE"

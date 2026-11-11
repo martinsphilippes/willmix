@@ -93,13 +93,13 @@ perguntas:
       c: "Abrir o ChatGPT →"
       d: "Salvar observações"
     correta: [b]
-    explicacao: "**Copiar prompt** copia o texto, e o botão passa a mostrar \"Copiado ✓\". **Gerar prompt** cria o texto; **Abrir o ChatGPT →** só abre o site em outra aba."
+    explicacao: '**Copiar prompt** copia o texto, e o botão passa a mostrar "Copiado ✓". **Gerar prompt** cria o texto; **Abrir o ChatGPT →** só abre o site em outra aba.'
   - id: AGE-03-Q7
     tipo: unica
     nivel: 3
     capitulo: AGE-03-C2
     cena: 6
-    enunciado: "Você clica em **Copiar prompt** e aparece \"Não deu para copiar sozinho: selecione o texto e copie.\" O que você faz?"
+    enunciado: 'Você clica em **Copiar prompt** e aparece "Não deu para copiar sozinho: selecione o texto e copie." O que você faz?'
     opcoes:
       a: "Clica de novo em **Gerar prompt** para tentar outra vez do zero"
       b: "Envia o texto do prompt em **Arte da embalagem**, como arquivo"
@@ -114,7 +114,7 @@ perguntas:
     cena: 7
     enunciado: "O ChatGPT criou uma imagem de que você gostou. Qual é o próximo passo no portal?"
     opcoes:
-      a: "Colar a imagem no campo \"Prompt pronto\" do briefing"
+      a: 'Colar a imagem no campo "Prompt pronto" do briefing'
       b: "Esperar: o portal busca a imagem criada no ChatGPT"
       c: "Escrever o link da imagem em **Observações (gráfica, fornecedor)**"
       d: "Baixar a imagem, conferir na faca e enviar em **Arte da embalagem**"

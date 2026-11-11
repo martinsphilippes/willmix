@@ -42,7 +42,7 @@ perguntas:
       c: "Em Notificações"
       d: "Em Marketing"
     correta: [a]
-    explicacao: "No Histórico, a coluna \"Último pedido\" traz **Comprar de novo** e **Nova proposta**. Os dois botões levam ao mesmo cartão do pedido."
+    explicacao: 'No Histórico, a coluna "Último pedido" traz **Comprar de novo** e **Nova proposta**. Os dois botões levam ao mesmo cartão do pedido.'
   - id: CLI-06-Q2
     tipo: unica
     nivel: 1
@@ -91,16 +91,16 @@ perguntas:
     opcoes:
       a: "É apagada para sempre e não dá para ver mais"
       b: "Vira pedido cancelado, com acerto de sinal"
-      c: "Sai da lista e fica em \"Ver canceladas e excluídas\", com a situação Excluída"
+      c: 'Sai da lista e fica em "Ver canceladas e excluídas", com a situação Excluída'
       d: "Continua na lista, com um aviso vermelho"
     correta: [c]
-    explicacao: "Nada é apagado de verdade. A solicitação sai da lista e as cotações em aberto são encerradas; ela fica em \"Ver canceladas e excluídas\"."
+    explicacao: 'Nada é apagado de verdade. A solicitação sai da lista e as cotações em aberto são encerradas; ela fica em "Ver canceladas e excluídas".'
   - id: CLI-06-Q6
     tipo: unica
     nivel: 3
     capitulo: CLI-06-C3
     cena: 7
-    enunciado: "João tenta excluir uma solicitação e aparece \"Já virou pedido: não pode ser excluída aqui (o pedido continua).\" O que faz?"
+    enunciado: 'João tenta excluir uma solicitação e aparece "Já virou pedido: não pode ser excluída aqui (o pedido continua)." O que faz?'
     opcoes:
       a: "Tenta excluir de novo até conseguir"
       b: "Pede ao fornecedor para cancelar"
@@ -113,7 +113,7 @@ perguntas:
     nivel: 3
     capitulo: CLI-06-C4
     cena: 8
-    enunciado: "João pediu o cancelamento de um pedido e viu \"O produto já entrou em produção: o cancelamento só pode ser tratado diretamente com a Wellmix.\" O que faz?"
+    enunciado: 'João pediu o cancelamento de um pedido e viu "O produto já entrou em produção: o cancelamento só pode ser tratado diretamente com a Wellmix." O que faz?'
     opcoes:
       a: "Insiste no botão até o portal aceitar"
       b: "Conversa com a Wellmix pelo botão de conversa"
@@ -129,7 +129,7 @@ perguntas:
     enunciado: "Coloque na ordem os passos para pedir o cancelamento de um pedido."
     opcoes:
       a: "Abrir o pedido e rolar até o cartão **Solicitar cancelamento**"
-      b: "Escrever o motivo em \"Por que deseja cancelar?\""
+      b: 'Escrever o motivo em "Por que deseja cancelar?"'
       c: "Clicar em **Solicitar cancelamento**"
       d: "Aguardar a análise da Wellmix, que aceita ou recusa"
     correta: [a, b, c, d]

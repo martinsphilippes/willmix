@@ -36,7 +36,7 @@ perguntas:
       c: "Observações (gráfica, fornecedor)"
       d: "Medidas da caixa"
     correta: [c]
-    explicacao: "O campo fica no cartão **Observações (gráfica, fornecedor)**. Digite o valor, escolha a **Moeda** e clique em **Salvar observações**; a tela volta com \"Salvo.\""
+    explicacao: 'O campo fica no cartão **Observações (gráfica, fornecedor)**. Digite o valor, escolha a **Moeda** e clique em **Salvar observações**; a tela volta com "Salvo."'
   - id: AGE-04-Q2
     tipo: multipla
     nivel: 2
@@ -50,13 +50,13 @@ perguntas:
       d: "Só a agência e a Wellmix veem"
       e: "Sem ele, o briefing não fica Pronta"
     correta: [a, b, d]
-    explicacao: "É o que a agência cobra pela criação e finalização da arte, é opcional e fica só entre a agência e a Wellmix: o fornecedor e o cliente não veem o briefing. Número inválido gera \"Informe o valor por item como número maior que zero.\""
+    explicacao: 'É o que a agência cobra pela criação e finalização da arte, é opcional e fica só entre a agência e a Wellmix: o fornecedor e o cliente não veem o briefing. Número inválido gera "Informe o valor por item como número maior que zero."'
   - id: AGE-04-Q3
     tipo: unica
     nivel: 2
     capitulo: AGE-04-C2
     cena: 5
-    enunciado: "Na etapa **Arte e embalagem** do pedido, o item \"Aprovação da arte pelo fornecedor\" está **Pendente**. O que isso quer dizer?"
+    enunciado: 'Na etapa **Arte e embalagem** do pedido, o item "Aprovação da arte pelo fornecedor" está **Pendente**. O que isso quer dizer?'
     opcoes:
       a: "Você precisa reenviar a arte agora, antes do prazo"
       b: "A Wellmix ainda vai conferir e aprovar a arte"
@@ -76,7 +76,7 @@ perguntas:
       c: "Certificação"
       d: "Arte do pedido"
     correta: [d]
-    explicacao: "A pendência \"Pedido #N: Arte e embalagem\" aparece em **Arte do pedido** (o quadrado 2). No pedido, a **Arte da embalagem** fica **Reprovado**, com a observação do fornecedor."
+    explicacao: 'A pendência "Pedido #N: Arte e embalagem" aparece em **Arte do pedido** (o quadrado 2). No pedido, a **Arte da embalagem** fica **Reprovado**, com a observação do fornecedor.'
   - id: AGE-04-Q5
     tipo: ordem
     nivel: 2
@@ -95,7 +95,7 @@ perguntas:
     nivel: 3
     capitulo: AGE-04-C3
     cena: 7
-    enunciado: "Você reenviou a arte (v3) e o item voltou a **Concluído**. \"Aprovação da arte pelo fornecedor\" está **Pendente** de novo. O que você faz?"
+    enunciado: 'Você reenviou a arte (v3) e o item voltou a **Concluído**. "Aprovação da arte pelo fornecedor" está **Pendente** de novo. O que você faz?'
     opcoes:
       a: "Exclui a v2 para o fornecedor ver só a v3 do item"
       b: "Pede à Wellmix que reabra o item pelo pedido"
@@ -113,7 +113,7 @@ perguntas:
       a: "O documento segue e o fornecedor assina assim mesmo, com a arte antiga"
       b: "A Wellmix assina primeiro e libera o envio ao fornecedor"
       c: "O documento vai para assinatura, mas sem a arte da embalagem"
-      d: "\"Aguardando a arte da embalagem: o documento só vai para assinatura depois dela.\""
+      d: '"Aguardando a arte da embalagem: o documento só vai para assinatura depois dela."'
     correta: [d]
     explicacao: "Enquanto a arte está reprovada, o documento do pedido não pode ir para assinatura. Reenvie a arte primeiro; a dica some quando ela volta a Concluído."
   - id: AGE-04-Q8

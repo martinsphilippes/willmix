@@ -78,7 +78,7 @@ perguntas:
       c: "**Validar**"
       d: "**Enviar o documento assinado (PDF ou foto)**"
     correta: [a]
-    explicacao: "No portal, você marca o aceite e clica em **Assinar o documento**; aparece \"Assinatura registrada.\" Os botões de PDF e de envio pertencem à Opção 2."
+    explicacao: 'No portal, você marca o aceite e clica em **Assinar o documento**; aparece "Assinatura registrada." Os botões de PDF e de envio pertencem à Opção 2.'
     traducoes:
       en:
         enunciado: "In **Option 1: sign here in the portal**, which button records your signature?"
@@ -87,7 +87,7 @@ perguntas:
           b: "**Download the document as PDF**"
           c: "**Validate**"
           d: "**Send the signed document (PDF or photo)**"
-        explicacao: "In the portal you tick the acceptance and click **Sign the document**; \"Signature registered.\" appears. The PDF and upload buttons belong to Option 2."
+        explicacao: 'In the portal you tick the acceptance and click **Sign the document**; "Signature registered." appears. The PDF and upload buttons belong to Option 2.'
       zh:
         enunciado: "在“方式一：在平台上直接签署”里，哪个按钮会记录您的签署？"
         opcoes:
@@ -103,7 +103,7 @@ perguntas:
     cena: 4
     enunciado: "Coloque na ordem os passos para assinar pelo portal (Opção 1)."
     opcoes:
-      a: "Marcar \"Li o documento acima e concordo…\""
+      a: 'Marcar "Li o documento acima e concordo…"'
       b: "Conferir o documento (produto, quantidade, preço, prazo)"
       c: "Clicar em **Assinar o documento**"
       d: "Conferir o nome em **Seu nome completo**"
@@ -113,7 +113,7 @@ perguntas:
       en:
         enunciado: "Put in order the steps to sign through the portal (Option 1)."
         opcoes:
-          a: "Tick \"I have read the document above and agree…\""
+          a: 'Tick "I have read the document above and agree…"'
           b: "Check the document (product, quantity, price, lead time)"
           c: "Click **Sign the document**"
           d: "Check the name in **Your full name**"
@@ -188,23 +188,23 @@ perguntas:
     nivel: 3
     capitulo: FOR-07-C1
     cena: 2
-    enunciado: "A página do documento mostra \"A Wellmix ainda não assinou. Você assina depois dela.\" Você já conferiu tudo. O que faz?"
+    enunciado: 'A página do documento mostra "A Wellmix ainda não assinou. Você assina depois dela." Você já conferiu tudo. O que faz?'
     opcoes:
       a: "Escreve seu nome e clica em **Assinar o documento** para adiantar"
       b: "Espera: o quadro **Sua vez de assinar** aparece depois da Wellmix"
       c: "Pede à Wellmix que assine o documento em seu nome"
       d: "Avisa a agência para refazer a arte e o selo"
     correta: [b]
-    explicacao: "A Wellmix assina primeiro; se você tentar antes, o sistema responde \"A Wellmix assina primeiro. Aguarde a assinatura dela.\" Quando chegar a sua vez, aparece o quadro **Sua vez de assinar**."
+    explicacao: 'A Wellmix assina primeiro; se você tentar antes, o sistema responde "A Wellmix assina primeiro. Aguarde a assinatura dela." Quando chegar a sua vez, aparece o quadro **Sua vez de assinar**.'
     traducoes:
       en:
-        enunciado: "The document page says \"Wellmix has not signed yet. You sign after them.\" You have already checked everything. What do you do?"
+        enunciado: 'The document page says "Wellmix has not signed yet. You sign after them." You have already checked everything. What do you do?'
         opcoes:
           a: "Write your name and click **Sign the document** to get ahead"
           b: "Wait: the **Your turn to sign** box appears after Wellmix"
           c: "Ask Wellmix to sign the document on your behalf"
           d: "Tell the agency to redo the artwork and the seal"
-        explicacao: "Wellmix signs first; if you try earlier, the system answers \"Wellmix signs first. Wait for their signature.\" When your turn comes, the **Your turn to sign** box appears."
+        explicacao: 'Wellmix signs first; if you try earlier, the system answers "Wellmix signs first. Wait for their signature." When your turn comes, the **Your turn to sign** box appears.'
       zh:
         enunciado: "文件页面显示“Wellmix 尚未签署。请在其之后签署。”您已核对完毕。您该怎么办？"
         opcoes:
@@ -218,7 +218,7 @@ perguntas:
     nivel: 3
     capitulo: FOR-07-C2
     cena: 4
-    enunciado: "Ao clicar em **Assinar o documento**, aparece \"O pedido mudou enquanto você lia. Confira o documento de novo e assine.\" O que você faz?"
+    enunciado: 'Ao clicar em **Assinar o documento**, aparece "O pedido mudou enquanto você lia. Confira o documento de novo e assine." O que você faz?'
     opcoes:
       a: "Confere o documento de novo, na versão atual, e assina"
       b: "Clica em **Assinar o documento** várias vezes até passar"
@@ -228,7 +228,7 @@ perguntas:
     explicacao: "O documento foi alterado enquanto você lia, então a versão que você viu não vale mais. Releia os pontos principais (preço, prazo, pagamento) e assine; a versão fica registrada com a sua assinatura."
     traducoes:
       en:
-        enunciado: "When you click **Sign the document**, \"The order changed while you were reading. Check the document again and sign.\" appears. What do you do?"
+        enunciado: 'When you click **Sign the document**, "The order changed while you were reading. Check the document again and sign." appears. What do you do?'
         opcoes:
           a: "Check the document again, in its current version, and sign"
           b: "Click **Sign the document** several times until it goes through"

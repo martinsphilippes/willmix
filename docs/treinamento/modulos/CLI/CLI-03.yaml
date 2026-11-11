@@ -79,7 +79,7 @@ perguntas:
     nivel: 3
     capitulo: CLI-03-C3
     cena: 7
-    enunciado: "Depois de aprovar, João vê \"A Wellmix vai informar os dados para pagamento\" em vez do Pix. O que faz?"
+    enunciado: 'Depois de aprovar, João vê "A Wellmix vai informar os dados para pagamento" em vez do Pix. O que faz?'
     opcoes:
       a: "Aguarda a orientação da Wellmix para pagar e depois anexa o comprovante"
       b: "Paga por uma chave Pix que achou na internet"

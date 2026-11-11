@@ -57,12 +57,12 @@ perguntas:
     cena: 4
     enunciado: "Coloque na ordem o caminho da faca até a sua arte."
     opcoes:
-      a: "Você recebe o aviso \"Faca (die-cut) recebida\""
+      a: 'Você recebe o aviso "Faca (die-cut) recebida"'
       b: "Você baixa a faca e faz a arte em cima dela"
       c: "As cotações são comparadas e o fornecedor é escolhido"
       d: "O fornecedor escolhido envia a faca"
     correta: [c, d, a, b]
-    explicacao: "Enquanto o fornecedor não é escolhido, a linha diz \"Aguardando o fornecedor escolhido enviar\". Quando ele envia, você recebe o aviso e baixa o arquivo para fazer a arte em cima dele."
+    explicacao: 'Enquanto o fornecedor não é escolhido, a linha diz "Aguardando o fornecedor escolhido enviar". Quando ele envia, você recebe o aviso e baixa o arquivo para fazer a arte em cima dele.'
   - id: AGE-02-Q4
     tipo: unica
     nivel: 2
@@ -114,13 +114,13 @@ perguntas:
       c: "Enviar um segundo arquivo na Foto da embalagem física"
       d: "O fornecedor escolhido enviar a faca"
     correta: [d]
-    explicacao: "O briefing só fica **Pronta** com a faca e a arte enviadas. Arquivos para a gráfica e foto são opcionais e não seguram nada. Quando a faca chega, o selo muda e a Wellmix recebe \"Embalagem pronta\"."
+    explicacao: 'O briefing só fica **Pronta** com a faca e a arte enviadas. Arquivos para a gráfica e foto são opcionais e não seguram nada. Quando a faca chega, o selo muda e a Wellmix recebe "Embalagem pronta".'
   - id: AGE-02-Q8
     tipo: unica
     nivel: 3
     capitulo: AGE-02-C3
     cena: 9
-    enunciado: "O fornecedor já aprovou a arte no pedido e você tenta enviar outra. O portal diz: \"A arte já foi aprovada no pedido: para trocar, a Wellmix reabre o item pelo pedido.\" O que você faz?"
+    enunciado: 'O fornecedor já aprovou a arte no pedido e você tenta enviar outra. O portal diz: "A arte já foi aprovada no pedido: para trocar, a Wellmix reabre o item pelo pedido." O que você faz?'
     opcoes:
       a: "Exclui a arte e envia de novo pelo briefing mesmo assim"
       b: "Pede à Wellmix que reabra o item pelo pedido"

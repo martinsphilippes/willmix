@@ -76,19 +76,19 @@ perguntas:
     cena: 7
     enunciado: "Quando os quatro itens da etapa estão **Feito**, o que o cartão **Die Cut** mostra?"
     opcoes:
-      a: "\"Falta: Foto em alta, Pedido mínimo (MOQ).\""
-      b: "\"Os quatro itens estão feitos. Obrigado!\""
-      c: "\"Aguardando a arte (agência ou Wellmix)\""
+      a: '"Falta: Foto em alta, Pedido mínimo (MOQ)."'
+      b: '"Os quatro itens estão feitos. Obrigado!"'
+      c: '"Aguardando a arte (agência ou Wellmix)"'
     correta: [b]
-    explicacao: "Com os quatro itens feitos, o cartão mostra \"Os quatro itens estão feitos. Obrigado!\" e a etiqueta **Feito**; a pendência sai da faixa e a Wellmix é avisada."
+    explicacao: 'Com os quatro itens feitos, o cartão mostra "Os quatro itens estão feitos. Obrigado!" e a etiqueta **Feito**; a pendência sai da faixa e a Wellmix é avisada.'
     traducoes:
       en:
         enunciado: "When the four items of the step are **Done**, what does the **Die Cut** card show?"
         opcoes:
-          a: "\"Missing: High-resolution photo, Minimum order (MOQ).\""
-          b: "\"All four items are done. Thank you!\""
-          c: "\"Waiting for the artwork (agency or Wellmix)\""
-        explicacao: "With the four items done, the card shows \"All four items are done. Thank you!\" and the **Done** tag; the task leaves the strip and Wellmix is notified."
+          a: '"Missing: High-resolution photo, Minimum order (MOQ)."'
+          b: '"All four items are done. Thank you!"'
+          c: '"Waiting for the artwork (agency or Wellmix)"'
+        explicacao: 'With the four items done, the card shows "All four items are done. Thank you!" and the **Done** tag; the task leaves the strip and Wellmix is notified.'
       zh:
         enunciado: "当环节的四项都显示“已完成”时，“刀模 (Die Cut)”卡片会显示什么？"
         opcoes:
@@ -212,7 +212,7 @@ perguntas:
     nivel: 3
     capitulo: FOR-04-C3
     cena: 6
-    enunciado: "Você digitou 0,5 em **Pedido mínimo (peças)** e clicou em **Confirmar pedido mínimo e prazo**. Aparece \"Pedido mínimo inválido…\". O que fazer?"
+    enunciado: 'Você digitou 0,5 em **Pedido mínimo (peças)** e clicou em **Confirmar pedido mínimo e prazo**. Aparece "Pedido mínimo inválido…". O que fazer?'
     opcoes:
       a: "Digitar 0, para a Wellmix definir o pedido mínimo"
       b: "Mudar o prazo para 720 dias e confirmar de novo"
@@ -222,7 +222,7 @@ perguntas:
     explicacao: "O pedido mínimo é um número inteiro de peças, maior que zero; zero e decimais são recusados. O prazo é outro campo: vai de 1 a 720 dias."
     traducoes:
       en:
-        enunciado: "You typed 0.5 in **Minimum order (pieces)** and clicked **Confirm minimum order and lead time**. \"Invalid minimum order…\" appears. What do you do?"
+        enunciado: 'You typed 0.5 in **Minimum order (pieces)** and clicked **Confirm minimum order and lead time**. "Invalid minimum order…" appears. What do you do?'
         opcoes:
           a: "Type 0, so Wellmix sets the minimum order"
           b: "Change the lead time to 720 days and confirm again"

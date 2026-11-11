@@ -42,20 +42,20 @@ perguntas:
     nivel: 3
     capitulo: GER-01-C1
     cena: 4
-    enunciado: "Você clica em **Entrar** e aparece em vermelho \"Credenciais inválidas\". O que faz?"
+    enunciado: 'Você clica em **Entrar** e aparece em vermelho "Credenciais inválidas". O que faz?'
     opcoes:
       a: "Espera alguns minutos, porque o banco de dados do portal não está respondendo"
       b: "Pede ao administrador para liberar a tela"
       c: "Clica em **Pular** e tenta de novo"
       d: "Confere o e-mail ou nome de usuário e a senha e tenta de novo"
     correta: [d]
-    explicacao: "\"Credenciais inválidas\" quer dizer que o login ou a senha não batem. O campo Login ou e-mail aceita e-mail ou nome de usuário; confira os dois campos."
+    explicacao: '"Credenciais inválidas" quer dizer que o login ou a senha não batem. O campo Login ou e-mail aceita e-mail ou nome de usuário; confira os dois campos.'
   - id: GER-01-Q3
     tipo: unica
     nivel: 3
     capitulo: GER-01-C1
     cena: 4
-    enunciado: "Ao entrar, aparece: \"Não foi possível entrar agora: o banco de dados do portal não está respondendo. Sua senha não é o problema.\" O que faz?"
+    enunciado: 'Ao entrar, aparece: "Não foi possível entrar agora: o banco de dados do portal não está respondendo. Sua senha não é o problema." O que faz?'
     opcoes:
       a: "Espera alguns minutos e tenta de novo; se continuar, avisa a Wellmix"
       b: "Troca a senha por uma nova e entra de novo, porque a antiga deve ter expirado"
@@ -107,7 +107,7 @@ perguntas:
     nivel: 3
     capitulo: GER-01-C3
     cena: 10
-    enunciado: "Você é cliente, digita o endereço de /app/booking e o portal volta ao início com a faixa âmbar \"Você não tem acesso a Booking\". O que isso significa?"
+    enunciado: 'Você é cliente, digita o endereço de /app/booking e o portal volta ao início com a faixa âmbar "Você não tem acesso a Booking". O que isso significa?'
     opcoes:
       a: "A senha está errada e é preciso trocá-la antes de entrar de novo no portal"
       b: "O portal está com defeito, e é preciso tentar de novo mais tarde, quando voltar"

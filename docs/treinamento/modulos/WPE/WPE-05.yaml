@@ -48,7 +48,7 @@ perguntas:
     nivel: 2
     capitulo: WPE-05-C1
     cena: 4
-    enunciado: "No cartão **Embarque**, o quadro \"Frete pelo tarifário\" mostra o quê?"
+    enunciado: 'No cartão **Embarque**, o quadro "Frete pelo tarifário" mostra o quê?'
     opcoes:
       a: "Só o frete da companhia marítima designada, já que as outras não importam"
       b: "O frete das tabelas de todas as companhias na rota, do mais barato ao mais caro"
@@ -74,7 +74,7 @@ perguntas:
     nivel: 1
     capitulo: WPE-05-C2
     cena: 6
-    enunciado: "Qual link, na linha \"Invoice e packing list\", monta o PDF com os itens, o preço da cotação e a ficha de compra para o comex conferir?"
+    enunciado: 'Qual link, na linha "Invoice e packing list", monta o PDF com os itens, o preço da cotação e a ficha de compra para o comex conferir?'
     opcoes:
       a: "**Gerar invoice e packing list**"
       b: "**Ver tarifário completo**"
@@ -101,14 +101,14 @@ perguntas:
     nivel: 3
     capitulo: WPE-05-C3
     cena: 7
-    enunciado: "O passo Booking (a reserva no navio) chegou \"Enviado, aguardando validação\", mas o número informado não bate com o que o agente de carga combinou. O que você faz?"
+    enunciado: 'O passo Booking (a reserva no navio) chegou "Enviado, aguardando validação", mas o número informado não bate com o que o agente de carga combinou. O que você faz?'
     opcoes:
       a: "Clica em **Recusar** sem escrever nada, porque o erro é óbvio para todos"
       b: "Clica em **Validar** e corrige o número na etapa seguinte do cartão"
       c: "Escreve o motivo e clica em **Recusar**"
       d: "Apaga o passo e envia você mesmo outra reserva no navio, no lugar do agente"
     correta: [c]
-    explicacao: "Recusar exige o motivo; quem fez recebe o aviso \"Recusado; quem fez foi avisado.\" e envia de novo. Sem motivo o portal responde \"Escreva o motivo para recusar.\""
+    explicacao: 'Recusar exige o motivo; quem fez recebe o aviso "Recusado; quem fez foi avisado." e envia de novo. Sem motivo o portal responde "Escreva o motivo para recusar."'
   - id: WPE-05-Q7
     tipo: unica
     nivel: 3
@@ -127,11 +127,11 @@ perguntas:
     nivel: 3
     capitulo: WPE-05-C4
     cena: 9
-    enunciado: "Você quer enviar o DANFE (nota de entrada), mas o portal responde \"Conclua antes o passo anterior.\" Qual passo está faltando?"
+    enunciado: 'Você quer enviar o DANFE (nota de entrada), mas o portal responde "Conclua antes o passo anterior." Qual passo está faltando?'
     opcoes:
       a: "Numerário pago, do financeiro"
       b: "DI/DUIMP e XML, do comex"
       c: "Invoice e packing assinados, do fornecedor"
       d: "Presença de carga, do comex"
     correta: [b]
-    explicacao: "O DANFE é da Wellmix e vem \"Depois de: DI/DUIMP e XML\". Concluído esse passo do comex, digite o Nº da nota fiscal, anexe o arquivo e clique em **Enviar**."
+    explicacao: 'O DANFE é da Wellmix e vem "Depois de: DI/DUIMP e XML". Concluído esse passo do comex, digite o Nº da nota fiscal, anexe o arquivo e clique em **Enviar**.'

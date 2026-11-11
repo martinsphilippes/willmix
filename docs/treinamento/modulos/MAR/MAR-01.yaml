@@ -41,7 +41,7 @@ perguntas:
     nivel: 1
     capitulo: MAR-01-C1
     cena: 3
-    enunciado: "Em Minhas pendências, qual botão da linha \"Pedido #1: Embarque\" leva ao pedido?"
+    enunciado: 'Em Minhas pendências, qual botão da linha "Pedido #1: Embarque" leva ao pedido?'
     opcoes:
       a: "Confirmar"
       b: "Abrir"
@@ -51,7 +51,7 @@ perguntas:
     explicacao: "A linha mostra o pedido, o tipo e o prazo, e o botão **Abrir** leva à página do pedido. A mesma pendência também aparece no sino de notificações."
     traducoes:
       en:
-        enunciado: "In My tasks, which button on the row \"Order #1: Shipping\" takes you to the order?"
+        enunciado: 'In My tasks, which button on the row "Order #1: Shipping" takes you to the order?'
         opcoes:
           a: "Confirm"
           b: "Open"
@@ -116,8 +116,8 @@ perguntas:
           a: "Open Finance from the menu"
           b: "Look at the order summary, which shows the customer"
           c: "Look for the values in the Documents table"
-          d: "Use the \"Chat with Wellmix\" button"
-        explicacao: "The shipping line does not see the customer or the prices: the order shows only the supplier, the items and the Shipping stage. Any question, use \"Chat with Wellmix\"."
+          d: 'Use the "Chat with Wellmix" button'
+        explicacao: 'The shipping line does not see the customer or the prices: the order shows only the supplier, the items and the Shipping stage. Any question, use "Chat with Wellmix".'
       zh:
         enunciado: "为了做计划，你想知道订单的客户名称和价格，但页面上没有显示。你该怎么做？"
         opcoes:
@@ -131,7 +131,7 @@ perguntas:
     nivel: 2
     capitulo: MAR-01-C2
     cena: 7
-    enunciado: "O item **Previsão de chegada** mostra \"Aguardando a data de embarque\". Por quê?"
+    enunciado: 'O item **Previsão de chegada** mostra "Aguardando a data de embarque". Por quê?'
     opcoes:
       a: "Ela só abre depois que a data de embarque é enviada"
       b: "O BL ainda não foi enviado, e ele vem antes da chegada no cartão"
@@ -141,7 +141,7 @@ perguntas:
     explicacao: "A previsão de chegada é conferida com a data de embarque, por isso só abre depois dela. Envie primeiro a **Data de embarque**; o item muda para Concluído e mostra quem enviou e quando."
     traducoes:
       en:
-        enunciado: "The Estimated arrival item shows \"Waiting for the shipping date\". Why?"
+        enunciado: 'The Estimated arrival item shows "Waiting for the shipping date". Why?'
         opcoes:
           a: "It only opens after the shipping date is sent"
           b: "The BL has not been sent yet, and it comes before the arrival on the card"

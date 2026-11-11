@@ -78,7 +78,7 @@ perguntas:
       c: "A companhia marítima envia e a Wellmix valida"
       d: "Você envia e você mesmo valida"
     correta: [a]
-    explicacao: "A linha mostra \"Faz: comex · valida: fornecedor\". Quem enviou não valida o próprio passo: por isso o fornecedor valida o que o comex fez, e o comex valida a invoice assinada que você envia."
+    explicacao: 'A linha mostra "Faz: comex · valida: fornecedor". Quem enviou não valida o próprio passo: por isso o fornecedor valida o que o comex fez, e o comex valida a invoice assinada que você envia.'
     traducoes:
       en:
         enunciado: "In the **Invoice and packing list** line, who sends the file and who validates it?"
@@ -87,7 +87,7 @@ perguntas:
           b: "You send it and the comex validates it"
           c: "The shipping line sends it and Wellmix validates it"
           d: "You send it and you validate it yourself"
-        explicacao: "The line shows \"Done by: comex · validated by: supplier\". The sender cannot validate their own step: so the supplier validates what the comex did, and the comex validates the signed invoice you send."
+        explicacao: 'The line shows "Done by: comex · validated by: supplier". The sender cannot validate their own step: so the supplier validates what the comex did, and the comex validates the signed invoice you send.'
       zh:
         enunciado: "在“发票和装箱单”这一行，谁上传文件，谁来审核？"
         opcoes:
@@ -164,23 +164,23 @@ perguntas:
     nivel: 2
     capitulo: FOR-09-C3
     cena: 4
-    enunciado: "A linha **Invoice e packing assinados** mostra \"Depois de: Invoice e packing list\" e você não consegue enviar. O que falta?"
+    enunciado: 'A linha **Invoice e packing assinados** mostra "Depois de: Invoice e packing list" e você não consegue enviar. O que falta?'
     opcoes:
       a: "Esperar o **BL (original)** chegar"
       b: "Enviar antes o **Draft do BL**"
       c: "Validar a **Invoice e packing list**"
       d: "Pedir ao comex que valide a invoice assinada"
     correta: [c]
-    explicacao: "A linha da invoice assinada só destrava depois de você validar a **Invoice e packing list**. Se tentar enviar fora de ordem, o sistema diz \"Conclua antes o passo anterior.\""
+    explicacao: 'A linha da invoice assinada só destrava depois de você validar a **Invoice e packing list**. Se tentar enviar fora de ordem, o sistema diz "Conclua antes o passo anterior."'
     traducoes:
       en:
-        enunciado: "The **Signed invoice and packing** line shows \"After: Invoice and packing list\" and you cannot send. What is missing?"
+        enunciado: 'The **Signed invoice and packing** line shows "After: Invoice and packing list" and you cannot send. What is missing?'
         opcoes:
           a: "Waiting for the **BL (original)** to arrive"
           b: "Sending the **Draft BL** first"
           c: "Validating the **Invoice and packing list**"
           d: "Asking the comex to validate the signed invoice"
-        explicacao: "The signed invoice line only unlocks after you validate the **Invoice and packing list**. If you try to send out of order, the system says \"Finish the previous step first.\""
+        explicacao: 'The signed invoice line only unlocks after you validate the **Invoice and packing list**. If you try to send out of order, the system says "Finish the previous step first."'
       zh:
         enunciado: "“已签署的发票和装箱单”这一行显示“需先完成：发票和装箱单”，您无法提交。还缺什么？"
         opcoes:
@@ -201,7 +201,7 @@ perguntas:
       c: "Escreve o erro em **Motivo (obrigatório para recusar)** e clica em **Recusar**"
       d: "Baixa o arquivo, corrige os pesos por conta própria e usa **Enviar** na linha"
     correta: [c]
-    explicacao: "Para recusar, o motivo é obrigatório; sem ele aparece \"Escreva o motivo para recusar.\" Ao recusar, quem enviou é avisado e corrige. Validar significaria aceitar a invoice como está."
+    explicacao: 'Para recusar, o motivo é obrigatório; sem ele aparece "Escreva o motivo para recusar." Ao recusar, quem enviou é avisado e corrige. Validar significaria aceitar a invoice como está.'
     traducoes:
       en:
         enunciado: "You opened the invoice and the carton weights are wrong. What do you do?"
@@ -210,7 +210,7 @@ perguntas:
           b: "Click **Reject** without writing anything, because the weight error is obvious"
           c: "Write the error in **Reason (required to reject)** and click **Reject**"
           d: "Download the file, fix the weights on your own and use **Send** on the line"
-        explicacao: "To reject, the reason is required; without it \"Write the reason to reject.\" appears. When you reject, the sender is notified and fixes it. Validating would mean accepting the invoice as it is."
+        explicacao: 'To reject, the reason is required; without it "Write the reason to reject." appears. When you reject, the sender is notified and fixes it. Validating would mean accepting the invoice as it is.'
       zh:
         enunciado: "您打开发票，发现箱子的重量有误。您该怎么办？"
         opcoes:

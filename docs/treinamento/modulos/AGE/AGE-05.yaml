@@ -36,13 +36,13 @@ perguntas:
       c: "Selo na arte"
       d: "Certificação"
     correta: [c]
-    explicacao: "O quadrado **Selo na arte** fica amarelo, e a linha diz \"Aplicar o selo de certificação na arte\". Clique em **Abrir** para ir direto ao cartão Certificação do pedido."
+    explicacao: 'O quadrado **Selo na arte** fica amarelo, e a linha diz "Aplicar o selo de certificação na arte". Clique em **Abrir** para ir direto ao cartão Certificação do pedido.'
   - id: AGE-05-Q2
     tipo: unica
     nivel: 2
     capitulo: AGE-05-C1
     cena: 3
-    enunciado: "O briefing mostra: \"Selo de certificação: aguardando a certificadora. Deixe o espaço do selo na arte.\" O que você faz?"
+    enunciado: 'O briefing mostra: "Selo de certificação: aguardando a certificadora. Deixe o espaço do selo na arte." O que você faz?'
     opcoes:
       a: "Espera o selo chegar para só então começar a arte"
       b: "Deixa o espaço do selo na arte e segue com ela"
@@ -75,26 +75,26 @@ perguntas:
       c: "Baixar o selo pelo link **Arquivo**"
       d: "Aplicar o selo na arte da embalagem"
     correta: [c, d, a, b]
-    explicacao: "Baixe o selo, aplique na arte, escolha o arquivo da arte com o selo e clique em **Enviar**. A situação vira \"Enviado, aguardando validação\"."
+    explicacao: 'Baixe o selo, aplique na arte, escolha o arquivo da arte com o selo e clique em **Enviar**. A situação vira "Enviado, aguardando validação".'
   - id: AGE-05-Q5
     tipo: unica
     nivel: 3
     capitulo: AGE-05-C2
     cena: 6
-    enunciado: "Você escolheu um arquivo de arte grande na linha **Selo aplicado na arte** e clicou em **Enviar** na hora. O portal respondeu \"Envie o arquivo.\" O que fazer?"
+    enunciado: 'Você escolheu um arquivo de arte grande na linha **Selo aplicado na arte** e clicou em **Enviar** na hora. O portal respondeu "Envie o arquivo." O que fazer?'
     opcoes:
-      a: "Esperar aparecer \"Arquivo pronto…\" e então clicar em **Enviar**"
+      a: 'Esperar aparecer "Arquivo pronto…" e então clicar em **Enviar**'
       b: "Pedir à Wellmix que envie a arte no seu lugar, pela conversa"
       c: "Trocar o arquivo por um menor e clicar em **Enviar** na hora"
       d: "Clicar em **Enviar de novo**, que aparece em toda linha"
     correta: [a]
-    explicacao: "Em arquivo grande, o envio só funciona depois que o arquivo termina de subir: espere o aviso \"Arquivo pronto: {nome} ({tamanho}). Agora clique no botão para enviar.\" e então clique em **Enviar**."
+    explicacao: 'Em arquivo grande, o envio só funciona depois que o arquivo termina de subir: espere o aviso "Arquivo pronto: {nome} ({tamanho}). Agora clique no botão para enviar." e então clique em **Enviar**.'
   - id: AGE-05-Q6
     tipo: unica
     nivel: 3
     capitulo: AGE-05-C3
     cena: 7
-    enunciado: "Chega o aviso \"Selo aplicado na arte recusado\", com o motivo \"O selo ficou pequeno demais\". O que você faz?"
+    enunciado: 'Chega o aviso "Selo aplicado na arte recusado", com o motivo "O selo ficou pequeno demais". O que você faz?'
     opcoes:
       a: "Pede à certificadora um selo maior"
       b: "Sobe uma nova versão em Arte da embalagem no briefing"
@@ -114,7 +114,7 @@ perguntas:
       c: "O fornecedor ainda não assinou o documento do pedido"
       d: "A certificadora ainda não assinou o documento do pedido"
     correta: [a]
-    explicacao: "Sem a arte ou sem o selo aplicado, o botão não aparece, e o portal avisa o que falta (por exemplo, \"Aguardando o selo da certificadora aplicado na arte\"). As assinaturas vêm depois do envio."
+    explicacao: 'Sem a arte ou sem o selo aplicado, o botão não aparece, e o portal avisa o que falta (por exemplo, "Aguardando o selo da certificadora aplicado na arte"). As assinaturas vêm depois do envio.'
   - id: AGE-05-Q8
     tipo: unica
     nivel: 2

@@ -57,12 +57,12 @@ perguntas:
     cena: 4
     enunciado: "Em Início → Pendências, como você mostra só o que já venceu?"
     opcoes:
-      a: "No filtro Tipo, escolhendo \"Atrasadas\""
-      b: "No filtro Prazo, escolhendo \"Atrasadas\""
-      c: "No filtro Prazo, escolhendo \"Vencem hoje\""
+      a: 'No filtro Tipo, escolhendo "Atrasadas"'
+      b: 'No filtro Prazo, escolhendo "Atrasadas"'
+      c: 'No filtro Prazo, escolhendo "Vencem hoje"'
       d: "Abrindo o Painel de SLA, que lista só as vencidas"
     correta: [b]
-    explicacao: "O filtro **Prazo** tem Todas, Atrasadas, Vencem hoje e Até 7 dias; cada linha mostra \"atrasada há N dias\" ou \"vence amanhã\". O Painel de SLA é outra tela, com a visão por analista."
+    explicacao: 'O filtro **Prazo** tem Todas, Atrasadas, Vencem hoje e Até 7 dias; cada linha mostra "atrasada há N dias" ou "vence amanhã". O Painel de SLA é outra tela, com a visão por analista.'
   - id: WPE-07-Q4
     tipo: multipla
     nivel: 2
@@ -70,10 +70,10 @@ perguntas:
     cena: 5
     enunciado: "Sobre os lembretes por prazo, o que está certo? Marque todas as certas."
     opcoes:
-      a: "\"Vence em breve\" avisa o responsável quando falta pouco para o prazo (padrão: até 1 dia)"
-      b: "\"Atrasado\" avisa quando o prazo da etapa já venceu"
+      a: '"Vence em breve" avisa o responsável quando falta pouco para o prazo (padrão: até 1 dia)'
+      b: '"Atrasado" avisa quando o prazo da etapa já venceu'
       c: "O e-mail e o WhatsApp também avisam o responsável de verdade"
-      d: "Os prazos por etapa e o \"Lembrete antes do vencimento (dias)\" são do administrador, em Configurações"
+      d: 'Os prazos por etapa e o "Lembrete antes do vencimento (dias)" são do administrador, em Configurações'
     correta: [a, b, d]
     explicacao: "O portal confere os prazos todo dia e avisa pelo sino. E-mail e WhatsApp são de demonstração: só o sino e as Notificações do portal avisam. Mudar os prazos é só do administrador."
   - id: WPE-07-Q5
@@ -81,11 +81,11 @@ perguntas:
     nivel: 3
     capitulo: WPE-07-C2
     cena: 6
-    enunciado: "O Pedido #3 está com \"Inspeção · Bloqueada\" e a faixa vermelha \"Revisão necessária\". O que você faz?"
+    enunciado: 'O Pedido #3 está com "Inspeção · Bloqueada" e a faixa vermelha "Revisão necessária". O que você faz?'
     opcoes:
       a: "Espera o fornecedor reenviar as fotos; o bloqueio some sozinho"
       b: "Cancela o pedido, que é a única forma de destravar"
-      c: "Abre o pedido e decide em \"Revisão da divergência na inspeção (Wellmix)\": **Aprovar** ou **Reprovar**"
+      c: 'Abre o pedido e decide em "Revisão da divergência na inspeção (Wellmix)": **Aprovar** ou **Reprovar**'
       d: "Pede ao cliente que aprove a divergência"
     correta: [c]
     explicacao: "Etapa bloqueada espera a Wellmix. **Aprovar** aceita a divergência com o motivo; **Reprovar** pede nova medição ao fornecedor (o caminho completo está no vídeo da inspeção)."
@@ -94,7 +94,7 @@ perguntas:
     nivel: 3
     capitulo: WPE-07-C3
     cena: 7
-    enunciado: "Você, operador, abre um pedido e vê no alto o alerta amarelo \"Cliente pediu o cancelamento\", sem formulário para responder. O que você faz?"
+    enunciado: 'Você, operador, abre um pedido e vê no alto o alerta amarelo "Cliente pediu o cancelamento", sem formulário para responder. O que você faz?'
     opcoes:
       a: "Cancela o pedido pelo cartão **Cancelar pedido**, no fim da página"
       b: "Leva o pedido ao administrador, que é quem decide o cancelamento"
@@ -114,7 +114,7 @@ perguntas:
       c: "Deixa o alerta sem resposta até o cliente desistir do pedido"
       d: "Apaga o alerta pela Control Tower, em Pedido de cancelamento"
     correta: [a]
-    explicacao: "Recusar exige a resposta ao cliente, que passa a ver \"A Wellmix recusou o cancelamento: …\". Não escolha **Cancelar pedido** para testar: o portal não tem botão de desfazer."
+    explicacao: 'Recusar exige a resposta ao cliente, que passa a ver "A Wellmix recusou o cancelamento: …". Não escolha **Cancelar pedido** para testar: o portal não tem botão de desfazer.'
   - id: WPE-07-Q8
     tipo: unica
     nivel: 2
@@ -127,4 +127,4 @@ perguntas:
       c: "O pedido volta à etapa Pedido pré-aprovado, para ser refeito"
       d: "O pedido fica Cancelado com o histórico, sai dos containers e dos fretes em aberto, e todos são avisados"
     correta: [d]
-    explicacao: "Nada é apagado: o pedido fica \"Cancelado\", com a etapa em que parou e o motivo, as etapas abertas se encerram e cliente, fornecedor e parceiros são avisados. Se já tem número no Sankhya, cancele lá também."
+    explicacao: 'Nada é apagado: o pedido fica "Cancelado", com a etapa em que parou e o motivo, as etapas abertas se encerram e cliente, fornecedor e parceiros são avisados. Se já tem número no Sankhya, cancele lá também.'

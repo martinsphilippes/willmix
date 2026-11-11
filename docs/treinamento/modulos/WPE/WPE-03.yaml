@@ -42,7 +42,7 @@ perguntas:
       c: "Em Cadastros → Produtos"
       d: "Em Pedidos → Embalagens"
     correta: [d]
-    explicacao: "Em Pedidos → Embalagens há um briefing por solicitação, aberto quando ela vai ao fornecedor. A situação diz se a venda já foi confirmada: \"Em preparação\" ou \"No pedido\"."
+    explicacao: 'Em Pedidos → Embalagens há um briefing por solicitação, aberto quando ela vai ao fornecedor. A situação diz se a venda já foi confirmada: "Em preparação" ou "No pedido".'
   - id: WPE-03-Q2
     tipo: unica
     nivel: 1
@@ -55,7 +55,7 @@ perguntas:
       c: "O cliente, ao aprovar a proposta"
       d: "A certificadora, junto com o selo"
     correta: [b]
-    explicacao: "A faca vem só do fornecedor escolhido; a arte é da agência (ou da Wellmix, sem agência). A tela mostra \"com o fornecedor\" ao lado da faca."
+    explicacao: 'A faca vem só do fornecedor escolhido; a arte é da agência (ou da Wellmix, sem agência). A tela mostra "com o fornecedor" ao lado da faca.'
   - id: WPE-03-Q3
     tipo: multipla
     nivel: 2
@@ -75,14 +75,14 @@ perguntas:
     nivel: 3
     capitulo: WPE-03-C2
     cena: 6
-    enunciado: "A linha \"Selo aplicado na arte\" chega como \"Enviado, aguardando validação\", mas o selo está fora do lugar combinado. O que você faz?"
+    enunciado: 'A linha "Selo aplicado na arte" chega como "Enviado, aguardando validação", mas o selo está fora do lugar combinado. O que você faz?'
     opcoes:
       a: "Clica em **Recusar** direto, sem escrever nada, para a agência refazer o selo"
       b: "Clica em **Validar** e avisa a agência por fora, porque é só um detalhe"
-      c: "Escreve o \"Motivo (obrigatório para recusar)\" e clica em **Recusar**"
+      c: 'Escreve o "Motivo (obrigatório para recusar)" e clica em **Recusar**'
       d: "Espera o fornecedor reprovar a arte"
     correta: [c]
-    explicacao: "Recusar exige o motivo (sem ele aparece \"Escreva o motivo para recusar.\"), e quem fez a arte recebe o aviso. Quem enviou a arte não valida a própria."
+    explicacao: 'Recusar exige o motivo (sem ele aparece "Escreva o motivo para recusar."), e quem fez a arte recebe o aviso. Quem enviou a arte não valida a própria.'
   - id: WPE-03-Q5
     tipo: unica
     nivel: 3
@@ -90,12 +90,12 @@ perguntas:
     cena: 7
     enunciado: "O fornecedor reprovou a arte com uma observação. O que você vê no pedido e o que acontece quando a agência reenviar?"
     opcoes:
-      a: "Fica \"Reprovado\" com a observação; no reenvio, a aprovação volta a \"Pendente\""
+      a: 'Fica "Reprovado" com a observação; no reenvio, a aprovação volta a "Pendente"'
       b: "O item some da lista até a agência reenviar, e a observação do fornecedor não chega à Wellmix"
       c: "A etapa Arte e embalagem é cancelada e o pedido inteiro volta à Preparação"
-      d: "A aprovação já vira \"Aprovada\", porque a agência corrigiu tudo o que foi pedido"
+      d: 'A aprovação já vira "Aprovada", porque a agência corrigiu tudo o que foi pedido'
     correta: [a]
-    explicacao: "A arte volta para quem a fez, com aviso e com a observação do fornecedor à vista. Quando é reenviada, a aprovação volta a \"Pendente\" para ele decidir de novo."
+    explicacao: 'A arte volta para quem a fez, com aviso e com a observação do fornecedor à vista. Quando é reenviada, a aprovação volta a "Pendente" para ele decidir de novo.'
   - id: WPE-03-Q6
     tipo: unica
     nivel: 2
@@ -108,13 +108,13 @@ perguntas:
       c: "Em Cadastros → Fornecedores, trocando o fornecedor principal do produto"
       d: "Em Configurações, que o operador abre sem restrição"
     correta: [a]
-    explicacao: "Em **Parceiros do pedido**, a linha **Agência** tem uma lista e o botão **Designar**. A arte ainda não enviada passa para a nova agência (ou para a Wellmix, se você escolher \"—\"), e o novo responsável é avisado."
+    explicacao: 'Em **Parceiros do pedido**, a linha **Agência** tem uma lista e o botão **Designar**. A arte ainda não enviada passa para a nova agência (ou para a Wellmix, se você escolher "—"), e o novo responsável é avisado.'
   - id: WPE-03-Q7
     tipo: unica
     nivel: 3
     capitulo: WPE-03-C3
     cena: 9
-    enunciado: "Você tenta enviar o documento do pedido para assinatura e a tela diz: \"Aguardando o selo da certificadora aplicado na arte: o documento só vai para assinatura depois dele.\" O que isso pede?"
+    enunciado: 'Você tenta enviar o documento do pedido para assinatura e a tela diz: "Aguardando o selo da certificadora aplicado na arte: o documento só vai para assinatura depois dele." O que isso pede?'
     opcoes:
       a: "Que o administrador assine o documento antes de qualquer outra pessoa"
       b: "Que o fornecedor aprove a arte antes de qualquer envio para assinatura"
@@ -134,4 +134,4 @@ perguntas:
       c: "A Wellmix assina em **Assinar o documento**, com o aceite marcado"
       d: "Clicar em **Enviar para assinatura**"
     correta: [b, d, c, a]
-    explicacao: "Com o selo validado o documento vai para assinatura. A Wellmix assina primeiro (sem isso aparece \"A Wellmix assina primeiro. Aguarde a assinatura dela.\") e depois o fornecedor."
+    explicacao: 'Com o selo validado o documento vai para assinatura. A Wellmix assina primeiro (sem isso aparece "A Wellmix assina primeiro. Aguarde a assinatura dela.") e depois o fornecedor.'

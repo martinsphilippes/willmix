@@ -36,7 +36,7 @@ perguntas:
       c: "O portal usa o NCM do fornecedor"
       d: "O valor sobe com um imposto estimado"
     correta: [a]
-    explicacao: "O aviso da tela diz: \"Sem NCM confirmado, II e IPI ficam em 0% no valor ao cliente.\" Por isso a classificação é importante, e quem classifica é você."
+    explicacao: 'O aviso da tela diz: "Sem NCM confirmado, II e IPI ficam em 0% no valor ao cliente." Por isso a classificação é importante, e quem classifica é você.'
   - id: DES-02-Q2
     tipo: unica
     nivel: 1
@@ -49,7 +49,7 @@ perguntas:
       c: "Classificar NCM"
       d: "Selo na arte"
     correta: [c]
-    explicacao: "A pendência **Classificar NCM** (\"Solicitação nº N · confira as sugestões e confirme o NCM\") aparece junto com um aviso no sino. Clique em **Abrir** para ir à tela de classificação."
+    explicacao: 'A pendência **Classificar NCM** ("Solicitação nº N · confira as sugestões e confirme o NCM") aparece junto com um aviso no sino. Clique em **Abrir** para ir à tela de classificação.'
   - id: DES-02-Q3
     tipo: multipla
     nivel: 2
@@ -76,7 +76,7 @@ perguntas:
       c: "Rejeitar"
       d: "Validar"
     correta: [a]
-    explicacao: "Depois de **Confirmar**, o bloco \"NCM confirmado\" mostra o código e o botão **Alterar NCM**, que serve para corrigir. **Rejeitar** e **Validar** são da tela do produto, para as candidatas."
+    explicacao: 'Depois de **Confirmar**, o bloco "NCM confirmado" mostra o código e o botão **Alterar NCM**, que serve para corrigir. **Rejeitar** e **Validar** são da tela do produto, para as candidatas.'
   - id: DES-02-Q5
     tipo: unica
     nivel: 2
@@ -89,20 +89,20 @@ perguntas:
       c: "Na etapa Desembaraço, no item Documentos aduaneiros do pedido"
       d: "Reabrindo a pendência Classificar NCM da solicitação antiga"
     correta: [b]
-    explicacao: "No **Resumo do pedido**, o link de **Classificação fiscal (NCM)** (por exemplo, \"Não classificado\") abre a tela do produto. A tela Classificar NCM da solicitação fecha quando ela vira pedido: \"Esta solicitação já virou pedido ou foi encerrada\"."
+    explicacao: 'No **Resumo do pedido**, o link de **Classificação fiscal (NCM)** (por exemplo, "Não classificado") abre a tela do produto. A tela Classificar NCM da solicitação fecha quando ela vira pedido: "Esta solicitação já virou pedido ou foi encerrada".'
   - id: DES-02-Q6
     tipo: unica
     nivel: 3
     capitulo: DES-02-C3
     cena: 7
-    enunciado: "A tela do produto mostra a candidata \"7013.37\" com o selo **Sugerida**. Um colega diz que, como o portal sugeriu, o NCM já vale. O que você responde?"
+    enunciado: 'A tela do produto mostra a candidata "7013.37" com o selo **Sugerida**. Um colega diz que, como o portal sugeriu, o NCM já vale. O que você responde?'
     opcoes:
       a: "Vale, porque a origem é Heurística (palavras-chave)"
       b: "Só vale depois que uma pessoa clicar em **Validar**"
       c: "Vale depois de 24 horas sem ninguém rejeitar"
       d: "Vale se a Wellmix abrir o pedido"
     correta: [b]
-    explicacao: "A sugestão nunca vale sozinha: precisa de uma pessoa clicando em **Validar**. Aí o topo mostra \"NCM validado\", com quem validou e quando. Só uma classificação validada vale por produto; validar outra substitui a atual."
+    explicacao: 'A sugestão nunca vale sozinha: precisa de uma pessoa clicando em **Validar**. Aí o topo mostra "NCM validado", com quem validou e quando. Só uma classificação validada vale por produto; validar outra substitui a atual.'
   - id: DES-02-Q7
     tipo: unica
     nivel: 3

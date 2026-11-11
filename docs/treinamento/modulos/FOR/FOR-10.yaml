@@ -108,7 +108,7 @@ perguntas:
       c: "Ainda falta acontecer o evento da condição, como a entrega"
       d: "A data de vencimento já passou"
     correta: [c]
-    explicacao: "\"Aguardando o marco\" quer dizer que ainda falta o evento combinado, como a entrega, para a parcela vencer. Parcela paga mostra \"Pago · falta o fornecedor confirmar\", e passada do prazo mostra \"Vencida\"."
+    explicacao: '"Aguardando o marco" quer dizer que ainda falta o evento combinado, como a entrega, para a parcela vencer. Parcela paga mostra "Pago · falta o fornecedor confirmar", e passada do prazo mostra "Vencida".'
     traducoes:
       en:
         enunciado: "In the **Payment forecast**, an installment shows **Waiting for milestone**. What does that mean?"
@@ -117,7 +117,7 @@ perguntas:
           b: "It was already paid and you still have to confirm"
           c: "The event in the terms, such as delivery, has not happened yet"
           d: "The due date has already passed"
-        explicacao: "\"Waiting for milestone\" means the agreed event, such as delivery, is still missing for the installment to fall due. A paid installment shows \"Paid · awaiting supplier confirmation\", and a late one shows \"Overdue\"."
+        explicacao: '"Waiting for milestone" means the agreed event, such as delivery, is still missing for the installment to fall due. A paid installment shows "Paid · awaiting supplier confirmation", and a late one shows "Overdue".'
       zh:
         enunciado: "在“付款预计”里，某一期显示“等待节点”。这是什么意思？"
         opcoes:
@@ -138,7 +138,7 @@ perguntas:
       c: "Clicar em **Confirmar recebimento**"
       d: "Abrir **Conta corrente**, no menu **Pedidos**"
     correta: [b, d, a, c]
-    explicacao: "Só confirme depois que o dinheiro estiver no banco. Aí você abre a **Conta corrente**, acha a linha do pagamento e clica em **Confirmar recebimento**: a situação vira \"Recebido\" e o histórico registra \"Recebimento confirmado\"."
+    explicacao: 'Só confirme depois que o dinheiro estiver no banco. Aí você abre a **Conta corrente**, acha a linha do pagamento e clica em **Confirmar recebimento**: a situação vira "Recebido" e o histórico registra "Recebimento confirmado".'
     traducoes:
       en:
         enunciado: "Put in order what you do to confirm a payment from Wellmix."
@@ -147,7 +147,7 @@ perguntas:
           b: "Wait for the money to arrive in your bank account"
           c: "Click **Confirm receipt**"
           d: "Open **Account statement**, in the **Orders** menu"
-        explicacao: "Only confirm after the money is in the bank. Then you open the **Account statement**, find the payment line and click **Confirm receipt**: the status becomes \"Received\" and the history records \"Receipt confirmed\"."
+        explicacao: 'Only confirm after the money is in the bank. Then you open the **Account statement**, find the payment line and click **Confirm receipt**: the status becomes "Received" and the history records "Receipt confirmed".'
       zh:
         enunciado: "请把您确认 Wellmix 付款的步骤按顺序排好。"
         opcoes:
@@ -166,14 +166,14 @@ perguntas:
       a: "Verdadeiro"
       b: "Falso"
     correta: [a]
-    explicacao: "Ao abrir a Conta corrente, a trilha só registra \"visualizado\". Confirmar é um ato seu e a parcela fica pendente (\"Pago · falta o fornecedor confirmar\") até você clicar no botão."
+    explicacao: 'Ao abrir a Conta corrente, a trilha só registra "visualizado". Confirmar é um ato seu e a parcela fica pendente ("Pago · falta o fornecedor confirmar") até você clicar no botão.'
     traducoes:
       en:
         enunciado: "True or false: opening the **Account statement** and seeing the payment line does not confirm receipt; only the **Confirm receipt** button does."
         opcoes:
           a: "True"
           b: "False"
-        explicacao: "When you open the Account statement, the trail only records \"viewed on\". Confirming is your own act and the installment stays pending (\"Paid · awaiting supplier confirmation\") until you click the button."
+        explicacao: 'When you open the Account statement, the trail only records "viewed on". Confirming is your own act and the installment stays pending ("Paid · awaiting supplier confirmation") until you click the button.'
       zh:
         enunciado: "判断题：打开“往来账”并看到付款那一行并不会确认收款；只有“确认收款”按钮才会确认。"
         opcoes:
@@ -185,23 +185,23 @@ perguntas:
     nivel: 3
     capitulo: FOR-10-C3
     cena: 5
-    enunciado: "Chegou o aviso \"pagamento enviado, confirme o recebimento\", mas o dinheiro ainda não apareceu no seu banco. O que faz?"
+    enunciado: 'Chegou o aviso "pagamento enviado, confirme o recebimento", mas o dinheiro ainda não apareceu no seu banco. O que faz?'
     opcoes:
       a: "Espera o dinheiro entrar e só então clica em **Confirmar recebimento**"
       b: "Clica em **Confirmar recebimento** para o aviso sair"
       c: "Clica em **Confirmar recebimento** e corrige depois, se o dinheiro não vier"
       d: "Pede à Wellmix que confirme por você"
     correta: [a]
-    explicacao: "Só confirme depois de receber. Não há como desfazer a confirmação: só a Wellmix consegue ajustar. A parcela fica como \"Pago · falta o fornecedor confirmar\" até você confirmar."
+    explicacao: 'Só confirme depois de receber. Não há como desfazer a confirmação: só a Wellmix consegue ajustar. A parcela fica como "Pago · falta o fornecedor confirmar" até você confirmar.'
     traducoes:
       en:
-        enunciado: "The notice \"payment sent, please confirm receipt\" arrived, but the money has not shown up in your bank yet. What do you do?"
+        enunciado: 'The notice "payment sent, please confirm receipt" arrived, but the money has not shown up in your bank yet. What do you do?'
         opcoes:
           a: "Wait for the money to arrive and only then click **Confirm receipt**"
           b: "Click **Confirm receipt** so the notice goes away"
           c: "Click **Confirm receipt** and fix it later if the money does not come"
           d: "Ask Wellmix to confirm for you"
-        explicacao: "Only confirm after you receive it. There is no undo: only Wellmix can adjust it. The installment stays as \"Paid · awaiting supplier confirmation\" until you confirm."
+        explicacao: 'Only confirm after you receive it. There is no undo: only Wellmix can adjust it. The installment stays as "Paid · awaiting supplier confirmation" until you confirm.'
       zh:
         enunciado: "您收到了“款项已汇出，请确认收款”的通知，但钱还没有到您的银行账户。您该怎么办？"
         opcoes:
@@ -215,7 +215,7 @@ perguntas:
     nivel: 3
     capitulo: FOR-10-C2
     cena: 4
-    enunciado: "Ao abrir a **Previsão de pagamentos**, aparece \"A condição de pagamento ainda não foi configurada pela Wellmix.\" O que você faz?"
+    enunciado: 'Ao abrir a **Previsão de pagamentos**, aparece "A condição de pagamento ainda não foi configurada pela Wellmix." O que você faz?'
     opcoes:
       a: "Confirma o recebimento da parcela 1 para liberar a condição"
       b: "Espera: a condição aparece sozinha quando o pedido é entregue"
@@ -225,7 +225,7 @@ perguntas:
     explicacao: "A condição de pagamento é configurada pela Wellmix. Se ela ainda não está lá, o caminho é falar com a Wellmix pelas **Mensagens**."
     traducoes:
       en:
-        enunciado: "When you open the **Payment forecast**, \"Wellmix has not set the payment terms yet.\" appears. What do you do?"
+        enunciado: 'When you open the **Payment forecast**, "Wellmix has not set the payment terms yet." appears. What do you do?'
         opcoes:
           a: "Confirm receipt of installment 1 to release the terms"
           b: "Wait: the terms appear by themselves when the order is delivered"

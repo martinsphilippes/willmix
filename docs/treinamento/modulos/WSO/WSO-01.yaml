@@ -10,7 +10,7 @@ capitulos:
     inicio: "0:00"
     fim: "1:15"
     cenas: [1, 4]
-    resumo: "O aviso no sino, a pendência \"Enviar ao fornecedor\" e a lista Pedidos → Solicitações levam à solicitação que acabou de chegar."
+    resumo: 'O aviso no sino, a pendência "Enviar ao fornecedor" e a lista Pedidos → Solicitações levam à solicitação que acabou de chegar.'
   - id: WSO-01-C2
     titulo: Conferir o pedido e a situação da RFQ
     inicio: "1:15"
@@ -33,10 +33,10 @@ perguntas:
     opcoes:
       a: "Gestão → Histórico, na linha da solicitação do cliente"
       b: "Cadastros → Produtos, abrindo o produto que o cliente pediu"
-      c: "Início → Pendências, na linha **Enviar ao fornecedor** (tipo \"Abrir RFQ\")"
+      c: 'Início → Pendências, na linha **Enviar ao fornecedor** (tipo "Abrir RFQ")'
       d: "Pedidos → Embalagens, no briefing da solicitação"
     correta: [c]
-    explicacao: "O aviso chega no sino e a pendência aparece em Início → Pendências como \"Enviar ao fornecedor: {produto}\", com o botão **Abrir** que leva direto à solicitação."
+    explicacao: 'O aviso chega no sino e a pendência aparece em Início → Pendências como "Enviar ao fornecedor: {produto}", com o botão **Abrir** que leva direto à solicitação.'
   - id: WSO-01-Q2
     tipo: unica
     nivel: 1
@@ -55,7 +55,7 @@ perguntas:
     nivel: 2
     capitulo: WSO-01-C2
     cena: 5
-    enunciado: "O cliente também vê as \"Etapas da solicitação\" (Solicitação nova, RFQ aberta, Cotações recebidas, e assim por diante) na tela dele."
+    enunciado: 'O cliente também vê as "Etapas da solicitação" (Solicitação nova, RFQ aberta, Cotações recebidas, e assim por diante) na tela dele.'
     opcoes:
       a: "Verdadeiro"
       b: "Falso"
@@ -83,7 +83,7 @@ perguntas:
     opcoes:
       a: "A solicitação vira **RFQ aberta**"
       b: "O cliente recebe a proposta com o preço"
-      c: "O fornecedor recebe o aviso \"Cotação pedida\" e a pendência de responder"
+      c: 'O fornecedor recebe o aviso "Cotação pedida" e a pendência de responder'
       d: "A coluna **Responderam** mostra 0 / 1"
       e: "O pedido nasce com as nove etapas"
     correta: [a, c, d]
@@ -93,7 +93,7 @@ perguntas:
     nivel: 3
     capitulo: WSO-01-C3
     cena: 7
-    enunciado: "Você enviou a jarra ao fornecedor A e agora quer mandar o mesmo produto também ao fornecedor B. A tela responde: \"Este produto já foi enviado a outro fornecedor. A RFQ para vários fornecedores está em espera.\" O que você faz?"
+    enunciado: 'Você enviou a jarra ao fornecedor A e agora quer mandar o mesmo produto também ao fornecedor B. A tela responde: "Este produto já foi enviado a outro fornecedor. A RFQ para vários fornecedores está em espera." O que você faz?'
     opcoes:
       a: "Marca os dois fornecedores na lista e clica de novo"
       b: "Fala com o administrador, que é quem pode ativar a RFQ para vários fornecedores"
@@ -119,7 +119,7 @@ perguntas:
     nivel: 3
     capitulo: WSO-01-C3
     cena: 9
-    enunciado: "Meia hora depois do envio, a solicitação mostra o selo **RFQ aberta** e \"0 de 1 responderam\". O que isso quer dizer e o que você faz?"
+    enunciado: 'Meia hora depois do envio, a solicitação mostra o selo **RFQ aberta** e "0 de 1 responderam". O que isso quer dizer e o que você faz?'
     opcoes:
       a: "Deu erro no envio; é preciso enviar de novo ao fornecedor"
       b: "O cliente ainda precisa aprovar a solicitação antes de o fornecedor ver"

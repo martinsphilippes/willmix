@@ -141,7 +141,7 @@ perguntas:
       c: "Enviar de novo a **Foto na balança** do produto pronto"
       d: "Trocar **Fornecedor é** para Trade e informar a fábrica"
     correta: [b]
-    explicacao: "Mudar o ETD pede o **Motivo da mudança do ETD**; sem ele aparece \"Informe o motivo da mudança do ETD.\" Com o motivo, a Wellmix é avisada, e o cartão mostra o primeiro ETD e a diferença em dias."
+    explicacao: 'Mudar o ETD pede o **Motivo da mudança do ETD**; sem ele aparece "Informe o motivo da mudança do ETD." Com o motivo, a Wellmix é avisada, e o cartão mostra o primeiro ETD e a diferença em dias.'
     traducoes:
       en:
         enunciado: "The ETD (estimated departure) changed. Besides changing the date, what does the **Production** card require?"
@@ -150,7 +150,7 @@ perguntas:
           b: "Writing the **Reason for the ETD change**"
           c: "Sending the **Photo on the scale** of the finished product again"
           d: "Switching **Supplier is** to Trading company and entering the factory"
-        explicacao: "Changing the ETD requires the **Reason for the ETD change**; without it, \"Enter the reason for the ETD change.\" appears. With the reason, Wellmix is notified, and the card shows the first ETD and the difference in days."
+        explicacao: 'Changing the ETD requires the **Reason for the ETD change**; without it, "Enter the reason for the ETD change." appears. With the reason, Wellmix is notified, and the card shows the first ETD and the difference in days.'
       zh:
         enunciado: "ETD（预计离港日）变了。除了修改日期，“生产”卡片还要求什么？"
         opcoes:
@@ -194,7 +194,7 @@ perguntas:
     nivel: 3
     capitulo: FOR-08-C1
     cena: 2
-    enunciado: "Você é uma empresa trade. Ao tentar agendar, aparece \"Fornecedor trade: informe o endereço da fábrica antes de agendar.\" O que faz?"
+    enunciado: 'Você é uma empresa trade. Ao tentar agendar, aparece "Fornecedor trade: informe o endereço da fábrica antes de agendar." O que faz?'
     opcoes:
       a: "Muda **Fornecedor é** para Fábrica, só para o aviso sumir da tela"
       b: "Preenche **Fábrica** e **Endereço da fábrica** e clica em **Salvar produção**"
@@ -204,7 +204,7 @@ perguntas:
     explicacao: "A Wellmix precisa saber onde inspecionar. Quem é trade informa a fábrica e o endereço onde se inspeciona e salva. Mudar para Fábrica só para escapar do aviso seria informar o dado errado."
     traducoes:
       en:
-        enunciado: "You are a trading company. When trying to schedule, \"Trading supplier: enter the factory address before scheduling.\" appears. What do you do?"
+        enunciado: 'You are a trading company. When trying to schedule, "Trading supplier: enter the factory address before scheduling." appears. What do you do?'
         opcoes:
           a: "Change **Supplier is** to Factory, just so the message goes away from the screen"
           b: "Fill in **Factory** and **Factory address** and click **Save production**"
@@ -224,7 +224,7 @@ perguntas:
     nivel: 3
     capitulo: FOR-08-C3
     cena: 5
-    enunciado: "Você mediu um peso muito diferente do esperado e a etapa mostra \"Divergência detectada; aguardando revisão da Wellmix.\" O que acontece?"
+    enunciado: 'Você mediu um peso muito diferente do esperado e a etapa mostra "Divergência detectada; aguardando revisão da Wellmix." O que acontece?'
     opcoes:
       a: "A etapa conclui e abre o Embarque mesmo com a divergência"
       b: "A tela mostra o peso esperado para você ajustar o número enviado"
@@ -234,7 +234,7 @@ perguntas:
     explicacao: "Fora da tolerância, a etapa bloqueia até a Wellmix revisar, e o valor esperado nunca é mostrado a você. **Enviar correção** é só para SKU reprovado."
     traducoes:
       en:
-        enunciado: "You measured a weight very different from the expected one and the step shows \"Divergence detected; waiting for Wellmix review.\" What happens?"
+        enunciado: 'You measured a weight very different from the expected one and the step shows "Divergence detected; waiting for Wellmix review." What happens?'
         opcoes:
           a: "The step finishes and opens Shipment even with the divergence"
           b: "The screen shows the expected weight so you can adjust the number you sent"
@@ -261,7 +261,7 @@ perguntas:
       c: "Envia de novo a **Foto na balança** e as outras fotos, sem nenhum texto"
       d: "Espera: a Wellmix reinspeciona o SKU sozinha, sem nada de você"
     correta: [a]
-    explicacao: "O campo **O que foi corrigido** é obrigatório e a tela não envia vazio. Ao clicar em **Enviar correção**, aparece \"Correção enviada à Wellmix.\" e o SKU vai para nova inspeção."
+    explicacao: 'O campo **O que foi corrigido** é obrigatório e a tela não envia vazio. Ao clicar em **Enviar correção**, aparece "Correção enviada à Wellmix." e o SKU vai para nova inspeção.'
     traducoes:
       en:
         enunciado: "A **Rejected** SKU appears in the card, with Wellmix's note. What do you do to ask for a new inspection?"
@@ -270,7 +270,7 @@ perguntas:
           b: "Click **Save production** with the same factory and the same ETD"
           c: "Send the **Photo on the scale** and the other photos again, with no text"
           d: "Wait: Wellmix reinspects the SKU by itself, with nothing from you"
-        explicacao: "The **What was fixed** field is required and the screen does not send it empty. When you click **Send fix**, \"Fix sent to Wellmix.\" appears and the SKU goes for a new inspection."
+        explicacao: 'The **What was fixed** field is required and the screen does not send it empty. When you click **Send fix**, "Fix sent to Wellmix." appears and the SKU goes for a new inspection.'
       zh:
         enunciado: "卡片里出现一个“不通过”的 SKU，附有 Wellmix 的备注。要申请再次验货，您该怎么做？"
         opcoes:

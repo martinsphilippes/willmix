@@ -10,7 +10,7 @@ capitulos:
     inicio: "0:00"
     fim: "1:25"
     cenas: [1, 4]
-    resumo: "Quando o fornecedor responde, a pendência \"Escolher fornecedor\" leva à Comparação de cotações, onde você escolhe o fornecedor e confere o NCM."
+    resumo: 'Quando o fornecedor responde, a pendência "Escolher fornecedor" leva à Comparação de cotações, onde você escolhe o fornecedor e confere o NCM.'
   - id: WSO-02-C2
     titulo: Conferir a conta e definir valor e sinal
     inicio: "1:25"
@@ -42,13 +42,13 @@ perguntas:
       c: "Abrir RFQ: Jarra de vidro 1,5 L"
       d: "Escolher fornecedor: Jarra de vidro 1,5 L"
     correta: [d]
-    explicacao: "Com a cotação respondida, o sino avisa \"Cotação recebida\" e a pendência vira **Escolher fornecedor**, com a solicitação em \"Cotações recebidas\". As outras pendências são de etapas anteriores ou posteriores."
+    explicacao: 'Com a cotação respondida, o sino avisa "Cotação recebida" e a pendência vira **Escolher fornecedor**, com a solicitação em "Cotações recebidas". As outras pendências são de etapas anteriores ou posteriores.'
   - id: WSO-02-Q2
     tipo: unica
     nivel: 2
     capitulo: WSO-02-C1
     cena: 4
-    enunciado: "No cartão \"Classificação fiscal (NCM)\" o NCM do produto ainda não foi confirmado. O que acontece com a conta do valor ao cliente?"
+    enunciado: 'No cartão "Classificação fiscal (NCM)" o NCM do produto ainda não foi confirmado. O que acontece com a conta do valor ao cliente?'
     opcoes:
       a: "A conta não aparece até o NCM ser confirmado"
       b: "O imposto de importação e o IPI ficam em 0% no valor ao cliente"
@@ -61,7 +61,7 @@ perguntas:
     nivel: 1
     capitulo: WSO-02-C2
     cena: 6
-    enunciado: "O campo \"Sinal (% do valor ao cliente)\" é uma porcentagem de quê?"
+    enunciado: 'O campo "Sinal (% do valor ao cliente)" é uma porcentagem de quê?'
     opcoes:
       a: "Do valor ao cliente, de 0 a 100 (o padrão é 30%)"
       b: "Do custo importado calculado"
@@ -73,7 +73,7 @@ perguntas:
     nivel: 3
     capitulo: WSO-02-C2
     cena: 6
-    enunciado: "Você digitou 28000 em \"Valor ao cliente\", mas mudou de ideia e quer voltar ao valor que o sistema calculou. O que você faz?"
+    enunciado: 'Você digitou 28000 em "Valor ao cliente", mas mudou de ideia e quer voltar ao valor que o sistema calculou. O que você faz?'
     opcoes:
       a: "Troca a lista **Moeda** e volta ao Real"
       b: "Clica em **Usar valor calculado**"
@@ -86,7 +86,7 @@ perguntas:
     nivel: 2
     capitulo: WSO-02-C3
     cena: 7
-    enunciado: "Ponha em ordem o trabalho do comprador na tela da solicitação em \"Cotações recebidas\"."
+    enunciado: 'Ponha em ordem o trabalho do comprador na tela da solicitação em "Cotações recebidas".'
     opcoes:
       a: "Digitar o **Valor ao cliente** e conferir o **Sinal**"
       b: "Escolher o **Fornecedor** em Comparação de cotações"
@@ -99,7 +99,7 @@ perguntas:
     nivel: 3
     capitulo: WSO-02-C3
     cena: 7
-    enunciado: "Você já enviou uma escolha para aprovação e, ao revisar, quer mudar o valor. A tela avisa: \"Há uma escolha aguardando aprovação. Enviar outra substitui a atual.\" O que acontece se você enviar?"
+    enunciado: 'Você já enviou uma escolha para aprovação e, ao revisar, quer mudar o valor. A tela avisa: "Há uma escolha aguardando aprovação. Enviar outra substitui a atual." O que acontece se você enviar?'
     opcoes:
       a: "O envio é recusado até o primeiro nível decidir"
       b: "As duas escolhas seguem para aprovação, lado a lado"
@@ -126,11 +126,11 @@ perguntas:
     nivel: 3
     capitulo: WSO-02-C4
     cena: 9
-    enunciado: "O administrador reprovou sua escolha, com o motivo \"Valor acima do que o cliente aceita\". A pendência Escolher fornecedor voltou para você. O que você faz?"
+    enunciado: 'O administrador reprovou sua escolha, com o motivo "Valor acima do que o cliente aceita". A pendência Escolher fornecedor voltou para você. O que você faz?'
     opcoes:
       a: "Espera o administrador reenviar a escolha com o valor menor"
       b: "Cancela a solicitação e pede ao cliente que envie outra"
       c: "Pede ao cliente que aprove a proposta mesmo assim"
       d: "Ajusta o valor e envia outra escolha para aprovação"
     correta: [d]
-    explicacao: "Reprovar não trava o comprador: o motivo chega no aviso \"Pré-custo reprovado\", a aprovação anterior fica em \"Aprovações anteriores\" e a nova escolha substitui a antiga."
+    explicacao: 'Reprovar não trava o comprador: o motivo chega no aviso "Pré-custo reprovado", a aprovação anterior fica em "Aprovações anteriores" e a nova escolha substitui a antiga.'

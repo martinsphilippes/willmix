@@ -36,7 +36,7 @@ perguntas:
       c: "Avalie a compra: pedido #1"
       d: "Responder mensagem"
     correta: [b]
-    explicacao: "Na etapa Entrega, a pendência \"Pedido #N: Entrega\" mostra \"Recebimento confirmado\" e o prazo. No sino, o aviso equivalente é \"Entrega precisa de você\", com **Resolver**."
+    explicacao: 'Na etapa Entrega, a pendência "Pedido #N: Entrega" mostra "Recebimento confirmado" e o prazo. No sino, o aviso equivalente é "Entrega precisa de você", com **Resolver**.'
   - id: CLI-05-Q2
     tipo: unica
     nivel: 1
@@ -49,7 +49,7 @@ perguntas:
       c: "**Comprar de novo**"
       d: "**Conversar com a Wellmix**"
     correta: [a]
-    explicacao: "O botão vermelho **Confirmar**, ao lado de \"Recebimento confirmado\", registra o recebimento."
+    explicacao: 'O botão vermelho **Confirmar**, ao lado de "Recebimento confirmado", registra o recebimento.'
   - id: CLI-05-Q3
     tipo: unica
     nivel: 2
@@ -60,7 +60,7 @@ perguntas:
       a: "Continua em Entrega até a Wellmix aprovar"
       b: "Volta para a etapa Transporte"
       c: "Abre automaticamente uma nova solicitação"
-      d: "É encerrado: todas as etapas ficam concluídas e aparece \"Pedido encerrado\""
+      d: 'É encerrado: todas as etapas ficam concluídas e aparece "Pedido encerrado"'
     correta: [d]
     explicacao: "Com a confirmação, o pedido é encerrado e a tabela mostra as nove etapas como Concluída. Por isso, confira a carga antes de clicar."
   - id: CLI-05-Q4
@@ -72,10 +72,10 @@ perguntas:
     opcoes:
       a: "Por e-mail"
       b: "Por WhatsApp"
-      c: "No sino e em Pendências (\"Avalie a compra: pedido #N\")"
+      c: 'No sino e em Pendências ("Avalie a compra: pedido #N")'
       d: "Só se João abrir Histórico"
     correta: [c]
-    explicacao: "O convite chega no sino (\"como foi a sua compra?\") e em Pendências, tipo Pós-venda. E-mail e WhatsApp não avisam."
+    explicacao: 'O convite chega no sino ("como foi a sua compra?") e em Pendências, tipo Pós-venda. E-mail e WhatsApp não avisam.'
   - id: CLI-05-Q5
     tipo: ordem
     nivel: 2
@@ -83,10 +83,10 @@ perguntas:
     cena: 7
     enunciado: "Coloque na ordem o caminho do cliente quando a carga chega."
     opcoes:
-      a: "Abrir a pendência \"Pedido #N: Entrega\""
+      a: 'Abrir a pendência "Pedido #N: Entrega"'
       b: "Conferir a carga"
       c: "Clicar em **Confirmar**"
-      d: "Abrir \"Avalie a compra\""
+      d: 'Abrir "Avalie a compra"'
       e: "Clicar em **Enviar avaliação**"
     correta: [a, b, c, d, e]
     explicacao: "Primeiro se confirma o recebimento, e o pedido é encerrado. Só então o pós-venda é aberto, e a avaliação termina em **Enviar avaliação**."
@@ -111,11 +111,11 @@ perguntas:
     enunciado: "A compra teve um problema de prazo e João quer que a Wellmix saiba. Onde escreve?"
     opcoes:
       a: "No campo Sugestões"
-      b: "No campo \"Houve problemas? (produto, prazo, embalagem, transporte)\""
+      b: 'No campo "Houve problemas? (produto, prazo, embalagem, transporte)"'
       c: "Em Observação, ao confirmar a entrega"
       d: "Em Notificações"
     correta: [b]
-    explicacao: "Com texto em \"Houve problemas?\", a Wellmix recebe o aviso com destaque de atenção. Sem problema, o aviso sai como informativo."
+    explicacao: 'Com texto em "Houve problemas?", a Wellmix recebe o aviso com destaque de atenção. Sem problema, o aviso sai como informativo.'
   - id: CLI-05-Q8
     tipo: unica
     nivel: 3

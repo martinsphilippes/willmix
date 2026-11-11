@@ -31,7 +31,7 @@ perguntas:
     nivel: 1
     capitulo: FOR-06-C1
     cena: 3
-    enunciado: "Você recebeu o aviso \"arte da embalagem para aprovar\". Em que item do pedido você abre o arquivo da arte para conferir?"
+    enunciado: 'Você recebeu o aviso "arte da embalagem para aprovar". Em que item do pedido você abre o arquivo da arte para conferir?'
     opcoes:
       a: "Em **Aprovação da arte pelo fornecedor**, na etapa Arte e embalagem"
       b: "Em **Arte da embalagem**, na etapa Arte e embalagem"
@@ -41,7 +41,7 @@ perguntas:
     explicacao: "O arquivo da arte (nome e versão, por exemplo arte.pdf v1) fica no item **Arte da embalagem**. O item **Aprovação da arte pelo fornecedor** é onde você decide, depois de conferir."
     traducoes:
       en:
-        enunciado: "You got the notice \"packaging artwork to approve\". In which item of the order do you open the artwork file to check it?"
+        enunciado: 'You got the notice "packaging artwork to approve". In which item of the order do you open the artwork file to check it?'
         opcoes:
           a: "In **Artwork approval by supplier**, in the Artwork and packaging step"
           b: "In **Packaging artwork**, in the Artwork and packaging step"
@@ -191,7 +191,7 @@ perguntas:
       c: "Espera a nova versão da arte chegar sozinha"
       d: "Avisa a Wellmix, porque só ela pode refazer a decisão"
     correta: [d]
-    explicacao: "Depois de decidir, o sistema mostra \"Esta aprovação já foi decidida; só a Wellmix pode refazer.\" Por isso, confira com calma antes de aprovar; se já aprovou, fale com a Wellmix."
+    explicacao: 'Depois de decidir, o sistema mostra "Esta aprovação já foi decidida; só a Wellmix pode refazer." Por isso, confira com calma antes de aprovar; se já aprovou, fale com a Wellmix.'
     traducoes:
       en:
         enunciado: "You clicked **Approve** and only afterwards saw a text error in the artwork. The item is already **Done**. What do you do?"
@@ -200,7 +200,7 @@ perguntas:
           b: "Click **Approve** again to update it"
           c: "Wait for the new artwork version to arrive by itself"
           d: "Tell Wellmix, because only Wellmix can redo the decision"
-        explicacao: "After you decide, the system says \"This approval was already decided; only Wellmix can redo it.\" So check calmly before approving; if you already approved, talk to Wellmix."
+        explicacao: 'After you decide, the system says "This approval was already decided; only Wellmix can redo it." So check calmly before approving; if you already approved, talk to Wellmix.'
       zh:
         enunciado: "您点击了“批准”，之后才发现设计稿上有文字错误。该项已是“已完成”。您该怎么办？"
         opcoes:
@@ -217,7 +217,7 @@ perguntas:
     enunciado: "O logo na tampa da arte está pequeno demais. Qual é o jeito certo de pedir o ajuste?"
     opcoes:
       a: "Aprovar agora para não atrasar e pedir o ajuste depois, nas Mensagens"
-      b: "Escrever \"Aumentar o logo na tampa\" em **Observação** e clicar em **Reprovar**"
+      b: 'Escrever "Aumentar o logo na tampa" em **Observação** e clicar em **Reprovar**'
       c: "Deixar o item como está e esperar que a Wellmix perceba o problema"
       d: "Clicar em **Aprovar** e escrever o recado em **Observação** mesmo assim"
     correta: [b]
@@ -227,7 +227,7 @@ perguntas:
         enunciado: "The logo on the lid of the artwork is too small. What is the right way to ask for the change?"
         opcoes:
           a: "Approve now so as not to delay, and ask for the change later, in Messages"
-          b: "Write \"Make the logo on the lid bigger\" in **Note** and click **Reject**"
+          b: 'Write "Make the logo on the lid bigger" in **Note** and click **Reject**'
           c: "Leave the item as it is and wait for Wellmix to notice the problem"
           d: "Click **Approve** and write the message in **Note** anyway"
         explicacao: "Whoever makes the artwork only gets your message if you reject. Always write what to change in **Note** and click **Reject**; approving means you accept the artwork for production."

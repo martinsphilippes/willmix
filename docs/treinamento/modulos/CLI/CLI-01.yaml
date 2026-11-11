@@ -62,14 +62,14 @@ perguntas:
     nivel: 3
     capitulo: CLI-01-C2
     cena: 5
-    enunciado: "João ordena a vitrine por **Menor preço** e o produto com \"Preço sob consulta\" aparece no fim da lista. O que isso quer dizer?"
+    enunciado: 'João ordena a vitrine por **Menor preço** e o produto com "Preço sob consulta" aparece no fim da lista. O que isso quer dizer?'
     opcoes:
       a: "É o produto mais caro da vitrine"
       b: "O produto saiu do catálogo e vai sumir"
       c: "É normal: nas ordens por preço, produto sem preço fica no fim"
       d: "Há um erro no cartão, e é preciso avisar a Wellmix"
     correta: [c]
-    explicacao: "Nas ordens por preço, o produto sem preço vai para o fim. \"Preço sob consulta\" quer dizer que a Wellmix informa o valor na proposta."
+    explicacao: 'Nas ordens por preço, o produto sem preço vai para o fim. "Preço sob consulta" quer dizer que a Wellmix informa o valor na proposta.'
   - id: CLI-01-Q4
     tipo: unica
     nivel: 2
@@ -82,7 +82,7 @@ perguntas:
       c: "A página fecha e o produto sai do carrinho"
       d: "A Wellmix recebe um aviso de quantidade baixa"
     correta: [b]
-    explicacao: "A tela avisa \"Pedido mínimo: 300 un. Ao sair do campo, volta ao mínimo.\" O campo não aceita menos que o mínimo."
+    explicacao: 'A tela avisa "Pedido mínimo: 300 un. Ao sair do campo, volta ao mínimo." O campo não aceita menos que o mínimo.'
   - id: CLI-01-Q5
     tipo: ordem
     nivel: 2
@@ -114,7 +114,7 @@ perguntas:
     nivel: 3
     capitulo: CLI-01-C4
     cena: 9
-    enunciado: "João preenche \"Quando você precisa?\" com 20/12/2026 esperando que a proposta chegue antes disso. Isso funciona?"
+    enunciado: 'João preenche "Quando você precisa?" com 20/12/2026 esperando que a proposta chegue antes disso. Isso funciona?'
     opcoes:
       a: "Sim, a Wellmix passa a entregar a proposta até a data que João escolheu no campo"
       b: "Sim, mas só se ele escrever o motivo do pedido no campo Observações antes de enviar"

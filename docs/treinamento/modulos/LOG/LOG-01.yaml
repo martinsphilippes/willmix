@@ -56,14 +56,14 @@ perguntas:
     nivel: 2
     capitulo: LOG-01-C1
     cena: 4
-    enunciado: "Na coluna \"Quem faz / valida\", quem confere o Booking e quem confere os BLs?"
+    enunciado: 'Na coluna "Quem faz / valida", quem confere o Booking e quem confere os BLs?'
     opcoes:
       a: "A Wellmix confere o Booking; a comex confere os BLs"
       b: "A comex confere o Booking; a Wellmix confere os BLs"
       c: "A Wellmix confere tudo"
       d: "A comex confere o Booking e o BL, mas não o Draft"
     correta: [a]
-    explicacao: "No Booking aparece \"Faz: agente de carga · valida: Wellmix\". No Draft do BL e no BL (original), \"valida: comex\"."
+    explicacao: 'No Booking aparece "Faz: agente de carga · valida: Wellmix". No Draft do BL e no BL (original), "valida: comex".'
   - id: LOG-01-Q4
     tipo: unica
     nivel: 2
@@ -76,7 +76,7 @@ perguntas:
       c: "Clicar em **Enviar** uma segunda vez"
       d: "O pedido chegar ao Transporte"
     correta: [a]
-    explicacao: "A linha passa a \"Enviado, aguardando validação\". Quando a Wellmix valida, o Booking fica Concluído e só então o próximo passo, o Draft do BL, libera para você."
+    explicacao: 'A linha passa a "Enviado, aguardando validação". Quando a Wellmix valida, o Booking fica Concluído e só então o próximo passo, o Draft do BL, libera para você.'
   - id: LOG-01-Q5
     tipo: ordem
     nivel: 2
@@ -88,33 +88,33 @@ perguntas:
       b: "BL (original)"
       c: "Booking (Nº do booking)"
     correta: [c, a, b]
-    explicacao: "Cada passo mostra \"Depois de: …\": o Draft do BL vem depois do Booking, e o BL (original) depois do Draft do BL. Cada um só libera quando o anterior é validado."
+    explicacao: 'Cada passo mostra "Depois de: …": o Draft do BL vem depois do Booking, e o BL (original) depois do Draft do BL. Cada um só libera quando o anterior é validado.'
   - id: LOG-01-Q6
     tipo: unica
     nivel: 3
     capitulo: LOG-01-C2
     cena: 6
-    enunciado: "A comex recusou o Draft do BL com o motivo \"Peso bruto diferente da invoice\". A linha mostra **Recusado**. O que você faz?"
+    enunciado: 'A comex recusou o Draft do BL com o motivo "Peso bruto diferente da invoice". A linha mostra **Recusado**. O que você faz?'
     opcoes:
       a: "Envia o Booking de novo, para a Wellmix revalidar"
       b: "Espera: a comex corrige o arquivo por conta própria"
       c: "Valida o rascunho você mesmo, para liberar o BL"
       d: "Corrige o arquivo e clica em **Enviar de novo**"
     correta: [d]
-    explicacao: "Você recebe o aviso \"Draft do BL recusado\" com o motivo. Corrija o arquivo e use **Enviar de novo** na mesma linha; a comex confere outra vez."
+    explicacao: 'Você recebe o aviso "Draft do BL recusado" com o motivo. Corrija o arquivo e use **Enviar de novo** na mesma linha; a comex confere outra vez.'
   - id: LOG-01-Q7
     tipo: unica
     nivel: 3
     capitulo: LOG-01-C3
     cena: 7
-    enunciado: "Você quer enviar o **BL (original)**, mas o passo mostra \"Depois de: Draft do BL\" e não deixa enviar. O que falta?"
+    enunciado: 'Você quer enviar o **BL (original)**, mas o passo mostra "Depois de: Draft do BL" e não deixa enviar. O que falta?'
     opcoes:
       a: "A comex validar o Draft do BL"
       b: "Informar a Presença de carga"
       c: "O fornecedor assinar a invoice"
       d: "A Wellmix validar o BL antes do rascunho"
     correta: [a]
-    explicacao: "Fora de ordem o portal responde \"Conclua antes o passo anterior.\" Quando a comex valida o rascunho, você recebe \"sua vez, BL (original)\" e pode digitar o **Nº do BL**, escolher o arquivo e clicar em **Enviar**."
+    explicacao: 'Fora de ordem o portal responde "Conclua antes o passo anterior." Quando a comex valida o rascunho, você recebe "sua vez, BL (original)" e pode digitar o **Nº do BL**, escolher o arquivo e clicar em **Enviar**.'
   - id: LOG-01-Q8
     tipo: multipla
     nivel: 3

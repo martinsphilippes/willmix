@@ -36,7 +36,7 @@ perguntas:
       c: "Só o administrador"
       d: "O fornecedor, ao responder a primeira cotação"
     correta: [c]
-    explicacao: "O cartão \"Ligar ou deixar em espera\" mostra ao operador apenas o aviso \"Só o administrador liga ou coloca a RFQ em espera.\" O operador vê a situação, mas o interruptor é do administrador."
+    explicacao: 'O cartão "Ligar ou deixar em espera" mostra ao operador apenas o aviso "Só o administrador liga ou coloca a RFQ em espera." O operador vê a situação, mas o interruptor é do administrador.'
   - id: WSO-04-Q2
     tipo: unica
     nivel: 1
@@ -49,20 +49,20 @@ perguntas:
       c: "**Colocar a RFQ em espera**"
       d: "**Enviar ao fornecedor**"
     correta: [a]
-    explicacao: "**Ativar a RFQ** muda o selo para \"Ativa\" e mostra \"RFQ ativada.\" **Abrir RFQ** é o botão da solicitação, já com a RFQ ativa, e **Colocar a RFQ em espera** faz o caminho contrário."
+    explicacao: '**Ativar a RFQ** muda o selo para "Ativa" e mostra "RFQ ativada." **Abrir RFQ** é o botão da solicitação, já com a RFQ ativa, e **Colocar a RFQ em espera** faz o caminho contrário.'
   - id: WSO-04-Q3
     tipo: ordem
     nivel: 2
     capitulo: WSO-04-C2
     cena: 5
-    enunciado: "Ponha na ordem o caminho para abrir uma solicitação ainda em \"Solicitado\" a dois fornecedores."
+    enunciado: 'Ponha na ordem o caminho para abrir uma solicitação ainda em "Solicitado" a dois fornecedores.'
     opcoes:
       a: "Abrir a solicitação e marcar os fornecedores no cartão **Abrir RFQ**"
       b: "Abrir Pedidos → RFQ"
       c: "Clicar em **Abrir RFQ**"
       d: "Clicar em **Ativar a RFQ**"
     correta: [b, d, a, c]
-    explicacao: "O cartão **Abrir RFQ** só existe na solicitação depois que a RFQ está ativa. Os fornecedores que já vendem o produto aparecem primeiro, com o selo \"já fornece\"."
+    explicacao: 'O cartão **Abrir RFQ** só existe na solicitação depois que a RFQ está ativa. Os fornecedores que já vendem o produto aparecem primeiro, com o selo "já fornece".'
   - id: WSO-04-Q4
     tipo: multipla
     nivel: 2
@@ -82,14 +82,14 @@ perguntas:
     nivel: 3
     capitulo: WSO-04-C2
     cena: 6
-    enunciado: "A RFQ está ativa, mas na solicitação que você abriu não aparece o quadro \"Disputa de fornecedores\". Só um fornecedor respondeu. Por quê?"
+    enunciado: 'A RFQ está ativa, mas na solicitação que você abriu não aparece o quadro "Disputa de fornecedores". Só um fornecedor respondeu. Por quê?'
     opcoes:
       a: "A disputa só aparece quando a solicitação é de compra para estoque"
       b: "A disputa só aparece depois que o cliente aprova a proposta"
       c: "O quadro fica escondido até o administrador atualizar a página"
       d: "A disputa só existe com duas ou mais cotações respondidas"
     correta: [d]
-    explicacao: "Com uma cotação só não há o que comparar. A Disputa de fornecedores aparece dentro de \"Comparação de cotações\" quando duas ou mais cotações foram respondidas."
+    explicacao: 'Com uma cotação só não há o que comparar. A Disputa de fornecedores aparece dentro de "Comparação de cotações" quando duas ou mais cotações foram respondidas.'
   - id: WSO-04-Q6
     tipo: unica
     nivel: 3
@@ -98,7 +98,7 @@ perguntas:
     enunciado: "Uma solicitação já tem a RFQ aberta para dois fornecedores. Você clica em **Colocar a RFQ em espera**. O que acontece com ela?"
     opcoes:
       a: "É cancelada, e as cotações recebidas são descartadas"
-      b: "Volta para \"Solicitado\", sem a disputa"
+      b: 'Volta para "Solicitado", sem a disputa'
       c: "Fica parada até alguém ativar a RFQ de novo"
       d: "Continua valendo, com a disputa e tudo, até ser concluída"
     correta: [d]
@@ -123,9 +123,9 @@ perguntas:
     cena: 9
     enunciado: "Um colega pergunta quem ativou a RFQ ontem e quando. Onde você confere?"
     opcoes:
-      a: "Em Gestão → Auditoria, filtrando o módulo \"Configurações\""
+      a: 'Em Gestão → Auditoria, filtrando o módulo "Configurações"'
       b: "Em Início → Notificações, onde todos foram avisados"
-      c: "Em Pedidos → RFQ, no histórico do cartão \"Como está funcionando agora\""
+      c: 'Em Pedidos → RFQ, no histórico do cartão "Como está funcionando agora"'
       d: "Em Início → Painel de SLA, na tabela Equipe"
     correta: [a]
-    explicacao: "Cada mudança do interruptor (\"RFQ ativada\", \"RFQ colocada em espera\") fica registrada na Auditoria, módulo Configurações. Ninguém recebe aviso quando o administrador muda o interruptor, por isso as Notificações não ajudam."
+    explicacao: 'Cada mudança do interruptor ("RFQ ativada", "RFQ colocada em espera") fica registrada na Auditoria, módulo Configurações. Ninguém recebe aviso quando o administrador muda o interruptor, por isso as Notificações não ajudam.'

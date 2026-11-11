@@ -10,13 +10,13 @@ capitulos:
     inicio: "0:00"
     fim: "1:12"
     cenas: [1, 4]
-    resumo: "A pendência \"Preparação\" leva ao pedido e à ficha de compra, onde cada bloco mostra se está completo ou o que falta."
+    resumo: 'A pendência "Preparação" leva ao pedido e à ficha de compra, onde cada bloco mostra se está completo ou o que falta.'
   - id: WPE-02-C2
     titulo: Fazer a programação e salvar a ficha
     inicio: "1:12"
     fim: "2:12"
     cenas: [5, 6]
-    resumo: "Preencha o primeiro lote da programação de compra e clique em **Salvar ficha** até aparecer \"Ficha salva e completa.\""
+    resumo: 'Preencha o primeiro lote da programação de compra e clique em **Salvar ficha** até aparecer "Ficha salva e completa."'
   - id: WPE-02-C3
     titulo: Validar a ficha e o cadastro do produto
     inicio: "2:12"
@@ -29,7 +29,7 @@ perguntas:
     nivel: 1
     capitulo: WPE-02-C1
     cena: 3
-    enunciado: "No pedido, o cartão **Preparação** mostra a Ficha de compra do fornecedor como \"Concluído\". Qual botão você clica para conferi-la?"
+    enunciado: 'No pedido, o cartão **Preparação** mostra a Ficha de compra do fornecedor como "Concluído". Qual botão você clica para conferi-la?'
     opcoes:
       a: "**Ver ficha de compra**"
       b: "**Confirmar**"
@@ -56,7 +56,7 @@ perguntas:
     nivel: 3
     capitulo: WPE-02-C1
     cena: 4
-    enunciado: "A ficha mostra o aviso \"Falta para concluir: 1º lote da programação.\" Todos os outros blocos estão \"Completo\", vindos da cotação. Quem faz o que falta?"
+    enunciado: 'A ficha mostra o aviso "Falta para concluir: 1º lote da programação." Todos os outros blocos estão "Completo", vindos da cotação. Quem faz o que falta?'
     opcoes:
       a: "O fornecedor, que deve completar a ficha pelo portal dele"
       b: "A Wellmix: a programação de compra é sua"
@@ -82,7 +82,7 @@ perguntas:
     nivel: 3
     capitulo: WPE-02-C2
     cena: 5
-    enunciado: "Depois de digitar a programação, o quadro amarelo \"Fechar o container\" sugere aumentar as caixas. Você só quer registrar o primeiro lote do pedido como ele está. O que faz?"
+    enunciado: 'Depois de digitar a programação, o quadro amarelo "Fechar o container" sugere aumentar as caixas. Você só quer registrar o primeiro lote do pedido como ele está. O que faz?'
     opcoes:
       a: "Aplica a sugestão, porque o container precisa fechar"
       b: "Ignora a sugestão, que é opcional, e segue para **Salvar ficha**"
@@ -95,7 +95,7 @@ perguntas:
     nivel: 3
     capitulo: WPE-02-C3
     cena: 7
-    enunciado: "Você clica em **Confirmar** em \"Ficha e imagens validadas pelo comprador\" e o portal responde: \"Antes de validar a ficha, faça a Programação de compra (1º lote) na ficha de compra do pedido.\" O que você faz?"
+    enunciado: 'Você clica em **Confirmar** em "Ficha e imagens validadas pelo comprador" e o portal responde: "Antes de validar a ficha, faça a Programação de compra (1º lote) na ficha de compra do pedido." O que você faz?'
     opcoes:
       a: "Clica em **Confirmar** de novo até o portal aceitar"
       b: "Valida primeiro o Cadastro do produto, que destrava a ficha"
@@ -110,7 +110,7 @@ perguntas:
     cena: 7
     enunciado: "Ponha em ordem o caminho até validar a ficha de compra."
     opcoes:
-      a: "Clicar em **Confirmar** em \"Ficha e imagens validadas pelo comprador\""
+      a: 'Clicar em **Confirmar** em "Ficha e imagens validadas pelo comprador"'
       b: "Clicar em **Salvar ficha**"
       c: "Clicar em **Ver ficha de compra** no cartão Preparação"
       d: "Preencher a Programação de compra na ficha"
@@ -121,11 +121,11 @@ perguntas:
     nivel: 2
     capitulo: WPE-02-C3
     cena: 9
-    enunciado: "Os três itens da Preparação estão concluídos. O que muda na tabela \"Etapas do pedido\"?"
+    enunciado: 'Os três itens da Preparação estão concluídos. O que muda na tabela "Etapas do pedido"?'
     opcoes:
       a: "A Preparação conclui e a Arte e embalagem passa a Em andamento, com a agência como responsável"
       b: "A Preparação conclui e o pedido vai direto para a Inspeção"
       c: "A Preparação continua aberta até as duas assinaturas do documento do pedido"
       d: "A Preparação conclui e o Embarque abre para a companhia marítima"
     correta: [a]
-    explicacao: "Concluída a Preparação, abre a Arte e embalagem, e a agência recebe a pendência \"Arte do pedido\". O início da produção só entra sozinho depois das duas assinaturas."
+    explicacao: 'Concluída a Preparação, abre a Arte e embalagem, e a agência recebe a pendência "Arte do pedido". O início da produção só entra sozinho depois das duas assinaturas.'

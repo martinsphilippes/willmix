@@ -37,13 +37,13 @@ perguntas:
       d: "Solicitações"
       e: "Pedidos"
     correta: [a, c, e]
-    explicacao: "O despachante abre só Pendências, Notificações, Mensagens e Pedidos. Financeiro e Solicitações não são dele: o portal volta ao início com \"Você não tem acesso a Financeiro. Peça ao administrador em Gestão → Equipe e divisões.\""
+    explicacao: 'O despachante abre só Pendências, Notificações, Mensagens e Pedidos. Financeiro e Solicitações não são dele: o portal volta ao início com "Você não tem acesso a Financeiro. Peça ao administrador em Gestão → Equipe e divisões."'
   - id: DES-01-Q2
     tipo: unica
     nivel: 1
     capitulo: DES-01-C1
     cena: 4
-    enunciado: "Em \"Etapas do pedido\", qual linha mostra \"Responsável: Despachante\" e está **Em andamento**?"
+    enunciado: 'Em "Etapas do pedido", qual linha mostra "Responsável: Despachante" e está **Em andamento**?'
     opcoes:
       a: "Embarque"
       b: "Desembaraço"
@@ -72,7 +72,7 @@ perguntas:
     enunciado: "Você quer conferir o número e o arquivo do BL original antes de registrar o processo. Onde olha?"
     opcoes:
       a: "No item **Documentos aduaneiros** da etapa Desembaraço"
-      b: "No cartão **Embarque e desembaraço**, passo \"BL (original)\""
+      b: 'No cartão **Embarque e desembaraço**, passo "BL (original)"'
       c: "Em Mensagens, na conversa com a companhia marítima"
       d: "Na lista de Pendências, na coluna do prazo da linha"
     correta: [b]
@@ -95,7 +95,7 @@ perguntas:
     nivel: 3
     capitulo: DES-01-C3
     cena: 7
-    enunciado: "Você clica em **Enviar** em **Custos realizados** sem digitar nada e o portal diz \"Informe o valor (ex.: 1.234,56).\" O que faz?"
+    enunciado: 'Você clica em **Enviar** em **Custos realizados** sem digitar nada e o portal diz "Informe o valor (ex.: 1.234,56)." O que faz?'
     opcoes:
       a: "Clica em **Confirmar** na Liberação aduaneira para seguir em frente"
       b: "Marca o item como opcional para o portal aceitar o envio"

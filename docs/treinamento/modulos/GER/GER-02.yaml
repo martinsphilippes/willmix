@@ -65,9 +65,9 @@ perguntas:
     opcoes:
       a: "Um atraso"
       b: "Um cancelamento"
-      c: "\"Pedido #1 criado\""
+      c: '"Pedido #1 criado"'
       d: "Um problema no pedido"
-      e: "Um aviso com o selo \"Sua vez\""
+      e: 'Um aviso com o selo "Sua vez"'
     correta: [a, b, d]
     explicacao: "Atenção reúne atraso, problema e cancelamento. O que pede a sua ação fica em **Precisa de você**, e o que andou no pedido, em **Novidades**."
   - id: GER-02-Q4
@@ -75,7 +75,7 @@ perguntas:
     nivel: 3
     capitulo: GER-02-C2
     cena: 5
-    enunciado: "No sino há um aviso com o selo \"Sua vez\". Você quer ir ao lugar certo e já marcá-lo como lido. Qual botão usa?"
+    enunciado: 'No sino há um aviso com o selo "Sua vez". Você quer ir ao lugar certo e já marcá-lo como lido. Qual botão usa?'
     opcoes:
       a: "**Excluir todas**"
       b: "**Resolver**"
@@ -119,7 +119,7 @@ perguntas:
       c: "O PDF só vai se for escolhido antes de digitar o texto"
       d: "O PDF não vai junto; envie primeiro o texto e depois o arquivo"
     correta: [b]
-    explicacao: "Ao escolher o arquivo, ele é enviado na hora, junto com o texto digitado. Clicar em **Enviar** depois, com o campo vazio, mostra \"Confira o valor de: Mensagem.\""
+    explicacao: 'Ao escolher o arquivo, ele é enviado na hora, junto com o texto digitado. Clicar em **Enviar** depois, com o campo vazio, mostra "Confira o valor de: Mensagem."'
   - id: GER-02-Q8
     tipo: ordem
     nivel: 2
@@ -128,7 +128,7 @@ perguntas:
     enunciado: "A Wellmix respondeu a uma conversa sua. Coloque na ordem o que você vê e faz."
     opcoes:
       a: "A Wellmix responde na conversa"
-      b: "O balão ganha o número e aparece a faixa amarela \"Nova mensagem da Wellmix\""
+      b: 'O balão ganha o número e aparece a faixa amarela "Nova mensagem da Wellmix"'
       c: "Você clica em **Abrir e responder**"
       d: "A conversa abre no assunto e os números somem"
     correta: [a, b, c, d]

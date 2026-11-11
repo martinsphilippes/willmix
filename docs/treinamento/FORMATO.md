@@ -7,18 +7,18 @@ A mecânica (percentuais, aprovação, trilhas) está em [README.md](README.md).
 ## Estrutura do arquivo
 
 ```yaml
-episodio: FOR-02                 # o ID do episódio, igual ao do roteiro
+episodio: FOR-02 # o ID do episódio, igual ao do roteiro
 titulo: Responder à solicitação do Booking
 serie: FOR
-papel: fornecedor                # papel de quem assiste (ver docs/ACCESS.md)
-duracao: "3:30"                  # a duração-alvo do roteiro, m:ss
-idiomas: [pt, en, zh]            # os idiomas em que o módulo existe (pt sempre)
+papel: fornecedor # papel de quem assiste (ver docs/ACCESS.md)
+duracao: "3:30" # a duração-alvo do roteiro, m:ss
+idiomas: [pt, en, zh] # os idiomas em que o módulo existe (pt sempre)
 capitulos:
   - id: FOR-02-C1
     titulo: Onde chega a solicitação
-    inicio: "0:12"               # início no vídeo, m:ss (vem dos tempos das cenas do roteiro)
+    inicio: "0:12" # início no vídeo, m:ss (vem dos tempos das cenas do roteiro)
     fim: "1:05"
-    cenas: [2, 4]                # da cena 2 à 4 do roteiro
+    cenas: [2, 4] # da cena 2 à 4 do roteiro
     resumo: Uma frase do que se aprende neste trecho.
 perguntas:
   - id: FOR-02-Q1
@@ -34,7 +34,7 @@ perguntas:
       d: "Quarta alternativa"
     correta: [b]
     explicacao: "Por que b está certa, com o nome real do botão ou da tela."
-    traducoes:                   # só nos módulos com idiomas além do pt
+    traducoes: # só nos módulos com idiomas além do pt
       en:
         enunciado: "..."
         opcoes: { a: "...", b: "...", c: "...", d: "..." }
@@ -58,12 +58,12 @@ Cada módulo tem um **banco de 8 perguntas** (o GER-00, 10). A prova sorteia 5 d
 
 ### Tipos
 
-| `tipo`     | Como responde                       | `opcoes`                              | `correta`                                |
-| ---------- | ----------------------------------- | ------------------------------------- | ---------------------------------------- |
-| `unica`    | escolhe uma entre 3 e 4             | `a`, `b`, `c` (e `d`)                 | uma letra: `[b]`                         |
-| `multipla` | marca todas as certas (de 4 a 5)    | `a` a `e`                             | duas ou mais letras: `[a, c]`            |
-| `vf`       | verdadeiro ou falso                 | `a: Verdadeiro`, `b: Falso`           | `[a]` ou `[b]`                           |
-| `ordem`    | coloca os passos na ordem certa     | de 3 a 5 passos (as letras são só ids)| a sequência completa: `[c, a, b]`        |
+| `tipo`     | Como responde                    | `opcoes`                               | `correta`                         |
+| ---------- | -------------------------------- | -------------------------------------- | --------------------------------- |
+| `unica`    | escolhe uma entre 3 e 4          | `a`, `b`, `c` (e `d`)                  | uma letra: `[b]`                  |
+| `multipla` | marca todas as certas (de 4 a 5) | `a` a `e`                              | duas ou mais letras: `[a, c]`     |
+| `vf`       | verdadeiro ou falso              | `a: Verdadeiro`, `b: Falso`            | `[a]` ou `[b]`                    |
+| `ordem`    | coloca os passos na ordem certa  | de 3 a 5 passos (as letras são só ids) | a sequência completa: `[c, a, b]` |
 
 Em `ordem`, a tela embaralha os passos; `correta` é a ordem certa.
 

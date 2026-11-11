@@ -42,7 +42,7 @@ perguntas:
       c: "**+ Nova solicitação**"
       d: "**Enviar**"
     correta: [c]
-    explicacao: "O botão vermelho **+ Nova solicitação** fica em Orçamentos, no grupo Meus pedidos. Na vitrine, o cartão \"Não encontrou? Peça um produto\" leva ao mesmo formulário."
+    explicacao: 'O botão vermelho **+ Nova solicitação** fica em Orçamentos, no grupo Meus pedidos. Na vitrine, o cartão "Não encontrou? Peça um produto" leva ao mesmo formulário.'
   - id: CLI-02-Q2
     tipo: unica
     nivel: 1
@@ -68,7 +68,7 @@ perguntas:
       c: "Descrição"
       d: "Quantidade"
     correta: [b, c, d]
-    explicacao: "Se faltar algo, a tela diz \"Confira os produtos: nome, descrição e quantidade são obrigatórios.\" A Especificação é opcional."
+    explicacao: 'Se faltar algo, a tela diz "Confira os produtos: nome, descrição e quantidade são obrigatórios." A Especificação é opcional.'
   - id: CLI-02-Q4
     tipo: ordem
     nivel: 2
@@ -94,7 +94,7 @@ perguntas:
       c: "Apaga o produto da solicitação"
       d: "Bloqueia o botão **Enviar** até João ligar para a Wellmix"
     correta: [a]
-    explicacao: "A tela avisa \"Abaixo do pedido mínimo (300 un). Ao sair do campo, a quantidade sobe para o mínimo.\" Use pelo menos o mínimo que a tela mostra."
+    explicacao: 'A tela avisa "Abaixo do pedido mínimo (300 un). Ao sair do campo, a quantidade sobe para o mínimo." Use pelo menos o mínimo que a tela mostra.'
   - id: CLI-02-Q6
     tipo: unica
     nivel: 3
@@ -113,7 +113,7 @@ perguntas:
     nivel: 3
     capitulo: CLI-02-C4
     cena: 9
-    enunciado: "João acha o \"Prazo de resposta (SLA)\" longo e tenta editar o campo para encurtá-lo. O que acontece?"
+    enunciado: 'João acha o "Prazo de resposta (SLA)" longo e tenta editar o campo para encurtá-lo. O que acontece?'
     opcoes:
       a: "O campo aceita datas de até 5 dias úteis"
       b: "O campo é cinza e só de leitura: o prazo é definido pela Wellmix"
