@@ -2,6 +2,8 @@
 
 Telas Cadastros → Clientes (`/app/customers`) e Cadastros → Fornecedores (`/app/suppliers`), ao lado da lista de Empresas (que continua igual). As duas são a mesma tela (`src/app/app/_party-accounts`), cada uma do seu lado da conta.
 
+**Outros parceiros (decisão do dono, 11/11/2026).** A lista de Empresas (`/app/parties`, antes "Parceiros") repetia clientes e fornecedores, que já têm as telas acima. Ela passa a se chamar **Outros parceiros** e lista só os demais tipos: agência, despachante, armador, transportadora, jurídico, comex, logística e OCP (`OTHER_PARTY_TYPES`, em `src/lib/party-types.ts`). É o único lugar que lista e cadastra esses tipos, por isso a tela não foi excluída. Os endereços antigos `?type=supplier` e `?type=customer` levam para Fornecedores e Clientes. O cadastro de cada empresa (`/app/parties/[id]`) e o "Novo parceiro" (`/app/parties/new`) não mudaram: continuam sendo o cadastro de todos os tipos, inclusive cliente e fornecedor. Nenhum dado foi apagado.
+
 ## Lista
 
 - Cinco cartões com a conta de todos os clientes listados: **Valor do contrato**, **Entregue**, **Pagamento antecipado**, **A receber** e **Recebido**.
