@@ -417,15 +417,20 @@ async function saleRecords(
   const out = new Map<string, PricingRecord>();
   if (!ids.length) return out;
   try {
-    const rows = await getStore().list("audit_log", {
-      filter: {
-        entity: "request",
-        entityId: ids,
-        action: ["quote.select", "proposal.refresh"],
-      },
-      orderBy: "createdAt",
-      direction: "desc",
-    });
+    // Muitas solicitações: por ação (poucas linhas) em vez de por id (lotes
+    // de 100 ids); o filtro pelos ids é feito aqui. Poucas: pelos ids.
+    const wanted = new Set(ids);
+    const rows = (
+      await getStore().list("audit_log", {
+        filter: {
+          entity: "request",
+          ...(ids.length > 100 ? {} : { entityId: ids }),
+          action: ["quote.select", "proposal.refresh"],
+        },
+        orderBy: "createdAt",
+        direction: "desc",
+      })
+    ).filter((r) => wanted.has(r.entityId));
     for (const row of rows) {
       if (out.has(row.entityId)) continue;
       const pricing = (row.after as { pricing?: PricingRecord } | null)
@@ -438,23 +443,26 @@ async function saleRecords(
   return out;
 }
 
-export async function loadFinance(
-  options: {
-    /** Câmbio do dia e da venda (estimativa da margem). A Control Tower não usa. */
-    estimate?: boolean;
-  } = {},
-): Promise<{
-  rows: OrderFinance[];
-  summary: FinanceSummary;
-}> {
+/**
+ * Pagamentos, nomes e primeiro item de cada pedido: do resumo por pedido
+ * (docs/RESUMOS.md) quando ele está em uso; senão, das tabelas.
+ */
+async function financeLookup(orders: Order[]) {
+  const { factsForOrders } = await import("./order-summary");
+  const facts = await factsForOrders(orders);
+  if (facts) {
+    const f = (o: Order) => facts.get(o.id);
+    return {
+      payments: (o: Order) => (f(o)?.pays ?? []) as Payment[],
+      customer: (o: Order) => (o.customerId && f(o)?.customer) || "—",
+      supplier: (o: Order) => (o.supplierId && f(o)?.supplier) || "—",
+      product: (o: Order) => f(o)?.product ?? "—",
+    };
+  }
   const store = getStore();
   // Sem a cópia do registro do ERP (sankhyaRefs): era mais da metade de
-  // pedidos, pagamentos e itens.
-  const [orders, payments, items] = await Promise.all([
-    listColumns(store, "orders", columnsExcept("orders", ["sankhyaRefs"]), {
-      orderBy: "number",
-      direction: "desc",
-    }),
+  // pagamentos e itens.
+  const [payments, items] = await Promise.all([
     listColumns(store, "payments", columnsExcept("payments", ["sankhyaRefs"])),
     listColumns(store, "order_items", ["orderId", "name"]),
   ]);
@@ -475,6 +483,33 @@ export async function loadFinance(
     if (list) list.push(p);
     else paymentsByOrder.set(p.orderId, [p]);
   }
+  const name = (id: string | null) => (id && parties.get(id)?.name) || "—";
+  return {
+    payments: (o: Order) => paymentsByOrder.get(o.id) ?? [],
+    customer: (o: Order) => name(o.customerId),
+    supplier: (o: Order) => name(o.supplierId),
+    product: (o: Order) => itemByOrder.get(o.id)?.name ?? "—",
+  };
+}
+
+export async function loadFinance(
+  options: {
+    /** Câmbio do dia e da venda (estimativa da margem). A Control Tower não usa. */
+    estimate?: boolean;
+  } = {},
+): Promise<{
+  rows: OrderFinance[];
+  summary: FinanceSummary;
+}> {
+  const store = getStore();
+  // Sem a cópia do registro do ERP (sankhyaRefs): mais da metade dos pedidos.
+  const orders = await listColumns(
+    store,
+    "orders",
+    columnsExcept("orders", ["sankhyaRefs"]),
+    { orderBy: "number", direction: "desc" },
+  );
+  const lookup = await financeLookup(orders);
   const estimate = options.estimate !== false;
   const [today, sales] = estimate
     ? await Promise.all([
@@ -482,15 +517,14 @@ export async function loadFinance(
         saleRecords(orders.map((o) => o.requestId)),
       ])
     : [null, new Map<string, PricingRecord>()];
-  const name = (id: string | null) => (id && parties.get(id)?.name) || "—";
   const rows = orders.map((o) =>
     computeOrderFinance(
       o,
-      paymentsByOrder.get(o.id) ?? [],
+      lookup.payments(o),
       {
-        customer: name(o.customerId),
-        supplier: name(o.supplierId),
-        product: itemByOrder.get(o.id)?.name ?? "—",
+        customer: lookup.customer(o),
+        supplier: lookup.supplier(o),
+        product: lookup.product(o),
       },
       {
         today,

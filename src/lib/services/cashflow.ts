@@ -1,4 +1,5 @@
 import "server-only";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 
 import { getStore } from "@/lib/db";
 import { rateFor } from "@/lib/pricing";
@@ -130,15 +131,31 @@ export function buildCashflow(input: {
 export async function loadCashflow(weeks = 12, now = new Date()) {
   const store = getStore();
   const today = brazilDay(now.toISOString()) as string;
-  const [{ rows }, payables, requests, stages, payments, parties] =
-    await Promise.all([
-      loadFinance({ estimate: false }),
-      listPayables(),
-      store.list("requests", { filter: { status: "WAITING_DOWN_PAYMENT" } }),
-      store.list("stages", { filter: { key: "DELIVERED" } }),
-      store.list("payments", { filter: { direction: "customer_in" } }),
-      store.list("parties", { filter: { type: "customer" } }),
-    ]);
+  const [{ rows }, payables, requests, payments] = await Promise.all([
+    loadFinance({ estimate: false }),
+    listPayables(),
+    store.list("requests", { filter: { status: "WAITING_DOWN_PAYMENT" } }),
+    store.list("payments", { filter: { direction: "customer_in" } }),
+  ]);
+  // Etapa "Entregue" de cada pedido: do resumo por pedido (docs/RESUMOS.md)
+  // ou, sem ele, da tabela de etapas. Clientes: só os das solicitações.
+  const { factsForOrders } = await import("./order-summary");
+  const facts = await factsForOrders(rows.map((r) => r.order));
+  const deliveredStages = facts
+    ? null
+    : await store.list("stages", { filter: { key: "DELIVERED" } });
+  const deliveredByOrder = deliveredStages
+    ? indexBy(deliveredStages, "orderId")
+    : null;
+  const deliveredOf = (orderId: string) =>
+    facts
+      ? facts.get(orderId)?.ship.find((x) => x.key === "DELIVERED")
+      : deliveredByOrder!.get(orderId);
+  const parties = await listByIds(
+    store,
+    "parties",
+    requests.map((q) => q.customerId),
+  );
   let rates: Record<string, number | undefined> = {};
   try {
     const { getFxRates } = await import("./fx");
@@ -153,7 +170,7 @@ export async function loadCashflow(weeks = 12, now = new Date()) {
     const o = r.order;
     if (o.status === "CANCELLED" || o.customerId === STOCK_PARTY_ID) continue;
     if (!(r.receivable > 0)) continue;
-    const st = stages.find((s) => s.orderId === o.id);
+    const st = deliveredOf(o.id);
     const delivered = o.status === "DELIVERED" || o.status === "CLOSED";
     const day = delivered
       ? brazilDay(st?.startedAt ?? st?.completedAt ?? o.updatedAt)

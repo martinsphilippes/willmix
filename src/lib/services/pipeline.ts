@@ -3,6 +3,7 @@ import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 
 import {
   getStore,
+  type Stage,
   type StageKey,
   type User,
   type VariantSnapshot,
@@ -13,7 +14,13 @@ import {
   ORDER_ACCESS_FIELDS,
   isWellmix,
 } from "@/lib/auth/permissions";
-import { journeyIndex, loadJourneyInput, type JourneyStep } from "./journey";
+import {
+  journeyIndex,
+  loadJourneyInput,
+  type JourneyInput,
+  type JourneyStep,
+} from "./journey";
+import type { OrderFacts } from "./order-summary";
 
 /*
  * Painel de Pedidos: cada pedido com a etapa em que está (cancelado mostra a
@@ -81,6 +88,35 @@ export interface PipelineRow {
   requestNumber: number | null;
 }
 
+/**
+ * A mesma entrada de `loadJourneyInput`, montada do resumo dos pedidos dados
+ * (etapas e itens de etapa, passos do embarque) e da revisão aberta.
+ */
+async function journeyInputFromFacts(
+  facts: OrderFacts[],
+  activeStages: JourneyInput["activeStages"],
+  rowsOf: (f: OrderFacts[]) => {
+    stages: JourneyInput["stages"];
+    requirements: JourneyInput["requirements"];
+  },
+  now = new Date(),
+): Promise<JourneyInput> {
+  const { stages, requirements } = rowsOf(facts);
+  const reviews = await getStore().list("review_items", {
+    filter: { status: "open" },
+    orderBy: "createdAt",
+    direction: "desc",
+  });
+  return {
+    now,
+    activeStages,
+    stages,
+    requirements,
+    steps: facts.flatMap((f) => f.steps),
+    reviews,
+  };
+}
+
 const STATE_ORDER: Record<PipelineState, number> = {
   blocked: 0,
   active: 1,
@@ -107,7 +143,7 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
     "productId",
     "deadline",
   ] as const;
-  const [orders, stages, items, requests] = await Promise.all([
+  const [orders, items, requests] = await Promise.all([
     listColumns(
       store,
       "orders",
@@ -121,9 +157,6 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
       ],
       { orderBy: "number", direction: "desc" },
     ),
-    listColumns(store, "stages", ["orderId", "status", "percent", "dueAt"], {
-      filter: { status: ["active", "blocked"] },
-    }),
     listColumns(store, "order_items", [
       "orderId",
       "name",
@@ -137,6 +170,19 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
       ? listColumns(store, "requests", requestColumns)
       : Promise.resolve([]),
   ]);
+  // Etapas e viagem: do resumo por pedido (docs/RESUMOS.md) quando em uso.
+  const { factsForOrders, activeStagesFromFacts, journeyRowsFromFacts } =
+    await import("./order-summary");
+  const facts = await factsForOrders(orders);
+  const stages: Array<Pick<Stage, "orderId" | "status" | "percent" | "dueAt">> =
+    facts
+      ? activeStagesFromFacts([...facts.values()])
+      : await listColumns(
+          store,
+          "stages",
+          ["orderId", "status", "percent", "dueAt"],
+          { filter: { status: ["active", "blocked"] } },
+        );
   const stageByOrder = indexBy(stages, "orderId");
   // Só os parceiros que aparecem (antes: a tabela inteira, ~32 mil).
   const parties = indexBy(
@@ -191,19 +237,23 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
   const showSupplier = canSeeSupplier(user) && user.role !== "supplier";
   // Passo da viagem: pedidos em andamento e cancelados (onde pararam) e as
   // solicitações abertas, com a regra da Control Tower.
+  const journeyOrders = visibleOrders.filter(
+    (o) =>
+      o.status !== "CLOSED" && (o.status !== "CANCELLED" || !!o.cancelStageKey),
+  );
   const journey = journeyIndex(
-    await loadJourneyInput(
-      visibleOrders
-        .filter(
-          (o) =>
-            o.status !== "CLOSED" &&
-            (o.status !== "CANCELLED" || !!o.cancelStageKey),
+    facts
+      ? await journeyInputFromFacts(
+          journeyOrders.flatMap((o) => facts.get(o.id) ?? []),
+          stages,
+          journeyRowsFromFacts,
         )
-        .map((o) => o.id),
-      requests
-        .filter((r) => r.status !== "ORDERED" && r.status !== "CANCELLED")
-        .map((r) => r.id),
-    ),
+      : await loadJourneyInput(
+          journeyOrders.map((o) => o.id),
+          requests
+            .filter((r) => r.status !== "ORDERED" && r.status !== "CANCELLED")
+            .map((r) => r.id),
+        ),
   );
   const rows: PipelineRow[] = [];
 
