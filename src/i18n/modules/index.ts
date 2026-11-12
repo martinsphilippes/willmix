@@ -125,6 +125,7 @@ import * as supplierRequestNegotiation from "./supplier-request-negotiation";
 import * as purchaseOrder from "./purchase-order";
 import * as purchaseRounds from "./purchase-rounds";
 import * as aiReferences from "./ai-references";
+import * as sampling from "./sampling";
 import * as notifications from "./notifications";
 import * as productSheetImport from "./product-sheet-import";
 import * as productVariants from "./product-variants";
@@ -256,6 +257,7 @@ export const modulesPt = {
   ...purchaseOrder.pt,
   ...purchaseRounds.pt,
   ...aiReferences.pt,
+  ...sampling.pt,
   ...intro.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
@@ -384,6 +386,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...purchaseOrder.en,
   ...purchaseRounds.en,
   ...aiReferences.en,
+  ...sampling.en,
   ...intro.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
@@ -512,5 +515,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...purchaseOrder.zh,
   ...purchaseRounds.zh,
   ...aiReferences.zh,
+  ...sampling.zh,
   ...intro.zh,
 };

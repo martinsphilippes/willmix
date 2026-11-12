@@ -9484,6 +9484,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "sampling",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "longtext"
         }
       ],
       "indexes": [

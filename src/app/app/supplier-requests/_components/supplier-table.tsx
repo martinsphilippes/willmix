@@ -36,7 +36,9 @@ import {
   answerSupplierRequestAction,
   postSupplierRequestMessageAction,
 } from "../../actions/supplier-requests";
-import { STATUS_TONE } from "./status";
+import { SAMPLING_TONE, STATUS_TONE } from "./status";
+import { samplingOf } from "@/lib/supplier-request-sampling";
+import Link from "next/link";
 import { roundsDates } from "@/components/purchase-rounds";
 import { dateTime } from "./negotiation";
 import { AnswerIcon, ChatBubbleIcon, OpenIcon } from "./icons";
@@ -333,6 +335,24 @@ export function SupplierRequestTable({
                   <Badge tone={STATUS_TONE[r.status]}>
                     {t(`supplierRequests.status.${r.status}` as DictionaryKey)}
                   </Badge>
+                  {(() => {
+                    // Aprovada: a amostragem (fotos e vídeos da amostra).
+                    const sampling = samplingOf(r);
+                    return sampling ? (
+                      <Link
+                        href={`${href}#amostragem`}
+                        className="mt-1 block"
+                        data-supplier-table-sampling={sampling.status}
+                      >
+                        <Badge tone={SAMPLING_TONE[sampling.status]}>
+                          {t("sampling.table.open")}:{" "}
+                          {t(
+                            `sampling.status.${sampling.status}` as DictionaryKey,
+                          )}
+                        </Badge>
+                      </Link>
+                    ) : null;
+                  })()}
                 </Td>
                 <Td className={cx(nowrap, "text-xs")}>
                   {sla ? (
