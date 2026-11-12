@@ -57,7 +57,24 @@ export function canViewRequest(user: User, request: Request): boolean {
  *   pedidos em que foram designados;
  * - jurídico: todos (somente leitura, multas).
  */
-export function canViewOrder(user: User, order: Order): boolean {
+/** Campos do pedido que decidem quem o vê (canViewOrder). */
+export const ORDER_ACCESS_FIELDS = [
+  "customerId",
+  "requestedByUserId",
+  "supplierId",
+  "agencyId",
+  "brokerId",
+  "shippingLineId",
+  "carrierId",
+  "comexId",
+  "logisticsId",
+  "ocpId",
+] as const;
+
+export function canViewOrder(
+  user: User,
+  order: Pick<Order, (typeof ORDER_ACCESS_FIELDS)[number]>,
+): boolean {
   if (isWellmix(user) || user.role === "legal") return true;
   const party = user.partyId;
   if (!party) return false;

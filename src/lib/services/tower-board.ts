@@ -1,5 +1,5 @@
 import "server-only";
-import { listByIds } from "@/lib/db/lookup";
+import { columnsExcept, listByIds, listColumns } from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -186,7 +186,7 @@ const isPortalOrder = (o: Pick<Order, "flow">) => o.flow === "supplier_request";
 export interface BoardInput {
   now: Date;
   finance: boolean;
-  orders: Order[];
+  orders: Omit<Order, "sankhyaRefs">[];
   parties: Pick<Party, "id" | "name">[];
   items: Pick<OrderItem, "orderId" | "name">[];
   products: Pick<Product, "id" | "name">[];
@@ -626,8 +626,13 @@ export async function loadTowerBoard(options: {
     supplierRequests,
     settings,
   ] = await Promise.all([
-    store.list("orders", { orderBy: "number", direction: "desc" }),
-    store.list("order_items"),
+    // Sem a cópia do registro do ERP (sankhyaRefs): com milhares de pedidos
+    // do Sankhya, as linhas inteiras estouravam a memória da função.
+    listColumns(store, "orders", columnsExcept("orders", ["sankhyaRefs"]), {
+      orderBy: "number",
+      direction: "desc",
+    }),
+    listColumns(store, "order_items", ["orderId", "name"]),
     store.list("stages", { filter: { status: ["active", "blocked"] } }),
     store.list("penalties", { filter: { status: ["open", "disputed"] } }),
     store.list("requirements", { filter: { status: "rejected" } }),
@@ -689,16 +694,26 @@ export async function loadTowerBoard(options: {
     finance,
   ] = await Promise.all([
     ids.length
-      ? store.list("stages", { filter: { orderId: ids } })
-      : none<Stage>(),
-    ids.length
-      ? store.list("requirements", {
-          filter: { orderId: ids, key: BOARD_REQUIREMENT_KEYS },
+      ? listColumns(store, "stages", ["orderId", "key"], {
+          filter: { orderId: ids },
         })
-      : none<Requirement>(),
+      : none<BoardInput["stages"][number]>(),
+    ids.length
+      ? listColumns(
+          store,
+          "requirements",
+          ["orderId", "stageId", "key", "status", "value"],
+          { filter: { orderId: ids, key: BOARD_REQUIREMENT_KEYS } },
+        )
+      : none<BoardInput["requirements"][number]>(),
     portalIds.length
-      ? store.list("requirements", { filter: { orderId: portalIds } })
-      : none<Requirement>(),
+      ? listColumns(
+          store,
+          "requirements",
+          ["orderId", "stageId", "key", "status"],
+          { filter: { orderId: portalIds } },
+        )
+      : none<NonNullable<BoardInput["laneRequirements"]>[number]>(),
     ids.length
       ? safe(store.list("import_steps", { filter: { orderId: ids } }))
       : none<ImportStep>(),

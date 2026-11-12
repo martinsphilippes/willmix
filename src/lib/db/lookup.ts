@@ -1,5 +1,6 @@
-import type { TableName, Tables } from "./schema";
-import type { Store } from "./store";
+import { TABLES, type TableName, type Tables } from "./schema";
+import type { ListOptions, Store } from "./store";
+import { pickColumns } from "./store";
 
 /**
  * Ajudas de leitura para telas que mostram nomes de cadastros grandes
@@ -33,4 +34,35 @@ export function indexBy<T, F extends keyof T>(
   const map = new Map<T[F], T>();
   for (const row of rows) if (!map.has(row[field])) map.set(row[field], row);
   return map;
+}
+
+/**
+ * Só as colunas que a tela usa (mais id e datas). No Supabase o banco já
+ * devolve só elas; nos outros stores a linha inteira é recortada, para o
+ * resultado ser igual nos dois.
+ */
+export async function listColumns<
+  K extends TableName,
+  C extends keyof Tables[K] & string,
+>(
+  store: Store,
+  table: K,
+  columns: readonly C[],
+  options: ListOptions<Tables[K]> = {},
+): Promise<Pick<Tables[K], C | "id" | "createdAt" | "updatedAt">[]> {
+  if (store.listColumns) return store.listColumns(table, columns, options);
+  return (await store.list(table, options)).map((r) => pickColumns(r, columns));
+}
+
+/**
+ * Todas as colunas da tabela menos as indicadas (ex.: a cópia do registro do
+ * ERP, `sankhyaRefs`, que nenhuma lista usa e pesa mais que o resto).
+ */
+export function columnsExcept<
+  K extends TableName,
+  O extends keyof Tables[K] & string,
+>(table: K, omit: readonly O[]): Exclude<keyof Tables[K] & string, O>[] {
+  return Object.keys(TABLES[table].columns).filter(
+    (c) => !(omit as readonly string[]).includes(c),
+  ) as Exclude<keyof Tables[K] & string, O>[];
 }

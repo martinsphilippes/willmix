@@ -1,5 +1,10 @@
 import "server-only";
-import { indexBy, listByIds } from "@/lib/db/lookup";
+import {
+  columnsExcept,
+  indexBy,
+  listByIds,
+  listColumns,
+} from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -91,7 +96,12 @@ export async function loadControlTower(): Promise<TowerData> {
   for (const p of [rejectedP, expiringP, reviewsP]) p.catch(() => undefined);
   const now = Date.now();
   const [orders, stages, requests, penalties, items] = await Promise.all([
-    store.list("orders", { orderBy: "number", direction: "desc" }),
+    // Sem a cópia do registro do ERP (sankhyaRefs), que pesava mais que o
+    // resto dos pedidos e itens (a Control Tower estourava a memória).
+    listColumns(store, "orders", columnsExcept("orders", ["sankhyaRefs"]), {
+      orderBy: "number",
+      direction: "desc",
+    }),
     store.list("stages", { filter: { status: ["active", "blocked"] } }),
     store.list("requests", {
       filter: {
@@ -105,7 +115,7 @@ export async function loadControlTower(): Promise<TowerData> {
       },
     }),
     store.list("penalties", { filter: { status: ["open", "disputed"] } }),
-    store.list("order_items"),
+    listColumns(store, "order_items", ["orderId", "name"]),
   ]);
   // Só os parceiros que aparecem na tela (antes: a tabela inteira, ~32 mil).
   const parties = indexBy(

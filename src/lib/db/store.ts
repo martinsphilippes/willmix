@@ -80,25 +80,66 @@ export interface Store {
   createSignedUpload?(name: string): Promise<{ key: string; url: string }>;
   /** Próximo valor de um contador sequencial (ex.: número do pedido). */
   nextNumber(key: string): Promise<number>;
+  /**
+   * Só algumas colunas (mais id e datas), para listas grandes. Opcional: sem
+   * ela, `listColumns` (lookup.ts) lê a linha inteira e recorta.
+   */
+  listColumns?<K extends TableName, C extends keyof Tables[K] & string>(
+    table: K,
+    columns: readonly C[],
+    options?: ListOptions<Tables[K]>,
+  ): Promise<Pick<Tables[K], C | "id" | "createdAt" | "updatedAt">[]>;
 }
 
+/** A linha só com id, datas e as colunas pedidas. */
+export function pickColumns<T extends object, C extends keyof T & string>(
+  row: T,
+  columns: readonly C[],
+): Pick<
+  T,
+  C | ("id" & keyof T) | ("createdAt" & keyof T) | ("updatedAt" & keyof T)
+> {
+  const out: Record<string, unknown> = {};
+  for (const key of ["id", "createdAt", "updatedAt", ...columns])
+    if (key in row) out[key] = (row as Record<string, unknown>)[key];
+  return out as never;
+}
+
+/**
+ * Teste de uma linha contra o filtro. Para filtrar muitas linhas, use
+ * `rowMatcher` (monta os conjuntos do "igual a um destes" uma vez só: com
+ * milhares de ids, o `includes` linha a linha levava segundos).
+ */
 export function matchesFilter<T extends object>(
   row: T,
   filter?: Filter<T>,
 ): boolean {
-  if (!filter) return true;
-  for (const [key, expected] of Object.entries(filter)) {
-    const actual = (row as Record<string, unknown>)[key];
+  return rowMatcher(filter)(row);
+}
+
+export function rowMatcher<T extends object>(
+  filter?: Filter<T>,
+): (row: T) => boolean {
+  if (!filter) return () => true;
+  const checks = Object.values(filter).map((expected) => {
     if (Array.isArray(expected)) {
-      if (!expected.includes(actual as string | number)) return false;
-    } else if (expected === null) {
-      // Como o "is null" do banco: campo ausente também é vazio.
-      if (actual != null) return false;
-    } else if (actual !== expected) {
-      return false;
+      const set = new Set<unknown>(expected);
+      return (actual: unknown) => set.has(actual);
     }
-  }
-  return true;
+    return (actual: unknown) => matchesValue(actual, expected as FilterValue);
+  });
+  const keys = Object.keys(filter);
+  return (row: T) => {
+    for (let i = 0; i < keys.length; i++)
+      if (!checks[i]((row as Record<string, unknown>)[keys[i]])) return false;
+    return true;
+  };
+}
+
+function matchesValue(actual: unknown, expected: FilterValue): boolean {
+  // Como o "is null" do banco: campo ausente também é vazio.
+  if (expected === null) return actual == null;
+  return actual === expected;
 }
 
 export function sortRows<T extends object>(

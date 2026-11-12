@@ -1,5 +1,5 @@
 import "server-only";
-import { indexBy, listByIds } from "@/lib/db/lookup";
+import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -10,6 +10,7 @@ import {
 import {
   canSeeSupplier,
   canViewOrder,
+  ORDER_ACCESS_FIELDS,
   isWellmix,
 } from "@/lib/auth/permissions";
 import { journeyIndex, loadJourneyInput, type JourneyStep } from "./journey";
@@ -90,12 +91,53 @@ const STATE_ORDER: Record<PipelineState, number> = {
 export async function pipelineFor(user: User): Promise<PipelineRow[]> {
   const store = getStore();
   const wellmix = isWellmix(user);
+  // Só as colunas usadas: a cópia do registro do ERP (sankhyaRefs) era mais
+  // da metade dos pedidos e itens (com ~100 mil itens, a tela passava dos
+  // 300 s da Vercel).
+  const requestColumns = [
+    "groupId",
+    "number",
+    "specification",
+    "status",
+    "customerId",
+    "productName",
+    "variant",
+    "quantity",
+    "unit",
+    "productId",
+    "deadline",
+  ] as const;
   const [orders, stages, items, requests] = await Promise.all([
-    store.list("orders", { orderBy: "number", direction: "desc" }),
-    store.list("stages", { filter: { status: ["active", "blocked"] } }),
-    store.list("order_items"),
-    wellmix ? store.list("requests") : Promise.resolve([]),
+    listColumns(
+      store,
+      "orders",
+      [
+        ...ORDER_ACCESS_FIELDS,
+        "number",
+        "status",
+        "requestId",
+        "fobCurrency",
+        "cancelStageKey",
+      ],
+      { orderBy: "number", direction: "desc" },
+    ),
+    listColumns(store, "stages", ["orderId", "status", "percent", "dueAt"], {
+      filter: { status: ["active", "blocked"] },
+    }),
+    listColumns(store, "order_items", [
+      "orderId",
+      "name",
+      "variant",
+      "quantity",
+      "unit",
+      "unitPrice",
+      "productId",
+    ]),
+    wellmix
+      ? listColumns(store, "requests", requestColumns)
+      : Promise.resolve([]),
   ]);
+  const stageByOrder = indexBy(stages, "orderId");
   // Só os parceiros que aparecem (antes: a tabela inteira, ~32 mil).
   const parties = indexBy(
     await listByIds(store, "parties", [
@@ -126,7 +168,9 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
           ),
         ];
         return ids.length
-          ? store.list("requests", { filter: { id: ids } })
+          ? listColumns(store, "requests", requestColumns, {
+              filter: { id: ids },
+            })
           : [];
       })();
   const requestById = new Map(orderRequests.map((r) => [r.id, r]));
@@ -165,7 +209,7 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
 
   for (const o of visibleOrders) {
     const request = o.requestId ? requestById.get(o.requestId) : undefined;
-    const stage = stages.find((s) => s.orderId === o.id);
+    const stage = stageByOrder.get(o.id);
     const cancelled = o.status === "CANCELLED";
     const closed = o.status === "CLOSED";
     rows.push({

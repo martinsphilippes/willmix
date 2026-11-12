@@ -418,3 +418,31 @@ describe("listas grandes", () => {
     );
   });
 });
+
+describe("SupabaseStore.listColumns", () => {
+  it("pede só as colunas escolhidas e devolve só elas", async () => {
+    const { calls } = fakeSupabase();
+    const store = new SupabaseStore("https://x.supabase.co", "service");
+    await store.create("order_items", {
+      orderId: "o1",
+      productId: null,
+      name: "Copo",
+      quantity: 2,
+      unit: "un",
+      unitPrice: 1,
+      variantId: null,
+      variant: null,
+      sankhyaCode: "9",
+      sankhyaRefs: { grande: "x".repeat(50) },
+    } as never);
+    calls.length = 0;
+    const rows = await store.listColumns("order_items", ["orderId", "name"], {
+      filter: { orderId: "o1" },
+    });
+    expect(calls[0]).toContain("select=id,createdAt,updatedAt,orderId,name&");
+    expect(rows).toHaveLength(1);
+    expect(Object.keys(rows[0]).sort()).toEqual(
+      ["createdAt", "id", "name", "orderId", "updatedAt"].sort(),
+    );
+  });
+});
