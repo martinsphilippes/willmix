@@ -1,5 +1,4 @@
 import "server-only";
-import { listByIds } from "@/lib/db/lookup";
 
 import { getStore } from "@/lib/db";
 import { rateFor } from "@/lib/pricing";
@@ -131,21 +130,15 @@ export function buildCashflow(input: {
 export async function loadCashflow(weeks = 12, now = new Date()) {
   const store = getStore();
   const today = brazilDay(now.toISOString()) as string;
-  const [{ rows }, payables, requests, stages, payments] = await Promise.all([
-    loadFinance({ estimate: false }),
-    listPayables(),
-    store.list("requests", { filter: { status: "WAITING_DOWN_PAYMENT" } }),
-    store.list("stages", { filter: { key: "DELIVERED" } }),
-    store.list("payments", { filter: { direction: "customer_in" } }),
-  ]);
-  // Só os clientes das solicitações com sinal a receber (antes: todos).
-  const parties = (
-    await listByIds(
-      store,
-      "parties",
-      requests.map((r) => r.customerId),
-    )
-  ).filter((p) => p.type === "customer");
+  const [{ rows }, payables, requests, stages, payments, parties] =
+    await Promise.all([
+      loadFinance({ estimate: false }),
+      listPayables(),
+      store.list("requests", { filter: { status: "WAITING_DOWN_PAYMENT" } }),
+      store.list("stages", { filter: { key: "DELIVERED" } }),
+      store.list("payments", { filter: { direction: "customer_in" } }),
+      store.list("parties", { filter: { type: "customer" } }),
+    ]);
   let rates: Record<string, number | undefined> = {};
   try {
     const { getFxRates } = await import("./fx");
