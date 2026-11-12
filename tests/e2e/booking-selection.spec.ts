@@ -248,6 +248,9 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   ).toBeDisabled();
   await expect(page.locator("[data-selection-submit]")).toBeVisible();
   await expect(page.locator("[data-selection-item]")).toHaveCount(3);
+  // Ao lado do bloco, os três prompts de IA com os padrões das Configurações.
+  await expect(page.locator("[data-ai-prompt]")).toHaveCount(3);
+  await expect(page.locator('[data-ai-prompt="product"]')).not.toHaveValue("");
 
   // 6. Seleção: o bloco sugerido junta os três copos de dois fornecedores.
   await page.goto(`${base}&tab=selection`);

@@ -58,6 +58,10 @@ import { SupplierNoLoginAlert } from "@/components/supplier-no-login";
 import { canOpen } from "@/lib/auth/screens";
 import { partiesWithoutLogin } from "@/lib/services/portal-access";
 import { TableTools } from "@/components/table-tools";
+import { SelectionAiPrompts } from "@/components/selection-ai-prompts";
+import { defaultPrompts, effectivePrompts } from "@/lib/ai-references";
+import { getMediaAdapter } from "@/lib/integrations/openai-media";
+import { getSettings } from "@/lib/settings";
 import {
   BookingItemSuperplan,
   bookingItemCost,
@@ -76,6 +80,8 @@ import {
  */
 
 const FORM = "selection-form";
+/** "Gravar e gerar com IA" espera a OpenAI (duas imagens e a ficha). */
+export const maxDuration = 300;
 
 export default async function BookingSelectionPage({
   searchParams,
@@ -92,14 +98,26 @@ export default async function BookingSelectionPage({
   const filters = parseSelectionFilters(query);
   const groupIds = parseGroupIds(query.ids);
   const t = await getT();
-  const [result, group, fx, savedGroups] = await Promise.all([
+  // Referências por IA (painel ao lado de "Gravar a escolha do grupo").
+  const aiGenerated =
+    typeof query.ai === "string" && /^\d{1,2}$/.test(query.ai)
+      ? Number(query.ai)
+      : null;
+  const aiError =
+    typeof query.aiError === "string" && /^[a-z_]{1,40}$/.test(query.aiError)
+      ? query.aiError
+      : null;
+  const [result, group, fx, savedGroups, settings] = await Promise.all([
     listSelectionItems(user, q, { filters }),
     groupIds.length
       ? listSelectionItems(user, "", { ids: groupIds })
       : Promise.resolve(null),
     getFxRates(),
     tab === "selection" ? listSelectionGroups(user) : Promise.resolve([]),
+    getSettings(),
   ]);
+  const aiDefaults = defaultPrompts(settings);
+  const aiMedia = getMediaAdapter(settings);
   const usd = fx.rates.USD ?? null;
   const rmb = fx.rates.RMB ?? null;
   const rmbPerUsd = usd && rmb ? usd / rmb : null;
@@ -560,62 +578,73 @@ export default async function BookingSelectionPage({
         {costHint}
         {table}
 
-        <Card title={t("supplierRequests.selection.form.title")}>
-          <p className="mb-3 text-sm text-zinc-600">
-            {t("supplierRequests.selection.form.body")}
-          </p>
-          <div className="grid gap-3 md:grid-cols-3">
-            <SelectionQuantity
-              label={t("supplierRequests.selection.form.quantity")}
-              hint={t("supplierRequests.selection.form.quantityHint")}
-              scheduledHint={t("purchaseRounds.form.quantityOff")}
-              defaultQuantity={current?.quantity ?? null}
-              schedule={current?.schedule ?? null}
-              labels={{
-                intl,
-                toggle: t("purchaseRounds.form.toggle"),
-                ask: t("purchaseRounds.form.ask"),
-                hint: t("purchaseRounds.form.hint"),
-                interval: t("purchaseRounds.form.interval"),
-                days: t("purchaseRounds.form.days", { n: "{n}" }),
-                custom: t("purchaseRounds.form.custom"),
-                firstDate: t("purchaseRounds.form.firstDate"),
-                n: t("purchaseRounds.form.n", { n: "{n}" }),
-                quantity: t("purchaseRounds.form.quantity"),
-                expected: t("purchaseRounds.form.expected"),
-                add: t("purchaseRounds.form.add"),
-                remove: t("purchaseRounds.form.remove", { n: "{n}" }),
-                total: t("purchaseRounds.form.total", {
-                  total: "{total}",
-                  unit: "{unit}",
-                }),
-                off: t("purchaseRounds.form.off"),
-              }}
-            />
-            <div className="md:col-span-3">
-              <Field
-                label={t("supplierRequests.selection.form.needs")}
-                hint={t("supplierRequests.selection.form.needsHint")}
-              >
-                <Textarea
-                  name="needs"
-                  rows={3}
-                  maxLength={4000}
-                  defaultValue={current?.needs ?? undefined}
-                  data-selection-needs
-                />
-              </Field>
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+          <Card title={t("supplierRequests.selection.form.title")}>
+            <p className="mb-3 text-sm text-zinc-600">
+              {t("supplierRequests.selection.form.body")}
+            </p>
+            <div className="grid gap-3 md:grid-cols-3">
+              <SelectionQuantity
+                label={t("supplierRequests.selection.form.quantity")}
+                hint={t("supplierRequests.selection.form.quantityHint")}
+                scheduledHint={t("purchaseRounds.form.quantityOff")}
+                defaultQuantity={current?.quantity ?? null}
+                schedule={current?.schedule ?? null}
+                labels={{
+                  intl,
+                  toggle: t("purchaseRounds.form.toggle"),
+                  ask: t("purchaseRounds.form.ask"),
+                  hint: t("purchaseRounds.form.hint"),
+                  interval: t("purchaseRounds.form.interval"),
+                  days: t("purchaseRounds.form.days", { n: "{n}" }),
+                  custom: t("purchaseRounds.form.custom"),
+                  firstDate: t("purchaseRounds.form.firstDate"),
+                  n: t("purchaseRounds.form.n", { n: "{n}" }),
+                  quantity: t("purchaseRounds.form.quantity"),
+                  expected: t("purchaseRounds.form.expected"),
+                  add: t("purchaseRounds.form.add"),
+                  remove: t("purchaseRounds.form.remove", { n: "{n}" }),
+                  total: t("purchaseRounds.form.total", {
+                    total: "{total}",
+                    unit: "{unit}",
+                  }),
+                  off: t("purchaseRounds.form.off"),
+                }}
+              />
+              <div className="md:col-span-3">
+                <Field
+                  label={t("supplierRequests.selection.form.needs")}
+                  hint={t("supplierRequests.selection.form.needsHint")}
+                >
+                  <Textarea
+                    name="needs"
+                    rows={3}
+                    maxLength={4000}
+                    defaultValue={current?.needs ?? undefined}
+                    data-selection-needs
+                  />
+                </Field>
+              </div>
             </div>
-          </div>
-          <div className="mt-3">
-            <SubmitButton
-              pendingText={t("supplierRequests.selection.form.pending")}
-              data-selection-submit
-            >
-              {t("supplierRequests.selection.form.submit")}
-            </SubmitButton>
-          </div>
-        </Card>
+            <div className="mt-3">
+              <SubmitButton
+                pendingText={t("supplierRequests.selection.form.pending")}
+                data-selection-submit
+              >
+                {t("supplierRequests.selection.form.submit")}
+              </SubmitButton>
+            </div>
+          </Card>
+          <SelectionAiPrompts
+            prompts={effectivePrompts(current?.aiPrompts, aiDefaults)}
+            assets={current?.aiAssets}
+            mode={aiMedia.mode}
+            models={{ image: aiMedia.imageModel, text: aiMedia.textModel }}
+            generated={aiGenerated}
+            error={aiError}
+            t={t}
+          />
+        </div>
       </form>
     );
   };

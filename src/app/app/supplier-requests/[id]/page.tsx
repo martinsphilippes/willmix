@@ -69,6 +69,7 @@ import { RequestTimeline } from "../_components/timeline";
 import { RequestChat, type ChatMessage } from "../_components/request-chat";
 import { dateTime } from "../_components/negotiation";
 import { canPostMessage } from "@/lib/supplier-requests";
+import { RequestAiReferences } from "@/components/selection-ai-prompts";
 
 /*
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
@@ -613,6 +614,8 @@ export default async function SupplierRequestPage({
               />
             </div>
           </Card>
+
+          <RequestAiReferences assets={r.aiAssets} t={t} />
 
           {wellmix ? (
             <Card
