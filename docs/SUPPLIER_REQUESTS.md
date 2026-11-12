@@ -53,7 +53,7 @@ O quadrante de comparação **não abre a solicitação**: ele grava a escolha d
 3. A solicitação guarda uma **cópia do item** (`item`), para o fornecedor ver o que foi pedido mesmo que o booking mude.
 4. **Alternativas**: até 30 itens parecidos, guardados por id. Só a Wellmix vê (com fornecedor, origem, preço, mínimo do Superplan e link para o booking).
 5. Situações: **Aberta** (esperando o fornecedor) → **Respondida** → **Aprovada** ou **Recusada**; **Cancelada** pela Wellmix. Decisões possíveis (`supplierRequestDecisions`): Aberta → só Cancelar (antes da resposta do fornecedor não há o que aprovar ou recusar; a Wellmix cancela ou manda mensagem; até 12/11/2026 também recusava); Respondida "faz" → Aprovar ou Recusar; Respondida "não faz" → Recusar.
-6. **Resposta do fornecedor**: faz ou não faz; se faz, preço por peça (obrigatório) e moeda; pedido mínimo, prazo de produção (dias), modalidade de entrega (FOB/EXW) e observação. Muda até a Wellmix decidir. A Wellmix pode **registrar a resposta** em nome dele quando ela chega por fora (WeChat, e-mail).
+6. **Resposta do fornecedor**: faz ou não faz; se faz, preço por peça (obrigatório) e moeda; pedido mínimo, prazo de produção (dias), modalidade de entrega (FOB/EXW) e observação. Muda até a Wellmix decidir. Só o fornecedor responde, pelo portal (até 12/11/2026 a Wellmix podia registrar a resposta em nome dele).
 7. Avisos (sino, e-mail e WhatsApp em modo mock): ao fornecedor quando a solicitação abre e quando a Wellmix decide; a quem abriu, quando o fornecedor responde.
 
 ## Uma solicitação, vários produtos (decisão do dono, 11/11/2026)
@@ -121,7 +121,7 @@ O fornecedor cadastrado pela planilha do booking nasce sem login. Sem login, a s
 
 - **Detalhe do booking**: quando o fornecedor do booking não tem login ativo.
 - **Seleção de itens**: no topo, os fornecedores dos itens mostrados que não têm login, e o selo "Sem acesso" na coluna Fornecedor.
-- **Solicitação ao fornecedor** (Aberta ou Respondida): "ele não vê nem responde esta solicitação". O aviso lembra que dá para registrar a resposta em nome dele.
+- **Solicitação ao fornecedor** (Aberta ou Respondida): "ele não vê nem responde esta solicitação". O aviso pede para criar o acesso: só ele responde (até 12/11/2026 o aviso oferecia registrar a resposta em nome dele).
 
 Com a tela Cadastros, cada nome leva ao quadro de acesso do cadastro (`/app/parties/{id}#access`). O login criado ali fica preso ao cadastro e passa a ver as solicitações que já estavam abertas. Sem a tela Cadastros, o aviso pede a quem cuida de Cadastros. A solicitação abre normalmente nos dois casos.
 

@@ -63,7 +63,7 @@ import { canPostMessage } from "@/lib/supplier-requests";
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
  * o item, a quantidade e o que a Wellmix precisa, e responde (até a Wellmix
  * decidir). A Wellmix vê também o booking, o Superplan do item e as
- * alternativas, registra a resposta quando ela chega por fora e decide.
+ * alternativas e decide (a resposta é só do fornecedor).
  */
 
 export default async function SupplierRequestPage({
@@ -99,7 +99,7 @@ export default async function SupplierRequestPage({
   const { request: r, supplier, lot, chosen, alternatives } = detail;
   const wellmix = isWellmix(user);
   // Fornecedor sem login (só a Wellmix vê o aviso): enquanto a solicitação
-  // está em andamento, ele não vê nem responde; a Wellmix registra por ele.
+  // está em andamento, ele não vê nem responde até ganhar o acesso.
   const noLoginNow =
     wellmix &&
     !!supplier &&

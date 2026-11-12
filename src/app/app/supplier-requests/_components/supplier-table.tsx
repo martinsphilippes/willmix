@@ -45,7 +45,7 @@ import { AnswerIcon, ChatBubbleIcon, OpenIcon } from "./icons";
  * "Tabela da solicitação"): os produtos pedidos ao mesmo fornecedor no mesmo
  * booking, uma informação por coluna, e três ações rápidas por linha
  * (mensagem, resposta sim/não e abrir a tela do produto), só com ícones.
- * O fornecedor responde; a Wellmix registra a resposta em nome dele.
+ * O fornecedor responde (só ele; a Wellmix não responde por ele).
  */
 
 const STATE_TONE: Record<ConditionsState, Tone> = {
