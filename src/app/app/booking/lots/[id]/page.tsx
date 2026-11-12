@@ -856,6 +856,7 @@ export default async function BookingLotPage({
                                 : (ncmSuggestions.get(item.id) ?? []).map(
                                     (sg: NcmSuggestion) => ({
                                       ncm: sg.ncm,
+                                      pct: Math.round(sg.score * 100),
                                       title: t("bookingNcm.suggestion", {
                                         pct: Math.round(sg.score * 100),
                                         n: sg.products,
@@ -865,6 +866,9 @@ export default async function BookingLotPage({
                                   )
                             }
                             suggestLabel={t("bookingNcm.suggestions")}
+                            recommendedLabel={t("bookingNcm.recommended")}
+                            fillLabel={t("bookingNcm.fillRecommended")}
+                            othersLabel={t("bookingNcm.otherSuggestions")}
                           />
                         ) : (
                           <span className="tabular-nums">
