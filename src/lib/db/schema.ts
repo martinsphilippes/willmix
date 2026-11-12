@@ -323,8 +323,15 @@ export type ProductSupplierSource = (typeof PRODUCT_SUPPLIER_SOURCES)[number];
  * itens que um fornecedor mandou, antes de existir produto. Rascunho
  * (editável) → Fechado (importação concluída, análise do Superplan feita) →
  * Em andamento (algum item já foi escolhido) → Concluído; e Cancelado.
+ *
+ * "preparing" (12/11/2026) vem antes do rascunho, só no booking que o
+ * parceiro lança: ele subiu a planilha e ainda confere e corrige os campos.
+ * A Wellmix não vê o booking nessa situação; ao apertar "Enviar para Wellmix
+ * Conferir" ele vira rascunho e ganha o número (docs/BOOKING.md, "Booking do
+ * Trading").
  */
 export const BOOKING_LOT_STATUSES = [
+  "preparing",
   "draft",
   "closed",
   "in_progress",

@@ -72,6 +72,8 @@ import type { NcmSuggestion } from "@/lib/ncm-match";
  */
 
 const STATUS_TONE: Record<BookingLotStatus, Tone> = {
+  // Em preenchimento pelo parceiro: a Wellmix não lista (só por completude).
+  preparing: "neutral",
   draft: "warning",
   closed: "info",
   in_progress: "brand",
@@ -134,6 +136,12 @@ export default async function BookingLotPage({
         lotId={id}
         t={await getT()}
         created={(await searchParams).created === "1"}
+        sent={(await searchParams).sent === "1"}
+        error={
+          typeof (await searchParams).error === "string"
+            ? String((await searchParams).error)
+            : ""
+        }
       />
     );
   }

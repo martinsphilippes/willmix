@@ -237,7 +237,8 @@ export async function setBookingItemsNcm(
   const lotOf = new Map(lots.map((l) => [l.id, l]));
   for (const item of items) {
     const lot = lotOf.get(item.lotId);
-    if (!lot || lot.status === "cancelled")
+    // Cancelado, ou ainda em preenchimento pelo parceiro (não foi enviado).
+    if (!lot || lot.status === "cancelled" || lot.status === "preparing")
       throw new BookingNcmError("booking_lot_locked");
     // Sem NCM, só no rascunho (fechado exige NCM).
     if (!ncm && lot.status !== "draft")
@@ -404,7 +405,9 @@ export async function reclassifyBookingLot(
   assertScreen(user, "booking");
   const store = getStore();
   const lot = await store.get("booking_lots", lotId);
-  if (!lot) throw new BookingNcmError("not_found");
+  // Em preenchimento pelo parceiro: para a Wellmix ainda não existe.
+  if (!lot || lot.status === "preparing")
+    throw new BookingNcmError("not_found");
   if (lot.status === "cancelled")
     throw new BookingNcmError("booking_lot_locked");
   const items = await store.list("booking_items", { filter: { lotId } });

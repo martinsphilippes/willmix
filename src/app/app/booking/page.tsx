@@ -27,13 +27,22 @@ import { BookingLotsTable } from "./_components/booking-lots-table";
  * coluna, e o botão "Importar booking".
  */
 
-export default async function BookingLotsPage() {
+export default async function BookingLotsPage({
+  searchParams,
+}: PageProps<"/app/booking">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/booking");
   requireScreen(user, "booking");
   const t = await getT();
-  // Login externo (Trading): só os bookings da empresa dele, sem a análise.
-  if (!isWellmix(user)) return <PartnerBookingList user={user} t={t} />;
+  // Login externo (Trading…): só os bookings da empresa dele, sem a análise.
+  if (!isWellmix(user))
+    return (
+      <PartnerBookingList
+        user={user}
+        t={t}
+        discarded={(await searchParams).discarded === "1"}
+      />
+    );
   const entries = await listBookingLots(user);
   const statusLabel = (s: string) =>
     t(`bookingLots.status.${s}` as DictionaryKey);

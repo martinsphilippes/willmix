@@ -35,10 +35,16 @@ const ADAPTED: Partial<Record<Screen, readonly ExternalRole[]>> = {
 
 /**
  * Telas adaptadas que já vêm abertas em certos perfis (além das do papel).
- * Trading: a tela Booking (dono, 11/11/2026).
+ * Booking: Trading (dono, 11/11/2026) e Factory, Supplier e GP (dono,
+ * 12/11/2026): os quatro tipos em destaque de Outros parceiros lançam os
+ * bookings da própria empresa. Tipo criado no painel e o Fornecedor recebem
+ * pela Gestão de telas.
  */
 const PROFILE_EXTRA: Record<string, readonly Screen[]> = {
   "type:trading": ["booking"],
+  "type:factory": ["booking"],
+  "type:supplier_partner": ["booking"],
+  "type:gp": ["booking"],
 };
 
 /** O perfil tem tela aberta de fábrica além das do papel (ex.: o Booking do Trading)? */

@@ -104,7 +104,8 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await expect(page.locator('[data-access-limited="explore"]')).toBeVisible();
   await expect(page.locator('[data-access-limited="orders"]')).toHaveCount(0);
 
-  // Comparar Factory com o Fornecedor: a diferença é Solicitações ao fornecedor.
+  // Comparar Factory com o Fornecedor: as diferenças são Solicitações ao
+  // fornecedor (tirada agora) e o Booking (a Factory tem; o Fornecedor não).
   await page.goto(
     "/app/parties/access?view=compare&a=type:factory&b=role:supplier",
   );
@@ -112,9 +113,13 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
     "data-differs",
     "1",
   );
+  await expect(page.locator('[data-access-compare="booking"]')).toHaveAttribute(
+    "data-differs",
+    "1",
+  );
   await expect(page.locator("[data-access-compare-diff]")).toHaveAttribute(
     "data-access-compare-diff",
-    "1",
+    "2",
   );
 
   // Como Factory: Solicitações ao fornecedor recusa, mesmo pelo endereço; a Gestão de telas
@@ -212,10 +217,11 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
 });
 
 /*
- * Booking do Trading (dono, 11/11/2026; docs/BOOKING.md): o login de uma
- * Trading abre a tela Booking, lança o booking dela (sobe a planilha) e vê só
- * os bookings da empresa dele, sem a análise da Wellmix; o resto do Booking
- * continua só da Wellmix.
+ * Booking do Trading (dono, 11 e 12/11/2026; docs/BOOKING.md): o login de uma
+ * Trading abre a tela Booking, lança o booking dela em dois passos (sobe a
+ * planilha, confere os campos na tela e aperta "Enviar para Wellmix
+ * Conferir") e vê só os bookings da empresa dele, sem a análise da Wellmix;
+ * o resto do Booking continua só da Wellmix.
  */
 test("Trading com login: lança o booking dele e vê só os bookings dele", async ({
   page,
@@ -246,15 +252,19 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   await access.locator("[data-party-access-create]").click();
   await page.waitForURL(/saved=user/);
 
-  // Gestão de telas: o Booking já vem aberto no Trading; na Factory pode ser
-  // liberado (deixou de ser "interna da Wellmix").
-  await page.goto("/app/parties/access?profile=type:trading");
-  await expect(page.locator('[data-access-screen="booking"]')).toHaveAttribute(
-    "data-access-state",
-    "open",
-  );
-  await expect(page.locator('[data-access-limited="booking"]')).toHaveCount(0);
-  await page.goto("/app/parties/access?profile=type:factory");
+  // Gestão de telas: o Booking já vem aberto no Trading (e na Factory, no
+  // Supplier e no GP); no Fornecedor pode ser liberado (deixou de ser
+  // "interna da Wellmix").
+  for (const profile of ["type:trading", "type:gp", "type:supplier_partner"]) {
+    await page.goto(`/app/parties/access?profile=${profile}`);
+    await expect(
+      page.locator('[data-access-screen="booking"]'),
+    ).toHaveAttribute("data-access-state", "open");
+    await expect(page.locator('[data-access-limited="booking"]')).toHaveCount(
+      0,
+    );
+  }
+  await page.goto("/app/parties/access?profile=role:supplier");
   await expect(page.locator('[data-access-screen="booking"]')).toHaveAttribute(
     "data-access-state",
     "blocked",
@@ -319,7 +329,7 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   await page.goto("/app/booking/selection");
   await expect(page).toHaveURL(/\/app\/booking$/);
 
-  // Lançar booking: a Trading sobe a planilha dela (só arquivo, sem link).
+  // Lançar booking, passo 1: a Trading sobe a planilha dela (só arquivo).
   await page.locator("[data-partner-booking-launch]").click();
   await page.waitForURL(/\/app\/booking\/import$/);
   const launch = page.locator("[data-partner-booking-launch-form]");
@@ -336,19 +346,74 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
     );
   await page.locator("[data-partner-booking-launch-submit]").click();
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
-  await expect(page.locator("[data-partner-booking-launched]")).toBeVisible();
+  const launchedUrl = new URL(page.url()).pathname;
+
+  // Passo 2: confere os campos, todos abertos e já preenchidos pela planilha.
+  await expect(page.locator("[data-partner-booking-preparing]")).toBeVisible();
+  const editing = page.locator("[data-partner-booking-edit]");
+  await expect(editing.locator("tbody tr")).toHaveCount(1);
+  const field = (name: string) =>
+    editing.locator(`[data-partner-item-field$=":${name}"]`);
+  await expect(field("factoryItemCode")).toHaveValue(`${code}-T`);
+  await expect(field("price")).toHaveValue("1,25");
+  await expect(field("moq")).toHaveValue("1000");
+  // (as listas de incoterm e moeda levam a marca no invólucro do select)
+  await expect(field("currency").locator("select")).toHaveValue("USD");
+  await expect(field("incoterm").locator("select")).toHaveValue("FOB");
+  await expect(field("material")).toHaveValue("glass");
+  // Corrige o preço: grava ao sair do campo.
+  await field("price").fill("1,40");
+  await field("price").press("Enter");
+  await expect(
+    editing.locator('[data-booking-row-note="saved"]').first(),
+  ).toBeVisible();
+  // Na lista dele aparece em primeiro, como não enviado.
+  await page.goto("/app/booking");
+  await expect(page.locator("[data-partner-booking-unsent]")).toBeVisible();
+  await expect(page.locator("[data-partner-booking]")).toHaveCount(2);
+  await expect(page.locator("[data-partner-booking]").first()).toHaveAttribute(
+    "data-partner-booking-status",
+    "preparing",
+  );
+
+  // Antes de enviar, a Wellmix não vê o booking: nem na lista, nem no endereço.
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/booking");
+  await expect(
+    page.getByText(`booking-${code}-T.xlsx`, { exact: false }),
+  ).toHaveCount(0);
+  const hidden = await page.goto(launchedUrl);
+  expect(hidden?.status()).toBe(404);
+
+  // A Trading volta, vê a correção gravada e aperta Enviar para Wellmix Conferir.
+  await login(page, userLogin);
+  await page.goto(launchedUrl);
+  await expect(
+    page
+      .locator("[data-partner-booking-edit]")
+      .locator('[data-partner-item-field$=":price"]'),
+  ).toHaveValue("1,4");
+  await page.locator('[data-partner-booking-send="bottom"]').click();
+  await page.waitForURL(/[?&]sent=1/);
+  await expect(page.locator("[data-partner-booking-sent]")).toBeVisible();
+  // Depois de enviado: só consulta, com o preço corrigido.
+  await expect(page.locator("[data-partner-booking-edit]")).toHaveCount(0);
+  await expect(page.locator("[data-partner-booking-send]")).toHaveCount(0);
   await expect(page.locator("[data-partner-booking-items]")).toContainText(
     `${code}-T`,
   );
-  const launchedUrl = new URL(page.url()).pathname;
-  // Na lista dele: o que a Wellmix pôs em nome dela e o que ela lançou.
+  await expect(page.locator("[data-partner-booking-items]")).toContainText(
+    "1,4 USD FOB",
+  );
+  // Na lista dele: o que a Wellmix pôs em nome dela e o que ela enviou.
   await page.goto("/app/booking");
   await expect(page.locator("[data-partner-booking]")).toHaveCount(2);
+  await expect(page.locator("[data-partner-booking-unsent]")).toHaveCount(0);
   await expect(page.locator("[data-partner-booking]").first()).toContainText(
     `booking-${code}-T.xlsx`,
   );
 
-  // A Wellmix vê o booking lançado, com a Trading de responsável, e é avisada.
+  // A Wellmix agora vê o booking, com a Trading de responsável, e é avisada.
   await login(page, "admin@wellmix.com");
   await page.goto(launchedUrl);
   await expect(

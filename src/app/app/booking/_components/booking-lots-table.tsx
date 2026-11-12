@@ -37,6 +37,8 @@ export interface BookingLotsTableLabels {
 }
 
 const STATUS_TONE: Record<BookingLotRow["status"], Tone> = {
+  // Em preenchimento pelo parceiro: a Wellmix não lista (só por completude).
+  preparing: "neutral",
   draft: "warning",
   closed: "info",
   in_progress: "brand",

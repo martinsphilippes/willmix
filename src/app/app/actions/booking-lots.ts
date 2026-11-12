@@ -127,9 +127,10 @@ export async function launchBookingAction(form: FormData) {
 async function inline(
   lotId: string | null,
   save: (user: Awaited<ReturnType<typeof requireUser>>) => Promise<void>,
+  who: () => ReturnType<typeof requireUser> = screenUser,
 ): Promise<InlineResult> {
   try {
-    const user = await screenUser();
+    const user = await who();
     await save(user);
   } catch (error) {
     const { getT } = await import("@/i18n/server");
@@ -212,6 +213,78 @@ export async function setBookingItemFieldAction(
     if (!isBookingItemField(input.field)) throw new Error("invalid_input");
     const { setBookingItemField } = await import("@/lib/services/booking-lots");
     await setBookingItemField(user, input.itemId, input.field, input.value);
+  });
+}
+
+/** O login externo com a tela Booking (o parceiro que lança o booking dele). */
+async function partnerUser() {
+  const user = await requireUser();
+  if (isWellmix(user)) throw new ForbiddenError();
+  assertScreen(user, "booking");
+  return user;
+}
+
+/**
+ * O parceiro confere a planilha que subiu: um campo de um item grava ao sair
+ * dele, sem sair da tela. Só no booking dele e só antes de enviar (o serviço
+ * confere).
+ */
+export async function setPartnerBookingItemFieldAction(
+  lotId: string,
+  itemId: string,
+  field: string,
+  value: string,
+): Promise<InlineResult> {
+  const id = ID.safeParse(lotId);
+  return inline(
+    id.success ? id.data : null,
+    async (user) => {
+      const input = z
+        .object({
+          itemId: ID,
+          field: z.string().refine(isBookingItemField),
+          value: z.string().max(4000),
+        })
+        .parse({ itemId, field, value });
+      if (!isBookingItemField(input.field)) throw new Error("invalid_input");
+      const { setPartnerBookingItemField } =
+        await import("@/lib/services/booking-partner");
+      await setPartnerBookingItemField(
+        user,
+        input.itemId,
+        input.field,
+        input.value,
+      );
+    },
+    partnerUser,
+  );
+}
+
+/** "Enviar para Wellmix Conferir": o booking sai do preenchimento e a Wellmix é avisada. */
+export async function sendPartnerBookingAction(form: FormData) {
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await run(back, async () => {
+    const user = await partnerUser();
+    const lotId = ID.parse(raw);
+    const { sendPartnerBooking } =
+      await import("@/lib/services/booking-partner");
+    await sendPartnerBooking(user, lotId);
+    return withQuery(detail(lotId), "sent", "1");
+  });
+}
+
+/** Descarta o booking que o parceiro ainda preenchia (nada chegou à Wellmix). */
+export async function discardPartnerBookingAction(form: FormData) {
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await run(back, async () => {
+    const user = await partnerUser();
+    const lotId = ID.parse(raw);
+    const { discardPartnerBooking } =
+      await import("@/lib/services/booking-partner");
+    await discardPartnerBooking(user, lotId);
+    return withQuery(LIST, "discarded", "1");
   });
 }
 
