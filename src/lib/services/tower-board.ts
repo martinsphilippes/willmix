@@ -1,4 +1,5 @@
 import "server-only";
+import { listByIds } from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -614,9 +615,7 @@ export async function loadTowerBoard(options: {
   const now = options.now ?? new Date();
   const [
     orders,
-    parties,
     items,
-    products,
     activeStages,
     penalties,
     rejected,
@@ -628,9 +627,7 @@ export async function loadTowerBoard(options: {
     settings,
   ] = await Promise.all([
     store.list("orders", { orderBy: "number", direction: "desc" }),
-    store.list("parties"),
     store.list("order_items"),
-    store.list("products"),
     store.list("stages", { filter: { status: ["active", "blocked"] } }),
     store.list("penalties", { filter: { status: ["open", "disputed"] } }),
     store.list("requirements", { filter: { status: "rejected" } }),
@@ -652,6 +649,25 @@ export async function loadTowerBoard(options: {
       }),
     ),
     getSettings(),
+  ]);
+  // Parceiros e produtos: só os que aparecem nos quadrados (antes: as
+  // tabelas inteiras, ~32 mil parceiros e ~17 mil produtos).
+  const [parties, products] = await Promise.all([
+    listByIds(store, "parties", [
+      ...orders.map((o) => o.customerId),
+      ...lots.map((l) => l.supplierId),
+      ...supplierRequests.map((r) => r.supplierId),
+      ...certifications
+        .filter((c) => c.entity === "party")
+        .map((c) => c.entityId),
+    ]),
+    listByIds(
+      store,
+      "products",
+      certifications
+        .filter((c) => c.entity === "product")
+        .map((c) => c.entityId),
+    ),
   ]);
   const live = orders.filter(
     (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",

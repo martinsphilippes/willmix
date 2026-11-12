@@ -1,3 +1,4 @@
+import { listByIds } from "@/lib/db/lookup";
 import { registerOrderInvoiceAction } from "../../actions/order-invoice";
 import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
@@ -370,7 +371,7 @@ export default async function OrderPage({
     !!user.partyId &&
     order.shippingLineId === user.partyId;
   const [
-    parties,
+    partiesOfOrder,
     items,
     documents,
     payments,
@@ -386,7 +387,34 @@ export default async function OrderPage({
     tariffView,
     myTariff,
   ] = await Promise.all([
-    store.list("parties"),
+    // Parceiros do pedido e os das listas de troca (agência, despachante...,
+    // poucos). Antes: a tabela inteira, ~32 mil (clientes e fornecedores).
+    Promise.all([
+      listByIds(store, "parties", [
+        order.customerId,
+        order.supplierId,
+        order.agencyId,
+        order.brokerId,
+        order.shippingLineId,
+        order.carrierId,
+        order.comexId,
+        order.logisticsId,
+        order.ocpId,
+      ]),
+      store.list("parties", {
+        filter: {
+          type: [
+            "agency",
+            "broker",
+            "shipping_line",
+            "carrier",
+            "comex",
+            "logistics",
+            "ocp",
+          ],
+        },
+      }),
+    ]),
     store.list("order_items", { filter: { orderId: order.id } }),
     store.list("documents", {
       filter: { orderId: order.id },
@@ -434,8 +462,20 @@ export default async function OrderPage({
         })
       : Promise.resolve(null),
   ]);
+  // Responsáveis de multas e fornecedor da compra podem ser outros parceiros.
+  const known = new Map(partiesOfOrder.flat().map((p) => [p.id, p]));
+  for (const p of await listByIds(
+    store,
+    "parties",
+    [
+      ...penalties.map((x) => x.responsiblePartyId),
+      snapshot?.supplierId,
+    ].filter((id) => id && !known.has(id)),
+  ))
+    known.set(p.id, p);
+  const parties = [...known.values()];
   const partyName = (pid: string | null) =>
-    parties.find((p) => p.id === pid)?.name ?? "—";
+    (pid && known.get(pid)?.name) || "—";
   /* Parceiro (agência, despachante, companhia, transportador): só a parte dele.
      O transportador ganha o cartão "Carga e entrega" no lugar do cartão do pedido. */
   const partner = isPartner(user);

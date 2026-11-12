@@ -1,4 +1,5 @@
 import "server-only";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -179,13 +180,22 @@ export async function slaBoardFor(
   const admin = isAdmin(viewer);
   const manages = admin || visible.size > 1;
 
-  const [customers, tasks, partnerItems, recentStages] = await Promise.all([
-    store.list("parties", { filter: { type: "customer" } }),
+  const [tasks, partnerItems, recentStages] = await Promise.all([
     pendingTasksFor(viewer),
     partnerDelays(now),
     store.list("stages", { filter: { status: "done" } }),
   ]);
-  const customerById = new Map(customers.map((c) => [c.id, c]));
+  // Só os clientes que aparecem (antes: todos os clientes, ~26 mil).
+  const customerById = new Map<string, { name: string }>();
+  const loadCustomers = async (ids: Array<string | null | undefined>) => {
+    const missing = ids.filter((id) => id && !customerById.has(id));
+    for (const p of await listByIds(store, "parties", missing))
+      if (p.type === "customer") customerById.set(p.id, p);
+  };
+  await loadCustomers([
+    ...tasks.map((t) => t.customerId),
+    ...partnerItems.map((p) => p.customerId),
+  ]);
   // Dono: o analista da solicitação/do pedido, se ainda é da equipe ativa.
   const teamIds = new Set(team.map((u) => u.id));
   const ownerFor = (ownerUserId: string | null | undefined) =>
@@ -233,6 +243,7 @@ export async function slaBoardFor(
   const orders = orderIds.length
     ? await store.list("orders", { filter: { id: orderIds } })
     : [];
+  await loadCustomers(orders.map((o) => o.customerId));
   const stageOwner = new Map(
     doneStages.map((s) => [
       s.id,
@@ -340,12 +351,18 @@ async function partnerDelays(
   >
 > {
   const store = getStore();
-  const [stages, parties] = await Promise.all([
-    store.list("stages", { filter: { status: ["active", "blocked"] } }),
-    store.list("parties"),
-  ]);
+  const stages = await store.list("stages", {
+    filter: { status: ["active", "blocked"] },
+  });
+  // Nomes só dos parceiros que aparecem (antes: a tabela inteira, ~32 mil).
+  const partyNames = new Map<string, string>();
+  const loadNames = async (ids: Array<string | null | undefined>) => {
+    const missing = ids.filter((id) => id && !partyNames.has(id));
+    for (const p of await listByIds(store, "parties", missing))
+      partyNames.set(p.id, p.name);
+  };
   const name = (id: string | null | undefined) =>
-    (id && parties.find((p) => p.id === id)?.name) || null;
+    (id && partyNames.get(id)) || null;
   const out: Array<
     Omit<SlaItem, "customerName" | "ownerId"> & { ownerUserId: string | null }
   > = [];
@@ -370,8 +387,22 @@ async function partnerDelays(
         },
       }),
     ]);
+    await loadNames(
+      orders.flatMap((o) => [
+        o.supplierId,
+        o.agencyId,
+        o.brokerId,
+        o.shippingLineId,
+        o.carrierId,
+        o.comexId,
+        o.logisticsId,
+        o.ocpId,
+        o.customerId,
+      ]),
+    );
+    const orderById = indexBy(orders, "id");
     for (const s of lateStages) {
-      const order = orders.find((o) => o.id === s.orderId);
+      const order = orderById.get(s.orderId);
       if (!order || order.status === "CANCELLED") continue;
       const roles = [
         ...new Set(
@@ -435,6 +466,7 @@ async function partnerDelays(
     const { negotiationTurn, supplierRequestLate, supplierRequestSlaDue } =
       await import("@/lib/supplier-requests");
     const minutes = (await getSettings()).supplierRequestSlaMinutes;
+    await loadNames(supplierRequests.map((r) => r.supplierId));
     for (const r of supplierRequests) {
       if (!supplierRequestLate(r, minutes, now)) continue;
       const dueAt = supplierRequestSlaDue(r, minutes);

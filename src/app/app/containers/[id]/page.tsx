@@ -1,3 +1,4 @@
+import { listByIds } from "@/lib/db/lookup";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -60,13 +61,18 @@ export default async function ContainerPage({
       view.items.map((i) => i.orderId).filter((x): x is string => !!x),
     ),
   ];
-  const [settings, choices, products, orders, parties] = await Promise.all([
+  const [settings, choices, products, orders] = await Promise.all([
     getSettings(),
     listOrderItemChoices(),
     store.list("products", { filter: { active: true }, orderBy: "name" }),
     orderIds.length ? store.list("orders", { filter: { id: orderIds } }) : [],
-    store.list("parties"),
   ]);
+  // Só os clientes dos pedidos do container (antes: a tabela inteira).
+  const parties = await listByIds(
+    store,
+    "parties",
+    orders.map((o) => o.customerId),
+  );
   const { container, items, usage, split, customerName } = view;
   const errorText = errorMessage(t, error);
   const closed = container.status === "closed";
