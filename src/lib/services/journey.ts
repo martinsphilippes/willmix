@@ -1,4 +1,5 @@
 import "server-only";
+import { listColumns } from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -98,7 +99,9 @@ export function journeyIndex(input: JourneyInput) {
     const map = new Map<string, T[]>();
     for (const row of rows) {
       if (!row.orderId) continue;
-      map.set(row.orderId, [...(map.get(row.orderId) ?? []), row]);
+      const list = map.get(row.orderId);
+      if (list) list.push(row);
+      else map.set(row.orderId, [row]);
     }
     return map;
   };
@@ -223,19 +226,32 @@ export async function loadJourneyInput(
   const store = getStore();
   const none = <T>() => Promise.resolve([] as T[]);
   const [activeStages, stages, requirements, steps, reviews] =
+    // Só as colunas usadas (com milhares de pedidos do Sankhya, as linhas
+    // inteiras de etapas e itens de etapa passavam de 80 MB).
     await Promise.all([
-      store.list("stages", { filter: { status: ["active", "blocked"] } }),
+      listColumns(store, "stages", ["orderId", "status"], {
+        filter: { status: ["active", "blocked"] },
+      }),
       orderIds.length
-        ? store.list("stages", { filter: { orderId: orderIds } })
-        : none<Stage>(),
-      orderIds.length
-        ? store.list("requirements", {
-            filter: { orderId: orderIds, key: JOURNEY_REQUIREMENT_KEYS },
+        ? listColumns(store, "stages", ["orderId", "key"], {
+            filter: { orderId: orderIds },
           })
-        : none<Requirement>(),
+        : none<Pick<Stage, "id" | "orderId" | "key">>(),
       orderIds.length
-        ? safe(store.list("import_steps", { filter: { orderId: orderIds } }))
-        : none<ImportStep>(),
+        ? listColumns(
+            store,
+            "requirements",
+            ["orderId", "stageId", "key", "status", "value"],
+            { filter: { orderId: orderIds, key: JOURNEY_REQUIREMENT_KEYS } },
+          )
+        : none<JourneyInput["requirements"][number]>(),
+      orderIds.length
+        ? safe(
+            listColumns(store, "import_steps", ["orderId", "key", "status"], {
+              filter: { orderId: orderIds },
+            }),
+          )
+        : none<JourneyInput["steps"][number]>(),
       store.list("review_items", {
         filter: { status: "open" },
         orderBy: "createdAt",

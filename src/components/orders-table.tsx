@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   Badge,
   cx,
@@ -15,6 +23,15 @@ import { PhotoGallery, type GalleryPhoto } from "./photo-gallery";
 import { RowMoreDetails, RowMoreToggle, oneLine } from "./row-more";
 import { chatTargetFromHref } from "@/lib/chat-target";
 import { TableTools } from "@/components/table-tools";
+import {
+  ORDERS_FILTER_KEYS as FILTER_KEYS,
+  ORDERS_STATE_RANK as STATE_RANK,
+  filterOrderRows,
+  parseOrdersSort,
+  type OrdersFilterKey as FilterKey,
+  type OrdersFilters as Filters,
+  type OrdersSortKey as SortKey,
+} from "@/lib/orders-filter";
 
 /** Textos da galeria de fotos da linha (já no idioma de quem vê). */
 type GalleryLabels = {
@@ -27,9 +44,11 @@ type GalleryLabels = {
 
 /*
  * Painel de Pedidos com filtro em todas as colunas (texto ou lista) e
- * ordenação por coluna. Os dados chegam prontos do servidor (já filtrados por
- * papel); filtrar e ordenar é só na tela, na hora. Os filtros ficam no
- * endereço (?p=…&st=…), então voltar, recarregar ou mandar o link mantém.
+ * ordenação por coluna. O servidor filtra, ordena e manda uma página por vez
+ * (com milhares de pedidos do Sankhya, a lista inteira não cabia); a tela
+ * aplica o filtro na hora sobre a página e pede a nova ao servidor. Os filtros
+ * ficam no endereço (?p=…&st=…&pg=…), então voltar, recarregar ou mandar o
+ * link mantém.
  */
 
 export type RowState = "active" | "blocked" | "done" | "cancelled";
@@ -146,6 +165,10 @@ export interface OrdersTableLabels {
   request: string;
   /** "{shown} de {total}" */
   count: string;
+  /** "Página {page} de {pages}" e os botões da paginação. */
+  pageOf: string;
+  pagePrev: string;
+  pageNext: string;
   clear: string;
   empty: string;
   sortBy: string;
@@ -186,64 +209,12 @@ export interface OrdersTableLabels {
   more: string;
 }
 
-type Filters = Record<FilterKey, string>;
-type FilterKey = "n" | "p" | "c" | "s" | "ph" | "st" | "pr" | "d" | "u";
-type SortKey =
-  | "number"
-  | "product"
-  | "customer"
-  | "supplier"
-  | "phase"
-  | "state"
-  | "progress"
-  | "due"
-  | "updated";
-
-const FILTER_KEYS: FilterKey[] = [
-  "n",
-  "p",
-  "c",
-  "s",
-  "ph",
-  "st",
-  "pr",
-  "d",
-  "u",
-];
-const SORT_KEYS: readonly SortKey[] = [
-  "number",
-  "product",
-  "customer",
-  "supplier",
-  "phase",
-  "state",
-  "progress",
-  "due",
-  "updated",
-];
 const STATE_TONE: Record<RowState, Tone> = {
   active: "info",
   blocked: "warning",
   done: "success",
   cancelled: "danger",
 };
-const STATE_RANK: Record<RowState, number> = {
-  blocked: 0,
-  active: 1,
-  done: 2,
-  cancelled: 3,
-};
-
-/** Sem acento e sem caixa: "Preparação" acha "preparacao". */
-const fold = (s: string) =>
-  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-
-function addDays(day: string, n: number) {
-  const d = new Date(`${day}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
 export function OrdersTable({
   rows,
   showCustomer,
@@ -251,6 +222,7 @@ export function OrdersTable({
   labels,
   initial,
   today,
+  paging,
 }: {
   rows: OrdersTableRow[];
   showCustomer: boolean;
@@ -260,7 +232,28 @@ export function OrdersTable({
   initial: Partial<Filters> & { sort?: string };
   /** Dia de hoje (AAAA-MM-DD, Brasília), do servidor. */
   today: string;
+  /**
+   * Paginação do servidor: `rows` é só a página; `matched` são as linhas que
+   * passam no filtro e `total`, todas. As listas dos filtros vêm de todas.
+   */
+  paging?: {
+    page: number;
+    pages: number;
+    matched: number;
+    total: number;
+    phases: Array<[string, string]>;
+    states: RowState[];
+  };
 }) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const typing = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (typing.current) clearTimeout(typing.current);
+    },
+    [],
+  );
   const [filters, setFilters] = useState<Filters>(
     () =>
       Object.fromEntries(
@@ -270,21 +263,23 @@ export function OrdersTable({
   // Linha escolhida: os itens dela aparecem no painel de baixo (como no
   // Sankhya). Sem escolha, vale a primeira da lista filtrada.
   const [picked, setPicked] = useState<string | null>(null);
-  const [sort, setSort] = useState<{ key: SortKey; desc: boolean } | null>(
-    () => {
-      // Só colunas conhecidas (link editado ou antigo não quebra a tela).
-      const raw = initial.sort ?? "";
-      const key = raw.replace(/^-/, "");
-      return (SORT_KEYS as readonly string[]).includes(key)
-        ? { key: key as SortKey, desc: raw.startsWith("-") }
-        : null;
-    },
+  // Só colunas conhecidas (link editado ou antigo não quebra a tela).
+  const [sort, setSort] = useState<{ key: SortKey; desc: boolean } | null>(() =>
+    parseOrdersSort(initial.sort),
   );
 
-  // Filtros e ordem no endereço, sem recarregar a página.
-  function sync(next: Filters, nextSort: typeof sort) {
+  // Filtros e ordem no endereço. Com paginação do servidor, o endereço novo
+  // pede a página certa (texto: espera a pessoa parar de digitar).
+  function sync(
+    next: Filters,
+    nextSort: typeof sort,
+    options: { wait?: boolean; page?: number } = {},
+  ) {
     try {
       const url = new URL(window.location.href);
+      if (options.page && options.page > 1)
+        url.searchParams.set("pg", String(options.page));
+      else url.searchParams.delete("pg");
       for (const k of FILTER_KEYS)
         if (next[k]) url.searchParams.set(k, next[k]);
         else url.searchParams.delete(k);
@@ -294,16 +289,29 @@ export function OrdersTable({
           `${nextSort.desc ? "-" : ""}${nextSort.key}`,
         );
       else url.searchParams.delete("sort");
+      if (paging) {
+        if (typing.current) clearTimeout(typing.current);
+        const go = () =>
+          startTransition(() =>
+            router.replace(`${url.pathname}${url.search}`, { scroll: false }),
+          );
+        if (options.wait) typing.current = setTimeout(go, 400);
+        else go();
+        return;
+      }
       // Estado nulo: o Next acompanha a troca de endereço (useSearchParams).
       window.history.replaceState(null, "", url);
     } catch {
       // Sem histórico (tela embutida): os filtros valem só na tela.
     }
   }
-  function setFilter(key: FilterKey, value: string) {
+  function setFilter(key: FilterKey, value: string, wait = false) {
     const next = { ...filters, [key]: value };
     setFilters(next);
-    sync(next, sort);
+    sync(next, sort, { wait });
+  }
+  function goToPage(page: number) {
+    sync(filters, sort, { page });
   }
   function toggleSort(key: SortKey) {
     const next =
@@ -324,7 +332,7 @@ export function OrdersTable({
     sync(empty, null);
   }
 
-  const phases = useMemo(() => {
+  const localPhases = useMemo(() => {
     const seen = new Map<string, { label: string; rank: number }>();
     for (const r of rows)
       if (!seen.has(r.phaseKey))
@@ -333,90 +341,25 @@ export function OrdersTable({
       .sort((a, b) => a[1].rank - b[1].rank)
       .map(([key, v]) => [key, v.label] as [string, string]);
   }, [rows]);
-  const states = useMemo(
+  const localStates = useMemo(
     () =>
       (Object.keys(STATE_RANK) as RowState[]).filter((s) =>
         rows.some((r) => r.state === s),
       ),
     [rows],
   );
+  const phases = paging?.phases ?? localPhases;
+  const states = paging?.states ?? localStates;
 
-  const shown = useMemo(() => {
-    const has = (value: string, q: string) =>
-      !q || fold(value).includes(fold(q));
-    const week = addDays(today, 7);
-    const weekAgo = addDays(today, -7);
-    const monthAgo = addDays(today, -30);
-    const list = rows.filter((r) => {
-      if (!has(r.number, filters.n)) return false;
-      // Produto: acha também pelos outros itens do pedido/lote.
-      if (
-        !has(r.product, filters.p) &&
-        !r.items.some((i) => has(`${i.name} ${i.variant ?? ""}`, filters.p))
-      )
-        return false;
-      if (showCustomer && !has(r.customer, filters.c)) return false;
-      if (showSupplier && !has(r.supplier, filters.s)) return false;
-      if (filters.ph && r.phaseKey !== filters.ph) return false;
-      if (filters.st && r.state !== filters.st) return false;
-      if (filters.pr === "cancelled" && r.state !== "cancelled") return false;
-      // Links antigos (?pr=none|partial|full) continuam valendo pelo percentual.
-      if (filters.pr === "none" && r.progress !== 0) return false;
-      if (
-        filters.pr === "partial" &&
-        !(r.progress !== null && r.progress > 0 && r.progress < 100)
-      )
-        return false;
-      if (filters.pr === "full" && r.progress !== 100) return false;
-      // Passo da viagem: a linha ou algum produto do grupo nesse passo (como
-      // no quadrado da Control Tower, cancelado não conta).
-      if (
-        filters.pr &&
-        !["cancelled", "none", "partial", "full"].includes(filters.pr) &&
-        !(r.state !== "cancelled" && r.step === filters.pr) &&
-        !r.items.some((i) => i.state !== "cancelled" && i.step === filters.pr)
-      )
-        return false;
-      if (filters.d === "overdue" && !(r.due && r.due < today)) return false;
-      if (filters.d === "week" && !(r.due && r.due >= today && r.due <= week))
-        return false;
-      if (filters.d === "none" && r.due) return false;
-      if (filters.u === "today" && r.updated !== today) return false;
-      if (filters.u === "week" && r.updated < weekAgo) return false;
-      if (filters.u === "month" && r.updated < monthAgo) return false;
-      return true;
-    });
-    if (!sort) return list;
-    const value = (r: OrdersTableRow): string | number => {
-      switch (sort.key) {
-        case "number":
-          return Number(r.number.replace(/\D/g, "")) || 0;
-        case "phase":
-          return r.phaseRank;
-        case "state":
-          return STATE_RANK[r.state];
-        case "progress":
-          return r.state === "cancelled" ? -1 : (r.progress ?? -1);
-        case "due":
-          return r.due || "9999";
-        case "updated":
-          return r.updated;
-        case "product":
-        case "customer":
-        case "supplier":
-          return fold(r[sort.key]);
-      }
-    };
-    return [...list].sort((a, b) => {
-      const va = value(a);
-      const vb = value(b);
-      const cmp =
-        typeof va === "number" && typeof vb === "number"
-          ? va - vb
-          : String(va).localeCompare(String(vb));
-      return sort.desc ? -cmp : cmp;
-    });
-  }, [rows, filters, sort, today, showCustomer, showSupplier]);
+  const shown = useMemo(
+    () =>
+      filterOrderRows(rows, filters, sort, {
+        today,
+        showCustomer,
+        showSupplier,
+      }),
+    [rows, filters, sort, today, showCustomer, showSupplier],
+  );
 
   const filtering = FILTER_KEYS.some((k) => filters[k]) || !!sort;
   const control = cx(inputDenseClass, "min-w-24 font-normal normal-case");
@@ -454,7 +397,7 @@ export function OrdersTable({
     <input
       type="search"
       value={filters[key]}
-      onChange={(e) => setFilter(key, e.target.value)}
+      onChange={(e) => setFilter(key, e.target.value, true)}
       placeholder={labels.search}
       aria-label={`${labels.search}: ${label}`}
       className={control}
@@ -489,8 +432,8 @@ export function OrdersTable({
       <div className="mb-2 flex flex-wrap items-center gap-3 text-sm text-zinc-600">
         <span data-orders-count>
           {labels.count
-            .replace("{shown}", String(shown.length))
-            .replace("{total}", String(rows.length))}
+            .replace("{shown}", String(paging?.matched ?? shown.length))
+            .replace("{total}", String(paging?.total ?? rows.length))}
         </span>
         {filtering ? (
           <button
@@ -507,6 +450,7 @@ export function OrdersTable({
         tableClassName="min-w-[56rem]"
         sortable={false}
         searchable={false}
+        paginated={!paging}
       >
         <thead>
           <tr>
@@ -692,6 +636,36 @@ export function OrdersTable({
           )}
         </tbody>
       </TableTools>
+      {paging && paging.pages > 1 ? (
+        <nav
+          className="mt-2 flex items-center justify-end gap-3 text-sm text-zinc-600"
+          data-orders-pager
+        >
+          <button
+            type="button"
+            disabled={paging.page <= 1}
+            onClick={() => goToPage(paging.page - 1)}
+            className="rounded-md border border-zinc-200 px-2.5 py-1 disabled:opacity-40"
+            data-orders-page-prev
+          >
+            {labels.pagePrev}
+          </button>
+          <span data-orders-page>
+            {labels.pageOf
+              .replace("{page}", String(paging.page))
+              .replace("{pages}", String(paging.pages))}
+          </span>
+          <button
+            type="button"
+            disabled={paging.page >= paging.pages}
+            onClick={() => goToPage(paging.page + 1)}
+            className="rounded-md border border-zinc-200 px-2.5 py-1 disabled:opacity-40"
+            data-orders-page-next
+          >
+            {labels.pageNext}
+          </button>
+        </nav>
+      ) : null}
       <ItemsPanel
         row={current}
         labels={labels}

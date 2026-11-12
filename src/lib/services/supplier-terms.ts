@@ -1,4 +1,5 @@
 import "server-only";
+import { columnsExcept, listColumns } from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -297,19 +298,27 @@ export async function listPayables(
 ): Promise<OrderPayable[]> {
   const store = getStore();
   // Com a chave presente (mesmo vazia), só os pedidos daquele fornecedor.
-  const orders = await store.list("orders", {
-    filter:
-      "supplierId" in filter
-        ? { supplierId: filter.supplierId ?? "" }
-        : undefined,
-    orderBy: "number",
-    direction: "desc",
-  });
+  // Sem a cópia do registro do ERP (sankhyaRefs), que era mais da metade de
+  // pedidos, pagamentos, itens e parceiros (com milhares de pedidos do
+  // Sankhya, a Control Tower estourava a memória).
+  const orders = await listColumns(
+    store,
+    "orders",
+    columnsExcept("orders", ["sankhyaRefs"]),
+    {
+      filter:
+        "supplierId" in filter
+          ? { supplierId: filter.supplierId ?? "" }
+          : undefined,
+      orderBy: "number",
+      direction: "desc",
+    },
+  );
   if (!orders.length) return [];
   const ids = orders.map((o) => o.id);
   const supplierIds = [...new Set(orders.map((o) => o.supplierId))];
   const [payments, stages, requirements, items, suppliers] = await Promise.all([
-    store.list("payments", {
+    listColumns(store, "payments", columnsExcept("payments", ["sankhyaRefs"]), {
       filter: { orderId: ids, direction: "supplier_out" },
     }),
     store.list("stages", {
@@ -318,18 +327,28 @@ export async function listPayables(
     store.list("requirements", {
       filter: { orderId: ids, key: SCHEDULE_REQUIREMENT_KEYS },
     }),
-    store.list("order_items", { filter: { orderId: ids } }),
-    store.list("parties", { filter: { id: supplierIds } }),
+    listColumns(
+      store,
+      "order_items",
+      columnsExcept("order_items", ["sankhyaRefs"]),
+      { filter: { orderId: ids } },
+    ),
+    listColumns(store, "parties", columnsExcept("parties", ["sankhyaRefs"]), {
+      filter: { id: supplierIds },
+    }),
   ]);
   const today = todayInBrazil();
   const by = <T extends { orderId: string | null }>(rows: T[]) => {
     const map = new Map<string, T[]>();
     for (const row of rows) {
       if (!row.orderId) continue;
-      map.set(row.orderId, [...(map.get(row.orderId) ?? []), row]);
+      const list = map.get(row.orderId);
+      if (list) list.push(row);
+      else map.set(row.orderId, [row]);
     }
     return map;
   };
+  const supplierById = new Map(suppliers.map((s) => [s.id, s]));
   const paymentsBy = by(payments);
   const stagesBy = by(stages);
   const reqsBy = by(requirements);
@@ -337,7 +356,7 @@ export async function listPayables(
   return orders.map((order) =>
     payableFor(
       order,
-      suppliers.find((s) => s.id === order.supplierId) ?? null,
+      supplierById.get(order.supplierId) ?? null,
       paymentsBy.get(order.id) ?? [],
       stagesBy.get(order.id) ?? [],
       reqsBy.get(order.id) ?? [],
