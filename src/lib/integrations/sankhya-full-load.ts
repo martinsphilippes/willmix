@@ -1,5 +1,5 @@
 import "server-only";
-import type { User } from "@/lib/db";
+import { getStore, type User } from "@/lib/db";
 import {
   executeQuery,
   type SankhyaRow,
@@ -209,14 +209,28 @@ export async function runFullLoad(
     } else if (entity === "stockBalances") {
       await applyStockBalances(ctx, rows);
     } else if (entity === "orders") {
-      if (rows.length) {
+      // Notas que já estão no portal saem antes da consulta ao Sankhya (itens,
+      // produtos e parceiros de uma nota grande levavam até 30 s só para a
+      // carga descobrir depois que ela já existia).
+      const known = await knownOrders(rows.map((r) => String(r.NUNOTA)));
+      for (const r of rows)
+        if (known.has(String(r.NUNOTA)))
+          ctx.out.push({
+            entity: "orders",
+            code: String(r.NUNOTA),
+            outcome: "existing",
+            id: known.get(String(r.NUNOTA))!,
+            label: `NUNOTA ${r.NUNOTA}`,
+          });
+      const fresh = rows.filter((r) => !known.has(String(r.NUNOTA)));
+      if (fresh.length) {
         const t0 = Date.now();
-        const set = await fetchImportSetFor(rows);
+        const set = await fetchImportSetFor(fresh);
         const t1 = Date.now();
         ctx.out.push(...(await importSankhyaSet(user, set, erp, null)));
         // Tempo de cada lado, nos logs da Vercel (onde a nota gasta tempo).
         console.info(
-          `[sankhya-load] notas ${rows.length} itens ${set.items.length}: Sankhya ${t1 - t0} ms, portal ${Date.now() - t1} ms`,
+          `[sankhya-load] notas ${fresh.length} (já no portal ${rows.length - fresh.length}) itens ${set.items.length}: Sankhya ${t1 - t0} ms, portal ${Date.now() - t1} ms`,
         );
       }
     } else {
@@ -259,4 +273,23 @@ export async function runFullLoad(
   await persist();
   if (ctx.out.length) await auditImport(user, `full:${entity}`, ctx.out);
   return { progress, lines: ctx.out };
+}
+
+/** NUNOTAs que já viraram pedido no portal (pelo código do Sankhya ou nº do ERP). */
+async function knownOrders(nunotas: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!nunotas.length) return out;
+  const store = getStore();
+  const [byCode, byErp] = await Promise.all([
+    store.list("orders", { filter: { sankhyaCode: nunotas } }),
+    store.list("orders", { filter: { erpNumber: nunotas } }),
+  ]);
+  for (const o of [...byCode, ...byErp]) {
+    const key =
+      o.sankhyaCode && nunotas.includes(o.sankhyaCode)
+        ? o.sankhyaCode
+        : String(o.erpNumber);
+    if (!out.has(key)) out.set(key, o.id);
+  }
+  return out;
 }
