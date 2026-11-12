@@ -34,7 +34,7 @@ export const pt = {
   "fiscal.table.tecUrl": "Link oficial da planilha da TEC",
   "fiscal.table.tipiUrl": "Link oficial da planilha da TIPI",
   "fiscal.table.urlHint":
-    "Copie o link do arquivo no site do governo (Camex para a TEC, Receita Federal para a TIPI) e salve as configurações. O robô baixa todo dia 2; se o site bloquear, a Wellmix é avisada para enviar a planilha.",
+    "Copie o link do arquivo no site do governo (Camex para a TEC, Receita Federal para a TIPI) e salve as configurações. Também vale o link da página que lista a planilha (ex.: “Anexos compilados” da Camex): o robô acha nela a versão mais nova. O robô baixa todo dia 2; se o site bloquear, a Wellmix é avisada para enviar a planilha.",
   "fiscal.table.syncNow": "Atualizar agora pelos links",
   "fiscal.table.uploaded":
     "{kind}: {count} NCMs carregados, {changed} alíquota(s) alterada(s).",
@@ -167,7 +167,7 @@ export const en: Record<keyof typeof pt, string> = {
   "fiscal.table.tecUrl": "Official TEC spreadsheet link",
   "fiscal.table.tipiUrl": "Official TIPI spreadsheet link",
   "fiscal.table.urlHint":
-    "Copy the file link from the government website (Camex for the TEC, Receita Federal for the TIPI) and save the settings. The robot downloads on the 2nd of each month; if the site blocks it, Wellmix is told to upload the spreadsheet.",
+    "Copy the file link from the government website (Camex for the TEC, Receita Federal for the TIPI) and save the settings. The link of the page that lists the spreadsheet also works (e.g. Camex “Anexos compilados”): the robot finds the newest version there. The robot downloads on the 2nd of each month; if the site blocks it, Wellmix is told to upload the spreadsheet.",
   "fiscal.table.syncNow": "Update now from the links",
   "fiscal.table.uploaded":
     "{kind}: {count} NCMs loaded, {changed} rate(s) changed.",
@@ -297,7 +297,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "fiscal.table.tecUrl": "TEC 官方表格链接",
   "fiscal.table.tipiUrl": "TIPI 官方表格链接",
   "fiscal.table.urlHint":
-    "从政府网站复制文件链接（TEC 来自 Camex，TIPI 来自巴西联邦税务局）并保存设置。系统每月 2 日自动下载；如网站拦截，将通知 Wellmix 上传表格。",
+    "从政府网站复制文件链接（TEC 来自 Camex，TIPI 来自巴西联邦税务局）并保存设置。也可以填写列出表格的网页链接（例如 Camex 的“Anexos compilados”）：系统会在其中找到最新版本。系统每月 2 日自动下载；如网站拦截，将通知 Wellmix 上传表格。",
   "fiscal.table.syncNow": "立即通过链接更新",
   "fiscal.table.uploaded":
     "{kind}：已加载 {count} 个 NCM，{changed} 个税率有变化。",

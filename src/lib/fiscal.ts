@@ -203,3 +203,58 @@ export function parseFiscalFile(
   }
   return best;
 }
+
+/** O link baixou uma página (HTML) e não a planilha? */
+export function looksLikeHtml(bytes: Uint8Array, contentType: string | null) {
+  if (/html/i.test(contentType ?? "")) return true;
+  const head = new TextDecoder()
+    .decode(bytes.slice(0, 512))
+    .replace(/^﻿/, "")
+    .trimStart()
+    .toLowerCase();
+  return head.startsWith("<!doctype html") || head.startsWith("<html");
+}
+
+/** "11-11-2026-anexos…" → 20261111 (para achar a versão mais nova); sem data, 0. */
+function dateInName(url: string) {
+  const m = /(\d{2})[-_.](\d{2})[-_.](\d{4})/.exec(url);
+  return m ? Number(`${m[3]}${m[2]}${m[1]}`) : 0;
+}
+
+/**
+ * Link da planilha dentro de uma página oficial: assim o robô aceita a página
+ * da Camex ("Anexos compilados", tarifas vigentes), cujo arquivo muda de nome a
+ * cada versão. TEC: a planilha dos "anexos I a X" (Resolução Gecex 272) mais
+ * nova pela data no nome; TIPI: a planilha com "tipi" no nome. Sem nenhuma, null.
+ */
+export function findSheetLink(
+  html: string,
+  pageUrl: string,
+  kind: FiscalKind,
+): string | null {
+  const links = new Set<string>();
+  for (const m of html.matchAll(/href\s*=\s*["']([^"']+)["']/gi)) {
+    let href = m[1].replace(/&amp;/g, "&").trim();
+    // Plone (gov.br): ".../arquivo.xlsx/view" e ".../arquivo.xlsx/@@download/file/..." apontam para o arquivo.
+    href = href.replace(
+      /(\.(?:xlsx|xls|csv))\/(?:view|@@download\/.*)$/i,
+      "$1",
+    );
+    if (!/\.(xlsx|xls|csv)(\?.*)?$/i.test(href)) continue;
+    try {
+      const url = new URL(href, pageUrl);
+      if (url.protocol === "https:") links.add(url.toString());
+    } catch {
+      // link quebrado: ignora
+    }
+  }
+  const name = (u: string) => decodeURIComponent(u).toLowerCase();
+  const wanted = [...links].filter((u) =>
+    kind === "tec"
+      ? /anexos?[-_ ]i[-_ ]a[-_ ]x/.test(name(u)) ||
+        /(^|[^a-z])tec([^a-z]|$)/.test(name(u).split("/").pop() ?? "")
+      : /tipi/.test(name(u).split("/").pop() ?? ""),
+  );
+  if (!wanted.length) return null;
+  return wanted.sort((a, b) => dateInName(b) - dateInName(a))[0];
+}

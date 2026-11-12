@@ -331,3 +331,57 @@ describe("NCM da solicitação", () => {
     expect((await store.get("products", product.id))?.ncm).toBe("8517.13.00");
   });
 });
+
+describe("robô da tabela fiscal: link de página", () => {
+  const page = `<html><body>
+    <a href="https://www.gov.br/mdic/pt-br/assuntos/camex/estrategia-comercial/arquivos-listas/anexo-unico-lessin.xlsx">Lessin</a>
+    <a href="/mdic/pt-br/assuntos/camex/estrategia-comercial/arquivos-listas/02-10-2026-anexos-i-a-x-resolucao-gecex-272-21.xlsx/view">antiga</a>
+    <a href="https://www.gov.br/mdic/pt-br/assuntos/camex/estrategia-comercial/arquivos-listas/11-11-2026-anexos-i-a-x-resolucao-gecex-272-21.xlsx">TEC</a>
+  </body></html>`;
+  const pageUrl =
+    "https://www.gov.br/mdic/pt-br/assuntos/camex/se-camex/strat/tarifas/vigentes";
+
+  it("acha na página a planilha dos anexos I a X mais nova", () => {
+    expect(fiscal.findSheetLink(page, pageUrl, "tec")).toBe(
+      "https://www.gov.br/mdic/pt-br/assuntos/camex/estrategia-comercial/arquivos-listas/11-11-2026-anexos-i-a-x-resolucao-gecex-272-21.xlsx",
+    );
+    expect(fiscal.findSheetLink(page, pageUrl, "tipi")).toBeNull();
+    expect(
+      fiscal.findSheetLink(
+        '<a href="/receita/tipi.xlsx/@@download/file/tipi.xlsx">TIPI</a>',
+        "https://www.gov.br/receita/pagina",
+        "tipi",
+      ),
+    ).toBe("https://www.gov.br/receita/tipi.xlsx");
+    expect(
+      fiscal.looksLikeHtml(new TextEncoder().encode("<!DOCTYPE html>"), null),
+    ).toBe(true);
+    expect(
+      fiscal.looksLikeHtml(new TextEncoder().encode("NCM;TEC"), "text/csv"),
+    ).toBe(false);
+  });
+
+  it("baixa a planilha achada na página; página sem planilha vira motivo", async () => {
+    await setSetting("fiscalTecUrl", pageUrl);
+    await setSetting("fiscalTipiUrl", "https://exemplo.gov.br/pagina-tipi");
+    const asked: string[] = [];
+    const fetcher = async (url: RequestInfo | URL) => {
+      asked.push(String(url));
+      if (String(url).endsWith(".xlsx"))
+        return new Response(tecCsv({ "70133700": "16" }), { status: 200 });
+      return new Response(
+        String(url) === pageUrl ? page : "<html>nada</html>",
+        { status: 200, headers: { "content-type": "text/html" } },
+      );
+    };
+    const r1 = await fs.syncFiscalTables(null, fetcher as typeof fetch);
+    expect(asked).toContain(
+      "https://www.gov.br/mdic/pt-br/assuntos/camex/estrategia-comercial/arquivos-listas/11-11-2026-anexos-i-a-x-resolucao-gecex-272-21.xlsx",
+    );
+    expect(r1.results.find((x) => x.kind === "tec")).toMatchObject({
+      ok: true,
+    });
+    expect(r1.lastError).toBe("TIPI: página sem link da planilha");
+    expect((await fs.lookupNcm("70133700"))?.ii).toBe(16);
+  });
+});
