@@ -1,3 +1,4 @@
+import { listByIds } from "@/lib/db/lookup";
 import { LiveSearch } from "@/components/live-search";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -111,9 +112,14 @@ export default async function InventoryPage({
         )
         .slice(0, 200)
     : [];
-  const parties = customerOrders.length
-    ? await getStore().list("parties", { filter: { type: "customer" } })
-    : [];
+  // Só os clientes desses pedidos (antes: todos, ~26 mil).
+  const parties = (
+    await listByIds(
+      getStore(),
+      "parties",
+      customerOrders.map((o) => o.customerId),
+    )
+  ).filter((p) => p.type === "customer");
   const errorCode = typeof sp.error === "string" ? sp.error : null;
 
   return (

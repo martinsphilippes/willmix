@@ -26,6 +26,7 @@ import * as productPhotos from "./product-photos";
 import * as sheetGenerate from "./sheet-generate";
 import * as notificationsDelete from "./notifications-delete";
 import * as tableTools from "./table-tools";
+import * as partyPicker from "./party-picker";
 import * as sheetSafety from "./sheet-safety";
 import * as productSpec from "./product-spec";
 import * as importing from "./import";
@@ -231,6 +232,7 @@ export const modulesPt = {
   ...sheetGenerate.pt,
   ...notificationsDelete.pt,
   ...tableTools.pt,
+  ...partyPicker.pt,
   ...sheetSafety.pt,
   ...productSpec.pt,
   ...freightTariff.pt,
@@ -356,6 +358,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sheetGenerate.en,
   ...notificationsDelete.en,
   ...tableTools.en,
+  ...partyPicker.en,
   ...sheetSafety.en,
   ...productSpec.en,
   ...freightTariff.en,
@@ -481,6 +484,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sheetGenerate.zh,
   ...notificationsDelete.zh,
   ...tableTools.zh,
+  ...partyPicker.zh,
   ...sheetSafety.zh,
   ...productSpec.zh,
   ...freightTariff.zh,

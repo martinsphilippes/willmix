@@ -1,3 +1,6 @@
+import { listByIds } from "@/lib/db/lookup";
+import { PartyPicker } from "@/components/party-picker";
+import { partyPickerLabels } from "@/components/party-picker-labels";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -56,17 +59,25 @@ export default async function MarketingPage({
   const productId = one(params.productId);
   const t = await getT();
   const store = getStore();
-  const [settings, kits, products, customers] = await Promise.all([
+  const [settings, kits, products] = await Promise.all([
     getSettings(),
     listKits(user, {
       customerId: customerId || undefined,
       productId: productId || undefined,
     }),
     store.list("products", { orderBy: "name" }),
-    wellmix
-      ? store.list("parties", { filter: { type: "customer" }, orderBy: "name" })
-      : Promise.resolve([]),
   ]);
+  // Só os clientes dos kits e o do filtro; o filtro busca pelo nome (com a
+  // carga do Sankhya são ~26 mil clientes, que não cabem numa lista).
+  const customers = wellmix
+    ? (
+        await listByIds(store, "parties", [
+          ...kits.map((k) => k.customerId),
+          customerId,
+        ])
+      ).filter((p) => p.type === "customer")
+    : [];
+  const filterCustomer = customers.find((c) => c.id === customerId) ?? null;
   const rows = status ? kits.filter((k) => k.status === status) : kits;
   const productName = (id: string) =>
     products.find((p) => p.id === id)?.name ?? "—";
@@ -176,14 +187,17 @@ export default async function MarketingPage({
                 </Select>
               </Field>
               <Field label={t("marketing.filter.customer")}>
-                <Select name="customerId" defaultValue={customerId}>
-                  <option value="">{t("common.all")}</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
+                <PartyPicker
+                  name="customerId"
+                  type="customer"
+                  initial={
+                    filterCustomer
+                      ? { id: filterCustomer.id, name: filterCustomer.name }
+                      : null
+                  }
+                  ariaLabel={t("marketing.filter.customer")}
+                  labels={partyPickerLabels(t)}
+                />
               </Field>
               <Field label={t("marketing.filter.product")}>
                 <Select name="productId" defaultValue={productId}>

@@ -446,3 +446,17 @@ describe("SupabaseStore.listColumns", () => {
     );
   });
 });
+
+describe("SupabaseStore: busca por nome", () => {
+  it("vira ilike com o texto limpo", async () => {
+    const { calls } = fakeSupabase();
+    const store = new SupabaseStore("https://x.supabase.co", "service");
+    await store.list("parties", {
+      filter: { type: "customer" },
+      search: { column: "name", text: "joão*" },
+      limit: 20,
+    });
+    expect(decodeURIComponent(calls[0])).toContain("name=ilike.*joão*");
+    expect(decodeURIComponent(calls[0])).not.toContain("joão**");
+  });
+});

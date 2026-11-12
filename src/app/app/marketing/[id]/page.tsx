@@ -1,3 +1,6 @@
+import { listByIds } from "@/lib/db/lookup";
+import { PartyPicker } from "@/components/party-picker";
+import { partyPickerLabels } from "@/components/party-picker-labels";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -24,7 +27,6 @@ import {
   Input,
   LinkButton,
   PageHeader,
-  Select,
   TextLink,
   Textarea,
   formatDate,
@@ -101,8 +103,12 @@ export default async function MarketingKitPage({
   const [settings, sheet, customers, suggestions] = await Promise.all([
     getSettings(),
     loadProductSheet(kit.productId),
+    // Só o cliente do kit; o campo busca pelo nome (com a carga do Sankhya
+    // são ~26 mil clientes, que não cabem numa lista).
     wellmix
-      ? store.list("parties", { filter: { type: "customer" }, orderBy: "name" })
+      ? listByIds(store, "parties", [kit.customerId]).then((rows) =>
+          rows.filter((p) => p.type === "customer"),
+        )
       : Promise.resolve([]),
     wellmix
       ? listSuggestions("marketing_kit", kit.id)
@@ -571,18 +577,18 @@ export default async function MarketingKitPage({
                         value={kit.customerId ?? ""}
                       />
                     ) : null}
-                    <Select
+                    <PartyPicker
                       name={customerLocked ? undefined : "customerId"}
+                      type="customer"
                       disabled={customerLocked}
-                      defaultValue={kit.customerId ?? ""}
-                    >
-                      <option value="">{t("marketing.noCustomer")}</option>
-                      {customers.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </Select>
+                      initial={
+                        customers[0]
+                          ? { id: customers[0].id, name: customers[0].name }
+                          : null
+                      }
+                      ariaLabel={t("marketing.field.customer")}
+                      labels={partyPickerLabels(t)}
+                    />
                   </Field>
                 </div>
                 <div className="grid min-w-0 grid-cols-5 gap-3 @xl:col-span-3">

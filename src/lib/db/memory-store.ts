@@ -12,6 +12,7 @@ import type { BaseRow, TableName, Tables } from "./schema";
 import { clampRange, type ByteRange } from "@/lib/http-range";
 import { TABLES } from "./schema";
 import {
+  matchesSearch,
   pickColumns,
   rowMatcher,
   sortRows,
@@ -85,7 +86,10 @@ export class MemoryStore implements Store {
     columns: readonly C[],
     options: ListOptions<Tables[K]> = {},
   ) {
-    const rows = this.db[table].filter(rowMatcher(options.filter));
+    const match = rowMatcher(options.filter);
+    const rows = this.db[table].filter(
+      (row) => match(row) && matchesSearch(row, options.search),
+    );
     const sorted = sortRows(
       rows,
       options.orderBy ?? "createdAt",
@@ -100,7 +104,10 @@ export class MemoryStore implements Store {
     table: K,
     options: ListOptions<Tables[K]> = {},
   ) {
-    const rows = this.db[table].filter(rowMatcher(options.filter));
+    const match = rowMatcher(options.filter);
+    const rows = this.db[table].filter(
+      (row) => match(row) && matchesSearch(row, options.search),
+    );
     const sorted = sortRows(
       rows,
       options.orderBy ?? "createdAt",

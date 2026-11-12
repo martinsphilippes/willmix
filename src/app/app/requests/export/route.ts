@@ -1,3 +1,4 @@
+import { listByIds } from "@/lib/db/lookup";
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
@@ -39,12 +40,19 @@ export async function GET(request: NextRequest) {
     : "all";
   const q = (sp.get("q") ?? "").slice(0, 120);
   const store = getStore();
-  const [all, parties, users] = await Promise.all([
+  const [all, users] = await Promise.all([
     store.list("requests", { orderBy: "createdAt", direction: "desc" }),
-    store.list("parties", { filter: { type: "customer" } }),
     store.list("users"),
   ]);
   const visible = all.filter((r) => canViewRequest(user, r));
+  // Só os clientes das solicitações (antes: todos, ~26 mil).
+  const parties = (
+    await listByIds(
+      store,
+      "parties",
+      visible.map((r) => r.customerId),
+    )
+  ).filter((p) => p.type === "customer");
   const cancelled = await cancelledOrderIds(visible.map((r) => r.orderId));
   const today = todayBrazil();
   const name = (id: string) => parties.find((p) => p.id === id)?.name ?? "";

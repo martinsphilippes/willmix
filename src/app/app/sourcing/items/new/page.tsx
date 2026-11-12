@@ -1,3 +1,4 @@
+import { listByIds } from "@/lib/db/lookup";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -16,8 +17,7 @@ export default async function NewSourcingItemPage({
   const { error, visitId } = await searchParams;
   const t = await getT();
   const store = getStore();
-  const [suppliers, lines, visit] = await Promise.all([
-    store.list("parties", { filter: { type: "supplier" }, orderBy: "name" }),
+  const [lines, visit] = await Promise.all([
     store.list("product_lines", { orderBy: "name" }),
     typeof visitId === "string" && visitId
       ? store.get("supplier_visits", visitId)
@@ -34,6 +34,10 @@ export default async function NewSourcingItemPage({
         foundAt: visit.visitedAt,
       }
     : undefined;
+  // Só o fornecedor da visita; o campo busca os demais pelo nome.
+  const suppliers = (
+    await listByIds(store, "parties", [visit?.supplierId])
+  ).filter((p) => p.type === "supplier");
   const errorText = errorMessage(t, error);
   return (
     <>

@@ -1,3 +1,4 @@
+import { listByIds } from "@/lib/db/lookup";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -73,29 +74,21 @@ export default async function SourcingItemPage({
   const { item, photos, measurements, visit, supplier, documents } = data;
   const t = await getT();
   const store = getStore();
-  const [
-    suppliers,
-    lines,
-    users,
-    customers,
-    openRequests,
-    settings,
-    suggestions,
-  ] = await Promise.all([
-    store.list("parties", { filter: { type: "supplier" }, orderBy: "name" }),
-    store.list("product_lines", { orderBy: "name" }),
-    store.list("users"),
-    store.list("parties", { filter: { type: "customer" }, orderBy: "name" }),
-    // Demanda de cliente: solicitações em aberto sem produto do catálogo (ou a já vinculada).
-    store.list("requests", {
-      filter: { status: ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"] },
-      orderBy: "createdAt",
-      direction: "desc",
-    }),
-    // Visão de Produto: sugestão de campos pela foto (humano confirma).
-    getSettings(),
-    listSuggestions("sourcing_item", id),
-  ]);
+  const [lines, users, openRequests, settings, suggestions] = await Promise.all(
+    [
+      store.list("product_lines", { orderBy: "name" }),
+      store.list("users"),
+      // Demanda de cliente: solicitações em aberto sem produto do catálogo (ou a já vinculada).
+      store.list("requests", {
+        filter: { status: ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"] },
+        orderBy: "createdAt",
+        direction: "desc",
+      }),
+      // Visão de Produto: sugestão de campos pela foto (humano confirma).
+      getSettings(),
+      listSuggestions("sourcing_item", id),
+    ],
+  );
   const aiAdapter = getAiAdapter(settings);
   const aiPhotos = collectAiPhotos(
     photos,
@@ -105,6 +98,18 @@ export default async function SourcingItemPage({
   );
   const userName = (uid: string | null) =>
     users.find((u) => u.id === uid)?.name ?? "—";
+  // Só o fornecedor do item; o campo busca os demais pelo nome.
+  const suppliers = (
+    await listByIds(store, "parties", [item.supplierId])
+  ).filter((p) => p.type === "supplier");
+  // Só os clientes das solicitações em aberto (antes: todos, ~26 mil).
+  const customers = (
+    await listByIds(
+      store,
+      "parties",
+      openRequests.map((r) => r.customerId),
+    )
+  ).filter((p) => p.type === "customer");
   const customerName = (pid: string) =>
     customers.find((c) => c.id === pid)?.name ?? "—";
   const linkableRequests = openRequests.filter(
