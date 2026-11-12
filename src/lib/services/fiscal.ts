@@ -3,7 +3,9 @@ import "server-only";
 import { getStore, type User } from "@/lib/db";
 import { getSettings, setSetting, type FiscalTableMeta } from "@/lib/settings";
 import {
+  findSheetLink,
   formatNcm,
+  looksLikeHtml,
   normalizeNcm,
   parseFiscalFile,
   type FiscalKind,
@@ -249,15 +251,31 @@ export async function syncFiscalTables(
   }> = [];
   for (const [kind, url] of targets) {
     try {
-      const res = await fetcher(url, {
-        signal: AbortSignal.timeout(60_000),
-        headers: { "user-agent": "Mozilla/5.0 (Wellmix portal)" },
-      });
-      if (!res.ok) throw new Error(`http ${res.status}`);
-      const bytes = new Uint8Array(await res.arrayBuffer());
-      if (bytes.length > MAX_DOWNLOAD) throw new Error("arquivo grande demais");
+      const download = async (target: string) => {
+        const res = await fetcher(target, {
+          signal: AbortSignal.timeout(60_000),
+          headers: { "user-agent": "Mozilla/5.0 (Wellmix portal)" },
+        });
+        if (!res.ok) throw new Error(`http ${res.status}`);
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        if (bytes.length > MAX_DOWNLOAD)
+          throw new Error("arquivo grande demais");
+        return { bytes, type: res.headers.get("content-type") };
+      };
+      let fileUrl = url;
+      let { bytes, type } = await download(url);
+      // Link de página (ex.: "Anexos compilados" da Camex): acha nela a
+      // planilha mais nova e baixa essa. Assim o link não envelhece.
+      if (looksLikeHtml(bytes, type)) {
+        const found = findSheetLink(new TextDecoder().decode(bytes), url, kind);
+        if (!found) throw new Error("página sem link da planilha");
+        fileUrl = found;
+        ({ bytes, type } = await download(found));
+        if (looksLikeHtml(bytes, type))
+          throw new Error("o link da página não é uma planilha");
+      }
       const name = decodeURIComponent(
-        new URL(url).pathname.split("/").filter(Boolean).pop() ?? kind,
+        new URL(fileUrl).pathname.split("/").filter(Boolean).pop() ?? kind,
       );
       const r = await importFiscalFile(user, kind, bytes, name, "robot");
       results.push({ kind, ok: true, ...r });
