@@ -105,6 +105,7 @@ export function SuperplanCalculator({
   ctx,
   averageUsd,
   averageWeightKg = null,
+  fiscalTableLoaded = true,
   save,
 }: {
   labels: SuperplanLabels;
@@ -125,6 +126,11 @@ export function SuperplanCalculator({
    * na conta.
    */
   averageWeightKg?: number | null;
+  /**
+   * Há tabela fiscal (TEC/TIPI) carregada? Só escolhe o aviso quando faltam
+   * II ou IPI: produto sem NCM, tabela não carregada ou NCM fora dela.
+   */
+  fiscalTableLoaded?: boolean;
   save?: SuperplanSave;
   /** Nulo: sem o cartão de abrir a faca e a RFQ. */
 }) {
@@ -348,7 +354,13 @@ export function SuperplanCalculator({
             {prefill.productId &&
             (prefill.iiPct === null || prefill.ipiPct === null) ? (
               <div className="mb-3">
-                <Alert tone="warning">{L("superplan.ncm.missing")}</Alert>
+                <Alert tone="warning">
+                  {!prefill.ncm
+                    ? L("superplan.ncm.none")
+                    : !fiscalTableLoaded
+                      ? L("superplan.ncm.noTable")
+                      : L("superplan.ncm.notInTable", { ncm: prefill.ncm })}
+                </Alert>
               </div>
             ) : null}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

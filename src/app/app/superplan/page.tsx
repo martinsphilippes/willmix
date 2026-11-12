@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isAdmin } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
+import { hasFiscalTable } from "@/lib/services/fiscal";
 import {
   loadSuperplanContext,
   superplanPrefillsFor,
@@ -73,7 +74,7 @@ export default async function SuperplanPage({
       ? query.product
       : null;
 
-  const [ctx, products, prefills] = await Promise.all([
+  const [ctx, products, prefills, fiscalTableLoaded] = await Promise.all([
     loadSuperplanContext({
       formatDay: (day) => formatDate(`${day}T12:00:00Z`, t),
     }),
@@ -82,6 +83,8 @@ export default async function SuperplanPage({
     productId
       ? superplanPrefillsFor([productId], { includeInactive: true })
       : null,
+    // Só para dizer por que faltam II e IPI (sem tabela ≠ NCM fora dela).
+    productId ? hasFiscalTable() : true,
   ]);
   const { params } = ctx;
   const loaded = productId ? (prefills?.get(productId) ?? null) : null;
@@ -125,6 +128,7 @@ export default async function SuperplanPage({
         averageUsd={loaded ? loaded.averageUsd : undefined}
         // Peso médio (ficha mestre): mostrado na Compra, fora da conta.
         averageWeightKg={loaded ? loaded.averageWeightKg : null}
+        fiscalTableLoaded={fiscalTableLoaded}
         ctx={ctx}
       />
 
