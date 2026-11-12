@@ -84,6 +84,13 @@ Quem abre `/app/supplier-requests/[id]` (o fornecedor e, desde a segunda rodada,
 - **Histórico de interações** (linha do tempo, `requestTimeline`), na coluna da direita logo abaixo da resposta do fornecedor: abertura, cada resposta do fornecedor (as registradas pela Wellmix antes de 12/11/2026 continuam marcadas assim), contrapropostas, aceites, novas propostas, recusas, mensagens e arquivos, a decisão da Wellmix e o produto (criado/associado, vitrine, CODPROD), cada um com data e hora, quem fez e o que ficou resolvido. Cada resposta passa a ser um passo `answer` no histórico. As respostas de antes disso (só a última ficava na solicitação) vêm da auditoria (`supplier_request.answer`, `legacyAnswers`): a hora e o "faz/não faz" de cada uma; só a última tem os valores. A 1ª e a última resposta da tabela usam as mesmas horas.
 - **Conversa**: ícone flutuante de chat no canto inferior direito; abre uma janela pequena com as mensagens e o campo para mandar outra (foto, PDF ou Excel). O cartão Negociação fica só com a contraproposta e a resposta a ela.
 
+### Ficha negociada (decisão do dono, 12/11/2026)
+
+- O cartão principal se chama **"O que está sendo negociado"** (era "O que a Wellmix pede").
+- Com a resposta "faz", a ficha do item mostra as **condições combinadas** (`agreedConditions`: resposta do responsável, contraproposta aceita ou nova proposta dele; com contraproposta esperando, a resposta gravada): **preço negociado** (moeda e FOB/EXW), MOQ e prazo de produção. Onde mudou, o valor do booking fica ao lado, **riscado**. O item do booking não é alterado (a planilha continua como veio).
+- **Superplan refeito** (só a Wellmix): a mesma conta do booking (`analyzeNegotiatedItem`, em `superplan-analysis.ts`) com o preço e a moeda negociados, o tipo de negócio do retrato do booking e o câmbio do dia, refeita a cada abertura da tela; nada é gravado. Mostra o custo por peça novo com o do booking riscado, o preço mínimo e a meta.
+- **Alternativas com a nova referência**: a alternativa com custo do booking menor que o custo negociado ganha o selo "mais barata que a negociada"; cada alternativa tem **"Abrir solicitação para esta"** (o item atual e as outras viram alternativas dela, com a mesma quantidade e necessidade; as regras de sempre valem, como `supplier_request_exists`).
+
 ## Lista de solicitações
 
 - Datas com hora (aberta em, finalizada em).

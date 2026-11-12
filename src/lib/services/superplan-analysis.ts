@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   getStore,
+  type BookingAnalysis,
   type BookingItem,
   type Product,
   type PurchaseSheet,
@@ -312,4 +313,35 @@ export async function superplanBusinessTypes(): Promise<{
     names: params.businessTypes.map((t) => t.name),
     defaultName: params.defaultBusinessType,
   };
+}
+
+/**
+ * Superplan do item com as condições negociadas na solicitação ao
+ * fornecedor (docs/SUPPLIER_REQUESTS.md, "Ficha negociada"): a mesma conta
+ * do booking, com o preço e a moeda combinados no lugar dos da planilha e o
+ * tipo de negócio do retrato do booking. Refeita a cada abertura da tela
+ * (câmbio do dia); nada é gravado. Sem preço negociado, nulo.
+ */
+export async function analyzeNegotiatedItem(
+  item: BookingItem,
+  deal: { price: number | null; currency: string | null },
+  byUserId: string,
+): Promise<BookingAnalysis | null> {
+  if (deal.price === null) return null;
+  const currency = (deal.currency ?? item.currency ?? "").toUpperCase();
+  const negotiated: BookingItem = {
+    ...item,
+    price: deal.price,
+    currency: (currency === "CNY"
+      ? "RMB"
+      : currency) as BookingItem["currency"],
+  };
+  const snapshot = (
+    await analyzeBookingItems([negotiated], {
+      businessType: item.analysis?.businessType ?? null,
+    })
+  ).get(item.id);
+  return snapshot
+    ? { ...snapshot, at: new Date().toISOString(), byUserId }
+    : null;
 }
