@@ -18,6 +18,7 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { SheetFileInput } from "@/components/sheet-file-input";
 import { importBookingAction } from "../../actions/booking-lots";
+import { PartnerBookingLaunch } from "../_components/partner-booking";
 
 /*
  * Importar booking (docs/BOOKING.md, "Booking por planilha"): a planilha de
@@ -31,11 +32,16 @@ export default async function BookingImportPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/booking/import");
   requireScreen(user, "booking");
-  // Só a Wellmix: o login externo com a tela Booking vê só os bookings dele.
-  if (!isWellmix(user)) redirect("/app/booking");
   const { error } = await searchParams;
   const t = await getT();
   const code = typeof error === "string" ? error : "";
+  // Login externo (Trading): lança o booking dele, num formulário próprio.
+  // Quem só consulta a tela (não pode responder por booking) volta à lista.
+  if (!isWellmix(user)) {
+    const launch = await PartnerBookingLaunch({ user, t, error: code });
+    if (!launch) redirect("/app/booking");
+    return launch;
+  }
   const known = [`bookingLots.error.${code}`, `sheetImport.error.${code}`].find(
     (k) => k in dictionaries.pt,
   ) as DictionaryKey | undefined;

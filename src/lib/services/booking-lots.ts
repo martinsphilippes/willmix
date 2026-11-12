@@ -1,13 +1,16 @@
 import "server-only";
 
-import { assertWellmix } from "@/lib/auth/permissions";
+import { assertWellmix, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import {
+  BOOKING_PARTNER_TYPES,
   bookingDateOf,
   bookingLotEditable,
   bookingLotPending,
   bookingLotReady,
+  bookingRecipientId,
   canMoveBookingLot,
+  isBookingPartner,
   matchSheetSupplier,
   mostCommon,
   readBookingItemValue,
@@ -26,7 +29,11 @@ import {
   type User,
 } from "@/lib/db";
 import { audit } from "./audit";
-import { registerUploadedDocument, uploadDocument } from "./documents";
+import {
+  fileKeyTaken,
+  registerUploadedDocument,
+  uploadDocument,
+} from "./documents";
 import {
   parseProductSheet,
   sheetBytes,
@@ -226,7 +233,9 @@ export async function createBookingLotFromSheet(
 /**
  * O mesmo, sem conferir o papel (quem chama confere): o booking concorrente
  * que o parceiro convidado sobe (services/booking-invites.ts) nasce com ele
- * como responsável e com a Wellmix que convidou como dona.
+ * como responsável e com a Wellmix que convidou como dona; o booking que o
+ * parceiro lança por conta própria (services/booking-partner.ts) nasce com
+ * ele como responsável e sem dono interno (`ownerUserId: null`).
  */
 export async function createLotFromSheet(
   user: User,
@@ -238,6 +247,16 @@ export async function createLotFromSheet(
     ownerUserId?: string | null;
   } = {},
 ): Promise<BookingLot> {
+  // Login externo (convidado ou parceiro que lança): a chave tem de ser de um
+  // arquivo recém-subido, nunca a de um documento já registrado (a planilha
+  // guardada de outro booking, por exemplo, não é lida para dentro do dele).
+  if (
+    !isWellmix(user) &&
+    !(source instanceof File) &&
+    "fileKey" in source &&
+    (await fileKeyTaken(source.fileKey))
+  )
+    throw new SheetImportError("file_required");
   const file = await sheetBytes(source);
   const parsed = parseProductSheet(file.bytes, {
     sheet: options.sheet ?? null,
@@ -276,7 +295,8 @@ export async function createLotFromSheet(
       statusChangedAt: null,
       statusChangedByUserId: null,
       note: null,
-      ownerUserId: options.ownerUserId ?? user.id,
+      ownerUserId:
+        options.ownerUserId === undefined ? user.id : options.ownerUserId,
       createdByUserId: user.id,
       // Coluna opcional: só vai quando há responsável.
       ...(options.partnerId ? { partnerId: options.partnerId } : {}),
@@ -388,28 +408,10 @@ export interface BookingLotDetail {
   partners: Party[];
 }
 
-/**
- * Tipos que podem ser o responsável pelo booking: o fornecedor, os parceiros
- * à parte (Trading, Factory, Supplier, GP) e os tipos criados no painel.
- */
-export const BOOKING_PARTNER_TYPES = [
-  "supplier",
-  "trading",
-  "factory",
-  "supplier_partner",
-  "gp",
-  "partner",
-] as const;
-
-const isBookingPartner = (p: Pick<Party, "type">) =>
-  (BOOKING_PARTNER_TYPES as readonly string[]).includes(p.type);
-
-/** Para quem vão as solicitações do booking: o responsável ou, sem ele, o fornecedor. */
-export function bookingRecipientId(
-  lot: Pick<BookingLot, "supplierId" | "partnerId">,
-): string | null {
-  return lot.partnerId ?? lot.supplierId ?? null;
-}
+// Quem pode responder por um booking e para quem vão as solicitações dele:
+// regras puras em src/lib/booking-lots.ts (também usadas pela visão do
+// parceiro, que não carrega este módulo).
+export { BOOKING_PARTNER_TYPES, bookingRecipientId };
 
 export async function getBookingLot(
   user: User,

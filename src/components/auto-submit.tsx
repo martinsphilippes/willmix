@@ -16,7 +16,14 @@ export function AutoSubmit() {
       if (el?.closest("[data-auto-submit]")) form.requestSubmit();
     };
     form.addEventListener("change", onChange);
-    return () => form.removeEventListener("change", onChange);
+    // Marca que o envio automático já está ligado: antes disto (página ainda
+    // carregando) mudar o filtro não envia. Os testes esperam por esta marca.
+    const span = marker.current;
+    span?.setAttribute("data-auto-submit-ready", "");
+    return () => {
+      form.removeEventListener("change", onChange);
+      span?.removeAttribute("data-auto-submit-ready");
+    };
   }, []);
   return <span ref={marker} hidden />;
 }
