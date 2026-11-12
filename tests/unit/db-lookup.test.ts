@@ -75,3 +75,14 @@ describe("leitura só das colunas usadas", () => {
     expect(match({ id: "c" })).toBe(false);
   });
 });
+
+describe("busca por nome (campo de cliente/fornecedor)", () => {
+  it("tira os curingas do LIKE e do PostgREST e ignora caixa e acento", async () => {
+    const { searchText, matchesSearch } = await import("@/lib/db/store");
+    expect(searchText(" 50%_off*, (x) ")).toBe("50 off x");
+    const search = { column: "name" as const, text: "joao" };
+    expect(matchesSearch({ name: "Loja do João Ltda" }, search)).toBe(true);
+    expect(matchesSearch({ name: "Outra" }, search)).toBe(false);
+    expect(matchesSearch({ name: null }, search)).toBe(false);
+  });
+});

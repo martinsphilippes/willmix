@@ -1,3 +1,6 @@
+import { listByIds } from "@/lib/db/lookup";
+import { PartyPicker } from "@/components/party-picker";
+import { partyPickerLabels } from "@/components/party-picker-labels";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -5,7 +8,6 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { getStore, type StockReservation } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { listStockReservations, loadInventory } from "@/lib/services/inventory";
-import { STOCK_PARTY_ID } from "@/lib/services/stock-party";
 import {
   RESERVATION_DEFAULT_DAYS,
   RESERVATION_MAX_DAYS,
@@ -65,15 +67,20 @@ export default async function ReservationsPage({
     : "active";
   const today = brazilDay(new Date().toISOString()) as string;
   const store = getStore();
-  const [all, inventory, customers, users] = await Promise.all([
+  const [all, inventory, users] = await Promise.all([
     listStockReservations(),
     loadInventory(),
-    store.list("parties", { filter: { type: "customer" } }),
     store.list("users"),
   ]);
-  const clients = customers
-    .filter((c) => c.id !== STOCK_PARTY_ID)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  // Só os clientes das reservas; o campo de cliente busca pelo nome (com a
+  // carga do Sankhya são ~26 mil, que não cabem numa lista).
+  const customers = (
+    await listByIds(
+      store,
+      "parties",
+      all.map((r) => r.customerId),
+    )
+  ).filter((p) => p.type === "customer");
   const free = inventory
     .map((r) => ({ ...r, free: freeStock(r.brazil, r.reserved ?? 0) }))
     .filter((r) => r.free > 0);
@@ -180,16 +187,13 @@ export default async function ReservationsPage({
               </Select>
             </Field>
             <Field label={t("res.customer")}>
-              <Select name="customerId" required defaultValue="">
-                <option value="" disabled>
-                  {t("common.select")}
-                </option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
+              <PartyPicker
+                name="customerId"
+                type="customer"
+                required
+                ariaLabel={t("res.customer")}
+                labels={partyPickerLabels(t)}
+              />
             </Field>
             <Field label={t("res.quantity")}>
               <Input

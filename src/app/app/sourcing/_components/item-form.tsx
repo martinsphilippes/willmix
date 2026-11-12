@@ -16,6 +16,8 @@ import {
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { CURRENCIES } from "@/lib/currencies";
 import { PhotoInput } from "@/components/photo-input";
+import { PartyPicker } from "@/components/party-picker";
+import { partyPickerLabels } from "@/components/party-picker-labels";
 import { SubmitButton } from "@/components/submit-button";
 import { saveSourcingItemAction } from "../../actions/sourcing";
 import {
@@ -57,7 +59,11 @@ export function ItemForm({
 }: {
   t: Translate;
   item?: SourcingItem | null;
-  suppliers: Party[];
+  /**
+   * O fornecedor já escolhido (o campo busca os demais pelo nome: com a
+   * carga do Sankhya são ~5,7 mil, que não cabem numa lista).
+   */
+  suppliers: Pick<Party, "id" | "name">[];
   lines: ProductLine[];
   preset?: ItemPreset;
 }) {
@@ -116,19 +122,18 @@ export function ItemForm({
               label={t("sourcing.item.supplier")}
               hint={t("sourcing.visit.supplierHint")}
             >
-              <Select
+              <PartyPicker
                 name="supplierId"
-                defaultValue={supplierId}
+                type="supplier"
+                initial={
+                  registered
+                    ? { id: registered.id, name: registered.name }
+                    : null
+                }
                 className={bigField}
-              >
-                <option value="">{t("common.select")}</option>
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                    {s.city ? ` · ${s.city}` : ""}
-                  </option>
-                ))}
-              </Select>
+                ariaLabel={t("sourcing.item.supplier")}
+                labels={partyPickerLabels(t)}
+              />
             </Field>
           </div>
           <div className="@2xl:col-span-2">

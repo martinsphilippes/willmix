@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { TableName, Tables } from "./schema";
 import { TABLES } from "./schema";
 import type { ListOptions, NewRow, Patch, Store, StoredFile } from "./store";
-import { pickColumns } from "./store";
+import { pickColumns, searchText } from "./store";
 import { storageFileName } from "../file-kinds";
 import {
   clampRange,
@@ -136,6 +136,11 @@ export class SupabaseStore implements Store {
         if (value.length === 0) return [];
         params.push(`${enc(key)}=in.(${value.map(inValue).join(",")})`);
       } else params.push(`${enc(key)}=eq.${enc(String(value))}`);
+    }
+    if (options.search) {
+      const text = searchText(options.search.text);
+      if (text)
+        params.push(`${enc(options.search.column)}=ilike.${enc(`*${text}*`)}`);
     }
     const dir = options.direction === "desc" ? "desc" : "asc";
     params.push(

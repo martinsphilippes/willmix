@@ -1,3 +1,4 @@
+import { listByIds } from "@/lib/db/lookup";
 import { LiveSearch } from "@/components/live-search";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -96,13 +97,12 @@ export default async function RequestsPage({
   const customer = user.role === "customer";
   // Tudo numa rodada só: lista, parceiros, pendências e pedidos em andamento.
   const wellmix = isWellmix(user);
-  const [allRequests, parties, tasks, inProgress, team] = await Promise.all([
+  const [allRequests, tasks, inProgress, team] = await Promise.all([
     store.list("requests", {
       filter: customer ? { customerId: user.partyId! } : undefined,
       orderBy: "createdAt",
       direction: "desc",
     }),
-    store.list("parties", { filter: { type: "customer" } }),
     // Sem Pendências ou Pedidos no perfil (Gestão de telas), os blocos do
     // topo também não aparecem aqui.
     customer && canOpen(user, "tasks")
@@ -114,6 +114,14 @@ export default async function RequestsPage({
     wellmix ? store.list("users") : Promise.resolve([]),
   ]);
   const visible = allRequests.filter((r) => canViewRequest(user, r));
+  // Só os clientes das solicitações (antes: todos, ~26 mil).
+  const parties = (
+    await listByIds(
+      store,
+      "parties",
+      visible.map((r) => r.customerId),
+    )
+  ).filter((p) => p.type === "customer");
   // Pedido cancelado: a solicitação segue ORDERED no banco, mas o selo mostra
   // "Pedido cancelado" em vez de "Pedido criado".
   const cancelled = await cancelledOrderIds(visible.map((r) => r.orderId));

@@ -19,6 +19,37 @@ export interface ListOptions<T> {
   orderBy?: keyof T & string;
   direction?: "asc" | "desc";
   limit?: number;
+  /**
+   * Texto contido na coluna, sem diferenciar maiúsculas (busca dos campos
+   * de cliente/fornecedor: ~26 mil clientes não cabem numa lista).
+   */
+  search?: { column: keyof T & string; text: string };
+}
+
+/** O texto da busca sem os caracteres especiais do LIKE e do PostgREST. */
+export function searchText(text: string) {
+  return text
+    .replace(/[%_*,()\\"]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Busca do modo memória e do Appwrite: contém o texto, sem caixa nem acento. */
+export function matchesSearch<T extends object>(
+  row: T,
+  search?: { column: keyof T & string; text: string },
+): boolean {
+  if (!search) return true;
+  const fold = (v: string) =>
+    v
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  const value = (row as Record<string, unknown>)[search.column];
+  return (
+    typeof value === "string" &&
+    fold(value).includes(fold(searchText(search.text)))
+  );
 }
 
 export type NewRow<T extends BaseRow> = Omit<T, keyof BaseRow> & {

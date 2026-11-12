@@ -1,3 +1,4 @@
+import { listByIds } from "@/lib/db/lookup";
 import type { ReactNode } from "react";
 import { fallbackError } from "@/i18n/error-text";
 import Link from "next/link";
@@ -86,11 +87,18 @@ export default async function AfterSalesPage({
       : "open";
   const t = await getT();
   const store = getStore();
-  const [all, orders, parties] = await Promise.all([
+  const [all, orders] = await Promise.all([
     listAfterSales(),
     store.list("orders"),
-    store.list("parties", { filter: { type: "customer" } }),
   ]);
+  // Só os clientes dos pós-vendas (antes: todos, ~26 mil).
+  const parties = (
+    await listByIds(
+      store,
+      "parties",
+      all.map((a) => a.customerId),
+    )
+  ).filter((p) => p.type === "customer");
   const orderOf = (a: AfterSales) => orders.find((o) => o.id === a.orderId);
   // Pedido cancelado: pós-venda ainda aberto (cancelado antes de o
   // cancelamento encerrar o pós-venda) aparece encerrado, como os de agora.

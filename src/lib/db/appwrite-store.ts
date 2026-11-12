@@ -3,6 +3,7 @@ import { InputFile } from "node-appwrite/file";
 import type { TableName, Tables } from "./schema";
 import { BUCKET_ID, DATABASE_ID, TABLES } from "./schema";
 import type { ListOptions, NewRow, Patch, Store, StoredFile } from "./store";
+import { matchesSearch } from "./store";
 import { downloadBytes } from "./download-bytes";
 import { storageFileName } from "../file-kinds";
 import {
@@ -46,6 +47,14 @@ export class AppwriteStore implements Store {
     table: K,
     options: ListOptions<Tables[K]> = {},
   ): Promise<Tables[K][]> {
+    // Busca por texto: filtrada aqui (o Appwrite pede índice de texto).
+    if (options.search) {
+      const { search, limit, ...rest } = options;
+      const rows = (await this.list(table, rest)).filter((row) =>
+        matchesSearch(row, search),
+      );
+      return limit ? rows.slice(0, limit) : rows;
+    }
     // O Appwrite aceita até 100 valores por filtro "igual a um destes": listas
     // maiores viram consultas em paralelo, juntadas e reordenadas aqui.
     const big = Object.entries(options.filter ?? {}).find(
