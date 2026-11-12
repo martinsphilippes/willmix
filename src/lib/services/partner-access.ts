@@ -20,9 +20,11 @@ import {
 } from "@/lib/partner-access";
 import {
   PARTNER_LOGIN_ROLE,
+  loginTypeLabel,
   partnerTypeCatalog,
   type PartnerTypeEntry,
 } from "@/lib/partner-types";
+import type { Locale } from "@/lib/db/schema";
 import { audit } from "./audit";
 import { listPartnerTypeRows } from "./partner-types";
 
@@ -59,12 +61,19 @@ export const loadPartnerAccess = cache(
   async (): Promise<PartnerAccessConfig> => (await readConfig()).config,
 );
 
+/*
+ * O cadastro e o catálogo de tipos do login da requisição: a sessão (perfil
+ * de telas) e o rótulo embaixo do nome leem os mesmos, uma vez só por página.
+ */
+const loginParty = cache((id: string) => getStore().get("parties", id));
+const loginTypeRows = cache(() => listPartnerTypeRows());
+
 /** Perfil de telas do parceiro: o do tipo (novos) ou nulo (vale o do papel). */
 async function partyProfileKey(party: Party | null): Promise<string | null> {
   if (!party) return null;
   if (FEATURED_PARTY_TYPES.includes(party.type)) return `type:${party.type}`;
   if (party.type !== "partner" || !party.partnerTypeId) return null;
-  const entry = partnerTypeCatalog(await listPartnerTypeRows()).find(
+  const entry = partnerTypeCatalog(await loginTypeRows()).find(
     (e) => e.rowId === party.partnerTypeId,
   );
   return entry?.profileKey ?? null;
@@ -74,10 +83,32 @@ async function partyProfileKey(party: Party | null): Promise<string | null> {
 export async function profileKeyOfUser(
   user: Pick<User, "role" | "partyId">,
 ): Promise<string> {
-  const party = user.partyId
-    ? await getStore().get("parties", user.partyId)
-    : null;
+  const party = user.partyId ? await loginParty(user.partyId) : null;
   return (await partyProfileKey(party)) ?? `role:${user.role}`;
+}
+
+/**
+ * Nome do tipo do parceiro de um login que entra com o papel do Fornecedor
+ * mas é de outro tipo (Trading, Factory, Supplier, GP ou tipo criado no
+ * painel), no idioma pedido e com o nome que o administrador deu ao tipo.
+ * Nulo: vale o nome do papel (o próprio Fornecedor, cliente, agência...).
+ * É o que aparece embaixo do nome dele no menu (`loginTypeLabel`).
+ */
+export async function partnerTypeLabelOf(
+  user: Pick<User, "role" | "partyId">,
+  locale: Locale,
+): Promise<string | null> {
+  if (user.role !== PARTNER_LOGIN_ROLE || !user.partyId) return null;
+  const party = await loginParty(user.partyId);
+  // Fornecedor de verdade: o nome do papel, sem ler o catálogo de tipos.
+  if (!party || party.type === "supplier" || party.type === "customer")
+    return null;
+  return loginTypeLabel(
+    user.role,
+    party,
+    partnerTypeCatalog(await loginTypeRows()),
+    locale,
+  );
 }
 
 /**

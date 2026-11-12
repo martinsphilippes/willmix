@@ -27,6 +27,7 @@ Pedido do dono (11/11/2026): quatro tipos novos em Outros parceiros (**Trading, 
 10. **Gerar login de acesso** (pedido do dono, 11/11/2026): o login nasce no quadro "Logins de acesso ao portal" do cadastro do parceiro (nome, login, senha sugerida, idioma). Para ficar à vista: botão **Gerar login de acesso** no topo do cadastro, coluna "Login de acesso" na lista de Outros parceiros (quantos logins tem, ou o link para gerar) e, depois de cadastrar um parceiro novo, a tela já abre nesse quadro.
 11. **Novo parceiro a partir de um filtro**: com um tipo filtrado na lista, o botão já abre o formulário com ele marcado.
 12. **Situação**: o cadastro novo nasce **ativo** (correção de 11/11/2026: nascia inativo, porque a caixa de status só existe na edição, e ficava fora das listas de escolha, como a do responsável pelo booking). Desativar é na edição do cadastro.
+13. **Nome que aparece no login** (achado do dono, 12/11/2026: o login da Trading aparecia como "Fornecedor"): quem entra com o papel do Fornecedor mas é de outro tipo (Trading, Factory, Supplier, GP ou tipo criado no painel) mostra o **nome do tipo**, com o nome que o administrador deu e no idioma de quem lê: embaixo do nome no pé do menu, no cartão da conta e, na ficha do parceiro, na lista de logins e no campo "Papel" (`loginTypeLabel`; no servidor, `partnerTypeLabelOf`). O papel gravado continua `supplier`; só o nome mostrado muda. O Fornecedor de verdade e os outros papéis continuam com o nome do papel.
 
 ## Banco
 

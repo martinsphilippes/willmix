@@ -919,3 +919,12 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - A coluna passou a se chamar "Capacidade (ml ou tamanho)": mostra os mililitros ou o tamanho e aceita os dois ao digitar. Vale para o parceiro e para a Wellmix (tela do booking, Seleção de itens e solicitação ao fornecedor). Para fechar o booking, o tamanho vale como capacidade. Detalhes em docs/BOOKING.md ("Capacidade: mililitros ou tamanho").
 - Os bookings já carregados passam a mostrar o tamanho sem novo envio. Sem mudança no banco; a cópia do item da solicitação ganhou o campo opcional `sizeText`.
 - **Em aberto**: a ficha de compra e a ficha do produto continuam só com mililitros.
+
+## Login de Trading aparecia como "Fornecedor"
+
+- **Achado do dono** (12/11/2026): no pé do menu, embaixo do nome, o login da Trading mostrava "Fornecedor".
+- **Causa**: Trading, Factory, Supplier, GP e os tipos criados no painel entram com o papel do Fornecedor (as telas saem do perfil do tipo), e o menu mostrava o nome do papel.
+- Agora aparece o **nome do tipo** (o que o administrador deu, no idioma de quem lê): embaixo do nome no menu, no cartão da conta e, na ficha do parceiro, na lista de logins e no campo "Papel". O Fornecedor de verdade e os outros papéis continuam com o nome do papel. Regra em `loginTypeLabel` (docs/PARTNER_TYPES.md, regra 13).
+- Só o nome mostrado mudou: o papel gravado no login continua `supplier`, as telas e as permissões são as mesmas. Sem mudança no banco.
+- O cadastro e o catálogo de tipos do login são lidos uma vez por página (a sessão e o rótulo usam a mesma leitura).
+- **Não muda**: as telas que citam o papel de uma etapa ou de um aviso ("Fornecedor" como responsável no pedido) continuam com o nome do papel.
