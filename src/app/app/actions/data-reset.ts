@@ -41,3 +41,20 @@ export async function resetCatalogDataAction(form: FormData) {
     return `/app/settings/reset?catalog=${result.finished ? "1" : "partial"}#catalog`;
   });
 }
+
+/**
+ * Apagar os testes do portal (bookings, solicitações ao fornecedor,
+ * agrupamentos, produtos/pedidos/solicitações sem código do Sankhya, chat),
+ * mantendo tudo o que veio do Sankhya. Só o administrador, com a palavra.
+ */
+export async function resetPortalTestsAction(form: FormData) {
+  const user = await requireUser();
+  await run("/app/settings/reset", async () => {
+    assertRole(user, ["admin"]);
+    const confirm = z.string().max(20).parse(str(form, "confirm"));
+    const { resetPortalTestData } =
+      await import("@/lib/services/portal-test-reset");
+    const result = await resetPortalTestData(user, confirm);
+    return `/app/settings/reset?portal=${result.finished ? "1" : "partial"}#portal`;
+  });
+}
