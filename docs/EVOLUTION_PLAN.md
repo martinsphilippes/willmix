@@ -937,3 +937,15 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Complemento do dono** (mesmo dia): mexer nas caixas da programação tem de mudar as peças em consequência. Aumentar, Diminuir ou digitar numa rodada atualizam as peças dela, a quantidade somada, o "Total de peças" do gerador e o "Containers por rodada", mesmo com outro número digitado no gerador antes.
 - O que saiu da tela (pedido do dono): o campo editável "Containers por rodada" (virou informativo) e os atalhos "Completar o container" / "Só rodadas cheias" do gerador (viraram os botões de cada rodada). Nada mudou no que é gravado: a programação continua sendo as peças de cada rodada, o intervalo e a 1ª data. Sem mudança no banco.
 - **Em aberto**: a conta é só de cubagem (o peso máximo do container não entra); a ocupação e os ajustes aparecem só na Seleção (a solicitação ao fornecedor e o pedido pai mostram as peças).
+
+## Programação de compra: o cálculo escrito de volta, os dois botões em toda rodada e os containers à vista
+
+- **Achado do dono** (12/11/2026, com a tela em produção): "ficou faltando, você tirou coisa que não deveria": o cálculo escrito tinha sumido, as rodadas estavam sem "− diminuir" e "+ aumentar" e a quantidade de containers não aparecia ("Containers por rodada: —").
+- **Causa**: nenhum item do grupo estava marcado como escolhido, e nessa situação o gerador escondia tudo (a conta usa a caixa master e o CBM do item escolhido) e mostrava só um aviso. Além disso, a entrega anterior tinha tirado a linha da ocupação e o "− Diminuir" só aparecia quando a rodada passava de um container.
+- **Agora** (docs/PURCHASE_SCHEDULE.md, seção 1):
+  - bloco **Cálculo** sempre escrito: a caixa do item, caixas, m³ e containers do total, o arredondamento, os containers de cada rodada com a ocupação e os containers no total; vale também como prévia antes de gerar;
+  - sem item marcado, a conta usa o primeiro item do grupo com caixa master e CBM, dizendo qual; o rádio marcado é lido também ao abrir a página;
+  - **+ Aumentar** e **− Diminuir** em toda rodada (o que não se aplica aparece desligado, com o motivo);
+  - "Containers por rodada" mostra quantos containers cada rodada precisa (inteiro; "1 a 2" quando diferem) e cada rodada diz a quantidade de containers e a ocupação.
+- Nada muda no que é gravado. Sem mudança no banco.
+- **Lição**: o que o dono já tinha na tela (a conta escrita) não sai numa troca de regra sem ele pedir; e uma tela não pode ficar vazia por falta de um passo anterior: ou faz a conta com o que há e diz o que assumiu, ou diz o que falta no lugar de sumir.

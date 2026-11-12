@@ -239,7 +239,7 @@ export interface RoundLoad {
   containers: number | null;
   /** Containers que a rodada precisa (para cima). */
   needed: number | null;
-  /** Ocupação do último container da rodada (1 a 100). */
+  /** Ocupação do último container da rodada (0 a 100; 0 = menos de 1%). */
   lastPct: number | null;
   /** Só containers cheios: o último com 95% ou mais (margem de 5%). */
   full: boolean;
@@ -298,7 +298,7 @@ export function roundLoad(
     cbm,
     containers: r6(cartons / perContainer),
     needed,
-    lastPct: exact ? 100 : Math.max(1, pct),
+    lastPct: exact ? 100 : pct,
     full: exact || pct >= 100 - CONTAINER_FULL_MARGIN_PCT,
     up: step(exact ? needed + 1 : needed),
     down: step(needed - 1),
@@ -306,22 +306,37 @@ export function roundLoad(
 }
 
 /**
- * "Containers por rodada" (informativo): o menor e o maior entre as rodadas.
- * Nulo sem rodada com peças ou sem a caixa master, o CBM e o container.
+ * "Containers por rodada" (informativo): entre as rodadas, o menor e o maior
+ * número de containers que cada uma precisa (`needed`, inteiro) e ocupa
+ * (`min`/`max`, fração). Nulo sem rodada com peças ou sem a caixa master, o
+ * CBM e o container.
  */
 export function containersPerRound(
   quantities: readonly number[],
   masterCartonQty: number | null | undefined,
   cbmPerCarton: number | null | undefined,
   containerCbm: number | null | undefined,
-): { min: number; max: number } | null {
-  const list = quantities
-    .map(
-      (q) =>
-        roundLoad(q, masterCartonQty, cbmPerCarton, containerCbm)?.containers ??
-        null,
-    )
-    .filter((c): c is number => c !== null);
-  if (!list.length) return null;
-  return { min: Math.min(...list), max: Math.max(...list) };
+): {
+  min: number;
+  max: number;
+  needed: { min: number; max: number; total: number };
+} | null {
+  const loads = quantities
+    .map((q) => roundLoad(q, masterCartonQty, cbmPerCarton, containerCbm))
+    .filter(
+      (l): l is RoundLoad & { containers: number; needed: number } =>
+        !!l && l.containers !== null && l.needed !== null,
+    );
+  if (!loads.length) return null;
+  const used = loads.map((l) => l.containers);
+  const needed = loads.map((l) => l.needed);
+  return {
+    min: Math.min(...used),
+    max: Math.max(...used),
+    needed: {
+      min: Math.min(...needed),
+      max: Math.max(...needed),
+      total: needed.reduce((a, n) => a + n, 0),
+    },
+  };
 }

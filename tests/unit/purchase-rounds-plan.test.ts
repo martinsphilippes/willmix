@@ -94,11 +94,12 @@ describe("roundLoad", () => {
   it("rodada pequena: só dá para aumentar até fechar o container", () => {
     // O cartão do dono: 1.008 peças = 21 caixas de 2.893 que cabem no 40HC.
     const load = roundLoad(1008, 48, 0.0235, 68)!;
+    // Menos de 1% do container: a ocupação vem como 0 (a tela mostra "<1%").
     expect(load).toMatchObject({
       cartons: 21,
       cbm: 0.4935,
       needed: 1,
-      lastPct: 1,
+      lastPct: 0,
       full: false,
       down: null,
     });
@@ -193,9 +194,19 @@ describe("containersPerRound", () => {
     const range = containersPerRound([13_344, 13_344, 13_320], ...rest())!;
     expect(range.max).toBeCloseTo(556 / 680, 4);
     expect(range.min).toBeCloseTo(555 / 680, 4);
-    // Depois de "Aumentar" na 1ª rodada, ela passa a 1 container.
+    // O campo mostra quantos containers cada rodada precisa (inteiro): 1 em
+    // cada uma, 3 no total.
+    expect(range.needed).toEqual({ min: 1, max: 1, total: 3 });
+    // Depois de "Aumentar" na 1ª rodada, ela passa a 1 container cheio.
     expect(containersPerRound([16_320, 13_344], ...rest())).toMatchObject({
       max: 1,
+      needed: { min: 1, max: 1, total: 2 },
+    });
+    // Uma rodada que passa de um container precisa de dois: "1 a 2".
+    expect(containersPerRound([16_320, 884 * 24], ...rest())!.needed).toEqual({
+      min: 1,
+      max: 2,
+      total: 3,
     });
     expect(containersPerRound([], ...rest())).toBeNull();
     expect(containersPerRound([1000], null, 0.1, 68)).toBeNull();
