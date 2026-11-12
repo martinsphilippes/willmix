@@ -1,10 +1,13 @@
 import type { Screen } from "@/lib/auth/screens";
 import type { TowerRow } from "@/lib/services/control-tower";
-import type {
-  BoardCard,
-  BoardCardKey,
-  TowerBoard,
+import {
+  atRisk,
+  type BoardCard,
+  type BoardCardKey,
+  type TowerBoard,
 } from "@/lib/services/tower-board";
+
+export { RISK_DAYS } from "@/lib/services/tower-board";
 
 /*
  * Control Tower por etapa do processo (docs/WORKFLOW.md, "Control Tower: por
@@ -146,21 +149,6 @@ export const ACTION_CARDS: ReadonlyArray<{
 export const isActionCardKey = (key: string | undefined) =>
   !!key && ACTION_CARDS.some((a) => a.key === key);
 
-/** Perto do prazo: o prazo da etapa do pedido vence nos próximos dias (alerta âmbar). */
-export const RISK_DAYS = 2;
-
-/**
- * Linha do pedido em risco: prazo ainda não vencido, mas dentro de RISK_DAYS.
- * Só pedido em andamento (a solicitação ao fornecedor tem SLA em minutos:
- * ali só conta o estouro).
- */
-function atRisk(row: TowerRow, now: number): boolean {
-  if (row.kind !== "order" || row.cancelled || row.stageKey === "CLOSED")
-    return false;
-  if (row.overdue || !row.dueAt) return false;
-  const due = Date.parse(row.dueAt);
-  return due >= now && due - now <= RISK_DAYS * 86_400_000;
-}
 
 /** Um passo da etapa: o mesmo quadrado do tower-board, com a lista dele. */
 export interface StageGroup {
@@ -189,21 +177,17 @@ export interface Stage {
   single: BoardCardKey | null;
 }
 
-/** Junta as linhas de vários quadrados sem repetir. */
-function uniqueRows(cards: BoardCard[]): TowerRow[] {
-  const seen = new Set<string>();
-  const rows: TowerRow[] = [];
-  for (const card of cards)
-    for (const row of card.rows) {
-      const id = `${row.kind ?? ""}:${row.id}`;
-      if (seen.has(id)) continue;
-      seen.add(id);
-      rows.push(row);
-    }
-  return rows;
-}
+/** Em risco no quadrado: o número já contado (agregado) ou, sem ele, pelas linhas. */
+const riskOf = (card: BoardCard, at: number) =>
+  card.risk ?? card.rows.filter((r) => atRisk(r, at)).length;
 
-/** Monta as etapas a partir dos quadrados já calculados (função pura). */
+/**
+ * Monta as etapas a partir dos quadrados já calculados (função pura). Usa as
+ * contagens dos quadrados (não precisa das linhas: a Control Tower lê os
+ * números agregados, docs/RESUMOS.md). Os passos que não são "em paralelo"
+ * são exclusivos (cada lote, solicitação ou pedido cai em um só), então a
+ * etapa é a soma deles.
+ */
 export function buildTowerStages(
   board: TowerBoard,
   now: Date = new Date(),
@@ -219,22 +203,21 @@ export function buildTowerStages(
         key: c.key,
         parallel: !!c.parallel,
         rows: card.rows,
-        count: card.rows.length,
+        count: card.count,
         overdue: card.overdue,
-        risk: card.rows.filter((r) => atRisk(r, at)).length,
+        risk: riskOf(card, at),
         value: card.value,
       };
     });
-    const exclusive = present
-      .filter((c) => !c.parallel)
-      .map((c) => byKey.get(c.key)!);
-    const rows = uniqueRows(exclusive);
+    const exclusive = groups.filter((g) => !g.parallel);
+    const sum = (f: (g: StageGroup) => number) =>
+      exclusive.reduce((n, g) => n + f(g), 0);
     return {
       key: def.key,
       groups,
-      count: rows.length,
-      overdue: rows.filter((r) => r.overdue).length,
-      risk: rows.filter((r) => atRisk(r, at)).length,
+      count: sum((g) => g.count),
+      overdue: sum((g) => g.overdue),
+      risk: sum((g) => g.risk),
       alongside: groups
         .filter((g) => g.parallel)
         .map((g) => ({ key: g.key, count: g.count })),

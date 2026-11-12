@@ -1,5 +1,5 @@
 import "server-only";
-import { indexBy, listByIds } from "@/lib/db/lookup";
+import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -372,9 +372,14 @@ export interface OrderItemChoice {
 /** Pedidos não encerrados com item, para o formulário "Adicionar item por pedido". */
 export async function listOrderItemChoices(): Promise<OrderItemChoice[]> {
   const store = getStore();
+  // Só as colunas usadas (antes: pedidos e itens inteiros, com a cópia do
+  // registro do ERP; ~8 mil pedidos e ~100 mil itens).
   const [orders, items] = await Promise.all([
-    store.list("orders", { orderBy: "number", direction: "desc" }),
-    store.list("order_items"),
+    listColumns(store, "orders", ["number", "status", "customerId"], {
+      orderBy: "number",
+      direction: "desc",
+    }),
+    listColumns(store, "order_items", ["orderId", "name", "quantity", "unit"]),
   ]);
   const open = orders.filter(
     (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",

@@ -2,7 +2,14 @@ import "server-only";
 
 import { translator } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { getStore, type Order, type StageKey, type User } from "@/lib/db";
+import {
+  getStore,
+  type Order,
+  type Requirement,
+  type Stage,
+  type StageKey,
+  type User,
+} from "@/lib/db";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import {
   ORDER_SIGN_SEND,
@@ -11,6 +18,7 @@ import {
   ROLE_PARTY_FIELD,
   STAGE_TEMPLATES,
   isOffFlowStage,
+  isPurchaseFlow,
 } from "@/lib/workflow/stages";
 
 export type TaskKind =
@@ -289,6 +297,142 @@ function finish(
   };
 }
 
+/** Pendência antes de `finish` (prazo e grupo calculados na hora da leitura). */
+export type TaskDraft = Parameters<typeof finish>[0];
+
+type Lanes = typeof import("@/lib/purchase-lanes") & {
+  sla: Awaited<ReturnType<typeof import("./purchase-order").purchaseLaneSla>>;
+  all: Requirement[];
+};
+
+/**
+ * Pendências dos itens das etapas em andamento ou bloqueadas (função pura):
+ * a regra de `pendingTasksFor`, também usada no resumo de cada pedido para a
+ * Wellmix (as mesmas para toda a equipe).
+ */
+export function stageTaskDrafts(
+  user: User,
+  input: {
+    stages: Stage[];
+    orderById: Map<string, Order>;
+    openRequirements: Requirement[];
+    sealApplied: Set<string>;
+    lanes: Lanes | null;
+  },
+): TaskDraft[] {
+  const { stages, orderById, openRequirements, sealApplied, lanes } = input;
+  const wellmix = isWellmix(user);
+  const supplier = user.role === "supplier" && !!user.partyId;
+  const out: TaskDraft[] = [];
+  for (const stage of stages) {
+    // Pagamento ao fornecedor não é pendência de etapa (vira parcela abaixo).
+    if (isOffFlowStage(stage.key)) continue;
+    const order = orderById.get(stage.orderId);
+    if (!order) continue;
+    if (!isInvolved(user, order)) continue;
+    const mine = openRequirements.filter(
+      (r) =>
+        r.stageId === stage.id &&
+        (wellmix || r.role === user.role) &&
+        // Aprovar a arte só vira pendência depois que a arte chega.
+        !(
+          r.key === "art_approval" &&
+          openRequirements.some(
+            (x) => x.stageId === stage.id && x.key === "art",
+          )
+        ) &&
+        // Documento do pedido (ordem nova): enviar para assinatura só depois
+        // da arte; a Wellmix assina depois do envio; o fornecedor, depois dela.
+        !SIGN_AFTER.some(
+          ([key, before]) =>
+            r.key === key &&
+            openRequirements.some(
+              (x) => x.stageId === stage.id && x.key === before,
+            ),
+        ) &&
+        !(r.key === ORDER_SIGN_SEND && !sealApplied.has(r.orderId)) &&
+        // Raias do pedido de compra: só o que já está liberado.
+        !(
+          lanes &&
+          isPurchaseFlow(order) &&
+          lanes.blockedBy(
+            r.key,
+            lanes.all.filter((x) => x.stageId === stage.id),
+          ).length
+        ),
+    );
+    if (mine.length === 0) continue;
+    // Prazo das raias: o mais próximo entre a arte e a validação pendentes.
+    const laneDue =
+      lanes && isPurchaseFlow(order)
+        ? (mine
+            .map((r) =>
+              lanes.laneDueAt(
+                r.key,
+                order.createdAt,
+                lanes.all.filter((x) => x.stageId === stage.id),
+                lanes.sla,
+              ),
+            )
+            .filter((d): d is string => !!d)
+            .sort()[0] ?? null)
+        : null;
+    // Fornecedor: a assinatura do documento é uma etapa dele à parte dos
+    // outros itens da etapa do pedido (ficha, arte, inspeção).
+    const sign = supplier
+      ? mine.filter((r) => r.key === ORDER_SIGNED_SUPPLIER)
+      : [];
+    const rest = supplier
+      ? mine.filter((r) => r.key !== ORDER_SIGNED_SUPPLIER)
+      : mine;
+    for (const [items, step] of [
+      [rest, supplier ? SUPPLIER_STAGE_STEP[stage.key] : undefined],
+      [sign, "sign"],
+    ] as Array<[typeof mine, SupplierStep | undefined]>) {
+      if (!items.length) continue;
+      out.push({
+        kind: "requirement",
+        title: `Pedido #${order.number}: ${stage.key}`,
+        detail: items.map((r) => r.label).join(", "),
+        link:
+          step === "sign"
+            ? `/app/orders/${order.id}/purchase-order`
+            : `/app/orders/${order.id}`,
+        dueAt: laneDue ?? stage.dueAt,
+        orderNumber: order.number,
+        stageKey: stage.key,
+        customerId: order.customerId,
+        ownerUserId: order.ownerUserId ?? null,
+        requestId: order.requestId,
+        orderId: order.id,
+        sinceAt: stage.startedAt,
+        ...(step ? { supplierStep: step } : {}),
+      });
+    }
+  }
+
+  return out;
+}
+
+/** Pedidos do login de fora da Wellmix (a mesma regra de `isInvolved`). */
+async function involvedOrderIds(user: User): Promise<string[]> {
+  const { listColumns } = await import("@/lib/db/lookup");
+  const store = getStore();
+  if (user.role === "customer") {
+    if (!user.partyId) return [];
+    const rows = await listColumns(store, "orders", ["customerId"], {
+      filter: { customerId: user.partyId, requestedByUserId: user.id },
+    });
+    return rows.map((o) => o.id);
+  }
+  const field = ROLE_PARTY_FIELD[user.role];
+  if (!field || !user.partyId) return [];
+  const rows = await listColumns(store, "orders", [field], {
+    filter: { [field]: user.partyId },
+  });
+  return rows.map((o) => o.id);
+}
+
 /** Pendências do usuário: o que ele precisa fazer agora. */
 export async function pendingTasksFor(user: User): Promise<Task[]> {
   const store = getStore();
@@ -307,9 +451,24 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
 
   // Todas as consultas independentes saem juntas (cada ida ao banco custa uma
   // viagem de rede); os detalhes vêm depois, em lote.
+  // Parceiros e cliente: só as etapas dos pedidos deles (antes: as etapas de
+  // todos os pedidos, filtradas depois). Wellmix com os resumos em uso: as
+  // tarefas das etapas vêm prontas do resumo de cada pedido (docs/RESUMOS.md).
+  const scope = wellmix ? null : await involvedOrderIds(user);
+  const ready = wellmix
+    ? await (await import("./order-summary")).summariesReady()
+    : false;
   const [stages, newRequests, demands, reviews, openAfterSales] =
     await Promise.all([
-      store.list("stages", { filter: { status: ["active", "blocked"] } }),
+      ready
+        ? none
+        : scope
+          ? scope.length
+            ? store.list("stages", {
+                filter: { orderId: scope, status: ["active", "blocked"] },
+              })
+            : none
+          : store.list("stages", { filter: { status: ["active", "blocked"] } }),
       // Solicitação do cliente ainda sem pedido (as situações da RFQ e do sinal
       // só existem nas antigas): a Wellmix dá o próximo passo.
       wellmix
@@ -393,7 +552,6 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
 
   // Pedido de compra (docs/PURCHASE_ORDER.md): prazos da arte e da validação
   // (Configurações) e a ordem dentro das raias.
-  const { isPurchaseFlow } = await import("@/lib/workflow/stages");
   const lanes = orders.some((o) => isPurchaseFlow(o))
     ? {
         ...(await import("@/lib/purchase-lanes")),
@@ -407,97 +565,16 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     : null;
 
   // Requisitos pendentes em etapas ativas/bloqueadas.
-  for (const stage of stages) {
-    // Pagamento ao fornecedor não é pendência de etapa (vira parcela abaixo).
-    if (isOffFlowStage(stage.key)) continue;
-    const order = orderById.get(stage.orderId);
-    if (!order) continue;
-    if (!isInvolved(user, order)) continue;
-    const mine = openRequirements.filter(
-      (r) =>
-        r.stageId === stage.id &&
-        (wellmix || r.role === user.role) &&
-        // Aprovar a arte só vira pendência depois que a arte chega.
-        !(
-          r.key === "art_approval" &&
-          openRequirements.some(
-            (x) => x.stageId === stage.id && x.key === "art",
-          )
-        ) &&
-        // Documento do pedido (ordem nova): enviar para assinatura só depois
-        // da arte; a Wellmix assina depois do envio; o fornecedor, depois dela.
-        !SIGN_AFTER.some(
-          ([key, before]) =>
-            r.key === key &&
-            openRequirements.some(
-              (x) => x.stageId === stage.id && x.key === before,
-            ),
-        ) &&
-        !(r.key === ORDER_SIGN_SEND && !sealApplied.has(r.orderId)) &&
-        // Raias do pedido de compra: só o que já está liberado.
-        !(
-          lanes &&
-          isPurchaseFlow(order) &&
-          lanes.blockedBy(
-            r.key,
-            lanes.all.filter((x) => x.stageId === stage.id),
-          ).length
-        ),
-    );
-    if (mine.length === 0) continue;
-    // Prazo das raias: o mais próximo entre a arte e a validação pendentes.
-    const laneDue =
-      lanes && isPurchaseFlow(order)
-        ? (mine
-            .map((r) =>
-              lanes.laneDueAt(
-                r.key,
-                order.createdAt,
-                lanes.all.filter((x) => x.stageId === stage.id),
-                lanes.sla,
-              ),
-            )
-            .filter((d): d is string => !!d)
-            .sort()[0] ?? null)
-        : null;
-    // Fornecedor: a assinatura do documento é uma etapa dele à parte dos
-    // outros itens da etapa do pedido (ficha, arte, inspeção).
-    const sign = supplier
-      ? mine.filter((r) => r.key === ORDER_SIGNED_SUPPLIER)
-      : [];
-    const rest = supplier
-      ? mine.filter((r) => r.key !== ORDER_SIGNED_SUPPLIER)
-      : mine;
-    for (const [items, step] of [
-      [rest, supplier ? SUPPLIER_STAGE_STEP[stage.key] : undefined],
-      [sign, "sign"],
-    ] as Array<[typeof mine, SupplierStep | undefined]>) {
-      if (!items.length) continue;
-      tasks.push(
-        finish(
-          {
-            kind: "requirement",
-            title: `Pedido #${order.number}: ${stage.key}`,
-            detail: items.map((r) => r.label).join(", "),
-            link:
-              step === "sign"
-                ? `/app/orders/${order.id}/purchase-order`
-                : `/app/orders/${order.id}`,
-            dueAt: laneDue ?? stage.dueAt,
-            orderNumber: order.number,
-            stageKey: stage.key,
-            customerId: order.customerId,
-            ownerUserId: order.ownerUserId ?? null,
-            requestId: order.requestId,
-            orderId: order.id,
-            sinceAt: stage.startedAt,
-            ...(step ? { supplierStep: step } : {}),
-          },
-          now,
-        ),
-      );
-    }
-  }
+  const drafts = ready
+    ? await (await import("./order-summary")).wellmixStageTaskDrafts()
+    : stageTaskDrafts(user, {
+        stages,
+        orderById,
+        openRequirements,
+        sealApplied,
+        lanes,
+      });
+  for (const draft of drafts) tasks.push(finish(draft, now));
 
   const { getSettings } = await import("@/lib/settings");
   const flowSettings = await getSettings();

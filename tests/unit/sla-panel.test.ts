@@ -230,4 +230,38 @@ describe("painel de SLA por divisão", () => {
     expect(one.recentStages.every((s) => s.ownerId === analyst.id)).toBe(true);
     expect(one.recentStages.length).toBe(one.onTime.total);
   });
+
+  it("'no prazo' vem do indicador pronto, refeito quando uma etapa com prazo é concluída", async () => {
+    const store = getStore();
+    const before = await slaBoardFor(admin, ALL);
+    const request = await r.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId: null,
+      productName: "Etapa no prazo",
+      description: "SLA",
+      specification: null,
+      quantity: 10,
+      unit: "un",
+      deadline: null,
+      notes: null,
+    });
+    const order = await orderFromRequest(admin, request);
+    const [stage] = await store.list("stages", {
+      filter: { orderId: order.id, status: ["active", "blocked"] },
+      limit: 1,
+    });
+    await store.update("stages", stage.id, {
+      dueAt: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+    });
+    await store.update("stages", stage.id, {
+      status: "done",
+      completedAt: new Date().toISOString(),
+    });
+    const after = await slaBoardFor(admin, ALL);
+    expect(after.onTime.total).toBe(before.onTime.total + 1);
+    expect(after.onTime.done).toBe(before.onTime.done + 1);
+    expect(after.recentStages.some((x) => x.orderId === order.id)).toBe(true);
+    const row = await store.get("kpi_snapshots", "sla.done");
+    expect(row).not.toBeNull();
+  });
 });

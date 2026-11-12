@@ -16,11 +16,13 @@ import {
   type SkuInspection,
   type Stage,
   type StageKey,
+  type User,
 } from "@/lib/db";
 import { isSchemaMissing } from "@/lib/db/errors";
 import {
   DUE_SOON_DAYS,
   addDays,
+  brazilDay,
   type InstallmentStatus,
 } from "@/lib/supplier-terms";
 import { JOURNEY_REQUIREMENT_KEYS } from "./journey";
@@ -29,11 +31,7 @@ import {
   saleFxFromRecord,
   type FinanceSummaryRow,
 } from "./finance";
-import {
-  SCHEDULE_REQUIREMENT_KEYS,
-  payableFor,
-  todayInBrazil,
-} from "./supplier-terms";
+import { SCHEDULE_REQUIREMENT_KEYS, payableFor } from "./supplier-terms";
 import type { BoardOrder, BoardStage } from "./tower-board";
 
 /*
@@ -59,7 +57,7 @@ import type { BoardOrder, BoardStage } from "./tower-board";
  */
 
 /** Formato de `facts`; mudar o formato = subir o número (as telas voltam ao caminho antigo até a reconstrução). */
-export const SUMMARY_VERSION = 2;
+export const SUMMARY_VERSION = 4;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -156,6 +154,8 @@ interface Sources {
   stages: Map<string, Stage[]>;
   requirements: Map<string, Requirement[]>;
   portalRequirements: Map<string, Requirement[]>;
+  /** Itens pendentes ou recusados (pendências das etapas em andamento). */
+  openRequirements: Map<string, Requirement[]>;
   steps: Map<string, ImportStep[]>;
   tracks: Map<string, ProductionTrack[]>;
   skus: Map<string, SkuInspection[]>;
@@ -192,6 +192,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
       stages: new Map(),
       requirements: new Map(),
       portalRequirements: new Map(),
+      openRequirements: new Map(),
       steps: new Map(),
       tracks: new Map(),
       skus: new Map(),
@@ -205,6 +206,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     stages,
     requirements,
     portalRequirements,
+    openRequirements,
     steps,
     tracks,
     skus,
@@ -223,6 +225,9 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     portalIds.length
       ? store.list("requirements", { filter: { orderId: portalIds } })
       : Promise.resolve([]),
+    store.list("requirements", {
+      filter: { ...byOrder, status: ["pending", "rejected"] },
+    }),
     safe(store.list("import_steps", { filter: byOrder })),
     safe(store.list("production_tracks", { filter: byOrder })),
     safe(store.list("sku_inspections", { filter: byOrder })),
@@ -243,6 +248,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     stages: groupBy(stages, (r) => r.orderId),
     requirements: groupBy(requirements, (r) => r.orderId),
     portalRequirements: groupBy(portalRequirements, (r) => r.orderId),
+    openRequirements: groupBy(openRequirements, (r) => r.orderId),
     steps: groupBy(steps, (r) => r.orderId),
     tracks: groupBy(tracks, (r) => r.orderId),
     skus: groupBy(skus, (r) => r.orderId),
@@ -393,8 +399,14 @@ function withoutRefs(p: Payment): FactPayment {
 
 const live = (status: string) => status !== "CLOSED" && status !== "CANCELLED";
 
-function summaryRow(facts: OrderFacts, computedAt: string) {
+function summaryRow(
+  facts: OrderFacts,
+  computedAt: string,
+  kpi: unknown,
+  tasks: unknown = [],
+) {
   return {
+    tasks,
     id: facts.order.id,
     orderId: facts.order.id,
     number: facts.order.number,
@@ -403,7 +415,110 @@ function summaryRow(facts: OrderFacts, computedAt: string) {
     version: SUMMARY_VERSION,
     facts,
     computedAt,
+    kpi,
   };
+}
+
+/** Pendência da Wellmix guardada no resumo: a ordem da etapa e a pendência. */
+interface StoredTask {
+  k: string;
+  d: unknown;
+}
+
+/** Login genérico da Wellmix: as pendências de etapa são as mesmas para toda a equipe. */
+const WELLMIX_VIEWER = {
+  id: "__wellmix__",
+  role: "operator",
+  partyId: null,
+} as unknown as User;
+
+/**
+ * Pendências da Wellmix nas etapas em andamento de cada pedido, com a regra
+ * de `pendingTasksFor` (`stageTaskDrafts`), e a ordem da etapa (criação, id)
+ * para a lista sair na mesma ordem de antes.
+ */
+async function stageTasksOf(src: Sources): Promise<Map<string, StoredTask[]>> {
+  const { stageTaskDrafts } = await import("./tasks");
+  const out = new Map<string, StoredTask[]>();
+  const portal = src.orders.filter(isPortal);
+  const lanes = portal.length
+    ? {
+        ...(await import("@/lib/purchase-lanes")),
+        sla: await (await import("./purchase-order")).purchaseLaneSla(),
+        all: portal.flatMap((o) => src.portalRequirements.get(o.id) ?? []),
+      }
+    : null;
+  for (const order of src.orders) {
+    const stages = (src.stages.get(order.id) ?? []).filter((s) =>
+      ACTIVE.includes(s.status),
+    );
+    if (!stages.length) continue;
+    const sealApplied = new Set(
+      (src.steps.get(order.id) ?? [])
+        .filter(
+          (s) =>
+            s.key === "cert_seal_art" &&
+            (s.status === "submitted" || s.status === "validated"),
+        )
+        .map((s) => s.orderId),
+    );
+    const byKey = new Map(stages.map((s) => [s.key, s]));
+    const drafts = stageTaskDrafts(WELLMIX_VIEWER, {
+      stages,
+      orderById: new Map([[order.id, order]]),
+      openRequirements: src.openRequirements.get(order.id) ?? [],
+      sealApplied,
+      lanes,
+    });
+    if (!drafts.length) continue;
+    out.set(
+      order.id,
+      drafts.map((d) => {
+        const stage = d.stageKey ? byKey.get(d.stageKey) : undefined;
+        return {
+          k: `${stage?.createdAt ?? ""}|${stage?.id ?? ""}`,
+          d,
+        };
+      }),
+    );
+  }
+  return out;
+}
+
+/**
+ * As pendências de etapa da Wellmix, prontas (do resumo de cada pedido), na
+ * ordem das etapas. Resumo de outro formato é recalculado antes.
+ */
+export async function wellmixStageTaskDrafts(): Promise<
+  Array<import("./tasks").TaskDraft>
+> {
+  const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
+  await flushSummaryChanges();
+  const { listColumns } = await import("@/lib/db/lookup");
+  const read = () =>
+    listColumns(getStore(), "order_summaries", ["tasks", "version"]);
+  let rows = await read();
+  const stale = rows
+    .filter((r) => r.version !== SUMMARY_VERSION)
+    .map((r) => r.id);
+  if (stale.length) {
+    await recomputeOrderSummaries(stale);
+    rows = await read();
+  }
+  return rows
+    .flatMap((r) => (r.tasks as StoredTask[] | null) ?? [])
+    .sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0))
+    .map((t) => t.d as import("./tasks").TaskDraft);
+}
+
+/** Contribuição de cada pedido para os indicadores (src/lib/services/tower-kpis.ts). */
+async function kpisOf(
+  facts: OrderFacts[],
+  now: Date,
+  ids: string[] | null,
+): Promise<Map<string, unknown>> {
+  const { orderKpisFor } = await import("./tower-kpis");
+  return orderKpisFor(facts, now, ids);
 }
 
 async function writeSummaries(rows: ReturnType<typeof summaryRow>[]) {
@@ -441,14 +556,24 @@ export async function summaryStatus(): Promise<SummaryMarker | null> {
 }
 
 /** Recalcula o resumo dos pedidos dados (e apaga o dos pedidos que não existem mais). */
-export async function recomputeOrderSummaries(ids: string[]): Promise<number> {
+export async function recomputeOrderSummaries(
+  ids: string[],
+  now: Date = new Date(),
+): Promise<number> {
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return 0;
   const src = await loadSources(unique);
-  const today = todayInBrazil();
-  const now = new Date().toISOString();
-  const rows = src.orders.map((o) =>
-    summaryRow(buildOrderFacts(o, src, today), now),
+  const today = brazilDay(now.toISOString()) as string;
+  const at = now.toISOString();
+  const facts = src.orders.map((o) => buildOrderFacts(o, src, today));
+  const kpis = await kpisOf(
+    facts,
+    now,
+    src.orders.map((o) => o.id),
+  );
+  const tasks = await stageTasksOf(src);
+  const rows = facts.map((f) =>
+    summaryRow(f, at, kpis.get(f.order.id), tasks.get(f.order.id) ?? []),
   );
   await writeSummaries(rows);
   const found = new Set(src.orders.map((o) => o.id));
@@ -477,10 +602,24 @@ async function ordersOfParties(partyIds: string[]): Promise<string[]> {
 export async function applySummaryChanges(changes: {
   orders: string[];
   parties: string[];
+  /** Mudou uma tabela pequena dos indicadores (bookings, solicitações, certificações...). */
+  kpi?: boolean;
 }): Promise<number> {
-  if (!(await summariesEnabled())) return 0;
+  if (!(await summariesReady())) return 0;
   const ids = [...changes.orders, ...(await ordersOfParties(changes.parties))];
-  return recomputeOrderSummaries(ids);
+  const done = await recomputeOrderSummaries(ids);
+  // Indicadores prontos: refeitos depois de cada leva de gravações.
+  if (ids.length || changes.kpi) {
+    const { rebuildTowerKpis } = await import("./tower-kpis");
+    await rebuildTowerKpis();
+  }
+  return done;
+}
+
+/** Os resumos estão prontos no formato atual (houve reconstrução neste formato)? */
+export async function summariesReady(): Promise<boolean> {
+  const marker = await readMarker().catch(() => null);
+  return !!marker && marker.version === SUMMARY_VERSION;
 }
 
 /**
@@ -504,18 +643,29 @@ export function stableJson(value: unknown): string {
  * apaga o resumo de pedido que não existe mais. Resumo recalculado por evento
  * durante a reconstrução (mais novo) não é sobrescrito.
  */
-export async function rebuildOrderSummaries(): Promise<SummaryMarker> {
+export async function rebuildOrderSummaries(
+  now: Date = new Date(),
+): Promise<SummaryMarker> {
   const started = Date.now();
   const startedAt = new Date(started).toISOString();
   const store = getStore();
   const src = await loadSources(null);
-  const today = todayInBrazil();
+  const today = brazilDay(now.toISOString()) as string;
   const facts = src.orders.map((o) => buildOrderFacts(o, src, today));
+  const kpis = await kpisOf(facts, now, null);
+  const tasks = await stageTasksOf(src);
   const existing = new Map(
     (await store.list("order_summaries")).map((r) => [r.id, r]),
   );
   const rows = facts
-    .map((f) => summaryRow(f, startedAt))
+    .map((f) =>
+      summaryRow(
+        f,
+        startedAt,
+        kpis.get(f.order.id),
+        tasks.get(f.order.id) ?? [],
+      ),
+    )
     .filter((row) => {
       const old = existing.get(row.id);
       if (!old) return true;
@@ -524,7 +674,9 @@ export async function rebuildOrderSummaries(): Promise<SummaryMarker> {
         old.version !== row.version ||
         old.status !== row.status ||
         old.number !== row.number ||
-        stableJson(old.facts) !== stableJson(row.facts)
+        stableJson(old.facts) !== stableJson(row.facts) ||
+        stableJson(old.kpi ?? null) !== stableJson(row.kpi ?? null) ||
+        stableJson(old.tasks ?? null) !== stableJson(row.tasks)
       );
     });
   await writeSummaries(rows);
@@ -545,6 +697,9 @@ export async function rebuildOrderSummaries(): Promise<SummaryMarker> {
   };
   const { setRawSetting } = await import("@/lib/settings");
   await setRawSetting(SUMMARY_SETTING_KEY, marker);
+  // Indicadores prontos refeitos sobre os resumos novos.
+  const { rebuildTowerKpis } = await import("./tower-kpis");
+  await rebuildTowerKpis(now);
   return marker;
 }
 

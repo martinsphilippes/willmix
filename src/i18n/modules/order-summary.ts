@@ -21,6 +21,8 @@ export const pt = {
     "Lê todos os pedidos e grava só o que mudou. Pode levar alguns minutos com muitos pedidos.",
   "summaries.done": "Resumos reconstruídos.",
   "summaries.error": "A reconstrução falhou: {detail}",
+  "ct.list.more":
+    "Mostrando os {shown} primeiros de {total}. Use Pedidos para ver e filtrar todos.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -42,6 +44,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Reads every order and writes only what changed. It can take a few minutes with many orders.",
   "summaries.done": "Summaries rebuilt.",
   "summaries.error": "The rebuild failed: {detail}",
+  "ct.list.more":
+    "Showing the first {shown} of {total}. Use Orders to see and filter all of them.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -63,4 +67,5 @@ export const zh: Record<keyof typeof pt, string> = {
     "读取所有订单，只写入有变化的部分。订单很多时可能需要几分钟。",
   "summaries.done": "摘要已重建。",
   "summaries.error": "重建失败：{detail}",
+  "ct.list.more": "显示前 {shown} 条，共 {total} 条。请在“订单”中查看和筛选全部。",
 };

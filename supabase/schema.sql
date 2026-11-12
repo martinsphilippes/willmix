@@ -1802,10 +1802,27 @@ alter table public."order_summaries" add column if not exists "live" boolean;
 alter table public."order_summaries" add column if not exists "version" bigint;
 alter table public."order_summaries" add column if not exists "facts" jsonb;
 alter table public."order_summaries" add column if not exists "computedAt" timestamptz;
+alter table public."order_summaries" add column if not exists "kpi" jsonb;
+alter table public."order_summaries" add column if not exists "tasks" jsonb;
 create index if not exists "order_summaries_by_order" on public."order_summaries" ("orderId");
 create index if not exists "order_summaries_by_live" on public."order_summaries" ("live");
 create index if not exists "order_summaries_created" on public."order_summaries" ("createdAt");
 create index if not exists "order_summaries_created_id" on public."order_summaries" ("createdAt", "id");
+
+create table if not exists public."kpi_snapshots" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."kpi_snapshots" enable row level security;
+alter table public."kpi_snapshots" add column if not exists "key" text;
+alter table public."kpi_snapshots" add column if not exists "version" bigint;
+alter table public."kpi_snapshots" add column if not exists "data" jsonb;
+alter table public."kpi_snapshots" add column if not exists "validUntil" timestamptz;
+alter table public."kpi_snapshots" add column if not exists "computedAt" timestamptz;
+create unique index if not exists "kpi_snapshots_by_key" on public."kpi_snapshots" ("key");
+create index if not exists "kpi_snapshots_created" on public."kpi_snapshots" ("createdAt");
+create index if not exists "kpi_snapshots_created_id" on public."kpi_snapshots" ("createdAt", "id");
 
 create or replace function public.next_number(counter_key text)
 returns bigint

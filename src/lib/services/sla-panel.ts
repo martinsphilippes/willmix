@@ -1,11 +1,12 @@
 import "server-only";
-import { indexBy, listByIds } from "@/lib/db/lookup";
+import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 
 import {
   getStore,
   type Division,
   type JobLevel,
   type Role,
+  type Stage,
   type StageKey,
   type User,
 } from "@/lib/db";
@@ -183,7 +184,9 @@ export async function slaBoardFor(
   const [tasks, partnerItems, recentStages] = await Promise.all([
     pendingTasksFor(viewer),
     partnerDelays(now),
-    store.list("stages", { filter: { status: "done" } }),
+    // Indicador pronto: as etapas concluídas com prazo dos últimos 30 dias
+    // (antes: todas as etapas concluídas, ~31 mil, a cada abertura).
+    readSlaDone(now),
   ]);
   // Só os clientes que aparecem (antes: todos os clientes, ~26 mil).
   const customerById = new Map<string, { name: string }>();
@@ -351,9 +354,13 @@ async function partnerDelays(
   >
 > {
   const store = getStore();
-  const stages = await store.list("stages", {
-    filter: { status: ["active", "blocked"] },
-  });
+  // Só as colunas usadas (~13 mil etapas em andamento).
+  const stages = await listColumns(
+    store,
+    "stages",
+    ["orderId", "key", "dueAt", "status"],
+    { filter: { status: ["active", "blocked"] } },
+  );
   // Nomes só dos parceiros que aparecem (antes: a tabela inteira, ~32 mil).
   const partyNames = new Map<string, string>();
   const loadNames = async (ids: Array<string | null | undefined>) => {
@@ -494,4 +501,100 @@ async function partnerDelays(
   }
 
   return out;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Indicador pronto: etapas concluídas no prazo (docs/RESUMOS.md)             */
+/* ------------------------------------------------------------------------ */
+
+const SLA_DONE_KEY = "sla.done";
+const SLA_DONE_VERSION = 1;
+const WINDOW_MS = 30 * 86_400_000;
+
+type DoneStage = Pick<
+  Stage,
+  "id" | "orderId" | "key" | "dueAt" | "completedAt"
+>;
+
+interface SlaDone {
+  version: number;
+  computedAt: string;
+  validUntil: string | null;
+  stages: DoneStage[];
+}
+
+/**
+ * Refaz o indicador: as etapas concluídas com prazo nos últimos 30 dias.
+ * Vale até a primeira delas sair da janela; uma etapa concluída com prazo
+ * refaz antes (src/lib/db/summary-dirty.ts).
+ */
+export async function rebuildSlaDone(now: Date = new Date()): Promise<SlaDone> {
+  const store = getStore();
+  const rows = await listColumns(
+    store,
+    "stages",
+    ["orderId", "key", "dueAt", "completedAt"],
+    { filter: { status: "done" } },
+  );
+  const since = new Date(now.getTime() - WINDOW_MS).toISOString();
+  const stages = rows.filter(
+    (s) =>
+      !!s.completedAt &&
+      !!s.dueAt &&
+      s.completedAt >= since &&
+      !isOffFlowStage(s.key),
+  );
+  const leaves = stages.map((s) => Date.parse(s.completedAt!) + WINDOW_MS);
+  const snapshot: SlaDone = {
+    version: SLA_DONE_VERSION,
+    computedAt: now.toISOString(),
+    validUntil: leaves.length
+      ? new Date(Math.min(...leaves)).toISOString()
+      : null,
+    stages: stages.map((s) => ({
+      id: s.id,
+      orderId: s.orderId,
+      key: s.key,
+      dueAt: s.dueAt,
+      completedAt: s.completedAt,
+    })),
+  };
+  const row = {
+    id: SLA_DONE_KEY,
+    key: SLA_DONE_KEY,
+    version: SLA_DONE_VERSION,
+    data: snapshot,
+    validUntil: snapshot.validUntil,
+    computedAt: snapshot.computedAt,
+  };
+  try {
+    if (store.upsertMany) await store.upsertMany("kpi_snapshots", [row]);
+    else {
+      const { id, ...rest } = row;
+      if (await store.get("kpi_snapshots", id))
+        await store.update("kpi_snapshots", id, rest);
+      else await store.create("kpi_snapshots", row);
+    }
+  } catch (error) {
+    // Tabela ainda não publicada: o painel usa o que acabou de calcular.
+    console.error("[sla] indicador não gravado", error);
+  }
+  return snapshot;
+}
+
+/** As etapas concluídas com prazo dos últimos 30 dias (indicador pronto). */
+async function readSlaDone(now: Date): Promise<DoneStage[]> {
+  const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
+  await flushSummaryChanges();
+  const row = await getStore()
+    .get("kpi_snapshots", SLA_DONE_KEY)
+    .catch(() => null);
+  const data = row?.data as SlaDone | undefined;
+  if (
+    data &&
+    data.version === SLA_DONE_VERSION &&
+    (!data.validUntil || Date.parse(data.validUntil) > now.getTime())
+  )
+    return data.stages;
+  return (await rebuildSlaDone(now)).stages;
 }

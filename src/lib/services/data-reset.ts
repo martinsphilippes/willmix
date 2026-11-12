@@ -71,6 +71,7 @@ const SALES_TABLES = [
   "process_events",
   // Resumo dos pedidos (derivado; docs/RESUMOS.md).
   "order_summaries",
+  "kpi_snapshots",
 ] as const satisfies readonly TableName[];
 
 /** Tabelas que podem ainda não existir no Appwrite (esquema não publicado). */
@@ -89,6 +90,7 @@ const OPTIONAL_TABLES = new Set<TableName>([
   "stock_reservations",
   "process_events",
   "order_summaries",
+  "kpi_snapshots",
 ]);
 
 /** Entidades de venda no histórico (auditoria) e nas medições/revisões. */

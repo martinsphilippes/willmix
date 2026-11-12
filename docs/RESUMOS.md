@@ -101,9 +101,84 @@ O teste `tests/unit/order-summary.test.ts` compara todas essas telas pelos dois 
 - **Carga de cada analista** (`openLoad`, a cada solicitação nova): só os pedidos e solicitações com dono na equipe, em vez de todos os pedidos.
 - **Aviso de confirmação de pagamento** (`notifySuppliersToConfirm`): mapas por pedido no lugar de `.find`/`.filter` dentro do laço.
 
+## Regra: indicadores leem tabelas agregadas (decisão do dono, 12/11/2026)
+
+KPIs e indicadores (números de quadrados, contagens, totais, "no prazo") leem uma tabela agregada no nível do indicador (`kpi_snapshots`), e não tabelas por pedido ou produto. A tabela por pedido (`order_summaries`) serve de contribuição para somar o agregado e para montar a lista de um quadrado quando ele é escolhido.
+
+Cada indicador:
+- é refeito por evento, na gravação que muda o número;
+- é refeito quando passa o `validUntil`, o próximo instante em que um prazo vence ou o dia vira;
+- tem a reconstrução noturna (00h05 em Brasília) como reserva;
+- tem teste que compara os números com o cálculo completo.
+
+## Indicadores prontos da Control Tower (`kpi_snapshots`, chave "tower")
+
+A tela lê uma linha só. Com o indicador válido, são duas consultas: o marcador em `settings` e a linha agregada. A linha traz:
+- a contagem, os atrasados, os em risco e o valor de cada quadrado;
+- as visões gerais e o total de exceções;
+- os totais da faixa do financeiro e a visão comercial;
+- `validUntil`.
+
+**Contribuição de cada pedido** (`order_summaries.kpi`, `OrderKpi`, em `src/lib/services/tower-kpis.ts`):
+- em que quadrados entra, e se está atrasado ou em risco;
+- em que visões gerais aparece;
+- quantas exceções tem;
+- os valores do financeiro;
+- até quando a contribuição vale (`u`, via `nextChange`).
+
+A contribuição é calculada pelas mesmas funções da tela (`buildTowerBoard`, `buildControlTower`) só com o pedido, as multas, os itens recusados e a revisão dele.
+
+O momento em que a contribuição muda (`nextChange`) é o mais próximo entre:
+- o prazo da etapa;
+- dois dias antes do prazo (entrada em "em risco");
+- as datas de chegada e embarque;
+- o ETD e os follow-ups da produção;
+- a entrada da parcela em "a vencer" e o vencimento;
+- a virada do mês, para encerrados e cancelados.
+
+**Agregado** (`rebuildTowerKpis`):
+- lê só a coluna `kpi`;
+- recalcula antes os pedidos com a contribuição vencida;
+- soma, e o valor de cada quadrado só conta na moeda principal;
+- acrescenta o que não é de pedido, lido na hora: bookings, solicitações ao fornecedor (SLA), certificações, revisão, containers e solicitações do cliente;
+- grava a linha.
+
+**Quando é refeito:**
+- a cada leva de gravações, depois do recálculo dos pedidos marcados;
+- em gravações de bookings, solicitações, certificações, containers, revisão e configurações, que marcam `kpi`;
+- antes da leitura, se o `validUntil` passou.
+
+**Listas:** só a do quadrado, visão ou exceções escolhido é montada. A tela lê os pedidos membros na coluna `kpi`, busca o resumo das primeiras 200 linhas e usa as mesmas funções da tela. Acima de 200, mostra "Mostrando os 200 primeiros de N".
+
+**Etapas:** os passos que não são "em paralelo" são exclusivos, então a etapa é a soma dos passos (`buildTowerStages` usa as contagens).
+
+**Testes** (`tests/unit/tower-kpis.test.ts`): o indicador comparado ao cálculo completo em cada quadrado, etapa, visão, exceções, totais e listas:
+- logo depois da reconstrução;
+- quando um prazo vence, sem gravação;
+- 40 dias depois;
+- depois de gravações;
+- depois de uma revisão nova.
+
+Outro teste confere que, com o indicador válido, a leitura são só as duas consultas.
+
+## Pendências
+
+- **Parceiros e cliente** (a tela inicial deles): leem só as etapas dos próprios pedidos (`involvedOrderIds`, a regra de `isInvolved`). Antes, liam as 13 mil etapas em andamento e os 50 mil itens pendentes.
+- **Wellmix:** as tarefas dos itens das etapas em andamento são as mesmas para toda a equipe. São pré-calculadas no resumo de cada pedido (`order_summaries.tasks`) pela mesma função (`stageTaskDrafts`) e guardam a ordem da etapa. Na leitura, só o prazo é calculado. Teste: admin e operador com a mesma lista pelo resumo e pelas tabelas, antes e depois de gravações.
+- Seguem calculadas na hora as tarefas que dependem de quem está logado (validação de passos de embarque, pagamentos e programação de compra do admin, mensagens) e as que não são de etapa.
+
+## Painel de SLA
+
+- **"No prazo"** (indicador `kpi_snapshots`, chave "sla.done"): as etapas concluídas com prazo nos últimos 30 dias. É refeito quando uma etapa com prazo é concluída ou reaberta, e quando a primeira sai da janela. Antes, a tela lia as cerca de 31 mil etapas concluídas a cada abertura.
+- **Pendências por pessoa:** vêm das Pendências, agora leves. Os atrasos de parceiros leem só as colunas usadas das etapas em andamento.
+
+## Container e sugestões de produto
+
+- **Escolha de itens do container:** lê só as colunas usadas de pedidos e itens. A lista em si continua com todos os itens dos pedidos em aberto. Uma busca no lugar da lista é decisão de tela, do dono.
+- **Sugestões para completar o container:** leem só os pedidos dos clientes dos containers em planejamento ou carga.
+
 ## O que ainda pesa
 
-1. **Pedidos:** a página no servidor (50 linhas) veio no PR martinsphilippes/willmix#314. A lista ainda lê todos os itens para filtrar e ordenar, mas só com as colunas usadas.
-2. **Pendências** (`pendingTasksFor`): lê os itens de todas as etapas em andamento a cada abertura, e é o início dos parceiros.
-3. **Escolha de itens para o container e sugestões de produto:** leem os itens de todos os pedidos em aberto.
-4. **Painel de SLA:** lê as etapas concluídas de todos os pedidos para medir durações.
+1. **Pedidos:** a lista lê todos os itens, só com as colunas usadas, para filtrar e ordenar no servidor (página de 50).
+2. **Tarefas de embarque e produção da Wellmix nas Pendências:** leem os pedidos nas etapas de produção e embarque. Dependem de quem valida, então não foram pré-calculadas.
+3. **Escolha de itens do container:** a lista do formulário tem todos os itens dos pedidos em aberto.
