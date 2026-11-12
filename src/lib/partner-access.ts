@@ -21,13 +21,44 @@ export type ExternalRole = keyof typeof ROLE_SCREENS;
 export const EXTERNAL_ROLES = Object.keys(ROLE_SCREENS) as ExternalRole[];
 
 /**
+ * Telas internas da Wellmix já adaptadas a logins externos, com os papéis de
+ * login para os quais a tela tem dados (nos outros abre vazia).
+ *
+ * Booking (dono, 11/11/2026): o login externo vê só os bookings em que a
+ * empresa dele é o responsável ou o fornecedor, só leitura e sem a análise da
+ * Wellmix (src/lib/services/booking-partner.ts). Responsável e fornecedor de
+ * um booking entram sempre com o papel do Fornecedor.
+ */
+const ADAPTED: Partial<Record<Screen, readonly ExternalRole[]>> = {
+  booking: ["supplier"],
+};
+
+/**
+ * Telas adaptadas que já vêm abertas em certos perfis (além das do papel).
+ * Trading: a tela Booking (dono, 11/11/2026).
+ */
+const PROFILE_EXTRA: Record<string, readonly Screen[]> = {
+  "type:trading": ["booking"],
+};
+
+/** O perfil tem tela aberta de fábrica além das do papel (ex.: o Booking do Trading)? */
+export const hasProfileExtras = (profileKey: string) =>
+  (PROFILE_EXTRA[profileKey] ?? []).length > 0;
+
+/** Algum perfil tem tela extra de fábrica (a sessão só olha o tipo se houver)? */
+export const ANY_PROFILE_EXTRAS = Object.keys(PROFILE_EXTRA).length > 0;
+
+/**
  * Telas que um login externo pode receber: as que já são de algum papel
  * externo (cliente, fornecedor, parceiros), feitas para mostrar a cada um só
- * os próprios registros. As telas internas da Wellmix aparecem no catálogo,
- * bloqueadas: liberá-las a um externo mostraria dados de todos.
+ * os próprios registros, e as internas já adaptadas (`ADAPTED`). As outras
+ * telas internas da Wellmix aparecem no catálogo, bloqueadas: liberá-las a um
+ * externo mostraria dados de todos.
  */
-export const GRANTABLE_SCREENS: readonly Screen[] = SCREENS.filter((s) =>
-  EXTERNAL_ROLES.some((r) => ROLE_SCREENS[r].includes(s)),
+export const GRANTABLE_SCREENS: readonly Screen[] = SCREENS.filter(
+  (s) =>
+    EXTERNAL_ROLES.some((r) => ROLE_SCREENS[r].includes(s)) ||
+    (ADAPTED[s] ?? []).length > 0,
 );
 export const isGrantable = (screen: Screen) =>
   GRANTABLE_SCREENS.includes(screen);
@@ -60,6 +91,16 @@ const OWN_DATA_SCREENS: readonly Screen[] = [
  */
 
 /**
+ * Papéis externos para os quais a tela tem dados: os que a têm de fábrica e
+ * os das telas internas adaptadas (o "tipo de origem" no catálogo).
+ */
+export const originRoles = (screen: Screen): ExternalRole[] =>
+  EXTERNAL_ROLES.filter(
+    (r) =>
+      ROLE_SCREENS[r].includes(screen) || (ADAPTED[screen] ?? []).includes(r),
+  );
+
+/**
  * A tela foi feita para outro papel e o conteúdo dela ainda é só dos
  * registros daquele papel (ex.: a vitrine é do cliente; as solicitações ao
  * fornecedor, do fornecedor): liberada a este perfil, abre vazia ou volta ao
@@ -68,11 +109,11 @@ const OWN_DATA_SCREENS: readonly Screen[] = [
 export const isLimitedFor = (screen: Screen, profileKey: string) =>
   isGrantable(screen) &&
   !OWN_DATA_SCREENS.includes(screen) &&
-  !(ROLE_SCREENS[baseRoleOf(profileKey)] ?? []).includes(screen);
+  !originRoles(screen).includes(baseRoleOf(profileKey));
 
-/** Papéis externos que têm a tela de fábrica (o "tipo de origem" no catálogo). */
-export const originRoles = (screen: Screen): ExternalRole[] =>
-  EXTERNAL_ROLES.filter((r) => ROLE_SCREENS[r].includes(screen));
+/** Tela da equipe Wellmix adaptada a logins externos (ex.: Booking). */
+export const isAdaptedInternal = (screen: Screen) =>
+  (ADAPTED[screen] ?? []).length > 0;
 
 /** Sempre aberta (o início): sem ela o login não entra em lugar nenhum. */
 export const ALWAYS_OPEN: readonly Screen[] = ["home"];
@@ -85,6 +126,11 @@ export interface StoredProfile {
   /** Abre, mas não aparece no menu (chega-se por link). */
   menuHidden: string[];
   sources: Record<string, string>;
+  /**
+   * Gravado depois de as telas extras do perfil (PROFILE_EXTRA) existirem: o
+   * que o administrador marcou vale como está, inclusive sem elas.
+   */
+  extrasDecided?: boolean;
 }
 export type PartnerAccessConfig = Record<string, StoredProfile>;
 
@@ -101,7 +147,10 @@ export const isProfileKey = (key: string) =>
 
 /** Padrão de fábrica: o do papel; nos tipos novos, o do Fornecedor. */
 export function defaultScreens(profileKey: string): Screen[] {
-  return [...(ROLE_SCREENS[baseRoleOf(profileKey)] ?? [])];
+  return [
+    ...(ROLE_SCREENS[baseRoleOf(profileKey)] ?? []),
+    ...(PROFILE_EXTRA[profileKey] ?? []),
+  ];
 }
 
 const valid = (list: unknown): Screen[] =>
@@ -124,10 +173,14 @@ export function resolveProfile(
       custom: false,
     };
   }
+  // Tela que passou a vir aberta no perfil depois de ele ser gravado (ex.: o
+  // Booking do Trading): entra, a menos que o administrador já tenha gravado
+  // o perfil depois disso (`extrasDecided`, marcado a cada gravação).
+  const late = stored.extrasDecided ? [] : (PROFILE_EXTRA[profileKey] ?? []);
   // O gravado nunca vale mais que as telas de login externo (as internas da
   // Wellmix saem, mesmo que estejam gravadas).
   const screens = [
-    ...new Set([...ALWAYS_OPEN, ...valid(stored.screens)]),
+    ...new Set([...ALWAYS_OPEN, ...valid(stored.screens), ...late]),
   ].filter(isGrantable);
   const sources: ProfileAccess["sources"] = {};
   for (const s of screens)
@@ -146,6 +199,7 @@ const store = (access: ProfileAccess): StoredProfile => ({
   screens: access.screens,
   menuHidden: access.menuHidden,
   sources: access.sources as Record<string, string>,
+  extrasDecided: true,
 });
 
 /** O que muda numa tela entre duas configurações do mesmo perfil. */

@@ -5,6 +5,14 @@
  */
 export const pt = {
   "bookingLots.title": "Booking",
+  "bookingLots.partner.subtitle":
+    "Os bookings da sua empresa: as planilhas em que ela é o responsável ou o fornecedor. Só para consulta.",
+  "bookingLots.partner.empty":
+    "Nenhum booking da sua empresa ainda. Quando a Wellmix carregar uma planilha sua, ela aparece aqui.",
+  "bookingLots.partner.lot": "Booking nº {n}",
+  "bookingLots.partner.back": "Voltar aos bookings",
+  "bookingLots.partner.items": "Itens do booking ({n})",
+  "bookingLots.partner.noItems": "Este booking não tem itens.",
   "bookingLots.subtitle":
     "Planilhas de booking dos fornecedores. Suba a planilha, confira fornecedor, data e itens e feche: o Superplan analisa todos os itens.",
   "bookingLots.import": "Importar booking",
@@ -188,6 +196,14 @@ export const pt = {
 
 export const en: typeof pt = {
   "bookingLots.title": "Booking",
+  "bookingLots.partner.subtitle":
+    "Your company's bookings: the spreadsheets where it is the owner or the supplier. Read only.",
+  "bookingLots.partner.empty":
+    "No booking from your company yet. When Wellmix loads one of your spreadsheets, it shows up here.",
+  "bookingLots.partner.lot": "Booking no. {n}",
+  "bookingLots.partner.back": "Back to bookings",
+  "bookingLots.partner.items": "Booking items ({n})",
+  "bookingLots.partner.noItems": "This booking has no items.",
   "bookingLots.subtitle":
     "Suppliers' booking spreadsheets. Upload the spreadsheet, check supplier, date and items, then close: Superplan analyzes every item.",
   "bookingLots.import": "Import booking",
@@ -369,6 +385,14 @@ export const en: typeof pt = {
 
 export const zh: typeof pt = {
   "bookingLots.title": "Booking",
+  "bookingLots.partner.subtitle":
+    "贵公司的订舱：贵公司作为负责人或供应商的表格。仅供查看。",
+  "bookingLots.partner.empty":
+    "暂无贵公司的订舱。Wellmix 导入贵公司的表格后会显示在这里。",
+  "bookingLots.partner.lot": "订舱 {n}",
+  "bookingLots.partner.back": "返回订舱列表",
+  "bookingLots.partner.items": "订舱产品（{n}）",
+  "bookingLots.partner.noItems": "此订舱没有产品。",
   "bookingLots.subtitle":
     "供应商的 booking 表格。上传表格，核对供应商、日期和条目，然后关闭：Superplan 会分析所有条目。",
   "bookingLots.import": "导入 booking",

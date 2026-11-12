@@ -64,6 +64,8 @@ const GRANTED_FROM_CUSTOMER: Entry[] = [
   ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
 ];
 const GRANTED_FROM_PARTNERS: Entry[] = [
+  // Booking adaptado ao login externo: os bookings da empresa de quem abre.
+  ["booking", { href: "/app/booking", key: "nav.booking" }],
   ["quotes", { href: "/app/supplier-requests", key: "nav.supplierRequests" }],
   [
     "quotes",
@@ -227,6 +229,8 @@ export function navFor(
     ...group(
       "nav.group.orders",
       pick(has, [
+        // Trading (e quem mais recebe a tela): os bookings da empresa dele.
+        ["booking", { href: "/app/booking", key: "nav.booking" }],
         // O que a Wellmix pergunta sobre um item do booking dele.
         [
           "quotes",

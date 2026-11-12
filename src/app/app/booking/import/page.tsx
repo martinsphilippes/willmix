@@ -1,3 +1,4 @@
+import { isWellmix } from "@/lib/auth/permissions";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -30,6 +31,8 @@ export default async function BookingImportPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/booking/import");
   requireScreen(user, "booking");
+  // Só a Wellmix: o login externo com a tela Booking vê só os bookings dele.
+  if (!isWellmix(user)) redirect("/app/booking");
   const { error } = await searchParams;
   const t = await getT();
   const code = typeof error === "string" ? error : "";

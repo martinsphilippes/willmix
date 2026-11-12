@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { bookingSheet, importAndClose } from "./helpers";
 
 /*
  * Tipos em destaque e Gestão de telas (docs/PARTNER_ACCESS.md): Trading,
@@ -208,4 +209,111 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   page.once("dialog", (dialog) => dialog.accept());
   await page.locator("[data-access-reset]").click();
   await page.waitForURL(/saved=reset/);
+});
+
+/*
+ * Booking do Trading (dono, 11/11/2026; docs/BOOKING.md): o login de uma
+ * Trading abre a tela Booking e vê só os bookings da empresa dele, sem a
+ * análise da Wellmix; o resto do Booking continua só da Wellmix.
+ */
+test("Trading com login: abre o Booking e vê só os bookings dele", async ({
+  page,
+}) => {
+  const tag = Date.now().toString(36);
+  const code = `TRD${tag.toUpperCase()}`;
+  const tradingName = `Trading ${tag}`;
+  const userLogin = `wu-${tag}@trading.com`;
+  await login(page, "admin@wellmix.com");
+
+  // Cadastro da Trading com um login (entra com o papel do Fornecedor).
+  await page.goto("/app/parties");
+  await page.locator('[data-party-type-chip="trading"]').click();
+  await page.waitForURL(/type=trading/);
+  await page.locator("[data-party-new]").click();
+  await expect(page.locator("[data-party-type]")).toHaveValue("trading");
+  await page.fill('input[name="name"]', tradingName);
+  await page.getByRole("button", { name: "Salvar" }).first().click();
+  await page.waitForURL(/\/app\/parties\/[^/?]+$/);
+  // O cadastro novo nasce ativo (senão não entra nas listas de escolha).
+  await expect(
+    page.locator('input[type="checkbox"][name="active"]'),
+  ).toBeChecked();
+  const access = page.locator("[data-party-access]");
+  await access.locator('input[name="name"]').fill("Wu Trading");
+  await access.locator('input[name="login"]').fill(userLogin);
+  await access.locator('input[name="password"]').fill(PASSWORD);
+  await access.locator("[data-party-access-create]").click();
+  await page.waitForURL(/saved=user/);
+
+  // Gestão de telas: o Booking já vem aberto no Trading; na Factory pode ser
+  // liberado (deixou de ser "interna da Wellmix").
+  await page.goto("/app/parties/access?profile=type:trading");
+  await expect(page.locator('[data-access-screen="booking"]')).toHaveAttribute(
+    "data-access-state",
+    "open",
+  );
+  await expect(page.locator('[data-access-limited="booking"]')).toHaveCount(0);
+  await page.goto("/app/parties/access?profile=type:factory");
+  await expect(page.locator('[data-access-screen="booking"]')).toHaveAttribute(
+    "data-access-state",
+    "blocked",
+  );
+
+  // Dois bookings: um de outro fornecedor e um com a Trading de responsável.
+  await importAndClose(
+    page,
+    bookingSheet(
+      "Guangzhou Supplier B",
+      `${code}-X`,
+      `Glass jar ${code} other`,
+    ),
+    "Guangzhou Supplier B",
+  );
+  const foreignUrl = new URL(page.url()).pathname;
+  await importAndClose(
+    page,
+    bookingSheet("Shenzhen Supplier A", `${code}-A`, `Glass jar ${code} own`),
+    "Shenzhen Supplier A",
+  );
+  const ownUrl = new URL(page.url()).pathname;
+  const partner = page.locator(
+    "[data-booking-lot-partner] input[role=combobox]",
+  );
+  await partner.click();
+  await partner.fill(tradingName);
+  await page
+    .locator("[data-booking-lot-partner] [role=option]")
+    .filter({ hasText: tradingName })
+    .first()
+    .click();
+  await expect(
+    page.locator('[data-booking-lot-partner] [data-booking-row-note="saved"]'),
+  ).toBeVisible();
+
+  // Como Trading: a tela Booking abre e lista só o booking dele.
+  await login(page, userLogin);
+  await page.goto("/app/booking");
+  await expect(page).toHaveURL(/\/app\/booking$/);
+  const rows = page.locator("[data-partner-booking]");
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText(`booking-${code}-A.xlsx`);
+  await expect(page.locator('a[href="/app/booking/import"]')).toHaveCount(0);
+  await rows.first().locator("a").click();
+  await page.waitForURL((url) => url.pathname === ownUrl);
+  const items = page.locator("[data-partner-booking-items]");
+  await expect(items.locator("tr")).toHaveCount(1);
+  await expect(items).toContainText(`${code}-A`);
+  // Sem a análise da Wellmix e sem os campos de edição do booking.
+  await expect(page.locator("[data-booking-item-analysis]")).toHaveCount(0);
+  await expect(page.locator("[data-booking-lot-partner]")).toHaveCount(0);
+  await expect(page.locator("[data-booking-lot-close-submit]")).toHaveCount(0);
+  // O booking de outra empresa não abre, nem pelo endereço.
+  const foreign = await page.goto(foreignUrl);
+  expect(foreign?.status()).toBe(404);
+  await expect(page.locator("[data-partner-booking-items]")).toHaveCount(0);
+  // Importar e Seleção de itens são só da Wellmix: voltam para a lista dele.
+  await page.goto("/app/booking/import");
+  await expect(page).toHaveURL(/\/app\/booking$/);
+  await page.goto("/app/booking/selection");
+  await expect(page).toHaveURL(/\/app\/booking$/);
 });
