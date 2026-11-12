@@ -14,6 +14,7 @@
 - `DATA_MODE=memory` (padrão sem Appwrite): JSON em `.data/` (ou `/tmp/wellmix-data` na Vercel, efêmero). Seed automático no primeiro `/login`.
 - `DATA_MODE=appwrite`: exige `NEXT_PUBLIC_APPWRITE_ENDPOINT`, `NEXT_PUBLIC_APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`.
 - IA: na Vercel usa o AI Gateway com o token OIDC do projeto, sem chave. Opcionais: `AI_GATEWAY_API_KEY` ou `ANTHROPIC_API_KEY` (prioridade). Fora da Vercel e sem chave, modo manual. Configurações → Testar IA confirma.
+- IA de imagem (referências da escolha do grupo, docs/SUPPLIER_REQUESTS.md): `OPENAI_API_KEY` (só servidor). Sem ela, os prompts ficam gravados e nada é gerado.
 
 ## Variáveis de ambiente
 

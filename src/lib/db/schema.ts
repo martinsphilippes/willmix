@@ -2483,6 +2483,8 @@ export interface SupplierRequest extends BaseRow {
    * rodada e intervalo (docs/PURCHASE_SCHEDULE.md). `quantity` é o total.
    */
   schedule?: RequestSchedule | null;
+  /** Referências geradas por IA na escolha do grupo (imagens e ficha); o fornecedor vê. */
+  aiAssets?: AiReferenceAsset[] | null;
   /**
    * Amostragem (docs/SUPPLIER_SAMPLING.md): depois da aprovação, o
    * responsável pelo booking envia fotos e vídeos de uma amostra do item e a
@@ -2556,6 +2558,32 @@ export interface SelectionGroup extends BaseRow {
   updatedByUserId: string | null;
   /** Programação de compra: rodadas com peças e intervalo; `quantity` é o total. */
   schedule?: RequestSchedule | null;
+  /**
+   * Prompts de IA da escolha (imagens e ficha para o fornecedor,
+   * docs/SUPPLIER_REQUESTS.md "Referências por IA"). Nulo = os padrões das
+   * Configurações.
+   */
+  aiPrompts?: AiReferencePrompts | null;
+  /** Arquivos gerados pela IA com os prompts; vão para a solicitação ao abrir. */
+  aiAssets?: AiReferenceAsset[] | null;
+}
+
+/** Os três prompts das referências por IA (duas imagens e uma ficha). */
+export interface AiReferencePrompts {
+  product: string;
+  detail: string;
+  sheet: string;
+}
+export type AiReferenceKind = keyof AiReferencePrompts;
+
+/** Arquivo gerado pela IA: imagem aproximada do produto ou ficha em texto. */
+export interface AiReferenceAsset {
+  kind: AiReferenceKind;
+  documentId: string;
+  /** "api" (OpenAI) ou "mock" (exemplo rotulado, nunca real). */
+  mode: "api" | "mock";
+  model: string | null;
+  at: string;
 }
 
 export interface StockReservation extends BaseRow {
@@ -4386,6 +4414,7 @@ export const TABLES: Record<TableName, TableDef> = {
       orderId: id(false),
       batchId: id(false),
       schedule: json(),
+      aiAssets: json(),
       sampling: jsonLarge(),
     },
     indexes: [
@@ -4409,6 +4438,8 @@ export const TABLES: Record<TableName, TableDef> = {
       createdByUserId: id(),
       updatedByUserId: id(false),
       schedule: json(),
+      aiPrompts: json(),
+      aiAssets: json(),
     },
     indexes: [
       { key: "by_status", type: "key", columns: ["status"] },
