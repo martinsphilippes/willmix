@@ -572,7 +572,13 @@ export function SelectionQuantity({
           prefix=""
           total={qty}
           unit="pcs"
-          onTotalChange={(t) => setQty(t)}
+          onTotalChange={(t) => {
+            // As rodadas mudaram: a quantidade é a soma e os campos do
+            // gerador voltam a acompanhar a tela (o digitado neles caduca).
+            setQty(t);
+            setTotalEdit(null);
+            setRoundsEdit(null);
+          }}
           labels={labels}
           max={MAX_PURCHASE_ROUNDS}
           initial={schedule}
