@@ -326,6 +326,60 @@ describe("resumo por pedido", () => {
     expect(again.removed).toBe(0);
   });
 
+  it("em partes: uma fatia por rodada, continua de onde parou e chega ao mesmo resultado", async () => {
+    const store = getStore();
+    const before = await towerDirect();
+    const orders = await store.list("orders");
+    // Sem resumos: a reconstrução em partes refaz todos.
+    for (const row of await store.list("order_summaries"))
+      await store.remove("order_summaries", row.id);
+    expect(await summary.rebuildOrderSummariesStep({ budgetMs: 0 })).toEqual({
+      state: "idle",
+    });
+    const first = await summary.rebuildOrderSummariesStep({
+      budgetMs: 0,
+      start: true,
+      chunk: 2,
+    });
+    expect(first).toMatchObject({
+      state: "running",
+      processed: 2,
+      total: orders.length,
+      busy: false,
+    });
+    expect(await store.list("order_summaries")).toHaveLength(2);
+    // Outra rodada trabalhando: esta não faz nada.
+    const progress = (await summary.rebuildProgress())!;
+    const { setRawSetting } = await import("@/lib/settings");
+    await setRawSetting(summary.REBUILD_SETTING_KEY, {
+      ...progress,
+      lockUntil: new Date(Date.now() + 60_000).toISOString(),
+    });
+    expect(
+      await summary.rebuildOrderSummariesStep({ budgetMs: 0, chunk: 2 }),
+    ).toMatchObject({ state: "running", processed: 2, busy: true });
+    await setRawSetting(summary.REBUILD_SETTING_KEY, progress);
+    // As rodadas seguintes continuam do cursor, sem começar de novo.
+    let rounds = 1;
+    let result = first;
+    while (result.state === "running") {
+      result = await summary.rebuildOrderSummariesStep({
+        budgetMs: 0,
+        start: true,
+        chunk: 2,
+      });
+      rounds++;
+    }
+    expect(rounds).toBe(Math.ceil(orders.length / 2));
+    expect(result.state).toBe("done");
+    if (result.state !== "done") return;
+    expect(result.marker.orders).toBe(orders.length);
+    expect(result.marker.written).toBe(orders.length);
+    expect(await summary.rebuildProgress()).toBeNull();
+    expect(await store.list("order_summaries")).toHaveLength(orders.length);
+    expect(await tower()).toEqual(before);
+  });
+
   it("gravações marcam o pedido e o resumo é recalculado antes da leitura", async () => {
     const store = getStore();
     const [order] = await store.list("orders", {
