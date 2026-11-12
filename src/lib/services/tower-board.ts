@@ -1,4 +1,5 @@
 import "server-only";
+import { listByIds } from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -671,9 +672,7 @@ export async function loadTowerBoard(options: {
   if (view) return boardFromSummaries(view, options.finance, now, await sideP);
   const [
     orders,
-    parties,
     items,
-    products,
     activeStages,
     [
       penalties,
@@ -687,11 +686,28 @@ export async function loadTowerBoard(options: {
     ],
   ] = await Promise.all([
     store.list("orders", { orderBy: "number", direction: "desc" }),
-    store.list("parties"),
     store.list("order_items"),
-    store.list("products"),
     store.list("stages", { filter: { status: ["active", "blocked"] } }),
     sideP,
+  ]);
+  // Parceiros e produtos: só os que aparecem nos quadrados (antes: as
+  // tabelas inteiras, ~32 mil parceiros e ~17 mil produtos).
+  const [parties, products] = await Promise.all([
+    listByIds(store, "parties", [
+      ...orders.map((o) => o.customerId),
+      ...lots.map((l) => l.supplierId),
+      ...supplierRequests.map((r) => r.supplierId),
+      ...certifications
+        .filter((c) => c.entity === "party")
+        .map((c) => c.entityId),
+    ]),
+    listByIds(
+      store,
+      "products",
+      certifications
+        .filter((c) => c.entity === "product")
+        .map((c) => c.entityId),
+    ),
   ]);
   const live = orders.filter(
     (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",

@@ -1,4 +1,5 @@
 import "server-only";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 
 import { getStore, type User } from "@/lib/db";
 import {
@@ -49,14 +50,23 @@ export async function loadCommercialHistory(
   if (user.role === "customer" && !user.partyId) return [];
   const customerId =
     user.role === "customer" ? (user.partyId ?? undefined) : filter.customerId;
-  const [orders, items, parties, requests, afterSales] = await Promise.all([
+  const [orders, items, requests, afterSales] = await Promise.all([
     store.list("orders", customerId ? { filter: { customerId } } : {}),
     store.list("order_items"),
-    store.list("parties"),
     store.list("requests"),
     store.list("after_sales"),
   ]);
-  const nameOf = (id: string) => parties.find((p) => p.id === id)?.name ?? "—";
+  // Só os clientes dos pedidos (antes: a tabela inteira, ~32 mil).
+  const parties = indexBy(
+    await listByIds(
+      store,
+      "parties",
+      orders.map((o) => o.customerId),
+    ),
+    "id",
+  );
+  const itemByOrder = indexBy(items, "orderId");
+  const nameOf = (id: string) => parties.get(id)?.name ?? "—";
   const groups = new Map<string, HistoryRow & { dates: number[] }>();
   const sorted = [...orders].sort((a, b) =>
     a.createdAt.localeCompare(b.createdAt),
@@ -67,7 +77,7 @@ export async function loadCommercialHistory(
     // Pedido cancelado não é compra: não conta nem vira o "último pedido"
     // (Comprar de novo / Nova proposta).
     if (order.status === "CANCELLED") continue;
-    const item = items.find((i) => i.orderId === order.id);
+    const item = itemByOrder.get(order.id);
     if (!item) continue;
     const key = `${order.customerId}|${item.productId ?? item.name.toLowerCase()}`;
     const sellUnit =

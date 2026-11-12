@@ -1,4 +1,5 @@
 import "server-only";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -325,18 +326,16 @@ export async function listContainers(
     orderBy: "createdAt",
     direction: "desc",
   });
-  const customerIds = [
-    ...new Set(
-      containers.map((c) => c.customerId).filter((x): x is string => !!x),
+  const items = await store.list("container_items");
+  // Só os clientes dos containers (antes: a tabela inteira, ~32 mil).
+  const parties = indexBy(
+    await listByIds(
+      store,
+      "parties",
+      containers.map((c) => c.customerId),
     ),
-  ];
-  // Só os clientes dos containers (antes: o cadastro inteiro de parceiros).
-  const [items, parties] = await Promise.all([
-    store.list("container_items"),
-    customerIds.length
-      ? store.list("parties", { filter: { id: customerIds } })
-      : Promise.resolve([]),
-  ]);
+    "id",
+  );
   return containers.map((c) => {
     const mine = items.filter((i) => i.containerId === c.id);
     return {
@@ -344,7 +343,8 @@ export async function listContainers(
       itemCount: mine.length,
       usage: containerUsage(mine, c.capacityCbm, c.maxWeightKg),
       split: commercialSplit(mine),
-      customerName: parties.find((p) => p.id === c.customerId)?.name ?? null,
+      customerName:
+        (c.customerId ? parties.get(c.customerId)?.name : undefined) ?? null,
     };
   });
 }
@@ -372,22 +372,37 @@ export interface OrderItemChoice {
 /** Pedidos não encerrados com item, para o formulário "Adicionar item por pedido". */
 export async function listOrderItemChoices(): Promise<OrderItemChoice[]> {
   const store = getStore();
-  const [orders, items, parties] = await Promise.all([
+  const [orders, items] = await Promise.all([
     store.list("orders", { orderBy: "number", direction: "desc" }),
     store.list("order_items"),
-    store.list("parties"),
   ]);
+  const open = orders.filter(
+    (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
+  );
+  // Só os clientes dos pedidos abertos (antes: a tabela inteira, ~32 mil).
+  const parties = indexBy(
+    await listByIds(
+      store,
+      "parties",
+      open.map((o) => o.customerId),
+    ),
+    "id",
+  );
+  const itemsByOrder = new Map<string, typeof items>();
+  for (const i of items) {
+    const list = itemsByOrder.get(i.orderId);
+    if (list) list.push(i);
+    else itemsByOrder.set(i.orderId, [i]);
+  }
   const choices: OrderItemChoice[] = [];
-  for (const order of orders) {
-    if (order.status === "CLOSED" || order.status === "CANCELLED") continue;
-    for (const item of items.filter((i) => i.orderId === order.id)) {
+  for (const order of open) {
+    for (const item of itemsByOrder.get(order.id) ?? []) {
       choices.push({
         orderItemId: item.id,
         orderId: order.id,
         orderNumber: order.number,
         customerId: order.customerId,
-        customerName:
-          parties.find((p) => p.id === order.customerId)?.name ?? "—",
+        customerName: parties.get(order.customerId)?.name ?? "—",
         name: item.name,
         quantity: item.quantity,
         unit: item.unit,

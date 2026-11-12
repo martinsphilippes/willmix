@@ -19,9 +19,11 @@ import {
 } from "@/lib/services/data-reset";
 import {
   resetCatalogDataAction,
+  resetPortalTestsAction,
   resetSalesDataAction,
 } from "../../actions/data-reset";
 import { planCatalogReset } from "@/lib/services/catalog-reset";
+import { planPortalTestReset } from "@/lib/services/portal-test-reset";
 
 // A limpeza apaga linha por linha no Appwrite: mais tempo que uma página
 // comum. A rodada para sozinha bem antes (RESET_BUDGET_MS) e a tela mostra
@@ -38,10 +40,14 @@ export default async function ResetPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "settings");
-  const { done, error, catalog } = await searchParams;
+  const { done, error, catalog, portal } = await searchParams;
   const t = await getT();
   const plan = await planSalesReset(user);
   const catalogPlan = await planCatalogReset(user);
+  const portalPlan = await planPortalTestReset(user);
+  const portalRows = Object.entries(portalPlan.remove).filter(
+    ([, n]) => (n ?? 0) > 0,
+  ) as Array<[string, number]>;
   const catalogRows = Object.entries(catalogPlan.remove).filter(
     ([, n]) => (n ?? 0) > 0,
   ) as Array<[string, number]>;
@@ -98,7 +104,80 @@ export default async function ResetPage({
           <span data-reset-error="">{errorText}</span>
         </Alert>
       ) : null}
-      <Card className="mt-3">
+      <Card className="mt-3" title={t("reset.portal.title")}>
+        <div id="portal" className="scroll-mt-4 space-y-4" data-portal-reset="">
+          {portal === "1" && !errorText ? (
+            <Alert tone="success">
+              <span data-portal-done="">{t("reset.portal.done")}</span>
+            </Alert>
+          ) : portal === "partial" && !errorText ? (
+            <Alert tone="warning">
+              {t("reset.remaining", { n: portalPlan.total })}
+            </Alert>
+          ) : null}
+          <p className="text-sm font-medium text-red-700">
+            {t("reset.portal.intro")}
+          </p>
+          {portalPlan.total === 0 && portalPlan.unlink === 0 ? (
+            <p className="text-sm text-zinc-600" data-portal-empty="">
+              {t("reset.nothing")}
+            </p>
+          ) : (
+            <>
+              <dl
+                className="grid max-w-md grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm"
+                data-portal-plan=""
+              >
+                {portalRows.map(([key, n]) => (
+                  <div key={key} className="contents">
+                    <dt className="font-mono text-xs text-zinc-700">{key}</dt>
+                    <dd
+                      className="text-right font-medium tabular-nums"
+                      data-portal-count={key}
+                    >
+                      {n.toLocaleString(t.intl)}
+                    </dd>
+                  </div>
+                ))}
+                <div className="contents">
+                  <dt className="text-zinc-700">{t("reset.portal.files")}</dt>
+                  <dd className="text-right font-medium tabular-nums">
+                    {portalPlan.files.toLocaleString(t.intl)}
+                  </dd>
+                </div>
+                <div className="contents">
+                  <dt className="text-zinc-700">{t("reset.portal.unlink")}</dt>
+                  <dd className="text-right font-medium tabular-nums">
+                    {portalPlan.unlink.toLocaleString(t.intl)}
+                  </dd>
+                </div>
+              </dl>
+              <form
+                action={resetPortalTestsAction}
+                className="flex flex-wrap items-end gap-3 border-t border-zinc-200 pt-4"
+                data-portal-form=""
+              >
+                <div className="w-full sm:w-64">
+                  <Field label={t("reset.confirmLabel")}>
+                    <Input
+                      name="confirm"
+                      required
+                      autoComplete="off"
+                      autoCapitalize="characters"
+                      maxLength={20}
+                      placeholder={RESET_CONFIRM_WORD}
+                    />
+                  </Field>
+                </div>
+                <SubmitButton variant="danger" pendingText="…">
+                  {t("reset.portal.submit")}
+                </SubmitButton>
+              </form>
+            </>
+          )}
+        </div>
+      </Card>
+      <Card className="mt-6">
         <div className="space-y-4">
           <p className="text-sm font-medium text-red-700">{t("reset.intro")}</p>
           <div className="grid gap-4 lg:grid-cols-2">

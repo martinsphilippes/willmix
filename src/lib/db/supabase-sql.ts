@@ -73,6 +73,17 @@ export function tableSql(table: TableName): string {
   lines.push(
     `create index if not exists ${q(indexName(table, "created"))} on public.${q(table)} ("createdAt");`,
   );
+  // As listas sempre ordenam por (campo, id) e paginam por offset
+  // (SupabaseStore.list): sem índice nessa ordem, cada página de 1000 linhas
+  // ordenava a tabela inteira (parceiros por nome: ~1 s por página, com
+  // escrita em disco). Um índice por ordenação usada: criação e nome.
+  lines.push(
+    `create index if not exists ${q(indexName(table, "created_id"))} on public.${q(table)} ("createdAt", "id");`,
+  );
+  if ("name" in def.columns)
+    lines.push(
+      `create index if not exists ${q(indexName(table, "name_id"))} on public.${q(table)} ("name", "id");`,
+    );
   return lines.join("\n");
 }
 

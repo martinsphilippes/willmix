@@ -1,4 +1,5 @@
 import "server-only";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -179,24 +180,23 @@ export async function loadControlTower(): Promise<TowerData> {
       ...side,
     });
   }
-  // Caminho antigo (sem resumo ainda): as tabelas inteiras.
+  // Caminho antigo (sem resumo ainda): as tabelas de pedidos, itens e etapas.
   const store = getStore();
-  const [orders, parties, stages, items, side] = await Promise.all([
+  const [orders, stages, items, side] = await Promise.all([
     store.list("orders", { orderBy: "number", direction: "desc" }),
-    store.list("parties"),
     store.list("stages", { filter: { status: ["active", "blocked"] } }),
     store.list("order_items"),
     sideP,
   ]);
+  // Só os parceiros que aparecem na tela (antes: a tabela inteira, ~32 mil).
+  const parties = await listByIds(store, "parties", [
+    ...orders.map((o) => o.customerId),
+    ...side.requests.map((r) => r.customerId),
+  ]);
   // Mapas pelo primeiro de cada (como o .find de antes, sem pedidos × itens).
-  const first = <T>(rows: T[], key: (r: T) => string) => {
-    const map = new Map<string, T>();
-    for (const r of rows) if (!map.has(key(r))) map.set(key(r), r);
-    return map;
-  };
-  const partyById = first(parties, (p) => p.id);
-  const itemByOrder = first(items, (i) => i.orderId);
-  const stageByOrder = first(stages, (s) => s.orderId);
+  const partyById = indexBy(parties, "id");
+  const itemByOrder = indexBy(items, "orderId");
+  const stageByOrder = indexBy(stages, "orderId");
   return buildControlTower({
     now,
     orders,

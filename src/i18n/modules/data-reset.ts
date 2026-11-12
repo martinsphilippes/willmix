@@ -4,6 +4,14 @@
  * pt, en e zh.
  */
 export const pt = {
+  "reset.portal.title": "Apagar só os testes do portal (mantém o Sankhya)",
+  "reset.portal.intro":
+    "Apaga bookings (lotes, itens e convites), solicitações ao fornecedor, agrupamentos da seleção, carrinho, chat e os produtos, pedidos e solicitações criados no portal (sem código do Sankhya), com fotos, arquivos, avisos e histórico deles. A numeração de bookings e de solicitações ao fornecedor recomeça do 1. Fica tudo o que veio do Sankhya (pedidos, itens, títulos, produtos, parceiros, linhas, condições, locais e saldos), usuários, parceiros e configurações. Use para refazer os testes e no roll-out. Não tem volta.",
+  "reset.portal.unlink": "Registros que só perdem a ligação",
+  "reset.portal.files": "Arquivos apagados",
+  "reset.portal.submit": "Apagar os testes do portal",
+  "reset.portal.done":
+    "Testes do portal apagados. Os dados do Sankhya ficaram.",
   "reset.catalog.title":
     "Apagar também os cadastros que vêm do Sankhya (migração)",
   "reset.catalog.intro":
@@ -61,6 +69,13 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "reset.portal.title": "Delete only the portal tests (keeps Sankhya)",
+  "reset.portal.intro":
+    "Deletes bookings (lots, items and invites), supplier requests, selection groups, cart, chat and the products, orders and requests created in the portal (without a Sankhya code), with their photos, files, notifications and history. Booking and supplier request numbering restarts at 1. Everything that came from Sankhya stays (orders, items, receivables, products, partners, lines, payment terms, locations and balances), as do users, partners and settings. Use it to redo the tests and at roll-out. Cannot be undone.",
+  "reset.portal.unlink": "Records that only lose the link",
+  "reset.portal.files": "Files deleted",
+  "reset.portal.submit": "Delete the portal tests",
+  "reset.portal.done": "Portal tests deleted. The Sankhya data was kept.",
   "reset.catalog.title":
     "Also delete the master data that comes from Sankhya (migration)",
   "reset.catalog.intro":
@@ -118,6 +133,13 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "reset.portal.title": "仅删除门户中的测试数据（保留 Sankhya）",
+  "reset.portal.intro":
+    "删除预订（批次、条目和邀请）、供应商请求、选品分组、购物车、聊天，以及在门户中创建的（没有 Sankhya 代码的）产品、订单和请求，连同其照片、文件、通知和历史记录。预订和供应商请求的编号从 1 重新开始。来自 Sankhya 的所有数据（订单、条目、账款、产品、合作伙伴、产品线、付款条件、库位和余额）以及用户、合作伙伴和设置都会保留。用于重新测试和正式上线。无法撤销。",
+  "reset.portal.unlink": "仅解除关联的记录",
+  "reset.portal.files": "删除的文件",
+  "reset.portal.submit": "删除门户测试数据",
+  "reset.portal.done": "门户测试数据已删除，Sankhya 数据已保留。",
   "reset.catalog.title": "同时删除来自 Sankhya 的主数据（迁移）",
   "reset.catalog.intro":
     "删除供应商、客户和承运商、产品（含照片、变体和产品供应商）、产品线、付款条件和库位，以便完整导入从 Sankhya 重新带入全部数据。用户、其他合作方（代理、报关行、船公司、法务、外贸、物流、认证机构）、Wellmix 库存客户和设置会保留。用户不会被删除或停用：有关联用户的供应商或客户会保留，导入时按 CNPJ 或名称将其关联到 Sankhya。此操作无法撤销。",

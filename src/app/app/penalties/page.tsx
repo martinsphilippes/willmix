@@ -1,3 +1,4 @@
+import { listByIds } from "@/lib/db/lookup";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -27,11 +28,16 @@ export default async function PenaltiesPage() {
   requireScreen(user, "penalties");
   const t = await getT();
   const store = getStore();
-  const [allPenalties, orders, parties] = await Promise.all([
+  const [allPenalties, orders] = await Promise.all([
     store.list("penalties", { orderBy: "createdAt", direction: "desc" }),
     store.list("orders"),
-    store.list("parties"),
   ]);
+  // Só os responsáveis das multas (antes: a tabela inteira, ~32 mil).
+  const parties = await listByIds(
+    store,
+    "parties",
+    allPenalties.map((p) => p.responsiblePartyId),
+  );
   // A Wellmix e o jurídico veem todas. Qualquer outro login que receba a tela
   // (Gestão de telas) vê só as multas da própria empresa.
   const seesAll = isWellmix(user) || user.role === "legal";
