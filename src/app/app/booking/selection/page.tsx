@@ -28,6 +28,8 @@ import { DateRangePicker } from "@/components/date-range-picker";
 import { SelectionBasket } from "@/components/selection-basket";
 import { AutoSubmit } from "@/components/auto-submit";
 import { getFxRates } from "@/lib/services/fx";
+import { getSettings } from "@/lib/settings";
+import { cbmFromDimensions } from "@/lib/logistics/cbm";
 import { getT } from "@/i18n/server";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
@@ -61,7 +63,6 @@ import { TableTools } from "@/components/table-tools";
 import { SelectionAiPrompts } from "@/components/selection-ai-prompts";
 import { defaultPrompts, effectivePrompts } from "@/lib/ai-references";
 import { getMediaAdapter } from "@/lib/integrations/openai-media";
-import { getSettings } from "@/lib/settings";
 import {
   BookingItemSuperplan,
   bookingItemCost,
@@ -118,6 +119,10 @@ export default async function BookingSelectionPage({
   ]);
   const aiDefaults = defaultPrompts(settings);
   const aiMedia = getMediaAdapter(settings);
+  const containerTypes = settings.containerTypes.map((c) => ({
+    code: c.code,
+    capacityCbm: c.capacityCbm,
+  }));
   const usd = fx.rates.USD ?? null;
   const rmb = fx.rates.RMB ?? null;
   const rmbPerUsd = usd && rmb ? usd / rmb : null;
@@ -590,6 +595,67 @@ export default async function BookingSelectionPage({
                 scheduledHint={t("purchaseRounds.form.quantityOff")}
                 defaultQuantity={current?.quantity ?? null}
                 schedule={current?.schedule ?? null}
+                chosenItemId={current?.chosenItemId ?? null}
+                containerTypes={containerTypes}
+                items={list.map(({ item }) => ({
+                  id: item.id,
+                  masterCartonQty: item.masterCartonQty,
+                  cbmPerCarton:
+                    item.cbmPerCarton ??
+                    cbmFromDimensions(
+                      item.lengthCm,
+                      item.widthCm,
+                      item.heightCm,
+                    ),
+                  sheetQty: sheetQuantity(item),
+                }))}
+                gen={{
+                  title: t("purchaseRounds.gen.title"),
+                  hint: t("purchaseRounds.gen.hint"),
+                  total: t("purchaseRounds.gen.total"),
+                  container: t("purchaseRounds.gen.container"),
+                  perRound: t("purchaseRounds.gen.perRound"),
+                  rounds: t("purchaseRounds.gen.rounds"),
+                  submit: t("purchaseRounds.gen.submit"),
+                  item: t("purchaseRounds.gen.item", {
+                    pcs: "{pcs}",
+                    cbm: "{cbm}",
+                    cartons: "{cartons}",
+                    pieces: "{pieces}",
+                    container: "{container}",
+                  }),
+                  noItem: t("purchaseRounds.gen.noItem"),
+                  noCarton: t("purchaseRounds.gen.noCarton"),
+                  tooBig: t("purchaseRounds.gen.tooBig", {
+                    cbm: "{cbm}",
+                    container: "{container}",
+                    cap: "{cap}",
+                  }),
+                  errorTotal: t("purchaseRounds.gen.errorTotal"),
+                  result: t("purchaseRounds.gen.result", {
+                    rounds: "{rounds}",
+                    cartons: "{cartons}",
+                    cbm: "{cbm}",
+                    containers: "{containers}",
+                    container: "{container}",
+                  }),
+                  extra: t("purchaseRounds.gen.extra", { extra: "{extra}" }),
+                  raised: t("purchaseRounds.gen.raised", {
+                    max: "{max}",
+                    n: "{n}",
+                  }),
+                  last: t("purchaseRounds.gen.last", { pct: "{pct}" }),
+                  fillUp: t("purchaseRounds.gen.fillUp", {
+                    pieces: "{pieces}",
+                  }),
+                  trim: t("purchaseRounds.gen.trim", { pieces: "{pieces}" }),
+                  load: t("purchaseRounds.gen.load", {
+                    cartons: "{cartons}",
+                    cbm: "{cbm}",
+                    containers: "{containers}",
+                    container: "{container}",
+                  }),
+                }}
                 labels={{
                   intl,
                   toggle: t("purchaseRounds.form.toggle"),

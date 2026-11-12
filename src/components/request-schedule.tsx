@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { cx, inputClass } from "@/components/ui";
 import {
   DEFAULT_SCHEDULE_INTERVAL,
@@ -60,6 +60,8 @@ export function RequestScheduleFields({
   initial = null,
   className,
   onToggle,
+  generator,
+  roundInfo,
 }: {
   prefix: string;
   /** Quantidade total da linha (texto do campo). */
@@ -76,6 +78,13 @@ export function RequestScheduleFields({
   className?: string;
   /** Avisa quando a programação liga ou desliga. */
   onToggle?: (on: boolean) => void;
+  /**
+   * Gerador de rodadas (programação de compra): recebe `apply`, que liga a
+   * programação com as peças de cada rodada já preenchidas.
+   */
+  generator?: (apply: (quantities: number[]) => void) => ReactNode;
+  /** Linha extra de cada rodada (caixas, CBM, ocupação do container). */
+  roundInfo?: (quantity: number) => ReactNode;
 }) {
   const known = (SCHEDULE_INTERVALS as readonly number[]).includes(
     initial?.intervalDays ?? -1,
@@ -105,6 +114,16 @@ export function RequestScheduleFields({
     setOn(true);
     onToggle?.(true);
     onTotalChange(String(parts.reduce((a, b) => a + b, 0)));
+  }
+  function apply(list: number[]) {
+    const clean = list.slice(0, max).map((q) => Math.max(0, Math.round(q)));
+    if (!clean.length) return;
+    setQtys(clean.map(String));
+    if (!on) {
+      setOn(true);
+      onToggle?.(true);
+    }
+    onTotalChange(String(clean.reduce((a, b) => a + b, 0)));
   }
   function disable() {
     setOn(false);
@@ -151,6 +170,9 @@ export function RequestScheduleFields({
           <span aria-hidden>+</span>
           {labels.toggle}
         </button>
+        {generator ? (
+          <div className="basis-full">{generator(apply)}</div>
+        ) : null}
       </div>
     );
 
@@ -181,6 +203,7 @@ export function RequestScheduleFields({
         value={firstDate}
       />
       <p className="text-xs leading-relaxed text-zinc-600">{labels.hint}</p>
+      {generator ? generator(apply) : null}
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
           <span className="block text-xs font-medium text-zinc-700">
@@ -288,6 +311,9 @@ export function RequestScheduleFields({
                     : "—"}
                 </span>
               </p>
+              {roundInfo
+                ? roundInfo(Number(String(q).replace(",", ".")) || 0)
+                : null}
             </div>
           ))}
           {qtys.length < max ? (

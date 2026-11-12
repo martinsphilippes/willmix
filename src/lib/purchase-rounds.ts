@@ -113,3 +113,130 @@ export function mapLaneKey(
   const child = childItems.find((i) => i.productId === parent.productId);
   return child ? `${key.slice(0, at)}__${child.id}` : null;
 }
+
+/*
+ * "Gerar programação" na Seleção: a Wellmix digita o total de peças e a conta
+ * monta as rodadas pela cubagem do item escolhido e pelo container. Caixas
+ * master são inteiras; cada rodada leva containers cheios (N por rodada) e a
+ * última fica com o resto. Mais de 12 rodadas: sobe os containers por rodada
+ * até caber. Tudo continua editável depois.
+ */
+
+export interface RoundsPlanInput {
+  /** Peças desejadas no total. */
+  total: number;
+  masterCartonQty: number | null | undefined;
+  cbmPerCarton: number | null | undefined;
+  containerCbm: number | null | undefined;
+  /** Containers em cada rodada (padrão 1). */
+  containersPerRound?: number;
+  maxRounds?: number;
+}
+
+export interface PlannedRound {
+  pieces: number;
+  cartons: number;
+  cbm: number;
+  /** Containers que a rodada ocupa (ex.: 1, 0,62). */
+  containers: number;
+}
+
+export interface RoundsPlan {
+  rounds: PlannedRound[];
+  /** Peças somadas (total arredondado para caixas inteiras). */
+  pieces: number;
+  /** Peças a mais pelo arredondamento para caixas inteiras. */
+  extraPieces: number;
+  cartons: number;
+  cbm: number;
+  cartonsPerContainer: number;
+  piecesPerContainer: number;
+  containersPerRound: number;
+  /** Os containers por rodada subiram para caber em `maxRounds` rodadas. */
+  raised: boolean;
+  /** Ocupação da última rodada (0–100) frente aos containers dela. */
+  lastFillPct: number;
+  /** Peças para fechar a última rodada (null quando já fecha). */
+  fillUp: number | null;
+  /** Peças a tirar para ficar só com rodadas cheias (null sem rodada parcial ou com uma só). */
+  trimDown: number | null;
+}
+
+export type RoundsPlanError = "total" | "carton" | "too_big";
+
+const pos = (n: number | null | undefined): n is number =>
+  typeof n === "number" && Number.isFinite(n) && n > 0;
+const r4 = (n: number) => Math.round(n * 10_000) / 10_000;
+
+/** Caixas master inteiras que cabem num container (0 = a caixa não cabe). */
+export function cartonsPerContainer(
+  cbmPerCarton: number,
+  containerCbm: number,
+): number {
+  return Math.floor(containerCbm / cbmPerCarton + 1e-9);
+}
+
+export function planPurchaseRounds(
+  input: RoundsPlanInput,
+): { plan: RoundsPlan } | { error: RoundsPlanError } {
+  const max = Math.max(1, Math.floor(input.maxRounds ?? MAX_PURCHASE_ROUNDS));
+  const { masterCartonQty: perCarton, cbmPerCarton, containerCbm } = input;
+  if (!pos(input.total) || input.total > 100_000_000) return { error: "total" };
+  if (!pos(perCarton) || !pos(cbmPerCarton) || !pos(containerCbm))
+    return { error: "carton" };
+  const perContainer = cartonsPerContainer(cbmPerCarton, containerCbm);
+  if (perContainer < 1) return { error: "too_big" };
+  const cartons = Math.ceil(input.total / perCarton - 1e-9);
+  const asked = Math.max(1, Math.floor(input.containersPerRound ?? 1) || 1);
+  let perRoundContainers = asked;
+  while (Math.ceil(cartons / (perContainer * perRoundContainers)) > max)
+    perRoundContainers++;
+  const perRound = perContainer * perRoundContainers;
+  const count = Math.ceil(cartons / perRound);
+  const rounds: PlannedRound[] = Array.from({ length: count }, (_, i) => {
+    const c = i < count - 1 ? perRound : cartons - perRound * (count - 1);
+    return {
+      pieces: c * perCarton,
+      cartons: c,
+      cbm: r4(c * cbmPerCarton),
+      containers: r4(c / perContainer),
+    };
+  });
+  const last = rounds[rounds.length - 1];
+  const lastFull = last.cartons === perRound;
+  return {
+    plan: {
+      rounds,
+      pieces: cartons * perCarton,
+      extraPieces: cartons * perCarton - Math.round(input.total),
+      cartons,
+      cbm: r4(cartons * cbmPerCarton),
+      cartonsPerContainer: perContainer,
+      piecesPerContainer: perContainer * perCarton,
+      containersPerRound: perRoundContainers,
+      raised: perRoundContainers > asked,
+      lastFillPct: Math.round((last.cartons / perRound) * 100),
+      fillUp: lastFull ? null : (perRound - last.cartons) * perCarton,
+      trimDown: lastFull || count < 2 ? null : last.pieces,
+    },
+  };
+}
+
+/** Caixas, CBM e ocupação de uma rodada com N peças (para mostrar ao editar). */
+export function roundLoad(
+  pieces: number,
+  masterCartonQty: number | null | undefined,
+  cbmPerCarton: number | null | undefined,
+  containerCbm: number | null | undefined,
+): { cartons: number; cbm: number; containers: number | null } | null {
+  if (!pos(pieces) || !pos(masterCartonQty) || !pos(cbmPerCarton)) return null;
+  const cartons = Math.ceil(pieces / masterCartonQty - 1e-9);
+  const perContainer = pos(containerCbm)
+    ? cartonsPerContainer(cbmPerCarton, containerCbm)
+    : 0;
+  return {
+    cartons,
+    cbm: r4(cartons * cbmPerCarton),
+    containers: perContainer >= 1 ? r4(cartons / perContainer) : null,
+  };
+}
