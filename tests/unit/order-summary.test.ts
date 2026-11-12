@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
@@ -18,6 +18,13 @@ const { loadTowerBoard } = await import("@/lib/services/tower-board");
 const { loadControlTower, loadTowerTotals } =
   await import("@/lib/services/control-tower");
 const summary = await import("@/lib/services/order-summary");
+const { loadFinance } = await import("@/lib/services/finance");
+const { listPayables } = await import("@/lib/services/supplier-terms");
+const { loadCashflow } = await import("@/lib/services/cashflow");
+const { loadOwnerPanel } = await import("@/lib/services/owner-panel");
+const { pipelineFor } = await import("@/lib/services/pipeline");
+const { customerAccounts, customerDetail } =
+  await import("@/lib/services/customer-accounts");
 const { pendingSummaryChanges } = await import("@/lib/db/summary-dirty");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
@@ -54,7 +61,52 @@ async function tower() {
     loadControlTower(),
     loadTowerTotals(),
   ]);
-  return { withMoney, withoutMoney, data, totals };
+  // As outras telas que leem o resumo (etapa 1 e 2 de docs/RESUMOS.md).
+  const supplier = (await getStore().list("users")).find(
+    (u) => u.email === "supplier.a@china.com",
+  )!;
+  const [
+    finance,
+    financeEstimate,
+    payables,
+    supplierPayables,
+    cashflow,
+    owner,
+    pipeline,
+    supplierPipeline,
+    customers,
+    suppliers,
+    joaoDetail,
+  ] = await Promise.all([
+    loadFinance({ estimate: false }),
+    loadFinance(),
+    listPayables(),
+    listPayables({ supplierId: "fornecedor-a" }),
+    loadCashflow(12, NOW),
+    loadOwnerPanel(NOW),
+    pipelineFor(admin),
+    pipelineFor(supplier),
+    customerAccounts({ status: "all" }),
+    customerAccounts({ status: "all" }, "supplier"),
+    customerDetail("cliente-joao"),
+  ]);
+  return {
+    withMoney,
+    withoutMoney,
+    data,
+    totals,
+    finance,
+    financeEstimate,
+    payables,
+    supplierPayables,
+    cashflow,
+    owner,
+    pipeline,
+    supplierPipeline,
+    customers,
+    suppliers,
+    joaoDetail,
+  };
 }
 
 /** A mesma tela pelo caminho antigo (sem o marcador da reconstrução). */
@@ -233,6 +285,39 @@ describe("resumo por pedido", () => {
     expect(counts.ordClosedMonth).toBeGreaterThan(0);
     expect(counts.ordCancelledMonth).toBeGreaterThan(0);
     expect(after.totals.sold).toBeGreaterThan(0);
+  });
+
+  it("com o resumo, as telas não leem pagamentos, etapas e requisitos por pedido", async () => {
+    const store = getStore();
+    const calls: Array<[string, Record<string, unknown> | undefined]> = [];
+    const original = store.list.bind(store);
+    const spy = vi.spyOn(store, "list").mockImplementation(((
+      table: string,
+      options?: { filter?: object },
+    ) => {
+      calls.push([table, options?.filter as Record<string, unknown>]);
+      return original(table as never, options as never);
+    }) as typeof store.list);
+    try {
+      const shown = await tower();
+      expect(shown.finance.rows.length).toBeGreaterThan(0);
+      expect(shown.pipeline.length).toBeGreaterThan(0);
+      expect(shown.payables.length).toBeGreaterThan(0);
+    } finally {
+      spy.mockRestore();
+    }
+    const read = (
+      table: string,
+      test: (f?: Record<string, unknown>) => boolean,
+    ) => calls.filter(([t, f]) => t === table && test(f));
+    expect(read("order_summaries", () => true).length).toBeGreaterThan(0);
+    // Nada por pedido nem a tabela inteira de pagamentos, etapas e requisitos.
+    expect(read("payments", (f) => !f || "orderId" in f)).toEqual([]);
+    expect(read("stages", (f) => !f || "orderId" in f || "key" in f)).toEqual(
+      [],
+    );
+    expect(read("requirements", (f) => !f || "orderId" in f)).toEqual([]);
+    expect(read("import_steps", () => true)).toEqual([]);
   });
 
   it("reconstruir de novo sem mudança não grava nada", async () => {

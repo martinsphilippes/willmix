@@ -7,7 +7,7 @@ import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import { partnerTypeName, partyTypeValue } from "@/lib/partner-types";
-import { isOtherPartyType } from "@/lib/party-types";
+import { OTHER_PARTY_TYPES, isOtherPartyType } from "@/lib/party-types";
 import { getPartnerTypeCatalog } from "@/lib/services/partner-types";
 import { savePartnerTypeAction } from "../../actions/partner-types";
 import {
@@ -39,7 +39,11 @@ export default async function PartnerTypesPage({
   const admin = isAdmin(user);
   const [catalog, parties] = await Promise.all([
     getPartnerTypeCatalog(),
-    getStore().list("parties"),
+    // Só os tipos contados aqui (antes: os ~32 mil parceiros, clientes e
+    // fornecedores do Sankhya inclusive).
+    getStore().list("parties", {
+      filter: { type: [...OTHER_PARTY_TYPES, "partner"] },
+    }),
   ]);
   const count = new Map<string, number>();
   for (const p of parties)

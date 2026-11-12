@@ -59,7 +59,7 @@ import type { BoardOrder, BoardStage } from "./tower-board";
  */
 
 /** Formato de `facts`; mudar o formato = subir o número (as telas voltam ao caminho antigo até a reconstrução). */
-export const SUMMARY_VERSION = 1;
+export const SUMMARY_VERSION = 2;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -91,7 +91,7 @@ export interface OrderFacts {
   /** Nome do primeiro item do pedido (nulo: sem itens). */
   product: string | null;
   /** Etapas em andamento ou bloqueadas, na ordem do banco. */
-  active: Array<Omit<BoardStage, "orderId">>;
+  active: Array<Omit<BoardStage, "orderId"> & Pick<Stage, "percent">>;
   /** Itens das etapas que dividem os quadros de posição (journey.ts). */
   reqs: FactRequirement[];
   /** Todos os itens do pedido de compra (raias e contrato); nulo no importado. */
@@ -105,7 +105,23 @@ export interface OrderFacts {
   money: FactMoney;
   /** Parcelas ao fornecedor (situação e vencimento). */
   installments: Array<{ status: InstallmentStatus; dueDate: string | null }>;
+  /** Pagamentos do pedido (sem os códigos do Sankhya): financeiro, cronograma, conta do cliente. */
+  pays: FactPayment[];
+  /** Etapas de embarque e entrega (marcos do cronograma de pagamento e da entrega). */
+  ship: FactStage[];
+  /** Itens das etapas do cronograma de pagamento (data de embarque, pagamento antigo). */
+  sreqs: FactScheduleRequirement[];
 }
+
+export type FactPayment = Omit<Payment, "sankhyaRefs">;
+export type FactStage = Pick<
+  Stage,
+  "id" | "key" | "status" | "startedAt" | "completedAt" | "dueAt"
+>;
+export type FactScheduleRequirement = Pick<
+  Requirement,
+  "id" | "stageId" | "key" | "status" | "value" | "submittedAt" | "updatedAt"
+>;
 
 const BOARD_KEYS: readonly string[] = JOURNEY_REQUIREMENT_KEYS;
 const SCHEDULE_KEYS: readonly string[] = SCHEDULE_REQUIREMENT_KEYS;
@@ -303,6 +319,7 @@ export function buildOrderFacts(
         status: s.status,
         dueAt: s.dueAt ?? null,
         responsibleRole: s.responsibleRole,
+        percent: s.percent,
       })),
     reqs: reqs
       .filter((r) => BOARD_KEYS.includes(r.key))
@@ -342,7 +359,36 @@ export function buildOrderFacts(
       status: i.status,
       dueDate: i.dueDate,
     })),
+    pays: payments.map(withoutRefs),
+    ship: stages
+      .filter((x) => x.key === "SHIPPING" || x.key === "DELIVERED")
+      .map((x) => ({
+        id: x.id,
+        key: x.key,
+        status: x.status,
+        startedAt: x.startedAt ?? null,
+        completedAt: x.completedAt ?? null,
+        dueAt: x.dueAt ?? null,
+      })),
+    sreqs: reqs
+      .filter((r) => SCHEDULE_KEYS.includes(r.key))
+      .map((r) => ({
+        id: r.id,
+        stageId: r.stageId,
+        key: r.key,
+        status: r.status,
+        value: r.value ?? null,
+        submittedAt: r.submittedAt ?? null,
+        updatedAt: r.updatedAt,
+      })),
   };
+}
+
+/** Pagamento sem os códigos do Sankhya (não entram em conta nenhuma). */
+function withoutRefs(p: Payment): FactPayment {
+  const copy: Partial<Payment> = { ...p };
+  delete copy.sankhyaRefs;
+  return copy as FactPayment;
 }
 
 const live = (status: string) => status !== "CLOSED" && status !== "CANCELLED";
@@ -516,17 +562,28 @@ export interface SummaryView {
  * não podem ser usados (sem reconstrução completa, ou de outro formato).
  * Antes, recalcula o que gravações desta instância marcaram.
  */
-export async function readOrderSummaries(): Promise<SummaryView | null> {
+export async function readOrderSummaries(
+  /** Só os resumos destes pedidos (lista curta); sem ela, todos. */
+  ids?: string[],
+): Promise<SummaryView | null> {
   const marker = await readMarker().catch(() => null);
   if (!marker || marker.version !== SUMMARY_VERSION) return null;
   const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
   await flushSummaryChanges();
   let rows: OrderSummary[];
   try {
-    rows = await getStore().list("order_summaries", {
-      orderBy: "number",
-      direction: "desc",
-    });
+    rows = ids
+      ? ids.length
+        ? await getStore().list("order_summaries", {
+            filter: { id: ids },
+            orderBy: "number",
+            direction: "desc",
+          })
+        : []
+      : await getStore().list("order_summaries", {
+          orderBy: "number",
+          direction: "desc",
+        });
   } catch (error) {
     if (isSchemaMissing(error)) return null;
     throw error;
@@ -534,6 +591,78 @@ export async function readOrderSummaries(): Promise<SummaryView | null> {
   if (rows.some((r) => r.version !== SUMMARY_VERSION)) return null;
   return { facts: rows.map((r) => r.facts as OrderFacts) };
 }
+
+/** Acima disto, lê todos os resumos de uma vez em vez de pedir pelos ids. */
+const BY_ID_LIMIT = 300;
+
+/**
+ * Resumo de cada pedido dado, pelo id do pedido; nulo quando os resumos não
+ * estão em uso (as telas seguem pelo caminho antigo). Pedido sem resumo
+ * ainda (gravado agora em outra instância) é calculado na hora.
+ */
+export async function factsForOrders(
+  orders: Array<Pick<Order, "id">>,
+): Promise<Map<string, OrderFacts> | null> {
+  const ids = [...new Set(orders.map((o) => o.id))];
+  const view = await readOrderSummaries(
+    ids.length <= BY_ID_LIMIT ? ids : undefined,
+  );
+  if (!view) return null;
+  const map = new Map(view.facts.map((f) => [f.order.id, f]));
+  const missing = ids.filter((id) => !map.has(id));
+  if (missing.length) {
+    await recomputeOrderSummaries(missing);
+    for (const row of await getStore().list("order_summaries", {
+      filter: { id: missing },
+    }))
+      map.set(row.id, row.facts as OrderFacts);
+  }
+  return map;
+}
+
+/**
+ * Etapas e itens de etapa dos quadros e da viagem (journey.ts), montados do
+ * resumo: a etapa de cada item vai num id sintético (pedido + chave).
+ */
+export function journeyRowsFromFacts(facts: OrderFacts[]) {
+  const stages: Array<Pick<Stage, "id" | "orderId" | "key">> = [];
+  const requirements: Array<
+    Pick<Requirement, "orderId" | "stageId" | "key" | "status" | "value">
+  > = [];
+  const laneRequirements: Array<
+    Pick<Requirement, "orderId" | "stageId" | "key" | "status">
+  > = [];
+  for (const f of facts) {
+    const orderId = f.order.id;
+    const keys = new Set<StageKey>();
+    for (const r of f.reqs) {
+      if (r.s) keys.add(r.s);
+      requirements.push({
+        orderId,
+        stageId: factStageId(orderId, r.s),
+        key: r.k,
+        status: r.st,
+        value: r.v,
+      });
+    }
+    for (const r of f.lane ?? []) {
+      if (r.s) keys.add(r.s);
+      laneRequirements.push({
+        orderId,
+        stageId: factStageId(orderId, r.s),
+        key: r.k,
+        status: r.st,
+      });
+    }
+    for (const key of keys)
+      stages.push({ id: factStageId(orderId, key), orderId, key });
+  }
+  return { stages, requirements, laneRequirements };
+}
+
+/** Etapas em andamento ou bloqueadas de todos os pedidos dados. */
+export const activeStagesFromFacts = (facts: OrderFacts[]) =>
+  facts.flatMap((f) => f.active.map((s) => ({ ...s, orderId: f.order.id })));
 
 /** Situação da parcela no dia (vencida, a vencer, agendada mudam com o tempo). */
 export function installmentStatusOn(
