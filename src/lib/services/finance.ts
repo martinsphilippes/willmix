@@ -1,4 +1,5 @@
 import "server-only";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 
 import { getStore, type Order, type Payment } from "@/lib/db";
 import { fxKey, rateFor, type FxRates } from "@/lib/pricing";
@@ -442,12 +443,28 @@ export async function loadFinance(
   summary: FinanceSummary;
 }> {
   const store = getStore();
-  const [orders, payments, parties, items] = await Promise.all([
+  const [orders, payments, items] = await Promise.all([
     store.list("orders", { orderBy: "number", direction: "desc" }),
     store.list("payments"),
-    store.list("parties"),
     store.list("order_items"),
   ]);
+  // Só os parceiros dos pedidos (antes: a tabela inteira, ~32 mil).
+  const parties = indexBy(
+    await listByIds(
+      store,
+      "parties",
+      orders.flatMap((o) => [o.customerId, o.supplierId]),
+    ),
+    "id",
+  );
+  const itemByOrder = indexBy(items, "orderId");
+  const paymentsByOrder = new Map<string, typeof payments>();
+  for (const p of payments) {
+    if (!p.orderId) continue;
+    const list = paymentsByOrder.get(p.orderId);
+    if (list) list.push(p);
+    else paymentsByOrder.set(p.orderId, [p]);
+  }
   const estimate = options.estimate !== false;
   const [today, sales] = estimate
     ? await Promise.all([
@@ -455,16 +472,15 @@ export async function loadFinance(
         saleRecords(orders.map((o) => o.requestId)),
       ])
     : [null, new Map<string, PricingRecord>()];
-  const name = (id: string | null) =>
-    parties.find((p) => p.id === id)?.name ?? "—";
+  const name = (id: string | null) => (id && parties.get(id)?.name) || "—";
   const rows = orders.map((o) =>
     computeOrderFinance(
       o,
-      payments.filter((p) => p.orderId === o.id),
+      paymentsByOrder.get(o.id) ?? [],
       {
         customer: name(o.customerId),
         supplier: name(o.supplierId),
-        product: items.find((i) => i.orderId === o.id)?.name ?? "—",
+        product: itemByOrder.get(o.id)?.name ?? "—",
       },
       {
         today,

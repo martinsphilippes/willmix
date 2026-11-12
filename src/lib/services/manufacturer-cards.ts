@@ -1,4 +1,5 @@
 import "server-only";
+import { listByIds } from "@/lib/db/lookup";
 
 import { z } from "zod";
 import { getStore, type ManufacturerCard, type User } from "@/lib/db";
@@ -90,7 +91,13 @@ export async function productCards(
   });
   if (!cards.length) return [];
   const parties = new Map(
-    (await store.list("parties", {})).map((p) => [p.id, p.name]),
+    (
+      await listByIds(
+        store,
+        "parties",
+        cards.map((c) => c.supplierId),
+      )
+    ).map((p) => [p.id, p.name]),
   );
   return cards.map((card) => ({
     card,

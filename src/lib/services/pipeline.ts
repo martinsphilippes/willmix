@@ -1,4 +1,5 @@
 import "server-only";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -89,15 +90,28 @@ const STATE_ORDER: Record<PipelineState, number> = {
 export async function pipelineFor(user: User): Promise<PipelineRow[]> {
   const store = getStore();
   const wellmix = isWellmix(user);
-  const [orders, parties, stages, items, requests] = await Promise.all([
+  const [orders, stages, items, requests] = await Promise.all([
     store.list("orders", { orderBy: "number", direction: "desc" }),
-    store.list("parties"),
     store.list("stages", { filter: { status: ["active", "blocked"] } }),
     store.list("order_items"),
     wellmix ? store.list("requests") : Promise.resolve([]),
   ]);
+  // Só os parceiros que aparecem (antes: a tabela inteira, ~32 mil).
+  const parties = indexBy(
+    await listByIds(store, "parties", [
+      ...orders.flatMap((o) => [o.customerId, o.supplierId]),
+      ...requests.map((r) => r.customerId),
+    ]),
+    "id",
+  );
+  const itemsByOrder = new Map<string, typeof items>();
+  for (const i of items) {
+    const list = itemsByOrder.get(i.orderId);
+    if (list) list.push(i);
+    else itemsByOrder.set(i.orderId, [i]);
+  }
   const name = (id: string | null | undefined) =>
-    (id && parties.find((p) => p.id === id)?.name) || null;
+    (id && parties.get(id)?.name) || null;
   // Solicitação de cada pedido (lote e número). A Wellmix já carregou todas;
   // os demais, só as dos pedidos que veem (só groupId e número são usados).
   const visibleOrders = orders.filter((o) => canViewOrder(user, o));
@@ -164,21 +178,19 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
           ? `/app/orders/${o.id}/purchase-order`
           : `/app/orders/${o.id}`,
       number: o.number,
-      product: items.find((i) => i.orderId === o.id)?.name ?? "—",
-      items: items
-        .filter((i) => i.orderId === o.id)
-        .map((i) => ({
-          id: i.id,
-          name: i.name,
-          variant: i.variant?.name ?? null,
-          quantity: i.quantity,
-          unit: i.unit,
-          unitPrice: wellmix ? i.unitPrice : null,
-          currency: wellmix ? o.fobCurrency : null,
-          productId: wellmix ? i.productId : null,
-          variantData: wellmix ? (i.variant ?? null) : null,
-          specification: wellmix ? (request?.specification ?? null) : null,
-        })),
+      product: itemsByOrder.get(o.id)?.[0]?.name ?? "—",
+      items: (itemsByOrder.get(o.id) ?? []).map((i) => ({
+        id: i.id,
+        name: i.name,
+        variant: i.variant?.name ?? null,
+        quantity: i.quantity,
+        unit: i.unit,
+        unitPrice: wellmix ? i.unitPrice : null,
+        currency: wellmix ? o.fobCurrency : null,
+        productId: wellmix ? i.productId : null,
+        variantData: wellmix ? (i.variant ?? null) : null,
+        specification: wellmix ? (request?.specification ?? null) : null,
+      })),
       ...group(request, `order:${o.id}`),
       requestNumber: request?.number ?? null,
       customer: wellmix ? name(o.customerId) : null,

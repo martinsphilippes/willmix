@@ -1,4 +1,5 @@
 import "server-only";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 
 import { getStore, type Product } from "@/lib/db";
 import {
@@ -67,11 +68,10 @@ export async function loadProductCycle(
   const store = getStore();
   const product = await store.get("products", productId);
   if (!product) return null;
-  const [items, requests, parties, afterSales, kits, schedules, sourcing] =
+  const [items, requests, afterSales, kits, schedules, sourcing] =
     await Promise.all([
       store.list("order_items", { filter: { productId } }),
       store.list("requests", { filter: { productId } }),
-      store.list("parties"),
       store.list("after_sales"),
       store.list("marketing_kits", { filter: { productId } }),
       store.list("purchase_schedules", { filter: { productId } }),
@@ -79,14 +79,24 @@ export async function loadProductCycle(
         ? store.get("sourcing_items", product.sourcingItemId)
         : Promise.resolve(null),
     ]);
-  const nameOf = (id: string | null) =>
-    id ? (parties.find((p) => p.id === id)?.name ?? "—") : null;
   const visit = sourcing?.visitId
     ? await store.get("supplier_visits", sourcing.visitId)
     : null;
   const orders = (
     await Promise.all(items.map((i) => store.get("orders", i.orderId)))
   ).filter((o): o is NonNullable<typeof o> => !!o);
+  // Só os parceiros que aparecem (antes: a tabela inteira, ~32 mil).
+  const parties = indexBy(
+    await listByIds(store, "parties", [
+      ...orders.map((o) => o.customerId),
+      ...requests.map((r) => r.customerId),
+      ...kits.map((k) => k.customerId),
+      sourcing?.supplierId,
+    ]),
+    "id",
+  );
+  const nameOf = (id: string | null) =>
+    id ? (parties.get(id)?.name ?? "—") : null;
   const orderRows = orders
     .map((o) => {
       const item = items.find((i) => i.orderId === o.id);

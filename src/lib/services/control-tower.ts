@@ -1,4 +1,5 @@
 import "server-only";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 
 import {
   getStore,
@@ -78,7 +79,6 @@ export async function loadControlTower(): Promise<TowerData> {
   const rejectedP = store.list("requirements", {
     filter: { status: "rejected" },
   });
-  const productsP = store.list("products");
   const expiringP = import("./compliance").then((m) =>
     m.expiringCertifications(),
   );
@@ -88,33 +88,39 @@ export async function loadControlTower(): Promise<TowerData> {
     direction: "desc",
   });
   // Evita rejeição sem tratamento se algo falhar antes de chegar ao await.
-  for (const p of [rejectedP, productsP, expiringP, reviewsP])
-    p.catch(() => undefined);
+  for (const p of [rejectedP, expiringP, reviewsP]) p.catch(() => undefined);
   const now = Date.now();
-  const [orders, parties, stages, requests, penalties, items] =
-    await Promise.all([
-      store.list("orders", { orderBy: "number", direction: "desc" }),
-      store.list("parties"),
-      store.list("stages", { filter: { status: ["active", "blocked"] } }),
-      store.list("requests", {
-        filter: {
-          status: [
-            "REQUESTED",
-            "RFQ_OPEN",
-            "QUOTATION_RECEIVED",
-            "SUPPLIER_SELECTED",
-            "WAITING_DOWN_PAYMENT",
-          ],
-        },
-      }),
-      store.list("penalties", { filter: { status: ["open", "disputed"] } }),
-      store.list("order_items"),
-    ]);
-  const partyName = (id: string | null) =>
-    parties.find((p) => p.id === id)?.name ?? "—";
-  const productOf = (order: Order) =>
-    items.find((i) => i.orderId === order.id)?.name ?? "—";
-  const stageOf = (order: Order) => stages.find((s) => s.orderId === order.id);
+  const [orders, stages, requests, penalties, items] = await Promise.all([
+    store.list("orders", { orderBy: "number", direction: "desc" }),
+    store.list("stages", { filter: { status: ["active", "blocked"] } }),
+    store.list("requests", {
+      filter: {
+        status: [
+          "REQUESTED",
+          "RFQ_OPEN",
+          "QUOTATION_RECEIVED",
+          "SUPPLIER_SELECTED",
+          "WAITING_DOWN_PAYMENT",
+        ],
+      },
+    }),
+    store.list("penalties", { filter: { status: ["open", "disputed"] } }),
+    store.list("order_items"),
+  ]);
+  // Só os parceiros que aparecem na tela (antes: a tabela inteira, ~32 mil).
+  const parties = indexBy(
+    await listByIds(store, "parties", [
+      ...orders.map((o) => o.customerId),
+      ...requests.map((r) => r.customerId),
+    ]),
+    "id",
+  );
+  const itemByOrder = indexBy(items, "orderId");
+  const stageByOrder = indexBy(stages, "orderId");
+  const orderById = indexBy(orders, "id");
+  const partyName = (id: string | null) => (id && parties.get(id)?.name) || "—";
+  const productOf = (order: Order) => itemByOrder.get(order.id)?.name ?? "—";
+  const stageOf = (order: Order) => stageByOrder.get(order.id);
 
   const rows: TowerRow[] = orders
     .filter(
@@ -192,7 +198,7 @@ export async function loadControlTower(): Promise<TowerData> {
   }
   const rejected = await rejectedP;
   for (const req of rejected) {
-    const order = orders.find((o) => o.id === req.orderId);
+    const order = req.orderId ? orderById.get(req.orderId) : undefined;
     if (order && order.status !== "CLOSED" && order.status !== "CANCELLED") {
       exceptions.push({
         kind: "document",
@@ -227,7 +233,7 @@ export async function loadControlTower(): Promise<TowerData> {
     }
   }
   for (const p of penalties) {
-    const order = orders.find((o) => o.id === p.orderId);
+    const order = orderById.get(p.orderId);
     exceptions.push({
       kind: "penalty",
       severity: "medium",
@@ -236,12 +242,18 @@ export async function loadControlTower(): Promise<TowerData> {
     });
   }
   // Certificações válidas a vencer no prazo de aviso.
-  const products = await productsP;
-  for (const cert of await expiringP) {
+  const expiring = await expiringP;
+  const products = indexBy(
+    await listByIds(
+      store,
+      "products",
+      expiring.filter((c) => c.entity === "product").map((c) => c.entityId),
+    ),
+    "id",
+  );
+  for (const cert of expiring) {
     const product =
-      cert.entity === "product"
-        ? products.find((p) => p.id === cert.entityId)
-        : null;
+      cert.entity === "product" ? products.get(cert.entityId) : null;
     exceptions.push({
       kind: "compliance",
       severity: "medium",
@@ -255,7 +267,8 @@ export async function loadControlTower(): Promise<TowerData> {
   // Item de pedido cancelado não é pendência (os de antes da regra ficaram abertos).
   const reviews = await reviewsP;
   for (const r of reviews) {
-    const order = orders.find((o) => o.id === reviewOrderId(r));
+    const reviewOrder = reviewOrderId(r);
+    const order = reviewOrder ? orderById.get(reviewOrder) : undefined;
     if (order?.status === "CANCELLED") continue;
     exceptions.push({
       kind: "review",

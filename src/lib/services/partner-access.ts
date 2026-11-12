@@ -1,4 +1,5 @@
 import "server-only";
+import { listByIds } from "@/lib/db/lookup";
 import { cache } from "react";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
 import { getStore, type Party, type User } from "@/lib/db";
@@ -114,12 +115,17 @@ export interface AccessProfileInfo {
 /** Todos os perfis administráveis: os papéis externos e os tipos com login. */
 export async function listAccessProfiles(): Promise<AccessProfileInfo[]> {
   const store = getStore();
-  const [config, rows, users, parties] = await Promise.all([
+  const [config, rows, users] = await Promise.all([
     loadPartnerAccess(),
     listPartnerTypeRows(),
     store.list("users"),
-    store.list("parties"),
   ]);
+  // Só as empresas dos logins (antes: a tabela inteira, ~32 mil).
+  const parties = await listByIds(
+    store,
+    "parties",
+    users.map((u) => u.partyId),
+  );
   const catalog = partnerTypeCatalog(rows);
   const typed = catalog.filter((e) => e.profileKey?.startsWith("type:"));
   const partyOf = new Map(parties.map((p) => [p.id, p]));
