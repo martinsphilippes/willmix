@@ -734,7 +734,7 @@ export async function setBookingItemField(
 
 /** Roda o Superplan em todos os itens e grava o retrato em cada um. */
 async function analyzeLot(
-  user: User,
+  user: User | null,
   lot: BookingLot,
   items: BookingItem[],
   businessType: string | null,
@@ -747,7 +747,7 @@ async function analyzeLot(
     const snapshot = snapshots.get(item.id);
     if (!snapshot) continue;
     await store.update("booking_items", item.id, {
-      analysis: { ...snapshot, at, byUserId: user.id },
+      analysis: { ...snapshot, at, byUserId: user?.id ?? "system" },
     });
   }
   return at;
@@ -832,6 +832,76 @@ export async function reanalyzeBookingLot(
     lot.id,
     `Booking nº ${lot.number}: análise refeita`,
   );
+}
+
+/** Status em que o booking tem análise do Superplan (fechado em diante). */
+const ANALYZED_LOT_STATUSES: BookingLotStatus[] = [
+  "closed",
+  "in_progress",
+  "done",
+];
+
+/**
+ * A tabela fiscal (TEC ou TIPI) foi carregada: refaz sozinho a análise dos
+ * bookings fechados, em andamento ou concluídos que têm algum item cujo II
+ * ou IPI pelo NCM mudou (inclusive o que antes não estava na tabela). Os
+ * outros ficam como estão: o robô roda sempre e não deve trocar câmbio e
+ * parâmetros de análises que a tabela não mexeu. Cada booking refeito usa o
+ * próprio tipo de negócio, como "Refazer a análise". `user` nulo = o robô.
+ */
+export async function reanalyzeLotsForFiscalTable(
+  user: User | null,
+): Promise<{ lots: number; items: number }> {
+  const store = getStore();
+  const { lookupNcm } = await import("./fiscal");
+  const { ncmTaxPct } = await import("./superplan-analysis");
+  const lots = await store.list("booking_lots", {
+    filter: { status: ANALYZED_LOT_STATUSES },
+  });
+  const rates = new Map<string, ReturnType<typeof ncmTaxPct>>();
+  const taxOf = async (ncm: string) => {
+    let r = rates.get(ncm);
+    if (!r) rates.set(ncm, (r = ncmTaxPct(await lookupNcm(ncm))));
+    return r;
+  };
+  const pct = (n: number | null) => (n === null ? null : Number(n.toFixed(2)));
+  let done = 0;
+  let itemCount = 0;
+  for (const lot of lots) {
+    const items = await store.list("booking_items", {
+      filter: { lotId: lot.id },
+    });
+    let affected = false;
+    for (const item of items) {
+      const ncm = item.ncm?.trim();
+      const before = item.analysis?.inputs;
+      if (!ncm || !item.analysis) continue;
+      const now = await taxOf(ncm);
+      if (
+        !before ||
+        before.ncmFound !== now.ncmFound ||
+        (now.ncmFound &&
+          (pct(now.iiPct) !== before.iiPct ||
+            pct(now.ipiPct) !== before.ipiPct))
+      ) {
+        affected = true;
+        break;
+      }
+    }
+    if (!affected) continue;
+    const at = await analyzeLot(user, lot, items, lot.businessType);
+    await store.update("booking_lots", lot.id, { analyzedAt: at });
+    await audit(
+      user,
+      "booking_lot.analyze",
+      "booking_lot",
+      lot.id,
+      `Booking nº ${lot.number}: análise refeita (tabela fiscal atualizada)`,
+    );
+    done++;
+    itemCount += items.length;
+  }
+  return { lots: done, items: itemCount };
 }
 
 /** Muda o status à mão (fechar o rascunho é `closeBookingLot`). */
