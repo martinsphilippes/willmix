@@ -36,8 +36,12 @@ export function todayIso(now = new Date()): string {
 }
 
 /** Divide a quantidade em n partes inteiras; o resto vai para as primeiras. */
-export function splitEvenly(total: number, n: number): number[] {
-  const count = Math.max(1, Math.min(MAX_REQUEST_SCHEDULE, Math.floor(n)));
+export function splitEvenly(
+  total: number,
+  n: number,
+  max: number = MAX_REQUEST_SCHEDULE,
+): number[] {
+  const count = Math.max(1, Math.min(max, Math.floor(n)));
   const whole = Math.max(0, Math.floor(total));
   const base = Math.floor(whole / count);
   const rest = whole - base * count;
@@ -72,6 +76,7 @@ export function scheduleTotal(schedule: RequestSchedule): number {
 export function parseRequestSchedule(
   form: FormData,
   prefix: string,
+  max: number = MAX_REQUEST_SCHEDULE,
 ): RequestSchedule | null {
   const get = (k: string) => {
     const v = form.get(`${prefix}schedule.${k}`);
@@ -79,7 +84,7 @@ export function parseRequestSchedule(
   };
   const count = Number(get("count") || 0);
   if (!count) return null;
-  if (!Number.isInteger(count) || count < 1 || count > MAX_REQUEST_SCHEDULE)
+  if (!Number.isInteger(count) || count < 1 || count > max)
     throw new Error("invalid_input");
   const intervalDays = Number(get("intervalDays"));
   if (!Number.isInteger(intervalDays) || intervalDays < 1 || intervalDays > 365)

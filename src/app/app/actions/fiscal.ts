@@ -45,7 +45,8 @@ export async function uploadFiscalTableAction(form: FormData) {
     if (file.size > MAX_FILE) throw new Error("fiscal_file_too_big");
     if (!/\.(xlsx|csv|txt)$/i.test(file.name))
       throw new Error("fiscal_file_type");
-    const { importFiscalFile } = await import("@/lib/services/fiscal");
+    const { importFiscalFile, refreshBookingAnalyses } =
+      await import("@/lib/services/fiscal");
     const r = await importFiscalFile(
       user,
       kind,
@@ -53,7 +54,9 @@ export async function uploadFiscalTableAction(form: FormData) {
       file.name,
       "upload",
     );
-    return `${back}?fiscal=${kind}-${r.count}-${r.changed}#fiscal`;
+    const b = await refreshBookingAnalyses(user);
+    const redone = b?.lots ? `&reanalyzed=${b.lots}-${b.items}` : "";
+    return `${back}?fiscal=${kind}-${r.count}-${r.changed}${redone}#fiscal`;
   });
 }
 
@@ -66,7 +69,10 @@ export async function syncFiscalNowAction() {
     const { syncFiscalTables } = await import("@/lib/services/fiscal");
     const r = await syncFiscalTables(user);
     if (r.results.length === 0) throw new Error("fiscal_no_urls");
-    return `${back}?fiscalSync=${r.lastError ? "partial" : "ok"}#fiscal`;
+    const redone = r.bookings?.lots
+      ? `&reanalyzed=${r.bookings.lots}-${r.bookings.items}`
+      : "";
+    return `${back}?fiscalSync=${r.lastError ? "partial" : "ok"}${redone}#fiscal`;
   });
 }
 

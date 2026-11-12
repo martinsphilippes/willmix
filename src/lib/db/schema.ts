@@ -953,6 +953,29 @@ export interface Order extends BaseRow {
    * depois, mesmo as que o portal não tem como campo.
    */
   sankhyaRefs?: Record<string, string | number> | null;
+  /**
+   * Programação de compra (docs/PURCHASE_SCHEDULE.md). No pedido pai: as
+   * rodadas, cada uma com a data, as peças de cada produto e o pedido filho
+   * que nasceu dela. O pai guarda o total e a negociação; não vai a contrato
+   * nem produção. Nulo nos pedidos sem programação.
+   */
+  purchaseRounds?: PurchaseRound[] | null;
+  /** No pedido filho: o pedido pai e o nº da rodada (1, 2, 3…). */
+  parentOrderId?: string | null;
+  roundIndex?: number | null;
+}
+
+/** Uma rodada da programação de compra no pedido pai. */
+export interface PurchaseRound {
+  /** 1, 2, 3… */
+  index: number;
+  /** AAAA-MM-DD: o dia em que o pedido filho nasce. */
+  expectedAt: string;
+  /** Peças de cada produto nesta rodada. */
+  items: Array<{ productId: string; quantity: number }>;
+  /** Pedido filho desta rodada (nulo até nascer). */
+  orderId: string | null;
+  createdAt: string | null;
 }
 
 export interface OrderItem extends BaseRow {
@@ -2453,6 +2476,11 @@ export interface SupplierRequest extends BaseRow {
    * solicitação só, com vários produtos). Nulo nas antigas.
    */
   batchId?: string | null;
+  /**
+   * Programação de compra pedida na escolha do grupo: rodadas, peças por
+   * rodada e intervalo (docs/PURCHASE_SCHEDULE.md). `quantity` é o total.
+   */
+  schedule?: RequestSchedule | null;
 }
 
 /**
@@ -2473,6 +2501,8 @@ export interface SelectionGroup extends BaseRow {
   requestedAt: string | null;
   createdByUserId: string;
   updatedByUserId: string | null;
+  /** Programação de compra: rodadas com peças e intervalo; `quantity` é o total. */
+  schedule?: RequestSchedule | null;
 }
 
 export interface StockReservation extends BaseRow {
@@ -3082,9 +3112,13 @@ export const TABLES: Record<TableName, TableDef> = {
       flow: enumOf(["supplier_request"], false),
       fxRate: float(),
       sankhyaRefs: json(),
+      purchaseRounds: jsonLarge(),
+      parentOrderId: id(false),
+      roundIndex: int(),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
+      { key: "by_parent", type: "key", columns: ["parentOrderId"] },
       { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
       { key: "by_owner", type: "key", columns: ["ownerUserId"] },
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -4298,6 +4332,7 @@ export const TABLES: Record<TableName, TableDef> = {
       slaNotifiedAt: datetime(),
       orderId: id(false),
       batchId: id(false),
+      schedule: json(),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
@@ -4319,6 +4354,7 @@ export const TABLES: Record<TableName, TableDef> = {
       requestedAt: datetime(),
       createdByUserId: id(),
       updatedByUserId: id(false),
+      schedule: json(),
     },
     indexes: [
       { key: "by_status", type: "key", columns: ["status"] },

@@ -41,6 +41,8 @@ export const pt = {
   "fiscal.table.synced.ok": "Tabela fiscal atualizada pelos links oficiais.",
   "fiscal.table.synced.partial":
     "Atualização incompleta: veja o motivo na tabela fiscal.",
+  "fiscal.table.reanalyzed":
+    "Análise do Superplan refeita em {lots} booking(s) ({items} itens): o II ou o IPI de algum NCM mudou.",
   "settings.error.tax_invalid":
     "Alíquota inválida: use um número de 0 a 99,99.",
   "settings.error.fiscal_url_invalid":
@@ -174,6 +176,8 @@ export const en: Record<keyof typeof pt, string> = {
   "fiscal.table.synced.ok": "Tax table updated from the official links.",
   "fiscal.table.synced.partial":
     "Incomplete update: see the reason in the tax table.",
+  "fiscal.table.reanalyzed":
+    "Superplan analysis redone in {lots} booking(s) ({items} items): the II or IPI of some NCM changed.",
   "settings.error.tax_invalid": "Invalid rate: use a number from 0 to 99.99.",
   "settings.error.fiscal_url_invalid":
     "Invalid link: use the full address starting with https://.",
@@ -303,6 +307,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "{kind}：已加载 {count} 个 NCM，{changed} 个税率有变化。",
   "fiscal.table.synced.ok": "税率表已通过官方链接更新。",
   "fiscal.table.synced.partial": "更新不完整：请在税率表中查看原因。",
+  "fiscal.table.reanalyzed":
+    "已在 {lots} 个 booking（{items} 个条目）中重新进行 Superplan 分析：部分 NCM 的 II 或 IPI 有变化。",
   "settings.error.tax_invalid": "税率无效：请输入 0 到 99.99 之间的数字。",
   "settings.error.fiscal_url_invalid":
     "链接无效：请使用以 https:// 开头的完整地址。",

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import {
-  bestMinimumItem,
+  bestCostItem,
   priceInUsd,
   sheetQuantity,
   similarQuery,
@@ -46,9 +46,9 @@ import {
   formatDate,
   formatMoney,
   linkClass,
-  type Tone,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { SelectionQuantity } from "@/components/selection-quantity";
 import {
   openGroupRequestsAction,
   saveSelectionGroupAction,
@@ -58,6 +58,10 @@ import { SupplierNoLoginAlert } from "@/components/supplier-no-login";
 import { canOpen } from "@/lib/auth/screens";
 import { partiesWithoutLogin } from "@/lib/services/portal-access";
 import { TableTools } from "@/components/table-tools";
+import {
+  BookingItemSuperplan,
+  bookingItemCost,
+} from "@/components/booking-item-superplan";
 
 /*
  * Seleção de itens (docs/SUPPLIER_REQUESTS.md): duas abas.
@@ -71,11 +75,6 @@ import { TableTools } from "@/components/table-tools";
  * Nada de produto, cliente ou estoque nasce aqui.
  */
 
-const SIGNAL_TONE: Record<string, Tone> = {
-  viable: "success",
-  below: "warning",
-  loss: "danger",
-};
 const FORM = "selection-form";
 
 export default async function BookingSelectionPage({
@@ -125,7 +124,7 @@ export default async function BookingSelectionPage({
   const groupRows = group?.rows ?? [];
   // A tabela de comparação: na aba Seleção, o grupo; na aba Itens, a lista.
   const rows = tab === "selection" ? groupRows : listRows;
-  const best = bestMinimumItem(rows.map((r) => r.item));
+  const best = bestCostItem(rows.map((r) => r.item));
   const blocks =
     tab === "selection" && result
       ? suggestBlocks(
@@ -261,6 +260,11 @@ export default async function BookingSelectionPage({
    * a solicitação abre só na aba Seleção, com o grupo).
    */
   const comparison = (list: SelectionRow[], basket: boolean) => {
+    const costHint = (
+      <p className="text-xs text-zinc-500" data-selection-cost-hint>
+        {t("supplierRequests.selection.costHint")}
+      </p>
+    );
     const table = (
       <TableTools className="" tableClassName="min-w-0" data-selection-items="">
         <thead>
@@ -290,6 +294,7 @@ export default async function BookingSelectionPage({
               "capacity",
               "material",
               "sheetQty",
+              "costPiece",
               "superplan",
               "situation",
             ].map((k) => (
@@ -302,6 +307,7 @@ export default async function BookingSelectionPage({
         <tbody>
           {list.map(({ item, lot, supplier, activeRequest }) => {
             const a = item.analysis;
+            const cost = bookingItemCost(a);
             const draft = lot.status === "draft";
             const busy = !!activeRequest || draft;
             const priceUsd = priceInUsd(item.price, item.currency, rmbPerUsd);
@@ -482,29 +488,29 @@ export default async function BookingSelectionPage({
                 <td className={cx(td, "tabular-nums")}>
                   {num(sheetQuantity(item), 0)}
                 </td>
-                <td className={td}>
-                  {a ? (
+                <td
+                  className={cx(td, "whitespace-nowrap tabular-nums")}
+                  data-sort={cost ?? ""}
+                  data-selection-cost={item.id}
+                >
+                  {cost !== null ? (
                     <span className="flex flex-col items-start gap-0.5">
-                      <Badge
-                        tone={a.verdict ? SIGNAL_TONE[a.verdict] : "neutral"}
-                      >
-                        {t(
-                          `booking.signal.${a.verdict ?? "missing"}` as DictionaryKey,
-                        )}
-                      </Badge>
-                      {a.minimumBrl !== null ? (
-                        <span className="text-xs whitespace-nowrap text-zinc-600">
-                          {t("bookingLots.item.minimum", {
-                            price: formatMoney(a.minimumBrl, "BRL", t),
-                          })}
-                        </span>
-                      ) : null}
+                      <span className="text-sm font-semibold text-zinc-900">
+                        {formatMoney(cost, "BRL", t)}
+                      </span>
                       {item.id === best ? (
                         <Badge tone="success">
                           {t("supplierRequests.selection.best")}
                         </Badge>
                       ) : null}
                     </span>
+                  ) : (
+                    <span className="text-zinc-400">—</span>
+                  )}
+                </td>
+                <td className={td}>
+                  {a ? (
+                    <BookingItemSuperplan analysis={a} t={t} />
                   ) : (
                     <span className="text-zinc-500">
                       {t("booking.signal.none")}
@@ -534,6 +540,7 @@ export default async function BookingSelectionPage({
     if (basket)
       return (
         <div className="space-y-4" data-selection-list>
+          {costHint}
           {table}
         </div>
       );
@@ -550,6 +557,7 @@ export default async function BookingSelectionPage({
           name="group"
           value={list.map((r) => r.item.id).join(",")}
         />
+        {costHint}
         {table}
 
         <Card title={t("supplierRequests.selection.form.title")}>
@@ -557,19 +565,34 @@ export default async function BookingSelectionPage({
             {t("supplierRequests.selection.form.body")}
           </p>
           <div className="grid gap-3 md:grid-cols-3">
-            <Field
+            <SelectionQuantity
               label={t("supplierRequests.selection.form.quantity")}
               hint={t("supplierRequests.selection.form.quantityHint")}
-            >
-              <Input
-                name="quantity"
-                inputMode="numeric"
-                autoComplete="off"
-                defaultValue={current?.quantity ?? undefined}
-                data-selection-quantity
-              />
-            </Field>
-            <div className="md:col-span-2">
+              scheduledHint={t("purchaseRounds.form.quantityOff")}
+              defaultQuantity={current?.quantity ?? null}
+              schedule={current?.schedule ?? null}
+              labels={{
+                intl,
+                toggle: t("purchaseRounds.form.toggle"),
+                ask: t("purchaseRounds.form.ask"),
+                hint: t("purchaseRounds.form.hint"),
+                interval: t("purchaseRounds.form.interval"),
+                days: t("purchaseRounds.form.days", { n: "{n}" }),
+                custom: t("purchaseRounds.form.custom"),
+                firstDate: t("purchaseRounds.form.firstDate"),
+                n: t("purchaseRounds.form.n", { n: "{n}" }),
+                quantity: t("purchaseRounds.form.quantity"),
+                expected: t("purchaseRounds.form.expected"),
+                add: t("purchaseRounds.form.add"),
+                remove: t("purchaseRounds.form.remove", { n: "{n}" }),
+                total: t("purchaseRounds.form.total", {
+                  total: "{total}",
+                  unit: "{unit}",
+                }),
+                off: t("purchaseRounds.form.off"),
+              }}
+            />
+            <div className="md:col-span-3">
               <Field
                 label={t("supplierRequests.selection.form.needs")}
                 hint={t("supplierRequests.selection.form.needsHint")}
@@ -1059,6 +1082,18 @@ export default async function BookingSelectionPage({
                                                     ),
                                                   },
                                                 )}
+                                                {g!.schedule?.items.length
+                                                  ? ` · ${t(
+                                                      "purchaseRounds.summary.short",
+                                                      {
+                                                        rounds:
+                                                          g!.schedule.items
+                                                            .length,
+                                                        days: g!.schedule
+                                                          .intervalDays,
+                                                      },
+                                                    )}`
+                                                  : null}
                                               </span>
                                             ) : (
                                               <span className="shrink-0 text-zinc-500">

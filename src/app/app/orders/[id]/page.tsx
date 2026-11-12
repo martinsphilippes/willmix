@@ -15,6 +15,7 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
+import { OrderRoundsSection } from "./_components/rounds";
 import {
   canSeeInternalCosts,
   canSeeSellPrice,
@@ -207,6 +208,7 @@ export default async function OrderPage({
     stage: stageQuery,
     freight: freightNotice,
     freightN,
+    rounds: roundsSpawned,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
@@ -1204,6 +1206,19 @@ export default async function OrderPage({
         fields={invalidFields}
         token={errorToken}
       />
+      {/* Programação de compra: rodadas do pedido pai ou a rodada deste filho. */}
+      {purchaseFlow ? (
+        <OrderRoundsSection
+          order={order}
+          wellmix={wellmix}
+          spawned={
+            typeof roundsSpawned === "string" && /^\d+$/.test(roundsSpawned)
+              ? Number(roundsSpawned)
+              : null
+          }
+          t={t}
+        />
+      ) : null}
       {notice ? (
         <div className="mb-3">
           <Alert tone="success">{t(notice)}</Alert>

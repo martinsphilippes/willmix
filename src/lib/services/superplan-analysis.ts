@@ -216,6 +216,20 @@ export async function analyzeProductsWithDefaults(
  * item"); sem NCM ou fora da tabela, ficam fora (`ncmFound` falso, a conta
  * usa 0, como num produto sem NCM).
  */
+/**
+ * II e IPI de um NCM pela tabela fiscal (IPI "NT" = 0%) e se os dois são
+ * conhecidos: a mesma leitura da análise dos itens do booking.
+ */
+export function ncmTaxPct(rates: NcmRates | null): {
+  iiPct: number | null;
+  ipiPct: number | null;
+  ncmFound: boolean;
+} {
+  const iiPct = rates?.ii ?? null;
+  const ipiPct = rates ? (rates.ipiNt ? 0 : (rates.ipi ?? null)) : null;
+  return { iiPct, ipiPct, ncmFound: iiPct !== null && ipiPct !== null };
+}
+
 export function bookingItemPrefill(
   item: BookingItem,
   rates: NcmRates | null = null,
@@ -223,8 +237,7 @@ export function bookingItemPrefill(
   const currency = (item.currency ?? "").toUpperCase();
   const known = currency === "USD" || currency === "RMB";
   const price = positive(item.price);
-  const iiPct = rates?.ii ?? null;
-  const ipiPct = rates ? (rates.ipiNt ? 0 : (rates.ipi ?? null)) : null;
+  const { iiPct, ipiPct } = ncmTaxPct(rates);
   return {
     productId: null,
     productName:

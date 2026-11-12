@@ -155,7 +155,10 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
   } = {};
   if (order.flow === "supplier_request") {
     const [requests, requirements] = await Promise.all([
-      store.list("supplier_requests", { filter: { orderId: order.id } }),
+      // Rodada de uma programação de compra: a negociação é a do pedido pai.
+      store.list("supplier_requests", {
+        filter: { orderId: order.parentOrderId ?? order.id },
+      }),
       store.list("requirements", { filter: { orderId: order.id } }),
     ]);
     const sorted = [...items].sort((a, b) =>

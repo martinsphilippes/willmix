@@ -11,6 +11,10 @@ import {
   type User,
 } from "@/lib/db";
 import { groupRequests, sheetQuantity } from "@/lib/supplier-requests";
+import {
+  scheduleTotal,
+  type RequestSchedule,
+} from "@/lib/workflow/request-schedule";
 import { audit } from "./audit";
 import {
   SupplierRequestError,
@@ -49,6 +53,8 @@ export interface SaveSelectionGroupInput {
   /** Vazio: a quantidade da planilha do item escolhido. */
   quantity: number | null;
   needs: string | null;
+  /** Programação de compra (rodadas); com ela, a quantidade é a soma. */
+  schedule?: RequestSchedule | null;
 }
 
 /**
@@ -76,7 +82,10 @@ export async function saveSelectionGroup(
   const lot = await store.get("booking_lots", chosen.lotId);
   if (!lot || !CHOOSABLE_LOTS.includes(lot.status))
     throw new SupplierRequestError("supplier_request_lot_not_closed");
-  const quantity = input.quantity ?? sheetQuantity(chosen);
+  const schedule = input.schedule?.items.length ? input.schedule : null;
+  const quantity = schedule
+    ? scheduleTotal(schedule)
+    : (input.quantity ?? sheetQuantity(chosen));
   if (
     quantity === null ||
     !Number.isFinite(quantity) ||
@@ -102,10 +111,16 @@ export async function saveSelectionGroup(
     supplierRequestId: null,
     requestedAt: null,
     updatedByUserId: user.id,
+    // Sem programação grava nulo só quando a escolha já tinha uma (o esquema
+    // antigo, sem a coluna, continua gravando a escolha simples).
+    ...(schedule ? { schedule } : {}),
   };
   const [reuse, ...rest] = overlapping;
   const group = reuse
-    ? await store.update("selection_groups", reuse.id, values)
+    ? await store.update("selection_groups", reuse.id, {
+        ...values,
+        ...(!schedule && reuse.schedule ? { schedule: null } : {}),
+      })
     : await store.create("selection_groups", {
         ...values,
         createdByUserId: user.id,
@@ -120,7 +135,7 @@ export async function saveSelectionGroup(
     "selection_group.save",
     "selection_group",
     group.id,
-    `Escolha do grupo: ${chosen.description ?? chosen.productName ?? chosen.factoryItemCode ?? chosen.id}, ${group.quantity} pcs (${itemIds.length} itens comparados)`,
+    `Escolha do grupo: ${chosen.description ?? chosen.productName ?? chosen.factoryItemCode ?? chosen.id}, ${group.quantity} pcs${schedule ? ` em ${schedule.items.length} rodadas (${schedule.items.map((i) => i.quantity).join(" + ")}), a cada ${schedule.intervalDays} dias desde ${schedule.firstDate}` : ""} (${itemIds.length} itens comparados)`,
   );
   return group;
 }
@@ -207,6 +222,7 @@ export async function openGroupRequests(
           quantity: group.quantity,
           needs: group.needs,
           searchQuery: null,
+          schedule: group.schedule ?? null,
         },
         batches,
       );

@@ -1,4 +1,9 @@
 import "server-only";
+
+import {
+  scheduleTotal,
+  type RequestSchedule,
+} from "@/lib/workflow/request-schedule";
 import { assertCan } from "@/lib/auth/function-access";
 
 import { assertWellmix, isWellmix } from "@/lib/auth/permissions";
@@ -228,6 +233,8 @@ export interface OpenSupplierRequestInput {
   quantity: number | null;
   needs: string | null;
   searchQuery: string | null;
+  /** Programação de compra da escolha do grupo (rodadas); a quantidade é o total. */
+  schedule?: RequestSchedule | null;
 }
 
 /**
@@ -280,7 +287,10 @@ export async function openSupplierRequest(
   if (existing.some((r) => supplierRequestActive(r.status)))
     throw new SupplierRequestError("supplier_request_exists");
 
-  const quantity = input.quantity ?? sheetQuantity(item);
+  const schedule = input.schedule?.items.length ? input.schedule : null;
+  const quantity = schedule
+    ? scheduleTotal(schedule)
+    : (input.quantity ?? sheetQuantity(item));
   if (
     quantity === null ||
     !Number.isFinite(quantity) ||
@@ -308,6 +318,7 @@ export async function openSupplierRequest(
   const request = await store.create("supplier_requests", {
     number,
     ...(batch ? { batchId: batch.id } : {}),
+    ...(schedule ? { schedule } : {}),
     status: "open",
     supplierId: supplier.id,
     bookingItemId: item.id,
@@ -344,7 +355,7 @@ export async function openSupplierRequest(
     "supplier_request.open",
     "supplier_request",
     request.id,
-    `Solicitação ao fornecedor nº ${number}: ${supplier.name}, ${request.quantity} pcs (booking nº ${lot.number})`,
+    `Solicitação ao fornecedor nº ${number}: ${supplier.name}, ${request.quantity} pcs${schedule ? ` em ${schedule.items.length} rodadas a cada ${schedule.intervalDays} dias` : ""} (booking nº ${lot.number})`,
   );
   if (batches) return request;
   const { notify } = await import("./notifications");

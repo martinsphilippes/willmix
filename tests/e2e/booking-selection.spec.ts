@@ -184,6 +184,12 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(
     draftRow.locator('[data-selection-lot-status="draft"]'),
   ).toBeVisible();
+  // Os fechados mostram o custo por peça do Superplan (R$), com a explicação.
+  await expect(page.locator("[data-selection-cost-hint]")).toBeVisible();
+  for (const code of [`${TAG}-A`, `${TAG}-B`])
+    await expect(
+      rows.filter({ hasText: code }).locator("[data-selection-cost]"),
+    ).toContainText("R$");
   // A aba Itens só agrupa: sem escolher nem abrir solicitação.
   await expect(page.locator("[data-selection-choose]")).toHaveCount(0);
   await expect(page.locator("[data-selection-submit]")).toHaveCount(0);
