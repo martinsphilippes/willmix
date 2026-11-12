@@ -32,7 +32,19 @@ export const pt = {
     "Nenhum booking fechado ainda. Feche um booking para os itens dele aparecerem aqui.",
   "supplierRequests.selection.schemaMissing":
     "As tabelas novas ainda não foram publicadas no banco (npm run appwrite:push).",
-  "supplierRequests.selection.best": "Melhor preço mínimo",
+  "supplierRequests.selection.best": "Menor custo por peça",
+  "supplierRequests.selection.col.costPiece": "Custo/peça (Superplan)",
+  "supplierRequests.selection.costHint":
+    "Custo/peça: quanto cada peça custa posta no depósito (compra, frete, impostos da importação e despesas, dividido pelas peças que cabem no container), calculado pelo Superplan ao fechar o booking com o câmbio do dia, o container e o frete padrão. Mínimo = custo × markup do tipo de negócio; Meta = preço de venda que dá o lucro da meta. Compare com o preço que o cliente paga para decidir o escolhido e as alternativas. Passe o mouse no Superplan para ver data, tipo, container, frete e dólar usados.",
+  "supplierRequests.superplan.target": "Meta {pct}%: {price}",
+  "supplierRequests.superplan.targetNone": "Meta {pct}% inalcançável",
+  "supplierRequests.superplan.noNcm":
+    "Sem II/IPI (NCM fora da tabela fiscal): custo abaixo do real",
+  "supplierRequests.superplan.grossEstimated":
+    "Peso bruto estimado pelo líquido",
+  "supplierRequests.superplan.assumptions":
+    "Calculado em {date} · {type} · container {container} · frete {freight} · dólar {fx}",
+  "supplierRequests.detail.chosenCost": "Custo/peça {price}",
   "supplierRequests.selection.similar": "ver parecidos",
   "supplierRequests.selection.tab.items": "Itens",
   "supplierRequests.selection.tab.selection": "Seleção",
@@ -397,7 +409,19 @@ export const en: typeof pt = {
     "No closed booking yet. Close a booking for its items to show up here.",
   "supplierRequests.selection.schemaMissing":
     "The new tables are not published in the database yet (npm run appwrite:push).",
-  "supplierRequests.selection.best": "Best minimum price",
+  "supplierRequests.selection.best": "Lowest cost per piece",
+  "supplierRequests.selection.col.costPiece": "Cost/piece (Superplan)",
+  "supplierRequests.selection.costHint":
+    "Cost/piece: what each piece costs landed in the warehouse (purchase, freight, import taxes and expenses, divided by the pieces that fit in the container), calculated by Superplan when the booking was closed with that day's exchange rate, the default container and the default freight. Minimum = cost × business type markup; Target = sale price that gives the target profit. Compare with what the customer pays to decide the chosen item and the alternatives. Hover over Superplan to see the date, type, container, freight and dollar used.",
+  "supplierRequests.superplan.target": "Target {pct}%: {price}",
+  "supplierRequests.superplan.targetNone": "Target {pct}% unreachable",
+  "supplierRequests.superplan.noNcm":
+    "No II/IPI (NCM not in the tax table): cost below the real one",
+  "supplierRequests.superplan.grossEstimated":
+    "Gross weight estimated from net",
+  "supplierRequests.superplan.assumptions":
+    "Calculated on {date} · {type} · container {container} · freight {freight} · dollar {fx}",
+  "supplierRequests.detail.chosenCost": "Cost/piece {price}",
   "supplierRequests.selection.similar": "see similar",
   "supplierRequests.selection.tab.items": "Items",
   "supplierRequests.selection.tab.selection": "Selection",
@@ -754,7 +778,18 @@ export const zh: typeof pt = {
     "还没有已关闭的 booking。关闭一个 booking 后其条目会出现在这里。",
   "supplierRequests.selection.schemaMissing":
     "新数据表尚未发布到数据库（npm run appwrite:push）。",
-  "supplierRequests.selection.best": "最低价最优",
+  "supplierRequests.selection.best": "单件成本最低",
+  "supplierRequests.selection.col.costPiece": "单件成本 (Superplan)",
+  "supplierRequests.selection.costHint":
+    "单件成本：每件产品到仓的成本（采购、运费、进口税和费用，除以集装箱可装件数），由 Superplan 在关闭 booking 时按当日汇率、默认集装箱和默认运费计算。最低价 = 成本 × 业务类型加价倍数；目标 = 达到目标利润的售价。与客户支付的价格比较，以决定选中条目和备选。鼠标悬停在 Superplan 上可查看所用日期、类型、集装箱、运费和美元汇率。",
+  "supplierRequests.superplan.target": "目标 {pct}%：{price}",
+  "supplierRequests.superplan.targetNone": "目标 {pct}% 无法达到",
+  "supplierRequests.superplan.noNcm":
+    "无 II/IPI（NCM 不在税表中）：成本低于实际",
+  "supplierRequests.superplan.grossEstimated": "毛重按净重估算",
+  "supplierRequests.superplan.assumptions":
+    "计算于 {date} · {type} · 集装箱 {container} · 运费 {freight} · 美元 {fx}",
+  "supplierRequests.detail.chosenCost": "单件成本 {price}",
   "supplierRequests.selection.similar": "查看相似",
   "supplierRequests.selection.tab.items": "项目",
   "supplierRequests.selection.tab.selection": "选择",

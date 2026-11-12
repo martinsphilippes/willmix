@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BookingItemSuperplan } from "@/components/booking-item-superplan";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -28,10 +29,8 @@ import {
   PageHeader,
   Select,
   Textarea,
-  cx,
   formatMoney,
   linkClass,
-  type Tone,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import {
@@ -66,12 +65,6 @@ import { canPostMessage } from "@/lib/supplier-requests";
  * decidir). A Wellmix vê também o booking, o Superplan do item e as
  * alternativas, registra a resposta quando ela chega por fora e decide.
  */
-
-const SIGNAL_TONE: Record<string, Tone> = {
-  viable: "success",
-  below: "warning",
-  loss: "danger",
-};
 
 export default async function SupplierRequestPage({
   params,
@@ -459,6 +452,17 @@ export default async function SupplierRequestPage({
                         <span className="tabular-nums">
                           {num(item.price)} {item.currency ?? ""}
                         </span>
+                        {item.analysis?.costBrl != null ? (
+                          <span className="font-semibold text-zinc-800">
+                            {t("supplierRequests.detail.chosenCost", {
+                              price: formatMoney(
+                                item.analysis.costBrl,
+                                "BRL",
+                                t,
+                              ),
+                            })}
+                          </span>
+                        ) : null}
                         {item.analysis?.minimumBrl != null ? (
                           <span>
                             {t("bookingLots.item.minimum", {
@@ -718,29 +722,22 @@ export default async function SupplierRequestPage({
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                       {t("supplierRequests.detail.chosenSuperplan")}
                     </p>
-                    <span className={cx("mt-1 flex flex-wrap gap-2")}>
-                      <Badge
-                        tone={
-                          chosen.analysis.verdict
-                            ? SIGNAL_TONE[chosen.analysis.verdict]
-                            : "neutral"
-                        }
-                      >
-                        {t(
-                          `booking.signal.${chosen.analysis.verdict ?? "missing"}` as DictionaryKey,
-                        )}
-                      </Badge>
-                      {chosen.analysis.minimumBrl !== null ? (
-                        <span className="text-xs text-zinc-600">
-                          {t("bookingLots.item.minimum", {
+                    <span className="mt-1 flex flex-col gap-1">
+                      {chosen.analysis.costBrl !== null ? (
+                        <span
+                          className="text-sm font-semibold text-zinc-900"
+                          data-supplier-request-chosen-cost
+                        >
+                          {t("supplierRequests.detail.chosenCost", {
                             price: formatMoney(
-                              chosen.analysis.minimumBrl,
+                              chosen.analysis.costBrl,
                               "BRL",
                               t,
                             ),
                           })}
                         </span>
                       ) : null}
+                      <BookingItemSuperplan analysis={chosen.analysis} t={t} />
                     </span>
                   </div>
                 ) : null}

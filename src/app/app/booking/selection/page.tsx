@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import {
-  bestMinimumItem,
+  bestCostItem,
   priceInUsd,
   sheetQuantity,
   similarQuery,
@@ -46,7 +46,6 @@ import {
   formatDate,
   formatMoney,
   linkClass,
-  type Tone,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import {
@@ -58,6 +57,10 @@ import { SupplierNoLoginAlert } from "@/components/supplier-no-login";
 import { canOpen } from "@/lib/auth/screens";
 import { partiesWithoutLogin } from "@/lib/services/portal-access";
 import { TableTools } from "@/components/table-tools";
+import {
+  BookingItemSuperplan,
+  bookingItemCost,
+} from "@/components/booking-item-superplan";
 
 /*
  * Seleção de itens (docs/SUPPLIER_REQUESTS.md): duas abas.
@@ -71,11 +74,6 @@ import { TableTools } from "@/components/table-tools";
  * Nada de produto, cliente ou estoque nasce aqui.
  */
 
-const SIGNAL_TONE: Record<string, Tone> = {
-  viable: "success",
-  below: "warning",
-  loss: "danger",
-};
 const FORM = "selection-form";
 
 export default async function BookingSelectionPage({
@@ -125,7 +123,7 @@ export default async function BookingSelectionPage({
   const groupRows = group?.rows ?? [];
   // A tabela de comparação: na aba Seleção, o grupo; na aba Itens, a lista.
   const rows = tab === "selection" ? groupRows : listRows;
-  const best = bestMinimumItem(rows.map((r) => r.item));
+  const best = bestCostItem(rows.map((r) => r.item));
   const blocks =
     tab === "selection" && result
       ? suggestBlocks(
@@ -261,6 +259,11 @@ export default async function BookingSelectionPage({
    * a solicitação abre só na aba Seleção, com o grupo).
    */
   const comparison = (list: SelectionRow[], basket: boolean) => {
+    const costHint = (
+      <p className="text-xs text-zinc-500" data-selection-cost-hint>
+        {t("supplierRequests.selection.costHint")}
+      </p>
+    );
     const table = (
       <TableTools className="" tableClassName="min-w-0" data-selection-items="">
         <thead>
@@ -290,6 +293,7 @@ export default async function BookingSelectionPage({
               "capacity",
               "material",
               "sheetQty",
+              "costPiece",
               "superplan",
               "situation",
             ].map((k) => (
@@ -302,6 +306,7 @@ export default async function BookingSelectionPage({
         <tbody>
           {list.map(({ item, lot, supplier, activeRequest }) => {
             const a = item.analysis;
+            const cost = bookingItemCost(a);
             const draft = lot.status === "draft";
             const busy = !!activeRequest || draft;
             const priceUsd = priceInUsd(item.price, item.currency, rmbPerUsd);
@@ -482,29 +487,29 @@ export default async function BookingSelectionPage({
                 <td className={cx(td, "tabular-nums")}>
                   {num(sheetQuantity(item), 0)}
                 </td>
-                <td className={td}>
-                  {a ? (
+                <td
+                  className={cx(td, "whitespace-nowrap tabular-nums")}
+                  data-sort={cost ?? ""}
+                  data-selection-cost={item.id}
+                >
+                  {cost !== null ? (
                     <span className="flex flex-col items-start gap-0.5">
-                      <Badge
-                        tone={a.verdict ? SIGNAL_TONE[a.verdict] : "neutral"}
-                      >
-                        {t(
-                          `booking.signal.${a.verdict ?? "missing"}` as DictionaryKey,
-                        )}
-                      </Badge>
-                      {a.minimumBrl !== null ? (
-                        <span className="text-xs whitespace-nowrap text-zinc-600">
-                          {t("bookingLots.item.minimum", {
-                            price: formatMoney(a.minimumBrl, "BRL", t),
-                          })}
-                        </span>
-                      ) : null}
+                      <span className="text-sm font-semibold text-zinc-900">
+                        {formatMoney(cost, "BRL", t)}
+                      </span>
                       {item.id === best ? (
                         <Badge tone="success">
                           {t("supplierRequests.selection.best")}
                         </Badge>
                       ) : null}
                     </span>
+                  ) : (
+                    <span className="text-zinc-400">—</span>
+                  )}
+                </td>
+                <td className={td}>
+                  {a ? (
+                    <BookingItemSuperplan analysis={a} t={t} />
                   ) : (
                     <span className="text-zinc-500">
                       {t("booking.signal.none")}
@@ -534,6 +539,7 @@ export default async function BookingSelectionPage({
     if (basket)
       return (
         <div className="space-y-4" data-selection-list>
+          {costHint}
           {table}
         </div>
       );
@@ -550,6 +556,7 @@ export default async function BookingSelectionPage({
           name="group"
           value={list.map((r) => r.item.id).join(",")}
         />
+        {costHint}
         {table}
 
         <Card title={t("supplierRequests.selection.form.title")}>
