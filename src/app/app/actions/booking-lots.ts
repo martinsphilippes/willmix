@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { assertWellmix } from "@/lib/auth/permissions";
+import {
+  ForbiddenError,
+  assertWellmix,
+  isWellmix,
+} from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import { isBookingItemField } from "@/lib/booking-lots";
 import { BOOKING_LOT_STATUSES, SHEET_CURRENCIES } from "@/lib/db/schema";
@@ -71,6 +75,49 @@ export async function importBookingAction(form: FormData) {
     const lot = await createBookingLotFromSheet(user, source, {
       defaultCurrency: parsed.currency,
       sheet: parsed.sheet,
+    });
+    return withQuery(detail(lot.id), "created", "1");
+  });
+}
+
+/**
+ * O parceiro com a tela Booking (Trading…) lança o booking dele: a planilha
+ * vira um booking em rascunho em nome da empresa dele, e a Wellmix é avisada.
+ * Só arquivo (sem link) e só login externo; o serviço confere a empresa (ativa
+ * e de um tipo que responde por booking).
+ */
+export async function launchBookingAction(form: FormData) {
+  const user = await requireUser();
+  await run(IMPORT, async () => {
+    if (isWellmix(user)) throw new ForbiddenError();
+    assertScreen(user, "booking");
+    const parsed = z
+      .object({
+        currency: z.enum(SHEET_CURRENCIES).nullable(),
+        uploadedFileId: z
+          .string()
+          .regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/)
+          .nullable(),
+        uploadedFileName: z.string().max(255).nullable(),
+      })
+      .parse({
+        currency: str(form, "currency") || null,
+        uploadedFileId: str(form, "uploadedFileId") || null,
+        uploadedFileName: str(form, "uploadedFileName") || null,
+      });
+    const file = form.get("file");
+    const { SheetImportError } =
+      await import("@/lib/services/product-sheet-import");
+    const source = parsed.uploadedFileId
+      ? { fileKey: parsed.uploadedFileId, fileName: parsed.uploadedFileName }
+      : file instanceof File && file.size > 0
+        ? file
+        : null;
+    if (!source) throw new SheetImportError("file_required");
+    const { launchPartnerBooking } =
+      await import("@/lib/services/booking-partner");
+    const lot = await launchPartnerBooking(user, source, {
+      defaultCurrency: parsed.currency,
     });
     return withQuery(detail(lot.id), "created", "1");
   });

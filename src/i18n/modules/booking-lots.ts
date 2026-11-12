@@ -6,13 +6,30 @@
 export const pt = {
   "bookingLots.title": "Booking",
   "bookingLots.partner.subtitle":
-    "Os bookings da sua empresa: as planilhas em que ela é o responsável ou o fornecedor. Só para consulta.",
+    "Os bookings da sua empresa: os que ela lançou e os que a Wellmix carregou em nome dela.",
   "bookingLots.partner.empty":
     "Nenhum booking da sua empresa ainda. Quando a Wellmix carregar uma planilha sua, ela aparece aqui.",
   "bookingLots.partner.lot": "Booking nº {n}",
   "bookingLots.partner.back": "Voltar aos bookings",
   "bookingLots.partner.items": "Itens do booking ({n})",
   "bookingLots.partner.noItems": "Este booking não tem itens.",
+  "bookingLots.partner.emptyLaunch":
+    'Nenhum booking da sua empresa ainda. Use "Lançar booking" para enviar a planilha do primeiro.',
+  "bookingLots.partner.launch": "Lançar booking",
+  "bookingLots.partner.launch.subtitle":
+    "Envie a planilha do seu booking. Ele chega à Wellmix em nome da sua empresa e fica na sua lista.",
+  "bookingLots.partner.launch.after":
+    "Depois de lançado, a Wellmix confere e analisa o booking. Para corrigir ou cancelar um booking já lançado, fale com a Wellmix.",
+  "bookingLots.partner.launched":
+    "Booking lançado. A Wellmix foi avisada e vai conferir.",
+  "bookingLots.partner.status.draft": "Em conferência na Wellmix",
+  "bookingLots.partner.status.closed": "Conferido pela Wellmix",
+  "bookingLots.notify.launched.subject":
+    "Booking nº {n} lançado por um parceiro",
+  "bookingLots.notify.launched.body":
+    "{partner} lançou o booking ({items} itens, {file}). Confira, complete o que faltar e feche para analisar.",
+  "bookingLots.error.booking_launch_limit":
+    "Sua empresa já lançou muitos bookings nas últimas 24 horas. Tente mais tarde ou fale com a Wellmix.",
   "bookingLots.subtitle":
     "Planilhas de booking dos fornecedores. Suba a planilha, confira fornecedor, data e itens e feche: o Superplan analisa todos os itens.",
   "bookingLots.import": "Importar booking",
@@ -197,13 +214,30 @@ export const pt = {
 export const en: typeof pt = {
   "bookingLots.title": "Booking",
   "bookingLots.partner.subtitle":
-    "Your company's bookings: the spreadsheets where it is the owner or the supplier. Read only.",
+    "Your company's bookings: the ones it submitted and the ones Wellmix loaded on its behalf.",
   "bookingLots.partner.empty":
     "No booking from your company yet. When Wellmix loads one of your spreadsheets, it shows up here.",
   "bookingLots.partner.lot": "Booking no. {n}",
   "bookingLots.partner.back": "Back to bookings",
   "bookingLots.partner.items": "Booking items ({n})",
   "bookingLots.partner.noItems": "This booking has no items.",
+  "bookingLots.partner.emptyLaunch":
+    'No booking from your company yet. Use "Submit booking" to send the spreadsheet of the first one.',
+  "bookingLots.partner.launch": "Submit booking",
+  "bookingLots.partner.launch.subtitle":
+    "Send your booking spreadsheet. It reaches Wellmix under your company's name and stays on your list.",
+  "bookingLots.partner.launch.after":
+    "After submission, Wellmix reviews and analyzes the booking. To fix or cancel a submitted booking, contact Wellmix.",
+  "bookingLots.partner.launched":
+    "Booking submitted. Wellmix was notified and will review it.",
+  "bookingLots.partner.status.draft": "Under review at Wellmix",
+  "bookingLots.partner.status.closed": "Reviewed by Wellmix",
+  "bookingLots.notify.launched.subject":
+    "Booking no. {n} submitted by a partner",
+  "bookingLots.notify.launched.body":
+    "{partner} submitted the booking ({items} items, {file}). Review it, fill in what is missing and close it to analyze.",
+  "bookingLots.error.booking_launch_limit":
+    "Your company has already submitted many bookings in the last 24 hours. Try again later or contact Wellmix.",
   "bookingLots.subtitle":
     "Suppliers' booking spreadsheets. Upload the spreadsheet, check supplier, date and items, then close: Superplan analyzes every item.",
   "bookingLots.import": "Import booking",
@@ -386,13 +420,28 @@ export const en: typeof pt = {
 export const zh: typeof pt = {
   "bookingLots.title": "Booking",
   "bookingLots.partner.subtitle":
-    "贵公司的订舱：贵公司作为负责人或供应商的表格。仅供查看。",
+    "贵公司的订舱：贵公司提交的，以及 Wellmix 代贵公司导入的。",
   "bookingLots.partner.empty":
     "暂无贵公司的订舱。Wellmix 导入贵公司的表格后会显示在这里。",
   "bookingLots.partner.lot": "订舱 {n}",
   "bookingLots.partner.back": "返回订舱列表",
   "bookingLots.partner.items": "订舱产品（{n}）",
   "bookingLots.partner.noItems": "此订舱没有产品。",
+  "bookingLots.partner.emptyLaunch":
+    "暂无贵公司的订舱。请点击“提交订舱”上传第一份表格。",
+  "bookingLots.partner.launch": "提交订舱",
+  "bookingLots.partner.launch.subtitle":
+    "上传贵公司的订舱表格。表格将以贵公司的名义提交给 Wellmix，并显示在您的列表中。",
+  "bookingLots.partner.launch.after":
+    "提交后，Wellmix 会核对并分析该订舱。如需修改或取消已提交的订舱，请联系 Wellmix。",
+  "bookingLots.partner.launched": "订舱已提交。已通知 Wellmix 进行核对。",
+  "bookingLots.partner.status.draft": "Wellmix 核对中",
+  "bookingLots.partner.status.closed": "Wellmix 已核对",
+  "bookingLots.notify.launched.subject": "合作方提交了订舱 {n}",
+  "bookingLots.notify.launched.body":
+    "{partner} 提交了订舱（{items} 个商品，{file}）。请核对、补全缺失信息并关闭以进行分析。",
+  "bookingLots.error.booking_launch_limit":
+    "贵公司在过去 24 小时内提交的订舱过多。请稍后再试或联系 Wellmix。",
   "bookingLots.subtitle":
     "供应商的 booking 表格。上传表格，核对供应商、日期和条目，然后关闭：Superplan 会分析所有条目。",
   "bookingLots.import": "导入 booking",

@@ -44,7 +44,7 @@ Onde está: regras puras em `src/lib/booking-lots.ts`; serviço em `src/lib/serv
 
 Banco: tabelas `booking_lots` e `booking_items` (docs/APPWRITE.md). Antes da publicação (`npm run appwrite:push`), a lista avisa "esquema desatualizado" e não oferece a importação.
 
-Permissões: importar, editar, fechar, analisar e selecionar são só da Wellmix com a tela Booking. Cadastrar o fornecedor sugerido também é dessa tela. Cliente, fornecedor e parceiros não veem bookings, itens, fotos nem a planilha guardada (documentos internos). Única exceção: o login externo com a tela Booking no perfil (de fábrica, só a Trading) lê os bookings da própria empresa, sem a análise ("Booking do Trading", abaixo).
+Permissões: importar, editar, fechar, analisar e selecionar são só da Wellmix com a tela Booking. Cadastrar o fornecedor sugerido também é dessa tela. Cliente, fornecedor e parceiros não veem bookings, itens, fotos nem a planilha guardada (documentos internos). Única exceção: o login externo com a tela Booking no perfil (de fábrica, só a Trading) lança e lê os bookings da própria empresa, sem a análise ("Booking do Trading", abaixo).
 
 ### Responsável pelo booking (decisão do dono, 11/11/2026)
 
@@ -56,18 +56,21 @@ Permissões: importar, editar, fechar, analisar e selecionar são só da Wellmix
 
 ### Booking do Trading (decisão do dono, 11/11/2026)
 
-Pedido do dono: os logins de Trading têm de ver a tela Booking. Escopo confirmado por ele: **só os bookings da empresa dele**.
+Pedidos do dono: os logins de Trading têm de ver a tela Booking, **só com os bookings da empresa dele**; e têm de poder **lançar o booking** que a Trading faz.
 
 - **Quem abre**: o login cujo perfil tem a tela Booking. De fábrica, só a **Trading** (`type:trading`). Para Factory, Supplier, GP, Fornecedor ou um tipo criado no painel, o administrador libera em Gestão de telas (docs/PARTNER_ACCESS.md).
-- **O que vê**: a lista dos bookings em que a empresa dele é o **responsável** (`booking_lots.partnerId`) ou o **fornecedor** (`supplierId`), e, dentro de cada um, os itens como vieram na planilha: código, nome, descrição, preço com moeda e incoterm, MOQ, caixa, cubagem, medidas, capacidade, material e embalagem.
-- **O que não vê**: bookings de outras empresas (o endereço direto responde "não encontrado", sem dizer se existe); a análise da Wellmix (Superplan, viabilidade, preço mínimo, lucro, margem); o NCM; o produto do cadastro ligado ao item; as colunas extras da planilha; a observação interna; o nome do fornecedor e de quem importou; as fotos e a planilha guardada (documentos internos, regra de sempre).
-- **Só leitura**: importar booking, Seleção de itens e convite para booking concorrente continuam só da Wellmix (abertos por um login externo, voltam para a lista dele). Nenhuma ação do servidor do Booking aceita login externo.
-- **Outros papéis**: liberada a um perfil que nunca é responsável nem fornecedor de booking (cliente, agência…), a tela abre vazia.
-- **Vínculo**: é a Wellmix que define, no campo "Responsável pelo booking" da tela do booking. O booking aparece para a Trading assim que ela vira a responsável, em qualquer situação (rascunho, fechado ou cancelado).
+- **Lançar booking**: botão na lista dele → sobe a planilha (.xlsx ou .xls, as mesmas colunas de sempre, até 80 itens; só arquivo, sem link) e escolhe a moeda dos preços sem moeda. Nasce um booking **em rascunho**, com a empresa dele como **responsável** (`partnerId`), sem dono interno (`ownerUserId` vazio) e criado pelo login dele. O fornecedor (a fábrica) é o que vier na planilha, pela regra de sempre. Quem da Wellmix abre o Booking recebe o aviso "Booking nº N lançado por um parceiro", com o link; dali em diante o booking segue como qualquer outro (conferir, NCM, fechar, Superplan, Seleção de itens).
+- **Quem pode lançar**: login externo com a tela, de um cadastro **ativo** de um tipo que responde por booking (fornecedor, Trading, Factory, Supplier, GP ou tipo criado no painel). Cliente, agência e os demais, mesmo com a tela liberada, só consultam (e a lista vem vazia).
+- **O que vê**: os bookings pelos quais a empresa dele **responde**: aqueles em que ela é o responsável (`booking_lots.partnerId`) ou, quando o booking não tem responsável, o fornecedor (`supplierId`). É a mesma regra de para quem vão as solicitações (`bookingRecipientId`). Dentro de cada um, os itens como vieram na planilha: código, nome, descrição, preço com moeda e incoterm, MOQ, caixa, cubagem, medidas, capacidade, material e embalagem.
+- **O que não vê**: bookings de outras empresas (o endereço direto responde "não encontrado", sem dizer se existe); o booking de uma trading não aparece para a fábrica citada na planilha dela (o preço é o da trading); a análise da Wellmix (Superplan, viabilidade, preço mínimo, lucro, margem); o NCM; o produto do cadastro ligado ao item; as colunas extras da planilha; a observação interna; o nome do fornecedor e de quem importou; as fotos e a planilha guardada (documentos internos, regra de sempre).
+- **Situação, nas palavras dele**: rascunho aparece como "Em conferência na Wellmix"; fechado, "Conferido pela Wellmix"; as outras, como na Wellmix.
+- **Depois de lançado**: ele só consulta. Corrigir, fechar ou cancelar é da Wellmix (ele fala com a Wellmix). Seleção de itens e convite para booking concorrente continuam só da Wellmix (abertos por um login externo, voltam para a lista dele); as rotinas da Wellmix não aceitam login externo.
+- **Vínculo feito pela Wellmix**: no campo "Responsável pelo booking" da tela do booking. O booking aparece para a Trading assim que ela vira a responsável, em qualquer situação.
+- **Travas**: até 20 bookings lançados pela mesma empresa em 24 horas (`booking_launch_limit`); a chave de arquivo enviada por um login externo tem de ser de um arquivo recém-subido, nunca a de um documento já registrado (vale também para a resposta ao convite).
 
-Onde está: `src/lib/services/booking-partner.ts` (duas consultas pelo vínculo; nunca lê bookings de outra empresa), `src/app/app/booking/_components/partner-booking.tsx`, regra das telas em `src/lib/partner-access.ts` (`ADAPTED`, `PROFILE_EXTRA`); testes em `tests/unit/booking-partner.test.ts` e `tests/e2e/partner-access.spec.ts`. Sem mudança no banco.
+Onde está: `src/lib/services/booking-partner.ts` (`launchPartnerBooking`, `canLaunchBooking`, as leituras; nunca lê bookings de outra empresa), `launchBookingAction` em `src/app/app/actions/booking-lots.ts`, `src/app/app/booking/_components/partner-booking.tsx` (lista, lançamento em `/app/booking/import` e o booking), regras puras em `src/lib/booking-lots.ts` (`BOOKING_PARTNER_TYPES`, `bookingRecipientId`), regra das telas em `src/lib/partner-access.ts` (`ADAPTED`, `PROFILE_EXTRA`); testes em `tests/unit/booking-partner.test.ts` e `tests/e2e/partner-access.spec.ts`. Sem mudança no banco.
 
-Fica para o dono decidir: a Trading enviar o próprio booking pela tela (hoje só responde a convite), ver as fotos dos itens e ser avisada quando um booking passa a ser dela.
+Fica para o dono decidir: a Trading corrigir ou cancelar o booking que lançou, ver as fotos dos itens, baixar um modelo de planilha e ser avisada quando um booking passa a ser dela ou é conferido.
 
 ### NCM do item (decisão do dono, 11/11/2026)
 

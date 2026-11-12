@@ -25,6 +25,8 @@ Decisão do dono (11/11/2026). Na Seleção de itens, ao avaliar um item de book
    - A solicitação aberta de um item desse booking vai ao responsável, ou seja, ao parceiro que subiu o booking (docs/BOOKING.md, "Responsável pelo booking").
 7. **Cancelar:** a Wellmix cancela um convite ainda aberto na tela do item.
 
+- **Arquivo do convidado**: a chave de arquivo que o convidado envia tem de ser de um arquivo recém-subido; a de um documento já registrado é recusada antes de a planilha ser lida (trava de 12/11/2026, a mesma do booking lançado pelo parceiro; `createLotFromSheet`).
+
 ## Dados
 
 Tabela `booking_invites`:

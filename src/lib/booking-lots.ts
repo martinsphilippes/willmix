@@ -398,3 +398,26 @@ export function sortBookingLots(
     return cmp * sign || b.number - a.number;
   });
 }
+
+/**
+ * Tipos que podem ser o responsável pelo booking: o fornecedor, os parceiros
+ * à parte (Trading, Factory, Supplier, GP) e os tipos criados no painel.
+ */
+export const BOOKING_PARTNER_TYPES = [
+  "supplier",
+  "trading",
+  "factory",
+  "supplier_partner",
+  "gp",
+  "partner",
+] as const;
+
+export const isBookingPartner = (p: Pick<Party, "type">) =>
+  (BOOKING_PARTNER_TYPES as readonly string[]).includes(p.type);
+
+/** Para quem vão as solicitações do booking: o responsável ou, sem ele, o fornecedor. */
+export function bookingRecipientId(
+  lot: Pick<BookingLot, "supplierId" | "partnerId">,
+): string | null {
+  return lot.partnerId ?? lot.supplierId ?? null;
+}

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { User } from "@/lib/db";
+import { SHEET_CURRENCIES, type BookingLotStatus, type User } from "@/lib/db";
 import type { Translate } from "@/i18n";
-import type { DictionaryKey } from "@/i18n/dictionaries";
+import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
+import { fallbackError } from "@/i18n/error-text";
 import {
+  canLaunchBooking,
   getPartnerBookingLot,
   listPartnerBookingLots,
 } from "@/lib/services/booking-partner";
@@ -12,8 +14,10 @@ import {
   Badge,
   Card,
   Empty,
+  Field,
   LinkButton,
   PageHeader,
+  Select,
   Table,
   Td,
   Th,
@@ -21,12 +25,32 @@ import {
   linkClass,
   rowClass,
 } from "@/components/ui";
+import { SubmitButton } from "@/components/submit-button";
+import { SheetFileInput } from "@/components/sheet-file-input";
+import { launchBookingAction } from "../../actions/booking-lots";
 
 /*
- * Tela Booking para o login externo (Trading; dono, 11/11/2026): os bookings
- * da empresa dele, só para ler. Sem bookings de outros fornecedores e sem a
- * análise da Wellmix (regras em src/lib/services/booking-partner.ts).
+ * Tela Booking para o login externo (Trading; dono, 11/11/2026): ele lança os
+ * bookings da empresa dele (sobe a planilha) e vê só os dela. Sem bookings de
+ * outras empresas e sem a análise da Wellmix (regras em
+ * src/lib/services/booking-partner.ts).
  */
+
+/** Situação do booking nas palavras de quem lançou (a Wellmix vê as dela). */
+const PARTNER_STATUS: Partial<
+  Record<BookingLotStatus, { key: DictionaryKey; tone: "info" | "success" }>
+> = {
+  draft: { key: "bookingLots.partner.status.draft", tone: "info" },
+  closed: { key: "bookingLots.partner.status.closed", tone: "success" },
+};
+
+const statusOf = (t: Translate, status: BookingLotStatus) => {
+  const own = PARTNER_STATUS[status];
+  return {
+    label: t(own?.key ?? (`bookingLots.status.${status}` as DictionaryKey)),
+    tone: own?.tone ?? ("neutral" as const),
+  };
+};
 
 const num = (t: Translate, n: number | null | undefined, digits = 0) =>
   n === null || n === undefined
@@ -40,13 +64,27 @@ export async function PartnerBookingList({
   user: User;
   t: Translate;
 }) {
-  const lots = await listPartnerBookingLots(user);
+  const [lots, canLaunch] = await Promise.all([
+    listPartnerBookingLots(user),
+    canLaunchBooking(user),
+  ]);
   return (
     <>
       <PageHeader
         t={t}
         title={t("bookingLots.title")}
         subtitle={t("bookingLots.partner.subtitle")}
+        actions={
+          canLaunch && lots !== null ? (
+            <LinkButton
+              href="/app/booking/import"
+              variant="primary"
+              data-partner-booking-launch
+            >
+              {t("bookingLots.partner.launch")}
+            </LinkButton>
+          ) : null
+        }
       />
       {lots === null ? (
         <div className="mb-3">
@@ -82,8 +120,8 @@ export async function PartnerBookingList({
                     </Link>
                   </Td>
                   <Td className="whitespace-nowrap">
-                    <Badge tone="neutral">
-                      {t(`bookingLots.status.${lot.status}` as DictionaryKey)}
+                    <Badge tone={statusOf(t, lot.status).tone}>
+                      {statusOf(t, lot.status).label}
                     </Badge>
                   </Td>
                   <Td className="whitespace-nowrap tabular-nums">
@@ -101,9 +139,106 @@ export async function PartnerBookingList({
             </tbody>
           </Table>
         ) : (
-          <Empty>{t("bookingLots.partner.empty")}</Empty>
+          <Empty>
+            {t(
+              canLaunch
+                ? "bookingLots.partner.emptyLaunch"
+                : "bookingLots.partner.empty",
+            )}
+          </Empty>
         )}
       </Card>
+    </>
+  );
+}
+
+/**
+ * Lançar booking: o parceiro sobe a planilha dele. Nulo quando o login não
+ * pode lançar (a tela é só de consulta): quem chama volta para a lista.
+ */
+export async function PartnerBookingLaunch({
+  user,
+  t,
+  error,
+}: {
+  user: User;
+  t: Translate;
+  /** Código do erro da última tentativa (?error=...). */
+  error: string;
+}) {
+  if (!(await canLaunchBooking(user))) return null;
+  const known = [
+    `bookingLots.error.${error}`,
+    `sheetImport.error.${error}`,
+  ].find((k) => k in dictionaries.pt) as DictionaryKey | undefined;
+  const errorText = !error ? null : known ? t(known) : fallbackError(t, error);
+  return (
+    <>
+      <PageHeader
+        t={t}
+        title={t("bookingLots.partner.launch")}
+        subtitle={t("bookingLots.partner.launch.subtitle")}
+        actions={
+          <LinkButton href="/app/booking" variant="secondary">
+            {t("bookingLots.partner.back")}
+          </LinkButton>
+        }
+      />
+      {errorText ? (
+        <div className="mb-3">
+          <Alert tone="danger">{errorText}</Alert>
+        </div>
+      ) : null}
+      <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
+        <Card title={t("bookingLots.import.form")} className="lg:col-span-2">
+          <form
+            action={launchBookingAction}
+            className="space-y-3"
+            data-partner-booking-launch-form
+          >
+            <Field
+              label={t("bookingLots.import.file")}
+              hint={t("bookingLots.import.fileHint")}
+            >
+              <SheetFileInput
+                label={t("bookingLots.import.file")}
+                uploadingLabel={t("sheetImport.uploading")}
+                failedLabel={t("sheetImport.uploadFailed")}
+                chosenLabel={t("sheetImport.uploaded")}
+              />
+            </Field>
+            <Field
+              label={t("bookingLots.import.currency")}
+              hint={t("bookingLots.import.currencyHint")}
+            >
+              <Select name="currency" defaultValue="USD">
+                {SHEET_CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <SubmitButton
+              pendingText={t("bookingLots.import.submitting")}
+              data-partner-booking-launch-submit
+            >
+              {t("bookingLots.partner.launch")}
+            </SubmitButton>
+          </form>
+        </Card>
+        <Card title={t("bookingLots.import.columns.title")}>
+          <div className="space-y-2 text-sm text-zinc-700">
+            <p>{t("bookingLots.import.columns.body")}</p>
+            <p className="text-zinc-600">
+              {t("bookingLots.import.columns.extra")}
+            </p>
+            <p className="text-zinc-600">
+              {t("bookingLots.partner.launch.after")}
+            </p>
+          </div>
+        </Card>
+      </div>
     </>
   );
 }
@@ -112,10 +247,13 @@ export async function PartnerBookingLotView({
   user,
   lotId,
   t,
+  created = false,
 }: {
   user: User;
   lotId: string;
   t: Translate;
+  /** Acabou de ser lançado por ele (?created=1). */
+  created?: boolean;
 }) {
   const detail = await getPartnerBookingLot(user, lotId);
   // Booking de outra empresa (ou que não existe): não se diz qual dos dois.
@@ -131,7 +269,7 @@ export async function PartnerBookingLotView({
         subtitle={[
           lot.fileName,
           lot.bookingDate ? formatDate(lot.bookingDate, t) : null,
-          t(`bookingLots.status.${lot.status}` as DictionaryKey),
+          statusOf(t, lot.status).label,
         ]
           .filter(Boolean)
           .join(" · ")}
@@ -141,6 +279,11 @@ export async function PartnerBookingLotView({
           </LinkButton>
         }
       />
+      {created ? (
+        <div className="mb-3" data-partner-booking-launched>
+          <Alert tone="success">{t("bookingLots.partner.launched")}</Alert>
+        </div>
+      ) : null}
       <Card title={t("bookingLots.partner.items", { n: String(items.length) })}>
         {items.length ? (
           <Table>

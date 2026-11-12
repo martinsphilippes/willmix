@@ -213,10 +213,11 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
 
 /*
  * Booking do Trading (dono, 11/11/2026; docs/BOOKING.md): o login de uma
- * Trading abre a tela Booking e vê só os bookings da empresa dele, sem a
- * análise da Wellmix; o resto do Booking continua só da Wellmix.
+ * Trading abre a tela Booking, lança o booking dela (sobe a planilha) e vê só
+ * os bookings da empresa dele, sem a análise da Wellmix; o resto do Booking
+ * continua só da Wellmix.
  */
-test("Trading com login: abre o Booking e vê só os bookings dele", async ({
+test("Trading com login: lança o booking dele e vê só os bookings dele", async ({
   page,
 }) => {
   const tag = Date.now().toString(36);
@@ -297,7 +298,10 @@ test("Trading com login: abre o Booking e vê só os bookings dele", async ({
   const rows = page.locator("[data-partner-booking]");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText(`booking-${code}-A.xlsx`);
-  await expect(page.locator('a[href="/app/booking/import"]')).toHaveCount(0);
+  // Sem os botões da Wellmix (importar e seleção); com o de lançar o dele.
+  await expect(page.locator("[data-booking-import-link]")).toHaveCount(0);
+  await expect(page.locator('a[href="/app/booking/selection"]')).toHaveCount(0);
+  await expect(page.locator("[data-partner-booking-launch]")).toBeVisible();
   await rows.first().locator("a").click();
   await page.waitForURL((url) => url.pathname === ownUrl);
   const items = page.locator("[data-partner-booking-items]");
@@ -311,9 +315,45 @@ test("Trading com login: abre o Booking e vê só os bookings dele", async ({
   const foreign = await page.goto(foreignUrl);
   expect(foreign?.status()).toBe(404);
   await expect(page.locator("[data-partner-booking-items]")).toHaveCount(0);
-  // Importar e Seleção de itens são só da Wellmix: voltam para a lista dele.
-  await page.goto("/app/booking/import");
-  await expect(page).toHaveURL(/\/app\/booking$/);
+  // A Seleção de itens é só da Wellmix: volta para a lista dele.
   await page.goto("/app/booking/selection");
   await expect(page).toHaveURL(/\/app\/booking$/);
+
+  // Lançar booking: a Trading sobe a planilha dela (só arquivo, sem link).
+  await page.locator("[data-partner-booking-launch]").click();
+  await page.waitForURL(/\/app\/booking\/import$/);
+  const launch = page.locator("[data-partner-booking-launch-form]");
+  await expect(launch.locator('input[name="sheetUrl"]')).toHaveCount(0);
+  await expect(page.locator("[data-booking-import-form]")).toHaveCount(0);
+  await launch
+    .locator("input[type=file]")
+    .setInputFiles(
+      bookingSheet(
+        "Yiwu Glass Factory",
+        `${code}-T`,
+        `Glass jar ${code} trade`,
+      ),
+    );
+  await page.locator("[data-partner-booking-launch-submit]").click();
+  await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
+  await expect(page.locator("[data-partner-booking-launched]")).toBeVisible();
+  await expect(page.locator("[data-partner-booking-items]")).toContainText(
+    `${code}-T`,
+  );
+  const launchedUrl = new URL(page.url()).pathname;
+  // Na lista dele: o que a Wellmix pôs em nome dela e o que ela lançou.
+  await page.goto("/app/booking");
+  await expect(page.locator("[data-partner-booking]")).toHaveCount(2);
+  await expect(page.locator("[data-partner-booking]").first()).toContainText(
+    `booking-${code}-T.xlsx`,
+  );
+
+  // A Wellmix vê o booking lançado, com a Trading de responsável, e é avisada.
+  await login(page, "admin@wellmix.com");
+  await page.goto(launchedUrl);
+  await expect(
+    page.locator("[data-booking-lot-partner] input[role=combobox]"),
+  ).toHaveValue(new RegExp(tradingName));
+  await page.goto("/app/notifications");
+  await expect(page.getByText(/lançado por um parceiro/).first()).toBeVisible();
 });

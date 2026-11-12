@@ -193,7 +193,10 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(rows).toHaveCount(2);
   await page.goto(base);
 
-  // 3. Fornecedor: só os do B (o fechado e o rascunho).
+  // 3. Fornecedor: só os do B (o fechado e o rascunho). O envio automático
+  // dos filtros só liga com a página pronta: mexer antes não filtrava (era a
+  // causa de este passo falhar de vez em quando).
+  await page.locator("[data-auto-submit-ready]").waitFor({ state: "attached" });
   const supplierSelect = page.locator("[data-selection-filter-supplier]");
   const optionB = supplierSelect.locator("option", {
     hasText: "Guangzhou Supplier B",

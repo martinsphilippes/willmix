@@ -128,7 +128,14 @@ export default async function BookingLotPage({
   requireScreen(user, "booking");
   // Login externo (Trading): o booking dele, só para ler, sem a análise.
   if (!isWellmix(user)) {
-    return <PartnerBookingLotView user={user} lotId={id} t={await getT()} />;
+    return (
+      <PartnerBookingLotView
+        user={user}
+        lotId={id}
+        t={await getT()}
+        created={(await searchParams).created === "1"}
+      />
+    );
   }
   const query = await searchParams;
   const one = (key: string) => {
