@@ -311,9 +311,14 @@ export async function upsertProducts(
   rows: SankhyaRow[],
   lineByGroup: Map<string, string>,
   currency = DEFAULT_SANKHYA_ERP.currency,
+  /** Histórico de notas: dados extras (última compra, caixas) só dos novos. */
+  { extrasOnlyNew = false }: { extrasOnlyNew?: boolean } = {},
 ) {
   const store = getStore();
-  const extras = await productExtras(rows);
+  const known = new Set(ctx.products.map((p) => p.sankhyaCode));
+  const extras = await productExtras(
+    extrasOnlyNew ? rows.filter((r) => !known.has(code(r.CODPROD))) : rows,
+  );
   const byCode = new Map<
     string,
     { id: string; name: string; lineId: string }
@@ -623,9 +628,19 @@ export async function importSankhyaSet(
 
   // Parceiros antes dos produtos: o fornecedor da última compra do produto
   // é ligado pelo código do parceiro.
+  // Dados extras (cidade, endereço, contatos) só dos parceiros que ainda não
+  // estão no portal: nos que já estão, esta carga não atualiza nada (cada
+  // consulta a mais ao Sankhya atrasava a nota).
+  const knownParty = new Set(
+    ctx.parties.map((p) => `${p.type}:${p.sankhyaCode}`),
+  );
   const extras = await partnerExtras([
-    ...set.partners,
-    ...(set.carriers ?? []),
+    ...set.partners.filter(
+      (r) => !knownParty.has(`supplier:${code(r.CODPARC)}`),
+    ),
+    ...(set.carriers ?? []).filter(
+      (r) => !knownParty.has(`carrier:${code(r.CODPARC)}`),
+    ),
   ]);
   const supplierByCode = new Map<string, Party>();
   for (const row of set.partners) {
@@ -660,6 +675,7 @@ export async function importSankhyaSet(
     set.products,
     lineByGroup,
     erp.currency,
+    { extrasOnlyNew: !ctx.update },
   );
   const conditionByCode = new Map(
     (await store.list("payment_conditions")).map((c) => [String(c.code), c]),
@@ -816,7 +832,8 @@ export async function importSankhyaSet(
       sankhyaRefs: refsOf(row),
     });
     await store.update("requests", request.id, { orderId: order.id });
-    for (const item of items) {
+    // Itens em paralelo, 8 por vez (um por um custava uma ida ao banco cada).
+    const createItem = async (item: SankhyaRow) => {
       const product = productByCode.get(code(item.CODPROD)) ?? null;
       await store.create("order_items", {
         orderId: order.id,
@@ -831,7 +848,9 @@ export async function importSankhyaSet(
         sankhyaCode: code(item.SEQUENCIA) || null,
         sankhyaRefs: refsOf(item),
       });
-    }
+    };
+    for (let i = 0; i < items.length; i += 8)
+      await Promise.all(items.slice(i, i + 8).map(createItem));
     await createStagesForOrder(order);
     await advanceStages(order.id, target.stage, !!target.closed, createdAt);
     const saved = (await store.get("orders", order.id)) ?? order;

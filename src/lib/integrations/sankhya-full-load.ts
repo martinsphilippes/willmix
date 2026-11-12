@@ -210,8 +210,14 @@ export async function runFullLoad(
       await applyStockBalances(ctx, rows);
     } else if (entity === "orders") {
       if (rows.length) {
+        const t0 = Date.now();
         const set = await fetchImportSetFor(rows);
+        const t1 = Date.now();
         ctx.out.push(...(await importSankhyaSet(user, set, erp, null)));
+        // Tempo de cada lado, nos logs da Vercel (onde a nota gasta tempo).
+        console.info(
+          `[sankhya-load] notas ${rows.length} itens ${set.items.length}: Sankhya ${t1 - t0} ms, portal ${Date.now() - t1} ms`,
+        );
       }
     } else {
       const groupCodes = [
