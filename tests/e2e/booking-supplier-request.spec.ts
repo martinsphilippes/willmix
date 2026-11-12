@@ -150,10 +150,21 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-answer]")).toContainText(
     /1[.,]3\b/,
   );
+  // Ficha negociada: o preço combinado, com o do booking riscado ao lado;
+  // o Superplan refeito é só da Wellmix.
+  await expect(page.locator('[data-negotiated-value="price"]')).toContainText(
+    /1[.,]3\b/,
+  );
+  await expect(page.locator('[data-negotiated-before="price"]')).toContainText(
+    /1[.,]25\b/,
+  );
+  await expect(page.locator("[data-negotiated-superplan]")).toHaveCount(0);
 
   // 4. A Wellmix aprova e cria o produto (fora da vitrine até liberar).
   await login(page, "admin@wellmix.com");
   await page.goto(itemUrl);
+  await expect(page.locator("[data-negotiated-superplan]")).toBeVisible();
+  await expect(page.locator("[data-alternative-open]")).toHaveCount(1);
   await page.click("[data-supplier-decide=approved]");
   await page.waitForURL(/[?&]decided=approved/);
   await page.fill("[data-request-product-name]", `Copo de vidro ${TAG}`);

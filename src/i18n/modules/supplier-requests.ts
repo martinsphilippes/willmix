@@ -149,7 +149,16 @@ export const pt = {
     "Solicitação aprovada. Crie o produto ou associe a um existente no bloco Produto, logo abaixo.",
   "supplierRequests.detail.decided.declined": "Solicitação recusada.",
   "supplierRequests.detail.decided.cancelled": "Solicitação cancelada.",
-  "supplierRequests.detail.request": "O que a Wellmix pede",
+  "supplierRequests.detail.request": "O que está sendo negociado",
+  "supplierRequests.detail.negotiatedPrice": "Preço negociado",
+  "supplierRequests.detail.negotiatedHint":
+    "Valores renegociados com o responsável; o do booking fica ao lado, riscado.",
+  "supplierRequests.detail.negotiatedSuperplan":
+    "Superplan com as condições negociadas",
+  "supplierRequests.detail.negotiatedSuperplanHint":
+    "Refeito agora com o preço negociado e o câmbio de hoje. Riscado: o custo do booking. Compare com as alternativas abaixo.",
+  "supplierRequests.detail.alternativeCheaper": "mais barata que a negociada",
+  "supplierRequests.detail.alternativeOpen": "Abrir solicitação para esta",
   "supplierRequests.detail.quantity": "Quantidade",
   "supplierRequests.detail.pieces": "{n} peças",
   "supplierRequests.detail.needs": "O que a Wellmix precisa no produto",
@@ -519,7 +528,17 @@ export const en: typeof pt = {
     "Request approved. Create the product or link an existing one in the Product block below.",
   "supplierRequests.detail.decided.declined": "Request declined.",
   "supplierRequests.detail.decided.cancelled": "Request cancelled.",
-  "supplierRequests.detail.request": "What Wellmix asks",
+  "supplierRequests.detail.request": "What is being negotiated",
+  "supplierRequests.detail.negotiatedPrice": "Negotiated price",
+  "supplierRequests.detail.negotiatedHint":
+    "Values renegotiated with the person in charge; the booking value is beside it, struck through.",
+  "supplierRequests.detail.negotiatedSuperplan":
+    "Superplan with the negotiated conditions",
+  "supplierRequests.detail.negotiatedSuperplanHint":
+    "Recalculated now with the negotiated price and today's exchange rate. Struck through: the booking cost. Compare with the alternatives below.",
+  "supplierRequests.detail.alternativeCheaper":
+    "cheaper than the negotiated one",
+  "supplierRequests.detail.alternativeOpen": "Open a request for this one",
   "supplierRequests.detail.quantity": "Quantity",
   "supplierRequests.detail.pieces": "{n} pieces",
   "supplierRequests.detail.needs": "What Wellmix needs in the product",
@@ -881,7 +900,15 @@ export const zh: typeof pt = {
     "询单已批准。请在下方“产品”区域创建产品或关联到已有产品。",
   "supplierRequests.detail.decided.declined": "询单已拒绝。",
   "supplierRequests.detail.decided.cancelled": "询单已取消。",
-  "supplierRequests.detail.request": "Wellmix 的要求",
+  "supplierRequests.detail.request": "正在谈判的内容",
+  "supplierRequests.detail.negotiatedPrice": "谈判价格",
+  "supplierRequests.detail.negotiatedHint":
+    "与负责人重新谈判后的数值；预订单的原值显示在旁边并划掉。",
+  "supplierRequests.detail.negotiatedSuperplan": "按谈判条件计算的 Superplan",
+  "supplierRequests.detail.negotiatedSuperplanHint":
+    "已按谈判价格和今日汇率重新计算。划掉的是预订单的成本。请与下方备选比较。",
+  "supplierRequests.detail.alternativeCheaper": "比谈判价更便宜",
+  "supplierRequests.detail.alternativeOpen": "为此项发起询单",
   "supplierRequests.detail.quantity": "数量",
   "supplierRequests.detail.pieces": "{n} 件",
   "supplierRequests.detail.needs": "Wellmix 对产品的要求",

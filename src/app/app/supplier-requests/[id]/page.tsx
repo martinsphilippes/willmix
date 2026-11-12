@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   PurchaseScheduleTable,
   roundsLine,
@@ -40,7 +41,10 @@ import { SubmitButton } from "@/components/submit-button";
 import {
   answerSupplierRequestAction,
   decideSupplierRequestAction,
+  openSupplierRequestAction,
 } from "../../actions/supplier-requests";
+import { agreedConditions } from "@/lib/services/supplier-request-product";
+import { analyzeNegotiatedItem } from "@/lib/services/superplan-analysis";
 import { STATUS_TONE, answerText } from "../_components/status";
 import {
   RequestProductCard,
@@ -279,9 +283,46 @@ export default async function SupplierRequestPage({
   }
 
   const proposalPending = !!pendingProposal(r.negotiation);
+  // Ficha negociada: com a resposta "faz", os valores combinados (resposta,
+  // contraproposta aceita ou nova proposta do responsável) entram na ficha,
+  // com o do booking riscado ao lado; a Wellmix vê o Superplan refeito com
+  // eles (docs/SUPPLIER_REQUESTS.md, "Ficha negociada").
+  const deal = r.supplierCanDo === "yes" ? agreedConditions(r) : null;
+  const negotiated =
+    wellmix && deal && chosen
+      ? await analyzeNegotiatedItem(chosen, deal, user.id).catch(
+          (error: unknown) => {
+            console.error("analyzeNegotiatedItem", error);
+            return null;
+          },
+        )
+      : null;
+  const priceText = (
+    price: number | null,
+    currency: string | null,
+    incoterm: string | null,
+  ) =>
+    price === null
+      ? "—"
+      : `${num(price)} ${currency ?? ""} ${incoterm ?? ""}`
+          .replace(/\s+/g, " ")
+          .trim();
+  /** Valor negociado, com o do booking riscado ao lado quando mudou. */
+  const changed = (now: string, before: string, key: string) =>
+    now === before ? (
+      now
+    ) : (
+      <span key={key} className="flex flex-wrap items-baseline gap-2">
+        <strong data-negotiated-value={key}>{now}</strong>
+        <s className="text-xs text-zinc-400" data-negotiated-before={key}>
+          {before}
+        </s>
+      </span>
+    );
+  const bookingPrice = priceText(it.price, it.currency, it.incoterm);
+  const cheaperThan = negotiated?.costBrl ?? null;
   // Só o fornecedor responde: a resposta é para a Wellmix, que não responde por ele.
-  const canAnswer =
-    !wellmix && supplierCanAnswer(r.status) && !proposalPending;
+  const canAnswer = !wellmix && supplierCanAnswer(r.status) && !proposalPending;
   // Decidir (aprovar, recusar, cancelar): só com a permissão (Equipe → Funções e acessos).
   const decisions =
     wellmix && can(user, "supplierRequest.decide")
@@ -383,17 +424,86 @@ export default async function SupplierRequestPage({
                         ) : null}
                       </span>,
                     ],
-                    [
-                      t("supplierRequests.detail.bookingPrice"),
-                      it.price === null
-                        ? "—"
-                        : `${num(it.price)} ${it.currency ?? ""} ${it.incoterm ?? ""}`.trim(),
-                    ],
-                    [col("moq"), num(it.moq, 0)],
+                    ...(deal
+                      ? ([
+                          [
+                            t("supplierRequests.detail.negotiatedPrice"),
+                            changed(
+                              priceText(
+                                deal.price,
+                                deal.currency,
+                                deal.incoterm,
+                              ),
+                              bookingPrice,
+                              "price",
+                            ),
+                          ],
+                          [
+                            col("moq"),
+                            changed(num(deal.moq, 0), num(it.moq, 0), "moq"),
+                          ],
+                          ...(deal.leadTimeDays !== null
+                            ? [
+                                [
+                                  t("supplierRequests.detail.answer.leadTime"),
+                                  num(deal.leadTimeDays, 0),
+                                ] as [string, ReactNode],
+                              ]
+                            : []),
+                        ] as Array<[string, ReactNode]>)
+                      : ([
+                          [
+                            t("supplierRequests.detail.bookingPrice"),
+                            bookingPrice,
+                          ],
+                          [col("moq"), num(it.moq, 0)],
+                        ] as Array<[string, ReactNode]>)),
                   ]}
                 />
+                {deal ? (
+                  <p
+                    className="mt-1 text-xs text-zinc-500"
+                    data-negotiated-hint
+                  >
+                    {t("supplierRequests.detail.negotiatedHint")}
+                  </p>
+                ) : null}
               </div>
             </div>
+            {negotiated ? (
+              <div
+                className="mt-4 rounded-lg border border-brand-100 bg-brand-50/40 p-3"
+                data-negotiated-superplan
+              >
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  {t("supplierRequests.detail.negotiatedSuperplan")}
+                </h3>
+                <div className="mt-1 flex flex-wrap items-start gap-4">
+                  {negotiated.costBrl !== null ? (
+                    <span className="flex flex-wrap items-baseline gap-2">
+                      <strong
+                        className="text-sm text-zinc-900"
+                        data-negotiated-cost
+                      >
+                        {t("supplierRequests.detail.chosenCost", {
+                          price: formatMoney(negotiated.costBrl, "BRL", t),
+                        })}
+                      </strong>
+                      {chosen?.analysis?.costBrl != null &&
+                      chosen.analysis.costBrl !== negotiated.costBrl ? (
+                        <s className="text-xs text-zinc-400">
+                          {formatMoney(chosen.analysis.costBrl, "BRL", t)}
+                        </s>
+                      ) : null}
+                    </span>
+                  ) : null}
+                  <BookingItemSuperplan analysis={negotiated} t={t} />
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {t("supplierRequests.detail.negotiatedSuperplanHint")}
+                </p>
+              </div>
+            ) : null}
             <div className="mt-4">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 {t("supplierRequests.detail.needs")}
@@ -495,6 +605,56 @@ export default async function SupplierRequestPage({
                           >
                             nº {l.number}
                           </Link>
+                        ) : null}
+                        {cheaperThan !== null &&
+                        item.analysis?.costBrl != null &&
+                        item.analysis.costBrl < cheaperThan ? (
+                          <Badge tone="warning">
+                            <span data-alternative-cheaper={item.id}>
+                              {t("supplierRequests.detail.alternativeCheaper")}
+                            </span>
+                          </Badge>
+                        ) : null}
+                        {deal ? (
+                          // Nova referência: abre a solicitação para a
+                          // alternativa, com o item atual e as outras de
+                          // alternativa (mesma quantidade e necessidade).
+                          <form action={openSupplierRequestAction}>
+                            <input
+                              type="hidden"
+                              name="chosen"
+                              value={item.id}
+                            />
+                            {[
+                              ...(chosen ? [chosen.id] : []),
+                              ...alternatives.map((a) => a.item.id),
+                            ]
+                              .filter((x) => x !== item.id)
+                              .map((x) => (
+                                <input
+                                  key={x}
+                                  type="hidden"
+                                  name="alternatives"
+                                  value={x}
+                                />
+                              ))}
+                            <input
+                              type="hidden"
+                              name="quantity"
+                              value={String(r.quantity)}
+                            />
+                            <input
+                              type="hidden"
+                              name="needs"
+                              value={r.needs ?? ""}
+                            />
+                            <SubmitButton
+                              variant="secondary"
+                              data-alternative-open={item.id}
+                            >
+                              {t("supplierRequests.detail.alternativeOpen")}
+                            </SubmitButton>
+                          </form>
                         ) : null}
                       </span>
                     </li>
