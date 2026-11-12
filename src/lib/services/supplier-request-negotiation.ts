@@ -5,6 +5,7 @@ import { assertScreen } from "@/lib/auth/screens";
 import {
   getStore,
   type SheetCurrency,
+  type SheetIncoterm,
   type SupplierRequest,
   type SupplierRequestEvent,
   type User,
@@ -128,6 +129,8 @@ export interface OfferInput {
   currency: SheetCurrency | null;
   moq: number | null;
   leadTimeDays: number | null;
+  /** Modalidade de entrega (FOB/EXW): os mesmos campos da resposta. */
+  incoterm?: SheetIncoterm | null;
   text: string | null;
 }
 
@@ -149,7 +152,12 @@ export async function proposeCounter(
   const text = clip(input.text);
   if (!text)
     throw new SupplierRequestError("supplier_request_comment_required");
-  if (input.price === null && input.moq === null && input.leadTimeDays === null)
+  if (
+    input.price === null &&
+    input.moq === null &&
+    input.leadTimeDays === null &&
+    !input.incoterm
+  )
     throw new SupplierRequestError("supplier_request_offer_empty");
   const e = event(user, side, {
     kind: "proposal",
@@ -160,6 +168,7 @@ export async function proposeCounter(
         : (input.currency ?? request.supplierCurrency ?? "USD"),
     moq: input.moq,
     leadTimeDays: input.leadTimeDays,
+    incoterm: input.incoterm ?? null,
     text,
   });
   const updated = await getStore().update("supplier_requests", request.id, {
@@ -215,6 +224,7 @@ export async function respondToProposal(
       ...(proposal.leadTimeDays != null
         ? { supplierLeadTimeDays: proposal.leadTimeDays }
         : {}),
+      ...(proposal.incoterm ? { supplierIncoterm: proposal.incoterm } : {}),
     };
   } else if (action === "counter") {
     if (input.price === null)
@@ -225,9 +235,11 @@ export async function respondToProposal(
       currency: input.currency ?? proposal.currency ?? "USD",
       moq: input.moq,
       leadTimeDays: input.leadTimeDays,
+      incoterm: input.incoterm ?? null,
       text,
     });
     patch = {
+      ...(input.incoterm ? { supplierIncoterm: input.incoterm } : {}),
       supplierPrice: input.price,
       supplierCurrency: e.currency ?? "USD",
       supplierMoq: input.moq ?? request.supplierMoq,

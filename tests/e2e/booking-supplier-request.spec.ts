@@ -113,7 +113,18 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-request-sla]")).toBeVisible();
   await page.goto(itemUrl);
   const propose = page.locator("[data-negotiation-propose-form]");
+  // Os mesmos campos da resposta (com FOB/EXW) e a estimativa do Superplan:
+  // ao digitar o preço, custo e mínimo; pela inversa, o preço necessário.
   await propose.locator("[data-negotiation-price]").fill("1,30");
+  await expect(propose.locator("[data-proposal-sim-cost]")).toBeVisible();
+  await propose.locator("[data-proposal-sim-target]").fill("500");
+  await expect(propose.locator("[data-proposal-sim-needed]")).toBeVisible();
+  await propose.locator("[data-proposal-sim-use]").click();
+  await expect(propose.locator("[data-negotiation-price]")).not.toHaveValue(
+    "1,30",
+  );
+  await propose.locator("[data-negotiation-price]").fill("1,30");
+  await propose.locator("[data-negotiation-incoterm]").selectOption("FOB");
   await propose.locator("[data-negotiation-text]").fill("Fechamos a 1,30?");
   await page.click("[data-negotiation-propose-submit]");
   await page.waitForURL(/[?&]negotiation=proposal/);

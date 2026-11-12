@@ -116,6 +116,14 @@ No detalhe da solicitação, o bloco **Negociação e conversa** guarda o histó
 5. **Avisos**: cada contraproposta vai ao fornecedor; cada aceite, nova proposta ou recusa, a quem abriu; cada mensagem ou arquivo, ao outro lado.
 6. A lista mostra de quem é a vez ("Esperando o fornecedor" / "Esperando a Wellmix", `negotiationTurn`).
 
+### Contraproposta com o Superplan (decisão do dono, 12/11/2026)
+
+- **Mesmos campos da resposta**: a contraproposta da Wellmix (e a nova proposta do fornecedor) tem preço, moeda, MOQ, prazo e **modalidade de entrega (FOB/EXW)**. A FOB/EXW aceita ou proposta vira a do fornecedor (`supplierIncoterm`).
+- **Estimativa do Superplan** (só a Wellmix, no formulário "Devolver com contraproposta"): a tela recebe a entrada do Superplan do item (`superplanBaseForItem`: tipo de negócio do retrato do booking, container, frete e câmbio do dia) e refaz a conta no navegador a cada tecla (`computeSuperplan` é pura):
+  - digitando o **preço sugerido**: custo por peça e preço mínimo (com o mínimo do booking para comparar);
+  - pela **inversa**, digitando o **preço mínimo desejado (R$)**: o preço por peça necessário (`priceForMinimum`, em `src/lib/superplan-inverse.ts`, busca binária, arredondado para baixo) e o botão "Usar este preço". Mínimo abaixo do que o frete e as despesas já custam: "não alcançável".
+  - Só USD e RMB entram na conta; faltando dado do item (caixa, volume, frete, câmbio), a tela diz isso. É estimativa: o que vale é o que o fornecedor responde.
+
 ## Pendências do fornecedor
 
 A solicitação aparece em "Minhas pendências" do fornecedor, na etapa **Responder a solicitação** (`supplier.request`, a segunda do caminho, depois de "Analisar o Booking"), enquanto a vez é dele (`negotiationTurn` = fornecedor): Aberta, ou Respondida com contraproposta da Wellmix esperando. O prazo é o SLA da negociação; "Com você desde" é a abertura ou a contraproposta. Sai quando ele responde ou a Wellmix decide (`supplierRequestTasks` em `src/lib/services/tasks.ts`).

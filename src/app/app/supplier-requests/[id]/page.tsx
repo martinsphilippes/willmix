@@ -47,7 +47,10 @@ import {
   resolveLinkedRequestAction,
 } from "../../actions/supplier-requests";
 import { agreedConditions } from "@/lib/services/supplier-request-product";
-import { analyzeNegotiatedItem } from "@/lib/services/superplan-analysis";
+import {
+  analyzeNegotiatedItem,
+  superplanBaseForItem,
+} from "@/lib/services/superplan-analysis";
 import { STATUS_TONE, answerText } from "../_components/status";
 import {
   RequestProductCard,
@@ -68,7 +71,7 @@ import { SupplierRequestTable } from "../_components/supplier-table";
 import { RequestTimeline } from "../_components/timeline";
 import { RequestChat, type ChatMessage } from "../_components/request-chat";
 import { dateTime } from "../_components/negotiation";
-import { canPostMessage } from "@/lib/supplier-requests";
+import { canPostMessage, canPropose } from "@/lib/supplier-requests";
 
 /*
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
@@ -363,6 +366,19 @@ export default async function SupplierRequestPage({
     );
   const bookingPrice = priceText(it.price, it.currency, it.incoterm);
   const cheaperThan = negotiated?.costBrl ?? null;
+  // Contraproposta: a Wellmix simula o Superplan do item no navegador.
+  const simulation =
+    wellmix && chosen && canPropose(r)
+      ? await superplanBaseForItem(chosen)
+          .then((base) => ({
+            base,
+            bookingMinimum: chosen.analysis?.minimumBrl ?? null,
+          }))
+          .catch((error: unknown) => {
+            console.error("superplanBaseForItem", error);
+            return null;
+          })
+      : null;
   // Só o fornecedor responde: a resposta é para a Wellmix, que não responde por ele.
   const canAnswer = !wellmix && supplierCanAnswer(r.status) && !proposalPending;
   // Decidir (aprovar, recusar, cancelar): só com a permissão (Equipe → Funções e acessos).
@@ -1055,7 +1071,12 @@ export default async function SupplierRequestPage({
 
           {/* Contraproposta: na coluna da direita, embaixo do Booking (a
               conversa fica no chat flutuante). */}
-          <NegotiationCard request={r} wellmix={wellmix} t={t} />
+          <NegotiationCard
+            request={r}
+            wellmix={wellmix}
+            t={t}
+            simulation={simulation}
+          />
         </div>
       </div>
       {wellmix && r.orderId ? (

@@ -340,3 +340,19 @@ describe("Superplan: parâmetros", () => {
     );
   });
 });
+
+describe("conta inversa (contraproposta com o Superplan)", () => {
+  it("acha o preço por peça que leva ao mínimo desejado", async () => {
+    const { priceForMinimum } = await import("@/lib/superplan-inverse");
+    const base = example();
+    const minimumAt = (p: number) =>
+      computeSuperplan({ ...base, unitPrice: p }).prices!.minimum;
+    const target = minimumAt(3);
+    const price = priceForMinimum(base, base.currency, target)!;
+    expect(price).toBeCloseTo(3, 3);
+    // Arredondado para baixo: não passa do mínimo desejado.
+    expect(minimumAt(price)).toBeLessThanOrEqual(target);
+    // Abaixo do que só o frete e as despesas já custam: inalcançável.
+    expect(priceForMinimum(base, base.currency, 0.01)).toBeNull();
+  });
+});

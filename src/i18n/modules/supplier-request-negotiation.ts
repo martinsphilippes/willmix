@@ -60,6 +60,23 @@ export const pt = {
   "settings.error.supplier_request_sla_invalid":
     "Informe o SLA da negociação em minutos (de 1 a 86400).",
 
+  "supplierRequests.negotiation.sim.title": "Estimativa do Superplan",
+  "supplierRequests.negotiation.sim.cost": "Custo por peça",
+  "supplierRequests.negotiation.sim.minimum": "Preço mínimo",
+  "supplierRequests.negotiation.sim.booking": "no booking:",
+  "supplierRequests.negotiation.sim.target": "Preço mínimo desejado (R$)",
+  "supplierRequests.negotiation.sim.targetHint":
+    "Conta inversa: o sistema mostra o preço por peça necessário para chegar a esse mínimo.",
+  "supplierRequests.negotiation.sim.needed": "Preço por peça necessário",
+  "supplierRequests.negotiation.sim.use": "Usar este preço",
+  "supplierRequests.negotiation.sim.unreachable":
+    "Esse mínimo não é alcançável só com o preço (fica abaixo do custo sem a mercadoria).",
+  "supplierRequests.negotiation.sim.currency":
+    "A estimativa só funciona com preço em USD ou RMB.",
+  "supplierRequests.negotiation.sim.missing":
+    "Faltam dados do item para a estimativa (caixa, volume, frete ou câmbio).",
+  "supplierRequests.negotiation.sim.hint":
+    "Só estimativa, refeita a cada tecla com o câmbio de hoje e os padrões do Superplan; o que vale é a resposta do fornecedor.",
   "supplierRequests.error.supplier_request_supplier_only":
     "A resposta é do fornecedor, pelo portal: a Wellmix não responde por ele.",
   "supplierRequests.error.supplier_request_proposal_pending":
@@ -158,6 +175,23 @@ export const en: Record<keyof typeof pt, string> = {
   "settings.error.supplier_request_sla_invalid":
     "Enter the negotiation SLA in minutes (1 to 86400).",
 
+  "supplierRequests.negotiation.sim.title": "Superplan estimate",
+  "supplierRequests.negotiation.sim.cost": "Cost per piece",
+  "supplierRequests.negotiation.sim.minimum": "Minimum price",
+  "supplierRequests.negotiation.sim.booking": "in the booking:",
+  "supplierRequests.negotiation.sim.target": "Desired minimum price (R$)",
+  "supplierRequests.negotiation.sim.targetHint":
+    "Reverse calculation: the system shows the price per piece needed to reach that minimum.",
+  "supplierRequests.negotiation.sim.needed": "Price per piece needed",
+  "supplierRequests.negotiation.sim.use": "Use this price",
+  "supplierRequests.negotiation.sim.unreachable":
+    "This minimum can't be reached by the price alone (it is below the cost without the goods).",
+  "supplierRequests.negotiation.sim.currency":
+    "The estimate only works with a price in USD or RMB.",
+  "supplierRequests.negotiation.sim.missing":
+    "The item is missing data for the estimate (carton, volume, freight or exchange rate).",
+  "supplierRequests.negotiation.sim.hint":
+    "Estimate only, recalculated on every keystroke with today's exchange rate and the Superplan defaults; the supplier's answer is what counts.",
   "supplierRequests.error.supplier_request_supplier_only":
     "The answer comes from the supplier, through the portal: Wellmix does not answer for them.",
   "supplierRequests.error.supplier_request_proposal_pending":
@@ -251,6 +285,22 @@ export const zh: Record<keyof typeof pt, string> = {
   "settings.error.supplier_request_sla_invalid":
     "请填写议价 SLA 分钟数（1 至 86400）。",
 
+  "supplierRequests.negotiation.sim.title": "Superplan 估算",
+  "supplierRequests.negotiation.sim.cost": "每件成本",
+  "supplierRequests.negotiation.sim.minimum": "最低价",
+  "supplierRequests.negotiation.sim.booking": "预订单中：",
+  "supplierRequests.negotiation.sim.target": "期望最低价（R$）",
+  "supplierRequests.negotiation.sim.targetHint":
+    "反向计算：系统显示达到该最低价所需的每件价格。",
+  "supplierRequests.negotiation.sim.needed": "所需每件价格",
+  "supplierRequests.negotiation.sim.use": "使用此价格",
+  "supplierRequests.negotiation.sim.unreachable":
+    "仅靠价格无法达到该最低价（低于不含货物的成本）。",
+  "supplierRequests.negotiation.sim.currency": "估算仅适用于 USD 或 RMB 价格。",
+  "supplierRequests.negotiation.sim.missing":
+    "该商品缺少估算所需数据（箱规、体积、运费或汇率）。",
+  "supplierRequests.negotiation.sim.hint":
+    "仅为估算，每次输入都会按今日汇率和 Superplan 默认值重新计算；以供应商的答复为准。",
   "supplierRequests.error.supplier_request_supplier_only":
     "答复由供应商通过门户提交：Wellmix 不能代为答复。",
   "supplierRequests.error.supplier_request_proposal_pending":

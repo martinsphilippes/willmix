@@ -8,7 +8,11 @@ import {
   type PurchaseSheet,
 } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
-import { computeSuperplan, superplanParams } from "@/lib/superplan";
+import {
+  computeSuperplan,
+  superplanParams,
+  type SuperplanInput,
+} from "@/lib/superplan";
 import {
   defaultSuperplanInput,
   snapshotOf,
@@ -344,4 +348,22 @@ export async function analyzeNegotiatedItem(
   return snapshot
     ? { ...snapshot, at: new Date().toISOString(), byUserId }
     : null;
+}
+
+/**
+ * Base da simulação da contraproposta (docs/SUPPLIER_REQUESTS.md,
+ * "Contraproposta com o Superplan"): a entrada do Superplan do item do
+ * booking com os valores padrão (tipo de negócio do retrato, container,
+ * frete e câmbio do dia). A tela troca só o preço e a moeda e refaz a conta
+ * no navegador (`computeSuperplan` é pura), nos dois sentidos.
+ */
+export async function superplanBaseForItem(
+  item: BookingItem,
+): Promise<SuperplanInput> {
+  const ctx = await loadSuperplanContext();
+  const ncm = text(item.ncm);
+  const rates = ncm ? await lookupNcm(ncm) : null;
+  return defaultSuperplanInput(bookingItemPrefill(item, rates), ctx, {
+    businessType: item.analysis?.businessType ?? undefined,
+  }).input;
 }

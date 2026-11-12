@@ -1,5 +1,7 @@
 import type { SupplierRequest, SupplierRequestEvent } from "@/lib/db/schema";
-import { SHEET_CURRENCIES } from "@/lib/db/schema";
+import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
+import type { SuperplanInput } from "@/lib/superplan";
+import { ProposalFields } from "./proposal-fields";
 import type { Translate } from "@/i18n";
 import { canPropose, pendingProposal } from "@/lib/supplier-requests";
 import type { SupplierRequestSla } from "@/lib/services/supplier-request-negotiation";
@@ -56,14 +58,16 @@ function OfferFields({
   t,
   values,
   currencyDefault,
+  incotermDefault,
   raw,
 }: {
   t: Translate;
   values: Pick<
     SupplierRequestEvent,
-    "price" | "currency" | "moq" | "leadTimeDays"
+    "price" | "currency" | "moq" | "leadTimeDays" | "incoterm"
   > | null;
   currencyDefault: string;
+  incotermDefault: string;
   raw: (n: number | null | undefined) => string;
 }) {
   return (
@@ -104,6 +108,19 @@ function OfferFields({
           data-negotiation-lead-time
         />
       </Field>
+      <Field label={t("supplierRequests.detail.answer.incoterm")}>
+        <Select
+          name="incoterm"
+          defaultValue={values?.incoterm ?? incotermDefault}
+          data-negotiation-incoterm
+        >
+          {SHEET_INCOTERMS.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </Select>
+      </Field>
     </div>
   );
 }
@@ -112,10 +129,13 @@ export function NegotiationCard({
   request: r,
   wellmix,
   t,
+  simulation = null,
 }: {
   request: SupplierRequest;
   wellmix: boolean;
   t: Translate;
+  /** Só a Wellmix: base do Superplan do item e o mínimo do booking. */
+  simulation?: { base: SuperplanInput; bookingMinimum: number | null } | null;
 }) {
   const events = r.negotiation ?? [];
   const proposal = pendingProposal(events);
@@ -123,6 +143,7 @@ export function NegotiationCard({
   const raw = (n: number | null | undefined) =>
     n === null || n === undefined ? "" : String(n).replace(".", decimal);
   const currencyDefault = r.supplierCurrency ?? r.item.currency ?? "USD";
+  const incotermDefault = r.supplierIncoterm ?? r.item.incoterm ?? "FOB";
   const showPropose = wellmix && canPropose(r);
   // Só o fornecedor responde à contraproposta (a Wellmix não responde por ele).
   const showRespond = !wellmix && !!proposal && r.status === "answered";
@@ -162,16 +183,42 @@ export function NegotiationCard({
                 {t("supplierRequests.negotiation.proposeHint")}
               </p>
               <input type="hidden" name="id" value={r.id} />
-              <OfferFields
-                t={t}
+              <ProposalFields
                 values={{
                   price: r.supplierPrice,
-                  currency: r.supplierCurrency,
+                  currency: r.supplierCurrency ?? currencyDefault,
                   moq: r.supplierMoq,
                   leadTimeDays: r.supplierLeadTimeDays,
+                  incoterm: incotermDefault,
                 }}
-                currencyDefault={currencyDefault}
-                raw={raw}
+                currencies={SHEET_CURRENCIES}
+                incoterms={SHEET_INCOTERMS}
+                base={simulation?.base ?? null}
+                bookingMinimum={simulation?.bookingMinimum ?? null}
+                intl={t.intl}
+                labels={{
+                  price: t("supplierRequests.detail.answer.price"),
+                  currency: t("supplierRequests.detail.answer.currency"),
+                  moq: t("supplierRequests.detail.answer.moq"),
+                  leadTime: t("supplierRequests.detail.answer.leadTime"),
+                  incoterm: t("supplierRequests.detail.answer.incoterm"),
+                  simTitle: t("supplierRequests.negotiation.sim.title"),
+                  simCost: t("supplierRequests.negotiation.sim.cost"),
+                  simMinimum: t("supplierRequests.negotiation.sim.minimum"),
+                  simBooking: t("supplierRequests.negotiation.sim.booking"),
+                  simTarget: t("supplierRequests.negotiation.sim.target"),
+                  simTargetHint: t(
+                    "supplierRequests.negotiation.sim.targetHint",
+                  ),
+                  simNeeded: t("supplierRequests.negotiation.sim.needed"),
+                  simUse: t("supplierRequests.negotiation.sim.use"),
+                  simUnreachable: t(
+                    "supplierRequests.negotiation.sim.unreachable",
+                  ),
+                  simCurrency: t("supplierRequests.negotiation.sim.currency"),
+                  simMissing: t("supplierRequests.negotiation.sim.missing"),
+                  simHint: t("supplierRequests.negotiation.sim.hint"),
+                }}
               />
               <Field label={t("supplierRequests.negotiation.comment")}>
                 <Textarea
@@ -208,6 +255,7 @@ export function NegotiationCard({
                 t={t}
                 values={proposal}
                 currencyDefault={currencyDefault}
+                incotermDefault={incotermDefault}
                 raw={raw}
               />
               <Field label={t("supplierRequests.negotiation.commentOptional")}>

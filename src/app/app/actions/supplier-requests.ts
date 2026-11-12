@@ -342,11 +342,16 @@ function offerOf(form: FormData) {
     .max(4000)
     .nullable()
     .parse(str(form, "text") || null);
+  const incoterm = z
+    .enum(SHEET_INCOTERMS)
+    .nullable()
+    .parse(str(form, "incoterm") || null);
   return {
     price: number(form, "price"),
     currency,
     moq: number(form, "moq", true),
     leadTimeDays: number(form, "leadTimeDays", true),
+    incoterm,
     text,
   };
 }
