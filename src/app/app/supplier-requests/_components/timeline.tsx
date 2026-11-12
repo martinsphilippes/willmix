@@ -82,6 +82,8 @@ export function RequestTimeline({
         return k("reject");
       case "message":
         return e?.documentId && !e.text ? k("file") : k("message");
+      case "keep":
+        return k("keep");
       case "decided":
         return k(`decided.${entry.outcome ?? "approved"}`);
       case "product":

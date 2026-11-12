@@ -349,6 +349,24 @@ export const pt = {
   "supplierRequests.timeline.counter": "Nova proposta do fornecedor",
   "supplierRequests.timeline.reject":
     "Contraproposta recusada: fica a resposta anterior",
+  "supplierRequests.timeline.keep": "Wellmix continua negociando",
+  "supplierRequests.detail.linked.title": "Solicitações ligadas ({n})",
+  "supplierRequests.detail.linked.hint":
+    "Do item e das alternativas dele (só a Wellmix vê). Ao aprovar uma, as que estão em andamento pedem uma resposta: continuar negociando ou recusar.",
+  "supplierRequests.detail.linked.ask":
+    "A solicitação nº {n} (alternativa) foi aprovada: continuar negociando esta ou recusar?",
+  "supplierRequests.detail.linked.askShort":
+    "Aprovada a nº {n}: continuar ou recusar?",
+  "supplierRequests.detail.linked.keep": "Continuar negociando",
+  "supplierRequests.detail.linked.decline": "Recusar",
+  "supplierRequests.detail.linked.notice.keep":
+    "A solicitação continua em negociação.",
+  "supplierRequests.detail.linked.notice.decline":
+    "Solicitação ligada recusada.",
+  "supplierRequests.detail.linked.approvedAsk":
+    'Aprovada. As solicitações ligadas em andamento esperam a sua resposta: continuar negociando ou recusar (veja "Solicitações ligadas").',
+  "supplierRequests.error.supplier_request_linked_nothing":
+    "Nenhuma solicitação ligada aprovada espera a resposta desta.",
   "supplierRequests.timeline.message": "Mensagem",
   "supplierRequests.timeline.file": "Arquivo enviado",
   "supplierRequests.timeline.decided.approved": "Aprovada pela Wellmix",
@@ -730,6 +748,23 @@ export const en: typeof pt = {
   "supplierRequests.timeline.counter": "New proposal from the supplier",
   "supplierRequests.timeline.reject":
     "Counter-offer declined: the previous answer stays",
+  "supplierRequests.timeline.keep": "Wellmix keeps negotiating",
+  "supplierRequests.detail.linked.title": "Linked requests ({n})",
+  "supplierRequests.detail.linked.hint":
+    "For the item and its alternatives (only Wellmix sees this). When one is approved, those in progress ask for an answer: keep negotiating or decline.",
+  "supplierRequests.detail.linked.ask":
+    "Request no. {n} (alternative) was approved: keep negotiating this one or decline it?",
+  "supplierRequests.detail.linked.askShort":
+    "No. {n} approved: keep or decline?",
+  "supplierRequests.detail.linked.keep": "Keep negotiating",
+  "supplierRequests.detail.linked.decline": "Decline",
+  "supplierRequests.detail.linked.notice.keep":
+    "The request stays in negotiation.",
+  "supplierRequests.detail.linked.notice.decline": "Linked request declined.",
+  "supplierRequests.detail.linked.approvedAsk":
+    'Approved. The linked requests in progress are waiting for your answer: keep negotiating or decline (see "Linked requests").',
+  "supplierRequests.error.supplier_request_linked_nothing":
+    "No approved linked request is waiting for an answer on this one.",
   "supplierRequests.timeline.message": "Message",
   "supplierRequests.timeline.file": "File sent",
   "supplierRequests.timeline.decided.approved": "Approved by Wellmix",
@@ -1088,6 +1123,21 @@ export const zh: typeof pt = {
   "supplierRequests.timeline.accept": "接受还价：数值成为答复",
   "supplierRequests.timeline.counter": "供应商新报价",
   "supplierRequests.timeline.reject": "拒绝还价：保留之前的答复",
+  "supplierRequests.timeline.keep": "Wellmix 继续谈判",
+  "supplierRequests.detail.linked.title": "关联询单（{n}）",
+  "supplierRequests.detail.linked.hint":
+    "该商品及其备选的询单（仅 Wellmix 可见）。批准其中一个后，进行中的询单需要答复：继续谈判或拒绝。",
+  "supplierRequests.detail.linked.ask":
+    "询单 {n} 号（备选）已批准：继续谈判此询单还是拒绝？",
+  "supplierRequests.detail.linked.askShort": "{n} 号已批准：继续还是拒绝？",
+  "supplierRequests.detail.linked.keep": "继续谈判",
+  "supplierRequests.detail.linked.decline": "拒绝",
+  "supplierRequests.detail.linked.notice.keep": "该询单继续谈判。",
+  "supplierRequests.detail.linked.notice.decline": "关联询单已拒绝。",
+  "supplierRequests.detail.linked.approvedAsk":
+    "已批准。进行中的关联询单正在等待您的答复：继续谈判或拒绝（见“关联询单”）。",
+  "supplierRequests.error.supplier_request_linked_nothing":
+    "没有已批准的关联询单在等待此询单的答复。",
   "supplierRequests.timeline.message": "消息",
   "supplierRequests.timeline.file": "已发送文件",
   "supplierRequests.timeline.decided.approved": "Wellmix 已批准",
