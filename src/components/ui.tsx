@@ -4,6 +4,7 @@ import { cloneElement, isValidElement, useId } from "react";
 import { twMerge } from "tailwind-merge";
 import type { Translate } from "@/i18n";
 import { PAGE_HELP_ENABLED, PageHelp, type HelpSpec } from "./page-help";
+import { TableTools } from "./table-tools";
 
 /*
  * Kit de componentes com a identidade Wellmix. Tailwind 4, sem dependências.
@@ -196,7 +197,12 @@ export function PageHeader({
 }
 
 export type Tone =
-  "neutral" | "info" | "success" | "warning" | "danger" | "brand";
+  | "neutral"
+  | "info"
+  | "success"
+  | "warning"
+  | "danger"
+  | "brand";
 const badgeStyles: Record<Tone, string> = {
   neutral: "bg-zinc-100 text-zinc-700 ring-zinc-200",
   info: "bg-sky-50 text-sky-800 ring-sky-200",
@@ -462,26 +468,52 @@ export function Select({
   );
 }
 
+/**
+ * Tabela padrão do portal: ordena pelo cabeçalho, busca ao digitar em todas
+ * as colunas e pagina em 15, 25 ou 50 linhas (ver table-tools.tsx). Tabelas
+ * que não são lista (rowSpan, grupos) ficam como estão; `tools={false}`
+ * desliga tudo (documentos, planilhas de edição).
+ */
 export function Table({
   children,
   className,
+  tools = true,
+  sortable = true,
+  searchable = true,
+  paginated = true,
 }: {
   children: ReactNode;
   className?: string;
+  tools?: boolean;
+  sortable?: boolean;
+  searchable?: boolean;
+  paginated?: boolean;
 }) {
+  if (!tools) {
+    return (
+      /* relative: texto só para leitor de tela (sr-only, posição absoluta) numa
+         coluna fora da tela fica dentro da rolagem, sem alargar a página. */
+      <div
+        className={cx(
+          "relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border",
+          className,
+        )}
+      >
+        <table className="w-full min-w-[32rem] text-left text-sm">
+          {children}
+        </table>
+      </div>
+    );
+  }
   return (
-    /* relative: texto só para leitor de tela (sr-only, posição absoluta) numa
-       coluna fora da tela fica dentro da rolagem, sem alargar a página. */
-    <div
-      className={cx(
-        "relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border",
-        className,
-      )}
+    <TableTools
+      className={className}
+      sortable={sortable}
+      searchable={searchable}
+      paginated={paginated}
     >
-      <table className="w-full min-w-[32rem] text-left text-sm">
-        {children}
-      </table>
-    </div>
+      {children}
+    </TableTools>
   );
 }
 

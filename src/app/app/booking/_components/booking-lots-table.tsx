@@ -16,6 +16,7 @@ import {
   linkClass,
   type Tone,
 } from "@/components/ui";
+import { TableTools } from "@/components/table-tools";
 
 /*
  * Tabela dos bookings já carregados: a busca filtra por qualquer campo
@@ -172,70 +173,72 @@ export function BookingLotsTable({
         </span>
       </div>
       {shown.length ? (
-        <div className="relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border">
-          <table className="w-full min-w-[56rem] text-left text-sm">
-            <thead>
-              <tr>
-                {COLUMNS.map(({ key, numeric }) => {
-                  const active = sort.key === key;
-                  return (
-                    <th
-                      key={key}
-                      aria-sort={
-                        active
-                          ? sort.dir === "asc"
-                            ? "ascending"
-                            : "descending"
-                          : "none"
-                      }
+        <TableTools
+          tableClassName="min-w-[56rem]"
+          sortable={false}
+          searchable={false}
+        >
+          <thead>
+            <tr>
+              {COLUMNS.map(({ key, numeric }) => {
+                const active = sort.key === key;
+                return (
+                  <th
+                    key={key}
+                    aria-sort={
+                      active
+                        ? sort.dir === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                    }
+                    className={cx(
+                      "border-b border-zinc-200 bg-zinc-50/80 px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500",
+                      numeric && "text-right",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggle(key)}
+                      title={labels.sortBy.replace("{col}", labels.cols[key])}
                       className={cx(
-                        "border-b border-zinc-200 bg-zinc-50/80 px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500",
-                        numeric && "text-right",
+                        "inline-flex items-center gap-1 uppercase hover:text-brand-700",
+                        active && "text-brand-700",
                       )}
+                      data-booking-lots-sort={key}
                     >
-                      <button
-                        type="button"
-                        onClick={() => toggle(key)}
-                        title={labels.sortBy.replace("{col}", labels.cols[key])}
-                        className={cx(
-                          "inline-flex items-center gap-1 uppercase hover:text-brand-700",
-                          active && "text-brand-700",
-                        )}
-                        data-booking-lots-sort={key}
-                      >
-                        {labels.cols[key]}
-                        <span aria-hidden className="text-[10px]">
-                          {active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}
-                        </span>
-                      </button>
-                    </th>
-                  );
-                })}
+                      {labels.cols[key]}
+                      <span aria-hidden className="text-[10px]">
+                        {active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}
+                      </span>
+                    </button>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((row) => (
+              <tr
+                key={row.id}
+                className="transition hover:bg-brand-50/40"
+                data-booking-lot-row={row.id}
+              >
+                {COLUMNS.map(({ key, numeric }) => (
+                  <td
+                    key={key}
+                    className={cx(
+                      "border-b border-zinc-100 px-2.5 py-2 align-top text-[13px] text-zinc-800",
+                      numeric && "text-right tabular-nums",
+                    )}
+                  >
+                    {cell(row, key)}
+                  </td>
+                ))}
               </tr>
-            </thead>
-            <tbody>
-              {shown.map((row) => (
-                <tr
-                  key={row.id}
-                  className="transition hover:bg-brand-50/40"
-                  data-booking-lot-row={row.id}
-                >
-                  {COLUMNS.map(({ key, numeric }) => (
-                    <td
-                      key={key}
-                      className={cx(
-                        "border-b border-zinc-100 px-2.5 py-2 align-top text-[13px] text-zinc-800",
-                        numeric && "text-right tabular-nums",
-                      )}
-                    >
-                      {cell(row, key)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </TableTools>
       ) : (
         <Empty>{labels.noMatch}</Empty>
       )}

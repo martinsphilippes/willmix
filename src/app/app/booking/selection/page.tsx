@@ -57,6 +57,7 @@ import { listSelectionGroups } from "@/lib/services/selection-groups";
 import { SupplierNoLoginAlert } from "@/components/supplier-no-login";
 import { canOpen } from "@/lib/auth/screens";
 import { partiesWithoutLogin } from "@/lib/services/portal-access";
+import { TableTools } from "@/components/table-tools";
 
 /*
  * Seleção de itens (docs/SUPPLIER_REQUESTS.md): duas abas.
@@ -261,276 +262,272 @@ export default async function BookingSelectionPage({
    */
   const comparison = (list: SelectionRow[], basket: boolean) => {
     const table = (
-      <div className="relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border">
-        <table className="w-full text-left text-sm" data-selection-items>
-          <thead>
-            <tr>
-              <th className={th}>
-                {basket ? (
-                  <input
-                    type="checkbox"
-                    data-basket-all
-                    aria-label={t("supplierRequests.selection.pickAll")}
-                    title={t("supplierRequests.selection.pickAll")}
-                  />
-                ) : null}
+      <TableTools className="" tableClassName="min-w-0" data-selection-items="">
+        <thead>
+          <tr>
+            <th className={th}>
+              {basket ? (
+                <input
+                  type="checkbox"
+                  data-basket-all
+                  aria-label={t("supplierRequests.selection.pickAll")}
+                  title={t("supplierRequests.selection.pickAll")}
+                />
+              ) : null}
+            </th>
+            {[
+              ...(basket ? [] : ["choose", "alternative"]),
+              "photo",
+              "item",
+              "supplier",
+              "booking",
+              "price",
+              "priceUsd",
+              "moq",
+              "box",
+              "cbm",
+              "size",
+              "capacity",
+              "material",
+              "sheetQty",
+              "superplan",
+              "situation",
+            ].map((k) => (
+              <th key={k} className={th}>
+                {col(k)}
               </th>
-              {[
-                ...(basket ? [] : ["choose", "alternative"]),
-                "photo",
-                "item",
-                "supplier",
-                "booking",
-                "price",
-                "priceUsd",
-                "moq",
-                "box",
-                "cbm",
-                "size",
-                "capacity",
-                "material",
-                "sheetQty",
-                "superplan",
-                "situation",
-              ].map((k) => (
-                <th key={k} className={th}>
-                  {col(k)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {list.map(({ item, lot, supplier, activeRequest }) => {
-              const a = item.analysis;
-              const draft = lot.status === "draft";
-              const busy = !!activeRequest || draft;
-              const priceUsd = priceInUsd(item.price, item.currency, rmbPerUsd);
-              const similar = similarQuery(item);
-              return (
-                <tr
-                  key={item.id}
-                  className={cx(
-                    "transition hover:bg-brand-50/40",
-                    item.id === best && "bg-emerald-50/50",
-                  )}
-                  data-selection-item={item.id}
-                >
-                  <td className={cx(td, "text-center")}>
-                    {basket ? (
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {list.map(({ item, lot, supplier, activeRequest }) => {
+            const a = item.analysis;
+            const draft = lot.status === "draft";
+            const busy = !!activeRequest || draft;
+            const priceUsd = priceInUsd(item.price, item.currency, rmbPerUsd);
+            const similar = similarQuery(item);
+            return (
+              <tr
+                key={item.id}
+                className={cx(
+                  "transition hover:bg-brand-50/40",
+                  item.id === best && "bg-emerald-50/50",
+                )}
+                data-selection-item={item.id}
+              >
+                <td className={cx(td, "text-center")}>
+                  {basket ? (
+                    <input
+                      type="checkbox"
+                      value={item.id}
+                      data-basket-item
+                      aria-label={`${t("supplierRequests.selection.pick")} ${item.description ?? item.factoryItemCode ?? ""}`}
+                    />
+                  ) : null}
+                </td>
+                {basket ? null : (
+                  <>
+                    <td className={cx(td, "text-center")}>
+                      <input
+                        type="radio"
+                        name="chosen"
+                        value={item.id}
+                        disabled={busy}
+                        defaultChecked={
+                          !busy && current?.chosenItemId === item.id
+                        }
+                        title={
+                          draft
+                            ? t("supplierRequests.selection.draftHint")
+                            : undefined
+                        }
+                        aria-label={`${col("choose")} ${item.description ?? item.factoryItemCode ?? ""}`}
+                        data-selection-choose={item.id}
+                      />
+                    </td>
+                    <td className={cx(td, "text-center")}>
                       <input
                         type="checkbox"
+                        name="alternatives"
                         value={item.id}
-                        data-basket-item
-                        aria-label={`${t("supplierRequests.selection.pick")} ${item.description ?? item.factoryItemCode ?? ""}`}
+                        aria-label={`${col("alternative")} ${item.description ?? item.factoryItemCode ?? ""}`}
+                        data-selection-alternative={item.id}
                       />
-                    ) : null}
-                  </td>
-                  {basket ? null : (
-                    <>
-                      <td className={cx(td, "text-center")}>
-                        <input
-                          type="radio"
-                          name="chosen"
-                          value={item.id}
-                          disabled={busy}
-                          defaultChecked={
-                            !busy && current?.chosenItemId === item.id
-                          }
-                          title={
-                            draft
-                              ? t("supplierRequests.selection.draftHint")
-                              : undefined
-                          }
-                          aria-label={`${col("choose")} ${item.description ?? item.factoryItemCode ?? ""}`}
-                          data-selection-choose={item.id}
-                        />
-                      </td>
-                      <td className={cx(td, "text-center")}>
-                        <input
-                          type="checkbox"
-                          name="alternatives"
-                          value={item.id}
-                          aria-label={`${col("alternative")} ${item.description ?? item.factoryItemCode ?? ""}`}
-                          data-selection-alternative={item.id}
-                        />
-                      </td>
-                    </>
+                    </td>
+                  </>
+                )}
+                <td className={td}>
+                  {item.photoDocumentId ? (
+                    <a
+                      href={`/api/files/${item.photoDocumentId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                      <img
+                        src={`/api/files/${item.photoDocumentId}`}
+                        alt=""
+                        loading="lazy"
+                        className="h-12 w-12 rounded border border-zinc-200 object-cover"
+                      />
+                    </a>
+                  ) : (
+                    <span className="text-zinc-400">—</span>
                   )}
-                  <td className={td}>
-                    {item.photoDocumentId ? (
-                      <a
-                        href={`/api/files/${item.photoDocumentId}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
-                        <img
-                          src={`/api/files/${item.photoDocumentId}`}
-                          alt=""
-                          loading="lazy"
-                          className="h-12 w-12 rounded border border-zinc-200 object-cover"
-                        />
-                      </a>
-                    ) : (
-                      <span className="text-zinc-400">—</span>
-                    )}
-                  </td>
-                  <td className={td}>
-                    <span className="block max-w-64 min-w-44 whitespace-normal font-medium">
-                      {item.description ?? item.productName ?? "—"}
-                    </span>
-                    <span className="block text-xs text-zinc-500">
-                      {[item.factoryItemCode, item.colorAssortment]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                    {similar ? (
-                      <Link
-                        href={`/app/booking/selection?q=${encodeURIComponent(similar)}`}
-                        className={cx(linkClass, "text-xs")}
-                        data-selection-similar={item.id}
-                      >
-                        {t("supplierRequests.selection.similar")}
-                      </Link>
-                    ) : null}
-                    {basket && lot.status !== "cancelled" ? (
-                      <Link
-                        href={`/app/booking/invite/${item.id}`}
-                        className={cx(linkClass, "ml-2 text-xs")}
-                        title={t("bookingInvites.selection.inviteHint")}
-                        data-selection-invite={item.id}
-                      >
-                        {t("bookingInvites.selection.invite")}
-                      </Link>
-                    ) : null}
-                  </td>
-                  <td className={td}>
-                    <span className="block max-w-40 min-w-28 whitespace-normal">
-                      {supplier?.name ?? "—"}
-                    </span>
-                    {supplier && noLoginIds.has(supplier.id) ? (
-                      <span data-selection-no-login={supplier.id}>
-                        <Badge tone="warning">{t("portalAccess.none")}</Badge>
-                      </span>
-                    ) : null}
-                    <span className="block text-xs text-zinc-500">
-                      {lot.origin ?? ""}
-                    </span>
-                  </td>
-                  <td className={cx(td, "whitespace-nowrap")}>
+                </td>
+                <td className={td}>
+                  <span className="block max-w-64 min-w-44 whitespace-normal font-medium">
+                    {item.description ?? item.productName ?? "—"}
+                  </span>
+                  <span className="block text-xs text-zinc-500">
+                    {[item.factoryItemCode, item.colorAssortment]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                  {similar ? (
                     <Link
-                      href={`/app/booking/lots/${lot.id}`}
+                      href={`/app/booking/selection?q=${encodeURIComponent(similar)}`}
+                      className={cx(linkClass, "text-xs")}
+                      data-selection-similar={item.id}
+                    >
+                      {t("supplierRequests.selection.similar")}
+                    </Link>
+                  ) : null}
+                  {basket && lot.status !== "cancelled" ? (
+                    <Link
+                      href={`/app/booking/invite/${item.id}`}
+                      className={cx(linkClass, "ml-2 text-xs")}
+                      title={t("bookingInvites.selection.inviteHint")}
+                      data-selection-invite={item.id}
+                    >
+                      {t("bookingInvites.selection.invite")}
+                    </Link>
+                  ) : null}
+                </td>
+                <td className={td}>
+                  <span className="block max-w-40 min-w-28 whitespace-normal">
+                    {supplier?.name ?? "—"}
+                  </span>
+                  {supplier && noLoginIds.has(supplier.id) ? (
+                    <span data-selection-no-login={supplier.id}>
+                      <Badge tone="warning">{t("portalAccess.none")}</Badge>
+                    </span>
+                  ) : null}
+                  <span className="block text-xs text-zinc-500">
+                    {lot.origin ?? ""}
+                  </span>
+                </td>
+                <td className={cx(td, "whitespace-nowrap")}>
+                  <Link
+                    href={`/app/booking/lots/${lot.id}`}
+                    className={linkClass}
+                  >
+                    nº {lot.number}
+                  </Link>
+                  {lot.status !== "closed" ? (
+                    <span
+                      className="block"
+                      data-selection-lot-status={lot.status}
+                    >
+                      <Badge tone={draft ? "warning" : "neutral"}>
+                        {t(`bookingLots.status.${lot.status}` as DictionaryKey)}
+                      </Badge>
+                    </span>
+                  ) : null}
+                  <span className="block text-xs text-zinc-500">
+                    {formatDate(lot.bookingDate, t)}
+                  </span>
+                </td>
+                <td className={cx(td, "whitespace-nowrap tabular-nums")}>
+                  {num(item.price)} {item.currency ?? ""}
+                  {item.incoterm ? (
+                    <span className="block text-xs text-zinc-500">
+                      {item.incoterm}
+                    </span>
+                  ) : null}
+                </td>
+                <td className={cx(td, "whitespace-nowrap tabular-nums")}>
+                  {priceUsd === null ? "—" : `US$ ${num(priceUsd, 3)}`}
+                </td>
+                <td className={cx(td, "tabular-nums")}>{num(item.moq, 0)}</td>
+                <td className={cx(td, "tabular-nums")}>
+                  {num(item.masterCartonQty, 0)}
+                  {item.innerQty ? (
+                    <span className="block text-xs text-zinc-500">
+                      inner {num(item.innerQty, 0)}
+                    </span>
+                  ) : null}
+                </td>
+                <td className={cx(td, "tabular-nums")}>
+                  {num(item.cbmPerCarton)}
+                </td>
+                <td className={cx(td, "whitespace-nowrap tabular-nums")}>
+                  {[item.lengthCm, item.widthCm, item.heightCm]
+                    .map((n) => num(n, 2))
+                    .join(" × ")}
+                </td>
+                <td className={cx(td, "tabular-nums")}>
+                  {num(item.capacityMl, 0)}
+                </td>
+                <td className={td}>
+                  <span className="block max-w-36 whitespace-normal">
+                    {item.material ?? "—"}
+                  </span>
+                  <span className="block text-xs text-zinc-500">
+                    {item.packageType ?? ""}
+                  </span>
+                </td>
+                <td className={cx(td, "tabular-nums")}>
+                  {num(sheetQuantity(item), 0)}
+                </td>
+                <td className={td}>
+                  {a ? (
+                    <span className="flex flex-col items-start gap-0.5">
+                      <Badge
+                        tone={a.verdict ? SIGNAL_TONE[a.verdict] : "neutral"}
+                      >
+                        {t(
+                          `booking.signal.${a.verdict ?? "missing"}` as DictionaryKey,
+                        )}
+                      </Badge>
+                      {a.minimumBrl !== null ? (
+                        <span className="text-xs whitespace-nowrap text-zinc-600">
+                          {t("bookingLots.item.minimum", {
+                            price: formatMoney(a.minimumBrl, "BRL", t),
+                          })}
+                        </span>
+                      ) : null}
+                      {item.id === best ? (
+                        <Badge tone="success">
+                          {t("supplierRequests.selection.best")}
+                        </Badge>
+                      ) : null}
+                    </span>
+                  ) : (
+                    <span className="text-zinc-500">
+                      {t("booking.signal.none")}
+                    </span>
+                  )}
+                </td>
+                <td className={td}>
+                  {activeRequest ? (
+                    <Link
+                      href={`/app/supplier-requests/${activeRequest.id}`}
                       className={linkClass}
                     >
-                      nº {lot.number}
+                      {t("supplierRequests.selection.inRequest", {
+                        n: activeRequest.number,
+                      })}
                     </Link>
-                    {lot.status !== "closed" ? (
-                      <span
-                        className="block"
-                        data-selection-lot-status={lot.status}
-                      >
-                        <Badge tone={draft ? "warning" : "neutral"}>
-                          {t(
-                            `bookingLots.status.${lot.status}` as DictionaryKey,
-                          )}
-                        </Badge>
-                      </span>
-                    ) : null}
-                    <span className="block text-xs text-zinc-500">
-                      {formatDate(lot.bookingDate, t)}
-                    </span>
-                  </td>
-                  <td className={cx(td, "whitespace-nowrap tabular-nums")}>
-                    {num(item.price)} {item.currency ?? ""}
-                    {item.incoterm ? (
-                      <span className="block text-xs text-zinc-500">
-                        {item.incoterm}
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className={cx(td, "whitespace-nowrap tabular-nums")}>
-                    {priceUsd === null ? "—" : `US$ ${num(priceUsd, 3)}`}
-                  </td>
-                  <td className={cx(td, "tabular-nums")}>{num(item.moq, 0)}</td>
-                  <td className={cx(td, "tabular-nums")}>
-                    {num(item.masterCartonQty, 0)}
-                    {item.innerQty ? (
-                      <span className="block text-xs text-zinc-500">
-                        inner {num(item.innerQty, 0)}
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className={cx(td, "tabular-nums")}>
-                    {num(item.cbmPerCarton)}
-                  </td>
-                  <td className={cx(td, "whitespace-nowrap tabular-nums")}>
-                    {[item.lengthCm, item.widthCm, item.heightCm]
-                      .map((n) => num(n, 2))
-                      .join(" × ")}
-                  </td>
-                  <td className={cx(td, "tabular-nums")}>
-                    {num(item.capacityMl, 0)}
-                  </td>
-                  <td className={td}>
-                    <span className="block max-w-36 whitespace-normal">
-                      {item.material ?? "—"}
-                    </span>
-                    <span className="block text-xs text-zinc-500">
-                      {item.packageType ?? ""}
-                    </span>
-                  </td>
-                  <td className={cx(td, "tabular-nums")}>
-                    {num(sheetQuantity(item), 0)}
-                  </td>
-                  <td className={td}>
-                    {a ? (
-                      <span className="flex flex-col items-start gap-0.5">
-                        <Badge
-                          tone={a.verdict ? SIGNAL_TONE[a.verdict] : "neutral"}
-                        >
-                          {t(
-                            `booking.signal.${a.verdict ?? "missing"}` as DictionaryKey,
-                          )}
-                        </Badge>
-                        {a.minimumBrl !== null ? (
-                          <span className="text-xs whitespace-nowrap text-zinc-600">
-                            {t("bookingLots.item.minimum", {
-                              price: formatMoney(a.minimumBrl, "BRL", t),
-                            })}
-                          </span>
-                        ) : null}
-                        {item.id === best ? (
-                          <Badge tone="success">
-                            {t("supplierRequests.selection.best")}
-                          </Badge>
-                        ) : null}
-                      </span>
-                    ) : (
-                      <span className="text-zinc-500">
-                        {t("booking.signal.none")}
-                      </span>
-                    )}
-                  </td>
-                  <td className={td}>
-                    {activeRequest ? (
-                      <Link
-                        href={`/app/supplier-requests/${activeRequest.id}`}
-                        className={linkClass}
-                      >
-                        {t("supplierRequests.selection.inRequest", {
-                          n: activeRequest.number,
-                        })}
-                      </Link>
-                    ) : (
-                      <span className="text-zinc-400">—</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                  ) : (
+                    <span className="text-zinc-400">—</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </TableTools>
     );
     if (basket)
       return (
