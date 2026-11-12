@@ -12,6 +12,8 @@ import {
   containersPerRound,
   planPurchaseRounds,
   roundLoad,
+  type RoundLoad,
+  type RoundStep,
 } from "@/lib/purchase-rounds";
 import { splitEvenly } from "@/lib/workflow/request-schedule";
 
@@ -23,15 +25,22 @@ import { splitEvenly } from "@/lib/workflow/request-schedule";
  *
  * "Gerar programação" parte da QUANTIDADE (regra do dono, 12/11/2026): o
  * total de peças e o número de rodadas viram rodadas iguais, em caixas
- * master inteiras do item marcado como escolhido. Os containers de cada
- * rodada saem da conta ("Containers por rodada" é só informativo). Em cada
- * rodada, "Aumentar" e "Diminuir" ajustam as peças para fechar o container;
- * com 95% ou mais ele conta como cheio.
+ * master inteiras. Os containers de cada rodada saem da conta ("Containers
+ * por rodada" é só informativo). O cálculo fica sempre escrito na tela (a
+ * caixa, o container, caixas, m³ e containers) e cada rodada tem "+ Aumentar"
+ * e "− Diminuir" para fechar o container; com 95% ou mais ele conta como
+ * cheio.
+ *
+ * A conta usa a caixa master e o CBM do item marcado como escolhido na
+ * tabela. Sem nenhum marcado, usa o primeiro item do grupo que tem esses
+ * dados (e diz qual): a conta, os containers e os botões não somem.
  */
 
 /** Caixa master do item do grupo (o CBM já resolvido das medidas, quando falta). */
 export interface SelectionCarton {
   id: string;
+  /** Como o item aparece na conta (código e fornecedor). */
+  label: string;
   masterCartonQty: number | null;
   cbmPerCarton: number | null;
   /** Quantidade da planilha (total sugerido). */
@@ -47,10 +56,15 @@ export interface GenerateLabels {
   /** "Containers por rodada" (informativo) e a explicação dele. */
   perRound: string;
   perRoundHint: string;
-  /** "{min} a {max}" quando as rodadas ocupam containers diferentes. */
+  /** "{min} a {max}" quando as rodadas precisam de containers diferentes. */
   perRoundRange: string;
   submit: string;
+  /** Título do cálculo escrito. */
+  calc: string;
+  /** A caixa do item escolhido; `itemAssumed` quando nenhum está marcado. */
   item: string;
+  itemAssumed: string;
+  assumedNote: string;
   noItem: string;
   noCarton: string;
   tooBig: string;
@@ -59,19 +73,38 @@ export interface GenerateLabels {
   result: string;
   extra: string;
   reduced: string;
+  /** As rodadas foram geradas com a caixa de outro item. */
+  regen: string;
+  /** Rodadas iguais: "Cada rodada: … = {n} container…". */
+  each: string;
+  eachMany: string;
+  /** Rodadas diferentes: "Containers por rodada: {list}." e cada item da lista. */
+  list: string;
+  listItem: string;
+  listItemMany: string;
+  totalContainers: string;
   load: string;
-  /** Situação do container da rodada. */
-  full: string;
-  fullMargin: string;
-  partial: string;
-  partialLast: string;
-  /** Ajustes da rodada: "Aumentar +{pieces}" / "fecha {n} container" (ou "containers"). */
+  /** Situação do container no cartão da rodada (com a quantidade de containers). */
+  cardPartial: string;
+  cardPartialMany: string;
+  cardFull: string;
+  cardFullMany: string;
+  cardFullMargin: string;
+  cardFullMarginMany: string;
+  /** Ajustes da rodada: "+ Aumentar {pieces}" / "fecha {n} container". */
   up: string;
   upTo: string;
   upToMany: string;
   down: string;
   downTo: string;
   downToMany: string;
+  /**
+   * "− Diminuir" quando não há container cheio abaixo, e o motivo: a rodada
+   * tem menos de um container, ou já está no mínimo de um container cheio.
+   */
+  downOff: string;
+  downOffWhy: string;
+  downOffMin: string;
 }
 
 const fill = (s: string, vars: Record<string, string | number>) =>
@@ -82,6 +115,8 @@ const parseNum = (s: string) => {
   const t = String(s).replace(/[.,\s]/g, "");
   return t ? Number(t) : NaN;
 };
+
+const usable = (i: SelectionCarton) => !!(i.masterCartonQty && i.cbmPerCarton);
 
 export function SelectionQuantity({
   label,
@@ -135,31 +170,58 @@ export function SelectionQuantity({
     text: string;
     at: number;
   } | null>(null);
-  // O que a última geração arredondou (some quando as rodadas mudam).
+  // O que a última geração arredondou e com a caixa de qual item (some
+  // quando as rodadas mudam).
   const [note, setNote] = useState<{
     pieces: number;
     extra: number;
     reduced: { cartons: number; rounds: number } | null;
+    itemId: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // O item escolhido é o rádio "chosen" da tabela (no mesmo formulário).
+  // O item escolhido é o rádio "chosen" da tabela (no mesmo formulário). Além
+  // de ouvir a troca, lê o que já está marcado ao abrir e ao voltar para a
+  // página: o navegador pode devolver o rádio marcado sem avisar.
   useEffect(() => {
     const form = ref.current?.closest("form");
     if (!form) return;
+    const sync = () => {
+      const el = form.querySelector<HTMLInputElement>(
+        'input[name="chosen"]:checked',
+      );
+      if (el) setChosen(el.value);
+    };
     const onChange = (e: Event) => {
       const el = e.target;
       if (el instanceof HTMLInputElement && el.name === "chosen" && el.checked)
         setChosen(el.value);
     };
+    const frame = requestAnimationFrame(sync);
     form.addEventListener("change", onChange);
-    return () => form.removeEventListener("change", onChange);
+    window.addEventListener("pageshow", sync);
+    return () => {
+      cancelAnimationFrame(frame);
+      form.removeEventListener("change", onChange);
+      window.removeEventListener("pageshow", sync);
+    };
   }, []);
 
   const intl = labels.intl;
   const fmt = (n: number, digits = 0) =>
     n.toLocaleString(intl, { maximumFractionDigits: digits });
-  const item = items.find((i) => i.id === chosen) ?? null;
+  /** Fração de container: nunca "0" para o que ocupa pouco. */
+  const frac = (n: number) =>
+    n > 0 && n < 0.005 ? `<${fmt(0.01, 2)}` : fmt(n, 2);
+  /** Ocupação: menos de 1% aparece como "<1". */
+  const pctText = (pct: number) => (pct === 0 ? "<1" : String(pct));
+
+  // A caixa da conta: a do item marcado; sem nenhum marcado, a do primeiro
+  // item do grupo que tem peças por caixa master e CBM.
+  const marked = items.find((i) => i.id === chosen) ?? null;
+  const fallback = marked ? null : (items.find(usable) ?? null);
+  const item = marked ?? fallback;
+  const assumed = !marked && !!fallback;
   const capacity =
     containerTypes.find((c) => c.code === container)?.capacityCbm ?? null;
   const total =
@@ -170,11 +232,13 @@ export function SelectionQuantity({
         : item?.sheetQty
           ? String(item.sheetQty)
           : "";
-  const hasCarton = !!(item?.masterCartonQty && item.cbmPerCarton && capacity);
+  const hasCarton = !!(item && usable(item) && capacity);
   const perContainer =
     hasCarton && item
       ? Math.floor(capacity! / item.cbmPerCarton! + 1e-9)
       : null;
+  const loadOf = (pieces: number) =>
+    roundLoad(pieces, item?.masterCartonQty, item?.cbmPerCarton, capacity);
 
   /** Total em N rodadas iguais: caixas master inteiras quando o item as tem. */
   function divide(amount: number, count: number): number[] {
@@ -236,6 +300,7 @@ export function SelectionQuantity({
         reduced: plan.reduced
           ? { cartons: plan.cartons, rounds: plan.rounds.length }
           : null,
+        itemId: item!.id,
       });
       apply(plan.rounds.map((r) => r.pieces));
     }
@@ -252,38 +317,172 @@ export function SelectionQuantity({
         : "border-zinc-300 bg-white text-zinc-700 hover:bg-brand-50",
     );
 
+  /** O cálculo escrito: a caixa, o container e o que as rodadas ocupam. */
+  const calculation = (live: number[], roundsValue: string) => {
+    if (!item)
+      return (
+        <p className="text-amber-800" data-generate-item="none">
+          {gen.noItem}
+        </p>
+      );
+    if (!hasCarton || perContainer === null)
+      return (
+        <p className="text-amber-800" data-generate-item="missing">
+          {gen.noCarton}
+        </p>
+      );
+    // Rodadas da tela; sem programação, a prévia do que seria gerado.
+    const typedTotal = parseNum(total);
+    const typedRounds = parseNum(roundsValue);
+    const planned =
+      !live.length &&
+      typedTotal > 0 &&
+      Number.isInteger(typedRounds) &&
+      typedRounds >= 1 &&
+      typedRounds <= MAX_PURCHASE_ROUNDS
+        ? planPurchaseRounds({
+            total: typedTotal,
+            rounds: typedRounds,
+            masterCartonQty: item.masterCartonQty,
+            cbmPerCarton: item.cbmPerCarton,
+            containerCbm: capacity,
+          })
+        : null;
+    const preview = planned && "plan" in planned ? planned.plan : null;
+    const shown = live.length
+      ? live
+      : preview
+        ? preview.rounds.map((r) => r.pieces)
+        : [];
+    const loads = shown
+      .map(loadOf)
+      .filter(
+        (l): l is RoundLoad & { containers: number; needed: number } =>
+          !!l && l.containers !== null && l.needed !== null,
+      );
+    const complete = loads.length > 0 && loads.length === shown.length;
+    const liveSum = live.reduce((a, q) => a + q, 0);
+    const fresh = live.length && note && liveSum === note.pieces ? note : null;
+    const rounding = live.length
+      ? fresh
+      : preview
+        ? {
+            extra: preview.extraPieces,
+            reduced: preview.reduced
+              ? { cartons: preview.cartons, rounds: preview.rounds.length }
+              : null,
+          }
+        : null;
+    const first = loads[0];
+    const same =
+      complete &&
+      loads.every(
+        (l) =>
+          l.cartons === first.cartons &&
+          l.needed === first.needed &&
+          l.lastPct === first.lastPct,
+      );
+    return (
+      <div className="space-y-1 text-zinc-700" data-generate-calc>
+        <p className="font-semibold text-zinc-900">{gen.calc}</p>
+        <p data-generate-item={assumed ? "assumed" : "ok"}>
+          {fill(assumed ? gen.itemAssumed : gen.item, {
+            label: item.label,
+            pcs: fmt(item.masterCartonQty!),
+            cbm: fmt(item.cbmPerCarton!, 4),
+            cartons: fmt(perContainer),
+            pieces: fmt(perContainer * item.masterCartonQty!),
+            container,
+          })}
+        </p>
+        {assumed ? (
+          <p className="text-amber-800" data-generate-assumed>
+            {gen.assumedNote}
+          </p>
+        ) : null}
+        {complete ? (
+          <>
+            <p className="font-medium text-zinc-900" data-generate-result>
+              {fill(gen.result, {
+                rounds: loads.length,
+                cartons: fmt(loads.reduce((a, l) => a + l.cartons, 0)),
+                cbm: fmt(
+                  loads.reduce((a, l) => a + l.cbm, 0),
+                  2,
+                ),
+                containers: frac(loads.reduce((a, l) => a + l.containers, 0)),
+                container,
+              })}
+            </p>
+            {rounding && rounding.extra > 0 ? (
+              <p data-generate-extra>
+                {fill(gen.extra, { extra: fmt(rounding.extra) })}
+              </p>
+            ) : null}
+            {rounding?.reduced ? (
+              <p className="text-amber-800" data-generate-reduced>
+                {fill(gen.reduced, {
+                  cartons: fmt(rounding.reduced.cartons),
+                  rounds: rounding.reduced.rounds,
+                })}
+              </p>
+            ) : null}
+            <p data-generate-each>
+              {same
+                ? fill(first.needed > 1 ? gen.eachMany : gen.each, {
+                    cartons: fmt(first.cartons),
+                    cbm: fmt(first.cbm, 2),
+                    n: fmt(first.needed),
+                    pct: pctText(first.lastPct ?? 0),
+                    container,
+                  })
+                : fill(gen.list, {
+                    list: loads
+                      .map((l, i) =>
+                        fill(l.needed > 1 ? gen.listItemMany : gen.listItem, {
+                          i: i + 1,
+                          n: fmt(l.needed),
+                          pct: pctText(l.lastPct ?? 0),
+                        }),
+                      )
+                      .join(" · "),
+                  })}
+            </p>
+            <p className="font-medium text-zinc-900" data-generate-containers>
+              {fill(gen.totalContainers, {
+                n: fmt(loads.reduce((a, l) => a + l.needed, 0)),
+                container,
+              })}
+            </p>
+            {live.length && note && note.itemId !== item.id ? (
+              <p className="text-amber-800" data-generate-regen>
+                {gen.regen}
+              </p>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+    );
+  };
+
   const generator = (apply: (q: number[]) => void, live: number[]) => {
     const roundsValue =
       roundsEdit && roundsEdit.at === live.length
         ? roundsEdit.text
         : String(live.length || 2);
-    // Rodadas da tela; sem programação, a prévia do que seria gerado.
+    // "Containers por rodada": o que as rodadas da tela precisam; sem
+    // programação, o que a prévia (total ÷ rodadas) precisaria.
     const typedTotal = parseNum(total);
     const typedRounds = parseNum(roundsValue);
-    const preview =
-      !live.length &&
-      hasCarton &&
-      typedTotal > 0 &&
-      Number.isInteger(typedRounds) &&
-      typedRounds >= 1 &&
-      typedRounds <= MAX_PURCHASE_ROUNDS
+    const shown = live.length
+      ? live
+      : hasCarton &&
+          typedTotal > 0 &&
+          Number.isInteger(typedRounds) &&
+          typedRounds >= 1 &&
+          typedRounds <= MAX_PURCHASE_ROUNDS
         ? divide(typedTotal, typedRounds)
         : [];
-    const shown = live.length ? live : preview;
-    const loads = hasCarton
-      ? shown.map((q) =>
-          roundLoad(q, item!.masterCartonQty, item!.cbmPerCarton, capacity),
-        )
-      : [];
-    const summary =
-      live.length && loads.length && loads.every((l) => l !== null)
-        ? {
-            rounds: loads.length,
-            cartons: loads.reduce((a, l) => a + l!.cartons, 0),
-            cbm: loads.reduce((a, l) => a + l!.cbm, 0),
-            containers: loads.reduce((a, l) => a + (l!.containers ?? 0), 0),
-          }
-        : null;
     const range = hasCarton
       ? containersPerRound(
           shown,
@@ -292,18 +491,14 @@ export function SelectionQuantity({
           capacity,
         )
       : null;
-    // Rodadas iguais (ou com uma caixa de diferença, o resto da divisão):
-    // um número só; diferentes de verdade: "de X a Y".
     const perRoundText = !range
       ? "—"
-      : range.max - range.min < 0.01
-        ? fmt(range.max, 2)
+      : range.needed.min === range.needed.max
+        ? fmt(range.needed.max)
         : fill(gen.perRoundRange, {
-            min: fmt(range.min, 2),
-            max: fmt(range.max, 2),
+            min: fmt(range.needed.min),
+            max: fmt(range.needed.max),
           });
-    const liveSum = live.reduce((a, q) => a + q, 0);
-    const fresh = note && liveSum === note.pieces ? note : null;
     return (
       <div
         className="mt-1 space-y-2 rounded-lg border border-brand-200 bg-white p-2.5 text-xs"
@@ -351,103 +546,55 @@ export function SelectionQuantity({
               className={cx(inputDenseClass, "w-20 tabular-nums")}
             />
           </label>
-          {hasCarton || !item ? (
-            <>
-              <div className="space-y-1">
-                <span className="block font-medium text-zinc-700">
-                  {gen.container}
-                </span>
-                <div
-                  className="flex flex-wrap gap-1"
-                  role="group"
-                  aria-label={gen.container}
+          <div className="space-y-1">
+            <span className="block font-medium text-zinc-700">
+              {gen.container}
+            </span>
+            <div
+              className="flex flex-wrap gap-1"
+              role="group"
+              aria-label={gen.container}
+            >
+              {containerTypes.map((c) => (
+                <button
+                  key={c.code}
+                  type="button"
+                  aria-pressed={container === c.code}
+                  onClick={() => setContainer(c.code)}
+                  data-generate-container={c.code}
+                  className={chip(container === c.code)}
+                  title={`${fmt(c.capacityCbm, 2)} m³`}
                 >
-                  {containerTypes.map((c) => (
-                    <button
-                      key={c.code}
-                      type="button"
-                      aria-pressed={container === c.code}
-                      onClick={() => setContainer(c.code)}
-                      data-generate-container={c.code}
-                      className={chip(container === c.code)}
-                      title={`${fmt(c.capacityCbm, 2)} m³`}
-                    >
-                      {c.code}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <span
-                  className="block font-medium text-zinc-700"
-                  id={perRoundId}
-                >
-                  {gen.perRound}
-                </span>
-                {/* Informativo: sai das peças de cada rodada, ninguém digita. */}
-                <output
-                  aria-labelledby={perRoundId}
-                  title={gen.perRoundHint}
-                  data-generate-per-round
-                  className="flex min-h-8 min-w-20 cursor-default items-center rounded-md border border-dashed border-zinc-300 bg-zinc-100 px-2.5 py-1 text-[13px] font-semibold tabular-nums text-zinc-700"
-                >
-                  {perRoundText}
-                </output>
-              </div>
-            </>
-          ) : null}
+                  {c.code}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <span className="block font-medium text-zinc-700" id={perRoundId}>
+              {gen.perRound}
+            </span>
+            {/* Informativo: sai das peças de cada rodada, ninguém digita. */}
+            <output
+              aria-labelledby={perRoundId}
+              title={gen.perRoundHint}
+              data-generate-per-round
+              className="flex min-h-8 min-w-20 cursor-default items-center rounded-md border border-dashed border-zinc-300 bg-zinc-100 px-2.5 py-1 text-[13px] font-semibold tabular-nums text-zinc-700"
+            >
+              {perRoundText}
+            </output>
+          </div>
           <button
             type="button"
             onClick={() => generate(apply, roundsValue)}
-            disabled={!item && !total}
+            disabled={!total}
             data-generate-submit
             className="rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
           >
             {gen.submit}
           </button>
         </div>
-        <p
-          className={cx(item && hasCarton ? "text-zinc-600" : "text-amber-800")}
-          data-generate-item={item ? (hasCarton ? "ok" : "missing") : "none"}
-        >
-          {!item
-            ? gen.noItem
-            : hasCarton && perContainer !== null
-              ? fill(gen.item, {
-                  pcs: fmt(item.masterCartonQty!),
-                  cbm: fmt(item.cbmPerCarton!, 4),
-                  cartons: fmt(perContainer),
-                  pieces: fmt(perContainer * item.masterCartonQty!),
-                  container,
-                })
-              : gen.noCarton}
-        </p>
-        {summary ? (
-          <div className="space-y-1 text-zinc-700" data-generate-result>
-            <p className="font-medium text-zinc-900">
-              {fill(gen.result, {
-                rounds: summary.rounds,
-                cartons: fmt(summary.cartons),
-                cbm: fmt(summary.cbm, 2),
-                containers: fmt(summary.containers, 2),
-                container,
-              })}
-            </p>
-            {fresh && fresh.extra > 0 ? (
-              <p data-generate-extra>
-                {fill(gen.extra, { extra: fmt(fresh.extra) })}
-              </p>
-            ) : null}
-            {fresh?.reduced ? (
-              <p className="text-amber-800" data-generate-reduced>
-                {fill(gen.reduced, {
-                  cartons: fmt(fresh.reduced.cartons),
-                  rounds: fresh.reduced.rounds,
-                })}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
+        {calculation(live, roundsValue)}
         {error ? (
           <p
             role="alert"
@@ -461,10 +608,13 @@ export function SelectionQuantity({
     );
   };
 
+  const stepClass =
+    "block w-full rounded-md border px-1.5 py-1 text-left text-[11px] leading-tight";
+
   /** Um ajuste da rodada: o quanto muda e com quantos containers fica. */
   const stepButton = (
     kind: "up" | "down",
-    step: { pieces: number; containers: number; target: number },
+    step: RoundStep,
     set: (quantity: number) => void,
   ) => {
     const main = fill(kind === "up" ? gen.up : gen.down, {
@@ -489,7 +639,10 @@ export function SelectionQuantity({
         {...(kind === "up"
           ? { "data-round-up": step.target }
           : { "data-round-down": step.target })}
-        className="block w-full rounded-md border border-brand-200 bg-white px-1.5 py-1 text-left text-[11px] leading-tight hover:border-brand-400 hover:bg-brand-50"
+        className={cx(
+          stepClass,
+          "border-brand-200 bg-white hover:border-brand-400 hover:bg-brand-50",
+        )}
       >
         <span className="block font-semibold text-brand-700">{main}</span>
         <span className="block text-zinc-500">{to}</span>
@@ -498,13 +651,9 @@ export function SelectionQuantity({
   };
 
   const roundInfo = (pieces: number, set: (quantity: number) => void) => {
-    const load = roundLoad(
-      pieces,
-      item?.masterCartonQty,
-      item?.cbmPerCarton,
-      capacity,
-    );
+    const load = loadOf(pieces);
     if (!load) return null;
+    const many = (load.needed ?? 1) > 1;
     return (
       <div
         className="space-y-1"
@@ -516,12 +665,13 @@ export function SelectionQuantity({
           {fill(gen.load, {
             cartons: fmt(load.cartons),
             cbm: fmt(load.cbm, 2),
-            containers:
-              load.containers === null ? "—" : fmt(load.containers, 2),
+            containers: load.containers === null ? "—" : frac(load.containers),
             container,
           })}
         </p>
-        {load.containers !== null && load.lastPct !== null ? (
+        {load.containers !== null &&
+        load.needed !== null &&
+        load.lastPct !== null ? (
           <>
             <p
               className={cx(
@@ -530,16 +680,44 @@ export function SelectionQuantity({
               )}
               data-round-status
             >
-              {load.full
-                ? load.lastPct === 100
-                  ? gen.full
-                  : fill(gen.fullMargin, { pct: load.lastPct })
-                : fill((load.needed ?? 1) > 1 ? gen.partialLast : gen.partial, {
-                    pct: load.lastPct,
-                  })}
+              {fill(
+                load.full
+                  ? load.lastPct === 100
+                    ? many
+                      ? gen.cardFullMany
+                      : gen.cardFull
+                    : many
+                      ? gen.cardFullMarginMany
+                      : gen.cardFullMargin
+                  : many
+                    ? gen.cardPartialMany
+                    : gen.cardPartial,
+                { n: fmt(load.needed), pct: pctText(load.lastPct), container },
+              )}
             </p>
             {load.up ? stepButton("up", load.up, set) : null}
-            {load.down ? stepButton("down", load.down, set) : null}
+            {load.down ? (
+              stepButton("down", load.down, set)
+            ) : (
+              // Os dois botões ficam sempre no cartão: sem container cheio
+              // abaixo, o de diminuir aparece desligado, com o motivo.
+              <button
+                type="button"
+                disabled
+                data-round-down-off
+                className={cx(
+                  stepClass,
+                  "cursor-not-allowed border-zinc-200 bg-zinc-50",
+                )}
+              >
+                <span className="block font-semibold text-zinc-400">
+                  {gen.downOff}
+                </span>
+                <span className="block text-zinc-400">
+                  {load.full ? gen.downOffMin : gen.downOffWhy}
+                </span>
+              </button>
+            )}
           </>
         ) : null}
       </div>

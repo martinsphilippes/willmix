@@ -597,8 +597,15 @@ export default async function BookingSelectionPage({
                 schedule={current?.schedule ?? null}
                 chosenItemId={current?.chosenItemId ?? null}
                 containerTypes={containerTypes}
-                items={list.map(({ item }) => ({
+                items={list.map(({ item, supplier }) => ({
                   id: item.id,
+                  // Como o item aparece na conta quando nenhum está marcado.
+                  label: [
+                    item.factoryItemCode ?? item.description,
+                    supplier?.name,
+                  ]
+                    .filter(Boolean)
+                    .join(" · "),
                   masterCartonQty: item.masterCartonQty,
                   cbmPerCarton:
                     item.cbmPerCarton ??
@@ -622,6 +629,7 @@ export default async function BookingSelectionPage({
                     max: "{max}",
                   }),
                   submit: t("purchaseRounds.gen.submit"),
+                  calc: t("purchaseRounds.gen.calc"),
                   item: t("purchaseRounds.gen.item", {
                     pcs: "{pcs}",
                     cbm: "{cbm}",
@@ -629,6 +637,15 @@ export default async function BookingSelectionPage({
                     pieces: "{pieces}",
                     container: "{container}",
                   }),
+                  itemAssumed: t("purchaseRounds.gen.itemAssumed", {
+                    label: "{label}",
+                    pcs: "{pcs}",
+                    cbm: "{cbm}",
+                    cartons: "{cartons}",
+                    pieces: "{pieces}",
+                    container: "{container}",
+                  }),
+                  assumedNote: t("purchaseRounds.gen.assumedNote"),
                   noItem: t("purchaseRounds.gen.noItem"),
                   noCarton: t("purchaseRounds.gen.noCarton"),
                   tooBig: t("purchaseRounds.gen.tooBig", {
@@ -652,26 +669,71 @@ export default async function BookingSelectionPage({
                     cartons: "{cartons}",
                     rounds: "{rounds}",
                   }),
+                  regen: t("purchaseRounds.gen.regen"),
+                  each: t("purchaseRounds.gen.each", {
+                    cartons: "{cartons}",
+                    cbm: "{cbm}",
+                    n: "{n}",
+                    pct: "{pct}",
+                    container: "{container}",
+                  }),
+                  eachMany: t("purchaseRounds.gen.eachMany", {
+                    cartons: "{cartons}",
+                    cbm: "{cbm}",
+                    n: "{n}",
+                    pct: "{pct}",
+                    container: "{container}",
+                  }),
+                  list: t("purchaseRounds.gen.list", { list: "{list}" }),
+                  listItem: t("purchaseRounds.gen.listItem", {
+                    i: "{i}",
+                    n: "{n}",
+                    pct: "{pct}",
+                  }),
+                  listItemMany: t("purchaseRounds.gen.listItemMany", {
+                    i: "{i}",
+                    n: "{n}",
+                    pct: "{pct}",
+                  }),
+                  totalContainers: t("purchaseRounds.gen.totalContainers", {
+                    n: "{n}",
+                    container: "{container}",
+                  }),
                   load: t("purchaseRounds.gen.load", {
                     cartons: "{cartons}",
                     cbm: "{cbm}",
                     containers: "{containers}",
                     container: "{container}",
                   }),
-                  full: t("purchaseRounds.gen.full"),
-                  fullMargin: t("purchaseRounds.gen.fullMargin", {
+                  cardPartial: t("purchaseRounds.gen.cardPartial", {
+                    n: "{n}",
                     pct: "{pct}",
                   }),
-                  partial: t("purchaseRounds.gen.partial", { pct: "{pct}" }),
-                  partialLast: t("purchaseRounds.gen.partialLast", {
+                  cardPartialMany: t("purchaseRounds.gen.cardPartialMany", {
+                    n: "{n}",
                     pct: "{pct}",
                   }),
+                  cardFull: t("purchaseRounds.gen.cardFull", { n: "{n}" }),
+                  cardFullMany: t("purchaseRounds.gen.cardFullMany", {
+                    n: "{n}",
+                  }),
+                  cardFullMargin: t("purchaseRounds.gen.cardFullMargin", {
+                    n: "{n}",
+                    pct: "{pct}",
+                  }),
+                  cardFullMarginMany: t(
+                    "purchaseRounds.gen.cardFullMarginMany",
+                    { n: "{n}", pct: "{pct}" },
+                  ),
                   up: t("purchaseRounds.gen.up", { pieces: "{pieces}" }),
                   upTo: t("purchaseRounds.gen.upTo", { n: "{n}" }),
                   upToMany: t("purchaseRounds.gen.upToMany", { n: "{n}" }),
                   down: t("purchaseRounds.gen.down", { pieces: "{pieces}" }),
                   downTo: t("purchaseRounds.gen.downTo", { n: "{n}" }),
                   downToMany: t("purchaseRounds.gen.downToMany", { n: "{n}" }),
+                  downOff: t("purchaseRounds.gen.downOff"),
+                  downOffWhy: t("purchaseRounds.gen.downOffWhy"),
+                  downOffMin: t("purchaseRounds.gen.downOffMin"),
                 }}
                 labels={{
                   intl,
