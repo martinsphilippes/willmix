@@ -352,7 +352,8 @@ export async function fetchImportSetFor(orderRows: SankhyaRow[]) {
   const nunotas = orderRows.map((r) => r.NUNOTA as number);
   const all = (rows: SankhyaRow[], column: string) =>
     distinct(rows, column, Number.MAX_SAFE_INTEGER);
-  const [partners, items, financial, companies] = await Promise.all([
+  // Tudo o que depende só das notas vai junto (as transportadoras também).
+  const [partners, items, financial, companies, carriers] = await Promise.all([
     fetchEntity("partners", all(orderRows, "CODPARC"), true),
     fetchEntity("orderItems", nunotas, true),
     fetchEntity("financial", nunotas, true),
@@ -364,6 +365,9 @@ export async function fetchImportSetFor(orderRows: SankhyaRow[]) {
           .join(", ") || "-1"
       })`,
     ).catch(() => null),
+    partnersByCode(
+      all(orderRows, "CODPARCTRANSP").filter((c) => Number(c) > 0),
+    ),
   ]);
   const itemRows = items.table?.rows ?? [];
   const products = await fetchEntity(
@@ -372,9 +376,6 @@ export async function fetchImportSetFor(orderRows: SankhyaRow[]) {
     true,
   );
   const productRows = products.table?.rows ?? [];
-  const carriers = await partnersByCode(
-    all(orderRows, "CODPARCTRANSP").filter((c) => Number(c) > 0),
-  );
   const groups = await fetchEntity(
     "productGroups",
     all(productRows, "CODGRUPOPROD"),
