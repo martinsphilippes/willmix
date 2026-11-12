@@ -139,6 +139,8 @@ export function supplierRequestItemOf(item: BookingItem): SupplierRequestItem {
     widthCm: item.widthCm,
     heightCm: item.heightCm,
     capacityMl: item.capacityMl,
+    // Sem volume, a capacidade da planilha é um tamanho ("8X10", "A4").
+    ...(item.sizeText ? { sizeText: item.sizeText } : {}),
     packageType: item.packageType,
     material: item.material,
     moq: item.moq,

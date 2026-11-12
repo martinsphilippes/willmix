@@ -567,3 +567,118 @@ describe("lançar booking pelo parceiro", () => {
     expect(ok.status).toBe("preparing");
   });
 });
+
+describe("capacidade com letras na planilha", () => {
+  it("o tamanho que vem na coluna da capacidade aparece na tela e pode ser corrigido", async () => {
+    const store = getStore();
+    // Porta-retratos: a coluna "capacity" traz o tamanho da foto, não ml.
+    const frames = new File(
+      [
+        xlsxBytes([
+          {
+            name: "BOOKING",
+            cells: [
+              [...HEADER, "CAPACITY"],
+              [...row("Fábrica Frames", "PR-8X10", "2.00"), "8X10"],
+              [...row("Fábrica Frames", "PR-ML", "2.10"), "350 ml"],
+              [...row("Fábrica Frames", "PR-L", "2.20"), "1,5 L"],
+              [...row("Fábrica Frames", "PR-VAZIO", "2.30"), ""],
+            ],
+          },
+        ]),
+      ],
+      "porta-retrato.xlsx",
+      {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      },
+    );
+    const lot = await svc.launchPartnerBooking(trader, frames);
+    const read = async () =>
+      (await svc.getPartnerBookingLot(trader, lot.id))!.items.map((i) => [
+        i.factoryItemCode,
+        i.capacityMl,
+        i.sizeText,
+      ]);
+    // O que veio da planilha: o tamanho em texto; os volumes em mililitros.
+    expect(await read()).toEqual([
+      ["PR-8X10", null, "8X10"],
+      ["PR-ML", 350, null],
+      ["PR-L", 1500, null],
+      ["PR-VAZIO", null, null],
+    ]);
+    const { items } = (await svc.getPartnerBookingLot(trader, lot.id))!;
+    // Ele corrige: outro tamanho, mililitros no lugar do tamanho, e preenche o vazio.
+    await svc.setPartnerBookingItemField(
+      trader,
+      items[0].id,
+      "capacityMl",
+      "20x25 cm",
+    );
+    await svc.setPartnerBookingItemField(
+      trader,
+      items[1].id,
+      "capacityMl",
+      "A4",
+    );
+    await svc.setPartnerBookingItemField(
+      trader,
+      items[3].id,
+      "capacityMl",
+      "500",
+    );
+    expect(await read()).toEqual([
+      ["PR-8X10", null, "20x25 cm"],
+      ["PR-ML", null, "A4"],
+      ["PR-L", 1500, null],
+      ["PR-VAZIO", 500, null],
+    ]);
+    await expect(
+      svc.setPartnerBookingItemField(trader, items[2].id, "capacityMl", "0"),
+    ).rejects.toThrow("booking_item_invalid");
+    // Enviado, a Wellmix vê o tamanho, pode corrigir e ele vale como capacidade.
+    const sent = await svc.sendPartnerBooking(trader, lot.id);
+    const detail = (await internal.getBookingLot(admin, sent.id))!;
+    expect(
+      detail.items.map((i) => [i.factoryItemCode, i.capacityMl, i.sizeText]),
+    ).toEqual([
+      ["PR-8X10", null, "20x25 cm"],
+      ["PR-ML", null, "A4"],
+      ["PR-L", 1500, null],
+      ["PR-VAZIO", 500, null],
+    ]);
+    const { bookingLotPending } = await import("@/lib/booking-lots");
+    const pending = bookingLotPending(detail.lot, detail.items);
+    for (const missing of pending.items.values())
+      expect(missing).not.toContain("capacityMl");
+    await internal.setBookingItemField(
+      admin,
+      items[0].id,
+      "capacityMl",
+      "8X10",
+    );
+    await internal.setBookingItemField(
+      admin,
+      items[1].id,
+      "capacityMl",
+      "250 ml",
+    );
+    const after = await store.list("booking_items", {
+      filter: { lotId: sent.id },
+    });
+    const byCode = new Map(after.map((i) => [i.factoryItemCode, i]));
+    expect([
+      byCode.get("PR-8X10")!.capacityMl,
+      byCode.get("PR-8X10")!.sizeText,
+    ]).toEqual([null, "8X10"]);
+    expect([
+      byCode.get("PR-ML")!.capacityMl,
+      byCode.get("PR-ML")!.sizeText,
+    ]).toEqual([250, null]);
+    // A cópia do item para a solicitação leva o tamanho.
+    const { supplierRequestItemOf } = await import("@/lib/supplier-requests");
+    expect(supplierRequestItemOf(byCode.get("PR-8X10")!).sizeText).toBe("8X10");
+    expect(supplierRequestItemOf(byCode.get("PR-ML")!)).not.toHaveProperty(
+      "sizeText",
+    );
+  });
+});

@@ -16,6 +16,7 @@ import {
   bookingLotPreparing,
   bookingRecipientId,
   isBookingPartner,
+  readBookingCapacity,
   readBookingItemValue,
   type BookingItemField,
 } from "@/lib/booking-lots";
@@ -94,11 +95,16 @@ const lotView = (lot: BookingLot): PartnerBookingLot => ({
  */
 export type PartnerBookingItem = Pick<
   BookingItem,
-  "id" | "position" | BookingItemField
+  // `sizeText`: o tamanho que veio na coluna da capacidade ("8X10", "A4").
+  "id" | "position" | "sizeText" | BookingItemField
 >;
 
 const itemView = (i: BookingItem): PartnerBookingItem => {
-  const view = { id: i.id, position: i.position } as PartnerBookingItem;
+  const view = {
+    id: i.id,
+    position: i.position,
+    sizeText: i.sizeText ?? null,
+  } as PartnerBookingItem;
   for (const field of BOOKING_ITEM_FIELDS)
     (view as Record<string, unknown>)[field] = i[field];
   return view;
@@ -258,6 +264,20 @@ export async function setPartnerBookingItemField(
   const item = await store.get("booking_items", itemId);
   if (!item) throw new PartnerBookingError("not_found");
   await ownPreparingLot(user, item.lotId);
+  // Capacidade: mililitros ou o tamanho em texto (os dois campos juntos).
+  if (field === "capacityMl") {
+    const next = readBookingCapacity(raw, item);
+    if (
+      next.capacityMl === item.capacityMl &&
+      next.sizeText === (item.sizeText ?? null)
+    )
+      return;
+    await store.update("booking_items", item.id, {
+      ...next,
+      updatedByUserId: user.id,
+    });
+    return;
+  }
   const value = readBookingItemValue(field, raw);
   if (item[field] === value) return;
   await store.update("booking_items", item.id, {

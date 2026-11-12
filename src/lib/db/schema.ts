@@ -2301,6 +2301,8 @@ export interface SupplierRequestItem {
   widthCm: number | null;
   heightCm: number | null;
   capacityMl: number | null;
+  /** Sem volume, a capacidade da planilha é um tamanho ("8X10", "A4"). Solicitações antigas não têm. */
+  sizeText?: string | null;
   packageType: string | null;
   material: string | null;
   moq: number | null;

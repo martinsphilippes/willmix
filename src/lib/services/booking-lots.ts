@@ -14,6 +14,7 @@ import {
   isBookingPartner,
   matchSheetSupplier,
   mostCommon,
+  readBookingCapacity,
   readBookingItemValue,
   supplierKey,
   type BookingItemField,
@@ -706,6 +707,19 @@ export async function setBookingItemField(
   const item = await withSchema(() => store.get("booking_items", itemId));
   if (!item) throw new BookingLotError("not_found");
   await editableLot(item.lotId);
+  // Capacidade: mililitros ou o tamanho em texto (os dois campos juntos).
+  if (field === "capacityMl") {
+    const next = readBookingCapacity(raw, item);
+    if (
+      next.capacityMl === item.capacityMl &&
+      next.sizeText === (item.sizeText ?? null)
+    )
+      return item;
+    return store.update("booking_items", item.id, {
+      ...next,
+      updatedByUserId: user.id,
+    });
+  }
   const value = readBookingItemValue(field, raw);
   if (item[field] === value) return item;
   return store.update("booking_items", item.id, {

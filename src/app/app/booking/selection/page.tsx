@@ -467,7 +467,9 @@ export default async function BookingSelectionPage({
                     .join(" × ")}
                 </td>
                 <td className={cx(td, "tabular-nums")}>
-                  {num(item.capacityMl, 0)}
+                  {item.capacityMl === null && item.sizeText
+                    ? item.sizeText
+                    : num(item.capacityMl, 0)}
                 </td>
                 <td className={td}>
                   <span className="block max-w-36 whitespace-normal">
