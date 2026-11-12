@@ -314,3 +314,90 @@ describe("amostragem da solicitação ao fornecedor", () => {
     ).toBe(false);
   });
 });
+
+describe("prazo e bloqueio da amostragem (decisões do dono, 12/11/2026)", () => {
+  it("prazo de 1 dia desde a abertura ou a última reprovação", () => {
+    const s = lib.openSampling("2026-11-12T10:00:00.000Z", "u1");
+    expect(lib.samplingDueAt(s)).toBe("2026-11-13T10:00:00.000Z");
+    expect(lib.samplingDueAt(s, 3)).toBe("2026-11-15T10:00:00.000Z");
+    expect(lib.samplingLate(s, 1, new Date("2026-11-13T09:59:00Z"))).toBe(
+      false,
+    );
+    expect(lib.samplingLate(s, 1, new Date("2026-11-13T10:01:00Z"))).toBe(true);
+    // Enviada: a vez é da Wellmix, sem prazo para o responsável.
+    expect(lib.samplingDueAt({ ...s, status: "submitted" })).toBeNull();
+    // Reprovada: o prazo recomeça na reprovação.
+    const rejected = {
+      ...s,
+      status: "rejected" as const,
+      round: 2,
+      history: [
+        ...s.history,
+        {
+          id: "r",
+          at: "2026-11-14T08:00:00.000Z",
+          kind: "reject" as const,
+          side: "wellmix" as const,
+          byUserId: "u1",
+          round: 1,
+        },
+      ],
+    };
+    expect(lib.samplingDueAt(rejected)).toBe("2026-11-15T08:00:00.000Z");
+  });
+
+  it("produto e pedido de compra só depois da amostra aprovada; atraso avisa uma vez", async () => {
+    const product = await import("@/lib/services/supplier-request-product");
+    const po = await import("@/lib/services/purchase-order");
+    const request = await approvedRequest();
+    await svc.answerSupplierRequest(supplierA, request.id, {
+      canDo: "yes",
+      price: 1.1,
+      currency: "USD",
+      moq: 1000,
+      leadTimeDays: 30,
+      note: null,
+    });
+    await svc.decideSupplierRequest(admin, request.id, "approved", null);
+    const line = (
+      await getStore().list("product_lines", { filter: { active: true } })
+    )[0];
+    await expect(
+      product.createProductFromRequest(admin, request.id, {
+        name: "Caneca amostra",
+        lineId: line.id,
+        itemIds: [request.bookingItemId],
+      }),
+    ).rejects.toThrow("request_product_sampling_pending");
+    const someProduct = (await getStore().list("products"))[0];
+    await expect(
+      product.linkRequestToProduct(admin, request.id, {
+        productId: someProduct.id,
+        itemIds: [],
+      }),
+    ).rejects.toThrow("request_product_sampling_pending");
+
+    // Passou do prazo: avisa o responsável e quem abriu, uma vez só.
+    const later = new Date(Date.now() + 2 * 86_400_000);
+    expect(await sampling.notifyLateSampling(later)).toBeGreaterThanOrEqual(1);
+    const again = await sampling.notifyLateSampling(later);
+    const stored = (await getStore().get("supplier_requests", request.id))!;
+    expect(stored.sampling?.lateNotifiedAt).toBeTruthy();
+    expect(again).toBe(0);
+
+    // Amostra aprovada: libera o produto, e ele entra no pedido de compra.
+    const { approveSample } = await import("./helpers/sampling");
+    await approveSample(admin, request.id);
+    await product.createProductFromRequest(admin, request.id, {
+      name: "Caneca amostra",
+      lineId: line.id,
+      itemIds: [request.bookingItemId],
+    });
+    const groups = await po.listPurchaseCandidates(admin);
+    expect(
+      groups!.some((g) =>
+        g.candidates.some((c) => c.request.id === request.id),
+      ),
+    ).toBe(true);
+  });
+});

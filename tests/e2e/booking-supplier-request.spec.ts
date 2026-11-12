@@ -190,6 +190,12 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   // A aprovação abre a amostragem, esperando o responsável pelo booking.
   await expect(page.locator("[data-sampling=pending]")).toBeVisible();
   await expect(page.locator("[data-sampling-upload]")).toHaveCount(0);
+  // Produto e pedido de compra só depois da amostra aprovada; prazo de 1 dia.
+  await expect(
+    page.locator("[data-request-product-waits-sample]"),
+  ).toBeVisible();
+  await expect(page.locator("[data-request-product-create]")).toHaveCount(0);
+  await expect(page.locator("[data-sampling-due=ok]")).toBeVisible();
 
   // 4.1 Amostragem: o responsável sobe uma foto da amostra e envia.
   await login(page, "supplier.a@china.com");

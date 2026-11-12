@@ -42,6 +42,12 @@ export const DEFAULT_SETTINGS = {
    * prazo para o parceiro subir o booking (docs/BOOKING_INVITES.md).
    */
   bookingInviteSlaDays: 1,
+  /**
+   * SLA da amostragem, em dias corridos: da aprovação da solicitação (ou da
+   * reprovação da amostra) até o responsável enviar as fotos e vídeos
+   * (docs/SUPPLIER_SAMPLING.md). Decisão do dono (12/11/2026): 1 dia.
+   */
+  samplingSlaDays: 1,
   /* ---- Pedido de compra das solicitações ao fornecedor (docs/PURCHASE_ORDER.md) ---- */
   /** Dias da agência de arte para enviar a arte de cada produto, desde o pedido. */
   purchaseArtSlaDays: 5,

@@ -59,10 +59,11 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 - Visibilidade do cliente por login: cada login vê só as solicitações e pedidos que solicitou (`requests.requestedForUserId`, copiado para `orders.requestedByUserId`); outro login da mesma empresa não vê, e avisos, pendências e histórico seguem a mesma regra. A Wellmix, ao abrir em nome do cliente, indica o login solicitante (na criação ou depois, em /app/requests/[id]); sem solicitante, só a Wellmix vê. Registros antigos: `npm run appwrite:backfill-requesters` (criados por login de cliente → esse login).
 - Modalidade de operação: cliente sem cadastro explícito = "não informado" (sem gate); o pedido guarda a modalidade vigente na criação.
 
+- Amostragem (docs/SUPPLIER_SAMPLING.md, decidido pelo dono em 12/11/2026): bloqueia produto e pedido de compra até a amostra aprovada; prazo padrão de 1 dia (Configurações → SLA); sem amostra física (impressa em 3D, só fotos e vídeos).
+
 ## A confirmar com o negócio
 
 - Sinal: percentual real e se há segunda parcela antes do embarque.
 - Quem paga custos aduaneiros e como entram na conta do cliente.
 - Tolerância de peso por linha de produto (hoje global).
 - Papéis internos além de admin e operador (financeiro?).
-- Amostragem (docs/SUPPLIER_SAMPLING.md, 12/11/2026): a amostra aprovada deve ser exigida antes de criar/associar o produto e de gerar o pedido de compra? Hoje a etapa não bloqueia nada. Também: prazo (SLA) para o responsável enviar a amostra e se a amostra física (envio por correio) entra na mesma etapa.

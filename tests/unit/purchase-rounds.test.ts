@@ -9,6 +9,7 @@ import { xlsxBytes } from "./xlsx-fixture";
  * filho no dia, com a Preparação do pai copiada e o contrato próprio.
  */
 withTempStore();
+const { approveSample } = await import("./helpers/sampling");
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
@@ -162,6 +163,7 @@ async function approvedWith(
       note: null,
     });
     await svc.decideSupplierRequest(admin, request.id, "approved", null);
+    await approveSample(admin, request.id);
     await product.createProductFromRequest(admin, request.id, {
       name: `Produto rodada ${codes[i]}`,
       lineId,

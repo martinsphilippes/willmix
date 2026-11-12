@@ -1263,8 +1263,10 @@ async function samplingTasks(
     if (isSchemaMissing(error)) return [];
     throw error;
   }
-  const { samplingOf, samplingTurn } =
+  const { samplingDueAt, samplingOf, samplingTurn } =
     await import("@/lib/supplier-request-sampling");
+  const { samplingSlaDays } = await import("./supplier-request-sampling");
+  const days = await samplingSlaDays();
   const out: Task[] = [];
   for (const r of rows.sort((a, b) => a.number - b.number)) {
     const s = samplingOf(r);
@@ -1291,7 +1293,7 @@ async function samplingTasks(
                 values: { n: r.number, product },
               },
               link,
-              dueAt: null,
+              dueAt: samplingDueAt(s, days),
               sinceAt: s.reviewedAt ?? s.openedAt,
               loadedAt: r.createdAt,
               supplierStep: "sampling",
