@@ -85,7 +85,10 @@ export function UserMenu({
               <span className="block truncate font-semibold text-zinc-900">
                 {name}
               </span>
-              <span className="block truncate text-xs text-zinc-500">
+              <span
+                className="block truncate text-xs text-zinc-500"
+                data-user-role
+              >
                 {role}
               </span>
             </span>

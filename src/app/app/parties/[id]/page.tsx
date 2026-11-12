@@ -44,6 +44,7 @@ import {
 } from "@/components/ui";
 import { PartyForm } from "@/components/party-form";
 import {
+  loginTypeLabel,
   partnerTypeName,
   partyTypeLabel,
   partyTypeValue,
@@ -245,6 +246,10 @@ export default async function PartyPage({
           : t(`role.${loginRole}` as DictionaryKey),
       }
     : null;
+  // Nome do papel na lista de logins e no campo "Papel": os tipos que entram
+  // como o Fornecedor (Trading, Factory...) mostram o nome do tipo.
+  const roleName = (r: (typeof ROLES)[number]) =>
+    loginTypeLabel(r, party, catalog, t.locale) ?? t(`role.${r}`);
   const roles = [
     ...ROLES.filter((r) => r === loginRole),
     ...ROLES.filter(
@@ -387,7 +392,9 @@ export default async function PartyPage({
                           {t("portalAccess.party.inactive")}
                         </Badge>
                       )}
-                      <Badge>{t(`role.${u.role}`)}</Badge>
+                      <Badge>
+                        <span data-party-login-role>{roleName(u.role)}</span>
+                      </Badge>
                     </span>
                   </li>
                 ))}
@@ -450,7 +457,7 @@ export default async function PartyPage({
                         >
                           {roles.map((r) => (
                             <option key={r} value={r}>
-                              {t(`role.${r}`)}
+                              {roleName(r)}
                             </option>
                           ))}
                         </Select>

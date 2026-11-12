@@ -58,9 +58,13 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   // Depois de cadastrar, a tela já abre no quadro de acesso, com o atalho no topo.
   await expect(page).toHaveURL(/#access$/);
   await expect(page.locator("[data-party-login-jump]")).toBeVisible();
-  // Usuário vinculado: entra com o papel do Fornecedor.
+  // Usuário vinculado: entra com o papel do Fornecedor, mas o nome que
+  // aparece é o do tipo (Factory), não "Fornecedor".
   const access = page.locator("[data-party-access]");
   await expect(access.locator('select[name="role"]')).toHaveValue("supplier");
+  await expect(access.locator('select[name="role"] option:checked')).toHaveText(
+    "Factory",
+  );
   await access.locator('input[name="name"]').fill("Li Factory");
   await access.locator('input[name="login"]').fill(userLogin);
   await access.locator('input[name="password"]').fill(PASSWORD);
@@ -69,6 +73,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await expect(page.locator("[data-party-access-profile]")).toContainText(
     "Factory",
   );
+  await expect(page.locator("[data-party-login-role]")).toHaveText("Factory");
 
   // Na lista, a coluna do login mostra que o parceiro já tem acesso.
   await page.goto("/app/parties?type=factory");
@@ -83,6 +88,8 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await expect(
     page.getByRole("heading", { name: "Solicitações ao fornecedor" }),
   ).toBeVisible();
+  // Embaixo do nome dele no menu: o tipo (Factory), não o papel do login.
+  await expect(page.locator("[data-user-role]")).toHaveText("Factory");
 
   // Administrador: tira Solicitações ao fornecedor da Factory na Gestão de telas.
   await login(page, "admin@wellmix.com");
@@ -315,6 +322,8 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   await login(page, userLogin);
   await page.goto("/app/booking");
   await expect(page).toHaveURL(/\/app\/booking$/);
+  // Embaixo do nome dele no menu: "Trading", não "Fornecedor".
+  await expect(page.locator("[data-user-role]")).toHaveText("Trading");
   const rows = page.locator("[data-partner-booking]");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText(`booking-${code}-A.xlsx`);

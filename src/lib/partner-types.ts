@@ -117,6 +117,24 @@ export function partyTypeLabel(
   return entry ? partnerTypeName(entry, t.locale) : t(`party.${p.type}`);
 }
 
+/**
+ * Como o papel de um login aparece para as pessoas (embaixo do nome dele no
+ * menu, na lista de logins do cadastro): quem entra com o papel do
+ * Fornecedor mas é de outro tipo de parceiro (Trading, Factory, Supplier, GP
+ * ou tipo criado no painel) mostra o nome do tipo. Nulo: vale o nome do
+ * papel (dono, 12/11/2026: o login de Trading aparecia como "Fornecedor").
+ */
+export function loginTypeLabel(
+  role: string,
+  party: Pick<Party, "type" | "partnerTypeId"> | null | undefined,
+  catalog: PartnerTypeEntry[],
+  locale: Locale,
+): string | null {
+  if (role !== PARTNER_LOGIN_ROLE || !party) return null;
+  const entry = catalog.find((e) => e.value === partyTypeValue(party));
+  return entry ? partnerTypeName(entry, locale) : null;
+}
+
 /** Sem acento nem caixa, com espaços simples: para comparar nomes. */
 export const foldTypeText = (text: string) =>
   text

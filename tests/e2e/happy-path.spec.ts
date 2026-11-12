@@ -99,6 +99,12 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await login(page, "supplier.a@china.com");
   await page.goto(requestUrl);
   await expect(page.locator("[data-supplier-table-row]")).toHaveCount(1);
+  // Fornecedor de verdade: embaixo do nome continua o papel, no idioma do
+  // login (este lê em chinês). Os tipos que entram como ele, Trading e os
+  // demais, mostram o nome do tipo.
+  await expect(page.locator("[data-user-role]")).toHaveText(
+    /^(Fornecedor|Supplier|供应商)$/,
+  );
   await page.locator("[data-supplier-table-answer-open]").click();
   await page.fill("[data-supplier-table-answer-price-input]", "1,40");
   await page.fill("[data-supplier-table-answer-moq]", "2000");

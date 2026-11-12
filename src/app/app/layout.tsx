@@ -2,7 +2,7 @@ import { loginLabel } from "@/lib/auth/login-id";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getStore, type User } from "@/lib/db";
+import { getStore } from "@/lib/db";
 import { getLocale, getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/lib/nav";
 import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
+import { partnerTypeLabelOf } from "@/lib/services/partner-access";
 import {
   topicLabel,
   unreadCountFor,
@@ -183,7 +184,9 @@ function unreadBar(t: Translate, digest: UnreadDigest | null) {
 function demoAccounts(
   t: Translate,
   existing: Set<string>,
-  current: { email: string; name: string; role: User["role"] },
+  current: { email: string; name: string },
+  /** O rótulo de quem está logado (o papel ou o tipo do parceiro). */
+  currentLabel: string,
 ) {
   const list = DEMO_USERS.filter((u) => existing.has(u.email)).map((u) => ({
     email: u.email,
@@ -192,7 +195,7 @@ function demoAccounts(
   if (!list.some((a) => a.email === current.email))
     list.unshift({
       email: current.email,
-      label: `${t(`role.${current.role}`)} · ${current.name}`,
+      label: `${currentLabel} · ${current.name}`,
     });
   return list;
 }
@@ -269,6 +272,13 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
   const footerLinks = footerNav.map(link);
   const menuHrefs = [...flattenNav(nav), ...footerNav].map((l) => l.href);
   const showDemo = demoAccountsEnabled();
+  // Embaixo do nome: o papel; nos logins de Trading, Factory, Supplier, GP e
+  // tipos criados no painel (que entram como o Fornecedor), o nome do tipo.
+  const roleLabel =
+    (await partnerTypeLabelOf(user, t.locale).catch((error: unknown) => {
+      console.error("partnerTypeLabelOf failed", error);
+      return null;
+    })) ?? t(`role.${user.role}`);
   // Falha aqui não derruba o portal: o seletor só fica sem as contas.
   const demoList = showDemo
     ? demoAccounts(
@@ -278,9 +288,9 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           return new Set<string>();
         }),
         user,
+        roleLabel,
       )
     : [];
-  const roleLabel = t(`role.${user.role}`);
   const bell = seesNotifications ? (
     <NotificationsBell
       unread={unread}

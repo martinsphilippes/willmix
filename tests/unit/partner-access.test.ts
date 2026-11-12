@@ -442,3 +442,110 @@ describe("serviço e sessão", () => {
     );
   });
 });
+
+describe("nome do papel embaixo do nome do login", () => {
+  it("quem entra como o Fornecedor mas é de outro tipo mostra o tipo; os demais, o papel", async () => {
+    const store = getStore();
+    const types = await import("@/lib/services/partner-types");
+    const typeLib = await import("@/lib/partner-types");
+    const { createPortalLogin } = await import("@/lib/services/portal-access");
+    // Trading (em destaque): o nome de fábrica, em qualquer idioma.
+    expect(await svc.partnerTypeLabelOf(trader, "pt")).toBe("Trading");
+    expect(await svc.partnerTypeLabelOf(trader, "zh")).toBe("Trading");
+    // Fornecedor de verdade, cliente e a Wellmix: vale o nome do papel.
+    expect(await svc.partnerTypeLabelOf(supplier, "pt")).toBeNull();
+    expect(await svc.partnerTypeLabelOf(admin, "pt")).toBeNull();
+    expect(await svc.partnerTypeLabelOf(operator, "pt")).toBeNull();
+    const customer = (await store.list("users")).find(
+      (u) => u.role === "customer",
+    )!;
+    expect(await svc.partnerTypeLabelOf(customer, "pt")).toBeNull();
+    // Login sem cadastro (ou com o cadastro apagado): o papel.
+    expect(
+      await svc.partnerTypeLabelOf({ role: "supplier", partyId: null }, "pt"),
+    ).toBeNull();
+    expect(
+      await svc.partnerTypeLabelOf(
+        { role: "supplier", partyId: "nao-existe" },
+        "pt",
+      ),
+    ).toBeNull();
+
+    // Tipo criado no painel, com login: o nome dado, no idioma de quem lê.
+    const inspection = await types.savePartnerType(admin, {
+      value: null,
+      name: "Empresa de Inspeção",
+      nameEn: "Inspection Company",
+      nameZh: null,
+      description: null,
+      active: true,
+      allowLogin: true,
+    });
+    const inspector = await store.create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
+      type: "partner",
+      partnerTypeId: inspection.rowId,
+      name: "Inspeções Ningbo",
+      country: "CN",
+      email: null,
+      phone: null,
+      taxId: null,
+      notes: null,
+      active: true,
+    });
+    const chen = await createPortalLogin(admin, {
+      name: "Chen",
+      email: "chen@inspecoes.com",
+      password: "senha-forte-123",
+      role: "supplier",
+      partyId: inspector.id,
+      locale: "zh",
+    } as Parameters<typeof createPortalLogin>[1]);
+    expect(await svc.partnerTypeLabelOf(chen, "pt")).toBe(
+      "Empresa de Inspeção",
+    );
+    expect(await svc.partnerTypeLabelOf(chen, "en")).toBe("Inspection Company");
+    // Sem tradução no idioma: o nome em português.
+    expect(await svc.partnerTypeLabelOf(chen, "zh")).toBe(
+      "Empresa de Inspeção",
+    );
+
+    // O administrador renomeia o tipo de fábrica: o login passa a mostrar o
+    // nome novo.
+    await types.savePartnerType(admin, {
+      value: "trading",
+      name: "Trading Company",
+      nameEn: null,
+      nameZh: null,
+      description: null,
+      active: true,
+    });
+    expect(await svc.partnerTypeLabelOf(trader, "pt")).toBe("Trading Company");
+
+    // A regra pura (a ficha do parceiro usa a mesma): só o papel do
+    // Fornecedor troca de nome, e só quando o cadastro é de outro tipo.
+    const catalog = await types.getPartnerTypeCatalog();
+    const factory = { type: "factory" as const, partnerTypeId: null };
+    expect(typeLib.loginTypeLabel("supplier", factory, catalog, "pt")).toBe(
+      "Factory",
+    );
+    expect(typeLib.loginTypeLabel("admin", factory, catalog, "pt")).toBeNull();
+    expect(
+      typeLib.loginTypeLabel(
+        "supplier",
+        { type: "supplier", partnerTypeId: null },
+        catalog,
+        "pt",
+      ),
+    ).toBeNull();
+    expect(
+      typeLib.loginTypeLabel(
+        "agency",
+        { type: "agency", partnerTypeId: null },
+        catalog,
+        "pt",
+      ),
+    ).toBeNull();
+    expect(typeLib.loginTypeLabel("supplier", null, catalog, "pt")).toBeNull();
+  });
+});
