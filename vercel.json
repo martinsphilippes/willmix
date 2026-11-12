@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "regions": ["fra1"],
+  "regions": ["gru1"],
   "crons": [
     {
       "path": "/api/jobs/reminders",
