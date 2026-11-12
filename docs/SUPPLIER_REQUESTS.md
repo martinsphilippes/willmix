@@ -160,6 +160,10 @@ Tabela `selection_groups` (escolha por grupo): `status` saved/requested/replaced
 | Textos                                                      | `src/i18n/modules/supplier-requests.ts`                                                                                                                                                           |
 | Testes                                                      | `tests/unit/supplier-requests.test.ts`; de ponta a ponta (booking → seleção → solicitação → resposta do fornecedor → produto → vitrine → CODPROD) em `tests/e2e/booking-supplier-request.spec.ts` |
 
+## Amostragem (depois de aprovada; 12/11/2026)
+
+A aprovação abre a **Amostragem**: o responsável pelo booking envia fotos e vídeos de uma amostra do item e a Wellmix aprova ou reprova (docs/SUPPLIER_SAMPLING.md). Não bloqueia o produto nem o pedido.
+
 ## Produto (depois de aprovada; decisão do dono, 10/11/2026)
 
 Na solicitação **Aprovada**, a Wellmix que abre Cotações e Produtos vê o bloco **Produto**, no próprio detalhe da solicitação.

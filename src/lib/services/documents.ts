@@ -73,12 +73,13 @@ export const CHAT_EXTRA_MIME = [
 /** Tipos aceitos para o destino do arquivo (o chat aceita alguns a mais). */
 function acceptsMime(
   mime: string,
-  input?: Pick<UploadInput, "conversationTopicId">,
+  input?: Pick<UploadInput, "conversationTopicId" | "video">,
 ): boolean {
   const m = mime.toLowerCase();
   return (
     ALLOWED_MIME.includes(m) ||
-    (!!input?.conversationTopicId && CHAT_EXTRA_MIME.includes(m))
+    (!!input?.conversationTopicId && CHAT_EXTRA_MIME.includes(m)) ||
+    (!!input?.video && m.startsWith("video/") && CHAT_EXTRA_MIME.includes(m))
   );
 }
 
@@ -97,6 +98,8 @@ export interface UploadInput {
   conversationTopicId?: string | null;
   /** Arquivo da conversa de uma solicitação ao fornecedor: só a Wellmix e esse fornecedor. */
   supplierRequestId?: string | null;
+  /** Aceita vídeo (amostragem da solicitação ao fornecedor). */
+  video?: boolean;
   type: DocumentType;
   visibility?: Visibility;
 }
@@ -105,7 +108,7 @@ export interface UploadInput {
 /** Mesma checagem do upload, sem gravar: para validar antes de criar o que o arquivo acompanha. */
 export function assertUploadable(
   file: File,
-  input?: Pick<UploadInput, "conversationTopicId">,
+  input?: Pick<UploadInput, "conversationTopicId" | "video">,
 ): void {
   if (file.size === 0) throw new DocumentError("empty");
   if (file.size > MAX_BYTES) throw new DocumentError("too_large");

@@ -54,6 +54,9 @@ export const pt = {
   "action.supplierRequest.decide": "Decidir a solicitação ao fornecedor",
   "action.desc.supplierRequest.decide":
     "Aprovar, recusar ou cancelar a solicitação depois da resposta do fornecedor.",
+  "action.sampling.validate": "Validar a amostragem",
+  "action.desc.sampling.validate":
+    "Aprovar ou reprovar as fotos e vídeos da amostra enviados pelo responsável pelo booking.",
   "action.dumping.release": "Liberar dumping",
   "action.desc.dumping.release":
     "Liberar a escolha do fornecedor quando a ficha marca dumping.",
@@ -144,6 +147,9 @@ export const en: Record<keyof typeof pt, string> = {
   "action.supplierRequest.decide": "Decide the supplier request",
   "action.desc.supplierRequest.decide":
     "Approve, decline or cancel the request after the supplier answers.",
+  "action.sampling.validate": "Validate the sampling",
+  "action.desc.sampling.validate":
+    "Approve or reject the sample photos and videos sent by the booking owner.",
   "action.dumping.release": "Release dumping",
   "action.desc.dumping.release":
     "Release the supplier choice when the sheet flags dumping.",
@@ -231,6 +237,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "action.group.money": "金额",
   "action.supplierRequest.decide": "决定供应商询价",
   "action.desc.supplierRequest.decide": "供应商答复后批准、拒绝或取消询价。",
+  "action.sampling.validate": "验证样品",
+  "action.desc.sampling.validate": "批准或驳回订舱负责人发送的样品照片和视频。",
   "action.dumping.release": "放行倾销标记",
   "action.desc.dumping.release": "资料标记为倾销时，放行供应商选择。",
   "action.approval.planner": "审批预成本（计划员级）",
