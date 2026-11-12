@@ -119,6 +119,22 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.goto(itemUrl);
   await page.click("[data-supplier-decide=approved]");
   await page.waitForURL(/[?&]decided=approved/);
+  // Amostragem (docs/SUPPLIER_SAMPLING.md): o produto sai depois da amostra
+  // aprovada; o fornecedor manda a foto da peça e a Wellmix aprova.
+  await login(page, "supplier.a@china.com");
+  await page.goto(itemUrl);
+  await page.setInputFiles("[data-sampling-upload] input[type=file]", {
+    name: "amostra.png",
+    mimeType: "image/png",
+    buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+  });
+  await page.waitForURL(/[?&]sampling=file/);
+  await page.click("[data-sampling-submit]");
+  await page.waitForURL(/[?&]sampling=submitted/);
+  await login(page, "admin@wellmix.com");
+  await page.goto(itemUrl);
+  await page.click("[data-sampling-review=approve]");
+  await page.waitForURL(/[?&]sampling=approved/);
   // A busca no catálogo fica na tela do produto (não volta à tabela).
   await page.fill("[data-request-product-search=pq]", "garrafa");
   await page.press("[data-request-product-search=pq]", "Enter");

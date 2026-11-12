@@ -74,6 +74,8 @@ import { dateTime } from "../_components/negotiation";
 import { canPostMessage, canPropose } from "@/lib/supplier-requests";
 import { RequestAiReferences } from "@/components/selection-ai-prompts";
 import { SamplingCard } from "../_components/sampling";
+import { samplingSlaDays } from "@/lib/services/supplier-request-sampling";
+import { samplingApproved } from "@/lib/supplier-request-sampling";
 
 /*
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
@@ -100,6 +102,9 @@ export default async function SupplierRequestPage({
   await notifyLateSupplierRequests().catch((error) =>
     console.error("notifyLateSupplierRequests", error),
   );
+  await import("@/lib/services/supplier-request-sampling")
+    .then((m) => m.notifyLateSampling())
+    .catch((error) => console.error("notifyLateSampling", error));
   const detail = await getSupplierRequest(user, id).catch((error: unknown) => {
     if (error instanceof Error && error.message === "schema_outdated")
       return "schema" as const;
@@ -239,6 +244,7 @@ export default async function SupplierRequestPage({
             rows={rows}
             currentId={r.id}
             slaMinutes={slaMinutes}
+            samplingSlaDays={await samplingSlaDays()}
             wellmix={wellmix}
             legacy={legacy}
             t={t}
@@ -250,7 +256,16 @@ export default async function SupplierRequestPage({
 
   // Bloco "Produto": a Wellmix que abre Produtos, na solicitação aprovada.
   let productData: RequestProductData | null = null;
-  if (wellmix && r.status === "approved" && canOpen(user, "products")) {
+  // Produto (criar ou associar) e pedido de compra só depois da amostra
+  // aprovada (decisão do dono, 12/11/2026; docs/SUPPLIER_SAMPLING.md).
+  const productWaitsSample =
+    wellmix && r.status === "approved" && !r.productId && !samplingApproved(r);
+  if (
+    wellmix &&
+    r.status === "approved" &&
+    canOpen(user, "products") &&
+    !productWaitsSample
+  ) {
     const svc = await import("@/lib/services/supplier-request-product");
     const store = getStore();
     const q = {
@@ -476,6 +491,7 @@ export default async function SupplierRequestPage({
             request={r}
             wellmix={wellmix}
             canValidate={wellmix && can(user, "sampling.validate")}
+            slaDays={await samplingSlaDays()}
             t={t}
           />
         </div>
@@ -1120,6 +1136,11 @@ export default async function SupplierRequestPage({
               {t("purchaseOrder.detail.generate")}
             </Link>
           </Alert>
+        </div>
+      ) : null}
+      {productWaitsSample ? (
+        <div className="mt-4" data-request-product-waits-sample>
+          <Alert tone="info">{t("sampling.productBlocked")}</Alert>
         </div>
       ) : null}
       {productData ? (

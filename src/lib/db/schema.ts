@@ -2536,6 +2536,8 @@ export interface SupplierRequestSampling {
   submittedAt?: string | null;
   reviewedAt?: string | null;
   reviewedByUserId?: string | null;
+  /** Aviso de prazo estourado da rodada atual (uma vez só por rodada). */
+  lateNotifiedAt?: string | null;
 }
 
 /**

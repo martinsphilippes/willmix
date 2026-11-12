@@ -114,3 +114,39 @@ export function samplingTurn(
   if (s.status === "approved") return null;
   return "supplier";
 }
+
+/** Amostra aprovada: libera criar/associar o produto e o pedido de compra. */
+export const samplingApproved = (
+  request: Pick<
+    SupplierRequest,
+    "status" | "decidedAt" | "updatedAt" | "sampling"
+  >,
+) => samplingOf(request)?.status === "approved";
+
+/** Padrão do SLA da amostragem (dias corridos), decisão do dono (12/11/2026). */
+export const SAMPLING_SLA_DAYS = 1;
+
+/**
+ * Prazo para o responsável enviar a amostra: da abertura da amostragem (ou
+ * da última reprovação) + o SLA. Nulo quando a vez não é dele.
+ */
+export function samplingDueAt(
+  s: SupplierRequestSampling | null,
+  days: number = SAMPLING_SLA_DAYS,
+): string | null {
+  if (samplingTurn(s) !== "supplier" || !s) return null;
+  const lastReject = [...s.history].reverse().find((e) => e.kind === "reject");
+  const from = Date.parse(lastReject?.at ?? s.openedAt);
+  if (Number.isNaN(from)) return null;
+  return new Date(from + days * 86_400_000).toISOString();
+}
+
+/** Passou do prazo sem enviar a amostra. */
+export function samplingLate(
+  s: SupplierRequestSampling | null,
+  days: number = SAMPLING_SLA_DAYS,
+  now: Date = new Date(),
+): boolean {
+  const due = samplingDueAt(s, days);
+  return !!due && Date.parse(due) < now.getTime();
+}

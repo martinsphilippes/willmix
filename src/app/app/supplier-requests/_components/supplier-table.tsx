@@ -37,7 +37,11 @@ import {
   postSupplierRequestMessageAction,
 } from "../../actions/supplier-requests";
 import { SAMPLING_TONE, STATUS_TONE } from "./status";
-import { samplingOf } from "@/lib/supplier-request-sampling";
+import {
+  SAMPLING_SLA_DAYS,
+  samplingLate,
+  samplingOf,
+} from "@/lib/supplier-request-sampling";
 import Link from "next/link";
 import { roundsDates } from "@/components/purchase-rounds";
 import { dateTime } from "./negotiation";
@@ -63,6 +67,7 @@ export function SupplierRequestTable({
   rows,
   currentId,
   slaMinutes,
+  samplingSlaDays = SAMPLING_SLA_DAYS,
   wellmix,
   legacy,
   t,
@@ -70,6 +75,8 @@ export function SupplierRequestTable({
   rows: SupplierRequest[];
   currentId: string;
   slaMinutes: number;
+  /** SLA da amostragem (dias). */
+  samplingSlaDays?: number;
   wellmix: boolean;
   /** Respostas antigas (auditoria), para a 1ª e a última resposta. */
   legacy: Map<string, Array<{ at: string }>>;
@@ -349,6 +356,9 @@ export function SupplierRequestTable({
                           {t(
                             `sampling.status.${sampling.status}` as DictionaryKey,
                           )}
+                          {samplingLate(sampling, samplingSlaDays)
+                            ? ` · ${t("sampling.late")}`
+                            : ""}
                         </Badge>
                       </Link>
                     ) : null;

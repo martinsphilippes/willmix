@@ -12,6 +12,12 @@ Pedido do dono (12/11/2026, acompanhando a solicitação nº 1): depois do aceit
 
 Só o responsável envia (a Wellmix, mesmo admin, não envia por ele: `sampling_supplier_only`); outro fornecedor não vê (404). Os arquivos são documentos com `supplierRequestId`: só a Wellmix e o fornecedor da solicitação abrem (`canAccessDocument`). Vídeo toca na própria tela (`/api/files` responde por pedaços).
 
+## Decisões do dono (12/11/2026)
+
+1. **Bloqueia até a aprovação**: criar ou associar o produto e gerar o pedido de compra só depois da amostra aprovada. Na tela, o bloco Produto dá lugar ao aviso "O produto (criar ou associar) e o pedido de compra ficam liberados depois que a Wellmix aprovar a amostra"; o serviço recusa (`request_product_sampling_pending`) e a lista do pedido de compra não traz a solicitação sem amostra aprovada (`purchase_order_sampling_pending` se vier assim mesmo). Regra em `samplingApproved` (`src/lib/supplier-request-sampling.ts`).
+2. **Prazo padrão de 1 dia** (Configurações → SLA → "Prazo da amostragem (dias)", `samplingSlaDays`, de 1 a 30): conta da abertura da amostragem (aprovação da solicitação) ou da última reprovação até o responsável enviar. O cartão mostra "Prazo: …" e, passado, "Atrasada" (também no selo da tabela); a pendência do fornecedor ganha o prazo; o aviso de atraso sai **uma vez por rodada** ao responsável e a quem abriu (`notifyLateSampling`, ao abrir as telas das solicitações e no job diário `/api/jobs/reminders`; `sampling.lateNotifiedAt`).
+3. **Sem amostra física**: a amostra é feita em **impressora 3D** e não é enviada; só vão as fotos e os vídeos dela. Os textos da tela dizem isso ao responsável.
+
 ## Onde aparece
 
 - **Tela do produto** (`/app/supplier-requests/[id]?view=item`): cartão **Amostragem** no topo (situação, rodada, fotos e vídeos, envio, validação e histórico).
@@ -21,13 +27,9 @@ Só o responsável envia (a Wellmix, mesmo admin, não envia por ele: `sampling_
 
 Situações: `pending` (esperando a amostra) → `submitted` (esperando a validação) → `approved` ou `rejected` (volta a esperar a amostra, rodada + 1).
 
-## O que não mudou
-
-A amostragem **não bloqueia** o bloco Produto nem o pedido de compra: a solicitação aprovada continua podendo criar/associar o produto e entrar no pedido como antes. Exigir a amostra aprovada antes disso é decisão do dono (docs/OPEN_DECISIONS.md).
-
 ## Banco
 
-`supplier_requests.sampling` (JSON grande, opcional): `status`, `round`, `openedAt`, `files` (`documentId`, `fileName`, `mime`, `kind` photo/video, `round`, `at`, `byUserId`), `history` (`open`/`submit`/`approve`/`reject`, com lado, rodada, texto e nº de arquivos), `submittedAt`, `reviewedAt`, `reviewedByUserId`. Auditoria: `sampling.file`, `sampling.file_remove`, `sampling.submit`, `sampling.approve`, `sampling.reject`.
+`supplier_requests.sampling` (JSON grande, opcional): `status`, `round`, `openedAt`, `files` (`documentId`, `fileName`, `mime`, `kind` photo/video, `round`, `at`, `byUserId`), `history` (`open`/`submit`/`approve`/`reject`, com lado, rodada, texto e nº de arquivos), `submittedAt`, `reviewedAt`, `reviewedByUserId`, `lateNotifiedAt`. Auditoria: `sampling.file`, `sampling.file_remove`, `sampling.submit`, `sampling.approve`, `sampling.reject`.
 
 ## Onde está
 

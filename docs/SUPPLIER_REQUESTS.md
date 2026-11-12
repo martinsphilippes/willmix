@@ -183,7 +183,7 @@ Tabela `selection_groups` (escolha por grupo): `status` saved/requested/replaced
 
 ## Amostragem (depois de aprovada; 12/11/2026)
 
-A aprovação abre a **Amostragem**: o responsável pelo booking envia fotos e vídeos de uma amostra do item e a Wellmix aprova ou reprova (docs/SUPPLIER_SAMPLING.md). Não bloqueia o produto nem o pedido.
+A aprovação abre a **Amostragem**: o responsável pelo booking envia fotos e vídeos de uma amostra do item e a Wellmix aprova ou reprova (docs/SUPPLIER_SAMPLING.md). O produto e o pedido de compra só saem depois da amostra aprovada; prazo padrão de 1 dia.
 
 ## Produto (depois de aprovada; decisão do dono, 10/11/2026)
 

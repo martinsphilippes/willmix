@@ -58,6 +58,16 @@ async function approvedRequest(id: string): Promise<SupplierRequest> {
   return request;
 }
 
+/**
+ * Criar ou associar o produto só depois da amostra aprovada (decisão do
+ * dono, 12/11/2026; docs/SUPPLIER_SAMPLING.md).
+ */
+async function assertSampleApproved(request: SupplierRequest) {
+  const { samplingApproved } = await import("@/lib/supplier-request-sampling");
+  if (!samplingApproved(request))
+    throw new RequestProductError("request_product_sampling_pending");
+}
+
 /* ------------------------------------------------------------------------ */
 /* Busca (itens e produtos)                                                  */
 /* ------------------------------------------------------------------------ */
@@ -392,6 +402,7 @@ export async function createProductFromRequest(
   const request = await approvedRequest(requestId);
   if (request.productId)
     throw new RequestProductError("request_product_exists");
+  await assertSampleApproved(request);
   const name = clip(input.name, 160);
   if (!name) throw new RequestProductError("request_product_name_required");
   const line = await store.get("product_lines", input.lineId);
@@ -458,6 +469,7 @@ export async function linkRequestToProduct(
   const request = await approvedRequest(requestId);
   if (request.productId)
     throw new RequestProductError("request_product_exists");
+  await assertSampleApproved(request);
   const product = await store.get("products", input.productId);
   if (!product || !product.active)
     throw new RequestProductError("request_product_not_found");
@@ -641,12 +653,7 @@ export async function unreleasedRequestProductIds(): Promise<Set<string>> {
 /* ------------------------------------------------------------------------ */
 
 export type ErpField =
-  | "DESCRPROD"
-  | "REFFORN"
-  | "NCM"
-  | "PESOBRUTO"
-  | "PESOLIQ"
-  | "MEDIDAS";
+  "DESCRPROD" | "REFFORN" | "NCM" | "PESOBRUTO" | "PESOLIQ" | "MEDIDAS";
 
 export interface ErpReadiness {
   field: ErpField;

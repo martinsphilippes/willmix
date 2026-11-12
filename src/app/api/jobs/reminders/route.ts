@@ -46,6 +46,13 @@ export async function GET(request: Request) {
         console.error("[reminders] supplier-request-sla", error);
         return null;
       });
+  // Amostragem que passou do prazo sem as fotos e vídeos (docs/SUPPLIER_SAMPLING.md).
+  const samplingLate = await import("@/lib/services/supplier-request-sampling")
+    .then((m) => m.notifyLateSampling())
+    .catch((error) => {
+      console.error("[reminders] sampling-sla", error);
+      return null;
+    });
   // Programação de compra: rodadas que chegaram ao dia viram pedidos filhos.
   const purchaseRounds = await import("@/lib/services/purchase-rounds")
     .then((m) => m.spawnDueRounds(null))
@@ -58,6 +65,7 @@ export async function GET(request: Request) {
     ...result,
     purchaseRounds,
     supplierRequestsLate,
+    samplingLate,
     released,
     packaging,
     shipping,

@@ -13,6 +13,7 @@ import {
 } from "@/lib/db";
 import {
   SAMPLING_MAX_FILES,
+  samplingLate,
   samplingCanReview,
   samplingCanSubmit,
   samplingCanUpload,
@@ -92,7 +93,7 @@ async function save(
 async function notifyTo(
   request: SupplierRequest,
   to: "wellmix" | "supplier",
-  key: "opened" | "submitted" | "approved" | "rejected",
+  key: "opened" | "submitted" | "approved" | "rejected" | "late",
   vars: Record<string, string | number> = {},
 ) {
   const { notify } = await import("./notifications");
@@ -284,6 +285,8 @@ export async function reviewSampling(
     ...sampling,
     status: decision === "approve" ? "approved" : "rejected",
     round: decision === "approve" ? sampling.round : sampling.round + 1,
+    // Nova rodada: o prazo recomeça e o aviso de atraso pode sair de novo.
+    lateNotifiedAt: null,
     reviewedAt: now,
     reviewedByUserId: user.id,
     history: [...sampling.history, event],
@@ -304,4 +307,40 @@ export async function reviewSampling(
     { reason: text ?? "" },
   );
   return updated;
+}
+
+/** SLA da amostragem (dias corridos), em Configurações → SLA. */
+export async function samplingSlaDays(): Promise<number> {
+  const { getSettings } = await import("@/lib/settings");
+  return (await getSettings()).samplingSlaDays;
+}
+
+/**
+ * Avisa uma vez por rodada o responsável e quem abriu a solicitação quando
+ * a amostra passa do prazo sem ser enviada. Roda ao abrir as telas das
+ * solicitações e no job diário. Devolve quantas avisou.
+ */
+export async function notifyLateSampling(
+  now: Date = new Date(),
+): Promise<number> {
+  const store = getStore();
+  let rows: SupplierRequest[];
+  try {
+    rows = await store.list("supplier_requests", {
+      filter: { status: "approved" },
+    });
+  } catch {
+    return 0;
+  }
+  const days = await samplingSlaDays();
+  let count = 0;
+  for (const request of rows) {
+    const s = samplingOf(request);
+    if (!s || s.lateNotifiedAt || !samplingLate(s, days, now)) continue;
+    await save(request, { ...s, lateNotifiedAt: now.toISOString() });
+    for (const to of ["supplier", "wellmix"] as const)
+      await notifyTo(request, to, "late", { days });
+    count++;
+  }
+  return count;
 }
