@@ -591,6 +591,9 @@ export async function answerSupplierRequest(
   const request = await withSchema(() => store.get("supplier_requests", id));
   if (!request || !canSee(user, request))
     throw new SupplierRequestError("not_found");
+  // A resposta é do fornecedor: a Wellmix (mesmo admin) não responde por ele.
+  if (isWellmix(user))
+    throw new SupplierRequestError("supplier_request_supplier_only");
   if (!supplierCanAnswer(request.status))
     throw new SupplierRequestError("supplier_request_closed");
   // Com contraproposta esperando: aceitar, outra proposta ou recusar.
@@ -618,7 +621,7 @@ export async function answerSupplierRequest(
     leadTimeDays: input.leadTimeDays,
     incoterm,
     text: clip(input.note, 4000),
-    onBehalf: isWellmix(user),
+    onBehalf: false,
   };
   const updated = await store.update("supplier_requests", request.id, {
     status: "answered",

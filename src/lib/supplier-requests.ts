@@ -168,7 +168,8 @@ export const supplierRequestActive = (status: SupplierRequestStatus) =>
 export const supplierCanAnswer = supplierRequestActive;
 
 /**
- * Decisões da Wellmix em cada status. Com contraproposta esperando o
+ * Decisões da Wellmix em cada status. Antes da resposta do fornecedor, só
+ * cancela (aprovar ou recusar o quê?). Com contraproposta esperando o
  * fornecedor, não aprova (ainda não se sabe o que ele aceita).
  */
 export function supplierRequestDecisions(
@@ -176,7 +177,7 @@ export function supplierRequestDecisions(
   canDo: "yes" | "no" | null,
   proposalPending = false,
 ): Array<"approved" | "declined" | "cancelled"> {
-  if (status === "open") return ["cancelled", "declined"];
+  if (status === "open") return ["cancelled"];
   if (status === "answered") {
     if (proposalPending) return ["declined"];
     return canDo === "yes" ? ["approved", "declined"] : ["declined"];

@@ -182,8 +182,8 @@ export async function proposeCounter(
 }
 
 /**
- * Resposta do fornecedor à contraproposta (ou registrada pela Wellmix em
- * nome dele): aceitar (os valores propostos viram a resposta), outra
+ * Resposta do fornecedor à contraproposta (só ele; a Wellmix não responde
+ * por ele, `supplier_request_supplier_only`): aceitar (os valores propostos viram a resposta), outra
  * proposta (novos valores; preço obrigatório) ou recusar (fica a anterior).
  */
 export async function respondToProposal(
@@ -193,6 +193,8 @@ export async function respondToProposal(
   input: OfferInput,
 ): Promise<SupplierRequest> {
   const { request } = await load(user, id);
+  if (isWellmix(user))
+    throw new SupplierRequestError("supplier_request_supplier_only");
   const proposal = pendingProposal(request.negotiation);
   if (request.status !== "answered" || !proposal)
     throw new SupplierRequestError("supplier_request_no_proposal");

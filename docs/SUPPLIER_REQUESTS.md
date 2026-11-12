@@ -52,8 +52,8 @@ O quadrante de comparação **não abre a solicitação**: ele grava a escolha d
 2. Vai ao **responsável pelo booking** do item (`booking_lots.partnerId`, decisão do dono, 11/11/2026); sem responsável, ao **fornecedor do booking** (ativo). O booking Fechado passa a Em andamento.
 3. A solicitação guarda uma **cópia do item** (`item`), para o fornecedor ver o que foi pedido mesmo que o booking mude.
 4. **Alternativas**: até 30 itens parecidos, guardados por id. Só a Wellmix vê (com fornecedor, origem, preço, mínimo do Superplan e link para o booking).
-5. Situações: **Aberta** (esperando o fornecedor) → **Respondida** → **Aprovada** ou **Recusada**; **Cancelada** pela Wellmix. Decisões possíveis (`supplierRequestDecisions`): Aberta → Cancelar ou Recusar; Respondida "faz" → Aprovar ou Recusar; Respondida "não faz" → Recusar.
-6. **Resposta do fornecedor**: faz ou não faz; se faz, preço por peça (obrigatório) e moeda; pedido mínimo, prazo de produção (dias), modalidade de entrega (FOB/EXW) e observação. Muda até a Wellmix decidir. A Wellmix pode **registrar a resposta** em nome dele quando ela chega por fora (WeChat, e-mail).
+5. Situações: **Aberta** (esperando o fornecedor) → **Respondida** → **Aprovada** ou **Recusada**; **Cancelada** pela Wellmix. Decisões possíveis (`supplierRequestDecisions`): Aberta → só Cancelar (antes da resposta do fornecedor não há o que aprovar ou recusar; a Wellmix cancela ou manda mensagem; até 12/11/2026 também recusava); Respondida "faz" → Aprovar ou Recusar; Respondida "não faz" → Recusar.
+6. **Resposta do fornecedor**: faz ou não faz; se faz, preço por peça (obrigatório) e moeda; pedido mínimo, prazo de produção (dias), modalidade de entrega (FOB/EXW) e observação. Muda até a Wellmix decidir. Só o fornecedor responde, pelo portal (até 12/11/2026 a Wellmix podia registrar a resposta em nome dele).
 7. Avisos (sino, e-mail e WhatsApp em modo mock): ao fornecedor quando a solicitação abre e quando a Wellmix decide; a quem abriu, quando o fornecedor responde.
 
 ## Uma solicitação, vários produtos (decisão do dono, 11/11/2026)
@@ -74,14 +74,14 @@ Quem abre `/app/supplier-requests/[id]` (o fornecedor e, desde a segunda rodada,
 - **Uma informação por coluna**: foto (miniatura que amplia, `PhotoGallery`), nº, produto, código da fábrica, nº do item, material, quantidade, MOQ, preço, moeda e entrega do booking, o que a Wellmix precisa, "faz?", as **condições iniciais** (as do booking, com que a Wellmix abre a solicitação: preço, moeda, MOQ, FOB/EXW; o booking não traz prazo; `initialConditions`) e as **condições finais** (a **última proposta enviada, aceita ou não**: cada passo atualiza as condições em ordem, da resposta do fornecedor à contraproposta da Wellmix, ao aceite/recusa e à nova proposta; com a situação dela: resposta do fornecedor, contraproposta enviada, aceita, recusada ou nova proposta do fornecedor; `finalConditions`), situação, SLA (prazo com data e hora, "Atrasada"), de quem é a vez, **aberta em**, **1ª resposta** e **última resposta** (data e hora; `answerTimes`).
 - Ações rápidas por linha, **só ícones** (o nome fica na dica e no `aria-label`), cada uma numa caixa pequena (`QuickDialog`):
   - **Mensagem**: texto para a conversa da solicitação.
-  - **Sim / Não**: resposta definitiva com preço e moeda, **MOQ** e **modalidade de entrega (FOB/EXW)**; o prazo já respondido fica como está. A Wellmix registra a resposta em nome do fornecedor. Só enquanto se pode responder (Aberta ou Respondida, sem contraproposta esperando).
+  - **Sim / Não**: resposta definitiva com preço e moeda, **MOQ** e **modalidade de entrega (FOB/EXW)**; o prazo já respondido fica como está. Só o fornecedor responde (desde 12/11/2026 a Wellmix, mesmo admin, não registra a resposta por ele: `supplier_request_supplier_only`). Só enquanto se pode responder (Aberta ou Respondida, sem contraproposta esperando).
   - **Abrir produto**: a tela completa, no mesmo link com `?view=item`. "Ver todos os produtos" volta à tabela.
 - As ações da tabela voltam para a tabela (`view=table`); as da tela do produto voltam para o produto.
 
 ## Tela do produto da solicitação (`?view=item`)
 
 - **Resposta**: o formulário completo tem também a **modalidade de entrega (FOB/EXW)** (`supplierIncoterm`; sem ela, a do item do booking).
-- **Histórico de interações** (linha do tempo, `requestTimeline`), na coluna da direita logo abaixo da resposta do fornecedor: abertura, cada resposta do fornecedor (ou registrada pela Wellmix), contrapropostas, aceites, novas propostas, recusas, mensagens e arquivos, a decisão da Wellmix e o produto (criado/associado, vitrine, CODPROD), cada um com data e hora, quem fez e o que ficou resolvido. Cada resposta passa a ser um passo `answer` no histórico. As respostas de antes disso (só a última ficava na solicitação) vêm da auditoria (`supplier_request.answer`, `legacyAnswers`): a hora e o "faz/não faz" de cada uma; só a última tem os valores. A 1ª e a última resposta da tabela usam as mesmas horas.
+- **Histórico de interações** (linha do tempo, `requestTimeline`), na coluna da direita logo abaixo da resposta do fornecedor: abertura, cada resposta do fornecedor (as registradas pela Wellmix antes de 12/11/2026 continuam marcadas assim), contrapropostas, aceites, novas propostas, recusas, mensagens e arquivos, a decisão da Wellmix e o produto (criado/associado, vitrine, CODPROD), cada um com data e hora, quem fez e o que ficou resolvido. Cada resposta passa a ser um passo `answer` no histórico. As respostas de antes disso (só a última ficava na solicitação) vêm da auditoria (`supplier_request.answer`, `legacyAnswers`): a hora e o "faz/não faz" de cada uma; só a última tem os valores. A 1ª e a última resposta da tabela usam as mesmas horas.
 - **Conversa**: ícone flutuante de chat no canto inferior direito; abre uma janela pequena com as mensagens e o campo para mandar outra (foto, PDF ou Excel). O cartão Negociação fica só com a contraproposta e a resposta a ela.
 
 ## Lista de solicitações
@@ -95,7 +95,7 @@ Quem abre `/app/supplier-requests/[id]` (o fornecedor e, desde a segunda rodada,
 No detalhe da solicitação, o bloco **Negociação e conversa** guarda o histórico em ordem (`negotiation`, sem limite de rodadas):
 
 1. **Contraproposta da Wellmix**: na resposta "faz", a Wellmix "devolve com contraproposta" de **preço, pedido mínimo e prazo** (ao menos um valor) com **comentário obrigatório**. Só uma contraproposta espera de cada vez.
-2. **Resposta do fornecedor** (ou registrada pela Wellmix em nome dele):
+2. **Resposta do fornecedor** (só ele responde, desde 12/11/2026; a Wellmix vê a contraproposta esperando, sem os botões):
    - **Aceitar**: os valores propostos viram a resposta (`supplierPrice`, `supplierCurrency`, `supplierMoq`, `supplierLeadTimeDays`).
    - **Nova proposta**: novos valores (preço obrigatório) e comentário opcional; viram a resposta e a vez volta à Wellmix.
    - **Recusar**: fica a resposta anterior.
@@ -121,7 +121,7 @@ O fornecedor cadastrado pela planilha do booking nasce sem login. Sem login, a s
 
 - **Detalhe do booking**: quando o fornecedor do booking não tem login ativo.
 - **Seleção de itens**: no topo, os fornecedores dos itens mostrados que não têm login, e o selo "Sem acesso" na coluna Fornecedor.
-- **Solicitação ao fornecedor** (Aberta ou Respondida): "ele não vê nem responde esta solicitação". O aviso lembra que dá para registrar a resposta em nome dele.
+- **Solicitação ao fornecedor** (Aberta ou Respondida): "ele não vê nem responde esta solicitação". O aviso pede para criar o acesso: só ele responde (até 12/11/2026 o aviso oferecia registrar a resposta em nome dele).
 
 Com a tela Cadastros, cada nome leva ao quadro de acesso do cadastro (`/app/parties/{id}#access`). O login criado ali fica preso ao cadastro e passa a ver as solicitações que já estavam abertas. Sem a tela Cadastros, o aviso pede a quem cuida de Cadastros. A solicitação abre normalmente nos dois casos.
 

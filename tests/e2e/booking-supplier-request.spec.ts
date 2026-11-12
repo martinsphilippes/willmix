@@ -61,6 +61,17 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-request-needs]")).toContainText(
     "Cor âmbar",
   );
+  // A resposta é do fornecedor: a Wellmix (admin) não responde por ele e,
+  // antes da resposta, só cancela ou manda mensagem.
+  await page.goto(itemUrl);
+  await expect(page.locator("[data-supplier-answer-form]")).toHaveCount(0);
+  await expect(page.locator("[data-supplier-decide-waiting]")).toBeVisible();
+  await expect(page.locator("[data-supplier-decide=cancelled]")).toBeVisible();
+  await expect(page.locator("[data-supplier-decide=declined]")).toHaveCount(0);
+  await expect(page.locator("[data-supplier-decide=approved]")).toHaveCount(0);
+  await page.goto(requestUrl);
+  await expect(page.locator("[data-supplier-table-answer-open]")).toHaveCount(0);
+  await expect(page.locator("[data-supplier-table-message]")).toBeVisible();
 
   // 3. O fornecedor A vê primeiro a tabela dos produtos da solicitação e
   // responde "sim" na caixa rápida da linha, sem a alternativa; o B não abre.

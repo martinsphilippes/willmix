@@ -204,6 +204,21 @@ describe("seleção de itens e solicitação ao fornecedor", () => {
         note: null,
       }),
     ).rejects.toThrow("not_found");
+    // A resposta é do fornecedor: a Wellmix (mesmo admin) não responde por ele.
+    await expect(
+      svc.answerSupplierRequest(admin, request.id, {
+        canDo: "yes",
+        price: 1,
+        currency: "USD",
+        moq: null,
+        leadTimeDays: null,
+        note: null,
+      }),
+    ).rejects.toThrow("supplier_request_supplier_only");
+    // Antes da resposta, a Wellmix só cancela (não recusa).
+    await expect(
+      svc.decideSupplierRequest(admin, request.id, "declined", null),
+    ).rejects.toThrow("supplier_request_decision_invalid");
 
     // Resposta: "faz" pede preço; muda até a Wellmix decidir.
     await expect(
@@ -895,10 +910,7 @@ describe("regras puras", () => {
     expect(lib.priceInUsd(7, "RMB", 7)).toBe(1);
     expect(lib.priceInUsd(2, "USD", null)).toBe(2);
     expect(lib.priceInUsd(2, "EUR", 7)).toBeNull();
-    expect(lib.supplierRequestDecisions("open", null)).toEqual([
-      "cancelled",
-      "declined",
-    ]);
+    expect(lib.supplierRequestDecisions("open", null)).toEqual(["cancelled"]);
     expect(lib.supplierRequestDecisions("answered", "yes")).toEqual([
       "approved",
       "declined",
