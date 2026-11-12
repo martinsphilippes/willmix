@@ -275,7 +275,9 @@ export default async function SupplierRequestPage({
   }
 
   const proposalPending = !!pendingProposal(r.negotiation);
-  const canAnswer = supplierCanAnswer(r.status) && !proposalPending;
+  // Só o fornecedor responde: a resposta é para a Wellmix, que não responde por ele.
+  const canAnswer =
+    !wellmix && supplierCanAnswer(r.status) && !proposalPending;
   // Decidir (aprovar, recusar, cancelar): só com a permissão (Equipe → Funções e acessos).
   const decisions =
     wellmix && can(user, "supplierRequest.decide")
@@ -543,11 +545,7 @@ export default async function SupplierRequestPage({
                 data-supplier-answer-form
               >
                 <input type="hidden" name="id" value={r.id} />
-                {wellmix ? (
-                  <p className="text-xs text-zinc-500">
-                    {t("supplierRequests.detail.answer.wellmixHint")}
-                  </p>
-                ) : r.supplierCanDo ? (
+                {r.supplierCanDo ? (
                   <p className="text-xs text-zinc-500">
                     {t("supplierRequests.detail.answer.change")}
                   </p>
@@ -628,15 +626,10 @@ export default async function SupplierRequestPage({
                   />
                 </Field>
                 <SubmitButton
-                  variant={wellmix ? "secondary" : "primary"}
                   pendingText={t("supplierRequests.detail.answer.pending")}
                   data-supplier-answer-submit
                 >
-                  {t(
-                    wellmix
-                      ? "supplierRequests.detail.answer.submitWellmix"
-                      : "supplierRequests.detail.answer.submit",
-                  )}
+                  {t("supplierRequests.detail.answer.submit")}
                 </SubmitButton>
               </form>
             ) : null}
@@ -657,6 +650,14 @@ export default async function SupplierRequestPage({
                     date: dateTime(r.decidedAt, t),
                   })}
                   {r.decisionNote ? ` · ${r.decisionNote}` : ""}
+                </p>
+              ) : null}
+              {r.status === "open" ? (
+                <p
+                  className="mb-2 text-xs text-zinc-500"
+                  data-supplier-decide-waiting
+                >
+                  {t("supplierRequests.detail.decide.waiting")}
                 </p>
               ) : null}
               {proposalPending ? (

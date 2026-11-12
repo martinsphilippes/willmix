@@ -124,7 +124,8 @@ export function NegotiationCard({
     n === null || n === undefined ? "" : String(n).replace(".", decimal);
   const currencyDefault = r.supplierCurrency ?? r.item.currency ?? "USD";
   const showPropose = wellmix && canPropose(r);
-  const showRespond = !!proposal && r.status === "answered";
+  // Só o fornecedor responde à contraproposta (a Wellmix não responde por ele).
+  const showRespond = !wellmix && !!proposal && r.status === "answered";
 
   // Histórico na linha do tempo e mensagens no chat flutuante: aqui ficam
   // só a contraproposta e a resposta a ela.
@@ -200,11 +201,7 @@ export function NegotiationCard({
                 {t("supplierRequests.negotiation.respond")}
               </h3>
               <p className="text-xs text-zinc-500">
-                {t(
-                  wellmix
-                    ? "supplierRequests.negotiation.respondWellmixHint"
-                    : "supplierRequests.negotiation.respondHint",
-                )}
+                {t("supplierRequests.negotiation.respondHint")}
               </p>
               <input type="hidden" name="id" value={r.id} />
               <OfferFields

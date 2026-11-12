@@ -30,8 +30,6 @@ export const pt = {
   "supplierRequests.negotiation.respond": "Responder à contraproposta",
   "supplierRequests.negotiation.respondHint":
     "Aceitar: os valores propostos viram a sua resposta. Nova proposta: informe os seus valores (o preço é obrigatório). Recusar: fica a sua resposta anterior.",
-  "supplierRequests.negotiation.respondWellmixHint":
-    "Registre a resposta do fornecedor quando ela chegar por fora (WeChat, e-mail).",
   "supplierRequests.negotiation.accept": "Aceitar",
   "supplierRequests.negotiation.counter": "Enviar nova proposta",
   "supplierRequests.negotiation.reject": "Recusar",
@@ -62,6 +60,8 @@ export const pt = {
   "settings.error.supplier_request_sla_invalid":
     "Informe o SLA da negociação em minutos (de 1 a 86400).",
 
+  "supplierRequests.error.supplier_request_supplier_only":
+    "A resposta é do fornecedor, pelo portal: a Wellmix não responde por ele.",
   "supplierRequests.error.supplier_request_proposal_pending":
     "Há uma contraproposta esperando o fornecedor: ele aceita, responde com outra proposta ou recusa.",
   "supplierRequests.error.supplier_request_propose_invalid":
@@ -129,8 +129,6 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierRequests.negotiation.respond": "Answer the counteroffer",
   "supplierRequests.negotiation.respondHint":
     "Accept: the proposed values become your answer. New proposal: enter your values (price is required). Decline: your previous answer stays.",
-  "supplierRequests.negotiation.respondWellmixHint":
-    "Record the supplier's answer when it arrives another way (WeChat, email).",
   "supplierRequests.negotiation.accept": "Accept",
   "supplierRequests.negotiation.counter": "Send new proposal",
   "supplierRequests.negotiation.reject": "Decline",
@@ -160,6 +158,8 @@ export const en: Record<keyof typeof pt, string> = {
   "settings.error.supplier_request_sla_invalid":
     "Enter the negotiation SLA in minutes (1 to 86400).",
 
+  "supplierRequests.error.supplier_request_supplier_only":
+    "The answer comes from the supplier, through the portal: Wellmix does not answer for them.",
   "supplierRequests.error.supplier_request_proposal_pending":
     "A counteroffer is waiting for the supplier: they accept it, answer with another proposal or decline it.",
   "supplierRequests.error.supplier_request_propose_invalid":
@@ -224,8 +224,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierRequests.negotiation.respond": "答复还价",
   "supplierRequests.negotiation.respondHint":
     "接受：还价的数值成为您的答复。新报价：填写您的数值（价格必填）。拒绝：保留您之前的答复。",
-  "supplierRequests.negotiation.respondWellmixHint":
-    "供应商通过其他渠道（微信、邮件）答复时，在此代为登记。",
   "supplierRequests.negotiation.accept": "接受",
   "supplierRequests.negotiation.counter": "发送新报价",
   "supplierRequests.negotiation.reject": "拒绝",
@@ -253,6 +251,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "settings.error.supplier_request_sla_invalid":
     "请填写议价 SLA 分钟数（1 至 86400）。",
 
+  "supplierRequests.error.supplier_request_supplier_only":
+    "答复由供应商通过门户提交：Wellmix 不能代为答复。",
   "supplierRequests.error.supplier_request_proposal_pending":
     "有还价正在等待供应商：请接受、提出新报价或拒绝。",
   "supplierRequests.error.supplier_request_propose_invalid":

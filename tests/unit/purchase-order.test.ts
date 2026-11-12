@@ -116,7 +116,9 @@ async function approvedProducts(
       needs: null,
       searchQuery: null,
     });
-    await svc.answerSupplierRequest(partnerId ? admin : supplierA, request.id, {
+    // Só o fornecedor responde: com parceiro, um login do parceiro.
+    const answerer = partnerId ? { ...supplierA, partyId: partnerId } : supplierA;
+    await svc.answerSupplierRequest(answerer, request.id, {
       canDo: "yes",
       price: 1.1 + i,
       currency: "USD",

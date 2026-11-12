@@ -221,7 +221,9 @@ export function SupplierRequestTable({
             // (2.1, 2.2…): nenhuma é "esta solicitação".
             const current = r.id === currentId && !r.batchId;
             const pending = !!pendingProposal(r.negotiation);
-            const canAnswer = supplierCanAnswer(r.status) && !pending;
+            // Só o fornecedor responde (a Wellmix não responde por ele).
+            const canAnswer =
+              !wellmix && supplierCanAnswer(r.status) && !pending;
             const turn = negotiationTurn(r);
             const sla = slaOf(r, slaMinutes);
             const times = answerTimes(
@@ -392,13 +394,10 @@ export function SupplierRequestTable({
                     {canAnswer ? (
                       <QuickDialog
                         label={<AnswerIcon />}
-                        hint={k(wellmix ? "answerWellmix" : "answer")}
-                        title={t(
-                          wellmix
-                            ? "supplierRequests.table.answerTitleWellmix"
-                            : "supplierRequests.table.answerTitle",
-                          { n: r.number },
-                        )}
+                        hint={k("answer")}
+                        title={t("supplierRequests.table.answerTitle", {
+                          n: r.number,
+                        })}
                         closeLabel={k("close")}
                         tone="primary"
                         data-supplier-table-answer-open={r.id}

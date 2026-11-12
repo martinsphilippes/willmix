@@ -170,15 +170,13 @@ export const pt = {
   "supplierRequests.detail.answer.leadTime": "Prazo de produção (dias)",
   "supplierRequests.detail.answer.note": "Observação",
   "supplierRequests.detail.answer.submit": "Enviar resposta",
-  "supplierRequests.detail.answer.submitWellmix":
-    "Registrar a resposta do fornecedor",
-  "supplierRequests.detail.answer.wellmixHint":
-    "Use quando o fornecedor respondeu por fora do portal (WeChat, e-mail).",
   "supplierRequests.detail.answer.pending": "Enviando…",
   "supplierRequests.detail.answer.at": "Respondido em {date}",
   "supplierRequests.detail.answer.change":
     "Você pode mudar a resposta até a Wellmix decidir.",
   "supplierRequests.detail.decide.title": "Decisão da Wellmix",
+  "supplierRequests.detail.decide.waiting":
+    "Enquanto o fornecedor não responde, a Wellmix só cancela a solicitação ou manda mensagem. Aprovar ou recusar fica para depois da resposta.",
   "supplierRequests.detail.decide.approved": "Aprovar",
   "supplierRequests.detail.decide.declined": "Recusar",
   "supplierRequests.detail.decide.cancelled": "Cancelar a solicitação",
@@ -298,10 +296,7 @@ export const pt = {
   "supplierRequests.table.subtitleWellmix":
     "{n} produto(s) pedidos a este fornecedor nesta solicitação",
   "supplierRequests.table.hintWellmix":
-    "Uma informação por coluna. Pelos ícones: mensagem ao fornecedor, registrar a resposta dele (quando chega por fora) e abrir a tela do produto.",
-  "supplierRequests.table.answerWellmix": "Registrar a resposta do fornecedor",
-  "supplierRequests.table.answerTitleWellmix":
-    "Resposta do fornecedor (registrada pela Wellmix) · solicitação nº {n}",
+    "Uma informação por coluna. Pelos ícones: mensagem ao fornecedor e abrir a tela do produto. A resposta é do fornecedor, pelo portal.",
   "supplierRequests.table.proposalPendingWellmix":
     "Contraproposta esperando o fornecedor.",
   "supplierRequests.table.late": "Atrasada",
@@ -545,15 +540,13 @@ export const en: typeof pt = {
   "supplierRequests.detail.answer.leadTime": "Production lead time (days)",
   "supplierRequests.detail.answer.note": "Note",
   "supplierRequests.detail.answer.submit": "Send answer",
-  "supplierRequests.detail.answer.submitWellmix":
-    "Record the supplier's answer",
-  "supplierRequests.detail.answer.wellmixHint":
-    "Use when the supplier answered outside the portal (WeChat, e-mail).",
   "supplierRequests.detail.answer.pending": "Sending…",
   "supplierRequests.detail.answer.at": "Answered on {date}",
   "supplierRequests.detail.answer.change":
     "You can change the answer until Wellmix decides.",
   "supplierRequests.detail.decide.title": "Wellmix decision",
+  "supplierRequests.detail.decide.waiting":
+    "Until the supplier answers, Wellmix can only cancel the request or send a message. Approving or declining comes after the answer.",
   "supplierRequests.detail.decide.approved": "Approve",
   "supplierRequests.detail.decide.declined": "Decline",
   "supplierRequests.detail.decide.cancelled": "Cancel the request",
@@ -670,14 +663,11 @@ export const en: typeof pt = {
   "supplierRequests.table.subtitleWellmix":
     "{n} product(s) requested from this supplier in this request",
   "supplierRequests.table.hintWellmix":
-    "One piece of information per column. Icons: message the supplier, record their answer (when it arrives elsewhere) and open the product screen.",
+    "One piece of information per column. Icons: message the supplier and open the product screen. The answer comes from the supplier, through the portal.",
   "supplierRequests.table.hint":
     "One piece of information per column. Icons: message Wellmix, yes/no answer and open the product screen.",
   "supplierRequests.table.answerHint":
     "To answer yes, enter the price per piece. Minimum order and delivery terms (FOB/EXW) go with it; the lead time stays as it is (change it on the product screen).",
-  "supplierRequests.table.answerWellmix": "Record the supplier's answer",
-  "supplierRequests.table.answerTitleWellmix":
-    "Supplier's answer (recorded by Wellmix) · request no. {n}",
   "supplierRequests.table.proposalPendingWellmix":
     "Counter-offer waiting for the supplier.",
   "supplierRequests.table.late": "Late",
@@ -912,14 +902,13 @@ export const zh: typeof pt = {
   "supplierRequests.detail.answer.leadTime": "生产周期（天）",
   "supplierRequests.detail.answer.note": "备注",
   "supplierRequests.detail.answer.submit": "发送回复",
-  "supplierRequests.detail.answer.submitWellmix": "记录供应商的回复",
-  "supplierRequests.detail.answer.wellmixHint":
-    "供应商在门户之外（微信、邮件）回复时使用。",
   "supplierRequests.detail.answer.pending": "正在发送…",
   "supplierRequests.detail.answer.at": "回复于 {date}",
   "supplierRequests.detail.answer.change":
     "在 Wellmix 决定之前，您可以修改回复。",
   "supplierRequests.detail.decide.title": "Wellmix 的决定",
+  "supplierRequests.detail.decide.waiting":
+    "供应商答复之前，Wellmix 只能取消询单或发送消息。批准或拒绝需在答复之后。",
   "supplierRequests.detail.decide.approved": "批准",
   "supplierRequests.detail.decide.declined": "拒绝",
   "supplierRequests.detail.decide.cancelled": "取消询单",
@@ -1029,14 +1018,11 @@ export const zh: typeof pt = {
   "supplierRequests.table.subtitleWellmix":
     "此询单中向该供应商询问的 {n} 个产品",
   "supplierRequests.table.hintWellmix":
-    "每列一项信息。图标：给供应商留言、登记供应商的答复（通过其他渠道收到时）、打开产品页面。",
+    "每列一项信息。图标：给供应商留言、打开产品页面。答复由供应商通过门户提交。",
   "supplierRequests.table.hint":
     "每列一项信息。图标：给 Wellmix 留言、是/否答复、打开产品页面。",
   "supplierRequests.table.answerHint":
     "答复“是”时请填写单价。起订量和交货方式（FOB/EXW）一并提交；交期保持不变（可在产品页面修改）。",
-  "supplierRequests.table.answerWellmix": "登记供应商的答复",
-  "supplierRequests.table.answerTitleWellmix":
-    "供应商答复（由 Wellmix 登记）· 询单 {n} 号",
   "supplierRequests.table.proposalPendingWellmix": "还价等待供应商答复。",
   "supplierRequests.table.late": "已超时",
   "supplierRequests.table.canDoYes": "可以做",

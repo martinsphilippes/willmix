@@ -187,6 +187,10 @@ describe("contraproposta", () => {
     expect(
       lib.negotiationTurn((await store.get("supplier_requests", request.id))!),
     ).toBe("supplier");
+    // A Wellmix não responde à própria contraproposta pelo fornecedor.
+    await expect(
+      neg.respondToProposal(admin, request.id, "accept", offer({})),
+    ).rejects.toThrow("supplier_request_supplier_only");
 
     await neg.respondToProposal(supplierA, request.id, "accept", offer({}));
     const accepted = (await store.get("supplier_requests", request.id))!;
@@ -440,8 +444,8 @@ describe("pendências do fornecedor", () => {
     expect(open.text?.detail).toBe("supplierTasks.request.detail");
     expect(open.sinceAt).toBe(open.loadedAt);
 
-    // Decidida: sai das pendências.
-    await svc.decideSupplierRequest(admin, request.id, "declined", null);
+    // Cancelada (a aberta só cancela): sai das pendências.
+    await svc.decideSupplierRequest(admin, request.id, "cancelled", null);
     expect(await mine(supplierA, request.id)).toEqual([]);
   });
 });
