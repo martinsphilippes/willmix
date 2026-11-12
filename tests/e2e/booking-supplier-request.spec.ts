@@ -131,6 +131,8 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await chat.locator("[data-negotiation-message-text]").fill("Foto amanhã.");
   await chat.locator("[data-negotiation-message-submit]").click();
   await expect(chat.locator("[data-request-chat-message]")).toHaveCount(2);
+  // Fecha o chat flutuante: com o menu lateral, ele cobre os botões da resposta.
+  await page.click("[data-request-chat-toggle]");
   await page.click("[data-negotiation-respond=accept]");
   await page.waitForURL(/[?&]negotiation=accept/);
   await expect(page.locator('[data-timeline-entry="accept"]')).toBeVisible();

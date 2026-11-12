@@ -79,8 +79,6 @@ export default async function PartiesPage({
     const base = PARTY_TYPE_SCREEN[p.type as keyof typeof PARTY_TYPE_SCREEN];
     return `${base ?? "/app/parties"}/${p.id}`;
   };
-  const typeLabel = (p: (typeof parties)[number]) =>
-    own.find((e) => e.value === p.type)?.label ?? partyTypeLabel(p, catalog, t);
 
   return (
     <>
@@ -140,7 +138,7 @@ export default async function PartiesPage({
             href={`/app/parties?type=${entry.value}`}
             aria-current={type === entry.value ? "page" : undefined}
             className={chipClass(type === entry.value)}
-            data-party-type-chip={entry.value}
+            data-party-own-chip={entry.value}
           >
             {entry.label}
           </Link>
@@ -178,7 +176,7 @@ export default async function PartiesPage({
                 <Td>
                   <TextLink href={detailHref(p)}>{p.name}</TextLink>
                 </Td>
-                <Td>{typeLabel(p)}</Td>
+                <Td>{partyTypeLabel(p, catalog, t)}</Td>
                 <Td>{p.country ?? "—"}</Td>
                 <Td>
                   <span className="text-zinc-600">{p.email ?? "—"}</span>

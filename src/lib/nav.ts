@@ -355,6 +355,7 @@ export function flattenNav(entries: NavEntry[]): NavLink[] {
 
 /** Subpáginas que têm link próprio no menu (o link "pai" não acende nelas). */
 const OWN_LINK_SUBPAGES = [
+  "/app/booking/selection",
   "/app/freight/tariff",
   "/app/supplier-requests/invites",
 ];

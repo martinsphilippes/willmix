@@ -242,6 +242,9 @@ describe("menu lateral", () => {
     expect(isActiveHref("/app", "/app/orders")).toBe(false);
     expect(isActiveHref("/app/orders", "/app/orders/123")).toBe(true);
     expect(isActiveHref("/app/orders", "/app/orders-x")).toBe(false);
+    // Seleção de itens tem link próprio: "Booking" não acende junto.
+    expect(isActiveHref("/app/booking", "/app/booking/selection")).toBe(false);
+    expect(isActiveHref("/app/booking", "/app/booking/abc")).toBe(true);
     // Tarifário tem link próprio: "Fretes" não acende junto.
     expect(isActiveHref("/app/freight", "/app/freight/abc123")).toBe(true);
     expect(isActiveHref("/app/freight", "/app/freight/tariff")).toBe(false);

@@ -337,11 +337,14 @@ function NavList({
   onExpand,
   onNavigate,
   bottom,
+  scroll = true,
 }: {
   entries: NavEntryView[];
   footer: NavItemView[];
   label: string;
   collapsed: boolean;
+  /** Barra do computador: a lista rola por dentro e o pé fica fixo. */
+  scroll?: boolean;
   /** Clicar num grupo com o menu recolhido abre o menu. */
   onExpand?: () => void;
   onNavigate?: () => void;
@@ -376,7 +379,9 @@ function NavList({
     <>
       <nav
         aria-label={label}
-        className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-2 py-3"
+        className={`space-y-0.5 px-2 py-3 ${
+          scroll ? "flex-1 overflow-y-auto overscroll-contain" : ""
+        }`}
         data-sidebar-nav
       >
         {entries.map((entry, i) =>
@@ -609,6 +614,7 @@ export function MobileNav({
             label={labels.main}
             collapsed={false}
             onNavigate={close}
+            scroll={false}
           />
           {extras ? (
             <div className="space-y-4 border-t border-zinc-200 px-3 py-4">
