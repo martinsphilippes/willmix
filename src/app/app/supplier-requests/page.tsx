@@ -59,6 +59,9 @@ export default async function SupplierRequestsPage({
   await notifyLateSupplierRequests().catch((error) =>
     console.error("notifyLateSupplierRequests", error),
   );
+  await import("@/lib/services/supplier-request-sampling")
+    .then((m) => m.notifyLateSampling())
+    .catch((error) => console.error("notifyLateSampling", error));
   const entries = await listSupplierRequests(user);
   const wellmix = isWellmix(user);
   const slaMinutes = await supplierRequestSlaMinutes();

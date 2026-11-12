@@ -7,6 +7,8 @@ import {
   samplingCanReview,
   samplingCanSubmit,
   samplingCanUpload,
+  samplingDueAt,
+  samplingLate,
   samplingOf,
   samplingRoundFiles,
 } from "@/lib/supplier-request-sampling";
@@ -104,16 +106,21 @@ export function SamplingCard({
   request: r,
   wellmix,
   canValidate,
+  slaDays,
   t,
 }: {
   request: SupplierRequest;
   wellmix: boolean;
   /** A Wellmix com a ação "Validar a amostragem". */
   canValidate: boolean;
+  /** SLA da amostragem (dias), de Configurações → SLA. */
+  slaDays: number;
   t: Translate;
 }) {
   const s = samplingOf(r);
   if (!s) return null;
+  const dueAt = samplingDueAt(s, slaDays);
+  const late = samplingLate(s, slaDays);
   const current = samplingRoundFiles(s);
   const previous = s.files.filter((f) => f.round !== s.round);
   const canUpload = !wellmix && samplingCanUpload(s);
@@ -135,6 +142,20 @@ export function SamplingCard({
             <span className="text-xs font-normal text-zinc-500">
               {t("sampling.round", { n: s.round })}
             </span>
+            {dueAt ? (
+              <span
+                className={cx(
+                  "text-xs",
+                  late
+                    ? "font-semibold text-red-700"
+                    : "font-normal text-zinc-500",
+                )}
+                data-sampling-due={late ? "late" : "ok"}
+              >
+                {late ? `${t("sampling.late")} · ` : ""}
+                {t("sampling.due", { date: dateTime(dueAt, t) })}
+              </span>
+            ) : null}
           </span>
         }
       >

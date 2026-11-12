@@ -5,9 +5,24 @@
  * pt, en e zh.
  */
 export const pt = {
+  "sampling.late": "Atrasada",
+  "sampling.due": "Prazo: {date}",
+  "sampling.productBlocked":
+    "O produto (criar ou associar) e o pedido de compra ficam liberados depois que a Wellmix aprovar a amostra.",
+  "sampling.settings.sla": "Prazo da amostragem (dias)",
+  "sampling.settings.slaHint":
+    "Da aprovação da solicitação (ou da amostra reprovada) até o responsável enviar as fotos e vídeos. Padrão: 1 dia.",
+  "sampling.notify.late.subject": "Solicitação nº {n}: amostragem atrasada",
+  "sampling.notify.late.body":
+    "O prazo de {days} dia(s) para enviar as fotos e vídeos da amostra de {product} passou.",
+  "settings.error.sampling_sla_invalid": "Prazo da amostragem: de 1 a 30 dias.",
+  "supplierRequests.error.request_product_sampling_pending":
+    "O produto só é criado ou associado depois da amostra aprovada.",
+  "purchaseOrder.error.purchase_order_sampling_pending":
+    "Só entram no pedido de compra os produtos com a amostra aprovada.",
   "sampling.title": "Amostragem",
   "sampling.intro.supplier":
-    "A Wellmix aprovou este produto. Agora envie fotos e vídeos de uma amostra do item (detalhes, embalagem, funcionamento) e mande para a validação.",
+    "A Wellmix aprovou este produto. Agora envie fotos e vídeos da amostra do item feita em impressora 3D (detalhes, medidas, encaixes) e mande para a validação. A amostra física não é enviada.",
   "sampling.intro.wellmix":
     "O responsável pelo booking envia fotos e vídeos de uma amostra do item. Confira e aprove, ou reprove com o motivo para ele mandar de novo.",
   "sampling.status.pending": "Esperando a amostra",
@@ -106,9 +121,24 @@ export const pt = {
 };
 
 export const en: typeof pt = {
+  "sampling.late": "Late",
+  "sampling.due": "Due: {date}",
+  "sampling.productBlocked":
+    "The product (create or link) and the purchase order are unlocked after Wellmix approves the sample.",
+  "sampling.settings.sla": "Sampling deadline (days)",
+  "sampling.settings.slaHint":
+    "From the request approval (or the rejected sample) until the owner sends the photos and videos. Default: 1 day.",
+  "sampling.notify.late.subject": "Request no. {n}: sampling late",
+  "sampling.notify.late.body":
+    "The {days}-day deadline to send the photos and videos of the sample of {product} has passed.",
+  "settings.error.sampling_sla_invalid": "Sampling deadline: 1 to 30 days.",
+  "supplierRequests.error.request_product_sampling_pending":
+    "The product is only created or linked after the sample is approved.",
+  "purchaseOrder.error.purchase_order_sampling_pending":
+    "Only products with an approved sample go into the purchase order.",
   "sampling.title": "Sampling",
   "sampling.intro.supplier":
-    "Wellmix approved this product. Now send photos and videos of a sample of the item (details, packaging, how it works) and submit them for validation.",
+    "Wellmix approved this product. Now send photos and videos of the 3D-printed sample of the item (details, dimensions, fittings) and submit them for validation. The physical sample is not shipped.",
   "sampling.intro.wellmix":
     "The booking owner sends photos and videos of a sample of the item. Check them and approve, or reject with the reason so they send again.",
   "sampling.status.pending": "Waiting for the sample",
@@ -202,9 +232,24 @@ export const en: typeof pt = {
 };
 
 export const zh: typeof pt = {
+  "sampling.late": "已逾期",
+  "sampling.due": "期限：{date}",
+  "sampling.productBlocked":
+    "Wellmix 批准样品后，才能创建或关联产品并生成采购订单。",
+  "sampling.settings.sla": "样品期限（天）",
+  "sampling.settings.slaHint":
+    "从询价批准（或样品被驳回）到负责人发送照片和视频。默认：1 天。",
+  "sampling.notify.late.subject": "询价 {n}：样品已逾期",
+  "sampling.notify.late.body":
+    "发送 {product} 样品照片和视频的 {days} 天期限已过。",
+  "settings.error.sampling_sla_invalid": "样品期限：1 至 30 天。",
+  "supplierRequests.error.request_product_sampling_pending":
+    "样品批准后才能创建或关联产品。",
+  "purchaseOrder.error.purchase_order_sampling_pending":
+    "只有样品已批准的产品才能进入采购订单。",
   "sampling.title": "样品",
   "sampling.intro.supplier":
-    "Wellmix 已批准该产品。请发送该商品样品的照片和视频（细节、包装、功能），并提交验证。",
+    "Wellmix 已批准该产品。请发送该商品 3D 打印样品的照片和视频（细节、尺寸、配合），并提交验证。实物样品无需寄送。",
   "sampling.intro.wellmix":
     "订舱负责人发送商品样品的照片和视频。请检查并批准，或填写原因驳回，让其重新发送。",
   "sampling.status.pending": "等待样品",

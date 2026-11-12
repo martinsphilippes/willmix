@@ -9,6 +9,7 @@ import { xlsxBytes } from "./xlsx-fixture";
  * responde até a Wellmix decidir; nada de produto nasce aqui.
  */
 withTempStore();
+const { approveSample } = await import("./helpers/sampling");
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
@@ -432,6 +433,7 @@ describe("produto da solicitação aprovada", () => {
       note: null,
     });
     await svc.decideSupplierRequest(admin, request.id, "approved", null);
+    await approveSample(admin, request.id);
     return { request, itemA, itemB, lotA, lotB };
   }
 
@@ -481,6 +483,7 @@ describe("produto da solicitação aprovada", () => {
       "supplier_request_linked_nothing",
     );
     await svc.decideSupplierRequest(admin, a.id, "approved", null);
+    await approveSample(admin, a.id);
     const fromA = await svc.linkedSupplierRequests(
       admin,
       (await store.get("supplier_requests", a.id))!,
@@ -502,6 +505,7 @@ describe("produto da solicitação aprovada", () => {
     // Recusar: vai para Recusada mesmo antes da resposta.
     const second = await pair("LD");
     await svc.decideSupplierRequest(admin, second.a.id, "approved", null);
+    await approveSample(admin, second.a.id);
     const declined = await svc.resolveLinkedRequest(
       admin,
       second.b.id,
@@ -704,6 +708,7 @@ describe("itens da seleção para o produto", () => {
       note: null,
     });
     await svc.decideSupplierRequest(admin, request.id, "approved", null);
+    await approveSample(admin, request.id);
     // Depois, a escolha do grupo abre outra solicitação do mesmo item.
     await svc.openSupplierRequest(admin, {
       itemId: itemA.id,

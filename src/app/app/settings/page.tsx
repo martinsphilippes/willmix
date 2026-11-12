@@ -375,6 +375,21 @@ export default async function SettingsPage({
                       data-setting-booking-invite-sla
                     />
                   </Field>
+                  <Field
+                    label={t("sampling.settings.sla")}
+                    hint={t("sampling.settings.slaHint")}
+                  >
+                    <Input
+                      name="samplingSlaDays"
+                      type="number"
+                      min={1}
+                      max={30}
+                      step="1"
+                      required
+                      defaultValue={s.samplingSlaDays}
+                      data-setting-sampling-sla
+                    />
+                  </Field>
                   <Field label={t("purchaseOrder.settings.artDays")}>
                     <Input
                       name="purchaseArtSlaDays"

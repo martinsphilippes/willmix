@@ -10,6 +10,7 @@ import { xlsxBytes } from "./xlsx-fixture";
  * contrato só conclui com os dois arquivos assinados.
  */
 withTempStore();
+const { approveSample } = await import("./helpers/sampling");
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
@@ -117,7 +118,9 @@ async function approvedProducts(
       searchQuery: null,
     });
     // Só o fornecedor responde: com parceiro, um login do parceiro.
-    const answerer = partnerId ? { ...supplierA, partyId: partnerId } : supplierA;
+    const answerer = partnerId
+      ? { ...supplierA, partyId: partnerId }
+      : supplierA;
     await svc.answerSupplierRequest(answerer, request.id, {
       canDo: "yes",
       price: 1.1 + i,
@@ -127,6 +130,7 @@ async function approvedProducts(
       note: null,
     });
     await svc.decideSupplierRequest(admin, request.id, "approved", null);
+    await approveSample(admin, request.id);
     await product.createProductFromRequest(admin, request.id, {
       name: `Produto PO ${i + 1}`,
       lineId,

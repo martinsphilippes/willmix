@@ -26,6 +26,7 @@ import {
   type LaneSla,
 } from "@/lib/purchase-lanes";
 import { ROLE_PARTY_FIELD } from "@/lib/workflow/stages";
+import { samplingApproved } from "@/lib/supplier-request-sampling";
 import { audit } from "./audit";
 
 /*
@@ -74,7 +75,10 @@ export async function listPurchaseCandidates(
     if (isSchemaMissing(error)) return null;
     throw error;
   }
-  const open = rows.filter((r) => r.productId && !r.orderId);
+  // Só com a amostra aprovada (docs/SUPPLIER_SAMPLING.md).
+  const open = rows.filter(
+    (r) => r.productId && !r.orderId && samplingApproved(r),
+  );
   if (!open.length) return [];
   const productIds = [...new Set(open.map((r) => r.productId!))];
   const supplierIds = [...new Set(open.map((r) => r.supplierId))];
@@ -149,6 +153,8 @@ export async function createPurchaseOrder(
   for (const r of requests) {
     if (r.status !== "approved" || !r.productId)
       throw new PurchaseOrderError("purchase_order_not_ready");
+    if (!samplingApproved(r))
+      throw new PurchaseOrderError("purchase_order_sampling_pending");
     if (r.orderId) throw new PurchaseOrderError("purchase_order_taken");
   }
   const supplierId = requests[0].supplierId;
