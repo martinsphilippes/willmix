@@ -19,6 +19,16 @@ async function login(page: Page, user: string, password = PASSWORD) {
   await page.waitForURL(/\/app/);
 }
 
+/**
+ * Abre a Gestão de telas e espera a tabela ficar interativa: a busca da
+ * tabela só aparece depois da hidratação. Clicar antes perde o clique (a
+ * hidratação devolve a caixa ao valor da página).
+ */
+async function openAccess(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.locator("[data-table-search]").first()).toBeVisible();
+}
+
 test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async ({
   page,
 }) => {
@@ -76,7 +86,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
 
   // Administrador: tira Solicitações ao fornecedor da Factory na Gestão de telas.
   await login(page, "admin@wellmix.com");
-  await page.goto("/app/parties/access?profile=type:factory");
+  await openAccess(page, "/app/parties/access?profile=type:factory");
   await expect(page.locator("[data-access-users]")).toHaveAttribute(
     "data-access-users",
     /^[1-9]/,
@@ -174,7 +184,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await page.locator("[data-access-copy-apply]").click();
   await page.waitForURL(/saved=1/);
   // E tira Pendências e Mensagens da Factory.
-  await page.goto("/app/parties/access?profile=type:factory");
+  await openAccess(page, "/app/parties/access?profile=type:factory");
   page.once("dialog", (dialog) => dialog.accept());
   await page.locator('[data-access-open="tasks"]').uncheck();
   await page.locator('[data-access-open="messages"]').uncheck();
@@ -210,7 +220,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
 
   // Deixa o perfil como estava para os outros testes.
   await login(page, "admin@wellmix.com");
-  await page.goto("/app/parties/access?profile=type:factory");
+  await openAccess(page, "/app/parties/access?profile=type:factory");
   page.once("dialog", (dialog) => dialog.accept());
   await page.locator("[data-access-reset]").click();
   await page.waitForURL(/saved=reset/);
@@ -256,7 +266,7 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   // Supplier e no GP); no Fornecedor pode ser liberado (deixou de ser
   // "interna da Wellmix").
   for (const profile of ["type:trading", "type:gp", "type:supplier_partner"]) {
-    await page.goto(`/app/parties/access?profile=${profile}`);
+    await openAccess(page, `/app/parties/access?profile=${profile}`);
     await expect(
       page.locator('[data-access-screen="booking"]'),
     ).toHaveAttribute("data-access-state", "open");
@@ -264,7 +274,7 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
       0,
     );
   }
-  await page.goto("/app/parties/access?profile=role:supplier");
+  await openAccess(page, "/app/parties/access?profile=role:supplier");
   await expect(page.locator('[data-access-screen="booking"]')).toHaveAttribute(
     "data-access-state",
     "blocked",
