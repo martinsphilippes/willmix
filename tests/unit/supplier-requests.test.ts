@@ -1053,3 +1053,33 @@ describe("responsável pelo booking (para quem vão as solicitações)", () => {
     expect(toSupplier.supplierId).toBe(lot.supplierId);
   });
 });
+
+describe("Seleção de itens: o melhor caso pelo custo por peça", () => {
+  type Item = Parameters<typeof lib.bestCostItem>[0][number];
+  const item = (
+    id: string,
+    costBrl: number | null,
+    minimumBrl: number | null,
+  ) =>
+    ({
+      id,
+      analysis:
+        costBrl === null && minimumBrl === null
+          ? null
+          : { costBrl, minimumBrl },
+    }) as unknown as Item;
+
+  it("destaca o menor custo, mesmo com mínimo maior (tipo de negócio diferente)", () => {
+    expect(
+      lib.bestCostItem([
+        item("a", 10, 18),
+        item("b", 9, 20),
+        item("c", null, null),
+      ]),
+    ).toBe("b");
+  });
+
+  it("sem custo calculado, nenhum destaque", () => {
+    expect(lib.bestCostItem([item("a", null, null)])).toBeNull();
+  });
+});
