@@ -122,9 +122,10 @@ const ROWS: Record<FullLoadEntity, { min: number; max: number }> = {
   products: { min: 40, max: 120 },
   stockLocations: { min: 100, max: 400 },
   stockBalances: { min: 100, max: 400 },
-  // Uma nota grande (muitos itens e títulos) já ocupa boa parte da rodada:
-  // lotes pequenos gravam o cursor a cada nota ou duas.
-  orders: { min: 1, max: 3 },
+  // Lotes de até 8 notas (12/11/2026): com a nota levando ~1,3 s no portal,
+  // a consulta ao Sankhya (custo quase fixo por lote) pesava mais que a
+  // gravação; o cursor continua gravado a cada lote.
+  orders: { min: 3, max: 8 },
 };
 
 export interface FullLoadResult {
