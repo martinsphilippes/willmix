@@ -448,15 +448,12 @@ export default async function OrderPage({
           parties,
         })
       : null;
-  // Multas: a Wellmix e o jurídico veem todas; os demais (cliente, fornecedor
-  // e parceiros), só as da própria empresa. É a mesma regra da tela Multas: o
-  // cliente não lê o nome do fornecedor nem o que foi cobrado dele.
-  const visiblePenalties =
-    isWellmix(user) || user.role === "legal"
-      ? penalties
-      : penalties.filter(
-          (p) => !!user.partyId && p.responsiblePartyId === user.partyId,
-        );
+  // Pendente de decisão do dono (docs/PARTNER_ACCESS.md, "Em aberto"): aqui o
+  // cliente e o fornecedor ainda veem todas as multas do pedido, com o nome
+  // do responsável; a tela Multas já mostra a cada login só as da empresa dele.
+  const visiblePenalties = partner
+    ? penalties.filter((p) => p.responsiblePartyId === user.partyId)
+    : penalties;
   const userName = (uid: string | null) =>
     users.find((u) => u.id === uid)?.name ?? "—";
   const docById = (did: string | null) =>

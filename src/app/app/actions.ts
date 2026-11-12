@@ -37,6 +37,7 @@ import {
 } from "@/lib/services/requests";
 import {
   assertUploadable,
+  discardRequirementUpload,
   registerUploadedDocument,
   registerUploadedPhoto,
   uploadDocument,
@@ -347,11 +348,23 @@ export async function submitRequirementAction(form: FormData) {
       if (amount === null) throw new Error("money_required");
       value = moneyValue(parseCurrency(str(form, "currency"), "BRL"), amount);
     }
-    await submitRequirement(user, requirementId, {
-      value,
-      documentId,
-      note: str(form, "note") || null,
-    });
+    try {
+      await submitRequirement(user, requirementId, {
+        value,
+        documentId,
+        note: str(form, "note") || null,
+      });
+    } catch (error) {
+      // Envio recusado depois de o arquivo subir (etapa fechada, pré-requisito
+      // pendente…): o arquivo recém-gravado não fica no pedido como versão nova.
+      if (documentId)
+        await discardRequirementUpload(requirementId, documentId).catch(
+          (cleanupError: unknown) => {
+            console.error("submitRequirementAction: limpeza", cleanupError);
+          },
+        );
+      throw error;
+    }
     return `/app/orders/${orderId}#stage-${requirement.stageId}`;
   });
 }

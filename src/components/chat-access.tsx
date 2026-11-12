@@ -21,3 +21,8 @@ export function ChatAccess({
 }
 
 export const useChatAccess = () => useContext(ChatAccessContext);
+
+/** Mostra os filhos só a quem tem a tela Mensagens (para componentes do servidor). */
+export function ChatOnly({ children }: { children: ReactNode }) {
+  return useChatAccess() ? <>{children}</> : null;
+}

@@ -13,6 +13,10 @@ const { isInvolved } = await import("@/lib/services/tasks");
 const { attachAccess } = await import("@/lib/auth/access-cache");
 const { flattenNav, navFor } = await import("@/lib/nav");
 const { canOpen } = await import("@/lib/auth/screens");
+const { getStore } = await import("@/lib/db");
+const { discardRequirementUpload, fileKeyTaken } =
+  await import("@/lib/services/documents");
+const { uploadedPhotoKeys } = await import("@/app/app/actions/helpers");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
 
@@ -81,5 +85,65 @@ describe("início do login externo", () => {
     expect(canOpen(noTasks, "tasks")).toBe(false);
     expect(canOpen(noTasks, "messages")).toBe(false);
     expect(homeKey(noTasks)).toBe("nav.home");
+  });
+});
+
+describe("arquivo de um envio recusado", () => {
+  const docRow = (requirementId: string, storageKey: string) =>
+    getStore().create("documents", {
+      orderId: "o1",
+      requestId: null,
+      requirementId,
+      type: "art",
+      name: "arte.pdf",
+      mime: "application/pdf",
+      size: 10,
+      storageKey,
+      version: 2,
+      previousDocumentId: null,
+      uploadedByUserId: "u1",
+      visibility: "supplier",
+    } as never);
+  const requirementRow = (documentId: string | null) =>
+    getStore().create("requirements", {
+      orderId: "o1",
+      stageId: "s1",
+      key: "art",
+      type: "file",
+      role: "agency",
+      status: "pending",
+      documentId,
+    } as never);
+
+  it("sai do pedido quando o requisito não ficou com ele", async () => {
+    const store = getStore();
+    const requirement = await requirementRow(null);
+    const doc = await docRow(requirement.id, "chave-recusada");
+    expect(await fileKeyTaken("chave-recusada")).toBe(true);
+    await discardRequirementUpload(requirement.id, doc.id);
+    expect(await store.get("documents", doc.id)).toBeNull();
+    expect(await fileKeyTaken("chave-recusada")).toBe(false);
+  });
+
+  it("fica quando o requisito aponta para ele ou é de outro requisito", async () => {
+    const store = getStore();
+    const kept = await docRow("placeholder", "chave-aceita");
+    const requirement = await requirementRow(kept.id);
+    await store.update("documents", kept.id, {
+      requirementId: requirement.id,
+    } as never);
+    await discardRequirementUpload(requirement.id, kept.id);
+    expect(await store.get("documents", kept.id)).not.toBeNull();
+    // Documento de outro requisito: nunca apagado por engano.
+    const other = await docRow("outro-requisito", "chave-outra");
+    await discardRequirementUpload(requirement.id, other.id);
+    expect(await store.get("documents", other.id)).not.toBeNull();
+  });
+
+  it("a mesma foto subida não entra duas vezes no envio", () => {
+    const form = new FormData();
+    for (const id of ["foto1", "foto2", "foto1", "../x", "foto2"])
+      form.append("uploadedPhotoId", id);
+    expect(uploadedPhotoKeys(form)).toEqual(["foto1", "foto2"]);
   });
 });

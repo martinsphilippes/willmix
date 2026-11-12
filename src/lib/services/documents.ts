@@ -129,7 +129,7 @@ export async function uploadDocument(
 }
 
 /** O arquivo (chave no armazenamento) já pertence a um documento registrado. */
-async function fileKeyTaken(fileKey: string): Promise<boolean> {
+export async function fileKeyTaken(fileKey: string): Promise<boolean> {
   const taken = await getStore().list("documents", {
     filter: { storageKey: fileKey },
     limit: 1,
@@ -184,6 +184,31 @@ export async function registerUploadedPhoto(
     throw new DocumentError("mime");
   }
   return registerUploadedDocument(user, fileKey, input);
+}
+
+/**
+ * Arquivo que subiu para um requisito cujo envio foi recusado em seguida
+ * (etapa fechada, pré-requisito pendente…): sai do pedido, para não ficar
+ * como a versão mais nova do requisito. Só apaga o que este envio criou e se
+ * o requisito não ficou apontando para ele.
+ */
+export async function discardRequirementUpload(
+  requirementId: string,
+  documentId: string,
+): Promise<void> {
+  const store = getStore();
+  const [requirement, doc] = await Promise.all([
+    store.get("requirements", requirementId),
+    store.get("documents", documentId),
+  ]);
+  if (!doc || doc.requirementId !== requirementId) return;
+  if (requirement?.documentId === documentId) return;
+  await store.remove("documents", doc.id);
+  // Arquivo só sai do armazenamento se nenhum outro documento aponta para ele.
+  if (!(await fileKeyTaken(doc.storageKey)))
+    await store.removeFile(doc.storageKey).catch((error: unknown) => {
+      console.error("discardRequirementUpload: arquivo não apagado", error);
+    });
 }
 
 /** Foto enviada no formulário (File) ou já subida direto (id no armazenamento). */
