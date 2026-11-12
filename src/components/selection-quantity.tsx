@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Input, cx, inputDenseClass } from "@/components/ui";
 import {
   RequestScheduleFields,
@@ -9,9 +9,9 @@ import {
 import type { RequestSchedule } from "@/lib/db/schema";
 import {
   MAX_PURCHASE_ROUNDS,
+  containersPerRound,
   planPurchaseRounds,
   roundLoad,
-  type RoundsPlan,
 } from "@/lib/purchase-rounds";
 import { splitEvenly } from "@/lib/workflow/request-schedule";
 
@@ -20,9 +20,13 @@ import { splitEvenly } from "@/lib/workflow/request-schedule";
  * (docs/PURCHASE_SCHEDULE.md): sem programação, a quantidade digitada (em
  * branco = a da planilha); com ela, rodadas com peças e intervalo, e a
  * quantidade passa a ser a soma das rodadas (o campo fica só para leitura).
- * "Gerar programação" monta as rodadas pelo total de peças, pela caixa master
- * e CBM do item marcado como escolhido e pelo container (containers cheios;
- * a última rodada fica com o resto).
+ *
+ * "Gerar programação" parte da QUANTIDADE (regra do dono, 12/11/2026): o
+ * total de peças e o número de rodadas viram rodadas iguais, em caixas
+ * master inteiras do item marcado como escolhido. Os containers de cada
+ * rodada saem da conta ("Containers por rodada" é só informativo). Em cada
+ * rodada, "Aumentar" e "Diminuir" ajustam as peças para fechar o container;
+ * com 95% ou mais ele conta como cheio.
  */
 
 /** Caixa master do item do grupo (o CBM já resolvido das medidas, quando falta). */
@@ -38,22 +42,34 @@ export interface GenerateLabels {
   title: string;
   hint: string;
   total: string;
-  container: string;
-  perRound: string;
   rounds: string;
+  container: string;
+  /** "Containers por rodada" (informativo) e a explicação dele. */
+  perRound: string;
+  perRoundHint: string;
+  /** "{min} a {max}" quando as rodadas ocupam containers diferentes. */
+  perRoundRange: string;
   submit: string;
   item: string;
   noItem: string;
   noCarton: string;
   tooBig: string;
   errorTotal: string;
+  errorRounds: string;
   result: string;
   extra: string;
-  raised: string;
-  last: string;
-  fillUp: string;
-  trim: string;
+  reduced: string;
   load: string;
+  /** Situação do container da rodada. */
+  full: string;
+  fullMargin: string;
+  partial: string;
+  partialLast: string;
+  /** Ajustes da rodada: "Aumentar +{pieces}" / "fecha {n} container(s)". */
+  up: string;
+  upTo: string;
+  down: string;
+  downTo: string;
 }
 
 const fill = (s: string, vars: Record<string, string | number>) =>
@@ -91,6 +107,7 @@ export function SelectionQuantity({
   containerTypes: Array<{ code: string; capacityCbm: number }>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const perRoundId = useId();
   const [qty, setQty] = useState(
     defaultQuantity === null ? "" : String(defaultQuantity),
   );
@@ -103,10 +120,16 @@ export function SelectionQuantity({
         ?.code ??
       "",
   );
-  const [perRound, setPerRound] = useState("1");
-  const [roundsCount, setRoundsCount] = useState("2");
+  // Nulo = acompanha a tela: o total é a soma das rodadas e o número de
+  // rodadas é o dos cartões; digitado, vale o que está no campo até gerar.
   const [totalText, setTotalText] = useState<string | null>(null);
-  const [result, setResult] = useState<RoundsPlan | null>(null);
+  const [roundsText, setRoundsText] = useState<string | null>(null);
+  // O que a última geração arredondou (some quando as rodadas mudam).
+  const [note, setNote] = useState<{
+    pieces: number;
+    extra: number;
+    reduced: { cartons: number; rounds: number } | null;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // O item escolhido é o rádio "chosen" da tabela (no mesmo formulário).
@@ -137,45 +160,72 @@ export function SelectionQuantity({
       ? Math.floor(capacity! / item.cbmPerCarton! + 1e-9)
       : null;
 
-  function generate(apply: (q: number[]) => void, override?: number) {
-    const n = override ?? parseNum(total);
+  /** Total em N rodadas iguais: caixas master inteiras quando o item as tem. */
+  function divide(amount: number, count: number): number[] {
+    if (hasCarton && amount > 0) {
+      const out = planPurchaseRounds({
+        total: amount,
+        rounds: Math.max(1, Math.min(MAX_PURCHASE_ROUNDS, Math.floor(count))),
+        masterCartonQty: item!.masterCartonQty,
+        cbmPerCarton: item!.cbmPerCarton,
+        containerCbm: capacity,
+      });
+      if ("plan" in out) return out.plan.rounds.map((r) => r.pieces);
+    }
+    return splitEvenly(amount, count, MAX_PURCHASE_ROUNDS);
+  }
+
+  function generate(apply: (q: number[]) => void, roundsValue: string) {
+    const n = parseNum(total);
     if (!Number.isFinite(n) || n <= 0) {
       setError(gen.errorTotal);
       return;
     }
+    const count = parseNum(roundsValue);
+    if (!Number.isInteger(count) || count < 1 || count > MAX_PURCHASE_ROUNDS) {
+      setError(fill(gen.errorRounds, { max: MAX_PURCHASE_ROUNDS }));
+      return;
+    }
     setError(null);
     if (!hasCarton) {
-      const count = Math.max(
-        1,
-        Math.min(MAX_PURCHASE_ROUNDS, Math.floor(parseNum(roundsCount)) || 1),
-      );
-      setResult(null);
+      setNote(null);
       apply(splitEvenly(n, count, MAX_PURCHASE_ROUNDS));
-      return;
+    } else {
+      const out = planPurchaseRounds({
+        total: n,
+        rounds: count,
+        masterCartonQty: item!.masterCartonQty,
+        cbmPerCarton: item!.cbmPerCarton,
+        containerCbm: capacity,
+      });
+      if ("error" in out) {
+        setNote(null);
+        setError(
+          out.error === "too_big"
+            ? fill(gen.tooBig, {
+                cbm: fmt(item!.cbmPerCarton!, 4),
+                container,
+                cap: fmt(capacity!, 2),
+              })
+            : out.error === "rounds"
+              ? fill(gen.errorRounds, { max: MAX_PURCHASE_ROUNDS })
+              : gen.errorTotal,
+        );
+        return;
+      }
+      const { plan } = out;
+      setNote({
+        pieces: plan.pieces,
+        extra: plan.extraPieces,
+        reduced: plan.reduced
+          ? { cartons: plan.cartons, rounds: plan.rounds.length }
+          : null,
+      });
+      apply(plan.rounds.map((r) => r.pieces));
     }
-    const out = planPurchaseRounds({
-      total: n,
-      masterCartonQty: item!.masterCartonQty,
-      cbmPerCarton: item!.cbmPerCarton,
-      containerCbm: capacity,
-      containersPerRound: Math.floor(parseNum(perRound)) || 1,
-    });
-    if ("error" in out) {
-      setResult(null);
-      setError(
-        out.error === "too_big"
-          ? fill(gen.tooBig, {
-              cbm: fmt(item!.cbmPerCarton!, 4),
-              container,
-              cap: fmt(capacity!, 2),
-            })
-          : gen.errorTotal,
-      );
-      return;
-    }
-    if (override !== undefined) setTotalText(String(override));
-    setResult(out.plan);
-    apply(out.plan.rounds.map((r) => r.pieces));
+    // Gerado: os campos voltam a acompanhar as rodadas da tela.
+    setTotalText(null);
+    setRoundsText(null);
   }
 
   const chip = (on: boolean) =>
@@ -186,78 +236,83 @@ export function SelectionQuantity({
         : "border-zinc-300 bg-white text-zinc-700 hover:bg-brand-50",
     );
 
-  const generator = (apply: (q: number[]) => void) => (
-    <div
-      className="mt-1 space-y-2 rounded-lg border border-brand-200 bg-white p-2.5 text-xs"
-      data-rounds-generator
-      role="group"
-      aria-label={gen.title}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
-          e.preventDefault();
-          generate(apply);
-        }
-      }}
-    >
-      <p className="font-semibold text-zinc-900">{gen.title}</p>
-      <p className="text-zinc-600">{gen.hint}</p>
-      <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-        <label className="space-y-1">
-          <span className="block font-medium text-zinc-700">{gen.total}</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={total}
-            onChange={(e) => {
-              setTotalText(e.target.value);
-              setError(null);
-            }}
-            data-generate-total
-            className={cx(inputDenseClass, "w-28 tabular-nums")}
-          />
-        </label>
-        {hasCarton || !item ? (
-          <>
-            <div className="space-y-1">
-              <span className="block font-medium text-zinc-700">
-                {gen.container}
-              </span>
-              <div
-                className="flex flex-wrap gap-1"
-                role="group"
-                aria-label={gen.container}
-              >
-                {containerTypes.map((c) => (
-                  <button
-                    key={c.code}
-                    type="button"
-                    aria-pressed={container === c.code}
-                    onClick={() => setContainer(c.code)}
-                    data-generate-container={c.code}
-                    className={chip(container === c.code)}
-                    title={`${fmt(c.capacityCbm, 2)} m³`}
-                  >
-                    {c.code}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <label className="space-y-1">
-              <span className="block font-medium text-zinc-700">
-                {gen.perRound}
-              </span>
-              <input
-                type="number"
-                min="1"
-                max="50"
-                value={perRound}
-                onChange={(e) => setPerRound(e.target.value)}
-                data-generate-per-round
-                className={cx(inputDenseClass, "w-20 tabular-nums")}
-              />
-            </label>
-          </>
-        ) : (
+  const generator = (apply: (q: number[]) => void, live: number[]) => {
+    const roundsValue = roundsText ?? String(live.length || 2);
+    // Rodadas da tela; sem programação, a prévia do que seria gerado.
+    const typedTotal = parseNum(total);
+    const typedRounds = parseNum(roundsValue);
+    const preview =
+      !live.length &&
+      hasCarton &&
+      typedTotal > 0 &&
+      Number.isInteger(typedRounds) &&
+      typedRounds >= 1 &&
+      typedRounds <= MAX_PURCHASE_ROUNDS
+        ? divide(typedTotal, typedRounds)
+        : [];
+    const shown = live.length ? live : preview;
+    const loads = hasCarton
+      ? shown.map((q) =>
+          roundLoad(q, item!.masterCartonQty, item!.cbmPerCarton, capacity),
+        )
+      : [];
+    const summary =
+      live.length && loads.length && loads.every((l) => l !== null)
+        ? {
+            rounds: loads.length,
+            cartons: loads.reduce((a, l) => a + l!.cartons, 0),
+            cbm: loads.reduce((a, l) => a + l!.cbm, 0),
+            containers: loads.reduce((a, l) => a + (l!.containers ?? 0), 0),
+          }
+        : null;
+    const range = hasCarton
+      ? containersPerRound(
+          shown,
+          item!.masterCartonQty,
+          item!.cbmPerCarton,
+          capacity,
+        )
+      : null;
+    const perRoundText = !range
+      ? "—"
+      : fmt(range.min, 2) === fmt(range.max, 2)
+        ? fmt(range.max, 2)
+        : fill(gen.perRoundRange, {
+            min: fmt(range.min, 2),
+            max: fmt(range.max, 2),
+          });
+    const liveSum = live.reduce((a, q) => a + q, 0);
+    const fresh = note && liveSum === note.pieces ? note : null;
+    return (
+      <div
+        className="mt-1 space-y-2 rounded-lg border border-brand-200 bg-white p-2.5 text-xs"
+        data-rounds-generator
+        role="group"
+        aria-label={gen.title}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
+            e.preventDefault();
+            generate(apply, roundsValue);
+          }
+        }}
+      >
+        <p className="font-semibold text-zinc-900">{gen.title}</p>
+        <p className="text-zinc-600">{gen.hint}</p>
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+          <label className="space-y-1">
+            <span className="block font-medium text-zinc-700">{gen.total}</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={total}
+              onChange={(e) => {
+                setTotalText(e.target.value);
+                setError(null);
+              }}
+              data-generate-total
+              className={cx(inputDenseClass, "w-28 tabular-nums")}
+            />
+          </label>
           <label className="space-y-1">
             <span className="block font-medium text-zinc-700">
               {gen.rounds}
@@ -266,104 +321,155 @@ export function SelectionQuantity({
               type="number"
               min="1"
               max={MAX_PURCHASE_ROUNDS}
-              value={roundsCount}
-              onChange={(e) => setRoundsCount(e.target.value)}
+              value={roundsValue}
+              onChange={(e) => {
+                setRoundsText(e.target.value);
+                setError(null);
+              }}
               data-generate-rounds
               className={cx(inputDenseClass, "w-20 tabular-nums")}
             />
           </label>
-        )}
-        <button
-          type="button"
-          onClick={() => generate(apply)}
-          disabled={!item && !total}
-          data-generate-submit
-          className="rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
-        >
-          {gen.submit}
-        </button>
-      </div>
-      <p
-        className={cx(item && hasCarton ? "text-zinc-600" : "text-amber-800")}
-        data-generate-item={item ? (hasCarton ? "ok" : "missing") : "none"}
-      >
-        {!item
-          ? gen.noItem
-          : hasCarton && perContainer !== null
-            ? fill(gen.item, {
-                pcs: fmt(item.masterCartonQty!),
-                cbm: fmt(item.cbmPerCarton!, 4),
-                cartons: fmt(perContainer),
-                pieces: fmt(perContainer * item.masterCartonQty!),
-                container,
-              })
-            : gen.noCarton}
-      </p>
-      {result ? (
-        <div className="space-y-1 text-zinc-700" data-generate-result>
-          <p className="font-medium text-zinc-900">
-            {fill(gen.result, {
-              rounds: result.rounds.length,
-              cartons: fmt(result.cartons),
-              cbm: fmt(result.cbm, 2),
-              containers: fmt(
-                result.rounds.reduce((a, r) => a + r.containers, 0),
-                2,
-              ),
-              container,
-            })}
-          </p>
-          {result.extraPieces > 0 ? (
-            <p>{fill(gen.extra, { extra: fmt(result.extraPieces) })}</p>
+          {hasCarton || !item ? (
+            <>
+              <div className="space-y-1">
+                <span className="block font-medium text-zinc-700">
+                  {gen.container}
+                </span>
+                <div
+                  className="flex flex-wrap gap-1"
+                  role="group"
+                  aria-label={gen.container}
+                >
+                  {containerTypes.map((c) => (
+                    <button
+                      key={c.code}
+                      type="button"
+                      aria-pressed={container === c.code}
+                      onClick={() => setContainer(c.code)}
+                      data-generate-container={c.code}
+                      className={chip(container === c.code)}
+                      title={`${fmt(c.capacityCbm, 2)} m³`}
+                    >
+                      {c.code}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <span
+                  className="block font-medium text-zinc-700"
+                  id={perRoundId}
+                >
+                  {gen.perRound}
+                </span>
+                {/* Informativo: sai das peças de cada rodada, ninguém digita. */}
+                <output
+                  aria-labelledby={perRoundId}
+                  title={gen.perRoundHint}
+                  data-generate-per-round
+                  className="flex min-h-8 min-w-20 cursor-default items-center rounded-md border border-dashed border-zinc-300 bg-zinc-100 px-2.5 py-1 text-[13px] font-semibold tabular-nums text-zinc-700"
+                >
+                  {perRoundText}
+                </output>
+              </div>
+            </>
           ) : null}
-          {result.raised ? (
-            <p className="text-amber-800">
-              {fill(gen.raised, {
-                max: MAX_PURCHASE_ROUNDS,
-                n: result.containersPerRound,
+          <button
+            type="button"
+            onClick={() => generate(apply, roundsValue)}
+            disabled={!item && !total}
+            data-generate-submit
+            className="rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
+          >
+            {gen.submit}
+          </button>
+        </div>
+        <p
+          className={cx(item && hasCarton ? "text-zinc-600" : "text-amber-800")}
+          data-generate-item={item ? (hasCarton ? "ok" : "missing") : "none"}
+        >
+          {!item
+            ? gen.noItem
+            : hasCarton && perContainer !== null
+              ? fill(gen.item, {
+                  pcs: fmt(item.masterCartonQty!),
+                  cbm: fmt(item.cbmPerCarton!, 4),
+                  cartons: fmt(perContainer),
+                  pieces: fmt(perContainer * item.masterCartonQty!),
+                  container,
+                })
+              : gen.noCarton}
+        </p>
+        {summary ? (
+          <div className="space-y-1 text-zinc-700" data-generate-result>
+            <p className="font-medium text-zinc-900">
+              {fill(gen.result, {
+                rounds: summary.rounds,
+                cartons: fmt(summary.cartons),
+                cbm: fmt(summary.cbm, 2),
+                containers: fmt(summary.containers, 2),
+                container,
               })}
             </p>
-          ) : null}
-          {result.fillUp !== null ? (
-            <p className="flex flex-wrap items-center gap-2">
-              <span>{fill(gen.last, { pct: result.lastFillPct })}</span>
-              <button
-                type="button"
-                onClick={() => generate(apply, result.pieces + result.fillUp!)}
-                data-generate-fill
-                className="font-semibold text-brand-700 underline underline-offset-2"
-              >
-                {fill(gen.fillUp, { pieces: fmt(result.fillUp) })}
-              </button>
-              {result.trimDown !== null ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    generate(apply, result.pieces - result.trimDown!)
-                  }
-                  data-generate-trim
-                  className="font-semibold text-brand-700 underline underline-offset-2"
-                >
-                  {fill(gen.trim, { pieces: fmt(result.trimDown) })}
-                </button>
-              ) : null}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-      {error ? (
-        <p
-          role="alert"
-          className="font-medium text-red-700"
-          data-generate-error
-        >
-          {error}
-        </p>
-      ) : null}
-    </div>
-  );
+            {fresh && fresh.extra > 0 ? (
+              <p data-generate-extra>
+                {fill(gen.extra, { extra: fmt(fresh.extra) })}
+              </p>
+            ) : null}
+            {fresh?.reduced ? (
+              <p className="text-amber-800" data-generate-reduced>
+                {fill(gen.reduced, {
+                  cartons: fmt(fresh.reduced.cartons),
+                  rounds: fresh.reduced.rounds,
+                })}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        {error ? (
+          <p
+            role="alert"
+            className="font-medium text-red-700"
+            data-generate-error
+          >
+            {error}
+          </p>
+        ) : null}
+      </div>
+    );
+  };
 
-  const roundInfo = (pieces: number) => {
+  /** Um ajuste da rodada: o quanto muda e com quantos containers fica. */
+  const stepButton = (
+    kind: "up" | "down",
+    step: { pieces: number; containers: number; target: number },
+    set: (quantity: number) => void,
+  ) => {
+    const main = fill(kind === "up" ? gen.up : gen.down, {
+      pieces: fmt(step.pieces),
+    });
+    const to = fill(kind === "up" ? gen.upTo : gen.downTo, {
+      n: fmt(step.containers),
+      container,
+    });
+    return (
+      <button
+        type="button"
+        onClick={() => set(step.target)}
+        aria-label={`${main}: ${to}`}
+        {...(kind === "up"
+          ? { "data-round-up": step.target }
+          : { "data-round-down": step.target })}
+        className="block w-full rounded-md border border-brand-200 bg-white px-1.5 py-1 text-left text-[11px] leading-tight hover:border-brand-400 hover:bg-brand-50"
+      >
+        <span className="block font-semibold text-brand-700">{main}</span>
+        <span className="block text-zinc-500">{to}</span>
+      </button>
+    );
+  };
+
+  const roundInfo = (pieces: number, set: (quantity: number) => void) => {
     const load = roundLoad(
       pieces,
       item?.masterCartonQty,
@@ -372,23 +478,43 @@ export function SelectionQuantity({
     );
     if (!load) return null;
     return (
-      <p
-        className={cx(
-          "text-[11px]",
-          load.containers !== null &&
-            Math.abs(load.containers - Math.round(load.containers)) > 1e-6
-            ? "text-amber-800"
-            : "text-zinc-500",
-        )}
-        data-schedule-load
+      <div
+        className="space-y-1"
+        data-round-fill={
+          load.containers === null ? "none" : load.full ? "full" : "partial"
+        }
       >
-        {fill(gen.load, {
-          cartons: fmt(load.cartons),
-          cbm: fmt(load.cbm, 2),
-          containers: load.containers === null ? "—" : fmt(load.containers, 2),
-          container,
-        })}
-      </p>
+        <p className="text-[11px] text-zinc-500" data-schedule-load>
+          {fill(gen.load, {
+            cartons: fmt(load.cartons),
+            cbm: fmt(load.cbm, 2),
+            containers:
+              load.containers === null ? "—" : fmt(load.containers, 2),
+            container,
+          })}
+        </p>
+        {load.containers !== null && load.lastPct !== null ? (
+          <>
+            <p
+              className={cx(
+                "text-[11px] font-semibold",
+                load.full ? "text-emerald-700" : "text-amber-800",
+              )}
+              data-round-status
+            >
+              {load.full
+                ? load.lastPct === 100
+                  ? gen.full
+                  : fill(gen.fullMargin, { pct: load.lastPct })
+                : fill((load.needed ?? 1) > 1 ? gen.partialLast : gen.partial, {
+                    pct: load.lastPct,
+                  })}
+            </p>
+            {load.up ? stepButton("up", load.up, set) : null}
+            {load.down ? stepButton("down", load.down, set) : null}
+          </>
+        ) : null}
+      </div>
     );
   };
 
@@ -425,10 +551,11 @@ export function SelectionQuantity({
           className="flex flex-wrap items-center gap-x-2 gap-y-1"
           onToggle={(on) => {
             setScheduled(on);
-            if (!on) setResult(null);
+            if (!on) setNote(null);
           }}
           generator={generator}
           roundInfo={roundInfo}
+          split={divide}
         />
       </div>
     </div>

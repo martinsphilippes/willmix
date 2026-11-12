@@ -62,6 +62,7 @@ export function RequestScheduleFields({
   onToggle,
   generator,
   roundInfo,
+  split,
 }: {
   prefix: string;
   /** Quantidade total da linha (texto do campo). */
@@ -80,11 +81,25 @@ export function RequestScheduleFields({
   onToggle?: (on: boolean) => void;
   /**
    * Gerador de rodadas (programação de compra): recebe `apply`, que liga a
-   * programação com as peças de cada rodada já preenchidas.
+   * programação com as peças de cada rodada já preenchidas, e as peças das
+   * rodadas de agora (vazio com a programação desligada).
    */
-  generator?: (apply: (quantities: number[]) => void) => ReactNode;
-  /** Linha extra de cada rodada (caixas, CBM, ocupação do container). */
-  roundInfo?: (quantity: number) => ReactNode;
+  generator?: (
+    apply: (quantities: number[]) => void,
+    quantities: number[],
+  ) => ReactNode;
+  /**
+   * Linhas extras de cada rodada (caixas, CBM, ocupação do container e os
+   * ajustes para fechar o container): recebe as peças e `set`, que troca as
+   * peças daquela rodada.
+   */
+  roundInfo?: (quantity: number, set: (quantity: number) => void) => ReactNode;
+  /**
+   * Como dividir um total em N rodadas ao ligar, acrescentar ou tirar uma
+   * rodada (programação de compra: em caixas master inteiras). Padrão: em
+   * partes iguais.
+   */
+  split?: (total: number, count: number) => number[];
 }) {
   const known = (SCHEDULE_INTERVALS as readonly number[]).includes(
     initial?.intervalDays ?? -1,
@@ -106,10 +121,13 @@ export function RequestScheduleFields({
 
   const days =
     interval > 0 ? interval : Math.max(0, Number(customInterval) || 0);
+  const num = (q: string) => Number(String(q).replace(",", ".")) || 0;
+  const divide = (amount: number, count: number) =>
+    split ? split(amount, count) : splitEvenly(amount, count, max);
 
   function enable() {
     const n = Math.max(0, Number(String(total).replace(",", ".")) || 0);
-    const parts = splitEvenly(n, 2);
+    const parts = divide(n, 2);
     setQtys(parts.map(String));
     setOn(true);
     onToggle?.(true);
@@ -142,11 +160,11 @@ export function RequestScheduleFields({
   }
   function add() {
     if (qtys.length >= max) return;
-    update(splitEvenly(sum(qtys), qtys.length + 1, max).map(String));
+    update(divide(sum(qtys), qtys.length + 1).map(String));
   }
   function remove() {
     if (qtys.length <= 2) return;
-    update(splitEvenly(sum(qtys), qtys.length - 1, max).map(String));
+    update(divide(sum(qtys), qtys.length - 1).map(String));
   }
 
   /* Na grade da linha de produto (RequestItems): desligada, fica ao lado de
@@ -171,7 +189,7 @@ export function RequestScheduleFields({
           {labels.toggle}
         </button>
         {generator ? (
-          <div className="basis-full">{generator(apply)}</div>
+          <div className="basis-full">{generator(apply, [])}</div>
         ) : null}
       </div>
     );
@@ -203,7 +221,7 @@ export function RequestScheduleFields({
         value={firstDate}
       />
       <p className="text-xs leading-relaxed text-zinc-600">{labels.hint}</p>
-      {generator ? generator(apply) : null}
+      {generator ? generator(apply, qtys.map(num)) : null}
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
           <span className="block text-xs font-medium text-zinc-700">
@@ -269,7 +287,11 @@ export function RequestScheduleFields({
             <div
               key={i}
               data-schedule-item={i + 1}
-              className="w-36 shrink-0 space-y-1 rounded-md border border-zinc-200 bg-white p-2"
+              className={cx(
+                "shrink-0 space-y-1 rounded-md border border-zinc-200 bg-white p-2",
+                // Com os ajustes do container, o cartão precisa de mais largura.
+                roundInfo ? "w-44" : "w-36",
+              )}
             >
               <div className="flex items-center justify-between gap-1">
                 <span className="text-xs font-semibold text-zinc-800">
@@ -312,7 +334,9 @@ export function RequestScheduleFields({
                 </span>
               </p>
               {roundInfo
-                ? roundInfo(Number(String(q).replace(",", ".")) || 0)
+                ? roundInfo(num(q), (v) =>
+                    update(qtys.map((x, j) => (j === i ? String(v) : x))),
+                  )
                 : null}
             </div>
           ))}
