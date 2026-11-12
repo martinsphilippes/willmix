@@ -360,7 +360,11 @@ export const SUPPLIER_REQUEST_STATUSES = [
 export type SupplierRequestStatus = (typeof SUPPLIER_REQUEST_STATUSES)[number];
 
 /** Convite para booking concorrente: aberto → respondido (booking enviado) | cancelado. */
-export const BOOKING_INVITE_STATUSES = ["open", "answered", "cancelled"] as const;
+export const BOOKING_INVITE_STATUSES = [
+  "open",
+  "answered",
+  "cancelled",
+] as const;
 export type BookingInviteStatus = (typeof BOOKING_INVITE_STATUSES)[number];
 
 /** Escolha gravada de um grupo da seleção: gravada, com solicitação aberta, ou trocada por outra. */
@@ -2507,6 +2511,26 @@ export interface ProcessEvent extends BaseRow {
   entityId?: string | null;
 }
 
+/**
+ * Resumo de um pedido para as telas de visão geral (Control Tower; docs/RESUMOS.md).
+ * Uma linha por pedido, com o mesmo id do pedido. É derivado: recalculado a
+ * cada gravação ligada ao pedido (por evento) e reconstruído toda noite;
+ * apagar a tabela não perde nada.
+ */
+export interface OrderSummary extends BaseRow {
+  orderId: string;
+  number: number;
+  /** Situação do pedido (a etapa, CLOSED ou CANCELLED). */
+  status: string;
+  /** Em andamento (nem encerrado nem cancelado). */
+  live: boolean;
+  /** Formato do resumo (`facts`); outro número = recalcular. */
+  version: number;
+  /** O que as telas de visão geral leem do pedido (`OrderFacts`, src/lib/services/order-summary.ts). */
+  facts: unknown;
+  computedAt: string;
+}
+
 /** Local de estoque (Sankhya TGFLOC; CODLOCAL). */
 export interface StockLocation extends BaseRow {
   /** CODLOCAL no Sankhya (único). */
@@ -2728,6 +2752,7 @@ export interface Tables {
   payment_conditions: PaymentCondition;
   stock_locations: StockLocation;
   process_events: ProcessEvent;
+  order_summaries: OrderSummary;
 }
 export type TableName = keyof Tables;
 
@@ -4424,6 +4449,23 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_request", type: "key", columns: ["requestId"] },
       { key: "by_event", type: "key", columns: ["event"] },
       { key: "by_entity", type: "key", columns: ["entityId"] },
+    ],
+  },
+  order_summaries: {
+    label:
+      "Resumo dos pedidos (Control Tower; derivado, recalculado por evento)",
+    columns: {
+      orderId: id(),
+      number: int(),
+      status: str(40),
+      live: bool(),
+      version: int(),
+      facts: jsonLarge(),
+      computedAt: datetime(),
+    },
+    indexes: [
+      { key: "by_order", type: "key", columns: ["orderId"] },
+      { key: "by_live", type: "key", columns: ["live"] },
     ],
   },
 };

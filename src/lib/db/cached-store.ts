@@ -2,6 +2,7 @@ import { cache } from "react";
 import type { TableName, Tables } from "./schema";
 import type { ListOptions, NewRow, Patch, Store } from "./store";
 import type { ByteRange } from "@/lib/http-range";
+import { noteWrite, removalNeedsRow } from "./summary-dirty";
 
 /**
  * Leituras memorizadas por requisição. Uma página chama o mesmo `get`/`list`
@@ -77,7 +78,10 @@ export class CachedStore implements Store {
   async create<K extends TableName>(table: K, data: NewRow<Tables[K]>) {
     this.written();
     try {
-      return await this.base.create(table, data);
+      const row = await this.base.create(table, data);
+      // Resumo do pedido (docs/RESUMOS.md): o pedido desta gravação é recalculado.
+      noteWrite(table, row.id, row);
+      return row;
     } finally {
       this.written();
     }
@@ -90,16 +94,39 @@ export class CachedStore implements Store {
   ) {
     this.written();
     try {
-      return await this.base.update(table, id, patch);
+      const row = await this.base.update(table, id, patch);
+      noteWrite(table, id, row, patch);
+      return row;
     } finally {
       this.written();
     }
   }
 
+  get upsertMany() {
+    const base = this.base.upsertMany?.bind(this.base);
+    if (!base) return undefined;
+    return async <K extends TableName>(
+      table: K,
+      rows: Array<NewRow<Tables[K]> & { id: string }>,
+    ) => {
+      this.written();
+      try {
+        await base(table, rows);
+      } finally {
+        this.written();
+      }
+    };
+  }
+
   async remove<K extends TableName>(table: K, id: string) {
     this.written();
     try {
-      return await this.base.remove(table, id);
+      // Linha lida antes de apagar: o pedido dela também é recalculado.
+      const before = removalNeedsRow(table)
+        ? await this.base.get(table, id).catch(() => null)
+        : null;
+      await this.base.remove(table, id);
+      noteWrite(table, id, before);
     } finally {
       this.written();
     }
