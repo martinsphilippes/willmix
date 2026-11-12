@@ -1,4 +1,6 @@
 import "server-only";
+
+import { isRoundsParent } from "@/lib/purchase-rounds";
 import { can } from "@/lib/auth/function-access";
 
 import {
@@ -214,7 +216,14 @@ async function assertDateOrder(
  * é mantido e só o que falta é criado. Assim uma criação interrompida no
  * meio (tempo esgotado) é retomada sem duplicar nada.
  */
-export async function createStagesForOrder(order: Order) {
+export async function createStagesForOrder(
+  order: Order,
+  /**
+   * Roda depois de criar etapas e itens e antes de a 1ª etapa andar (a rodada
+   * de uma programação de compra copia ali os itens já feitos no pai).
+   */
+  beforeStart?: () => Promise<void>,
+) {
   const store = getStore();
   const settings = await getSettings();
   const [existingStages, existingRequirements] = await Promise.all([
@@ -289,6 +298,7 @@ export async function createStagesForOrder(order: Order) {
     currentStageId: firstStageId,
     status: "ORDER_CREATED",
   });
+  if (beforeStart && !existingStages.length) await beforeStart();
   // Pedido de compra: "Pedido criado" não tem itens e conclui na hora; as
   // raias abrem em seguida.
   if (isPurchaseFlow(order) && firstStageId && !existingStages.length)
@@ -1025,6 +1035,16 @@ async function completeStage(user: User | null, stage: Stage) {
   if (!order || order.status === "CANCELLED") return;
   // Entregue: o processo continua no pós-venda (entidade própria; as etapas não mudam).
   if (stage.key === "DELIVERED") await openAfterSales(user, order);
+  // Pedido pai de uma programação de compra (docs/PURCHASE_SCHEDULE.md): para
+  // depois da Preparação (artes e certificado prontos). Contrato e produção
+  // são de cada rodada; as que já chegaram ao dia nascem agora.
+  if (stage.key === "PREPARATION" && isRoundsParent(order)) {
+    const { spawnDueRounds } = await import("@/lib/services/purchase-rounds");
+    await spawnDueRounds(user, { orderId: order.id }).catch((error) =>
+      console.error("spawnDueRounds", error),
+    );
+    return;
+  }
   const next = nextStageKey(stage.key);
   if (!next) {
     await store.update("orders", order.id, {
@@ -1078,14 +1098,23 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
   await emitStageEvent(user, order.id, `stage:${key}:start`);
 
   // Pedido de compra: as três raias começam juntas, cada uma com o seu aviso.
-  if (key === "PREPARATION" && isPurchaseFlow(order) && required.length > 0) {
+  if (
+    key === "PREPARATION" &&
+    isPurchaseFlow(order) &&
+    pendingRequired.length > 0
+  ) {
     const { notifyLanesOpen } = await import("@/lib/services/purchase-order");
     await notifyLanesOpen(order, pendingRequired);
     return;
   }
 
   // Preparação com a ficha completa desde a cotação: conclui sem pedir nada ao fornecedor.
-  if (key === "PREPARATION" && user && required.length > 0) {
+  if (
+    key === "PREPARATION" &&
+    user &&
+    required.length > 0 &&
+    !isPurchaseFlow(order)
+  ) {
     const { syncPreparationFromSheet } =
       await import("@/lib/services/purchase-sheet");
     await syncPreparationFromSheet(user, order.id);

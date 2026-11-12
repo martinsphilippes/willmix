@@ -1,4 +1,6 @@
 import "server-only";
+
+import { buildPurchaseRounds } from "@/lib/purchase-rounds";
 import { assertCan } from "@/lib/auth/function-access";
 
 import { assertWellmix } from "@/lib/auth/permissions";
@@ -170,7 +172,10 @@ export async function createPurchaseOrder(
   const ordered = ids.map((id) => {
     const request = requests.find((r) => r.id === id)!;
     const product = products.find((p) => p.id === request.productId)!;
-    const asked = lines.find((l) => l.requestId === id)?.quantity ?? null;
+    // Com programação de compra, o total é a soma das rodadas (não se ajusta aqui).
+    const asked = request.schedule?.items.length
+      ? null
+      : (lines.find((l) => l.requestId === id)?.quantity ?? null);
     const quantity = Math.round(asked ?? request.quantity);
     if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 1e9)
       throw new PurchaseOrderError("purchase_order_qty_invalid");
@@ -179,6 +184,16 @@ export async function createPurchaseOrder(
   });
   if (ordered.some((o) => !o.product))
     throw new PurchaseOrderError("purchase_order_not_ready");
+  // Programação de compra (docs/PURCHASE_SCHEDULE.md): o pedido vira o pai e
+  // cada rodada nasce como pedido filho no dia combinado.
+  const planned = buildPurchaseRounds(
+    ordered.map((o) => ({
+      productId: o.product.id,
+      schedule: o.request.schedule ?? null,
+    })),
+  );
+  if ("error" in planned) throw new PurchaseOrderError(planned.error);
+  const rounds = planned.rounds;
   const fobTotal = ordered.every((o) => o.unitPrice !== null)
     ? ordered.reduce((sum, o) => sum + o.unitPrice! * o.quantity, 0)
     : null;
@@ -231,6 +246,7 @@ export async function createPurchaseOrder(
     notes: null,
     ownerUserId: user.id,
     flow: "supplier_request",
+    ...(rounds ? { purchaseRounds: rounds } : {}),
   });
   await store.update("requests", backing.id, { orderId: order.id });
   for (const o of ordered)
@@ -255,7 +271,7 @@ export async function createPurchaseOrder(
     "order.create_purchase",
     "order",
     order.id,
-    `Pedido de compra #${order.number}: ${ordered.length} produto(s) de ${supplierId}, ${summary}`,
+    `Pedido de compra #${order.number}: ${ordered.length} produto(s) de ${supplierId}, ${summary}${rounds ? `; pedido pai de ${rounds.length} rodadas (${rounds.map((r) => r.expectedAt).join(", ")})` : ""}`,
   );
   const { createStagesForOrder } = await import("@/lib/workflow/engine");
   const fresh = (await store.get("orders", order.id)) ?? order;

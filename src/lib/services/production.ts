@@ -115,12 +115,13 @@ export async function supplierFactory(
  * onde vieram os itens. Nulo nos demais pedidos.
  */
 export async function bookingFactory(
-  order: Pick<Order, "id" | "supplierId">,
+  order: Pick<Order, "id" | "supplierId" | "parentOrderId">,
 ): Promise<{ name: string | null; address: string | null } | null> {
   const store = getStore();
   try {
+    // Rodada de uma programação de compra: as solicitações são as do pai.
     const requests = await store.list("supplier_requests", {
-      filter: { orderId: order.id },
+      filter: { orderId: order.parentOrderId ?? order.id },
     });
     const lotIds = [...new Set(requests.map((r) => r.bookingLotId))];
     if (!lotIds.length) return null;

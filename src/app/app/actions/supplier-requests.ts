@@ -105,9 +105,16 @@ export async function saveSelectionGroupAction(form: FormData) {
       });
     const { saveSelectionGroup } =
       await import("@/lib/services/selection-groups");
+    // Programação de compra (rodadas, peças por rodada e intervalo): a mesma
+    // do pedido do cliente (RequestScheduleFields), até 12 rodadas.
+    const { parseRequestSchedule } =
+      await import("@/lib/workflow/request-schedule");
+    const { MAX_PURCHASE_ROUNDS } = await import("@/lib/purchase-rounds");
+    const schedule = parseRequestSchedule(form, "", MAX_PURCHASE_ROUNDS);
     await saveSelectionGroup(user, {
       ...input,
-      quantity: number(form, "quantity", true),
+      quantity: schedule ? null : number(form, "quantity", true),
+      schedule,
     });
     return `${withQuery(back, "saved", "1")}#blocks`;
   });

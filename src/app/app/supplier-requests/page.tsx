@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { roundsLine } from "@/components/purchase-rounds";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -252,6 +253,18 @@ export default async function SupplierRequestsPage({
                       {t("supplierRequests.detail.pieces", {
                         n: pieces.toLocaleString(t.intl),
                       })}
+                      {/* Programação de compra: rodadas e peças por rodada. */}
+                      {products
+                        .filter((p) => p.schedule?.items.length)
+                        .map((p) => (
+                          <span
+                            key={p.id}
+                            className="block text-xs text-zinc-500"
+                            data-supplier-request-rounds={p.id}
+                          >
+                            {roundsLine(p.schedule, t)}
+                          </span>
+                        ))}
                     </Td>
                     <Td
                       className="tabular-nums"

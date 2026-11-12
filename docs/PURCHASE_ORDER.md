@@ -26,6 +26,8 @@ A solicitação do cliente (vitrine, tabela `requests`) e a reposição pedida p
   - a solicitação ao fornecedor fica presa ao pedido (`supplier_requests.orderId`).
 - **Ao nascer:** recebe a condição de pagamento do fornecedor e os parceiros padrão. Quando há uma só agência e uma só certificadora ativas, elas são designadas sozinhas.
 
+- **Programação de compra:** produtos com rodadas fazem do pedido o **pedido pai**; cada rodada nasce como pedido filho no dia combinado (docs/PURCHASE_SCHEDULE.md).
+
 ## 2. As três raias (etapa "Preparação, arte e certificação")
 
 "Pedido criado" conclui na hora. A Preparação abre com as três raias **em paralelo**, produto a produto: a chave de cada item leva o id do item do pedido, `chave__item`. Cada raia recebe o seu aviso.

@@ -1659,6 +1659,28 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "purchaseRounds",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "longtext"
+        },
+        {
+          "key": "parentOrderId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "roundIndex",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
         }
       ],
       "indexes": [
@@ -1667,6 +1689,16 @@
           "type": "unique",
           "columns": [
             "number"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_parent",
+          "type": "key",
+          "columns": [
+            "parentOrderId"
           ],
           "orders": [
             "ASC"
@@ -9438,6 +9470,13 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "schedule",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -9573,6 +9612,13 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "schedule",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [

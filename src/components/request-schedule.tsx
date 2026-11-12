@@ -9,6 +9,7 @@ import {
   addDaysIso,
   splitEvenly,
   todayIso,
+  type RequestSchedule,
 } from "@/lib/workflow/request-schedule";
 
 /*
@@ -55,6 +56,10 @@ export function RequestScheduleFields({
   unit,
   onTotalChange,
   labels,
+  max = MAX_REQUEST_SCHEDULE,
+  initial = null,
+  className,
+  onToggle,
 }: {
   prefix: string;
   /** Quantidade total da linha (texto do campo). */
@@ -63,14 +68,32 @@ export function RequestScheduleFields({
   /** Soma das programações muda a quantidade total da linha. */
   onTotalChange: (total: string) => void;
   labels: ScheduleLabels;
+  /** Máximo de programações (padrão: as 6 da solicitação do cliente). */
+  max?: number;
+  /** Programação já gravada (reabrir para rever): começa ligada com ela. */
+  initial?: RequestSchedule | null;
+  /** Classes do bloco (fora da grade da linha de produto). */
+  className?: string;
+  /** Avisa quando a programação liga ou desliga. */
+  onToggle?: (on: boolean) => void;
 }) {
-  const [on, setOn] = useState(false);
-  const [interval, setInterval] = useState<number>(DEFAULT_SCHEDULE_INTERVAL);
-  const [customInterval, setCustomInterval] = useState("");
-  const [firstDate, setFirstDate] = useState(() =>
-    addDaysIso(todayIso(), DEFAULT_SCHEDULE_INTERVAL),
+  const known = (SCHEDULE_INTERVALS as readonly number[]).includes(
+    initial?.intervalDays ?? -1,
   );
-  const [qtys, setQtys] = useState<string[]>([]);
+  const [on, setOn] = useState(!!initial?.items.length);
+  const [interval, setInterval] = useState<number>(
+    initial ? (known ? initial.intervalDays : 0) : DEFAULT_SCHEDULE_INTERVAL,
+  );
+  const [customInterval, setCustomInterval] = useState(
+    initial && !known ? String(initial.intervalDays) : "",
+  );
+  const [firstDate, setFirstDate] = useState(
+    () =>
+      initial?.firstDate ?? addDaysIso(todayIso(), DEFAULT_SCHEDULE_INTERVAL),
+  );
+  const [qtys, setQtys] = useState<string[]>(
+    () => initial?.items.map((i) => String(i.quantity)) ?? [],
+  );
 
   const days =
     interval > 0 ? interval : Math.max(0, Number(customInterval) || 0);
@@ -80,11 +103,13 @@ export function RequestScheduleFields({
     const parts = splitEvenly(n, 2);
     setQtys(parts.map(String));
     setOn(true);
+    onToggle?.(true);
     onTotalChange(String(parts.reduce((a, b) => a + b, 0)));
   }
   function disable() {
     setOn(false);
     setQtys([]);
+    onToggle?.(false);
   }
   function sum(list: string[]) {
     return list.reduce(
@@ -97,12 +122,12 @@ export function RequestScheduleFields({
     onTotalChange(String(sum(list)));
   }
   function add() {
-    if (qtys.length >= MAX_REQUEST_SCHEDULE) return;
-    update(splitEvenly(sum(qtys), qtys.length + 1).map(String));
+    if (qtys.length >= max) return;
+    update(splitEvenly(sum(qtys), qtys.length + 1, max).map(String));
   }
   function remove() {
     if (qtys.length <= 2) return;
-    update(splitEvenly(sum(qtys), qtys.length - 1).map(String));
+    update(splitEvenly(sum(qtys), qtys.length - 1, max).map(String));
   }
 
   /* Na grade da linha de produto (RequestItems): desligada, fica ao lado de
@@ -110,7 +135,10 @@ export function RequestScheduleFields({
   if (!on)
     return (
       <div
-        className="col-span-2 flex flex-wrap items-center gap-x-2 gap-y-1 self-end sm:min-h-8"
+        className={
+          className ??
+          "col-span-2 flex flex-wrap items-center gap-x-2 gap-y-1 self-end sm:min-h-8"
+        }
         data-request-schedule="off"
       >
         <span className="text-xs text-zinc-500">{labels.ask}</span>
@@ -128,7 +156,10 @@ export function RequestScheduleFields({
 
   return (
     <fieldset
-      className="col-span-2 min-w-0 max-w-full space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5 sm:col-span-4"
+      className={cx(
+        "min-w-0 max-w-full space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5",
+        className ? null : "col-span-2 sm:col-span-4",
+      )}
       data-request-schedule="on"
     >
       <legend className="px-1 text-sm font-semibold text-zinc-800">
@@ -259,7 +290,7 @@ export function RequestScheduleFields({
               </p>
             </div>
           ))}
-          {qtys.length < MAX_REQUEST_SCHEDULE ? (
+          {qtys.length < max ? (
             <button
               type="button"
               onClick={add}
