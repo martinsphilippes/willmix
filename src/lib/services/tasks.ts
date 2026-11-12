@@ -11,6 +11,7 @@ import {
   type User,
 } from "@/lib/db";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
+import { can } from "@/lib/auth/function-access";
 import {
   ORDER_SIGN_SEND,
   ORDER_SIGNED_SUPPLIER,
@@ -41,7 +42,9 @@ export type TaskKind =
   | "message_reply"
   | "ncm_classify"
   | "purchase_schedule"
-  | "supplier_request";
+  | "supplier_request"
+  | "sampling"
+  | "sampling_validate";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -99,6 +102,7 @@ export interface Task {
 export const SUPPLIER_STEPS = [
   "booking",
   "request",
+  "sampling",
   "dieline",
   "sheet",
   "art",
@@ -232,6 +236,7 @@ const KIND_ORDER: string[] = [
   "booking_invite",
   "new_request",
   "supplier_request",
+  "sampling_validate",
   "freight_quote",
   "supplier_payment",
   "confirm_receipt",
@@ -595,6 +600,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       ),
     );
   if (supplier) tasks.push(...(await supplierRequestTasks(user, now)));
+  // Amostragem: o responsável envia; a Wellmix (com a ação) valida.
+  if (supplier || (wellmix && can(user, "sampling.validate")))
+    tasks.push(...(await samplingTasks(user, supplier, now)));
   if (supplier) tasks.push(...(await bookingInviteTasks(user, now)));
   // Pós-venda aberto: o cliente avalia a compra (pedido cancelado não conta;
   // os cancelados antes de o cancelamento encerrar o pós-venda ainda o têm aberto).
@@ -1232,6 +1240,78 @@ async function supplierRequestTasks(user: User, now: Date): Promise<Task[]> {
         now,
       );
     });
+}
+
+/**
+ * Amostragem das solicitações aprovadas (docs/SUPPLIER_SAMPLING.md): ao
+ * fornecedor, enviar (pendente ou reprovada); à Wellmix, validar a enviada.
+ */
+async function samplingTasks(
+  user: User,
+  supplier: boolean,
+  now: Date,
+): Promise<Task[]> {
+  let rows;
+  try {
+    rows = await getStore().list("supplier_requests", {
+      filter: supplier
+        ? { supplierId: user.partyId!, status: "approved" }
+        : { status: "approved" },
+    });
+  } catch (error) {
+    const { isSchemaMissing } = await import("@/lib/db/errors");
+    if (isSchemaMissing(error)) return [];
+    throw error;
+  }
+  const { samplingOf, samplingTurn } =
+    await import("@/lib/supplier-request-sampling");
+  const out: Task[] = [];
+  for (const r of rows.sort((a, b) => a.number - b.number)) {
+    const s = samplingOf(r);
+    if (samplingTurn(s) !== (supplier ? "supplier" : "wellmix") || !s) continue;
+    const product =
+      r.item.description ?? r.item.productName ?? r.item.factoryItemCode ?? "—";
+    const link = `/app/supplier-requests/${r.id}?view=item#amostragem`;
+    out.push(
+      supplier
+        ? finish(
+            {
+              kind: "sampling",
+              title: `Amostragem da solicitação nº ${r.number}: ${product}`,
+              detail:
+                s.status === "rejected"
+                  ? "A Wellmix reprovou a amostra: envie de novo"
+                  : "Envie fotos e vídeos de uma amostra do item",
+              text: {
+                title: "supplierTasks.sampling.title",
+                detail:
+                  s.status === "rejected"
+                    ? "supplierTasks.sampling.rejected"
+                    : "supplierTasks.sampling.detail",
+                values: { n: r.number, product },
+              },
+              link,
+              dueAt: null,
+              sinceAt: s.reviewedAt ?? s.openedAt,
+              loadedAt: r.createdAt,
+              supplierStep: "sampling",
+            },
+            now,
+          )
+        : finish(
+            {
+              kind: "sampling_validate",
+              title: `Validar a amostragem: solicitação nº ${r.number}`,
+              detail: product,
+              link,
+              dueAt: null,
+              sinceAt: s.submittedAt ?? null,
+            },
+            now,
+          ),
+    );
+  }
+  return out;
 }
 
 export function isInvolved(user: User, order: Order): boolean {

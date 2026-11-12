@@ -248,6 +248,33 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   ).toBeDisabled();
   await expect(page.locator("[data-selection-submit]")).toBeVisible();
   await expect(page.locator("[data-selection-item]")).toHaveCount(3);
+  // Programação de compra pela cubagem (docs/PURCHASE_SCHEDULE.md): 48 peças
+  // e 0,12 m³ por caixa → 566 caixas por 40HC; 60.000 peças = 1.250 caixas
+  // em 3 rodadas (566 + 566 + 118), e a quantidade vira a soma.
+  const gen = page.locator("[data-rounds-generator]");
+  await expect(gen.locator("[data-generate-item]")).toHaveAttribute(
+    "data-generate-item",
+    "none",
+  );
+  await page
+    .locator("[data-selection-item]", { hasText: `${TAG}-A` })
+    .locator("[data-selection-choose]")
+    .check();
+  await expect(gen.locator("[data-generate-item]")).toHaveAttribute(
+    "data-generate-item",
+    "ok",
+  );
+  await gen.locator("[data-generate-total]").fill("60000");
+  await gen.locator("[data-generate-submit]").click();
+  await expect(page.locator("[data-schedule-item]")).toHaveCount(3);
+  await expect(page.locator('input[name="schedule.qty.1"]')).toHaveValue(
+    "27168",
+  );
+  await expect(page.locator('input[name="schedule.qty.3"]')).toHaveValue(
+    "5664",
+  );
+  await expect(page.locator("[data-selection-quantity]")).toHaveValue("60000");
+  await expect(page.locator("[data-generate-result]")).toContainText("1.250");
 
   // 6. Seleção: o bloco sugerido junta os três copos de dois fornecedores.
   await page.goto(`${base}&tab=selection`);

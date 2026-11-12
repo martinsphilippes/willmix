@@ -198,6 +198,31 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await page.goto(`${altUrl}?view=item`);
   await expect(page.locator("[data-linked-ask]")).toHaveCount(0);
   await page.goto(itemUrl);
+  // A aprovação abre a amostragem, esperando o responsável pelo booking.
+  await expect(page.locator("[data-sampling=pending]")).toBeVisible();
+  await expect(page.locator("[data-sampling-upload]")).toHaveCount(0);
+
+  // 4.1 Amostragem: o responsável sobe uma foto da amostra e envia.
+  await login(page, "supplier.a@china.com");
+  await page.goto(itemUrl);
+  await page.setInputFiles("[data-sampling-upload] input[type=file]", {
+    name: "amostra.png",
+    mimeType: "image/png",
+    buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+  });
+  await page.waitForURL(/[?&]sampling=file/);
+  await expect(page.locator("[data-sampling-file]")).toHaveCount(1);
+  await page.click("[data-sampling-submit]");
+  await page.waitForURL(/[?&]sampling=submitted/);
+  await expect(page.locator("[data-sampling=submitted]")).toBeVisible();
+
+  // 4.2 A Wellmix valida a amostra.
+  await login(page, "admin@wellmix.com");
+  await page.goto(itemUrl);
+  await expect(page.locator("[data-sampling-file]")).toHaveCount(1);
+  await page.click("[data-sampling-review=approve]");
+  await page.waitForURL(/[?&]sampling=approved/);
+  await expect(page.locator("[data-sampling=approved]")).toBeVisible();
   await page.fill("[data-request-product-name]", `Copo de vidro ${TAG}`);
   await page.selectOption("[data-request-product-line]", { index: 1 });
   await page.click("[data-request-product-create]");

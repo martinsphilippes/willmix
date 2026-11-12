@@ -65,3 +65,4 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 - Quem paga custos aduaneiros e como entram na conta do cliente.
 - Tolerância de peso por linha de produto (hoje global).
 - Papéis internos além de admin e operador (financeiro?).
+- Amostragem (docs/SUPPLIER_SAMPLING.md, 12/11/2026): a amostra aprovada deve ser exigida antes de criar/associar o produto e de gerar o pedido de compra? Hoje a etapa não bloqueia nada. Também: prazo (SLA) para o responsável enviar a amostra e se a amostra física (envio por correio) entra na mesma etapa.

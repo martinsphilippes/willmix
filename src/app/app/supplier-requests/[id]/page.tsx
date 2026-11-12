@@ -72,6 +72,7 @@ import { RequestTimeline } from "../_components/timeline";
 import { RequestChat, type ChatMessage } from "../_components/request-chat";
 import { dateTime } from "../_components/negotiation";
 import { canPostMessage, canPropose } from "@/lib/supplier-requests";
+import { SamplingCard } from "../_components/sampling";
 
 /*
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
@@ -168,6 +169,13 @@ export default async function SupplierRequestPage({
   const productNotice = one("product");
   if (["created", "linked", "items", "released"].includes(productNotice))
     notices.push(t(`srProduct.notice.${productNotice}` as DictionaryKey));
+  const samplingNotice = one("sampling");
+  if (
+    ["file", "removed", "submitted", "approved", "rejected"].includes(
+      samplingNotice,
+    )
+  )
+    notices.push(t(`sampling.notice.${samplingNotice}` as DictionaryKey));
   const erpNotice = one("erp");
   if (["checked", "unchecked", "cleared"].includes(erpNotice))
     notices.push(t(`srProduct.notice.erp.${erpNotice}` as DictionaryKey));
@@ -457,6 +465,18 @@ export default async function SupplierRequestPage({
           <Alert tone="info">
             {t("supplierRequests.detail.linked.approvedAsk")}
           </Alert>
+        </div>
+      ) : null}
+
+      {/* Amostragem: a etapa depois da aprovação (fotos e vídeos da amostra). */}
+      {r.status === "approved" ? (
+        <div className="mb-4">
+          <SamplingCard
+            request={r}
+            wellmix={wellmix}
+            canValidate={wellmix && can(user, "sampling.validate")}
+            t={t}
+          />
         </div>
       ) : null}
 

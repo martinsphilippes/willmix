@@ -4,14 +4,20 @@ import { requireScreen } from "@/lib/auth/guard";
 import { getT } from "@/i18n/server";
 import { Alert, Card, PageHeader, TextLink } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
-import { summaryStatus } from "@/lib/services/order-summary";
-import { rebuildOrderSummariesAction } from "../../actions/order-summary";
+import { SummaryRebuildProgress } from "@/components/summary-rebuild-progress";
+import { rebuildProgress, summaryStatus } from "@/lib/services/order-summary";
+import {
+  continueOrderSummariesAction,
+  rebuildOrderSummariesAction,
+} from "../../actions/order-summary";
 
 export const maxDuration = 300;
 
 /**
  * Configurações → Resumos dos pedidos (docs/RESUMOS.md): a última
- * reconstrução completa e o botão para reconstruir agora. Só admin.
+ * reconstrução completa e o botão para reconstruir agora. A reconstrução é
+ * feita em partes; com uma em andamento, a tela mostra quantos pedidos já
+ * foram e pede as rodadas seguintes até terminar. Só admin.
  */
 export default async function OrderSummariesPage({
   searchParams,
@@ -26,7 +32,10 @@ export default async function OrderSummariesPage({
     Array.isArray(v) ? v[0] : v;
   const ran = one(sp.ran) === "1";
   const error = one(sp.error);
-  const status = await summaryStatus().catch(() => null);
+  const [status, progress] = await Promise.all([
+    summaryStatus().catch(() => null),
+    rebuildProgress().catch(() => null),
+  ]);
   const when = (iso: string) =>
     new Date(iso).toLocaleString(t.intl, { timeZone: "America/Sao_Paulo" });
   const stats = status
@@ -72,16 +81,41 @@ export default async function OrderSummariesPage({
             {t("summaries.never")}
           </p>
         )}
-        <form action={rebuildOrderSummariesAction} className="mt-4 space-y-2">
-          <SubmitButton
-            variant="primary"
-            pendingText={t("summaries.rebuilding")}
-            data-summaries-rebuild
-          >
-            {t("summaries.rebuild")}
-          </SubmitButton>
-          <p className="text-xs text-zinc-500">{t("summaries.rebuildHint")}</p>
-        </form>
+        {progress ? (
+          <div className="mt-4 space-y-2">
+            <h3 className="text-sm font-medium text-zinc-900">
+              {t("summaries.running")}
+            </h3>
+            <SummaryRebuildProgress
+              processed={progress.processed}
+              total={progress.total}
+              step={continueOrderSummariesAction}
+              done="/app/settings/summaries?ran=1"
+              labels={{
+                progress: t("summaries.progress"),
+                busy: t("summaries.busy"),
+                error: t("summaries.stepError"),
+                retry: t("summaries.retry"),
+              }}
+            />
+            <p className="text-xs text-zinc-500">
+              {t("summaries.runningHint")}
+            </p>
+          </div>
+        ) : (
+          <form action={rebuildOrderSummariesAction} className="mt-4 space-y-2">
+            <SubmitButton
+              variant="primary"
+              pendingText={t("summaries.rebuilding")}
+              data-summaries-rebuild
+            >
+              {t("summaries.rebuild")}
+            </SubmitButton>
+            <p className="text-xs text-zinc-500">
+              {t("summaries.rebuildHint")}
+            </p>
+          </form>
+        )}
       </Card>
     </>
   );

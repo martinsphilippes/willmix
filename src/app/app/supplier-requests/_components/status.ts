@@ -22,3 +22,11 @@ export function answerText(t: Translate, r: SupplierRequest): string {
           `${r.supplierPrice.toLocaleString(t.intl, { maximumFractionDigits: 4 })} ${r.supplierCurrency ?? ""}`.trim(),
       });
 }
+
+/** Cor do selo da amostragem. */
+export const SAMPLING_TONE = {
+  pending: "warning",
+  submitted: "info",
+  approved: "success",
+  rejected: "danger",
+} as const;

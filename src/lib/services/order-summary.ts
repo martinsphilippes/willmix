@@ -638,24 +638,109 @@ export function stableJson(value: unknown): string {
   );
 }
 
-/**
- * Reconstrói todos os resumos: lê tudo de uma vez, grava só o que mudou e
- * apaga o resumo de pedido que não existe mais. Resumo recalculado por evento
- * durante a reconstrução (mais novo) não é sobrescrito.
+/*
+ * Reconstrução em partes (docs/RESUMOS.md). Ler e gravar todos os pedidos de
+ * uma vez passava dos 5 minutos que a Vercel dá a uma requisição (15 mil
+ * pedidos). Agora cada rodada processa fatias de pedidos (em ordem de id) até
+ * o tempo dado e guarda onde parou em `settings` (`orderSummariesRebuild`); a
+ * próxima rodada continua dali. A última apaga o resumo de pedido que não
+ * existe mais, grava o marcador e refaz os indicadores.
  */
-export async function rebuildOrderSummaries(
-  now: Date = new Date(),
-): Promise<SummaryMarker> {
-  const started = Date.now();
-  const startedAt = new Date(started).toISOString();
+
+/** Andamento de uma reconstrução em partes (em `settings`). */
+export const REBUILD_SETTING_KEY = "orderSummariesRebuild";
+
+/** Pedidos por fatia: cabem com folga numa rodada. */
+export const REBUILD_CHUNK = 500;
+
+/** Reconstrução parada há mais que isso recomeça do zero (dados velhos). */
+const REBUILD_STALE_MS = 12 * 60 * 60 * 1000;
+
+export interface RebuildProgress {
+  startedAt: string;
+  version: number;
+  /** Último id de pedido processado (as fatias seguem a ordem de id). */
+  cursor: string | null;
+  processed: number;
+  total: number;
+  written: number;
+  /** Outra rodada está trabalhando até esse instante. */
+  lockUntil: string | null;
+}
+
+export type RebuildState =
+  | { state: "idle" }
+  | {
+      state: "running";
+      processed: number;
+      total: number;
+      startedAt: string;
+      /** Outra rodada está trabalhando agora; esta não fez nada. */
+      busy: boolean;
+    }
+  | { state: "done"; marker: SummaryMarker };
+
+async function settingRow(key: string) {
+  const [row] = await getStore().list("settings", {
+    filter: { key },
+    limit: 1,
+  });
+  return row ?? null;
+}
+
+async function readProgress(): Promise<RebuildProgress | null> {
+  const value = (await settingRow(REBUILD_SETTING_KEY))?.value as
+    RebuildProgress | undefined;
+  return value?.startedAt ? value : null;
+}
+
+async function saveProgress(progress: RebuildProgress) {
+  const { setRawSetting } = await import("@/lib/settings");
+  await setRawSetting(REBUILD_SETTING_KEY, progress);
+}
+
+async function clearProgress() {
+  const row = await settingRow(REBUILD_SETTING_KEY);
+  if (row) await getStore().remove("settings", row.id);
+}
+
+/** A reconstrução em andamento, se houver (para a tela de Configurações). */
+export async function rebuildProgress(): Promise<RebuildProgress | null> {
+  return readProgress();
+}
+
+/** Ids de todos os pedidos, em ordem (só a coluna id). */
+async function orderIdsSorted(): Promise<string[]> {
+  const { listColumns } = await import("@/lib/db/lookup");
+  const rows = await listColumns(getStore(), "orders", ["id"]);
+  return rows.map((r) => r.id).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+/**
+ * Uma fatia: resume os pedidos dados e grava só o que mudou. Resumo
+ * recalculado por evento depois do início (mais novo) não é sobrescrito.
+ */
+async function rebuildChunk(
+  ids: string[],
+  startedAt: string,
+  now: Date,
+): Promise<number> {
   const store = getStore();
-  const src = await loadSources(null);
+  const src = await loadSources(ids);
   const today = brazilDay(now.toISOString()) as string;
   const facts = src.orders.map((o) => buildOrderFacts(o, src, today));
-  const kpis = await kpisOf(facts, now, null);
+  const kpis = await kpisOf(
+    facts,
+    now,
+    src.orders.map((o) => o.id),
+  );
   const tasks = await stageTasksOf(src);
   const existing = new Map(
-    (await store.list("order_summaries")).map((r) => [r.id, r]),
+    (
+      await store.list("order_summaries", {
+        filter: { id: src.orders.map((o) => o.id) },
+      })
+    ).map((r) => [r.id, r]),
   );
   const rows = facts
     .map((f) =>
@@ -680,27 +765,147 @@ export async function rebuildOrderSummaries(
       );
     });
   await writeSummaries(rows);
-  const found = new Set(src.orders.map((o) => o.id));
+  return rows.length;
+}
+
+/**
+ * Fim da reconstrução: apaga o resumo de pedido que não existe mais, resume
+ * o pedido criado durante ela que ficou antes do cursor, grava o marcador e
+ * refaz os indicadores.
+ */
+async function finishRebuild(
+  progress: RebuildProgress,
+  ids: string[],
+  now: Date,
+): Promise<SummaryMarker> {
+  const store = getStore();
+  const { listColumns } = await import("@/lib/db/lookup");
+  const summaryIds = (
+    await listColumns(store, "order_summaries", ["orderId"])
+  ).map((r) => r.id);
+  const found = new Set(ids);
+  const have = new Set(summaryIds);
   let removed = 0;
-  for (const id of existing.keys())
+  for (const id of summaryIds)
     if (!found.has(id)) {
       await store.remove("order_summaries", id);
       removed++;
     }
+  const missing = ids.filter((id) => !have.has(id));
+  let written = progress.written;
+  if (missing.length)
+    written += await rebuildChunk(missing, progress.startedAt, now);
   const marker: SummaryMarker = {
     builtAt: new Date().toISOString(),
     version: SUMMARY_VERSION,
-    orders: src.orders.length,
-    written: rows.length,
+    orders: ids.length,
+    written,
     removed,
-    ms: Date.now() - started,
+    ms: Date.now() - Date.parse(progress.startedAt),
   };
   const { setRawSetting } = await import("@/lib/settings");
   await setRawSetting(SUMMARY_SETTING_KEY, marker);
+  await clearProgress();
   // Indicadores prontos refeitos sobre os resumos novos.
   const { rebuildTowerKpis } = await import("./tower-kpis");
   await rebuildTowerKpis(now);
   return marker;
+}
+
+/**
+ * Uma rodada da reconstrução: começa uma (com `start`) ou continua a que
+ * está em andamento, processa fatias até `budgetMs` (ao menos uma) e termina
+ * quando não sobra pedido. Outra rodada trabalhando agora: devolve o
+ * andamento sem fazer nada (`busy`).
+ */
+export async function rebuildOrderSummariesStep(options: {
+  budgetMs: number;
+  start?: boolean;
+  chunk?: number;
+  now?: Date;
+}): Promise<RebuildState> {
+  const chunk = options.chunk ?? REBUILD_CHUNK;
+  const began = Date.now();
+  const deadline = began + options.budgetMs;
+  const running = (p: RebuildProgress, busy: boolean): RebuildState => ({
+    state: "running",
+    processed: p.processed,
+    total: p.total,
+    startedAt: p.startedAt,
+    busy,
+  });
+  let progress = await readProgress();
+  if (
+    progress &&
+    (progress.version !== SUMMARY_VERSION ||
+      began - Date.parse(progress.startedAt) > REBUILD_STALE_MS)
+  )
+    progress = null;
+  if (progress?.lockUntil && Date.parse(progress.lockUntil) > began)
+    return running(progress, true);
+  if (!progress && !options.start) return { state: "idle" };
+  const ids = await orderIdsSorted();
+  progress ??= {
+    startedAt: new Date(began).toISOString(),
+    version: SUMMARY_VERSION,
+    cursor: null,
+    processed: 0,
+    total: ids.length,
+    written: 0,
+    lockUntil: null,
+  };
+  const cursor = progress.cursor;
+  const pending = cursor ? ids.filter((id) => id > cursor) : ids;
+  // A trava cobre a rodada e mais um minuto (rodada que caiu não prende a
+  // próxima); sem limite de tempo, dez minutos por fatia.
+  const lock = () =>
+    new Date(
+      Math.min(Math.max(deadline, Date.now()), Date.now() + 9 * 60_000) +
+        60_000,
+    ).toISOString();
+  progress = { ...progress, total: progress.processed + pending.length };
+  let offset = 0;
+  do {
+    const part = pending.slice(offset, offset + chunk);
+    if (!part.length) break;
+    await saveProgress({ ...progress, lockUntil: lock() });
+    const now = options.now ?? new Date();
+    const written = await rebuildChunk(part, progress.startedAt, now);
+    offset += part.length;
+    progress = {
+      ...progress,
+      cursor: part[part.length - 1],
+      processed: progress.processed + part.length,
+      written: progress.written + written,
+    };
+  } while (Date.now() < deadline);
+  if (offset < pending.length) {
+    progress = { ...progress, lockUntil: null };
+    await saveProgress(progress);
+    return running(progress, false);
+  }
+  await saveProgress({ ...progress, lockUntil: lock() });
+  const marker = await finishRebuild(progress, ids, options.now ?? new Date());
+  return { state: "done", marker };
+}
+
+/**
+ * Reconstrói todos os resumos de uma vez (testes e modo memória): as mesmas
+ * fatias da reconstrução em partes, sem limite de tempo.
+ */
+export async function rebuildOrderSummaries(
+  now: Date = new Date(),
+): Promise<SummaryMarker> {
+  for (;;) {
+    const result = await rebuildOrderSummariesStep({
+      budgetMs: Number.POSITIVE_INFINITY,
+      start: true,
+      now,
+    });
+    if (result.state === "done") return result.marker;
+    if (result.state === "running" && result.busy)
+      throw new Error("summary_rebuild_busy");
+  }
 }
 
 /* ------------------------------------------------------------------------ */
