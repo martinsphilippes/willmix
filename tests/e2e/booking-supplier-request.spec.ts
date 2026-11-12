@@ -70,7 +70,9 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-decide=declined]")).toHaveCount(0);
   await expect(page.locator("[data-supplier-decide=approved]")).toHaveCount(0);
   await page.goto(requestUrl);
-  await expect(page.locator("[data-supplier-table-answer-open]")).toHaveCount(0);
+  await expect(page.locator("[data-supplier-table-answer-open]")).toHaveCount(
+    0,
+  );
   await expect(page.locator("[data-supplier-table-message]")).toBeVisible();
 
   // 3. O fornecedor A vê primeiro a tabela dos produtos da solicitação e
@@ -165,8 +167,26 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await page.goto(itemUrl);
   await expect(page.locator("[data-negotiated-superplan]")).toBeVisible();
   await expect(page.locator("[data-alternative-open]")).toHaveCount(1);
+  // Nova referência: abre a solicitação para a alternativa (fornecedor B);
+  // as duas ficam ligadas.
+  await page.locator("[data-alternative-open]").click();
+  await page.waitForURL(/[?&]created=1/);
+  const altUrl = page.url().split("?")[0];
+  expect(altUrl).not.toBe(requestUrl);
+  await page.goto(itemUrl);
+  await expect(page.locator("[data-linked-request]")).toHaveCount(1);
   await page.click("[data-supplier-decide=approved]");
   await page.waitForURL(/[?&]decided=approved/);
+  // Aprovada esta, a ligada pede resposta: continuar negociando ou recusar.
+  await expect(page.locator("[data-linked-approved-ask]")).toBeVisible();
+  await page
+    .locator("[data-linked-asked] [data-linked-resolve=decline]")
+    .click();
+  await page.waitForURL(/[?&]linked=decline/);
+  await expect(page.locator("[data-linked-asked]")).toHaveCount(0);
+  await page.goto(`${altUrl}?view=item`);
+  await expect(page.locator("[data-linked-ask]")).toHaveCount(0);
+  await page.goto(itemUrl);
   // A aprovação abre a amostragem, esperando o responsável pelo booking.
   await expect(page.locator("[data-sampling=pending]")).toBeVisible();
   await expect(page.locator("[data-sampling-upload]")).toHaveCount(0);

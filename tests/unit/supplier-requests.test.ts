@@ -435,6 +435,82 @@ describe("produto da solicitação aprovada", () => {
     return { request, itemA, itemB, lotA, lotB };
   }
 
+  it("solicitações ligadas: aprovada uma, a outra pede continuar ou recusar", async () => {
+    const store = getStore();
+    const pair = async (code: string) => {
+      const lotA = await closedLot("Shenzhen Supplier A", [
+        row("Shenzhen Supplier A", `${code}-A`, `Jar ${code} 1l`, "2000"),
+      ]);
+      const lotB = await closedLot("Guangzhou Supplier B", [
+        row("Guangzhou Supplier B", `${code}-B`, `Jar ${code} wide`, "2000"),
+      ]);
+      const [itemA] = await store.list("booking_items", {
+        filter: { lotId: lotA.id },
+      });
+      const [itemB] = await store.list("booking_items", {
+        filter: { lotId: lotB.id },
+      });
+      const open = (itemId: string, alternativeIds: string[]) =>
+        svc.openSupplierRequest(admin, {
+          itemId,
+          alternativeIds,
+          quantity: null,
+          needs: null,
+          searchQuery: null,
+        });
+      // A lista B de alternativa; B foi aberta sem alternativas (o vínculo
+      // vale nos dois sentidos).
+      const a = await open(itemA.id, [itemB.id]);
+      const b = await open(itemB.id, []);
+      await svc.answerSupplierRequest(supplierA, a.id, {
+        canDo: "yes",
+        price: 2,
+        currency: "USD",
+        moq: null,
+        leadTimeDays: null,
+        note: null,
+      });
+      return { a, b };
+    };
+
+    const { a, b } = await pair("LK");
+    // Nada aprovado: nenhuma pergunta; o fornecedor não vê ligadas.
+    expect(await svc.linkedApprovalFor(admin, b)).toBeNull();
+    expect(await svc.linkedSupplierRequests(supplierA, a)).toEqual([]);
+    await expect(svc.resolveLinkedRequest(admin, b.id, "keep")).rejects.toThrow(
+      "supplier_request_linked_nothing",
+    );
+    await svc.decideSupplierRequest(admin, a.id, "approved", null);
+    const fromA = await svc.linkedSupplierRequests(
+      admin,
+      (await store.get("supplier_requests", a.id))!,
+    );
+    expect(fromA.map((l) => [l.request.id, l.askedBy])).toEqual([
+      [b.id, a.number],
+    ]);
+    expect((await svc.linkedApprovalFor(admin, b))?.id).toBe(a.id);
+    await expect(
+      svc.resolveLinkedRequest(supplierA, b.id, "keep"),
+    ).rejects.toThrow();
+    // Continuar: a pergunta some e a solicitação segue aberta.
+    await svc.resolveLinkedRequest(admin, b.id, "keep");
+    const kept = (await store.get("supplier_requests", b.id))!;
+    expect(kept.status).toBe("open");
+    expect(kept.negotiation?.at(-1)?.kind).toBe("keep");
+    expect(await svc.linkedApprovalFor(admin, kept)).toBeNull();
+
+    // Recusar: vai para Recusada mesmo antes da resposta.
+    const second = await pair("LD");
+    await svc.decideSupplierRequest(admin, second.a.id, "approved", null);
+    const declined = await svc.resolveLinkedRequest(
+      admin,
+      second.b.id,
+      "decline",
+    );
+    expect(declined.status).toBe("declined");
+    expect(declined.decisionNote).toContain(`nº ${second.a.number}`);
+  });
+
   it("cria o produto fora da vitrine, com a resposta do fornecedor, e liga os itens", async () => {
     const store = getStore();
     const product = await import("@/lib/services/supplier-request-product");

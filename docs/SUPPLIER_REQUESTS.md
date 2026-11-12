@@ -91,6 +91,11 @@ Quem abre `/app/supplier-requests/[id]` (o fornecedor e, desde a segunda rodada,
 - **Superplan refeito** (só a Wellmix): a mesma conta do booking (`analyzeNegotiatedItem`, em `superplan-analysis.ts`) com o preço e a moeda negociados, o tipo de negócio do retrato do booking e o câmbio do dia, refeita a cada abertura da tela; nada é gravado. Mostra o custo por peça novo com o do booking riscado, o preço mínimo e a meta.
 - **Alternativas com a nova referência**: a alternativa com custo do booking menor que o custo negociado ganha o selo "mais barata que a negociada"; cada alternativa tem **"Abrir solicitação para esta"** (o item atual e as outras viram alternativas dela, com a mesma quantidade e necessidade; as regras de sempre valem, como `supplier_request_exists`).
 
+### Solicitações ligadas (decisão do dono, 12/11/2026)
+
+- **Ligadas**: as solicitações do item e das alternativas dele, nos dois sentidos (uma lista o item da outra como alternativa; `linkedSupplierRequests`). Só a Wellmix vê, no cartão "Solicitações ligadas" da tela do produto: nº, item, fornecedor e situação.
+- **Ao aprovar uma**, cada ligada em andamento (Aberta ou Respondida) passa a **pedir uma resposta** (`linkedApprovalAsking`): **Continuar negociando** (fica o passo `keep` no histórico, só da Wellmix, e a pergunta some até outra aprovação) ou **Recusar** (vai para Recusada mesmo antes da resposta do fornecedor, com a nota "Alternativa aprovada: solicitação nº …"; `resolveLinkedRequest`, permissão `supplierRequest.decide`). A pergunta aparece na aprovada (aviso e botões no cartão) e no topo da ligada até ser respondida.
+
 ## Lista de solicitações
 
 - Datas com hora (aberta em, finalizada em).

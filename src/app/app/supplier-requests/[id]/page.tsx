@@ -18,6 +18,8 @@ import {
 import {
   getSupplierRequest,
   legacyAnswers,
+  linkedApprovalFor,
+  linkedSupplierRequests,
   supplierRequestGroup,
 } from "@/lib/services/supplier-requests";
 import { getT } from "@/i18n/server";
@@ -42,6 +44,7 @@ import {
   answerSupplierRequestAction,
   decideSupplierRequestAction,
   openSupplierRequestAction,
+  resolveLinkedRequestAction,
 } from "../../actions/supplier-requests";
 import { agreedConditions } from "@/lib/services/supplier-request-product";
 import { analyzeNegotiatedItem } from "@/lib/services/superplan-analysis";
@@ -157,6 +160,9 @@ export default async function SupplierRequestPage({
         `supplierRequests.negotiation.notice.${negotiationNotice}` as DictionaryKey,
       ),
     );
+  const linkedNotice = one("linked");
+  if (linkedNotice === "keep" || linkedNotice === "decline")
+    notices.push(t(`supplierRequests.detail.linked.notice.${linkedNotice}`));
   const productNotice = one("product");
   if (["created", "linked", "items", "released"].includes(productNotice))
     notices.push(t(`srProduct.notice.${productNotice}` as DictionaryKey));
@@ -291,6 +297,42 @@ export default async function SupplierRequestPage({
   }
 
   const proposalPending = !!pendingProposal(r.negotiation);
+  // Solicitações ligadas (item e alternativas): aprovada uma, as em
+  // andamento pedem resposta, continuar negociando ou recusar.
+  const [linked, askingMe] = wellmix
+    ? await Promise.all([
+        linkedSupplierRequests(user, r),
+        linkedApprovalFor(user, r),
+      ])
+    : [[], null];
+  const canResolve = wellmix && can(user, "supplierRequest.decide");
+  const resolveButtons = (targetId: string) => (
+    <form
+      action={resolveLinkedRequestAction}
+      className="flex flex-wrap gap-2"
+      data-linked-resolve-form={targetId}
+    >
+      <input type="hidden" name="id" value={targetId} />
+      <input type="hidden" name="back" value={r.id} />
+      <SubmitButton
+        name="choice"
+        value="keep"
+        variant="secondary"
+        data-linked-resolve="keep"
+      >
+        {t("supplierRequests.detail.linked.keep")}
+      </SubmitButton>
+      <SubmitButton
+        name="choice"
+        value="decline"
+        variant="danger"
+        data-linked-resolve="decline"
+      >
+        {t("supplierRequests.detail.linked.decline")}
+      </SubmitButton>
+    </form>
+  );
+  const linkedWaiting = linked.filter((l) => l.askedBy !== null).length;
   // Ficha negociada: com a resposta "faz", os valores combinados (resposta,
   // contraproposta aceita ou nova proposta do responsável) entram na ficha,
   // com o do booking riscado ao lado; a Wellmix vê o Superplan refeito com
@@ -382,6 +424,33 @@ export default async function SupplierRequestPage({
         }
       />
       {noticeBlock}
+      {askingMe && canResolve ? (
+        <div className="mb-3" data-linked-ask>
+          <Alert tone="warning">
+            <span className="flex flex-col gap-2">
+              <span>
+                {t("supplierRequests.detail.linked.ask", {
+                  n: askingMe.number,
+                })}{" "}
+                <Link
+                  href={`/app/supplier-requests/${askingMe.id}?view=item`}
+                  className={linkClass}
+                >
+                  nº {askingMe.number}
+                </Link>
+              </span>
+              {resolveButtons(r.id)}
+            </span>
+          </Alert>
+        </div>
+      ) : null}
+      {r.status === "approved" && linkedWaiting > 0 ? (
+        <div className="mb-3" data-linked-approved-ask>
+          <Alert tone="info">
+            {t("supplierRequests.detail.linked.approvedAsk")}
+          </Alert>
+        </div>
+      ) : null}
 
       {/* Amostragem: a etapa depois da aprovação (fotos e vídeos da amostra). */}
       {r.status === "approved" ? (
@@ -687,6 +756,62 @@ export default async function SupplierRequestPage({
               )}
             </Card>
           ) : null}
+
+          {linked.length ? (
+            <Card
+              title={t("supplierRequests.detail.linked.title", {
+                n: linked.length,
+              })}
+            >
+              <p className="mb-2 text-xs text-zinc-500">
+                {t("supplierRequests.detail.linked.hint")}
+              </p>
+              <ul className="divide-y divide-zinc-100 text-sm" data-linked>
+                {linked.map(({ request: o, supplier: s, askedBy }) => (
+                  <li
+                    key={o.id}
+                    className="flex flex-col gap-2 py-2"
+                    data-linked-request={o.id}
+                  >
+                    <span className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span>
+                        <Link
+                          href={`/app/supplier-requests/${o.id}?view=item`}
+                          className={linkClass}
+                        >
+                          nº {o.number}
+                        </Link>{" "}
+                        <span className="font-medium">
+                          {o.item.description ?? o.item.productName ?? "—"}
+                        </span>{" "}
+                        <span className="text-xs text-zinc-500">
+                          {[o.item.factoryItemCode, s?.name]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      </span>
+                      <Badge tone={STATUS_TONE[o.status]}>
+                        {t(
+                          `supplierRequests.status.${o.status}` as DictionaryKey,
+                        )}
+                      </Badge>
+                    </span>
+                    {askedBy !== null && canResolve ? (
+                      <span
+                        className="flex flex-wrap items-center gap-2 text-xs text-amber-800"
+                        data-linked-asked={o.id}
+                      >
+                        {t("supplierRequests.detail.linked.askShort", {
+                          n: askedBy,
+                        })}
+                        {resolveButtons(o.id)}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ) : null}
         </div>
 
         <div className="space-y-4">
@@ -829,7 +954,17 @@ export default async function SupplierRequestPage({
 
           {/* Histórico de interações logo abaixo da resposta do fornecedor. */}
           <RequestTimeline
-            request={r}
+            request={
+              wellmix
+                ? r
+                : {
+                    ...r,
+                    // "Continuar negociando" é decisão interna da Wellmix.
+                    negotiation: (r.negotiation ?? []).filter(
+                      (e) => e.kind !== "keep",
+                    ),
+                  }
+            }
             legacyAnswers={timelineLegacy.get(r.id) ?? []}
             t={t}
           />

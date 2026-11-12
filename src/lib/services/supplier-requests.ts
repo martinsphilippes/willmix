@@ -692,6 +692,17 @@ export async function decideSupplierRequest(
     ).includes(decision)
   )
     throw new SupplierRequestError("supplier_request_decision_invalid");
+  return writeDecision(user, request, decision, note);
+}
+
+/** Grava a decisão da Wellmix, com auditoria e aviso ao fornecedor. */
+async function writeDecision(
+  user: User,
+  request: SupplierRequest,
+  decision: "approved" | "declined" | "cancelled",
+  note: string | null,
+): Promise<SupplierRequest> {
+  const store = getStore();
   const decidedAt = new Date().toISOString();
   // Aprovada: abre a amostragem (o responsável envia fotos e vídeos de uma
   // amostra; docs/SUPPLIER_SAMPLING.md).
@@ -736,5 +747,147 @@ export async function decideSupplierRequest(
       await import("./supplier-request-sampling");
     await notifySamplingOpened(updated);
   }
+  return updated;
+}
+
+/* ---- Solicitações ligadas (docs/SUPPLIER_REQUESTS.md, "Solicitações ligadas") ---- */
+
+/**
+ * Ligadas: as solicitações do item e das alternativas dele, nos dois
+ * sentidos (a do item lista a outra como alternativa, ou a outra lista o
+ * item). Só a Wellmix vê. A própria e as da mesma solicitação com vários
+ * produtos ficam fora.
+ */
+export interface LinkedSupplierRequest {
+  request: SupplierRequest;
+  supplier: Party | null;
+  /** Nº da ligada aprovada que pede resposta: continuar negociando ou recusar. */
+  askedBy: number | null;
+}
+
+function linkedTo(a: SupplierRequest, b: SupplierRequest): boolean {
+  if (a.id === b.id || a.bookingItemId === b.bookingItemId) return false;
+  return (
+    (a.alternativeItemIds ?? []).includes(b.bookingItemId) ||
+    (b.alternativeItemIds ?? []).includes(a.bookingItemId)
+  );
+}
+
+/**
+ * A ligada aprovada que ainda espera a resposta desta (aprovada depois do
+ * último "continuar negociando"), ou nulo. Só pergunta à que está em
+ * andamento.
+ */
+export function linkedApprovalAsking(
+  request: SupplierRequest,
+  linked: SupplierRequest[],
+): SupplierRequest | null {
+  if (!supplierRequestActive(request.status)) return null;
+  const kept =
+    (request.negotiation ?? [])
+      .filter((e) => e.kind === "keep")
+      .map((e) => e.at)
+      .sort()
+      .at(-1) ?? "";
+  return (
+    linked
+      .filter(
+        (o) =>
+          o.status === "approved" &&
+          !!o.decidedAt &&
+          o.decidedAt > kept &&
+          linkedTo(request, o),
+      )
+      .sort((x, y) => (x.decidedAt! < y.decidedAt! ? 1 : -1))[0] ?? null
+  );
+}
+
+async function allLinkable(): Promise<SupplierRequest[]> {
+  return getStore().list("supplier_requests");
+}
+
+export async function linkedSupplierRequests(
+  user: User,
+  request: SupplierRequest,
+): Promise<LinkedSupplierRequest[]> {
+  if (!isWellmix(user)) return [];
+  const all = await allLinkable();
+  const linked = all.filter((o) => linkedTo(request, o));
+  if (!linked.length) return [];
+  const supplierIds = [...new Set(linked.map((o) => o.supplierId))];
+  const parties = await getStore().list("parties", {
+    filter: { id: supplierIds },
+  });
+  const byId = new Map(parties.map((p) => [p.id, p]));
+  return linked
+    .sort((a, b) => a.number - b.number)
+    .map((o) => ({
+      request: o,
+      supplier: byId.get(o.supplierId) ?? null,
+      askedBy:
+        linkedApprovalAsking(
+          o,
+          all.filter((x) => linkedTo(o, x)),
+        )?.number ?? null,
+    }));
+}
+
+/** A ligada aprovada que pergunta a esta solicitação (para o aviso no topo). */
+export async function linkedApprovalFor(
+  user: User,
+  request: SupplierRequest,
+): Promise<SupplierRequest | null> {
+  if (!isWellmix(user) || !supplierRequestActive(request.status)) return null;
+  const all = await allLinkable();
+  return linkedApprovalAsking(
+    request,
+    all.filter((o) => linkedTo(request, o)),
+  );
+}
+
+/**
+ * Resposta da Wellmix depois de aprovar uma ligada: continuar negociando
+ * esta (fica um passo "keep" no histórico, só da Wellmix) ou recusá-la (vai
+ * para Recusada, mesmo antes da resposta do fornecedor).
+ */
+export async function resolveLinkedRequest(
+  user: User,
+  id: string,
+  choice: "keep" | "decline",
+): Promise<SupplierRequest> {
+  assertWellmix(user);
+  assertScreen(user, "quotes");
+  assertCan(user, "supplierRequest.decide");
+  const store = getStore();
+  const request = await withSchema(() => store.get("supplier_requests", id));
+  if (!request) throw new SupplierRequestError("not_found");
+  const approved = await linkedApprovalFor(user, request);
+  if (!approved)
+    throw new SupplierRequestError("supplier_request_linked_nothing");
+  if (choice === "decline")
+    return writeDecision(
+      user,
+      request,
+      "declined",
+      `Alternativa aprovada: solicitação nº ${approved.number}`,
+    );
+  const keep: SupplierRequestEvent = {
+    id: crypto.randomUUID(),
+    at: new Date().toISOString(),
+    kind: "keep",
+    side: "wellmix",
+    byUserId: user.id,
+    text: `Alternativa aprovada: solicitação nº ${approved.number}`,
+  };
+  const updated = await store.update("supplier_requests", request.id, {
+    negotiation: [...(request.negotiation ?? []), keep].slice(-500),
+  });
+  await audit(
+    user,
+    "supplier_request.keep",
+    "supplier_request",
+    request.id,
+    `Solicitação ao fornecedor nº ${request.number}: continua em negociação depois da aprovação da nº ${approved.number}`,
+  );
   return updated;
 }

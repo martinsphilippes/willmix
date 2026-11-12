@@ -2354,6 +2354,8 @@ export const SUPPLIER_REQUEST_EVENT_KINDS = [
   "message",
   /** Resposta do fornecedor (faz ou não e as condições), ou registrada pela Wellmix por ele. */
   "answer",
+  /** Wellmix continua negociando depois de aprovar uma solicitação ligada (só a Wellmix vê). */
+  "keep",
 ] as const;
 export type SupplierRequestEventKind =
   (typeof SUPPLIER_REQUEST_EVENT_KINDS)[number];
