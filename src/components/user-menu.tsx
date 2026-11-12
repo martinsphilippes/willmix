@@ -5,6 +5,8 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 /**
  * Avatar no canto do cabeçalho: abre um cartão com nome, papel, e-mail e os
  * controles passados em `children` (ex.: Sair). Fecha ao clicar fora ou com Esc.
+ * Na barra lateral (`placement="sidebar"`): linha com nome e papel no pé do
+ * menu, cartão abrindo para cima; recolhida (`compact`), só o avatar.
  */
 export function UserMenu({
   name,
@@ -12,12 +14,16 @@ export function UserMenu({
   email,
   label,
   children,
+  placement = "header",
+  compact = false,
 }: {
   name: string;
   role: string;
   email: string;
   label: string;
   children?: ReactNode;
+  placement?: "header" | "sidebar";
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -54,30 +60,67 @@ export function UserMenu({
           setOpen(false);
       }}
     >
-      <button
-        ref={button}
-        type="button"
-        aria-expanded={open}
-        aria-controls={id}
-        aria-label={`${label}: ${name}`}
-        onClick={() => setOpen((v) => !v)}
-        data-user-menu
-        className="inline-flex items-center gap-2 rounded-full py-0.5 pl-0.5 pr-2.5 text-sm transition hover:bg-white/10 focus-visible:outline-white"
-      >
-        <span
-          aria-hidden
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-bold text-brand-700"
+      {placement === "sidebar" ? (
+        <button
+          ref={button}
+          type="button"
+          aria-expanded={open}
+          aria-controls={id}
+          aria-label={`${label}: ${name}`}
+          title={compact ? name : undefined}
+          onClick={() => setOpen((v) => !v)}
+          data-user-menu
+          className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm transition hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-brand-600 ${
+            compact ? "justify-center px-0" : ""
+          }`}
         >
-          {initial}
-        </span>
-        <span className="hidden max-w-32 truncate font-medium md:block">
-          {first}
-        </span>
-      </button>
+          <span
+            aria-hidden
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+          >
+            {initial}
+          </span>
+          {compact ? null : (
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate font-semibold text-zinc-900">
+                {name}
+              </span>
+              <span className="block truncate text-xs text-zinc-500">
+                {role}
+              </span>
+            </span>
+          )}
+        </button>
+      ) : (
+        <button
+          ref={button}
+          type="button"
+          aria-expanded={open}
+          aria-controls={id}
+          aria-label={`${label}: ${name}`}
+          onClick={() => setOpen((v) => !v)}
+          data-user-menu
+          className="inline-flex items-center gap-2 rounded-full py-0.5 pl-0.5 pr-2.5 text-sm transition hover:bg-white/10 focus-visible:outline-white"
+        >
+          <span
+            aria-hidden
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-bold text-brand-700"
+          >
+            {initial}
+          </span>
+          <span className="hidden max-w-32 truncate font-medium md:block">
+            {first}
+          </span>
+        </button>
+      )}
       {open ? (
         <div
           id={id}
-          className="absolute right-0 top-full z-30 mt-1 w-64 rounded-xl border border-zinc-200 bg-white p-2 text-zinc-800 shadow-lg shadow-zinc-900/10"
+          className={`absolute z-30 w-64 rounded-xl ${
+            placement === "sidebar"
+              ? "bottom-full left-0 mb-1"
+              : "right-0 top-full mt-1"
+          } border border-zinc-200 bg-white p-2 text-zinc-800 shadow-lg shadow-zinc-900/10`}
         >
           <div className="px-2 py-1.5">
             <p className="truncate text-sm font-semibold text-zinc-900">

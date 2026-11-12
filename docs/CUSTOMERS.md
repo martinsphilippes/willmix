@@ -4,6 +4,13 @@ Telas Cadastros → Clientes (`/app/customers`) e Cadastros → Fornecedores (`/
 
 **Outros parceiros (decisão do dono, 11/11/2026).** A lista de Empresas (`/app/parties`, antes "Parceiros") repetia clientes e fornecedores, que já têm as telas acima. Ela passa a se chamar **Outros parceiros** e lista só os demais tipos: agência, despachante, armador, transportadora, jurídico, comex, logística e OCP (`OTHER_PARTY_TYPES`, em `src/lib/party-types.ts`). É o único lugar que lista e cadastra esses tipos, por isso a tela não foi excluída. Os endereços antigos `?type=supplier` e `?type=customer` levam para Fornecedores e Clientes. O cadastro de cada empresa (`/app/parties/[id]`) e o "Novo parceiro" (`/app/parties/new`) não mudaram: continuam sendo o cadastro de todos os tipos, inclusive cliente e fornecedor. Nenhum dado foi apagado.
 
+**Parceiros numa tela só (decisão do dono, 12/11/2026).**
+- A tela `/app/parties` volta a se chamar **Parceiros** e lista todos os cadastros, clientes e fornecedores inclusive.
+- Os filtros são Todos, Clientes, Fornecedores e os tipos do catálogo. `?type=customer` e `?type=supplier` filtram a lista e não levam mais às outras telas.
+- O nome do cliente ou do fornecedor abre a ficha na tela própria (`/app/customers/[id]`, `/app/suppliers/[id]`), com a conta e o scorecard.
+- "+ Novo parceiro" já vem com o tipo do filtro.
+- No menu, Cadastros mostra só Parceiros. As listas de Clientes e Fornecedores continuam pelo endereço e pelos links do subtítulo.
+
 ## Lista
 
 - Cinco cartões com a conta de todos os clientes listados: **Valor do contrato**, **Entregue**, **Pagamento antecipado**, **A receber** e **Recebido**.

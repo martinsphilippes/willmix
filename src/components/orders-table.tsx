@@ -14,6 +14,7 @@ import { ChatOpenButton } from "./chat-open-button";
 import { PhotoGallery, type GalleryPhoto } from "./photo-gallery";
 import { RowMoreDetails, RowMoreToggle, oneLine } from "./row-more";
 import { chatTargetFromHref } from "@/lib/chat-target";
+import { TableTools } from "@/components/table-tools";
 
 /** Textos da galeria de fotos da linha (já no idioma de quem vê). */
 type GalleryLabels = {
@@ -502,194 +503,195 @@ export function OrdersTable({
           </button>
         ) : null}
       </div>
-      <div className="-mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border">
-        <table className="w-full min-w-[56rem] text-sm">
-          <thead>
-            <tr>
-              {head("number", labels.number, "w-24")}
-              {head("product", labels.product)}
-              {showCustomer ? head("customer", labels.customer) : null}
-              {showSupplier ? head("supplier", labels.supplier) : null}
-              {head("phase", labels.phase)}
-              {head("state", labels.state)}
-              {head("progress", labels.progress, "w-44")}
-              {head("due", labels.due)}
-              {head("updated", labels.updated)}
-              <th className="w-10 px-2.5 py-2" />
-            </tr>
-            <tr>
-              {filterCell(text("n", labels.number))}
-              {filterCell(text("p", labels.product))}
-              {showCustomer ? filterCell(text("c", labels.customer)) : null}
-              {showSupplier ? filterCell(text("s", labels.supplier)) : null}
-              {filterCell(select("ph", labels.phase, phases))}
-              {filterCell(
-                select(
-                  "st",
-                  labels.state,
-                  states.map((s) => [s, labels.states[s]]),
-                ),
-              )}
-              {filterCell(
-                <select
-                  value={filters.pr}
-                  onChange={(e) => setFilter("pr", e.target.value)}
-                  aria-label={labels.progress}
-                  className={control}
-                  data-orders-filter="pr"
-                >
-                  <option value="">{labels.all}</option>
-                  {[
-                    [labels.journey.groupRequest, "req"],
-                    [labels.journey.groupOrder, "ord"],
-                  ].map(([group, prefix]) => {
-                    const options = labels.journey.steps.filter(([value]) =>
-                      value.startsWith(prefix),
-                    );
-                    return options.length ? (
-                      <optgroup key={prefix} label={group}>
-                        {options.map(([value, text]) => (
-                          <option key={value} value={value}>
-                            {text}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : null;
-                  })}
-                  <option value="cancelled">{labels.journey.cancelled}</option>
-                </select>,
-              )}
-              {filterCell(
-                select("d", labels.due, [
-                  ["overdue", labels.dueOptions.overdue],
-                  ["week", labels.dueOptions.week],
-                  ["none", labels.dueOptions.none],
-                ]),
-              )}
-              {filterCell(
-                select("u", labels.updated, [
-                  ["today", labels.updatedOptions.today],
-                  ["week", labels.updatedOptions.week],
-                  ["month", labels.updatedOptions.month],
-                ]),
-              )}
-              <td className="px-2.5 py-2" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {shown.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={8 + (showCustomer ? 1 : 0) + (showSupplier ? 1 : 0)}
-                  className="px-3 py-6 text-center text-zinc-500"
-                >
-                  {labels.empty}
-                </td>
-              </tr>
-            ) : (
-              shown.map((r) => {
-                const overdue =
-                  !!r.due &&
-                  r.due < today &&
-                  (r.state === "active" || r.state === "blocked");
-                const selected = current?.key === r.key;
-                return (
-                  <tr
-                    key={r.key}
-                    className={cx(
-                      rowClass,
-                      "cursor-pointer",
-                      selected &&
-                        "bg-brand-50 ring-1 ring-inset ring-brand-200",
-                    )}
-                    data-orders-row={r.key}
-                    data-orders-state={r.state}
-                    aria-selected={selected}
-                    // Clicar na linha mostra os itens embaixo; o número e o
-                    // nome continuam abrindo a página.
-                    onClick={(event) => {
-                      if ((event.target as HTMLElement).closest("a,button"))
-                        return;
-                      setPicked(r.key);
-                    }}
-                  >
-                    <td className="whitespace-nowrap px-2.5 py-2">
-                      <Link href={r.href} className={linkClass}>
-                        {r.number}
-                      </Link>
-                      {r.subtitle ? (
-                        <span className="block text-[11px] text-zinc-500">
-                          {r.subtitle}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="min-w-40 px-2.5 py-2 font-medium text-zinc-900">
-                      <Link href={r.href} className="hover:underline">
-                        {r.product}
-                      </Link>
-                      {r.items.length > 1 ? (
-                        <span className="ml-1.5 whitespace-nowrap text-xs font-normal text-zinc-500">
-                          {r.items.length === 2
-                            ? labels.moreItem
-                            : labels.moreItems.replace(
-                                "{n}",
-                                String(r.items.length - 1),
-                              )}
-                        </span>
-                      ) : null}
-                    </td>
-                    {showCustomer ? (
-                      <td className="min-w-32 px-2.5 py-2">
-                        {r.customer || "—"}
-                      </td>
-                    ) : null}
-                    {showSupplier ? (
-                      <td className="min-w-32 px-2.5 py-2">
-                        {r.supplier || "—"}
-                      </td>
-                    ) : null}
-                    <td className="whitespace-nowrap px-2.5 py-2">{r.phase}</td>
-                    <td className="whitespace-nowrap px-2.5 py-2">
-                      <Badge tone={STATE_TONE[r.state]}>
-                        {labels.states[r.state]}
-                      </Badge>
-                    </td>
-                    <td className="px-2.5 py-2">
-                      <JourneyBar
-                        progress={r.progress}
-                        label={r.stepLabel}
-                        step={r.step}
-                        cancelled={r.state === "cancelled"}
-                        stoppedAt={labels.journey.stoppedAt}
-                      />
-                    </td>
-                    <td
-                      className={cx(
-                        "whitespace-nowrap px-2.5 py-2 tabular-nums",
-                        overdue && "font-semibold text-red-700",
-                      )}
-                    >
-                      {r.dueLabel}
-                    </td>
-                    <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-zinc-600">
-                      {r.updatedLabel}
-                    </td>
-                    {/* Conversa do pedido/solicitação: sempre na última coluna. */}
-                    <td className="whitespace-nowrap px-2.5 py-2 text-right">
-                      {chatTargetFromHref(r.href) ? (
-                        <ChatOpenButton
-                          target={chatTargetFromHref(r.href)!}
-                          label={labels.chat}
-                        />
-                      ) : null}
-                    </td>
-                  </tr>
-                );
-              })
+      <TableTools
+        tableClassName="min-w-[56rem]"
+        sortable={false}
+        searchable={false}
+      >
+        <thead>
+          <tr>
+            {head("number", labels.number, "w-24")}
+            {head("product", labels.product)}
+            {showCustomer ? head("customer", labels.customer) : null}
+            {showSupplier ? head("supplier", labels.supplier) : null}
+            {head("phase", labels.phase)}
+            {head("state", labels.state)}
+            {head("progress", labels.progress, "w-44")}
+            {head("due", labels.due)}
+            {head("updated", labels.updated)}
+            <th className="w-10 px-2.5 py-2" />
+          </tr>
+          <tr>
+            {filterCell(text("n", labels.number))}
+            {filterCell(text("p", labels.product))}
+            {showCustomer ? filterCell(text("c", labels.customer)) : null}
+            {showSupplier ? filterCell(text("s", labels.supplier)) : null}
+            {filterCell(select("ph", labels.phase, phases))}
+            {filterCell(
+              select(
+                "st",
+                labels.state,
+                states.map((s) => [s, labels.states[s]]),
+              ),
             )}
-          </tbody>
-        </table>
-      </div>
+            {filterCell(
+              <select
+                value={filters.pr}
+                onChange={(e) => setFilter("pr", e.target.value)}
+                aria-label={labels.progress}
+                className={control}
+                data-orders-filter="pr"
+              >
+                <option value="">{labels.all}</option>
+                {[
+                  [labels.journey.groupRequest, "req"],
+                  [labels.journey.groupOrder, "ord"],
+                ].map(([group, prefix]) => {
+                  const options = labels.journey.steps.filter(([value]) =>
+                    value.startsWith(prefix),
+                  );
+                  return options.length ? (
+                    <optgroup key={prefix} label={group}>
+                      {options.map(([value, text]) => (
+                        <option key={value} value={value}>
+                          {text}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : null;
+                })}
+                <option value="cancelled">{labels.journey.cancelled}</option>
+              </select>,
+            )}
+            {filterCell(
+              select("d", labels.due, [
+                ["overdue", labels.dueOptions.overdue],
+                ["week", labels.dueOptions.week],
+                ["none", labels.dueOptions.none],
+              ]),
+            )}
+            {filterCell(
+              select("u", labels.updated, [
+                ["today", labels.updatedOptions.today],
+                ["week", labels.updatedOptions.week],
+                ["month", labels.updatedOptions.month],
+              ]),
+            )}
+            <td className="px-2.5 py-2" />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100">
+          {shown.length === 0 ? (
+            <tr>
+              <td
+                colSpan={8 + (showCustomer ? 1 : 0) + (showSupplier ? 1 : 0)}
+                className="px-3 py-6 text-center text-zinc-500"
+              >
+                {labels.empty}
+              </td>
+            </tr>
+          ) : (
+            shown.map((r) => {
+              const overdue =
+                !!r.due &&
+                r.due < today &&
+                (r.state === "active" || r.state === "blocked");
+              const selected = current?.key === r.key;
+              return (
+                <tr
+                  key={r.key}
+                  className={cx(
+                    rowClass,
+                    "cursor-pointer",
+                    selected && "bg-brand-50 ring-1 ring-inset ring-brand-200",
+                  )}
+                  data-orders-row={r.key}
+                  data-orders-state={r.state}
+                  aria-selected={selected}
+                  // Clicar na linha mostra os itens embaixo; o número e o
+                  // nome continuam abrindo a página.
+                  onClick={(event) => {
+                    if ((event.target as HTMLElement).closest("a,button"))
+                      return;
+                    setPicked(r.key);
+                  }}
+                >
+                  <td className="whitespace-nowrap px-2.5 py-2">
+                    <Link href={r.href} className={linkClass}>
+                      {r.number}
+                    </Link>
+                    {r.subtitle ? (
+                      <span className="block text-[11px] text-zinc-500">
+                        {r.subtitle}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="min-w-40 px-2.5 py-2 font-medium text-zinc-900">
+                    <Link href={r.href} className="hover:underline">
+                      {r.product}
+                    </Link>
+                    {r.items.length > 1 ? (
+                      <span className="ml-1.5 whitespace-nowrap text-xs font-normal text-zinc-500">
+                        {r.items.length === 2
+                          ? labels.moreItem
+                          : labels.moreItems.replace(
+                              "{n}",
+                              String(r.items.length - 1),
+                            )}
+                      </span>
+                    ) : null}
+                  </td>
+                  {showCustomer ? (
+                    <td className="min-w-32 px-2.5 py-2">
+                      {r.customer || "—"}
+                    </td>
+                  ) : null}
+                  {showSupplier ? (
+                    <td className="min-w-32 px-2.5 py-2">
+                      {r.supplier || "—"}
+                    </td>
+                  ) : null}
+                  <td className="whitespace-nowrap px-2.5 py-2">{r.phase}</td>
+                  <td className="whitespace-nowrap px-2.5 py-2">
+                    <Badge tone={STATE_TONE[r.state]}>
+                      {labels.states[r.state]}
+                    </Badge>
+                  </td>
+                  <td className="px-2.5 py-2">
+                    <JourneyBar
+                      progress={r.progress}
+                      label={r.stepLabel}
+                      step={r.step}
+                      cancelled={r.state === "cancelled"}
+                      stoppedAt={labels.journey.stoppedAt}
+                    />
+                  </td>
+                  <td
+                    className={cx(
+                      "whitespace-nowrap px-2.5 py-2 tabular-nums",
+                      overdue && "font-semibold text-red-700",
+                    )}
+                  >
+                    {r.dueLabel}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-zinc-600">
+                    {r.updatedLabel}
+                  </td>
+                  {/* Conversa do pedido/solicitação: sempre na última coluna. */}
+                  <td className="whitespace-nowrap px-2.5 py-2 text-right">
+                    {chatTargetFromHref(r.href) ? (
+                      <ChatOpenButton
+                        target={chatTargetFromHref(r.href)!}
+                        label={labels.chat}
+                      />
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </TableTools>
       <ItemsPanel
         row={current}
         labels={labels}

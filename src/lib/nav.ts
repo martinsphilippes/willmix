@@ -4,21 +4,42 @@ import { canOpen, menuScreensFor, type Screen } from "@/lib/auth/screens";
 import type { User } from "@/lib/db/schema";
 
 /*
- * Menu principal do portal. O que cada login vê vem de uma regra só
- * (src/lib/auth/screens.ts, docs/ACCESS.md): o menu mostra as telas que o
- * login abre, nos grupos de sempre. A Wellmix tem quatro grupos (Início,
- * Pedidos, Cadastros, Gestão): o admin vê tudo; o operador, o básico mais as
- * telas das suas funções. Cliente, fornecedores e parceiros veem dois grupos
- * (Início, Pedidos); o cliente vê a vitrine (Explorar) e "Meus pedidos". A
- * logo leva ao início de cada um. Grupo com uma tela só vira link direto;
- * grupo vazio some.
+ * Menu lateral do portal (decisão do dono, 12/11/2026). O que cada login vê
+ * vem de uma regra só (src/lib/auth/screens.ts, docs/ACCESS.md): o menu mostra
+ * as telas que o login abre. No alto, links soltos do dia a dia (Control
+ * Tower, Pendências, Mensagens, Notificações); depois os grupos, cada um na
+ * ordem do fluxo (Compras: Booking → Seleção → Convites → Solicitações ao
+ * fornecedor; Pedidos e entrega: Pedidos de compra → Revisão → Containers →
+ * Fretes → Tarifário → Estoque; Financeiro; Painéis; Cadastros). Configurações,
+ * Equipe e acessos e Auditoria ficam fixos embaixo (navFooterFor). Grupo com
+ * uma tela só vira link direto; grupo vazio some. Telas fora do fluxo de hoje
+ * ficam fora do menu de todos (MENU_HIDDEN), mas continuam abrindo pelo
+ * endereço.
  */
+
+/** Ícone do item no menu lateral (desenhado em src/components/app-nav.tsx). */
+export type NavIcon =
+  | "tower"
+  | "tasks"
+  | "messages"
+  | "bell"
+  | "cart"
+  | "ship"
+  | "money"
+  | "chart"
+  | "folder"
+  | "settings"
+  | "team"
+  | "shield"
+  | "home"
+  | "box";
 
 export interface NavLink {
   href: string;
   key: DictionaryKey;
-  /** Contador ao lado do item (ex.: mensagens não lidas), preenchido pelo layout. */
-  badge?: "messages";
+  /** Contador ao lado do item (mensagens ou notificações não lidas), preenchido pelo layout. */
+  badge?: "messages" | "notifications";
+  icon?: NavIcon;
 }
 
 /** Mensagens (chat com a Wellmix / com as empresas): todo papel que entra no portal. */
@@ -26,10 +47,18 @@ const MESSAGES: NavLink = {
   href: "/app/messages",
   key: "nav.messages",
   badge: "messages",
+  icon: "messages",
+};
+const NOTIFICATIONS: NavLink = {
+  href: "/app/notifications",
+  key: "nav.notifications",
+  badge: "notifications",
+  icon: "bell",
 };
 
 export interface NavGroup {
   key: DictionaryKey;
+  icon: NavIcon;
   items: NavLink[];
 }
 
@@ -39,17 +68,49 @@ export function isNavGroup(entry: NavEntry): entry is NavGroup {
   return "items" in entry;
 }
 
-/** Grupo do menu; com uma tela só, vira o próprio link; vazio, some. */
-function group(key: DictionaryKey, items: NavLink[]): NavEntry[] {
+/**
+ * Fora do menu de todos por enquanto (decisão do dono, 12/11/2026): telas de
+ * fora do fluxo de hoje (Booking → pedido de compra). A vitrine ainda não
+ * abriu, então as telas do cliente final esperam. A tela continua abrindo
+ * pelo endereço; para voltar ao menu, basta tirar daqui.
+ */
+export const MENU_HIDDEN: readonly string[] = [
+  "/app/requests",
+  "/app/explore",
+  "/app/sourcing",
+  "/app/marketing",
+  "/app/after-sales",
+  "/app/history",
+];
+
+/** Grupo do menu; com uma tela só, vira o próprio link (com o ícone do grupo); vazio, some. */
+function group(
+  key: DictionaryKey,
+  icon: NavIcon,
+  items: NavLink[],
+): NavEntry[] {
   if (items.length === 0) return [];
-  return items.length === 1 ? [items[0]] : [{ key, items }];
+  return items.length === 1
+    ? [{ ...items[0], icon: items[0].icon ?? icon }]
+    : [{ key, icon, items }];
 }
 
 type Entry = [Screen, NavLink];
 
-/** Só os links das telas que o login abre, na ordem dada. */
-function pick(has: Set<Screen>, entries: Entry[]): NavLink[] {
-  return entries.filter(([screen]) => has.has(screen)).map(([, link]) => link);
+/**
+ * Só os links das telas que o login abre, na ordem dada, sem os ocultos. A
+ * tela liberada a um perfil na Gestão de telas (granted) aparece mesmo oculta:
+ * foi o administrador que escolheu dar a tela.
+ */
+function pick(has: Set<Screen>, entries: Entry[], granted: Entry[] = []) {
+  const extra = new Set(granted.map(([, link]) => link));
+  return [...entries, ...granted]
+    .filter(
+      ([screen, link]) =>
+        has.has(screen) &&
+        (extra.has(link) || !MENU_HIDDEN.includes(link.href)),
+    )
+    .map(([, link]) => link);
 }
 
 /*
@@ -66,18 +127,18 @@ const GRANTED_FROM_CUSTOMER: Entry[] = [
 const GRANTED_FROM_PARTNERS: Entry[] = [
   // Booking adaptado ao login externo: os bookings da empresa de quem abre.
   ["booking", { href: "/app/booking", key: "nav.booking" }],
-  ["quotes", { href: "/app/supplier-requests", key: "nav.supplierRequests" }],
   [
     "quotes",
     { href: "/app/supplier-requests/invites", key: "nav.bookingInvites" },
   ],
+  ["quotes", { href: "/app/supplier-requests", key: "nav.supplierRequests" }],
   ["freight", { href: "/app/freight", key: "nav.freight" }],
   [
     "freightTariff",
     { href: "/app/freight/tariff", key: "nav.myFreightTariff" },
   ],
-  ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
   ["account", { href: "/app/account", key: "nav.account" }],
+  ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
 ];
 
 export function navFor(
@@ -86,35 +147,23 @@ export function navFor(
   const has = menuScreensFor(user);
   if (isWellmix(user)) {
     return [
+      ...pick(has, [
+        ["home", { href: "/app", key: "nav.controlTower", icon: "tower" }],
+        ["tasks", { href: "/app/tasks", key: "nav.tasks", icon: "tasks" }],
+        ["messages", MESSAGES],
+        ["notifications", NOTIFICATIONS],
+      ]),
+      // Do booking ao pedido gerado.
       ...group(
-        "nav.group.home",
-        pick(has, [
-          ["home", { href: "/app", key: "nav.controlTower" }],
-          ["tasks", { href: "/app/tasks", key: "nav.tasks" }],
-          // O que cada operador deve, pelo prazo, na carteira dele.
-          ["sla", { href: "/app/sla", key: "nav.sla" }],
-          [
-            "notifications",
-            { href: "/app/notifications", key: "nav.notifications" },
-          ],
-          ["messages", MESSAGES],
-        ]),
-      ),
-      // Do pedido do cliente à entrega: comercial e operação juntos.
-      ...group(
-        "nav.group.orders",
+        "nav.group.purchasing",
+        "cart",
         pick(has, [
           // Bookings: as planilhas de fornecedor (docs/BOOKING.md).
           ["booking", { href: "/app/booking", key: "nav.booking" }],
-          ["requests", { href: "/app/requests", key: "nav.requests" }],
           // Itens dos bookings comparados e a solicitação ao fornecedor do escolhido.
           [
             "booking",
             { href: "/app/booking/selection", key: "nav.bookingSelection" },
-          ],
-          [
-            "quotes",
-            { href: "/app/supplier-requests", key: "nav.supplierRequests" },
           ],
           [
             "quotes",
@@ -123,144 +172,180 @@ export function navFor(
               key: "nav.bookingInvites",
             },
           ],
-          ["orders", { href: "/app/orders", key: "nav.orders" }],
+          [
+            "quotes",
+            { href: "/app/supplier-requests", key: "nav.supplierRequests" },
+          ],
+          // Fora do menu (MENU_HIDDEN): Solicitações do cliente e Sourcing.
+          ["requests", { href: "/app/requests", key: "nav.requests" }],
+          ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],
+        ]),
+      ),
+      // Do pedido de compra ao estoque.
+      ...group(
+        "nav.group.delivery",
+        "ship",
+        pick(has, [
+          ["orders", { href: "/app/orders", key: "nav.purchaseOrders" }],
           ["reviews", { href: "/app/reviews", key: "nav.reviews" }],
+          ["containers", { href: "/app/containers", key: "nav.containers" }],
           ["freight", { href: "/app/freight", key: "nav.freight" }],
           [
             "freightTariff",
             { href: "/app/freight/tariff", key: "nav.freightTariff" },
           ],
-          ["containers", { href: "/app/containers", key: "nav.containers" }],
-          // Viabilidade de um produto: custo do container, preço mínimo e
-          // lucro contra a meta do tipo de negócio (só o administrador).
-          ["superplan", { href: "/app/superplan", key: "nav.superplan" }],
-          // Sourcing guardado, em espera (interruptor na tela).
-          ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],
-        ]),
-      ),
-      ...group(
-        "nav.group.registry",
-        pick(has, [
-          // Clientes com a conta de cada um (contratado, entregue, a receber).
-          ["parties", { href: "/app/customers", key: "nav.customers" }],
-          ["parties", { href: "/app/suppliers", key: "nav.suppliers" }],
-          // Só os demais parceiros: clientes e fornecedores estão logo acima.
-          ["parties", { href: "/app/parties", key: "nav.partiesOther" }],
-          ["products", { href: "/app/products", key: "nav.products" }],
-          // Estoque: no Brasil, em trânsito e em produção (compras para estoque).
+          // Estoque: em produção, em trânsito e no Brasil.
           ["products", { href: "/app/inventory", key: "nav.inventory" }],
-          ["lines", { href: "/app/lines", key: "nav.lines" }],
-          // A vitrine como o cliente vê (preço estimado, o que falta no cadastro).
-          ["explore", { href: "/app/explore", key: "nav.explorePreview" }],
+          // Fora do menu (MENU_HIDDEN): Pós-venda.
+          ["afterSales", { href: "/app/after-sales", key: "nav.afterSales" }],
         ]),
       ),
       ...group(
-        "nav.group.management",
+        "nav.group.finance",
+        "money",
         pick(has, [
-          // Painéis por área (compras, produção, embarque, recebimento...).
-          // Painel do dono: vendas, margem, a receber/pagar, estoque (só Finanças).
+          ["finance", { href: "/app/finance", key: "nav.finance" }],
+          ["payables", { href: "/app/payables", key: "nav.payables" }],
+          ["finance", { href: "/app/commissions", key: "nav.commissions" }],
+          ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
+        ]),
+      ),
+      ...group(
+        "nav.group.panels",
+        "chart",
+        pick(has, [
+          // Painel do dono e fluxo de caixa: números de Finanças.
           ["finance", { href: "/app/dashboards/owner", key: "nav.owner" }],
-          // Fluxo de caixa previsto: entradas e saídas por semana (só Finanças).
           [
             "finance",
             { href: "/app/dashboards/cashflow", key: "nav.cashflow" },
           ],
+          // Viabilidade de um produto (só o administrador).
+          ["superplan", { href: "/app/superplan", key: "nav.superplan" }],
           ["dashboards", { href: "/app/dashboards", key: "nav.dashboards" }],
-          ["finance", { href: "/app/finance", key: "nav.finance" }],
-          ["finance", { href: "/app/commissions", key: "nav.commissions" }],
-          ["payables", { href: "/app/payables", key: "nav.payables" }],
-          ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
-          ["afterSales", { href: "/app/after-sales", key: "nav.afterSales" }],
-          ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
+          // O que cada operador deve, pelo prazo, na carteira dele.
+          ["sla", { href: "/app/sla", key: "nav.sla" }],
+          // Fora do menu (MENU_HIDDEN): Histórico comercial e Marketing.
           ["history", { href: "/app/history", key: "nav.history" }],
-          ["settings", { href: "/app/settings", key: "nav.settings" }],
-          // Cargo, chefe, funções e carteira de clientes (Painel de SLA).
-          ["team", { href: "/app/team", key: "nav.team" }],
-          // Trilha de auditoria (quem fez o quê e quando).
-          ["audit", { href: "/app/audit", key: "nav.audit" }],
+          ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
+        ]),
+      ),
+      ...group(
+        "nav.group.registry",
+        "folder",
+        pick(has, [
+          // Clientes, fornecedores e demais parceiros numa tela só, com filtro
+          // por tipo (as listas de Clientes e Fornecedores seguem pelo endereço).
+          ["parties", { href: "/app/parties", key: "nav.parties" }],
+          ["products", { href: "/app/products", key: "nav.products" }],
+          ["lines", { href: "/app/lines", key: "nav.lines" }],
+          // Fora do menu (MENU_HIDDEN): a vitrine como o cliente vê.
+          ["explore", { href: "/app/explore", key: "nav.explorePreview" }],
         ]),
       ),
     ];
   }
   if (user.role === "customer")
-    // Início do cliente é a vitrine (Explorar); o resto (orçamentos, pedidos,
-    // pendências) fica num grupo só, "Meus pedidos".
+    // A vitrine ainda não abriu (Explorar, Orçamentos, Histórico e Marketing
+    // fora do menu): o cliente fica com os pedidos e o dia a dia.
     return [
-      ...pick(has, [["explore", { href: "/app/explore", key: "nav.explore" }]]),
+      ...pick(has, [
+        ["tasks", { href: "/app/tasks", key: "nav.tasks", icon: "tasks" }],
+        ["messages", MESSAGES],
+        ["notifications", NOTIFICATIONS],
+      ]),
       ...group(
         "nav.group.myOrders",
-        pick(has, [
-          ["requests", { href: "/app/requests", key: "nav.myQuotes" }],
-          ["orders", { href: "/app/orders", key: "nav.orders" }],
-          ["tasks", { href: "/app/tasks", key: "nav.tasks" }],
+        "box",
+        pick(
+          has,
           [
-            "notifications",
-            { href: "/app/notifications", key: "nav.notifications" },
+            ["explore", { href: "/app/explore", key: "nav.explore" }],
+            ["requests", { href: "/app/requests", key: "nav.myQuotes" }],
+            ["orders", { href: "/app/orders", key: "nav.orders" }],
+            ["history", { href: "/app/history", key: "nav.history" }],
+            ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
           ],
-          ["messages", MESSAGES],
-          ["history", { href: "/app/history", key: "nav.history" }],
-          ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
           // Telas de outros perfis liberadas na Gestão de telas.
-          ...GRANTED_FROM_PARTNERS,
-        ]),
+          GRANTED_FROM_PARTNERS,
+        ),
       ),
     ];
-  // Fornecedores e parceiros: início nas Pendências; no grupo Pedidos, a tela
-  // própria do papel (cotações, fretes, embalagens, multas, conta corrente).
+  // Fornecedores e parceiros: início nas Pendências; num grupo, a tela própria
+  // do papel (bookings, fretes, multas, conta corrente).
+  const own = pick(
+    has,
+    [
+      // Trading (e quem mais recebe a tela): os bookings da empresa dele.
+      ["booking", { href: "/app/booking", key: "nav.booking" }],
+      // Convite para subir um booking concorrente de um item.
+      [
+        "quotes",
+        { href: "/app/supplier-requests/invites", key: "nav.bookingInvites" },
+      ],
+      // O que a Wellmix pergunta sobre um item do booking dele.
+      [
+        "quotes",
+        { href: "/app/supplier-requests", key: "nav.supplierRequests" },
+      ],
+      ["orders", { href: "/app/orders", key: "nav.orders" }],
+      ["freight", { href: "/app/freight", key: "nav.freight" }],
+      // A companhia envia a própria tabela de fretes (só vê as dela).
+      [
+        "freightTariff",
+        { href: "/app/freight/tariff", key: "nav.myFreightTariff" },
+      ],
+      // Despachante: NCM dos itens de booking sem produto parecido.
+      ...(user.role === "broker"
+        ? ([
+            ["tasks", { href: "/app/ncm-items", key: "nav.ncmItems" }],
+          ] as Entry[])
+        : []),
+      ["account", { href: "/app/account", key: "nav.account" }],
+      ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
+    ],
+    // Telas do cliente liberadas na Gestão de telas.
+    GRANTED_FROM_CUSTOMER,
+  );
+  const bookings = own.some(
+    (l) =>
+      l.href === "/app/booking" || l.href.startsWith("/app/supplier-requests"),
+  );
   return [
+    ...pick(has, [
+      // O início são as Pendências; sem elas no perfil, é só "Início".
+      [
+        "home",
+        canOpen(user, "tasks")
+          ? { href: "/app", key: "nav.tasks", icon: "tasks" }
+          : { href: "/app", key: "nav.home", icon: "home" },
+      ],
+      ["messages", MESSAGES],
+      ["notifications", NOTIFICATIONS],
+    ]),
     ...group(
-      "nav.group.home",
-      pick(has, [
-        // O início são as Pendências; sem elas no perfil, é só "Início".
-        [
-          "home",
-          {
-            href: "/app",
-            key: canOpen(user, "tasks") ? "nav.tasks" : "nav.home",
-          },
-        ],
-        [
-          "notifications",
-          { href: "/app/notifications", key: "nav.notifications" },
-        ],
-        ["messages", MESSAGES],
-      ]),
-    ),
-    ...group(
-      "nav.group.orders",
-      pick(has, [
-        // Trading (e quem mais recebe a tela): os bookings da empresa dele.
-        ["booking", { href: "/app/booking", key: "nav.booking" }],
-        // O que a Wellmix pergunta sobre um item do booking dele.
-        [
-          "quotes",
-          { href: "/app/supplier-requests", key: "nav.supplierRequests" },
-        ],
-        // Convite para subir um booking concorrente de um item.
-        [
-          "quotes",
-          { href: "/app/supplier-requests/invites", key: "nav.bookingInvites" },
-        ],
-        ["freight", { href: "/app/freight", key: "nav.freight" }],
-        // A companhia envia a própria tabela de fretes (só vê as dela).
-        [
-          "freightTariff",
-          { href: "/app/freight/tariff", key: "nav.myFreightTariff" },
-        ],
-        ["orders", { href: "/app/orders", key: "nav.orders" }],
-        // Despachante: NCM dos itens de booking sem produto parecido.
-        ...(user.role === "broker"
-          ? ([
-              ["tasks", { href: "/app/ncm-items", key: "nav.ncmItems" }],
-            ] as Entry[])
-          : []),
-        ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
-        ["account", { href: "/app/account", key: "nav.account" }],
-        // Telas do cliente liberadas na Gestão de telas.
-        ...GRANTED_FROM_CUSTOMER,
-      ]),
+      bookings ? "nav.group.myBookings" : "nav.group.orders",
+      bookings ? "cart" : "box",
+      own,
     ),
   ];
+}
+
+/** Itens fixos embaixo do menu lateral: Configurações, Equipe e acessos, Auditoria. */
+export function navFooterFor(
+  user: Pick<User, "role"> & Partial<Pick<User, "functions">>,
+): NavLink[] {
+  if (!isWellmix(user)) return [];
+  return pick(menuScreensFor(user), [
+    [
+      "settings",
+      { href: "/app/settings", key: "nav.settings", icon: "settings" },
+    ],
+    // Cargo, chefe, funções e carteira de clientes (Painel de SLA).
+    ["team", { href: "/app/team", key: "nav.teamAccess", icon: "team" }],
+    // Trilha de auditoria (quem fez o quê e quando).
+    ["audit", { href: "/app/audit", key: "nav.audit", icon: "shield" }],
+  ]);
 }
 
 /** Todos os links, na ordem, sem os grupos (celular e testes). */
@@ -270,6 +355,7 @@ export function flattenNav(entries: NavEntry[]): NavLink[] {
 
 /** Subpáginas que têm link próprio no menu (o link "pai" não acende nelas). */
 const OWN_LINK_SUBPAGES = [
+  "/app/booking/selection",
   "/app/freight/tariff",
   "/app/supplier-requests/invites",
 ];
