@@ -62,6 +62,7 @@ import {
 } from "../../../actions/booking-lots";
 import { reclassifyBookingNcmAction } from "../../../actions/booking-ncm";
 import type { NcmSuggestion } from "@/lib/ncm-match";
+import { TableTools } from "@/components/table-tools";
 
 /*
  * Detalhamento de um booking (docs/BOOKING.md, "Booking por planilha"):
@@ -159,8 +160,7 @@ export default async function BookingLotPage({
   if (detail === "schema")
     return <Alert tone="warning">{t("bookingLots.schemaMissing")}</Alert>;
   if (!detail) notFound();
-  const { lot, items, supplier, suppliers, owner, partner, partners } =
-    detail;
+  const { lot, items, supplier, suppliers, owner, partner, partners } = detail;
   // Fornecedor sem login: a solicitação aberta a partir deste booking fica parada.
   const noLogin =
     supplier && (await partiesWithoutLogin([supplier.id])).has(supplier.id)
@@ -746,186 +746,184 @@ export default async function BookingLotPage({
                 }) + (ncmEditable ? ` ${t("bookingNcm.closedHint")}` : "")}
           </p>
           {items.length ? (
-            <div className="relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border">
-              <table className="w-full text-left text-sm" data-booking-items>
-                <thead>
-                  <tr>
-                    {["position", "photo"].map((k) => (
-                      <th
-                        key={k}
-                        className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
-                      >
-                        {colLabel(k)}
-                      </th>
-                    ))}
-                    <th className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-500">
-                      {t("bookingNcm.col")}
-                      <span className="text-brand-700"> *</span>
+            <TableTools
+              className=""
+              tableClassName="min-w-0"
+              data-booking-items=""
+            >
+              <thead>
+                <tr>
+                  {["position", "photo"].map((k) => (
+                    <th
+                      key={k}
+                      className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
+                    >
+                      {colLabel(k)}
                     </th>
-                    {COLUMNS.map((c) => (
-                      <th
-                        key={c.field}
-                        className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-500"
-                      >
-                        {colLabel(c.field)}
-                        {isRequiredItemField(c.field) ? (
-                          <span className="text-brand-700"> *</span>
-                        ) : null}
-                      </th>
-                    ))}
-                    {["check", "analysis"].map((k) => (
-                      <th
-                        key={k}
-                        className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
-                      >
-                        {colLabel(k)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => {
-                    const missing = missingItemFields(item);
-                    return (
-                      <tr
-                        key={item.id}
-                        className="transition hover:bg-brand-50/40"
-                        data-booking-item={item.id}
-                      >
-                        <td className="border-b border-zinc-100 px-2 py-2 align-top text-xs text-zinc-500">
-                          {item.position + 1}
-                          {item.sourceRows ? (
-                            <span className="block text-[10px]">
-                              L{item.sourceRows}
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className="border-b border-zinc-100 px-2 py-2 align-top">
-                          <span className="flex gap-1">
-                            {[item.photoDocumentId, item.cardDocumentId]
-                              .filter((d): d is string => !!d)
-                              .map((doc) => (
-                                <a
-                                  key={doc}
-                                  href={`/api/files/${doc}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title={
-                                    doc === item.cardDocumentId
-                                      ? t("bookingLots.item.card")
-                                      : t("bookingLots.item.col.photo")
-                                  }
-                                >
-                                  {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
-                                  <img
-                                    src={`/api/files/${doc}`}
-                                    alt=""
-                                    className="h-10 w-10 rounded border border-zinc-200 object-cover"
-                                    loading="lazy"
-                                  />
-                                </a>
-                              ))}
-                            {!item.photoDocumentId && !item.cardDocumentId
-                              ? muted
-                              : null}
+                  ))}
+                  <th className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-500">
+                    {t("bookingNcm.col")}
+                    <span className="text-brand-700"> *</span>
+                  </th>
+                  {COLUMNS.map((c) => (
+                    <th
+                      key={c.field}
+                      className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-500"
+                    >
+                      {colLabel(c.field)}
+                      {isRequiredItemField(c.field) ? (
+                        <span className="text-brand-700"> *</span>
+                      ) : null}
+                    </th>
+                  ))}
+                  {["check", "analysis"].map((k) => (
+                    <th
+                      key={k}
+                      className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
+                    >
+                      {colLabel(k)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => {
+                  const missing = missingItemFields(item);
+                  return (
+                    <tr
+                      key={item.id}
+                      className="transition hover:bg-brand-50/40"
+                      data-booking-item={item.id}
+                    >
+                      <td className="border-b border-zinc-100 px-2 py-2 align-top text-xs text-zinc-500">
+                        {item.position + 1}
+                        {item.sourceRows ? (
+                          <span className="block text-[10px]">
+                            L{item.sourceRows}
                           </span>
-                        </td>
-                        <td
-                          className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
-                          data-booking-item-ncm-cell={
-                            item.ncmSource ??
-                            (item.ncmRequestedAt ? "broker_pending" : "none")
-                          }
-                        >
-                          {ncmEditable ? (
-                            <BookingItemNcmInput
-                              lotId={lot.id}
-                              itemId={item.id}
-                              saved={item.ncm ?? ""}
-                              labels={cellLabels(
-                                t("bookingNcm.edit", {
-                                  n:
-                                    item.itemNumber ??
-                                    String(item.position + 1),
-                                }),
-                              )}
-                              suggestions={
-                                item.ncm
-                                  ? []
-                                  : (ncmSuggestions.get(item.id) ?? []).map(
-                                      (sg: NcmSuggestion) => ({
-                                        ncm: sg.ncm,
-                                        title: t("bookingNcm.suggestion", {
-                                          pct: Math.round(sg.score * 100),
-                                          n: sg.products,
-                                          example: sg.example,
-                                        }),
-                                      }),
-                                    )
-                              }
-                              suggestLabel={t("bookingNcm.suggestions")}
-                            />
-                          ) : (
-                            <span className="tabular-nums">
-                              {item.ncm ?? "—"}
-                            </span>
-                          )}
-                          <span className="mt-0.5 block">
-                            {item.ncm && item.ncmSource ? (
-                              <Badge
-                                tone={
-                                  item.ncmSource === "match"
-                                    ? "info"
-                                    : "neutral"
+                        ) : null}
+                      </td>
+                      <td className="border-b border-zinc-100 px-2 py-2 align-top">
+                        <span className="flex gap-1">
+                          {[item.photoDocumentId, item.cardDocumentId]
+                            .filter((d): d is string => !!d)
+                            .map((doc) => (
+                              <a
+                                key={doc}
+                                href={`/api/files/${doc}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title={
+                                  doc === item.cardDocumentId
+                                    ? t("bookingLots.item.card")
+                                    : t("bookingLots.item.col.photo")
                                 }
                               >
-                                {t(
-                                  `bookingNcm.source.${item.ncmSource}` as DictionaryKey,
-                                  {
-                                    pct: Math.round((item.ncmScore ?? 0) * 100),
-                                  },
-                                )}
-                              </Badge>
-                            ) : !item.ncm && item.ncmRequestedAt ? (
-                              <Badge tone="warning">
-                                {t("bookingNcm.pending")}
-                              </Badge>
-                            ) : null}
+                                {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                                <img
+                                  src={`/api/files/${doc}`}
+                                  alt=""
+                                  className="h-10 w-10 rounded border border-zinc-200 object-cover"
+                                  loading="lazy"
+                                />
+                              </a>
+                            ))}
+                          {!item.photoDocumentId && !item.cardDocumentId
+                            ? muted
+                            : null}
+                        </span>
+                      </td>
+                      <td
+                        className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
+                        data-booking-item-ncm-cell={
+                          item.ncmSource ??
+                          (item.ncmRequestedAt ? "broker_pending" : "none")
+                        }
+                      >
+                        {ncmEditable ? (
+                          <BookingItemNcmInput
+                            lotId={lot.id}
+                            itemId={item.id}
+                            saved={item.ncm ?? ""}
+                            labels={cellLabels(
+                              t("bookingNcm.edit", {
+                                n: item.itemNumber ?? String(item.position + 1),
+                              }),
+                            )}
+                            suggestions={
+                              item.ncm
+                                ? []
+                                : (ncmSuggestions.get(item.id) ?? []).map(
+                                    (sg: NcmSuggestion) => ({
+                                      ncm: sg.ncm,
+                                      title: t("bookingNcm.suggestion", {
+                                        pct: Math.round(sg.score * 100),
+                                        n: sg.products,
+                                        example: sg.example,
+                                      }),
+                                    }),
+                                  )
+                            }
+                            suggestLabel={t("bookingNcm.suggestions")}
+                          />
+                        ) : (
+                          <span className="tabular-nums">
+                            {item.ncm ?? "—"}
                           </span>
-                        </td>
-                        {COLUMNS.map((c) => (
-                          <td
-                            key={c.field}
-                            className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
-                          >
-                            {itemCell(item, c)}
-                          </td>
-                        ))}
-                        <td className="border-b border-zinc-100 px-2 py-2 align-top text-xs">
-                          {missing.length ? (
-                            <span
-                              className="block max-w-44 whitespace-normal text-amber-800"
-                              data-booking-item-missing={missing.join(",")}
+                        )}
+                        <span className="mt-0.5 block">
+                          {item.ncm && item.ncmSource ? (
+                            <Badge
+                              tone={
+                                item.ncmSource === "match" ? "info" : "neutral"
+                              }
                             >
-                              {t("bookingLots.item.missing", {
-                                list: missing.map(colLabel).join(", "),
-                              })}
-                            </span>
-                          ) : (
-                            <Badge tone="success">
-                              {t("bookingLots.item.complete")}
+                              {t(
+                                `bookingNcm.source.${item.ncmSource}` as DictionaryKey,
+                                {
+                                  pct: Math.round((item.ncmScore ?? 0) * 100),
+                                },
+                              )}
                             </Badge>
-                          )}
+                          ) : !item.ncm && item.ncmRequestedAt ? (
+                            <Badge tone="warning">
+                              {t("bookingNcm.pending")}
+                            </Badge>
+                          ) : null}
+                        </span>
+                      </td>
+                      {COLUMNS.map((c) => (
+                        <td
+                          key={c.field}
+                          className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
+                        >
+                          {itemCell(item, c)}
                         </td>
-                        <td className="border-b border-zinc-100 px-2 py-2 align-top">
-                          {analysisCell(item)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                      ))}
+                      <td className="border-b border-zinc-100 px-2 py-2 align-top text-xs">
+                        {missing.length ? (
+                          <span
+                            className="block max-w-44 whitespace-normal text-amber-800"
+                            data-booking-item-missing={missing.join(",")}
+                          >
+                            {t("bookingLots.item.missing", {
+                              list: missing.map(colLabel).join(", "),
+                            })}
+                          </span>
+                        ) : (
+                          <Badge tone="success">
+                            {t("bookingLots.item.complete")}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="border-b border-zinc-100 px-2 py-2 align-top">
+                        {analysisCell(item)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </TableTools>
           ) : (
             <Empty>{t("bookingLots.empty")}</Empty>
           )}

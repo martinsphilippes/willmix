@@ -216,3 +216,39 @@ html[data-wm-intro="done"] body {
 [data-fold-bare] > section > header:first-child {
   display: none;
 }
+
+/*
+ * Cabeçalho ordenável das tabelas (src/components/table-tools.tsx): seta
+ * discreta ao lado do título; cheia na coluna que está ordenando.
+ */
+th[data-table-sort] {
+  cursor: pointer;
+  user-select: none;
+}
+th[data-table-sort]:hover {
+  color: var(--color-zinc-800);
+}
+th[data-table-sort]::after {
+  content: "↕";
+  margin-left: 0.25rem;
+  color: var(--color-zinc-300);
+  font-weight: 400;
+}
+th[data-table-sort="asc"]::after {
+  content: "↑";
+  color: var(--color-brand-600);
+}
+th[data-table-sort="desc"]::after {
+  content: "↓";
+  color: var(--color-brand-600);
+}
+th[data-table-sort]:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: -2px;
+}
+@media print {
+  [data-table-search],
+  [data-table-pager] {
+    display: none;
+  }
+}

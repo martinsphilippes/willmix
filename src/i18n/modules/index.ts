@@ -25,6 +25,7 @@ import * as towerBoard from "./tower-board";
 import * as productPhotos from "./product-photos";
 import * as sheetGenerate from "./sheet-generate";
 import * as notificationsDelete from "./notifications-delete";
+import * as tableTools from "./table-tools";
 import * as sheetSafety from "./sheet-safety";
 import * as productSpec from "./product-spec";
 import * as importing from "./import";
@@ -227,6 +228,7 @@ export const modulesPt = {
   ...productPhotos.pt,
   ...sheetGenerate.pt,
   ...notificationsDelete.pt,
+  ...tableTools.pt,
   ...sheetSafety.pt,
   ...productSpec.pt,
   ...freightTariff.pt,
@@ -350,6 +352,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...productPhotos.en,
   ...sheetGenerate.en,
   ...notificationsDelete.en,
+  ...tableTools.en,
   ...sheetSafety.en,
   ...productSpec.en,
   ...freightTariff.en,
@@ -473,6 +476,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...productPhotos.zh,
   ...sheetGenerate.zh,
   ...notificationsDelete.zh,
+  ...tableTools.zh,
   ...sheetSafety.zh,
   ...productSpec.zh,
   ...freightTariff.zh,
