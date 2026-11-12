@@ -17,6 +17,11 @@ export const pt = {
   "superplan.ncm": "NCM {ncm}",
   "superplan.ncm.missing":
     "Produto sem NCM na tabela fiscal: confira II e IPI à mão.",
+  "superplan.ncm.none": "Produto sem NCM no cadastro: confira II e IPI à mão.",
+  "superplan.ncm.noTable":
+    "A tabela fiscal (TEC/TIPI) não está carregada em Configurações: confira II e IPI à mão.",
+  "superplan.ncm.notInTable":
+    "O NCM {ncm} não está na tabela fiscal: confira II e IPI à mão.",
   "superplan.section.purchase": "Compra",
   "superplan.section.container": "Container e fretes",
   "superplan.section.fx": "Câmbio",
@@ -245,6 +250,12 @@ export const en: Record<keyof typeof pt, string> = {
   "superplan.ncm": "NCM {ncm}",
   "superplan.ncm.missing":
     "Product without an NCM in the tax table: check II and IPI by hand.",
+  "superplan.ncm.none":
+    "Product without an NCM in the catalog: check II and IPI by hand.",
+  "superplan.ncm.noTable":
+    "The tax table (TEC/TIPI) is not loaded in Settings: check II and IPI by hand.",
+  "superplan.ncm.notInTable":
+    "NCM {ncm} is not in the tax table: check II and IPI by hand.",
   "superplan.section.purchase": "Purchase",
   "superplan.section.container": "Container and freight",
   "superplan.section.fx": "Exchange rate",
@@ -473,6 +484,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "superplan.product.loaded": "已载入 {name} 的数据。",
   "superplan.ncm": "NCM {ncm}",
   "superplan.ncm.missing": "该产品的 NCM 不在税率表中：请手动核对 II 和 IPI。",
+  "superplan.ncm.none": "该产品在产品库中没有 NCM：请手动核对 II 和 IPI。",
+  "superplan.ncm.noTable":
+    "税率表（TEC/TIPI）尚未在设置中加载：请手动核对 II 和 IPI。",
+  "superplan.ncm.notInTable": "NCM {ncm} 不在税率表中：请手动核对 II 和 IPI。",
   "superplan.section.purchase": "采购",
   "superplan.section.container": "货柜和运费",
   "superplan.section.fx": "汇率",
