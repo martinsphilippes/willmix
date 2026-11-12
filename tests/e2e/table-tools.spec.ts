@@ -39,5 +39,8 @@ test("tabela padrão: ordena, busca e pagina", async ({ page }) => {
   // Paginação: 15, 25 ou 50 linhas.
   const size = tools.locator("[data-table-page-size]");
   await expect(size.locator("option")).toHaveText(["15", "25", "50"]);
-  await expect(tools.locator("[data-table-range]")).toContainText(`1–${total}`);
+  // "1–15 de 17": a faixa vai até o fim da primeira página, não do total.
+  await expect(tools.locator("[data-table-range]")).toContainText(
+    `1–${firstPage} de ${total}`,
+  );
 });
