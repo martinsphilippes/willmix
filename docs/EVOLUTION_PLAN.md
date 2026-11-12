@@ -911,3 +911,11 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - O que mudou para quem já usava: o booking que o parceiro carrega não vai mais direto para a Wellmix; fica com ele até o envio (o Booking nº 3, já enviado, não muda). O aviso à Wellmix saiu do carregamento e foi para o envio.
 - Aditivo: situação nova no enum (`BOOKING_LOT_STATUSES`), sem coluna nova; a coluna é texto no Supabase (nada a publicar) e o `appwrite.config.json` foi gerado de novo. Nenhuma tela, rota ou campo saiu.
 - **Fica para o dono decidir**: a Wellmix devolver o booking para o parceiro corrigir; fotos dos itens e modelo de planilha para o parceiro; avisos ao parceiro; lembrete do booking carregado e não enviado; a Wellmix enxergar os bookings ainda em preenchimento.
+
+## Booking: a coluna Capacidade mostra e aceita o tamanho (letras)
+
+- **Achado do dono** (12/11/2026): ao carregar a planilha de porta-retratos, a coluna "Capacidade (ml)" vinha vazia, com a planilha preenchida.
+- **Causa**: nesses produtos a coluna traz um tamanho ("8X10", "A4"), não mililitros. O leitor guardava o texto em `sizeText`, mas nenhuma tela do booking o mostrava e o campo só aceitava número.
+- A coluna passou a se chamar "Capacidade (ml ou tamanho)": mostra os mililitros ou o tamanho e aceita os dois ao digitar. Vale para o parceiro e para a Wellmix (tela do booking, Seleção de itens e solicitação ao fornecedor). Para fechar o booking, o tamanho vale como capacidade. Detalhes em docs/BOOKING.md ("Capacidade: mililitros ou tamanho").
+- Os bookings já carregados passam a mostrar o tamanho sem novo envio. Sem mudança no banco; a cópia do item da solicitação ganhou o campo opcional `sizeText`.
+- **Em aberto**: a ficha de compra e a ficha do produto continuam só com mililitros.

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import {
+  bookingCapacityShown,
   bookingLotEditable,
   bookingLotMoves,
   bookingLotPending,
@@ -291,7 +292,10 @@ export default async function BookingLotPage({
 
   const muted = <span className="text-zinc-400">—</span>;
   const itemCell = (item: BookingItem, col: (typeof COLUMNS)[number]) => {
-    const value = item[col.field];
+    // Capacidade: os mililitros ou, sem volume, o tamanho que veio na planilha
+    // ("8X10", "A4"); por isso a coluna aceita letras.
+    const capacity = col.field === "capacityMl";
+    const value = capacity ? bookingCapacityShown(item) : item[col.field];
     const required = isRequiredItemField(col.field);
     const labels = cellLabels(
       t("bookingLots.item.edit", {
@@ -330,7 +334,7 @@ export default async function BookingLotPage({
                 ? value
                 : ""
           }
-          numeric={col.kind === "number"}
+          numeric={col.kind === "number" && !capacity}
           width={col.width}
           required={required}
           labels={labels}

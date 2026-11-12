@@ -78,6 +78,17 @@ Onde está: `src/lib/services/booking-partner.ts` (`launchPartnerBooking`, `setP
 
 Fica para o dono decidir: a Wellmix devolver o booking para o parceiro corrigir; o parceiro ver as fotos dos itens e baixar um modelo de planilha; ser avisado quando um booking passa a ser dele ou é conferido; lembrete para o booking carregado e não enviado; a Wellmix enxergar (sem mexer) os bookings ainda em preenchimento.
 
+### Capacidade: mililitros ou tamanho (dono, 12/11/2026)
+
+Achado do dono: a planilha de porta-retratos trazia a coluna de capacidade preenchida e a tela mostrava o campo vazio.
+
+- **Causa**: a coluna "capacity" da planilha traz mililitros quando o produto tem volume ("350", "350 ml", "1,5 L") e um **tamanho** quando não tem ("8X10", "A4"). O leitor já separava: o número em `booking_items.capacityMl`, o texto em `booking_items.sizeText`. Só que nenhuma tela do booking mostrava o `sizeText`, e a coluna só aceitava número. O dado não se perdia; ficava escondido.
+- **Agora** a coluna Capacidade ("ml ou tamanho") mostra os mililitros ou, sem eles, o tamanho, e **aceita letras**: número (com ou sem "ml"/"L") grava em `capacityMl`; qualquer outro texto grava em `sizeText`; vazio apaga. Vale na tela do parceiro (em preenchimento e depois de enviado), na tela do booking da Wellmix, na Seleção de itens e na solicitação ao fornecedor (a cópia do item passou a levar o `sizeText`).
+- **Para fechar o booking, o tamanho vale como capacidade** (`missingItemFields`): um porta-retrato não precisa de mililitros inventados.
+- Os bookings já carregados não precisam ser enviados de novo: o tamanho já estava gravado e passa a aparecer.
+- Regras em `src/lib/booking-lots.ts` (`parseCapacityMl`, `readBookingCapacity`, `bookingCapacityShown`); testes em `tests/unit/booking-capacity.test.ts` e `tests/unit/booking-partner.test.ts`. Sem mudança no banco.
+- Em aberto: a ficha de compra do pedido e a ficha do produto continuam com a capacidade só em mililitros; o tamanho ainda não segue para elas.
+
 ### NCM do item (decisão do dono, 11/11/2026)
 
 O NCM é **obrigatório para fechar o booking** e entra na análise do Superplan (II e IPI da tabela fiscal).

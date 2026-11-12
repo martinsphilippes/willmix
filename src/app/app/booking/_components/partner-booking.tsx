@@ -10,6 +10,7 @@ import type { Translate } from "@/i18n";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import {
+  bookingCapacityShown,
   bookingItemFieldKind,
   bookingLotPreparing,
   isRequiredItemField,
@@ -119,6 +120,19 @@ const EDIT_COLUMNS: Array<{ field: BookingItemField; width: string }> = [
   { field: "purchaseQty", width: "w-24" },
   { field: "plannedQty", width: "w-24" },
 ];
+
+/**
+ * O que o campo mostra. A capacidade são os mililitros ou, quando a planilha
+ * traz um tamanho no lugar ("8X10", "A4"), o texto dele.
+ */
+const shown = (
+  item: PartnerBookingItem,
+  field: BookingItemField,
+): string | number | null => {
+  const value =
+    field === "capacityMl" ? bookingCapacityShown(item) : item[field];
+  return value === null || value === undefined || value === "" ? null : value;
+};
 
 const num = (t: Translate, n: number | null | undefined, digits = 0) =>
   n === null || n === undefined
@@ -459,8 +473,7 @@ function PreparingItems({
       total +
       EDIT_COLUMNS.filter(
         ({ field }) =>
-          isRequiredItemField(field) &&
-          (item[field] === null || item[field] === ""),
+          isRequiredItemField(field) && shown(item, field) === null,
       ).length,
     0,
   );
@@ -473,9 +486,10 @@ function PreparingItems({
     field: BookingItemField,
     width: string,
   ) => {
-    const value = item[field];
+    const value = shown(item, field);
     const required = isRequiredItemField(field);
-    const kind = bookingItemFieldKind(field);
+    // Capacidade: aceita letras (o tamanho, quando o produto não tem volume).
+    const kind = field === "capacityMl" ? "text" : bookingItemFieldKind(field);
     const labels = {
       field: t("bookingLots.item.edit", {
         field: colLabel(field),
@@ -672,7 +686,9 @@ function SentItems({
                     : "—"}
                 </Td>
                 <Td className="text-right tabular-nums">
-                  {num(t, i.capacityMl)}
+                  {typeof bookingCapacityShown(i) === "string"
+                    ? bookingCapacityShown(i)
+                    : num(t, i.capacityMl)}
                 </Td>
                 <Td className="min-w-40">
                   {[i.material, i.packageType, i.colorAssortment]

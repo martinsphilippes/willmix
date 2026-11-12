@@ -377,6 +377,16 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   await expect(
     editing.locator('[data-booking-row-note="saved"]').first(),
   ).toBeVisible();
+  // A capacidade veio da planilha em ml e aceita letras: o tamanho, quando o
+  // produto não tem volume (porta-retrato "8X10").
+  await expect(field("capacityMl")).toHaveValue("350");
+  await field("capacityMl").fill("8X10");
+  await field("capacityMl").press("Enter");
+  await expect(
+    field("capacityMl")
+      .locator("xpath=..")
+      .locator('[data-booking-row-note="saved"]'),
+  ).toBeVisible();
   // Na lista dele aparece em primeiro, como não enviado.
   await page.goto("/app/booking");
   await expect(page.locator("[data-partner-booking-unsent]")).toBeVisible();
@@ -403,6 +413,15 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
       .locator("[data-partner-booking-edit]")
       .locator('[data-partner-item-field$=":price"]'),
   ).toHaveValue("1,4");
+  // O tamanho digitado na capacidade ficou gravado e não conta como em branco.
+  await expect(
+    page
+      .locator("[data-partner-booking-edit]")
+      .locator('[data-partner-item-field$=":capacityMl"]'),
+  ).toHaveValue("8X10");
+  await expect(
+    page.locator('[data-partner-item-blank="capacityMl"]'),
+  ).toHaveCount(0);
   await page.locator('[data-partner-booking-send="bottom"]').click();
   await page.waitForURL(/[?&]sent=1/);
   await expect(page.locator("[data-partner-booking-sent]")).toBeVisible();
@@ -414,6 +433,9 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   );
   await expect(page.locator("[data-partner-booking-items]")).toContainText(
     "1,4 USD FOB",
+  );
+  await expect(page.locator("[data-partner-booking-items]")).toContainText(
+    "8X10",
   );
   // Na lista dele: o que a Wellmix pôs em nome dela e o que ela enviou.
   await page.goto("/app/booking");

@@ -166,11 +166,73 @@ export function readBookingItemValue(
 const filled = (v: unknown) =>
   v !== null && v !== undefined && !(typeof v === "string" && !v.trim());
 
-/** Campos obrigatórios que faltam no item. */
+/* ------------------------------------------------------------------------ */
+/* Capacidade: mililitros ou, quando o produto não tem volume, o tamanho      */
+/* ------------------------------------------------------------------------ */
+
+/*
+ * A coluna "capacity" da planilha traz mililitros quando o produto tem
+ * volume ("350", "350 ml", "1,5 L") e um tamanho quando não tem ("8X10",
+ * "A4", como nos porta-retratos). O número fica em `capacityMl`; o texto,
+ * em `sizeText` (o leitor da planilha já separa assim). A coluna da tela
+ * mostra o que houver e aceita os dois (dono, 12/11/2026: a capacidade com
+ * letras vinha da planilha e sumia da tela).
+ */
+type ItemCapacity = Pick<BookingItem, "capacityMl" | "sizeText">;
+
+const VOLUME = /^([\d.,]+)\s*(ml|l)?$/i;
+
+/** "350", "350 ml" → 350; "1,5 L" → 1500; texto ("8X10", "A4") → null. */
+export function parseCapacityMl(raw: string): number | null {
+  const m = VOLUME.exec(raw.replace(/\s+/g, " ").trim());
+  if (!m) return null;
+  const n = parseNumberInput(m[1]);
+  if (n === null || !Number.isFinite(n)) return null;
+  return (m[2] ?? "").toLowerCase() === "l" ? Math.round(n * 1000) : n;
+}
+
+/** O que a coluna Capacidade mostra: os mililitros ou o tamanho em texto. */
+export const bookingCapacityShown = (
+  item: Partial<ItemCapacity>,
+): number | string | null =>
+  typeof item.capacityMl === "number"
+    ? item.capacityMl
+    : filled(item.sizeText)
+      ? (item.sizeText as string)
+      : null;
+
+/**
+ * Valor digitado na coluna Capacidade → o que gravar. Número (com ou sem
+ * "ml"/"L") vira mililitros; qualquer outro texto fica como tamanho; vazio
+ * apaga. O tamanho só é trocado quando era ele que a coluna mostrava (um
+ * tamanho que veio da coluna de medidas e estava guardado não se perde ao
+ * digitar os mililitros).
+ */
+export function readBookingCapacity(
+  raw: string,
+  current: Partial<ItemCapacity>,
+): ItemCapacity {
+  const value = raw.replace(/\s+/g, " ").trim();
+  const keptText =
+    typeof current.capacityMl === "number" ? (current.sizeText ?? null) : null;
+  if (!value) return { capacityMl: null, sizeText: keptText };
+  if (VOLUME.test(value)) {
+    const ml = parseCapacityMl(value);
+    if (ml === null || ml <= 0 || ml > MAX_NUMBER)
+      throw new BookingItemValueError();
+    return { capacityMl: ml, sizeText: keptText };
+  }
+  return { capacityMl: null, sizeText: value.slice(0, 60) };
+}
+
+/** Campos obrigatórios que faltam no item (o tamanho vale como capacidade). */
 export function missingItemFields(
-  item: Pick<BookingItem, BookingItemRequiredField>,
+  item: Pick<BookingItem, BookingItemRequiredField> &
+    Partial<Pick<BookingItem, "sizeText">>,
 ): BookingItemRequiredField[] {
-  return BOOKING_ITEM_REQUIRED.filter((f) => !filled(item[f]));
+  return BOOKING_ITEM_REQUIRED.filter((f) =>
+    f === "capacityMl" ? bookingCapacityShown(item) === null : !filled(item[f]),
+  );
 }
 
 /** O que falta para fechar o booking: no cabeçalho e em cada item. */

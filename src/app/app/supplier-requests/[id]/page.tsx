@@ -413,7 +413,12 @@ export default async function SupplierRequestPage({
                       .map((n) => num(n, 2))
                       .join(" × "),
                   ],
-                  [col("capacityMl"), num(it.capacityMl, 0)],
+                  [
+                    col("capacityMl"),
+                    it.capacityMl === null && it.sizeText
+                      ? it.sizeText
+                      : num(it.capacityMl, 0),
+                  ],
                   [col("packageType"), it.packageType ?? "—"],
                   [col("material"), it.material ?? "—"],
                   [col("colorAssortment"), it.colorAssortment ?? "—"],
