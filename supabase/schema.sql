@@ -241,7 +241,11 @@ alter table public."orders" add column if not exists "paymentConditionId" text;
 alter table public."orders" add column if not exists "flow" text;
 alter table public."orders" add column if not exists "fxRate" double precision;
 alter table public."orders" add column if not exists "sankhyaRefs" jsonb;
+alter table public."orders" add column if not exists "purchaseRounds" jsonb;
+alter table public."orders" add column if not exists "parentOrderId" text;
+alter table public."orders" add column if not exists "roundIndex" bigint;
 create unique index if not exists "orders_number_unique" on public."orders" ("number");
+create index if not exists "orders_by_parent" on public."orders" ("parentOrderId");
 create index if not exists "orders_by_sankhya" on public."orders" ("sankhyaCode");
 create index if not exists "orders_by_owner" on public."orders" ("ownerUserId");
 create index if not exists "orders_by_customer" on public."orders" ("customerId");
@@ -1572,6 +1576,7 @@ alter table public."supplier_requests" add column if not exists "negotiation" js
 alter table public."supplier_requests" add column if not exists "slaNotifiedAt" timestamptz;
 alter table public."supplier_requests" add column if not exists "orderId" text;
 alter table public."supplier_requests" add column if not exists "batchId" text;
+alter table public."supplier_requests" add column if not exists "schedule" jsonb;
 create index if not exists "supplier_requests_by_supplier" on public."supplier_requests" ("supplierId");
 create index if not exists "supplier_requests_by_item" on public."supplier_requests" ("bookingItemId");
 create index if not exists "supplier_requests_by_status" on public."supplier_requests" ("status");
@@ -1595,6 +1600,7 @@ alter table public."selection_groups" add column if not exists "supplierRequestI
 alter table public."selection_groups" add column if not exists "requestedAt" timestamptz;
 alter table public."selection_groups" add column if not exists "createdByUserId" text;
 alter table public."selection_groups" add column if not exists "updatedByUserId" text;
+alter table public."selection_groups" add column if not exists "schedule" jsonb;
 create index if not exists "selection_groups_by_status" on public."selection_groups" ("status");
 create index if not exists "selection_groups_by_chosen" on public."selection_groups" ("chosenItemId");
 create index if not exists "selection_groups_created" on public."selection_groups" ("createdAt");

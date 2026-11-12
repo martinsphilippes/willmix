@@ -46,8 +46,17 @@ export async function GET(request: Request) {
         console.error("[reminders] supplier-request-sla", error);
         return null;
       });
+  // Programação de compra: rodadas que chegaram ao dia viram pedidos filhos.
+  const purchaseRounds = await import("@/lib/services/purchase-rounds")
+    .then((m) => m.spawnDueRounds(null))
+    .then((orders) => orders.length)
+    .catch((error) => {
+      console.error("[reminders] purchase-rounds", error);
+      return null;
+    });
   return NextResponse.json({
     ...result,
+    purchaseRounds,
     supplierRequestsLate,
     released,
     packaging,

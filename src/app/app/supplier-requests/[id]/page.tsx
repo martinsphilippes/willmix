@@ -1,4 +1,8 @@
 import Link from "next/link";
+import {
+  PurchaseScheduleTable,
+  roundsLine,
+} from "@/components/purchase-rounds";
 import { BookingItemSuperplan } from "@/components/booking-item-superplan";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -364,11 +368,18 @@ export default async function SupplierRequestPage({
                     ],
                     [
                       t("supplierRequests.detail.quantity"),
-                      <strong key="q">
-                        {t("supplierRequests.detail.pieces", {
-                          n: r.quantity.toLocaleString(intl),
-                        })}
-                      </strong>,
+                      <span key="q" className="flex flex-col">
+                        <strong>
+                          {t("supplierRequests.detail.pieces", {
+                            n: r.quantity.toLocaleString(intl),
+                          })}
+                        </strong>
+                        {r.schedule?.items.length ? (
+                          <span className="text-xs text-zinc-600">
+                            {roundsLine(r.schedule, t)}
+                          </span>
+                        ) : null}
+                      </span>,
                     ],
                     [
                       t("supplierRequests.detail.bookingPrice"),
@@ -391,6 +402,7 @@ export default async function SupplierRequestPage({
               >
                 {r.needs ?? t("supplierRequests.detail.needsNone")}
               </p>
+              <PurchaseScheduleTable schedule={r.schedule} t={t} />
             </div>
             <div className="mt-4">
               <DescriptionList

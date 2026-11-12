@@ -48,6 +48,7 @@ import {
   linkClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { SelectionQuantity } from "@/components/selection-quantity";
 import {
   openGroupRequestsAction,
   saveSelectionGroupAction,
@@ -564,19 +565,34 @@ export default async function BookingSelectionPage({
             {t("supplierRequests.selection.form.body")}
           </p>
           <div className="grid gap-3 md:grid-cols-3">
-            <Field
+            <SelectionQuantity
               label={t("supplierRequests.selection.form.quantity")}
               hint={t("supplierRequests.selection.form.quantityHint")}
-            >
-              <Input
-                name="quantity"
-                inputMode="numeric"
-                autoComplete="off"
-                defaultValue={current?.quantity ?? undefined}
-                data-selection-quantity
-              />
-            </Field>
-            <div className="md:col-span-2">
+              scheduledHint={t("purchaseRounds.form.quantityOff")}
+              defaultQuantity={current?.quantity ?? null}
+              schedule={current?.schedule ?? null}
+              labels={{
+                intl,
+                toggle: t("purchaseRounds.form.toggle"),
+                ask: t("purchaseRounds.form.ask"),
+                hint: t("purchaseRounds.form.hint"),
+                interval: t("purchaseRounds.form.interval"),
+                days: t("purchaseRounds.form.days", { n: "{n}" }),
+                custom: t("purchaseRounds.form.custom"),
+                firstDate: t("purchaseRounds.form.firstDate"),
+                n: t("purchaseRounds.form.n", { n: "{n}" }),
+                quantity: t("purchaseRounds.form.quantity"),
+                expected: t("purchaseRounds.form.expected"),
+                add: t("purchaseRounds.form.add"),
+                remove: t("purchaseRounds.form.remove", { n: "{n}" }),
+                total: t("purchaseRounds.form.total", {
+                  total: "{total}",
+                  unit: "{unit}",
+                }),
+                off: t("purchaseRounds.form.off"),
+              }}
+            />
+            <div className="md:col-span-3">
               <Field
                 label={t("supplierRequests.selection.form.needs")}
                 hint={t("supplierRequests.selection.form.needsHint")}
@@ -1066,6 +1082,18 @@ export default async function BookingSelectionPage({
                                                     ),
                                                   },
                                                 )}
+                                                {g!.schedule?.items.length
+                                                  ? ` · ${t(
+                                                      "purchaseRounds.summary.short",
+                                                      {
+                                                        rounds:
+                                                          g!.schedule.items
+                                                            .length,
+                                                        days: g!.schedule
+                                                          .intervalDays,
+                                                      },
+                                                    )}`
+                                                  : null}
                                               </span>
                                             ) : (
                                               <span className="shrink-0 text-zinc-500">

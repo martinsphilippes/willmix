@@ -37,6 +37,7 @@ import {
   postSupplierRequestMessageAction,
 } from "../../actions/supplier-requests";
 import { STATUS_TONE } from "./status";
+import { roundsDates } from "@/components/purchase-rounds";
 import { dateTime } from "./negotiation";
 import { AnswerIcon, ChatBubbleIcon, OpenIcon } from "./icons";
 
@@ -89,6 +90,8 @@ export function SupplierRequestTable({
     "factoryCode",
     "itemNumber",
     "material",
+    "rounds",
+    "perRound",
     "quantity",
     "bookingMoq",
     "bookingPrice",
@@ -275,6 +278,27 @@ export function SupplierRequestTable({
                 <Td className={nowrap}>{it.factoryItemCode ?? "—"}</Td>
                 <Td className={nowrap}>{it.itemNumber ?? "—"}</Td>
                 <Td className={nowrap}>{it.material ?? "—"}</Td>
+                {/* Programação de compra: rodadas, peças por rodada e o total. */}
+                <Td
+                  className={cx(nowrap, "tabular-nums")}
+                  data-supplier-table-rounds={r.id}
+                >
+                  <span title={roundsDates(r.schedule, t) ?? undefined}>
+                    {r.schedule?.items.length ?? 1}
+                  </span>
+                </Td>
+                <Td
+                  className={cx(nowrap, "tabular-nums")}
+                  data-supplier-table-per-round={r.id}
+                >
+                  <span title={roundsDates(r.schedule, t) ?? undefined}>
+                    {r.schedule?.items.length
+                      ? r.schedule.items
+                          .map((i) => i.quantity.toLocaleString(intl))
+                          .join(" / ")
+                      : r.quantity.toLocaleString(intl)}
+                  </span>
+                </Td>
                 <Td className={cx(nowrap, "tabular-nums")}>
                   {r.quantity.toLocaleString(intl)}
                 </Td>

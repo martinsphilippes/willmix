@@ -1,3 +1,4 @@
+import { roundsDates, roundsLine } from "@/components/purchase-rounds";
 import type { Party } from "@/lib/db/schema";
 import type { Translate } from "@/i18n";
 import type { PurchaseCandidateGroup } from "@/lib/services/purchase-order";
@@ -91,14 +92,31 @@ export function PurchaseOrderCard({
                       {num(r.supplierLeadTimeDays, 0)}
                     </Td>
                     <Td>
-                      <Input
-                        name={`qty_${r.id}`}
-                        inputMode="numeric"
-                        defaultValue={String(r.quantity)}
-                        className="w-28"
-                        aria-label={t("purchaseOrder.col.quantity")}
-                        data-purchase-qty={r.id}
-                      />
+                      {r.schedule?.items.length ? (
+                        // Programação de compra: o total é a soma das
+                        // rodadas; o pedido vira o pai e cada rodada, um filho.
+                        <span
+                          className="block max-w-56 whitespace-normal text-xs"
+                          data-purchase-rounds={r.id}
+                        >
+                          <strong className="block text-sm tabular-nums">
+                            {r.quantity.toLocaleString(t.intl)}
+                          </strong>
+                          {roundsLine(r.schedule, t)}
+                          <span className="block text-zinc-500">
+                            {roundsDates(r.schedule, t)}
+                          </span>
+                        </span>
+                      ) : (
+                        <Input
+                          name={`qty_${r.id}`}
+                          inputMode="numeric"
+                          defaultValue={String(r.quantity)}
+                          className="w-28"
+                          aria-label={t("purchaseOrder.col.quantity")}
+                          data-purchase-qty={r.id}
+                        />
+                      )}
                     </Td>
                   </tr>
                 ))}
