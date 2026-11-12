@@ -156,6 +156,23 @@ export class MemoryStore implements Store {
     return clone(updated);
   }
 
+  async upsertMany<K extends TableName>(
+    table: K,
+    rows: Array<NewRow<Tables[K]> & { id: string }>,
+  ) {
+    const now = new Date().toISOString();
+    const list = this.db[table] as BaseRow[];
+    const at = new Map(list.map((r, i) => [r.id, i]));
+    for (const data of rows) {
+      const i = at.get(data.id);
+      if (i === undefined) {
+        at.set(data.id, list.length);
+        list.push({ ...data, createdAt: now, updatedAt: now } as BaseRow);
+      } else list[i] = { ...list[i], ...data, updatedAt: now } as BaseRow;
+    }
+    this.save();
+  }
+
   async remove<K extends TableName>(table: K, id: string) {
     (this.db[table] as BaseRow[]) = (this.db[table] as BaseRow[]).filter(
       (r) => r.id !== id,

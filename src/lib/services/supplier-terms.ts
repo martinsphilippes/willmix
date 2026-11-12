@@ -215,12 +215,15 @@ export function receivedInOldFlow(
 }
 
 /** Requisitos que o cronograma usa: data de embarque e os itens da etapa antiga. */
-const SCHEDULE_REQUIREMENT_KEYS = ["ship_date", ...LEGACY_PAYMENT_KEYS];
+export const SCHEDULE_REQUIREMENT_KEYS = [
+  "ship_date",
+  ...LEGACY_PAYMENT_KEYS,
+];
 
 /** Hoje (AAAA-MM-DD) em Brasília. */
 export const todayInBrazil = () => brazilDay(new Date()) as string;
 
-function payableFor(
+export function payableFor(
   order: Order,
   supplier: Party | null,
   payments: Payment[],

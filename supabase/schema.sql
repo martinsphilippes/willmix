@@ -1783,6 +1783,24 @@ create index if not exists "process_events_by_entity" on public."process_events"
 create index if not exists "process_events_created" on public."process_events" ("createdAt");
 create index if not exists "process_events_created_id" on public."process_events" ("createdAt", "id");
 
+create table if not exists public."order_summaries" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."order_summaries" enable row level security;
+alter table public."order_summaries" add column if not exists "orderId" text;
+alter table public."order_summaries" add column if not exists "number" bigint;
+alter table public."order_summaries" add column if not exists "status" text;
+alter table public."order_summaries" add column if not exists "live" boolean;
+alter table public."order_summaries" add column if not exists "version" bigint;
+alter table public."order_summaries" add column if not exists "facts" jsonb;
+alter table public."order_summaries" add column if not exists "computedAt" timestamptz;
+create index if not exists "order_summaries_by_order" on public."order_summaries" ("orderId");
+create index if not exists "order_summaries_by_live" on public."order_summaries" ("live");
+create index if not exists "order_summaries_created" on public."order_summaries" ("createdAt");
+create index if not exists "order_summaries_created_id" on public."order_summaries" ("createdAt", "id");
+
 create or replace function public.next_number(counter_key text)
 returns bigint
 language sql

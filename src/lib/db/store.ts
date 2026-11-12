@@ -50,6 +50,15 @@ export interface Store {
     patch: Patch<Tables[K]>,
   ): Promise<Tables[K]>;
   remove<K extends TableName>(table: K, id: string): Promise<void>;
+  /**
+   * Grava várias linhas de uma vez pelo id: cria as que não existem e
+   * substitui as que existem (resumos derivados; docs/RESUMOS.md). Opcional:
+   * sem ele, quem chama grava uma a uma.
+   */
+  upsertMany?<K extends TableName>(
+    table: K,
+    rows: Array<NewRow<Tables[K]> & { id: string }>,
+  ): Promise<void>;
   putFile(bytes: Uint8Array, name: string, mime: string): Promise<StoredFile>;
   /** Metadados de um arquivo já no armazenamento (ex.: enviado direto pelo navegador); null se não existe. */
   statFile(key: string): Promise<StoredFile | null>;

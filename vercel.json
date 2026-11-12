@@ -10,6 +10,10 @@
     {
       "path": "/api/jobs/fiscal",
       "schedule": "30 9 2 * *"
+    },
+    {
+      "path": "/api/jobs/summaries",
+      "schedule": "17 6 * * *"
     }
   ]
 }

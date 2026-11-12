@@ -55,6 +55,12 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
 
   // 1. Booking por planilha: dois fornecedores com o mesmo tipo de item.
   await login(page, "admin@wellmix.com");
+  // Resumos dos pedidos ligados (docs/RESUMOS.md): daqui em diante a Control
+  // Tower lê o resumo, recalculado a cada gravação dos pedidos do fluxo.
+  await page.goto("/app/settings/summaries");
+  await page.locator("[data-summaries-rebuild]").click();
+  await page.waitForURL(/\/app\/settings\/summaries\?ran=1/);
+  await expect(page.locator("[data-summaries-status]")).toBeVisible();
   // Sourcing em espera (pedido do dono): a tela guarda tudo, mostra a
   // situação e o interruptor do administrador (liga e volta para espera).
   await page.goto("/app/sourcing");
@@ -377,6 +383,14 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(page.locator("[data-audit-row]").first()).toBeVisible();
   await page.goto("/app");
   await expect(page.getByText("Control Tower").first()).toBeVisible();
+  // O pedido do fluxo (criado depois da reconstrução e encerrado no passo 11)
+  // está no resumo, já encerrado: o recálculo por evento acompanhou o fluxo.
+  await page.goto("/app?filter=closed");
+  await expect(
+    page.locator(
+      `[data-tower-list=closed] a[href="${new URL(orderUrl).pathname}"]`,
+    ),
+  ).toBeVisible();
 
   // 14. Contas de demonstração: em Configurações todas existem; o seletor
   // "Demo" do topo troca de conta sem deslogar antes (entra como OCP) e volta.

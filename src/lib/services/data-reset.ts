@@ -69,6 +69,8 @@ const SALES_TABLES = [
   "stock_reservations",
   // Eventos das regras de processo das vendas de teste.
   "process_events",
+  // Resumo dos pedidos (derivado; docs/RESUMOS.md).
+  "order_summaries",
 ] as const satisfies readonly TableName[];
 
 /** Tabelas que podem ainda não existir no Appwrite (esquema não publicado). */
@@ -86,6 +88,7 @@ const OPTIONAL_TABLES = new Set<TableName>([
   "stock_counts",
   "stock_reservations",
   "process_events",
+  "order_summaries",
 ]);
 
 /** Entidades de venda no histórico (auditoria) e nas medições/revisões. */
