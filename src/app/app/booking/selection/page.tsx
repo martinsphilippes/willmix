@@ -613,9 +613,14 @@ export default async function BookingSelectionPage({
                   title: t("purchaseRounds.gen.title"),
                   hint: t("purchaseRounds.gen.hint"),
                   total: t("purchaseRounds.gen.total"),
+                  rounds: t("purchaseRounds.gen.rounds"),
                   container: t("purchaseRounds.gen.container"),
                   perRound: t("purchaseRounds.gen.perRound"),
-                  rounds: t("purchaseRounds.gen.rounds"),
+                  perRoundHint: t("purchaseRounds.gen.perRoundHint"),
+                  perRoundRange: t("purchaseRounds.gen.perRoundRange", {
+                    min: "{min}",
+                    max: "{max}",
+                  }),
                   submit: t("purchaseRounds.gen.submit"),
                   item: t("purchaseRounds.gen.item", {
                     pcs: "{pcs}",
@@ -632,6 +637,9 @@ export default async function BookingSelectionPage({
                     cap: "{cap}",
                   }),
                   errorTotal: t("purchaseRounds.gen.errorTotal"),
+                  errorRounds: t("purchaseRounds.gen.errorRounds", {
+                    max: "{max}",
+                  }),
                   result: t("purchaseRounds.gen.result", {
                     rounds: "{rounds}",
                     cartons: "{cartons}",
@@ -640,21 +648,30 @@ export default async function BookingSelectionPage({
                     container: "{container}",
                   }),
                   extra: t("purchaseRounds.gen.extra", { extra: "{extra}" }),
-                  raised: t("purchaseRounds.gen.raised", {
-                    max: "{max}",
-                    n: "{n}",
+                  reduced: t("purchaseRounds.gen.reduced", {
+                    cartons: "{cartons}",
+                    rounds: "{rounds}",
                   }),
-                  last: t("purchaseRounds.gen.last", { pct: "{pct}" }),
-                  fillUp: t("purchaseRounds.gen.fillUp", {
-                    pieces: "{pieces}",
-                  }),
-                  trim: t("purchaseRounds.gen.trim", { pieces: "{pieces}" }),
                   load: t("purchaseRounds.gen.load", {
                     cartons: "{cartons}",
                     cbm: "{cbm}",
                     containers: "{containers}",
                     container: "{container}",
                   }),
+                  full: t("purchaseRounds.gen.full"),
+                  fullMargin: t("purchaseRounds.gen.fullMargin", {
+                    pct: "{pct}",
+                  }),
+                  partial: t("purchaseRounds.gen.partial", { pct: "{pct}" }),
+                  partialLast: t("purchaseRounds.gen.partialLast", {
+                    pct: "{pct}",
+                  }),
+                  up: t("purchaseRounds.gen.up", { pieces: "{pieces}" }),
+                  upTo: t("purchaseRounds.gen.upTo", { n: "{n}" }),
+                  upToMany: t("purchaseRounds.gen.upToMany", { n: "{n}" }),
+                  down: t("purchaseRounds.gen.down", { pieces: "{pieces}" }),
+                  downTo: t("purchaseRounds.gen.downTo", { n: "{n}" }),
+                  downToMany: t("purchaseRounds.gen.downToMany", { n: "{n}" }),
                 }}
                 labels={{
                   intl,

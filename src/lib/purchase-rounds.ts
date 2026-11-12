@@ -115,21 +115,28 @@ export function mapLaneKey(
 }
 
 /*
- * "Gerar programação" na Seleção: a Wellmix digita o total de peças e a conta
- * monta as rodadas pela cubagem do item escolhido e pelo container. Caixas
- * master são inteiras; cada rodada leva containers cheios (N por rodada) e a
- * última fica com o resto. Mais de 12 rodadas: sobe os containers por rodada
- * até caber. Tudo continua editável depois.
+ * "Gerar programação" na Seleção (regra do dono, 12/11/2026; a mesma da ficha
+ * de compra): tudo sai da QUANTIDADE de produto. A Wellmix digita o total de
+ * peças e o número de rodadas; o total vira caixas master inteiras do item
+ * escolhido, divididas igualmente entre as rodadas (o resto vai para as
+ * primeiras). Os containers de cada rodada são consequência da conta, ninguém
+ * os digita: caixas da rodada ÷ caixas que cabem no container. Em cada rodada
+ * há dois ajustes para fechar o container: aumentar até o próximo container
+ * cheio ou diminuir até o de baixo. O container conta como cheio com 95% ou
+ * mais de ocupação (margem de 5%), nunca acima da capacidade.
  */
+
+/** Margem para o container contar como cheio: pode faltar até 5%. */
+export const CONTAINER_FULL_MARGIN_PCT = 5;
 
 export interface RoundsPlanInput {
   /** Peças desejadas no total. */
   total: number;
+  /** Rodadas informadas (1 a `maxRounds`). */
+  rounds: number;
   masterCartonQty: number | null | undefined;
   cbmPerCarton: number | null | undefined;
   containerCbm: number | null | undefined;
-  /** Containers em cada rodada (padrão 1). */
-  containersPerRound?: number;
   maxRounds?: number;
 }
 
@@ -149,24 +156,21 @@ export interface RoundsPlan {
   extraPieces: number;
   cartons: number;
   cbm: number;
+  /** Containers que o total ocupa (ex.: 2,4). */
+  containers: number;
   cartonsPerContainer: number;
   piecesPerContainer: number;
-  containersPerRound: number;
-  /** Os containers por rodada subiram para caber em `maxRounds` rodadas. */
-  raised: boolean;
-  /** Ocupação da última rodada (0–100) frente aos containers dela. */
-  lastFillPct: number;
-  /** Peças para fechar a última rodada (null quando já fecha). */
-  fillUp: number | null;
-  /** Peças a tirar para ficar só com rodadas cheias (null sem rodada parcial ou com uma só). */
-  trimDown: number | null;
+  /** Menos rodadas que as pedidas: não há uma caixa inteira para cada uma. */
+  reduced: boolean;
 }
 
-export type RoundsPlanError = "total" | "carton" | "too_big";
+export type RoundsPlanError = "total" | "rounds" | "carton" | "too_big";
 
 const pos = (n: number | null | undefined): n is number =>
   typeof n === "number" && Number.isFinite(n) && n > 0;
 const r4 = (n: number) => Math.round(n * 10_000) / 10_000;
+/** Fração de container: 6 casas, para o que a tela mostra com 2 não arredondar duas vezes. */
+const r6 = (n: number) => Math.round(n * 1_000_000) / 1_000_000;
 
 /** Caixas master inteiras que cabem num container (0 = a caixa não cabe). */
 export function cartonsPerContainer(
@@ -182,28 +186,27 @@ export function planPurchaseRounds(
   const max = Math.max(1, Math.floor(input.maxRounds ?? MAX_PURCHASE_ROUNDS));
   const { masterCartonQty: perCarton, cbmPerCarton, containerCbm } = input;
   if (!pos(input.total) || input.total > 100_000_000) return { error: "total" };
+  const asked = Math.floor(input.rounds);
+  if (!Number.isFinite(asked) || asked < 1 || asked > max)
+    return { error: "rounds" };
   if (!pos(perCarton) || !pos(cbmPerCarton) || !pos(containerCbm))
     return { error: "carton" };
   const perContainer = cartonsPerContainer(cbmPerCarton, containerCbm);
   if (perContainer < 1) return { error: "too_big" };
   const cartons = Math.ceil(input.total / perCarton - 1e-9);
-  const asked = Math.max(1, Math.floor(input.containersPerRound ?? 1) || 1);
-  let perRoundContainers = asked;
-  while (Math.ceil(cartons / (perContainer * perRoundContainers)) > max)
-    perRoundContainers++;
-  const perRound = perContainer * perRoundContainers;
-  const count = Math.ceil(cartons / perRound);
+  // Caixa é inteira: com menos caixas que rodadas, ficam as rodadas que dá.
+  const count = Math.min(asked, cartons);
+  const base = Math.floor(cartons / count);
+  const rest = cartons - base * count;
   const rounds: PlannedRound[] = Array.from({ length: count }, (_, i) => {
-    const c = i < count - 1 ? perRound : cartons - perRound * (count - 1);
+    const c = base + (i < rest ? 1 : 0);
     return {
       pieces: c * perCarton,
       cartons: c,
       cbm: r4(c * cbmPerCarton),
-      containers: r4(c / perContainer),
+      containers: r6(c / perContainer),
     };
   });
-  const last = rounds[rounds.length - 1];
-  const lastFull = last.cartons === perRound;
   return {
     plan: {
       rounds,
@@ -211,32 +214,114 @@ export function planPurchaseRounds(
       extraPieces: cartons * perCarton - Math.round(input.total),
       cartons,
       cbm: r4(cartons * cbmPerCarton),
+      containers: r6(cartons / perContainer),
       cartonsPerContainer: perContainer,
       piecesPerContainer: perContainer * perCarton,
-      containersPerRound: perRoundContainers,
-      raised: perRoundContainers > asked,
-      lastFillPct: Math.round((last.cartons / perRound) * 100),
-      fillUp: lastFull ? null : (perRound - last.cartons) * perCarton,
-      trimDown: lastFull || count < 2 ? null : last.pieces,
+      reduced: count < asked,
     },
   };
 }
 
-/** Caixas, CBM e ocupação de uma rodada com N peças (para mostrar ao editar). */
+/** Um ajuste da rodada para fechar o container. */
+export interface RoundStep {
+  /** Containers cheios da rodada depois do ajuste. */
+  containers: number;
+  /** Peças a acrescentar (aumentar) ou a tirar (diminuir); sempre positivo. */
+  pieces: number;
+  /** Peças da rodada depois do ajuste. */
+  target: number;
+}
+
+export interface RoundLoad {
+  cartons: number;
+  cbm: number;
+  /** Containers que a rodada ocupa (0,72; 2,4). Nulo sem container ou com a caixa maior que ele. */
+  containers: number | null;
+  /** Containers que a rodada precisa (para cima). */
+  needed: number | null;
+  /** Ocupação do último container da rodada (1 a 100). */
+  lastPct: number | null;
+  /** Só containers cheios: o último com 95% ou mais (margem de 5%). */
+  full: boolean;
+  /** Aumentar até o próximo container cheio. */
+  up: RoundStep | null;
+  /** Diminuir até o container cheio de baixo (nunca zera a rodada). */
+  down: RoundStep | null;
+}
+
+/** Teto de peças de um ajuste (o mesmo do total do gerador). */
+const MAX_ROUND_PIECES = 100_000_000;
+
+/**
+ * Caixas, CBM e ocupação de uma rodada com N peças, e os dois ajustes para
+ * fechar o container. Caixas são inteiras; a ocupação é medida em caixas que
+ * cabem no container (o container com todas as caixas que cabem está 100%).
+ */
 export function roundLoad(
   pieces: number,
   masterCartonQty: number | null | undefined,
   cbmPerCarton: number | null | undefined,
   containerCbm: number | null | undefined,
-): { cartons: number; cbm: number; containers: number | null } | null {
+): RoundLoad | null {
   if (!pos(pieces) || !pos(masterCartonQty) || !pos(cbmPerCarton)) return null;
   const cartons = Math.ceil(pieces / masterCartonQty - 1e-9);
   const perContainer = pos(containerCbm)
     ? cartonsPerContainer(cbmPerCarton, containerCbm)
     : 0;
+  const cbm = r4(cartons * cbmPerCarton);
+  if (perContainer < 1)
+    return {
+      cartons,
+      cbm,
+      containers: null,
+      needed: null,
+      lastPct: null,
+      full: false,
+      up: null,
+      down: null,
+    };
+  const needed = Math.ceil(cartons / perContainer - 1e-9);
+  // Caixas no último container (1 a perContainer).
+  const inLast = cartons - (needed - 1) * perContainer;
+  const exact = inLast === perContainer;
+  // Conta em inteiros: "cheio" e o percentual mostrado nunca discordam.
+  const pct = Math.floor((inLast * 100) / perContainer);
+  const current = Math.round(pieces);
+  const step = (containers: number): RoundStep | null => {
+    const target = containers * perContainer * masterCartonQty;
+    return containers >= 1 && target !== current && target <= MAX_ROUND_PIECES
+      ? { containers, pieces: Math.abs(target - current), target }
+      : null;
+  };
   return {
     cartons,
-    cbm: r4(cartons * cbmPerCarton),
-    containers: perContainer >= 1 ? r4(cartons / perContainer) : null,
+    cbm,
+    containers: r6(cartons / perContainer),
+    needed,
+    lastPct: exact ? 100 : Math.max(1, pct),
+    full: exact || pct >= 100 - CONTAINER_FULL_MARGIN_PCT,
+    up: step(exact ? needed + 1 : needed),
+    down: step(needed - 1),
   };
+}
+
+/**
+ * "Containers por rodada" (informativo): o menor e o maior entre as rodadas.
+ * Nulo sem rodada com peças ou sem a caixa master, o CBM e o container.
+ */
+export function containersPerRound(
+  quantities: readonly number[],
+  masterCartonQty: number | null | undefined,
+  cbmPerCarton: number | null | undefined,
+  containerCbm: number | null | undefined,
+): { min: number; max: number } | null {
+  const list = quantities
+    .map(
+      (q) =>
+        roundLoad(q, masterCartonQty, cbmPerCarton, containerCbm)?.containers ??
+        null,
+    )
+    .filter((c): c is number => c !== null);
+  if (!list.length) return null;
+  return { min: Math.min(...list), max: Math.max(...list) };
 }
