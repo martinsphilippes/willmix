@@ -16,9 +16,37 @@ import type { TowerRow } from "@/lib/services/control-tower";
 import {
   loadControlTower,
   loadTowerTotals,
+  type TowerData,
   type TowerTotals,
 } from "@/lib/services/control-tower";
-import { isBoardCardKey, loadTowerBoard } from "@/lib/services/tower-board";
+import {
+  isBoardCardKey,
+  loadTowerBoard,
+  type BoardCardKey,
+} from "@/lib/services/tower-board";
+import {
+  boardFromKpis,
+  readTowerKpis,
+  towerBucketRows,
+  towerCardRows,
+  towerExceptionRows,
+} from "@/lib/services/tower-kpis";
+
+/** Visões gerais, na ordem da tela. */
+const BUCKETS: Array<keyof TowerData["buckets"]> = [
+  "active",
+  "requestsOpen",
+  "waitingSupplier",
+  "waitingCustomer",
+  "preparation",
+  "inspection",
+  "shipping",
+  "customs",
+  "transport",
+  "overdue",
+  "problems",
+  "closed",
+];
 import {
   actionCardsFor,
   buildTowerStages,
@@ -289,12 +317,30 @@ export async function ControlTower({
   const deniedScreen = (SCREENS as readonly string[]).includes(denied ?? "")
     ? (denied as Screen)
     : null;
-  const [data, totals, board] = await Promise.all([
-    loadControlTower(),
-    wellmix ? loadTowerTotals() : Promise.resolve(null),
-    wellmix && operations ? loadTowerBoard({ finance }) : Promise.resolve(null),
-  ]);
-  const stages = board ? buildTowerStages(board) : null;
+  const now = new Date();
+  // Indicadores prontos (docs/RESUMOS.md): uma linha agregada com os números
+  // de cada quadrado, das visões gerais e dos totais; a lista só do escolhido.
+  // Sem os resumos em uso, o caminho completo (todas as linhas).
+  const kpis = wellmix ? await readTowerKpis(now) : null;
+  const full = kpis
+    ? null
+    : await Promise.all([
+        loadControlTower(),
+        wellmix ? loadTowerTotals() : Promise.resolve(null),
+        wellmix && operations
+          ? loadTowerBoard({ finance })
+          : Promise.resolve(null),
+      ]);
+  const totals = kpis ? kpis.totals : full![1];
+  const board = kpis
+    ? operations
+      ? boardFromKpis(kpis, finance)
+      : null
+    : full![2];
+  const bucketCount = (key: keyof TowerData["buckets"]) =>
+    kpis ? kpis.buckets[key] : full![0].buckets[key].length;
+  const exceptionsCount = kpis ? kpis.exceptions : full![0].exceptions.length;
+  const stages = board ? buildTowerStages(board, now) : null;
   const actionCards = board
     ? actionCardsFor(board, (screen) => canOpen(user, screen))
     : [];
@@ -334,7 +380,7 @@ export async function ControlTower({
     : null;
   const groupDef = openStage?.groups.find((g) => g.key === groupKey) ?? null;
   const cards: Array<{
-    key: keyof typeof data.buckets;
+    key: keyof TowerData["buckets"];
     label: string;
     tone?: "danger" | "warning";
   }> = [
@@ -355,8 +401,8 @@ export async function ControlTower({
   // quadrado, logo abaixo do grupo dele; tocar de novo fecha).
   const picked = !!(actionCard || groupDef);
   const selected =
-    !picked && filter && filter in data.buckets
-      ? (filter as keyof typeof data.buckets)
+    !picked && filter && BUCKETS.includes(filter as keyof TowerData["buckets"])
+      ? (filter as keyof TowerData["buckets"])
       : null;
   // Quadrados que abrem um cartão (não uma lista): exceções e visão comercial.
   const extra =
@@ -474,20 +520,62 @@ export async function ControlTower({
     </div>
   );
   const cardTitle = (key: string) => t(`board.card.${key}` as DictionaryKey);
+  /* A lista do escolhido: com os indicadores, montada só agora (até
+     TOWER_LIST_LIMIT linhas, com o total); sem eles, das linhas já lidas. */
+  const cardList = async (key: BoardCardKey) =>
+    kpis
+      ? towerCardRows(key, finance, now)
+      : (() => {
+          const rows = board?.cards.find((c) => c.key === key)?.rows ?? [];
+          return { rows, total: rows.length };
+        })();
+  const withMore = (
+    list: { rows: TowerRow[]; total: number },
+    title: string | undefined,
+    key: string,
+  ) => (
+    <>
+      {renderList(list.rows, title, key)}
+      {list.total > list.rows.length ? (
+        <p className="-mt-2 mb-4 text-xs text-zinc-500" data-tower-list-more>
+          {t("ct.list.more", { shown: list.rows.length, total: list.total })}
+        </p>
+      ) : null}
+    </>
+  );
   const actionList = actionCard
-    ? renderList(actionCard.rows, cardTitle(actionCard.key), actionCard.key)
+    ? withMore(
+        await cardList(actionCard.key),
+        cardTitle(actionCard.key),
+        actionCard.key,
+      )
     : null;
   const groupList = groupDef
-    ? renderList(groupDef.rows, cardTitle(groupDef.key), groupDef.key)
+    ? withMore(
+        await cardList(groupDef.key),
+        cardTitle(groupDef.key),
+        groupDef.key,
+      )
     : null;
   const filterList =
     selected && !picked
-      ? renderList(
-          data.buckets[selected],
+      ? withMore(
+          kpis
+            ? await towerBucketRows(selected, now)
+            : {
+                rows: full![0].buckets[selected],
+                total: full![0].buckets[selected].length,
+              },
           cards.find((c) => c.key === selected)?.label,
           selected,
         )
       : null;
+  const exceptions =
+    extra === "exceptions"
+      ? kpis
+        ? await towerExceptionRows(now)
+        : full![0].exceptions
+      : [];
   return (
     <>
       <PageHeader
@@ -545,10 +633,10 @@ export async function ControlTower({
                   <SideStat
                     key={c.key}
                     label={c.label}
-                    value={data.buckets[c.key].length}
+                    value={bucketCount(c.key)}
                     // Tocar no escolhido fecha a lista.
                     href={c.key === selected ? "/app" : `/app?filter=${c.key}`}
-                    tone={data.buckets[c.key].length > 0 ? c.tone : undefined}
+                    tone={bucketCount(c.key) > 0 ? c.tone : undefined}
                     active={c.key === selected}
                   />
                 ))}
@@ -556,11 +644,11 @@ export async function ControlTower({
                     tocar de novo fecha. */}
                 <SideStat
                   label={t("ct.exceptions")}
-                  value={data.exceptions.length}
+                  value={exceptionsCount}
                   href={
                     extra === "exceptions" ? "/app" : "/app?filter=exceptions"
                   }
-                  tone={data.exceptions.length > 0 ? "warning" : undefined}
+                  tone={exceptionsCount > 0 ? "warning" : undefined}
                   active={extra === "exceptions"}
                 />
                 {totals && finance ? (
@@ -595,11 +683,11 @@ export async function ControlTower({
             {extra === "exceptions" ? (
               <div data-tower-extra="exceptions">
                 <Card className="min-w-0" title={t("ct.exceptions")}>
-                  {data.exceptions.length === 0 ? (
+                  {exceptions.length === 0 ? (
                     <Empty>{t("common.none")}</Empty>
                   ) : (
                     <ul className="space-y-2 text-sm">
-                      {data.exceptions.map((e, i) => (
+                      {exceptions.map((e, i) => (
                         <li
                           key={i}
                           className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200/80 px-3 py-2"

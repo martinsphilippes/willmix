@@ -368,7 +368,11 @@ describe("resumo por pedido", () => {
     await store.remove("orders", gone.id);
 
     const after = await tower();
-    expect(pendingSummaryChanges()).toEqual({ orders: [], parties: [] });
+    expect(pendingSummaryChanges()).toEqual({
+      orders: [],
+      parties: [],
+      kpi: false,
+    });
     const direct = await towerDirect();
     expect(after).toEqual(direct);
     const ids = (await summary.readOrderSummaries())!.facts.map(

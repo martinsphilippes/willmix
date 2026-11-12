@@ -10633,6 +10633,13 @@
           "array": false,
           "default": null,
           "type": "datetime"
+        },
+        {
+          "key": "kpi",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -10651,6 +10658,64 @@
           "type": "key",
           "columns": [
             "live"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "kpi_snapshots",
+      "databaseId": "willmix",
+      "name": "Indicadores prontos (derivado; recalculado por evento)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "key",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "version",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "data",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "longtext"
+        },
+        {
+          "key": "validUntil",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "computedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_key",
+          "type": "unique",
+          "columns": [
+            "key"
           ],
           "orders": [
             "ASC"

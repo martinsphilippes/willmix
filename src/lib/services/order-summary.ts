@@ -21,6 +21,7 @@ import { isSchemaMissing } from "@/lib/db/errors";
 import {
   DUE_SOON_DAYS,
   addDays,
+  brazilDay,
   type InstallmentStatus,
 } from "@/lib/supplier-terms";
 import { JOURNEY_REQUIREMENT_KEYS } from "./journey";
@@ -29,11 +30,7 @@ import {
   saleFxFromRecord,
   type FinanceSummaryRow,
 } from "./finance";
-import {
-  SCHEDULE_REQUIREMENT_KEYS,
-  payableFor,
-  todayInBrazil,
-} from "./supplier-terms";
+import { SCHEDULE_REQUIREMENT_KEYS, payableFor } from "./supplier-terms";
 import type { BoardOrder, BoardStage } from "./tower-board";
 
 /*
@@ -59,7 +56,7 @@ import type { BoardOrder, BoardStage } from "./tower-board";
  */
 
 /** Formato de `facts`; mudar o formato = subir o número (as telas voltam ao caminho antigo até a reconstrução). */
-export const SUMMARY_VERSION = 2;
+export const SUMMARY_VERSION = 3;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -393,7 +390,7 @@ function withoutRefs(p: Payment): FactPayment {
 
 const live = (status: string) => status !== "CLOSED" && status !== "CANCELLED";
 
-function summaryRow(facts: OrderFacts, computedAt: string) {
+function summaryRow(facts: OrderFacts, computedAt: string, kpi: unknown) {
   return {
     id: facts.order.id,
     orderId: facts.order.id,
@@ -403,7 +400,18 @@ function summaryRow(facts: OrderFacts, computedAt: string) {
     version: SUMMARY_VERSION,
     facts,
     computedAt,
+    kpi,
   };
+}
+
+/** Contribuição de cada pedido para os indicadores (src/lib/services/tower-kpis.ts). */
+async function kpisOf(
+  facts: OrderFacts[],
+  now: Date,
+  ids: string[] | null,
+): Promise<Map<string, unknown>> {
+  const { orderKpisFor } = await import("./tower-kpis");
+  return orderKpisFor(facts, now, ids);
 }
 
 async function writeSummaries(rows: ReturnType<typeof summaryRow>[]) {
@@ -441,15 +449,22 @@ export async function summaryStatus(): Promise<SummaryMarker | null> {
 }
 
 /** Recalcula o resumo dos pedidos dados (e apaga o dos pedidos que não existem mais). */
-export async function recomputeOrderSummaries(ids: string[]): Promise<number> {
+export async function recomputeOrderSummaries(
+  ids: string[],
+  now: Date = new Date(),
+): Promise<number> {
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return 0;
   const src = await loadSources(unique);
-  const today = todayInBrazil();
-  const now = new Date().toISOString();
-  const rows = src.orders.map((o) =>
-    summaryRow(buildOrderFacts(o, src, today), now),
+  const today = brazilDay(now.toISOString()) as string;
+  const at = now.toISOString();
+  const facts = src.orders.map((o) => buildOrderFacts(o, src, today));
+  const kpis = await kpisOf(
+    facts,
+    now,
+    src.orders.map((o) => o.id),
   );
+  const rows = facts.map((f) => summaryRow(f, at, kpis.get(f.order.id)));
   await writeSummaries(rows);
   const found = new Set(src.orders.map((o) => o.id));
   const store = getStore();
@@ -477,10 +492,24 @@ async function ordersOfParties(partyIds: string[]): Promise<string[]> {
 export async function applySummaryChanges(changes: {
   orders: string[];
   parties: string[];
+  /** Mudou uma tabela pequena dos indicadores (bookings, solicitações, certificações...). */
+  kpi?: boolean;
 }): Promise<number> {
-  if (!(await summariesEnabled())) return 0;
+  if (!(await summariesReady())) return 0;
   const ids = [...changes.orders, ...(await ordersOfParties(changes.parties))];
-  return recomputeOrderSummaries(ids);
+  const done = await recomputeOrderSummaries(ids);
+  // Indicadores prontos: refeitos depois de cada leva de gravações.
+  if (ids.length || changes.kpi) {
+    const { rebuildTowerKpis } = await import("./tower-kpis");
+    await rebuildTowerKpis();
+  }
+  return done;
+}
+
+/** Os resumos estão prontos no formato atual (houve reconstrução neste formato)? */
+export async function summariesReady(): Promise<boolean> {
+  const marker = await readMarker().catch(() => null);
+  return !!marker && marker.version === SUMMARY_VERSION;
 }
 
 /**
@@ -504,18 +533,21 @@ export function stableJson(value: unknown): string {
  * apaga o resumo de pedido que não existe mais. Resumo recalculado por evento
  * durante a reconstrução (mais novo) não é sobrescrito.
  */
-export async function rebuildOrderSummaries(): Promise<SummaryMarker> {
+export async function rebuildOrderSummaries(
+  now: Date = new Date(),
+): Promise<SummaryMarker> {
   const started = Date.now();
   const startedAt = new Date(started).toISOString();
   const store = getStore();
   const src = await loadSources(null);
-  const today = todayInBrazil();
+  const today = brazilDay(now.toISOString()) as string;
   const facts = src.orders.map((o) => buildOrderFacts(o, src, today));
+  const kpis = await kpisOf(facts, now, null);
   const existing = new Map(
     (await store.list("order_summaries")).map((r) => [r.id, r]),
   );
   const rows = facts
-    .map((f) => summaryRow(f, startedAt))
+    .map((f) => summaryRow(f, startedAt, kpis.get(f.order.id)))
     .filter((row) => {
       const old = existing.get(row.id);
       if (!old) return true;
@@ -524,7 +556,8 @@ export async function rebuildOrderSummaries(): Promise<SummaryMarker> {
         old.version !== row.version ||
         old.status !== row.status ||
         old.number !== row.number ||
-        stableJson(old.facts) !== stableJson(row.facts)
+        stableJson(old.facts) !== stableJson(row.facts) ||
+        stableJson(old.kpi ?? null) !== stableJson(row.kpi ?? null)
       );
     });
   await writeSummaries(rows);
@@ -545,6 +578,9 @@ export async function rebuildOrderSummaries(): Promise<SummaryMarker> {
   };
   const { setRawSetting } = await import("@/lib/settings");
   await setRawSetting(SUMMARY_SETTING_KEY, marker);
+  // Indicadores prontos refeitos sobre os resumos novos.
+  const { rebuildTowerKpis } = await import("./tower-kpis");
+  await rebuildTowerKpis(now);
   return marker;
 }
 

@@ -13,7 +13,7 @@
     },
     {
       "path": "/api/jobs/summaries",
-      "schedule": "17 6 * * *"
+      "schedule": "5 3 * * *"
     }
   ]
 }

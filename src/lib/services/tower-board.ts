@@ -35,7 +35,6 @@ import {
   isLiveStatus,
   type SummaryView,
 } from "./order-summary";
-import { todayInBrazil } from "./supplier-terms";
 import { followupsDue, latestByItem } from "./production";
 import { getSettings } from "@/lib/settings";
 import { ORDER_SIGNED_WELLMIX } from "@/lib/workflow/stages";
@@ -155,6 +154,8 @@ export interface BoardCard {
   count: number;
   /** Quantos do quadrado estão com o prazo vencido. */
   overdue: number;
+  /** Quantos estão perto do prazo (RISK_DAYS), ainda sem estourar. */
+  risk?: number;
   /** Valor de venda somado (a receber, no quadrado "A receber"); nulo sem Finanças. */
   value: number | null;
 }
@@ -163,6 +164,22 @@ export interface TowerBoard {
   cards: BoardCard[];
   /** Moeda dos valores (a de venda principal). */
   currency: string;
+}
+
+/** Perto do prazo: o prazo da etapa do pedido vence nos próximos dias (alerta âmbar). */
+export const RISK_DAYS = 2;
+
+/**
+ * Linha do pedido em risco: prazo ainda não vencido, mas dentro de RISK_DAYS.
+ * Só pedido em andamento (a solicitação ao fornecedor tem SLA em minutos:
+ * ali só conta o estouro).
+ */
+export function atRisk(row: TowerRow, now: number): boolean {
+  if (row.kind !== "order" || row.cancelled || row.stageKey === "CLOSED")
+    return false;
+  if (row.overdue || !row.dueAt) return false;
+  const due = Date.parse(row.dueAt);
+  return due >= now && due - now <= RISK_DAYS * 86_400_000;
 }
 
 /** Etapas antes do embarque: a produção ainda conta. */
@@ -619,6 +636,7 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
       rows: list,
       count,
       overdue: list.filter((r) => r.overdue).length,
+      risk: list.filter((r) => atRisk(r, now)).length,
       value:
         input.finance && value !== undefined && value > 0.005 ? value : null,
     };
@@ -645,28 +663,7 @@ export async function loadTowerBoard(options: {
   const store = getStore();
   const now = options.now ?? new Date();
   // Tabelas pequenas: lidas na hora, nos dois caminhos.
-  const sideP = Promise.all([
-    store.list("penalties", { filter: { status: ["open", "disputed"] } }),
-    store.list("requirements", { filter: { status: "rejected" } }),
-    store.list("review_items", {
-      filter: { status: "open" },
-      orderBy: "createdAt",
-      direction: "desc",
-    }),
-    import("./compliance").then((m) => m.expiringCertifications()),
-    store.list("containers"),
-    safe(
-      store.list("booking_lots", {
-        filter: { status: ["draft", "closed", "in_progress"] },
-      }),
-    ),
-    safe(
-      store.list("supplier_requests", {
-        filter: { status: ["open", "answered", "approved"] },
-      }),
-    ),
-    getSettings(),
-  ]);
+  const sideP = loadBoardSide();
   sideP.catch(() => undefined);
   const { readOrderSummaries } = await import("./order-summary");
   const view = await readOrderSummaries();
@@ -809,7 +806,34 @@ export async function loadTowerBoard(options: {
   });
 }
 
-type BoardSide = [
+/** Tabelas pequenas dos quadrados, lidas na hora (multas, recusados, revisão, certificações, containers, bookings, solicitações, configurações). */
+export function loadBoardSide(): Promise<BoardSide> {
+  const store = getStore();
+  return Promise.all([
+    store.list("penalties", { filter: { status: ["open", "disputed"] } }),
+    store.list("requirements", { filter: { status: "rejected" } }),
+    store.list("review_items", {
+      filter: { status: "open" },
+      orderBy: "createdAt",
+      direction: "desc",
+    }),
+    import("./compliance").then((m) => m.expiringCertifications()),
+    store.list("containers"),
+    safe(
+      store.list("booking_lots", {
+        filter: { status: ["draft", "closed", "in_progress"] },
+      }),
+    ),
+    safe(
+      store.list("supplier_requests", {
+        filter: { status: ["open", "answered", "approved"] },
+      }),
+    ),
+    getSettings(),
+  ]);
+}
+
+export type BoardSide = [
   Penalty[],
   Requirement[],
   ReviewItem[],
@@ -825,7 +849,7 @@ type BoardSide = [
  * entradas de `buildTowerBoard`, montadas do que o resumo guardou, e as
  * parcelas com a situação do dia.
  */
-async function boardFromSummaries(
+export async function boardFromSummaries(
   view: SummaryView,
   finance: boolean,
   now: Date,
@@ -883,7 +907,8 @@ async function boardFromSummaries(
   for (const p of others) parties.push({ id: p.id, name: p.name });
   const { stages, requirements, laneRequirements } =
     journeyRowsFromFacts(liveFacts);
-  const today = todayInBrazil();
+  // Dia do "agora" dado (não o relógio): os indicadores calculam em instantes escolhidos.
+  const today = brazilDay(now) as string;
   const moneyRows = facts.map((f) => ({ ...f.money, order: f.order }));
   const currency = finance ? (moneyRows[0]?.sellCurrency ?? "BRL") : "BRL";
   return buildTowerBoard({

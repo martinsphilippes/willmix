@@ -2531,6 +2531,27 @@ export interface OrderSummary extends BaseRow {
   /** O que as telas de visão geral leem do pedido (`OrderFacts`, src/lib/services/order-summary.ts). */
   facts: unknown;
   computedAt: string;
+  /**
+   * Contribuição do pedido para os indicadores da Control Tower (`OrderKpi`,
+   * src/lib/services/tower-kpis.ts): em que quadrados e visões ele entra.
+   * Lida sozinha (coluna pequena) para somar os indicadores.
+   */
+  kpi?: unknown;
+}
+
+/**
+ * Indicadores prontos de uma tela (docs/RESUMOS.md): uma linha por conjunto
+ * (ex.: "tower" = os quadrados, etapas, visões gerais e totais da Control
+ * Tower), com o id igual à chave. Derivado: refeito a cada gravação que muda
+ * os números e quando passa `validUntil` (um prazo vence, o dia vira).
+ */
+export interface KpiSnapshot extends BaseRow {
+  key: string;
+  version: number;
+  data: unknown;
+  /** Até quando os números valem sem recalcular (prazos que vencem, virada do dia). */
+  validUntil: string | null;
+  computedAt: string;
 }
 
 /** Local de estoque (Sankhya TGFLOC; CODLOCAL). */
@@ -2755,6 +2776,7 @@ export interface Tables {
   stock_locations: StockLocation;
   process_events: ProcessEvent;
   order_summaries: OrderSummary;
+  kpi_snapshots: KpiSnapshot;
 }
 export type TableName = keyof Tables;
 
@@ -4464,11 +4486,23 @@ export const TABLES: Record<TableName, TableDef> = {
       version: int(),
       facts: jsonLarge(),
       computedAt: datetime(),
+      kpi: json(),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_live", type: "key", columns: ["live"] },
     ],
+  },
+  kpi_snapshots: {
+    label: "Indicadores prontos (derivado; recalculado por evento)",
+    columns: {
+      key: str(60, true),
+      version: int(),
+      data: jsonLarge(),
+      validUntil: datetime(),
+      computedAt: datetime(),
+    },
+    indexes: [{ key: "by_key", type: "unique", columns: ["key"] }],
   },
 };
 

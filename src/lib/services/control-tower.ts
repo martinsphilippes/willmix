@@ -17,6 +17,7 @@ import {
 } from "@/lib/db";
 import type { BoardOrder } from "./tower-board";
 import type { FinanceSummary, FinanceSummaryRow } from "./finance";
+import type { OrderFacts } from "./order-summary";
 
 /** Pedido do item de revisão (itens antigos podem ter só entity "order"). */
 export const reviewOrderId = (r: ReviewItem) =>
@@ -114,7 +115,7 @@ const OPEN_REQUEST_STATUSES: RequestStatus[] = [
  * (solicitações abertas, multas em aberto, itens recusados, certificações a
  * vencer e os produtos delas, revisão).
  */
-async function loadTowerSide() {
+export async function loadTowerSide() {
   const store = getStore();
   const [requests, penalties, rejected, certifications, reviews] =
     await Promise.all([
@@ -143,42 +144,16 @@ async function loadTowerSide() {
 }
 
 /** Visão da Wellmix: onde cada pedido está, quem precisa agir, o que está atrasado ou com problema. */
-export async function loadControlTower(): Promise<TowerData> {
-  const now = Date.now();
+export async function loadControlTower(
+  now: number = Date.now(),
+): Promise<TowerData> {
   const sideP = loadTowerSide();
   sideP.catch(() => undefined);
   const { readOrderSummaries } = await import("./order-summary");
   const view = await readOrderSummaries();
   if (view) {
     // Do resumo dos pedidos (docs/RESUMOS.md).
-    const side = await sideP;
-    const byId = new Map(view.facts.map((f) => [f.order.id, f]));
-    const names = new Map<string, string>();
-    for (const f of view.facts) {
-      if (f.customer !== null) names.set(f.order.customerId, f.customer);
-      if (f.supplier !== null) names.set(f.order.supplierId, f.supplier);
-    }
-    // Clientes das solicitações abertas que não aparecem nos pedidos.
-    const missing = [
-      ...new Set(
-        side.requests
-          .map((r) => r.customerId)
-          .filter((id): id is string => !!id && !names.has(id)),
-      ),
-    ];
-    if (missing.length)
-      for (const p of await getStore().list("parties", {
-        filter: { id: missing },
-      }))
-        if (!names.has(p.id)) names.set(p.id, p.name);
-    return buildControlTower({
-      now,
-      orders: view.facts.map((f) => f.order),
-      partyName: (id) => (id === null ? null : (names.get(id) ?? null)),
-      productOf: (id) => byId.get(id)?.product ?? null,
-      stageOf: (id) => byId.get(id)?.active[0],
-      ...side,
-    });
+    return controlTowerFromFacts(view.facts, await sideP, now);
   }
   // Caminho antigo (sem resumo ainda): as tabelas de pedidos, itens e etapas.
   const store = getStore();
@@ -203,6 +178,44 @@ export async function loadControlTower(): Promise<TowerData> {
     partyName: (id) => (id === null ? null : (partyById.get(id)?.name ?? null)),
     productOf: (id) => itemByOrder.get(id)?.name ?? null,
     stageOf: (id) => stageByOrder.get(id),
+    ...side,
+  });
+}
+
+/** O que `loadTowerSide` lê (tabelas pequenas, lidas na hora). */
+export type TowerSide = Awaited<ReturnType<typeof loadTowerSide>>;
+
+/** Visões gerais e exceções a partir do resumo dos pedidos dados. */
+export async function controlTowerFromFacts(
+  facts: OrderFacts[],
+  side: TowerSide,
+  now: number,
+): Promise<TowerData> {
+  const byId = new Map(facts.map((f) => [f.order.id, f]));
+  const names = new Map<string, string>();
+  for (const f of facts) {
+    if (f.customer !== null) names.set(f.order.customerId, f.customer);
+    if (f.supplier !== null) names.set(f.order.supplierId, f.supplier);
+  }
+  // Clientes das solicitações abertas que não aparecem nos pedidos.
+  const missing = [
+    ...new Set(
+      side.requests
+        .map((r) => r.customerId)
+        .filter((id): id is string => !!id && !names.has(id)),
+    ),
+  ];
+  if (missing.length)
+    for (const p of await getStore().list("parties", {
+      filter: { id: missing },
+    }))
+      if (!names.has(p.id)) names.set(p.id, p.name);
+  return buildControlTower({
+    now,
+    orders: facts.map((f) => f.order),
+    partyName: (id) => (id === null ? null : (names.get(id) ?? null)),
+    productOf: (id) => byId.get(id)?.product ?? null,
+    stageOf: (id) => byId.get(id)?.active[0],
     ...side,
   });
 }
@@ -462,7 +475,7 @@ const PIPELINE: Array<{
 ];
 
 /** Linha do financeiro que os totais leem (de `loadFinance` ou do resumo do pedido). */
-type TotalsRow = FinanceSummaryRow & {
+export type TotalsRow = FinanceSummaryRow & {
   order: Pick<Order, "id" | "status">;
   fob: number;
 };
@@ -470,12 +483,10 @@ type TotalsRow = FinanceSummaryRow & {
 /** Reutiliza o financeiro e o container; nada é estimado: só o que foi lançado. */
 export async function loadTowerTotals(): Promise<TowerTotals> {
   const { loadFinance, summarizeFinance } = await import("./finance");
-  const { listContainers } = await import("./containers");
   const { readOrderSummaries } = await import("./order-summary");
   const store = getStore();
-  const [view, containers, reviews] = await Promise.all([
+  const [view, reviews] = await Promise.all([
     readOrderSummaries(),
-    listContainers(),
     store.list("review_items", { filter: { status: "open" } }),
   ]);
   let rows: TotalsRow[];
@@ -488,6 +499,64 @@ export async function loadTowerTotals(): Promise<TowerTotals> {
     // Só o que foi lançado (sem estimar pelo câmbio do dia).
     ({ rows, summary } = await loadFinance({ estimate: false }));
   }
+  return buildTowerTotals(
+    rows,
+    summary,
+    reviews,
+    await loadContainerTotals(summary.currency),
+  );
+}
+
+/** Containers da faixa de totais e da visão comercial (poucos: lidos na hora). */
+export async function loadContainerTotals(
+  currency: string,
+): Promise<Pick<TowerTotals, "containers" | "commercial">> {
+  const { listContainers, loadContainer } = await import("./containers");
+  const containers = await listContainers();
+  const openContainers = containers.filter(
+    (c) => c.container.status !== "closed",
+  );
+  const avgOccupancyPercent =
+    openContainers.length > 0
+      ? Math.round(
+          (openContainers.reduce((s, c) => s + c.usage.occupancyPercent, 0) /
+            openContainers.length) *
+            10,
+        ) / 10
+      : null;
+  const commercial = await Promise.all(
+    openContainers.map(async (c) => {
+      const view = await loadContainer(c.container.id);
+      return {
+        id: c.container.id,
+        code: c.container.code,
+        customer: c.customerName,
+        totalCbm: c.usage.totalCbm,
+        occupancyPercent: c.usage.occupancyPercent,
+        soldPercent: c.split.soldPercent,
+        availablePercent: c.split.availablePercent,
+        soldValue: view?.soldValue ?? 0,
+        soldCurrency: view?.soldCurrency ?? currency,
+      };
+    }),
+  );
+  return {
+    containers: {
+      total: containers.length,
+      open: openContainers.length,
+      avgOccupancyPercent,
+    },
+    commercial,
+  };
+}
+
+/** Totais da faixa do financeiro e da operação (função pura). */
+export function buildTowerTotals(
+  rows: TotalsRow[],
+  summary: FinanceSummary,
+  reviews: ReviewItem[],
+  containerTotals: Pick<TowerTotals, "containers" | "commercial">,
+): TowerTotals {
   // Pedido cancelado não é compra: fica fora do "Comprado (FOB)".
   const purchasedByCurrency: Record<string, number> = {};
   const cancelled = new Set<string>();
@@ -511,34 +580,6 @@ export async function loadTowerTotals(): Promise<TowerTotals> {
         .reduce((s, r) => s + r.sell, 0),
     };
   });
-  const openContainers = containers.filter(
-    (c) => c.container.status !== "closed",
-  );
-  const avgOccupancyPercent =
-    openContainers.length > 0
-      ? Math.round(
-          (openContainers.reduce((s, c) => s + c.usage.occupancyPercent, 0) /
-            openContainers.length) *
-            10,
-        ) / 10
-      : null;
-  const commercial = await Promise.all(
-    openContainers.map(async (c) => {
-      const { loadContainer } = await import("./containers");
-      const view = await loadContainer(c.container.id);
-      return {
-        id: c.container.id,
-        code: c.container.code,
-        customer: c.customerName,
-        totalCbm: c.usage.totalCbm,
-        occupancyPercent: c.usage.occupancyPercent,
-        soldPercent: c.split.soldPercent,
-        availablePercent: c.split.availablePercent,
-        soldValue: view?.soldValue ?? 0,
-        soldCurrency: view?.soldCurrency ?? summary.currency,
-      };
-    }),
-  );
   return {
     sellCurrency: summary.currency,
     sold: summary.sell,
@@ -551,11 +592,6 @@ export async function loadTowerTotals(): Promise<TowerTotals> {
     // Itens de revisão de pedido cancelado não contam (os de antes da regra ficaram abertos).
     reviewsOpen: reviews.filter((r) => !cancelled.has(reviewOrderId(r) ?? ""))
       .length,
-    containers: {
-      total: containers.length,
-      open: openContainers.length,
-      avgOccupancyPercent,
-    },
-    commercial,
+    ...containerTotals,
   };
 }
