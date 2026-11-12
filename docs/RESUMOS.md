@@ -61,7 +61,18 @@ Uma falha no recálculo só vai para o log. A reconstrução noturna corrige.
 - **Job noturno:** `/api/jobs/summaries`, às 6h17 UTC (3h17 em Brasília; `vercel.json`, protegido por `CRON_SECRET`).
 - **Manual:** Configurações → **Resumos dos pedidos** → "Reconstruir agora" (só o administrador; auditoria `order_summaries.rebuild`).
 
-A reconstrução lê tudo de uma vez e grava em lote (`upsertMany`), só o que mudou. A comparação ignora a ordem das chaves, que o `jsonb` reordena. Ela apaga o resumo de pedido que não existe mais e não sobrescreve resumo recalculado por evento durante ela.
+**Em partes (12/11/2026).** Com 15,7 mil pedidos, ler e gravar tudo de uma vez passava dos 5 minutos que a Vercel dá a uma requisição, e as tentativas pela tela eram cortadas sem terminar. Agora a reconstrução (`rebuildOrderSummariesStep`) anda em fatias de 500 pedidos, em ordem de id. Cada fatia lê só os dados desses pedidos, como o recálculo por evento.
+
+- Cada rodada trabalha até o tempo dado (ao menos uma fatia) e guarda onde parou em `settings` (`orderSummariesRebuild`: início, último id, processados, total, gravados).
+- A próxima rodada continua do último id. Uma trava (`lockUntil`, o fim da rodada mais um minuto) evita duas rodadas ao mesmo tempo; a outra só devolve o andamento.
+- A última rodada apaga o resumo de pedido que não existe mais, resume o pedido criado durante a reconstrução que ficou antes do cursor, grava o marcador e refaz os indicadores (`kpi_snapshots`).
+- Reconstrução parada há mais de 12 horas, ou de outro formato, recomeça do zero.
+- **Tela:** "Reconstruir agora" faz a primeira rodada (45 s). Se não terminar, a tela mostra quantos pedidos já foram e pede as rodadas seguintes até o fim. Fechou a tela: a reconstrução fica parada e continua ao abrir de novo ou no job noturno.
+- **Job noturno:** rodadas de até 4 minutos; sem terminar, chama a si mesmo (`?hop=n`, no máximo 30 vezes) depois da resposta.
+- Até o marcador novo ser gravado, as telas seguem pelo caminho antigo (o marcador velho é de outro formato) ou pelos resumos anteriores (mesmo formato).
+- Teste em `tests/unit/order-summary.test.ts`: fatias de 2 pedidos, uma por rodada, com a trava, chegam à mesma Control Tower.
+
+Cada fatia grava em lote (`upsertMany`), só o que mudou. A comparação ignora a ordem das chaves, que o `jsonb` reordena. Ela apaga o resumo de pedido que não existe mais e não sobrescreve resumo recalculado por evento durante ela.
 
 Ao terminar, grava o marcador `orderSummaries` em `settings`: quando, quantos pedidos, quantos gravados e apagados, duração.
 
