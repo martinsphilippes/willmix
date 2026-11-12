@@ -273,7 +273,7 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   // "Containers por rodada" é só informativo (não é campo): já mostra a
   // prévia do que as rodadas vão ocupar.
   const perRound = gen.locator("[data-generate-per-round]");
-  await expect(perRound).toHaveText("0,73 a 0,74");
+  await expect(perRound).toHaveText("0,74");
   await expect(gen.locator("input[data-generate-per-round]")).toHaveCount(0);
   await gen.locator("[data-generate-submit]").click();
   await expect(page.locator("[data-schedule-item]")).toHaveCount(3);
@@ -290,8 +290,11 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
     "partial",
   );
   await expect(card(1).locator("[data-round-status]")).toContainText("73%");
-  // Aumentar: fecha o container da rodada 1 (566 caixas = 27.168 peças); o
-  // total e o informativo acompanham.
+  // Aumentar: fecha o container da rodada 1 (566 caixas = 27.168 peças). A
+  // quantidade de peças muda em consequência: a da rodada, a soma e o total
+  // do gerador (mesmo com outro número digitado nele antes); o informativo
+  // acompanha.
+  await gen.locator("[data-generate-total]").fill("50000");
   await card(1).locator("[data-round-up]").click();
   await expect(qty(1)).toHaveValue("27168");
   await expect(card(1).locator("[data-round-fill]")).toHaveAttribute(
@@ -299,6 +302,7 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
     "full",
   );
   await expect(page.locator("[data-selection-quantity]")).toHaveValue("67152");
+  await expect(gen.locator("[data-generate-total]")).toHaveValue("67152");
   await expect(perRound).toHaveText("0,73 a 1");
   // Diminuir: 30.000 peças passam de um container (o segundo com 10%);
   // tirar o excedente deixa a rodada 2 com um container cheio.
@@ -306,6 +310,7 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(card(2).locator("[data-round-status]")).toContainText("10%");
   await card(2).locator("[data-round-down]").click();
   await expect(qty(2)).toHaveValue("27168");
+  await expect(gen.locator("[data-generate-total]")).toHaveValue("74304");
   // Margem de 5%: 26.000 peças = 542 caixas = 95% do container: cheio.
   await qty(3).fill("26000");
   await expect(card(3).locator("[data-round-fill]")).toHaveAttribute(

@@ -281,8 +281,19 @@ export function RequestScheduleFields({
           />
         </label>
       </div>
-      <div className="-mx-1 min-w-0 max-w-full overflow-x-auto px-1">
-        <div className="flex w-max gap-2">
+      {/* Com os ajustes do container (programação de compra) os cartões
+          quebram de linha: os botões de cada rodada ficam sempre à vista.
+          Sem eles (solicitação do cliente), a fileira rola para o lado. */}
+      <div
+        className={
+          roundInfo
+            ? "min-w-0"
+            : "-mx-1 min-w-0 max-w-full overflow-x-auto px-1"
+        }
+      >
+        <div
+          className={roundInfo ? "flex flex-wrap gap-2" : "flex w-max gap-2"}
+        >
           {qtys.map((q, i) => (
             <div
               key={i}
@@ -290,7 +301,7 @@ export function RequestScheduleFields({
               className={cx(
                 "shrink-0 space-y-1 rounded-md border border-zinc-200 bg-white p-2",
                 // Com os ajustes do container, o cartão precisa de mais largura.
-                roundInfo ? "w-44" : "w-36",
+                roundInfo ? "w-40" : "w-36",
               )}
             >
               <div className="flex items-center justify-between gap-1">

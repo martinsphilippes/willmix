@@ -65,11 +65,13 @@ export interface GenerateLabels {
   fullMargin: string;
   partial: string;
   partialLast: string;
-  /** Ajustes da rodada: "Aumentar +{pieces}" / "fecha {n} container(s)". */
+  /** Ajustes da rodada: "Aumentar +{pieces}" / "fecha {n} container" (ou "containers"). */
   up: string;
   upTo: string;
+  upToMany: string;
   down: string;
   downTo: string;
+  downToMany: string;
 }
 
 const fill = (s: string, vars: Record<string, string | number>) =>
@@ -120,10 +122,19 @@ export function SelectionQuantity({
         ?.code ??
       "",
   );
-  // Nulo = acompanha a tela: o total é a soma das rodadas e o número de
-  // rodadas é o dos cartões; digitado, vale o que está no campo até gerar.
-  const [totalText, setTotalText] = useState<string | null>(null);
-  const [roundsText, setRoundsText] = useState<string | null>(null);
+  // Os dois campos do gerador acompanham a tela: o total é a soma das
+  // rodadas e o número de rodadas é o dos cartões. O digitado vale só
+  // enquanto as rodadas não mudam (`at` = como estavam ao digitar): mexer
+  // numa rodada (Aumentar, Diminuir, digitar, "+ Rodada", "×") atualiza os
+  // dois na hora.
+  const [totalEdit, setTotalEdit] = useState<{
+    text: string;
+    at: string;
+  } | null>(null);
+  const [roundsEdit, setRoundsEdit] = useState<{
+    text: string;
+    at: number;
+  } | null>(null);
   // O que a última geração arredondou (some quando as rodadas mudam).
   const [note, setNote] = useState<{
     pieces: number;
@@ -152,8 +163,13 @@ export function SelectionQuantity({
   const capacity =
     containerTypes.find((c) => c.code === container)?.capacityCbm ?? null;
   const total =
-    totalText ??
-    (qty.trim() ? qty : item?.sheetQty ? String(item.sheetQty) : "");
+    totalEdit && totalEdit.at === qty
+      ? totalEdit.text
+      : qty.trim()
+        ? qty
+        : item?.sheetQty
+          ? String(item.sheetQty)
+          : "";
   const hasCarton = !!(item?.masterCartonQty && item.cbmPerCarton && capacity);
   const perContainer =
     hasCarton && item
@@ -224,8 +240,8 @@ export function SelectionQuantity({
       apply(plan.rounds.map((r) => r.pieces));
     }
     // Gerado: os campos voltam a acompanhar as rodadas da tela.
-    setTotalText(null);
-    setRoundsText(null);
+    setTotalEdit(null);
+    setRoundsEdit(null);
   }
 
   const chip = (on: boolean) =>
@@ -237,7 +253,10 @@ export function SelectionQuantity({
     );
 
   const generator = (apply: (q: number[]) => void, live: number[]) => {
-    const roundsValue = roundsText ?? String(live.length || 2);
+    const roundsValue =
+      roundsEdit && roundsEdit.at === live.length
+        ? roundsEdit.text
+        : String(live.length || 2);
     // Rodadas da tela; sem programação, a prévia do que seria gerado.
     const typedTotal = parseNum(total);
     const typedRounds = parseNum(roundsValue);
@@ -273,9 +292,11 @@ export function SelectionQuantity({
           capacity,
         )
       : null;
+    // Rodadas iguais (ou com uma caixa de diferença, o resto da divisão):
+    // um número só; diferentes de verdade: "de X a Y".
     const perRoundText = !range
       ? "—"
-      : fmt(range.min, 2) === fmt(range.max, 2)
+      : range.max - range.min < 0.01
         ? fmt(range.max, 2)
         : fill(gen.perRoundRange, {
             min: fmt(range.min, 2),
@@ -306,7 +327,7 @@ export function SelectionQuantity({
               inputMode="numeric"
               value={total}
               onChange={(e) => {
-                setTotalText(e.target.value);
+                setTotalEdit({ text: e.target.value, at: qty });
                 setError(null);
               }}
               data-generate-total
@@ -323,7 +344,7 @@ export function SelectionQuantity({
               max={MAX_PURCHASE_ROUNDS}
               value={roundsValue}
               onChange={(e) => {
-                setRoundsText(e.target.value);
+                setRoundsEdit({ text: e.target.value, at: live.length });
                 setError(null);
               }}
               data-generate-rounds
@@ -449,10 +470,17 @@ export function SelectionQuantity({
     const main = fill(kind === "up" ? gen.up : gen.down, {
       pieces: fmt(step.pieces),
     });
-    const to = fill(kind === "up" ? gen.upTo : gen.downTo, {
-      n: fmt(step.containers),
-      container,
-    });
+    const many = step.containers > 1;
+    const to = fill(
+      kind === "up"
+        ? many
+          ? gen.upToMany
+          : gen.upTo
+        : many
+          ? gen.downToMany
+          : gen.downTo,
+      { n: fmt(step.containers), container },
+    );
     return (
       <button
         type="button"

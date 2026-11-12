@@ -169,6 +169,8 @@ export type RoundsPlanError = "total" | "rounds" | "carton" | "too_big";
 const pos = (n: number | null | undefined): n is number =>
   typeof n === "number" && Number.isFinite(n) && n > 0;
 const r4 = (n: number) => Math.round(n * 10_000) / 10_000;
+/** Fração de container: 6 casas, para o que a tela mostra com 2 não arredondar duas vezes. */
+const r6 = (n: number) => Math.round(n * 1_000_000) / 1_000_000;
 
 /** Caixas master inteiras que cabem num container (0 = a caixa não cabe). */
 export function cartonsPerContainer(
@@ -202,7 +204,7 @@ export function planPurchaseRounds(
       pieces: c * perCarton,
       cartons: c,
       cbm: r4(c * cbmPerCarton),
-      containers: r4(c / perContainer),
+      containers: r6(c / perContainer),
     };
   });
   return {
@@ -212,7 +214,7 @@ export function planPurchaseRounds(
       extraPieces: cartons * perCarton - Math.round(input.total),
       cartons,
       cbm: r4(cartons * cbmPerCarton),
-      containers: r4(cartons / perContainer),
+      containers: r6(cartons / perContainer),
       cartonsPerContainer: perContainer,
       piecesPerContainer: perContainer * perCarton,
       reduced: count < asked,
@@ -294,7 +296,7 @@ export function roundLoad(
   return {
     cartons,
     cbm,
-    containers: r4(cartons / perContainer),
+    containers: r6(cartons / perContainer),
     needed,
     lastPct: exact ? 100 : Math.max(1, pct),
     full: exact || pct >= 100 - CONTAINER_FULL_MARGIN_PCT,

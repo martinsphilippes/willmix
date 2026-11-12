@@ -57,9 +57,11 @@ export const pt = {
   "purchaseRounds.gen.partial": "Container com {pct}% ocupado",
   "purchaseRounds.gen.partialLast": "Último container com {pct}% ocupado",
   "purchaseRounds.gen.up": "Aumentar +{pieces}",
-  "purchaseRounds.gen.upTo": "fecha {n} container(s)",
+  "purchaseRounds.gen.upTo": "fecha {n} container",
+  "purchaseRounds.gen.upToMany": "fecha {n} containers",
   "purchaseRounds.gen.down": "Diminuir −{pieces}",
-  "purchaseRounds.gen.downTo": "fica com {n} container(s)",
+  "purchaseRounds.gen.downTo": "fica com {n} container",
+  "purchaseRounds.gen.downToMany": "fica com {n} containers",
 
   "purchaseRounds.summary.title": "Programação de compra",
   "purchaseRounds.summary.same":
@@ -158,9 +160,11 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.partial": "Container {pct}% used",
   "purchaseRounds.gen.partialLast": "Last container {pct}% used",
   "purchaseRounds.gen.up": "Increase +{pieces}",
-  "purchaseRounds.gen.upTo": "closes {n} container(s)",
+  "purchaseRounds.gen.upTo": "closes {n} container",
+  "purchaseRounds.gen.upToMany": "closes {n} containers",
   "purchaseRounds.gen.down": "Decrease −{pieces}",
-  "purchaseRounds.gen.downTo": "leaves {n} container(s)",
+  "purchaseRounds.gen.downTo": "leaves {n} container",
+  "purchaseRounds.gen.downToMany": "leaves {n} containers",
 
   "purchaseRounds.summary.title": "Purchase schedule",
   "purchaseRounds.summary.same":
@@ -254,8 +258,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.partialLast": "最后一个集装箱已用 {pct}%",
   "purchaseRounds.gen.up": "增加 +{pieces}",
   "purchaseRounds.gen.upTo": "装满 {n} 个集装箱",
+  "purchaseRounds.gen.upToMany": "装满 {n} 个集装箱",
   "purchaseRounds.gen.down": "减少 −{pieces}",
   "purchaseRounds.gen.downTo": "保留 {n} 个集装箱",
+  "purchaseRounds.gen.downToMany": "保留 {n} 个集装箱",
 
   "purchaseRounds.summary.title": "采购计划",
   "purchaseRounds.summary.same":

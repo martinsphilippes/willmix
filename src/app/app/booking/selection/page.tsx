@@ -668,8 +668,10 @@ export default async function BookingSelectionPage({
                   }),
                   up: t("purchaseRounds.gen.up", { pieces: "{pieces}" }),
                   upTo: t("purchaseRounds.gen.upTo", { n: "{n}" }),
+                  upToMany: t("purchaseRounds.gen.upToMany", { n: "{n}" }),
                   down: t("purchaseRounds.gen.down", { pieces: "{pieces}" }),
                   downTo: t("purchaseRounds.gen.downTo", { n: "{n}" }),
+                  downToMany: t("purchaseRounds.gen.downToMany", { n: "{n}" }),
                 }}
                 labels={{
                   intl,
