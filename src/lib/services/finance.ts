@@ -1,5 +1,10 @@
 import "server-only";
-import { indexBy, listByIds } from "@/lib/db/lookup";
+import {
+  columnsExcept,
+  indexBy,
+  listByIds,
+  listColumns,
+} from "@/lib/db/lookup";
 
 import { getStore, type Order, type Payment } from "@/lib/db";
 import { fxKey, rateFor, type FxRates } from "@/lib/pricing";
@@ -443,10 +448,15 @@ export async function loadFinance(
   summary: FinanceSummary;
 }> {
   const store = getStore();
+  // Sem a cópia do registro do ERP (sankhyaRefs): era mais da metade de
+  // pedidos, pagamentos e itens.
   const [orders, payments, items] = await Promise.all([
-    store.list("orders", { orderBy: "number", direction: "desc" }),
-    store.list("payments"),
-    store.list("order_items"),
+    listColumns(store, "orders", columnsExcept("orders", ["sankhyaRefs"]), {
+      orderBy: "number",
+      direction: "desc",
+    }),
+    listColumns(store, "payments", columnsExcept("payments", ["sankhyaRefs"])),
+    listColumns(store, "order_items", ["orderId", "name"]),
   ]);
   // Só os parceiros dos pedidos (antes: a tabela inteira, ~32 mil).
   const parties = indexBy(

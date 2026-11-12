@@ -1,6 +1,7 @@
 import { cache } from "react";
 import type { TableName, Tables } from "./schema";
 import type { ListOptions, NewRow, Patch, Store } from "./store";
+import { pickColumns } from "./store";
 import type { ByteRange } from "@/lib/http-range";
 import { noteWrite, removalNeedsRow } from "./summary-dirty";
 
@@ -68,6 +69,23 @@ export class CachedStore implements Store {
   list<K extends TableName>(table: K, options: ListOptions<Tables[K]> = {}) {
     return this.read(`list:${table}:${JSON.stringify(options)}`, () =>
       this.base.list(table, options),
+    );
+  }
+
+  /** Colunas escolhidas (Supabase); nos outros stores, a linha recortada. */
+  listColumns<K extends TableName, C extends keyof Tables[K] & string>(
+    table: K,
+    columns: readonly C[],
+    options: ListOptions<Tables[K]> = {},
+  ) {
+    return this.read(
+      `cols:${table}:${columns.join(",")}:${JSON.stringify(options)}`,
+      async () =>
+        this.base.listColumns
+          ? this.base.listColumns(table, columns, options)
+          : (await this.base.list(table, options)).map((r) =>
+              pickColumns(r, columns),
+            ),
     );
   }
 

@@ -12,7 +12,8 @@ import type { BaseRow, TableName, Tables } from "./schema";
 import { clampRange, type ByteRange } from "@/lib/http-range";
 import { TABLES } from "./schema";
 import {
-  matchesFilter,
+  pickColumns,
+  rowMatcher,
   sortRows,
   type ListOptions,
   type NewRow,
@@ -78,13 +79,28 @@ export class MemoryStore implements Store {
     this.save();
   }
 
+  /** Como no Supabase: recorta as colunas antes de copiar a linha. */
+  async listColumns<K extends TableName, C extends keyof Tables[K] & string>(
+    table: K,
+    columns: readonly C[],
+    options: ListOptions<Tables[K]> = {},
+  ) {
+    const rows = this.db[table].filter(rowMatcher(options.filter));
+    const sorted = sortRows(
+      rows,
+      options.orderBy ?? "createdAt",
+      options.direction ?? "asc",
+    );
+    return (options.limit ? sorted.slice(0, options.limit) : sorted).map(
+      (row) => clone(pickColumns(row, columns)),
+    );
+  }
+
   async list<K extends TableName>(
     table: K,
     options: ListOptions<Tables[K]> = {},
   ) {
-    const rows = this.db[table].filter((row) =>
-      matchesFilter(row, options.filter),
-    );
+    const rows = this.db[table].filter(rowMatcher(options.filter));
     const sorted = sortRows(
       rows,
       options.orderBy ?? "createdAt",

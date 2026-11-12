@@ -8,6 +8,13 @@ import { STAGE_KEYS, REQUEST_STATUSES } from "@/lib/db/schema";
 import { getStore, type Product, type ProductPhoto } from "@/lib/db";
 import { pipelineFor, type PipelineItem } from "@/lib/services/pipeline";
 import {
+  ORDERS_FILTER_KEYS,
+  ORDERS_PAGE_SIZE,
+  filterOrderRows,
+  ordersPage,
+  parseOrdersSort,
+} from "@/lib/orders-filter";
+import {
   JOURNEY_STEPS,
   journeyPercent,
   type JourneyStep,
@@ -94,23 +101,11 @@ export default async function OrdersPage({
    * e valor): só a Wellmix, a mesma regra da foto, do código e do preço FOB
    * nos itens do pedido. Para os demais nada disso sai do servidor.
    */
-  const productIds = wellmix
-    ? [
-        ...new Set(
-          rows
-            .flatMap((r) => r.items.map((i) => i.productId))
-            .filter((id): id is string => !!id),
-        ),
-      ]
-    : [];
+  // Produtos e fotos: só os dos itens da página mostrada (carregados depois
+  // do filtro e da paginação, mais abaixo).
   const store = getStore();
-  const [products, photos] = productIds.length
-    ? await Promise.all([
-        store.list("products", { filter: { id: productIds } }),
-        store.list("product_photos", { filter: { productId: productIds } }),
-      ])
-    : [[] as Product[], [] as ProductPhoto[]];
-  const productById = new Map(products.map((p) => [p.id, p]));
+  let productById = new Map<string, Product>();
+  let photos: ProductPhoto[] = [];
   const num = (n: number, digits = 2) =>
     n.toLocaleString(t.intl, { maximumFractionDigits: digits });
   /** Conta do item (a mesma da folha do fornecedor) e preço × quantidade. */
@@ -190,8 +185,11 @@ export default async function OrdersPage({
   // juntos) e, embaixo, os itens da linha escolhida. Cada produto continua
   // com o próprio pedido; a linha resume o grupo.
   const groups = new Map<string, (typeof rows)[number][]>();
-  for (const r of rows)
-    groups.set(r.groupKey, [...(groups.get(r.groupKey) ?? []), r]);
+  for (const r of rows) {
+    const list = groups.get(r.groupKey);
+    if (list) list.push(r);
+    else groups.set(r.groupKey, [r]);
+  }
   const STATE_WEIGHT = {
     blocked: 0,
     active: 1,
@@ -206,7 +204,32 @@ export default async function OrdersPage({
   const stepIndex = (step: JourneyStep | null) =>
     step ? JOURNEY_STEPS.indexOf(step) : Number.POSITIVE_INFINITY;
 
-  const tableRows: OrdersTableRow[] = [...groups.values()].map((members) => {
+  /** Item completo (linhas da página): textos formatados e detalhe. */
+  const itemRow = (
+    r: (typeof rows)[number],
+    i: PipelineItem,
+  ): OrdersTableRow["items"][number] => ({
+    orderItemId: r.kind === "order" ? (i.id ?? null) : null,
+    name: i.name,
+    variant: i.variant,
+    quantity: `${i.quantity.toLocaleString(t.intl)} ${i.unit}`,
+    price: wellmix ? money(i.unitPrice, i.currency) : null,
+    supplier: r.supplier ?? "",
+    ref: refLabel(r),
+    href: r.href,
+    phase: phaseLabel(r),
+    state: r.state,
+    progress: stepPercent(r.journey),
+    step: r.journey,
+    stepLabel: stepLabel(r.journey),
+    dueLabel: formatDate(r.dueAt, t),
+    due: brazilDay(r.dueAt),
+    detail: itemDetail(i),
+  });
+  const buildRow = (
+    members: (typeof rows)[number][],
+    detailed: boolean,
+  ): OrdersTableRow => {
     const sorted = [...members].sort(
       (a, b) => (a.number ?? 0) - (b.number ?? 0) || a.key.localeCompare(b.key),
     );
@@ -255,27 +278,34 @@ export default async function OrdersPage({
           : t("orders.panel.request"),
       isRequest: sorted.every((r) => r.kind === "request"),
       product: first.product,
+      // Resumo (todas as linhas, só para filtrar e ordenar): sem os textos
+      // formatados dos itens. Cada toLocaleString/formatDate cria um
+      // formatador; com ~100 mil itens isso passava de 20 s.
       items: sorted.flatMap((r) =>
-        r.items.map((i) => ({
-          orderItemId: r.kind === "order" ? (i.id ?? null) : null,
-          name: i.name,
-          variant: i.variant,
-          quantity: `${i.quantity.toLocaleString(t.intl)} ${i.unit}`,
-          price: wellmix ? money(i.unitPrice, i.currency) : null,
-          supplier: r.supplier ?? "",
-          ref: refLabel(r),
-          href: r.href,
-          phase: phaseLabel(r),
-          state: r.state,
-          progress: stepPercent(r.journey),
-          step: r.journey,
-          stepLabel: stepLabel(r.journey),
-          dueLabel: formatDate(r.dueAt, t),
-          due: brazilDay(r.dueAt),
-          detail: itemDetail(i),
-        })),
+        r.items.map((i) =>
+          detailed
+            ? itemRow(r, i)
+            : {
+                orderItemId: null,
+                name: i.name,
+                variant: i.variant,
+                quantity: "",
+                price: null,
+                supplier: "",
+                ref: "",
+                href: r.href,
+                phase: "",
+                state: r.state,
+                progress: null,
+                step: r.journey,
+                stepLabel: null,
+                dueLabel: "",
+                due: "",
+                detail: null,
+              },
+        ),
       ),
-      itemsTotals: itemsTotals(sorted),
+      itemsTotals: detailed ? itemsTotals(sorted) : null,
       customer: first.customer ?? "",
       supplier: suppliers.join(", "),
       phase: phaseLabel(lead),
@@ -286,14 +316,72 @@ export default async function OrdersPage({
       step: journeyLead.journey,
       stepLabel: stepLabel(journeyLead.journey),
       due: dues.length ? brazilDay(dues[0]) : "",
-      dueLabel: dues.length ? formatDate(dues[0], t) : formatDate(null, t),
+      dueLabel: !detailed
+        ? ""
+        : dues.length
+          ? formatDate(dues[0], t)
+          : formatDate(null, t),
       updated: brazilDay(updated),
-      updatedLabel: formatDate(updated, t),
+      updatedLabel: detailed ? formatDate(updated, t) : "",
     };
-  });
+  };
+
+  // Filtro, ordem e página no servidor (com milhares de pedidos do Sankhya,
+  // mandar tudo ao navegador passava do tempo da Vercel). O detalhe dos
+  // itens (foto, código, caixas, volume) só sai para as linhas da página.
+  const today = brazilDay(new Date());
   const one = (v: string | string[] | undefined) =>
     typeof v === "string" ? v.slice(0, 120) : undefined;
-
+  const entries = [...groups.values()].map((members) => ({
+    members,
+    row: buildRow(members, false),
+  }));
+  const filters = Object.fromEntries(
+    ORDERS_FILTER_KEYS.map((k) => [k, one(params[k]) ?? ""]),
+  );
+  const entryOf = new Map(entries.map((e) => [e.row, e]));
+  const matched = filterOrderRows(
+    entries.map((e) => e.row),
+    filters,
+    parseOrdersSort(one(params.sort)),
+    { today, showCustomer, showSupplier },
+  );
+  const { page, pages, start } = ordersPage(one(params.pg), matched.length);
+  const pageEntries = matched
+    .slice(start, start + ORDERS_PAGE_SIZE)
+    .map((r) => entryOf.get(r)!);
+  const productIds = wellmix
+    ? [
+        ...new Set(
+          pageEntries
+            .flatMap((e) => e.members.flatMap((r) => r.items))
+            .map((i) => i.productId)
+            .filter((id): id is string => !!id),
+        ),
+      ]
+    : [];
+  if (productIds.length) {
+    const [products, productPhotos] = await Promise.all([
+      store.list("products", { filter: { id: productIds } }),
+      store.list("product_photos", { filter: { productId: productIds } }),
+    ]);
+    productById = new Map(products.map((p) => [p.id, p]));
+    photos = productPhotos;
+  }
+  const tableRows: OrdersTableRow[] = pageEntries.map((e) =>
+    buildRow(e.members, true),
+  );
+  // As listas dos filtros (etapas e situações) vêm de todas as linhas.
+  const phaseSeen = new Map<string, { label: string; rank: number }>();
+  for (const { row } of entries)
+    if (!phaseSeen.has(row.phaseKey))
+      phaseSeen.set(row.phaseKey, { label: row.phase, rank: row.phaseRank });
+  const phaseOptions = [...phaseSeen.entries()]
+    .sort((a, b) => a[1].rank - b[1].rank)
+    .map(([key, v]) => [key, v.label] as [string, string]);
+  const stateOptions = (
+    ["blocked", "active", "done", "cancelled"] as const
+  ).filter((st) => entries.some((e) => e.row.state === st));
   return (
     <>
       <PageHeader
@@ -301,14 +389,22 @@ export default async function OrdersPage({
         t={t}
         title={t("orders.title")}
       />
-      {tableRows.length === 0 ? (
+      {entries.length === 0 ? (
         <Empty>{t("common.none")}</Empty>
       ) : (
         <OrdersTable
           rows={tableRows}
           showCustomer={showCustomer}
           showSupplier={showSupplier}
-          today={brazilDay(new Date())}
+          today={today}
+          paging={{
+            page,
+            pages,
+            matched: matched.length,
+            total: entries.length,
+            phases: phaseOptions,
+            states: [...stateOptions],
+          }}
           initial={{
             n: one(params.n),
             p: one(params.p),
@@ -367,6 +463,12 @@ export default async function OrdersPage({
               shown: "{shown}",
               total: "{total}",
             }),
+            pageOf: t("orders.panel.pageOf", {
+              page: "{page}",
+              pages: "{pages}",
+            }),
+            pagePrev: t("orders.panel.pagePrev"),
+            pageNext: t("orders.panel.pageNext"),
             clear: t("orders.panel.clear"),
             empty: t("orders.panel.empty"),
             sortBy: t("orders.panel.sortBy"),

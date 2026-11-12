@@ -40,3 +40,38 @@ describe("leitura só do que a tela usa", () => {
     expect(tableSql("stages")).not.toContain("name_id");
   });
 });
+
+describe("leitura só das colunas usadas", () => {
+  it("sem listColumns no store, recorta a linha inteira", async () => {
+    const { listColumns, columnsExcept } = await import("@/lib/db/lookup");
+    const store = {
+      list: vi.fn(async () => [
+        {
+          id: "1",
+          createdAt: "a",
+          updatedAt: "b",
+          name: "X",
+          sankhyaRefs: { big: 1 },
+        },
+      ]),
+    } as unknown as Store;
+    expect(await listColumns(store, "order_items", ["name"])).toEqual([
+      { id: "1", createdAt: "a", updatedAt: "b", name: "X" },
+    ]);
+    expect(columnsExcept("orders", ["sankhyaRefs"])).not.toContain(
+      "sankhyaRefs",
+    );
+    expect(columnsExcept("orders", ["sankhyaRefs"])).toContain("customerId");
+  });
+
+  it("filtro em memória: lista de valores e vazio como no banco", async () => {
+    const { rowMatcher } = await import("@/lib/db/store");
+    const match = rowMatcher<{ id: string; x?: string | null }>({
+      id: ["a", "b"],
+      x: null,
+    });
+    expect(match({ id: "a" })).toBe(true);
+    expect(match({ id: "a", x: "v" })).toBe(false);
+    expect(match({ id: "c" })).toBe(false);
+  });
+});
