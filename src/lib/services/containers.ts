@@ -325,8 +325,18 @@ export async function listContainers(
     orderBy: "createdAt",
     direction: "desc",
   });
-  const items = await store.list("container_items");
-  const parties = await store.list("parties");
+  const customerIds = [
+    ...new Set(
+      containers.map((c) => c.customerId).filter((x): x is string => !!x),
+    ),
+  ];
+  // Só os clientes dos containers (antes: o cadastro inteiro de parceiros).
+  const [items, parties] = await Promise.all([
+    store.list("container_items"),
+    customerIds.length
+      ? store.list("parties", { filter: { id: customerIds } })
+      : Promise.resolve([]),
+  ]);
   return containers.map((c) => {
     const mine = items.filter((i) => i.containerId === c.id);
     return {

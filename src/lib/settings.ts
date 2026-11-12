@@ -254,3 +254,17 @@ export async function setSetting<K extends SettingKey>(
   if (existing) await store.update("settings", existing.id, { value });
   else await store.create("settings", { key, value });
 }
+
+/**
+ * Valor guardado em `settings` fora das Configurações da tela (ex.: o marcador
+ * dos resumos dos pedidos, docs/RESUMOS.md). `getSettings` ignora essas chaves.
+ */
+export async function setRawSetting(key: string, value: unknown) {
+  const store = getStore();
+  const [existing] = await store.list("settings", {
+    filter: { key },
+    limit: 1,
+  });
+  if (existing) await store.update("settings", existing.id, { value });
+  else await store.create("settings", { key, value });
+}

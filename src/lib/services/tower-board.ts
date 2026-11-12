@@ -26,6 +26,14 @@ import { reviewOrderId, type TowerRow } from "./control-tower";
 import { stepTemplate } from "./import-flow";
 import { JOURNEY_REQUIREMENT_KEYS, journeyIndex } from "./journey";
 import { isSchemaMissing } from "@/lib/db/errors";
+import type { Container } from "@/lib/db";
+import {
+  factStageId,
+  installmentStatusOn,
+  isLiveStatus,
+  type SummaryView,
+} from "./order-summary";
+import { todayInBrazil } from "./supplier-terms";
 import { followupsDue, latestByItem } from "./production";
 import { getSettings } from "@/lib/settings";
 import { ORDER_SIGNED_WELLMIX } from "@/lib/workflow/stages";
@@ -179,18 +187,40 @@ const CERT_STEPS: ImportStep["key"][] = [
 ];
 const ALERT_CHANNELS = ["yellow", "red", "grey"];
 
+/** O que os quadros leem do pedido (o resumo por pedido guarda só isto; docs/RESUMOS.md). */
+export type BoardOrder = Pick<
+  Order,
+  | "id"
+  | "number"
+  | "status"
+  | "flow"
+  | "customerId"
+  | "supplierId"
+  | "closedAt"
+  | "cancelledAt"
+  | "cancelStageKey"
+  | "erpSyncStatus"
+  | "cancelRequestStatus"
+>;
+
+/** Etapa em andamento como os quadros a leem. */
+export type BoardStage = Pick<
+  Stage,
+  "id" | "orderId" | "key" | "status" | "dueAt" | "responsibleRole"
+>;
+
 /** Pedido de compra (tem o fluxo do portal); o importado do Sankhya não tem. */
 const isPortalOrder = (o: Pick<Order, "flow">) => o.flow === "supplier_request";
 
 export interface BoardInput {
   now: Date;
   finance: boolean;
-  orders: Order[];
+  orders: BoardOrder[];
   parties: Pick<Party, "id" | "name">[];
   items: Pick<OrderItem, "orderId" | "name">[];
   products: Pick<Product, "id" | "name">[];
   /** Etapa em andamento ou bloqueada de cada pedido. */
-  activeStages: Stage[];
+  activeStages: BoardStage[];
   /** Todas as etapas dos pedidos em andamento (para achar o Embarque). */
   stages: Pick<Stage, "id" | "orderId" | "key">[];
   /** Itens das etapas com as chaves de BOARD_REQUIREMENT_KEYS. */
@@ -272,18 +302,18 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     ...input,
     reviews: input.reviews,
   });
-  const step = (o: Order, key: ImportStep["key"]) =>
+  const step = (o: BoardOrder, key: ImportStep["key"]) =>
     (stepsBy.get(o.id) ?? []).find((s) => s.key === key);
   const informed = (s: ImportStep | undefined) =>
     s?.status === "submitted" || s?.status === "validated";
 
   // Prazo vencido e bloqueio são do fluxo do portal; o pedido importado só dá visibilidade.
-  const isOverdue = (o: Order) => {
+  const isOverdue = (o: BoardOrder) => {
     if (!isPortalOrder(o)) return false;
     const stage = stageOf.get(o.id);
     return !!stage?.dueAt && Date.parse(stage.dueAt) < now;
   };
-  const orderRow = (o: Order): TowerRow => {
+  const orderRow = (o: BoardOrder): TowerRow => {
     const stage = stageOf.get(o.id);
     const closed = o.status === "CLOSED";
     const cancelled = o.status === "CANCELLED";
@@ -319,11 +349,11 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     BOARD_CARDS.map((c) => [c.key, []]),
   );
   const values = new Map<BoardCardKey, number>();
-  const sellOf = (o: Order) => {
+  const sellOf = (o: BoardOrder) => {
     const m = input.money.get(o.id);
     return m && m.currency === input.currency ? m.sell : 0;
   };
-  const addOrder = (key: BoardCardKey, o: Order, value = sellOf(o)) => {
+  const addOrder = (key: BoardCardKey, o: BoardOrder, value = sellOf(o)) => {
     rows.get(key)!.push(orderRow(o));
     values.set(key, (values.get(key) ?? 0) + value);
   };
@@ -389,7 +419,7 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   const live = input.orders.filter(
     (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
   );
-  const signedByWellmix = (o: Order) =>
+  const signedByWellmix = (o: BoardOrder) =>
     (laneReqsBy.get(o.id) ?? []).some(
       (r) => r.key === ORDER_SIGNED_WELLMIX && r.status === "done",
     );
@@ -612,26 +642,8 @@ export async function loadTowerBoard(options: {
 }): Promise<TowerBoard> {
   const store = getStore();
   const now = options.now ?? new Date();
-  const [
-    orders,
-    parties,
-    items,
-    products,
-    activeStages,
-    penalties,
-    rejected,
-    reviews,
-    certifications,
-    containers,
-    lots,
-    supplierRequests,
-    settings,
-  ] = await Promise.all([
-    store.list("orders", { orderBy: "number", direction: "desc" }),
-    store.list("parties"),
-    store.list("order_items"),
-    store.list("products"),
-    store.list("stages", { filter: { status: ["active", "blocked"] } }),
+  // Tabelas pequenas: lidas na hora, nos dois caminhos.
+  const sideP = Promise.all([
     store.list("penalties", { filter: { status: ["open", "disputed"] } }),
     store.list("requirements", { filter: { status: "rejected" } }),
     store.list("review_items", {
@@ -652,6 +664,34 @@ export async function loadTowerBoard(options: {
       }),
     ),
     getSettings(),
+  ]);
+  sideP.catch(() => undefined);
+  const { readOrderSummaries } = await import("./order-summary");
+  const view = await readOrderSummaries();
+  if (view) return boardFromSummaries(view, options.finance, now, await sideP);
+  const [
+    orders,
+    parties,
+    items,
+    products,
+    activeStages,
+    [
+      penalties,
+      rejected,
+      reviews,
+      certifications,
+      containers,
+      lots,
+      supplierRequests,
+      settings,
+    ],
+  ] = await Promise.all([
+    store.list("orders", { orderBy: "number", direction: "desc" }),
+    store.list("parties"),
+    store.list("order_items"),
+    store.list("products"),
+    store.list("stages", { filter: { status: ["active", "blocked"] } }),
+    sideP,
   ]);
   const live = orders.filter(
     (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
@@ -749,5 +789,164 @@ export async function loadTowerBoard(options: {
     ),
     money,
     currency: finance?.summary.currency ?? "BRL",
+  });
+}
+
+type BoardSide = [
+  Penalty[],
+  Requirement[],
+  ReviewItem[],
+  Certification[],
+  Container[],
+  BookingLot[],
+  SupplierRequest[],
+  Awaited<ReturnType<typeof getSettings>>,
+];
+
+/**
+ * Os quadros a partir do resumo dos pedidos (docs/RESUMOS.md): as mesmas
+ * entradas de `buildTowerBoard`, montadas do que o resumo guardou, e as
+ * parcelas com a situação do dia.
+ */
+async function boardFromSummaries(
+  view: SummaryView,
+  finance: boolean,
+  now: Date,
+  side: BoardSide,
+): Promise<TowerBoard> {
+  const [
+    penalties,
+    rejected,
+    reviews,
+    certifications,
+    containers,
+    lots,
+    supplierRequests,
+    settings,
+  ] = side;
+  const store = getStore();
+  const facts = view.facts;
+  const liveFacts = facts.filter((f) => isLiveStatus(f.order.status));
+  const liveIds = new Set(liveFacts.map((f) => f.order.id));
+  // Nomes: clientes dos pedidos (do resumo) e, lidos agora, os fornecedores
+  // dos bookings e solicitações e os parceiros das certificações.
+  const parties: Pick<Party, "id" | "name">[] = [];
+  const known = new Set<string>();
+  for (const f of facts)
+    if (f.customer !== null) {
+      parties.push({ id: f.order.customerId, name: f.customer });
+      known.add(f.order.customerId);
+    }
+  const otherIds = [
+    ...new Set(
+      [
+        ...lots.map((l) => l.supplierId),
+        ...supplierRequests.map((r) => r.supplierId),
+        ...certifications
+          .filter((c) => c.entity === "party")
+          .map((c) => c.entityId),
+      ].filter((id): id is string => !!id && !known.has(id)),
+    ),
+  ];
+  const productIds = [
+    ...new Set(
+      certifications
+        .filter((c) => c.entity === "product")
+        .map((c) => c.entityId),
+    ),
+  ];
+  const [others, products] = await Promise.all([
+    otherIds.length
+      ? store.list("parties", { filter: { id: otherIds } })
+      : Promise.resolve([]),
+    productIds.length
+      ? store.list("products", { filter: { id: productIds } })
+      : Promise.resolve([]),
+  ]);
+  for (const p of others) parties.push({ id: p.id, name: p.name });
+  const stages: Pick<Stage, "id" | "orderId" | "key">[] = [];
+  const requirements: BoardInput["requirements"] = [];
+  const laneRequirements: NonNullable<BoardInput["laneRequirements"]> = [];
+  for (const f of liveFacts) {
+    const orderId = f.order.id;
+    const keys = new Set<StageKey>();
+    for (const r of f.reqs) {
+      if (r.s) keys.add(r.s);
+      requirements.push({
+        orderId,
+        stageId: factStageId(orderId, r.s),
+        key: r.k,
+        status: r.st,
+        value: r.v,
+      });
+    }
+    for (const r of f.lane ?? []) {
+      if (r.s) keys.add(r.s);
+      laneRequirements.push({
+        orderId,
+        stageId: factStageId(orderId, r.s),
+        key: r.k,
+        status: r.st,
+      });
+    }
+    for (const key of keys)
+      stages.push({ id: factStageId(orderId, key), orderId, key });
+  }
+  const today = todayInBrazil();
+  const moneyRows = facts.map((f) => ({ ...f.money, order: f.order }));
+  const currency = finance ? (moneyRows[0]?.sellCurrency ?? "BRL") : "BRL";
+  return buildTowerBoard({
+    now,
+    finance,
+    orders: facts.map((f) => f.order),
+    parties,
+    items: facts
+      .filter((f) => f.product !== null)
+      .map((f) => ({ orderId: f.order.id, name: f.product as string })),
+    products,
+    activeStages: facts.flatMap((f) =>
+      f.active.map((s) => ({ ...s, orderId: f.order.id })),
+    ),
+    stages,
+    requirements,
+    laneRequirements,
+    lots,
+    supplierRequests,
+    supplierRequestSlaMinutes: settings.supplierRequestSlaMinutes,
+    steps: liveFacts.flatMap((f) => f.steps),
+    tracks: liveFacts.flatMap((f) => f.tracks),
+    skus: liveFacts.flatMap((f) => f.skus),
+    artIssues: liveFacts.flatMap((f) =>
+      f.art.map((a) => ({ orderId: f.order.id, status: a.status })),
+    ),
+    receivings: liveFacts.flatMap((f) => f.receivings),
+    penalties,
+    rejected: rejected.filter((r) => liveIds.has(r.orderId)),
+    reviews,
+    certifications,
+    containers: {
+      open: containers.filter((c) => c.status !== "closed").length,
+    },
+    installments: finance
+      ? facts.flatMap((f) =>
+          f.installments.map((i) => ({
+            orderId: f.order.id,
+            status: installmentStatusOn(i, today),
+          })),
+        )
+      : [],
+    money: new Map(
+      finance
+        ? facts.map((f) => [
+            f.order.id,
+            {
+              sell: f.money.sell,
+              currency: f.money.sellCurrency,
+              receivable: f.money.receivable,
+            },
+          ])
+        : [],
+    ),
+    currency,
   });
 }

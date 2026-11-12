@@ -455,16 +455,29 @@ export async function loadFinance(
         saleRecords(orders.map((o) => o.requestId)),
       ])
     : [null, new Map<string, PricingRecord>()];
+  // Mapas por id (antes: .find/.filter dentro do laço, pedidos × itens).
+  const names = new Map<string, string>();
+  for (const p of parties) if (!names.has(p.id)) names.set(p.id, p.name);
   const name = (id: string | null) =>
-    parties.find((p) => p.id === id)?.name ?? "—";
+    (id === null ? undefined : names.get(id)) ?? "—";
+  const paymentsBy = new Map<string, Payment[]>();
+  for (const p of payments) {
+    if (!p.orderId) continue;
+    const list = paymentsBy.get(p.orderId);
+    if (list) list.push(p);
+    else paymentsBy.set(p.orderId, [p]);
+  }
+  const firstItem = new Map<string, string>();
+  for (const i of items)
+    if (!firstItem.has(i.orderId)) firstItem.set(i.orderId, i.name);
   const rows = orders.map((o) =>
     computeOrderFinance(
       o,
-      payments.filter((p) => p.orderId === o.id),
+      paymentsBy.get(o.id) ?? [],
       {
         customer: name(o.customerId),
         supplier: name(o.supplierId),
-        product: items.find((i) => i.orderId === o.id)?.name ?? "—",
+        product: firstItem.get(o.id) ?? "—",
       },
       {
         today,
@@ -476,6 +489,27 @@ export async function loadFinance(
       },
     ),
   );
+  return { rows, summary: summarizeFinance(rows) };
+}
+
+/** O que o resumo do financeiro lê de cada pedido (também do resumo por pedido, docs/RESUMOS.md). */
+export type FinanceSummaryRow = Pick<
+  OrderFinance,
+  | "sellCurrency"
+  | "sell"
+  | "received"
+  | "receivable"
+  | "cost"
+  | "estimated"
+  | "fxEffect"
+  | "fobCurrency"
+  | "payable"
+  | "paid"
+  | "paidOther"
+> & { order: Pick<Order, "status"> };
+
+/** Totais do financeiro sobre as linhas na ordem dos pedidos (número decrescente). */
+export function summarizeFinance(rows: FinanceSummaryRow[]): FinanceSummary {
   const currency = rows[0]?.sellCurrency ?? "BRL";
   const same = rows.filter((r) => r.sellCurrency === currency);
   // Pedido cancelado não é venda nem custo: fica fora de vendido, custo, margem
@@ -501,24 +535,21 @@ export async function loadFinance(
   const margin = knownSell - cost;
   const effects = live.filter((r) => r.fxEffect !== null);
   return {
-    rows,
-    summary: {
-      currency,
-      sell,
-      received,
-      receivable: same.reduce((s, r) => s + r.receivable, 0),
-      cost,
-      margin,
-      marginPct: knownSell > 0 ? (margin / knownSell) * 100 : null,
-      missingFx: live.length - known.length,
-      estimated: known.filter((r) => r.estimated).length,
-      fxEffect: effects.length
-        ? cents(effects.reduce((s, r) => s + (r.fxEffect as number), 0)) || 0
-        : null,
-      fxEffectEstimated: effects.some((r) => r.estimated),
-      payableByCurrency,
-      paidByCurrency,
-    },
+    currency,
+    sell,
+    received,
+    receivable: same.reduce((s, r) => s + r.receivable, 0),
+    cost,
+    margin,
+    marginPct: knownSell > 0 ? (margin / knownSell) * 100 : null,
+    missingFx: live.length - known.length,
+    estimated: known.filter((r) => r.estimated).length,
+    fxEffect: effects.length
+      ? cents(effects.reduce((s, r) => s + (r.fxEffect as number), 0)) || 0
+      : null,
+    fxEffectEstimated: effects.some((r) => r.estimated),
+    payableByCurrency,
+    paidByCurrency,
   };
 }
 

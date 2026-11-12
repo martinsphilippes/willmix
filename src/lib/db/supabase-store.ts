@@ -208,6 +208,32 @@ export class SupabaseStore implements Store {
     return fromRow<Tables[K]>(table, row);
   }
 
+  async upsertMany<K extends TableName>(
+    table: K,
+    rows: Array<NewRow<Tables[K]> & { id: string }>,
+  ) {
+    const now = new Date().toISOString();
+    // Em partes: o corpo de cada POST fica pequeno (resumos têm JSON).
+    for (let i = 0; i < rows.length; i += 500) {
+      const part = rows.slice(i, i + 500);
+      await this.rest(table, {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(
+          part.map((r) => {
+            const { id, ...rest } = r as { id: string } & Row;
+            return {
+              id,
+              createdAt: now,
+              updatedAt: now,
+              ...toRow(table, rest),
+            };
+          }),
+        ),
+      });
+    }
+  }
+
   async remove<K extends TableName>(table: K, id: string) {
     await this.rest(`${table}?id=eq.${enc(id)}`, { method: "DELETE" });
   }

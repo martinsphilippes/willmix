@@ -2,12 +2,20 @@ import "server-only";
 
 import {
   getStore,
+  type Certification,
   type Order,
+  type Penalty,
+  type Product,
+  type Request,
   type RequestStatus,
+  type Requirement,
   type ReviewItem,
   type Role,
+  type Stage,
   type StageKey,
 } from "@/lib/db";
+import type { BoardOrder } from "./tower-board";
+import type { FinanceSummary, FinanceSummaryRow } from "./finance";
 
 /** Pedido do item de revisão (itens antigos podem ter só entity "order"). */
 export const reviewOrderId = (r: ReviewItem) =>
@@ -71,54 +79,146 @@ export interface TowerData {
   exceptions: TowerException[];
 }
 
+/** O que as visões gerais e as exceções leem (montagem pura em `buildControlTower`). */
+export interface ControlTowerInput {
+  now: number;
+  /** Pedidos, do número maior para o menor. */
+  orders: BoardOrder[];
+  /** Nome do parceiro como o cadastro tem (nulo: não encontrado). */
+  partyName: (id: string | null) => string | null;
+  /** Primeiro item do pedido (nulo: sem itens). */
+  productOf: (orderId: string) => string | null;
+  /** Primeira etapa em andamento ou bloqueada do pedido. */
+  stageOf: (
+    orderId: string,
+  ) => Pick<Stage, "dueAt" | "status" | "responsibleRole"> | undefined;
+  requests: Request[];
+  penalties: Pick<Penalty, "orderId" | "reason">[];
+  rejected: Pick<Requirement, "orderId" | "label">[];
+  products: Pick<Product, "id" | "name">[];
+  certifications: Certification[];
+  reviews: ReviewItem[];
+}
+
+const OPEN_REQUEST_STATUSES: RequestStatus[] = [
+  "REQUESTED",
+  "RFQ_OPEN",
+  "QUOTATION_RECEIVED",
+  "SUPPLIER_SELECTED",
+  "WAITING_DOWN_PAYMENT",
+];
+
+/**
+ * O que não vem do resumo dos pedidos: tabelas pequenas, lidas na hora
+ * (solicitações abertas, multas em aberto, itens recusados, certificações a
+ * vencer e os produtos delas, revisão).
+ */
+async function loadTowerSide() {
+  const store = getStore();
+  const [requests, penalties, rejected, certifications, reviews] =
+    await Promise.all([
+      store.list("requests", { filter: { status: OPEN_REQUEST_STATUSES } }),
+      store.list("penalties", { filter: { status: ["open", "disputed"] } }),
+      store.list("requirements", { filter: { status: "rejected" } }),
+      import("./compliance").then((m) => m.expiringCertifications()),
+      store.list("review_items", {
+        filter: { status: "open" },
+        orderBy: "createdAt",
+        direction: "desc",
+      }),
+    ]);
+  const productIds = [
+    ...new Set(
+      certifications
+        .filter((c) => c.entity === "product")
+        .map((c) => c.entityId),
+    ),
+  ];
+  // Só os produtos das certificações (antes: o cadastro inteiro).
+  const products = productIds.length
+    ? await store.list("products", { filter: { id: productIds } })
+    : [];
+  return { requests, penalties, rejected, certifications, reviews, products };
+}
+
 /** Visão da Wellmix: onde cada pedido está, quem precisa agir, o que está atrasado ou com problema. */
 export async function loadControlTower(): Promise<TowerData> {
-  const store = getStore();
-  // Leituras usadas mais abaixo saem já, junto com as primeiras (sem esperar em fila).
-  const rejectedP = store.list("requirements", {
-    filter: { status: "rejected" },
-  });
-  const productsP = store.list("products");
-  const expiringP = import("./compliance").then((m) =>
-    m.expiringCertifications(),
-  );
-  const reviewsP = store.list("review_items", {
-    filter: { status: "open" },
-    orderBy: "createdAt",
-    direction: "desc",
-  });
-  // Evita rejeição sem tratamento se algo falhar antes de chegar ao await.
-  for (const p of [rejectedP, productsP, expiringP, reviewsP])
-    p.catch(() => undefined);
   const now = Date.now();
-  const [orders, parties, stages, requests, penalties, items] =
-    await Promise.all([
-      store.list("orders", { orderBy: "number", direction: "desc" }),
-      store.list("parties"),
-      store.list("stages", { filter: { status: ["active", "blocked"] } }),
-      store.list("requests", {
-        filter: {
-          status: [
-            "REQUESTED",
-            "RFQ_OPEN",
-            "QUOTATION_RECEIVED",
-            "SUPPLIER_SELECTED",
-            "WAITING_DOWN_PAYMENT",
-          ],
-        },
-      }),
-      store.list("penalties", { filter: { status: ["open", "disputed"] } }),
-      store.list("order_items"),
-    ]);
-  const partyName = (id: string | null) =>
-    parties.find((p) => p.id === id)?.name ?? "—";
-  const productOf = (order: Order) =>
-    items.find((i) => i.orderId === order.id)?.name ?? "—";
-  const stageOf = (order: Order) => stages.find((s) => s.orderId === order.id);
+  const sideP = loadTowerSide();
+  sideP.catch(() => undefined);
+  const { readOrderSummaries } = await import("./order-summary");
+  const view = await readOrderSummaries();
+  if (view) {
+    // Do resumo dos pedidos (docs/RESUMOS.md).
+    const side = await sideP;
+    const byId = new Map(view.facts.map((f) => [f.order.id, f]));
+    const names = new Map<string, string>();
+    for (const f of view.facts) {
+      if (f.customer !== null) names.set(f.order.customerId, f.customer);
+      if (f.supplier !== null) names.set(f.order.supplierId, f.supplier);
+    }
+    // Clientes das solicitações abertas que não aparecem nos pedidos.
+    const missing = [
+      ...new Set(
+        side.requests
+          .map((r) => r.customerId)
+          .filter((id): id is string => !!id && !names.has(id)),
+      ),
+    ];
+    if (missing.length)
+      for (const p of await getStore().list("parties", {
+        filter: { id: missing },
+      }))
+        if (!names.has(p.id)) names.set(p.id, p.name);
+    return buildControlTower({
+      now,
+      orders: view.facts.map((f) => f.order),
+      partyName: (id) => (id === null ? null : (names.get(id) ?? null)),
+      productOf: (id) => byId.get(id)?.product ?? null,
+      stageOf: (id) => byId.get(id)?.active[0],
+      ...side,
+    });
+  }
+  // Caminho antigo (sem resumo ainda): as tabelas inteiras.
+  const store = getStore();
+  const [orders, parties, stages, items, side] = await Promise.all([
+    store.list("orders", { orderBy: "number", direction: "desc" }),
+    store.list("parties"),
+    store.list("stages", { filter: { status: ["active", "blocked"] } }),
+    store.list("order_items"),
+    sideP,
+  ]);
+  // Mapas pelo primeiro de cada (como o .find de antes, sem pedidos × itens).
+  const first = <T>(rows: T[], key: (r: T) => string) => {
+    const map = new Map<string, T>();
+    for (const r of rows) if (!map.has(key(r))) map.set(key(r), r);
+    return map;
+  };
+  const partyById = first(parties, (p) => p.id);
+  const itemByOrder = first(items, (i) => i.orderId);
+  const stageByOrder = first(stages, (s) => s.orderId);
+  return buildControlTower({
+    now,
+    orders,
+    partyName: (id) => (id === null ? null : (partyById.get(id)?.name ?? null)),
+    productOf: (id) => itemByOrder.get(id)?.name ?? null,
+    stageOf: (id) => stageByOrder.get(id),
+    ...side,
+  });
+}
+
+/** Visões gerais e exceções (função pura). */
+export function buildControlTower(input: ControlTowerInput): TowerData {
+  const { now, orders, requests, penalties } = input;
+  const partyName = (id: string | null) => input.partyName(id) ?? "—";
+  const productOf = (order: BoardOrder) => input.productOf(order.id) ?? "—";
+  const stageOf = (order: BoardOrder) => input.stageOf(order.id);
+  const orderById = new Map<string, BoardOrder>();
+  for (const o of orders) if (!orderById.has(o.id)) orderById.set(o.id, o);
 
   const rows: TowerRow[] = orders
     .filter(
-      (o): o is Order & { status: StageKey } =>
+      (o): o is BoardOrder & { status: StageKey } =>
         o.status !== "CLOSED" && o.status !== "CANCELLED",
     )
     .map((o) => {
@@ -139,7 +239,9 @@ export async function loadControlTower(): Promise<TowerData> {
     });
 
   const closedRows: TowerRow[] = orders
-    .filter((o): o is Order & { status: "CLOSED" } => o.status === "CLOSED")
+    .filter(
+      (o): o is BoardOrder & { status: "CLOSED" } => o.status === "CLOSED",
+    )
     .map((o) => ({
       id: o.id,
       number: `#${o.number}`,
@@ -190,9 +292,8 @@ export async function loadControlTower(): Promise<TowerData> {
         link: row.link,
       });
   }
-  const rejected = await rejectedP;
-  for (const req of rejected) {
-    const order = orders.find((o) => o.id === req.orderId);
+  for (const req of input.rejected) {
+    const order = orderById.get(req.orderId);
     if (order && order.status !== "CLOSED" && order.status !== "CANCELLED") {
       exceptions.push({
         kind: "document",
@@ -227,7 +328,7 @@ export async function loadControlTower(): Promise<TowerData> {
     }
   }
   for (const p of penalties) {
-    const order = orders.find((o) => o.id === p.orderId);
+    const order = p.orderId ? orderById.get(p.orderId) : undefined;
     exceptions.push({
       kind: "penalty",
       severity: "medium",
@@ -236,12 +337,10 @@ export async function loadControlTower(): Promise<TowerData> {
     });
   }
   // Certificações válidas a vencer no prazo de aviso.
-  const products = await productsP;
-  for (const cert of await expiringP) {
+  const productById = new Map(input.products.map((p) => [p.id, p]));
+  for (const cert of input.certifications) {
     const product =
-      cert.entity === "product"
-        ? products.find((p) => p.id === cert.entityId)
-        : null;
+      cert.entity === "product" ? productById.get(cert.entityId) : null;
     exceptions.push({
       kind: "compliance",
       severity: "medium",
@@ -253,9 +352,9 @@ export async function loadControlTower(): Promise<TowerData> {
   }
   // Fila "itens para revisão" (gates): cada item aberto é uma exceção com atalho.
   // Item de pedido cancelado não é pendência (os de antes da regra ficaram abertos).
-  const reviews = await reviewsP;
-  for (const r of reviews) {
-    const order = orders.find((o) => o.id === reviewOrderId(r));
+  for (const r of input.reviews) {
+    const id = reviewOrderId(r);
+    const order = id ? orderById.get(id) : undefined;
     if (order?.status === "CANCELLED") continue;
     exceptions.push({
       kind: "review",
@@ -362,17 +461,33 @@ const PIPELINE: Array<{
   { key: "delivered", stages: ["DELIVERED", "CLOSED"] },
 ];
 
+/** Linha do financeiro que os totais leem (de `loadFinance` ou do resumo do pedido). */
+type TotalsRow = FinanceSummaryRow & {
+  order: Pick<Order, "id" | "status">;
+  fob: number;
+};
+
 /** Reutiliza o financeiro e o container; nada é estimado: só o que foi lançado. */
 export async function loadTowerTotals(): Promise<TowerTotals> {
-  const { loadFinance } = await import("./finance");
+  const { loadFinance, summarizeFinance } = await import("./finance");
   const { listContainers } = await import("./containers");
+  const { readOrderSummaries } = await import("./order-summary");
   const store = getStore();
-  const [{ rows, summary }, containers, reviews] = await Promise.all([
-    // Só o que foi lançado (sem estimar pelo câmbio do dia).
-    loadFinance({ estimate: false }),
+  const [view, containers, reviews] = await Promise.all([
+    readOrderSummaries(),
     listContainers(),
     store.list("review_items", { filter: { status: "open" } }),
   ]);
+  let rows: TotalsRow[];
+  let summary: FinanceSummary;
+  if (view) {
+    // Do resumo dos pedidos (docs/RESUMOS.md): o mesmo cálculo, sem ler as tabelas.
+    rows = view.facts.map((f) => ({ ...f.money, order: f.order }));
+    summary = summarizeFinance(rows);
+  } else {
+    // Só o que foi lançado (sem estimar pelo câmbio do dia).
+    ({ rows, summary } = await loadFinance({ estimate: false }));
+  }
   // Pedido cancelado não é compra: fica fora do "Comprado (FOB)".
   const purchasedByCurrency: Record<string, number> = {};
   const cancelled = new Set<string>();

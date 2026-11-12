@@ -100,6 +100,7 @@ import * as sheetFill from "./sheet-fill";
 import * as productSheet from "./product-sheet";
 import * as sheetRecords from "./sheet-records";
 import * as navGroups from "./nav-groups";
+import * as orderSummary from "./order-summary";
 import * as placeholders from "./placeholders";
 import * as ncmSheet from "./ncm-sheet";
 import * as i18nSweep from "./i18n-sweep";
@@ -204,6 +205,7 @@ export const modulesPt = {
   ...productSheet.pt,
   ...sheetRecords.pt,
   ...navGroups.pt,
+  ...orderSummary.pt,
   ...placeholders.pt,
   ...ncmSheet.pt,
   ...i18nSweep.pt,
@@ -328,6 +330,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...productSheet.en,
   ...sheetRecords.en,
   ...navGroups.en,
+  ...orderSummary.en,
   ...placeholders.en,
   ...ncmSheet.en,
   ...i18nSweep.en,
@@ -452,6 +455,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...productSheet.zh,
   ...sheetRecords.zh,
   ...navGroups.zh,
+  ...orderSummary.zh,
   ...placeholders.zh,
   ...ncmSheet.zh,
   ...i18nSweep.zh,

@@ -216,6 +216,10 @@ export default async function SettingsPage({
             <LinkButton href="/app/settings/supabase" variant="secondary">
               {t("supaCopy.link")}
             </LinkButton>
+            {/* Resumo dos pedidos da Control Tower (docs/RESUMOS.md). */}
+            <LinkButton href="/app/settings/summaries" variant="secondary">
+              {t("summaries.link")}
+            </LinkButton>
             <LinkButton href="/app/settings/reset" variant="danger">
               {t("reset.link")}
             </LinkButton>
