@@ -29,8 +29,9 @@ import { JOURNEY_REQUIREMENT_KEYS, journeyIndex } from "./journey";
 import { isSchemaMissing } from "@/lib/db/errors";
 import type { Container } from "@/lib/db";
 import {
-  factStageId,
+  activeStagesFromFacts,
   installmentStatusOn,
+  journeyRowsFromFacts,
   isLiveStatus,
   type SummaryView,
 } from "./order-summary";
@@ -880,34 +881,8 @@ async function boardFromSummaries(
       : Promise.resolve([]),
   ]);
   for (const p of others) parties.push({ id: p.id, name: p.name });
-  const stages: Pick<Stage, "id" | "orderId" | "key">[] = [];
-  const requirements: BoardInput["requirements"] = [];
-  const laneRequirements: NonNullable<BoardInput["laneRequirements"]> = [];
-  for (const f of liveFacts) {
-    const orderId = f.order.id;
-    const keys = new Set<StageKey>();
-    for (const r of f.reqs) {
-      if (r.s) keys.add(r.s);
-      requirements.push({
-        orderId,
-        stageId: factStageId(orderId, r.s),
-        key: r.k,
-        status: r.st,
-        value: r.v,
-      });
-    }
-    for (const r of f.lane ?? []) {
-      if (r.s) keys.add(r.s);
-      laneRequirements.push({
-        orderId,
-        stageId: factStageId(orderId, r.s),
-        key: r.k,
-        status: r.st,
-      });
-    }
-    for (const key of keys)
-      stages.push({ id: factStageId(orderId, key), orderId, key });
-  }
+  const { stages, requirements, laneRequirements } =
+    journeyRowsFromFacts(liveFacts);
   const today = todayInBrazil();
   const moneyRows = facts.map((f) => ({ ...f.money, order: f.order }));
   const currency = finance ? (moneyRows[0]?.sellCurrency ?? "BRL") : "BRL";
@@ -920,9 +895,7 @@ async function boardFromSummaries(
       .filter((f) => f.product !== null)
       .map((f) => ({ orderId: f.order.id, name: f.product as string })),
     products,
-    activeStages: facts.flatMap((f) =>
-      f.active.map((s) => ({ ...s, orderId: f.order.id })),
-    ),
+    activeStages: activeStagesFromFacts(facts),
     stages,
     requirements,
     laneRequirements,

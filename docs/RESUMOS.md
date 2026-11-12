@@ -16,7 +16,8 @@ Uma linha por pedido, com o mesmo id do pedido. O campo `facts` (`OrderFacts`, e
 - os requisitos que dividem os quadros e, no pedido de compra, os das raias;
 - embarque, produção, inspeção por SKU, arte e recebimento;
 - os valores do financeiro sem estimativa (venda, recebido, a receber, FOB, pago e a pagar);
-- as parcelas ao fornecedor (situação e vencimento).
+- as parcelas ao fornecedor (situação e vencimento);
+- desde o formato 2: os pagamentos do pedido (sem os códigos do Sankhya), as etapas de embarque e entrega (início, conclusão, prazo) e os itens do cronograma de pagamento; e o percentual da etapa em andamento.
 
 As colunas `number`, `status` e `live` servem para ordenar e filtrar.
 
@@ -79,8 +80,30 @@ Sem marcador, as gravações não recalculam nada; custam uma leitura de `settin
 - `listContainers`: só os clientes dos containers, em vez do cadastro inteiro de parceiros.
 - Control Tower, caminho antigo: só os produtos das certificações, em vez do cadastro inteiro.
 
-## Próximas etapas (plano aprovado em 12/11/2026)
+## Outras telas que leem o resumo (formato 2, 12/11/2026)
 
-1. Pedidos, Financeiro, Fluxo de caixa, Painel do dono e Contas a pagar lendo do resumo (`facts.money` e `facts.installments` já estão lá).
-2. Resumo por parceiro (saldo, pedidos, totais) para Clientes, Fornecedores e Conta corrente. Parceiros e produtos lidos só pelos ids da tela, em vez do cadastro inteiro (umas 20 telas).
-3. Jobs com uma consulta por item: lembretes (`runReminders`) e a distribuição de solicitações (`distributeUnassigned`).
+Cada tela continua lendo a lista de pedidos (cerca de 15 MB) e passa a tirar do resumo, com `factsForOrders`, o que antes vinha das tabelas grandes: pagamentos, itens, parceiros, etapas e requisitos (mais de 200 MB por abertura). Um pedido ainda sem resumo, porque acabou de ser gravado em outra instância, é calculado na hora. Sem os resumos em uso, todas seguem pelo caminho antigo.
+
+- **Financeiro, Fluxo de caixa, Painel do dono, Clientes e Fornecedores** (`loadFinance`): pagamentos, nomes e primeiro item de cada pedido. O câmbio da venda (auditoria) passa a ser lido por ação, sem os lotes de 100 ids.
+- **Contas a pagar, conta corrente do fornecedor, Fluxo de caixa e aviso diário de parcelas** (`listPayables`): o cronograma de cada pedido (`payableFor`) é montado com os pagamentos, os marcos e os itens do cronograma do resumo.
+- **Fluxo de caixa:** a etapa "Entregue" sai do resumo. Os clientes das solicitações são lidos só pelos ids.
+- **Painel do dono:** só os pagamentos confirmados ou recebidos e só as solicitações abertas ou à espera do sinal.
+- **Pedidos** (`pipelineFor`): etapas em andamento e a viagem (`journeyIndex`) saem do resumo. Os itens continuam vindo da tabela, só com as colunas usadas, porque o filtro por produto e a ordem percorrem todos.
+- **Saldo por parceiro:** sai do mesmo resumo por pedido, somado na hora (`customerAccounts`), sem uma segunda tabela.
+- **Tipos de parceiro:** conta só os parceiros desses tipos.
+
+O teste `tests/unit/order-summary.test.ts` compara todas essas telas pelos dois caminhos. Também confere que, com o resumo, nenhuma delas lê pagamentos, etapas ou requisitos por pedido.
+
+## Jobs (12/11/2026)
+
+- **Lembrete de prazo** (`runReminders`): pedidos e itens pendentes das etapas vencidas são lidos de uma vez, em vez de duas leituras por etapa. Teste em `tests/unit/reminders.test.ts`.
+- **Distribuição de solicitações** (`distributeUnassigned`): solicitações, primeiro item, produtos e linhas são lidos em lote, em vez de quatro leituras por pedido.
+- **Carga de cada analista** (`openLoad`, a cada solicitação nova): só os pedidos e solicitações com dono na equipe, em vez de todos os pedidos.
+- **Aviso de confirmação de pagamento** (`notifySuppliersToConfirm`): mapas por pedido no lugar de `.find`/`.filter` dentro do laço.
+
+## O que ainda pesa
+
+1. **Pedidos:** a página no servidor (50 linhas) veio no PR martinsphilippes/willmix#314. A lista ainda lê todos os itens para filtrar e ordenar, mas só com as colunas usadas.
+2. **Pendências** (`pendingTasksFor`): lê os itens de todas as etapas em andamento a cada abertura, e é o início dos parceiros.
+3. **Escolha de itens para o container e sugestões de produto:** leem os itens de todos os pedidos em aberto.
+4. **Painel de SLA:** lê as etapas concluídas de todos os pedidos para medir durações.

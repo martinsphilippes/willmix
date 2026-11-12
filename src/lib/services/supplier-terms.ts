@@ -215,10 +215,7 @@ export function receivedInOldFlow(
 }
 
 /** Requisitos que o cronograma usa: data de embarque e os itens da etapa antiga. */
-export const SCHEDULE_REQUIREMENT_KEYS = [
-  "ship_date",
-  ...LEGACY_PAYMENT_KEYS,
-];
+export const SCHEDULE_REQUIREMENT_KEYS = ["ship_date", ...LEGACY_PAYMENT_KEYS];
 
 /** Hoje (AAAA-MM-DD) em Brasília. */
 export const todayInBrazil = () => brazilDay(new Date()) as string;
@@ -317,6 +314,35 @@ export async function listPayables(
   if (!orders.length) return [];
   const ids = orders.map((o) => o.id);
   const supplierIds = [...new Set(orders.map((o) => o.supplierId))];
+  // Do resumo por pedido (docs/RESUMOS.md): pagamentos, marcos e itens do
+  // cronograma sem ler as tabelas de pagamentos, etapas e requisitos.
+  const { factsForOrders } = await import("./order-summary");
+  const facts = await factsForOrders(orders);
+  if (facts) {
+    const suppliers = await listColumns(
+      store,
+      "parties",
+      columnsExcept("parties", ["sankhyaRefs"]),
+      { filter: { id: supplierIds } },
+    );
+    const supplierById = new Map(suppliers.map((s) => [s.id, s]));
+    const today = todayInBrazil();
+    return orders.map((order) => {
+      const f = facts.get(order.id);
+      return payableFor(
+        order,
+        supplierById.get(order.supplierId) ?? null,
+        ((f?.pays ?? []) as Payment[]).filter(
+          (p) => p.direction === "supplier_out",
+        ),
+        (f?.ship ?? []) as Stage[],
+        (f?.sreqs ?? []) as Requirement[],
+        (f?.product != null ? [{ name: f.product }] : []) as OrderItem[],
+        today,
+      );
+    });
+  }
+
   const [payments, stages, requirements, items, suppliers] = await Promise.all([
     listColumns(store, "payments", columnsExcept("payments", ["sankhyaRefs"]), {
       filter: { orderId: ids, direction: "supplier_out" },
@@ -604,14 +630,21 @@ export async function notifySuppliersToConfirm(
       filter: { orderId: orderIds, key: "payment_received", status: "done" },
     }),
   ]);
+  // Mapas por pedido (antes: .find/.filter dentro do laço, pagamentos × pedidos).
+  const orderById = new Map<string, (typeof orders)[number]>();
+  for (const o of orders) if (!orderById.has(o.id)) orderById.set(o.id, o);
+  const confirmedBy = new Map<string, typeof oldConfirmed>();
+  for (const r of oldConfirmed) {
+    const list = confirmedBy.get(r.orderId);
+    if (list) list.push(r);
+    else confirmedBy.set(r.orderId, [r]);
+  }
   const bySupplier = new Map<string, string[]>();
   for (const p of paid) {
-    const order = orders.find((o) => o.id === p.orderId);
+    const order = orderById.get(p.orderId as string);
     if (!order || order.status === "CANCELLED") continue;
     // Já recebido pela etapa antiga (pagamento anterior à confirmação dela).
-    const receivedAt = legacyReceivedAt(
-      oldConfirmed.filter((r) => r.orderId === order.id),
-    );
+    const receivedAt = legacyReceivedAt(confirmedBy.get(order.id) ?? []);
     if (receivedInOldFlow(p, receivedAt)) continue;
     bySupplier.set(order.supplierId, [
       ...(bySupplier.get(order.supplierId) ?? []),

@@ -123,8 +123,11 @@ export async function loadOwnerPanel(now = new Date()) {
   const [{ rows, summary }, payments, requests, inventory, movements, counts] =
     await Promise.all([
       loadFinance(),
-      store.list("payments"),
-      store.list("requests"),
+      // Só os que entram nas contas do painel (antes: as tabelas inteiras).
+      store.list("payments", { filter: { status: ["confirmed", "received"] } }),
+      store.list("requests", {
+        filter: { status: [...OPEN_REQUEST, "WAITING_DOWN_PAYMENT"] },
+      }),
       loadInventory(now),
       listStockMovements(),
       safeList("stock_counts"),

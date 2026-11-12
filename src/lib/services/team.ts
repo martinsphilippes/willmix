@@ -1,7 +1,14 @@
 import "server-only";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 import { loadFunctionDefs } from "./team-functions";
 
-import { getStore, type Division, type JobLevel, type User } from "@/lib/db";
+import {
+  getStore,
+  type Division,
+  type JobLevel,
+  type RequestStatus,
+  type User,
+} from "@/lib/db";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
 import { WELLMIX_BASE, validScreens } from "@/lib/auth/screens";
 import { audit } from "./audit";
@@ -141,24 +148,30 @@ export async function setLineDivision(
   );
 }
 
-/** Pendências abertas por analista: solicitações antes do pedido e pedidos em andamento. */
-async function openLoad(): Promise<Map<string, number>> {
+const OPEN_REQUEST_STATUSES: RequestStatus[] = [
+  "REQUESTED",
+  "RFQ_OPEN",
+  "QUOTATION_RECEIVED",
+  "SUPPLIER_SELECTED",
+  "WAITING_DOWN_PAYMENT",
+];
+
+/**
+ * Pendências abertas por analista: solicitações antes do pedido e pedidos em
+ * andamento. Só os analistas dados contam (os pedidos sem dono da equipe,
+ * como os milhares do histórico do Sankhya, nem são lidos).
+ */
+async function openLoad(team: User[]): Promise<Map<string, number>> {
   const store = getStore();
+  const load = new Map<string, number>();
+  const ids = team.map((u) => u.id);
+  if (!ids.length) return load;
   const [requests, orders] = await Promise.all([
     store.list("requests", {
-      filter: {
-        status: [
-          "REQUESTED",
-          "RFQ_OPEN",
-          "QUOTATION_RECEIVED",
-          "SUPPLIER_SELECTED",
-          "WAITING_DOWN_PAYMENT",
-        ],
-      },
+      filter: { status: OPEN_REQUEST_STATUSES, ownerUserId: ids },
     }),
-    store.list("orders"),
+    store.list("orders", { filter: { ownerUserId: ids } }),
   ]);
-  const load = new Map<string, number>();
   const add = (id: string | null | undefined) => {
     if (id) load.set(id, (load.get(id) ?? 0) + 1);
   };
@@ -175,19 +188,28 @@ async function openLoad(): Promise<Map<string, number>> {
  */
 export async function pickOwner(
   productId: string | null | undefined,
-  context?: { team: User[]; load: Map<string, number> },
+  context?: {
+    team: User[];
+    load: Map<string, number>;
+    /** Divisão já lida de cada produto (distribuição em lote). */
+    divisionOf?: (productId: string) => string | null | undefined;
+  },
 ): Promise<string | null> {
   if (!productId) return null;
   const store = getStore();
-  const product = await store.get("products", productId);
-  if (!product?.lineId) return null;
-  const line = await store.get("product_lines", product.lineId);
-  const division = line?.division ?? null;
+  let division: string | null | undefined;
+  if (context?.divisionOf) division = context.divisionOf(productId);
+  else {
+    const product = await store.get("products", productId);
+    if (!product?.lineId) return null;
+    const line = await store.get("product_lines", product.lineId);
+    division = line?.division ?? null;
+  }
   if (!division) return null;
   const team = context?.team ?? (await wellmixTeam());
   const candidates = team.filter((u) => u.division === division);
   if (!candidates.length) return null;
-  const load = context?.load ?? (await openLoad());
+  const load = context?.load ?? (await openLoad(team));
   const chosen = [...candidates].sort(
     (a, b) => (load.get(a.id) ?? 0) - (load.get(b.id) ?? 0),
   )[0];
@@ -205,46 +227,79 @@ export async function distributeUnassigned(
 ): Promise<{ requests: number; orders: number }> {
   if (!isAdmin(user)) throw new ForbiddenError();
   const store = getStore();
-  const context = { team: await wellmixTeam(), load: await openLoad() };
+  const team = await wellmixTeam();
   const valid = (id: string | null | undefined) =>
-    !!id && context.team.some((u) => u.id === id);
+    !!id && team.some((u) => u.id === id);
   const result = { requests: 0, orders: 0 };
-  const open = await store.list("requests", {
-    filter: {
-      status: [
-        "REQUESTED",
-        "RFQ_OPEN",
-        "QUOTATION_RECEIVED",
-        "SUPPLIER_SELECTED",
-        "WAITING_DOWN_PAYMENT",
-      ],
-    },
-  });
-  for (const r of open) {
-    if (valid(r.ownerUserId)) continue;
-    const owner = await pickOwner(r.productId, context);
-    if (!owner) continue;
-    await store.update("requests", r.id, { ownerUserId: owner });
-    result.requests++;
-  }
-  const orders = (await store.list("orders")).filter(
+  const [load, open, liveOrders] = await Promise.all([
+    openLoad(team),
+    store.list("requests", { filter: { status: OPEN_REQUEST_STATUSES } }),
+    store.list("orders"),
+  ]);
+  const orders = liveOrders.filter(
     (o) =>
       o.status !== "CLOSED" &&
       o.status !== "CANCELLED" &&
       !valid(o.ownerUserId),
   );
+  // Lidos de uma vez (antes: solicitação, item, produto e linha por pedido).
+  const [orderRequests, items] = await Promise.all([
+    listByIds(
+      store,
+      "requests",
+      orders.map((o) => o.requestId),
+    ),
+    orders.length
+      ? store.list("order_items", {
+          filter: { orderId: orders.map((o) => o.id) },
+        })
+      : Promise.resolve([]),
+  ]);
+  const requestById = indexBy(orderRequests, "id");
+  const firstItem = indexBy(items, "orderId");
+  const products = indexBy(
+    await listByIds(store, "products", [
+      ...open.map((r) => r.productId),
+      ...items.map((i) => i.productId),
+      ...orderRequests.map((r) => r.productId),
+    ]),
+    "id",
+  );
+  const lines = indexBy(
+    await listByIds(
+      store,
+      "product_lines",
+      [...products.values()].map((p) => p.lineId),
+    ),
+    "id",
+  );
+  const context = {
+    team,
+    load,
+    divisionOf: (productId: string) => {
+      const lineId = products.get(productId)?.lineId;
+      return lineId ? (lines.get(lineId)?.division ?? null) : null;
+    },
+  };
+  for (const r of open) {
+    if (valid(r.ownerUserId)) continue;
+    const owner = await pickOwner(r.productId, context);
+    if (!owner) continue;
+    await store.update("requests", r.id, { ownerUserId: owner });
+    // O pedido desta solicitação herda o responsável logo abaixo (como antes,
+    // quando a solicitação era lida de novo depois desta passada).
+    const same = requestById.get(r.id);
+    if (same) same.ownerUserId = owner;
+    result.requests++;
+  }
   for (const o of orders) {
-    const request = o.requestId
-      ? await store.get("requests", o.requestId)
-      : null;
+    const request = o.requestId ? requestById.get(o.requestId) : null;
     let owner = valid(request?.ownerUserId) ? request!.ownerUserId! : null;
-    if (!owner) {
-      const [item] = await store.list("order_items", {
-        filter: { orderId: o.id },
-        limit: 1,
-      });
-      owner = await pickOwner(item?.productId ?? request?.productId, context);
-    }
+    if (!owner)
+      owner = await pickOwner(
+        firstItem.get(o.id)?.productId ?? request?.productId,
+        context,
+      );
     if (!owner) continue;
     await store.update("orders", o.id, { ownerUserId: owner });
     result.orders++;
