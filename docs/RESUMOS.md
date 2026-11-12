@@ -88,7 +88,7 @@ Cada tela continua lendo a lista de pedidos (cerca de 15 MB) e passa a tirar do 
 - **Contas a pagar, conta corrente do fornecedor, Fluxo de caixa e aviso diário de parcelas** (`listPayables`): o cronograma de cada pedido (`payableFor`) é montado com os pagamentos, os marcos e os itens do cronograma do resumo.
 - **Fluxo de caixa:** a etapa "Entregue" sai do resumo. Os clientes das solicitações são lidos só pelos ids.
 - **Painel do dono:** só os pagamentos confirmados ou recebidos e só as solicitações abertas ou à espera do sinal.
-- **Pedidos** (`pipelineFor`): etapas em andamento e a viagem (`journeyIndex`) saem do resumo. Os itens de todos os pedidos continuam vindo da tabela, porque a tela manda todos para o navegador (os filtros por produto e por progresso rodam lá).
+- **Pedidos** (`pipelineFor`): etapas em andamento e a viagem (`journeyIndex`) saem do resumo. Os itens continuam vindo da tabela, só com as colunas usadas, porque o filtro por produto e a ordem percorrem todos.
 - **Saldo por parceiro:** sai do mesmo resumo por pedido, somado na hora (`customerAccounts`), sem uma segunda tabela.
 - **Tipos de parceiro:** conta só os parceiros desses tipos.
 
@@ -103,7 +103,7 @@ O teste `tests/unit/order-summary.test.ts` compara todas essas telas pelos dois 
 
 ## O que ainda pesa
 
-1. **Pedidos:** a tela manda todos os pedidos com todos os itens para o navegador. Resolver isso pede paginação ou carregar os itens da linha escolhida, o que muda a tela e é decisão do dono.
+1. **Pedidos:** a página no servidor (50 linhas) veio no PR martinsphilippes/willmix#314. A lista ainda lê todos os itens para filtrar e ordenar, mas só com as colunas usadas.
 2. **Pendências** (`pendingTasksFor`): lê os itens de todas as etapas em andamento a cada abertura, e é o início dos parceiros.
 3. **Escolha de itens para o container e sugestões de produto:** leem os itens de todos os pedidos em aberto.
 4. **Painel de SLA:** lê as etapas concluídas de todos os pedidos para medir durações.

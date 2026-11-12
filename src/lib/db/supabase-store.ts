@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { TableName, Tables } from "./schema";
 import { TABLES } from "./schema";
 import type { ListOptions, NewRow, Patch, Store, StoredFile } from "./store";
+import { pickColumns } from "./store";
 import { storageFileName } from "../file-kinds";
 import {
   clampRange,
@@ -93,6 +94,8 @@ export class SupabaseStore implements Store {
   async list<K extends TableName>(
     table: K,
     options: ListOptions<Tables[K]> = {},
+    /** Colunas pedidas ao banco (padrão: todas). Ver listColumns. */
+    select = "*",
   ): Promise<Tables[K][]> {
     // Listas grandes no "igual a um destes" viram consultas em partes (URL
     // curta), juntadas e reordenadas aqui, como no Appwrite.
@@ -105,13 +108,17 @@ export class SupabaseStore implements Store {
       for (let i = 0; i < values.length; i += MAX_IN)
         chunks.push(values.slice(i, i + MAX_IN));
       const parts = await inBatches(chunks, PARALLEL, (chunk) =>
-        this.list(table, {
-          ...options,
-          filter: {
-            ...options.filter,
-            [field]: chunk,
-          } as ListOptions<Tables[K]>["filter"],
-        }),
+        this.list(
+          table,
+          {
+            ...options,
+            filter: {
+              ...options.filter,
+              [field]: chunk,
+            } as ListOptions<Tables[K]>["filter"],
+          },
+          select,
+        ),
       );
       const orderBy = (options.orderBy ?? "createdAt") as string;
       const dir = options.direction === "desc" ? -1 : 1;
@@ -122,7 +129,7 @@ export class SupabaseStore implements Store {
       });
       return options.limit ? merged.slice(0, options.limit) : merged;
     }
-    const params: string[] = ["select=*"];
+    const params: string[] = [`select=${select}`];
     for (const [key, value] of Object.entries(options.filter ?? {})) {
       if (value === null) params.push(`${enc(key)}=is.null`);
       else if (Array.isArray(value)) {
@@ -167,6 +174,33 @@ export class SupabaseStore implements Store {
       }
     }
     return rows.map((r) => fromRow<Tables[K]>(table, r));
+  }
+
+  /**
+   * Só as colunas pedidas (mais id e datas): telas de lista não trazem, por
+   * exemplo, a cópia do registro do ERP (sankhyaRefs, ~60% do tamanho dos
+   * pedidos e itens).
+   */
+  async listColumns<K extends TableName, C extends keyof Tables[K] & string>(
+    table: K,
+    columns: readonly C[],
+    options: ListOptions<Tables[K]> = {},
+  ): Promise<Pick<Tables[K], C | "id" | "createdAt" | "updatedAt">[]> {
+    const wanted = [
+      ...new Set([
+        "id",
+        "createdAt",
+        "updatedAt",
+        ...columns,
+        ...(options.orderBy ? [options.orderBy] : []),
+      ]),
+    ];
+    const rows = await this.list(
+      table,
+      options,
+      wanted.map((c) => enc(c)).join(","),
+    );
+    return rows.map((r) => pickColumns(r, columns));
   }
 
   async get<K extends TableName>(table: K, id: string) {
