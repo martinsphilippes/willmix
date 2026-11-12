@@ -58,6 +58,9 @@ export interface GenerateLabels {
   perRoundHint: string;
   /** "{min} a {max}" quando as rodadas precisam de containers diferentes. */
   perRoundRange: string;
+  /** "Containers no total" (informativo: a soma das rodadas) e a explicação. */
+  totalField: string;
+  totalFieldHint: string;
   submit: string;
   /** Título do cálculo escrito. */
   calc: string;
@@ -145,6 +148,7 @@ export function SelectionQuantity({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const perRoundId = useId();
+  const totalFieldId = useId();
   const [qty, setQty] = useState(
     defaultQuantity === null ? "" : String(defaultQuantity),
   );
@@ -582,6 +586,20 @@ export function SelectionQuantity({
               className="flex min-h-8 min-w-20 cursor-default items-center rounded-md border border-dashed border-zinc-300 bg-zinc-100 px-2.5 py-1 text-[13px] font-semibold tabular-nums text-zinc-700"
             >
               {perRoundText}
+            </output>
+          </div>
+          <div className="space-y-1">
+            <span className="block font-medium text-zinc-700" id={totalFieldId}>
+              {gen.totalField}
+            </span>
+            {/* Informativo: a soma dos containers de todas as rodadas. */}
+            <output
+              aria-labelledby={totalFieldId}
+              title={gen.totalFieldHint}
+              data-generate-total-containers
+              className="flex min-h-8 min-w-20 cursor-default items-center rounded-md border border-dashed border-zinc-300 bg-zinc-100 px-2.5 py-1 text-[13px] font-semibold tabular-nums text-zinc-700"
+            >
+              {range ? fmt(range.needed.total) : "—"}
             </output>
           </div>
           <button
