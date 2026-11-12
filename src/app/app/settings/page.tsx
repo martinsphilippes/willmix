@@ -94,6 +94,7 @@ export default async function SettingsPage({
     aiCode,
     fiscal,
     fiscalSync,
+    reanalyzed,
     demo,
     demoFailed,
   } = await searchParams;
@@ -122,6 +123,17 @@ export default async function SettingsPage({
       : fiscalSync === "partial"
         ? t("fiscal.table.synced.partial")
         : null;
+  // "&reanalyzed=2-40": bookings com a análise refeita pela tabela nova.
+  const redoneMatch =
+    typeof reanalyzed === "string" ? /^(\d+)-(\d+)$/.exec(reanalyzed) : null;
+  const redoneNotice = redoneMatch
+    ? t("fiscal.table.reanalyzed", {
+        lots: redoneMatch[1],
+        items: redoneMatch[2],
+      })
+    : null;
+  const fiscalNotices =
+    [fiscalNotice, redoneNotice].filter(Boolean).join(" ") || null;
   const lines = lineRows.map((l) => ({ id: l.id, name: l.name }));
   const customers = customerRows.map((c) => ({ id: c.id, name: c.name }));
   const errorKey =
@@ -736,7 +748,7 @@ export default async function SettingsPage({
       ) : null}
       {/* Tabela fiscal e teste da IA lado a lado. */}
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-        <FiscalTableCard t={t} status={fiscalInfo} notice={fiscalNotice} />
+        <FiscalTableCard t={t} status={fiscalInfo} notice={fiscalNotices} />
 
         {/* Teste real da IA com a configuração salva (mostra provedor/modelo ou o motivo da falha). */}
         <Card title={t("operations.ai.test")}>

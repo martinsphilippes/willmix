@@ -231,6 +231,21 @@ const MAX_DOWNLOAD = 15 * 1024 * 1024;
  * oficiais configurados. Falha não apaga nada: guarda o motivo e avisa a
  * Wellmix para subir a planilha à mão.
  */
+/**
+ * Depois de carregar a tabela: refaz as análises do Superplan dos bookings
+ * cujo II ou IPI mudou (`reanalyzeLotsForFiscalTable`). Uma falha aqui não
+ * desfaz a tabela já carregada: fica no log e devolve nulo.
+ */
+export async function refreshBookingAnalyses(user: User | null) {
+  try {
+    const { reanalyzeLotsForFiscalTable } = await import("./booking-lots");
+    return await reanalyzeLotsForFiscalTable(user);
+  } catch (error) {
+    console.error("fiscal: falha ao refazer as análises dos bookings", error);
+    return null;
+  }
+}
+
 export async function syncFiscalTables(
   user: User | null = null,
   fetcher: typeof fetch = fetch,
@@ -289,6 +304,9 @@ export async function syncFiscalTables(
       results.push({ kind, ok: false, error: reason });
     }
   }
+  const bookings = results.some((r) => r.ok)
+    ? await refreshBookingAnalyses(user)
+    : null;
   const failed = results.filter((r) => !r.ok);
   const lastError = failed.length
     ? failed.map((r) => `${r.kind.toUpperCase()}: ${r.error}`).join(" · ")
@@ -305,7 +323,7 @@ export async function syncFiscalTables(
         : "A tabela fiscal tem mais de 90 dias ou está incompleta. Suba a planilha oficial em Configurações.",
       link: "/app/settings#fiscal",
     });
-  return { results, lastError };
+  return { results, lastError, bookings };
 }
 
 /** Texto curto do NCM para telas: "8517.13.00 · descrição". */
