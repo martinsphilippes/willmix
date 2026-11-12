@@ -692,11 +692,18 @@ export async function decideSupplierRequest(
     ).includes(decision)
   )
     throw new SupplierRequestError("supplier_request_decision_invalid");
+  const decidedAt = new Date().toISOString();
+  // Aprovada: abre a amostragem (o responsável envia fotos e vídeos de uma
+  // amostra; docs/SUPPLIER_SAMPLING.md).
+  const { openSampling } = await import("@/lib/supplier-request-sampling");
   const updated = await store.update("supplier_requests", request.id, {
     status: decision,
-    decidedAt: new Date().toISOString(),
+    decidedAt,
     decidedByUserId: user.id,
     decisionNote: clip(note, 500),
+    ...(decision === "approved"
+      ? { sampling: openSampling(decidedAt, user.id) }
+      : {}),
   });
   await audit(
     user,
@@ -724,5 +731,10 @@ export async function decideSupplierRequest(
       }),
     },
   ).catch((error) => console.error("notify(supplier_request.decide)", error));
+  if (decision === "approved") {
+    const { notifySamplingOpened } =
+      await import("./supplier-request-sampling");
+    await notifySamplingOpened(updated);
+  }
   return updated;
 }

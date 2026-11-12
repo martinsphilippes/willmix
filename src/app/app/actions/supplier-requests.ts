@@ -385,3 +385,88 @@ export async function postSupplierRequestMessageAction(form: FormData) {
     return withQuery(back, "negotiation", "message") + "#conversa";
   });
 }
+
+/* ------------------------------------------------------------------------ */
+/* Amostragem (docs/SUPPLIER_SAMPLING.md)                                    */
+/* ------------------------------------------------------------------------ */
+
+const sampling = (id: string) => `/app/supplier-requests/${id}?view=item`;
+const samplingBack = (url: string, notice: string) =>
+  withQuery(url, "sampling", notice) + "#amostragem";
+
+/** O responsável adiciona uma foto ou um vídeo da amostra. */
+export async function addSamplingFileAction(form: FormData) {
+  const user = await requireUser();
+  const { id, ok } = backOf(form);
+  const back = ok ? sampling(id) : "/app/supplier-requests";
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const raw = form.get("file");
+    const file = raw instanceof File && raw.size > 0 ? raw : null;
+    const uploaded = str(form, "uploadedFileId");
+    const uploadedFileId = uploaded
+      ? z
+          .string()
+          .regex(/^[A-Za-z0-9_.-]{1,64}$/)
+          .parse(uploaded)
+      : null;
+    const { addSamplingFile } =
+      await import("@/lib/services/supplier-request-sampling");
+    await addSamplingFile(user, id, { file, uploadedFileId });
+    return samplingBack(back, "file");
+  });
+}
+
+/** O responsável tira da rodada um arquivo ainda não enviado. */
+export async function removeSamplingFileAction(form: FormData) {
+  const user = await requireUser();
+  const { id, ok } = backOf(form);
+  const back = ok ? sampling(id) : "/app/supplier-requests";
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const documentId = ID.parse(str(form, "documentId"));
+    const { removeSamplingFile } =
+      await import("@/lib/services/supplier-request-sampling");
+    await removeSamplingFile(user, id, documentId);
+    return samplingBack(back, "removed");
+  });
+}
+
+/** O responsável envia a rodada para a validação da Wellmix. */
+export async function submitSamplingAction(form: FormData) {
+  const user = await requireUser();
+  const { id, ok } = backOf(form);
+  const back = ok ? sampling(id) : "/app/supplier-requests";
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const note = z
+      .string()
+      .max(2000)
+      .nullable()
+      .parse(str(form, "note") || null);
+    const { submitSampling } =
+      await import("@/lib/services/supplier-request-sampling");
+    await submitSampling(user, id, note);
+    return samplingBack(back, "submitted");
+  });
+}
+
+/** A Wellmix aprova ou reprova a amostra (motivo obrigatório para reprovar). */
+export async function reviewSamplingAction(form: FormData) {
+  const user = await requireUser();
+  const { id, ok } = backOf(form);
+  const back = ok ? sampling(id) : "/app/supplier-requests";
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const decision = z.enum(["approve", "reject"]).parse(str(form, "decision"));
+    const note = z
+      .string()
+      .max(2000)
+      .nullable()
+      .parse(str(form, "note") || null);
+    const { reviewSampling } =
+      await import("@/lib/services/supplier-request-sampling");
+    await reviewSampling(user, id, decision, note);
+    return samplingBack(back, decision === "approve" ? "approved" : "rejected");
+  });
+}

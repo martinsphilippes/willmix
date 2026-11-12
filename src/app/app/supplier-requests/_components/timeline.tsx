@@ -23,6 +23,7 @@ const DOT: Record<string, string> = {
   product: "bg-emerald-600",
   showcase: "bg-emerald-600",
   erp: "bg-emerald-600",
+  sampling: "bg-amber-500",
 };
 
 const DECIDED_DOT: Record<string, string> = {
@@ -92,6 +93,10 @@ export function RequestTimeline({
         return k("showcase");
       case "erp":
         return k("erp");
+      case "sampling":
+        return t(
+          `sampling.timeline.${entry.outcome ?? "submit"}` as DictionaryKey,
+        );
     }
   };
 
@@ -102,9 +107,15 @@ export function RequestTimeline({
           const e = entry.event;
           const chips = e ? values(e) : [];
           const dot =
-            entry.kind === "decided"
-              ? (DECIDED_DOT[entry.outcome ?? ""] ?? DOT.decided)
-              : (DOT[entry.kind] ?? "bg-zinc-400");
+            entry.kind === "sampling"
+              ? entry.outcome === "approve"
+                ? "bg-emerald-600"
+                : entry.outcome === "reject"
+                  ? "bg-red-600"
+                  : DOT.sampling
+              : entry.kind === "decided"
+                ? (DECIDED_DOT[entry.outcome ?? ""] ?? DOT.decided)
+                : (DOT[entry.kind] ?? "bg-zinc-400");
           return (
             <li
               key={entry.key}

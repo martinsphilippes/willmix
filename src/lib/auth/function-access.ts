@@ -31,6 +31,7 @@ export const ACTION_GROUPS = [
     key: "purchase",
     actions: [
       "supplierRequest.decide",
+      "sampling.validate",
       "dumping.release",
       "approval.planner",
       "approval.purchasing_director",
@@ -89,6 +90,7 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
       return ["buyer"];
     // Quem abria a tela fazia: o padrão não tira nada de ninguém.
     case "supplierRequest.decide":
+    case "sampling.validate":
       return withScreen("quotes");
     case "purchaseOrder.generate":
       return withScreen("quotes", "orders");

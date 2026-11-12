@@ -2481,6 +2481,57 @@ export interface SupplierRequest extends BaseRow {
    * rodada e intervalo (docs/PURCHASE_SCHEDULE.md). `quantity` é o total.
    */
   schedule?: RequestSchedule | null;
+  /**
+   * Amostragem (docs/SUPPLIER_SAMPLING.md): depois da aprovação, o
+   * responsável pelo booking envia fotos e vídeos de uma amostra do item e a
+   * Wellmix valida. Nulo nas aprovadas antes da etapa (lida como pendente).
+   */
+  sampling?: SupplierRequestSampling | null;
+}
+
+export const SAMPLING_STATUSES = [
+  "pending",
+  "submitted",
+  "approved",
+  "rejected",
+] as const;
+export type SamplingStatus = (typeof SAMPLING_STATUSES)[number];
+
+/** Foto ou vídeo da amostra (documento com `supplierRequestId`). */
+export interface SamplingFile {
+  documentId: string;
+  fileName: string;
+  mime: string;
+  kind: "photo" | "video";
+  /** Rodada em que entrou (a reprovada abre a seguinte). */
+  round: number;
+  at: string;
+  byUserId: string;
+}
+
+/** Passo da amostragem: aberta, enviada, aprovada ou reprovada. */
+export interface SamplingEvent {
+  id: string;
+  at: string;
+  kind: "open" | "submit" | "approve" | "reject";
+  side: "wellmix" | "supplier";
+  byUserId: string;
+  round: number;
+  text?: string | null;
+  /** Arquivos enviados na rodada (no "submit"). */
+  files?: number | null;
+}
+
+export interface SupplierRequestSampling {
+  status: SamplingStatus;
+  /** Rodada atual (começa em 1; cada reprovação abre outra). */
+  round: number;
+  openedAt: string;
+  files: SamplingFile[];
+  history: SamplingEvent[];
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+  reviewedByUserId?: string | null;
 }
 
 /**
@@ -4333,6 +4384,7 @@ export const TABLES: Record<TableName, TableDef> = {
       orderId: id(false),
       batchId: id(false),
       schedule: json(),
+      sampling: jsonLarge(),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },

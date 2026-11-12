@@ -281,7 +281,8 @@ export type TimelineKind =
   | "decided"
   | "product"
   | "showcase"
-  | "erp";
+  | "erp"
+  | "sampling";
 
 /** Um ponto da linha do tempo: quando, quem e o que ficou resolvido. */
 export interface TimelineEntry {
@@ -388,6 +389,18 @@ export function requestTimeline(
       kind: "erp",
       side: "wellmix",
     });
+  // Amostragem: envio da amostra e a validação da Wellmix (a abertura já
+  // aparece na decisão).
+  for (const e of request.sampling?.history ?? [])
+    if (e.kind !== "open")
+      out.push({
+        key: `sampling-${e.id}`,
+        at: e.at,
+        kind: "sampling",
+        side: e.side,
+        outcome: e.kind,
+        note: e.text ?? null,
+      });
   return out.sort((a, b) => (a.at === b.at ? 0 : a.at < b.at ? -1 : 1));
 }
 

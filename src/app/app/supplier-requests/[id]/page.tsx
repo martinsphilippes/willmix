@@ -66,6 +66,7 @@ import { RequestTimeline } from "../_components/timeline";
 import { RequestChat, type ChatMessage } from "../_components/request-chat";
 import { dateTime } from "../_components/negotiation";
 import { canPostMessage } from "@/lib/supplier-requests";
+import { SamplingCard } from "../_components/sampling";
 
 /*
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
@@ -159,6 +160,13 @@ export default async function SupplierRequestPage({
   const productNotice = one("product");
   if (["created", "linked", "items", "released"].includes(productNotice))
     notices.push(t(`srProduct.notice.${productNotice}` as DictionaryKey));
+  const samplingNotice = one("sampling");
+  if (
+    ["file", "removed", "submitted", "approved", "rejected"].includes(
+      samplingNotice,
+    )
+  )
+    notices.push(t(`sampling.notice.${samplingNotice}` as DictionaryKey));
   const erpNotice = one("erp");
   if (["checked", "unchecked", "cleared"].includes(erpNotice))
     notices.push(t(`srProduct.notice.erp.${erpNotice}` as DictionaryKey));
@@ -374,6 +382,18 @@ export default async function SupplierRequestPage({
         }
       />
       {noticeBlock}
+
+      {/* Amostragem: a etapa depois da aprovação (fotos e vídeos da amostra). */}
+      {r.status === "approved" ? (
+        <div className="mb-4">
+          <SamplingCard
+            request={r}
+            wellmix={wellmix}
+            canValidate={wellmix && can(user, "sampling.validate")}
+            t={t}
+          />
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
         <div className="space-y-4 lg:col-span-2">

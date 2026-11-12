@@ -66,6 +66,7 @@ describe("pendências do fornecedor por etapa", () => {
     expect([...SUPPLIER_STEPS]).toEqual([
       "booking",
       "request",
+      "sampling",
       "dieline",
       "sheet",
       "art",
