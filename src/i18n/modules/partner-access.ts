@@ -30,10 +30,16 @@ export const pt = {
   "partnerAccess.state.blocked": "Bloqueada",
   "partnerAccess.state.internal": "Interna da Wellmix",
   "partnerAccess.state.other": "De outra classe de login",
+  "partnerAccess.emptyForProfile":
+    "Esta tela não tem dados para o seu tipo de login.",
+  "partnerAccess.home.noTasks":
+    "As pendências não fazem parte do seu acesso. Use o menu para abrir as suas telas.",
+  "partnerAccess.limited":
+    "Feita para {origin}: neste perfil abre sem dados (ou volta ao início) até ser adaptada.",
   "partnerAccess.error.partner_access_not_adapted":
     "Essa tela foi feita para outra classe de login e ainda não foi adaptada para este perfil: liberá-la agora mostraria dados sem o filtro da empresa.",
   "partnerAccess.otherHint":
-    "Telas de outra classe de login (ex.: a vitrine do Cliente para um Trading) aparecem no catálogo, mas só podem ser liberadas depois de adaptadas, uma a uma, para filtrar os dados pela empresa de quem abre.",
+    "Qualquer tela de login externo pode ser liberada a qualquer perfil. As que mostram os dados da própria empresa (Início, Pendências, Notificações, Mensagens, Pedidos e Multas) funcionam inteiras: cada login vê só o que é da empresa dele (Multas fica vazia para quem nunca é o responsável por uma multa). As outras foram feitas para os registros de um papel e, em outro perfil, abrem sem dados até serem adaptadas.",
   "partnerAccess.state.always": "Sempre aberta",
   "partnerAccess.origin.wellmix": "Equipe Wellmix",
   "partnerAccess.source.default": "Padrão",
@@ -137,10 +143,16 @@ export const en: typeof pt = {
   "partnerAccess.state.blocked": "Blocked",
   "partnerAccess.state.internal": "Wellmix internal",
   "partnerAccess.state.other": "From another login class",
+  "partnerAccess.emptyForProfile":
+    "This screen has no data for your login type.",
+  "partnerAccess.home.noTasks":
+    "Tasks are not part of your access. Use the menu to open your screens.",
+  "partnerAccess.limited":
+    "Built for {origin}: in this profile it opens with no data (or returns home) until adapted.",
   "partnerAccess.error.partner_access_not_adapted":
     "That screen was built for another login class and has not been adapted to this profile yet: granting it now would show data without the company filter.",
   "partnerAccess.otherHint":
-    "Screens of another login class (e.g. the Customer showcase for a Trading) are in the catalog, but can only be granted after being adapted, one by one, to filter the data by the company of whoever opens them.",
+    "Any external-login screen can be granted to any profile. Those that show the company's own data (Home, Tasks, Notifications, Messages, Orders and Penalties) work fully: each login sees only what belongs to its company (Penalties stays empty for a company that is never the responsible party). The others were built for the records of one role and, in another profile, open with no data until adapted.",
   "partnerAccess.state.always": "Always open",
   "partnerAccess.origin.wellmix": "Wellmix team",
   "partnerAccess.source.default": "Default",
@@ -246,10 +258,15 @@ export const zh: typeof pt = {
   "partnerAccess.state.blocked": "未开放",
   "partnerAccess.state.internal": "Wellmix 内部",
   "partnerAccess.state.other": "属于其他登录类别",
+  "partnerAccess.emptyForProfile": "此页面没有适用于您登录类型的数据。",
+  "partnerAccess.home.noTasks":
+    "待办不在您的权限范围内。请使用菜单打开您的页面。",
+  "partnerAccess.limited":
+    "原本面向 {origin}：在此权限组中打开时没有数据（或返回首页），需调整后才有内容。",
   "partnerAccess.error.partner_access_not_adapted":
     "该页面是为其他登录类别设计的，尚未针对此权限组调整：现在开放会显示未按公司过滤的数据。",
   "partnerAccess.otherHint":
-    "其他登录类别的页面（例如面向客户的展示页）会列在目录中，但需逐个调整为按打开者所属公司过滤数据后才能开放。",
+    "任何外部登录页面都可以开放给任何权限组。显示本公司数据的页面（首页、待办、通知、消息、订单和罚款）可完整使用：每个登录只能看到本公司的内容（从未被列为责任方的公司，罚款页面为空）。其余页面是为某一角色的记录设计的，在其他权限组中打开时没有数据，需调整后才有内容。",
   "partnerAccess.state.always": "始终开放",
   "partnerAccess.origin.wellmix": "Wellmix 团队",
   "partnerAccess.source.default": "默认",

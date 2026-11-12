@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -26,11 +27,19 @@ export default async function PenaltiesPage() {
   requireScreen(user, "penalties");
   const t = await getT();
   const store = getStore();
-  const [penalties, orders, parties] = await Promise.all([
+  const [allPenalties, orders, parties] = await Promise.all([
     store.list("penalties", { orderBy: "createdAt", direction: "desc" }),
     store.list("orders"),
     store.list("parties"),
   ]);
+  // A Wellmix e o jurídico veem todas. Qualquer outro login que receba a tela
+  // (Gestão de telas) vê só as multas da própria empresa.
+  const seesAll = isWellmix(user) || user.role === "legal";
+  const penalties = seesAll
+    ? allPenalties
+    : allPenalties.filter(
+        (p) => !!user.partyId && p.responsiblePartyId === user.partyId,
+      );
 
   return (
     <>
@@ -71,7 +80,8 @@ export default async function PenaltiesPage() {
                   </Td>
                   <Td>
                     {p.reason}
-                    {p.evidenceDocumentId ? (
+                    {/* A evidência é um arquivo interno: só a Wellmix o abre. */}
+                    {isWellmix(user) && p.evidenceDocumentId ? (
                       <>
                         {" "}
                         <a
@@ -104,25 +114,28 @@ export default async function PenaltiesPage() {
                     </Badge>
                   </Td>
                   <Td>
-                    <form
-                      action={updatePenaltyStatusAction}
-                      className="flex gap-1.5"
-                    >
-                      <input type="hidden" name="penaltyId" value={p.id} />
-                      {(["disputed", "paid", "cancelled"] as const)
-                        .filter((s) => s !== p.status)
-                        .map((s) => (
-                          <SubmitButton
-                            key={s}
-                            name="status"
-                            value={s}
-                            variant="secondary"
-                            className="px-2 py-1 text-xs"
-                          >
-                            {t(`penaltyStatus.${s}`)}
-                          </SubmitButton>
-                        ))}
-                    </form>
+                    {/* Mudar a situação: Wellmix e jurídico (a ação recusa os demais). */}
+                    {seesAll ? (
+                      <form
+                        action={updatePenaltyStatusAction}
+                        className="flex gap-1.5"
+                      >
+                        <input type="hidden" name="penaltyId" value={p.id} />
+                        {(["disputed", "paid", "cancelled"] as const)
+                          .filter((s) => s !== p.status)
+                          .map((s) => (
+                            <SubmitButton
+                              key={s}
+                              name="status"
+                              value={s}
+                              variant="secondary"
+                              className="px-2 py-1 text-xs"
+                            >
+                              {t(`penaltyStatus.${s}`)}
+                            </SubmitButton>
+                          ))}
+                      </form>
+                    ) : null}
                   </Td>
                   <Td className="whitespace-nowrap text-right">
                     <ChatOpenButton

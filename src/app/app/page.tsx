@@ -1,8 +1,16 @@
 import { redirect } from "next/navigation";
+import {
+  SCREENS,
+  SCREEN_LABEL,
+  canOpen,
+  type Screen,
+} from "@/lib/auth/screens";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
+import { getT } from "@/i18n/server";
 import { ControlTower } from "@/components/control-tower";
 import { TaskList } from "@/components/task-list";
+import { Alert, Empty, PageHeader } from "@/components/ui";
 
 /**
  * Início: Control Tower para a Wellmix; Solicitações para o cliente (com as
@@ -30,10 +38,40 @@ export default async function AppHome({ searchParams }: PageProps<"/app">) {
       ? `?denied=${denied}`
       : "";
   // Cliente: a vitrine; sem empresa vinculada, a lista de solicitações.
-  if (user.role === "customer")
-    redirect(
-      user.partyId ? `/app/explore${deniedQs}` : `/app/requests${deniedQs}`,
+  // Sem a vitrine no perfil (Gestão de telas), vai às solicitações; sem as
+  // duas, fica aqui, nas pendências (não entra em ciclo).
+  if (user.role === "customer") {
+    if (user.partyId && canOpen(user, "explore"))
+      redirect(`/app/explore${deniedQs}`);
+    if (canOpen(user, "requests")) redirect(`/app/requests${deniedQs}`);
+  }
+  // Sem Pendências no perfil (Gestão de telas): o início fica com a saudação
+  // e o aviso da tela negada; a lista de pendências não aparece aqui também.
+  if (!canOpen(user, "tasks")) {
+    const t = await getT();
+    const deniedScreen =
+      typeof denied === "string" &&
+      (SCREENS as readonly string[]).includes(denied)
+        ? (denied as Screen)
+        : null;
+    return (
+      <>
+        <PageHeader
+          t={t}
+          title={t("nav.home")}
+          subtitle={t("home.welcome", { name: user.name })}
+        />
+        {deniedScreen ? (
+          <Alert tone="warning">
+            {t("access.denied", { screen: t(SCREEN_LABEL[deniedScreen]) })}
+          </Alert>
+        ) : null}
+        <Empty>
+          <span data-home-no-tasks="">{t("partnerAccess.home.noTasks")}</span>
+        </Empty>
+      </>
     );
+  }
   return (
     <TaskList user={user} denied={typeof denied === "string" ? denied : null} />
   );

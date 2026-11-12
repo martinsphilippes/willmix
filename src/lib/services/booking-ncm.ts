@@ -37,13 +37,19 @@ import { audit } from "./audit";
 
 export class BookingNcmError extends Error {}
 
-/** Quem preenche o NCM do item: a Wellmix (tela Booking) ou o despachante com empresa. */
+/**
+ * Quem preenche o NCM do item: a Wellmix (tela Booking) ou o despachante com
+ * empresa e com as Pendências no perfil (é onde está a fila, /app/ncm-items).
+ */
 function assertNcmFiller(user: User) {
   if (isWellmix(user)) {
     assertScreen(user, "booking");
     return;
   }
-  if (user.role === "broker" && user.partyId) return;
+  if (user.role === "broker" && user.partyId) {
+    assertScreen(user, "tasks");
+    return;
+  }
   throw new BookingNcmError("forbidden");
 }
 

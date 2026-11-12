@@ -1,3 +1,4 @@
+import { requireScreen } from "@/lib/auth/guard";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { TaskList } from "@/components/task-list";
@@ -7,6 +8,7 @@ export default async function TasksPage({
 }: PageProps<"/app/tasks">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/tasks");
+  requireScreen(user, "tasks");
   // Filtros: ?due=overdue|today|week|later|none e ?type=<etapa ou tipo>.
   const { due, type } = await searchParams;
   return (

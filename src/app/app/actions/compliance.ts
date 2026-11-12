@@ -58,7 +58,8 @@ export async function suggestNcmAction(form: FormData) {
   const back = taxBack(form, productId);
   await run(back, async () => {
     assertRole(user, TAX_ROLES);
-    if (isWellmix(user)) assertScreen(user, "products");
+    // Wellmix: a tela Produtos; o despachante entra pelo pedido (tela Pedidos).
+    assertScreen(user, isWellmix(user) ? "products" : "orders");
     const product = await getStore().get("products", productId);
     if (!product) throw new Error("product_not_found");
     const created = await suggestTaxCandidates(user, productId);
@@ -90,7 +91,8 @@ export async function addTaxCandidateAction(form: FormData) {
   const back = taxBack(form, productId);
   await run(back, async () => {
     assertRole(user, TAX_ROLES);
-    if (isWellmix(user)) assertScreen(user, "products");
+    // Wellmix: a tela Produtos; o despachante entra pelo pedido (tela Pedidos).
+    assertScreen(user, isWellmix(user) ? "products" : "orders");
     const parsed = candidateSchema.parse({
       ncm: str(form, "ncm"),
       description: str(form, "description") || null,
@@ -127,7 +129,8 @@ export async function validateTaxAction(form: FormData) {
   const back = taxBack(form, productId);
   await run(back, async () => {
     assertRole(user, TAX_ROLES);
-    if (isWellmix(user)) assertScreen(user, "products");
+    // Wellmix: a tela Produtos; o despachante entra pelo pedido (tela Pedidos).
+    assertScreen(user, isWellmix(user) ? "products" : "orders");
     const id = z.string().min(1).parse(str(form, "id"));
     const row = await getStore().get("tax_classifications", id);
     if (!row || row.productId !== productId) throw new Error("not_found");
@@ -142,7 +145,8 @@ export async function rejectTaxAction(form: FormData) {
   const back = taxBack(form, productId);
   await run(back, async () => {
     assertRole(user, TAX_ROLES);
-    if (isWellmix(user)) assertScreen(user, "products");
+    // Wellmix: a tela Produtos; o despachante entra pelo pedido (tela Pedidos).
+    assertScreen(user, isWellmix(user) ? "products" : "orders");
     const parsed = z
       .object({ id: z.string().min(1), note: z.string().max(2000).nullable() })
       .parse({ id: str(form, "id"), note: str(form, "note") || null });

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getSettings } from "@/lib/settings";
@@ -25,6 +26,7 @@ export default async function CartPage({
 }: PageProps<"/app/explore/cart">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/explore/cart");
+  requireScreen(user, "explore");
   if (user.role !== "customer") redirect("/app/explore");
   // Cliente sem empresa: lista de solicitações (a vitrine o mandaria de volta).
   if (!user.partyId) redirect("/app/requests");

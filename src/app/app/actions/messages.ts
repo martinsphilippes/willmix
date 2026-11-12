@@ -2,13 +2,15 @@
 
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { MESSAGE_MAX_LENGTH } from "@/lib/db/schema";
 import { field, requireUser, run, runInPlace, str } from "./helpers";
 
 /*
- * Mensagens (chat interno). Qualquer usuário logado escreve e abre assuntos;
- * o serviço confere a empresa da conversa e se ele vê a solicitação/o pedido
- * do assunto. Começar conversa escolhendo a empresa: só a Wellmix.
+ * Mensagens (chat interno). Quem tem a tela Mensagens no perfil escreve e
+ * abre assuntos; o serviço confere a empresa da conversa e se ele vê a
+ * solicitação/o pedido do assunto. Começar conversa escolhendo a empresa: só
+ * a Wellmix.
  */
 
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
@@ -41,6 +43,7 @@ export async function postMessageAction(form: FormData) {
   const user = await requireUser();
   const back = threadBack(str(form, "conversationId"), str(form, "topicId"));
   await runInPlace(back, async () => {
+    assertScreen(user, "messages");
     const topicId = ID.parse(str(form, "topicId"));
     // Anexo: arquivo no formulário (até ~4 MB) ou já subido direto.
     const file = form.get("file");
@@ -74,6 +77,7 @@ export async function translateMessageAction(form: FormData) {
   const user = await requireUser();
   const back = threadBack(str(form, "conversationId"), str(form, "topicId"));
   await runInPlace(back, async () => {
+    assertScreen(user, "messages");
     const id = ID.parse(str(form, "messageId"));
     const { translateMessageFor } = await import("@/lib/services/messages");
     await translateMessageFor(user, id);
@@ -91,6 +95,7 @@ export async function markTopicReadAction(
 ) {
   const user = await requireUser();
   await runInPlace(threadBack(conversationId, topicId), async () => {
+    assertScreen(user, "messages");
     const id = ID.parse(topicId);
     const { markTopicRead } = await import("@/lib/services/messages");
     await markTopicRead(user, id);
@@ -104,6 +109,7 @@ export async function markTopicReadAction(
 export async function openChatAction(form: FormData) {
   const user = await requireUser();
   await run(pageBack(form), async () => {
+    assertScreen(user, "messages");
     const input = {
       partyId: optionalId.parse(optional(form, "partyId")),
       requestId: optionalId.parse(optional(form, "requestId")),
@@ -123,6 +129,7 @@ export async function openTreeTopicAction(form: FormData) {
   const user = await requireUser();
   const conversationId = str(form, "conversationId");
   await run(threadBack(conversationId, ""), async () => {
+    assertScreen(user, "messages");
     const input = {
       conversationId: ID.parse(conversationId),
       orderId: optionalId.parse(optional(form, "orderId")),
@@ -142,6 +149,7 @@ export async function startConversationAction(form: FormData) {
   const user = await requireUser();
   await run(BASE, async () => {
     assertWellmix(user);
+    assertScreen(user, "messages");
     const target = z
       .string()
       .regex(/^(party|user):[A-Za-z0-9_-]{1,64}$/)

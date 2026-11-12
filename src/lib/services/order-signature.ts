@@ -574,11 +574,15 @@ export async function signOrderDocument(
     // (o que não é PDF nem foto é apagado) e guarda como o anexo comum.
     const stored = await store.statFile(input.signedFileKey);
     if (!stored) throw new OrderSignatureError("signature_file_missing");
+    const { registerUploadedDocument, fileKeyTaken } =
+      await import("./documents");
+    // Arquivo que já é de um documento registrado: recusa sem apagar nada.
+    if (await fileKeyTaken(input.signedFileKey))
+      throw new OrderSignatureError("signature_file_missing");
     if (!SIGNED_FILE_MIME.test(stored.mime ?? "")) {
       await store.removeFile(input.signedFileKey).catch(() => undefined);
       throw new OrderSignatureError("signature_file_invalid");
     }
-    const { registerUploadedDocument } = await import("./documents");
     const doc = await registerUploadedDocument(user, input.signedFileKey, {
       orderId: order.id,
       type: "other",

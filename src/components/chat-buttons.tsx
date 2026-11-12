@@ -1,11 +1,13 @@
 import { openChatAction } from "@/app/app/actions/messages";
+import { ChatOnly } from "./chat-access";
 import { SubmitButton } from "./submit-button";
 
 /*
  * "Conversar com a Wellmix" / "Conversar com a empresa" na solicitação e no
  * pedido: cada botão abre (ou cria) o assunto da solicitação/do pedido na
  * conversa da empresa e leva até ele. Quem é de fora tem um botão (a própria
- * empresa); a Wellmix, um por empresa participante.
+ * empresa); a Wellmix, um por empresa participante. Perfil sem a tela
+ * Mensagens (Gestão de telas) não vê os botões: a ação recusaria.
  */
 
 export interface ChatTarget {
@@ -50,33 +52,35 @@ export function ChatButtons({
 }) {
   if (!targets.length) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2" data-chat-buttons>
-      {prefix ? (
-        <span className="text-xs font-medium text-zinc-500">{prefix}</span>
-      ) : null}
-      {targets.map((target) => (
-        <form key={target.partyId ?? "own"} action={openChatAction}>
-          <input type="hidden" name="back" value={back} />
-          {requestId ? (
-            <input type="hidden" name="requestId" value={requestId} />
-          ) : null}
-          {orderId ? (
-            <input type="hidden" name="orderId" value={orderId} />
-          ) : null}
-          {target.partyId ? (
-            <input type="hidden" name="partyId" value={target.partyId} />
-          ) : null}
-          {/* Mesmo tamanho dos outros botões do topo da página. */}
-          <SubmitButton
-            variant="secondary"
-            title={target.title}
-            data-chat-target={target.partyId ?? "own"}
-          >
-            <ChatIcon />
-            {target.label}
-          </SubmitButton>
-        </form>
-      ))}
-    </div>
+    <ChatOnly>
+      <div className="flex flex-wrap items-center gap-2" data-chat-buttons>
+        {prefix ? (
+          <span className="text-xs font-medium text-zinc-500">{prefix}</span>
+        ) : null}
+        {targets.map((target) => (
+          <form key={target.partyId ?? "own"} action={openChatAction}>
+            <input type="hidden" name="back" value={back} />
+            {requestId ? (
+              <input type="hidden" name="requestId" value={requestId} />
+            ) : null}
+            {orderId ? (
+              <input type="hidden" name="orderId" value={orderId} />
+            ) : null}
+            {target.partyId ? (
+              <input type="hidden" name="partyId" value={target.partyId} />
+            ) : null}
+            {/* Mesmo tamanho dos outros botões do topo da página. */}
+            <SubmitButton
+              variant="secondary"
+              title={target.title}
+              data-chat-target={target.partyId ?? "own"}
+            >
+              <ChatIcon />
+              {target.label}
+            </SubmitButton>
+          </form>
+        ))}
+      </div>
+    </ChatOnly>
   );
 }

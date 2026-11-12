@@ -1,11 +1,12 @@
 "use server";
 
 import { z } from "zod";
+import { assertScreen } from "@/lib/auth/screens";
 import { requireUser, run, runInPlace, str } from "./helpers";
 
 /*
- * Avisos da lista do portal: qualquer usuário logado exclui os próprios
- * (o serviço só encontra linhas do próprio usuário).
+ * Avisos da lista do portal: quem tem a tela Notificações no perfil exclui os
+ * próprios (o serviço só encontra linhas do próprio usuário).
  */
 
 const ID = z.string().min(1).max(64);
@@ -15,6 +16,7 @@ const BACK = "/app/notifications";
 export async function deleteNotificationAction(form: FormData) {
   const user = await requireUser();
   await runInPlace(BACK, async () => {
+    assertScreen(user, "notifications");
     const id = ID.parse(str(form, "id"));
     const { deleteInAppNotifications } =
       await import("@/lib/services/notifications");
@@ -26,6 +28,7 @@ export async function deleteNotificationAction(form: FormData) {
 export async function deleteAllNotificationsAction() {
   const user = await requireUser();
   await run(BACK, async () => {
+    assertScreen(user, "notifications");
     const { deleteInAppNotifications } =
       await import("@/lib/services/notifications");
     const count = await deleteInAppNotifications(user);
@@ -37,9 +40,9 @@ export async function deleteAllNotificationsAction() {
 export async function openNotificationAction(form: FormData) {
   const user = await requireUser();
   await run(BACK, async () => {
+    assertScreen(user, "notifications");
     const id = ID.parse(str(form, "id"));
-    const { openNotification } =
-      await import("@/lib/services/notifications");
+    const { openNotification } = await import("@/lib/services/notifications");
     return (await openNotification(user, id)) ?? BACK;
   });
 }

@@ -128,6 +128,15 @@ export async function uploadDocument(
   return createDocumentRow(user, stored, input, bytes);
 }
 
+/** O arquivo (chave no armazenamento) já pertence a um documento registrado. */
+export async function fileKeyTaken(fileKey: string): Promise<boolean> {
+  const taken = await getStore().list("documents", {
+    filter: { storageKey: fileKey },
+    limit: 1,
+  });
+  return taken.length > 0;
+}
+
 /**
  * Documento cujo arquivo o navegador já subiu direto ao armazenamento (token
  * de upload): o servidor só confere que existe, tamanho e tipo, e registra.
@@ -142,6 +151,9 @@ export async function registerUploadedDocument(
   const store = getStore();
   const stored = await store.statFile(fileKey);
   if (!stored) throw new DocumentError("upload_missing");
+  // Arquivo que já é de um documento: recusa antes de qualquer limpeza, para
+  // nunca apagar o arquivo de um documento registrado.
+  if (await fileKeyTaken(fileKey)) throw new DocumentError("upload_missing");
   if (stored.size === 0) throw new DocumentError("empty");
   if (stored.size > MAX_BYTES) {
     await store.removeFile(fileKey);
@@ -152,11 +164,6 @@ export async function registerUploadedDocument(
     await store.removeFile(fileKey);
     throw new DocumentError("mime");
   }
-  const taken = await store.list("documents", {
-    filter: { storageKey: fileKey },
-    limit: 1,
-  });
-  if (taken.length) throw new DocumentError("upload_missing");
   return createDocumentRow(user, { ...stored, mime }, input, null);
 }
 
@@ -171,11 +178,37 @@ export async function registerUploadedPhoto(
 ): Promise<Document> {
   const stored = await getStore().statFile(fileKey);
   if (!stored) throw new DocumentError("upload_missing");
+  if (await fileKeyTaken(fileKey)) throw new DocumentError("upload_missing");
   if (!(stored.mime ?? "").startsWith("image/")) {
     await getStore().removeFile(fileKey);
     throw new DocumentError("mime");
   }
   return registerUploadedDocument(user, fileKey, input);
+}
+
+/**
+ * Arquivo que subiu para um requisito cujo envio foi recusado em seguida
+ * (etapa fechada, pré-requisito pendente…): sai do pedido, para não ficar
+ * como a versão mais nova do requisito. Só apaga o que este envio criou e se
+ * o requisito não ficou apontando para ele.
+ */
+export async function discardRequirementUpload(
+  requirementId: string,
+  documentId: string,
+): Promise<void> {
+  const store = getStore();
+  const [requirement, doc] = await Promise.all([
+    store.get("requirements", requirementId),
+    store.get("documents", documentId),
+  ]);
+  if (!doc || doc.requirementId !== requirementId) return;
+  if (requirement?.documentId === documentId) return;
+  await store.remove("documents", doc.id);
+  // Arquivo só sai do armazenamento se nenhum outro documento aponta para ele.
+  if (!(await fileKeyTaken(doc.storageKey)))
+    await store.removeFile(doc.storageKey).catch((error: unknown) => {
+      console.error("discardRequirementUpload: arquivo não apagado", error);
+    });
 }
 
 /** Foto enviada no formulário (File) ou já subida direto (id no armazenamento). */

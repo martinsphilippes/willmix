@@ -18,7 +18,7 @@ import {
   ALWAYS_OPEN,
   GRANTABLE_SCREENS,
   isGrantable,
-  isGrantableFor,
+  isLimitedFor,
   originRoles,
   type ProfileAccess,
   type ScreenChange,
@@ -181,11 +181,9 @@ export default async function PartnerAccessPage({
   const stateOf = (access: ProfileAccess, screen: Screen) =>
     !isGrantable(screen)
       ? "internal"
-      : !isGrantableFor(screen, current.key)
-        ? "other"
-        : access.screens.includes(screen)
-          ? "open"
-          : "blocked";
+      : access.screens.includes(screen)
+        ? "open"
+        : "blocked";
   const shown = (screen: Screen) =>
     (!q ||
       screenName(screen).toLowerCase().includes(q) ||
@@ -293,13 +291,11 @@ export default async function PartnerAccessPage({
               <Field label={t("partnerAccess.filter.state")}>
                 <Select name="state" defaultValue={stateFilter}>
                   <option value="">{t("partnerAccess.filter.all")}</option>
-                  {(["open", "blocked", "other", "internal"] as const).map(
-                    (s) => (
-                      <option key={s} value={s}>
-                        {t(`partnerAccess.state.${s}`)}
-                      </option>
-                    ),
-                  )}
+                  {(["open", "blocked", "internal"] as const).map((s) => (
+                    <option key={s} value={s}>
+                      {t(`partnerAccess.state.${s}`)}
+                    </option>
+                  ))}
                 </Select>
               </Field>
             </div>
@@ -390,7 +386,7 @@ export default async function PartnerAccessPage({
                           tone={
                             state === "open"
                               ? "success"
-                              : state === "internal" || state === "other"
+                              : state === "internal"
                                 ? "warning"
                                 : "neutral"
                           }
@@ -401,9 +397,19 @@ export default async function PartnerAccessPage({
                               : `partnerAccess.state.${state}`,
                           )}
                         </Badge>
+                        {isLimitedFor(s, current.key) ? (
+                          <span
+                            className="mt-1 block max-w-56 whitespace-normal text-xs text-amber-800"
+                            data-access-limited={s}
+                          >
+                            {t("partnerAccess.limited", {
+                              origin: originText(s),
+                            })}
+                          </span>
+                        ) : null}
                       </Td>
                       <Td>
-                        {state === "internal" || state === "other" ? (
+                        {state === "internal" ? (
                           "—"
                         ) : always ? (
                           <>
@@ -430,7 +436,7 @@ export default async function PartnerAccessPage({
                         )}
                       </Td>
                       <Td>
-                        {state === "internal" || state === "other" ? (
+                        {state === "internal" ? (
                           "—"
                         ) : (
                           <input

@@ -2,6 +2,8 @@
 
 import { z } from "zod";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
+import type { User } from "@/lib/db";
 import { MESSAGE_MAX_LENGTH } from "@/lib/db/schema";
 import { getT } from "@/i18n/server";
 import { withTranslationText } from "@/lib/message-translation";
@@ -12,7 +14,7 @@ import { errorCode, requireUser } from "./helpers";
  * Pendências, SLA, itens do pedido). Server Actions que devolvem dados em vez
  * de redirecionar: a tela que as chama continua onde está. Quem pode ver e
  * escrever é conferido no serviço (empresa da conversa, solicitação/pedido
- * visível); aqui só a validação dos parâmetros.
+ * visível); aqui a tela Mensagens do perfil e a validação dos parâmetros.
  */
 
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
@@ -21,8 +23,13 @@ const optionalId = ID.nullable().optional();
 export type ChatResult<T> =
   { ok: true; data: T } | { ok: false; error: string };
 
-async function guard<T>(fn: () => Promise<T>): Promise<ChatResult<T>> {
+async function guard<T>(
+  user: User,
+  fn: () => Promise<T>,
+): Promise<ChatResult<T>> {
   try {
+    // Perfil sem a tela Mensagens (Gestão de telas): o chat recusa.
+    assertScreen(user, "messages");
     return { ok: true, data: await fn() };
   } catch (error) {
     if (error instanceof ForbiddenError)
@@ -39,7 +46,7 @@ const contextSchema = z.object({
 /** Com quem dá para conversar e os itens do pedido. */
 export async function chatContextAction(input: unknown) {
   const user = await requireUser();
-  return guard(async () => {
+  return guard(user, async () => {
     const parsed = contextSchema.parse(input);
     const { chatContext } = await import("@/lib/services/messages");
     return chatContext(user, parsed);
@@ -56,7 +63,7 @@ const openSchema = z.object({
 /** Abre (ou acha) o assunto: pedido inteiro, item do pedido ou solicitação. */
 export async function chatOpenAction(input: unknown) {
   const user = await requireUser();
-  return guard(async () => {
+  return guard(user, async () => {
     const parsed = openSchema.parse(input);
     const { openTopic } = await import("@/lib/services/messages");
     return openTopic(user, parsed);
@@ -69,7 +76,7 @@ export async function chatOpenAction(input: unknown) {
  */
 export async function chatThreadAction(topicId: unknown) {
   const user = await requireUser();
-  return guard(async () => {
+  return guard(user, async () => {
     const id = ID.parse(topicId);
     const t = await getT();
     const { topicThread, translateShown } =
@@ -88,7 +95,7 @@ export async function chatThreadAction(topicId: unknown) {
 /** "Traduzir" / "Tentar de novo" numa mensagem (o serviço confere o acesso). */
 export async function chatTranslateAction(messageId: unknown) {
   const user = await requireUser();
-  return guard(async () => {
+  return guard(user, async () => {
     const id = ID.parse(messageId);
     const { translateMessageFor } = await import("@/lib/services/messages");
     await translateMessageFor(user, id);
@@ -105,7 +112,7 @@ export async function chatSendAction(
   replyToMessageId?: unknown,
 ) {
   const user = await requireUser();
-  return guard(async () => {
+  return guard(user, async () => {
     const id = ID.parse(topicId);
     const text = z.string().trim().min(1).max(MESSAGE_MAX_LENGTH).parse(body);
     const replyTo = optionalId.parse(replyToMessageId ?? null);
@@ -130,7 +137,7 @@ const uploadedId = z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/);
  */
 export async function chatSendFileAction(form: FormData) {
   const user = await requireUser();
-  return guard(async () => {
+  return guard(user, async () => {
     const id = ID.parse(form.get("topicId"));
     const text = z
       .string()
@@ -160,7 +167,7 @@ export async function chatSendFileAction(form: FormData) {
 /** Marca o assunto como lido (a tela mostrou mensagens novas). */
 export async function chatReadAction(topicId: unknown) {
   const user = await requireUser();
-  return guard(async () => {
+  return guard(user, async () => {
     const id = ID.parse(topicId);
     const { markTopicRead } = await import("@/lib/services/messages");
     await markTopicRead(user, id);

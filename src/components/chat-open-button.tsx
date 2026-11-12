@@ -8,6 +8,7 @@
  */
 
 import { CHAT_EVENT, type ChatTargetDetail } from "@/lib/chat-target";
+import { useChatAccess } from "./chat-access";
 
 export function ChatIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -36,6 +37,9 @@ export function ChatOpenButton({
   label: string;
   className?: string;
 }) {
+  // Perfil sem a tela Mensagens: sem ícone (o painel não existe para ele).
+  const enabled = useChatAccess();
+  if (!enabled) return null;
   return (
     <button
       type="button"

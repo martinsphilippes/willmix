@@ -30,14 +30,13 @@ export function num(form: FormData, key: string) {
  * para a requisição): ids no formato do Appwrite, no máximo 12 por envio.
  */
 export function uploadedPhotoKeys(form: FormData): string[] {
-  return (
-    form
-      .getAll("uploadedPhotoId")
-      .map((v) => (typeof v === "string" ? v.trim() : ""))
-      // Ids do Appwrite (ID.unique()): letras, números, "_" e "-"; nada de "." ou "/".
-      .filter((v) => /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(v))
-      .slice(0, 12)
-  );
+  const keys = form
+    .getAll("uploadedPhotoId")
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    // Ids do Appwrite (ID.unique()): letras, números, "_" e "-"; nada de "." ou "/".
+    .filter((v) => /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(v));
+  // Sem repetir: a mesma foto não vira dois documentos do mesmo arquivo.
+  return [...new Set(keys)].slice(0, 12);
 }
 
 /** Arquivos enviados num campo (ignora vazios). */

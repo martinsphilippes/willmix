@@ -448,6 +448,9 @@ export default async function OrderPage({
           parties,
         })
       : null;
+  // Pendente de decisão do dono (docs/PARTNER_ACCESS.md, "Em aberto"): aqui o
+  // cliente e o fornecedor ainda veem todas as multas do pedido, com o nome
+  // do responsável; a tela Multas já mostra a cada login só as da empresa dele.
   const visiblePenalties = partner
     ? penalties.filter((p) => p.responsiblePartyId === user.partyId)
     : penalties;

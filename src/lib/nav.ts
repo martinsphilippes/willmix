@@ -1,6 +1,6 @@
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { isWellmix } from "@/lib/auth/permissions";
-import { menuScreensFor, type Screen } from "@/lib/auth/screens";
+import { canOpen, menuScreensFor, type Screen } from "@/lib/auth/screens";
 import type { User } from "@/lib/db/schema";
 
 /*
@@ -209,7 +209,14 @@ export function navFor(
     ...group(
       "nav.group.home",
       pick(has, [
-        ["home", { href: "/app", key: "nav.tasks" }],
+        // O início são as Pendências; sem elas no perfil, é só "Início".
+        [
+          "home",
+          {
+            href: "/app",
+            key: canOpen(user, "tasks") ? "nav.tasks" : "nav.home",
+          },
+        ],
         [
           "notifications",
           { href: "/app/notifications", key: "nav.notifications" },

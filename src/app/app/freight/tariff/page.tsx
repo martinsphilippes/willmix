@@ -157,6 +157,9 @@ export default async function FreightTariffPage({
   const wellmix = isWellmix(user);
   requireScreen(user, "freightTariff");
   if (user.role === "shipping_line" && !user.partyId) redirect("/app");
+  // Só a Wellmix e a companhia marítima têm tarifário. Outro login que receba
+  // a tela (Gestão de telas) abre sem dados: nem erro, nem envio de planilha.
+  const hasTariff = wellmix || user.role === "shipping_line";
   const sp = await searchParams;
   const t = await getT();
   const param = (k: string) => (typeof sp[k] === "string" ? sp[k] : null);
@@ -184,14 +187,16 @@ export default async function FreightTariffPage({
   let history: FreightTariff[] = [];
   let loadError: string | null = null;
   try {
-    [comparative, mine, history] = await Promise.all([
-      wellmix ? comparativeTariff(user) : Promise.resolve(null),
-      wellmix ? Promise.resolve(null) : currentFreightTariff(user),
-      listFreightTariffs(user),
-    ]);
-    if (id) viewing = await getFreightTariff(user, id);
-    else if (!wellmix)
-      viewing = imported ? await getFreightTariff(user, imported) : mine;
+    if (hasTariff) {
+      [comparative, mine, history] = await Promise.all([
+        wellmix ? comparativeTariff(user) : Promise.resolve(null),
+        wellmix ? Promise.resolve(null) : currentFreightTariff(user),
+        listFreightTariffs(user),
+      ]);
+      if (id) viewing = await getFreightTariff(user, id);
+      else if (!wellmix)
+        viewing = imported ? await getFreightTariff(user, imported) : mine;
+    }
   } catch (e) {
     // Tabela ainda não publicada vira "schema_outdated"; o resto, "unexpected".
     loadError = errorCode("/app/freight/tariff", e);
@@ -212,9 +217,10 @@ export default async function FreightTariffPage({
   const userName = (uid: string) =>
     users.find((u) => u.id === uid)?.name ?? "—";
   // Companhia marítima: a planilha vai sempre para a dela (o formulário diz qual).
-  const ownLine = wellmix
-    ? null
-    : ((await store.get("parties", user.partyId!))?.name ?? null);
+  const ownLine =
+    wellmix || !hasTariff || !user.partyId
+      ? null
+      : ((await store.get("parties", user.partyId))?.name ?? null);
   const companyName = (lineId: string | null | undefined) =>
     lineId ? (lines.find((p) => p.id === lineId)?.name ?? null) : null;
   const qs = (extra: Record<string, string>) => {
@@ -310,17 +316,25 @@ export default async function FreightTariffPage({
       ) : null}
 
       <div className="mt-3 space-y-4">
-        <ImportCard
-          t={t}
-          from={from}
-          wellmix={wellmix}
-          lines={lines}
-          today={today}
-          company={companyParam}
-          ownLine={ownLine}
-        />
+        {hasTariff ? (
+          <ImportCard
+            t={t}
+            from={from}
+            wellmix={wellmix}
+            lines={lines}
+            today={today}
+            company={companyParam}
+            ownLine={ownLine}
+          />
+        ) : null}
 
-        {loadError ? null : showComparative ? (
+        {loadError ? null : !hasTariff ? (
+          <Empty>
+            <span data-tariff-no-profile="">
+              {t("partnerAccess.emptyForProfile")}
+            </span>
+          </Empty>
+        ) : showComparative ? (
           comparative ? (
             <ComparativeView
               t={t}

@@ -11,8 +11,13 @@ import {
   SUPPLIER_REQUEST_SLA_MIN,
 } from "@/lib/supplier-requests";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertRole, assertWellmix, isWellmix } from "@/lib/auth/permissions";
-import { assertScreen } from "@/lib/auth/screens";
+import {
+  ForbiddenError,
+  assertRole,
+  assertWellmix,
+  isWellmix,
+} from "@/lib/auth/permissions";
+import { assertScreen, canOpen } from "@/lib/auth/screens";
 import {
   getStore,
   PARTY_EXTRA_DEFAULTS,
@@ -32,11 +37,13 @@ import {
 } from "@/lib/services/requests";
 import {
   assertUploadable,
+  discardRequirementUpload,
   registerUploadedDocument,
   registerUploadedPhoto,
   uploadDocument,
 } from "@/lib/services/documents";
 import {
+  canSubmitRequirement,
   decideRequirement,
   submitRequirement,
   unblockStage,
@@ -113,6 +120,10 @@ export async function createRequestAction(form: FormData) {
     addTo ? `/app/requests/new?addTo=${addTo}` : "/app/requests/new",
     async () => {
       assertScreen(user, "requests");
+      // Só o cliente e a Wellmix criam solicitação: a recusa vem antes de
+      // qualquer consulta a produto (a tela pode estar em outro perfil).
+      if (!isWellmix(user) && user.role !== "customer")
+        throw new ForbiddenError();
       const store = getStore();
       const rows = parseRequestItems(form);
       if (!rows.length) throw new Error("no_products");
@@ -281,6 +292,12 @@ export async function submitRequirementAction(form: FormData) {
     const requirement = await store.get("requirements", requirementId);
     if (!requirement || requirement.orderId !== orderId)
       throw new Error("not_found");
+    // Confere quem pode preencher antes de subir o arquivo: sem isso, o
+    // documento ficaria gravado no pedido mesmo com o envio recusado.
+    const order = await store.get("orders", orderId);
+    if (!order) throw new Error("not_found");
+    if (!canSubmitRequirement(user, order, requirement))
+      throw new ForbiddenError();
     // "Ficha de compra" só se conclui pela própria ficha (campos e foto na balança).
     if (requirement.key === "purchase_sheet")
       throw new Error("use_purchase_sheet");
@@ -331,11 +348,23 @@ export async function submitRequirementAction(form: FormData) {
       if (amount === null) throw new Error("money_required");
       value = moneyValue(parseCurrency(str(form, "currency"), "BRL"), amount);
     }
-    await submitRequirement(user, requirementId, {
-      value,
-      documentId,
-      note: str(form, "note") || null,
-    });
+    try {
+      await submitRequirement(user, requirementId, {
+        value,
+        documentId,
+        note: str(form, "note") || null,
+      });
+    } catch (error) {
+      // Envio recusado depois de o arquivo subir (etapa fechada, pré-requisito
+      // pendente…): o arquivo recém-gravado não fica no pedido como versão nova.
+      if (documentId)
+        await discardRequirementUpload(requirementId, documentId).catch(
+          (cleanupError: unknown) => {
+            console.error("submitRequirementAction: limpeza", cleanupError);
+          },
+        );
+      throw error;
+    }
     return `/app/orders/${orderId}#stage-${requirement.stageId}`;
   });
 }
@@ -716,6 +745,8 @@ export async function updatePenaltyStatusAction(form: FormData) {
 
 export async function markNotificationsReadAction() {
   const user = await requireUser();
+  // Sem a tela Notificações no perfil, nada a marcar (a tela nem abre).
+  if (!canOpen(user, "notifications")) return;
   const store = getStore();
   const unread = await store.list("notifications", {
     filter: { userId: user.id, channel: "inapp", readAt: null },
