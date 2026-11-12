@@ -949,3 +949,8 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
   - "Containers por rodada" mostra quantos containers cada rodada precisa (inteiro; "1 a 2" quando diferem) e cada rodada diz a quantidade de containers e a ocupação.
 - Nada muda no que é gravado. Sem mudança no banco.
 - **Lição**: o que o dono já tinha na tela (a conta escrita) não sai numa troca de regra sem ele pedir; e uma tela não pode ficar vazia por falta de um passo anterior: ou faz a conta com o que há e diz o que assumiu, ou diz o que falta no lugar de sumir.
+
+## Programação de compra: campo "Containers no total"
+
+- **Pedido do dono** (12/11/2026): além de "Containers por rodada", mostrar os containers no total, sem tirar nada da tela.
+- Campo informativo novo ao lado de "Containers por rodada": a soma dos containers de todas as rodadas (`containersPerRound().needed.total`), que acompanha as rodadas da tela e a prévia. Só acréscimo: nenhuma linha do Cálculo, botão ou campo saiu. Sem mudança no banco.

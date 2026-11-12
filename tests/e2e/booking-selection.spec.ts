@@ -280,6 +280,9 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   // containers cada rodada precisa, já na prévia. O cálculo fica escrito.
   const perRound = gen.locator("[data-generate-per-round]");
   await expect(perRound).toHaveText("1");
+  // Ao lado, os containers no total (a soma das rodadas), também informativo.
+  const totalContainers = gen.locator("[data-generate-total-containers]");
+  await expect(totalContainers).toHaveText("3");
   await expect(gen.locator("input[data-generate-per-round]")).toHaveCount(0);
   await expect(calc.locator("[data-generate-result]")).toContainText("1.250");
   await gen.locator("[data-generate-submit]").click();
@@ -323,10 +326,12 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await qty(2).fill("30000");
   await expect(card(2).locator("[data-round-status]")).toContainText("10%");
   await expect(perRound).toHaveText("1 a 2");
+  await expect(totalContainers).toHaveText("4");
   await card(2).locator("[data-round-down]").click();
   await expect(qty(2)).toHaveValue("27168");
   await expect(gen.locator("[data-generate-total]")).toHaveValue("74304");
   await expect(perRound).toHaveText("1");
+  await expect(totalContainers).toHaveText("3");
   // Margem de 5%: 26.000 peças = 542 caixas = 95% do container: cheio.
   await qty(3).fill("26000");
   await expect(card(3).locator("[data-round-fill]")).toHaveAttribute(

@@ -32,6 +32,9 @@ export const pt = {
   "purchaseRounds.gen.perRoundHint":
     "Informativo: quantos containers cada rodada precisa. Sai das peças de cada rodada e muda quando uma rodada aumenta ou diminui.",
   "purchaseRounds.gen.perRoundRange": "{min} a {max}",
+  "purchaseRounds.gen.totalField": "Containers no total",
+  "purchaseRounds.gen.totalFieldHint":
+    "Informativo: a soma dos containers de todas as rodadas. Muda quando uma rodada aumenta ou diminui.",
   "purchaseRounds.gen.rounds": "Rodadas",
   "purchaseRounds.gen.submit": "Gerar programação",
   "purchaseRounds.gen.calc": "Cálculo",
@@ -157,6 +160,9 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.perRoundHint":
     "For information: how many containers each round needs. It comes from the pieces of each round and changes when a round is increased or decreased.",
   "purchaseRounds.gen.perRoundRange": "{min} to {max}",
+  "purchaseRounds.gen.totalField": "Containers in total",
+  "purchaseRounds.gen.totalFieldHint":
+    "For information: the sum of the containers of all rounds. It changes when a round is increased or decreased.",
   "purchaseRounds.gen.rounds": "Rounds",
   "purchaseRounds.gen.submit": "Generate schedule",
   "purchaseRounds.gen.calc": "Calculation",
@@ -278,6 +284,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.perRoundHint":
     "仅供参考：每批需要的集装箱数，由每批件数算出，增加或减少某一批时随之变化。",
   "purchaseRounds.gen.perRoundRange": "{min} 至 {max}",
+  "purchaseRounds.gen.totalField": "集装箱合计",
+  "purchaseRounds.gen.totalFieldHint":
+    "仅供参考：各批集装箱数之和，增加或减少某一批时随之变化。",
   "purchaseRounds.gen.rounds": "批数",
   "purchaseRounds.gen.submit": "生成计划",
   "purchaseRounds.gen.calc": "计算",

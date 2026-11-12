@@ -624,6 +624,8 @@ export default async function BookingSelectionPage({
                   container: t("purchaseRounds.gen.container"),
                   perRound: t("purchaseRounds.gen.perRound"),
                   perRoundHint: t("purchaseRounds.gen.perRoundHint"),
+                  totalField: t("purchaseRounds.gen.totalField"),
+                  totalFieldHint: t("purchaseRounds.gen.totalFieldHint"),
                   perRoundRange: t("purchaseRounds.gen.perRoundRange", {
                     min: "{min}",
                     max: "{max}",
