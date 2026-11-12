@@ -18,6 +18,9 @@ export const pt = {
   "bookingNcm.reclassified":
     "NCM estimado de novo: {n} itens preenchidos por aproximação; {left} continuam sem NCM.",
   "bookingNcm.suggestions": "Sugestões",
+  "bookingNcm.recommended": "Recomendado",
+  "bookingNcm.fillRecommended": "Preencher com o recomendado",
+  "bookingNcm.otherSuggestions": "Outras opções",
   "bookingNcm.suggestion":
     "{pct}% das palavras batem com {n} produto(s), ex.: {example}. Clique para usar.",
   "bookingNcm.pending": "Com o despachante",
@@ -77,6 +80,9 @@ export const en: typeof pt = {
   "bookingNcm.reclassified":
     "NCM estimated again: {n} items filled by approximation; {left} still without NCM.",
   "bookingNcm.suggestions": "Suggestions",
+  "bookingNcm.recommended": "Recommended",
+  "bookingNcm.fillRecommended": "Fill with recommended",
+  "bookingNcm.otherSuggestions": "Other options",
   "bookingNcm.suggestion":
     "{pct}% of the words match {n} product(s), e.g. {example}. Click to use.",
   "bookingNcm.pending": "With the customs broker",
@@ -136,6 +142,9 @@ export const zh: typeof pt = {
   "bookingNcm.reclassified":
     "已重新估算 NCM：{n} 个项目通过近似填写；{left} 个仍无 NCM。",
   "bookingNcm.suggestions": "建议",
+  "bookingNcm.recommended": "推荐",
+  "bookingNcm.fillRecommended": "填入推荐值",
+  "bookingNcm.otherSuggestions": "其他选项",
   "bookingNcm.suggestion":
     "{pct}% 的词与 {n} 个商品匹配，例如：{example}。点击使用。",
   "bookingNcm.pending": "报关行处理中",

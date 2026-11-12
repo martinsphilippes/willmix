@@ -191,14 +191,21 @@ export function BookingItemNcmInput({
   labels,
   suggestions = [],
   suggestLabel = "",
+  recommendedLabel = "",
+  fillLabel = "",
+  othersLabel = "",
 }: {
   lotId: string;
   itemId: string;
   saved: string;
   labels: BookingRowFieldLabels;
   /** NCMs prováveis (sem NCM gravado): um clique grava. */
-  suggestions?: Array<{ ncm: string; title: string }>;
+  suggestions?: Array<{ ncm: string; title: string; pct?: number }>;
   suggestLabel?: string;
+  /** Textos do destaque: "Recomendado", o botão e o título das demais. */
+  recommendedLabel?: string;
+  fillLabel?: string;
+  othersLabel?: string;
 }) {
   return (
     <span className="block">
@@ -225,65 +232,106 @@ export function BookingItemNcmInput({
           suggestions={suggestions}
           label={suggestLabel}
           failed={labels.failed}
+          recommendedLabel={recommendedLabel || suggestLabel}
+          fillLabel={fillLabel || suggestLabel}
+          othersLabel={othersLabel}
         />
       ) : null}
     </span>
   );
 }
 
-/** Sugestões de NCM do item: clicar grava (a tela se atualiza com o NCM). */
+/**
+ * Sugestões de NCM do item (já em ordem, a primeira é a mais bem qualificada):
+ * a recomendada vem em destaque com o botão "Preencher com o recomendado";
+ * as demais seguem como opções. Clicar grava (a tela se atualiza com o NCM).
+ */
 function NcmSuggestionChips({
   lotId,
   itemId,
   suggestions,
   label,
   failed,
+  recommendedLabel,
+  fillLabel,
+  othersLabel,
 }: {
   lotId: string;
   itemId: string;
-  suggestions: Array<{ ncm: string; title: string }>;
+  suggestions: Array<{ ncm: string; title: string; pct?: number }>;
   label: string;
   failed: string;
+  recommendedLabel: string;
+  fillLabel: string;
+  othersLabel: string;
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const choose = (ncm: string) =>
+    start(async () => {
+      setError(null);
+      try {
+        const r = await setBookingItemNcmAction(lotId, itemId, ncm);
+        if (!r.ok) setError(r.message);
+      } catch {
+        setError(failed);
+      }
+    });
+  const [best, ...others] = suggestions;
   return (
     <span
-      className="mt-1 block w-36"
+      className="mt-1 block w-40"
       data-booking-item-ncm-suggestions={itemId}
     >
-      <span className="block text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
-        {label}
+      <span
+        className="block rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-1"
+        title={best.title}
+        data-booking-item-ncm-recommended={best.ncm}
+      >
+        <span className="block text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+          {recommendedLabel}
+        </span>
+        <span className="flex items-baseline gap-1">
+          <span className="font-mono text-[13px] font-semibold tabular-nums text-zinc-900">
+            {best.ncm}
+          </span>
+          {best.pct !== undefined ? (
+            <span className="text-[11px] text-emerald-700">{best.pct}%</span>
+          ) : null}
+        </span>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => choose(best.ncm)}
+          className="mt-1 w-full rounded-md bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          data-booking-item-ncm-suggestion={best.ncm}
+          data-booking-item-ncm-fill={itemId}
+        >
+          {fillLabel}
+        </button>
       </span>
-      <span className="mt-0.5 flex flex-wrap gap-1">
-        {suggestions.map((sg) => (
-          <button
-            key={sg.ncm}
-            type="button"
-            title={sg.title}
-            disabled={pending}
-            onClick={() =>
-              start(async () => {
-                setError(null);
-                try {
-                  const r = await setBookingItemNcmAction(
-                    lotId,
-                    itemId,
-                    sg.ncm,
-                  );
-                  if (!r.ok) setError(r.message);
-                } catch {
-                  setError(failed);
-                }
-              })
-            }
-            className="rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-[11px] font-medium tabular-nums text-brand-800 hover:bg-brand-100 disabled:opacity-50"
-            data-booking-item-ncm-suggestion={sg.ncm}
-          >
-            {sg.ncm}
-          </button>
-        ))}
-      </span>
+      {others.length ? (
+        <>
+          <span className="mt-1 block text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+            {othersLabel || label}
+          </span>
+          <span className="mt-0.5 flex flex-wrap gap-1">
+            {others.map((sg) => (
+              <button
+                key={sg.ncm}
+                type="button"
+                title={sg.title}
+                disabled={pending}
+                onClick={() => choose(sg.ncm)}
+                className="rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-[11px] font-medium tabular-nums text-brand-800 hover:bg-brand-100 disabled:opacity-50"
+                data-booking-item-ncm-suggestion={sg.ncm}
+              >
+                {sg.ncm}
+              </button>
+            ))}
+          </span>
+        </>
+      ) : null}
       {error ? (
         <span role="alert" className="mt-0.5 block text-[11px] text-red-700">
           {error}
