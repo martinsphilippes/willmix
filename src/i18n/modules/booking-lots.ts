@@ -17,11 +17,37 @@ export const pt = {
     'Nenhum booking da sua empresa ainda. Use "Lançar booking" para enviar a planilha do primeiro.',
   "bookingLots.partner.launch": "Lançar booking",
   "bookingLots.partner.launch.subtitle":
-    "Envie a planilha do seu booking. Ele chega à Wellmix em nome da sua empresa e fica na sua lista.",
+    "Envie a planilha do seu booking. Depois você confere os campos na tela e envia para a Wellmix conferir.",
+  "bookingLots.partner.launch.submit": "Carregar planilha",
   "bookingLots.partner.launch.after":
-    "Depois de lançado, a Wellmix confere e analisa o booking. Para corrigir ou cancelar um booking já lançado, fale com a Wellmix.",
-  "bookingLots.partner.launched":
-    "Booking lançado. A Wellmix foi avisada e vai conferir.",
+    'Depois de carregar, todos os campos aparecem na tela, já preenchidos, para você conferir e corrigir. A Wellmix só recebe o booking quando você apertar "Enviar para Wellmix Conferir".',
+  "bookingLots.partner.unsent": "Novo booking (não enviado)",
+  "bookingLots.partner.unsentHint":
+    'Há booking em preenchimento que ainda não foi enviado. A Wellmix só o recebe depois de você apertar "Enviar para Wellmix Conferir".',
+  "bookingLots.partner.loaded":
+    'Planilha carregada. Confira os campos abaixo, corrija o que precisar e aperte "Enviar para Wellmix Conferir".',
+  "bookingLots.partner.preparingHint":
+    'Este booking ainda não foi enviado. Confira os campos e aperte "Enviar para Wellmix Conferir": a Wellmix só o recebe depois disso.',
+  "bookingLots.partner.editHint":
+    "Tudo veio da planilha e pode ser corrigido aqui: cada campo grava ao sair dele. Com * os que a Wellmix precisa para fechar o booking.",
+  "bookingLots.partner.blanks":
+    "{n} campo(s) com * em branco, destacado(s) em amarelo.",
+  "bookingLots.partner.send": "Enviar para Wellmix Conferir",
+  "bookingLots.partner.sending": "Enviando…",
+  "bookingLots.partner.sendHint":
+    "Depois de enviar, a Wellmix confere e analisa o booking, e você passa a só consultar.",
+  "bookingLots.partner.sendConfirmBlanks":
+    "Ainda há {n} campo(s) com * em branco. Enviar assim mesmo?",
+  "bookingLots.partner.sent":
+    "Booking nº {n} enviado. A Wellmix foi avisada e vai conferir.",
+  "bookingLots.partner.discard": "Descartar",
+  "bookingLots.partner.discardConfirm":
+    "Descartar este booking? A planilha carregada e as correções feitas aqui serão apagadas. Nada foi enviado à Wellmix.",
+  "bookingLots.partner.discarded":
+    "Booking descartado. Nada foi enviado à Wellmix.",
+  "bookingLots.error.booking_partner_sent":
+    "Este booking já foi enviado para a Wellmix. Para corrigir ou cancelar, fale com a Wellmix.",
+  "bookingLots.partner.status.preparing": "Em preenchimento: falta enviar",
   "bookingLots.partner.status.draft": "Em conferência na Wellmix",
   "bookingLots.partner.status.closed": "Conferido pela Wellmix",
   "bookingLots.notify.launched.subject":
@@ -55,6 +81,7 @@ export const pt = {
   "bookingLots.col.viable": "Superplan",
   "bookingLots.col.owner": "Responsável",
   "bookingLots.col.createdAt": "Carregado em",
+  "bookingLots.status.preparing": "Em preenchimento (parceiro)",
   "bookingLots.status.draft": "Rascunho",
   "bookingLots.status.closed": "Fechado",
   "bookingLots.status.in_progress": "Em andamento",
@@ -225,11 +252,37 @@ export const en: typeof pt = {
     'No booking from your company yet. Use "Submit booking" to send the spreadsheet of the first one.',
   "bookingLots.partner.launch": "Submit booking",
   "bookingLots.partner.launch.subtitle":
-    "Send your booking spreadsheet. It reaches Wellmix under your company's name and stays on your list.",
+    "Send your booking spreadsheet. Then you check the fields on screen and send it to Wellmix for review.",
+  "bookingLots.partner.launch.submit": "Load spreadsheet",
   "bookingLots.partner.launch.after":
-    "After submission, Wellmix reviews and analyzes the booking. To fix or cancel a submitted booking, contact Wellmix.",
-  "bookingLots.partner.launched":
-    "Booking submitted. Wellmix was notified and will review it.",
+    'After loading, every field shows on screen, already filled in, for you to check and fix. Wellmix only receives the booking when you press "Send to Wellmix for review".',
+  "bookingLots.partner.unsent": "New booking (not sent)",
+  "bookingLots.partner.unsentHint":
+    'There is a booking being filled in that has not been sent yet. Wellmix only receives it after you press "Send to Wellmix for review".',
+  "bookingLots.partner.loaded":
+    'Spreadsheet loaded. Check the fields below, fix what is needed and press "Send to Wellmix for review".',
+  "bookingLots.partner.preparingHint":
+    'This booking has not been sent yet. Check the fields and press "Send to Wellmix for review": Wellmix only receives it after that.',
+  "bookingLots.partner.editHint":
+    "Everything came from the spreadsheet and can be fixed here: each field saves when you leave it. Fields with * are the ones Wellmix needs to close the booking.",
+  "bookingLots.partner.blanks":
+    "{n} field(s) with * left blank, highlighted in yellow.",
+  "bookingLots.partner.send": "Send to Wellmix for review",
+  "bookingLots.partner.sending": "Sending…",
+  "bookingLots.partner.sendHint":
+    "After you send it, Wellmix reviews and analyzes the booking, and you can only view it.",
+  "bookingLots.partner.sendConfirmBlanks":
+    "There are still {n} field(s) with * left blank. Send anyway?",
+  "bookingLots.partner.sent":
+    "Booking no. {n} sent. Wellmix was notified and will review it.",
+  "bookingLots.partner.discard": "Discard",
+  "bookingLots.partner.discardConfirm":
+    "Discard this booking? The loaded spreadsheet and the fixes made here will be deleted. Nothing was sent to Wellmix.",
+  "bookingLots.partner.discarded":
+    "Booking discarded. Nothing was sent to Wellmix.",
+  "bookingLots.error.booking_partner_sent":
+    "This booking has already been sent to Wellmix. To fix or cancel it, contact Wellmix.",
+  "bookingLots.partner.status.preparing": "Being filled in: not sent yet",
   "bookingLots.partner.status.draft": "Under review at Wellmix",
   "bookingLots.partner.status.closed": "Reviewed by Wellmix",
   "bookingLots.notify.launched.subject":
@@ -263,6 +316,7 @@ export const en: typeof pt = {
   "bookingLots.col.viable": "Superplan",
   "bookingLots.col.owner": "Owner",
   "bookingLots.col.createdAt": "Uploaded on",
+  "bookingLots.status.preparing": "Being filled in (partner)",
   "bookingLots.status.draft": "Draft",
   "bookingLots.status.closed": "Closed",
   "bookingLots.status.in_progress": "In progress",
@@ -431,10 +485,34 @@ export const zh: typeof pt = {
     "暂无贵公司的订舱。请点击“提交订舱”上传第一份表格。",
   "bookingLots.partner.launch": "提交订舱",
   "bookingLots.partner.launch.subtitle":
-    "上传贵公司的订舱表格。表格将以贵公司的名义提交给 Wellmix，并显示在您的列表中。",
+    "上传贵公司的订舱表格。之后您在页面上核对各字段，再提交给 Wellmix 核对。",
+  "bookingLots.partner.launch.submit": "上传表格",
   "bookingLots.partner.launch.after":
-    "提交后，Wellmix 会核对并分析该订舱。如需修改或取消已提交的订舱，请联系 Wellmix。",
-  "bookingLots.partner.launched": "订舱已提交。已通知 Wellmix 进行核对。",
+    "上传后，所有字段会显示在页面上并已填好，供您核对和修改。只有在您点击“提交给 Wellmix 核对”后，Wellmix 才会收到该订舱。",
+  "bookingLots.partner.unsent": "新订舱（未提交）",
+  "bookingLots.partner.unsentHint":
+    "有正在填写、尚未提交的订舱。只有在您点击“提交给 Wellmix 核对”后，Wellmix 才会收到。",
+  "bookingLots.partner.loaded":
+    "表格已上传。请核对下方字段，修改需要更正的内容，然后点击“提交给 Wellmix 核对”。",
+  "bookingLots.partner.preparingHint":
+    "此订舱尚未提交。请核对字段并点击“提交给 Wellmix 核对”：之后 Wellmix 才会收到。",
+  "bookingLots.partner.editHint":
+    "所有内容均来自表格，可在此修改：离开字段时自动保存。带 * 的字段是 Wellmix 关闭订舱所需的。",
+  "bookingLots.partner.blanks": "有 {n} 个带 * 的字段为空，已用黄色标出。",
+  "bookingLots.partner.send": "提交给 Wellmix 核对",
+  "bookingLots.partner.sending": "正在提交…",
+  "bookingLots.partner.sendHint":
+    "提交后，Wellmix 会核对并分析该订舱，您只能查看。",
+  "bookingLots.partner.sendConfirmBlanks":
+    "仍有 {n} 个带 * 的字段为空。仍要提交吗？",
+  "bookingLots.partner.sent": "订舱 {n} 已提交。已通知 Wellmix 进行核对。",
+  "bookingLots.partner.discard": "放弃",
+  "bookingLots.partner.discardConfirm":
+    "放弃此订舱？已上传的表格和在此所做的修改将被删除。尚未向 Wellmix 提交任何内容。",
+  "bookingLots.partner.discarded": "订舱已放弃。未向 Wellmix 提交任何内容。",
+  "bookingLots.error.booking_partner_sent":
+    "此订舱已提交给 Wellmix。如需修改或取消，请联系 Wellmix。",
+  "bookingLots.partner.status.preparing": "填写中：尚未提交",
   "bookingLots.partner.status.draft": "Wellmix 核对中",
   "bookingLots.partner.status.closed": "Wellmix 已核对",
   "bookingLots.notify.launched.subject": "合作方提交了订舱 {n}",
@@ -466,6 +544,7 @@ export const zh: typeof pt = {
   "bookingLots.col.viable": "Superplan",
   "bookingLots.col.owner": "负责人",
   "bookingLots.col.createdAt": "上传日期",
+  "bookingLots.status.preparing": "填写中（合作方）",
   "bookingLots.status.draft": "草稿",
   "bookingLots.status.closed": "已关闭",
   "bookingLots.status.in_progress": "进行中",

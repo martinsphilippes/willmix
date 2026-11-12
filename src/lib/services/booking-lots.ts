@@ -6,6 +6,7 @@ import {
   BOOKING_PARTNER_TYPES,
   bookingDateOf,
   bookingLotEditable,
+  bookingLotPreparing,
   bookingLotPending,
   bookingLotReady,
   bookingRecipientId,
@@ -235,7 +236,9 @@ export async function createBookingLotFromSheet(
  * que o parceiro convidado sobe (services/booking-invites.ts) nasce com ele
  * como responsável e com a Wellmix que convidou como dona; o booking que o
  * parceiro lança por conta própria (services/booking-partner.ts) nasce com
- * ele como responsável e sem dono interno (`ownerUserId: null`).
+ * ele como responsável, sem dono interno (`ownerUserId: null`) e "em
+ * preenchimento" (`preparing`): sem número e sem a aproximação de NCM, que
+ * só vêm quando ele envia (`releasePreparingLot`).
  */
 export async function createLotFromSheet(
   user: User,
@@ -245,6 +248,8 @@ export async function createLotFromSheet(
     sheet?: string | null;
     partnerId?: string | null;
     ownerUserId?: string | null;
+    /** Lançado pelo parceiro: fica em preenchimento até ele enviar. */
+    preparing?: boolean;
   } = {},
 ): Promise<BookingLot> {
   // Login externo (convidado ou parceiro que lança): a chave tem de ser de um
@@ -272,12 +277,16 @@ export async function createLotFromSheet(
   const sheetDate = mostCommon(
     parsed.groups.map((g) => asText(g.reading.sheetDate, 40)),
   );
-  const number = await withSchema(() => store.nextNumber(LOT_COUNTER));
+  // Em preenchimento não gasta número: ele vem no envio, para a sequência
+  // que a Wellmix vê não ter buracos.
+  const number = options.preparing
+    ? 0
+    : await withSchema(() => store.nextNumber(LOT_COUNTER));
   const fileDocumentId = await keepSheetFile(user, source, file);
   const lot = await withSchema(() =>
     store.create("booking_lots", {
       number,
-      status: "draft",
+      status: options.preparing ? "preparing" : "draft",
       supplierId: supplier?.id ?? null,
       supplierHint: hint,
       origin: clip(supplier?.city, 80) ?? hint.city,
@@ -317,6 +326,16 @@ export async function createLotFromSheet(
       updatedByUserId: null,
     });
   }
+  if (options.preparing) {
+    await audit(
+      user,
+      "booking_lot.create",
+      "booking_lot",
+      lot.id,
+      `Booking em preenchimento pelo parceiro: ${parsed.groups.length} itens (${lot.fileName})`,
+    );
+    return lot;
+  }
   // NCM por aproximação; sem correspondência, vai para o despachante.
   const { classifyBookingItems } = await import("./booking-ncm");
   await classifyBookingItems(
@@ -332,9 +351,56 @@ export async function createLotFromSheet(
   return lot;
 }
 
+/**
+ * O parceiro enviou o booking que preenchia ("Enviar para Wellmix Conferir"):
+ * ganha o número, vira rascunho e os itens passam pela aproximação de NCM,
+ * como numa importação. A partir daqui é um booking como outro qualquer.
+ * Quem chama confere quem pode (services/booking-partner.ts).
+ */
+export async function releasePreparingLot(
+  user: User,
+  lotId: string,
+): Promise<BookingLot> {
+  const store = getStore();
+  const lot = await withSchema(() => store.get("booking_lots", lotId));
+  if (!lot) throw new BookingLotError("not_found");
+  if (!bookingLotPreparing(lot.status))
+    throw new BookingLotError("booking_lot_locked");
+  const number = await withSchema(() => store.nextNumber(LOT_COUNTER));
+  const sent = await store.update("booking_lots", lot.id, {
+    number,
+    status: "draft",
+    statusChangedAt: new Date().toISOString(),
+    statusChangedByUserId: user.id,
+  });
+  const { classifyBookingItems } = await import("./booking-ncm");
+  await classifyBookingItems(
+    await store.list("booking_items", { filter: { lotId: lot.id } }),
+  );
+  await audit(
+    user,
+    "booking_lot.partner_send",
+    "booking_lot",
+    lot.id,
+    `Booking nº ${number}: enviado pelo parceiro para a Wellmix conferir (${lot.fileName})`,
+    { status: "preparing" },
+    { status: "draft", number },
+  );
+  return sent;
+}
+
 /* ------------------------------------------------------------------------ */
 /* Leitura                                                                   */
 /* ------------------------------------------------------------------------ */
+
+/**
+ * O booking como a Wellmix o vê. O que o parceiro ainda está preenchendo
+ * (antes de "Enviar para Wellmix Conferir") não existe para ela: nulo.
+ */
+async function wellmixLot(id: string): Promise<BookingLot | null> {
+  const lot = await withSchema(() => getStore().get("booking_lots", id));
+  return lot && !bookingLotPreparing(lot.status) ? lot : null;
+}
 
 export interface BookingLotListEntry {
   lot: BookingLot;
@@ -365,6 +431,8 @@ export async function listBookingLots(
     if (isSchemaMissing(error)) return null;
     throw error;
   }
+  // Fora os que o parceiro ainda preenche (não foram enviados à Wellmix).
+  lots = lots.filter((lot) => !bookingLotPreparing(lot.status));
   const [parties, users] = await Promise.all([
     store.list("parties", { filter: { type: "supplier" } }),
     store.list("users"),
@@ -419,7 +487,7 @@ export async function getBookingLot(
 ): Promise<BookingLotDetail | null> {
   assertBooking(user);
   const store = getStore();
-  const lot = await withSchema(() => store.get("booking_lots", id));
+  const lot = await wellmixLot(id);
   if (!lot) return null;
   const [items, suppliers, owner, partnerRows] = await Promise.all([
     store.list("booking_items", { filter: { lotId: lot.id } }),
@@ -458,7 +526,7 @@ export async function getBookingLot(
 /* ------------------------------------------------------------------------ */
 
 async function editableLot(id: string): Promise<BookingLot> {
-  const lot = await withSchema(() => getStore().get("booking_lots", id));
+  const lot = await wellmixLot(id);
   if (!lot) throw new BookingLotError("not_found");
   if (!bookingLotEditable(lot.status))
     throw new BookingLotError("booking_lot_locked");
@@ -510,7 +578,7 @@ export async function setBookingLotPartner(
 ): Promise<BookingLot> {
   assertBooking(user);
   const store = getStore();
-  const lot = await withSchema(() => store.get("booking_lots", lotId));
+  const lot = await wellmixLot(lotId);
   if (!lot) throw new BookingLotError("not_found");
   if (lot.status === "cancelled")
     throw new BookingLotError("booking_lot_locked");
@@ -566,7 +634,7 @@ export async function setBookingLotNote(
   note: string | null,
 ): Promise<void> {
   assertBooking(user);
-  const lot = await withSchema(() => getStore().get("booking_lots", lotId));
+  const lot = await wellmixLot(lotId);
   if (!lot) throw new BookingLotError("not_found");
   await getStore().update("booking_lots", lot.id, { note: clip(note, 500) });
 }
@@ -730,7 +798,7 @@ export async function reanalyzeBookingLot(
 ): Promise<void> {
   assertBooking(user);
   const store = getStore();
-  const lot = await withSchema(() => store.get("booking_lots", lotId));
+  const lot = await wellmixLot(lotId);
   if (!lot) throw new BookingLotError("not_found");
   if (lot.status === "draft" || lot.status === "cancelled")
     throw new BookingLotError("booking_lot_not_closed");
@@ -760,7 +828,7 @@ export async function moveBookingLot(
 ): Promise<void> {
   assertBooking(user);
   const store = getStore();
-  const lot = await withSchema(() => store.get("booking_lots", lotId));
+  const lot = await wellmixLot(lotId);
   if (!lot) throw new BookingLotError("not_found");
   if (!canMoveBookingLot(lot.status, status))
     throw new BookingLotError("booking_lot_move_invalid");

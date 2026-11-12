@@ -1,13 +1,26 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SHEET_CURRENCIES, type BookingLotStatus, type User } from "@/lib/db";
+import {
+  SHEET_CURRENCIES,
+  SHEET_INCOTERMS,
+  type BookingLotStatus,
+  type User,
+} from "@/lib/db";
 import type { Translate } from "@/i18n";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import {
+  bookingItemFieldKind,
+  bookingLotPreparing,
+  isRequiredItemField,
+  type BookingItemField,
+} from "@/lib/booking-lots";
+import {
   canLaunchBooking,
   getPartnerBookingLot,
   listPartnerBookingLots,
+  type PartnerBookingItem,
+  type PartnerBookingLot,
 } from "@/lib/services/booking-partner";
 import {
   Alert,
@@ -27,19 +40,33 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { SheetFileInput } from "@/components/sheet-file-input";
-import { launchBookingAction } from "../../actions/booking-lots";
+import {
+  PartnerItemInput,
+  PartnerItemSelect,
+} from "@/components/partner-booking-fields";
+import {
+  discardPartnerBookingAction,
+  launchBookingAction,
+  sendPartnerBookingAction,
+} from "../../actions/booking-lots";
 
 /*
- * Tela Booking para o login externo (Trading; dono, 11/11/2026): ele lança os
- * bookings da empresa dele (sobe a planilha) e vê só os dela. Sem bookings de
- * outras empresas e sem a análise da Wellmix (regras em
+ * Tela Booking para o login externo (Trading, Factory, Supplier, GP; dono,
+ * 11 e 12/11/2026): ele lança os bookings da empresa dele e vê só os dela.
+ * Lançar tem dois passos: sobe a planilha, confere os campos na tela (todos
+ * abertos e já preenchidos) e aperta "Enviar para Wellmix Conferir". Sem
+ * bookings de outras empresas e sem a análise da Wellmix (regras em
  * src/lib/services/booking-partner.ts).
  */
 
 /** Situação do booking nas palavras de quem lançou (a Wellmix vê as dela). */
 const PARTNER_STATUS: Partial<
-  Record<BookingLotStatus, { key: DictionaryKey; tone: "info" | "success" }>
+  Record<
+    BookingLotStatus,
+    { key: DictionaryKey; tone: "warning" | "info" | "success" }
+  >
 > = {
+  preparing: { key: "bookingLots.partner.status.preparing", tone: "warning" },
   draft: { key: "bookingLots.partner.status.draft", tone: "info" },
   closed: { key: "bookingLots.partner.status.closed", tone: "success" },
 };
@@ -52,6 +79,47 @@ const statusOf = (t: Translate, status: BookingLotStatus) => {
   };
 };
 
+/** Nome do booking: o número vem no envio; antes disso, "novo, não enviado". */
+const lotTitle = (
+  t: Translate,
+  lot: Pick<PartnerBookingLot, "number" | "status">,
+) =>
+  bookingLotPreparing(lot.status)
+    ? t("bookingLots.partner.unsent")
+    : t("bookingLots.partner.lot", { n: lot.number });
+
+/**
+ * Colunas do booking em preenchimento: todos os campos da planilha, um por
+ * coluna, com os que identificam o item na frente.
+ */
+const EDIT_COLUMNS: Array<{ field: BookingItemField; width: string }> = [
+  { field: "productName", width: "w-44" },
+  { field: "itemNumber", width: "w-16" },
+  { field: "factoryItemCode", width: "w-28" },
+  { field: "description", width: "w-52" },
+  { field: "incoterm", width: "w-20" },
+  { field: "currency", width: "w-20" },
+  { field: "price", width: "w-20" },
+  { field: "moq", width: "w-20" },
+  { field: "masterCartonQty", width: "w-20" },
+  { field: "innerQty", width: "w-20" },
+  { field: "cbmPerCarton", width: "w-20" },
+  { field: "lengthCm", width: "w-20" },
+  { field: "widthCm", width: "w-20" },
+  { field: "heightCm", width: "w-20" },
+  { field: "capacityMl", width: "w-20" },
+  { field: "netWeightPcKg", width: "w-20" },
+  { field: "grossWeightPcKg", width: "w-20" },
+  { field: "material", width: "w-32" },
+  { field: "packageType", width: "w-32" },
+  { field: "colorAssortment", width: "w-36" },
+  { field: "powerDetail", width: "w-32" },
+  { field: "purchaseSchedule", width: "w-32" },
+  { field: "departureIntervalDays", width: "w-24" },
+  { field: "purchaseQty", width: "w-24" },
+  { field: "plannedQty", width: "w-24" },
+];
+
 const num = (t: Translate, n: number | null | undefined, digits = 0) =>
   n === null || n === undefined
     ? "—"
@@ -60,9 +128,12 @@ const num = (t: Translate, n: number | null | undefined, digits = 0) =>
 export async function PartnerBookingList({
   user,
   t,
+  discarded = false,
 }: {
   user: User;
   t: Translate;
+  /** Acabou de descartar um booking que preenchia (?discarded=1). */
+  discarded?: boolean;
 }) {
   const [lots, canLaunch] = await Promise.all([
     listPartnerBookingLots(user),
@@ -91,6 +162,16 @@ export async function PartnerBookingList({
           <Alert tone="warning">{t("bookingLots.schemaMissing")}</Alert>
         </div>
       ) : null}
+      {discarded ? (
+        <div className="mb-3" data-partner-booking-discarded>
+          <Alert tone="success">{t("bookingLots.partner.discarded")}</Alert>
+        </div>
+      ) : null}
+      {lots?.some((lot) => bookingLotPreparing(lot.status)) ? (
+        <div className="mb-3" data-partner-booking-unsent>
+          <Alert tone="warning">{t("bookingLots.partner.unsentHint")}</Alert>
+        </div>
+      ) : null}
       <Card>
         {lots?.length ? (
           <Table>
@@ -110,13 +191,14 @@ export async function PartnerBookingList({
                   key={lot.id}
                   className={rowClass}
                   data-partner-booking={lot.id}
+                  data-partner-booking-status={lot.status}
                 >
                   <Td className="whitespace-nowrap font-medium">
                     <Link
                       href={`/app/booking/lots/${lot.id}`}
                       className={linkClass}
                     >
-                      {t("bookingLots.partner.lot", { n: lot.number })}
+                      {lotTitle(t, lot)}
                     </Link>
                   </Td>
                   <Td className="whitespace-nowrap">
@@ -223,7 +305,7 @@ export async function PartnerBookingLaunch({
               pendingText={t("bookingLots.import.submitting")}
               data-partner-booking-launch-submit
             >
-              {t("bookingLots.partner.launch")}
+              {t("bookingLots.partner.launch.submit")}
             </SubmitButton>
           </form>
         </Card>
@@ -248,24 +330,33 @@ export async function PartnerBookingLotView({
   lotId,
   t,
   created = false,
+  sent = false,
+  error = "",
 }: {
   user: User;
   lotId: string;
   t: Translate;
-  /** Acabou de ser lançado por ele (?created=1). */
+  /** Acabou de subir a planilha (?created=1). */
   created?: boolean;
+  /** Acabou de enviar para a Wellmix (?sent=1). */
+  sent?: boolean;
+  /** Código do erro da última ação (?error=...). */
+  error?: string;
 }) {
   const detail = await getPartnerBookingLot(user, lotId);
   // Booking de outra empresa (ou que não existe): não se diz qual dos dois.
   if (!detail) notFound();
   const { lot, items } = detail;
-  const col = (k: string) =>
-    t(`supplierRequests.selection.col.${k}` as DictionaryKey);
+  const preparing = bookingLotPreparing(lot.status);
+  const known = [`bookingLots.error.${error}`, `common.${error}`].find(
+    (k) => k in dictionaries.pt,
+  ) as DictionaryKey | undefined;
+  const errorText = !error ? null : known ? t(known) : fallbackError(t, error);
   return (
     <>
       <PageHeader
         t={t}
-        title={t("bookingLots.partner.lot", { n: lot.number })}
+        title={lotTitle(t, lot)}
         subtitle={[
           lot.fileName,
           lot.bookingDate ? formatDate(lot.bookingDate, t) : null,
@@ -279,81 +370,322 @@ export async function PartnerBookingLotView({
           </LinkButton>
         }
       />
-      {created ? (
-        <div className="mb-3" data-partner-booking-launched>
-          <Alert tone="success">{t("bookingLots.partner.launched")}</Alert>
+      {errorText ? (
+        <div className="mb-3">
+          <Alert tone="danger">{errorText}</Alert>
         </div>
       ) : null}
-      <Card title={t("bookingLots.partner.items", { n: String(items.length) })}>
+      {sent ? (
+        <div className="mb-3" data-partner-booking-sent>
+          <Alert tone="success">
+            {t("bookingLots.partner.sent", { n: lot.number })}
+          </Alert>
+        </div>
+      ) : null}
+      {preparing ? (
+        <PreparingItems t={t} lot={lot} items={items} created={created} />
+      ) : (
+        <SentItems t={t} items={items} />
+      )}
+    </>
+  );
+}
+
+/** Enviar para a Wellmix e descartar: no alto e no fim da tabela. */
+function PreparingActions({
+  t,
+  lotId,
+  blanks,
+  marker,
+}: {
+  t: Translate;
+  lotId: string;
+  /** Campos obrigatórios em branco (só avisa, não impede). */
+  blanks: number;
+  marker: "top" | "bottom";
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <form action={sendPartnerBookingAction}>
+        <input type="hidden" name="lotId" value={lotId} />
+        <SubmitButton
+          variant="primary"
+          pendingText={t("bookingLots.partner.sending")}
+          confirmText={
+            blanks
+              ? t("bookingLots.partner.sendConfirmBlanks", { n: blanks })
+              : undefined
+          }
+          data-partner-booking-send={marker}
+        >
+          {t("bookingLots.partner.send")}
+        </SubmitButton>
+      </form>
+      <form action={discardPartnerBookingAction}>
+        <input type="hidden" name="lotId" value={lotId} />
+        <SubmitButton
+          variant="secondary"
+          confirmText={t("bookingLots.partner.discardConfirm")}
+          data-partner-booking-discard={marker}
+        >
+          {t("bookingLots.partner.discard")}
+        </SubmitButton>
+      </form>
+    </div>
+  );
+}
+
+/**
+ * Em preenchimento: todos os campos da planilha abertos e já preenchidos.
+ * Cada um grava ao sair dele; o que a Wellmix exige e está em branco fica
+ * destacado (não impede o envio).
+ */
+function PreparingItems({
+  t,
+  lot,
+  items,
+  created,
+}: {
+  t: Translate;
+  lot: PartnerBookingLot;
+  items: PartnerBookingItem[];
+  created: boolean;
+}) {
+  const decimal = t.intl.startsWith("pt") ? "," : ".";
+  const colLabel = (f: string) =>
+    t(`bookingLots.item.col.${f}` as DictionaryKey);
+  const blanks = items.reduce(
+    (total, item) =>
+      total +
+      EDIT_COLUMNS.filter(
+        ({ field }) =>
+          isRequiredItemField(field) &&
+          (item[field] === null || item[field] === ""),
+      ).length,
+    0,
+  );
+  const th =
+    "border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-500";
+  const td =
+    "border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800";
+  const cell = (
+    item: PartnerBookingItem,
+    field: BookingItemField,
+    width: string,
+  ) => {
+    const value = item[field];
+    const required = isRequiredItemField(field);
+    const kind = bookingItemFieldKind(field);
+    const labels = {
+      field: t("bookingLots.item.edit", {
+        field: colLabel(field),
+        n: item.itemNumber ?? String(item.position + 1),
+      }),
+      saving: t("booking.row.saving"),
+      saved: t("booking.row.saved"),
+      failed: t("booking.row.failed"),
+    };
+    if (kind === "incoterm" || kind === "currency") {
+      const list = kind === "incoterm" ? SHEET_INCOTERMS : SHEET_CURRENCIES;
+      return (
+        <PartnerItemSelect
+          lotId={lot.id}
+          itemId={item.id}
+          field={field}
+          current={typeof value === "string" ? value : ""}
+          required={required}
+          options={[
+            { value: "", label: "—" },
+            ...list.map((v) => ({ value: v, label: v })),
+          ]}
+          labels={labels}
+        />
+      );
+    }
+    return (
+      <PartnerItemInput
+        lotId={lot.id}
+        itemId={item.id}
+        field={field}
+        saved={
+          typeof value === "number"
+            ? String(value).replace(".", decimal)
+            : typeof value === "string"
+              ? value
+              : ""
+        }
+        numeric={kind === "number"}
+        width={width}
+        required={required}
+        labels={labels}
+      />
+    );
+  };
+  return (
+    <>
+      <div className="mb-3" data-partner-booking-preparing>
+        <Alert tone={created ? "success" : "warning"}>
+          {t(
+            created
+              ? "bookingLots.partner.loaded"
+              : "bookingLots.partner.preparingHint",
+          )}
+        </Alert>
+      </div>
+      <Card
+        title={t("bookingLots.partner.items", { n: String(items.length) })}
+        actions={
+          <PreparingActions t={t} lotId={lot.id} blanks={blanks} marker="top" />
+        }
+      >
+        <p className="mb-2 text-xs text-zinc-500">
+          {t("bookingLots.partner.editHint")}
+          {blanks ? (
+            <span
+              className="text-amber-800"
+              data-partner-booking-blanks={blanks}
+            >
+              {" "}
+              {t("bookingLots.partner.blanks", { n: blanks })}
+            </span>
+          ) : null}
+        </p>
         {items.length ? (
-          <Table>
-            <thead>
-              <tr>
-                <Th className="w-10 text-right">#</Th>
-                <Th>{col("item")}</Th>
-                <Th className="text-right">{col("price")}</Th>
-                <Th className="text-right">{col("moq")}</Th>
-                <Th className="text-right">{col("box")}</Th>
-                <Th className="text-right">{col("cbm")}</Th>
-                <Th>{col("size")}</Th>
-                <Th className="text-right">{col("capacity")}</Th>
-                <Th>{col("material")}</Th>
-              </tr>
-            </thead>
-            <tbody data-partner-booking-items>
-              {items.map((i, index) => (
-                <tr key={i.id} className={rowClass}>
-                  <Td className="text-right tabular-nums text-zinc-500">
-                    {index + 1}
-                  </Td>
-                  <Td className="min-w-56">
-                    <span className="font-medium text-zinc-900">
-                      {i.productName ?? i.description ?? "—"}
-                    </span>
-                    <span className="block text-xs text-zinc-500">
-                      {[i.itemNumber, i.factoryItemCode]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  </Td>
-                  <Td className="whitespace-nowrap text-right tabular-nums">
-                    {i.price === null
-                      ? "—"
-                      : [num(t, i.price, 4), i.currency, i.incoterm]
-                          .filter(Boolean)
-                          .join(" ")}
-                  </Td>
-                  <Td className="text-right tabular-nums">{num(t, i.moq)}</Td>
-                  <Td className="whitespace-nowrap text-right tabular-nums">
-                    {num(t, i.masterCartonQty)}
-                    {i.innerQty ? ` / ${num(t, i.innerQty)}` : ""}
-                  </Td>
-                  <Td className="text-right tabular-nums">
-                    {num(t, i.cbmPerCarton, 4)}
-                  </Td>
-                  <Td className="whitespace-nowrap tabular-nums">
-                    {[i.lengthCm, i.widthCm, i.heightCm].some((n) => n !== null)
-                      ? [i.lengthCm, i.widthCm, i.heightCm]
-                          .map((n) => num(t, n, 2))
-                          .join(" × ")
-                      : "—"}
-                  </Td>
-                  <Td className="text-right tabular-nums">
-                    {num(t, i.capacityMl)}
-                  </Td>
-                  <Td className="min-w-40">
-                    {[i.material, i.packageType, i.colorAssortment]
-                      .filter(Boolean)
-                      .join(" · ") || "—"}
-                  </Td>
+          <div className="relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border">
+            <table
+              className="w-full text-left text-sm"
+              data-partner-booking-edit
+            >
+              <thead>
+                <tr>
+                  <th className={th}>#</th>
+                  {EDIT_COLUMNS.map(({ field }) => (
+                    <th key={field} className={th}>
+                      {colLabel(field)}
+                      {isRequiredItemField(field) ? (
+                        <span className="text-brand-700"> *</span>
+                      ) : null}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {items.map((item, index) => (
+                  <tr key={item.id} data-partner-booking-item={item.id}>
+                    <td
+                      className={`${td} text-right tabular-nums text-zinc-500`}
+                    >
+                      {index + 1}
+                    </td>
+                    {EDIT_COLUMNS.map(({ field, width }) => (
+                      <td key={field} className={td}>
+                        {cell(item, field, width)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <Empty>{t("bookingLots.partner.noItems")}</Empty>
         )}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4">
+          <p className="max-w-xl text-sm text-zinc-600">
+            {t("bookingLots.partner.sendHint")}
+          </p>
+          <PreparingActions
+            t={t}
+            lotId={lot.id}
+            blanks={blanks}
+            marker="bottom"
+          />
+        </div>
       </Card>
     </>
+  );
+}
+
+/** Já enviado: só para consultar, sem a análise da Wellmix. */
+function SentItems({
+  t,
+  items,
+}: {
+  t: Translate;
+  items: PartnerBookingItem[];
+}) {
+  const col = (k: string) =>
+    t(`supplierRequests.selection.col.${k}` as DictionaryKey);
+  return (
+    <Card title={t("bookingLots.partner.items", { n: String(items.length) })}>
+      {items.length ? (
+        <Table>
+          <thead>
+            <tr>
+              <Th className="w-10 text-right">#</Th>
+              <Th>{col("item")}</Th>
+              <Th className="text-right">{col("price")}</Th>
+              <Th className="text-right">{col("moq")}</Th>
+              <Th className="text-right">{col("box")}</Th>
+              <Th className="text-right">{col("cbm")}</Th>
+              <Th>{col("size")}</Th>
+              <Th className="text-right">{col("capacity")}</Th>
+              <Th>{col("material")}</Th>
+            </tr>
+          </thead>
+          <tbody data-partner-booking-items>
+            {items.map((i, index) => (
+              <tr key={i.id} className={rowClass}>
+                <Td className="text-right tabular-nums text-zinc-500">
+                  {index + 1}
+                </Td>
+                <Td className="min-w-56">
+                  <span className="font-medium text-zinc-900">
+                    {i.productName ?? i.description ?? "—"}
+                  </span>
+                  <span className="block text-xs text-zinc-500">
+                    {[i.itemNumber, i.factoryItemCode]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </Td>
+                <Td className="whitespace-nowrap text-right tabular-nums">
+                  {i.price === null
+                    ? "—"
+                    : [num(t, i.price, 4), i.currency, i.incoterm]
+                        .filter(Boolean)
+                        .join(" ")}
+                </Td>
+                <Td className="text-right tabular-nums">{num(t, i.moq)}</Td>
+                <Td className="whitespace-nowrap text-right tabular-nums">
+                  {num(t, i.masterCartonQty)}
+                  {i.innerQty ? ` / ${num(t, i.innerQty)}` : ""}
+                </Td>
+                <Td className="text-right tabular-nums">
+                  {num(t, i.cbmPerCarton, 4)}
+                </Td>
+                <Td className="whitespace-nowrap tabular-nums">
+                  {[i.lengthCm, i.widthCm, i.heightCm].some((n) => n !== null)
+                    ? [i.lengthCm, i.widthCm, i.heightCm]
+                        .map((n) => num(t, n, 2))
+                        .join(" × ")
+                    : "—"}
+                </Td>
+                <Td className="text-right tabular-nums">
+                  {num(t, i.capacityMl)}
+                </Td>
+                <Td className="min-w-40">
+                  {[i.material, i.packageType, i.colorAssortment]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      ) : (
+        <Empty>{t("bookingLots.partner.noItems")}</Empty>
+      )}
+    </Card>
   );
 }

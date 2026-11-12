@@ -74,13 +74,24 @@ async function screensNow(user: User) {
 describe("regras puras", () => {
   it("padrão: o papel; nos tipos novos, o do Fornecedor", () => {
     expect(lib.defaultScreens("role:agency")).toEqual([...ROLE_SCREENS.agency]);
-    for (const key of ["type:factory", "type:gp", "type:x"])
-      expect(lib.defaultScreens(key)).toEqual([...ROLE_SCREENS.supplier]);
-    // Trading: as do Fornecedor mais a tela Booking (só os bookings dele).
-    expect(lib.defaultScreens("type:trading")).toEqual([
-      ...ROLE_SCREENS.supplier,
-      "booking",
-    ]);
+    // Tipo criado no painel: as do Fornecedor.
+    expect(lib.defaultScreens("type:x")).toEqual([...ROLE_SCREENS.supplier]);
+    // Os quatro em destaque (Trading, Factory, Supplier e GP): as do
+    // Fornecedor mais a tela Booking (só os bookings da empresa deles).
+    for (const key of [
+      "type:trading",
+      "type:factory",
+      "type:supplier_partner",
+      "type:gp",
+    ]) {
+      expect(lib.defaultScreens(key)).toEqual([
+        ...ROLE_SCREENS.supplier,
+        "booking",
+      ]);
+      expect(lib.hasProfileExtras(key)).toBe(true);
+    }
+    expect(lib.hasProfileExtras("type:x")).toBe(false);
+    expect(lib.hasProfileExtras("role:supplier")).toBe(false);
     // O Booking é uma tela interna adaptada: pode ser liberada a um login
     // externo e tem dados para quem entra como o Fornecedor (responsável ou
     // fornecedor do booking); nos outros papéis abre vazia. Não vem aberta

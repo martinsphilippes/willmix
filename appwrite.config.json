@@ -8442,6 +8442,7 @@
           "type": "varchar",
           "format": "enum",
           "elements": [
+            "preparing",
             "draft",
             "closed",
             "in_progress",

@@ -109,6 +109,19 @@ export const isBookingItemField = (f: string): f is BookingItemField =>
 export const isRequiredItemField = (f: string) =>
   (BOOKING_ITEM_REQUIRED as readonly string[]).includes(f);
 
+/** Como o campo do item é digitado na tela: texto, número ou uma das listas. */
+export const bookingItemFieldKind = (
+  field: BookingItemField,
+): "text" | "number" | "incoterm" | "currency" =>
+  field === "incoterm"
+    ? "incoterm"
+    : field === "currency"
+      ? "currency"
+      : (INT_FIELDS as readonly string[]).includes(field) ||
+          (DECIMAL_FIELDS as readonly string[]).includes(field)
+        ? "number"
+        : "text";
+
 /** Teto dos números do item (peças e medidas absurdas são recusadas). */
 const MAX_NUMBER = 1e9;
 
@@ -194,10 +207,21 @@ export const bookingLotEditable = (status: BookingLotStatus) =>
   status === "draft";
 
 /**
+ * Em preenchimento pelo parceiro que lançou (docs/BOOKING.md, "Booking do
+ * Trading"): ele confere e corrige os campos antes de enviar. Para a Wellmix
+ * o booking ainda não existe: fica fora das listas, da seleção, do NCM e das
+ * telas dela.
+ */
+export const bookingLotPreparing = (status: BookingLotStatus) =>
+  status === "preparing";
+
+/**
  * Para onde o status vai à mão. Fechar o rascunho é a ação própria (exige os
  * campos e roda a análise); o resto é escolha da equipe.
  */
 const MOVES: Record<BookingLotStatus, BookingLotStatus[]> = {
+  // Em preenchimento pelo parceiro: só ele manda adiante (vira rascunho).
+  preparing: [],
   draft: ["cancelled"],
   closed: ["in_progress", "done", "cancelled"],
   in_progress: ["closed", "done", "cancelled"],

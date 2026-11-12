@@ -102,7 +102,8 @@ export async function inviteScreen(
   const item = await store.get("booking_items", itemId);
   if (!item) return null;
   const lot = await store.get("booking_lots", item.lotId);
-  if (!lot) return null;
+  // Em preenchimento pelo parceiro: para a Wellmix ainda não existe.
+  if (!lot || lot.status === "preparing") return null;
   const [partners, invites, settings] = await Promise.all([
     store.list("parties", {
       filter: { type: [...INVITE_PARTNER_TYPES], active: true },
@@ -153,7 +154,7 @@ export async function inviteForItem(
   const item = await store.get("booking_items", input.itemId);
   if (!item) throw new BookingInviteError("not_found");
   const lot = await store.get("booking_lots", item.lotId);
-  if (!lot || lot.status === "cancelled")
+  if (!lot || lot.status === "cancelled" || lot.status === "preparing")
     throw new BookingInviteError("not_found");
   const parties = await store.list("parties", { filter: { id: ids } });
   if (

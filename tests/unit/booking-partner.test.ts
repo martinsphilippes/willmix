@@ -15,6 +15,9 @@ const { seedDemo } = await import("@/lib/seed");
 const { PARTY_EXTRA_DEFAULTS } = await import("@/lib/db/schema");
 const svc = await import("@/lib/services/booking-partner");
 const internal = await import("@/lib/services/booking-lots");
+const ncm = await import("@/lib/services/booking-ncm");
+const invites = await import("@/lib/services/booking-invites");
+const requests = await import("@/lib/services/supplier-requests");
 const { screensFor } = await import("@/lib/auth/screens");
 const { attachAccess } = await import("@/lib/auth/access-cache");
 const { externalAccessFor } = await import("@/lib/services/partner-access");
@@ -302,9 +305,10 @@ describe("lançar booking pelo parceiro", () => {
     ).rejects.toThrow();
   });
 
-  it("o booking nasce em rascunho, em nome dele, e só ele e a Wellmix veem", async () => {
+  it("subir a planilha: nasce em preenchimento, só dele, e a Wellmix ainda não vê", async () => {
     const store = getStore();
     const before = (await store.list("notifications")).length;
+    const counter = await store.nextNumber("booking_lot_number");
     const launched = await svc.launchPartnerBooking(
       trader,
       sheet("booking-trading.xlsx", [
@@ -313,7 +317,9 @@ describe("lançar booking pelo parceiro", () => {
       ]),
       { defaultCurrency: "USD" },
     );
-    expect(launched.status).toBe("draft");
+    // Em preenchimento, sem número (ele vem no envio).
+    expect(launched.status).toBe("preparing");
+    expect(launched.number).toBe(0);
     expect(launched.itemCount).toBe(2);
     expect(launched.fileName).toBe("booking-trading.xlsx");
     const saved = (await store.get("booking_lots", launched.id))!;
@@ -321,34 +327,133 @@ describe("lançar booking pelo parceiro", () => {
     expect(saved.partnerId).toBe(trader.partyId);
     expect(saved.ownerUserId).toBeNull();
     expect(saved.createdByUserId).toBe(trader.id);
-    // Na lista dele, com os itens da planilha; fora da lista da outra trading.
-    expect(
-      (await svc.listPartnerBookingLots(trader))!.map((l) => l.id),
-    ).toContain(launched.id);
+    // Na lista dele, em primeiro (falta enviar); fora da lista da outra trading.
+    const own = (await svc.listPartnerBookingLots(trader))!;
+    expect(own[0].id).toBe(launched.id);
     expect(
       (await svc.listPartnerBookingLots(otherTrader))!.map((l) => l.id),
     ).not.toContain(launched.id);
     expect(await svc.getPartnerBookingLot(otherTrader, launched.id)).toBeNull();
+    // Todos os campos da planilha vêm preenchidos, prontos para conferir.
     const detail = (await svc.getPartnerBookingLot(trader, launched.id))!;
-    expect(detail.items.map((i) => [i.factoryItemCode, i.price])).toEqual([
-      ["TR-100", 2.4],
-      ["TR-101", 3.1],
+    expect(
+      detail.items.map((i) => [i.factoryItemCode, i.price, i.moq, i.incoterm]),
+    ).toEqual([
+      ["TR-100", 2.4, 1000, "FOB"],
+      ["TR-101", 3.1, 1000, "FOB"],
     ]);
-    // A Wellmix vê o booking na tela dela, com a trading de responsável.
+    const first = detail.items[0] as Record<string, unknown>;
+    for (const hidden of ["analysis", "extras", "productId", "ncm"])
+      expect(first).not.toHaveProperty(hidden);
+    // Para a Wellmix o booking ainda não existe: nem na lista, nem pelo
+    // endereço, nem nas rotinas dela; ninguém foi avisado; o NCM não rodou.
+    expect(
+      (await internal.listBookingLots(admin))!.map((e) => e.lot.id),
+    ).not.toContain(launched.id);
+    expect(await internal.getBookingLot(admin, launched.id)).toBeNull();
+    await expect(
+      internal.setBookingItemField(admin, detail.items[0].id, "price", "9"),
+    ).rejects.toThrow("not_found");
+    await expect(
+      internal.setBookingLotPartner(admin, launched.id, null),
+    ).rejects.toThrow("not_found");
+    await expect(
+      internal.setBookingLotNote(admin, launched.id, "x"),
+    ).rejects.toThrow("not_found");
+    await expect(
+      internal.moveBookingLot(admin, launched.id, "cancelled"),
+    ).rejects.toThrow("not_found");
+    await expect(
+      internal.closeBookingLot(admin, launched.id, null),
+    ).rejects.toThrow("not_found");
+    await expect(
+      ncm.setBookingItemsNcm(admin, [detail.items[0].id], "7013.37.00"),
+    ).rejects.toThrow("booking_lot_locked");
+    await expect(ncm.reclassifyBookingLot(admin, launched.id)).rejects.toThrow(
+      "not_found",
+    );
+    expect(await invites.inviteScreen(admin, detail.items[0].id)).toBeNull();
+    const selection = (await requests.listSelectionItems(admin, ""))!;
+    expect(selection.rows.map((r) => r.lot.id)).not.toContain(launched.id);
+    expect((await store.list("notifications")).length).toBe(before);
+    const items = await store.list("booking_items", {
+      filter: { lotId: launched.id },
+    });
+    expect(items.every((i) => !i.ncm && !i.ncmRequestedAt)).toBe(true);
+    // E não gastou número da sequência dos bookings.
+    expect(await store.nextNumber("booking_lot_number")).toBe(counter + 1);
+  });
+
+  it("conferir: ele corrige os campos; outra empresa e a Wellmix não", async () => {
+    const store = getStore();
+    const lot = (await svc.listPartnerBookingLots(trader))!.find(
+      (l) => l.status === "preparing",
+    )!;
+    const [item] = (await svc.getPartnerBookingLot(trader, lot.id))!.items;
+    await svc.setPartnerBookingItemField(trader, item.id, "price", "2,55");
+    await svc.setPartnerBookingItemField(trader, item.id, "currency", "RMB");
+    await svc.setPartnerBookingItemField(trader, item.id, "material", "glass");
+    await svc.setPartnerBookingItemField(trader, item.id, "moq", "");
+    const saved = (await store.get("booking_items", item.id))!;
+    expect([saved.price, saved.currency, saved.material, saved.moq]).toEqual([
+      2.55,
+      "RMB",
+      "glass",
+      null,
+    ]);
+    expect(saved.updatedByUserId).toBe(trader.id);
+    // Valor que não dá para ler recusa, como na tela da Wellmix.
+    await expect(
+      svc.setPartnerBookingItemField(trader, item.id, "price", "abc"),
+    ).rejects.toThrow("booking_item_invalid");
+    await expect(
+      svc.setPartnerBookingItemField(trader, item.id, "incoterm", "CIF"),
+    ).rejects.toThrow("booking_item_invalid");
+    // Outra empresa, o fornecedor sem a tela e a Wellmix: não mexem.
+    await expect(
+      svc.setPartnerBookingItemField(otherTrader, item.id, "price", "1"),
+    ).rejects.toThrow("not_found");
+    await expect(
+      svc.setPartnerBookingItemField(supplier, item.id, "price", "1"),
+    ).rejects.toThrow();
+    await expect(
+      svc.setPartnerBookingItemField(admin, item.id, "price", "1"),
+    ).rejects.toThrow();
+    await expect(svc.sendPartnerBooking(otherTrader, lot.id)).rejects.toThrow(
+      "not_found",
+    );
+    await expect(
+      svc.discardPartnerBooking(otherTrader, lot.id),
+    ).rejects.toThrow("not_found");
+    expect((await store.get("booking_items", item.id))!.price).toBe(2.55);
+  });
+
+  it("Enviar para Wellmix Conferir: ganha o número, vira rascunho e a Wellmix é avisada", async () => {
+    const store = getStore();
+    const before = (await store.list("notifications")).length;
+    const lot = (await svc.listPartnerBookingLots(trader))!.find(
+      (l) => l.status === "preparing",
+    )!;
+    const next = (await store.nextNumber("booking_lot_number")) + 1;
+    const sent = await svc.sendPartnerBooking(trader, lot.id);
+    expect(sent.status).toBe("draft");
+    expect(sent.number).toBe(next);
+    // A Wellmix passa a ver, com a trading de responsável e o que ele corrigiu.
     const mineForWellmix = (await internal.listBookingLots(admin))!.find(
-      (e) => e.lot.id === launched.id,
+      (e) => e.lot.id === sent.id,
     )!;
     expect(mineForWellmix.lot.partnerId).toBe(trader.partyId);
-    const wellmixDetail = (await internal.getBookingLot(admin, launched.id))!;
+    const wellmixDetail = (await internal.getBookingLot(admin, sent.id))!;
     expect(wellmixDetail.partner?.id).toBe(trader.partyId);
+    expect(wellmixDetail.items[0].price).toBe(2.55);
     // E é avisada (quem abre o Booking), com o link do booking.
     const notes = (await store.list("notifications")).slice(before);
     const inApp = notes.filter(
-      (n) =>
-        n.channel === "inapp" && n.link === `/app/booking/lots/${launched.id}`,
+      (n) => n.channel === "inapp" && n.link === `/app/booking/lots/${sent.id}`,
     );
     expect(inApp.map((n) => n.userId)).toContain(admin.id);
     expect(inApp.every((n) => n.kind === "action")).toBe(true);
+    expect(inApp[0].subject).toContain(String(sent.number));
     expect(inApp[0].body).toContain("Trading Um");
     // Fora a Wellmix, só o despachante recebe aviso (NCM dos itens sem
     // produto parecido, como em qualquer booking); nenhum fornecedor, trading
@@ -360,6 +465,42 @@ describe("lançar booking pelo parceiro", () => {
     expect(
       [...roles].filter((r) => !["admin", "operator", "broker"].includes(r!)),
     ).toEqual([]);
+    // Depois de enviado ele só consulta: não corrige, não reenvia, não descarta.
+    const [item] = (await svc.getPartnerBookingLot(trader, sent.id))!.items;
+    await expect(
+      svc.setPartnerBookingItemField(trader, item.id, "price", "1"),
+    ).rejects.toThrow("booking_partner_sent");
+    await expect(svc.sendPartnerBooking(trader, sent.id)).rejects.toThrow(
+      "booking_partner_sent",
+    );
+    await expect(svc.discardPartnerBooking(trader, sent.id)).rejects.toThrow(
+      "booking_partner_sent",
+    );
+    // E a Wellmix edita como em qualquer rascunho.
+    await internal.setBookingItemField(admin, item.id, "price", "2,60");
+    expect((await store.get("booking_items", item.id))!.price).toBe(2.6);
+  });
+
+  it("descartar o que ainda preenchia: some o booking, os itens e a planilha", async () => {
+    const store = getStore();
+    const launched = await svc.launchPartnerBooking(
+      trader,
+      sheet("errado.xlsx", [row("Fábrica Z", "ERR-1", "1.00")]),
+    );
+    const saved = (await store.get("booking_lots", launched.id))!;
+    expect(saved.fileDocumentId).toBeTruthy();
+    const lotsBefore = (await internal.listBookingLots(admin))!.length;
+    await svc.discardPartnerBooking(trader, launched.id);
+    expect(await store.get("booking_lots", launched.id)).toBeNull();
+    expect(
+      await store.list("booking_items", { filter: { lotId: launched.id } }),
+    ).toEqual([]);
+    expect(await store.get("documents", saved.fileDocumentId!)).toBeNull();
+    expect(
+      (await svc.listPartnerBookingLots(trader))!.map((l) => l.id),
+    ).not.toContain(launched.id);
+    // Para a Wellmix nada mudou.
+    expect((await internal.listBookingLots(admin))!.length).toBe(lotsBefore);
   });
 
   it("empresa inativa não lança", async () => {
@@ -423,6 +564,6 @@ describe("lançar booking pelo parceiro", () => {
       otherTrader,
       sheet("de-novo.xlsx", [row("Fábrica Z", "LIM-2", "1.00")]),
     );
-    expect(ok.status).toBe("draft");
+    expect(ok.status).toBe("preparing");
   });
 });

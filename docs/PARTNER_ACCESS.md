@@ -17,7 +17,7 @@ Pedido do dono (11/11/2026): administrar, em Cadastros → Outros parceiros, que
 
 - `role:<papel>`: cliente, fornecedor e os parceiros de sempre (agência, despachante…).
 - `type:<tipo>`: Trading, Factory, Supplier, GP e os tipos criados no painel com login.
-- **Padrão de fábrica**: o do papel (`ROLE_SCREENS`); nos tipos novos, **o do Fornecedor**: Início, Pendências, Notificações, Mensagens, Pedidos, Cotações (com Solicitações ao fornecedor) e Conta corrente, incluindo as páginas de detalhe desses endereços. A **Trading** recebe também o **Booking** (decisão do dono, 11/11/2026; `PROFILE_EXTRA`): só os bookings da empresa dela (docs/BOOKING.md, "Booking do Trading").
+- **Padrão de fábrica**: o do papel (`ROLE_SCREENS`); nos tipos novos, **o do Fornecedor**: Início, Pendências, Notificações, Mensagens, Pedidos, Cotações (com Solicitações ao fornecedor) e Conta corrente, incluindo as páginas de detalhe desses endereços. A **Trading**, a **Factory**, o **Supplier** e o **GP** recebem também o **Booking** (decisões do dono, 11 e 12/11/2026; `PROFILE_EXTRA`): lançam e veem só os bookings da própria empresa (docs/BOOKING.md, "Booking do Trading").
 - O que o administrador muda fica gravado **por perfil**, independente dos outros (mudar o Fornecedor não muda a Trading, e vice-versa). "Voltar ao padrão" apaga o gravado.
 
 ## Regras
@@ -42,7 +42,7 @@ Pedido do dono (11/11/2026): administrar, em Cadastros → Outros parceiros, que
 
 Sem tabela nova: a configuração fica em `settings` (chave `partnerAccess`), um perfil por chave: `{ screens, menuHidden, sources, extrasDecided }`. Sem nada gravado, vale o padrão de fábrica.
 
-`extrasDecided` (gravado a cada alteração do perfil): o administrador já decidiu sobre as telas que o perfil ganhou de fábrica depois (o Booking da Trading). Perfil gravado **antes** disso não tem a marca e ganha a tela; a partir da gravação seguinte vale exatamente o que foi marcado, inclusive sem ela.
+`extrasDecided` (gravado a cada alteração do perfil): o administrador já decidiu sobre as telas que o perfil ganhou de fábrica depois (o Booking da Trading). Perfil gravado **antes** disso não tem a marca e ganha a tela; a partir da gravação seguinte vale exatamente o que foi marcado, inclusive sem ela. Limite conhecido: a marca é uma só por perfil. Um perfil que já foi gravado (tem a marca) não ganha sozinho uma tela que entre em `PROFILE_EXTRA` depois; o administrador marca a tela na Gestão de telas.
 
 ## Onde está
 
