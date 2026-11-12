@@ -1119,45 +1119,59 @@ async function advanceStages(
   at: string,
 ) {
   const store = getStore();
-  const stages = (await store.list("stages", { filter: { orderId } })).sort(
-    (a, b) => a.sequence - b.sequence,
-  );
+  // Etapas e requisitos lidos uma vez; as gravações vão em paralelo (uma por
+  // vez, a nota levava ~15 s só aqui, mesmo com poucos itens).
+  const [stages, requirements] = await Promise.all([
+    store
+      .list("stages", { filter: { orderId } })
+      .then((list) => list.sort((a, b) => a.sequence - b.sequence)),
+    store.list("requirements", { filter: { orderId } }),
+  ]);
   const targetIndex = STAGE_KEYS.indexOf(target);
   let current: string | null = null;
+  const writes: Array<() => Promise<unknown>> = [];
   for (const stage of stages) {
     const index = STAGE_KEYS.indexOf(stage.key);
     const done = closed || index < targetIndex;
     if (done) {
-      await store.update("stages", stage.id, {
-        status: "done",
-        percent: 100,
-        startedAt: stage.startedAt ?? at,
-        completedAt: at,
-        dueAt: null,
-      });
-      for (const req of await store.list("requirements", {
-        filter: { stageId: stage.id },
-      }))
-        if (req.status === "pending")
-          await store.update("requirements", req.id, {
-            status: "done",
-            note: "Etapa concluída no Sankhya (carga do histórico)",
-            submittedAt: at,
-          });
+      writes.push(() =>
+        store.update("stages", stage.id, {
+          status: "done",
+          percent: 100,
+          startedAt: stage.startedAt ?? at,
+          completedAt: at,
+          dueAt: null,
+        }),
+      );
+      for (const req of requirements)
+        if (req.stageId === stage.id && req.status === "pending")
+          writes.push(() =>
+            store.update("requirements", req.id, {
+              status: "done",
+              note: "Etapa concluída no Sankhya (carga do histórico)",
+              submittedAt: at,
+            }),
+          );
     } else if (index === targetIndex) {
-      await store.update("stages", stage.id, {
-        status: "active",
-        startedAt: at,
-      });
+      writes.push(() =>
+        store.update("stages", stage.id, {
+          status: "active",
+          startedAt: at,
+        }),
+      );
       current = stage.id;
     } else {
-      await store.update("stages", stage.id, {
-        status: "pending",
-        startedAt: null,
-        dueAt: null,
-      });
+      writes.push(() =>
+        store.update("stages", stage.id, {
+          status: "pending",
+          startedAt: null,
+          dueAt: null,
+        }),
+      );
     }
   }
+  for (let i = 0; i < writes.length; i += 8)
+    await Promise.all(writes.slice(i, i + 8).map((w) => w()));
   const last = stages[stages.length - 1];
   await store.update("orders", orderId, {
     status: target,
