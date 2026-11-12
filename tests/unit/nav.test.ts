@@ -1,16 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  MENU_HIDDEN,
   flattenNav,
   isActiveHref,
   isNavGroup,
+  navFooterFor,
   navFor,
-  type NavLink,
 } from "@/lib/nav";
 import { ROLES, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
 
-/* Menu principal: todos os papéis veem grupos (sem links soltos); grupo com
-   uma tela só vira link; grupo vazio some. O menu segue as telas do login
-   (src/lib/auth/screens.ts): nenhuma tela some do admin nem se repete. */
+/* Menu lateral (12/11/2026): links do dia a dia no alto, grupos na ordem do
+   fluxo, Configurações/Equipe/Auditoria fixos embaixo; grupo com uma tela só
+   vira link; grupo vazio some; telas fora do fluxo de hoje (MENU_HIDDEN) não
+   aparecem para ninguém. O menu segue as telas do login
+   (src/lib/auth/screens.ts): nenhuma tela se repete. */
 const ADMIN = { role: "admin" as const };
 const view = (user: Parameters<typeof navFor>[0]) =>
   navFor(user).map((e) =>
@@ -18,207 +21,219 @@ const view = (user: Parameters<typeof navFor>[0]) =>
       ? { group: e.key, items: e.items.map((i) => i.href) }
       : { link: e.href },
   );
-/** Telas que saem com a RFQ e a cotação (11/11/2026): fora das comparações. */
-const GONE = ["/app/rfq", "/app/quotes", "/app/packaging"];
 const hrefsOf = (user: Parameters<typeof navFor>[0]) =>
-  flattenNav(navFor(user))
-    .map((l) => l.href)
-    .filter((h) => !GONE.includes(h));
+  flattenNav(navFor(user)).map((l) => l.href);
+const TOP = ["/app", "/app/tasks", "/app/messages", "/app/notifications"];
 
-describe("menu principal", () => {
-  it("admin: tudo em quatro grupos, sem links soltos na barra", () => {
-    const entries = navFor(ADMIN);
-    const direct = entries
-      .filter((e): e is NavLink => !isNavGroup(e))
-      .map((e) => e.href);
-    expect(direct).toEqual([]);
-    const groups = entries.filter(isNavGroup).map((g) => g.key);
-    expect(groups).toEqual([
-      "nav.group.home",
-      "nav.group.orders",
-      "nav.group.registry",
-      "nav.group.management",
+describe("menu lateral", () => {
+  it("admin: dia a dia no alto e cinco grupos na ordem do fluxo; ajustes embaixo", () => {
+    expect(view(ADMIN)).toEqual([
+      ...TOP.map((link) => ({ link })),
+      {
+        group: "nav.group.purchasing",
+        items: [
+          "/app/booking",
+          "/app/booking/selection",
+          "/app/supplier-requests/invites",
+          "/app/supplier-requests",
+        ],
+      },
+      {
+        group: "nav.group.delivery",
+        items: [
+          "/app/orders",
+          "/app/reviews",
+          "/app/containers",
+          "/app/freight",
+          "/app/freight/tariff",
+          "/app/inventory",
+        ],
+      },
+      {
+        group: "nav.group.finance",
+        items: [
+          "/app/finance",
+          "/app/payables",
+          "/app/commissions",
+          "/app/penalties",
+        ],
+      },
+      {
+        group: "nav.group.panels",
+        items: [
+          "/app/dashboards/owner",
+          "/app/dashboards/cashflow",
+          "/app/superplan",
+          "/app/dashboards",
+          "/app/sla",
+        ],
+      },
+      {
+        group: "nav.group.registry",
+        items: ["/app/parties", "/app/products", "/app/lines"],
+      },
     ]);
-    const hrefs = flattenNav(entries).map((l) => l.href);
-    expect(new Set(hrefs).size).toBe(hrefs.length);
-    // O dia a dia continua no começo do menu (celular mostra na ordem).
-    // Em Pedidos, o Booking vem antes de Solicitações (acontece antes dela).
-    expect(hrefs.slice(0, 7)).toEqual([
-      "/app",
-      "/app/tasks",
-      "/app/sla",
-      "/app/notifications",
-      "/app/messages",
-      "/app/booking",
-      "/app/requests",
+    expect(navFooterFor(ADMIN).map((l) => [l.href, l.key])).toEqual([
+      ["/app/settings", "nav.settings"],
+      ["/app/team", "nav.teamAccess"],
+      ["/app/audit", "nav.audit"],
     ]);
-    // Sourcing (em espera) fica depois do Superplan.
-    expect(hrefs.indexOf("/app/superplan")).toBeLessThan(
-      hrefs.indexOf("/app/sourcing"),
+    // Pedidos de compra e Parceiros (clientes, fornecedores e demais numa tela só).
+    const links = flattenNav(navFor(ADMIN));
+    expect(links.find((l) => l.href === "/app/orders")?.key).toBe(
+      "nav.purchaseOrders",
     );
-    for (const href of [
-      "/app",
-      "/app/tasks",
-      "/app/requests",
-      "/app/orders",
-      "/app/reviews",
-      "/app/sourcing",
-      "/app/freight",
-      "/app/freight/tariff",
-      "/app/containers",
-      "/app/superplan",
-      "/app/parties",
-      "/app/products",
-      "/app/lines",
-      "/app/explore",
-      "/app/dashboards",
-      "/app/finance",
-      "/app/payables",
-      "/app/penalties",
-      "/app/after-sales",
-      "/app/marketing",
-      "/app/history",
-      "/app/notifications",
-      "/app/settings",
-      "/app/sla",
-      "/app/team",
-      "/app/audit",
-    ])
-      expect(hrefs).toContain(href);
+    expect(links.find((l) => l.href === "/app/parties")?.key).toBe(
+      "nav.parties",
+    );
+    for (const href of ["/app/customers", "/app/suppliers"])
+      expect(links.map((l) => l.href)).not.toContain(href);
+    // Todo grupo e todo link solto têm ícone.
+    for (const e of navFor(ADMIN)) expect(e.icon).toBeTruthy();
   });
 
-  it("operador sem função: só o grupo Início; com todas as funções, tudo menos o que é só do admin", () => {
-    const none = navFor({ role: "operator", functions: null });
-    expect(none.map((e) => (isNavGroup(e) ? e.key : e.href))).toEqual([
-      "nav.group.home",
+  it("telas fora do fluxo de hoje não aparecem no menu de ninguém", () => {
+    expect(MENU_HIDDEN).toEqual([
+      "/app/requests",
+      "/app/explore",
+      "/app/sourcing",
+      "/app/marketing",
+      "/app/after-sales",
+      "/app/history",
     ]);
-    expect(flattenNav(none).map((l) => l.href)).toEqual([
-      "/app",
-      "/app/tasks",
-      "/app/sla",
-      "/app/notifications",
-      "/app/messages",
+    for (const role of ROLES)
+      for (const functions of [null, [...WELLMIX_FUNCTIONS]]) {
+        const hrefs = hrefsOf({ role, functions });
+        for (const hidden of MENU_HIDDEN) expect(hrefs).not.toContain(hidden);
+      }
+  });
+
+  it("operador: sem função, o dia a dia e o SLA; com todas, tudo menos o que é só do admin", () => {
+    const none = { role: "operator" as const, functions: null };
+    expect(view(none)).toEqual([
+      ...TOP.map((link) => ({ link })),
+      { link: "/app/sla" },
     ]);
-    const all = flattenNav(
-      navFor({ role: "operator", functions: [...WELLMIX_FUNCTIONS] }),
-    ).map((l) => l.href);
-    const admin = flattenNav(navFor(ADMIN)).map((l) => l.href);
+    expect(navFooterFor(none)).toEqual([]);
+    const all = hrefsOf({
+      role: "operator",
+      functions: [...WELLMIX_FUNCTIONS],
+    });
+    const admin = hrefsOf(ADMIN);
     expect(all).toEqual(
       admin.filter(
         (h) =>
           ![
             "/app/finance",
-            // Acordos e comissões: quem abre o Financeiro (só o admin).
             "/app/commissions",
             "/app/payables",
-            "/app/settings",
-            "/app/team",
-            // Superplan: custo e margem de cada produto, só do admin.
             "/app/superplan",
-            // Painel do dono: números de Finanças, só do admin.
             "/app/dashboards/owner",
             "/app/dashboards/cashflow",
           ].includes(h),
       ),
     );
+    expect(
+      navFooterFor({ role: "operator", functions: [...WELLMIX_FUNCTIONS] }).map(
+        (l) => l.href,
+      ),
+    ).not.toContain("/app/settings");
   });
 
-  it("operador por função: comprador vê compras; financeiro não aparece para ninguém além do admin", () => {
-    const buyer = flattenNav(
-      navFor({ role: "operator", functions: ["buyer"] }),
-    ).map((l) => l.href);
-    expect(buyer).toContain("/app/requests");
+  it("operador por função: comprador vê Compras e Pedidos e entrega; financeiro só o admin", () => {
+    const buyer = hrefsOf({ role: "operator", functions: ["buyer"] });
+    expect(buyer).toContain("/app/booking");
     expect(buyer).toContain("/app/orders");
     expect(buyer).toContain("/app/products");
     expect(buyer).not.toContain("/app/lines");
     expect(buyer).not.toContain("/app/finance");
     expect(buyer).not.toContain("/app/payables");
-    // Designer: Início, Pedidos, Cadastros com Produtos e Vitrine e Marketing.
-    expect(hrefsOf({ role: "operator", functions: ["designer"] })).toEqual([
-      "/app",
-      "/app/tasks",
-      "/app/sla",
-      "/app/notifications",
-      "/app/messages",
-      "/app/orders",
-      "/app/products",
-      "/app/inventory",
-      "/app/explore",
-      "/app/marketing",
+    expect(view({ role: "operator", functions: ["designer"] })).toEqual([
+      ...TOP.map((link) => ({ link })),
+      {
+        group: "nav.group.delivery",
+        items: ["/app/orders", "/app/inventory"],
+      },
+      { link: "/app/sla" },
+      { link: "/app/products" },
     ]);
   });
 
-  it('cliente: Explorar (vitrine) no início e o resto em "Meus pedidos"; nenhuma tela some', () => {
-    const entries = navFor({ role: "customer" });
-    expect(entries[0]).toEqual({ href: "/app/explore", key: "nav.explore" });
-    expect(entries.filter(isNavGroup).map((g) => g.key)).toEqual([
-      "nav.group.myOrders",
-    ]);
-    const hrefs = flattenNav(entries).map((l) => l.href);
-    expect(hrefs).toEqual([
-      "/app/explore",
-      "/app/requests",
-      "/app/orders",
-      "/app/tasks",
-      "/app/notifications",
-      "/app/messages",
-      "/app/history",
-      "/app/marketing",
+  it("cliente: o dia a dia e os pedidos (a vitrine ainda não abriu)", () => {
+    expect(view({ role: "customer" })).toEqual([
+      { link: "/app/tasks" },
+      { link: "/app/messages" },
+      { link: "/app/notifications" },
+      { link: "/app/orders" },
     ]);
   });
 
-  it("fornecedores e parceiros: Início (Pendências, Notificações) e Pedidos com a tela do papel", () => {
-    const home = {
-      group: "nav.group.home",
-      items: ["/app", "/app/notifications", "/app/messages"],
-    };
-    expect(hrefsOf({ role: "supplier" })).toEqual([
-      ...home.items,
-      "/app/supplier-requests",
-      "/app/supplier-requests/invites",
-      "/app/orders",
-      "/app/account",
+  it("fornecedores e parceiros: Pendências, Mensagens, Notificações e um grupo com a tela do papel", () => {
+    const top = ["/app", "/app/messages", "/app/notifications"].map((link) => ({
+      link,
+    }));
+    expect(view({ role: "supplier" })).toEqual([
+      ...top,
+      {
+        group: "nav.group.myBookings",
+        items: [
+          "/app/supplier-requests/invites",
+          "/app/supplier-requests",
+          "/app/orders",
+          "/app/account",
+        ],
+      },
     ]);
     expect(view({ role: "shipping_line" })).toEqual([
-      home,
+      ...top,
       {
         group: "nav.group.orders",
-        items: ["/app/freight", "/app/freight/tariff", "/app/orders"],
+        items: ["/app/orders", "/app/freight", "/app/freight/tariff"],
       },
     ]);
     expect(view({ role: "legal" })).toEqual([
-      home,
+      ...top,
       { group: "nav.group.orders", items: ["/app/orders", "/app/penalties"] },
     ]);
     // Grupo com uma tela só vira link direto (sem lista de um item).
-    for (const role of ["carrier", "comex", "logistics", "ocp"] as const)
-      expect(view({ role })).toEqual([home, { link: "/app/orders" }]);
+    for (const role of [
+      "carrier",
+      "comex",
+      "logistics",
+      "ocp",
+      "agency",
+    ] as const)
+      expect(view({ role })).toEqual([...top, { link: "/app/orders" }]);
     // O despachante tem também o NCM dos itens de booking (docs/BOOKING.md).
     expect(view({ role: "broker" })).toEqual([
-      home,
+      ...top,
       { group: "nav.group.orders", items: ["/app/orders", "/app/ncm-items"] },
     ]);
-    // A agência tem os pedidos.
-    expect(hrefsOf({ role: "agency" })).toEqual([...home.items, "/app/orders"]);
-    // Nenhuma tela some nem se repete; o início continua nas pendências.
     for (const role of ROLES.filter(
       (r) => r !== "admin" && r !== "operator" && r !== "customer",
     )) {
-      const hrefs = flattenNav(navFor({ role })).map((l) => l.href);
+      const hrefs = hrefsOf({ role });
       expect(new Set(hrefs).size).toBe(hrefs.length);
       expect(hrefs[0]).toBe("/app");
       expect(hrefs).toContain("/app/orders");
-      expect(hrefs).toContain("/app/notifications");
+      expect(navFooterFor({ role })).toEqual([]);
     }
   });
 
-  it("Mensagens no menu de todos os papéis, com o selo de não lidas", () => {
+  it("Mensagens e Notificações no menu de todos os papéis, com o selo de não lidas", () => {
     for (const role of ROLES) {
       const links = flattenNav(navFor({ role, functions: null }));
-      const messages = links.filter((l) => l.href === "/app/messages");
-      expect(messages).toEqual([
-        { href: "/app/messages", key: "nav.messages", badge: "messages" },
+      expect(links.filter((l) => l.href === "/app/messages")).toEqual([
+        {
+          href: "/app/messages",
+          key: "nav.messages",
+          badge: "messages",
+          icon: "messages",
+        },
       ]);
+      expect(links.find((l) => l.href === "/app/notifications")?.badge).toBe(
+        "notifications",
+      );
     }
   });
 

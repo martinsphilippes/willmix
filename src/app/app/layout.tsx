@@ -5,7 +5,13 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getStore, type User } from "@/lib/db";
 import { getLocale, getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
-import { flattenNav, isNavGroup, navFor, type NavLink } from "@/lib/nav";
+import {
+  flattenNav,
+  isNavGroup,
+  navFooterFor,
+  navFor,
+  type NavLink,
+} from "@/lib/nav";
 import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import {
@@ -15,8 +21,7 @@ import {
   type UnreadDigest,
 } from "@/lib/services/messages";
 import { UnreadMessagesBar } from "@/components/unread-messages-bar";
-import { AppNav, MobileNav } from "@/components/app-nav";
-import { UserMenu } from "@/components/user-menu";
+import { AppSidebar, MobileNav } from "@/components/app-nav";
 import { WellmixLogo } from "@/components/brand";
 import { LogoutButton } from "@/components/logout-button";
 import { PasswordChangeCard } from "@/components/password-change-card";
@@ -218,35 +223,6 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           console.error("unreadCountFor failed", error);
           return 0;
         });
-  const link = (l: NavLink) => ({
-    href: l.href,
-    label: t(l.key),
-    ...(l.badge === "messages" && unreadMessages > 0
-      ? {
-          badge: unreadMessages,
-          badgeLabel: t("messages.unread", { n: unreadMessages }),
-        }
-      : {}),
-  });
-  const nav = navFor(user);
-  const entries = nav.map((entry) =>
-    isNavGroup(entry)
-      ? { label: t(entry.key), items: entry.items.map(link) }
-      : link(entry),
-  );
-  const showDemo = demoAccountsEnabled();
-  // Falha aqui não derruba o portal: o seletor só fica sem as contas.
-  const demoList = showDemo
-    ? demoAccounts(
-        t,
-        await existingDemoAccounts().catch((error: unknown) => {
-          console.error("existingDemoAccounts failed", error);
-          return new Set<string>();
-        }),
-        user,
-      )
-    : [];
-  const roleLabel = t(`role.${user.role}`);
   // Não lidas no sino (até 100: o que a caixa de entrada mostra). Sem a tela
   // Notificações no perfil, o sino não aparece (ele levaria a uma tela negada).
   const seesNotifications = canOpen(user, "notifications");
@@ -260,6 +236,51 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         })
       ).filter((n) => !n.readAt).length
     : 0;
+  const badgeOf = (l: NavLink) =>
+    l.badge === "messages" && unreadMessages > 0
+      ? {
+          badge: unreadMessages,
+          badgeLabel: t("messages.unread", { n: unreadMessages }),
+        }
+      : l.badge === "notifications" && unread > 0
+        ? {
+            badge: unread,
+            badgeLabel: t("nav.notifications.unread", { n: String(unread) }),
+          }
+        : {};
+  const link = (l: NavLink) => ({
+    href: l.href,
+    label: t(l.key),
+    ...(l.icon ? { icon: l.icon } : {}),
+    ...badgeOf(l),
+  });
+  const nav = navFor(user);
+  const entries = nav.map((entry) =>
+    isNavGroup(entry)
+      ? {
+          id: entry.key,
+          label: t(entry.key),
+          icon: entry.icon,
+          items: entry.items.map(link),
+        }
+      : link(entry),
+  );
+  const footerNav = navFooterFor(user);
+  const footerLinks = footerNav.map(link);
+  const menuHrefs = [...flattenNav(nav), ...footerNav].map((l) => l.href);
+  const showDemo = demoAccountsEnabled();
+  // Falha aqui não derruba o portal: o seletor só fica sem as contas.
+  const demoList = showDemo
+    ? demoAccounts(
+        t,
+        await existingDemoAccounts().catch((error: unknown) => {
+          console.error("existingDemoAccounts failed", error);
+          return new Set<string>();
+        }),
+        user,
+      )
+    : [];
+  const roleLabel = t(`role.${user.role}`);
   const bell = seesNotifications ? (
     <NotificationsBell
       unread={unread}
@@ -269,6 +290,20 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
   ) : null;
   const hasMessages = flattenNav(nav).some((l) => l.href === "/app/messages");
 
+  // Cartão da conta no pé da barra lateral: senha e Sair.
+  const account = (
+    <>
+      <Link
+        href="/app/password"
+        className="block rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+        data-password-link
+      >
+        {t("password.menu")}
+      </Link>
+      <LogoutButton label={t("nav.logout")} variant="light" />
+    </>
+  );
+
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <Suspense fallback={null}>
@@ -277,16 +312,75 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         <SubmitTracker />
         <MissingLive />
       </Suspense>
-      {/* Cabeçalho em duas faixas: marca e conta em cima; menu embaixo (no
-          celular o menu vira um painel aberto pelo botão). */}
-      {/* Fixo no alto em todas as telas (pedido do dono): não some ao rolar.
-          A altura fica em --wm-header (globals.css), usada pelos painéis
-          laterais fixos e pelos saltos para uma seção. */}
+      {/* Cabeçalho numa faixa só (marca, idioma, demo, mensagens e sino),
+          fixo no alto em todas as telas; o menu fica na barra lateral (no
+          celular, no painel aberto pelo botão). A altura fica em --wm-header
+          (globals.css), usada pela barra lateral, pelos painéis laterais
+          fixos e pelos saltos para uma seção. */}
       <header
         className="sticky top-0 z-40 bg-brand-700 text-white shadow-md shadow-brand-900/20 print:static"
         data-app-header
       >
-        <div className="mx-auto flex h-14 w-full portal-wide items-center gap-3 px-4">
+        <div className="flex h-14 w-full items-center gap-3 px-4">
+          <div className="md:hidden">
+            <MobileNav
+              entries={entries}
+              footer={footerLinks}
+              labels={{
+                open: t("nav.menu"),
+                close: t("nav.menu.close"),
+                main: t("nav.main"),
+              }}
+              extras={
+                <>
+                  <div className="flex items-center gap-3">
+                    <span
+                      aria-hidden
+                      className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                    >
+                      {user.name.trim().charAt(0).toUpperCase()}
+                    </span>
+                    <span className="min-w-0 leading-tight">
+                      <span className="block truncate text-sm font-semibold">
+                        {user.name}
+                      </span>
+                      <span className="block text-xs text-zinc-500">
+                        {roleLabel}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <LocaleSwitcher
+                      locale={locale}
+                      dark={false}
+                      label={t("nav.language")}
+                    />
+                    {showDemo ? (
+                      <DemoSwitcher
+                        accounts={demoList}
+                        current={user.email}
+                        password={DEMO_PASSWORD}
+                        label={t("nav.demo")}
+                        variant="light"
+                        errors={{
+                          missing: t("demo.switch.missing"),
+                          failed: t("demo.switch.failed"),
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                  <Link
+                    href="/app/password"
+                    className="block rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                    data-password-link
+                  >
+                    {t("password.menu")}
+                  </Link>
+                  <LogoutButton label={t("nav.logout")} variant="light" />
+                </>
+              }
+            />
+          </div>
           <Link
             href="/app"
             className="flex items-center gap-2.5 rounded-md focus-visible:outline-white"
@@ -323,110 +417,58 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
               />
             ) : null}
             {bell}
-            <div className="hidden md:block">
-              <UserMenu
-                name={user.name}
-                role={roleLabel}
-                email={loginLabel(user.email)}
-                label={t("nav.user")}
-              >
-                <Link
-                  href="/app/password"
-                  className="block rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-                  data-password-link
-                >
-                  {t("password.menu")}
-                </Link>
-                <LogoutButton label={t("nav.logout")} variant="light" />
-              </UserMenu>
-            </div>
-            <div className="md:hidden">
-              <MobileNav
-                entries={entries}
-                labels={{
-                  open: t("nav.menu"),
-                  close: t("nav.menu.close"),
-                  main: t("nav.main"),
-                }}
-                extras={
-                  <>
-                    <div className="flex items-center gap-3">
-                      <span
-                        aria-hidden
-                        className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
-                      >
-                        {user.name.trim().charAt(0).toUpperCase()}
-                      </span>
-                      <span className="min-w-0 leading-tight">
-                        <span className="block truncate text-sm font-semibold">
-                          {user.name}
-                        </span>
-                        <span className="block text-xs text-zinc-500">
-                          {roleLabel}
-                        </span>
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <LocaleSwitcher
-                        locale={locale}
-                        dark={false}
-                        label={t("nav.language")}
-                      />
-                      {showDemo ? (
-                        <DemoSwitcher
-                          accounts={demoList}
-                          current={user.email}
-                          password={DEMO_PASSWORD}
-                          label={t("nav.demo")}
-                          variant="light"
-                          errors={{
-                            missing: t("demo.switch.missing"),
-                            failed: t("demo.switch.failed"),
-                          }}
-                        />
-                      ) : null}
-                    </div>
-                    <Link
-                      href="/app/password"
-                      className="block rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-                      data-password-link
-                    >
-                      {t("password.menu")}
-                    </Link>
-                    <LogoutButton label={t("nav.logout")} variant="light" />
-                  </>
-                }
-              />
-            </div>
-          </div>
-        </div>
-        <div className="hidden border-t border-white/10 bg-black/10 md:block">
-          <div className="mx-auto w-full portal-wide px-2">
-            <AppNav entries={entries} label={t("nav.main")} />
           </div>
         </div>
       </header>
-      {unreadBar(t, digest)}
-      {dataMode() === "memory" && process.env.NODE_ENV === "production" ? (
-        <div className="bg-amber-100 px-4 py-1 text-center text-xs text-amber-900">
-          {t("app.demoBanner")}
+      <div className="flex flex-1">
+        <AppSidebar
+          entries={entries}
+          footer={footerLinks}
+          labels={{
+            main: t("nav.main"),
+            collapse: t("nav.sidebar.collapse"),
+            expand: t("nav.sidebar.expand"),
+          }}
+          account={{
+            name: user.name,
+            role: roleLabel,
+            email: loginLabel(user.email),
+            label: t("nav.user"),
+            menu: account,
+          }}
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          {unreadBar(t, digest)}
+          {dataMode() === "memory" && process.env.NODE_ENV === "production" ? (
+            <div className="bg-amber-100 px-4 py-1 text-center text-xs text-amber-900">
+              {t("app.demoBanner")}
+            </div>
+          ) : null}
+          <main className="mx-auto w-full portal-wide flex-1 px-4 py-6 sm:py-8 lg:px-6">
+            {/* "Voltar" em todas as telas: para a tela anterior desta aba. */}
+            <Suspense fallback={null}>
+              <BackButton label={t("common.back")} menu={menuHrefs} />
+            </Suspense>
+            {/* Senha provisória: antes da troca, nenhuma tela abre. */}
+            {user.mustChangePassword ? (
+              <PasswordChangeCard t={t} firstAccess />
+            ) : (
+              <ChatAccess enabled={seesMessages}>{children}</ChatAccess>
+            )}
+          </main>
+          <footer className="border-t border-zinc-200 bg-white">
+            <div className="mx-auto flex w-full portal-wide flex-wrap items-center justify-between gap-3 px-4 py-4 text-xs text-zinc-500">
+              <div className="flex items-center gap-3">
+                <WellmixLogo className="h-5" />
+                <span>
+                  {t("app.name")} · {t("app.tagline")}
+                </span>
+              </div>
+              <span>© Wellmix</span>
+            </div>
+          </footer>
         </div>
-      ) : null}
-      <main className="mx-auto w-full portal-wide flex-1 px-4 py-6 sm:py-8">
-        {/* "Voltar" em todas as telas: para a tela anterior desta aba. */}
-        <Suspense fallback={null}>
-          <BackButton
-            label={t("common.back")}
-            menu={flattenNav(nav).map((l) => l.href)}
-          />
-        </Suspense>
-        {/* Senha provisória: antes da troca, nenhuma tela abre. */}
-        {user.mustChangePassword ? (
-          <PasswordChangeCard t={t} firstAccess />
-        ) : (
-          <ChatAccess enabled={seesMessages}>{children}</ChatAccess>
-        )}
-      </main>
+      </div>
       {/* Painel lateral de chat: abre de qualquer linha com o ícone de conversa. */}
       {seesMessages ? (
         <ChatDrawer
@@ -455,17 +497,6 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           }}
         />
       ) : null}
-      <footer className="border-t border-zinc-200 bg-white">
-        <div className="mx-auto flex w-full portal-wide flex-wrap items-center justify-between gap-3 px-4 py-4 text-xs text-zinc-500">
-          <div className="flex items-center gap-3">
-            <WellmixLogo className="h-5" />
-            <span>
-              {t("app.name")} · {t("app.tagline")}
-            </span>
-          </div>
-          <span>© Wellmix</span>
-        </div>
-      </footer>
     </div>
   );
 }

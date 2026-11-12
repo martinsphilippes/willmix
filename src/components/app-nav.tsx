@@ -10,53 +10,167 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { isActiveHref } from "@/lib/nav";
+import { isActiveHref, type NavIcon } from "@/lib/nav";
+import { UserMenu } from "@/components/user-menu";
 
 /*
- * Menu principal. No computador: uma linha com os grupos (Wellmix: Início,
- * Pedidos, Cadastros, Gestão; demais papéis: Início, Pedidos) abrindo uma
- * lista; grupo com uma tela só aparece como link. No celular: botão
- * "Menu" que abre um painel com tudo (grupos como títulos) e, no fim, idioma,
- * conta de demonstração e Sair. O item da tela atual fica destacado; um grupo
- * fica destacado quando a tela atual está dentro dele. Listas e painel fecham
- * ao escolher um item, ao navegar, ao clicar fora e com Esc (foco volta ao
- * botão que abriu).
+ * Menu lateral (decisão do dono, 12/11/2026). No computador: barra fixa à
+ * esquerda, abaixo do cabeçalho, com os links do dia a dia no alto, os grupos
+ * que abrem e fecham (o da tela atual abre sozinho) e, fixos embaixo,
+ * Configurações, Equipe e acessos e Auditoria. O botão « recolhe a barra para
+ * só os ícones (o nome aparece ao passar o mouse); a escolha e os grupos
+ * abertos ficam guardados no navegador. No celular: botão "Menu" que abre o
+ * mesmo menu num painel e, no fim, idioma, conta de demonstração e Sair.
  */
 
 export interface NavItemView {
   href: string;
   label: string;
+  icon?: NavIcon;
   /** Contador (ex.: mensagens não lidas); zero ou ausente não aparece. */
   badge?: number;
   /** Texto do contador para leitores de tela ("3 não lidas"). */
   badgeLabel?: string;
 }
 export interface NavEntryView {
+  /** Chave estável do grupo (para lembrar se está aberto). */
+  id?: string;
   label: string;
   href?: string;
+  icon?: NavIcon;
   items?: NavItemView[];
   badge?: number;
   badgeLabel?: string;
+}
+
+const ICON_PATHS: Record<NavIcon, ReactNode> = {
+  tower: (
+    <>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  tasks: (
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="m8.5 12 2.5 2.5 4.5-5" />
+    </>
+  ),
+  messages: <path d="M4 5h16v11H9l-5 4V5Z" />,
+  bell: (
+    <>
+      <path d="M6 9a6 6 0 1 1 12 0v4.5l1.6 2.4a.6.6 0 0 1-.5.9H4.9a.6.6 0 0 1-.5-.9L6 13.5V9Z" />
+      <path d="M10 19.5a2 2 0 0 0 4 0" />
+    </>
+  ),
+  cart: (
+    <>
+      <path d="M3 4h2l2.2 10.5a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L21 8H6" />
+      <circle cx="9.5" cy="19.5" r="1.2" />
+      <circle cx="17" cy="19.5" r="1.2" />
+    </>
+  ),
+  ship: (
+    <>
+      <path d="M3 15h18l-2.5 4.5h-13L3 15Z" />
+      <path d="M6 15V9h12v6" />
+      <path d="M9 9V5h6v4" />
+    </>
+  ),
+  money: (
+    <>
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M6.5 9.5h.01M17.5 14.5h.01" />
+    </>
+  ),
+  chart: (
+    <>
+      <path d="M4 20V4" />
+      <path d="M4 20h16" />
+      <path d="M8 16v-5M12 16V8M16 16v-3" />
+    </>
+  ),
+  folder: (
+    <path d="M3.5 6.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-11Z" />
+  ),
+  settings: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8" />
+    </>
+  ),
+  team: (
+    <>
+      <circle cx="9" cy="8.5" r="3" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <circle cx="17" cy="9.5" r="2.3" />
+      <path d="M15.5 14.2A4.5 4.5 0 0 1 21 18.5" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M12 3 5 6v5.5c0 4.2 3 7.8 7 9.5 4-1.7 7-5.3 7-9.5V6l-7-3Z" />
+      <path d="m9 12 2 2 4-4" />
+    </>
+  ),
+  home: (
+    <>
+      <path d="M4 11 12 4l8 7" />
+      <path d="M6 9.5V20h12V9.5" />
+    </>
+  ),
+  box: (
+    <>
+      <path d="M4 7.5 12 4l8 3.5v9L12 20l-8-3.5v-9Z" />
+      <path d="M4 7.5 12 11l8-3.5M12 11v9" />
+    </>
+  ),
+};
+
+function Icon({ name, className }: { name?: NavIcon; className?: string }) {
+  if (!name) return <span aria-hidden className={className} />;
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      {ICON_PATHS[name]}
+    </svg>
+  );
 }
 
 /** Selo com o contador ao lado do item (no grupo, a soma dos itens). */
 function CountBadge({
   n,
   label,
-  light,
+  dot,
 }: {
   n?: number;
   label?: string;
-  light?: boolean;
+  /** Menu recolhido: só um ponto sobre o ícone. */
+  dot?: boolean;
 }) {
   if (!n || n <= 0) return null;
+  if (dot)
+    return (
+      <span
+        aria-label={label}
+        data-nav-badge={n}
+        className="absolute right-1.5 top-1 h-2 w-2 rounded-full bg-brand-600 ring-2 ring-white"
+      />
+    );
   return (
     <span
       aria-label={label}
       data-nav-badge={n}
-      className={`ml-1.5 inline-flex min-w-4.5 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-4.5 ${
-        light ? "bg-white text-brand-700" : "bg-brand-600 text-white"
-      }`}
+      className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-[10px] font-bold leading-5 text-white"
     >
       {n > 99 ? "99+" : n}
     </span>
@@ -78,172 +192,346 @@ function useCloseOnNavigate(close: () => void) {
   }, [pathname, close]);
 }
 
-const linkBase =
-  "whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition focus-visible:outline-white";
-const linkIdle = "text-white/80 hover:bg-white/10 hover:text-white";
-const linkActive = "bg-white/15 text-white";
-const popover =
-  "absolute top-full z-30 mt-1 min-w-48 rounded-xl border border-zinc-200 bg-white p-1.5 text-zinc-800 shadow-lg shadow-zinc-900/10";
-const popoverLink = (current: boolean) =>
-  `block rounded-lg px-3 py-2 text-sm transition ${
-    current ? "bg-brand-50 font-semibold text-brand-700" : "hover:bg-zinc-100"
-  }`;
+const COLLAPSED_KEY = "wm-nav-collapsed";
+const OPEN_KEY = "wm-nav-open";
 
-function GroupMenu({
-  entry,
-  active,
-}: {
-  entry: NavEntryView & { items: NavItemView[] };
-  active: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  // Lista perto da borda direita abre alinhada à direita (não sai da tela).
-  const [alignEnd, setAlignEnd] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  const button = useRef<HTMLButtonElement>(null);
-  const id = useId();
-  const pathname = usePathname();
-  const close = useCallback(() => setOpen(false), []);
-  useCloseOnNavigate(close);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (root.current && !root.current.contains(e.target as Node))
-        setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        button.current?.focus();
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-  function toggle() {
-    if (!open && button.current) {
-      const rect = button.current.getBoundingClientRect();
-      setAlignEnd(rect.left + 224 > window.innerWidth);
-    }
-    setOpen((v) => !v);
+function readOpen(): string[] {
+  try {
+    const raw = window.localStorage.getItem(OPEN_KEY);
+    const list: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list)
+      ? list.filter((v): v is string => typeof v === "string")
+      : [];
+  } catch {
+    return [];
   }
+}
+function save(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Sem armazenamento (aba privada): o menu só não lembra.
+  }
+}
+
+const rowBase =
+  "relative flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-600";
+const rowIdle = "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900";
+const rowActive = "bg-brand-50 font-semibold text-brand-700";
+
+/** Link do menu (solto ou dentro do grupo). */
+function NavRow({
+  item,
+  collapsed,
+  nested,
+  onNavigate,
+}: {
+  item: NavItemView;
+  collapsed: boolean;
+  nested?: boolean;
+  onNavigate?: () => void;
+}) {
+  const pathname = usePathname();
+  const current = isActiveHref(item.href, pathname);
   return (
-    <div
-      ref={root}
-      className="relative"
-      onBlur={(e) => {
-        // Foco saiu da lista (Tab): fecha.
-        if (open && !root.current?.contains(e.relatedTarget as Node | null))
-          setOpen(false);
-      }}
+    <Link
+      href={item.href}
+      aria-current={current ? "page" : undefined}
+      title={collapsed ? item.label : undefined}
+      aria-label={collapsed ? item.label : undefined}
+      onClick={onNavigate}
+      data-nav-link={item.href}
+      className={`${rowBase} ${current ? rowActive : rowIdle} ${
+        nested ? "py-1.5 pl-10" : ""
+      } ${collapsed ? "justify-center px-0" : ""}`}
     >
+      {nested ? null : <Icon name={item.icon} className="h-5 w-5 shrink-0" />}
+      {collapsed ? null : <span className="truncate">{item.label}</span>}
+      <CountBadge n={item.badge} label={item.badgeLabel} dot={collapsed} />
+    </Link>
+  );
+}
+
+/** Grupo que abre e fecha; o da tela atual abre sozinho. */
+function NavGroupRow({
+  entry,
+  items,
+  open,
+  collapsed,
+  onToggle,
+  onNavigate,
+}: {
+  entry: NavEntryView;
+  items: NavItemView[];
+  open: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
+  onNavigate?: () => void;
+}) {
+  const pathname = usePathname();
+  const id = useId();
+  const active = items.some((i) => isActiveHref(i.href, pathname));
+  const badge = groupBadge(items);
+  return (
+    <div data-nav-group={entry.label}>
       <button
-        ref={button}
         type="button"
-        aria-expanded={open}
-        aria-controls={id}
-        aria-current={active ? "true" : undefined}
-        onClick={toggle}
-        data-nav-group={entry.label}
-        className={`${linkBase} inline-flex items-center gap-1 ${active ? linkActive : linkIdle}`}
+        aria-expanded={collapsed ? undefined : open}
+        aria-controls={collapsed ? undefined : id}
+        title={collapsed ? entry.label : undefined}
+        aria-label={collapsed ? entry.label : undefined}
+        onClick={onToggle}
+        className={`${rowBase} ${
+          active ? "font-semibold text-brand-700" : rowIdle
+        } ${active && collapsed ? "bg-brand-50" : ""} ${
+          collapsed ? "justify-center px-0" : ""
+        }`}
       >
-        {entry.label}
-        <CountBadge n={groupBadge(entry.items)} light />
-        <svg
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden
-          className={`h-3.5 w-3.5 opacity-80 transition ${open ? "rotate-180" : ""}`}
-        >
-          <path
-            fillRule="evenodd"
-            d="M5.3 7.3a1 1 0 0 1 1.4 0L10 10.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.4Z"
-            clipRule="evenodd"
-          />
-        </svg>
+        <Icon name={entry.icon} className="h-5 w-5 shrink-0" />
+        {collapsed ? (
+          <CountBadge n={badge} dot />
+        ) : (
+          <>
+            <span className="truncate">{entry.label}</span>
+            {open ? null : <CountBadge n={badge} />}
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden
+              className={`h-4 w-4 shrink-0 text-zinc-400 transition ${
+                badge > 0 && !open ? "" : "ml-auto"
+              } ${open ? "rotate-180" : ""}`}
+            >
+              <path
+                fillRule="evenodd"
+                d="M5.3 7.3a1 1 0 0 1 1.4 0L10 10.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.4Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </>
+        )}
       </button>
-      {open ? (
-        <div
-          id={id}
-          data-nav-panel
-          className={`${popover} ${alignEnd ? "right-0" : "left-0"}`}
-        >
-          {entry.items.map((item) => {
-            const current = isActiveHref(item.href, pathname);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={current ? "page" : undefined}
-                onClick={close}
-                className={popoverLink(current)}
-              >
-                {item.label}
-                <CountBadge n={item.badge} label={item.badgeLabel} />
-              </Link>
-            );
-          })}
+      {open && !collapsed ? (
+        <div id={id} role="group" className="mt-0.5 space-y-0.5">
+          {items.map((item) => (
+            <NavRow
+              key={item.href}
+              item={item}
+              collapsed={false}
+              nested
+              onNavigate={onNavigate}
+            />
+          ))}
         </div>
       ) : null}
     </div>
   );
 }
 
-/** Linha do menu no computador. */
-export function AppNav({
+/** Lista do menu (computador e celular). */
+function NavList({
   entries,
+  footer,
   label,
+  collapsed,
+  onExpand,
+  onNavigate,
+  bottom,
 }: {
   entries: NavEntryView[];
+  footer: NavItemView[];
   label: string;
+  collapsed: boolean;
+  /** Clicar num grupo com o menu recolhido abre o menu. */
+  onExpand?: () => void;
+  onNavigate?: () => void;
+  bottom?: ReactNode;
 }) {
   const pathname = usePathname();
+  const current = entries.find((e) =>
+    e.items?.some((i) => isActiveHref(i.href, pathname)),
+  )?.id;
+  // Já no servidor o grupo da tela atual vem aberto (sem piscar).
+  const [open, setOpen] = useState<string[]>(current ? [current] : []);
+  // Grupos abertos guardados; ao entrar numa tela, o grupo dela abre.
+  useEffect(() => {
+    const saved = readOpen();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage só existe no navegador
+    setOpen(current && !saved.includes(current) ? [...saved, current] : saved);
+  }, [current]);
+  function toggle(id: string) {
+    const opened = open.includes(id);
+    const next =
+      opened && !collapsed
+        ? open.filter((v) => v !== id)
+        : opened
+          ? open
+          : [...open, id];
+    setOpen(next);
+    save(OPEN_KEY, JSON.stringify(next));
+    // Com o menu recolhido, clicar no grupo abre o menu já com ele aberto.
+    if (collapsed) onExpand?.();
+  }
   return (
-    <nav
-      aria-label={label}
-      className="flex flex-wrap items-center gap-0.5 py-1.5"
+    <>
+      <nav
+        aria-label={label}
+        className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-2 py-3"
+        data-sidebar-nav
+      >
+        {entries.map((entry, i) =>
+          entry.items ? (
+            <div key={entry.id ?? entry.label} className={i > 0 ? "pt-1" : ""}>
+              <NavGroupRow
+                entry={entry}
+                items={entry.items}
+                open={open.includes(entry.id ?? entry.label)}
+                collapsed={collapsed}
+                onToggle={() => toggle(entry.id ?? entry.label)}
+                onNavigate={onNavigate}
+              />
+            </div>
+          ) : (
+            <NavRow
+              key={entry.href}
+              item={{
+                href: entry.href!,
+                label: entry.label,
+                icon: entry.icon,
+                badge: entry.badge,
+                badgeLabel: entry.badgeLabel,
+              }}
+              collapsed={collapsed}
+              onNavigate={onNavigate}
+            />
+          ),
+        )}
+      </nav>
+      {footer.length > 0 || bottom ? (
+        <div
+          className="space-y-0.5 border-t border-zinc-200 px-2 py-3"
+          data-sidebar-footer
+        >
+          {footer.map((item) => (
+            <NavRow
+              key={item.href}
+              item={item}
+              collapsed={collapsed}
+              onNavigate={onNavigate}
+            />
+          ))}
+          {bottom}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+/** Barra lateral do computador (a partir do tablet). */
+export function AppSidebar({
+  entries,
+  footer,
+  labels,
+  account,
+}: {
+  entries: NavEntryView[];
+  footer: NavItemView[];
+  labels: { main: string; collapse: string; expand: string };
+  /** Conta no pé do menu (nome, papel e o cartão com senha e Sair). */
+  account?: {
+    name: string;
+    role: string;
+    email: string;
+    label: string;
+    menu: ReactNode;
+  };
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage só existe no navegador
+      setCollapsed(window.localStorage.getItem(COLLAPSED_KEY) === "1");
+    } catch {
+      // Sem armazenamento: começa aberto.
+    }
+  }, []);
+  function setAndSave(value: boolean) {
+    setCollapsed(value);
+    save(COLLAPSED_KEY, value ? "1" : "0");
+  }
+  return (
+    <aside
+      data-sidebar
+      data-sidebar-collapsed={collapsed ? "1" : "0"}
+      className={`sticky top-(--wm-header) hidden h-[calc(100dvh-var(--wm-header))] shrink-0 flex-col border-r border-zinc-200 bg-white transition-[width] duration-150 md:flex print:hidden ${
+        collapsed ? "w-16" : "w-64"
+      }`}
     >
-      {entries.map((entry) =>
-        entry.items ? (
-          <GroupMenu
-            key={entry.label}
-            entry={entry as NavEntryView & { items: NavItemView[] }}
-            active={entry.items.some((i) => isActiveHref(i.href, pathname))}
-          />
-        ) : (
-          <Link
-            key={entry.href}
-            href={entry.href!}
-            aria-current={
-              isActiveHref(entry.href!, pathname) ? "page" : undefined
-            }
-            className={`${linkBase} ${isActiveHref(entry.href!, pathname) ? linkActive : linkIdle}`}
+      <div
+        className={`flex px-2 pt-2 ${collapsed ? "justify-center" : "justify-end"}`}
+      >
+        <button
+          type="button"
+          onClick={() => setAndSave(!collapsed)}
+          aria-label={collapsed ? labels.expand : labels.collapse}
+          title={collapsed ? labels.expand : labels.collapse}
+          data-sidebar-toggle
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 focus-visible:outline-2 focus-visible:outline-brand-600"
+        >
+          <svg
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+            className={`h-4 w-4 transition ${collapsed ? "rotate-180" : ""}`}
           >
-            {entry.label}
-            <CountBadge n={entry.badge} label={entry.badgeLabel} light />
-          </Link>
-        ),
-      )}
-    </nav>
+            <path d="m11 5-5 5 5 5M16 5l-5 5 5 5" />
+          </svg>
+        </button>
+      </div>
+      <NavList
+        entries={entries}
+        footer={footer}
+        label={labels.main}
+        collapsed={collapsed}
+        onExpand={() => setAndSave(false)}
+        bottom={
+          account ? (
+            <div className="mt-2 border-t border-zinc-100 pt-2">
+              <UserMenu
+                name={account.name}
+                role={account.role}
+                email={account.email}
+                label={account.label}
+                placement="sidebar"
+                compact={collapsed}
+              >
+                {account.menu}
+              </UserMenu>
+            </div>
+          ) : null
+        }
+      />
+    </aside>
   );
 }
 
 /** Celular: botão que abre o painel com todo o menu e, no fim, os "extras" (idioma, demo, Sair). */
 export function MobileNav({
   entries,
+  footer,
   labels,
   extras,
 }: {
   entries: NavEntryView[];
+  footer: NavItemView[];
   labels: { open: string; close: string; main: string };
   extras?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const pathname = usePathname();
   const id = useId();
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -277,25 +565,6 @@ export function MobileNav({
       trigger?.focus();
     };
   }, [open]);
-  const item = (link: NavItemView) => {
-    const current = isActiveHref(link.href, pathname);
-    return (
-      <Link
-        key={link.href}
-        href={link.href}
-        aria-current={current ? "page" : undefined}
-        onClick={close}
-        className={`block rounded-lg px-3 py-2.5 text-base transition ${
-          current
-            ? "bg-brand-50 font-semibold text-brand-700"
-            : "text-zinc-800 hover:bg-zinc-100"
-        }`}
-      >
-        {link.label}
-        <CountBadge n={link.badge} label={link.badgeLabel} />
-      </Link>
-    );
-  };
   return (
     <>
       <button
@@ -306,7 +575,7 @@ export function MobileNav({
         aria-label={open ? labels.close : labels.open}
         onClick={() => setOpen((v) => !v)}
         data-mobile-menu
-        className="-mr-2 inline-flex h-11 w-11 items-center justify-center rounded-lg text-white/90 transition hover:bg-white/10 focus-visible:outline-white"
+        className="-ml-2 inline-flex h-11 w-11 items-center justify-center rounded-lg text-white/90 transition hover:bg-white/10 focus-visible:outline-white"
       >
         <svg
           viewBox="0 0 24 24"
@@ -332,35 +601,15 @@ export function MobileNav({
           aria-modal="true"
           aria-label={labels.main}
           data-mobile-panel
-          className="fixed inset-x-0 bottom-0 top-14 z-40 overflow-y-auto bg-white text-zinc-900"
+          className="fixed inset-x-0 bottom-0 top-14 z-40 flex flex-col overflow-y-auto bg-white text-zinc-900"
         >
-          <nav aria-label={labels.main} className="space-y-1 px-3 py-3">
-            {entries.map((entry, i) =>
-              entry.items ? (
-                <div
-                  key={entry.label}
-                  role="group"
-                  aria-labelledby={`${id}-g${i}`}
-                  className="pt-2"
-                >
-                  <h2
-                    id={`${id}-g${i}`}
-                    className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
-                  >
-                    {entry.label}
-                  </h2>
-                  {entry.items.map(item)}
-                </div>
-              ) : (
-                item({
-                  href: entry.href!,
-                  label: entry.label,
-                  badge: entry.badge,
-                  badgeLabel: entry.badgeLabel,
-                })
-              ),
-            )}
-          </nav>
+          <NavList
+            entries={entries}
+            footer={footer}
+            label={labels.main}
+            collapsed={false}
+            onNavigate={close}
+          />
           {extras ? (
             <div className="space-y-4 border-t border-zinc-200 px-3 py-4">
               {extras}

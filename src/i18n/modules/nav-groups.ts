@@ -15,6 +15,17 @@ export const pt = {
   "nav.language": "Idioma",
   "nav.demo": "Conta de demonstração",
   "nav.notifications.unread": "{n} não lida(s)",
+  "nav.group.purchasing": "Compras",
+  "nav.group.delivery": "Pedidos e entrega",
+  "nav.group.finance": "Financeiro",
+  "nav.group.panels": "Painéis",
+  "nav.group.myBookings": "Meus bookings",
+  "nav.purchaseOrders": "Pedidos de compra",
+  "nav.teamAccess": "Equipe e acessos",
+  "nav.sidebar.collapse": "Recolher menu",
+  "nav.sidebar.expand": "Expandir menu",
+  "parties.all.subtitle":
+    "Clientes, fornecedores e demais parceiros num cadastro só. Use os filtros por tipo. Listas com a conta de cada um:",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -30,6 +41,17 @@ export const en: Record<keyof typeof pt, string> = {
   "nav.language": "Language",
   "nav.demo": "Demo account",
   "nav.notifications.unread": "{n} unread",
+  "nav.group.purchasing": "Purchasing",
+  "nav.group.delivery": "Orders and delivery",
+  "nav.group.finance": "Finance",
+  "nav.group.panels": "Dashboards",
+  "nav.group.myBookings": "My bookings",
+  "nav.purchaseOrders": "Purchase orders",
+  "nav.teamAccess": "Team and access",
+  "nav.sidebar.collapse": "Collapse menu",
+  "nav.sidebar.expand": "Expand menu",
+  "parties.all.subtitle":
+    "Customers, suppliers and other partners in one register. Filter by type. Lists with each account:",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -45,4 +67,15 @@ export const zh: Record<keyof typeof pt, string> = {
   "nav.language": "语言",
   "nav.demo": "演示账号",
   "nav.notifications.unread": "{n} 条未读",
+  "nav.group.purchasing": "采购",
+  "nav.group.delivery": "订单与交付",
+  "nav.group.finance": "财务",
+  "nav.group.panels": "看板",
+  "nav.group.myBookings": "我的订舱",
+  "nav.purchaseOrders": "采购订单",
+  "nav.teamAccess": "团队与权限",
+  "nav.sidebar.collapse": "收起菜单",
+  "nav.sidebar.expand": "展开菜单",
+  "parties.all.subtitle":
+    "客户、供应商和其他合作方统一登记，可按类型筛选。各自账户的列表：",
 };

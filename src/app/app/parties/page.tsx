@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
-import { PARTY_TYPE_SCREEN, isOtherPartyType } from "@/lib/party-types";
+import { PARTY_TYPE_SCREEN } from "@/lib/party-types";
 import { isAdmin } from "@/lib/auth/permissions";
 import {
   partnerTypeName,
@@ -41,18 +41,13 @@ export default async function PartiesPage({
   if (!user) redirect("/login");
   requireScreen(user, "parties");
   const { type: rawType } = await searchParams;
-  // Clientes e fornecedores têm telas próprias: o endereço antigo
-  // (?type=supplier, ?type=customer) leva para lá.
-  const own =
-    typeof rawType === "string"
-      ? PARTY_TYPE_SCREEN[rawType as keyof typeof PARTY_TYPE_SCREEN]
-      : undefined;
-  if (own) redirect(own);
   const t = await getT();
   const store = getStore();
-  // Só os outros parceiros (agência, despachante, transportadora, OCP… e os
-  // tipos criados no painel).
-  const [all, catalog, users] = await Promise.all([
+  // Parceiros numa tela só (decisão do dono, 12/11/2026): clientes,
+  // fornecedores e os demais tipos (agência, despachante, armador, OCP… e os
+  // criados no painel), com filtro por tipo. A ficha de cliente e de
+  // fornecedor continua na tela própria (conta, scorecard, exportação).
+  const [parties, catalog, users] = await Promise.all([
     store.list("parties", { orderBy: "name" }),
     getPartnerTypeCatalog(),
     store.list("users"),
@@ -62,27 +57,40 @@ export default async function PartiesPage({
   for (const u of users)
     if (u.active && u.partyId)
       logins.set(u.partyId, (logins.get(u.partyId) ?? 0) + 1);
-  const parties = all.filter((p) => isOtherPartyType(p.type));
-  // Filtros: os tipos ativos e os inativos que ainda têm cadastro.
+  // Filtros: Clientes, Fornecedores e os tipos ativos e os inativos que ainda
+  // têm cadastro.
   const inUse = new Set(parties.map(partyTypeValue));
+  const own = [
+    { value: "customer", label: t("nav.customers") },
+    { value: "supplier", label: t("nav.suppliers") },
+  ];
   const chips = catalog.filter((e) => e.active || inUse.has(e.value));
   const type =
-    typeof rawType === "string" && chips.some((e) => e.value === rawType)
+    typeof rawType === "string" &&
+    (own.some((e) => e.value === rawType) ||
+      chips.some((e) => e.value === rawType))
       ? rawType
       : "";
   const filtered = type
     ? parties.filter((p) => partyTypeValue(p) === type)
     : parties;
+  /** Ficha do parceiro: cliente e fornecedor na tela própria. */
+  const detailHref = (p: (typeof parties)[number]) => {
+    const base = PARTY_TYPE_SCREEN[p.type as keyof typeof PARTY_TYPE_SCREEN];
+    return `${base ?? "/app/parties"}/${p.id}`;
+  };
+  const typeLabel = (p: (typeof parties)[number]) =>
+    own.find((e) => e.value === p.type)?.label ?? partyTypeLabel(p, catalog, t);
 
   return (
     <>
       <PageHeader
         help={{ body: "help.parties.body", steps: "help.parties.steps" }}
         t={t}
-        title={t("parties.other.title")}
+        title={t("nav.parties")}
         subtitle={
-          <span data-parties-other>
-            {t("parties.other.subtitle")}{" "}
+          <span data-parties-all>
+            {t("parties.all.subtitle")}{" "}
             <TextLink href="/app/customers">{t("nav.customers")}</TextLink>
             {" · "}
             <TextLink href="/app/suppliers">{t("nav.suppliers")}</TextLink>
@@ -126,6 +134,17 @@ export default async function PartiesPage({
         >
           {t("common.all")}
         </Link>
+        {own.map((entry) => (
+          <Link
+            key={entry.value}
+            href={`/app/parties?type=${entry.value}`}
+            aria-current={type === entry.value ? "page" : undefined}
+            className={chipClass(type === entry.value)}
+            data-party-type-chip={entry.value}
+          >
+            {entry.label}
+          </Link>
+        ))}
         {chips.map((entry) => (
           <Link
             key={entry.value}
@@ -157,9 +176,9 @@ export default async function PartiesPage({
             {filtered.map((p) => (
               <tr key={p.id} className={rowClass}>
                 <Td>
-                  <TextLink href={`/app/parties/${p.id}`}>{p.name}</TextLink>
+                  <TextLink href={detailHref(p)}>{p.name}</TextLink>
                 </Td>
-                <Td>{partyTypeLabel(p, catalog, t)}</Td>
+                <Td>{typeLabel(p)}</Td>
                 <Td>{p.country ?? "—"}</Td>
                 <Td>
                   <span className="text-zinc-600">{p.email ?? "—"}</span>
