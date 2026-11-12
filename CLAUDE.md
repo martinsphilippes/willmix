@@ -9,7 +9,7 @@ Portal Operacional de Importações. Next.js 16 na Vercel; Supabase em produçã
 - `docs/APPWRITE.md` e `docs/AMBIENTE.md`: esquema, permissões, variáveis e limitações da sessão cloud.
 - `docs/SUPABASE.md`: troca do Appwrite pelo Supabase (etapas, esquema gerado, publicação).
 - `docs/BOOKING.md`, `docs/SUPPLIER_REQUESTS.md`, `docs/SUPERPLAN.md`, `docs/ORDER_SIGNATURE.md` e `docs/PURCHASE_ORDER.md`: do Booking ao pedido (bookings por planilha, seleção de itens e solicitação ao fornecedor, análise, negociação, documento com as duas assinaturas). A RFQ e a cotação saíram em 11/11/2026 (`docs/QUOTE_FLOW.md`).
-- `docs/RESUMOS.md`: resumo por pedido (`order_summaries`) da Control Tower, atualizado por evento e reconstruído toda noite; mudar o formato = subir `SUMMARY_VERSION`.
+- `docs/RESUMOS.md`: indicadores prontos (`kpi_snapshots`) e resumo por pedido (`order_summaries`), atualizados por evento e reconstruídos toda noite; mudar o formato = subir `SUMMARY_VERSION`/`KPI_VERSION`. Regra: KPIs e indicadores leem tabelas agregadas no nível do indicador, nunca tabelas por pedido ou produto.
 - `docs/PWA.md`: aplicativo instalável (manifesto, service worker, tela sem conexão) e responsividade.
 - `docs/INTEGRATIONS.md`: adaptadores mock/manual e dependências externas pendentes; `docs/SANKHYA.md` para o ERP.
 - Skills `.claude/skills/appwrite-cli` e `.claude/skills/appwrite-typescript` antes de rodar o CLI ou escrever código com o SDK.

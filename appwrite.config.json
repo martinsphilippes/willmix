@@ -10640,6 +10640,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "tasks",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "longtext"
         }
       ],
       "indexes": [

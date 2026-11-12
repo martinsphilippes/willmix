@@ -18,6 +18,38 @@ const { loadControlTower, loadTowerTotals } =
 const { buildTowerStages } = await import("@/lib/tower-stages");
 const summary = await import("@/lib/services/order-summary");
 const k = await import("@/lib/services/tower-kpis");
+const { pendingTasksFor } = await import("@/lib/services/tasks");
+type User = import("@/lib/db").User;
+
+/** O mesmo cálculo pelas tabelas (sem o marcador dos resumos). */
+async function withoutSummaries<T>(fn: () => Promise<T>): Promise<T> {
+  const store = getStore();
+  const [marker] = await store.list("settings", {
+    filter: { key: summary.SUMMARY_SETTING_KEY },
+  });
+  if (marker) await store.remove("settings", marker.id);
+  try {
+    return await fn();
+  } finally {
+    if (marker)
+      await store.create("settings", {
+        id: marker.id,
+        key: marker.key,
+        value: marker.value,
+      });
+  }
+}
+
+/** Pendências da Wellmix (admin e operador) pelo resumo e pelas tabelas: iguais. */
+async function expectSameTasks() {
+  const users = await getStore().list("users");
+  const operator = users.find((u) => u.role === "operator") as User;
+  for (const user of [scenario.admin, operator].filter(Boolean)) {
+    const fromSummary = await pendingTasksFor(user);
+    const fromTables = await withoutSummaries(() => pendingTasksFor(user));
+    expect(fromSummary, user.role).toEqual(fromTables);
+  }
+}
 type BoardCardKey = import("@/lib/services/tower-board").BoardCardKey;
 
 const NOW = new Date();
@@ -87,6 +119,12 @@ describe("indicadores prontos da Control Tower", () => {
   it("depois da reconstrução, os números são os da tela inteira", async () => {
     await summary.rebuildOrderSummaries(NOW);
     const { kpis, full } = await expectSame(NOW);
+    await expectSameTasks();
+    expect(
+      (await pendingTasksFor(scenario.admin)).some(
+        (t) => t.kind === "requirement",
+      ),
+    ).toBe(true);
     // O teste não compara telas vazias.
     expect(kpis.cards.ordPrepSankhya.count).toBeGreaterThan(0);
     expect(kpis.cards.parProduction.count).toBeGreaterThan(0);
@@ -163,6 +201,7 @@ describe("indicadores prontos da Control Tower", () => {
     await store.update("parties", "cliente-joao", { name: "Loja do João 3" });
     const fresh = await scenario.placeOrder("Garrafa F");
     const { kpis } = await expectSame(NOW);
+    await expectSameTasks();
     // Bloqueado (pedido fora do portal): entra nas visões "Problemas".
     const problems = await k.towerBucketRows("problems", NOW);
     expect(problems.rows.some((r) => r.id === c.id)).toBe(true);

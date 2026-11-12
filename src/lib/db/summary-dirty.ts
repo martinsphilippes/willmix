@@ -47,6 +47,8 @@ const pending = {
   orders: new Set<string>(),
   parties: new Set<string>(),
   kpi: false,
+  /** Etapa com prazo concluída (ou reaberta): refaz o "no prazo" do SLA. */
+  sla: false,
 };
 let scheduled = false;
 let chain: Promise<void> = Promise.resolve();
@@ -74,6 +76,14 @@ export function noteWrite(
     const orderId = (row as { orderId?: unknown } | null)?.orderId;
     if (typeof orderId !== "string" || !orderId) return;
     pending.orders.add(orderId);
+    if (table === "stages") {
+      const stage = row as { status?: string; dueAt?: string | null };
+      if (
+        stage.dueAt &&
+        (stage.status === "done" || (!!patch && "status" in patch))
+      )
+        pending.sla = true;
+    }
   } else if (table === "review_items") {
     // Revisão: do pedido dela (orderId ou, nos antigos, a entidade "order").
     const r = row as {
@@ -107,6 +117,15 @@ function schedule() {
 export function flushSummaryChanges(): Promise<void> {
   scheduled = false;
   chain = chain.then(async () => {
+    if (pending.sla) {
+      pending.sla = false;
+      try {
+        const { rebuildSlaDone } = await import("@/lib/services/sla-panel");
+        await rebuildSlaDone();
+      } catch (error) {
+        console.error("[sla] indicador por evento falhou", error);
+      }
+    }
     while (pending.orders.size || pending.parties.size || pending.kpi) {
       const changes = {
         orders: [...pending.orders],
@@ -135,5 +154,6 @@ export function pendingSummaryChanges() {
     orders: [...pending.orders],
     parties: [...pending.parties],
     kpi: pending.kpi,
+    sla: pending.sla,
   };
 }

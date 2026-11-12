@@ -1797,6 +1797,7 @@ alter table public."order_summaries" add column if not exists "version" bigint;
 alter table public."order_summaries" add column if not exists "facts" jsonb;
 alter table public."order_summaries" add column if not exists "computedAt" timestamptz;
 alter table public."order_summaries" add column if not exists "kpi" jsonb;
+alter table public."order_summaries" add column if not exists "tasks" jsonb;
 create index if not exists "order_summaries_by_order" on public."order_summaries" ("orderId");
 create index if not exists "order_summaries_by_live" on public."order_summaries" ("live");
 create index if not exists "order_summaries_created" on public."order_summaries" ("createdAt");

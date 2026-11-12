@@ -372,6 +372,7 @@ describe("resumo por pedido", () => {
       orders: [],
       parties: [],
       kpi: false,
+      sla: false,
     });
     const direct = await towerDirect();
     expect(after).toEqual(direct);

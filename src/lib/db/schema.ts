@@ -2537,6 +2537,11 @@ export interface OrderSummary extends BaseRow {
    * Lida sozinha (coluna pequena) para somar os indicadores.
    */
   kpi?: unknown;
+  /**
+   * Pendências da Wellmix nas etapas em andamento do pedido (`TaskDraft`s com
+   * a ordem da etapa, src/lib/services/tasks.ts): as mesmas para toda a equipe.
+   */
+  tasks?: unknown;
 }
 
 /**
@@ -4487,6 +4492,7 @@ export const TABLES: Record<TableName, TableDef> = {
       facts: jsonLarge(),
       computedAt: datetime(),
       kpi: json(),
+      tasks: jsonLarge(),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },

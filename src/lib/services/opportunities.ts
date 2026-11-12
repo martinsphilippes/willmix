@@ -107,10 +107,28 @@ export async function containerFillOpportunities(
       (user.role === "customer" && c.container.customerId === user.partyId),
   );
   if (containers.length === 0) return [];
-  const [products, items, orders] = await Promise.all([
+  // Só os pedidos dos clientes dos containers e só as colunas usadas (antes:
+  // pedidos e itens inteiros).
+  const customerIds = [
+    ...new Set(
+      containers
+        .map((c) => c.container.customerId)
+        .filter((x): x is string => !!x),
+    ),
+  ];
+  const { listColumns } = await import("@/lib/db/lookup");
+  const orders = customerIds.length
+    ? await listColumns(store, "orders", ["customerId"], {
+        filter: { customerId: customerIds },
+      })
+    : [];
+  const [products, items] = await Promise.all([
     store.list("products", { filter: { active: true } }),
-    store.list("order_items"),
-    store.list("orders"),
+    orders.length
+      ? listColumns(store, "order_items", ["orderId", "productId"], {
+          filter: { orderId: orders.map((o) => o.id) },
+        })
+      : Promise.resolve([]),
   ]);
   const out: ContainerFillOpportunity[] = [];
   for (const c of containers) {
