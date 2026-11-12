@@ -215,6 +215,30 @@ export async function decideSupplierRequestAction(form: FormData) {
   });
 }
 
+/**
+ * Depois de aprovar uma solicitação ligada: continuar negociando esta ou
+ * recusá-la. Volta para a tela de onde veio (`back`: a aprovada ou esta).
+ */
+export async function resolveLinkedRequestAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "id");
+  const backRaw = str(form, "back");
+  const back = ID.safeParse(backRaw).success
+    ? detail(backRaw)
+    : ID.safeParse(raw).success
+      ? detail(raw)
+      : "/app/supplier-requests";
+  await run(back, async () => {
+    const input = z
+      .object({ id: ID, choice: z.enum(["keep", "decline"]) })
+      .parse({ id: raw, choice: str(form, "choice") });
+    const { resolveLinkedRequest } =
+      await import("@/lib/services/supplier-requests");
+    await resolveLinkedRequest(user, input.id, input.choice);
+    return withQuery(back, "linked", input.choice);
+  });
+}
+
 /* ---- Produto da solicitação aprovada (docs/SUPPLIER_REQUESTS.md, "Produto") ---- */
 
 /** Itens marcados no formulário (ids). */
