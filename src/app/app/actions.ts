@@ -787,8 +787,12 @@ export async function savePartyAction(form: FormData) {
         phone: str(form, "phone") || null,
         taxId: str(form, "taxId") || null,
         notes: str(form, "notes") || null,
-        // O hidden "off" vem antes do checkbox: só a lista diz se "on" foi enviado.
-        active: form.getAll("active").includes("on"),
+        // Cadastro novo nasce ativo: o formulário de criação não tem a caixa
+        // de status, e sem isto todo parceiro novo nascia inativo e ficava
+        // fora das listas de escolha (ex.: responsável pelo booking). Na
+        // edição vale a caixa (o hidden "off" vem antes do checkbox: só a
+        // lista diz se "on" foi enviado).
+        active: id ? form.getAll("active").includes("on") : true,
       });
     const store = getStore();
     // O tipo sai do catálogo (docs/PARTNER_TYPES.md): inativo só continua no

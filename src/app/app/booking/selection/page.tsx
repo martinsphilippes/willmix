@@ -1,3 +1,4 @@
+import { isWellmix } from "@/lib/auth/permissions";
 import { LiveSearch } from "@/components/live-search";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -82,6 +83,8 @@ export default async function BookingSelectionPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/booking/selection");
   requireScreen(user, "booking");
+  // Só a Wellmix: o login externo com a tela Booking vê só os bookings dele.
+  if (!isWellmix(user)) redirect("/app/booking");
   const query = await searchParams;
   const q = typeof query.q === "string" ? query.q.slice(0, 200) : "";
   const error = typeof query.error === "string" ? query.error : "";

@@ -14,8 +14,14 @@ import {
   type PartnerAccessConfig,
   type ProfileAccess,
   type ScreenChange,
+  ANY_PROFILE_EXTRAS,
+  hasProfileExtras,
 } from "@/lib/partner-access";
-import { partnerTypeCatalog, type PartnerTypeEntry } from "@/lib/partner-types";
+import {
+  PARTNER_LOGIN_ROLE,
+  partnerTypeCatalog,
+  type PartnerTypeEntry,
+} from "@/lib/partner-types";
 import { audit } from "./audit";
 import { listPartnerTypeRows } from "./partner-types";
 
@@ -75,15 +81,21 @@ export async function profileKeyOfUser(
 
 /**
  * Telas do login externo pela Gestão de telas. Nulo = nada foi mudado para o
- * perfil dele: vale o padrão de fábrica do papel (sem leitura a mais).
+ * perfil dele: vale o padrão de fábrica do papel. Sem nada gravado, só o
+ * login que entra como o Fornecedor custa uma leitura a mais (o cadastro
+ * dele, para saber se é de um tipo com tela extra de fábrica).
  */
 export async function externalAccessFor(
   user: Pick<User, "role" | "partyId">,
 ): Promise<{ screens: string[]; menuHidden: string[] } | null> {
   const config = await loadPartnerAccess();
-  if (!Object.keys(config).length) return null;
+  // Tipos novos (Trading...) entram como o Fornecedor e podem ter tela de
+  // fábrica além das do papel (o Booking do Trading): aí o tipo conta mesmo
+  // sem nada gravado.
+  const mayHaveExtras = ANY_PROFILE_EXTRAS && user.role === PARTNER_LOGIN_ROLE;
+  if (!Object.keys(config).length && !mayHaveExtras) return null;
   const key = await profileKeyOfUser(user);
-  if (!config[key]) return null;
+  if (!config[key] && !hasProfileExtras(key)) return null;
   const access = resolveProfile(config, key);
   return { screens: access.screens, menuHidden: access.menuHidden };
 }

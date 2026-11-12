@@ -17,6 +17,7 @@ import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import {
   ALWAYS_OPEN,
   GRANTABLE_SCREENS,
+  isAdaptedInternal,
   isGrantable,
   isLimitedFor,
   originRoles,
@@ -129,10 +130,13 @@ export default async function PartnerAccessPage({
   ));
   const screenName = (screen: Screen) => t(SCREEN_LABEL[screen]);
   const originText = (screen: Screen) => {
-    const roles = originRoles(screen);
-    return roles.length
-      ? roles.map((r) => t(`role.${r}` as DictionaryKey)).join(", ")
-      : t("partnerAccess.origin.wellmix");
+    const roles = originRoles(screen).map((r) =>
+      t(`role.${r}` as DictionaryKey),
+    );
+    // Tela da equipe adaptada a um login externo (Booking): as duas origens.
+    return roles.length && !isAdaptedInternal(screen)
+      ? roles.join(", ")
+      : [t("partnerAccess.origin.wellmix"), ...roles].join(", ");
   };
   const sourceText = (access: ProfileAccess, screen: Screen) => {
     const source = access.sources[screen];

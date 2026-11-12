@@ -74,8 +74,45 @@ async function screensNow(user: User) {
 describe("regras puras", () => {
   it("padrão: o papel; nos tipos novos, o do Fornecedor", () => {
     expect(lib.defaultScreens("role:agency")).toEqual([...ROLE_SCREENS.agency]);
-    for (const key of ["type:trading", "type:factory", "type:gp", "type:x"])
+    for (const key of ["type:factory", "type:gp", "type:x"])
       expect(lib.defaultScreens(key)).toEqual([...ROLE_SCREENS.supplier]);
+    // Trading: as do Fornecedor mais a tela Booking (só os bookings dele).
+    expect(lib.defaultScreens("type:trading")).toEqual([
+      ...ROLE_SCREENS.supplier,
+      "booking",
+    ]);
+    // O Booking é uma tela interna adaptada: pode ser liberada a um login
+    // externo e tem dados para quem entra como o Fornecedor (responsável ou
+    // fornecedor do booking); nos outros papéis abre vazia. Não vem aberta
+    // no Fornecedor comum.
+    expect(lib.isGrantable("booking")).toBe(true);
+    expect(lib.isAdaptedInternal("booking")).toBe(true);
+    expect(lib.isAdaptedInternal("orders")).toBe(false);
+    expect(lib.originRoles("booking")).toEqual(["supplier"]);
+    expect(lib.isLimitedFor("booking", "type:trading")).toBe(false);
+    expect(lib.isLimitedFor("booking", "role:supplier")).toBe(false);
+    expect(lib.isLimitedFor("booking", "role:customer")).toBe(true);
+    expect(lib.isLimitedFor("booking", "role:agency")).toBe(true);
+    expect(lib.defaultScreens("role:supplier")).not.toContain("booking");
+    // Perfil do Trading gravado antes de o Booking existir: ganha a tela;
+    // depois de o administrador gravar de novo, vale o que ele marcou.
+    const old = {
+      "type:trading": {
+        screens: ["home", "orders"],
+        menuHidden: [],
+        sources: {},
+      },
+    };
+    expect(lib.resolveProfile(old, "type:trading").screens).toContain(
+      "booking",
+    );
+    const saved = lib.setProfileScreens(old, "type:trading", {
+      screens: ["orders"],
+      menuHidden: [],
+    });
+    expect(lib.resolveProfile(saved, "type:trading").screens).not.toContain(
+      "booking",
+    );
     const access = lib.resolveProfile({}, "type:trading");
     expect(access.custom).toBe(false);
     expect(access.sources.orders).toBe("default");
@@ -234,10 +271,15 @@ describe("regras puras", () => {
 });
 
 describe("serviço e sessão", () => {
-  it("o login de Trading nasce com as telas do Fornecedor", async () => {
+  it("o login de Trading nasce com as telas do Fornecedor mais o Booking", async () => {
     const now = await screensNow(trader);
-    expect(now.open).toEqual([...ROLE_SCREENS.supplier].sort());
-    expect(now.links).toEqual((await screensNow(supplier)).links);
+    expect(now.open).toEqual([...ROLE_SCREENS.supplier, "booking"].sort());
+    // O menu é o do Fornecedor mais a entrada do Booking.
+    expect(now.links).toContain("/app/booking");
+    expect(now.links.filter((l) => l !== "/app/booking")).toEqual(
+      (await screensNow(supplier)).links,
+    );
+    expect((await screensNow(supplier)).links).not.toContain("/app/booking");
     const profiles = await svc.listAccessProfiles();
     const trading = profiles.find((p) => p.key === "type:trading")!;
     expect(trading.users).toBe(1);
@@ -280,6 +322,7 @@ describe("serviço e sessão", () => {
     expect(changes.map((c) => `${c.change}:${c.screen}`).sort()).toEqual([
       "menu_hidden:orders",
       "removed:account",
+      "removed:booking",
       "removed:quotes",
     ]);
     const now = await screensNow(trader);
@@ -384,7 +427,7 @@ describe("serviço e sessão", () => {
       [...ROLE_SCREENS.supplier].sort(),
     );
     expect((await screensNow(trader)).open).toEqual(
-      [...ROLE_SCREENS.supplier].sort(),
+      [...ROLE_SCREENS.supplier, "booking"].sort(),
     );
   });
 });

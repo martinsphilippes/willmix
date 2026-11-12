@@ -1,3 +1,5 @@
+import { isWellmix } from "@/lib/auth/permissions";
+import { PartnerBookingLotView } from "../../_components/partner-booking";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -124,6 +126,10 @@ export default async function BookingLotPage({
   const { id } = await params;
   if (!user) redirect(`/login?next=/app/booking/lots/${id}`);
   requireScreen(user, "booking");
+  // Login externo (Trading): o booking dele, só para ler, sem a análise.
+  if (!isWellmix(user)) {
+    return <PartnerBookingLotView user={user} lotId={id} t={await getT()} />;
+  }
   const query = await searchParams;
   const one = (key: string) => {
     const v = query[key];

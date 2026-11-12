@@ -143,6 +143,15 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.getByText("Preparação, arte e certificação").first(),
   ).toBeVisible();
+  // Transportador: o pedido só designa sozinho quando há exatamente um ativo
+  // no cadastro. Outros testes cadastram mais transportadores (que nascem
+  // ativos), então a Wellmix designa aqui, em Parceiros do pedido.
+  const carrierRow = page.locator('[data-order-partner="carrier"]');
+  await carrierRow.locator("select").selectOption({ label: "Trans Rodo" });
+  await carrierRow.locator("button[type=submit]").click();
+  await page.waitForLoadState("networkidle");
+  await page.goto(orderUrl);
+  await expect(carrierRow.locator("td").nth(1)).toHaveText("Trans Rodo");
   // A solicitação fica presa ao pedido: não volta a ser candidata.
   await page.goto("/app/supplier-requests");
   await expect(

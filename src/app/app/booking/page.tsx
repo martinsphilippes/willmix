@@ -1,3 +1,5 @@
+import { isWellmix } from "@/lib/auth/permissions";
+import { PartnerBookingList } from "./_components/partner-booking";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -30,6 +32,8 @@ export default async function BookingLotsPage() {
   if (!user) redirect("/login?next=/app/booking");
   requireScreen(user, "booking");
   const t = await getT();
+  // Login externo (Trading): só os bookings da empresa dele, sem a análise.
+  if (!isWellmix(user)) return <PartnerBookingList user={user} t={t} />;
   const entries = await listBookingLots(user);
   const statusLabel = (s: string) =>
     t(`bookingLots.status.${s}` as DictionaryKey);
