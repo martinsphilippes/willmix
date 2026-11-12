@@ -52,6 +52,7 @@ import { audit } from "@/lib/services/audit";
 import { requesterTarget, notify } from "@/lib/services/notifications";
 import { DEFAULT_SETTINGS, setSetting, type SettingKey } from "@/lib/settings";
 import { loginLabel } from "@/lib/auth/login-id";
+import { AI_PROMPT_MAX } from "@/lib/ai-references";
 import {
   createPortalLogin,
   PORTAL_MIN_PASSWORD,
@@ -1103,7 +1104,21 @@ export async function saveSettingsAction(form: FormData) {
           throw new Error("quote_sla_invalid");
         value = days;
       } else if (typeof current === "number") value = Number(raw);
-      else if (key === "aiMode") {
+      else if (
+        key === "aiPromptProduct" ||
+        key === "aiPromptDetail" ||
+        key === "aiPromptSheet"
+      ) {
+        const v = String(raw).trim();
+        if (!v || v.length > AI_PROMPT_MAX)
+          throw new Error("ai_prompt_invalid");
+        value = v;
+      } else if (key === "openaiImageModel" || key === "openaiTextModel") {
+        const v = String(raw).trim();
+        if (!/^[A-Za-z0-9._:/-]{1,80}$/.test(v))
+          throw new Error("openai_model_invalid");
+        value = v;
+      } else if (key === "aiMode") {
         if (!["AUTO", "MOCK", "MANUAL"].includes(String(raw)))
           throw new Error("invalid_ai_mode");
         value = String(raw);

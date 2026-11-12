@@ -5,6 +5,7 @@ import { assertScreen } from "@/lib/auth/screens";
 import { GROUP_MAX } from "@/lib/booking-selection";
 import {
   getStore,
+  type AiReferencePrompts,
   type BookingItem,
   type SelectionGroup,
   type SupplierRequest,
@@ -55,6 +56,11 @@ export interface SaveSelectionGroupInput {
   needs: string | null;
   /** Programação de compra (rodadas); com ela, a quantidade é a soma. */
   schedule?: RequestSchedule | null;
+  /**
+   * Prompts de IA digitados (undefined = não veio no formulário, fica o que
+   * estava; null = os padrão das Configurações).
+   */
+  aiPrompts?: AiReferencePrompts | null;
 }
 
 /**
@@ -114,12 +120,21 @@ export async function saveSelectionGroup(
     // Sem programação grava nulo só quando a escolha já tinha uma (o esquema
     // antigo, sem a coluna, continua gravando a escolha simples).
     ...(schedule ? { schedule } : {}),
+    // Prompts de IA: o mesmo cuidado (só grava quando há prompt próprio).
+    ...(input.aiPrompts ? { aiPrompts: input.aiPrompts } : {}),
   };
   const [reuse, ...rest] = overlapping;
   const group = reuse
     ? await store.update("selection_groups", reuse.id, {
         ...values,
         ...(!schedule && reuse.schedule ? { schedule: null } : {}),
+        ...(input.aiPrompts === null && reuse.aiPrompts
+          ? { aiPrompts: null }
+          : {}),
+        // Outro ganhador: as imagens e a ficha eram do anterior.
+        ...(reuse.chosenItemId !== chosen.id && reuse.aiAssets?.length
+          ? { aiAssets: null }
+          : {}),
       })
     : await store.create("selection_groups", {
         ...values,
@@ -226,6 +241,9 @@ export async function openGroupRequests(
         },
         batches,
       );
+      // Imagens e ficha geradas por IA: vão para a solicitação (o fornecedor vê).
+      const { attachReferencesToRequest } = await import("./ai-references");
+      await attachReferencesToRequest(group, request.id);
       await store.update("selection_groups", group.id, {
         status: "requested",
         supplierRequestId: request.id,

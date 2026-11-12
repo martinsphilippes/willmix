@@ -248,6 +248,9 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   ).toBeDisabled();
   await expect(page.locator("[data-selection-submit]")).toBeVisible();
   await expect(page.locator("[data-selection-item]")).toHaveCount(3);
+  // Ao lado do bloco, os três prompts de IA com os padrões das Configurações.
+  await expect(page.locator("[data-ai-prompt]")).toHaveCount(3);
+  await expect(page.locator('[data-ai-prompt="product"]')).not.toHaveValue("");
   // Programação de compra pela cubagem (docs/PURCHASE_SCHEDULE.md): 48 peças
   // e 0,12 m³ por caixa → 566 caixas por 40HC; 60.000 peças = 1.250 caixas
   // em 3 rodadas (566 + 566 + 118), e a quantidade vira a soma.

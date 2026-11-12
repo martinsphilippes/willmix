@@ -9479,6 +9479,13 @@
           "type": "text"
         },
         {
+          "key": "aiAssets",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
           "key": "sampling",
           "required": false,
           "array": false,
@@ -9622,6 +9629,20 @@
         },
         {
           "key": "schedule",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "aiPrompts",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "aiAssets",
           "required": false,
           "array": false,
           "default": null,

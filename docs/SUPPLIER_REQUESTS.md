@@ -46,6 +46,19 @@ O quadrante de comparação **não abre a solicitação**: ele grava a escolha d
 5. **Abrir a solicitação** (`openGroupRequests`): "dos marcados" (cada bloco resolvido tem uma caixa, já marcada) ou "de todos". Abre **uma solicitação só por fornecedor**, com os ganhadores como produtos dela (ver "Uma solicitação, vários produtos"); de cada grupo vai **só o ganhador**; os outros itens do grupo vão como alternativas (só a Wellmix vê). O grupo passa a mostrar "Solicitação nº N aberta" com o link. Um grupo que não abre (ex.: item com solicitação em andamento) continua gravado e a tela diz o motivo; os demais abrem. Uma solicitação só (um fornecedor), sem falha, leva direto a ela.
 6. Só a Wellmix com a tela Booking grava, lista e abre. O fornecedor não tem acesso a `selection_groups`.
 
+### Referências por IA (pedido do dono, 12/11/2026)
+
+À direita do bloco "Gravar a escolha do grupo" fica o painel **Prompts de IA para o fornecedor**: três prompts que a OpenAI transforma em arquivos anexados à solicitação, para o fornecedor ver, além das demais informações, como o produto deve ficar de forma aproximada ao final da produção.
+
+1. **Imagem 1: produto final** e **Imagem 2: detalhes e embalagem** (imagens, modelo `openaiImageModel`, padrão `gpt-image-1`). Com foto no item do booking, a imagem parte dela (`/v1/images/edits`); sem foto, só do texto (`/v1/images/generations`).
+2. **Arquivo: ficha para o fornecedor** (texto .txt, em inglês e chinês, modelo `openaiTextModel`, padrão `gpt-5-mini`, `/v1/responses`).
+3. Cada prompt vai com os **dados do item** da planilha (descrição, código, material, cores, medidas, capacidade, embalagem, função, caixa) e **o que a Wellmix precisa** (`itemContext`, `src/lib/ai-references.ts`). Só o que a planilha tem: nada de número inventado.
+4. **Padrões em Configurações** (Visão de Produto → "Referências por IA na escolha do grupo"): `aiPromptProduct`, `aiPromptDetail`, `aiPromptSheet` e os dois modelos. Na escolha, o painel abre com os prompts dela ou os padrão; só o que difere do padrão é gravado (`selection_groups.aiPrompts`, `promptsToSave`).
+5. **"Gravar escolha"** grava os prompts sem gerar. **"Gravar e gerar com IA"** grava a escolha e gera os três arquivos (até 1 a 2 minutos; a página tem `maxDuration` 300 s). Gerar de novo troca os arquivos; o tipo que falhar fica como estava. A escolha fica gravada mesmo se a IA falhar, e o painel diz o motivo (chave recusada, limite/créditos, pedido recusado, sem resposta).
+6. Os arquivos ficam com a escolha (`selection_groups.aiAssets`; só a Wellmix abre). Ao **abrir a solicitação**, vão para ela (`supplier_requests.aiAssets` e `documents.supplierRequestId`): o fornecedor da solicitação vê o cartão **Referências geradas por IA** na tela do produto (`?view=item`), com o aviso de que são imagens aproximadas, não fotos de amostra. Outro fornecedor não abre (`canAccessDocument`).
+7. Outro ganhador na mesma escolha: os arquivos do anterior saem da escolha.
+8. **Modos** (`aiMode` das Configurações; `src/lib/integrations/openai-media.ts`): AUTO usa a OpenAI com `OPENAI_API_KEY` (só no servidor; Configurações mostra se a chave existe, nunca o valor); sem a chave, ou em MANUAL, o botão fica desligado e nada é gerado. MOCK gera exemplos rotulados "EXEMPLO MOCK" (testes e demonstração), com o selo "Exemplo mock".
+
 ### Regras da solicitação
 
 1. Uma solicitação **por item escolhido**; o item com solicitação Aberta ou Respondida recusa outra (`supplier_request_exists`). Depois de decidida, pode ter outra.
@@ -155,7 +168,7 @@ Com a tela Cadastros, cada nome leva ao quadro de acesso do cadastro (`/app/part
 
 Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_request_number`; o mesmo nos produtos da mesma solicitação), `batchId` (a solicitação a que o produto pertence), `status`, `supplierId` (índice `by_supplier`), `bookingItemId` (índice `by_item`), `bookingLotId`, `alternativeItemIds` (JSON), `item` (JSON, cópia do item), `quantity`, `unit`, `needs`, `searchQuery`, a resposta (`supplierCanDo`, `supplierPrice`, `supplierCurrency`, `supplierMoq`, `supplierLeadTimeDays`, `supplierNote`, `respondedAt`, `respondedByUserId`), a decisão (`decidedAt`, `decidedByUserId`, `decisionNote`), `createdByUserId` e o produto (`productId`, com índice `by_product`, `productAction` created/linked, `productLinkedAt`, `productLinkedByUserId`, `showcaseReleasedAt`, `showcaseReleasedByUserId`, `erpCheckedAt`), a negociação (`negotiation`, `slaNotifiedAt`), a modalidade de entrega da resposta (`supplierIncoterm`); índice `by_status`. Arquivos da conversa: `documents.supplierRequestId`. Antes de `npm run appwrite:push`, as telas avisam "esquema desatualizado".
 
-Tabela `selection_groups` (escolha por grupo): `status` saved/requested/replaced (índice `by_status`), `itemIds` (JSON), `chosenItemId` (índice `by_chosen`), `quantity`, `needs`, `supplierRequestId`, `requestedAt`, `createdByUserId`, `updatedByUserId`. Serviço em `src/lib/services/selection-groups.ts`; testes em `tests/unit/selection-groups.test.ts`.
+Tabela `selection_groups` (escolha por grupo): `status` saved/requested/replaced (índice `by_status`), `itemIds` (JSON), `chosenItemId` (índice `by_chosen`), `quantity`, `needs`, `supplierRequestId`, `requestedAt`, `createdByUserId`, `updatedByUserId`, `aiPrompts` (JSON, prompts próprios da escolha) e `aiAssets` (JSON, arquivos gerados pela IA; também em `supplier_requests.aiAssets`). Serviço em `src/lib/services/selection-groups.ts` e `src/lib/services/ai-references.ts`; testes em `tests/unit/selection-groups.test.ts` e `tests/unit/ai-references.test.ts`.
 
 ## Onde está
 

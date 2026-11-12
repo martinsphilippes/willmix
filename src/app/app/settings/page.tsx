@@ -151,6 +151,8 @@ export default async function SettingsPage({
         : t("common.error");
   /* Modo efetivo da IA (api/mock/manual): diz se a chave está no ambiente sem nunca exibi-la. */
   const ai = aiStatus(s);
+  // Só diz se a chave existe (nunca o valor).
+  const openaiKey = !!process.env.OPENAI_API_KEY?.trim();
   const aiEffective = ai.mode;
   const aiEffectiveKey = (
     ai.provider
@@ -620,6 +622,57 @@ export default async function SettingsPage({
                         name="importerName"
                         maxLength={120}
                         defaultValue={s.importerName}
+                      />
+                    </Field>
+                  </div>
+                </div>
+                {/* Referências por IA na escolha do grupo (OpenAI): prompts padrão e modelos. */}
+                <div className="space-y-3" data-settings-ai-references>
+                  <p className="text-sm font-semibold text-zinc-800">
+                    {t("aiRefs.settings.section")}{" "}
+                    <Badge tone={openaiKey ? "success" : "warning"}>
+                      {t(
+                        openaiKey
+                          ? "aiRefs.settings.key.on"
+                          : "aiRefs.settings.key.off",
+                      )}
+                    </Badge>
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    {t("aiRefs.settings.hint")}
+                  </p>
+                  {(
+                    [
+                      ["aiPromptProduct", "aiRefs.kind.product"],
+                      ["aiPromptDetail", "aiRefs.kind.detail"],
+                      ["aiPromptSheet", "aiRefs.kind.sheet"],
+                    ] as const
+                  ).map(([name, label]) => (
+                    <Field key={name} label={t(label)}>
+                      <Textarea
+                        name={name}
+                        rows={3}
+                        maxLength={2000}
+                        required
+                        defaultValue={s[name]}
+                      />
+                    </Field>
+                  ))}
+                  <div className="grid gap-3 @sm:grid-cols-2">
+                    <Field label={t("aiRefs.settings.imageModel")}>
+                      <Input
+                        name="openaiImageModel"
+                        maxLength={80}
+                        defaultValue={s.openaiImageModel}
+                        className="font-mono text-xs"
+                      />
+                    </Field>
+                    <Field label={t("aiRefs.settings.textModel")}>
+                      <Input
+                        name="openaiTextModel"
+                        maxLength={80}
+                        defaultValue={s.openaiTextModel}
+                        className="font-mono text-xs"
                       />
                     </Field>
                   </div>

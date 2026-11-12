@@ -114,6 +114,22 @@ export const DEFAULT_SETTINGS = {
   aiMode: "AUTO" as "AUTO" | "MOCK" | "MANUAL",
   /** Modelo usado na API (lido a cada chamada; nada fixo em componente). */
   aiModel: "claude-sonnet-5-5",
+  /*
+   * Referências por IA na escolha do grupo (docs/SUPPLIER_REQUESTS.md,
+   * "Referências por IA"): os três prompts padrão (editáveis em cada escolha)
+   * e os modelos da OpenAI. Precisa de OPENAI_API_KEY; aiMode MOCK gera
+   * exemplos rotulados e MANUAL desliga.
+   */
+  aiPromptProduct:
+    "Foto de estúdio realista do produto como deve ficar ao final da produção: fundo branco, luz suave, vista de três quartos, mostrando forma, material, cores e acabamento. Sem texto, sem marca e sem logotipo que não estejam pedidos.",
+  aiPromptDetail:
+    "Imagem realista com os detalhes de acabamento e a embalagem do produto ao final da produção: close nas partes que o fornecedor precisa caprichar (encaixes, costuras, tampa, alça, cor) e o produto ao lado da embalagem individual. Fundo neutro, sem texto.",
+  aiPromptSheet:
+    "Escreva uma ficha de produção curta para o fornecedor, em inglês e depois em chinês simplificado: descrição do produto, material, cores, medidas e capacidade, acabamento, embalagem e o que a Wellmix precisa. Use tópicos. Não invente números: o que não estiver nos dados fica como 'to be confirmed'.",
+  /** Modelo de imagem da OpenAI (gera as duas imagens aproximadas). */
+  openaiImageModel: "gpt-image-1",
+  /** Modelo de texto da OpenAI (escreve a ficha). */
+  openaiTextModel: "gpt-5-mini",
   /** Marketing studio e kits de marketing (prévia → oferta → compra → liberação). */
   marketingEnabled: true,
   /** Preço padrão do kit de marketing por produto (editável por kit; nunca fixo em código). */

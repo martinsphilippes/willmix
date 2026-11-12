@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { SHEET_CURRENCIES, SHEET_INCOTERMS, YES_NO } from "@/lib/db/schema";
+import type { AiReferencePrompts } from "@/lib/db/schema";
 import { parseNumberInput } from "@/lib/number-input";
 import { requireUser, run, str, withQuery } from "./helpers";
 
@@ -111,11 +112,50 @@ export async function saveSelectionGroupAction(form: FormData) {
       await import("@/lib/workflow/request-schedule");
     const { MAX_PURCHASE_ROUNDS } = await import("@/lib/purchase-rounds");
     const schedule = parseRequestSchedule(form, "", MAX_PURCHASE_ROUNDS);
-    await saveSelectionGroup(user, {
+    // Prompts de IA do painel ao lado (docs/SUPPLIER_REQUESTS.md,
+    // "Referências por IA"): só o que difere do padrão é gravado.
+    let aiPrompts: AiReferencePrompts | null | undefined;
+    if (form.has("aiPrompt.product")) {
+      const {
+        AI_PROMPT_MAX,
+        AI_REFERENCE_KINDS,
+        defaultPrompts,
+        promptsToSave,
+      } = await import("@/lib/ai-references");
+      const typed = z
+        .record(z.string(), z.string().max(AI_PROMPT_MAX * 2))
+        .parse(
+          Object.fromEntries(
+            AI_REFERENCE_KINDS.map((k) => [
+              k,
+              String(form.get(`aiPrompt.${k}`) ?? ""),
+            ]),
+          ),
+        );
+      const { getSettings } = await import("@/lib/settings");
+      aiPrompts = promptsToSave(typed, defaultPrompts(await getSettings()));
+    }
+    const saved = await saveSelectionGroup(user, {
       ...input,
       quantity: schedule ? null : number(form, "quantity", true),
       schedule,
+      aiPrompts,
     });
+    // "Gravar e gerar com IA": grava e gera as imagens e a ficha. A escolha
+    // fica gravada mesmo se a IA falhar; a tela diz o motivo.
+    if (str(form, "generate") === "1") {
+      const { generateGroupReferences } =
+        await import("@/lib/services/ai-references");
+      const ai = await generateGroupReferences(user, saved.id);
+      let to = withQuery(
+        withQuery(back, "ids", saved.itemIds.join(",")),
+        "saved",
+        "1",
+      );
+      to = withQuery(to, "ai", String(ai.generated));
+      if (ai.error) to = withQuery(to, "aiError", ai.error);
+      return `${to}#ai-references`;
+    }
     return `${withQuery(back, "saved", "1")}#blocks`;
   });
 }
