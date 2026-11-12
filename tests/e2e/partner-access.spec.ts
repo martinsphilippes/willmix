@@ -197,10 +197,10 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await expect(page.locator("[data-home-no-tasks]")).toBeVisible();
   await page.goto("/app/tasks");
   await expect(page).toHaveURL(/denied=tasks/);
-  // Sem Mensagens: a tela recusa e o painel de chat não existe.
+  // Sem Mensagens: a tela recusa e o ícone de mensagens some do cabeçalho.
   await page.goto("/app/messages");
   await expect(page).toHaveURL(/denied=messages/);
-  await expect(page.locator("[data-chat-drawer]")).toHaveCount(0);
+  await expect(page.locator("[data-messages-link]")).toHaveCount(0);
 
   // Deixa o perfil como estava para os outros testes.
   await login(page, "admin@wellmix.com");

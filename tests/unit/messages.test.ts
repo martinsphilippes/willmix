@@ -269,6 +269,35 @@ describe("avisos no sino", () => {
     // O texto vai no idioma de quem recebe (Wang Fang usa zh).
     expect(notices.at(-1)!.subject).toBe("Wellmix 发来新消息");
   });
+
+  it("perfil sem a tela Mensagens não recebe o aviso da mensagem", async () => {
+    const access = await import("@/lib/services/partner-access");
+    const { ROLE_SCREENS } = await import("@/lib/auth/screens");
+    const { topicId } = await msg.openTopic(admin, {
+      partyId: "fornecedor-c",
+    });
+    const supplierC = (
+      await getStore().list("users", {
+        filter: { partyId: "fornecedor-c" },
+      })
+    )[0];
+    // Nada pendente no assunto: a próxima mensagem geraria um aviso novo.
+    await msg.markTopicRead(supplierC, topicId);
+    const before = (await inapp(supplierC.id)).length;
+    await access.saveProfileScreens(admin, "role:supplier", {
+      screens: ROLE_SCREENS.supplier.filter((s) => s !== "messages"),
+      menuHidden: [],
+    });
+    try {
+      await msg.postMessage(admin, topicId, "Sem a tela Mensagens");
+      expect(await inapp(supplierC.id)).toHaveLength(before);
+    } finally {
+      await access.resetProfileScreens(admin, "role:supplier");
+    }
+    // Com o perfil de volta ao padrão, o aviso chega.
+    await msg.postMessage(admin, topicId, "Com a tela de volta");
+    expect(await inapp(supplierC.id)).toHaveLength(before + 1);
+  });
 });
 
 describe("esquema ainda não publicado", () => {

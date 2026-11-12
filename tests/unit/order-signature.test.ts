@@ -636,6 +636,28 @@ describe("documento do pedido com duas assinaturas", () => {
         signedFileKey: "nao-existe",
       }),
     ).rejects.toThrow("signature_file_missing");
+    // Arquivo que já é de um documento registrado (de um tipo que a assinatura
+    // não aceita): recusa sem apagar o arquivo do documento.
+    const sheet = await store.putFile(
+      new Uint8Array([80, 75, 3, 4]),
+      "packing-list.xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    const { registerUploadedDocument } =
+      await import("@/lib/services/documents");
+    await registerUploadedDocument(supplierA, sheet.key, {
+      orderId: order.id,
+      type: "other",
+    });
+    await expect(
+      sig.signOrderDocument(supplierA, order.id, {
+        name: "Li Wei",
+        agree: true,
+        hash: view.hash,
+        signedFileKey: sheet.key,
+      }),
+    ).rejects.toThrow("signature_file_missing");
+    expect(await store.statFile(sheet.key)).not.toBeNull();
     const photo = await store.putFile(
       new Uint8Array([255, 216, 255, 224, 9, 9]),
       "assinado.jpg",

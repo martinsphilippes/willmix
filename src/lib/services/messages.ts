@@ -1423,7 +1423,16 @@ async function notifyOtherSide(
           await conversationOwner(conversation).then((u) => (u ? [u] : []))
         ).filter((u) => u.active);
     const external = logins.filter((u) => !isWellmix(u));
-    const sees = await Promise.all(external.map((u) => canSeeTopic(u, topic)));
+    const { externalAccessFor } = await import("./partner-access");
+    const sees = await Promise.all(
+      external.map(async (u) => {
+        if (!(await canSeeTopic(u, topic))) return false;
+        // Perfil sem a tela Mensagens (Gestão de telas): sem aviso, que
+        // traria o começo da mensagem e um link que o login não abre.
+        const access = await externalAccessFor(u);
+        return !access || access.screens.includes("messages");
+      }),
+    );
     recipients = external.filter((_, i) => sees[i]);
   } else {
     recipients = await store.list("users", {

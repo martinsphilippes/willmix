@@ -851,11 +851,10 @@ export default async function OrderPage({
     (user.role === "supplier" && order.supplierId === user.partyId);
   const showAfterSales =
     customerSide && (!!afterSales || (wellmix && delivered));
+  // "Comprar de novo" cria uma solicitação: só com a tela Solicitações no
+  // perfil (a ação recusa sem ela).
   const showFollowUp =
-    customerSide &&
-    delivered &&
-    !!items[0] &&
-    (!wellmix || canOpen(user, "requests"));
+    customerSide && delivered && !!items[0] && canOpen(user, "requests");
   /* Partes do pedido na tabela de etapas (ordem do negócio): só as que este
      login já vê nos cartões de baixo; cada linha leva ao cartão ou à página. */
   const partsByStage = orderPartsByStage([

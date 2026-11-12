@@ -2,7 +2,12 @@ import { LiveSearch } from "@/components/live-search";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
-import { SCREENS, SCREEN_LABEL, type Screen } from "@/lib/auth/screens";
+import {
+  SCREENS,
+  SCREEN_LABEL,
+  canOpen,
+  type Screen,
+} from "@/lib/auth/screens";
 import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
 import { canDeleteRequest } from "@/lib/services/requests";
 import {
@@ -98,8 +103,14 @@ export default async function RequestsPage({
       direction: "desc",
     }),
     store.list("parties", { filter: { type: "customer" } }),
-    customer ? pendingTasksFor(user) : Promise.resolve([]),
-    customer ? customerOrdersInProgress(user) : Promise.resolve([]),
+    // Sem Pendências ou Pedidos no perfil (Gestão de telas), os blocos do
+    // topo também não aparecem aqui.
+    customer && canOpen(user, "tasks")
+      ? pendingTasksFor(user)
+      : Promise.resolve([]),
+    customer && canOpen(user, "orders")
+      ? customerOrdersInProgress(user)
+      : Promise.resolve([]),
     wellmix ? store.list("users") : Promise.resolve([]),
   ]);
   const visible = allRequests.filter((r) => canViewRequest(user, r));

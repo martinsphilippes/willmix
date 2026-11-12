@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { isWellmix } from "@/lib/auth/permissions";
@@ -59,13 +60,14 @@ export default async function PurchaseOrderPage({
   /* Fornecedor: entra no pedido por aqui. As pendências dele neste pedido
      aparecem no alto, cada uma com o atalho para a tela onde se resolve. */
   const isSupplier = user.role === "supplier";
-  const myTasks = isSupplier
-    ? (await pendingTasksFor(user)).filter(
-        (task) =>
-          task.link.startsWith(`/app/orders/${order.id}`) &&
-          !task.link.startsWith(`/app/orders/${order.id}/purchase-order`),
-      )
-    : [];
+  const myTasks =
+    isSupplier && canOpen(user, "tasks")
+      ? (await pendingTasksFor(user)).filter(
+          (task) =>
+            task.link.startsWith(`/app/orders/${order.id}`) &&
+            !task.link.startsWith(`/app/orders/${order.id}/purchase-order`),
+        )
+      : [];
   const errorCode = typeof error === "string" ? error : "";
   const errorKey = `orderSign.error.${errorCode}` as DictionaryKey;
   const errorText = errorCode && t(errorKey) !== errorKey ? t(errorKey) : null;

@@ -3,6 +3,7 @@ import { fallbackError } from "@/i18n/error-text";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
 import { canSeeInternalCosts, isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { loadCommercialHistory, type HistoryRow } from "@/lib/services/history";
@@ -82,6 +83,9 @@ export default async function HistoryPage({
   if (!user) redirect("/login");
   const wellmix = isWellmix(user);
   requireScreen(user, "history");
+  // "Comprar de novo" leva ao cartão de recompra do pedido: só com Pedidos e
+  // Solicitações no perfil (sem eles o cartão não existe e o botão não leva a nada).
+  const canBuyAgain = canOpen(user, "orders") && canOpen(user, "requests");
   const { customerId: customerParam, error } = await searchParams;
   const customerId =
     wellmix && typeof customerParam === "string" && customerParam
@@ -228,9 +232,11 @@ export default async function HistoryPage({
                       >
                         {t("orders.number", { number: r.lastOrderNumber })}
                       </TextLink>
-                      <div className="mt-1.5">
-                        <RowActions row={r} t={t} />
-                      </div>
+                      {canBuyAgain ? (
+                        <div className="mt-1.5">
+                          <RowActions row={r} t={t} />
+                        </div>
+                      ) : null}
                     </Td>
                     <Td className="whitespace-nowrap text-right">
                       <ChatOpenButton
@@ -301,9 +307,11 @@ export default async function HistoryPage({
                     <Interest value={r.repurchaseInterest} t={t} />
                   </Item>
                 </dl>
-                <div className="mt-3">
-                  <RowActions row={r} t={t} />
-                </div>
+                {canBuyAgain ? (
+                  <div className="mt-3">
+                    <RowActions row={r} t={t} />
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>
