@@ -5,7 +5,7 @@
 | Serviço  | Estado                   | Observações                                                                                                  |
 | -------- | ------------------------ | ------------------------------------------------------------------------------------------------------------ |
 | GitHub   | conectado                | `martinsphilippes/willmix`. CI em `.github/workflows/ci.yml`.                                                |
-| Vercel   | conectado                | Projeto `wellmix`, time `martinsphilippes`, região `fra1` (Frankfurt, a mesma do Appwrite). Deploy por push. |
+| Vercel   | conectado                | Projeto `wellmix`, time `martinsphilippes`, região `gru1` (São Paulo, a mesma do Supabase). Deploy por push. |
 | Appwrite | conectado e publicado    | Projeto `6ab41ae700396f0409b8` em `fra`; esquema e seed publicados                                           |
 | Supabase | conectado, não utilizado | Decisão: um único backend (Appwrite).                                                                        |
 
@@ -56,7 +56,7 @@ No plano gratuito (Free), o Appwrite pausa o projeto depois de 7 dias seguidos s
 
 ## Desempenho
 
-- O servidor roda em `fra1`, ao lado do Appwrite (`fra`). Com o servidor em São Paulo, cada consulta cruzava o Atlântico (cerca de 200 ms) e uma página com 20 consultas levava segundos. O usuário no Brasil paga uma viagem por página; as consultas ficam locais.
+- O servidor roda em `gru1` (São Paulo), ao lado do banco (Supabase `sa-east-1`) e do Sankhya. Regra: **a região da Vercel (`vercel.json`) acompanha a do banco**. Até 12/11/2026 ficou em `fra1` (era a região do Appwrite) depois da virada para o Supabase: 299 mil de 300 mil consultas num dia entraram pelo Cloudflare de Frankfurt e nenhuma levou menos de ~150 ms (um insert de uma linha, 150 ms; 10 itens de nota do Sankhya, 27 s). Conferir nos logs do Supabase (`edge_logs`, campo `request.cf.colo`): deve aparecer GRU, não FRA.
 - Leituras repetidas na mesma requisição saem uma vez só (`src/lib/db/cached-store.ts`; qualquer escrita limpa). `DB_TRACE=1` registra cada consulta com o tempo; `DB_CACHE=0` desliga a memorização.
 - Sessão conferida fica 60 s em memória por instância (hash do segredo), sem 2 idas ao Appwrite por página e por foto; logout apaga na hora.
 - Fotos e arquivos (`/api/files`) ficam 1 h no navegador (`private`); versão nova é documento novo.
