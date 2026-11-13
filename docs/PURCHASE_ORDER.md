@@ -93,7 +93,8 @@ Regras:
 - **Avisos:**
   - arte enviada → a Wellmix valida;
   - arte validada e certificado emitido → a agência faz a arte final.
-- **Passos do selo:** os passos do cartão Certificação (selo e arte com o selo) não viram pendência nestes pedidos, porque a certificação é a raia da certificadora.
+- **Passos do selo (dono, 13/11/2026):** os passos do cartão Certificação (selo, memorial e arte com o selo) viram pendência quando algum produto exige certificação, cada um no login responsável: selo para a certificadora, memorial para o analista (a validação, para a certificadora), aplicar o selo para o designer do pedido ou a agência que faz a arte, validar a arte com o selo para o analista que pode validar arte (docs/CERTIFICATION.md, seção 13). Até 13/11/2026 não viravam pendência.
+- **Parceiro designado depois:** designar ou trocar a certificadora ou a agência em Parceiros do pedido passa os itens abertos das raias para ela (certificado; arte e arte final com o selo, quando a agência faz a arte), sem duplicar; sem o parceiro, voltam para a Wellmix. O que já foi feito não muda.
 - **Fim da etapa:** a etapa conclui quando todos os itens das três raias estão feitos.
 
 ## 2b. Quadro Die Cut (13/11/2026)

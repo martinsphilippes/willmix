@@ -177,6 +177,18 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.getByRole("link", { name: "Die-Cut, Arte e Certificação" }),
   ).toHaveCount(1);
+  // Certificação no login responsável (docs/CERTIFICATION.md, seção 13): o
+  // memorial é do analista do pedido (quem gerou), com o link direto para o
+  // quadro do alto do cartão Certificação.
+  const orderPath = new URL(orderUrl).pathname;
+  await page.goto("/app/tasks");
+  // (A lista pagina no navegador: a linha pode estar em outra página.)
+  await expect(
+    page.locator(
+      `[data-task-row] a[href="${orderPath}#certification-featured"]`,
+    ),
+  ).not.toHaveCount(0);
+  await page.goto(orderUrl);
   // Transportador: o pedido só designa sozinho quando há exatamente um ativo
   // no cadastro. Outros testes cadastram mais transportadores (que nascem
   // ativos), então a Wellmix designa aqui, em Parceiros do pedido.
@@ -271,6 +283,12 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // A pendência dele cai na etapa "Die Cut" e abre o quadro do pedido, com
   // os quatro itens do produto: die-cut, foto em alta, pedido mínimo e prazo.
   await page.goto("/app/tasks");
+  // Certificação e artes não são dele: nenhuma dessas pendências aparece.
+  await expect(
+    page.locator(
+      `[data-task-row] a[href*="${orderPath}#certification"], [data-task-row] a[href*="${orderPath}#artwork"]`,
+    ),
+  ).toHaveCount(0);
   const dieCutTask = page.locator(
     `[data-task-group="supplier.dieline"]:has(a[href*="${new URL(orderUrl, "http://x").pathname}/die-cut"])`,
   );

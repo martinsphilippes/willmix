@@ -344,6 +344,19 @@ export default async function OrderPage({
   const certSteps = certAll.filter(
     (v) => v.template.seal || classicCert || v.template.key === "cert_memorial",
   );
+  /* Visão interna: o que falta designar para cada tarefa da certificação ter
+     dono (docs/CERTIFICATION.md, "Quem recebe cada tarefa"), e o pedido de
+     compra cujos produtos não exigem certificação (nada vira pendência). */
+  const certMissingDesigner =
+    certSteps.find((v) => v.assignee?.missing === "designer")?.assignee ?? null;
+  const certMissingAnalyst = certSteps.some(
+    (v) => v.assignee?.missing === "analyst",
+  );
+  const certNotNeeded =
+    wellmix &&
+    certSteps.length > 0 &&
+    order.flow === "supplier_request" &&
+    !(await importFlow.purchaseNeedsCertification(order));
   for (const v of [...importSteps, ...certSteps]) {
     if (v.step?.submittedByUserId)
       productionUserIds.add(v.step.submittedByUserId);
@@ -2113,7 +2126,7 @@ export default async function OrderPage({
           names={productionNames}
           title={t("certFlow.title")}
           anchor="certification"
-          featured={["cert_seal", "cert_memorial"]}
+          featured={importFlow.CERT_FEATURED_STEPS}
           featuredHint={t("certFlow.featured.hint")}
           error={stepCard === "certification" ? stepError : null}
           hints={[
@@ -2121,8 +2134,48 @@ export default async function OrderPage({
               ? [t("certFlow.sealHint")]
               : []),
             // Todo pedido precisa de selo: sem certificadora, a Wellmix designa.
-            ...(wellmix && !order.ocpId && certSteps.length
-              ? [t("certFlow.notify.noOcp.body")]
+            ...(certNotNeeded
+              ? [
+                  <span key="no-cert" data-cert-not-needed>
+                    {t("certFlow.noCertNeeded")}
+                  </span>,
+                ]
+              : []),
+            ...(wellmix && !order.ocpId && certSteps.length && !certNotNeeded
+              ? [
+                  <span key="no-ocp" data-cert-missing="ocp">
+                    {t("certFlow.notify.noOcp.body")}{" "}
+                    <a href="#order-partners" className={linkClass}>
+                      {t("certFlow.assign.ocp")}
+                    </a>
+                  </span>,
+                ]
+              : []),
+            // Arte feita pela Wellmix sem designer: quem fica com a aplicação
+            // do selo e onde escolher o designer.
+            ...(certMissingDesigner && !certNotNeeded
+              ? [
+                  <span key="no-designer" data-cert-missing="designer">
+                    {t("certFlow.missingHint.designer", {
+                      who:
+                        certMissingDesigner.label ??
+                        t("certFlow.assignee.team"),
+                    })}{" "}
+                    <a href="#artwork" className={linkClass}>
+                      {t("certFlow.assign.designer")}
+                    </a>
+                  </span>,
+                ]
+              : []),
+            ...(certMissingAnalyst && !certNotNeeded
+              ? [
+                  <span key="no-analyst" data-cert-missing="analyst">
+                    {t("certFlow.missingHint.analyst")}{" "}
+                    <TextLink href="/app/team#distribute">
+                      {t("certFlow.assign.analyst")}
+                    </TextLink>
+                  </span>,
+                ]
               : []),
             // A certificação pedida na ficha: só para quem abre a ficha
             // aqui (a Wellmix e a certificadora), não para a agência ou o comex.

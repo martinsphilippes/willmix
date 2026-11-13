@@ -20,6 +20,8 @@ import {
 } from "./ui";
 import { SubmitButton } from "./submit-button";
 import type { getT } from "@/i18n/server";
+import Link from "next/link";
+import { ASSIGN_HREF } from "@/lib/assign-href";
 
 /*
  * Artes do pedido (Fase F): designer, não conformidade por SKU com a volta ao
@@ -106,6 +108,42 @@ export function ArtworkCard({
                         {t("artwork.noCandidates")}
                       </span>
                     ) : null}
+                    {/* Visão interna: quem recebe as correções e a aplicação
+                        do selo agora, e o aviso quando falta o designer. */}
+                    {view.maker ? (
+                      <span
+                        className="w-full text-xs text-zinc-600"
+                        data-artwork-maker={view.maker.via}
+                      >
+                        {t("artwork.maker", {
+                          name: view.maker.label ?? t("artwork.maker.team"),
+                        })}
+                      </span>
+                    ) : null}
+                    {view.maker?.missing === "designer" ? (
+                      <span
+                        className="w-full text-xs font-medium text-amber-700"
+                        data-artwork-missing="designer"
+                      >
+                        {t("artwork.missingDesigner", {
+                          who: view.maker.label ?? t("artwork.maker.team"),
+                        })}
+                      </span>
+                    ) : null}
+                    {view.maker?.missing === "analyst" ? (
+                      <span
+                        className="w-full text-xs font-medium text-amber-700"
+                        data-artwork-missing="analyst"
+                      >
+                        {t("certFlow.missing.analyst")}{" "}
+                        <Link
+                          href={ASSIGN_HREF.analyst(order.id)}
+                          className="text-brand-700 underline"
+                        >
+                          {t("certFlow.assign.analyst")}
+                        </Link>
+                      </span>
+                    ) : null}
                   </form>
                 ) : (
                   (view.designer?.name ?? "—")
@@ -148,7 +186,8 @@ export function ArtworkCard({
                 : issues.map((issue, n) => (
                     <tr
                       key={issue.id}
-                      className={rowClass}
+                      id={`artwork-issue-${issue.id}`}
+                      className={`${rowClass} scroll-mt-24`}
                       data-artwork-item={n === 0 ? item.id : undefined}
                       data-artwork-issue={issue.status}
                     >
@@ -222,7 +261,7 @@ export function ArtworkCard({
                               {t("artwork.sendFix")}
                             </SubmitButton>
                           </form>
-                        ) : issue.status === "fixed" && wellmix ? (
+                        ) : issue.status === "fixed" && view.canReview ? (
                           <form
                             action={reviewArtFixAction}
                             className="flex flex-wrap items-end gap-2"
