@@ -46,6 +46,10 @@ import Link from "next/link";
 import { roundsDates } from "@/components/purchase-rounds";
 import { dateTime } from "./negotiation";
 import { AnswerIcon, ChatBubbleIcon, OpenIcon } from "./icons";
+import {
+  requestItemSpecs,
+  type RequestBookSpecs,
+} from "@/lib/supplier-request-specs";
 
 /*
  * O que se vê primeiro ao abrir uma solicitação (docs/SUPPLIER_REQUESTS.md,
@@ -70,6 +74,7 @@ export function SupplierRequestTable({
   samplingSlaDays = SAMPLING_SLA_DAYS,
   wellmix,
   legacy,
+  bookSpecs,
   t,
 }: {
   rows: SupplierRequest[];
@@ -80,6 +85,8 @@ export function SupplierRequestTable({
   wellmix: boolean;
   /** Respostas antigas (auditoria), para a 1ª e a última resposta. */
   legacy: Map<string, Array<{ at: string }>>;
+  /** Ficha do item exato do Book (por solicitação): completa a cópia gravada. */
+  bookSpecs?: Map<string, RequestBookSpecs>;
   t: Translate;
 }) {
   const intl = t.intl;
@@ -99,9 +106,17 @@ export function SupplierRequestTable({
     "factoryCode",
     "itemNumber",
     "material",
+    "packageType",
+    "measures",
+    "capacity",
+    "masterCartonQty",
+    "innerQty",
+    "cbmPerCarton",
     "rounds",
     "perRound",
     "quantity",
+    "totalCartons",
+    "totalCbm",
     "bookingMoq",
     "bookingPrice",
     "bookingCurrency",
@@ -228,7 +243,40 @@ export function SupplierRequestTable({
         <tbody>
           {rows.map((r, index) => {
             const it = r.item;
-            const name = it.description ?? it.productName ?? "—";
+            const book = bookSpecs?.get(r.id) ?? null;
+            // Cópia da solicitação; o que ela não guarda, do item do Book.
+            const specs = requestItemSpecs(r, book);
+            const name = specs.description ?? specs.productName ?? "—";
+            const bookCol = (key: string) =>
+              t(`bookingLots.item.col.${key}` as DictionaryKey);
+            // Dados complementares: só os que existem aparecem.
+            const details = (
+              [
+                // A descrição já é o nome da linha; o nome só quando é outro.
+                [
+                  "productName",
+                  k("detail.productName"),
+                  specs.productName !== name ? specs.productName : null,
+                ],
+                ["colors", bookCol("colorAssortment"), specs.colorAssortment],
+                ["power", bookCol("powerDetail"), specs.powerDetail],
+                [
+                  "netWeight",
+                  bookCol("netWeightPcKg"),
+                  specs.netWeightPcKg === null
+                    ? null
+                    : num(specs.netWeightPcKg),
+                ],
+                [
+                  "grossWeight",
+                  bookCol("grossWeightPcKg"),
+                  specs.grossWeightPcKg === null
+                    ? null
+                    : num(specs.grossWeightPcKg),
+                ],
+                ["ncm", k("detail.ncm"), wellmix ? (book?.ncm ?? null) : null],
+              ] as Array<[string, string, string | null]>
+            ).filter((d): d is [string, string, string] => !!d[2]);
             // Na solicitação com vários produtos, cada linha é um produto dela
             // (2.1, 2.2…): nenhuma é "esta solicitação".
             const current = r.id === currentId && !r.batchId;
@@ -285,10 +333,103 @@ export function SupplierRequestTable({
                   <span className="block min-w-48 max-w-72 whitespace-normal font-medium text-zinc-900">
                     {name}
                   </span>
+                  {details.length || wellmix ? (
+                    <details
+                      className="group/specs mt-1 min-w-48 max-w-72 text-xs"
+                      data-supplier-table-details={r.id}
+                    >
+                      <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded font-medium text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-brand-600 [&::-webkit-details-marker]:hidden">
+                        {k("details")}
+                        <svg
+                          aria-hidden
+                          viewBox="0 0 20 20"
+                          className="h-3.5 w-3.5 transition-transform group-open/specs:rotate-180"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M5 8l5 5 5-5" />
+                        </svg>
+                      </summary>
+                      <div className="mt-1 space-y-1 whitespace-normal rounded-md border border-zinc-200 bg-zinc-50/70 p-2">
+                        {details.length ? (
+                          <dl className="space-y-1">
+                            {details.map(([key, label, value]) => (
+                              <div key={key} data-supplier-table-detail={key}>
+                                <dt className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                                  {label}
+                                </dt>
+                                <dd className="break-words text-zinc-800">
+                                  {value}
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                        ) : (
+                          <p className="text-zinc-500">{k("detailsNone")}</p>
+                        )}
+                        {wellmix ? (
+                          <Link
+                            href={`/app/booking/lots/${r.bookingLotId}`}
+                            className="inline-block font-medium text-brand-700 hover:underline"
+                            data-supplier-table-book={r.id}
+                          >
+                            {k("detail.book")}
+                          </Link>
+                        ) : null}
+                      </div>
+                    </details>
+                  ) : null}
                 </Td>
                 <Td className={nowrap}>{it.factoryItemCode ?? "—"}</Td>
                 <Td className={nowrap}>{it.itemNumber ?? "—"}</Td>
-                <Td className={nowrap}>{it.material ?? "—"}</Td>
+                <Td className={nowrap}>{specs.material ?? "—"}</Td>
+                {/* Ficha técnica: a mesma que o Book mostra. */}
+                <Td data-supplier-table-package={r.id}>
+                  <span className="block max-w-40 whitespace-normal">
+                    {specs.packageType ?? "—"}
+                  </span>
+                </Td>
+                <Td
+                  className={cx(nowrap, "tabular-nums")}
+                  data-supplier-table-measures={r.id}
+                >
+                  {[specs.lengthCm, specs.widthCm, specs.heightCm].some(
+                    (n) => n !== null,
+                  )
+                    ? [specs.lengthCm, specs.widthCm, specs.heightCm]
+                        .map((n) => num(n, 2))
+                        .join(" × ")
+                    : "—"}
+                </Td>
+                <Td
+                  className={cx(nowrap, "tabular-nums")}
+                  data-supplier-table-capacity={r.id}
+                >
+                  {typeof specs.capacity === "number"
+                    ? `${num(specs.capacity, 0)} ml`
+                    : (specs.capacity ?? "—")}
+                </Td>
+                <Td
+                  className={cx(nowrap, "tabular-nums")}
+                  data-supplier-table-master={r.id}
+                >
+                  {num(specs.masterCartonQty, 0)}
+                </Td>
+                <Td
+                  className={cx(nowrap, "tabular-nums")}
+                  data-supplier-table-inner={r.id}
+                >
+                  {num(specs.innerQty, 0)}
+                </Td>
+                <Td
+                  className={cx(nowrap, "tabular-nums")}
+                  data-supplier-table-cbm={r.id}
+                >
+                  {num(specs.cbmPerCarton)}
+                </Td>
                 {/* Programação de compra: rodadas, peças por rodada e o total. */}
                 <Td
                   className={cx(nowrap, "tabular-nums")}
@@ -313,7 +454,28 @@ export function SupplierRequestTable({
                 <Td className={cx(nowrap, "tabular-nums")}>
                   {r.quantity.toLocaleString(intl)}
                 </Td>
-                <Td className={cx(nowrap, "tabular-nums")}>{num(it.moq, 0)}</Td>
+                <Td
+                  className={cx(nowrap, "tabular-nums")}
+                  data-supplier-table-total-cartons={r.id}
+                >
+                  {num(specs.totalCartons, 0)}
+                </Td>
+                <Td
+                  className={cx(nowrap, "tabular-nums")}
+                  data-supplier-table-total-cbm={r.id}
+                >
+                  <span
+                    title={
+                      specs.cbmFromMeasures ? k("cbmFromMeasures") : undefined
+                    }
+                  >
+                    {specs.cbmFromMeasures ? "≈ " : ""}
+                    {num(specs.totalCbm)}
+                  </span>
+                </Td>
+                <Td className={cx(nowrap, "tabular-nums")}>
+                  {it.moq === null ? "—" : `${num(it.moq, 0)} ${r.unit}`}
+                </Td>
                 <Td className={cx(nowrap, "tabular-nums")}>{num(it.price)}</Td>
                 <Td className={nowrap}>{it.currency ?? "—"}</Td>
                 <Td className={nowrap}>{it.incoterm ?? "—"}</Td>

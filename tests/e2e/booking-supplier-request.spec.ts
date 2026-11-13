@@ -74,6 +74,34 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     0,
   );
   await expect(page.locator("[data-supplier-table-message]")).toBeVisible();
+  // Ficha técnica na tabela: a mesma do Book, e os totais do que foi pedido.
+  const specs = page.locator("[data-supplier-table-row]");
+  await expect(specs.locator("[data-supplier-table-master]")).toHaveText("48");
+  await expect(specs.locator("[data-supplier-table-inner]")).toHaveText("12");
+  await expect(specs.locator("[data-supplier-table-cbm]")).toHaveText(
+    /0[.,]12/,
+  );
+  await expect(specs.locator("[data-supplier-table-package]")).toHaveText(
+    "color box",
+  );
+  await expect(specs.locator("[data-supplier-table-capacity]")).toHaveText(
+    "350 ml",
+  );
+  await expect(specs.locator("[data-supplier-table-measures]")).toHaveText(
+    "10 × 8 × 20",
+  );
+  await expect(specs.locator("[data-supplier-table-total-cartons]")).toHaveText(
+    /\d/,
+  );
+  await expect(specs.locator("[data-supplier-table-total-cbm]")).toHaveText(
+    /\d/,
+  );
+  // Dados complementares na própria linha; o link do Book é só da Wellmix.
+  await specs.locator("[data-supplier-table-details] summary").click();
+  await expect(
+    specs.locator("[data-supplier-table-detail=grossWeight]"),
+  ).toContainText(/0[.,]35/);
+  await expect(specs.locator("[data-supplier-table-book]")).toBeVisible();
 
   // 3. O fornecedor A vê primeiro a tabela dos produtos da solicitação e
   // responde "sim" na caixa rápida da linha, sem a alternativa; o B não abre.
@@ -83,6 +111,9 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-request-alternative]")).toHaveCount(
     0,
   );
+  await expect(page.locator("[data-supplier-table-master]")).toHaveText("48");
+  await expect(page.locator("[data-supplier-table-book]")).toHaveCount(0);
+  await expect(page.locator("[data-supplier-table-detail=ncm]")).toHaveCount(0);
   await page.locator("[data-supplier-table-answer-open]").click();
   await page.fill("[data-supplier-table-answer-price-input]", "1,40");
   await page.fill("[data-supplier-table-answer-moq]", "2000");
