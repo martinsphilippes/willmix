@@ -12,7 +12,12 @@ import { ActionError } from "@/components/action-error";
 import { Fragment, type ReactNode } from "react";
 import { fallbackError } from "@/i18n/error-text";
 import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
-import { canViewDieCut } from "@/lib/services/die-cut-step";
+import { canViewDieCut, negotiatedTerms } from "@/lib/services/die-cut-step";
+import {
+  isLeadTimeKey,
+  itemIdOf,
+  supplierSeesLaneRequirement,
+} from "@/lib/purchase-lanes";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -279,6 +284,16 @@ export default async function OrderPage({
     sheetState = await sheetProgress(progress.order);
   }
   const { order, stages, requirements } = progress;
+  /* Visão do fornecedor na Preparação do pedido de compra (pedido do dono,
+     13/11/2026): só a faca, a foto em alta e o prazo de produção de cada
+     produto, e o campo do prazo já vem com o prazo registrado na solicitação
+     ou na negociação. Só traz o valor: ele confere e envia, como antes. */
+  const supplierLanes = purchaseFlow && user.role === "supplier";
+  const registeredTerms =
+    supplierLanes &&
+    requirements.some((r) => isLeadTimeKey(r.key) && r.status !== "done")
+      ? await negotiatedTerms(order)
+      : null;
   // "Enviar para assinatura" (pedidos novos): o que ainda falta (arte, selo).
   const signSend = requirements.find((r) => r.key === ORDER_SIGN_SEND);
   const sendBlockers =
@@ -1703,6 +1718,11 @@ export default async function OrderPage({
               )?.value ?? null;
             const open =
               stage.status === "active" || stage.status === "blocked";
+            // Pedido de compra, fornecedor: só a faca, a foto em alta e o prazo.
+            const supplierView = supplierLanes && stage.key === "PREPARATION";
+            const shownReqs = supplierView
+              ? reqs.filter(supplierSeesLaneRequirement)
+              : reqs;
             return (
               <Fragment key={stage.id}>
                 <Card
@@ -1759,8 +1779,13 @@ export default async function OrderPage({
                     ) : null
                   }
                 >
-                  <p className="mb-2 text-xs leading-relaxed text-zinc-500">
-                    {t(`help.stage.${stage.key}`)}
+                  <p
+                    className="mb-2 text-xs leading-relaxed text-zinc-500"
+                    data-stage-help={supplierView ? "supplier" : undefined}
+                  >
+                    {supplierView
+                      ? t("dieCut.stageHelp.supplier")
+                      : t(`help.stage.${stage.key}`)}
                   </p>
                   {stage.key === "SHIPPING" && showTariff ? (
                     <FreightTariffBox
@@ -1813,10 +1838,13 @@ export default async function OrderPage({
                   ) : null}
                   {stage.status === "pending" ? (
                     <p className="text-sm text-zinc-500">
-                      {reqs.map((r) => requirementLabel(t, r)).join(" · ")}
+                      {shownReqs.map((r) => requirementLabel(t, r)).join(" · ")}
                     </p>
                   ) : (
-                    <ul className="@container divide-y divide-zinc-100">
+                    <ul
+                      className="@container divide-y divide-zinc-100"
+                      data-stage-tasks={stage.key}
+                    >
                       {/* Pedido de compra: os quatro itens do fornecedor também
                           ficam juntos, produto a produto, no quadro Die Cut. */}
                       {purchaseFlow &&
@@ -1828,7 +1856,11 @@ export default async function OrderPage({
                           data-die-cut-link
                         >
                           <span className="text-sm text-zinc-600">
-                            {t("dieCut.orderHint")}
+                            {t(
+                              supplierView
+                                ? "dieCut.orderHint.supplier"
+                                : "dieCut.orderHint",
+                            )}
                           </span>
                           <LinkButton
                             href={dieCutHref(order.id)}
@@ -1850,13 +1882,23 @@ export default async function OrderPage({
                           </LinkButton>
                         </li>
                       ) : null}
-                      {reqs.map((r) => (
+                      {shownReqs.map((r) => (
                         <RequirementRow
                           key={r.id}
                           requirement={r}
                           order={order}
                           user={user}
                           t={t}
+                          // O prazo registrado para o item só preenche o campo.
+                          defaultValue={
+                            supplierView && isLeadTimeKey(r.key)
+                              ? (r.value ??
+                                registeredTerms
+                                  ?.get(itemIdOf(r.key) ?? "")
+                                  ?.days?.toString() ??
+                                null)
+                              : null
+                          }
                           waiting={
                             r.key === "art_approval" &&
                             reqs.some(
@@ -2960,10 +3002,13 @@ function RequirementRow({
   sheetHint,
   dateBounds,
   waiting,
+  defaultValue,
 }: {
   requirement: Requirement;
   /** Ainda não dá para agir: aguarda outro item (ex.: aprovar a arte antes de ela chegar). */
   waiting?: string | null;
+  /** Valor que o campo traz preenchido (quem preenche confere e envia). */
+  defaultValue?: string | null;
   /** Data: limites vindos das outras datas do pedido. */
   dateBounds?: DateBounds;
   order: {
@@ -3146,6 +3191,7 @@ function RequirementRow({
             orderId={order.id}
             t={t}
             dateBounds={dateBounds}
+            defaultValue={defaultValue}
           />
         </div>
       ) : canRemeasure ? (
