@@ -12,6 +12,8 @@ import type { BaseRow, TableName, Tables } from "./schema";
 import { clampRange, type ByteRange } from "@/lib/http-range";
 import { TABLES } from "./schema";
 import {
+  hidesHeld,
+  isHeld,
   matchesSearch,
   pickColumns,
   rowMatcher,
@@ -87,8 +89,12 @@ export class MemoryStore implements Store {
     options: ListOptions<Tables[K]> = {},
   ) {
     const match = rowMatcher(options.filter);
+    const hide = hidesHeld(table, options);
     const rows = this.db[table].filter(
-      (row) => match(row) && matchesSearch(row, options.search),
+      (row) =>
+        match(row) &&
+        matchesSearch(row, options.search) &&
+        !(hide && isHeld(row)),
     );
     const sorted = sortRows(
       rows,
@@ -105,8 +111,12 @@ export class MemoryStore implements Store {
     options: ListOptions<Tables[K]> = {},
   ) {
     const match = rowMatcher(options.filter);
+    const hide = hidesHeld(table, options);
     const rows = this.db[table].filter(
-      (row) => match(row) && matchesSearch(row, options.search),
+      (row) =>
+        match(row) &&
+        matchesSearch(row, options.search) &&
+        !(hide && isHeld(row)),
     );
     const sorted = sortRows(
       rows,

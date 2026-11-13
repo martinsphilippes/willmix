@@ -460,3 +460,19 @@ describe("SupabaseStore: busca por nome", () => {
     expect(decodeURIComponent(calls[0])).not.toContain("joão**");
   });
 });
+
+describe("SupabaseStore: histórico do Sankhya em espera", () => {
+  it("listas gerais de etapas e pendências deixam de fora as linhas em espera", async () => {
+    const { calls } = fakeSupabase();
+    const store = new SupabaseStore("https://x.supabase.co", "service");
+    await store.list("requirements", { filter: { status: ["pending"] } });
+    await store.list("stages", { filter: { status: ["active"] } });
+    await store.list("requirements", { filter: { orderId: "o1" } });
+    await store.list("requirements", { filter: { stageId: "s1" } });
+    await store.list("payments", { filter: { orderId: "o1" } });
+    await store.list("orders", {});
+    expect(calls[0]).toContain("held=not.is.true");
+    expect(calls[1]).toContain("held=not.is.true");
+    for (const call of calls.slice(2)) expect(call).not.toContain("held=");
+  });
+});

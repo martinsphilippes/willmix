@@ -1983,6 +1983,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "held",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
         }
       ],
       "indexes": [
@@ -1998,6 +2005,16 @@
         },
         {
           "key": "by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "live_by_status",
           "type": "key",
           "columns": [
             "status"
@@ -2143,6 +2160,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "held",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
         }
       ],
       "indexes": [
@@ -2161,6 +2185,26 @@
           "type": "key",
           "columns": [
             "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "live_by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "live_by_key",
+          "type": "key",
+          "columns": [
+            "key"
           ],
           "orders": [
             "ASC"
@@ -2681,6 +2725,20 @@
             "userId"
           ],
           "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_user_channel_created",
+          "type": "key",
+          "columns": [
+            "userId",
+            "channel",
+            "createdAt"
+          ],
+          "orders": [
+            "ASC",
+            "ASC",
             "ASC"
           ]
         }
