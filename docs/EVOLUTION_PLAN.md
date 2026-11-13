@@ -974,3 +974,11 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Pedido do dono** (13/11/2026, com a foto do campo): "troca esse nome de Rodadas para Programações".
 - Só o rótulo desse campo do gerador (`purchaseRounds.gen.rounds`) e o aviso dele ("Informe de 1 a 12 programações."), nos três idiomas. Nada mais mudou na tela nem na regra. Sem mudança no banco.
 - **Ficou como estava** (aguardando o dono dizer se quer trocar também): os cartões "Rodada 1, 2…", "+ Rodada", "Intervalo entre rodadas", "Data da 1ª rodada", "Containers por rodada", a explicação e as linhas do Cálculo, que continuam dizendo "rodada".
+
+## Seleção de itens: "Gravar a escolha do grupo" em cima e "Prompts de IA" abaixo, na largura toda
+
+- **Pedido do dono** (13/11/2026, com a foto da tela e a descrição da prévia): os dois cartões ficavam lado a lado, cada um com metade da largura; os campos da programação quebravam em três linhas e os prompts ficavam empilhados numa coluna estreita.
+- Agora "Gravar a escolha do grupo" fica em cima e "Prompts de IA para o fornecedor" logo abaixo, cada um na largura toda da área de conteúdo. Dentro deles: os campos do gerador da programação (Total de peças, Programações, Container, Containers por rodada, Containers no total e "Gerar programação") numa linha só, e os três prompts lado a lado, com mais linhas à vista.
+- A distribuição segue a largura do próprio cartão (`@container`), não a da janela: vale com o menu lateral aberto ou recolhido. Em cartão estreito (tablet em pé, celular) os campos do gerador vão para 3 ou 2 colunas e os prompts ficam um por linha.
+- Só desenho: nenhum campo, texto de botão, regra ou dado mudou (o texto de Configurações que dizia "painel ao lado" passou a dizer "abaixo"). Sem mudança no banco.
+- Teste: o E2E da seleção confere a ordem dos cartões, os três prompts na mesma linha e os seis campos do gerador na mesma linha. Ele passou também a informar o câmbio manual em Configurações antes de importar os bookings: o custo por peça (R$) dependia de os sites públicos de câmbio responderem de onde o teste roda.

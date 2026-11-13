@@ -505,7 +505,7 @@ export function SelectionQuantity({
           });
     return (
       <div
-        className="mt-1 space-y-2 rounded-lg border border-brand-200 bg-white p-2.5 text-xs"
+        className="@container mt-1 space-y-2 rounded-lg border border-brand-200 bg-white p-2.5 text-xs"
         data-rounds-generator
         role="group"
         aria-label={gen.title}
@@ -518,8 +518,16 @@ export function SelectionQuantity({
       >
         <p className="font-semibold text-zinc-900">{gen.title}</p>
         <p className="text-zinc-600">{gen.hint}</p>
-        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-          <label className="space-y-1">
+        {/* Os campos numa linha só quando o cartão tem largura (ele ocupa a
+            área de conteúdo inteira): os quatro números dividem o espaço, o
+            container e o botão ficam do tamanho deles. Em cartão estreito,
+            em 3 ou 2 colunas. A medida é a do bloco (@container), que é a
+            mesma com a programação ligada ou desligada num tablet deitado. */}
+        <div
+          className="grid grid-cols-2 items-end gap-x-2.5 gap-y-2 @md:grid-cols-3 @[47rem]:grid-cols-[minmax(5rem,1fr)_minmax(5rem,1fr)_auto_minmax(max-content,1fr)_minmax(max-content,1fr)_auto]"
+          data-generate-fields
+        >
+          <label className="min-w-0 space-y-1">
             <span className="block font-medium text-zinc-700">{gen.total}</span>
             <input
               type="text"
@@ -530,10 +538,10 @@ export function SelectionQuantity({
                 setError(null);
               }}
               data-generate-total
-              className={cx(inputDenseClass, "w-28 tabular-nums")}
+              className={cx(inputDenseClass, "w-full tabular-nums")}
             />
           </label>
-          <label className="space-y-1">
+          <label className="min-w-0 space-y-1">
             <span className="block font-medium text-zinc-700">
               {gen.rounds}
             </span>
@@ -547,15 +555,15 @@ export function SelectionQuantity({
                 setError(null);
               }}
               data-generate-rounds
-              className={cx(inputDenseClass, "w-20 tabular-nums")}
+              className={cx(inputDenseClass, "w-full tabular-nums")}
             />
           </label>
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <span className="block font-medium text-zinc-700">
               {gen.container}
             </span>
             <div
-              className="flex flex-wrap gap-1"
+              className="flex min-h-8 flex-wrap items-center gap-1"
               role="group"
               aria-label={gen.container}
             >
@@ -574,7 +582,7 @@ export function SelectionQuantity({
               ))}
             </div>
           </div>
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <span className="block font-medium text-zinc-700" id={perRoundId}>
               {gen.perRound}
             </span>
@@ -583,12 +591,12 @@ export function SelectionQuantity({
               aria-labelledby={perRoundId}
               title={gen.perRoundHint}
               data-generate-per-round
-              className="flex min-h-8 min-w-20 cursor-default items-center rounded-md border border-dashed border-zinc-300 bg-zinc-100 px-2.5 py-1 text-[13px] font-semibold tabular-nums text-zinc-700"
+              className="flex min-h-8 w-full min-w-20 cursor-default items-center rounded-md border border-dashed border-zinc-300 bg-zinc-100 px-2.5 py-1 text-[13px] font-semibold tabular-nums text-zinc-700"
             >
               {perRoundText}
             </output>
           </div>
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <span className="block font-medium text-zinc-700" id={totalFieldId}>
               {gen.totalField}
             </span>
@@ -597,7 +605,7 @@ export function SelectionQuantity({
               aria-labelledby={totalFieldId}
               title={gen.totalFieldHint}
               data-generate-total-containers
-              className="flex min-h-8 min-w-20 cursor-default items-center rounded-md border border-dashed border-zinc-300 bg-zinc-100 px-2.5 py-1 text-[13px] font-semibold tabular-nums text-zinc-700"
+              className="flex min-h-8 w-full min-w-20 cursor-default items-center rounded-md border border-dashed border-zinc-300 bg-zinc-100 px-2.5 py-1 text-[13px] font-semibold tabular-nums text-zinc-700"
             >
               {range ? fmt(range.needed.total) : "—"}
             </output>
@@ -607,7 +615,7 @@ export function SelectionQuantity({
             onClick={() => generate(apply, roundsValue)}
             disabled={!total}
             data-generate-submit
-            className="rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
+            className="min-h-8 justify-self-start whitespace-nowrap rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
           >
             {gen.submit}
           </button>

@@ -41,7 +41,7 @@ export const pt = {
     "Imagens aproximadas de como a Wellmix espera o produto ao final da produção e a ficha do produto. São referência: não são fotos de amostra.",
   "aiRefs.settings.section": "Referências por IA na escolha do grupo (OpenAI)",
   "aiRefs.settings.hint":
-    'Prompts padrão do painel ao lado de "Gravar a escolha do grupo" (editáveis em cada escolha). Os dados do item vão junto automaticamente.',
+    'Prompts padrão do painel abaixo de "Gravar a escolha do grupo" (editáveis em cada escolha). Os dados do item vão junto automaticamente.',
   "aiRefs.settings.imageModel": "Modelo de imagem (OpenAI)",
   "aiRefs.settings.textModel": "Modelo de texto (OpenAI)",
   "aiRefs.settings.key.on": "OPENAI_API_KEY configurada",
@@ -91,7 +91,7 @@ export const en: typeof pt = {
     "Approximate images of how Wellmix expects the product at the end of production, and the product sheet. They are references, not sample photos.",
   "aiRefs.settings.section": "AI references in the group choice (OpenAI)",
   "aiRefs.settings.hint":
-    'Default prompts of the panel next to "Save the group\'s choice" (editable in each choice). The item data is added automatically.',
+    'Default prompts of the panel below "Save the group\'s choice" (editable in each choice). The item data is added automatically.',
   "aiRefs.settings.imageModel": "Image model (OpenAI)",
   "aiRefs.settings.textModel": "Text model (OpenAI)",
   "aiRefs.settings.key.on": "OPENAI_API_KEY configured",
@@ -138,7 +138,7 @@ export const zh: typeof pt = {
     "Wellmix 期望产品在生产完成后的大致样子图片和产品说明。仅供参考，不是样品照片。",
   "aiRefs.settings.section": "分组选择中的 AI 参考（OpenAI）",
   "aiRefs.settings.hint":
-    "“保存本组的选择”旁边面板的默认提示词（每次选择可修改）。商品数据会自动加入。",
+    "“保存本组的选择”下方面板的默认提示词（每次选择可修改）。商品数据会自动加入。",
   "aiRefs.settings.imageModel": "图片模型（OpenAI）",
   "aiRefs.settings.textModel": "文字模型（OpenAI）",
   "aiRefs.settings.key.on": "已配置 OPENAI_API_KEY",

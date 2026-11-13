@@ -583,7 +583,9 @@ export default async function BookingSelectionPage({
         {costHint}
         {table}
 
-        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        {/* A escolha em cima e os prompts de IA logo abaixo: cada cartão ocupa
+            a largura toda da área de conteúdo (pedido do dono, 13/11/2026). */}
+        <div className="space-y-4" data-selection-choice-cards>
           <Card title={t("supplierRequests.selection.form.title")}>
             <p className="mb-3 text-sm text-zinc-600">
               {t("supplierRequests.selection.form.body")}

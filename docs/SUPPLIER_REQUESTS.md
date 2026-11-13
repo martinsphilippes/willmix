@@ -48,7 +48,7 @@ O quadrante de comparação **não abre a solicitação**: ele grava a escolha d
 
 ### Referências por IA (pedido do dono, 12/11/2026)
 
-À direita do bloco "Gravar a escolha do grupo" fica o painel **Prompts de IA para o fornecedor**: três prompts que a OpenAI transforma em arquivos anexados à solicitação, para o fornecedor ver, além das demais informações, como o produto deve ficar de forma aproximada ao final da produção.
+Logo abaixo do bloco "Gravar a escolha do grupo" fica o painel **Prompts de IA para o fornecedor** (até 13/11/2026 ficava à direita; pedido do dono: os dois cartões um sobre o outro, cada um na largura toda da área de conteúdo, com os três prompts lado a lado; em tela estreita, um por linha): três prompts que a OpenAI transforma em arquivos anexados à solicitação, para o fornecedor ver, além das demais informações, como o produto deve ficar de forma aproximada ao final da produção.
 
 1. **Imagem 1: produto final** e **Imagem 2: detalhes e embalagem** (imagens, modelo `openaiImageModel`, padrão `gpt-image-1`). Com foto no item do booking, a imagem parte dela (`/v1/images/edits`); sem foto, só do texto (`/v1/images/generations`).
 2. **Arquivo: ficha para o fornecedor** (texto .txt, em inglês e chinês, modelo `openaiTextModel`, padrão `gpt-5-mini`, `/v1/responses`).
