@@ -348,23 +348,46 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   // containers saem da conta.
   const gen = page.locator("[data-rounds-generator]");
   const calc = gen.locator("[data-generate-calc]");
-  // Sem nenhum item marcado como escolhido, a conta não some: usa o primeiro
-  // do grupo com caixa master e CBM, e diz qual.
-  await expect(gen.locator("[data-generate-item]")).toHaveAttribute(
-    "data-generate-item",
-    "assumed",
+  // Sem item marcado em "Escolher", nada é calculado nem gerado (dono,
+  // 13/11/2026; antes a conta usava o primeiro item do grupo com caixa master
+  // e CBM): o gerador pede para marcar um item, os resultados ficam em branco
+  // e "Gerar programação" e "+ Programação de compra" ficam desligados, mesmo
+  // com o total de caixas e as programações preenchidos. Enter também não gera.
+  const selectItem = gen.locator("[data-generate-select-item]");
+  await expect(selectItem).toHaveText(
+    "Selecione um item na tabela para gerar a programação de compra",
   );
-  await expect(gen.locator("[data-generate-assumed]")).toBeVisible();
-  await expect(calc).toContainText("27.168");
+  await expect(calc).toHaveCount(0);
+  await expect(gen.locator("[data-generate-per-round]")).toHaveText("—");
+  await expect(gen.locator("[data-generate-total-containers]")).toHaveText("—");
+  await expect(page.locator("[data-schedule-on]")).toBeDisabled();
+  await gen.locator("[data-generate-total]").fill("1360");
+  await gen.locator("[data-generate-rounds]").fill("5");
+  await expect(gen.locator("[data-generate-submit]")).toBeDisabled();
+  await gen.locator("[data-generate-total]").press("Enter");
+  await gen.locator("[data-generate-rounds]").press("Enter");
+  await expect(page.locator("[data-schedule-item]")).toHaveCount(0);
+  await expect(page.locator('[data-request-schedule="off"]')).toBeVisible();
+  await expect(calc).toHaveCount(0);
+  await expect(gen.locator("[data-generate-per-round]")).toHaveText("—");
+  await expect(page).not.toHaveURL(/[?&]saved=1/);
+  // Volta os campos ao que eram (em branco: a quantidade da planilha) para as
+  // contas abaixo: as peças digitadas e apagadas mandam no total de caixas.
+  await gen.locator("[data-selection-quantity]").fill("1");
+  await gen.locator("[data-selection-quantity]").fill("");
+  await gen.locator("[data-generate-rounds]").fill("2");
+  // Com o item marcado, o fluxo volta ao normal, com a caixa dele.
   await page
     .locator("[data-selection-item]", { hasText: `${TAG}-A` })
     .locator("[data-selection-choose]")
     .check();
+  await expect(selectItem).toHaveCount(0);
   await expect(gen.locator("[data-generate-item]")).toHaveAttribute(
     "data-generate-item",
     "ok",
   );
-  await expect(gen.locator("[data-generate-assumed]")).toHaveCount(0);
+  await expect(page.locator("[data-schedule-on]")).toBeEnabled();
+  await expect(gen.locator("[data-generate-submit]")).toBeEnabled();
   // O campo do total se chama "Total de caixas" e recebe caixas master: sem
   // nada digitado, mostra as peças da planilha (3.000) em caixas inteiras.
   await expect(
@@ -420,6 +443,31 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(qty(2)).toHaveValue("20016");
   await expect(qty(3)).toHaveValue("19968");
   await expect(page.locator("[data-selection-quantity]")).toHaveValue("60000");
+  // Trocar o item marcado desfaz a programação ainda não gravada do item
+  // anterior: as rodadas saem e a quantidade (peças) volta a ir sozinha no
+  // formulário. "Programações" e as peças ficam para gerar de novo.
+  await page
+    .locator("[data-selection-item]", { hasText: `${TAG}-B` })
+    .locator("[data-selection-choose]")
+    .check();
+  await expect(page.locator("[data-schedule-item]")).toHaveCount(0);
+  await expect(page.locator('[data-request-schedule="off"]')).toBeVisible();
+  await expect(gen.locator("[data-generate-rounds]")).toHaveValue("3");
+  await expect(page.locator("[data-selection-quantity]")).toHaveValue("60000");
+  await expect(page.locator("[data-selection-quantity]")).toHaveAttribute(
+    "name",
+    "quantity",
+  );
+  // Voltar ao A não traz de volta o que não foi gravado: gera de novo.
+  await page
+    .locator("[data-selection-item]", { hasText: `${TAG}-A` })
+    .locator("[data-selection-choose]")
+    .check();
+  await expect(page.locator("[data-schedule-item]")).toHaveCount(0);
+  await gen.locator("[data-generate-submit]").click();
+  await expect(page.locator("[data-schedule-item]")).toHaveCount(3);
+  await expect(qty(1)).toHaveValue("20016");
+  await expect(qty(3)).toHaveValue("19968");
   // O cálculo escrito: caixas, m³ e containers do total, a ocupação das
   // rodadas e quantos containers no total.
   await expect(calc.locator("[data-generate-result]")).toContainText("1.250");

@@ -294,6 +294,9 @@ export async function registerSupplierPayment(
       }),
     },
   );
+  // Pedido de compra: o sinal pago libera a produção.
+  const { refreshPurchaseGates } = await import("./purchase-gates");
+  await refreshPurchaseGates(orderId, user);
   return payment;
 }
 
@@ -398,5 +401,8 @@ export async function markSupplierPaymentPaid(
       }),
     },
   );
+  // Pedido de compra: o sinal pago libera a produção.
+  const { refreshPurchaseGates } = await import("./purchase-gates");
+  await refreshPurchaseGates(orderId, user);
   return updated;
 }

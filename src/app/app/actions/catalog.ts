@@ -263,6 +263,10 @@ export async function updateProductSheetAction(form: FormData) {
     const { fillProductNameCopies } =
       await import("@/lib/services/product-name-copies");
     await fillProductNameCopies(user, { id, name: parsed.name });
+    // Pedido de compra aberto com o produto: a ficha pode ter fechado.
+    const { refreshGatesForProduct } =
+      await import("@/lib/services/purchase-gates");
+    await refreshGatesForProduct(id, user);
     return `/app/products/${id}?saved=1`;
   });
 }
@@ -297,6 +301,10 @@ export async function addProductPhotosAction(form: FormData) {
       productId,
       `${added.length} foto(s) ${parsed.kind}`,
     );
+    // Pedido de compra aberto com o produto: a ficha pode ter fechado.
+    const { refreshGatesForProduct } =
+      await import("@/lib/services/purchase-gates");
+    await refreshGatesForProduct(productId, user);
     return `/app/products/${productId}#photos`;
   });
 }

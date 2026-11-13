@@ -611,15 +611,8 @@ export default async function BookingSelectionPage({
                 schedule={current?.schedule ?? null}
                 chosenItemId={current?.chosenItemId ?? null}
                 containerTypes={containerTypes}
-                items={list.map(({ item, supplier }) => ({
+                items={list.map(({ item }) => ({
                   id: item.id,
-                  // Como o item aparece na conta quando nenhum está marcado.
-                  label: [
-                    item.factoryItemCode ?? item.description,
-                    supplier?.name,
-                  ]
-                    .filter(Boolean)
-                    .join(" · "),
                   masterCartonQty: item.masterCartonQty,
                   cbmPerCarton:
                     item.cbmPerCarton ??
@@ -653,16 +646,7 @@ export default async function BookingSelectionPage({
                     pieces: "{pieces}",
                     container: "{container}",
                   }),
-                  itemAssumed: t("purchaseRounds.gen.itemAssumed", {
-                    label: "{label}",
-                    pcs: "{pcs}",
-                    cbm: "{cbm}",
-                    cartons: "{cartons}",
-                    pieces: "{pieces}",
-                    container: "{container}",
-                  }),
-                  assumedNote: t("purchaseRounds.gen.assumedNote"),
-                  noItem: t("purchaseRounds.gen.noItem"),
+                  selectItem: t("purchaseRounds.gen.selectItem"),
                   noCarton: t("purchaseRounds.gen.noCarton"),
                   noPieces: t("purchaseRounds.gen.noPieces"),
                   tooBig: t("purchaseRounds.gen.tooBig", {
@@ -687,7 +671,6 @@ export default async function BookingSelectionPage({
                     cartons: "{cartons}",
                     rounds: "{rounds}",
                   }),
-                  regen: t("purchaseRounds.gen.regen"),
                   each: t("purchaseRounds.gen.each", {
                     cartons: "{cartons}",
                     cbm: "{cbm}",

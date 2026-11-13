@@ -1099,11 +1099,22 @@ export async function saveSettingsAction(form: FormData) {
         value = c;
       } else if (
         key === "purchaseArtSlaDays" ||
-        key === "purchaseArtReviewSlaDays"
+        key === "purchaseArtReviewSlaDays" ||
+        key === "purchaseDieCutSlaDays" ||
+        key === "purchaseCertSlaDays" ||
+        key === "purchaseArtFinalSlaDays" ||
+        key === "purchaseRegistrationSlaDays" ||
+        key === "purchaseSignatureSlaDays" ||
+        key === "purchaseDownPaymentSlaDays"
       ) {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 1 || n > 365)
           throw new Error("purchase_sla_invalid");
+        value = n;
+      } else if (key === "certificationHorizonDays") {
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 1 || n > 730)
+          throw new Error("certification_horizon_invalid");
         value = n;
       } else if (key === "bookingInviteSlaDays") {
         const n = Number(raw);

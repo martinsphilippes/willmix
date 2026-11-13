@@ -10,6 +10,7 @@ import { xlsxBytes } from "./xlsx-fixture";
  */
 withTempStore();
 const { approveSample } = await import("./helpers/sampling");
+const gates = await import("./helpers/product-gates");
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
@@ -197,11 +198,19 @@ async function finishLanes(orderId: string) {
       (r) => r.key === k("art_review", item.id),
     )!;
     await engine.decideRequirement(admin, review.id, "approve");
-    await submit(ocp, orderId, k("certificate", item.id), { file: "cert.pdf" });
-    await submit(agency, orderId, k("art_final", item.id), {
-      file: "final.pdf",
-    });
+    // Certificado e arte final com o selo só quando a linha exige.
+    const keys = new Set((await requirementsOf(orderId)).map((r) => r.key));
+    if (keys.has(k("certificate", item.id))) {
+      await submit(ocp, orderId, k("certificate", item.id), {
+        file: "cert.pdf",
+      });
+      await submit(agency, orderId, k("art_final", item.id), {
+        file: "final.pdf",
+      });
+    }
   }
+  // Cadastro e fiscal: NCM validado e ficha completa de cada produto.
+  await gates.readyOrderProducts(admin, orderId);
 }
 
 describe("regras puras da programação de compra", () => {
@@ -389,6 +398,12 @@ describe("programação de compra de ponta a ponta", () => {
       [1000, 600].sort(),
     );
     expect(child.fobTotal).toBeCloseTo(2 * 1600);
+    // Cada rodada decide o próprio pedido de amostras antes de assinar.
+    expect(
+      (await signature.getOrderSignatureView(admin, child.id))!.samplesPending,
+    ).toBe(true);
+    const samples = await import("@/lib/services/sample-order");
+    await samples.decideSampleOrder(admin, child.id, { status: "none" });
     // Contrato próprio, com a negociação e as artes finais do pai.
     const view = (await signature.getOrderSignatureView(admin, child.id))!;
     expect(view.document.finalArts).toHaveLength(2);

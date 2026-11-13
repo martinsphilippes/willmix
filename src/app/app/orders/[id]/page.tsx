@@ -12,12 +12,18 @@ import { ActionError } from "@/components/action-error";
 import { Fragment, type ReactNode } from "react";
 import { fallbackError } from "@/i18n/error-text";
 import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
-import { canViewDieCut, negotiatedTerms } from "@/lib/services/die-cut-step";
 import {
+  DOWN_PAYMENT_KEY,
+  LANE_KEYS,
+  baseKeyOf,
+  blockedBy,
+  isAutoGateKey,
   isLeadTimeKey,
+  isSampleOrderKey,
   itemIdOf,
   supplierSeesLaneRequirement,
 } from "@/lib/purchase-lanes";
+import { canViewDieCut, negotiatedTerms } from "@/lib/services/die-cut-step";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -1928,7 +1934,15 @@ export default async function OrderPage({
                                           x.status !== "done",
                                       )
                                     ? t("orderSign.send.waitWellmix")
-                                    : dateWaiting(t, stage.key, r, reqs)
+                                    : ((purchaseFlow
+                                        ? laneWaiting(t, r, reqs)
+                                        : null) ??
+                                      dateWaiting(t, stage.key, r, reqs))
+                          }
+                          gateHref={
+                            purchaseFlow && wellmix
+                              ? gateHrefOf(order.id, r, items)
+                              : null
                           }
                           dateBounds={
                             r.type === "date"
@@ -3008,9 +3022,15 @@ function RequirementRow({
   sheetHint,
   dateBounds,
   waiting,
+  gateHref,
   defaultValue,
 }: {
   requirement: Requirement;
+  /**
+   * Item conferido pelo sistema (NCM validado, ficha completa, sinal): o
+   * atalho para a tela onde a área dona faz a parte dela.
+   */
+  gateHref?: { href: string; label: DictionaryKey } | null;
   /** Ainda não dá para agir: aguarda outro item (ex.: aprovar a arte antes de ela chegar). */
   waiting?: string | null;
   /** Valor que o campo traz preenchido (quem preenche confere e envia). */
@@ -3175,6 +3195,27 @@ function RequirementRow({
             </LinkButton>
           </div>
         ) : null
+      ) : isSampleOrderKey(r.key) ? (
+        // Pedido de amostras: pela página dele (docs/SAMPLE_ORDER.md).
+        isWellmix(user) || user.role === "supplier" ? (
+          <div className={wide.side}>
+            <LinkButton
+              href={`/app/orders/${order.id}/samples`}
+              variant={
+                open &&
+                !waiting &&
+                r.status !== "done" &&
+                canSubmitRequirement(user, order as never, r)
+                  ? "primary"
+                  : "secondary"
+              }
+              className="w-full @sm:w-auto"
+              data-sample-order-link={r.key}
+            >
+              {t("sampleOrder.open")}
+            </LinkButton>
+          </div>
+        ) : null
       ) : isOrderSignatureKey(r.key) ? (
         // Assinatura: pela página do documento do pedido (só a Wellmix e o
         // fornecedor do pedido chegam a ela).
@@ -3190,6 +3231,17 @@ function RequirementRow({
             </LinkButton>
           </div>
         ) : null
+      ) : open && gateHref && !waiting && r.status !== "done" ? (
+        <div className={wide.side}>
+          <LinkButton
+            href={gateHref.href}
+            variant="secondary"
+            className="w-full @sm:w-auto"
+            data-requirement-gate={baseKeyOf(r.key)}
+          >
+            {t(gateHref.label)}
+          </LinkButton>
+        </div>
       ) : canAct ? (
         <div className={wide.side}>
           <RequirementForm
@@ -3225,6 +3277,52 @@ function RequirementRow({
 /* ------------------------------------------------------------------------ */
 /* Evolução incremental: trilha, snapshot, resultado da inspeção, containers  */
 /* ------------------------------------------------------------------------ */
+
+/**
+ * Pedido de compra: o item espera o anterior da raia ou do contrato (a arte
+ * espera a faca e a foto em alta; a arte final, a arte validada e o
+ * certificado; o sinal, as duas assinaturas). Diz o que falta.
+ */
+function laneWaiting(
+  t: Translate,
+  r: Requirement,
+  reqs: Requirement[],
+): string | null {
+  if (r.status === "done") return null;
+  const missing = blockedBy(r.key, reqs);
+  if (!missing.length) return null;
+  const labels = missing
+    .map((k) => reqs.find((x) => x.key === k))
+    .filter((x): x is Requirement => !!x)
+    .map((x) => requirementLabel(t, x).split(" · ")[0]);
+  return t("purchaseSequence.waiting", { items: labels.join(", ") });
+}
+
+/** Atalho dos itens que o sistema confere: onde a área dona faz a parte dela. */
+function gateHrefOf(
+  orderId: string,
+  r: Requirement,
+  items: Array<{ id: string; productId: string | null }>,
+): { href: string; label: DictionaryKey } | null {
+  if (!isAutoGateKey(r.key)) return null;
+  const base = baseKeyOf(r.key);
+  if (base === DOWN_PAYMENT_KEY)
+    return {
+      href: `/app/orders/${orderId}#supplier-payment`,
+      label: "purchaseSequence.gate.downPayment",
+    };
+  const productId = items.find((i) => i.id === itemIdOf(r.key))?.productId;
+  if (!productId) return null;
+  return base === LANE_KEYS.ncmValidated
+    ? {
+        href: `/app/products/${productId}/tax`,
+        label: "purchaseSequence.gate.ncm",
+      }
+    : {
+        href: `/app/products/${productId}#photos`,
+        label: "purchaseSequence.gate.sheet",
+      };
+}
 
 /**
  * Data que espera outra da mesma etapa (ex.: a previsão de chegada só depois

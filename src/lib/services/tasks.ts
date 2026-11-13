@@ -369,7 +369,7 @@ export function stageTaskDrafts(
         ),
     );
     if (mine.length === 0) continue;
-    // Prazo das raias: o mais próximo entre a arte e a validação pendentes.
+    // Prazo de cada passo (Configurações → SLA): o mais próximo dos pendentes.
     const laneDue =
       lanes && isPurchaseFlow(order)
         ? (mine
@@ -379,6 +379,7 @@ export function stageTaskDrafts(
                 order.createdAt,
                 lanes.all.filter((x) => x.stageId === stage.id),
                 lanes.sla,
+                stage.startedAt,
               ),
             )
             .filter((d): d is string => !!d)
@@ -413,7 +414,7 @@ export function stageTaskDrafts(
           values: { product: product.name, n: order.number },
         },
         link: dieCutHref(order.id, product.itemId),
-        dueAt: stage.dueAt,
+        dueAt: laneDue ?? stage.dueAt,
         orderNumber: order.number,
         stageKey: stage.key,
         customerId: order.customerId,

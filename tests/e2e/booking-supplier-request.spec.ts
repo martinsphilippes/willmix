@@ -4,6 +4,7 @@ import {
   importAndClose,
   login,
   selectAndOpenSupplierRequest,
+  setManualFx,
 } from "./helpers";
 
 /*
@@ -29,6 +30,8 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
 
   // 1. Dois bookings de fornecedores diferentes, com o mesmo tipo de item.
   await login(page, "admin@wellmix.com");
+  // Câmbio manual: a simulação da proposta (adiante) precisa de câmbio.
+  await setManualFx(page);
   await importAndClose(
     page,
     bookingSheet("Shenzhen Supplier A", codeA, `Glass cup ${TAG} 350ml`),
@@ -173,9 +176,10 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-request-alternative]")).toHaveCount(
     0,
   );
-  // "Situação" (a geral do produto) e "SLA" fecham a tabela, antes de
-  // "Ações", e o conjunto fica fixo à direita na rolagem (dono, 13/11/2026).
-  // Aqui com os três botões do fornecedor; adiante, com os dois da Wellmix.
+  // "Situação / SLA" (a geral do produto e, embaixo, o SLA; antes eram duas
+  // colunas) fecha a tabela, antes de "Ações", e o conjunto fica fixo à
+  // direita na rolagem (dono, 13/11/2026). Aqui com os três botões do
+  // fornecedor; adiante, com os dois da Wellmix.
   const pinnedColumns = async () => {
     const read = (end: boolean) =>
       page.evaluate((toEnd) => {
@@ -190,16 +194,16 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
           return [Math.round(box.left - left), Math.round(box.right - left)];
         };
         const row = table.tBodies[0].rows[0];
-        const lastThree = (cells: HTMLCollectionOf<HTMLTableCellElement>) =>
+        const lastTwo = (cells: HTMLCollectionOf<HTMLTableCellElement>) =>
           Array.from(cells)
-            .slice(-3)
+            .slice(-2)
             .map((cell) => cell.getAttribute("data-supplier-table-pin"));
         return {
           width: frame.clientWidth,
           scrolled: Math.round(frame.scrollLeft),
-          head: lastThree(table.tHead!.rows[0].cells),
-          body: lastThree(row.cells),
-          pins: ["status", "sla", "actions"].map((name) =>
+          head: lastTwo(table.tHead!.rows[0].cells),
+          body: lastTwo(row.cells),
+          pins: ["status", "actions"].map((name) =>
             span(row.querySelector(`td[data-supplier-table-pin=${name}]`)!),
           ),
           first: span(row.cells[0]),
@@ -207,17 +211,16 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
       }, end);
     const start = await read(false);
     const end = await read(true);
-    expect(start.head).toEqual(["status", "sla", "actions"]);
-    expect(start.body).toEqual(["status", "sla", "actions"]);
-    // A tabela rola (o resto anda) e as três ficam onde estavam, coladas
+    expect(start.head).toEqual(["status", "actions"]);
+    expect(start.body).toEqual(["status", "actions"]);
+    // A tabela rola (o resto anda) e as duas ficam onde estavam, coladas
     // uma na outra e na borda direita.
     expect(end.scrolled).toBeGreaterThan(0);
     expect(end.first[0]).toBeLessThan(start.first[0]);
     expect(end.pins).toEqual(start.pins);
-    const [status, sla, actions] = start.pins;
+    const [status, actions] = start.pins;
     expect(Math.abs(actions[1] - start.width)).toBeLessThanOrEqual(1);
-    expect(Math.abs(sla[1] - actions[0])).toBeLessThanOrEqual(1);
-    expect(Math.abs(status[1] - sla[0])).toBeLessThanOrEqual(1);
+    expect(Math.abs(status[1] - actions[0])).toBeLessThanOrEqual(1);
     expect(status[0]).toBeGreaterThan(0);
     // A largura do conjunto fixo.
     return start.width - status[0];
@@ -263,24 +266,58 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await page.goto(requestUrl);
   await expect(page.locator("[data-supplier-table-row]")).toHaveCount(1);
   await expect(page.locator("[data-supplier-request-sla]")).toBeVisible();
-  // As três colunas fixas, agora com os dois botões da Wellmix (o conjunto
+  // As duas colunas fixas, agora com os dois botões da Wellmix (o conjunto
   // fica mais estreito que o do fornecedor).
   expect(await pinnedColumns()).toBeLessThan(supplierPinned);
-  // SLA: o estado em destaque e o prazo (data e hora) numa linha embaixo.
-  const sla = page.locator("[data-supplier-request-sla]");
-  await expect(sla).toHaveAttribute("data-supplier-request-sla", "ok");
-  await expect(sla).toContainText("No prazo");
-  await expect(sla.locator("[data-supplier-table-sla-due]")).toHaveText(
-    /^\d{2}\/\d{2}\/\d{4},? \d{2}:\d{2}$/,
-  );
-  // Situação: a geral do produto. A das condições finais é outra coluna,
-  // continua no lugar dela e não fica fixa.
+  // "Situação / SLA": a situação geral do produto e, embaixo, o SLA. A
+  // situação das condições finais é outra coluna, continua no lugar dela e
+  // não fica fixa.
   const statusCell = page.locator("td[data-supplier-table-pin=status]");
+  await expect(page.locator("th[data-supplier-table-pin=status]")).toHaveText(
+    "Situação / SLA",
+  );
   await expect(statusCell).toHaveAttribute(
     "data-supplier-table-status",
     "answered",
   );
-  await expect(statusCell).toHaveText("Respondida");
+  await expect(
+    statusCell.locator("[data-supplier-table-status-badge]"),
+  ).toHaveText("Respondida");
+  // SLA: o selo e, à direita na mesma linha, o "+"; a data e a hora do prazo
+  // começam recolhidas. "+" mostra embaixo do selo e vira "−"; "−" recolhe.
+  const sla = statusCell.locator("[data-supplier-request-sla]");
+  await expect(sla).toHaveAttribute("data-supplier-request-sla", "ok");
+  await expect(sla).toContainText("No prazo");
+  const slaToggle = sla.locator("[data-supplier-table-sla-toggle]");
+  const slaDue = sla.locator("[data-supplier-table-sla-due]");
+  await expect(slaToggle).toHaveText("+");
+  await expect(slaToggle).toHaveAttribute("aria-expanded", "false");
+  await expect(slaDue).toBeHidden();
+  const slaBadge = (await sla
+    .locator("[data-supplier-table-sla-badge]")
+    .boundingBox())!;
+  const toggleBox = (await slaToggle.boundingBox())!;
+  expect(toggleBox.x).toBeGreaterThan(slaBadge.x + slaBadge.width - 1);
+  expect(
+    Math.abs(
+      toggleBox.y + toggleBox.height / 2 - (slaBadge.y + slaBadge.height / 2),
+    ),
+  ).toBeLessThan(4);
+  const cellWidth = (await statusCell.boundingBox())!.width;
+  await slaToggle.click();
+  await expect(slaToggle).toHaveText("−");
+  await expect(slaToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(slaDue).toBeVisible();
+  await expect(slaDue).toHaveText(/^\d{2}\/\d{2}\/\d{4},? \d{2}:\d{2}$/);
+  const dueBox = (await slaDue.boundingBox())!;
+  expect(dueBox.y).toBeGreaterThan(slaBadge.y + slaBadge.height - 1);
+  // A coluna mantém a largura com o prazo aberto.
+  expect(
+    Math.abs((await statusCell.boundingBox())!.width - cellWidth),
+  ).toBeLessThan(1);
+  await slaToggle.click();
+  await expect(slaToggle).toHaveText("+");
+  await expect(slaDue).toBeHidden();
   const finalState = page.locator("td[data-supplier-table-final-state]");
   await expect(finalState).toHaveCount(1);
   await expect(finalState).not.toHaveAttribute("data-supplier-table-pin");

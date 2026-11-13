@@ -138,7 +138,9 @@ describe("o produto ganha o nome real", () => {
     const p = await product(XPTO);
     const { order, item, request } = await purchaseOrder(p.id, XPTO);
     // Rótulo antigo, gravado antes desta regra, e uma tarefa já respondida.
-    const [first, second] = await lane(order.id);
+    const tasks = await lane(order.id);
+    const first = tasks.find((r) => r.key.startsWith("die_cut__"))!;
+    const second = tasks.find((r) => r.key.startsWith("hd_photo__"))!;
     const keys = (await lane(order.id)).map((r) => r.key);
     await store.update("requirements", first.id, {
       label: `Faca (die cut) · ${XPTO}`,

@@ -78,7 +78,7 @@ A arte não espera o pedido: quando a Wellmix abre a RFQ, além de os fornecedor
 
 ## Pagamento ao fornecedor (fora do fluxo)
 
-O pagamento da Wellmix ao fornecedor é negociado com cada um e costuma vencer meses depois da entrega, por isso não segura o pedido:
+O pagamento da Wellmix ao fornecedor é negociado com cada um e costuma vencer meses depois da entrega, por isso não segura o pedido. Exceção do pedido de compra (13/11/2026): o **sinal** (parcelas no marco "pedido gerado") segura a produção até ser pago, e sem ele o fornecedor está em conta corrente (docs/PURCHASE_ORDER.md, seção 1a).
 
 - **Condição no cadastro do fornecedor** (`parties.paymentTerms`, só a Wellmix edita em Cadastros → fornecedor → "Condição de pagamento ao fornecedor"): até 6 parcelas, cada uma com % do FOB, marco (pedido gerado, embarque, entrega ao cliente) e dias depois do marco; soma 100%. Observação livre em `paymentTermsNote`. Sem condição = "não configurada" (nada é presumido).
 - **Cópia no pedido**: o pedido guarda a condição do dia em que nasceu (`orders.supplierPaymentTerms`); mudar o cadastro depois não mexe nele, até a Wellmix usar "Usar a condição atual do cadastro" no pedido, o que só vale enquanto o pedido não tem pagamento ao fornecedor lançado (`terms_has_payments`). Pedidos antigos (sem cópia) seguem a condição atual do fornecedor até o primeiro pagamento de parcela, que fixa no pedido a condição que valia.

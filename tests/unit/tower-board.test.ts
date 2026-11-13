@@ -318,6 +318,8 @@ describe("as três raias da Preparação, arte e certificação", () => {
         stages: [sa.stage, sb.stage, sc.stage],
         laneRequirements: [
           lane(a, sa, "die_cut__i1"),
+          lane(a, sa, "hd_photo__i1", true),
+          lane(a, sa, "ncm_validated__i1"),
           lane(a, sa, "art__i1"),
           lane(a, sa, "art_review__i1"),
           lane(a, sa, "certificate__i1"),
@@ -335,11 +337,14 @@ describe("as três raias da Preparação, arte e certificação", () => {
         ] as BoardInput["laneRequirements"],
       }),
     );
-    // A arte final só é pedida quando validada e certificada (não conta antes).
+    // A arte espera a faca e a foto em alta (o pedido A ainda não tem a faca);
+    // a arte final só é pedida quando validada e certificada (não conta antes).
     expect(ids(board, "lnSupplier")).toEqual([a.id]);
-    expect(ids(board, "lnArt")?.sort()).toEqual([a.id, c.id].sort());
+    expect(ids(board, "lnArt")).toEqual([c.id]);
     expect(ids(board, "lnArtReview")).toEqual([b.id]);
     expect(ids(board, "lnCert")).toEqual([a.id]);
+    // Cadastro e fiscal: o NCM ainda sem validação.
+    expect(ids(board, "lnRegistration")).toEqual([a.id]);
     // As raias não mudam a posição: os três ficam em "Pedidos de compra".
     expect(ids(board, "ordPrepPortal")?.length).toBe(3);
   });

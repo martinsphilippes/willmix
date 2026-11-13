@@ -121,11 +121,13 @@ describe("tarefas das raias do pedido de compra", () => {
     );
   });
 
-  it("nome ausente ou de exemplo: só o título, nas oito tarefas", () => {
-    for (const name of ["Produto novo XPTO", "XPTO", "", "  "]) {
-      const out = labels(name);
-      expect(out).toHaveLength(8);
-      expect(out).toEqual([
+  it("nome ausente ou de exemplo: só o título, em todas as tarefas", () => {
+    // Os títulos são os mesmos do produto com nome, sem " · nome".
+    const titles = labels("Jarra de vidro").map((l) =>
+      l.replace(" · Jarra de vidro", ""),
+    );
+    expect(titles).toEqual(
+      expect.arrayContaining([
         "Faca (die cut)",
         "Foto em alta resolução",
         "MOQ confirmado (peças)",
@@ -134,7 +136,12 @@ describe("tarefas das raias do pedido de compra", () => {
         "Validação da arte pela Wellmix",
         "Certificado (Inmetro)",
         "Arte final com o selo",
-      ]);
+      ]),
+    );
+    for (const name of ["Produto novo XPTO", "XPTO", "", "  "]) {
+      const out = labels(name);
+      expect(out).toEqual(titles);
+      expect(out.some((l) => l.includes(" · "))).toBe(false);
     }
   });
 

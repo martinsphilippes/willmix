@@ -49,6 +49,8 @@ import {
   LANE_KEYS,
   baseKeyOf,
   blockedBy,
+  isAutoGateKey,
+  isSampleOrderKey,
   prerequisitesOf,
   type LaneItem,
 } from "@/lib/purchase-lanes";
@@ -302,8 +304,17 @@ export async function createStagesForOrder(
   if (beforeStart && !existingStages.length) await beforeStart();
   // Pedido de compra: "Pedido criado" não tem itens e conclui na hora; as
   // raias abrem em seguida.
-  if (isPurchaseFlow(order) && firstStageId && !existingStages.length)
+  if (isPurchaseFlow(order) && firstStageId && !existingStages.length) {
     await evaluateStage(null, firstStageId);
+    // O que o sistema já sabe fica feito na hora (NCM validado, ficha
+    // completa, certificação válida pelo período); o resto vira aviso.
+    const { refreshPurchaseGates } =
+      await import("@/lib/services/purchase-gates");
+    await refreshPurchaseGates(order.id);
+    const { notifyRegistrationOpen } =
+      await import("@/lib/services/purchase-order");
+    await notifyRegistrationOpen(order);
+  }
   return firstStageId;
 }
 
@@ -334,6 +345,11 @@ async function purchaseLaneItems(orderId: string): Promise<LaneItem[]> {
         // hoje; sem nenhum, a tarefa nasce só com o título.
         name: realName(item.name) ?? realName(product?.name) ?? "",
         lineRequirements: line?.requirements ?? null,
+        // Mapa do processo (P6): certificado e arte final com o selo só
+        // quando a linha do produto exige certificação.
+        certificationRequired: !!line?.requiredCertifications?.some((k) =>
+          k.trim(),
+        ),
       };
     });
 }
@@ -351,6 +367,8 @@ export interface SubmitInput {
    * assinatura não são concluídos pelo "Confirmar" comum.
    */
   signature?: boolean;
+  /** Só o serviço do pedido de amostras marca os itens dele (docs/SAMPLE_ORDER.md). */
+  sampleOrder?: boolean;
 }
 
 /** Quem pode preencher: Wellmix sempre; o papel do requisito quando vinculado ao parceiro certo. */
@@ -359,6 +377,9 @@ export function canSubmitRequirement(
   order: Order,
   requirement: Pick<Requirement, "role"> & Partial<Pick<Requirement, "key">>,
 ): boolean {
+  // Itens conferidos pelo sistema (NCM validado, ficha completa, sinal): só
+  // concluem pela tela dona deles, nunca à mão.
+  if (isAutoGateKey(requirement.key ?? "")) return false;
   if (isWellmix(user)) {
     // Ações que dependem de permissão (Equipe → Funções e acessos): validar
     // a arte do pedido de compra e assinar o contrato pela Wellmix.
@@ -401,6 +422,9 @@ export async function submitRequirement(
   // Assinatura do documento do pedido: só pela página do documento.
   if (isOrderSignatureKey(requirement.key) && !input.signature)
     throw new WorkflowError("signature_required");
+  // Pedido de amostras: só pela página dele.
+  if (isSampleOrderKey(requirement.key) && !input.sampleOrder)
+    throw new WorkflowError("sample_order_required");
   // Pedido de compra: a ordem dentro das raias (validar só a arte enviada;
   // arte final só com a arte validada e o certificado).
   if (isPurchaseFlow(order) && prerequisitesOf(requirement.key).length) {

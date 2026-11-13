@@ -18,6 +18,7 @@ import {
   ORDER_SIGNED_WELLMIX,
 } from "@/lib/workflow/stages";
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
+import { DOWN_PAYMENT_KEY, SAMPLE_ORDER_KEY } from "@/lib/purchase-lanes";
 import { audit } from "./audit";
 import { notify, notifyWellmix } from "./notifications";
 
@@ -197,8 +198,18 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
       incoterm: requests.find((r) => r.item.incoterm)?.item.incoterm ?? null,
       finalArts: sorted
         .map((item) => {
-          const art = requirements.find(
-            (r) => r.key === `art_final__${item.id}` && r.status === "done",
+          // Linha sem certificação (sem arte final com o selo): a arte
+          // validada pela Wellmix vai direto para o contrato (mapa, P7?).
+          const hasFinal = requirements.some(
+            (r) => r.key === `art_final__${item.id}`,
+          );
+          const validated = requirements.some(
+            (r) => r.key === `art_review__${item.id}` && r.status === "done",
+          );
+          const art = requirements.find((r) =>
+            hasFinal
+              ? r.key === `art_final__${item.id}` && r.status === "done"
+              : validated && r.key === `art__${item.id}` && r.status === "done",
           );
           return art?.documentId
             ? { name: realName(item.name) ?? "", documentId: art.documentId }
@@ -306,6 +317,8 @@ export interface OrderSignatureView {
    * enquanto a Preparação está aberta.
    */
   canReopenSupplier: boolean;
+  /** Pedido de compra: falta definir o pedido de amostras (a Wellmix assina depois). */
+  samplesPending: boolean;
 }
 
 export const ORDER_DOCUMENT_STATUSES = [
@@ -324,6 +337,10 @@ async function signatureRequirements(orderId: string) {
     supplier: all.find((r) => r.key === ORDER_SIGNED_SUPPLIER) ?? null,
     // "Enviar para assinatura" (pedidos novos): antes dele ninguém assina.
     send: all.find((r) => r.key === ORDER_SIGN_SEND) ?? null,
+    // Pedido de compra: o sinal (ou a conta corrente) libera a produção.
+    downPayment: all.find((r) => r.key === DOWN_PAYMENT_KEY) ?? null,
+    // Pedido de amostras (docs/SAMPLE_ORDER.md): a Wellmix assina depois dele.
+    samples: all.find((r) => r.key === SAMPLE_ORDER_KEY) ?? null,
   };
 }
 
@@ -394,6 +411,9 @@ export async function getOrderSignatureView(
     return stage?.status === "active" || stage?.status === "blocked";
   };
   let canSign: OrderSignatureView["canSign"] = null;
+  // Pedido de compra: o pedido de amostras vem antes da assinatura da Wellmix.
+  const samplesPending =
+    !!reqs.samples && reqs.samples.status !== "done" && !wellmix;
   let canRegisterSupplier = false;
   let supplierBlocked = false;
   // Pedido novo: antes do "Enviar para assinatura" ninguém assina.
@@ -414,6 +434,7 @@ export async function getOrderSignatureView(
     if (isWellmix(user)) {
       if (
         !awaitingSend &&
+        !samplesPending &&
         can(user, "contract.sign") &&
         (await stageActive(reqs.wellmix))
       )
@@ -454,6 +475,7 @@ export async function getOrderSignatureView(
     sendBlockers,
     canSend,
     waitingWellmix: isOrderSupplier(user, order) && !!reqs.wellmix && !wellmix,
+    samplesPending,
   };
 }
 
@@ -557,6 +579,8 @@ export async function signOrderDocument(
   // Pedido novo: primeiro a arte e o selo, depois "Enviar para assinatura".
   if (reqs.send && reqs.send.status !== "done")
     throw new OrderSignatureError("signature_not_sent");
+  if (side === "wellmix" && reqs.samples && reqs.samples.status !== "done")
+    throw new OrderSignatureError("signature_samples_pending");
   const document = await buildOrderDocument(order);
   const hash = orderDocumentHash(document);
   if (input.hash !== hash)
@@ -647,6 +671,17 @@ export async function signOrderDocument(
     );
   } else {
     // Contrato assinado: o início da produção entra sozinho (e o prazo conta).
+    // No pedido de compra ele espera o sinal (ou a conta corrente), que o
+    // sistema confere agora; o financeiro é avisado do que falta.
+    if (reqs.downPayment) {
+      const { refreshPurchaseGates } = await import("./purchase-gates");
+      await refreshPurchaseGates(order.id, user);
+      const fresh = await store.get("requirements", reqs.downPayment.id);
+      if (fresh && fresh.status !== "done") {
+        const { notifyDownPaymentDue } = await import("./purchase-order");
+        await notifyDownPaymentDue(order);
+      }
+    }
     await applyProductionStart(user, order.id);
     // Assinado pelos dois: o pedido está autorizado e segue para o Sankhya.
     const erp = await sendOrderToErp(user, order.id);
@@ -710,7 +745,16 @@ export async function productionStartFor(
   const days = typeof own === "number" ? own : settings.productionStartDays;
   const signed = parseSignature(reqs.supplier);
   if (!signed) return { auto: !!reqs.supplier, days, at: null };
-  const start = new Date(`${dayInBrazil(signed.at)}T00:00:00.000Z`);
+  // Pedido de compra com o item do sinal: a produção começa quando ele fecha
+  // (sinal pago ou conta corrente), não na assinatura (mapa, P12 → R1).
+  const released = reqs.downPayment
+    ? reqs.downPayment.status === "done"
+      ? (reqs.downPayment.submittedAt ?? reqs.downPayment.updatedAt)
+      : null
+    : signed.at;
+  if (!released) return { auto: true, days, at: null };
+  const base = released > signed.at ? released : signed.at;
+  const start = new Date(`${dayInBrazil(base)}T00:00:00.000Z`);
   start.setUTCDate(start.getUTCDate() + days);
   return { auto: true, days, at: start.toISOString() };
 }
@@ -755,7 +799,7 @@ export async function setSupplierProductionStartDays(
  * Nunca derruba a assinatura: falha aqui fica no log e a ficha continua
  * mostrando a data calculada.
  */
-async function applyProductionStart(user: User, orderId: string) {
+export async function applyProductionStart(user: User | null, orderId: string) {
   try {
     const store = getStore();
     const { at } = await productionStartFor(orderId);
@@ -776,7 +820,7 @@ async function applyProductionStart(user: User, orderId: string) {
       if (track.productionStartAt !== at)
         await store.update("production_tracks", track.id, {
           productionStartAt: at,
-          updatedByUserId: user.id,
+          updatedByUserId: user?.id ?? null,
         });
     } else {
       await store.create("production_tracks", {
@@ -791,7 +835,7 @@ async function applyProductionStart(user: User, orderId: string) {
         followups: [],
         inspectionScheduledAt: null,
         inspectionNote: null,
-        updatedByUserId: user.id,
+        updatedByUserId: user?.id ?? null,
       });
     }
     await audit(
@@ -799,7 +843,7 @@ async function applyProductionStart(user: User, orderId: string) {
       "order.production_start",
       "order",
       orderId,
-      `Início da produção definido pelo contrato assinado: ${at.slice(0, 10)}`,
+      `Início da produção definido pelo contrato assinado (e o sinal, no pedido de compra): ${at.slice(0, 10)}`,
     );
   } catch (error) {
     console.error("[order-signature] início da produção", error);

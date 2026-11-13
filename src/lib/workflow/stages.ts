@@ -6,7 +6,13 @@ import type {
   StageKey,
 } from "@/lib/db/schema";
 import { STAGE_KEYS } from "@/lib/db/schema";
-import { laneRequirements, type LaneItem } from "@/lib/purchase-lanes";
+import {
+  DOWN_PAYMENT_KEY,
+  SAMPLE_ORDER_KEY,
+  SAMPLE_ORDER_SUPPLIER_KEY,
+  laneRequirements,
+  type LaneItem,
+} from "@/lib/purchase-lanes";
 
 /** Item que conclui o Embarque (os dados do embarque são opcionais). */
 export const SHIPPED_KEY = "shipped";
@@ -210,6 +216,23 @@ export const ART_APPROVAL_LABEL = "Aprovação da arte pelo fornecedor";
  * arquivos assinados e carimbados: o da Wellmix e o do fornecedor.
  */
 export const PURCHASE_CONTRACT_REQUIREMENTS: RequirementTemplate[] = [
+  // Contrato secundário de amostras (mapa P17, docs/SAMPLE_ORDER.md): a
+  // Wellmix gera o pedido de amostras (ou marca "sem amostras") antes de
+  // assinar; o fornecedor aceita o pedido de amostras à parte.
+  {
+    key: SAMPLE_ORDER_KEY,
+    label: "Pedido de amostras definido (show room e agência na China)",
+    type: "confirm",
+    required: true,
+    role: "operator",
+  },
+  {
+    key: SAMPLE_ORDER_SUPPLIER_KEY,
+    label: "Pedido de amostras aceito pelo fornecedor",
+    type: "confirm",
+    required: true,
+    role: "supplier",
+  },
   {
     key: ORDER_SIGNED_WELLMIX,
     label: "Contrato assinado e carimbado pela Wellmix (arquivo)",
@@ -223,6 +246,16 @@ export const PURCHASE_CONTRACT_REQUIREMENTS: RequirementTemplate[] = [
     type: "confirm",
     required: true,
     role: "supplier",
+  },
+  // Mapa do processo (P12?/P12): com as duas assinaturas, o sinal pago (ou a
+  // conta corrente com o fornecedor) libera a produção. O sistema confere
+  // pela condição de pagamento do pedido e pelas parcelas pagas.
+  {
+    key: DOWN_PAYMENT_KEY,
+    label: "Sinal pago ao fornecedor (ou conta corrente)",
+    type: "confirm",
+    required: true,
+    role: "operator",
   },
 ];
 

@@ -550,6 +550,9 @@ async function writeProductSheet(
     changed.length ? before : null,
     changed.length ? after : null,
   );
+  // Pedido de compra aberto com o produto: a ficha completa libera o item.
+  const { refreshGatesForProduct } = await import("./purchase-gates");
+  await refreshGatesForProduct(productId, user);
   return { sheet, missing: await productSheetMissing(productId, sheet) };
 }
 
@@ -672,6 +675,26 @@ export async function productSheetMissing(
     sheet,
     await productSheetPhotoKinds(productId),
   ).filter((m) => m !== "lot1" && m !== "productionStartAt");
+}
+
+/**
+ * O que falta na ficha mestre do produto, como a tela do produto mostra (a
+ * ficha gravada, com o que as colunas do produto já têm). Usado pelo item
+ * "Ficha mestre completa" do pedido de compra (docs/PURCHASE_ORDER.md).
+ */
+export async function productMasterMissing(
+  productId: string,
+): Promise<SheetMissing[] | null> {
+  const store = getStore();
+  const product = await store.get("products", productId);
+  if (!product) return null;
+  const [masterSheet, supplier] = await Promise.all([
+    getProductSheet(productId),
+    product.supplierId ? store.get("parties", product.supplierId) : null,
+  ]);
+  const draft = productSheetDraft(product, supplier);
+  const view = masterSheet ? withProductColumns(masterSheet, draft) : draft;
+  return productSheetMissing(productId, view as Partial<PurchaseSheet>);
 }
 
 /**

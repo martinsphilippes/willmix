@@ -60,6 +60,8 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 - Modalidade de operação: cliente sem cadastro explícito = "não informado" (sem gate); o pedido guarda a modalidade vigente na criação.
 
 - Amostragem (docs/SUPPLIER_SAMPLING.md, decidido pelo dono em 12/11/2026): bloqueia produto e pedido de compra até a amostra aprovada; prazo padrão de 1 dia (Configurações → SLA); sem amostra física (impressa em 3D, só fotos e vídeos).
+- Pedido de compra pelo mapa do processo (dono, 13/11/2026; docs/PURCHASE_ORDER.md, seção 1a): certificação só quando a linha exige; o sinal pago (ou a conta corrente, "CC") libera a produção; as dependências bloqueiam (NCM validado e ficha completa antes do contrato); assinatura pela Wellmix só por funções específicas (padrão: diretorias, Equipe → Funções e acessos). Prazos de cada passo e `certificationHorizonDays` (120) em Configurações.
+- Pedido de amostras (dono, 13/11/2026; docs/SAMPLE_ORDER.md): 5 × 3 × variantes de cada produto, documento à parte com aceite do fornecedor, decidido sempre antes da assinatura da Wellmix ("sem amostras" é uma decisão registrada).
 
 ## A confirmar com o negócio
 
