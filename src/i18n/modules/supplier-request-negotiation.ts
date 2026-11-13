@@ -63,7 +63,7 @@ export const pt = {
   "supplierRequests.negotiation.sim.title": "Estimativa do Superplan",
   "supplierRequests.negotiation.sim.cost": "Custo por peça",
   "supplierRequests.negotiation.sim.minimum": "Preço mínimo",
-  "supplierRequests.negotiation.sim.booking": "no booking:",
+  "supplierRequests.negotiation.sim.booking": "no book:",
   "supplierRequests.negotiation.sim.target": "Preço mínimo desejado (R$)",
   "supplierRequests.negotiation.sim.targetHint":
     "Conta inversa: o sistema mostra o preço por peça necessário para chegar a esse mínimo.",
@@ -178,7 +178,7 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierRequests.negotiation.sim.title": "Superplan estimate",
   "supplierRequests.negotiation.sim.cost": "Cost per piece",
   "supplierRequests.negotiation.sim.minimum": "Minimum price",
-  "supplierRequests.negotiation.sim.booking": "in the booking:",
+  "supplierRequests.negotiation.sim.booking": "in the book:",
   "supplierRequests.negotiation.sim.target": "Desired minimum price (R$)",
   "supplierRequests.negotiation.sim.targetHint":
     "Reverse calculation: the system shows the price per piece needed to reach that minimum.",
@@ -288,7 +288,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierRequests.negotiation.sim.title": "Superplan 估算",
   "supplierRequests.negotiation.sim.cost": "每件成本",
   "supplierRequests.negotiation.sim.minimum": "最低价",
-  "supplierRequests.negotiation.sim.booking": "预订单中：",
+  "supplierRequests.negotiation.sim.booking": "Book 中：",
   "supplierRequests.negotiation.sim.target": "期望最低价（R$）",
   "supplierRequests.negotiation.sim.targetHint":
     "反向计算：系统显示达到该最低价所需的每件价格。",

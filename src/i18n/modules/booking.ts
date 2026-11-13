@@ -4,7 +4,7 @@
  * e zh.
  */
 export const pt = {
-  "nav.booking": "Booking",
+  "nav.booking": "Book",
   "booking.signal.viable": "Viável",
   "booking.signal.below": "Abaixo da meta",
   "booking.signal.loss": "Prejuízo",
@@ -13,7 +13,7 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
-  "nav.booking": "Booking",
+  "nav.booking": "Book",
   "booking.signal.viable": "Viable",
   "booking.signal.below": "Below target",
   "booking.signal.loss": "Loss",
@@ -22,7 +22,7 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
-  "nav.booking": "Booking",
+  "nav.booking": "Book",
   "booking.signal.viable": "可行",
   "booking.signal.below": "低于目标",
   "booking.signal.loss": "亏损",

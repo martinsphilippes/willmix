@@ -4,6 +4,16 @@ Tela **Pedidos → Booking** (`/app/booking`), só da Wellmix. Cada **booking** 
 
 O nome "booking" também existe na etapa de embarque (reserva no navio, `import_steps`). São coisas diferentes: esta tela é a lista das planilhas de fornecedor; a reserva do navio continua onde está.
 
+## Nome na tela: Book (dono, 13/11/2026)
+
+Decisão do dono: esta etapa chama-se **Book** em todas as telas ("todas as palavras que sejam da responsabilidade desta etapa"), nos três idiomas. Confirmado por ele para o chinês: "Book em tudo, menos na área de marítimo/navio".
+
+1. **O que mudou**: só o texto. Onde a tela dizia Booking (ou booking, bookings) passou a dizer Book (book, books): menu, lista, importar, lançar, dados do book, fechar, NCM dos books, convites de book, Seleção de itens, solicitação ao fornecedor ("Preço do book", "MOQ do book", "Condições iniciais (book)"), amostragem, Control Tower, pendências, avisos e as mensagens novas do histórico. No chinês, as palavras 订舱, 订舱表, 订舱单, 预订 e 预订单 que nomeavam esta etapa também viraram "Book" (订舱 quer dizer reserva de navio).
+2. **O que não mudou**: a reserva de praça no navio, no embarque, continua **booking** (`importFlow.step.booking`, `importFlow.ph.booking`, `containers.codeHint`, `board.card.ordBooking`). Também não mudam os nomes internos, que não aparecem na tela: endereços (`/app/booking/...`), chaves do dicionário (`bookingLots.*`), tabelas (`booking_lots`, `booking_items`, `booking_invites`), a tela `booking` das permissões e os arquivos. Nenhum dado foi alterado: avisos e histórico já gravados continuam com o texto de quando nasceram.
+3. **Regra para textos novos**: escreva Book. O teste `tests/unit/book-wording.test.ts` falha se um texto de tela disser Booking fora da lista do navio, ou se inglês e chinês não usarem a mesma palavra.
+
+Este documento e o código continuam dizendo "booking" como nome interno; na tela, leia Book.
+
 **Booking antigo removido (decisão do dono, 11/11/2026).** A fila antiga de produtos (tabela `bookings`, uma linha por produto, etapas Novo → Em análise → Aprovado → Oferecido → Reservado → Virou solicitação → Descartado, "Gerar solicitação" e o envio automático da RFQ ao fornecedor do produto) saiu inteira: telas `/app/booking/products` e `/app/booking/[id]`, a opção "Mandar para o Booking" da importação da ficha técnica, o "Gravar no Booking" do Superplan, o bloco do Booking na Control Tower e o preço desejado na cotação. A tabela saiu do esquema (`src/lib/db/schema.ts`); o fluxo que vale é o desta página.
 
 Onde está cada parte:

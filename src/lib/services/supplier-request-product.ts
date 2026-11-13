@@ -453,7 +453,7 @@ export async function createProductFromRequest(
     "product.create",
     "product",
     product.id,
-    `${name} (solicitação ao fornecedor nº ${request.number}, ${linked} itens de booking)`,
+    `${name} (solicitação ao fornecedor nº ${request.number}, ${linked} itens de book)`,
   );
   return product;
 }
@@ -485,7 +485,7 @@ export async function linkRequestToProduct(
     "product.link_booking",
     "product",
     product.id,
-    `Solicitação ao fornecedor nº ${request.number} associada (${linked} itens de booking)`,
+    `Solicitação ao fornecedor nº ${request.number} associada (${linked} itens de book)`,
   );
   return product;
 }

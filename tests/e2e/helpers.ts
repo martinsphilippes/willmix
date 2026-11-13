@@ -113,12 +113,24 @@ export async function importAndClose(
     .setInputFiles(file);
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
-  // Na caixa "Dados do booking" (dono, 13/11/2026): quem fabrica é a
+  // A etapa chama-se Book (dono, 13/11/2026; antes "Booking"): o título, a
+  // caixa de dados, o botão de fechar e o menu.
+  await expect(
+    page.getByRole("heading", { name: /^Book nº \d+/ }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Fechar o book" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Book", exact: true }).first(),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: /booking/i })).toHaveCount(0);
+  // Na caixa "Dados do book" (dono, 13/11/2026): quem fabrica é a
   // Fábrica (antes "Fornecedor") e para quem vão as solicitações é o
   // Fornecedor (antes "Responsável pelo booking").
   const data = page
     .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "Dados do booking" }) })
+    .filter({ has: page.getByRole("heading", { name: "Dados do book" }) })
     .first();
   await expect(
     data.getByText("Fábrica", { exact: true }).first(),
@@ -126,7 +138,7 @@ export async function importAndClose(
   await expect(
     data.getByText("Fornecedor", { exact: true }).first(),
   ).toBeVisible();
-  await expect(data).not.toContainText("Responsável pelo booking");
+  await expect(data).not.toContainText(/Responsável pelo book/);
   // Fornecedor do cadastro (tem login): nenhum aviso de "sem acesso".
   await expect(page.locator("[data-supplier-no-login]")).toHaveCount(0);
   const combo = page.locator(

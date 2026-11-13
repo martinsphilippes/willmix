@@ -357,6 +357,6 @@ export async function discardPartnerBooking(
     "booking_lot.partner_discard",
     "booking_lot",
     lot.id,
-    `Booking em preenchimento descartado pelo parceiro: ${lot.itemCount} itens (${lot.fileName})`,
+    `Book em preenchimento descartado pelo parceiro: ${lot.itemCount} itens (${lot.fileName})`,
   );
 }
