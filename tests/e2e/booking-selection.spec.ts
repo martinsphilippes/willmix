@@ -156,10 +156,27 @@ async function importDraft(page: Page, file: ReturnType<typeof sheet>) {
   }
 }
 
+/**
+ * Câmbio manual em Configurações. O custo por peça do Superplan (R$) precisa
+ * de câmbio, e o do dia vem de sites públicos que nem todo ambiente de teste
+ * alcança (rede restrita). Com a cotação do dia ela continua valendo; sem
+ * ela, vale este, e a conta sai do mesmo jeito.
+ */
+async function setManualFx(page: Page) {
+  await page.goto("/app/settings");
+  const usd = page.locator('input[name="fxManualRates.USD"]');
+  await usd.fill("5.5");
+  await page.locator('input[name="fxManualRates.RMB"]').fill("0.78");
+  await page.locator('input[name="fxManualRates.EUR"]').fill("6");
+  await usd.evaluate((el) => (el as HTMLInputElement).form!.requestSubmit());
+  await page.waitForURL(/\/app\/settings\?ok=1/);
+}
+
 test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   page,
 }) => {
   await login(page, "admin@wellmix.com");
+  await setManualFx(page);
   await importAndClose(
     page,
     sheet("Shenzhen Supplier A", `${TAG}-A`, `Glass cup ${TAG} 350ml`),
@@ -248,9 +265,33 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   ).toBeDisabled();
   await expect(page.locator("[data-selection-submit]")).toBeVisible();
   await expect(page.locator("[data-selection-item]")).toHaveCount(3);
-  // Ao lado do bloco, os três prompts de IA com os padrões das Configurações.
+  // Abaixo do bloco, os três prompts de IA com os padrões das Configurações.
   await expect(page.locator("[data-ai-prompt]")).toHaveCount(3);
   await expect(page.locator('[data-ai-prompt="product"]')).not.toHaveValue("");
+  // Desenho (pedido do dono, 13/11/2026): "Gravar a escolha do grupo" em cima
+  // e "Prompts de IA" logo abaixo, os dois na largura toda; com essa largura,
+  // os três prompts ficam lado a lado e os campos do gerador numa linha só.
+  const choiceCard = (await page
+    .locator("[data-selection-choice-cards] > section")
+    .first()
+    .boundingBox())!;
+  const promptsCard = (await page.locator("[data-ai-prompts]").boundingBox())!;
+  expect(promptsCard.y).toBeGreaterThanOrEqual(
+    choiceCard.y + choiceCard.height,
+  );
+  expect(Math.abs(promptsCard.width - choiceCard.width)).toBeLessThan(2);
+  const tops = (selector: string, edge: "top" | "bottom") =>
+    page
+      .locator(selector)
+      .evaluateAll(
+        (els, e) =>
+          els.map((el) => Math.round(el.getBoundingClientRect()[e as "top"])),
+        edge,
+      );
+  expect(new Set(await tops("[data-ai-prompt]", "top")).size).toBe(1);
+  const generatorFields = await tops("[data-generate-fields] > *", "bottom");
+  expect(generatorFields).toHaveLength(6);
+  expect(new Set(generatorFields).size).toBe(1);
   // Programação de compra pela quantidade (docs/PURCHASE_SCHEDULE.md): 48
   // peças e 0,12 m³ por caixa → 566 caixas (27.168 peças) por 40HC. O total
   // e o número de rodadas mandam: 60.000 peças = 1.250 caixas em 3 rodadas

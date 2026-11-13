@@ -18,10 +18,12 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 
 /*
- * Painel ao lado de "Gravar a escolha do grupo" (docs/SUPPLIER_REQUESTS.md,
+ * Painel logo abaixo de "Gravar a escolha do grupo" (docs/SUPPLIER_REQUESTS.md,
  * "Referências por IA"): os três prompts (padrão das Configurações, editáveis
  * na escolha), o botão que grava e gera com a OpenAI e os arquivos gerados.
- * Fica dentro do formulário da escolha: os prompts vão com ela.
+ * Fica dentro do formulário da escolha: os prompts vão com ela. O cartão
+ * ocupa a largura toda da área de conteúdo e os três prompts ficam lado a
+ * lado (pela largura do cartão, @container); em tela estreita, um por linha.
  */
 
 export function SelectionAiPrompts({
@@ -73,53 +75,59 @@ export function SelectionAiPrompts({
             ) : null}
           </div>
         ) : null}
-        <div className="space-y-3">
-          {AI_REFERENCE_KINDS.map((kind) => {
-            const asset = byKind[kind];
-            return (
-              <div key={kind} className="space-y-1.5">
-                <Field label={t(`aiRefs.kind.${kind}`)}>
-                  <Textarea
-                    name={`aiPrompt.${kind}`}
-                    rows={3}
-                    maxLength={AI_PROMPT_MAX}
-                    defaultValue={prompts[kind]}
-                    data-ai-prompt={kind}
-                  />
-                </Field>
-                {asset ? (
-                  <div className="flex items-center gap-2" data-ai-asset={kind}>
-                    {AI_REFERENCE_OUTPUT[kind] === "image" ? (
-                      <a
-                        href={`/api/files/${asset.documentId}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
-                        <img
-                          src={`/api/files/${asset.documentId}`}
-                          alt={t(`aiRefs.kind.${kind}`)}
-                          className="h-20 w-20 rounded-lg border border-zinc-200 object-cover"
-                        />
-                      </a>
-                    ) : (
-                      <a
-                        href={`/api/files/${asset.documentId}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={linkClass}
-                      >
-                        {t("aiRefs.openSheet")}
-                      </a>
-                    )}
-                    {asset.mode === "mock" ? (
-                      <Badge tone="warning">{t("aiRefs.mockBadge")}</Badge>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
+        <div className="@container">
+          <div className="grid gap-3 @3xl:grid-cols-3" data-ai-prompt-grid>
+            {AI_REFERENCE_KINDS.map((kind) => {
+              const asset = byKind[kind];
+              return (
+                <div key={kind} className="space-y-1.5">
+                  <Field label={t(`aiRefs.kind.${kind}`)}>
+                    <Textarea
+                      name={`aiPrompt.${kind}`}
+                      // Lado a lado a caixa é mais estreita: mais linhas à vista.
+                      rows={5}
+                      maxLength={AI_PROMPT_MAX}
+                      defaultValue={prompts[kind]}
+                      data-ai-prompt={kind}
+                    />
+                  </Field>
+                  {asset ? (
+                    <div
+                      className="flex items-center gap-2"
+                      data-ai-asset={kind}
+                    >
+                      {AI_REFERENCE_OUTPUT[kind] === "image" ? (
+                        <a
+                          href={`/api/files/${asset.documentId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                          <img
+                            src={`/api/files/${asset.documentId}`}
+                            alt={t(`aiRefs.kind.${kind}`)}
+                            className="h-20 w-20 rounded-lg border border-zinc-200 object-cover"
+                          />
+                        </a>
+                      ) : (
+                        <a
+                          href={`/api/files/${asset.documentId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={linkClass}
+                        >
+                          {t("aiRefs.openSheet")}
+                        </a>
+                      )}
+                      {asset.mode === "mock" ? (
+                        <Badge tone="warning">{t("aiRefs.mockBadge")}</Badge>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         </div>
         <p className="mt-3 text-xs text-zinc-500">
           {t("aiRefs.panel.dataHint")} {t("aiRefs.panel.saveHint")}
