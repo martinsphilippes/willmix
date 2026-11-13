@@ -18,6 +18,7 @@ import {
 import {
   getSupplierRequest,
   legacyAnswers,
+  requestBookSpecs,
   linkedApprovalFor,
   linkedSupplierRequests,
   supplierRequestGroup,
@@ -215,7 +216,10 @@ export default async function SupplierRequestPage({
       supplierRequestGroup(user, r),
       supplierRequestSlaMinutes(),
     ]);
-    const legacy = await legacyAnswers(rows);
+    const [legacy, bookSpecs] = await Promise.all([
+      legacyAnswers(rows),
+      requestBookSpecs(user, rows),
+    ]);
     return (
       <>
         <PageHeader
@@ -247,6 +251,7 @@ export default async function SupplierRequestPage({
             samplingSlaDays={await samplingSlaDays()}
             wellmix={wellmix}
             legacy={legacy}
+            bookSpecs={bookSpecs}
             t={t}
           />
         </div>

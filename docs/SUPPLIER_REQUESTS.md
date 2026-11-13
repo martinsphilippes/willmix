@@ -91,6 +91,16 @@ Quem abre `/app/supplier-requests/[id]` (o fornecedor e, desde a segunda rodada,
   - **Abrir produto**: a tela completa, no mesmo link com `?view=item`. "Ver todos os produtos" volta à tabela.
 - As ações da tabela voltam para a tabela (`view=table`); as da tela do produto voltam para o produto.
 
+### Ficha técnica na tabela (pedido do dono, 13/11/2026)
+
+A tabela ganhou a ficha que o Book já mostra, para o item ser avaliado sem abrir a tela do produto. Nada foi tirado: as colunas e as ações de antes continuam.
+
+- **Colunas novas**, uma informação por coluna: embalagem (ao lado de Material), medidas do produto (cm), capacidade ou tamanho ("350 ml" ou o texto da planilha, como "8X10"), peças por caixa master, peças por caixa interna, CBM por caixa master (m³), total de caixas master e cubagem total (m³). "Quantidade" passou a se chamar "Total de peças" e o MOQ do book mostra a unidade da solicitação (`unit`).
+- **De onde vem** (`requestItemSpecs`, `src/lib/supplier-request-specs.ts`): vale a **cópia gravada na solicitação** (`item`); o campo que ela não guarda (solicitação antiga, campo criado depois, como `sizeText`) vem do **item exato do Book** (`bookingItemId`), nunca de outro item com o mesmo nome ou código. Do Book só sai a ficha técnica (`requestBookSpecs`: sem preço nem análise); preço, moeda, entrega e MOQ continuam só os da cópia. Sem dado, "—".
+- **Totais**, com as contas que já existiam: caixas inteiras (`roundLoad`; sem CBM, `boxesFor`) e cubagem = caixas × CBM da caixa master. Com programação de compra, cada rodada fecha as suas caixas e os totais são a soma. Sem CBM informado, vale o das medidas (`cbmFromDimensions`, a mesma regra da seleção de itens), mostrado com "≈" e a dica. Sem peças por caixa, os dois ficam "—".
+- **Master e interna** são campos separados desde a planilha (QTY/BOX e QTY/INNER): não há valor "36 / 12" guardado junto, então não existe a coluna única "Qtd./caixa".
+- **Mais detalhes**, na própria linha (abaixo do nome, abre e fecha): nome do produto quando difere da descrição, cores, função/bateria/voltagem, peso líquido e bruto por peça; para a Wellmix, também o NCM do item do Book e o link do Book. Só aparece o que existe. As medidas da caixa master não são guardadas no Book (só as do item e o CBM da caixa), por isso não aparecem.
+
 ## Tela do produto da solicitação (`?view=item`)
 
 - **Resposta**: o formulário completo tem também a **modalidade de entrega (FOB/EXW)** (`supplierIncoterm`; sem ela, a do item do booking).

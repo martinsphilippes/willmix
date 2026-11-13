@@ -38,6 +38,10 @@ import {
   type SelectionFilters,
 } from "@/lib/booking-selection";
 import { audit } from "./audit";
+import {
+  requestBookSpecsOf,
+  type RequestBookSpecs,
+} from "@/lib/supplier-request-specs";
 
 /*
  * Seleção de itens e solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md).
@@ -509,6 +513,34 @@ export async function supplierRequestGroup(
   return group.sort(
     (a, b) => a.number - b.number || a.createdAt.localeCompare(b.createdAt),
   );
+}
+
+/**
+ * Ficha técnica do item exato do Book de cada produto da tabela (por id da
+ * solicitação), para completar o que a cópia da solicitação não guarda
+ * (docs/SUPPLIER_REQUESTS.md, "Ficha técnica na tabela"). Só as solicitações
+ * que o usuário vê, e só os campos da ficha; o NCM, só para a Wellmix.
+ */
+export async function requestBookSpecs(
+  user: User,
+  requests: SupplierRequest[],
+): Promise<Map<string, RequestBookSpecs>> {
+  const out = new Map<string, RequestBookSpecs>();
+  const seen = requests.filter((r) => canSee(user, r));
+  const ids = [...new Set(seen.map((r) => r.bookingItemId))];
+  if (!ids.length) return out;
+  const items = await getStore()
+    .list("booking_items", { filter: { id: ids } })
+    .catch(() => [] as BookingItem[]);
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const wellmix = isWellmix(user);
+  for (const r of seen) {
+    const item = byId.get(r.bookingItemId);
+    if (!item) continue;
+    const specs = requestBookSpecsOf(item);
+    out.set(r.id, wellmix ? specs : { ...specs, ncm: null });
+  }
+  return out;
 }
 
 /**
