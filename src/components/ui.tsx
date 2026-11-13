@@ -214,9 +214,12 @@ const badgeStyles: Record<Tone, string> = {
 
 export function Badge({
   tone = "neutral",
+  className,
   children,
 }: {
   tone?: Tone;
+  /** Ajuste de forma ou tamanho (ex.: selo menor que quebra a linha). */
+  className?: string;
   children: ReactNode;
 }) {
   return (
@@ -224,6 +227,7 @@ export function Badge({
       className={cx(
         "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset",
         badgeStyles[tone],
+        className,
       )}
     >
       {children}
