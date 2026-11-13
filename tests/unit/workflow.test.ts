@@ -179,7 +179,11 @@ describe("fluxo completo: solicitação → entrega", () => {
     // Arte aprovada: a etapa ainda espera o documento do pedido (ordem nova:
     // selo na arte, "Enviar para assinatura", Wellmix e fornecedor assinam).
     expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
-    await completeOrderDocument(operator, order.id);
+    // Assinar pela Wellmix é das diretorias (padrão das funções, decisão do
+    // dono de 13/11/2026): o operador de compras e planejamento não assina.
+    const { can } = await import("@/lib/auth/function-access");
+    expect(can(operator, "contract.sign")).toBe(false);
+    await completeOrderDocument(by("admin"), order.id);
     expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
 
     // inspeção com peso divergente bloqueia

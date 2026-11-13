@@ -48,6 +48,7 @@ import {
   LANE_KEYS,
   baseKeyOf,
   blockedBy,
+  isAutoGateKey,
   prerequisitesOf,
   type LaneItem,
 } from "@/lib/purchase-lanes";
@@ -301,8 +302,17 @@ export async function createStagesForOrder(
   if (beforeStart && !existingStages.length) await beforeStart();
   // Pedido de compra: "Pedido criado" não tem itens e conclui na hora; as
   // raias abrem em seguida.
-  if (isPurchaseFlow(order) && firstStageId && !existingStages.length)
+  if (isPurchaseFlow(order) && firstStageId && !existingStages.length) {
     await evaluateStage(null, firstStageId);
+    // O que o sistema já sabe fica feito na hora (NCM validado, ficha
+    // completa, certificação válida pelo período); o resto vira aviso.
+    const { refreshPurchaseGates } =
+      await import("@/lib/services/purchase-gates");
+    await refreshPurchaseGates(order.id);
+    const { notifyRegistrationOpen } =
+      await import("@/lib/services/purchase-order");
+    await notifyRegistrationOpen(order);
+  }
   return firstStageId;
 }
 
@@ -331,6 +341,11 @@ async function purchaseLaneItems(orderId: string): Promise<LaneItem[]> {
         id: item.id,
         name: item.name,
         lineRequirements: line?.requirements ?? null,
+        // Mapa do processo (P6): certificado e arte final com o selo só
+        // quando a linha do produto exige certificação.
+        certificationRequired: !!line?.requiredCertifications?.some((k) =>
+          k.trim(),
+        ),
       };
     });
 }
@@ -356,6 +371,9 @@ export function canSubmitRequirement(
   order: Order,
   requirement: Pick<Requirement, "role"> & Partial<Pick<Requirement, "key">>,
 ): boolean {
+  // Itens conferidos pelo sistema (NCM validado, ficha completa, sinal): só
+  // concluem pela tela dona deles, nunca à mão.
+  if (isAutoGateKey(requirement.key ?? "")) return false;
   if (isWellmix(user)) {
     // Ações que dependem de permissão (Equipe → Funções e acessos): validar
     // a arte do pedido de compra e assinar o contrato pela Wellmix.
