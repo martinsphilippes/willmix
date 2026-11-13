@@ -521,11 +521,13 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // 9. Inspeção (mapa R3/R4?): o fornecedor manda as fotos, o peso, o vídeo
   // da produção e a declaração de conformidade. Nestes pedidos não há peso
   // declarado para comparar (sem ficha de compra).
-  await fillMyRequirements(page, orderUrl, {
-    重量: "15",
-    weight: "15",
-    peso: "15",
-  });
+  // Com as medidas extras ligadas, são 15 itens do fornecedor.
+  await fillMyRequirements(
+    page,
+    orderUrl,
+    { 重量: "15", weight: "15", peso: "15" },
+    20,
+  );
   // A Wellmix aprova o SKU no cartão Produção: só então vai ao Embarque.
   await login(page, "admin@wellmix.com");
   await page.goto(`${orderUrl}#production`);
