@@ -6,6 +6,12 @@ import {
   parseLeadTime,
   parseMoq,
 } from "@/lib/die-cut-step";
+import {
+  baseKeyOf,
+  isLeadTimeKey,
+  laneRequirements,
+  supplierSeesLaneRequirement,
+} from "@/lib/purchase-lanes";
 
 /*
  * Quadro Die Cut do pedido de compra: os quatro itens do fornecedor, produto
@@ -60,5 +66,94 @@ describe("die cut", () => {
     expect(parseLeadTime("45")).toBe(45);
     expect(parseLeadTime("0")).toBeNull();
     expect(parseLeadTime("721")).toBeNull();
+  });
+});
+
+/*
+ * Visão do fornecedor na etapa "Preparação, arte e certificação" (pedido do
+ * dono, 13/11/2026): só a faca, a foto em alta e o prazo de cada produto. O
+ * resto continua existindo e valendo (a Wellmix vê tudo).
+ */
+describe("visão do fornecedor na Preparação", () => {
+  const items = [
+    { id: "a", name: "Copo" },
+    { id: "b", name: "Jarra" },
+  ];
+
+  it("mostra por produto só a faca, a foto em alta e o prazo", () => {
+    const all = laneRequirements(items, { art: "agency", ocp: "ocp" });
+    expect(all.filter(supplierSeesLaneRequirement).map((r) => r.key)).toEqual([
+      "die_cut__a",
+      "hd_photo__a",
+      "lead_time_confirmed__a",
+      "die_cut__b",
+      "hd_photo__b",
+      "lead_time_confirmed__b",
+    ]);
+    // O que ele não vê: o cadastro (NCM e ficha, da Wellmix), MOQ, arte,
+    // validação, certificado e arte final, que continuam obrigatórios (nada
+    // some do pedido).
+    const hidden = all.filter((r) => !supplierSeesLaneRequirement(r));
+    expect([...new Set(hidden.map((r) => baseKeyOf(r.key)))]).toEqual([
+      "ncm_validated",
+      "sheet_complete",
+      "moq_confirmed",
+      "art",
+      "art_review",
+      "certificate",
+      "art_final",
+    ]);
+    expect(hidden.every((r) => r.required)).toBe(true);
+    // Arte feita pela Wellmix e pedido sem certificadora: a mesma visão.
+    const internal = laneRequirements(items, {
+      art: "operator",
+      ocp: "operator",
+    });
+    expect(internal.filter(supplierSeesLaneRequirement)).toHaveLength(6);
+  });
+
+  it("item a mais da linha do produto (ex.: NCM) não aparece para ele", () => {
+    const all = laneRequirements(
+      [
+        {
+          id: "a",
+          name: "Copo",
+          lineRequirements: [
+            {
+              key: "ncm",
+              label: "NCM",
+              type: "text",
+              required: true,
+              role: "supplier",
+            },
+            {
+              key: "pantone",
+              label: "Pantone",
+              type: "text",
+              required: true,
+              role: "supplier",
+            },
+          ],
+        },
+      ],
+      { art: "agency", ocp: "ocp" },
+    );
+    // Continuam na etapa; só saem da visão dele.
+    expect(all.map((r) => r.key)).toContain("ncm__a");
+    expect(all.filter(supplierSeesLaneRequirement).map((r) => r.key)).toEqual([
+      "die_cut__a",
+      "hd_photo__a",
+      "lead_time_confirmed__a",
+    ]);
+    // Requisito sem item do pedido (fluxo antigo) também não entra.
+    expect(supplierSeesLaneRequirement({ key: "lead_time_confirmed" })).toBe(
+      false,
+    );
+  });
+
+  it("reconhece o prazo de produção de um item", () => {
+    expect(isLeadTimeKey("lead_time_confirmed__a")).toBe(true);
+    expect(isLeadTimeKey("lead_time_confirmed")).toBe(false);
+    expect(isLeadTimeKey("moq_confirmed__a")).toBe(false);
   });
 });

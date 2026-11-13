@@ -261,6 +261,13 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await login(page, "supplier.a@china.com");
   await page.goto(orderUrl);
   await expect(requirementRow(page, /Faca \(die cut\)/).first()).toBeVisible();
+  // Na seção ele vê só a faca, a foto em alta e o prazo (dono, 13/11/2026).
+  // Sem prazo na resposta à solicitação, o campo do prazo vem vazio.
+  const prep = page.locator('[data-stage-tasks="PREPARATION"]');
+  await expect(prep.locator("li:not([data-die-cut-link])")).toHaveCount(3);
+  await expect(prep).not.toContainText(/MOQ|Arte|Certificado|Validação/);
+  const leadTimeRow = requirementRow(page, /Prazo de produção confirmado/);
+  await expect(leadTimeRow.locator("input[name=value]")).toHaveValue("");
   // A pendência dele cai na etapa "Die Cut" e abre o quadro do pedido, com
   // os quatro itens do produto: die-cut, foto em alta, pedido mínimo e prazo.
   await page.goto("/app/tasks");
@@ -299,6 +306,9 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(requirementRow(page, /Faca \(die cut\)/).first()).toContainText(
     /doc\.pdf/,
   );
+  // O prazo confirmado aparece na linha, sem o campo.
+  await expect(leadTimeRow).toContainText("45");
+  await expect(leadTimeRow.locator("input[name=value]")).toHaveCount(0);
   await fillMyRequirements(page, orderUrl);
   // 6b. Agência: com a faca e a foto em alta, envia a arte. A arte final com
   // o selo ainda não sobe (falta a arte validada e o certificado): a linha

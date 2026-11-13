@@ -790,4 +790,76 @@ describe("pedido em nome do responsável pelo booking (trading)", () => {
       sent.some((n) => n.body.includes("Antes: 1000 peças e 45 dias")),
     ).toBe(true);
   });
+
+  it("Preparação na visão do fornecedor: três tarefas por produto e o prazo registrado", async () => {
+    const store = getStore();
+    const dieCut = await import("@/lib/services/die-cut-step");
+    const { baseKeyOf, supplierSeesLaneRequirement } =
+      await import("@/lib/purchase-lanes");
+    const [r1, r2] = await approvedProducts(null, ["SV-1", "SV-2"]);
+    // O segundo produto ficou sem prazo na solicitação (resposta sem o prazo).
+    await store.update("supplier_requests", r2.id, {
+      supplierLeadTimeDays: null,
+    });
+    const order = await po.createPurchaseOrder(admin, [
+      { requestId: r1.id, quantity: null },
+      { requestId: r2.id, quantity: null },
+    ]);
+    const items = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    const itemOf = async (requestId: string) => {
+      const request = (await store.get("supplier_requests", requestId))!;
+      return items.find((i) => i.productId === request.productId)!;
+    };
+    const registered = await itemOf(r1.id);
+    const manual = await itemOf(r2.id);
+
+    // O prazo registrado de cada item: é ele que preenche o campo do
+    // fornecedor; sem registro, o campo fica vazio.
+    const terms = await dieCut.negotiatedTerms(order);
+    expect(terms.get(registered.id)?.days).toBe(30);
+    expect(terms.get(manual.id)?.days).toBeNull();
+
+    // O fornecedor vê três tarefas por produto; as oito continuam na etapa.
+    const [prep] = await store.list("stages", {
+      filter: { orderId: order.id, key: "PREPARATION" },
+    });
+    const ofPrep = async () =>
+      (await requirementsOf(order.id)).filter((r) => r.stageId === prep.id);
+    const reqs = await ofPrep();
+    expect(reqs).toHaveLength(16);
+    const seen = reqs.filter(supplierSeesLaneRequirement);
+    expect(seen).toHaveLength(6);
+    expect([...new Set(seen.map((r) => baseKeyOf(r.key)))].sort()).toEqual([
+      "die_cut",
+      "hd_photo",
+      "lead_time_confirmed",
+    ]);
+    expect(reqs.every((r) => r.required && r.status === "pending")).toBe(true);
+
+    // Preencher o campo não confirma nada: a confirmação segue o envio de
+    // sempre (o registrado num item, o digitado no outro).
+    const k = (base: string, itemId: string) => `${base}__${itemId}`;
+    await submit(supplierA, order.id, k("lead_time_confirmed", registered.id), {
+      value: "30",
+    });
+    await submit(supplierA, order.id, k("lead_time_confirmed", manual.id), {
+      value: "40",
+    });
+    const after = await ofPrep();
+    const lead = (itemId: string) =>
+      after.find((r) => r.key === k("lead_time_confirmed", itemId))!;
+    expect(lead(registered.id)).toMatchObject({ status: "done", value: "30" });
+    expect(lead(manual.id)).toMatchObject({ status: "done", value: "40" });
+    // O MOQ, que ele não vê nessa seção, continua pendente e obrigatório: ele
+    // confirma no quadro Die Cut (com o negociado já no campo) ou a Wellmix.
+    expect(
+      after.find((r) => r.key === k("moq_confirmed", registered.id)),
+    ).toMatchObject({ status: "pending", required: true, role: "supplier" });
+    const view = (await dieCut.getDieCutView(supplierA, order.id))!;
+    expect(view.products.find((p) => p.itemId === registered.id)).toMatchObject(
+      { missing: ["dieline", "hd", "moq"], negotiatedMoq: 1000 },
+    );
+  });
 });
