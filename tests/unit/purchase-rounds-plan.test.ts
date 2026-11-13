@@ -9,6 +9,7 @@ import {
   planPurchaseRounds,
   quantityFields,
   roundLoad,
+  scheduleOnItemChange,
 } from "@/lib/purchase-rounds";
 
 /*
@@ -188,6 +189,55 @@ describe("os dois campos de quantidade do gerador", () => {
     expect(parseCount(" 60 000 ")).toBe(60_000);
     expect(parseCount("")).toBeNaN();
     expect(parseCount("abc")).toBeNaN();
+  });
+});
+
+/*
+ * Programação de compra e o item marcado em "Escolher" (pedido do dono,
+ * 13/11/2026): as rodadas são do item com cuja caixa foram feitas. Trocar ou
+ * desmarcar o item desfaz a programação ainda não gravada; voltar ao item da
+ * escolha gravada traz a gravada de volta.
+ */
+describe("programação de compra quando o item marcado muda", () => {
+  const change = (over: Partial<Parameters<typeof scheduleOnItemChange>[0]>) =>
+    scheduleOnItemChange({
+      on: true,
+      next: "B",
+      savedItem: null,
+      savedKept: true,
+      ...over,
+    });
+
+  it("trocar de item desfaz a programação ainda não gravada", () => {
+    expect(change({})).toBe("drop");
+    // Escolha gravada com A: marcar B tira as rodadas de A da tela.
+    expect(change({ savedItem: "A" })).toBe("drop");
+  });
+
+  it("desmarcar (nenhum item) também desfaz", () => {
+    expect(change({ next: null })).toBe("drop");
+    expect(change({ next: null, savedItem: "A" })).toBe("drop");
+  });
+
+  it("sem programação na tela, nada muda", () => {
+    expect(change({ on: false })).toBe("keep");
+    expect(change({ on: false, next: null, savedItem: "A" })).toBe("keep");
+  });
+
+  it("voltar ao item da escolha gravada traz a programação gravada", () => {
+    // Com a tela sem programação (ela saiu ao marcar outro item)...
+    expect(change({ on: false, next: "A", savedItem: "A" })).toBe("restore");
+    // ...ou com a programação ainda não gravada de outro item na tela.
+    expect(change({ on: true, next: "A", savedItem: "A" })).toBe("restore");
+  });
+
+  it("desligada pelo usuário com o item gravado marcado, a gravada não volta", () => {
+    expect(
+      change({ on: false, next: "A", savedItem: "A", savedKept: false }),
+    ).toBe("keep");
+    expect(
+      change({ on: true, next: "A", savedItem: "A", savedKept: false }),
+    ).toBe("drop");
   });
 });
 

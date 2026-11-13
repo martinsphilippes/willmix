@@ -12,6 +12,7 @@ withTempStore();
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const lots = await import("@/lib/services/booking-lots");
+const { buildSchedule } = await import("@/lib/workflow/request-schedule");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -131,6 +132,23 @@ describe("escolha por grupo", () => {
         needs: null,
       }),
     ).rejects.toThrow("supplier_request_qty_required");
+
+    // O escolhido tem de ser um item do grupo comparado (pedido do dono,
+    // 13/11/2026): sem ele não se grava escolha nem programação de compra.
+    for (const chosenItemId of ["", of("GA-3").id])
+      await expect(
+        groups.saveSelectionGroup(admin, {
+          itemIds: [of("GA-1").id, of("GA-2").id],
+          chosenItemId,
+          quantity: 1200,
+          needs: null,
+          schedule: buildSchedule({
+            intervalDays: 45,
+            firstDate: "2026-12-10",
+            quantities: [600, 600],
+          }),
+        }),
+      ).rejects.toThrow("supplier_request_choose");
 
     // Grava: quantidade em branco = a da planilha do ganhador.
     const tray = await groups.saveSelectionGroup(admin, {

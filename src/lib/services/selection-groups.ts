@@ -74,6 +74,11 @@ export async function saveSelectionGroup(
 ): Promise<SelectionGroup> {
   assertWellmix(user);
   assertScreen(user, "booking");
+  // O escolhido é um item do grupo comparado (o rádio "Escolher" da tabela):
+  // sem ele não se grava escolha nem programação de compra, que é calculada
+  // com a caixa dele (pedido do dono, 13/11/2026).
+  if (!input.chosenItemId || !input.itemIds.includes(input.chosenItemId))
+    throw new SupplierRequestError("supplier_request_choose");
   const store = getStore();
   const ids = [...new Set([input.chosenItemId, ...input.itemIds])].slice(
     0,

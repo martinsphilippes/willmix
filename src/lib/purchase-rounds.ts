@@ -257,6 +257,33 @@ export function quantityFields(input: {
   };
 }
 
+/**
+ * O que acontece com a programação da tela quando o item marcado em
+ * "Escolher" muda (pedido do dono, 13/11/2026). As rodadas são do item com
+ * cuja caixa foram feitas:
+ *
+ * - `drop`: trocar de item (ou desmarcar) desfaz a programação ainda não
+ *   gravada do item anterior;
+ * - `restore`: voltar ao item da escolha gravada traz de volta a programação
+ *   gravada com ele (nada foi apagado), a não ser que o usuário a tenha
+ *   desligado em "Sem programação" com esse item marcado;
+ * - `keep`: sem programação na tela, nada muda.
+ */
+export function scheduleOnItemChange(input: {
+  /** A programação está ligada na tela. */
+  on: boolean;
+  /** O item marcado agora (nulo: nenhum). */
+  next: string | null;
+  /** O item da escolha gravada, quando ela tem programação gravada. */
+  savedItem: string | null;
+  /** A programação gravada ainda pode voltar (o usuário não a desligou). */
+  savedKept: boolean;
+}): "keep" | "drop" | "restore" {
+  if (input.next !== null && input.next === input.savedItem && input.savedKept)
+    return "restore";
+  return input.on ? "drop" : "keep";
+}
+
 export function planPurchaseRounds(
   input: RoundsPlanInput,
 ): { plan: RoundsPlan } | { error: RoundsPlanError } {
