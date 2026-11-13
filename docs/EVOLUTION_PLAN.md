@@ -989,3 +989,11 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - A distribuição segue a largura do próprio cartão (`@container`), não a da janela: vale com o menu lateral aberto ou recolhido. Em cartão estreito (tablet em pé, celular) os campos do gerador vão para 3 ou 2 colunas e os prompts ficam um por linha.
 - Só desenho: nenhum campo, texto de botão, regra ou dado mudou (o texto de Configurações que dizia "painel ao lado" passou a dizer "abaixo"). Sem mudança no banco.
 - Teste: o E2E da seleção confere a ordem dos cartões, os três prompts na mesma linha e os seis campos do gerador na mesma linha. Ele passou também a informar o câmbio manual em Configurações antes de importar os bookings: o custo por peça (R$) dependia de os sites públicos de câmbio responderem de onde o teste roda.
+
+## Seleção de itens: sai a coluna "Alternativa" da tabela do grupo
+
+- **Pedido do dono** (13/11/2026, com a foto da tabela): remover só a coluna "Alternativa", a segunda, entre "Escolher" e "Foto": o cabeçalho e as caixas de seleção, com "Foto" logo à direita de "Escolher", sem espaço vazio. Limitar à exibição dessa tabela e preservar a escolha do item principal, a ordem das demais colunas, os dados já salvos e as regras de negócio.
+- **O que saiu**: o cabeçalho e a célula com a caixa em `src/app/app/booking/selection/page.tsx` (aba Seleção; a aba Itens já não tinha a coluna). É uma remoção de tela pedida pelo dono, a única desta entrega.
+- **Por que não muda regra nem dado**: a caixa não alterava o que era gravado. A escolha grava os itens do grupo (`group`) e o ganhador; marcar "Alternativa" só repetia ids que já estavam no grupo. Ao abrir a solicitação, todos os outros itens do grupo vão como alternativas (`openGroupRequests`), como antes.
+- **Ficou como estava**: a coluna "Escolher" e a escolha do ganhador, a ordem e o conteúdo das outras colunas, a ação de gravar (ainda aceita `alternatives`), o texto "Alternativa" no dicionário, as alternativas na solicitação ao fornecedor e tudo o que já estava salvo. Sem mudança no banco.
+- **Teste**: o E2E confere que a caixa e o cabeçalho não existem mais, que "Foto" vem logo depois de "Escolher", que cada linha tem o mesmo número de colunas do cabeçalho e, adiante, que o outro item do grupo continua aparecendo como alternativa na solicitação.
