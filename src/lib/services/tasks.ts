@@ -21,6 +21,7 @@ import {
   isOffFlowStage,
   isPurchaseFlow,
 } from "@/lib/workflow/stages";
+import { dieCutHref, dieCutItemOf, dieCutProducts } from "@/lib/die-cut-step";
 
 export type TaskKind =
   | "booking_invite"
@@ -390,8 +391,39 @@ export function stageTaskDrafts(
     const rest = supplier
       ? mine.filter((r) => r.key !== ORDER_SIGNED_SUPPLIER)
       : mine;
+    // Fornecedor do pedido de compra: os quatro itens do Die Cut (die-cut,
+    // foto em alta, pedido mínimo e prazo) são uma etapa dele, produto a
+    // produto, e abrem no quadro Die Cut do pedido.
+    const dieCut =
+      supplier && isPurchaseFlow(order)
+        ? dieCutProducts(rest.filter((r) => dieCutItemOf(r.key)))
+        : [];
+    const other = dieCut.length
+      ? rest.filter((r) => !dieCutItemOf(r.key))
+      : rest;
+    for (const product of dieCut)
+      out.push({
+        kind: "requirement",
+        title: `Die Cut: ${product.name}`,
+        detail: `Pedido #${order.number} · die-cut, foto em alta, pedido mínimo e prazo de entrega`,
+        text: {
+          title: "tasks.dieline.title",
+          detail: "tasks.dieline.detailOrder",
+          values: { product: product.name, n: order.number },
+        },
+        link: dieCutHref(order.id, product.itemId),
+        dueAt: stage.dueAt,
+        orderNumber: order.number,
+        stageKey: stage.key,
+        customerId: order.customerId,
+        ownerUserId: order.ownerUserId ?? null,
+        requestId: order.requestId,
+        orderId: order.id,
+        sinceAt: stage.startedAt,
+        supplierStep: "dieline",
+      });
     for (const [items, step] of [
-      [rest, supplier ? SUPPLIER_STAGE_STEP[stage.key] : undefined],
+      [other, supplier ? SUPPLIER_STAGE_STEP[stage.key] : undefined],
       [sign, "sign"],
     ] as Array<[typeof mine, SupplierStep | undefined]>) {
       if (!items.length) continue;

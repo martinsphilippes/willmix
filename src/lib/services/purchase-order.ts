@@ -345,10 +345,21 @@ export async function notifyLanesOpen(
  * Depois de um passo da raia: arte enviada → a Wellmix valida; arte validada
  * e certificado na mão → quem faz a arte faz a arte final com o selo.
  */
-export async function afterLaneStep(order: Order, key: string): Promise<void> {
+export async function afterLaneStep(
+  order: Order,
+  key: string,
+  /** Status do item antes do envio (o Die Cut só avisa na primeira vez). */
+  statusBefore?: Requirement["status"],
+): Promise<void> {
   const item = itemIdOf(key);
   if (!item) return;
   const base = baseKeyOf(key);
+  // Die Cut: com os quatro itens do produto feitos, a Wellmix é avisada.
+  if (laneOf(key) === "supplier") {
+    const { afterDieCutItem } = await import("./die-cut-step");
+    await afterDieCutItem(order, key, statusBefore);
+    return;
+  }
   const store = getStore();
   const requirements = await store.list("requirements", {
     filter: { orderId: order.id },

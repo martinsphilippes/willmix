@@ -495,7 +495,7 @@ export async function submitRequirement(
   // fazer a arte final com o certificado).
   if (isPurchaseFlow(order)) {
     const { afterLaneStep } = await import("@/lib/services/purchase-order");
-    await afterLaneStep(order, requirement.key);
+    await afterLaneStep(order, requirement.key, before.status);
   }
 
   // Documento enviado para assinatura: a vez é da Wellmix (assina primeiro).
