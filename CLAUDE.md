@@ -34,3 +34,12 @@ Exceções (parar e avisar o dono em vez de mesclar):
 - Conflito com a base ou outro PR aberto mexendo na mesma tela ou regra.
 - Decisão de negócio tomada sem confirmação do dono.
 - Mudança que apaga ou altera dados, telas, rotas ou campos existentes.
+
+## Mensagem final (pedido do dono, 13/11/2026)
+
+Toda vez que for parar de responder (a resposta que encerra o turno), termine com uma mensagem final em duas partes, para a próxima decisão ficar fácil:
+
+- **Do meu lado (Claude):** o que ainda falta fazer, o que está rodando ou esperando (CI, merge, publicação) e o que ficou de fora.
+- **Do seu lado (dono):** o que você precisa decidir, conferir ou fazer, com o link ou o caminho na tela.
+
+Se nada falta de um dos lados, diga isso ("Do meu lado: nada pendente").
