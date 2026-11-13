@@ -171,6 +171,10 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.getByText("Preparação, arte e certificação").first(),
   ).toBeVisible();
+  // Na tabela "Etapas do pedido", a linha da etapa 2 leva o nome novo.
+  await expect(
+    page.getByRole("link", { name: "Die-Cut, Arte e Certificação" }),
+  ).toHaveCount(1);
   // Transportador: o pedido só designa sozinho quando há exatamente um ativo
   // no cadastro. Outros testes cadastram mais transportadores (que nascem
   // ativos), então a Wellmix designa aqui, em Parceiros do pedido.
