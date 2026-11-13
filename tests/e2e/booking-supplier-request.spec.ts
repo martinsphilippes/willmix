@@ -335,6 +335,8 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     "1,30",
   );
   await propose.locator("[data-negotiation-price]").fill("1,30");
+  // O prazo combinado (35 dias) vai preencher o campo do prazo no pedido.
+  await propose.locator("[data-negotiation-lead-time]").fill("35");
   await propose.locator("[data-negotiation-incoterm]").selectOption("FOB");
   await propose.locator("[data-negotiation-text]").fill("Fechamos a 1,30?");
   await page.click("[data-negotiation-propose-submit]");
@@ -514,4 +516,34 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     page.getByText("Preparação, arte e certificação").first(),
   ).toBeVisible();
   await expect(page.getByText(/Faca \(die cut\)/).first()).toBeVisible();
+  const orderUrl = page.url().split("?")[0];
+  // A Wellmix vê a seção inteira, com as outras raias.
+  const prep = page.locator('[data-stage-tasks="PREPARATION"]');
+  await expect(prep).toContainText("MOQ confirmado (peças)");
+  await expect(prep).toContainText("Certificado (Inmetro)");
+
+  // 7. Visão do fornecedor (dono, 13/11/2026): na Preparação, só a faca, a
+  // foto em alta e o prazo de cada produto, com a ajuda falando delas; o
+  // prazo já vem com o combinado na negociação, para ele conferir e enviar.
+  await login(page, "supplier.a@china.com");
+  await page.goto(orderUrl);
+  // A ajuda da seção é a dele, no idioma do login (este lê em chinês).
+  await expect(page.locator("[data-stage-help=supplier]")).toContainText(
+    /die[ -]cut/i,
+  );
+  const product = `Copo de vidro ${TAG}`;
+  const tasks = prep.locator("li", {
+    has: page.locator("span.font-medium", { hasText: product }),
+  });
+  await expect(tasks).toHaveCount(3);
+  for (const label of [
+    "Faca (die cut)",
+    "Foto em alta resolução",
+    "Prazo de produção confirmado (dias)",
+  ])
+    await expect(tasks.filter({ hasText: label })).toHaveCount(1);
+  await expect(prep).not.toContainText(/MOQ|Arte|Certificado|Validação/);
+  const leadTime = tasks.filter({ hasText: "Prazo de produção" });
+  await expect(leadTime.locator("input[name=value]")).toHaveValue("35");
+  await expect(leadTime.locator("button[type=submit]")).toBeVisible();
 });
