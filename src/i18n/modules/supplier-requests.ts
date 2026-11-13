@@ -298,6 +298,13 @@ export const pt = {
   "supplierRequests.selection.winner": "Escolhido · {qty} peças",
   "supplierRequests.selection.blocks.reopen": "Rever a escolha",
   "supplierRequests.selection.blocks.sizeManual": "{n} itens comparados",
+  "supplierRequests.selection.requestedRow.chosen": "Item escolhido",
+  "supplierRequests.selection.requestedRow.others":
+    "Itens comparados que não foram escolhidos",
+  "supplierRequests.selection.requestedRow.none":
+    "Este grupo não tem outros itens comparados.",
+  "supplierRequests.selection.requestedRow.gone":
+    "Mais {n} item(ns) deste grupo não estão mais nos books.",
   "supplierRequests.error.selection_group_pick":
     "Marque ao menos um grupo resolvido, ou use o botão de abrir todos.",
   "supplierRequests.error.selection_group_none":
@@ -708,6 +715,13 @@ export const en: typeof pt = {
   "supplierRequests.selection.winner": "Chosen · {qty} pieces",
   "supplierRequests.selection.blocks.reopen": "Review the choice",
   "supplierRequests.selection.blocks.sizeManual": "{n} items compared",
+  "supplierRequests.selection.requestedRow.chosen": "Chosen item",
+  "supplierRequests.selection.requestedRow.others":
+    "Compared items that were not chosen",
+  "supplierRequests.selection.requestedRow.none":
+    "This group has no other compared items.",
+  "supplierRequests.selection.requestedRow.gone":
+    "{n} more item(s) of this group are no longer in the books.",
   "supplierRequests.error.selection_group_pick":
     "Mark at least one resolved group, or use the open-all button.",
   "supplierRequests.error.selection_group_none":
@@ -1103,6 +1117,11 @@ export const zh: typeof pt = {
   "supplierRequests.selection.winner": "已选 · {qty} 件",
   "supplierRequests.selection.blocks.reopen": "重新选择",
   "supplierRequests.selection.blocks.sizeManual": "比较了 {n} 个产品",
+  "supplierRequests.selection.requestedRow.chosen": "已选产品",
+  "supplierRequests.selection.requestedRow.others": "已比较但未选中的产品",
+  "supplierRequests.selection.requestedRow.none": "该组没有其他已比较的产品。",
+  "supplierRequests.selection.requestedRow.gone":
+    "该组还有 {n} 个产品已不在 Book 中。",
   "supplierRequests.error.selection_group_pick":
     "请至少勾选一个已解决的组，或使用全部打开按钮。",
   "supplierRequests.error.selection_group_none": "没有等待询问的已解决组。",

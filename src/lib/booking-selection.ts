@@ -257,3 +257,24 @@ export function groupForBlock<
       )[0] ?? null
   );
 }
+
+/**
+ * Os itens comparados que não ganharam, na ordem dada: os que `find` acha e
+ * quantos não existem mais (ex.: item apagado do book). O ganhador nunca
+ * entra, e um id repetido conta uma vez só.
+ */
+export function otherGroupItems<T>(
+  ids: string[],
+  chosenId: string,
+  find: (id: string) => T | null | undefined,
+): { rows: T[]; missing: number } {
+  const rows: T[] = [];
+  let missing = 0;
+  for (const id of new Set(ids)) {
+    if (id === chosenId) continue;
+    const row = find(id);
+    if (row) rows.push(row);
+    else missing++;
+  }
+  return { rows, missing };
+}
