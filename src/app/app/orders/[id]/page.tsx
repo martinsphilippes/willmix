@@ -21,6 +21,7 @@ import {
   isLeadTimeKey,
   isSampleOrderKey,
   itemIdOf,
+  supplierLaneView,
   supplierSeesLaneRequirement,
 } from "@/lib/purchase-lanes";
 import { canViewDieCut, negotiatedTerms } from "@/lib/services/die-cut-step";
@@ -901,6 +902,16 @@ export default async function OrderPage({
         ]
       : []),
   ];
+  /* Login Trading no pedido de compra (pedido do dono, 13/11/2026): a etapa 2
+     aparece como "Die-Cut", com o responsável "Fornecedor" (sempre, mesmo
+     quando a etapa passa para a Wellmix) e o andamento só das tarefas dele
+     (faca, foto em alta e prazo de cada produto), contado do que está
+     gravado. A etapa de verdade, o andamento do pedido e a visão da Wellmix
+     não mudam. */
+  const tradingView =
+    supplierLanes && known.get(order.supplierId)?.type === "trading";
+  const tradingDieCut = (s: (typeof stages)[number], reqs: Requirement[]) =>
+    tradingView && s.key === "PREPARATION" ? supplierLaneView(s, reqs) : null;
   /* Etapas em linhas: quem vê a etapa abre os detalhes dela; a etapa em
      andamento (ou que ainda aceita dados, como o BL depois do embarque)
      fica aberta sempre. ?stage=CHAVE abre outra; ?stage=all, todas. */
@@ -1483,28 +1494,36 @@ export default async function OrderPage({
               if (!ownStage && !ownParts.length) return null;
               const open = s.status === "active" || s.status === "blocked";
               const expanded = expandedStageIds.has(s.id);
+              // Login Trading: a etapa 2 como "Die-Cut", com o andamento dele.
+              const dieCut = tradingDieCut(s, reqs);
+              const status = dieCut?.status ?? s.status;
+              const rowName = dieCut
+                ? t("purchaseOrder.dieCut.title")
+                : stageRowName(s.key);
+              const completedAt = dieCut ? dieCut.completedAt : s.completedAt;
               return (
                 <Fragment key={s.id}>
                   {ownStage ? (
                     <tr
                       className={cx(
                         rowClass,
-                        s.status === "active" && "bg-brand-50/60",
-                        s.status === "blocked" && "bg-amber-50/70",
+                        status === "active" && "bg-brand-50/60",
+                        status === "blocked" && "bg-amber-50/70",
                       )}
                       data-stage-row={s.key}
+                      data-stage-status={status}
                     >
                       <Td className="w-10">
-                        <StepDot state={s.status}>{index + 1}</StepDot>
+                        <StepDot state={status}>{index + 1}</StepDot>
                       </Td>
                       <Td className="min-w-40">
                         <span
                           className={cx(
-                            s.status === "pending"
+                            status === "pending"
                               ? "text-zinc-500"
-                              : s.status === "active"
+                              : status === "active"
                                 ? "font-semibold text-brand-800"
-                                : s.status === "blocked"
+                                : status === "blocked"
                                   ? "font-semibold text-amber-900"
                                   : "font-medium text-zinc-900",
                           )}
@@ -1514,22 +1533,29 @@ export default async function OrderPage({
                               href={stageHref(s)}
                               className="transition hover:text-brand-700"
                             >
-                              {stageRowName(s.key)}
+                              {rowName}
                             </a>
                           ) : (
-                            stageRowName(s.key)
+                            rowName
                           )}
                         </span>
                       </Td>
                       <Td className="whitespace-nowrap">
-                        <Badge tone={stageTone(s.status)}>
-                          {t(`stageStatus.${s.status}`)}
+                        <Badge tone={stageTone(status)}>
+                          {dieCut && status === "done"
+                            ? t("purchaseOrder.dieCut.done")
+                            : t(`stageStatus.${status}`)}
                         </Badge>
                       </Td>
                       <Td className="whitespace-nowrap text-zinc-700">
                         {visible ? (
-                          <span className="inline-flex items-center gap-1">
-                            {t(`role.${s.responsibleRole}`)}
+                          <span
+                            className="inline-flex items-center gap-1"
+                            data-stage-responsible={s.key}
+                          >
+                            {dieCut
+                              ? t("role.supplier")
+                              : t(`role.${s.responsibleRole}`)}
                             {(() => {
                               // Mensagem para o responsável da etapa (Wellmix: a
                               // empresa; quem é de fora: a Wellmix), já com a etapa escrita.
@@ -1539,7 +1565,9 @@ export default async function OrderPage({
                                 wellmix,
                               );
                               const draft = t("orderView.stage.chatDraft", {
-                                stage: stageName(s.key),
+                                stage: dieCut
+                                  ? t("purchaseOrder.dieCut.title")
+                                  : stageName(s.key),
                               });
                               if (!chat) return null;
                               if (chat.kind === "unassigned")
@@ -1589,7 +1617,10 @@ export default async function OrderPage({
                       <Td
                         className={cx(
                           "whitespace-nowrap tabular-nums",
-                          visible && open && isOverdue(s.dueAt)
+                          visible &&
+                            open &&
+                            !dieCut?.complete &&
+                            isOverdue(s.dueAt)
                             ? "font-semibold text-red-700"
                             : "text-zinc-700",
                         )}
@@ -1597,21 +1628,26 @@ export default async function OrderPage({
                         {visible && s.dueAt ? formatDate(s.dueAt, t) : "—"}
                       </Td>
                       <Td className="whitespace-nowrap tabular-nums text-zinc-700">
-                        {visible && s.completedAt
-                          ? formatDate(s.completedAt, t)
+                        {visible && completedAt
+                          ? formatDate(completedAt, t)
                           : "—"}
                       </Td>
                       <Td className="w-32">
                         {open ? (
                           <span className="flex items-center gap-2">
                             <span className="w-16">
-                              <Progress percent={s.percent} />
+                              <Progress
+                                percent={dieCut?.percent ?? s.percent}
+                              />
                             </span>
-                            <span className="text-xs font-semibold tabular-nums text-zinc-600">
-                              {s.percent}%
+                            <span
+                              className="text-xs font-semibold tabular-nums text-zinc-600"
+                              data-stage-percent={s.key}
+                            >
+                              {dieCut?.percent ?? s.percent}%
                             </span>
                           </span>
-                        ) : s.status === "done" ? (
+                        ) : status === "done" ? (
                           <span className="text-xs font-semibold text-emerald-700">
                             100%
                           </span>
@@ -1620,13 +1656,18 @@ export default async function OrderPage({
                         )}
                       </Td>
                       <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
-                        {visible && reqs.length
+                        {visible && dieCut
                           ? t("orderView.stage.reqs", {
-                              done: reqs.filter((r) => r.status === "done")
-                                .length,
-                              total: reqs.length,
+                              done: dieCut.done,
+                              total: dieCut.total,
                             })
-                          : "—"}
+                          : visible && reqs.length
+                            ? t("orderView.stage.reqs", {
+                                done: reqs.filter((r) => r.status === "done")
+                                  .length,
+                                total: reqs.length,
+                              })
+                            : "—"}
                       </Td>
                       <Td className="whitespace-nowrap text-right">
                         {visible ? (
@@ -1742,26 +1783,35 @@ export default async function OrderPage({
             const shownReqs = supplierView
               ? reqs.filter(supplierSeesLaneRequirement)
               : reqs;
+            // Login Trading: a etapa 2 como "Die-Cut", com o andamento dele.
+            const dieCut = tradingDieCut(stage, reqs);
+            const status = dieCut?.status ?? stage.status;
             return (
               <Fragment key={stage.id}>
                 <Card
                   className={cx(
                     "mt-4",
-                    stage.status === "active" &&
+                    status === "active" &&
                       "border-brand-300! ring-4 ring-brand-50",
-                    stage.status === "blocked" &&
+                    status === "blocked" &&
                       "border-amber-400! ring-4 ring-amber-50",
                   )}
                   title={
                     <span
                       id={`stage-${stage.id}`}
                       className="flex scroll-mt-24 flex-wrap items-center gap-2"
+                      data-stage-card={stage.key}
+                      data-stage-status={status}
                     >
-                      {stageName(stage.key)}
-                      <Badge tone={stageTone(stage.status)}>
-                        {t(`stageStatus.${stage.status}`)}
+                      {dieCut
+                        ? t("purchaseOrder.dieCut.title")
+                        : stageName(stage.key)}
+                      <Badge tone={stageTone(status)}>
+                        {dieCut && status === "done"
+                          ? t("purchaseOrder.dieCut.done")
+                          : t(`stageStatus.${status}`)}
                       </Badge>
-                      {open && stage.dueAt ? (
+                      {open && !dieCut?.complete && stage.dueAt ? (
                         <span
                           className={cx(
                             "text-xs",
@@ -1780,12 +1830,24 @@ export default async function OrderPage({
                       <span className="flex items-center gap-2 text-xs text-zinc-500">
                         <span>
                           {t("common.responsible")}:{" "}
-                          <span className="font-semibold text-zinc-700">
-                            {t(`role.${stage.responsibleRole}`)}
+                          <span
+                            className="font-semibold text-zinc-700"
+                            data-stage-card-responsible={stage.key}
+                          >
+                            {dieCut
+                              ? t("role.supplier")
+                              : t(`role.${stage.responsibleRole}`)}
                           </span>
                         </span>
-                        <span className="w-24">
-                          <Progress percent={stage.percent} />
+                        <span
+                          className="w-24"
+                          data-stage-card-percent={
+                            dieCut?.percent ?? stage.percent
+                          }
+                        >
+                          <Progress
+                            percent={dieCut?.percent ?? stage.percent}
+                          />
                         </span>
                       </span>
                     ) : !defaultExpanded(stage) ? (
