@@ -315,44 +315,8 @@ export function SamplingCard({
           </details>
         ) : null}
 
-        {s.history.length ? (
-          <div className="mt-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              {t("sampling.history.title")}
-            </h3>
-            <ol className="mt-1 space-y-1 text-sm" data-sampling-history>
-              {s.history.map((e) => (
-                <li key={e.id} className="flex flex-wrap gap-x-2">
-                  <time className="text-xs tabular-nums text-zinc-500">
-                    {dateTime(e.at, t)}
-                  </time>
-                  <span
-                    className={cx(
-                      "font-medium",
-                      e.kind === "reject"
-                        ? "text-red-700"
-                        : e.kind === "approve"
-                          ? "text-emerald-700"
-                          : "text-zinc-800",
-                    )}
-                  >
-                    {t(`sampling.history.${e.kind}` as DictionaryKey, {
-                      n: e.files ?? 0,
-                    })}
-                  </span>
-                  <span className="text-xs text-zinc-500">
-                    {t("sampling.round", { n: e.round })}
-                  </span>
-                  {e.text && e.kind !== "submit" ? (
-                    <span className="w-full whitespace-pre-wrap text-zinc-700">
-                      {e.text}
-                    </span>
-                  ) : null}
-                </li>
-              ))}
-            </ol>
-          </div>
-        ) : null}
+        {/* O histórico (envios, validações e comentários) fica só no
+            "Histórico de interações" da tela, sem repetir aqui. */}
       </Card>
     </section>
   );
