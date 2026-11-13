@@ -346,6 +346,55 @@ describe("pedido de compra", () => {
     // Raias concluídas: o contrato (com a arte final) espera as duas assinaturas.
     const afterLanes = (await store.get("orders", order.id))!;
     expect(afterLanes.status).toBe("PACKAGING");
+    // Pedido de amostras (P17): a Wellmix decide antes de assinar.
+    const before = (await signature.getOrderSignatureView(admin, order.id))!;
+    expect(before.samplesPending).toBe(true);
+    expect(before.canSign).toBeNull();
+    await expect(
+      signature.signOrderDocument(admin, order.id, {
+        name: "Ana Wellmix",
+        agree: true,
+        hash: before.hash,
+        signedFile: pdf("cedo.pdf"),
+      }),
+    ).rejects.toThrow("signature_samples_pending");
+    // 5 × 3 por variante: o produto A tem duas variantes; o B, nenhuma (conta 1).
+    const pv = await import("@/lib/services/product-variants");
+    for (const name of ["Azul", "Verde"])
+      await pv.upsertProductVariant(admin, itemA.productId!, {
+        name,
+        factoryItemCode: `PO-1-${name}`,
+        sortOrder: 0,
+      });
+    const samples = await import("@/lib/services/sample-order");
+    const doc = await samples.decideSampleOrder(admin, order.id, {
+      status: "ordered",
+    });
+    expect(
+      doc.lines.map((l) => [l.itemId, l.variants, l.quantity]),
+    ).toEqual([
+      [itemA.id, 2, 30],
+      [itemB.id, 1, 15],
+    ]);
+    await expect(
+      samples.decideSampleOrder(admin, order.id, { status: "none" }),
+    ).rejects.toThrow("sample_order_already_done");
+    // O fornecedor aceita o pedido de amostras à parte.
+    const supplierView = (await samples.getSampleOrderView(
+      supplierA,
+      order.id,
+    ))!;
+    expect(supplierView.canAccept).toBe(true);
+    await samples.acceptSampleOrder(supplierA, order.id, {
+      name: "Li Supplier",
+      agree: true,
+      hash: doc.hash,
+    });
+    expect(
+      (await requirementsOf(order.id)).find(
+        (r) => r.key === "sample_order_supplier",
+      )!.status,
+    ).toBe("done");
     const view = (await signature.getOrderSignatureView(admin, order.id))!;
     expect(view.document.finalArts).toHaveLength(2);
     expect(view.document.items.every((i) => i.moq === 1000)).toBe(true);
@@ -447,6 +496,14 @@ async function signedPurchaseOrder(
   }
   await gates.readyOrderProducts(admin, order.id);
   expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
+  // Sem amostras neste pedido: o aceite do fornecedor fica dispensado.
+  const samples = await import("@/lib/services/sample-order");
+  await samples.decideSampleOrder(admin, order.id, { status: "none" });
+  expect(
+    (await requirementsOf(order.id)).find(
+      (r) => r.key === "sample_order_supplier",
+    ),
+  ).toMatchObject({ status: "done", value: "not_applicable" });
   const view = (await signature.getOrderSignatureView(admin, order.id))!;
   for (const [who, name] of [
     [admin, "Ana Wellmix"],

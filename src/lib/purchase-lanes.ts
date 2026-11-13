@@ -64,6 +64,20 @@ const SIGNED_WELLMIX = "order_signed_wellmix";
 const SIGNED_SUPPLIER = "order_signed_supplier";
 
 /**
+ * Pedido de amostras (contrato secundário, mapa P17, docs/SAMPLE_ORDER.md):
+ * a Wellmix define (gera o pedido ou marca "sem amostras") antes de assinar
+ * o contrato; o fornecedor aceita o pedido de amostras à parte.
+ */
+export const SAMPLE_ORDER_KEY = "sample_order";
+export const SAMPLE_ORDER_SUPPLIER_KEY = "sample_order_supplier";
+export const SAMPLE_ORDER_KEYS: readonly string[] = [
+  SAMPLE_ORDER_KEY,
+  SAMPLE_ORDER_SUPPLIER_KEY,
+];
+export const isSampleOrderKey = (key: string) =>
+  SAMPLE_ORDER_KEYS.includes(key);
+
+/**
  * Itens que o sistema confere sozinho (ninguém marca à mão): o NCM validado
  * na tela fiscal, a ficha mestre completa e o sinal pago (ou a conta corrente).
  */
@@ -99,6 +113,10 @@ export function prerequisitesOf(key: string): string[] {
   // Contrato: o fornecedor assina depois da Wellmix; o sinal (ou a conta
   // corrente) vem com as duas assinaturas.
   if (key === SIGNED_SUPPLIER) return [SIGNED_WELLMIX];
+  // A Wellmix só assina com o pedido de amostras definido (P17 → P11); o
+  // fornecedor aceita o pedido de amostras depois de gerado.
+  if (key === SIGNED_WELLMIX) return [SAMPLE_ORDER_KEY];
+  if (key === SAMPLE_ORDER_SUPPLIER_KEY) return [SAMPLE_ORDER_KEY];
   if (key === DOWN_PAYMENT_KEY) return [SIGNED_WELLMIX, SIGNED_SUPPLIER];
   const item = itemIdOf(key);
   if (!item) return [];
@@ -290,7 +308,12 @@ export interface LaneSla {
 
 /** Dias do passo pela chave, ou nulo quando o passo segue o prazo da etapa. */
 function daysOf(key: string, sla: LaneSla): number | null {
-  if (key === SIGNED_WELLMIX || key === SIGNED_SUPPLIER)
+  if (
+    key === SIGNED_WELLMIX ||
+    key === SIGNED_SUPPLIER ||
+    key === SAMPLE_ORDER_KEY ||
+    key === SAMPLE_ORDER_SUPPLIER_KEY
+  )
     return sla.signatureDays ?? null;
   if (key === DOWN_PAYMENT_KEY) return sla.downPaymentDays ?? null;
   if (!itemIdOf(key)) return null;
@@ -331,7 +354,8 @@ export function unlockedAt(
     .filter((t): t is string => !!t)
     .sort();
   if (times.length) return times.at(-1)!;
-  if (key === SIGNED_WELLMIX) return stageStartedAt ?? null;
+  if (key === SIGNED_WELLMIX || key === SAMPLE_ORDER_KEY)
+    return stageStartedAt ?? null;
   return orderCreatedAt;
 }
 

@@ -8,6 +8,8 @@ import type {
 import { STAGE_KEYS } from "@/lib/db/schema";
 import {
   DOWN_PAYMENT_KEY,
+  SAMPLE_ORDER_KEY,
+  SAMPLE_ORDER_SUPPLIER_KEY,
   laneRequirements,
   type LaneItem,
 } from "@/lib/purchase-lanes";
@@ -214,6 +216,23 @@ export const ART_APPROVAL_LABEL = "Aprovação da arte pelo fornecedor";
  * arquivos assinados e carimbados: o da Wellmix e o do fornecedor.
  */
 export const PURCHASE_CONTRACT_REQUIREMENTS: RequirementTemplate[] = [
+  // Contrato secundário de amostras (mapa P17, docs/SAMPLE_ORDER.md): a
+  // Wellmix gera o pedido de amostras (ou marca "sem amostras") antes de
+  // assinar; o fornecedor aceita o pedido de amostras à parte.
+  {
+    key: SAMPLE_ORDER_KEY,
+    label: "Pedido de amostras definido (show room e agência na China)",
+    type: "confirm",
+    required: true,
+    role: "operator",
+  },
+  {
+    key: SAMPLE_ORDER_SUPPLIER_KEY,
+    label: "Pedido de amostras aceito pelo fornecedor",
+    type: "confirm",
+    required: true,
+    role: "supplier",
+  },
   {
     key: ORDER_SIGNED_WELLMIX,
     label: "Contrato assinado e carimbado pela Wellmix (arquivo)",

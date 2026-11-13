@@ -124,6 +124,7 @@ import * as bookingNcm from "./booking-ncm";
 import * as supplierRequestNegotiation from "./supplier-request-negotiation";
 import * as purchaseOrder from "./purchase-order";
 import * as purchaseSequence from "./purchase-sequence";
+import * as sampleOrder from "./sample-order";
 import * as purchaseRounds from "./purchase-rounds";
 import * as aiReferences from "./ai-references";
 import * as sampling from "./sampling";
@@ -257,6 +258,7 @@ export const modulesPt = {
   ...supplierRequestNegotiation.pt,
   ...purchaseOrder.pt,
   ...purchaseSequence.pt,
+  ...sampleOrder.pt,
   ...purchaseRounds.pt,
   ...aiReferences.pt,
   ...sampling.pt,
@@ -387,6 +389,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...supplierRequestNegotiation.en,
   ...purchaseOrder.en,
   ...purchaseSequence.en,
+  ...sampleOrder.en,
   ...purchaseRounds.en,
   ...aiReferences.en,
   ...sampling.en,
@@ -517,6 +520,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...supplierRequestNegotiation.zh,
   ...purchaseOrder.zh,
   ...purchaseSequence.zh,
+  ...sampleOrder.zh,
   ...purchaseRounds.zh,
   ...aiReferences.zh,
   ...sampling.zh,
