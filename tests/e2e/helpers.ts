@@ -113,14 +113,20 @@ export async function importAndClose(
     .setInputFiles(file);
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
-  // Na caixa "Dados do booking" o campo do fornecedor se chama Fábrica
-  // (dono, 13/11/2026) e a palavra "fornecedor" não aparece nela.
+  // Na caixa "Dados do booking" (dono, 13/11/2026): quem fabrica é a
+  // Fábrica (antes "Fornecedor") e para quem vão as solicitações é o
+  // Fornecedor (antes "Responsável pelo booking").
   const data = page
     .locator("section")
     .filter({ has: page.getByRole("heading", { name: "Dados do booking" }) })
     .first();
-  await expect(data.getByText("Fábrica", { exact: true })).toBeVisible();
-  await expect(data).not.toContainText(/fornecedor/i);
+  await expect(
+    data.getByText("Fábrica", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    data.getByText("Fornecedor", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(data).not.toContainText("Responsável pelo booking");
   // Fornecedor do cadastro (tem login): nenhum aviso de "sem acesso".
   await expect(page.locator("[data-supplier-no-login]")).toHaveCount(0);
   const combo = page.locator(

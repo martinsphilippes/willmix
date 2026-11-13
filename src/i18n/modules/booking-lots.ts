@@ -210,12 +210,12 @@ export const pt = {
   "bookingLots.item.profit": "Lucro {pct}%",
   "bookingLots.item.missingData": "Faltou: {list}",
 
-  "bookingLots.partner.title": "Responsável pelo booking",
+  "bookingLots.partner.title": "Fornecedor",
   "bookingLots.partner.supplier": "A fábrica do booking",
   "bookingLots.partner.hint":
     "As solicitações dos itens deste booking vão para ele. Vazio: vão para a fábrica.",
-  "bookingLots.partner.search": "Digite para buscar o responsável",
-  "bookingLots.partner.noMatch": "Nenhum responsável encontrado",
+  "bookingLots.partner.search": "Digite para buscar o fornecedor",
+  "bookingLots.partner.noMatch": "Nenhum fornecedor encontrado",
   "bookingLots.error.booking_partner_invalid":
     "Escolha um parceiro ativo: fornecedor, Trading, Factory, Supplier, GP ou outro tipo com login.",
   "bookingLots.error.supplier_required":
@@ -446,12 +446,12 @@ export const en: typeof pt = {
   "bookingLots.item.profit": "Profit {pct}%",
   "bookingLots.item.missingData": "Missing: {list}",
 
-  "bookingLots.partner.title": "Booking owner",
+  "bookingLots.partner.title": "Supplier",
   "bookingLots.partner.supplier": "The booking factory",
   "bookingLots.partner.hint":
     "Requests for this booking's items go to this partner. Empty: they go to the factory.",
-  "bookingLots.partner.search": "Type to search the owner",
-  "bookingLots.partner.noMatch": "No owner found",
+  "bookingLots.partner.search": "Type to search the supplier",
+  "bookingLots.partner.noMatch": "No supplier found",
   "bookingLots.error.booking_partner_invalid":
     "Choose an active partner: supplier, Trading, Factory, Supplier, GP or another type with login.",
   "bookingLots.error.supplier_required":
@@ -675,11 +675,11 @@ export const zh: typeof pt = {
   "bookingLots.item.profit": "利润 {pct}%",
   "bookingLots.item.missingData": "缺少：{list}",
 
-  "bookingLots.partner.title": "订舱负责人",
+  "bookingLots.partner.title": "供应商",
   "bookingLots.partner.supplier": "订舱的工厂",
   "bookingLots.partner.hint": "此订舱商品的询价都发给该合作方。留空：发给工厂。",
-  "bookingLots.partner.search": "输入以搜索负责人",
-  "bookingLots.partner.noMatch": "未找到负责人",
+  "bookingLots.partner.search": "输入以搜索供应商",
+  "bookingLots.partner.noMatch": "未找到供应商",
   "bookingLots.error.booking_partner_invalid":
     "请选择启用的合作方：供应商、Trading、Factory、Supplier、GP 或其他可登录类型。",
   "bookingLots.error.supplier_required":
