@@ -8,7 +8,7 @@ export const pt = {
   "supplierTasks.rfq.title": "RFQ: {product}",
   "supplierTasks.booking.detail": "{qty} {unit}",
   "supplierTasks.intro":
-    "Aqui está tudo que depende de você, do Booking até o embarque. Toque numa etapa para ver só as pendências dela.",
+    "Aqui está tudo que depende de você, do Book até o embarque. Toque numa etapa para ver só as pendências dela.",
   "supplierTasks.steps.title": "Etapas que chegam até você",
   "supplierTasks.steps.all": "Todas as etapas",
   "supplierTasks.steps.none": "nada agora",
@@ -43,7 +43,7 @@ export const pt = {
     "Envie a arte do pedido; se o fornecedor reprovar, corrija e envie de novo.",
   "agencyTasks.help.seal":
     "Aplique na arte o selo enviado pela certificadora e envie a arte com o selo para a Wellmix conferir.",
-  "tasks.group.supplier.booking": "Analisar o Booking",
+  "tasks.group.supplier.booking": "Analisar o Book",
   "tasks.group.supplier.request": "Responder a solicitação",
   "supplierTasks.help.request":
     "Diga se faz o item pedido pela Wellmix e em que condições (preço, pedido mínimo e prazo); se vier contraproposta, aceite, proponha de novo ou recuse.",
@@ -78,7 +78,7 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierTasks.rfq.title": "RFQ: {product}",
   "supplierTasks.booking.detail": "{qty} {unit}",
   "supplierTasks.intro":
-    "Everything that depends on you, from the Booking to shipment. Tap a step to see only its pending items.",
+    "Everything that depends on you, from the Book to shipment. Tap a step to see only its pending items.",
   "supplierTasks.steps.title": "Steps that reach you",
   "supplierTasks.steps.all": "All steps",
   "supplierTasks.steps.none": "nothing now",
@@ -113,7 +113,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Upload the order artwork; if the supplier rejects it, fix it and upload again.",
   "agencyTasks.help.seal":
     "Apply the seal sent by the certifier to the artwork and upload it for Wellmix to check.",
-  "tasks.group.supplier.booking": "Review the Booking",
+  "tasks.group.supplier.booking": "Review the Book",
   "tasks.group.supplier.request": "Answer the request",
   "supplierTasks.help.request":
     "Say whether you make the item Wellmix asked for and on what terms (price, minimum order and lead time); if a counter-proposal arrives, accept it, propose again or decline.",
@@ -148,7 +148,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierTasks.rfq.title": "RFQ：{product}",
   "supplierTasks.booking.detail": "{qty} {unit}",
   "supplierTasks.intro":
-    "这里是所有需要您处理的事项，从 Booking 到装运。点击某个环节，只看该环节的待办。",
+    "这里是所有需要您处理的事项，从 Book 到装运。点击某个环节，只看该环节的待办。",
   "supplierTasks.steps.title": "需要您处理的环节",
   "supplierTasks.steps.all": "全部环节",
   "supplierTasks.steps.none": "暂无",
@@ -181,7 +181,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "agencyTasks.help.art": "上传订单设计稿；如供应商未通过，请修改后重新上传。",
   "agencyTasks.help.seal":
     "把认证机构发送的认证标志加到设计稿上，并上传给 Wellmix 核对。",
-  "tasks.group.supplier.booking": "审核 Booking",
+  "tasks.group.supplier.booking": "审核 Book",
   "tasks.group.supplier.request": "答复询问",
   "supplierTasks.help.request":
     "请说明是否能做 Wellmix 询问的产品以及条件（价格、起订量和交期）；如收到还价，请接受、重新报价或拒绝。",

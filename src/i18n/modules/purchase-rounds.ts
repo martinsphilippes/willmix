@@ -9,7 +9,7 @@ export const pt = {
   "purchaseRounds.form.toggle": "Programação de compra",
   "purchaseRounds.form.ask": "Comprar em rodadas nos próximos meses?",
   "purchaseRounds.form.hint":
-    "Divida o total em rodadas de pedido com intervalo fixo, a partir da data da 1ª rodada. A solicitação leva a programação ao responsável pelo booking. Aprovada, o pedido de compra vira o pedido pai e cada rodada nasce como pedido filho no dia combinado, com a negociação e as artes do pai.",
+    "Divida o total em rodadas de pedido com intervalo fixo, a partir da data da 1ª rodada. A solicitação leva a programação ao responsável pelo book. Aprovada, o pedido de compra vira o pedido pai e cada rodada nasce como pedido filho no dia combinado, com a negociação e as artes do pai.",
   "purchaseRounds.form.interval": "Intervalo entre rodadas",
   "purchaseRounds.form.days": "{n} dias",
   "purchaseRounds.form.custom": "Outro",
@@ -137,7 +137,7 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseRounds.form.toggle": "Purchase schedule",
   "purchaseRounds.form.ask": "Buy in rounds over the coming months?",
   "purchaseRounds.form.hint":
-    "Split the total into order rounds at a fixed interval, starting on the 1st round date. The request carries the schedule to the booking owner. Once approved, the purchase order becomes the parent order and each round is born as a child order on the agreed day, with the parent's negotiation and artwork.",
+    "Split the total into order rounds at a fixed interval, starting on the 1st round date. The request carries the schedule to the book owner. Once approved, the purchase order becomes the parent order and each round is born as a child order on the agreed day, with the parent's negotiation and artwork.",
   "purchaseRounds.form.interval": "Interval between rounds",
   "purchaseRounds.form.days": "{n} days",
   "purchaseRounds.form.custom": "Other",
@@ -262,7 +262,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.form.toggle": "采购计划",
   "purchaseRounds.form.ask": "未来几个月分批下单？",
   "purchaseRounds.form.hint":
-    "从第 1 批日期开始，按固定间隔将总数分成多批订单。询单会把计划交给预订负责人。批准后，采购订单成为父订单，每一批在约定日期生成子订单，沿用父订单的谈判和设计稿。",
+    "从第 1 批日期开始，按固定间隔将总数分成多批订单。询单会把计划交给 Book 负责人。批准后，采购订单成为父订单，每一批在约定日期生成子订单，沿用父订单的谈判和设计稿。",
   "purchaseRounds.form.interval": "批次间隔",
   "purchaseRounds.form.days": "{n} 天",
   "purchaseRounds.form.custom": "其他",

@@ -9,7 +9,7 @@ export const pt = {
   "sourcingStandby.state.on": "Ativo",
   "sourcingStandby.now.title": "Como está funcionando agora",
   "sourcingStandby.now.off":
-    "O Sourcing está em espera. Os produtos chegam pela ficha técnica que sobe no Booking, já com o fornecedor. O pedido de produto fora do catálogo continua virando solicitação, mas não abre item de Sourcing nem pendência para a equipe. As visitas e os itens já cadastrados continuam aqui embaixo, guardados.",
+    "O Sourcing está em espera. Os produtos chegam pela ficha técnica que sobe no Book, já com o fornecedor. O pedido de produto fora do catálogo continua virando solicitação, mas não abre item de Sourcing nem pendência para a equipe. As visitas e os itens já cadastrados continuam aqui embaixo, guardados.",
   "sourcingStandby.now.on":
     "O Sourcing está ativo. O pedido de produto fora do catálogo abre um item de Sourcing e uma pendência para a equipe localizar fornecedores.",
   "sourcingStandby.kept.title": "O que está guardado (nada foi apagado)",
@@ -37,7 +37,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sourcingStandby.state.on": "Active",
   "sourcingStandby.now.title": "How it is working now",
   "sourcingStandby.now.off":
-    "Sourcing is on hold. Products arrive through the technical sheet uploaded to the Booking, already with the supplier. A request for a product outside the catalogue still becomes a request, but it does not open a Sourcing item or a task for the team. The visits and items already registered stay below, stored.",
+    "Sourcing is on hold. Products arrive through the technical sheet uploaded to the Book, already with the supplier. A request for a product outside the catalogue still becomes a request, but it does not open a Sourcing item or a task for the team. The visits and items already registered stay below, stored.",
   "sourcingStandby.now.on":
     "Sourcing is active. A request for a product outside the catalogue opens a Sourcing item and a task for the team to find suppliers.",
   "sourcingStandby.kept.title": "What is stored (nothing was deleted)",
@@ -65,7 +65,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sourcingStandby.state.on": "已启用",
   "sourcingStandby.now.title": "目前的运作方式",
   "sourcingStandby.now.off":
-    "寻源功能暂停中。产品通过上传到 Booking 的技术表进入系统，并已带有供应商。目录外产品的需求仍会生成询价单，但不会创建寻源条目，也不会给团队生成待办。已登记的走访和条目仍保存在下方。",
+    "寻源功能暂停中。产品通过上传到 Book 的技术表进入系统，并已带有供应商。目录外产品的需求仍会生成询价单，但不会创建寻源条目，也不会给团队生成待办。已登记的走访和条目仍保存在下方。",
   "sourcingStandby.now.on":
     "寻源功能已启用。目录外产品的需求会创建寻源条目，并给团队生成寻找供应商的待办。",
   "sourcingStandby.kept.title": "已保存的内容（没有删除任何数据）",

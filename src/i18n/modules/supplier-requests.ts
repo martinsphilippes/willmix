@@ -16,7 +16,7 @@ export const pt = {
 
   "supplierRequests.selection.title": "Seleção de itens",
   "supplierRequests.selection.subtitle":
-    "Itens dos bookings, inclusive os rascunhos. Filtre, agrupe itens de vários fornecedores, compare os parecidos e abra a solicitação ao fornecedor do melhor (booking fechado).",
+    "Itens dos books, inclusive os rascunhos. Filtre, agrupe itens de vários fornecedores, compare os parecidos e abra a solicitação ao fornecedor do melhor (book fechado).",
   "supplierRequests.selection.search":
     "Buscar em qualquer campo (descrição, código, material, fornecedor, origem…)",
   "supplierRequests.selection.searchPlaceholder":
@@ -27,15 +27,15 @@ export const pt = {
   "supplierRequests.selection.truncated":
     "Mostrando {shown} de {n} itens. Refine a busca para ver o resto.",
   "supplierRequests.selection.empty":
-    "Nenhum item de booking fechado combina com a busca.",
+    "Nenhum item de book fechado combina com a busca.",
   "supplierRequests.selection.noItems":
-    "Nenhum booking fechado ainda. Feche um booking para os itens dele aparecerem aqui.",
+    "Nenhum book fechado ainda. Feche um book para os itens dele aparecerem aqui.",
   "supplierRequests.selection.schemaMissing":
     "As tabelas novas ainda não foram publicadas no banco (npm run appwrite:push).",
   "supplierRequests.selection.best": "Menor custo por peça",
   "supplierRequests.selection.col.costPiece": "Custo/peça (Superplan)",
   "supplierRequests.selection.costHint":
-    "Custo/peça: quanto cada peça custa posta no depósito (compra, frete, impostos da importação e despesas, dividido pelas peças que cabem no container), calculado pelo Superplan ao fechar o booking com o câmbio do dia, o container e o frete padrão. Mínimo = custo × markup do tipo de negócio; Meta = preço de venda que dá o lucro da meta. Compare com o preço que o cliente paga para decidir o escolhido e as alternativas. Passe o mouse no Superplan para ver data, tipo, container, frete e dólar usados.",
+    "Custo/peça: quanto cada peça custa posta no depósito (compra, frete, impostos da importação e despesas, dividido pelas peças que cabem no container), calculado pelo Superplan ao fechar o book com o câmbio do dia, o container e o frete padrão. Mínimo = custo × markup do tipo de negócio; Meta = preço de venda que dá o lucro da meta. Compare com o preço que o cliente paga para decidir o escolhido e as alternativas. Passe o mouse no Superplan para ver data, tipo, container, frete e dólar usados.",
   "supplierRequests.superplan.target": "Meta {pct}%: {price}",
   "supplierRequests.superplan.targetNone": "Meta {pct}% inalcançável",
   "supplierRequests.superplan.noNcm":
@@ -53,8 +53,8 @@ export const pt = {
   "supplierRequests.selection.pickHint":
     'Esta aba é só para agrupar: marque os itens (um a um ou todos os da tela, com filtro e busca) e clique em "Agrupar para seleção". A solicitação ao fornecedor abre na aba Seleção, com o grupo.',
   "supplierRequests.selection.draftHint":
-    "Feche o booking para abrir a solicitação deste item",
-  "supplierRequests.selection.filter.period": "Período do booking",
+    "Feche o book para abrir a solicitação deste item",
+  "supplierRequests.selection.filter.period": "Período do book",
   "supplierRequests.selection.filter.anyDate": "Qualquer data",
   "supplierRequests.selection.filter.apply": "Aplicar",
   "supplierRequests.selection.filter.clearDates": "Limpar datas",
@@ -79,7 +79,7 @@ export const pt = {
   "supplierRequests.selection.group.back": "Voltar para os itens",
   "supplierRequests.selection.blocks.title": "Blocos sugeridos",
   "supplierRequests.selection.blocks.hint":
-    "Itens parecidos pelo nome, dos bookings do filtro. Abra um bloco para comparar e escolher.",
+    "Itens parecidos pelo nome, dos books do filtro. Abra um bloco para comparar e escolher.",
   "supplierRequests.selection.blocks.size":
     "{n} itens · {suppliers} fornecedores",
   "supplierRequests.selection.blocks.more": "e mais {n}",
@@ -92,7 +92,7 @@ export const pt = {
   "supplierRequests.selection.col.photo": "Foto",
   "supplierRequests.selection.col.item": "Item",
   "supplierRequests.selection.col.supplier": "Fornecedor",
-  "supplierRequests.selection.col.booking": "Booking",
+  "supplierRequests.selection.col.booking": "Book",
   "supplierRequests.selection.col.price": "Preço",
   "supplierRequests.selection.col.priceUsd": "Preço (US$)",
   "supplierRequests.selection.col.moq": "MOQ",
@@ -152,11 +152,11 @@ export const pt = {
   "supplierRequests.detail.request": "O que está sendo negociado",
   "supplierRequests.detail.negotiatedPrice": "Preço negociado",
   "supplierRequests.detail.negotiatedHint":
-    "Valores renegociados com o responsável; o do booking fica ao lado, riscado.",
+    "Valores renegociados com o responsável; o do book fica ao lado, riscado.",
   "supplierRequests.detail.negotiatedSuperplan":
     "Superplan com as condições negociadas",
   "supplierRequests.detail.negotiatedSuperplanHint":
-    "Refeito agora com o preço negociado e o câmbio de hoje. Riscado: o custo do booking. Compare com as alternativas abaixo.",
+    "Refeito agora com o preço negociado e o câmbio de hoje. Riscado: o custo do book. Compare com as alternativas abaixo.",
   "supplierRequests.detail.alternativeCheaper": "mais barata que a negociada",
   "supplierRequests.detail.alternativeOpen": "Abrir solicitação para esta",
   "supplierRequests.detail.quantity": "Quantidade",
@@ -164,9 +164,9 @@ export const pt = {
   "supplierRequests.detail.needs": "O que a Wellmix precisa no produto",
   "supplierRequests.detail.needsNone": "Nada além do item como está.",
   "supplierRequests.detail.item": "Item",
-  "supplierRequests.detail.bookingPrice": "Preço do booking",
-  "supplierRequests.detail.booking": "Booking",
-  "supplierRequests.detail.bookingOf": "Booking nº {n} · {file}",
+  "supplierRequests.detail.bookingPrice": "Preço do book",
+  "supplierRequests.detail.booking": "Book",
+  "supplierRequests.detail.bookingOf": "Book nº {n} · {file}",
   "supplierRequests.detail.supplier": "Fornecedor",
   "supplierRequests.detail.answer.title": "Resposta do fornecedor",
   "supplierRequests.detail.answer.none": "O fornecedor ainda não respondeu.",
@@ -194,15 +194,15 @@ export const pt = {
   "supplierRequests.detail.alternatives": "Alternativas ({n})",
   "supplierRequests.detail.alternativesNone": "Nenhuma alternativa guardada.",
   "supplierRequests.detail.alternativesHint":
-    "Só a Wellmix vê: itens parecidos de outros bookings, para comparar ou abrir outra solicitação.",
+    "Só a Wellmix vê: itens parecidos de outros books, para comparar ou abrir outra solicitação.",
   "supplierRequests.detail.chosenSuperplan": "Superplan do item escolhido",
 
   "supplierRequests.error.supplier_request_choose":
     "Marque o item escolhido antes de abrir a solicitação.",
   "supplierRequests.error.supplier_request_lot_not_closed":
-    "O booking deste item não está fechado. Feche o booking antes de abrir a solicitação.",
+    "O book deste item não está fechado. Feche o book antes de abrir a solicitação.",
   "supplierRequests.error.supplier_request_no_supplier":
-    "O booking deste item não tem fornecedor.",
+    "O book deste item não tem fornecedor.",
   "supplierRequests.error.supplier_invalid":
     "O fornecedor deste item está inativo ou não existe mais.",
   "supplierRequests.error.supplier_request_exists":
@@ -249,7 +249,7 @@ export const pt = {
   "supplierRequests.table.col.photo": "Foto",
   "supplierRequests.table.col.item": "Produto",
   "supplierRequests.table.col.quantity": "Quantidade",
-  "supplierRequests.table.col.bookingPrice": "Preço do booking",
+  "supplierRequests.table.col.bookingPrice": "Preço do book",
   "supplierRequests.table.col.answer": "Sua resposta",
   "supplierRequests.table.col.status": "Situação",
   "supplierRequests.table.col.actions": "Ações",
@@ -316,9 +316,9 @@ export const pt = {
   "supplierRequests.table.col.factoryCode": "Cód. fábrica",
   "supplierRequests.table.col.itemNumber": "Nº do item",
   "supplierRequests.table.col.material": "Material",
-  "supplierRequests.table.col.bookingMoq": "MOQ do booking",
+  "supplierRequests.table.col.bookingMoq": "MOQ do book",
   "supplierRequests.table.col.bookingCurrency": "Moeda",
-  "supplierRequests.table.col.bookingIncoterm": "Entrega do booking",
+  "supplierRequests.table.col.bookingIncoterm": "Entrega do book",
   "supplierRequests.table.col.needs": "A Wellmix precisa",
   "supplierRequests.table.col.canDo": "Faz?",
   "supplierRequests.table.col.sla": "SLA",
@@ -380,7 +380,7 @@ export const pt = {
     "Uma informação por coluna. Pelos ícones: mensagem à Wellmix, resposta sim/não e abrir a tela do produto.",
   "supplierRequests.table.answerHint":
     "Para responder sim, informe o preço por peça. Pedido mínimo e modalidade de entrega (FOB/EXW) vão junto; o prazo fica como está (mude na tela do produto).",
-  "supplierRequests.table.col.initial": "Condições iniciais (booking)",
+  "supplierRequests.table.col.initial": "Condições iniciais (book)",
   "supplierRequests.table.col.final": "Condições finais (última proposta)",
   "supplierRequests.table.col.cond.price": "Preço",
   "supplierRequests.table.col.cond.currency": "Moeda",
@@ -415,7 +415,7 @@ export const en: typeof pt = {
 
   "supplierRequests.selection.title": "Item selection",
   "supplierRequests.selection.subtitle":
-    "Items from the bookings, drafts included. Filter, group items from several suppliers, compare similar ones and open a request to the best one's supplier (closed booking).",
+    "Items from the books, drafts included. Filter, group items from several suppliers, compare similar ones and open a request to the best one's supplier (closed book).",
   "supplierRequests.selection.search":
     "Search any field (description, code, material, supplier, origin…)",
   "supplierRequests.selection.searchPlaceholder":
@@ -426,15 +426,15 @@ export const en: typeof pt = {
   "supplierRequests.selection.truncated":
     "Showing {shown} of {n} items. Refine the search to see the rest.",
   "supplierRequests.selection.empty":
-    "No item from a closed booking matches the search.",
+    "No item from a closed book matches the search.",
   "supplierRequests.selection.noItems":
-    "No closed booking yet. Close a booking for its items to show up here.",
+    "No closed book yet. Close a book for its items to show up here.",
   "supplierRequests.selection.schemaMissing":
     "The new tables are not published in the database yet (npm run appwrite:push).",
   "supplierRequests.selection.best": "Lowest cost per piece",
   "supplierRequests.selection.col.costPiece": "Cost/piece (Superplan)",
   "supplierRequests.selection.costHint":
-    "Cost/piece: what each piece costs landed in the warehouse (purchase, freight, import taxes and expenses, divided by the pieces that fit in the container), calculated by Superplan when the booking was closed with that day's exchange rate, the default container and the default freight. Minimum = cost × business type markup; Target = sale price that gives the target profit. Compare with what the customer pays to decide the chosen item and the alternatives. Hover over Superplan to see the date, type, container, freight and dollar used.",
+    "Cost/piece: what each piece costs landed in the warehouse (purchase, freight, import taxes and expenses, divided by the pieces that fit in the container), calculated by Superplan when the book was closed with that day's exchange rate, the default container and the default freight. Minimum = cost × business type markup; Target = sale price that gives the target profit. Compare with what the customer pays to decide the chosen item and the alternatives. Hover over Superplan to see the date, type, container, freight and dollar used.",
   "supplierRequests.superplan.target": "Target {pct}%: {price}",
   "supplierRequests.superplan.targetNone": "Target {pct}% unreachable",
   "supplierRequests.superplan.noNcm":
@@ -452,8 +452,8 @@ export const en: typeof pt = {
   "supplierRequests.selection.pickHint":
     'This tab is only for grouping: tick the items (one by one or all on screen, with filter and search) and click "Group for selection". The supplier request is opened in the Selection tab, with the group.',
   "supplierRequests.selection.draftHint":
-    "Close the booking to open the request for this item",
-  "supplierRequests.selection.filter.period": "Booking period",
+    "Close the book to open the request for this item",
+  "supplierRequests.selection.filter.period": "Book period",
   "supplierRequests.selection.filter.anyDate": "Any date",
   "supplierRequests.selection.filter.apply": "Apply",
   "supplierRequests.selection.filter.clearDates": "Clear dates",
@@ -477,7 +477,7 @@ export const en: typeof pt = {
   "supplierRequests.selection.group.back": "Back to items",
   "supplierRequests.selection.blocks.title": "Suggested blocks",
   "supplierRequests.selection.blocks.hint":
-    "Items with similar names, from the filtered bookings. Open a block to compare and choose.",
+    "Items with similar names, from the filtered books. Open a block to compare and choose.",
   "supplierRequests.selection.blocks.size": "{n} items · {suppliers} suppliers",
   "supplierRequests.selection.blocks.more": "and {n} more",
   "supplierRequests.selection.blocks.open": "Compare and select",
@@ -489,7 +489,7 @@ export const en: typeof pt = {
   "supplierRequests.selection.col.photo": "Photo",
   "supplierRequests.selection.col.item": "Item",
   "supplierRequests.selection.col.supplier": "Supplier",
-  "supplierRequests.selection.col.booking": "Booking",
+  "supplierRequests.selection.col.booking": "Book",
   "supplierRequests.selection.col.price": "Price",
   "supplierRequests.selection.col.priceUsd": "Price (US$)",
   "supplierRequests.selection.col.moq": "MOQ",
@@ -549,11 +549,11 @@ export const en: typeof pt = {
   "supplierRequests.detail.request": "What is being negotiated",
   "supplierRequests.detail.negotiatedPrice": "Negotiated price",
   "supplierRequests.detail.negotiatedHint":
-    "Values renegotiated with the person in charge; the booking value is beside it, struck through.",
+    "Values renegotiated with the person in charge; the book value is beside it, struck through.",
   "supplierRequests.detail.negotiatedSuperplan":
     "Superplan with the negotiated conditions",
   "supplierRequests.detail.negotiatedSuperplanHint":
-    "Recalculated now with the negotiated price and today's exchange rate. Struck through: the booking cost. Compare with the alternatives below.",
+    "Recalculated now with the negotiated price and today's exchange rate. Struck through: the book cost. Compare with the alternatives below.",
   "supplierRequests.detail.alternativeCheaper":
     "cheaper than the negotiated one",
   "supplierRequests.detail.alternativeOpen": "Open a request for this one",
@@ -562,9 +562,9 @@ export const en: typeof pt = {
   "supplierRequests.detail.needs": "What Wellmix needs in the product",
   "supplierRequests.detail.needsNone": "Nothing beyond the item as it is.",
   "supplierRequests.detail.item": "Item",
-  "supplierRequests.detail.bookingPrice": "Booking price",
-  "supplierRequests.detail.booking": "Booking",
-  "supplierRequests.detail.bookingOf": "Booking no. {n} · {file}",
+  "supplierRequests.detail.bookingPrice": "Book price",
+  "supplierRequests.detail.booking": "Book",
+  "supplierRequests.detail.bookingOf": "Book no. {n} · {file}",
   "supplierRequests.detail.supplier": "Supplier",
   "supplierRequests.detail.answer.title": "Supplier's answer",
   "supplierRequests.detail.answer.none": "The supplier has not answered yet.",
@@ -592,15 +592,15 @@ export const en: typeof pt = {
   "supplierRequests.detail.alternatives": "Alternatives ({n})",
   "supplierRequests.detail.alternativesNone": "No alternatives kept.",
   "supplierRequests.detail.alternativesHint":
-    "Wellmix only: similar items from other bookings, to compare or open another request.",
+    "Wellmix only: similar items from other books, to compare or open another request.",
   "supplierRequests.detail.chosenSuperplan": "Superplan of the chosen item",
 
   "supplierRequests.error.supplier_request_choose":
     "Mark the chosen item before opening the request.",
   "supplierRequests.error.supplier_request_lot_not_closed":
-    "This item's booking is not closed. Close the booking before opening the request.",
+    "This item's book is not closed. Close the book before opening the request.",
   "supplierRequests.error.supplier_request_no_supplier":
-    "This item's booking has no supplier.",
+    "This item's book has no supplier.",
   "supplierRequests.error.supplier_invalid":
     "This item's supplier is inactive or no longer exists.",
   "supplierRequests.error.supplier_request_exists":
@@ -647,7 +647,7 @@ export const en: typeof pt = {
   "supplierRequests.table.col.photo": "Photo",
   "supplierRequests.table.col.item": "Product",
   "supplierRequests.table.col.quantity": "Quantity",
-  "supplierRequests.table.col.bookingPrice": "Booking price",
+  "supplierRequests.table.col.bookingPrice": "Book price",
   "supplierRequests.table.col.answer": "Your answer",
   "supplierRequests.table.col.status": "Status",
   "supplierRequests.table.col.actions": "Actions",
@@ -715,9 +715,9 @@ export const en: typeof pt = {
   "supplierRequests.table.col.factoryCode": "Factory code",
   "supplierRequests.table.col.itemNumber": "Item no.",
   "supplierRequests.table.col.material": "Material",
-  "supplierRequests.table.col.bookingMoq": "Booking MOQ",
+  "supplierRequests.table.col.bookingMoq": "Book MOQ",
   "supplierRequests.table.col.bookingCurrency": "Currency",
-  "supplierRequests.table.col.bookingIncoterm": "Booking terms",
+  "supplierRequests.table.col.bookingIncoterm": "Book terms",
   "supplierRequests.table.col.needs": "Wellmix needs",
   "supplierRequests.table.col.canDo": "Can do?",
   "supplierRequests.table.col.sla": "SLA",
@@ -774,7 +774,7 @@ export const en: typeof pt = {
   "supplierRequests.timeline.productLinked": "Linked to an existing product",
   "supplierRequests.timeline.showcase": "Product released to the showcase",
   "supplierRequests.timeline.erp": "CODPROD checked in Sankhya",
-  "supplierRequests.table.col.initial": "Initial terms (booking)",
+  "supplierRequests.table.col.initial": "Initial terms (book)",
   "supplierRequests.table.col.final": "Final terms (last proposal)",
   "supplierRequests.table.col.cond.price": "Price",
   "supplierRequests.table.col.cond.currency": "Currency",
@@ -808,7 +808,7 @@ export const zh: typeof pt = {
 
   "supplierRequests.selection.title": "条目筛选",
   "supplierRequests.selection.subtitle":
-    "所有 booking 的条目（包括草稿）。筛选、将多个供应商的条目分组、比较相似条目，并向最佳条目的供应商发起询单（booking 须已关闭）。",
+    "所有 Book 的条目（包括草稿）。筛选、将多个供应商的条目分组、比较相似条目，并向最佳条目的供应商发起询单（Book 须已关闭）。",
   "supplierRequests.selection.search":
     "搜索任意字段（描述、编码、材质、供应商、产地…）",
   "supplierRequests.selection.searchPlaceholder": "例如：玻璃杯、保温瓶、350",
@@ -817,15 +817,15 @@ export const zh: typeof pt = {
   "supplierRequests.selection.count": "{n} 个条目",
   "supplierRequests.selection.truncated":
     "显示 {n} 个中的 {shown} 个。请细化搜索以查看其余条目。",
-  "supplierRequests.selection.empty": "没有已关闭 booking 的条目符合搜索。",
+  "supplierRequests.selection.empty": "没有已关闭 Book 的条目符合搜索。",
   "supplierRequests.selection.noItems":
-    "还没有已关闭的 booking。关闭一个 booking 后其条目会出现在这里。",
+    "还没有已关闭的 Book。关闭一个 Book 后其条目会出现在这里。",
   "supplierRequests.selection.schemaMissing":
     "新数据表尚未发布到数据库（npm run appwrite:push）。",
   "supplierRequests.selection.best": "单件成本最低",
   "supplierRequests.selection.col.costPiece": "单件成本 (Superplan)",
   "supplierRequests.selection.costHint":
-    "单件成本：每件产品到仓的成本（采购、运费、进口税和费用，除以集装箱可装件数），由 Superplan 在关闭 booking 时按当日汇率、默认集装箱和默认运费计算。最低价 = 成本 × 业务类型加价倍数；目标 = 达到目标利润的售价。与客户支付的价格比较，以决定选中条目和备选。鼠标悬停在 Superplan 上可查看所用日期、类型、集装箱、运费和美元汇率。",
+    "单件成本：每件产品到仓的成本（采购、运费、进口税和费用，除以集装箱可装件数），由 Superplan 在关闭 Book 时按当日汇率、默认集装箱和默认运费计算。最低价 = 成本 × 业务类型加价倍数；目标 = 达到目标利润的售价。与客户支付的价格比较，以决定选中条目和备选。鼠标悬停在 Superplan 上可查看所用日期、类型、集装箱、运费和美元汇率。",
   "supplierRequests.superplan.target": "目标 {pct}%：{price}",
   "supplierRequests.superplan.targetNone": "目标 {pct}% 无法达到",
   "supplierRequests.superplan.noNcm":
@@ -841,9 +841,8 @@ export const zh: typeof pt = {
   "supplierRequests.selection.pickAll": "全选本页",
   "supplierRequests.selection.pickHint":
     "此页签仅用于分组：勾选产品（逐个或勾选当前页全部，可配合筛选和搜索），然后点击“分组以便选择”。供应商申请在“选择”页签中按分组发起。",
-  "supplierRequests.selection.draftHint":
-    "关闭该 booking 后才能为此项目发起请求",
-  "supplierRequests.selection.filter.period": "Booking 日期范围",
+  "supplierRequests.selection.draftHint": "关闭该 Book 后才能为此项目发起请求",
+  "supplierRequests.selection.filter.period": "Book 日期范围",
   "supplierRequests.selection.filter.anyDate": "任意日期",
   "supplierRequests.selection.filter.apply": "应用",
   "supplierRequests.selection.filter.clearDates": "清除日期",
@@ -867,7 +866,7 @@ export const zh: typeof pt = {
   "supplierRequests.selection.group.back": "返回项目",
   "supplierRequests.selection.blocks.title": "建议分组",
   "supplierRequests.selection.blocks.hint":
-    "来自筛选 booking 的名称相似项目。打开一个分组进行比较和选择。",
+    "来自筛选 Book 的名称相似项目。打开一个分组进行比较和选择。",
   "supplierRequests.selection.blocks.size": "{n} 个项目 · {suppliers} 个供应商",
   "supplierRequests.selection.blocks.more": "还有 {n} 个",
   "supplierRequests.selection.blocks.open": "比较并选择",
@@ -878,7 +877,7 @@ export const zh: typeof pt = {
   "supplierRequests.selection.col.photo": "照片",
   "supplierRequests.selection.col.item": "条目",
   "supplierRequests.selection.col.supplier": "供应商",
-  "supplierRequests.selection.col.booking": "Booking",
+  "supplierRequests.selection.col.booking": "Book",
   "supplierRequests.selection.col.price": "价格",
   "supplierRequests.selection.col.priceUsd": "价格（US$）",
   "supplierRequests.selection.col.moq": "MOQ",
@@ -938,10 +937,10 @@ export const zh: typeof pt = {
   "supplierRequests.detail.request": "正在谈判的内容",
   "supplierRequests.detail.negotiatedPrice": "谈判价格",
   "supplierRequests.detail.negotiatedHint":
-    "与负责人重新谈判后的数值；预订单的原值显示在旁边并划掉。",
+    "与负责人重新谈判后的数值；Book 的原值显示在旁边并划掉。",
   "supplierRequests.detail.negotiatedSuperplan": "按谈判条件计算的 Superplan",
   "supplierRequests.detail.negotiatedSuperplanHint":
-    "已按谈判价格和今日汇率重新计算。划掉的是预订单的成本。请与下方备选比较。",
+    "已按谈判价格和今日汇率重新计算。划掉的是 Book 的成本。请与下方备选比较。",
   "supplierRequests.detail.alternativeCheaper": "比谈判价更便宜",
   "supplierRequests.detail.alternativeOpen": "为此项发起询单",
   "supplierRequests.detail.quantity": "数量",
@@ -949,9 +948,9 @@ export const zh: typeof pt = {
   "supplierRequests.detail.needs": "Wellmix 对产品的要求",
   "supplierRequests.detail.needsNone": "按条目现状即可，无其他要求。",
   "supplierRequests.detail.item": "条目",
-  "supplierRequests.detail.bookingPrice": "Booking 价格",
-  "supplierRequests.detail.booking": "Booking",
-  "supplierRequests.detail.bookingOf": "Booking 第 {n} 号 · {file}",
+  "supplierRequests.detail.bookingPrice": "Book 价格",
+  "supplierRequests.detail.booking": "Book",
+  "supplierRequests.detail.bookingOf": "Book 第 {n} 号 · {file}",
   "supplierRequests.detail.supplier": "供应商",
   "supplierRequests.detail.answer.title": "供应商回复",
   "supplierRequests.detail.answer.none": "供应商尚未回复。",
@@ -979,15 +978,15 @@ export const zh: typeof pt = {
   "supplierRequests.detail.alternatives": "备选（{n}）",
   "supplierRequests.detail.alternativesNone": "未保存备选条目。",
   "supplierRequests.detail.alternativesHint":
-    "仅 Wellmix 可见：其他 booking 中的相似条目，用于比较或另行发起询单。",
+    "仅 Wellmix 可见：其他 Book 中的相似条目，用于比较或另行发起询单。",
   "supplierRequests.detail.chosenSuperplan": "选中条目的 Superplan",
 
   "supplierRequests.error.supplier_request_choose":
     "发起询单前请勾选选中的条目。",
   "supplierRequests.error.supplier_request_lot_not_closed":
-    "该条目的 booking 尚未关闭。请先关闭 booking 再发起询单。",
+    "该条目的 Book 尚未关闭。请先关闭 Book 再发起询单。",
   "supplierRequests.error.supplier_request_no_supplier":
-    "该条目的 booking 没有供应商。",
+    "该条目的 Book 没有供应商。",
   "supplierRequests.error.supplier_invalid": "该条目的供应商已停用或不存在。",
   "supplierRequests.error.supplier_request_exists":
     "该条目已有进行中的询单。请打开现有询单。",
@@ -1031,7 +1030,7 @@ export const zh: typeof pt = {
   "supplierRequests.table.col.photo": "图片",
   "supplierRequests.table.col.item": "产品",
   "supplierRequests.table.col.quantity": "数量",
-  "supplierRequests.table.col.bookingPrice": "订舱价格",
+  "supplierRequests.table.col.bookingPrice": "Book 价格",
   "supplierRequests.table.col.answer": "您的答复",
   "supplierRequests.table.col.status": "状态",
   "supplierRequests.table.col.actions": "操作",
@@ -1094,9 +1093,9 @@ export const zh: typeof pt = {
   "supplierRequests.table.col.factoryCode": "工厂货号",
   "supplierRequests.table.col.itemNumber": "项目号",
   "supplierRequests.table.col.material": "材质",
-  "supplierRequests.table.col.bookingMoq": "订舱起订量",
+  "supplierRequests.table.col.bookingMoq": "Book 起订量",
   "supplierRequests.table.col.bookingCurrency": "币种",
-  "supplierRequests.table.col.bookingIncoterm": "订舱交货方式",
+  "supplierRequests.table.col.bookingIncoterm": "Book 交货方式",
   "supplierRequests.table.col.needs": "Wellmix 需要",
   "supplierRequests.table.col.canDo": "能做？",
   "supplierRequests.table.col.sla": "SLA",
@@ -1147,7 +1146,7 @@ export const zh: typeof pt = {
   "supplierRequests.timeline.productLinked": "已关联现有产品",
   "supplierRequests.timeline.showcase": "产品已上架展示",
   "supplierRequests.timeline.erp": "已在 Sankhya 核对 CODPROD",
-  "supplierRequests.table.col.initial": "初始条件（订舱）",
+  "supplierRequests.table.col.initial": "初始条件（Book）",
   "supplierRequests.table.col.final": "最终条件（最近报价）",
   "supplierRequests.table.col.cond.price": "价格",
   "supplierRequests.table.col.cond.currency": "币种",

@@ -333,7 +333,7 @@ export async function createLotFromSheet(
       "booking_lot.create",
       "booking_lot",
       lot.id,
-      `Booking em preenchimento pelo parceiro: ${parsed.groups.length} itens (${lot.fileName})`,
+      `Book em preenchimento pelo parceiro: ${parsed.groups.length} itens (${lot.fileName})`,
     );
     return lot;
   }
@@ -347,7 +347,7 @@ export async function createLotFromSheet(
     "booking_lot.create",
     "booking_lot",
     lot.id,
-    `Booking nº ${lot.number}: ${parsed.groups.length} itens (${lot.fileName})`,
+    `Book nº ${lot.number}: ${parsed.groups.length} itens (${lot.fileName})`,
   );
   return lot;
 }
@@ -383,7 +383,7 @@ export async function releasePreparingLot(
     "booking_lot.partner_send",
     "booking_lot",
     lot.id,
-    `Booking nº ${number}: enviado pelo parceiro para a Wellmix conferir (${lot.fileName})`,
+    `Book nº ${number}: enviado pelo parceiro para a Wellmix conferir (${lot.fileName})`,
     { status: "preparing" },
     { status: "draft", number },
   );
@@ -559,7 +559,7 @@ export async function setBookingLotSupplier(
     "booking_lot.supplier",
     "booking_lot",
     lot.id,
-    `Booking nº ${lot.number}: fornecedor ${supplierId ?? "-"}`,
+    `Book nº ${lot.number}: fornecedor ${supplierId ?? "-"}`,
     { supplierId: lot.supplierId },
     { supplierId },
   );
@@ -596,7 +596,7 @@ export async function setBookingLotPartner(
     "booking_lot.partner",
     "booking_lot",
     lot.id,
-    `Booking nº ${lot.number}: responsável ${partnerId ?? "o fornecedor"}`,
+    `Book nº ${lot.number}: responsável ${partnerId ?? "o fornecedor"}`,
     { partnerId: lot.partnerId ?? null },
     { partnerId },
   );
@@ -621,7 +621,7 @@ export async function setBookingLotDate(
     "booking_lot.date",
     "booking_lot",
     lot.id,
-    `Booking nº ${lot.number}: data ${day ?? "-"}`,
+    `Book nº ${lot.number}: data ${day ?? "-"}`,
     { bookingDate: lot.bookingDate },
     { bookingDate },
   );
@@ -678,7 +678,7 @@ export async function registerBookingLotSupplier(
       email: null,
       phone: clip(input.phone, 40),
       taxId: null,
-      notes: `Cadastrado pelo booking nº ${lot.number}.`,
+      notes: `Cadastrado pelo book nº ${lot.number}.`,
       city: clip(input.city, 80),
       storeNumber: clip(input.storeNumber, 60),
       active: true,
@@ -688,7 +688,7 @@ export async function registerBookingLotSupplier(
       "party.create",
       "party",
       party.id,
-      `${party.name} (booking nº ${lot.number})`,
+      `${party.name} (book nº ${lot.number})`,
     );
   }
   await setBookingLotSupplier(user, lot.id, party.id);
@@ -799,7 +799,7 @@ export async function closeBookingLot(
     "booking_lot.close",
     "booking_lot",
     lot.id,
-    `Booking nº ${lot.number} fechado: ${items.length} itens analisados`,
+    `Book nº ${lot.number} fechado: ${items.length} itens analisados`,
   );
   return updated;
 }
@@ -830,7 +830,7 @@ export async function reanalyzeBookingLot(
     "booking_lot.analyze",
     "booking_lot",
     lot.id,
-    `Booking nº ${lot.number}: análise refeita`,
+    `Book nº ${lot.number}: análise refeita`,
   );
 }
 
@@ -896,7 +896,7 @@ export async function reanalyzeLotsForFiscalTable(
       "booking_lot.analyze",
       "booking_lot",
       lot.id,
-      `Booking nº ${lot.number}: análise refeita (tabela fiscal atualizada)`,
+      `Book nº ${lot.number}: análise refeita (tabela fiscal atualizada)`,
     );
     done++;
     itemCount += items.length;
@@ -926,7 +926,7 @@ export async function moveBookingLot(
     "booking_lot.status",
     "booking_lot",
     lot.id,
-    `Booking nº ${lot.number}: ${lot.status} → ${status}`,
+    `Book nº ${lot.number}: ${lot.status} → ${status}`,
     { status: lot.status },
     { status },
   );

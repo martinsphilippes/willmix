@@ -219,7 +219,7 @@ export async function inviteForItem(
     "booking_invite.create",
     "booking_lot",
     lot.id,
-    `Convite para booking concorrente do item ${item.factoryItemCode ?? item.description ?? item.id} (booking nº ${lot.number}): ${fresh.map((p) => p.name).join(", ")}`,
+    `Convite para book concorrente do item ${item.factoryItemCode ?? item.description ?? item.id} (book nº ${lot.number}): ${fresh.map((p) => p.name).join(", ")}`,
   );
   const { notify } = await import("./notifications");
   const label = (item.description ?? item.productName ?? "").slice(0, 80);
@@ -335,7 +335,7 @@ export async function answerInviteWithSheet(
     "booking_invite.answer",
     "booking_lot",
     lot.id,
-    `Convite nº ${invite.number}: ${partner?.name ?? invite.partnerId} subiu o booking nº ${lot.number}`,
+    `Convite nº ${invite.number}: ${partner?.name ?? invite.partnerId} subiu o book nº ${lot.number}`,
   );
   const { notify } = await import("./notifications");
   await notify(

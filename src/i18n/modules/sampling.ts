@@ -24,7 +24,7 @@ export const pt = {
   "sampling.intro.supplier":
     "A Wellmix aprovou este produto. Agora envie fotos e vídeos da amostra do item feita em impressora 3D (detalhes, medidas, encaixes) e mande para a validação. A amostra física não é enviada.",
   "sampling.intro.wellmix":
-    "O responsável pelo booking envia fotos e vídeos de uma amostra do item. Confira e aprove, ou reprove com o motivo para ele mandar de novo.",
+    "O responsável pelo book envia fotos e vídeos de uma amostra do item. Confira e aprove, ou reprove com o motivo para ele mandar de novo.",
   "sampling.status.pending": "Esperando a amostra",
   "sampling.status.submitted": "Esperando a validação da Wellmix",
   "sampling.status.approved": "Amostra aprovada",
@@ -55,7 +55,7 @@ export const pt = {
   "sampling.waiting.supplier":
     "Enviada em {date}. A Wellmix vai conferir e avisar.",
   "sampling.waiting.wellmix":
-    "Esperando o responsável pelo booking enviar a amostra.",
+    "Esperando o responsável pelo book enviar a amostra.",
   "sampling.review.note": "Comentário (obrigatório para reprovar)",
   "sampling.review.approve": "Aprovar a amostra",
   "sampling.review.reject": "Reprovar e pedir de novo",
@@ -105,7 +105,7 @@ export const pt = {
   "supplierRequests.error.sampling_not_open":
     "A amostragem abre depois que a solicitação é aprovada.",
   "supplierRequests.error.sampling_supplier_only":
-    "Só o responsável pelo booking envia a amostragem.",
+    "Só o responsável pelo book envia a amostragem.",
   "supplierRequests.error.sampling_closed":
     "A amostragem não aceita arquivos agora (enviada ou já aprovada).",
   "supplierRequests.error.sampling_too_many":
@@ -140,7 +140,7 @@ export const en: typeof pt = {
   "sampling.intro.supplier":
     "Wellmix approved this product. Now send photos and videos of the 3D-printed sample of the item (details, dimensions, fittings) and submit them for validation. The physical sample is not shipped.",
   "sampling.intro.wellmix":
-    "The booking owner sends photos and videos of a sample of the item. Check them and approve, or reject with the reason so they send again.",
+    "The book owner sends photos and videos of a sample of the item. Check them and approve, or reject with the reason so they send again.",
   "sampling.status.pending": "Waiting for the sample",
   "sampling.status.submitted": "Waiting for Wellmix validation",
   "sampling.status.approved": "Sample approved",
@@ -168,8 +168,7 @@ export const en: typeof pt = {
   "sampling.submit.needFile": "Add at least one photo or video to submit.",
   "sampling.waiting.supplier":
     "Submitted on {date}. Wellmix will check it and let you know.",
-  "sampling.waiting.wellmix":
-    "Waiting for the booking owner to send the sample.",
+  "sampling.waiting.wellmix": "Waiting for the book owner to send the sample.",
   "sampling.review.note": "Comment (required to reject)",
   "sampling.review.approve": "Approve the sample",
   "sampling.review.reject": "Reject and ask again",
@@ -216,7 +215,7 @@ export const en: typeof pt = {
   "supplierRequests.error.sampling_not_open":
     "Sampling opens after the request is approved.",
   "supplierRequests.error.sampling_supplier_only":
-    "Only the booking owner sends the sampling.",
+    "Only the book owner sends the sampling.",
   "supplierRequests.error.sampling_closed":
     "The sampling does not accept files now (submitted or already approved).",
   "supplierRequests.error.sampling_too_many":
@@ -251,7 +250,7 @@ export const zh: typeof pt = {
   "sampling.intro.supplier":
     "Wellmix 已批准该产品。请发送该商品 3D 打印样品的照片和视频（细节、尺寸、配合），并提交验证。实物样品无需寄送。",
   "sampling.intro.wellmix":
-    "订舱负责人发送商品样品的照片和视频。请检查并批准，或填写原因驳回，让其重新发送。",
+    "Book 负责人发送商品样品的照片和视频。请检查并批准，或填写原因驳回，让其重新发送。",
   "sampling.status.pending": "等待样品",
   "sampling.status.submitted": "等待 Wellmix 验证",
   "sampling.status.approved": "样品已批准",
@@ -278,7 +277,7 @@ export const zh: typeof pt = {
   "sampling.submit.pending": "发送中…",
   "sampling.submit.needFile": "请至少添加一张照片或一个视频再提交。",
   "sampling.waiting.supplier": "已于 {date} 提交。Wellmix 检查后会通知您。",
-  "sampling.waiting.wellmix": "等待订舱负责人发送样品。",
+  "sampling.waiting.wellmix": "等待 Book 负责人发送样品。",
   "sampling.review.note": "备注（驳回时必填）",
   "sampling.review.approve": "批准样品",
   "sampling.review.reject": "驳回并要求重发",
@@ -320,7 +319,7 @@ export const zh: typeof pt = {
   "tasks.group.sampling_validate": "验证样品",
   "supplierRequests.error.sampling_not_open": "询价批准后才开启样品环节。",
   "supplierRequests.error.sampling_supplier_only":
-    "只有订舱负责人可以发送样品。",
+    "只有 Book 负责人可以发送样品。",
   "supplierRequests.error.sampling_closed":
     "样品环节现在不接受文件（已提交或已批准）。",
   "supplierRequests.error.sampling_too_many": "本轮文件数量已达上限。",
