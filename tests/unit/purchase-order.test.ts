@@ -663,6 +663,59 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     expect((await certOf(p2)).status).toBe("done");
   });
 
+  it("mesas de trabalho: cada área vê a fila dela, já liberada e com prazo", async () => {
+    const store = getStore();
+    const desks = await import("@/lib/services/desks");
+    const [r1] = await approvedProducts(
+      null,
+      ["DK-1", "DK-2"],
+      "linha-brinquedos",
+    );
+    const order = await po.createPurchaseOrder(admin, [
+      { requestId: r1.id, quantity: null },
+    ]);
+    const [item] = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    const rowsOf = async (u: User, desk: (typeof desks.DESK_KEYS)[number]) =>
+      Object.fromEntries(
+        (await desks.loadDesk(u, desk)).map((q) => [
+          q.key,
+          q.rows.filter((r) => r.orderNumber === order.number),
+        ]),
+      );
+    // Quem tem mesa: a Wellmix (todas), a agência e a certificadora (a sua).
+    expect(desks.desksFor(admin)).toContain("cadastro");
+    expect(desks.desksFor(agency)).toEqual(["agency"]);
+    expect(desks.desksFor(ocp)).toEqual(["ocp"]);
+    expect(desks.desksFor(supplierA)).toEqual([]);
+    expect(await desks.loadDesk(supplierA, "cadastro")).toEqual([]);
+    // Cadastro: NCM e ficha a fazer, com o atalho para a tela do produto.
+    const cadastro = await rowsOf(admin, "cadastro");
+    expect(cadastro.ncm).toHaveLength(1);
+    expect(cadastro.ncm[0].link).toBe(`/app/products/${item.productId}/tax`);
+    expect(cadastro.ncm[0].dueAt).toBeTruthy();
+    expect(cadastro.sheet).toHaveLength(1);
+    // Certificadora: o certificado do pedido dela.
+    expect((await rowsOf(ocp, "ocp")).certificates).toHaveLength(1);
+    // Agência: a arte só entra na fila com a faca e a foto em alta.
+    expect((await rowsOf(agency, "agency")).art).toHaveLength(0);
+    const k = (base: string) => `${base}__${item.id}`;
+    await submit(supplierA, order.id, k("die_cut"), { file: "f.pdf" });
+    await submit(supplierA, order.id, k("hd_photo"), { file: "h.pdf" });
+    const art = (await rowsOf(agency, "agency")).art;
+    expect(art).toHaveLength(1);
+    expect(art[0].dueAt).toBeTruthy();
+    // Marketing: a validação entra quando a arte chega.
+    expect((await rowsOf(admin, "mkt")).artReview).toHaveLength(0);
+    await submit(agency, order.id, k("art"), { file: "a.pdf" });
+    expect((await rowsOf(admin, "mkt")).artReview).toHaveLength(1);
+    expect((await rowsOf(agency, "agency")).art).toHaveLength(0);
+    // NCM validado: sai da fila do cadastro.
+    await gates.validateNcm(admin, item.productId!);
+    expect((await rowsOf(admin, "cadastro")).ncm).toHaveLength(0);
+  });
+
   it("prazo de cada passo conta da liberação do anterior", async () => {
     const lanes = await import("@/lib/purchase-lanes");
     const sla = {
