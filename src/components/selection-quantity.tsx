@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import { Input, cx, inputDenseClass } from "@/components/ui";
+import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
+import { cx, inputDenseClass } from "@/components/ui";
 import {
   RequestScheduleFields,
   type ScheduleLabels,
@@ -10,37 +10,55 @@ import type { RequestSchedule } from "@/lib/db/schema";
 import {
   MAX_PURCHASE_ROUNDS,
   containersPerRound,
+  parseCount,
+  piecesFromCartons,
   planPurchaseRounds,
+  quantityFields,
   roundLoad,
+  scheduleOnItemChange,
   type RoundLoad,
   type RoundStep,
+  type TypedQuantity,
 } from "@/lib/purchase-rounds";
-import { splitEvenly } from "@/lib/workflow/request-schedule";
+import { scheduleTotal, splitEvenly } from "@/lib/workflow/request-schedule";
 
 /*
  * Quantidade da escolha do grupo com a programação de compra
  * (docs/PURCHASE_SCHEDULE.md): sem programação, a quantidade digitada (em
  * branco = a da planilha); com ela, rodadas com peças e intervalo, e a
- * quantidade passa a ser a soma das rodadas (o campo fica só para leitura).
+ * quantidade gravada passa a ser a soma das rodadas.
+ *
+ * "Quantidade (peças)" fica na linha do gerador, logo depois de "Total de
+ * caixas", com o mesmo tamanho (pedido do dono, 13/11/2026). Os dois são o
+ * mesmo número em duas unidades: o que se digita num aparece no outro, pelas
+ * peças por caixa master do item escolhido (`quantityFields`). Sem
+ * programação, "Quantidade (peças)" é a quantidade que a escolha grava; com
+ * ela, os dois são o total do gerador (vale ao apertar "Gerar programação")
+ * e voltam a acompanhar as rodadas quando elas mudam.
  *
  * "Gerar programação" parte da QUANTIDADE (regra do dono, 12/11/2026): o
- * total de peças e o número de rodadas viram rodadas iguais, em caixas
- * master inteiras. Os containers de cada rodada saem da conta ("Containers
- * por rodada" é só informativo). O cálculo fica sempre escrito na tela (a
+ * total e o número de rodadas viram rodadas iguais, em caixas master
+ * inteiras. O total é digitado em CAIXAS master (decisão do dono,
+ * 13/11/2026): a conta multiplica pelas peças por caixa master do item
+ * escolhido, e a quantidade e as rodadas continuam em peças. Os containers
+ * de cada rodada saem da conta ("Containers por rodada" é só informativo). O cálculo fica sempre escrito na tela (a
  * caixa, o container, caixas, m³ e containers) e cada rodada tem "+ Aumentar"
  * e "− Diminuir" para fechar o container; com 95% ou mais ele conta como
  * cheio.
  *
- * A conta usa a caixa master e o CBM do item marcado como escolhido na
- * tabela. Sem nenhum marcado, usa o primeiro item do grupo que tem esses
- * dados (e diz qual): a conta, os containers e os botões não somem.
+ * A conta usa só a caixa master e o CBM do item marcado em "Escolher" na
+ * tabela (pedido do dono, 13/11/2026; antes, sem item marcado, usava o
+ * primeiro item do grupo com esses dados). Sem item marcado nada é calculado
+ * nem gerado: o gerador pede para marcar um item, "Gerar programação" e
+ * "+ Programação de compra" ficam desligados e os resultados em branco.
+ * Trocar ou desmarcar o item desfaz a programação ainda não gravada do item
+ * anterior; voltar ao item da escolha gravada traz de volta a programação
+ * gravada com ele (`scheduleOnItemChange`).
  */
 
 /** Caixa master do item do grupo (o CBM já resolvido das medidas, quando falta). */
 export interface SelectionCarton {
   id: string;
-  /** Como o item aparece na conta (código e fornecedor). */
-  label: string;
   masterCartonQty: number | null;
   cbmPerCarton: number | null;
   /** Quantidade da planilha (total sugerido). */
@@ -64,11 +82,12 @@ export interface GenerateLabels {
   submit: string;
   /** Título do cálculo escrito. */
   calc: string;
-  /** A caixa do item escolhido; `itemAssumed` quando nenhum está marcado. */
+  /** A caixa do item escolhido. */
   item: string;
-  itemAssumed: string;
-  assumedNote: string;
-  noItem: string;
+  /** Nenhum item marcado em "Escolher": nada é calculado nem gerado. */
+  selectItem: string;
+  /** O item não tem peças por caixa master: caixas não viram peças. */
+  noPieces: string;
   noCarton: string;
   tooBig: string;
   errorTotal: string;
@@ -76,8 +95,6 @@ export interface GenerateLabels {
   result: string;
   extra: string;
   reduced: string;
-  /** As rodadas foram geradas com a caixa de outro item. */
-  regen: string;
   /** Rodadas iguais: "Cada rodada: … = {n} container…". */
   each: string;
   eachMany: string;
@@ -113,12 +130,6 @@ export interface GenerateLabels {
 const fill = (s: string, vars: Record<string, string | number>) =>
   s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : `{${k}}`));
 
-/** Peças são inteiras: pontos, vírgulas e espaços são separador de milhar. */
-const parseNum = (s: string) => {
-  const t = String(s).replace(/[.,\s]/g, "");
-  return t ? Number(t) : NaN;
-};
-
 const usable = (i: SelectionCarton) => !!(i.masterCartonQty && i.cbmPerCarton);
 
 export function SelectionQuantity({
@@ -149,11 +160,24 @@ export function SelectionQuantity({
   const ref = useRef<HTMLDivElement>(null);
   const perRoundId = useId();
   const totalFieldId = useId();
+  const quantityHintId = useId();
+  const selectItemId = useId();
   const [qty, setQty] = useState(
     defaultQuantity === null ? "" : String(defaultQuantity),
   );
   const [scheduled, setScheduled] = useState(!!schedule?.items.length);
   const [chosen, setChosen] = useState<string | null>(chosenItemId);
+  // A programação gravada é do item da escolha gravada. Ela sai da tela
+  // quando outro item é marcado e volta com ele, a não ser que o usuário a
+  // desligue ("Sem programação") com esse item marcado.
+  const savedItem = schedule?.items.length ? chosenItemId : null;
+  const [savedKept, setSavedKept] = useState(true);
+  // O bloco da programação é montado de novo quando ela sai da tela ou volta
+  // (`initial`: sem rodadas, ou as gravadas).
+  const [seed, setSeed] = useState<{
+    key: number;
+    initial: RequestSchedule | null;
+  }>({ key: 0, initial: schedule });
   const [container, setContainer] = useState(
     () =>
       containerTypes.find((c) => c.code === "40HC")?.code ??
@@ -161,32 +185,63 @@ export function SelectionQuantity({
         ?.code ??
       "",
   );
-  // Os dois campos do gerador acompanham a tela: o total é a soma das
-  // rodadas e o número de rodadas é o dos cartões. O digitado vale só
-  // enquanto as rodadas não mudam (`at` = como estavam ao digitar): mexer
-  // numa rodada (Aumentar, Diminuir, digitar, "+ Rodada", "×") atualiza os
-  // dois na hora.
-  const [totalEdit, setTotalEdit] = useState<{
-    text: string;
-    at: string;
-  } | null>(null);
+  // Os campos do gerador acompanham a tela: o total (em caixas e em peças)
+  // é a soma das rodadas e o número de rodadas é o dos cartões. O digitado
+  // vale só enquanto as rodadas não mudam (`at` = como estavam ao digitar):
+  // mexer numa rodada (Aumentar, Diminuir, digitar, "+ Rodada", "×")
+  // atualiza todos na hora. Do total guarda-se o último campo digitado
+  // (caixas ou peças); o outro sai da conta.
+  const [amountEdit, setAmountEdit] = useState<
+    (TypedQuantity & { at: string }) | null
+  >(null);
   const [roundsEdit, setRoundsEdit] = useState<{
     text: string;
     at: number;
   } | null>(null);
-  // O que a última geração arredondou e com a caixa de qual item (some
-  // quando as rodadas mudam).
+  // O que a última geração arredondou (some quando as rodadas ou o item
+  // mudam).
   const [note, setNote] = useState<{
     pieces: number;
     extra: number;
     reduced: { cartons: number; rounds: number } | null;
-    itemId: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Marcou outro item (ou nenhum): o que vinha do anterior sai. O aviso e o
+  // arredondamento anotados somem; a programação ainda não gravada sai da
+  // tela ou, de volta ao item da escolha gravada, a gravada volta.
+  const markItem = useEffectEvent((next: string | null) => {
+    if (next === chosen) return;
+    setChosen(next);
+    setNote(null);
+    setError(null);
+    const action = scheduleOnItemChange({
+      on: scheduled,
+      next,
+      savedItem,
+      savedKept,
+    });
+    if (action === "keep") return;
+    const rounds =
+      ref.current?.querySelectorAll("[data-schedule-item]").length ?? 0;
+    setSeed((s) => ({
+      key: s.key + 1,
+      initial: action === "restore" ? schedule : null,
+    }));
+    setScheduled(action === "restore");
+    if (action === "restore" && schedule) {
+      setQty(String(scheduleTotal(schedule)));
+      setAmountEdit(null);
+      setRoundsEdit(null);
+    } else if (rounds) {
+      // Sem as rodadas, "Programações" continua com quantas eram.
+      setRoundsEdit({ text: String(rounds), at: 0 });
+    }
+  });
+
   // O item escolhido é o rádio "chosen" da tabela (no mesmo formulário). Além
-  // de ouvir a troca, lê o que já está marcado ao abrir e ao voltar para a
-  // página: o navegador pode devolver o rádio marcado sem avisar.
+  // de ouvir a troca, lê o que está marcado ao abrir e ao voltar para a
+  // página: o navegador pode devolver o rádio marcado (ou nenhum) sem avisar.
   useEffect(() => {
     const form = ref.current?.closest("form");
     if (!form) return;
@@ -194,12 +249,12 @@ export function SelectionQuantity({
       const el = form.querySelector<HTMLInputElement>(
         'input[name="chosen"]:checked',
       );
-      if (el) setChosen(el.value);
+      markItem(el ? el.value : null);
     };
     const onChange = (e: Event) => {
       const el = e.target;
       if (el instanceof HTMLInputElement && el.name === "chosen" && el.checked)
-        setChosen(el.value);
+        markItem(el.value);
     };
     const frame = requestAnimationFrame(sync);
     form.addEventListener("change", onChange);
@@ -220,22 +275,42 @@ export function SelectionQuantity({
   /** Ocupação: menos de 1% aparece como "<1". */
   const pctText = (pct: number) => (pct === 0 ? "<1" : String(pct));
 
-  // A caixa da conta: a do item marcado; sem nenhum marcado, a do primeiro
-  // item do grupo que tem peças por caixa master e CBM.
-  const marked = items.find((i) => i.id === chosen) ?? null;
-  const fallback = marked ? null : (items.find(usable) ?? null);
-  const item = marked ?? fallback;
-  const assumed = !marked && !!fallback;
+  // A caixa da conta: só a do item marcado em "Escolher" (sem item marcado,
+  // nenhuma: nada é calculado nem gerado).
+  const item = items.find((i) => i.id === chosen) ?? null;
   const capacity =
     containerTypes.find((c) => c.code === container)?.capacityCbm ?? null;
-  const total =
-    totalEdit && totalEdit.at === qty
-      ? totalEdit.text
-      : qty.trim()
-        ? qty
-        : item?.sheetQty
-          ? String(item.sheetQty)
-          : "";
+  // "Total de caixas" e "Quantidade (peças)": o mesmo número em duas
+  // unidades, pelas peças por caixa master do item. Sem nada digitado
+  // acompanham a tela: as peças de agora e, em caixas inteiras, elas ou (em
+  // branco) as da planilha. Sem as peças por caixa não há como converter: o
+  // campo que sairia da conta fica como estava.
+  const perCarton = item?.masterCartonQty ?? null;
+  const typed = amountEdit && amountEdit.at === qty ? amountEdit : null;
+  const { cartons: total, pieces } = quantityFields({
+    typed,
+    base: qty,
+    masterCartonQty: perCarton,
+    sheetQty: item?.sheetQty,
+  });
+  /**
+   * Total do gerador em peças; NaN sem conversão. Digitado em peças vale
+   * como está (a conta arredonda para caixas master inteiras e diz quanto);
+   * senão, caixas × peças por caixa.
+   */
+  const totalPieces = () =>
+    typed?.unit === "pieces" && perCarton
+      ? parseCount(typed.text)
+      : (piecesFromCartons(parseCount(total), perCarton) ?? NaN);
+  const typeAmount = (unit: TypedQuantity["unit"], text: string) => {
+    setAmountEdit({
+      unit,
+      text,
+      pieces: unit === "pieces" ? text : pieces,
+      at: qty,
+    });
+    setError(null);
+  };
   const hasCarton = !!(item && usable(item) && capacity);
   const perContainer =
     hasCarton && item
@@ -260,20 +335,36 @@ export function SelectionQuantity({
   }
 
   function generate(apply: (q: number[]) => void, roundsValue: string) {
-    const n = parseNum(total);
-    if (!Number.isFinite(n) || n <= 0) {
+    // Sem item marcado não há caixa para a conta: nada é gerado (o botão fica
+    // desligado e Enter nos campos também não gera).
+    if (!item) return;
+    const boxes = parseCount(total);
+    if (!Number.isInteger(boxes) || boxes <= 0) {
       setError(gen.errorTotal);
       return;
     }
-    const count = parseNum(roundsValue);
+    const count = parseCount(roundsValue);
     if (!Number.isInteger(count) || count < 1 || count > MAX_PURCHASE_ROUNDS) {
       setError(fill(gen.errorRounds, { max: MAX_PURCHASE_ROUNDS }));
       return;
     }
+    // Caixas → peças: sem as peças por caixa master do item não há conversão.
+    const n = totalPieces();
+    if (!perCarton || !(n > 0)) {
+      setNote(null);
+      setError(gen.noPieces);
+      return;
+    }
     setError(null);
     if (!hasCarton) {
+      // Sem o CBM da caixa não há conta de containers: as caixas são
+      // divididas igualmente (rodada sem caixa não entra).
       setNote(null);
-      apply(splitEvenly(n, count, MAX_PURCHASE_ROUNDS));
+      apply(
+        splitEvenly(boxes, count, MAX_PURCHASE_ROUNDS)
+          .filter((b) => b > 0)
+          .map((b) => b * perCarton),
+      );
     } else {
       const out = planPurchaseRounds({
         total: n,
@@ -304,12 +395,11 @@ export function SelectionQuantity({
         reduced: plan.reduced
           ? { cartons: plan.cartons, rounds: plan.rounds.length }
           : null,
-        itemId: item!.id,
       });
       apply(plan.rounds.map((r) => r.pieces));
     }
     // Gerado: os campos voltam a acompanhar as rodadas da tela.
-    setTotalEdit(null);
+    setAmountEdit(null);
     setRoundsEdit(null);
   }
 
@@ -325,19 +415,29 @@ export function SelectionQuantity({
   const calculation = (live: number[], roundsValue: string) => {
     if (!item)
       return (
-        <p className="text-amber-800" data-generate-item="none">
-          {gen.noItem}
+        <p
+          id={selectItemId}
+          className="font-medium text-amber-800"
+          data-generate-item="none"
+          data-generate-select-item
+        >
+          {gen.selectItem}
         </p>
       );
     if (!hasCarton || perContainer === null)
       return (
-        <p className="text-amber-800" data-generate-item="missing">
-          {gen.noCarton}
+        // Com as peças por caixa a conversão vale (só não há containers);
+        // sem elas, caixas não viram peças.
+        <p
+          className="text-amber-800"
+          data-generate-item={perCarton ? "missing" : "no-pieces"}
+        >
+          {perCarton ? gen.noCarton : gen.noPieces}
         </p>
       );
     // Rodadas da tela; sem programação, a prévia do que seria gerado.
-    const typedTotal = parseNum(total);
-    const typedRounds = parseNum(roundsValue);
+    const typedTotal = totalPieces();
+    const typedRounds = parseCount(roundsValue);
     const planned =
       !live.length &&
       typedTotal > 0 &&
@@ -389,9 +489,8 @@ export function SelectionQuantity({
     return (
       <div className="space-y-1 text-zinc-700" data-generate-calc>
         <p className="font-semibold text-zinc-900">{gen.calc}</p>
-        <p data-generate-item={assumed ? "assumed" : "ok"}>
-          {fill(assumed ? gen.itemAssumed : gen.item, {
-            label: item.label,
+        <p data-generate-item="ok">
+          {fill(gen.item, {
             pcs: fmt(item.masterCartonQty!),
             cbm: fmt(item.cbmPerCarton!, 4),
             cartons: fmt(perContainer),
@@ -399,17 +498,14 @@ export function SelectionQuantity({
             container,
           })}
         </p>
-        {assumed ? (
-          <p className="text-amber-800" data-generate-assumed>
-            {gen.assumedNote}
-          </p>
-        ) : null}
         {complete ? (
           <>
             <p className="font-medium text-zinc-900" data-generate-result>
               {fill(gen.result, {
                 rounds: loads.length,
                 cartons: fmt(loads.reduce((a, l) => a + l.cartons, 0)),
+                // As caixas em peças: o total que vai para a quantidade.
+                pieces: fmt(shown.reduce((a, q) => a + q, 0)),
                 cbm: fmt(
                   loads.reduce((a, l) => a + l.cbm, 0),
                   2,
@@ -458,11 +554,6 @@ export function SelectionQuantity({
                 container,
               })}
             </p>
-            {live.length && note && note.itemId !== item.id ? (
-              <p className="text-amber-800" data-generate-regen>
-                {gen.regen}
-              </p>
-            ) : null}
           </>
         ) : null}
       </div>
@@ -476,8 +567,8 @@ export function SelectionQuantity({
         : String(live.length || 2);
     // "Containers por rodada": o que as rodadas da tela precisam; sem
     // programação, o que a prévia (total ÷ rodadas) precisaria.
-    const typedTotal = parseNum(total);
-    const typedRounds = parseNum(roundsValue);
+    const typedTotal = totalPieces();
+    const typedRounds = parseCount(roundsValue);
     const shown = live.length
       ? live
       : hasCarton &&
@@ -510,21 +601,29 @@ export function SelectionQuantity({
         role="group"
         aria-label={gen.title}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
-            e.preventDefault();
-            generate(apply, roundsValue);
-          }
+          if (e.key !== "Enter" || !(e.target instanceof HTMLInputElement))
+            return;
+          // Sem programação, "Quantidade (peças)" é a quantidade da escolha:
+          // Enter grava, como antes de o campo vir para esta linha.
+          if (!scheduled && e.target.hasAttribute("data-selection-quantity"))
+            return;
+          e.preventDefault();
+          generate(apply, roundsValue);
         }}
       >
         <p className="font-semibold text-zinc-900">{gen.title}</p>
         <p className="text-zinc-600">{gen.hint}</p>
         {/* Os campos numa linha só quando o cartão tem largura (ele ocupa a
-            área de conteúdo inteira): os quatro números dividem o espaço, o
-            container e o botão ficam do tamanho deles. Em cartão estreito,
-            em 3 ou 2 colunas. A medida é a do bloco (@container), que é a
-            mesma com a programação ligada ou desligada num tablet deitado. */}
+            área de conteúdo inteira): os números dividem o espaço, o
+            container e o botão ficam do tamanho deles. "Total de caixas" e
+            "Quantidade (peças)" ficam lado a lado em colunas iguais (mesma
+            largura), nunca menores que o rótulo mais comprido. Com menos
+            largura (tablet deitado com o menu aberto), os campos seguem numa
+            linha e o botão desce; em cartão estreito, em 3 ou 2 colunas. A
+            medida é a do bloco (@container), que é a mesma com a programação
+            ligada ou desligada. */}
         <div
-          className="grid grid-cols-2 items-end gap-x-2.5 gap-y-2 @md:grid-cols-3 @[47rem]:grid-cols-[minmax(5rem,1fr)_minmax(5rem,1fr)_auto_minmax(max-content,1fr)_minmax(max-content,1fr)_auto]"
+          className="grid grid-cols-2 items-end gap-x-2.5 gap-y-2 @md:grid-cols-3 @[47.5rem]:grid-cols-[minmax(7rem,1fr)_minmax(7rem,1fr)_minmax(5rem,1fr)_auto_minmax(max-content,1fr)_minmax(max-content,1fr)] @[57rem]:grid-cols-[minmax(7rem,1fr)_minmax(7rem,1fr)_minmax(5rem,1fr)_auto_minmax(max-content,1fr)_minmax(max-content,1fr)_auto]"
           data-generate-fields
         >
           <label className="min-w-0 space-y-1">
@@ -533,11 +632,24 @@ export function SelectionQuantity({
               type="text"
               inputMode="numeric"
               value={total}
-              onChange={(e) => {
-                setTotalEdit({ text: e.target.value, at: qty });
-                setError(null);
-              }}
+              onChange={(e) => typeAmount("cartons", e.target.value)}
               data-generate-total
+              className={cx(inputDenseClass, "w-full tabular-nums")}
+            />
+          </label>
+          {/* A quantidade da escolha, em peças: só vai no formulário sem
+              programação (com ela, a quantidade é a soma das rodadas). */}
+          <label className="min-w-0 space-y-1">
+            <span className="block font-medium text-zinc-700">{label}</span>
+            <input
+              type="text"
+              name={scheduled ? undefined : "quantity"}
+              inputMode="numeric"
+              autoComplete="off"
+              value={pieces}
+              onChange={(e) => typeAmount("pieces", e.target.value)}
+              aria-describedby={quantityHintId}
+              data-selection-quantity
               className={cx(inputDenseClass, "w-full tabular-nums")}
             />
           </label>
@@ -613,12 +725,22 @@ export function SelectionQuantity({
           <button
             type="button"
             onClick={() => generate(apply, roundsValue)}
-            disabled={!total}
+            disabled={!item || !total}
+            aria-describedby={item ? undefined : selectItemId}
             data-generate-submit
-            className="min-h-8 justify-self-start whitespace-nowrap rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
+            className="order-1 min-h-8 justify-self-start whitespace-nowrap rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50 @[57rem]:order-none"
           >
             {gen.submit}
           </button>
+          {/* A dica da quantidade fica logo abaixo dos campos: quando o
+              botão não cabe na linha deles, ele vem depois dela. */}
+          <p
+            id={quantityHintId}
+            className="col-span-full text-zinc-500"
+            data-selection-quantity-hint
+          >
+            {scheduled ? scheduledHint : hint}
+          </p>
         </div>
         {calculation(live, roundsValue)}
         {error ? (
@@ -756,41 +878,32 @@ export function SelectionQuantity({
       className="space-y-3 md:col-span-3"
       data-selection-quantity-block
     >
-      <label className="block max-w-xs space-y-1">
-        <span className="block text-sm font-medium text-zinc-700">{label}</span>
-        <Input
-          name={scheduled ? undefined : "quantity"}
-          inputMode="numeric"
-          autoComplete="off"
-          value={qty}
-          readOnly={scheduled}
-          onChange={(e) => setQty(e.target.value)}
-          data-selection-quantity
-        />
-        <span className="block text-xs text-zinc-500">
-          {scheduled ? scheduledHint : hint}
-        </span>
-      </label>
       <div>
         <RequestScheduleFields
+          key={seed.key}
           prefix=""
-          total={qty}
+          total={pieces}
           unit="pcs"
           onTotalChange={(t) => {
             // As rodadas mudaram: a quantidade é a soma e os campos do
             // gerador voltam a acompanhar a tela (o digitado neles caduca).
             setQty(t);
-            setTotalEdit(null);
+            setAmountEdit(null);
             setRoundsEdit(null);
           }}
           labels={labels}
           max={MAX_PURCHASE_ROUNDS}
-          initial={schedule}
+          initial={seed.initial}
           className="flex flex-wrap items-center gap-x-2 gap-y-1"
           onToggle={(on) => {
             setScheduled(on);
-            if (!on) setNote(null);
+            if (on) return;
+            setNote(null);
+            // "Sem programação" com o item da escolha gravada: a gravada
+            // não volta mais ao remarcar o item.
+            if (chosen !== null && chosen === savedItem) setSavedKept(false);
           }}
+          blocked={!item}
           generator={generator}
           roundInfo={roundInfo}
           split={divide}

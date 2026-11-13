@@ -15,10 +15,29 @@ import {
   isWellmix,
 } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
-import { artRole } from "@/lib/workflow/stages";
+import { artRole, isPurchaseFlow } from "@/lib/workflow/stages";
+import { baseKeyOf, LANE_KEYS } from "@/lib/purchase-lanes";
 import { audit } from "./audit";
 import { notify, type NotifyTarget } from "./notifications";
 import { isSchemaMissing } from "@/lib/db/errors";
+import {
+  artMakerRoute,
+  artValidatorRoute,
+  canValidateArt,
+  internalRoute,
+  loadRoutingContext,
+  notifyTargetOf,
+  ocpRoute,
+  orderDesigner,
+  reaches,
+  routeLabel,
+  routeOwnerUserId,
+  withoutSubmitter,
+  type MissingAssignment,
+  type Route,
+  type RouteVia,
+  type RoutingContext,
+} from "./cert-art-routing";
 
 /*
  * Embarque e desembaraço (Fase D, docs/IMPORT_FLOW.md): passos do processo de
@@ -239,9 +258,28 @@ const PARTNER_FIELD = {
   supplier: "supplierId",
 } as const;
 
-/** Âncora do cartão do passo na tela do pedido. */
-const anchorOf = (tpl: StepTemplate) =>
-  groupOf(tpl) === "certification" ? "certification" : "import-flow";
+/** Passos da certificação enviados no quadro em destaque do alto do cartão. */
+export const CERT_FEATURED_STEPS: ImportStepKey[] = [
+  "cert_seal",
+  "cert_memorial",
+];
+
+/**
+ * Link direto para a tarefa no pedido: o quadro em destaque (selo e memorial
+ * a enviar) ou a linha do passo no cartão Certificação; embarque e
+ * desembaraço, o cartão.
+ */
+export function stepLink(
+  orderId: string,
+  tpl: StepTemplate,
+  action: "do" | "validate" = "validate",
+): string {
+  if (groupOf(tpl) !== "certification")
+    return `/app/orders/${orderId}#import-flow`;
+  if (action === "do" && CERT_FEATURED_STEPS.includes(tpl.key))
+    return `/app/orders/${orderId}#certification-featured`;
+  return `/app/orders/${orderId}#certification-step-${tpl.key}`;
+}
 
 /** Nome do cartão nos registros da auditoria. */
 const auditLabel = (tpl: StepTemplate) =>
@@ -278,9 +316,19 @@ export async function canSubmitStep(
   const tpl = stepTemplate(key);
   // Memorial: a certificadora do pedido também anexa (dono, 10/11/2026).
   if (key === "cert_memorial" && isOrderOcp(user, order)) return true;
+  // Arte com o selo: o designer do pedido (login da agência escolhido em
+  // Artes → Designer do pedido) envia, mesmo com a arte feita pela Wellmix.
+  if (tpl.actor === "agency" && (await isOrderDesigner(user, order)))
+    return true;
   if (!actsAs(user, order, tpl.actor)) return false;
   if (tpl.actor === "agency" && !isWellmix(user)) return agencyDoesArt(order);
   return true;
+}
+
+/** O login é o designer do pedido (ainda válido: Wellmix ou da agência do pedido). */
+async function isOrderDesigner(user: User, order: Order): Promise<boolean> {
+  if (!order.designerUserId || order.designerUserId !== user.id) return false;
+  return orderDesigner(order, await loadRoutingContext())?.id === user.id;
 }
 
 /** Vê o passo: Wellmix sempre; o parceiro, se o passo é visível ao papel dele. */
@@ -339,30 +387,17 @@ async function agencyDoesArt(order: Order): Promise<boolean> {
   return artRole(order, settings.agencyValidationEnabled) === "agency";
 }
 
-/** Quem faz a arte na Wellmix: o designer do pedido, a função Designer ou o analista. */
-async function wellmixArtTarget(order: Order): Promise<NotifyTarget> {
-  const team = await getStore().list("users", {
-    filter: { role: ["admin", "operator"], active: true },
-  });
-  const designer = team.find((u) => u.id === order.designerUserId);
-  if (designer) return { userIds: [designer.id] };
-  const designers = holdersOf(team, "art.design", await loadFunctionDefs());
-  if (designers.length) return { userIds: designers.map((u) => u.id) };
-  return order.ownerUserId
-    ? { userIds: [order.ownerUserId] }
-    : { role: ["admin", "operator"] };
-}
-
 /** Destino dos avisos para um papel do passo neste pedido. */
 async function targetFor(
   order: Order,
   actor: StepActor,
 ): Promise<NotifyTarget> {
-  if (actor === "agency") {
-    return order.agencyId && (await agencyDoesArt(order))
-      ? { role: "agency", partyId: order.agencyId }
-      : wellmixArtTarget(order);
-  }
+  // Quem faz a arte (o designer do pedido, a agência quando é ela quem faz a
+  // arte ou a Wellmix) e a certificadora: o mesmo destino das pendências.
+  if (actor === "agency")
+    return notifyTargetOf(artMakerRoute(order, await loadRoutingContext()));
+  if (actor === "ocp")
+    return notifyTargetOf(ocpRoute(order, await loadRoutingContext()));
   if (actor === "finance") {
     const team = await getStore().list("users", {
       filter: { role: ["admin", "operator"], active: true },
@@ -386,6 +421,41 @@ async function targetFor(
   return order.ownerUserId
     ? { userIds: [order.ownerUserId] }
     : { role: ["admin", "operator"] };
+}
+
+/**
+ * Certificação: quem faz o passo (docs/CERTIFICATION.md, "Quem recebe cada
+ * tarefa"). Selo, laudo e registro: a certificadora; arte com o selo: quem
+ * faz a arte; memorial: o responsável interno da Wellmix.
+ */
+function certDoRoute(
+  order: Order,
+  tpl: StepTemplate,
+  ctx: RoutingContext,
+): Route {
+  if (tpl.actor === "ocp") return ocpRoute(order, ctx);
+  if (tpl.actor === "agency") return artMakerRoute(order, ctx);
+  return internalRoute(order, ctx);
+}
+
+/**
+ * Certificação: quem valida o passo enviado. A arte com o selo, quem pode
+ * validar arte (o analista, se pode); o memorial, a certificadora (sem ela,
+ * a Wellmix valida no lugar); o registro, o responsável interno. Quem enviou
+ * nunca recebe a validação do próprio envio.
+ */
+function certValidateRoute(
+  order: Order,
+  tpl: StepTemplate,
+  ctx: RoutingContext,
+  submitterId: string | null,
+): Route | null {
+  if (!tpl.validator) return null;
+  if (tpl.key === "cert_seal_art")
+    return artValidatorRoute(order, ctx, submitterId);
+  const route =
+    tpl.validator === "ocp" ? ocpRoute(order, ctx) : internalRoute(order, ctx);
+  return withoutSubmitter(route, ctx, submitterId);
 }
 
 export interface SubmitInput {
@@ -476,9 +546,9 @@ export async function submitStep(
     orderId,
     `${auditLabel(tpl)}: ${key} enviado${value ? ` (${value})` : ""}${data.amount ? ` · ${data.currency} ${data.amount}` : ""}`,
   );
-  const link = `/app/orders/${orderId}#${anchorOf(tpl)}`;
+  const link = stepLink(orderId, tpl);
   if (tpl.validator)
-    await notify(await validatorTarget(order, tpl.validator, user), {
+    await notify(await validatorTarget(order, tpl.validator, user, key), {
       link,
       kind: "action",
       text: (t) => ({
@@ -518,7 +588,19 @@ async function validatorTarget(
   order: Order,
   validator: StepActor,
   submitter: User,
+  key: ImportStepKey,
 ): Promise<NotifyTarget> {
+  // Certificação: o mesmo destino da pendência de validar.
+  const tpl = stepTemplate(key);
+  if (groupOf(tpl) === "certification") {
+    const route = certValidateRoute(
+      order,
+      tpl,
+      await loadRoutingContext(),
+      submitter.id,
+    );
+    if (route) return notifyTargetOf(route);
+  }
   const target = await targetFor(order, validator);
   if (validator !== "wellmix" || !isWellmix(submitter)) return target;
   if (!target.userIds?.length) return target;
@@ -562,7 +644,7 @@ async function handOverSeal(
     (before.value ?? null) === (seal.value ?? null)
   )
     return;
-  const link = `/app/orders/${order.id}#certification`;
+  const link = stepLink(order.id, stepTemplate("cert_seal_art"), "do");
   const art = steps.find((s) => s.key === "cert_seal_art");
   if (
     replaced &&
@@ -617,7 +699,7 @@ export async function notifySealRequested(order: Order): Promise<void> {
     await notify(
       { role: "ocp", partyId: order.ocpId },
       {
-        link: `/app/orders/${order.id}#certification`,
+        link: stepLink(order.id, stepTemplate("cert_seal"), "do"),
         kind: "action",
         text: (t) => ({
           subject: t("certFlow.notify.sealRequested.subject", {
@@ -660,17 +742,23 @@ export async function notifySealPartner(
   }
   if (previousPartyId !== undefined) {
     // Quem faz a arte não mudou (ex.: arte feita pela Wellmix nas
-    // configurações e só a agência do pedido trocou): nada a avisar.
-    const byAgency = (await getSettings()).agencyValidationEnabled;
-    const maker = (agencyId: string | null) =>
-      artRole({ agencyId }, byAgency) === "agency" ? agencyId : null;
+    // configurações, ou o designer do pedido continua o mesmo, e só a
+    // agência do pedido trocou): nada a avisar.
+    const ctx = await loadRoutingContext();
+    const maker = (agencyId: string | null) => {
+      const route = artMakerRoute({ ...order, agencyId }, ctx);
+      return JSON.stringify([
+        route.party?.partyId ?? null,
+        route.userIds ?? [],
+      ]);
+    };
     if (maker(previousPartyId) === maker(order.agencyId ?? null)) return;
   }
   const art = steps.find((s) => s.key === "cert_seal_art");
   const artOpen = !art || art.status === "pending" || art.status === "rejected";
   if (!sealDone || !artOpen) return;
   await notify(await targetFor(order, "agency"), {
-    link: `/app/orders/${order.id}#certification`,
+    link: stepLink(order.id, stepTemplate("cert_seal_art"), "do"),
     kind: "action",
     text: (t) => ({
       subject: t("certFlow.notify.sealReady.subject", {
@@ -698,8 +786,14 @@ export async function sealStateFor(
   // Pedido cancelado ou encerrado: os passos não aceitam mais envio.
   if (order.status === "CANCELLED" || order.status === "CLOSED") return null;
   if (!canSeeStep(user, order, "cert_seal")) return null;
-  // Agência do pedido com a arte feita pela Wellmix: não é ela quem aplica.
-  if (!isWellmix(user) && !(await agencyDoesArt(order))) return null;
+  // Agência do pedido com a arte feita pela Wellmix: não é ela quem aplica
+  // (a não ser o login dela escolhido como designer do pedido).
+  if (
+    !isWellmix(user) &&
+    !(await agencyDoesArt(order)) &&
+    !(await isOrderDesigner(user, order))
+  )
+    return null;
   const steps = await stepsOf(order.id);
   if (!isDone(steps.find((s) => s.key === "cert_seal"))) return "pending";
   const art = steps.find((s) => s.key === "cert_seal_art");
@@ -727,6 +821,11 @@ export async function validateStep(
   const tpl = stepTemplate(key);
   if (!tpl.validator) throw new ImportFlowError("no_validation");
   if (!actsAs(user, order, tpl.validator)) throw new ForbiddenError();
+  // Arte com o selo: só quem pode validar arte (ação "Validar a arte" em
+  // Equipe → Funções e acessos; o administrador sempre), como a validação da
+  // arte do pedido de compra.
+  if (key === "cert_seal_art" && !can(user, "art.validate"))
+    throw new ForbiddenError();
   const step = (await stepsOf(orderId)).find((s) => s.key === key);
   if (!step || step.status !== "submitted")
     throw new ImportFlowError("invalid_status");
@@ -748,10 +847,9 @@ export async function validateStep(
     orderId,
     `${auditLabel(tpl)}: ${key} ${decision === "validated" ? "validado" : `recusado (${reason})`}`,
   );
-  const link = `/app/orders/${orderId}#${anchorOf(tpl)}`;
   if (decision === "rejected")
     await notify(await targetFor(order, tpl.actor), {
-      link,
+      link: stepLink(orderId, tpl, "do"),
       kind: "action",
       text: (t) => ({
         subject: t("importFlow.notify.rejected.subject", {
@@ -766,7 +864,7 @@ export async function validateStep(
     const next = IMPORT_STEPS.find((s) => s.after === key);
     if (next)
       await notify(await targetFor(order, next.actor), {
-        link,
+        link: stepLink(orderId, next, "do"),
         kind: "action",
         text: (t) => ({
           subject: t("importFlow.notify.next.subject", {
@@ -787,6 +885,22 @@ export interface StepView {
   done: boolean;
   canSubmit: boolean;
   canValidate: boolean;
+  /**
+   * Certificação, visão interna da Wellmix: com quem está o passo aberto
+   * agora (fazer ou validar) e o que falta designar. Nulo nos concluídos e
+   * para quem é de fora.
+   */
+  assignee?: StepAssignee | null;
+}
+
+export interface StepAssignee {
+  /** Validar o envio (senão, fazer o passo). */
+  validating: boolean;
+  via: RouteVia;
+  /** Nome de quem recebe (empresa parceira ou logins); nulo: a equipe. */
+  label: string | null;
+  /** O que falta designar para a tarefa ter dono certo. */
+  missing: MissingAssignment | null;
 }
 
 /** Passos que o usuário vê, com o que ele pode fazer em cada um. */
@@ -801,36 +915,71 @@ export async function importFlowView(
   const shown = IMPORT_STEPS.filter(
     (tpl) => groupOf(tpl) === group && canSeeStep(user, order, tpl.key),
   );
-  // Passo da agência: só de quem faz a arte (a Wellmix sempre pode agir).
+  // Passo da agência: só de quem faz a arte (a Wellmix sempre pode agir;
+  // o designer do pedido também, mesmo login da agência).
   const agencyActs =
     isWellmix(user) ||
     !shown.some((tpl) => tpl.actor === "agency") ||
-    (await agencyDoesArt(order));
-  return shown.map((tpl) => {
-    const step = steps.find((s) => s.key === tpl.key) ?? null;
-    const isReady = ready(tpl.key, steps);
-    const done = isDone(step ?? undefined);
+    (await agencyDoesArt(order)) ||
+    (await isOrderDesigner(user, order));
+  // Visão interna da Wellmix: com quem está cada passo aberto, pela mesma
+  // regra das pendências (só onde há pendência).
+  const ctx =
+    group === "certification" && isWellmix(user) && open
+      ? await loadRoutingContext()
+      : null;
+  const gate = ctx
+    ? certGate(
+        order,
+        steps,
+        isPurchaseFlow(order) && (await purchaseNeedsCertification(order)),
+      )
+    : null;
+  const assigneeOf = async (
+    tpl: StepTemplate,
+    step: ImportStep | null,
+  ): Promise<StepAssignee | null> => {
+    if (!ctx || !gate) return null;
+    const task = certTask(order, tpl, step ?? undefined, steps, ctx, gate);
+    if (!task) return null;
     return {
-      template: tpl,
-      step,
-      ready: isReady,
-      done,
-      canSubmit:
-        open &&
-        isReady &&
-        !(tpl.validator && step?.status === "validated") &&
-        (actsAs(user, order, tpl.actor) ||
-          // Memorial: a certificadora do pedido também anexa.
-          (tpl.key === "cert_memorial" && isOrderOcp(user, order))) &&
-        (tpl.actor !== "agency" || agencyActs),
-      canValidate:
-        open &&
-        !!tpl.validator &&
-        step?.status === "submitted" &&
-        actsAs(user, order, tpl.validator) &&
-        (step.submittedByUserId !== user.id || isAdmin(user)),
+      validating: task.kind === "cert_validate",
+      via: task.route.via,
+      label: await routeLabel(task.route, ctx),
+      missing: task.route.missing ?? null,
     };
-  });
+  };
+  const artValidator = can(user, "art.validate");
+  return Promise.all(
+    shown.map(async (tpl) => {
+      const step = steps.find((s) => s.key === tpl.key) ?? null;
+      const isReady = ready(tpl.key, steps);
+      const done = isDone(step ?? undefined);
+      return {
+        template: tpl,
+        step,
+        ready: isReady,
+        done,
+        canSubmit:
+          open &&
+          isReady &&
+          !(tpl.validator && step?.status === "validated") &&
+          (actsAs(user, order, tpl.actor) ||
+            // Memorial: a certificadora do pedido também anexa.
+            (tpl.key === "cert_memorial" && isOrderOcp(user, order))) &&
+          (tpl.actor !== "agency" || agencyActs),
+        canValidate:
+          open &&
+          !!tpl.validator &&
+          step?.status === "submitted" &&
+          actsAs(user, order, tpl.validator) &&
+          // Arte com o selo: só quem pode validar arte.
+          (tpl.key !== "cert_seal_art" || artValidator) &&
+          (step.submittedByUserId !== user.id || isAdmin(user)),
+        assignee: await assigneeOf(tpl, step),
+      };
+    }),
+  );
 }
 
 /** Acesso ao arquivo de um passo: quem vê o passo. */
@@ -860,24 +1009,73 @@ export interface ImportTaskDraft {
   key: ImportStepKey;
   /** Desde quando o passo está com quem o vê (envio a validar; passo anterior concluído). */
   sinceAt?: string | null;
+  /** Certificação: link direto para a tarefa no pedido. */
+  link?: string;
+  /** Certificação: o que falta designar (sinalizado na pendência e no cartão). */
+  missing?: MissingAssignment | null;
+  /** Certificação: dono da pendência no painel de SLA (quem a recebeu). */
+  ownerUserId?: string | null;
+}
+
+export interface ImportTasksOptions {
+  /**
+   * Painel de SLA: as pendências da certificação que estão com qualquer
+   * login da Wellmix (não só com o usuário), para acompanhar a equipe.
+   */
+  team?: boolean;
+}
+
+/**
+ * Pedidos de compra cujos produtos exigem certificação: os que têm o item
+ * "Certificado" na Preparação (mapa do processo, P6). Sem exigência, o selo,
+ * o memorial e a arte com o selo não viram pendência.
+ */
+async function purchaseOrdersNeedingCert(
+  orders: Pick<Order, "id" | "flow">[],
+): Promise<Set<string>> {
+  const ids = orders.filter(isPurchaseFlow).map((o) => o.id);
+  if (!ids.length) return new Set();
+  const { listColumns } = await import("@/lib/db/lookup");
+  const rows = await listColumns(
+    getStore(),
+    "requirements",
+    ["orderId", "key"],
+    { filter: { orderId: ids } },
+  );
+  return new Set(
+    rows
+      .filter((r) => baseKeyOf(r.key) === LANE_KEYS.certificate)
+      .map((r) => r.orderId),
+  );
+}
+
+/** O pedido de compra exige certificação (a tela avisa quando não exige). */
+export async function purchaseNeedsCertification(
+  order: Pick<Order, "id" | "flow">,
+): Promise<boolean> {
+  return (await purchaseOrdersNeedingCert([order])).has(order.id);
 }
 
 /**
  * Pendências: o parceiro (comex, agente de carga, fornecedor, OCP, agência)
  * faz os passos dele que estão prontos; quem valida, os enviados; o
- * financeiro, o numerário. A Wellmix só ganha pendência quando valida, quando
- * o passo é dela (DANFE, memorial) ou quando é ela quem faz a arte (o passo
- * "selo aplicado na arte" de um pedido sem agência).
+ * financeiro, o numerário. A Wellmix só ganha pendência de embarque e
+ * desembaraço quando valida ou quando o passo é dela (DANFE).
  *
- * Certificação: o selo vale para todo pedido, desde que ele nasce; sem
- * certificadora no pedido, a pendência do selo fica com a Wellmix (designar
- * a certificadora ou enviar o selo recebido por fora). Memorial, laudo e
- * registro valem com OCP designado ou passo deles já começado (como o
- * cartão do pedido), a partir da Preparação.
+ * Certificação (docs/CERTIFICATION.md, "Quem recebe cada tarefa"): cada passo
+ * vai para um login certo, pelo que o pedido já tem (cert-art-routing): o
+ * selo, a certificadora (sem ela, quem designa: o analista ou a equipe); o
+ * memorial, o analista, e a validação dele, a certificadora; a arte com o
+ * selo, o designer do pedido, a agência que faz a arte ou a Wellmix, e a
+ * validação, quem pode validar arte. O selo vale para todo pedido, desde que
+ * ele nasce; memorial, laudo e registro, com OCP designado ou passo deles já
+ * começado, a partir da Preparação. Pedido de compra: só com produto que
+ * exige certificação (P6), e o memorial desde que o pedido nasce.
  */
 export async function importTasks(
   user: User,
   orders: Order[],
+  options: ImportTasksOptions = {},
 ): Promise<ImportTaskDraft[]> {
   const IMPORT_LIVE = ["INSPECTION", "SHIPPING", "CUSTOMS", "TRANSPORT"];
   const open = orders.filter(
@@ -895,29 +1093,47 @@ export async function importTasks(
   }
   const out: ImportTaskDraft[] = [];
   const wellmix = isWellmix(user);
+  const teamView = wellmix && !!options.team;
   let agencyArt: boolean | null = null;
+  // Certificação: quem recebe cada passo, lido uma vez para a lista toda.
+  const ctx = await loadRoutingContext();
+  const teamIds = new Set(ctx.team.map((u) => u.id));
+  const mine = (route: Route) =>
+    teamView
+      ? !!route.team || (route.userIds ?? []).some((id) => teamIds.has(id))
+      : reaches(user, route);
+  const certPurchase = await purchaseOrdersNeedingCert(open);
   for (const order of open) {
     const steps = rows.filter((r) => r.orderId === order.id);
     const importLive = IMPORT_LIVE.includes(order.status);
-    // Memorial, laudo e registro: com OCP designado ou passo deles começado.
-    // Com o pedido recém-criado ninguém ganha a pendência de começar, mas o
-    // que já começou pelo cartão segue (validar, passo seguinte).
-    const classicStarted = steps.some((s) => {
-      const tpl = stepTemplate(s.key);
-      return groupOf(tpl) === "certification" && !tpl.seal;
-    });
-    const classicDeep = steps.some(
-      (s) => s.key === "cert_lab" || s.key === "cert_registration",
-    );
-    const classicCert =
-      order.status === "ORDER_CREATED"
-        ? classicStarted
-        : !!order.ocpId || classicStarted;
+    const gate = certGate(order, steps, certPurchase.has(order.id));
     for (const tpl of IMPORT_STEPS) {
       const cert = groupOf(tpl) === "certification";
       if (!cert && !importLive) continue;
-      if (cert && !tpl.seal && !classicCert) continue;
       const step = steps.find((s) => s.key === tpl.key);
+      if (cert) {
+        const task = certTask(order, tpl, step, steps, ctx, gate);
+        if (!task) continue;
+        const { route, ...draft } = task;
+        if (!mine(route)) continue;
+        if (draft.kind === "cert_validate" && !teamView) {
+          // Quem enviou não valida o próprio envio; a arte com o selo, só
+          // quem pode validar arte.
+          if (step?.submittedByUserId === user.id) continue;
+          if (
+            wellmix &&
+            tpl.key === "cert_seal_art" &&
+            !canValidateArt(user, ctx)
+          )
+            continue;
+        }
+        out.push({
+          ...draft,
+          order,
+          ownerUserId: routeOwnerUserId(route, order, ctx),
+        });
+        continue;
+      }
       // Validar o que foi enviado.
       if (
         tpl.validator &&
@@ -932,17 +1148,13 @@ export async function importTasks(
             !order[PARTNER_FIELD[tpl.validator]]))
       ) {
         out.push({
-          kind: cert ? "cert_validate" : "import_validate",
+          kind: "import_validate",
           order,
           key: tpl.key,
           sinceAt: step.submittedAt,
         });
         continue;
       }
-      // Memorial, laudo e registro não viram pendência de começar: o PDF do
-      // memorial/selo basta (dono, 10/11/2026). Pedido antigo com laudo ou
-      // registro já começados segue o caminho dele.
-      if (cert && !tpl.seal && !classicDeep) continue;
       // Fazer (ou refazer) o passo.
       const todo =
         !step || step.status === "pending" || step.status === "rejected";
@@ -953,16 +1165,10 @@ export async function importTasks(
         agencyArt ??= (await getSettings()).agencyValidationEnabled;
         const agencyDoes = artRole(order, agencyArt) === "agency";
         if (wellmix ? agencyDoes : !agencyDoes) continue;
-      } else if (
-        wellmix &&
-        tpl.actor !== "wellmix" &&
-        tpl.actor !== "finance" &&
-        // Selo sem certificadora no pedido: a pendência fica com a Wellmix.
-        !(tpl.seal && !order[PARTNER_FIELD[tpl.actor]])
-      )
+      } else if (wellmix && tpl.actor !== "wellmix" && tpl.actor !== "finance")
         continue;
       out.push({
-        kind: cert ? "cert_step" : "import_step",
+        kind: "import_step",
         order,
         key: tpl.key,
         // Recusado: desde a recusa; senão, desde que o passo anterior fechou.
@@ -976,4 +1182,103 @@ export async function importTasks(
     }
   }
   return out;
+}
+
+interface CertGate {
+  /** A certificação vale no pedido (pedido de compra: só com produto que exige, P6). */
+  on: boolean;
+  /** Memorial, laudo e registro valem (OCP designado ou passo começado). */
+  classicCert: boolean;
+  /** Laudo ou registro já começados (pedido antigo segue o caminho dele). */
+  classicDeep: boolean;
+}
+
+/**
+ * Quando cada passo da certificação vira pendência. Memorial, laudo e
+ * registro: com OCP designado ou passo deles começado; com o pedido
+ * recém-criado ninguém ganha a pendência de começar, mas o que já começou
+ * pelo cartão segue (validar, passo seguinte). Pedido de compra: só com
+ * produto que exige certificação, e o memorial desde que ele nasce (vai
+ * junto com o selo).
+ */
+function certGate(
+  order: Order,
+  steps: ImportStep[],
+  purchaseNeedsCert: boolean,
+): CertGate {
+  const purchase = isPurchaseFlow(order);
+  const on = !purchase || purchaseNeedsCert;
+  const classicStarted = steps.some((s) => {
+    const tpl = stepTemplate(s.key);
+    return groupOf(tpl) === "certification" && !tpl.seal;
+  });
+  return {
+    on,
+    classicCert: purchase
+      ? on
+      : order.status === "ORDER_CREATED"
+        ? classicStarted
+        : !!order.ocpId || classicStarted,
+    classicDeep: steps.some(
+      (s) => s.key === "cert_lab" || s.key === "cert_registration",
+    ),
+  };
+}
+
+/**
+ * Pendência de um passo da certificação (fazer ou validar) e para quem ela
+ * vai; nula quando o passo não pede nada agora.
+ */
+function certTask(
+  order: Order,
+  tpl: StepTemplate,
+  step: ImportStep | undefined,
+  steps: ImportStep[],
+  ctx: RoutingContext,
+  gate: CertGate,
+): (Omit<ImportTaskDraft, "order"> & { route: Route }) | null {
+  if (!gate.on) return null;
+  if (!tpl.seal && !gate.classicCert) return null;
+  // Validar o que foi enviado.
+  if (tpl.validator && step?.status === "submitted") {
+    const route = certValidateRoute(order, tpl, ctx, step.submittedByUserId);
+    if (!route) return null;
+    return {
+      kind: "cert_validate",
+      key: tpl.key,
+      sinceAt: step.submittedAt,
+      link: stepLink(order.id, tpl, "validate"),
+      missing: route.missing ?? null,
+      route,
+    };
+  }
+  // Laudo e registro não viram pendência de começar: o PDF do memorial e do
+  // selo basta (dono, 10/11/2026). Pedido antigo com laudo ou registro já
+  // começados segue o caminho dele. O memorial é tarefa do responsável
+  // interno (dono, 13/11/2026).
+  if (!tpl.seal && tpl.key !== "cert_memorial" && !gate.classicDeep)
+    return null;
+  // Laudo e registro sem certificadora: ninguém começa por ela.
+  if (tpl.actor === "ocp" && !tpl.seal && !order.ocpId) return null;
+  // Fazer (ou refazer) o passo, quando o anterior já foi feito.
+  const todo = !step || step.status === "pending" || step.status === "rejected";
+  if (!todo || !ready(tpl.key, steps)) return null;
+  const route = certDoRoute(order, tpl, ctx);
+  const before = tpl.after ? steps.find((x) => x.key === tpl.after) : null;
+  return {
+    kind: "cert_step",
+    key: tpl.key,
+    // Recusado: desde a recusa; senão, desde que o passo anterior fechou.
+    sinceAt:
+      step?.status === "rejected"
+        ? step.validatedAt
+        : (before?.validatedAt ?? before?.submittedAt ?? null),
+    // Selo sem certificadora: quem designa vai direto a Parceiros do pedido.
+    link:
+      tpl.key === "cert_seal" && route.missing === "ocp"
+        ? `/app/orders/${order.id}#order-partners`
+        : stepLink(order.id, tpl, "do"),
+    missing: route.missing ?? null,
+    route,
+  };
 }

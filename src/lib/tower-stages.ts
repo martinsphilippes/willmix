@@ -67,6 +67,7 @@ export const TOWER_STAGES: readonly StageDef[] = [
       alongside("lnArt"),
       alongside("lnArtReview"),
       alongside("lnCert"),
+      alongside("lnRegistration"),
     ],
   },
   {
@@ -74,6 +75,7 @@ export const TOWER_STAGES: readonly StageDef[] = [
     cards: [
       main("ordContractWellmix"),
       main("ordContractSupplier"),
+      main("ordContractDownPayment"),
       main("ordContractSankhya"),
     ],
   },

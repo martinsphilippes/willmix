@@ -4,8 +4,8 @@
  * pedido pai com os pedidos filhos. Mesmas chaves em pt, en e zh.
  */
 export const pt = {
-  "supplierRequests.table.col.rounds": "Rodadas",
-  "supplierRequests.table.col.perRound": "Peças por rodada",
+  "supplierRequests.table.col.rounds": "Programações",
+  "supplierRequests.table.col.perRound": "Peças por programação",
   "purchaseRounds.form.toggle": "Programação de compra",
   "purchaseRounds.form.ask": "Comprar em rodadas nos próximos meses?",
   "purchaseRounds.form.hint":
@@ -26,7 +26,7 @@ export const pt = {
   "purchaseRounds.gen.title": "Gerar programação pela quantidade",
   "purchaseRounds.gen.hint":
     "Digite o total de caixas e o número de datas programadas: o total é dividido igualmente entre as rodadas, em caixas master inteiras. Os containers de cada rodada saem dessa conta. Em cada rodada, + Aumentar ou − Diminuir ajusta as peças para fechar o container (com 95% ou mais ele conta como cheio).",
-  "purchaseRounds.gen.total": "Total de peças",
+  "purchaseRounds.gen.total": "Total de caixas",
   "purchaseRounds.gen.container": "Container",
   "purchaseRounds.gen.perRound": "Containers por rodada",
   "purchaseRounds.gen.perRoundHint":
@@ -40,26 +40,22 @@ export const pt = {
   "purchaseRounds.gen.calc": "Cálculo",
   "purchaseRounds.gen.item":
     "Item escolhido: {pcs} peças por caixa master · {cbm} m³ por caixa → {cartons} caixas ({pieces} peças) por {container}.",
-  "purchaseRounds.gen.itemAssumed":
-    "Conta com {label}: {pcs} peças por caixa master · {cbm} m³ por caixa → {cartons} caixas ({pieces} peças) por {container}.",
-  "purchaseRounds.gen.assumedNote":
-    "Nenhum item está marcado como escolhido na tabela: a conta usa o primeiro do grupo com caixa master e CBM. Marque o escolhido para usar a caixa dele.",
-  "purchaseRounds.gen.noItem":
-    "Nenhum item do grupo tem peças por caixa master e CBM da caixa (nem as medidas): sem esses dados não há conta de containers. O total é dividido igualmente pelas rodadas.",
+  "purchaseRounds.gen.selectItem":
+    "Selecione um item na tabela para gerar a programação de compra",
   "purchaseRounds.gen.noCarton":
-    "O item escolhido não tem peças por caixa master ou CBM da caixa (nem as medidas): sem esses dados não há conta de containers. O total é dividido igualmente pelas rodadas.",
+    "O item escolhido não tem CBM da caixa (nem as medidas): sem ele não há conta de containers. As caixas são divididas igualmente pelas rodadas.",
+  "purchaseRounds.gen.noPieces":
+    "O item escolhido não tem peças por caixa master: não dá para converter caixas em peças. Marque outro item ou use “+ Programação de compra” e informe as peças de cada rodada.",
   "purchaseRounds.gen.tooBig":
     "A caixa master ({cbm} m³) não cabe no {container} ({cap} m³). Escolha um container maior.",
-  "purchaseRounds.gen.errorTotal": "Digite o total de peças.",
+  "purchaseRounds.gen.errorTotal": "Digite o total de caixas (número inteiro).",
   "purchaseRounds.gen.errorRounds": "Informe de 1 a {max} programações.",
   "purchaseRounds.gen.result":
-    "{rounds} rodada(s) · {cartons} caixas · {cbm} m³ · {containers} container(s) {container}",
+    "{rounds} rodada(s) · {cartons} caixas ({pieces} peças) · {cbm} m³ · {containers} container(s) {container}",
   "purchaseRounds.gen.extra":
     "Arredondado para caixas master inteiras: +{extra} peças.",
   "purchaseRounds.gen.reduced":
     "São só {cartons} caixa(s) master: a programação ficou com {rounds} rodada(s).",
-  "purchaseRounds.gen.regen":
-    "As rodadas foram geradas com a caixa de outro item: clique em Gerar programação para dividir de novo em caixas inteiras deste.",
   "purchaseRounds.gen.each":
     "Cada rodada: {cartons} caixas · {cbm} m³ = {n} container {container}, com {pct}% ocupado.",
   "purchaseRounds.gen.eachMany":
@@ -154,7 +150,7 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.title": "Generate the schedule from the quantity",
   "purchaseRounds.gen.hint":
     "Type the total cartons and the number of scheduled dates: the total is split evenly across the rounds, in whole master cartons. The containers of each round come from that calculation. In each round, + Increase or − Decrease adjusts the pieces to close the container (at 95% or more it counts as full).",
-  "purchaseRounds.gen.total": "Total pieces",
+  "purchaseRounds.gen.total": "Total cartons",
   "purchaseRounds.gen.container": "Container",
   "purchaseRounds.gen.perRound": "Containers per round",
   "purchaseRounds.gen.perRoundHint":
@@ -168,26 +164,22 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.calc": "Calculation",
   "purchaseRounds.gen.item":
     "Chosen item: {pcs} pieces per master carton · {cbm} m³ per carton → {cartons} cartons ({pieces} pieces) per {container}.",
-  "purchaseRounds.gen.itemAssumed":
-    "Calculated with {label}: {pcs} pieces per master carton · {cbm} m³ per carton → {cartons} cartons ({pieces} pieces) per {container}.",
-  "purchaseRounds.gen.assumedNote":
-    "No item is marked as chosen in the table: the calculation uses the first one in the group with a master carton and CBM. Mark the chosen one to use its carton.",
-  "purchaseRounds.gen.noItem":
-    "No item in the group has pieces per master carton and carton CBM (nor dimensions): without them there is no container calculation. The total is split evenly across the rounds.",
+  "purchaseRounds.gen.selectItem":
+    "Select an item in the table to generate the purchase schedule",
   "purchaseRounds.gen.noCarton":
-    "The chosen item has no pieces per master carton or carton CBM (nor dimensions): without them there is no container calculation. The total is split evenly across the rounds.",
+    "The chosen item has no carton CBM (nor dimensions): without it there is no container calculation. The cartons are split evenly across the rounds.",
+  "purchaseRounds.gen.noPieces":
+    "The chosen item has no pieces per master carton: cartons cannot be converted to pieces. Mark another item or use “+ Purchase schedule” and enter the pieces of each round.",
   "purchaseRounds.gen.tooBig":
     "The master carton ({cbm} m³) does not fit in the {container} ({cap} m³). Pick a larger container.",
-  "purchaseRounds.gen.errorTotal": "Type the total pieces.",
+  "purchaseRounds.gen.errorTotal": "Type the total cartons (a whole number).",
   "purchaseRounds.gen.errorRounds": "Enter 1 to {max} schedules.",
   "purchaseRounds.gen.result":
-    "{rounds} round(s) · {cartons} cartons · {cbm} m³ · {containers} container(s) {container}",
+    "{rounds} round(s) · {cartons} cartons ({pieces} pieces) · {cbm} m³ · {containers} container(s) {container}",
   "purchaseRounds.gen.extra":
     "Rounded up to whole master cartons: +{extra} pieces.",
   "purchaseRounds.gen.reduced":
     "There are only {cartons} master carton(s): the schedule has {rounds} round(s).",
-  "purchaseRounds.gen.regen":
-    "The rounds were generated with another item's carton: click Generate schedule to split again in whole cartons of this one.",
   "purchaseRounds.gen.each":
     "Each round: {cartons} cartons · {cbm} m³ = {n} {container} container, {pct}% used.",
   "purchaseRounds.gen.eachMany":
@@ -278,7 +270,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.title": "按数量生成采购计划",
   "purchaseRounds.gen.hint":
     "输入总箱数和计划日期数：总数按整箱外箱平均分到各批，每批的集装箱数由此算出。每批可用“+ 增加”或“− 减少”调整件数以装满集装箱（达到 95% 即视为装满）。",
-  "purchaseRounds.gen.total": "总件数",
+  "purchaseRounds.gen.total": "总箱数",
   "purchaseRounds.gen.container": "集装箱",
   "purchaseRounds.gen.perRound": "每批集装箱数",
   "purchaseRounds.gen.perRoundHint":
@@ -292,24 +284,19 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.calc": "计算",
   "purchaseRounds.gen.item":
     "所选产品：每外箱 {pcs} 件 · 每箱 {cbm} m³ → 每个 {container} {cartons} 箱（{pieces} 件）。",
-  "purchaseRounds.gen.itemAssumed":
-    "按 {label} 计算：每外箱 {pcs} 件 · 每箱 {cbm} m³ → 每个 {container} {cartons} 箱（{pieces} 件）。",
-  "purchaseRounds.gen.assumedNote":
-    "表格中尚未勾选所选产品：计算使用本组第一个有外箱和体积的产品。勾选所选产品后按其外箱计算。",
-  "purchaseRounds.gen.noItem":
-    "本组没有产品填写每外箱件数和外箱体积（也没有尺寸）：无法计算集装箱。总数平均分配到各批。",
+  "purchaseRounds.gen.selectItem": "请在表格中选择一个商品以生成采购计划",
   "purchaseRounds.gen.noCarton":
-    "所选产品没有每外箱件数或外箱体积（也没有尺寸）：无法计算集装箱。总数平均分配到各批。",
+    "所选产品没有外箱体积（也没有尺寸）：无法计算集装箱。箱数平均分配到各批。",
+  "purchaseRounds.gen.noPieces":
+    "所选产品没有每外箱件数：无法把箱数换算成件数。请选择其他产品，或使用“+ 采购计划”并填写每批的件数。",
   "purchaseRounds.gen.tooBig":
     "外箱（{cbm} m³）装不进 {container}（{cap} m³）。请选择更大的集装箱。",
-  "purchaseRounds.gen.errorTotal": "请输入总件数。",
+  "purchaseRounds.gen.errorTotal": "请输入总箱数（整数）。",
   "purchaseRounds.gen.errorRounds": "请输入 1 到 {max} 个计划。",
   "purchaseRounds.gen.result":
-    "{rounds} 批 · {cartons} 箱 · {cbm} m³ · {containers} 个 {container}",
+    "{rounds} 批 · {cartons} 箱（{pieces} 件） · {cbm} m³ · {containers} 个 {container}",
   "purchaseRounds.gen.extra": "按整箱向上取整：多 {extra} 件。",
   "purchaseRounds.gen.reduced": "只有 {cartons} 个外箱：计划为 {rounds} 批。",
-  "purchaseRounds.gen.regen":
-    "各批是按另一产品的外箱生成的：点击“生成计划”按本产品的整箱重新分配。",
   "purchaseRounds.gen.each":
     "每批：{cartons} 箱 · {cbm} m³ = {n} 个 {container}，已用 {pct}%。",
   "purchaseRounds.gen.eachMany":

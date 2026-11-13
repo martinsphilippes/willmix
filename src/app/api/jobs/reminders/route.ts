@@ -61,9 +61,18 @@ export async function GET(request: Request) {
       console.error("[reminders] purchase-rounds", error);
       return null;
     });
+  // Pedido de compra: o que o sistema confere sozinho (NCM validado, ficha
+  // completa, certificação válida, sinal pago ou conta corrente).
+  const purchaseGates = await import("@/lib/services/purchase-gates")
+    .then((m) => m.refreshAllPurchaseGates())
+    .catch((error) => {
+      console.error("[reminders] purchase-gates", error);
+      return null;
+    });
   return NextResponse.json({
     ...result,
     purchaseRounds,
+    purchaseGates,
     supplierRequestsLate,
     samplingLate,
     released,

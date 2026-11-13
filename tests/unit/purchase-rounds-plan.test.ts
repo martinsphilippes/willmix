@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   CONTAINER_FULL_MARGIN_PCT,
   MAX_PURCHASE_ROUNDS,
+  cartonsFromPieces,
   containersPerRound,
+  parseCount,
+  piecesFromCartons,
   planPurchaseRounds,
+  quantityFields,
   roundLoad,
+  scheduleOnItemChange,
 } from "@/lib/purchase-rounds";
 
 /*
@@ -22,6 +27,219 @@ const plan = (input: Parameters<typeof planPurchaseRounds>[0]) => {
   if ("error" in out) throw new Error(out.error);
   return out.plan;
 };
+
+/*
+ * O total do gerador é digitado em CAIXAS master (decisão do dono,
+ * 13/11/2026): a conta multiplica pelas peças por caixa master do item e a
+ * programação continua em peças.
+ */
+describe("total em caixas master", () => {
+  it("caixas viram peças pelas peças por caixa master do item", () => {
+    expect(piecesFromCartons(1250, 48)).toBe(60_000);
+    expect(piecesFromCartons(300, 12)).toBe(3600);
+    // Sem as peças por caixa não há como converter.
+    expect(piecesFromCartons(300, null)).toBeNull();
+    expect(piecesFromCartons(300, undefined)).toBeNull();
+    expect(piecesFromCartons(300, 0)).toBeNull();
+    // Caixa é inteira e positiva.
+    expect(piecesFromCartons(0, 12)).toBeNull();
+    expect(piecesFromCartons(-3, 12)).toBeNull();
+    expect(piecesFromCartons(62.5, 48)).toBeNull();
+    expect(piecesFromCartons(Number.NaN, 48)).toBeNull();
+  });
+
+  it("peças viram caixas inteiras, para cima", () => {
+    expect(cartonsFromPieces(60_000, 48)).toBe(1250);
+    expect(cartonsFromPieces(3600, 12)).toBe(300);
+    // 3.000 peças de 48 = 62,5 caixas: 63.
+    expect(cartonsFromPieces(3000, 48)).toBe(63);
+    expect(cartonsFromPieces(1, 48)).toBe(1);
+    expect(cartonsFromPieces(0, 48)).toBeNull();
+    expect(cartonsFromPieces(Number.NaN, 48)).toBeNull();
+    expect(cartonsFromPieces(3000, null)).toBeNull();
+  });
+
+  it("o total em caixas gera as rodadas sem arredondar peças", () => {
+    // 1.250 caixas de 48 = 60.000 peças em 3 rodadas: 417 + 417 + 416 caixas.
+    const p = plan({
+      masterCartonQty: 48,
+      cbmPerCarton: 0.12,
+      containerCbm: 68,
+      total: piecesFromCartons(1250, 48)!,
+      rounds: 3,
+    });
+    expect(p.cartons).toBe(1250);
+    expect(p.pieces).toBe(60_000);
+    expect(p.extraPieces).toBe(0);
+    expect(p.rounds.map((r) => r.cartons)).toEqual([417, 417, 416]);
+    expect(p.rounds.map((r) => r.pieces)).toEqual([20_016, 20_016, 19_968]);
+  });
+});
+
+/*
+ * "Total de caixas" e "Quantidade (peças)" lado a lado no gerador (pedido do
+ * dono, 13/11/2026): o mesmo número em duas unidades. O que se digita num
+ * aparece no outro, pelas peças por caixa master do item escolhido.
+ */
+describe("os dois campos de quantidade do gerador", () => {
+  const item = { masterCartonQty: 48, sheetQty: 3000 };
+  const fields = (
+    typed: Parameters<typeof quantityFields>[0]["typed"],
+    base = "",
+    extra: { masterCartonQty?: number | null; sheetQty?: number } = {},
+  ) => quantityFields({ typed, base, ...item, ...extra });
+  const cartons = (text: string, pieces = "") =>
+    ({ unit: "cartons", text, pieces }) as const;
+  const pieces = (text: string) =>
+    ({ unit: "pieces", text, pieces: text }) as const;
+
+  it("caixas digitadas viram peças: 10 caixas de 48 = 480 peças", () => {
+    expect(fields(cartons("10"))).toEqual({ cartons: "10", pieces: "480" });
+    expect(fields(cartons("1250"))).toEqual({
+      cartons: "1250",
+      pieces: "60000",
+    });
+    // O que foi digitado em caixas fica como foi digitado.
+    expect(fields(cartons("1.250"))).toEqual({
+      cartons: "1.250",
+      pieces: "60000",
+    });
+  });
+
+  it("peças digitadas viram caixas inteiras, para cima", () => {
+    expect(fields(pieces("480"))).toEqual({ cartons: "10", pieces: "480" });
+    // 500 peças de 48 = 10,4 caixas: 11. As peças ficam como digitadas.
+    expect(fields(pieces("500"))).toEqual({ cartons: "11", pieces: "500" });
+    expect(fields(pieces("60.000"))).toEqual({
+      cartons: "1250",
+      pieces: "60.000",
+    });
+    expect(fields(pieces("1"))).toEqual({ cartons: "1", pieces: "1" });
+  });
+
+  it("sem nada digitado, os dois acompanham a quantidade de base", () => {
+    // A quantidade gravada ou a soma das rodadas.
+    expect(fields(null, "67152")).toEqual({
+      cartons: "1399",
+      pieces: "67152",
+    });
+    expect(fields(null, "480")).toEqual({ cartons: "10", pieces: "480" });
+  });
+
+  it("peças em branco: vale a quantidade da planilha, que as caixas mostram", () => {
+    // Ao abrir, sem quantidade gravada: 3.000 da planilha = 63 caixas.
+    expect(fields(null, "")).toEqual({ cartons: "63", pieces: "" });
+    // Apagar as peças volta à quantidade da planilha.
+    expect(fields(pieces(""))).toEqual({ cartons: "63", pieces: "" });
+    expect(fields(pieces("  "))).toEqual({ cartons: "63", pieces: "  " });
+    // Sem quantidade na planilha, não há o que mostrar.
+    expect(fields(null, "", { sheetQty: undefined })).toEqual({
+      cartons: "",
+      pieces: "",
+    });
+  });
+
+  it("apagar as caixas não devolve o número antigo enquanto se digita", () => {
+    expect(fields(cartons(""), "480")).toEqual({ cartons: "", pieces: "" });
+    // Caixa é inteira e positiva: outro valor não vira peças.
+    expect(fields(cartons("0"), "480")).toEqual({ cartons: "0", pieces: "" });
+    expect(fields(cartons("abc"), "480")).toEqual({
+      cartons: "abc",
+      pieces: "",
+    });
+  });
+
+  it("peças que não são número não viram caixas", () => {
+    expect(fields(pieces("abc"))).toEqual({ cartons: "", pieces: "abc" });
+    expect(fields(pieces("0"))).toEqual({ cartons: "", pieces: "0" });
+  });
+
+  it("item sem peças por caixa master: não há conversão, as peças ficam", () => {
+    // Digitar caixas não apaga as peças que estavam no campo.
+    expect(fields(cartons("10", "500"), "", { masterCartonQty: null })).toEqual(
+      { cartons: "10", pieces: "500" },
+    );
+    expect(fields(pieces("500"), "", { masterCartonQty: null })).toEqual({
+      cartons: "",
+      pieces: "500",
+    });
+    expect(fields(null, "500", { masterCartonQty: null })).toEqual({
+      cartons: "",
+      pieces: "500",
+    });
+  });
+
+  it("trocar o item escolhido refaz a conta com a caixa dele", () => {
+    // 10 caixas digitadas: 480 peças com 48 por caixa, 240 com 24.
+    expect(fields(cartons("10"), "", { masterCartonQty: 24 })).toEqual({
+      cartons: "10",
+      pieces: "240",
+    });
+    // 480 peças digitadas: 10 caixas de 48, 20 caixas de 24.
+    expect(fields(pieces("480"), "", { masterCartonQty: 24 })).toEqual({
+      cartons: "20",
+      pieces: "480",
+    });
+  });
+
+  it("número inteiro digitado: ponto, vírgula e espaço separam milhar", () => {
+    expect(parseCount("60000")).toBe(60_000);
+    expect(parseCount("60.000")).toBe(60_000);
+    expect(parseCount("60,000")).toBe(60_000);
+    expect(parseCount(" 60 000 ")).toBe(60_000);
+    expect(parseCount("")).toBeNaN();
+    expect(parseCount("abc")).toBeNaN();
+  });
+});
+
+/*
+ * Programação de compra e o item marcado em "Escolher" (pedido do dono,
+ * 13/11/2026): as rodadas são do item com cuja caixa foram feitas. Trocar ou
+ * desmarcar o item desfaz a programação ainda não gravada; voltar ao item da
+ * escolha gravada traz a gravada de volta.
+ */
+describe("programação de compra quando o item marcado muda", () => {
+  const change = (over: Partial<Parameters<typeof scheduleOnItemChange>[0]>) =>
+    scheduleOnItemChange({
+      on: true,
+      next: "B",
+      savedItem: null,
+      savedKept: true,
+      ...over,
+    });
+
+  it("trocar de item desfaz a programação ainda não gravada", () => {
+    expect(change({})).toBe("drop");
+    // Escolha gravada com A: marcar B tira as rodadas de A da tela.
+    expect(change({ savedItem: "A" })).toBe("drop");
+  });
+
+  it("desmarcar (nenhum item) também desfaz", () => {
+    expect(change({ next: null })).toBe("drop");
+    expect(change({ next: null, savedItem: "A" })).toBe("drop");
+  });
+
+  it("sem programação na tela, nada muda", () => {
+    expect(change({ on: false })).toBe("keep");
+    expect(change({ on: false, next: null, savedItem: "A" })).toBe("keep");
+  });
+
+  it("voltar ao item da escolha gravada traz a programação gravada", () => {
+    // Com a tela sem programação (ela saiu ao marcar outro item)...
+    expect(change({ on: false, next: "A", savedItem: "A" })).toBe("restore");
+    // ...ou com a programação ainda não gravada de outro item na tela.
+    expect(change({ on: true, next: "A", savedItem: "A" })).toBe("restore");
+  });
+
+  it("desligada pelo usuário com o item gravado marcado, a gravada não volta", () => {
+    expect(
+      change({ on: false, next: "A", savedItem: "A", savedKept: false }),
+    ).toBe("keep");
+    expect(
+      change({ on: true, next: "A", savedItem: "A", savedKept: false }),
+    ).toBe("drop");
+  });
+});
 
 describe("planPurchaseRounds", () => {
   it("divide o total nas rodadas informadas, em caixas master inteiras", () => {

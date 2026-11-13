@@ -61,6 +61,10 @@ import { canOpen } from "@/lib/auth/screens";
 import { partiesWithoutLogin } from "@/lib/services/portal-access";
 import { TableTools } from "@/components/table-tools";
 import { SelectionAiPrompts } from "@/components/selection-ai-prompts";
+import {
+  RequestedGroups,
+  type RequestedGroupCard,
+} from "./_components/requested-groups";
 import { defaultPrompts, effectivePrompts } from "@/lib/ai-references";
 import { getMediaAdapter } from "@/lib/integrations/openai-media";
 import {
@@ -201,13 +205,28 @@ export default async function BookingSelectionPage({
       })),
   ];
   // Em cima os resolvidos (esperando a solicitação), depois os blocos por
-  // resolver e, separados embaixo, os que já têm solicitação aberta.
-  const cardSections = (["saved", "pending", "requested"] as const).map(
-    (key) => ({
-      key,
-      cards: cards.filter((c) => (c.entry?.group.status ?? "pending") === key),
-    }),
+  // resolver, em cartões; separados embaixo, os que já têm solicitação
+  // aberta, em lista compacta (uma linha por grupo).
+  const cardSections = (["saved", "pending"] as const).map((key) => ({
+    key,
+    cards: cards.filter((c) => (c.entry?.group.status ?? "pending") === key),
+  }));
+  const requestedCards = cards.flatMap((c): RequestedGroupCard[] =>
+    c.entry?.group.status === "requested" ? [{ ...c, entry: c.entry }] : [],
   );
+  // Essa lista não depende do filtro da tela: os itens dos grupos que a
+  // busca, os filtros ou o limite da lista deixaram de fora são lidos à
+  // parte (só quando faltam), para a linha aberta mostrar o grupo inteiro.
+  const requestedMissing = [
+    ...new Set(
+      requestedCards.flatMap((c) => [...c.ids, ...c.entry.group.itemIds]),
+    ),
+  ].filter((id) => !rowById.has(id));
+  const requestedExtra = requestedMissing.length
+    ? await listSelectionItems(user, "", { ids: requestedMissing })
+    : null;
+  const requestedRows = new Map(rowById);
+  for (const r of requestedExtra?.all ?? []) requestedRows.set(r.item.id, r);
   const savedCount = savedGroups.filter(
     (e) => e.group.status === "saved",
   ).length;
@@ -302,8 +321,10 @@ export default async function BookingSelectionPage({
                 />
               ) : null}
             </th>
+            {/* Sem a coluna "Alternativa" (dono, 13/11/2026): os outros itens
+                do grupo já são as alternativas do escolhido. */}
             {[
-              ...(basket ? [] : ["choose", "alternative"]),
+              ...(basket ? [] : ["choose"]),
               "photo",
               "item",
               "supplier",
@@ -372,15 +393,6 @@ export default async function BookingSelectionPage({
                         }
                         aria-label={`${col("choose")} ${item.description ?? item.factoryItemCode ?? ""}`}
                         data-selection-choose={item.id}
-                      />
-                    </td>
-                    <td className={cx(td, "text-center")}>
-                      <input
-                        type="checkbox"
-                        name="alternatives"
-                        value={item.id}
-                        aria-label={`${col("alternative")} ${item.description ?? item.factoryItemCode ?? ""}`}
-                        data-selection-alternative={item.id}
                       />
                     </td>
                   </>
@@ -599,15 +611,8 @@ export default async function BookingSelectionPage({
                 schedule={current?.schedule ?? null}
                 chosenItemId={current?.chosenItemId ?? null}
                 containerTypes={containerTypes}
-                items={list.map(({ item, supplier }) => ({
+                items={list.map(({ item }) => ({
                   id: item.id,
-                  // Como o item aparece na conta quando nenhum está marcado.
-                  label: [
-                    item.factoryItemCode ?? item.description,
-                    supplier?.name,
-                  ]
-                    .filter(Boolean)
-                    .join(" · "),
                   masterCartonQty: item.masterCartonQty,
                   cbmPerCarton:
                     item.cbmPerCarton ??
@@ -641,17 +646,9 @@ export default async function BookingSelectionPage({
                     pieces: "{pieces}",
                     container: "{container}",
                   }),
-                  itemAssumed: t("purchaseRounds.gen.itemAssumed", {
-                    label: "{label}",
-                    pcs: "{pcs}",
-                    cbm: "{cbm}",
-                    cartons: "{cartons}",
-                    pieces: "{pieces}",
-                    container: "{container}",
-                  }),
-                  assumedNote: t("purchaseRounds.gen.assumedNote"),
-                  noItem: t("purchaseRounds.gen.noItem"),
+                  selectItem: t("purchaseRounds.gen.selectItem"),
                   noCarton: t("purchaseRounds.gen.noCarton"),
+                  noPieces: t("purchaseRounds.gen.noPieces"),
                   tooBig: t("purchaseRounds.gen.tooBig", {
                     cbm: "{cbm}",
                     container: "{container}",
@@ -664,6 +661,7 @@ export default async function BookingSelectionPage({
                   result: t("purchaseRounds.gen.result", {
                     rounds: "{rounds}",
                     cartons: "{cartons}",
+                    pieces: "{pieces}",
                     cbm: "{cbm}",
                     containers: "{containers}",
                     container: "{container}",
@@ -673,7 +671,6 @@ export default async function BookingSelectionPage({
                     cartons: "{cartons}",
                     rounds: "{rounds}",
                   }),
-                  regen: t("purchaseRounds.gen.regen"),
                   each: t("purchaseRounds.gen.each", {
                     cartons: "{cartons}",
                     cbm: "{cbm}",
@@ -1133,7 +1130,6 @@ export default async function BookingSelectionPage({
                               {section.cards.map((b) => {
                                 const g = b.entry?.group ?? null;
                                 const saved = g?.status === "saved";
-                                const request = b.entry?.request ?? null;
                                 // O ganhador primeiro, para aparecer sempre.
                                 const ids = g
                                   ? [
@@ -1194,28 +1190,6 @@ export default async function BookingSelectionPage({
                                             "supplierRequests.selection.resolved",
                                           )}
                                         </Badge>
-                                      ) : null}
-                                      {g?.status === "requested" ? (
-                                        request ? (
-                                          <Link
-                                            href={`/app/supplier-requests/${request.id}`}
-                                            className={linkClass}
-                                            data-selection-request-link
-                                          >
-                                            {t(
-                                              "supplierRequests.selection.requested",
-                                              {
-                                                n: request.number,
-                                              },
-                                            )}
-                                          </Link>
-                                        ) : (
-                                          <Badge tone="success">
-                                            {t(
-                                              "supplierRequests.selection.requestedNoLink",
-                                            )}
-                                          </Badge>
-                                        )
                                       ) : null}
                                     </div>
                                     <ul className="mb-3 space-y-1 text-[13px] text-zinc-700">
@@ -1317,6 +1291,22 @@ export default async function BookingSelectionPage({
                           </section>
                         ) : null,
                       )}
+                      {requestedCards.length ? (
+                        <section data-selection-section="requested">
+                          <h3 className="mb-2 text-sm font-semibold text-zinc-800">
+                            {t("supplierRequests.selection.section.requested", {
+                              n: requestedCards.length,
+                            })}
+                          </h3>
+                          <RequestedGroups
+                            t={t}
+                            cards={requestedCards}
+                            rows={requestedRows}
+                            rmbPerUsd={rmbPerUsd}
+                            hrefOf={groupHref}
+                          />
+                        </section>
+                      ) : null}
                     </div>
                   </form>
                 ) : (

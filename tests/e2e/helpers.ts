@@ -33,6 +33,22 @@ export async function login(page: Page, email: string) {
   await page.waitForURL(/\/app/);
 }
 
+/**
+ * Câmbio manual em Configurações (Wellmix). As contas do Superplan (custo por
+ * peça, simulação da proposta) precisam de câmbio, e o do dia vem de sites
+ * públicos que nem todo ambiente de teste alcança (rede restrita). Com a
+ * cotação do dia ela continua valendo; sem ela, vale este.
+ */
+export async function setManualFx(page: Page) {
+  await page.goto("/app/settings");
+  const usd = page.locator('input[name="fxManualRates.USD"]');
+  await usd.fill("5.5");
+  await page.locator('input[name="fxManualRates.RMB"]').fill("0.78");
+  await page.locator('input[name="fxManualRates.EUR"]').fill("6");
+  await usd.evaluate((el) => (el as HTMLInputElement).form!.requestSubmit());
+  await page.waitForURL(/\/app\/settings\?ok=1/);
+}
+
 const BOOKING_HEADER = [
   "DATE",
   "LOCAL",
@@ -206,6 +222,11 @@ export async function importAndClose(
  * dois itens; agrupa, escolhe `chosen` (código) com `alternative` de
  * alternativa, grava e abre a solicitação ao fornecedor do escolhido.
  * Devolve o endereço da solicitação (sem a busca).
+ *
+ * Com `cartons` (caixas master de 48 peças, a da planilha de teste), a
+ * quantidade é digitada em "Total de caixas": confere que "Quantidade
+ * (peças)" acompanha, que é ela que a escolha grava e que os dois campos
+ * voltam com o mesmo número ao rever a escolha.
  */
 export async function selectAndOpenSupplierRequest(
   page: Page,
@@ -213,6 +234,7 @@ export async function selectAndOpenSupplierRequest(
   chosen: string,
   alternative: string,
   needs: string,
+  { cartons = null as number | null } = {},
 ) {
   await page.goto(`/app/booking/selection?q=${encodeURIComponent(tag)}`);
   await expect(page.locator("[data-selection-item]")).toHaveCount(2);
@@ -225,11 +247,37 @@ export async function selectAndOpenSupplierRequest(
     .locator("[data-selection-item]", { hasText: chosen })
     .locator("input[data-selection-choose]")
     .check();
-  await page
-    .locator("[data-selection-item]", { hasText: alternative })
-    .locator("input[data-selection-alternative]")
-    .check();
+  // Sem a coluna "Alternativa" (dono, 13/11/2026): só se escolhe o ganhador
+  // e "Foto" vem logo depois de "Escolher". O outro item do grupo continua
+  // indo como alternativa da solicitação (quem chama confere mais adiante).
+  await expect(
+    page.locator("[data-selection-item]", { hasText: alternative }),
+  ).toHaveCount(1);
+  await expect(page.locator("input[data-selection-alternative]")).toHaveCount(
+    0,
+  );
+  await expect(page.locator('input[name="alternatives"]')).toHaveCount(0);
+  const heads = page.locator("table[data-selection-items] thead th");
+  await expect(heads.nth(1)).toContainText("Escolher");
+  await expect(heads.nth(2)).toContainText("Foto");
+  await expect(
+    page.locator("table[data-selection-items] thead"),
+  ).not.toContainText("Alternativa");
+  // Cada linha tem as mesmas colunas do cabeçalho (nenhuma célula sobrando).
+  const columns = await heads.count();
+  await expect(
+    page.locator("[data-selection-item]").first().locator("td"),
+  ).toHaveCount(columns);
   await page.fill("[data-selection-needs]", needs);
+  // Sem programação de compra, "Quantidade (peças)" é a quantidade da
+  // escolha (dono, 13/11/2026): digitar as caixas calcula as peças.
+  const pieces = cartons === null ? null : String(cartons * 48);
+  if (cartons !== null) {
+    await page.locator("[data-generate-total]").fill(String(cartons));
+    await expect(page.locator("[data-selection-quantity]")).toHaveValue(
+      pieces!,
+    );
+  }
   // Gravar só guarda a escolha (nada vai ao fornecedor); o grupo aparece
   // resolvido, com o ganhador em verde, e a solicitação abre dali.
   await page.click("[data-selection-submit]");
@@ -238,6 +286,23 @@ export async function selectAndOpenSupplierRequest(
   const resolved = page.locator("[data-selection-resolved=saved]");
   await expect(resolved).toHaveCount(1);
   await expect(resolved.locator("[data-selection-winner]")).toContainText(tag);
+  if (cartons !== null) {
+    // A escolha gravou as peças das caixas digitadas; ao rever, os dois
+    // campos voltam com o mesmo número.
+    await expect(resolved.locator("[data-selection-winner]")).toContainText(
+      `${(cartons * 48).toLocaleString("pt-BR")} peças`,
+    );
+    await resolved.locator("[data-selection-block-open]").click();
+    await page.waitForURL(/ids=/);
+    await expect(page.locator("[data-selection-quantity]")).toHaveValue(
+      pieces!,
+    );
+    await expect(page.locator("[data-generate-total]")).toHaveValue(
+      String(cartons),
+    );
+    await page.goBack();
+    await expect(resolved).toHaveCount(1);
+  }
   await page.click("[data-selection-open-all]");
   // Recém-aberta, a solicitação abre na tela do produto (view=item).
   await page.waitForURL(/\/app\/supplier-requests\/[^/?]+\?.*created=1/);

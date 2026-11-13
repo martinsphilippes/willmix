@@ -248,7 +248,7 @@ export const pt = {
     "{n} produto(s) que a Wellmix pediu a você nesta solicitação",
   "supplierRequests.table.col.photo": "Foto",
   "supplierRequests.table.col.item": "Produto",
-  "supplierRequests.table.col.quantity": "Quantidade",
+  "supplierRequests.table.col.quantity": "Total de peças",
   "supplierRequests.table.col.bookingPrice": "Preço do book",
   "supplierRequests.table.col.answer": "Sua resposta",
   "supplierRequests.table.col.status": "Situação",
@@ -260,7 +260,7 @@ export const pt = {
   "supplierRequests.table.needs": "A Wellmix precisa",
   "supplierRequests.table.current": "Esta solicitação",
   "supplierRequests.table.proposalPending":
-    "Contraproposta esperando você: abra o produto para responder.",
+    "Contraproposta esperando você: confirme, renegocie ou recuse.",
   "supplierRequests.table.message": "Mensagem",
   "supplierRequests.table.messageTitle":
     "Mensagem à Wellmix · solicitação nº {n}",
@@ -298,6 +298,13 @@ export const pt = {
   "supplierRequests.selection.winner": "Escolhido · {qty} peças",
   "supplierRequests.selection.blocks.reopen": "Rever a escolha",
   "supplierRequests.selection.blocks.sizeManual": "{n} itens comparados",
+  "supplierRequests.selection.requestedRow.chosen": "Item escolhido",
+  "supplierRequests.selection.requestedRow.others":
+    "Itens comparados que não foram escolhidos",
+  "supplierRequests.selection.requestedRow.none":
+    "Este grupo não tem outros itens comparados.",
+  "supplierRequests.selection.requestedRow.gone":
+    "Mais {n} item(ns) deste grupo não estão mais nos books.",
   "supplierRequests.error.selection_group_pick":
     "Marque ao menos um grupo resolvido, ou use o botão de abrir todos.",
   "supplierRequests.error.selection_group_none":
@@ -309,6 +316,7 @@ export const pt = {
   "supplierRequests.table.proposalPendingWellmix":
     "Contraproposta esperando o fornecedor.",
   "supplierRequests.table.late": "Atrasada",
+  "supplierRequests.table.onTime": "No prazo",
   "supplierRequests.table.canDoYes": "Faz",
   "supplierRequests.table.canDoNo": "Não faz",
   "supplierRequests.table.canDoWaiting": "Esperando",
@@ -322,6 +330,9 @@ export const pt = {
   "supplierRequests.table.col.needs": "A Wellmix precisa",
   "supplierRequests.table.col.canDo": "Faz?",
   "supplierRequests.table.col.sla": "SLA",
+  "supplierRequests.table.col.statusSla": "Situação / SLA",
+  "supplierRequests.table.slaShow": "Mostrar data e hora do prazo",
+  "supplierRequests.table.slaHide": "Ocultar data e hora do prazo",
   "supplierRequests.table.col.turn": "Vez",
   "supplierRequests.table.col.openedAt": "Aberta em",
   "supplierRequests.table.col.firstAnswerAt": "1ª resposta",
@@ -377,7 +388,7 @@ export const pt = {
   "supplierRequests.timeline.showcase": "Produto liberado na vitrine",
   "supplierRequests.timeline.erp": "CODPROD conferido no Sankhya",
   "supplierRequests.table.hint":
-    "Uma informação por coluna. Pelos ícones: mensagem à Wellmix, resposta sim/não e abrir a tela do produto.",
+    "Uma informação por coluna. Em Ações: mensagem à Wellmix, abrir a tela do produto e, por item, confirmar a oferta, renegociar ou recusar.",
   "supplierRequests.table.answerHint":
     "Para responder sim, informe o preço por peça. Pedido mínimo e modalidade de entrega (FOB/EXW) vão junto; o prazo fica como está (mude na tela do produto).",
   "supplierRequests.table.col.initial": "Condições iniciais (book)",
@@ -399,6 +410,45 @@ export const pt = {
   "supplierRequests.table.state.accepted": "Aceita",
   "supplierRequests.table.state.rejected": "Recusada",
   "supplierRequests.table.state.counter": "Nova proposta do fornecedor",
+  "supplierRequests.table.confirm": "Confirmar {price}/peça",
+  "supplierRequests.table.confirmHint.book":
+    "Aceita a oferta do book como está: preço, moeda, pedido mínimo e entrega.",
+  "supplierRequests.table.confirmHint.proposal":
+    "Aceita a contraproposta da Wellmix como está.",
+  "supplierRequests.table.confirmHint.own":
+    "Sua resposta já é a oferta em vigor.",
+  "supplierRequests.table.renegotiate": "Renegociar",
+  "supplierRequests.table.renegotiateHint":
+    "Mudar as condições e enviar uma contraproposta",
+  "supplierRequests.table.renegotiateTitle": "Renegociar · solicitação nº {n}",
+  "supplierRequests.table.renegotiateText":
+    "As condições em vigor já estão preenchidas. Mude o que quiser e envie; o item fica em negociação até a Wellmix responder.",
+  "supplierRequests.table.renegotiateSend": "Enviar contraproposta",
+  "supplierRequests.table.refuse": "Recusar oferta",
+  "supplierRequests.table.refuseHint.book": "Responde que não faz este item.",
+  "supplierRequests.table.refuseHint.proposal":
+    "Recusa a contraproposta da Wellmix; fica valendo a sua resposta anterior.",
+  "supplierRequests.table.refuseHint.own":
+    "Retira a sua resposta: passa a constar que não faz este item.",
+  "supplierRequests.detail.offer.confirmed": "Oferta confirmada.",
+  "supplierRequests.detail.offer.refused": "Oferta recusada.",
+  "supplierRequests.error.supplier_request_offer_changed":
+    "A oferta deste item mudou desde que a tela foi aberta. Nada foi gravado: confira os valores atuais e responda de novo.",
+  "supplierRequests.table.col.packageType": "Embalagem",
+  "supplierRequests.table.col.measures": "Medidas do produto (cm)",
+  "supplierRequests.table.col.capacity": "Capacidade / tamanho",
+  "supplierRequests.table.col.masterCartonQty": "Pçs/caixa master",
+  "supplierRequests.table.col.innerQty": "Pçs/caixa interna",
+  "supplierRequests.table.col.cbmPerCarton": "CBM/caixa master (m³)",
+  "supplierRequests.table.col.totalCartons": "Total de caixas master",
+  "supplierRequests.table.col.totalCbm": "Cubagem total (m³)",
+  "supplierRequests.table.details": "Mais detalhes",
+  "supplierRequests.table.detailsNone": "Sem dados complementares neste item.",
+  "supplierRequests.table.detail.productName": "Nome do produto",
+  "supplierRequests.table.detail.ncm": "NCM",
+  "supplierRequests.table.detail.book": "Abrir o Book deste item",
+  "supplierRequests.table.cbmFromMeasures":
+    "Sem CBM informado: cubagem calculada pelas medidas do item.",
 };
 
 export const en: typeof pt = {
@@ -646,7 +696,7 @@ export const en: typeof pt = {
     "{n} product(s) Wellmix requested from you in this request",
   "supplierRequests.table.col.photo": "Photo",
   "supplierRequests.table.col.item": "Product",
-  "supplierRequests.table.col.quantity": "Quantity",
+  "supplierRequests.table.col.quantity": "Total pieces",
   "supplierRequests.table.col.bookingPrice": "Book price",
   "supplierRequests.table.col.answer": "Your answer",
   "supplierRequests.table.col.status": "Status",
@@ -658,7 +708,7 @@ export const en: typeof pt = {
   "supplierRequests.table.needs": "Wellmix needs",
   "supplierRequests.table.current": "This request",
   "supplierRequests.table.proposalPending":
-    "Counter-offer waiting for you: open the product to reply.",
+    "Counter-offer waiting for you: confirm, renegotiate or decline.",
   "supplierRequests.table.message": "Message",
   "supplierRequests.table.messageTitle": "Message to Wellmix · request no. {n}",
   "supplierRequests.table.messageText": "Message",
@@ -693,6 +743,13 @@ export const en: typeof pt = {
   "supplierRequests.selection.winner": "Chosen · {qty} pieces",
   "supplierRequests.selection.blocks.reopen": "Review the choice",
   "supplierRequests.selection.blocks.sizeManual": "{n} items compared",
+  "supplierRequests.selection.requestedRow.chosen": "Chosen item",
+  "supplierRequests.selection.requestedRow.others":
+    "Compared items that were not chosen",
+  "supplierRequests.selection.requestedRow.none":
+    "This group has no other compared items.",
+  "supplierRequests.selection.requestedRow.gone":
+    "{n} more item(s) of this group are no longer in the books.",
   "supplierRequests.error.selection_group_pick":
     "Mark at least one resolved group, or use the open-all button.",
   "supplierRequests.error.selection_group_none":
@@ -702,12 +759,13 @@ export const en: typeof pt = {
   "supplierRequests.table.hintWellmix":
     "One piece of information per column. Icons: message the supplier and open the product screen. The answer comes from the supplier, through the portal.",
   "supplierRequests.table.hint":
-    "One piece of information per column. Icons: message Wellmix, yes/no answer and open the product screen.",
+    "One piece of information per column. Under Actions: message Wellmix, open the product screen and, per item, confirm the offer, renegotiate or decline.",
   "supplierRequests.table.answerHint":
     "To answer yes, enter the price per piece. Minimum order and delivery terms (FOB/EXW) go with it; the lead time stays as it is (change it on the product screen).",
   "supplierRequests.table.proposalPendingWellmix":
     "Counter-offer waiting for the supplier.",
   "supplierRequests.table.late": "Late",
+  "supplierRequests.table.onTime": "On time",
   "supplierRequests.table.canDoYes": "Can do",
   "supplierRequests.table.canDoNo": "Can't do",
   "supplierRequests.table.canDoWaiting": "Waiting",
@@ -721,6 +779,9 @@ export const en: typeof pt = {
   "supplierRequests.table.col.needs": "Wellmix needs",
   "supplierRequests.table.col.canDo": "Can do?",
   "supplierRequests.table.col.sla": "SLA",
+  "supplierRequests.table.col.statusSla": "Status / SLA",
+  "supplierRequests.table.slaShow": "Show deadline date and time",
+  "supplierRequests.table.slaHide": "Hide deadline date and time",
   "supplierRequests.table.col.turn": "Turn",
   "supplierRequests.table.col.openedAt": "Opened",
   "supplierRequests.table.col.firstAnswerAt": "First answer",
@@ -792,6 +853,46 @@ export const en: typeof pt = {
   "supplierRequests.table.state.accepted": "Accepted",
   "supplierRequests.table.state.rejected": "Declined",
   "supplierRequests.table.state.counter": "New proposal from the supplier",
+  "supplierRequests.table.confirm": "Confirm {price}/pc",
+  "supplierRequests.table.confirmHint.book":
+    "Accepts the book offer as is: price, currency, minimum order and delivery.",
+  "supplierRequests.table.confirmHint.proposal":
+    "Accepts the Wellmix counter-offer as is.",
+  "supplierRequests.table.confirmHint.own":
+    "Your answer is already the offer in force.",
+  "supplierRequests.table.renegotiate": "Renegotiate",
+  "supplierRequests.table.renegotiateHint":
+    "Change the conditions and send a counter-offer",
+  "supplierRequests.table.renegotiateTitle": "Renegotiate · request no. {n}",
+  "supplierRequests.table.renegotiateText":
+    "The conditions in force are already filled in. Change what you want and send; the item stays under negotiation until Wellmix replies.",
+  "supplierRequests.table.renegotiateSend": "Send counter-offer",
+  "supplierRequests.table.refuse": "Decline offer",
+  "supplierRequests.table.refuseHint.book":
+    "Answers that you do not make this item.",
+  "supplierRequests.table.refuseHint.proposal":
+    "Declines the Wellmix counter-offer; your previous answer stands.",
+  "supplierRequests.table.refuseHint.own":
+    "Withdraws your answer: it will show that you do not make this item.",
+  "supplierRequests.detail.offer.confirmed": "Offer confirmed.",
+  "supplierRequests.detail.offer.refused": "Offer declined.",
+  "supplierRequests.error.supplier_request_offer_changed":
+    "The offer for this item changed since the screen was opened. Nothing was saved: check the current values and answer again.",
+  "supplierRequests.table.col.packageType": "Package",
+  "supplierRequests.table.col.measures": "Product size (cm)",
+  "supplierRequests.table.col.capacity": "Capacity / size",
+  "supplierRequests.table.col.masterCartonQty": "Pcs/master carton",
+  "supplierRequests.table.col.innerQty": "Pcs/inner box",
+  "supplierRequests.table.col.cbmPerCarton": "CBM/master carton (m³)",
+  "supplierRequests.table.col.totalCartons": "Total master cartons",
+  "supplierRequests.table.col.totalCbm": "Total volume (m³)",
+  "supplierRequests.table.details": "More details",
+  "supplierRequests.table.detailsNone": "No additional data for this item.",
+  "supplierRequests.table.detail.productName": "Product name",
+  "supplierRequests.table.detail.ncm": "NCM",
+  "supplierRequests.table.detail.book": "Open the Book of this item",
+  "supplierRequests.table.cbmFromMeasures":
+    "No CBM informed: volume calculated from the item measurements.",
 };
 
 export const zh: typeof pt = {
@@ -1029,7 +1130,7 @@ export const zh: typeof pt = {
   "supplierRequests.table.subtitle": "Wellmix 在此询单中向您询问的 {n} 个产品",
   "supplierRequests.table.col.photo": "图片",
   "supplierRequests.table.col.item": "产品",
-  "supplierRequests.table.col.quantity": "数量",
+  "supplierRequests.table.col.quantity": "总件数",
   "supplierRequests.table.col.bookingPrice": "Book 价格",
   "supplierRequests.table.col.answer": "您的答复",
   "supplierRequests.table.col.status": "状态",
@@ -1041,7 +1142,7 @@ export const zh: typeof pt = {
   "supplierRequests.table.needs": "Wellmix 需要",
   "supplierRequests.table.current": "本询单",
   "supplierRequests.table.proposalPending":
-    "有还价等待您答复：请打开产品页面回复。",
+    "有还价等待您答复：请确认、重新议价或拒绝。",
   "supplierRequests.table.message": "留言",
   "supplierRequests.table.messageTitle": "给 Wellmix 的留言 · 询单 {n} 号",
   "supplierRequests.table.messageText": "留言",
@@ -1073,6 +1174,11 @@ export const zh: typeof pt = {
   "supplierRequests.selection.winner": "已选 · {qty} 件",
   "supplierRequests.selection.blocks.reopen": "重新选择",
   "supplierRequests.selection.blocks.sizeManual": "比较了 {n} 个产品",
+  "supplierRequests.selection.requestedRow.chosen": "已选产品",
+  "supplierRequests.selection.requestedRow.others": "已比较但未选中的产品",
+  "supplierRequests.selection.requestedRow.none": "该组没有其他已比较的产品。",
+  "supplierRequests.selection.requestedRow.gone":
+    "该组还有 {n} 个产品已不在 Book 中。",
   "supplierRequests.error.selection_group_pick":
     "请至少勾选一个已解决的组，或使用全部打开按钮。",
   "supplierRequests.error.selection_group_none": "没有等待询问的已解决组。",
@@ -1081,11 +1187,12 @@ export const zh: typeof pt = {
   "supplierRequests.table.hintWellmix":
     "每列一项信息。图标：给供应商留言、打开产品页面。答复由供应商通过门户提交。",
   "supplierRequests.table.hint":
-    "每列一项信息。图标：给 Wellmix 留言、是/否答复、打开产品页面。",
+    "每列一项信息。操作栏：给 Wellmix 留言、打开产品页面，并可逐项确认报价、重新议价或拒绝。",
   "supplierRequests.table.answerHint":
     "答复“是”时请填写单价。起订量和交货方式（FOB/EXW）一并提交；交期保持不变（可在产品页面修改）。",
   "supplierRequests.table.proposalPendingWellmix": "还价等待供应商答复。",
   "supplierRequests.table.late": "已超时",
+  "supplierRequests.table.onTime": "未超时",
   "supplierRequests.table.canDoYes": "可以做",
   "supplierRequests.table.canDoNo": "不能做",
   "supplierRequests.table.canDoWaiting": "等待中",
@@ -1099,6 +1206,9 @@ export const zh: typeof pt = {
   "supplierRequests.table.col.needs": "Wellmix 需要",
   "supplierRequests.table.col.canDo": "能做？",
   "supplierRequests.table.col.sla": "SLA",
+  "supplierRequests.table.col.statusSla": "状态 / SLA",
+  "supplierRequests.table.slaShow": "显示截止日期和时间",
+  "supplierRequests.table.slaHide": "隐藏截止日期和时间",
   "supplierRequests.table.col.turn": "轮到",
   "supplierRequests.table.col.openedAt": "开单时间",
   "supplierRequests.table.col.firstAnswerAt": "首次答复",
@@ -1164,4 +1274,38 @@ export const zh: typeof pt = {
   "supplierRequests.table.state.accepted": "已接受",
   "supplierRequests.table.state.rejected": "已拒绝",
   "supplierRequests.table.state.counter": "供应商新报价",
+  "supplierRequests.table.confirm": "确认 {price}/件",
+  "supplierRequests.table.confirmHint.book":
+    "按原样接受 Book 报价：价格、币种、起订量和交货方式。",
+  "supplierRequests.table.confirmHint.proposal": "按原样接受 Wellmix 的还价。",
+  "supplierRequests.table.confirmHint.own": "您的答复已是当前有效报价。",
+  "supplierRequests.table.renegotiate": "重新议价",
+  "supplierRequests.table.renegotiateHint": "修改条件并发出还价",
+  "supplierRequests.table.renegotiateTitle": "重新议价 · 询单 {n} 号",
+  "supplierRequests.table.renegotiateText":
+    "当前有效条件已填好。修改后发送；在 Wellmix 答复前，该产品保持议价中。",
+  "supplierRequests.table.renegotiateSend": "发送还价",
+  "supplierRequests.table.refuse": "拒绝报价",
+  "supplierRequests.table.refuseHint.book": "答复不做此产品。",
+  "supplierRequests.table.refuseHint.proposal":
+    "拒绝 Wellmix 的还价；保留您之前的答复。",
+  "supplierRequests.table.refuseHint.own": "撤回您的答复：将显示不做此产品。",
+  "supplierRequests.detail.offer.confirmed": "报价已确认。",
+  "supplierRequests.detail.offer.refused": "报价已拒绝。",
+  "supplierRequests.error.supplier_request_offer_changed":
+    "打开页面后，此产品的报价已变更。未保存任何内容：请核对当前数值后重新答复。",
+  "supplierRequests.table.col.packageType": "包装",
+  "supplierRequests.table.col.measures": "产品尺寸（cm）",
+  "supplierRequests.table.col.capacity": "容量 / 尺寸",
+  "supplierRequests.table.col.masterCartonQty": "每外箱件数",
+  "supplierRequests.table.col.innerQty": "每内盒件数",
+  "supplierRequests.table.col.cbmPerCarton": "每外箱CBM（m³）",
+  "supplierRequests.table.col.totalCartons": "外箱总数",
+  "supplierRequests.table.col.totalCbm": "总体积（m³）",
+  "supplierRequests.table.details": "更多详情",
+  "supplierRequests.table.detailsNone": "此产品没有补充信息。",
+  "supplierRequests.table.detail.productName": "产品名称",
+  "supplierRequests.table.detail.ncm": "NCM",
+  "supplierRequests.table.detail.book": "打开此产品的 Book",
+  "supplierRequests.table.cbmFromMeasures": "未填写CBM：体积按产品尺寸计算。",
 };

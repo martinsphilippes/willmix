@@ -106,6 +106,7 @@ describe("etapas da Control Tower", () => {
       { key: "lnArt", count: 1 },
       { key: "lnArtReview", count: 0 },
       { key: "lnCert", count: 1 },
+      { key: "lnRegistration", count: 0 },
     ]);
     const production = stages.find((s) => s.key === "production")!;
     expect(production.count).toBe(1);

@@ -11,6 +11,19 @@ import {
 import { ActionError } from "@/components/action-error";
 import { Fragment, type ReactNode } from "react";
 import { fallbackError } from "@/i18n/error-text";
+import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
+import {
+  DOWN_PAYMENT_KEY,
+  LANE_KEYS,
+  baseKeyOf,
+  blockedBy,
+  isAutoGateKey,
+  isLeadTimeKey,
+  isSampleOrderKey,
+  itemIdOf,
+  supplierSeesLaneRequirement,
+} from "@/lib/purchase-lanes";
+import { canViewDieCut, negotiatedTerms } from "@/lib/services/die-cut-step";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -231,6 +244,13 @@ export default async function OrderPage({
     purchaseFlow && (key === "PREPARATION" || key === "PACKAGING")
       ? t(`purchaseOrder.stage.${key}` as DictionaryKey)
       : t(`stage.${key}` as DictionaryKey);
+  // Linha da etapa na tabela "Etapas do pedido" (pedido do dono, 13/11/2026):
+  // no pedido de compra a etapa 2 aparece como "Die-Cut, Arte e Certificação";
+  // o quadro da etapa e o resto da tela seguem com o nome de sempre.
+  const stageRowName = (key: string) =>
+    purchaseFlow && key === "PREPARATION"
+      ? t("purchaseOrder.stageRow.PREPARATION")
+      : stageName(key);
   const store = getStore();
   const wellmix = isWellmix(user);
   /* Certificadora (OCP) do pedido: vê tudo do pedido para gerar o selo
@@ -270,6 +290,16 @@ export default async function OrderPage({
     sheetState = await sheetProgress(progress.order);
   }
   const { order, stages, requirements } = progress;
+  /* Visão do fornecedor na Preparação do pedido de compra (pedido do dono,
+     13/11/2026): só a faca, a foto em alta e o prazo de produção de cada
+     produto, e o campo do prazo já vem com o prazo registrado na solicitação
+     ou na negociação. Só traz o valor: ele confere e envia, como antes. */
+  const supplierLanes = purchaseFlow && user.role === "supplier";
+  const registeredTerms =
+    supplierLanes &&
+    requirements.some((r) => isLeadTimeKey(r.key) && r.status !== "done")
+      ? await negotiatedTerms(order)
+      : null;
   // "Enviar para assinatura" (pedidos novos): o que ainda falta (arte, selo).
   const signSend = requirements.find((r) => r.key === ORDER_SIGN_SEND);
   const sendBlockers =
@@ -315,6 +345,19 @@ export default async function OrderPage({
   const certSteps = certAll.filter(
     (v) => v.template.seal || classicCert || v.template.key === "cert_memorial",
   );
+  /* Visão interna: o que falta designar para cada tarefa da certificação ter
+     dono (docs/CERTIFICATION.md, "Quem recebe cada tarefa"), e o pedido de
+     compra cujos produtos não exigem certificação (nada vira pendência). */
+  const certMissingDesigner =
+    certSteps.find((v) => v.assignee?.missing === "designer")?.assignee ?? null;
+  const certMissingAnalyst = certSteps.some(
+    (v) => v.assignee?.missing === "analyst",
+  );
+  const certNotNeeded =
+    wellmix &&
+    certSteps.length > 0 &&
+    order.flow === "supplier_request" &&
+    !(await importFlow.purchaseNeedsCertification(order));
   for (const v of [...importSteps, ...certSteps]) {
     if (v.step?.submittedByUserId)
       productionUserIds.add(v.step.submittedByUserId);
@@ -1471,10 +1514,10 @@ export default async function OrderPage({
                               href={stageHref(s)}
                               className="transition hover:text-brand-700"
                             >
-                              {stageName(s.key)}
+                              {stageRowName(s.key)}
                             </a>
                           ) : (
-                            stageName(s.key)
+                            stageRowName(s.key)
                           )}
                         </span>
                       </Td>
@@ -1694,6 +1737,11 @@ export default async function OrderPage({
               )?.value ?? null;
             const open =
               stage.status === "active" || stage.status === "blocked";
+            // Pedido de compra, fornecedor: só a faca, a foto em alta e o prazo.
+            const supplierView = supplierLanes && stage.key === "PREPARATION";
+            const shownReqs = supplierView
+              ? reqs.filter(supplierSeesLaneRequirement)
+              : reqs;
             return (
               <Fragment key={stage.id}>
                 <Card
@@ -1750,8 +1798,13 @@ export default async function OrderPage({
                     ) : null
                   }
                 >
-                  <p className="mb-2 text-xs leading-relaxed text-zinc-500">
-                    {t(`help.stage.${stage.key}`)}
+                  <p
+                    className="mb-2 text-xs leading-relaxed text-zinc-500"
+                    data-stage-help={supplierView ? "supplier" : undefined}
+                  >
+                    {supplierView
+                      ? t("dieCut.stageHelp.supplier")
+                      : t(`help.stage.${stage.key}`)}
                   </p>
                   {stage.key === "SHIPPING" && showTariff ? (
                     <FreightTariffBox
@@ -1804,17 +1857,67 @@ export default async function OrderPage({
                   ) : null}
                   {stage.status === "pending" ? (
                     <p className="text-sm text-zinc-500">
-                      {reqs.map((r) => requirementLabel(t, r)).join(" · ")}
+                      {shownReqs.map((r) => requirementLabel(t, r)).join(" · ")}
                     </p>
                   ) : (
-                    <ul className="@container divide-y divide-zinc-100">
-                      {reqs.map((r) => (
+                    <ul
+                      className="@container divide-y divide-zinc-100"
+                      data-stage-tasks={stage.key}
+                    >
+                      {/* Pedido de compra: os quatro itens do fornecedor também
+                          ficam juntos, produto a produto, no quadro Die Cut. */}
+                      {purchaseFlow &&
+                      stage.key === "PREPARATION" &&
+                      canViewDieCut(user, progress.order) &&
+                      reqs.some((r) => dieCutItemOf(r.key)) ? (
+                        <li
+                          className="flex flex-wrap items-center justify-between gap-2 py-2.5"
+                          data-die-cut-link
+                        >
+                          <span className="text-sm text-zinc-600">
+                            {t(
+                              supplierView
+                                ? "dieCut.orderHint.supplier"
+                                : "dieCut.orderHint",
+                            )}
+                          </span>
+                          <LinkButton
+                            href={dieCutHref(order.id)}
+                            variant={
+                              user.role === "supplier" &&
+                              reqs.some(
+                                (r) =>
+                                  dieCutItemOf(r.key) && r.status !== "done",
+                              )
+                                ? "primary"
+                                : "secondary"
+                            }
+                          >
+                            {reqs.some(
+                              (r) => dieCutItemOf(r.key) && r.status !== "done",
+                            )
+                              ? t("dieCut.open")
+                              : t("dieCut.view")}
+                          </LinkButton>
+                        </li>
+                      ) : null}
+                      {shownReqs.map((r) => (
                         <RequirementRow
                           key={r.id}
                           requirement={r}
                           order={order}
                           user={user}
                           t={t}
+                          // O prazo registrado para o item só preenche o campo.
+                          defaultValue={
+                            supplierView && isLeadTimeKey(r.key)
+                              ? (r.value ??
+                                registeredTerms
+                                  ?.get(itemIdOf(r.key) ?? "")
+                                  ?.days?.toString() ??
+                                null)
+                              : null
+                          }
                           waiting={
                             r.key === "art_approval" &&
                             reqs.some(
@@ -1838,7 +1941,15 @@ export default async function OrderPage({
                                           x.status !== "done",
                                       )
                                     ? t("orderSign.send.waitWellmix")
-                                    : dateWaiting(t, stage.key, r, reqs)
+                                    : ((purchaseFlow
+                                        ? laneWaiting(t, r, reqs)
+                                        : null) ??
+                                      dateWaiting(t, stage.key, r, reqs))
+                          }
+                          gateHref={
+                            purchaseFlow && wellmix
+                              ? gateHrefOf(order.id, r, items)
+                              : null
                           }
                           dateBounds={
                             r.type === "date"
@@ -2016,7 +2127,7 @@ export default async function OrderPage({
           names={productionNames}
           title={t("certFlow.title")}
           anchor="certification"
-          featured={["cert_seal", "cert_memorial"]}
+          featured={importFlow.CERT_FEATURED_STEPS}
           featuredHint={t("certFlow.featured.hint")}
           error={stepCard === "certification" ? stepError : null}
           hints={[
@@ -2024,8 +2135,48 @@ export default async function OrderPage({
               ? [t("certFlow.sealHint")]
               : []),
             // Todo pedido precisa de selo: sem certificadora, a Wellmix designa.
-            ...(wellmix && !order.ocpId && certSteps.length
-              ? [t("certFlow.notify.noOcp.body")]
+            ...(certNotNeeded
+              ? [
+                  <span key="no-cert" data-cert-not-needed>
+                    {t("certFlow.noCertNeeded")}
+                  </span>,
+                ]
+              : []),
+            ...(wellmix && !order.ocpId && certSteps.length && !certNotNeeded
+              ? [
+                  <span key="no-ocp" data-cert-missing="ocp">
+                    {t("certFlow.notify.noOcp.body")}{" "}
+                    <a href="#order-partners" className={linkClass}>
+                      {t("certFlow.assign.ocp")}
+                    </a>
+                  </span>,
+                ]
+              : []),
+            // Arte feita pela Wellmix sem designer: quem fica com a aplicação
+            // do selo e onde escolher o designer.
+            ...(certMissingDesigner && !certNotNeeded
+              ? [
+                  <span key="no-designer" data-cert-missing="designer">
+                    {t("certFlow.missingHint.designer", {
+                      who:
+                        certMissingDesigner.label ??
+                        t("certFlow.assignee.team"),
+                    })}{" "}
+                    <a href="#artwork" className={linkClass}>
+                      {t("certFlow.assign.designer")}
+                    </a>
+                  </span>,
+                ]
+              : []),
+            ...(certMissingAnalyst && !certNotNeeded
+              ? [
+                  <span key="no-analyst" data-cert-missing="analyst">
+                    {t("certFlow.missingHint.analyst")}{" "}
+                    <TextLink href="/app/team#distribute">
+                      {t("certFlow.assign.analyst")}
+                    </TextLink>
+                  </span>,
+                ]
               : []),
             // A certificação pedida na ficha: só para quem abre a ficha
             // aqui (a Wellmix e a certificadora), não para a agência ou o comex.
@@ -2918,10 +3069,19 @@ function RequirementRow({
   sheetHint,
   dateBounds,
   waiting,
+  gateHref,
+  defaultValue,
 }: {
   requirement: Requirement;
+  /**
+   * Item conferido pelo sistema (NCM validado, ficha completa, sinal): o
+   * atalho para a tela onde a área dona faz a parte dela.
+   */
+  gateHref?: { href: string; label: DictionaryKey } | null;
   /** Ainda não dá para agir: aguarda outro item (ex.: aprovar a arte antes de ela chegar). */
   waiting?: string | null;
+  /** Valor que o campo traz preenchido (quem preenche confere e envia). */
+  defaultValue?: string | null;
   /** Data: limites vindos das outras datas do pedido. */
   dateBounds?: DateBounds;
   order: {
@@ -3082,6 +3242,27 @@ function RequirementRow({
             </LinkButton>
           </div>
         ) : null
+      ) : isSampleOrderKey(r.key) ? (
+        // Pedido de amostras: pela página dele (docs/SAMPLE_ORDER.md).
+        isWellmix(user) || user.role === "supplier" ? (
+          <div className={wide.side}>
+            <LinkButton
+              href={`/app/orders/${order.id}/samples`}
+              variant={
+                open &&
+                !waiting &&
+                r.status !== "done" &&
+                canSubmitRequirement(user, order as never, r)
+                  ? "primary"
+                  : "secondary"
+              }
+              className="w-full @sm:w-auto"
+              data-sample-order-link={r.key}
+            >
+              {t("sampleOrder.open")}
+            </LinkButton>
+          </div>
+        ) : null
       ) : isOrderSignatureKey(r.key) ? (
         // Assinatura: pela página do documento do pedido (só a Wellmix e o
         // fornecedor do pedido chegam a ela).
@@ -3097,6 +3278,17 @@ function RequirementRow({
             </LinkButton>
           </div>
         ) : null
+      ) : open && gateHref && !waiting && r.status !== "done" ? (
+        <div className={wide.side}>
+          <LinkButton
+            href={gateHref.href}
+            variant="secondary"
+            className="w-full @sm:w-auto"
+            data-requirement-gate={baseKeyOf(r.key)}
+          >
+            {t(gateHref.label)}
+          </LinkButton>
+        </div>
       ) : canAct ? (
         <div className={wide.side}>
           <RequirementForm
@@ -3104,6 +3296,7 @@ function RequirementRow({
             orderId={order.id}
             t={t}
             dateBounds={dateBounds}
+            defaultValue={defaultValue}
           />
         </div>
       ) : canRemeasure ? (
@@ -3131,6 +3324,52 @@ function RequirementRow({
 /* ------------------------------------------------------------------------ */
 /* Evolução incremental: trilha, snapshot, resultado da inspeção, containers  */
 /* ------------------------------------------------------------------------ */
+
+/**
+ * Pedido de compra: o item espera o anterior da raia ou do contrato (a arte
+ * espera a faca e a foto em alta; a arte final, a arte validada e o
+ * certificado; o sinal, as duas assinaturas). Diz o que falta.
+ */
+function laneWaiting(
+  t: Translate,
+  r: Requirement,
+  reqs: Requirement[],
+): string | null {
+  if (r.status === "done") return null;
+  const missing = blockedBy(r.key, reqs);
+  if (!missing.length) return null;
+  const labels = missing
+    .map((k) => reqs.find((x) => x.key === k))
+    .filter((x): x is Requirement => !!x)
+    .map((x) => requirementLabel(t, x).split(" · ")[0]);
+  return t("purchaseSequence.waiting", { items: labels.join(", ") });
+}
+
+/** Atalho dos itens que o sistema confere: onde a área dona faz a parte dela. */
+function gateHrefOf(
+  orderId: string,
+  r: Requirement,
+  items: Array<{ id: string; productId: string | null }>,
+): { href: string; label: DictionaryKey } | null {
+  if (!isAutoGateKey(r.key)) return null;
+  const base = baseKeyOf(r.key);
+  if (base === DOWN_PAYMENT_KEY)
+    return {
+      href: `/app/orders/${orderId}#supplier-payment`,
+      label: "purchaseSequence.gate.downPayment",
+    };
+  const productId = items.find((i) => i.id === itemIdOf(r.key))?.productId;
+  if (!productId) return null;
+  return base === LANE_KEYS.ncmValidated
+    ? {
+        href: `/app/products/${productId}/tax`,
+        label: "purchaseSequence.gate.ncm",
+      }
+    : {
+        href: `/app/products/${productId}#photos`,
+        label: "purchaseSequence.gate.sheet",
+      };
+}
 
 /**
  * Data que espera outra da mesma etapa (ex.: a previsão de chegada só depois

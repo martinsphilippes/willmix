@@ -180,6 +180,110 @@ export function cartonsPerContainer(
   return Math.floor(containerCbm / cbmPerCarton + 1e-9);
 }
 
+/**
+ * O gerador recebe o total em CAIXAS master (decisão do dono, 13/11/2026); a
+ * programação continua em peças: caixas × peças por caixa master do item
+ * escolhido. Nulo sem as peças por caixa (não há como converter) ou com um
+ * número de caixas que não é inteiro e positivo.
+ */
+export function piecesFromCartons(
+  cartons: number,
+  masterCartonQty: number | null | undefined,
+): number | null {
+  if (!pos(masterCartonQty) || !pos(cartons) || !Number.isInteger(cartons))
+    return null;
+  return cartons * masterCartonQty;
+}
+
+/** Peças em caixas master inteiras (para cima, como o gerador arredonda). */
+export function cartonsFromPieces(
+  pieces: number,
+  masterCartonQty: number | null | undefined,
+): number | null {
+  if (!pos(masterCartonQty) || !pos(pieces)) return null;
+  return Math.ceil(pieces / masterCartonQty - 1e-9);
+}
+
+/** Número inteiro digitado: pontos, vírgulas e espaços são separador de milhar. */
+export function parseCount(text: string): number {
+  const t = String(text).replace(/[.,\s]/g, "");
+  return t ? Number(t) : NaN;
+}
+
+/** O último campo de quantidade digitado no gerador e o que foi digitado. */
+export interface TypedQuantity {
+  unit: "cartons" | "pieces";
+  text: string;
+  /**
+   * As peças que estavam na tela ao digitar as caixas: ficam no campo quando
+   * o item não tem peças por caixa master (não há como converter).
+   */
+  pieces: string;
+}
+
+/**
+ * "Total de caixas" e "Quantidade (peças)" são o mesmo número em duas
+ * unidades (pedido do dono, 13/11/2026): o que se digita num aparece no
+ * outro, pelas peças por caixa master do item escolhido. 10 caixas de 48 são
+ * 480 peças; 500 peças são 11 caixas (inteiras, para cima).
+ *
+ * Sem nada digitado, os dois acompanham a quantidade de base (`base`: a
+ * gravada ou a soma das rodadas). Com as peças em branco vale a quantidade
+ * da planilha ao gravar, e é ela que as caixas mostram.
+ */
+export function quantityFields(input: {
+  typed: TypedQuantity | null;
+  /** Quantidade de base, em peças (texto do campo). */
+  base: string;
+  masterCartonQty: number | null | undefined;
+  sheetQty: number | null | undefined;
+}): { cartons: string; pieces: string } {
+  const { typed, masterCartonQty } = input;
+  const pieces =
+    typed === null
+      ? input.base
+      : typed.unit === "pieces"
+        ? typed.text
+        : pos(masterCartonQty)
+          ? String(
+              piecesFromCartons(parseCount(typed.text), masterCartonQty) ?? "",
+            )
+          : typed.pieces;
+  if (typed?.unit === "cartons") return { cartons: typed.text, pieces };
+  const now = pieces.trim() ? parseCount(pieces) : (input.sheetQty ?? NaN);
+  return {
+    cartons: String(cartonsFromPieces(now, masterCartonQty) ?? ""),
+    pieces,
+  };
+}
+
+/**
+ * O que acontece com a programação da tela quando o item marcado em
+ * "Escolher" muda (pedido do dono, 13/11/2026). As rodadas são do item com
+ * cuja caixa foram feitas:
+ *
+ * - `drop`: trocar de item (ou desmarcar) desfaz a programação ainda não
+ *   gravada do item anterior;
+ * - `restore`: voltar ao item da escolha gravada traz de volta a programação
+ *   gravada com ele (nada foi apagado), a não ser que o usuário a tenha
+ *   desligado em "Sem programação" com esse item marcado;
+ * - `keep`: sem programação na tela, nada muda.
+ */
+export function scheduleOnItemChange(input: {
+  /** A programação está ligada na tela. */
+  on: boolean;
+  /** O item marcado agora (nulo: nenhum). */
+  next: string | null;
+  /** O item da escolha gravada, quando ela tem programação gravada. */
+  savedItem: string | null;
+  /** A programação gravada ainda pode voltar (o usuário não a desligou). */
+  savedKept: boolean;
+}): "keep" | "drop" | "restore" {
+  if (input.next !== null && input.next === input.savedItem && input.savedKept)
+    return "restore";
+  return input.on ? "drop" : "keep";
+}
+
 export function planPurchaseRounds(
   input: RoundsPlanInput,
 ): { plan: RoundsPlan } | { error: RoundsPlanError } {

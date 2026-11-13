@@ -996,6 +996,95 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - Só esse texto (`purchaseRounds.gen.hint`), nos três idiomas. Nada mudou na conta nem nos campos. Sem mudança no banco.
 - **Ficou como estava, para o dono decidir**: o campo logo abaixo continua se chamando "Total de peças" e continua recebendo peças (a conta arredonda para caixas master inteiras). A explicação agora fala em caixas e o campo em peças: ou o campo passa a receber caixas (muda a conta: caixas × peças por caixa master), ou só o nome dele muda, ou fica assim.
 
+## Seleção de itens: sai a coluna "Alternativa" da tabela do grupo
+
+- **Pedido do dono** (13/11/2026, com a foto da tabela): remover só a coluna "Alternativa", a segunda, entre "Escolher" e "Foto": o cabeçalho e as caixas de seleção, com "Foto" logo à direita de "Escolher", sem espaço vazio. Limitar à exibição dessa tabela e preservar a escolha do item principal, a ordem das demais colunas, os dados já salvos e as regras de negócio.
+- **O que saiu**: o cabeçalho e a célula com a caixa em `src/app/app/booking/selection/page.tsx` (aba Seleção; a aba Itens já não tinha a coluna). É uma remoção de tela pedida pelo dono, a única desta entrega.
+- **Por que não muda regra nem dado**: a caixa não alterava o que era gravado. A escolha grava os itens do grupo (`group`) e o ganhador; marcar "Alternativa" só repetia ids que já estavam no grupo. Ao abrir a solicitação, todos os outros itens do grupo vão como alternativas (`openGroupRequests`), como antes.
+- **Ficou como estava**: a coluna "Escolher" e a escolha do ganhador, a ordem e o conteúdo das outras colunas, a ação de gravar (ainda aceita `alternatives`), o texto "Alternativa" no dicionário, as alternativas na solicitação ao fornecedor e tudo o que já estava salvo. Sem mudança no banco.
+- **Teste**: o E2E confere que a caixa e o cabeçalho não existem mais, que "Foto" vem logo depois de "Escolher", que cada linha tem o mesmo número de colunas do cabeçalho e, adiante, que o outro item do grupo continua aparecendo como alternativa na solicitação.
+
+## Programação de compra: o total do gerador passa a ser digitado em caixas
+
+- **Decisão do dono** (13/11/2026, depois de a explicação passar a dizer "total de caixas"): "o campo passa a receber caixas". Antes o campo se chamava "Total de peças" e a conta lia o número como peças, o que desencontrava do texto.
+- O campo do gerador chama-se **"Total de caixas"** e recebe caixas master inteiras. A conta multiplica pelas **peças por caixa master** do item escolhido e continua em peças: a "Quantidade (peças)" e os cartões das rodadas não mudaram. A linha do Cálculo passou a dizer as duas coisas ("2 rodada(s) · 300 caixas (14.400 peças) · …").
+- O campo acompanha a tela como antes, agora em caixas: sem nada digitado mostra as peças da quantidade (ou da planilha) em caixas inteiras, para cima; mexer numa rodada atualiza o número.
+- Item **sem peças por caixa master**: caixas não viram peças. O gerador avisa e indica "+ Programação de compra", onde as peças de cada rodada são digitadas (antes ele dividia as peças igualmente). Item só **sem o CBM** da caixa: as caixas são divididas igualmente, sem conta de containers.
+- Regra em `src/lib/purchase-rounds.ts` (`piecesFromCartons`, `cartonsFromPieces`); tela em `src/components/selection-quantity.tsx`. Textos nos três idiomas (`purchaseRounds.gen.total`, `.errorTotal`, `.result`, `.noItem`, `.noCarton` e o novo `.noPieces`). Sem mudança no banco: a programação gravada continua em peças.
+- Testes: `tests/unit/purchase-rounds-plan.test.ts` (conversão) e o E2E da seleção (1.250 caixas = 60.000 peças em 3 rodadas; o campo acompanhando as rodadas em caixas).
+
+## Seleção de itens: "Com solicitação aberta" em lista compacta
+
+- **Pedido do dono** (13/11/2026, com a foto da tela): os cartões da parte "Com solicitação aberta" ocupavam muito espaço. Viraram uma lista compacta, com uma linha de largura total por grupo comparado: o nome do grupo, o link "Solicitação nº N aberta", o resumo do item escolhido (quantidade, programação de compra quando houver e preço) e "Rever a escolha".
+- Cada linha começa recolhida. A seta abre, embaixo da própria linha, os itens comparados que não foram escolhidos, com os dados que os cartões mostravam (nome, fornecedor e preço); outro toque recolhe. O link da solicitação fica fora do botão da seta: abre a solicitação sem abrir a linha.
+- A unidade da lista é o grupo: dois grupos na mesma solicitação (ex.: 6604-7 e 6604-4 na nº 3) continuam em linhas separadas.
+- **Só a apresentação dessa parte**: os cartões de "Por resolver" e dos resolvidos que esperam a solicitação, os vínculos com as solicitações, os dados gravados e "Rever a escolha" (mesmo endereço) não mudaram. Nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- Dois cuidados a mais, só nessa lista: a linha aberta mostra o grupo inteiro mesmo com busca ou filtro na tela (antes os itens fora do filtro sumiam do cartão), e o item sem descrição aparece pelo código da fábrica (antes, "—").
+- Peças: `RequestedGroups` (`src/app/app/booking/selection/_components/requested-groups.tsx`), `ExpandRow` (`src/components/expand-row.tsx`) e `otherGroupItems` (`src/lib/booking-selection.ts`). As colunas seguem a largura da lista (`@container`): uma linha só a partir de 48rem (iPad deitado), duas no iPad em pé, três no celular.
+- Testes: `tests/unit/booking-selection.test.ts` (itens não escolhidos) e o E2E `booking-supplier-request.spec.ts` (linha recolhida, seta abre e recolhe, link não abre a linha e leva à solicitação, grupo inteiro com a tela filtrada, "Rever a escolha").
+
+## Solicitação ao fornecedor: colunas "Programações" e "Peças por programação"
+
+- **Pedido do dono** (13/11/2026, com a foto da tabela): na tabela "Produtos desta solicitação" (Compras → Solicitações ao fornecedor → detalhes), o cabeçalho "Rodadas" passa a "Programações" e "Peças por rodada" passa a "Peças por programação".
+- Só os dois rótulos em português dessa tabela (`supplierRequests.table.col.rounds` e `.perRound`). Inglês e chinês, a ordem das colunas, os valores, as contas e o resto da tela não mudaram. Sem mudança no banco.
+
+## Seleção de itens: "Quantidade (peças)" ao lado de "Total de caixas", sincronizados
+
+- **Pedido do dono** (13/11/2026, com a foto do cartão no tablet): no cartão "Gravar a escolha do grupo", mover "Quantidade (peças)" do alto do cartão para a mesma linha de "Total de caixas", imediatamente à direita, com a mesma largura, altura e estilo e os rótulos alinhados; sincronizar os dois nos dois sentidos pelas peças por caixa master do item escolhido (10 caixas de 48 = 480 peças); com a programação fechada, manter "Quantidade (peças)" acessível para gravar a escolha sem rodadas; o mesmo valor nos dois modos; em branco continua valendo a quantidade da planilha.
+- **Posição e tamanho**: o campo saiu do alto do cartão (um campo só, o mesmo `data-selection-quantity`) e entrou na linha do gerador, com a mesma coluna e a mesma classe de "Total de caixas". A dica dele vem logo abaixo da linha. Com sete controles na linha, o botão "Gerar programação" só cabe ao lado dos campos em tela larga; em tablet deitado com o menu aberto e em janela de 1280 ele desce para a linha de baixo (os seis campos continuam numa linha só).
+- **Sincronização**: `quantityFields` e `parseCount` em `src/lib/purchase-rounds.ts` (regra pura, com teste). Caixas → peças = caixas × peças por caixa; peças → caixas inteiras, para cima. Guarda-se só o último campo digitado; o outro sai da conta, inclusive quando o item escolhido muda.
+- **Nos dois modos**: fechada, as peças são a quantidade da escolha (vão no formulário; Enter grava, como antes). Aberta, a quantidade gravada continua sendo a soma das rodadas e os dois campos são o total do gerador (vale em "Gerar programação" ou Enter; acompanham as rodadas quando elas mudam). O campo deixou de ser só leitura com a programação aberta, porque passou a ser entrada do gerador.
+- **Ficou como estava**: a escolha do item na tabela, Programações, Container, os dois informativos de containers, o Cálculo, os cartões das rodadas com Aumentar e Diminuir, "O que a Wellmix precisa", "Gravar escolha", "Gerar programação" e a regra do servidor (em branco = quantidade da planilha; com programação = soma das rodadas). Nenhum texto mudou. Sem mudança no banco.
+- **Teste**: `tests/unit/purchase-rounds-plan.test.ts` (a regra dos dois campos) e o E2E da seleção (posição, largura e altura iguais, rótulos alinhados, conversão nos dois sentidos, Enter nos dois modos, fechar a programação mantendo o valor, gravar 10 caixas = 480 peças e reabrir a escolha).
+
+## Solicitação ao fornecedor: "Situação" e "SLA" no fim da tabela, fixas com "Ações"
+
+- **Pedido do dono** (13/11/2026, com a foto da tabela): em "Produtos desta solicitação" (Compras → Solicitações ao fornecedor → detalhes), a situação do produto e o SLA ficavam no meio da tabela e sumiam na rolagem. Passam para o fim, na ordem **Situação | SLA | Ações**, e o conjunto fica fixo à direita na rolagem horizontal.
+- **Indicadores compactos**: em "Situação", o selo da situação e, na aprovada, a amostragem embaixo (rótulo pequeno e selo menor, que quebra a linha quando o texto é longo); em "SLA", o estado em destaque ("Atrasada" ou "No prazo") e a data e a hora do prazo numa segunda linha menor.
+- **Só a posição e a apresentação dessas duas colunas**: a "Situação" das condições finais ("Aceita"…) continua no lugar dela; a ordem das outras colunas, os dados, as regras de SLA e da amostragem e os botões de mensagem e de abrir o produto não mudaram. Nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- **Onde fixa**: a partir de 1024px de tela (iPad deitado e computador). No iPad em pé e no celular as três colunas tomariam quase toda a largura ao lado do menu; ali só "Ações" fica fixa, como antes.
+- Texto novo nos três idiomas: `supplierRequests.table.onTime` ("No prazo"). O `Badge` aceita `className` para o selo menor.
+- Peças: `src/app/app/supplier-requests/_components/supplier-table.tsx` (variáveis `--pin-*` e classes `PIN`). Detalhes em `docs/SUPPLIER_REQUESTS.md`, "Situação, SLA e ações fixas à direita".
+- Teste: o E2E `booking-supplier-request.spec.ts` confere a ordem das três colunas, que elas não saem do lugar ao rolar (com 2 e com 3 botões), o SLA em duas linhas e a situação com a amostragem.
+
+## Pedido de compra: "Preparação, arte e certificação" na visão do fornecedor
+
+- **Pedido do dono** (13/11/2026, com a foto da seção): o fornecedor via na seção as tarefas de todas as raias (faca, foto em alta, MOQ, prazo, arte, validação da arte, certificado e arte final). Agora vê **só três por produto**: a faca (die cut) e a foto em alta, com os mesmos controles de envio, e o prazo de produção confirmado (dias).
+- **Prazo já preenchido**: o campo traz o prazo registrado para o item na solicitação ao fornecedor (a resposta dele, com o que a negociação mudou). Só traz o valor: a confirmação segue o envio de sempre. Sem prazo registrado, campo vazio e editável com "Enviar"; já confirmado, a linha mostra o valor confirmado.
+- **Textos**: para o fornecedor, a ajuda da seção e a frase do atalho do Die Cut falam só das três tarefas (pt/en/zh: `dieCut.stageHelp.supplier`, `dieCut.orderHint.supplier`).
+- **Só a visão do fornecedor nessa seção**: as tarefas, os dados e as regras continuam os mesmos; a Wellmix e os outros papéis veem a seção como antes. O MOQ continua obrigatório e o fornecedor confirma no quadro Die Cut (ou a Wellmix). Nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- Peças: `supplierSeesLaneRequirement` e `isLeadTimeKey` (`src/lib/purchase-lanes.ts`), `negotiatedTerms` (`src/lib/services/die-cut-step.ts`, agora exportado) e a página do pedido. Detalhes em `docs/PURCHASE_ORDER.md`, seção 2c.
+- Testes: `tests/unit/die-cut-step.test.ts` (o que o fornecedor vê), `tests/unit/purchase-order.test.ts` (um produto com prazo registrado e outro sem; confirmar segue o envio de sempre) e o E2E do caminho principal.
+
+## Solicitação ao fornecedor: coluna compacta "Situação / SLA" com o prazo atrás do "+"
+
+- **Pedido do dono** (13/11/2026, com imagem de referência): na tabela "Produtos desta solicitação", a situação e o SLA ficam numa coluna compacta, **"Situação / SLA"** (eram duas colunas, "Situação" e "SLA"). À direita do selo do SLA (**Atrasada** ou **No prazo**), na mesma linha, um botão pequeno **"+"**; a data e a hora do prazo começam recolhidas.
+- **"+"** mostra a data e a hora embaixo do selo, dentro da célula, e vira **"−"**; **"−"** recolhe. Cada linha abre sozinha e a coluna mantém a largura.
+- O mesmo vale para **No prazo** (o pedido mostrava o atrasado; a data recolhida vale para os dois, para a coluna ficar compacta em todas as linhas). **Confirmado pelo dono** no mesmo dia: "Pode deixar o + também no No prazo".
+- **Não mudou**: "Mais detalhes" do produto, os botões de "Ações" (mensagem, abrir o produto e, para o fornecedor, confirmar, renegociar e recusar), a amostragem na situação aprovada e as regras do SLA (`slaOf`). "Situação / SLA" e "Ações" continuam fixas à direita a partir de 1024px. Sem mudança no banco.
+- Textos novos nos três idiomas (`supplierRequests.table.col.statusSla`, `.slaShow`, `.slaHide`). Testes: `tests/unit/sla-due-toggle.test.ts` (começa recolhido, "+" à direita do selo) e o E2E da solicitação (abre, mostra a data embaixo, vira "−", recolhe, largura igual). O E2E da solicitação passou a informar o câmbio manual em Configurações (`setManualFx` em `tests/e2e/helpers.ts`), porque a simulação da proposta dependia de os sites públicos de câmbio responderem de onde o teste roda.
+
+## Programação de compra: só calcula e gera com um item marcado em "Escolher"
+
+- **Pedido do dono** (13/11/2026, com as fotos da tela no tablet: "Total de caixas" 1.360 e "Programações" 5 preenchidos, nenhum item marcado e a conta feita com "COMB · YI KAI", o primeiro do grupo): exigir que um item do grupo esteja marcado na coluna "Escolher" antes de calcular ou gerar a programação; sem item, "Gerar programação" desligado, resultados em branco e o aviso "Selecione um item na tabela para gerar a programação de compra"; tirar o uso automático do primeiro item do grupo com caixa master e CBM; validar também na geração e na gravação; trocar ou desmarcar o item invalida os resultados e a programação ainda não gravada; preservar as programações gravadas e o resto da tela.
+- **Tela** (`src/components/selection-quantity.tsx`): a caixa da conta é só a do item marcado. Sem ele, o gerador mostra o aviso, "Gerar programação" e "+ Programação de compra" ficam desligados (e "+ Rodada" e "×", com a nova opção `blocked` de `RequestScheduleFields`), Enter não gera e os informativos e o Cálculo ficam em branco. Saiu a conta com o item "assumido" e o aviso de rodadas geradas com a caixa de outro item, que deixou de acontecer.
+- **Troca de item** (`scheduleOnItemChange`, regra pura com teste): a programação ainda não gravada do item anterior sai da tela; a gravada volta ao marcar de novo o item da escolha gravada (a não ser que o usuário a tenha desligado com ele marcado). Nada muda no banco até "Gravar escolha".
+- **Servidor** (`saveSelectionGroup`): além de exigir o item marcado (como antes), recusa o escolhido que não é um dos itens do grupo comparado, com ou sem programação (`supplier_request_choose`).
+- **Textos**: novo `purchaseRounds.gen.selectItem` nos três idiomas; saíram `purchaseRounds.gen.itemAssumed`, `.assumedNote`, `.noItem` e `.regen`, que só serviam à conta com o item assumido.
+- **Ficou como estava**: com o item marcado, o gerador, a conta, os campos de quantidade sincronizados, os cartões das rodadas com Aumentar e Diminuir, "Gravar escolha" e as programações já gravadas (nenhum dado alterado). Sem mudança no banco.
+- **Testes**: `tests/unit/purchase-rounds-plan.test.ts` (troca de item), `tests/unit/selection-groups.test.ts` (escolhido fora do grupo é recusado) e o E2E da seleção (o cenário das fotos bloqueado, Enter sem efeito, marcar o item libera; trocar de item tira as rodadas e voltar não traz o que não foi gravado). A volta da programação gravada foi conferida no navegador de teste (gravar, rever a escolha, trocar e voltar).
+
+## Die Cut: pedido mínimo e prazo confirmados viram resumo, com "Editar"
+
+- **Pedido do dono** (13/11/2026, com a foto da tela do fornecedor): no quadro Die Cut, depois de salvar, o bloco "Pedido mínimo (MOQ) · Prazo de entrega" mostrava "Feito" e continuava com o formulário e o botão "Confirmar pedido mínimo e prazo", como se fosse preciso confirmar de novo.
+- **Confirmado**: no lugar do formulário, um resumo de leitura: o selo verde **Confirmado** (no título do bloco, no lugar de "Feito"), os valores salvos no formato do idioma (**132.000 peças · 15 dias**) e quem confirmou, com a data. Sem o botão de confirmar e sem o "Confira os números". A linha "Negociado" continua, com os números no mesmo formato.
+- **Editar**: o fluxo deixa corrigir enquanto a Preparação está aberta (o serviço regrava e avisa a Wellmix se o valor mudou), então fica um botão secundário **Editar**, que abre o mesmo formulário com os valores salvos (foco no primeiro campo) e **Cancelar** para voltar ao resumo. Etapa fechada: só o resumo.
+- **Registro salvo**: o estado vem dos dois requisitos concluídos; recarregar ou voltar ao quadro mostra o resumo. Depois de salvar, o bloco remonta (chave = data dos envios) e volta ao resumo.
+- **Envio**: o botão fica desativado enquanto grava. Recusa não troca de tela: o erro aparece junto ao formulário (campo recusado marcado) e o que foi digitado fica. As regras de validação, o aviso de salvo no topo e as outras tarefas do pedido (die-cut, foto em alta, página do pedido) não mudaram. Nenhuma tela, rota, campo ou dado removido; sem mudança de banco.
+- Textos novos nos três idiomas: `dieCut.terms.confirmedBadge`, `dieCut.terms.values`, `dieCut.terms.editAria` ("Editar" e "Cancelar" usam `common.edit` e `common.cancel`).
+- Peças: `confirmDieCutTermsAction` passa a devolver o erro ao formulário (`DieCutTermsState`, em `src/app/app/actions/die-cut-step.ts`), o bloco é `src/app/app/orders/[id]/die-cut/_components/die-cut-terms.tsx`, `formatTermsNumber` (`src/lib/die-cut-step.ts`) e `errorTextFor` (`src/i18n/error-text.ts`, o mesmo texto de erro do topo da página). Detalhes em `docs/PURCHASE_ORDER.md`, seção 2b.
+- Testes: `tests/unit/die-cut-terms.test.ts` (resumo com e sem "Editar", formulário, nada), `tests/unit/die-cut-step.test.ts` (formato "132.000 peças · 15 dias" e texto do erro) e o E2E do caminho principal (resumo depois de salvar e ao recarregar, "Editar" com os valores salvos, "Cancelar", recusa com o valor digitado e o erro no formulário sem trocar de tela, botão desativado enquanto grava e o resumo de volta).
+
 ## Book: na caixa "Dados do book" o Fornecedor fica à esquerda e a Fábrica à direita
 
 - **Pedido do dono** (13/11/2026, com a foto da caixa): inverter só a posição dos dois blocos da primeira linha da caixa "Dados do book" (`/app/booking/lots/[id]`).

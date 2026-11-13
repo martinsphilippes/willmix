@@ -499,6 +499,61 @@ export function finalConditions(
 }
 
 /**
+ * Oferta vigente de um produto da solicitação, do ponto de vista do
+ * fornecedor (docs/SUPPLIER_REQUESTS.md, "Três respostas na tabela"):
+ * - `proposal`: a contraproposta da Wellmix que espera a resposta dele;
+ * - `book`: as condições do book com que a solicitação abriu (sem resposta,
+ *   ou depois de um "não faço");
+ * - `own`: a resposta dele mesmo (a vez é da Wellmix): não há o que
+ *   confirmar, só renegociar ou recusar.
+ * Nulo quando o fornecedor já não responde (decidida ou cancelada).
+ */
+export type OfferSource = "proposal" | "book" | "own";
+
+export interface CurrentOffer {
+  source: OfferSource;
+  conditions: RequestConditions;
+  /** Dá para confirmar direto: oferta da Wellmix (ou do book) com preço. */
+  confirmable: boolean;
+  /**
+   * Retrato da oferta que a tela mostrou. A ação manda de volta; se a oferta
+   * mudou desde então, o servidor recusa e a tela volta com a atual.
+   */
+  token: string;
+}
+
+export function currentOffer(request: SupplierRequest): CurrentOffer | null {
+  if (!supplierCanAnswer(request.status)) return null;
+  const pending = pendingProposal(request.negotiation);
+  const source: OfferSource = pending
+    ? "proposal"
+    : request.status === "open" || request.supplierCanDo !== "yes"
+      ? "book"
+      : "own";
+  const conditions =
+    source === "book"
+      ? initialConditions(request)
+      : (finalConditions(request) ?? initialConditions(request));
+  const token = [
+    source,
+    pending?.id ?? (request.negotiation ?? []).length,
+    conditions.price,
+    conditions.currency,
+    conditions.moq,
+    conditions.incoterm,
+    conditions.leadTimeDays,
+  ]
+    .map((v) => v ?? "")
+    .join("|");
+  return {
+    source,
+    conditions,
+    confirmable: source !== "own" && conditions.price !== null,
+    token,
+  };
+}
+
+/**
  * Finalizada (decidida) depois do prazo do SLA? Nulo enquanto não foi
  * decidida. O prazo é o mesmo do selo "Atrasada": abertura + minutos.
  */

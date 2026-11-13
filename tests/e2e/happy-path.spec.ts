@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
 import {
   bookingSheet,
   fillMyRequirements,
@@ -141,7 +141,9 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.waitForURL(/[?&]pq=garrafa/);
   expect(page.url()).toContain("view=item");
   await page.fill("[data-request-product-name]", productName);
-  await page.selectOption("[data-request-product-line]", { index: 1 });
+  // Brinquedos exige Inmetro (mapa do processo, P6): o pedido terá o
+  // certificado e a arte final com o selo.
+  await page.selectOption("[data-request-product-line]", "linha-brinquedos");
   await page.click("[data-request-product-create]");
   await page.waitForURL(/[?&]product=created/);
 
@@ -171,6 +173,22 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.getByText("Preparação, arte e certificação").first(),
   ).toBeVisible();
+  // Na tabela "Etapas do pedido", a linha da etapa 2 leva o nome novo.
+  await expect(
+    page.getByRole("link", { name: "Die-Cut, Arte e Certificação" }),
+  ).toHaveCount(1);
+  // Certificação no login responsável (docs/CERTIFICATION.md, seção 13): o
+  // memorial é do analista do pedido (quem gerou), com o link direto para o
+  // quadro do alto do cartão Certificação.
+  const orderPath = new URL(orderUrl).pathname;
+  await page.goto("/app/tasks");
+  // (A lista pagina no navegador: a linha pode estar em outra página.)
+  await expect(
+    page.locator(
+      `[data-task-row] a[href="${orderPath}#certification-featured"]`,
+    ),
+  ).not.toHaveCount(0);
+  await page.goto(orderUrl);
   // Transportador: o pedido só designa sozinho quando há exatamente um ativo
   // no cadastro. Outros testes cadastram mais transportadores (que nascem
   // ativos), então a Wellmix designa aqui, em Parceiros do pedido.
@@ -186,8 +204,74 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page.locator(`[data-purchase-candidate="${requestId}"]`),
   ).toHaveCount(0);
 
-  // 6. As três raias, em paralelo. A arte final espera a validação e o
-  // certificado; a validação espera a arte.
+  // 5b. Cadastro e fiscal (mapa, P9/P14): o contrato espera o NCM validado e
+  // a ficha mestre completa. O sistema confere; o atalho leva à tela dona.
+  // A mesa do cadastro mostra o NCM e a ficha a fazer (docs/DESKS.md).
+  await page.goto("/app/tasks");
+  await page.locator("[data-desk-link]").click();
+  await page.goto("/app/tasks/desk?desk=cadastro");
+  await expect(
+    page.locator("[data-desk-queue=ncm] [data-desk-row]").first(),
+  ).toBeVisible();
+  await page.goto(orderUrl);
+  const ncmGate = page.locator("[data-requirement-gate=ncm_validated]");
+  await expect(ncmGate).toBeVisible();
+  const taxUrl = (await ncmGate.getAttribute("href"))!;
+  const productId = taxUrl.split("/")[3];
+  await page.goto(taxUrl);
+  const taxAdd = page.locator("form[data-tax-add]");
+  await taxAdd.locator("input[name=ncm]").fill("7013.37.00");
+  await Promise.all([
+    page.waitForLoadState("networkidle"),
+    taxAdd.locator("button[type=submit]").click(),
+  ]);
+  await page.goto(taxUrl);
+  await Promise.all([
+    page.waitForLoadState("networkidle"),
+    page.locator("form[data-tax-validate] button[type=submit]").first().click(),
+  ]);
+  // Ficha: as cinco fotos obrigatórias e a cor.
+  for (const kind of [
+    "weight_scale",
+    "dimension_scale",
+    "dimension_side",
+    "angle",
+    "original",
+  ]) {
+    await gotoProduct(page, productId);
+    await Promise.all([
+      page.waitForResponse(
+        (r) => r.request().method() === "POST" && r.status() < 400,
+      ),
+      page
+        .locator(`[data-sheet-photo="${kind}"] input[type=file]`)
+        .first()
+        .setInputFiles(png),
+    ]);
+    await page.waitForLoadState("networkidle");
+  }
+  await gotoProduct(page, productId);
+  // O cadastro fica em quadros recolhidos: abre todos.
+  await page
+    .locator("#product-form details[data-fold-card]")
+    .evaluateAll((els) =>
+      els.forEach((el) => ((el as HTMLDetailsElement).open = true)),
+    );
+  await page.locator("#product-form input[name=color]").fill("Transparente");
+  await Promise.all([
+    page.waitForURL(/[?&]saved=1/),
+    page.locator("#product-form button[type=submit]").last().click(),
+  ]);
+  await page.goto(orderUrl);
+  await expect(requirementRow(page, /^NCM validado/)).toContainText(
+    /Concluído/,
+  );
+  await expect(requirementRow(page, /^Ficha mestre completa/)).toContainText(
+    /Concluído/,
+  );
+
+  // 6. As raias, em paralelo. A arte espera a faca e a foto em alta; a arte
+  // final espera a validação e o certificado; a validação espera a arte.
   await page.goto(orderUrl);
   await expect(requirementRow(page, /Arte final com o selo/)).toContainText(
     /Pendente/,
@@ -196,18 +280,130 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await login(page, "supplier.a@china.com");
   await page.goto(orderUrl);
   await expect(requirementRow(page, /Faca \(die cut\)/).first()).toBeVisible();
-  await fillMyRequirements(page, orderUrl, { MOQ: "2000", Prazo: "45" });
-  // 6b. Agência: envia a arte. A arte final com o selo ainda não sobe
-  // (falta a arte validada e o certificado).
+  // Na seção ele vê só a faca, a foto em alta e o prazo (dono, 13/11/2026).
+  // Sem prazo na resposta à solicitação, o campo do prazo vem vazio.
+  const prep = page.locator('[data-stage-tasks="PREPARATION"]');
+  await expect(prep.locator("li:not([data-die-cut-link])")).toHaveCount(3);
+  await expect(prep).not.toContainText(/MOQ|Arte|Certificado|Validação/);
+  const leadTimeRow = requirementRow(page, /Prazo de produção confirmado/);
+  await expect(leadTimeRow.locator("input[name=value]")).toHaveValue("");
+  // A pendência dele cai na etapa "Die Cut" e abre o quadro do pedido, com
+  // os quatro itens do produto: die-cut, foto em alta, pedido mínimo e prazo.
+  await page.goto("/app/tasks");
+  // Certificação e artes não são dele: nenhuma dessas pendências aparece.
+  await expect(
+    page.locator(
+      `[data-task-row] a[href*="${orderPath}#certification"], [data-task-row] a[href*="${orderPath}#artwork"]`,
+    ),
+  ).toHaveCount(0);
+  const dieCutTask = page.locator(
+    `[data-task-group="supplier.dieline"]:has(a[href*="${new URL(orderUrl, "http://x").pathname}/die-cut"])`,
+  );
+  await expect(dieCutTask).toHaveCount(1);
+  await expect(dieCutTask).toContainText(/Die Cut/);
+  await dieCutTask.getByRole("link").first().click();
+  await page.waitForURL(/\/die-cut/);
+  const board = page.locator("[data-die-cut-product]");
+  await expect(board).toHaveAttribute("data-complete", "no");
+  for (const [item, file] of [
+    ["dieline", pdf],
+    ["hd", png],
+  ] as const) {
+    await board
+      .locator(`[data-die-cut-item="${item}"] input[type=file]`)
+      .last()
+      .setInputFiles(file);
+    await page.waitForURL(new RegExp(`saved=${item}`));
+    await expect(
+      board.locator(`[data-die-cut-item="${item}"]`),
+    ).toHaveAttribute("data-done", "yes");
+  }
+  // O pedido mínimo e o prazo vêm com o negociado; ele corrige o prazo.
+  const termsItem = board.locator('[data-die-cut-item="terms"]');
+  const terms = termsItem.locator("[data-die-cut-terms]");
+  await expect(terms.locator("input[name=moq]")).toHaveValue("2000");
+  await terms.locator("input[name=leadTimeDays]").fill("45");
+  await terms.getByRole("button").click();
+  await page.waitForURL(/saved=terms/);
+  await expect(board).toHaveAttribute("data-complete", "yes");
+  // Confirmado (dono, 13/11/2026): no lugar do formulário, o resumo com o
+  // selo, os valores e quem confirmou, sem o botão de confirmar e sem o
+  // "confira os números". Recarregar mostra o mesmo (vem do registro
+  // salvo). O fornecedor do teste lê em chinês.
+  const termsValues = termsItem.locator("[data-die-cut-terms-values]");
+  const editTerms = termsItem.locator("[data-die-cut-terms-edit]");
+  for (const reload of [false, true]) {
+    if (reload) await page.reload();
+    await expect(terms).toHaveCount(0);
+    await expect(termsItem).toContainText("已确认");
+    await expect(termsValues).toHaveText("2,000 件 · 45 天");
+    await expect(termsItem.locator("[data-die-cut-terms-by]")).toContainText(
+      "Li Wei",
+    );
+    await expect(termsItem).not.toContainText("请核对数字");
+    await expect(editTerms).toBeVisible();
+  }
+  // "Editar" abre o formulário com os valores salvos (foco no primeiro
+  // campo); "Cancelar" volta ao resumo.
+  await editTerms.click();
+  await expect(terms.locator("input[name=moq]")).toBeFocused();
+  await expect(terms.locator("input[name=moq]")).toHaveValue("2000");
+  await expect(terms.locator("input[name=leadTimeDays]")).toHaveValue("45");
+  await terms.locator("[data-die-cut-terms-cancel]").click();
+  await expect(terms).toHaveCount(0);
+  await expect(editTerms).toBeFocused();
+  // Recusa: o que foi digitado fica e o erro aparece junto ao formulário,
+  // sem trocar de tela.
+  await editTerms.click();
+  await terms.locator("input[name=moq]").fill("0");
+  const beforeRefusal = page.url();
+  await terms.locator("button[type=submit]").click();
+  await expect(
+    terms.locator('[data-die-cut-terms-error="invalid_moq"]'),
+  ).toContainText("起订量无效");
+  await expect(terms.locator("input[name=moq]")).toHaveValue("0");
+  await expect(terms.locator("input[name=moq]")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await expect(terms.locator("input[name=leadTimeDays]")).toHaveValue("45");
+  expect(page.url()).toBe(beforeRefusal);
+  // Enquanto envia, o botão fica desativado (sem clique repetido); salvo,
+  // volta o resumo. Mesmos valores: nada muda para a Wellmix.
+  const slowSave = async (route: Route) => {
+    if (route.request().method() === "POST")
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  };
+  await page.route(/\/die-cut/, slowSave);
+  await terms.locator("input[name=moq]").fill("2000");
+  await terms.locator("button[type=submit]").click();
+  await expect(terms.locator("button[type=submit]")).toBeDisabled();
+  await expect(terms).toHaveCount(0);
+  await page.unroute(/\/die-cut/, slowSave);
+  await expect(termsValues).toHaveText("2,000 件 · 45 天");
+  // Nada mais dele na Preparação: o pedido mostra os quatro concluídos.
+  await page.goto(orderUrl);
+  await expect(page.locator("[data-die-cut-link]")).toBeVisible();
+  await expect(requirementRow(page, /Faca \(die cut\)/).first()).toContainText(
+    /doc\.pdf/,
+  );
+  // O prazo confirmado aparece na linha, sem o campo.
+  await expect(leadTimeRow).toContainText("45");
+  await expect(leadTimeRow.locator("input[name=value]")).toHaveCount(0);
+  await fillMyRequirements(page, orderUrl);
+  // 6b. Agência: com a faca e a foto em alta, envia a arte. A arte final com
+  // o selo ainda não sobe (falta a arte validada e o certificado): a linha
+  // diz o que ela aguarda.
   await login(page, "agencia@design.com");
   await fillMyRequirements(page, orderUrl, {}, 1);
   await page.goto(orderUrl);
   await expect(requirementRow(page, /^Arte ·/)).toContainText(/Concluído/);
-  await requirementRow(page, /Arte final com o selo/)
-    .locator("input[type=file]")
-    .last()
-    .setInputFiles(pdf);
-  await page.waitForURL(/[?&]error=lane_prerequisite/);
+  await expect(
+    requirementRow(page, /Arte final com o selo/).locator(
+      "[data-requirement-waiting]",
+    ),
+  ).toContainText(/Aguarda/);
   // 6c. A Wellmix devolve a arte com o motivo; a agência reenvia.
   await login(page, "admin@wellmix.com");
   await page.goto(orderUrl);
@@ -239,6 +435,19 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // 7. Contrato: o documento traz a arte final; a Wellmix sobe o arquivo
   // assinado e carimbado, depois o fornecedor.
   await login(page, "admin@wellmix.com");
+  // 7a. Pedido de amostras (P17): antes de assinar, a Wellmix gera o pedido
+  // de amostras (5 × 3 por variante; o produto não tem variantes: 15).
+  await page.goto(`${orderUrl}/purchase-order`);
+  await expect(page.locator("[data-sign-wait-samples]")).toBeVisible();
+  await page.goto(`${orderUrl}/samples`);
+  await expect(page.locator("[data-sample-total]")).toHaveText("15");
+  await Promise.all([
+    page.waitForURL(/[?&]decided=ordered/),
+    page.locator("form[data-sample-order-create] button[type=submit]").click(),
+  ]);
+  await expect(
+    page.locator("[data-sample-order-status=sent]"),
+  ).toBeVisible();
   await page.goto(`${orderUrl}/purchase-order`);
   await expect(page.locator("[data-contract-final-arts] li")).toHaveCount(1);
   await uploadSignedContract(page, orderUrl);
@@ -262,9 +471,28 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.locator("[data-order-document-status=signed]"),
   ).toBeVisible();
+  // O fornecedor aceita o pedido de amostras à parte.
+  await page.goto(`${orderUrl}/samples`);
+  const accept = page.locator("form[data-sample-order-accept]");
+  await accept.locator("input[name=name]").fill("Li Wei");
+  await accept.locator("input[name=agree]").check();
+  await Promise.all([
+    page.waitForURL(/[?&]accepted=1/),
+    accept.locator("button[type=submit]").click(),
+  ]);
+  await expect(
+    page.locator("[data-sample-order-status=accepted]"),
+  ).toBeVisible();
 
-  // 8. Pagamento ao fornecedor (fora do fluxo): a condição do cadastro do
-  // fornecedor, parcela 1 vence no pedido. Financeiro é só do admin.
+  // Assinado pelos dois: a produção espera o sinal (mapa, P12?/P12).
+  await login(page, "admin@wellmix.com");
+  await page.goto(orderUrl);
+  await expect(requirementRow(page, /^Sinal pago ao fornecedor/)).toContainText(
+    /Pendente/,
+  );
+
+  // 8. Pagamento ao fornecedor: a condição do cadastro do fornecedor,
+  // parcela 1 (o sinal) vence no pedido. Financeiro é só do admin.
   await login(page, "operador@wellmix.com");
   await page.goto("/app/payables");
   await page.waitForURL(/\/app\?denied=payables/);

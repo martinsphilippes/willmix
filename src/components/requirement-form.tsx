@@ -31,6 +31,7 @@ export function RequirementForm({
   action,
   defaultValue,
   dateBounds,
+  returnTo,
 }: {
   requirement: Requirement;
   orderId: string;
@@ -39,6 +40,8 @@ export function RequirementForm({
   defaultValue?: string | null;
   /** Data: limites vindos das outras datas do pedido (chegada ≥ embarque…). */
   dateBounds?: DateBounds;
+  /** Quadro Die Cut do pedido: o envio volta para ele, não para o pedido. */
+  returnTo?: "die-cut";
 }) {
   if (requirement.type === "approval") {
     return (
@@ -72,6 +75,9 @@ export function RequirementForm({
       <>
         <input type="hidden" name="orderId" value={orderId} />
         <input type="hidden" name="requirementId" value={requirement.id} />
+        {returnTo ? (
+          <input type="hidden" name="returnTo" value={returnTo} />
+        ) : null}
       </>
     );
     // Requisito de arquivo: os dois botões ocupam a largura no celular.

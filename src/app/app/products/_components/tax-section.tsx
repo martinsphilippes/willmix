@@ -211,7 +211,7 @@ export function TaxSection({
                   {canAct ? (
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       {row.status !== "validated" ? (
-                        <form action={validateTaxAction}>
+                        <form action={validateTaxAction} data-tax-validate>
                           {hidden}
                           <input type="hidden" name="id" value={row.id} />
                           <SubmitButton
@@ -260,6 +260,7 @@ export function TaxSection({
         {canAct ? (
           <form
             action={addTaxCandidateAction}
+            data-tax-add
             className="@container min-w-0 space-y-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3"
           >
             {hidden}

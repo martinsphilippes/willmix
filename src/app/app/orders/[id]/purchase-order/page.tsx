@@ -408,6 +408,19 @@ export default async function PurchaseOrderPage({
             )}
           </div>
         </Alert>
+      ) : view.samplesPending && isWellmix(user) ? (
+        // Pedido de amostras (docs/SAMPLE_ORDER.md): a Wellmix decide antes de assinar.
+        <Alert tone="warning">
+          <span data-sign-wait-samples>
+            {t("sampleOrder.signWait")}{" "}
+            <Link
+              href={`/app/orders/${order.id}/samples`}
+              className={linkClass}
+            >
+              {t("sampleOrder.open")}
+            </Link>
+          </span>
+        </Alert>
       ) : view.waitingWellmix ? (
         <Alert tone="warning">{t("orderSign.waitingWellmix")}</Alert>
       ) : view.supplierBlocked ? (

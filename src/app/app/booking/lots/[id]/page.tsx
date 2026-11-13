@@ -410,11 +410,29 @@ export default async function BookingLotPage({
         t={t}
         title={t("bookingLots.detail.title", { n: lot.number })}
         subtitle={
-          <span className="flex flex-wrap items-center gap-2">
+          // Dono e fábrica vêm do registro (partnerId e supplierId), nunca do
+          // nome do arquivo, que continua no campo "Planilha".
+          <span
+            className="flex flex-col items-start gap-1"
+            data-booking-lot-heading
+          >
             <Badge tone={STATUS_TONE[lot.status]}>
               {statusLabel(lot.status)}
             </Badge>
-            <span>{lot.fileName}</span>
+            <span>
+              {partner
+                ? t("bookingLots.detail.headingSupplier", {
+                    name: partner.name,
+                  })
+                : t("bookingLots.detail.headingSupplierNone")}
+            </span>
+            <span>
+              {supplier
+                ? t("bookingLots.detail.headingFactory", {
+                    name: supplier.name,
+                  })
+                : t("bookingLots.detail.headingFactoryNone")}
+            </span>
           </span>
         }
         actions={
