@@ -497,17 +497,35 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   // programação aberta, Enter no campo gera de novo com o total digitado
   // (como em "Total de caixas"); fechada, o campo continua na tela, é ele
   // que a escolha grava (10 caixas de 48 = 480 peças) e Enter grava, como
-  // antes. Ao rever a escolha, os dois campos voltam com o mesmo número.
+  // antes. Nada é gravado aqui: a escolha gravada com as caixas digitadas e
+  // a volta dela aos dois campos estão em booking-supplier-request.spec.ts.
   await page
     .locator("[data-selection-item]", { hasText: `${TAG}-A` })
     .locator("[data-selection-choose]")
     .check();
   const savedBoxes = page.locator("[data-generate-total]");
   const savedPieces = page.locator("[data-selection-quantity]");
+  /** Enter no campo: o gerador ficou com ele (true) ou deixou o formulário gravar. */
+  const enterTaken = () =>
+    savedPieces.evaluate((el) => {
+      const event = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      el.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+  /** O que o formulário mandaria como quantidade (nulo: não vai no formulário). */
+  const formQuantity = () =>
+    savedPieces.evaluate((el) =>
+      new FormData((el as HTMLInputElement).form!).get("quantity"),
+    );
   await savedBoxes.fill("100");
   await page.locator("[data-generate-submit]").click();
   await expect(page.locator("[data-schedule-item]")).toHaveCount(2);
   await expect(savedPieces).toHaveValue("4800");
+  expect(await formQuantity()).toBeNull();
   await savedPieces.fill("9600");
   await savedPieces.press("Enter");
   await expect(page.locator('input[name="schedule.qty.1"]')).toHaveValue(
@@ -529,15 +547,9 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(savedPieces).toHaveAttribute("name", "quantity");
   await savedBoxes.fill("10");
   await expect(savedPieces).toHaveValue("480");
-  await savedPieces.press("Enter");
-  await page.waitForURL(/[?&]saved=1/);
-  const resolved = page.locator("[data-selection-resolved=saved]");
-  await expect(resolved).toHaveCount(1);
-  await expect(resolved.locator("[data-selection-winner]")).toContainText(
-    "480 peças",
-  );
-  await resolved.locator("[data-selection-block-open]").click();
-  await page.waitForURL(/ids=/);
-  await expect(page.locator("[data-selection-quantity]")).toHaveValue("480");
-  await expect(page.locator("[data-generate-total]")).toHaveValue("10");
+  expect(await formQuantity()).toBe("480");
+  expect(await enterTaken()).toBe(false);
+  // Em branco, o formulário manda a quantidade vazia: vale a da planilha.
+  await savedPieces.fill("");
+  expect(await formQuantity()).toBe("");
 });

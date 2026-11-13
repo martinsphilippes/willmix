@@ -46,13 +46,16 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-booking-lot-row]").first()).toBeVisible();
 
   // 2. Seleção: a busca por parte da descrição traz os dois lado a lado;
-  // escolhe o A, com o B de alternativa, e abre a solicitação.
+  // escolhe o A, com o B de alternativa, e abre a solicitação. A quantidade
+  // é digitada em caixas: 63 caixas de 48 = 3.024 peças (a planilha traz
+  // 3.000; em branco valeria ela).
   const requestUrl = await selectAndOpenSupplierRequest(
     page,
     TAG,
     codeA,
     codeB,
     "Cor âmbar e caixa com a marca",
+    { cartons: 63 },
   );
   const itemUrl = `${requestUrl}?view=item`;
   await expect(page.locator("[data-supplier-request-alternative]")).toHaveCount(
