@@ -112,6 +112,7 @@ export default async function TeamPage({
         {
           member: "team.saved.member",
           line: "team.saved.line",
+          deleted: "team.saved.deleted",
         } as Record<string, DictionaryKey>
       )[saved] ?? (`fn.saved.${saved}` as DictionaryKey))
     : null;

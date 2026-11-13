@@ -71,6 +71,25 @@ export async function saveTeamMemberAction(form: FormData) {
 }
 
 /**
+ * Exclui o acesso de um login da equipe (só o administrador; o serviço
+ * confere de novo, inclusive o próprio acesso e o último administrador).
+ * Feito, volta à lista com "Acesso excluído com sucesso"; com erro, volta à
+ * pessoa com o motivo (a lista lê do banco, nada fica pela metade).
+ */
+export async function removeTeamMemberAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "userId");
+  const valid = ID.safeParse(raw).success;
+  await run(valid ? `/app/team/${raw}` : "/app/team", async () => {
+    assertRole(user, ["admin"]);
+    const targetId = ID.parse(raw);
+    const { removeTeamMember } = await import("@/lib/services/team");
+    await removeTeamMember(user, targetId);
+    return "/app/team?saved=deleted";
+  });
+}
+
+/**
  * Novo login da equipe Wellmix (só o administrador): nome, login (e-mail ou
  * nome de usuário), senha e o lugar na hierarquia (cargo, divisão, a quem
  * responde, funções). Depois de criar, abre "Editar acessos" da pessoa, para

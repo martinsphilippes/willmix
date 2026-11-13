@@ -15,6 +15,7 @@ export function QuickDialog({
   closeLabel,
   tone = "secondary",
   hint,
+  disabled = false,
   children,
   ...rest
 }: {
@@ -22,8 +23,11 @@ export function QuickDialog({
   label: ReactNode;
   title: string;
   closeLabel: string;
-  tone?: "primary" | "secondary";
+  /** "danger": ação sem volta (ex.: excluir acesso). */
+  tone?: "primary" | "secondary" | "danger";
   hint?: string;
+  /** Botão desligado: a caixa não abre (quem usa mostra o motivo ao lado). */
+  disabled?: boolean;
   children: ReactNode;
 } & { [key: `data-${string}`]: string | undefined }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -32,13 +36,16 @@ export function QuickDialog({
       <button
         type="button"
         onClick={() => dialog.current?.showModal()}
+        disabled={disabled}
         title={hint}
         aria-label={hint}
         className={cx(
-          "inline-flex items-center justify-center rounded-md px-2.5 py-1 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-brand-600",
+          "inline-flex items-center justify-center rounded-md px-2.5 py-1 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-50",
           tone === "primary"
             ? "bg-brand-600 text-white hover:bg-brand-700"
-            : "border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50",
+            : tone === "danger"
+              ? "border border-red-300 bg-white text-red-700 hover:bg-red-50 disabled:hover:bg-white"
+              : "border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50",
         )}
         {...rest}
       >
