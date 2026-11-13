@@ -13,6 +13,7 @@ import {
   type SuperplanPrefill,
 } from "@/lib/superplan-defaults";
 import { getT } from "@/i18n/server";
+import { realName } from "@/lib/placeholder-name";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import { pt as superplanTexts } from "@/i18n/modules/superplan";
@@ -121,7 +122,7 @@ export default async function SuperplanPage({
         intl={t.intl}
         products={products.map((p) => ({
           id: p.id,
-          label: [p.sku, p.name].filter(Boolean).join(" · "),
+          label: [p.sku, realName(p.name)].filter(Boolean).join(" · "),
         }))}
         prefill={prefill}
         // Média do despachante (ficha mestre): só informação na tela.

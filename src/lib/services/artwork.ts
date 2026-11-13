@@ -1,5 +1,6 @@
 import "server-only";
-import { holdersOf } from "@/lib/auth/function-access";
+import { realName } from "@/lib/placeholder-name";
+import { can, holdersOf } from "@/lib/auth/function-access";
 import { loadFunctionDefs } from "./team-functions";
 
 import {
@@ -13,25 +14,44 @@ import {
 import {
   ForbiddenError,
   canViewOrder,
-  isAdmin,
   isWellmix,
 } from "@/lib/auth/permissions";
 import { audit } from "./audit";
 import { canAccessDocument } from "./documents";
-import { notify, type NotifyTarget } from "./notifications";
+import { notify } from "./notifications";
 import { isSchemaMissing } from "@/lib/db/errors";
+import {
+  artMakerRoute,
+  artReviewRoute,
+  canValidateArt,
+  loadRoutingContext,
+  notifyTargetOf,
+  reaches,
+  routeLabel,
+  routeOwnerUserId,
+  type MissingAssignment,
+  type Route,
+  type RouteVia,
+} from "./cert-art-routing";
 
 /*
  * Marketing das artes do pedido (Fase F, docs/ARTWORK.md):
  * - designer do pedido: alguém da Wellmix com a função "designer" ou um
  *   login da agência do pedido;
  * - não conformidade da arte por SKU: a Wellmix aponta (com motivo e,
- *   se quiser, arquivo), o designer corrige, a Wellmix aceita ou reabre;
+ *   se quiser, arquivo), o designer corrige, a Wellmix aceita ou reabre
+ *   (quem pode validar arte). Cada lado ganha a pendência (quem faz a arte
+ *   corrige; quem apontou confere), pelo encaminhamento de
+ *   cert-art-routing.ts;
  * - baixar todas as artes do pedido de uma vez (zip), só o que o usuário
  *   pode abrir.
  */
 
 export class ArtworkError extends Error {}
+
+/** Link direto para a não conformidade no cartão Artes do pedido. */
+export const issueLink = (orderId: string, issueId: string) =>
+  `/app/orders/${orderId}#artwork-issue-${issueId}`;
 
 /** Tipos de documento que são arte/embalagem. */
 export const ART_DOC_TYPES = [
@@ -121,19 +141,13 @@ export async function assignDesigner(
   return updated;
 }
 
-/** Para quem vão os avisos ao designer. */
-async function designerTarget(order: Order): Promise<NotifyTarget> {
-  if (order.designerUserId) return { userIds: [order.designerUserId] };
-  if (order.agencyId) return { role: "agency", partyId: order.agencyId };
-  const team = await getStore().list("users", {
-    filter: { role: ["admin", "operator"], active: true },
-  });
-  const designers = holdersOf(team, "art.design", await loadFunctionDefs());
-  return {
-    userIds: (designers.length ? designers : team.filter(isAdmin)).map(
-      (u) => u.id,
-    ),
-  };
+/**
+ * Para quem vão os avisos ao designer: quem faz a arte do pedido (o designer
+ * do pedido; sem ele, a agência quando é ela quem faz a arte; senão a
+ * Wellmix), o mesmo destino da pendência de corrigir.
+ */
+async function designerTarget(order: Order) {
+  return notifyTargetOf(artMakerRoute(order, await loadRoutingContext()));
 }
 
 async function issuesOf(orderId: string): Promise<ArtIssue[]> {
@@ -181,7 +195,7 @@ export async function reportArtIssue(
     `Não conformidade na arte de ${item.name}: ${note}`,
   );
   await notify(await designerTarget(order), {
-    link: `/app/orders/${orderId}#artwork`,
+    link: issueLink(orderId, issue.id),
     kind: "action",
     text: (t) => ({
       subject: t("artwork.notify.issue.subject", {
@@ -222,10 +236,11 @@ export async function fixArtIssue(
     order.id,
     `Arte corrigida: ${fixNote}`,
   );
+  // Quem confere: quem apontou (se pode validar arte); senão quem valida.
   await notify(
-    { userIds: [issue.reportedByUserId] },
+    notifyTargetOf(artReviewRoute(order, updated, await loadRoutingContext())),
     {
-      link: `/app/orders/${order.id}#artwork`,
+      link: issueLink(order.id, issue.id),
       kind: "action",
       text: (t) => ({
         subject: t("artwork.notify.fixed.subject", {
@@ -245,7 +260,10 @@ export async function reviewArtFix(
   accept: boolean,
   note: string | null,
 ) {
-  if (!isWellmix(user)) throw new ForbiddenError();
+  // Conferir a correção é validar a arte: quem tem a ação "Validar a arte"
+  // (Equipe → Funções e acessos; o administrador sempre).
+  if (!isWellmix(user) || !can(user, "art.validate"))
+    throw new ForbiddenError();
   const store = getStore();
   const issue = await store.get("art_issues", issueId);
   if (!issue) throw new ArtworkError("not_found");
@@ -275,7 +293,7 @@ export async function reviewArtFix(
   );
   if (!accept)
     await notify(await designerTarget(order), {
-      link: `/app/orders/${order.id}#artwork`,
+      link: issueLink(order.id, issue.id),
       kind: "action",
       text: (t) => ({
         subject: t("artwork.notify.reopened.subject", {
@@ -293,6 +311,17 @@ export interface ArtworkView {
   items: { item: OrderItem; issues: ArtIssue[] }[];
   open: number;
   canFix: boolean;
+  /** Conferir a correção (aceitar ou reabrir): quem pode validar arte. */
+  canReview: boolean;
+  /**
+   * Visão interna da Wellmix: quem faz a arte do pedido agora (recebe as
+   * correções e a aplicação do selo) e o que falta designar.
+   */
+  maker: {
+    via: RouteVia;
+    label: string | null;
+    missing: MissingAssignment | null;
+  } | null;
 }
 
 export async function artworkView(
@@ -308,6 +337,9 @@ export async function artworkView(
       : Promise.resolve(null),
     isWellmix(user) ? designerCandidates(order) : Promise.resolve([]),
   ]);
+  const wellmix = isWellmix(user);
+  const ctx = wellmix ? await loadRoutingContext() : null;
+  const route = ctx ? artMakerRoute(order, ctx) : null;
   return {
     designer: designer ?? null,
     candidates,
@@ -319,7 +351,111 @@ export async function artworkView(
     })),
     open: issues.filter((i) => i.status !== "accepted").length,
     canFix: canFixArt(user, order),
+    canReview: wellmix && can(user, "art.validate"),
+    maker:
+      ctx && route
+        ? {
+            via: route.via,
+            label: await routeLabel(route, ctx),
+            missing: route.missing ?? null,
+          }
+        : null,
   };
+}
+
+export interface ArtTaskDraft {
+  /** Corrigir a não conformidade (quem faz a arte) ou conferir a correção. */
+  kind: "art_fix" | "art_review";
+  order: Order;
+  issue: ArtIssue;
+  itemName: string;
+  link: string;
+  missing: MissingAssignment | null;
+  /** Dono no painel de SLA: o login da Wellmix que recebeu. */
+  ownerUserId: string | null;
+  sinceAt: string | null;
+}
+
+/**
+ * Pendências do cartão Artes: a não conformidade aberta vai para quem faz a
+ * arte (o designer do pedido; sem ele, a agência quando é ela quem faz a
+ * arte; senão a Wellmix) e a corrigida, para quem confere (quem apontou, se
+ * pode validar arte; senão quem valida). `team`: painel de SLA, as de
+ * qualquer login da Wellmix.
+ */
+export async function artIssueTasks(
+  user: User,
+  options: { team?: boolean } = {},
+): Promise<ArtTaskDraft[]> {
+  const wellmix = isWellmix(user);
+  const agency = user.role === "agency" && !!user.partyId;
+  if (!wellmix && !agency) return [];
+  const store = getStore();
+  let issues: ArtIssue[] = [];
+  try {
+    let orderIds: string[] | null = null;
+    if (agency) {
+      const { listColumns } = await import("@/lib/db/lookup");
+      orderIds = (
+        await listColumns(store, "orders", ["agencyId"], {
+          filter: { agencyId: user.partyId! },
+        })
+      ).map((o) => o.id);
+      if (!orderIds.length) return [];
+    }
+    issues = await store.list("art_issues", {
+      filter: {
+        status: ["open", "fixed"],
+        ...(orderIds ? { orderId: orderIds } : {}),
+      },
+    });
+  } catch (error) {
+    if (isSchemaMissing(error)) return [];
+    throw error;
+  }
+  if (!issues.length) return [];
+  const [orders, items] = await Promise.all([
+    store.list("orders", {
+      filter: { id: [...new Set(issues.map((i) => i.orderId))] },
+    }),
+    store.list("order_items", {
+      filter: { id: [...new Set(issues.map((i) => i.orderItemId))] },
+    }),
+  ]);
+  const ctx = await loadRoutingContext();
+  const teamIds = new Set(ctx.team.map((u) => u.id));
+  const teamView = wellmix && !!options.team;
+  const mine = (route: Route) =>
+    teamView
+      ? !!route.team || (route.userIds ?? []).some((id) => teamIds.has(id))
+      : reaches(user, route);
+  const out: ArtTaskDraft[] = [];
+  for (const issue of issues) {
+    const order = orders.find((o) => o.id === issue.orderId);
+    if (!order || order.status === "CANCELLED" || order.status === "CLOSED")
+      continue;
+    const fix = issue.status === "open";
+    const route = fix
+      ? artMakerRoute(order, ctx)
+      : artReviewRoute(order, issue, ctx);
+    if (!mine(route)) continue;
+    // Conferir é validar a arte: só quem pode (a equipe toda no painel).
+    if (!fix && !teamView && !canValidateArt(user, ctx)) continue;
+    out.push({
+      kind: fix ? "art_fix" : "art_review",
+      order,
+      issue,
+      // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+      itemName:
+        realName(items.find((i) => i.id === issue.orderItemId)?.name) ?? "—",
+      link: issueLink(order.id, issue.id),
+      missing: route.missing ?? null,
+      ownerUserId: routeOwnerUserId(route, order, ctx),
+      // Aberta: desde que foi apontada (ou reaberta); corrigida, desde a correção.
+      sinceAt: fix ? issue.updatedAt : issue.fixedAt,
+    });
+  }
+  return out;
 }
 
 /** Artes do pedido que o usuário pode abrir (para o zip). */

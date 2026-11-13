@@ -503,6 +503,13 @@ export async function assignPartnerAction(form: FormData) {
         await store.update("stages", stage.id, { responsiblePartyId: partyId });
       }
     }
+    // Pedido de compra: os itens abertos da arte e do certificado (raias da
+    // Preparação) passam para a agência ou a certificadora designada.
+    if (field === "agencyId" || field === "ocpId") {
+      const updated = await store.get("orders", orderId);
+      const { syncLaneRoles } = await import("@/lib/services/purchase-order");
+      if (updated) await syncLaneRoles(user, updated);
+    }
     if (field === "agencyId") {
       // Arte e embalagem: a arte ainda não enviada passa a ser da agência
       // (ou volta à Wellmix sem agência); a aprovação é sempre do fornecedor.
@@ -911,6 +918,9 @@ export async function saveProductAction(form: FormData) {
         sku: str(form, "sku") || null,
         specification: str(form, "specification") || null,
       });
+    // "XPTO" é texto de exemplo, não nome (docs/PURCHASE_ORDER.md).
+    const { assertRealProductName } = await import("@/lib/placeholder-name");
+    assertRealProductName(parsed.name);
     const id = str(form, "id");
     const store = getStore();
     const saved = id
@@ -920,6 +930,12 @@ export async function saveProductAction(form: FormData) {
           ...parsed,
           active: true,
         });
+    // O nome chega aos pedidos e às tarefas que estavam sem ele.
+    if (id) {
+      const { fillProductNameCopies } =
+        await import("@/lib/services/product-name-copies");
+      await fillProductNameCopies(user, saved);
+    }
     // Produto novo ou alterado vai para o Sankhya (fase 3).
     const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
     await syncSoon(user, "product", saved.id);

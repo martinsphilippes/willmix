@@ -6,6 +6,7 @@ import { CONTAINER_STATUSES, getStore } from "@/lib/db";
 import { listOrderItemChoices, loadContainer } from "@/lib/services/containers";
 import { getSettings } from "@/lib/settings";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
 import {
   Alert,
   Badge,
@@ -443,7 +444,7 @@ export default async function ContainerPage({
                   <Select name="productId" required className={bigField}>
                     {products.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name}
+                        {productNameText(t, p.name)}
                         {p.sku ? ` (${p.sku})` : ""}
                       </option>
                     ))}

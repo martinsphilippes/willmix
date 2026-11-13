@@ -94,6 +94,9 @@ export async function updateProductSheetAction(form: FormData) {
     const store = getStore();
     const product = await store.get("products", id);
     if (!product) throw new Error("product_not_found");
+    // "XPTO" é texto de exemplo, não nome (docs/PURCHASE_ORDER.md).
+    const { assertRealProductName } = await import("@/lib/placeholder-name");
+    assertRealProductName(str(form, "name"));
     const parsed = sheetSchema.parse({
       name: str(form, "name"),
       lineId: str(form, "lineId"),
@@ -256,6 +259,10 @@ export async function updateProductSheetAction(form: FormData) {
       ...next,
       cbm,
     });
+    // O nome chega aos pedidos e às tarefas que estavam sem ele.
+    const { fillProductNameCopies } =
+      await import("@/lib/services/product-name-copies");
+    await fillProductNameCopies(user, { id, name: parsed.name });
     // Pedido de compra aberto com o produto: a ficha pode ter fechado.
     const { refreshGatesForProduct } =
       await import("@/lib/services/purchase-gates");

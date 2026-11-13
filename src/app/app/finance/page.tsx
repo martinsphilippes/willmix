@@ -1,3 +1,4 @@
+import { realName } from "@/lib/placeholder-name";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -221,7 +222,7 @@ export default async function FinancePage({
                     )}
                   </Td>
                   <Td>{r.customerName}</Td>
-                  <Td>{r.productName}</Td>
+                  <Td>{realName(r.productName) ?? "—"}</Td>
                   <Td
                     className={cx(
                       "whitespace-nowrap font-semibold",

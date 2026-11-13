@@ -22,6 +22,7 @@ import {
 } from "@/lib/services/notifications";
 import { STAGE_KEYS } from "@/lib/db/schema";
 import { requirementLabel } from "@/i18n";
+import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
 import {
   ROLE_PARTY_FIELD,
   STAGE_TEMPLATES,
@@ -340,7 +341,9 @@ async function purchaseLaneItems(orderId: string): Promise<LaneItem[]> {
         : undefined;
       return {
         id: item.id,
-        name: item.name,
+        // Nome real do item; se ele ficou com o nome de exemplo, o do produto
+        // hoje; sem nenhum, a tarefa nasce só com o título.
+        name: realName(item.name) ?? realName(product?.name) ?? "",
         lineRequirements: line?.requirements ?? null,
         // Mapa do processo (P6): certificado e arte final com o selo só
         // quando a linha do produto exige certificação.
@@ -489,7 +492,7 @@ export async function submitRequirement(
     "requirement.submit",
     "requirement",
     requirement.id,
-    `${stage.key}: ${requirement.label}`,
+    `${stage.key}: ${withoutPlaceholder(requirement.label)}`,
     before,
     {
       status: "done",
@@ -502,14 +505,14 @@ export async function submitRequirement(
       value: null,
       submittedByUserId: null,
       submittedAt: null,
-      note: `Refazer: a data informada antes (${String(r.value ?? "").slice(0, 10)}) era anterior à ${requirement.label.toLowerCase()} (${String(input.value).slice(0, 10)}).`,
+      note: `Refazer: a data informada antes (${String(r.value ?? "").slice(0, 10)}) era anterior à ${withoutPlaceholder(requirement.label).toLowerCase()} (${String(input.value).slice(0, 10)}).`,
     });
     await audit(
       user,
       "requirement.reopen",
       "requirement",
       r.id,
-      `${stage.key}: ${r.label} antes de ${requirement.label}`,
+      `${stage.key}: ${withoutPlaceholder(r.label)} antes de ${withoutPlaceholder(requirement.label)}`,
       { status: r.status, value: r.value },
       { status: "pending", value: null },
     );
@@ -622,7 +625,7 @@ export async function submitRequirement(
         "requirement.submit",
         "requirement",
         sibling.id,
-        `${stage.key}: ${sibling.label} (confirmação do fornecedor)`,
+        `${stage.key}: ${withoutPlaceholder(sibling.label)} (confirmação do fornecedor)`,
         { status: "pending" },
         { status: "done", value: "supplier_confirmed" },
       );
@@ -695,7 +698,7 @@ export async function clearRequirementDocument(
     "requirement.clear",
     "requirement",
     requirement.id,
-    `${stage.key}: ${requirement.label} (arquivo excluído)`,
+    `${stage.key}: ${withoutPlaceholder(requirement.label)} (arquivo excluído)`,
   );
   await evaluateStage(user, stage.id);
 }
@@ -765,7 +768,7 @@ export async function decideRequirement(
       "requirement.approve",
       "requirement",
       requirement.id,
-      `${stage.key}: ${requirement.label}`,
+      `${stage.key}: ${withoutPlaceholder(requirement.label)}`,
     );
     if (isPurchaseFlow(order)) {
       const { afterLaneStep } = await import("@/lib/services/purchase-order");
@@ -801,7 +804,7 @@ export async function decideRequirement(
       "requirement.reject",
       "requirement",
       requirement.id,
-      `${stage.key}: ${requirement.label}`,
+      `${stage.key}: ${withoutPlaceholder(requirement.label)}`,
     );
     // Avisa quem refaz (arte: agência ou Wellmix); sem origem, o fornecedor
     // (como antes). Parceiro sem empresa no pedido: avisa a Wellmix, nunca

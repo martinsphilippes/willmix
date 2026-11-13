@@ -22,6 +22,7 @@ import {
   isPurchaseFlow,
 } from "@/lib/workflow/stages";
 import { dieCutHref, dieCutItemOf, dieCutProducts } from "@/lib/die-cut-step";
+import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
 
 export type TaskKind =
   | "booking_invite"
@@ -45,7 +46,9 @@ export type TaskKind =
   | "purchase_schedule"
   | "supplier_request"
   | "sampling"
-  | "sampling_validate";
+  | "sampling_validate"
+  | "art_fix"
+  | "art_review";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -70,6 +73,8 @@ export interface Task {
   text?: {
     title: DictionaryKey;
     detail: DictionaryKey;
+    /** Frase a mais no detalhe (ex.: o que falta designar e onde). */
+    detailExtra?: DictionaryKey;
     values: Record<string, string | number>;
   };
   /** Filtro "tipo": a etapa (requisito) ou o tipo da pendência. */
@@ -256,6 +261,7 @@ export type AgencyStep = (typeof AGENCY_STEPS)[number];
 export const agencyGroup = (step: AgencyStep) => `agency.${step}`;
 const AGENCY_STEP_OF_KIND: Partial<Record<TaskKind, AgencyStep>> = {
   requirement: "art",
+  art_fix: "art",
   cert_step: "seal",
 };
 
@@ -431,7 +437,7 @@ export function stageTaskDrafts(
       out.push({
         kind: "requirement",
         title: `Pedido #${order.number}: ${stage.key}`,
-        detail: items.map((r) => r.label).join(", "),
+        detail: withoutPlaceholder(items.map((r) => r.label).join(", ")),
         link:
           step === "sign"
             ? `/app/orders/${order.id}/purchase-order`
@@ -471,8 +477,19 @@ async function involvedOrderIds(user: User): Promise<string[]> {
   return rows.map((o) => o.id);
 }
 
+export interface PendingTasksOptions {
+  /**
+   * Painel de SLA: as pendências de certificação e artes de toda a equipe
+   * Wellmix (cada uma com quem a recebeu como dono), não só as do usuário.
+   */
+  team?: boolean;
+}
+
 /** Pendências do usuário: o que ele precisa fazer agora. */
-export async function pendingTasksFor(user: User): Promise<Task[]> {
+export async function pendingTasksFor(
+  user: User,
+  options: PendingTasksOptions = {},
+): Promise<Task[]> {
   const store = getStore();
   const tasks: Task[] = [];
   const now = new Date();
@@ -909,22 +926,28 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       if (!isSchemaMissing(error)) throw error;
     }
     const ptText = translator("pt");
-    for (const p of await importTasks(user, orders)) {
+    // Certificação (docs/CERTIFICATION.md, "Quem recebe cada tarefa"): cada
+    // passo já vem só para o login que o recebe, com o link direto.
+    for (const p of await importTasks(user, orders, { team: options.team })) {
       const step = IMPORT_STEP_LABEL[p.key] ?? p.key;
       const cert = p.kind === "cert_step" || p.kind === "cert_validate";
-      // Pedido de compra: a certificação é a raia da certificadora (o
-      // certificado de cada produto), não os passos do selo.
-      if (cert && p.order.flow === "supplier_request") continue;
       const validate =
         p.kind === "import_validate" || p.kind === "cert_validate";
-      // Selo sem certificadora no pedido: a pendência é da Wellmix, que
-      // designa a certificadora em Parceiros do pedido.
+      // Selo sem certificadora no pedido: a pendência é de quem designa a
+      // certificadora em Parceiros do pedido (o analista ou a equipe).
       const assignOcp =
         p.kind === "cert_step" && p.key === "cert_seal" && !p.order.ocpId;
-      // Selo de certificação: texto próprio, traduzido na tela.
+      // Selo e memorial: texto próprio, traduzido na tela.
       const seal =
         SEAL_TASK_TEXT[assignOcp ? "assign_ocp" : `${p.kind}:${p.key}`];
+      // Sem designer (arte feita pela Wellmix) ou sem analista: a pendência
+      // diz o que falta designar e onde (a certificadora tem texto próprio).
+      const missing =
+        cert && p.missing && p.missing !== "ocp"
+          ? MISSING_TASK_TEXT[p.missing]
+          : null;
       const values = { n: p.order.number };
+      const detail = seal ? ptText(seal.detail, values) : "";
       tasks.push(
         finish(
           {
@@ -934,16 +957,68 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
               : validate
                 ? `Validar ${step}: pedido #${p.order.number}`
                 : `${step}: pedido #${p.order.number}`,
-            detail: seal ? ptText(seal.detail, values) : "",
-            ...(seal ? { text: { ...seal, values } } : {}),
-            link: `/app/orders/${p.order.id}#${assignOcp ? "order-partners" : cert ? "certification" : "import-flow"}`,
+            detail: missing
+              ? `${detail} ${ptText(missing, values)}`.trim()
+              : detail,
+            ...(seal
+              ? {
+                  text: {
+                    ...seal,
+                    ...(missing ? { detailExtra: missing } : {}),
+                    values,
+                  },
+                }
+              : {}),
+            link: p.link ?? `/app/orders/${p.order.id}#import-flow`,
             dueAt: null,
             requestId: p.order.requestId,
             sinceAt: p.sinceAt ?? null,
             ...(supplier && !cert ? { supplierStep: "shipping" as const } : {}),
             orderNumber: p.order.number,
             customerId: p.order.customerId,
-            ownerUserId: p.order.ownerUserId ?? null,
+            ownerUserId:
+              p.ownerUserId !== undefined
+                ? p.ownerUserId
+                : (p.order.ownerUserId ?? null),
+          },
+          now,
+        ),
+      );
+    }
+  }
+  // Artes (cartão Artes do pedido): corrigir a não conformidade (quem faz a
+  // arte) e conferir a correção (quem apontou ou quem valida a arte).
+  if (wellmix || agency) {
+    const { artIssueTasks } = await import("./artwork");
+    const ptText = translator("pt");
+    for (const a of await artIssueTasks(user, { team: options.team })) {
+      const text = ART_TASK_TEXT[a.kind];
+      const missing =
+        a.missing && a.missing !== "ocp" ? MISSING_TASK_TEXT[a.missing] : null;
+      const values = { n: a.order.number, item: a.itemName };
+      tasks.push(
+        finish(
+          {
+            kind: a.kind,
+            title: ptText(text.title, values),
+            detail: [
+              ptText(text.detail, values),
+              missing ? ptText(missing, values) : "",
+            ]
+              .filter(Boolean)
+              .join(" "),
+            text: {
+              ...text,
+              ...(missing ? { detailExtra: missing } : {}),
+              values,
+            },
+            link: a.link,
+            dueAt: null,
+            requestId: a.order.requestId,
+            sinceAt: a.sinceAt,
+            orderNumber: a.order.number,
+            customerId: a.order.customerId,
+            ownerUserId: a.ownerUserId,
           },
           now,
         ),
@@ -1042,7 +1117,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
                 ? "tasks.ncm.detail"
                 : "tasks.ncm.detailNoNumber",
               values: {
-                product: request.productName,
+                product: realName(request.productName) ?? "—",
                 n: request.number ?? "",
               },
             },
@@ -1176,6 +1251,32 @@ const SEAL_TASK_TEXT: Record<
     title: "tasks.seal.assign.title",
     detail: "tasks.seal.assign.detail",
   },
+  "cert_step:cert_memorial": {
+    title: "tasks.memorial.send.title",
+    detail: "tasks.memorial.send.detail",
+  },
+  "cert_validate:cert_memorial": {
+    title: "tasks.memorial.validate.title",
+    detail: "tasks.memorial.validate.detail",
+  },
+};
+
+/** Pendências do cartão Artes: título e detalhe traduzidos. */
+const ART_TASK_TEXT: Record<
+  "art_fix" | "art_review",
+  { title: DictionaryKey; detail: DictionaryKey }
+> = {
+  art_fix: { title: "tasks.art.fix.title", detail: "tasks.art.fix.detail" },
+  art_review: {
+    title: "tasks.art.review.title",
+    detail: "tasks.art.review.detail",
+  },
+};
+
+/** Pendência sem dono certo: o que falta designar e onde (traduzido na tela). */
+const MISSING_TASK_TEXT: Record<"designer" | "analyst", DictionaryKey> = {
+  designer: "tasks.missing.designer",
+  analyst: "tasks.missing.analyst",
 };
 
 /*

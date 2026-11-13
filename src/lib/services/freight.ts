@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 
 import type { Translate } from "@/i18n";
 import { formatAmount } from "@/lib/workflow/money";
@@ -172,7 +173,10 @@ async function orderLabel(order: Order): Promise<string> {
   const items = await getStore().list("order_items", {
     filter: { orderId: order.id },
   });
-  const names = items.map((i) => i.name);
+  // Nome de exemplo ("Produto novo XPTO") fica de fora: sobra o número.
+  const names = items
+    .map((i) => realName(i.name))
+    .filter((n): n is string => !!n);
   return `#${order.number}${names.length ? ` ${names.slice(0, 2).join(", ")}${names.length > 2 ? ` +${names.length - 2}` : ""}` : ""}`;
 }
 

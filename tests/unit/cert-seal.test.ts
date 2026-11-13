@@ -73,12 +73,19 @@ async function inbox(user: User, order: Order) {
   return rows.filter((n) => n.link?.startsWith(`/app/orders/${order.id}`));
 }
 
-const sealLink = (order: Order) => `/app/orders/${order.id}#certification`;
+/*
+ * Links diretos para a tarefa no cartão Certificação: o quadro em destaque
+ * (selo e memorial a enviar) ou a linha do passo.
+ */
+const featuredLink = (order: Order) =>
+  `/app/orders/${order.id}#certification-featured`;
+const stepLink = (order: Order, key: string) =>
+  `/app/orders/${order.id}#certification-step-${key}`;
+const isCertLink = (order: Order, link: string | null | undefined) =>
+  !!link?.startsWith(`/app/orders/${order.id}#certification`);
 
 async function certTasks(user: User, order: Order) {
-  return (await pendingTasksFor(user)).filter(
-    (t) => t.link === sealLink(order),
-  );
+  return (await pendingTasksFor(user)).filter((t) => isCertLink(order, t.link));
 }
 
 const fresh = async (order: Order) =>
@@ -107,7 +114,7 @@ describe("pedido novo: cai no login da certificadora", () => {
     expect(order.ocpId).toBe(ocp.partyId);
     const notes = await inbox(ocp, order);
     expect(notes).toHaveLength(1);
-    expect(notes[0].link).toBe(sealLink(order));
+    expect(notes[0].link).toBe(featuredLink(order));
     expect(notes[0].kind).toBe("action");
     expect(notes[0].subject).toContain(`#${order.number}`);
     const tasks = await certTasks(ocp, order);
@@ -136,7 +143,7 @@ describe("pedido novo: cai no login da certificadora", () => {
   it("antes do selo, quem faz a arte só acompanha: sem aviso e sem pendência", async () => {
     expect(await certTasks(agency, order)).toHaveLength(0);
     expect(
-      (await inbox(agency, order)).filter((n) => n.link === sealLink(order)),
+      (await inbox(agency, order)).filter((n) => isCertLink(order, n.link)),
     ).toHaveLength(0);
     // A agência vê só as duas linhas do selo (não memorial, laudo ou registro).
     const view = await f.importFlowView(agency, order, "certification");
@@ -153,15 +160,28 @@ describe("pedido novo: cai no login da certificadora", () => {
       expect(f.canSeeStep(agency, order, key)).toBe(false);
   });
 
-  it("a Wellmix não ganha pendência de certificação: nem recém-criado, nem na Preparação", async () => {
+  it("a Wellmix só ganha o memorial, na Preparação, no login do responsável interno", async () => {
     expect(await certTasks(admin, order)).toHaveLength(0);
     await getStore().update("orders", order.id, { status: "PREPARATION" });
-    // O memorial deixou de ser pendência de começar: o PDF do selo/memorial
-    // basta para o pedido seguir (dono, 10/11/2026).
+    // O memorial é tarefa do responsável interno (dono, 13/11/2026). Sem
+    // analista no pedido, fica com a equipe e a pendência diz onde distribuir.
+    const team = await certTasks(admin, order);
+    expect(team.map((t) => [t.kind, t.text?.title, t.link])).toEqual([
+      ["cert_step", "tasks.memorial.send.title", featuredLink(order)],
+    ]);
+    expect(team[0].text?.detailExtra).toBe("tasks.missing.analyst");
+    // Com analista: só ele recebe; o resto da equipe não.
+    await getStore().update("orders", order.id, { ownerUserId: operator.id });
+    expect((await certTasks(operator, order)).map((t) => t.kind)).toEqual([
+      "cert_step",
+    ]);
     expect(await certTasks(admin, order)).toHaveLength(0);
     // A pendência do selo continua com a certificadora.
     expect(await certTasks(ocp, order)).toHaveLength(1);
-    await getStore().update("orders", order.id, { status: "ORDER_CREATED" });
+    await getStore().update("orders", order.id, {
+      status: "ORDER_CREATED",
+      ownerUserId: null,
+    });
   });
 
   it("memorial enviado pela Wellmix com o pedido recém-criado: a certificadora valida", async () => {
@@ -247,7 +267,9 @@ describe("selo enviado: vai para a agência aplicar na arte", () => {
     expect(await certTasks(ocp, order)).toHaveLength(0);
     const notes = await inbox(agency, order);
     expect(notes).toHaveLength(before + 1);
-    const handOver = notes.find((n) => n.link === sealLink(order))!;
+    const handOver = notes.find(
+      (n) => n.link === stepLink(order, "cert_seal_art"),
+    )!;
     // "Agora é com você": quem recebe é quem age (não a certificadora).
     expect(handOver.kind).toBe("action");
     expect(handOver.actor).toBe("recipient");
@@ -535,7 +557,7 @@ describe("parceiro designado depois", () => {
       (await pendingTasksFor(admin)).filter(
         (t) =>
           t.link === `/app/orders/${order.id}#order-partners` ||
-          t.link === sealLink(order),
+          isCertLink(order, t.link),
       ),
     ).toHaveLength(0);
   });

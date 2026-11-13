@@ -1,7 +1,7 @@
 import { LiveSearch } from "@/components/live-search";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { Translate } from "@/i18n";
+import { productNameText, type Translate } from "@/i18n";
 import type { ExploreProduct } from "@/lib/services/catalog-explore";
 import type { CatalogEstimate } from "@/lib/services/catalog-price-calc";
 import { ExploreAddForm } from "@/components/explore-add-form";
@@ -376,7 +376,7 @@ export function ProductCard({
             </span>
           ) : null}
           <h3 className="line-clamp-2 min-h-[2.5rem] break-words text-sm leading-5 text-zinc-800 group-hover:text-zinc-950">
-            {product.name}
+            {productNameText(t, product.name)}
           </h3>
           {hasVariants ? (
             <span

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { TableName, Tables } from "./schema";
 import { TABLES } from "./schema";
 import type { ListOptions, NewRow, Patch, Store, StoredFile } from "./store";
-import { pickColumns, searchText } from "./store";
+import { hidesHeld, pickColumns, searchText } from "./store";
 import { storageFileName } from "../file-kinds";
 import {
   clampRange,
@@ -137,6 +137,8 @@ export class SupabaseStore implements Store {
         params.push(`${enc(key)}=in.(${value.map(inValue).join(",")})`);
       } else params.push(`${enc(key)}=eq.${enc(String(value))}`);
     }
+    // Histórico do Sankhya em espera (store.ts, hidesHeld).
+    if (hidesHeld(table, options)) params.push("held=not.is.true");
     if (options.search) {
       const text = searchText(options.search.text);
       if (text)

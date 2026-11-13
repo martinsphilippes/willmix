@@ -94,8 +94,19 @@ Regras:
 - **Avisos:**
   - arte enviada → a Wellmix valida;
   - arte validada e certificado emitido → a agência faz a arte final.
-- **Passos do selo:** os passos do cartão Certificação (selo e arte com o selo) não viram pendência nestes pedidos, porque a certificação é a raia da certificadora.
+- **Passos do selo (dono, 13/11/2026):** os passos do cartão Certificação (selo, memorial e arte com o selo) viram pendência quando algum produto exige certificação, cada um no login responsável: selo para a certificadora, memorial para o analista (a validação, para a certificadora), aplicar o selo para o designer do pedido ou a agência que faz a arte, validar a arte com o selo para o analista que pode validar arte (docs/CERTIFICATION.md, seção 13). Até 13/11/2026 não viravam pendência.
+- **Parceiro designado depois:** designar ou trocar a certificadora ou a agência em Parceiros do pedido passa os itens abertos das raias para ela (certificado; arte e arte final com o selo, quando a agência faz a arte), sem duplicar; sem o parceiro, voltam para a Wellmix. O que já foi feito não muda.
 - **Fim da etapa:** a etapa conclui quando todos os itens das três raias estão feitos.
+
+### Nome do produto nas tarefas e o nome de exemplo (pedido do dono, 13/11/2026)
+
+Cada tarefa das raias leva o produto no nome: "Faca (die cut) · Jarra de vidro". O nome é o do item do pedido; se ele não tiver nome real, vale o do produto do cadastro (`purchaseLaneItems`, em `src/lib/workflow/engine.ts`).
+
+- **Nome de exemplo:** "XPTO" e "Produto novo XPTO" foram digitados como marcador de um nome a preencher depois, e o sistema copiou o texto para o item do pedido, para o rótulo das tarefas e para a solicitação do pedido. Esse texto vale como **nome ausente** (`isPlaceholderName`, em `src/lib/placeholder-name.ts`): só ele ou junto de "produto"/"novo"; um nome real que contém a palavra ("Xpto Cargo", "Jarra XPTO 500 ml") é nome.
+- **Sem nome real:** a tarefa mostra só o título ("Faca (die cut)"), sem o "·" sobrando. Nas outras telas, o produto aparece como "Produto sem nome" (ou "—" nas colunas de lista). Os registros antigos ficam como estão no banco; só a exibição trata o texto como ausente (`requirementLabel`, `productNameText`, `realName`).
+- **Quando o nome chega:** ao salvar o nome real no cadastro do produto (tela do produto ou lista de produtos), as cópias vazias ou de exemplo recebem o nome (`fillProductNameCopies`, em `src/lib/services/product-name-copies.ts`): o item do pedido, o rótulo de cada tarefa do produto e a solicitação do pedido. Cópia com nome real não muda. Status, respostas, arquivos e o vínculo das tarefas (a chave `chave__item`) ficam como estão. **Pedido assinado (por qualquer lado), encerrado ou cancelado fica como está**: o contrato assinado não muda sozinho. A auditoria registra quantas cópias receberam o nome (`product.name_copies`).
+- **Não volta a nascer:** o cadastro do produto (tela do produto, lista de produtos e "Criar produto" da solicitação ao fornecedor) recusa o nome de exemplo (`product_name_placeholder`); a tela do produto com esse nome mostra o campo vazio, com a dica de preencher o nome real. A recompra, a solicitação com variação e o seletor da nova solicitação não copiam mais o nome de exemplo.
+- **Auditoria:** as linhas antigas da auditoria continuam com o texto que foi digitado (registro do que aconteceu).
 
 ## 2b. Quadro Die Cut (13/11/2026)
 
@@ -121,6 +132,18 @@ O que muda e o que não muda:
 - **MOQ:** continua sendo uma tarefa do fornecedor. Ele confirma no quadro Die Cut (o atalho "Abrir o Die Cut" continua na seção e fica em destaque enquanto faltar item), com o negociado já no campo; a Wellmix também pode confirmar.
 - **Textos:** para o fornecedor, a ajuda da seção e a frase do atalho do Die Cut falam só das três tarefas (`dieCut.stageHelp.supplier`, `dieCut.orderHint.supplier`).
 - **Regra** (`supplierSeesLaneRequirement`, `src/lib/purchase-lanes.ts`): uma lista fechada com as três chaves (`die_cut`, `hd_photo`, `lead_time_confirmed`) de cada item do pedido.
+
+## 2d. A etapa nº 2 na visão do login Trading (13/11/2026)
+
+Pedido do dono: no login de uma **trading** (parceiro do tipo Trading, que entra com o papel de fornecedor; docs/PARTNER_TYPES.md), a etapa nº 2 do pedido de compra mostra só o lado da trading. Vale na linha da tabela "Etapas do pedido" e no card de detalhes:
+
+- **Título "Die-Cut"** (zh: "刀模 (Die-Cut)") e **"Responsável: Fornecedor"**, sempre, mesmo quando a etapa passa para um operador da Wellmix. O responsável real da etapa não muda: só o que essa visão mostra.
+- **Andamento só das tarefas do fornecedor** (`supplierLaneView`, `src/lib/purchase-lanes.ts`): a faca, a foto em alta e o prazo de produção confirmado de cada produto, as mesmas três tarefas que o card já mostrava (seção 2c). A barra e o "X de Y" contam só essas. Arte, embalagem, certificação, MOQ, NCM e ficha de compra ficam fora da conta.
+- **Concluído:** com as três tarefas de todos os produtos feitas, a linha e o card mostram o selo verde "Concluído" e a barra em 100%; a linha mostra em "Concluída em" a data do último envio. Faltando alguma, o progresso é parcial, e o prazo da etapa continua à vista (em vermelho, se atrasado, só enquanto faltar tarefa dele).
+- **Na hora e ao recarregar:** a conta sai dos registros gravados sempre que a página abre. O último envio já devolve a tela atualizada, e pedidos que já tinham tudo enviado aparecem concluídos sem nenhuma ação.
+- **Etapa ainda não começada:** uma etapa pendente ou cancelada continua como está; só a etapa em andamento, bloqueada ou concluída vira "Concluído" nessa visão.
+- **Só na visão Trading da etapa nº 2.** Não mudam: a etapa de verdade (só conclui com todas as raias), o andamento global do pedido, a visão interna da Wellmix ("Die-Cut, Arte e Certificação", com o responsável e o andamento de todas as raias), as tarefas de arte, embalagem e certificação dos responsáveis designados e as outras etapas. Os outros logins com papel de fornecedor (fornecedor, fábrica, GP, parceiro do fornecedor) continuam vendo a etapa como antes, com o card de três tarefas da seção 2c. Sem mudança no banco.
+- **Quem é Trading:** o parceiro do pedido (`supplierId`) é do tipo `trading`. Um login de fornecedor só abre o pedido em que o parceiro é o dele (`canViewOrder`), então é o próprio login da trading.
 
 ## 3. Contrato e assinaturas (etapa "Arte e embalagem")
 

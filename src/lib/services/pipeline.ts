@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 
 import {
@@ -272,10 +273,11 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
           ? `/app/orders/${o.id}/purchase-order`
           : `/app/orders/${o.id}`,
       number: o.number,
-      product: itemsByOrder.get(o.id)?.[0]?.name ?? "—",
+      // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+      product: realName(itemsByOrder.get(o.id)?.[0]?.name) ?? "—",
       items: (itemsByOrder.get(o.id) ?? []).map((i) => ({
         id: i.id,
-        name: i.name,
+        name: realName(i.name) ?? "—",
         variant: i.variant?.name ?? null,
         quantity: i.quantity,
         unit: i.unit,
@@ -318,10 +320,10 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
       kind: "request",
       href: `/app/requests/${r.id}`,
       number: r.number ?? null,
-      product: r.productName,
+      product: realName(r.productName) ?? "—",
       items: [
         {
-          name: r.productName,
+          name: realName(r.productName) ?? "—",
           variant: r.variant?.name ?? null,
           quantity: r.quantity,
           unit: r.unit,

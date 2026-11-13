@@ -6,7 +6,7 @@ import type {
   ItemChoice,
   agreedConditions,
 } from "@/lib/services/supplier-request-product";
-import type { Translate } from "@/i18n";
+import { productNameText, type Translate } from "@/i18n";
 import {
   Alert,
   Badge,
@@ -387,7 +387,7 @@ export function RequestProductCard({
           className={linkClass}
           data-request-product-open
         >
-          {product.name}
+          {productNameText(t, product.name)}
         </Link>
         <span className="text-zinc-500">
           {t("srProduct.linkedItems", { n: data.linkedCount })}

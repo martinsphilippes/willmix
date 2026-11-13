@@ -22,6 +22,7 @@ import {
   isLeadTimeKey,
   isSampleOrderKey,
   itemIdOf,
+  supplierLaneView,
   supplierSeesLaneRequirement,
 } from "@/lib/purchase-lanes";
 import { canViewDieCut, negotiatedTerms } from "@/lib/services/die-cut-step";
@@ -113,7 +114,7 @@ import { getSettings } from "@/lib/settings";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { getAfterSales } from "@/lib/services/after-sales";
 import { getT } from "@/i18n/server";
-import { requirementLabel, type Translate } from "@/i18n";
+import { productNameText, requirementLabel, type Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -347,6 +348,19 @@ export default async function OrderPage({
   const certSteps = certAll.filter(
     (v) => v.template.seal || classicCert || v.template.key === "cert_memorial",
   );
+  /* Visão interna: o que falta designar para cada tarefa da certificação ter
+     dono (docs/CERTIFICATION.md, "Quem recebe cada tarefa"), e o pedido de
+     compra cujos produtos não exigem certificação (nada vira pendência). */
+  const certMissingDesigner =
+    certSteps.find((v) => v.assignee?.missing === "designer")?.assignee ?? null;
+  const certMissingAnalyst = certSteps.some(
+    (v) => v.assignee?.missing === "analyst",
+  );
+  const certNotNeeded =
+    wellmix &&
+    certSteps.length > 0 &&
+    order.flow === "supplier_request" &&
+    !(await importFlow.purchaseNeedsCertification(order));
   for (const v of [...importSteps, ...certSteps]) {
     if (v.step?.submittedByUserId)
       productionUserIds.add(v.step.submittedByUserId);
@@ -406,7 +420,7 @@ export default async function OrderPage({
     order.shippingLineId === user.partyId;
   const [
     partiesOfOrder,
-    items,
+    storedItems,
     documents,
     payments,
     penalties,
@@ -507,6 +521,12 @@ export default async function OrderPage({
     ].filter((id) => id && !known.has(id)),
   ))
     known.set(p.id, p);
+  // Nome de exemplo ("Produto novo XPTO") ou vazio: a tela mostra "Produto
+  // sem nome" (docs/PURCHASE_ORDER.md, "Nome de exemplo"); o dado não muda.
+  const items = storedItems.map((i) => ({
+    ...i,
+    name: productNameText(t, i.name),
+  }));
   const parties = [...known.values()];
   const partyName = (pid: string | null) =>
     (pid && known.get(pid)?.name) || "—";
@@ -898,6 +918,16 @@ export default async function OrderPage({
         ]
       : []),
   ];
+  /* Login Trading no pedido de compra (pedido do dono, 13/11/2026): a etapa 2
+     aparece como "Die-Cut", com o responsável "Fornecedor" (sempre, mesmo
+     quando a etapa passa para a Wellmix) e o andamento só das tarefas dele
+     (faca, foto em alta e prazo de cada produto), contado do que está
+     gravado. A etapa de verdade, o andamento do pedido e a visão da Wellmix
+     não mudam. */
+  const tradingView =
+    supplierLanes && known.get(order.supplierId)?.type === "trading";
+  const tradingDieCut = (s: (typeof stages)[number], reqs: Requirement[]) =>
+    tradingView && s.key === "PREPARATION" ? supplierLaneView(s, reqs) : null;
   /* Etapas em linhas: quem vê a etapa abre os detalhes dela; a etapa em
      andamento (ou que ainda aceita dados, como o BL depois do embarque)
      fica aberta sempre. ?stage=CHAVE abre outra; ?stage=all, todas. */
@@ -1480,28 +1510,36 @@ export default async function OrderPage({
               if (!ownStage && !ownParts.length) return null;
               const open = s.status === "active" || s.status === "blocked";
               const expanded = expandedStageIds.has(s.id);
+              // Login Trading: a etapa 2 como "Die-Cut", com o andamento dele.
+              const dieCut = tradingDieCut(s, reqs);
+              const status = dieCut?.status ?? s.status;
+              const rowName = dieCut
+                ? t("purchaseOrder.dieCut.title")
+                : stageRowName(s.key);
+              const completedAt = dieCut ? dieCut.completedAt : s.completedAt;
               return (
                 <Fragment key={s.id}>
                   {ownStage ? (
                     <tr
                       className={cx(
                         rowClass,
-                        s.status === "active" && "bg-brand-50/60",
-                        s.status === "blocked" && "bg-amber-50/70",
+                        status === "active" && "bg-brand-50/60",
+                        status === "blocked" && "bg-amber-50/70",
                       )}
                       data-stage-row={s.key}
+                      data-stage-status={status}
                     >
                       <Td className="w-10">
-                        <StepDot state={s.status}>{index + 1}</StepDot>
+                        <StepDot state={status}>{index + 1}</StepDot>
                       </Td>
                       <Td className="min-w-40">
                         <span
                           className={cx(
-                            s.status === "pending"
+                            status === "pending"
                               ? "text-zinc-500"
-                              : s.status === "active"
+                              : status === "active"
                                 ? "font-semibold text-brand-800"
-                                : s.status === "blocked"
+                                : status === "blocked"
                                   ? "font-semibold text-amber-900"
                                   : "font-medium text-zinc-900",
                           )}
@@ -1511,22 +1549,29 @@ export default async function OrderPage({
                               href={stageHref(s)}
                               className="transition hover:text-brand-700"
                             >
-                              {stageRowName(s.key)}
+                              {rowName}
                             </a>
                           ) : (
-                            stageRowName(s.key)
+                            rowName
                           )}
                         </span>
                       </Td>
                       <Td className="whitespace-nowrap">
-                        <Badge tone={stageTone(s.status)}>
-                          {t(`stageStatus.${s.status}`)}
+                        <Badge tone={stageTone(status)}>
+                          {dieCut && status === "done"
+                            ? t("purchaseOrder.dieCut.done")
+                            : t(`stageStatus.${status}`)}
                         </Badge>
                       </Td>
                       <Td className="whitespace-nowrap text-zinc-700">
                         {visible ? (
-                          <span className="inline-flex items-center gap-1">
-                            {t(`role.${s.responsibleRole}`)}
+                          <span
+                            className="inline-flex items-center gap-1"
+                            data-stage-responsible={s.key}
+                          >
+                            {dieCut
+                              ? t("role.supplier")
+                              : t(`role.${s.responsibleRole}`)}
                             {(() => {
                               // Mensagem para o responsável da etapa (Wellmix: a
                               // empresa; quem é de fora: a Wellmix), já com a etapa escrita.
@@ -1536,7 +1581,9 @@ export default async function OrderPage({
                                 wellmix,
                               );
                               const draft = t("orderView.stage.chatDraft", {
-                                stage: stageName(s.key),
+                                stage: dieCut
+                                  ? t("purchaseOrder.dieCut.title")
+                                  : stageName(s.key),
                               });
                               if (!chat) return null;
                               if (chat.kind === "unassigned")
@@ -1586,7 +1633,10 @@ export default async function OrderPage({
                       <Td
                         className={cx(
                           "whitespace-nowrap tabular-nums",
-                          visible && open && isOverdue(s.dueAt)
+                          visible &&
+                            open &&
+                            !dieCut?.complete &&
+                            isOverdue(s.dueAt)
                             ? "font-semibold text-red-700"
                             : "text-zinc-700",
                         )}
@@ -1594,21 +1644,26 @@ export default async function OrderPage({
                         {visible && s.dueAt ? formatDate(s.dueAt, t) : "—"}
                       </Td>
                       <Td className="whitespace-nowrap tabular-nums text-zinc-700">
-                        {visible && s.completedAt
-                          ? formatDate(s.completedAt, t)
+                        {visible && completedAt
+                          ? formatDate(completedAt, t)
                           : "—"}
                       </Td>
                       <Td className="w-32">
                         {open ? (
                           <span className="flex items-center gap-2">
                             <span className="w-16">
-                              <Progress percent={s.percent} />
+                              <Progress
+                                percent={dieCut?.percent ?? s.percent}
+                              />
                             </span>
-                            <span className="text-xs font-semibold tabular-nums text-zinc-600">
-                              {s.percent}%
+                            <span
+                              className="text-xs font-semibold tabular-nums text-zinc-600"
+                              data-stage-percent={s.key}
+                            >
+                              {dieCut?.percent ?? s.percent}%
                             </span>
                           </span>
-                        ) : s.status === "done" ? (
+                        ) : status === "done" ? (
                           <span className="text-xs font-semibold text-emerald-700">
                             100%
                           </span>
@@ -1617,13 +1672,18 @@ export default async function OrderPage({
                         )}
                       </Td>
                       <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
-                        {visible && reqs.length
+                        {visible && dieCut
                           ? t("orderView.stage.reqs", {
-                              done: reqs.filter((r) => r.status === "done")
-                                .length,
-                              total: reqs.length,
+                              done: dieCut.done,
+                              total: dieCut.total,
                             })
-                          : "—"}
+                          : visible && reqs.length
+                            ? t("orderView.stage.reqs", {
+                                done: reqs.filter((r) => r.status === "done")
+                                  .length,
+                                total: reqs.length,
+                              })
+                            : "—"}
                       </Td>
                       <Td className="whitespace-nowrap text-right">
                         {visible ? (
@@ -1739,26 +1799,35 @@ export default async function OrderPage({
             const shownReqs = supplierView
               ? reqs.filter(supplierSeesLaneRequirement)
               : reqs;
+            // Login Trading: a etapa 2 como "Die-Cut", com o andamento dele.
+            const dieCut = tradingDieCut(stage, reqs);
+            const status = dieCut?.status ?? stage.status;
             return (
               <Fragment key={stage.id}>
                 <Card
                   className={cx(
                     "mt-4",
-                    stage.status === "active" &&
+                    status === "active" &&
                       "border-brand-300! ring-4 ring-brand-50",
-                    stage.status === "blocked" &&
+                    status === "blocked" &&
                       "border-amber-400! ring-4 ring-amber-50",
                   )}
                   title={
                     <span
                       id={`stage-${stage.id}`}
                       className="flex scroll-mt-24 flex-wrap items-center gap-2"
+                      data-stage-card={stage.key}
+                      data-stage-status={status}
                     >
-                      {stageName(stage.key)}
-                      <Badge tone={stageTone(stage.status)}>
-                        {t(`stageStatus.${stage.status}`)}
+                      {dieCut
+                        ? t("purchaseOrder.dieCut.title")
+                        : stageName(stage.key)}
+                      <Badge tone={stageTone(status)}>
+                        {dieCut && status === "done"
+                          ? t("purchaseOrder.dieCut.done")
+                          : t(`stageStatus.${status}`)}
                       </Badge>
-                      {open && stage.dueAt ? (
+                      {open && !dieCut?.complete && stage.dueAt ? (
                         <span
                           className={cx(
                             "text-xs",
@@ -1777,12 +1846,24 @@ export default async function OrderPage({
                       <span className="flex items-center gap-2 text-xs text-zinc-500">
                         <span>
                           {t("common.responsible")}:{" "}
-                          <span className="font-semibold text-zinc-700">
-                            {t(`role.${stage.responsibleRole}`)}
+                          <span
+                            className="font-semibold text-zinc-700"
+                            data-stage-card-responsible={stage.key}
+                          >
+                            {dieCut
+                              ? t("role.supplier")
+                              : t(`role.${stage.responsibleRole}`)}
                           </span>
                         </span>
-                        <span className="w-24">
-                          <Progress percent={stage.percent} />
+                        <span
+                          className="w-24"
+                          data-stage-card-percent={
+                            dieCut?.percent ?? stage.percent
+                          }
+                        >
+                          <Progress
+                            percent={dieCut?.percent ?? stage.percent}
+                          />
                         </span>
                       </span>
                     ) : !defaultExpanded(stage) ? (
@@ -2188,7 +2269,7 @@ export default async function OrderPage({
           names={productionNames}
           title={t("certFlow.title")}
           anchor="certification"
-          featured={["cert_seal", "cert_memorial"]}
+          featured={importFlow.CERT_FEATURED_STEPS}
           featuredHint={t("certFlow.featured.hint")}
           error={stepCard === "certification" ? stepError : null}
           hints={[
@@ -2196,8 +2277,48 @@ export default async function OrderPage({
               ? [t("certFlow.sealHint")]
               : []),
             // Todo pedido precisa de selo: sem certificadora, a Wellmix designa.
-            ...(wellmix && !order.ocpId && certSteps.length
-              ? [t("certFlow.notify.noOcp.body")]
+            ...(certNotNeeded
+              ? [
+                  <span key="no-cert" data-cert-not-needed>
+                    {t("certFlow.noCertNeeded")}
+                  </span>,
+                ]
+              : []),
+            ...(wellmix && !order.ocpId && certSteps.length && !certNotNeeded
+              ? [
+                  <span key="no-ocp" data-cert-missing="ocp">
+                    {t("certFlow.notify.noOcp.body")}{" "}
+                    <a href="#order-partners" className={linkClass}>
+                      {t("certFlow.assign.ocp")}
+                    </a>
+                  </span>,
+                ]
+              : []),
+            // Arte feita pela Wellmix sem designer: quem fica com a aplicação
+            // do selo e onde escolher o designer.
+            ...(certMissingDesigner && !certNotNeeded
+              ? [
+                  <span key="no-designer" data-cert-missing="designer">
+                    {t("certFlow.missingHint.designer", {
+                      who:
+                        certMissingDesigner.label ??
+                        t("certFlow.assignee.team"),
+                    })}{" "}
+                    <a href="#artwork" className={linkClass}>
+                      {t("certFlow.assign.designer")}
+                    </a>
+                  </span>,
+                ]
+              : []),
+            ...(certMissingAnalyst && !certNotNeeded
+              ? [
+                  <span key="no-analyst" data-cert-missing="analyst">
+                    {t("certFlow.missingHint.analyst")}{" "}
+                    <TextLink href="/app/team#distribute">
+                      {t("certFlow.assign.analyst")}
+                    </TextLink>
+                  </span>,
+                ]
               : []),
             // A certificação pedida na ficha: só para quem abre a ficha
             // aqui (a Wellmix e a certificadora), não para a agência ou o comex.
@@ -4352,7 +4473,7 @@ async function FollowUpCard({
                   className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200/80 px-3 py-2"
                 >
                   <TextLink href={`/app/requests/${r.id}`} className="min-w-0">
-                    {r.productName} · {r.quantity} {r.unit}
+                    {productNameText(t, r.productName)} · {r.quantity} {r.unit}
                   </TextLink>
                   {r.origin && r.origin !== "manual" ? (
                     <Badge tone="brand">{t(`orders.origin.${r.origin}`)}</Badge>
