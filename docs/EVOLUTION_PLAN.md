@@ -995,3 +995,10 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Pedido do dono** (13/11/2026, com o texto pronto): a explicação do gerador passa a começar com "Digite o total de caixas e o número de datas programadas" (antes: "o total de peças e o número de rodadas"). O resto da frase ficou como estava.
 - Só esse texto (`purchaseRounds.gen.hint`), nos três idiomas. Nada mudou na conta nem nos campos. Sem mudança no banco.
 - **Ficou como estava, para o dono decidir**: o campo logo abaixo continua se chamando "Total de peças" e continua recebendo peças (a conta arredonda para caixas master inteiras). A explicação agora fala em caixas e o campo em peças: ou o campo passa a receber caixas (muda a conta: caixas × peças por caixa master), ou só o nome dele muda, ou fica assim.
+
+## Book: na caixa "Dados do book" o Fornecedor fica à esquerda e a Fábrica à direita
+
+- **Pedido do dono** (13/11/2026, com a foto da caixa): inverter só a posição dos dois blocos da primeira linha da caixa "Dados do book" (`/app/booking/lots/[id]`).
+- Agora a primeira linha é: à esquerda **Fornecedor** (dono do book: o campo editável e a ajuda "As solicitações dos itens deste book vão para ele. Vazio: vão para a fábrica.") e à direita **Fábrica** (o nome da fábrica e a linha "Da planilha: …"). Cada bloco foi inteiro: rótulo, valor e texto de ajuda. No celular, em uma coluna, o Fornecedor vem primeiro.
+- Só a ordem dos dois blocos na tela: nenhum texto, campo, vínculo (`supplierId`, `partnerId`) ou regra de para quem vão as solicitações mudou. Origem, Data, Status, Planilha, Responsável, Itens e Carregado em ficam onde estavam. Sem mudança no banco.
+- Teste: o E2E (`importAndClose`) confere que os dois primeiros rótulos da caixa são Fornecedor e Fábrica, nessa ordem e lado a lado.
