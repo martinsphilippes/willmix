@@ -716,6 +716,145 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     expect((await rowsOf(admin, "cadastro")).ncm).toHaveLength(0);
   });
 
+  it("inspeção: vídeo, conformidade, aprovação da Wellmix e tentativas (R3/R4?/R10)", async () => {
+    const store = getStore();
+    const terms = await import("@/lib/services/supplier-terms");
+    const production = await import("@/lib/services/production");
+    // Conta corrente: o pedido chega à inspeção com as duas assinaturas.
+    await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+      terms: [{ percent: 100, base: "delivered", days: 60 }],
+      note: null,
+    });
+    let order;
+    let items;
+    try {
+      ({ order, items } = await signedPurchaseOrder(["IN-1", "IN-2"]));
+    } finally {
+      await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+        terms: [
+          { percent: 30, base: "order_created", days: 0 },
+          { percent: 70, base: "delivered", days: 90 },
+        ],
+        note: null,
+      });
+    }
+    expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
+    await production.savePlan(admin, order.id, { etd: "2027-01-10" });
+    const media = async () => {
+      for (const key of ["photo_unpacked", "photo_packed", "photo_scale"])
+        await submit(supplierA, order.id, key, { file: `${key}.pdf` });
+      await submit(supplierA, order.id, "weight_measured", { value: "15" });
+      await submit(supplierA, order.id, "production_video", {
+        file: "video.pdf",
+      });
+      await submit(supplierA, order.id, "supplier_conformity", {
+        value: "ok",
+      });
+    };
+    const [a, b] = [...items].sort((x, y) =>
+      x.createdAt.localeCompare(y.createdAt),
+    );
+    // A declaração espera as fotos, o peso e o vídeo; a Wellmix, a declaração.
+    await expect(
+      submit(supplierA, order.id, "supplier_conformity", { value: "ok" }),
+    ).rejects.toThrow("lane_prerequisite");
+    await expect(
+      production.inspectSku(admin, order.id, {
+        orderItemId: a.id,
+        result: "approved",
+        note: null,
+      }),
+    ).rejects.toThrow("conformity_required");
+    await media();
+    // Reprovado 1 a 3 vezes: ETD +1 dia e volta à produção a cada vez.
+    for (let round = 1; round <= 3; round++) {
+      const row = await production.inspectSku(admin, order.id, {
+        orderItemId: a.id,
+        result: "rejected",
+        note: `Cor errada ${round}`,
+      });
+      expect(row.round).toBe(round);
+      const track = (await production.getTrack(order.id))!;
+      expect(track.etd!.slice(0, 10)).toBe(
+        new Date(Date.parse("2027-01-10") + round * 86_400_000)
+          .toISOString()
+          .slice(0, 10),
+      );
+      const video = (await requirementsOf(order.id)).find(
+        (r) => r.key === "production_video",
+      )!;
+      expect(video.status).toBe("pending");
+      await production.respondSku(supplierA, row.id, `Corrigido ${round}`);
+      await media();
+    }
+    // 4ª reprovação: passou do limite; a Wellmix confirma o cancelamento.
+    const last = await production.inspectSku(admin, order.id, {
+      orderItemId: a.id,
+      result: "rejected",
+      note: "Cor errada de novo",
+    });
+    expect(production.attemptsExhausted(last, 3)).toBe(true);
+    await production.respondSku(supplierA, last.id, "Tentamos de novo");
+    await expect(
+      production.inspectSku(admin, order.id, {
+        orderItemId: a.id,
+        result: "approved",
+        note: null,
+      }),
+    ).rejects.toThrow("attempts_exhausted");
+    expect(
+      (await store.list("audit_log", { filter: { entityId: order.id } })).some(
+        (e) => e.action === "production.attempts_exhausted",
+      ),
+    ).toBe(true);
+    // O outro produto aprovado não libera o embarque sozinho.
+    await production.inspectSku(admin, order.id, {
+      orderItemId: b.id,
+      result: "approved",
+      note: null,
+    });
+    expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
+  });
+
+  it("inspeção aprovada em todos os SKUs libera o embarque", async () => {
+    const store = getStore();
+    const terms = await import("@/lib/services/supplier-terms");
+    const production = await import("@/lib/services/production");
+    await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+      terms: [{ percent: 100, base: "delivered", days: 60 }],
+      note: null,
+    });
+    let order;
+    let items;
+    try {
+      ({ order, items } = await signedPurchaseOrder(["IN-3", "IN-4"]));
+    } finally {
+      await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+        terms: [
+          { percent: 30, base: "order_created", days: 0 },
+          { percent: 70, base: "delivered", days: 90 },
+        ],
+        note: null,
+      });
+    }
+    for (const key of ["photo_unpacked", "photo_packed", "photo_scale"])
+      await submit(supplierA, order.id, key, { file: `${key}.pdf` });
+    await submit(supplierA, order.id, "weight_measured", { value: "15" });
+    await submit(supplierA, order.id, "production_video", { file: "v.pdf" });
+    await submit(supplierA, order.id, "supplier_conformity", { value: "ok" });
+    expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
+    for (const item of items)
+      await production.inspectSku(admin, order.id, {
+        orderItemId: item.id,
+        result: "approved",
+        note: null,
+      });
+    expect(
+      (await requirementsOf(order.id)).find((r) => r.key === "sku_approved"),
+    ).toMatchObject({ status: "done", value: "approved" });
+    expect((await store.get("orders", order.id))!.status).toBe("SHIPPING");
+  });
+
   it("prazo de cada passo conta da liberação do anterior", async () => {
     const lanes = await import("@/lib/purchase-lanes");
     const sla = {

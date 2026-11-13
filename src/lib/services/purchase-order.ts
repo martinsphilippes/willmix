@@ -536,5 +536,7 @@ export async function purchaseLaneSla(): Promise<LaneSla> {
     registrationDays: s.purchaseRegistrationSlaDays,
     signatureDays: s.purchaseSignatureSlaDays,
     downPaymentDays: s.purchaseDownPaymentSlaDays,
+    inspectionMediaDays: s.purchaseInspectionMediaSlaDays,
+    inspectionReviewDays: s.purchaseInspectionReviewSlaDays,
   };
 }

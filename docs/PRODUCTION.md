@@ -27,3 +27,15 @@ Isso não bloqueia as etapas atuais do pedido (a etapa Inspeção continua com f
 
 ## Esquema
 Tabelas `production_tracks` (uma por pedido) e `sku_inspections` (uma linha por item e rodada). Antes do push do esquema, o cartão aparece vazio e salvar responde "esquema desatualizado".
+
+## Sequência da inspeção do pedido de compra (mapa R3, R4?, R10, R11; dono, 13/11/2026)
+
+Nos pedidos de compra novos (`orders.flow = "supplier_request"`), a etapa Inspeção segue o mapa do processo e **segura o embarque até a aprovação da Wellmix**:
+
+1. **Fornecedor** (ou a trading, que entra como fornecedor): fotos sem e com embalagem, foto na balança, peso medido e o **vídeo da produção** (`production_video`, aceita vídeo). Prazo: `purchaseInspectionMediaSlaDays` (7) do início da etapa, que começa com a produção liberada (sinal pago ou conta corrente).
+2. **Declaração de conformidade** do fornecedor (`supplier_conformity`, "Produto conforme o pedido"), depois das fotos, do peso e do vídeo. Mesmo prazo.
+3. **Wellmix** inspeciona cada SKU no cartão Produção (aprovado ou reprovado com motivo), só depois da declaração (`conformity_required`). O item **"Inspeção aprovada pela Wellmix (todos os SKUs)"** (`sku_approved`) é conferido pelo sistema e só fecha com todos aprovados; a etapa (e o embarque) espera por ele. Prazo: `purchaseInspectionReviewSlaDays` (2) da declaração.
+4. **Reprovado** (até `purchaseInspectionMaxAttempts`, 3 tentativas): o ETD ganha 1 dia (no histórico, com o motivo), as fotos, o peso, o vídeo e a declaração voltam a pendentes para o fornecedor e ele diz o que corrigiu; a Wellmix inspeciona de novo.
+5. **Passou do limite** (a 4ª reprovação): a Wellmix é avisada e o pedido mostra **"Tentativas de aprovação esgotadas"**, com a confirmação de cancelamento: motivo "qualidade reprovada", a **mensagem para o fornecedor** (obrigatória; vai no aviso de cancelamento a todos os parceiros) e o atalho para escolher outro fornecedor na Seleção de itens. Não há nova rodada (`attempts_exhausted`). Quem confirma é quem tem a permissão "Cancelar pedido".
+
+Pedidos abertos antes desta entrega não ganham os itens novos. Prazos e o limite de tentativas ficam em Configurações → SLA.

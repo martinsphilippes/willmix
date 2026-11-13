@@ -3,6 +3,7 @@ import "server-only";
 import { getStore, type Order, type Requirement, type User } from "@/lib/db";
 import {
   DOWN_PAYMENT_KEY,
+  SKU_APPROVED_KEY,
   LANE_KEYS,
   baseKeyOf,
   blockedBy,
@@ -140,6 +141,29 @@ async function downPaymentVerdict(order: Order): Promise<Verdict> {
     : { done: false };
 }
 
+/** Todos os SKUs do pedido aprovados pela Wellmix na inspeção (última rodada). */
+async function skuVerdict(order: Order): Promise<Verdict> {
+  const store = getStore();
+  const [items, rows] = await Promise.all([
+    store.list("order_items", { filter: { orderId: order.id } }),
+    store
+      .list("sku_inspections", { filter: { orderId: order.id } })
+      .catch(() => []),
+  ]);
+  const { latestByItem } = await import("./production");
+  const latest = latestByItem(rows);
+  const ok =
+    items.length > 0 &&
+    items.every((i) => latest.get(i.id)?.result === "approved");
+  return ok
+    ? {
+        done: true,
+        value: "approved",
+        note: "Todos os SKUs aprovados na inspeção",
+      }
+    : { done: false };
+}
+
 /** Itens automáticos ainda abertos do pedido, já liberados (o anterior feito). */
 function openGates(requirements: Requirement[]) {
   const auto = new Set<string>([
@@ -147,6 +171,7 @@ function openGates(requirements: Requirement[]) {
     LANE_KEYS.sheetComplete,
     LANE_KEYS.certificate,
     DOWN_PAYMENT_KEY,
+    SKU_APPROVED_KEY,
   ]);
   return requirements.filter((r) => {
     if (r.status === "done" || !auto.has(baseKeyOf(r.key))) return false;
@@ -192,6 +217,7 @@ async function refresh(orderId: string, user: User | null): Promise<number> {
     const base = baseKeyOf(r.key);
     let verdict: Verdict;
     if (base === DOWN_PAYMENT_KEY) verdict = await downPaymentVerdict(order);
+    else if (base === SKU_APPROVED_KEY) verdict = await skuVerdict(order);
     else {
       const productId = items.find((i) => i.id === itemIdOf(r.key))?.productId;
       if (!productId) continue;
@@ -278,7 +304,7 @@ export async function refreshAllPurchaseGates(): Promise<number> {
   const orders = await getStore().list("orders", {
     filter: {
       flow: "supplier_request",
-      status: ["PREPARATION", "PACKAGING"],
+      status: ["PREPARATION", "PACKAGING", "INSPECTION"],
     },
   });
   let done = 0;

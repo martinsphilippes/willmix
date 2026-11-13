@@ -14,6 +14,7 @@ import { fallbackError } from "@/i18n/error-text";
 import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import {
   DOWN_PAYMENT_KEY,
+  SKU_APPROVED_KEY,
   LANE_KEYS,
   baseKeyOf,
   blockedBy,
@@ -151,6 +152,7 @@ import {
   CustomerCancelCard,
 } from "@/components/order-cancel";
 import { customerCanRequestCancel } from "@/lib/services/order-cancel";
+import { cancelOrderAction } from "../../actions/order-cancel";
 import {
   cancelledOrderIds,
   requestDisplayStatus,
@@ -671,6 +673,14 @@ export default async function OrderPage({
   const isCancelled = order.status === "CANCELLED";
   const admin = user.role === "admin";
   const canCancel = can(user, "order.cancel");
+  // Inspeção do pedido de compra: SKU reprovado além do limite de tentativas.
+  const maxAttempts = (await getSettings()).purchaseInspectionMaxAttempts;
+  const { attemptsExhausted } = await import("@/lib/services/production");
+  const exhaustedItems = purchaseFlow
+    ? (productionView?.items ?? []).filter((v) =>
+        attemptsExhausted(v.latest, maxAttempts),
+      )
+    : [];
   const canRequestCancel =
     user.role === "customer" && !isCancelled
       ? await customerCanRequestCancel(order)
@@ -2059,6 +2069,70 @@ export default async function OrderPage({
           />
         ) : null}
 
+        {/* Inspeção do pedido de compra (mapa R10): tentativas esgotadas, a
+            Wellmix confirma o cancelamento com a mensagem ao fornecedor. */}
+        {wellmix && exhaustedItems.length && order.status !== "CANCELLED" ? (
+          <div id="inspection-cancel" className="scroll-mt-24">
+            <Alert tone="danger">
+              <div className="space-y-2" data-inspection-cancel>
+                <p className="font-semibold">{t("inspectionCancel.title")}</p>
+                <p>
+                  {t("inspectionCancel.body", {
+                    items: exhaustedItems.map((v) => v.item.name).join(", "),
+                    n: String(Math.max(...exhaustedItems.map((v) => v.rounds))),
+                    max: String(maxAttempts),
+                  })}
+                </p>
+                {canCancel ? (
+                  <form action={cancelOrderAction} className="space-y-2">
+                    <input type="hidden" name="orderId" value={order.id} />
+                    <input
+                      type="hidden"
+                      name="reason"
+                      value="quality_rejected"
+                    />
+                    <Field label={t("inspectionCancel.message")}>
+                      <Textarea
+                        name="note"
+                        required
+                        minLength={3}
+                        maxLength={1000}
+                        rows={3}
+                        className="bg-white"
+                      />
+                    </Field>
+                    <label className="flex items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="confirm"
+                        value="1"
+                        required
+                        className="mt-0.5"
+                      />
+                      <span>{t("inspectionCancel.confirm")}</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <SubmitButton variant="danger">
+                        {t("inspectionCancel.submit")}
+                      </SubmitButton>
+                      <LinkButton
+                        href="/app/booking/selection"
+                        variant="secondary"
+                      >
+                        {t("inspectionCancel.selection")}
+                      </LinkButton>
+                    </div>
+                  </form>
+                ) : (
+                  <p className="text-xs">
+                    {t("inspectionCancel.noPermission")}
+                  </p>
+                )}
+              </div>
+            </Alert>
+          </div>
+        ) : null}
+
         {/* Produção (Fase C): ETD, follow 5/15/25, inspeção agendada e por SKU. */}
         {productionView ? (
           <ProductionCard
@@ -3304,6 +3378,11 @@ function gateHrefOf(
     return {
       href: `/app/orders/${orderId}#supplier-payment`,
       label: "purchaseSequence.gate.downPayment",
+    };
+  if (base === SKU_APPROVED_KEY)
+    return {
+      href: `/app/orders/${orderId}#production`,
+      label: "purchaseSequence.gate.sku",
     };
   const productId = items.find((i) => i.id === itemIdOf(r.key))?.productId;
   if (!productId) return null;
