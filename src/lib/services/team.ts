@@ -11,6 +11,7 @@ import {
 } from "@/lib/db";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
 import { WELLMIX_BASE, validScreens } from "@/lib/auth/screens";
+import { loginLabel } from "@/lib/auth/login-id";
 import { audit } from "./audit";
 
 /*
@@ -124,6 +125,75 @@ export async function setTeamMember(
     before,
     { ...input, ...(screens !== undefined ? { screens } : {}) },
   );
+}
+
+/**
+ * O que a tela mostra antes de excluir o acesso: quantas pessoas respondem a
+ * ela, quantas pendências abertas estão com ela e se é o último administrador.
+ */
+export async function teamMemberRemoval(
+  member: User,
+  team: User[],
+): Promise<{ reports: number; openWork: number; lastAdmin: boolean }> {
+  const load = await openLoad([member]);
+  return {
+    reports: team.filter((u) => u.managerUserId === member.id).length,
+    openWork: load.get(member.id) ?? 0,
+    lastAdmin:
+      isAdmin(member) && !team.some((u) => isAdmin(u) && u.id !== member.id),
+  };
+}
+
+/**
+ * Exclui o acesso de um login da equipe (pedido do dono, 13/11/2026): o login
+ * fica inativo e sai da equipe. Não entra mais no portal, e as sessões abertas
+ * caem na próxima página (a sessão relê o login a cada requisição). Nada é
+ * apagado: o cadastro, o histórico, os registros ligados a ele e a autoria
+ * das ações anteriores continuam. Só o administrador; não exclui o próprio
+ * acesso nem o último administrador ativo. Fica na Auditoria quem excluiu,
+ * qual acesso e quando.
+ */
+export async function removeTeamMember(
+  user: User,
+  targetId: string,
+): Promise<User> {
+  if (!isAdmin(user)) throw new ForbiddenError();
+  const store = getStore();
+  const team = await wellmixTeam();
+  const target = team.find((u) => u.id === targetId);
+  if (!target) throw new TeamError("not_found");
+  if (target.id === user.id) throw new TeamError("delete_self");
+  const otherAdmins = (list: User[]) =>
+    list.some((u) => isAdmin(u) && u.id !== target.id);
+  if (isAdmin(target) && !otherAdmins(team))
+    throw new TeamError("delete_last_admin");
+  await store.update("users", target.id, { active: false });
+  // Dois administradores excluindo um ao outro ao mesmo tempo: se não sobrou
+  // nenhum ativo, esta exclusão é desfeita.
+  if (isAdmin(target) && !otherAdmins(await wellmixTeam())) {
+    await store.update("users", target.id, { active: true });
+    throw new TeamError("delete_last_admin");
+  }
+  const { forgetUserSessions } = await import("@/lib/auth/session");
+  forgetUserSessions(target.id);
+  await audit(
+    user,
+    "team.member.delete",
+    "user",
+    target.id,
+    `Acesso excluído: ${target.name} (${loginLabel(target.email)})`,
+    {
+      active: true,
+      role: target.role,
+      jobLevel: target.jobLevel ?? null,
+      managerUserId: target.managerUserId ?? null,
+      division: target.division ?? null,
+      functions: target.functions ?? [],
+      screens: target.screens ?? null,
+    },
+    { active: false },
+  );
+  return target;
 }
 
 /** Define a divisão de uma linha de produto (só admin). */

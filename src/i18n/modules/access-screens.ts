@@ -8,6 +8,23 @@ export const pt = {
   "team.edit": "Editar acessos",
   "team.person.title": "Acessos de {name}",
   "team.person.back": "Voltar à equipe",
+  "team.delete.open": "Excluir acesso",
+  "team.delete.title": "Excluir acesso",
+  "team.delete.close": "Fechar",
+  "team.delete.body":
+    "Esta pessoa vai perder o acesso à equipe Wellmix: não entra mais no portal e, se estiver com ele aberto, é desconectada na próxima tela. O histórico, os registros e a autoria do que ela fez continuam guardados.",
+  "team.delete.reports":
+    "{n} pessoa(s) respondem a ela: depois, escolha outro chefe em “Responde a”.",
+  "team.delete.openWork":
+    "{n} pendência(s) aberta(s) estão com ela: depois, use “Distribuir agora” na aba “Linha de produto e divisão” para passá-las a outra pessoa da divisão.",
+  "team.delete.confirm": "Excluir acesso",
+  "team.delete.self": "Você não pode excluir o próprio acesso.",
+  "team.delete.lastAdmin":
+    "Último administrador ativo da equipe: o acesso não pode ser excluído.",
+  "team.saved.deleted": "Acesso excluído com sucesso",
+  "team.error.delete_self": "Você não pode excluir o próprio acesso.",
+  "team.error.delete_last_admin":
+    "Este é o último administrador ativo da equipe: o acesso não pode ser excluído.",
   "team.block.data": "Dados",
   "team.block.functions": "Funções (o que a pessoa faz no processo)",
   "team.block.screens": "Telas que o login abre",
@@ -55,6 +72,23 @@ export const en: Record<keyof typeof pt, string> = {
   "team.edit": "Edit access",
   "team.person.title": "Access for {name}",
   "team.person.back": "Back to team",
+  "team.delete.open": "Delete access",
+  "team.delete.title": "Delete access",
+  "team.delete.close": "Close",
+  "team.delete.body":
+    "This person will lose access to the Wellmix team: they can no longer sign in to the portal and, if it is open, they are signed out on the next screen. Their history, records and authorship of what they did are kept.",
+  "team.delete.reports":
+    "{n} person(s) report to them: afterwards, choose another manager under “Reports to”.",
+  "team.delete.openWork":
+    "{n} open item(s) are with them: afterwards, use “Distribute now” on the “Product line and division” tab to hand them to someone else in the division.",
+  "team.delete.confirm": "Delete access",
+  "team.delete.self": "You cannot delete your own access.",
+  "team.delete.lastAdmin":
+    "Last active administrator of the team: this access cannot be deleted.",
+  "team.saved.deleted": "Access deleted successfully",
+  "team.error.delete_self": "You cannot delete your own access.",
+  "team.error.delete_last_admin":
+    "This is the last active administrator of the team: the access cannot be deleted.",
   "team.block.data": "Details",
   "team.block.functions": "Functions (what the person does in the process)",
   "team.block.screens": "Screens this login opens",
@@ -102,6 +136,22 @@ export const zh: Record<keyof typeof pt, string> = {
   "team.edit": "编辑权限",
   "team.person.title": "{name} 的权限",
   "team.person.back": "返回团队",
+  "team.delete.open": "删除权限",
+  "team.delete.title": "删除权限",
+  "team.delete.close": "关闭",
+  "team.delete.body":
+    "此人将失去 Wellmix 团队的访问权限：无法再登录门户；如果门户正开着，会在下一个页面退出登录。其历史、记录以及所做操作的作者信息都会保留。",
+  "team.delete.reports":
+    "有 {n} 人向此人汇报：之后请在“汇报对象”中为他们选择新的上级。",
+  "team.delete.openWork":
+    "此人名下有 {n} 项未完成事项：之后请在“产品线与部门”页使用“立即分配”，交给该事业部的其他人。",
+  "team.delete.confirm": "删除权限",
+  "team.delete.self": "不能删除自己的权限。",
+  "team.delete.lastAdmin": "团队中最后一位在职管理员：不能删除此权限。",
+  "team.saved.deleted": "权限已删除",
+  "team.error.delete_self": "不能删除自己的权限。",
+  "team.error.delete_last_admin":
+    "这是团队中最后一位在职管理员：不能删除此权限。",
   "team.block.data": "基本信息",
   "team.block.functions": "职能（此人在流程中做什么）",
   "team.block.screens": "此账号可打开的页面",
