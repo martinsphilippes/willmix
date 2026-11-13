@@ -968,3 +968,9 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - Na caixa "Dados do booking" os dois campos ficam assim: **Fábrica** (quem fabrica; `supplierId`) e **Fornecedor** (para quem vão as solicitações dos itens: a Trading, a Factory, o Supplier, o GP ou o próprio fornecedor; `partnerId`; vazio = a fábrica). A busca do campo voltou a dizer "Digite para buscar o fornecedor".
 - Só texto, nos três idiomas (`bookingLots.partner.title`, `.search` e `.noMatch`). Sem mudança no banco nem na regra de para quem vão as solicitações.
 - **Não mudou** (fora da caixa): os textos das outras telas que dizem "responsável pelo booking" (amostragem, programação de compra, solicitação ao fornecedor) e o campo "Responsável" da mesma caixa, que é a pessoa da Wellmix dona do booking.
+
+## Programação de compra: o campo "Rodadas" do gerador passa a se chamar "Programações"
+
+- **Pedido do dono** (13/11/2026, com a foto do campo): "troca esse nome de Rodadas para Programações".
+- Só o rótulo desse campo do gerador (`purchaseRounds.gen.rounds`) e o aviso dele ("Informe de 1 a 12 programações."), nos três idiomas. Nada mais mudou na tela nem na regra. Sem mudança no banco.
+- **Ficou como estava** (aguardando o dono dizer se quer trocar também): os cartões "Rodada 1, 2…", "+ Rodada", "Intervalo entre rodadas", "Data da 1ª rodada", "Containers por rodada", a explicação e as linhas do Cálculo, que continuam dizendo "rodada".

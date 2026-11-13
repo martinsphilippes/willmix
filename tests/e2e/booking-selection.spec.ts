@@ -275,6 +275,8 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   );
   await expect(gen.locator("[data-generate-assumed]")).toHaveCount(0);
   await gen.locator("[data-generate-total]").fill("60000");
+  // O campo do número de rodadas se chama "Programações" (dono, 13/11/2026).
+  await expect(gen.getByLabel("Programações", { exact: true })).toBeVisible();
   await gen.locator("[data-generate-rounds]").fill("3");
   // "Containers por rodada" é só informativo (não é campo): quantos
   // containers cada rodada precisa, já na prévia. O cálculo fica escrito.
