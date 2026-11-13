@@ -35,7 +35,7 @@ export const pt = {
   "purchaseRounds.gen.totalField": "Containers no total",
   "purchaseRounds.gen.totalFieldHint":
     "Informativo: a soma dos containers de todas as rodadas. Muda quando uma rodada aumenta ou diminui.",
-  "purchaseRounds.gen.rounds": "Rodadas",
+  "purchaseRounds.gen.rounds": "Programações",
   "purchaseRounds.gen.submit": "Gerar programação",
   "purchaseRounds.gen.calc": "Cálculo",
   "purchaseRounds.gen.item":
@@ -51,7 +51,7 @@ export const pt = {
   "purchaseRounds.gen.tooBig":
     "A caixa master ({cbm} m³) não cabe no {container} ({cap} m³). Escolha um container maior.",
   "purchaseRounds.gen.errorTotal": "Digite o total de peças.",
-  "purchaseRounds.gen.errorRounds": "Informe de 1 a {max} rodadas.",
+  "purchaseRounds.gen.errorRounds": "Informe de 1 a {max} programações.",
   "purchaseRounds.gen.result":
     "{rounds} rodada(s) · {cartons} caixas · {cbm} m³ · {containers} container(s) {container}",
   "purchaseRounds.gen.extra":
@@ -163,7 +163,7 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.totalField": "Containers in total",
   "purchaseRounds.gen.totalFieldHint":
     "For information: the sum of the containers of all rounds. It changes when a round is increased or decreased.",
-  "purchaseRounds.gen.rounds": "Rounds",
+  "purchaseRounds.gen.rounds": "Schedules",
   "purchaseRounds.gen.submit": "Generate schedule",
   "purchaseRounds.gen.calc": "Calculation",
   "purchaseRounds.gen.item":
@@ -179,7 +179,7 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.tooBig":
     "The master carton ({cbm} m³) does not fit in the {container} ({cap} m³). Pick a larger container.",
   "purchaseRounds.gen.errorTotal": "Type the total pieces.",
-  "purchaseRounds.gen.errorRounds": "Enter 1 to {max} rounds.",
+  "purchaseRounds.gen.errorRounds": "Enter 1 to {max} schedules.",
   "purchaseRounds.gen.result":
     "{rounds} round(s) · {cartons} cartons · {cbm} m³ · {containers} container(s) {container}",
   "purchaseRounds.gen.extra":
@@ -287,7 +287,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.totalField": "集装箱合计",
   "purchaseRounds.gen.totalFieldHint":
     "仅供参考：各批集装箱数之和，增加或减少某一批时随之变化。",
-  "purchaseRounds.gen.rounds": "批数",
+  "purchaseRounds.gen.rounds": "计划数",
   "purchaseRounds.gen.submit": "生成计划",
   "purchaseRounds.gen.calc": "计算",
   "purchaseRounds.gen.item":
@@ -303,7 +303,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.tooBig":
     "外箱（{cbm} m³）装不进 {container}（{cap} m³）。请选择更大的集装箱。",
   "purchaseRounds.gen.errorTotal": "请输入总件数。",
-  "purchaseRounds.gen.errorRounds": "请输入 1 到 {max} 批。",
+  "purchaseRounds.gen.errorRounds": "请输入 1 到 {max} 个计划。",
   "purchaseRounds.gen.result":
     "{rounds} 批 · {cartons} 箱 · {cbm} m³ · {containers} 个 {container}",
   "purchaseRounds.gen.extra": "按整箱向上取整：多 {extra} 件。",
