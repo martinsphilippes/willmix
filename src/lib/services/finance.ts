@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 import {
   columnsExcept,
   indexBy,
@@ -630,7 +631,7 @@ export async function loadOrderFinance(
     {
       customer: customer?.name ?? "—",
       supplier: supplier?.name ?? "—",
-      product: items[0]?.name ?? "—",
+      product: realName(items[0]?.name) ?? "—",
     },
     {
       today,

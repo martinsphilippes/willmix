@@ -6,6 +6,7 @@ import { getStore } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { hiddenBookingProductIds } from "@/lib/services/booking-visibility";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
 import {
   Alert,
   Card,
@@ -96,7 +97,7 @@ export default async function NewMarketingKitPage({
                 </option>
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}
+                    {productNameText(t, p.name)}
                     {p.sku ? ` (${p.sku})` : ""}
                   </option>
                 ))}

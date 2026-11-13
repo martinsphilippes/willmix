@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { ProductSpecField } from "@/components/product-spec-field";
 import { productSpecLabels, sameSpec } from "@/lib/product-spec";
-import { translator } from "@/i18n";
+import { productNameText, translator } from "@/i18n";
+import { realName } from "@/lib/placeholder-name";
 import type { ComponentProps } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -340,7 +341,7 @@ export default async function ProductSheetPage({
           steps: "help.catalog.product.steps",
         }}
         t={t}
-        title={product.name}
+        title={productNameText(t, product.name)}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             {product.sku ? (
@@ -418,13 +419,27 @@ export default async function ProductSheetPage({
         <div className="grid items-start gap-2 lg:grid-cols-2">
           <FoldCard title={t("catalog.section.product")} fold="product">
             <div className="space-y-2">
-              <FieldRow label={t("common.name")} size="full" required>
+              <FieldRow
+                label={t("common.name")}
+                size="full"
+                required
+                // Nome de exemplo ("Produto novo XPTO") não é nome: o campo
+                // vem vazio, com a dica, e o nome real é pedido ao salvar.
+                missing={!realName(product.name)}
+                hint={
+                  realName(product.name) ? undefined : (
+                    <span data-product-name-unnamed>
+                      {t("productName.unnamedHint")}
+                    </span>
+                  )
+                }
+              >
                 <Input
                   name="name"
                   maxLength={160}
                   required
                   minLength={2}
-                  defaultValue={product.name}
+                  defaultValue={realName(product.name) ?? ""}
                   dense
                 />
               </FieldRow>
@@ -1084,7 +1099,9 @@ export default async function ProductSheetPage({
                         >
                           <Thumb
                             photo={photo}
-                            alt={photo.caption ?? product.name}
+                            alt={
+                              photo.caption ?? productNameText(t, product.name)
+                            }
                           />
                         </a>
                         {photo.caption ? (

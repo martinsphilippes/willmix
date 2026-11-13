@@ -1,4 +1,9 @@
 import "server-only";
+import {
+  nameOfLabel,
+  realName,
+  withoutPlaceholder,
+} from "@/lib/placeholder-name";
 
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore, type Order, type Requirement, type User } from "@/lib/db";
@@ -67,8 +72,9 @@ export function defaultDesk(user: User): DeskKey | null {
   return desks[0];
 }
 
+// O produto do rótulo; sem ele (ou com o nome de exemplo), o título da tarefa.
 const productOf = (r: Pick<Requirement, "label">) =>
-  r.label.split(" · ").slice(1).join(" · ").trim() || r.label;
+  nameOfLabel(r.label) || withoutPlaceholder(r.label);
 
 const byDue = (a: DeskRow, b: DeskRow) =>
   (a.dueAt ?? "9999").localeCompare(b.dueAt ?? "9999");
@@ -274,7 +280,7 @@ async function queuesOf(user: User, desk: DeskKey): Promise<DeskQueue[]> {
             .filter((p) => p.active)
             .map((p) => ({
               id: p.id,
-              title: p.name,
+              title: realName(p.name) ?? "—",
               orderNumber: null,
               note: null,
               dueAt: null,

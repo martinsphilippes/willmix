@@ -8,6 +8,7 @@ import { SheetBoardReader } from "@/components/sheet-board-reader";
 import { sheetReadingView } from "@/lib/services/sheet-reading";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { Alert, Badge, LinkButton, PageHeader, Select } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
@@ -139,7 +140,7 @@ export default async function PurchaseSheetPage({
           <span className="flex flex-wrap items-center gap-2">
             {t("sheet.subtitle", {
               number: String(view.order.number),
-              product: item?.name ?? "—",
+              product: item ? productNameText(t, item.name) : "—",
             })}
             {missing.length === 0 && !certifier ? (
               <Badge tone="success">{t("sheet.complete")}</Badge>

@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 import { can, holdersOf } from "@/lib/auth/function-access";
 import { loadFunctionDefs } from "./team-functions";
 
@@ -444,7 +445,9 @@ export async function artIssueTasks(
       kind: fix ? "art_fix" : "art_review",
       order,
       issue,
-      itemName: items.find((i) => i.id === issue.orderItemId)?.name ?? "—",
+      // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+      itemName:
+        realName(items.find((i) => i.id === issue.orderItemId)?.name) ?? "—",
       link: issueLink(order.id, issue.id),
       missing: route.missing ?? null,
       ownerUserId: routeOwnerUserId(route, order, ctx),

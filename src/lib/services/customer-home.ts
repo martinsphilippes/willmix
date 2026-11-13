@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 
 import { getStore, type Order, type StageKey, type User } from "@/lib/db";
 import { canViewOrder } from "@/lib/auth/permissions";
@@ -73,7 +74,8 @@ export async function customerOrdersInProgress(
     return {
       order,
       productName:
-        items.find((i) => i.orderId === order.id)?.name ?? `#${order.number}`,
+        realName(items.find((i) => i.orderId === order.id)?.name) ??
+        `#${order.number}`,
       stageKey: order.status,
       blocked: stage?.status === "blocked",
       percent: stage?.percent ?? 0,

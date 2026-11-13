@@ -1,5 +1,10 @@
 import "server-only";
 
+import {
+  nameOfLabel,
+  realName,
+  withoutPlaceholder,
+} from "@/lib/placeholder-name";
 import { buildPurchaseRounds } from "@/lib/purchase-rounds";
 import { assertCan } from "@/lib/auth/function-access";
 
@@ -209,7 +214,10 @@ export async function createPurchaseOrder(
     : null;
   const first = ordered[0];
   const summary = ordered
-    .map((o) => `nº ${o.request.number} (${o.product.name})`)
+    .map((o) =>
+      // Produto ainda sem nome real: só o número da solicitação.
+      withoutPlaceholder(`nº ${o.request.number} (${o.product.name})`),
+    )
     .join(", ");
 
   // A solicitação do pedido (o pedido sempre tem uma): já nasce "pedido".
@@ -318,10 +326,23 @@ async function send(
   await notify(targetOf(order, role) as Parameters<typeof notify>[0], {
     kind: "action",
     link: `/app/orders/${order.id}`,
-    text: (t) => ({
-      subject: t(subjectKey as never, { n: order.number, ...vars }),
-      body: t(bodyKey as never, { n: order.number, ...vars }),
-    }),
+    text: (t) => {
+      // Produto sem nome real: o aviso diz isso, em vez de ficar em branco.
+      const values = {
+        n: order.number,
+        ...vars,
+        ...("product" in vars && !vars.product
+          ? { product: t("productName.unnamed") }
+          : {}),
+        ...("products" in vars && !vars.products
+          ? { products: t("productName.unnamed") }
+          : {}),
+      };
+      return {
+        subject: t(subjectKey as never, values),
+        body: t(bodyKey as never, values),
+      };
+    },
   }).catch((error) => console.error("notify(purchase_order)", error));
 }
 
@@ -423,9 +444,11 @@ export async function afterLaneStep(
   }
 }
 
-/** O produto do rótulo do item da raia ("Arte · Copo" → "Copo"). */
-const productOf = (r: Pick<Requirement, "label">) =>
-  r.label.split(" · ").slice(1).join(" · ").trim();
+/**
+ * O produto do rótulo do item da raia ("Arte · Copo" → "Copo"); vazio sem
+ * produto ou com o nome de exemplo ("Produto novo XPTO").
+ */
+const productOf = (r: Pick<Requirement, "label">) => nameOfLabel(r.label);
 
 /**
  * Pedido de compra gerado (P2 → V1): o comercial fica sabendo do que vem, com
@@ -453,9 +476,6 @@ export async function notifySalesOfPurchase(order: Order): Promise<void> {
       ? holders
       : users.filter((u) => u.role === "admin");
     if (!sales.length) return;
-    const list = items
-      .map((i) => `${i.name} (${i.quantity} ${i.unit})`)
-      .join(", ");
     const { notify } = await import("./notifications");
     await notify(
       { userIds: sales.map((u) => u.id) },
@@ -466,7 +486,15 @@ export async function notifySalesOfPurchase(order: Order): Promise<void> {
           subject: t("purchaseSequence.notify.sales.subject", {
             n: order.number,
           }),
-          body: t("purchaseSequence.notify.sales.body", { items: list }),
+          body: t("purchaseSequence.notify.sales.body", {
+            // Nome de exemplo ("Produto novo XPTO") vira "Produto sem nome".
+            items: items
+              .map(
+                (i) =>
+                  `${realName(i.name) ?? t("productName.unnamed")} (${i.quantity} ${i.unit})`,
+              )
+              .join(", "),
+          }),
         }),
       },
     );
@@ -501,7 +529,7 @@ export async function notifyRegistrationOpen(order: Order): Promise<void> {
     (r) => laneOf(r.key) === "registration" && r.status !== "done",
   );
   if (!open.length) return;
-  const products = [...new Set(open.map(productOf))].join(", ");
+  const products = [...new Set(open.map(productOf))].filter(Boolean).join(", ");
   await send(
     order,
     "operator",

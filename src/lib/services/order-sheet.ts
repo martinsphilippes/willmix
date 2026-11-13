@@ -1,5 +1,6 @@
 import "server-only";
 
+import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
 import { getStore, type Order } from "@/lib/db";
 import type { OrderDocument, OrderSignature } from "./order-signature";
 
@@ -189,8 +190,12 @@ export async function buildOrderSheet(
       )
       .join(", ");
     const power = sheet?.powerSource ?? null;
-    const name = variant ? `${item.name} - ${variant.name}` : item.name;
-    const requestText = clean(request?.description);
+    // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+    const itemName = realName(item.name) ?? "";
+    const name = variant
+      ? [itemName, variant.name].filter(Boolean).join(" - ")
+      : itemName;
+    const requestText = clean(withoutPlaceholder(request?.description ?? ""));
     return {
       n: index + 1,
       contact:

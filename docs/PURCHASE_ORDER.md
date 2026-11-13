@@ -98,6 +98,16 @@ Regras:
 - **Parceiro designado depois:** designar ou trocar a certificadora ou a agência em Parceiros do pedido passa os itens abertos das raias para ela (certificado; arte e arte final com o selo, quando a agência faz a arte), sem duplicar; sem o parceiro, voltam para a Wellmix. O que já foi feito não muda.
 - **Fim da etapa:** a etapa conclui quando todos os itens das três raias estão feitos.
 
+### Nome do produto nas tarefas e o nome de exemplo (pedido do dono, 13/11/2026)
+
+Cada tarefa das raias leva o produto no nome: "Faca (die cut) · Jarra de vidro". O nome é o do item do pedido; se ele não tiver nome real, vale o do produto do cadastro (`purchaseLaneItems`, em `src/lib/workflow/engine.ts`).
+
+- **Nome de exemplo:** "XPTO" e "Produto novo XPTO" foram digitados como marcador de um nome a preencher depois, e o sistema copiou o texto para o item do pedido, para o rótulo das tarefas e para a solicitação do pedido. Esse texto vale como **nome ausente** (`isPlaceholderName`, em `src/lib/placeholder-name.ts`): só ele ou junto de "produto"/"novo"; um nome real que contém a palavra ("Xpto Cargo", "Jarra XPTO 500 ml") é nome.
+- **Sem nome real:** a tarefa mostra só o título ("Faca (die cut)"), sem o "·" sobrando. Nas outras telas, o produto aparece como "Produto sem nome" (ou "—" nas colunas de lista). Os registros antigos ficam como estão no banco; só a exibição trata o texto como ausente (`requirementLabel`, `productNameText`, `realName`).
+- **Quando o nome chega:** ao salvar o nome real no cadastro do produto (tela do produto ou lista de produtos), as cópias vazias ou de exemplo recebem o nome (`fillProductNameCopies`, em `src/lib/services/product-name-copies.ts`): o item do pedido, o rótulo de cada tarefa do produto e a solicitação do pedido. Cópia com nome real não muda. Status, respostas, arquivos e o vínculo das tarefas (a chave `chave__item`) ficam como estão. **Pedido assinado (por qualquer lado), encerrado ou cancelado fica como está**: o contrato assinado não muda sozinho. A auditoria registra quantas cópias receberam o nome (`product.name_copies`).
+- **Não volta a nascer:** o cadastro do produto (tela do produto, lista de produtos e "Criar produto" da solicitação ao fornecedor) recusa o nome de exemplo (`product_name_placeholder`); a tela do produto com esse nome mostra o campo vazio, com a dica de preencher o nome real. A recompra, a solicitação com variação e o seletor da nova solicitação não copiam mais o nome de exemplo.
+- **Auditoria:** as linhas antigas da auditoria continuam com o texto que foi digitado (registro do que aconteceu).
+
 ## 2b. Quadro Die Cut (13/11/2026)
 
 - **O que é:** os quatro itens do fornecedor (die-cut, foto em alta, pedido mínimo e prazo de entrega) juntos, produto a produto, em `/app/orders/{id}/die-cut`. São os mesmos requisitos da raia dele; a página do pedido continua mostrando cada um e ganha o atalho "Abrir o Die Cut".

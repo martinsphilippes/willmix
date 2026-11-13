@@ -1,5 +1,6 @@
 import { LOCALES, type Locale } from "@/lib/db/schema";
 import { dictionaries, type DictionaryKey } from "./dictionaries";
+import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
 
 export type Translate = ((
   key: DictionaryKey,
@@ -52,8 +53,20 @@ export function requirementLabel(
   }
   const key = `req.${requirement.key}` as DictionaryKey;
   const translated = t(key);
-  return translated === key ? requirement.label : translated;
+  // Rótulo gravado com nome de exemplo ("… · Produto novo XPTO"): só o título.
+  return translated === key
+    ? withoutPlaceholder(requirement.label)
+    : translated;
 }
+
+/**
+ * Nome do produto para a tela: o real, ou "Produto sem nome" quando está
+ * vazio ou é o nome de exemplo ("Produto novo XPTO").
+ */
+export const productNameText = (
+  t: Translate,
+  name: string | null | undefined,
+) => realName(name) ?? t("productName.unnamed");
 
 export const LOCALE_NAMES: Record<Locale, string> = {
   pt: "Português",

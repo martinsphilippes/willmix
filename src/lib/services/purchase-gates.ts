@@ -1,4 +1,5 @@
 import "server-only";
+import { withoutPlaceholder } from "@/lib/placeholder-name";
 
 import { getStore, type Order, type Requirement, type User } from "@/lib/db";
 import {
@@ -215,7 +216,7 @@ async function refresh(orderId: string, user: User | null): Promise<number> {
       "requirement.auto",
       "requirement",
       r.id,
-      `${r.label}: ${verdict.note}`,
+      `${withoutPlaceholder(r.label)}: ${verdict.note}`,
       { status: r.status },
       { status: "done", value: verdict.value },
     );

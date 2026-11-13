@@ -5,6 +5,7 @@ import type {
   Role,
   StageStatus,
 } from "@/lib/db/schema";
+import { titleWithName } from "@/lib/placeholder-name";
 
 /*
  * Pedido de compra das solicitações ao fornecedor (docs/PURCHASE_ORDER.md):
@@ -264,7 +265,8 @@ export function laneRequirements(
 ): RequirementTemplate[] {
   const out: RequirementTemplate[] = [];
   for (const item of items) {
-    const of = (label: string) => `${label} · ${item.name}`;
+    // Sem nome real (vazio ou de exemplo), fica só o título da tarefa.
+    const of = (label: string) => titleWithName(label, item.name);
     const certified = item.certificationRequired !== false;
     // Cadastro e fiscal: NCM validado e ficha mestre completa (o sistema confere).
     out.push(

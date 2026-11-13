@@ -1,3 +1,4 @@
+import { productNameText } from "@/i18n";
 import type { Order } from "@/lib/db";
 import type { ArtworkView } from "@/lib/services/artwork";
 import {
@@ -174,7 +175,9 @@ export function ArtworkCard({
                       className={rowClass}
                       data-artwork-item={item.id}
                     >
-                      <Td className="min-w-40 font-medium">{item.name}</Td>
+                      <Td className="min-w-40 font-medium">
+                        {productNameText(t, item.name)}
+                      </Td>
                       <Td className="whitespace-nowrap">
                         <Badge tone="neutral">{t("artwork.noIssues")}</Badge>
                       </Td>
@@ -191,7 +194,9 @@ export function ArtworkCard({
                       data-artwork-item={n === 0 ? item.id : undefined}
                       data-artwork-issue={issue.status}
                     >
-                      <Td className="min-w-40 font-medium">{item.name}</Td>
+                      <Td className="min-w-40 font-medium">
+                        {productNameText(t, item.name)}
+                      </Td>
                       <Td className="whitespace-nowrap">
                         <Badge tone={tone(issue.status)}>
                           {t(`artwork.status.${issue.status}`)}
@@ -324,7 +329,7 @@ export function ArtworkCard({
               >
                 {view.items.map(({ item }) => (
                   <option key={item.id} value={item.id}>
-                    {item.name}
+                    {productNameText(t, item.name)}
                   </option>
                 ))}
               </Select>

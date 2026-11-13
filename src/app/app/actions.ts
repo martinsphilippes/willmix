@@ -913,6 +913,9 @@ export async function saveProductAction(form: FormData) {
         sku: str(form, "sku") || null,
         specification: str(form, "specification") || null,
       });
+    // "XPTO" é texto de exemplo, não nome (docs/PURCHASE_ORDER.md).
+    const { assertRealProductName } = await import("@/lib/placeholder-name");
+    assertRealProductName(parsed.name);
     const id = str(form, "id");
     const store = getStore();
     const saved = id
@@ -922,6 +925,12 @@ export async function saveProductAction(form: FormData) {
           ...parsed,
           active: true,
         });
+    // O nome chega aos pedidos e às tarefas que estavam sem ele.
+    if (id) {
+      const { fillProductNameCopies } =
+        await import("@/lib/services/product-name-copies");
+      await fillProductNameCopies(user, saved);
+    }
     // Produto novo ou alterado vai para o Sankhya (fase 3).
     const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
     await syncSoon(user, "product", saved.id);
