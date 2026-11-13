@@ -57,6 +57,14 @@ Regras:
 - **Passos do selo:** os passos do cartão Certificação (selo e arte com o selo) não viram pendência nestes pedidos, porque a certificação é a raia da certificadora.
 - **Fim da etapa:** a etapa conclui quando todos os itens das três raias estão feitos.
 
+## 2b. Quadro Die Cut (13/11/2026)
+
+- **O que é:** os quatro itens do fornecedor (die-cut, foto em alta, pedido mínimo e prazo de entrega) juntos, produto a produto, em `/app/orders/{id}/die-cut`. São os mesmos requisitos da raia dele; a página do pedido continua mostrando cada um e ganha o atalho "Abrir o Die Cut".
+- **Como chega:** em Minhas pendências, a etapa **Die Cut** do fornecedor traz uma linha por produto ("Die Cut: produto"); "Abrir" leva ao quadro, já no produto.
+- **Pedido mínimo e prazo:** vêm com o negociado na solicitação ao fornecedor; ele confirma os dois de uma vez ou corrige. Enquanto a Preparação está aberta dá para corrigir de novo.
+- **Avisos à Wellmix:** quando os quatro itens de um produto ficam completos (com o valor negociado, se o confirmado saiu diferente) e a cada mudança posterior de pedido mínimo ou prazo, com o valor de antes.
+- **Quem abre:** a Wellmix e o fornecedor do pedido.
+
 ## 3. Contrato e assinaturas (etapa "Arte e embalagem")
 
 - Concluída a Preparação, o sistema monta o **contrato**: o documento do pedido (`/app/orders/{id}/purchase-order`) com os dados, os produtos, o MOQ e o prazo negociados de cada um e a **arte final com o selo** de cada produto.

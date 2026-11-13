@@ -104,7 +104,7 @@ export function orderDocumentHash(doc: OrderDocument): string {
 }
 
 /** O fornecedor do pedido: quem assina o documento do lado de lá. */
-function isOrderSupplier(user: User, order: Pick<Order, "supplierId">) {
+export function isOrderSupplier(user: User, order: Pick<Order, "supplierId">) {
   return (
     user.role === "supplier" &&
     !!user.partyId &&

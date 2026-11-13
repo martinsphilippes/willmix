@@ -11,6 +11,8 @@ import {
 import { ActionError } from "@/components/action-error";
 import { Fragment, type ReactNode } from "react";
 import { fallbackError } from "@/i18n/error-text";
+import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
+import { canViewDieCut } from "@/lib/services/die-cut-step";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -1808,6 +1810,39 @@ export default async function OrderPage({
                     </p>
                   ) : (
                     <ul className="@container divide-y divide-zinc-100">
+                      {/* Pedido de compra: os quatro itens do fornecedor também
+                          ficam juntos, produto a produto, no quadro Die Cut. */}
+                      {purchaseFlow &&
+                      stage.key === "PREPARATION" &&
+                      canViewDieCut(user, progress.order) &&
+                      reqs.some((r) => dieCutItemOf(r.key)) ? (
+                        <li
+                          className="flex flex-wrap items-center justify-between gap-2 py-2.5"
+                          data-die-cut-link
+                        >
+                          <span className="text-sm text-zinc-600">
+                            {t("dieCut.orderHint")}
+                          </span>
+                          <LinkButton
+                            href={dieCutHref(order.id)}
+                            variant={
+                              user.role === "supplier" &&
+                              reqs.some(
+                                (r) =>
+                                  dieCutItemOf(r.key) && r.status !== "done",
+                              )
+                                ? "primary"
+                                : "secondary"
+                            }
+                          >
+                            {reqs.some(
+                              (r) => dieCutItemOf(r.key) && r.status !== "done",
+                            )
+                              ? t("dieCut.open")
+                              : t("dieCut.view")}
+                          </LinkButton>
+                        </li>
+                      ) : null}
                       {reqs.map((r) => (
                         <RequirementRow
                           key={r.id}

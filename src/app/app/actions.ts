@@ -61,7 +61,9 @@ import { importCsv } from "@/lib/services/import";
 import { confirmSupplierPaymentReceipt } from "@/lib/services/acknowledgements";
 
 /* Helpers compartilhados com src/app/app/actions/*.ts */
-import { num, requireUser, run, str } from "./actions/helpers";
+import { num, requireUser, run, str, withQuery } from "./actions/helpers";
+import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
+import { itemIdOf } from "@/lib/purchase-lanes";
 import { parseRequestItems } from "./actions/request-items";
 import { scheduleTotal } from "@/lib/workflow/request-schedule";
 
@@ -287,7 +289,10 @@ export async function submitRequirementAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
   const requirementId = str(form, "requirementId");
-  await run(`/app/orders/${orderId}`, async () => {
+  // Envio feito no quadro Die Cut do pedido: volta para ele (sucesso ou erro).
+  const dieCut = str(form, "returnTo") === "die-cut";
+  const back = dieCut ? dieCutHref(orderId) : `/app/orders/${orderId}`;
+  await run(back, async () => {
     assertScreen(user, "orders");
     const store = getStore();
     const requirement = await store.get("requirements", requirementId);
@@ -366,6 +371,14 @@ export async function submitRequirementAction(form: FormData) {
         );
       throw error;
     }
+    if (dieCut) {
+      const item = dieCutItemOf(requirement.key);
+      return withQuery(
+        dieCutHref(orderId, itemIdOf(requirement.key)),
+        "saved",
+        item === "dieline" || item === "hd" ? item : "terms",
+      );
+    }
     return `/app/orders/${orderId}#stage-${requirement.stageId}`;
   });
 }
@@ -375,13 +388,16 @@ export async function clearRequirementDocumentAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
   const requirementId = str(form, "requirementId");
-  await run(`/app/orders/${orderId}`, async () => {
+  const dieCut = str(form, "returnTo") === "die-cut";
+  const back = dieCut ? dieCutHref(orderId) : `/app/orders/${orderId}`;
+  await run(back, async () => {
     assertScreen(user, "orders");
     const requirement = await getStore().get("requirements", requirementId);
     if (!requirement || requirement.orderId !== orderId)
       throw new Error("not_found");
     const { clearRequirementDocument } = await import("@/lib/workflow/engine");
     await clearRequirementDocument(user, requirementId);
+    if (dieCut) return dieCutHref(orderId, itemIdOf(requirement.key));
     return `/app/orders/${orderId}#stage-${requirement.stageId}`;
   });
 }

@@ -196,7 +196,45 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await login(page, "supplier.a@china.com");
   await page.goto(orderUrl);
   await expect(requirementRow(page, /Faca \(die cut\)/).first()).toBeVisible();
-  await fillMyRequirements(page, orderUrl, { MOQ: "2000", Prazo: "45" });
+  // A pendência dele cai na etapa "Die Cut" e abre o quadro do pedido, com
+  // os quatro itens do produto: die-cut, foto em alta, pedido mínimo e prazo.
+  await page.goto("/app/tasks");
+  const dieCutTask = page.locator(
+    `[data-task-group="supplier.dieline"]:has(a[href*="${new URL(orderUrl, "http://x").pathname}/die-cut"])`,
+  );
+  await expect(dieCutTask).toHaveCount(1);
+  await expect(dieCutTask).toContainText(/Die Cut/);
+  await dieCutTask.getByRole("link").first().click();
+  await page.waitForURL(/\/die-cut/);
+  const board = page.locator("[data-die-cut-product]");
+  await expect(board).toHaveAttribute("data-complete", "no");
+  for (const [item, file] of [
+    ["dieline", pdf],
+    ["hd", png],
+  ] as const) {
+    await board
+      .locator(`[data-die-cut-item="${item}"] input[type=file]`)
+      .last()
+      .setInputFiles(file);
+    await page.waitForURL(new RegExp(`saved=${item}`));
+    await expect(
+      board.locator(`[data-die-cut-item="${item}"]`),
+    ).toHaveAttribute("data-done", "yes");
+  }
+  // O pedido mínimo e o prazo vêm com o negociado; ele corrige o prazo.
+  const terms = board.locator("[data-die-cut-terms]");
+  await expect(terms.locator("input[name=moq]")).toHaveValue("2000");
+  await terms.locator("input[name=leadTimeDays]").fill("45");
+  await terms.getByRole("button").click();
+  await page.waitForURL(/saved=terms/);
+  await expect(board).toHaveAttribute("data-complete", "yes");
+  // Nada mais dele na Preparação: o pedido mostra os quatro concluídos.
+  await page.goto(orderUrl);
+  await expect(page.locator("[data-die-cut-link]")).toBeVisible();
+  await expect(requirementRow(page, /Faca \(die cut\)/).first()).toContainText(
+    /doc\.pdf/,
+  );
+  await fillMyRequirements(page, orderUrl);
   // 6b. Agência: envia a arte. A arte final com o selo ainda não sobe
   // (falta a arte validada e o certificado).
   await login(page, "agencia@design.com");

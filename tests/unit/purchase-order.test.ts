@@ -390,4 +390,94 @@ describe("pedido em nome do responsável pelo booking (trading)", () => {
     const doc = await signature.buildOrderDocument(order);
     expect("manufacturers" in doc).toBe(false);
   });
+
+  it("quadro Die Cut: pendência por produto, quatro itens e aviso à Wellmix", async () => {
+    const store = getStore();
+    const dieCut = await import("@/lib/services/die-cut-step");
+    const [r1] = await approvedProducts(null, ["DC-1", "DC-2"]);
+    const order = await po.createPurchaseOrder(admin, [
+      { requestId: r1.id, quantity: null },
+    ]);
+    const [item] = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    const href = `/app/orders/${order.id}/die-cut#item-${item.id}`;
+    const mine = async () =>
+      (await pendingTasksFor(supplierA)).filter((t) => t.orderId === order.id);
+
+    // A pendência do fornecedor cai na etapa Die Cut e abre o quadro.
+    const tasks = await mine();
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]).toMatchObject({
+      group: "supplier.dieline",
+      supplierStep: "dieline",
+      link: href,
+      text: { title: "tasks.dieline.title" },
+    });
+
+    // O quadro traz os quatro itens e o negociado na solicitação.
+    let view = (await dieCut.getDieCutView(supplierA, order.id))!;
+    expect(view.open).toBe(true);
+    expect(view.canAct).toBe(true);
+    expect(view.products).toHaveLength(1);
+    expect(view.products[0]).toMatchObject({
+      itemId: item.id,
+      negotiatedMoq: 1000,
+      negotiatedLeadTimeDays: 30,
+      complete: false,
+      missing: ["dieline", "hd", "moq", "leadTime"],
+    });
+    // Só a Wellmix e o fornecedor do pedido abrem.
+    expect(await dieCut.getDieCutView(agency, order.id)).toBeNull();
+    expect(await dieCut.getDieCutView(admin, order.id)).not.toBeNull();
+    await expect(
+      dieCut.confirmDieCutTerms(agency, order.id, item.id, {
+        moq: 1,
+        leadTimeDays: 1,
+      }),
+    ).rejects.toThrow("not_found");
+
+    const k = (base: string) => `${base}__${item.id}`;
+    const notices = async () =>
+      (await store.list("notifications")).filter((n) => n.link === href);
+    await submit(supplierA, order.id, k("die_cut"), { file: "faca.pdf" });
+    await submit(supplierA, order.id, k("hd_photo"), { file: "hd.pdf" });
+    expect(await notices()).toHaveLength(0);
+    // Confirma os dois números de uma vez, com o prazo diferente do negociado.
+    await dieCut.confirmDieCutTerms(supplierA, order.id, item.id, {
+      moq: 1000,
+      leadTimeDays: 45,
+    });
+    view = (await dieCut.getDieCutView(supplierA, order.id))!;
+    expect(view.products[0].complete).toBe(true);
+    expect(view.products[0].items.moq?.value).toBe("1000");
+    expect(view.products[0].items.leadTime?.value).toBe("45");
+    expect(view.documents.size).toBe(2);
+    expect(await mine()).toHaveLength(0);
+
+    // Completo: um aviso só à Wellmix, com o número de antes.
+    let sent = await notices();
+    const subjects = () => [...new Set(sent.map((n) => n.subject))];
+    expect(subjects()).toHaveLength(1);
+    expect(subjects()[0]).toContain("mudou pedido mínimo ou prazo");
+    expect(sent[0].body).toContain("45 dias");
+    expect(sent[0].body).toContain("Antes: 1000 peças e 30 dias");
+
+    // Confirmar de novo sem mudar nada não avisa; mudando, avisa com o de antes.
+    const count = sent.length;
+    await dieCut.confirmDieCutTerms(supplierA, order.id, item.id, {
+      moq: 1000,
+      leadTimeDays: 45,
+    });
+    expect(await notices()).toHaveLength(count);
+    await dieCut.confirmDieCutTerms(supplierA, order.id, item.id, {
+      moq: 1200,
+      leadTimeDays: 45,
+    });
+    sent = await notices();
+    expect(sent.length).toBeGreaterThan(count);
+    expect(
+      sent.some((n) => n.body.includes("Antes: 1000 peças e 45 dias")),
+    ).toBe(true);
+  });
 });
