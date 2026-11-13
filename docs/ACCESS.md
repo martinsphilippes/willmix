@@ -28,6 +28,7 @@ Uma única lista de **telas** e uma única regra que diz quais telas cada login 
 | Booking (planilhas de fornecedor)                                            |     ✓     |      ✓       |    ✓    |    ✓     |      ✓       |       ✓        |          |
 | Solicitações (e cotações)                                                    |     ✓     |      ✓       |    ✓    |          |      ✓       |       ✓        |          |
 | Pedidos                                                                      |     ✓     |      ✓       |    ✓    |    ✓     |      ✓       |       ✓        |    ✓     |
+| Produção (13/11/2026)                                                        |     ✓     |              |    ✓    |          |      ✓       |       ✓        |          |
 | Sourcing                                                                     |     ✓     |      ✓       |         |    ✓     |      ✓       |       ✓        |          |
 | Fila de revisão                                                              |     ✓     |      ✓       |         |    ✓     |      ✓       |       ✓        |          |
 | Fretes e Tarifário de frete                                                  |     ✓     |              |    ✓    |          |      ✓       |       ✓        |          |
