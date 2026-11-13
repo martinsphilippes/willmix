@@ -233,6 +233,13 @@ export default async function OrderPage({
     purchaseFlow && (key === "PREPARATION" || key === "PACKAGING")
       ? t(`purchaseOrder.stage.${key}` as DictionaryKey)
       : t(`stage.${key}` as DictionaryKey);
+  // Linha da etapa na tabela "Etapas do pedido" (pedido do dono, 13/11/2026):
+  // no pedido de compra a etapa 2 aparece como "Die-Cut, Arte e Certificação";
+  // o quadro da etapa e o resto da tela seguem com o nome de sempre.
+  const stageRowName = (key: string) =>
+    purchaseFlow && key === "PREPARATION"
+      ? t("purchaseOrder.stageRow.PREPARATION")
+      : stageName(key);
   const store = getStore();
   const wellmix = isWellmix(user);
   /* Certificadora (OCP) do pedido: vê tudo do pedido para gerar o selo
@@ -1473,10 +1480,10 @@ export default async function OrderPage({
                               href={stageHref(s)}
                               className="transition hover:text-brand-700"
                             >
-                              {stageName(s.key)}
+                              {stageRowName(s.key)}
                             </a>
                           ) : (
-                            stageName(s.key)
+                            stageRowName(s.key)
                           )}
                         </span>
                       </Td>
