@@ -3,28 +3,34 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { fallbackError } from "@/i18n/error-text";
+import { errorTextFor } from "@/i18n/error-text";
 import { getStore, type Requirement } from "@/lib/db";
 import { canSubmitRequirement } from "@/lib/workflow/engine";
 import { getDieCutView } from "@/lib/services/die-cut-step";
-import { DIE_CUT_ITEMS, type DieCutItem } from "@/lib/die-cut-step";
+import {
+  DIE_CUT_ITEMS,
+  formatTermsNumber,
+  type DieCutItem,
+} from "@/lib/die-cut-step";
 import {
   Alert,
   Badge,
   Card,
-  Field,
-  Input,
   LinkButton,
   PageHeader,
   TextLink,
   formatDate,
 } from "@/components/ui";
 import { ActionError } from "@/components/action-error";
-import { SubmitButton } from "@/components/submit-button";
 import { RequirementForm } from "@/components/requirement-form";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { clearRequirementDocumentAction } from "../../../actions";
 import { confirmDieCutTermsAction } from "../../../actions/die-cut-step";
+import { DieCutTerms } from "./_components/die-cut-terms";
+
+/** Quem confirmou por último o pedido mínimo e o prazo (o envio mais recente). */
+const lastConfirmed = (a: Requirement, b: Requirement) =>
+  (b.submittedAt ?? "") > (a.submittedAt ?? "") ? b : a;
 
 /*
  * Quadro "Die Cut" do pedido de compra (decisão do dono, 13/11/2026): os
@@ -49,9 +55,7 @@ export default async function DieCutPage({
 
   const code = typeof error === "string" ? error : "";
   const errorText = code
-    ? ([`dieCut.error.${code}`, `orders.error.${code}`]
-        .map((key) => [key, t(key as DictionaryKey)])
-        .find(([key, text]) => text !== key)?.[1] ?? fallbackError(t, code))
+    ? errorTextFor(t, code, ["dieCut.error", "orders.error"])
     : null;
   const savedKey = `dieCut.saved.${typeof saved === "string" ? saved : ""}`;
   const savedText =
@@ -71,6 +75,9 @@ export default async function DieCutPage({
     : [];
   const sentBy = (r: Requirement) =>
     `${users.find((u) => u.id === r.submittedByUserId)?.name ?? "—"} · ${formatDate(r.submittedAt, t)}`;
+  /** Pedido mínimo e prazo no formato do idioma (132000 → "132.000"). */
+  const termsNumber = (value: string | number | null | undefined) =>
+    formatTermsNumber(value, t.intl);
 
   const state = (r: Requirement | null) =>
     r?.status === "done" ? (
@@ -221,72 +228,73 @@ export default async function DieCutPage({
                         <span className="text-sm font-medium text-zinc-900">
                           {t("dieCut.item.moq")} · {t("dieCut.item.leadTime")}
                         </span>
-                        {state(termsDone ? moq : null)}
+                        {termsDone ? (
+                          <Badge tone="success">
+                            {t("dieCut.terms.confirmedBadge")}
+                          </Badge>
+                        ) : (
+                          state(null)
+                        )}
                       </div>
                       {p.negotiatedMoq !== null ||
                       p.negotiatedLeadTimeDays !== null ? (
                         <p className="text-xs text-zinc-600">
                           {t("dieCut.negotiated", {
-                            moq: p.negotiatedMoq ?? "—",
-                            days: p.negotiatedLeadTimeDays ?? "—",
+                            moq: termsNumber(p.negotiatedMoq),
+                            days: termsNumber(p.negotiatedLeadTimeDays),
                           })}
                         </p>
                       ) : null}
-                      {termsDone ? (
-                        <p className="text-xs text-zinc-500">
-                          <span className="mr-2 text-zinc-800">
-                            {t("dieCut.confirmed", {
-                              moq: moq.value ?? "—",
-                              days: lead.value ?? "—",
-                            })}
-                          </span>
-                          {sentBy(lead)}
-                        </p>
-                      ) : null}
-                      {canSend(moq) && canSend(lead) ? (
-                        <form
-                          action={confirmDieCutTermsAction}
-                          className="space-y-2"
-                          data-die-cut-terms
-                        >
-                          <input
-                            type="hidden"
-                            name="orderId"
-                            value={order.id}
-                          />
-                          <input type="hidden" name="itemId" value={p.itemId} />
-                          <p className="text-xs text-zinc-600">
-                            {t("dieCut.terms.hint")}
-                          </p>
-                          <div className="flex flex-wrap items-end gap-2">
-                            <Field label={t("dieCut.moq")}>
-                              <Input
-                                name="moq"
-                                inputMode="numeric"
-                                required
-                                defaultValue={
-                                  moq.value ?? p.negotiatedMoq ?? ""
-                                }
-                                className="w-36"
-                              />
-                            </Field>
-                            <Field label={t("dieCut.leadTime")}>
-                              <Input
-                                name="leadTimeDays"
-                                inputMode="numeric"
-                                required
-                                defaultValue={
-                                  lead.value ?? p.negotiatedLeadTimeDays ?? ""
-                                }
-                                className="w-36"
-                              />
-                            </Field>
-                            <SubmitButton pendingText="...">
-                              {t("dieCut.terms.submit")}
-                            </SubmitButton>
-                          </div>
-                        </form>
-                      ) : null}
+                      {/* Confirmado: o resumo no lugar do formulário, com
+                          "Editar" enquanto a etapa deixa corrigir (dono,
+                          13/11/2026). Muda o registro salvo, o bloco remonta
+                          e volta ao resumo. */}
+                      <DieCutTerms
+                        key={`${moq.submittedAt ?? ""}|${lead.submittedAt ?? ""}`}
+                        action={confirmDieCutTermsAction}
+                        orderId={order.id}
+                        itemId={p.itemId}
+                        confirmed={termsDone}
+                        canEdit={canSend(moq) && canSend(lead)}
+                        initial={{
+                          moq: String(moq.value ?? p.negotiatedMoq ?? ""),
+                          leadTimeDays: String(
+                            lead.value ?? p.negotiatedLeadTimeDays ?? "",
+                          ),
+                        }}
+                        summary={
+                          termsDone ? (
+                            <>
+                              <span
+                                className="text-sm font-semibold text-zinc-900 tabular-nums"
+                                data-die-cut-terms-values
+                              >
+                                {t("dieCut.terms.values", {
+                                  moq: termsNumber(moq.value),
+                                  days: termsNumber(lead.value),
+                                })}
+                              </span>
+                              <span
+                                className="text-xs text-zinc-500"
+                                data-die-cut-terms-by
+                              >
+                                {sentBy(lastConfirmed(moq, lead))}
+                              </span>
+                            </>
+                          ) : null
+                        }
+                        labels={{
+                          hint: t("dieCut.terms.hint"),
+                          moq: t("dieCut.moq"),
+                          leadTime: t("dieCut.leadTime"),
+                          submit: t("dieCut.terms.submit"),
+                          edit: t("common.edit"),
+                          editAria: t("dieCut.terms.editAria", {
+                            product: p.name,
+                          }),
+                          cancel: t("common.cancel"),
+                        }}
+                      />
                     </li>
                   ) : null}
                 </ul>

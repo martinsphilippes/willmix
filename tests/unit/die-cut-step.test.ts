@@ -3,9 +3,12 @@ import {
   dieCutHref,
   dieCutItemOf,
   dieCutProducts,
+  formatTermsNumber,
   parseLeadTime,
   parseMoq,
 } from "@/lib/die-cut-step";
+import { translator } from "@/i18n";
+import { errorTextFor } from "@/i18n/error-text";
 import {
   baseKeyOf,
   isLeadTimeKey,
@@ -155,5 +158,44 @@ describe("visão do fornecedor na Preparação", () => {
     expect(isLeadTimeKey("lead_time_confirmed__a")).toBe(true);
     expect(isLeadTimeKey("lead_time_confirmed")).toBe(false);
     expect(isLeadTimeKey("moq_confirmed__a")).toBe(false);
+  });
+});
+
+describe("resumo do pedido mínimo e do prazo (confirmado)", () => {
+  it("mostra os números no formato do idioma", () => {
+    expect(formatTermsNumber("132000", "pt-BR")).toBe("132.000");
+    expect(formatTermsNumber(132000, "en-US")).toBe("132,000");
+    expect(formatTermsNumber("15", "pt-BR")).toBe("15");
+    // O exemplo do dono, com o texto do resumo.
+    const t = translator("pt");
+    expect(
+      t("dieCut.terms.values", {
+        moq: formatTermsNumber("132000", t.intl),
+        days: formatTermsNumber("15", t.intl),
+      }),
+    ).toBe("132.000 peças · 15 dias");
+  });
+
+  it("sem valor, um traço", () => {
+    expect(formatTermsNumber(null, "pt-BR")).toBe("—");
+    expect(formatTermsNumber(undefined, "pt-BR")).toBe("—");
+    expect(formatTermsNumber("", "pt-BR")).toBe("—");
+  });
+
+  it("o erro vem do quadro, depois do pedido, senão o texto padrão", () => {
+    const t = translator("pt");
+    const prefixes = ["dieCut.error", "orders.error"];
+    expect(errorTextFor(t, "invalid_moq", prefixes)).toBe(
+      t("dieCut.error.invalid_moq"),
+    );
+    expect(errorTextFor(t, "date_invalid", prefixes)).toBe(
+      t("orders.error.date_invalid"),
+    );
+    expect(errorTextFor(t, "codigo_novo", prefixes)).toBe(
+      `${t("common.error")} (codigo_novo)`,
+    );
+    expect(errorTextFor(t, "unexpected", prefixes)).toBe(
+      t("common.unexpected"),
+    );
   });
 });
