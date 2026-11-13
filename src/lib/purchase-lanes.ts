@@ -94,6 +94,33 @@ export function blockedBy(
   return prerequisitesOf(key).filter((k) => !done.has(k));
 }
 
+/**
+ * Visão do fornecedor na etapa "Preparação, arte e certificação" do pedido de
+ * compra (pedido do dono, 13/11/2026): só três tarefas por produto, a faca
+ * (die cut), a foto em alta e o prazo de produção. O resto (MOQ, arte,
+ * validação, certificado, arte final, NCM ou outro item da linha do produto)
+ * continua existindo e valendo; só não aparece para ele nessa seção. A
+ * Wellmix vê tudo, e o MOQ segue no quadro Die Cut.
+ */
+const SUPPLIER_PREPARATION_KEYS = new Set<string>([
+  LANE_KEYS.dieCut,
+  LANE_KEYS.hdPhoto,
+  LANE_KEYS.leadTime,
+]);
+
+export function supplierSeesLaneRequirement(
+  requirement: Pick<Requirement, "key">,
+): boolean {
+  return (
+    !!itemIdOf(requirement.key) &&
+    SUPPLIER_PREPARATION_KEYS.has(baseKeyOf(requirement.key))
+  );
+}
+
+/** O prazo de produção confirmado de um item do pedido (`lead_time_confirmed__item`). */
+export const isLeadTimeKey = (key: string) =>
+  !!itemIdOf(key) && baseKeyOf(key) === LANE_KEYS.leadTime;
+
 export interface LaneItem {
   id: string;
   name: string;

@@ -40,6 +40,10 @@ export const pt = {
   "dieCut.view": "Ver o Die Cut",
   "dieCut.orderHint":
     "Die-cut, foto em alta, pedido mínimo e prazo de entrega de cada produto ficam no quadro Die Cut.",
+  "dieCut.orderHint.supplier":
+    "A faca, a foto em alta e o prazo de cada produto também ficam no quadro Die Cut.",
+  "dieCut.stageHelp.supplier":
+    "Envie a faca (die cut) e a foto em alta resolução de cada produto e confirme o prazo de produção em dias.",
   "dieCut.negotiated": "Negociado: {moq} peças · {days} dias.",
   "dieCut.confirmed": "Confirmado: {moq} peças · {days} dias.",
   "dieCut.closed":
@@ -90,6 +94,10 @@ export const en: Record<keyof typeof pt, string> = {
   "dieCut.view": "View Die Cut",
   "dieCut.orderHint":
     "Die-cut, high-resolution photo, minimum order and lead time of each product are in the Die Cut board.",
+  "dieCut.orderHint.supplier":
+    "The die-cut, the high-resolution photo and the lead time of each product are also in the Die Cut board.",
+  "dieCut.stageHelp.supplier":
+    "Send the die-cut and the high-resolution photo of each product and confirm the production lead time in days.",
   "dieCut.negotiated": "Negotiated: {moq} pieces · {days} days.",
   "dieCut.confirmed": "Confirmed: {moq} pieces · {days} days.",
   "dieCut.closed":
@@ -136,6 +144,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "dieCut.view": "查看刀模 (Die Cut)",
   "dieCut.orderHint":
     "每个产品的刀模、高清照片、起订量和交期都在刀模 (Die Cut) 页面。",
+  "dieCut.orderHint.supplier":
+    "每个产品的刀模、高清照片和交期也在刀模 (Die Cut) 页面。",
+  "dieCut.stageHelp.supplier":
+    "请提交每个产品的刀模图 (die cut) 和高清照片，并确认生产交期（天）。",
   "dieCut.negotiated": "已谈定：{moq} 件 · {days} 天。",
   "dieCut.confirmed": "已确认：{moq} 件 · {days} 天。",
   "dieCut.closed": "订单的这个环节未开启：以下内容仅供查看。",
