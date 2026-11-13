@@ -4,8 +4,8 @@
  * pedido pai com os pedidos filhos. Mesmas chaves em pt, en e zh.
  */
 export const pt = {
-  "supplierRequests.table.col.rounds": "Rodadas",
-  "supplierRequests.table.col.perRound": "Peças por rodada",
+  "supplierRequests.table.col.rounds": "Programações",
+  "supplierRequests.table.col.perRound": "Peças por programação",
   "purchaseRounds.form.toggle": "Programação de compra",
   "purchaseRounds.form.ask": "Comprar em rodadas nos próximos meses?",
   "purchaseRounds.form.hint":
