@@ -25,7 +25,7 @@ export const pt = {
     "Com a programação de compra, a quantidade é a soma das rodadas.",
   "purchaseRounds.gen.title": "Gerar programação pela quantidade",
   "purchaseRounds.gen.hint":
-    "Digite o total de peças e o número de rodadas: o total é dividido igualmente entre as rodadas, em caixas master inteiras. Os containers de cada rodada saem dessa conta. Em cada rodada, + Aumentar ou − Diminuir ajusta as peças para fechar o container (com 95% ou mais ele conta como cheio).",
+    "Digite o total de caixas e o número de datas programadas: o total é dividido igualmente entre as rodadas, em caixas master inteiras. Os containers de cada rodada saem dessa conta. Em cada rodada, + Aumentar ou − Diminuir ajusta as peças para fechar o container (com 95% ou mais ele conta como cheio).",
   "purchaseRounds.gen.total": "Total de peças",
   "purchaseRounds.gen.container": "Container",
   "purchaseRounds.gen.perRound": "Containers por rodada",
@@ -153,7 +153,7 @@ export const en: Record<keyof typeof pt, string> = {
     "With a purchase schedule, the quantity is the sum of the rounds.",
   "purchaseRounds.gen.title": "Generate the schedule from the quantity",
   "purchaseRounds.gen.hint":
-    "Type the total pieces and the number of rounds: the total is split evenly across the rounds, in whole master cartons. The containers of each round come from that calculation. In each round, + Increase or − Decrease adjusts the pieces to close the container (at 95% or more it counts as full).",
+    "Type the total cartons and the number of scheduled dates: the total is split evenly across the rounds, in whole master cartons. The containers of each round come from that calculation. In each round, + Increase or − Decrease adjusts the pieces to close the container (at 95% or more it counts as full).",
   "purchaseRounds.gen.total": "Total pieces",
   "purchaseRounds.gen.container": "Container",
   "purchaseRounds.gen.perRound": "Containers per round",
@@ -277,7 +277,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.form.quantityOff": "使用采购计划时，数量为各批之和。",
   "purchaseRounds.gen.title": "按数量生成采购计划",
   "purchaseRounds.gen.hint":
-    "输入总件数和批数：总数按整箱外箱平均分到各批，每批的集装箱数由此算出。每批可用“+ 增加”或“− 减少”调整件数以装满集装箱（达到 95% 即视为装满）。",
+    "输入总箱数和计划日期数：总数按整箱外箱平均分到各批，每批的集装箱数由此算出。每批可用“+ 增加”或“− 减少”调整件数以装满集装箱（达到 95% 即视为装满）。",
   "purchaseRounds.gen.total": "总件数",
   "purchaseRounds.gen.container": "集装箱",
   "purchaseRounds.gen.perRound": "每批集装箱数",

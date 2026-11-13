@@ -989,3 +989,9 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - A distribuição segue a largura do próprio cartão (`@container`), não a da janela: vale com o menu lateral aberto ou recolhido. Em cartão estreito (tablet em pé, celular) os campos do gerador vão para 3 ou 2 colunas e os prompts ficam um por linha.
 - Só desenho: nenhum campo, texto de botão, regra ou dado mudou (o texto de Configurações que dizia "painel ao lado" passou a dizer "abaixo"). Sem mudança no banco.
 - Teste: o E2E da seleção confere a ordem dos cartões, os três prompts na mesma linha e os seis campos do gerador na mesma linha. Ele passou também a informar o câmbio manual em Configurações antes de importar os bookings: o custo por peça (R$) dependia de os sites públicos de câmbio responderem de onde o teste roda.
+
+## Programação de compra: a explicação do gerador fala em "total de caixas" e "datas programadas"
+
+- **Pedido do dono** (13/11/2026, com o texto pronto): a explicação do gerador passa a começar com "Digite o total de caixas e o número de datas programadas" (antes: "o total de peças e o número de rodadas"). O resto da frase ficou como estava.
+- Só esse texto (`purchaseRounds.gen.hint`), nos três idiomas. Nada mudou na conta nem nos campos. Sem mudança no banco.
+- **Ficou como estava, para o dono decidir**: o campo logo abaixo continua se chamando "Total de peças" e continua recebendo peças (a conta arredonda para caixas master inteiras). A explicação agora fala em caixas e o campo em peças: ou o campo passa a receber caixas (muda a conta: caixas × peças por caixa master), ou só o nome dele muda, ou fica assim.
