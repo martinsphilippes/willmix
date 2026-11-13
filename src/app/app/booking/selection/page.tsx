@@ -652,6 +652,7 @@ export default async function BookingSelectionPage({
                   assumedNote: t("purchaseRounds.gen.assumedNote"),
                   noItem: t("purchaseRounds.gen.noItem"),
                   noCarton: t("purchaseRounds.gen.noCarton"),
+                  noPieces: t("purchaseRounds.gen.noPieces"),
                   tooBig: t("purchaseRounds.gen.tooBig", {
                     cbm: "{cbm}",
                     container: "{container}",
@@ -664,6 +665,7 @@ export default async function BookingSelectionPage({
                   result: t("purchaseRounds.gen.result", {
                     rounds: "{rounds}",
                     cartons: "{cartons}",
+                    pieces: "{pieces}",
                     cbm: "{cbm}",
                     containers: "{containers}",
                     container: "{container}",

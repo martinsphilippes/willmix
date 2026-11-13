@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   CONTAINER_FULL_MARGIN_PCT,
   MAX_PURCHASE_ROUNDS,
+  cartonsFromPieces,
   containersPerRound,
+  piecesFromCartons,
   planPurchaseRounds,
   roundLoad,
 } from "@/lib/purchase-rounds";
@@ -22,6 +24,54 @@ const plan = (input: Parameters<typeof planPurchaseRounds>[0]) => {
   if ("error" in out) throw new Error(out.error);
   return out.plan;
 };
+
+/*
+ * O total do gerador é digitado em CAIXAS master (decisão do dono,
+ * 13/11/2026): a conta multiplica pelas peças por caixa master do item e a
+ * programação continua em peças.
+ */
+describe("total em caixas master", () => {
+  it("caixas viram peças pelas peças por caixa master do item", () => {
+    expect(piecesFromCartons(1250, 48)).toBe(60_000);
+    expect(piecesFromCartons(300, 12)).toBe(3600);
+    // Sem as peças por caixa não há como converter.
+    expect(piecesFromCartons(300, null)).toBeNull();
+    expect(piecesFromCartons(300, undefined)).toBeNull();
+    expect(piecesFromCartons(300, 0)).toBeNull();
+    // Caixa é inteira e positiva.
+    expect(piecesFromCartons(0, 12)).toBeNull();
+    expect(piecesFromCartons(-3, 12)).toBeNull();
+    expect(piecesFromCartons(62.5, 48)).toBeNull();
+    expect(piecesFromCartons(Number.NaN, 48)).toBeNull();
+  });
+
+  it("peças viram caixas inteiras, para cima", () => {
+    expect(cartonsFromPieces(60_000, 48)).toBe(1250);
+    expect(cartonsFromPieces(3600, 12)).toBe(300);
+    // 3.000 peças de 48 = 62,5 caixas: 63.
+    expect(cartonsFromPieces(3000, 48)).toBe(63);
+    expect(cartonsFromPieces(1, 48)).toBe(1);
+    expect(cartonsFromPieces(0, 48)).toBeNull();
+    expect(cartonsFromPieces(Number.NaN, 48)).toBeNull();
+    expect(cartonsFromPieces(3000, null)).toBeNull();
+  });
+
+  it("o total em caixas gera as rodadas sem arredondar peças", () => {
+    // 1.250 caixas de 48 = 60.000 peças em 3 rodadas: 417 + 417 + 416 caixas.
+    const p = plan({
+      masterCartonQty: 48,
+      cbmPerCarton: 0.12,
+      containerCbm: 68,
+      total: piecesFromCartons(1250, 48)!,
+      rounds: 3,
+    });
+    expect(p.cartons).toBe(1250);
+    expect(p.pieces).toBe(60_000);
+    expect(p.extraPieces).toBe(0);
+    expect(p.rounds.map((r) => r.cartons)).toEqual([417, 417, 416]);
+    expect(p.rounds.map((r) => r.pieces)).toEqual([20_016, 20_016, 19_968]);
+  });
+});
 
 describe("planPurchaseRounds", () => {
   it("divide o total nas rodadas informadas, em caixas master inteiras", () => {

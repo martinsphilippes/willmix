@@ -995,3 +995,12 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Pedido do dono** (13/11/2026, com o texto pronto): a explicação do gerador passa a começar com "Digite o total de caixas e o número de datas programadas" (antes: "o total de peças e o número de rodadas"). O resto da frase ficou como estava.
 - Só esse texto (`purchaseRounds.gen.hint`), nos três idiomas. Nada mudou na conta nem nos campos. Sem mudança no banco.
 - **Ficou como estava, para o dono decidir**: o campo logo abaixo continua se chamando "Total de peças" e continua recebendo peças (a conta arredonda para caixas master inteiras). A explicação agora fala em caixas e o campo em peças: ou o campo passa a receber caixas (muda a conta: caixas × peças por caixa master), ou só o nome dele muda, ou fica assim.
+
+## Programação de compra: o total do gerador passa a ser digitado em caixas
+
+- **Decisão do dono** (13/11/2026, depois de a explicação passar a dizer "total de caixas"): "o campo passa a receber caixas". Antes o campo se chamava "Total de peças" e a conta lia o número como peças, o que desencontrava do texto.
+- O campo do gerador chama-se **"Total de caixas"** e recebe caixas master inteiras. A conta multiplica pelas **peças por caixa master** do item escolhido e continua em peças: a "Quantidade (peças)" e os cartões das rodadas não mudaram. A linha do Cálculo passou a dizer as duas coisas ("2 rodada(s) · 300 caixas (14.400 peças) · …").
+- O campo acompanha a tela como antes, agora em caixas: sem nada digitado mostra as peças da quantidade (ou da planilha) em caixas inteiras, para cima; mexer numa rodada atualiza o número.
+- Item **sem peças por caixa master**: caixas não viram peças. O gerador avisa e indica "+ Programação de compra", onde as peças de cada rodada são digitadas (antes ele dividia as peças igualmente). Item só **sem o CBM** da caixa: as caixas são divididas igualmente, sem conta de containers.
+- Regra em `src/lib/purchase-rounds.ts` (`piecesFromCartons`, `cartonsFromPieces`); tela em `src/components/selection-quantity.tsx`. Textos nos três idiomas (`purchaseRounds.gen.total`, `.errorTotal`, `.result`, `.noItem`, `.noCarton` e o novo `.noPieces`). Sem mudança no banco: a programação gravada continua em peças.
+- Testes: `tests/unit/purchase-rounds-plan.test.ts` (conversão) e o E2E da seleção (1.250 caixas = 60.000 peças em 3 rodadas; o campo acompanhando as rodadas em caixas).

@@ -9,7 +9,9 @@ import {
 import type { RequestSchedule } from "@/lib/db/schema";
 import {
   MAX_PURCHASE_ROUNDS,
+  cartonsFromPieces,
   containersPerRound,
+  piecesFromCartons,
   planPurchaseRounds,
   roundLoad,
   type RoundLoad,
@@ -24,9 +26,11 @@ import { splitEvenly } from "@/lib/workflow/request-schedule";
  * quantidade passa a ser a soma das rodadas (o campo fica só para leitura).
  *
  * "Gerar programação" parte da QUANTIDADE (regra do dono, 12/11/2026): o
- * total de peças e o número de rodadas viram rodadas iguais, em caixas
- * master inteiras. Os containers de cada rodada saem da conta ("Containers
- * por rodada" é só informativo). O cálculo fica sempre escrito na tela (a
+ * total e o número de rodadas viram rodadas iguais, em caixas master
+ * inteiras. O total é digitado em CAIXAS master (decisão do dono,
+ * 13/11/2026): a conta multiplica pelas peças por caixa master do item
+ * escolhido, e a quantidade e as rodadas continuam em peças. Os containers
+ * de cada rodada saem da conta ("Containers por rodada" é só informativo). O cálculo fica sempre escrito na tela (a
  * caixa, o container, caixas, m³ e containers) e cada rodada tem "+ Aumentar"
  * e "− Diminuir" para fechar o container; com 95% ou mais ele conta como
  * cheio.
@@ -69,6 +73,8 @@ export interface GenerateLabels {
   itemAssumed: string;
   assumedNote: string;
   noItem: string;
+  /** O item não tem peças por caixa master: caixas não viram peças. */
+  noPieces: string;
   noCarton: string;
   tooBig: string;
   errorTotal: string;
@@ -228,14 +234,19 @@ export function SelectionQuantity({
   const assumed = !marked && !!fallback;
   const capacity =
     containerTypes.find((c) => c.code === container)?.capacityCbm ?? null;
+  // O total do gerador é em CAIXAS master; a conta segue em peças (caixas ×
+  // peças por caixa master do item). O campo acompanha a tela: as peças de
+  // agora (as da quantidade ou, em branco, as da planilha) em caixas
+  // inteiras. Sem as peças por caixa não há como converter: fica vazio.
+  const perCarton = item?.masterCartonQty ?? null;
+  const piecesNow = qty.trim() ? parseNum(qty) : (item?.sheetQty ?? NaN);
   const total =
     totalEdit && totalEdit.at === qty
       ? totalEdit.text
-      : qty.trim()
-        ? qty
-        : item?.sheetQty
-          ? String(item.sheetQty)
-          : "";
+      : String(cartonsFromPieces(piecesNow, perCarton) ?? "");
+  /** Peças do total digitado (caixas × peças por caixa); NaN sem conversão. */
+  const totalPieces = () =>
+    piecesFromCartons(parseNum(total), perCarton) ?? NaN;
   const hasCarton = !!(item && usable(item) && capacity);
   const perContainer =
     hasCarton && item
@@ -260,8 +271,8 @@ export function SelectionQuantity({
   }
 
   function generate(apply: (q: number[]) => void, roundsValue: string) {
-    const n = parseNum(total);
-    if (!Number.isFinite(n) || n <= 0) {
+    const boxes = parseNum(total);
+    if (!Number.isInteger(boxes) || boxes <= 0) {
       setError(gen.errorTotal);
       return;
     }
@@ -270,10 +281,23 @@ export function SelectionQuantity({
       setError(fill(gen.errorRounds, { max: MAX_PURCHASE_ROUNDS }));
       return;
     }
+    // Caixas → peças: sem as peças por caixa master do item não há conversão.
+    const n = piecesFromCartons(boxes, perCarton);
+    if (n === null) {
+      setNote(null);
+      setError(gen.noPieces);
+      return;
+    }
     setError(null);
     if (!hasCarton) {
+      // Sem o CBM da caixa não há conta de containers: as caixas são
+      // divididas igualmente (rodada sem caixa não entra).
       setNote(null);
-      apply(splitEvenly(n, count, MAX_PURCHASE_ROUNDS));
+      apply(
+        splitEvenly(boxes, count, MAX_PURCHASE_ROUNDS)
+          .filter((b) => b > 0)
+          .map((b) => b * perCarton!),
+      );
     } else {
       const out = planPurchaseRounds({
         total: n,
@@ -331,12 +355,17 @@ export function SelectionQuantity({
       );
     if (!hasCarton || perContainer === null)
       return (
-        <p className="text-amber-800" data-generate-item="missing">
-          {gen.noCarton}
+        // Com as peças por caixa a conversão vale (só não há containers);
+        // sem elas, caixas não viram peças.
+        <p
+          className="text-amber-800"
+          data-generate-item={perCarton ? "missing" : "no-pieces"}
+        >
+          {perCarton ? gen.noCarton : gen.noPieces}
         </p>
       );
     // Rodadas da tela; sem programação, a prévia do que seria gerado.
-    const typedTotal = parseNum(total);
+    const typedTotal = totalPieces();
     const typedRounds = parseNum(roundsValue);
     const planned =
       !live.length &&
@@ -410,6 +439,8 @@ export function SelectionQuantity({
               {fill(gen.result, {
                 rounds: loads.length,
                 cartons: fmt(loads.reduce((a, l) => a + l.cartons, 0)),
+                // As caixas em peças: o total que vai para a quantidade.
+                pieces: fmt(shown.reduce((a, q) => a + q, 0)),
                 cbm: fmt(
                   loads.reduce((a, l) => a + l.cbm, 0),
                   2,
@@ -476,7 +507,7 @@ export function SelectionQuantity({
         : String(live.length || 2);
     // "Containers por rodada": o que as rodadas da tela precisam; sem
     // programação, o que a prévia (total ÷ rodadas) precisaria.
-    const typedTotal = parseNum(total);
+    const typedTotal = totalPieces();
     const typedRounds = parseNum(roundsValue);
     const shown = live.length
       ? live
