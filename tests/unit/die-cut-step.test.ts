@@ -13,6 +13,7 @@ import {
   baseKeyOf,
   isLeadTimeKey,
   laneRequirements,
+  supplierLaneView,
   supplierSeesLaneRequirement,
 } from "@/lib/purchase-lanes";
 
@@ -197,5 +198,107 @@ describe("resumo do pedido mínimo e do prazo (confirmado)", () => {
     expect(errorTextFor(t, "unexpected", prefixes)).toBe(
       t("common.unexpected"),
     );
+  });
+});
+
+/*
+ * A etapa 2 como o login Trading a vê (pedido do dono, 13/11/2026): o
+ * andamento só das tarefas dele, contado do que está gravado.
+ */
+describe("etapa Die-Cut na visão do login Trading", () => {
+  const all = laneRequirements(
+    [
+      { id: "a", name: "Copo" },
+      { id: "b", name: "Jarra" },
+    ],
+    { art: "agency", ocp: "ocp" },
+  );
+  const at = (day: number) =>
+    `2026-11-${String(day).padStart(2, "0")}T10:00:00.000Z`;
+  /** As tarefas da etapa, com as de `done` feitas (no dia indicado). */
+  const state = (done: Record<string, number>) =>
+    all.map((r) => ({
+      key: r.key,
+      status: (r.key in done ? "done" : "pending") as "done" | "pending",
+      submittedAt: r.key in done ? at(done[r.key]) : null,
+    }));
+
+  it("parcial enquanto falta tarefa dele; a arte e o certificado não contam", () => {
+    const view = supplierLaneView(
+      { status: "active" },
+      state({
+        die_cut__a: 10,
+        hd_photo__a: 11,
+        lead_time_confirmed__a: 12,
+        die_cut__b: 12,
+        // Feitas, mas de outros responsáveis: fora da conta.
+        art__a: 13,
+        certificate__a: 13,
+        moq_confirmed__a: 12,
+      }),
+    );
+    expect(view).toEqual({
+      status: "active",
+      done: 4,
+      total: 6,
+      percent: 67,
+      complete: false,
+      completedAt: null,
+    });
+  });
+
+  it("todas as dele feitas: concluída, 100%, com a data do último envio", () => {
+    const view = supplierLaneView(
+      { status: "active" },
+      state({
+        die_cut__a: 10,
+        hd_photo__a: 11,
+        lead_time_confirmed__a: 12,
+        die_cut__b: 14,
+        hd_photo__b: 9,
+        lead_time_confirmed__b: 13,
+      }),
+    );
+    expect(view).toMatchObject({
+      status: "done",
+      done: 6,
+      total: 6,
+      percent: 100,
+      complete: true,
+      completedAt: at(14),
+    });
+    // A etapa parada pela Wellmix também aparece concluída para ele.
+    expect(
+      supplierLaneView(
+        { status: "blocked" },
+        state(
+          Object.fromEntries(
+            all.filter(supplierSeesLaneRequirement).map((r) => [r.key, 10]),
+          ),
+        ),
+      )?.status,
+    ).toBe("done");
+  });
+
+  it("etapa que não começou ou cancelada fica como está", () => {
+    const allDone = state(
+      Object.fromEntries(
+        all.filter(supplierSeesLaneRequirement).map((r) => [r.key, 10]),
+      ),
+    );
+    expect(supplierLaneView({ status: "pending" }, allDone)).toMatchObject({
+      status: "pending",
+      completedAt: null,
+    });
+    expect(supplierLaneView({ status: "cancelled" }, allDone)).toMatchObject({
+      status: "cancelled",
+      completedAt: null,
+    });
+    // Sem tarefa dele (fluxo antigo): nada muda na tela.
+    expect(
+      supplierLaneView({ status: "active" }, [
+        { key: "purchase_sheet", status: "done", submittedAt: at(10) },
+      ]),
+    ).toBeNull();
   });
 });
