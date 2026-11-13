@@ -59,6 +59,36 @@ import {
  * O fornecedor responde (só ele; a Wellmix não responde por ele).
  */
 
+/*
+ * Situação | SLA | Ações: as três últimas colunas, fixas à direita na rolagem
+ * horizontal (pedido do dono, 13/11/2026). Cada coluna fixa precisa saber a
+ * largura das que ficam à direita dela; por isso o conteúdo vai numa caixa de
+ * largura certa (as variáveis abaixo, postas na moldura da tabela) e a coluna
+ * mede sempre a caixa mais o respiro da célula (`--pin-pad`, o `px-2.5` do
+ * <Td> dos dois lados). As três fixam a partir de 1024px de tela (iPad
+ * deitado, computador), quando sobra tabela para rolar ao lado do menu; em
+ * tela menor (iPad em pé, celular) só as ações ficam fixas, como antes.
+ */
+const PIN_VARS = "[--pin-pad:1.25rem] [--pin-status:8.5rem] [--pin-sla:6.5rem]";
+/** Caixa das ações, pelo máximo de botões de uma linha (2 ou 3). */
+const PIN_ACTIONS = {
+  2: "[--pin-actions:5.25rem]",
+  3: "[--pin-actions:7.75rem]",
+} as const;
+const PIN = {
+  // A borda esquerda do conjunto: um fio e uma sombra separam do que rola.
+  status:
+    "lg:sticky lg:z-10 lg:right-[calc(var(--pin-actions)_+_var(--pin-sla)_+_2_*_var(--pin-pad))] lg:shadow-[inset_1px_0_0_var(--color-zinc-200),-6px_0_6px_-6px_rgba(0,0,0,0.15)]",
+  sla: "lg:sticky lg:z-10 lg:right-[calc(var(--pin-actions)_+_var(--pin-pad))]",
+  // Em tela menor a borda é das ações (as únicas fixas), como sempre foi.
+  actions:
+    "sticky right-0 z-10 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] lg:shadow-none",
+};
+/** Fundo opaco das células fixas; acompanha o realce da linha (`group/row`). */
+const PIN_BG =
+  "bg-white transition-colors group-hover/row:bg-[color-mix(in_srgb,var(--color-brand-50)_40%,white)]";
+const PIN_BG_CURRENT = "bg-brand-50 group-hover/row:bg-brand-50";
+
 const STATE_TONE: Record<ConditionsState, Tone> = {
   answer: "info",
   pending: "warning",
@@ -126,15 +156,13 @@ export function SupplierRequestTable({
   ];
   // Condições iniciais (primeira resposta) e finais (as que valem hoje).
   const conditionCols = ["price", "currency", "moq", "incoterm", "leadTime"];
-  const after = [
-    "status",
-    "sla",
-    "turn",
-    "openedAt",
-    "firstAnswerAt",
-    "lastAnswerAt",
-  ];
+  // Depois das condições; a situação e o SLA fecham a tabela, com as ações.
+  const after = ["turn", "openedAt", "firstAnswerAt", "lastAnswerAt"];
   const nowrap = "whitespace-nowrap";
+  // Só o fornecedor responde: com resposta por dar, a linha tem três botões.
+  const canAnswerRow = (r: SupplierRequest) =>
+    !wellmix && supplierCanAnswer(r.status) && !pendingProposal(r.negotiation);
+  const actionSlots = rows.some(canAnswerRow) ? 3 : 2;
 
   /**
    * As colunas de condições de uma linha: as iniciais (do booking) e as
@@ -194,7 +222,7 @@ export function SupplierRequestTable({
       <p className="mb-3 text-xs text-zinc-500">
         {k(wellmix ? "hintWellmix" : "hint")}
       </p>
-      <Table>
+      <Table className={cx(PIN_VARS, PIN_ACTIONS[actionSlots])}>
         <thead>
           <tr>
             {before.map((c) => (
@@ -220,8 +248,23 @@ export function SupplierRequestTable({
               </Th>
             ))}
             <Th
-              className="sticky right-0 z-10 bg-zinc-50 text-right shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]"
+              className={cx(nowrap, "bg-zinc-50", PIN.status)}
               rowSpan={2}
+              data-supplier-table-pin="status"
+            >
+              {k("col.status")}
+            </Th>
+            <Th
+              className={cx(nowrap, "bg-zinc-50", PIN.sla)}
+              rowSpan={2}
+              data-supplier-table-pin="sla"
+            >
+              {k("col.sla")}
+            </Th>
+            <Th
+              className={cx("bg-zinc-50 text-right", PIN.actions)}
+              rowSpan={2}
+              data-supplier-table-pin="actions"
             >
               {k("col.actions")}
             </Th>
@@ -282,8 +325,10 @@ export function SupplierRequestTable({
             const current = r.id === currentId && !r.batchId;
             const pending = !!pendingProposal(r.negotiation);
             // Só o fornecedor responde (a Wellmix não responde por ele).
-            const canAnswer =
-              !wellmix && supplierCanAnswer(r.status) && !pending;
+            const canAnswer = canAnswerRow(r);
+            // Aprovada: a amostragem (fotos e vídeos da amostra).
+            const sampling = samplingOf(r);
+            const pinBg = cx(PIN_BG, current && PIN_BG_CURRENT);
             const turn = negotiationTurn(r);
             const sla = slaOf(r, slaMinutes);
             const times = answerTimes(
@@ -295,7 +340,11 @@ export function SupplierRequestTable({
             return (
               <tr
                 key={r.id}
-                className={cx(rowClass, current && "bg-brand-50/60")}
+                className={cx(
+                  rowClass,
+                  "group/row",
+                  current && "bg-brand-50/60",
+                )}
                 data-supplier-table-row={r.id}
                 data-current={current ? "1" : undefined}
               >
@@ -500,45 +549,6 @@ export function SupplierRequestTable({
                 </Td>
                 {conditionCells(initialConditions(r), "initial", r.id)}
                 {conditionCells(finalConditions(r), "final", r.id)}
-                <Td className={nowrap}>
-                  <Badge tone={STATUS_TONE[r.status]}>
-                    {t(`supplierRequests.status.${r.status}` as DictionaryKey)}
-                  </Badge>
-                  {(() => {
-                    // Aprovada: a amostragem (fotos e vídeos da amostra).
-                    const sampling = samplingOf(r);
-                    return sampling ? (
-                      <Link
-                        href={`${href}#amostragem`}
-                        className="mt-1 block"
-                        data-supplier-table-sampling={sampling.status}
-                      >
-                        <Badge tone={SAMPLING_TONE[sampling.status]}>
-                          {t("sampling.table.open")}:{" "}
-                          {t(
-                            `sampling.status.${sampling.status}` as DictionaryKey,
-                          )}
-                          {samplingLate(sampling, samplingSlaDays)
-                            ? ` · ${t("sampling.late")}`
-                            : ""}
-                        </Badge>
-                      </Link>
-                    ) : null;
-                  })()}
-                </Td>
-                <Td className={cx(nowrap, "text-xs")}>
-                  {sla ? (
-                    <span
-                      className={sla.late ? "font-semibold text-red-700" : ""}
-                      data-supplier-request-sla={sla.late ? "late" : "ok"}
-                    >
-                      {sla.late ? `${k("late")} · ` : ""}
-                      {dateTime(sla.dueAt, t)}
-                    </span>
-                  ) : (
-                    "—"
-                  )}
-                </Td>
                 <Td className="text-xs">
                   {turn
                     ? t(
@@ -565,13 +575,76 @@ export function SupplierRequestTable({
                 <Td className={cx(nowrap, "text-xs tabular-nums")}>
                   {dateTime(times.last, t)}
                 </Td>
+                {/* Situação geral do produto e, na aprovada, a amostragem. */}
                 <Td
-                  className={cx(
-                    "sticky right-0 z-10 bg-white shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]",
-                    current && "bg-brand-50",
-                  )}
+                  className={cx(pinBg, PIN.status)}
+                  data-supplier-table-pin="status"
+                  data-supplier-table-status={r.status}
                 >
-                  <span className="flex justify-end gap-1">
+                  <div className="w-[var(--pin-status)]">
+                    <Badge tone={STATUS_TONE[r.status]}>
+                      {t(
+                        `supplierRequests.status.${r.status}` as DictionaryKey,
+                      )}
+                    </Badge>
+                    {sampling ? (
+                      <Link
+                        href={`${href}#amostragem`}
+                        className="mt-1 block rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                        data-supplier-table-sampling={sampling.status}
+                      >
+                        <span className="block text-[10px] leading-tight font-semibold tracking-wide text-zinc-500 uppercase">
+                          {t("sampling.table.open")}
+                        </span>
+                        <Badge
+                          tone={SAMPLING_TONE[sampling.status]}
+                          className="mt-0.5 rounded-md px-1.5 text-[11px] leading-tight whitespace-normal"
+                        >
+                          {t(
+                            `sampling.status.${sampling.status}` as DictionaryKey,
+                          )}
+                          {samplingLate(sampling, samplingSlaDays)
+                            ? ` · ${t("sampling.late")}`
+                            : ""}
+                        </Badge>
+                      </Link>
+                    ) : null}
+                  </div>
+                </Td>
+                {/* SLA: o estado em destaque e o prazo embaixo, menor. */}
+                <Td
+                  className={cx(pinBg, PIN.sla)}
+                  data-supplier-table-pin="sla"
+                >
+                  <div className="w-[var(--pin-sla)]">
+                    {sla ? (
+                      <span
+                        className="block"
+                        data-supplier-request-sla={sla.late ? "late" : "ok"}
+                      >
+                        <Badge tone={sla.late ? "danger" : "neutral"}>
+                          {k(sla.late ? "late" : "onTime")}
+                        </Badge>
+                        <span
+                          className={cx(
+                            "mt-1 block text-[11px] leading-tight tabular-nums",
+                            sla.late ? "text-red-700" : "text-zinc-500",
+                          )}
+                          data-supplier-table-sla-due
+                        >
+                          {dateTime(sla.dueAt, t)}
+                        </span>
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </div>
+                </Td>
+                <Td
+                  className={cx(pinBg, PIN.actions)}
+                  data-supplier-table-pin="actions"
+                >
+                  <span className="flex w-[var(--pin-actions)] justify-end gap-1">
                     {canPostMessage(r.status) ? (
                       <QuickDialog
                         label={<ChatBubbleIcon />}

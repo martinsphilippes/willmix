@@ -173,6 +173,56 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-request-alternative]")).toHaveCount(
     0,
   );
+  // "Situação" (a geral do produto) e "SLA" fecham a tabela, antes de
+  // "Ações", e o conjunto fica fixo à direita na rolagem (dono, 13/11/2026).
+  // Aqui com os três botões do fornecedor; adiante, com os dois da Wellmix.
+  const pinnedColumns = async () => {
+    const read = (end: boolean) =>
+      page.evaluate((toEnd) => {
+        const table = document.querySelector<HTMLTableElement>(
+          "[data-supplier-table] table",
+        )!;
+        const frame = table.parentElement!;
+        frame.scrollLeft = toEnd ? frame.scrollWidth : 0;
+        const left = frame.getBoundingClientRect().left + frame.clientLeft;
+        const span = (cell: Element) => {
+          const box = cell.getBoundingClientRect();
+          return [Math.round(box.left - left), Math.round(box.right - left)];
+        };
+        const row = table.tBodies[0].rows[0];
+        const lastThree = (cells: HTMLCollectionOf<HTMLTableCellElement>) =>
+          Array.from(cells)
+            .slice(-3)
+            .map((cell) => cell.getAttribute("data-supplier-table-pin"));
+        return {
+          width: frame.clientWidth,
+          scrolled: Math.round(frame.scrollLeft),
+          head: lastThree(table.tHead!.rows[0].cells),
+          body: lastThree(row.cells),
+          pins: ["status", "sla", "actions"].map((name) =>
+            span(row.querySelector(`td[data-supplier-table-pin=${name}]`)!),
+          ),
+          first: span(row.cells[0]),
+        };
+      }, end);
+    const start = await read(false);
+    const end = await read(true);
+    expect(start.head).toEqual(["status", "sla", "actions"]);
+    expect(start.body).toEqual(["status", "sla", "actions"]);
+    // A tabela rola (o resto anda) e as três ficam onde estavam, coladas
+    // uma na outra e na borda direita.
+    expect(end.scrolled).toBeGreaterThan(0);
+    expect(end.first[0]).toBeLessThan(start.first[0]);
+    expect(end.pins).toEqual(start.pins);
+    const [status, sla, actions] = start.pins;
+    expect(Math.abs(actions[1] - start.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(sla[1] - actions[0])).toBeLessThanOrEqual(1);
+    expect(Math.abs(status[1] - sla[0])).toBeLessThanOrEqual(1);
+    expect(status[0]).toBeGreaterThan(0);
+    // A largura do conjunto fixo.
+    return start.width - status[0];
+  };
+  const supplierPinned = await pinnedColumns();
   await expect(page.locator("[data-supplier-table-master]")).toHaveText("48");
   await expect(page.locator("[data-supplier-table-book]")).toHaveCount(0);
   await expect(page.locator("[data-supplier-table-detail=ncm]")).toHaveCount(0);
@@ -204,6 +254,28 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await page.goto(requestUrl);
   await expect(page.locator("[data-supplier-table-row]")).toHaveCount(1);
   await expect(page.locator("[data-supplier-request-sla]")).toBeVisible();
+  // As três colunas fixas, agora com os dois botões da Wellmix (o conjunto
+  // fica mais estreito que o do fornecedor).
+  expect(await pinnedColumns()).toBeLessThan(supplierPinned);
+  // SLA: o estado em destaque e o prazo (data e hora) numa linha embaixo.
+  const sla = page.locator("[data-supplier-request-sla]");
+  await expect(sla).toHaveAttribute("data-supplier-request-sla", "ok");
+  await expect(sla).toContainText("No prazo");
+  await expect(sla.locator("[data-supplier-table-sla-due]")).toHaveText(
+    /^\d{2}\/\d{2}\/\d{4},? \d{2}:\d{2}$/,
+  );
+  // Situação: a geral do produto. A das condições finais é outra coluna,
+  // continua no lugar dela e não fica fixa.
+  const statusCell = page.locator("td[data-supplier-table-pin=status]");
+  await expect(statusCell).toHaveAttribute(
+    "data-supplier-table-status",
+    "answered",
+  );
+  await expect(statusCell).toHaveText("Respondida");
+  const finalState = page.locator("td[data-supplier-table-final-state]");
+  await expect(finalState).toHaveCount(1);
+  await expect(finalState).not.toHaveAttribute("data-supplier-table-pin");
+  await expect(finalState).toHaveCSS("position", "static");
   await page.goto(itemUrl);
   const propose = page.locator("[data-negotiation-propose-form]");
   // Os mesmos campos da resposta (com FOB/EXW) e a estimativa do Superplan:
@@ -322,6 +394,21 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await page.click("[data-sampling-review=approve]");
   await page.waitForURL(/[?&]sampling=approved/);
   await expect(page.locator("[data-sampling=approved]")).toBeVisible();
+  // Na tabela, a situação mostra a aprovação e, embaixo, a amostragem (que
+  // leva ao quadro dela no produto); decidida, a solicitação não tem SLA.
+  await page.goto(requestUrl);
+  await expect(statusCell).toHaveAttribute(
+    "data-supplier-table-status",
+    "approved",
+  );
+  await expect(statusCell).toContainText("Aprovada");
+  const samplingLink = statusCell.locator(
+    "[data-supplier-table-sampling=approved]",
+  );
+  await expect(samplingLink).toContainText("Amostra aprovada");
+  await expect(samplingLink).toHaveAttribute("href", /view=item#amostragem$/);
+  await expect(page.locator("[data-supplier-request-sla]")).toHaveCount(0);
+  await page.goto(itemUrl);
   await page.fill("[data-request-product-name]", `Copo de vidro ${TAG}`);
   await page.selectOption("[data-request-product-line]", { index: 1 });
   await page.click("[data-request-product-create]");
