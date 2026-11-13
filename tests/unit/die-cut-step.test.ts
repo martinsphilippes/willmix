@@ -90,10 +90,13 @@ describe("visão do fornecedor na Preparação", () => {
       "hd_photo__b",
       "lead_time_confirmed__b",
     ]);
-    // O que ele não vê: MOQ, arte, validação, certificado e arte final, que
-    // continuam obrigatórios (nada some do pedido).
+    // O que ele não vê: o cadastro (NCM e ficha, da Wellmix), MOQ, arte,
+    // validação, certificado e arte final, que continuam obrigatórios (nada
+    // some do pedido).
     const hidden = all.filter((r) => !supplierSeesLaneRequirement(r));
     expect([...new Set(hidden.map((r) => baseKeyOf(r.key)))]).toEqual([
+      "ncm_validated",
+      "sheet_complete",
       "moq_confirmed",
       "art",
       "art_review",

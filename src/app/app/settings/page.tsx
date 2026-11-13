@@ -412,6 +412,74 @@ export default async function SettingsPage({
                       defaultValue={s.purchaseArtReviewSlaDays}
                     />
                   </Field>
+                  <Field label={t("purchaseSequence.settings.dieCutDays")}>
+                    <Input
+                      name="purchaseDieCutSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseDieCutSlaDays}
+                    />
+                  </Field>
+                  <Field
+                    label={t("purchaseSequence.settings.registrationDays")}
+                  >
+                    <Input
+                      name="purchaseRegistrationSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseRegistrationSlaDays}
+                    />
+                  </Field>
+                  <Field label={t("purchaseSequence.settings.certDays")}>
+                    <Input
+                      name="purchaseCertSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseCertSlaDays}
+                    />
+                  </Field>
+                  <Field label={t("purchaseSequence.settings.finalDays")}>
+                    <Input
+                      name="purchaseArtFinalSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseArtFinalSlaDays}
+                    />
+                  </Field>
+                  <Field label={t("purchaseSequence.settings.signatureDays")}>
+                    <Input
+                      name="purchaseSignatureSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseSignatureSlaDays}
+                    />
+                  </Field>
+                  <Field label={t("purchaseSequence.settings.downPaymentDays")}>
+                    <Input
+                      name="purchaseDownPaymentSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseDownPaymentSlaDays}
+                    />
+                  </Field>
                 </div>
               </div>
 
@@ -520,6 +588,20 @@ export default async function SettingsPage({
                       step="1"
                       min="0"
                       defaultValue={s.certificationExpiryWarningDays}
+                    />
+                  </Field>
+                  <Field
+                    label={t("purchaseSequence.settings.horizonDays")}
+                    hint={t("purchaseSequence.settings.horizonHint")}
+                  >
+                    <Input
+                      name="certificationHorizonDays"
+                      type="number"
+                      step="1"
+                      min={1}
+                      max={730}
+                      required
+                      defaultValue={s.certificationHorizonDays}
                     />
                   </Field>
                 </div>

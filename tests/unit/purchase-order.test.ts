@@ -11,6 +11,7 @@ import { xlsxBytes } from "./xlsx-fixture";
  */
 withTempStore();
 const { approveSample } = await import("./helpers/sampling");
+const gates = await import("./helpers/product-gates");
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
@@ -90,6 +91,8 @@ const pdf = (name: string) =>
 async function approvedProducts(
   partnerId: string | null = null,
   codes: [string, string] = ["PO-1", "PO-2"],
+  /** Linha dos produtos (padrão: a primeira, que não exige certificação). */
+  lineIdOf: string | null = null,
 ) {
   const store = getStore();
   const lot = await lots.createBookingLotFromSheet(
@@ -107,7 +110,7 @@ async function approvedProducts(
     "7013.37.00",
   );
   await lots.closeBookingLot(admin, lot.id, null);
-  const lineId = (await store.list("product_lines"))[0].id;
+  const lineId = lineIdOf ?? (await store.list("product_lines"))[0].id;
   const out = [];
   for (const [i, item] of items.entries()) {
     const request = await svc.openSupplierRequest(admin, {
@@ -176,9 +179,14 @@ beforeAll(async () => {
 });
 
 describe("pedido de compra", () => {
-  it("junta os produtos aprovados do fornecedor e abre as três raias", async () => {
+  it("junta os produtos aprovados do fornecedor e abre as raias na sequência do mapa", async () => {
     const store = getStore();
-    const [r1, r2] = await approvedProducts();
+    // Brinquedos exige Inmetro: certificado e arte final com o selo entram.
+    const [r1, r2] = await approvedProducts(
+      null,
+      ["PO-1", "PO-2"],
+      "linha-brinquedos",
+    );
     const groups = (await po.listPurchaseCandidates(admin))!;
     const group = groups.find((g) => g.supplierId === r1.supplierId)!;
     expect(group.candidates.map((c) => c.request.id).sort()).toEqual(
@@ -213,27 +221,61 @@ describe("pedido de compra", () => {
       po.createPurchaseOrder(admin, [{ requestId: r1.id, quantity: null }]),
     ).rejects.toThrow("purchase_order_taken");
 
-    // As três raias, item a item.
+    // As raias, item a item: cadastro (NCM e ficha), fornecedor, arte e
+    // certificadora (a linha exige certificação).
     const reqs = await requirementsOf(order.id);
     const prep = reqs.filter((r) => r.key.includes("__"));
-    expect(prep).toHaveLength(2 * 8);
+    expect(prep).toHaveLength(2 * 10);
     const roles = new Set(prep.map((r) => r.role));
     expect(roles).toEqual(new Set(["supplier", "agency", "operator", "ocp"]));
-    // Avisos das raias: fornecedor, agência e certificadora.
-    for (const u of [supplierA, agency, ocp]) {
-      const notes = await store.list("notifications", {
-        filter: { userId: u.id, channel: "inapp" },
-      });
-      expect(notes.some((n) => n.link === `/app/orders/${order.id}`)).toBe(
-        true,
-      );
-    }
+    // Avisos das raias: fornecedor e certificadora na hora; a agência só com
+    // a faca e a foto em alta; Vendas fica sabendo do que vem.
+    const linked = async (u: User) =>
+      (
+        await store.list("notifications", {
+          filter: { userId: u.id, channel: "inapp" },
+        })
+      ).filter((n) => n.link === `/app/orders/${order.id}`);
+    for (const u of [supplierA, ocp]) expect((await linked(u)).length).toBe(1);
+    expect(await linked(agency)).toHaveLength(0);
+    // Vendas: quem tem a ação "Receber o aviso de pedido de compra" (padrão:
+    // quem abre Pós-venda, como o operador de compras do seed).
+    const operator = (await store.list("users")).find(
+      (u) => u.email === "operador@wellmix.com",
+    )!;
+    expect(
+      (await linked(operator)).some((n) => /o que vem/.test(n.subject)),
+    ).toBe(true);
+    expect(
+      (await linked(admin)).some((n) => /NCM e ficha/.test(n.subject)),
+    ).toBe(true);
 
-    // Ordem dentro da raia: sem arte não valida; sem certificado não há arte final.
     const [itemA, itemB] = [...items].sort((a, b) =>
       a.createdAt.localeCompare(b.createdAt),
     );
     const k = (base: string, id: string) => `${base}__${id}`;
+    // NCM e ficha: o sistema confere; ninguém marca à mão.
+    const ncmReq = reqs.find((r) => r.key === k("ncm_validated", itemA.id))!;
+    await expect(
+      engine.submitRequirement(admin, ncmReq.id, { value: "ok" }),
+    ).rejects.toThrow();
+    // A arte espera a faca e a foto em alta do fornecedor (P4 → P5).
+    await expect(
+      submit(agency, order.id, k("art", itemA.id), { file: "arte.pdf" }),
+    ).rejects.toThrow("lane_prerequisite");
+    await submit(supplierA, order.id, k("die_cut", itemA.id), {
+      file: "faca.pdf",
+    });
+    expect(await linked(agency)).toHaveLength(0);
+    await submit(supplierA, order.id, k("hd_photo", itemA.id), {
+      file: "foto.pdf",
+    });
+    // Faca e foto em alta na mão: a agência é avisada para criar a arte.
+    expect(
+      (await linked(agency)).some((n) => /faca e foto/.test(n.subject)),
+    ).toBe(true);
+
+    // Ordem dentro da raia: sem arte não valida; sem certificado não há arte final.
     const review = reqs.find((r) => r.key === k("art_review", itemA.id))!;
     await expect(
       engine.decideRequirement(admin, review.id, "approve"),
@@ -266,12 +308,14 @@ describe("pedido de compra", () => {
 
     // Resto das raias: o fornecedor e o item B.
     for (const item of [itemA, itemB]) {
-      await submit(supplierA, order.id, k("die_cut", item.id), {
-        file: "faca.pdf",
-      });
-      await submit(supplierA, order.id, k("hd_photo", item.id), {
-        file: "foto.pdf",
-      });
+      if (item === itemB) {
+        await submit(supplierA, order.id, k("die_cut", item.id), {
+          file: "faca.pdf",
+        });
+        await submit(supplierA, order.id, k("hd_photo", item.id), {
+          file: "foto.pdf",
+        });
+      }
       await submit(supplierA, order.id, k("moq_confirmed", item.id), {
         value: "1000",
       });
@@ -287,6 +331,17 @@ describe("pedido de compra", () => {
     );
     await submit(ocp, order.id, k("certificate", itemB.id), { file: "c.pdf" });
     await submit(agency, order.id, k("art_final", itemB.id), { file: "f.pdf" });
+
+    // Fornecedor, arte e certificado prontos, mas o contrato espera o
+    // cadastro: NCM validado e ficha completa de cada produto (P9/P14).
+    expect((await store.get("orders", order.id))!.status).toBe("PREPARATION");
+    await gates.validateNcm(admin, itemA.productId!);
+    expect(
+      (await requirementsOf(order.id)).find(
+        (r) => r.key === k("ncm_validated", itemA.id),
+      )!.status,
+    ).toBe("done");
+    await gates.readyOrderProducts(admin, order.id);
 
     // Raias concluídas: o contrato (com a arte final) espera as duas assinaturas.
     const afterLanes = (await store.get("orders", order.id))!;
@@ -315,8 +370,16 @@ describe("pedido de compra", () => {
       hash: view.hash,
       signedFile: pdf("contrato-fornecedor.pdf"),
     });
+    // Assinado pelos dois, mas a produção espera o sinal (a condição do
+    // fornecedor tem parcela no pedido gerado) ou a conta corrente (P12?).
     const signed = (await store.get("orders", order.id))!;
-    expect(signed.status).toBe("INSPECTION");
+    expect(signed.status).toBe("PACKAGING");
+    const downPayment = (await requirementsOf(order.id)).find(
+      (r) => r.key === "down_payment",
+    )!;
+    expect(downPayment.status).toBe("pending");
+    const { productionStartFor } = signature;
+    expect((await productionStartFor(order.id)).at).toBeNull();
   });
 
   it("o comprador é o cliente com o CODEMP, nunca o cadastro de fornecedor da mesma empresa", async () => {
@@ -344,6 +407,253 @@ describe("pedido de compra", () => {
     await expect(
       po.createPurchaseOrder(supplierA, [{ requestId: "x", quantity: null }]),
     ).rejects.toThrow();
+  });
+});
+
+/**
+ * Pedido de compra levado até o contrato pela sequência do mapa: fornecedor,
+ * arte (e certificado, quando a linha exige), cadastro e as duas assinaturas.
+ */
+async function signedPurchaseOrder(
+  codes: [string, string],
+  lineId: string | null = null,
+) {
+  const store = getStore();
+  const [r1, r2] = await approvedProducts(null, codes, lineId);
+  const order = await po.createPurchaseOrder(admin, [
+    { requestId: r1.id, quantity: null },
+    { requestId: r2.id, quantity: null },
+  ]);
+  const items = await store.list("order_items", {
+    filter: { orderId: order.id },
+  });
+  const k = (base: string, id: string) => `${base}__${id}`;
+  for (const item of items) {
+    await submit(supplierA, order.id, k("die_cut", item.id), { file: "f.pdf" });
+    await submit(supplierA, order.id, k("hd_photo", item.id), {
+      file: "h.pdf",
+    });
+    await submit(supplierA, order.id, k("moq_confirmed", item.id), {
+      value: "1000",
+    });
+    await submit(supplierA, order.id, k("lead_time_confirmed", item.id), {
+      value: "30",
+    });
+    await submit(agency, order.id, k("art", item.id), { file: "a.pdf" });
+    const review = (await requirementsOf(order.id)).find(
+      (r) => r.key === k("art_review", item.id),
+    )!;
+    await engine.decideRequirement(admin, review.id, "approve");
+  }
+  await gates.readyOrderProducts(admin, order.id);
+  expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
+  const view = (await signature.getOrderSignatureView(admin, order.id))!;
+  for (const [who, name] of [
+    [admin, "Ana Wellmix"],
+    [supplierA, "Li Supplier"],
+  ] as const)
+    await signature.signOrderDocument(who, order.id, {
+      name,
+      agree: true,
+      hash: view.hash,
+      signedFile: pdf(`${name}.pdf`),
+    });
+  return { order, items };
+}
+
+describe("pedido de compra: sequência do mapa do processo", () => {
+  it("linha sem certificação: sem certificado nem arte final; o contrato vem da arte validada", async () => {
+    const store = getStore();
+    const [r1] = await approvedProducts(null, ["SQ-0", "SQ-00"]);
+    const order = await po.createPurchaseOrder(admin, [
+      { requestId: r1.id, quantity: null },
+    ]);
+    const keys = (await requirementsOf(order.id)).map(
+      (r) => r.key.split("__")[0],
+    );
+    expect(keys).not.toContain("certificate");
+    expect(keys).not.toContain("art_final");
+    expect(keys).toEqual(
+      expect.arrayContaining(["ncm_validated", "sheet_complete", "art"]),
+    );
+    // A certificadora não recebe nada deste pedido.
+    const ocpNotes = await store.list("notifications", {
+      filter: { userId: ocp.id, channel: "inapp" },
+    });
+    expect(ocpNotes.some((n) => n.link === `/app/orders/${order.id}`)).toBe(
+      false,
+    );
+  });
+
+  it("sinal pago libera a produção; o início dela conta da liberação", async () => {
+    const store = getStore();
+    const { order } = await signedPurchaseOrder(["SQ-1", "SQ-2"]);
+    // Assinado pelos dois: a produção espera o sinal (30% no pedido gerado).
+    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
+    const finance = await store.list("notifications", {
+      filter: { userId: admin.id, channel: "inapp" },
+    });
+    expect(
+      finance.some(
+        (n) =>
+          n.link === `/app/orders/${order.id}` &&
+          /pagar o sinal/.test(n.subject),
+      ),
+    ).toBe(true);
+    // Pagamento pedido ao banco ainda não é sinal pago.
+    const pay = await import("@/lib/services/supplier-payment");
+    const requested = await pay.registerSupplierPayment(admin, order.id, {
+      method: "transfer_copied",
+    });
+    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
+    await pay.markSupplierPaymentPaid(admin, order.id, requested.id, {});
+    const released = (await store.get("orders", order.id))!;
+    expect(released.status).toBe("INSPECTION");
+    const down = (await requirementsOf(order.id)).find(
+      (r) => r.key === "down_payment",
+    )!;
+    expect(down).toMatchObject({ status: "done", value: "paid" });
+    expect((await signature.productionStartFor(order.id)).at).not.toBeNull();
+    // O fornecedor fica sabendo que pode produzir.
+    const supplierNotes = await store.list("notifications", {
+      filter: { userId: supplierA.id, channel: "inapp" },
+    });
+    expect(
+      supplierNotes.some(
+        (n) =>
+          n.link === `/app/orders/${order.id}` &&
+          /produção liberada|production released|已放行生产/.test(n.subject),
+      ),
+    ).toBe(true);
+  });
+
+  it("conta corrente com o fornecedor: a produção começa com as duas assinaturas", async () => {
+    const store = getStore();
+    const terms = await import("@/lib/services/supplier-terms");
+    await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+      terms: [{ percent: 100, base: "delivered", days: 60 }],
+      note: null,
+    });
+    try {
+      const { order } = await signedPurchaseOrder(["SQ-3", "SQ-4"]);
+      expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
+      const down = (await requirementsOf(order.id)).find(
+        (r) => r.key === "down_payment",
+      )!;
+      expect(down).toMatchObject({ status: "done", value: "current_account" });
+    } finally {
+      await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+        terms: [
+          { percent: 30, base: "order_created", days: 0 },
+          { percent: 70, base: "delivered", days: 90 },
+        ],
+        note: null,
+      });
+    }
+  });
+
+  it("certificação válida pelo período do pedido dispensa a certificadora (P8)", async () => {
+    const store = getStore();
+    const compliance = await import("@/lib/services/compliance");
+    const [r1, r2] = await approvedProducts(
+      null,
+      ["SQ-5", "SQ-6"],
+      "linha-brinquedos",
+    );
+    const productOf = async (id: string) =>
+      (await store.get("supplier_requests", id))!.productId!;
+    const [p1, p2] = [await productOf(r1.id), await productOf(r2.id)];
+    const valid = (days: number) =>
+      new Date(Date.now() + days * 86_400_000).toISOString();
+    // Um vale o período (120 dias); o outro vence antes e precisa renovar.
+    await compliance.addCertification(admin, "product", p1, {
+      kind: "Inmetro",
+      number: "INM-1",
+      validUntil: valid(400),
+      status: "valid",
+    });
+    await compliance.addCertification(admin, "product", p2, {
+      kind: "Inmetro",
+      number: "INM-2",
+      validUntil: valid(30),
+      status: "valid",
+    });
+    const order = await po.createPurchaseOrder(admin, [
+      { requestId: r1.id, quantity: null },
+      { requestId: r2.id, quantity: null },
+    ]);
+    const items = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    const certOf = async (productId: string) => {
+      const item = items.find((i) => i.productId === productId)!;
+      return (await requirementsOf(order.id)).find(
+        (r) => r.key === `certificate__${item.id}`,
+      )!;
+    };
+    expect(await certOf(p1)).toMatchObject({
+      status: "done",
+      value: "valid",
+    });
+    expect((await certOf(p2)).status).toBe("pending");
+    // Renovada no cadastro do produto: o item fecha sozinho.
+    await compliance.addCertification(admin, "product", p2, {
+      kind: "Inmetro",
+      number: "INM-2b",
+      validUntil: valid(500),
+      status: "valid",
+    });
+    expect((await certOf(p2)).status).toBe("done");
+  });
+
+  it("prazo de cada passo conta da liberação do anterior", async () => {
+    const lanes = await import("@/lib/purchase-lanes");
+    const sla = {
+      artDays: 5,
+      reviewDays: 2,
+      dieCutDays: 7,
+      finalDays: 3,
+      signatureDays: 2,
+      downPaymentDays: 3,
+    };
+    const created = "2026-11-01T12:00:00.000Z";
+    const reqs = [
+      {
+        key: "die_cut__i",
+        status: "done",
+        submittedAt: "2026-11-03T12:00:00.000Z",
+      },
+      {
+        key: "hd_photo__i",
+        status: "done",
+        submittedAt: "2026-11-04T12:00:00.000Z",
+      },
+      { key: "art__i", status: "pending", submittedAt: null },
+      {
+        key: "order_signed_wellmix",
+        status: "done",
+        submittedAt: "2026-11-10T12:00:00.000Z",
+      },
+      { key: "order_signed_supplier", status: "pending", submittedAt: null },
+      { key: "down_payment", status: "pending", submittedAt: null },
+    ] as Array<
+      Pick<import("@/lib/db").Requirement, "key" | "status" | "submittedAt">
+    >;
+    // Faca: do pedido; arte: da última peça do fornecedor (foto em alta).
+    expect(lanes.laneDueAt("die_cut__i", created, reqs, sla)).toBe(
+      "2026-11-08T12:00:00.000Z",
+    );
+    expect(lanes.laneDueAt("art__i", created, reqs, sla)).toBe(
+      "2026-11-09T12:00:00.000Z",
+    );
+    // Fornecedor assina contando da Wellmix; o sinal espera os dois.
+    expect(lanes.laneDueAt("order_signed_supplier", created, reqs, sla)).toBe(
+      "2026-11-12T12:00:00.000Z",
+    );
+    expect(lanes.laneDueAt("down_payment", created, reqs, sla)).toBeNull();
+    expect(lanes.blockedBy("down_payment", reqs)).toEqual([
+      "order_signed_supplier",
+    ]);
   });
 });
 

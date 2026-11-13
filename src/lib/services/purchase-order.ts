@@ -282,6 +282,7 @@ export async function createPurchaseOrder(
   const { createStagesForOrder } = await import("@/lib/workflow/engine");
   const fresh = (await store.get("orders", order.id)) ?? order;
   await createStagesForOrder(fresh);
+  await notifySalesOfPurchase(fresh);
   return (await store.get("orders", order.id)) ?? fresh;
 }
 
@@ -320,15 +321,23 @@ async function send(
   }).catch((error) => console.error("notify(purchase_order)", error));
 }
 
-/** As três raias abrem juntas: fornecedor, agência de arte e certificadora. */
+/**
+ * As raias abrem juntas: fornecedor, cadastro e fiscal (Wellmix) e, com a
+ * linha exigindo certificação, a certificadora. A agência é avisada quando a
+ * faca e a foto em alta chegam (a arte espera por elas).
+ */
 export async function notifyLanesOpen(
   order: Order,
-  pending: Array<Pick<Requirement, "key" | "role">>,
+  pending: Array<Pick<Requirement, "key" | "role" | "status">>,
 ): Promise<void> {
   const byLane = new Map<string, Requirement["role"]>();
   for (const r of pending) {
     const lane = laneOf(r.key);
     if (lane === "art" && baseKeyOf(r.key) !== LANE_KEYS.art) continue;
+    // Só o que já está liberado (a arte espera a faca).
+    if (blockedBy(r.key, pending).length) continue;
+    // Cadastro e fiscal: avisado depois da conferência automática (só o que falta).
+    if (lane === "registration") continue;
     if (!byLane.has(lane)) byLane.set(lane, r.role);
   }
   for (const [lane, role] of byLane)
@@ -354,18 +363,37 @@ export async function afterLaneStep(
   const item = itemIdOf(key);
   if (!item) return;
   const base = baseKeyOf(key);
+  const store = getStore();
   // Die Cut: com os quatro itens do produto feitos, a Wellmix é avisada.
   if (laneOf(key) === "supplier") {
     const { afterDieCutItem } = await import("./die-cut-step");
     await afterDieCutItem(order, key, statusBefore);
+    // Faca e foto em alta na mão: quem faz a arte começa (P4 → P5).
+    if (
+      statusBefore !== "done" &&
+      (base === LANE_KEYS.dieCut || base === LANE_KEYS.hdPhoto)
+    ) {
+      const all = await store.list("requirements", {
+        filter: { orderId: order.id },
+      });
+      const artKey = laneKey(LANE_KEYS.art, item);
+      const art = all.find((r) => r.key === artKey);
+      if (art && art.status !== "done" && !blockedBy(artKey, all).length)
+        await send(
+          order,
+          art.role,
+          "purchaseSequence.notify.artUnlocked.subject",
+          "purchaseSequence.notify.artUnlocked.body",
+          { product: productOf(art) },
+        );
+    }
     return;
   }
-  const store = getStore();
   const requirements = await store.list("requirements", {
     filter: { orderId: order.id },
   });
   const named = requirements.find((r) => r.key === key);
-  const product = (named?.label.split(" · ").slice(1).join(" · ") ?? "").trim();
+  const product = named ? productOf(named) : "";
   if (base === LANE_KEYS.art) {
     await send(
       order,
@@ -391,12 +419,122 @@ export async function afterLaneStep(
   }
 }
 
-/** SLA da arte (Configurações). */
+/** O produto do rótulo do item da raia ("Arte · Copo" → "Copo"). */
+const productOf = (r: Pick<Requirement, "label">) =>
+  r.label.split(" · ").slice(1).join(" · ").trim();
+
+/**
+ * Pedido de compra gerado (P2 → V1): o comercial fica sabendo do que vem, com
+ * os produtos e as quantidades. Vai para quem tem a ação "Receber o aviso de
+ * pedido de compra" (Equipe → Funções e acessos; padrão: quem abre Pós-venda).
+ */
+export async function notifySalesOfPurchase(order: Order): Promise<void> {
+  try {
+    const store = getStore();
+    const [users, items] = await Promise.all([
+      store.list("users", {
+        filter: { role: ["admin", "operator"], active: true },
+      }),
+      store.list("order_items", { filter: { orderId: order.id } }),
+    ]);
+    const { holdersOf } = await import("@/lib/auth/function-access");
+    const { loadFunctionDefs } = await import("./team-functions");
+    const holders = holdersOf(
+      users,
+      "purchaseOrder.salesNotice",
+      await loadFunctionDefs(),
+    );
+    // Ninguém com a ação: os administradores ficam sabendo (como no recebimento).
+    const sales = holders.length
+      ? holders
+      : users.filter((u) => u.role === "admin");
+    if (!sales.length) return;
+    const list = items
+      .map((i) => `${i.name} (${i.quantity} ${i.unit})`)
+      .join(", ");
+    const { notify } = await import("./notifications");
+    await notify(
+      { userIds: sales.map((u) => u.id) },
+      {
+        kind: "info",
+        link: `/app/orders/${order.id}`,
+        text: (t) => ({
+          subject: t("purchaseSequence.notify.sales.subject", {
+            n: order.number,
+          }),
+          body: t("purchaseSequence.notify.sales.body", { items: list }),
+        }),
+      },
+    );
+  } catch (error) {
+    console.error("notify(purchase_order_sales)", error);
+  }
+}
+
+/**
+ * Contrato assinado pelas duas partes: o financeiro confere o sinal (ou a
+ * conta corrente) para liberar a produção (P11 → P12?).
+ */
+export async function notifyDownPaymentDue(order: Order): Promise<void> {
+  await send(
+    order,
+    "operator",
+    "purchaseSequence.notify.downPayment.subject",
+    "purchaseSequence.notify.downPayment.body",
+    {},
+  );
+}
+
+/**
+ * Cadastro e fiscal: o que a conferência automática não fechou (NCM sem
+ * validação, ficha incompleta) vira aviso à Wellmix, com os produtos.
+ */
+export async function notifyRegistrationOpen(order: Order): Promise<void> {
+  const requirements = await getStore().list("requirements", {
+    filter: { orderId: order.id },
+  });
+  const open = requirements.filter(
+    (r) => laneOf(r.key) === "registration" && r.status !== "done",
+  );
+  if (!open.length) return;
+  const products = [...new Set(open.map(productOf))].join(", ");
+  await send(
+    order,
+    "operator",
+    "purchaseSequence.notify.registration.subject",
+    "purchaseSequence.notify.registration.body",
+    { products },
+  );
+}
+
+/** Sinal pago ou conta corrente: o fornecedor pode começar a produção (P12 → R1). */
+export async function notifyProductionReleased(
+  order: Order,
+  how: string,
+): Promise<void> {
+  await send(
+    order,
+    "supplier",
+    "purchaseSequence.notify.production.subject",
+    how === "current_account"
+      ? "purchaseSequence.notify.production.bodyAccount"
+      : "purchaseSequence.notify.production.body",
+    {},
+  );
+}
+
+/** Prazos de cada passo do pedido de compra (Configurações → SLA). */
 export async function purchaseLaneSla(): Promise<LaneSla> {
   const { getSettings } = await import("@/lib/settings");
   const s = await getSettings();
   return {
     artDays: s.purchaseArtSlaDays,
     reviewDays: s.purchaseArtReviewSlaDays,
+    dieCutDays: s.purchaseDieCutSlaDays,
+    certDays: s.purchaseCertSlaDays,
+    finalDays: s.purchaseArtFinalSlaDays,
+    registrationDays: s.purchaseRegistrationSlaDays,
+    signatureDays: s.purchaseSignatureSlaDays,
+    downPaymentDays: s.purchaseDownPaymentSlaDays,
   };
 }

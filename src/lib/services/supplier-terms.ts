@@ -108,6 +108,9 @@ export async function saveSupplierPaymentTerms(
     before,
     { paymentTerms: terms, paymentTermsNote: note },
   );
+  // Pedidos de compra esperando a condição (sinal ou conta corrente).
+  const { refreshGatesForSupplier } = await import("./purchase-gates");
+  await refreshGatesForSupplier(partyId, user);
   return updated;
 }
 
@@ -160,6 +163,8 @@ export async function applySupplierTermsToOrder(
     { supplierPaymentTerms: before },
     { supplierPaymentTerms: terms },
   );
+  const { refreshPurchaseGates } = await import("./purchase-gates");
+  await refreshPurchaseGates(orderId, user);
 }
 
 export interface OrderPayable {

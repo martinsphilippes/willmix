@@ -176,6 +176,9 @@ export async function checkProductCompliance(
 
 /** Reabre ou resolve o item de revisão de conformidade dos pedidos abertos do produto. */
 async function refreshComplianceReviews(user: User, productId: string) {
+  // Pedido de compra: certificação válida pelo período dispensa a renovação.
+  const { refreshGatesForProduct } = await import("./purchase-gates");
+  await refreshGatesForProduct(productId, user);
   const store = getStore();
   const check = await checkProductCompliance(productId);
   const items = await store.list("order_items", { filter: { productId } });

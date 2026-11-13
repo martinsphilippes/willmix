@@ -108,6 +108,9 @@ Na ordem do fluxo, o selo fica depois dele: Booking e Superplan → solicitaçã
 4. **Quem confere o selo na arte**: a Wellmix (confirmado).
 5. **A certificadora vê o pedido completo**, fotos e tudo o mais: feito (seção 6).
 
+### 11.1a Pedido de compra: certificação pela linha (dono, 13/11/2026)
+No pedido de compra (`orders.flow = "supplier_request"`) vale o mapa do processo: o certificado e a arte final com o selo só existem quando a linha do produto exige certificação, e o produto com certificação válida pelo período do pedido não renova (docs/PURCHASE_ORDER.md, seção 1a). Os passos do cartão Certificação já não viravam pendência nesses pedidos; a regra "todo pedido precisa do selo" segue para os outros fluxos.
+
 ### 11.2 Ainda em aberto
 0. Registro das respostas do dono de 10/11/2026 sobre o fluxo com a RFQ em espera (docs/RFQ_STANDBY.md): a faca continua sendo pedida ao fornecedor **depois da confirmação** da cotação, como hoje; o selo é enviado pela certificadora, aplicado na arte por quem faz a arte e conferido pela Wellmix (o que já está feito aqui).
 1. **Preço e cliente para a certificadora**: resolvido (dono, 10/11/2026): ela vê **tudo do pedido** (cliente, fornecedor, FOB, preço dos itens, a ficha inteira com o bloco Preço e o documento do pedido, só para ler; não assina). O dono vai pedir depois o que tirar: campo da ficha sai incluindo o nome em `CERTIFIER_HIDDEN_FIELDS` (`purchase-sheet.ts`); o resto, nas condições `certifier` de `orders/[id]/page.tsx` e em `canViewOrderDocument`. Ficam fora o financeiro da Wellmix (preço de venda, margem, pagamentos), que não é dado do pedido para ela.

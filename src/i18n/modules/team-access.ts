@@ -88,6 +88,10 @@ export const pt = {
   "action.numerario.manage": "Numerário e financeiro do pedido",
   "action.desc.numerario.manage":
     "Validar e pagar o numerário; recebe os avisos de recebimento encerrado.",
+  "action.purchaseOrder.salesNotice":
+    "Receber o aviso de pedido de compra (Vendas)",
+  "action.desc.purchaseOrder.salesNotice":
+    "Fica sabendo dos produtos e quantidades de cada pedido de compra novo, para vender antes da chegada.",
   "action.receiving.follow": "Acompanhar o recebimento",
   "action.desc.receiving.follow": "Recebe os avisos da conferência no armazém.",
   "action.values.view": "Ver valores e margem",
@@ -180,6 +184,9 @@ export const en: Record<keyof typeof pt, string> = {
   "action.numerario.manage": "Customs advance and order finance",
   "action.desc.numerario.manage":
     "Validate and pay the customs advance; receives the closed-receiving notices.",
+  "action.purchaseOrder.salesNotice": "Get the purchase order notice (Sales)",
+  "action.desc.purchaseOrder.salesNotice":
+    "Learns the products and quantities of each new purchase order, to sell before arrival.",
   "action.receiving.follow": "Follow receiving",
   "action.desc.receiving.follow": "Receives the warehouse check notices.",
   "action.values.view": "See values and margin",
@@ -260,6 +267,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "action.desc.order.cancel": "取消订单并处理客户的取消申请。",
   "action.numerario.manage": "清关预付款与订单财务",
   "action.desc.numerario.manage": "审核并支付清关预付款；接收收货结束的通知。",
+  "action.purchaseOrder.salesNotice": "接收采购订单通知（销售）",
+  "action.desc.purchaseOrder.salesNotice":
+    "了解每个新采购订单的产品和数量，以便在到货前销售。",
   "action.receiving.follow": "跟进收货",
   "action.desc.receiving.follow": "接收仓库清点的通知。",
   "action.values.view": "查看金额与毛利",

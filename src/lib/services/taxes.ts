@@ -722,6 +722,9 @@ export async function validateTaxClassification(user: User, id: string) {
     row.productId,
     `NCM ${row.ncm} validado`,
   );
+  // Pedido de compra aberto com o produto: o NCM validado libera o item.
+  const { refreshGatesForProduct } = await import("./purchase-gates");
+  await refreshGatesForProduct(row.productId, user);
   return updated;
 }
 

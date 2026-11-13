@@ -37,8 +37,17 @@ import {
 } from "./order-summary";
 import { followupsDue, latestByItem } from "./production";
 import { getSettings } from "@/lib/settings";
-import { ORDER_SIGNED_WELLMIX } from "@/lib/workflow/stages";
-import { LANE_KEYS, baseKeyOf, blockedBy, laneOf } from "@/lib/purchase-lanes";
+import {
+  ORDER_SIGNED_SUPPLIER,
+  ORDER_SIGNED_WELLMIX,
+} from "@/lib/workflow/stages";
+import {
+  DOWN_PAYMENT_KEY,
+  LANE_KEYS,
+  baseKeyOf,
+  blockedBy,
+  laneOf,
+} from "@/lib/purchase-lanes";
 import {
   negotiationTurn,
   supplierRequestLate,
@@ -96,6 +105,7 @@ export const BOARD_CARDS = [
   { key: "ordPrepSankhya", block: "order" },
   { key: "ordContractWellmix", block: "order" },
   { key: "ordContractSupplier", block: "order" },
+  { key: "ordContractDownPayment", block: "order" },
   { key: "ordContractSankhya", block: "order" },
   { key: "ordInspection", block: "order" },
   { key: "ordInspectionIssue", block: "order" },
@@ -113,6 +123,7 @@ export const BOARD_CARDS = [
   { key: "lnArt", block: "parallel" },
   { key: "lnArtReview", block: "parallel" },
   { key: "lnCert", block: "parallel" },
+  { key: "lnRegistration", block: "parallel" },
   { key: "parProduction", block: "parallel" },
   { key: "parProductionLate", block: "parallel" },
   { key: "parFollowupDue", block: "parallel" },
@@ -442,6 +453,14 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     (laneReqsBy.get(o.id) ?? []).some(
       (r) => r.key === ORDER_SIGNED_WELLMIX && r.status === "done",
     );
+  // Contrato assinado pelos dois e o sinal ainda por pagar (segura a produção).
+  const waitingDownPayment = (o: BoardOrder) =>
+    (laneReqsBy.get(o.id) ?? []).some(
+      (r) => r.key === DOWN_PAYMENT_KEY && r.status !== "done",
+    ) &&
+    (laneReqsBy.get(o.id) ?? []).some(
+      (r) => r.key === ORDER_SIGNED_SUPPLIER && r.status === "done",
+    );
   for (const o of live) {
     const card = journey.orderCard(o);
     const portal = isPortalOrder(o);
@@ -451,9 +470,11 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
       addOrder(
         !portal
           ? "ordContractSankhya"
-          : signedByWellmix(o)
-            ? "ordContractSupplier"
-            : "ordContractWellmix",
+          : waitingDownPayment(o)
+            ? "ordContractDownPayment"
+            : signedByWellmix(o)
+              ? "ordContractSupplier"
+              : "ordContractWellmix",
         o,
       );
     else addOrder(card, o);
@@ -491,6 +512,8 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
       if (has((base) => base === LANE_KEYS.artReview))
         addOrder("lnArtReview", o);
       if (has((base) => base === LANE_KEYS.certificate)) addOrder("lnCert", o);
+      if (has((_, lane) => lane === "registration"))
+        addOrder("lnRegistration", o);
     }
     const track = trackOf.get(o.id) ?? null;
     const preShipping = BEFORE_SHIPPING.includes(o.status as StageKey);
