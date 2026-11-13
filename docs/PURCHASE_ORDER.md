@@ -65,6 +65,21 @@ Regras:
 - **Avisos à Wellmix:** quando os quatro itens de um produto ficam completos (com o valor negociado, se o confirmado saiu diferente) e a cada mudança posterior de pedido mínimo ou prazo, com o valor de antes.
 - **Quem abre:** a Wellmix e o fornecedor do pedido.
 
+## 2c. O que o fornecedor vê na seção da etapa (13/11/2026)
+
+Na página do pedido, a seção "Preparação, arte e certificação" mostrava ao fornecedor as tarefas de todas as raias. Pedido do dono: ele vê **só três tarefas por produto**:
+
+- **Faca (die cut)** e **Foto em alta resolução**, com os mesmos controles de envio.
+- **Prazo de produção confirmado (dias)**: o campo já vem com o **prazo registrado para o item na solicitação ao fornecedor** (a resposta dele, com o que a negociação mudou: `supplierLeadTimeDays`, por `negotiatedTerms`). O preenchimento só traz o valor: ele confere, muda se quiser e aperta "Enviar", como antes. Sem prazo registrado, o campo fica vazio. Já confirmado nesta etapa, a linha mostra o valor confirmado.
+
+O que muda e o que não muda:
+
+- **Só a visão do fornecedor nessa seção.** MOQ, arte, validação da arte, certificado, arte final e qualquer outro item (um NCM ou um item a mais da linha do produto) deixam de aparecer para ele ali. A Wellmix e os outros papéis veem a seção como antes.
+- **Nada some do pedido:** as tarefas de cada produto continuam existindo, obrigatórias, com as mesmas regras; a etapa só conclui com todas feitas.
+- **MOQ:** continua sendo uma tarefa do fornecedor. Ele confirma no quadro Die Cut (o atalho "Abrir o Die Cut" continua na seção e fica em destaque enquanto faltar item), com o negociado já no campo; a Wellmix também pode confirmar.
+- **Textos:** para o fornecedor, a ajuda da seção e a frase do atalho do Die Cut falam só das três tarefas (`dieCut.stageHelp.supplier`, `dieCut.orderHint.supplier`).
+- **Regra** (`supplierSeesLaneRequirement`, `src/lib/purchase-lanes.ts`): uma lista fechada com as três chaves (`die_cut`, `hd_photo`, `lead_time_confirmed`) de cada item do pedido.
+
 ## 3. Contrato e assinaturas (etapa "Arte e embalagem")
 
 - Concluída a Preparação, o sistema monta o **contrato**: o documento do pedido (`/app/orders/{id}/purchase-order`) com os dados, os produtos, o MOQ e o prazo negociados de cada um e a **arte final com o selo** de cada produto.
