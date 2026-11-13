@@ -9,7 +9,13 @@ import {
   holdersOf,
   resolveFunctions,
 } from "@/lib/auth/function-access";
-import { FUNCTION_SCREENS, screensFor } from "@/lib/auth/screens";
+import {
+  FUNCTION_SCREENS,
+  WELLMIX_BASE,
+  screensFor,
+  startPathFor,
+} from "@/lib/auth/screens";
+import { attachAccess } from "@/lib/auth/access-cache";
 import { WELLMIX_FUNCTIONS } from "@/lib/db/schema";
 
 /* Funções e acessos: telas e ações por função, padrão do código e configuração do administrador. */
@@ -99,7 +105,88 @@ describe("configuração do administrador", () => {
     expect(accessFromFunctions(["fn_temp"], defs)).toEqual({
       screens: [],
       actions: [],
+      base: [...WELLMIX_BASE],
     });
+  });
+
+  it("telas do Início por função: desmarcar numa não tira de quem tem outra", () => {
+    // Sem nada gravado: todas as telas do Início, como antes.
+    const before = resolveFunctions(null);
+    expect(before.every((d) => d.baseOff.length === 0)).toBe(true);
+    expect(
+      screensFor(op(["designer"]), accessFromFunctions(["designer"], before)),
+    ).toEqual(new Set([...WELLMIX_BASE, ...FUNCTION_SCREENS.designer]));
+
+    // Designer sem Painel de SLA e sem Control Tower; Planner intacto.
+    const defs = resolveFunctions({
+      functions: [{ key: "designer", baseOff: ["sla", "home", "orders", "x"] }],
+    });
+    const designer = defs.find((d) => d.key === "designer")!;
+    // Só telas do Início entram; as telas da função seguem o padrão.
+    expect(designer.baseOff).toEqual(["home", "sla"]);
+    expect(designer.screens).toEqual([...FUNCTION_SCREENS.designer]);
+
+    const only = screensFor(
+      op(["designer"]),
+      accessFromFunctions(["designer"], defs),
+    );
+    expect(only.has("sla")).toBe(false);
+    expect(only.has("home")).toBe(false);
+    expect(only.has("tasks")).toBe(true);
+    expect(only.has("orders")).toBe(true);
+
+    const planner = screensFor(
+      op(["planner"]),
+      accessFromFunctions(["planner"], defs),
+    );
+    expect(planner.has("sla")).toBe(true);
+    expect(planner.has("home")).toBe(true);
+
+    // Outra função do mesmo login libera: vale a união.
+    const both = screensFor(
+      op(["designer", "planner"]),
+      accessFromFunctions(["designer", "planner"], defs),
+    );
+    expect(both.has("sla")).toBe(true);
+
+    // Admin abre tudo; tela marcada direto no login também segue valendo.
+    expect(
+      screensFor({ role: "admin", functions: ["designer"] }).has("sla"),
+    ).toBe(true);
+    expect(
+      screensFor({
+        role: "operator",
+        functions: ["designer"],
+        screens: [],
+      }).has("sla"),
+    ).toBe(true);
+    // Sem função ativa: o Início inteiro.
+    expect(accessFromFunctions([], defs).base).toEqual([...WELLMIX_BASE]);
+    // Ações não mudam.
+    expect(accessFromFunctions(["designer"], defs).actions).toEqual(
+      accessFromFunctions(["designer"], before).actions,
+    );
+  });
+
+  it("sem o Control Tower, o início vai à primeira tela do menu", () => {
+    const defs = resolveFunctions({
+      functions: [
+        { key: "designer", baseOff: ["home", "tasks"] },
+        {
+          key: "fn_vazia",
+          name: "Vazia",
+          screens: [],
+          baseOff: [...WELLMIX_BASE],
+        },
+      ],
+    });
+    const designer = op(["designer"]);
+    attachAccess(designer, accessFromFunctions(["designer"], defs));
+    expect(startPathFor(designer)).toBe("/app/sla");
+    const empty = op(["fn_vazia"]);
+    attachAccess(empty, accessFromFunctions(["fn_vazia"], defs));
+    expect(screensFor(empty).size).toBe(0);
+    expect(startPathFor(empty)).toBeNull();
   });
 
   it("valores: quem abre Financeiro ou tem a permissão", () => {
