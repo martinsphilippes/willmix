@@ -996,6 +996,14 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - Só esse texto (`purchaseRounds.gen.hint`), nos três idiomas. Nada mudou na conta nem nos campos. Sem mudança no banco.
 - **Ficou como estava, para o dono decidir**: o campo logo abaixo continua se chamando "Total de peças" e continua recebendo peças (a conta arredonda para caixas master inteiras). A explicação agora fala em caixas e o campo em peças: ou o campo passa a receber caixas (muda a conta: caixas × peças por caixa master), ou só o nome dele muda, ou fica assim.
 
+## Seleção de itens: sai a coluna "Alternativa" da tabela do grupo
+
+- **Pedido do dono** (13/11/2026, com a foto da tabela): remover só a coluna "Alternativa", a segunda, entre "Escolher" e "Foto": o cabeçalho e as caixas de seleção, com "Foto" logo à direita de "Escolher", sem espaço vazio. Limitar à exibição dessa tabela e preservar a escolha do item principal, a ordem das demais colunas, os dados já salvos e as regras de negócio.
+- **O que saiu**: o cabeçalho e a célula com a caixa em `src/app/app/booking/selection/page.tsx` (aba Seleção; a aba Itens já não tinha a coluna). É uma remoção de tela pedida pelo dono, a única desta entrega.
+- **Por que não muda regra nem dado**: a caixa não alterava o que era gravado. A escolha grava os itens do grupo (`group`) e o ganhador; marcar "Alternativa" só repetia ids que já estavam no grupo. Ao abrir a solicitação, todos os outros itens do grupo vão como alternativas (`openGroupRequests`), como antes.
+- **Ficou como estava**: a coluna "Escolher" e a escolha do ganhador, a ordem e o conteúdo das outras colunas, a ação de gravar (ainda aceita `alternatives`), o texto "Alternativa" no dicionário, as alternativas na solicitação ao fornecedor e tudo o que já estava salvo. Sem mudança no banco.
+- **Teste**: o E2E confere que a caixa e o cabeçalho não existem mais, que "Foto" vem logo depois de "Escolher", que cada linha tem o mesmo número de colunas do cabeçalho e, adiante, que o outro item do grupo continua aparecendo como alternativa na solicitação.
+
 ## Programação de compra: o total do gerador passa a ser digitado em caixas
 
 - **Decisão do dono** (13/11/2026, depois de a explicação passar a dizer "total de caixas"): "o campo passa a receber caixas". Antes o campo se chamava "Total de peças" e a conta lia o número como peças, o que desencontrava do texto.

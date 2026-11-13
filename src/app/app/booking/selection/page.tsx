@@ -302,8 +302,10 @@ export default async function BookingSelectionPage({
                 />
               ) : null}
             </th>
+            {/* Sem a coluna "Alternativa" (dono, 13/11/2026): os outros itens
+                do grupo já são as alternativas do escolhido. */}
             {[
-              ...(basket ? [] : ["choose", "alternative"]),
+              ...(basket ? [] : ["choose"]),
               "photo",
               "item",
               "supplier",
@@ -372,15 +374,6 @@ export default async function BookingSelectionPage({
                         }
                         aria-label={`${col("choose")} ${item.description ?? item.factoryItemCode ?? ""}`}
                         data-selection-choose={item.id}
-                      />
-                    </td>
-                    <td className={cx(td, "text-center")}>
-                      <input
-                        type="checkbox"
-                        name="alternatives"
-                        value={item.id}
-                        aria-label={`${col("alternative")} ${item.description ?? item.factoryItemCode ?? ""}`}
-                        data-selection-alternative={item.id}
                       />
                     </td>
                   </>

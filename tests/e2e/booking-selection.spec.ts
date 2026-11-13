@@ -97,6 +97,12 @@ async function importAndClose(
     "[data-booking-lot-supplier] input[role=combobox]",
   );
   await expect(combo).toHaveValue(new RegExp(supplierName));
+  // Cabeçalho: dono e fábrica do registro, sem o nome do arquivo.
+  const heading = page.locator("[data-booking-lot-heading]");
+  await expect(heading).toContainText(
+    `Informações lançadas da Fábrica ${supplierName}`,
+  );
+  await expect(heading).not.toContainText(".xlsx");
   await combo.click();
   await combo.fill(supplierName.toLowerCase().split(" ").slice(0, 2).join(" "));
   const options = page.locator("[data-booking-lot-supplier] [role=option]");

@@ -216,10 +216,27 @@ export async function selectAndOpenSupplierRequest(
     .locator("[data-selection-item]", { hasText: chosen })
     .locator("input[data-selection-choose]")
     .check();
-  await page
-    .locator("[data-selection-item]", { hasText: alternative })
-    .locator("input[data-selection-alternative]")
-    .check();
+  // Sem a coluna "Alternativa" (dono, 13/11/2026): só se escolhe o ganhador
+  // e "Foto" vem logo depois de "Escolher". O outro item do grupo continua
+  // indo como alternativa da solicitação (quem chama confere mais adiante).
+  await expect(
+    page.locator("[data-selection-item]", { hasText: alternative }),
+  ).toHaveCount(1);
+  await expect(page.locator("input[data-selection-alternative]")).toHaveCount(
+    0,
+  );
+  await expect(page.locator('input[name="alternatives"]')).toHaveCount(0);
+  const heads = page.locator("table[data-selection-items] thead th");
+  await expect(heads.nth(1)).toContainText("Escolher");
+  await expect(heads.nth(2)).toContainText("Foto");
+  await expect(
+    page.locator("table[data-selection-items] thead"),
+  ).not.toContainText("Alternativa");
+  // Cada linha tem as mesmas colunas do cabeçalho (nenhuma célula sobrando).
+  const columns = await heads.count();
+  await expect(
+    page.locator("[data-selection-item]").first().locator("td"),
+  ).toHaveCount(columns);
   await page.fill("[data-selection-needs]", needs);
   // Gravar só guarda a escolha (nada vai ao fornecedor); o grupo aparece
   // resolvido, com o ganhador em verde, e a solicitação abre dali.

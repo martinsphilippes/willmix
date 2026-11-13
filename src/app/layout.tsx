@@ -6,6 +6,7 @@ import { INTL_TAG } from "@/i18n";
 import { IntroPlayer } from "@/components/intro-player";
 import { INTRO_BOOT } from "@/lib/intro";
 import { PwaInstall } from "@/components/pwa-install";
+import { PhotoHoverPreview } from "@/components/photo-hover-preview";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -60,6 +61,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="flex min-h-full flex-col bg-[#f5f5f6] text-zinc-900">
         {children}
+        {/* Prévia grande de qualquer foto ao passar o mouse (vale no portal todo). */}
+        <PhotoHoverPreview />
         <PwaInstall
           labels={{
             title: t("pwa.install.title"),
