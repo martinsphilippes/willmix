@@ -1047,6 +1047,23 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - Peças: `src/app/app/supplier-requests/_components/supplier-table.tsx` (variáveis `--pin-*` e classes `PIN`). Detalhes em `docs/SUPPLIER_REQUESTS.md`, "Situação, SLA e ações fixas à direita".
 - Teste: o E2E `booking-supplier-request.spec.ts` confere a ordem das três colunas, que elas não saem do lugar ao rolar (com 2 e com 3 botões), o SLA em duas linhas e a situação com a amostragem.
 
+## Pedido de compra: "Preparação, arte e certificação" na visão do fornecedor
+
+- **Pedido do dono** (13/11/2026, com a foto da seção): o fornecedor via na seção as tarefas de todas as raias (faca, foto em alta, MOQ, prazo, arte, validação da arte, certificado e arte final). Agora vê **só três por produto**: a faca (die cut) e a foto em alta, com os mesmos controles de envio, e o prazo de produção confirmado (dias).
+- **Prazo já preenchido**: o campo traz o prazo registrado para o item na solicitação ao fornecedor (a resposta dele, com o que a negociação mudou). Só traz o valor: a confirmação segue o envio de sempre. Sem prazo registrado, campo vazio e editável com "Enviar"; já confirmado, a linha mostra o valor confirmado.
+- **Textos**: para o fornecedor, a ajuda da seção e a frase do atalho do Die Cut falam só das três tarefas (pt/en/zh: `dieCut.stageHelp.supplier`, `dieCut.orderHint.supplier`).
+- **Só a visão do fornecedor nessa seção**: as tarefas, os dados e as regras continuam os mesmos; a Wellmix e os outros papéis veem a seção como antes. O MOQ continua obrigatório e o fornecedor confirma no quadro Die Cut (ou a Wellmix). Nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- Peças: `supplierSeesLaneRequirement` e `isLeadTimeKey` (`src/lib/purchase-lanes.ts`), `negotiatedTerms` (`src/lib/services/die-cut-step.ts`, agora exportado) e a página do pedido. Detalhes em `docs/PURCHASE_ORDER.md`, seção 2c.
+- Testes: `tests/unit/die-cut-step.test.ts` (o que o fornecedor vê), `tests/unit/purchase-order.test.ts` (um produto com prazo registrado e outro sem; confirmar segue o envio de sempre) e o E2E do caminho principal.
+
+## Solicitação ao fornecedor: coluna compacta "Situação / SLA" com o prazo atrás do "+"
+
+- **Pedido do dono** (13/11/2026, com imagem de referência): na tabela "Produtos desta solicitação", a situação e o SLA ficam numa coluna compacta, **"Situação / SLA"** (eram duas colunas, "Situação" e "SLA"). À direita do selo do SLA (**Atrasada** ou **No prazo**), na mesma linha, um botão pequeno **"+"**; a data e a hora do prazo começam recolhidas.
+- **"+"** mostra a data e a hora embaixo do selo, dentro da célula, e vira **"−"**; **"−"** recolhe. Cada linha abre sozinha e a coluna mantém a largura.
+- O mesmo vale para **No prazo** (o pedido mostrava o atrasado; a data recolhida vale para os dois, para a coluna ficar compacta em todas as linhas). **Confirmado pelo dono** no mesmo dia: "Pode deixar o + também no No prazo".
+- **Não mudou**: "Mais detalhes" do produto, os botões de "Ações" (mensagem, abrir o produto e, para o fornecedor, confirmar, renegociar e recusar), a amostragem na situação aprovada e as regras do SLA (`slaOf`). "Situação / SLA" e "Ações" continuam fixas à direita a partir de 1024px. Sem mudança no banco.
+- Textos novos nos três idiomas (`supplierRequests.table.col.statusSla`, `.slaShow`, `.slaHide`). Testes: `tests/unit/sla-due-toggle.test.ts` (começa recolhido, "+" à direita do selo) e o E2E da solicitação (abre, mostra a data embaixo, vira "−", recolhe, largura igual). O E2E da solicitação passou a informar o câmbio manual em Configurações (`setManualFx` em `tests/e2e/helpers.ts`), porque a simulação da proposta dependia de os sites públicos de câmbio responderem de onde o teste roda.
+
 ## Programação de compra: só calcula e gera com um item marcado em "Escolher"
 
 - **Pedido do dono** (13/11/2026, com as fotos da tela no tablet: "Total de caixas" 1.360 e "Programações" 5 preenchidos, nenhum item marcado e a conta feita com "COMB · YI KAI", o primeiro do grupo): exigir que um item do grupo esteja marcado na coluna "Escolher" antes de calcular ou gerar a programação; sem item, "Gerar programação" desligado, resultados em branco e o aviso "Selecione um item na tabela para gerar a programação de compra"; tirar o uso automático do primeiro item do grupo com caixa master e CBM; validar também na geração e na gravação; trocar ou desmarcar o item invalida os resultados e a programação ainda não gravada; preservar as programações gravadas e o resto da tela.

@@ -260,7 +260,8 @@ export async function seedDemo(): Promise<{
     }
   }
 
-  // Brinquedos e infláveis exigem Inmetro; utilidades (usada pelo E2E) não exige nada.
+  // Brinquedos e infláveis exigem Inmetro (o E2E do caminho principal usa
+  // Brinquedos); utilidades não exige nada.
   const lines: Array<{
     id: string;
     name: string;

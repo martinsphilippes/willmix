@@ -6,7 +6,11 @@ import type {
   StageKey,
 } from "@/lib/db/schema";
 import { STAGE_KEYS } from "@/lib/db/schema";
-import { laneRequirements, type LaneItem } from "@/lib/purchase-lanes";
+import {
+  DOWN_PAYMENT_KEY,
+  laneRequirements,
+  type LaneItem,
+} from "@/lib/purchase-lanes";
 
 /** Item que conclui o Embarque (os dados do embarque são opcionais). */
 export const SHIPPED_KEY = "shipped";
@@ -223,6 +227,16 @@ export const PURCHASE_CONTRACT_REQUIREMENTS: RequirementTemplate[] = [
     type: "confirm",
     required: true,
     role: "supplier",
+  },
+  // Mapa do processo (P12?/P12): com as duas assinaturas, o sinal pago (ou a
+  // conta corrente com o fornecedor) libera a produção. O sistema confere
+  // pela condição de pagamento do pedido e pelas parcelas pagas.
+  {
+    key: DOWN_PAYMENT_KEY,
+    label: "Sinal pago ao fornecedor (ou conta corrente)",
+    type: "confirm",
+    required: true,
+    role: "operator",
   },
 ];
 

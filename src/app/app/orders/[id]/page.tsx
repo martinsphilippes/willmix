@@ -12,7 +12,17 @@ import { ActionError } from "@/components/action-error";
 import { Fragment, type ReactNode } from "react";
 import { fallbackError } from "@/i18n/error-text";
 import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
-import { canViewDieCut } from "@/lib/services/die-cut-step";
+import {
+  DOWN_PAYMENT_KEY,
+  LANE_KEYS,
+  baseKeyOf,
+  blockedBy,
+  isAutoGateKey,
+  isLeadTimeKey,
+  itemIdOf,
+  supplierSeesLaneRequirement,
+} from "@/lib/purchase-lanes";
+import { canViewDieCut, negotiatedTerms } from "@/lib/services/die-cut-step";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -279,6 +289,16 @@ export default async function OrderPage({
     sheetState = await sheetProgress(progress.order);
   }
   const { order, stages, requirements } = progress;
+  /* Visão do fornecedor na Preparação do pedido de compra (pedido do dono,
+     13/11/2026): só a faca, a foto em alta e o prazo de produção de cada
+     produto, e o campo do prazo já vem com o prazo registrado na solicitação
+     ou na negociação. Só traz o valor: ele confere e envia, como antes. */
+  const supplierLanes = purchaseFlow && user.role === "supplier";
+  const registeredTerms =
+    supplierLanes &&
+    requirements.some((r) => isLeadTimeKey(r.key) && r.status !== "done")
+      ? await negotiatedTerms(order)
+      : null;
   // "Enviar para assinatura" (pedidos novos): o que ainda falta (arte, selo).
   const signSend = requirements.find((r) => r.key === ORDER_SIGN_SEND);
   const sendBlockers =
@@ -1703,6 +1723,11 @@ export default async function OrderPage({
               )?.value ?? null;
             const open =
               stage.status === "active" || stage.status === "blocked";
+            // Pedido de compra, fornecedor: só a faca, a foto em alta e o prazo.
+            const supplierView = supplierLanes && stage.key === "PREPARATION";
+            const shownReqs = supplierView
+              ? reqs.filter(supplierSeesLaneRequirement)
+              : reqs;
             return (
               <Fragment key={stage.id}>
                 <Card
@@ -1759,8 +1784,13 @@ export default async function OrderPage({
                     ) : null
                   }
                 >
-                  <p className="mb-2 text-xs leading-relaxed text-zinc-500">
-                    {t(`help.stage.${stage.key}`)}
+                  <p
+                    className="mb-2 text-xs leading-relaxed text-zinc-500"
+                    data-stage-help={supplierView ? "supplier" : undefined}
+                  >
+                    {supplierView
+                      ? t("dieCut.stageHelp.supplier")
+                      : t(`help.stage.${stage.key}`)}
                   </p>
                   {stage.key === "SHIPPING" && showTariff ? (
                     <FreightTariffBox
@@ -1813,10 +1843,13 @@ export default async function OrderPage({
                   ) : null}
                   {stage.status === "pending" ? (
                     <p className="text-sm text-zinc-500">
-                      {reqs.map((r) => requirementLabel(t, r)).join(" · ")}
+                      {shownReqs.map((r) => requirementLabel(t, r)).join(" · ")}
                     </p>
                   ) : (
-                    <ul className="@container divide-y divide-zinc-100">
+                    <ul
+                      className="@container divide-y divide-zinc-100"
+                      data-stage-tasks={stage.key}
+                    >
                       {/* Pedido de compra: os quatro itens do fornecedor também
                           ficam juntos, produto a produto, no quadro Die Cut. */}
                       {purchaseFlow &&
@@ -1828,7 +1861,11 @@ export default async function OrderPage({
                           data-die-cut-link
                         >
                           <span className="text-sm text-zinc-600">
-                            {t("dieCut.orderHint")}
+                            {t(
+                              supplierView
+                                ? "dieCut.orderHint.supplier"
+                                : "dieCut.orderHint",
+                            )}
                           </span>
                           <LinkButton
                             href={dieCutHref(order.id)}
@@ -1850,13 +1887,23 @@ export default async function OrderPage({
                           </LinkButton>
                         </li>
                       ) : null}
-                      {reqs.map((r) => (
+                      {shownReqs.map((r) => (
                         <RequirementRow
                           key={r.id}
                           requirement={r}
                           order={order}
                           user={user}
                           t={t}
+                          // O prazo registrado para o item só preenche o campo.
+                          defaultValue={
+                            supplierView && isLeadTimeKey(r.key)
+                              ? (r.value ??
+                                registeredTerms
+                                  ?.get(itemIdOf(r.key) ?? "")
+                                  ?.days?.toString() ??
+                                null)
+                              : null
+                          }
                           waiting={
                             r.key === "art_approval" &&
                             reqs.some(
@@ -1880,7 +1927,15 @@ export default async function OrderPage({
                                           x.status !== "done",
                                       )
                                     ? t("orderSign.send.waitWellmix")
-                                    : dateWaiting(t, stage.key, r, reqs)
+                                    : ((purchaseFlow
+                                        ? laneWaiting(t, r, reqs)
+                                        : null) ??
+                                      dateWaiting(t, stage.key, r, reqs))
+                          }
+                          gateHref={
+                            purchaseFlow && wellmix
+                              ? gateHrefOf(order.id, r, items)
+                              : null
                           }
                           dateBounds={
                             r.type === "date"
@@ -2960,10 +3015,19 @@ function RequirementRow({
   sheetHint,
   dateBounds,
   waiting,
+  gateHref,
+  defaultValue,
 }: {
   requirement: Requirement;
+  /**
+   * Item conferido pelo sistema (NCM validado, ficha completa, sinal): o
+   * atalho para a tela onde a área dona faz a parte dela.
+   */
+  gateHref?: { href: string; label: DictionaryKey } | null;
   /** Ainda não dá para agir: aguarda outro item (ex.: aprovar a arte antes de ela chegar). */
   waiting?: string | null;
+  /** Valor que o campo traz preenchido (quem preenche confere e envia). */
+  defaultValue?: string | null;
   /** Data: limites vindos das outras datas do pedido. */
   dateBounds?: DateBounds;
   order: {
@@ -3139,6 +3203,17 @@ function RequirementRow({
             </LinkButton>
           </div>
         ) : null
+      ) : open && gateHref && !waiting && r.status !== "done" ? (
+        <div className={wide.side}>
+          <LinkButton
+            href={gateHref.href}
+            variant="secondary"
+            className="w-full @sm:w-auto"
+            data-requirement-gate={baseKeyOf(r.key)}
+          >
+            {t(gateHref.label)}
+          </LinkButton>
+        </div>
       ) : canAct ? (
         <div className={wide.side}>
           <RequirementForm
@@ -3146,6 +3221,7 @@ function RequirementRow({
             orderId={order.id}
             t={t}
             dateBounds={dateBounds}
+            defaultValue={defaultValue}
           />
         </div>
       ) : canRemeasure ? (
@@ -3173,6 +3249,52 @@ function RequirementRow({
 /* ------------------------------------------------------------------------ */
 /* Evolução incremental: trilha, snapshot, resultado da inspeção, containers  */
 /* ------------------------------------------------------------------------ */
+
+/**
+ * Pedido de compra: o item espera o anterior da raia ou do contrato (a arte
+ * espera a faca e a foto em alta; a arte final, a arte validada e o
+ * certificado; o sinal, as duas assinaturas). Diz o que falta.
+ */
+function laneWaiting(
+  t: Translate,
+  r: Requirement,
+  reqs: Requirement[],
+): string | null {
+  if (r.status === "done") return null;
+  const missing = blockedBy(r.key, reqs);
+  if (!missing.length) return null;
+  const labels = missing
+    .map((k) => reqs.find((x) => x.key === k))
+    .filter((x): x is Requirement => !!x)
+    .map((x) => requirementLabel(t, x).split(" · ")[0]);
+  return t("purchaseSequence.waiting", { items: labels.join(", ") });
+}
+
+/** Atalho dos itens que o sistema confere: onde a área dona faz a parte dela. */
+function gateHrefOf(
+  orderId: string,
+  r: Requirement,
+  items: Array<{ id: string; productId: string | null }>,
+): { href: string; label: DictionaryKey } | null {
+  if (!isAutoGateKey(r.key)) return null;
+  const base = baseKeyOf(r.key);
+  if (base === DOWN_PAYMENT_KEY)
+    return {
+      href: `/app/orders/${orderId}#supplier-payment`,
+      label: "purchaseSequence.gate.downPayment",
+    };
+  const productId = items.find((i) => i.id === itemIdOf(r.key))?.productId;
+  if (!productId) return null;
+  return base === LANE_KEYS.ncmValidated
+    ? {
+        href: `/app/products/${productId}/tax`,
+        label: "purchaseSequence.gate.ncm",
+      }
+    : {
+        href: `/app/products/${productId}#photos`,
+        label: "purchaseSequence.gate.sheet",
+      };
+}
 
 /**
  * Data que espera outra da mesma etapa (ex.: a previsão de chegada só depois

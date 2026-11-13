@@ -176,6 +176,9 @@ export async function confirmSupplierPaymentReceipt(
       });
       if (req) await submitRequirement(user, req.id, { value: paymentId });
     }
+    // Pedido de compra: o sinal recebido libera a produção.
+    const { refreshPurchaseGates } = await import("./purchase-gates");
+    await refreshPurchaseGates(order.id, user);
   }
   await recordAck(user, "payment", paymentId, "confirmed");
   return payment;

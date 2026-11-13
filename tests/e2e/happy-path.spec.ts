@@ -141,7 +141,9 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.waitForURL(/[?&]pq=garrafa/);
   expect(page.url()).toContain("view=item");
   await page.fill("[data-request-product-name]", productName);
-  await page.selectOption("[data-request-product-line]", { index: 1 });
+  // Brinquedos exige Inmetro (mapa do processo, P6): o pedido terá o
+  // certificado e a arte final com o selo.
+  await page.selectOption("[data-request-product-line]", "linha-brinquedos");
   await page.click("[data-request-product-create]");
   await page.waitForURL(/[?&]product=created/);
 
@@ -190,8 +192,67 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page.locator(`[data-purchase-candidate="${requestId}"]`),
   ).toHaveCount(0);
 
-  // 6. As três raias, em paralelo. A arte final espera a validação e o
-  // certificado; a validação espera a arte.
+  // 5b. Cadastro e fiscal (mapa, P9/P14): o contrato espera o NCM validado e
+  // a ficha mestre completa. O sistema confere; o atalho leva à tela dona.
+  await page.goto(orderUrl);
+  const ncmGate = page.locator("[data-requirement-gate=ncm_validated]");
+  await expect(ncmGate).toBeVisible();
+  const taxUrl = (await ncmGate.getAttribute("href"))!;
+  const productId = taxUrl.split("/")[3];
+  await page.goto(taxUrl);
+  const taxAdd = page.locator("form[data-tax-add]");
+  await taxAdd.locator("input[name=ncm]").fill("7013.37.00");
+  await Promise.all([
+    page.waitForLoadState("networkidle"),
+    taxAdd.locator("button[type=submit]").click(),
+  ]);
+  await page.goto(taxUrl);
+  await Promise.all([
+    page.waitForLoadState("networkidle"),
+    page.locator("form[data-tax-validate] button[type=submit]").first().click(),
+  ]);
+  // Ficha: as cinco fotos obrigatórias e a cor.
+  for (const kind of [
+    "weight_scale",
+    "dimension_scale",
+    "dimension_side",
+    "angle",
+    "original",
+  ]) {
+    await gotoProduct(page, productId);
+    await Promise.all([
+      page.waitForResponse(
+        (r) => r.request().method() === "POST" && r.status() < 400,
+      ),
+      page
+        .locator(`[data-sheet-photo="${kind}"] input[type=file]`)
+        .first()
+        .setInputFiles(png),
+    ]);
+    await page.waitForLoadState("networkidle");
+  }
+  await gotoProduct(page, productId);
+  // O cadastro fica em quadros recolhidos: abre todos.
+  await page
+    .locator("#product-form details[data-fold-card]")
+    .evaluateAll((els) =>
+      els.forEach((el) => ((el as HTMLDetailsElement).open = true)),
+    );
+  await page.locator("#product-form input[name=color]").fill("Transparente");
+  await Promise.all([
+    page.waitForURL(/[?&]saved=1/),
+    page.locator("#product-form button[type=submit]").last().click(),
+  ]);
+  await page.goto(orderUrl);
+  await expect(requirementRow(page, /^NCM validado/)).toContainText(
+    /Concluído/,
+  );
+  await expect(requirementRow(page, /^Ficha mestre completa/)).toContainText(
+    /Concluído/,
+  );
+
+  // 6. As raias, em paralelo. A arte espera a faca e a foto em alta; a arte
+  // final espera a validação e o certificado; a validação espera a arte.
   await page.goto(orderUrl);
   await expect(requirementRow(page, /Arte final com o selo/)).toContainText(
     /Pendente/,
@@ -200,6 +261,13 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await login(page, "supplier.a@china.com");
   await page.goto(orderUrl);
   await expect(requirementRow(page, /Faca \(die cut\)/).first()).toBeVisible();
+  // Na seção ele vê só a faca, a foto em alta e o prazo (dono, 13/11/2026).
+  // Sem prazo na resposta à solicitação, o campo do prazo vem vazio.
+  const prep = page.locator('[data-stage-tasks="PREPARATION"]');
+  await expect(prep.locator("li:not([data-die-cut-link])")).toHaveCount(3);
+  await expect(prep).not.toContainText(/MOQ|Arte|Certificado|Validação/);
+  const leadTimeRow = requirementRow(page, /Prazo de produção confirmado/);
+  await expect(leadTimeRow.locator("input[name=value]")).toHaveValue("");
   // A pendência dele cai na etapa "Die Cut" e abre o quadro do pedido, com
   // os quatro itens do produto: die-cut, foto em alta, pedido mínimo e prazo.
   await page.goto("/app/tasks");
@@ -238,18 +306,22 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(requirementRow(page, /Faca \(die cut\)/).first()).toContainText(
     /doc\.pdf/,
   );
+  // O prazo confirmado aparece na linha, sem o campo.
+  await expect(leadTimeRow).toContainText("45");
+  await expect(leadTimeRow.locator("input[name=value]")).toHaveCount(0);
   await fillMyRequirements(page, orderUrl);
-  // 6b. Agência: envia a arte. A arte final com o selo ainda não sobe
-  // (falta a arte validada e o certificado).
+  // 6b. Agência: com a faca e a foto em alta, envia a arte. A arte final com
+  // o selo ainda não sobe (falta a arte validada e o certificado): a linha
+  // diz o que ela aguarda.
   await login(page, "agencia@design.com");
   await fillMyRequirements(page, orderUrl, {}, 1);
   await page.goto(orderUrl);
   await expect(requirementRow(page, /^Arte ·/)).toContainText(/Concluído/);
-  await requirementRow(page, /Arte final com o selo/)
-    .locator("input[type=file]")
-    .last()
-    .setInputFiles(pdf);
-  await page.waitForURL(/[?&]error=lane_prerequisite/);
+  await expect(
+    requirementRow(page, /Arte final com o selo/).locator(
+      "[data-requirement-waiting]",
+    ),
+  ).toContainText(/Aguarda/);
   // 6c. A Wellmix devolve a arte com o motivo; a agência reenvia.
   await login(page, "admin@wellmix.com");
   await page.goto(orderUrl);
@@ -305,8 +377,15 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page.locator("[data-order-document-status=signed]"),
   ).toBeVisible();
 
-  // 8. Pagamento ao fornecedor (fora do fluxo): a condição do cadastro do
-  // fornecedor, parcela 1 vence no pedido. Financeiro é só do admin.
+  // Assinado pelos dois: a produção espera o sinal (mapa, P12?/P12).
+  await login(page, "admin@wellmix.com");
+  await page.goto(orderUrl);
+  await expect(requirementRow(page, /^Sinal pago ao fornecedor/)).toContainText(
+    /Pendente/,
+  );
+
+  // 8. Pagamento ao fornecedor: a condição do cadastro do fornecedor,
+  // parcela 1 (o sinal) vence no pedido. Financeiro é só do admin.
   await login(page, "operador@wellmix.com");
   await page.goto("/app/payables");
   await page.waitForURL(/\/app\?denied=payables/);

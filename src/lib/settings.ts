@@ -53,6 +53,22 @@ export const DEFAULT_SETTINGS = {
   purchaseArtSlaDays: 5,
   /** Dias da Wellmix para validar a arte (aprovar ou devolver), desde o envio. */
   purchaseArtReviewSlaDays: 2,
+  /*
+   * Prazos dos outros passos do pedido de compra (mapa do processo), em dias
+   * corridos, cada um contado da liberação do passo (o anterior concluído).
+   */
+  /** Fornecedor: faca, foto em alta, MOQ e prazo de produção, desde o pedido. */
+  purchaseDieCutSlaDays: 7,
+  /** Certificadora: certificado do produto, desde o pedido. */
+  purchaseCertSlaDays: 15,
+  /** Quem faz a arte: arte final com o selo, desde a arte validada e o certificado. */
+  purchaseArtFinalSlaDays: 3,
+  /** Cadastro e fiscal: NCM validado e ficha mestre completa, desde o pedido. */
+  purchaseRegistrationSlaDays: 3,
+  /** Cada assinatura do contrato (Wellmix, depois o fornecedor). */
+  purchaseSignatureSlaDays: 2,
+  /** Financeiro: sinal pago ao fornecedor, desde as duas assinaturas. */
+  purchaseDownPaymentSlaDays: 3,
   /** Prazos padrão por etapa, em dias. */
   stageDueDays: {
     ORDER_CREATED: 1,
@@ -112,6 +128,12 @@ export const DEFAULT_SETTINGS = {
   complianceGateEnabled: true,
   /** Aviso de certificação a vencer (dias). */
   certificationExpiryWarningDays: 30,
+  /**
+   * Período do pedido (dias): a certificação do produto precisa valer até
+   * lá para o pedido de compra não pedir outra à certificadora (mapa do
+   * processo, P8; no quadro, cerca de 4 meses).
+   */
+  certificationHorizonDays: 120,
   /* ---- Visão de Produto ---- */
   /**
    * IA: AUTO usa a API quando há ANTHROPIC_API_KEY, senão modo manual (sem sugestão);

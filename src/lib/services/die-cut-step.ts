@@ -43,8 +43,14 @@ export function canViewDieCut(user: User, order: Order): boolean {
   );
 }
 
-/** Pedido mínimo e prazo negociados de cada item do pedido (por id do item). */
-async function negotiatedTerms(order: Order) {
+/**
+ * Pedido mínimo e prazo negociados de cada item do pedido (por id do item):
+ * a resposta do fornecedor à solicitação, já com o que a negociação mudou.
+ * Também preenche o campo do prazo na visão do fornecedor da Preparação.
+ */
+export async function negotiatedTerms(
+  order: Pick<Order, "id" | "parentOrderId">,
+) {
   const store = getStore();
   const [items, requests] = await Promise.all([
     store.list("order_items", { filter: { orderId: order.id } }),

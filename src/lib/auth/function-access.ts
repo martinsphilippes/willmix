@@ -37,6 +37,7 @@ export const ACTION_GROUPS = [
       "approval.purchasing_director",
       "approval.executive_director",
       "purchaseOrder.generate",
+      "purchaseOrder.salesNotice",
     ],
   },
   {
@@ -88,13 +89,21 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
       return ["designer"];
     case "receiving.follow":
       return ["buyer"];
+    // Vendas fica sabendo do que vem (mapa, P2 → V1): quem cuida do pós-venda
+    // e da recompra. O administrador muda em Equipe → Funções e acessos.
+    case "purchaseOrder.salesNotice":
+      return withScreen("afterSales");
     // Quem abria a tela fazia: o padrão não tira nada de ninguém.
     case "supplierRequest.decide":
     case "sampling.validate":
       return withScreen("quotes");
     case "purchaseOrder.generate":
       return withScreen("quotes", "orders");
+    // Assinar o contrato pela Wellmix: só as diretorias (decisão do dono,
+    // 13/11/2026; mapa do processo, P11: a Diretoria de compras aprova). O
+    // administrador muda em Equipe → Funções e acessos.
     case "contract.sign":
+      return ["purchasing_director", "executive_director"];
     case "art.validate":
       return withScreen("orders");
     // Só o administrador, como antes.
