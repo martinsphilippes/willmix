@@ -194,6 +194,13 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
 
   // 5b. Cadastro e fiscal (mapa, P9/P14): o contrato espera o NCM validado e
   // a ficha mestre completa. O sistema confere; o atalho leva à tela dona.
+  // A mesa do cadastro mostra o NCM e a ficha a fazer (docs/DESKS.md).
+  await page.goto("/app/tasks");
+  await page.locator("[data-desk-link]").click();
+  await page.goto("/app/tasks/desk?desk=cadastro");
+  await expect(
+    page.locator("[data-desk-queue=ncm] [data-desk-row]").first(),
+  ).toBeVisible();
   await page.goto(orderUrl);
   const ncmGate = page.locator("[data-requirement-gate=ncm_validated]");
   await expect(ncmGate).toBeVisible();
