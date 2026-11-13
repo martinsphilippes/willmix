@@ -20,6 +20,7 @@ import {
   type User,
 } from "@/lib/db";
 import { isSchemaMissing } from "@/lib/db/errors";
+import { isHeld } from "@/lib/db/store";
 import {
   DUE_SOON_DAYS,
   addDays,
@@ -451,8 +452,9 @@ async function stageTasksOf(src: Sources): Promise<Map<string, StoredTask[]>> {
       }
     : null;
   for (const order of src.orders) {
-    const stages = (src.stages.get(order.id) ?? []).filter((s) =>
-      ACTIVE.includes(s.status),
+    // Etapa em espera (histórico do Sankhya até o go-live): sem pendência.
+    const stages = (src.stages.get(order.id) ?? []).filter(
+      (s) => ACTIVE.includes(s.status) && !isHeld(s),
     );
     if (!stages.length) continue;
     const sealApplied = new Set(

@@ -1109,6 +1109,14 @@ export async function auditImport(
 }
 
 /**
+ * Histórico em espera até o go-live (decisão do dono, 13/11/2026): as etapas
+ * e pendências dos pedidos da carga do histórico nascem com `held` e ficam
+ * fora das listas gerais (store.ts, `hidesHeld`). No go-live, uma
+ * sincronização traz a situação real e a marca sai (docs/SANKHYA.md).
+ */
+export const SANKHYA_HISTORY_HOLD = true;
+
+/**
  * Pedido histórico: as etapas antes da etapa da TOP ficam concluídas (com os
  * requisitos dados como feitos), a da TOP fica ativa; FINALIZADO encerra tudo.
  */
@@ -1130,6 +1138,7 @@ async function advanceStages(
   const targetIndex = STAGE_KEYS.indexOf(target);
   let current: string | null = null;
   const writes: Array<() => Promise<unknown>> = [];
+  const hold = SANKHYA_HISTORY_HOLD ? { held: true } : {};
   for (const stage of stages) {
     const index = STAGE_KEYS.indexOf(stage.key);
     const done = closed || index < targetIndex;
@@ -1141,6 +1150,7 @@ async function advanceStages(
           startedAt: stage.startedAt ?? at,
           completedAt: at,
           dueAt: null,
+          ...hold,
         }),
       );
       for (const req of requirements)
@@ -1150,13 +1160,17 @@ async function advanceStages(
               status: "done",
               note: "Etapa concluída no Sankhya (carga do histórico)",
               submittedAt: at,
+              ...hold,
             }),
           );
+        else if (req.stageId === stage.id && SANKHYA_HISTORY_HOLD)
+          writes.push(() => store.update("requirements", req.id, hold));
     } else if (index === targetIndex) {
       writes.push(() =>
         store.update("stages", stage.id, {
           status: "active",
           startedAt: at,
+          ...hold,
         }),
       );
       current = stage.id;
@@ -1166,9 +1180,15 @@ async function advanceStages(
           status: "pending",
           startedAt: null,
           dueAt: null,
+          ...hold,
         }),
       );
     }
+    // Pendências das etapas ativa e seguintes: em espera também.
+    if (!done && SANKHYA_HISTORY_HOLD)
+      for (const req of requirements)
+        if (req.stageId === stage.id)
+          writes.push(() => store.update("requirements", req.id, hold));
   }
   for (let i = 0; i < writes.length; i += 8)
     await Promise.all(writes.slice(i, i + 8).map((w) => w()));

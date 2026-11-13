@@ -52,6 +52,36 @@ export function matchesSearch<T extends object>(
   );
 }
 
+/**
+ * Etapas e pendências em espera (`held`): as dos pedidos da carga do
+ * histórico do Sankhya, ocultas até o go-live, quando uma sincronização traz
+ * a situação real (docs/SANKHYA.md, "Histórico em espera"). Ficam de fora
+ * das listas gerais (Pendências, lembretes, SLA, contagens), que filtram só
+ * por situação ou chave. A leitura de um pedido ou de linhas já escolhidas
+ * (filtro `orderId`, `stageId` ou `id`), a leitura por id (`get`) e quem
+ * filtra `held` de propósito continuam vendo tudo: as ações num pedido do
+ * histórico funcionam como antes.
+ */
+export const HELD_TABLES: ReadonlySet<TableName> = new Set<TableName>([
+  "stages",
+  "requirements",
+]);
+
+const SCOPED_FILTERS = ["orderId", "stageId", "id", "held"];
+
+export function hidesHeld(
+  table: TableName,
+  options: { filter?: object } = {},
+): boolean {
+  if (!HELD_TABLES.has(table)) return false;
+  const filter = (options.filter ?? {}) as Record<string, unknown>;
+  return !SCOPED_FILTERS.some((field) => field in filter);
+}
+
+/** Linha em espera (ver `hidesHeld`). */
+export const isHeld = (row: object) =>
+  (row as { held?: unknown }).held === true;
+
 export type NewRow<T extends BaseRow> = Omit<T, keyof BaseRow> & {
   id?: string;
 };
