@@ -101,7 +101,7 @@ import { getSettings } from "@/lib/settings";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { getAfterSales } from "@/lib/services/after-sales";
 import { getT } from "@/i18n/server";
-import { requirementLabel, type Translate } from "@/i18n";
+import { productNameText, requirementLabel, type Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -376,7 +376,7 @@ export default async function OrderPage({
     order.shippingLineId === user.partyId;
   const [
     partiesOfOrder,
-    items,
+    storedItems,
     documents,
     payments,
     penalties,
@@ -477,6 +477,12 @@ export default async function OrderPage({
     ].filter((id) => id && !known.has(id)),
   ))
     known.set(p.id, p);
+  // Nome de exemplo ("Produto novo XPTO") ou vazio: a tela mostra "Produto
+  // sem nome" (docs/PURCHASE_ORDER.md, "Nome de exemplo"); o dado não muda.
+  const items = storedItems.map((i) => ({
+    ...i,
+    name: productNameText(t, i.name),
+  }));
   const parties = [...known.values()];
   const partyName = (pid: string | null) =>
     (pid && known.get(pid)?.name) || "—";
@@ -4122,7 +4128,7 @@ async function FollowUpCard({
                   className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200/80 px-3 py-2"
                 >
                   <TextLink href={`/app/requests/${r.id}`} className="min-w-0">
-                    {r.productName} · {r.quantity} {r.unit}
+                    {productNameText(t, r.productName)} · {r.quantity} {r.unit}
                   </TextLink>
                   {r.origin && r.origin !== "manual" ? (
                     <Badge tone="brand">{t(`orders.origin.${r.origin}`)}</Badge>

@@ -5,6 +5,7 @@ import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
 import { missingForCompletion } from "@/lib/services/purchase-sheet-calc";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
 import {
   listLinksForProducts,
   listLinksForSupplier,
@@ -192,7 +193,9 @@ export default async function ProductsPage({
           error === "nothing_purged" ||
           error === "purge_blocked"
             ? t(`productDelete.error.${error}` as DictionaryKey)
-            : t("common.error")}
+            : error === "product_name_placeholder"
+              ? t("productName.error.product_name_placeholder")
+              : t("common.error")}
         </Alert>
       ) : null}
       {deleted ? (
@@ -417,14 +420,14 @@ export default async function ProductsPage({
                         name="ids"
                         value={p.id}
                         form={BULK_FORM}
-                        aria-label={`${t("productDelete.selectOne")}: ${p.name}`}
+                        aria-label={`${t("productDelete.selectOne")}: ${productNameText(t, p.name)}`}
                         className="h-4 w-4 accent-brand-600"
                         data-product-select={p.id}
                       />
                     </Td>
                     <Td className="w-14">
                       <PhotoGallery
-                        name={p.name}
+                        name={productNameText(t, p.name)}
                         {...galleryProps(t, productPhotoList(p, productPhotos))}
                       />
                     </Td>
@@ -442,7 +445,7 @@ export default async function ProductsPage({
                         className="text-zinc-900"
                         title={t("catalog.open")}
                       >
-                        {p.name}
+                        {productNameText(t, p.name)}
                       </TextLink>
                       {(variants.get(p.id)?.length ?? 0) > 0 ? (
                         <span

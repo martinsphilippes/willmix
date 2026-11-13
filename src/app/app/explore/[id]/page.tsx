@@ -5,6 +5,7 @@ import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   canBuyOnStorefront,
@@ -173,7 +174,7 @@ export default async function ExploreProductPage({
               ) : null}
             </div>
             <h1 className="mt-2 text-xl font-semibold leading-tight text-zinc-900 sm:text-2xl">
-              {product.name}
+              {productNameText(t, product.name)}
             </h1>
             {product.category ? (
               <p className="mt-1 text-sm text-zinc-500">{product.category}</p>

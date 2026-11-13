@@ -5,6 +5,8 @@ import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
+import { realName } from "@/lib/placeholder-name";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -217,11 +219,13 @@ export default async function NewRequestPage({
     })),
     photos: (showcase.get(p.id) ?? []).map((ph) => ({
       documentId: ph.documentId,
-      caption: ph.caption?.trim() || p.name,
+      caption: ph.caption?.trim() || productNameText(t, p.name),
     })),
-    label: `${p.name}${p.sku ? ` (${p.sku})` : ""}`,
-    productName: p.name,
-    description: `${p.name}${p.category ? ` — ${p.category}` : ""}`,
+    // Nome de exemplo ("Produto novo XPTO"): "Produto sem nome" no seletor
+    // e nada no nome e na descrição da solicitação (quem pede preenche).
+    label: `${productNameText(t, p.name)}${p.sku ? ` (${p.sku})` : ""}`,
+    productName: realName(p.name) ?? "",
+    description: [realName(p.name), p.category].filter(Boolean).join(" — "),
     // A especificação do cadastro (montada com os dados ou escrita à mão)
     // vale; produto antigo sem ela: os dados das colunas.
     specification: p.specification?.trim()

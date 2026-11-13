@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { isWellmix } from "@/lib/auth/permissions";
 import {
@@ -315,7 +316,7 @@ export default async function PurchaseOrderPage({
                     rel="noreferrer"
                     className={linkClass}
                   >
-                    {a.name}
+                    {productNameText(t, a.name)}
                   </a>
                 </li>
               ))}
@@ -457,7 +458,7 @@ export default async function PurchaseOrderPage({
                 {doc.items.map((item, i) => (
                   <tr key={i}>
                     <td className={cell}>
-                      {item.name}
+                      {productNameText(t, item.name)}
                       {item.variant ? ` · ${item.variant}` : ""}
                     </td>
                     <td className={`${cell} text-right tabular-nums`}>

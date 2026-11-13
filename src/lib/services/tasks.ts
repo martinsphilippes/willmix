@@ -22,6 +22,7 @@ import {
   isPurchaseFlow,
 } from "@/lib/workflow/stages";
 import { dieCutHref, dieCutItemOf, dieCutProducts } from "@/lib/die-cut-step";
+import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
 
 export type TaskKind =
   | "booking_invite"
@@ -430,7 +431,7 @@ export function stageTaskDrafts(
       out.push({
         kind: "requirement",
         title: `Pedido #${order.number}: ${stage.key}`,
-        detail: items.map((r) => r.label).join(", "),
+        detail: withoutPlaceholder(items.map((r) => r.label).join(", ")),
         link:
           step === "sign"
             ? `/app/orders/${order.id}/purchase-order`
@@ -1041,7 +1042,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
                 ? "tasks.ncm.detail"
                 : "tasks.ncm.detailNoNumber",
               values: {
-                product: request.productName,
+                product: realName(request.productName) ?? "—",
                 n: request.number ?? "",
               },
             },

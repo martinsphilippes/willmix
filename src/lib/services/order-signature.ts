@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 import { can } from "@/lib/auth/function-access";
 
 import { createHash } from "node:crypto";
@@ -140,7 +141,9 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
     .map((item) => {
       const unitPrice = item.unitPrice ?? sheet?.price ?? null;
       return {
-        name: item.name,
+        // Nome de exemplo vale como ausente (a tela mostra "Produto sem
+        // nome"); nome real fica igual, e o hash dos assinados não muda.
+        name: realName(item.name) ?? "",
         variant: item.variant?.name ?? null,
         quantity: item.quantity,
         unit: item.unit,
@@ -198,7 +201,7 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
             (r) => r.key === `art_final__${item.id}` && r.status === "done",
           );
           return art?.documentId
-            ? { name: item.name, documentId: art.documentId }
+            ? { name: realName(item.name) ?? "", documentId: art.documentId }
             : null;
         })
         .filter((x): x is { name: string; documentId: string } => !!x),

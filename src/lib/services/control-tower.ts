@@ -1,4 +1,5 @@
 import "server-only";
+import { withoutPlaceholder } from "@/lib/placeholder-name";
 import { indexBy, listByIds } from "@/lib/db/lookup";
 
 import {
@@ -311,7 +312,7 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
       exceptions.push({
         kind: "document",
         severity: "medium",
-        detail: `#${order.number} · ${req.label}`,
+        detail: `#${order.number} · ${withoutPlaceholder(req.label)}`,
         link: `/app/orders/${order.id}`,
       });
     }

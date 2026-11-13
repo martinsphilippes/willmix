@@ -1,5 +1,6 @@
 import type { Requirement } from "@/lib/db/schema";
 import { LANE_KEYS, baseKeyOf, itemIdOf } from "@/lib/purchase-lanes";
+import { nameOfLabel } from "@/lib/placeholder-name";
 
 /*
  * Etapa "Die Cut" do fornecedor no pedido de compra (decisão do dono,
@@ -37,9 +38,11 @@ export interface DieCutProduct<R> {
   complete: boolean;
 }
 
-/** Nome do produto gravado no rótulo do requisito ("Faca (die cut) · Produto"). */
-export const productOfLabel = (label: string) =>
-  label.split(" · ").slice(1).join(" · ").trim();
+/**
+ * Nome do produto gravado no rótulo do requisito ("Faca (die cut) · Produto").
+ * Vazio quando o rótulo não tem produto ou tem o nome de exemplo.
+ */
+export const productOfLabel = (label: string) => nameOfLabel(label);
 
 /**
  * Os quatro itens de cada produto do pedido, na ordem em que os requisitos

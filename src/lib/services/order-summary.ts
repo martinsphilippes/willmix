@@ -1,5 +1,6 @@
 import "server-only";
 
+import { realName } from "@/lib/placeholder-name";
 import {
   getStore,
   type ArtIssue,
@@ -292,7 +293,7 @@ export function buildOrderFacts(
     {
       customer: customer?.name ?? "—",
       supplier: supplier?.name ?? "—",
-      product: items[0]?.name ?? "—",
+      product: realName(items[0]?.name) ?? "—",
     },
     {
       today: null,
@@ -316,7 +317,8 @@ export function buildOrderFacts(
     order: pickOrder(order),
     customer: customer?.name ?? null,
     supplier: supplier?.name ?? null,
-    product: items[0]?.name ?? null,
+    // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+    product: realName(items[0]?.name),
     active: stages
       .filter((s) => ACTIVE.includes(s.status))
       .map((s) => ({

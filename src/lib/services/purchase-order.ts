@@ -1,5 +1,6 @@
 import "server-only";
 
+import { nameOfLabel, withoutPlaceholder } from "@/lib/placeholder-name";
 import { buildPurchaseRounds } from "@/lib/purchase-rounds";
 import { assertCan } from "@/lib/auth/function-access";
 
@@ -205,7 +206,10 @@ export async function createPurchaseOrder(
     : null;
   const first = ordered[0];
   const summary = ordered
-    .map((o) => `nº ${o.request.number} (${o.product.name})`)
+    .map((o) =>
+      // Produto ainda sem nome real: só o número da solicitação.
+      withoutPlaceholder(`nº ${o.request.number} (${o.product.name})`),
+    )
     .join(", ");
 
   // A solicitação do pedido (o pedido sempre tem uma): já nasce "pedido".
@@ -313,10 +317,20 @@ async function send(
   await notify(targetOf(order, role) as Parameters<typeof notify>[0], {
     kind: "action",
     link: `/app/orders/${order.id}`,
-    text: (t) => ({
-      subject: t(subjectKey as never, { n: order.number, ...vars }),
-      body: t(bodyKey as never, { n: order.number, ...vars }),
-    }),
+    text: (t) => {
+      // Produto sem nome real: o aviso diz isso, em vez de ficar em branco.
+      const values = {
+        n: order.number,
+        ...vars,
+        ...("product" in vars && !vars.product
+          ? { product: t("productName.unnamed") }
+          : {}),
+      };
+      return {
+        subject: t(subjectKey as never, values),
+        body: t(bodyKey as never, values),
+      };
+    },
   }).catch((error) => console.error("notify(purchase_order)", error));
 }
 
@@ -365,7 +379,7 @@ export async function afterLaneStep(
     filter: { orderId: order.id },
   });
   const named = requirements.find((r) => r.key === key);
-  const product = (named?.label.split(" · ").slice(1).join(" · ") ?? "").trim();
+  const product = nameOfLabel(named?.label ?? "");
   if (base === LANE_KEYS.art) {
     await send(
       order,

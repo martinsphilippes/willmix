@@ -165,7 +165,7 @@ async function notifyDieCut(
           values.before
             ? "notif.dieCut.changedSubject"
             : "notif.dieCut.subject",
-          { product },
+          { product: product || t("productName.unnamed") },
         ),
       })}`,
       body: [

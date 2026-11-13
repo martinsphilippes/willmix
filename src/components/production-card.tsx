@@ -1,3 +1,4 @@
+import { productNameText } from "@/i18n";
 import type { Order, User } from "@/lib/db";
 import { FOLLOWUP_DAYS } from "@/lib/db/schema";
 import type { ProductionView } from "@/lib/services/production";
@@ -451,7 +452,7 @@ export function ProductionCard({
                   data-sku-status={latest?.result ?? "pending"}
                 >
                   <Td className="min-w-40 font-medium">
-                    {item.name}
+                    {productNameText(t, item.name)}
                     {item.variant?.name ? (
                       <span className="block text-xs font-normal text-zinc-500">
                         {item.variant.name}

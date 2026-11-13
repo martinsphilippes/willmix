@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 import { listByIds } from "@/lib/db/lookup";
 
 import {
@@ -299,7 +300,9 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     (id && parties.get(id)) || "—";
   const firstItem = new Map<string, string>();
   for (const i of input.items)
-    if (!firstItem.has(i.orderId)) firstItem.set(i.orderId, i.name);
+    if (!firstItem.has(i.orderId))
+      // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+      firstItem.set(i.orderId, realName(i.name) ?? "—");
   const stageOf = new Map(input.activeStages.map((s) => [s.orderId, s]));
   const by = <T extends { orderId: string | null }>(rows: T[]) => {
     const map = new Map<string, T[]>();

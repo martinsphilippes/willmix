@@ -4,6 +4,7 @@ import type {
   RequirementType,
   Role,
 } from "@/lib/db/schema";
+import { titleWithName } from "@/lib/placeholder-name";
 
 /*
  * Pedido de compra das solicitações ao fornecedor (docs/PURCHASE_ORDER.md):
@@ -117,7 +118,8 @@ export function laneRequirements(
 ): RequirementTemplate[] {
   const out: RequirementTemplate[] = [];
   for (const item of items) {
-    const of = (label: string) => `${label} · ${item.name}`;
+    // Sem nome real (vazio ou de exemplo), fica só o título da tarefa.
+    const of = (label: string) => titleWithName(label, item.name);
     // Sempre a faca e a foto em alta; a linha do produto acrescenta os itens
     // dela (a ficha de compra é do fluxo antigo e fica de fora).
     const base: RequirementTemplate[] = [
