@@ -168,31 +168,38 @@ export async function removeTeamMember(
   if (isAdmin(target) && !otherAdmins(team))
     throw new TeamError("delete_last_admin");
   await store.update("users", target.id, { active: false });
-  // Dois administradores excluindo um ao outro ao mesmo tempo: se não sobrou
-  // nenhum ativo, esta exclusão é desfeita.
-  if (isAdmin(target) && !otherAdmins(await wellmixTeam())) {
-    await store.update("users", target.id, { active: true });
-    throw new TeamError("delete_last_admin");
+  try {
+    // Dois administradores excluindo um ao outro ao mesmo tempo: se não
+    // sobrou nenhum ativo, esta exclusão é desfeita.
+    if (isAdmin(target) && !otherAdmins(await wellmixTeam()))
+      throw new TeamError("delete_last_admin");
+    await audit(
+      user,
+      "team.member.delete",
+      "user",
+      target.id,
+      `Acesso excluído: ${target.name} (${loginLabel(target.email)})`,
+      {
+        active: true,
+        role: target.role,
+        jobLevel: target.jobLevel ?? null,
+        managerUserId: target.managerUserId ?? null,
+        division: target.division ?? null,
+        functions: target.functions ?? [],
+        screens: target.screens ?? null,
+      },
+      { active: false },
+    );
+  } catch (error) {
+    // Nada pela metade: sem o registro na Auditoria (ou deixando a equipe sem
+    // administrador), o acesso volta como estava e a tela mostra o erro.
+    await store
+      .update("users", target.id, { active: true })
+      .catch((undo) => console.error("[team] desfazer exclusão", undo));
+    throw error;
   }
   const { forgetUserSessions } = await import("@/lib/auth/session");
   forgetUserSessions(target.id);
-  await audit(
-    user,
-    "team.member.delete",
-    "user",
-    target.id,
-    `Acesso excluído: ${target.name} (${loginLabel(target.email)})`,
-    {
-      active: true,
-      role: target.role,
-      jobLevel: target.jobLevel ?? null,
-      managerUserId: target.managerUserId ?? null,
-      division: target.division ?? null,
-      functions: target.functions ?? [],
-      screens: target.screens ?? null,
-    },
-    { active: false },
-  );
   return target;
 }
 

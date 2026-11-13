@@ -237,6 +237,35 @@ describe("Excluir acesso", () => {
     expect((await store.get("users", admin.id))?.active).toBe(true);
   });
 
+  it("sem o registro na Auditoria, a exclusão é desfeita", async () => {
+    const store = getStore();
+    const target = await newLogin("Hugo Compras", "hugo@wellmix.com");
+    const original = store.create.bind(store) as (
+      table: string,
+      data: Record<string, unknown>,
+    ) => Promise<unknown>;
+    const spy = vi.spyOn(store, "create").mockImplementation((async (
+      table: string,
+      data: Record<string, unknown>,
+    ) => {
+      if (table === "audit_log") throw new Error("banco fora do ar");
+      return original(table, data);
+    }) as never);
+    try {
+      expect(await code(() => team.removeTeamMember(admin, target.id))).toBe(
+        "banco fora do ar",
+      );
+    } finally {
+      spy.mockRestore();
+    }
+    // A lista segue o que está gravado: a pessoa continua com o acesso.
+    expect((await store.get("users", target.id))?.active).toBe(true);
+    expect((await team.wellmixTeam()).some((u) => u.id === target.id)).toBe(
+      true,
+    );
+    expect(await deletions(target.id)).toHaveLength(0);
+  });
+
   it("a tela volta à lista com a mensagem; com erro, mostra o motivo", async () => {
     const target = await newLogin("Elisa Compras", "elisa@wellmix.com");
     const other = await newLogin("Fábio Compras", "fabio@wellmix.com");
