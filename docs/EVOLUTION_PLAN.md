@@ -1022,3 +1022,8 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - Dois cuidados a mais, só nessa lista: a linha aberta mostra o grupo inteiro mesmo com busca ou filtro na tela (antes os itens fora do filtro sumiam do cartão), e o item sem descrição aparece pelo código da fábrica (antes, "—").
 - Peças: `RequestedGroups` (`src/app/app/booking/selection/_components/requested-groups.tsx`), `ExpandRow` (`src/components/expand-row.tsx`) e `otherGroupItems` (`src/lib/booking-selection.ts`). As colunas seguem a largura da lista (`@container`): uma linha só a partir de 48rem (iPad deitado), duas no iPad em pé, três no celular.
 - Testes: `tests/unit/booking-selection.test.ts` (itens não escolhidos) e o E2E `booking-supplier-request.spec.ts` (linha recolhida, seta abre e recolhe, link não abre a linha e leva à solicitação, grupo inteiro com a tela filtrada, "Rever a escolha").
+
+## Solicitação ao fornecedor: colunas "Programações" e "Peças por programação"
+
+- **Pedido do dono** (13/11/2026, com a foto da tabela): na tabela "Produtos desta solicitação" (Compras → Solicitações ao fornecedor → detalhes), o cabeçalho "Rodadas" passa a "Programações" e "Peças por rodada" passa a "Peças por programação".
+- Só os dois rótulos em português dessa tabela (`supplierRequests.table.col.rounds` e `.perRound`). Inglês e chinês, a ordem das colunas, os valores, as contas e o resto da tela não mudaram. Sem mudança no banco.
