@@ -961,3 +961,10 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - Na caixa "Dados do booking" da tela do booking (`/app/booking/lots/[id]`): o rótulo do campo virou **Fábrica**, e os textos da própria caixa que citavam o mesmo campo acompanharam ("Sem fábrica", "Digite para buscar a fábrica", "Nenhuma fábrica encontrada", "Cidade da fábrica." e, no Responsável, "A fábrica do booking" e "Vazio: vão para a fábrica."). A busca do Responsável, que dizia "buscar o fornecedor", passou a dizer "buscar o responsável".
 - Só texto, nos três idiomas (`bookingLots.detail.*` e `bookingLots.partner.*`); o campo continua sendo o fornecedor do cadastro (`supplierId`). Sem mudança no banco.
 - **Não mudou** (fora da caixa): a coluna "Fornecedor" e o "Sem fornecedor" da lista de bookings, os avisos da tela, a Seleção de itens e a solicitação ao fornecedor.
+
+## Booking: na caixa "Dados do booking" o "Responsável pelo booking" passa a se chamar Fornecedor
+
+- **Pedido do dono** (13/11/2026, logo depois de o campo Fornecedor virar Fábrica): "troca o responsável pelo booking por Fornecedor".
+- Na caixa "Dados do booking" os dois campos ficam assim: **Fábrica** (quem fabrica; `supplierId`) e **Fornecedor** (para quem vão as solicitações dos itens: a Trading, a Factory, o Supplier, o GP ou o próprio fornecedor; `partnerId`; vazio = a fábrica). A busca do campo voltou a dizer "Digite para buscar o fornecedor".
+- Só texto, nos três idiomas (`bookingLots.partner.title`, `.search` e `.noMatch`). Sem mudança no banco nem na regra de para quem vão as solicitações.
+- **Não mudou** (fora da caixa): os textos das outras telas que dizem "responsável pelo booking" (amostragem, programação de compra, solicitação ao fornecedor) e o campo "Responsável" da mesma caixa, que é a pessoa da Wellmix dona do booking.
