@@ -506,7 +506,14 @@ export function TaskItems({
           // Item de etapa do fornecedor: o que fazer, no idioma dele (os
           // rótulos dos itens do pedido são gravados em português).
           const detail = task.text
-            ? t(task.text.detail, task.text.values)
+            ? [
+                t(task.text.detail, task.text.values),
+                task.text.detailExtra
+                  ? t(task.text.detailExtra, task.text.values)
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ")
             : since && task.supplierStep && task.kind === "requirement"
               ? t(`supplierTasks.help.${task.supplierStep}` as DictionaryKey)
               : task.detail;

@@ -498,6 +498,13 @@ export async function assignPartnerAction(form: FormData) {
         await store.update("stages", stage.id, { responsiblePartyId: partyId });
       }
     }
+    // Pedido de compra: os itens abertos da arte e do certificado (raias da
+    // Preparação) passam para a agência ou a certificadora designada.
+    if (field === "agencyId" || field === "ocpId") {
+      const updated = await store.get("orders", orderId);
+      const { syncLaneRoles } = await import("@/lib/services/purchase-order");
+      if (updated) await syncLaneRoles(user, updated);
+    }
     if (field === "agencyId") {
       // Arte e embalagem: a arte ainda não enviada passa a ser da agência
       // (ou volta à Wellmix sem agência); a aprovação é sempre do fornecedor.

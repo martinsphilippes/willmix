@@ -25,7 +25,11 @@ import {
   laneOf,
   type LaneSla,
 } from "@/lib/purchase-lanes";
-import { ROLE_PARTY_FIELD } from "@/lib/workflow/stages";
+import {
+  ROLE_PARTY_FIELD,
+  artRole,
+  isPurchaseFlow,
+} from "@/lib/workflow/stages";
 import { samplingApproved } from "@/lib/supplier-request-sampling";
 import { audit } from "./audit";
 
@@ -537,4 +541,45 @@ export async function purchaseLaneSla(): Promise<LaneSla> {
     signatureDays: s.purchaseSignatureSlaDays,
     downPaymentDays: s.purchaseDownPaymentSlaDays,
   };
+}
+
+/**
+ * Parceiro designado ou trocado depois (Parceiros do pedido): os itens das
+ * raias ainda abertos passam para quem faz agora. O certificado vai para a
+ * certificadora; a arte e a arte final com o selo, para a agência quando é
+ * ela quem faz a arte. Sem o parceiro, voltam para a Wellmix. O que já foi
+ * feito fica como está (o histórico de quem fez não muda) e nada é criado de
+ * novo: a pendência aberta só troca de dono.
+ */
+export async function syncLaneRoles(user: User, order: Order): Promise<number> {
+  if (!isPurchaseFlow(order)) return 0;
+  const store = getStore();
+  const { getSettings } = await import("@/lib/settings");
+  const art = artRole(order, (await getSettings()).agencyValidationEnabled);
+  const ocp = order.ocpId ? "ocp" : "operator";
+  const open = (
+    await store.list("requirements", { filter: { orderId: order.id } })
+  ).filter((r) => r.status !== "done");
+  let moved = 0;
+  for (const r of open) {
+    const base = baseKeyOf(r.key);
+    const role =
+      base === LANE_KEYS.certificate
+        ? ocp
+        : base === LANE_KEYS.art || base === LANE_KEYS.artFinal
+          ? art
+          : null;
+    if (!role || r.role === role) continue;
+    await store.update("requirements", r.id, { role });
+    moved++;
+  }
+  if (moved)
+    await audit(
+      user,
+      "order.lanes_reassigned",
+      "order",
+      order.id,
+      `Raias do pedido de compra: ${moved} item(ns) aberto(s) da arte e do certificado com o novo responsável`,
+    );
+  return moved;
 }

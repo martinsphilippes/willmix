@@ -4,8 +4,11 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import { CUSTOMS_CHANNELS } from "@/lib/db/schema";
 import {
   SEAL_REPLACED_REASON,
+  type StepAssignee,
   type StepView,
 } from "@/lib/services/import-flow";
+import Link from "next/link";
+import { ASSIGN_HREF } from "@/lib/assign-href";
 import {
   submitImportStepAction,
   validateImportStepAction,
@@ -74,6 +77,33 @@ export function ImportFlowCard({
   const label = (key: string) => t(`importFlow.step.${key}` as DictionaryKey);
   const actorLabel = (a: string) => t(`importFlow.actor.${a}` as DictionaryKey);
   const done = steps.filter((s) => s.done).length;
+  // Selo de certificação já enviado: quem aplica na arte baixa daqui também.
+  const sealDoc =
+    steps.find((s) => s.template.key === "cert_seal" && s.done)?.step
+      ?.documentId ?? null;
+  /* Visão interna (Wellmix): com quem está o passo aberto e o que falta
+     designar, com o link de onde designar. */
+  const assigneeLine = (a: StepAssignee) => (
+    <span className="mt-1 block" data-import-assignee={a.via}>
+      {t(a.validating ? "certFlow.assignee.validate" : "certFlow.assignee.do", {
+        name: a.label ?? t("certFlow.assignee.team"),
+      })}
+      {a.missing ? (
+        <span
+          className="mt-0.5 block font-medium text-amber-700"
+          data-import-missing={a.missing}
+        >
+          {t(`certFlow.missing.${a.missing}` as DictionaryKey)}{" "}
+          <Link
+            href={ASSIGN_HREF[a.missing](order.id)}
+            className="text-brand-700 underline"
+          >
+            {t(`certFlow.assign.${a.missing}` as DictionaryKey)}
+          </Link>
+        </span>
+      ) : null}
+    </span>
+  );
   /* Formulário de envio de um passo (na linha da tabela ou no quadro em
      destaque do alto). */
   const submitForm = (tpl: StepView["template"], step: StepView["step"]) => (
@@ -263,10 +293,12 @@ export function ImportFlowCard({
               done: isDone,
               canSubmit,
               canValidate,
+              assignee,
             }) => (
               <tr
                 key={tpl.key}
-                className={rowClass}
+                id={`${anchor}-step-${tpl.key}`}
+                className={cx(rowClass, "scroll-mt-24")}
                 data-import-step={tpl.key}
                 data-import-status={step?.status ?? "pending"}
               >
@@ -312,6 +344,7 @@ export function ImportFlowCard({
                     actor: actorLabel(tpl.actor),
                     validator: tpl.validator ? actorLabel(tpl.validator) : "—",
                   })}
+                  {assignee ? assigneeLine(assignee) : null}
                 </Td>
                 <Td className="min-w-32">
                   {step && step.status !== "pending" ? (
@@ -374,6 +407,16 @@ export function ImportFlowCard({
                       data-invoice-generate
                     >
                       {t("importFlow.invoice.generate")}
+                    </a>
+                  ) : null}
+                  {/* Aplicar o selo: o arquivo do selo para baixar junto do envio. */}
+                  {tpl.key === "cert_seal_art" && canSubmit && sealDoc ? (
+                    <a
+                      href={`/api/files/${sealDoc}`}
+                      className="mb-1 block font-medium text-brand-700 underline"
+                      data-seal-download
+                    >
+                      {t("certFlow.sealDownload")}
                     </a>
                   ) : null}
                   {canSubmit && !featured.includes(tpl.key)
