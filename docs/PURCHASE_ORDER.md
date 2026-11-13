@@ -123,6 +123,18 @@ O que muda e o que não muda:
 - **Textos:** para o fornecedor, a ajuda da seção e a frase do atalho do Die Cut falam só das três tarefas (`dieCut.stageHelp.supplier`, `dieCut.orderHint.supplier`).
 - **Regra** (`supplierSeesLaneRequirement`, `src/lib/purchase-lanes.ts`): uma lista fechada com as três chaves (`die_cut`, `hd_photo`, `lead_time_confirmed`) de cada item do pedido.
 
+## 2d. A etapa nº 2 na visão do login Trading (13/11/2026)
+
+Pedido do dono: no login de uma **trading** (parceiro do tipo Trading, que entra com o papel de fornecedor; docs/PARTNER_TYPES.md), a etapa nº 2 do pedido de compra mostra só o lado da trading. Vale na linha da tabela "Etapas do pedido" e no card de detalhes:
+
+- **Título "Die-Cut"** (zh: "刀模 (Die-Cut)") e **"Responsável: Fornecedor"**, sempre, mesmo quando a etapa passa para um operador da Wellmix. O responsável real da etapa não muda: só o que essa visão mostra.
+- **Andamento só das tarefas do fornecedor** (`supplierLaneView`, `src/lib/purchase-lanes.ts`): a faca, a foto em alta e o prazo de produção confirmado de cada produto, as mesmas três tarefas que o card já mostrava (seção 2c). A barra e o "X de Y" contam só essas. Arte, embalagem, certificação, MOQ, NCM e ficha de compra ficam fora da conta.
+- **Concluído:** com as três tarefas de todos os produtos feitas, a linha e o card mostram o selo verde "Concluído" e a barra em 100%; a linha mostra em "Concluída em" a data do último envio. Faltando alguma, o progresso é parcial, e o prazo da etapa continua à vista (em vermelho, se atrasado, só enquanto faltar tarefa dele).
+- **Na hora e ao recarregar:** a conta sai dos registros gravados sempre que a página abre. O último envio já devolve a tela atualizada, e pedidos que já tinham tudo enviado aparecem concluídos sem nenhuma ação.
+- **Etapa ainda não começada:** uma etapa pendente ou cancelada continua como está; só a etapa em andamento, bloqueada ou concluída vira "Concluído" nessa visão.
+- **Só na visão Trading da etapa nº 2.** Não mudam: a etapa de verdade (só conclui com todas as raias), o andamento global do pedido, a visão interna da Wellmix ("Die-Cut, Arte e Certificação", com o responsável e o andamento de todas as raias), as tarefas de arte, embalagem e certificação dos responsáveis designados e as outras etapas. Os outros logins com papel de fornecedor (fornecedor, fábrica, GP, parceiro do fornecedor) continuam vendo a etapa como antes, com o card de três tarefas da seção 2c. Sem mudança no banco.
+- **Quem é Trading:** o parceiro do pedido (`supplierId`) é do tipo `trading`. Um login de fornecedor só abre o pedido em que o parceiro é o dele (`canViewOrder`), então é o próprio login da trading.
+
 ## 3. Contrato e assinaturas (etapa "Arte e embalagem")
 
 - Concluída a Preparação, o sistema monta o **contrato**: o documento do pedido (`/app/orders/{id}/purchase-order`) com os dados, os produtos, o MOQ e o prazo negociados de cada um e a **arte final com o selo** de cada produto (sem certificação na linha, a arte validada).
