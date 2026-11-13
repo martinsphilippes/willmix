@@ -300,8 +300,9 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   expect(new Set(generatorFields).size).toBe(1);
   // Programação de compra pela quantidade (docs/PURCHASE_SCHEDULE.md): 48
   // peças e 0,12 m³ por caixa → 566 caixas (27.168 peças) por 40HC. O total
-  // e o número de rodadas mandam: 60.000 peças = 1.250 caixas em 3 rodadas
-  // iguais (417 + 417 + 416 caixas); os containers saem da conta.
+  // em CAIXAS master (dono, 13/11/2026) e o número de rodadas mandam: 1.250
+  // caixas = 60.000 peças em 3 rodadas iguais (417 + 417 + 416 caixas); os
+  // containers saem da conta.
   const gen = page.locator("[data-rounds-generator]");
   const calc = gen.locator("[data-generate-calc]");
   // Sem nenhum item marcado como escolhido, a conta não some: usa o primeiro
@@ -321,7 +322,13 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
     "ok",
   );
   await expect(gen.locator("[data-generate-assumed]")).toHaveCount(0);
-  await gen.locator("[data-generate-total]").fill("60000");
+  // O campo do total se chama "Total de caixas" e recebe caixas master: sem
+  // nada digitado, mostra as peças da planilha (3.000) em caixas inteiras.
+  await expect(
+    gen.getByLabel("Total de caixas", { exact: true }),
+  ).toBeVisible();
+  await expect(gen.locator("[data-generate-total]")).toHaveValue("63");
+  await gen.locator("[data-generate-total]").fill("1250");
   // O campo do número de rodadas se chama "Programações" (dono, 13/11/2026).
   await expect(gen.getByLabel("Programações", { exact: true })).toBeVisible();
   await gen.locator("[data-generate-rounds]").fill("3");
@@ -333,7 +340,9 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   const totalContainers = gen.locator("[data-generate-total-containers]");
   await expect(totalContainers).toHaveText("3");
   await expect(gen.locator("input[data-generate-per-round]")).toHaveCount(0);
+  // A prévia já diz as caixas em peças: 1.250 × 48 = 60.000.
   await expect(calc.locator("[data-generate-result]")).toContainText("1.250");
+  await expect(calc.locator("[data-generate-result]")).toContainText("60.000");
   await gen.locator("[data-generate-submit]").click();
   await expect(page.locator("[data-schedule-item]")).toHaveCount(3);
   const qty = (n: number) => page.locator(`input[name="schedule.qty.${n}"]`);
@@ -358,8 +367,8 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(card(1).locator("[data-round-down-off]")).toBeDisabled();
   // Aumentar: fecha o container da rodada 1 (566 caixas = 27.168 peças). A
   // quantidade de peças muda em consequência: a da rodada, a soma e o total
-  // do gerador (mesmo com outro número digitado nele antes).
-  await gen.locator("[data-generate-total]").fill("50000");
+  // do gerador, em caixas (mesmo com outro número digitado nele antes).
+  await gen.locator("[data-generate-total]").fill("1000");
   await card(1).locator("[data-round-up]").click();
   await expect(qty(1)).toHaveValue("27168");
   await expect(card(1).locator("[data-round-fill]")).toHaveAttribute(
@@ -367,7 +376,8 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
     "full",
   );
   await expect(page.locator("[data-selection-quantity]")).toHaveValue("67152");
-  await expect(gen.locator("[data-generate-total]")).toHaveValue("67152");
+  // 67.152 peças ÷ 48 = 1.399 caixas.
+  await expect(gen.locator("[data-generate-total]")).toHaveValue("1399");
   await expect(perRound).toHaveText("1");
   // Diminuir: 30.000 peças passam de um container (o segundo com 10%): a
   // rodada precisa de 2 e o informativo mostra "1 a 2". Tirar o excedente
@@ -378,7 +388,8 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(totalContainers).toHaveText("4");
   await card(2).locator("[data-round-down]").click();
   await expect(qty(2)).toHaveValue("27168");
-  await expect(gen.locator("[data-generate-total]")).toHaveValue("74304");
+  // 74.304 peças ÷ 48 = 1.548 caixas.
+  await expect(gen.locator("[data-generate-total]")).toHaveValue("1548");
   await expect(perRound).toHaveText("1");
   await expect(totalContainers).toHaveText("3");
   // Margem de 5%: 26.000 peças = 542 caixas = 95% do container: cheio.

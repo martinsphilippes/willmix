@@ -180,6 +180,30 @@ export function cartonsPerContainer(
   return Math.floor(containerCbm / cbmPerCarton + 1e-9);
 }
 
+/**
+ * O gerador recebe o total em CAIXAS master (decisão do dono, 13/11/2026); a
+ * programação continua em peças: caixas × peças por caixa master do item
+ * escolhido. Nulo sem as peças por caixa (não há como converter) ou com um
+ * número de caixas que não é inteiro e positivo.
+ */
+export function piecesFromCartons(
+  cartons: number,
+  masterCartonQty: number | null | undefined,
+): number | null {
+  if (!pos(masterCartonQty) || !pos(cartons) || !Number.isInteger(cartons))
+    return null;
+  return cartons * masterCartonQty;
+}
+
+/** Peças em caixas master inteiras (para cima, como o gerador arredonda). */
+export function cartonsFromPieces(
+  pieces: number,
+  masterCartonQty: number | null | undefined,
+): number | null {
+  if (!pos(masterCartonQty) || !pos(pieces)) return null;
+  return Math.ceil(pieces / masterCartonQty - 1e-9);
+}
+
 export function planPurchaseRounds(
   input: RoundsPlanInput,
 ): { plan: RoundsPlan } | { error: RoundsPlanError } {

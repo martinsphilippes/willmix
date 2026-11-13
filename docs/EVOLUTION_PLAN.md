@@ -1003,3 +1003,12 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Por que não muda regra nem dado**: a caixa não alterava o que era gravado. A escolha grava os itens do grupo (`group`) e o ganhador; marcar "Alternativa" só repetia ids que já estavam no grupo. Ao abrir a solicitação, todos os outros itens do grupo vão como alternativas (`openGroupRequests`), como antes.
 - **Ficou como estava**: a coluna "Escolher" e a escolha do ganhador, a ordem e o conteúdo das outras colunas, a ação de gravar (ainda aceita `alternatives`), o texto "Alternativa" no dicionário, as alternativas na solicitação ao fornecedor e tudo o que já estava salvo. Sem mudança no banco.
 - **Teste**: o E2E confere que a caixa e o cabeçalho não existem mais, que "Foto" vem logo depois de "Escolher", que cada linha tem o mesmo número de colunas do cabeçalho e, adiante, que o outro item do grupo continua aparecendo como alternativa na solicitação.
+
+## Programação de compra: o total do gerador passa a ser digitado em caixas
+
+- **Decisão do dono** (13/11/2026, depois de a explicação passar a dizer "total de caixas"): "o campo passa a receber caixas". Antes o campo se chamava "Total de peças" e a conta lia o número como peças, o que desencontrava do texto.
+- O campo do gerador chama-se **"Total de caixas"** e recebe caixas master inteiras. A conta multiplica pelas **peças por caixa master** do item escolhido e continua em peças: a "Quantidade (peças)" e os cartões das rodadas não mudaram. A linha do Cálculo passou a dizer as duas coisas ("2 rodada(s) · 300 caixas (14.400 peças) · …").
+- O campo acompanha a tela como antes, agora em caixas: sem nada digitado mostra as peças da quantidade (ou da planilha) em caixas inteiras, para cima; mexer numa rodada atualiza o número.
+- Item **sem peças por caixa master**: caixas não viram peças. O gerador avisa e indica "+ Programação de compra", onde as peças de cada rodada são digitadas (antes ele dividia as peças igualmente). Item só **sem o CBM** da caixa: as caixas são divididas igualmente, sem conta de containers.
+- Regra em `src/lib/purchase-rounds.ts` (`piecesFromCartons`, `cartonsFromPieces`); tela em `src/components/selection-quantity.tsx`. Textos nos três idiomas (`purchaseRounds.gen.total`, `.errorTotal`, `.result`, `.noItem`, `.noCarton` e o novo `.noPieces`). Sem mudança no banco: a programação gravada continua em peças.
+- Testes: `tests/unit/purchase-rounds-plan.test.ts` (conversão) e o E2E da seleção (1.250 caixas = 60.000 peças em 3 rodadas; o campo acompanhando as rodadas em caixas).
