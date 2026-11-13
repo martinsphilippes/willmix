@@ -49,6 +49,7 @@ import Link from "next/link";
 import { roundsDates } from "@/components/purchase-rounds";
 import { dateTime } from "./negotiation";
 import { ChatBubbleIcon, OpenIcon } from "./icons";
+import { SlaDueToggle } from "./sla-due-toggle";
 import {
   requestItemSpecs,
   type RequestBookSpecs,
@@ -63,16 +64,18 @@ import {
  */
 
 /*
- * Situação | SLA | Ações: as três últimas colunas, fixas à direita na rolagem
- * horizontal (pedido do dono, 13/11/2026). Cada coluna fixa precisa saber a
+ * Situação / SLA | Ações: as duas últimas colunas, fixas à direita na rolagem
+ * horizontal (pedido do dono, 13/11/2026). A situação e o SLA dividem uma
+ * coluna compacta (o SLA embaixo da situação, com o prazo recolhido atrás do
+ * "+"); até então eram duas colunas. Cada coluna fixa precisa saber a
  * largura das que ficam à direita dela; por isso o conteúdo vai numa caixa de
  * largura certa (as variáveis abaixo, postas na moldura da tabela) e a coluna
  * mede sempre a caixa mais o respiro da célula (`--pin-pad`, o `px-2.5` do
- * <Td> dos dois lados). As três fixam a partir de 1024px de tela (iPad
+ * <Td> dos dois lados). As duas fixam a partir de 1024px de tela (iPad
  * deitado, computador), quando sobra tabela para rolar ao lado do menu; em
  * tela menor (iPad em pé, celular) só as ações ficam fixas, como antes.
  */
-const PIN_VARS = "[--pin-pad:1.25rem] [--pin-status:8.5rem] [--pin-sla:6.5rem]";
+const PIN_VARS = "[--pin-pad:1.25rem] [--pin-status:8.5rem]";
 /**
  * Caixa das ações: só os dois ícones (mensagem e abrir) ou, para o
  * fornecedor que ainda responde, também os três botões de resposta
@@ -85,8 +88,7 @@ const PIN_ACTIONS = {
 const PIN = {
   // A borda esquerda do conjunto: um fio e uma sombra separam do que rola.
   status:
-    "lg:sticky lg:z-10 lg:right-[calc(var(--pin-actions)_+_var(--pin-sla)_+_2_*_var(--pin-pad))] lg:shadow-[inset_1px_0_0_var(--color-zinc-200),-6px_0_6px_-6px_rgba(0,0,0,0.15)]",
-  sla: "lg:sticky lg:z-10 lg:right-[calc(var(--pin-actions)_+_var(--pin-pad))]",
+    "lg:sticky lg:z-10 lg:right-[calc(var(--pin-actions)_+_var(--pin-pad))] lg:shadow-[inset_1px_0_0_var(--color-zinc-200),-6px_0_6px_-6px_rgba(0,0,0,0.15)]",
   // Em tela menor a borda é das ações (as únicas fixas), como sempre foi.
   actions:
     "sticky right-0 z-10 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] lg:shadow-none",
@@ -163,7 +165,7 @@ export function SupplierRequestTable({
   ];
   // Condições iniciais (primeira resposta) e finais (as que valem hoje).
   const conditionCols = ["price", "currency", "moq", "incoterm", "leadTime"];
-  // Depois das condições; a situação e o SLA fecham a tabela, com as ações.
+  // Depois das condições; "Situação / SLA" fecha a tabela, com as ações.
   const after = ["turn", "openedAt", "firstAnswerAt", "lastAnswerAt"];
   const nowrap = "whitespace-nowrap";
   // Só o fornecedor responde: enquanto pode, a linha tem as três respostas
@@ -260,14 +262,7 @@ export function SupplierRequestTable({
               rowSpan={2}
               data-supplier-table-pin="status"
             >
-              {k("col.status")}
-            </Th>
-            <Th
-              className={cx(nowrap, "bg-zinc-50", PIN.sla)}
-              rowSpan={2}
-              data-supplier-table-pin="sla"
-            >
-              {k("col.sla")}
+              {k("col.statusSla")}
             </Th>
             <Th
               className={cx("bg-zinc-50 text-right", PIN.actions)}
@@ -585,18 +580,21 @@ export function SupplierRequestTable({
                 <Td className={cx(nowrap, "text-xs tabular-nums")}>
                   {dateTime(times.last, t)}
                 </Td>
-                {/* Situação geral do produto e, na aprovada, a amostragem. */}
+                {/* Situação / SLA: a situação geral do produto (na aprovada,
+                    com a amostragem) e, embaixo, o SLA com o prazo recolhido. */}
                 <Td
                   className={cx(pinBg, PIN.status)}
                   data-supplier-table-pin="status"
                   data-supplier-table-status={r.status}
                 >
                   <div className="w-[var(--pin-status)]">
-                    <Badge tone={STATUS_TONE[r.status]}>
-                      {t(
-                        `supplierRequests.status.${r.status}` as DictionaryKey,
-                      )}
-                    </Badge>
+                    <span data-supplier-table-status-badge>
+                      <Badge tone={STATUS_TONE[r.status]}>
+                        {t(
+                          `supplierRequests.status.${r.status}` as DictionaryKey,
+                        )}
+                      </Badge>
+                    </span>
                     {sampling ? (
                       <Link
                         href={`${href}#amostragem`}
@@ -619,35 +617,30 @@ export function SupplierRequestTable({
                         </Badge>
                       </Link>
                     ) : null}
-                  </div>
-                </Td>
-                {/* SLA: o estado em destaque e o prazo embaixo, menor. */}
-                <Td
-                  className={cx(pinBg, PIN.sla)}
-                  data-supplier-table-pin="sla"
-                >
-                  <div className="w-[var(--pin-sla)]">
+                    {/* SLA (só enquanto a solicitação está ativa): o selo e o
+                        "+" na mesma linha; a data e a hora do prazo ficam
+                        recolhidas até o "+" (que vira "−"). */}
                     {sla ? (
                       <span
-                        className="block"
+                        className="mt-1 block"
                         data-supplier-request-sla={sla.late ? "late" : "ok"}
                       >
-                        <Badge tone={sla.late ? "danger" : "neutral"}>
-                          {k(sla.late ? "late" : "onTime")}
-                        </Badge>
-                        <span
-                          className={cx(
-                            "mt-1 block text-[11px] leading-tight tabular-nums",
-                            sla.late ? "text-red-700" : "text-zinc-500",
-                          )}
-                          data-supplier-table-sla-due
+                        <SlaDueToggle
+                          due={dateTime(sla.dueAt, t)}
+                          late={sla.late}
+                          labels={{ show: k("slaShow"), hide: k("slaHide") }}
                         >
-                          {dateTime(sla.dueAt, t)}
-                        </span>
+                          <span
+                            className="inline-flex"
+                            data-supplier-table-sla-badge
+                          >
+                            <Badge tone={sla.late ? "danger" : "neutral"}>
+                              {k(sla.late ? "late" : "onTime")}
+                            </Badge>
+                          </span>
+                        </SlaDueToggle>
                       </span>
-                    ) : (
-                      "—"
-                    )}
+                    ) : null}
                   </div>
                 </Td>
                 <Td
