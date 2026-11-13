@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   lotMatchesFilters,
+  otherGroupItems,
   parseGroupIds,
   parseSelectionFilters,
   searchSuggestions,
@@ -107,5 +108,35 @@ describe("autocompletar", () => {
         null,
       ]),
     ).toEqual(["Glass cup", "São Paulo"]);
+  });
+});
+
+describe("itens não escolhidos do grupo", () => {
+  const have = new Map([
+    ["a", { id: "a" }],
+    ["b", { id: "b" }],
+    ["c", { id: "c" }],
+  ]);
+  const find = (id: string) => have.get(id);
+
+  it("mantém a ordem dada, tira o ganhador e conta os que não existem mais", () => {
+    expect(otherGroupItems(["c", "a", "b"], "a", find)).toEqual({
+      rows: [{ id: "c" }, { id: "b" }],
+      missing: 0,
+    });
+    // Item que não existe mais: contado, não some calado.
+    expect(otherGroupItems(["a", "x", "b", "y"], "a", find)).toEqual({
+      rows: [{ id: "b" }],
+      missing: 2,
+    });
+  });
+
+  it("id repetido conta uma vez; grupo só com o ganhador não tem outros", () => {
+    expect(otherGroupItems(["a", "b", "b", "a", "x", "x"], "a", find)).toEqual({
+      rows: [{ id: "b" }],
+      missing: 1,
+    });
+    expect(otherGroupItems(["a"], "a", find)).toEqual({ rows: [], missing: 0 });
+    expect(otherGroupItems([], "a", find)).toEqual({ rows: [], missing: 0 });
   });
 });

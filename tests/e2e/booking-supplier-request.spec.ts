@@ -61,6 +61,65 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-request-needs]")).toContainText(
     "Cor âmbar",
   );
+
+  // 2b. Seleção → "Com solicitação aberta": o grupo é uma linha recolhida,
+  // com o link da solicitação e o resumo do escolhido; a seta mostra o item
+  // comparado que não foi escolhido e um novo clique recolhe.
+  const requestPath = new URL(requestUrl).pathname;
+  const requestedRow = () =>
+    page
+      .locator(
+        '[data-selection-section="requested"] [data-selection-group-row]',
+      )
+      .filter({ has: page.locator(`a[href="${requestPath}"]`) });
+  const checkRequestedRow = async () => {
+    const row = requestedRow();
+    await expect(row).toHaveCount(1);
+    // `data-ready`: a seta já responde ao toque (tela hidratada).
+    const toggle = row.locator("[data-expand-toggle][data-ready]");
+    const others = row.locator("[data-expand-detail]");
+    await expect(row.locator("[data-selection-winner]")).toContainText(
+      `Glass cup ${TAG} 350ml`,
+    );
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(others).toBeHidden();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(others.locator("[data-selection-other]")).toHaveCount(1);
+    await expect(others).toContainText(`Glass cup ${TAG} with handle`);
+    await expect(others).toContainText("Guangzhou Supplier B");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(others).toBeHidden();
+    return { row, toggle, others };
+  };
+  await page.goto(
+    `/app/booking/selection?q=${encodeURIComponent(TAG)}&tab=selection`,
+  );
+  const listed = await checkRequestedRow();
+  // O link fica fora do botão da seta: tocar nele não abre a linha (aqui com
+  // a navegação impedida, para a linha continuar na tela)…
+  const requestLink = listed.row.locator("[data-selection-request-link]");
+  await requestLink.evaluate((el) => {
+    el.addEventListener("click", (e) => e.preventDefault(), { once: true });
+    (el as HTMLElement).click();
+  });
+  await expect(listed.toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(listed.others).toBeHidden();
+  // …e, tocado de verdade, abre a solicitação.
+  await requestLink.click();
+  await page.waitForURL((url) => url.pathname === requestPath);
+  // Com a busca tirando a alternativa da tela (só o escolhido combina), a
+  // linha aberta ainda mostra o grupo inteiro: a lista não depende do filtro.
+  const onlyChosen = encodeURIComponent(`${TAG} 350ml`);
+  await page.goto(`/app/booking/selection?q=${onlyChosen}`);
+  await expect(page.locator("[data-selection-item]")).toHaveCount(1);
+  await page.goto(`/app/booking/selection?q=${onlyChosen}&tab=selection`);
+  const filtered = await checkRequestedRow();
+  // "Rever a escolha" continua abrindo o grupo para comparar.
+  await filtered.row.locator("[data-selection-block-open]").click();
+  await page.waitForURL(/[?&]ids=/);
+  await expect(page.locator("[data-selection-item]")).toHaveCount(2);
   // A resposta é do fornecedor: a Wellmix (admin) não responde por ele e,
   // antes da resposta, só cancela ou manda mensagem.
   await page.goto(itemUrl);
