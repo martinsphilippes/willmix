@@ -241,8 +241,10 @@ export default async function BookingLotPage({
 
   const hint = lot.supplierHint;
   const sheetSupplier = hint?.name ?? null;
+  // Na caixa "Dados do booking" este campo se chama Fábrica (dono,
+  // 13/11/2026); a lista de bookings continua com "Sem fornecedor".
   const supplierOptions = [
-    { value: "", label: t("bookingLots.supplierNone") },
+    { value: "", label: t("bookingLots.detail.supplierNone") },
     ...suppliers.map((s) => ({
       value: s.id,
       label: [s.name, s.storeNumber, s.city].filter(Boolean).join(" · "),
@@ -484,7 +486,7 @@ export default async function BookingLotPage({
                       noMatch={t("bookingLots.detail.supplierNoMatch")}
                     />
                   ) : (
-                    (supplier?.name ?? t("bookingLots.supplierNone"))
+                    (supplier?.name ?? t("bookingLots.detail.supplierNone"))
                   )}
                   {sheetSupplier ? (
                     <span className="text-xs text-zinc-500">
@@ -506,8 +508,8 @@ export default async function BookingLotPage({
                       current={lot.partnerId ?? ""}
                       options={partnerOptions}
                       labels={cellLabels(t("bookingLots.partner.title"))}
-                      placeholder={t("bookingLots.detail.supplierSearch")}
-                      noMatch={t("bookingLots.detail.supplierNoMatch")}
+                      placeholder={t("bookingLots.partner.search")}
+                      noMatch={t("bookingLots.partner.noMatch")}
                     />
                   ) : (
                     (partner?.name ?? t("bookingLots.partner.supplier"))

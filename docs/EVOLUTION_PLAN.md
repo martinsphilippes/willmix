@@ -954,3 +954,10 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (12/11/2026): além de "Containers por rodada", mostrar os containers no total, sem tirar nada da tela.
 - Campo informativo novo ao lado de "Containers por rodada": a soma dos containers de todas as rodadas (`containersPerRound().needed.total`), que acompanha as rodadas da tela e a prévia. Só acréscimo: nenhuma linha do Cálculo, botão ou campo saiu. Sem mudança no banco.
+
+## Booking: na caixa "Dados do booking" o campo Fornecedor passa a se chamar Fábrica
+
+- **Pedido do dono** (13/11/2026): "nessa caixa onde tem escrito Fornecedor troque para Fábrica".
+- Na caixa "Dados do booking" da tela do booking (`/app/booking/lots/[id]`): o rótulo do campo virou **Fábrica**, e os textos da própria caixa que citavam o mesmo campo acompanharam ("Sem fábrica", "Digite para buscar a fábrica", "Nenhuma fábrica encontrada", "Cidade da fábrica." e, no Responsável, "A fábrica do booking" e "Vazio: vão para a fábrica."). A busca do Responsável, que dizia "buscar o fornecedor", passou a dizer "buscar o responsável".
+- Só texto, nos três idiomas (`bookingLots.detail.*` e `bookingLots.partner.*`); o campo continua sendo o fornecedor do cadastro (`supplierId`). Sem mudança no banco.
+- **Não mudou** (fora da caixa): a coluna "Fornecedor" e o "Sem fornecedor" da lista de bookings, os avisos da tela, a Seleção de itens e a solicitação ao fornecedor.
