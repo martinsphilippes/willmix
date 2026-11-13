@@ -53,7 +53,8 @@ Pedido gerado ──► Vendas avisada (P2 → V1)
 | Validação da arte | Wellmix (`art.validate`) | arte | `purchaseArtReviewSlaDays` (2) do envio | Wellmix, a cada envio |
 | Certificado | Certificadora (sem ela, a Wellmix) | pedido gerado; só se a linha exige certificação | `purchaseCertSlaDays` (15) do pedido | certificadora, no pedido gerado |
 | Arte final com o selo | Agência | arte validada **e** certificado; só se a linha exige certificação | `purchaseArtFinalSlaDays` (3) da liberação | agência, quando libera |
-| Assinatura da Wellmix | Diretorias (`contract.sign`) | todas as raias concluídas | `purchaseSignatureSlaDays` (2) do início do contrato | responsável da etapa |
+| Pedido de amostras (P17, docs/SAMPLE_ORDER.md) | Wellmix gera ou marca "sem amostras"; fornecedor aceita | todas as raias concluídas | `purchaseSignatureSlaDays` (2) | fornecedor, com o pedido de amostras gerado |
+| Assinatura da Wellmix | Diretorias (`contract.sign`) | raias concluídas **e** pedido de amostras definido | `purchaseSignatureSlaDays` (2) do início do contrato | responsável da etapa |
 | Assinatura do fornecedor | Fornecedor | assinatura da Wellmix | `purchaseSignatureSlaDays` (2) da Wellmix | fornecedor |
 | Sinal ou conta corrente (`down_payment`) | Financeiro (Contas a pagar) | as duas assinaturas | `purchaseDownPaymentSlaDays` (3) das assinaturas | financeiro, com as duas assinaturas; fornecedor, "produção liberada" |
 

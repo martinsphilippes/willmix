@@ -17,7 +17,7 @@ import {
   ORDER_SIGNED_WELLMIX,
 } from "@/lib/workflow/stages";
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
-import { DOWN_PAYMENT_KEY } from "@/lib/purchase-lanes";
+import { DOWN_PAYMENT_KEY, SAMPLE_ORDER_KEY } from "@/lib/purchase-lanes";
 import { audit } from "./audit";
 import { notify, notifyWellmix } from "./notifications";
 
@@ -314,6 +314,8 @@ export interface OrderSignatureView {
    * enquanto a Preparação está aberta.
    */
   canReopenSupplier: boolean;
+  /** Pedido de compra: falta definir o pedido de amostras (a Wellmix assina depois). */
+  samplesPending: boolean;
 }
 
 export const ORDER_DOCUMENT_STATUSES = [
@@ -334,6 +336,8 @@ async function signatureRequirements(orderId: string) {
     send: all.find((r) => r.key === ORDER_SIGN_SEND) ?? null,
     // Pedido de compra: o sinal (ou a conta corrente) libera a produção.
     downPayment: all.find((r) => r.key === DOWN_PAYMENT_KEY) ?? null,
+    // Pedido de amostras (docs/SAMPLE_ORDER.md): a Wellmix assina depois dele.
+    samples: all.find((r) => r.key === SAMPLE_ORDER_KEY) ?? null,
   };
 }
 
@@ -404,6 +408,9 @@ export async function getOrderSignatureView(
     return stage?.status === "active" || stage?.status === "blocked";
   };
   let canSign: OrderSignatureView["canSign"] = null;
+  // Pedido de compra: o pedido de amostras vem antes da assinatura da Wellmix.
+  const samplesPending =
+    !!reqs.samples && reqs.samples.status !== "done" && !wellmix;
   let canRegisterSupplier = false;
   let supplierBlocked = false;
   // Pedido novo: antes do "Enviar para assinatura" ninguém assina.
@@ -424,6 +431,7 @@ export async function getOrderSignatureView(
     if (isWellmix(user)) {
       if (
         !awaitingSend &&
+        !samplesPending &&
         can(user, "contract.sign") &&
         (await stageActive(reqs.wellmix))
       )
@@ -464,6 +472,7 @@ export async function getOrderSignatureView(
     sendBlockers,
     canSend,
     waitingWellmix: isOrderSupplier(user, order) && !!reqs.wellmix && !wellmix,
+    samplesPending,
   };
 }
 
@@ -567,6 +576,8 @@ export async function signOrderDocument(
   // Pedido novo: primeiro a arte e o selo, depois "Enviar para assinatura".
   if (reqs.send && reqs.send.status !== "done")
     throw new OrderSignatureError("signature_not_sent");
+  if (side === "wellmix" && reqs.samples && reqs.samples.status !== "done")
+    throw new OrderSignatureError("signature_samples_pending");
   const document = await buildOrderDocument(order);
   const hash = orderDocumentHash(document);
   if (input.hash !== hash)

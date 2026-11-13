@@ -49,6 +49,7 @@ import {
   baseKeyOf,
   blockedBy,
   isAutoGateKey,
+  isSampleOrderKey,
   prerequisitesOf,
   type LaneItem,
 } from "@/lib/purchase-lanes";
@@ -363,6 +364,8 @@ export interface SubmitInput {
    * assinatura não são concluídos pelo "Confirmar" comum.
    */
   signature?: boolean;
+  /** Só o serviço do pedido de amostras marca os itens dele (docs/SAMPLE_ORDER.md). */
+  sampleOrder?: boolean;
 }
 
 /** Quem pode preencher: Wellmix sempre; o papel do requisito quando vinculado ao parceiro certo. */
@@ -416,6 +419,9 @@ export async function submitRequirement(
   // Assinatura do documento do pedido: só pela página do documento.
   if (isOrderSignatureKey(requirement.key) && !input.signature)
     throw new WorkflowError("signature_required");
+  // Pedido de amostras: só pela página dele.
+  if (isSampleOrderKey(requirement.key) && !input.sampleOrder)
+    throw new WorkflowError("sample_order_required");
   // Pedido de compra: a ordem dentro das raias (validar só a arte enviada;
   // arte final só com a arte validada e o certificado).
   if (isPurchaseFlow(order) && prerequisitesOf(requirement.key).length) {

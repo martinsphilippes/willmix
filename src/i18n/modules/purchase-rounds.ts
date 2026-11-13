@@ -40,12 +40,8 @@ export const pt = {
   "purchaseRounds.gen.calc": "Cálculo",
   "purchaseRounds.gen.item":
     "Item escolhido: {pcs} peças por caixa master · {cbm} m³ por caixa → {cartons} caixas ({pieces} peças) por {container}.",
-  "purchaseRounds.gen.itemAssumed":
-    "Conta com {label}: {pcs} peças por caixa master · {cbm} m³ por caixa → {cartons} caixas ({pieces} peças) por {container}.",
-  "purchaseRounds.gen.assumedNote":
-    "Nenhum item está marcado como escolhido na tabela: a conta usa o primeiro do grupo com caixa master e CBM. Marque o escolhido para usar a caixa dele.",
-  "purchaseRounds.gen.noItem":
-    "Nenhum item do grupo tem peças por caixa master e CBM da caixa (nem as medidas): sem esses dados não dá para gerar a programação por caixas. Use “+ Programação de compra” e informe as peças de cada rodada.",
+  "purchaseRounds.gen.selectItem":
+    "Selecione um item na tabela para gerar a programação de compra",
   "purchaseRounds.gen.noCarton":
     "O item escolhido não tem CBM da caixa (nem as medidas): sem ele não há conta de containers. As caixas são divididas igualmente pelas rodadas.",
   "purchaseRounds.gen.noPieces":
@@ -60,8 +56,6 @@ export const pt = {
     "Arredondado para caixas master inteiras: +{extra} peças.",
   "purchaseRounds.gen.reduced":
     "São só {cartons} caixa(s) master: a programação ficou com {rounds} rodada(s).",
-  "purchaseRounds.gen.regen":
-    "As rodadas foram geradas com a caixa de outro item: clique em Gerar programação para dividir de novo em caixas inteiras deste.",
   "purchaseRounds.gen.each":
     "Cada rodada: {cartons} caixas · {cbm} m³ = {n} container {container}, com {pct}% ocupado.",
   "purchaseRounds.gen.eachMany":
@@ -170,12 +164,8 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.calc": "Calculation",
   "purchaseRounds.gen.item":
     "Chosen item: {pcs} pieces per master carton · {cbm} m³ per carton → {cartons} cartons ({pieces} pieces) per {container}.",
-  "purchaseRounds.gen.itemAssumed":
-    "Calculated with {label}: {pcs} pieces per master carton · {cbm} m³ per carton → {cartons} cartons ({pieces} pieces) per {container}.",
-  "purchaseRounds.gen.assumedNote":
-    "No item is marked as chosen in the table: the calculation uses the first one in the group with a master carton and CBM. Mark the chosen one to use its carton.",
-  "purchaseRounds.gen.noItem":
-    "No item in the group has pieces per master carton and carton CBM (nor dimensions): without them the schedule cannot be generated from cartons. Use “+ Purchase schedule” and enter the pieces of each round.",
+  "purchaseRounds.gen.selectItem":
+    "Select an item in the table to generate the purchase schedule",
   "purchaseRounds.gen.noCarton":
     "The chosen item has no carton CBM (nor dimensions): without it there is no container calculation. The cartons are split evenly across the rounds.",
   "purchaseRounds.gen.noPieces":
@@ -190,8 +180,6 @@ export const en: Record<keyof typeof pt, string> = {
     "Rounded up to whole master cartons: +{extra} pieces.",
   "purchaseRounds.gen.reduced":
     "There are only {cartons} master carton(s): the schedule has {rounds} round(s).",
-  "purchaseRounds.gen.regen":
-    "The rounds were generated with another item's carton: click Generate schedule to split again in whole cartons of this one.",
   "purchaseRounds.gen.each":
     "Each round: {cartons} cartons · {cbm} m³ = {n} {container} container, {pct}% used.",
   "purchaseRounds.gen.eachMany":
@@ -296,12 +284,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.calc": "计算",
   "purchaseRounds.gen.item":
     "所选产品：每外箱 {pcs} 件 · 每箱 {cbm} m³ → 每个 {container} {cartons} 箱（{pieces} 件）。",
-  "purchaseRounds.gen.itemAssumed":
-    "按 {label} 计算：每外箱 {pcs} 件 · 每箱 {cbm} m³ → 每个 {container} {cartons} 箱（{pieces} 件）。",
-  "purchaseRounds.gen.assumedNote":
-    "表格中尚未勾选所选产品：计算使用本组第一个有外箱和体积的产品。勾选所选产品后按其外箱计算。",
-  "purchaseRounds.gen.noItem":
-    "本组没有产品填写每外箱件数和外箱体积（也没有尺寸）：无法按箱数生成计划。请使用“+ 采购计划”并填写每批的件数。",
+  "purchaseRounds.gen.selectItem": "请在表格中选择一个商品以生成采购计划",
   "purchaseRounds.gen.noCarton":
     "所选产品没有外箱体积（也没有尺寸）：无法计算集装箱。箱数平均分配到各批。",
   "purchaseRounds.gen.noPieces":
@@ -314,8 +297,6 @@ export const zh: Record<keyof typeof pt, string> = {
     "{rounds} 批 · {cartons} 箱（{pieces} 件） · {cbm} m³ · {containers} 个 {container}",
   "purchaseRounds.gen.extra": "按整箱向上取整：多 {extra} 件。",
   "purchaseRounds.gen.reduced": "只有 {cartons} 个外箱：计划为 {rounds} 批。",
-  "purchaseRounds.gen.regen":
-    "各批是按另一产品的外箱生成的：点击“生成计划”按本产品的整箱重新分配。",
   "purchaseRounds.gen.each":
     "每批：{cartons} 箱 · {cbm} m³ = {n} 个 {container}，已用 {pct}%。",
   "purchaseRounds.gen.eachMany":

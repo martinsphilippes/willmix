@@ -19,6 +19,7 @@ import {
   blockedBy,
   isAutoGateKey,
   isLeadTimeKey,
+  isSampleOrderKey,
   itemIdOf,
   supplierSeesLaneRequirement,
 } from "@/lib/purchase-lanes";
@@ -3185,6 +3186,27 @@ function RequirementRow({
                   ? t("sheet.completeCta", { count: String(sheetHint.count) })
                   : t("sheet.open")
                 : t("sheet.view")}
+            </LinkButton>
+          </div>
+        ) : null
+      ) : isSampleOrderKey(r.key) ? (
+        // Pedido de amostras: pela página dele (docs/SAMPLE_ORDER.md).
+        isWellmix(user) || user.role === "supplier" ? (
+          <div className={wide.side}>
+            <LinkButton
+              href={`/app/orders/${order.id}/samples`}
+              variant={
+                open &&
+                !waiting &&
+                r.status !== "done" &&
+                canSubmitRequirement(user, order as never, r)
+                  ? "primary"
+                  : "secondary"
+              }
+              className="w-full @sm:w-auto"
+              data-sample-order-link={r.key}
+            >
+              {t("sampleOrder.open")}
             </LinkButton>
           </div>
         ) : null
