@@ -435,6 +435,32 @@ export async function respondProposalAction(form: FormData) {
   });
 }
 
+/**
+ * O fornecedor confirma ou recusa a oferta vigente do produto, direto da
+ * tabela (sem formulário). `offer` é o retrato da oferta que a tela mostrou.
+ */
+export async function respondOfferAction(form: FormData) {
+  const user = await requireUser();
+  const { id, back, ok } = backOf(form);
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const input = z
+      .object({
+        action: z.enum(["confirm", "refuse"]),
+        offer: z.string().min(1).max(200),
+      })
+      .parse({ action: str(form, "action"), offer: str(form, "offer") });
+    const { respondToOffer } =
+      await import("@/lib/services/supplier-request-negotiation");
+    await respondToOffer(user, id, input.action, input.offer);
+    return withQuery(
+      back,
+      "offer",
+      input.action === "confirm" ? "confirmed" : "refused",
+    );
+  });
+}
+
 /** Mensagem livre da conversa, com ou sem arquivo (foto, PDF ou Excel). */
 export async function postSupplierRequestMessageAction(form: FormData) {
   const user = await requireUser();

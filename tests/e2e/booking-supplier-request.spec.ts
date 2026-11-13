@@ -226,7 +226,16 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-table-master]")).toHaveText("48");
   await expect(page.locator("[data-supplier-table-book]")).toHaveCount(0);
   await expect(page.locator("[data-supplier-table-detail=ncm]")).toHaveCount(0);
+  // Três respostas por produto: confirmar a oferta do book (com o valor no
+  // botão), renegociar (formulário já preenchido com ela) ou recusar.
+  await expect(page.locator("[data-supplier-table-confirm]")).toContainText(
+    /1[.,]25 USD/,
+  );
+  await expect(page.locator("[data-supplier-table-refuse]")).toBeVisible();
   await page.locator("[data-supplier-table-answer-open]").click();
+  await expect(
+    page.locator("[data-supplier-table-answer-price-input]"),
+  ).toHaveValue(/1[.,]25/);
   await page.fill("[data-supplier-table-answer-price-input]", "1,40");
   await page.fill("[data-supplier-table-answer-moq]", "2000");
   await page.selectOption("[data-supplier-table-answer-incoterm]", "EXW");
@@ -302,6 +311,10 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await login(page, "supplier.a@china.com");
   await page.goto(requestUrl);
   await expect(page.locator("[data-supplier-table-pending]")).toBeVisible();
+  // A oferta vigente passou a ser a contraproposta: é ela que se confirma.
+  await expect(page.locator("[data-supplier-table-confirm]")).toContainText(
+    /1[.,]3 USD/,
+  );
   await page.locator("[data-supplier-table-message]").click();
   await page.fill("[data-supplier-table-message-text]", "Ok, segue a caixa.");
   await page.click("[data-supplier-table-message-submit]");

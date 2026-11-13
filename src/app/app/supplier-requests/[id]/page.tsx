@@ -159,6 +159,9 @@ export default async function SupplierRequestPage({
     notices.push(
       t(`supplierRequests.detail.decided.${decided}` as DictionaryKey),
     );
+  const offerNotice = one("offer");
+  if (offerNotice === "confirmed" || offerNotice === "refused")
+    notices.push(t(`supplierRequests.detail.offer.${offerNotice}`));
   const negotiationNotice = one("negotiation");
   if (
     ["proposal", "accept", "counter", "reject", "message"].includes(
