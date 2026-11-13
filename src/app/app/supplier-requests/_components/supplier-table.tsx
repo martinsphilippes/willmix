@@ -5,6 +5,7 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   answerTimes,
   canPostMessage,
+  currentOffer,
   finalConditions,
   initialConditions,
   type ConditionsState,
@@ -35,6 +36,8 @@ import { QuickDialog } from "@/components/quick-dialog";
 import {
   answerSupplierRequestAction,
   postSupplierRequestMessageAction,
+  respondOfferAction,
+  respondProposalAction,
 } from "../../actions/supplier-requests";
 import { SAMPLING_TONE, STATUS_TONE } from "./status";
 import {
@@ -45,7 +48,7 @@ import {
 import Link from "next/link";
 import { roundsDates } from "@/components/purchase-rounds";
 import { dateTime } from "./negotiation";
-import { AnswerIcon, ChatBubbleIcon, OpenIcon } from "./icons";
+import { ChatBubbleIcon, OpenIcon } from "./icons";
 import {
   requestItemSpecs,
   type RequestBookSpecs,
@@ -282,8 +285,10 @@ export function SupplierRequestTable({
             const current = r.id === currentId && !r.batchId;
             const pending = !!pendingProposal(r.negotiation);
             // Só o fornecedor responde (a Wellmix não responde por ele).
-            const canAnswer =
-              !wellmix && supplierCanAnswer(r.status) && !pending;
+            // Três respostas por produto: confirmar a oferta vigente,
+            // renegociar (formulário já preenchido) ou recusar.
+            const offer =
+              !wellmix && supplierCanAnswer(r.status) ? currentOffer(r) : null;
             const turn = negotiationTurn(r);
             const sla = slaOf(r, slaMinutes);
             const times = answerTimes(
@@ -571,7 +576,7 @@ export function SupplierRequestTable({
                     current && "bg-brand-50",
                   )}
                 >
-                  <span className="flex justify-end gap-1">
+                  <span className="flex flex-wrap items-start justify-end gap-1">
                     {canPostMessage(r.status) ? (
                       <QuickDialog
                         label={<ChatBubbleIcon />}
@@ -607,123 +612,187 @@ export function SupplierRequestTable({
                         </form>
                       </QuickDialog>
                     ) : null}
-                    {canAnswer ? (
-                      <QuickDialog
-                        label={<AnswerIcon />}
-                        hint={k("answer")}
-                        title={t("supplierRequests.table.answerTitle", {
-                          n: r.number,
-                        })}
-                        closeLabel={k("close")}
-                        tone="primary"
-                        data-supplier-table-answer-open={r.id}
+                    {offer ? (
+                      <span
+                        className="order-last flex w-full flex-col items-stretch gap-1"
+                        data-supplier-table-offer={offer.source}
                       >
-                        <form
-                          action={answerSupplierRequestAction}
-                          className="space-y-2"
-                          data-supplier-table-answer-form
-                        >
-                          <input type="hidden" name="id" value={r.id} />
-                          <input type="hidden" name="view" value="table" />
-                          {/* Mantém o prazo já respondido (muda na tela do produto). */}
-                          <input
-                            type="hidden"
-                            name="leadTimeDays"
-                            value={raw(r.supplierLeadTimeDays)}
-                          />
-                          <p className="text-xs text-zinc-500">
-                            {k("answerHint")}
-                          </p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Field
-                              label={t("supplierRequests.detail.answer.price")}
-                            >
-                              <Input
-                                name="price"
-                                inputMode="decimal"
-                                defaultValue={raw(r.supplierPrice)}
-                                data-supplier-table-answer-price-input
-                              />
-                            </Field>
-                            <Field
-                              label={t(
-                                "supplierRequests.detail.answer.currency",
-                              )}
-                            >
-                              <Select
-                                name="currency"
-                                defaultValue={
-                                  r.supplierCurrency ?? it.currency ?? "USD"
-                                }
-                              >
-                                {SHEET_CURRENCIES.map((c) => (
-                                  <option key={c} value={c}>
-                                    {c}
-                                  </option>
-                                ))}
-                              </Select>
-                            </Field>
-                            <Field
-                              label={t("supplierRequests.detail.answer.moq")}
-                            >
-                              <Input
-                                name="moq"
-                                inputMode="numeric"
-                                defaultValue={raw(r.supplierMoq)}
-                                data-supplier-table-answer-moq
-                              />
-                            </Field>
-                            <Field
-                              label={t(
-                                "supplierRequests.detail.answer.incoterm",
-                              )}
-                            >
-                              <Select
-                                name="incoterm"
-                                defaultValue={
-                                  r.supplierIncoterm ?? it.incoterm ?? "FOB"
-                                }
-                                data-supplier-table-answer-incoterm
-                              >
-                                {SHEET_INCOTERMS.map((c) => (
-                                  <option key={c} value={c}>
-                                    {c}
-                                  </option>
-                                ))}
-                              </Select>
-                            </Field>
-                          </div>
-                          <Field
-                            label={t("supplierRequests.detail.answer.note")}
-                          >
-                            <Textarea
-                              name="note"
-                              rows={2}
-                              maxLength={4000}
-                              defaultValue={r.supplierNote ?? ""}
+                        {offer.confirmable ? (
+                          <form action={respondOfferAction}>
+                            <input type="hidden" name="id" value={r.id} />
+                            <input type="hidden" name="view" value="table" />
+                            <input
+                              type="hidden"
+                              name="action"
+                              value="confirm"
                             />
-                          </Field>
-                          <div className="flex flex-wrap gap-2">
+                            <input
+                              type="hidden"
+                              name="offer"
+                              value={offer.token}
+                            />
                             <SubmitButton
-                              name="canDo"
-                              value="yes"
+                              className="w-full whitespace-nowrap px-2.5 py-1 text-xs"
+                              pendingText={k("sending")}
+                              title={k(`confirmHint.${offer.source}`)}
+                              data-supplier-table-confirm={r.id}
+                            >
+                              {t("supplierRequests.table.confirm", {
+                                price: [
+                                  num(offer.conditions.price),
+                                  offer.conditions.currency,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" "),
+                              })}
+                            </SubmitButton>
+                          </form>
+                        ) : null}
+                        <QuickDialog
+                          label={k("renegotiate")}
+                          hint={k("renegotiateHint")}
+                          title={t("supplierRequests.table.renegotiateTitle", {
+                            n: r.number,
+                          })}
+                          closeLabel={k("close")}
+                          data-supplier-table-answer-open={r.id}
+                        >
+                          {/* Com contraproposta esperando: nova proposta; sem,
+                              a resposta "faz" com as condições que ele editar. */}
+                          <form
+                            action={
+                              pending
+                                ? respondProposalAction
+                                : answerSupplierRequestAction
+                            }
+                            className="space-y-2"
+                            data-supplier-table-answer-form
+                          >
+                            <input type="hidden" name="id" value={r.id} />
+                            <input type="hidden" name="view" value="table" />
+                            {pending ? (
+                              <input
+                                type="hidden"
+                                name="action"
+                                value="counter"
+                              />
+                            ) : (
+                              <input type="hidden" name="canDo" value="yes" />
+                            )}
+                            {/* Mantém o prazo vigente (muda na tela do produto). */}
+                            <input
+                              type="hidden"
+                              name="leadTimeDays"
+                              value={raw(
+                                offer.conditions.leadTimeDays ??
+                                  r.supplierLeadTimeDays,
+                              )}
+                            />
+                            <p className="text-xs text-zinc-500">
+                              {k("renegotiateText")}
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Field
+                                label={t(
+                                  "supplierRequests.detail.answer.price",
+                                )}
+                              >
+                                <Input
+                                  name="price"
+                                  inputMode="decimal"
+                                  required
+                                  defaultValue={raw(offer.conditions.price)}
+                                  data-supplier-table-answer-price-input
+                                />
+                              </Field>
+                              <Field
+                                label={t(
+                                  "supplierRequests.detail.answer.currency",
+                                )}
+                              >
+                                <Select
+                                  name="currency"
+                                  defaultValue={
+                                    offer.conditions.currency ?? "USD"
+                                  }
+                                >
+                                  {SHEET_CURRENCIES.map((c) => (
+                                    <option key={c} value={c}>
+                                      {c}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </Field>
+                              <Field
+                                label={t("supplierRequests.detail.answer.moq")}
+                              >
+                                <Input
+                                  name="moq"
+                                  inputMode="numeric"
+                                  defaultValue={raw(offer.conditions.moq)}
+                                  data-supplier-table-answer-moq
+                                />
+                              </Field>
+                              <Field
+                                label={t(
+                                  "supplierRequests.detail.answer.incoterm",
+                                )}
+                              >
+                                <Select
+                                  name="incoterm"
+                                  defaultValue={
+                                    offer.conditions.incoterm ?? "FOB"
+                                  }
+                                  data-supplier-table-answer-incoterm
+                                >
+                                  {SHEET_INCOTERMS.map((c) => (
+                                    <option key={c} value={c}>
+                                      {c}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </Field>
+                            </div>
+                            <Field
+                              label={t("supplierRequests.detail.answer.note")}
+                            >
+                              <Textarea
+                                name={pending ? "text" : "note"}
+                                rows={2}
+                                maxLength={4000}
+                                defaultValue={
+                                  pending ? "" : (r.supplierNote ?? "")
+                                }
+                              />
+                            </Field>
+                            <SubmitButton
                               pendingText={k("sending")}
                               data-supplier-table-answer="yes"
                             >
-                              {k("yes")}
+                              {k("renegotiateSend")}
                             </SubmitButton>
-                            <SubmitButton
-                              name="canDo"
-                              value="no"
-                              variant="danger"
-                              pendingText={k("sending")}
-                              data-supplier-table-answer="no"
-                            >
-                              {k("no")}
-                            </SubmitButton>
-                          </div>
+                          </form>
+                        </QuickDialog>
+                        <form action={respondOfferAction}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <input type="hidden" name="view" value="table" />
+                          <input type="hidden" name="action" value="refuse" />
+                          <input
+                            type="hidden"
+                            name="offer"
+                            value={offer.token}
+                          />
+                          <SubmitButton
+                            variant="danger"
+                            className="w-full whitespace-nowrap px-2.5 py-1 text-xs"
+                            pendingText={k("sending")}
+                            title={k(`refuseHint.${offer.source}`)}
+                            data-supplier-table-refuse={r.id}
+                          >
+                            {k("refuse")}
+                          </SubmitButton>
                         </form>
-                      </QuickDialog>
+                      </span>
                     ) : null}
                     <LinkButton
                       href={href}

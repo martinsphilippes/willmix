@@ -13,6 +13,7 @@ import {
 import {
   canPostMessage,
   canPropose,
+  currentOffer,
   pendingProposal,
   supplierRequestActive,
   supplierRequestLate,
@@ -20,7 +21,10 @@ import {
 } from "@/lib/supplier-requests";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { audit } from "./audit";
-import { SupplierRequestError } from "./supplier-requests";
+import {
+  SupplierRequestError,
+  answerSupplierRequest,
+} from "./supplier-requests";
 
 /*
  * Negociação da solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md,
@@ -270,6 +274,66 @@ export async function respondToProposal(
       `supplierRequests.notify.${action}.body` as DictionaryKey,
     );
   return updated;
+}
+
+/**
+ * Confirmar ou recusar a oferta vigente de um produto, direto da tabela, sem
+ * formulário (docs/SUPPLIER_REQUESTS.md, "Três respostas na tabela"). Só o
+ * fornecedor. `token` é o retrato da oferta que a tela mostrou: se ela mudou
+ * (outra contraproposta, outra resposta), nada é gravado
+ * (`supplier_request_offer_changed`) e a tela volta com a oferta atual.
+ * Reaproveita os passos de sempre: com contraproposta esperando, aceite ou
+ * recusa dela; sem, a resposta "faz" com as condições do book ou "não faz".
+ */
+export async function respondToOffer(
+  user: User,
+  id: string,
+  action: "confirm" | "refuse",
+  token: string,
+): Promise<SupplierRequest> {
+  const { request } = await load(user, id);
+  if (isWellmix(user))
+    throw new SupplierRequestError("supplier_request_supplier_only");
+  const offer = currentOffer(request);
+  if (!offer) throw new SupplierRequestError("supplier_request_closed");
+  if (offer.token !== token)
+    throw new SupplierRequestError("supplier_request_offer_changed");
+  const none = {
+    price: null,
+    currency: null,
+    moq: null,
+    leadTimeDays: null,
+    text: null,
+  };
+  if (offer.source === "proposal")
+    return respondToProposal(
+      user,
+      id,
+      action === "confirm" ? "accept" : "reject",
+      none,
+    );
+  if (action === "refuse")
+    return answerSupplierRequest(user, id, {
+      canDo: "no",
+      price: null,
+      currency: null,
+      moq: null,
+      leadTimeDays: null,
+      note: null,
+    });
+  if (!offer.confirmable)
+    throw new SupplierRequestError("supplier_request_offer_changed");
+  const c = offer.conditions;
+  return answerSupplierRequest(user, id, {
+    canDo: "yes",
+    price: c.price,
+    currency: (c.currency as SheetCurrency | null) ?? null,
+    moq: c.moq,
+    // O book não traz prazo: fica o que o fornecedor já tinha informado.
+    leadTimeDays: c.leadTimeDays ?? request.supplierLeadTimeDays ?? null,
+    incoterm: (c.incoterm as SheetIncoterm | null) ?? null,
+    note: null,
+  });
 }
 
 /**

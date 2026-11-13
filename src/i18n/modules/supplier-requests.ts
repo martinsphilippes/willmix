@@ -260,7 +260,7 @@ export const pt = {
   "supplierRequests.table.needs": "A Wellmix precisa",
   "supplierRequests.table.current": "Esta solicitação",
   "supplierRequests.table.proposalPending":
-    "Contraproposta esperando você: abra o produto para responder.",
+    "Contraproposta esperando você: confirme, renegocie ou recuse.",
   "supplierRequests.table.message": "Mensagem",
   "supplierRequests.table.messageTitle":
     "Mensagem à Wellmix · solicitação nº {n}",
@@ -384,7 +384,7 @@ export const pt = {
   "supplierRequests.timeline.showcase": "Produto liberado na vitrine",
   "supplierRequests.timeline.erp": "CODPROD conferido no Sankhya",
   "supplierRequests.table.hint":
-    "Uma informação por coluna. Pelos ícones: mensagem à Wellmix, resposta sim/não e abrir a tela do produto.",
+    "Uma informação por coluna. Em Ações: mensagem à Wellmix, abrir a tela do produto e, por item, confirmar a oferta, renegociar ou recusar.",
   "supplierRequests.table.answerHint":
     "Para responder sim, informe o preço por peça. Pedido mínimo e modalidade de entrega (FOB/EXW) vão junto; o prazo fica como está (mude na tela do produto).",
   "supplierRequests.table.col.initial": "Condições iniciais (book)",
@@ -406,6 +406,30 @@ export const pt = {
   "supplierRequests.table.state.accepted": "Aceita",
   "supplierRequests.table.state.rejected": "Recusada",
   "supplierRequests.table.state.counter": "Nova proposta do fornecedor",
+  "supplierRequests.table.confirm": "Confirmar {price}/peça",
+  "supplierRequests.table.confirmHint.book":
+    "Aceita a oferta do book como está: preço, moeda, pedido mínimo e entrega.",
+  "supplierRequests.table.confirmHint.proposal":
+    "Aceita a contraproposta da Wellmix como está.",
+  "supplierRequests.table.confirmHint.own":
+    "Sua resposta já é a oferta em vigor.",
+  "supplierRequests.table.renegotiate": "Renegociar",
+  "supplierRequests.table.renegotiateHint":
+    "Mudar as condições e enviar uma contraproposta",
+  "supplierRequests.table.renegotiateTitle": "Renegociar · solicitação nº {n}",
+  "supplierRequests.table.renegotiateText":
+    "As condições em vigor já estão preenchidas. Mude o que quiser e envie; o item fica em negociação até a Wellmix responder.",
+  "supplierRequests.table.renegotiateSend": "Enviar contraproposta",
+  "supplierRequests.table.refuse": "Recusar oferta",
+  "supplierRequests.table.refuseHint.book": "Responde que não faz este item.",
+  "supplierRequests.table.refuseHint.proposal":
+    "Recusa a contraproposta da Wellmix; fica valendo a sua resposta anterior.",
+  "supplierRequests.table.refuseHint.own":
+    "Retira a sua resposta: passa a constar que não faz este item.",
+  "supplierRequests.detail.offer.confirmed": "Oferta confirmada.",
+  "supplierRequests.detail.offer.refused": "Oferta recusada.",
+  "supplierRequests.error.supplier_request_offer_changed":
+    "A oferta deste item mudou desde que a tela foi aberta. Nada foi gravado: confira os valores atuais e responda de novo.",
   "supplierRequests.table.col.packageType": "Embalagem",
   "supplierRequests.table.col.measures": "Medidas do produto (cm)",
   "supplierRequests.table.col.capacity": "Capacidade / tamanho",
@@ -680,7 +704,7 @@ export const en: typeof pt = {
   "supplierRequests.table.needs": "Wellmix needs",
   "supplierRequests.table.current": "This request",
   "supplierRequests.table.proposalPending":
-    "Counter-offer waiting for you: open the product to reply.",
+    "Counter-offer waiting for you: confirm, renegotiate or decline.",
   "supplierRequests.table.message": "Message",
   "supplierRequests.table.messageTitle": "Message to Wellmix · request no. {n}",
   "supplierRequests.table.messageText": "Message",
@@ -731,7 +755,7 @@ export const en: typeof pt = {
   "supplierRequests.table.hintWellmix":
     "One piece of information per column. Icons: message the supplier and open the product screen. The answer comes from the supplier, through the portal.",
   "supplierRequests.table.hint":
-    "One piece of information per column. Icons: message Wellmix, yes/no answer and open the product screen.",
+    "One piece of information per column. Under Actions: message Wellmix, open the product screen and, per item, confirm the offer, renegotiate or decline.",
   "supplierRequests.table.answerHint":
     "To answer yes, enter the price per piece. Minimum order and delivery terms (FOB/EXW) go with it; the lead time stays as it is (change it on the product screen).",
   "supplierRequests.table.proposalPendingWellmix":
@@ -821,6 +845,31 @@ export const en: typeof pt = {
   "supplierRequests.table.state.accepted": "Accepted",
   "supplierRequests.table.state.rejected": "Declined",
   "supplierRequests.table.state.counter": "New proposal from the supplier",
+  "supplierRequests.table.confirm": "Confirm {price}/pc",
+  "supplierRequests.table.confirmHint.book":
+    "Accepts the book offer as is: price, currency, minimum order and delivery.",
+  "supplierRequests.table.confirmHint.proposal":
+    "Accepts the Wellmix counter-offer as is.",
+  "supplierRequests.table.confirmHint.own":
+    "Your answer is already the offer in force.",
+  "supplierRequests.table.renegotiate": "Renegotiate",
+  "supplierRequests.table.renegotiateHint":
+    "Change the conditions and send a counter-offer",
+  "supplierRequests.table.renegotiateTitle": "Renegotiate · request no. {n}",
+  "supplierRequests.table.renegotiateText":
+    "The conditions in force are already filled in. Change what you want and send; the item stays under negotiation until Wellmix replies.",
+  "supplierRequests.table.renegotiateSend": "Send counter-offer",
+  "supplierRequests.table.refuse": "Decline offer",
+  "supplierRequests.table.refuseHint.book":
+    "Answers that you do not make this item.",
+  "supplierRequests.table.refuseHint.proposal":
+    "Declines the Wellmix counter-offer; your previous answer stands.",
+  "supplierRequests.table.refuseHint.own":
+    "Withdraws your answer: it will show that you do not make this item.",
+  "supplierRequests.detail.offer.confirmed": "Offer confirmed.",
+  "supplierRequests.detail.offer.refused": "Offer declined.",
+  "supplierRequests.error.supplier_request_offer_changed":
+    "The offer for this item changed since the screen was opened. Nothing was saved: check the current values and answer again.",
   "supplierRequests.table.col.packageType": "Package",
   "supplierRequests.table.col.measures": "Product size (cm)",
   "supplierRequests.table.col.capacity": "Capacity / size",
@@ -1085,7 +1134,7 @@ export const zh: typeof pt = {
   "supplierRequests.table.needs": "Wellmix 需要",
   "supplierRequests.table.current": "本询单",
   "supplierRequests.table.proposalPending":
-    "有还价等待您答复：请打开产品页面回复。",
+    "有还价等待您答复：请确认、重新议价或拒绝。",
   "supplierRequests.table.message": "留言",
   "supplierRequests.table.messageTitle": "给 Wellmix 的留言 · 询单 {n} 号",
   "supplierRequests.table.messageText": "留言",
@@ -1130,7 +1179,7 @@ export const zh: typeof pt = {
   "supplierRequests.table.hintWellmix":
     "每列一项信息。图标：给供应商留言、打开产品页面。答复由供应商通过门户提交。",
   "supplierRequests.table.hint":
-    "每列一项信息。图标：给 Wellmix 留言、是/否答复、打开产品页面。",
+    "每列一项信息。操作栏：给 Wellmix 留言、打开产品页面，并可逐项确认报价、重新议价或拒绝。",
   "supplierRequests.table.answerHint":
     "答复“是”时请填写单价。起订量和交货方式（FOB/EXW）一并提交；交期保持不变（可在产品页面修改）。",
   "supplierRequests.table.proposalPendingWellmix": "还价等待供应商答复。",
@@ -1213,6 +1262,26 @@ export const zh: typeof pt = {
   "supplierRequests.table.state.accepted": "已接受",
   "supplierRequests.table.state.rejected": "已拒绝",
   "supplierRequests.table.state.counter": "供应商新报价",
+  "supplierRequests.table.confirm": "确认 {price}/件",
+  "supplierRequests.table.confirmHint.book":
+    "按原样接受 Book 报价：价格、币种、起订量和交货方式。",
+  "supplierRequests.table.confirmHint.proposal": "按原样接受 Wellmix 的还价。",
+  "supplierRequests.table.confirmHint.own": "您的答复已是当前有效报价。",
+  "supplierRequests.table.renegotiate": "重新议价",
+  "supplierRequests.table.renegotiateHint": "修改条件并发出还价",
+  "supplierRequests.table.renegotiateTitle": "重新议价 · 询单 {n} 号",
+  "supplierRequests.table.renegotiateText":
+    "当前有效条件已填好。修改后发送；在 Wellmix 答复前，该产品保持议价中。",
+  "supplierRequests.table.renegotiateSend": "发送还价",
+  "supplierRequests.table.refuse": "拒绝报价",
+  "supplierRequests.table.refuseHint.book": "答复不做此产品。",
+  "supplierRequests.table.refuseHint.proposal":
+    "拒绝 Wellmix 的还价；保留您之前的答复。",
+  "supplierRequests.table.refuseHint.own": "撤回您的答复：将显示不做此产品。",
+  "supplierRequests.detail.offer.confirmed": "报价已确认。",
+  "supplierRequests.detail.offer.refused": "报价已拒绝。",
+  "supplierRequests.error.supplier_request_offer_changed":
+    "打开页面后，此产品的报价已变更。未保存任何内容：请核对当前数值后重新答复。",
   "supplierRequests.table.col.packageType": "包装",
   "supplierRequests.table.col.measures": "产品尺寸（cm）",
   "supplierRequests.table.col.capacity": "容量 / 尺寸",

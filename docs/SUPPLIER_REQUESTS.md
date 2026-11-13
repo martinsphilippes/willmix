@@ -92,9 +92,20 @@ Quem abre `/app/supplier-requests/[id]` (o fornecedor e, desde a segunda rodada,
 - **Uma informação por coluna**: foto (miniatura que amplia, `PhotoGallery`), nº, produto, código da fábrica, nº do item, material, quantidade, MOQ, preço, moeda e entrega do booking, o que a Wellmix precisa, "faz?", as **condições iniciais** (as do booking, com que a Wellmix abre a solicitação: preço, moeda, MOQ, FOB/EXW; o booking não traz prazo; `initialConditions`) e as **condições finais** (a **última proposta enviada, aceita ou não**: cada passo atualiza as condições em ordem, da resposta do fornecedor à contraproposta da Wellmix, ao aceite/recusa e à nova proposta; com a situação dela: resposta do fornecedor, contraproposta enviada, aceita, recusada ou nova proposta do fornecedor; `finalConditions`), situação, SLA (prazo com data e hora, "Atrasada"), de quem é a vez, **aberta em**, **1ª resposta** e **última resposta** (data e hora; `answerTimes`).
 - Ações rápidas por linha, **só ícones** (o nome fica na dica e no `aria-label`), cada uma numa caixa pequena (`QuickDialog`):
   - **Mensagem**: texto para a conversa da solicitação.
-  - **Sim / Não**: resposta definitiva com preço e moeda, **MOQ** e **modalidade de entrega (FOB/EXW)**; o prazo já respondido fica como está. Só o fornecedor responde (desde 12/11/2026 a Wellmix, mesmo admin, não registra a resposta por ele: `supplier_request_supplier_only`). Só enquanto se pode responder (Aberta ou Respondida, sem contraproposta esperando).
+  - **Confirmar, Renegociar e Recusar** (desde 13/11/2026, no lugar do "Sim / Não"; ver "Três respostas na tabela"). O formulário de Renegociar tem preço e moeda, **MOQ** e **modalidade de entrega (FOB/EXW)**; o prazo vigente fica como está. Só o fornecedor responde (desde 12/11/2026 a Wellmix, mesmo admin, não registra a resposta por ele: `supplier_request_supplier_only`). Só enquanto se pode responder (Aberta ou Respondida, sem contraproposta esperando).
   - **Abrir produto**: a tela completa, no mesmo link com `?view=item`. "Ver todos os produtos" volta à tabela.
 - As ações da tabela voltam para a tabela (`view=table`); as da tela do produto voltam para o produto.
+
+### Três respostas na tabela (pedido do dono, 13/11/2026)
+
+O botão combinado "Sim / Não" da linha deu lugar a **três botões por produto**, só para o fornecedor e só enquanto ele pode responder (Aberta ou Respondida). Mensagem e "Abrir produto" continuam.
+
+- **Oferta vigente** (`currentOffer`, `src/lib/supplier-requests.ts`): com contraproposta da Wellmix esperando, é ela (`proposal`, os valores dela sobre a última resposta); sem resposta ou depois de um "não faço", são as condições do book (`book`); respondida "faz" e sem contraproposta, é a resposta do próprio fornecedor (`own`: a vez é da Wellmix).
+- **Confirmar {preço}/peça**: aceita a oferta vigente como está, sem formulário (`respondToOffer`, ação `respondOfferAction`). Oferta do book: grava a resposta "faz" com o preço, a moeda, o MOQ e a entrega do book. Contraproposta: o aceite de sempre (`respondToProposal`). Não aparece na oferta `own` (não há o que confirmar) nem em oferta sem preço.
+- **Renegociar**: o formulário de antes, já preenchido com a oferta vigente. Sem contraproposta, envia a resposta "faz" com as condições editadas; com contraproposta, envia a nova proposta (`counter`). A vez passa à Wellmix e o item fica em negociação.
+- **Recusar oferta**: sem formulário. Oferta do book ou a própria: resposta "não faz". Contraproposta: a recusa de sempre (fica a resposta anterior).
+- **Oferta que mudou**: cada botão leva o retrato da oferta mostrada (`token`: origem, passo da negociação e valores). Se ela mudou desde que a tela abriu, nada é gravado (`supplier_request_offer_changed`) e a tela volta com a oferta atual e o aviso.
+- Cada formulário leva o `id` do produto da linha: a ação vale só para ele. Permissões, histórico (passos `answer`, `accept`, `counter`, `reject`), auditoria e avisos são os do fluxo que já existia.
 
 ### Ficha técnica na tabela (pedido do dono, 13/11/2026)
 

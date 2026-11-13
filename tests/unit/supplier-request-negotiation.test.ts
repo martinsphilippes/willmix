@@ -267,6 +267,186 @@ describe("contraproposta", () => {
   });
 });
 
+describe("três respostas na tabela", () => {
+  /** Solicitação aberta (sem resposta) de um item do fornecedor A. */
+  async function openRequest(sku: string) {
+    const lot = await lots.createBookingLotFromSheet(admin, sheet(sku));
+    const { setBookingItemsNcm } = await import("@/lib/services/booking-ncm");
+    const [item] = await getStore().list("booking_items", {
+      filter: { lotId: lot.id },
+    });
+    await setBookingItemsNcm(admin, [item.id], "7013.37.00");
+    await lots.closeBookingLot(admin, lot.id, null);
+    return svc.openSupplierRequest(admin, {
+      itemId: item.id,
+      alternativeIds: [],
+      quantity: null,
+      needs: null,
+      searchQuery: null,
+    });
+  }
+  const fresh = async (id: string) =>
+    (await getStore().get("supplier_requests", id))!;
+
+  it("confirmar a oferta do book grava a resposta com as condições dela, só naquele item", async () => {
+    const one = await openRequest("OFF-1");
+    const other = await openRequest("OFF-2");
+    const offer = lib.currentOffer(one)!;
+    expect(offer.source).toBe("book");
+    expect(offer.confirmable).toBe(true);
+    expect(offer.conditions).toMatchObject({
+      price: 1.25,
+      currency: "USD",
+      moq: 1000,
+      incoterm: "FOB",
+    });
+    // A Wellmix não confirma pelo fornecedor; outro fornecedor não abre.
+    await expect(
+      neg.respondToOffer(admin, one.id, "confirm", offer.token),
+    ).rejects.toThrow("supplier_request_supplier_only");
+    await expect(
+      neg.respondToOffer(supplierB, one.id, "confirm", offer.token),
+    ).rejects.toThrow("not_found");
+
+    await neg.respondToOffer(supplierA, one.id, "confirm", offer.token);
+    const after = await fresh(one.id);
+    expect(after).toMatchObject({
+      status: "answered",
+      supplierCanDo: "yes",
+      supplierPrice: 1.25,
+      supplierCurrency: "USD",
+      supplierMoq: 1000,
+      supplierIncoterm: "FOB",
+    });
+    expect(after.negotiation?.at(-1)).toMatchObject({
+      kind: "answer",
+      canDo: "yes",
+      price: 1.25,
+    });
+    // A outra linha da tela não muda.
+    expect(await fresh(other.id)).toMatchObject({
+      status: "open",
+      supplierCanDo: null,
+    });
+    // Respondida "faz": a oferta em vigor é a dele, sem o que confirmar.
+    expect(lib.currentOffer(after)).toMatchObject({
+      source: "own",
+      confirmable: false,
+    });
+  });
+
+  it("recusar a oferta do book responde não faz, sem preço", async () => {
+    const request = await openRequest("OFF-3");
+    await neg.respondToOffer(
+      supplierA,
+      request.id,
+      "refuse",
+      lib.currentOffer(request)!.token,
+    );
+    const after = await fresh(request.id);
+    expect(after).toMatchObject({
+      status: "answered",
+      supplierCanDo: "no",
+      supplierPrice: null,
+    });
+    // Depois do "não faço", a oferta do book volta a poder ser confirmada.
+    expect(lib.currentOffer(after)).toMatchObject({
+      source: "book",
+      confirmable: true,
+    });
+  });
+
+  it("com contraproposta: confirmar aceita os valores dela; recusar mantém a resposta", async () => {
+    const request = await answeredRequest("OFF-4");
+    await neg.proposeCounter(
+      admin,
+      request.id,
+      offer({ price: 1.3, moq: 800, incoterm: "EXW", text: "1,30?" }),
+    );
+    const pending = lib.currentOffer(await fresh(request.id))!;
+    expect(pending.source).toBe("proposal");
+    expect(pending.conditions).toMatchObject({
+      price: 1.3,
+      currency: "USD",
+      moq: 800,
+      incoterm: "EXW",
+      leadTimeDays: 30,
+    });
+    await neg.respondToOffer(supplierA, request.id, "confirm", pending.token);
+    const accepted = await fresh(request.id);
+    expect(accepted).toMatchObject({
+      supplierPrice: 1.3,
+      supplierMoq: 800,
+      supplierIncoterm: "EXW",
+    });
+    expect(accepted.negotiation?.at(-1)?.kind).toBe("accept");
+
+    await neg.proposeCounter(
+      admin,
+      request.id,
+      offer({ price: 1.1, text: "E 1,10?" }),
+    );
+    await neg.respondToOffer(
+      supplierA,
+      request.id,
+      "refuse",
+      lib.currentOffer(await fresh(request.id))!.token,
+    );
+    const refused = await fresh(request.id);
+    expect(refused.negotiation?.at(-1)?.kind).toBe("reject");
+    expect(refused.supplierPrice).toBe(1.3);
+  });
+
+  it("oferta que mudou desde a tela: nada é gravado", async () => {
+    const request = await answeredRequest("OFF-5");
+    await neg.proposeCounter(
+      admin,
+      request.id,
+      offer({ price: 1.3, text: "1,30?" }),
+    );
+    const seen = lib.currentOffer(await fresh(request.id))!;
+    // O fornecedor manda outra proposta e a Wellmix devolve outra: a tela
+    // aberta antes ainda mostra 1,30.
+    await neg.respondToProposal(
+      supplierA,
+      request.id,
+      "counter",
+      offer({ price: 1.35, currency: "USD" }),
+    );
+    await neg.proposeCounter(
+      admin,
+      request.id,
+      offer({ price: 1.2, text: "1,20?" }),
+    );
+    const before = await fresh(request.id);
+    for (const action of ["confirm", "refuse"] as const)
+      await expect(
+        neg.respondToOffer(supplierA, request.id, action, seen.token),
+      ).rejects.toThrow("supplier_request_offer_changed");
+    const after = await fresh(request.id);
+    expect(after.negotiation).toHaveLength(before.negotiation!.length);
+    expect(after.supplierPrice).toBe(1.35);
+    // Com a oferta atual, confirma.
+    await neg.respondToOffer(
+      supplierA,
+      request.id,
+      "confirm",
+      lib.currentOffer(after)!.token,
+    );
+    expect((await fresh(request.id)).supplierPrice).toBe(1.2);
+  });
+
+  it("decidida: não há oferta para responder", async () => {
+    const request = await answeredRequest("OFF-6");
+    const token = lib.currentOffer(await fresh(request.id))!.token;
+    await svc.decideSupplierRequest(admin, request.id, "declined", null);
+    expect(lib.currentOffer(await fresh(request.id))).toBeNull();
+    await expect(
+      neg.respondToOffer(supplierA, request.id, "refuse", token),
+    ).rejects.toThrow("supplier_request_closed");
+  });
+});
+
 describe("conversa e arquivos", () => {
   it("os dois lados mandam mensagem e foto, PDF ou Excel; só a Wellmix e o fornecedor abrem", async () => {
     const store = getStore();
