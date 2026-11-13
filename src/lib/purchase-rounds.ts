@@ -204,6 +204,59 @@ export function cartonsFromPieces(
   return Math.ceil(pieces / masterCartonQty - 1e-9);
 }
 
+/** Número inteiro digitado: pontos, vírgulas e espaços são separador de milhar. */
+export function parseCount(text: string): number {
+  const t = String(text).replace(/[.,\s]/g, "");
+  return t ? Number(t) : NaN;
+}
+
+/** O último campo de quantidade digitado no gerador e o que foi digitado. */
+export interface TypedQuantity {
+  unit: "cartons" | "pieces";
+  text: string;
+  /**
+   * As peças que estavam na tela ao digitar as caixas: ficam no campo quando
+   * o item não tem peças por caixa master (não há como converter).
+   */
+  pieces: string;
+}
+
+/**
+ * "Total de caixas" e "Quantidade (peças)" são o mesmo número em duas
+ * unidades (pedido do dono, 13/11/2026): o que se digita num aparece no
+ * outro, pelas peças por caixa master do item escolhido. 10 caixas de 48 são
+ * 480 peças; 500 peças são 11 caixas (inteiras, para cima).
+ *
+ * Sem nada digitado, os dois acompanham a quantidade de base (`base`: a
+ * gravada ou a soma das rodadas). Com as peças em branco vale a quantidade
+ * da planilha ao gravar, e é ela que as caixas mostram.
+ */
+export function quantityFields(input: {
+  typed: TypedQuantity | null;
+  /** Quantidade de base, em peças (texto do campo). */
+  base: string;
+  masterCartonQty: number | null | undefined;
+  sheetQty: number | null | undefined;
+}): { cartons: string; pieces: string } {
+  const { typed, masterCartonQty } = input;
+  const pieces =
+    typed === null
+      ? input.base
+      : typed.unit === "pieces"
+        ? typed.text
+        : pos(masterCartonQty)
+          ? String(
+              piecesFromCartons(parseCount(typed.text), masterCartonQty) ?? "",
+            )
+          : typed.pieces;
+  if (typed?.unit === "cartons") return { cartons: typed.text, pieces };
+  const now = pieces.trim() ? parseCount(pieces) : (input.sheetQty ?? NaN);
+  return {
+    cartons: String(cartonsFromPieces(now, masterCartonQty) ?? ""),
+    pieces,
+  };
+}
+
 export function planPurchaseRounds(
   input: RoundsPlanInput,
 ): { plan: RoundsPlan } | { error: RoundsPlanError } {

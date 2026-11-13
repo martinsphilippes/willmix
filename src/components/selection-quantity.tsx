@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { Input, cx, inputDenseClass } from "@/components/ui";
+import { cx, inputDenseClass } from "@/components/ui";
 import {
   RequestScheduleFields,
   type ScheduleLabels,
@@ -9,13 +9,15 @@ import {
 import type { RequestSchedule } from "@/lib/db/schema";
 import {
   MAX_PURCHASE_ROUNDS,
-  cartonsFromPieces,
   containersPerRound,
+  parseCount,
   piecesFromCartons,
   planPurchaseRounds,
+  quantityFields,
   roundLoad,
   type RoundLoad,
   type RoundStep,
+  type TypedQuantity,
 } from "@/lib/purchase-rounds";
 import { splitEvenly } from "@/lib/workflow/request-schedule";
 
@@ -23,7 +25,15 @@ import { splitEvenly } from "@/lib/workflow/request-schedule";
  * Quantidade da escolha do grupo com a programação de compra
  * (docs/PURCHASE_SCHEDULE.md): sem programação, a quantidade digitada (em
  * branco = a da planilha); com ela, rodadas com peças e intervalo, e a
- * quantidade passa a ser a soma das rodadas (o campo fica só para leitura).
+ * quantidade gravada passa a ser a soma das rodadas.
+ *
+ * "Quantidade (peças)" fica na linha do gerador, logo depois de "Total de
+ * caixas", com o mesmo tamanho (pedido do dono, 13/11/2026). Os dois são o
+ * mesmo número em duas unidades: o que se digita num aparece no outro, pelas
+ * peças por caixa master do item escolhido (`quantityFields`). Sem
+ * programação, "Quantidade (peças)" é a quantidade que a escolha grava; com
+ * ela, os dois são o total do gerador (vale ao apertar "Gerar programação")
+ * e voltam a acompanhar as rodadas quando elas mudam.
  *
  * "Gerar programação" parte da QUANTIDADE (regra do dono, 12/11/2026): o
  * total e o número de rodadas viram rodadas iguais, em caixas master
@@ -119,12 +129,6 @@ export interface GenerateLabels {
 const fill = (s: string, vars: Record<string, string | number>) =>
   s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : `{${k}}`));
 
-/** Peças são inteiras: pontos, vírgulas e espaços são separador de milhar. */
-const parseNum = (s: string) => {
-  const t = String(s).replace(/[.,\s]/g, "");
-  return t ? Number(t) : NaN;
-};
-
 const usable = (i: SelectionCarton) => !!(i.masterCartonQty && i.cbmPerCarton);
 
 export function SelectionQuantity({
@@ -155,6 +159,7 @@ export function SelectionQuantity({
   const ref = useRef<HTMLDivElement>(null);
   const perRoundId = useId();
   const totalFieldId = useId();
+  const quantityHintId = useId();
   const [qty, setQty] = useState(
     defaultQuantity === null ? "" : String(defaultQuantity),
   );
@@ -167,15 +172,15 @@ export function SelectionQuantity({
         ?.code ??
       "",
   );
-  // Os dois campos do gerador acompanham a tela: o total é a soma das
-  // rodadas e o número de rodadas é o dos cartões. O digitado vale só
-  // enquanto as rodadas não mudam (`at` = como estavam ao digitar): mexer
-  // numa rodada (Aumentar, Diminuir, digitar, "+ Rodada", "×") atualiza os
-  // dois na hora.
-  const [totalEdit, setTotalEdit] = useState<{
-    text: string;
-    at: string;
-  } | null>(null);
+  // Os campos do gerador acompanham a tela: o total (em caixas e em peças)
+  // é a soma das rodadas e o número de rodadas é o dos cartões. O digitado
+  // vale só enquanto as rodadas não mudam (`at` = como estavam ao digitar):
+  // mexer numa rodada (Aumentar, Diminuir, digitar, "+ Rodada", "×")
+  // atualiza todos na hora. Do total guarda-se o último campo digitado
+  // (caixas ou peças); o outro sai da conta.
+  const [amountEdit, setAmountEdit] = useState<
+    (TypedQuantity & { at: string }) | null
+  >(null);
   const [roundsEdit, setRoundsEdit] = useState<{
     text: string;
     at: number;
@@ -234,19 +239,37 @@ export function SelectionQuantity({
   const assumed = !marked && !!fallback;
   const capacity =
     containerTypes.find((c) => c.code === container)?.capacityCbm ?? null;
-  // O total do gerador é em CAIXAS master; a conta segue em peças (caixas ×
-  // peças por caixa master do item). O campo acompanha a tela: as peças de
-  // agora (as da quantidade ou, em branco, as da planilha) em caixas
-  // inteiras. Sem as peças por caixa não há como converter: fica vazio.
+  // "Total de caixas" e "Quantidade (peças)": o mesmo número em duas
+  // unidades, pelas peças por caixa master do item. Sem nada digitado
+  // acompanham a tela: as peças de agora e, em caixas inteiras, elas ou (em
+  // branco) as da planilha. Sem as peças por caixa não há como converter: o
+  // campo que sairia da conta fica como estava.
   const perCarton = item?.masterCartonQty ?? null;
-  const piecesNow = qty.trim() ? parseNum(qty) : (item?.sheetQty ?? NaN);
-  const total =
-    totalEdit && totalEdit.at === qty
-      ? totalEdit.text
-      : String(cartonsFromPieces(piecesNow, perCarton) ?? "");
-  /** Peças do total digitado (caixas × peças por caixa); NaN sem conversão. */
+  const typed = amountEdit && amountEdit.at === qty ? amountEdit : null;
+  const { cartons: total, pieces } = quantityFields({
+    typed,
+    base: qty,
+    masterCartonQty: perCarton,
+    sheetQty: item?.sheetQty,
+  });
+  /**
+   * Total do gerador em peças; NaN sem conversão. Digitado em peças vale
+   * como está (a conta arredonda para caixas master inteiras e diz quanto);
+   * senão, caixas × peças por caixa.
+   */
   const totalPieces = () =>
-    piecesFromCartons(parseNum(total), perCarton) ?? NaN;
+    typed?.unit === "pieces" && perCarton
+      ? parseCount(typed.text)
+      : (piecesFromCartons(parseCount(total), perCarton) ?? NaN);
+  const typeAmount = (unit: TypedQuantity["unit"], text: string) => {
+    setAmountEdit({
+      unit,
+      text,
+      pieces: unit === "pieces" ? text : pieces,
+      at: qty,
+    });
+    setError(null);
+  };
   const hasCarton = !!(item && usable(item) && capacity);
   const perContainer =
     hasCarton && item
@@ -271,19 +294,19 @@ export function SelectionQuantity({
   }
 
   function generate(apply: (q: number[]) => void, roundsValue: string) {
-    const boxes = parseNum(total);
+    const boxes = parseCount(total);
     if (!Number.isInteger(boxes) || boxes <= 0) {
       setError(gen.errorTotal);
       return;
     }
-    const count = parseNum(roundsValue);
+    const count = parseCount(roundsValue);
     if (!Number.isInteger(count) || count < 1 || count > MAX_PURCHASE_ROUNDS) {
       setError(fill(gen.errorRounds, { max: MAX_PURCHASE_ROUNDS }));
       return;
     }
     // Caixas → peças: sem as peças por caixa master do item não há conversão.
-    const n = piecesFromCartons(boxes, perCarton);
-    if (n === null) {
+    const n = totalPieces();
+    if (!perCarton || !(n > 0)) {
       setNote(null);
       setError(gen.noPieces);
       return;
@@ -296,7 +319,7 @@ export function SelectionQuantity({
       apply(
         splitEvenly(boxes, count, MAX_PURCHASE_ROUNDS)
           .filter((b) => b > 0)
-          .map((b) => b * perCarton!),
+          .map((b) => b * perCarton),
       );
     } else {
       const out = planPurchaseRounds({
@@ -333,7 +356,7 @@ export function SelectionQuantity({
       apply(plan.rounds.map((r) => r.pieces));
     }
     // Gerado: os campos voltam a acompanhar as rodadas da tela.
-    setTotalEdit(null);
+    setAmountEdit(null);
     setRoundsEdit(null);
   }
 
@@ -366,7 +389,7 @@ export function SelectionQuantity({
       );
     // Rodadas da tela; sem programação, a prévia do que seria gerado.
     const typedTotal = totalPieces();
-    const typedRounds = parseNum(roundsValue);
+    const typedRounds = parseCount(roundsValue);
     const planned =
       !live.length &&
       typedTotal > 0 &&
@@ -508,7 +531,7 @@ export function SelectionQuantity({
     // "Containers por rodada": o que as rodadas da tela precisam; sem
     // programação, o que a prévia (total ÷ rodadas) precisaria.
     const typedTotal = totalPieces();
-    const typedRounds = parseNum(roundsValue);
+    const typedRounds = parseCount(roundsValue);
     const shown = live.length
       ? live
       : hasCarton &&
@@ -541,21 +564,29 @@ export function SelectionQuantity({
         role="group"
         aria-label={gen.title}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
-            e.preventDefault();
-            generate(apply, roundsValue);
-          }
+          if (e.key !== "Enter" || !(e.target instanceof HTMLInputElement))
+            return;
+          // Sem programação, "Quantidade (peças)" é a quantidade da escolha:
+          // Enter grava, como antes de o campo vir para esta linha.
+          if (!scheduled && e.target.hasAttribute("data-selection-quantity"))
+            return;
+          e.preventDefault();
+          generate(apply, roundsValue);
         }}
       >
         <p className="font-semibold text-zinc-900">{gen.title}</p>
         <p className="text-zinc-600">{gen.hint}</p>
         {/* Os campos numa linha só quando o cartão tem largura (ele ocupa a
-            área de conteúdo inteira): os quatro números dividem o espaço, o
-            container e o botão ficam do tamanho deles. Em cartão estreito,
-            em 3 ou 2 colunas. A medida é a do bloco (@container), que é a
-            mesma com a programação ligada ou desligada num tablet deitado. */}
+            área de conteúdo inteira): os números dividem o espaço, o
+            container e o botão ficam do tamanho deles. "Total de caixas" e
+            "Quantidade (peças)" ficam lado a lado em colunas iguais (mesma
+            largura), nunca menores que o rótulo mais comprido. Com menos
+            largura (tablet deitado com o menu aberto), os campos seguem numa
+            linha e o botão desce; em cartão estreito, em 3 ou 2 colunas. A
+            medida é a do bloco (@container), que é a mesma com a programação
+            ligada ou desligada. */}
         <div
-          className="grid grid-cols-2 items-end gap-x-2.5 gap-y-2 @md:grid-cols-3 @[47rem]:grid-cols-[minmax(5rem,1fr)_minmax(5rem,1fr)_auto_minmax(max-content,1fr)_minmax(max-content,1fr)_auto]"
+          className="grid grid-cols-2 items-end gap-x-2.5 gap-y-2 @md:grid-cols-3 @[47.5rem]:grid-cols-[minmax(7rem,1fr)_minmax(7rem,1fr)_minmax(5rem,1fr)_auto_minmax(max-content,1fr)_minmax(max-content,1fr)] @[57rem]:grid-cols-[minmax(7rem,1fr)_minmax(7rem,1fr)_minmax(5rem,1fr)_auto_minmax(max-content,1fr)_minmax(max-content,1fr)_auto]"
           data-generate-fields
         >
           <label className="min-w-0 space-y-1">
@@ -564,11 +595,24 @@ export function SelectionQuantity({
               type="text"
               inputMode="numeric"
               value={total}
-              onChange={(e) => {
-                setTotalEdit({ text: e.target.value, at: qty });
-                setError(null);
-              }}
+              onChange={(e) => typeAmount("cartons", e.target.value)}
               data-generate-total
+              className={cx(inputDenseClass, "w-full tabular-nums")}
+            />
+          </label>
+          {/* A quantidade da escolha, em peças: só vai no formulário sem
+              programação (com ela, a quantidade é a soma das rodadas). */}
+          <label className="min-w-0 space-y-1">
+            <span className="block font-medium text-zinc-700">{label}</span>
+            <input
+              type="text"
+              name={scheduled ? undefined : "quantity"}
+              inputMode="numeric"
+              autoComplete="off"
+              value={pieces}
+              onChange={(e) => typeAmount("pieces", e.target.value)}
+              aria-describedby={quantityHintId}
+              data-selection-quantity
               className={cx(inputDenseClass, "w-full tabular-nums")}
             />
           </label>
@@ -646,10 +690,19 @@ export function SelectionQuantity({
             onClick={() => generate(apply, roundsValue)}
             disabled={!total}
             data-generate-submit
-            className="min-h-8 justify-self-start whitespace-nowrap rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
+            className="order-1 min-h-8 justify-self-start whitespace-nowrap rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50 @[57rem]:order-none"
           >
             {gen.submit}
           </button>
+          {/* A dica da quantidade fica logo abaixo dos campos: quando o
+              botão não cabe na linha deles, ele vem depois dela. */}
+          <p
+            id={quantityHintId}
+            className="col-span-full text-zinc-500"
+            data-selection-quantity-hint
+          >
+            {scheduled ? scheduledHint : hint}
+          </p>
         </div>
         {calculation(live, roundsValue)}
         {error ? (
@@ -787,31 +840,16 @@ export function SelectionQuantity({
       className="space-y-3 md:col-span-3"
       data-selection-quantity-block
     >
-      <label className="block max-w-xs space-y-1">
-        <span className="block text-sm font-medium text-zinc-700">{label}</span>
-        <Input
-          name={scheduled ? undefined : "quantity"}
-          inputMode="numeric"
-          autoComplete="off"
-          value={qty}
-          readOnly={scheduled}
-          onChange={(e) => setQty(e.target.value)}
-          data-selection-quantity
-        />
-        <span className="block text-xs text-zinc-500">
-          {scheduled ? scheduledHint : hint}
-        </span>
-      </label>
       <div>
         <RequestScheduleFields
           prefix=""
-          total={qty}
+          total={pieces}
           unit="pcs"
           onTotalChange={(t) => {
             // As rodadas mudaram: a quantidade é a soma e os campos do
             // gerador voltam a acompanhar a tela (o digitado neles caduca).
             setQty(t);
-            setTotalEdit(null);
+            setAmountEdit(null);
             setRoundsEdit(null);
           }}
           labels={labels}

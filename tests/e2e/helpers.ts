@@ -197,6 +197,11 @@ export async function importAndClose(
  * dois itens; agrupa, escolhe `chosen` (código) com `alternative` de
  * alternativa, grava e abre a solicitação ao fornecedor do escolhido.
  * Devolve o endereço da solicitação (sem a busca).
+ *
+ * Com `cartons` (caixas master de 48 peças, a da planilha de teste), a
+ * quantidade é digitada em "Total de caixas": confere que "Quantidade
+ * (peças)" acompanha, que é ela que a escolha grava e que os dois campos
+ * voltam com o mesmo número ao rever a escolha.
  */
 export async function selectAndOpenSupplierRequest(
   page: Page,
@@ -204,6 +209,7 @@ export async function selectAndOpenSupplierRequest(
   chosen: string,
   alternative: string,
   needs: string,
+  { cartons = null as number | null } = {},
 ) {
   await page.goto(`/app/booking/selection?q=${encodeURIComponent(tag)}`);
   await expect(page.locator("[data-selection-item]")).toHaveCount(2);
@@ -238,6 +244,15 @@ export async function selectAndOpenSupplierRequest(
     page.locator("[data-selection-item]").first().locator("td"),
   ).toHaveCount(columns);
   await page.fill("[data-selection-needs]", needs);
+  // Sem programação de compra, "Quantidade (peças)" é a quantidade da
+  // escolha (dono, 13/11/2026): digitar as caixas calcula as peças.
+  const pieces = cartons === null ? null : String(cartons * 48);
+  if (cartons !== null) {
+    await page.locator("[data-generate-total]").fill(String(cartons));
+    await expect(page.locator("[data-selection-quantity]")).toHaveValue(
+      pieces!,
+    );
+  }
   // Gravar só guarda a escolha (nada vai ao fornecedor); o grupo aparece
   // resolvido, com o ganhador em verde, e a solicitação abre dali.
   await page.click("[data-selection-submit]");
@@ -246,6 +261,23 @@ export async function selectAndOpenSupplierRequest(
   const resolved = page.locator("[data-selection-resolved=saved]");
   await expect(resolved).toHaveCount(1);
   await expect(resolved.locator("[data-selection-winner]")).toContainText(tag);
+  if (cartons !== null) {
+    // A escolha gravou as peças das caixas digitadas; ao rever, os dois
+    // campos voltam com o mesmo número.
+    await expect(resolved.locator("[data-selection-winner]")).toContainText(
+      `${(cartons * 48).toLocaleString("pt-BR")} peças`,
+    );
+    await resolved.locator("[data-selection-block-open]").click();
+    await page.waitForURL(/ids=/);
+    await expect(page.locator("[data-selection-quantity]")).toHaveValue(
+      pieces!,
+    );
+    await expect(page.locator("[data-generate-total]")).toHaveValue(
+      String(cartons),
+    );
+    await page.goBack();
+    await expect(resolved).toHaveCount(1);
+  }
   await page.click("[data-selection-open-all]");
   // Recém-aberta, a solicitação abre na tela do produto (view=item).
   await page.waitForURL(/\/app\/supplier-requests\/[^/?]+\?.*created=1/);
