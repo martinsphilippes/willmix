@@ -110,6 +110,10 @@ export const pt = {
     "Depois de importar, o book abre em rascunho: confira o fornecedor e a data estimados, complete os itens e feche.",
 
   "bookingLots.detail.title": "Book nº {n}",
+  "bookingLots.detail.headingSupplier": "Book do Fornecedor {name}",
+  "bookingLots.detail.headingSupplierNone": "Fornecedor não informado",
+  "bookingLots.detail.headingFactory": "Informações lançadas da Fábrica {name}",
+  "bookingLots.detail.headingFactoryNone": "Fábrica não informada",
   "bookingLots.detail.created":
     "Book carregado com {n} itens. Confira o fornecedor e a data, que vieram da planilha, e complete os itens.",
   "bookingLots.detail.closed":
@@ -346,6 +350,11 @@ export const en: typeof pt = {
     "After importing, the book opens as a draft: check the estimated supplier and date, complete the items and close.",
 
   "bookingLots.detail.title": "Book no. {n}",
+  "bookingLots.detail.headingSupplier": "Book of Supplier {name}",
+  "bookingLots.detail.headingSupplierNone": "Supplier not informed",
+  "bookingLots.detail.headingFactory":
+    "Information entered from Factory {name}",
+  "bookingLots.detail.headingFactoryNone": "Factory not informed",
   "bookingLots.detail.created":
     "Book uploaded with {n} items. Check the supplier and date taken from the spreadsheet and complete the items.",
   "bookingLots.detail.closed": "Book closed. Superplan analyzed every item.",
@@ -576,6 +585,10 @@ export const zh: typeof pt = {
     "导入后 Book 以草稿打开：核对估计的供应商和日期，补全条目后关闭。",
 
   "bookingLots.detail.title": "Book 第 {n} 号",
+  "bookingLots.detail.headingSupplier": "供应商 {name} 的 Book",
+  "bookingLots.detail.headingSupplierNone": "未填写供应商",
+  "bookingLots.detail.headingFactory": "信息来自工厂 {name}",
+  "bookingLots.detail.headingFactoryNone": "未填写工厂",
   "bookingLots.detail.created":
     "已上传 Book，共 {n} 个条目。请核对来自表格的供应商和日期，并补全条目。",
   "bookingLots.detail.closed": "Book 已关闭。Superplan 已分析所有条目。",
