@@ -11,7 +11,9 @@ import {
 import {
   ForbiddenError,
   canViewOrder,
+  hasCertifier,
   isAdmin,
+  isOrderCertifier,
   isWellmix,
 } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
@@ -256,14 +258,21 @@ export function actsAs(user: User, order: Order, actor: StepActor): boolean {
   if (actor === "finance") return isFinance(user);
   if (isWellmix(user)) return true;
   if (actor === "wellmix") return false;
+  // Certificação: o despachante do pedido (ou a certificadora designada).
+  if (actor === "ocp") return isOrderCertifier(user, order);
   const field = PARTNER_FIELD[actor];
   return user.role === actor && !!user.partyId && order[field] === user.partyId;
 }
 
-/** A certificadora (OCP) designada no pedido. */
-function isOrderOcp(user: User, order: Order) {
-  return user.role === "ocp" && !!user.partyId && order.ocpId === user.partyId;
-}
+/** Quem certifica pelo pedido: o despachante ou a certificadora (OCP) designada. */
+const isOrderOcp = (user: User, order: Order) => isOrderCertifier(user, order);
+
+/**
+ * O parceiro do papel está designado no pedido? Certificação: o despachante
+ * ou a certificadora (a certificação é do despachante, dono, 13/11/2026).
+ */
+const partnerAssigned = (order: Order, actor: keyof typeof PARTNER_FIELD) =>
+  actor === "ocp" ? hasCertifier(order) : !!order[PARTNER_FIELD[actor]];
 
 /**
  * Pode enviar o passo: quem age por ele. O passo da agência só é dela quando
@@ -287,7 +296,10 @@ export async function canSubmitStep(
 export function canSeeStep(user: User, order: Order, key: ImportStepKey) {
   if (isWellmix(user)) return true;
   if (!canViewOrder(user, order)) return false;
-  return stepTemplate(key).visibleTo.includes(user.role);
+  const visibleTo = stepTemplate(key).visibleTo;
+  // O despachante certifica: vê o que a certificadora vê.
+  if (user.role === "broker" && visibleTo.includes("ocp")) return true;
+  return visibleTo.includes(user.role);
 }
 
 /** O card aparece para o usuário (vê algum passo). */
@@ -378,6 +390,9 @@ async function targetFor(
       ),
     };
   }
+  // Certificação: o despachante do pedido; sem ele, a certificadora.
+  if (actor === "ocp" && order.brokerId)
+    return { role: "broker", partyId: order.brokerId };
   if (actor !== "wellmix") {
     const partyId = order[PARTNER_FIELD[actor]];
     if (partyId) return { role: actor, partyId };
@@ -613,10 +628,16 @@ async function handOverSeal(
  */
 export async function notifySealRequested(order: Order): Promise<void> {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return;
-  if (order.ocpId) {
-    await notify(
-      { role: "ocp", partyId: order.ocpId },
-      {
+  if (hasCertifier(order)) {
+    // O despachante (a certificação é dele) e a certificadora, se houver.
+    const certifiers = [
+      order.brokerId
+        ? { role: "broker" as const, partyId: order.brokerId }
+        : null,
+      order.ocpId ? { role: "ocp" as const, partyId: order.ocpId } : null,
+    ].filter((x) => x !== null);
+    for (const target of certifiers)
+      await notify(target, {
         link: `/app/orders/${order.id}#certification`,
         kind: "action",
         text: (t) => ({
@@ -625,8 +646,7 @@ export async function notifySealRequested(order: Order): Promise<void> {
           }),
           body: t("certFlow.notify.sealRequested.body"),
         }),
-      },
-    );
+      });
     return;
   }
   await notify(await targetFor(order, "wellmix"), {
@@ -647,15 +667,16 @@ export async function notifySealRequested(order: Order): Promise<void> {
  */
 export async function notifySealPartner(
   order: Order,
-  field: "ocpId" | "agencyId",
+  field: "ocpId" | "brokerId" | "agencyId",
   /** Quem estava no campo antes da troca (para não avisar de novo quem já fazia a arte). */
   previousPartyId?: string | null,
 ): Promise<void> {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return;
   const steps = await stepsOf(order.id);
   const sealDone = isDone(steps.find((s) => s.key === "cert_seal"));
-  if (field === "ocpId") {
-    if (order.ocpId && !sealDone) await notifySealRequested(order);
+  // Quem certifica mudou (certificadora ou despachante): o selo a emitir.
+  if (field === "ocpId" || field === "brokerId") {
+    if (hasCertifier(order) && !sealDone) await notifySealRequested(order);
     return;
   }
   if (previousPartyId !== undefined) {
@@ -912,7 +933,7 @@ export async function importTasks(
     const classicCert =
       order.status === "ORDER_CREATED"
         ? classicStarted
-        : !!order.ocpId || classicStarted;
+        : hasCertifier(order) || classicStarted;
     for (const tpl of IMPORT_STEPS) {
       const cert = groupOf(tpl) === "certification";
       if (!cert && !importLive) continue;
@@ -929,7 +950,7 @@ export async function importTasks(
           tpl.validator === "wellmix" ||
           tpl.validator === "finance" ||
           (tpl.validator !== "supplier" &&
-            !order[PARTNER_FIELD[tpl.validator]]))
+            !partnerAssigned(order, tpl.validator)))
       ) {
         out.push({
           kind: cert ? "cert_validate" : "import_validate",
@@ -958,7 +979,7 @@ export async function importTasks(
         tpl.actor !== "wellmix" &&
         tpl.actor !== "finance" &&
         // Selo sem certificadora no pedido: a pendência fica com a Wellmix.
-        !(tpl.seal && !order[PARTNER_FIELD[tpl.actor]])
+        !(tpl.seal && !partnerAssigned(order, tpl.actor))
       )
         continue;
       out.push({

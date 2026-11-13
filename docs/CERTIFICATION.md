@@ -1,5 +1,7 @@
 # Certificação com o OCP (Fase F)
 
+> **Despachante certifica (decisão do dono, 13/11/2026).** A certificação é do **despachante do pedido** (`orders.brokerId`): ele recebe o aviso e a pendência do selo, faz e valida os passos que eram da certificadora e, no pedido de compra, o certificado de cada produto (raia `certificate__*`, papel `broker`). A certificadora (OCP) designada continua podendo agir como antes. Sem despachante nem certificadora, a pendência "Designar o despachante da certificação" fica com compras, em Parceiros do pedido. Regra única: `isOrderCertifier` / `hasCertifier` em `src/lib/auth/permissions.ts`.
+
 - **OCP (organismo de certificação)**: login próprio (papel `ocp`, empresa do tipo OCP), designado no pedido em "Parceiros" (`orders.ocpId`). Com uma só certificadora ativa, ela é designada sozinha quando o pedido nasce. Vê só os pedidos em que está: o cartão Certificação e o pedido completo para ler (seção 6), inclusive cliente e preço de compra (decisão do dono, 10/11/2026).
 - **Todo pedido precisa do selo de certificação** (decisão do dono, 10/11/2026): as duas linhas do selo aparecem no cartão **Certificação** de todo pedido, desde que ele nasce (não esperam a Preparação).
 - Memorial, laudo e registro aparecem no cartão quando há OCP designado, quando a ficha da cotação/pedido marca "Precisa de certificação" ou quando algum deles já começou.

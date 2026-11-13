@@ -86,6 +86,7 @@ alter table public."product_lines" add column if not exists "requiredCertificati
 alter table public."product_lines" add column if not exists "prompts" jsonb;
 alter table public."product_lines" add column if not exists "division" text;
 alter table public."product_lines" add column if not exists "sankhyaCode" text;
+alter table public."product_lines" add column if not exists "agencyId" text;
 create index if not exists "product_lines_by_sankhya" on public."product_lines" ("sankhyaCode");
 create index if not exists "product_lines_created" on public."product_lines" ("createdAt");
 create index if not exists "product_lines_created_id" on public."product_lines" ("createdAt", "id");

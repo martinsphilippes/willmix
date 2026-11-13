@@ -12,7 +12,11 @@ import {
   type StageKey,
   type User,
 } from "@/lib/db";
-import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
+import {
+  ForbiddenError,
+  isOrderCertifier,
+  isWellmix,
+} from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { audit } from "@/lib/services/audit";
 import {
@@ -386,6 +390,10 @@ export function canSubmitRequirement(
     if (key === ORDER_SIGNED_WELLMIX) return can(user, "contract.sign");
     return true;
   }
+  // Certificado do produto: o despachante do pedido (a certificação é dele,
+  // dono, 13/11/2026) ou a certificadora designada.
+  if (baseKeyOf(requirement.key ?? "") === LANE_KEYS.certificate)
+    return isOrderCertifier(user, order);
   if (user.role !== requirement.role) return false;
   // Cliente: só o login solicitante do pedido.
   if (user.role === "customer" && order.requestedByUserId !== user.id)

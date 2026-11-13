@@ -19,6 +19,26 @@ export const PARTNER_ROLES: Role[] = [
 export const isPartner = (user: Pick<User, "role">) =>
   PARTNER_ROLES.includes(user.role);
 
+/**
+ * Quem certifica pelo pedido: o despachante do pedido (a certificação é dele,
+ * decisão do dono, 13/11/2026) ou a certificadora (OCP) designada, que segue
+ * podendo agir como antes.
+ */
+export function isOrderCertifier(
+  user: Pick<User, "role" | "partyId">,
+  order: Partial<Pick<Order, "brokerId" | "ocpId">>,
+): boolean {
+  if (!user.partyId) return false;
+  if (user.role === "broker") return order.brokerId === user.partyId;
+  if (user.role === "ocp") return order.ocpId === user.partyId;
+  return false;
+}
+
+/** O pedido tem quem certifique (despachante ou certificadora)? */
+export const hasCertifier = (
+  order: Partial<Pick<Order, "brokerId" | "ocpId">>,
+) => !!order.brokerId || !!order.ocpId;
+
 export class ForbiddenError extends Error {
   constructor(message = "forbidden") {
     super(message);

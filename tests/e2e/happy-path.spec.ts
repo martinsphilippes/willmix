@@ -407,8 +407,8 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     .locator("button[value=approve]")
     .click();
   await page.waitForLoadState("networkidle");
-  // 6d. Certificadora: o certificado.
-  await login(page, "ocp@certifica.com");
+  // 6d. Despachante: o certificado (a certificação é dele, dono, 13/11/2026).
+  await login(page, "despachante@comex.com");
   await fillMyRequirements(page, orderUrl);
   // 6e. Agência: com a arte validada e o certificado, a arte final com o selo.
   await login(page, "agencia@design.com");
@@ -427,9 +427,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page.waitForURL(/[?&]decided=ordered/),
     page.locator("form[data-sample-order-create] button[type=submit]").click(),
   ]);
-  await expect(
-    page.locator("[data-sample-order-status=sent]"),
-  ).toBeVisible();
+  await expect(page.locator("[data-sample-order-status=sent]")).toBeVisible();
   await page.goto(`${orderUrl}/purchase-order`);
   await expect(page.locator("[data-contract-final-arts] li")).toHaveCount(1);
   await uploadSignedContract(page, orderUrl);

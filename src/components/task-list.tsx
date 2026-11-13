@@ -14,6 +14,7 @@ import {
   taskGroups,
   type Task,
 } from "@/lib/services/tasks";
+import { tasksForFunctions } from "@/lib/task-owner";
 import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -53,7 +54,8 @@ export async function TaskList({
   /** Cotação que o fornecedor acabou de enviar (confirmação no topo). */
 }) {
   const t = await getT();
-  const tasks = await pendingTasksFor(user);
+  // Operador: só as pendências das funções dele (dono, 13/11/2026).
+  const tasks = tasksForFunctions(user, await pendingTasksFor(user));
   const deniedScreen = (SCREENS as readonly string[]).includes(denied ?? "")
     ? (denied as Screen)
     : null;

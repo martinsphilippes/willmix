@@ -498,6 +498,27 @@ export async function assignPartnerAction(form: FormData) {
         await store.update("stages", stage.id, { responsiblePartyId: partyId });
       }
     }
+    if (field === "brokerId" || field === "ocpId") {
+      // Certificado de cada produto (pedido de compra): do despachante
+      // (dono, 13/11/2026); sem ele, da certificadora; sem nenhum, da Wellmix.
+      const { LANE_KEYS, baseKeyOf } = await import("@/lib/purchase-lanes");
+      const next = { ...order, [field]: partyId };
+      const certRole = next.brokerId
+        ? "broker"
+        : next.ocpId
+          ? "ocp"
+          : "operator";
+      const certs = (
+        await store.list("requirements", { filter: { orderId } })
+      ).filter(
+        (r) =>
+          r.status !== "done" &&
+          baseKeyOf(r.key) === LANE_KEYS.certificate &&
+          r.role !== certRole,
+      );
+      for (const r of certs)
+        await store.update("requirements", r.id, { role: certRole });
+    }
     if (field === "agencyId") {
       // Arte e embalagem: a arte ainda não enviada passa a ser da agência
       // (ou volta à Wellmix sem agência); a aprovação é sempre do fornecedor.
@@ -516,7 +537,7 @@ export async function assignPartnerAction(form: FormData) {
     // Selo de certificação: o OCP novo é avisado do selo a emitir; quem
     // passa a fazer a arte, do selo que já chegou. Só quando mudou de fato.
     if (
-      (field === "ocpId" || field === "agencyId") &&
+      (field === "ocpId" || field === "brokerId" || field === "agencyId") &&
       (order[field] ?? null) !== partyId
     ) {
       try {

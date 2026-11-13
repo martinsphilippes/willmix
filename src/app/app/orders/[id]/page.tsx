@@ -35,6 +35,7 @@ import {
   canSeeSupplier,
   canViewOrder,
   canViewRequest,
+  isOrderCertifier,
   isPartner,
   isWellmix,
 } from "@/lib/auth/permissions";
@@ -258,7 +259,8 @@ export default async function OrderPage({
      preço de compra, a ficha inteira, o documento do pedido, as
      certificações já registradas e os arquivos. Só lê. O financeiro da
      Wellmix (preço de venda, margem, pagamentos) não é do pedido dela. */
-  const certifier = user.role === "ocp";
+  // O despachante do pedido certifica (dono, 13/11/2026): vê o mesmo.
+  const certifier = isOrderCertifier(user, progress.order);
   // Financeiro é só do administrador: pagamentos, valores e margem do pedido.
   const financeAccess = canOpen(user, "finance");
   /* Nova medição (inspeção bloqueada): só com ?remeasure=1; sem o parâmetro a tela é a de sempre. */

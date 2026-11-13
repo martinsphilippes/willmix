@@ -133,3 +133,26 @@ Registrar e confirmar pagamentos (sinal, pagamento ao fornecedor, marketing) con
 
 - Bloqueio por política no banco (RLS por usuário no Supabase): hoje o banco já é fechado e só o servidor do portal lê e grava; a conferência é no servidor (decisão do dono: não agora).
 - Pendências: um login sem a permissão de validar a arte ou assinar o contrato ainda pode ver a pendência em Minhas pendências; ao abrir, o botão não aparece.
+
+## Pendências por função (decisão do dono, 13/11/2026)
+
+Em Pendências (`/app/tasks`) o **operador** vê só o que as funções dele fazem; o administrador vê tudo, como antes. Cada pendência aponta para uma ação ou tela de Equipe → Funções e acessos (`src/lib/task-owner.ts`):
+
+| Pendência                                                                                                          | Quem (padrão)                                         |
+| ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| Fazer a arte, arte final, selo na arte (sem agência)                                                               | ação "art.design" (Designer)                          |
+| Validar a arte, conferir o selo na arte                                                                            | ação "art.validate"                                   |
+| Assinar o documento pela Wellmix                                                                                   | ação "contract.sign" (diretorias)                     |
+| Enviar para assinatura, confirmar o pedido, nº no ERP, itens da linha, produção e inspeção, designar o despachante | ação "purchaseOrder.generate" (compras)               |
+| Embarque, desembaraço, transporte e entrega                                                                        | tela Frete                                            |
+| Numerário                                                                                                          | ação "numerario.manage"                               |
+| Solicitação nova, revisão, sourcing                                                                                | telas Solicitações, Revisão, Sourcing                 |
+| Certificação (selo, memorial, laudo, registro, certificado)                                                        | despachante do pedido; na Wellmix, só o administrador |
+| Itens do fornecedor e dos parceiros                                                                                | não aparecem para o operador                          |
+| Mensagem a responder                                                                                               | o analista da conversa (sem analista: todos)          |
+
+O painel de SLA e as outras telas continuam com a lista completa da Wellmix.
+
+## Agência de arte por linha (decisão do dono, 13/11/2026)
+
+Em Linhas de produto, cada linha pode ter a **agência de arte** (`product_lines.agencyId`, só agências ativas). O pedido novo herda a agência da linha (antes da regra "a única agência ativa"); ao salvar, os pedidos abertos da linha ainda sem agência a recebem, com o mesmo efeito da troca em Parceiros do pedido (`src/lib/services/line-agency.ts`).

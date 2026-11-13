@@ -727,6 +727,8 @@ export interface ProductLine extends BaseRow {
   division?: Division | null;
   /** Código do grupo (CODGRUPOPROD) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
   sankhyaCode?: string | null;
+  /** Agência de arte da linha: os pedidos da linha a herdam (src/lib/services/line-agency.ts). */
+  agencyId?: string | null;
 }
 
 /** Configuração de IA e de validação por linha de produto. Tudo opcional; nulo = só o prompt base. */
@@ -3049,6 +3051,7 @@ export const TABLES: Record<TableName, TableDef> = {
       prompts: json(),
       division: enumOf(DIVISIONS, false),
       sankhyaCode: str(40),
+      agencyId: id(false),
     },
     indexes: [{ key: "by_sankhya", type: "key", columns: ["sankhyaCode"] }],
   },

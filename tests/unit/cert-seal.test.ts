@@ -503,9 +503,12 @@ describe("parceiro designado depois", () => {
     expect(await inbox(agency, order)).toHaveLength(before + 1);
   });
 
-  it("pedido sem certificadora: todo pedido precisa de selo, então a Wellmix é avisada e fica com a pendência de designar", async () => {
+  it("pedido sem despachante nem certificadora: todo pedido precisa de selo, então a Wellmix é avisada e fica com a pendência de designar", async () => {
     let order = await newOrder();
-    order = await getStore().update("orders", order.id, { ocpId: null });
+    order = await getStore().update("orders", order.id, {
+      ocpId: null,
+      brokerId: null,
+    });
     const before = (await inbox(admin, order)).length;
     await f.notifySealRequested(order);
     const notes = await inbox(admin, order);
@@ -743,5 +746,54 @@ describe("certificadora vê o pedido completo", () => {
       expect(await canAccessDocument(otherOcp(), d)).toBe(false);
       expect(await canAccessDocument(agency, d)).toBe(false);
     }
+  });
+});
+
+describe("certificação é do despachante (dono, 13/11/2026)", () => {
+  it("o despachante do pedido recebe o aviso e a pendência do selo, e envia o selo", async () => {
+    const order = await newOrder();
+    const broker = (await getStore().list("users")).find(
+      (u) => u.role === "broker" && u.partyId === order.brokerId,
+    )!;
+    expect(broker).toBeTruthy();
+    expect(await inbox(broker, order)).toHaveLength(1);
+    const tasks = await certTasks(broker, order);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].text?.title).toBe("tasks.seal.issue.title");
+    expect(f.canSeeStep(broker, order, "cert_seal")).toBe(true);
+    await f.submitStep(broker, order.id, "cert_seal", {
+      documentId: (await doc(broker, order, "selo-despachante.pdf")).id,
+    });
+    expect(await certTasks(broker, order)).toHaveLength(0);
+  });
+
+  it("o comprador (operador) não vê pendência de certificação", async () => {
+    const order = await newOrder();
+    await getStore().update("orders", order.id, {
+      ocpId: null,
+      brokerId: null,
+    });
+    const { tasksForFunctions } = await import("@/lib/task-owner");
+    const buyer = {
+      ...operator,
+      role: "operator" as const,
+      functions: ["buyer"],
+      screens: null,
+    };
+    const all = await pendingTasksFor(buyer);
+    const cert = (list: typeof all) =>
+      list
+        .filter(
+          (t) =>
+            t.orderId === order.id ||
+            t.link.startsWith(`/app/orders/${order.id}#certification`),
+        )
+        .filter((t) => t.kind === "cert_step" && t.stepKey !== "assign");
+    expect(cert(tasksForFunctions(buyer, all))).toHaveLength(0);
+    // Designar o despachante (Parceiros do pedido) fica com compras.
+    const assign = tasksForFunctions(buyer, all).filter(
+      (t) => t.link === `/app/orders/${order.id}#order-partners`,
+    );
+    expect(assign).toHaveLength(1);
   });
 });

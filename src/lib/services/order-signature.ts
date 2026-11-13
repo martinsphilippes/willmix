@@ -9,7 +9,12 @@ import {
   type Requirement,
   type User,
 } from "@/lib/db";
-import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
+import {
+  ForbiddenError,
+  isAdmin,
+  isOrderCertifier,
+  isWellmix,
+} from "@/lib/auth/permissions";
 import {
   ORDER_CONFIRMED,
   ORDER_SIGN_SEND,
@@ -119,11 +124,12 @@ export function isOrderSupplier(user: User, order: Pick<Order, "supplierId">) {
  */
 export function canViewOrderDocument(
   user: User,
-  order: Pick<Order, "supplierId"> & Partial<Pick<Order, "ocpId">>,
+  order: Pick<Order, "supplierId"> & Partial<Pick<Order, "ocpId" | "brokerId">>,
 ): boolean {
   if (isWellmix(user)) return true;
   if (isOrderSupplier(user, order)) return true;
-  return user.role === "ocp" && !!user.partyId && order.ocpId === user.partyId;
+  // Quem certifica: o despachante do pedido ou a certificadora.
+  return isOrderCertifier(user, order);
 }
 
 export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
