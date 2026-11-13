@@ -33,6 +33,22 @@ export async function login(page: Page, email: string) {
   await page.waitForURL(/\/app/);
 }
 
+/**
+ * Câmbio manual em Configurações (Wellmix). As contas do Superplan (custo por
+ * peça, simulação da proposta) precisam de câmbio, e o do dia vem de sites
+ * públicos que nem todo ambiente de teste alcança (rede restrita). Com a
+ * cotação do dia ela continua valendo; sem ela, vale este.
+ */
+export async function setManualFx(page: Page) {
+  await page.goto("/app/settings");
+  const usd = page.locator('input[name="fxManualRates.USD"]');
+  await usd.fill("5.5");
+  await page.locator('input[name="fxManualRates.RMB"]').fill("0.78");
+  await page.locator('input[name="fxManualRates.EUR"]').fill("6");
+  await usd.evaluate((el) => (el as HTMLInputElement).form!.requestSubmit());
+  await page.waitForURL(/\/app\/settings\?ok=1/);
+}
+
 const BOOKING_HEADER = [
   "DATE",
   "LOCAL",
