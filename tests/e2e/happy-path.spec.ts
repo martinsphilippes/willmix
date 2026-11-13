@@ -353,6 +353,19 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // 7. Contrato: o documento traz a arte final; a Wellmix sobe o arquivo
   // assinado e carimbado, depois o fornecedor.
   await login(page, "admin@wellmix.com");
+  // 7a. Pedido de amostras (P17): antes de assinar, a Wellmix gera o pedido
+  // de amostras (5 × 3 por variante; o produto não tem variantes: 15).
+  await page.goto(`${orderUrl}/purchase-order`);
+  await expect(page.locator("[data-sign-wait-samples]")).toBeVisible();
+  await page.goto(`${orderUrl}/samples`);
+  await expect(page.locator("[data-sample-total]")).toHaveText("15");
+  await Promise.all([
+    page.waitForURL(/[?&]decided=ordered/),
+    page.locator("form[data-sample-order-create] button[type=submit]").click(),
+  ]);
+  await expect(
+    page.locator("[data-sample-order-status=sent]"),
+  ).toBeVisible();
   await page.goto(`${orderUrl}/purchase-order`);
   await expect(page.locator("[data-contract-final-arts] li")).toHaveCount(1);
   await uploadSignedContract(page, orderUrl);
@@ -375,6 +388,18 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   ).toBeVisible();
   await expect(
     page.locator("[data-order-document-status=signed]"),
+  ).toBeVisible();
+  // O fornecedor aceita o pedido de amostras à parte.
+  await page.goto(`${orderUrl}/samples`);
+  const accept = page.locator("form[data-sample-order-accept]");
+  await accept.locator("input[name=name]").fill("Li Wei");
+  await accept.locator("input[name=agree]").check();
+  await Promise.all([
+    page.waitForURL(/[?&]accepted=1/),
+    accept.locator("button[type=submit]").click(),
+  ]);
+  await expect(
+    page.locator("[data-sample-order-status=accepted]"),
   ).toBeVisible();
 
   // Assinado pelos dois: a produção espera o sinal (mapa, P12?/P12).

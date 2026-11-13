@@ -398,6 +398,12 @@ describe("programação de compra de ponta a ponta", () => {
       [1000, 600].sort(),
     );
     expect(child.fobTotal).toBeCloseTo(2 * 1600);
+    // Cada rodada decide o próprio pedido de amostras antes de assinar.
+    expect(
+      (await signature.getOrderSignatureView(admin, child.id))!.samplesPending,
+    ).toBe(true);
+    const samples = await import("@/lib/services/sample-order");
+    await samples.decideSampleOrder(admin, child.id, { status: "none" });
     // Contrato próprio, com a negociação e as artes finais do pai.
     const view = (await signature.getOrderSignatureView(admin, child.id))!;
     expect(view.document.finalArts).toHaveLength(2);
