@@ -20,7 +20,7 @@ Só o responsável envia (a Wellmix, mesmo admin, não envia por ele: `sampling_
 
 ## Onde aparece
 
-- **Tela do produto** (`/app/supplier-requests/[id]?view=item`): cartão **Amostragem** no topo (situação, rodada, fotos e vídeos, envio, validação e histórico).
+- **Tela do produto** (`/app/supplier-requests/[id]?view=item`): cartão **Amostragem** no topo (situação, rodada, fotos e vídeos, envio e validação). O bloco "Histórico da amostragem" saiu do cartão em 13/11/2026 (pedido do dono: repetia o painel "Histórico de interações", que continua com os envios, as validações e os comentários; `sampling.history` segue gravado).
 - **Tabela da solicitação**: na coluna Situação, o selo "Amostragem: …" com link para o cartão.
 - **Linha do tempo**: envio, aprovação e reprovação da amostra.
 - **Pendências**: do fornecedor, na nova etapa **"Enviar a amostragem"** (`supplier.sampling`, depois de "Responder a solicitação"), enquanto pendente ou reprovada; da Wellmix com a ação, **"Validar amostragem"** (`sampling_validate`) enquanto enviada.
