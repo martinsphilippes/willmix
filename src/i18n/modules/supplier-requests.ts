@@ -316,6 +316,7 @@ export const pt = {
   "supplierRequests.table.proposalPendingWellmix":
     "Contraproposta esperando o fornecedor.",
   "supplierRequests.table.late": "Atrasada",
+  "supplierRequests.table.onTime": "No prazo",
   "supplierRequests.table.canDoYes": "Faz",
   "supplierRequests.table.canDoNo": "Não faz",
   "supplierRequests.table.canDoWaiting": "Esperando",
@@ -761,6 +762,7 @@ export const en: typeof pt = {
   "supplierRequests.table.proposalPendingWellmix":
     "Counter-offer waiting for the supplier.",
   "supplierRequests.table.late": "Late",
+  "supplierRequests.table.onTime": "On time",
   "supplierRequests.table.canDoYes": "Can do",
   "supplierRequests.table.canDoNo": "Can't do",
   "supplierRequests.table.canDoWaiting": "Waiting",
@@ -1184,6 +1186,7 @@ export const zh: typeof pt = {
     "答复“是”时请填写单价。起订量和交货方式（FOB/EXW）一并提交；交期保持不变（可在产品页面修改）。",
   "supplierRequests.table.proposalPendingWellmix": "还价等待供应商答复。",
   "supplierRequests.table.late": "已超时",
+  "supplierRequests.table.onTime": "未超时",
   "supplierRequests.table.canDoYes": "可以做",
   "supplierRequests.table.canDoNo": "不能做",
   "supplierRequests.table.canDoWaiting": "等待中",
