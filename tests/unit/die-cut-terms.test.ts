@@ -55,6 +55,23 @@ describe("pedido mínimo e prazo no quadro Die Cut", () => {
     expect(html).not.toContain(labels.submit);
   });
 
+  it("produto sem nome: o Editar fica com o texto visível", () => {
+    const html = renderToStaticMarkup(
+      createElement(DieCutTerms, {
+        action: async (prev) => prev,
+        orderId: "o1",
+        itemId: "i1",
+        confirmed: true,
+        canEdit: true,
+        initial: { moq: "132000", leadTimeDays: "15" },
+        summary: "132.000 peças · 15 dias",
+        labels: { ...labels, editAria: null },
+      } as Props),
+    );
+    expect(html).toMatch(/<button[^>]*data-die-cut-terms-edit="true"/);
+    expect(html).not.toContain("aria-label");
+  });
+
   it("confirmado com a etapa fechada: só o resumo, sem Editar", () => {
     const html = render(true, false);
     expect(html).toContain("132.000 peças · 15 dias");

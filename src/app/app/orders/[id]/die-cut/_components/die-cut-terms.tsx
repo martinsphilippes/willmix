@@ -25,8 +25,11 @@ export interface DieCutTermsLabels {
   leadTime: string;
   submit: string;
   edit: string;
-  /** Nome do "Editar" para leitores de tela (diz qual produto). */
-  editAria: string;
+  /**
+   * Nome do "Editar" para leitores de tela, com o produto; nulo (produto sem
+   * nome) fica o texto visível.
+   */
+  editAria: string | null;
   cancel: string;
 }
 
@@ -101,7 +104,7 @@ export function DieCutTerms({
           type="button"
           variant="secondary"
           className="px-2.5 py-1 text-xs"
-          aria-label={labels.editAria}
+          aria-label={labels.editAria ?? undefined}
           onClick={() => {
             // O botão some: o foco vai para o primeiro campo.
             flushSync(() => setEditing(true));

@@ -289,9 +289,9 @@ export default async function DieCutPage({
                           leadTime: t("dieCut.leadTime"),
                           submit: t("dieCut.terms.submit"),
                           edit: t("common.edit"),
-                          editAria: t("dieCut.terms.editAria", {
-                            product: p.name,
-                          }),
+                          editAria: p.name
+                            ? t("dieCut.terms.editAria", { product: p.name })
+                            : null,
                           cancel: t("common.cancel"),
                         }}
                       />
