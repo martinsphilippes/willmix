@@ -974,3 +974,10 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Pedido do dono** (13/11/2026, com a foto do campo): "troca esse nome de Rodadas para Programações".
 - Só o rótulo desse campo do gerador (`purchaseRounds.gen.rounds`) e o aviso dele ("Informe de 1 a 12 programações."), nos três idiomas. Nada mais mudou na tela nem na regra. Sem mudança no banco.
 - **Ficou como estava** (aguardando o dono dizer se quer trocar também): os cartões "Rodada 1, 2…", "+ Rodada", "Intervalo entre rodadas", "Data da 1ª rodada", "Containers por rodada", a explicação e as linhas do Cálculo, que continuam dizendo "rodada".
+
+## Etapa Booking passa a se chamar Book em todas as telas
+
+- **Pedido do dono** (13/11/2026): "essa etapa do Booking inicial (...) onde tem escrito Booking seja alterado para Book (todas as palavras que sejam da responsabilidade desta etapa)". Para o chinês, perguntado, respondeu: "Book em tudo, menos na área de marítimo/navio".
+- **Só texto, nos três idiomas**: 138 textos em português, 140 em inglês e 140 em chinês (Booking → Book, bookings → books; no chinês também 订舱, 订舱表, 订舱单, 预订 e 预订单 → Book), mais as mensagens novas do histórico e das pendências desta etapa (`src/lib/services/booking-*.ts`, `supplier-requests.ts`, `supplier-request-product.ts`, `tasks.ts`).
+- **Ficou como estava**: a reserva no navio do embarque (`importFlow.step.booking`, `importFlow.ph.booking`, `containers.codeHint`, `board.card.ordBooking`) e os nomes internos (endereços `/app/booking`, chaves, tabelas, permissões). Nenhuma tela, rota, campo ou dado removido ou alterado; sem mudança no banco. O que já estava gravado (avisos, histórico) mantém o texto antigo.
+- **Guarda**: `tests/unit/book-wording.test.ts` (texto novo com "Booking" nesta etapa falha) e o E2E confere o título "Book nº N", "Dados do book", "Fechar o book" e o menu "Book". Detalhes em docs/BOOKING.md, "Nome na tela: Book".

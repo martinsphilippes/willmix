@@ -1029,7 +1029,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           {
             kind: "ncm_classify",
             title: `Classificar NCM: ${group.key}`,
-            detail: `Itens de booking sem NCM: ${group.items.length}`,
+            detail: `Itens de book sem NCM: ${group.items.length}`,
             text: {
               title: "bookingNcm.task.title",
               detail: "bookingNcm.task.detail",
@@ -1170,7 +1170,7 @@ async function bookingInviteTasks(user: User, now: Date): Promise<Task[]> {
       return finish(
         {
           kind: "booking_invite",
-          title: `Enviar booking concorrente: ${item}`,
+          title: `Enviar book concorrente: ${item}`,
           detail: `${qty} peças · convite nº ${i.number}`,
           text: {
             title: "bookingInvites.task.title",

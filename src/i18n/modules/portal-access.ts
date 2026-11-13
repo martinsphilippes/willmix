@@ -38,7 +38,7 @@ export const pt = {
     "A senha não fica à vista: é a que foi passada na criação do acesso.",
   "portalAccess.none": "Sem acesso",
   "portalAccess.booking.title":
-    "Fornecedor do Booking sem acesso ao portal: não consegue ver nem responder.",
+    "Fornecedor do Book sem acesso ao portal: não consegue ver nem responder.",
   "portalAccess.booking.hint":
     "Toque no nome para criar o acesso. Ele fica preso ao cadastro do fornecedor, e o que já foi enviado aparece para ele assim que entrar.",
   "portalAccess.booking.noScreen":
@@ -97,7 +97,7 @@ export const en: Record<keyof typeof pt, string> = {
     "The password is not shown: it is the one given when the access was created.",
   "portalAccess.none": "No access",
   "portalAccess.booking.title":
-    "Booking supplier without portal access: cannot see or answer.",
+    "Book supplier without portal access: cannot see or answer.",
   "portalAccess.booking.hint":
     "Tap the name to create the access. It stays tied to the supplier record, and what was already sent shows up as soon as they sign in.",
   "portalAccess.booking.noScreen":
@@ -153,7 +153,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "partyProfile.passwordNote": "密码不显示：即创建账号时提供的密码。",
   "portalAccess.none": "无账号",
   "portalAccess.booking.title":
-    "Booking 中的供应商没有门户账号：无法查看，也无法回复。",
+    "Book 中的供应商没有门户账号：无法查看，也无法回复。",
   "portalAccess.booking.hint":
     "点击名称创建账号。账号绑定在该供应商的档案上，登录后即可看到已发送的内容。",
   "portalAccess.booking.noScreen": "请让负责档案的同事为这些供应商创建账号。",

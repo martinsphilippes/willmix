@@ -51,9 +51,9 @@ export const pt = {
   "notif.quoteSelected.subject": "Cotação escolhida: {product}",
   "notif.quoteSelected.body":
     "Sua cotação foi escolhida. Agora é com o cliente: o pedido nasce quando o sinal for confirmado.",
-  "notif.bookingAnalysis.subject": "Booking para analisar: {product}{ref}",
+  "notif.bookingAnalysis.subject": "Book para analisar: {product}{ref}",
   "notif.bookingAnalysis.many.subject":
-    "Booking para analisar: {count} produtos{ref}",
+    "Book para analisar: {count} produtos{ref}",
   "notif.rfq.subject": "Cotação pedida: {product}{ref}",
   "notif.rfq.body": "{qty} {unit}. Responda com preço, prazo e condições.",
   "notif.rfq.many.subject": "Cotação pedida: {count} produtos{ref}",
@@ -143,9 +143,8 @@ export const en = {
   "notif.quoteSelected.subject": "Quote selected: {product}",
   "notif.quoteSelected.body":
     "Your quote was chosen. Now with the customer: the order is created once the down payment is confirmed.",
-  "notif.bookingAnalysis.subject": "Booking to review: {product}{ref}",
-  "notif.bookingAnalysis.many.subject":
-    "Booking to review: {count} products{ref}",
+  "notif.bookingAnalysis.subject": "Book to review: {product}{ref}",
+  "notif.bookingAnalysis.many.subject": "Book to review: {count} products{ref}",
   "notif.rfq.subject": "Quote requested: {product}{ref}",
   "notif.rfq.body": "{qty} {unit}. Reply with price, lead time and terms.",
   "notif.rfq.many.subject": "Quote requested: {count} products{ref}",
@@ -231,8 +230,8 @@ export const zh = {
   "notif.quoteSelected.subject": "报价已中选：{product}",
   "notif.quoteSelected.body":
     "您的报价已中选。现在等待客户：定金确认后即生成订单。",
-  "notif.bookingAnalysis.subject": "待分析的 Booking：{product}{ref}",
-  "notif.bookingAnalysis.many.subject": "待分析的 Booking：{count} 个产品{ref}",
+  "notif.bookingAnalysis.subject": "待分析的 Book：{product}{ref}",
+  "notif.bookingAnalysis.many.subject": "待分析的 Book：{count} 个产品{ref}",
   "notif.rfq.subject": "询价：{product}{ref}",
   "notif.rfq.body": "{qty} {unit}。请回复价格、交期和条件。",
   "notif.rfq.many.subject": "询价：{count} 个产品{ref}",

@@ -290,7 +290,7 @@ export async function setBookingItemsNcm(
     "booking_item.ncm",
     "booking_item",
     ids[0],
-    `NCM ${ncm ?? "-"} em ${ids.length} item(ns) de booking (${source})`,
+    `NCM ${ncm ?? "-"} em ${ids.length} item(ns) de book (${source})`,
     null,
     { ncm, itemIds: ids },
   );
@@ -417,7 +417,7 @@ export async function reclassifyBookingLot(
     "booking_item.ncm",
     "booking_lot",
     lotId,
-    `NCM estimado de novo no booking nº ${lot.number}: ${result.matched} por aproximação, ${result.toBroker} sem correspondência`,
+    `NCM estimado de novo no book nº ${lot.number}: ${result.matched} por aproximação, ${result.toBroker} sem correspondência`,
   );
   return result;
 }

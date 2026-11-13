@@ -7,7 +7,7 @@ export const pt = {
   "aiRefs.panel.body":
     "A IA da OpenAI cria duas imagens aproximadas de como o produto deve ficar ao final da produção e uma ficha em texto. Os arquivos vão anexados à solicitação ao fornecedor. Os padrões ficam em Configurações; o que mudar aqui vale só para esta escolha.",
   "aiRefs.panel.dataHint":
-    "Os dados do item (descrição, material, cores, medidas, embalagem) e o que a Wellmix precisa vão junto com cada prompt. Com foto no booking, as imagens partem dela.",
+    "Os dados do item (descrição, material, cores, medidas, embalagem) e o que a Wellmix precisa vão junto com cada prompt. Com foto no book, as imagens partem dela.",
   "aiRefs.kind.product": "Imagem 1: produto final",
   "aiRefs.kind.detail": "Imagem 2: detalhes e embalagem",
   "aiRefs.kind.sheet": "Arquivo: ficha para o fornecedor",
@@ -57,7 +57,7 @@ export const en: typeof pt = {
   "aiRefs.panel.body":
     "OpenAI creates two approximate images of how the product should look at the end of production and a text sheet. The files are attached to the supplier request. Defaults live in Settings; changes here apply only to this choice.",
   "aiRefs.panel.dataHint":
-    "The item data (description, material, colors, dimensions, packaging) and what Wellmix needs go with each prompt. With a booking photo, the images start from it.",
+    "The item data (description, material, colors, dimensions, packaging) and what Wellmix needs go with each prompt. With a book photo, the images start from it.",
   "aiRefs.kind.product": "Image 1: finished product",
   "aiRefs.kind.detail": "Image 2: details and packaging",
   "aiRefs.kind.sheet": "File: sheet for the supplier",
@@ -107,7 +107,7 @@ export const zh: typeof pt = {
   "aiRefs.panel.body":
     "OpenAI 会生成两张产品在生产完成后大致样子的图片和一份文字说明。这些文件会附在给供应商的询单中。默认提示词在“设置”中；此处的修改只对本次选择有效。",
   "aiRefs.panel.dataHint":
-    "商品数据（描述、材质、颜色、尺寸、包装）和 Wellmix 的要求会随每个提示词一起发送。订舱单有照片时，图片以照片为基础。",
+    "商品数据（描述、材质、颜色、尺寸、包装）和 Wellmix 的要求会随每个提示词一起发送。Book 有照片时，图片以照片为基础。",
   "aiRefs.kind.product": "图片 1：成品",
   "aiRefs.kind.detail": "图片 2：细节和包装",
   "aiRefs.kind.sheet": "文件：给供应商的说明",
