@@ -33,7 +33,7 @@ O mecanismo é o mesmo da programação de entregas da solicitação do cliente 
 
 A solicitação aberta do grupo leva a programação (`supplier_requests.schedule`). O responsável pelo booking passa a ver **rodadas, peças por rodada e total**, em vez de só a quantidade:
 
-- **Tabela da solicitação**: colunas "Rodadas" e "Peças por rodada" antes da quantidade (total). Pedido único: 1 rodada com a quantidade toda. Passar o mouse mostra o intervalo e as datas.
+- **Tabela da solicitação**: colunas "Programações" e "Peças por programação" (em português; até 13/11/2026 chamavam-se "Rodadas" e "Peças por rodada", troca pedida pelo dono) antes da quantidade (total). Pedido único: 1 rodada com a quantidade toda. Passar o mouse mostra o intervalo e as datas.
 - **Tela do produto**: "3 rodadas de 1.000 peças · total 3.000 peças" sob a quantidade e o quadro **Programação de compra** com a data e as peças de cada rodada.
 - **Lista de solicitações**: a mesma linha de resumo sob as peças.
 
