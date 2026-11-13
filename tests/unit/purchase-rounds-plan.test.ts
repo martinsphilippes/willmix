@@ -4,8 +4,10 @@ import {
   MAX_PURCHASE_ROUNDS,
   cartonsFromPieces,
   containersPerRound,
+  parseCount,
   piecesFromCartons,
   planPurchaseRounds,
+  quantityFields,
   roundLoad,
 } from "@/lib/purchase-rounds";
 
@@ -70,6 +72,122 @@ describe("total em caixas master", () => {
     expect(p.extraPieces).toBe(0);
     expect(p.rounds.map((r) => r.cartons)).toEqual([417, 417, 416]);
     expect(p.rounds.map((r) => r.pieces)).toEqual([20_016, 20_016, 19_968]);
+  });
+});
+
+/*
+ * "Total de caixas" e "Quantidade (peças)" lado a lado no gerador (pedido do
+ * dono, 13/11/2026): o mesmo número em duas unidades. O que se digita num
+ * aparece no outro, pelas peças por caixa master do item escolhido.
+ */
+describe("os dois campos de quantidade do gerador", () => {
+  const item = { masterCartonQty: 48, sheetQty: 3000 };
+  const fields = (
+    typed: Parameters<typeof quantityFields>[0]["typed"],
+    base = "",
+    extra: { masterCartonQty?: number | null; sheetQty?: number } = {},
+  ) => quantityFields({ typed, base, ...item, ...extra });
+  const cartons = (text: string, pieces = "") =>
+    ({ unit: "cartons", text, pieces }) as const;
+  const pieces = (text: string) =>
+    ({ unit: "pieces", text, pieces: text }) as const;
+
+  it("caixas digitadas viram peças: 10 caixas de 48 = 480 peças", () => {
+    expect(fields(cartons("10"))).toEqual({ cartons: "10", pieces: "480" });
+    expect(fields(cartons("1250"))).toEqual({
+      cartons: "1250",
+      pieces: "60000",
+    });
+    // O que foi digitado em caixas fica como foi digitado.
+    expect(fields(cartons("1.250"))).toEqual({
+      cartons: "1.250",
+      pieces: "60000",
+    });
+  });
+
+  it("peças digitadas viram caixas inteiras, para cima", () => {
+    expect(fields(pieces("480"))).toEqual({ cartons: "10", pieces: "480" });
+    // 500 peças de 48 = 10,4 caixas: 11. As peças ficam como digitadas.
+    expect(fields(pieces("500"))).toEqual({ cartons: "11", pieces: "500" });
+    expect(fields(pieces("60.000"))).toEqual({
+      cartons: "1250",
+      pieces: "60.000",
+    });
+    expect(fields(pieces("1"))).toEqual({ cartons: "1", pieces: "1" });
+  });
+
+  it("sem nada digitado, os dois acompanham a quantidade de base", () => {
+    // A quantidade gravada ou a soma das rodadas.
+    expect(fields(null, "67152")).toEqual({
+      cartons: "1399",
+      pieces: "67152",
+    });
+    expect(fields(null, "480")).toEqual({ cartons: "10", pieces: "480" });
+  });
+
+  it("peças em branco: vale a quantidade da planilha, que as caixas mostram", () => {
+    // Ao abrir, sem quantidade gravada: 3.000 da planilha = 63 caixas.
+    expect(fields(null, "")).toEqual({ cartons: "63", pieces: "" });
+    // Apagar as peças volta à quantidade da planilha.
+    expect(fields(pieces(""))).toEqual({ cartons: "63", pieces: "" });
+    expect(fields(pieces("  "))).toEqual({ cartons: "63", pieces: "  " });
+    // Sem quantidade na planilha, não há o que mostrar.
+    expect(fields(null, "", { sheetQty: undefined })).toEqual({
+      cartons: "",
+      pieces: "",
+    });
+  });
+
+  it("apagar as caixas não devolve o número antigo enquanto se digita", () => {
+    expect(fields(cartons(""), "480")).toEqual({ cartons: "", pieces: "" });
+    // Caixa é inteira e positiva: outro valor não vira peças.
+    expect(fields(cartons("0"), "480")).toEqual({ cartons: "0", pieces: "" });
+    expect(fields(cartons("abc"), "480")).toEqual({
+      cartons: "abc",
+      pieces: "",
+    });
+  });
+
+  it("peças que não são número não viram caixas", () => {
+    expect(fields(pieces("abc"))).toEqual({ cartons: "", pieces: "abc" });
+    expect(fields(pieces("0"))).toEqual({ cartons: "", pieces: "0" });
+  });
+
+  it("item sem peças por caixa master: não há conversão, as peças ficam", () => {
+    // Digitar caixas não apaga as peças que estavam no campo.
+    expect(fields(cartons("10", "500"), "", { masterCartonQty: null })).toEqual(
+      { cartons: "10", pieces: "500" },
+    );
+    expect(fields(pieces("500"), "", { masterCartonQty: null })).toEqual({
+      cartons: "",
+      pieces: "500",
+    });
+    expect(fields(null, "500", { masterCartonQty: null })).toEqual({
+      cartons: "",
+      pieces: "500",
+    });
+  });
+
+  it("trocar o item escolhido refaz a conta com a caixa dele", () => {
+    // 10 caixas digitadas: 480 peças com 48 por caixa, 240 com 24.
+    expect(fields(cartons("10"), "", { masterCartonQty: 24 })).toEqual({
+      cartons: "10",
+      pieces: "240",
+    });
+    // 480 peças digitadas: 10 caixas de 48, 20 caixas de 24.
+    expect(fields(pieces("480"), "", { masterCartonQty: 24 })).toEqual({
+      cartons: "20",
+      pieces: "480",
+    });
+  });
+
+  it("número inteiro digitado: ponto, vírgula e espaço separam milhar", () => {
+    expect(parseCount("60000")).toBe(60_000);
+    expect(parseCount("60.000")).toBe(60_000);
+    expect(parseCount("60,000")).toBe(60_000);
+    expect(parseCount(" 60 000 ")).toBe(60_000);
+    expect(parseCount("")).toBeNaN();
+    expect(parseCount("abc")).toBeNaN();
   });
 });
 
