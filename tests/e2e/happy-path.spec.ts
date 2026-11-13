@@ -143,9 +143,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.fill("[data-request-product-name]", productName);
   // Brinquedos exige Inmetro (mapa do processo, P6): o pedido terá o
   // certificado e a arte final com o selo.
-  await page.selectOption("[data-request-product-line]", {
-    label: "Brinquedos",
-  });
+  await page.selectOption("[data-request-product-line]", "linha-brinquedos");
   await page.click("[data-request-product-create]");
   await page.waitForURL(/[?&]product=created/);
 
@@ -234,6 +232,12 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     await page.waitForLoadState("networkidle");
   }
   await gotoProduct(page, productId);
+  // O cadastro fica em quadros recolhidos: abre todos.
+  await page
+    .locator("#product-form details[data-fold-card]")
+    .evaluateAll((els) =>
+      els.forEach((el) => ((el as HTMLDetailsElement).open = true)),
+    );
   await page.locator("#product-form input[name=color]").fill("Transparente");
   await Promise.all([
     page.waitForURL(/[?&]saved=1/),
@@ -364,6 +368,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   ).toBeVisible();
 
   // Assinado pelos dois: a produção espera o sinal (mapa, P12?/P12).
+  await login(page, "admin@wellmix.com");
   await page.goto(orderUrl);
   await expect(requirementRow(page, /^Sinal pago ao fornecedor/)).toContainText(
     /Pendente/,
