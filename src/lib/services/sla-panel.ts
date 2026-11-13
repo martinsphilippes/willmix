@@ -183,7 +183,9 @@ export async function slaBoardFor(
   const manages = admin || visible.size > 1;
 
   const [tasks, partnerItems, recentStages] = await Promise.all([
-    pendingTasksFor(viewer),
+    // Equipe: as pendências de certificação e artes de qualquer login da
+    // Wellmix, cada uma com quem a recebeu como dono (acompanhamento).
+    pendingTasksFor(viewer, { team: true }),
     partnerDelays(now),
     // Indicador pronto: as etapas concluídas com prazo dos últimos 30 dias
     // (antes: todas as etapas concluídas, ~31 mil, a cada abertura).

@@ -83,6 +83,19 @@ export function dieCutProducts<
 export const dieCutHref = (orderId: string, itemId?: string | null) =>
   `/app/orders/${orderId}/die-cut${itemId ? `#item-${itemId}` : ""}`;
 
+/**
+ * Pedido mínimo ou prazo para mostrar, no formato do idioma da tela
+ * (132000 vira "132.000" em pt-BR e "132,000" em en-US); vazio vira "—".
+ */
+export function formatTermsNumber(
+  value: string | number | null | undefined,
+  intl: string,
+): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toLocaleString(intl) : String(value);
+}
+
 /** Pedido mínimo: inteiro de peças, maior que zero. */
 export function parseMoq(raw: string): number | null {
   const n = Number(raw.trim());

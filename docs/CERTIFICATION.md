@@ -38,8 +38,8 @@ A arte não espera o selo: o briefing de embalagem continua nascendo na RFQ. Na 
 ### 4. Regras de negócio
 - **Todo pedido precisa de selo**: a pendência do selo existe em todo pedido aberto e nunca fica sem dono. Com certificadora no pedido, é dela; sem certificadora, é da Wellmix ("designar a certificadora do selo", que abre em Parceiros do pedido).
 - **Sem trava por enquanto** (decisão do dono): a arte pode ser enviada e aprovada pelo fornecedor sem o selo; o que avisa é a pendência e o quadro "Certificação pendente". Travas ficam para depois.
-- **Quem recebe o selo**: quem faz a arte, pela mesma regra do item "Arte" da etapa Arte e embalagem (`artRole`): a agência do pedido; sem agência, ou com "Arte da embalagem feita pela agência" desligado, a Wellmix (o designer do pedido, quem tem a função Designer ou o analista).
-- **Pedido recém-criado**: só o selo já nasce como pendência. Memorial, laudo e registro viram pendência a partir da Preparação; se alguém começar o memorial antes, pelo cartão, o que vem depois (validar, laudo) segue normalmente.
+- **Quem recebe o selo**: quem faz a arte (seção 13): o designer do pedido; sem ele, a agência do pedido quando é ela quem faz a arte (`artRole`); sem agência, ou com "Arte da embalagem feita pela agência" desligado, a Wellmix (quem tem a função Designer; sem ninguém nela, o analista).
+- **Pedido recém-criado**: só o selo já nasce como pendência. Memorial, laudo e registro viram pendência a partir da Preparação; se alguém começar o memorial antes, pelo cartão, o que vem depois (validar, laudo) segue normalmente. O memorial é pendência do responsável interno (dono, 13/11/2026; até então não virava pendência de começar); laudo e registro continuam sem pendência de começar.
 - **Selo trocado**: a certificadora pode reenviar o selo. Se a arte com o selo já tinha sido enviada ou validada, o passo da arte **reabre** (a arte leva o selo antigo), o reenvio pede um arquivo novo e quem faz a arte é avisado. Reenviar sem mudar arquivo nem número não reabre nem avisa.
 - **Wellmix no lugar da certificadora**: a Wellmix pode enviar o selo recebido por fora; o resto do caminho é igual.
 - **Pedido encerrado ou cancelado**: os passos não aceitam mais envio e as pendências somem.
@@ -86,7 +86,7 @@ Sem tabela e sem coluna nova: dois valores novos no enum `import_steps.key` (`ce
 | Arte recusada | quem faz a arte | recusado + motivo | Aplicar o selo na arte |
 | Pedido sem certificadora | Wellmix | designar certificadora | Designar a certificadora do selo |
 
-As pendências de certificação aparecem com o tipo "Certificação" e abrem direto no cartão (`#certification`); a de designar a certificadora abre em Parceiros do pedido. A recusa de uma ação (arquivo que falta, formato não aceito, passo anterior por fazer) aparece dentro do próprio cartão. Arquivo grande (a arte com o selo) sobe direto ao armazenamento, até 50 MB, e o botão só envia depois que o arquivo terminou de subir.
+As pendências de certificação aparecem com o tipo "Certificação" e abrem direto na tarefa: o selo e o memorial a enviar, no quadro em destaque do cartão (`#certification-featured`); aplicar o selo e as validações, na linha do passo (`#certification-step-<passo>`); a de designar a certificadora, em Parceiros do pedido. Os avisos usam os mesmos links. Quem recebe cada uma: seção 13. A recusa de uma ação (arquivo que falta, formato não aceito, passo anterior por fazer) aparece dentro do próprio cartão. Arquivo grande (a arte com o selo) sobe direto ao armazenamento, até 50 MB, e o botão só envia depois que o arquivo terminou de subir.
 
 ### 9. Indicadores
 - Control Tower, "Certificação pendente": todo pedido aberto sem o selo enviado ou sem a arte com o selo conferida; com certificação pedida (OCP, ficha ou passo começado), também memorial, laudo e registro.
@@ -109,7 +109,7 @@ Na ordem do fluxo, o selo fica depois dele: Booking e Superplan → solicitaçã
 5. **A certificadora vê o pedido completo**, fotos e tudo o mais: feito (seção 6).
 
 ### 11.1a Pedido de compra: certificação pela linha (dono, 13/11/2026)
-No pedido de compra (`orders.flow = "supplier_request"`) vale o mapa do processo: o certificado e a arte final com o selo só existem quando a linha do produto exige certificação, e o produto com certificação válida pelo período do pedido não renova (docs/PURCHASE_ORDER.md, seção 1a). Os passos do cartão Certificação já não viravam pendência nesses pedidos; a regra "todo pedido precisa do selo" segue para os outros fluxos.
+No pedido de compra (`orders.flow = "supplier_request"`) vale o mapa do processo: o certificado e a arte final com o selo só existem quando a linha do produto exige certificação, e o produto com certificação válida pelo período do pedido não renova (docs/PURCHASE_ORDER.md, seção 1a). Os passos do cartão Certificação (selo, memorial e arte com o selo) viram pendência nesses pedidos quando algum produto exige certificação (há o item "Certificado" na Preparação), cada um no login certo (seção 13; até 13/11/2026 não viravam pendência). Sem produto que exige certificação, nada do cartão vira pendência e o cartão avisa a Wellmix. A regra "todo pedido precisa do selo" segue para os outros fluxos.
 
 ### 11.2 Ainda em aberto
 0. Registro das respostas do dono de 10/11/2026 sobre o fluxo com a RFQ em espera (docs/RFQ_STANDBY.md): a faca continua sendo pedida ao fornecedor **depois da confirmação** da cotação, como hoje; o selo é enviado pela certificadora, aplicado na arte por quem faz a arte e conferido pela Wellmix (o que já está feito aqui).
@@ -121,3 +121,23 @@ No pedido de compra (`orders.flow = "supplier_request"`) vale o mapa do processo
 - Um envio só para a arte (hoje a arte com o selo é enviada no cartão Certificação e a arte para o fornecedor no item "Arte").
 - Reaproveitar o selo de um produto já certificado em pedidos de recompra.
 - Certificadora padrão nas Configurações quando houver mais de uma.
+
+### 13. Quem recebe cada tarefa (dono, 13/11/2026)
+Cada tarefa dos cartões **Certificação** e **Artes** do pedido vai para o login responsável, pelo que o pedido já tem: **Parceiros do pedido** (certificadora e agência), **Designer do pedido** (cartão Artes) e o **analista do pedido** (`orders.ownerUserId`, o mesmo dono do Painel de SLA), que é o responsável interno da Wellmix. Regra única em `src/lib/services/cert-art-routing.ts`, usada pelas pendências, pelos avisos e pela visão interna.
+
+| Tarefa | Quem recebe | Sem ele |
+|---|---|---|
+| Gerar o selo | a certificadora do pedido (todos os logins dela) | o analista (pendência "Designar a certificadora", em Parceiros do pedido) |
+| Enviar o memorial descritivo | o analista | a equipe Wellmix |
+| Validar o memorial | a certificadora do pedido | a Wellmix valida no lugar (o analista; nunca quem enviou) |
+| Aplicar o selo na arte (só depois do selo enviado) | o designer do pedido (login da Wellmix ou da agência) | a agência, quando é ela quem faz a arte; senão quem tem a função Designer; senão o analista; senão a equipe |
+| Validar o selo aplicado na arte | o analista, se pode validar arte (ação "Validar a arte") | quem tem a ação; quem enviou nunca valida o próprio envio |
+| Corrigir a arte (não conformidade, cartão Artes) | igual a "aplicar o selo na arte" | igual |
+| Conferir a correção da arte | quem apontou a não conformidade, se pode validar arte | quem valida a arte (como acima) |
+
+- **Só no login certo**: a pendência aparece só para quem a recebe. Os outros logins da Wellmix não a veem em Minhas pendências; o acompanhamento fica no cartão do pedido e no Painel de SLA, que mostra as da equipe toda, cada uma com quem a recebeu como dono. O fornecedor não recebe nenhuma destas.
+- **Visão interna**: no cartão Certificação, a Wellmix vê em cada passo aberto com quem ele está ("Com: …" ou "Para validar: …"); no cartão Artes, "Quem faz a arte: …". O que falta designar aparece em destaque, com o link de onde designar: certificadora → Parceiros do pedido; designer → cartão Artes; analista → Equipe e acessos ("Distribuir agora"). A pendência sem dono certo também diz o que falta.
+- **O servidor confere** antes de gravar: o selo, a certificadora do pedido ou a Wellmix; o memorial, a Wellmix ou a certificadora do pedido; a arte com o selo, quem faz a arte (o designer do pedido, a agência quando é ela quem faz a arte, a Wellmix); validar a arte com o selo e conferir a correção da arte, só quem tem a ação "Validar a arte" (o administrador sempre), como a validação da arte do pedido de compra. Quem enviou não valida o próprio passo (exceto o administrador).
+- **Selo para baixar**: quem aplica o selo baixa o arquivo na linha "Selo aplicado na arte" ("Baixar o selo"), no quadro do alto ou no zip das artes.
+- **Trocar o responsável**: as pendências são calculadas na hora a partir do pedido. Designar ou trocar a certificadora, a agência, o designer ou o analista muda o dono da pendência aberta, sem criar outra; o que já foi feito continua com quem fez e quem validou. No pedido de compra, os itens abertos das raias também passam para o parceiro novo: o certificado para a certificadora, a arte e a arte final com o selo para a agência quando é ela quem faz a arte (`syncLaneRoles`); sem o parceiro, voltam para a Wellmix.
+- **Limites**: os itens das raias da Preparação (arte, validação e arte final do pedido de compra) seguem o papel de cada item (agência ou Wellmix) e continuam visíveis para a equipe Wellmix inteira; o designer do pedido ainda não é usado neles.

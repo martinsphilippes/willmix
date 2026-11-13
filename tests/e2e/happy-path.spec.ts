@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
 import {
   bookingSheet,
   fillMyRequirements,
@@ -177,6 +177,18 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.getByRole("link", { name: "Die-Cut, Arte e Certificação" }),
   ).toHaveCount(1);
+  // Certificação no login responsável (docs/CERTIFICATION.md, seção 13): o
+  // memorial é do analista do pedido (quem gerou), com o link direto para o
+  // quadro do alto do cartão Certificação.
+  const orderPath = new URL(orderUrl).pathname;
+  await page.goto("/app/tasks");
+  // (A lista pagina no navegador: a linha pode estar em outra página.)
+  await expect(
+    page.locator(
+      `[data-task-row] a[href="${orderPath}#certification-featured"]`,
+    ),
+  ).not.toHaveCount(0);
+  await page.goto(orderUrl);
   // Transportador: o pedido só designa sozinho quando há exatamente um ativo
   // no cadastro. Outros testes cadastram mais transportadores (que nascem
   // ativos), então a Wellmix designa aqui, em Parceiros do pedido.
@@ -278,6 +290,12 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // A pendência dele cai na etapa "Die Cut" e abre o quadro do pedido, com
   // os quatro itens do produto: die-cut, foto em alta, pedido mínimo e prazo.
   await page.goto("/app/tasks");
+  // Certificação e artes não são dele: nenhuma dessas pendências aparece.
+  await expect(
+    page.locator(
+      `[data-task-row] a[href*="${orderPath}#certification"], [data-task-row] a[href*="${orderPath}#artwork"]`,
+    ),
+  ).toHaveCount(0);
   const dieCutTask = page.locator(
     `[data-task-group="supplier.dieline"]:has(a[href*="${new URL(orderUrl, "http://x").pathname}/die-cut"])`,
   );
@@ -301,12 +319,69 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     ).toHaveAttribute("data-done", "yes");
   }
   // O pedido mínimo e o prazo vêm com o negociado; ele corrige o prazo.
-  const terms = board.locator("[data-die-cut-terms]");
+  const termsItem = board.locator('[data-die-cut-item="terms"]');
+  const terms = termsItem.locator("[data-die-cut-terms]");
   await expect(terms.locator("input[name=moq]")).toHaveValue("2000");
   await terms.locator("input[name=leadTimeDays]").fill("45");
   await terms.getByRole("button").click();
   await page.waitForURL(/saved=terms/);
   await expect(board).toHaveAttribute("data-complete", "yes");
+  // Confirmado (dono, 13/11/2026): no lugar do formulário, o resumo com o
+  // selo, os valores e quem confirmou, sem o botão de confirmar e sem o
+  // "confira os números". Recarregar mostra o mesmo (vem do registro
+  // salvo). O fornecedor do teste lê em chinês.
+  const termsValues = termsItem.locator("[data-die-cut-terms-values]");
+  const editTerms = termsItem.locator("[data-die-cut-terms-edit]");
+  for (const reload of [false, true]) {
+    if (reload) await page.reload();
+    await expect(terms).toHaveCount(0);
+    await expect(termsItem).toContainText("已确认");
+    await expect(termsValues).toHaveText("2,000 件 · 45 天");
+    await expect(termsItem.locator("[data-die-cut-terms-by]")).toContainText(
+      "Li Wei",
+    );
+    await expect(termsItem).not.toContainText("请核对数字");
+    await expect(editTerms).toBeVisible();
+  }
+  // "Editar" abre o formulário com os valores salvos (foco no primeiro
+  // campo); "Cancelar" volta ao resumo.
+  await editTerms.click();
+  await expect(terms.locator("input[name=moq]")).toBeFocused();
+  await expect(terms.locator("input[name=moq]")).toHaveValue("2000");
+  await expect(terms.locator("input[name=leadTimeDays]")).toHaveValue("45");
+  await terms.locator("[data-die-cut-terms-cancel]").click();
+  await expect(terms).toHaveCount(0);
+  await expect(editTerms).toBeFocused();
+  // Recusa: o que foi digitado fica e o erro aparece junto ao formulário,
+  // sem trocar de tela.
+  await editTerms.click();
+  await terms.locator("input[name=moq]").fill("0");
+  const beforeRefusal = page.url();
+  await terms.locator("button[type=submit]").click();
+  await expect(
+    terms.locator('[data-die-cut-terms-error="invalid_moq"]'),
+  ).toContainText("起订量无效");
+  await expect(terms.locator("input[name=moq]")).toHaveValue("0");
+  await expect(terms.locator("input[name=moq]")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await expect(terms.locator("input[name=leadTimeDays]")).toHaveValue("45");
+  expect(page.url()).toBe(beforeRefusal);
+  // Enquanto envia, o botão fica desativado (sem clique repetido); salvo,
+  // volta o resumo. Mesmos valores: nada muda para a Wellmix.
+  const slowSave = async (route: Route) => {
+    if (route.request().method() === "POST")
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  };
+  await page.route(/\/die-cut/, slowSave);
+  await terms.locator("input[name=moq]").fill("2000");
+  await terms.locator("button[type=submit]").click();
+  await expect(terms.locator("button[type=submit]")).toBeDisabled();
+  await expect(terms).toHaveCount(0);
+  await page.unroute(/\/die-cut/, slowSave);
+  await expect(termsValues).toHaveText("2,000 件 · 45 天");
   // Nada mais dele na Preparação: o pedido mostra os quatro concluídos.
   await page.goto(orderUrl);
   await expect(page.locator("[data-die-cut-link]")).toBeVisible();

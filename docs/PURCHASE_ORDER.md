@@ -94,7 +94,8 @@ Regras:
 - **Avisos:**
   - arte enviada → a Wellmix valida;
   - arte validada e certificado emitido → a agência faz a arte final.
-- **Passos do selo:** os passos do cartão Certificação (selo e arte com o selo) não viram pendência nestes pedidos, porque a certificação é a raia da certificadora.
+- **Passos do selo (dono, 13/11/2026):** os passos do cartão Certificação (selo, memorial e arte com o selo) viram pendência quando algum produto exige certificação, cada um no login responsável: selo para a certificadora, memorial para o analista (a validação, para a certificadora), aplicar o selo para o designer do pedido ou a agência que faz a arte, validar a arte com o selo para o analista que pode validar arte (docs/CERTIFICATION.md, seção 13). Até 13/11/2026 não viravam pendência.
+- **Parceiro designado depois:** designar ou trocar a certificadora ou a agência em Parceiros do pedido passa os itens abertos das raias para ela (certificado; arte e arte final com o selo, quando a agência faz a arte), sem duplicar; sem o parceiro, voltam para a Wellmix. O que já foi feito não muda.
 - **Fim da etapa:** a etapa conclui quando todos os itens das três raias estão feitos.
 
 ### Nome do produto nas tarefas e o nome de exemplo (pedido do dono, 13/11/2026)
@@ -112,6 +113,8 @@ Cada tarefa das raias leva o produto no nome: "Faca (die cut) · Jarra de vidro"
 - **O que é:** os quatro itens do fornecedor (die-cut, foto em alta, pedido mínimo e prazo de entrega) juntos, produto a produto, em `/app/orders/{id}/die-cut`. São os mesmos requisitos da raia dele; a página do pedido continua mostrando cada um e ganha o atalho "Abrir o Die Cut".
 - **Como chega:** em Minhas pendências, a etapa **Die Cut** do fornecedor traz uma linha por produto ("Die Cut: produto"); "Abrir" leva ao quadro, já no produto.
 - **Pedido mínimo e prazo:** vêm com o negociado na solicitação ao fornecedor; ele confirma os dois de uma vez ou corrige. Enquanto a Preparação está aberta dá para corrigir de novo.
+- **Depois de confirmar** (pedido do dono, 13/11/2026): o bloco troca o formulário por um resumo de leitura: o selo verde **Confirmado** no título, os valores salvos no formato do idioma ("132.000 peças · 15 dias") e quem confirmou, com a data (o envio mais recente dos dois). Sem o botão de confirmar e sem o "Confira os números". Enquanto a Preparação está aberta e quem vê pode enviar, **Editar** (botão secundário) abre o mesmo formulário com os valores salvos, com **Cancelar** para voltar ao resumo; fechada a etapa, só o resumo. O estado vem do registro salvo (os dois requisitos concluídos), então recarregar a página ou voltar ao quadro mostra o mesmo.
+- **Envio:** o botão fica desativado enquanto grava (sem clique repetido). Se a gravação é recusada, a tela não muda: o erro aparece logo abaixo do formulário, o campo recusado fica marcado e o que foi digitado continua. Deu certo, a página volta com o aviso de salvo e o bloco no resumo. As regras de validação (pedido mínimo inteiro maior que zero; prazo de 1 a 720 dias) e o aviso à Wellmix quando o valor muda depois de completo são os mesmos.
 - **Avisos à Wellmix:** quando os quatro itens de um produto ficam completos (com o valor negociado, se o confirmado saiu diferente) e a cada mudança posterior de pedido mínimo ou prazo, com o valor de antes.
 - **Quem abre:** a Wellmix e o fornecedor do pedido.
 
