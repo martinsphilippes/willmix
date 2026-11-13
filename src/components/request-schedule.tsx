@@ -63,6 +63,7 @@ export function RequestScheduleFields({
   generator,
   roundInfo,
   split,
+  blocked = false,
 }: {
   prefix: string;
   /** Quantidade total da linha (texto do campo). */
@@ -100,6 +101,12 @@ export function RequestScheduleFields({
    * partes iguais.
    */
   split?: (total: number, count: number) => number[];
+  /**
+   * Programação de compra sem o item escolhido marcado na tabela (pedido do
+   * dono, 13/11/2026): não liga, não acrescenta nem tira rodada (a conta
+   * precisa da caixa do item). O motivo aparece no gerador.
+   */
+  blocked?: boolean;
 }) {
   const known = (SCHEDULE_INTERVALS as readonly number[]).includes(
     initial?.intervalDays ?? -1,
@@ -126,6 +133,7 @@ export function RequestScheduleFields({
     split ? split(amount, count) : splitEvenly(amount, count, max);
 
   function enable() {
+    if (blocked) return;
     const n = Math.max(0, Number(String(total).replace(",", ".")) || 0);
     const parts = divide(n, 2);
     setQtys(parts.map(String));
@@ -159,11 +167,11 @@ export function RequestScheduleFields({
     onTotalChange(String(sum(list)));
   }
   function add() {
-    if (qtys.length >= max) return;
+    if (blocked || qtys.length >= max) return;
     update(divide(sum(qtys), qtys.length + 1).map(String));
   }
   function remove() {
-    if (qtys.length <= 2) return;
+    if (blocked || qtys.length <= 2) return;
     update(divide(sum(qtys), qtys.length - 1).map(String));
   }
 
@@ -182,8 +190,9 @@ export function RequestScheduleFields({
         <button
           type="button"
           onClick={enable}
+          disabled={blocked}
           data-schedule-on
-          className="inline-flex items-center gap-1 rounded-md border border-dashed border-brand-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+          className="inline-flex items-center gap-1 rounded-md border border-dashed border-brand-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
         >
           <span aria-hidden>+</span>
           {labels.toggle}
@@ -312,8 +321,9 @@ export function RequestScheduleFields({
                   <button
                     type="button"
                     onClick={() => remove()}
+                    disabled={blocked}
                     aria-label={fill(labels.remove, { n: i + 1 })}
-                    className="rounded px-1 text-xs text-zinc-400 hover:bg-red-50 hover:text-red-700"
+                    className="rounded px-1 text-xs text-zinc-400 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-zinc-400"
                   >
                     ×
                   </button>
@@ -355,8 +365,9 @@ export function RequestScheduleFields({
             <button
               type="button"
               onClick={add}
+              disabled={blocked}
               data-schedule-add
-              className="flex w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-brand-300 bg-white p-2 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+              className="flex w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-brand-300 bg-white p-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
             >
               <span aria-hidden className="text-lg leading-none">
                 +
