@@ -548,6 +548,31 @@ describe("permissões", () => {
     expect(await page(supplier)).toEqual({ purchases: [], next: null });
   });
 
+  it('Wellmix sem "Ver valores e margem": as compras, sem a venda', async () => {
+    // A regra das listas e do Histórico comercial (canSeeMoney): o operador
+    // sem a ação vê pedidos e produtos, não os valores; o administrador vê.
+    const operator = (
+      await getStore().list("users", {
+        filter: { email: "operador@wellmix.com" },
+      })
+    )[0];
+    expect(operator).toBeTruthy();
+    const theirs = await page(operator);
+    expect(theirs.purchases.length).toBeGreaterThan(0);
+    for (const p of theirs.purchases) {
+      expect(p.total).toBeNull();
+      for (const i of p.items) {
+        expect(i.unitSale).toBeNull();
+        expect(i.subtotalSale).toBeNull();
+      }
+    }
+    const view = ph.purchaseHistoryView(theirs, translator("pt"));
+    expect(view.purchases.every((p) => p.total === "—")).toBe(true);
+    expect((await page(admin)).purchases.some((p) => p.total !== null)).toBe(
+      true,
+    );
+  });
+
   it("o custo do fornecedor (FOB) não sai em nenhum valor", async () => {
     const p = await page(admin);
     const json = JSON.stringify(p);

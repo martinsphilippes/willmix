@@ -21,7 +21,7 @@ Pedido do dono (14/11/2026, com as fotos da Nova solicitação no iPad, login Co
 | Número | `orders.number` ("Pedido #n") |
 | Data | Pedido do portal: `orders.createdAt`. Pedido da carga do Sankhya: o fim (`completedAt`) da etapa "Pedido criado" já concluída, que a carga grava com a data do pedido no Sankhya (DTNEG). Sem essa etapa concluída: "—" (a dica diz "Data original não gravada na carga do Sankhya"). |
 | Situação | `orders.status`, com o nome das etapas usado nas outras telas |
-| Valor total e moeda | Venda ao cliente: `orders.sellPrice` e `orders.sellCurrency`, só para quem vê venda (`canSeeSellPrice`). Sem venda gravada: "—". O custo do fornecedor (`orders.fobTotal`) nunca aparece. |
+| Valor total e moeda | Venda ao cliente: `orders.sellPrice` e `orders.sellCurrency`, só para quem vê valores (seção 5). Sem venda gravada: "—". O custo do fornecedor (`orders.fobTotal`) nunca aparece. |
 
 Expandida, a linha mostra os produtos do pedido, a programação (se for pedido pai) e o link "Abrir o pedido #n (nova aba)", que abre `/app/orders/<id>` em outra aba para não perder a solicitação em andamento.
 
@@ -53,7 +53,7 @@ Cada dado vem primeiro do que ficou **gravado no pedido** (o pedido, os itens, a
 | Peso líquido e bruto por peça, kg | `purchase_sheets.netWeightPcKg/grossWeightPcKg` → `variant.netWeightKg/grossWeightKg` | `products.netWeightKg/grossWeightKg` | Wellmix |
 | NCM | `purchase_sheets.ncm` | `products.ncm` | Wellmix |
 | EAN | — | `products.ean` | Wellmix |
-| Valor unitário (venda) e Subtotal (venda), com a moeda | A venda é gravada no pedido inteiro (`orders.sellPrice`). Pedido de um produto: subtotal = total do pedido e unitário = total ÷ quantidade. Pedido de vários produtos: "—" por item (o total fica na linha do pedido). | — | quem vê venda |
+| Valor unitário (venda) e Subtotal (venda), com a moeda | A venda é gravada no pedido inteiro (`orders.sellPrice`). Pedido de um produto: subtotal = total do pedido e unitário = total ÷ quantidade. Pedido de vários produtos: "—" por item (o total fica na linha do pedido). | — | quem vê valores (seção 5) |
 
 - **Solicitação de apoio** (pedido da carga do Sankhya, pedido de compra pela solicitação ao fornecedor e rodada da programação): o texto da solicitação ("Importado do Sankhya…", "Rodada 1 de 2…") não é descrição de produto e não aparece.
 - **Rodada sem ficha de compra própria** usa a do pedido pai.
@@ -69,7 +69,7 @@ Cada dado vem primeiro do que ficou **gravado no pedido** (o pedido, os itens, a
 
 - **Quem lê:** só quem abre Solicitações (`canOpen(user, "requests")`) e é da Wellmix ou cliente. Parceiros (fornecedor, agência, despachante…) recebem "não encontrado".
 - **Wellmix:** qualquer cliente (o `customer` da consulta). **Cliente:** só a empresa dele (o `customer` da consulta é ignorado) e só os pedidos que ele pediu (o mesmo `canViewOrder` da lista de Pedidos), já no filtro da consulta.
-- **Valor de venda:** só para quem vê venda (`canSeeSellPrice`). **Custo** (FOB do pedido, preço unitário do fornecedor `order_items.unitPrice`): nunca sai do servidor.
+- **Valor de venda:** na Wellmix, só com a ação "Ver valores e margem" (`canSeeMoney`, a mesma regra das listas, exportações e do Histórico comercial; o administrador sempre); sem ela, o card mostra as compras e os produtos com "—" nos valores. O login do cliente vê a venda dos pedidos dele (`canSeeSellPrice`). **Custo** (FOB do pedido, preço unitário do fornecedor `order_items.unitPrice`): nunca sai do servidor.
 - **Folha do fornecedor** (códigos, caixa, medidas, cubagem, dados técnicos, ficha atual): só para a Wellmix, como na lista de Pedidos. Para o cliente, nem a ficha de compra nem a ficha do produto são lidas.
 - Tudo é leitura: nenhuma Server Action nova, nada gravado, sem mudança no banco.
 
@@ -107,4 +107,4 @@ Para o histórico ficar completo: gravar a venda ao cliente (por item, se o come
 - Rota de leitura: `src/app/api/purchase-history/route.ts` (GET, `?customer=&before=&shown=`, sem cache).
 - Tela: `src/components/customer-purchase-history.tsx` (o card), `src/components/request-customer-context.tsx` (a grade da tela, com o cliente escolhido no formulário para o card), `request-customer-field.tsx` e `search-picker.tsx` (`onDeselect`: apagar o nome escolhido limpa o cliente), `src/app/app/requests/new/page.tsx` (a grade com a coluna da esquerda).
 - Textos: `src/i18n/modules/purchase-history.ts` (pt/en/zh).
-- Testes: `tests/unit/purchase-history.test.ts` (cliente sem histórico, vários pedidos com "Carregar mais" e a janela lida, venda por pedido e por item, ficha de compra × ficha atual, medida zero, pedido antigo incompleto em caixas, data do Sankhya com e sem a etapa, programação com filho e rodada prevista também no login do cliente, permissões); E2E: `tests/e2e/search-pickers.spec.ts` (sem cliente, estoque, escolher, apagar e escolher de novo) e o caminho principal (o pedido de compra novo no topo do histórico da Wellmix SC, o detalhe e o link do pedido).
+- Testes: `tests/unit/purchase-history.test.ts` (cliente sem histórico, vários pedidos com "Carregar mais" e a janela lida, venda por pedido e por item, ficha de compra × ficha atual, medida zero, pedido antigo incompleto em caixas, data do Sankhya com e sem a etapa, programação com filho e rodada prevista também no login do cliente, permissões, inclusive o operador sem "Ver valores e margem"); E2E: `tests/e2e/search-pickers.spec.ts` (sem cliente, estoque, escolher, apagar e escolher de novo) e o caminho principal (o pedido de compra novo no topo do histórico da Wellmix SC, o detalhe e o link do pedido).

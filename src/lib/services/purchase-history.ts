@@ -15,6 +15,7 @@ import {
   canViewOrder,
   isWellmix,
 } from "@/lib/auth/permissions";
+import { canSeeMoney } from "@/lib/auth/function-access";
 import { boxesFor } from "@/lib/logistics/cbm";
 import { realName } from "@/lib/placeholder-name";
 import { formatAmount } from "@/lib/workflow/money";
@@ -33,8 +34,10 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
  * nulo ("—" na tela).
  *
  * Permissões de sempre: a Wellmix vê os pedidos de qualquer cliente; o login
- * do cliente, só os pedidos dele (`canViewOrder`). Valor de venda só para
- * quem vê venda (`canSeeSellPrice`); custo (FOB, preço do fornecedor) nunca.
+ * do cliente, só os pedidos dele (`canViewOrder`). Valor de venda: na
+ * Wellmix, só com "Ver valores e margem" (`canSeeMoney`, como nas listas e
+ * no Histórico comercial); o cliente, a dos pedidos dele. Custo (FOB, preço
+ * do fornecedor) nunca.
  * Código, caixa, medidas, cubagem e dados técnicos (a folha do fornecedor)
  * só para a Wellmix, como na lista de Pedidos: para os demais nada disso sai
  * do servidor.
@@ -511,7 +514,10 @@ export async function loadPurchaseHistory(
   );
   const itemsOf = (orderId: string) =>
     items.filter((i) => i.orderId === orderId);
-  const seesSale = canSeeSellPrice(user);
+  // Venda: na Wellmix, só com "Ver valores e margem" (a regra das listas,
+  // exportações e do Histórico comercial, canSeeMoney); o login do cliente
+  // vê a venda dos pedidos dele.
+  const seesSale = wellmix ? canSeeMoney(user) : canSeeSellPrice(user);
 
   const dateOf = (o: Order) =>
     o.sankhyaCode ? (erpDate.get(o.id) ?? null) : o.createdAt;
