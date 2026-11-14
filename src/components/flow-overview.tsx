@@ -12,11 +12,11 @@ import {
   flowAllFor,
   flowBlockSummary,
   flowOverviewEntities,
-  type OverviewEntity,
+  flowOverviewKpis,
 } from "@/lib/services/flow";
 import { isWellmix } from "@/lib/auth/permissions";
 import { overviewHref, stepId } from "@/lib/flow";
-import { PROGRESS_BLOCKS } from "@/lib/flow-progress";
+import { ENTITY_BLOCKS } from "@/lib/services/flow-kpis";
 import { FlowCases } from "./flow-cases";
 import { FlowEntities, PercentBar, daysSince } from "./flow-entities";
 import { Card, PageHeader, Stat, TextLink, cx } from "./ui";
@@ -177,13 +177,6 @@ export async function FlowOverview({
   );
 }
 
-/** Blocos com o Overview pelas entidades, na ordem do mapa. */
-const ENTITY_BLOCKS: readonly FlowBlock[] = ["new-product", ...PROGRESS_BLOCKS];
-
-/** Média dos percentuais (0 sem pedidos). */
-const avg = (xs: number[]) =>
-  xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0;
-
 async function EntityOverview({
   user,
   block,
@@ -198,28 +191,22 @@ async function EntityOverview({
   basePath: string;
 }) {
   const now = new Date();
-  const [summary, byBlock] = await Promise.all([
+  // Os números vêm prontos (kpi_snapshots "flow", docs/RESUMOS.md); a lista
+  // só do bloco aberto, para a tabela.
+  const [summary, kpis, entities] = await Promise.all([
     flowBlockSummary(user, block, now),
-    Promise.all(
-      ENTITY_BLOCKS.map(
-        async (b) => [b, await flowOverviewEntities(user, b)] as const,
-      ),
-    ),
+    flowOverviewKpis(user, now),
+    flowOverviewEntities(user, block),
   ]);
-  const blockEntities = new Map<FlowBlock, OverviewEntity[]>(byBlock);
-  const entities = blockEntities.get(block) ?? [];
+  const mine = kpis.blocks[block];
   const current = summary.find((s) => s.step.key === selected) ?? null;
   const shown = current
     ? entities.filter((e) => e.steps.includes(current.step.key))
     : entities;
-  const inStep = (key: string) =>
-    entities.filter((e) => e.steps.includes(key)).length;
-  const late = entities.filter((e) => e.lateDays > 0).length;
+  const inStep = (key: string) => kpis.steps[`${block}/${key}`] ?? 0;
+  const late = mine?.late ?? 0;
   const np = block === "new-product";
-  const oldest = Math.max(
-    0,
-    ...entities.map((e) => daysSince(e.since, now) ?? 0),
-  );
+  const oldest = daysSince(mine?.oldest ?? null, now) ?? 0;
   const tasks = summary.reduce((n, s) => n + s.count, 0);
   const lateTasks = summary.reduce((n, s) => n + s.overdue, 0);
   return (
@@ -227,7 +214,7 @@ async function EntityOverview({
       <PageHeader
         title={t(blockLabelKey(block))}
         subtitle={t(np ? "flow.np.subtitle" : "flow.entities.subtitle", {
-          n: entities.length,
+          n: mine?.count ?? 0,
           late,
           tasks,
         })}
@@ -238,7 +225,7 @@ async function EntityOverview({
       >
         <Stat
           label={np ? t("flow.np.kpiEntities") : t("flow.kpi.entities")}
-          value={<span data-flow-kpi="entities">{entities.length}</span>}
+          value={<span data-flow-kpi="entities">{mine?.count ?? 0}</span>}
         />
         <Stat
           label={t("flow.kpi.late")}
@@ -247,19 +234,11 @@ async function EntityOverview({
         />
         <Stat
           label={t("flow.kpi.blockPercent")}
-          value={
-            <span data-flow-kpi="block">
-              {avg(entities.map((e) => e.percent))}%
-            </span>
-          }
+          value={<span data-flow-kpi="block">{mine?.percent ?? 0}%</span>}
         />
         <Stat
           label={t("flow.kpi.overall")}
-          value={
-            <span data-flow-kpi="overall">
-              {avg(entities.map((e) => e.overall))}%
-            </span>
-          }
+          value={<span data-flow-kpi="overall">{mine?.overall ?? 0}%</span>}
         />
         <Stat
           label={t("flow.kpi.tasks")}
@@ -281,16 +260,17 @@ async function EntityOverview({
           data-flow-general
         >
           {ENTITY_BLOCKS.map((b, i) => {
-            const list = blockEntities.get(b) ?? [];
+            const k = kpis.blocks[b];
+            const count = k?.count ?? 0;
             const here = b === block;
-            const lateHere = list.filter((e) => e.lateDays > 0).length;
+            const lateHere = k?.late ?? 0;
             return (
               <li key={b} className="relative">
                 <Link
                   href={overviewHref(b)}
                   aria-current={here ? "page" : undefined}
                   data-flow-general-block={b}
-                  data-flow-general-count={list.length}
+                  data-flow-general-count={count}
                   className={cx(
                     "block rounded-xl border px-3 py-2 transition hover:shadow-sm",
                     here
@@ -313,14 +293,11 @@ async function EntityOverview({
                         here ? "text-zinc-900" : "text-zinc-500",
                       )}
                     >
-                      {list.length}
+                      {count}
                     </span>
                   </div>
                   <div className="mt-1">
-                    <PercentBar
-                      percent={avg(list.map((e) => e.percent))}
-                      muted={!here}
-                    />
+                    <PercentBar percent={k?.percent ?? 0} muted={!here} />
                   </div>
                   <div
                     className={cx(
@@ -362,7 +339,7 @@ async function EntityOverview({
                 {t("flow.entities.allSteps")}
               </span>
               <span className="text-lg font-bold tabular-nums text-zinc-900">
-                {entities.length}
+                {mine?.count ?? 0}
               </span>
             </Link>
           </li>
