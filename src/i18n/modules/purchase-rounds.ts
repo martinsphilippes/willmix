@@ -18,6 +18,14 @@ export const pt = {
   "purchaseRounds.form.firstDate": "Data da 1ª programação",
   "purchaseRounds.form.n": "Programação {n}",
   "purchaseRounds.form.quantity": "Peças",
+  "purchaseRounds.form.cartons": "Caixas",
+  "purchaseRounds.form.cartonCalc":
+    "{cartons} caixas × {pcs} peças por caixa = {pieces} peças",
+  "purchaseRounds.form.cartonPartial":
+    "{pieces} peças não fecham caixas inteiras de {pcs} ({cartons} caixas): digite as caixas.",
+  "purchaseRounds.form.totalCartons": "{cartons} caixas de {pcs} peças",
+  "purchaseRounds.form.piecesLocked":
+    "Sai das caixas: caixas × peças por caixa master. Mude as caixas.",
   "purchaseRounds.form.expected": "Pedido em",
   "purchaseRounds.form.add": "Programação",
   "purchaseRounds.form.remove": "Remover programação {n}",
@@ -73,7 +81,7 @@ export const pt = {
   "purchaseRounds.gen.listItemMany": "{i}ª: {n} (o último {pct}% ocupado)",
   "purchaseRounds.gen.totalContainers":
     "Containers {container} previstos no total: {n}.",
-  "purchaseRounds.gen.load": "{cartons} caixas master · {cbm} m³",
+  "purchaseRounds.gen.load": "Volume: {cbm} m³",
   "purchaseRounds.gen.cardPartial": "{n} container previsto · {pct}% ocupado",
   "purchaseRounds.gen.cardPartialMany":
     "{n} containers previstos · o último {pct}% ocupado",
@@ -152,6 +160,14 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseRounds.form.firstDate": "1st round date",
   "purchaseRounds.form.n": "Round {n}",
   "purchaseRounds.form.quantity": "Pieces",
+  "purchaseRounds.form.cartons": "Cartons",
+  "purchaseRounds.form.cartonCalc":
+    "{cartons} cartons × {pcs} pieces per carton = {pieces} pieces",
+  "purchaseRounds.form.cartonPartial":
+    "{pieces} pieces do not make whole cartons of {pcs} ({cartons} cartons): type the cartons.",
+  "purchaseRounds.form.totalCartons": "{cartons} cartons of {pcs} pieces",
+  "purchaseRounds.form.piecesLocked":
+    "Comes from the cartons: cartons × pieces per master carton. Change the cartons.",
   "purchaseRounds.form.expected": "Order on",
   "purchaseRounds.form.add": "Round",
   "purchaseRounds.form.remove": "Remove round {n}",
@@ -207,7 +223,7 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.listItemMany": "#{i}: {n} (last one {pct}% used)",
   "purchaseRounds.gen.totalContainers":
     "Planned {container} containers in total: {n}.",
-  "purchaseRounds.gen.load": "{cartons} master cartons · {cbm} m³",
+  "purchaseRounds.gen.load": "Volume: {cbm} m³",
   "purchaseRounds.gen.cardPartial": "{n} container planned · {pct}% used",
   "purchaseRounds.gen.cardPartialMany":
     "{n} containers planned · last one {pct}% used",
@@ -283,6 +299,14 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.form.firstDate": "第 1 批日期",
   "purchaseRounds.form.n": "第 {n} 批",
   "purchaseRounds.form.quantity": "件数",
+  "purchaseRounds.form.cartons": "箱数",
+  "purchaseRounds.form.cartonCalc":
+    "{cartons} 箱 × 每箱 {pcs} 件 = {pieces} 件",
+  "purchaseRounds.form.cartonPartial":
+    "{pieces} 件不是整箱（每箱 {pcs} 件，{cartons} 箱）：请填写箱数。",
+  "purchaseRounds.form.totalCartons": "{cartons} 箱，每箱 {pcs} 件",
+  "purchaseRounds.form.piecesLocked":
+    "由箱数计算：箱数 × 每外箱件数。请修改箱数。",
   "purchaseRounds.form.expected": "下单日",
   "purchaseRounds.form.add": "批次",
   "purchaseRounds.form.remove": "删除第 {n} 批",
@@ -334,7 +358,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.listItem": "第{i}批：{n}（已用 {pct}%）",
   "purchaseRounds.gen.listItemMany": "第{i}批：{n}（最后一个已用 {pct}%）",
   "purchaseRounds.gen.totalContainers": "计划 {container} 合计：{n} 个。",
-  "purchaseRounds.gen.load": "{cartons} 个外箱 · {cbm} m³",
+  "purchaseRounds.gen.load": "体积：{cbm} m³",
   "purchaseRounds.gen.cardPartial": "计划 {n} 个集装箱 · 已用 {pct}%",
   "purchaseRounds.gen.cardPartialMany":
     "计划 {n} 个集装箱 · 最后一个已用 {pct}%",

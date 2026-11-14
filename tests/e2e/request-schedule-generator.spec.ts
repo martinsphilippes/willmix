@@ -107,9 +107,29 @@ test("Nova solicitação: o bloco Programação de compra, pedido único, sobra,
   await expect(gen.locator("[data-generate-per-round]")).toHaveText("1");
   await expect(gen.locator("[data-generate-total-containers]")).toHaveText("2");
   const card1 = first.locator('[data-schedule-item="1"]');
-  await expect(card1.locator("[data-schedule-load]")).toHaveText(
-    "150 caixas master · 18,03 m³",
+  // Cada programação em caixas (dono, 14/11/2026): "Caixas" é o campo
+  // editável, as peças ficam travadas e a conta fica escrita.
+  await expect(card1.locator("[data-schedule-cartons]")).toHaveValue("150");
+  await expect(qty(page, 0, 1)).toHaveAttribute("readonly", "");
+  await expect(card1.locator("[data-schedule-carton-calc]")).toHaveText(
+    "150 caixas × 48 peças por caixa = 7.200 peças",
   );
+  await expect(card1.locator("[data-schedule-load]")).toHaveText(
+    "Volume: 18,03 m³",
+  );
+  await expect(first.locator("[data-schedule-total-cartons]")).toContainText(
+    "300 caixas de 48 peças",
+  );
+  // Mudar as caixas de uma programação muda as peças e o total.
+  const card2 = first.locator('[data-schedule-item="2"]');
+  await card2.locator("[data-schedule-cartons]").fill("100");
+  await expect(qty(page, 0, 2)).toHaveValue("4800");
+  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("12000");
+  await expect(card2.locator("[data-schedule-carton-calc]")).toHaveText(
+    "100 caixas × 48 peças por caixa = 4.800 peças",
+  );
+  await card2.locator("[data-schedule-cartons]").fill("150");
+  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("14400");
   await expect(card1.locator("[data-round-status]")).toHaveText(
     "1 container previsto · 26% ocupado",
   );

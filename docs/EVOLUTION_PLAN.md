@@ -1431,6 +1431,12 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Nada foi removido**: `p<n>.quantity` e `p<n>.unit` continuam no formulário (ocultos; a unidade é "un") e no envio; rotas, Server Actions, permissões, banco e esquema iguais. A ficha de compra continua com os lotes dela (até 6), agora com a mesma distribuição (`splitEvenly`).
 - Peças: `purchaseScheduleLabels` em `src/components/generate-labels.ts`; `roundsShortage` e `MAX_SCHEDULE_ROUNDS`; `SelectionQuantity` (aviso, pedido mínimo) e `RequestScheduleFields` (quadro sempre à vista). Testes: `tests/e2e/request-schedule-generator.spec.ts`, `tests/e2e/schedule-both-screens.spec.ts`, `tests/unit/request-schedule-generator.test.ts` e `tests/unit/purchase-rounds.test.ts`. Docs: `docs/PURCHASE_SCHEDULE.md`.
 
+## Programação de compra: cada programação em caixas
+
+- **Pedido do dono** (14/11/2026, depois da publicação do bloco): nos cartões das programações, a quantidade de caixas; o campo de peças travado (só as caixas se editam); a conta pelas peças que vêm na caixa.
+- **Mudou na tela**: com as peças por caixa master do produto, cada cartão traz "Caixas" (editável), "Peças" travada (caixas × peças por caixa) e a conta escrita; o total diz as caixas; a linha do volume do cartão diz só os m³. Sem as peças por caixa master, as peças continuam editáveis.
+- **Nada foi removido**: o formulário continua mandando as peças de cada programação (`schedule.qty.N`) e o servidor grava como antes; rotas, Server Actions, banco e esquema iguais.
+
 ## Nova solicitação: Histórico de compras do cliente
 
 - **Pedido do dono** (14/11/2026, com as fotos da Nova solicitação no iPad): um card "Histórico de compras do cliente" na coluna da esquerda, embaixo de "Encontrar o produto por foto ou link", no espaço vazio, sem mudar a largura do formulário. Os pedidos do cliente escolhido, do mais recente para o mais antigo, 10 por vez com "Carregar mais"; trocar o cliente limpa e carrega o novo; sem cliente, "Selecione um cliente para ver o histórico"; compra para estoque esconde o card. Linha compacta (número, data, situação, valor com moeda) e, expandida, os produtos com código, peças, caixa, medidas, cubagem, descrição, dados técnicos e valores de venda; dado histórico ausente "—", ficha atual marcada; programação com o pai como compra e os filhos no detalhe.
