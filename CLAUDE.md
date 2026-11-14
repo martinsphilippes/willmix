@@ -9,6 +9,7 @@ Portal Operacional de Importações. Next.js 16 na Vercel; Supabase em produçã
 - `docs/APPWRITE.md` e `docs/AMBIENTE.md`: esquema, permissões, variáveis e limitações da sessão cloud.
 - `docs/SUPABASE.md`: troca do Appwrite pelo Supabase (etapas, esquema gerado, publicação).
 - `docs/BOOKING.md`, `docs/SUPPLIER_REQUESTS.md`, `docs/SUPERPLAN.md`, `docs/ORDER_SIGNATURE.md`, `docs/PURCHASE_ORDER.md`, `docs/SAMPLE_ORDER.md`, `docs/PURCHASE_SCHEDULE.md` e `docs/SUPPLIER_SAMPLING.md`: do Booking ao pedido (bookings por planilha, seleção de itens e solicitação ao fornecedor, análise, negociação, amostragem (fotos e vídeos da amostra depois da aprovação), documento com as duas assinaturas, programação de compra com pedido pai e filhos). A RFQ e a cotação saíram em 11/11/2026 (`docs/QUOTE_FLOW.md`).
+- `docs/PRODUCTION.md` e `docs/ORIGIN_CONTAINER.md`: produção, inspeção pelo mapa (vídeo, conformidade, tentativas) e o container na origem com o rastreio diário do Comex interno.
 - `docs/DESKS.md`: mesas de trabalho por papel (GP, cadastro, marketing, agência, certificadora) em Pendências.
 - `docs/RESUMOS.md`: indicadores prontos (`kpi_snapshots`) e resumo por pedido (`order_summaries`), atualizados por evento e reconstruídos toda noite; mudar o formato = subir `SUMMARY_VERSION`/`KPI_VERSION`. Regra: KPIs e indicadores leem tabelas agregadas no nível do indicador, nunca tabelas por pedido ou produto.
 - `docs/PWA.md`: aplicativo instalável (manifesto, service worker, tela sem conexão) e responsividade.

@@ -524,6 +524,8 @@ export const WELLMIX_FUNCTIONS = [
   "executive_director",
   // Fase F: designer do marketing (artes e embalagens).
   "designer",
+  // Comex interno da Wellmix (não é o despachante): rastreio do container.
+  "comex_internal",
 ] as const;
 export type WellmixFunction = (typeof WELLMIX_FUNCTIONS)[number];
 
@@ -565,6 +567,16 @@ export const IMPORT_STEP_KEYS = [
   // aplica na arte da embalagem (docs/CERTIFICATION.md).
   "cert_seal",
   "cert_seal_art",
+  // Container na origem (mapa R19, R20, R7, R25, R26; docs/ORIGIN_CONTAINER.md):
+  // chegada do container vazio na fábrica, fotos e vídeos dele vazio, do
+  // carregamento (com o check de carga), do lacre (com o número do
+  // container) e a volta ao porto. O rastreio diário é do Comex interno.
+  "container_at_factory",
+  "container_empty",
+  "container_loaded",
+  "container_sealed",
+  "container_at_port",
+  "container_tracking",
 ] as const;
 export type ImportStepKey = (typeof IMPORT_STEP_KEYS)[number];
 export const IMPORT_STEP_STATUSES = [

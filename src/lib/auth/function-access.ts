@@ -47,7 +47,7 @@ export const ACTION_GROUPS = [
   },
   {
     key: "logistics",
-    actions: ["numerario.manage", "receiving.follow"],
+    actions: ["numerario.manage", "receiving.follow", "container.tracking"],
   },
   {
     key: "money",
@@ -90,6 +90,9 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
       return ["designer"];
     case "receiving.follow":
       return ["buyer"];
+    // Rastreio diário do container (mapa R19; dono, 13/11/2026).
+    case "container.tracking":
+      return ["comex_internal"];
     // Vendas fica sabendo do que vem (mapa, P2 → V1): quem cuida do pós-venda
     // e da recompra. O administrador muda em Equipe → Funções e acessos.
     case "purchaseOrder.salesNotice":

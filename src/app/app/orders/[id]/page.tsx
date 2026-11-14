@@ -328,6 +328,19 @@ export default async function OrderPage({
     order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
       ? await importFlow.importFlowView(user, order)
       : [];
+  /* Container na origem (pedido de compra, mapa R19 a R26). */
+  const originSteps =
+    purchaseFlow &&
+    [
+      "INSPECTION",
+      "SHIPPING",
+      "CUSTOMS",
+      "TRANSPORT",
+      "DELIVERED",
+      "CLOSED",
+    ].includes(order.status)
+      ? await importFlow.importFlowView(user, order, "origin")
+      : [];
   /* Certificação (Fase F). O selo de certificação vale para todo pedido,
      desde que ele nasce (já está na mão da certificadora). Memorial, laudo
      e registro aparecem com OCP designado, ficha pedindo certificação ou
@@ -2236,6 +2249,25 @@ export default async function OrderPage({
           />
         ) : null}
 
+        {/* Container na origem (mapa R19 a R26): vazio na fábrica, carregamento,
+            lacre e número, volta ao porto e o rastreio diário do Comex interno. */}
+        {originSteps.length ? (
+          <ImportFlowCard
+            t={t}
+            order={order}
+            steps={originSteps}
+            names={productionNames}
+            title={t("originFlow.title")}
+            anchor="container-origin"
+            error={stepCard === "container-origin" ? stepError : null}
+            notice={
+              typeof importNotice === "string" &&
+              ["submitted", "validated", "rejected"].includes(importNotice)
+                ? t(`importFlow.done.${importNotice}` as DictionaryKey)
+                : null
+            }
+          />
+        ) : null}
         {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário, DI... */}
         <ImportFlowCard
           t={t}
