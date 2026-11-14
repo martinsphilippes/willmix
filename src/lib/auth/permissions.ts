@@ -154,3 +154,13 @@ export const canSeeSupplier = (user: User) =>
 /** Valor de venda ao cliente: fornecedor nunca vê. */
 export const canSeeSellPrice = (user: User) =>
   isWellmix(user) || user.role === "customer";
+
+/**
+ * Quem cria pedido (encomenda do cliente, /app/requests/new): a Wellmix e o
+ * cliente, com a tela de solicitações liberada (dono, 14/11/2026: o botão
+ * "Criar pedido" no bloco Pedido e na tela Pedidos).
+ */
+export const canCreateOrder = (
+  user: Pick<User, "role">,
+  canOpenRequests: boolean,
+) => canOpenRequests && (isWellmix(user) || user.role === "customer");

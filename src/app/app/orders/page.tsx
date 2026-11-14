@@ -26,6 +26,7 @@ import {
 import { itemLogistics, logisticsTotals } from "@/lib/services/item-logistics";
 import { productPhotoList } from "@/lib/services/product-list";
 import { Empty, PageHeader, formatDate } from "@/components/ui";
+import { CreateOrderButton } from "@/components/create-order-button";
 import { galleryProps } from "@/components/photo-gallery-props";
 import {
   OrdersTable,
@@ -422,6 +423,7 @@ export default async function OrdersPage({
         help={{ body: "help.orders.body" }}
         t={t}
         title={t("orders.title")}
+        actions={<CreateOrderButton user={user} t={t} />}
       />
       {entries.length === 0 ? (
         <Empty>{t("common.none")}</Empty>

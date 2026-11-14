@@ -20,6 +20,7 @@ import { FlowAll } from "@/components/flow-all";
 import { isWellmix } from "@/lib/auth/permissions";
 import { partnerStepsOf, stepId } from "@/lib/flow";
 import { FlowCases } from "@/components/flow-cases";
+import { CreateOrderButton } from "@/components/create-order-button";
 import { FlowStepWork } from "@/components/flow-step-work";
 import {
   FlowFreightWork,
@@ -100,6 +101,20 @@ export default async function FlowStepPage({
     (await (wellmix ? flowAllFor(user) : flowPartnerAllFor(user))).get(
       stepId(step),
     ) ?? [];
+  // Voltar ao Overview (Wellmix) e, no passo Pedidos, "Criar pedido" (dono,
+  // 14/11/2026: a entrada da encomenda do cliente).
+  const headerActions = (
+    <>
+      {step.block === "order" && step.key === "orders" ? (
+        <CreateOrderButton user={user} t={t} />
+      ) : null}
+      {wellmix && FLOW_OVERVIEW_BLOCKS.includes(step.block) ? (
+        <TextLink href={overviewHref(step.block)} data-flow-back>
+          {t("flow.step.back", { block: t(blockLabelKey(step.block)) })}
+        </TextLink>
+      ) : null}
+    </>
+  );
   const tabs = (
     <nav
       aria-label={t("flow.tabs")}
@@ -137,13 +152,7 @@ export default async function FlowStepPage({
         <PageHeader
           title={t(stepLabelKey(step))}
           subtitle={t(stepHelpKey(step))}
-          actions={
-            wellmix && FLOW_OVERVIEW_BLOCKS.includes(step.block) ? (
-              <TextLink href={overviewHref(step.block)} data-flow-back>
-                {t("flow.step.back", { block: t(blockLabelKey(step.block)) })}
-              </TextLink>
-            ) : null
-          }
+          actions={headerActions}
         />
         {tabs}
         <FlowAll step={step} entities={entities} t={t} partner={!wellmix} />
@@ -167,13 +176,7 @@ export default async function FlowStepPage({
       <PageHeader
         title={t(stepLabelKey(step))}
         subtitle={t(stepHelpKey(step))}
-        actions={
-          wellmix && FLOW_OVERVIEW_BLOCKS.includes(step.block) ? (
-            <TextLink href={overviewHref(step.block)} data-flow-back>
-              {t("flow.step.back", { block: t(blockLabelKey(step.block)) })}
-            </TextLink>
-          ) : null
-        }
+        actions={headerActions}
       />
       {tabs}
       {step.block === "order" && step.key === "orders" ? (
