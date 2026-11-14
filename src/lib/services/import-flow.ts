@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { can, holdersOf } from "@/lib/auth/function-access";
 import { loadFunctionDefs } from "./team-functions";
 
@@ -215,7 +216,17 @@ export const IMPORT_STEPS: StepTemplate[] = [
     input: "text_file",
     visibleTo: ["comex", "logistics"],
     after: "di",
+  }, // LPCO (mapa E5, E5?; dono, 14/11/2026): o comex registra o pedido da
+  // licença (número e arquivo) e a Wellmix marca deferida ou indeferida. Só
+  // no pedido com produto de NCM que exige LPCO (Configurações, lpcoApplies).
+  {
+    key: "lpco",
+    actor: "comex",
+    validator: "wellmix",
+    input: "text_file",
+    visibleTo: ["comex", "logistics", "broker"],
   },
+
   /*
    * Container na origem (mapa R19, R20, R7, R25, R26; docs/ORIGIN_CONTAINER.md):
    * depois do booking, o fornecedor (ou a trading, que entra como fornecedor)
@@ -423,7 +434,13 @@ const PURCHASE_HIDDEN_STEPS: readonly ImportStepKey[] = [
 ];
 
 /** O passo vale para o pedido (container na origem só no de compra; papéis antigos fora dele). */
-export function stepApplies(order: Order, key: ImportStepKey): boolean {
+export function stepApplies(
+  order: Order,
+  key: ImportStepKey,
+  /** LPCO: o pedido tem produto de NCM que exige (lpcoApplies). */
+  lpco = false,
+): boolean {
+  if (key === "lpco") return lpco;
   const purchase = isPurchaseFlow(order);
   if (EXW_STEPS.includes(key)) return isExwOrder(order);
   if (groupOf(stepTemplate(key)) === "origin") return purchase;
@@ -536,7 +553,8 @@ export async function canSubmitStep(
   key: ImportStepKey,
 ): Promise<boolean> {
   const tpl = stepTemplate(key);
-  if (!stepApplies(order, key)) return false;
+  if (!stepApplies(order, key, key === "lpco" && (await lpcoApplies(order))))
+    return false;
   // Pedido de compra: o BL vem dos documentos do embarque, conferido.
   if (key === "bl" && isPurchaseFlow(order)) return false;
   // Memorial e selo: só a certificadora (OCP) do pedido (dono, 14/11/2026).
@@ -1223,11 +1241,12 @@ export async function importFlowView(
   const steps = await stepsOf(order.id);
   // Pedido encerrado: só leitura.
   const open = order.status !== "CLOSED" && order.status !== "CANCELLED";
+  const lpco = group === "import" && (await lpcoApplies(order));
   const shown = IMPORT_STEPS.filter(
     (tpl) =>
       groupOf(tpl) === group &&
       // Container na origem só no pedido de compra; nele, sem os papéis antigos.
-      stepApplies(order, tpl.key) &&
+      stepApplies(order, tpl.key, lpco) &&
       canSeeStep(user, order, tpl.key),
   );
   // Passo da agência: só de quem faz a arte (a Wellmix sempre pode agir;
@@ -1438,7 +1457,12 @@ export async function importTasks(
         ...routeImportCandidates(
           user,
           order,
-          wellmixImportCandidates(order, steps, certPurchase.has(order.id)),
+          wellmixImportCandidates(
+            order,
+            steps,
+            certPurchase.has(order.id),
+            await lpcoApplies(order),
+          ),
           ctx,
           today,
           options,
@@ -1455,12 +1479,13 @@ export async function importTasks(
     const samplesOn =
       isPurchaseFlow(order) &&
       (await (await import("./sample-flow")).samplesApply(order));
+    const lpco = importLive && (await lpcoApplies(order));
     for (const tpl of IMPORT_STEPS) {
       const cert = groupOf(tpl) === "certification";
       if (!cert && !importLive) continue;
       if (groupOf(tpl) === "samples" && !samplesOn) continue;
       // Container na origem só no pedido de compra; nele, sem os papéis antigos.
-      if (!stepApplies(order, tpl.key)) continue;
+      if (!stepApplies(order, tpl.key, lpco)) continue;
       const step = steps.find((s) => s.key === tpl.key);
       if (cert) {
         const candidate = certCandidate(order, tpl, step, steps, gate);
@@ -1603,17 +1628,20 @@ export function wellmixImportCandidates(
   order: Order,
   steps: ImportStep[],
   purchaseNeedsCert: boolean,
+  /** LPCO: o pedido tem produto de NCM que exige (lpcoApplies). */
+  lpcoRequired = false,
 ): ImportCandidate[] {
   if (order.status === "CLOSED" || order.status === "CANCELLED") return [];
   const out: ImportCandidate[] = [];
   const importLive = IMPORT_LIVE.includes(order.status);
   const gate = certGate(order, steps, purchaseNeedsCert);
+  const lpco = importLive && lpcoRequired;
   for (const tpl of IMPORT_STEPS) {
     const cert = groupOf(tpl) === "certification";
     if (!cert && !importLive) continue;
     // Container na origem só no pedido de compra; nele, sem os passos antigos
     // do despachante e do agente (docs/SHIPPING_DOCS.md).
-    if (!stepApplies(order, tpl.key)) continue;
+    if (!stepApplies(order, tpl.key, lpco)) continue;
     // Amostras: passos da trading e da agência na China, nunca da Wellmix
     // por esta lista (docs/SAMPLE_FLOW.md).
     if (groupOf(tpl) === "samples") continue;
@@ -2009,7 +2037,7 @@ const OPEN_FLOW_STATUSES: readonly string[] = [
 export function openImportStepKeys(
   order: Order,
   steps: ImportStep[],
-  options: { certification: boolean; samples: boolean },
+  options: { certification: boolean; samples: boolean; lpco?: boolean },
 ): ImportStepKey[] {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return [];
   const flowing = OPEN_FLOW_STATUSES.includes(order.status);
@@ -2018,11 +2046,79 @@ export function openImportStepKeys(
     if (group === "certification" ? !options.certification : !flowing)
       return false;
     if (group === "samples" && !options.samples) return false;
-    if (!stepApplies(order, tpl.key)) return false;
+    if (!stepApplies(order, tpl.key, options.lpco ?? false)) return false;
     if (tpl.key === "bl" && isPurchaseFlow(order)) return false;
     return (
       ready(tpl.key, steps, order) &&
       !isDone(steps.find((s) => s.key === tpl.key))
     );
   }).map((tpl) => tpl.key);
+}
+
+/** Prefixos de NCM que exigem LPCO (Configurações; vírgula, espaço ou linha). */
+export function lpcoPrefixes(raw: string | null | undefined): string[] {
+  return (raw ?? "")
+    .split(/[\s,;]+/)
+    .map((p) => p.replace(/\D/g, ""))
+    .filter((p) => p.length >= 2);
+}
+
+/** O NCM (com ou sem pontos) começa por algum prefixo da lista? */
+export function ncmNeedsLpco(
+  ncm: string | null | undefined,
+  prefixes: readonly string[],
+): boolean {
+  const digits = (ncm ?? "").replace(/\D/g, "");
+  return !!digits && prefixes.some((p) => digits.startsWith(p));
+}
+
+/**
+ * LPCO (mapa E5; dono, 14/11/2026): o pedido tem produto cujo NCM começa por
+ * um dos prefixos de Configurações → LPCO. Lista vazia: nenhum pedido exige.
+ */
+export const lpcoApplies = cache(async (order: Order): Promise<boolean> => {
+  const settings = await getSettings();
+  const prefixes = lpcoPrefixes(settings.lpcoNcmPrefixes);
+  if (!prefixes.length) return false;
+  const store = getStore();
+  const items = await store.list("order_items", {
+    filter: { orderId: order.id },
+  });
+  const productIds = [
+    ...new Set(items.map((i) => i.productId).filter((x): x is string => !!x)),
+  ];
+  if (!productIds.length) return false;
+  const products = await store.list("products", {
+    filter: { id: productIds },
+  });
+  return products.some((p) => ncmNeedsLpco(p.ncm, prefixes));
+});
+
+/**
+ * Os pedidos (da lista) que exigem LPCO, em três leituras: Configurações,
+ * itens dos pedidos e produtos. A mesma regra de lpcoApplies, para as telas
+ * que leem muitos pedidos (Todos no passo, Overview, resumo do pedido).
+ */
+export async function lpcoOrderIds(
+  orderIds: readonly string[],
+): Promise<Set<string>> {
+  const out = new Set<string>();
+  if (!orderIds.length) return out;
+  const prefixes = lpcoPrefixes((await getSettings()).lpcoNcmPrefixes);
+  if (!prefixes.length) return out;
+  const store = getStore();
+  const items = await store.list("order_items", {
+    filter: { orderId: [...orderIds] },
+  });
+  const productIds = [
+    ...new Set(items.map((i) => i.productId).filter((x): x is string => !!x)),
+  ];
+  if (!productIds.length) return out;
+  const products = await store.list("products", { filter: { id: productIds } });
+  const needs = new Set(
+    products.filter((p) => ncmNeedsLpco(p.ncm, prefixes)).map((p) => p.id),
+  );
+  for (const i of items)
+    if (i.productId && needs.has(i.productId)) out.add(i.orderId);
+  return out;
 }

@@ -233,6 +233,8 @@ function importStep(stepKey: string): Ref | null {
       return "delivery/channel";
     case "danfe":
       return "delivery/invoice";
+    case "lpco":
+      return "delivery/lpco";
     case "cargo_presence":
     case "numerario":
     case "numerario_paid":
@@ -273,6 +275,9 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   receiving_storage: "delivery/storage",
   // Pré-produção: sinal pago e a produção sem ETD (casos do menu).
   preproduction_plan: "production/pre-production",
+  // Vendas: amostra no Brasil e produto com a venda ativada, a oferecer.
+  sales_sample: "sales/samples",
+  sales_product: "sales/offers",
   receiving_return: "delivery/return",
 };
 
@@ -433,6 +438,7 @@ export const PARTNER_FLOW_STEPS: Readonly<Record<string, readonly string[]>> = {
     "production/loading",
     "production/cargo-docs",
     "production/shipment",
+    "delivery/lpco",
     "delivery/cargo-presence",
     "delivery/channel",
     "delivery/invoice",

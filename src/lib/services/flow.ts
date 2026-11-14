@@ -52,7 +52,11 @@ export type FlowCase = Omit<Task, "kind"> & {
     | Task["kind"]
     | "receiving_storage"
     | "receiving_return"
-    | "preproduction_plan";
+    | "preproduction_plan"
+    | "sales_sample"
+    | "sales_product";
+  /** Vendas → Ofertas: o produto com a venda ativada. */
+  productId?: string | null;
 };
 
 /** Peças da descarga (Armazenagem); o resto (RIC, devolução, fechamento) é Retorno. */
@@ -174,6 +178,109 @@ export const flowPreProductionCasesFor = cache(
   },
 );
 
+/**
+ * Vendas (dono, 14/11/2026; docs/FLOW_MENU.md): a amostra que chegou ao
+ * Brasil (passo samples_brazil concluído) ainda não oferecida a ninguém
+ * (Vendas → Amostras) e o produto com a venda ativada (foto real aprovada
+ * pelo marketing, R5) ainda não oferecido (Vendas → Ofertas). A oferta fica
+ * em sales_offers. Wellmix com a tela Produtos.
+ */
+export const flowSalesCasesFor = cache(
+  async (user: User): Promise<FlowCase[]> => {
+    if (!isWellmix(user) || !canOpen(user, "products")) return [];
+    const store = getStore();
+    const [arrived, approved, offers] = await Promise.all([
+      store
+        .list("import_steps", { filter: { key: "samples_brazil" } })
+        .catch(() => []),
+      store
+        .list("real_media", { filter: { status: "approved" } })
+        .catch(() => []),
+      store.list("sales_offers").catch(() => []),
+    ]);
+    const offeredOrders = new Set(
+      offers.filter((o) => o.kind === "sample").map((o) => o.orderId),
+    );
+    const offeredProducts = new Set(
+      offers.filter((o) => o.kind === "product").map((o) => o.productId),
+    );
+    const out: FlowCase[] = [];
+    const base = {
+      dueAt: null,
+      overdue: false,
+      due: "none" as const,
+      daysLeft: null,
+      customerId: null,
+      ownerUserId: null,
+    };
+    const sampleIds = [
+      ...new Set(
+        arrived
+          .filter(
+            (x) =>
+              (x.status === "submitted" || x.status === "validated") &&
+              !offeredOrders.has(x.orderId),
+          )
+          .map((x) => x.orderId),
+      ),
+    ];
+    const orders = sampleIds.length
+      ? (await store.list("orders", { filter: { id: sampleIds } })).filter(
+          (o) => o.status !== "CANCELLED" && !o.held,
+        )
+      : [];
+    for (const order of orders) {
+      const step = arrived.find((x) => x.orderId === order.id);
+      out.push({
+        ...base,
+        kind: "sales_sample",
+        title: `Pedido #${order.number}`,
+        detail: "",
+        text: {
+          title: "flow.sales.sample.title",
+          detail: "flow.sales.sample.detail",
+          values: { n: order.number },
+        },
+        link: `/app/flow/sales/samples/${order.id}`,
+        orderNumber: order.number,
+        orderId: order.id,
+        sinceAt: step?.submittedAt ?? step?.updatedAt ?? null,
+        group: "sales_sample",
+      });
+    }
+    const productIds = [
+      ...new Set(
+        approved
+          .map((m) => m.productId)
+          .filter((x): x is string => !!x && !offeredProducts.has(x)),
+      ),
+    ];
+    const products = productIds.length
+      ? await store.list("products", { filter: { id: productIds } })
+      : [];
+    for (const product of products) {
+      const media = approved.find((m) => m.productId === product.id);
+      out.push({
+        ...base,
+        kind: "sales_product",
+        title: product.name,
+        detail: "",
+        text: {
+          title: "flow.sales.product.title",
+          detail: "flow.sales.product.detail",
+          values: { name: product.name },
+        },
+        link: "/app/flow/sales/offers",
+        productId: product.id,
+        orderId: null,
+        sinceAt: media?.decidedAt ?? null,
+        group: "sales_product",
+      });
+    }
+    return out;
+  },
+);
+
 /** Todos os casos do menu do login: as pendências e os recebimentos abertos. */
 export const flowCasesFor = cache(async (user: User): Promise<FlowCase[]> => [
   ...(await flowTasksFor(user)),
@@ -183,6 +290,10 @@ export const flowCasesFor = cache(async (user: User): Promise<FlowCase[]> => [
   })),
   ...(await flowPreProductionCasesFor(user).catch((error: unknown) => {
     console.error("flowPreProductionCasesFor failed", error);
+    return [];
+  })),
+  ...(await flowSalesCasesFor(user).catch((error: unknown) => {
+    console.error("flowSalesCasesFor failed", error);
     return [];
   })),
 ]);
@@ -363,6 +474,9 @@ const flowAllData = cache(
     const byItems = group(items);
     const now = new Date();
     const progress = new Map<string, OrderProgress>();
+    const lpco = await (
+      await import("./import-flow")
+    ).lpcoOrderIds(orders.map((o) => o.id));
     for (const order of orders) {
       const input: OrderFlowInput = {
         order,
@@ -374,6 +488,7 @@ const flowAllData = cache(
         items: byItems.get(order.id) ?? [],
         downPayment: downPayments.find((x) => x.orderId === order.id) ?? null,
         sampleOrder: sampleOrders.find((x) => x.orderId === order.id) ?? null,
+        lpco: lpco.has(order.id),
       };
       progress.set(order.id, orderProgress(input.stages, now));
       for (const e of orderFlowEntries(input))
@@ -742,6 +857,7 @@ export const flowPartnerAllFor = cache(
     }
     const flow = await import("./import-flow");
     const { samplesApply } = await import("./sample-flow");
+    const lpcoIds = await flow.lpcoOrderIds(ids);
     for (const order of orders) {
       const steps = importSteps.filter((s) => s.orderId === order.id);
       const samples =
@@ -756,6 +872,7 @@ export const flowPartnerAllFor = cache(
       for (const key of flow.openImportStepKeys(order, steps, {
         certification: steps.some((s) => s.key.startsWith("cert_")),
         samples,
+        lpco: lpcoIds.has(order.id),
       })) {
         if (!flow.canSeeStep(user, order, key)) continue;
         const step = flowStepOfImportKey(key);

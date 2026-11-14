@@ -57,6 +57,8 @@ export interface OrderFlowInput {
   downPayment: Requirement | null;
   /** Item do pedido de amostras (`sample_order`), se houver. */
   sampleOrder: Requirement | null;
+  /** LPCO: o pedido tem produto de NCM que exige (lpcoOrderIds). */
+  lpco?: boolean;
 }
 
 export interface FlowEntry {
@@ -129,6 +131,7 @@ export function orderFlowEntries(input: OrderFlowInput): FlowEntry[] {
   for (const key of openImportStepKeys(order, steps, {
     certification,
     samples,
+    lpco: input.lpco ?? false,
   })) {
     const step = flowStepOfImportKey(key);
     if (step)
