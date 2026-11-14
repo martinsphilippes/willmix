@@ -17,6 +17,7 @@ import { PaymentTermsEditor } from "@/components/payment-terms-editor";
 import { paymentTermsTexts } from "@/components/supplier-terms-text";
 import {
   saveSupplierProductionStartAction,
+  saveSupplierInvoiceDaysAction,
   saveSupplierTermsAction,
 } from "../../actions/supplier-terms";
 import { getSettings } from "@/lib/settings";
@@ -140,6 +141,11 @@ export default async function PartyPage({
   const productionStart = {
     own: allSettings.productionStartDaysBySupplier?.[id] ?? null,
     fallback: allSettings.productionStartDays,
+  };
+  // Fatura ativa: dias depois dos documentos do embarque conferidos.
+  const invoiceDays = {
+    own: allSettings.invoiceDaysBySupplier?.[id] ?? null,
+    fallback: allSettings.invoiceDays,
   };
   // Produtos que o fornecedor fornece: os em que é o principal e os em que
   // entrou pela cotação (cada um com o código, preço e MOQ dele).
@@ -757,6 +763,49 @@ export default async function PartyPage({
                     max="365"
                     defaultValue={productionStart.own ?? ""}
                     placeholder={String(productionStart.fallback)}
+                  />
+                </Field>
+                <SubmitButton variant="secondary">
+                  {t("common.save")}
+                </SubmitButton>
+              </form>
+            </Card>
+          ) : null}
+          {isSupplier && isAdmin(user) ? (
+            /* Fatura ativa (mapa R24): dias depois dos documentos do
+               embarque conferidos. Vazio: o padrão das Configurações. */
+            <Card
+              title={
+                <span id="invoice-days" className="scroll-mt-24">
+                  {t("supplierInvoice.title")}
+                </span>
+              }
+            >
+              <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+                {t("supplierInvoice.hint", {
+                  days: String(invoiceDays.fallback),
+                })}
+              </p>
+              {saved === "invoice" ? (
+                <div className="mb-3">
+                  <Alert tone="success">{t("supplierInvoice.saved")}</Alert>
+                </div>
+              ) : null}
+              <form
+                action={saveSupplierInvoiceDaysAction}
+                className="flex flex-wrap items-end gap-2"
+                data-invoice-days-form
+              >
+                <input type="hidden" name="id" value={party.id} />
+                <Field label={t("supplierInvoice.label")}>
+                  <Input
+                    name="invoiceDays"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="365"
+                    defaultValue={invoiceDays.own ?? ""}
+                    placeholder={String(invoiceDays.fallback)}
                   />
                 </Field>
                 <SubmitButton variant="secondary">

@@ -111,7 +111,10 @@ test("Excluir acesso: confirmação, lista, sessão aberta e Auditoria", async (
   await theirs.getByLabel(/e-mail|email|邮箱/i).fill(userLogin);
   await theirs.getByLabel(/senha|password|密码/i).fill(PASSWORD);
   await theirs.getByRole("button", { name: /entrar|sign in|登录/i }).click();
-  await expect(theirs.getByRole("alert")).toBeVisible();
+  // O anúncio de rota do Next também é role=alert (vazio): só o aviso com texto.
+  await expect(
+    theirs.getByRole("alert").filter({ hasText: /\S/ }),
+  ).toBeVisible();
   await expect(theirs).toHaveURL(/\/login/);
   await other.close();
 

@@ -488,6 +488,9 @@ export async function submitBl(
   );
   if (ok) {
     await bridgeBlStep(user, view.order, number, documentId);
+    // Documentos conferidos: a fatura fica ativa em N dias (mapa R24).
+    const { activateInvoice } = await import("./supplier-invoice");
+    await activateInvoice(view.order);
     await notifyWellmix({
       kind: "info",
       subject: `Pedido #${view.order.number}: packing list, invoice e BL conferidos`,

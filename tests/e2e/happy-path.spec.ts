@@ -757,6 +757,8 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // Sankhya), sem login; a Wellmix confirma o recebimento e o pedido encerra.
   await login(page, "admin@wellmix.com");
   await page.goto(orderUrl);
+  // Fatura ativa (R24): com o BL conferido, o faturamento já tem vencimento.
+  await expect(page.locator("[data-invoice-due]")).toBeVisible();
   await page
     .locator("[data-requirement-form=receipt_confirmed] button[type=submit]")
     .click();

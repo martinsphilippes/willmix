@@ -283,6 +283,16 @@ export default async function SettingsPage({
                       defaultValue={s.productionStartDays}
                     />
                   </Field>
+                  <Field label={t("settings.label.invoiceDays")}>
+                    <Input
+                      name="invoiceDays"
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="365"
+                      defaultValue={s.invoiceDays}
+                    />
+                  </Field>
                   <Field label={t("settings.label.deliveryConfirmationMode")}>
                     <Select
                       name="deliveryConfirmationMode"
@@ -484,7 +494,9 @@ export default async function SettingsPage({
                       defaultValue={s.purchaseDownPaymentSlaDays}
                     />
                   </Field>
-                  <Field label={t("purchaseSequence.settings.inspectionMediaDays")}>
+                  <Field
+                    label={t("purchaseSequence.settings.inspectionMediaDays")}
+                  >
                     <Input
                       name="purchaseInspectionMediaSlaDays"
                       type="number"
@@ -495,7 +507,9 @@ export default async function SettingsPage({
                       defaultValue={s.purchaseInspectionMediaSlaDays}
                     />
                   </Field>
-                  <Field label={t("purchaseSequence.settings.inspectionReviewDays")}>
+                  <Field
+                    label={t("purchaseSequence.settings.inspectionReviewDays")}
+                  >
                     <Input
                       name="purchaseInspectionReviewSlaDays"
                       type="number"
@@ -506,7 +520,9 @@ export default async function SettingsPage({
                       defaultValue={s.purchaseInspectionReviewSlaDays}
                     />
                   </Field>
-                  <Field label={t("purchaseSequence.settings.inspectionMaxAttempts")}>
+                  <Field
+                    label={t("purchaseSequence.settings.inspectionMaxAttempts")}
+                  >
                     <Input
                       name="purchaseInspectionMaxAttempts"
                       type="number"
