@@ -22,6 +22,7 @@ import {
   TextLink,
   Th,
   cx,
+  formatMoney,
   rowClass,
 } from "@/components/ui";
 import {
@@ -36,6 +37,14 @@ import { setCustomersActiveAction } from "../actions/customers";
 import { accountBase, accountLabels } from "./labels";
 import { startConversationAction } from "../actions/messages";
 import { canSeeMoney } from "@/lib/auth/function-access";
+import { ServerPager, SortTh } from "@/components/server-table";
+import {
+  SERVER_TABLE_FROM,
+  parseServerPage,
+  parseServerSort,
+  serverTable,
+  type ServerColumn,
+} from "@/lib/server-table";
 
 /*
  * Clientes e Fornecedores (Cadastros), a mesma tela dos dois lados (`side`): cartões com a conta de todos os listados (contrato,
@@ -82,11 +91,80 @@ export async function PartyAccountList({
   const { rows, totals } = await customerAccounts({ q, status }, side);
   const fallback = mainCurrency(totals);
 
+  // Ordem e página no servidor (auditoria de performance, 14/11/2026): com
+  // os 26 mil clientes a tela mandava todas as linhas ao navegador (281 MB de
+  // HTML medidos com o volume de produção; 54 MB nos fornecedores). Mesmas
+  // regras de ordem da TableTools, sobre a lista inteira (src/lib/server-table.ts).
+  // A busca continua a de customerAccounts (o campo "q").
+  type Row = (typeof rows)[number];
+  const moneyText = (m: Record<string, number>) => {
+    const entries = Object.entries(m).filter(([, v]) => v);
+    return entries.length
+      ? entries.map(([c, v]) => formatMoney(v, c, t)).join(" ")
+      : formatMoney(0, fallback, t);
+  };
+  const columns: ServerColumn<Row>[] = [
+    {
+      key: "name",
+      text: ({ party }) =>
+        [
+          party.name,
+          party.taxId,
+          party.city ? `· ${party.city}` : null,
+          party.operationMode
+            ? t(`operations.mode.badge.${party.operationMode}` as DictionaryKey)
+            : null,
+          party.active ? null : L("inactive"),
+        ]
+          .filter(Boolean)
+          .join(" "),
+    },
+    {
+      key: "phone",
+      text: ({ party }) => `${party.phone ?? "—"} ${party.email ?? ""}`,
+    },
+    {
+      key: "orders",
+      text: ({ orders, openOrders, openRequests }) =>
+        [
+          String(orders),
+          openOrders ? L("openOrders", { n: openOrders }) : null,
+          openRequests ? L("openRequests", { n: openRequests }) : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
+    },
+    ...(money
+      ? (
+          [
+            "contract",
+            "delivered",
+            "prepaid",
+            "receivable",
+            "received",
+          ] as const
+        ).map((key): ServerColumn<Row> => ({
+          key,
+          text: ({ totals: a }) => moneyText(a[key]),
+        }))
+      : []),
+  ];
+  // Lista curta: inteira, com a TableTools de sempre. Longa: no servidor.
+  const serverMode = rows.length > SERVER_TABLE_FROM;
+  const sort = serverMode ? parseServerSort(param(sp.sort), columns) : null;
+  const shown = serverTable(rows, columns, {
+    sort,
+    page: parseServerPage(param(sp.page)),
+    size: serverMode ? undefined : Math.max(rows.length, 1),
+    decimalComma: t.locale === "pt",
+  });
+  const sortValue = sort ? `${sort.desc ? "-" : ""}${sort.key}` : null;
   const query = (patch: Record<string, string | null>) => {
     const p = new URLSearchParams();
     const merged: Record<string, string | null> = {
       q: q || null,
       status,
+      sort: sortValue,
       ...patch,
     };
     for (const [k, v] of Object.entries(merged))
@@ -94,6 +172,24 @@ export async function PartyAccountList({
     const s = p.toString();
     return s ? `?${s}` : "";
   };
+  const sortHref = (value: string | null) =>
+    `${base}${query({ sort: value, page: null })}`;
+  const pageHref = (page: number) =>
+    `${base}${query({ page: page ? String(page + 1) : null })}`;
+  /** Cabeçalho: ordena no servidor (lista longa) ou na TableTools (curta). */
+  const header = (label: string, column: string, className?: string) =>
+    serverMode ? (
+      <SortTh
+        label={label}
+        column={column}
+        sort={sort}
+        href={sortHref}
+        t={t}
+        className={className}
+      />
+    ) : (
+      <Th className={className}>{label}</Th>
+    );
   const back = `${base}${query({})}`;
   const batch = param(sp.batch);
   const error = param(sp.error);
@@ -151,6 +247,9 @@ export async function PartyAccountList({
         {status !== "active" ? (
           <input type="hidden" name="status" value={status} />
         ) : null}
+        {sortValue ? (
+          <input type="hidden" name="sort" value={sortValue} />
+        ) : null}
         <Input
           name="q"
           defaultValue={q}
@@ -206,7 +305,7 @@ export async function PartyAccountList({
       {rows.length === 0 ? (
         <Empty>{L("empty")}</Empty>
       ) : (
-        <Table>
+        <Table tools={!serverMode}>
           <thead>
             <tr>
               <Th className="w-8">
@@ -216,23 +315,23 @@ export async function PartyAccountList({
                   label={L("batch.selectAll")}
                 />
               </Th>
-              <Th>{L("col.name")}</Th>
-              <Th>{L("col.phone")}</Th>
-              <Th className="text-right">{L("col.orders")}</Th>
+              {header(L("col.name"), "name")}
+              {header(L("col.phone"), "phone")}
+              {header(L("col.orders"), "orders", "text-right")}
               {money ? (
                 <>
-                  <Th className="text-right">{L("card.contract")}</Th>
-                  <Th className="text-right">{L("card.delivered")}</Th>
-                  <Th className="text-right">{L("card.prepaid")}</Th>
-                  <Th className="text-right">{L("card.receivable")}</Th>
-                  <Th className="text-right">{L("card.received")}</Th>
+                  {header(L("card.contract"), "contract", "text-right")}
+                  {header(L("card.delivered"), "delivered", "text-right")}
+                  {header(L("card.prepaid"), "prepaid", "text-right")}
+                  {header(L("card.receivable"), "receivable", "text-right")}
+                  {header(L("card.received"), "received", "text-right")}
                 </>
               ) : null}
               <Th className="text-right">{L("col.actions")}</Th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(
+            {shown.rows.map(
               ({ party, orders, openOrders, openRequests, totals: a }) => (
                 <tr
                   key={party.id}
@@ -381,6 +480,7 @@ export async function PartyAccountList({
           </tbody>
         </Table>
       )}
+      {serverMode ? <ServerPager page={shown} href={pageHref} t={t} /> : null}
       <p className="mt-2 text-xs text-zinc-500" data-customer-count>
         {L("total", { n: rows.length })}
       </p>
