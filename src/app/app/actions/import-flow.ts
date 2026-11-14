@@ -18,7 +18,11 @@ const UPLOADED_ID = z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/);
 /** Cartão de onde veio (embarque ou certificação). */
 const anchorOf = (form: FormData) => {
   const a = str(form, "anchor");
-  return a === "certification" || a === "container-origin" ? a : "import-flow";
+  return a === "certification" ||
+    a === "container-origin" ||
+    a === "samples-flow"
+    ? a
+    : "import-flow";
 };
 
 /** Aviso de "feito" no cartão de onde a ação veio (cada cartão lê o seu). */

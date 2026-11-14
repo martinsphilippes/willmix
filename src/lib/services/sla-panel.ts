@@ -407,6 +407,7 @@ async function partnerDelays(
         o.comexId,
         o.logisticsId,
         o.ocpId,
+        o.marketingAgencyId,
         o.customerId,
       ]),
     );
@@ -435,6 +436,7 @@ async function partnerDelays(
         comex: "comexId",
         logistics: "logisticsId",
         ocp: "ocpId",
+        marketing_agency: "marketingAgencyId",
         customer: "customerId",
       };
       const parties = roles

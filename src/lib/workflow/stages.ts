@@ -612,7 +612,8 @@ export type PartyField =
   | "carrierId"
   | "comexId"
   | "logisticsId"
-  | "ocpId";
+  | "ocpId"
+  | "marketingAgencyId";
 
 export const ROLE_PARTY_FIELD: Record<Role, PartyField | null> = {
   admin: null,
@@ -627,6 +628,7 @@ export const ROLE_PARTY_FIELD: Record<Role, PartyField | null> = {
   comex: "comexId",
   logistics: "logisticsId",
   ocp: "ocpId",
+  marketing_agency: "marketingAgencyId",
 };
 
 export const stageTemplate = (key: StageKey) =>

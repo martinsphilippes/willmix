@@ -43,7 +43,13 @@ export const ACTION_GROUPS = [
   },
   {
     key: "order",
-    actions: ["art.validate", "art.design", "contract.sign", "order.cancel"],
+    actions: [
+      "art.validate",
+      "art.design",
+      "contract.sign",
+      "order.cancel",
+      "realMedia.approve",
+    ],
   },
   {
     key: "logistics",
@@ -87,6 +93,10 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
     case "numerario.manage":
       return ["finance"];
     case "art.design":
+      return ["designer"];
+    // Fotos e vídeos reais da agência na China: o marketing aprova, troca
+    // as fotos do catálogo e ativa a venda (mapa R5/R16; dono, 14/11/2026).
+    case "realMedia.approve":
       return ["designer"];
     case "receiving.follow":
       return ["buyer"];

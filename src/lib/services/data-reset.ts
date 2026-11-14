@@ -60,6 +60,7 @@ const SALES_TABLES = [
   // Embarque e desembaraço dos pedidos de teste.
   "import_steps",
   "shipping_docs",
+  "real_media",
   "receivings",
   "art_issues",
   "art_issues",
@@ -79,6 +80,7 @@ const SALES_TABLES = [
 const OPTIONAL_TABLES = new Set<TableName>([
   "import_steps",
   "shipping_docs",
+  "real_media",
   "receivings",
   "production_tracks",
   "sku_inspections",

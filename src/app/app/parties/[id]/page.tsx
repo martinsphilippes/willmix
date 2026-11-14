@@ -99,6 +99,7 @@ const roleForType: Record<string, string> = {
   comex: "comex",
   logistics: "logistics",
   ocp: "ocp",
+  marketing_agency: "marketing_agency",
 };
 
 export default async function PartyPage({

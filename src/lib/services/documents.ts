@@ -469,6 +469,19 @@ const CATALOG_HIDDEN_KINDS: ProductPhoto["kind"][] = [
   "prompt",
 ];
 
+/**
+ * Fotos reais (agência na China, aprovadas pelo marketing; docs/SAMPLE_FLOW.md):
+ * quando o produto tem, a vitrine mostra só elas. As de referência (IA,
+ * fornecedor, originais) ficam guardadas no cadastro, fora da vitrine.
+ */
+export function realFirst<T extends Pick<ProductPhoto, "kind">>(
+  photos: T[],
+): T[] {
+  return photos.some((p) => p.kind === "real")
+    ? photos.filter((p) => p.kind === "real")
+    : photos;
+}
+
 /** Máximo de fotos do cadastro mostradas por produto na solicitação. */
 export const CATALOG_SHOWCASE_LIMIT = 8;
 const SHOWCASE_ORDER: ProductPhoto["kind"][] = [
@@ -515,7 +528,8 @@ export async function catalogShowcasePhotos(
     list.push(photo);
     result.set(photo.productId!, list);
   }
-  for (const [id, list] of result) {
+  for (const [id, all] of result) {
+    const list = realFirst(all);
     list.sort(
       (a, b) =>
         Number(b.isPrimary) - Number(a.isPrimary) ||
@@ -550,12 +564,11 @@ async function isCatalogShowcasePhoto(
       .filter((p) => p.kind === "commercial" && p.derivedFromPhotoId)
       .map((p) => p.derivedFromPhotoId as string),
   );
-  return photos.some(
-    (p) =>
-      p.documentId === documentId &&
-      !CATALOG_HIDDEN_KINDS.includes(p.kind) &&
-      !replaced.has(p.id),
-  );
+  return realFirst(
+    photos.filter(
+      (p) => !CATALOG_HIDDEN_KINDS.includes(p.kind) && !replaced.has(p.id),
+    ),
+  ).some((p) => p.documentId === documentId);
 }
 
 /** A agência é a do pedido de algum pedido com este produto? */
@@ -593,8 +606,10 @@ export function showcaseOf(photos: ProductPhoto[]): ProductPhoto[] {
       .filter((p) => p.kind === "commercial" && p.derivedFromPhotoId)
       .map((p) => p.derivedFromPhotoId as string),
   );
-  return photos.filter(
-    (p) => !CATALOG_HIDDEN_KINDS.includes(p.kind) && !replaced.has(p.id),
+  return realFirst(
+    photos.filter(
+      (p) => !CATALOG_HIDDEN_KINDS.includes(p.kind) && !replaced.has(p.id),
+    ),
   );
 }
 

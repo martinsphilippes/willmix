@@ -192,6 +192,7 @@ export const ROLE_SCREENS: Record<
   ],
   supplier: [...PARTNER_BASE, "quotes", "account"],
   agency: PARTNER_BASE,
+  marketing_agency: PARTNER_BASE,
   broker: PARTNER_BASE,
   shipping_line: [...PARTNER_BASE, "freight", "freightTariff"],
   carrier: PARTNER_BASE,

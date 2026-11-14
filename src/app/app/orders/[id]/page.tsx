@@ -334,6 +334,17 @@ export default async function OrderPage({
     order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
       ? await importFlow.importFlowView(user, order)
       : [];
+  /* Amostras depois da inspeção (docs/SAMPLE_FLOW.md): passos e divisão. */
+  const samplesSteps = purchaseFlow
+    ? await importFlow.importFlowView(user, order, "samples")
+    : [];
+  const samplesSplit =
+    samplesSteps.length && (isWellmix(user) || user.role === "supplier")
+      ? await (await import("@/lib/services/sample-flow")).samplesSplitOf(order)
+      : [];
+  const realMediaVisible =
+    samplesSteps.length > 0 &&
+    (isWellmix(user) || user.role === "marketing_agency");
   /* Fatura ativa em N dias (mapa R24): depois do BL conferido. */
   const invoiceDue =
     purchaseFlow && isWellmix(user) && !order.invoicedAt
@@ -499,6 +510,7 @@ export default async function OrderPage({
             "comex",
             "logistics",
             "ocp",
+            "marketing_agency",
           ],
         },
       }),
@@ -1329,6 +1341,7 @@ export default async function OrderPage({
                       ["comex", order.comexId ?? null],
                       ["logistics", order.logisticsId ?? null],
                       ["ocp", order.ocpId ?? null],
+                      ["marketing_agency", order.marketingAgencyId ?? null],
                     ] as Array<[PartyType, string | null]>
                   ).flatMap(([type, pid]) =>
                     pid
@@ -2439,6 +2452,78 @@ export default async function OrderPage({
             }
           />
         ) : null}
+        {/* Amostras (mapa R12 a R16): retirada, envios ao Brasil (4 × 3 × Nm)
+            e à China (1 × 3 × Nm), recebimento, fotos reais e devolução. */}
+        {samplesSteps.length ? (
+          <div id="samples" className="min-w-0 scroll-mt-24 space-y-3">
+            <Card title={t("samplesFlow.title")} dense>
+              <p className="mb-3 text-sm text-zinc-600">
+                {t("samplesFlow.hint")}
+              </p>
+              {samplesSplit.length ? (
+                <Table tools={false}>
+                  <thead>
+                    <tr>
+                      <Th>{t("samplesFlow.col.product")}</Th>
+                      <Th className="text-right">
+                        {t("samplesFlow.col.brazil")}
+                      </Th>
+                      <Th className="text-right">
+                        {t("samplesFlow.col.china")}
+                      </Th>
+                      <Th className="text-right">
+                        {t("samplesFlow.col.total")}
+                      </Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {samplesSplit.map((l) => (
+                      <tr key={l.itemId} data-sample-split={l.itemId}>
+                        <Td>{productNameText(t, l.name)}</Td>
+                        <Td className="text-right" data-split-brazil>
+                          {l.brazil}
+                        </Td>
+                        <Td className="text-right" data-split-china>
+                          {l.china}
+                        </Td>
+                        <Td className="text-right">{l.total}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              ) : null}
+              {realMediaVisible ? (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-zinc-600">
+                    {t("realMedia.orderHint")}
+                  </p>
+                  <LinkButton
+                    href={`/app/orders/${order.id}/real-media`}
+                    variant="secondary"
+                    data-real-media-link
+                  >
+                    {t("realMedia.open")}
+                  </LinkButton>
+                </div>
+              ) : null}
+            </Card>
+            <ImportFlowCard
+              t={t}
+              order={order}
+              steps={samplesSteps}
+              names={productionNames}
+              title={t("samplesFlow.title")}
+              anchor="samples-flow"
+              error={stepCard === "samples-flow" ? stepError : null}
+              notice={
+                typeof importNotice === "string" &&
+                ["submitted", "validated", "rejected"].includes(importNotice)
+                  ? t(`importFlow.done.${importNotice}` as DictionaryKey)
+                  : null
+              }
+            />
+          </div>
+        ) : null}
         {/* Documentos do embarque (docs/SHIPPING_DOCS.md): check list de carga,
             packing list, invoice e BL conferidos pelo sistema. */}
         {shippingDocsVisible ? (
@@ -3271,6 +3356,7 @@ export default async function OrderPage({
                   ["comexId", "comex"],
                   ["logisticsId", "logistics"],
                   ["ocpId", "ocp"],
+                  ["marketingAgencyId", "marketing_agency"],
                 ] as const
               ).map(([field, type]) => (
                 <tr key={field} className={rowClass} data-order-partner={type}>
