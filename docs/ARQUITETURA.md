@@ -73,13 +73,17 @@ Nada disso é feito agora; a regra é só não tomar decisões que tornem isso i
 - Cor da marca: vermelho Wellmix `#BF2026`. Escala `brand-50…950` em `src/app/globals.css` (`brand-600` = cor do logo; `brand-700` para links e texto de destaque, contraste AA sobre branco).
 - Logomarca: `public/brand/wellmix-logo.svg` (selo vermelho, fundo claro) e `wellmix-logo-white.svg` (fundo vermelho/escuro), usadas pelo componente `WellmixLogo` (`src/components/brand.tsx`). Ícones do navegador, atalho no celular e imagem de compartilhamento ficam nos arquivos de metadados do Next (`src/app/icon.svg`, `apple-icon.png`, `favicon.ico`, `opengraph-image.png`, `manifest.ts`).
 - Onde a marca aparece: cabeçalho vermelho numa faixa só (marca, idioma, conta de demonstração, mensagens e sino); menu lateral branco (veja "Menu lateral", abaixo; painel no celular); login com painel vermelho (apresentação e fluxo) e formulário branco; rodapé com logo colorido; barra do navegador no celular (`themeColor`).
-- **Menu lateral** (decisão do dono, 12/11/2026; modelo em `src/lib/nav.ts`, barra em `src/components/app-nav.tsx`). Barra fixa à esquerda, abaixo do cabeçalho. No alto ficam os links do dia a dia: Control Tower, Pendências, Mensagens e Notificações, com contador de não lidas. Mensagens e Notificações continuam também no cabeçalho. Depois vêm os grupos, cada um na ordem do fluxo:
-  - **Compras**: Booking → Seleção de itens → Convites de booking → Solicitações ao fornecedor.
-  - **Pedidos e entrega**: Pedidos de compra → Revisão → Containers → Fretes → Tarifário de frete → Estoque.
-  - **Produção** (item pai do primeiro nível, logo abaixo de Pedidos e entrega; dono, 14/11/2026): o nome abre a tela `/app/production`; quando as etapas entrarem como subitens (`PRODUCTION_STEPS` em `src/lib/nav.ts`), a seta ao lado abre e fecha o grupo.
-  - **Financeiro**: Financeiro, Contas a pagar, Acordos e comissões, Multas.
-  - **Painéis**: Painel do dono, Fluxo de caixa, Superplan, Painéis por área, Painel de SLA.
+- **Menu lateral** (decisão do dono, 12/11/2026; blocos do mapa desde 14/11/2026, detalhe em `docs/FLOW_MENU.md`; modelo em `src/lib/nav.ts`, passos em `src/lib/flow.ts`, barra em `src/components/app-nav.tsx`). Barra fixa à esquerda, abaixo do cabeçalho. No alto: Control Tower e Pendências (com o total). Mensagens e Notificações ficam só no cabeçalho. Depois vêm os blocos na ordem do mapa do processo, cada passo com o contador do que espera ação do login (vermelho quando alguma atrasou):
+  - **Produto novo**: Overview → Books → Seleção de itens → Cotações (convites de book) → Negociações (solicitações ao fornecedor).
+  - **Pedido**: Overview → Pedidos → Certificação → Material de arte → Arte → Revisão → Contrato.
+  - **Produção**: Overview (`/app/production`) → Pré-produção → Inspeção → Amostra → Produção → Booking → Logística → Carregamento → Documentos de carga → Embarque.
+  - **Entrega**: Overview → LPCO → Presença de carga → Canal cinza ou vermelho → Logística → Nota fiscal → Entrega → Retorno → Armazenagem, e Containers, Fretes e Tarifário de frete no fim.
+  - **Vendas**: Estoque → Amostras → Ofertas → Venda.
+  - **Financeiro**: Financeiro, Contas a pagar, Fluxo de caixa, Acordos e comissões, Multas.
+  - **Painéis** (sem contador): Painel do dono, Painéis por área, Painel de SLA.
   - **Cadastros**: Parceiros, Produtos, Linhas.
+
+  O Superplan saiu do menu: atalho em Configurações.
 
   Fixos embaixo (`navFooterFor`): Configurações, Equipe e acessos e Auditoria; por último, o cartão da conta (trocar senha, Sair). O grupo da tela atual abre sozinho; os outros abrem e fecham com um clique. O botão « recolhe a barra para só os ícones. As duas escolhas ficam no `localStorage` (`wm-nav-collapsed`, `wm-nav-open`), sem efeito se o armazenamento faltar. Grupo com uma tela só vira link direto; grupo vazio some. Fornecedor: grupo **Meus bookings** (Booking, Convites, Solicitações ao fornecedor, Pedidos, Conta corrente, Multas). Demais parceiros: grupo **Pedidos** com a tela do papel.
 

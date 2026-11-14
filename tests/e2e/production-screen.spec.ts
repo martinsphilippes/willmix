@@ -2,20 +2,21 @@ import { expect, test } from "@playwright/test";
 import { login } from "./helpers";
 
 /*
- * Tela "Produção" (pedido do dono, 13/11/2026): item do primeiro nível do
- * menu, logo abaixo do grupo Pedidos e entrega (dono, 14/11/2026: saiu de
- * dentro do grupo e aparece uma vez só), com ícone como os outros itens
- * principais; abre a tela própria, com o item aceso no menu; aparece em
+ * Tela "Produção" (pedido do dono, 13/11/2026). Desde 14/11/2026 o menu tem
+ * os blocos do mapa (docs/FLOW_MENU.md): Produção é um grupo logo abaixo de
+ * Pedido, e a tela /app/production é o Overview do bloco (linha do tempo dos
+ * passos e a tabela dos casos), aberta pelo item "Overview". Aparece em
  * Equipe e acessos → Telas e links (marcada no padrão do comprador,
  * desmarcada no do designer); sem a tela, o endereço volta ao início com o
  * aviso. O bloco "Produção" do pedido não muda (E2E do caminho principal).
  */
-test("Produção: menu, tela própria, Telas e links e acesso pelo endereço", async ({
+test("Produção: menu, Overview, Telas e links e acesso pelo endereço", async ({
   page,
 }) => {
   await login(page, "admin@wellmix.com");
 
-  // No primeiro nível do menu, logo abaixo do grupo Pedidos e entrega.
+  // Grupo Produção logo abaixo do grupo Pedido; Mensagens e Notificações
+  // saíram do menu (ficam no cabeçalho).
   await page.goto("/app/orders");
   const sidebar = page.locator("[data-sidebar-nav]").filter({ visible: true });
   const order = await sidebar
@@ -29,40 +30,47 @@ test("Produção: menu, tela própria, Telas e links e acesso pelo endereço", a
           el.getAttribute("data-nav-link"),
       ),
     );
-  const at = order.indexOf("/app/production");
-  expect(at).toBeGreaterThan(0);
-  expect(order[at - 1]).toBe("Pedidos e entrega");
-  // Uma vez só: não está mais dentro de Pedidos e entrega.
-  const delivery = page
-    .locator('[data-nav-group="Pedidos e entrega"]')
-    .filter({ visible: true })
-    .first();
+  expect(order.slice(0, 4)).toEqual([
+    "/app",
+    "/app/tasks",
+    "Produto novo",
+    "Pedido",
+  ]);
+  expect(order[order.indexOf("Pedido") + 1]).toBe("Produção");
+  expect(order).not.toContain("/app/messages");
+  expect(order).not.toContain("/app/notifications");
   await expect(
-    delivery.locator('[data-nav-link="/app/production"]'),
+    sidebar.first().locator('[data-nav-link="/app/messages"]'),
   ).toHaveCount(0);
-  await expect(
-    sidebar.first().locator('[data-nav-link="/app/production"]'),
-  ).toHaveCount(1);
 
-  // Com ícone, como os outros itens principais; clicar abre a tela própria,
-  // com o título e o item aceso.
+  // Abre o grupo e o Overview: a linha do tempo com os passos na ordem.
+  await sidebar.first().locator('[data-nav-group="Produção"] button').click();
   const item = sidebar.first().locator('[data-nav-link="/app/production"]');
-  await expect(item.locator("svg")).toHaveCount(1);
-  await expect(item).toHaveText(/Produção/);
+  await expect(item).toHaveText(/Overview/);
   await item.click();
   await page.waitForURL(/\/app\/production$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Produção");
   await expect(page.locator("[data-production-page]")).toBeVisible();
+  await expect(page.locator("[data-flow-timeline-step]")).toHaveCount(9);
   await expect(
-    page
-      .locator('[data-nav-link="/app/production"]')
-      .filter({ visible: true })
-      .first(),
-  ).toHaveAttribute("aria-current", "page");
-  // Só Produção fica acesa no menu (Pedidos e entrega não abre nela).
+    page.locator("[data-flow-timeline-step]").first(),
+  ).toHaveAttribute("data-flow-timeline-step", "pre-production");
+  // Clicar num passo mostra os casos dele ao lado.
+  await page.locator('[data-flow-timeline-step="inspection"]').click();
+  await page.waitForURL(/step=inspection/);
+  await expect(
+    page.locator('[data-flow-timeline-step="inspection"]'),
+  ).toHaveAttribute("aria-current", "step");
+  // Só o Overview fica aceso no menu.
   const current = sidebar.first().locator('[aria-current="page"]');
   await expect(current).toHaveCount(1);
   await expect(current).toHaveAttribute("data-nav-link", "/app/production");
+
+  // Tela do passo: título, volta ao Overview e os filtros de prazo.
+  await page.goto("/app/flow/production/inspection");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Inspeção");
+  await expect(page.locator("[data-flow-back]")).toBeVisible();
+  await expect(page.locator("[data-flow-filter]")).toHaveCount(4);
 
   // Equipe e acessos → Telas e links: logo depois de Pedidos; o padrão do
   // comprador já marca, o do designer não.
