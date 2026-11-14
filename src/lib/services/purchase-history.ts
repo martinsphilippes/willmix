@@ -97,7 +97,10 @@ export interface HistoryItem {
   specification: Fact<string> | null;
   /** Nulo para quem não é da Wellmix (a folha do fornecedor não sai). */
   sheet: HistoryItemSheet | null;
-  /** Venda: o pedido grava o total; por item, só no pedido de um produto. */
+  /**
+   * Venda por produto: a gravada no item (`sellUnitPrice`); sem ela, a do
+   * pedido de um produto (total ÷ quantidade).
+   */
   unitSale: Money | null;
   subtotalSale: Money | null;
 }
@@ -242,6 +245,7 @@ type ItemRow = Pick<
   | "unit"
   | "variant"
   | "sankhyaRefs"
+  | "sellUnitPrice"
 >;
 
 /** Folha do fornecedor do item: o gravado no pedido antes da ficha atual. */
@@ -451,6 +455,7 @@ export async function loadPurchaseHistory(
         "unit",
         "variant",
         "sankhyaRefs",
+        "sellUnitPrice",
       ],
       { filter: { orderId: ids }, jsonKeys: { sankhyaRefs: ["CODPROD"] } },
     ),
@@ -580,16 +585,35 @@ export async function loadPurchaseHistory(
               product,
             })
           : null,
-        // O pedido grava o valor de venda do pedido inteiro: por item, só
-        // quando o pedido tem um produto (unitário = total ÷ quantidade).
-        unitSale:
-          single && total && item.quantity > 0
-            ? {
-                amount: round(total.amount / item.quantity, 4),
-                currency: total.currency,
-              }
-            : null,
-        subtotalSale: single ? total : null,
+        // Venda por produto gravada no item (docs/ORDER_SALE.md), na moeda
+        // do pedido; sem ela, pedido de um produto: unitário = total ÷
+        // quantidade (pedidos antigos, com a venda só no pedido inteiro).
+        ...(() => {
+          const recorded =
+            seesSale && typeof item.sellUnitPrice === "number"
+              ? item.sellUnitPrice
+              : null;
+          if (recorded !== null) {
+            const currency = o.sellCurrency ?? "BRL";
+            return {
+              unitSale: { amount: recorded, currency },
+              subtotalSale: {
+                amount: round(recorded * item.quantity, 2),
+                currency,
+              },
+            };
+          }
+          return {
+            unitSale:
+              single && total && item.quantity > 0
+                ? {
+                    amount: round(total.amount / item.quantity, 4),
+                    currency: total.currency,
+                  }
+                : null,
+            subtotalSale: single ? total : null,
+          };
+        })(),
       };
     });
   };

@@ -374,10 +374,31 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page.locator(`[data-purchase-candidate="${requestId}"]`),
   ).toHaveCount(0);
 
+  // Venda ao cliente por pedido e por produto (dono, 14/11/2026;
+  // docs/ORDER_SALE.md): o administrador grava o preço de cada produto no
+  // detalhe do pedido; o total do pedido é a soma.
+  await page.goto(orderUrl);
+  const saleCard = page.locator('[data-order-section="order-sale"]');
+  await expect(saleCard.locator('[data-order-sale-form="edit"]')).toBeVisible();
+  const saleInputs = saleCard.locator(
+    "[data-order-sale-line] input[data-money]",
+  );
+  for (let i = 0; i < (await saleInputs.count()); i++)
+    await saleInputs.nth(i).fill("12,50");
+  await expect(saleCard.locator("[data-order-sale-state]")).toHaveAttribute(
+    "data-order-sale-state",
+    "complete",
+  );
+  await saleCard.locator("[data-order-sale-save]").click();
+  await page.waitForURL(/[?&]sale=saved/);
+  await expect(
+    page.locator('[data-order-section="order-sale"] [data-order-sale-total]'),
+  ).toBeVisible();
+
   // Histórico de compras do cliente na Nova solicitação (dono, 14/11/2026;
   // docs/PURCHASE_HISTORY.md): o pedido de compra entra no histórico do
   // cliente dele (a Wellmix SC), o mais recente primeiro, com o produto e a
-  // quantidade no detalhe; sem venda gravada, o valor fica "—".
+  // quantidade no detalhe e o preço de venda gravado acima.
   await page.goto("/app/requests/new");
   const purchaseHistory = page.locator("[data-purchase-history]");
   await expect(purchaseHistory).toHaveAttribute(
@@ -408,7 +429,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   ).toContainText(/\d/);
   await expect(
     historyItem.locator('[data-purchase-history-field="unitSale"]'),
-  ).toContainText("—");
+  ).toContainText("12,50");
   // O pedido abre em outra aba (a solicitação em andamento fica).
   const historyOpen = historyRow.locator("[data-purchase-history-open]");
   await expect(historyOpen).toHaveAttribute("href", orderPath);

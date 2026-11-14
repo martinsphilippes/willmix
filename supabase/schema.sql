@@ -275,6 +275,7 @@ alter table public."order_items" add column if not exists "name" text;
 alter table public."order_items" add column if not exists "quantity" double precision;
 alter table public."order_items" add column if not exists "unit" text;
 alter table public."order_items" add column if not exists "unitPrice" double precision;
+alter table public."order_items" add column if not exists "sellUnitPrice" double precision;
 alter table public."order_items" add column if not exists "variantId" text;
 alter table public."order_items" add column if not exists "variant" jsonb;
 alter table public."order_items" add column if not exists "colors" jsonb;

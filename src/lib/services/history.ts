@@ -77,6 +77,7 @@ export async function loadCommercialHistory(
     "quantity",
     "unit",
     "unitPrice",
+    "sellUnitPrice",
   ] as const;
   const [orders, items, requests, afterSales] = await Promise.all([
     ordersP,
@@ -129,10 +130,14 @@ export async function loadCommercialHistory(
     const item = itemByOrder.get(order.id);
     if (!item) continue;
     const key = `${order.customerId}|${item.productId ?? item.name.toLowerCase()}`;
+    // A venda gravada por produto (docs/ORDER_SALE.md); sem ela, o total do
+    // pedido ÷ quantidade, como antes.
     const sellUnit =
-      order.sellPrice !== null && item.quantity > 0
-        ? order.sellPrice / item.quantity
-        : null;
+      typeof item.sellUnitPrice === "number"
+        ? item.sellUnitPrice
+        : order.sellPrice !== null && item.quantity > 0
+          ? order.sellPrice / item.quantity
+          : null;
     const fobUnit =
       order.fobTotal !== null && item.quantity > 0
         ? order.fobTotal / item.quantity

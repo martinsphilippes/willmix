@@ -113,6 +113,9 @@ export const pt = {
   "action.values.view": "Ver valores e margem",
   "action.desc.values.view":
     "Ver venda, recebido, custo e margem nas listas, exportações e na Control Tower (registrar pagamentos continua na tela Financeiro).",
+  "action.sale.record": "Gravar a venda ao cliente",
+  "action.desc.sale.record":
+    "Gravar e alterar o preço de venda de cada produto no detalhe do pedido; o total do pedido é a soma. Tudo vai para a Auditoria.",
   "fn.searchFunction": "Buscar função",
   "fn.membersIn.one": "1 pessoa nesta função",
   "fn.membersIn.many": "{n} pessoas nesta função",
@@ -266,6 +269,9 @@ export const en: Record<keyof typeof pt, string> = {
   "action.values.view": "See values and margin",
   "action.desc.values.view":
     "See sales, received, cost and margin in lists, exports and the Control Tower (recording payments stays in the Finance screen).",
+  "action.sale.record": "Record the customer sale",
+  "action.desc.sale.record":
+    "Record and change the sale price of each product on the order detail; the order total is the sum. Everything goes to the Audit log.",
   "fn.searchFunction": "Search function",
   "fn.membersIn.one": "1 person in this function",
   "fn.membersIn.many": "{n} people in this function",
@@ -404,6 +410,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "action.values.view": "查看金额与毛利",
   "action.desc.values.view":
     "在列表、导出和控制塔中查看销售、已收、成本和毛利（登记付款仍在财务页面）。",
+  "action.sale.record": "录入客户售价",
+  "action.desc.sale.record":
+    "在订单详情中录入和修改每个产品的售价；订单总额为合计。所有修改记入审计日志。",
   "fn.searchFunction": "搜索职能",
   "fn.membersIn.one": "此职能有 1 人",
   "fn.membersIn.many": "此职能有 {n} 人",
