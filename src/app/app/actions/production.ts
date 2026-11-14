@@ -7,7 +7,7 @@ import {
   SKU_INSPECTION_RESULTS,
 } from "@/lib/db/schema";
 import { assertScreen } from "@/lib/auth/screens";
-import { field, requireUser, run, str } from "./helpers";
+import { field, requireUser, run, str, flowReturnTo } from "./helpers";
 
 /*
  * Produção (docs/PRODUCTION.md): dados da produção e ETD, follow 5/15/25,
@@ -23,6 +23,9 @@ const note = (form: FormData, key: string) =>
 const isoDay = (value: string) => `${value}T12:00:00.000Z`;
 
 function back(form: FormData) {
+  // Tela do passo do menu de onde a ação veio (docs/FLOW_MENU.md).
+  const flow = flowReturnTo(form);
+  if (flow) return flow;
   const orderId = ID.safeParse(str(form, "orderId"));
   return orderId.success ? `/app/orders/${orderId.data}` : "/app/orders";
 }

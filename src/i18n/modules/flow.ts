@@ -3,6 +3,7 @@
  * telas dos passos; docs/FLOW_MENU.md): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "flow.work.saved": "Salvo.",
   "flow.work.title": "Resolver aqui",
   "flow.work.order": "Pedido #{n}",
   "flow.work.openOrder": "Abrir o pedido completo",
@@ -138,6 +139,7 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "flow.work.saved": "Saved.",
   "flow.work.title": "Resolve here",
   "flow.work.order": "Order #{n}",
   "flow.work.openOrder": "Open the full order",
@@ -273,6 +275,7 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "flow.work.saved": "已保存。",
   "flow.work.title": "在此处理",
   "flow.work.order": "订单 #{n}",
   "flow.work.openOrder": "打开完整订单",

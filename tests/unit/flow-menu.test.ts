@@ -121,3 +121,51 @@ describe("passos do menu", () => {
       }
   });
 });
+
+describe("resolver na tela do passo", () => {
+  it("a ação volta só para uma tela de passo do menu", async () => {
+    const { flowReturnTo } = await import("@/app/app/actions/helpers");
+    const form = (v: string) => {
+      const f = new FormData();
+      f.set("returnTo", v);
+      return f;
+    };
+    expect(flowReturnTo(form("/app/flow/order/art"))).toBe(
+      "/app/flow/order/art",
+    );
+    for (const bad of [
+      "die-cut",
+      "/app/orders/o1",
+      "https://evil.example/app/flow/order/art",
+      "/app/flow/order/art?x=1",
+      "//app/flow/order/art",
+    ])
+      expect(flowReturnTo(form(bad))).toBeNull();
+    expect(flowReturnTo(new FormData())).toBeNull();
+  });
+
+  it("validação e arte final trazem os arquivos das outras tarefas", async () => {
+    const { laneInputKeys } = await import("@/lib/purchase-lanes");
+    const reqs = [
+      { key: "art__i1", status: "done", documentId: "d-art" },
+      { key: "art_review__i1", status: "pending", documentId: null },
+      { key: "certificate__i1", status: "done", documentId: "d-cert" },
+    ] as const;
+    expect(laneInputKeys("art_review__i1", reqs)).toEqual([
+      { label: "lane.input.review", documentId: "d-art" },
+    ]);
+    // Sem a validação feita, a arte final só traz o certificado.
+    expect(laneInputKeys("art_final__i1", reqs)).toEqual([
+      { label: "lane.input.certificate", documentId: "d-cert" },
+    ]);
+    const reviewed = [
+      ...reqs.filter((r) => r.key !== "art_review__i1"),
+      { key: "art_review__i1", status: "done" as const, documentId: null },
+    ];
+    expect(laneInputKeys("art_final__i1", reviewed)).toEqual([
+      { label: "lane.input.art", documentId: "d-art" },
+      { label: "lane.input.certificate", documentId: "d-cert" },
+    ]);
+    expect(laneInputKeys("art__i1", reqs)).toEqual([]);
+  });
+});

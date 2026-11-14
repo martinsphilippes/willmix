@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { IMPORT_STEP_KEYS } from "@/lib/db/schema";
 import { assertScreen } from "@/lib/auth/screens";
-import { field, files, requireUser, run, str } from "./helpers";
+import { field, files, flowReturnTo, requireUser, run, str } from "./helpers";
 
 /*
  * Embarque e desembaraço (docs/IMPORT_FLOW.md): enviar um passo (número,
@@ -33,12 +33,10 @@ const doneParam = (form: FormData) =>
 const errorBack = (form: FormData, to: string) =>
   `${to}?stepCard=${anchorOf(form)}#${anchorOf(form)}`;
 
-/** Tela do passo do menu de onde a ação veio (docs/FLOW_MENU.md). */
-const FLOW_STEP_PATH = /^\/app\/flow\/[a-z-]{1,40}\/[a-z-]{1,40}$/;
-
 function back(form: FormData) {
-  const returnTo = str(form, "returnTo");
-  if (FLOW_STEP_PATH.test(returnTo)) return returnTo;
+  // Tela do passo do menu de onde a ação veio (docs/FLOW_MENU.md).
+  const flow = flowReturnTo(form);
+  if (flow) return flow;
   const orderId = ID.safeParse(str(form, "orderId"));
   return orderId.success ? `/app/orders/${orderId.data}` : "/app/orders";
 }

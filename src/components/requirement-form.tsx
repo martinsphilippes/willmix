@@ -40,9 +40,18 @@ export function RequirementForm({
   defaultValue?: string | null;
   /** Data: limites vindos das outras datas do pedido (chegada ≥ embarque…). */
   dateBounds?: DateBounds;
-  /** Quadro Die Cut do pedido: o envio volta para ele, não para o pedido. */
-  returnTo?: "die-cut";
+  /**
+   * Quadro Die Cut do pedido ("die-cut") ou tela do passo do menu
+   * (/app/flow/<bloco>/<passo>, docs/FLOW_MENU.md): o envio volta para ele,
+   * não para o pedido.
+   */
+  returnTo?: string;
 }) {
+  // Tela do passo: vai em todo formulário (o Die Cut só usa foto e arquivo).
+  const flowBack =
+    returnTo && returnTo.startsWith("/app/flow/") ? (
+      <input type="hidden" name="returnTo" value={returnTo} />
+    ) : null;
   if (requirement.type === "approval") {
     return (
       <form
@@ -51,6 +60,7 @@ export function RequirementForm({
       >
         <input type="hidden" name="orderId" value={orderId} />
         <input type="hidden" name="requirementId" value={requirement.id} />
+        {flowBack}
         <Input
           name="note"
           placeholder={t("common.note")}
@@ -150,6 +160,7 @@ export function RequirementForm({
     >
       <input type="hidden" name="orderId" value={orderId} />
       <input type="hidden" name="requirementId" value={requirement.id} />
+      {flowBack}
       {isMoneyRequirement(requirement) ? (
         <MoneyInput
           locale={t.intl}
