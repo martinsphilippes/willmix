@@ -717,6 +717,43 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expectOrderBlocks(page, orderUrl);
   await expectDocumentAck(page, orderUrl);
   await login(page, "ocp@certifica.com");
+  // Pedido → Certificação (dono, 14/11/2026): a tela do passo é só a lista,
+  // uma linha por produto, com as abas, os filtros e os contadores, sem os
+  // cartões dos pedidos embaixo. O "Resolver" da linha abre o produto no
+  // detalhe do pedido no passo, com a foto e o arquivo para enviar, e o
+  // envio volta ao mesmo produto.
+  await page.goto("/app/flow/order/certification");
+  await expect(page.locator("[data-flow-tab]")).toHaveCount(2);
+  await expect(page.locator("[data-flow-filter]")).toHaveCount(4);
+  await expect(page.locator("[data-flow-requirements]")).toHaveCount(0);
+  await expect(page.locator("[data-flow-work]")).toHaveCount(0);
+  const certRow = page.locator(
+    `[data-flow-case][data-flow-case-order="${orderId}"][data-flow-case-item]`,
+  );
+  await expect(certRow).toHaveCount(1);
+  const certItem = (await certRow.getAttribute("data-flow-case-item"))!;
+  await Promise.all([
+    page.waitForURL(
+      new RegExp(
+        `/app/flow/order/certification/${orderId}\\?item=${certItem}$`,
+      ),
+    ),
+    certRow.locator("[data-flow-case-open]").click(),
+  ]);
+  await expect(page.locator("[data-flow-order-focus]")).toBeVisible();
+  await expect(page.locator("[data-flow-order-requirement]")).toHaveCount(1);
+  const certReq = page.locator(
+    `[data-flow-order-requirement="certificate__${certItem}"]`,
+  );
+  await expect(certReq).toHaveAttribute("data-flow-order-item", certItem);
+  const certForms = certReq.locator("[data-requirement-upload] form");
+  await expect(certForms).toHaveCount(2);
+  await Promise.all([
+    page.waitForURL(/[?&]saved=1/),
+    certForms.last().locator("input[type=file]").setInputFiles(pdf),
+  ]);
+  expect(page.url()).toContain(`item=${certItem}`);
+  await expect(certReq).not.toHaveAttribute("data-status", "pending");
   await fillMyRequirements(page, orderUrl);
   // Memorial e selo: as pendências são dela e levam ao quadro do alto do
   // cartão Certificação, onde ela preenche e envia os dois.

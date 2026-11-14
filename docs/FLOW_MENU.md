@@ -54,6 +54,16 @@ A visão é do passo e das necessidades operacionais dele, não do pedido inteir
 - "Todos no passo" e o "Resolver" das pendências abrem o pedido na tela do passo; as telas focadas que já existem (Die Cut, documento do pedido, documentos do embarque, amostras, fotos reais) seguem diretas. As ações voltam para o pedido no passo (`flowReturnTo` aceita `/app/flow/<bloco>/<passo>/<pedido>`).
 - O detalhe do pedido (`/app/orders/[id]`) não mudou nesta frente.
 
+## Pedido → Certificação: só a lista, uma linha por produto (14/11/2026)
+
+Pedido do dono (com a foto da tela no login admin): os cartões dos pedidos embaixo da tabela repetiam os itens que já estavam na lista.
+
+- A tela do passo (`/app/flow/order/certification`) é só a lista: as abas Pendências e Todos no passo, os filtros de prazo e os contadores continuam; os cartões por pedido embaixo (itens de etapa e passos da certificação) saíram desta tela (`isListOnlyStep` em `src/lib/flow.ts`). Os outros passos seguem com os cartões.
+- Uma linha por produto: o certificado é de cada produto, então a pendência de etapa que junta vários produtos do pedido vira uma linha para cada um, só com o item daquele produto (`splitByProduct` e `casesInStep`). O contador do menu, os filtros, a aba Pendências e o Overview contam as mesmas linhas (`countByStep`). A aba Todos no passo segue com uma linha por pedido.
+- O "Resolver" da linha abre o pedido no passo já no produto: `/app/flow/order/certification/<pedido>?item=<item do pedido>` (`productOfCase`, `orderInStepHref`). Ali aparece só o item daquele produto, com o envio da foto ou do arquivo para quem pode enviar (a mesma regra de antes: etapa aberta, `canSubmitRequirement` e o responsável por login) e o link "Ver tudo do pedido neste passo". O envio volta ao mesmo produto (`flowReturnTo` aceita `?item=` só depois do pedido, com o mesmo formato de identificador). Produto que não é do pedido mostra o aviso e tudo do passo; pedido de outra empresa não abre.
+- As linhas do pedido inteiro (memorial, laudo, registro, selo, arte com o selo) abrem o pedido no passo, no quadro do passo (a mesma âncora do link da pendência).
+- No celular, a tabela dos casos rola de lado e a coluna do "Resolver" fica fixa à direita, sempre à vista (em todos os passos e no Overview; `FlowCases`).
+
 ## Overview pelos pedidos e visão do pedido entre os blocos (14/11/2026)
 
 Pedido do dono: o Overview de Pedido, Produção e Entrega (só a Wellmix) passa a mostrar os pedidos do bloco, e não só as pendências.
