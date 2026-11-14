@@ -2371,6 +2371,91 @@ export default async function OrderPage({
         ) : null}
       </OrderSection>
 
+      {/* Documentos: um por linha, com a trilha visualizado/confirmado.
+          Logo depois de Etapas do pedido, antes dos outros blocos (dono,
+          14/11/2026); o link Documentos da Certificação leva até aqui. */}
+      <OrderSection id="order-documents" title={t("orders.documents")}>
+        {visibleDocs.length === 0 ? (
+          <Empty>{t("common.none")}</Empty>
+        ) : (
+          <>
+            <Table>
+              <thead>
+                <tr>
+                  <Th>{t("orderView.col.document")}</Th>
+                  <Th>{t("orderView.col.type")}</Th>
+                  <Th className="text-right">{t("orderView.col.version")}</Th>
+                  <Th>{t("orderView.col.trail")}</Th>
+                  <Th />
+                </tr>
+              </thead>
+              <tbody>
+                {visibleDocs.map((d) => (
+                  <tr key={d.id} className={rowClass} data-order-document>
+                    <Td className="min-w-44">
+                      <a
+                        href={`/api/files/${d.id}`}
+                        className={cx(linkClass, "block max-w-72 truncate")}
+                        target="_blank"
+                        title={d.name}
+                      >
+                        {d.name}
+                      </a>
+                    </Td>
+                    <Td className="whitespace-nowrap text-zinc-700">
+                      {t(`docType.${d.type}` as DictionaryKey)}
+                    </Td>
+                    <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
+                      v{d.version}
+                    </Td>
+                    <Td className="min-w-40">
+                      {documentTrails[d.id] ? (
+                        <AckTrail
+                          t={t}
+                          summary={documentTrails[d.id]}
+                          showNames={wellmix}
+                        />
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                    <Td className="whitespace-nowrap text-right">
+                      {documentTrails[d.id] &&
+                      d.uploadedByUserId !== user.id ? (
+                        confirmedDocs.has(d.id) ? (
+                          <span className="text-xs text-emerald-700">
+                            ✓ {t("orders.ack.confirmedDoc")}
+                          </span>
+                        ) : (
+                          <form action={acknowledgeDocumentAction}>
+                            <input
+                              type="hidden"
+                              name="documentId"
+                              value={d.id}
+                            />
+                            <input
+                              type="hidden"
+                              name="back"
+                              value={`/app/orders/${order.id}`}
+                            />
+                            <SubmitTextButton className="min-h-9 text-xs">
+                              {t("orders.ack.confirmDoc")}
+                            </SubmitTextButton>
+                          </form>
+                        )
+                      ) : null}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+            <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">
+              {t("orders.ack.hint")}
+            </p>
+          </>
+        )}
+      </OrderSection>
+
       {showAfterSales ? (
         <div id="after-sales" className="mt-6 min-w-0 scroll-mt-24">
           <AfterSalesCard
@@ -2658,20 +2743,6 @@ export default async function OrderPage({
             </div>
           </Card>
         ) : null}
-        {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário, DI... */}
-        <ImportFlowCard
-          t={t}
-          order={order}
-          steps={importSteps}
-          names={productionNames}
-          error={stepCard === "import-flow" ? stepError : null}
-          notice={
-            typeof importNotice === "string" &&
-            ["submitted", "validated", "rejected"].includes(importNotice)
-              ? t(`importFlow.done.${importNotice}` as DictionaryKey)
-              : null
-          }
-        />
         {/* Certificação (Fase F): memorial, laboratório e registro com o OCP,
             e o selo de certificação que a agência aplica na arte. */}
         <ImportFlowCard
@@ -3273,89 +3344,6 @@ export default async function OrderPage({
         </OrderSection>
       ) : null}
 
-      {/* Documentos: um por linha, com a trilha visualizado/confirmado. */}
-      <OrderSection id="order-documents" title={t("orders.documents")}>
-        {visibleDocs.length === 0 ? (
-          <Empty>{t("common.none")}</Empty>
-        ) : (
-          <>
-            <Table>
-              <thead>
-                <tr>
-                  <Th>{t("orderView.col.document")}</Th>
-                  <Th>{t("orderView.col.type")}</Th>
-                  <Th className="text-right">{t("orderView.col.version")}</Th>
-                  <Th>{t("orderView.col.trail")}</Th>
-                  <Th />
-                </tr>
-              </thead>
-              <tbody>
-                {visibleDocs.map((d) => (
-                  <tr key={d.id} className={rowClass} data-order-document>
-                    <Td className="min-w-44">
-                      <a
-                        href={`/api/files/${d.id}`}
-                        className={cx(linkClass, "block max-w-72 truncate")}
-                        target="_blank"
-                        title={d.name}
-                      >
-                        {d.name}
-                      </a>
-                    </Td>
-                    <Td className="whitespace-nowrap text-zinc-700">
-                      {t(`docType.${d.type}` as DictionaryKey)}
-                    </Td>
-                    <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
-                      v{d.version}
-                    </Td>
-                    <Td className="min-w-40">
-                      {documentTrails[d.id] ? (
-                        <AckTrail
-                          t={t}
-                          summary={documentTrails[d.id]}
-                          showNames={wellmix}
-                        />
-                      ) : (
-                        "—"
-                      )}
-                    </Td>
-                    <Td className="whitespace-nowrap text-right">
-                      {documentTrails[d.id] &&
-                      d.uploadedByUserId !== user.id ? (
-                        confirmedDocs.has(d.id) ? (
-                          <span className="text-xs text-emerald-700">
-                            ✓ {t("orders.ack.confirmedDoc")}
-                          </span>
-                        ) : (
-                          <form action={acknowledgeDocumentAction}>
-                            <input
-                              type="hidden"
-                              name="documentId"
-                              value={d.id}
-                            />
-                            <input
-                              type="hidden"
-                              name="back"
-                              value={`/app/orders/${order.id}`}
-                            />
-                            <SubmitTextButton className="min-h-9 text-xs">
-                              {t("orders.ack.confirmDoc")}
-                            </SubmitTextButton>
-                          </form>
-                        )
-                      ) : null}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-            <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">
-              {t("orders.ack.hint")}
-            </p>
-          </>
-        )}
-      </OrderSection>
-
       {/* Multas: uma por linha; nova multa para diretorias e admin (docs/ACCESS.md). */}
       {wellmix || user.role === "legal" || visiblePenalties.length > 0 ? (
         <OrderSection id="order-penalties" title={t("orders.penalties")}>
@@ -3555,6 +3543,28 @@ export default async function OrderPage({
               canRequest={canRequestCancel}
             />
           ) : null}
+        </div>
+      ) : null}
+
+      {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário,
+          DI... A última seção da tela, depois de todas as outras (dono,
+          14/11/2026); a linha da tabela Etapas do pedido leva até aqui
+          (#import-flow). */}
+      {importSteps.length ? (
+        <div className="mt-6 min-w-0" data-order-import-flow>
+          <ImportFlowCard
+            t={t}
+            order={order}
+            steps={importSteps}
+            names={productionNames}
+            error={stepCard === "import-flow" ? stepError : null}
+            notice={
+              typeof importNotice === "string" &&
+              ["submitted", "validated", "rejected"].includes(importNotice)
+                ? t(`importFlow.done.${importNotice}` as DictionaryKey)
+                : null
+            }
+          />
         </div>
       ) : null}
     </>

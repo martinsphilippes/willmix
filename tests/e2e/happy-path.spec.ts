@@ -20,6 +20,97 @@ const requirementRow = (page: Page, label: RegExp) =>
   });
 
 /**
+ * Ordem dos blocos no detalhe do pedido (dono, 14/11/2026), no login do
+ * despachante, no desktop, no iPad e no celular: Documentos logo depois de
+ * Etapas do pedido; a Certificação no meio, na ordem de antes; Embarque e
+ * desembaraço por último. A linha da tabela e o link Documentos da
+ * Certificação levam às posições novas.
+ */
+async function expectOrderBlocks(page: Page, orderUrl: string) {
+  const initial = page.viewportSize();
+  for (const size of [
+    { width: 1440, height: 900 },
+    { width: 820, height: 1180 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(size);
+    await page.goto(orderUrl);
+    const layout = await page.evaluate(() => {
+      const stages = document.querySelector(
+        '[data-order-section="order-stages"]',
+      );
+      const docs = document.querySelector(
+        '[data-order-section="order-documents"]',
+      );
+      const cert = document.getElementById("certification");
+      const flow = document.querySelector("[data-order-import-flow]");
+      const main = document.querySelector("main");
+      if (!stages || !docs || !cert || !flow || !main) return null;
+      const follows = (a: Element, b: Element) =>
+        !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return {
+        docsRightAfterStages: stages.nextElementSibling === docs,
+        certAfterDocs: follows(docs, cert),
+        flowAfterCert: follows(cert, flow),
+        // Nenhuma seção de conteúdo depois do Embarque e desembaraço.
+        sectionsAfterFlow: [...main.querySelectorAll("section")].filter(
+          (el) => !flow.contains(el) && follows(flow, el),
+        ).length,
+      };
+    });
+    expect(layout, `${size.width}×${size.height}`).toEqual({
+      docsRightAfterStages: true,
+      certAfterDocs: true,
+      flowAfterCert: true,
+      sectionsAfterFlow: 0,
+    });
+    // Linha "Embarque e desembaraço" da tabela: leva ao quadro no fim.
+    await page
+      .locator('[data-order-part="import"] [data-order-part-open="import"]')
+      .click();
+    await expect(page).toHaveURL(/#import-flow$/);
+    await expect(page.locator("#import-flow")).toBeInViewport();
+    // Link "Documentos" da Certificação: leva à tabela embaixo das etapas.
+    await page
+      .locator('[data-certifier-dossier] a[href="#order-documents"]')
+      .click();
+    await expect(page).toHaveURL(/#order-documents$/);
+    await expect(
+      page.locator('[data-order-section="order-documents"] h2'),
+    ).toBeInViewport();
+  }
+  if (initial) await page.setViewportSize(initial);
+}
+
+/**
+ * Documentos do pedido (no lugar novo): abrir o arquivo registra
+ * "Visualizado" e não confirma; confirmar a leitura é o botão.
+ */
+async function expectDocumentAck(page: Page, orderUrl: string) {
+  await page.goto(orderUrl);
+  const docs = page.locator('[data-order-section="order-documents"]');
+  const href = await docs
+    .locator("[data-order-document]", { has: page.locator("form button") })
+    .first()
+    .locator("a[href^='/api/files/']")
+    .getAttribute("href");
+  expect(href).toBeTruthy();
+  expect((await page.request.get(href!)).status()).toBe(200);
+  await page.goto(orderUrl);
+  const row = docs.locator("[data-order-document]", {
+    has: page.locator(`a[href="${href}"]`),
+  });
+  await expect(row).toContainText(/Visualizado \d{2}\/\d{2}\/\d{4}/);
+  const confirm = row.getByRole("button", { name: "Confirmar leitura" });
+  await expect(confirm).toBeVisible();
+  await Promise.all([page.waitForLoadState("load"), confirm.click()]);
+  await expect(row).toContainText("Leitura confirmada");
+  await expect(
+    row.getByRole("button", { name: "Confirmar leitura" }),
+  ).toHaveCount(0);
+}
+
+/**
  * Contrato do pedido de compra (docs/PURCHASE_ORDER.md, seção 3): baixa o
  * PDF, assina, carimba e sobe o arquivo (sem o aceite no portal). Escolher o
  * arquivo já registra a assinatura.
@@ -624,6 +715,10 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
       "form:has(input[name=requirementId])",
     ),
   ).toHaveCount(0);
+  // Detalhe do pedido no login do despachante (dono, 14/11/2026): a ordem
+  // dos blocos, os atalhos e a confirmação de leitura dos documentos.
+  await expectOrderBlocks(page, orderUrl);
+  await expectDocumentAck(page, orderUrl);
   await login(page, "ocp@certifica.com");
   await fillMyRequirements(page, orderUrl);
   // 6e. Agência: com a arte validada e o certificado, a arte final com o selo.
