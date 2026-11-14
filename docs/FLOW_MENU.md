@@ -43,6 +43,17 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
   - produção em andamento: pedido na etapa de inspeção com ETD.
 - O Overview do bloco mostra, em cada passo da linha do tempo, quantos pedidos estão nele ("N no passo"), além das pendências. Passos com tela de antes (Books, Pedidos, Revisão, Estoque) listam na própria tela.
 
+## O pedido na tela do passo (14/11/2026)
+
+A visão é do passo e das necessidades operacionais dele, não do pedido inteiro (a visão do pedido, com entidades e linha do tempo, é outra frente). Abrir um pedido de dentro de um passo leva a `/app/flow/<bloco>/<passo>/<pedido>` (só a Wellmix; os parceiros seguem no detalhe do pedido):
+
+- os itens de etapa do passo para esse pedido, de qualquer etapa, feitos e abertos (quem enviou, quando, o arquivo ou o valor; o formulário onde ainda dá para agir; o atalho para a tela própria do contrato, das amostras, do Die Cut e da ficha);
+- os passos do embarque, da origem, da certificação e das amostras do passo (cartão de passos, com os feitos);
+- o cartão do passo: produção (Pré-produção, Produção, Inspeção, com o relatório na Inspeção), recebimento (Armazenagem, Retorno), artes (Arte), frete marítimo (Logística).
+- **Pedidos** (o passo em que o pedido é criado) tem tela própria em `/app/flow/order/orders` (o menu "Pedidos" leva a ela; a lista `/app/orders` continua, com link na tela). O pedido nesse passo mostra só a criação: resumo, itens, programação de compra (pai e filhos) e os itens da criação (confirmação, número do ERP, ficha).
+- "Todos no passo" e o "Resolver" das pendências abrem o pedido na tela do passo; as telas focadas que já existem (Die Cut, documento do pedido, documentos do embarque, amostras, fotos reais) seguem diretas. As ações voltam para o pedido no passo (`flowReturnTo` aceita `/app/flow/<bloco>/<passo>/<pedido>`).
+- O detalhe do pedido (`/app/orders/[id]`) não mudou nesta frente.
+
 ## Overview pelos pedidos e visão do pedido entre os blocos (14/11/2026)
 
 Pedido do dono: o Overview de Pedido, Produção e Entrega (só a Wellmix) passa a mostrar os pedidos do bloco, e não só as pendências.

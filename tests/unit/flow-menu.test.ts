@@ -116,7 +116,16 @@ describe("passos do menu", () => {
     expect(caseHref(of("order/art-material"), task)).toBe(
       "/app/orders/o1/die-cut",
     );
-    expect(caseHref(of("order/art"), task)).toBe("/app/orders/o1");
+    // O resto: o pedido na tela do passo (a visão é do passo).
+    expect(caseHref(of("order/art"), task)).toBe("/app/flow/order/art/o1");
+    // Telas focadas do pedido seguem diretas.
+    expect(
+      caseHref(of("production/cargo-docs"), {
+        kind: "import_step",
+        link: "/app/orders/o1/shipping-docs#packing",
+        orderId: "o1",
+      }),
+    ).toBe("/app/orders/o1/shipping-docs#packing");
   });
 
   it("todo passo tem nome e explicação nos três idiomas", () => {
@@ -139,11 +148,16 @@ describe("resolver na tela do passo", () => {
     expect(flowReturnTo(form("/app/flow/order/art"))).toBe(
       "/app/flow/order/art",
     );
+    // O pedido na tela do passo.
+    expect(flowReturnTo(form("/app/flow/order/art/o-1_x"))).toBe(
+      "/app/flow/order/art/o-1_x",
+    );
     for (const bad of [
       "die-cut",
       "/app/orders/o1",
       "https://evil.example/app/flow/order/art",
       "/app/flow/order/art?x=1",
+      "/app/flow/order/art/o1/extra",
       "//app/flow/order/art",
     ])
       expect(flowReturnTo(form(bad))).toBeNull();
