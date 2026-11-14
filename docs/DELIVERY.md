@@ -53,8 +53,7 @@ era de qualquer login da Wellmix.
 
 ## Qualidade no CD (E19, E19?, E22)
 
-O dono não detalhou como a qualidade confere; ficou o padrão abaixo, para
-confirmar.
+Confirmado pelo dono (14/11/2026): a contagem por SKU basta, por unidade ou por caixas.
 
 - Função nova **Qualidade (CD)** e a ação **"Concluir a conferência da
   qualidade no CD"** (Equipe → Funções e acessos, módulo Entrega). Sem
@@ -66,6 +65,12 @@ confirmar.
     é avisada.
   - **Com divergência:** a observação é obrigatória, Compras (analista e
     "Acompanhar o recebimento") é avisada, e o pedido segue a trilha do lote.
+- **Contagem por unidade ou por caixas** (dono, 14/11/2026: "a contagem
+  por SKU basta, só que por unidade ou quantidade de caixas"). Cada linha da
+  conferência tem "un" ou "caixas (N un)". Em caixas, o recebido em unidades
+  é caixas × caixa master do cadastro (variante, senão produto), e as caixas
+  ficam guardadas na linha (`cartons`). Item sem caixa master só aceita
+  unidade (`no_master_box`).
 - Pendência **"Conferir a carga no CD"** (grupo Qualidade) com a descarga
   registrada e a conferência por concluir.
 - Dados: em `receivings`, `qualityResult` (`ok`/`divergent`),

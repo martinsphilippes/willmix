@@ -2265,6 +2265,11 @@ export interface ReceivingItem {
   received: number;
   damaged: number;
   note: string | null;
+  /**
+   * Contado em caixas (dono, 14/11/2026: por unidade ou por caixas): as
+   * caixas contadas; `received` fica em unidades (caixas × caixa master).
+   */
+  cartons?: number | null;
 }
 
 /** Recebimento do container no armazém (um por pedido). */
