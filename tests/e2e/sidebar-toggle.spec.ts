@@ -66,8 +66,9 @@ async function measure(page: Page) {
         hits(cx, r.bottom - 1),
       // Área de toque confortável (44 px).
       size: Math.round(Math.min(r.width, r.height)),
+      // A borda de 1 px à direita da barra conta de um lado só.
       align:
-        Math.abs(left - right) <= 1
+        Math.abs(left - right) <= 2
           ? "center"
           : right < left
             ? "right"
@@ -94,6 +95,14 @@ test("menu lateral: o botão de recolher e expandir fica inteiro abaixo do cabe�
         "data-sidebar-collapsed",
         collapsed ? "1" : "0",
       );
+      // Espera a barra terminar de abrir ou fechar (transição da largura).
+      await expect
+        .poll(() =>
+          page
+            .locator("[data-sidebar]")
+            .evaluate((el) => Math.round(el.getBoundingClientRect().width)),
+        )
+        .toBe(collapsed ? 64 : 256);
       const label = collapsed ? "Expandir menu" : "Recolher menu";
       for (const where of ["top", "middle", "bottom"] as const) {
         await scrollTo(page, where);
