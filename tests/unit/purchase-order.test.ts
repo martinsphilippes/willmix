@@ -973,6 +973,207 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     expect(await keysOf(ops)).toContain("container_tracking");
   });
 
+  it("documentos do embarque: check list, packing list, invoice e BL conferidos", async () => {
+    const store = getStore();
+    const terms = await import("@/lib/services/supplier-terms");
+    const flow = await import("@/lib/services/import-flow");
+    const docs = await import("@/lib/services/shipping-docs");
+    await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+      terms: [{ percent: 100, base: "delivered", days: 60 }],
+      note: null,
+    });
+    let order;
+    try {
+      ({ order } = await signedPurchaseOrder(["SD-1", "SD-2"]));
+    } finally {
+      await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+        terms: [
+          { percent: 30, base: "order_created", days: 0 },
+          { percent: 70, base: "delivered", days: 90 },
+        ],
+        note: null,
+      });
+    }
+    order = (await store.get("orders", order.id))!;
+    const items = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    // Caixa master de 10 peças, 0,5 kg líquido e 0,6 kg bruto por peça.
+    for (const i of items) {
+      await store.update("order_items", i.id, { quantity: 25, variant: null });
+      await store.update("products", i.productId!, {
+        masterBoxQty: 10,
+        netWeightKg: 0.5,
+        grossWeightKg: 0.6,
+      });
+    }
+    const [a, b] = items;
+    // Os passos antigos do despachante e do agente não aparecem no pedido de compra.
+    const shown = (await flow.importFlowView(admin, order)).map(
+      (s) => s.template.key,
+    );
+    expect(shown).not.toContain("invoice_packing");
+    expect(shown).not.toContain("draft_bl");
+    expect(shown).toContain("bl");
+    // O check list só abre depois das fotos do container vazio.
+    await expect(
+      docs.addLoad(supplierA, order.id, [{ itemId: a.id, cartons: 1 }]),
+    ).rejects.toThrow("shipping_load_closed");
+    await flow.submitStep(admin, order.id, "booking", { value: "BK-9" });
+    const ops = await store.create("users", {
+      email: "comex.docs@wellmix.com",
+      name: "Caio Comex",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      passwordHash: "x",
+      active: true,
+      importerId: null,
+      functions: ["comex_internal"],
+      screens: null,
+      mustChangePassword: false,
+    } as never);
+    await flow.validateStep(ops, order.id, "booking", "validated", null);
+    await flow.submitStep(supplierA, order.id, "container_at_factory", {
+      value: "2027-01-12",
+    });
+    await flow.submitStep(supplierA, order.id, "container_empty", {
+      documentId: (
+        await uploadDocument(supplierA, pdf("vazio.pdf"), {
+          orderId: order.id,
+          type: "import_step",
+        })
+      ).id,
+    });
+    // Check list: 3 caixas por item (25 peças / 10 por caixa), abatendo.
+    let view = (await docs.shippingDocsView(supplierA, order.id))!;
+    expect(view.load.map((l) => l.expected)).toEqual([3, 3]);
+    await docs.addLoad(supplierA, order.id, [
+      { itemId: a.id, cartons: 2 },
+      { itemId: b.id, cartons: 3 },
+    ]);
+    await expect(
+      docs.addLoad(supplierA, order.id, [{ itemId: a.id, cartons: 2 }]),
+    ).rejects.toThrow("shipping_load_over");
+    expect(
+      (await docs.shippingDocTasks(supplierA))
+        .filter((t) => t.order.id === order.id)
+        .map((t) => t.kind),
+    ).toEqual(["load"]);
+    await docs.addLoad(supplierA, order.id, [{ itemId: a.id, cartons: 1 }]);
+    view = (await docs.shippingDocsView(supplierA, order.id))!;
+    expect(view.loadDone).toBe(true);
+    expect(view.open.load).toBe(false);
+    // Packing list: caixas do check list, peças e pesos pelo cadastro.
+    expect(view.suggestion).toEqual([
+      expect.objectContaining({
+        cartons: 3,
+        pieces: 25,
+        netKg: 12.5,
+        grossKg: 15,
+      }),
+      expect.objectContaining({
+        cartons: 3,
+        pieces: 25,
+        netKg: 12.5,
+        grossKg: 15,
+      }),
+    ]);
+    await expect(
+      docs.submitInvoice(supplierA, order.id, {
+        number: "INV-1",
+        lines: view.suggestion,
+        documentId: "x",
+        currency: null,
+      }),
+    ).rejects.toThrow("shipping_doc_closed");
+    await docs.submitPackingList(supplierA, order.id, {
+      // Caixas digitadas diferentes não valem: ficam as do check list.
+      lines: view.suggestion.map((l) => ({ ...l, cartons: 99 })),
+      documentId: null,
+    });
+    view = (await docs.shippingDocsView(supplierA, order.id))!;
+    expect(view.docs.packing_list!.lines.map((l) => l.cartons)).toEqual([3, 3]);
+    // Invoice da trading: uma linha com peso bruto diferente volta para refazer.
+    const file = (
+      await uploadDocument(supplierA, pdf("invoice.pdf"), {
+        orderId: order.id,
+        type: "attachment",
+        visibility: "supplier",
+      })
+    ).id;
+    const wrong = view.suggestion.map((l, i) =>
+      i === 1 ? { ...l, grossKg: 16, pieces: 24 } : l,
+    );
+    await docs.submitInvoice(supplierA, order.id, {
+      number: "INV-1",
+      lines: wrong,
+      documentId: file,
+      currency: null,
+    });
+    view = (await docs.shippingDocsView(supplierA, order.id))!;
+    expect(view.docs.invoice!.status).toBe("rejected");
+    expect(view.docs.invoice!.mismatches!.map((m) => m.field)).toEqual([
+      "pieces",
+      "grossKg",
+    ]);
+    expect(
+      (await docs.shippingDocTasks(supplierA)).filter(
+        (t) => t.order.id === order.id,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "invoice", redo: true }),
+      ]),
+    );
+    await docs.submitInvoice(supplierA, order.id, {
+      number: "INV-1",
+      lines: view.docs.packing_list!.lines,
+      documentId: null,
+      currency: null,
+    });
+    view = (await docs.shippingDocsView(supplierA, order.id))!;
+    expect(view.docs.invoice!.status).toBe("accepted");
+    expect(view.can.bl).toBe(false);
+    // BL: sem marítima no pedido, a Wellmix faz; conferido com a invoice.
+    expect(await docs.shipmentBlockers(order.id)).toEqual([
+      "container_at_port",
+      "bl",
+    ]);
+    await expect(
+      flow.submitStep(admin, order.id, "bl", { value: "BL-0" }),
+    ).rejects.toThrow();
+    const bl = (await docs.shippingDocsView(admin, order.id))!;
+    await docs.submitBl(admin, order.id, {
+      number: "BL-1",
+      containerNumber: "mscu1234567",
+      lines: bl.suggestion.map((l, i) => (i === 0 ? { ...l, cartons: 2 } : l)),
+      documentId: file,
+    });
+    expect(
+      (await docs.shippingDocsView(admin, order.id))!.docs.bl!.status,
+    ).toBe("rejected");
+    await docs.submitBl(admin, order.id, {
+      number: "BL-1",
+      containerNumber: "mscu1234567",
+      lines: bl.suggestion,
+      documentId: null,
+    });
+    const done = (await docs.shippingDocsView(admin, order.id))!;
+    expect(done.docs.bl).toMatchObject({
+      status: "accepted",
+      containerNumber: "MSCU1234567",
+    });
+    // BL conferido fecha o passo "BL" do desembaraço.
+    const [blStep] = await store.list("import_steps", {
+      filter: { orderId: order.id, key: "bl" },
+    });
+    expect(blStep).toMatchObject({ status: "validated", value: "BL-1" });
+    expect(await docs.shipmentBlockers(order.id)).toEqual([
+      "container_at_port",
+    ]);
+  });
+
   it("prazo de cada passo conta da liberação do anterior", async () => {
     const lanes = await import("@/lib/purchase-lanes");
     const sla = {

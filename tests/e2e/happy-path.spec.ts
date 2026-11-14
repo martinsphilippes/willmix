@@ -35,9 +35,63 @@ async function uploadSignedContract(page: Page, orderUrl: string) {
   await page.waitForURL(/signed=1/);
 }
 
+/** Passo do cartão de embarque ou do container na origem: preenche e envia. */
+async function sendStep(
+  page: Page,
+  orderUrl: string,
+  anchor: "import-flow" | "container-origin",
+  key: string,
+  input: { value?: string; file?: boolean },
+) {
+  await page.goto(`${orderUrl}#${anchor}`);
+  await page.waitForLoadState("networkidle");
+  const row = page.locator(`#${anchor}-step-${key}`);
+  if (input.value !== undefined)
+    await row.locator("input[name=value]").fill(input.value);
+  if (input.file) await row.locator("input[type=file]").setInputFiles(pdf);
+  await Promise.all([
+    page.waitForURL(/importStep=submitted/),
+    row.locator(`[data-import-submit="${key}"]`).click(),
+  ]);
+}
+
+async function validateStep(
+  page: Page,
+  orderUrl: string,
+  anchor: "import-flow" | "container-origin",
+  key: string,
+) {
+  await page.goto(`${orderUrl}#${anchor}`);
+  await page.waitForLoadState("networkidle");
+  await Promise.all([
+    page.waitForURL(/importStep=validated/),
+    page
+      .locator(`#${anchor}-step-${key} [data-import-validate="${key}"]`)
+      .click(),
+  ]);
+}
+
+/** Pesos que faltarem no cadastro: o fornecedor completa no documento. */
+async function fillMissingWeights(
+  page: Page,
+  form: ReturnType<Page["locator"]>,
+) {
+  for (const [prefix, value] of [
+    ["pieces_", "1"],
+    ["netKg_", "1"],
+    ["grossKg_", "1.2"],
+  ] as const) {
+    const inputs = form.locator(`input[name^="${prefix}"]`);
+    for (let i = 0; i < (await inputs.count()); i++)
+      if (!(await inputs.nth(i).inputValue())) await inputs.nth(i).fill(value);
+  }
+}
+
 test("booking → seleção → solicitação ao fornecedor → produto → pedido de compra → raias → contrato → pagamento → inspeção → embarque → desembaraço → transporte → entrega", async ({
   page,
 }) => {
+  // Caminho inteiro, do Booking à entrega (com o container e os documentos do embarque).
+  test.slow();
   const codeA = `${TAG}-A`;
   const codeB = `${TAG}-B`;
   const productName = `Copo de vidro ${TAG}`;
@@ -589,6 +643,89 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   );
   // Embarque e desembaraço (Fase D): os passos aparecem para a Wellmix.
   await expect(page.locator("[data-import-step=booking]")).toBeVisible();
+
+  // Container na origem e documentos do embarque (docs/SHIPPING_DOCS.md):
+  // booking, container vazio, check list de carga, packing list, invoice
+  // (conferida com o packing list) e BL da marítima (conferido com a invoice).
+  await expect(page.locator("[data-import-step=invoice_packing]")).toHaveCount(
+    0,
+  );
+  await login(page, "admin@wellmix.com");
+  await sendStep(page, orderUrl, "import-flow", "booking", { value: "BK-E2E" });
+  await login(page, "operador@wellmix.com");
+  await validateStep(page, orderUrl, "import-flow", "booking");
+  await login(page, "supplier.a@china.com");
+  await sendStep(page, orderUrl, "container-origin", "container_at_factory", {
+    value: "2026-10-10",
+  });
+  await sendStep(page, orderUrl, "container-origin", "container_empty", {
+    file: true,
+  });
+  await page.goto(`${orderUrl}/shipping-docs`);
+  const loadForm = page.locator("form[data-shipping-load-form]");
+  const loadRows = loadForm.locator("[data-load-line]");
+  for (let i = 0; i < (await loadRows.count()); i++) {
+    const row = loadRows.nth(i);
+    const left = (
+      await row.locator("[data-load-remaining]").innerText()
+    ).trim();
+    await row
+      .locator('input[name^="add_"]')
+      .fill(/^\d+$/.test(left) ? left : "1");
+  }
+  await Promise.all([
+    page.waitForURL(/done=load/),
+    loadForm.locator("button[type=submit]").click(),
+  ]);
+  await expect(
+    page.locator("[data-shipping-doc=load] [data-shipping-status]"),
+  ).toHaveAttribute("data-shipping-status", "accepted");
+  const packing = page.locator("form[data-shipping-form=packing_list]");
+  await fillMissingWeights(page, packing);
+  await Promise.all([
+    page.waitForURL(/done=packing_list/),
+    packing.locator("button[type=submit]").click(),
+  ]);
+  // Invoice da trading (login do fornecedor do pedido): bate com o packing list.
+  const invoice = page.locator("form[data-shipping-form=invoice]");
+  await invoice.locator("input[name=number]").fill("INV-E2E");
+  await invoice.locator("input[type=file]").setInputFiles(pdf);
+  await Promise.all([
+    page.waitForURL(/done=invoice/),
+    invoice.locator("button[type=submit]").click(),
+  ]);
+  await expect(
+    page.locator("[data-shipping-doc=invoice] [data-shipping-status]"),
+  ).toHaveAttribute("data-shipping-status", "accepted");
+  // O carregamento é conferido pela Wellmix; depois lacre e porto.
+  await sendStep(page, orderUrl, "container-origin", "container_loaded", {
+    value: "Carga completa",
+    file: true,
+  });
+  await login(page, "admin@wellmix.com");
+  await validateStep(page, orderUrl, "container-origin", "container_loaded");
+  await login(page, "supplier.a@china.com");
+  await sendStep(page, orderUrl, "container-origin", "container_sealed", {
+    value: "MSCU1234567",
+    file: true,
+  });
+  await sendStep(page, orderUrl, "container-origin", "container_at_port", {
+    value: "2026-10-14",
+  });
+  // BL da companhia marítima, conferido com a invoice.
+  await login(page, "armador@maritima.com");
+  await page.goto(`${orderUrl}/shipping-docs`);
+  const bl = page.locator("form[data-shipping-form=bl]");
+  await bl.locator("input[name=number]").fill("BL-E2E");
+  await bl.locator("input[name=containerNumber]").fill("MSCU1234567");
+  await bl.locator("input[type=file]").setInputFiles(pdf);
+  await Promise.all([
+    page.waitForURL(/done=bl/),
+    bl.locator("button[type=submit]").click(),
+  ]);
+  await expect(
+    page.locator("[data-shipping-doc=bl] [data-shipping-status]"),
+  ).toHaveAttribute("data-shipping-status", "accepted");
 
   // 10. Embarque, desembaraço e transporte pelos parceiros do pedido.
   await login(page, "armador@maritima.com");
