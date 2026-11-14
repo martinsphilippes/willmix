@@ -9,8 +9,9 @@ import type { User } from "@/lib/db/schema";
  * as telas que o login abre. No alto, links soltos do dia a dia (Control
  * Tower, Pendências, Mensagens, Notificações); depois os grupos, cada um na
  * ordem do fluxo (Compras: Booking → Seleção → Convites → Solicitações ao
- * fornecedor; Pedidos e entrega: Pedidos de compra → Produção → Revisão →
- * Containers → Fretes → Tarifário → Estoque; Financeiro; Painéis; Cadastros). Configurações,
+ * fornecedor; Pedidos e entrega: Pedidos de compra → Revisão → Containers →
+ * Fretes → Tarifário → Estoque; Produção, item pai logo abaixo de Pedidos e
+ * entrega; Financeiro; Painéis; Cadastros). Configurações,
  * Equipe e acessos e Auditoria ficam fixos embaixo (navFooterFor). Grupo com
  * uma tela só vira link direto; grupo vazio some. Telas fora do fluxo de hoje
  * ficam fora do menu de todos (MENU_HIDDEN), mas continuam abrindo pelo
@@ -32,7 +33,8 @@ export type NavIcon =
   | "team"
   | "shield"
   | "home"
-  | "box";
+  | "box"
+  | "factory";
 
 export interface NavLink {
   href: string;
@@ -60,6 +62,11 @@ export interface NavGroup {
   key: DictionaryKey;
   icon: NavIcon;
   items: NavLink[];
+  /**
+   * Tela do próprio grupo (item pai, ex.: Produção): o nome abre a tela e a
+   * seta abre e fecha os subitens.
+   */
+  href?: string;
 }
 
 export type NavEntry = NavLink | NavGroup;
@@ -95,7 +102,30 @@ function group(
     : [{ key, icon, items }];
 }
 
+/**
+ * Item pai com tela própria (Produção, dono, 14/11/2026): sem subitens, é um
+ * link do primeiro nível, com o ícone; com subitens, vira grupo, e o nome
+ * continua abrindo a tela (a seta abre e fecha). Sem a tela do pai, os
+ * subitens seguem como um grupo comum.
+ */
+function parentGroup(
+  parent: NavLink | undefined,
+  key: DictionaryKey,
+  icon: NavIcon,
+  items: NavLink[],
+): NavEntry[] {
+  if (!parent) return group(key, icon, items);
+  if (items.length === 0) return [{ ...parent, icon: parent.icon ?? icon }];
+  return [{ key, icon, href: parent.href, items }];
+}
+
 type Entry = [Screen, NavLink];
+
+/**
+ * Etapas que vão entrar como subitens de Produção (dono, 14/11/2026), na
+ * ordem do fluxo. Vazio por enquanto: Produção é só o link da tela.
+ */
+const PRODUCTION_STEPS: Entry[] = [];
 
 /**
  * Só os links das telas que o login abre, na ordem dada, sem os ocultos. A
@@ -187,8 +217,6 @@ export function navFor(
         "ship",
         pick(has, [
           ["orders", { href: "/app/orders", key: "nav.purchaseOrders" }],
-          // Produção dos pedidos de compra (dono, 13/11/2026).
-          ["production", { href: "/app/production", key: "nav.production" }],
           ["reviews", { href: "/app/reviews", key: "nav.reviews" }],
           ["containers", { href: "/app/containers", key: "nav.containers" }],
           ["freight", { href: "/app/freight", key: "nav.freight" }],
@@ -201,6 +229,17 @@ export function navFor(
           // Fora do menu (MENU_HIDDEN): Pós-venda.
           ["afterSales", { href: "/app/after-sales", key: "nav.afterSales" }],
         ]),
+      ),
+      // Produção (dono, 14/11/2026): item pai do primeiro nível, logo abaixo
+      // de Pedidos e entrega (saiu de dentro do grupo). Vai receber as etapas
+      // como subitens; por enquanto, o próprio item abre a tela.
+      ...parentGroup(
+        pick(has, [
+          ["production", { href: "/app/production", key: "nav.production" }],
+        ])[0],
+        "nav.production",
+        "factory",
+        pick(has, PRODUCTION_STEPS),
       ),
       ...group(
         "nav.group.finance",
@@ -350,9 +389,16 @@ export function navFooterFor(
   ]);
 }
 
-/** Todos os links, na ordem, sem os grupos (celular e testes). */
+/** Todos os links, na ordem, sem os grupos (celular e testes); o item pai vem antes dos subitens. */
 export function flattenNav(entries: NavEntry[]): NavLink[] {
-  return entries.flatMap((e) => (isNavGroup(e) ? e.items : [e]));
+  return entries.flatMap((e) =>
+    isNavGroup(e)
+      ? [
+          ...(e.href ? [{ href: e.href, key: e.key, icon: e.icon }] : []),
+          ...e.items,
+        ]
+      : [e],
+  );
 }
 
 /** Subpáginas que têm link próprio no menu (o link "pai" não acende nelas). */
