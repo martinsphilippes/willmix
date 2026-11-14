@@ -164,11 +164,11 @@ Em Pendências (`/app/tasks`) o **operador** vê só o que as funções dele faz
 | Fazer a arte, arte final, selo na arte (sem agência)                                                               | ação "art.design" (Designer)                                                        |
 | Validar a arte, conferir o selo na arte                                                                            | ação "art.validate"                                                                 |
 | Assinar o documento pela Wellmix                                                                                   | ação "contract.sign" (diretorias)                                                   |
-| Enviar para assinatura, confirmar o pedido, nº no ERP, itens da linha, produção e inspeção, designar o despachante | ação "purchaseOrder.generate" (compras)                                             |
+| Enviar para assinatura, confirmar o pedido, nº no ERP, itens da linha, produção e inspeção, vincular a certificadora | ação "purchaseOrder.generate" (compras)                                             |
 | Embarque, desembaraço, transporte e entrega                                                                        | tela Frete                                                                          |
 | Numerário                                                                                                          | ação "numerario.manage"                                                             |
 | Solicitação nova, revisão, sourcing                                                                                | telas Solicitações, Revisão, Sourcing                                               |
-| Certificação (selo, validação do memorial, certificado)                                                            | despachante do pedido (a regra de "Quem recebe cada tarefa", docs/CERTIFICATION.md) |
+| Certificação (selo, validação do memorial, certificado)                                                            | certificadora (OCP) do pedido (a regra de "Quem recebe cada tarefa", docs/CERTIFICATION.md) |
 | Itens do fornecedor e dos parceiros                                                                                | não aparecem para o operador                                                        |
 | Mensagem a responder                                                                                               | o analista da conversa (sem analista: todos)                                        |
 

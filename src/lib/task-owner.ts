@@ -14,14 +14,14 @@ import {
  * o administrador vê tudo, como antes. Cada pendência aponta para uma ação
  * (ex.: fazer a arte = "art.design", padrão Designer) ou uma tela (ex.:
  * frete e desembaraço = "freight", padrão Comprador e Planejamento). O que é
- * de fornecedor e parceiros (assinatura do fornecedor, certificação do
- * despachante) não entra na lista do operador.
+ * de fornecedor e parceiros (assinatura do fornecedor, certificação da
+ * certificadora) não entra na lista do operador.
  */
 
 export type TaskGate =
   | { action: ActionKey }
   | { screen: Screen }
-  /** Só o administrador (financeiro, certificação sem despachante). */
+  /** Só o administrador (financeiro, certificação sem certificadora). */
   | { admin: true };
 
 /** Item de etapa dentro da pendência (para o filtro do operador). */
@@ -64,7 +64,7 @@ export function requirementGate(
       return { action: "art.validate" };
     case "order_signed_wellmix":
       return { action: "contract.sign" };
-    // Certificado do produto: é do despachante (sem ele, do administrador).
+    // Certificado do produto: é da certificadora (sem ela, do administrador).
     case LANE_KEYS.certificate:
       return ADMIN;
     case DOWN_PAYMENT_KEY:
@@ -111,7 +111,7 @@ export function kindGate(
     case "cert_step":
       // Aplicar o selo na arte (sem agência): quem faz a arte.
       if (stepKey === "cert_seal_art") return { action: "art.design" };
-      // Designar o despachante do pedido (parceiros do pedido): compras.
+      // Vincular a certificadora do pedido (parceiros do pedido): compras.
       if (stepKey === "assign") return COMPRAS;
       return ADMIN;
     case "cert_validate":

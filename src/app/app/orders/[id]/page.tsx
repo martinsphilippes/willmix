@@ -239,6 +239,9 @@ export default async function OrderPage({
     production: productionNotice,
     importStep: importNotice,
     certStep: certNotice,
+    // Quadro do alto da Certificação: arquivo substituído ou falha na troca.
+    certReplaced,
+    replaceFailed,
     stepCard,
     receiving: receivingNotice,
     artwork: artworkNotice,
@@ -287,7 +290,7 @@ export default async function OrderPage({
      preço de compra, a ficha inteira, o documento do pedido, as
      certificações já registradas e os arquivos. Só lê. O financeiro da
      Wellmix (preço de venda, margem, pagamentos) não é do pedido dela. */
-  // O despachante do pedido certifica (dono, 13/11/2026): vê o mesmo.
+  // Quem certifica é a certificadora do pedido (dono, 14/11/2026).
   const certifier = isOrderCertifier(user, progress.order);
   // Financeiro é só do administrador: pagamentos, valores e margem do pedido.
   const financeAccess = canOpen(user, "finance");
@@ -2696,6 +2699,12 @@ export default async function OrderPage({
           featured={importFlow.CERT_FEATURED_STEPS}
           featuredHint={t("certFlow.featured.hint")}
           error={stepCard === "certification" ? stepError : null}
+          replaced={typeof certReplaced === "string" ? certReplaced : null}
+          replaceFailed={
+            stepCard === "certification" && typeof replaceFailed === "string"
+              ? replaceFailed
+              : null
+          }
           hints={[
             ...(certSteps.some((v) => v.template.key === "cert_seal")
               ? [t("certFlow.sealHint")]

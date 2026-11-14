@@ -207,7 +207,7 @@ export function isSheetCertifier(
   user: Pick<User, "role" | "partyId">,
   order: Partial<Pick<Order, "ocpId" | "brokerId">>,
 ): boolean {
-  // Quem certifica: o despachante do pedido (dono, 13/11/2026) ou a certificadora.
+  // Quem certifica: a certificadora (OCP) do pedido (dono, 14/11/2026).
   return isOrderCertifier(user, order);
 }
 

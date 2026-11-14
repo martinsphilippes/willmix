@@ -379,7 +379,7 @@ export async function canAccessDocument(
       (await isCatalogShowcasePhoto(doc.productId, doc.id))
     )
       return true;
-    // Quem certifica (o despachante; a certificadora, papel sem uso): as
+    // Quem certifica (a certificadora; o despachante, que certificou até 14/11/2026): as
     // fotos de vitrine dos produtos dos pedidos em que está (precisa ver o
     // produto para gerar o selo de certificação; dono, 13/11/2026).
     if (

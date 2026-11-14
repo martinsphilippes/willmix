@@ -29,6 +29,7 @@ import {
 } from "./ui";
 import { SubmitButton } from "./submit-button";
 import { DirectFileInput } from "./sheet-file-input";
+import { ReplaceStepFile } from "./replace-step-file";
 import type { getT } from "@/i18n/server";
 
 /*
@@ -55,7 +56,13 @@ export function ImportFlowCard({
   featured = [],
   featuredHint,
   returnTo,
+  replaced = null,
+  replaceFailed = null,
 }: {
+  /** Documento do quadro do alto cujo arquivo acabou de ser substituído. */
+  replaced?: string | null;
+  /** Documento do quadro do alto cuja substituição falhou (o motivo é `error`). */
+  replaceFailed?: string | null;
   /**
    * Tela do passo do menu (/app/flow/<bloco>/<passo>, docs/FLOW_MENU.md): a
    * ação volta para ela em vez do pedido.
@@ -113,7 +120,12 @@ export function ImportFlowCard({
   );
   /* Formulário de envio de um passo (na linha da tabela ou no quadro em
      destaque do alto). */
-  const submitForm = (tpl: StepView["template"], step: StepView["step"]) => (
+  const submitForm = (
+    tpl: StepView["template"],
+    step: StepView["step"],
+    /** Primeiro envio (quadro do alto sem arquivo): sempre "Enviar". */
+    first = false,
+  ) => (
     <form
       action={submitImportStepAction}
       className="flex flex-wrap items-end gap-2"
@@ -204,7 +216,8 @@ export function ImportFlowCard({
         data-import-submit={tpl.key}
       >
         {t(
-          step?.status === "rejected" || step?.status === "submitted"
+          !first &&
+            (step?.status === "rejected" || step?.status === "submitted")
             ? "importFlow.resubmit"
             : "importFlow.submit",
         )}
@@ -215,6 +228,22 @@ export function ImportFlowCard({
   const tops = featured
     .map((key) => steps.find((s) => s.template.key === key))
     .filter((v): v is StepView => !!v);
+  // Falha ao substituir o arquivo de um documento do alto: o motivo aparece
+  // no quadro dele (não repete no alto do cartão).
+  const failedTop =
+    replaceFailed && tops.some((v) => v.template.key === replaceFailed)
+      ? replaceFailed
+      : null;
+  const replaceLabels = {
+    start: t("certFlow.replace.start"),
+    chosen: t("certFlow.replace.chosen"),
+    confirm: t("certFlow.replace.confirm"),
+    cancel: t("certFlow.replace.cancel"),
+    pending: t("certFlow.replace.pending"),
+    uploading: t("requirement.file.uploading"),
+    failed: t("certFlow.replace.uploadFailed"),
+    tooBig: t("requirement.file.tooBig"),
+  };
   return (
     <Card
       title={title ?? t("importFlow.title")}
@@ -233,7 +262,7 @@ export function ImportFlowCard({
           <Alert tone="success">{notice}</Alert>
         </div>
       ) : null}
-      {error ? (
+      {error && !failedTop ? (
         <div className="mb-3" data-import-error={anchor}>
           <Alert tone="danger">{error}</Alert>
         </div>
@@ -252,38 +281,83 @@ export function ImportFlowCard({
             <p className="mb-2 text-sm text-zinc-700">{featuredHint}</p>
           ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
-            {tops.map((top) => (
-              <div
-                key={top.template.key}
-                className="rounded-lg border border-zinc-200 bg-white p-3"
-                data-import-featured={top.template.key}
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-base font-semibold text-zinc-900">
-                    {label(top.template.key)}
-                  </p>
-                  <Badge tone={top.done ? "success" : "warning"}>
-                    {t(
-                      `importFlow.status.${top.done ? "done" : (top.step?.status ?? "pending")}` as DictionaryKey,
-                    )}
-                  </Badge>
-                  {top.step?.documentId ? (
-                    <a
-                      href={`/api/files/${top.step.documentId}`}
-                      className="text-sm text-brand-700 underline"
-                      data-import-featured-file
+            {tops.map((top) => {
+              const key = top.template.key;
+              // Documento já enviado (confirmado pelo servidor): o formulário
+              // fica recolhido; quem pode troca o arquivo pelo botão compacto.
+              const sent = !!top.step?.documentId;
+              return (
+                <div
+                  key={key}
+                  className="rounded-lg border border-zinc-200 bg-white p-3"
+                  data-import-featured={key}
+                  data-import-featured-state={sent ? "sent" : "empty"}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-base font-semibold text-zinc-900">
+                      {label(key)}
+                    </p>
+                    <Badge tone={top.done ? "success" : "warning"}>
+                      {t(
+                        `importFlow.status.${top.done ? "done" : (top.step?.status ?? "pending")}` as DictionaryKey,
+                      )}
+                    </Badge>
+                    {sent ? (
+                      <a
+                        href={`/api/files/${top.step!.documentId}`}
+                        className="text-sm text-brand-700 underline"
+                        data-import-featured-file
+                      >
+                        {t("importFlow.file")}
+                      </a>
+                    ) : null}
+                  </div>
+                  {sent && top.step?.value ? (
+                    <p
+                      className="mt-1 text-sm text-zinc-600"
+                      data-import-featured-value
                     >
-                      {t("importFlow.file")}
-                    </a>
+                      {t("certFlow.featured.number", {
+                        value: top.step.value,
+                      })}
+                    </p>
+                  ) : null}
+                  {replaced === key && sent ? (
+                    <p
+                      className="mt-1 text-sm font-medium text-emerald-800"
+                      role="status"
+                      data-import-replaced={key}
+                    >
+                      {t("certFlow.replace.done")}
+                    </p>
+                  ) : null}
+                  {failedTop === key && error ? (
+                    <p
+                      className="mt-1 text-sm font-medium text-red-700"
+                      role="alert"
+                      data-import-replace-failed={key}
+                    >
+                      {t("certFlow.replace.failed", { reason: error })}
+                    </p>
+                  ) : null}
+                  {top.canSubmit ? (
+                    sent ? (
+                      <ReplaceStepFile
+                        orderId={order.id}
+                        stepKey={key}
+                        anchor={anchor}
+                        returnTo={returnTo}
+                        labels={replaceLabels}
+                      />
+                    ) : (
+                      <div className="mt-2">
+                        {submitForm(top.template, top.step, true)}
+                      </div>
+                    )
                   ) : null}
                 </div>
-                {top.canSubmit ? (
-                  <div className="mt-2">
-                    {submitForm(top.template, top.step)}
-                  </div>
-                ) : null}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -466,9 +540,9 @@ export function ImportFlowCard({
                       <input type="hidden" name="orderId" value={order.id} />
                       <input type="hidden" name="key" value={tpl.key} />
                       <input type="hidden" name="anchor" value={anchor} />
-      {returnTo ? (
-        <input type="hidden" name="returnTo" value={returnTo} />
-      ) : null}
+                      {returnTo ? (
+                        <input type="hidden" name="returnTo" value={returnTo} />
+                      ) : null}
                       <Input
                         name="reason"
                         maxLength={1000}

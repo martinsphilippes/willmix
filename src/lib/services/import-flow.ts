@@ -483,18 +483,18 @@ export function actsAs(user: User, order: Order, actor: StepActor): boolean {
   if (actor === "comex_internal") return isComexInternal(user);
   if (isWellmix(user)) return true;
   if (actor === "wellmix") return false;
-  // Certificação: o despachante do pedido (ou a certificadora designada).
+  // Certificação: a certificadora (OCP) do pedido (dono, 14/11/2026).
   if (actor === "ocp") return isOrderCertifier(user, order);
   const field = PARTNER_FIELD[actor];
   return user.role === actor && !!user.partyId && order[field] === user.partyId;
 }
 
-/** Quem certifica pelo pedido: o despachante ou a certificadora (OCP) designada. */
+/** Quem certifica pelo pedido: a certificadora (OCP) vinculada ao pedido. */
 const isOrderOcp = (user: User, order: Order) => isOrderCertifier(user, order);
 
 /**
- * O parceiro do papel está designado no pedido? Certificação: o despachante
- * ou a certificadora (a certificação é do despachante, dono, 13/11/2026).
+ * O parceiro do papel está designado no pedido? Certificação: a certificadora
+ * (OCP) do pedido (dono, 14/11/2026).
  */
 const partnerAssigned = (order: Order, actor: keyof typeof PARTNER_FIELD) =>
   actor === "ocp" ? hasCertifier(order) : !!order[PARTNER_FIELD[actor]];
@@ -535,7 +535,8 @@ export function canSeeStep(user: User, order: Order, key: ImportStepKey) {
   if (isWellmix(user)) return true;
   if (!canViewOrder(user, order)) return false;
   const visibleTo = stepTemplate(key).visibleTo;
-  // O despachante certifica: vê o que a certificadora vê.
+  // O despachante acompanha a certificação só para ler (o passo é da
+  // certificadora do pedido; dono, 14/11/2026): vê, mas não envia.
   if (user.role === "broker" && visibleTo.includes("ocp")) return true;
   return visibleTo.includes(user.role);
 }
@@ -616,7 +617,7 @@ async function targetFor(
   actor: StepActor,
 ): Promise<NotifyTarget> {
   // Quem faz a arte (o designer do pedido, a agência quando é ela quem faz a
-  // arte ou a Wellmix) e quem certifica (o despachante): o mesmo destino das
+  // arte ou a Wellmix) e quem certifica (a certificadora): o mesmo destino das
   // pendências.
   if (actor === "agency")
     return notifyTargetOf(artMakerRoute(order, await loadRoutingContext()));
@@ -687,7 +688,20 @@ export interface SubmitInput {
   amount?: number | null;
   currency?: string | null;
   documentId?: string | null;
+  /**
+   * Substituir o arquivo (quadro do alto da Certificação, dono, 14/11/2026):
+   * troca só o arquivo de um documento já enviado. O número do selo (e o
+   * resto do passo) fica como estava; o arquivo antigo continua nos
+   * documentos do pedido e na auditoria.
+   */
+  replace?: boolean;
 }
+
+/** Documentos com "Substituir arquivo" no quadro do alto: o selo e o memorial. */
+export const REPLACEABLE_STEPS: readonly ImportStepKey[] = [
+  "cert_seal",
+  "cert_memorial",
+];
 
 /*
  * Amostras (docs/SAMPLE_FLOW.md): os passos só valem com o SKU aprovado e o
@@ -736,10 +750,24 @@ export async function submitStep(
     await syncPurchaseIncoterm(order.id);
   }
   const current = steps.find((s) => s.key === key);
-  if (current && tpl.validator && current.status === "validated")
+  // Substituir: só o selo e o memorial, que já têm arquivo, por outro arquivo.
+  const replacing = !!input.replace;
+  if (replacing) {
+    if (!REPLACEABLE_STEPS.includes(key))
+      throw new ImportFlowError("replace_not_allowed");
+    if (!current?.documentId) throw new ImportFlowError("replace_nothing");
+    if (!input.documentId) throw new ImportFlowError("file_required");
+  }
+  // Passo validado não se reenvia; o arquivo do selo e do memorial pode ser
+  // substituído (o memorial volta a esperar a validação da certificadora,
+  // salvo quando é ela quem substitui).
+  if (current && tpl.validator && current.status === "validated" && !replacing)
     throw new ImportFlowError("already_validated");
-  // O que cada tipo de passo exige.
-  const value = input.value?.trim() || null;
+  // O que cada tipo de passo exige. Na substituição, o número do selo (o
+  // valor do passo) fica como estava: só o arquivo muda.
+  const value = replacing
+    ? (current?.value ?? null)
+    : input.value?.trim() || null;
   const needsValue = ["text", "text_file", "channel", "date"].includes(
     tpl.input,
   );
@@ -798,10 +826,14 @@ export async function submitStep(
   }
   await audit(
     user,
-    "import.step_submitted",
+    replacing ? "import.step_file_replaced" : "import.step_submitted",
     "order",
     orderId,
-    `${auditLabel(tpl)}: ${key} enviado${value ? ` (${value})` : ""}${data.amount ? ` · ${data.currency} ${data.amount}` : ""}`,
+    replacing
+      ? `${auditLabel(tpl)}: ${key} com arquivo substituído (o anterior fica nos documentos do pedido)`
+      : `${auditLabel(tpl)}: ${key} enviado${value ? ` (${value})` : ""}${data.amount ? ` · ${data.currency} ${data.amount}` : ""}`,
+    replacing ? { documentId: current?.documentId ?? null } : null,
+    replacing ? { documentId } : null,
   );
   const link = stepLink(orderId, tpl);
   if (tpl.validator)
@@ -952,10 +984,10 @@ async function handOverSeal(
  */
 export async function notifySealRequested(order: Order): Promise<void> {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return;
-  // Certificação: o despachante do pedido (dono, 13/11/2026).
-  if (order.brokerId) {
+  // Certificação: a certificadora (OCP) do pedido (dono, 14/11/2026).
+  if (order.ocpId) {
     await notify(
-      { role: "broker", partyId: order.brokerId },
+      { role: "ocp", partyId: order.ocpId },
       {
         link: stepLink(order.id, stepTemplate("cert_seal"), "do"),
         kind: "action",
@@ -994,11 +1026,13 @@ export async function notifySealPartner(
   if (order.status === "CANCELLED" || order.status === "CLOSED") return;
   const steps = await stepsOf(order.id);
   const sealDone = isDone(steps.find((s) => s.key === "cert_seal"));
-  // Quem certifica mudou (certificadora ou despachante): o selo a emitir.
-  if (field === "ocpId" || field === "brokerId") {
+  // Quem certifica mudou (a certificadora do pedido): o selo a emitir.
+  if (field === "ocpId") {
     if (hasCertifier(order) && !sealDone) await notifySealRequested(order);
     return;
   }
+  // O despachante não certifica (dono, 14/11/2026): nada a avisar.
+  if (field === "brokerId") return;
   if (previousPartyId !== undefined) {
     // Quem faz a arte não mudou (ex.: arte feita pela Wellmix nas
     // configurações, ou o designer do pedido continua o mesmo, e só a
@@ -1237,7 +1271,13 @@ export async function importFlowView(
           open &&
           !purchaseBl &&
           isReady &&
-          !(tpl.validator && step?.status === "validated") &&
+          // Validado não se reenvia; o selo e o memorial com arquivo podem
+          // ter o arquivo substituído (quadro do alto, dono, 14/11/2026).
+          !(
+            tpl.validator &&
+            step?.status === "validated" &&
+            !(REPLACEABLE_STEPS.includes(tpl.key) && step.documentId)
+          ) &&
           (actsAs(user, order, tpl.actor) ||
             // Memorial: a certificadora do pedido também anexa.
             (tpl.key === "cert_memorial" && isOrderOcp(user, order))) &&
@@ -1842,7 +1882,7 @@ function certCandidate(
   // interno (dono, 13/11/2026).
   if (!tpl.seal && tpl.key !== "cert_memorial" && !gate.classicDeep)
     return null;
-  // Laudo e registro sem despachante: ninguém começa por ele.
+  // Laudo e registro sem certificadora: ninguém começa por ela.
   if (tpl.actor === "ocp" && !tpl.seal && !hasCertifier(order)) return null;
   // Fazer (ou refazer) o passo, quando o anterior já foi feito.
   const todo = !step || step.status === "pending" || step.status === "rejected";

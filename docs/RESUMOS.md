@@ -218,7 +218,7 @@ O que cada pedido guarda:
 
 Junto vai o pedido só com o que as pendências e o encaminhamento leem (`TaskOrder`: número, cliente, solicitação, situação, fluxo, analista, designer, agência, despachante e os outros parceiros) e a ordem do pedido (criação, id), para a lista sair na mesma ordem de antes.
 
-**Por que a rota não é gravada pronta.** Quem recebe a certificação e a arte depende da equipe ativa, das funções e das Configurações (arte feita pela agência), que mudam sem gravar no pedido. O resumo guarda o que a rota usa (os campos do pedido, quem enviou, quem apontou e quem corrigiu) e a leitura calcula a rota com o encaminhamento do momento (`loadRoutingContext`: usuários ativos, funções e configurações, tabelas pequenas). Trocar o analista, o designer ou o despachante grava no pedido e marca o resumo.
+**Por que a rota não é gravada pronta.** Quem recebe a certificação e a arte depende da equipe ativa, das funções e das Configurações (arte feita pela agência), que mudam sem gravar no pedido. O resumo guarda o que a rota usa (os campos do pedido, quem enviou, quem apontou e quem corrigiu) e a leitura calcula a rota com o encaminhamento do momento (`loadRoutingContext`: usuários ativos, funções e configurações, tabelas pequenas). Trocar o analista, o designer ou a certificadora grava no pedido e marca o resumo.
 
 **Prazos que vencem sem gravação.** O follow guarda a data; o rastreio do container guarda o dia do último registro; a parcela guarda o vencimento e a situação é refeita com o dia da leitura. Nada disso precisa de job.
 

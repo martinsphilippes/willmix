@@ -104,7 +104,7 @@ export interface Task {
   supplierStep?: SupplierStep;
   /** Itens da etapa na pendência (filtro por função do operador, src/lib/task-owner.ts). */
   items?: TaskItem[];
-  /** Passo do embarque ou da certificação ("assign": designar o despachante). */
+  /** Passo do embarque ou da certificação ("assign": vincular a certificadora). */
   stepKey?: string | null;
 }
 
@@ -1070,8 +1070,8 @@ export async function pendingTasksFor(
     user.role === "logistics" ||
     user.role === "ocp" ||
     user.role === "agency" ||
-    // Despachante: a certificação é dele (dono, 13/11/2026).
-    user.role === "broker" ||
+    // O despachante não tem passo aqui: a certificação é da certificadora
+    // (OCP) do pedido (dono, 14/11/2026).
     // Agência de marketing na China: amostras (docs/SAMPLE_FLOW.md).
     user.role === "marketing_agency"
       ? user.role
@@ -1092,11 +1092,9 @@ export async function pendingTasksFor(
                     ? "ocpId"
                     : importRole === "agency"
                       ? "agencyId"
-                      : importRole === "broker"
-                        ? "brokerId"
-                        : importRole === "marketing_agency"
-                          ? "marketingAgencyId"
-                          : "logisticsId"]: user.partyId!,
+                      : importRole === "marketing_agency"
+                        ? "marketingAgencyId"
+                        : "logisticsId"]: user.partyId!,
               }
             : supplier
               ? { supplierId: user.partyId!, held: null }

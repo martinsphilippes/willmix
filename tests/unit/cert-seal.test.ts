@@ -27,6 +27,8 @@ let operator: User;
 let joao: User;
 let supplierA: User;
 let ocp: User;
+/** Despachante do pedido: não certifica (dono, 14/11/2026); só lê o cartão. */
+let broker: User;
 let comex: User;
 let agency: User;
 
@@ -98,21 +100,22 @@ beforeAll(async () => {
   operator = by("operador@wellmix.com");
   joao = by("joao@lojista.com");
   supplierA = by("supplier.a@china.com");
-  // Quem certifica: o despachante do pedido (dono, 13/11/2026).
-  ocp = by("despachante@comex.com");
+  // Quem certifica: a certificadora (OCP) do pedido (dono, 14/11/2026).
+  ocp = by("ocp@certifica.com");
+  broker = by("despachante@comex.com");
   comex = by("comex@assessoria.com");
   agency = users.find((u) => u.role === "agency")!;
 });
 
-describe("pedido novo: cai no login do despachante", () => {
+describe("pedido novo: cai no login da certificadora", () => {
   let order: Order;
   beforeAll(async () => {
     order = await newOrder();
   });
 
-  it("nasce com o despachante designado, avisado e com a pendência do selo", async () => {
+  it("nasce com a certificadora designada, avisada e com a pendência do selo", async () => {
     expect(order.status).toBe("ORDER_CREATED");
-    expect(order.brokerId).toBe(ocp.partyId);
+    expect(order.ocpId).toBe(ocp.partyId);
     const notes = await inbox(ocp, order);
     expect(notes).toHaveLength(1);
     expect(notes[0].link).toBe(featuredLink(order));
@@ -126,14 +129,18 @@ describe("pedido novo: cai no login do despachante", () => {
     expect(tasks[0].title).toContain(`#${order.number}`);
   });
 
-  it("o despachante vê o cartão no pedido recém-criado e só ele envia o selo", async () => {
+  it("a certificadora vê o cartão no pedido recém-criado e só ela envia o selo; o despachante só lê", async () => {
     const view = await f.importFlowView(ocp, order, "certification");
     const seal = view.find((v) => v.template.key === "cert_seal")!;
     const applied = view.find((v) => v.template.key === "cert_seal_art")!;
     expect(seal.canSubmit).toBe(true);
     expect(applied.ready).toBe(false);
     expect(applied.canSubmit).toBe(false);
-    for (const user of [agency, supplierA, joao, comex])
+    // O despachante do pedido vê o cartão, mas não envia nem substitui.
+    const forBroker = await f.importFlowView(broker, order, "certification");
+    expect(forBroker.find((v) => v.template.key === "cert_seal")).toBeTruthy();
+    expect(forBroker.every((v) => !v.canSubmit && !v.canValidate)).toBe(true);
+    for (const user of [broker, agency, supplierA, joao, comex])
       await expect(
         f.submitStep(user, order.id, "cert_seal", {
           documentId: (await doc(user, order, `x-${user.role}.pdf`)).id,
@@ -185,7 +192,7 @@ describe("pedido novo: cai no login do despachante", () => {
     });
   });
 
-  it("memorial enviado pela Wellmix com o pedido recém-criado: o despachante valida", async () => {
+  it("memorial enviado pela Wellmix com o pedido recém-criado: a certificadora valida", async () => {
     const other = await newOrder();
     expect(other.status).toBe("ORDER_CREATED");
     await f.submitStep(admin, other.id, "cert_memorial", {
@@ -202,7 +209,7 @@ describe("pedido novo: cai no login do despachante", () => {
     ]);
   });
 
-  it("o despachante também anexa o memorial em PDF, que já vale; outro despachante não", async () => {
+  it("a certificadora também anexa o memorial em PDF, que já vale; outra certificadora e o despachante não", async () => {
     const other = await newOrder();
     const sent = await f.submitStep(ocp, other.id, "cert_memorial", {
       documentId: (await doc(ocp, other, "memorial.pdf")).id,
@@ -220,6 +227,11 @@ describe("pedido novo: cai no login do despachante", () => {
           documentId: sent.documentId,
         },
       ),
+    ).rejects.toThrow();
+    await expect(
+      f.submitStep(broker, other.id, "cert_memorial", {
+        documentId: sent.documentId,
+      }),
     ).rejects.toThrow();
     // Não gera pendência de validar nem de laudo para ninguém.
     expect((await certTasks(ocp, other)).map((t) => t.kind)).toEqual([
@@ -251,7 +263,7 @@ describe("selo enviado: vai para a agência aplicar na arte", () => {
     order = await newOrder();
   });
 
-  it("o despachante envia o selo (número opcional) e a agência recebe", async () => {
+  it("a certificadora envia o selo (número opcional) e a agência recebe", async () => {
     const before = (await inbox(agency, order)).length;
     // O arquivo é obrigatório; o número não.
     await expect(
@@ -282,9 +294,9 @@ describe("selo enviado: vai para a agência aplicar na arte", () => {
     expect(await certTasks(admin, order)).toHaveLength(0);
   });
 
-  it("o arquivo do selo abre para a Wellmix, o despachante e a agência; para mais ninguém", async () => {
+  it("o arquivo do selo abre para a Wellmix, a certificadora e a agência (o despachante só lê); para mais ninguém", async () => {
     const sealDoc = (await getStore().get("documents", sealDocId))!;
-    for (const user of [admin, operator, ocp, agency])
+    for (const user of [admin, operator, ocp, agency, broker])
       expect(await canAccessDocument(user, sealDoc)).toBe(true);
     for (const user of [supplierA, joao, comex])
       expect(await canAccessDocument(user, sealDoc)).toBe(false);
@@ -491,17 +503,17 @@ describe("arte feita pela Wellmix nas configurações", () => {
 });
 
 describe("parceiro designado depois", () => {
-  it("despachante designado depois é avisada; com o selo já enviado, não", async () => {
+  it("certificadora designada depois é avisada; com o selo já enviado, não", async () => {
     let order = await newOrder();
     const before = (await inbox(ocp, order)).length;
     // Mesmo OCP de novo no pedido ainda sem selo: avisa.
-    await f.notifySealPartner(order, "brokerId");
+    await f.notifySealPartner(order, "ocpId");
     expect(await inbox(ocp, order)).toHaveLength(before + 1);
     await f.submitStep(ocp, order.id, "cert_seal", {
       documentId: (await doc(ocp, order, "selo.pdf")).id,
     });
     order = await fresh(order);
-    await f.notifySealPartner(order, "brokerId");
+    await f.notifySealPartner(order, "ocpId");
     expect(await inbox(ocp, order)).toHaveLength(before + 1);
   });
 
@@ -526,10 +538,10 @@ describe("parceiro designado depois", () => {
     expect(await inbox(agency, order)).toHaveLength(before + 1);
   });
 
-  it("pedido sem despachante: todo pedido precisa de selo, então a Wellmix é avisada e fica com a pendência de designar", async () => {
+  it("pedido sem certificadora: todo pedido precisa de selo, então a Wellmix é avisada e fica com a pendência de vincular", async () => {
     let order = await newOrder();
     order = await getStore().update("orders", order.id, {
-      brokerId: null,
+      ocpId: null,
     });
     const before = (await inbox(admin, order)).length;
     await f.notifySealRequested(order);
@@ -549,11 +561,11 @@ describe("parceiro designado depois", () => {
     expect(await certTasks(admin, order)).toHaveLength(0);
     // Certificadora designada: a pendência passa para ela e sai da Wellmix.
     order = await getStore().update("orders", order.id, {
-      brokerId: ocp.partyId,
+      ocpId: ocp.partyId,
       status: "ORDER_CREATED",
     });
     const ocpBefore = (await inbox(ocp, order)).length;
-    await f.notifySealPartner(order, "brokerId");
+    await f.notifySealPartner(order, "ocpId");
     expect(await inbox(ocp, order)).toHaveLength(ocpBefore + 1);
     expect(await certTasks(ocp, order)).toHaveLength(1);
     expect(
@@ -565,9 +577,9 @@ describe("parceiro designado depois", () => {
     ).toHaveLength(0);
   });
 
-  it("sem despachante, o cartão e a tela do briefing mostram o selo do mesmo jeito", async () => {
+  it("sem certificadora, o cartão e a tela do briefing mostram o selo do mesmo jeito", async () => {
     let order = await newOrder();
-    order = await getStore().update("orders", order.id, { brokerId: null });
+    order = await getStore().update("orders", order.id, { ocpId: null });
     const view = await f.importFlowView(agency, order, "certification");
     expect(view.map((v) => v.template.key)).toEqual([
       "cert_seal",
@@ -576,9 +588,9 @@ describe("parceiro designado depois", () => {
     expect(await f.sealStateFor(agency, order)).toBe("pending");
   });
 
-  it("a Wellmix envia o selo no lugar do despachante: a agência recebe do mesmo jeito", async () => {
+  it("a Wellmix envia o selo no lugar da certificadora: a agência recebe do mesmo jeito", async () => {
     let order = await newOrder();
-    order = await getStore().update("orders", order.id, { brokerId: null });
+    order = await getStore().update("orders", order.id, { ocpId: null });
     await f.submitStep(admin, order.id, "cert_seal", {
       documentId: (await doc(admin, order, "selo-por-email.pdf")).id,
     });
@@ -611,9 +623,8 @@ describe("painel de certificação", () => {
   });
 });
 
-describe("certificadora vê o pedido completo (papel sem uso, mantido)", () => {
-  // A Wellmix não trabalha com certificadora (dono, 13/11/2026), mas o papel
-  // continua no código: a designada ainda lê o pedido como antes.
+describe("certificadora vê o pedido completo", () => {
+  // Quem certifica lê o pedido inteiro para gerar o selo (dono, 10/11/2026).
   let order: Order;
   let ocp: User;
   const otherOcp = () =>
@@ -779,28 +790,34 @@ describe("certificadora vê o pedido completo (papel sem uso, mantido)", () => {
   });
 });
 
-describe("certificação é do despachante (dono, 13/11/2026)", () => {
-  it("o despachante do pedido recebe o aviso e a pendência do selo, e envia o selo", async () => {
+describe("certificação é da certificadora (dono, 14/11/2026)", () => {
+  it("a certificadora do pedido recebe o aviso e a pendência do selo e envia; o despachante não", async () => {
     const order = await newOrder();
-    const broker = (await getStore().list("users")).find(
-      (u) => u.role === "broker" && u.partyId === order.brokerId,
-    )!;
-    expect(broker).toBeTruthy();
-    expect(await inbox(broker, order)).toHaveLength(1);
-    const tasks = await certTasks(broker, order);
+    expect(order.ocpId).toBe(ocp.partyId);
+    expect(await inbox(ocp, order)).toHaveLength(1);
+    const tasks = await certTasks(ocp, order);
     expect(tasks).toHaveLength(1);
     expect(tasks[0].text?.title).toBe("tasks.seal.issue.title");
-    expect(f.canSeeStep(broker, order, "cert_seal")).toBe(true);
-    await f.submitStep(broker, order.id, "cert_seal", {
-      documentId: (await doc(broker, order, "selo-despachante.pdf")).id,
-    });
+    // O despachante não recebe aviso nem pendência, e o servidor recusa.
+    expect(await inbox(broker, order)).toHaveLength(0);
     expect(await certTasks(broker, order)).toHaveLength(0);
+    expect(await f.canSubmitStep(broker, order, "cert_seal")).toBe(false);
+    expect(await f.canSubmitStep(broker, order, "cert_memorial")).toBe(false);
+    await expect(
+      f.submitStep(broker, order.id, "cert_seal", {
+        documentId: (await doc(broker, order, "selo-despachante.pdf")).id,
+      }),
+    ).rejects.toThrow();
+    await f.submitStep(ocp, order.id, "cert_seal", {
+      documentId: (await doc(ocp, order, "selo-ocp.pdf")).id,
+    });
+    expect(await certTasks(ocp, order)).toHaveLength(0);
   });
 
   it("o comprador (operador) não vê pendência de certificação", async () => {
     const order = await newOrder();
     await getStore().update("orders", order.id, {
-      brokerId: null,
+      ocpId: null,
     });
     const { tasksForFunctions } = await import("@/lib/task-owner");
     const buyer = {
@@ -819,7 +836,7 @@ describe("certificação é do despachante (dono, 13/11/2026)", () => {
         )
         .filter((t) => t.kind === "cert_step" && t.stepKey !== "assign");
     expect(cert(tasksForFunctions(buyer, all))).toHaveLength(0);
-    // Designar o despachante (Parceiros do pedido) fica com compras.
+    // Vincular a certificadora (Parceiros do pedido) fica com compras.
     const assign = tasksForFunctions(buyer, all).filter(
       (t) => t.link === `/app/orders/${order.id}#order-partners`,
     );
@@ -827,7 +844,7 @@ describe("certificação é do despachante (dono, 13/11/2026)", () => {
   });
 });
 
-describe("o despachante lê o que precisa para o selo", () => {
+describe("a certificadora lê o que precisa para o selo", () => {
   it("abre as fotos de vitrine dos produtos dos pedidos dele", async () => {
     const order = await newOrder();
     const photos = await getStore().list("product_photos", {
@@ -836,7 +853,7 @@ describe("o despachante lê o que precisa para o selo", () => {
     const showcase = photos.find((p) => p.kind === "original");
     expect(showcase).toBeTruthy();
     const d = (await getStore().get("documents", showcase!.documentId))!;
-    expect(order.brokerId).toBe(ocp.partyId);
+    expect(order.ocpId).toBe(ocp.partyId);
     expect(await canAccessDocument(ocp, d)).toBe(true);
   });
 });

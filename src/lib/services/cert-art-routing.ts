@@ -28,9 +28,10 @@ import type { NotifyTarget } from "./notifications";
  * certificadora e a agência), o Designer do pedido (cartão Artes) e o
  * analista do pedido (`ownerUserId`, o mesmo do painel de SLA).
  *
- * - Selo: o despachante do pedido (a certificação é dele; dono, 13/11/2026).
- * - Memorial descritivo: o responsável interno (o analista); a validação, o
- *   despachante.
+ * - Selo: a certificadora (OCP) do pedido (a certificação é dela; dono,
+ *   14/11/2026; de 13/11 a 14/11/2026 foi do despachante).
+ * - Memorial descritivo: o responsável interno (o analista) ou a própria
+ *   certificadora; a validação, a certificadora.
  * - Arte com o selo e correção da arte: o designer do pedido; sem ele, a
  *   agência quando é ela quem faz a arte; senão a Wellmix (quem tem a função
  *   Designer; sem ninguém, o analista).
@@ -121,19 +122,15 @@ export function internalRoute(
 }
 
 /**
- * Quem certifica: o despachante do pedido (a Wellmix não trabalha com
- * certificadora; dono, 13/11/2026). Sem ele, o responsável interno designa
- * o despachante em Parceiros do pedido.
+ * Quem certifica: a certificadora (OCP) do pedido (dono, 14/11/2026). Sem
+ * ela, o responsável interno vincula a certificadora em Parceiros do pedido.
  */
 export function ocpRoute(
-  order: Pick<Order, "brokerId" | "ownerUserId">,
+  order: Pick<Order, "ocpId" | "ownerUserId">,
   ctx: RoutingContext,
 ): Route {
-  if (order.brokerId)
-    return {
-      via: "broker",
-      party: { role: "broker", partyId: order.brokerId },
-    };
+  if (order.ocpId)
+    return { via: "ocp", party: { role: "ocp", partyId: order.ocpId } };
   return { ...internalRoute(order, ctx), missing: "ocp" };
 }
 
@@ -343,8 +340,7 @@ export async function routeLabel(
  *   quem faz a arte do pedido nem quem a enviou (`laneReviewRoute`).
  * - Certificado (Inmetro): a certificadora (OCP) do pedido, em Parceiros do
  *   pedido. Sem ela, o responsável interno designa (`missing: "certifier"`).
- *   Só o certificado das raias: o selo e o memorial do cartão Certificação
- *   continuam com o despachante (dono, 13/11/2026).
+ *   O selo e o memorial do cartão Certificação também são dela (`ocpRoute`).
  *
  * Quem vê e quem age sai daqui, calculado na hora a partir do pedido: trocar
  * o designer, a certificadora ou o analista muda o dono da tarefa aberta, sem

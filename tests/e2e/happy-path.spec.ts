@@ -614,9 +614,9 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     requirementRow(page, /Validação da arte pela Wellmix/),
   ).toContainText(/Concluído/);
-  // 6d. Certificadora (OCP) do pedido: o certificado das raias (dono,
-  // 14/11/2026; o selo do cartão Certificação continua com o despachante).
-  // O despachante não envia o certificado.
+  // 6d. Certificadora (OCP) do pedido: o certificado das raias e, no cartão
+  // Certificação, o selo e o memorial (dono, 14/11/2026). O despachante não
+  // envia o certificado.
   await login(page, "despachante@comex.com");
   await page.goto(orderUrl);
   await expect(
@@ -626,6 +626,69 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   ).toHaveCount(0);
   await login(page, "ocp@certifica.com");
   await fillMyRequirements(page, orderUrl);
+  // Selo no quadro do alto da Certificação: o primeiro envio com o número;
+  // depois, o formulário recolhe (também ao recarregar) e fica o botão
+  // "Substituir arquivo". Cancelar e falhar mantêm o arquivo atual; trocar
+  // atualiza o link, diz "Arquivo substituído" e mantém o número.
+  await page.goto(orderUrl);
+  const sealBox = page.locator('[data-import-featured="cert_seal"]');
+  await expect(sealBox).toHaveAttribute("data-import-featured-state", "empty");
+  await sealBox.locator('input[name="value"]').fill("BR-E2E-1");
+  await sealBox
+    .locator('input[type=file][name="file"]')
+    .setInputFiles({ ...pdf, name: "selo.pdf" });
+  await Promise.all([
+    page.waitForURL(/certStep=submitted/),
+    sealBox.locator('[data-import-submit="cert_seal"]').click(),
+  ]);
+  await page.reload();
+  await expect(sealBox).toHaveAttribute("data-import-featured-state", "sent");
+  await expect(sealBox.locator("[data-import-submit]")).toHaveCount(0);
+  await expect(sealBox).not.toContainText("Enviar de novo");
+  await expect(sealBox.locator("[data-import-featured-value]")).toContainText(
+    "BR-E2E-1",
+  );
+  const sealLink = sealBox.locator("[data-import-featured-file]");
+  const firstSeal = await sealLink.getAttribute("href");
+  const pickSeal = async (file: typeof pdf) => {
+    const [chooser] = await Promise.all([
+      page.waitForEvent("filechooser"),
+      sealBox.locator('[data-replace-start="cert_seal"]').click(),
+    ]);
+    await chooser.setFiles(file);
+    await expect(sealBox.locator("[data-replace-name]")).toHaveText(file.name);
+  };
+  await pickSeal({ ...pdf, name: "selo-v2.pdf" });
+  await sealBox.locator("[data-replace-cancel]").click();
+  await expect(sealBox.locator("[data-replace-start]")).toBeVisible();
+  await expect(sealLink).toHaveAttribute("href", firstSeal!);
+  // Falha no envio (arquivo vazio, recusado pelo servidor).
+  await pickSeal({ ...pdf, name: "vazio.pdf", buffer: Buffer.alloc(0) });
+  await Promise.all([
+    page.waitForURL(/replaceFailed=cert_seal/),
+    sealBox.locator("[data-replace-confirm]").click(),
+  ]);
+  await expect(sealBox.locator("[data-import-replace-failed]")).toBeVisible();
+  await expect(sealLink).toHaveAttribute("href", firstSeal!);
+  await pickSeal({ ...pdf, name: "selo-v2.pdf" });
+  await Promise.all([
+    page.waitForURL(/certReplaced=cert_seal/),
+    sealBox.locator("[data-replace-confirm]").click(),
+  ]);
+  await expect(sealBox.locator("[data-import-replaced]")).toHaveText(
+    "Arquivo substituído",
+  );
+  await expect(sealLink).not.toHaveAttribute("href", firstSeal!);
+  await expect(sealBox.locator("[data-import-featured-value]")).toContainText(
+    "BR-E2E-1",
+  );
+  // O despachante vê o cartão, mas não envia nem substitui.
+  await login(page, "despachante@comex.com");
+  await page.goto(orderUrl);
+  await expect(sealBox).toBeVisible();
+  await expect(
+    sealBox.locator("[data-replace-start], [data-import-submit]"),
+  ).toHaveCount(0);
   // 6e. Agência: com a arte validada e o certificado, a arte final com o selo.
   await login(page, "agencia@design.com");
   await fillMyRequirements(page, orderUrl);
