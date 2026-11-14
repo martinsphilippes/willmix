@@ -37,6 +37,7 @@ import {
   canSeeSupplier,
   canViewOrder,
   canViewRequest,
+  isOrderCertifier,
   isPartner,
   isWellmix,
 } from "@/lib/auth/permissions";
@@ -261,7 +262,8 @@ export default async function OrderPage({
      preço de compra, a ficha inteira, o documento do pedido, as
      certificações já registradas e os arquivos. Só lê. O financeiro da
      Wellmix (preço de venda, margem, pagamentos) não é do pedido dela. */
-  const certifier = user.role === "ocp";
+  // O despachante do pedido certifica (dono, 13/11/2026): vê o mesmo.
+  const certifier = isOrderCertifier(user, progress.order);
   // Financeiro é só do administrador: pagamentos, valores e margem do pedido.
   const financeAccess = canOpen(user, "finance");
   /* Nova medição (inspeção bloqueada): só com ?remeasure=1; sem o parâmetro a tela é a de sempre. */
@@ -325,6 +327,19 @@ export default async function OrderPage({
   const importSteps =
     order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
       ? await importFlow.importFlowView(user, order)
+      : [];
+  /* Container na origem (pedido de compra, mapa R19 a R26). */
+  const originSteps =
+    purchaseFlow &&
+    [
+      "INSPECTION",
+      "SHIPPING",
+      "CUSTOMS",
+      "TRANSPORT",
+      "DELIVERED",
+      "CLOSED",
+    ].includes(order.status)
+      ? await importFlow.importFlowView(user, order, "origin")
       : [];
   /* Certificação (Fase F). O selo de certificação vale para todo pedido,
      desde que ele nasce (já está na mão da certificadora). Memorial, laudo
@@ -2234,6 +2249,25 @@ export default async function OrderPage({
           />
         ) : null}
 
+        {/* Container na origem (mapa R19 a R26): vazio na fábrica, carregamento,
+            lacre e número, volta ao porto e o rastreio diário do Comex interno. */}
+        {originSteps.length ? (
+          <ImportFlowCard
+            t={t}
+            order={order}
+            steps={originSteps}
+            names={productionNames}
+            title={t("originFlow.title")}
+            anchor="container-origin"
+            error={stepCard === "container-origin" ? stepError : null}
+            notice={
+              typeof importNotice === "string" &&
+              ["submitted", "validated", "rejected"].includes(importNotice)
+                ? t(`importFlow.done.${importNotice}` as DictionaryKey)
+                : null
+            }
+          />
+        ) : null}
         {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário, DI... */}
         <ImportFlowCard
           t={t}

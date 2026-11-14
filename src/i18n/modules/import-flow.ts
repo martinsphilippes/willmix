@@ -3,6 +3,7 @@
  * comex e agente de carga): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "originFlow.title": "Container na origem",
   "role.comex": "Comex (assessoria)",
   "role.logistics": "Agente de carga",
   "party.comex": "Comex (assessoria)",
@@ -24,6 +25,14 @@ export const pt = {
   "importFlow.step.ce_mercante": "CE Mercante",
   "importFlow.step.ci": "Comprovante de importação (CI)",
   "importFlow.step.danfe": "DANFE (nota de entrada)",
+  "importFlow.step.container_at_factory":
+    "Container vazio no depósito da fábrica (data)",
+  "importFlow.step.container_empty": "Fotos e vídeos do container vazio",
+  "importFlow.step.container_loaded":
+    "Carregamento: fotos, vídeos e check de carga",
+  "importFlow.step.container_sealed": "Lacre: foto e número do container",
+  "importFlow.step.container_at_port": "Container lacrado no porto (data)",
+  "importFlow.step.container_tracking": "Rastreio do container (status do dia)",
   "importFlow.actor.logistics": "agente de carga",
   "importFlow.actor.comex": "comex",
   "importFlow.actor.supplier": "fornecedor",
@@ -50,6 +59,14 @@ export const pt = {
   "importFlow.ph.di": "Nº da DI/DUIMP",
   "importFlow.ph.ce_mercante": "Nº do CE Mercante",
   "importFlow.ph.danfe": "Nº da nota fiscal",
+  "importFlow.ph.container_at_factory": "",
+  "importFlow.ph.container_empty": "",
+  "importFlow.ph.container_loaded":
+    "Check de carga (caixas, avarias, observações)",
+  "importFlow.ph.container_sealed": "Nº do container",
+  "importFlow.ph.container_at_port": "",
+  "importFlow.ph.container_tracking":
+    "Status de hoje (ex.: no porto, embarcado, em trânsito)",
   "importFlow.ph.draft_bl": "",
   "importFlow.ph.invoice_packing": "",
   "importFlow.ph.invoice_signed": "",
@@ -108,6 +125,7 @@ export const pt = {
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
+  "originFlow.title": "Container at origin",
   "role.comex": "Foreign trade (comex)",
   "role.logistics": "Freight forwarder",
   "party.comex": "Foreign trade (comex)",
@@ -129,6 +147,14 @@ export const en: Record<keyof typeof pt, string> = {
   "importFlow.step.ce_mercante": "CE Mercante",
   "importFlow.step.ci": "Import receipt (CI)",
   "importFlow.step.danfe": "DANFE (entry invoice)",
+  "importFlow.step.container_at_factory":
+    "Empty container at the factory yard (date)",
+  "importFlow.step.container_empty": "Photos and videos of the empty container",
+  "importFlow.step.container_loaded": "Loading: photos, videos and load check",
+  "importFlow.step.container_sealed": "Seal: photo and container number",
+  "importFlow.step.container_at_port": "Sealed container at the port (date)",
+  "importFlow.step.container_tracking":
+    "Container tracking (status of the day)",
   "importFlow.actor.logistics": "freight forwarder",
   "importFlow.actor.comex": "comex",
   "importFlow.actor.supplier": "supplier",
@@ -155,6 +181,13 @@ export const en: Record<keyof typeof pt, string> = {
   "importFlow.ph.di": "DI/DUIMP no.",
   "importFlow.ph.ce_mercante": "CE Mercante no.",
   "importFlow.ph.danfe": "Invoice no.",
+  "importFlow.ph.container_at_factory": "",
+  "importFlow.ph.container_empty": "",
+  "importFlow.ph.container_loaded": "Load check (cartons, damage, notes)",
+  "importFlow.ph.container_sealed": "Container no.",
+  "importFlow.ph.container_at_port": "",
+  "importFlow.ph.container_tracking":
+    "Status today (e.g. at port, loaded, in transit)",
   "importFlow.ph.draft_bl": "",
   "importFlow.ph.invoice_packing": "",
   "importFlow.ph.invoice_signed": "",
@@ -211,6 +244,7 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "originFlow.title": "起运地集装箱",
   "role.comex": "外贸代理（Comex）",
   "role.logistics": "货代",
   "party.comex": "外贸代理（Comex）",
@@ -232,6 +266,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "importFlow.step.ce_mercante": "CE Mercante",
   "importFlow.step.ci": "进口证明（CI）",
   "importFlow.step.danfe": "DANFE（入库发票）",
+  "importFlow.step.container_at_factory": "空柜到达工厂堆场（日期）",
+  "importFlow.step.container_empty": "空柜照片和视频",
+  "importFlow.step.container_loaded": "装柜：照片、视频和装货检查",
+  "importFlow.step.container_sealed": "铅封：照片和柜号",
+  "importFlow.step.container_at_port": "已封柜到港（日期）",
+  "importFlow.step.container_tracking": "集装箱跟踪（当日状态）",
   "importFlow.actor.logistics": "货代",
   "importFlow.actor.comex": "Comex",
   "importFlow.actor.supplier": "供应商",
@@ -258,6 +298,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "importFlow.ph.di": "DI/DUIMP 号",
   "importFlow.ph.ce_mercante": "CE Mercante 号",
   "importFlow.ph.danfe": "发票号",
+  "importFlow.ph.container_at_factory": "",
+  "importFlow.ph.container_empty": "",
+  "importFlow.ph.container_loaded": "装货检查（箱数、破损、备注）",
+  "importFlow.ph.container_sealed": "柜号",
+  "importFlow.ph.container_at_port": "",
+  "importFlow.ph.container_tracking": "今日状态（如：在港、已装船、运输中）",
   "importFlow.ph.draft_bl": "",
   "importFlow.ph.invoice_packing": "",
   "importFlow.ph.invoice_signed": "",

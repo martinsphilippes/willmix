@@ -271,6 +271,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   purchasing_director: DIRECTOR,
   executive_director: DIRECTOR,
   designer: ["orders", "products", "marketing", "explore"],
+  // Comex interno: acompanha o container (rastreio diário) e o embarque.
+  comex_internal: ["orders", "containers", "freight", "history"],
 };
 
 type Who = Pick<User, "role"> & Partial<Pick<User, "functions" | "screens">>;

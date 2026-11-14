@@ -569,6 +569,14 @@
           "default": null,
           "type": "varchar",
           "size": 40
+        },
+        {
+          "key": "agencyId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -7611,7 +7619,13 @@
             "cert_lab",
             "cert_registration",
             "cert_seal",
-            "cert_seal_art"
+            "cert_seal_art",
+            "container_at_factory",
+            "container_empty",
+            "container_loaded",
+            "container_sealed",
+            "container_at_port",
+            "container_tracking"
           ]
         },
         {

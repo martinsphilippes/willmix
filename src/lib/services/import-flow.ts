@@ -11,7 +11,9 @@ import {
 import {
   ForbiddenError,
   canViewOrder,
+  hasCertifier,
   isAdmin,
+  isOrderCertifier,
   isWellmix,
 } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
@@ -64,9 +66,17 @@ export const SEAL_REPLACED_REASON = "@seal_replaced";
 
 /** Quem age num passo. */
 export type StepActor =
-  "logistics" | "comex" | "ocp" | "agency" | "supplier" | "finance" | "wellmix";
+  | "logistics"
+  | "comex"
+  | "ocp"
+  | "agency"
+  | "supplier"
+  | "finance"
+  // Comex interno da Wellmix (função "Comex (interno)"): rastreio do container.
+  | "comex_internal"
+  | "wellmix";
 /** Cartão do passo: embarque/desembaraço ou certificação (Fase F). */
-export type StepGroup = "import" | "certification";
+export type StepGroup = "import" | "certification" | "origin";
 /** O que o passo pede ("file_text": arquivo obrigatório e texto opcional). */
 export type StepInput =
   | "text"
@@ -196,6 +206,67 @@ export const IMPORT_STEPS: StepTemplate[] = [
     visibleTo: ["comex", "logistics"],
     after: "di",
   },
+  /*
+   * Container na origem (mapa R19, R20, R7, R25, R26; docs/ORIGIN_CONTAINER.md):
+   * depois do booking, o fornecedor (ou a trading, que entra como fornecedor)
+   * registra o container vazio na fábrica, as fotos e vídeos dele, o
+   * carregamento com o check de carga, o lacre com o número do container e a
+   * volta ao porto. O Comex interno acompanha o rastreio todo dia.
+   */
+  {
+    key: "container_at_factory",
+    actor: "supplier",
+    validator: null,
+    input: "date",
+    visibleTo: ["supplier", "logistics", "comex"],
+    after: "booking",
+    group: "origin",
+  },
+  {
+    key: "container_empty",
+    actor: "supplier",
+    validator: null,
+    input: "file",
+    visibleTo: ["supplier", "logistics"],
+    after: "container_at_factory",
+    group: "origin",
+  },
+  {
+    key: "container_loaded",
+    actor: "supplier",
+    validator: "wellmix",
+    input: "file_text",
+    visibleTo: ["supplier", "logistics", "comex"],
+    after: "container_empty",
+    group: "origin",
+  },
+  {
+    key: "container_sealed",
+    actor: "supplier",
+    validator: null,
+    input: "text_file",
+    visibleTo: ["supplier", "logistics", "comex"],
+    after: "container_loaded",
+    group: "origin",
+  },
+  {
+    key: "container_at_port",
+    actor: "supplier",
+    validator: null,
+    input: "date",
+    visibleTo: ["supplier", "logistics", "comex"],
+    after: "container_sealed",
+    group: "origin",
+  },
+  {
+    key: "container_tracking",
+    actor: "comex_internal",
+    validator: null,
+    input: "text",
+    visibleTo: [],
+    after: "container_at_factory",
+    group: "origin",
+  },
   // Certificação (Fase F, docs/CERTIFICATION.md): com o OCP do pedido.
   {
     key: "cert_memorial",
@@ -274,6 +345,8 @@ export function stepLink(
   tpl: StepTemplate,
   action: "do" | "validate" = "validate",
 ): string {
+  if (groupOf(tpl) === "origin")
+    return `/app/orders/${orderId}#container-origin`;
   if (groupOf(tpl) !== "certification")
     return `/app/orders/${orderId}#import-flow`;
   if (action === "do" && CERT_FEATURED_STEPS.includes(tpl.key))
@@ -283,7 +356,15 @@ export function stepLink(
 
 /** Nome do cartão nos registros da auditoria. */
 const auditLabel = (tpl: StepTemplate) =>
-  groupOf(tpl) === "certification" ? "Certificação" : "Embarque/desembaraço";
+  groupOf(tpl) === "certification"
+    ? "Certificação"
+    : groupOf(tpl) === "origin"
+      ? "Container na origem"
+      : "Embarque/desembaraço";
+
+/** Comex interno: permissão "Rastrear o container" (padrão: função Comex interno) ou admin. */
+export const isComexInternal = (user: User) =>
+  isAdmin(user) || (isWellmix(user) && can(user, "container.tracking"));
 
 /** Financeiro do pedido: permissão "Numerário" (padrão: função financeiro) ou admin. */
 export const isFinance = (user: User) =>
@@ -292,16 +373,24 @@ export const isFinance = (user: User) =>
 /** O usuário é quem age (ou valida) por esse papel neste pedido? */
 export function actsAs(user: User, order: Order, actor: StepActor): boolean {
   if (actor === "finance") return isFinance(user);
+  if (actor === "comex_internal") return isComexInternal(user);
   if (isWellmix(user)) return true;
   if (actor === "wellmix") return false;
+  // Certificação: o despachante do pedido (ou a certificadora designada).
+  if (actor === "ocp") return isOrderCertifier(user, order);
   const field = PARTNER_FIELD[actor];
   return user.role === actor && !!user.partyId && order[field] === user.partyId;
 }
 
-/** A certificadora (OCP) designada no pedido. */
-function isOrderOcp(user: User, order: Order) {
-  return user.role === "ocp" && !!user.partyId && order.ocpId === user.partyId;
-}
+/** Quem certifica pelo pedido: o despachante ou a certificadora (OCP) designada. */
+const isOrderOcp = (user: User, order: Order) => isOrderCertifier(user, order);
+
+/**
+ * O parceiro do papel está designado no pedido? Certificação: o despachante
+ * ou a certificadora (a certificação é do despachante, dono, 13/11/2026).
+ */
+const partnerAssigned = (order: Order, actor: keyof typeof PARTNER_FIELD) =>
+  actor === "ocp" ? hasCertifier(order) : !!order[PARTNER_FIELD[actor]];
 
 /**
  * Pode enviar o passo: quem age por ele. O passo da agência só é dela quando
@@ -335,7 +424,10 @@ async function isOrderDesigner(user: User, order: Order): Promise<boolean> {
 export function canSeeStep(user: User, order: Order, key: ImportStepKey) {
   if (isWellmix(user)) return true;
   if (!canViewOrder(user, order)) return false;
-  return stepTemplate(key).visibleTo.includes(user.role);
+  const visibleTo = stepTemplate(key).visibleTo;
+  // O despachante certifica: vê o que a certificadora vê.
+  if (user.role === "broker" && visibleTo.includes("ocp")) return true;
+  return visibleTo.includes(user.role);
 }
 
 /** O card aparece para o usuário (vê algum passo). */
@@ -393,18 +485,19 @@ async function targetFor(
   actor: StepActor,
 ): Promise<NotifyTarget> {
   // Quem faz a arte (o designer do pedido, a agência quando é ela quem faz a
-  // arte ou a Wellmix) e a certificadora: o mesmo destino das pendências.
+  // arte ou a Wellmix) e quem certifica (o despachante): o mesmo destino das
+  // pendências.
   if (actor === "agency")
     return notifyTargetOf(artMakerRoute(order, await loadRoutingContext()));
   if (actor === "ocp")
     return notifyTargetOf(ocpRoute(order, await loadRoutingContext()));
-  if (actor === "finance") {
+  if (actor === "finance" || actor === "comex_internal") {
     const team = await getStore().list("users", {
       filter: { role: ["admin", "operator"], active: true },
     });
     const finance = holdersOf(
       team,
-      "numerario.manage",
+      actor === "finance" ? "numerario.manage" : "container.tracking",
       await loadFunctionDefs(),
     );
     return {
@@ -695,9 +788,10 @@ async function handOverSeal(
  */
 export async function notifySealRequested(order: Order): Promise<void> {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return;
-  if (order.ocpId) {
+  // Certificação: o despachante do pedido (dono, 13/11/2026).
+  if (order.brokerId) {
     await notify(
-      { role: "ocp", partyId: order.ocpId },
+      { role: "broker", partyId: order.brokerId },
       {
         link: stepLink(order.id, stepTemplate("cert_seal"), "do"),
         kind: "action",
@@ -729,15 +823,16 @@ export async function notifySealRequested(order: Order): Promise<void> {
  */
 export async function notifySealPartner(
   order: Order,
-  field: "ocpId" | "agencyId",
+  field: "ocpId" | "brokerId" | "agencyId",
   /** Quem estava no campo antes da troca (para não avisar de novo quem já fazia a arte). */
   previousPartyId?: string | null,
 ): Promise<void> {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return;
   const steps = await stepsOf(order.id);
   const sealDone = isDone(steps.find((s) => s.key === "cert_seal"));
-  if (field === "ocpId") {
-    if (order.ocpId && !sealDone) await notifySealRequested(order);
+  // Quem certifica mudou (certificadora ou despachante): o selo a emitir.
+  if (field === "ocpId" || field === "brokerId") {
+    if (hasCertifier(order) && !sealDone) await notifySealRequested(order);
     return;
   }
   if (previousPartyId !== undefined) {
@@ -913,7 +1008,11 @@ export async function importFlowView(
   // Pedido encerrado: só leitura.
   const open = order.status !== "CLOSED" && order.status !== "CANCELLED";
   const shown = IMPORT_STEPS.filter(
-    (tpl) => groupOf(tpl) === group && canSeeStep(user, order, tpl.key),
+    (tpl) =>
+      groupOf(tpl) === group &&
+      // Container na origem: só no pedido de compra.
+      (group !== "origin" || isPurchaseFlow(order)) &&
+      canSeeStep(user, order, tpl.key),
   );
   // Passo da agência: só de quem faz a arte (a Wellmix sempre pode agir;
   // o designer do pedido também, mesmo login da agência).
@@ -1072,6 +1171,18 @@ export async function purchaseNeedsCertification(
  * começado, a partir da Preparação. Pedido de compra: só com produto que
  * exige certificação (P6), e o memorial desde que o pedido nasce.
  */
+/** Até a chegada do navio: o rastreio diário do container vale nessas etapas. */
+const TRACKING_LIVE = ["INSPECTION", "SHIPPING", "CUSTOMS"];
+
+/** Hoje em Brasília (AAAA-MM-DD). */
+const todayInBrazil = () =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
 export async function importTasks(
   user: User,
   orders: Order[],
@@ -1110,6 +1221,8 @@ export async function importTasks(
     for (const tpl of IMPORT_STEPS) {
       const cert = groupOf(tpl) === "certification";
       if (!cert && !importLive) continue;
+      // Container na origem: só no pedido de compra.
+      if (groupOf(tpl) === "origin" && !isPurchaseFlow(order)) continue;
       const step = steps.find((s) => s.key === tpl.key);
       if (cert) {
         const task = certTask(order, tpl, step, steps, ctx, gate);
@@ -1144,8 +1257,9 @@ export async function importTasks(
         (!wellmix ||
           tpl.validator === "wellmix" ||
           tpl.validator === "finance" ||
+          tpl.validator === "comex_internal" ||
           (tpl.validator !== "supplier" &&
-            !order[PARTNER_FIELD[tpl.validator]]))
+            !partnerAssigned(order, tpl.validator)))
       ) {
         out.push({
           kind: "import_validate",
@@ -1155,9 +1269,15 @@ export async function importTasks(
         });
         continue;
       }
-      // Fazer (ou refazer) o passo.
+      // Fazer (ou refazer) o passo. O rastreio do container é todo dia, até
+      // a chegada: a pendência volta quando o último registro não é de hoje.
       const todo =
-        !step || step.status === "pending" || step.status === "rejected";
+        !step ||
+        step.status === "pending" ||
+        step.status === "rejected" ||
+        (tpl.key === "container_tracking" &&
+          TRACKING_LIVE.includes(order.status) &&
+          (step.submittedAt ?? "").slice(0, 10) < todayInBrazil());
       if (!todo || !ready(tpl.key, steps)) continue;
       if (!actsAs(user, order, tpl.actor)) continue;
       if (tpl.actor === "agency") {
@@ -1165,7 +1285,12 @@ export async function importTasks(
         agencyArt ??= (await getSettings()).agencyValidationEnabled;
         const agencyDoes = artRole(order, agencyArt) === "agency";
         if (wellmix ? agencyDoes : !agencyDoes) continue;
-      } else if (wellmix && tpl.actor !== "wellmix" && tpl.actor !== "finance")
+      } else if (
+        wellmix &&
+        tpl.actor !== "wellmix" &&
+        tpl.actor !== "finance" &&
+        tpl.actor !== "comex_internal"
+      )
         continue;
       out.push({
         kind: "import_step",
@@ -1218,7 +1343,7 @@ function certGate(
       ? on
       : order.status === "ORDER_CREATED"
         ? classicStarted
-        : !!order.ocpId || classicStarted,
+        : hasCertifier(order) || classicStarted,
     classicDeep: steps.some(
       (s) => s.key === "cert_lab" || s.key === "cert_registration",
     ),
@@ -1258,8 +1383,8 @@ function certTask(
   // interno (dono, 13/11/2026).
   if (!tpl.seal && tpl.key !== "cert_memorial" && !gate.classicDeep)
     return null;
-  // Laudo e registro sem certificadora: ninguém começa por ela.
-  if (tpl.actor === "ocp" && !tpl.seal && !order.ocpId) return null;
+  // Laudo e registro sem despachante: ninguém começa por ele.
+  if (tpl.actor === "ocp" && !tpl.seal && !hasCertifier(order)) return null;
   // Fazer (ou refazer) o passo, quando o anterior já foi feito.
   const todo = !step || step.status === "pending" || step.status === "rejected";
   if (!todo || !ready(tpl.key, steps)) return null;

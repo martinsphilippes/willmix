@@ -64,7 +64,7 @@ export function ImportFlowCard({
   names: Map<string, string>;
   /** Certificação (Fase F) usa o mesmo cartão com outro título e âncora. */
   title?: string;
-  anchor?: "import-flow" | "certification";
+  anchor?: "import-flow" | "certification" | "container-origin";
   /** Explicações do cartão (ex.: como anda o selo de certificação). */
   hints?: ReactNode[];
   /** Passos com quadro em destaque no alto (o envio deles sai da tabela). */

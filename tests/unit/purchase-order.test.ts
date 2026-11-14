@@ -227,7 +227,11 @@ describe("pedido de compra", () => {
     const prep = reqs.filter((r) => r.key.includes("__"));
     expect(prep).toHaveLength(2 * 10);
     const roles = new Set(prep.map((r) => r.role));
-    expect(roles).toEqual(new Set(["supplier", "agency", "operator", "ocp"]));
+    // Certificado: do despachante do pedido (dono, 13/11/2026).
+    expect(order.brokerId).toBeTruthy();
+    expect(roles).toEqual(
+      new Set(["supplier", "agency", "operator", "broker"]),
+    );
     // Avisos das raias: fornecedor e certificadora na hora; a agência só com
     // a faca e a foto em alta; Vendas fica sabendo do que vem.
     const linked = async (u: User) =>
@@ -236,7 +240,11 @@ describe("pedido de compra", () => {
           filter: { userId: u.id, channel: "inapp" },
         })
       ).filter((n) => n.link === `/app/orders/${order.id}`);
-    for (const u of [supplierA, ocp]) expect((await linked(u)).length).toBe(1);
+    const broker = (await store.list("users")).find(
+      (u) => u.role === "broker" && u.partyId === order.brokerId,
+    )!;
+    for (const u of [supplierA, broker])
+      expect((await linked(u)).length).toBe(1);
     expect(await linked(agency)).toHaveLength(0);
     // Vendas: quem tem a ação "Receber o aviso de pedido de compra" (padrão:
     // quem abre Pós-venda, como o operador de compras do seed).
@@ -851,6 +859,118 @@ describe("pedido de compra: sequência do mapa do processo", () => {
       (await requirementsOf(order.id)).find((r) => r.key === "sku_approved"),
     ).toMatchObject({ status: "done", value: "approved" });
     expect((await store.get("orders", order.id))!.status).toBe("SHIPPING");
+  });
+
+  it("container na origem e o rastreio diário do Comex interno (R19 a R26)", async () => {
+    const store = getStore();
+    const terms = await import("@/lib/services/supplier-terms");
+    const flow = await import("@/lib/services/import-flow");
+    await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+      terms: [{ percent: 100, base: "delivered", days: 60 }],
+      note: null,
+    });
+    let order;
+    try {
+      ({ order } = await signedPurchaseOrder(["OR-1", "OR-2"]));
+    } finally {
+      await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+        terms: [
+          { percent: 30, base: "order_created", days: 0 },
+          { percent: 70, base: "delivered", days: 90 },
+        ],
+        note: null,
+      });
+    }
+    order = (await store.get("orders", order.id))!;
+    expect(order.status).toBe("INSPECTION");
+    const doc = async (user: User, name: string) =>
+      (
+        await uploadDocument(user, pdf(name), {
+          orderId: order.id,
+          type: "import_step",
+        })
+      ).id;
+    const keysOf = async (user: User) =>
+      (await flow.importTasks(user, [order]))
+        .filter((t) => t.key.startsWith("container_"))
+        .map((t) => t.key);
+    // Antes do booking, nada do container.
+    expect(await keysOf(supplierA)).toEqual([]);
+    // Booking (sem agente designado, a Wellmix faz) e validado por outro login.
+    const ops = await store.create("users", {
+      email: "comex.interno@wellmix.com",
+      name: "Clara Comex",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      passwordHash: "x",
+      active: true,
+      importerId: null,
+      functions: ["comex_internal"],
+      screens: null,
+      mustChangePassword: false,
+    } as never);
+    await flow.submitStep(admin, order.id, "booking", { value: "BK-1" });
+    await flow.validateStep(ops, order.id, "booking", "validated", null);
+    // O fornecedor faz a sequência; cada passo só abre depois do anterior.
+    expect(await keysOf(supplierA)).toEqual(["container_at_factory"]);
+    await expect(
+      flow.submitStep(supplierA, order.id, "container_empty", {
+        documentId: await doc(supplierA, "vazio.pdf"),
+      }),
+    ).rejects.toThrow("previous_step");
+    await flow.submitStep(supplierA, order.id, "container_at_factory", {
+      value: "2027-01-12",
+    });
+    // Começou o rastreio: pendência diária do Comex interno.
+    expect(await keysOf(ops)).toContain("container_tracking");
+    await flow.submitStep(ops, order.id, "container_tracking", {
+      value: "Container no depósito da fábrica",
+    });
+    expect(await keysOf(ops)).not.toContain("container_tracking");
+    // O fornecedor não rastreia; o rastreio não é dele.
+    await expect(
+      flow.submitStep(supplierA, order.id, "container_tracking", {
+        value: "x",
+      }),
+    ).rejects.toThrow();
+    await flow.submitStep(supplierA, order.id, "container_empty", {
+      documentId: await doc(supplierA, "vazio.pdf"),
+    });
+    await flow.submitStep(supplierA, order.id, "container_loaded", {
+      value: "480 caixas, sem avarias",
+      documentId: await doc(supplierA, "carga.pdf"),
+    });
+    // O carregamento é conferido pela Wellmix antes do lacre.
+    await expect(
+      flow.submitStep(supplierA, order.id, "container_sealed", {
+        value: "MSCU1234567",
+        documentId: await doc(supplierA, "lacre.pdf"),
+      }),
+    ).rejects.toThrow("previous_step");
+    await flow.validateStep(
+      ops,
+      order.id,
+      "container_loaded",
+      "validated",
+      null,
+    );
+    await flow.submitStep(supplierA, order.id, "container_sealed", {
+      value: "MSCU1234567",
+      documentId: await doc(supplierA, "lacre.pdf"),
+    });
+    await flow.submitStep(supplierA, order.id, "container_at_port", {
+      value: "2027-01-15",
+    });
+    expect(await keysOf(supplierA)).toEqual([]);
+    // No dia seguinte o rastreio volta a ser pendência.
+    const [tracking] = await store.list("import_steps", {
+      filter: { orderId: order.id, key: "container_tracking" },
+    });
+    await store.update("import_steps", tracking.id, {
+      submittedAt: "2026-01-01T12:00:00.000Z",
+    });
+    expect(await keysOf(ops)).toContain("container_tracking");
   });
 
   it("prazo de cada passo conta da liberação do anterior", async () => {
