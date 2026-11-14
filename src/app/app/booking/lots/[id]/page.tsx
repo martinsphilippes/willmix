@@ -10,6 +10,7 @@ import {
   bookingLotMoves,
   bookingLotPending,
   bookingLotReady,
+  incompleteBookingItems,
   isRequiredItemField,
   missingItemFields,
   type BookingItemField,
@@ -64,6 +65,10 @@ import {
 import { reclassifyBookingNcmAction } from "../../../actions/booking-ncm";
 import type { NcmSuggestion } from "@/lib/ncm-match";
 import { TableTools } from "@/components/table-tools";
+import {
+  BookingPendingList,
+  type PendingItemView,
+} from "@/components/booking-pending-list";
 
 /*
  * Detalhamento de um booking (docs/BOOKING.md, "Booking por planilha"):
@@ -262,6 +267,31 @@ export default async function BookingLotPage({
   ];
   const day = lot.bookingDate ? lot.bookingDate.slice(0, 10) : "";
 
+  /* "Fechar e analisar" parou por campos obrigatórios vazios (dono,
+     14/11/2026): a lista dos itens incompletos, cada um com os campos que
+     faltam, sai da mesma validação do fechamento (e do "Falta para fechar").
+     A tela se atualiza a cada campo gravado, e a lista junto. */
+  const itemsBlocked = errorCode === "booking_items_incomplete";
+  const incomplete: PendingItemView[] = itemsBlocked
+    ? incompleteBookingItems(items, pending).map((it) => {
+        const label =
+          [it.name, it.code].filter(Boolean).join(" · ") ||
+          t("bookingLots.incomplete.line", { n: it.line });
+        return {
+          itemId: it.itemId,
+          label,
+          fields: it.fields.map((field) => ({
+            field,
+            label: colLabel(field),
+            title: t("bookingLots.incomplete.go", {
+              field: colLabel(field),
+              item: label,
+            }),
+          })),
+        };
+      })
+    : [];
+
   const pendingList = [
     pending.supplier ? t("bookingLots.pending.supplier") : null,
     pending.date ? t("bookingLots.pending.date") : null,
@@ -448,7 +478,31 @@ export default async function BookingLotPage({
           canParties={canOpen(user, "parties")}
           t={t}
         />
-        {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+        {itemsBlocked && editable ? (
+          incomplete.length ? (
+            <Alert tone="danger">
+              <span className="block">{errorText}</span>
+              <span
+                className="mt-1 block font-medium"
+                data-booking-lot-incomplete={incomplete.length}
+              >
+                {t("bookingLots.incomplete.count", { n: incomplete.length })}
+              </span>
+              <BookingPendingList items={incomplete} />
+            </Alert>
+          ) : (
+            // Tudo completo depois do aviso: é só fechar de novo.
+            <Alert tone="success">
+              <span data-booking-lot-incomplete-done>
+                {t("bookingLots.incomplete.done", {
+                  action: t("bookingLots.detail.close.submit"),
+                })}
+              </span>
+            </Alert>
+          )
+        ) : errorText ? (
+          <Alert tone="danger">{errorText}</Alert>
+        ) : null}
         {notices.map(([tone, text]) => (
           <Alert key={text} tone={tone}>
             {text}
