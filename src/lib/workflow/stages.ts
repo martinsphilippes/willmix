@@ -333,9 +333,10 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
       isPurchaseFlow(order)
         ? laneRequirements(items ?? [], {
             art: artRole(order, agencyValidationEnabled),
-            // Certificado: do despachante (dono, 13/11/2026); sem ele, da
-            // Wellmix.
-            ocp: order.brokerId ? "broker" : "operator",
+            // Certificado: da certificadora (OCP) do pedido (dono,
+            // 14/11/2026). Quem recebe cada tarefa sai de laneRoute
+            // (src/lib/services/cert-art-routing.ts); o papel é a etiqueta.
+            ocp: "ocp",
           })
         : [
             ...(line?.requirements?.length

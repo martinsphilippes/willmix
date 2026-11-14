@@ -12,11 +12,7 @@ import {
   type StageKey,
   type User,
 } from "@/lib/db";
-import {
-  ForbiddenError,
-  isOrderCertifier,
-  isWellmix,
-} from "@/lib/auth/permissions";
+import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { audit } from "@/lib/services/audit";
 import {
@@ -55,6 +51,7 @@ import {
   baseKeyOf,
   blockedBy,
   isAutoGateKey,
+  isRoutedLaneKey,
   isSampleOrderKey,
   prerequisitesOf,
   type LaneItem,
@@ -376,6 +373,21 @@ export interface SubmitInput {
   sampleOrder?: boolean;
 }
 
+/**
+ * Arte, validação, certificado e arte final do pedido de compra: só o login
+ * que recebe a tarefa (o designer, quem valida a arte, a certificadora do
+ * pedido) ou o administrador (src/lib/services/cert-art-routing.ts).
+ */
+async function assertLaneAssignee(
+  user: User,
+  order: Order,
+  requirement: Pick<Requirement, "key" | "orderId">,
+) {
+  if (!isPurchaseFlow(order) || !isRoutedLaneKey(requirement.key)) return;
+  const { assertLaneActor } = await import("@/lib/services/cert-art-routing");
+  await assertLaneActor(user, order, requirement);
+}
+
 /** Quem pode preencher: Wellmix sempre; o papel do requisito quando vinculado ao parceiro certo. */
 export function canSubmitRequirement(
   user: User,
@@ -394,10 +406,19 @@ export function canSubmitRequirement(
     if (key === ORDER_SIGNED_WELLMIX) return can(user, "contract.sign");
     return true;
   }
-  // Certificado do produto: o despachante do pedido (a certificação é dele,
-  // dono, 13/11/2026) ou a certificadora designada.
-  if (baseKeyOf(requirement.key ?? "") === LANE_KEYS.certificate)
-    return isOrderCertifier(user, order);
+  // Arte, validação, certificado e arte final do pedido de compra (dono,
+  // 14/11/2026): o certificado é da certificadora (OCP) do pedido; a arte e
+  // a arte final, da agência do pedido quando o designer é dela. O login
+  // exato (o designer, a certificadora) é conferido em assertLaneActor.
+  if (isRoutedLaneKey(requirement.key ?? "")) {
+    if (!user.partyId) return false;
+    const base = baseKeyOf(requirement.key ?? "");
+    if (base === LANE_KEYS.certificate)
+      return user.role === "ocp" && order.ocpId === user.partyId;
+    if (base === LANE_KEYS.art || base === LANE_KEYS.artFinal)
+      return user.role === "agency" && order.agencyId === user.partyId;
+    return false;
+  }
   if (user.role !== requirement.role) return false;
   // Cliente: só o login solicitante do pedido.
   if (user.role === "customer" && order.requestedByUserId !== user.id)
@@ -421,6 +442,7 @@ export async function submitRequirement(
   if (!stage || !order) throw new WorkflowError("order_not_found");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
+  await assertLaneAssignee(user, order, requirement);
   // Validação da ficha pelo comprador: antes, a programação de compra
   // (que é da Wellmix) tem de estar feita.
   if (requirement.key === "sheet_validated") {
@@ -671,6 +693,7 @@ export async function clearRequirementDocument(
   if (!stage || !order) throw new WorkflowError("order_not_found");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
+  await assertLaneAssignee(user, order, requirement);
   if (
     stage.status !== "active" &&
     stage.status !== "blocked" &&
@@ -735,6 +758,7 @@ export async function decideRequirement(
   if (!stage || !order) throw new WorkflowError("order_not_found");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
+  await assertLaneAssignee(user, order, requirement);
   if (order.status === "CANCELLED" || stage.status === "cancelled")
     throw new WorkflowError("stage_not_active");
   // Como no envio: só na etapa aberta. Decisão já tomada só a Wellmix refaz

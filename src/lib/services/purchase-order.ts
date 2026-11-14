@@ -27,16 +27,14 @@ import {
   blockedBy,
   itemIdOf,
   laneKey,
+  isRoutedLaneKey,
   laneOf,
   type LaneSla,
 } from "@/lib/purchase-lanes";
-import {
-  ROLE_PARTY_FIELD,
-  artRole,
-  isPurchaseFlow,
-} from "@/lib/workflow/stages";
+import { ROLE_PARTY_FIELD, isPurchaseFlow } from "@/lib/workflow/stages";
 import { samplingApproved } from "@/lib/supplier-request-sampling";
 import { audit } from "./audit";
+import type { NotifyTarget } from "./notifications";
 
 /*
  * Pedido de compra (docs/PURCHASE_ORDER.md). Depois da solicitação ao
@@ -317,15 +315,32 @@ function targetOf(order: Order, role: Requirement["role"]): Target {
   return { role, partyId };
 }
 
+/**
+ * Arte, validação, certificado e arte final: o aviso vai para quem recebe a
+ * tarefa (o designer, quem valida, a certificadora; cert-art-routing.ts).
+ */
+async function laneTarget(
+  order: Order,
+  key: string,
+  siblings: ReadonlyArray<Pick<Requirement, "key" | "submittedByUserId">> = [],
+): Promise<NotifyTarget | null> {
+  const { laneRoute, loadRoutingContext, notifyTargetOf } =
+    await import("./cert-art-routing");
+  const route = laneRoute(key, order, await loadRoutingContext(), siblings);
+  return route ? notifyTargetOf(route) : null;
+}
+
 async function send(
   order: Order,
-  role: Requirement["role"],
+  /** O papel de quem age (o parceiro do pedido ou a Wellmix) ou o destino exato. */
+  who: Requirement["role"] | NotifyTarget,
   subjectKey: string,
   bodyKey: string,
   vars: Record<string, string | number>,
 ) {
   const { notify } = await import("./notifications");
-  await notify(targetOf(order, role) as Parameters<typeof notify>[0], {
+  const target = typeof who === "string" ? targetOf(order, who) : who;
+  await notify(target as Parameters<typeof notify>[0], {
     kind: "action",
     link: `/app/orders/${order.id}`,
     text: (t) => {
@@ -367,14 +382,20 @@ export async function notifyLanesOpen(
     if (lane === "registration") continue;
     if (!byLane.has(lane)) byLane.set(lane, r.role);
   }
-  for (const [lane, role] of byLane)
+  for (const [lane, role] of byLane) {
+    // Arte e certificado: o login que recebe (o designer, a certificadora).
+    const first = pending.find(
+      (r) => laneOf(r.key) === lane && isRoutedLaneKey(r.key),
+    );
+    const target = first ? await laneTarget(order, first.key) : null;
     await send(
       order,
-      role,
+      target ?? role,
       `purchaseOrder.notify.lane.${lane}.subject`,
       `purchaseOrder.notify.lane.${lane}.body`,
       {},
     );
+  }
 }
 
 /**
@@ -408,7 +429,7 @@ export async function afterLaneStep(
       if (art && art.status !== "done" && !blockedBy(artKey, all).length)
         await send(
           order,
-          art.role,
+          (await laneTarget(order, artKey, all)) ?? art.role,
           "purchaseSequence.notify.artUnlocked.subject",
           "purchaseSequence.notify.artUnlocked.body",
           { product: productOf(art) },
@@ -424,7 +445,11 @@ export async function afterLaneStep(
   if (base === LANE_KEYS.art) {
     await send(
       order,
-      "operator",
+      (await laneTarget(
+        order,
+        laneKey(LANE_KEYS.artReview, item),
+        requirements,
+      )) ?? "operator",
       "purchaseOrder.notify.review.subject",
       "purchaseOrder.notify.review.body",
       { product },
@@ -438,7 +463,7 @@ export async function afterLaneStep(
     if (blockedBy(finalKey, requirements).length) return;
     await send(
       order,
-      final.role,
+      (await laneTarget(order, finalKey, requirements)) ?? final.role,
       "purchaseOrder.notify.final.subject",
       "purchaseOrder.notify.final.body",
       { product },
@@ -576,32 +601,27 @@ export async function purchaseLaneSla(): Promise<LaneSla> {
 }
 
 /**
- * Parceiro designado ou trocado depois (Parceiros do pedido): os itens das
- * raias ainda abertos passam para quem faz agora. O certificado vai para a
- * certificadora; a arte e a arte final com o selo, para a agência quando é
- * ela quem faz a arte. Sem o parceiro, voltam para a Wellmix. O que já foi
- * feito fica como está (o histórico de quem fez não muda) e nada é criado de
- * novo: a pendência aberta só troca de dono.
+ * Papel gravado nas tarefas abertas da arte, da validação e do certificado,
+ * coerente com quem as recebe (`laneRoleFor`, src/lib/services/
+ * cert-art-routing.ts): ao trocar o designer, a agência ou a certificadora,
+ * e na correção dos pedidos abertos. Só atualiza no lugar (sem duplicar);
+ * o que já foi feito não muda.
  */
-export async function syncLaneRoles(user: User, order: Order): Promise<number> {
+export async function syncLaneRoles(
+  user: User | null,
+  order: Order,
+): Promise<number> {
   if (!isPurchaseFlow(order)) return 0;
   const store = getStore();
-  const { getSettings } = await import("@/lib/settings");
-  const art = artRole(order, (await getSettings()).agencyValidationEnabled);
-  // Certificado: do despachante (dono, 13/11/2026); sem ele, da Wellmix.
-  const ocp = order.brokerId ? "broker" : "operator";
+  const { isRoutedLaneKey, laneRoleFor, loadRoutingContext } =
+    await import("./cert-art-routing");
+  const ctx = await loadRoutingContext();
   const open = (
     await store.list("requirements", { filter: { orderId: order.id } })
-  ).filter((r) => r.status !== "done");
+  ).filter((r) => r.status !== "done" && isRoutedLaneKey(r.key));
   let moved = 0;
   for (const r of open) {
-    const base = baseKeyOf(r.key);
-    const role =
-      base === LANE_KEYS.certificate
-        ? ocp
-        : base === LANE_KEYS.art || base === LANE_KEYS.artFinal
-          ? art
-          : null;
+    const role = laneRoleFor(r.key, order, ctx);
     if (!role || r.role === role) continue;
     await store.update("requirements", r.id, { role });
     moved++;
@@ -612,9 +632,51 @@ export async function syncLaneRoles(user: User, order: Order): Promise<number> {
       "order.lanes_reassigned",
       "order",
       order.id,
-      `Raias do pedido de compra: ${moved} item(ns) aberto(s) da arte e do certificado com o novo responsável`,
+      `Raias do pedido de compra: ${moved} item(ns) aberto(s) da arte, da validação e do certificado com o novo responsável`,
     );
   return moved;
+}
+
+/** Última passada geral sem nada a ajustar (nesta instância do servidor). */
+let lanesQuietSince = 0;
+const LANES_QUIET_MS = 10 * 60_000;
+
+/**
+ * Pedidos de compra abertos com o papel gravado das tarefas de arte e
+ * certificado diferente de quem as recebe (antes de 14/11/2026 tudo ficava
+ * com a Wellmix): um pedido (página do pedido) ou todos os abertos
+ * (Pendências, a cada 10 minutos; job diário com `force`). Nunca derruba a
+ * tela: falha vai para o log.
+ */
+export async function normalizeLaneRoles(
+  orderId?: string,
+  opts: { force?: boolean } = {},
+): Promise<number> {
+  if (!orderId && !opts.force && Date.now() - lanesQuietSince < LANES_QUIET_MS)
+    return 0;
+  try {
+    const store = getStore();
+    const orders = orderId
+      ? [await store.get("orders", orderId)].filter((o): o is Order => !!o)
+      : await store.list("orders", {
+          // As raias ficam na Preparação; o contrato vem logo depois.
+          filter: {
+            flow: "supplier_request",
+            status: ["ORDER_CREATED", "PREPARATION", "PACKAGING"],
+          },
+        });
+    let changed = 0;
+    for (const order of orders) {
+      if (!isPurchaseFlow(order)) continue;
+      if (order.status === "CLOSED" || order.status === "CANCELLED") continue;
+      changed += await syncLaneRoles(null, order);
+    }
+    if (!orderId) lanesQuietSince = changed === 0 ? Date.now() : 0;
+    return changed;
+  } catch (error) {
+    console.error("[purchase-order] papéis das raias não ajustados", error);
+    return 0;
+  }
 }
 
 /**

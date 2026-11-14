@@ -7894,7 +7894,10 @@
             "samples_brazil",
             "samples_china",
             "samples_china_received",
-            "samples_returned"
+            "samples_returned",
+            "origin_carrier",
+            "origin_carrier_eta",
+            "origin_costs"
           ]
         },
         {
