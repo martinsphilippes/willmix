@@ -58,7 +58,7 @@ test("Nova solicitação: o bloco Programação de compra, pedido único, sobra,
   // 1. O bloco da Seleção: o título "Programação de compra" e, logo abaixo,
   // "Gerar programação pela quantidade". A linha de quantidade e unidade
   // saiu da tela; os dois continuam no formulário.
-  await expect(first.locator("[data-request-schedule] > legend")).toHaveText(
+  await expect(first.locator("[data-schedule-title]")).toHaveText(
     "Programação de compra",
   );
   await expect(gen).toContainText("Gerar programação pela quantidade");

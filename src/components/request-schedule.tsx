@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { cx, inputClass } from "@/components/ui";
 import {
   DEFAULT_SCHEDULE_INTERVAL,
@@ -124,6 +124,7 @@ export function RequestScheduleFields({
    */
   after?: (quantities: number[], dates: string[]) => ReactNode;
 }) {
+  const titleId = useId();
   const known = (SCHEDULE_INTERVALS as readonly number[]).includes(
     initial?.intervalDays ?? -1,
   );
@@ -206,14 +207,22 @@ export function RequestScheduleFields({
   // O bloco tem o mesmo quadro, título e explicação ligado ou desligado
   // (dono, 14/11/2026: "Programação de compra" seguido do gerador): sem
   // programação, o pedido único (a quantidade do gerador) e o botão que liga.
+  // O quadro é um grupo com título (não <fieldset>): na Seleção, marcar o
+  // vencedor muda os seletores `:has()` do formulário, e o navegador deixava
+  // os campos do gerador dentro do <fieldset> com tamanho zero até a página
+  // se recalcular. O título fica sobre a borda, como a legenda de antes.
   const frame = cx(
-    "min-w-0 max-w-full space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5",
+    "mt-3 min-w-0 max-w-full space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5",
     className,
   );
   const legend = (
-    <legend className="px-1 text-sm font-semibold text-zinc-800">
+    <h3
+      id={titleId}
+      className="-mt-[21px] w-fit bg-white px-1 text-sm leading-5 font-semibold text-zinc-800"
+      data-schedule-title
+    >
       {labels.toggle}
-    </legend>
+    </h3>
   );
   const hint = (
     <p className="text-xs leading-relaxed text-zinc-600" data-schedule-hint>
@@ -222,7 +231,12 @@ export function RequestScheduleFields({
   );
   if (!on)
     return (
-      <fieldset className={frame} data-request-schedule="off">
+      <div
+        role="group"
+        aria-labelledby={titleId}
+        className={frame}
+        data-request-schedule="off"
+      >
         {legend}
         {hint}
         {generator ? generator(apply, []) : null}
@@ -240,11 +254,16 @@ export function RequestScheduleFields({
           </button>
         </div>
         {after ? after([], []) : null}
-      </fieldset>
+      </div>
     );
 
   return (
-    <fieldset className={frame} data-request-schedule="on">
+    <div
+      role="group"
+      aria-labelledby={titleId}
+      className={frame}
+      data-request-schedule="on"
+    >
       {legend}
       <input
         type="hidden"
@@ -432,6 +451,6 @@ export function RequestScheduleFields({
             ),
           )
         : null}
-    </fieldset>
+    </div>
   );
 }

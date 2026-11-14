@@ -64,7 +64,7 @@ test("Programação de compra: a mesma entrada nas duas telas e 13 datas gravada
   // 1. Seleção de itens: 300 caixas em 2 datas.
   await openSelection(page, code);
   const choice = page.locator("[data-selection-quantity-block]");
-  await expect(choice.locator("[data-request-schedule] > legend")).toHaveText(
+  await expect(choice.locator("[data-schedule-title]")).toHaveText(
     "Programação de compra",
   );
   await generate(choice, "300", "2");
