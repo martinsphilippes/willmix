@@ -7626,6 +7626,80 @@
       ]
     },
     {
+      "$id": "showroom_receipts",
+      "databaseId": "willmix",
+      "name": "Recebimento das amostras no show room do Brasil",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "lines",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "divergent",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "note",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "documentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "receivedByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "receivedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "order_unique",
+          "type": "unique",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
       "$id": "real_media",
       "databaseId": "willmix",
       "name": "Fotos e vídeos reais do produto (agência na China)",
@@ -8000,6 +8074,7 @@
             "samples_brazil",
             "samples_china",
             "samples_china_received",
+            "samples_brazil_received",
             "samples_returned",
             "origin_carrier",
             "origin_carrier_eta",

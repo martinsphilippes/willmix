@@ -61,6 +61,7 @@ const SALES_TABLES = [
   "import_steps",
   "shipping_docs",
   "real_media",
+  "showroom_receipts",
   // Ofertas de amostras e produtos a clientes (Vendas).
   "sales_offers",
   "receivings",
@@ -83,6 +84,7 @@ const OPTIONAL_TABLES = new Set<TableName>([
   "import_steps",
   "shipping_docs",
   "real_media",
+  "showroom_receipts",
   "sales_offers",
   "receivings",
   "production_tracks",

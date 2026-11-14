@@ -7,6 +7,8 @@ import {
   type ImportStep,
   type Order,
   type RealMedia,
+  type ShowroomLine,
+  type ShowroomReceipt,
   type User,
 } from "@/lib/db";
 import { SAMPLE_ORDER_KEY } from "@/lib/purchase-lanes";
@@ -406,4 +408,212 @@ export async function realMediaTasks(user: User): Promise<RealMediaTask[]> {
       out.push({ order, kind: "approve", count: toApprove });
   }
   return out;
+}
+
+/* ---------------- Recebimento no show room do Brasil ---------------- */
+
+/*
+ * Pedido do dono (14/11/2026): o recebimento das amostras no show room do
+ * Brasil, com a conferência e o aviso a vendas. A Wellmix confere, produto a
+ * produto, as peças esperadas (4 × 3 × Nm) e as recebidas; o registro
+ * conclui o passo "Amostras recebidas no show room". Vendas fica sabendo do
+ * que chegou (quem tem a ação "Aviso de pedido de compra a vendas"); peça a
+ * mais ou a menos avisa a trading e a Wellmix.
+ */
+
+export interface ShowroomView {
+  order: Order;
+  /** O envio ao Brasil já foi registrado pela trading. */
+  open: boolean;
+  lines: ShowroomLine[];
+  receipt: ShowroomReceipt | null;
+  canReceive: boolean;
+}
+
+export async function showroomView(
+  user: User,
+  order: Order,
+): Promise<ShowroomView | null> {
+  if (
+    !isWellmix(user) &&
+    !(user.role === "supplier" && user.partyId === order.supplierId)
+  )
+    return null;
+  if (!(await samplesApply(order))) return null;
+  const [split, steps, [receipt]] = await Promise.all([
+    samplesSplitOf(order),
+    stepsOf(order.id),
+    getStore()
+      .list("showroom_receipts", { filter: { orderId: order.id } })
+      .catch(() => [] as ShowroomReceipt[]),
+  ]);
+  const open =
+    order.status !== "CANCELLED" &&
+    order.status !== "CLOSED" &&
+    stepDone(steps.find((s) => s.key === "samples_brazil"));
+  return {
+    order,
+    open,
+    lines:
+      receipt?.lines ??
+      split.map((l) => ({
+        itemId: l.itemId,
+        name: l.name,
+        expected: l.brazil,
+        received: l.brazil,
+      })),
+    receipt: receipt ?? null,
+    canReceive: open && !receipt && isWellmix(user),
+  };
+}
+
+/** A Wellmix registra o recebimento no show room, com as peças de cada produto. */
+export async function receiveShowroom(
+  user: User,
+  orderId: string,
+  input: {
+    received: Record<string, number>;
+    note: string | null;
+    documentId: string | null;
+  },
+) {
+  if (!isWellmix(user)) throw new ForbiddenError();
+  const store = getStore();
+  const order = await store.get("orders", orderId);
+  if (!order) throw new SampleFlowError("order_not_found");
+  const view = await showroomView(user, order);
+  if (!view?.canReceive) throw new SampleFlowError("showroom_closed");
+  const lines = view.lines.map((l) => {
+    const n = input.received[l.itemId];
+    if (!Number.isInteger(n) || n < 0 || n > 100_000)
+      throw new SampleFlowError("showroom_qty_invalid");
+    return { ...l, received: n };
+  });
+  const divergent = lines.some((l) => l.received !== l.expected);
+  const note = input.note?.trim() || null;
+  if (divergent && !note) throw new SampleFlowError("showroom_note_required");
+  const now = new Date().toISOString();
+  await store.create("showroom_receipts", {
+    orderId,
+    lines,
+    divergent,
+    note,
+    documentId: input.documentId,
+    receivedByUserId: user.id,
+    receivedAt: now,
+  });
+  // Conclui o passo do cartão Amostras (e o que vem depois enxerga).
+  const [step] = await store
+    .list("import_steps", {
+      filter: { orderId, key: "samples_brazil_received" },
+    })
+    .catch(() => []);
+  const data = {
+    status: "submitted" as const,
+    value: now.slice(0, 10),
+    amount: null,
+    currency: null,
+    documentId: input.documentId,
+    submittedByUserId: user.id,
+    submittedAt: now,
+    validatedByUserId: null,
+    validatedAt: null,
+    rejectReason: null,
+  };
+  if (step) await store.update("import_steps", step.id, data);
+  else
+    await store.create("import_steps", {
+      orderId,
+      key: "samples_brazil_received",
+      ...data,
+    });
+  const summary = lines
+    .map((l) => `${l.name}: ${l.received}/${l.expected}`)
+    .join("; ");
+  await audit(
+    user,
+    divergent ? "showroom.received_divergent" : "showroom.received",
+    "order",
+    orderId,
+    `Amostras no show room (pedido #${order.number}): ${summary}${note ? ` · ${note}` : ""}`,
+  );
+  // Vendas fica sabendo do que chegou ao show room.
+  const team = await store.list("users", {
+    filter: { role: ["admin", "operator"], active: true },
+  });
+  const sales = holdersOf(
+    team,
+    "purchaseOrder.salesNotice",
+    await loadFunctionDefs(),
+  );
+  const products = lines
+    .filter((l) => l.received > 0)
+    .map((l) => l.name)
+    .join(", ");
+  if (sales.length)
+    await notify(
+      { userIds: sales.map((u) => u.id) },
+      {
+        kind: "info",
+        link: `/app/orders/${orderId}#samples`,
+        text: (t) => ({
+          subject: t("showroom.notify.sales.subject", {
+            n: String(order.number),
+          }),
+          body: t("showroom.notify.sales.body", { products }),
+        }),
+      },
+    );
+  if (divergent) {
+    await notify(
+      { role: "supplier", partyId: order.supplierId },
+      {
+        kind: "alert",
+        actor: "recipient",
+        link: `/app/orders/${orderId}#samples`,
+        text: (t) => ({
+          subject: t("showroom.notify.divergent.subject", {
+            n: String(order.number),
+          }),
+          body: t("showroom.notify.divergent.body", {
+            lines: summary,
+            note: note ?? "",
+          }),
+        }),
+      },
+    );
+    await notifyWellmix({
+      kind: "alert",
+      subject: `Pedido #${order.number}: amostras no show room com diferença`,
+      body: `${summary}${note ? ` · ${note}` : ""}`,
+      link: `/app/orders/${orderId}#samples`,
+    });
+  }
+}
+
+/** Pendência da Wellmix: o envio ao Brasil foi registrado e o show room ainda não conferiu. */
+export async function showroomTasks(user: User): Promise<Order[]> {
+  if (!isWellmix(user)) return [];
+  const store = getStore();
+  const sent = await store
+    .list("import_steps", { filter: { key: "samples_brazil" } })
+    .catch(() => [] as ImportStep[]);
+  const ids = [
+    ...new Set(sent.filter((s) => stepDone(s)).map((s) => s.orderId)),
+  ];
+  if (!ids.length) return [];
+  const [orders, receipts] = await Promise.all([
+    store.list("orders", { filter: { id: ids } }),
+    store
+      .list("showroom_receipts", { filter: { orderId: ids } })
+      .catch(() => [] as ShowroomReceipt[]),
+  ]);
+  const done = new Set(receipts.map((r) => r.orderId));
+  return orders.filter(
+    (o) =>
+      !done.has(o.id) &&
+      o.status !== "CANCELLED" &&
+      o.status !== "CLOSED" &&
+      !o.held,
+  );
 }

@@ -1299,6 +1299,55 @@ describe("pedido de compra: sequência do mapa do processo", () => {
       value: "SF-CN-1",
       documentId: await doc(supplierA, "cn.pdf"),
     });
+    // Show room do Brasil: a Wellmix confere peça a peça; diferença pede
+    // observação, avisa a trading, e vendas fica sabendo do que chegou.
+    let room = (await sf.showroomView(admin, fresh))!;
+    expect(room.canReceive).toBe(true);
+    expect(room.lines.map((l) => l.expected)).toEqual([12, 12]);
+    expect((await sf.showroomTasks(admin)).map((o) => o.id)).toContain(
+      order.id,
+    );
+    await expect(
+      flow.submitStep(admin, order.id, "samples_brazil_received", {
+        value: "2026-11-25",
+      }),
+    ).rejects.toThrow();
+    const [l1, l2] = room.lines;
+    await expect(
+      sf.receiveShowroom(supplierA, order.id, {
+        received: { [l1.itemId]: 12, [l2.itemId]: 12 },
+        note: null,
+        documentId: null,
+      }),
+    ).rejects.toThrow();
+    await expect(
+      sf.receiveShowroom(admin, order.id, {
+        received: { [l1.itemId]: 12, [l2.itemId]: 10 },
+        note: null,
+        documentId: null,
+      }),
+    ).rejects.toThrow("showroom_note_required");
+    await sf.receiveShowroom(admin, order.id, {
+      received: { [l1.itemId]: 12, [l2.itemId]: 10 },
+      note: "Faltaram 2 peças do segundo produto",
+      documentId: null,
+    });
+    room = (await sf.showroomView(admin, fresh))!;
+    expect(room.receipt).toMatchObject({ divergent: true });
+    expect(room.canReceive).toBe(false);
+    expect((await sf.showroomTasks(admin)).map((o) => o.id)).not.toContain(
+      order.id,
+    );
+    const [receivedStep] = await store.list("import_steps", {
+      filter: { orderId: order.id, key: "samples_brazil_received" },
+    });
+    expect(receivedStep?.status).toBe("submitted");
+    const supplierAlert = await store.list("notifications", {
+      filter: { userId: supplierA.id, channel: "inapp" },
+    });
+    expect(
+      supplierAlert.some((n) => n.link === `/app/orders/${order.id}#samples`),
+    ).toBe(true);
     // A agência recebe a pendência de confirmar o recebimento.
     expect((await flow.importTasks(mkt, [fresh])).map((t) => t.key)).toContain(
       "samples_china_received",

@@ -85,6 +85,37 @@ export const pt = {
   "sourcing.photo.real": "Foto real (agência)",
   "importFlow.error.samples_closed":
     "Os passos das amostras abrem com o SKU aprovado e o pedido de amostras gerado.",
+  "importFlow.step.samples_brazil_received":
+    "Amostras recebidas no show room (conferidas)",
+  "showroom.title": "Recebimento no show room (Brasil)",
+  "showroom.hint":
+    "Confira as peças de cada produto que chegaram ao show room. Com diferença, explique na observação: a trading é avisada. Vendas fica sabendo do que chegou.",
+  "showroom.waiting": "Abre quando a trading registra o envio ao Brasil.",
+  "showroom.col.expected": "Esperadas",
+  "showroom.col.received": "Recebidas",
+  "showroom.note": "Observação (obrigatória com diferença)",
+  "showroom.photo": "Foto das amostras (opcional)",
+  "showroom.submit": "Registrar o recebimento",
+  "showroom.received": "Recebidas em {date} por {name}",
+  "showroom.divergent": "Com diferença",
+  "showroom.ok": "Conferidas sem diferença",
+  "showroom.done": "Recebimento registrado. Vendas foi avisada.",
+  "showroom.error.showroom_closed":
+    "O recebimento não está aberto agora (ou já foi registrado).",
+  "showroom.error.showroom_qty_invalid":
+    "Informe as peças recebidas de cada produto.",
+  "showroom.error.showroom_note_required":
+    "Com peças a mais ou a menos, explique na observação.",
+  "showroom.notify.sales.subject": "Pedido #{n}: amostras no show room",
+  "showroom.notify.sales.body":
+    "Chegaram ao show room do Brasil as amostras de: {products}. Já dá para oferecer (Vendas → Amostras).",
+  "showroom.notify.divergent.subject":
+    "Pedido #{n}: amostras do show room com diferença",
+  "showroom.notify.divergent.body": "Recebidas/esperadas: {lines}. {note}",
+  "showroom.task.title": "Receber as amostras no show room: pedido #{n}",
+  "showroom.task.detail":
+    "A trading enviou as amostras ao Brasil. Confira as peças de cada produto quando chegarem.",
+  "tasks.group.showroom": "Show room",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -168,6 +199,38 @@ export const en: Record<keyof typeof pt, string> = {
   "sourcing.photo.real": "Real photo (agency)",
   "importFlow.error.samples_closed":
     "The sample steps open once the SKU is approved and the sample order exists.",
+  "importFlow.step.samples_brazil_received":
+    "Samples received at the showroom (checked)",
+  "showroom.title": "Showroom receipt (Brazil)",
+  "showroom.hint":
+    "Check the pieces of each product that reached the showroom. If anything differs, explain in the note: the trading company is notified. Sales learns what arrived.",
+  "showroom.waiting":
+    "Opens when the trading company records the shipment to Brazil.",
+  "showroom.col.expected": "Expected",
+  "showroom.col.received": "Received",
+  "showroom.note": "Note (required if anything differs)",
+  "showroom.photo": "Photo of the samples (optional)",
+  "showroom.submit": "Record the receipt",
+  "showroom.received": "Received on {date} by {name}",
+  "showroom.divergent": "With differences",
+  "showroom.ok": "Checked, no differences",
+  "showroom.done": "Receipt recorded. Sales was notified.",
+  "showroom.error.showroom_closed":
+    "The receipt is not open now (or was already recorded).",
+  "showroom.error.showroom_qty_invalid":
+    "Enter the pieces received for each product.",
+  "showroom.error.showroom_note_required":
+    "With pieces missing or extra, explain in the note.",
+  "showroom.notify.sales.subject": "Order #{n}: samples at the showroom",
+  "showroom.notify.sales.body":
+    "The samples of {products} reached the showroom in Brazil. They can be offered now (Sales → Samples).",
+  "showroom.notify.divergent.subject":
+    "Order #{n}: showroom samples with differences",
+  "showroom.notify.divergent.body": "Received/expected: {lines}. {note}",
+  "showroom.task.title": "Receive the samples at the showroom: order #{n}",
+  "showroom.task.detail":
+    "The trading company sent the samples to Brazil. Check the pieces of each product when they arrive.",
+  "tasks.group.showroom": "Showroom",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -240,4 +303,30 @@ export const zh: Record<keyof typeof pt, string> = {
   "sourcing.photo.real": "实物照片（代理）",
   "importFlow.error.samples_closed":
     "SKU 通过且已生成样品订单后，样品步骤才开放。",
+  "importFlow.step.samples_brazil_received": "展厅已收到样品（已核对）",
+  "showroom.title": "展厅收货（巴西）",
+  "showroom.hint":
+    "核对每个产品到达展厅的件数。如有差异请在备注中说明：将通知贸易商。销售会知道到了哪些样品。",
+  "showroom.waiting": "贸易商登记寄往巴西后开放。",
+  "showroom.col.expected": "应收",
+  "showroom.col.received": "实收",
+  "showroom.note": "备注（有差异时必填）",
+  "showroom.photo": "样品照片（可选）",
+  "showroom.submit": "登记收货",
+  "showroom.received": "{name} 于 {date} 收货",
+  "showroom.divergent": "有差异",
+  "showroom.ok": "已核对，无差异",
+  "showroom.done": "已登记收货，已通知销售。",
+  "showroom.error.showroom_closed": "收货目前未开放（或已登记）。",
+  "showroom.error.showroom_qty_invalid": "请填写每个产品的实收件数。",
+  "showroom.error.showroom_note_required": "件数多或少时请在备注中说明。",
+  "showroom.notify.sales.subject": "订单 #{n}：样品已到展厅",
+  "showroom.notify.sales.body":
+    "以下产品的样品已到巴西展厅：{products}。现在可以推荐给客户（销售 → 样品）。",
+  "showroom.notify.divergent.subject": "订单 #{n}：展厅样品有差异",
+  "showroom.notify.divergent.body": "实收/应收：{lines}。{note}",
+  "showroom.task.title": "展厅收样：订单 #{n}",
+  "showroom.task.detail":
+    "贸易商已将样品寄往巴西。到货后请核对每个产品的件数。",
+  "tasks.group.showroom": "展厅",
 };

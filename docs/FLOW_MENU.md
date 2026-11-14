@@ -107,7 +107,7 @@ Os parceiros (fornecedor, agência, certificadora, despachante, comex, agente de
 ## LPCO, Amostras e Ofertas (14/11/2026)
 
 - **Entrega → LPCO** (mapa E5, E5?): passo novo do embarque, `lpco` (`IMPORT_STEPS`): o comex registra o pedido da licença (número e arquivo) e a Wellmix marca deferida ou indeferida. Só no pedido com produto cujo NCM começa por um dos prefixos de Configurações → "NCMs que exigem LPCO" (`lpcoNcmPrefixes`; vazio, em nenhum pedido). A regra é `lpcoApplies` / `lpcoOrderIds` em `src/lib/services/import-flow.ts`; `stepApplies` recebe o resultado (sem ele, o LPCO não aparece). Não segura a presença de carga (passo sem dependente). Também no menu do comex. O resumo do pedido subiu para a versão 11 (o LPCO entra na contribuição do Overview).
-- **Vendas → Amostras** (E23): a amostra que chegou ao Brasil (passo `samples_brazil` concluído) e ainda não foi oferecida. A tela tem o registro de a quem foi oferecida e a lista das ofertas registradas.
+- **Vendas → Amostras** (E23): a amostra que chegou ao Brasil (recebida e conferida no show room, passo `samples_brazil_received`; antes de 14/11/2026 contava o envio, `samples_brazil`) e ainda não foi oferecida. A tela tem o registro de a quem foi oferecida e a lista das ofertas registradas.
 - **Vendas → Ofertas** (V2): o produto com a venda ativada (foto real aprovada pelo marketing, R5, `real_media` aprovada) e ainda não oferecido, com o mesmo registro.
 - As ofertas ficam na tabela nova `sales_offers` (tipo amostra ou produto, pedido, produto, a quem, observação, quem e quando); `recordSalesOfferAction` (só a Wellmix, com a tela Produtos). Os casos contam no menu, fora das Pendências (`flowSalesCasesFor`). Limpar dados de teste apaga as ofertas.
 

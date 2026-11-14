@@ -79,3 +79,41 @@ export async function decideRealMediaAction(form: FormData) {
     return `${backOf(input.orderId)}?done=${input.decision}#item-${input.itemId}`;
   });
 }
+
+/** Recebimento das amostras no show room do Brasil (conferência por produto). */
+export async function receiveShowroomAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId");
+  const back = ID.test(orderId) ? `/app/orders/${orderId}` : "/app";
+  await run(`${back}?showroomCard=1#samples`, async () => {
+    assertScreen(user, "orders");
+    z.string().regex(ID).parse(orderId);
+    const itemIds = z
+      .array(z.string().regex(ID))
+      .max(500)
+      .parse(form.getAll("itemId").map(String));
+    const received: Record<string, number> = {};
+    for (const id of itemIds) {
+      const raw = str(form, `received_${id}`);
+      received[id] = raw === "" ? NaN : Number(raw);
+    }
+    const note = field(form, "note", z.string().trim().max(1000)) || null;
+    const { isWellmix } = await import("@/lib/auth/permissions");
+    if (!isWellmix(user)) throw new Error("forbidden");
+    const [file] = files(form, "photo");
+    let documentId: string | null = null;
+    if (file) {
+      const { uploadDocument } = await import("@/lib/services/documents");
+      documentId = (
+        await uploadDocument(user, file, {
+          orderId,
+          type: "import_step",
+          visibility: "internal",
+        })
+      ).id;
+    }
+    const { receiveShowroom } = await import("@/lib/services/sample-flow");
+    await receiveShowroom(user, orderId, { received, note, documentId });
+    return `${back}?showroom=received#samples`;
+  });
+}

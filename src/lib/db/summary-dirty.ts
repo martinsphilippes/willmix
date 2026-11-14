@@ -23,6 +23,7 @@ const ORDER_TABLES = new Set<TableName>([
   "sku_inspections",
   "shipping_docs",
   "real_media",
+  "showroom_receipts",
   "art_issues",
   "receivings",
   // Multas: quadrado de multa e exceção do pedido.

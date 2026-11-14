@@ -345,6 +345,16 @@ export const IMPORT_STEPS: StepTemplate[] = [
     group: "samples",
   },
   {
+    // Show room do Brasil: a Wellmix confere peça a peça (cartão Amostras).
+    key: "samples_brazil_received",
+    actor: "wellmix",
+    validator: null,
+    input: "date",
+    visibleTo: ["supplier"],
+    after: "samples_brazil",
+    group: "samples",
+  },
+  {
     key: "samples_china_received",
     actor: "marketing_agency",
     validator: null,
@@ -557,6 +567,8 @@ export async function canSubmitStep(
     return false;
   // Pedido de compra: o BL vem dos documentos do embarque, conferido.
   if (key === "bl" && isPurchaseFlow(order)) return false;
+  // Recebimento no show room: pela conferência do cartão Amostras.
+  if (key === "samples_brazil_received") return false;
   // Memorial e selo: só a certificadora (OCP) do pedido (dono, 14/11/2026).
   if (isOcpOnlyStep(key)) return isOrderOcp(user, order);
   // Arte com o selo: o designer do pedido (login da agência escolhido em
@@ -1302,6 +1314,7 @@ export async function importFlowView(
         canSubmit:
           open &&
           !purchaseBl &&
+          tpl.key !== "samples_brazil_received" &&
           isReady &&
           !(tpl.validator && step?.status === "validated") &&
           // Memorial e selo: só a certificadora (OCP) do pedido; quem mais

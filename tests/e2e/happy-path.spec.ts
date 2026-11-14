@@ -1163,6 +1163,18 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.locator("[data-real-media-status]").first(),
   ).toHaveAttribute("data-real-media-status", "approved");
+  // Show room do Brasil: a Wellmix confere as peças que chegaram (as
+  // esperadas já vêm preenchidas) e vendas fica sabendo.
+  await page.goto(`${orderUrl}#samples`);
+  const showroomForm = page.locator("form[data-showroom-form]");
+  await Promise.all([
+    page.waitForURL(/showroom=received/),
+    showroomForm.locator("button[type=submit]").click(),
+  ]);
+  await expect(page.locator("[data-showroom-status]")).toHaveAttribute(
+    "data-showroom-status",
+    "ok",
+  );
   // Vendas (docs/FLOW_MENU.md): a amostra que chegou ao Brasil vira caso em
   // Vendas → Amostras; o produto com a venda ativada (foto real aprovada),
   // em Vendas → Ofertas. Registrar a quem foi oferecido tira o caso.
