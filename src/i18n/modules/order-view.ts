@@ -54,8 +54,8 @@ export const pt = {
   "orderView.stage.close": "Fechar",
   "orderView.stage.all": "Abrir todas as etapas",
   "orderView.mine.hint":
-    "Só as tarefas a fazer do seu login neste pedido. O que é de outros responsáveis e o que já foi feito não aparecem aqui.",
-  "orderView.mine.empty": "Nenhuma tarefa sua neste pedido agora.",
+    "Só as tarefas do seu login neste pedido: em destaque, as que você já pode fazer; em cinza, as que ainda esperam outro item ou a etapa começar. O que é de outros responsáveis e o que já foi feito não aparecem aqui.",
+  "orderView.mine.empty": "Nenhuma tarefa sua neste pedido.",
   "orderView.mine.owner": "Responsável interno: {name}.",
   "orderView.stage.current": "Mostrar só a etapa em andamento",
   "orderView.stage.hint":
@@ -146,8 +146,8 @@ export const en: Record<keyof typeof pt, string> = {
   "orderView.stage.close": "Close",
   "orderView.stage.all": "Open all stages",
   "orderView.mine.hint":
-    "Only the tasks your login has to do on this order. Other people's tasks and what is already done are not shown here.",
-  "orderView.mine.empty": "No tasks of yours on this order right now.",
+    "Only your login's tasks on this order: highlighted, the ones you can do now; in grey, the ones still waiting for another item or for the stage to start. Other people's tasks and what is already done are not shown here.",
+  "orderView.mine.empty": "No tasks of yours on this order.",
   "orderView.mine.owner": "Internal owner: {name}.",
   "orderView.stage.current": "Show only the stage in progress",
   "orderView.stage.hint":
@@ -238,8 +238,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderView.stage.close": "关闭",
   "orderView.stage.all": "展开所有阶段",
   "orderView.mine.hint":
-    "这里只显示您在此订单中需要处理的任务。其他负责人的任务和已完成的任务不在此显示。",
-  "orderView.mine.empty": "您目前在此订单中没有任务。",
+    "这里只显示您在此订单中的任务：突出显示的是现在可以处理的；灰色的是仍在等待其他事项或阶段开始的。其他负责人的任务和已完成的任务不在此显示。",
+  "orderView.mine.empty": "您在此订单中没有任务。",
   "orderView.mine.owner": "内部负责人：{name}。",
   "orderView.stage.current": "只显示进行中的阶段",
   "orderView.stage.hint":

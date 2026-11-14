@@ -952,8 +952,10 @@ export default async function OrderPage({
   /* Operador da Wellmix (pedido do dono, 14/11/2026): a linha do tempo só
      com as tarefas a fazer que cabem ao login, tarefa a tarefa, inclusive
      dentro das etapas e das partes compartilhadas (regras em
-     src/lib/services/order-timeline.ts). Situação, andamento e contagem
-     saem das tarefas dele; a etapa sai da lista quando ele conclui a última.
+     src/lib/services/order-timeline.ts). As que ainda não estão liberadas
+     (esperam outro item ou a etapa começar) aparecem em cinza (decisão do
+     dono, 14/11/2026). Situação, andamento e contagem saem das tarefas
+     dele; a etapa sai da lista quando ele conclui a última.
      O administrador e os outros papéis veem como antes; o andamento do
      pedido inteiro não muda. */
   const mineOnly = timelineMineOnly(user);
@@ -965,9 +967,7 @@ export default async function OrderPage({
         certSteps,
         importSteps,
         sheetMissing: sheetState ? sheetState.missing.length : null,
-        sheetStarted:
-          !!sheetState &&
-          (sheetState.saved || sheetState.prefillSource !== "catalog"),
+        productionOpen: !!productionView && !productionView.allApproved,
         artIssues: artworkView?.items.flatMap((i) => i.issues) ?? [],
         supplierPaymentOpen:
           financeAccess &&
@@ -978,8 +978,11 @@ export default async function OrderPage({
     : null;
   const myStage = (s: (typeof stages)[number]) =>
     myTimeline?.stages.get(s.id) ?? null;
-  const myStageOpen = (s: (typeof stages)[number]) =>
-    (myStage(s)?.open.length ?? 0) > 0;
+  /** O operador tem item nesta etapa (liberado ou que vem depois). */
+  const myStageOpen = (s: (typeof stages)[number]) => {
+    const mine = myStage(s);
+    return !!mine && mine.open.length + mine.later.length > 0;
+  };
   /* Etapas em linhas: quem vê a etapa abre os detalhes dela; a etapa em
      andamento (ou que ainda aceita dados, como o BL depois do embarque)
      fica aberta sempre. ?stage=CHAVE abre outra; ?stage=all, todas. */
@@ -1814,12 +1817,14 @@ export default async function OrderPage({
                     const partState = minePart
                       ? myProgress(minePart).status
                       : part.state;
+                    // Só o que vem depois: em cinza.
+                    const partMuted = !!minePart && minePart.open === 0;
+                    const partTotal = minePart
+                      ? minePart.open + minePart.later + minePart.done
+                      : 0;
                     const partCount =
-                      minePart && minePart.open + minePart.done > 0
-                        ? {
-                            done: minePart.done,
-                            total: minePart.open + minePart.done,
-                          }
+                      minePart && partTotal > 0
+                        ? { done: minePart.done, total: partTotal }
                         : !minePart && part.total
                           ? { done: part.done ?? 0, total: part.total }
                           : null;
@@ -1834,7 +1839,10 @@ export default async function OrderPage({
                         <Td className="min-w-40">
                           <a
                             href={part.href}
-                            className="font-medium text-zinc-800 transition hover:text-brand-700"
+                            className={cx(
+                              "font-medium transition hover:text-brand-700",
+                              partMuted ? "text-zinc-500" : "text-zinc-800",
+                            )}
                           >
                             {t(`orderParts.${part.key}` as DictionaryKey)}
                           </a>
@@ -1930,8 +1938,18 @@ export default async function OrderPage({
             const supplierView = supplierLanes && stage.key === "PREPARATION";
             // Operador da Wellmix: só as tarefas abertas dele na etapa.
             const mine = mineOnly ? (myRow(stage)?.progress ?? null) : null;
+            // As que vêm depois ficam em cinza, na ordem da etapa.
+            const mineIds = new Set(
+              [
+                ...(myStage(stage)?.open ?? []),
+                ...(myStage(stage)?.later ?? []),
+              ].map((r) => r.id),
+            );
+            const laterIds = new Set(
+              (myStage(stage)?.later ?? []).map((r) => r.id),
+            );
             const shownReqs = mineOnly
-              ? (myStage(stage)?.open ?? [])
+              ? reqs.filter((r) => mineIds.has(r.id))
               : supplierView
                 ? reqs.filter(supplierSeesLaneRequirement)
                 : reqs;
@@ -2125,6 +2143,7 @@ export default async function OrderPage({
                           order={order}
                           user={user}
                           t={t}
+                          muted={laterIds.has(r.id)}
                           // O prazo registrado para o item só preenche o campo.
                           defaultValue={
                             supplierView && isLeadTimeKey(r.key)
@@ -3371,8 +3390,14 @@ function RequirementRow({
   waiting,
   gateHref,
   defaultValue,
+  muted = false,
 }: {
   requirement: Requirement;
+  /**
+   * Linha do tempo do operador: tarefa dele que ainda não está liberada
+   * (espera outro item ou a etapa começar), em cinza.
+   */
+  muted?: boolean;
   /**
    * Item conferido pelo sistema (NCM validado, ficha completa, sinal): o
    * atalho para a tela onde a área dona faz a parte dela.
@@ -3453,10 +3478,18 @@ function RequirementRow({
       ? ROW_WIDE_3XL
       : ROW_WIDE_XL;
   return (
-    <li className={cx("flex flex-col gap-2 py-2.5", wide.row)}>
+    <li
+      className={cx("flex flex-col gap-2 py-2.5", wide.row)}
+      data-requirement-later={muted ? "" : undefined}
+    >
       <div className="min-w-0 text-sm">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium text-zinc-900">
+          <span
+            className={cx(
+              "font-medium",
+              muted ? "text-zinc-500" : "text-zinc-900",
+            )}
+          >
             {requirementLabel(t, r)}
           </span>
           {!r.required ? (

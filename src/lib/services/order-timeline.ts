@@ -67,15 +67,20 @@ export const timelineMineOnly = (user: Pick<User, "role">) =>
 export interface MyStageTasks {
   /** Itens da etapa que o login faz agora (abertos e liberados). */
   open: Requirement[];
+  /**
+   * Itens do login que ainda não estão liberados (esperam outro item ou a
+   * etapa começar): aparecem em cinza (decisão do dono, 14/11/2026).
+   */
+  later: Requirement[];
   /** Itens da etapa do login já concluídos. */
   done: number;
 }
 
 export interface MyPartTasks {
   open: number;
+  /** Tarefas do login que ainda virão (em cinza). */
+  later: number;
   done: number;
-  /** A tarefa aberta do login já foi começada (ex.: a ficha já tem dados). */
-  started?: boolean;
   /**
    * As tarefas da parte são itens da etapa em que ela aparece (as
    * assinaturas do documento do pedido): já contam na etapa, não de novo.
@@ -140,7 +145,8 @@ export function wellmixRequirementRoute(
 /**
  * Itens de uma etapa que são do login: os abertos que ele faz agora (a etapa
  * em andamento, ou o dado que ainda dá para completar depois, sem esperar
- * outro item) e os já concluídos que eram dele.
+ * outro item), os que vêm depois (esperam outro item ou a etapa começar) e
+ * os já concluídos que eram dele.
  */
 export function myStageTasks(
   user: User,
@@ -151,8 +157,11 @@ export function myStageTasks(
   sealApplied: boolean,
 ): MyStageTasks {
   const open: Requirement[] = [];
+  const later: Requirement[] = [];
   let done = 0;
   const stageOpen = stageReqs.filter((r) => r.status !== "done");
+  // Etapa que ainda não começou: as tarefas dele nela vêm depois.
+  const upcoming = stage.status === "pending";
   for (const r of stageReqs) {
     // Item do histórico do Sankhya em espera até o go-live: sem tarefa.
     if (r.held) continue;
@@ -172,28 +181,39 @@ export function myStageTasks(
       stage.status === "active" ||
       stage.status === "blocked" ||
       canCompleteLater(stage, r, order);
-    if (!live) continue;
+    if (!live) {
+      if (upcoming) later.push(r);
+      continue;
+    }
     if (
       requirementWaiting(
         r,
         { open: stageOpen, all: stageReqs },
         { sealApplied, purchase: isPurchaseFlow(order) },
       )
-    )
+    ) {
+      later.push(r);
       continue;
+    }
     open.push(r);
   }
-  return { open, done };
+  return { open, later, done };
 }
 
-/** Passos (certificação, embarque) concluídos por este login. */
+/**
+ * Passos (certificação, embarque) em que a parte deste login está feita: o
+ * que ele enviou (mesmo esperando a validação de outro) e o que ele validou.
+ */
 const doneBy = (user: User, steps: readonly StepView[]) =>
-  steps.filter(
-    (v) =>
-      v.done &&
-      (v.step?.submittedByUserId === user.id ||
-        v.step?.validatedByUserId === user.id),
-  ).length;
+  steps.filter((v) => {
+    const step = v.step;
+    if (!step) return false;
+    const sent = step.status === "submitted" || step.status === "validated";
+    return (
+      (sent && step.submittedByUserId === user.id) ||
+      (step.status === "validated" && step.validatedByUserId === user.id)
+    );
+  }).length;
 
 export interface TimelineInput {
   order: Order;
@@ -204,8 +224,8 @@ export interface TimelineInput {
   importSteps: StepView[];
   /** Ficha de compra: campos que faltam (nulo: o pedido não tem a ficha). */
   sheetMissing: number | null;
-  /** A ficha de compra já foi começada (salva ou com dados trazidos). */
-  sheetStarted: boolean;
+  /** Produção ainda por acompanhar (o cartão existe e falta aprovar SKU). */
+  productionOpen: boolean;
   /** Não conformidades da arte do pedido (cartão Artes). */
   artIssues: ArtIssue[];
   /** Pagamento ao fornecedor ainda em aberto (pedido não encerrado). */
@@ -235,7 +255,7 @@ export async function myOrderTimeline(
     byStage.set(
       stage.id,
       stage.held
-        ? { open: [], done: 0 }
+        ? { open: [], later: [], done: 0 }
         : myStageTasks(user, order, stage, reqs, ctx, sealApplied),
     );
   }
@@ -245,29 +265,42 @@ export async function myOrderTimeline(
 
   // Certificação e embarque/desembaraço: as mesmas pendências do login. Do
   // embarque, o que a Wellmix faz (ou faz no lugar de um parceiro que falta)
-  // é do analista; o numerário, do financeiro.
-  const { importTasks, stepTemplate } = await import("./import-flow");
+  // é do analista; o numerário, do financeiro. O container na origem tem
+  // cartão próprio, fora da linha do tempo.
+  const { groupOf, importTasks, laterStepsFor, stepTemplate } =
+    await import("./import-flow");
   const steps = await importTasks(user, [order]);
   const certOpen = steps.filter(
     (p) => p.kind === "cert_step" || p.kind === "cert_validate",
-  ).length;
+  );
   const importOpen = steps.filter((p) => {
     if (p.kind !== "import_step" && p.kind !== "import_validate") return false;
     const tpl = stepTemplate(p.key);
+    if (groupOf(tpl) !== "import") return false;
     const role = p.kind === "import_validate" ? tpl.validator : tpl.actor;
     return role === "finance" || mineAsAnalyst;
-  }).length;
+  });
+  const laterSteps = await laterStepsFor(user, order, {
+    analyst: mineAsAnalyst,
+    openKeys: new Set([...certOpen, ...importOpen].map((p) => p.key)),
+  });
   parts.certification = {
-    open: certOpen,
+    open: certOpen.length,
+    later: laterSteps.certification,
     done: doneBy(user, input.certSteps),
   };
-  parts.import = { open: importOpen, done: doneBy(user, input.importSteps) };
+  parts.import = {
+    open: importOpen.length,
+    later: laterSteps.import,
+    done: doneBy(user, input.importSteps),
+  };
 
   // Artes: corrigir a não conformidade (quem faz a arte) e conferir (quem
   // apontou ou quem valida a arte).
   const { artIssueTasks } = await import("./artwork");
   parts.artwork = {
     open: (await artIssueTasks(user, { orderId: order.id })).length,
+    later: 0,
     done: input.artIssues.filter(
       (i) =>
         i.status === "accepted" &&
@@ -279,9 +312,11 @@ export async function myOrderTimeline(
   // os mesmos itens da etapa em que estão.
   const signKeys = [ORDER_SIGN_SEND, ORDER_SIGNED_WELLMIX];
   let docOpen = 0;
+  let docLater = 0;
   let docDone = 0;
   for (const mine of byStage.values()) {
     docOpen += mine.open.filter((r) => signKeys.includes(r.key)).length;
+    docLater += mine.later.filter((r) => signKeys.includes(r.key)).length;
   }
   for (const r of requirements)
     if (
@@ -290,23 +325,34 @@ export async function myOrderTimeline(
       r.submittedByUserId === user.id
     )
       docDone++;
-  parts.document = { open: docOpen, done: docDone, mirror: true };
+  parts.document = {
+    open: docOpen,
+    later: docLater,
+    done: docDone,
+    mirror: true,
+  };
 
   // Ficha de compra: o lado da Wellmix é do analista enquanto falta campo.
   parts.sheet = {
     open: input.sheetMissing && mineAsAnalyst ? 1 : 0,
+    later: 0,
     done: 0,
-    started: input.sheetStarted,
   };
-  // Produção: o follow e a reinspeção da Wellmix são do analista.
+  // Produção: o follow e a reinspeção da Wellmix são do analista; antes de
+  // haver o que fazer, o acompanhamento vem depois (em cinza).
   const { productionTasks } = await import("./production");
+  const productionOpen = mineAsAnalyst
+    ? (await productionTasks(user, [order])).length
+    : 0;
   parts.production = {
-    open: mineAsAnalyst ? (await productionTasks(user, [order])).length : 0,
+    open: productionOpen,
+    later: mineAsAnalyst && input.productionOpen && !productionOpen ? 1 : 0,
     done: 0,
   };
   // Pagamento ao fornecedor: quem abre o Financeiro.
   parts.supplier_payment = {
     open: input.supplierPaymentOpen && canOpen(user, "finance") ? 1 : 0,
+    later: 0,
     done: 0,
   };
   // Recebimento: o analista e quem acompanha o recebimento.
@@ -316,6 +362,7 @@ export async function myOrderTimeline(
       (mineAsAnalyst || can(user, "receiving.follow", ctx.defs))
         ? 1
         : 0,
+    later: 0,
     done: 0,
   };
   return { stages: byStage, parts };
@@ -324,6 +371,8 @@ export async function myOrderTimeline(
 export interface MyStageRow {
   /** Itens da etapa que o login faz agora (os detalhes da etapa). */
   open: Requirement[];
+  /** Itens do login que vêm depois (em cinza nos detalhes). */
+  later: Requirement[];
   /** Subetapas (partes do pedido) desta etapa com tarefa do login. */
   parts: OrderPartKey[];
   /** Situação, andamento e contagem do login na etapa (itens e subetapas). */
@@ -332,9 +381,10 @@ export interface MyStageRow {
 
 /**
  * A linha de uma etapa na linha do tempo do login: só quando há tarefa dele
- * a fazer dentro dela (nos itens da etapa ou numa subetapa); nula quando ele
- * já concluiu a última, mesmo com outros responsáveis ainda pendentes. A
- * contagem soma só as tarefas dele ali, as feitas e as que faltam.
+ * dentro dela (nos itens da etapa ou numa subetapa), a fazer agora ou depois;
+ * nula quando ele já concluiu a última, mesmo com outros responsáveis ainda
+ * pendentes. A contagem soma só as tarefas dele ali: as feitas, as liberadas
+ * e as que vêm depois.
  */
 export function myStageRow(
   mine: MyTimeline,
@@ -342,30 +392,41 @@ export function myStageRow(
   partKeys: readonly OrderPartKey[],
 ): MyStageRow | null {
   const own = mine.stages.get(stage.id);
-  const parts = partKeys.filter((k) => (mine.parts[k]?.open ?? 0) > 0);
+  const parts = partKeys.filter((k) => {
+    const part = mine.parts[k];
+    return !!part && part.open + part.later > 0;
+  });
   const openItems = own?.open ?? [];
-  if (!openItems.length && !parts.length) return null;
+  const laterItems = own?.later ?? [];
+  if (!openItems.length && !laterItems.length && !parts.length) return null;
   let open = openItems.length;
+  let later = laterItems.length;
   let done = own?.done ?? 0;
   for (const k of partKeys) {
     const part = mine.parts[k];
     if (!part || part.mirror) continue;
     open += part.open;
+    later += part.later;
     done += part.done;
   }
   return {
     open: openItems,
+    later: laterItems,
     parts,
     progress: myProgress(
-      { open, done, started: parts.some((k) => mine.parts[k]?.started) },
+      { open, later, done },
       stage.status === "blocked" && openItems.length > 0,
     ),
   };
 }
 
-/** Situação, andamento e contagem do login numa etapa ou parte. */
+/**
+ * Situação, andamento e contagem do login numa etapa ou parte: "em
+ * andamento" quando há tarefa dele liberada; "pendente" (em cinza) quando o
+ * que falta ainda vem depois.
+ */
 export function myProgress(
-  mine: { open: number; done: number; started?: boolean },
+  mine: { open: number; later?: number; done: number },
   blocked = false,
 ): {
   status: "pending" | "active" | "blocked";
@@ -373,13 +434,9 @@ export function myProgress(
   done: number;
   total: number;
 } {
-  const total = mine.open + mine.done;
+  const total = mine.open + (mine.later ?? 0) + mine.done;
   return {
-    status: blocked
-      ? "blocked"
-      : mine.done > 0 || (mine.open > 0 && mine.started)
-        ? "active"
-        : "pending",
+    status: blocked ? "blocked" : mine.open > 0 ? "active" : "pending",
     percent: total ? Math.round((mine.done / total) * 100) : 0,
     done: mine.done,
     total,

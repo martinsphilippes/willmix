@@ -4,10 +4,12 @@ import { xlsxBytes } from "./xlsx-fixture";
 
 /*
  * Linha do tempo "Etapas do pedido" do operador da Wellmix (pedido do dono,
- * 14/11/2026): só as tarefas a fazer que cabem ao login, tarefa a tarefa,
- * inclusive dentro das etapas e das subetapas compartilhadas. A etapa sai da
- * lista quando o login conclui a última tarefa dele, mesmo com outros ainda
- * pendentes; o que foi feito continua no pedido. O administrador vê tudo.
+ * 14/11/2026): só as tarefas que cabem ao login, tarefa a tarefa, inclusive
+ * dentro das etapas e das subetapas compartilhadas. As liberadas ficam em
+ * destaque; as que ainda esperam outro item ou a etapa começar, em cinza. A
+ * etapa sai da lista quando o login conclui a última tarefa dele, mesmo com
+ * outros ainda pendentes; o que foi feito continua no pedido. O
+ * administrador vê tudo.
  */
 withTempStore();
 const { approveSample } = await import("./helpers/sampling");
@@ -43,6 +45,8 @@ let otherBuyer: User;
 let designer: User;
 /** Cadastro: NCM e ficha mestre. */
 let catalog: User;
+/** Certificadora (o certificado da raia do pedido de compra). */
+let ocp: User;
 
 const HEADER = [
   "SUPPLIER NAME",
@@ -188,7 +192,7 @@ async function timelineOf(user: User, orderId: string) {
     certSteps: await f.importFlowView(user, order, "certification"),
     importSteps: await f.importFlowView(user, order),
     sheetMissing: sheet ? sheet.missing.length : null,
-    sheetStarted: !!sheet && (sheet.saved || sheet.prefillSource !== "catalog"),
+    productionOpen: false,
     artIssues: artwork?.items.flatMap((i) => i.issues) ?? [],
     supplierPaymentOpen: false,
     receivingOpen: false,
@@ -203,6 +207,7 @@ async function rowsOf(user: User, order: Order) {
     string,
     {
       open: string[];
+      later: string[];
       parts: string[];
       progress: ReturnType<typeof tl.myProgress>;
     }
@@ -215,6 +220,7 @@ async function rowsOf(user: User, order: Order) {
     if (r)
       out[stage.key] = {
         open: r.open.map((x) => baseKeyOf(x.key)).sort(),
+        later: r.later.map((x) => baseKeyOf(x.key)).sort(),
         parts: [...r.parts],
         progress: r.progress,
       };
@@ -230,6 +236,7 @@ beforeAll(async () => {
   const by = (email: string) => users.find((u) => u.email === email)!;
   admin = by("admin@wellmix.com");
   supplierA = by("supplier.a@china.com");
+  ocp = by("ocp@certifica.com");
   const store = getStore();
   const wellmixLogin = (name: string, functions: string[]) =>
     store.create("users", {
@@ -265,87 +272,142 @@ describe("pedido do Comprador, com designer da Wellmix e parceiros", () => {
     order = await fresh(order);
   });
 
-  it("no início: o Comprador vê o memorial e a ficha de compra; o Cadastro, NCM e ficha mestre", async () => {
-    // As etapas e a numeração continuam as do pedido; cada um vê as dele.
-    expect(await rowsOf(buyer, order)).toEqual({
-      ORDER_CREATED: {
-        open: [],
-        parts: ["certification"],
-        progress: { status: "pending", percent: 0, done: 0, total: 1 },
-      },
-      // A ficha já veio com os dados do booking: a tarefa dele está em
-      // andamento, ainda sem nada concluído.
-      PREPARATION: {
-        open: [],
-        parts: ["sheet"],
-        progress: { status: "active", percent: 0, done: 0, total: 1 },
-      },
+  it("no início: cada login vê as tarefas dele, as liberadas em destaque e as futuras em cinza", async () => {
+    const rows = await rowsOf(buyer, order);
+    // A numeração e a ordem continuam as do pedido; só as etapas com tarefa dele.
+    expect(Object.keys(rows)).toEqual([
+      "ORDER_CREATED",
+      "PREPARATION",
+      "PACKAGING",
+      "INSPECTION",
+      "SHIPPING",
+    ]);
+    // Certificação: o memorial (liberado) e, depois, validar a arte com o selo.
+    expect(rows.ORDER_CREATED).toEqual({
+      open: [],
+      later: [],
+      parts: ["certification"],
+      progress: { status: "active", percent: 0, done: 0, total: 2 },
+    });
+    // A validação da arte espera a arte: em cinza; a ficha de compra, liberada.
+    expect(rows.PREPARATION).toEqual({
+      open: [],
+      later: ["art_review"],
+      parts: ["sheet"],
+      progress: { status: "active", percent: 0, done: 0, total: 2 },
+    });
+    // Etapas que não começaram: só o que é dele, em cinza.
+    expect(rows.PACKAGING).toMatchObject({
+      open: [],
+      later: ["sample_order"],
+      progress: { status: "pending" },
+    });
+    expect(rows.INSPECTION).toMatchObject({
+      later: ["sku_approved"],
+      progress: { status: "pending" },
+    });
+    expect(rows.SHIPPING).toMatchObject({
+      parts: ["import"],
+      progress: { status: "pending" },
     });
     expect(await rowsOf(catalog, order)).toEqual({
       PREPARATION: {
         open: ["ncm_validated", "sheet_complete"],
+        later: [],
+        parts: [],
+        progress: { status: "active", percent: 0, done: 0, total: 2 },
+      },
+    });
+    // O designer: a arte espera a faca e a foto em alta; aplicar o selo, o selo.
+    expect(await rowsOf(designer, order)).toEqual({
+      ORDER_CREATED: {
+        open: [],
+        later: [],
+        parts: ["certification"],
+        progress: { status: "pending", percent: 0, done: 0, total: 1 },
+      },
+      PREPARATION: {
+        open: [],
+        later: ["art", "art_final"],
         parts: [],
         progress: { status: "pending", percent: 0, done: 0, total: 2 },
       },
     });
-    // A arte espera a faca e a foto em alta do fornecedor; o selo é da OCP.
-    expect(await rowsOf(designer, order)).toEqual({});
+    // Outro Comprador, sem pedido dele: nada; nem o que é de outros perfis.
     expect(await rowsOf(otherBuyer, order)).toEqual({});
   });
 
-  it("faca e foto em alta enviadas: a arte aparece para o designer do pedido", async () => {
+  it("faca e foto em alta enviadas: a arte fica liberada para o designer do pedido", async () => {
     await submit(supplierA, order, "die_cut");
     await submit(supplierA, order, "hd_photo");
-    expect(await rowsOf(designer, order)).toEqual({
-      PREPARATION: {
-        open: ["art"],
-        parts: [],
-        progress: { status: "pending", percent: 0, done: 0, total: 1 },
-      },
+    expect((await rowsOf(designer, order)).PREPARATION).toEqual({
+      open: ["art"],
+      later: ["art_final"],
+      parts: [],
+      progress: { status: "active", percent: 0, done: 0, total: 2 },
     });
-    // A validação ainda não está disponível: não aparece para o Comprador.
-    expect((await rowsOf(buyer, order)).PREPARATION.open).toEqual([]);
+    // A validação continua em cinza para o Comprador.
+    expect((await rowsOf(buyer, order)).PREPARATION).toMatchObject({
+      open: [],
+      later: ["art_review"],
+    });
   });
 
-  it("arte enviada: a etapa sai da lista do designer, com os outros ainda pendentes, e a validação aparece para o Comprador", async () => {
+  it("arte enviada: a validação fica liberada para o Comprador; a arte final segue em cinza para o designer", async () => {
     await submit(designer, order, "art");
-    expect(await rowsOf(designer, order)).toEqual({});
-    const reqs = await getStore().list("requirements", {
-      filter: { orderId: order.id },
-    });
-    // Outros responsáveis ainda têm o que fazer na etapa.
-    expect(
-      reqs.some(
-        (r) =>
-          r.status !== "done" &&
-          ["moq_confirmed", "certificate"].includes(baseKeyOf(r.key)),
-      ),
-    ).toBe(true);
     // A conclusão continua no pedido, com quem fez.
     const done = await requirementOf(order, "art");
     expect([done.status, done.submittedByUserId]).toEqual([
       "done",
       designer.id,
     ]);
+    expect((await rowsOf(designer, order)).PREPARATION).toEqual({
+      open: [],
+      later: ["art_final"],
+      parts: [],
+      progress: { status: "pending", percent: 50, done: 1, total: 2 },
+    });
     expect((await rowsOf(buyer, order)).PREPARATION).toEqual({
       open: ["art_review"],
+      later: [],
       parts: ["sheet"],
       progress: { status: "active", percent: 0, done: 0, total: 2 },
     });
     expect(await rowsOf(otherBuyer, order)).toEqual({});
   });
 
-  it("arte validada: a etapa fica para o Comprador só pela ficha de compra, com a contagem dele", async () => {
+  it("arte validada: a etapa do Comprador fica só com a ficha de compra, contando a feita", async () => {
     const review = await requirementOf(order, "art_review");
     await engine.decideRequirement(buyer, review.id, "approve");
     expect((await rowsOf(buyer, order)).PREPARATION).toEqual({
       open: [],
+      later: [],
       parts: ["sheet"],
       progress: { status: "active", percent: 50, done: 1, total: 2 },
     });
   });
 
-  it("memorial enviado: a Certificação sai da lista do Comprador; a validação é da certificadora", async () => {
+  it("arte final enviada: a etapa sai da lista do designer, com os outros ainda pendentes", async () => {
+    await submit(ocp, order, "certificate");
+    await submit(designer, order, "art_final");
+    const rows = await rowsOf(designer, order);
+    expect(rows.PREPARATION).toBeUndefined();
+    // Outros responsáveis ainda têm o que fazer na etapa.
+    const reqs = await getStore().list("requirements", {
+      filter: { orderId: order.id },
+    });
+    expect(
+      reqs.some(
+        (r) =>
+          r.status !== "done" &&
+          ["moq_confirmed", "lead_time_confirmed"].includes(baseKeyOf(r.key)),
+      ),
+    ).toBe(true);
+    // O que é dele depois (aplicar o selo) continua em cinza.
+    expect(Object.keys(rows)).toEqual(["ORDER_CREATED"]);
+  });
+
+  it("memorial enviado: a Certificação do Comprador fica só com a validação da arte com o selo, em cinza", async () => {
     const memorial = await getStore().create("documents", {
       orderId: order.id,
       requestId: null,
@@ -363,9 +425,12 @@ describe("pedido do Comprador, com designer da Wellmix e parceiros", () => {
     await f.submitStep(buyer, order.id, "cert_memorial", {
       documentId: memorial.id,
     });
-    const rows = await rowsOf(buyer, order);
-    expect(rows.ORDER_CREATED).toBeUndefined();
-    expect(Object.keys(rows)).toEqual(["PREPARATION"]);
+    expect((await rowsOf(buyer, order)).ORDER_CREATED).toEqual({
+      open: [],
+      later: [],
+      parts: ["certification"],
+      progress: { status: "pending", percent: 50, done: 1, total: 2 },
+    });
   });
 });
 
@@ -392,11 +457,18 @@ describe("pedido do Administrador, sem parceiros (como os de produção)", () =>
     expect(await rowsOf(otherBuyer, order)).toEqual({});
   });
 
-  it("sem agência, a arte fica com a função Designer quando liberada; o Cadastro, com NCM e ficha mestre", async () => {
-    expect(await rowsOf(designer, order)).toEqual({});
+  it("sem agência, a arte é da função Designer: em cinza até a faca e a foto, depois liberada", async () => {
+    expect((await rowsOf(designer, order)).PREPARATION).toMatchObject({
+      open: [],
+      later: ["art", "art_final"],
+    });
     await submit(supplierA, order, "die_cut");
     await submit(supplierA, order, "hd_photo");
-    expect((await rowsOf(designer, order)).PREPARATION?.open).toEqual(["art"]);
+    expect((await rowsOf(designer, order)).PREPARATION).toMatchObject({
+      open: ["art"],
+      later: ["art_final"],
+      progress: { status: "active" },
+    });
     // O certificado, sem certificadora, é da Wellmix: do responsável interno.
     expect((await rowsOf(catalog, order)).PREPARATION.open).toEqual([
       "ncm_validated",
@@ -441,25 +513,44 @@ describe("contagem da etapa", () => {
   it("as assinaturas do documento do pedido contam uma vez, na etapa", () => {
     const row = tl.myStageRow(
       {
-        stages: new Map([["s1", { open: [sign], done: 1 }]]),
-        parts: { document: { open: 1, done: 0, mirror: true } },
+        stages: new Map([["s1", { open: [sign], later: [], done: 1 }]]),
+        parts: { document: { open: 1, later: 0, done: 0, mirror: true } },
       },
       stage,
       ["document", "production"],
     );
     expect(row).toEqual({
       open: [sign],
+      later: [],
       parts: ["document"],
       progress: { status: "active", percent: 50, done: 1, total: 2 },
     });
   });
 
-  it("sem tarefa aberta do login, a etapa sai da lista, mesmo com feitas", () => {
+  it("só com tarefa que vem depois, a etapa aparece pendente (em cinza)", () => {
     expect(
       tl.myStageRow(
         {
-          stages: new Map([["s1", { open: [], done: 3 }]]),
-          parts: { production: { open: 0, done: 2 } },
+          stages: new Map([["s1", { open: [], later: [sign], done: 1 }]]),
+          parts: {},
+        },
+        { id: "s1", status: "pending" },
+        [],
+      ),
+    ).toEqual({
+      open: [],
+      later: [sign],
+      parts: [],
+      progress: { status: "pending", percent: 50, done: 1, total: 2 },
+    });
+  });
+
+  it("sem tarefa do login (nem a fazer, nem depois), a etapa sai da lista, mesmo com feitas", () => {
+    expect(
+      tl.myStageRow(
+        {
+          stages: new Map([["s1", { open: [], later: [], done: 3 }]]),
+          parts: { production: { open: 0, later: 0, done: 2 } },
         },
         stage,
         ["production"],
@@ -470,7 +561,10 @@ describe("contagem da etapa", () => {
   it("etapa travada com tarefa do login aparece travada", () => {
     expect(
       tl.myStageRow(
-        { stages: new Map([["s1", { open: [sign], done: 0 }]]), parts: {} },
+        {
+          stages: new Map([["s1", { open: [sign], later: [], done: 0 }]]),
+          parts: {},
+        },
         { id: "s1", status: "blocked" },
         [],
       )?.progress.status,
