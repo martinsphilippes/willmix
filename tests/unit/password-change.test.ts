@@ -17,7 +17,7 @@ const { seedDemo } = await import("@/lib/seed");
 const { verifyPassword } = await import("@/lib/auth/password");
 const { newPasswordError } = await import("@/lib/password-rules");
 const { createPortalLogin } = await import("@/lib/services/portal-access");
-const { changeOwnPassword, PasswordChangeError } =
+const { changeOwnPassword, PasswordChangeError, skipPasswordChange } =
   await import("@/lib/services/password-change");
 type User = import("@/lib/db").User;
 
@@ -102,5 +102,37 @@ describe("primeiro acesso com senha provisória", () => {
   it("login comum não nasce com a marca e troca a senha quando quiser", async () => {
     const before = await getStore().get("users", admin.id);
     expect(before!.mustChangePassword ?? false).toBe(false);
+  });
+});
+
+describe("primeiro acesso: seguir sem trocar a senha (dono, 14/11/2026)", () => {
+  it("a marca some, a senha provisória continua valendo e fica na auditoria", async () => {
+    const login = await createPortalLogin(admin, {
+      partyId: null,
+      email: "designer.teste@wellmix.com",
+      name: "Designer Teste",
+      role: "operator",
+      locale: "pt",
+      password: "provisoria-1",
+      mustChangePassword: true,
+    });
+    expect(login.mustChangePassword).toBe(true);
+
+    await skipPasswordChange(login);
+    const stored = await getStore().get("users", login.id);
+    expect(stored!.mustChangePassword).toBe(false);
+    // A senha não muda: entra com a provisória e troca quando quiser.
+    expect(verifyPassword("provisoria-1", stored!.passwordHash)).toBe(true);
+    const skipped = (
+      await getStore().list("audit_log", { filter: { entityId: login.id } })
+    ).filter((a) => a.action === "user.password_change_skipped");
+    expect(skipped).toHaveLength(1);
+
+    // Sem a marca, seguir de novo não faz nada (nem nova auditoria).
+    await skipPasswordChange(stored!);
+    const again = (
+      await getStore().list("audit_log", { filter: { entityId: login.id } })
+    ).filter((a) => a.action === "user.password_change_skipped");
+    expect(again).toHaveLength(1);
   });
 });

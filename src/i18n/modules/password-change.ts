@@ -7,7 +7,10 @@ export const pt = {
   "password.hint": "Informe a senha atual e escolha a nova.",
   "password.first.title": "Primeiro acesso: escolha a sua senha",
   "password.first.hint":
-    "Este login foi criado com uma senha provisória. Antes de usar o portal, troque por uma senha só sua.",
+    "Este login foi criado com uma senha provisória. Recomendamos trocar por uma senha só sua; se preferir, siga sem trocar.",
+  "password.first.skip": "Continuar sem trocar a senha",
+  "password.first.skipHint":
+    "Dá para trocar depois, no menu da sua conta (Trocar senha).",
   "password.current": "Senha atual",
   "password.current.first": "Senha provisória (a que você recebeu)",
   "password.next": "Senha nova",
@@ -33,7 +36,10 @@ export const en: Record<keyof typeof pt, string> = {
   "password.hint": "Enter your current password and choose the new one.",
   "password.first.title": "First access: choose your password",
   "password.first.hint":
-    "This login was created with a temporary password. Before using the portal, replace it with a password of your own.",
+    "This login was created with a temporary password. We recommend replacing it with a password of your own; if you prefer, continue without changing it.",
+  "password.first.skip": "Continue without changing the password",
+  "password.first.skipHint":
+    "You can change it later from your account menu (Change password).",
   "password.current": "Current password",
   "password.current.first": "Temporary password (the one you received)",
   "password.next": "New password",
@@ -59,7 +65,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "password.hint": "请输入当前密码并设置新密码。",
   "password.first.title": "首次登录：请设置您的密码",
   "password.first.hint":
-    "此账号使用临时密码创建。使用平台之前，请改为您自己的密码。",
+    "此账号使用临时密码创建。建议修改为您自己的密码；也可以不修改，直接继续。",
+  "password.first.skip": "不修改密码，继续",
+  "password.first.skipHint": "之后可在账户菜单（修改密码）中修改。",
   "password.current": "当前密码",
   "password.current.first": "临时密码（您收到的那个）",
   "password.next": "新密码",
