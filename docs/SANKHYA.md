@@ -134,6 +134,7 @@ O que a carga guarda para não perder vínculos:
 - Link: `/produto/{CODPROD}.jpg` (IMAGEM), `/produto/{CODPROD}-mini.jpg` (miniatura), `-arte800`, `-china`, `-arte`, `-balanca` (e `-mini` no fim de cada um). Exige sessão; leva a `/api/files`, que confere o acesso.
 - Atualização: o job diário (`/api/jobs/reminders`) recomeça a passada quando a anterior terminou há mais de 20 h e põe na fila do servidor, com a pessoa que ligou a fila da última vez (admin ativo).
 - Carga inicial: ~11,2 mil produtos ativos com foto. Na fila do servidor (rodadas de ~30 s a cada 30 s), algumas horas.
+- Erro do gateway numa foto (HTTP 5xx ou conexão caída; em 14/11/2026 uma foto logo depois do CODPROD 53 dava HTTP 500 toda vez e parava a fila): uma nova tentativa depois de 1 s; falhou de novo, a foto é pulada ("pulado por erro"), o produto guarda a versão anterior (a próxima passada tenta de novo) e a tela lista "CODPROD COLUNA: erro" (as 100 mais recentes, também nos logs `[sankhya-images]`). Erro de permissão ou de SQL continua parando a rodada. O erro da fila na tela traz o status e o texto do Sankhya, não só o código.
 - Permissão: o usuário da integração precisa de acesso ao `DbExplorerSP`; erro de permissão aparece na tela (erro da fila) com o texto do Sankhya, e aí é avisar o técnico.
 
 **Histórico de pedidos**: TGFCAB das TOPs de importação por faixa de NUNOTA, em lotes de 3 a 10 notas (cada uma vira solicitação, pedido, itens, etapas e títulos, como na amostra). Já carregada = pulada.

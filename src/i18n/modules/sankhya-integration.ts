@@ -149,6 +149,9 @@ export const pt = {
   "sankhyaLoad.import.outcome.linked": "vinculado",
   "sankhyaLoad.import.outcome.existing": "já existia",
   "sankhyaLoad.import.outcome.skipped": "ignorado",
+  "sankhyaLoad.import.outcome.failed": "pulado por erro",
+  "sankhyaLoad.full.failed":
+    "{n} fotos puladas por erro do Sankhya (a próxima passada tenta de novo)",
   "sankhyaLoad.import.entity.productGroups": "Linha de produto",
   "sankhyaLoad.import.entity.products": "Produto",
   "sankhyaLoad.import.entity.partners": "Fornecedor",
@@ -463,6 +466,9 @@ export const en: Record<keyof typeof pt, string> = {
   "sankhyaLoad.import.outcome.linked": "linked",
   "sankhyaLoad.import.outcome.existing": "already existed",
   "sankhyaLoad.import.outcome.skipped": "skipped",
+  "sankhyaLoad.import.outcome.failed": "skipped after error",
+  "sankhyaLoad.full.failed":
+    "{n} photos skipped after a Sankhya error (the next pass retries them)",
   "sankhyaLoad.import.entity.productGroups": "Product line",
   "sankhyaLoad.import.entity.products": "Product",
   "sankhyaLoad.import.entity.partners": "Supplier",
@@ -772,6 +778,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "sankhyaLoad.import.outcome.linked": "已关联",
   "sankhyaLoad.import.outcome.existing": "已存在",
   "sankhyaLoad.import.outcome.skipped": "已跳过",
+  "sankhyaLoad.import.outcome.failed": "因错误跳过",
+  "sankhyaLoad.full.failed": "{n} 张照片因 Sankhya 错误被跳过（下一轮会重试）",
   "sankhyaLoad.import.entity.productGroups": "产品线",
   "sankhyaLoad.import.entity.products": "产品",
   "sankhyaLoad.import.entity.partners": "供应商",
