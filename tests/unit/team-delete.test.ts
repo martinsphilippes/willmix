@@ -38,11 +38,14 @@ const session = await import("@/lib/auth/session");
 const { createPortalLogin } = await import("@/lib/services/portal-access");
 const { audit } = await import("@/lib/services/audit");
 const { removeTeamMemberAction } = await import("@/app/app/actions/team");
+const requests = await import("@/lib/services/requests");
+const { orderFromRequest } = await import("./helpers/order");
 type User = import("@/lib/db").User;
 
 const PASSWORD = "senha-forte-1";
 let admin: User;
 let operator: User;
+let joao: User;
 
 const code = async (fn: () => Promise<unknown>) => {
   try {
@@ -73,10 +76,14 @@ async function signInAs(email: string, password = PASSWORD) {
   await session.signIn(email, password);
 }
 
-/** Aperta "Excluir acesso" e devolve para onde a tela foi. */
-async function deleteVia(userId: string) {
+/** Aperta "Excluir acesso" (com as caixas marcadas) e devolve o destino. */
+async function deleteVia(
+  userId: string,
+  checked: Array<"moveReports" | "redistribute"> = [],
+) {
   const form = new FormData();
   form.set("userId", userId);
+  for (const name of checked) form.set(name, "on");
   redirects.length = 0;
   await removeTeamMemberAction(form).catch((error: Error) => {
     if (!error.message.startsWith("REDIRECT")) throw error;
@@ -93,6 +100,7 @@ beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   operator = users.find((u) => u.email === "operador@wellmix.com")!;
+  joao = users.find((u) => u.email === "joao@lojista.com")!;
 });
 
 describe("Excluir acesso", () => {
@@ -290,5 +298,212 @@ describe("Excluir acesso", () => {
     );
     expect((await getStore().get("users", other.id))?.active).toBe(true);
     expect(await deletions(other.id)).toHaveLength(0);
+  });
+});
+
+/*
+ * Opções da confirmação (pedido do dono, 14/11/2026): quem respondia à pessoa
+ * passa para o chefe dela; as pendências abertas dela vão para a divisão da
+ * linha de cada produto, como "Distribuir agora", só as dela.
+ */
+describe("Excluir acesso: opções da confirmação", () => {
+  const store = () => getStore();
+  const reload = async (u: { id: string }) =>
+    (await store().get("users", u.id))!;
+  const place = (
+    u: User,
+    managerUserId: string | null,
+    division: "wellmix" | null = null,
+  ) =>
+    team.setTeamMember(admin, u.id, {
+      jobLevel: division ? "analyst" : null,
+      managerUserId,
+      division,
+    });
+  /** Solicitação aberta (do catálogo ou não) que está com `owner`. */
+  async function openRequest(
+    name: string,
+    owner: User,
+    productId: string | null,
+  ) {
+    const created = await requests.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId,
+      productName: name,
+      description: name,
+      specification: null,
+      quantity: 1000,
+      unit: "un",
+      deadline: null,
+      notes: null,
+    });
+    return store().update("requests", created.id, { ownerUserId: owner.id });
+  }
+
+  it("passa quem respondia a ela para o chefe dela, com a Auditoria", async () => {
+    const boss = await newLogin("Irene Gerente", "irene@wellmix.com");
+    const target = await newLogin("Joana Coordenadora", "joana@wellmix.com");
+    const r1 = await newLogin("Kauã Analista", "kaua@wellmix.com");
+    const r2 = await newLogin("Lia Analista", "lia@wellmix.com");
+    await place(target, boss.id);
+    await place(r1, target.id, "wellmix");
+    await place(r2, target.id, "wellmix");
+
+    const before = await team.teamMemberRemoval(
+      await reload(target),
+      await team.wellmixTeam(),
+    );
+    expect(before).toMatchObject({
+      reports: 2,
+      moveTo: { id: boss.id, name: "Irene Gerente" },
+    });
+
+    const done = await team.removeTeamMember(admin, target.id, {
+      moveReports: true,
+    });
+    expect(done).toMatchObject({ moved: 2, redistributed: 0, unassigned: 0 });
+    expect(done.movedTo?.id).toBe(boss.id);
+    for (const r of [r1, r2])
+      // Só o chefe muda: cargo e divisão ficam.
+      expect(await reload(r)).toMatchObject({
+        managerUserId: boss.id,
+        jobLevel: "analyst",
+        division: "wellmix",
+        active: true,
+      });
+    const [moved] = (
+      await store().list("audit_log", {
+        filter: { entityId: r1.id, action: "team.member" },
+        orderBy: "createdAt",
+        direction: "desc",
+        limit: 1,
+      })
+    ).filter((a) => a.userId === admin.id);
+    expect(moved.before).toMatchObject({ managerUserId: target.id });
+    expect(moved.after).toMatchObject({ managerUserId: boss.id });
+  });
+
+  it("sem chefe ativo, quem respondia a ela fica como estava", async () => {
+    const target = await newLogin("Marta Sem Chefe", "marta@wellmix.com");
+    const report = await newLogin("Nuno Analista", "nuno@wellmix.com");
+    await place(report, target.id);
+    expect(
+      (
+        await team.teamMemberRemoval(
+          await reload(target),
+          await team.wellmixTeam(),
+        )
+      ).moveTo,
+    ).toBeNull();
+    const done = await team.removeTeamMember(admin, target.id, {
+      moveReports: true,
+    });
+    expect(done.moved).toBe(0);
+    expect((await reload(report)).managerUserId).toBe(target.id);
+  });
+
+  it("redistribui só as pendências dela; sem para quem ir, conta e deixa", async () => {
+    await team.setLineDivision(admin, "linha-utilidades", "wellmix");
+    const analyst = await newLogin("Olga Analista", "olga@wellmix.com");
+    await place(analyst, null, "wellmix");
+    const target = await newLogin("Paula Compras", "paula@wellmix.com");
+    const gone = await newLogin("Quim Antigo", "quim@wellmix.com");
+
+    const jar1 = await openRequest("Jarra da Paula", target, "prod-jarra");
+    const loose = await openRequest("Fora do catálogo", target, null);
+    const ordered = await openRequest("Jarra pedida", target, "prod-jarra");
+    const order = await orderFromRequest(admin, ordered);
+    expect(order.ownerUserId).toBe(target.id);
+    // De outro login que já saiu: fica para "Distribuir agora".
+    const others = await openRequest("Jarra do Quim", gone, "prod-jarra");
+    await store().update("users", gone.id, { active: false });
+
+    const wellmix = async () =>
+      new Set(
+        (await team.wellmixTeam())
+          .filter((u) => u.division === "wellmix")
+          .map((u) => u.id),
+      );
+    // A jarra, a fora do catálogo e o pedido (a solicitação pedida já fechou).
+    expect(
+      (
+        await team.teamMemberRemoval(
+          await reload(target),
+          await team.wellmixTeam(),
+        )
+      ).openWork,
+    ).toBe(3);
+
+    const done = await team.removeTeamMember(admin, target.id, {
+      redistribute: true,
+    });
+    expect(done).toMatchObject({ redistributed: 2, unassigned: 1, moved: 0 });
+    const division = await wellmix();
+    expect(division.has(analyst.id)).toBe(true);
+    expect(
+      division.has((await store().get("requests", jar1.id))!.ownerUserId!),
+    ).toBe(true);
+    expect(
+      division.has((await store().get("orders", order.id))!.ownerUserId!),
+    ).toBe(true);
+    // Sem divisão para o produto: continua com ela (sem responsável).
+    expect((await store().get("requests", loose.id))!.ownerUserId).toBe(
+      target.id,
+    );
+    // A de outro login não é mexida nesta passada.
+    expect((await store().get("requests", others.id))!.ownerUserId).toBe(
+      gone.id,
+    );
+    const [log] = await store().list("audit_log", {
+      filter: { action: "team.distribute" },
+      orderBy: "createdAt",
+      direction: "desc",
+      limit: 1,
+    });
+    expect(log.summary).toContain("Paula Compras");
+  });
+
+  it("se a passagem falhar, a exclusão fica e a tela diz o que conferir", async () => {
+    const target = await newLogin("Rita Compras", "rita@wellmix.com");
+    const s = store();
+    const original = s.list.bind(s) as (
+      table: string,
+      options?: unknown,
+    ) => Promise<unknown>;
+    const spy = vi.spyOn(s, "list").mockImplementation((async (
+      table: string,
+      options?: unknown,
+    ) => {
+      if (table === "orders") throw new Error("banco fora do ar");
+      return original(table, options);
+    }) as never);
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(
+        await code(() =>
+          team.removeTeamMember(admin, target.id, { redistribute: true }),
+        ),
+      ).toBe("delete_followup");
+    } finally {
+      spy.mockRestore();
+      quiet.mockRestore();
+    }
+    expect((await reload(target)).active).toBe(false);
+    expect(await deletions(target.id)).toHaveLength(1);
+  });
+
+  it("a tela leva o resumo para a lista", async () => {
+    const boss = await newLogin("Sara Gerente", "sara@wellmix.com");
+    const target = await newLogin("Téo Compras", "teo@wellmix.com");
+    const report = await newLogin("Ugo Analista", "ugo@wellmix.com");
+    await place(target, boss.id);
+    await place(report, target.id);
+    await openRequest("Fora do catálogo do Téo", target, null);
+
+    await signInAs("admin@wellmix.com", DEMO_PASSWORD);
+    expect(await deleteVia(target.id, ["moveReports", "redistribute"])).toBe(
+      `/app/team?saved=deleted&reports=1&to=${boss.id}&left=1`,
+    );
+    expect((await reload(report)).managerUserId).toBe(boss.id);
   });
 });
