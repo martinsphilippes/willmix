@@ -220,6 +220,35 @@ export const IMPORT_STEPS: StepTemplate[] = [
    * carregamento com o check de carga, o lacre com o número do container e a
    * volta ao porto. O Comex interno acompanha o rastreio todo dia.
    */
+  // Compra EXW (mapa R17 e R18): antes do container na fábrica, a trading
+  // contrata a transportadora e registra os custos de origem (POP).
+  {
+    key: "origin_carrier",
+    actor: "supplier",
+    validator: null,
+    input: "text",
+    visibleTo: ["supplier", "logistics", "comex"],
+    after: "booking",
+    group: "origin",
+  },
+  {
+    key: "origin_carrier_eta",
+    actor: "supplier",
+    validator: null,
+    input: "date",
+    visibleTo: ["supplier", "logistics", "comex"],
+    after: "origin_carrier",
+    group: "origin",
+  },
+  {
+    key: "origin_costs",
+    actor: "supplier",
+    validator: "wellmix",
+    input: "money_file",
+    visibleTo: ["supplier"],
+    after: "origin_carrier_eta",
+    group: "origin",
+  },
   {
     key: "container_at_factory",
     actor: "supplier",
@@ -390,6 +419,7 @@ const PURCHASE_HIDDEN_STEPS: readonly ImportStepKey[] = [
 /** O passo vale para o pedido (container na origem só no de compra; papéis antigos fora dele). */
 export function stepApplies(order: Order, key: ImportStepKey): boolean {
   const purchase = isPurchaseFlow(order);
+  if (EXW_STEPS.includes(key)) return isExwOrder(order);
   if (groupOf(stepTemplate(key)) === "origin") return purchase;
   return !(purchase && PURCHASE_HIDDEN_STEPS.includes(key));
 }
@@ -535,9 +565,30 @@ const isDone = (step: ImportStep | undefined) => {
 /** Passo concluído: validado (se tem quem valide) ou enviado. Control Tower usa. */
 export const importStepDone = isDone;
 
+/** Compra EXW: pedido de compra com algum produto EXW (dono, 14/11/2026). */
+export const isExwOrder = (order: Pick<Order, "flow" | "incoterm">) =>
+  isPurchaseFlow(order as Order) && order.incoterm === "EXW";
+
+/** Passos só da compra EXW (transportadora e custos de origem). */
+const EXW_STEPS: readonly ImportStepKey[] = [
+  "origin_carrier",
+  "origin_carrier_eta",
+  "origin_costs",
+];
+
+/**
+ * Passo anterior: o do modelo; na compra EXW, o container só chega à fábrica
+ * depois dos custos de origem validados (mapa R17? → R17 → R18 → R19).
+ */
+function afterOf(key: ImportStepKey, order?: Order): ImportStepKey | undefined {
+  if (key === "container_at_factory" && order && isExwOrder(order))
+    return "origin_costs";
+  return stepTemplate(key).after;
+}
+
 /** O passo já pode ser feito (o anterior concluído)? */
-function ready(key: ImportStepKey, steps: ImportStep[]) {
-  const after = stepTemplate(key).after;
+function ready(key: ImportStepKey, steps: ImportStep[], order?: Order) {
+  const after = afterOf(key, order);
   return !after || isDone(steps.find((s) => s.key === after));
 }
 
@@ -677,8 +728,13 @@ export async function submitStep(
   if (!(await canSubmitStep(user, order, key))) throw new ForbiddenError();
   const store = getStore();
   const steps = await stepsOf(orderId);
-  if (!ready(key, steps)) throw new ImportFlowError("previous_step");
+  if (!ready(key, steps, order)) throw new ImportFlowError("previous_step");
   await assertSampleGates(order, key, steps);
+  // Pedido de compra de antes, sem incoterm: o booking decide pelos produtos.
+  if (key === "booking" && isPurchaseFlow(order) && !order.incoterm) {
+    const { syncPurchaseIncoterm } = await import("./purchase-order");
+    await syncPurchaseIncoterm(order.id);
+  }
   const current = steps.find((s) => s.key === key);
   if (current && tpl.validator && current.status === "validated")
     throw new ImportFlowError("already_validated");
@@ -1168,10 +1224,12 @@ export async function importFlowView(
       // Pedido de compra: o BL vem conferido dos documentos do embarque (sem
       // o draft do agente antes dele, e ninguém envia por aqui).
       const purchaseBl = tpl.key === "bl" && isPurchaseFlow(order);
-      const isReady = purchaseBl || ready(tpl.key, steps);
+      const isReady = purchaseBl || ready(tpl.key, steps, order);
       const done = isDone(step ?? undefined);
       return {
-        template: purchaseBl ? { ...tpl, after: undefined } : tpl,
+        template: purchaseBl
+          ? { ...tpl, after: undefined }
+          : { ...tpl, after: afterOf(tpl.key, order) },
         step,
         ready: isReady,
         done,
@@ -1401,7 +1459,7 @@ export async function importTasks(
         (tpl.key === "container_tracking" &&
           TRACKING_LIVE.includes(order.status) &&
           (step.submittedAt ?? "").slice(0, 10) < todayInBrazil());
-      if (!todo || !ready(tpl.key, steps)) continue;
+      if (!todo || !ready(tpl.key, steps, order)) continue;
       // Pedido de compra: o BL vem conferido dos documentos do embarque.
       if (tpl.key === "bl" && isPurchaseFlow(order)) continue;
       if (!actsAs(user, order, tpl.actor)) continue;
@@ -1548,7 +1606,7 @@ export function wellmixImportCandidates(
       TRACKING_LIVE.includes(order.status);
     if (
       (always || tracking) &&
-      ready(tpl.key, steps) &&
+      ready(tpl.key, steps, order) &&
       // Pedido de compra: o BL vem conferido dos documentos do embarque.
       !(tpl.key === "bl" && isPurchaseFlow(order)) &&
       (tpl.actor === "agency" || WELLMIX_DOES.includes(tpl.actor))

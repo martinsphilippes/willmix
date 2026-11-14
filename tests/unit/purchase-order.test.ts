@@ -1417,6 +1417,120 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     });
   });
 
+  it("compra EXW: transportadora e custos de origem validados antes do container na fábrica; custo entra no pedido", async () => {
+    const store = getStore();
+    const flow = await import("@/lib/services/import-flow");
+    const po2 = await import("@/lib/services/purchase-order");
+    const { computeOrderFinance } = await import("@/lib/services/finance");
+    const { order, items } = await signedPurchaseOrder(["EX-1", "EX-2"]);
+    // Incoterm pelos produtos: algum EXW, o pedido é EXW.
+    const [master] = await store.list("purchase_sheets", {
+      filter: { orderId: items[0].productId!, productId: items[0].productId! },
+    });
+    if (master) {
+      await store.update("purchase_sheets", master.id, { incoterm: "EXW" });
+      expect(await po2.incotermFromProducts(order.id)).toBe("EXW");
+    }
+    await po2.setPurchaseIncoterm(admin, order.id, "EXW");
+    await expect(
+      po2.setPurchaseIncoterm(supplierA, order.id, "FOB"),
+    ).rejects.toThrow();
+    let fresh = (await store.get("orders", order.id))!;
+    expect(fresh.incoterm).toBe("EXW");
+    const keys = async () =>
+      (await flow.importFlowView(admin, fresh, "origin")).map(
+        (s) => s.template.key,
+      );
+    expect((await keys()).slice(0, 4)).toEqual([
+      "origin_carrier",
+      "origin_carrier_eta",
+      "origin_costs",
+      "container_at_factory",
+    ]);
+    const ops = await store.create("users", {
+      email: "comex.exw@wellmix.com",
+      name: "Edu Comex",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      passwordHash: "x",
+      active: true,
+      importerId: null,
+      functions: ["comex_internal"],
+      screens: null,
+      mustChangePassword: false,
+    } as never);
+    await flow.submitStep(admin, order.id, "booking", { value: "BK-EXW" });
+    await flow.validateStep(ops, order.id, "booking", "validated", null);
+    // O container só chega à fábrica depois dos custos de origem validados.
+    await expect(
+      flow.submitStep(supplierA, order.id, "container_at_factory", {
+        value: "2027-01-12",
+      }),
+    ).rejects.toThrow("previous_step");
+    await flow.submitStep(supplierA, order.id, "origin_carrier", {
+      value: "Ningbo Trucking",
+    });
+    await flow.submitStep(supplierA, order.id, "origin_carrier_eta", {
+      value: "2027-01-10",
+    });
+    await flow.submitStep(supplierA, order.id, "origin_costs", {
+      amount: 350,
+      currency: "USD",
+      documentId: (
+        await uploadDocument(supplierA, pdf("pop.pdf"), {
+          orderId: order.id,
+          type: "import_step",
+        })
+      ).id,
+    });
+    await expect(
+      flow.submitStep(supplierA, order.id, "container_at_factory", {
+        value: "2027-01-12",
+      }),
+    ).rejects.toThrow("previous_step");
+    await flow.validateStep(ops, order.id, "origin_costs", "validated", null);
+    await flow.submitStep(supplierA, order.id, "container_at_factory", {
+      value: "2027-01-12",
+    });
+    // FOB: os passos da compra EXW não aparecem.
+    await po2.setPurchaseIncoterm(admin, order.id, "FOB");
+    fresh = (await store.get("orders", order.id))!;
+    expect(await keys()).not.toContain("origin_costs");
+    // Custo do pedido com os custos de origem (na moeda da venda; em outra
+    // moeda sem câmbio do dia, o custo fica pendente).
+    const base = {
+      ...fresh,
+      status: "SHIPPING" as const,
+      fobTotal: 1000,
+      fobCurrency: "BRL",
+      sellPrice: 3000,
+      sellCurrency: "BRL",
+    };
+    const names = { customer: "c", supplier: "s", product: "p" };
+    const brl = computeOrderFinance(base, [], names, {
+      originCosts: [{ amount: 200, currency: "BRL" }],
+    });
+    expect([brl.cost, brl.originCost, brl.margin]).toEqual([1200, 200, 1800]);
+    const usd = computeOrderFinance(base, [], names, {
+      originCosts: [{ amount: 50, currency: "USD" }],
+    });
+    expect([usd.cost, usd.originCost]).toEqual([null, null]);
+    const withFx = computeOrderFinance(base, [], names, {
+      today: {
+        rates: { USD: 5 },
+        status: "ok",
+        day: "2026-11-14",
+      } as never,
+      originCosts: [{ amount: 50, currency: "USD" }],
+    });
+    expect([withFx.cost, withFx.originCost, withFx.estimated]).toEqual([
+      1250,
+      250,
+      true,
+    ]);
+  });
+
   it("prazo de cada passo conta da liberação do anterior", async () => {
     const lanes = await import("@/lib/purchase-lanes");
     const sla = {
