@@ -17,11 +17,10 @@ import {
 } from "@/lib/services/flow";
 import { FlowAll } from "@/components/flow-all";
 import { isWellmix } from "@/lib/auth/permissions";
-import { partnerStepsOf, stepId } from "@/lib/flow";
+import { TABLE_ONLY_STEPS, partnerStepsOf, stepId } from "@/lib/flow";
 import { FlowCases } from "@/components/flow-cases";
 import { FlowStepWork } from "@/components/flow-step-work";
 import {
-  FlowArtworkWork,
   FlowFreightWork,
   FlowProductionWork,
   FlowReceivingWork,
@@ -66,7 +65,6 @@ export default async function FlowStepPage({
     importStep,
     certStep,
     production,
-    artwork,
     receiving,
     freight,
     freightN,
@@ -140,7 +138,10 @@ export default async function FlowStepPage({
         <FlowAll step={step} entities={entities} t={t} partner={!wellmix} />
       </div>
     );
-  // Aviso de "feito" das ações da produção e da arte (os cartões leem o seu).
+  // Passo só com a tabela (Arte, dono, 14/11/2026): sem os cartões dos
+  // pedidos embaixo; o Resolver de cada linha abre a tarefa no pedido.
+  const tableOnly = TABLE_ONLY_STEPS.includes(stepId(step));
+  // Aviso de "feito" das ações da produção e do recebimento (os cartões leem o seu).
   const productionNotice =
     typeof production === "string" &&
     ["saved", "followup", "scheduled", "inspected", "fixed"].includes(
@@ -152,11 +153,6 @@ export default async function FlowStepPage({
     typeof receiving === "string" &&
     ["saved", "counted", "ric", "returned", "closed"].includes(receiving)
       ? t(`receiving.done.${receiving}` as DictionaryKey)
-      : null;
-  const artworkNotice =
-    typeof artwork === "string" &&
-    ["designer", "reported", "fixed", "accepted", "reopened"].includes(artwork)
-      ? t(`artwork.done.${artwork}` as DictionaryKey)
       : null;
   return (
     <div data-flow-step={`${block}/${key}`}>
@@ -209,7 +205,9 @@ export default async function FlowStepPage({
         </div>
       ) : null}
       <FlowCases step={step} tasks={tasks} t={t} />
-      <FlowRequirementWork user={user} step={step} tasks={all} t={t} />
+      {tableOnly ? null : (
+        <FlowRequirementWork user={user} step={step} tasks={all} t={t} />
+      )}
       {step.block === "production" &&
       (step.key === "production" ||
         step.key === "inspection" ||
@@ -245,22 +243,15 @@ export default async function FlowStepPage({
           notice={receivingNotice}
         />
       ) : null}
-      {step.block === "order" && step.key === "art" ? (
-        <FlowArtworkWork
+      {tableOnly ? null : (
+        <FlowStepWork
           user={user}
           step={step}
           tasks={all}
           t={t}
-          notice={artworkNotice}
+          notice={done ? t(`importFlow.done.${done}` as DictionaryKey) : null}
         />
-      ) : null}
-      <FlowStepWork
-        user={user}
-        step={step}
-        tasks={all}
-        t={t}
-        notice={done ? t(`importFlow.done.${done}` as DictionaryKey) : null}
-      />
+      )}
     </div>
   );
 }

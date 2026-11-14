@@ -26,6 +26,7 @@ import {
   supplierRequestSlaDue,
 } from "@/lib/supplier-requests";
 import {
+  casesInStep,
   countByStep,
   flowStepsOf,
   stepId,
@@ -194,15 +195,15 @@ export async function flowCountsFor(
   return countByStep(await flowCasesFor(user));
 }
 
-/** Os casos de um passo, das atrasadas às sem prazo (a ordem das Pendências). */
+/**
+ * Os casos de um passo, das atrasadas às sem prazo (a ordem das Pendências);
+ * no passo Arte, um por produto (a mesma conta do menu).
+ */
 export async function flowCasesOf(
   user: User,
   step: FlowStep,
 ): Promise<FlowCase[]> {
-  const id = stepId(step);
-  return (await flowCasesFor(user)).filter((t) =>
-    flowStepsOf(t).some((x) => stepId(x) === id),
-  );
+  return casesInStep(step, await flowCasesFor(user));
 }
 
 export interface FlowStepSummary {
@@ -228,10 +229,7 @@ export async function flowBlockSummary(
   return stepsOf(block)
     .filter((step) => !step.badgeOnly)
     .map((step) => {
-      const id = stepId(step);
-      const mine = tasks.filter((t) =>
-        flowStepsOf(t).some((x) => stepId(x) === id),
-      );
+      const mine = casesInStep(step, tasks);
       const ages = mine
         .map((t) => (t.sinceAt ? Date.parse(t.sinceAt) : NaN))
         .filter((ms) => Number.isFinite(ms))

@@ -32,6 +32,7 @@ export function RequirementForm({
   defaultValue,
   dateBounds,
   returnTo,
+  focus = false,
 }: {
   requirement: Requirement;
   orderId: string;
@@ -46,12 +47,23 @@ export function RequirementForm({
    * não para o pedido.
    */
   returnTo?: string;
+  /**
+   * Tarefa aberta pelo Resolver (?focus=, detalhe do pedido): o envio volta
+   * para ela, em destaque, e não para o topo da etapa.
+   */
+  focus?: boolean;
 }) {
+  // Tarefa em foco: vai em todo formulário (o envio volta para a linha dela).
+  const focusBack = focus ? (
+    <input type="hidden" name="focus" value={requirement.key} />
+  ) : null;
   // Tela do passo: vai em todo formulário (o Die Cut só usa foto e arquivo).
   const flowBack =
     returnTo && returnTo.startsWith("/app/flow/") ? (
       <input type="hidden" name="returnTo" value={returnTo} />
-    ) : null;
+    ) : (
+      focusBack
+    );
   if (requirement.type === "approval") {
     return (
       <form
@@ -87,7 +99,9 @@ export function RequirementForm({
         <input type="hidden" name="requirementId" value={requirement.id} />
         {returnTo ? (
           <input type="hidden" name="returnTo" value={returnTo} />
-        ) : null}
+        ) : (
+          focusBack
+        )}
       </>
     );
     // Requisito de arquivo: os dois botões ocupam a largura no celular.

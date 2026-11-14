@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   FLOW_STEPS,
+  REQUIREMENT_FOCUS,
   caseHref,
+  casesInStep,
   countByStep,
   flowStepOfImportKey,
   flowStepsOf,
@@ -117,7 +119,11 @@ describe("passos do menu", () => {
       "/app/orders/o1/die-cut",
     );
     // O resto: o pedido na tela do passo (a visão é do passo).
-    expect(caseHref(of("order/art"), task)).toBe("/app/flow/order/art/o1");
+    expect(caseHref(of("production/inspection"), task)).toBe(
+      "/app/flow/production/inspection/o1",
+    );
+    // Arte (dono, 14/11/2026): o detalhe do pedido (sem item, sem foco).
+    expect(caseHref(of("order/art"), task)).toBe("/app/orders/o1");
     // Telas focadas do pedido seguem diretas.
     expect(
       caseHref(of("production/cargo-docs"), {
@@ -187,6 +193,107 @@ describe("resolver na tela do passo", () => {
       { label: "lane.input.certificate", documentId: "d-cert" },
     ]);
     expect(laneInputKeys("art__i1", reqs)).toEqual([]);
+  });
+});
+
+describe("tela Arte: só a tabela, uma linha por produto (dono, 14/11/2026)", () => {
+  const art = FLOW_STEPS.find((s) => stepId(s) === "order/art")!;
+  const cert = FLOW_STEPS.find((s) => stepId(s) === "order/certification")!;
+  // Pedido com dois produtos: a arte de um, a validação do outro e o
+  // certificado do primeiro na mesma pendência da Preparação.
+  const twoProducts = {
+    kind: "requirement",
+    stageKey: "PREPARATION",
+    link: "/app/orders/o1",
+    orderId: "o1",
+    overdue: true,
+    items: [
+      { key: "art__i1", label: "Arte · GRECIE" },
+      { key: "certificate__i1", label: "Certificado · GRECIE" },
+      { key: "art_review__i2", label: "Validação da arte · Teste" },
+    ],
+  };
+
+  it("cada produto vira uma linha, e o Resolver abre a tarefa dele no pedido", () => {
+    const rows = casesInStep(art, [twoProducts]);
+    expect(rows.map((r) => r.items.map((i) => i.key))).toEqual([
+      ["art__i1"],
+      ["art_review__i2"],
+    ]);
+    expect(rows.map((r) => itemsInStep(art, r).map((i) => i.label))).toEqual(
+      [["Arte · GRECIE"], ["Validação da arte · Teste"]],
+    );
+    expect(rows.map((r) => caseHref(art, r))).toEqual([
+      "/app/orders/o1?focus=art__i1#requirement-art__i1",
+      "/app/orders/o1?focus=art_review__i2#requirement-art_review__i2",
+    ]);
+    // Os outros passos seguem com a pendência inteira.
+    expect(casesInStep(cert, [twoProducts])).toEqual([twoProducts]);
+  });
+
+  it("menu, abas e filtros contam por produto, as atrasadas também", () => {
+    const counts = countByStep([
+      twoProducts,
+      { kind: "art_fix", overdue: false },
+    ]);
+    expect(counts.get("order/art")).toEqual({ count: 3, overdue: 2 });
+    expect(counts.get("order/certification")).toEqual({
+      count: 1,
+      overdue: 1,
+    });
+    // A tela do passo lista o mesmo número de linhas que o menu conta.
+    expect(
+      casesInStep(art, [twoProducts, { kind: "art_fix", overdue: false }]),
+    ).toHaveLength(3);
+  });
+
+  it("pedido sem as raias (arte sem produto na chave): uma linha só", () => {
+    const classic = {
+      kind: "requirement",
+      stageKey: "PACKAGING",
+      link: "/app/orders/o2",
+      orderId: "o2",
+      items: [{ key: "art" }, { key: "art_approval" }],
+    };
+    const rows = casesInStep(art, [classic]);
+    expect(rows).toHaveLength(1);
+    expect(caseHref(art, rows[0])).toBe(
+      "/app/orders/o2?focus=art#requirement-art",
+    );
+  });
+
+  it("não conformidade da arte abre no cartão Artes do pedido", () => {
+    const issue = (link: string) => ({ kind: "art_fix", link, orderId: "o1" });
+    expect(caseHref(art, issue("/app/orders/o1#artwork-issue-x"))).toBe(
+      "/app/orders/o1#artwork-issue-x",
+    );
+    // Link de outro pedido (o10 começa como o1) não vale.
+    expect(caseHref(art, issue("/app/orders/o10#artwork-issue-x"))).toBe(
+      "/app/flow/order/art/o1",
+    );
+  });
+
+  it("o envio volta para a tarefa em foco só com chave de item de etapa", async () => {
+    const { requirementFocus } = await import("@/app/app/actions/helpers");
+    const form = (v: string) => {
+      const f = new FormData();
+      f.set("focus", v);
+      return f;
+    };
+    expect(requirementFocus(form("art__i-1_X"))).toBe("art__i-1_X");
+    expect(requirementFocus(form("art"))).toBe("art");
+    for (const bad of [
+      "",
+      "Art__i1",
+      "art__i1#x",
+      "art__i1?x=1",
+      "../art",
+      "/app/orders/o1",
+      "art__i 1",
+    ])
+      expect(requirementFocus(form(bad))).toBeNull();
+    expect(requirementFocus(new FormData())).toBeNull();
+    expect(REQUIREMENT_FOCUS.test("art_review__i2")).toBe(true);
   });
 });
 

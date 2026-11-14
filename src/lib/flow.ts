@@ -1,6 +1,6 @@
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { Screen } from "@/lib/auth/screens";
-import { baseKeyOf } from "@/lib/purchase-lanes";
+import { baseKeyOf, itemIdOf } from "@/lib/purchase-lanes";
 import type { StageKey } from "@/lib/db/schema";
 
 /*
@@ -326,7 +326,7 @@ export interface FlowCount {
 export const stepId = (step: Pick<FlowStep, "block" | "key">) =>
   `${step.block}/${step.key}`;
 
-/** Contagem por passo (`bloco/passo`). */
+/** Contagem por passo (`bloco/passo`), um por caso (no passo Arte, por produto). */
 export function countByStep(
   tasks: (FlowTaskLike & { overdue: boolean })[],
 ): Map<string, FlowCount> {
@@ -334,13 +334,73 @@ export function countByStep(
   for (const task of tasks)
     for (const step of flowStepsOf(task)) {
       const id = stepId(step);
+      const n = productCases(step, task).length;
       const c = out.get(id) ?? { count: 0, overdue: 0 };
-      c.count += 1;
-      if (task.overdue) c.overdue += 1;
+      c.count += n;
+      if (task.overdue) c.overdue += n;
       out.set(id, c);
     }
   return out;
 }
+
+/*
+ * Arte (dono, 14/11/2026): cada produto é uma tarefa. A pendência de etapa
+ * que traz a arte de vários produtos do pedido vira uma linha por produto,
+ * só com os itens dele no passo, e o Resolver abre a tarefa daquele produto
+ * no detalhe do pedido. O menu, as abas, os filtros e o Overview contam do
+ * mesmo jeito. A tela do passo fica só com a tabela (sem os cartões dos
+ * pedidos embaixo).
+ */
+const PER_PRODUCT_STEPS: readonly string[] = ["order/art"];
+
+/** Passos cuja tela é só a tabela: o Resolver leva à tarefa no pedido. */
+export const TABLE_ONLY_STEPS: readonly string[] = ["order/art"];
+
+/** Os casos de uma pendência que está no passo: ela mesma ou um por produto. */
+function productCases<T extends FlowTaskLike>(
+  step: Pick<FlowStep, "block" | "key">,
+  task: T,
+): T[] {
+  if (
+    !PER_PRODUCT_STEPS.includes(stepId(step)) ||
+    task.kind !== "requirement" ||
+    !task.items?.length
+  )
+    return [task];
+  type Item = NonNullable<T["items"]>[number];
+  // Item sem produto na chave (pedido de antes das raias): o pedido inteiro.
+  const byProduct = new Map<string, Item[]>();
+  for (const item of itemsInStep<Item>(step, task)) {
+    const product = itemIdOf(item.key) ?? "";
+    byProduct.set(product, [...(byProduct.get(product) ?? []), item]);
+  }
+  if (!byProduct.size) return [task];
+  return [...byProduct.values()].map((items) => ({ ...task, items }) as T);
+}
+
+/** Os casos de um passo, na ordem das pendências (no passo Arte, por produto). */
+export function casesInStep<T extends FlowTaskLike>(
+  step: Pick<FlowStep, "block" | "key">,
+  tasks: T[],
+): T[] {
+  const id = stepId(step);
+  return tasks.flatMap((task) =>
+    flowStepsOf(task).some((x) => stepId(x) === id)
+      ? productCases(step, task)
+      : [],
+  );
+}
+
+/** Âncora da tarefa (item de etapa) no detalhe do pedido. */
+export const requirementAnchor = (key: string) => `requirement-${key}`;
+
+/** Chave de item de etapa aceita no ?focus= do detalhe do pedido (ex.: `art__<item>`). */
+export const REQUIREMENT_FOCUS =
+  /^[a-z][a-z0-9_]{0,40}(__[A-Za-z0-9_-]{1,64})?$/;
+
+/** O detalhe do pedido aberto na tarefa, com ela em destaque. */
+export const requirementHref = (orderId: string, key: string) =>
+  `/app/orders/${encodeURIComponent(orderId)}?focus=${encodeURIComponent(key)}#${requirementAnchor(key)}`;
 
 /**
  * Onde se resolve o caso: a tela focada do pedido quando ela existe (Die Cut,
@@ -348,9 +408,29 @@ export function countByStep(
  */
 export function caseHref(
   step: Pick<FlowStep, "block" | "key">,
-  task: { link: string; orderId?: string | null; kind: string },
+  task: Omit<FlowTaskLike, "kind"> & {
+    link: string;
+    orderId?: string | null;
+    kind: string;
+  },
 ): string {
   const order = task.orderId;
+  // Arte (dono, 14/11/2026): a tarefa daquele produto no detalhe do pedido,
+  // em destaque; a não conformidade da arte, no link dela (cartão Artes).
+  if (order && TABLE_ONLY_STEPS.includes(stepId(step))) {
+    if (task.kind === "requirement") {
+      const first = itemsInStep(step, task)[0];
+      return first
+        ? requirementHref(order, first.key)
+        : `/app/orders/${encodeURIComponent(order)}`;
+    }
+    const base = `/app/orders/${order}`;
+    if (
+      task.link.startsWith(base) &&
+      ["", "#", "?"].includes(task.link.charAt(base.length))
+    )
+      return task.link;
+  }
   if (order && task.kind === "requirement") {
     if (step.block === "order" && step.key === "art-material")
       return task.link.includes("/die-cut")

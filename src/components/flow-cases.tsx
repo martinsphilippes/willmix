@@ -21,6 +21,14 @@ import {
 
 const DAY = 86_400_000;
 
+/*
+ * Celular: a tabela rola para o lado, e o Resolver (a entrada para a tarefa;
+ * a tela Arte é só a tabela) fica preso à direita, sempre à vista. No iPad e
+ * no computador, a coluna de sempre.
+ */
+const PIN_RESOLVE =
+  "max-sm:sticky max-sm:right-0 max-sm:z-10 max-sm:shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]";
+
 export function caseTitle(task: Task, t: Translate): string {
   if (task.text) return t(task.text.title, task.text.values);
   if (task.stageKey && task.orderNumber)
@@ -58,7 +66,7 @@ export function FlowCases({
           <Th>{t("flow.cases.what")}</Th>
           <Th>{t("flow.cases.due")}</Th>
           <Th>{t("flow.cases.since")}</Th>
-          <Th>
+          <Th className={`${PIN_RESOLVE} max-sm:bg-zinc-50`}>
             <span className="sr-only">{t("common.actions")}</span>
           </Th>
         </tr>
@@ -96,7 +104,9 @@ export function FlowCases({
               <Td className="whitespace-nowrap">
                 {days === null ? "—" : t("flow.cases.days", { n: days })}
               </Td>
-              <Td className="whitespace-nowrap text-right">
+              <Td
+                className={`whitespace-nowrap text-right ${PIN_RESOLVE} max-sm:bg-white`}
+              >
                 <TextLink href={caseHref(step, task)} data-flow-case-open>
                   {t("flow.cases.open")}
                 </TextLink>

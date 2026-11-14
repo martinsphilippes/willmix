@@ -1,5 +1,6 @@
 import { OrderProgressCard } from "@/components/order-progress-card";
 import { isProgressBlock } from "@/lib/flow-progress";
+import { REQUIREMENT_FOCUS, requirementAnchor } from "@/lib/flow";
 import { listByIds } from "@/lib/db/lookup";
 import { ColorLines } from "@/components/color-lines";
 import { registerOrderInvoiceAction } from "../../actions/order-invoice";
@@ -251,9 +252,14 @@ export default async function OrderPage({
     rounds: roundsSpawned,
     incoterm: incotermNotice,
     from: fromBlock,
+    focus,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
+  // Tarefa aberta pelo Resolver da tela do passo (?focus=art__<item>, Arte,
+  // dono, 14/11/2026): a etapa dela abre e a linha fica em destaque.
+  const focusKey =
+    typeof focus === "string" && REQUIREMENT_FOCUS.test(focus) ? focus : null;
   // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
   await normalizePackaging(id);
   // Pedido de compra: papel das tarefas de arte e certificado coerente com
@@ -1111,7 +1117,11 @@ export default async function OrderPage({
     openableStages
       .filter(
         (s) =>
-          defaultExpanded(s) || stageParam === "all" || stageParam === s.key,
+          defaultExpanded(s) ||
+          stageParam === "all" ||
+          stageParam === s.key ||
+          (!!focusKey &&
+            requirements.some((r) => r.stageId === s.id && r.key === focusKey)),
       )
       .map((s) => s.id),
   );
@@ -2276,6 +2286,7 @@ export default async function OrderPage({
                           lane={laneInfo.get(r.id) ?? null}
                           laneInputs={laneInputsOf(r)}
                           muted={laterIds.has(r.id)}
+                          focused={r.key === focusKey}
                           // O prazo registrado para o item só preenche o campo.
                           defaultValue={
                             supplierView && isLeadTimeKey(r.key)
@@ -3688,7 +3699,14 @@ function RequirementRow({
   lane,
   laneInputs,
   muted = false,
+  focused = false,
 }: {
+  /**
+   * Tarefa aberta pelo Resolver da tela do passo (?focus=, Arte): em
+   * destaque, com a âncora para a página rolar até ela; o envio volta para
+   * ela.
+   */
+  focused?: boolean;
   requirement: Requirement;
   /** Arquivos de outras tarefas que esta usa (a arte para validar; a arte e o certificado na arte final). */
   laneInputs?: LaneInput[];
@@ -3783,8 +3801,16 @@ function RequirementRow({
       : ROW_WIDE_XL;
   return (
     <li
-      className={cx("flex flex-col gap-2 py-2.5", wide.row)}
+      id={focused ? requirementAnchor(r.key) : undefined}
+      className={cx(
+        "flex flex-col gap-2 py-2.5",
+        wide.row,
+        focused &&
+          "-mx-2 scroll-mt-24 rounded-lg bg-brand-50 px-2 ring-2 ring-brand-300",
+      )}
       data-requirement-later={muted ? "" : undefined}
+      data-requirement-focus={focused ? r.key : undefined}
+      aria-current={focused ? "true" : undefined}
     >
       <div className="min-w-0 text-sm">
         <div className="flex flex-wrap items-center gap-2">
@@ -3972,6 +3998,7 @@ function RequirementRow({
             t={t}
             dateBounds={dateBounds}
             defaultValue={defaultValue}
+            focus={focused}
           />
         </div>
       ) : canRemeasure ? (

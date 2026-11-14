@@ -17,7 +17,6 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import { itemsInStep, stepId, type FlowStep } from "@/lib/flow";
 import { RequirementForm } from "./requirement-form";
 import { ProductionCard } from "./production-card";
-import { ArtworkCard } from "./artwork-card";
 import { ReceivingCard } from "./receiving-card";
 import { FreightOrderCard } from "./freight-order-card";
 import { InspectionResultCard } from "./inspection-result-card";
@@ -27,9 +26,10 @@ import { Badge, Card, LinkButton, TextLink } from "./ui";
  * Resolver na tela do passo (dono, 14/11/2026; docs/FLOW_MENU.md), segunda
  * parte da divisão do detalhe do pedido: os itens de etapa do passo (arte,
  * validação, arte final, certificado, medidas, assinatura…), a produção
- * (dados e ETD, follow 5/15/25, inspeção e SKUs) e as não conformidades da
- * arte, com os mesmos formulários e Server Actions do pedido. A ação volta
- * para a tela do passo. O detalhe do pedido continua com tudo.
+ * (dados e ETD, follow 5/15/25, inspeção e SKUs), com os mesmos formulários
+ * e Server Actions do pedido. A ação volta para a tela do passo. O detalhe
+ * do pedido continua com tudo. A tela Arte é só a tabela (dono, 14/11/2026):
+ * a arte, a validação, a arte final e as não conformidades abrem no pedido.
  */
 
 /** Pedidos por tela (os demais seguem na tabela, com o atalho). */
@@ -338,62 +338,6 @@ export async function FlowProductionWork({
                     ? ["plan"]
                     : ["plan", "followup"]
               }
-              returnTo={pathOf(step)}
-            />
-          </div>
-        ))}
-    </section>
-  );
-}
-
-/** Não conformidades da arte (correção da agência e revisão da Wellmix). */
-export async function FlowArtworkWork({
-  user,
-  step,
-  tasks,
-  t,
-  notice,
-}: {
-  user: User;
-  step: FlowStep;
-  tasks: Task[];
-  t: Translate;
-  notice: string | null;
-}) {
-  const orderIds = ordersOf(tasks, ["art_fix", "art_review"]);
-  if (!orderIds.length) return null;
-  const store = getStore();
-  const artworkSvc = await import("@/lib/services/artwork");
-  const orders = await store.list("orders", { filter: { id: orderIds } });
-  const views = (
-    await Promise.all(
-      orders
-        .filter((o) => artworkSvc.canFixArt(user, o))
-        .map(async (order) => ({
-          order,
-          view: await artworkSvc.artworkView(user, order).catch(() => null),
-        })),
-    )
-  ).filter((v) => v.view);
-  if (!views.length) return null;
-  return (
-    <section className="mt-6 space-y-4" data-flow-artwork>
-      {views
-        .sort((a, b) => a.order.number - b.order.number)
-        .map(({ order, view }) => (
-          <div key={order.id} data-flow-artwork-order={order.id}>
-            <p className="mb-1 text-sm font-semibold text-zinc-800">
-              {t("flow.work.order", { n: order.number })} ·{" "}
-              <TextLink href={`/app/orders/${order.id}`}>
-                {t("flow.work.openOrder")}
-              </TextLink>
-            </p>
-            <ArtworkCard
-              t={t}
-              order={order}
-              view={view!}
-              wellmix={isWellmix(user)}
-              notice={notice}
               returnTo={pathOf(step)}
             />
           </div>

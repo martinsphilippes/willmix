@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ZodError, type z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import type { User } from "@/lib/db";
+import { REQUIREMENT_FOCUS } from "@/lib/flow";
 
 /*
  * Utilitários compartilhados pelas Server Actions (src/app/app/actions.ts e
@@ -28,6 +29,16 @@ export function flowReturnTo(form: FormData): string | null {
     )
     ? v.trim()
     : null;
+}
+
+/**
+ * Tarefa aberta pelo Resolver da tela do passo (?focus= no detalhe do pedido,
+ * docs/FLOW_MENU.md): a chave do item, para o envio voltar para a linha
+ * dela. Qualquer outra coisa é ignorada.
+ */
+export function requirementFocus(form: FormData): string | null {
+  const v = str(form, "focus");
+  return v && REQUIREMENT_FOCUS.test(v) ? v : null;
 }
 
 export function str(form: FormData, key: string) {
