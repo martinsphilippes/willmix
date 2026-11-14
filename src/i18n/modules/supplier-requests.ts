@@ -54,6 +54,8 @@ export const pt = {
     "Nenhum grupo aberto para comparar. Abra um bloco em Blocos Sugeridos ou agrupe itens na aba Itens.",
   "supplierRequests.selection.requestedEmpty":
     "Nenhum grupo com solicitação aberta.",
+  "supplierRequests.selection.blocks.allRequested":
+    "Os blocos destes filtros já estão com solicitação aberta.",
   "supplierRequests.selection.pick": "Agrupar",
   "supplierRequests.selection.pickAll": "Marcar todos os da tela",
   "supplierRequests.selection.pickHint":
@@ -508,6 +510,8 @@ export const en: typeof pt = {
   "supplierRequests.selection.groupNone":
     "No group open to compare. Open a block in Suggested Blocks or group items in the Items tab.",
   "supplierRequests.selection.requestedEmpty": "No group with an open request.",
+  "supplierRequests.selection.blocks.allRequested":
+    "The blocks for these filters already have an open request.",
   "supplierRequests.selection.pick": "Group",
   "supplierRequests.selection.pickAll": "Select all on screen",
   "supplierRequests.selection.pickHint":
@@ -954,6 +958,8 @@ export const zh: typeof pt = {
   "supplierRequests.selection.groupNone":
     "没有打开的比较分组。请在“建议分组”中打开一个分组，或在“项目”标签中组合项目。",
   "supplierRequests.selection.requestedEmpty": "没有已打开询单的分组。",
+  "supplierRequests.selection.blocks.allRequested":
+    "这些筛选条件下的分组都已打开询单。",
   "supplierRequests.selection.pick": "分组",
   "supplierRequests.selection.pickAll": "全选本页",
   "supplierRequests.selection.pickHint":

@@ -105,11 +105,16 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await page.goto(
     `/app/booking/selection?q=${encodeURIComponent(TAG)}&tab=blocks`,
   );
-  await expect(page.locator("[data-selection-blocks]")).toHaveCount(1);
+  // O único bloco desta busca já tem solicitação: a aba diz isso e leva à
+  // lista, sem repeti-la.
+  const allRequested = page.locator("[data-selection-blocks-requested]");
+  await expect(allRequested).toBeVisible();
   await expect(
     page.locator('[data-selection-section="requested"]'),
   ).toHaveCount(0);
-  await page.locator('[data-selection-tab="requested"]').click();
+  await allRequested
+    .getByRole("link", { name: "Com Solicitação Aberta" })
+    .click();
   await page.waitForURL(/tab=requested/);
   await expect(page.locator("[data-selection-blocks]")).toHaveCount(0);
   await expect(page.locator("[data-selection-search]")).toHaveCount(0);

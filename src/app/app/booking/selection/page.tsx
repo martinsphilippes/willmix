@@ -1420,6 +1420,22 @@ export default async function BookingSelectionPage({
                       )}
                     </div>
                   </form>
+                ) : blockCards.length ? (
+                  // Os blocos dos filtros já têm solicitação aberta: estão
+                  // na outra aba.
+                  <div
+                    className="space-y-3"
+                    data-selection-blocks-requested={blockCards.length}
+                  >
+                    <Empty>
+                      {t("supplierRequests.selection.blocks.allRequested")}
+                    </Empty>
+                    <div className="flex justify-center">
+                      <LinkButton href={tabHref("requested")}>
+                        {t("supplierRequests.selection.tab.requested")}
+                      </LinkButton>
+                    </div>
+                  </div>
                 ) : (
                   <Empty>{t("supplierRequests.selection.blocks.empty")}</Empty>
                 )}
