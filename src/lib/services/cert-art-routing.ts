@@ -321,9 +321,10 @@ export async function routeLabel(
  *
  * - Arte e arte final com o selo: o designer do pedido (cartão Artes), pela
  *   mesma regra de quem faz a arte (`artMakerRoute`).
- * - Validação da arte pela Wellmix: o analista do pedido, se ele pode validar
- *   arte; senão quem tem a ação "Validar a arte"; nunca quem enviou a arte
- *   (`artValidatorRoute`).
+ * - Validação da arte pela Wellmix: o Operador Wellmix responsável pelo
+ *   pedido (o analista), se ele pode validar arte; senão os operadores com a
+ *   ação "Validar a arte". Nunca quem faz a arte do pedido nem quem a enviou
+ *   (`laneReviewRoute`).
  * - Certificado (Inmetro): a certificadora (OCP) do pedido, em Parceiros do
  *   pedido. Sem ela, o responsável interno designa (`missing: "certifier"`).
  *   Só o certificado das raias: o selo e o memorial do cartão Certificação
@@ -356,6 +357,39 @@ export function laneCertificateRoute(
   return { ...internalRoute(order, ctx), missing: "certifier" };
 }
 
+/**
+ * Validação da arte das raias: o Operador Wellmix responsável pelo pedido (o
+ * analista), se ele pode validar arte; senão os operadores com a ação
+ * "Validar a arte" (Equipe → Funções e acessos). Nunca quem faz a arte do
+ * pedido (o designer) nem quem a enviou. O administrador vê todas, mas não
+ * é o responsável: pedido com o administrador como analista vai para os
+ * operadores. Sem operador que possa, a regra dos cartões (`artValidatorRoute`).
+ */
+export function laneReviewRoute(
+  order: LaneOrder,
+  ctx: RoutingContext,
+  submitterId: string | null,
+): Route {
+  const makers = new Set(artMakerRoute(order, ctx).userIds ?? []);
+  const able = ctx.team.filter(
+    (u) =>
+      u.role === "operator" &&
+      u.id !== submitterId &&
+      !makers.has(u.id) &&
+      canValidateArt(u, ctx),
+  );
+  const owner = analystOf(order, ctx);
+  if (owner && able.some((u) => u.id === owner.id))
+    return { via: "analyst", userIds: [owner.id] };
+  if (able.length)
+    return {
+      via: "art_validate",
+      userIds: able.map((u) => u.id),
+      ...(owner ? {} : { missing: "analyst" as const }),
+    };
+  return artValidatorRoute(order, ctx, submitterId);
+}
+
 /** Quem enviou a arte do mesmo produto (a validação não fica com ele). */
 const artSubmitterOf = (key: string, siblings: readonly LaneSibling[]) => {
   const item = itemIdOf(key);
@@ -377,7 +411,7 @@ export function laneRoute(
     case LANE_KEYS.artFinal:
       return artMakerRoute(order, ctx);
     case LANE_KEYS.artReview:
-      return artValidatorRoute(order, ctx, artSubmitterOf(key, siblings));
+      return laneReviewRoute(order, ctx, artSubmitterOf(key, siblings));
     default:
       return laneCertificateRoute(order, ctx);
   }

@@ -106,7 +106,7 @@ Até 14/11/2026, as quatro tarefas da etapa "Die-Cut, Arte e Certificação" apa
 | Tarefa | Quem recebe | Sem ele |
 | --- | --- | --- |
 | Arte | o designer do pedido (cartão Artes: login da Wellmix ou da agência) | a agência, quando é ela quem faz a arte; senão quem tem a função Designer, com "Responsável não definido · Sem designer" |
-| Validação da arte pela Wellmix | o operador responsável pelo pedido (`orders.ownerUserId`), se pode validar arte (ação "Validar a arte"); nunca quem enviou a arte | quem tem a ação, com "Responsável não definido · Sem analista" |
+| Validação da arte pela Wellmix | o Operador Wellmix responsável pelo pedido (o analista, `orders.ownerUserId`), se pode validar arte (ação "Validar a arte"); nunca quem faz a arte do pedido nem quem a enviou | os operadores com a ação "Validar a arte" (Equipe → Funções e acessos), também quando o responsável é o administrador (ele vê todas, mas não recebe como responsável); sem analista, com "Responsável não definido · Sem analista" |
 | Certificado (Inmetro) | a certificadora (OCP) do pedido, em Parceiros do pedido (todos os logins dela) | ninguém envia: o responsável interno vê "Responsável não definido · Sem certificadora" e o link para vincular |
 | Arte final com o selo | o designer do pedido, como a arte | como a arte |
 
