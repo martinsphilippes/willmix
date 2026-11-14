@@ -72,21 +72,27 @@ test("Produção: menu, Overview, Telas e links e acesso pelo endereço", async 
   await expect(page.locator("[data-flow-back]")).toBeVisible();
   await expect(page.locator("[data-flow-filter]")).toHaveCount(4);
 
-  // Equipe e acessos → Telas e links: logo depois de Pedidos; o padrão do
-  // comprador já marca, o do designer não.
+  // Equipe e acessos → Telas e links: a seção Produção vem logo depois da
+  // seção Pedido (módulos do menu); o padrão do comprador já marca, o do
+  // designer não.
   await page.goto("/app/team?tab=functions&fn=buyer&view=screens");
-  const buyerBox = page.locator('input[name="screens"][value="production"]');
-  await expect(buyerBox).toBeChecked();
-  const values = await page
-    .locator('[data-fn-screens] input[type="checkbox"]')
-    .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value));
-  expect(values[values.indexOf("orders") + 1]).toBe("production");
-  await expect(page.locator("label", { has: buyerBox }).first()).toContainText(
-    "Produção",
-  );
-  await page.goto("/app/team?tab=functions&fn=designer&view=screens");
+  const buyerPanel = page.locator('[data-fn-screens="buyer"]');
+  const sections = await buyerPanel
+    .locator("[data-perm-group]")
+    .evaluateAll((els) => els.map((el) => el.getAttribute("data-perm-group")));
+  expect(sections[sections.indexOf("order") + 1]).toBe("production");
+  await buyerPanel.locator('[data-perm-section="production"]').click();
   await expect(
-    page.locator('input[name="screens"][value="production"]'),
+    buyerPanel.locator('[data-fn-screen="production"]'),
+  ).toBeChecked();
+  await expect(
+    buyerPanel.locator('[data-perm-row="production"]'),
+  ).toContainText("Produção");
+  await page.goto("/app/team?tab=functions&fn=designer&view=screens");
+  const designerPanel = page.locator('[data-fn-screens="designer"]');
+  await designerPanel.locator('[data-perm-section="production"]').click();
+  await expect(
+    designerPanel.locator('[data-fn-screen="production"]'),
   ).not.toBeChecked();
 
   // Login sem a tela (o fornecedor): pelo endereço, volta ao início com o aviso.

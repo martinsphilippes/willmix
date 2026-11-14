@@ -189,12 +189,19 @@ describe("configuração do administrador", () => {
     expect(startPathFor(empty)).toBeNull();
   });
 
-  it("valores: quem abre Financeiro ou tem a permissão", () => {
+  it("valores: só quem tem a permissão (abrir Financeiro não concede)", () => {
     const defs = resolveFunctions({
       functions: [{ key: "planner", actions: ["values.view"] }],
     });
     expect(canSeeMoney({ role: "admin", functions: [] })).toBe(true);
     expect(canSeeMoney(op(["buyer"]))).toBe(false);
+    // Tela Financeiro posta à mão (Personalizado), sem a ação: não vê valores.
+    expect(
+      canSeeMoney({
+        ...op(["buyer"]),
+        screenExceptions: { added: ["finance"], removed: [] },
+      } as Parameters<typeof canSeeMoney>[0]),
+    ).toBe(false);
     expect(can(op(["planner"]), "values.view", defs)).toBe(true);
   });
 

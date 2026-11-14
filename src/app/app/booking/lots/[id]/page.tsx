@@ -549,6 +549,28 @@ export default async function BookingLotPage({
         <Card title={t("bookingLots.detail.header")} className="lg:col-span-2">
           <DescriptionList
             items={[
+              // Primeira linha (dono, 13/11/2026): à esquerda o Fornecedor (dono do
+              // book, para quem vão as solicitações) e à direita a Fábrica.
+              [
+                t("bookingLots.partner.title"),
+                <span key="p" className="flex flex-col gap-1">
+                  {lot.status !== "cancelled" ? (
+                    <BookingLotPartnerSelect
+                      lotId={lot.id}
+                      current={lot.partnerId ?? ""}
+                      options={partnerOptions}
+                      labels={cellLabels(t("bookingLots.partner.title"))}
+                      placeholder={t("bookingLots.partner.search")}
+                      noMatch={t("bookingLots.partner.noMatch")}
+                    />
+                  ) : (
+                    (partner?.name ?? t("bookingLots.partner.supplier"))
+                  )}
+                  <span className="text-xs text-zinc-500">
+                    {t("bookingLots.partner.hint")}
+                  </span>
+                </span>,
+              ],
               [
                 t("bookingLots.detail.supplier"),
                 <span key="s" className="flex flex-col gap-1">
@@ -573,26 +595,6 @@ export default async function BookingLotPage({
                       })}
                     </span>
                   ) : null}
-                </span>,
-              ],
-              [
-                t("bookingLots.partner.title"),
-                <span key="p" className="flex flex-col gap-1">
-                  {lot.status !== "cancelled" ? (
-                    <BookingLotPartnerSelect
-                      lotId={lot.id}
-                      current={lot.partnerId ?? ""}
-                      options={partnerOptions}
-                      labels={cellLabels(t("bookingLots.partner.title"))}
-                      placeholder={t("bookingLots.partner.search")}
-                      noMatch={t("bookingLots.partner.noMatch")}
-                    />
-                  ) : (
-                    (partner?.name ?? t("bookingLots.partner.supplier"))
-                  )}
-                  <span className="text-xs text-zinc-500">
-                    {t("bookingLots.partner.hint")}
-                  </span>
                 </span>,
               ],
               [

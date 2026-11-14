@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { PASSWORD, login } from "./helpers";
 
 /*
@@ -12,27 +12,39 @@ import { PASSWORD, login } from "./helpers";
 
 async function createFunction(page: Page, name: string): Promise<string> {
   await page.goto("/app/team?tab=functions");
+  // "+ Nova função" abre o campo do nome (dono, 14/11/2026). No iPad e no
+  // celular a lista vira um seletor; o botão fica no pé da coluna.
+  await page.locator("[data-fn-new-open]").click();
   const form = page.locator("[data-fn-new]");
   await form.locator('input[name="name"]').fill(name);
-  await form.getByRole("button").click();
+  await form.locator('button[type="submit"]').click();
   await page.waitForURL(/saved=created/);
   return new URL(page.url()).searchParams.get("fn")!;
 }
 
+/** Abre todas as seções recolhidas de um painel de permissões. */
+async function expandAll(panel: Locator) {
+  const closed = panel.locator('[data-perm-section][aria-expanded="false"]');
+  while ((await closed.count()) > 0) await closed.first().click();
+}
+
+/** Marca as telas na aba "Telas e links" e salva ("Salvar permissões"). */
 async function saveScreens(
   page: Page,
   key: string,
   marks: Record<string, boolean>,
 ) {
   await page.goto(`/app/team?tab=functions&fn=${key}&view=screens`);
-  const form = page.locator(`[data-fn-screens="${key}"]`);
+  const editor = page.locator(`[data-fn-detail="${key}"]`);
+  const panel = editor.locator(`[data-fn-screens="${key}"]`);
+  await expandAll(panel);
   for (const [screen, on] of Object.entries(marks)) {
-    const box = form.locator(`input[name="screens"][value="${screen}"]`);
+    const box = panel.locator(`[data-fn-screen="${screen}"]`);
     await expect(box).toBeEnabled();
     await box.setChecked(on);
   }
-  await form.locator("[data-fn-save-screens]").click();
-  await page.waitForURL(/saved=screens/);
+  await editor.locator("[data-fn-save]").click();
+  await expect(editor.locator("[data-fn-saved]")).toBeVisible();
 }
 
 async function createLogin(
@@ -64,10 +76,11 @@ test("Início por função: menu e endereço seguem o que foi salvo", async ({
   await saveScreens(page, alfa, { orders: true, home: false, sla: false });
   await saveScreens(page, beta, { orders: true });
   await page.goto(`/app/team?tab=functions&fn=${alfa}&view=screens`);
-  const saved = page.locator(`[data-fn-screens="${alfa}"]`);
-  await expect(saved.locator('input[value="sla"]')).not.toBeChecked();
-  await expect(saved.locator('input[value="home"]')).not.toBeChecked();
-  await expect(saved.locator('input[value="tasks"]')).toBeChecked();
+  const saved = page.locator(`[data-fn-detail="${alfa}"]`);
+  await expandAll(saved.locator(`[data-fn-screens="${alfa}"]`));
+  await expect(saved.locator('[data-fn-screen="sla"]')).not.toBeChecked();
+  await expect(saved.locator('[data-fn-screen="home"]')).not.toBeChecked();
+  await expect(saved.locator('[data-fn-screen="tasks"]')).toBeChecked();
   await expect(saved).toContainText("configuráveis por função");
 
   const emailA = `alfa-${tag}@wellmix.com`;

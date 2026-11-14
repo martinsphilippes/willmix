@@ -14,6 +14,7 @@ import {
   stepLabelKey,
   type FlowStep,
 } from "@/lib/flow";
+import { stepWaiting } from "@/lib/requirement-waiting";
 import { RequirementForm } from "./requirement-form";
 import { ImportFlowCard } from "./import-flow-card";
 import { ProductionCard } from "./production-card";
@@ -146,6 +147,15 @@ export async function FlowOrderInStep({
         !isRoutedLaneKey(r.key) ||
         routing.canActOnLane(user, r.key, order, ctx, requirements))
     );
+  };
+  // O que a tarefa ainda espera, com a etapa aberta (a mesma regra do
+  // detalhe do pedido): a validação espera a arte; a arte final, a
+  // validação e o certificado; a aprovação da arte antiga, a arte.
+  const waitingOf = (r: Requirement) => {
+    const stage = stageById.get(r.stageId);
+    return stage?.status === "active" || stage?.status === "blocked"
+      ? stepWaiting(t, r, requirements, order.flow === "supplier_request")
+      : null;
   };
 
   // Passos do embarque, da origem, da certificação e das amostras do passo.
@@ -430,7 +440,17 @@ export async function FlowOrderInStep({
                       ) : null;
                     })}
                   </div>
-                  {canAct(r) ? (
+                  {waitingOf(r) ? (
+                    // Espera outra tarefa (a validação espera a arte; a arte
+                    // final, a validação e o certificado): diz o que falta,
+                    // como no detalhe do pedido, sem os botões.
+                    <p
+                      className="text-xs text-zinc-500"
+                      data-flow-order-waiting
+                    >
+                      {waitingOf(r)}
+                    </p>
+                  ) : canAct(r) ? (
                     own ? (
                       <div>
                         <LinkButton href={own.href} variant="secondary">
@@ -469,7 +489,9 @@ export async function FlowOrderInStep({
       ) : null}
 
       {report ? (
-        <InspectionResultCard t={t} report={report} userName={name} />
+        <div data-flow-inspection-report>
+          <InspectionResultCard t={t} report={report} userName={name} />
+        </div>
       ) : null}
       {production ? (
         <ProductionCard
