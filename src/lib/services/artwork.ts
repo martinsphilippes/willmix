@@ -114,6 +114,10 @@ export async function assignDesigner(
   const updated = await getStore().update("orders", orderId, {
     designerUserId,
   });
+  // Pedido de compra: a arte e a arte final abertas passam para o designer
+  // novo (o papel gravado acompanha; a pendência só troca de dono).
+  const { syncLaneRoles } = await import("./purchase-order");
+  await syncLaneRoles(user, updated);
   const designer = designerUserId
     ? await getStore().get("users", designerUserId)
     : null;

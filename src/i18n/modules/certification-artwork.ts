@@ -90,6 +90,8 @@ export const pt = {
     "Confira o memorial no cartão Certificação e valide, ou recuse com o motivo.",
   "tasks.missing.designer":
     "O pedido está sem designer: designe em Artes → Designer do pedido.",
+  "tasks.missing.certifier":
+    "O pedido está sem certificadora: vincule em Parceiros do pedido.",
   "tasks.missing.analyst":
     "O pedido está sem analista: distribua em Equipe e acessos.",
   "tasks.art.fix.title": "Corrigir a arte de {item}: pedido #{n}",
@@ -106,9 +108,13 @@ export const pt = {
   "certFlow.assignee.team": "equipe Wellmix",
   "certFlow.missing.ocp": "Sem despachante.",
   "certFlow.missing.designer": "Sem designer.",
+  "certFlow.missing.certifier": "Sem certificadora.",
   "certFlow.missing.analyst": "Sem analista.",
   "certFlow.assign.ocp": "Designar em Parceiros do pedido",
   "certFlow.assign.designer": "Designar em Artes",
+  "certFlow.assign.certifier": "Vincular em Parceiros do pedido",
+  "lane.with": "Com: {name}",
+  "lane.undefined": "Responsável não definido",
   "certFlow.assign.analyst": "Distribuir em Equipe e acessos",
   "certFlow.missingHint.designer":
     "A arte deste pedido é feita pela Wellmix e ele está sem designer: a aplicação do selo e as correções da arte ficam com {who}. Escolha o designer no cartão Artes.",
@@ -261,6 +267,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Check the technical description on the Certification card and validate it, or reject it with the reason.",
   "tasks.missing.designer":
     "The order has no designer: assign one under Artwork → Order designer.",
+  "tasks.missing.certifier":
+    "The order has no certifier: link one under Order partners.",
   "tasks.missing.analyst":
     "The order has no analyst: distribute it under Team and access.",
   "tasks.art.fix.title": "Fix the artwork of {item}: order #{n}",
@@ -276,9 +284,13 @@ export const en: Record<keyof typeof pt, string> = {
   "certFlow.assignee.team": "Wellmix team",
   "certFlow.missing.ocp": "No customs broker.",
   "certFlow.missing.designer": "No designer.",
+  "certFlow.missing.certifier": "No certifier.",
   "certFlow.missing.analyst": "No analyst.",
   "certFlow.assign.ocp": "Assign under Order partners",
   "certFlow.assign.designer": "Assign on Artwork",
+  "certFlow.assign.certifier": "Link under Order partners",
+  "lane.with": "With: {name}",
+  "lane.undefined": "No assignee defined",
   "certFlow.assign.analyst": "Distribute under Team and access",
   "certFlow.missingHint.designer":
     "Wellmix makes the artwork of this order and it has no designer: applying the seal and fixing the artwork stay with {who}. Choose the designer on the Artwork card.",
@@ -418,6 +430,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "请在“认证”卡片中核对技术说明书并审核通过，或填写原因后退回。",
   "tasks.missing.designer":
     "此订单没有设计师：请在“设计稿 → 订单设计师”中指定。",
+  "tasks.missing.certifier": "此订单没有认证机构：请在“订单合作方”中关联。",
   "tasks.missing.analyst": "此订单没有专员：请在“团队与权限”中分配。",
   "tasks.art.fix.title": "修改 {item} 的设计稿：订单 #{n}",
   "tasks.art.fix.detail": "请在“设计稿”卡片中查看不合格项并提交修改。",
@@ -431,9 +444,13 @@ export const zh: Record<keyof typeof pt, string> = {
   "certFlow.assignee.team": "Wellmix 团队",
   "certFlow.missing.ocp": "未指定报关行。",
   "certFlow.missing.designer": "未指定设计师。",
+  "certFlow.missing.certifier": "未关联认证机构。",
   "certFlow.missing.analyst": "未指定专员。",
   "certFlow.assign.ocp": "在订单合作方中指定",
   "certFlow.assign.designer": "在设计稿中指定",
+  "certFlow.assign.certifier": "在订单合作方中关联",
+  "lane.with": "负责：{name}",
+  "lane.undefined": "未指定负责人",
   "certFlow.assign.analyst": "在团队与权限中分配",
   "certFlow.missingHint.designer":
     "此订单的设计稿由 Wellmix 制作，且未指定设计师：放入标志和修改设计稿由 {who} 负责。请在“设计稿”卡片中选择设计师。",

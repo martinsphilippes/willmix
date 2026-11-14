@@ -305,6 +305,13 @@ export async function submitRequirementAction(form: FormData) {
     if (!order) throw new Error("not_found");
     if (!canSubmitRequirement(user, order, requirement))
       throw new ForbiddenError();
+    // Arte, validação, certificado e arte final do pedido de compra: só o
+    // login que recebe a tarefa (antes de subir o arquivo).
+    if (order.flow === "supplier_request") {
+      const { assertLaneActor } =
+        await import("@/lib/services/cert-art-routing");
+      await assertLaneActor(user, order, requirement);
+    }
     // "Ficha de compra" só se conclui pela própria ficha (campos e foto na balança).
     if (requirement.key === "purchase_sheet")
       throw new Error("use_purchase_sheet");

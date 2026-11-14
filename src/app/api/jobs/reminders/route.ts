@@ -24,6 +24,8 @@ export async function GET(request: Request) {
   const released = await releaseOffFlowStages(undefined, { force: true });
   // Arte e embalagem dos pedidos antigos passa para o fluxo novo.
   const packaging = await normalizePackaging(undefined, { force: true });
+  const { normalizeLaneRoles } = await import("@/lib/services/purchase-order");
+  const laneRoles = await normalizeLaneRoles(undefined, { force: true });
   // Embarque dos pedidos antigos: dados opcionais, "Embarque confirmado" conclui.
   const shipping = await normalizeShipping();
   const result = await runReminders();
@@ -77,6 +79,7 @@ export async function GET(request: Request) {
     samplingLate,
     released,
     packaging,
+    laneRoles,
     shipping,
     payablesDue,
     toConfirm,

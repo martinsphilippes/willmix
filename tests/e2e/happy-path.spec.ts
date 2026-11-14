@@ -425,8 +425,17 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     .locator("button[value=approve]")
     .click();
   await page.waitForLoadState("networkidle");
-  // 6d. Despachante: o certificado (a certificação é dele, dono, 13/11/2026).
+  // 6d. Certificadora (OCP) do pedido: o certificado das raias (dono,
+  // 14/11/2026; o selo do cartão Certificação continua com o despachante).
+  // O despachante não envia o certificado.
   await login(page, "despachante@comex.com");
+  await page.goto(orderUrl);
+  await expect(
+    requirementRow(page, /^Certificado/).locator(
+      "form:has(input[name=requirementId])",
+    ),
+  ).toHaveCount(0);
+  await login(page, "ocp@certifica.com");
   await fillMyRequirements(page, orderUrl);
   // 6e. Agência: com a arte validada e o certificado, a arte final com o selo.
   await login(page, "agencia@design.com");
