@@ -360,7 +360,7 @@ export async function PartnerBookingLotView({
   const detail = await getPartnerBookingLot(user, lotId);
   // Booking de outra empresa (ou que não existe): não se diz qual dos dois.
   if (!detail) notFound();
-  const { lot, items } = detail;
+  const { lot, items, partnerName, factoryName } = detail;
   const preparing = bookingLotPreparing(lot.status);
   const known = [`bookingLots.error.${error}`, `common.${error}`].find(
     (k) => k in dictionaries.pt,
@@ -371,13 +371,36 @@ export async function PartnerBookingLotView({
       <PageHeader
         t={t}
         title={lotTitle(t, lot)}
-        subtitle={[
-          lot.fileName,
-          lot.bookingDate ? formatDate(lot.bookingDate, t) : null,
-          statusOf(t, lot.status).label,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
+        // Como na tela da Wellmix (dono, 14/11/2026): o status e, em duas
+        // linhas, o Fornecedor e a Fábrica do registro; o nome do arquivo
+        // não identifica nenhum dos dois.
+        subtitle={
+          <span
+            className="flex flex-col items-start gap-1"
+            data-booking-lot-heading
+          >
+            <span className="flex flex-wrap items-center gap-2">
+              <Badge tone={statusOf(t, lot.status).tone}>
+                {statusOf(t, lot.status).label}
+              </Badge>
+              {lot.bookingDate ? (
+                <span>{formatDate(lot.bookingDate, t)}</span>
+              ) : null}
+            </span>
+            <span>
+              {partnerName
+                ? t("bookingLots.detail.headingSupplier", {
+                    name: partnerName,
+                  })
+                : t("bookingLots.detail.headingSupplierNone")}
+            </span>
+            <span>
+              {factoryName
+                ? t("bookingLots.detail.headingFactory", { name: factoryName })
+                : t("bookingLots.detail.headingFactoryNone")}
+            </span>
+          </span>
+        }
         actions={
           <LinkButton href="/app/booking" variant="secondary">
             {t("bookingLots.partner.back")}

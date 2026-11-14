@@ -220,6 +220,14 @@ describe("tela Booking do Trading", () => {
     ]);
     for (const hidden of ["analysis", "extras", "productId", "ncm"])
       expect(item).not.toHaveProperty(hidden);
+    // Cabeçalho: Fornecedor e Fábrica do registro (nomes do cadastro).
+    const store = getStore();
+    const lot = (await store.get("booking_lots", mine))!;
+    const nameOf = async (id: string | null | undefined) =>
+      id ? ((await store.get("parties", id))?.name ?? null) : null;
+    expect(detail.partnerName).toBe(await nameOf(lot.partnerId));
+    expect(detail.factoryName).toBe(await nameOf(lot.supplierId));
+    expect(detail.partnerName).toBeTruthy();
   });
 
   it("booking de outra empresa não abre", async () => {
