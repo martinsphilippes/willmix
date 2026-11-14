@@ -14,7 +14,7 @@ por PR para `wellmix`, com testes, como manda o `CLAUDE.md`.
    projeto `prj_4v6dAgUxYt1Dde0Y60UMiPNEaavs`).
 3. Próximos itens: seção **Pendências**.
 
-## Estado (14/11/2026, 11:20 UTC)
+## Estado (14/11/2026, 12:40 UTC)
 
 | Entrega     | Conteúdo                                                                                                                                               | Situação                                                    |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
@@ -22,8 +22,8 @@ por PR para `wellmix`, com testes, como manda o `CLAUDE.md`.
 | PR 2 (#398) | só as partes do resumo que cada tela usa; Pedidos sem ler todos os itens (formato 9); Histórico, Revisões, Pós-venda e Multas sem ler todos os pedidos | mesclado; formato 9 gravado em produção às 10:52 UTC (89 s) |
 | PR 3 (#400) | Parceiros, Clientes e Fornecedores paginados no servidor; links de arquivo/exportação sem pré-carregamento                                             | mesclado                                                    |
 | PR 4 (#402) | Histórico, Contas a pagar, Solicitações, Financeiro paginados; Configurações sem 26 mil campos; contas sem laço N×M                                    | mesclado                                                    |
-| PR 5        | Vitrine, Tabela de preços, Avaliação de fornecedores e Fluxo de caixa em páginas                                                                       | em entrega                                                  |
-| Próxima     | seletores com o cadastro inteiro (busca no lugar)                                                                                                      | pendente (ver **Pendências**)                               |
+| PR 5 (#405) | Vitrine, Tabela de preços, Avaliação de fornecedores e Fluxo de caixa em páginas                                                                       | mesclado                                                    |
+| PR 6        | campos com busca no lugar dos seletores com o cadastro inteiro (7 telas; aprovado pelo dono em 14/11/2026)                                             | em entrega                                                  |
 
 ### Resumo do que foi medido
 

@@ -516,9 +516,16 @@ export async function catalogShowcasePhotos(
   const wanted = new Set(productIds);
   const result = new Map<string, ProductPhoto[]>();
   if (!wanted.size) return result;
+  // Poucos produtos (o escolhido na nova solicitação, uma página da vitrine):
+  // só as fotos deles; muitos: a tabela de fotos inteira, como antes. O
+  // filtro abaixo vale nos dois casos (mesmo resultado).
+  const rows = await getStore().list(
+    "product_photos",
+    wanted.size <= 200 ? { filter: { productId: [...wanted] } } : {},
+  );
   // Cartão do fornecedor/fabricante e foto de referência (prompt) nunca vão
   // ao cliente: o cartão diz quem fabrica (o cliente iria direto à fábrica).
-  const photos = (await getStore().list("product_photos")).filter(
+  const photos = rows.filter(
     (p) =>
       p.productId &&
       wanted.has(p.productId) &&

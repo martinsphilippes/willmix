@@ -1,6 +1,10 @@
-import { listByIds } from "@/lib/db/lookup";
+import { listByIds, listColumns } from "@/lib/db/lookup";
 import { PartyPicker } from "@/components/party-picker";
-import { partyPickerLabels } from "@/components/party-picker-labels";
+import { ProductPicker } from "@/components/product-picker";
+import {
+  partyPickerLabels,
+  productPickerLabels,
+} from "@/components/party-picker-labels";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -60,14 +64,22 @@ export default async function MarketingPage({
   const productId = one(params.productId);
   const t = await getT();
   const store = getStore();
-  const [settings, kits, products] = await Promise.all([
+  const [settings, kits] = await Promise.all([
     getSettings(),
     listKits(user, {
       customerId: customerId || undefined,
       productId: productId || undefined,
     }),
-    store.list("products", { orderBy: "name" }),
   ]);
+  // Só os produtos dos kits e o do filtro (o filtro busca pelo nome ou
+  // código: ~17 mil produtos não cabem numa lista; a página saía com 5,5 MB).
+  const products = await listColumns(store, "products", ["name", "sku"], {
+    filter: {
+      id: [...new Set([...kits.map((k) => k.productId), productId])].filter(
+        Boolean,
+      ),
+    },
+  });
   // Só os clientes dos kits e o do filtro; o filtro busca pelo nome (com a
   // carga do Sankhya são ~26 mil clientes, que não cabem numa lista).
   const customers = wellmix
@@ -80,8 +92,9 @@ export default async function MarketingPage({
     : [];
   const filterCustomer = customers.find((c) => c.id === customerId) ?? null;
   const rows = status ? kits.filter((k) => k.status === status) : kits;
-  const productName = (id: string) =>
-    products.find((p) => p.id === id)?.name ?? "—";
+  const productById = new Map(products.map((p) => [p.id, p]));
+  const productName = (id: string) => productById.get(id)?.name ?? "—";
+  const filterProduct = productId ? productById.get(productId) : undefined;
   const customerName = (id: string | null) =>
     id
       ? (customers.find((c) => c.id === id)?.name ?? "—")
@@ -201,15 +214,24 @@ export default async function MarketingPage({
                 />
               </Field>
               <Field label={t("marketing.filter.product")}>
-                <Select name="productId" defaultValue={productId}>
-                  <option value="">{t("common.all")}</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {productNameText(t, p.name)}
-                      {p.sku ? ` (${p.sku})` : ""}
-                    </option>
-                  ))}
-                </Select>
+                {/* Vazio = todos os produtos, como a opção da lista antiga. */}
+                <ProductPicker
+                  name="productId"
+                  scope="all"
+                  initial={
+                    filterProduct
+                      ? {
+                          id: filterProduct.id,
+                          name: `${productNameText(t, filterProduct.name)}${filterProduct.sku ? ` (${filterProduct.sku})` : ""}`,
+                        }
+                      : null
+                  }
+                  ariaLabel={t("marketing.filter.product")}
+                  labels={{
+                    ...productPickerLabels(t),
+                    placeholder: t("common.all"),
+                  }}
+                />
               </Field>
               <div className="flex gap-2">
                 <SubmitButton

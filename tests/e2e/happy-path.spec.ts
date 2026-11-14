@@ -939,7 +939,16 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
 }) => {
   await login(page, "joao@lojista.com");
   await page.goto("/app/requests/new");
-  await page.selectOption('select[name="p0.productId"]', "prod-jarra");
+  // Produto escolhido pela busca (nome ou código); a ficha vem do servidor
+  // e preenche a linha antes de a descrição ser trocada.
+  const product = page.locator(
+    '[data-request-item="0"] [data-product-picker="catalog"]',
+  );
+  await product.locator("[data-product-picker-input]").fill("jarra");
+  await product.locator('[data-product-picker-option="prod-jarra"]').click();
+  await expect(
+    page.locator('[data-request-item="0"] [role="status"]'),
+  ).toBeVisible();
   await page.fill('textarea[name="p0.description"]', "Jarra de vidro");
   // A quantidade fica acima do pedido mínimo da jarra, se houver (a tela
   // sobe e o servidor recusa abaixo dele).

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
-import { getStore } from "@/lib/db";
 import { listContainers } from "@/lib/services/containers";
 import { getSettings } from "@/lib/settings";
 import { getT } from "@/i18n/server";
@@ -25,6 +24,8 @@ import {
   rowClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { PartyPicker } from "@/components/party-picker";
+import { partyPickerLabels } from "@/components/party-picker-labels";
 import { createContainerAction } from "../actions/logistics";
 import {
   bigField,
@@ -43,14 +44,9 @@ export default async function ContainersPage({
   requireScreen(user, "containers");
   const { error } = await searchParams;
   const t = await getT();
-  const [rows, settings, customers] = await Promise.all([
-    listContainers(),
-    getSettings(),
-    getStore().list("parties", {
-      filter: { type: "customer", active: true },
-      orderBy: "name",
-    }),
-  ]);
+  // O cliente do novo container é escolhido por busca (~26 mil clientes não
+  // cabem numa lista de seleção; a página saía com 7 MB).
+  const [rows, settings] = await Promise.all([listContainers(), getSettings()]);
   const errorText = errorMessage(t, error);
 
   return (
@@ -188,18 +184,19 @@ export default async function ContainersPage({
                   label={t("containers.customerOptional")}
                   hint={t("containers.customerHint")}
                 >
-                  <Select
+                  {/* Vazio = sem cliente, como a opção "Sem cliente" da lista antiga. */}
+                  <PartyPicker
                     name="customerId"
-                    defaultValue=""
-                    className={bigField}
-                  >
-                    <option value="">{t("containers.noCustomer")}</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </Select>
+                    type="customer"
+                    activeOnly
+                    includeStock
+                    ariaLabel={t("containers.customerOptional")}
+                    labels={{
+                      ...partyPickerLabels(t),
+                      placeholder: t("containers.noCustomer"),
+                    }}
+                    inputClassName={bigField}
+                  />
                 </Field>
               </div>
               <Field label={t("containers.etd")}>

@@ -8,8 +8,16 @@ import { searchParties } from "@/lib/services/party-search";
 
 export const dynamic = "force-dynamic";
 
-/** Telas com o campo de busca de parceiro (reservas, marketing, sourcing). */
-const PICKER_SCREENS: Screen[] = ["products", "marketing", "sourcing"];
+/**
+ * Telas com o campo de busca de parceiro (reservas, marketing, sourcing,
+ * containers). Todas já mostravam a lista inteira a quem as abre.
+ */
+const PICKER_SCREENS: Screen[] = [
+  "products",
+  "marketing",
+  "sourcing",
+  "containers",
+];
 
 /**
  * Busca de parceiros por nome para os campos de cliente e fornecedor
@@ -31,8 +39,9 @@ export async function GET(request: Request) {
   const options = await searchParties({
     type: type as PartyType,
     q: params.get("q") ?? "",
-    // O "estoque" é um cliente técnico (reservas): nunca aparece na busca.
-    exclude: [STOCK_PARTY_ID],
+    // O "estoque" é um cliente técnico (reservas): fica fora da busca, menos
+    // onde a lista antiga o mostrava (`stock=1`, ex.: cliente do container).
+    exclude: params.get("stock") === "1" ? [] : [STOCK_PARTY_ID],
     activeOnly: params.get("active") === "1",
   });
   return NextResponse.json(

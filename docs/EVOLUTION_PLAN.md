@@ -1289,3 +1289,28 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   | Fluxo de caixa   | 228 KB | 4,4 s  |
 
   O tempo que resta é o cálculo sobre todos os pedidos, não a página.
+
+## Performance: campos com busca no lugar das listas com o cadastro inteiro (14/11/2026)
+
+- **Pedido do dono** (14/11/2026): trocar pelas buscas os seletores grandes das 7 telas apontadas na auditoria (`PERFORMANCE_AUDIT.md`, "Pendências").
+- **Problema medido.** Servidor compilado, dados sintéticos do volume de produção (26 mil clientes, 32 mil empresas, 17 mil produtos). Cada tela mandava ao navegador uma lista de seleção com o cadastro inteiro:
+
+  | Tela                            | HTML    | Tempo  | Lista                                       |
+  | ------------------------------- | ------- | ------ | ------------------------------------------- |
+  | Nova solicitação                | 14,1 MB | 1,15 s | clientes e produtos, com a ficha de cada um |
+  | Novo kit de marketing           | 11,9 MB | 1,25 s | clientes e produtos                         |
+  | Mensagens                       | 8,6 MB  | 0,77 s | todas as empresas e logins sem empresa      |
+  | Containers                      | 6,7 MB  | 0,51 s | clientes                                    |
+  | Marketing (filtro)              | 5,3 MB  | 0,49 s | produtos                                    |
+  | Superplan                       | 4,1 MB  | 0,30 s | produtos                                    |
+  | Produtos (filtro de fornecedor) | 2,0 MB  | 0,36 s | fornecedores                                |
+
+- **O que mudou.** Os seletores viraram campos com busca (a partir de 2 letras, até 20 resultados), com o mesmo `name` de antes num campo escondido: formulários, filtros pelo endereço e Server Actions não mudam.
+  - Componente único `SearchPicker` (`src/components/search-picker.tsx`); o `PartyPicker` passa a usá-lo, com o mesmo comportamento.
+  - Produto: `ProductPicker` e a rota `/api/products/search` (nome ou código; o código igual ao digitado vem primeiro). Cada campo oferece o mesmo que a lista antiga: todos os produtos no filtro do Marketing, os ativos no Superplan, os ativos fora do Booking na nova solicitação e no novo kit. Cada escopo só para quem abre a tela que o usa; o cliente só busca no catálogo, e só com "Cliente pode criar solicitação" ligado (`src/lib/services/product-search.ts`).
+  - Nova solicitação: a ficha do produto escolhido (nome, descrição, especificação, fotos, estoque, mínimo e variações) vem de `/api/products/fill`, com as mesmas regras de antes (`src/lib/services/request-product-fill.ts`); a do produto que já chega escolhido (vitrine, busca por foto, programação de compra) vem pronta. Enquanto a ficha chega, a linha mostra "Carregando a ficha do produto…"; se não chegar, o campo volta vazio com o aviso. O cliente da Wellmix é escolhido por busca, e "Compra para estoque (sem cliente)" virou uma caixa ao lado (mesmo valor no campo `customerId`). O solicitante continua uma lista (são poucos logins de cliente), montada sem ler os 26 mil clientes.
+  - Mensagens: o destinatário da conversa nova é buscado em `/api/messages/targets` (as mesmas empresas e logins da lista antiga, com o tipo ao lado do nome; valor `party:<id>` ou `user:<id>`).
+  - Containers e novo kit: cliente por busca; a empresa interna "Estoque Wellmix" continua escolhível, como na lista antiga (`includeStock`). Marketing: produto do filtro por busca e nomes dos produtos só dos kits mostrados. Superplan: escolher na busca carrega a conta, como antes. Produtos: fornecedor do filtro por busca; a lista lê só id e nome dos fornecedores.
+  - Fotos do catálogo de poucos produtos (o escolhido, uma página da vitrine) são lidas só desses produtos, e não a tabela inteira de fotos (mesmo resultado).
+- **Não mudou:** o que é gravado, as ações, as permissões das telas, as regras do catálogo (Booking, desativados) e do estoque (o cliente vê só "em estoque").
+- Testes: `tests/unit/search-pickers.test.ts` (escopos, quem busca, código exato primeiro, ficha, destinatário) e `tests/e2e/search-pickers.spec.ts` (novo kit, nova solicitação com estoque e ficha, Superplan, filtro de fornecedor, Containers e Mensagens); o caminho principal escolhe o produto da nova solicitação pela busca.
