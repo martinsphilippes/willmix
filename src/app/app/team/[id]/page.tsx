@@ -12,7 +12,11 @@ import {
   screensFor,
 } from "@/lib/auth/screens";
 import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
-import { accessFromFunctions, functionLabel } from "@/lib/auth/function-access";
+import {
+  accessFromFunctions,
+  functionDescription,
+  functionLabel,
+} from "@/lib/auth/function-access";
 import { loadFunctionDefs } from "@/lib/services/team-functions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -296,9 +300,12 @@ export default async function TeamMemberPage({
                     <span className="font-medium">
                       {functionLabel(d.key, defs, (k) => t(k as DictionaryKey))}
                     </span>
-                    {d.builtin ? (
+                    {d.builtin &&
+                    functionDescription(d.key, (k) => t(k as DictionaryKey)) ? (
                       <span className="block text-xs text-zinc-500">
-                        {t(`function.desc.${d.key}` as DictionaryKey)}
+                        {functionDescription(d.key, (k) =>
+                          t(k as DictionaryKey),
+                        )}
                       </span>
                     ) : null}
                   </span>
