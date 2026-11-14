@@ -98,3 +98,39 @@ test("Início por função: menu e endereço seguem o que foi salvo", async ({
   await page.goto("/app");
   await expect(page).toHaveURL(/\/app$/);
 });
+
+/*
+ * Mensagens e Notificações só no cabeçalho (dono, 14/11/2026): a barra
+ * lateral e o menu do celular não mostram as duas linhas; os ícones do alto,
+ * à direita, continuam lá e levam às mesmas telas.
+ */
+test("Mensagens e Notificações ficam só nos ícones do cabeçalho", async ({
+  page,
+}) => {
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/tasks");
+  await expect(
+    page.locator('[data-sidebar-nav] [data-nav-link="/app/tasks"]:visible'),
+  ).toHaveCount(1);
+  await expect(page.locator('[data-nav-link="/app/messages"]')).toHaveCount(0);
+  await expect(
+    page.locator('[data-nav-link="/app/notifications"]'),
+  ).toHaveCount(0);
+  await page.locator("[data-messages-link]").click();
+  await expect(page).toHaveURL(/\/app\/messages/);
+  await page.locator("[data-notifications-bell]").click();
+  await expect(page).toHaveURL(/\/app\/notifications/);
+
+  // No celular: os ícones seguem no alto e o menu aberto também não tem as duas.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, "supplier.a@china.com");
+  await page.goto("/app");
+  await expect(page.locator("[data-messages-link]")).toBeVisible();
+  await expect(page.locator("[data-notifications-bell]")).toBeVisible();
+  await page.locator("[data-mobile-menu]").click();
+  await expect(page.locator('[data-nav-link="/app"]:visible')).toHaveCount(1);
+  await expect(page.locator('[data-nav-link="/app/messages"]')).toHaveCount(0);
+  await expect(
+    page.locator('[data-nav-link="/app/notifications"]'),
+  ).toHaveCount(0);
+});

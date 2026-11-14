@@ -7,7 +7,8 @@ import type { User } from "@/lib/db/schema";
  * Menu lateral do portal (decisão do dono, 12/11/2026). O que cada login vê
  * vem de uma regra só (src/lib/auth/screens.ts, docs/ACCESS.md): o menu mostra
  * as telas que o login abre. No alto, links soltos do dia a dia (Control
- * Tower, Pendências, Mensagens, Notificações); depois os grupos, cada um na
+ * Tower, Pendências, Mensagens, Notificações; as duas últimas ficam só nos
+ * ícones do cabeçalho, fora da barra lateral: SIDEBAR_HIDDEN); depois os grupos, cada um na
  * ordem do fluxo (Compras: Booking → Seleção → Convites → Solicitações ao
  * fornecedor; Pedidos e entrega: Pedidos de compra → Revisão → Containers →
  * Fretes → Tarifário → Estoque; Produção, item pai logo abaixo de Pedidos e
@@ -89,6 +90,32 @@ export const MENU_HIDDEN: readonly string[] = [
   "/app/after-sales",
   "/app/history",
 ];
+
+/**
+ * Fora da barra lateral (pedido do dono, 14/11/2026): Mensagens e Notificações
+ * aparecem só nos ícones do cabeçalho, no alto à direita, com os contadores.
+ * Continuam em navFor, porque o ícone de mensagens do cabeçalho e o "Voltar"
+ * saem dessa lista; só a barra lateral e o menu do celular deixam de desenhar
+ * as duas linhas. As telas, os links e as permissões não mudam.
+ */
+export const SIDEBAR_HIDDEN: readonly string[] = [
+  "/app/messages",
+  "/app/notifications",
+];
+
+/** O menu como a barra lateral e o menu do celular mostram: sem SIDEBAR_HIDDEN. */
+export function sidebarNav(entries: NavEntry[]): NavEntry[] {
+  return entries.flatMap((entry): NavEntry[] => {
+    if (!isNavGroup(entry))
+      return SIDEBAR_HIDDEN.includes(entry.href) ? [] : [entry];
+    const items = entry.items.filter((l) => !SIDEBAR_HIDDEN.includes(l.href));
+    if (items.length) return [{ ...entry, items }];
+    // Item pai sem subitens à vista: fica o link da tela dele.
+    return entry.href
+      ? [{ href: entry.href, key: entry.key, icon: entry.icon }]
+      : [];
+  });
+}
 
 /** Grupo do menu; com uma tela só, vira o próprio link (com o ícone do grupo); vazio, some. */
 function group(
