@@ -26,6 +26,7 @@ const iso = (offset: number) =>
 let scenario: Awaited<ReturnType<typeof towerScenario>>;
 let team: User[];
 let held: Order;
+let delivered: Order;
 
 /** O mesmo cálculo pelas tabelas (sem o marcador dos resumos). */
 async function withoutSummaries<T>(fn: () => Promise<T>): Promise<T> {
@@ -194,6 +195,19 @@ beforeAll(async () => {
     updatedByUserId: null,
   });
   await step(held.id, "booking", "submitted");
+  // Entregue com divergência no recebimento (mapa E24 a E27): comunicação
+  // validada, resposta do fornecedor a registrar, evidência a validar. Do
+  // pedido entregue só a divergência vira pendência (o selo não).
+  delivered = await scenario.placeOrder("Entregue D");
+  await store.update("orders", delivered.id, { status: "DELIVERED" });
+  await step(delivered.id, "divergence_purchasing", "validated", {
+    validatedAt: iso(-2),
+  });
+  await step(delivered.id, "divergence_supplier", "pending");
+  await step(delivered.id, "divergence_evidence", "submitted", {
+    documentId: "doc-evidencia",
+  });
+  await step(delivered.id, "divergence_finance", "pending");
   await summary.rebuildOrderSummaries(NOW);
 });
 
@@ -217,6 +231,16 @@ describe("pendências da Wellmix pela lista pronta do resumo", () => {
         (t) => t.kind === "import_step" && t.stepKey === "container_tracking",
       ),
     ).toBe(true);
+    // Entregue com divergência: os passos dela, e só eles.
+    const fromDelivered = tasks.filter(
+      (t) =>
+        t.orderNumber === delivered.number &&
+        (t.kind === "import_step" || t.kind === "import_validate"),
+    );
+    expect(fromDelivered.map((t) => `${t.kind}:${t.stepKey}`).sort()).toEqual([
+      "import_step:divergence_supplier",
+      "import_validate:divergence_evidence",
+    ]);
     // Pedido em espera: nenhuma pendência, nem guardada no resumo.
     expect(tasks.some((t) => t.orderId === held.id)).toBe(false);
     expect(tasks.some((t) => t.orderNumber === held.number)).toBe(false);

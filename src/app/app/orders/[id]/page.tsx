@@ -487,7 +487,14 @@ export default async function OrderPage({
     certSteps.length > 0 &&
     order.flow === "supplier_request" &&
     !(await importFlow.purchaseNeedsCertification(order));
-  for (const v of [...importSteps, ...certSteps]) {
+  /* Divergência no recebimento (mapa E24 a E27; docs/RECEIVING.md): só no
+     pedido em que a contagem achou divergência; a Wellmix e o fornecedor
+     do pedido (que responde pelo portal). */
+  const divergenceSteps =
+    order.status !== "CANCELLED"
+      ? await importFlow.importFlowView(user, order, "divergence")
+      : [];
+  for (const v of [...importSteps, ...certSteps, ...divergenceSteps]) {
     if (v.step?.submittedByUserId)
       productionUserIds.add(v.step.submittedByUserId);
     if (v.step?.validatedByUserId)
@@ -3293,6 +3300,24 @@ export default async function OrderPage({
             }
           />
         ) : null}
+        {/* Divergência no recebimento: Comunicar a Compras, Fornecedor,
+            Evidência e Financeiro (mapa E24 a E27). */}
+        <ImportFlowCard
+          t={t}
+          order={order}
+          steps={divergenceSteps}
+          names={productionNames}
+          title={t("divergenceFlow.title")}
+          anchor="divergence-flow"
+          hints={[t("divergenceFlow.hint")]}
+          error={stepCard === "divergence-flow" ? stepError : null}
+          notice={
+            typeof importNotice === "string" &&
+            ["submitted", "validated", "rejected"].includes(importNotice)
+              ? t(`importFlow.done.${importNotice}` as DictionaryKey)
+              : null
+          }
+        />
         {/* Artes (Fase F): designer, não conformidade por SKU, baixar todas. */}
         {artworkView ? (
           <ArtworkCard

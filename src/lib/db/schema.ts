@@ -607,6 +607,16 @@ export const IMPORT_STEP_KEYS = [
   "origin_carrier",
   "origin_carrier_eta",
   "origin_costs",
+  // Divergência no recebimento (mapa E24 a E27; dono, 14/11/2026;
+  // docs/RECEIVING.md): só existem no pedido cuja contagem achou divergência.
+  // A qualidade comunica a Compras (o planner valida), o comprador registra a
+  // resposta do fornecedor (ou o fornecedor responde pelo portal), a
+  // qualidade anexa a evidência (o analista valida) e o financeiro registra
+  // o resultado (a diretoria de compras valida).
+  "divergence_purchasing",
+  "divergence_supplier",
+  "divergence_evidence",
+  "divergence_finance",
 ] as const;
 export type ImportStepKey = (typeof IMPORT_STEP_KEYS)[number];
 export const IMPORT_STEP_STATUSES = [

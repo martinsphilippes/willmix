@@ -140,10 +140,10 @@ Copiado em 14/11/2026 do repositório da apresentação (aba Mapa) para guiar o 
 | E21   | Lote                                    | qualidade:R, planner:A                               |                                                                                                                      | todo             |
 | E22   | Armazenamento                           | qualidade:R, planner:A                               |                                                                                                                      | todo             |
 | E23   | Oferta de amostra                       | vendas:R, gp:A, mkt:C                                |                                                                                                                      | todo             |
-| E24   | Comunicar a Compras                     |                                                      |                                                                                                                      | todo             |
-| E25   | Fornecedor                              |                                                      |                                                                                                                      | todo             |
-| E26   | Evidência                               |                                                      |                                                                                                                      | todo             |
-| E27   | Financeiro                              |                                                      |                                                                                                                      | todo             |
+| E24   | Comunicar a Compras                     | qualidade:R, planner:A                               |                                                                                                                      | done             |
+| E25   | Fornecedor                              | comprador:R, fornecedor:R                            |                                                                                                                      | done             |
+| E26   | Evidência                               | qualidade:R, analista:A                              |                                                                                                                      | done             |
+| E27   | Financeiro                              | fin:R, dir. compras:A                                |                                                                                                                      | done             |
 
 ## Venda
 

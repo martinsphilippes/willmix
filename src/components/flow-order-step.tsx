@@ -52,7 +52,14 @@ import {
  * do arquivo para quem pode; o resto do pedido no passo fica em "Ver tudo".
  */
 
-const IMPORT_GROUPS = ["certification", "origin", "import", "samples"] as const;
+const IMPORT_GROUPS = [
+  "certification",
+  "origin",
+  "import",
+  "samples",
+  // Divergência no recebimento (Armazenagem, mapa E24 a E27).
+  "divergence",
+] as const;
 
 export async function FlowOrderInStep({
   user,

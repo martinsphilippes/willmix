@@ -215,6 +215,8 @@ function importStep(stepKey: string): Ref | null {
     return "order/certification";
   if (stepKey.startsWith("samples_")) return "production/sample";
   if (stepKey.startsWith("shipping_")) return "production/cargo-docs";
+  // Divergência no recebimento (mapa E24 a E27): na Armazenagem, marco 16.
+  if (stepKey.startsWith("divergence_")) return "delivery/storage";
   switch (stepKey) {
     case "booking":
       return "production/booking";

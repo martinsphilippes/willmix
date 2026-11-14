@@ -49,11 +49,11 @@ Legenda dos papéis, pelo RACI do mapa: **faz** (R), **aprova** (A), **é inform
 
 ### Entrega
 
-| #   | Marco                    | Depende de      | Passos do mapa             | Atividades                                                                                                                                                                                                         | Faz                           | Aprova                    | Informado                      | No sistema hoje                                                                                                           |
-| --- | ------------------------ | --------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------- | ------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| 14  | Desembaraço              | Embarque        | E5, E5?, E6, E7, E7?, E11  | LPCO (NCM que exige), presença de carga, numerário (e pago), DI, CE Mercante, CI, canal; processo, documentos, custos e liberação                                                                                  | Comex                         | Analista, Financeiro      | Dono (canal cinza ou vermelho) | Despachante e comex; numerário pelo financeiro                                                                            |
-| 15  | Nota fiscal e transporte | Desembaraço     | E12?, E13–E16              | DANFE, placa, atualização de status, programar entrega                                                                                                                                                             | Analista, Planner, Financeiro | Analista, Planner         | Cliente, Vendas                | Analista e financeiro                                                                                                     |
-| 16  | Entrega e recebimento    | NF e transporte | E17?, E9, E18–E22, E24–E27 | Entregue, recebimento confirmado, descarga (lacre, fotos, checklist, contagem), RIC, devolução do container, lote, armazenamento; Comunicar a Compras, Fornecedor, Evidência e Financeiro (caminho da divergência) | Transportador, Qualidade      | Analista, Planner, Vendas | Cliente                        | Quem abre Containers (recebimento). **E24–E27 (divergência no recebimento) ainda sem tarefa no sistema: próxima entrega** |
+| #   | Marco                    | Depende de      | Passos do mapa             | Atividades                                                                                                                                                                                                         | Faz                           | Aprova                    | Informado                      | No sistema hoje                                                                                                                                 |
+| --- | ------------------------ | --------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------- | ------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 14  | Desembaraço              | Embarque        | E5, E5?, E6, E7, E7?, E11  | LPCO (NCM que exige), presença de carga, numerário (e pago), DI, CE Mercante, CI, canal; processo, documentos, custos e liberação                                                                                  | Comex                         | Analista, Financeiro      | Dono (canal cinza ou vermelho) | Despachante e comex; numerário pelo financeiro                                                                                                  |
+| 15  | Nota fiscal e transporte | Desembaraço     | E12?, E13–E16              | DANFE, placa, atualização de status, programar entrega                                                                                                                                                             | Analista, Planner, Financeiro | Analista, Planner         | Cliente, Vendas                | Analista e financeiro                                                                                                                           |
+| 16  | Entrega e recebimento    | NF e transporte | E17?, E9, E18–E22, E24–E27 | Entregue, recebimento confirmado, descarga (lacre, fotos, checklist, contagem), RIC, devolução do container, lote, armazenamento; Comunicar a Compras, Fornecedor, Evidência e Financeiro (caminho da divergência) | Transportador, Qualidade      | Analista, Planner, Vendas | Cliente                        | Quem abre Containers (recebimento). E24–E27: passos da divergência no recebimento (docs/RECEIVING.md), só no pedido com divergência na contagem |
 
 Também ficam fora dos 16 marcos: a Revisão (fila da Wellmix, não é do pedido), o pós-venda e recompra (E10, Vendas) e a oferta de amostra (E23, Vendas), que já estão no bloco Vendas do menu.
 
@@ -83,11 +83,12 @@ Cada aprovação é um item obrigatório do pedido de compra, no fim do marco (`
 
 ## Lacunas que faltam
 
-1. **E24–E27:** decisão do dono (14/11/2026). O caminho da divergência no recebimento entra como passos do marco 16, na próxima entrega:
-   - Comunicar a Compras: faz a Qualidade, aprova o Planner;
-   - Fornecedor: faz o Comprador, e o fornecedor também responde pelo portal;
-   - Evidência: faz a Qualidade, aprova o Analista;
-   - Financeiro: faz o Financeiro, aprova a Diretoria de compras.
+Nenhuma. **E24–E27** (decisão do dono, 14/11/2026) entraram como passos do marco 16, no passo Armazenagem do menu (docs/RECEIVING.md, "Divergência no recebimento"). Só existem no pedido cuja contagem achou divergência:
+
+- Comunicar a Compras: faz a Qualidade, aprova o Planner;
+- Fornecedor: faz o Comprador, e o fornecedor também responde pelo portal;
+- Evidência: faz a Qualidade, aprova o Analista;
+- Financeiro: faz o Financeiro, aprova a Diretoria de compras.
 
 ## Código
 

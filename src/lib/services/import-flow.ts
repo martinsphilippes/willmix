@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { can, holdersOf } from "@/lib/auth/function-access";
+import { can, holdersOf, type ActionKey } from "@/lib/auth/function-access";
 import { loadFunctionDefs } from "./team-functions";
 
 import { getStore, type ImportStep, type Order, type User } from "@/lib/db";
@@ -80,6 +80,16 @@ export type StepActor =
   | "comex_internal"
   // Agência de marketing na China: amostras e fotos/vídeos reais.
   | "marketing_agency"
+  // Divergência no recebimento (mapa E24 a E27; docs/RECEIVING.md): funções
+  // da Wellmix resolvidas pela ação em Equipe → Funções e acessos.
+  // Qualidade do CD ("Concluir a conferência da qualidade").
+  | "quality"
+  // Comprador ("Acompanhar o recebimento": quem é avisado da divergência).
+  | "buyer"
+  // Planner ("Aprovar como Planner").
+  | "planner"
+  // Diretoria de compras ("Aprovar como Diretoria de compras").
+  | "purchasing_director"
   | "wellmix";
 /** Cartão do passo: embarque/desembaraço ou certificação (Fase F). */
 export type StepGroup =
@@ -87,7 +97,9 @@ export type StepGroup =
   | "certification"
   | "origin"
   // Amostras depois da inspeção (pedido de compra com pedido de amostras).
-  | "samples";
+  | "samples"
+  // Divergência no recebimento (mapa E24 a E27): só com divergência na contagem.
+  | "divergence";
 /** O que o passo pede ("file_text": arquivo obrigatório e texto opcional). */
 export type StepInput =
   | "text"
@@ -96,7 +108,12 @@ export type StepInput =
   | "file_text"
   | "money_file"
   | "channel"
-  | "date";
+  | "date"
+  // Resposta do fornecedor (divergência): escolha + texto, arquivo opcional.
+  | "reply"
+  // Resultado no financeiro (divergência): escolha, valor e arquivo (sem
+  // valor: só a escolha, o resto opcional).
+  | "outcome";
 
 export interface StepTemplate {
   key: ImportStepKey;
@@ -107,6 +124,15 @@ export interface StepTemplate {
   visibleTo: Role[];
   /** Passo que precisa estar concluído antes. */
   after?: ImportStepKey;
+  /** Outro passo que também precisa estar concluído antes (dois anteriores). */
+  alsoAfter?: ImportStepKey;
+  /**
+   * Parceiro que também pode enviar o passo pelo portal (além de quem faz):
+   * a resposta do fornecedor na divergência.
+   */
+  alsoBy?: "supplier";
+  /** Escolhas do passo ("reply" e "outcome"), guardadas no início do valor. */
+  choices?: readonly string[];
   /** Sem valor: embarque e desembaraço. */
   group?: StepGroup;
   /**
@@ -376,6 +402,55 @@ export const IMPORT_STEPS: StepTemplate[] = [
     after: "samples_china_received",
     group: "samples",
   },
+  /*
+   * Divergência no recebimento (mapa E24 a E27; dono, 14/11/2026;
+   * docs/RECEIVING.md): os quatro passos nascem quando a contagem por SKU
+   * acha a primeira divergência (receiving.ts, saveCounts); sem divergência
+   * não existem. A qualidade comunica a Compras e o planner valida; depois,
+   * em paralelo, o comprador registra a resposta do fornecedor (o fornecedor
+   * também responde pelo portal) e a qualidade anexa a evidência, que o
+   * analista do pedido valida; com as duas, o financeiro registra o
+   * resultado e a diretoria de compras valida.
+   */
+  {
+    key: "divergence_purchasing",
+    actor: "quality",
+    validator: "planner",
+    input: "text",
+    visibleTo: [],
+    group: "divergence",
+  },
+  {
+    key: "divergence_supplier",
+    actor: "buyer",
+    alsoBy: "supplier",
+    validator: null,
+    input: "reply",
+    choices: ["accepts", "contests", "replaces"],
+    visibleTo: ["supplier"],
+    after: "divergence_purchasing",
+    group: "divergence",
+  },
+  {
+    key: "divergence_evidence",
+    actor: "quality",
+    validator: "wellmix",
+    input: "text_file",
+    visibleTo: [],
+    after: "divergence_purchasing",
+    group: "divergence",
+  },
+  {
+    key: "divergence_finance",
+    actor: "finance",
+    validator: "purchasing_director",
+    input: "outcome",
+    choices: ["discount", "credit", "penalty", "none"],
+    visibleTo: [],
+    after: "divergence_evidence",
+    alsoAfter: "divergence_supplier",
+    group: "divergence",
+  },
   // Certificação (Fase F, docs/CERTIFICATION.md): com o OCP do pedido.
   // Memorial descritivo: a certificadora (OCP) vinculada ao pedido preenche e
   // envia (dono, 14/11/2026; antes a Wellmix enviava e a certificadora
@@ -433,6 +508,42 @@ export const IMPORT_STEPS: StepTemplate[] = [
 export const stepTemplate = (key: ImportStepKey) =>
   IMPORT_STEPS.find((s) => s.key === key)!;
 
+/** Passos da divergência no recebimento (mapa E24 a E27), na ordem. */
+export const DIVERGENCE_STEPS: readonly ImportStepKey[] = IMPORT_STEPS.filter(
+  (tpl) => groupOf(tpl) === "divergence",
+).map((tpl) => tpl.key);
+
+export const isDivergenceStep = (key: string) =>
+  (DIVERGENCE_STEPS as readonly string[]).includes(key);
+
+/** O pedido tem o caminho da divergência (as linhas dos passos existem). */
+export const hasDivergence = (steps: readonly Pick<ImportStep, "key">[]) =>
+  steps.some((s) => isDivergenceStep(s.key));
+
+/** Etapas do pedido em que o caminho da divergência anda (recebimento aberto). */
+export const DIVERGENCE_LIVE: readonly string[] = [
+  "CUSTOMS",
+  "TRANSPORT",
+  "DELIVERED",
+];
+
+/**
+ * Escolha e texto de um passo com escolhas ("reply", "outcome"): o valor é
+ * guardado como "escolha:texto" (ou só a escolha).
+ */
+export function parseChoice(
+  tpl: Pick<StepTemplate, "choices">,
+  value: string | null | undefined,
+): { choice: string | null; text: string | null } {
+  if (!tpl.choices?.length || !value)
+    return { choice: null, text: value ?? null };
+  const at = value.indexOf(":");
+  const head = at < 0 ? value : value.slice(0, at);
+  if (!tpl.choices.includes(head)) return { choice: null, text: value };
+  const text = at < 0 ? "" : value.slice(at + 1).trim();
+  return { choice: head, text: text || null };
+}
+
 /*
  * Pedido de compra: packing list, invoice e BL saem dos documentos do
  * embarque (docs/SHIPPING_DOCS.md: fornecedor, trading e marítima, conferidos
@@ -451,8 +562,15 @@ export function stepApplies(
   key: ImportStepKey,
   /** LPCO: o pedido tem produto de NCM que exige (lpcoApplies). */
   lpco = false,
+  /**
+   * Passos gravados do pedido: a divergência no recebimento só vale quando
+   * a linha do passo existe (nasce na contagem com divergência). Sem a
+   * lista, não vale.
+   */
+  steps?: readonly Pick<ImportStep, "key">[],
 ): boolean {
   if (key === "lpco") return lpco;
+  if (isDivergenceStep(key)) return !!steps?.some((s) => s.key === key);
   const purchase = isPurchaseFlow(order);
   if (EXW_STEPS.includes(key)) return isExwOrder(order);
   if (groupOf(stepTemplate(key)) === "origin") return purchase;
@@ -501,6 +619,8 @@ export function stepLink(
   if (groupOf(tpl) === "origin")
     return `/app/orders/${orderId}#container-origin`;
   if (groupOf(tpl) === "samples") return `/app/orders/${orderId}#samples-flow`;
+  if (groupOf(tpl) === "divergence")
+    return `/app/orders/${orderId}#divergence-flow`;
   if (groupOf(tpl) !== "certification")
     return `/app/orders/${orderId}#import-flow`;
   if (action === "do" && CERT_FEATURED_STEPS.includes(tpl.key))
@@ -516,7 +636,9 @@ const auditLabel = (tpl: StepTemplate) =>
       ? "Container na origem"
       : groupOf(tpl) === "samples"
         ? "Amostras"
-        : "Embarque/desembaraço";
+        : groupOf(tpl) === "divergence"
+          ? "Divergência no recebimento"
+          : "Embarque/desembaraço";
 
 /** Comex interno: permissão "Rastrear o container" (padrão: função Comex interno) ou admin. */
 export const isComexInternal = (user: User) =>
@@ -526,10 +648,28 @@ export const isComexInternal = (user: User) =>
 export const isFinance = (user: User) =>
   isAdmin(user) || (isWellmix(user) && can(user, "numerario.manage"));
 
+/**
+ * Funções da Wellmix resolvidas pela ação (Equipe → Funções e acessos): quem
+ * tem a ação age pelo papel; o administrador sempre.
+ */
+const ACTOR_ACTION = {
+  finance: "numerario.manage",
+  comex_internal: "container.tracking",
+  quality: "receiving.quality",
+  buyer: "receiving.follow",
+  planner: "approve.planner",
+  purchasing_director: "approve.purchasingDirector",
+} as const satisfies Partial<Record<StepActor, ActionKey>>;
+
+type FunctionActor = keyof typeof ACTOR_ACTION;
+
+const isFunctionActor = (actor: StepActor): actor is FunctionActor =>
+  actor in ACTOR_ACTION;
+
 /** O usuário é quem age (ou valida) por esse papel neste pedido? */
 export function actsAs(user: User, order: Order, actor: StepActor): boolean {
-  if (actor === "finance") return isFinance(user);
-  if (actor === "comex_internal") return isComexInternal(user);
+  if (isFunctionActor(actor))
+    return isAdmin(user) || (isWellmix(user) && can(user, ACTOR_ACTION[actor]));
   if (isWellmix(user)) return true;
   if (actor === "wellmix") return false;
   // Certificação: o despachante do pedido (ou a certificadora designada).
@@ -544,7 +684,10 @@ export function actsAs(user: User, order: Order, actor: StepActor): boolean {
  */
 function doesStep(user: User, order: Order, key: ImportStepKey): boolean {
   if (isOcpOnlyStep(key)) return isOrderOcp(user, order);
-  return actsAs(user, order, stepTemplate(key).actor);
+  const tpl = stepTemplate(key);
+  if (actsAs(user, order, tpl.actor)) return true;
+  // O parceiro que também responde pelo portal (o fornecedor do pedido).
+  return !!tpl.alsoBy && !isWellmix(user) && actsAs(user, order, tpl.alsoBy);
 }
 
 /**
@@ -565,7 +708,14 @@ export async function canSubmitStep(
   key: ImportStepKey,
 ): Promise<boolean> {
   const tpl = stepTemplate(key);
-  if (!stepApplies(order, key, key === "lpco" && (await lpcoApplies(order))))
+  if (
+    !stepApplies(
+      order,
+      key,
+      key === "lpco" && (await lpcoApplies(order)),
+      isDivergenceStep(key) ? await stepsOf(order.id) : undefined,
+    )
+  )
     return false;
   // Pedido de compra: o BL vem dos documentos do embarque, conferido.
   if (key === "bl" && isPurchaseFlow(order)) return false;
@@ -577,7 +727,7 @@ export async function canSubmitStep(
   // Artes → Designer do pedido) envia, mesmo com a arte feita pela Wellmix.
   if (tpl.actor === "agency" && (await isOrderDesigner(user, order)))
     return true;
-  if (!actsAs(user, order, tpl.actor)) return false;
+  if (!doesStep(user, order, key)) return false;
   if (tpl.actor === "agency" && !isWellmix(user)) return agencyDoesArt(order);
   return true;
 }
@@ -644,10 +794,27 @@ function afterOf(key: ImportStepKey, order?: Order): ImportStepKey | undefined {
   return stepTemplate(key).after;
 }
 
-/** O passo já pode ser feito (o anterior concluído)? */
+/** O passo já pode ser feito (o anterior, ou os dois anteriores, concluídos)? */
 function ready(key: ImportStepKey, steps: ImportStep[], order?: Order) {
   const after = afterOf(key, order);
-  return !after || isDone(steps.find((s) => s.key === after));
+  const also = stepTemplate(key).alsoAfter;
+  return (
+    (!after || isDone(steps.find((s) => s.key === after))) &&
+    (!also || isDone(steps.find((s) => s.key === also)))
+  );
+}
+
+/** O anterior que ainda falta (para a tela dizer "aguardando X"). */
+function pendingAfterOf(
+  key: ImportStepKey,
+  steps: ImportStep[],
+  order?: Order,
+): ImportStepKey | undefined {
+  const after = afterOf(key, order);
+  const also = stepTemplate(key).alsoAfter;
+  if (after && !isDone(steps.find((s) => s.key === after))) return after;
+  if (also && !isDone(steps.find((s) => s.key === also))) return also;
+  return after;
 }
 
 async function loadOrder(orderId: string) {
@@ -680,13 +847,13 @@ async function targetFor(
     return notifyTargetOf(artMakerRoute(order, await loadRoutingContext()));
   if (actor === "ocp")
     return notifyTargetOf(ocpRoute(order, await loadRoutingContext()));
-  if (actor === "finance" || actor === "comex_internal") {
+  if (isFunctionActor(actor)) {
     const team = await getStore().list("users", {
       filter: { role: ["admin", "operator"], active: true },
     });
     const finance = holdersOf(
       team,
-      actor === "finance" ? "numerario.manage" : "container.tracking",
+      ACTOR_ACTION[actor],
       await loadFunctionDefs(),
     );
     return {
@@ -747,6 +914,8 @@ export interface SubmitInput {
   amount?: number | null;
   currency?: string | null;
   documentId?: string | null;
+  /** Passo com escolhas ("reply", "outcome"): a escolha (uma das do modelo). */
+  choice?: string | null;
   /**
    * Substituir o arquivo (quadro do alto da Certificação, dono, 14/11/2026):
    * troca só o arquivo de um documento já enviado. O número do selo (e o
@@ -818,24 +987,37 @@ export async function submitStep(
   }
   if (current && tpl.validator && current.status === "validated")
     throw new ImportFlowError("already_validated");
+  // Passo com escolhas (divergência): a escolha vai no início do valor.
+  const choice = tpl.choices ? (input.choice ?? null) : null;
+  if (tpl.choices && !replacing && !tpl.choices.includes(choice ?? ""))
+    throw new ImportFlowError("choice_required");
+  // "Sem valor" no financeiro: nem valor nem arquivo obrigatórios.
+  const noAmount = tpl.input === "outcome" && choice === "none";
   // O que cada tipo de passo exige. Na substituição, o número do selo (o
   // valor do passo) fica como estava: só o arquivo muda.
+  const text = input.value?.trim() || null;
   const value = replacing
     ? (current?.value ?? null)
-    : input.value?.trim() || null;
+    : choice
+      ? (text ? `${choice}:${text}` : choice).slice(0, 200)
+      : text;
   const needsValue = ["text", "text_file", "channel", "date"].includes(
     tpl.input,
   );
-  const needsFile = ["file", "text_file", "file_text", "money_file"].includes(
-    tpl.input,
-  );
+  if (tpl.input === "reply" && !replacing && !text)
+    throw new ImportFlowError("value_required");
+  const needsFile =
+    ["file", "text_file", "file_text", "money_file"].includes(tpl.input) ||
+    (tpl.input === "outcome" && !noAmount);
   if (needsValue && !value) throw new ImportFlowError("value_required");
   if (
     tpl.input === "channel" &&
     !(CUSTOMS_CHANNELS as readonly string[]).includes(value ?? "")
   )
     throw new ImportFlowError("invalid_channel");
-  if (tpl.input === "money_file" && !(input.amount && input.amount > 0))
+  const money =
+    tpl.input === "money_file" || (tpl.input === "outcome" && !noAmount);
+  if (money && !(input.amount && input.amount > 0))
     throw new ImportFlowError("amount_required");
   const documentId = input.documentId ?? current?.documentId ?? null;
   if (needsFile && !documentId) throw new ImportFlowError("file_required");
@@ -848,9 +1030,8 @@ export async function submitStep(
   const data = {
     status: "submitted" as const,
     value,
-    amount: tpl.input === "money_file" ? (input.amount ?? null) : null,
-    currency:
-      tpl.input === "money_file" ? (input.currency || "BRL").slice(0, 3) : null,
+    amount: money ? (input.amount ?? null) : null,
+    currency: money ? (input.currency || "BRL").slice(0, 3) : null,
     documentId,
     submittedByUserId: user.id,
     submittedAt: now,
@@ -915,7 +1096,105 @@ export async function submitStep(
   // Selo de certificação: vai para quem faz a arte (agência ou Wellmix).
   if (key === "cert_seal")
     await handOverSeal(user, order, steps, current ?? null, step);
+  // Divergência: passo sem validação concluído libera o seguinte (E25 → E27).
+  if (groupOf(tpl) === "divergence" && !tpl.validator)
+    await notifyDivergenceNext(order, key, [
+      ...steps.filter((s) => s.key !== key),
+      step,
+    ]);
   return step;
+}
+
+/**
+ * Divergência no recebimento: os passos que dependiam deste e ficaram
+ * prontos (com os dois anteriores concluídos, no caso do financeiro) avisam
+ * quem faz; a resposta do fornecedor avisa também o fornecedor do pedido.
+ */
+async function notifyDivergenceNext(
+  order: Order,
+  key: ImportStepKey,
+  steps: ImportStep[],
+) {
+  for (const next of IMPORT_STEPS) {
+    if (next.after !== key && next.alsoAfter !== key) continue;
+    if (!steps.some((s) => s.key === next.key)) continue;
+    if (!ready(next.key, steps, order)) continue;
+    if (isDone(steps.find((s) => s.key === next.key))) continue;
+    const targets = [await targetFor(order, next.actor)];
+    if (next.alsoBy === "supplier" && order.supplierId)
+      targets.push({ role: "supplier", partyId: order.supplierId });
+    for (const target of targets)
+      await notify(target, {
+        link: stepLink(order.id, next, "do"),
+        kind: "action",
+        text: (t) => ({
+          subject: t("importFlow.notify.next.subject", {
+            n: String(order.number),
+            step: t(`importFlow.step.${next.key}`),
+          }),
+          body: t("importFlow.notify.next.body"),
+        }),
+      });
+  }
+}
+
+/**
+ * Primeira divergência na contagem do recebimento (receiving.ts,
+ * saveCounts): nascem os quatro passos do caminho (mapa E24 a E27), em
+ * "pendente", e a qualidade é avisada de que precisa comunicar a Compras.
+ * Idempotente: os que já existem ficam como estão.
+ */
+export async function openDivergenceSteps(
+  user: User,
+  order: Order,
+): Promise<ImportStep[]> {
+  if (order.status === "CANCELLED" || order.status === "CLOSED") return [];
+  const store = getStore();
+  const steps = await stepsOf(order.id);
+  const missing = DIVERGENCE_STEPS.filter(
+    (key) => !steps.some((s) => s.key === key),
+  );
+  if (!missing.length) return [];
+  const created: ImportStep[] = [];
+  for (const key of missing)
+    created.push(
+      await store.create("import_steps", {
+        orderId: order.id,
+        key,
+        status: "pending",
+        value: null,
+        amount: null,
+        currency: null,
+        documentId: null,
+        submittedByUserId: null,
+        submittedAt: null,
+        validatedByUserId: null,
+        validatedAt: null,
+        rejectReason: null,
+      }),
+    );
+  await audit(
+    user,
+    "import.divergence_opened",
+    "order",
+    order.id,
+    "Divergência no recebimento: abertos Comunicar a Compras, Fornecedor, Evidência e Financeiro",
+  );
+  if (missing.includes("divergence_purchasing")) {
+    const tpl = stepTemplate("divergence_purchasing");
+    await notify(await targetFor(order, tpl.actor), {
+      link: stepLink(order.id, tpl, "do"),
+      kind: "action",
+      text: (t) => ({
+        subject: t("importFlow.notify.next.subject", {
+          n: String(order.number),
+          step: t(`importFlow.step.${tpl.key}`),
+        }),
+        body: t("importFlow.notify.next.body"),
+      }),
+    });
+  }
+  return created;
 }
 
 /**
@@ -1203,6 +1482,9 @@ export async function validateStep(
         body: t("importFlow.notify.rejected.body", { reason: reason ?? "—" }),
       }),
     });
+  else if (groupOf(tpl) === "divergence")
+    // Divergência: E24 libera o fornecedor e a evidência; E26, o financeiro.
+    await notifyDivergenceNext(order, key, await stepsOf(orderId));
   else {
     // Próximo passo que dependia deste: avisa quem faz.
     const next = IMPORT_STEPS.find((s) => s.after === key);
@@ -1259,6 +1541,8 @@ export async function importFlowView(
     if (!(await samplesApply(order))) return [];
   }
   const steps = await stepsOf(order.id);
+  // Divergência no recebimento: só no pedido em que a contagem a achou.
+  if (group === "divergence" && !hasDivergence(steps)) return [];
   // Pedido encerrado: só leitura.
   const open = order.status !== "CLOSED" && order.status !== "CANCELLED";
   const lpco = group === "import" && (await lpcoApplies(order));
@@ -1266,7 +1550,7 @@ export async function importFlowView(
     (tpl) =>
       groupOf(tpl) === group &&
       // Container na origem só no pedido de compra; nele, sem os papéis antigos.
-      stepApplies(order, tpl.key, lpco) &&
+      stepApplies(order, tpl.key, lpco, steps) &&
       canSeeStep(user, order, tpl.key),
   );
   // Passo da agência: só de quem faz a arte (a Wellmix sempre pode agir;
@@ -1315,7 +1599,7 @@ export async function importFlowView(
       return {
         template: purchaseBl
           ? { ...tpl, after: undefined }
-          : { ...tpl, after: afterOf(tpl.key, order) },
+          : { ...tpl, after: pendingAfterOf(tpl.key, steps, order) },
         step,
         ready: isReady,
         done,
@@ -1503,10 +1787,16 @@ export async function importTasks(
     const lpco = importLive && (await lpcoApplies(order));
     for (const tpl of IMPORT_STEPS) {
       const cert = groupOf(tpl) === "certification";
-      if (!cert && !importLive) continue;
+      const divergence = groupOf(tpl) === "divergence";
+      if (
+        divergence
+          ? !DIVERGENCE_LIVE.includes(order.status)
+          : !cert && !importLive
+      )
+        continue;
       if (groupOf(tpl) === "samples" && !samplesOn) continue;
       // Container na origem só no pedido de compra; nele, sem os papéis antigos.
-      if (!stepApplies(order, tpl.key, lpco)) continue;
+      if (!stepApplies(order, tpl.key, lpco, steps)) continue;
       const step = steps.find((s) => s.key === tpl.key);
       if (cert) {
         const candidate = certCandidate(order, tpl, step, steps, gate);
@@ -1555,7 +1845,8 @@ export async function importTasks(
       if (!todo || !ready(tpl.key, steps, order)) continue;
       // Pedido de compra: o BL vem conferido dos documentos do embarque.
       if (tpl.key === "bl" && isPurchaseFlow(order)) continue;
-      if (!actsAs(user, order, tpl.actor)) continue;
+      // Quem faz (e o fornecedor que responde a divergência pelo portal).
+      if (!doesStep(user, order, tpl.key)) continue;
       if (tpl.actor === "agency") {
         // Passo de quem faz a arte: a agência do pedido ou, sem ela, a Wellmix.
         agencyArt ??= (await getSettings()).agencyValidationEnabled;
@@ -1594,6 +1885,17 @@ const WELLMIX_DOES: readonly StepActor[] = [
   "wellmix",
   "finance",
   "comex_internal",
+  "quality",
+  "buyer",
+];
+
+/** Quem valida pela Wellmix sempre (o resto, só no lugar do parceiro que falta). */
+const WELLMIX_VALIDATES: readonly StepActor[] = [
+  "wellmix",
+  "finance",
+  "comex_internal",
+  "planner",
+  "purchasing_director",
 ];
 
 /**
@@ -1659,10 +1961,13 @@ export function wellmixImportCandidates(
   const lpco = importLive && lpcoRequired;
   for (const tpl of IMPORT_STEPS) {
     const cert = groupOf(tpl) === "certification";
-    if (!cert && !importLive) continue;
+    // Divergência no recebimento: do desembaraço à entrega, com as linhas.
+    if (groupOf(tpl) === "divergence") {
+      if (!DIVERGENCE_LIVE.includes(order.status)) continue;
+    } else if (!cert && !importLive) continue;
     // Container na origem só no pedido de compra; nele, sem os passos antigos
     // do despachante e do agente (docs/SHIPPING_DOCS.md).
-    if (!stepApplies(order, tpl.key, lpco)) continue;
+    if (!stepApplies(order, tpl.key, lpco, steps)) continue;
     // Amostras: passos da trading e da agência na China, nunca da Wellmix
     // por esta lista (docs/SAMPLE_FLOW.md).
     if (groupOf(tpl) === "samples") continue;
@@ -1681,11 +1986,10 @@ export function wellmixImportCandidates(
     if (
       tpl.validator &&
       step?.status === "submitted" &&
-      (tpl.validator === "wellmix" ||
-        tpl.validator === "finance" ||
-        tpl.validator === "comex_internal" ||
+      (WELLMIX_VALIDATES.includes(tpl.validator) ||
         (tpl.validator !== "supplier" &&
-          !partnerAssigned(order, tpl.validator)))
+          !isFunctionActor(tpl.validator) &&
+          !partnerAssigned(order, tpl.validator as keyof typeof PARTNER_FIELD)))
     )
       candidate.validate = {
         validator: tpl.validator,
@@ -1905,7 +2209,8 @@ export async function laterStepsFor(
             role !== "supplier" &&
             role !== "comex_internal" &&
             role !== "agency" &&
-            !partnerAssigned(order, role) &&
+            !isFunctionActor(role) &&
+            !partnerAssigned(order, role as keyof typeof PARTNER_FIELD) &&
             options.analyst;
     const doing =
       step?.status !== "submitted" &&
@@ -2067,7 +2372,8 @@ export function openImportStepKeys(
     if (group === "certification" ? !options.certification : !flowing)
       return false;
     if (group === "samples" && !options.samples) return false;
-    if (!stepApplies(order, tpl.key, options.lpco ?? false)) return false;
+    if (!stepApplies(order, tpl.key, options.lpco ?? false, steps))
+      return false;
     if (tpl.key === "bl" && isPurchaseFlow(order)) return false;
     return (
       ready(tpl.key, steps, order) &&

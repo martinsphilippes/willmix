@@ -8334,7 +8334,11 @@
             "samples_returned",
             "origin_carrier",
             "origin_carrier_eta",
-            "origin_costs"
+            "origin_costs",
+            "divergence_purchasing",
+            "divergence_supplier",
+            "divergence_evidence",
+            "divergence_finance"
           ]
         },
         {

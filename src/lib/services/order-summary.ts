@@ -554,7 +554,7 @@ async function tasksOf(
   const [
     { stageTaskDrafts },
     { wellmixProductionCandidates, latestByItem },
-    { wellmixImportCandidates, WELLMIX_IMPORT_STATUSES },
+    { wellmixImportCandidates, WELLMIX_IMPORT_STATUSES, isDivergenceStep },
     { artIssueCounts },
     { baseKeyOf, LANE_KEYS },
   ] = await Promise.all([
@@ -627,6 +627,12 @@ async function tasksOf(
           (r) => baseKeyOf(r.key) === LANE_KEYS.certificate,
         );
       const i = wellmixImportCandidates(order, steps, needsCert);
+      if (i.length) stored.i = i;
+    } else if (order.status === "DELIVERED") {
+      // Entregue: só a divergência no recebimento (mapa E24 a E27).
+      const i = wellmixImportCandidates(order, steps, false).filter((c) =>
+        isDivergenceStep(c.key),
+      );
       if (i.length) stored.i = i;
     }
     // Artes: corrigir e conferir a correção.
