@@ -580,6 +580,16 @@ export default async function NewRequestPage({
                   n: "{n}",
                   unit: "{unit}",
                 }),
+                moqCartons: t("reqProduct.moqCartons", {
+                  n: "{n}",
+                  unit: "{unit}",
+                  cartons: "{cartons}",
+                }),
+                belowMoqCartons: t("reqProduct.belowMoqCartons", {
+                  n: "{n}",
+                  unit: "{unit}",
+                  cartons: "{cartons}",
+                }),
                 intl: t.intl,
                 // O bloco "Programação de compra" da Seleção de itens (dono,
                 // 14/11/2026): os mesmos textos; a explicação diz para onde a
