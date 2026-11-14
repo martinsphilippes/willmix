@@ -265,6 +265,16 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           label: t(entry.key),
           icon: entry.icon,
           items: entry.items.map(link),
+          // Item pai (ex.: Produção): o nome abre a tela; a seta, os subitens.
+          ...(entry.href
+            ? {
+                href: entry.href,
+                toggle: {
+                  show: t("nav.group.show", { name: t(entry.key) }),
+                  hide: t("nav.group.hide", { name: t(entry.key) }),
+                },
+              }
+            : {}),
         }
       : link(entry),
   );

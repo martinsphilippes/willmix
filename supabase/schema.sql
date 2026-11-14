@@ -215,6 +215,7 @@ alter table public."orders" add column if not exists "carrierId" text;
 alter table public."orders" add column if not exists "comexId" text;
 alter table public."orders" add column if not exists "logisticsId" text;
 alter table public."orders" add column if not exists "ocpId" text;
+alter table public."orders" add column if not exists "marketingAgencyId" text;
 alter table public."orders" add column if not exists "designerUserId" text;
 alter table public."orders" add column if not exists "closedAt" timestamptz;
 alter table public."orders" add column if not exists "notes" text;
@@ -1261,6 +1262,27 @@ alter table public."shipping_docs" add column if not exists "submittedAt" timest
 create unique index if not exists "shipping_docs_order_kind_unique" on public."shipping_docs" ("orderId", "kind");
 create index if not exists "shipping_docs_created" on public."shipping_docs" ("createdAt");
 create index if not exists "shipping_docs_created_id" on public."shipping_docs" ("createdAt", "id");
+
+create table if not exists public."real_media" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."real_media" enable row level security;
+alter table public."real_media" add column if not exists "orderId" text;
+alter table public."real_media" add column if not exists "orderItemId" text;
+alter table public."real_media" add column if not exists "productId" text;
+alter table public."real_media" add column if not exists "status" text;
+alter table public."real_media" add column if not exists "documentIds" jsonb;
+alter table public."real_media" add column if not exists "reason" text;
+alter table public."real_media" add column if not exists "sentByUserId" text;
+alter table public."real_media" add column if not exists "sentAt" timestamptz;
+alter table public."real_media" add column if not exists "decidedByUserId" text;
+alter table public."real_media" add column if not exists "decidedAt" timestamptz;
+create unique index if not exists "real_media_item_unique" on public."real_media" ("orderItemId");
+create index if not exists "real_media_by_order" on public."real_media" ("orderId");
+create index if not exists "real_media_created" on public."real_media" ("createdAt");
+create index if not exists "real_media_created_id" on public."real_media" ("createdAt", "id");
 
 create table if not exists public."sku_inspections" (
   "id" text primary key,

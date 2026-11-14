@@ -52,7 +52,8 @@
             "legal",
             "comex",
             "logistics",
-            "ocp"
+            "ocp",
+            "marketing_agency"
           ]
         },
         {
@@ -205,6 +206,7 @@
             "comex",
             "logistics",
             "ocp",
+            "marketing_agency",
             "trading",
             "factory",
             "supplier_partner",
@@ -1434,6 +1436,14 @@
           "size": 36
         },
         {
+          "key": "marketingAgencyId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
           "key": "designerUserId",
           "required": false,
           "array": false,
@@ -1956,7 +1966,8 @@
             "legal",
             "comex",
             "logistics",
-            "ocp"
+            "ocp",
+            "marketing_agency"
           ]
         },
         {
@@ -2133,7 +2144,8 @@
             "legal",
             "comex",
             "logistics",
-            "ocp"
+            "ocp",
+            "marketing_agency"
           ]
         },
         {
@@ -2290,7 +2302,8 @@
             "other",
             "print_ready",
             "packaging_sample",
-            "import_step"
+            "import_step",
+            "real_media"
           ]
         },
         {
@@ -2660,7 +2673,8 @@
             "legal",
             "comex",
             "logistics",
-            "ocp"
+            "ocp",
+            "marketing_agency"
           ]
         },
         {
@@ -3529,7 +3543,8 @@
             "prompt",
             "supplier",
             "hd",
-            "die_cut"
+            "die_cut",
+            "real"
           ]
         },
         {
@@ -4563,7 +4578,8 @@
             "legal",
             "comex",
             "logistics",
-            "ocp"
+            "ocp",
+            "marketing_agency"
           ]
         },
         {
@@ -7603,6 +7619,119 @@
       ]
     },
     {
+      "$id": "real_media",
+      "databaseId": "willmix",
+      "name": "Fotos e vídeos reais do produto (agência na China)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "orderItemId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "productId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "sent",
+            "approved",
+            "rejected"
+          ]
+        },
+        {
+          "key": "documentIds",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "reason",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sentByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "sentAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "decidedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "decidedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "item_unique",
+          "type": "unique",
+          "columns": [
+            "orderItemId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
       "$id": "sku_inspections",
       "databaseId": "willmix",
       "name": "Inspeção por SKU",
@@ -7760,7 +7889,12 @@
             "container_loaded",
             "container_sealed",
             "container_at_port",
-            "container_tracking"
+            "container_tracking",
+            "samples_picked",
+            "samples_brazil",
+            "samples_china",
+            "samples_china_received",
+            "samples_returned"
           ]
         },
         {

@@ -29,6 +29,7 @@ describe("Outros parceiros", () => {
       "comex",
       "logistics",
       "ocp",
+      "marketing_agency",
     ]);
     expect(isOtherPartyType("agency")).toBe(true);
     expect(isOtherPartyType("supplier")).toBe(false);

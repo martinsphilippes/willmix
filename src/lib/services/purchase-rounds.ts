@@ -188,6 +188,7 @@ async function createRoundOrder(
     comexId: parent.comexId ?? null,
     logisticsId: parent.logisticsId ?? null,
     ocpId: parent.ocpId ?? null,
+    marketingAgencyId: parent.marketingAgencyId ?? null,
     designerUserId: parent.designerUserId ?? null,
     closedAt: null,
     notes: null,

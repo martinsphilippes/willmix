@@ -39,7 +39,7 @@ async function uploadSignedContract(page: Page, orderUrl: string) {
 async function sendStep(
   page: Page,
   orderUrl: string,
-  anchor: "import-flow" | "container-origin",
+  anchor: "import-flow" | "container-origin" | "samples-flow",
   key: string,
   input: { value?: string; file?: boolean },
 ) {
@@ -58,7 +58,7 @@ async function sendStep(
 async function validateStep(
   page: Page,
   orderUrl: string,
-  anchor: "import-flow" | "container-origin",
+  anchor: "import-flow" | "container-origin" | "samples-flow",
   key: string,
 ) {
   await page.goto(`${orderUrl}#${anchor}`);
@@ -708,6 +708,52 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.locator("[data-shipping-doc=invoice] [data-shipping-status]"),
   ).toHaveAttribute("data-shipping-status", "accepted");
+  // Amostras (docs/SAMPLE_FLOW.md): o pedido tem pedido de amostras, então
+  // o carregamento espera a amostra da China voltar à trading, depois das
+  // fotos reais aprovadas. Sem agência na China designada, a Wellmix faz a
+  // parte dela.
+  await sendStep(page, orderUrl, "samples-flow", "samples_picked", {
+    value: "2026-10-11",
+  });
+  await sendStep(page, orderUrl, "samples-flow", "samples_brazil", {
+    value: "AWB-BR-E2E",
+    file: true,
+  });
+  await sendStep(page, orderUrl, "samples-flow", "samples_china", {
+    value: "SF-CN-E2E",
+    file: true,
+  });
+  await login(page, "admin@wellmix.com");
+  await page.goto(`${orderUrl}#samples`);
+  await expect(page.locator("[data-sample-split]").first()).toBeVisible();
+  await sendStep(page, orderUrl, "samples-flow", "samples_china_received", {
+    value: "2026-10-12",
+  });
+  await page.goto(`${orderUrl}/real-media`);
+  const sendForms = page.locator("form[data-real-media-send]");
+  while ((await sendForms.count()) > 0) {
+    const form = sendForms.first();
+    await form.locator("input[type=file]").setInputFiles(png);
+    await Promise.all([
+      page.waitForURL(/done=uploaded/),
+      form.locator("button[type=submit]").click(),
+    ]);
+  }
+  const decideForms = page.locator("form[data-real-media-decide]");
+  while ((await decideForms.count()) > 0) {
+    await Promise.all([
+      page.waitForURL(/done=approved/),
+      decideForms.first().locator("[data-real-media-approve]").click(),
+    ]);
+  }
+  await expect(
+    page.locator("[data-real-media-status]").first(),
+  ).toHaveAttribute("data-real-media-status", "approved");
+  await sendStep(page, orderUrl, "samples-flow", "samples_returned", {
+    value: "Amostra devolvida à trading",
+  });
+  await login(page, "supplier.a@china.com");
+  await validateStep(page, orderUrl, "samples-flow", "samples_returned");
   // O carregamento é conferido pela Wellmix; depois lacre e porto.
   await sendStep(page, orderUrl, "container-origin", "container_loaded", {
     value: "Carga completa",

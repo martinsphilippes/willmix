@@ -106,3 +106,34 @@ export const parseSampleOrder = (value: string | null | undefined) =>
   parse<SampleOrderDoc>(value);
 export const parseSampleAcceptance = (value: string | null | undefined) =>
   parse<SampleAcceptance>(value);
+
+/*
+ * Divisão das amostras depois da inspeção (mapa R13/R14; dono, 14/11/2026):
+ * de cada 5, 4 vão ao show room no Brasil e 1 à agência de marketing na
+ * China (4 × 3 × Nm e 1 × 3 × Nm).
+ */
+export const SAMPLES_TO_BRAZIL_PER_VARIANT = 4 * 3;
+export const SAMPLES_TO_CHINA_PER_VARIANT = 1 * 3;
+
+export interface SampleSplit {
+  itemId: string;
+  productId: string | null;
+  name: string;
+  variants: number;
+  brazil: number;
+  china: number;
+  total: number;
+}
+
+export const sampleSplit = (line: SampleLine): SampleSplit => {
+  const variants = Math.max(1, line.variants);
+  return {
+    itemId: line.itemId,
+    productId: line.productId,
+    name: line.name,
+    variants,
+    brazil: SAMPLES_TO_BRAZIL_PER_VARIANT * variants,
+    china: SAMPLES_TO_CHINA_PER_VARIANT * variants,
+    total: line.quantity,
+  };
+};

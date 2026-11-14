@@ -52,7 +52,8 @@ export type TaskKind =
   | "sampling_validate"
   | "art_fix"
   | "art_review"
-  | "invoice_due";
+  | "invoice_due"
+  | "real_media";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -1070,7 +1071,9 @@ export async function pendingTasksFor(
     user.role === "ocp" ||
     user.role === "agency" ||
     // Despachante: a certificação é dele (dono, 13/11/2026).
-    user.role === "broker"
+    user.role === "broker" ||
+    // Agência de marketing na China: amostras (docs/SAMPLE_FLOW.md).
+    user.role === "marketing_agency"
       ? user.role
       : null;
   if (wellmix || supplier || (importRole && user.partyId)) {
@@ -1091,7 +1094,9 @@ export async function pendingTasksFor(
                       ? "agencyId"
                       : importRole === "broker"
                         ? "brokerId"
-                        : "logisticsId"]: user.partyId!,
+                        : importRole === "marketing_agency"
+                          ? "marketingAgencyId"
+                          : "logisticsId"]: user.partyId!,
               }
             : supplier
               ? { supplierId: user.partyId!, held: null }
@@ -1185,6 +1190,40 @@ export async function pendingTasksFor(
           now,
         ),
       );
+    }
+  }
+  // Fotos e vídeos reais (docs/SAMPLE_FLOW.md): a agência na China
+  // fotografa a amostra de cada produto; o marketing aprova e ativa a venda.
+  if (wellmix || user.role === "marketing_agency") {
+    try {
+      const { realMediaTasks } = await import("./sample-flow");
+      const ptText = translator("pt");
+      for (const p of await realMediaTasks(user)) {
+        const values = { n: p.order.number, count: p.count };
+        const title = `realMedia.task.${p.kind}.title` as DictionaryKey;
+        const detail = `realMedia.task.${p.kind}.detail` as DictionaryKey;
+        tasks.push(
+          finish(
+            {
+              kind: "real_media",
+              title: ptText(title, values),
+              detail: ptText(detail, values),
+              text: { title, detail, values },
+              link: `/app/orders/${p.order.id}/real-media`,
+              dueAt: null,
+              requestId: p.order.requestId,
+              orderNumber: p.order.number,
+              customerId: p.order.customerId,
+              ownerUserId: p.order.ownerUserId ?? null,
+            },
+            now,
+          ),
+        );
+      }
+    } catch (error) {
+      const { isSchemaMissing } = await import("@/lib/db/errors");
+      // Tabela nova ainda não publicada: sem estas pendências.
+      if (!isSchemaMissing(error)) throw error;
     }
   }
   // Fatura ativa em N dias (mapa R24): com os documentos do embarque
@@ -1502,6 +1541,11 @@ const IMPORT_STEP_LABEL: Record<string, string> = {
   container_sealed: "Lacre e número do container",
   container_at_port: "Container lacrado no porto",
   container_tracking: "Rastreio do container",
+  samples_picked: "Retirada das amostras",
+  samples_brazil: "Envio das amostras ao Brasil",
+  samples_china: "Envio das amostras à agência na China",
+  samples_china_received: "Amostras recebidas pela agência",
+  samples_returned: "Devolução da amostra à trading",
   draft_bl: "Draft do BL",
   invoice_packing: "Invoice e packing list",
   invoice_signed: "Invoice assinada",

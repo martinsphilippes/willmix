@@ -66,6 +66,7 @@ describe("conversa da linha da etapa", () => {
         "customer",
         "logistics",
         "ocp",
+        "marketing_agency",
         "shipping_line",
         "supplier",
       ].sort(),

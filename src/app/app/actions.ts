@@ -465,6 +465,7 @@ export async function assignPartnerAction(form: FormData) {
       "comexId",
       "logisticsId",
       "ocpId",
+      "marketingAgencyId",
     ] as const;
     if (!(allowed as readonly string[]).includes(field))
       throw new Error("invalid_field");
@@ -483,6 +484,7 @@ export async function assignPartnerAction(form: FormData) {
       comexId: "comex",
       logisticsId: "logistics",
       ocpId: "ocp",
+      marketingAgencyId: "marketing_agency",
     };
     for (const stage of stages) {
       const reqs = await store.list("requirements", {

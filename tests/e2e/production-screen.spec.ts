@@ -2,34 +2,52 @@ import { expect, test } from "@playwright/test";
 import { login } from "./helpers";
 
 /*
- * Tela "Produção" (pedido do dono, 13/11/2026): item do menu em Pedidos e
- * entrega, logo abaixo de Pedidos de compra e antes de Revisão; abre a tela
- * própria, com o item aceso no menu; aparece em Equipe e acessos → Telas e
- * links (marcada no padrão do comprador, desmarcada no do designer); sem a
- * tela, o endereço volta ao início com o aviso. O bloco "Produção" do pedido
- * não muda (E2E do caminho principal).
+ * Tela "Produção" (pedido do dono, 13/11/2026): item do primeiro nível do
+ * menu, logo abaixo do grupo Pedidos e entrega (dono, 14/11/2026: saiu de
+ * dentro do grupo e aparece uma vez só), com ícone como os outros itens
+ * principais; abre a tela própria, com o item aceso no menu; aparece em
+ * Equipe e acessos → Telas e links (marcada no padrão do comprador,
+ * desmarcada no do designer); sem a tela, o endereço volta ao início com o
+ * aviso. O bloco "Produção" do pedido não muda (E2E do caminho principal).
  */
 test("Produção: menu, tela própria, Telas e links e acesso pelo endereço", async ({
   page,
 }) => {
   await login(page, "admin@wellmix.com");
 
-  // No menu, dentro de Pedidos e entrega: Pedidos de compra → Produção → Revisão.
+  // No primeiro nível do menu, logo abaixo do grupo Pedidos e entrega.
   await page.goto("/app/orders");
+  const sidebar = page.locator("[data-sidebar-nav]").filter({ visible: true });
+  const order = await sidebar
+    .first()
+    .evaluate((nav) =>
+      Array.from(nav.children).map(
+        (el) =>
+          el
+            .querySelector("[data-nav-group]")
+            ?.getAttribute("data-nav-group") ??
+          el.getAttribute("data-nav-link"),
+      ),
+    );
+  const at = order.indexOf("/app/production");
+  expect(at).toBeGreaterThan(0);
+  expect(order[at - 1]).toBe("Pedidos e entrega");
+  // Uma vez só: não está mais dentro de Pedidos e entrega.
   const delivery = page
     .locator('[data-nav-group="Pedidos e entrega"]')
     .filter({ visible: true })
     .first();
-  const hrefs = await delivery
-    .locator("[data-nav-link]")
-    .evaluateAll((els) => els.map((el) => el.getAttribute("data-nav-link")));
-  const at = hrefs.indexOf("/app/production");
-  expect(at).toBeGreaterThan(0);
-  expect(hrefs[at - 1]).toBe("/app/orders");
-  expect(hrefs[at + 1]).toBe("/app/reviews");
+  await expect(
+    delivery.locator('[data-nav-link="/app/production"]'),
+  ).toHaveCount(0);
+  await expect(
+    sidebar.first().locator('[data-nav-link="/app/production"]'),
+  ).toHaveCount(1);
 
-  // Clicar abre a tela própria, com o título e o item aceso.
-  const item = delivery.locator('[data-nav-link="/app/production"]');
+  // Com ícone, como os outros itens principais; clicar abre a tela própria,
+  // com o título e o item aceso.
+  const item = sidebar.first().locator('[data-nav-link="/app/production"]');
+  await expect(item.locator("svg")).toHaveCount(1);
   await expect(item).toHaveText(/Produção/);
   await item.click();
   await page.waitForURL(/\/app\/production$/);
@@ -41,12 +59,10 @@ test("Produção: menu, tela própria, Telas e links e acesso pelo endereço", a
       .filter({ visible: true })
       .first(),
   ).toHaveAttribute("aria-current", "page");
-  await expect(
-    page
-      .locator('[data-nav-link="/app/orders"]')
-      .filter({ visible: true })
-      .first(),
-  ).not.toHaveAttribute("aria-current", "page");
+  // Só Produção fica acesa no menu (Pedidos e entrega não abre nela).
+  const current = sidebar.first().locator('[aria-current="page"]');
+  await expect(current).toHaveCount(1);
+  await expect(current).toHaveAttribute("data-nav-link", "/app/production");
 
   // Equipe e acessos → Telas e links: logo depois de Pedidos; o padrão do
   // comprador já marca, o do designer não.

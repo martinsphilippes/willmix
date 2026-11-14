@@ -15,6 +15,7 @@ export const PARTNER_ROLES: Role[] = [
   "comex",
   "logistics",
   "ocp",
+  "marketing_agency",
 ];
 export const isPartner = (user: Pick<User, "role">) =>
   PARTNER_ROLES.includes(user.role);
@@ -90,6 +91,7 @@ export const ORDER_ACCESS_FIELDS = [
   "comexId",
   "logisticsId",
   "ocpId",
+  "marketingAgencyId",
 ] as const;
 
 export function canViewOrder(
@@ -118,6 +120,8 @@ export function canViewOrder(
       return order.logisticsId === party;
     case "ocp":
       return order.ocpId === party;
+    case "marketing_agency":
+      return order.marketingAgencyId === party;
     default:
       return false;
   }
