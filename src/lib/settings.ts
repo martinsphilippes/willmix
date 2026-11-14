@@ -69,6 +69,16 @@ export const DEFAULT_SETTINGS = {
   purchaseSignatureSlaDays: 2,
   /** Financeiro: sinal pago ao fornecedor, desde as duas assinaturas. */
   purchaseDownPaymentSlaDays: 3,
+  /** Fornecedor: fotos, vídeo e declaração de conformidade, desde o início da produção (mapa R3). */
+  purchaseInspectionMediaSlaDays: 7,
+  /** Wellmix: aprovar os SKUs, desde a declaração do fornecedor. */
+  purchaseInspectionReviewSlaDays: 2,
+  /**
+   * Tentativas de aprovação na inspeção (mapa R10): até aqui, cada
+   * reprovação soma 1 dia ao ETD e volta à produção; na seguinte, a Wellmix
+   * confirma o cancelamento do pedido (dono, 13/11/2026).
+   */
+  purchaseInspectionMaxAttempts: 3,
   /** Prazos padrão por etapa, em dias. */
   stageDueDays: {
     ORDER_CREATED: 1,

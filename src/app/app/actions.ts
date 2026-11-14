@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { PRODUCTION_VIDEO_KEY } from "@/lib/purchase-lanes";
 import { formatAmount, moneyValue, parseAmount } from "@/lib/workflow/money";
 import { CURRENCIES, isCurrency, parseCurrency } from "@/lib/currencies";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
@@ -322,6 +323,8 @@ export async function submitRequirementAction(form: FormData) {
         orderId,
         requirementId,
         type,
+        // Vídeo da produção (inspeção do pedido de compra).
+        video: requirement.key === PRODUCTION_VIDEO_KEY,
       });
       documentId = doc.id;
     } else if (uploadedFileId) {
@@ -333,6 +336,8 @@ export async function submitRequirementAction(form: FormData) {
         orderId,
         requirementId,
         type,
+        // Vídeo da produção (inspeção do pedido de compra).
+        video: requirement.key === PRODUCTION_VIDEO_KEY,
       });
       documentId = doc.id;
     } else if (uploadedPhotoId) {
@@ -1112,7 +1117,10 @@ export async function saveSettingsAction(form: FormData) {
         key === "purchaseArtFinalSlaDays" ||
         key === "purchaseRegistrationSlaDays" ||
         key === "purchaseSignatureSlaDays" ||
-        key === "purchaseDownPaymentSlaDays"
+        key === "purchaseDownPaymentSlaDays" ||
+        key === "purchaseInspectionMediaSlaDays" ||
+        key === "purchaseInspectionReviewSlaDays" ||
+        key === "purchaseInspectionMaxAttempts"
       ) {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 1 || n > 365)

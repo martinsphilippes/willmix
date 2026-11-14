@@ -480,6 +480,39 @@ export default async function SettingsPage({
                       defaultValue={s.purchaseDownPaymentSlaDays}
                     />
                   </Field>
+                  <Field label={t("purchaseSequence.settings.inspectionMediaDays")}>
+                    <Input
+                      name="purchaseInspectionMediaSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseInspectionMediaSlaDays}
+                    />
+                  </Field>
+                  <Field label={t("purchaseSequence.settings.inspectionReviewDays")}>
+                    <Input
+                      name="purchaseInspectionReviewSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseInspectionReviewSlaDays}
+                    />
+                  </Field>
+                  <Field label={t("purchaseSequence.settings.inspectionMaxAttempts")}>
+                    <Input
+                      name="purchaseInspectionMaxAttempts"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseInspectionMaxAttempts}
+                    />
+                  </Field>
                 </div>
               </div>
 

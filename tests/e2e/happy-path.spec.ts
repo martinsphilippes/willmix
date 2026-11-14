@@ -536,14 +536,30 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     "received",
   );
 
-  // 9. Inspeção: o fornecedor manda as fotos e o peso medido. Nestes
-  // pedidos não há peso declarado para comparar (sem ficha de compra):
-  // a etapa conclui e o pedido vai ao Embarque.
-  await fillMyRequirements(page, orderUrl, {
-    重量: "15",
-    weight: "15",
-    peso: "15",
-  });
+  // 9. Inspeção (mapa R3/R4?): o fornecedor manda as fotos, o peso, o vídeo
+  // da produção e a declaração de conformidade. Nestes pedidos não há peso
+  // declarado para comparar (sem ficha de compra).
+  // Com as medidas extras ligadas, são 15 itens do fornecedor.
+  await fillMyRequirements(
+    page,
+    orderUrl,
+    { 重量: "15", weight: "15", peso: "15" },
+    20,
+  );
+  // A Wellmix aprova o SKU no cartão Produção: só então vai ao Embarque.
+  await login(page, "admin@wellmix.com");
+  await page.goto(`${orderUrl}#production`);
+  const skuRow = page.locator("[data-sku-item]").first();
+  await expect(skuRow).toHaveAttribute("data-sku-status", "pending");
+  await Promise.all([
+    page.waitForLoadState("networkidle"),
+    skuRow.locator("[data-sku-approve]").click(),
+  ]);
+  await page.goto(orderUrl);
+  await expect(page.locator("[data-sku-item]").first()).toHaveAttribute(
+    "data-sku-status",
+    "approved",
+  );
   await login(page, "operador@wellmix.com");
   await page.goto(orderUrl);
   await expect(page.getByText(/Revisão necessária/)).toHaveCount(0);
