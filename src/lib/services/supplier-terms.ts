@@ -298,7 +298,14 @@ export async function orderPayable(order: Order): Promise<OrderPayable> {
  * já foi pago continua aparecendo).
  */
 export async function listPayables(
-  filter: { supplierId?: string } = {},
+  filter: {
+    supplierId?: string;
+    /**
+     * Sem os pedidos do histórico do Sankhya em espera (docs/SANKHYA.md):
+     * as pendências (tasks.ts) só olham os outros. Contas a pagar lê todos.
+     */
+    live?: boolean;
+  } = {},
 ): Promise<OrderPayable[]> {
   const store = getStore();
   // Com a chave presente (mesmo vazia), só os pedidos daquele fornecedor.
@@ -310,10 +317,12 @@ export async function listPayables(
     "orders",
     columnsExcept("orders", ["sankhyaRefs"]),
     {
-      filter:
-        "supplierId" in filter
+      filter: {
+        ...("supplierId" in filter
           ? { supplierId: filter.supplierId ?? "" }
-          : undefined,
+          : {}),
+        ...(filter.live ? { held: null } : {}),
+      },
       orderBy: "number",
       direction: "desc",
     },
