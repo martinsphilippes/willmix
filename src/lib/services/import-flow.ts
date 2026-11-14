@@ -321,6 +321,25 @@ export const IMPORT_STEPS: StepTemplate[] = [
 export const stepTemplate = (key: ImportStepKey) =>
   IMPORT_STEPS.find((s) => s.key === key)!;
 
+/*
+ * Pedido de compra: packing list, invoice e BL saem dos documentos do
+ * embarque (docs/SHIPPING_DOCS.md: fornecedor, trading e marítima, conferidos
+ * pelo sistema). Os passos antigos do despachante e do agente não aparecem;
+ * o "BL" fica, concluído sozinho quando o BL é conferido.
+ */
+const PURCHASE_HIDDEN_STEPS: readonly ImportStepKey[] = [
+  "draft_bl",
+  "invoice_packing",
+  "invoice_signed",
+];
+
+/** O passo vale para o pedido (container na origem só no de compra; papéis antigos fora dele). */
+export function stepApplies(order: Order, key: ImportStepKey): boolean {
+  const purchase = isPurchaseFlow(order);
+  if (groupOf(stepTemplate(key)) === "origin") return purchase;
+  return !(purchase && PURCHASE_HIDDEN_STEPS.includes(key));
+}
+
 const PARTNER_FIELD = {
   logistics: "logisticsId",
   comex: "comexId",
@@ -403,6 +422,9 @@ export async function canSubmitStep(
   key: ImportStepKey,
 ): Promise<boolean> {
   const tpl = stepTemplate(key);
+  if (!stepApplies(order, key)) return false;
+  // Pedido de compra: o BL vem dos documentos do embarque, conferido.
+  if (key === "bl" && isPurchaseFlow(order)) return false;
   // Memorial: a certificadora do pedido também anexa (dono, 10/11/2026).
   if (key === "cert_memorial" && isOrderOcp(user, order)) return true;
   // Arte com o selo: o designer do pedido (login da agência escolhido em
@@ -1010,8 +1032,8 @@ export async function importFlowView(
   const shown = IMPORT_STEPS.filter(
     (tpl) =>
       groupOf(tpl) === group &&
-      // Container na origem: só no pedido de compra.
-      (group !== "origin" || isPurchaseFlow(order)) &&
+      // Container na origem só no pedido de compra; nele, sem os papéis antigos.
+      stepApplies(order, tpl.key) &&
       canSeeStep(user, order, tpl.key),
   );
   // Passo da agência: só de quem faz a arte (a Wellmix sempre pode agir;
@@ -1221,8 +1243,8 @@ export async function importTasks(
     for (const tpl of IMPORT_STEPS) {
       const cert = groupOf(tpl) === "certification";
       if (!cert && !importLive) continue;
-      // Container na origem: só no pedido de compra.
-      if (groupOf(tpl) === "origin" && !isPurchaseFlow(order)) continue;
+      // Container na origem só no pedido de compra; nele, sem os papéis antigos.
+      if (!stepApplies(order, tpl.key)) continue;
       const step = steps.find((s) => s.key === tpl.key);
       if (cert) {
         const task = certTask(order, tpl, step, steps, ctx, gate);
@@ -1266,6 +1288,7 @@ export async function importTasks(
           order,
           key: tpl.key,
           sinceAt: step.submittedAt,
+          link: stepLink(order.id, tpl),
         });
         continue;
       }
@@ -1279,6 +1302,8 @@ export async function importTasks(
           TRACKING_LIVE.includes(order.status) &&
           (step.submittedAt ?? "").slice(0, 10) < todayInBrazil());
       if (!todo || !ready(tpl.key, steps)) continue;
+      // Pedido de compra: o BL vem conferido dos documentos do embarque.
+      if (tpl.key === "bl" && isPurchaseFlow(order)) continue;
       if (!actsAs(user, order, tpl.actor)) continue;
       if (tpl.actor === "agency") {
         // Passo de quem faz a arte: a agência do pedido ou, sem ela, a Wellmix.
@@ -1296,6 +1321,7 @@ export async function importTasks(
         kind: "import_step",
         order,
         key: tpl.key,
+        link: stepLink(order.id, tpl, "do"),
         // Recusado: desde a recusa; senão, desde que o passo anterior fechou.
         sinceAt:
           step?.status === "rejected"
