@@ -1158,3 +1158,14 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Como:** `SIDEBAR_HIDDEN` e `sidebarNav` em `src/lib/nav.ts`; o layout (`src/app/app/layout.tsx`) passa a lista filtrada só para a barra lateral e o menu do celular. A lista completa (`navFor`) continua com as duas, porque o ícone de mensagens do cabeçalho e o "Voltar" saem dela. Para voltar a mostrar, basta tirar o endereço de `SIDEBAR_HIDDEN`.
 - **Testes:** `tests/unit/nav.test.ts` (nenhum papel vê as duas na barra; o resto do menu fica igual e na mesma ordem; a lista completa não muda) e o E2E `home-screens.spec.ts` (computador: nada das duas no menu e os ícones levam às telas; celular: ícones no alto e o menu aberto sem as duas).
 - Os roteiros de vídeo (`docs/videos`) que citam Mensagens e Notificações no menu ficam para a próxima revisão dos roteiros.
+
+## E2E sobre a versão compilada (memória do servidor de teste)
+
+- **Pedido do dono** (14/11/2026): investigar por que a suíte E2E caía no meio. O servidor de teste (`next dev`) era derrubado pela falta de memória da sessão (12 GB) durante o caminho principal, inclusive na base sem nenhuma mudança nova.
+- **Causa**: o compilador do modo de desenvolvimento (Turbopack), não o código do portal. Medição com os 5 primeiros testes:
+  - a base de antes das últimas mesclas também passava de 11 GB, então não foi um PR específico; a suíte só cresceu até passar do limite;
+  - o JavaScript do servidor tem limite de 2 GB e não estourou;
+  - a limpeza total do cache do Turbopack (`turbopackMemoryEviction: "full"`) não resolveu: o servidor morreu a 11,6 GB;
+  - compilado (`next build` + `next start`), o pico foi de 572 MB, em 2 minutos contra cerca de 5.
+- **Mudança**: `npm run test:e2e` compila o portal e testa a versão compilada (`playwright.config.ts`), em modo memória com dados isolados, como antes. Isso também confere o mesmo código que vai para a Vercel. `E2E_DEV=1` volta ao `next dev` para depurar. Nada mudou no portal.
+- Docs: `docs/AMBIENTE.md` (Testes) e `docs/HANDOVER.md`.
