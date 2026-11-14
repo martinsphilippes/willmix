@@ -13,7 +13,10 @@ import {
   SUPPLIER_CONFORMITY_KEY,
   SAMPLE_ORDER_KEY,
   SAMPLE_ORDER_SUPPLIER_KEY,
+  DOWN_PAYMENT_APPROVAL,
+  PRE_PRODUCTION_APPROVAL,
   laneRequirements,
+  preparationApprovals,
   type LaneItem,
 } from "@/lib/purchase-lanes";
 
@@ -296,6 +299,16 @@ export const OFF_FLOW_STAGES: readonly StageKey[] = ["SUPPLIER_PAYMENT"];
 export const isOffFlowStage = (key: string) =>
   (OFF_FLOW_STAGES as readonly string[]).includes(key);
 
+/**
+ * Aprovações do mapa no fim da Preparação (dono, 14/11/2026;
+ * docs/MILESTONES.md): GP no cadastro e na certificação, Comprador no
+ * material de arte.
+ */
+const withPreparationApprovals = (lanes: RequirementTemplate[]) => [
+  ...lanes,
+  ...preparationApprovals(lanes),
+];
+
 export const STAGE_TEMPLATES: StageTemplate[] = [
   {
     key: "ORDER_CREATED",
@@ -331,13 +344,15 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     // (fornecedor, agência de arte e certificadora; src/lib/purchase-lanes.ts).
     requirements: ({ order, line, items, agencyValidationEnabled }) =>
       isPurchaseFlow(order)
-        ? laneRequirements(items ?? [], {
-            art: artRole(order, agencyValidationEnabled),
-            // Certificado: da certificadora (OCP) do pedido (dono,
-            // 14/11/2026). Quem recebe cada tarefa sai de laneRoute
-            // (src/lib/services/cert-art-routing.ts); o papel é a etiqueta.
-            ocp: "ocp",
-          })
+        ? withPreparationApprovals(
+            laneRequirements(items ?? [], {
+              art: artRole(order, agencyValidationEnabled),
+              // Certificado: da certificadora (OCP) do pedido (dono,
+              // 14/11/2026). Quem recebe cada tarefa sai de laneRoute
+              // (src/lib/services/cert-art-routing.ts); o papel é a etiqueta.
+              ocp: "ocp",
+            }),
+          )
         : [
             ...(line?.requirements?.length
               ? line.requirements
@@ -370,7 +385,7 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     partyField: "agencyId",
     requirements: ({ order, agencyValidationEnabled }) =>
       isPurchaseFlow(order)
-        ? PURCHASE_CONTRACT_REQUIREMENTS
+        ? [...PURCHASE_CONTRACT_REQUIREMENTS, DOWN_PAYMENT_APPROVAL]
         : [
             {
               key: "art",
@@ -448,7 +463,9 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
       // Pedido de compra (mapa R3/R4?, docs/PRODUCTION.md): o vídeo da
       // produção, a declaração de conformidade do fornecedor (ou da trading)
       // e a aprovação da Wellmix de todos os SKUs, que segura o embarque.
-      ...(isPurchaseFlow(order) ? PURCHASE_INSPECTION_REQUIREMENTS : []),
+      ...(isPurchaseFlow(order)
+        ? [PRE_PRODUCTION_APPROVAL, ...PURCHASE_INSPECTION_REQUIREMENTS]
+        : []),
     ],
   },
   {

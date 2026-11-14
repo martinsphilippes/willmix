@@ -420,3 +420,31 @@ export async function fillMyRequirements(
     }
   }
 }
+
+/**
+ * Aprovações do mapa no fim dos marcos (docs/MILESTONES.md): o login (com a
+ * ação, ou o administrador) aprova cada item pelo rótulo, na página do pedido.
+ */
+export async function approveMilestoneRows(
+  page: Page,
+  orderUrl: string,
+  labels: RegExp[],
+) {
+  // A mesma linha de item que o caminho principal usa (o <li> do rótulo).
+  const requirementRow = (p: Page, label: RegExp) =>
+    p.locator("li").filter({
+      has: p.locator("span.font-medium", { hasText: label }),
+    });
+  for (const label of labels) {
+    await page.goto(orderUrl);
+    const row = requirementRow(page, label).first();
+    await expect(row).toBeVisible();
+    await Promise.all([
+      page.waitForResponse((r) => r.request().method() === "POST"),
+      row.locator("form button[type=submit]").first().click(),
+    ]);
+    await page.waitForLoadState("networkidle");
+    // A última aprovação pode concluir a etapa (a linha some com ela).
+    expect(page.url()).not.toContain("error=");
+  }
+}

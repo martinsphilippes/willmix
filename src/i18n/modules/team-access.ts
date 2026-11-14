@@ -74,6 +74,18 @@ export const pt = {
   "action.purchaseOrder.generate": "Gerar pedido de compra",
   "action.desc.purchaseOrder.generate":
     "Gerar o pedido de compra dos produtos aprovados, por fornecedor.",
+  "action.approve.productManager": "Aprovar o cadastro e a certificação (GP)",
+  "action.desc.approve.productManager":
+    "No pedido de compra, aprova o fim dos marcos Pedido novo (cadastro e fiscal) e Certificação.",
+  "action.approve.buyer": "Aprovar o material de arte (Comprador)",
+  "action.desc.approve.buyer":
+    "No pedido de compra, aprova a faca, a foto em alta, o MOQ e o prazo do fornecedor.",
+  "action.approve.planner": "Aprovar a pré-produção (Planner)",
+  "action.desc.approve.planner":
+    "No pedido de compra, aprova os dados da produção e o ETD.",
+  "action.approve.purchasingDirector": "Aprovar o sinal (Diretoria de compras)",
+  "action.desc.approve.purchasingDirector":
+    "No pedido de compra, aprova o sinal pago ou a conta corrente antes da produção.",
   "action.art.validate": "Validar a arte",
   "action.desc.art.validate":
     "Aprovar ou devolver a arte de cada produto no pedido de compra.",
@@ -214,6 +226,20 @@ export const en: Record<keyof typeof pt, string> = {
   "action.purchaseOrder.generate": "Generate purchase order",
   "action.desc.purchaseOrder.generate":
     "Generate the purchase order of the approved products, per supplier.",
+  "action.approve.productManager":
+    "Approve registration and certification (PM)",
+  "action.desc.approve.productManager":
+    "In the purchase order, approves the end of the New order (registration and tax) and Certification milestones.",
+  "action.approve.buyer": "Approve the art material (Buyer)",
+  "action.desc.approve.buyer":
+    "In the purchase order, approves the supplier's die cut, HD photo, MOQ and lead time.",
+  "action.approve.planner": "Approve pre-production (Planner)",
+  "action.desc.approve.planner":
+    "In the purchase order, approves the production data and ETD.",
+  "action.approve.purchasingDirector":
+    "Approve the down payment (Purchasing director)",
+  "action.desc.approve.purchasingDirector":
+    "In the purchase order, approves the paid down payment or current account before production.",
   "action.art.validate": "Validate the art",
   "action.desc.art.validate":
     "Approve or return each product's art in the purchase order.",
@@ -346,6 +372,17 @@ export const zh: Record<keyof typeof pt, string> = {
   "action.desc.approval.executive_director": "最后一级，超过限额时需要。",
   "action.purchaseOrder.generate": "生成采购单",
   "action.desc.purchaseOrder.generate": "按供应商为已批准的产品生成采购单。",
+  "action.approve.productManager": "批准登记与认证（产品经理）",
+  "action.desc.approve.productManager":
+    "在采购单中批准“新订单”（登记与税务）和“认证”里程碑的完成。",
+  "action.approve.buyer": "批准美工素材（采购员）",
+  "action.desc.approve.buyer":
+    "在采购单中批准供应商的刀模、高清照片、起订量和交期。",
+  "action.approve.planner": "批准生产准备（计划员）",
+  "action.desc.approve.planner": "在采购单中批准生产数据和预计离港日。",
+  "action.approve.purchasingDirector": "批准定金（采购总监）",
+  "action.desc.approve.purchasingDirector":
+    "在采购单中批准生产前已付定金或往来账户。",
   "action.art.validate": "审核设计",
   "action.desc.art.validate": "在采购单中批准或退回每个产品的设计。",
   "action.art.design": "制作设计（设计师）",
