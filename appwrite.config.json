@@ -1458,6 +1458,29 @@
           "size": 36
         },
         {
+          "key": "pausedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "pauseReason",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "arrivalPort",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 10
+        },
+        {
           "key": "designerUserId",
           "required": false,
           "array": false,

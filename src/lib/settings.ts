@@ -118,6 +118,13 @@ export const DEFAULT_SETTINGS = {
   invoiceDays: 0,
   /** O mesmo prazo, por fornecedor (id → dias); só o administrador grava. */
   invoiceDaysBySupplier: {} as Record<string, number>,
+  /**
+   * Transportadora padrão pelo porto de chegada (mapa E12? a E14; dono,
+   * 14/11/2026): Itapoá → West Log; os demais portos → Edual. O nome é o do
+   * cadastro da transportadora; no pedido, "Contratar" a designa.
+   */
+  carrierItapoaName: "West Log",
+  carrierDefaultName: "Edual",
   /** Dias para lembrar antes do vencimento e depois. */
   reminderDaysBeforeDue: 1,
   /* ---- Evolução incremental (docs/EVOLUTION_PLAN.md) ---- */

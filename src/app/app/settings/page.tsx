@@ -299,6 +299,20 @@ export default async function SettingsPage({
                       <option value="false">{t("common.no")}</option>
                     </Select>
                   </Field>
+                  <Field label={t("settings.label.carrierItapoaName")}>
+                    <Input
+                      name="carrierItapoaName"
+                      maxLength={120}
+                      defaultValue={s.carrierItapoaName}
+                    />
+                  </Field>
+                  <Field label={t("settings.label.carrierDefaultName")}>
+                    <Input
+                      name="carrierDefaultName"
+                      maxLength={120}
+                      defaultValue={s.carrierDefaultName}
+                    />
+                  </Field>
                   <Field label={t("settings.label.productionStartDays")}>
                     <Input
                       name="productionStartDays"

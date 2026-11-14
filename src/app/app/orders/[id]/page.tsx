@@ -8,6 +8,10 @@ import { ColorLines } from "@/components/color-lines";
 import { registerOrderInvoiceAction } from "../../actions/order-invoice";
 import { setPurchaseIncotermAction } from "../../actions/purchase-order";
 import { receiveShowroomAction } from "../../actions/sample-flow";
+import {
+  resumeOrderAction,
+  setArrivalPortAction,
+} from "../../actions/delivery";
 import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
 import { ImportFlowCard } from "@/components/import-flow-card";
@@ -53,6 +57,7 @@ import {
   canSeeSupplier,
   canViewOrder,
   canViewRequest,
+  isAdmin,
   isOrderCertifier,
   isPartner,
   isWellmix,
@@ -256,6 +261,8 @@ export default async function OrderPage({
     from: fromBlock,
     showroom: showroomNotice,
     showroomCard,
+    resumed: resumedNotice,
+    port: portNotice,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
@@ -383,6 +390,21 @@ export default async function OrderPage({
       ? await (
           await import("@/lib/services/supplier-invoice")
         ).invoiceDueOf(order)
+      : null;
+  /* Porto de chegada e transportadora padrão (Wellmix, do embarque à entrega). */
+  const delivery =
+    isWellmix(user) &&
+    ["SHIPPING", "CUSTOMS", "TRANSPORT"].includes(order.status)
+      ? await (async () => {
+          const svc = await import("@/lib/services/delivery");
+          const { getSettings } = await import("@/lib/settings");
+          const s = await getSettings();
+          return {
+            view: await svc.deliveryView(order),
+            itapoa: s.carrierItapoaName,
+            other: s.carrierDefaultName,
+          };
+        })()
       : null;
   /* Documentos do embarque: a Wellmix, o fornecedor e a marítima do pedido. */
   const shippingDocsVisible =
@@ -1437,6 +1459,44 @@ export default async function OrderPage({
           />
         }
       />
+      {/* Pedido pausado pelo canal cinza ou vermelho (docs/DELIVERY.md). */}
+      {order.pausedAt ? (
+        <div className="mt-3" data-order-paused={order.pauseReason ?? "other"}>
+          <Alert tone="danger">
+            <p className="font-medium">{t("delivery.paused.title")}</p>
+            <p>
+              {t(
+                (order.pauseReason === "channel_red" ||
+                order.pauseReason === "channel_grey"
+                  ? `delivery.paused.${order.pauseReason}`
+                  : "delivery.paused.other") as DictionaryKey,
+                { date: formatDate(order.pausedAt, t) },
+              )}
+            </p>
+            {isAdmin(user) ? (
+              <form
+                action={resumeOrderAction}
+                className="mt-2 flex flex-wrap items-end gap-2"
+                data-order-resume
+              >
+                <input type="hidden" name="orderId" value={order.id} />
+                <Input
+                  name="note"
+                  maxLength={500}
+                  placeholder={t("delivery.resumeNote")}
+                />
+                <SubmitButton variant="secondary">
+                  {t("delivery.resume")}
+                </SubmitButton>
+              </form>
+            ) : null}
+          </Alert>
+        </div>
+      ) : resumedNotice ? (
+        <div className="mt-3">
+          <Alert tone="success">{t("delivery.resumed")}</Alert>
+        </div>
+      ) : null}
       {/* Linha do tempo do pedido entre os blocos (docs/FLOW_MENU.md). */}
       {/* Marcos do pedido (fase 2, docs/MILESTONES.md). */}
       {wellmix ? (
@@ -2623,6 +2683,90 @@ export default async function OrderPage({
           />
         ) : null}
 
+        {/* Porto de chegada e transportadora padrão (mapa E12? a E14). */}
+        {delivery ? (
+          <div id="delivery" className="min-w-0 scroll-mt-24">
+            <Card title={t("delivery.port.title")} dense>
+              <p className="mb-3 text-sm text-zinc-600">
+                {t("delivery.port.hint", {
+                  itapoa: delivery.itapoa,
+                  other: delivery.other,
+                })}
+              </p>
+              {portNotice === "saved" ? (
+                <div className="mb-3">
+                  <Alert tone="success">{t("delivery.port.saved")}</Alert>
+                </div>
+              ) : null}
+              <form
+                action={setArrivalPortAction}
+                className="flex flex-wrap items-end gap-2"
+                data-arrival-port-form
+              >
+                <input type="hidden" name="orderId" value={order.id} />
+                <Select
+                  name="port"
+                  defaultValue={delivery.view.port ?? ""}
+                  aria-label={t("delivery.port.label")}
+                  required
+                >
+                  <option value="" disabled>
+                    {t("delivery.port.label")}
+                  </option>
+                  {(["IOA", "ITJ", "NVT", "OTHER"] as const).map((p) => (
+                    <option key={p} value={p}>
+                      {t(`delivery.port.${p}`)}
+                    </option>
+                  ))}
+                </Select>
+                <SubmitButton variant="secondary">
+                  {t("delivery.port.save")}
+                </SubmitButton>
+              </form>
+              {delivery.view.port ? (
+                <div className="mt-3 text-sm" data-carrier-suggestion>
+                  {delivery.view.hired ? (
+                    <Alert tone="success">
+                      {t("delivery.carrier.hired", {
+                        name: delivery.view.carrier!.name,
+                      })}
+                    </Alert>
+                  ) : delivery.view.carrier ? (
+                    <form
+                      action={assignPartnerAction}
+                      className="flex flex-wrap items-center gap-2"
+                      data-carrier-hire
+                    >
+                      <input type="hidden" name="orderId" value={order.id} />
+                      <input type="hidden" name="field" value="carrierId" />
+                      <input
+                        type="hidden"
+                        name="partyId"
+                        value={delivery.view.carrier.id}
+                      />
+                      <span>
+                        {t("delivery.carrier.suggested", {
+                          name: delivery.view.carrier.name,
+                        })}
+                      </span>
+                      <SubmitButton>
+                        {t("delivery.carrier.hire", {
+                          name: delivery.view.carrier.name,
+                        })}
+                      </SubmitButton>
+                    </form>
+                  ) : (
+                    <Alert tone="warning">
+                      {t("delivery.carrier.missing", {
+                        name: delivery.view.carrierName,
+                      })}
+                    </Alert>
+                  )}
+                </div>
+              ) : null}
+            </Card>
+          </div>
+        ) : null}
         {/* Incoterm do pedido de compra (mapa R17?): EXW abre a transportadora
             e os custos de origem antes do container na fábrica. */}
         {purchaseFlow && isWellmix(user) && originSteps.length ? (
