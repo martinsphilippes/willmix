@@ -9,6 +9,7 @@ import {
   baseKeyOf,
   isAutoGateKey,
   isRoutedLaneKey,
+  milestoneApprovalOf,
 } from "@/lib/purchase-lanes";
 import {
   ORDER_SIGN_SEND,
@@ -137,6 +138,18 @@ export function wellmixRequirementRoute(
     );
   if (base === DOWN_PAYMENT_KEY)
     return holdersRoute(ctx, (u) => canOpen(u, "finance"), analyst);
+  // Aprovações do mapa no fim dos marcos: quem tem a ação (GP, Comprador,
+  // Planner, Diretoria de compras); sem ninguém, o analista.
+  // Primeiro o analista do pedido, se ele tem a ação; senão quem tem.
+  const approval = milestoneApprovalOf(r.key);
+  if (approval) {
+    const holds = (u: User) => can(u, approval.action, ctx.defs);
+    const ownerId =
+      analyst.via === "analyst" ? analyst.userIds?.[0] : undefined;
+    const own = ownerId ? ctx.team.find((u) => u.id === ownerId) : undefined;
+    if (own && holds(own)) return analyst;
+    return holdersRoute(ctx, holds, analyst);
+  }
   return analyst;
 }
 

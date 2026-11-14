@@ -145,6 +145,100 @@ export function laneOf(key: string): Lane {
   return "supplier";
 }
 
+/*
+ * Aprovações do mapa no fim de cada marco (dono, 14/11/2026;
+ * docs/MILESTONES.md): o GP aprova o cadastro e a certificação, o Comprador
+ * o material de arte, o Planner a pré-produção e a Diretoria de compras o
+ * sinal. Cada uma é um item obrigatório do pedido de compra, liberado quando
+ * as subtarefas do marco estão feitas, e feito só por quem tem a ação
+ * (Equipe e acessos).
+ */
+export interface MilestoneApproval {
+  key: string;
+  /** Ação (Equipe → Funções e acessos) de quem aprova. */
+  action:
+    | "approve.productManager"
+    | "approve.buyer"
+    | "approve.planner"
+    | "approve.purchasingDirector";
+  /** Itens (pela chave sem o produto) que precisam estar feitos antes. */
+  requires: string[];
+  label: string;
+}
+
+export const MILESTONE_APPROVALS = {
+  registration: {
+    key: "approval_registration",
+    action: "approve.productManager",
+    requires: [LANE_KEYS.ncmValidated, LANE_KEYS.sheetComplete],
+    label: "Cadastro e fiscal aprovados pelo GP",
+  },
+  certification: {
+    key: "approval_certification",
+    action: "approve.productManager",
+    requires: [LANE_KEYS.certificate],
+    label: "Certificação aprovada pelo GP",
+  },
+  artMaterial: {
+    key: "approval_art_material",
+    action: "approve.buyer",
+    requires: [
+      LANE_KEYS.dieCut,
+      LANE_KEYS.hdPhoto,
+      LANE_KEYS.moq,
+      LANE_KEYS.leadTime,
+    ],
+    label: "Material de arte aprovado pelo Comprador",
+  },
+  preProduction: {
+    key: "approval_pre_production",
+    action: "approve.planner",
+    requires: [],
+    label: "Pré-produção (dados e ETD) aprovada pelo Planner",
+  },
+  downPayment: {
+    key: "approval_down_payment",
+    action: "approve.purchasingDirector",
+    requires: [DOWN_PAYMENT_KEY],
+    label: "Sinal aprovado pela Diretoria de compras",
+  },
+} as const satisfies Record<string, MilestoneApproval>;
+
+const APPROVAL_BY_KEY = new Map<string, MilestoneApproval>(
+  Object.values(MILESTONE_APPROVALS).map((a) => [a.key, a]),
+);
+
+/** A aprovação do mapa de um item, se for uma. */
+export const milestoneApprovalOf = (key: string): MilestoneApproval | null =>
+  APPROVAL_BY_KEY.get(key) ?? null;
+
+const approvalTemplate = (a: MilestoneApproval): RequirementTemplate => ({
+  key: a.key,
+  label: a.label,
+  type: "confirm",
+  required: true,
+  role: "operator",
+});
+
+/** Aprovações do fim da Preparação: cadastro, material de arte e (se houver) certificação. */
+export function preparationApprovals(
+  lanes: RequirementTemplate[],
+): RequirementTemplate[] {
+  const cert = lanes.some((r) => baseKeyOf(r.key) === LANE_KEYS.certificate);
+  return [
+    approvalTemplate(MILESTONE_APPROVALS.registration),
+    approvalTemplate(MILESTONE_APPROVALS.artMaterial),
+    ...(cert ? [approvalTemplate(MILESTONE_APPROVALS.certification)] : []),
+  ];
+}
+
+export const DOWN_PAYMENT_APPROVAL = approvalTemplate(
+  MILESTONE_APPROVALS.downPayment,
+);
+export const PRE_PRODUCTION_APPROVAL = approvalTemplate(
+  MILESTONE_APPROVALS.preProduction,
+);
+
 /** O que precisa estar concluído antes (mesmo item): a ordem dentro das raias. */
 export function prerequisitesOf(key: string): string[] {
   // Contrato: o fornecedor assina depois da Wellmix; o sinal (ou a conta
@@ -195,6 +289,14 @@ export function blockedBy(
   const done = new Set(
     requirements.filter((r) => r.status === "done").map((r) => r.key),
   );
+  // Aprovação do mapa: todos os itens do marco (de todos os produtos).
+  const approval = milestoneApprovalOf(key);
+  if (approval)
+    return [...present].filter(
+      (k) =>
+        (approval.requires as readonly string[]).includes(baseKeyOf(k)) &&
+        !done.has(k),
+    );
   return prerequisitesOf(key).filter((k) => present.has(k) && !done.has(k));
 }
 

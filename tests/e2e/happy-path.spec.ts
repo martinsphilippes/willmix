@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 import {
+  approveMilestoneRows,
   bookingSheet,
   fillMyRequirements,
   gotoProduct,
@@ -901,6 +902,14 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // 6e. Agência: com a arte validada e o certificado, a arte final com o selo.
   await login(page, "agencia@design.com");
   await fillMyRequirements(page, orderUrl);
+  // 6f. Aprovações do mapa no fim dos marcos (docs/MILESTONES.md): o GP
+  // aprova o cadastro e a certificação, o Comprador o material de arte.
+  await login(page, "admin@wellmix.com");
+  await approveMilestoneRows(page, orderUrl, [
+    /Cadastro e fiscal aprovados pelo GP/,
+    /Material de arte aprovado pelo Comprador/,
+    /Certificação aprovada pelo GP/,
+  ]);
 
   // 7. Contrato: o documento traz a arte final; a Wellmix sobe o arquivo
   // assinado e carimbado, depois o fornecedor.
@@ -1004,6 +1013,11 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     "received",
   );
 
+  // Sinal recebido: a Diretoria de compras aprova (docs/MILESTONES.md).
+  await login(page, "admin@wellmix.com");
+  await approveMilestoneRows(page, orderUrl, [
+    /Sinal aprovado pela Diretoria de compras/,
+  ]);
   // Sinal pago e a produção sem ETD: o pedido aparece em Produção →
   // Pré-produção, com os dados da produção e o ETD (docs/FLOW_MENU.md).
   // Para a Wellmix a tela do passo é só a lista (dono, 14/11/2026: "no acesso
@@ -1104,6 +1118,10 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     "data-sku-status",
     "approved",
   );
+  // O Planner aprova a pré-produção (docs/MILESTONES.md).
+  await approveMilestoneRows(page, orderUrl, [
+    /Pré-produção \(dados e ETD\) aprovada pelo Planner/,
+  ]);
   // Operador da Wellmix: "Etapas do pedido" só com as tarefas dele
   // (docs/PURCHASE_ORDER.md, seção 2e). O pedido de compra é de quem o gerou
   // (o administrador, responsável interno) e os itens do Embarque são do
@@ -1352,9 +1370,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   const deliveredId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
   await expect(page.locator("[data-flow-receiving]")).toHaveCount(0);
   await Promise.all([
-    page.waitForURL(
-      new RegExp(`/app/flow/delivery/storage/${deliveredId}$`),
-    ),
+    page.waitForURL(new RegExp(`/app/flow/delivery/storage/${deliveredId}$`)),
     page
       .locator(`[data-flow-case-order="${deliveredId}"] [data-flow-case-open]`)
       .first()

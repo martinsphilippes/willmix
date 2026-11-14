@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
+import { approveMilestones } from "./helpers/approvals";
 import { xlsxBytes } from "./xlsx-fixture";
 
 /*
@@ -211,6 +212,8 @@ async function finishLanes(orderId: string) {
   }
   // Cadastro e fiscal: NCM validado e ficha completa de cada produto.
   await gates.readyOrderProducts(admin, orderId);
+  // Aprovações do mapa no fim dos marcos (docs/MILESTONES.md).
+  await approveMilestones(admin, orderId);
 }
 
 describe("regras puras da programação de compra", () => {
