@@ -18,12 +18,15 @@ import {
 import {
   DEFAULT_SELECTION_STATUSES,
   SELECTION_STATUSES,
+  SELECTION_TABS,
   filtersToParams,
   groupForBlock,
   parseGroupIds,
   parseSelectionFilters,
+  parseSelectionTab,
   searchSuggestions,
   suggestBlocks,
+  type SelectionTab,
 } from "@/lib/booking-selection";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { SelectionBasket } from "@/components/selection-basket";
@@ -102,7 +105,8 @@ export default async function BookingSelectionPage({
   const query = await searchParams;
   const q = typeof query.q === "string" ? query.q.slice(0, 200) : "";
   const error = typeof query.error === "string" ? query.error : "";
-  const tab = query.tab === "selection" ? "selection" : "items";
+  // Itens → Seleção → Blocos Sugeridos → Com Solicitação Aberta.
+  const tab = parseSelectionTab(query.tab);
   const filters = parseSelectionFilters(query);
   const groupIds = parseGroupIds(query.ids);
   const t = await getT();
@@ -121,7 +125,7 @@ export default async function BookingSelectionPage({
       ? listSelectionItems(user, "", { ids: groupIds })
       : Promise.resolve(null),
     getFxRates(),
-    tab === "selection" ? listSelectionGroups(user) : Promise.resolve([]),
+    tab !== "items" ? listSelectionGroups(user) : Promise.resolve([]),
     getSettings(),
   ]);
   const aiDefaults = defaultPrompts(settings);
@@ -152,11 +156,13 @@ export default async function BookingSelectionPage({
     t(`supplierRequests.selection.col.${k}` as DictionaryKey);
   const listRows = result?.rows ?? [];
   const groupRows = group?.rows ?? [];
-  // A tabela de comparação: na aba Seleção, o grupo; na aba Itens, a lista.
-  const rows = tab === "selection" ? groupRows : listRows;
+  // A tabela de comparação: na aba Seleção, o grupo; na aba Itens, a lista
+  // (as abas dos blocos e das solicitações abertas não têm essa tabela).
+  const rows =
+    tab === "selection" ? groupRows : tab === "items" ? listRows : [];
   const best = bestCostItem(rows.map((r) => r.item));
   const blocks =
-    tab === "selection" && result
+    (tab === "blocks" || tab === "requested") && result
       ? suggestBlocks(
           result.all.map((r) => ({
             item: r.item,
@@ -207,24 +213,28 @@ export default async function BookingSelectionPage({
         entry: e as (typeof savedGroups)[number] | null,
       })),
   ];
-  // Em cima os resolvidos (esperando a solicitação), depois os blocos por
-  // resolver, em cartões; separados embaixo, os que já têm solicitação
-  // aberta, em lista compacta (uma linha por grupo).
+  // Blocos Sugeridos: em cima os resolvidos (esperando a solicitação),
+  // depois os blocos por resolver, em cartões. Com Solicitação Aberta: os
+  // que já têm solicitação, em lista compacta (uma linha por grupo).
   const cardSections = (["saved", "pending"] as const).map((key) => ({
     key,
     cards: cards.filter((c) => (c.entry?.group.status ?? "pending") === key),
   }));
+  const blockCount = cardSections.reduce((n, sec) => n + sec.cards.length, 0);
   const requestedCards = cards.flatMap((c): RequestedGroupCard[] =>
     c.entry?.group.status === "requested" ? [{ ...c, entry: c.entry }] : [],
   );
   // Essa lista não depende do filtro da tela: os itens dos grupos que a
   // busca, os filtros ou o limite da lista deixaram de fora são lidos à
   // parte (só quando faltam), para a linha aberta mostrar o grupo inteiro.
-  const requestedMissing = [
-    ...new Set(
-      requestedCards.flatMap((c) => [...c.ids, ...c.entry.group.itemIds]),
-    ),
-  ].filter((id) => !rowById.has(id));
+  const requestedMissing =
+    tab === "requested"
+      ? [
+          ...new Set(
+            requestedCards.flatMap((c) => [...c.ids, ...c.entry.group.itemIds]),
+          ),
+        ].filter((id) => !rowById.has(id))
+      : [];
   const requestedExtra = requestedMissing.length
     ? await listSelectionItems(user, "", { ids: requestedMissing })
     : null;
@@ -260,12 +270,11 @@ export default async function BookingSelectionPage({
     "border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800";
 
   const filterParams = filtersToParams(filters, q);
-  const tabHref = (k: "items" | "selection") => {
+  // Cada aba leva os filtros; a Seleção leva também o grupo aberto.
+  const tabHref = (k: SelectionTab) => {
     const p = new URLSearchParams(filterParams);
-    if (k === "selection") {
-      p.set("tab", "selection");
-      if (groupIds.length) p.set("ids", groupIds.join(","));
-    }
+    if (k !== "items") p.set("tab", k);
+    if (k === "selection" && groupIds.length) p.set("ids", groupIds.join(","));
     const qs = p.toString();
     return qs ? `/app/booking/selection?${qs}` : "/app/booking/selection";
   };
@@ -933,167 +942,180 @@ export default async function BookingSelectionPage({
         </Alert>
       ) : (
         <div className="space-y-4">
-          <nav
-            className="flex gap-1 border-b border-zinc-200"
-            data-selection-tabs
-          >
-            {(["items", "selection"] as const).map((k) => (
-              <Link
-                key={k}
-                href={tabHref(k)}
-                className={cx(
-                  "-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition",
-                  tab === k
-                    ? "border-brand-600 text-brand-700"
-                    : "border-transparent text-zinc-500 hover:text-zinc-800",
-                )}
-                aria-current={tab === k ? "page" : undefined}
-                data-selection-tab={k}
-              >
-                {t(`supplierRequests.selection.tab.${k}` as DictionaryKey)}
-              </Link>
-            ))}
-          </nav>
+          {/* Quatro abas numa linha; na tela estreita, a linha rola de lado. */}
+          <div className="overflow-x-auto">
+            <nav
+              className="flex w-max min-w-full gap-1 border-b border-zinc-200"
+              data-selection-tabs
+            >
+              {SELECTION_TABS.map((k) => (
+                <Link
+                  key={k}
+                  href={tabHref(k)}
+                  className={cx(
+                    "-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold transition",
+                    tab === k
+                      ? "border-brand-600 text-brand-700"
+                      : "border-transparent text-zinc-500 hover:text-zinc-800",
+                  )}
+                  aria-current={tab === k ? "page" : undefined}
+                  data-selection-tab={k}
+                >
+                  {t(`supplierRequests.selection.tab.${k}` as DictionaryKey)}
+                </Link>
+              ))}
+            </nav>
+          </div>
 
-          <Card>
-            <form method="get" className="space-y-3" data-selection-search>
-              {tab === "selection" ? (
-                <input type="hidden" name="tab" value="selection" />
-              ) : null}
-              {tab === "selection" && groupIds.length ? (
-                <input type="hidden" name="ids" value={groupIds.join(",")} />
-              ) : null}
-              <div className="flex flex-wrap items-end gap-2">
-                <div className="min-w-64 flex-1">
-                  <Field label={t("supplierRequests.selection.search")}>
-                    <Input
-                      name="q"
-                      type="search"
-                      defaultValue={q}
-                      placeholder={t(
-                        "supplierRequests.selection.searchPlaceholder",
-                      )}
-                      maxLength={200}
-                      list="selection-suggestions"
-                      autoComplete="off"
+          {/* Os filtros valem para Itens, Seleção e Blocos Sugeridos; a lista
+              Com Solicitação Aberta não depende deles. */}
+          {tab === "requested" ? null : (
+            <Card>
+              <form method="get" className="space-y-3" data-selection-search>
+                {tab !== "items" ? (
+                  <input type="hidden" name="tab" value={tab} />
+                ) : null}
+                {tab === "selection" && groupIds.length ? (
+                  <input type="hidden" name="ids" value={groupIds.join(",")} />
+                ) : null}
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="min-w-64 flex-1">
+                    <Field label={t("supplierRequests.selection.search")}>
+                      <Input
+                        name="q"
+                        type="search"
+                        defaultValue={q}
+                        placeholder={t(
+                          "supplierRequests.selection.searchPlaceholder",
+                        )}
+                        maxLength={200}
+                        list="selection-suggestions"
+                        autoComplete="off"
+                      />
+                    </Field>
+                    <datalist id="selection-suggestions">
+                      {suggestions.map((v) => (
+                        <option key={v} value={v} />
+                      ))}
+                    </datalist>
+                    <LiveSearch />
+                  </div>
+                  <Field label={t("supplierRequests.selection.filter.period")}>
+                    <DateRangePicker
+                      from={filters.from}
+                      to={filters.to}
+                      locale={t.intl}
+                      labels={{
+                        placeholder: t(
+                          "supplierRequests.selection.filter.anyDate",
+                        ),
+                        apply: t("supplierRequests.selection.filter.apply"),
+                        clear: t(
+                          "supplierRequests.selection.filter.clearDates",
+                        ),
+                        last7: t("supplierRequests.selection.filter.last7"),
+                        last30: t("supplierRequests.selection.filter.last30"),
+                        thisMonth: t(
+                          "supplierRequests.selection.filter.thisMonth",
+                        ),
+                        lastMonth: t(
+                          "supplierRequests.selection.filter.lastMonth",
+                        ),
+                        previous: t(
+                          "supplierRequests.selection.filter.previous",
+                        ),
+                        next: t("supplierRequests.selection.filter.next"),
+                      }}
                     />
                   </Field>
-                  <datalist id="selection-suggestions">
-                    {suggestions.map((v) => (
-                      <option key={v} value={v} />
-                    ))}
-                  </datalist>
-                  <LiveSearch />
-                </div>
-                <Field label={t("supplierRequests.selection.filter.period")}>
-                  <DateRangePicker
-                    from={filters.from}
-                    to={filters.to}
-                    locale={t.intl}
-                    labels={{
-                      placeholder: t(
-                        "supplierRequests.selection.filter.anyDate",
-                      ),
-                      apply: t("supplierRequests.selection.filter.apply"),
-                      clear: t("supplierRequests.selection.filter.clearDates"),
-                      last7: t("supplierRequests.selection.filter.last7"),
-                      last30: t("supplierRequests.selection.filter.last30"),
-                      thisMonth: t(
-                        "supplierRequests.selection.filter.thisMonth",
-                      ),
-                      lastMonth: t(
-                        "supplierRequests.selection.filter.lastMonth",
-                      ),
-                      previous: t("supplierRequests.selection.filter.previous"),
-                      next: t("supplierRequests.selection.filter.next"),
-                    }}
-                  />
-                </Field>
-                <Field label={t("supplierRequests.selection.filter.supplier")}>
-                  <Select
-                    name="supplier"
-                    defaultValue={filters.supplierId ?? ""}
-                    data-auto-submit
-                    data-selection-filter-supplier
+                  <Field
+                    label={t("supplierRequests.selection.filter.supplier")}
                   >
-                    <option value="">
-                      {t("supplierRequests.selection.filter.all")}
-                    </option>
-                    {result.suppliers.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label={t("supplierRequests.selection.filter.origin")}>
-                  <Select
-                    name="origin"
-                    defaultValue={filters.origin ?? ""}
-                    data-auto-submit
-                    data-selection-filter-origin
-                  >
-                    <option value="">
-                      {t("supplierRequests.selection.filter.all")}
-                    </option>
-                    {result.origins.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  {t("supplierRequests.selection.filter.status")}
-                </span>
-                {SELECTION_STATUSES.map((st) => (
-                  <label
-                    key={st}
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-700 has-[:checked]:border-brand-300 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-800"
-                  >
-                    <input
-                      type="checkbox"
-                      name="status"
-                      value={st}
-                      defaultChecked={statuses.includes(st)}
-                      className="h-3.5 w-3.5"
+                    <Select
+                      name="supplier"
+                      defaultValue={filters.supplierId ?? ""}
                       data-auto-submit
-                      data-selection-filter-status={st}
-                    />
-                    {t(`bookingLots.status.${st}` as DictionaryKey)}
-                  </label>
-                ))}
-                <span className="ml-auto flex gap-2">
-                  <SubmitButton variant="secondary">
-                    {t("supplierRequests.selection.filter")}
-                  </SubmitButton>
-                  {filtered ? (
-                    <LinkButton
-                      href={
-                        tab === "selection"
-                          ? "/app/booking/selection?tab=selection"
-                          : "/app/booking/selection"
-                      }
-                      variant="ghost"
+                      data-selection-filter-supplier
                     >
-                      {t("supplierRequests.selection.clear")}
-                    </LinkButton>
-                  ) : null}
-                </span>
-              </div>
-              <AutoSubmit />
-            </form>
-            <p className="mt-2 text-xs text-zinc-500" data-selection-count>
-              {result.total > listRows.length
-                ? t("supplierRequests.selection.truncated", {
-                    shown: listRows.length,
-                    n: result.total,
-                  })
-                : t("supplierRequests.selection.count", { n: result.total })}
-            </p>
-          </Card>
+                      <option value="">
+                        {t("supplierRequests.selection.filter.all")}
+                      </option>
+                      {result.suppliers.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label={t("supplierRequests.selection.filter.origin")}>
+                    <Select
+                      name="origin"
+                      defaultValue={filters.origin ?? ""}
+                      data-auto-submit
+                      data-selection-filter-origin
+                    >
+                      <option value="">
+                        {t("supplierRequests.selection.filter.all")}
+                      </option>
+                      {result.origins.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    {t("supplierRequests.selection.filter.status")}
+                  </span>
+                  {SELECTION_STATUSES.map((st) => (
+                    <label
+                      key={st}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-700 has-[:checked]:border-brand-300 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-800"
+                    >
+                      <input
+                        type="checkbox"
+                        name="status"
+                        value={st}
+                        defaultChecked={statuses.includes(st)}
+                        className="h-3.5 w-3.5"
+                        data-auto-submit
+                        data-selection-filter-status={st}
+                      />
+                      {t(`bookingLots.status.${st}` as DictionaryKey)}
+                    </label>
+                  ))}
+                  <span className="ml-auto flex gap-2">
+                    <SubmitButton variant="secondary">
+                      {t("supplierRequests.selection.filter")}
+                    </SubmitButton>
+                    {filtered ? (
+                      <LinkButton
+                        href={
+                          tab === "items"
+                            ? "/app/booking/selection"
+                            : `/app/booking/selection?tab=${tab}`
+                        }
+                        variant="ghost"
+                      >
+                        {t("supplierRequests.selection.clear")}
+                      </LinkButton>
+                    ) : null}
+                  </span>
+                </div>
+                <AutoSubmit />
+              </form>
+              <p className="mt-2 text-xs text-zinc-500" data-selection-count>
+                {result.total > listRows.length
+                  ? t("supplierRequests.selection.truncated", {
+                      shown: listRows.length,
+                      n: result.total,
+                    })
+                  : t("supplierRequests.selection.count", { n: result.total })}
+              </p>
+            </Card>
+          )}
 
           {tab === "items" ? (
             listRows.length ? (
@@ -1119,39 +1141,51 @@ export default async function BookingSelectionPage({
                   : t("supplierRequests.selection.noItems")}
               </Empty>
             )
-          ) : (
+          ) : tab === "selection" ? (
+            groupIds.length ? (
+              <Card
+                title={t("supplierRequests.selection.group.title", {
+                  n: groupRows.length,
+                  suppliers: new Set(
+                    groupRows.map((r) => r.lot.supplierId ?? r.item.id),
+                  ).size,
+                })}
+              >
+                <div data-selection-group-view={groupRows.length}>
+                  {groupRows.length ? (
+                    comparison(groupRows, false)
+                  ) : (
+                    <Empty>{t("supplierRequests.selection.group.empty")}</Empty>
+                  )}
+                </div>
+                <p className="mt-3">
+                  <Link href={tabHref("items")} className={linkClass}>
+                    {t("supplierRequests.selection.group.back")}
+                  </Link>
+                </p>
+              </Card>
+            ) : (
+              // Sem grupo aberto: os caminhos para abrir um.
+              <div className="space-y-3" data-selection-group-none>
+                <Empty>{t("supplierRequests.selection.groupNone")}</Empty>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <LinkButton href={tabHref("blocks")}>
+                    {t("supplierRequests.selection.tab.blocks")}
+                  </LinkButton>
+                  <LinkButton href={tabHref("items")}>
+                    {t("supplierRequests.selection.tab.items")}
+                  </LinkButton>
+                </div>
+              </div>
+            )
+          ) : tab === "blocks" ? (
             <>
-              {groupIds.length ? (
-                <Card
-                  title={t("supplierRequests.selection.group.title", {
-                    n: groupRows.length,
-                    suppliers: new Set(
-                      groupRows.map((r) => r.lot.supplierId ?? r.item.id),
-                    ).size,
-                  })}
-                >
-                  <div data-selection-group-view={groupRows.length}>
-                    {groupRows.length ? (
-                      comparison(groupRows, false)
-                    ) : (
-                      <Empty>
-                        {t("supplierRequests.selection.group.empty")}
-                      </Empty>
-                    )}
-                  </div>
-                  <p className="mt-3">
-                    <Link href={tabHref("items")} className={linkClass}>
-                      {t("supplierRequests.selection.group.back")}
-                    </Link>
-                  </p>
-                </Card>
-              ) : null}
               <span id="blocks" className="block scroll-mt-24" />
               <Card title={t("supplierRequests.selection.blocks.title")}>
                 <p className="mb-3 text-sm text-zinc-600">
                   {t("supplierRequests.selection.blocks.hint")}
                 </p>
-                {cards.length ? (
+                {blockCount ? (
                   <form
                     action={openGroupRequestsAction}
                     data-selection-open-form
@@ -1384,26 +1418,36 @@ export default async function BookingSelectionPage({
                           </section>
                         ) : null,
                       )}
-                      {requestedCards.length ? (
-                        <section data-selection-section="requested">
-                          <h3 className="mb-2 text-sm font-semibold text-zinc-800">
-                            {t("supplierRequests.selection.section.requested", {
-                              n: requestedCards.length,
-                            })}
-                          </h3>
-                          <RequestedGroups
-                            t={t}
-                            cards={requestedCards}
-                            rows={requestedRows}
-                            rmbPerUsd={rmbPerUsd}
-                            hrefOf={groupHref}
-                          />
-                        </section>
-                      ) : null}
                     </div>
                   </form>
                 ) : (
                   <Empty>{t("supplierRequests.selection.blocks.empty")}</Empty>
+                )}
+              </Card>
+            </>
+          ) : (
+            <>
+              <span id="requested" className="block scroll-mt-24" />
+              <Card>
+                {requestedCards.length ? (
+                  <section data-selection-section="requested">
+                    <h3 className="mb-2 text-sm font-semibold text-zinc-800">
+                      {t("supplierRequests.selection.section.requested", {
+                        n: requestedCards.length,
+                      })}
+                    </h3>
+                    <RequestedGroups
+                      t={t}
+                      cards={requestedCards}
+                      rows={requestedRows}
+                      rmbPerUsd={rmbPerUsd}
+                      hrefOf={groupHref}
+                    />
+                  </section>
+                ) : (
+                  <Empty>
+                    {t("supplierRequests.selection.requestedEmpty")}
+                  </Empty>
                 )}
               </Card>
             </>

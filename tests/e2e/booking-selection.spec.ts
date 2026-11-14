@@ -524,8 +524,31 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(qty(4)).toHaveValue("20064");
   await expect(gen.locator("[data-generate-rounds]")).toHaveValue("4");
 
-  // 6. Seleção: o bloco sugerido junta os três copos de dois fornecedores.
+  // 6. Abas da tela, nesta ordem: Itens → Seleção → Blocos Sugeridos → Com
+  // Solicitação Aberta (dono, 14/11/2026); cada uma mostra só o que é dela.
   await page.goto(`${base}&tab=selection`);
+  await expect(page.locator("[data-selection-tab]")).toHaveText([
+    "Itens",
+    "Seleção",
+    "Blocos Sugeridos",
+    "Com Solicitação Aberta",
+  ]);
+  // Seleção sem grupo aberto: o caminho para os blocos, sem os blocos aqui.
+  await expect(page.locator("[data-selection-group-none]")).toBeVisible();
+  await expect(page.locator("[data-selection-block]")).toHaveCount(0);
+  await page
+    .locator("[data-selection-group-none]")
+    .getByRole("link", { name: "Blocos Sugeridos" })
+    .click();
+  await page.waitForURL(/tab=blocks/);
+  // A busca continua valendo nos blocos.
+  await expect(
+    page.locator("[data-selection-search] input[name=q]"),
+  ).toHaveValue(TAG);
+  await expect(
+    page.locator('[data-selection-tab="blocks"][aria-current="page"]'),
+  ).toHaveCount(1);
+  // Blocos Sugeridos: o bloco junta os três copos de dois fornecedores.
   const block = page.locator("[data-selection-block]").first();
   await expect(block).toHaveAttribute("data-selection-block", "3");
   await expect(block).toContainText("2");

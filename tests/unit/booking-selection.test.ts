@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  SELECTION_TABS,
   lotMatchesFilters,
   otherGroupItems,
   parseGroupIds,
   parseSelectionFilters,
+  parseSelectionTab,
   searchSuggestions,
   suggestBlocks,
 } from "@/lib/booking-selection";
@@ -138,5 +140,28 @@ describe("itens não escolhidos do grupo", () => {
     });
     expect(otherGroupItems(["a"], "a", find)).toEqual({ rows: [], missing: 0 });
     expect(otherGroupItems([], "a", find)).toEqual({ rows: [], missing: 0 });
+  });
+});
+
+/* Abas da tela (dono, 14/11/2026): Itens → Seleção → Blocos Sugeridos → Com
+   Solicitação Aberta; o endereço escolhe a aba e, sem ela, fica Itens. */
+describe("abas da Seleção de itens", () => {
+  it("quatro abas, nesta ordem", () => {
+    expect(SELECTION_TABS).toEqual([
+      "items",
+      "selection",
+      "blocks",
+      "requested",
+    ]);
+  });
+
+  it("a aba do endereço; sem ela ou com um valor estranho, Itens", () => {
+    expect(parseSelectionTab("selection")).toBe("selection");
+    expect(parseSelectionTab("blocks")).toBe("blocks");
+    expect(parseSelectionTab("requested")).toBe("requested");
+    expect(parseSelectionTab(["blocks", "items"])).toBe("blocks");
+    expect(parseSelectionTab(undefined)).toBe("items");
+    expect(parseSelectionTab("")).toBe("items");
+    expect(parseSelectionTab("outra")).toBe("items");
   });
 });

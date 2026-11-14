@@ -68,7 +68,7 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     "Cor âmbar",
   );
 
-  // 2b. Seleção → "Com solicitação aberta": o grupo é uma linha recolhida,
+  // 2b. Aba "Com Solicitação Aberta": o grupo é uma linha recolhida,
   // com o link da solicitação e o resumo do escolhido; a seta mostra o item
   // comparado que não foi escolhido e um novo clique recolhe.
   const requestPath = new URL(requestUrl).pathname;
@@ -99,9 +99,20 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     await expect(others).toBeHidden();
     return { row, toggle, others };
   };
+  // A lista fica só na aba Com Solicitação Aberta (dono, 14/11/2026): nem os
+  // blocos nem os filtros (que não valem para ela) aparecem ali, e a aba
+  // Blocos Sugeridos não repete a lista.
   await page.goto(
-    `/app/booking/selection?q=${encodeURIComponent(TAG)}&tab=selection`,
+    `/app/booking/selection?q=${encodeURIComponent(TAG)}&tab=blocks`,
   );
+  await expect(page.locator("[data-selection-blocks]")).toHaveCount(1);
+  await expect(
+    page.locator('[data-selection-section="requested"]'),
+  ).toHaveCount(0);
+  await page.locator('[data-selection-tab="requested"]').click();
+  await page.waitForURL(/tab=requested/);
+  await expect(page.locator("[data-selection-blocks]")).toHaveCount(0);
+  await expect(page.locator("[data-selection-search]")).toHaveCount(0);
   const listed = await checkRequestedRow();
   // O link fica fora do botão da seta: tocar nele não abre a linha (aqui com
   // a navegação impedida, para a linha continuar na tela)…
@@ -120,7 +131,7 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   const onlyChosen = encodeURIComponent(`${TAG} 350ml`);
   await page.goto(`/app/booking/selection?q=${onlyChosen}`);
   await expect(page.locator("[data-selection-item]")).toHaveCount(1);
-  await page.goto(`/app/booking/selection?q=${onlyChosen}&tab=selection`);
+  await page.goto(`/app/booking/selection?q=${onlyChosen}&tab=requested`);
   const filtered = await checkRequestedRow();
   // "Rever a escolha" continua abrindo o grupo para comparar.
   await filtered.row.locator("[data-selection-block-open]").click();
