@@ -2174,6 +2174,61 @@ export interface SalesOffer extends BaseRow {
   note: string | null;
   offeredByUserId: string;
   offeredAt: string;
+  /**
+   * Decisão do cliente (mapa V3; dono, 14/11/2026: vendas registra):
+   * "closed" (fechou: vira ordem de venda) ou "declined" (não fechou:
+   * ajustar a oferta). Nulo enquanto o cliente avalia.
+   */
+  decision?: "closed" | "declined" | null;
+  decisionNote?: string | null;
+  decidedAt?: string | null;
+  decidedByUserId?: string | null;
+  /** Ordem de venda gerada pelo "fechou". */
+  salesOrderId?: string | null;
+}
+
+/*
+ * Ordem de venda (mapa V7 e V8; docs/SALES_ORDERS.md). Decisões do dono
+ * (14/11/2026): o portal registra a ordem (cliente, produtos e quantidades,
+ * preço, condição de pagamento) e ela vai ao Sankhya como pedido de venda;
+ * a data e a janela da entrega ficam na ordem.
+ */
+export const SALES_ORDER_STATUSES = ["draft", "confirmed", "cancelled"] as const;
+export type SalesOrderStatus = (typeof SALES_ORDER_STATUSES)[number];
+export const SALES_ORDER_ERP = ["pending", "synced", "error"] as const;
+export type SalesOrderErp = (typeof SALES_ORDER_ERP)[number];
+
+export interface SalesOrderLine {
+  productId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number | null;
+  /** Reservado no estoque no Brasil (id da reserva) ou na chegada. */
+  reservationId?: string | null;
+  onArrival?: boolean;
+}
+
+export interface SalesOrder extends BaseRow {
+  number: number;
+  customerId: string;
+  offerId: string | null;
+  /** Pedido de compra de onde vem a mercadoria (previsão de chegada). */
+  purchaseOrderId: string | null;
+  lines: SalesOrderLine[];
+  currency: string;
+  paymentConditionId: string | null;
+  status: SalesOrderStatus;
+  /** Agendamento da entrega com o cliente (V8). */
+  deliveryDate: string | null;
+  deliveryWindow: string | null;
+  note: string | null;
+  erpStatus: SalesOrderErp;
+  erpNumber: string | null;
+  erpError: string | null;
+  createdByUserId: string;
+  confirmedAt: string | null;
+  confirmedByUserId: string | null;
 }
 
 export interface RealMedia extends BaseRow {
@@ -3172,6 +3227,7 @@ export interface Tables {
   real_media: RealMedia;
   showroom_receipts: ShowroomReceipt;
   sales_offers: SalesOffer;
+  sales_orders: SalesOrder;
   import_steps: ImportStep;
   receivings: Receiving;
   art_issues: ArtIssue;
@@ -4494,6 +4550,32 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_order", type: "key", columns: ["orderId"] },
     ],
   },
+  sales_orders: {
+    label: "Ordens de venda (Vendas)",
+    columns: {
+      number: int(true),
+      customerId: id(),
+      offerId: id(false),
+      purchaseOrderId: id(false),
+      lines: json(),
+      currency: str(3),
+      paymentConditionId: id(false),
+      status: enumOf(SALES_ORDER_STATUSES),
+      deliveryDate: str(10),
+      deliveryWindow: str(60),
+      note: text(),
+      erpStatus: enumOf(SALES_ORDER_ERP),
+      erpNumber: str(40),
+      erpError: text(),
+      createdByUserId: id(),
+      confirmedAt: datetime(),
+      confirmedByUserId: id(false),
+    },
+    indexes: [
+      { key: "number_unique", type: "unique", columns: ["number"] },
+      { key: "by_customer", type: "key", columns: ["customerId"] },
+    ],
+  },
   sales_offers: {
     label: "Ofertas de amostras e produtos a clientes (Vendas)",
     columns: {
@@ -4505,6 +4587,11 @@ export const TABLES: Record<TableName, TableDef> = {
       note: text(),
       offeredByUserId: id(),
       offeredAt: datetime(true),
+      decision: str(20),
+      decisionNote: text(),
+      decidedAt: datetime(),
+      decidedByUserId: id(false),
+      salesOrderId: id(false),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
