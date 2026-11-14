@@ -1150,3 +1150,11 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Só o nome na tela, em português**: as chaves, o código, as regras e o banco não mudaram; inglês e chinês ficam como estavam (como na troca das colunas da solicitação, #350). A palavra "rodada" com outro sentido continua: tentativas da inspeção por SKU, rodadas da amostragem, negociação da cotação e execuções técnicas (Sankhya, resumos, cópia do banco).
 - Teste: o E2E da seleção confere "a quantidade é a soma das programações".
 
+## Book: lista de pendências quando "Fechar e analisar" para por campos vazios
+
+- **Pedido do dono** (14/11/2026, com a foto do aviso "Há itens com campos obrigatórios vazios"): o aviso passa a listar os itens incompletos, agrupados por item (nome e código; sem eles, a linha), com todos os campos obrigatórios que faltam em cada um, usando os nomes das colunas da tabela.
+- **Cada campo é clicável**: leva ao item, mostra a linha mesmo em outra página da tabela ou escondida pela busca, rola até o campo, dá o foco e destaca a célula. Nada é recarregado: o que já foi digitado continua.
+- **Mesma validação**: a lista sai de `bookingLotPending`, a mesma regra que trava o fechamento e monta o "Falta para fechar"; nenhuma exigência nova, a mesma contagem. Cada campo gravado atualiza a tela e a lista; sem pendências, o aviso diz para fechar de novo, e "Fechar e analisar" segue o fluxo normal.
+- **Aditivo**: só o aviso do fechamento e a capacidade da tabela de mostrar uma linha pedida (`TABLE_REVEAL_EVENT`, `src/components/table-tools.tsx`; nenhuma outra tabela muda). Nenhuma tela, rota, campo ou dado removido; sem mudança no banco. Textos novos nos três idiomas: `bookingLots.incomplete.*`.
+- Peças: `incompleteBookingItems` (`src/lib/booking-lots.ts`), `src/components/booking-pending-list.tsx`, a página do Book e o destaque da célula em `globals.css`. Detalhes em `docs/BOOKING.md`, item 6.
+- Testes: `tests/unit/booking-pending-list.test.ts` (mesmos itens e contagem da validação, vários campos no mesmo item, nome e código ou a linha, página da linha) e `tests/e2e/booking-pending-list.spec.ts` (Book com 16 itens incompletos, dois campos no mesmo item, item na segunda página, item escondido pela busca: cada link leva ao campo certo; gravar atualiza a lista; sem pendências, fecha).

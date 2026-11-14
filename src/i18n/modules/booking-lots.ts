@@ -226,6 +226,12 @@ export const pt = {
     "Informe a data do book antes de fechar.",
   "bookingLots.error.booking_items_incomplete":
     "Há itens com campos obrigatórios vazios. Complete os campos marcados em cada item e feche de novo.",
+  "bookingLots.incomplete.count":
+    "{n} item(ns) incompleto(s). Toque num campo para ir até ele na tabela:",
+  "bookingLots.incomplete.line": "Linha {n}",
+  "bookingLots.incomplete.go": "Ir para o campo {field}: {item}",
+  "bookingLots.incomplete.done":
+    "Todos os itens estão completos. Clique em “{action}” para fechar o book.",
   "bookingLots.error.booking_lot_locked":
     "Este book não está mais em rascunho: os dados não mudam.",
   "bookingLots.error.booking_item_invalid":
@@ -466,6 +472,12 @@ export const en: typeof pt = {
     "Enter the book date before closing.",
   "bookingLots.error.booking_items_incomplete":
     "Some items have empty required fields. Complete the marked fields in each item and close again.",
+  "bookingLots.incomplete.count":
+    "{n} incomplete item(s). Tap a field to go to it in the table:",
+  "bookingLots.incomplete.line": "Row {n}",
+  "bookingLots.incomplete.go": "Go to field {field}: {item}",
+  "bookingLots.incomplete.done":
+    "All items are complete. Click “{action}” to close the book.",
   "bookingLots.error.booking_lot_locked":
     "This book is no longer a draft: its data no longer changes.",
   "bookingLots.error.booking_item_invalid":
@@ -698,6 +710,12 @@ export const zh: typeof pt = {
   "bookingLots.error.booking_date_required": "关闭前请填写 Book 日期。",
   "bookingLots.error.booking_items_incomplete":
     "有条目的必填字段为空。请补全每个条目中标出的字段后再关闭。",
+  "bookingLots.incomplete.count":
+    "{n} 个条目不完整。点击字段即可跳转到表格中的该字段：",
+  "bookingLots.incomplete.line": "第 {n} 行",
+  "bookingLots.incomplete.go": "跳转到字段 {field}：{item}",
+  "bookingLots.incomplete.done":
+    "所有条目均已完整。点击“{action}”关闭此 Book。",
   "bookingLots.error.booking_lot_locked": "此 Book 已不是草稿：数据不再更改。",
   "bookingLots.error.booking_item_invalid":
     "无法读取的值。请使用大于零的数字、FOB 或 EXW，以及 USD、RMB、BRL 或 EUR。",

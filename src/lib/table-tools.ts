@@ -7,6 +7,17 @@
 export const PAGE_SIZES = [15, 25, 50] as const;
 export type PageSize = (typeof PAGE_SIZES)[number];
 
+/**
+ * Evento (disparado numa linha da tabela, borbulha) que pede para mostrar a
+ * linha: a tabela limpa a busca que a esconde e vai à página dela (ex.: o
+ * link de um campo na lista de pendências do Book).
+ */
+export const TABLE_REVEAL_EVENT = "wellmix:table-reveal";
+
+/** Página (base 0) da linha na posição `index` da lista filtrada. */
+export const pageOfIndex = (index: number, pageSize: number) =>
+  index < 0 || pageSize <= 0 ? 0 : Math.floor(index / pageSize);
+
 /** Minúsculas, sem acento e com espaços simples: "Ação  Nº" → "acao nº". */
 export function normalizeText(value: string) {
   return value
