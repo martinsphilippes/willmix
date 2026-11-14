@@ -43,6 +43,17 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
   - produção em andamento: pedido na etapa de inspeção com ETD.
 - O Overview do bloco mostra, em cada passo da linha do tempo, quantos pedidos estão nele ("N no passo"), além das pendências. Passos com tela de antes (Books, Pedidos, Revisão, Estoque) listam na própria tela.
 
+## O pedido na tela do passo (14/11/2026)
+
+A visão é do passo e das necessidades operacionais dele, não do pedido inteiro (a visão do pedido, com entidades e linha do tempo, é outra frente). Abrir um pedido de dentro de um passo leva a `/app/flow/<bloco>/<passo>/<pedido>` (só a Wellmix; os parceiros seguem no detalhe do pedido):
+
+- os itens de etapa do passo para esse pedido, de qualquer etapa, feitos e abertos (quem enviou, quando, o arquivo ou o valor; o formulário onde ainda dá para agir; o atalho para a tela própria do contrato, das amostras, do Die Cut e da ficha);
+- os passos do embarque, da origem, da certificação e das amostras do passo (cartão de passos, com os feitos);
+- o cartão do passo: produção (Pré-produção, Produção, Inspeção, com o relatório na Inspeção), recebimento (Armazenagem, Retorno), artes (Arte), frete marítimo (Logística).
+- **Pedidos** (o passo em que o pedido é criado) tem tela própria em `/app/flow/order/orders` (o menu "Pedidos" leva a ela; a lista `/app/orders` continua, com link na tela). O pedido nesse passo mostra só a criação: resumo, itens, programação de compra (pai e filhos) e os itens da criação (confirmação, número do ERP, ficha).
+- "Todos no passo" e o "Resolver" das pendências abrem o pedido na tela do passo; as telas focadas que já existem (Die Cut, documento do pedido, documentos do embarque, amostras, fotos reais) seguem diretas. As ações voltam para o pedido no passo (`flowReturnTo` aceita `/app/flow/<bloco>/<passo>/<pedido>`).
+- O detalhe do pedido (`/app/orders/[id]`) não mudou nesta frente.
+
 ## Overview pelos pedidos e visão do pedido entre os blocos (14/11/2026)
 
 Pedido do dono: o Overview de Pedido, Produção e Entrega (só a Wellmix) passa a mostrar os pedidos do bloco, e não só as pendências.
@@ -54,7 +65,13 @@ Pedido do dono: o Overview de Pedido, Produção e Entrega (só a Wellmix) passa
 - **Visão do pedido** (`OrderProgressCard`, `src/components/order-progress-card.tsx`, no topo do detalhe do pedido para a Wellmix; o Overview abre com `?from=<bloco>#order-progress`): a viagem inteira do pedido, com a completude geral; o bloco de onde veio em cor, com as etapas (situação, %, prazo, conclusão e atraso) e o relatório de atraso (atraso agora e etapas concluídas depois do prazo); os outros blocos em cinza com o percentual. Clicar num bloco muda o foco. Sem `from`, o foco é o bloco atual do pedido.
 - **Regra** (`src/lib/flow-progress.ts`, pura): cada etapa do pedido cai num bloco (Pedido: criação, preparação, embalagem; Produção: inspeção, embarque; Entrega: desembaraço, transporte, entrega e encerramento; o pagamento ao fornecedor, fora do fluxo, não conta). Etapa concluída vale 100%, em andamento ou bloqueada o percentual dela, não começada 0%; cancelada não entra. O bloco é a média das etapas dele; o geral, a média de todas. Atraso: etapa aberta com o prazo vencido (dias desde o prazo) e etapa concluída depois do prazo.
 - **Leitura**: os pedidos do bloco são os do "Todos no passo" (`flowBlockEntities`), e a completude sai das etapas que essa mesma leitura já traz (`flowProgressFor`); nada novo no banco. Os KPIs são contados sobre essa mesma lista, sem tabela agregada (`kpi_snapshots`) por enquanto; ver "Pendências" abaixo.
-- Produto novo e os logins de fora da Wellmix seguem com o Overview das pendências.
+- **Produto novo** (segunda parte, 14/11/2026, pedido do dono): as entidades são os **books** e as **solicitações ao fornecedor** (`newProductEntities` em `src/lib/services/flow.ts`).
+  - Book em preenchimento ou rascunho: passo Books; fechado ou em andamento: Seleção de itens; com convite de book concorrente aberto: também Cotações (o atraso é o do convite vencido). Completude pela situação: em preenchimento 10%, rascunho 25%, fechado 50%, em andamento 75%, concluído 100%.
+  - Solicitação aberta ou respondida, ou aprovada com a amostra ainda não aprovada e sem pedido: Negociações. Completude: aberta 25%, respondida 50%, aprovada 70%, amostra enviada 85%, amostra aprovada 100%. Atraso: o SLA da negociação (Configurações) vencido, em dias (o que passou já conta 1). A solicitação com vários produtos (mesmo `batchId`) é uma linha só, com a média.
+  - % geral: sem pedido, a mesma do bloco; com pedidos que nasceram das solicitações, o Produto novo vale como um bloco ao lado dos três do pedido (`overallOf`).
+  - A tela do book (`/app/booking/lots/[id]`) e a da solicitação (`/app/supplier-requests/[id]`) ganham, para a Wellmix, o cartão **Linha do tempo** (`EntityTimelineCard`, `src/lib/services/entity-timeline.ts`): os passos do Produto novo em cor, com a situação e o atraso, e Pedido, Produção e Entrega em cinza com o percentual dos pedidos dela.
+  - A linha do tempo geral do Overview passa a ter os quatro blocos.
+- Os logins de fora da Wellmix seguem com o Overview das pendências.
 - **Pendência**: a regra de docs/RESUMOS.md pede indicadores em tabela agregada. Estes KPIs são contados na leitura dos pedidos em andamento, como já era o "N no passo". Se a tela pesar em produção, o próximo passo é guardar a contribuição de cada pedido (bloco, passos, %, atraso) no resumo e somar num `kpi_snapshots` próprio.
 
 ## De onde vem o contador

@@ -295,10 +295,12 @@ export async function selectAndOpenSupplierRequest(
       pieces!,
     );
   }
-  // Gravar só guarda a escolha (nada vai ao fornecedor); o grupo aparece
-  // resolvido, com o ganhador em verde, e a solicitação abre dali.
+  // Gravar só guarda a escolha (nada vai ao fornecedor); a tela vai para a
+  // aba Blocos Sugeridos, onde o grupo aparece resolvido, com o ganhador em
+  // verde, e a solicitação abre dali.
   await page.click("[data-selection-submit]");
   await page.waitForURL(/[?&]saved=1/);
+  await expect(page).toHaveURL(/[?&]tab=blocks/);
   await expect(page.locator("[data-selection-saved]")).toBeVisible();
   const resolved = page.locator("[data-selection-resolved=saved]");
   await expect(resolved).toHaveCount(1);

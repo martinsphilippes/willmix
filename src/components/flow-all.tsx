@@ -3,6 +3,7 @@ import { requirementLabel } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
 import type { FlowEntity, FlowEntityItem } from "@/lib/services/flow";
+import { orderInStepHref, type FlowStep } from "@/lib/flow";
 import { Empty, Table, Td, TextLink, Th, rowClass } from "./ui";
 
 /*
@@ -22,10 +23,12 @@ function itemLabel(item: FlowEntityItem, t: Translate): string {
 }
 
 export async function FlowAll({
+  step,
   entities,
   t,
   now = new Date(),
 }: {
+  step: FlowStep;
   entities: FlowEntity[];
   t: Translate;
   now?: Date;
@@ -80,7 +83,7 @@ export async function FlowAll({
                 </Td>
                 <Td className="whitespace-nowrap text-right">
                   <TextLink
-                    href={`/app/orders/${e.order.id}`}
+                    href={orderInStepHref(step, e.order.id)}
                     data-flow-all-view
                   >
                     {t("flow.all.view")}

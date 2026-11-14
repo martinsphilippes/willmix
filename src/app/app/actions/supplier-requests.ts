@@ -65,8 +65,15 @@ export async function openSupplierRequestAction(form: FormData) {
   });
 }
 
-/** Volta para a aba Seleção com os filtros que a tela tinha. */
-async function selectionBack(form: FormData) {
+/**
+ * Volta para uma aba da Seleção de itens (a Seleção, por padrão) com os
+ * filtros que a tela tinha. Os blocos e a abertura das solicitações ficam na
+ * aba Blocos Sugeridos (dono, 14/11/2026).
+ */
+async function selectionBack(
+  form: FormData,
+  tab: "selection" | "blocks" = "selection",
+) {
   const { filtersToParams, parseSelectionFilters } =
     await import("@/lib/booking-selection");
   const raw = new URLSearchParams(str(form, "filters").slice(0, 2000));
@@ -76,7 +83,7 @@ async function selectionBack(form: FormData) {
     parseSelectionFilters(query),
     (raw.get("q") ?? "").slice(0, 200),
   );
-  p.set("tab", "selection");
+  p.set("tab", tab);
   return `${SELECTION}?${p.toString()}`;
 }
 
@@ -178,14 +185,17 @@ export async function saveSelectionGroupAction(form: FormData) {
       if (ai.error) to = withQuery(to, "aiError", ai.error);
       return `${to}#ai-references`;
     }
-    return `${withQuery(back, "saved", "1")}#blocks`;
+    // Gravada, a escolha aparece em Blocos Sugeridos como resolvida, pronta
+    // para abrir a solicitação.
+    const blocks = await selectionBack(form, "blocks");
+    return `${withQuery(blocks, "saved", "1")}#blocks`;
   });
 }
 
 /** Abre a solicitação ao fornecedor dos grupos resolvidos (os marcados ou todos). */
 export async function openGroupRequestsAction(form: FormData) {
   const user = await requireUser();
-  const back = await selectionBack(form);
+  const back = await selectionBack(form, "blocks");
   await run(`${back}#blocks`, async () => {
     const all = str(form, "scope") === "all";
     const ids = z

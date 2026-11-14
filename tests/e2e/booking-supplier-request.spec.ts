@@ -68,7 +68,7 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     "Cor âmbar",
   );
 
-  // 2b. Seleção → "Com solicitação aberta": o grupo é uma linha recolhida,
+  // 2b. Aba "Com Solicitação Aberta": o grupo é uma linha recolhida,
   // com o link da solicitação e o resumo do escolhido; a seta mostra o item
   // comparado que não foi escolhido e um novo clique recolhe.
   const requestPath = new URL(requestUrl).pathname;
@@ -99,9 +99,25 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     await expect(others).toBeHidden();
     return { row, toggle, others };
   };
+  // A lista fica só na aba Com Solicitação Aberta (dono, 14/11/2026): nem os
+  // blocos nem os filtros (que não valem para ela) aparecem ali, e a aba
+  // Blocos Sugeridos não repete a lista.
   await page.goto(
-    `/app/booking/selection?q=${encodeURIComponent(TAG)}&tab=selection`,
+    `/app/booking/selection?q=${encodeURIComponent(TAG)}&tab=blocks`,
   );
+  // O único bloco desta busca já tem solicitação: a aba diz isso e leva à
+  // lista, sem repeti-la.
+  const allRequested = page.locator("[data-selection-blocks-requested]");
+  await expect(allRequested).toBeVisible();
+  await expect(
+    page.locator('[data-selection-section="requested"]'),
+  ).toHaveCount(0);
+  await allRequested
+    .getByRole("link", { name: "Com Solicitação Aberta" })
+    .click();
+  await page.waitForURL(/tab=requested/);
+  await expect(page.locator("[data-selection-blocks]")).toHaveCount(0);
+  await expect(page.locator("[data-selection-search]")).toHaveCount(0);
   const listed = await checkRequestedRow();
   // O link fica fora do botão da seta: tocar nele não abre a linha (aqui com
   // a navegação impedida, para a linha continuar na tela)…
@@ -120,7 +136,7 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   const onlyChosen = encodeURIComponent(`${TAG} 350ml`);
   await page.goto(`/app/booking/selection?q=${onlyChosen}`);
   await expect(page.locator("[data-selection-item]")).toHaveCount(1);
-  await page.goto(`/app/booking/selection?q=${onlyChosen}&tab=selection`);
+  await page.goto(`/app/booking/selection?q=${onlyChosen}&tab=requested`);
   const filtered = await checkRequestedRow();
   // "Rever a escolha" continua abrindo o grupo para comparar.
   await filtered.row.locator("[data-selection-block-open]").click();
@@ -422,6 +438,30 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-answer]")).toContainText(
     /1[.,]3\b/,
   );
+  // "✓ Enviado" ao lado de "Enviar resposta" (dono, 14/11/2026): há resposta
+  // gravada; continua ao recarregar; some ao mudar um campo e volta ao
+  // gravar de novo.
+  const sent = page.locator("[data-supplier-answer-form] [data-sent-mark]");
+  await expect(sent).toHaveAttribute("data-sent-mark", "on");
+  // O fornecedor de teste usa o portal em chinês.
+  await expect(sent).toHaveText(/^(Enviado|Sent|已发送)$/);
+  await page.reload();
+  await expect(sent).toHaveAttribute("data-sent-mark", "on");
+  const answerNote = page.locator(
+    '[data-supplier-answer-form] textarea[name="note"]',
+  );
+  const noteBefore = await answerNote.inputValue();
+  await answerNote.fill("Caixa confirmada.");
+  await expect(sent).toHaveAttribute("data-sent-mark", "off");
+  await expect(sent).toBeHidden();
+  // Voltar ao que estava gravado mostra de novo.
+  await answerNote.fill(noteBefore);
+  await expect(sent).toHaveAttribute("data-sent-mark", "on");
+  await answerNote.fill("Caixa confirmada.");
+  await expect(sent).toBeHidden();
+  await page.click("[data-supplier-answer-submit]");
+  await expect(answerNote).toHaveValue("Caixa confirmada.");
+  await expect(sent).toHaveAttribute("data-sent-mark", "on");
   // Ficha negociada: o preço combinado, com o do booking riscado ao lado;
   // o Superplan refeito é só da Wellmix.
   await expect(page.locator('[data-negotiated-value="price"]')).toContainText(

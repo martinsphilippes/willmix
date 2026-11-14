@@ -123,7 +123,7 @@ export default async function FlowStepPage({
           }
         />
         {tabs}
-        <FlowAll entities={entities} t={t} />
+        <FlowAll step={step} entities={entities} t={t} />
       </div>
     );
   // Aviso de "feito" das ações da produção e da arte (os cartões leem o seu).
@@ -158,6 +158,13 @@ export default async function FlowStepPage({
         }
       />
       {tabs}
+      {step.block === "order" && step.key === "orders" ? (
+        <p className="mb-3 text-sm">
+          <TextLink href="/app/orders" data-flow-orders-list>
+            {t("flow.orders.list")}
+          </TextLink>
+        </p>
+      ) : null}
       <nav
         aria-label={t("flow.cases.filter")}
         className="mb-3 flex flex-wrap gap-2 text-sm"

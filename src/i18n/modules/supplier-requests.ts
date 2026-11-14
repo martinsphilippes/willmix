@@ -48,6 +48,14 @@ export const pt = {
   "supplierRequests.selection.similar": "ver parecidos",
   "supplierRequests.selection.tab.items": "Itens",
   "supplierRequests.selection.tab.selection": "Seleção",
+  "supplierRequests.selection.tab.blocks": "Blocos Sugeridos",
+  "supplierRequests.selection.tab.requested": "Com Solicitação Aberta",
+  "supplierRequests.selection.groupNone":
+    "Nenhum grupo aberto para comparar. Abra um bloco em Blocos Sugeridos ou agrupe itens na aba Itens.",
+  "supplierRequests.selection.requestedEmpty":
+    "Nenhum grupo com solicitação aberta.",
+  "supplierRequests.selection.blocks.allRequested":
+    "Os blocos destes filtros já estão com solicitação aberta.",
   "supplierRequests.selection.pick": "Agrupar",
   "supplierRequests.selection.pickAll": "Marcar todos os da tela",
   "supplierRequests.selection.pickHint":
@@ -178,6 +186,7 @@ export const pt = {
   "supplierRequests.detail.answer.moq": "Pedido mínimo (peças)",
   "supplierRequests.detail.answer.leadTime": "Prazo de produção (dias)",
   "supplierRequests.detail.answer.note": "Observação",
+  "supplierRequests.detail.answer.sent": "Enviado",
   "supplierRequests.detail.answer.submit": "Enviar resposta",
   "supplierRequests.detail.answer.pending": "Enviando…",
   "supplierRequests.detail.answer.at": "Respondido em {date}",
@@ -499,6 +508,13 @@ export const en: typeof pt = {
   "supplierRequests.selection.similar": "see similar",
   "supplierRequests.selection.tab.items": "Items",
   "supplierRequests.selection.tab.selection": "Selection",
+  "supplierRequests.selection.tab.blocks": "Suggested Blocks",
+  "supplierRequests.selection.tab.requested": "With Open Request",
+  "supplierRequests.selection.groupNone":
+    "No group open to compare. Open a block in Suggested Blocks or group items in the Items tab.",
+  "supplierRequests.selection.requestedEmpty": "No group with an open request.",
+  "supplierRequests.selection.blocks.allRequested":
+    "The blocks for these filters already have an open request.",
   "supplierRequests.selection.pick": "Group",
   "supplierRequests.selection.pickAll": "Select all on screen",
   "supplierRequests.selection.pickHint":
@@ -628,6 +644,7 @@ export const en: typeof pt = {
   "supplierRequests.detail.answer.moq": "Minimum order (pieces)",
   "supplierRequests.detail.answer.leadTime": "Production lead time (days)",
   "supplierRequests.detail.answer.note": "Note",
+  "supplierRequests.detail.answer.sent": "Sent",
   "supplierRequests.detail.answer.submit": "Send answer",
   "supplierRequests.detail.answer.pending": "Sending…",
   "supplierRequests.detail.answer.at": "Answered on {date}",
@@ -942,6 +959,13 @@ export const zh: typeof pt = {
   "supplierRequests.selection.similar": "查看相似",
   "supplierRequests.selection.tab.items": "项目",
   "supplierRequests.selection.tab.selection": "选择",
+  "supplierRequests.selection.tab.blocks": "建议分组",
+  "supplierRequests.selection.tab.requested": "已打开询单",
+  "supplierRequests.selection.groupNone":
+    "没有打开的比较分组。请在“建议分组”中打开一个分组，或在“项目”标签中组合项目。",
+  "supplierRequests.selection.requestedEmpty": "没有已打开询单的分组。",
+  "supplierRequests.selection.blocks.allRequested":
+    "这些筛选条件下的分组都已打开询单。",
   "supplierRequests.selection.pick": "分组",
   "supplierRequests.selection.pickAll": "全选本页",
   "supplierRequests.selection.pickHint":
@@ -1067,6 +1091,7 @@ export const zh: typeof pt = {
   "supplierRequests.detail.answer.moq": "最小起订量（件）",
   "supplierRequests.detail.answer.leadTime": "生产周期（天）",
   "supplierRequests.detail.answer.note": "备注",
+  "supplierRequests.detail.answer.sent": "已发送",
   "supplierRequests.detail.answer.submit": "发送回复",
   "supplierRequests.detail.answer.pending": "正在发送…",
   "supplierRequests.detail.answer.at": "回复于 {date}",

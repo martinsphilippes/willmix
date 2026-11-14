@@ -2,8 +2,7 @@ import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
 import { stepLabelKey, type FlowBlock } from "@/lib/flow";
-import { blockOf } from "@/lib/flow-progress";
-import type { FlowBlockEntity } from "@/lib/services/flow";
+import type { OverviewEntity } from "@/lib/services/flow";
 import { Badge, Empty, Table, Td, TextLink, Th, cx, rowClass } from "./ui";
 
 /*
@@ -68,6 +67,13 @@ export function PercentBar({
   );
 }
 
+/** Rótulo da entidade: "Pedido #2", "Book nº 4", "Solicitação nº 7". */
+export function entityLabel(e: OverviewEntity, t: Translate): string {
+  if (e.kind === "book") return t("flow.np.book", { n: e.number });
+  if (e.kind === "request") return t("flow.np.request", { n: e.number });
+  return t("orders.number", { number: e.number });
+}
+
 export async function FlowEntities({
   block,
   entities,
@@ -76,25 +82,24 @@ export async function FlowEntities({
   now = new Date(),
 }: {
   block: FlowBlock;
-  entities: FlowBlockEntity[];
+  entities: OverviewEntity[];
   /** Mostra a coluna dos passos (visão do bloco inteiro). */
   showSteps: boolean;
   t: Translate;
   now?: Date;
 }) {
   if (!entities.length) return <Empty>{t("flow.entities.empty")}</Empty>;
-  const lateOf = (e: FlowBlockEntity) =>
-    (e.progress ? blockOf(e.progress, block)?.lateDays : 0) ?? 0;
   const rows = [...entities]
-    .sort((a, b) => lateOf(b) - lateOf(a) || a.order.number - b.order.number)
+    .sort((a, b) => b.lateDays - a.lateDays || a.number - b.number)
     .slice(0, ENTITY_ROWS);
-  const supplierIds = [
-    ...new Set(rows.map((e) => e.order.supplierId).filter(Boolean)),
+  const partyIds = [
+    ...new Set(rows.map((e) => e.partyId).filter((x): x is string => !!x)),
   ];
-  const parties = supplierIds.length
-    ? await getStore().list("parties", { filter: { id: supplierIds } })
+  const parties = partyIds.length
+    ? await getStore().list("parties", { filter: { id: partyIds } })
     : [];
   const nameOf = new Map(parties.map((p) => [p.id, p.name]));
+  const orders = block !== "new-product";
   return (
     <>
       {entities.length > rows.length ? (
@@ -108,10 +113,10 @@ export async function FlowEntities({
       <Table>
         <thead>
           <tr>
-            <Th>{t("flow.all.order")}</Th>
+            <Th>{orders ? t("flow.all.order") : t("flow.np.entity")}</Th>
             <Th>{t("flow.all.supplier")}</Th>
             {showSteps ? <Th>{t("flow.entities.steps")}</Th> : null}
-            <Th>{t("flow.all.stage")}</Th>
+            <Th>{orders ? t("flow.all.stage") : t("flow.np.status")}</Th>
             <Th>{t("flow.all.since")}</Th>
             <Th>{t("flow.entities.late")}</Th>
             <Th>{t("flow.entities.blockPercent")}</Th>
@@ -120,25 +125,21 @@ export async function FlowEntities({
         </thead>
         <tbody>
           {rows.map((e) => {
-            const mine = e.progress ? blockOf(e.progress, block) : null;
-            const days = daysSince(mine?.startedAt ?? e.since, now);
-            const late = mine?.lateDays ?? 0;
+            const days = daysSince(e.since, now);
             return (
               <tr
-                key={e.order.id}
+                key={`${e.kind}:${e.id}`}
                 className={rowClass}
-                data-flow-entity={e.order.id}
-                data-flow-entity-late={late}
+                data-flow-entity={e.id}
+                data-flow-entity-kind={e.kind}
+                data-flow-entity-late={e.lateDays}
               >
                 <Td className="whitespace-nowrap font-medium">
-                  <TextLink
-                    href={`/app/orders/${e.order.id}?from=${block}#order-progress`}
-                    data-flow-entity-open
-                  >
-                    {t("orders.number", { number: e.order.number })}
+                  <TextLink href={e.href} data-flow-entity-open>
+                    {entityLabel(e, t)}
                   </TextLink>
                 </Td>
-                <Td>{nameOf.get(e.order.supplierId) ?? "—"}</Td>
+                <Td>{(e.partyId && nameOf.get(e.partyId)) || "—"}</Td>
                 {showSteps ? (
                   <Td className="text-xs text-zinc-600">
                     {e.steps
@@ -147,15 +148,15 @@ export async function FlowEntities({
                   </Td>
                 ) : null}
                 <Td className="whitespace-nowrap">
-                  {t(`stage.${e.order.status}` as DictionaryKey)}
+                  {t(e.statusKey as DictionaryKey)}
                 </Td>
                 <Td className="whitespace-nowrap">
                   {days === null ? "—" : t("flow.cases.days", { n: days })}
                 </Td>
                 <Td className="whitespace-nowrap">
-                  {late > 0 ? (
+                  {e.lateDays > 0 ? (
                     <Badge tone="danger">
-                      {t("flow.entities.lateDays", { n: late })}
+                      {t("flow.entities.lateDays", { n: e.lateDays })}
                     </Badge>
                   ) : (
                     <span className="text-xs text-zinc-500">
@@ -165,15 +166,15 @@ export async function FlowEntities({
                 </Td>
                 <Td>
                   <PercentBar
-                    percent={mine?.percent ?? 0}
-                    data-flow-entity-block={mine?.percent ?? 0}
+                    percent={e.percent}
+                    data-flow-entity-block={e.percent}
                   />
                 </Td>
                 <Td>
                   <PercentBar
-                    percent={e.progress?.overall ?? 0}
+                    percent={e.overall}
                     muted
-                    data-flow-entity-overall={e.progress?.overall ?? 0}
+                    data-flow-entity-overall={e.overall}
                   />
                 </Td>
               </tr>
