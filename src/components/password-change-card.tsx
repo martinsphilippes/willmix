@@ -2,7 +2,9 @@ import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { PASSWORD_ERRORS, PASSWORD_MIN } from "@/lib/password-rules";
 import { Alert, Card } from "@/components/ui";
+import { skipPasswordChangeAction } from "@/app/app/actions/password";
 import { PasswordChangeForm } from "./password-change-form";
+import { SubmitButton } from "./submit-button";
 
 /**
  * Cartão da troca de senha, usado no primeiro acesso (no lugar da tela, pelo
@@ -44,6 +46,25 @@ export function PasswordChangeCard({
             }}
             errors={errors}
           />
+          {/* Primeiro acesso: dá para seguir com a senha provisória (dono,
+              14/11/2026); a troca fica para depois, em "Trocar senha". */}
+          {firstAccess ? (
+            <form
+              action={skipPasswordChangeAction}
+              className="space-y-2 border-t border-zinc-100 pt-3"
+              data-password-skip
+            >
+              <p className="text-xs text-zinc-500">
+                {t("password.first.skipHint")}
+              </p>
+              <SubmitButton
+                variant="secondary"
+                pendingText={t("password.pending")}
+              >
+                {t("password.first.skip")}
+              </SubmitButton>
+            </form>
+          ) : null}
         </div>
       </Card>
     </div>

@@ -74,3 +74,22 @@ export async function changeOwnPassword(
   }
   await audit(user, "user.password_change", "user", user.id, user.email);
 }
+
+/**
+ * Primeiro acesso: seguir com a senha provisória, sem trocar (pedido do dono,
+ * 14/11/2026). Tira a marca, então o portal abre normalmente; a senha não
+ * muda e a troca continua em "Trocar senha" (menu da conta). Fica na
+ * auditoria, para o administrador saber quem seguiu sem trocar.
+ */
+export async function skipPasswordChange(user: User): Promise<void> {
+  if (!user.mustChangePassword) return;
+  await getStore().update("users", user.id, { mustChangePassword: false });
+  await forgetCurrentSession();
+  await audit(
+    user,
+    "user.password_change_skipped",
+    "user",
+    user.id,
+    user.email,
+  );
+}

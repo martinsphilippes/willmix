@@ -1338,3 +1338,13 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Ações:** as mesmas. Depois de gravar a escolha, a tela vai para Blocos Sugeridos (antes: para a parte de baixo da Seleção), onde o grupo aparece resolvido; abrir as solicitações também volta para essa aba. "Gravar e gerar com IA" continua na Seleção, com o grupo aberto. Sem mudança no banco; nenhum dado, rota ou campo removido (`?tab=selection` continua abrindo a Seleção).
 - Peças: `SELECTION_TABS` e `parseSelectionTab` (`src/lib/booking-selection.ts`), a página (`src/app/app/booking/selection/page.tsx`), o retorno das ações (`selectionBack` em `src/app/app/actions/supplier-requests.ts`) e textos novos nos três idiomas (`supplierRequests.selection.tab.blocks`, `.tab.requested`, `.groupNone`, `.requestedEmpty`). Detalhes em `docs/SUPPLIER_REQUESTS.md`, "Seleção de itens".
 - Testes: `tests/unit/booking-selection.test.ts` (as quatro abas e a aba do endereço) e os E2E da seleção (ordem das abas, Seleção sem grupo, filtros nos blocos, Blocos Sugeridos sem a lista e Com Solicitação Aberta sem os blocos e sem os filtros, gravar levando a Blocos Sugeridos).
+
+## Primeiro acesso: seguir sem trocar a senha provisória
+
+- **Pedido do dono** (14/11/2026, com a foto da tela "Primeiro acesso: escolha a sua senha"): "Tem que ser possível seguir sem alterar senha". Até aqui, um login criado com senha provisória só via a troca de senha até trocar (decisão de 11/11/2026).
+- **Como ficou**: o cartão do primeiro acesso ganha, embaixo do formulário, o botão secundário **"Continuar sem trocar a senha"**, com a explicação "Dá para trocar depois, no menu da sua conta (Trocar senha)". O aviso amarelo agora recomenda trocar, sem obrigar. Ao continuar, a marca `mustChangePassword` some, a tela aberta segue no mesmo endereço e o portal não pede mais a troca (nem ao recarregar, nem ao entrar de novo). A senha provisória continua valendo.
+- **Rastro**: a auditoria registra `user.password_change_skipped` (quem seguiu sem trocar). Só vale para o próprio login (`skipPasswordChangeAction`, `src/app/app/actions/password.ts`).
+- **Não mudou**: a troca de senha (primeiro acesso e "Trocar senha"), as regras da senha nova, a criação de login com a troca marcada (Equipe e acessos) e o banco (a coluna é a mesma).
+- Textos nos três idiomas: `password.first.hint` (agora recomenda), `password.first.skip`, `password.first.skipHint`. Docs: `docs/ACCESS.md`.
+- Testes: `tests/unit/password-change.test.ts` (a marca some, a senha provisória continua valendo, uma auditoria só) e o E2E `tests/e2e/first-access.spec.ts` (login novo com a troca marcada, "Continuar sem trocar a senha", mesma tela, não pede mais ao recarregar nem ao entrar de novo, "Trocar senha" disponível).
+
