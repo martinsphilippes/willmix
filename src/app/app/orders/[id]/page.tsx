@@ -5,7 +5,6 @@ import { setPurchaseIncotermAction } from "../../actions/purchase-order";
 import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
 import { ImportFlowCard } from "@/components/import-flow-card";
-import { OpenPartFromHash, OrderPart } from "@/components/order-part";
 import { ProductionCard } from "@/components/production-card";
 import {
   sheetProgress,
@@ -214,36 +213,6 @@ import { myTariffStatus, orderTariffView } from "@/lib/services/freight-tariff";
 import { FreightOrderCard } from "@/components/freight-order-card";
 import { can } from "@/lib/auth/function-access";
 
-/**
- * Fases do pedido em que cada parte do detalhe abre sozinha (tela enxuta da
- * Wellmix, dono, 14/11/2026). Nas outras, a parte fica fechada a um clique.
- */
-const ORDER_PART_PHASES = {
-  certification: [
-    "ORDER_CREATED",
-    "PREPARATION",
-    "SUPPLIER_PAYMENT",
-    "PACKAGING",
-  ],
-  artwork: ["PREPARATION", "PACKAGING", "CLOSED"],
-  supplierPayment: [
-    "PREPARATION",
-    "SUPPLIER_PAYMENT",
-    "PACKAGING",
-    "INSPECTION",
-  ],
-  production: ["PREPARATION", "SUPPLIER_PAYMENT", "PACKAGING", "INSPECTION"],
-  inspectionCancel: ["INSPECTION"],
-  freight: ["INSPECTION", "SHIPPING"],
-  exw: ["INSPECTION", "SHIPPING"],
-  origin: ["INSPECTION", "SHIPPING"],
-  samples: ["INSPECTION", "SHIPPING", "CUSTOMS"],
-  shippingDocs: ["INSPECTION", "SHIPPING"],
-  importFlow: ["SHIPPING", "CUSTOMS", "TRANSPORT"],
-  receiving: ["CUSTOMS", "TRANSPORT", "DELIVERED", "CLOSED"],
-} as const satisfies Record<string, readonly string[]>;
-type OrderPartId = keyof typeof ORDER_PART_PHASES;
-
 export default async function OrderPage({
   params,
   searchParams,
@@ -276,33 +245,9 @@ export default async function OrderPage({
     freightN,
     rounds: roundsSpawned,
     incoterm: incotermNotice,
-    parts: partsQuery,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
-  /* Tela enxuta (dono, 14/11/2026; docs/FLOW_MENU.md): para a Wellmix, os
-     cartões das partes do pedido abrem e fecham; abertos só os da fase em
-     que o pedido está (?parts=all abre todos). Os parceiros veem só a parte
-     deles e continuam com tudo aberto. */
-  const allParts = partsQuery === "all";
-  const partOpen = (id: OrderPartId) =>
-    allParts ||
-    (ORDER_PART_PHASES[id] as readonly string[]).includes(order.status);
-  const part = (id: OrderPartId, node: ReactNode) =>
-    !node ? null : !isWellmix(user) ? (
-      node
-    ) : (
-      <OrderPart
-        key={id}
-        id={id}
-        title={t(`orderPart.${id}` as DictionaryKey)}
-        open={partOpen(id)}
-        openLabel={t("orderPart.open")}
-        closeLabel={t("orderPart.close")}
-      >
-        {node}
-      </OrderPart>
-    );
   // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
   await normalizePackaging(id);
   // Pedido de compra: papel das tarefas de arte e certificado coerente com
@@ -2439,329 +2384,240 @@ export default async function OrderPage({
         </div>
       ) : null}
 
-      {/* Tela enxuta (Wellmix): abertas só as partes da fase do pedido. */}
-      {isWellmix(user) ? (
-        <div
-          className="mt-6 flex flex-wrap items-center justify-between gap-2 text-sm text-zinc-600"
-          data-order-collapse-bar
-        >
-          <OpenPartFromHash />
-          <span>
-            {allParts ? t("orderPart.hint.all") : t("orderPart.hint.phase")}
-          </span>
-          <TextLink
-            href={
-              allParts
-                ? `/app/orders/${order.id}`
-                : `/app/orders/${order.id}?parts=all`
-            }
-            data-order-collapse-toggle={allParts ? "phase" : "all"}
-          >
-            {allParts ? t("orderPart.showPhase") : t("orderPart.showAll")}
-          </TextLink>
-        </div>
-      ) : null}
       <div className="mt-6 flex min-w-0 flex-col gap-6">
         {/* Frete marítimo pedido às companhias (só a Wellmix). */}
-        {part(
-          "freight",
-          wellmix && order.status !== "CANCELLED" ? (
-            <FreightOrderCard
-              t={t}
-              user={user}
-              orderId={order.id}
-              notice={typeof freightNotice === "string" ? freightNotice : null}
-              count={
-                typeof freightN === "string" && /^\d{1,3}$/.test(freightN)
-                  ? Number(freightN)
-                  : 0
-              }
-              error={typeof error === "string" ? error : null}
-            />
-          ) : null,
-        )}
+        {wellmix && order.status !== "CANCELLED" ? (
+          <FreightOrderCard
+            t={t}
+            user={user}
+            orderId={order.id}
+            notice={typeof freightNotice === "string" ? freightNotice : null}
+            count={
+              typeof freightN === "string" && /^\d{1,3}$/.test(freightN)
+                ? Number(freightN)
+                : 0
+            }
+            error={typeof error === "string" ? error : null}
+          />
+        ) : null}
         {/* Pagamento ao fornecedor: fora do fluxo das etapas (condição do
             fornecedor, parcelas e, para a Wellmix, o pagamento da vez). */}
-        {part(
-          "supplierPayment",
-          showSupplierPayment ? (
-            <SupplierPaymentCard
-              order={order}
-              t={t}
-              wellmix={financeAccess}
-              fxToday={financeAccess ? (finance?.fxToday ?? null) : null}
-              notice={
-                typeof paid === "string" &&
-                [
-                  "transfer_copied",
-                  "finance_email",
-                  "finance_whatsapp",
-                  "marked",
-                ].includes(paid)
-                  ? t(`supplierPay.done.${paid}` as DictionaryKey)
-                  : termsNotice === "applied"
-                    ? t("supplierTerms.applied")
-                    : null
-              }
-            />
-          ) : null,
-        )}
+        {showSupplierPayment ? (
+          <SupplierPaymentCard
+            order={order}
+            t={t}
+            wellmix={financeAccess}
+            fxToday={financeAccess ? (finance?.fxToday ?? null) : null}
+            notice={
+              typeof paid === "string" &&
+              [
+                "transfer_copied",
+                "finance_email",
+                "finance_whatsapp",
+                "marked",
+              ].includes(paid)
+                ? t(`supplierPay.done.${paid}` as DictionaryKey)
+                : termsNotice === "applied"
+                  ? t("supplierTerms.applied")
+                  : null
+            }
+          />
+        ) : null}
 
         {/* Inspeção do pedido de compra (mapa R10): tentativas esgotadas, a
             Wellmix confirma o cancelamento com a mensagem ao fornecedor. */}
-        {part(
-          "inspectionCancel",
-          wellmix && exhaustedItems.length && order.status !== "CANCELLED" ? (
-            <div id="inspection-cancel" className="scroll-mt-24">
-              <Alert tone="danger">
-                <div className="space-y-2" data-inspection-cancel>
-                  <p className="font-semibold">{t("inspectionCancel.title")}</p>
-                  <p>
-                    {t("inspectionCancel.body", {
-                      items: exhaustedItems.map((v) => v.item.name).join(", "),
-                      n: String(
-                        Math.max(...exhaustedItems.map((v) => v.rounds)),
-                      ),
-                      max: String(maxAttempts),
-                    })}
-                  </p>
-                  {canCancel ? (
-                    <form action={cancelOrderAction} className="space-y-2">
-                      <input type="hidden" name="orderId" value={order.id} />
-                      <input
-                        type="hidden"
-                        name="reason"
-                        value="quality_rejected"
+        {wellmix && exhaustedItems.length && order.status !== "CANCELLED" ? (
+          <div id="inspection-cancel" className="scroll-mt-24">
+            <Alert tone="danger">
+              <div className="space-y-2" data-inspection-cancel>
+                <p className="font-semibold">{t("inspectionCancel.title")}</p>
+                <p>
+                  {t("inspectionCancel.body", {
+                    items: exhaustedItems.map((v) => v.item.name).join(", "),
+                    n: String(Math.max(...exhaustedItems.map((v) => v.rounds))),
+                    max: String(maxAttempts),
+                  })}
+                </p>
+                {canCancel ? (
+                  <form action={cancelOrderAction} className="space-y-2">
+                    <input type="hidden" name="orderId" value={order.id} />
+                    <input
+                      type="hidden"
+                      name="reason"
+                      value="quality_rejected"
+                    />
+                    <Field label={t("inspectionCancel.message")}>
+                      <Textarea
+                        name="note"
+                        required
+                        minLength={3}
+                        maxLength={1000}
+                        rows={3}
+                        className="bg-white"
                       />
-                      <Field label={t("inspectionCancel.message")}>
-                        <Textarea
-                          name="note"
-                          required
-                          minLength={3}
-                          maxLength={1000}
-                          rows={3}
-                          className="bg-white"
-                        />
-                      </Field>
-                      <label className="flex items-start gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          name="confirm"
-                          value="1"
-                          required
-                          className="mt-0.5"
-                        />
-                        <span>{t("inspectionCancel.confirm")}</span>
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        <SubmitButton variant="danger">
-                          {t("inspectionCancel.submit")}
-                        </SubmitButton>
-                        <LinkButton
-                          href="/app/booking/selection"
-                          variant="secondary"
-                        >
-                          {t("inspectionCancel.selection")}
-                        </LinkButton>
-                      </div>
-                    </form>
-                  ) : (
-                    <p className="text-xs">
-                      {t("inspectionCancel.noPermission")}
-                    </p>
-                  )}
-                </div>
-              </Alert>
-            </div>
-          ) : null,
-        )}
+                    </Field>
+                    <label className="flex items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="confirm"
+                        value="1"
+                        required
+                        className="mt-0.5"
+                      />
+                      <span>{t("inspectionCancel.confirm")}</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <SubmitButton variant="danger">
+                        {t("inspectionCancel.submit")}
+                      </SubmitButton>
+                      <LinkButton
+                        href="/app/booking/selection"
+                        variant="secondary"
+                      >
+                        {t("inspectionCancel.selection")}
+                      </LinkButton>
+                    </div>
+                  </form>
+                ) : (
+                  <p className="text-xs">
+                    {t("inspectionCancel.noPermission")}
+                  </p>
+                )}
+              </div>
+            </Alert>
+          </div>
+        ) : null}
 
         {/* Produção (Fase C): ETD, follow 5/15/25, inspeção agendada e por SKU. */}
-        {part(
-          "production",
-          productionView ? (
-            <ProductionCard
-              t={t}
-              user={user}
-              order={order}
-              view={productionView}
-              wellmix={wellmix}
-              names={productionNames}
-              notice={
-                typeof productionNotice === "string" &&
-                [
-                  "saved",
-                  "followup",
-                  "scheduled",
-                  "inspected",
-                  "fixed",
-                ].includes(productionNotice)
-                  ? t(`production.done.${productionNotice}` as DictionaryKey)
-                  : null
-              }
-            />
-          ) : null,
-        )}
+        {productionView ? (
+          <ProductionCard
+            t={t}
+            user={user}
+            order={order}
+            view={productionView}
+            wellmix={wellmix}
+            names={productionNames}
+            notice={
+              typeof productionNotice === "string" &&
+              ["saved", "followup", "scheduled", "inspected", "fixed"].includes(
+                productionNotice,
+              )
+                ? t(`production.done.${productionNotice}` as DictionaryKey)
+                : null
+            }
+          />
+        ) : null}
 
         {/* Incoterm do pedido de compra (mapa R17?): EXW abre a transportadora
             e os custos de origem antes do container na fábrica. */}
-        {part(
-          "exw",
-          purchaseFlow && isWellmix(user) && originSteps.length ? (
-            <Card title={t("exw.title")} dense>
-              <p className="mb-3 text-sm text-zinc-600">{t("exw.hint")}</p>
-              {incotermNotice === "saved" ? (
-                <div className="mb-3">
-                  <Alert tone="success">{t("exw.saved")}</Alert>
-                </div>
-              ) : null}
-              <form
-                action={setPurchaseIncotermAction}
-                className="flex flex-wrap items-end gap-2"
-                data-incoterm-form
+        {purchaseFlow && isWellmix(user) && originSteps.length ? (
+          <Card title={t("exw.title")} dense>
+            <p className="mb-3 text-sm text-zinc-600">{t("exw.hint")}</p>
+            {incotermNotice === "saved" ? (
+              <div className="mb-3">
+                <Alert tone="success">{t("exw.saved")}</Alert>
+              </div>
+            ) : null}
+            <form
+              action={setPurchaseIncotermAction}
+              className="flex flex-wrap items-end gap-2"
+              data-incoterm-form
+            >
+              <input type="hidden" name="orderId" value={order.id} />
+              <Select
+                name="incoterm"
+                defaultValue={order.incoterm === "EXW" ? "EXW" : "FOB"}
+                aria-label={t("exw.title")}
               >
-                <input type="hidden" name="orderId" value={order.id} />
-                <Select
-                  name="incoterm"
-                  defaultValue={order.incoterm === "EXW" ? "EXW" : "FOB"}
-                  aria-label={t("exw.title")}
-                >
-                  <option value="FOB">FOB</option>
-                  <option value="EXW">EXW</option>
-                </Select>
-                <SubmitButton variant="secondary">{t("exw.save")}</SubmitButton>
-              </form>
-            </Card>
-          ) : null,
-        )}
+                <option value="FOB">FOB</option>
+                <option value="EXW">EXW</option>
+              </Select>
+              <SubmitButton variant="secondary">{t("exw.save")}</SubmitButton>
+            </form>
+          </Card>
+        ) : null}
         {/* Container na origem (mapa R19 a R26): vazio na fábrica, carregamento,
             lacre e número, volta ao porto e o rastreio diário do Comex interno. */}
-        {part(
-          "origin",
-          originSteps.length ? (
-            <ImportFlowCard
-              t={t}
-              order={order}
-              steps={originSteps}
-              names={productionNames}
-              title={t("originFlow.title")}
-              anchor="container-origin"
-              error={stepCard === "container-origin" ? stepError : null}
-              notice={
-                typeof importNotice === "string" &&
-                ["submitted", "validated", "rejected"].includes(importNotice)
-                  ? t(`importFlow.done.${importNotice}` as DictionaryKey)
-                  : null
-              }
-            />
-          ) : null,
-        )}
+        {originSteps.length ? (
+          <ImportFlowCard
+            t={t}
+            order={order}
+            steps={originSteps}
+            names={productionNames}
+            title={t("originFlow.title")}
+            anchor="container-origin"
+            error={stepCard === "container-origin" ? stepError : null}
+            notice={
+              typeof importNotice === "string" &&
+              ["submitted", "validated", "rejected"].includes(importNotice)
+                ? t(`importFlow.done.${importNotice}` as DictionaryKey)
+                : null
+            }
+          />
+        ) : null}
         {/* Amostras (mapa R12 a R16): retirada, envios ao Brasil (4 × 3 × Nm)
             e à China (1 × 3 × Nm), recebimento, fotos reais e devolução. */}
-        {part(
-          "samples",
-          samplesSteps.length ? (
-            <div id="samples" className="min-w-0 scroll-mt-24 space-y-3">
-              <Card title={t("samplesFlow.title")} dense>
-                <p className="mb-3 text-sm text-zinc-600">
-                  {t("samplesFlow.hint")}
-                </p>
-                {samplesSplit.length ? (
-                  <Table tools={false}>
-                    <thead>
-                      <tr>
-                        <Th>{t("samplesFlow.col.product")}</Th>
-                        <Th className="text-right">
-                          {t("samplesFlow.col.brazil")}
-                        </Th>
-                        <Th className="text-right">
-                          {t("samplesFlow.col.china")}
-                        </Th>
-                        <Th className="text-right">
-                          {t("samplesFlow.col.total")}
-                        </Th>
+        {samplesSteps.length ? (
+          <div id="samples" className="min-w-0 scroll-mt-24 space-y-3">
+            <Card title={t("samplesFlow.title")} dense>
+              <p className="mb-3 text-sm text-zinc-600">
+                {t("samplesFlow.hint")}
+              </p>
+              {samplesSplit.length ? (
+                <Table tools={false}>
+                  <thead>
+                    <tr>
+                      <Th>{t("samplesFlow.col.product")}</Th>
+                      <Th className="text-right">
+                        {t("samplesFlow.col.brazil")}
+                      </Th>
+                      <Th className="text-right">
+                        {t("samplesFlow.col.china")}
+                      </Th>
+                      <Th className="text-right">
+                        {t("samplesFlow.col.total")}
+                      </Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {samplesSplit.map((l) => (
+                      <tr key={l.itemId} data-sample-split={l.itemId}>
+                        <Td>{productNameText(t, l.name)}</Td>
+                        <Td className="text-right" data-split-brazil>
+                          {l.brazil}
+                        </Td>
+                        <Td className="text-right" data-split-china>
+                          {l.china}
+                        </Td>
+                        <Td className="text-right">{l.total}</Td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {samplesSplit.map((l) => (
-                        <tr key={l.itemId} data-sample-split={l.itemId}>
-                          <Td>{productNameText(t, l.name)}</Td>
-                          <Td className="text-right" data-split-brazil>
-                            {l.brazil}
-                          </Td>
-                          <Td className="text-right" data-split-china>
-                            {l.china}
-                          </Td>
-                          <Td className="text-right">{l.total}</Td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                ) : null}
-                {realMediaVisible ? (
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-zinc-600">
-                      {t("realMedia.orderHint")}
-                    </p>
-                    <LinkButton
-                      href={`/app/orders/${order.id}/real-media`}
-                      variant="secondary"
-                      data-real-media-link
-                    >
-                      {t("realMedia.open")}
-                    </LinkButton>
-                  </div>
-                ) : null}
-              </Card>
-              <ImportFlowCard
-                t={t}
-                order={order}
-                steps={samplesSteps}
-                names={productionNames}
-                title={t("samplesFlow.title")}
-                anchor="samples-flow"
-                error={stepCard === "samples-flow" ? stepError : null}
-                notice={
-                  typeof importNotice === "string" &&
-                  ["submitted", "validated", "rejected"].includes(importNotice)
-                    ? t(`importFlow.done.${importNotice}` as DictionaryKey)
-                    : null
-                }
-              />
-            </div>
-          ) : null,
-        )}
-        {/* Documentos do embarque (docs/SHIPPING_DOCS.md): check list de carga,
-            packing list, invoice e BL conferidos pelo sistema. */}
-        {part(
-          "shippingDocs",
-          shippingDocsVisible ? (
-            <Card title={t("shippingDocs.open")} dense>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-zinc-600">
-                  {t("shippingDocs.orderHint")}
-                </p>
-                <LinkButton
-                  href={`/app/orders/${order.id}/shipping-docs`}
-                  variant="secondary"
-                  data-shipping-docs-link
-                >
-                  {t("shippingDocs.open")}
-                </LinkButton>
-              </div>
+                    ))}
+                  </tbody>
+                </Table>
+              ) : null}
+              {realMediaVisible ? (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-zinc-600">
+                    {t("realMedia.orderHint")}
+                  </p>
+                  <LinkButton
+                    href={`/app/orders/${order.id}/real-media`}
+                    variant="secondary"
+                    data-real-media-link
+                  >
+                    {t("realMedia.open")}
+                  </LinkButton>
+                </div>
+              ) : null}
             </Card>
-          ) : null,
-        )}
-        {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário, DI... */}
-        {part(
-          "importFlow",
-          importSteps.length ? (
             <ImportFlowCard
               t={t}
               order={order}
-              steps={importSteps}
+              steps={samplesSteps}
               names={productionNames}
-              error={stepCard === "import-flow" ? stepError : null}
+              title={t("samplesFlow.title")}
+              anchor="samples-flow"
+              error={stepCard === "samples-flow" ? stepError : null}
               notice={
                 typeof importNotice === "string" &&
                 ["submitted", "validated", "rejected"].includes(importNotice)
@@ -2769,215 +2625,226 @@ export default async function OrderPage({
                   : null
               }
             />
-          ) : null,
-        )}
+          </div>
+        ) : null}
+        {/* Documentos do embarque (docs/SHIPPING_DOCS.md): check list de carga,
+            packing list, invoice e BL conferidos pelo sistema. */}
+        {shippingDocsVisible ? (
+          <Card title={t("shippingDocs.open")} dense>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-zinc-600">
+                {t("shippingDocs.orderHint")}
+              </p>
+              <LinkButton
+                href={`/app/orders/${order.id}/shipping-docs`}
+                variant="secondary"
+                data-shipping-docs-link
+              >
+                {t("shippingDocs.open")}
+              </LinkButton>
+            </div>
+          </Card>
+        ) : null}
+        {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário, DI... */}
+        <ImportFlowCard
+          t={t}
+          order={order}
+          steps={importSteps}
+          names={productionNames}
+          error={stepCard === "import-flow" ? stepError : null}
+          notice={
+            typeof importNotice === "string" &&
+            ["submitted", "validated", "rejected"].includes(importNotice)
+              ? t(`importFlow.done.${importNotice}` as DictionaryKey)
+              : null
+          }
+        />
         {/* Certificação (Fase F): memorial, laboratório e registro com o OCP,
             e o selo de certificação que a agência aplica na arte. */}
-        {part(
-          "certification",
-          certSteps.length ? (
-            <ImportFlowCard
-              t={t}
-              order={order}
-              // O selo e a arte com o selo vêm primeiro (é o que libera o pedido).
-              // Laudo e registro saíram da tela (o PDF do memorial/selo basta,
-              // dono 10/11/2026); pedido antigo que já os preencheu continua
-              // mostrando, para o dado não sumir.
-              steps={[
-                ...certSteps.filter((v) =>
-                  v.template.key.startsWith("cert_seal"),
-                ),
-                ...certSteps.filter(
-                  (v) =>
-                    !v.template.key.startsWith("cert_seal") &&
-                    (v.template.key === "cert_memorial" ||
-                      (v.step && v.step.status !== "pending")),
-                ),
-              ]}
-              names={productionNames}
-              title={t("certFlow.title")}
-              anchor="certification"
-              featured={importFlow.CERT_FEATURED_STEPS}
-              featuredHint={t("certFlow.featured.hint")}
-              error={stepCard === "certification" ? stepError : null}
-              hints={[
-                ...(certSteps.some((v) => v.template.key === "cert_seal")
-                  ? [t("certFlow.sealHint")]
-                  : []),
-                // Todo pedido precisa de selo: sem certificadora, a Wellmix designa.
-                ...(certNotNeeded
-                  ? [
-                      <span key="no-cert" data-cert-not-needed>
-                        {t("certFlow.noCertNeeded")}
-                      </span>,
-                    ]
-                  : []),
-                ...(wellmix &&
-                !order.ocpId &&
-                certSteps.length &&
-                !certNotNeeded
-                  ? [
-                      <span key="no-ocp" data-cert-missing="ocp">
-                        {t("certFlow.notify.noOcp.body")}{" "}
-                        <a href="#order-partners" className={linkClass}>
-                          {t("certFlow.assign.ocp")}
-                        </a>
-                      </span>,
-                    ]
-                  : []),
-                // Arte feita pela Wellmix sem designer: quem fica com a aplicação
-                // do selo e onde escolher o designer.
-                ...(certMissingDesigner && !certNotNeeded
-                  ? [
-                      <span key="no-designer" data-cert-missing="designer">
-                        {t("certFlow.missingHint.designer", {
-                          who:
-                            certMissingDesigner.label ??
-                            t("certFlow.assignee.team"),
-                        })}{" "}
-                        <a href="#artwork" className={linkClass}>
-                          {t("certFlow.assign.designer")}
-                        </a>
-                      </span>,
-                    ]
-                  : []),
-                ...(certMissingAnalyst && !certNotNeeded
-                  ? [
-                      <span key="no-analyst" data-cert-missing="analyst">
-                        {t("certFlow.missingHint.analyst")}{" "}
-                        <TextLink href="/app/team#distribute">
-                          {t("certFlow.assign.analyst")}
-                        </TextLink>
-                      </span>,
-                    ]
-                  : []),
-                // A certificação pedida na ficha: só para quem abre a ficha
-                // aqui (a Wellmix e a certificadora), não para a agência ou o comex.
-                ...((wellmix || certifier) &&
-                certSheet?.certificationNote?.trim()
-                  ? [
-                      t("certFlow.sheetNote", {
-                        note: certSheet.certificationNote.trim(),
-                      }),
-                    ]
-                  : []),
-                // Certificadora: onde está o pedido completo para gerar o selo.
-                ...(certifier && certSteps.length
-                  ? [
-                      <span key="dossier" data-certifier-dossier>
-                        {t("certFlow.dossier.hint")}{" "}
-                        {sheetHref ? (
-                          <>
-                            <TextLink href={sheetHref}>
-                              {t("sheet.view")}
-                            </TextLink>
-                            {" · "}
-                          </>
-                        ) : null}
-                        <a href="#order-items" className={linkClass}>
-                          {t("orderView.items")}
-                        </a>
+        <ImportFlowCard
+          t={t}
+          order={order}
+          // O selo e a arte com o selo vêm primeiro (é o que libera o pedido).
+          // Laudo e registro saíram da tela (o PDF do memorial/selo basta,
+          // dono 10/11/2026); pedido antigo que já os preencheu continua
+          // mostrando, para o dado não sumir.
+          steps={[
+            ...certSteps.filter((v) => v.template.key.startsWith("cert_seal")),
+            ...certSteps.filter(
+              (v) =>
+                !v.template.key.startsWith("cert_seal") &&
+                (v.template.key === "cert_memorial" ||
+                  (v.step && v.step.status !== "pending")),
+            ),
+          ]}
+          names={productionNames}
+          title={t("certFlow.title")}
+          anchor="certification"
+          featured={importFlow.CERT_FEATURED_STEPS}
+          featuredHint={t("certFlow.featured.hint")}
+          error={stepCard === "certification" ? stepError : null}
+          hints={[
+            ...(certSteps.some((v) => v.template.key === "cert_seal")
+              ? [t("certFlow.sealHint")]
+              : []),
+            // Todo pedido precisa de selo: sem certificadora, a Wellmix designa.
+            ...(certNotNeeded
+              ? [
+                  <span key="no-cert" data-cert-not-needed>
+                    {t("certFlow.noCertNeeded")}
+                  </span>,
+                ]
+              : []),
+            ...(wellmix && !order.ocpId && certSteps.length && !certNotNeeded
+              ? [
+                  <span key="no-ocp" data-cert-missing="ocp">
+                    {t("certFlow.notify.noOcp.body")}{" "}
+                    <a href="#order-partners" className={linkClass}>
+                      {t("certFlow.assign.ocp")}
+                    </a>
+                  </span>,
+                ]
+              : []),
+            // Arte feita pela Wellmix sem designer: quem fica com a aplicação
+            // do selo e onde escolher o designer.
+            ...(certMissingDesigner && !certNotNeeded
+              ? [
+                  <span key="no-designer" data-cert-missing="designer">
+                    {t("certFlow.missingHint.designer", {
+                      who:
+                        certMissingDesigner.label ??
+                        t("certFlow.assignee.team"),
+                    })}{" "}
+                    <a href="#artwork" className={linkClass}>
+                      {t("certFlow.assign.designer")}
+                    </a>
+                  </span>,
+                ]
+              : []),
+            ...(certMissingAnalyst && !certNotNeeded
+              ? [
+                  <span key="no-analyst" data-cert-missing="analyst">
+                    {t("certFlow.missingHint.analyst")}{" "}
+                    <TextLink href="/app/team#distribute">
+                      {t("certFlow.assign.analyst")}
+                    </TextLink>
+                  </span>,
+                ]
+              : []),
+            // A certificação pedida na ficha: só para quem abre a ficha
+            // aqui (a Wellmix e a certificadora), não para a agência ou o comex.
+            ...((wellmix || certifier) && certSheet?.certificationNote?.trim()
+              ? [
+                  t("certFlow.sheetNote", {
+                    note: certSheet.certificationNote.trim(),
+                  }),
+                ]
+              : []),
+            // Certificadora: onde está o pedido completo para gerar o selo.
+            ...(certifier && certSteps.length
+              ? [
+                  <span key="dossier" data-certifier-dossier>
+                    {t("certFlow.dossier.hint")}{" "}
+                    {sheetHref ? (
+                      <>
+                        <TextLink href={sheetHref}>{t("sheet.view")}</TextLink>
                         {" · "}
-                        <a href="#order-documents" className={linkClass}>
-                          {t("orders.documents")}
-                        </a>
-                      </span>,
-                    ]
-                  : []),
-                ...(certifier && certSteps.length && dossierCerts.length
-                  ? [
-                      <span key="certs" data-certifier-certs>
-                        {t("certFlow.dossier.certs")}
-                        <span className="mt-1 block space-y-0.5">
-                          {dossierCerts.map(({ cert, status }) => (
-                            <span key={cert.id} className="block">
-                              {[
-                                cert.kind,
-                                cert.name,
-                                cert.number
-                                  ? `${t("catalog.cert.number")} ${cert.number}`
-                                  : null,
-                                cert.issuer,
-                                t(
-                                  `catalog.cert.status.${status}` as DictionaryKey,
-                                ),
-                                cert.validUntil
-                                  ? `${t("catalog.cert.validUntil")} ${formatDate(cert.validUntil, t)}`
-                                  : null,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")}
-                              {cert.documentId ? (
-                                <>
-                                  {" · "}
-                                  <a
-                                    href={`/api/files/${cert.documentId}`}
-                                    className={linkClass}
-                                  >
-                                    {t("catalog.cert.open")}
-                                  </a>
-                                </>
-                              ) : null}
-                            </span>
-                          ))}
+                      </>
+                    ) : null}
+                    <a href="#order-items" className={linkClass}>
+                      {t("orderView.items")}
+                    </a>
+                    {" · "}
+                    <a href="#order-documents" className={linkClass}>
+                      {t("orders.documents")}
+                    </a>
+                  </span>,
+                ]
+              : []),
+            ...(certifier && certSteps.length && dossierCerts.length
+              ? [
+                  <span key="certs" data-certifier-certs>
+                    {t("certFlow.dossier.certs")}
+                    <span className="mt-1 block space-y-0.5">
+                      {dossierCerts.map(({ cert, status }) => (
+                        <span key={cert.id} className="block">
+                          {[
+                            cert.kind,
+                            cert.name,
+                            cert.number
+                              ? `${t("catalog.cert.number")} ${cert.number}`
+                              : null,
+                            cert.issuer,
+                            t(`catalog.cert.status.${status}` as DictionaryKey),
+                            cert.validUntil
+                              ? `${t("catalog.cert.validUntil")} ${formatDate(cert.validUntil, t)}`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                          {cert.documentId ? (
+                            <>
+                              {" · "}
+                              <a
+                                href={`/api/files/${cert.documentId}`}
+                                className={linkClass}
+                              >
+                                {t("catalog.cert.open")}
+                              </a>
+                            </>
+                          ) : null}
                         </span>
-                      </span>,
-                    ]
-                  : []),
-              ]}
-              notice={
-                typeof certNotice === "string" &&
-                ["submitted", "validated", "rejected"].includes(certNotice)
-                  ? t(`importFlow.done.${certNotice}` as DictionaryKey)
-                  : null
-              }
-            />
-          ) : null,
-        )}
+                      ))}
+                    </span>
+                  </span>,
+                ]
+              : []),
+          ]}
+          notice={
+            typeof certNotice === "string" &&
+            ["submitted", "validated", "rejected"].includes(certNotice)
+              ? t(`importFlow.done.${certNotice}` as DictionaryKey)
+              : null
+          }
+        />
 
         {/* Recebimento (Fase E): lacre, checklist, divergência por SKU, RIC, fechamento. */}
-        {part(
-          "receiving",
-          receivingView ? (
-            <ReceivingCard
-              t={t}
-              order={order}
-              view={receivingView}
-              notice={
-                typeof receivingNotice === "string" &&
-                ["saved", "counted", "ric", "returned", "closed"].includes(
-                  receivingNotice,
-                )
-                  ? t(`receiving.done.${receivingNotice}` as DictionaryKey)
-                  : null
-              }
-            />
-          ) : null,
-        )}
+        {receivingView ? (
+          <ReceivingCard
+            t={t}
+            order={order}
+            view={receivingView}
+            notice={
+              typeof receivingNotice === "string" &&
+              ["saved", "counted", "ric", "returned", "closed"].includes(
+                receivingNotice,
+              )
+                ? t(`receiving.done.${receivingNotice}` as DictionaryKey)
+                : null
+            }
+          />
+        ) : null}
         {/* Artes (Fase F): designer, não conformidade por SKU, baixar todas. */}
-        {part(
-          "artwork",
-          artworkView ? (
-            <ArtworkCard
-              t={t}
-              order={order}
-              view={artworkView}
-              wellmix={wellmix}
-              notice={
-                typeof artworkNotice === "string" &&
-                [
-                  "designer",
-                  "reported",
-                  "fixed",
-                  "accepted",
-                  "reopened",
-                ].includes(artworkNotice)
-                  ? t(`artwork.done.${artworkNotice}` as DictionaryKey)
-                  : null
-              }
-            />
-          ) : null,
-        )}
+        {artworkView ? (
+          <ArtworkCard
+            t={t}
+            order={order}
+            view={artworkView}
+            wellmix={wellmix}
+            notice={
+              typeof artworkNotice === "string" &&
+              [
+                "designer",
+                "reported",
+                "fixed",
+                "accepted",
+                "reopened",
+              ].includes(artworkNotice)
+                ? t(`artwork.done.${artworkNotice}` as DictionaryKey)
+                : null
+            }
+          />
+        ) : null}
       </div>
 
       {/* Containers em que o pedido está (cliente e parceiros: só código e ETA). */}
