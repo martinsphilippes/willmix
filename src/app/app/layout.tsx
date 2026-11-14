@@ -10,6 +10,7 @@ import {
   isNavGroup,
   navFooterFor,
   navFor,
+  sidebarNav,
   type NavLink,
 } from "@/lib/nav";
 import { isWellmix } from "@/lib/auth/permissions";
@@ -258,7 +259,10 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
     ...badgeOf(l),
   });
   const nav = navFor(user);
-  const entries = nav.map((entry) =>
+  // Barra lateral e menu do celular sem Mensagens e Notificações (só nos
+  // ícones do cabeçalho; dono, 14/11/2026). O cabeçalho e o "Voltar" seguem
+  // a lista inteira (nav).
+  const entries = sidebarNav(nav).map((entry) =>
     isNavGroup(entry)
       ? {
           id: entry.key,

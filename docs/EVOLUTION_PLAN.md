@@ -1150,3 +1150,11 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Só o nome na tela, em português**: as chaves, o código, as regras e o banco não mudaram; inglês e chinês ficam como estavam (como na troca das colunas da solicitação, #350). A palavra "rodada" com outro sentido continua: tentativas da inspeção por SKU, rodadas da amostragem, negociação da cotação e execuções técnicas (Sankhya, resumos, cópia do banco).
 - Teste: o E2E da seleção confere "a quantidade é a soma das programações".
 
+## Menu lateral sem "Mensagens" e "Notificações" (só os ícones do cabeçalho)
+
+- **Pedido do dono** (14/11/2026, com a foto do menu): ocultar do menu lateral esquerdo os itens "Mensagens" e "Notificações", com os contadores e o espaço das duas linhas, e manter os ícones de Mensagens e Notificações no canto superior direito, com os contadores, os links e as permissões de hoje.
+- **Como ficou:** a barra lateral (computador e tablet) e o menu do celular (o painel do botão "Menu") deixam de desenhar as duas linhas, para todos os logins. No alto ficam Control Tower e Pendências (ou só Pendências/Início, conforme o login), e os grupos seguem iguais, na mesma ordem.
+- **Não muda:** os ícones do cabeçalho (balão de mensagens e sino, com os números), as telas `/app/messages` e `/app/notifications`, os links, as permissões por função e por login, o "Voltar" e o painel lateral de chat. Nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- **Como:** `SIDEBAR_HIDDEN` e `sidebarNav` em `src/lib/nav.ts`; o layout (`src/app/app/layout.tsx`) passa a lista filtrada só para a barra lateral e o menu do celular. A lista completa (`navFor`) continua com as duas, porque o ícone de mensagens do cabeçalho e o "Voltar" saem dela. Para voltar a mostrar, basta tirar o endereço de `SIDEBAR_HIDDEN`.
+- **Testes:** `tests/unit/nav.test.ts` (nenhum papel vê as duas na barra; o resto do menu fica igual e na mesma ordem; a lista completa não muda) e o E2E `home-screens.spec.ts` (computador: nada das duas no menu e os ícones levam às telas; celular: ícones no alto e o menu aberto sem as duas).
+- Os roteiros de vídeo (`docs/videos`) que citam Mensagens e Notificações no menu ficam para a próxima revisão dos roteiros.
