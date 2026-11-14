@@ -11,6 +11,7 @@ import {
 import {
   flowAllFor,
   flowBlockSummary,
+  flowHeldEntities,
   flowOverviewEntities,
   flowOverviewKpis,
 } from "@/lib/services/flow";
@@ -18,7 +19,12 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { overviewHref, stepId } from "@/lib/flow";
 import { ENTITY_BLOCKS } from "@/lib/services/flow-kpis";
 import { FlowCases } from "./flow-cases";
-import { FlowEntities, PercentBar, daysSince } from "./flow-entities";
+import {
+  FlowEntities,
+  FlowHeldEntities,
+  PercentBar,
+  daysSince,
+} from "./flow-entities";
 import { Card, PageHeader, Stat, TextLink, cx } from "./ui";
 
 /*
@@ -193,16 +199,23 @@ async function EntityOverview({
   const now = new Date();
   // Os números vêm prontos (kpi_snapshots "flow", docs/RESUMOS.md); a lista
   // só do bloco aberto, para a tabela.
-  const [summary, kpis, entities] = await Promise.all([
+  const [summary, kpis, entities, heldRows] = await Promise.all([
     flowBlockSummary(user, block, now),
     flowOverviewKpis(user, now),
     flowOverviewEntities(user, block),
+    // Histórico do Sankhya em espera até o go-live, à parte (docs/SANKHYA.md).
+    flowHeldEntities(user, block),
   ]);
+  const heldCount = kpis.held.blocks[block] ?? 0;
+  const heldIn = (key: string) => kpis.held.steps[`${block}/${key}`] ?? 0;
   const mine = kpis.blocks[block];
   const current = summary.find((s) => s.step.key === selected) ?? null;
   const shown = current
     ? entities.filter((e) => e.steps.includes(current.step.key))
     : entities;
+  const heldShown = current
+    ? heldRows.filter((e) => e.steps.includes(current.step.key))
+    : heldRows;
   const inStep = (key: string) => kpis.steps[`${block}/${key}`] ?? 0;
   const late = mine?.late ?? 0;
   const np = block === "new-product";
@@ -220,7 +233,10 @@ async function EntityOverview({
         })}
       />
       <div
-        className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
+        className={cx(
+          "mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3",
+          np ? "lg:grid-cols-5" : "lg:grid-cols-6",
+        )}
         data-flow-kpis
       >
         <Stat
@@ -252,6 +268,12 @@ async function EntityOverview({
             </span>
           }
         />
+        {np ? null : (
+          <Stat
+            label={t("flow.held.kpi")}
+            value={<span data-flow-kpi="held">{heldCount}</span>}
+          />
+        )}
       </div>
       <Card className="mb-4" title={t("flow.general.title")}>
         <p className="mb-3 text-xs text-zinc-500">{t("flow.general.hint")}</p>
@@ -306,6 +328,14 @@ async function EntityOverview({
                     )}
                   >
                     {t("flow.general.late", { n: lateHere })}
+                    {kpis.held.blocks[b] ? (
+                      <span
+                        className="ml-2 text-zinc-500"
+                        data-flow-general-held={kpis.held.blocks[b]}
+                      >
+                        {t("flow.held.count", { n: kpis.held.blocks[b] })}
+                      </span>
+                    ) : null}
                   </div>
                 </Link>
               </li>
@@ -338,8 +368,15 @@ async function EntityOverview({
               >
                 {t("flow.entities.allSteps")}
               </span>
-              <span className="text-lg font-bold tabular-nums text-zinc-900">
-                {mine?.count ?? 0}
+              <span className="flex flex-col items-end">
+                <span className="text-lg font-bold tabular-nums text-zinc-900">
+                  {mine?.count ?? 0}
+                </span>
+                {heldCount ? (
+                  <span className="text-[11px] text-zinc-500">
+                    {t("flow.held.count", { n: heldCount })}
+                  </span>
+                ) : null}
               </span>
             </Link>
           </li>
@@ -402,6 +439,11 @@ async function EntityOverview({
                     <span data-flow-pending={s.count}>
                       {t("flow.entities.pending", { n: s.count })}
                     </span>
+                    {heldIn(s.step.key) ? (
+                      <span data-flow-held={heldIn(s.step.key)}>
+                        {t("flow.held.count", { n: heldIn(s.step.key) })}
+                      </span>
+                    ) : null}
                     {s.overdue ? (
                       <span className="font-semibold text-red-700">
                         {t("flow.overview.late", { n: s.overdue })}
@@ -460,6 +502,17 @@ async function EntityOverview({
               })}
             >
               <FlowCases step={current.step} tasks={current.tasks} t={t} />
+            </Card>
+          ) : null}
+          {heldShown.length ? (
+            <Card
+              title={t("flow.held.title", { n: heldShown.length })}
+              className="border-dashed"
+            >
+              <p className="mb-3 text-sm text-zinc-600">
+                {t("flow.held.hint")}
+              </p>
+              <FlowHeldEntities entities={heldShown} t={t} />
             </Card>
           ) : null}
         </div>

@@ -1,9 +1,14 @@
 import "server-only";
+import { cache } from "react";
 import { getStore } from "@/lib/db";
 import { listColumns } from "@/lib/db/lookup";
 import { isSchemaMissing } from "@/lib/db/errors";
 import { stepsOf, stepId, type FlowBlock } from "@/lib/flow";
-import { PROGRESS_BLOCKS, type ProgressBlock } from "@/lib/flow-progress";
+import {
+  PROGRESS_BLOCKS,
+  heldStepOf,
+  type ProgressBlock,
+} from "@/lib/flow-progress";
 import type { OrderFlow } from "./flow-contribution";
 import type { OverviewEntity } from "./flow";
 
@@ -22,7 +27,7 @@ import type { OverviewEntity } from "./flow";
  * - Mudou o formato? Suba FLOW_KPI_VERSION.
  */
 
-export const FLOW_KPI_VERSION = 1;
+export const FLOW_KPI_VERSION = 2;
 export const FLOW_KPI_KEY = "flow";
 
 const DAY = 86_400_000;
@@ -46,6 +51,11 @@ export interface FlowKpis {
   blocks: Record<string, FlowBlockKpi>;
   /** Entidades em cada passo (`bloco/passo`). */
   steps: Record<string, number>;
+  /**
+   * Histórico do Sankhya em espera até o go-live, à parte: quantos em cada
+   * bloco e em cada passo, pela situação (docs/SANKHYA.md).
+   */
+  held: { blocks: Record<string, number>; steps: Record<string, number> };
 }
 
 /** Blocos com o Overview pelas entidades, na ordem do mapa. */
@@ -77,6 +87,7 @@ export function entitiesFromFlows(
     .map((s) => s.key);
   const out: OverviewEntity[] = [];
   for (const { id, f } of flows) {
+    if (f.h) continue;
     const keys = Object.keys(f.s)
       .filter((k) => k.startsWith(`${block}/`))
       .map((k) => k.slice(block.length + 1))
@@ -104,10 +115,77 @@ export function entitiesFromFlows(
   return out.sort((a, b) => a.number - b.number);
 }
 
+/** Pedido do histórico em espera como linha do Overview (só pela situação). */
+export function heldEntity(o: {
+  id: string;
+  number: number;
+  status: string;
+  supplierId: string | null;
+}): (OverviewEntity & { block: string }) | null {
+  const ref = heldStepOf(o.status);
+  if (!ref) return null;
+  const [block, key] = ref.split("/");
+  return {
+    block,
+    kind: "order",
+    id: o.id,
+    number: o.number,
+    href: `/app/orders/${o.id}`,
+    partyId: o.supplierId || null,
+    steps: [key],
+    statusKey: `stage.${o.status}`,
+    since: null,
+    lateDays: 0,
+    percent: 0,
+    overall: 0,
+  };
+}
+
+/** Os pedidos em espera de um bloco (pela situação), na ordem do número. */
+export function heldOfBlock(
+  orders: Array<{
+    id: string;
+    number: number;
+    status: string;
+    supplierId: string | null;
+  }>,
+  block: ProgressBlock,
+): OverviewEntity[] {
+  const out: OverviewEntity[] = [];
+  for (const o of orders) {
+    const e = heldEntity(o);
+    if (!e || e.block !== block) continue;
+    const { block: inBlock, ...row } = e;
+    void inBlock;
+    out.push(row);
+  }
+  return out.sort((a, b) => a.number - b.number);
+}
+
+/** Os pedidos em espera de um bloco, da contribuição guardada no resumo. */
+export function heldFromFlows(
+  flows: Array<{ id: string; f: OrderFlow }>,
+  block: ProgressBlock,
+): OverviewEntity[] {
+  return heldOfBlock(
+    flows
+      .filter(({ f }) => f.h)
+      .map(({ id, f }) => ({
+        id,
+        number: f.n,
+        status: f.st,
+        supplierId: f.sup,
+      })),
+    block,
+  );
+}
+
 /** Os números do Overview a partir das linhas de cada bloco. */
 export function aggregateFlow(
   byBlock: Map<FlowBlock, OverviewEntity[]>,
-): Pick<FlowKpis, "blocks" | "steps"> {
+  heldByBlock: Map<FlowBlock, OverviewEntity[]> = new Map(),
+): Pick<FlowKpis, "blocks" | "steps" | "held"> {
+  const held: FlowKpis["held"] = { blocks: {}, steps: {} };
   const blocks: Record<string, FlowBlockKpi> = {};
   const steps: Record<string, number> = {};
   for (const block of ENTITY_BLOCKS) {
@@ -130,7 +208,17 @@ export function aggregateFlow(
       ).length;
     }
   }
-  return { blocks, steps };
+  for (const block of ENTITY_BLOCKS) {
+    const list = heldByBlock.get(block) ?? [];
+    held.blocks[block] = list.length;
+    for (const step of stepsOf(block)) {
+      if (step.badgeOnly) continue;
+      held.steps[stepId(step)] = list.filter((e) =>
+        e.steps.includes(step.key),
+      ).length;
+    }
+  }
+  return { blocks, steps, held };
 }
 
 /** Contribuições dos pedidos em andamento. Nulo: resumos de outro formato. */
@@ -153,6 +241,9 @@ export async function readOrderFlows(
     return f ? [{ id: r.id, f }] : [];
   });
 }
+
+/** As contribuições dos pedidos em andamento, lidas uma vez por página. */
+export const readLiveOrderFlows = cache(() => readOrderFlows());
 
 /** Próximo instante em que o atraso de alguma linha muda. */
 function nextLateChange(
@@ -197,7 +288,10 @@ export async function rebuildFlowKpis(
     summaryVersion: SUMMARY_VERSION,
     computedAt: now.toISOString(),
     validUntil: validUntil === null ? null : new Date(validUntil).toISOString(),
-    ...aggregateFlow(byBlock),
+    ...aggregateFlow(
+      byBlock,
+      new Map(PROGRESS_BLOCKS.map((b) => [b, heldFromFlows(flows, b)])),
+    ),
   };
   await writeSnapshot(snapshot);
   return snapshot;
