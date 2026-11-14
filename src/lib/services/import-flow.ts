@@ -1577,6 +1577,86 @@ function certGate(
 }
 
 /**
+ * Passos que ainda vão ser deste login da Wellmix e não são pendência agora
+ * (linha do tempo do operador, em cinza; src/lib/services/order-timeline.ts).
+ * Mesmas regras das pendências: na certificação, quem faz e quem valida cada
+ * passo (certCandidate, certDoRoute e certValidateRoute); no embarque e
+ * desembaraço, o lado da Wellmix (o
+ * responsável interno, `analyst`) e o numerário (o financeiro). `openKeys`:
+ * os passos que já são pendência dele agora (não contam de novo).
+ */
+export async function laterStepsFor(
+  user: User,
+  order: Order,
+  options: { analyst: boolean; openKeys: ReadonlySet<string> },
+): Promise<{ certification: number; import: number }> {
+  const out = { certification: 0, import: 0 };
+  if (
+    !isWellmix(user) ||
+    order.status === "CLOSED" ||
+    order.status === "CANCELLED"
+  )
+    return out;
+  const steps = await stepsOf(order.id);
+  const ctx = await loadRoutingContext();
+  const gate = certGate(
+    order,
+    steps,
+    isPurchaseFlow(order) ? await purchaseNeedsCertification(order) : false,
+  );
+  for (const tpl of IMPORT_STEPS) {
+    if (options.openKeys.has(tpl.key)) continue;
+    const step = steps.find((x) => x.key === tpl.key);
+    if (isDone(step)) continue;
+    const group = groupOf(tpl);
+    if (group === "certification") {
+      if (!gate.on || (!tpl.seal && !gate.classicCert)) continue;
+      const submitted = step?.status === "submitted";
+      // Laudo e registro só valem no pedido que já os começou (certTask).
+      const inPlay =
+        submitted ||
+        ((tpl.seal || tpl.key === "cert_memorial" || gate.classicDeep) &&
+          !(tpl.actor === "ocp" && !tpl.seal && !hasCertifier(order)));
+      if (!inPlay) continue;
+      const doing = !submitted && reaches(user, certDoRoute(order, tpl, ctx));
+      const validateRoute = certValidateRoute(
+        order,
+        tpl,
+        ctx,
+        step?.submittedByUserId ?? null,
+      );
+      const validating =
+        !!validateRoute &&
+        reaches(user, validateRoute) &&
+        step?.submittedByUserId !== user.id &&
+        (tpl.key !== "cert_seal_art" || canValidateArt(user, ctx));
+      if (doing || validating) out.certification++;
+      continue;
+    }
+    if (group !== "import") continue;
+    // O lado da Wellmix: fazer (o responsável interno; o numerário, o
+    // financeiro) e validar no lugar do parceiro que o pedido não tem.
+    const side = (role: StepActor | null) =>
+      role === "finance"
+        ? isFinance(user)
+        : role === "wellmix"
+          ? options.analyst
+          : !!role &&
+            role !== "supplier" &&
+            role !== "comex_internal" &&
+            role !== "agency" &&
+            !partnerAssigned(order, role) &&
+            options.analyst;
+    const doing =
+      step?.status !== "submitted" &&
+      (tpl.actor === "finance" || tpl.actor === "wellmix") &&
+      side(tpl.actor);
+    if (doing || side(tpl.validator)) out.import++;
+  }
+  return out;
+}
+
+/**
  * Passo da certificação que pede algo agora (fazer ou validar), antes de
  * saber para quem vai; nulo quando o passo não pede nada.
  */
