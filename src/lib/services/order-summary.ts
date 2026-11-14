@@ -739,7 +739,13 @@ async function readMarker(): Promise<SummaryMarker | null> {
     limit: 1,
   });
   const value = row?.value as SummaryMarker | undefined;
-  return value?.builtAt ? value : null;
+  const marker = value?.builtAt ? value : null;
+  // Formato antigo depois de um deploy: pede a reconstrução (summary-kick.ts).
+  if (marker) {
+    const { kickStaleSummaries } = await import("./summary-kick");
+    kickStaleSummaries(marker.version, SUMMARY_VERSION);
+  }
+  return marker;
 }
 
 /** Os resumos estão em uso (houve uma reconstrução completa)? */
