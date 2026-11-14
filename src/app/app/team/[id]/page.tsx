@@ -130,15 +130,60 @@ export default async function TeamMemberPage({
                       {member.name} · {loginLabel(member.email)}
                     </p>
                     <p>{t("team.delete.body")}</p>
-                    {removal.reports ? (
+                    {/* Opções (marcadas por padrão): os subordinados vão para o
+                        chefe dela e as pendências, para a divisão. Desmarcada,
+                        aparece o que fazer depois. Sem chefe ativo, só o aviso. */}
+                    {removal.reports && removal.moveTo ? (
+                      <div className="group space-y-1" data-team-delete-reports>
+                        <label className="flex items-start gap-2 font-medium text-zinc-800">
+                          <input
+                            type="checkbox"
+                            name="moveReports"
+                            form="team-delete-form"
+                            defaultChecked
+                            className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
+                            data-team-delete-move
+                          />
+                          <span>
+                            {t("team.delete.moveReports", {
+                              n: removal.reports,
+                              name: removal.moveTo.name,
+                            })}
+                          </span>
+                        </label>
+                        <p className="pl-6 text-amber-800 group-has-[:checked]:hidden">
+                          {t("team.delete.reports", { n: removal.reports })}
+                        </p>
+                      </div>
+                    ) : removal.reports ? (
                       <p className="text-amber-800" data-team-delete-reports>
                         {t("team.delete.reports", { n: removal.reports })}
                       </p>
                     ) : null}
                     {removal.openWork ? (
-                      <p className="text-amber-800" data-team-delete-open-work>
-                        {t("team.delete.openWork", { n: removal.openWork })}
-                      </p>
+                      <div
+                        className="group space-y-1"
+                        data-team-delete-open-work
+                      >
+                        <label className="flex items-start gap-2 font-medium text-zinc-800">
+                          <input
+                            type="checkbox"
+                            name="redistribute"
+                            form="team-delete-form"
+                            defaultChecked
+                            className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
+                            data-team-delete-redistribute
+                          />
+                          <span>
+                            {t("team.delete.redistribute", {
+                              n: removal.openWork,
+                            })}
+                          </span>
+                        </label>
+                        <p className="pl-6 text-amber-800 group-has-[:checked]:hidden">
+                          {t("team.delete.openWork", { n: removal.openWork })}
+                        </p>
+                      </div>
                     ) : null}
                     <div className="flex flex-wrap justify-end gap-2 pt-1">
                       <form method="dialog">
@@ -150,7 +195,10 @@ export default async function TeamMemberPage({
                           {t("common.cancel")}
                         </Button>
                       </form>
-                      <form action={removeTeamMemberAction}>
+                      <form
+                        id="team-delete-form"
+                        action={removeTeamMemberAction}
+                      >
                         <input type="hidden" name="userId" value={member.id} />
                         <SubmitButton variant="danger" data-team-delete-confirm>
                           {t("team.delete.confirm")}
