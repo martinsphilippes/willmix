@@ -24,8 +24,12 @@ import {
 import { ActionError } from "@/components/action-error";
 import { RequirementForm } from "@/components/requirement-form";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
-import { clearRequirementDocumentAction } from "../../../actions";
-import { confirmDieCutTermsAction } from "../../../actions/die-cut-step";
+import {
+  addDieCutPhotosAction,
+  confirmDieCutTermsAction,
+  removeDieCutPhotoAction,
+} from "../../../actions/die-cut-step";
+import { PhotoInput } from "@/components/photo-input";
 import { DieCutTerms } from "./_components/die-cut-terms";
 
 /** Quem confirmou por último o pedido mínimo e o prazo (o envio mais recente). */
@@ -51,7 +55,7 @@ export default async function DieCutPage({
   const view = await getDieCutView(user, id);
   if (!view) notFound();
   const t = await getT();
-  const { order, products, documents } = view;
+  const { order, products, documents, attachments } = view;
 
   const code = typeof error === "string" ? error : "";
   const errorText = code
@@ -65,9 +69,12 @@ export default async function DieCutPage({
 
   const userIds = [
     ...new Set(
-      products
-        .flatMap((p) => DIE_CUT_ITEMS.map((i) => p.items[i]?.submittedByUserId))
-        .filter((x): x is string => !!x),
+      [
+        ...products.flatMap((p) =>
+          DIE_CUT_ITEMS.map((i) => p.items[i]?.submittedByUserId),
+        ),
+        ...[...attachments.values()].flat().map((d) => d.uploadedByUserId),
+      ].filter((x): x is string => !!x),
     ),
   ];
   const users = userIds.length
@@ -105,35 +112,71 @@ export default async function DieCutPage({
         </div>
         <p className="text-xs text-zinc-600">{t(`dieCut.${item}.hint`)}</p>
         {r?.status === "done" && doc ? (
-          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-            {doc.mime.startsWith("image/") ? (
-              <a href={`/api/files/${doc.id}`} target="_blank">
-                {/* eslint-disable-next-line @next/next/no-img-element -- arquivo protegido em /api/files */}
-                <img
-                  src={`/api/files/${doc.id}`}
-                  alt={t(`dieCut.item.${item}`)}
-                  loading="lazy"
-                  className="h-16 w-16 rounded-lg border border-zinc-200 bg-zinc-50 object-cover"
-                />
-              </a>
-            ) : null}
-            <TextLink href={`/api/files/${doc.id}`} target="_blank">
-              {doc.name} (v{doc.version})
-            </TextLink>
+          // Todas as fotos do item (a principal e as do "+"), cada uma com
+          // miniatura, link e a própria exclusão (pedido do dono, 14/11/2026).
+          <ul className="space-y-2" data-die-cut-files={item}>
+            {(attachments.get(r.id) ?? [doc]).map((d) => (
+              <li
+                key={d.id}
+                className="flex flex-wrap items-center gap-2 text-xs text-zinc-500"
+                data-die-cut-file={d.id}
+              >
+                {d.mime.startsWith("image/") ? (
+                  <a href={`/api/files/${d.id}`} target="_blank">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- arquivo protegido em /api/files */}
+                    <img
+                      src={`/api/files/${d.id}`}
+                      alt={t(`dieCut.item.${item}`)}
+                      loading="lazy"
+                      className="h-16 w-16 rounded-lg border border-zinc-200 bg-zinc-50 object-cover"
+                    />
+                  </a>
+                ) : null}
+                <TextLink href={`/api/files/${d.id}`} target="_blank">
+                  {d.name} (v{d.version})
+                </TextLink>
+                {canSend(r) ? (
+                  <form action={removeDieCutPhotoAction}>
+                    <input type="hidden" name="orderId" value={order.id} />
+                    <input type="hidden" name="requirementId" value={r.id} />
+                    <input type="hidden" name="documentId" value={d.id} />
+                    <ConfirmDeleteButton
+                      label={t("requirement.remove")}
+                      confirmText={t("requirement.removeConfirm")}
+                      className="h-6! w-6!"
+                    />
+                  </form>
+                ) : null}
+                <span>
+                  {users.find((u) => u.id === d.uploadedByUserId)?.name ?? "—"}{" "}
+                  · {formatDate(d.createdAt, t)}
+                </span>
+              </li>
+            ))}
             {canSend(r) ? (
-              <form action={clearRequirementDocumentAction}>
-                <input type="hidden" name="orderId" value={order.id} />
-                <input type="hidden" name="requirementId" value={r.id} />
-                <input type="hidden" name="returnTo" value="die-cut" />
-                <ConfirmDeleteButton
-                  label={t("requirement.remove")}
-                  confirmText={t("requirement.removeConfirm")}
-                  className="h-6! w-6!"
-                />
-              </form>
+              <li>
+                <form action={addDieCutPhotosAction} data-die-cut-add={item}>
+                  <input type="hidden" name="orderId" value={order.id} />
+                  <input type="hidden" name="requirementId" value={r.id} />
+                  <PhotoInput
+                    name="file"
+                    multiple
+                    capture={false}
+                    maxDimension={item === "dieline" ? 2400 : 1600}
+                    quality={item === "dieline" ? 0.88 : 0.82}
+                    autoSubmit
+                    compact
+                    plus
+                    direct
+                    label={t("dieCut.photo.add")}
+                    pendingLabel={t("requirement.sending")}
+                    uploadingLabel={t("photo.uploading")}
+                    failedLabel={t("photo.failed")}
+                  />
+                </form>
+              </li>
             ) : null}
-            <span>{sentBy(r)}</span>
-          </div>
+          </ul>
         ) : null}
         {r?.status !== "done" && canSend(r) ? (
           <div className="@container">
