@@ -2,8 +2,9 @@ import type { Requirement, User } from "@/lib/db/schema";
 import { requirementLabel, productNameText, type Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
+import { canViewOrder, isWellmix } from "@/lib/auth/permissions";
 import { canSubmitRequirement } from "@/lib/workflow/engine";
-import { isRoutedLaneKey, laneInputKeys } from "@/lib/purchase-lanes";
+import { isRoutedLaneKey, itemIdOf, laneInputKeys } from "@/lib/purchase-lanes";
 import {
   blockLabelKey,
   flowStepOfImportKey,
@@ -22,6 +23,7 @@ import { FreightOrderCard } from "./freight-order-card";
 import { InspectionResultCard } from "./inspection-result-card";
 import { ownScreenOf } from "./flow-step-forms";
 import {
+  Alert,
   Badge,
   Card,
   Empty,
@@ -43,6 +45,10 @@ import {
  * passo (produção, recebimento, artes, frete). No passo Pedidos (onde o
  * pedido é criado): só a criação (resumo, itens, programação de compra e os
  * itens da criação). Só a Wellmix.
+ *
+ * Com o produto da linha (`focus`, o item do pedido; Certificação, dono
+ * 14/11/2026): só os itens daquele produto no passo, com o envio da foto ou
+ * do arquivo para quem pode; o resto do pedido no passo fica em "Ver tudo".
  */
 
 const IMPORT_GROUPS = ["certification", "origin", "import", "samples"] as const;
@@ -53,11 +59,14 @@ export async function FlowOrderInStep({
   orderId,
   t,
   notices,
+  focus = null,
 }: {
   user: User;
   step: FlowStep;
   orderId: string;
   t: Translate;
+  /** Produto (item do pedido) do "Resolver" da linha; nulo = tudo do passo. */
+  focus?: string | null;
   notices: {
     import: string | null;
     production: string | null;
@@ -69,7 +78,9 @@ export async function FlowOrderInStep({
 }) {
   const store = getStore();
   const order = await store.get("orders", orderId);
-  if (!order) return null;
+  // Parceiro: só o pedido dele (a mesma regra do detalhe do pedido).
+  const wellmix = isWellmix(user);
+  if (!order || !canViewOrder(user, order)) return null;
   const id = stepId(step);
   const returnTo = orderInStepHref(step, order.id);
   const [stages, requirements, supplier, customer] = await Promise.all([
@@ -83,8 +94,13 @@ export async function FlowOrderInStep({
       : Promise.resolve(null),
   ]);
   const stageById = new Map(stages.map((s) => [s.id, s]));
-  // Itens de etapa do passo (de qualquer etapa do pedido), feitos e abertos.
+  // Itens de etapa do passo (de qualquer etapa do pedido), feitos e abertos;
+  // o parceiro só vê os do papel dele (ou os que ele pode fazer).
   const mine = requirements
+    .filter(
+      (r) =>
+        wellmix || r.role === user.role || canSubmitRequirement(user, order, r),
+    )
     .filter((r) => {
       const stage = stageById.get(r.stageId);
       return flowStepsOf({
@@ -94,6 +110,15 @@ export async function FlowOrderInStep({
       }).some((x) => stepId(x) === id);
     })
     .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
+  // Produto da linha: só os itens dele (o link de outro pedido ou de um
+  // produto sem itens no passo cai em tudo do passo, com o aviso).
+  const focused = focus ? mine.filter((r) => itemIdOf(r.key) === focus) : [];
+  const focusOn = focused.length > 0;
+  const shown = focusOn ? focused : mine;
+  // Depois do envio, volta ao mesmo produto.
+  const formReturnTo = focusOn
+    ? orderInStepHref(step, order.id, focus)
+    : returnTo;
   // Arquivos: dos itens feitos e os que a validação e a arte final usam.
   const docIds = new Set<string>();
   for (const r of mine) {
@@ -139,10 +164,15 @@ export async function FlowOrderInStep({
           .filter((v) => {
             const s = flowStepOfImportKey(v.template.key);
             return s && stepId(s) === id;
-          });
+          })
+          // Do pedido inteiro: fora da visão de um produto (têm linha própria).
+          .filter(() => !focusOn);
 
   // Cartão do passo para este pedido.
+  // Produção: a Wellmix e o fornecedor do pedido (a regra do pedido).
   const production =
+    (wellmix ||
+      (user.role === "supplier" && order.supplierId === user.partyId)) &&
     step.block === "production" &&
     ["pre-production", "production", "inspection"].includes(step.key)
       ? await (
@@ -152,7 +182,7 @@ export async function FlowOrderInStep({
           .catch(() => null)
       : null;
   const report =
-    step.block === "production" && step.key === "inspection"
+    wellmix && step.block === "production" && step.key === "inspection"
       ? await (
           await import("@/lib/services/inspection-report")
         )
@@ -161,6 +191,7 @@ export async function FlowOrderInStep({
       : null;
   const receivingSvc = await import("@/lib/services/receiving");
   const receiving =
+    wellmix &&
     step.block === "delivery" &&
     (step.key === "storage" || step.key === "return") &&
     (receivingSvc.RECEIVING_STATUSES as readonly string[]).includes(
@@ -178,6 +209,7 @@ export async function FlowOrderInStep({
       ? await artworkSvc.artworkView(user, order).catch(() => null)
       : null;
   const freight =
+    wellmix &&
     step.block === "production" &&
     step.key === "logistics" &&
     order.status !== "CANCELLED";
@@ -208,7 +240,7 @@ export async function FlowOrderInStep({
     (uid && names.get(uid)) || "—";
 
   // Passo Pedidos (criação): resumo, itens e programação de compra.
-  const creation = step.block === "order" && step.key === "orders";
+  const creation = wellmix && step.block === "order" && step.key === "orders";
   const items = creation
     ? await store.list("order_items", { filter: { orderId: order.id } })
     : [];
@@ -217,7 +249,7 @@ export async function FlowOrderInStep({
     : { OrderRoundsSection: null };
 
   const nothing =
-    !mine.length &&
+    !shown.length &&
     !importViews.length &&
     !production &&
     !receiving &&
@@ -242,20 +274,27 @@ export async function FlowOrderInStep({
         }
       >
         <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <dt className="text-xs text-zinc-500">{t("flow.all.supplier")}</dt>
-            <dd className="font-medium text-zinc-900">
-              {supplier?.name ?? "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-zinc-500">
-              {t("flow.order.customer")}
-            </dt>
-            <dd className="font-medium text-zinc-900">
-              {customer?.name ?? "—"}
-            </dd>
-          </div>
+          {/* Fornecedor e cliente: só a Wellmix (o parceiro vê o pedido dele). */}
+          {wellmix ? (
+            <>
+              <div>
+                <dt className="text-xs text-zinc-500">
+                  {t("flow.all.supplier")}
+                </dt>
+                <dd className="font-medium text-zinc-900">
+                  {supplier?.name ?? "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500">
+                  {t("flow.order.customer")}
+                </dt>
+                <dd className="font-medium text-zinc-900">
+                  {customer?.name ?? "—"}
+                </dd>
+              </div>
+            </>
+          ) : null}
           <div>
             <dt className="text-xs text-zinc-500">{t("flow.all.stage")}</dt>
             <dd className="font-medium text-zinc-900" data-flow-order-stage>
@@ -304,10 +343,29 @@ export async function FlowOrderInStep({
         <OrderRoundsSection order={order} wellmix spawned={null} t={t} />
       ) : null}
 
-      {mine.length ? (
-        <Card title={t("flow.order.items.step")}>
+      {focus && !focusOn ? (
+        <Alert tone="info">{t("flow.order.focus.missing")}</Alert>
+      ) : null}
+      {shown.length ? (
+        <Card
+          title={t(
+            focusOn ? "flow.order.focus.title" : "flow.order.items.step",
+          )}
+          actions={
+            focusOn ? (
+              <TextLink href={returnTo} data-flow-order-all>
+                {t("flow.order.focus.all")}
+              </TextLink>
+            ) : null
+          }
+        >
+          {focusOn ? (
+            <p className="mb-1 text-xs text-zinc-500" data-flow-order-focus>
+              {t("flow.order.focus.hint")}
+            </p>
+          ) : null}
           <ul className="divide-y divide-zinc-100" data-flow-order-requirements>
-            {mine.map((r) => {
+            {shown.map((r) => {
               const doc = docOf(r.documentId);
               const own = ownScreenOf(r.key, order.id);
               return (
@@ -315,6 +373,7 @@ export async function FlowOrderInStep({
                   key={r.id}
                   className="flex flex-col gap-2 py-2.5 @container"
                   data-flow-order-requirement={r.key}
+                  data-flow-order-item={itemIdOf(r.key) ?? undefined}
                   data-status={r.status}
                 >
                   <div className="min-w-0 text-sm">
@@ -383,7 +442,7 @@ export async function FlowOrderInStep({
                         requirement={r}
                         orderId={order.id}
                         t={t}
-                        returnTo={returnTo}
+                        returnTo={formReturnTo}
                       />
                     )
                   ) : null}
@@ -418,7 +477,7 @@ export async function FlowOrderInStep({
           user={user}
           order={order}
           view={production}
-          wellmix
+          wellmix={wellmix}
           names={names}
           notice={notices.production}
           sections={
@@ -446,7 +505,7 @@ export async function FlowOrderInStep({
           t={t}
           order={order}
           view={artwork}
-          wellmix
+          wellmix={wellmix}
           notice={notices.artwork}
           returnTo={returnTo}
         />

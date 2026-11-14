@@ -5,6 +5,7 @@ import type { User } from "@/lib/db/schema";
 import {
   FLOW_OVERVIEW_BLOCKS,
   overviewHref,
+  partnerStepsOf,
   stepHref,
   stepId,
   stepLabelKey,
@@ -416,6 +417,33 @@ export function navFor(
     (l) =>
       l.href === "/app/booking" || l.href.startsWith("/app/supplier-requests"),
   );
+  // Passos do parceiro no mapa (docs/FLOW_MENU.md), por bloco, com o
+  // contador do que espera ação dele; quem abre os pedidos vê.
+  const partnerBlocks: [FlowBlock, DictionaryKey, NavIcon][] = [
+    ["order", "nav.group.order", "box"],
+    ["production", "nav.production", "factory"],
+    ["delivery", "nav.group.arrival", "ship"],
+  ];
+  const steps = partnerStepsOf(user.role);
+  const flow = partnerBlocks.flatMap(([block, key, icon]) =>
+    group(
+      key,
+      icon,
+      pick(
+        has,
+        steps
+          .filter((x) => x.block === block)
+          .map((step): Entry => [
+            "orders",
+            {
+              href: stepHref(step),
+              key: stepLabelKey(step),
+              step: stepId(step),
+            },
+          ]),
+      ),
+    ),
+  );
   return [
     ...pick(has, [
       // O início são as Pendências; sem elas no perfil, é só "Início".
@@ -428,6 +456,7 @@ export function navFor(
       ["messages", MESSAGES],
       ["notifications", NOTIFICATIONS],
     ]),
+    ...flow,
     ...group(
       bookings ? "nav.group.myBookings" : "nav.group.orders",
       bookings ? "cart" : "box",

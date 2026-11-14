@@ -26,6 +26,7 @@ import {
   supplierRequestSlaDue,
 } from "@/lib/supplier-requests";
 import {
+  casesInStep,
   countByStep,
   flowStepsOf,
   stepId,
@@ -194,15 +195,15 @@ export async function flowCountsFor(
   return countByStep(await flowCasesFor(user));
 }
 
-/** Os casos de um passo, das atrasadas às sem prazo (a ordem das Pendências). */
+/**
+ * Os casos de um passo, das atrasadas às sem prazo (a ordem das Pendências);
+ * nos passos por produto (Certificação), uma linha por produto.
+ */
 export async function flowCasesOf(
   user: User,
   step: FlowStep,
 ): Promise<FlowCase[]> {
-  const id = stepId(step);
-  return (await flowCasesFor(user)).filter((t) =>
-    flowStepsOf(t).some((x) => stepId(x) === id),
-  );
+  return casesInStep(step, await flowCasesFor(user));
 }
 
 export interface FlowStepSummary {
@@ -228,10 +229,7 @@ export async function flowBlockSummary(
   return stepsOf(block)
     .filter((step) => !step.badgeOnly)
     .map((step) => {
-      const id = stepId(step);
-      const mine = tasks.filter((t) =>
-        flowStepsOf(t).some((x) => stepId(x) === id),
-      );
+      const mine = casesInStep(step, tasks);
       const ages = mine
         .map((t) => (t.sinceAt ? Date.parse(t.sinceAt) : NaN))
         .filter((ms) => Number.isFinite(ms))
@@ -466,8 +464,9 @@ export async function flowOverviewEntities(
   if (await summariesReady()) {
     const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
     await flushSummaryChanges();
-    const { readOrderFlows, entitiesFromFlows } = await import("./flow-kpis");
-    const flows = await readOrderFlows();
+    const { readLiveOrderFlows, entitiesFromFlows } =
+      await import("./flow-kpis");
+    const flows = await readLiveOrderFlows();
     if (flows) return entitiesFromFlows(flows, block, new Date());
   }
   return (await flowBlockEntities(user, block)).map((e) => {
@@ -664,6 +663,120 @@ export async function newProductData(
 }
 
 /**
+ * Aba "Todos no passo" do parceiro (dono, 14/11/2026; docs/FLOW_MENU.md):
+ * os pedidos dele (a regra de canViewOrder) que estão em cada passo dele
+ * agora, só com o que é dele: os itens de etapa abertos que o papel faz e os
+ * passos do embarque, da origem, da certificação e das amostras prontos que
+ * o papel vê (canSeeStep). Só os passos do parceiro (PARTNER_FLOW_STEPS).
+ */
+export const flowPartnerAllFor = cache(
+  async (user: User): Promise<Map<string, FlowEntity[]>> => {
+    const { canViewOrder } = await import("@/lib/auth/permissions");
+    const { partnerStepsOf, flowStepOfImportKey } = await import("@/lib/flow");
+    const { canSubmitRequirement } = await import("@/lib/workflow/engine");
+    if (isWellmix(user) || !user.partyId) return new Map();
+    const mine = new Set(partnerStepsOf(user.role).map(stepId));
+    if (!mine.size) return new Map();
+    const store = getStore();
+    const orders = (await store.list("orders")).filter(
+      (o) =>
+        !o.held &&
+        o.status !== "CLOSED" &&
+        o.status !== "CANCELLED" &&
+        canViewOrder(user, o),
+    );
+    if (!orders.length) return new Map();
+    const ids = orders.map((o) => o.id);
+    const orderById = new Map(orders.map((o) => [o.id, o]));
+    const out = new Map<string, Map<string, FlowEntity>>();
+    const add = (
+      key: string,
+      orderId: string,
+      item: FlowEntityItem,
+      since: string | null,
+    ) => {
+      if (!mine.has(key)) return;
+      const order = orderById.get(orderId);
+      if (!order) return;
+      const byOrder = out.get(key) ?? new Map<string, FlowEntity>();
+      const entity = byOrder.get(orderId) ?? { order, items: [], since: null };
+      entity.items.push(item);
+      if (since && (!entity.since || since < entity.since))
+        entity.since = since;
+      byOrder.set(orderId, entity);
+      out.set(key, byOrder);
+    };
+    const [stages, importSteps] = await Promise.all([
+      store.list("stages", { filter: { orderId: ids } }),
+      store.list("import_steps", { filter: { orderId: ids } }).catch(() => []),
+    ]);
+    const live = stages.filter(
+      (s) => s.status === "active" || s.status === "blocked",
+    );
+    const stageById = new Map(live.map((s) => [s.id, s]));
+    const requirements = live.length
+      ? await store.list("requirements", {
+          filter: { stageId: live.map((s) => s.id) },
+        })
+      : [];
+    for (const r of requirements) {
+      if (r.status === "done") continue;
+      const stage = stageById.get(r.stageId);
+      const order = orderById.get(r.orderId);
+      if (!stage || !order) continue;
+      // Só o que é do papel: o item dele ou o que ele pode fazer.
+      if (r.role !== user.role && !canSubmitRequirement(user, order, r))
+        continue;
+      for (const step of flowStepsOf({
+        kind: "requirement",
+        stageKey: stage.key,
+        items: [{ key: r.key }],
+      }))
+        add(
+          stepId(step),
+          r.orderId,
+          { kind: "requirement", requirement: r },
+          stage.startedAt ?? null,
+        );
+    }
+    const flow = await import("./import-flow");
+    const { samplesApply } = await import("./sample-flow");
+    for (const order of orders) {
+      const steps = importSteps.filter((s) => s.orderId === order.id);
+      const samples =
+        [
+          "INSPECTION",
+          "SHIPPING",
+          "CUSTOMS",
+          "TRANSPORT",
+          "DELIVERED",
+        ].includes(order.status) &&
+        (await samplesApply(order).catch(() => false));
+      for (const key of flow.openImportStepKeys(order, steps, {
+        certification: steps.some((s) => s.key.startsWith("cert_")),
+        samples,
+      })) {
+        if (!flow.canSeeStep(user, order, key)) continue;
+        const step = flowStepOfImportKey(key);
+        if (step)
+          add(
+            stepId(step),
+            order.id,
+            { kind: "import", key },
+            order.updatedAt ?? null,
+          );
+      }
+    }
+    return new Map(
+      [...out.entries()].map(([k, byOrder]) => [
+        k,
+        [...byOrder.values()].sort((a, b) => a.order.number - b.order.number),
+      ]),
+    );
+  },
+);
+
+/**
  * Os números do Overview: os indicadores prontos (`kpi_snapshots`, chave
  * "flow") com os resumos em uso; sem eles, somados das linhas lidas das
  * tabelas, pela mesma conta (flow-kpis.ts, `aggregateFlow`).
@@ -671,13 +784,48 @@ export async function newProductData(
 export async function flowOverviewKpis(
   user: User,
   now = new Date(),
-): Promise<Pick<import("./flow-kpis").FlowKpis, "blocks" | "steps">> {
+): Promise<Pick<import("./flow-kpis").FlowKpis, "blocks" | "steps" | "held">> {
   const k = await import("./flow-kpis");
   if (!isWellmix(user)) return k.aggregateFlow(new Map());
   const ready = await k.readFlowKpis(now);
   if (ready) return ready;
   const byBlock = new Map<FlowBlock, OverviewEntity[]>();
-  for (const block of k.ENTITY_BLOCKS)
+  const held = new Map<FlowBlock, OverviewEntity[]>();
+  for (const block of k.ENTITY_BLOCKS) {
     byBlock.set(block, await flowOverviewEntities(user, block));
-  return k.aggregateFlow(byBlock);
+    held.set(block, await flowHeldEntities(user, block));
+  }
+  return k.aggregateFlow(byBlock, held);
+}
+
+/**
+ * Os pedidos do histórico do Sankhya em espera até o go-live num bloco
+ * (dono, 14/11/2026; docs/SANKHYA.md), pela situação: da contribuição
+ * guardada no resumo ou, sem os resumos em uso, dos pedidos marcados (só
+ * número, situação e fornecedor). Só a Wellmix; sem pendências nem atraso.
+ */
+export async function flowHeldEntities(
+  user: User,
+  block: FlowBlock,
+): Promise<OverviewEntity[]> {
+  if (!isWellmix(user) || !isProgressBlock(block)) return [];
+  const k = await import("./flow-kpis");
+  const { summariesReady } = await import("./order-summary");
+  if (await summariesReady()) {
+    const flows = await k.readLiveOrderFlows();
+    if (flows) return k.heldFromFlows(flows, block);
+  }
+  const { listColumns } = await import("@/lib/db/lookup");
+  const orders = await listColumns(
+    getStore(),
+    "orders",
+    ["number", "status", "supplierId", "held"],
+    { filter: { held: true } },
+  );
+  return k.heldOfBlock(
+    orders.filter(
+      (o) => o.held && o.status !== "CLOSED" && o.status !== "CANCELLED",
+    ),
+    block,
+  );
 }

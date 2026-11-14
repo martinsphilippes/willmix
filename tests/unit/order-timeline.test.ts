@@ -282,12 +282,13 @@ describe("pedido do Comprador, com designer da Wellmix e parceiros", () => {
       "INSPECTION",
       "SHIPPING",
     ]);
-    // Certificação: o memorial (liberado) e, depois, validar a arte com o selo.
+    // Certificação: só validar a arte com o selo, depois. O memorial e o
+    // selo são da certificadora (OCP) do pedido (dono, 14/11/2026).
     expect(rows.ORDER_CREATED).toEqual({
       open: [],
       later: [],
       parts: ["certification"],
-      progress: { status: "active", percent: 0, done: 0, total: 2 },
+      progress: { status: "pending", percent: 0, done: 0, total: 1 },
     });
     // A validação da arte espera a arte: em cinza; a ficha de compra, liberada.
     expect(rows.PREPARATION).toEqual({
@@ -407,7 +408,7 @@ describe("pedido do Comprador, com designer da Wellmix e parceiros", () => {
     expect(Object.keys(rows)).toEqual(["ORDER_CREATED"]);
   });
 
-  it("memorial enviado: a Certificação do Comprador fica só com a validação da arte com o selo, em cinza", async () => {
+  it("memorial enviado pela certificadora: a Certificação do Comprador continua só com a validação da arte com o selo, em cinza", async () => {
     const memorial = await getStore().create("documents", {
       orderId: order.id,
       requestId: null,
@@ -419,17 +420,23 @@ describe("pedido do Comprador, com designer da Wellmix e parceiros", () => {
       storageKey: `k-${order.id}-memorial`,
       version: 1,
       previousDocumentId: null,
-      uploadedByUserId: buyer.id,
+      uploadedByUserId: ocp.id,
       visibility: "internal",
     } as never);
-    await f.submitStep(buyer, order.id, "cert_memorial", {
+    // Só a certificadora (OCP) do pedido envia o memorial (dono, 14/11/2026).
+    await expect(
+      f.submitStep(buyer, order.id, "cert_memorial", {
+        documentId: memorial.id,
+      }),
+    ).rejects.toThrow();
+    await f.submitStep(ocp, order.id, "cert_memorial", {
       documentId: memorial.id,
     });
     expect((await rowsOf(buyer, order)).ORDER_CREATED).toEqual({
       open: [],
       later: [],
       parts: ["certification"],
-      progress: { status: "pending", percent: 50, done: 1, total: 2 },
+      progress: { status: "pending", percent: 0, done: 0, total: 1 },
     });
   });
 });

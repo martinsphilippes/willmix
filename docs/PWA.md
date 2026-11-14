@@ -19,15 +19,15 @@ Pedido do dono (10/11/2026): o portal inteiro funciona como aplicativo instaláv
 
 ## 3. Como está montado
 
-| Peça | Onde |
-| --- | --- |
-| Manifesto (nome, ícones, cor, atalhos, janela própria) | `src/app/manifest.ts` |
-| Service worker (arquivos públicos + tela sem conexão) | `public/sw.js` |
-| Tela sem conexão (estática, pt/en/zh) | `public/offline.html` |
-| Registro do service worker e convite para instalar | `src/components/pwa-install.tsx` (no layout raiz) |
-| Cabeçalhos do `sw.js` (sem cache, escopo `/`) | `next.config.ts` |
-| Tela toda, margens seguras e ajustes de toque | `src/app/layout.tsx` (viewport) e `src/app/globals.css` |
-| Textos | `src/i18n/modules/intro.ts` (`pwa.install.*`) |
+| Peça                                                   | Onde                                                    |
+| ------------------------------------------------------ | ------------------------------------------------------- |
+| Manifesto (nome, ícones, cor, atalhos, janela própria) | `src/app/manifest.ts`                                   |
+| Service worker (arquivos públicos + tela sem conexão)  | `public/sw.js`                                          |
+| Tela sem conexão (estática, pt/en/zh)                  | `public/offline.html`                                   |
+| Registro do service worker e convite para instalar     | `src/components/pwa-install.tsx` (no layout raiz)       |
+| Cabeçalhos do `sw.js` (sem cache, escopo `/`)          | `next.config.ts`                                        |
+| Tela toda, margens seguras e ajustes de toque          | `src/app/layout.tsx` (viewport) e `src/app/globals.css` |
+| Textos                                                 | `src/i18n/modules/intro.ts` (`pwa.install.*`)           |
 
 Regras:
 
@@ -40,6 +40,7 @@ Regras:
 - Todas as telas de lista e as telas de detalhe (pedido, ficha de compra, documento do pedido, solicitação, cotação, briefing, produto, fornecedor, cliente, vitrine) foram medidas em 375 px (iPhone), 412 px (Galaxy), 820 px (iPad) e 1280 px (notebook): nenhuma estoura para os lados. Tabelas largas rolam dentro do próprio quadro.
 - Corrigido nesta entrega: a tabela de blocos da ficha de compra estourava a página no celular.
 - iPhone/iPad: campos usam letra de 16 px (o Safari dava zoom ao tocar em campo menor); o conteúdo respeita o recorte da câmera e a barra de início.
+- Menu lateral fixo abaixo do cabeçalho (dono, 14/11/2026): no iPad, no fim da página, a margem da barra de início (`env(safe-area-inset-bottom)` no `body`) empurrava a barra, que era "sticky", e o botão de recolher ficava em parte embaixo do cabeçalho. Fixa, com o espaço dela reservado na linha, a barra não sobe; o pé dela respeita a barra de início e a lateral respeita o recorte da câmera (celular deitado). Medido em 1440 × 900, iPad em pé (834 × 1194) e deitado (1194 × 834) e celular deitado (844 × 390); no celular em pé o menu abre pelo botão do cabeçalho.
 
 ## 5. Como testar
 

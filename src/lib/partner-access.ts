@@ -249,17 +249,21 @@ export function setProfileScreens(
       throw new Error("partner_access_internal_screen");
   const before = resolveProfile(config, profileKey);
   const screens = [...new Set([...ALWAYS_OPEN, ...valid(input.screens)])];
+  const menuHidden = valid(input.menuHidden).filter(
+    (s) => screens.includes(s) && !ALWAYS_OPEN.includes(s),
+  );
   const sources: ProfileAccess["sources"] = {};
   for (const s of screens)
-    // Já estava: mantém a origem; entrou agora: liberada à mão.
-    sources[s] = before.screens.includes(s)
-      ? (before.sources[s] ?? "default")
-      : "manual";
+    // Já estava e o menu não mudou: mantém a origem. Entrou agora, ou o
+    // administrador tirou do menu ou devolveu ao menu: mudança à mão.
+    sources[s] =
+      before.screens.includes(s) &&
+      before.menuHidden.includes(s) === menuHidden.includes(s)
+        ? (before.sources[s] ?? "default")
+        : "manual";
   const after: ProfileAccess = {
     screens,
-    menuHidden: valid(input.menuHidden).filter(
-      (s) => screens.includes(s) && !ALWAYS_OPEN.includes(s),
-    ),
+    menuHidden,
     sources,
     custom: true,
   };
@@ -325,6 +329,110 @@ export function resetProfile(
   delete next[profileKey];
   return next;
 }
+
+/*
+ * Acessos externos em Cadastros → Parceiros (dono, 14/11/2026): comparar
+ * "Abre" e "No menu" separadamente e prever a cópia tela a tela, com o valor
+ * atual e o que será gravado. Tudo sai das mesmas regras que a sessão usa
+ * (resolveProfile, copyScreens): a tela nunca mostra outra coisa.
+ */
+
+/** Estado de uma tela num perfil: abre? aparece no menu (só se abrir)? */
+export interface AccessCell {
+  open: boolean;
+  /** Nulo quando a tela não abre: "No menu" não se aplica. */
+  menu: boolean | null;
+}
+
+export function accessCell(access: ProfileAccess, screen: Screen): AccessCell {
+  const open = access.screens.includes(screen);
+  return { open, menu: open ? !access.menuHidden.includes(screen) : null };
+}
+
+export interface CompareRow {
+  screen: Screen;
+  a: AccessCell;
+  b: AccessCell;
+  /** Um abre e o outro não. */
+  openDiff: boolean;
+  /** Os dois abrem, e só um mostra no menu. */
+  menuDiff: boolean;
+}
+
+/** Comparar dois perfis tela a tela (só consulta). */
+export function compareAccess(
+  a: ProfileAccess,
+  b: ProfileAccess,
+  screens: readonly Screen[] = GRANTABLE_SCREENS,
+): CompareRow[] {
+  return screens.map((screen) => {
+    const ca = accessCell(a, screen);
+    const cb = accessCell(b, screen);
+    return {
+      screen,
+      a: ca,
+      b: cb,
+      openDiff: ca.open !== cb.open,
+      menuDiff: ca.open && cb.open && ca.menu !== cb.menu,
+    };
+  });
+}
+
+export interface CopyPreviewRow {
+  screen: Screen;
+  /** Como está no destino. */
+  before: AccessCell;
+  /** Como fica no destino depois da cópia. */
+  after: AccessCell;
+  changed: boolean;
+}
+
+/**
+ * Prévia da cópia, tela a tela: só as telas escolhidas, só o destino. Usa a
+ * mesma conta da aplicação (copyScreens), então a prévia é o que será gravado.
+ */
+export function copyPreview(
+  config: PartnerAccessConfig,
+  from: string,
+  to: string,
+  screens: string[],
+  mode: "add" | "replace",
+): { rows: CopyPreviewRow[]; changes: ScreenChange[] } {
+  const next = copyScreens(config, from, to, screens, mode);
+  const before = resolveProfile(config, to);
+  const after = resolveProfile(next, to);
+  // Na ordem do catálogo (a mesma da tabela de telas).
+  const picked = valid(screens);
+  const rows = SCREENS.filter((s) => picked.includes(s)).map((screen) => {
+    const b = accessCell(before, screen);
+    const a = accessCell(after, screen);
+    return {
+      screen,
+      before: b,
+      after: a,
+      changed: b.open !== a.open || b.menu !== a.menu,
+    };
+  });
+  return { rows, changes: diffProfiles(before, after) };
+}
+
+/**
+ * Impressão digital das mudanças (a prévia vai com ela para a aplicação): se
+ * a configuração mudou entre a prévia e o clique, a cópia não é aplicada.
+ */
+export const changesKey = (changes: readonly ScreenChange[]) =>
+  changes
+    .map((c) => `${c.change}:${c.screen}`)
+    .sort()
+    .join(",");
+
+/**
+ * De onde vem o estado de uma tela que não abre: tirada do padrão (o padrão
+ * do perfil a abre e ela foi bloqueada, à mão ou por cópia) ou o próprio
+ * padrão. Só leitura: não cria nem tira acesso.
+ */
+export const blockedFromDefault = (profileKey: string, screen: Screen) =>
+  defaultScreens(profileKey).includes(screen);
 
 /** Perfil de um login externo: o do tipo do parceiro (se tiver) ou o do papel. */
 export function profileKeyOf(

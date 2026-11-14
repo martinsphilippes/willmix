@@ -3,6 +3,8 @@
  * telas dos passos; docs/FLOW_MENU.md): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "flow.all.hint.partner":
+    "Todos os seus pedidos que estão neste passo agora, com o que é seu. Clique para abrir o pedido no passo.",
   "flow.orders.list": "Lista de todos os pedidos",
   "flow.order.title": "Pedido #{n} em {step}",
   "flow.order.back": "Voltar a {step}",
@@ -15,6 +17,11 @@ export const pt = {
   "flow.order.quantity": "Quantidade",
   "flow.order.items.step": "Itens deste passo",
   "flow.order.empty": "Nada deste passo para este pedido.",
+  "flow.order.focus.title": "Este produto no passo",
+  "flow.order.focus.hint": "Só o produto da linha que você abriu.",
+  "flow.order.focus.all": "Ver tudo do pedido neste passo",
+  "flow.order.focus.missing":
+    "O produto do link não tem itens neste passo. Abaixo, tudo do pedido no passo.",
   "flow.all.production":
     "Produção em andamento (ETD definido, aguardando a inspeção)",
   "flow.tab.pending": "Pendências",
@@ -102,6 +109,12 @@ export const pt = {
   "flow.np.sampling.submitted": "Aprovada · amostra enviada",
   "flow.np.sampling.approved": "Aprovada · amostra aprovada",
   "flow.np.sampling.rejected": "Aprovada · amostra reprovada",
+  "flow.held.kpi": "Histórico em espera",
+  "flow.held.count": "+{n} em espera",
+  "flow.held.title": "Histórico do Sankhya em espera ({n})",
+  "flow.held.hint":
+    "Pedidos da carga do histórico do Sankhya, em espera até o go-live (Configurações → Go-live). Aparecem pela situação, sem pendências, atraso nem completude.",
+  "flow.held.capped": "Mostrando {n} de {total} pedidos em espera.",
   "flow.overview.inStep": "{n} no passo",
   "flow.preproduction.title": "Pré-produção do pedido #{n}",
   "flow.preproduction.detail":
@@ -252,6 +265,8 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "flow.all.hint.partner":
+    "All your orders in this step right now, with what is yours. Click to open the order in the step.",
   "flow.orders.list": "List of all orders",
   "flow.order.title": "Order #{n} in {step}",
   "flow.order.back": "Back to {step}",
@@ -264,6 +279,11 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.order.quantity": "Quantity",
   "flow.order.items.step": "Items in this step",
   "flow.order.empty": "Nothing in this step for this order.",
+  "flow.order.focus.title": "This product in the step",
+  "flow.order.focus.hint": "Only the product from the row you opened.",
+  "flow.order.focus.all": "See everything for this order in this step",
+  "flow.order.focus.missing":
+    "The product in the link has no items in this step. Below is everything for the order in this step.",
   "flow.all.production":
     "Production under way (ETD set, waiting for inspection)",
   "flow.tab.pending": "Pending",
@@ -350,6 +370,12 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.np.sampling.submitted": "Approved · sample sent",
   "flow.np.sampling.approved": "Approved · sample approved",
   "flow.np.sampling.rejected": "Approved · sample rejected",
+  "flow.held.kpi": "History on hold",
+  "flow.held.count": "+{n} on hold",
+  "flow.held.title": "Sankhya history on hold ({n})",
+  "flow.held.hint":
+    "Orders from the Sankhya history load, on hold until go-live (Settings → Go-live). They show by status, without tasks, delay or completion.",
+  "flow.held.capped": "Showing {n} of {total} orders on hold.",
   "flow.overview.inStep": "{n} in the step",
   "flow.preproduction.title": "Pre-production for order #{n}",
   "flow.preproduction.detail":
@@ -500,6 +526,8 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "flow.all.hint.partner":
+    "您目前处于本环节的全部订单（只含属于您的事项）。点击在本环节打开订单。",
   "flow.orders.list": "全部订单列表",
   "flow.order.title": "订单 #{n} · {step}",
   "flow.order.back": "返回{step}",
@@ -512,6 +540,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.order.quantity": "数量",
   "flow.order.items.step": "本环节事项",
   "flow.order.empty": "该订单在本环节没有事项。",
+  "flow.order.focus.title": "该产品在本环节的事项",
+  "flow.order.focus.hint": "仅显示您打开的那一行的产品。",
+  "flow.order.focus.all": "查看该订单在本环节的全部事项",
+  "flow.order.focus.missing":
+    "链接中的产品在本环节没有事项。下面是该订单在本环节的全部事项。",
   "flow.all.production": "生产进行中（已定 ETD，等待验货）",
   "flow.tab.pending": "待处理",
   "flow.tab.all": "本环节全部",
@@ -596,6 +629,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.np.sampling.submitted": "已批准 · 样品已提交",
   "flow.np.sampling.approved": "已批准 · 样品已批准",
   "flow.np.sampling.rejected": "已批准 · 样品被拒",
+  "flow.held.kpi": "暂缓的历史订单",
+  "flow.held.count": "+{n} 暂缓",
+  "flow.held.title": "Sankhya 历史订单暂缓（{n}）",
+  "flow.held.hint":
+    "来自 Sankhya 历史导入的订单，暂缓至上线（设置 → 上线）。按状态显示，不含待办、延误和完成度。",
+  "flow.held.capped": "显示 {total} 个暂缓订单中的 {n} 个。",
   "flow.overview.inStep": "本环节 {n} 个",
   "flow.preproduction.title": "订单 #{n} 产前",
   "flow.preproduction.detail": "定金已付：生产信息（工厂或贸易）和 ETD",

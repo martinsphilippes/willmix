@@ -110,6 +110,9 @@ beforeAll(async () => {
   );
   const operator = team.find((u) => u.role === "operator")!;
   const { a, b, c } = scenario.orders;
+  // c: sem certificadora (OCP). O memorial e o selo são só dela (dono,
+  // 14/11/2026): a Wellmix recebe uma pendência só, a de vincular.
+  await store.update("orders", c.id, { ocpId: null });
   // b: em embarque, com produção (follows de 5 e 15 dias vencidos, o de 25
   // ainda não), numerário a validar e booking enviado pelo operador.
   await store.update("orders", b.id, { status: "SHIPPING" });

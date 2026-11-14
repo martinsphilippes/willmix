@@ -94,12 +94,21 @@ describe("certificação com o OCP", () => {
     expect(imp.some((v) => v.template.key.startsWith("cert_"))).toBe(false);
   });
 
-  it("memorial (Wellmix) → OCP valida → laudo → registro validado pela Wellmix", async () => {
-    // (A certificadora também pode anexar o memorial: tests/unit/cert-seal.test.ts.)
-    await f.submitStep(admin, order.id, "cert_memorial", {
-      documentId: (await doc(admin, "memorial.pdf")).id,
+  it("memorial (a OCP envia, sem validação) → laudo → registro validado pela Wellmix", async () => {
+    // Memorial: só a certificadora (OCP) do pedido envia (dono, 14/11/2026);
+    // a Wellmix só acompanha (tests/unit/cert-seal.test.ts).
+    await expect(
+      f.submitStep(admin, order.id, "cert_memorial", {
+        documentId: (await doc(admin, "memorial-wellmix.pdf")).id,
+      }),
+    ).rejects.toThrow();
+    await f.submitStep(ocp, order.id, "cert_memorial", {
+      documentId: (await doc(ocp, "memorial.pdf")).id,
     });
-    await f.validateStep(ocp, order.id, "cert_memorial", "validated", null);
+    // Sem validação: o envio dela conclui o passo.
+    await expect(
+      f.validateStep(admin, order.id, "cert_memorial", "validated", null),
+    ).rejects.toThrow("no_validation");
     await f.submitStep(ocp, order.id, "cert_lab", {
       value: "Lab X / L-123",
       documentId: (await doc(ocp, "laudo.pdf")).id,

@@ -6,14 +6,19 @@ import {
   FLOW_OVERVIEW_BLOCKS,
   blockLabelKey,
   findStep,
+  isListOnlyStep,
   overviewHref,
   stepHelpKey,
   stepLabelKey,
 } from "@/lib/flow";
-import { flowAllFor, flowCasesOf } from "@/lib/services/flow";
+import {
+  flowAllFor,
+  flowCasesOf,
+  flowPartnerAllFor,
+} from "@/lib/services/flow";
 import { FlowAll } from "@/components/flow-all";
 import { isWellmix } from "@/lib/auth/permissions";
-import { stepId } from "@/lib/flow";
+import { partnerStepsOf, stepId } from "@/lib/flow";
 import { FlowCases } from "@/components/flow-cases";
 import { FlowStepWork } from "@/components/flow-step-work";
 import {
@@ -34,6 +39,9 @@ import { PageHeader, TextLink } from "@/components/ui";
  * (?due=overdue|today|week). Duas abas (dono, 14/11/2026): Pendências (o
  * que espera ação do login, padrão) e "Todos no passo" (?tab=all: todos os
  * pedidos que estão no passo agora, de qualquer responsável; só a Wellmix).
+ * Na Certificação (dono, 14/11/2026) a tela é só a lista, uma linha por
+ * produto: o "Resolver" abre o produto no detalhe do pedido no passo, onde
+ * ficam o envio da foto ou do arquivo e a validação.
  */
 const DUES = ["overdue", "today", "week"] as const;
 
@@ -46,7 +54,16 @@ export default async function FlowStepPage({
   if (!step || step.badgeOnly) notFound();
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=/app/flow/${block}/${key}`);
-  requireScreen(user, step.screen);
+  // Parceiros (dono, 14/11/2026): só os passos dele, com a tela Pedidos.
+  const wellmix = isWellmix(user);
+  if (
+    !wellmix &&
+    !partnerStepsOf(user.role).some(
+      (x) => x.key === step.key && x.block === step.block,
+    )
+  )
+    notFound();
+  requireScreen(user, wellmix ? step.screen : "orders");
   const {
     tab,
     due,
@@ -66,18 +83,21 @@ export default async function FlowStepPage({
   ) as string | undefined;
   const t = await getT();
   const all = await flowCasesOf(user, step);
+  // Sem os cartões por pedido embaixo da lista (o trabalho fica no detalhe).
+  const listOnly = isListOnlyStep(step);
   const filter = (DUES as readonly string[]).includes(String(due))
     ? String(due)
     : null;
   const tasks = filter ? all.filter((x) => x.due === filter) : all;
   const base = `/app/flow/${block}/${key}`;
-  // Aba "Todos no passo": só a Wellmix (os parceiros veem só o que é deles).
-  const wellmix = isWellmix(user);
-  const showAll = wellmix && tab === "all";
-  const entities = wellmix
-    ? ((await flowAllFor(user)).get(stepId(step)) ?? [])
-    : [];
-  const tabs = wellmix ? (
+  // Aba "Todos no passo": a Wellmix vê todos; o parceiro, os pedidos dele,
+  // só com o que é dele.
+  const showAll = tab === "all";
+  const entities =
+    (await (wellmix ? flowAllFor(user) : flowPartnerAllFor(user))).get(
+      stepId(step),
+    ) ?? [];
+  const tabs = (
     <nav
       aria-label={t("flow.tabs")}
       className="mb-4 flex gap-1 border-b border-zinc-200 text-sm"
@@ -107,7 +127,7 @@ export default async function FlowStepPage({
         );
       })}
     </nav>
-  ) : null;
+  );
   if (showAll)
     return (
       <div data-flow-step={`${block}/${key}`}>
@@ -115,7 +135,7 @@ export default async function FlowStepPage({
           title={t(stepLabelKey(step))}
           subtitle={t(stepHelpKey(step))}
           actions={
-            FLOW_OVERVIEW_BLOCKS.includes(step.block) ? (
+            wellmix && FLOW_OVERVIEW_BLOCKS.includes(step.block) ? (
               <TextLink href={overviewHref(step.block)} data-flow-back>
                 {t("flow.step.back", { block: t(blockLabelKey(step.block)) })}
               </TextLink>
@@ -123,7 +143,7 @@ export default async function FlowStepPage({
           }
         />
         {tabs}
-        <FlowAll step={step} entities={entities} t={t} />
+        <FlowAll step={step} entities={entities} t={t} partner={!wellmix} />
       </div>
     );
   // Aviso de "feito" das ações da produção e da arte (os cartões leem o seu).
@@ -150,7 +170,7 @@ export default async function FlowStepPage({
         title={t(stepLabelKey(step))}
         subtitle={t(stepHelpKey(step))}
         actions={
-          FLOW_OVERVIEW_BLOCKS.includes(step.block) ? (
+          wellmix && FLOW_OVERVIEW_BLOCKS.includes(step.block) ? (
             <TextLink href={overviewHref(step.block)} data-flow-back>
               {t("flow.step.back", { block: t(blockLabelKey(step.block)) })}
             </TextLink>
@@ -195,7 +215,9 @@ export default async function FlowStepPage({
         </div>
       ) : null}
       <FlowCases step={step} tasks={tasks} t={t} />
-      <FlowRequirementWork user={user} step={step} tasks={all} t={t} />
+      {listOnly ? null : (
+        <FlowRequirementWork user={user} step={step} tasks={all} t={t} />
+      )}
       {step.block === "production" &&
       (step.key === "production" ||
         step.key === "inspection" ||
@@ -240,13 +262,15 @@ export default async function FlowStepPage({
           notice={artworkNotice}
         />
       ) : null}
-      <FlowStepWork
-        user={user}
-        step={step}
-        tasks={all}
-        t={t}
-        notice={done ? t(`importFlow.done.${done}` as DictionaryKey) : null}
-      />
+      {listOnly ? null : (
+        <FlowStepWork
+          user={user}
+          step={step}
+          tasks={all}
+          t={t}
+          notice={done ? t(`importFlow.done.${done}` as DictionaryKey) : null}
+        />
+      )}
     </div>
   );
 }

@@ -1,10 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
 import { PARTY_TYPE_SCREEN } from "@/lib/party-types";
-import { isAdmin } from "@/lib/auth/permissions";
 import {
   partnerTypeName,
   partyTypeLabel,
@@ -14,19 +12,21 @@ import { getPartnerTypeCatalog } from "@/lib/services/partner-types";
 import { getT } from "@/i18n/server";
 import {
   Badge,
+  Card,
   Empty,
+  Field,
   Input,
   LinkButton,
-  PageHeader,
   Table,
   Td,
   TextLink,
   Th,
-  cx,
   rowClass,
 } from "@/components/ui";
-import { LiveSearch } from "@/components/live-search";
+import { AutoApply } from "@/components/auto-apply";
+import { FilterCombobox } from "@/components/filter-combobox";
 import { ServerPager, SortTh } from "@/components/server-table";
+import { PartiesHeader } from "./_components/parties-header";
 import {
   SERVER_TABLE_FROM,
   parseServerPage,
@@ -34,15 +34,6 @@ import {
   serverTable,
   type ServerColumn,
 } from "@/lib/server-table";
-
-/** Filtro por tipo: selecionado na cor da marca, demais neutros. */
-const chipClass = (selected: boolean) =>
-  cx(
-    "rounded-full px-3 py-1 font-medium ring-1 ring-inset transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600",
-    selected
-      ? "bg-brand-600 text-white ring-brand-600"
-      : "bg-white text-zinc-700 ring-zinc-200 hover:bg-brand-50 hover:text-brand-800 hover:ring-brand-200",
-  );
 
 export default async function PartiesPage({
   searchParams,
@@ -112,7 +103,9 @@ export default async function PartiesPage({
       text: (p) => (p.active ? t("common.yes") : t("common.no")),
     },
   ];
-  // Lista curta: inteira, com a TableTools de sempre. Longa: no servidor.
+  // Lista curta: inteira, com a TableTools de sempre (busca, ordem e
+  // páginas, como as outras tabelas do portal). Longa: no servidor, com o
+  // campo de busca no quadro de filtros. Um campo de busca só, nos dois.
   const serverMode = filtered.length > SERVER_TABLE_FROM;
   const sort = serverMode ? parseServerSort(one(sp.sort), columns) : null;
   const shown = serverTable(filtered, columns, {
@@ -147,12 +140,25 @@ export default async function PartiesPage({
       <Th>{label}</Th>
     );
 
+  // Filtro por tipo com busca (no lugar da fileira de botões; dono,
+  // 14/11/2026): Clientes, Fornecedores e os tipos de Outros parceiros.
+  const typeOptions = [
+    { value: "", label: t("parties.filter.typeAll") },
+    ...own,
+    ...chips.map((entry) => ({
+      value: entry.value,
+      label: `${partnerTypeName(entry, t.locale)}${
+        entry.active ? "" : ` ${t("partnerTypes.inactiveSuffix")}`
+      }`,
+    })),
+  ];
+
   return (
     <>
-      <PageHeader
-        help={{ body: "help.parties.body", steps: "help.parties.steps" }}
+      <PartiesHeader
         t={t}
-        title={t("nav.parties")}
+        user={user}
+        active="registry"
         subtitle={
           <span data-parties-all>
             {t("parties.all.subtitle")}{" "}
@@ -163,16 +169,6 @@ export default async function PartiesPage({
         }
         actions={
           <>
-            {isAdmin(user) ? (
-              <>
-                <LinkButton href="/app/parties/access" data-partner-access-link>
-                  {t("partnerAccess.link")}
-                </LinkButton>
-                <LinkButton href="/app/parties/types" data-partner-types-link>
-                  {t("partnerTypes.manage")}
-                </LinkButton>
-              </>
-            ) : null}
             <LinkButton href="/app/import?entity=parties">
               {t("parties.import")}
             </LinkButton>
@@ -191,69 +187,57 @@ export default async function PartiesPage({
           </>
         }
       />
-      <div className="mb-3 flex flex-wrap gap-2 text-sm" data-party-type-chips>
-        <Link
-          href="/app/parties"
-          aria-current={!type ? "page" : undefined}
-          className={chipClass(!type)}
+      <Card className="mb-3">
+        <form
+          method="get"
+          action="/app/parties"
+          className="grid gap-3 sm:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] sm:items-end"
+          data-parties-filter
         >
-          {t("common.all")}
-        </Link>
-        {own.map((entry) => (
-          <Link
-            key={entry.value}
-            href={`/app/parties?type=${entry.value}`}
-            aria-current={type === entry.value ? "page" : undefined}
-            className={chipClass(type === entry.value)}
-            data-party-own-chip={entry.value}
-          >
-            {entry.label}
-          </Link>
-        ))}
-        {chips.map((entry) => (
-          <Link
-            key={entry.value}
-            href={`/app/parties?type=${encodeURIComponent(entry.value)}`}
-            aria-current={type === entry.value ? "page" : undefined}
-            className={chipClass(type === entry.value)}
-            data-party-type-chip={entry.key}
-          >
-            {partnerTypeName(entry, t.locale)}
-            {entry.active ? "" : ` ${t("partnerTypes.inactiveSuffix")}`}
-          </Link>
-        ))}
-      </div>
-      {filtered.length === 0 ? (
-        <Empty>{t("common.none")}</Empty>
-      ) : (
-        <>
-          {/* Lista longa: busca (GET) no servidor; o resultado fica no endereço. */}
+          {sort ? (
+            <input
+              type="hidden"
+              name="sort"
+              value={`${sort.desc ? "-" : ""}${sort.key}`}
+            />
+          ) : null}
+          <Field label={t("parties.filter.type")}>
+            <FilterCombobox
+              key={type}
+              name="type"
+              value={type}
+              options={typeOptions}
+              label={t("parties.filter.type")}
+              placeholder={t("parties.filter.typePlaceholder")}
+              emptyText={t("parties.filter.typeNone")}
+              marker="party-type-filter"
+            />
+          </Field>
           {serverMode ? (
-            <form
-              method="get"
-              action="/app/parties"
-              className="mb-3 flex flex-wrap items-center gap-2"
-              data-parties-search
-            >
-              {type ? <input type="hidden" name="type" value={type} /> : null}
-              {sort ? (
-                <input
-                  type="hidden"
-                  name="sort"
-                  value={`${sort.desc ? "-" : ""}${sort.key}`}
-                />
-              ) : null}
+            <Field label={t("parties.filter.search")}>
               <Input
                 name="q"
                 type="search"
                 defaultValue={q}
-                placeholder={t("tableTools.search")}
-                aria-label={t("tableTools.search")}
-                className="w-full max-w-md"
+                placeholder={t("parties.filter.searchPlaceholder")}
+                aria-label={t("parties.filter.search")}
+                data-parties-search
               />
-              <LiveSearch />
-            </form>
+            </Field>
           ) : null}
+          <AutoApply />
+        </form>
+        <p
+          className="mt-2 text-xs text-zinc-500"
+          data-parties-count={shown.matched}
+        >
+          {t("parties.filter.count", { n: shown.matched })}
+        </p>
+      </Card>
+      {filtered.length === 0 ? (
+        <Empty>{t("common.none")}</Empty>
+      ) : (
+        <>
           {shown.matched === 0 ? (
             <Empty>{t("tableTools.none")}</Empty>
           ) : (

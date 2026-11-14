@@ -2,9 +2,10 @@ import { expect, test, type Page } from "@playwright/test";
 
 /*
  * Tipos de parceiro (docs/PARTNER_TYPES.md): no "Novo parceiro" aberto por
- * Outros parceiros nada vem marcado e Fornecedor não aparece; o atalho cria
- * o tipo, deixa-o selecionado e mantém o que já estava digitado; o tipo novo
- * vira filtro da lista; quem não é administrador não vê o atalho.
+ * Parceiros nada vem marcado e Fornecedor não aparece; o atalho cria o tipo,
+ * deixa-o selecionado e mantém o que já estava digitado; o tipo novo vira
+ * opção do filtro com busca da lista; quem não é administrador não vê o
+ * atalho.
  */
 const PASSWORD = "wellmix123";
 
@@ -55,19 +56,28 @@ test("novo parceiro: cria o tipo pelo atalho, mantém o digitado e o tipo vira f
   // Tipo criado no painel: sem classe de login, o cadastro não cria acesso.
   await expect(page.locator("[data-party-no-login-class]")).toBeVisible();
 
-  // Na lista, o tipo é um filtro e mostra o parceiro.
+  // Na lista, o tipo é uma opção do filtro com busca e mostra o parceiro.
   await page.goto("/app/parties");
-  const chip = page.locator("[data-party-type-chips] a", { hasText: typeName });
-  await expect(chip).toBeVisible();
-  await chip.click();
+  const input = page.locator("[data-party-type-filter-input]");
+  await expect(input).toHaveAttribute("data-party-type-filter-ready", "1");
+  await input.click();
+  await input.fill(typeName.slice(0, 18));
+  const option = page.locator("[data-party-type-filter-option]", {
+    hasText: typeName,
+  });
+  await expect(option).toBeVisible();
+  await option.click();
+  await page.waitForURL(/type=custom/);
   await expect(page.getByRole("link", { name: partyName })).toBeVisible();
   await expect(page.getByRole("cell", { name: typeName })).toBeVisible();
 
   // Tela dos tipos: o novo aparece, com um parceiro.
   await page.goto("/app/parties/types");
-  await expect(
-    page.locator("[data-partner-type-list] li", { hasText: typeName }),
-  ).toBeVisible();
+  const row = page.locator("[data-partner-type-list] tr", {
+    hasText: typeName,
+  });
+  await expect(row).toBeVisible();
+  await expect(row.locator("[data-partner-type-count]")).toHaveText("1");
 
   // Novo cliente continua vindo com Cliente marcado.
   await page.goto("/app/parties/new?type=customer");

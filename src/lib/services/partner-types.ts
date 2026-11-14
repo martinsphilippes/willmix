@@ -10,11 +10,13 @@ import {
 } from "@/lib/db";
 import { PARTY_TYPES } from "@/lib/db/schema";
 import { OTHER_PARTY_TYPES } from "@/lib/party-types";
+import { dictionaries } from "@/i18n/dictionaries";
 import {
   CUSTOM_PREFIX,
   PARTNER_LOGIN_ROLE,
   partyTypeValue,
   partnerTypeCatalog,
+  partnerTypeName,
   partnerTypeKey,
   matchPartnerType,
   partnerTypeNameTaken,
@@ -139,6 +141,66 @@ export async function savePartnerType(
   );
   if (!entry) throw new Error("unexpected");
   return entry;
+}
+
+/**
+ * Nomes de um tipo nos três idiomas como aparecem hoje, para editar sem
+ * perder tradução: no tipo de fábrica ainda sem nome próprio, o inglês e o
+ * chinês são os de fábrica (gravar só o português não pode trocar o "Agency"
+ * do inglês por "Agência").
+ */
+export function editableTypeNames(entry: PartnerTypeEntry): {
+  pt: string;
+  en: string | null;
+  zh: string | null;
+} {
+  const factory = (locale: "en" | "zh") =>
+    entry.builtin ? dictionaries[locale][`party.${entry.builtin}`] : null;
+  return {
+    pt: partnerTypeName(entry, "pt"),
+    en: entry.names.en ?? factory("en"),
+    zh: entry.names.zh ?? factory("zh"),
+  };
+}
+
+/**
+ * Muda só o que veio (nomes, descrição, login ou situação) e mantém o resto
+ * como está no servidor: renomear não apaga a descrição; inativar não muda
+ * nome, tradução, identificador nem os cadastros que já usam o tipo.
+ */
+export async function updatePartnerType(
+  user: User,
+  value: string,
+  patch: {
+    name?: string;
+    nameEn?: string | null;
+    nameZh?: string | null;
+    description?: string | null;
+    active?: boolean;
+    allowLogin?: boolean;
+  },
+): Promise<PartnerTypeEntry> {
+  // Mesmas checagens antes de ler: quem não pode mudar não descobre nada.
+  assertWellmix(user);
+  assertScreen(user, "parties");
+  assertRole(user, ["admin"]);
+  const current = (await getPartnerTypeCatalog()).find(
+    (e) => e.value === value,
+  );
+  if (!current) throw new Error("not_found");
+  const names = editableTypeNames(current);
+  return savePartnerType(user, {
+    value,
+    name: patch.name ?? names.pt,
+    nameEn: patch.nameEn !== undefined ? patch.nameEn : names.en,
+    nameZh: patch.nameZh !== undefined ? patch.nameZh : names.zh,
+    description:
+      patch.description !== undefined ? patch.description : current.description,
+    active: patch.active ?? current.active,
+    ...(patch.allowLogin !== undefined && !current.builtin
+      ? { allowLogin: patch.allowLogin }
+      : {}),
+  });
 }
 
 /**

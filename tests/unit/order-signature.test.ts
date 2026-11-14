@@ -198,8 +198,8 @@ describe("documento do pedido com duas assinaturas", () => {
           t.detail.includes("enviado para assinatura"),
       );
     expect(await sendTask(agency)).toBe(false);
-    // A certificadora (aqui, a Wellmix no lugar dela) envia o selo e a
-    // agência envia a arte com o selo.
+    // A certificadora (OCP) do pedido envia o selo (só ela; dono,
+    // 14/11/2026) e a agência envia a arte com o selo.
     const flow = await import("@/lib/services/import-flow");
     const stepDoc = async (user: User, name: string) =>
       (
@@ -209,8 +209,16 @@ describe("documento do pedido com duas assinaturas", () => {
           visibility: "internal",
         })
       ).id;
-    await flow.submitStep(admin, order.id, "cert_seal", {
-      documentId: await stepDoc(admin, "selo.pdf"),
+    const ocp = (await store.list("users")).find(
+      (u) => u.role === "ocp" && u.partyId === order.ocpId,
+    )!;
+    await expect(
+      flow.submitStep(admin, order.id, "cert_seal", {
+        documentId: await stepDoc(admin, "selo-wellmix.pdf"),
+      }),
+    ).rejects.toThrow();
+    await flow.submitStep(ocp, order.id, "cert_seal", {
+      documentId: await stepDoc(ocp, "selo.pdf"),
     });
     await flow.submitStep(agency, order.id, "cert_seal_art", {
       documentId: await stepDoc(agency, "arte-com-selo.pdf"),

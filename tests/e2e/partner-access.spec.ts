@@ -2,7 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { bookingSheet, importAndClose } from "./helpers";
 
 /*
- * Tipos em destaque e Gestão de telas (docs/PARTNER_ACCESS.md): Trading,
+ * Tipos em destaque e Acessos externos, a antiga Gestão de telas
+ * (docs/PARTNER_ACCESS.md): Trading,
  * Factory, Supplier e GP nos filtros; uma Factory com login entra com as
  * telas do Fornecedor; o administrador tira uma tela (vale na hora), compara
  * dois perfis e copia a tela de volta com prévia; uma tela de outra classe
@@ -20,13 +21,33 @@ async function login(page: Page, user: string, password = PASSWORD) {
 }
 
 /**
- * Abre a Gestão de telas e espera a tabela ficar interativa: a busca da
- * tabela só aparece depois da hidratação. Clicar antes perde o clique (a
- * hidratação devolve a caixa ao valor da página).
+ * Abre Acessos externos (a antiga Gestão de telas) e espera as caixas
+ * ficarem interativas (marca posta depois da hidratação). Clicar antes perde
+ * o clique (a hidratação devolve a caixa ao valor da página).
  */
 async function openAccess(page: Page, url: string) {
   await page.goto(url);
-  await expect(page.locator("[data-table-search]").first()).toBeVisible();
+  await expect(
+    page.locator("[data-access-form][data-access-ready]"),
+  ).toHaveCount(1);
+}
+
+/** Abre um módulo recolhido da tabela de telas (ex.: Pedidos). */
+async function openModule(page: Page, key: string) {
+  const toggle = page.locator(`[data-access-module-toggle="${key}"]`);
+  if (!(await toggle.isChecked()))
+    await page.locator(`[data-access-module="${key}"] label`).first().click();
+  await expect(toggle).toBeChecked();
+}
+
+/** Filtro de tipo da aba Cadastros: digita e escolhe a opção. */
+async function chooseType(page: Page, text: string, value: string) {
+  const input = page.locator("[data-party-type-filter-input]");
+  await expect(input).toHaveAttribute("data-party-type-filter-ready", "1");
+  await input.click();
+  await input.fill(text);
+  await page.locator(`[data-party-type-filter-option="${value}"]`).click();
+  await page.waitForURL(new RegExp(`type=${encodeURIComponent(value)}`));
 }
 
 test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async ({
@@ -37,18 +58,31 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   const userLogin = `li-${tag}@factory.com`;
   await login(page, "admin@wellmix.com");
 
-  // Os quatro tipos novos vêm primeiro nos filtros; Gestão de telas à vista.
+  // Os quatro tipos novos vêm logo depois de Clientes e Fornecedores no
+  // filtro com busca; a aba Acessos externos à vista.
   await page.goto("/app/parties");
-  const chips = page.locator("[data-party-type-chip]");
-  await expect(chips.nth(0)).toHaveText("Trading");
-  await expect(chips.nth(1)).toHaveText("Factory");
-  await expect(chips.nth(2)).toHaveText("Supplier");
-  await expect(chips.nth(3)).toHaveText("GP");
-  await expect(page.locator("[data-partner-access-link]")).toBeVisible();
+  const input = page.locator("[data-party-type-filter-input]");
+  await expect(input).toHaveAttribute("data-party-type-filter-ready", "1");
+  await input.click();
+  const values = await page
+    .locator("[data-party-type-filter-option]")
+    .evaluateAll((els) =>
+      els.map((el) => el.getAttribute("data-party-type-filter-option")),
+    );
+  expect(values.slice(0, 7)).toEqual([
+    "",
+    "customer",
+    "supplier",
+    "trading",
+    "factory",
+    "supplier_partner",
+    "gp",
+  ]);
+  await input.press("Escape");
+  await expect(page.locator('[data-parties-tab="access"]')).toBeVisible();
 
   // Novo parceiro a partir do filtro Factory: o tipo já vem marcado.
-  await page.locator('[data-party-type-chip="factory"]').click();
-  await page.waitForURL(/type=factory/);
+  await chooseType(page, "fact", "factory");
   await page.locator("[data-party-new]").click();
   await expect(page.locator("[data-party-type]")).toHaveValue("factory");
   await page.fill('input[name="name"]', factoryName);
@@ -103,6 +137,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
     "data-access-state",
     "internal",
   );
+  await openModule(page, "nav.group.orders");
   page.once("dialog", (dialog) => dialog.accept());
   await page.locator('[data-access-open="quotes"]').uncheck();
   await page.locator("[data-access-save]").click();
@@ -118,7 +153,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
     "data-access-state",
     "blocked",
   );
-  await expect(page.locator('[data-access-limited="explore"]')).toBeVisible();
+  await expect(page.locator('[data-access-limited="explore"]')).toHaveCount(1);
   await expect(page.locator('[data-access-limited="orders"]')).toHaveCount(0);
 
   // Comparar Factory com o Fornecedor: as diferenças são Solicitações ao
@@ -148,15 +183,21 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await expect(page).toHaveURL(/denied=parties/);
 
   // Administrador: copia Solicitações ao fornecedor do Fornecedor de volta para a Factory, com prévia.
+  // (endereço antigo ?view=copy: abre o painel Copiar acesso)
   await login(page, "admin@wellmix.com");
   await page.goto("/app/parties/access?view=copy");
+  const copyForm = page.locator("[data-access-copy-form]");
+  await expect(copyForm).toHaveAttribute("data-auto-apply-ready", "");
   await page.selectOption('select[name="from"]', "role:supplier");
   await page.selectOption('select[name="to"]', "type:factory");
+  await page.waitForURL(/to=type%3Afactory|to=type:factory/);
+  await expect(copyForm).toHaveAttribute("data-auto-apply-ready", "");
   await page.locator('[data-access-copy-screen="quotes"]').check();
   await page.locator("[data-access-copy-preview]").click();
   await expect(page.locator("[data-access-copy-result]")).toContainText(
     "Passa a abrir",
   );
+  page.once("dialog", (dialog) => dialog.accept());
   await page.locator("[data-access-copy-apply]").click();
   await page.waitForURL(/saved=1/);
   await expect(page.locator('[data-access-screen="quotes"]')).toHaveAttribute(
@@ -178,6 +219,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await expect(page.locator("[data-access-copy-result]")).toContainText(
     "Passa a abrir",
   );
+  page.once("dialog", (dialog) => dialog.accept());
   await page.locator("[data-access-copy-apply]").click();
   await page.waitForURL(/saved=1/);
 
@@ -188,6 +230,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await expect(page.locator("[data-access-copy-result]")).toContainText(
     "Passa a abrir",
   );
+  page.once("dialog", (dialog) => dialog.accept());
   await page.locator("[data-access-copy-apply]").click();
   await page.waitForURL(/saved=1/);
   // E tira Pendências e Mensagens da Factory.
@@ -251,8 +294,7 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
 
   // Cadastro da Trading com um login (entra com o papel do Fornecedor).
   await page.goto("/app/parties");
-  await page.locator('[data-party-type-chip="trading"]').click();
-  await page.waitForURL(/type=trading/);
+  await chooseType(page, "trad", "trading");
   await page.locator("[data-party-new]").click();
   await expect(page.locator("[data-party-type]")).toHaveValue("trading");
   await page.fill('input[name="name"]', tradingName);

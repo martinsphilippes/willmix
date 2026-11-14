@@ -33,6 +33,17 @@ const doneParam = (form: FormData) =>
 const errorBack = (form: FormData, to: string) =>
   `${to}?stepCard=${anchorOf(form)}#${anchorOf(form)}`;
 
+/**
+ * Substituir o arquivo do selo ou do memorial (quadro do alto da
+ * Certificação): o documento que está sendo trocado, para o quadro dele dizer
+ * se deu certo ou não. Nulo fora da substituição.
+ */
+const replacedKey = (form: FormData) => {
+  if (str(form, "replace") !== "1") return null;
+  const key = z.enum(IMPORT_STEP_KEYS).safeParse(str(form, "key"));
+  return key.success ? key.data : null;
+};
+
 function back(form: FormData) {
   // Tela do passo do menu de onde a ação veio (docs/FLOW_MENU.md).
   const flow = flowReturnTo(form);
@@ -44,7 +55,13 @@ function back(form: FormData) {
 export async function submitImportStepAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
-  await run(errorBack(form, to), async () => {
+  const replace = replacedKey(form);
+  // Falha na substituição: volta ao quadro do documento, com o arquivo
+  // anterior valendo e o motivo ali mesmo.
+  const failBack = replace
+    ? `${to}?stepCard=${anchorOf(form)}&replaceFailed=${replace}#${anchorOf(form)}-featured`
+    : errorBack(form, to);
+  await run(failBack, async () => {
     const orderId = ID.parse(str(form, "orderId"));
     const key = z.enum(IMPORT_STEP_KEYS).parse(str(form, "key"));
     const value = field(form, "value", z.string().trim().max(200)) || null;
@@ -96,7 +113,11 @@ export async function submitImportStepAction(form: FormData) {
       amount,
       currency,
       documentId,
+      replace: !!replace,
     });
+    // Arquivo substituído: o quadro do documento diz ali mesmo.
+    if (replace)
+      return `${to}?certReplaced=${replace}#${anchorOf(form)}-featured`;
     return `${to}?${doneParam(form)}=submitted#${anchorOf(form)}`;
   });
 }
