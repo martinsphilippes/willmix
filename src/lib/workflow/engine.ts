@@ -55,6 +55,7 @@ import {
   isSampleOrderKey,
   prerequisitesOf,
   type LaneItem,
+  milestoneApprovalOf,
 } from "@/lib/purchase-lanes";
 
 export class WorkflowError extends Error {}
@@ -404,6 +405,9 @@ export function canSubmitRequirement(
     if (baseKeyOf(key) === LANE_KEYS.artReview)
       return can(user, "art.validate");
     if (key === ORDER_SIGNED_WELLMIX) return can(user, "contract.sign");
+    // Aprovações do mapa no fim dos marcos (docs/MILESTONES.md).
+    const approval = milestoneApprovalOf(key);
+    if (approval) return can(user, approval.action);
     return true;
   }
   // Arte, validação, certificado e arte final do pedido de compra (dono,

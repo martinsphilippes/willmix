@@ -63,19 +63,31 @@ Também ficam fora dos 16 marcos: a Revisão (fila da Wellmix, não é do pedido
 - **Parceiros** (fornecedor, trading, agência, OCP, marítima, despachante, transportador): veem só os marcos e as subtarefas deles, como hoje (`src/lib/order-view.ts`).
 - **Informados (I):** recebem aviso quando o marco conclui. Pedido do histórico em espera não gera aviso (fase 1).
 
-## Lacunas para o dono decidir antes da fase 4
+## Aprovações do mapa (decisão do dono, 14/11/2026)
 
-1. **Aprovações que o mapa pede e o sistema ainda não tem como passo:**
-   - GP aprova o cadastro e a certificação;
-   - Comprador aprova o material de arte;
-   - Planner aprova a pré-produção;
-   - Diretoria de compras aprova o sinal.
+Cada aprovação é um item obrigatório do pedido de compra, no fim do marco (`MILESTONE_APPROVALS`, `src/lib/purchase-lanes.ts`):
 
-   A proposta é virar uma subtarefa "Aprovado por X" no fim do marco, que só libera o marco seguinte depois da aprovação. Cada uma precisa do sim do dono.
+| Marco            | Item                                                    | Quem aprova (ação em Equipe → Funções e acessos)                       | Libera quando                                                 |
+| ---------------- | ------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Pedido novo      | `approval_registration`                                 | GP ("Aprovar o cadastro e a certificação", `approve.productManager`)   | NCM validado e ficha mestre completa de todos os produtos     |
+| Certificação     | `approval_certification` (só com certificação na linha) | GP (a mesma ação)                                                      | Certificado de todos os produtos                              |
+| Material de arte | `approval_art_material`                                 | Comprador ("Aprovar o material de arte", `approve.buyer`)              | Faca, foto em alta, MOQ e prazo de todos os produtos          |
+| Pré-produção     | `approval_pre_production` (na etapa da inspeção)        | Planner ("Aprovar a pré-produção", `approve.planner`)                  | Etapa da inspeção começou (dados e ETD no cartão de produção) |
+| Sinal            | `approval_down_payment` (na etapa do contrato)          | Diretoria de compras ("Aprovar o sinal", `approve.purchasingDirector`) | Sinal pago ou conta corrente                                  |
 
-2. **Validação da arte:** no mapa quem aprova é o Marketing; hoje é o analista com a ação "Validar a arte". Manter ou trocar para a função Marketing?
-3. **E24–E27:** decisão do dono (14/11/2026): Comunicar a Compras → Fornecedor → Evidência → Financeiro, o caminho da divergência no recebimento (depois de "Divergência no produto?" e do Lote). Entram como subtarefas do marco 16, seguindo o mapa, na próxima entrega.
-4. **Pré-produção e Produção** cobrem o mesmo passo do mapa (R1). Decisão do dono (14/11/2026): ficam separadas, com a Inspeção e as Amostras entre elas; a Produção conclui quando a inspeção conclui.
+- **Quem recebe a tarefa:** o analista do pedido, se ele tem a ação; senão quem tem (`wellmixRequirementRoute`). O servidor recusa quem não tem a ação (`canSubmitRequirement`). O administrador sempre pode.
+- **O marco seguinte só libera depois:** o item é obrigatório, então a etapa do motor não conclui sem ele. Assim o contrato espera as três aprovações da Preparação, e a produção espera a do sinal.
+- **Pedidos já abertos:** não ganham os itens novos, como nas outras mudanças de etapa. Valem os pedidos de compra gerados a partir de agora.
+- **Padrão das ações:** GP (`product_manager`), Comprador (`buyer`), Planner (`planner`) e Diretoria de compras (`purchasing_director`). **Em produção as funções já têm as ações gravadas.** Enquanto o dono não marcar as ações novas em Equipe e acessos, só o administrador aprova.
+- **Validar a arte pelo Marketing (P5?):** a troca é feita em Equipe e acessos: desmarcar "Validar a arte" das funções que têm hoje (Comprador e outras) e marcar na função Designer (o Marketing). O padrão do código continua o de antes (quem abre Pedidos), porque não muda o que está gravado.
+
+## Lacunas que faltam
+
+1. **E24–E27:** decisão do dono (14/11/2026). O caminho da divergência no recebimento entra como passos do marco 16, na próxima entrega:
+   - Comunicar a Compras: faz a Qualidade, aprova o Planner;
+   - Fornecedor: faz o Comprador, e o fornecedor também responde pelo portal;
+   - Evidência: faz a Qualidade, aprova o Analista;
+   - Financeiro: faz o Financeiro, aprova a Diretoria de compras.
 
 ## Código
 
