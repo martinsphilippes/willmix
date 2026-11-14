@@ -54,6 +54,12 @@ A visão é do passo e das necessidades operacionais dele, não do pedido inteir
 - "Todos no passo" e o "Resolver" das pendências abrem o pedido na tela do passo; as telas focadas que já existem (Die Cut, documento do pedido, documentos do embarque, amostras, fotos reais) seguem diretas. As ações voltam para o pedido no passo (`flowReturnTo` aceita `/app/flow/<bloco>/<passo>/<pedido>`).
 - O detalhe do pedido (`/app/orders/[id]`) não mudou nesta frente.
 
+## Criar pedido (14/11/2026)
+
+- A encomenda do cliente entra por `/app/requests/new`. Com a lista `/app/requests` fora do menu (MENU_HIDDEN), o botão **+ Criar pedido** fica no cabeçalho do Overview do bloco Pedido (`/app/flow/order`), do passo Pedidos (`/app/flow/order/orders`, nas duas abas) e da lista `/app/orders`.
+- Aparece para quem cria: a Wellmix e o cliente, com a tela de solicitações liberada (`canCreateOrder`). Fornecedor e parceiros da operação não veem.
+- O cliente tem também o link "Criar pedido" no grupo "Meus pedidos" do menu.
+
 ## Pedido → Certificação: só a lista, uma linha por produto (14/11/2026)
 
 Pedido do dono (com a foto da tela no login admin): os cartões dos pedidos embaixo da tabela repetiam os itens que já estavam na lista.
