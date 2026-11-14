@@ -103,12 +103,13 @@ export default async function PartiesPage({
       text: (p) => (p.active ? t("common.yes") : t("common.no")),
     },
   ];
-  // Lista curta: inteira, com a ordem e as páginas da TableTools. Longa: no
-  // servidor. A busca é sempre a do filtro (um campo só; dono, 14/11/2026).
+  // Lista curta: inteira, com a TableTools de sempre (busca, ordem e
+  // páginas, como as outras tabelas do portal). Longa: no servidor, com o
+  // campo de busca no quadro de filtros. Um campo de busca só, nos dois.
   const serverMode = filtered.length > SERVER_TABLE_FROM;
   const sort = serverMode ? parseServerSort(one(sp.sort), columns) : null;
   const shown = serverTable(filtered, columns, {
-    q,
+    q: serverMode ? q : "",
     sort,
     page: parseServerPage(one(sp.page)),
     size: serverMode ? undefined : Math.max(filtered.length, 1),
@@ -212,16 +213,18 @@ export default async function PartiesPage({
               marker="party-type-filter"
             />
           </Field>
-          <Field label={t("parties.filter.search")}>
-            <Input
-              name="q"
-              type="search"
-              defaultValue={q}
-              placeholder={t("parties.filter.searchPlaceholder")}
-              aria-label={t("parties.filter.search")}
-              data-parties-search
-            />
-          </Field>
+          {serverMode ? (
+            <Field label={t("parties.filter.search")}>
+              <Input
+                name="q"
+                type="search"
+                defaultValue={q}
+                placeholder={t("parties.filter.searchPlaceholder")}
+                aria-label={t("parties.filter.search")}
+                data-parties-search
+              />
+            </Field>
+          ) : null}
           <AutoApply />
         </form>
         <p
@@ -239,7 +242,7 @@ export default async function PartiesPage({
             <Empty>{t("tableTools.none")}</Empty>
           ) : (
             <>
-              <Table tools={!serverMode} searchable={false}>
+              <Table tools={!serverMode}>
                 <thead>
                   <tr>
                     {header(t("common.name"), "name")}
