@@ -476,3 +476,23 @@ describe("SupabaseStore: histórico do Sankhya em espera", () => {
     for (const call of calls.slice(2)) expect(call).not.toContain("held=");
   });
 });
+
+describe("SupabaseStore: gravação em lote e contagem", () => {
+  it("PATCH com o filtro, listas longas em partes, e contagem sem trazer linhas", async () => {
+    const { calls } = fakeSupabase();
+    const store = new SupabaseStore("https://x.supabase.co", "service");
+    const ids = Array.from({ length: 150 }, (_, i) => `o${i}`);
+    await store.updateWhere("requirements", { orderId: ids, held: true }, {
+      held: null,
+    });
+    const patches = calls.filter((c) => c.startsWith("PATCH"));
+    expect(patches).toHaveLength(2);
+    for (const call of patches) expect(call).toContain("held=eq.true");
+    calls.length = 0;
+    await store.updateWhere("requirements", {}, { held: null });
+    expect(calls).toHaveLength(0);
+    await store.count("stages", { held: true });
+    expect(calls[0]).toContain("select=id&held=eq.true");
+    expect(calls[0]).toContain("limit=1");
+  });
+});

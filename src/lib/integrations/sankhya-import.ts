@@ -1111,13 +1111,12 @@ export async function auditImport(
   );
 }
 
-/**
+/*
  * Histórico em espera até o go-live (decisão do dono, 13/11/2026): as etapas
  * e pendências dos pedidos da carga do histórico nascem com `held` e ficam
- * fora das listas gerais (store.ts, `hidesHeld`). No go-live, uma
- * sincronização traz a situação real e a marca sai (docs/SANKHYA.md).
+ * fora das listas gerais (store.ts, `hidesHeld`). O botão Configurações →
+ * Go-live tira a marca e desliga esta (src/lib/services/go-live.ts).
  */
-export const SANKHYA_HISTORY_HOLD = true;
 
 /**
  * Pedido histórico: as etapas antes da etapa da TOP ficam concluídas (com os
@@ -1141,7 +1140,9 @@ async function advanceStages(
   const targetIndex = STAGE_KEYS.indexOf(target);
   let current: string | null = null;
   const writes: Array<() => Promise<unknown>> = [];
-  const hold = SANKHYA_HISTORY_HOLD ? { held: true } : {};
+  const { historyHoldActive } = await import("@/lib/services/go-live");
+  const holding = await historyHoldActive();
+  const hold = holding ? { held: true } : {};
   for (const stage of stages) {
     const index = STAGE_KEYS.indexOf(stage.key);
     const done = closed || index < targetIndex;
@@ -1166,7 +1167,7 @@ async function advanceStages(
               ...hold,
             }),
           );
-        else if (req.stageId === stage.id && SANKHYA_HISTORY_HOLD)
+        else if (req.stageId === stage.id && holding)
           writes.push(() => store.update("requirements", req.id, hold));
     } else if (index === targetIndex) {
       writes.push(() =>
@@ -1188,7 +1189,7 @@ async function advanceStages(
       );
     }
     // Pendências das etapas ativa e seguintes: em espera também.
-    if (!done && SANKHYA_HISTORY_HOLD)
+    if (!done && holding)
       for (const req of requirements)
         if (req.stageId === stage.id)
           writes.push(() => store.update("requirements", req.id, hold));
@@ -1200,5 +1201,6 @@ async function advanceStages(
     status: target,
     currentStageId: closed ? (last?.id ?? null) : current,
     closedAt: closed ? at : null,
+    ...hold,
   });
 }

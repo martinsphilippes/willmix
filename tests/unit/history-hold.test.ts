@@ -14,6 +14,8 @@ const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const { runReminders } = await import("@/lib/services/reminders");
 const { hidesHeld } = await import("@/lib/db/store");
+const { pendingTasksFor } = await import("@/lib/services/tasks");
+const goLive = await import("@/lib/services/go-live");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -50,6 +52,7 @@ async function heldOrder() {
       ...(s.status === "active" ? { dueAt: overdue, reminderSentAt: null } : {}),
     });
   for (const q of reqs) await store.update("requirements", q.id, { held: true });
+  await store.update("orders", order.id, { held: true });
   return { order, stages, reqs };
 }
 
@@ -95,5 +98,39 @@ describe("histórico em espera", () => {
         .filter((n) => !before.some((b) => b.id === n.id))
         .some((n) => n.link === `/app/orders/${order.id}`),
     ).toBe(false);
+  });
+});
+
+describe("go-live", () => {
+  it("pedido em espera não gera pendência; o go-live libera tudo e desliga a marca", async () => {
+    const { order } = await heldOrder();
+    const mine = async () =>
+      (await pendingTasksFor(admin)).filter(
+        (t) => t.orderNumber === order.number,
+      );
+    expect(await mine()).toHaveLength(0);
+    expect(await goLive.historyHoldActive()).toBe(true);
+    const before = await goLive.goLiveStatus();
+    expect(before.orders).toBeGreaterThan(0);
+    expect(before.stages + before.requirements).toBeGreaterThan(0);
+
+    let step = await goLive.releaseHistoryStep({
+      budgetMs: 10_000,
+      userId: admin.id,
+    });
+    for (let i = 0; step.state === "running" && i < 20; i++)
+      step = await goLive.releaseHistoryStep({
+        budgetMs: 10_000,
+        userId: admin.id,
+      });
+    expect(step.state).toBe("done");
+    const after = await goLive.goLiveStatus();
+    expect(after.orders + after.stages + after.requirements).toBe(0);
+    expect(after.released).toBe(true);
+    expect(after.doneAt).toBeTruthy();
+    // A carga seguinte não marca mais.
+    expect(await goLive.historyHoldActive()).toBe(false);
+    // As pendências do pedido voltam.
+    expect((await mine()).length).toBeGreaterThan(0);
   });
 });

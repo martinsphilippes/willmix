@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type { TableName, Tables } from "./schema";
-import type { ListOptions, NewRow, Patch, Store } from "./store";
+import type { Filter, ListOptions, NewRow, Patch, Store } from "./store";
 import { pickColumns } from "./store";
 import type { ByteRange } from "@/lib/http-range";
 import { noteWrite, removalNeedsRow } from "./summary-dirty";
@@ -134,6 +134,34 @@ export class CachedStore implements Store {
         this.written();
       }
     };
+  }
+
+  /**
+   * Gravação em lote por filtro (store.ts). Sem ela no banco, lista e grava
+   * uma a uma. Não marca resumos: quem usa reconstrói depois.
+   */
+  async updateWhere<K extends TableName>(
+    table: K,
+    filter: Filter<Tables[K]>,
+    patch: Patch<Tables[K]>,
+  ) {
+    this.written();
+    try {
+      if (this.base.updateWhere)
+        return await this.base.updateWhere(table, filter, patch);
+      const rows = await this.base.list(table, { filter });
+      for (const row of rows) await this.base.update(table, row.id, patch);
+    } finally {
+      this.written();
+    }
+  }
+
+  count<K extends TableName>(table: K, filter: Filter<Tables[K]>) {
+    return this.read(`count:${table}:${JSON.stringify(filter)}`, async () =>
+      this.base.count
+        ? this.base.count(table, filter)
+        : (await this.base.list(table, { filter })).length,
+    );
   }
 
   async remove<K extends TableName>(table: K, id: string) {
