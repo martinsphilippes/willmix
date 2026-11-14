@@ -2694,7 +2694,17 @@ export default async function OrderPage({
           title={t("certFlow.title")}
           anchor="certification"
           featured={importFlow.CERT_FEATURED_STEPS}
-          featuredHint={t("certFlow.featured.hint")}
+          // Memorial e selo: quem envia (a certificadora do pedido) lê como
+          // anexar; quem só acompanha, que é ela quem envia (dono, 14/11/2026).
+          featuredHint={t(
+            certSteps.some(
+              (v) =>
+                importFlow.CERT_FEATURED_STEPS.includes(v.template.key) &&
+                v.canSubmit,
+            )
+              ? "certFlow.featured.hint"
+              : "certFlow.featured.follow",
+          )}
           error={stepCard === "certification" ? stepError : null}
           hints={[
             ...(certSteps.some((v) => v.template.key === "cert_seal")
