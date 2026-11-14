@@ -15,6 +15,7 @@ import {
 import {
   ACTION_GROUPS,
   accessFromFunctions,
+  functionDescription,
   functionLabel,
   type FunctionDef,
 } from "@/lib/auth/function-access";
@@ -649,9 +650,10 @@ function FunctionsTab({
               </span>
             }
           >
-            {current.builtin ? (
+            {current.builtin &&
+            functionDescription(current.key, (k) => t(k as DictionaryKey)) ? (
               <p className="mb-3 text-sm text-zinc-600">
-                {t(`function.desc.${current.key}` as DictionaryKey)}
+                {functionDescription(current.key, (k) => t(k as DictionaryKey))}
               </p>
             ) : null}
             <p className="mb-4 text-xs text-zinc-500">{t("fn.adminNote")}</p>
