@@ -504,6 +504,29 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.goto(`/app/flow/order/orders/${allOrderId}`);
   await expect(page.locator("[data-flow-order-item]").first()).toBeVisible();
   await expect(page.locator("[data-production-card]")).toHaveCount(0);
+  // Overview do bloco pelos pedidos (docs/FLOW_MENU.md, 14/11/2026): KPIs,
+  // a linha do tempo geral, o passo com o número de pedidos e a tabela com a
+  // completude; o pedido abre na linha do tempo dele, com o bloco em foco.
+  await page.goto("/app/flow/order");
+  await expect(page.locator("[data-flow-kpis]")).toBeVisible();
+  await expect(page.locator("[data-flow-general-block]")).toHaveCount(3);
+  await expect(
+    page.locator('[data-flow-timeline-step="art"]'),
+  ).not.toHaveAttribute("data-flow-entities", "0");
+  await page.locator('[data-flow-timeline-step="art"]').click();
+  await page.waitForURL(/step=art/);
+  const entity = page.locator(`[data-flow-entity="${allOrderId}"]`);
+  await expect(entity.locator("[data-flow-entity-block]")).toBeVisible();
+  await expect(entity.locator("[data-flow-entity-overall]")).toBeVisible();
+  await entity.locator("[data-flow-entity-open]").click();
+  await page.waitForURL(/from=order/);
+  await expect(page.locator('[data-order-progress="order"]')).toBeVisible();
+  await expect(
+    page.locator('[data-order-progress-block="order"]'),
+  ).toHaveAttribute("aria-current", "step");
+  await expect(
+    page.locator('[data-order-progress-stage="PACKAGING"]'),
+  ).toBeVisible();
   await page.goto("/app/flow/order/art");
   await expect(
     page.locator('[data-flow-tab="pending"][aria-current="page"]'),
@@ -968,7 +991,16 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
 }) => {
   await login(page, "joao@lojista.com");
   await page.goto("/app/requests/new");
-  await page.selectOption('select[name="p0.productId"]', "prod-jarra");
+  // Produto escolhido pela busca (nome ou código); a ficha vem do servidor
+  // e preenche a linha antes de a descrição ser trocada.
+  const product = page.locator(
+    '[data-request-item="0"] [data-product-picker="catalog"]',
+  );
+  await product.locator("[data-product-picker-input]").fill("jarra");
+  await product.locator('[data-product-picker-option="prod-jarra"]').click();
+  await expect(
+    page.locator('[data-request-item="0"] [role="status"]'),
+  ).toBeVisible();
   await page.fill('textarea[name="p0.description"]', "Jarra de vidro");
   // A quantidade fica acima do pedido mínimo da jarra, se houver (a tela
   // sobe e o servidor recusa abaixo dele).

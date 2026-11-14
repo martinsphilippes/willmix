@@ -12,3 +12,15 @@ export function partyPickerLabels(t: Translate): PartyPickerLabels {
     clear: t("partyPicker.clear"),
   };
 }
+
+/** Textos do campo de produto com busca (nome ou código), no idioma de quem vê. */
+export function productPickerLabels(t: Translate): PartyPickerLabels {
+  return {
+    placeholder: t("productPicker.placeholder"),
+    typeMore: t("productPicker.typeMore"),
+    none: t("productPicker.none"),
+    loading: t("partyPicker.loading"),
+    pick: t("productPicker.pick"),
+    clear: t("partyPicker.clear"),
+  };
+}
