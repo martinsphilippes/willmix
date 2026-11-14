@@ -1391,6 +1391,11 @@ alter table public."receivings" add column if not exists "containerReturnDocumen
 alter table public."receivings" add column if not exists "closedAt" timestamptz;
 alter table public."receivings" add column if not exists "closedByUserId" text;
 alter table public."receivings" add column if not exists "closingNote" text;
+alter table public."receivings" add column if not exists "qualityResult" text;
+alter table public."receivings" add column if not exists "qualityAt" timestamptz;
+alter table public."receivings" add column if not exists "qualityByUserId" text;
+alter table public."receivings" add column if not exists "qualityNote" text;
+alter table public."receivings" add column if not exists "storedAt" timestamptz;
 alter table public."receivings" add column if not exists "updatedByUserId" text;
 create unique index if not exists "receivings_order_unique" on public."receivings" ("orderId");
 create index if not exists "receivings_created" on public."receivings" ("createdAt");

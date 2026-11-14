@@ -291,11 +291,13 @@ describe("pedido do Comprador, com designer da Wellmix e parceiros", () => {
       progress: { status: "pending", percent: 0, done: 0, total: 1 },
     });
     // A validação da arte espera a arte: em cinza; a ficha de compra, liberada.
+    // A aprovação do material de arte (Comprador, docs/MILESTONES.md)
+    // espera a faca, a foto, o MOQ e o prazo: em cinza.
     expect(rows.PREPARATION).toEqual({
       open: [],
-      later: ["art_review"],
+      later: ["approval_art_material", "art_review"],
       parts: ["sheet"],
-      progress: { status: "active", percent: 0, done: 0, total: 2 },
+      progress: { status: "active", percent: 0, done: 0, total: 3 },
     });
     // Etapas que não começaram: só o que é dele, em cinza.
     expect(rows.PACKAGING).toMatchObject({
@@ -350,7 +352,7 @@ describe("pedido do Comprador, com designer da Wellmix e parceiros", () => {
     // A validação continua em cinza para o Comprador.
     expect((await rowsOf(buyer, order)).PREPARATION).toMatchObject({
       open: [],
-      later: ["art_review"],
+      later: ["approval_art_material", "art_review"],
     });
   });
 
@@ -370,21 +372,21 @@ describe("pedido do Comprador, com designer da Wellmix e parceiros", () => {
     });
     expect((await rowsOf(buyer, order)).PREPARATION).toEqual({
       open: ["art_review"],
-      later: [],
+      later: ["approval_art_material"],
       parts: ["sheet"],
-      progress: { status: "active", percent: 0, done: 0, total: 2 },
+      progress: { status: "active", percent: 0, done: 0, total: 3 },
     });
     expect(await rowsOf(otherBuyer, order)).toEqual({});
   });
 
-  it("arte validada: a etapa do Comprador fica só com a ficha de compra, contando a feita", async () => {
+  it("arte validada: a etapa do Comprador fica com a ficha de compra e a aprovação do material, contando a feita", async () => {
     const review = await requirementOf(order, "art_review");
     await engine.decideRequirement(buyer, review.id, "approve");
     expect((await rowsOf(buyer, order)).PREPARATION).toEqual({
       open: [],
-      later: [],
+      later: ["approval_art_material"],
       parts: ["sheet"],
-      progress: { status: "active", percent: 50, done: 1, total: 2 },
+      progress: { status: "active", percent: 33, done: 1, total: 3 },
     });
   });
 

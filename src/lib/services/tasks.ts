@@ -1270,6 +1270,42 @@ export async function pendingTasksFor(
       if (!isSchemaMissing(error)) throw error;
     }
   }
+  // Qualidade no CD (mapa E19; docs/DELIVERY.md): descarga registrada e a
+  // conferência da qualidade por concluir.
+  if (wellmix) {
+    try {
+      const { qualityTasks } = await import("./receiving");
+      const ptText = translator("pt");
+      for (const order of await qualityTasks(user)) {
+        const values = { n: order.number };
+        tasks.push(
+          finish(
+            {
+              kind: "real_media",
+              group: "quality",
+              title: ptText("quality.task.title", values),
+              detail: ptText("quality.task.detail", values),
+              text: {
+                title: "quality.task.title",
+                detail: "quality.task.detail",
+                values,
+              },
+              link: `/app/orders/${order.id}#receiving`,
+              dueAt: null,
+              requestId: order.requestId,
+              orderNumber: order.number,
+              customerId: order.customerId,
+              ownerUserId: order.ownerUserId ?? null,
+            },
+            now,
+          ),
+        );
+      }
+    } catch (error) {
+      const { isSchemaMissing } = await import("@/lib/db/errors");
+      if (!isSchemaMissing(error)) throw error;
+    }
+  }
   // Fatura ativa em N dias (mapa R24): com os documentos do embarque
   // conferidos, o financeiro registra o faturamento até o vencimento.
   if (wellmix) {

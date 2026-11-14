@@ -4,6 +4,7 @@ import { RECEIVING_CHECKS } from "@/lib/db/schema";
 import type { ReceivingView } from "@/lib/services/receiving";
 import {
   closeReceivingAction,
+  concludeQualityAction,
   saveCountsAction,
   saveReturnAction,
   saveRicAction,
@@ -43,6 +44,7 @@ export function ReceivingCard({
   notice,
   sections = ["storage", "return"],
   returnTo,
+  canQuality = false,
 }: {
   t: Translate;
   order: Order;
@@ -56,6 +58,8 @@ export function ReceivingCard({
   sections?: ReadonlyArray<"storage" | "return">;
   /** Tela do passo do menu: a ação volta para ela em vez do pedido. */
   returnTo?: string;
+  /** Quem vê pode concluir a conferência da qualidade (mapa E19). */
+  canQuality?: boolean;
 }) {
   const row = view.row;
   const closed = !!row?.closedAt;
@@ -297,6 +301,56 @@ export function ReceivingCard({
                   </SubmitButton>
                 </div>
               ) : null}
+            </div>
+            {/* Qualidade no CD (mapa E19, E19?, E22): conclui a conferência. */}
+            <div className="mt-4" data-receiving-quality>
+              <h3 className="mb-1 text-sm font-semibold text-zinc-900">
+                {t("quality.title")}
+              </h3>
+              {row?.qualityAt ? (
+                <p
+                  className={
+                    row.qualityResult === "divergent"
+                      ? "text-sm text-red-700"
+                      : "text-sm text-emerald-700"
+                  }
+                  data-quality-result={row.qualityResult ?? ""}
+                >
+                  {t(
+                    row.qualityResult === "divergent"
+                      ? "quality.divergent"
+                      : "quality.ok",
+                    { date: formatDate(row.qualityAt, t) },
+                  )}
+                  {row.qualityNote ? ` · ${row.qualityNote}` : ""}
+                </p>
+              ) : !row?.items.length ? (
+                <p className="text-sm text-zinc-500">
+                  {t("quality.waitCounts")}
+                </p>
+              ) : canQuality && !closed ? (
+                <form
+                  action={concludeQualityAction}
+                  className="flex flex-wrap items-end gap-2"
+                  data-quality-form
+                >
+                  {hidden}
+                  <p className="w-full text-sm text-zinc-600">
+                    {t("quality.hint")}
+                  </p>
+                  <Input
+                    name="qualityNote"
+                    maxLength={1000}
+                    placeholder={t("quality.note")}
+                    className="min-w-0 flex-1"
+                  />
+                  <SubmitButton data-quality-conclude>
+                    {t("quality.conclude")}
+                  </SubmitButton>
+                </form>
+              ) : (
+                <p className="text-sm text-zinc-500">{t("quality.hint")}</p>
+              )}
             </div>
           </>
         ) : null}

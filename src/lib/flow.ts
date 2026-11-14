@@ -165,6 +165,12 @@ const REQUIREMENT_STEP: Record<string, Ref> = {
   order_signed_supplier: "order/contract",
   // Sinal ao fornecedor (P12).
   down_payment: "finance/finance",
+  // Aprovações do mapa no fim dos marcos (docs/MILESTONES.md).
+  approval_registration: "registry/products",
+  approval_certification: "order/certification",
+  approval_art_material: "order/art-material",
+  approval_pre_production: "production/pre-production",
+  approval_down_payment: "finance/finance",
   // Inspeção: fotos, peso, vídeo, conformidade e aprovação dos SKUs (R3, R4?).
   photo_unpacked: "production/inspection",
   photo_packed: "production/inspection",

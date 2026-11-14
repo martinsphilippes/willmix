@@ -49,11 +49,22 @@ export const ACTION_GROUPS = [
       "contract.sign",
       "order.cancel",
       "realMedia.approve",
+      // Aprovações do mapa no fim dos marcos (dono, 14/11/2026;
+      // docs/MILESTONES.md).
+      "approve.productManager",
+      "approve.buyer",
+      "approve.planner",
+      "approve.purchasingDirector",
     ],
   },
   {
     key: "logistics",
-    actions: ["numerario.manage", "receiving.follow", "container.tracking"],
+    actions: [
+      "numerario.manage",
+      "receiving.follow",
+      "container.tracking",
+      "receiving.quality",
+    ],
   },
   {
     key: "money",
@@ -98,6 +109,9 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
     // as fotos do catálogo e ativa a venda (mapa R5/R16; dono, 14/11/2026).
     case "realMedia.approve":
       return ["designer"];
+    // Conferência da qualidade no CD (mapa E19; dono, 14/11/2026).
+    case "receiving.quality":
+      return ["quality"];
     case "receiving.follow":
       return ["buyer"];
     // Rastreio diário do container (mapa R19; dono, 13/11/2026).
@@ -118,8 +132,21 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
     // administrador muda em Equipe → Funções e acessos.
     case "contract.sign":
       return ["purchasing_director", "executive_director"];
+    // Validar a arte: no mapa (P5?) quem aprova é o Marketing (dono,
+    // 14/11/2026). Em produção as funções já têm as ações gravadas (Equipe →
+    // Funções e acessos), e a troca é feita lá; o padrão do código fica o
+    // de antes (quem abre Pedidos).
     case "art.validate":
       return withScreen("orders");
+    // Aprovações do mapa no fim dos marcos (dono, 14/11/2026).
+    case "approve.productManager":
+      return ["product_manager"];
+    case "approve.buyer":
+      return ["buyer"];
+    case "approve.planner":
+      return ["planner"];
+    case "approve.purchasingDirector":
+      return ["purchasing_director"];
     // Só o administrador, como antes.
     case "order.cancel":
     case "values.view":

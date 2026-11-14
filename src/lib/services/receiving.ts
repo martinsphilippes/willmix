@@ -454,3 +454,126 @@ export async function receivingView(order: Order): Promise<ReceivingView> {
     finance,
   };
 }
+
+/* ---------------- Qualidade no CD (mapa E19, E19?, E22) ---------------- */
+
+/*
+ * Pedido do dono (14/11/2026): a qualidade confere o produto recebido no CD
+ * contra o pedido. Ela usa a conferência por SKU acima e conclui: sem
+ * divergência, o produto é armazenado (E22) e vendas fica sabendo; com
+ * divergência, Compras é avisada e o pedido segue a trilha do lote
+ * (E21: Compras → Fornecedor → Evidência → Financeiro).
+ *
+ * Quem conclui: quem tem a ação "Concluir a conferência da qualidade"
+ * (padrão: a função Qualidade (CD)); sem ninguém com ela na equipe, a
+ * Wellmix (como antes) e sempre o administrador.
+ */
+
+async function qualityHolders() {
+  const team = await getStore().list("users", {
+    filter: { role: ["admin", "operator"], active: true },
+  });
+  return holdersOf(team, "receiving.quality", await loadFunctionDefs());
+}
+
+export async function canDoQuality(user: User): Promise<boolean> {
+  if (isAdmin(user)) return true;
+  if (!isWellmix(user)) return false;
+  const holders = await qualityHolders();
+  return holders.length === 0 || holders.some((u) => u.id === user.id);
+}
+
+/** A qualidade conclui a conferência (a contagem por SKU já registrada). */
+export async function concludeQuality(
+  user: User,
+  orderId: string,
+  note: string | null,
+) {
+  if (!(await canDoQuality(user))) throw new ForbiddenError();
+  const { order, current } = await load(user, orderId);
+  const items = await getStore().list("order_items", { filter: { orderId } });
+  if (
+    !current ||
+    items.some((i) => !current.items.some((x) => x.orderItemId === i.id))
+  )
+    throw new ReceivingError("quality_counts_required");
+  if (current.qualityAt) throw new ReceivingError("quality_done");
+  const divergent = current.items.some(hasDivergence);
+  const now = new Date().toISOString();
+  const clean = note?.trim() || null;
+  if (divergent && !clean) throw new ReceivingError("quality_note_required");
+  const row = await upsert(user, orderId, current, {
+    qualityResult: divergent ? "divergent" : "ok",
+    qualityAt: now,
+    qualityByUserId: user.id,
+    qualityNote: clean,
+    ...(divergent ? {} : { storedAt: now }),
+  });
+  await audit(
+    user,
+    divergent ? "receiving.quality_divergent" : "receiving.quality_ok",
+    "order",
+    orderId,
+    divergent
+      ? `Qualidade: carga com divergência${clean ? ` (${clean})` : ""}; segue a trilha do lote`
+      : "Qualidade: carga conferida sem divergência; armazenada no CD",
+  );
+  const team = await getStore().list("users", {
+    filter: { role: ["admin", "operator"], active: true },
+  });
+  const defs = await loadFunctionDefs();
+  const ids = (key: Parameters<typeof holdersOf>[1]) => {
+    const set = new Set(holdersOf(team, key, defs).map((u) => u.id));
+    if (order.ownerUserId) set.add(order.ownerUserId);
+    if (!set.size) for (const u of team.filter(isAdmin)) set.add(u.id);
+    return [...set];
+  };
+  await notify(
+    {
+      // Sem divergência: vendas (o produto está no estoque); com ela, Compras.
+      userIds: ids(
+        divergent ? "receiving.follow" : "purchaseOrder.salesNotice",
+      ),
+    },
+    {
+      link: `/app/orders/${orderId}#receiving`,
+      kind: divergent ? "alert" : "info",
+      actor: null,
+      text: (t) => ({
+        subject: t(
+          divergent
+            ? "quality.notify.divergent.subject"
+            : "quality.notify.stored.subject",
+          { n: String(order.number) },
+        ),
+        body: t(
+          divergent
+            ? "quality.notify.divergent.body"
+            : "quality.notify.stored.body",
+          { note: clean ?? "" },
+        ),
+      }),
+    },
+  );
+  return row;
+}
+
+/**
+ * Pendências da qualidade: recebimentos com a descarga registrada e a
+ * conferência da qualidade por concluir (lê os recebimentos e os pedidos
+ * deles por id).
+ */
+export async function qualityTasks(user: User): Promise<Order[]> {
+  if (!(await canDoQuality(user))) return [];
+  const rows = await getStore()
+    .list("receivings")
+    .catch(() => [] as Receiving[]);
+  const open = rows.filter(
+    (r) => !r.closedAt && !r.qualityAt && (r.checklist?.length ?? 0) > 0,
+  );
+  if (!open.length) return [];
+  const orders = await getStore().list("orders", {
+    filter: { id: open.map((r) => r.orderId) },
+  });
+  return orders.filter((o) => o.status !== "CANCELLED" && !o.held);
+}

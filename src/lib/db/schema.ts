@@ -535,6 +535,8 @@ export const WELLMIX_FUNCTIONS = [
   "designer",
   // Comex interno da Wellmix (não é o despachante): rastreio do container.
   "comex_internal",
+  // Qualidade do CD (mapa E19): confere a carga recebida contra o pedido.
+  "quality",
 ] as const;
 export type WellmixFunction = (typeof WELLMIX_FUNCTIONS)[number];
 
@@ -2281,6 +2283,17 @@ export interface Receiving extends BaseRow {
   closedAt: string | null;
   closedByUserId: string | null;
   closingNote: string | null;
+  /**
+   * Conferência da qualidade no CD (mapa E19/E19?, E22; docs/DELIVERY.md):
+   * "ok" (sem divergência: armazenado) ou "divergent" (segue a trilha do
+   * lote). Nulo antes da conferência.
+   */
+  qualityResult?: "ok" | "divergent" | null;
+  qualityAt?: string | null;
+  qualityByUserId?: string | null;
+  qualityNote?: string | null;
+  /** Armazenado no CD (sem divergência). */
+  storedAt?: string | null;
   updatedByUserId: string | null;
 }
 
@@ -4550,6 +4563,11 @@ export const TABLES: Record<TableName, TableDef> = {
       closedAt: datetime(),
       closedByUserId: id(false),
       closingNote: text(),
+      qualityResult: str(20),
+      qualityAt: datetime(),
+      qualityByUserId: id(false),
+      qualityNote: text(),
+      storedAt: datetime(),
       updatedByUserId: id(false),
     },
     indexes: [{ key: "order_unique", type: "unique", columns: ["orderId"] }],

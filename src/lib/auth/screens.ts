@@ -281,6 +281,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   designer: ["orders", "products", "marketing", "explore"],
   // Comex interno: acompanha o container (rastreio diário) e o embarque.
   comex_internal: ["orders", "containers", "freight", "history"],
+  // Qualidade do CD: o recebimento no pedido e os containers que chegam.
+  quality: ["orders", "containers", "products"],
 };
 
 type Who = Pick<User, "role"> &

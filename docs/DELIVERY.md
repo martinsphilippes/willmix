@@ -39,13 +39,43 @@ no passo **DANFE** do embarque, que passou a ser do **financeiro**: a
 permissão "Numerário" (padrão: função financeiro) ou o administrador. Antes
 era de qualquer login da Wellmix.
 
+## Entrega no CD do comprador (E17?, E18)
+
+- O sistema vê quem é o comprador. A Wellmix é o cadastro de cliente com o
+  CODEMP do Sankhya (`purchaseOrderCustomer`).
+- **Comprador ≠ Wellmix:** cartão **Entrega no CD do comprador** no pedido,
+  para a Wellmix e a transportadora, do Desembaraço à Entrega. Mostra o
+  comprador, o endereço de entrega do cadastro (com aviso se faltar), a
+  transportadora e quem confirma: o comprador, no item "Recebimento
+  confirmado" da etapa Entrega, que já existia.
+- **Comprador = Wellmix:** a carga vai ao CD da Wellmix (cartão
+  Recebimento).
+
+## Qualidade no CD (E19, E19?, E22)
+
+O dono não detalhou como a qualidade confere; ficou o padrão abaixo, para
+confirmar.
+
+- Função nova **Qualidade (CD)** e a ação **"Concluir a conferência da
+  qualidade no CD"** (Equipe → Funções e acessos, módulo Entrega). Sem
+  ninguém com a ação na equipe, a Wellmix conclui, como antes; o
+  administrador sempre pode.
+- No cartão **Recebimento**, quadro **Qualidade (CD)**: depois da contagem
+  por SKU (que já existia), a qualidade conclui.
+  - **Sem divergência:** o produto fica **armazenado** (`storedAt`) e vendas
+    é avisada.
+  - **Com divergência:** a observação é obrigatória, Compras (analista e
+    "Acompanhar o recebimento") é avisada, e o pedido segue a trilha do lote.
+- Pendência **"Conferir a carga no CD"** (grupo Qualidade) com a descarga
+  registrada e a conferência por concluir.
+- Dados: em `receivings`, `qualityResult` (`ok`/`divergent`),
+  `qualityAt`, `qualityByUserId`, `qualityNote` e `storedAt`.
+
 ## Fica para depois
 
 - Lote com divergência (E21, E24 a E27: comunicar Compras → Fornecedor →
   Evidência → Financeiro). Está com a sessão "Overview com entidades e
   timeline".
-- Entrega no CD do comprador quando ele não é a Wellmix (E17?, E18) e a
-  conferência pela qualidade (E19, E19?).
 
 Código: `src/lib/services/delivery.ts`, ações em
 `src/app/app/actions/delivery.ts`. Teste: `tests/unit/delivery.test.ts`.
