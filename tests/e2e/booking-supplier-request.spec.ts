@@ -396,6 +396,30 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-answer]")).toContainText(
     /1[.,]3\b/,
   );
+  // "✓ Enviado" ao lado de "Enviar resposta" (dono, 14/11/2026): há resposta
+  // gravada; continua ao recarregar; some ao mudar um campo e volta ao
+  // gravar de novo.
+  const sent = page.locator("[data-supplier-answer-form] [data-sent-mark]");
+  await expect(sent).toHaveAttribute("data-sent-mark", "on");
+  // O fornecedor de teste usa o portal em chinês.
+  await expect(sent).toHaveText(/^(Enviado|Sent|已发送)$/);
+  await page.reload();
+  await expect(sent).toHaveAttribute("data-sent-mark", "on");
+  const answerNote = page.locator(
+    '[data-supplier-answer-form] textarea[name="note"]',
+  );
+  const noteBefore = await answerNote.inputValue();
+  await answerNote.fill("Caixa confirmada.");
+  await expect(sent).toHaveAttribute("data-sent-mark", "off");
+  await expect(sent).toBeHidden();
+  // Voltar ao que estava gravado mostra de novo.
+  await answerNote.fill(noteBefore);
+  await expect(sent).toHaveAttribute("data-sent-mark", "on");
+  await answerNote.fill("Caixa confirmada.");
+  await expect(sent).toBeHidden();
+  await page.click("[data-supplier-answer-submit]");
+  await expect(answerNote).toHaveValue("Caixa confirmada.");
+  await expect(sent).toHaveAttribute("data-sent-mark", "on");
   // Ficha negociada: o preço combinado, com o do booking riscado ao lado;
   // o Superplan refeito é só da Wellmix.
   await expect(page.locator('[data-negotiated-value="price"]')).toContainText(

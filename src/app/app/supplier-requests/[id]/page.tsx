@@ -1,4 +1,5 @@
 import { EntityTimelineCard } from "@/components/entity-timeline-card";
+import { SentMark } from "@/components/sent-mark";
 import { requestTimeline } from "@/lib/services/entity-timeline";
 import Link from "next/link";
 import { RequestColorPlan } from "@/components/color-lines";
@@ -1006,12 +1007,22 @@ export default async function SupplierRequestPage({
                     defaultValue={r.supplierNote ?? ""}
                   />
                 </Field>
-                <SubmitButton
-                  pendingText={t("supplierRequests.detail.answer.pending")}
-                  data-supplier-answer-submit
-                >
-                  {t("supplierRequests.detail.answer.submit")}
-                </SubmitButton>
+                <div className="flex flex-wrap items-center gap-3">
+                  <SubmitButton
+                    pendingText={t("supplierRequests.detail.answer.pending")}
+                    data-supplier-answer-submit
+                  >
+                    {t("supplierRequests.detail.answer.submit")}
+                  </SubmitButton>
+                  {/* "✓ Enviado" (dono, 14/11/2026): há resposta gravada e
+                      nenhum campo mudou desde então. A chave refaz o
+                      componente a cada envio gravado. */}
+                  <SentMark
+                    key={r.respondedAt ?? "none"}
+                    saved={!!r.supplierCanDo}
+                    label={t("supplierRequests.detail.answer.sent")}
+                  />
+                </div>
               </form>
             ) : null}
           </Card>
