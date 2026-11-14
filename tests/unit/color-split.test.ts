@@ -7,6 +7,7 @@ import {
   hasVariations,
   planMatches,
   splitByColor,
+  spreadCartons,
 } from "@/lib/color-split";
 
 /* Variações de cor do vencedor: cores do Book e divisão por cor e por data. */
@@ -182,5 +183,74 @@ describe("plano de cores", () => {
       carton: 48,
     });
     expect("error" in off && off.error.error).toBe("colors_cartons");
+  });
+});
+
+describe("caixas por cor digitadas (dono, 14/11/2026)", () => {
+  it("cada cor fica com as suas caixas, espalhadas pelas datas", () => {
+    // BEGE 30, CARVALHO 20, MARROM 20 = 70 caixas de 12; datas 35 + 35.
+    const r = splitByColor({
+      rounds: [420, 420],
+      colors: ["BEGE", "CARVALHO", "MARROM"],
+      carton: 12,
+      cartons: { BEGE: 30, CARVALHO: 20, MARROM: 20 },
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.rows).toEqual([
+      { color: "BEGE", quantity: 360, rounds: [180, 180] },
+      { color: "CARVALHO", quantity: 240, rounds: [120, 120] },
+      { color: "MARROM", quantity: 240, rounds: [120, 120] },
+    ]);
+  });
+
+  it("caixas que não somam o total das datas: recusa, nada muda", () => {
+    expect(
+      splitByColor({
+        rounds: [480],
+        colors: ["A", "B"],
+        carton: 48,
+        cartons: { A: 6, B: 5 },
+      }),
+    ).toEqual({ ok: false, error: "colors_total", expected: 10, got: 11 });
+  });
+
+  it("uma cor e cor com zero caixas também valem", () => {
+    const r = splitByColor({
+      rounds: [96, 48],
+      colors: ["A", "B"],
+      carton: 48,
+      cartons: { A: 3, B: 0 },
+    });
+    expect(r.ok && r.rows.map((x) => x.rounds)).toEqual([
+      [96, 48],
+      [0, 0],
+    ]);
+  });
+
+  it("plano personalizado marcado como tal", () => {
+    const out = buildColorPlan({
+      assortment: "A/B",
+      rounds: [144],
+      carton: 48,
+      cartons: { A: 2, B: 1 },
+    });
+    expect("plan" in out && out.plan).toEqual({
+      colors: ["A", "B"],
+      included: ["A", "B"],
+      rows: [
+        { color: "A", quantity: 96, rounds: [96] },
+        { color: "B", quantity: 48, rounds: [48] },
+      ],
+      custom: true,
+    });
+  });
+
+  it("espalha um total de caixas pelas datas na proporção de cada uma", () => {
+    expect(spreadCartons(70, [1440, 1440])).toEqual([35, 35]);
+    expect(spreadCartons(71, [1440, 1440])).toEqual([36, 35]);
+    expect(spreadCartons(10, [3, 1])).toEqual([8, 2]);
+    expect(spreadCartons(5, [0, 0])).toEqual([3, 2]);
+    expect(spreadCartons(5, [])).toEqual([]);
   });
 });

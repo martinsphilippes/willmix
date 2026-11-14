@@ -337,6 +337,46 @@ describe("variações de cor do vencedor até o pedido", () => {
     ]);
   });
 
+  it("caixas digitadas por cor: gravadas como estão e levadas ao pedido", async () => {
+    const store = getStore();
+    const items = await closedLot([row("CL-6", "Free jar", "AZUL/VERDE")]);
+    // 15 + 5 caixas de 48 = 960 peças, em uma data.
+    const { group, request } = await approvedFromGroup({
+      itemIds: [items[0].id],
+      chosenItemId: items[0].id,
+      quantity: 960,
+      needs: null,
+      colorCartons: { AZUL: 15, VERDE: 5 },
+    });
+    expect(group.colorPlan).toMatchObject({
+      custom: true,
+      rows: [
+        { color: "AZUL", quantity: 720 },
+        { color: "VERDE", quantity: 240 },
+      ],
+    });
+    const order = await po.createPurchaseOrder(admin, [
+      { requestId: request.id, quantity: null },
+    ]);
+    const [item] = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    expect(item.colors).toEqual([
+      { color: "AZUL", quantity: 720 },
+      { color: "VERDE", quantity: 240 },
+    ]);
+    // Soma diferente do total: recusa.
+    await expect(
+      groups.saveSelectionGroup(admin, {
+        itemIds: [items[0].id],
+        chosenItemId: items[0].id,
+        quantity: 960,
+        needs: null,
+        colorCartons: { AZUL: 15, VERDE: 6 },
+      }),
+    ).rejects.toThrow("selection_colors_total");
+  });
+
   it("recusa gravar sem cor ou com caixa que não fecha; sem variações segue igual", async () => {
     const items = await closedLot([
       row("CL-4", "Odd jar", "ROSA/LILAS"),

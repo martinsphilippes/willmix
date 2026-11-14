@@ -17,6 +17,9 @@ import {
 import { cartCount } from "@/lib/services/cart";
 import { ExploreHero, ProductCard, TrustStrip } from "@/components/explore-ui";
 import { Alert, cx } from "@/components/ui";
+import { ServerPager } from "@/components/server-table";
+import { parseServerPage } from "@/lib/server-table";
+import { pageRange } from "@/lib/table-tools";
 
 /*
  * Vitrine do cliente (Explorar): busca, categorias, ordem e a grade de
@@ -62,12 +65,33 @@ export default async function ExplorePage({
     canBuyOnStorefront(user),
   ]);
   const addedProduct = added ? items.find((p) => p.id === added) : null;
+  // Vitrine em páginas (auditoria de performance, 14/11/2026): com os 17 mil
+  // produtos a página saía com 72 MB, todos os cartões de uma vez, também no
+  // celular. A busca, a categoria e a ordem continuam valendo para o catálogo
+  // inteiro; o produto que acabou de ir para o carrinho abre na página dele.
+  const EXPLORE_PAGE = 60;
+  const addedIndex = added ? items.findIndex((p) => p.id === added) : -1;
+  const range = pageRange(
+    addedIndex >= 0
+      ? Math.floor(addedIndex / EXPLORE_PAGE)
+      : parseServerPage(
+          typeof params.page === "string" ? params.page : undefined,
+        ),
+    EXPLORE_PAGE,
+    items.length,
+  );
+  const pageItems = items.slice(
+    range.current * EXPLORE_PAGE,
+    (range.current + 1) * EXPLORE_PAGE,
+  );
 
   /** Link da vitrine mantendo a busca e mudando só o que for passado. */
   const hrefWith = (change: {
     line?: string | null;
     sort?: string | null;
     q?: string | null;
+    /** Página (base 0); mudar busca, categoria ou ordem volta à primeira. */
+    page?: number;
   }) => {
     const next = new URLSearchParams();
     const nq = change.q !== undefined ? change.q : q;
@@ -76,10 +100,12 @@ export default async function ExplorePage({
     if (nq) next.set("q", nq);
     if (nl) next.set("line", nl);
     if (ns && ns !== "relevance") next.set("sort", ns);
+    if (change.page) next.set("page", String(change.page + 1));
     const s = next.toString();
     return s ? `/app/explore?${s}` : "/app/explore";
   };
-  const back = hrefWith({});
+  // Volta do carrinho: a mesma página da vitrine.
+  const back = hrefWith({ page: range.current });
   const errorKey = `explore.error.${error ?? ""}` as DictionaryKey;
   const errorText = error
     ? t(errorKey) !== errorKey
@@ -207,7 +233,7 @@ export default async function ExplorePage({
           className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
           data-explore-grid={total}
         >
-          {items.map((product) => (
+          {pageItems.map((product) => (
             <ProductCard
               key={product.id}
               t={t}
@@ -219,7 +245,15 @@ export default async function ExplorePage({
           ))}
           {canBuy || wellmix ? <RequestOtherCard t={t} /> : null}
         </ul>
-      ) : (
+      ) : null}
+      {items.length > EXPLORE_PAGE ? (
+        <ServerPager
+          page={{ ...range, page: range.current, matched: items.length }}
+          href={(page) => hrefWith({ page })}
+          t={t}
+        />
+      ) : null}
+      {items.length ? null : (
         <div className="space-y-3">
           <div className="rounded-3xl border border-dashed border-zinc-300 bg-white px-6 py-10 text-center">
             <p className="text-base font-semibold text-zinc-900">
