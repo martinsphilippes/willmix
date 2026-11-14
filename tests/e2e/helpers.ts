@@ -130,7 +130,8 @@ export async function importAndClose(
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   // A etapa chama-se Book (dono, 13/11/2026; antes "Booking"): o título, a
-  // caixa de dados, o botão de fechar e o menu.
+  // caixa de dados, o botão de fechar e o menu ("Books", no bloco Produto
+  // novo desde 14/11/2026, docs/FLOW_MENU.md).
   await expect(
     page.getByRole("heading", { name: /^Book nº \d+/ }).first(),
   ).toBeVisible();
@@ -138,7 +139,7 @@ export async function importAndClose(
     page.getByRole("heading", { name: "Fechar o book" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Book", exact: true }).first(),
+    page.getByRole("link", { name: "Books", exact: true }).first(),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: /booking/i })).toHaveCount(0);
   // Na caixa "Dados do book" (dono, 13/11/2026): quem fabrica é a
