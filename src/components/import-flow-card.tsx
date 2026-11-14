@@ -158,7 +158,22 @@ export function ImportFlowCard({
             placeholder={t("importFlow.amount")}
             defaultValue={step?.amount ?? ""}
           />
-          <input type="hidden" name="currency" value="BRL" />
+          {tpl.key === "origin_costs" ? (
+            // Custos de origem (POP): na moeda em que a trading pagou.
+            <Select
+              name="currency"
+              defaultValue={step?.currency ?? "USD"}
+              aria-label={t("importFlow.costCurrency")}
+            >
+              {["USD", "RMB", "BRL"].map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <input type="hidden" name="currency" value="BRL" />
+          )}
         </>
       ) : null}
       {["file", "text_file", "file_text", "money_file"].includes(tpl.input) ? (

@@ -291,6 +291,8 @@ export async function createPurchaseOrder(
   await snapshotOrderPaymentTerms(order);
   const { assignDefaultPartners } = await import("./requests");
   await assignDefaultPartners(order);
+  // Compra EXW quando algum produto é EXW (mapa R17?; dono, 14/11/2026).
+  await syncPurchaseIncoterm(order.id);
   await audit(
     user,
     "order.create_purchase",
@@ -705,4 +707,59 @@ export async function normalizeLaneRoles(
     console.error("[purchase-order] papéis das raias não ajustados", error);
     return 0;
   }
+}
+
+/**
+ * Incoterm do pedido de compra pelo dos produtos (ficha mestre de cada um):
+ * EXW se algum é EXW, FOB se algum é FOB; sem incoterm nos produtos, fica
+ * como está. Decisão do dono (14/11/2026): a Wellmix pode trocar no pedido.
+ */
+export async function incotermFromProducts(
+  orderId: string,
+): Promise<"EXW" | "FOB" | null> {
+  const store = getStore();
+  const items = await store.list("order_items", { filter: { orderId } });
+  const ids = [
+    ...new Set(items.map((i) => i.productId).filter(Boolean)),
+  ] as string[];
+  if (!ids.length) return null;
+  const sheets = await store
+    .list("purchase_sheets", { filter: { orderId: ids } })
+    .catch(() => []);
+  const terms = sheets
+    .filter((s) => s.productId && s.orderId === s.productId)
+    .map((s) => s.incoterm);
+  if (terms.includes("EXW")) return "EXW";
+  if (terms.includes("FOB")) return "FOB";
+  return null;
+}
+
+export async function syncPurchaseIncoterm(orderId: string) {
+  const incoterm = await incotermFromProducts(orderId);
+  if (!incoterm) return;
+  const store = getStore();
+  const order = await store.get("orders", orderId);
+  if (order && order.incoterm !== incoterm)
+    await store.update("orders", orderId, { incoterm });
+}
+
+/** A Wellmix troca o incoterm do pedido de compra (FOB ou EXW). */
+export async function setPurchaseIncoterm(
+  user: User,
+  orderId: string,
+  incoterm: "EXW" | "FOB",
+) {
+  assertWellmix(user);
+  const store = getStore();
+  const order = await store.get("orders", orderId);
+  if (!order || order.flow !== "supplier_request") throw new Error("not_found");
+  if (order.incoterm === incoterm) return;
+  await store.update("orders", orderId, { incoterm });
+  await audit(
+    user,
+    "order.incoterm",
+    "order",
+    orderId,
+    `Incoterm do pedido #${order.number}: ${order.incoterm ?? "—"} → ${incoterm}`,
+  );
 }
