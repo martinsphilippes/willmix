@@ -127,4 +127,64 @@ describe("entrega", () => {
     expect(f.actsAs(operator, order, "finance")).toBe(false);
     expect(f.actsAs(finance, order, "finance")).toBe(true);
   });
+
+  it("qualidade no CD: conclui a conferência; sem divergência armazena, com divergência pede observação", async () => {
+    const store = getStore();
+    const rec = await import("@/lib/services/receiving");
+    await store.update("orders", order.id, { status: "DELIVERED" });
+    // Sem ninguém com a ação, a Wellmix conclui; com a função Qualidade, só ela.
+    expect(await rec.canDoQuality(operator)).toBe(true);
+    let quality = await store.create("users", {
+      email: "qualidade@wellmix.com",
+      name: "Quézia Qualidade",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      passwordHash: null,
+      active: true,
+      importerId: null,
+    });
+    await team.setTeamMember(admin, quality.id, {
+      jobLevel: null,
+      managerUserId: null,
+      division: null,
+      functions: ["quality"],
+    });
+    quality = (await store.get("users", quality.id))!;
+    expect(await rec.canDoQuality(quality)).toBe(true);
+    expect(await rec.canDoQuality(operator)).toBe(false);
+    await rec.saveUnloading(admin, order.id, {
+      sealNumber: "L-1",
+      sealIntact: "yes",
+      checklist: ["seal_matches", "container_ok"],
+    });
+    expect((await rec.qualityTasks(quality)).map((o) => o.id)).toContain(
+      order.id,
+    );
+    await expect(rec.concludeQuality(quality, order.id, null)).rejects.toThrow(
+      "quality_counts_required",
+    );
+    const [item] = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    await rec.saveCounts(admin, order.id, [
+      { orderItemId: item.id, received: 98, damaged: 0, note: null },
+    ]);
+    await expect(rec.concludeQuality(quality, order.id, null)).rejects.toThrow(
+      "quality_note_required",
+    );
+    await rec.saveCounts(admin, order.id, [
+      { orderItemId: item.id, received: item.quantity, damaged: 0, note: null },
+    ]);
+    await expect(
+      rec.concludeQuality(operator, order.id, null),
+    ).rejects.toThrow();
+    await rec.concludeQuality(quality, order.id, null);
+    const row = (await rec.getReceiving(order.id))!;
+    expect(row).toMatchObject({ qualityResult: "ok" });
+    expect(row.storedAt).toBeTruthy();
+    expect((await rec.qualityTasks(quality)).map((o) => o.id)).not.toContain(
+      order.id,
+    );
+  });
 });

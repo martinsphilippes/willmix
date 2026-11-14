@@ -55,7 +55,7 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
     key: "delivery",
     label: "nav.group.arrival",
     screens: ["containers", "freight", "freightTariff"],
-    actions: ["receiving.follow"],
+    actions: ["receiving.follow", "receiving.quality"],
   },
   {
     key: "sales",

@@ -159,3 +159,20 @@ export async function closeReceivingAction(form: FormData) {
     return `${to}?receiving=closed#receiving`;
   });
 }
+
+/** Qualidade no CD (mapa E19): conclui a conferência depois da contagem por SKU. */
+export async function concludeQualityAction(form: FormData) {
+  const user = await requireUser();
+  const to = back(form);
+  await run(`${to}#receiving`, async () => {
+    assertScreen(user, "orders");
+    const orderId = ID.parse(str(form, "orderId"));
+    const { concludeQuality } = await import("@/lib/services/receiving");
+    await concludeQuality(
+      user,
+      orderId,
+      field(form, "qualityNote", z.string().trim().max(1000)) || null,
+    );
+    return `${to}?receiving=quality#receiving`;
+  });
+}

@@ -53,7 +53,12 @@ export const ACTION_GROUPS = [
   },
   {
     key: "logistics",
-    actions: ["numerario.manage", "receiving.follow", "container.tracking"],
+    actions: [
+      "numerario.manage",
+      "receiving.follow",
+      "container.tracking",
+      "receiving.quality",
+    ],
   },
   {
     key: "money",
@@ -98,6 +103,9 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
     // as fotos do catálogo e ativa a venda (mapa R5/R16; dono, 14/11/2026).
     case "realMedia.approve":
       return ["designer"];
+    // Conferência da qualidade no CD (mapa E19; dono, 14/11/2026).
+    case "receiving.quality":
+      return ["quality"];
     case "receiving.follow":
       return ["buyer"];
     // Rastreio diário do container (mapa R19; dono, 13/11/2026).
