@@ -259,16 +259,13 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page.getByRole("link", { name: "Die-Cut, Arte e Certificação" }),
   ).toHaveCount(1);
   // Certificação no login responsável (docs/CERTIFICATION.md, seção 13): o
-  // memorial é do analista do pedido (quem gerou), com o link direto para o
-  // quadro do alto do cartão Certificação.
+  // memorial e o selo são da certificadora (OCP) do pedido (dono,
+  // 14/11/2026); o analista do pedido (quem gerou) não recebe nenhum dos dois.
   const orderPath = new URL(orderUrl).pathname;
+  const certFeaturedTask = `[data-task-row] a[href="${orderPath}#certification-featured"]`;
   await page.goto("/app/tasks");
-  // (A lista pagina no navegador: a linha pode estar em outra página.)
-  await expect(
-    page.locator(
-      `[data-task-row] a[href="${orderPath}#certification-featured"]`,
-    ),
-  ).not.toHaveCount(0);
+  // (A lista pagina no navegador: as linhas das outras páginas também contam.)
+  await expect(page.locator(certFeaturedTask)).toHaveCount(0);
   await page.goto(orderUrl);
   // Transportador: o pedido só designa sozinho quando há exatamente um ativo
   // no cadastro. Outros testes cadastram mais transportadores (que nascem
@@ -614,9 +611,9 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     requirementRow(page, /Validação da arte pela Wellmix/),
   ).toContainText(/Concluído/);
-  // 6d. Certificadora (OCP) do pedido: o certificado das raias (dono,
-  // 14/11/2026; o selo do cartão Certificação continua com o despachante).
-  // O despachante não envia o certificado.
+  // 6d. Certificadora (OCP) do pedido: o certificado das raias e, no cartão
+  // Certificação, o memorial e o selo (dono, 14/11/2026). O despachante não
+  // envia nenhum deles.
   await login(page, "despachante@comex.com");
   await page.goto(orderUrl);
   await expect(
@@ -626,6 +623,48 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   ).toHaveCount(0);
   await login(page, "ocp@certifica.com");
   await fillMyRequirements(page, orderUrl);
+  // Memorial e selo: as pendências são dela e levam ao quadro do alto do
+  // cartão Certificação, onde ela preenche e envia os dois.
+  await page.goto("/app/tasks");
+  await expect(page.locator(certFeaturedTask)).not.toHaveCount(0);
+  for (const key of ["cert_memorial", "cert_seal"] as const) {
+    await page.goto(`${orderUrl}#certification`);
+    await page.waitForLoadState("networkidle");
+    const box = page.locator(`[data-import-featured="${key}"]`);
+    if (key === "cert_seal")
+      await box.locator("input[name=value]").fill("SELO-E2E-1");
+    await box.locator("input[type=file]").setInputFiles(pdf);
+    await Promise.all([
+      page.waitForURL(/certStep=submitted/),
+      box.locator(`[data-import-submit="${key}"]`).click(),
+    ]);
+  }
+  await page.goto("/app/tasks");
+  await expect(page.locator(certFeaturedTask)).toHaveCount(0);
+  // O Comprador acompanha o mesmo pedido: a situação, quem faz e os arquivos
+  // enviados, sem campo, seletor de arquivo nem botão de envio (o servidor
+  // também recusa: tests/unit/cert-seal.test.ts).
+  await login(page, "operador@wellmix.com");
+  await page.goto(`${orderUrl}#certification`);
+  for (const key of ["cert_memorial", "cert_seal"] as const) {
+    const box = page.locator(`[data-import-featured="${key}"]`);
+    await expect(box).toBeVisible();
+    await expect(box.locator("form, input, [data-import-submit]")).toHaveCount(
+      0,
+    );
+    const file = box.locator("[data-import-featured-file]");
+    await expect(file).toBeVisible();
+    const opened = await page.request.get((await file.getAttribute("href"))!);
+    expect(opened.status()).toBe(200);
+    const row = page.locator(`#certification-step-${key}`);
+    await expect(row).toContainText("Faz: OCP");
+    await expect(
+      row.locator("form, input, [data-import-submit], a[href$='-featured']"),
+    ).toHaveCount(0);
+  }
+  await expect(page.locator("#certification-step-cert_seal")).toContainText(
+    "SELO-E2E-1",
+  );
   // 6e. Agência: com a arte validada e o certificado, a arte final com o selo.
   await login(page, "agencia@design.com");
   await fillMyRequirements(page, orderUrl);
