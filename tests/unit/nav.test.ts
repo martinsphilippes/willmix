@@ -251,10 +251,31 @@ describe("menu lateral", () => {
     ]);
   });
 
-  it("fornecedores e parceiros: Pendências e um grupo com a tela do papel", () => {
+  it("fornecedores e parceiros: Pendências, os passos do papel no mapa e o grupo com a tela do papel", () => {
     const top = [{ link: "/app" }];
+    // Os passos de cada parceiro, por bloco (docs/FLOW_MENU.md); bloco com um
+    // passo só vira link direto.
     expect(view({ role: "supplier" })).toEqual([
       ...top,
+      {
+        group: "nav.group.order",
+        items: [
+          "/app/flow/order/orders",
+          "/app/flow/order/art-material",
+          "/app/flow/order/contract",
+        ],
+      },
+      {
+        group: "nav.production",
+        items: [
+          "/app/flow/production/inspection",
+          "/app/flow/production/sample",
+          "/app/flow/production/logistics",
+          "/app/flow/production/loading",
+          "/app/flow/production/cargo-docs",
+          "/app/flow/production/shipment",
+        ],
+      },
       {
         group: "nav.group.myBookings",
         items: [
@@ -267,29 +288,61 @@ describe("menu lateral", () => {
     ]);
     expect(view({ role: "shipping_line" })).toEqual([
       ...top,
+      { link: "/app/flow/production/shipment" },
       {
         group: "nav.group.orders",
         items: ["/app/orders", "/app/freight", "/app/freight/tariff"],
       },
     ]);
+    // Sem passos no mapa: como antes.
     expect(view({ role: "legal" })).toEqual([
       ...top,
       { group: "nav.group.orders", items: ["/app/orders", "/app/penalties"] },
     ]);
-    // Grupo com uma tela só vira link direto (sem lista de um item).
-    for (const role of [
-      "carrier",
-      "comex",
-      "logistics",
-      "ocp",
-      "agency",
-    ] as const)
-      expect(view({ role })).toEqual([...top, { link: "/app/orders" }]);
+    expect(view({ role: "agency" })).toEqual([
+      ...top,
+      {
+        group: "nav.group.order",
+        items: ["/app/flow/order/certification", "/app/flow/order/art"],
+      },
+      { link: "/app/orders" },
+    ]);
+    expect(view({ role: "ocp" })).toEqual([
+      ...top,
+      { link: "/app/flow/order/certification" },
+      { link: "/app/orders" },
+    ]);
+    expect(view({ role: "carrier" })).toEqual([
+      ...top,
+      {
+        group: "nav.group.arrival",
+        items: ["/app/flow/delivery/logistics", "/app/flow/delivery/delivery"],
+      },
+      { link: "/app/orders" },
+    ]);
+    expect(view({ role: "marketing_agency" })).toEqual([
+      ...top,
+      { link: "/app/flow/production/sample" },
+      { link: "/app/orders" },
+    ]);
     // O despachante tem também o NCM dos itens de booking (docs/BOOKING.md).
     expect(view({ role: "broker" })).toEqual([
       ...top,
+      { link: "/app/flow/production/cargo-docs" },
+      { link: "/app/flow/delivery/cargo-presence" },
       { group: "nav.group.orders", items: ["/app/orders", "/app/ncm-items"] },
     ]);
+    for (const role of ["comex", "logistics"] as const) {
+      const hrefs = hrefsOf({ role });
+      expect(hrefs).toContain("/app/flow/production/cargo-docs");
+      expect(hrefs).toContain("/app/flow/delivery/cargo-presence");
+    }
+    // Cada passo do parceiro leva o contador do passo.
+    const supplierLinks = flattenNav(navFor({ role: "supplier" }));
+    expect(
+      supplierLinks.find((l) => l.href === "/app/flow/production/inspection")
+        ?.step,
+    ).toBe("production/inspection");
     for (const role of ROLES.filter(
       (r) => r !== "admin" && r !== "operator" && r !== "customer",
     )) {
@@ -298,6 +351,9 @@ describe("menu lateral", () => {
       expect(hrefs[0]).toBe("/app");
       expect(hrefs).toContain("/app/orders");
       expect(navFooterFor({ role })).toEqual([]);
+      // Nenhum Overview (só a Wellmix) nem passo da Wellmix.
+      expect(hrefs.some((h) => /^\/app\/flow\/[^/]+$/.test(h))).toBe(false);
+      expect(hrefs).not.toContain("/app/production");
     }
   });
 

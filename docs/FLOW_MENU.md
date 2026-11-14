@@ -73,6 +73,26 @@ Pedido do dono: o Overview de Pedido, Produção e Entrega (só a Wellmix) passa
   - A linha do tempo geral do Overview passa a ter os quatro blocos.
 - Os logins de fora da Wellmix seguem com o Overview das pendências.
 
+## Parceiros nos passos (14/11/2026)
+
+Os parceiros (fornecedor, agência, certificadora, despachante, comex, agente de carga, companhia marítima, transportador e agência de marketing) ganham no menu os passos deles no mapa, por bloco, com o contador do que espera ação deles (`PARTNER_FLOW_STEPS` em `src/lib/flow.ts`, tirado de quem faz, valida e vê cada passo do embarque e da certificação e do responsável de cada etapa do pedido). O grupo com as telas do papel (bookings, pedidos, fretes, conta corrente, multas) continua embaixo. O cliente e o jurídico não mudam.
+
+| Parceiro | Passos |
+| --- | --- |
+| Fornecedor | Pedidos (ficha e medidas), Material de arte, Contrato, Inspeção, Amostra, Logística, Carregamento, Documentos de carga, Embarque |
+| Agência | Certificação (arte com o selo), Arte |
+| Certificadora | Certificação |
+| Despachante | Documentos de carga, Presença de carga |
+| Comex | Certificação, Logística, Carregamento, Documentos de carga, Embarque, Presença de carga, Canal, Nota fiscal |
+| Agente de carga | Booking, Logística, Carregamento, Documentos de carga, Embarque, Presença de carga, Canal, Nota fiscal |
+| Companhia marítima | Embarque |
+| Transportador | Logística, Entrega |
+| Agência de marketing | Amostra |
+
+- A tela do passo do parceiro tem as duas abas: Pendências (o que espera ação dele) e Todos no passo (os pedidos dele no passo, só com o que é dele: itens de etapa do papel ou que ele pode fazer e os passos que ele vê; sem a coluna do fornecedor; `flowPartnerAllFor`).
+- O pedido no passo abre para o parceiro só nos passos dele e só nos pedidos dele (`canViewOrder`): os itens do papel, os passos que ele vê, o cartão de produção só para o fornecedor do pedido, sem o fornecedor e o cliente no cabeçalho. Recebimento, relatório da inspeção, frete e a criação do pedido seguem só da Wellmix. Passo que não é do parceiro não abre (404).
+- Sem Overview para os parceiros. O detalhe do pedido (`/app/orders/[id]`) continua como estava para eles.
+
 ## De onde vem o contador
 
 - As mesmas pendências da tela Pendências (`pendingTasksFor` + `tasksForFunctions`: o operador vê só as das funções dele), lidas uma vez por página (`flowTasksFor`, cache do React). Só leitura; nada novo no banco. A bolinha de Pendências é o total.
