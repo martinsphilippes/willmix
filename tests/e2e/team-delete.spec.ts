@@ -40,14 +40,13 @@ test("Excluir acesso: confirmação, lista, sessão aberta e Auditoria", async (
   const otavioId = await page
     .locator("[data-team-member]", { hasText: "Otávio Operador" })
     .getAttribute("data-team-member");
+  // Editar acessos da pessoa (o mesmo editor do painel lateral): salvar fica
+  // na tela e mostra o aviso depois que o servidor gravou.
   const setOtavioManager = async (value: string) => {
     await page.goto(`/app/team/${otavioId}`);
-    await page.locator('select[name="managerUserId"]').selectOption(value);
-    await page
-      .getByRole("button", { name: /salvar/i })
-      .first()
-      .click();
-    await page.waitForURL(/saved=member/);
+    await page.locator("[data-team-manager]").selectOption(value);
+    await page.locator("[data-team-save]").click();
+    await expect(page.locator("[data-team-saved]")).toBeVisible();
   };
   await setOtavioManager(memberId);
 

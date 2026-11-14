@@ -3,52 +3,30 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isAdmin } from "@/lib/auth/permissions";
-import {
-  SCREEN_GROUPS,
-  SCREEN_LABEL,
-  WELLMIX_BASE,
-  functionScreensFor,
-  hasCustomScreens,
-  screensFor,
-} from "@/lib/auth/screens";
-import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
-import {
-  accessFromFunctions,
-  functionDescription,
-  functionLabel,
-} from "@/lib/auth/function-access";
+import { WELLMIX_BASE } from "@/lib/auth/screens";
 import { loadFunctionDefs } from "@/lib/services/team-functions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import {
-  Alert,
-  Button,
-  Card,
-  Field,
-  PageHeader,
-  Select,
-  TextLink,
-  cx,
-} from "@/components/ui";
+import { Alert, Button, PageHeader, TextLink } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { QuickDialog } from "@/components/quick-dialog";
+import { teamMemberRemoval, wellmixTeam } from "@/lib/services/team";
+import { removeTeamMemberAction } from "../../actions/team";
+import { TeamAccessEditor } from "../_components/team-access-editor";
 import {
-  descendantsOf,
-  teamMemberRemoval,
-  wellmixTeam,
-} from "@/lib/services/team";
-import {
-  removeTeamMemberAction,
-  saveTeamMemberAction,
-} from "../../actions/team";
+  editorFunctions,
+  editorMember,
+  editorOptions,
+  editorTexts,
+  permissionGroups,
+} from "../_components/access-payload";
 
 /*
- * Acessos de uma pessoa da equipe (só o administrador): três blocos, um
- * embaixo do outro. Dados (cargo, divisão, a quem responde); Funções (o que
- * ela faz no processo: aprova, libera dumping, valida numerário…); Telas
- * (todas as telas do portal nos grupos do menu, com uma caixa por tela).
- * "Padrão das funções" segue as funções marcadas; "Personalizado" grava só
- * as caixas marcadas (o básico fica sempre). Regra em docs/ACCESS.md.
+ * Acessos de uma pessoa da equipe (só o administrador), na página própria: o
+ * mesmo editor do painel lateral da lista (TeamAccessEditor; dono,
+ * 14/11/2026): cargo, funções, divisão, "Responde a", o modo das telas e a
+ * prévia de "Acessos efetivos" (telas e ações, com a origem de cada uma).
+ * Regra em docs/ACCESS.md.
  *
  * "Excluir acesso" (pedido do dono, 13/11/2026), só para o administrador:
  * abre a confirmação com o nome e o login da pessoa; confirmado, o login sai
@@ -75,13 +53,7 @@ export default async function TeamMemberPage({
       redirect(`/app/team?error=${encodeURIComponent(error.slice(0, 60))}`);
     notFound();
   }
-  const below = descendantsOf(member.id, team);
-  const admin = isAdmin(member);
-  const custom = hasCustomScreens(member);
-  // Telas pelas funções, com a configuração de Equipe → Funções e acessos.
-  const access = accessFromFunctions(member.functions, defs);
-  const effective = screensFor(member, access);
-  const byFunctions = functionScreensFor(member, access);
+  const groups = permissionGroups(t);
   const errorKey = `team.error.${typeof error === "string" ? error : ""}`;
   const errorText =
     typeof error === "string" && error
@@ -99,8 +71,6 @@ export default async function TeamMemberPage({
       : removal.lastAdmin
         ? t("team.delete.lastAdmin")
         : null;
-  const block = "space-y-3";
-  const option = "inline-flex items-start gap-2 text-sm text-zinc-800";
 
   return (
     <>
@@ -237,173 +207,22 @@ export default async function TeamMemberPage({
           </Alert>
         </div>
       ) : null}
-      <form action={saveTeamMemberAction} className="space-y-4" data-team-form>
-        <input type="hidden" name="userId" value={member.id} />
-
-        <Card title={t("team.block.data")}>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Field label={t("team.col.level")}>
-              <Select name="jobLevel" defaultValue={member.jobLevel ?? ""}>
-                <option value="">{t("team.none")}</option>
-                {JOB_LEVELS.map((l) => (
-                  <option key={l} value={l}>
-                    {t(`level.${l}` as DictionaryKey)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label={t("team.col.division")}>
-              <Select name="division" defaultValue={member.division ?? ""}>
-                <option value="">{t("team.none")}</option>
-                {DIVISIONS.map((d) => (
-                  <option key={d} value={d}>
-                    {t(`division.${d}` as DictionaryKey)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label={t("team.col.manager")}>
-              <Select
-                name="managerUserId"
-                defaultValue={member.managerUserId ?? ""}
-              >
-                <option value="">{t("team.none")}</option>
-                {team
-                  // Nem ela mesma nem quem está abaixo dela (ciclo).
-                  .filter((m) => m.id !== member.id && !below.has(m.id))
-                  .map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-              </Select>
-            </Field>
-          </div>
-        </Card>
-
-        <Card title={t("team.block.functions")}>
-          <input type="hidden" name="functions.__form" value="1" />
-          <div className={cx(block, "grid gap-2 sm:grid-cols-2")}>
-            {defs
-              .filter((d) => !d.archived)
-              .map((d) => (
-                <label key={d.key} className={option}>
-                  <input
-                    type="checkbox"
-                    name="functions"
-                    value={d.key}
-                    defaultChecked={(member.functions ?? []).includes(d.key)}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
-                    data-team-function={d.key}
-                  />
-                  <span>
-                    <span className="font-medium">
-                      {functionLabel(d.key, defs, (k) => t(k as DictionaryKey))}
-                    </span>
-                    {d.builtin &&
-                    functionDescription(d.key, (k) => t(k as DictionaryKey)) ? (
-                      <span className="block text-xs text-zinc-500">
-                        {functionDescription(d.key, (k) =>
-                          t(k as DictionaryKey),
-                        )}
-                      </span>
-                    ) : null}
-                  </span>
-                </label>
-              ))}
-          </div>
-        </Card>
-
-        <Card title={t("team.block.screens")}>
-          {admin ? (
-            <Alert tone="info">{t("team.screens.adminNote")}</Alert>
-          ) : (
-            <>
-              <input type="hidden" name="screens.__form" value="1" />
-              <p className="mb-3 text-xs text-zinc-500">
-                {t("team.screens.mode.hint")}
-              </p>
-              <div className="mb-4 flex flex-wrap gap-4">
-                <label className={option}>
-                  <input
-                    type="radio"
-                    name="screensMode"
-                    value="default"
-                    defaultChecked={!custom}
-                    className="mt-0.5 h-4 w-4 accent-brand-600"
-                    data-team-screens-mode="default"
-                  />
-                  <span>
-                    {t("team.screens.mode.default")}
-                    <span className="block text-xs text-zinc-500">
-                      {[...byFunctions]
-                        .filter((s) => !WELLMIX_BASE.includes(s))
-                        .map((s) => t(SCREEN_LABEL[s]))
-                        .join(", ") || t("team.screens.base")}
-                    </span>
-                  </span>
-                </label>
-                <label className={option}>
-                  <input
-                    type="radio"
-                    name="screensMode"
-                    value="custom"
-                    defaultChecked={custom}
-                    className="mt-0.5 h-4 w-4 accent-brand-600"
-                    data-team-screens-mode="custom"
-                  />
-                  <span>{t("team.screens.mode.custom")}</span>
-                </label>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {SCREEN_GROUPS.map((group) => (
-                  <fieldset
-                    key={group.key}
-                    className="rounded-xl border border-zinc-200/80 p-3"
-                  >
-                    <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      {t(group.key)}
-                    </legend>
-                    <div className="grid gap-1.5 sm:grid-cols-2">
-                      {group.screens.map((screen) => {
-                        const base = WELLMIX_BASE.includes(screen);
-                        return (
-                          <label key={screen} className={option}>
-                            <input
-                              type="checkbox"
-                              name="screens"
-                              value={screen}
-                              defaultChecked={effective.has(screen)}
-                              disabled={base}
-                              className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
-                              data-team-screen={screen}
-                            />
-                            <span>
-                              {t(SCREEN_LABEL[screen])}
-                              {base ? (
-                                <span className="ml-1 text-xs text-zinc-400">
-                                  ({t("team.screens.alwaysOn")})
-                                </span>
-                              ) : null}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </fieldset>
-                ))}
-              </div>
-            </>
-          )}
-        </Card>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <SubmitButton data-team-save>{t("team.save")}</SubmitButton>
-          <span className="text-xs text-zinc-500">
-            {t("team.screens.saveHint")}
-          </span>
-        </div>
-      </form>
+      {/* O mesmo editor do painel lateral da lista (dono, 14/11/2026). */}
+      <section
+        className="rounded-2xl border border-zinc-200/80 bg-white p-3.5 shadow-sm shadow-zinc-900/[0.03] sm:p-4"
+        data-team-form
+      >
+        <TeamAccessEditor
+          member={editorMember(member, team, defs)}
+          functions={editorFunctions(defs, t)}
+          screenGroups={groups.screens}
+          actionGroups={groups.actions}
+          base={[...WELLMIX_BASE]}
+          options={editorOptions(team, t)}
+          texts={editorTexts(t)}
+          mode="page"
+        />
+      </section>
     </>
   );
 }

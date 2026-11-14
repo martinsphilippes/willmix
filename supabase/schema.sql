@@ -21,6 +21,7 @@ alter table public."users" add column if not exists "division" text;
 alter table public."users" add column if not exists "functions" jsonb;
 alter table public."users" add column if not exists "screens" jsonb;
 alter table public."users" add column if not exists "mustChangePassword" boolean;
+alter table public."users" add column if not exists "screenExceptions" jsonb;
 create unique index if not exists "users_email_unique" on public."users" ("email");
 create index if not exists "users_by_manager" on public."users" ("managerUserId");
 create index if not exists "users_created" on public."users" ("createdAt");
@@ -1284,6 +1285,25 @@ create unique index if not exists "real_media_item_unique" on public."real_media
 create index if not exists "real_media_by_order" on public."real_media" ("orderId");
 create index if not exists "real_media_created" on public."real_media" ("createdAt");
 create index if not exists "real_media_created_id" on public."real_media" ("createdAt", "id");
+
+create table if not exists public."sales_offers" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."sales_offers" enable row level security;
+alter table public."sales_offers" add column if not exists "kind" text;
+alter table public."sales_offers" add column if not exists "orderId" text;
+alter table public."sales_offers" add column if not exists "productId" text;
+alter table public."sales_offers" add column if not exists "offeredTo" text;
+alter table public."sales_offers" add column if not exists "customerId" text;
+alter table public."sales_offers" add column if not exists "note" text;
+alter table public."sales_offers" add column if not exists "offeredByUserId" text;
+alter table public."sales_offers" add column if not exists "offeredAt" timestamptz;
+create index if not exists "sales_offers_by_order" on public."sales_offers" ("orderId");
+create index if not exists "sales_offers_by_product" on public."sales_offers" ("productId");
+create index if not exists "sales_offers_created" on public."sales_offers" ("createdAt");
+create index if not exists "sales_offers_created_id" on public."sales_offers" ("createdAt", "id");
 
 create table if not exists public."sku_inspections" (
   "id" text primary key,

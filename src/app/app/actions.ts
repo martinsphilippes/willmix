@@ -1098,7 +1098,13 @@ export async function saveSettingsAction(form: FormData) {
       const current = DEFAULT_SETTINGS[key];
       let value: unknown = raw;
       if (typeof current === "boolean") value = raw === "on" || raw === "true";
-      else if (key === "productionStartDays" || key === "invoiceDays") {
+      else if (key === "lpcoNcmPrefixes") {
+        // LPCO (mapa E5): prefixos de NCM, só dígitos, pontos e separadores.
+        const text = String(raw).trim();
+        if (text.length > 2000 || !/^[\d.,;\s]*$/.test(text))
+          throw new Error("invalid_input");
+        value = text;
+      } else if (key === "productionStartDays" || key === "invoiceDays") {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 0 || n > 365)
           throw new Error("invalid_input");

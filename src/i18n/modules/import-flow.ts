@@ -25,6 +25,7 @@ export const pt = {
   "importFlow.step.ce_mercante": "CE Mercante",
   "importFlow.step.ci": "Comprovante de importação (CI)",
   "importFlow.step.danfe": "DANFE (nota de entrada)",
+  "importFlow.step.lpco": "LPCO (licença da importação)",
   "importFlow.step.container_at_factory":
     "Container vazio no depósito da fábrica (data)",
   "importFlow.step.container_empty": "Fotos e vídeos do container vazio",
@@ -59,6 +60,7 @@ export const pt = {
   "importFlow.ph.di": "Nº da DI/DUIMP",
   "importFlow.ph.ce_mercante": "Nº do CE Mercante",
   "importFlow.ph.danfe": "Nº da nota fiscal",
+  "importFlow.ph.lpco": "Nº da LPCO",
   "importFlow.ph.container_at_factory": "",
   "importFlow.ph.container_empty": "",
   "importFlow.ph.container_loaded":
@@ -147,6 +149,7 @@ export const en: Record<keyof typeof pt, string> = {
   "importFlow.step.ce_mercante": "CE Mercante",
   "importFlow.step.ci": "Import receipt (CI)",
   "importFlow.step.danfe": "DANFE (entry invoice)",
+  "importFlow.step.lpco": "LPCO (import licence)",
   "importFlow.step.container_at_factory":
     "Empty container at the factory yard (date)",
   "importFlow.step.container_empty": "Photos and videos of the empty container",
@@ -181,6 +184,7 @@ export const en: Record<keyof typeof pt, string> = {
   "importFlow.ph.di": "DI/DUIMP no.",
   "importFlow.ph.ce_mercante": "CE Mercante no.",
   "importFlow.ph.danfe": "Invoice no.",
+  "importFlow.ph.lpco": "LPCO no.",
   "importFlow.ph.container_at_factory": "",
   "importFlow.ph.container_empty": "",
   "importFlow.ph.container_loaded": "Load check (cartons, damage, notes)",
@@ -266,6 +270,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "importFlow.step.ce_mercante": "CE Mercante",
   "importFlow.step.ci": "进口证明（CI）",
   "importFlow.step.danfe": "DANFE（入库发票）",
+  "importFlow.step.lpco": "LPCO（进口许可）",
   "importFlow.step.container_at_factory": "空柜到达工厂堆场（日期）",
   "importFlow.step.container_empty": "空柜照片和视频",
   "importFlow.step.container_loaded": "装柜：照片、视频和装货检查",
@@ -298,6 +303,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "importFlow.ph.di": "DI/DUIMP 号",
   "importFlow.ph.ce_mercante": "CE Mercante 号",
   "importFlow.ph.danfe": "发票号",
+  "importFlow.ph.lpco": "LPCO 编号",
   "importFlow.ph.container_at_factory": "",
   "importFlow.ph.container_empty": "",
   "importFlow.ph.container_loaded": "装货检查（箱数、破损、备注）",

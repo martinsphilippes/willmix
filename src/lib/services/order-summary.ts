@@ -66,10 +66,11 @@ import type { BoardOrder, BoardStage } from "./tower-board";
  * página). 10: a contribuição de cada pedido para o Overview dos blocos
  * (`kpi.f`, flow-contribution.ts; docs/FLOW_MENU.md). 11: o pedido do
  * histórico em espera também contribui (`f.h`), só pela situação. 12: o
- * pedido em espera contribui pela situação real, como os outros, marcado
- * (`f.h`; dono, 14/11/2026).
+ * passo LPCO (mapa E5) entra no pedido com produto de NCM que exige a
+ * licença. 13: o pedido em espera contribui pela situação real, como os
+ * outros, marcado (`f.h`; dono, 14/11/2026).
  */
-export const SUMMARY_VERSION = 12;
+export const SUMMARY_VERSION = 13;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -750,6 +751,9 @@ async function kpisOf(
 /** Contribuição de cada pedido para o Overview dos blocos (docs/FLOW_MENU.md). */
 async function flowsOf(src: Sources) {
   const { buildOrderFlow } = await import("./flow-contribution");
+  const lpco = await (
+    await import("./import-flow")
+  ).lpcoOrderIds(src.orders.map((o) => o.id));
   const out = new Map<string, unknown>();
   for (const order of src.orders) {
     const reqs = src.flowRequirements.get(order.id) ?? [];
@@ -767,6 +771,7 @@ async function flowsOf(src: Sources) {
           reqs.find((r) => r.key === "down_payment" && r.status === "done") ??
           null,
         sampleOrder: reqs.find((r) => r.key === "sample_order") ?? null,
+        lpco: lpco.has(order.id),
       }),
     );
   }

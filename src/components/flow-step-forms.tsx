@@ -21,7 +21,21 @@ import { ArtworkCard } from "./artwork-card";
 import { ReceivingCard } from "./receiving-card";
 import { FreightOrderCard } from "./freight-order-card";
 import { InspectionResultCard } from "./inspection-result-card";
-import { Badge, Card, LinkButton, TextLink } from "./ui";
+import {
+  Badge,
+  Card,
+  Empty,
+  Input,
+  LinkButton,
+  Table,
+  Td,
+  TextLink,
+  Th,
+  formatDate,
+  rowClass,
+} from "./ui";
+import { SubmitButton } from "./submit-button";
+import { recordSalesOfferAction } from "@/app/app/actions/sales-offers";
 
 /*
  * Resolver na tela do passo (dono, 14/11/2026; docs/FLOW_MENU.md), segunda
@@ -509,6 +523,159 @@ export async function FlowFreightWork({
             />
           </div>
         ))}
+    </section>
+  );
+}
+
+/**
+ * Vendas (dono, 14/11/2026): cada amostra no Brasil (Amostras) ou produto
+ * com a venda ativada (Ofertas) ainda não oferecido, com o registro de a
+ * quem foi oferecido; embaixo, as ofertas já registradas no passo.
+ */
+export async function FlowSalesWork({
+  step,
+  tasks,
+  t,
+}: {
+  step: FlowStep;
+  tasks: Task[];
+  t: Translate;
+}) {
+  const sample = step.key === "samples";
+  const kind = sample ? "sample" : "product";
+  const cases = tasks.filter(
+    (x) => x.kind === (sample ? "sales_sample" : "sales_product"),
+  );
+  const offers = (
+    await getStore().list("sales_offers", {
+      filter: { kind },
+      orderBy: "offeredAt",
+      direction: "desc",
+      limit: 30,
+    })
+  ).filter(Boolean);
+  const [users, orders, products] = await Promise.all([
+    offers.length
+      ? getStore().list("users", {
+          filter: { id: [...new Set(offers.map((o) => o.offeredByUserId))] },
+        })
+      : Promise.resolve([]),
+    offers.some((o) => o.orderId)
+      ? getStore().list("orders", {
+          filter: {
+            id: [
+              ...new Set(
+                offers.map((o) => o.orderId).filter((x): x is string => !!x),
+              ),
+            ],
+          },
+        })
+      : Promise.resolve([]),
+    offers.some((o) => o.productId)
+      ? getStore().list("products", {
+          filter: {
+            id: [
+              ...new Set(
+                offers.map((o) => o.productId).filter((x): x is string => !!x),
+              ),
+            ],
+          },
+        })
+      : Promise.resolve([]),
+  ]);
+  const returnTo = pathOf(step);
+  const what = (o: { orderId: string | null; productId: string | null }) =>
+    o.orderId
+      ? `#${orders.find((x) => x.id === o.orderId)?.number ?? "—"}`
+      : (products.find((x) => x.id === o.productId)?.name ?? "—");
+  return (
+    <section className="mt-6 space-y-4" data-flow-sales={kind}>
+      {cases.length ? (
+        <Card title={t("flow.work.title")}>
+          <ul className="divide-y divide-zinc-100">
+            {cases.map((c) => (
+              <li
+                key={c.orderId ?? c.productId ?? c.title}
+                className="flex flex-col gap-2 py-3"
+                data-flow-sales-case={c.orderId ?? c.productId ?? ""}
+              >
+                <div className="text-sm font-medium text-zinc-900">
+                  {c.text ? t(c.text.title, c.text.values) : c.title}
+                </div>
+                <form
+                  action={recordSalesOfferAction}
+                  className="flex flex-wrap items-end gap-2"
+                >
+                  <input type="hidden" name="kind" value={kind} />
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  {c.orderId ? (
+                    <input type="hidden" name="orderId" value={c.orderId} />
+                  ) : null}
+                  {c.productId ? (
+                    <input type="hidden" name="productId" value={c.productId} />
+                  ) : null}
+                  <label className="text-xs text-zinc-600">
+                    {t("flow.sales.offeredTo")}
+                    <Input
+                      name="offeredTo"
+                      required
+                      minLength={2}
+                      maxLength={200}
+                      className="mt-0.5 w-56"
+                      data-flow-sales-to
+                    />
+                  </label>
+                  <label className="text-xs text-zinc-600">
+                    {t("flow.sales.note")}
+                    <Input
+                      name="note"
+                      maxLength={1000}
+                      className="mt-0.5 w-64"
+                    />
+                  </label>
+                  <SubmitButton data-flow-sales-submit>
+                    {t("flow.sales.submit")}
+                  </SubmitButton>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+      <Card title={t("flow.sales.history")}>
+        {offers.length ? (
+          <Table tools={false}>
+            <thead>
+              <tr>
+                <Th>{t("flow.sales.when")}</Th>
+                <Th>
+                  {sample ? t("flow.all.order") : t("flow.order.product")}
+                </Th>
+                <Th>{t("flow.sales.offeredTo")}</Th>
+                <Th>{t("flow.sales.note")}</Th>
+                <Th>{t("flow.sales.by")}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {offers.map((o) => (
+                <tr key={o.id} className={rowClass} data-flow-sales-offer>
+                  <Td className="whitespace-nowrap">
+                    {formatDate(o.offeredAt, t)}
+                  </Td>
+                  <Td>{what(o)}</Td>
+                  <Td>{o.offeredTo}</Td>
+                  <Td className="text-xs text-zinc-600">{o.note ?? "—"}</Td>
+                  <Td className="text-xs">
+                    {users.find((u) => u.id === o.offeredByUserId)?.name ?? "—"}
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        ) : (
+          <Empty>{t("flow.sales.historyEmpty")}</Empty>
+        )}
+      </Card>
     </section>
   );
 }

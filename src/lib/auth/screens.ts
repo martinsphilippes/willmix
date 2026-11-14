@@ -148,8 +148,9 @@ export const SCREEN_LABEL: Record<Screen, DictionaryKey> = {
 /**
  * Telas do Início (card "Início" em Equipe → Funções). Todo login da Wellmix
  * as abre por padrão; o administrador pode desmarcar cada uma por função
- * (FunctionDef.baseOff). Login sem função, ou com telas marcadas uma a uma,
- * continua abrindo todas.
+ * (FunctionDef.baseOff) e, no Personalizado de Editar acessos, login a login
+ * (users.screenExceptions, desde 14/11/2026). Login sem função continua
+ * abrindo todas.
  */
 export const WELLMIX_BASE: readonly Screen[] = [
   "home",
@@ -282,7 +283,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   comex_internal: ["orders", "containers", "freight", "history"],
 };
 
-type Who = Pick<User, "role"> & Partial<Pick<User, "functions" | "screens">>;
+type Who = Pick<User, "role"> &
+  Partial<Pick<User, "functions" | "screens" | "screenExceptions">>;
 
 /** Grupos do menu, com todas as telas (a tela de acessos mostra as caixas assim). */
 export const SCREEN_GROUPS: ReadonlyArray<{
@@ -363,14 +365,36 @@ export function functionScreensFor(
   return set;
 }
 
-/** O administrador marcou as telas deste login uma a uma (em vez do padrão das funções)? */
-export const hasCustomScreens = (user: Who) =>
-  isWellmix(user) && !isAdmin(user) && Array.isArray(user.screens);
+/** Exceções gravadas no Personalizado (users.screenExceptions), só chaves válidas; nulo sem elas. */
+export function screenExceptionsOf(
+  user: Who,
+): { added: Screen[]; removed: Screen[] } | null {
+  const value = user.screenExceptions;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return {
+    added: validScreens((value as { added?: unknown }).added),
+    removed: validScreens((value as { removed?: unknown }).removed),
+  };
+}
 
 /**
- * Telas que o login abre (menu e guarda das páginas saem daqui). Admin: todas.
- * Operador: a lista marcada pelo administrador (mais o básico), se houver;
- * senão o padrão das funções. Cliente, fornecedor e parceiros: a lista do papel.
+ * O login está no Personalizado (em vez do padrão das funções)? Pelas
+ * exceções (desde 14/11/2026) ou pela lista marcada uma a uma (antes).
+ */
+export const hasCustomScreens = (user: Who) =>
+  isWellmix(user) &&
+  !isAdmin(user) &&
+  (screenExceptionsOf(user) !== null || Array.isArray(user.screens));
+
+/**
+ * Telas que o login abre (menu, ícones do cabeçalho, guarda das páginas e
+ * Server Actions saem daqui). Admin: todas. Operador no Personalizado: o que
+ * as funções liberam agora, com as exceções do administrador por cima (o que
+ * ele marcou entra, o que desmarcou sai, inclusive no Início); mudar uma
+ * função muda o resultado e a exceção continua. Lista antiga marcada uma a
+ * uma (users.screens, de antes das exceções): ela mais o Início inteiro.
+ * Senão, o padrão das funções. Cliente, fornecedor e parceiros: a lista do
+ * papel.
  */
 export function screensFor(
   user: Who,
@@ -378,6 +402,13 @@ export function screensFor(
 ): Set<Screen> {
   if (isAdmin(user)) return new Set(SCREENS);
   if (isWellmix(user)) {
+    const exceptions = screenExceptionsOf(user);
+    if (exceptions) {
+      const set = functionScreensFor(user, access);
+      exceptions.added.forEach((s) => set.add(s));
+      exceptions.removed.forEach((s) => set.delete(s));
+      return set;
+    }
     if (Array.isArray(user.screens))
       return new Set<Screen>([...WELLMIX_BASE, ...validScreens(user.screens)]);
     return functionScreensFor(user, access);

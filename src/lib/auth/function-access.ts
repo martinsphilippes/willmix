@@ -2,10 +2,10 @@ import {
   FUNCTION_SCREENS,
   SCREENS,
   WELLMIX_BASE,
-  canOpen,
   type Screen,
 } from "@/lib/auth/screens";
 import { accessOf, type ResolvedAccess } from "@/lib/auth/access-cache";
+import { combineFunctionScreens } from "@/lib/auth/screen-picker";
 import { WELLMIX_FUNCTIONS, type WellmixFunction } from "@/lib/db/schema";
 import { ForbiddenError } from "@/lib/auth/permissions";
 
@@ -246,25 +246,17 @@ export function accessFromFunctions(
   functions: readonly string[] | null | undefined,
   defs: FunctionDef[],
 ): ResolvedAccess {
-  const screens = new Set<string>();
+  const active = defs.filter((d) => !d.archived);
+  // Telas e Início: a mesma regra que o card de Editar acessos usa na hora.
+  const { screens, base } = combineFunctionScreens(
+    functions,
+    active,
+    WELLMIX_BASE,
+  );
   const actions = new Set<string>();
-  const base = new Set<Screen>();
-  let active = 0;
-  for (const key of functions ?? []) {
-    const def = defs.find((d) => d.key === key && !d.archived);
-    if (!def) continue;
-    active++;
-    def.screens.forEach((s) => screens.add(s));
-    def.actions.forEach((a) => actions.add(a));
-    WELLMIX_BASE.forEach((s) => {
-      if (!def.baseOff.includes(s)) base.add(s);
-    });
-  }
-  return {
-    screens: [...screens],
-    actions: [...actions],
-    base: active ? WELLMIX_BASE.filter((s) => base.has(s)) : [...WELLMIX_BASE],
-  };
+  for (const key of functions ?? [])
+    active.find((d) => d.key === key)?.actions.forEach((a) => actions.add(a));
+  return { screens, actions: [...actions], base };
 }
 
 type Who = {
@@ -295,14 +287,13 @@ export function can(
 
 /**
  * Ver valores (venda, recebido, custo, margem) nas listas, exportações e na
- * Control Tower: quem abre Financeiro ou tem a permissão "Ver valores e
- * margem". Registrar e confirmar pagamentos continua sendo da tela Financeiro.
+ * Control Tower: quem tem a permissão "Ver valores e margem" (o
+ * administrador sempre). Abrir a tela Financeiro não concede a ação (dono,
+ * 14/11/2026: a tela controla a abertura; a ação, a execução). Registrar e
+ * confirmar pagamentos continua sendo da tela Financeiro.
  */
-export function canSeeMoney(user: Who & { screens?: unknown }): boolean {
-  return (
-    canOpen(user as Parameters<typeof canOpen>[0], "finance") ||
-    can(user, "values.view")
-  );
+export function canSeeMoney(user: Who): boolean {
+  return can(user, "values.view");
 }
 
 /** Server Actions e serviços: recusa (forbidden) quem não tem a ação. */

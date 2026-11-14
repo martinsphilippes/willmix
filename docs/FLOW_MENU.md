@@ -31,7 +31,7 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
   - **Produção → Logística** traz o frete marítimo do pedido (pedir às companhias e as respostas), para os pedidos com caso no passo. O pedido de frete aceita `returnTo` e volta para a tela do passo.
 - **Quinta parte** (14/11/2026): o **relatório da inspeção** (medidas × comprado, fotos, decisão da revisão, divergências) saiu do detalhe do pedido para um componente próprio (`src/components/inspection-result-card.tsx`) e aparece também em Produção → Inspeção, ao lado da agenda e da decisão por SKU, para todo pedido com caso no passo (inclusive o item "inspeção aprovada pela Wellmix" da etapa). O caminho principal aprova o SKU nessa tela.
 - Passos que já tinham tela (Books, Seleção, Cotações, Negociações, Pedidos, Revisão, Estoque) abrem a tela de sempre, com o contador.
-- Passos sem fonte de pendência ainda (LPCO, Amostras e Ofertas de Vendas) aparecem com a tela vazia e a explicação; nada inventado.
+- Todos os passos do menu têm fonte de pendência (LPCO, Amostras e Ofertas desde 14/11/2026).
 
 ## Abas da tela do passo (14/11/2026)
 
@@ -53,6 +53,16 @@ A visão é do passo e das necessidades operacionais dele, não do pedido inteir
 - **Pedidos** (o passo em que o pedido é criado) tem tela própria em `/app/flow/order/orders` (o menu "Pedidos" leva a ela; a lista `/app/orders` continua, com link na tela). O pedido nesse passo mostra só a criação: resumo, itens, programação de compra (pai e filhos) e os itens da criação (confirmação, número do ERP, ficha).
 - "Todos no passo" e o "Resolver" das pendências abrem o pedido na tela do passo; as telas focadas que já existem (Die Cut, documento do pedido, documentos do embarque, amostras, fotos reais) seguem diretas. As ações voltam para o pedido no passo (`flowReturnTo` aceita `/app/flow/<bloco>/<passo>/<pedido>`).
 - O detalhe do pedido (`/app/orders/[id]`) não mudou nesta frente.
+
+## Pedido → Certificação: só a lista, uma linha por produto (14/11/2026)
+
+Pedido do dono (com a foto da tela no login admin): os cartões dos pedidos embaixo da tabela repetiam os itens que já estavam na lista.
+
+- A tela do passo (`/app/flow/order/certification`) é só a lista: as abas Pendências e Todos no passo, os filtros de prazo e os contadores continuam; os cartões por pedido embaixo (itens de etapa e passos da certificação) saíram desta tela (`isListOnlyStep` em `src/lib/flow.ts`). Os outros passos seguem com os cartões.
+- Uma linha por produto: o certificado é de cada produto, então a pendência de etapa que junta vários produtos do pedido vira uma linha para cada um, só com o item daquele produto (`splitByProduct` e `casesInStep`). O contador do menu, os filtros, a aba Pendências e o Overview contam as mesmas linhas (`countByStep`). A aba Todos no passo segue com uma linha por pedido.
+- O "Resolver" da linha abre o pedido no passo já no produto: `/app/flow/order/certification/<pedido>?item=<item do pedido>` (`productOfCase`, `orderInStepHref`). Ali aparece só o item daquele produto, com o envio da foto ou do arquivo para quem pode enviar (a mesma regra de antes: etapa aberta, `canSubmitRequirement` e o responsável por login) e o link "Ver tudo do pedido neste passo". O envio volta ao mesmo produto (`flowReturnTo` aceita `?item=` só depois do pedido, com o mesmo formato de identificador). Produto que não é do pedido mostra o aviso e tudo do passo; pedido de outra empresa não abre.
+- As linhas do pedido inteiro (memorial, laudo, registro, selo, arte com o selo) abrem o pedido no passo, no quadro do passo (a mesma âncora do link da pendência).
+- No celular, a tabela dos casos rola de lado e a coluna do "Resolver" fica fixa à direita, sempre à vista (em todos os passos e no Overview; `FlowCases`).
 
 ## Overview pelos pedidos e visão do pedido entre os blocos (14/11/2026)
 
@@ -93,6 +103,13 @@ Os parceiros (fornecedor, agência, certificadora, despachante, comex, agente de
 - A tela do passo do parceiro tem as duas abas: Pendências (o que espera ação dele) e Todos no passo (os pedidos dele no passo, só com o que é dele: itens de etapa do papel ou que ele pode fazer e os passos que ele vê; sem a coluna do fornecedor; `flowPartnerAllFor`).
 - O pedido no passo abre para o parceiro só nos passos dele e só nos pedidos dele (`canViewOrder`): os itens do papel, os passos que ele vê, o cartão de produção só para o fornecedor do pedido, sem o fornecedor e o cliente no cabeçalho. Recebimento, relatório da inspeção, frete e a criação do pedido seguem só da Wellmix. Passo que não é do parceiro não abre (404).
 - Sem Overview para os parceiros. O detalhe do pedido (`/app/orders/[id]`) continua como estava para eles.
+
+## LPCO, Amostras e Ofertas (14/11/2026)
+
+- **Entrega → LPCO** (mapa E5, E5?): passo novo do embarque, `lpco` (`IMPORT_STEPS`): o comex registra o pedido da licença (número e arquivo) e a Wellmix marca deferida ou indeferida. Só no pedido com produto cujo NCM começa por um dos prefixos de Configurações → "NCMs que exigem LPCO" (`lpcoNcmPrefixes`; vazio, em nenhum pedido). A regra é `lpcoApplies` / `lpcoOrderIds` em `src/lib/services/import-flow.ts`; `stepApplies` recebe o resultado (sem ele, o LPCO não aparece). Não segura a presença de carga (passo sem dependente). Também no menu do comex. O resumo do pedido subiu para a versão 11 (o LPCO entra na contribuição do Overview).
+- **Vendas → Amostras** (E23): a amostra que chegou ao Brasil (passo `samples_brazil` concluído) e ainda não foi oferecida. A tela tem o registro de a quem foi oferecida e a lista das ofertas registradas.
+- **Vendas → Ofertas** (V2): o produto com a venda ativada (foto real aprovada pelo marketing, R5, `real_media` aprovada) e ainda não oferecido, com o mesmo registro.
+- As ofertas ficam na tabela nova `sales_offers` (tipo amostra ou produto, pedido, produto, a quem, observação, quem e quando); `recordSalesOfferAction` (só a Wellmix, com a tela Produtos). Os casos contam no menu, fora das Pendências (`flowSalesCasesFor`). Limpar dados de teste apaga as ofertas.
 
 ## De onde vem o contador
 
