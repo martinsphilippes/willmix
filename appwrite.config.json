@@ -10810,6 +10810,13 @@
           "array": false,
           "default": null,
           "type": "longtext"
+        },
+        {
+          "key": "hasTasks",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
         }
       ],
       "indexes": [
@@ -10828,6 +10835,16 @@
           "type": "key",
           "columns": [
             "live"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_has_tasks",
+          "type": "key",
+          "columns": [
+            "hasTasks"
           ],
           "orders": [
             "ASC"
