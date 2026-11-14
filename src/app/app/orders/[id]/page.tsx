@@ -391,6 +391,27 @@ export default async function OrderPage({
           await import("@/lib/services/supplier-invoice")
         ).invoiceDueOf(order)
       : null;
+  /* Entrega no CD do comprador (mapa E17?/E18): o comprador não é a Wellmix. */
+  const buyerDelivery =
+    (isWellmix(user) || user.role === "carrier") &&
+    ["CUSTOMS", "TRANSPORT", "DELIVERED"].includes(order.status)
+      ? await (async () => {
+          const { purchaseOrderCustomer } =
+            await import("@/lib/services/purchase-order");
+          const wellmixBuyer = await purchaseOrderCustomer();
+          const buyer = order.customerId
+            ? await store.get("parties", order.customerId)
+            : null;
+          const carrier = order.carrierId
+            ? await store.get("parties", order.carrierId)
+            : null;
+          return {
+            own: !!wellmixBuyer && wellmixBuyer.id === order.customerId,
+            buyer,
+            carrier,
+          };
+        })()
+      : null;
   /* Porto de chegada e transportadora padrão (Wellmix, do embarque à entrega). */
   const delivery =
     isWellmix(user) &&
@@ -2683,6 +2704,60 @@ export default async function OrderPage({
           />
         ) : null}
 
+        {/* Entrega no CD do comprador (mapa E17?/E18; docs/DELIVERY.md). */}
+        {buyerDelivery && !buyerDelivery.own ? (
+          <Card title={t("buyerDelivery.title")} dense>
+            <div data-buyer-delivery>
+              <p className="mb-3 text-sm text-zinc-600">
+                {t("buyerDelivery.hint")}
+              </p>
+              <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs text-zinc-500">
+                    {t("buyerDelivery.buyer")}
+                  </dt>
+                  <dd className="font-medium">
+                    {buyerDelivery.buyer?.name ?? "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500">
+                    {t("buyerDelivery.address")}
+                  </dt>
+                  <dd data-buyer-address>
+                    {buyerDelivery.buyer?.address || buyerDelivery.buyer?.city
+                      ? [
+                          buyerDelivery.buyer?.address,
+                          buyerDelivery.buyer?.city,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")
+                      : t("buyerDelivery.noAddress")}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500">
+                    {t("buyerDelivery.carrier")}
+                  </dt>
+                  <dd>
+                    {buyerDelivery.carrier?.name ??
+                      t("buyerDelivery.noCarrier")}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500">
+                    {t("buyerDelivery.confirm")}
+                  </dt>
+                  <dd>{t("buyerDelivery.confirmBuyer")}</dd>
+                </div>
+              </dl>
+            </div>
+          </Card>
+        ) : buyerDelivery?.own && isWellmix(user) ? (
+          <p className="text-sm text-zinc-600" data-buyer-delivery-own>
+            {t("buyerDelivery.wellmix")}
+          </p>
+        ) : null}
         {/* Porto de chegada e transportadora padrão (mapa E12? a E14). */}
         {delivery ? (
           <div id="delivery" className="min-w-0 scroll-mt-24">
@@ -3202,11 +3277,17 @@ export default async function OrderPage({
             t={t}
             order={order}
             view={receivingView}
+            canQuality={await receivingSvc.canDoQuality(user)}
             notice={
               typeof receivingNotice === "string" &&
-              ["saved", "counted", "ric", "returned", "closed"].includes(
-                receivingNotice,
-              )
+              [
+                "saved",
+                "counted",
+                "ric",
+                "returned",
+                "closed",
+                "quality",
+              ].includes(receivingNotice)
                 ? t(`receiving.done.${receivingNotice}` as DictionaryKey)
                 : null
             }
