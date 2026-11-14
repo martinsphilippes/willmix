@@ -18,9 +18,11 @@ export const ORDER_DOCUMENT_KEYS: readonly string[] = [
 
 /**
  * Ordem nova (docs/ORDER_SIGNATURE.md): a assinatura vem depois da arte e do
- * selo. Com a etapa "Arte e embalagem" aberta e a arte já enviada, a Wellmix
- * envia o selo e a arte com o selo (no lugar da certificadora e da agência) e
- * aperta "Enviar para assinatura".
+ * selo. Com a etapa "Arte e embalagem" aberta e a arte já enviada, a
+ * certificadora (OCP) do pedido envia o selo (só ela envia; dono,
+ * 14/11/2026; sem ela vinculada, a Wellmix vincula a da demonstração), a
+ * Wellmix envia a arte com o selo (no lugar da agência) e aperta "Enviar para
+ * assinatura".
  */
 export async function sendForSignature(
   admin: import("@/lib/db").User,
@@ -30,18 +32,28 @@ export async function sendForSignature(
   const { uploadDocument } = await import("@/lib/services/documents");
   const flow = await import("@/lib/services/import-flow");
   const s = await import("@/lib/services/order-signature");
-  for (const key of ["cert_seal", "cert_seal_art"] as const) {
-    const steps = await getStore().list("import_steps", {
-      filter: { orderId },
+  const store = getStore();
+  let order = (await store.get("orders", orderId))!;
+  if (!order.ocpId) {
+    const [party] = await store.list("parties", {
+      filter: { type: "ocp", active: true },
     });
+    order = await store.update("orders", orderId, { ocpId: party.id });
+  }
+  const [ocp] = await store.list("users", {
+    filter: { role: "ocp", partyId: order.ocpId!, active: true },
+  });
+  for (const key of ["cert_seal", "cert_seal_art"] as const) {
+    const steps = await store.list("import_steps", { filter: { orderId } });
     const have = steps.find((step) => step.key === key);
     if (have?.status === "submitted" || have?.status === "validated") continue;
+    const who = key === "cert_seal" ? ocp : admin;
     const doc = await uploadDocument(
-      admin,
+      who,
       new File(["%PDF-1.4 selo"], `${key}.pdf`, { type: "application/pdf" }),
       { orderId, type: "import_step", visibility: "internal" },
     );
-    await flow.submitStep(admin, orderId, key, { documentId: doc.id });
+    await flow.submitStep(who, orderId, key, { documentId: doc.id });
   }
   await s.sendOrderForSignature(admin, orderId);
 }
