@@ -1,5 +1,7 @@
 # Programação de compra (rodadas de pedido)
 
+> **Nome na tela (dono, 14/11/2026):** cada rodada aparece como **programação** (plural **programações**) em todos os textos em português da programação de compra: Seleção de itens, solicitação ao fornecedor, pedido pai e filhos e avisos. Neste documento e no código, "rodada" continua sendo o nome técnico.
+
 Decisão do dono (12/11/2026). Ao gravar a escolha do grupo na Seleção de itens (`/app/booking/selection?tab=selection`), a Wellmix pode oferecer ao fornecedor uma **programação de compra para os próximos meses**: em vez de uma quantidade só, diz em quantas rodadas compra, quantas peças em cada uma e o intervalo de dias entre elas.
 
 Decisões do dono (12/11/2026):

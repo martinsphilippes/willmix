@@ -359,7 +359,7 @@ export async function openSupplierRequest(
     "supplier_request.open",
     "supplier_request",
     request.id,
-    `Solicitação ao fornecedor nº ${number}: ${supplier.name}, ${request.quantity} pcs${schedule ? ` em ${schedule.items.length} rodadas a cada ${schedule.intervalDays} dias` : ""} (book nº ${lot.number})`,
+    `Solicitação ao fornecedor nº ${number}: ${supplier.name}, ${request.quantity} pcs${schedule ? ` em ${schedule.items.length} programações a cada ${schedule.intervalDays} dias` : ""} (book nº ${lot.number})`,
   );
   if (batches) return request;
   const { notify } = await import("./notifications");
