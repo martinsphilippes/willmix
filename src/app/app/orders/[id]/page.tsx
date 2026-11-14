@@ -1,3 +1,5 @@
+import { OrderProgressCard } from "@/components/order-progress-card";
+import { isProgressBlock } from "@/lib/flow-progress";
 import { listByIds } from "@/lib/db/lookup";
 import { ColorLines } from "@/components/color-lines";
 import { registerOrderInvoiceAction } from "../../actions/order-invoice";
@@ -245,6 +247,7 @@ export default async function OrderPage({
     freightN,
     rounds: roundsSpawned,
     incoterm: incotermNotice,
+    from: fromBlock,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
@@ -1421,6 +1424,16 @@ export default async function OrderPage({
           />
         }
       />
+      {/* Linha do tempo do pedido entre os blocos (docs/FLOW_MENU.md). */}
+      {wellmix ? (
+        <OrderProgressCard
+          orderId={order.id}
+          stages={stages}
+          focus={isProgressBlock(fromBlock) ? fromBlock : null}
+          t={t}
+          locale={t}
+        />
+      ) : null}
       <ActionError
         t={t}
         code={error}

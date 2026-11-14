@@ -5,6 +5,7 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import { pendingTasksFor, type Task } from "./tasks";
 import { tasksForFunctions } from "@/lib/task-owner";
+import { orderProgress, type OrderProgress } from "@/lib/flow-progress";
 import {
   countByStep,
   flowStepsOf,
@@ -253,14 +254,35 @@ export interface FlowEntity {
  * o Overview), não entra no menu.
  */
 export const flowAllFor = cache(
-  async (user: User): Promise<Map<string, FlowEntity[]>> => {
+  async (user: User): Promise<Map<string, FlowEntity[]>> =>
+    (await flowAllData(user)).entities,
+);
+
+/**
+ * Completude e atraso por bloco de cada pedido em andamento (dono,
+ * 14/11/2026): a mesma leitura das etapas do "Todos no passo", sem consulta
+ * nova. Só a Wellmix.
+ */
+export const flowProgressFor = cache(
+  async (user: User): Promise<Map<string, OrderProgress>> =>
+    (await flowAllData(user)).progress,
+);
+
+const flowAllData = cache(
+  async (
+    user: User,
+  ): Promise<{
+    entities: Map<string, FlowEntity[]>;
+    progress: Map<string, OrderProgress>;
+  }> => {
     const out = new Map<string, Map<string, FlowEntity>>();
-    if (!isWellmix(user)) return new Map();
+    const empty = { entities: new Map(), progress: new Map() };
+    if (!isWellmix(user)) return empty;
     const store = getStore();
     const orders = (await store.list("orders")).filter(
       (o) => !o.held && o.status !== "CLOSED" && o.status !== "CANCELLED",
     );
-    if (!orders.length) return new Map();
+    if (!orders.length) return empty;
     const orderById = new Map(orders.map((o) => [o.id, o]));
     const ids = orders.map((o) => o.id);
     const add = (
@@ -286,6 +308,19 @@ export const flowAllFor = cache(
         .list("production_tracks", { filter: { orderId: ids } })
         .catch(() => []),
     ]);
+    const now = new Date();
+    const stagesByOrder = new Map<string, typeof stages>();
+    for (const st of stages) {
+      const list = stagesByOrder.get(st.orderId) ?? [];
+      list.push(st);
+      stagesByOrder.set(st.orderId, list);
+    }
+    const progress = new Map(
+      orders.map((o) => [
+        o.id,
+        orderProgress(stagesByOrder.get(o.id) ?? [], now),
+      ]),
+    );
     // Itens de etapa abertos das etapas em andamento (ou bloqueadas).
     const live = stages.filter(
       (s) => s.status === "active" || s.status === "blocked",
@@ -372,11 +407,52 @@ export const flowAllFor = cache(
             { kind: "case", title: c.text },
             c.sinceAt ?? null,
           );
-    return new Map(
+    const entities = new Map(
       [...out.entries()].map(([k, byOrder]) => [
         k,
         [...byOrder.values()].sort((a, b) => a.order.number - b.order.number),
       ]),
     );
+    return { entities, progress };
   },
 );
+
+/** Pedido que está no bloco: os passos em que está, desde quando e a completude. */
+export interface FlowBlockEntity {
+  order: import("@/lib/db/schema").Order;
+  /** Chaves dos passos do bloco em que o pedido está agora. */
+  steps: string[];
+  items: FlowEntityItem[];
+  since: string | null;
+  progress: OrderProgress | null;
+}
+
+/**
+ * Os pedidos de um bloco agora (Overview, dono 14/11/2026): todo pedido com
+ * algo aberto em algum passo do bloco (a mesma regra do "Todos no passo"),
+ * com os passos, desde quando e a completude do pedido. Só a Wellmix.
+ */
+export async function flowBlockEntities(
+  user: User,
+  block: FlowBlock,
+): Promise<FlowBlockEntity[]> {
+  const { entities, progress } = await flowAllData(user);
+  const byOrder = new Map<string, FlowBlockEntity>();
+  for (const step of stepsOf(block)) {
+    if (step.badgeOnly) continue;
+    for (const e of entities.get(stepId(step)) ?? []) {
+      const row = byOrder.get(e.order.id) ?? {
+        order: e.order,
+        steps: [],
+        items: [],
+        since: null,
+        progress: progress.get(e.order.id) ?? null,
+      };
+      if (!row.steps.includes(step.key)) row.steps.push(step.key);
+      row.items.push(...e.items);
+      if (e.since && (!row.since || e.since < row.since)) row.since = e.since;
+      byOrder.set(e.order.id, row);
+    }
+  }
+  return [...byOrder.values()].sort((a, b) => a.order.number - b.order.number);
+}

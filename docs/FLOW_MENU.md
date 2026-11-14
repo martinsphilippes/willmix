@@ -4,16 +4,16 @@ Pedido do dono (14/11/2026): o menu lateral segue os blocos do mapa do processo 
 
 ## Estrutura
 
-| Bloco (mapa) | Itens |
-| --- | --- |
-| Produto novo (Book) | Overview, Books, Seleção de itens, Cotações (convites de book), Negociações (solicitações ao fornecedor, com a amostragem) |
-| Pedido | Overview, Pedidos, Certificação, Material de arte, Arte, Revisão, Contrato |
-| Produção | Overview (`/app/production`), Pré-produção, Inspeção, Amostra, Produção, Booking (marítima), Logística, Carregamento, Documentos de carga, Embarque |
-| Entrega | Overview, LPCO, Presença de carga, Canal cinza ou vermelho, Logística, Nota fiscal, Entrega, Retorno, Armazenagem; Containers, Fretes e Tarifário seguem no fim |
-| Vendas | Estoque, Amostras, Ofertas, Venda |
-| Financeiro | Financeiro, Contas a pagar, Fluxo de caixa (saiu de Painéis), Acordos e comissões, Multas |
-| Painéis | Painel do dono, Painéis por área, Painel de SLA (só leitura, sem contador) |
-| Cadastros | Parceiros, Produtos, Linhas |
+| Bloco (mapa)        | Itens                                                                                                                                                           |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Produto novo (Book) | Overview, Books, Seleção de itens, Cotações (convites de book), Negociações (solicitações ao fornecedor, com a amostragem)                                      |
+| Pedido              | Overview, Pedidos, Certificação, Material de arte, Arte, Revisão, Contrato                                                                                      |
+| Produção            | Overview (`/app/production`), Pré-produção, Inspeção, Amostra, Produção, Booking (marítima), Logística, Carregamento, Documentos de carga, Embarque             |
+| Entrega             | Overview, LPCO, Presença de carga, Canal cinza ou vermelho, Logística, Nota fiscal, Entrega, Retorno, Armazenagem; Containers, Fretes e Tarifário seguem no fim |
+| Vendas              | Estoque, Amostras, Ofertas, Venda                                                                                                                               |
+| Financeiro          | Financeiro, Contas a pagar, Fluxo de caixa (saiu de Painéis), Acordos e comissões, Multas                                                                       |
+| Painéis             | Painel do dono, Painéis por área, Painel de SLA (só leitura, sem contador)                                                                                      |
+| Cadastros           | Parceiros, Produtos, Linhas                                                                                                                                     |
 
 Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeçalho, com o contador de não lidas. O Superplan saiu de Painéis e virou atalho em Configurações. Nenhuma tela ou rota foi removida.
 
@@ -42,6 +42,20 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
   - recebimentos abertos (Armazenagem e Retorno) e a pré-produção, os mesmos casos do menu;
   - produção em andamento: pedido na etapa de inspeção com ETD.
 - O Overview do bloco mostra, em cada passo da linha do tempo, quantos pedidos estão nele ("N no passo"), além das pendências. Passos com tela de antes (Books, Pedidos, Revisão, Estoque) listam na própria tela.
+
+## Overview pelos pedidos e visão do pedido entre os blocos (14/11/2026)
+
+Pedido do dono: o Overview de Pedido, Produção e Entrega (só a Wellmix) passa a mostrar os pedidos do bloco, e não só as pendências.
+
+- **KPIs no topo** (`data-flow-kpis`): pedidos no bloco, atrasados no bloco, completude média do bloco, completude geral média e as pendências (com o pedido há mais tempo no bloco).
+- **Linha do tempo geral** (`data-flow-general`): os três blocos (Pedido → Produção → Entrega) com quantos pedidos estão em cada um, a completude média do bloco e os atrasados; o bloco aberto em cor, os outros em cinza; cada um leva ao Overview dele.
+- **Passos à esquerda**: o número grande é quantos pedidos estão no passo; as pendências, os atrasos e os dias ficam embaixo, em letra menor. "Todos os passos" no topo mostra o bloco inteiro (padrão).
+- **Tabela dos pedidos** (`FlowEntities`, `src/components/flow-entities.tsx`): pedido, fornecedor, passos (na visão do bloco inteiro), etapa, há quantos dias está no bloco, atraso, % do bloco e % geral; os atrasados primeiro, até 500 linhas. Com um passo escolhido, as pendências dele aparecem embaixo, como antes.
+- **Visão do pedido** (`OrderProgressCard`, `src/components/order-progress-card.tsx`, no topo do detalhe do pedido para a Wellmix; o Overview abre com `?from=<bloco>#order-progress`): a viagem inteira do pedido, com a completude geral; o bloco de onde veio em cor, com as etapas (situação, %, prazo, conclusão e atraso) e o relatório de atraso (atraso agora e etapas concluídas depois do prazo); os outros blocos em cinza com o percentual. Clicar num bloco muda o foco. Sem `from`, o foco é o bloco atual do pedido.
+- **Regra** (`src/lib/flow-progress.ts`, pura): cada etapa do pedido cai num bloco (Pedido: criação, preparação, embalagem; Produção: inspeção, embarque; Entrega: desembaraço, transporte, entrega e encerramento; o pagamento ao fornecedor, fora do fluxo, não conta). Etapa concluída vale 100%, em andamento ou bloqueada o percentual dela, não começada 0%; cancelada não entra. O bloco é a média das etapas dele; o geral, a média de todas. Atraso: etapa aberta com o prazo vencido (dias desde o prazo) e etapa concluída depois do prazo.
+- **Leitura**: os pedidos do bloco são os do "Todos no passo" (`flowBlockEntities`), e a completude sai das etapas que essa mesma leitura já traz (`flowProgressFor`); nada novo no banco. Os KPIs são contados sobre essa mesma lista, sem tabela agregada (`kpi_snapshots`) por enquanto; ver "Pendências" abaixo.
+- Produto novo e os logins de fora da Wellmix seguem com o Overview das pendências.
+- **Pendência**: a regra de docs/RESUMOS.md pede indicadores em tabela agregada. Estes KPIs são contados na leitura dos pedidos em andamento, como já era o "N no passo". Se a tela pesar em produção, o próximo passo é guardar a contribuição de cada pedido (bloco, passos, %, atraso) no resumo e somar num `kpi_snapshots` próprio.
 
 ## De onde vem o contador
 
