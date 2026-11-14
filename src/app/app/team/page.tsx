@@ -117,6 +117,21 @@ export default async function TeamPage({
       )[saved] ?? (`fn.saved.${saved}` as DictionaryKey))
     : null;
   const savedText = savedKey && t(savedKey) !== savedKey ? t(savedKey) : null;
+  // Resumo de "Excluir acesso": quem passou para o novo chefe, as pendências
+  // redistribuídas e as que ficaram sem responsável.
+  const count = (key: string) => {
+    const value = one(key);
+    return value && /^\d{1,6}$/.test(value) ? Number(value) : 0;
+  };
+  const deleted =
+    saved === "deleted"
+      ? {
+          reports: count("reports"),
+          to: team.find((m) => m.id === one("to"))?.name ?? null,
+          work: count("work"),
+          left: count("left"),
+        }
+      : null;
   const distributed = one("distributed");
   const distributedCount =
     distributed && /^\d+$/.test(distributed) ? Number(distributed) : null;
@@ -163,7 +178,31 @@ export default async function TeamPage({
       ) : null}
       {savedText ? (
         <div className="mb-3" data-team-saved={saved}>
-          <Alert tone="success">{savedText}</Alert>
+          <Alert tone="success">
+            <span className="block" data-team-saved-text>
+              {savedText}
+            </span>
+            {deleted?.reports && deleted.to ? (
+              <span className="mt-1 block" data-team-deleted-reports>
+                {t("team.saved.deleted.reports", {
+                  n: deleted.reports,
+                  name: deleted.to,
+                })}
+              </span>
+            ) : null}
+            {deleted?.work ? (
+              <span className="mt-1 block" data-team-deleted-work>
+                {t("team.saved.deleted.work", { n: deleted.work })}
+              </span>
+            ) : null}
+          </Alert>
+        </div>
+      ) : null}
+      {deleted?.left ? (
+        <div className="mb-3" data-team-deleted-left>
+          <Alert tone="warning">
+            {t("team.saved.deleted.left", { n: deleted.left })}
+          </Alert>
         </div>
       ) : null}
       {distributedCount !== null ? (

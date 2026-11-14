@@ -436,7 +436,13 @@ export async function artIssueTasks(
   const out: ArtTaskDraft[] = [];
   for (const issue of issues) {
     const order = orders.find((o) => o.id === issue.orderId);
-    if (!order || order.status === "CANCELLED" || order.status === "CLOSED")
+    // Pedido do histórico do Sankhya em espera (held): sem pendência.
+    if (
+      !order ||
+      order.held ||
+      order.status === "CANCELLED" ||
+      order.status === "CLOSED"
+    )
       continue;
     const fix = issue.status === "open";
     const route = fix

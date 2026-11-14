@@ -7,7 +7,8 @@ import { PASSWORD, login } from "./helpers";
  * nome e o login; "Cancelar" não muda nada; confirmado, a lista mostra
  * "Acesso excluído com sucesso" sem a pessoa, a sessão aberta dela cai na
  * próxima tela, o login não entra mais e a exclusão aparece na Auditoria.
- * O próprio acesso aparece desligado, com o motivo.
+ * O próprio acesso aparece desligado, com o motivo. Opção da confirmação
+ * (marcada por padrão): quem respondia a ela passa para o chefe dela.
  */
 test("Excluir acesso: confirmação, lista, sessão aberta e Auditoria", async ({
   page,
@@ -25,10 +26,30 @@ test("Excluir acesso: confirmação, lista, sessão aberta e Auditoria", async (
   await form.locator('input[name="login"]').fill(userLogin);
   await form.locator('input[name="password"]').fill(PASSWORD);
   await form.locator('input[name="mustChange"]').uncheck();
+  // Ela responde à Ana Admin.
+  await form
+    .locator('select[name="managerUserId"]')
+    .selectOption({ label: "Ana Admin" });
   await form.getByRole("button", { name: "Criar login" }).click();
   await page.waitForURL(/\/app\/team\/[^/?]+\?created=/);
   const memberUrl = new URL(page.url()).pathname;
   const memberId = memberUrl.split("/").pop()!;
+
+  // O Otávio passa a responder a ela.
+  await page.goto("/app/team");
+  const otavioId = await page
+    .locator("[data-team-member]", { hasText: "Otávio Operador" })
+    .getAttribute("data-team-member");
+  const setOtavioManager = async (value: string) => {
+    await page.goto(`/app/team/${otavioId}`);
+    await page.locator('select[name="managerUserId"]').selectOption(value);
+    await page
+      .getByRole("button", { name: /salvar/i })
+      .first()
+      .click();
+    await page.waitForURL(/saved=member/);
+  };
+  await setOtavioManager(memberId);
 
   // A pessoa entra em outro navegador e fica com o portal aberto.
   const other = await browser.newContext();
@@ -50,6 +71,19 @@ test("Excluir acesso: confirmação, lista, sessão aberta e Auditoria", async (
     `${name} · ${userLogin}`,
   );
   await expect(dialog).toContainText("vai perder o acesso à equipe Wellmix");
+  // Opção marcada: o Otávio vai para a Ana Admin. Desmarcada, aparece o que
+  // fazer depois; marcada de novo, o aviso some.
+  const move = dialog.locator("[data-team-delete-move]");
+  await expect(move).toBeChecked();
+  await expect(dialog.locator("[data-team-delete-reports] label")).toHaveText(
+    "Passar as 1 pessoa(s) que respondem a ela para Ana Admin, a quem ela responde",
+  );
+  const later = dialog.locator("[data-team-delete-reports] p");
+  await expect(later).toBeHidden();
+  await move.uncheck();
+  await expect(later).toBeVisible();
+  await move.check();
+  await expect(later).toBeHidden();
   await dialog.locator("[data-team-delete-cancel]").click();
   await expect(dialog).toBeHidden();
   await page.goto("/app/team");
@@ -60,11 +94,16 @@ test("Excluir acesso: confirmação, lista, sessão aberta e Auditoria", async (
   await open.click();
   await dialog.locator("[data-team-delete-confirm]").click();
   await page.waitForURL(/\/app\/team\?saved=deleted/);
-  await expect(page.locator('[data-team-saved="deleted"]')).toHaveText(
+  await expect(page.locator("[data-team-saved-text]")).toHaveText(
     "Acesso excluído com sucesso",
   );
+  await expect(page.locator("[data-team-deleted-reports]")).toHaveText(
+    "1 pessoa(s) passaram a responder a Ana Admin.",
+  );
   await expect(page.locator(`[data-team-member="${memberId}"]`)).toHaveCount(0);
-  await expect(page.locator("[data-team-member]").first()).toBeVisible();
+  await expect(page.locator(`[data-team-member="${otavioId}"]`)).toContainText(
+    "Ana Admin",
+  );
 
   // A sessão que estava aberta cai na próxima tela; o login não entra mais.
   await theirs.goto("/app");
@@ -100,4 +139,7 @@ test("Excluir acesso: confirmação, lista, sessão aberta e Auditoria", async (
   await expect(page.locator("[data-team-delete-why]")).toHaveText(
     "Você não pode excluir o próprio acesso.",
   );
+
+  // O Otávio volta a não responder a ninguém, como nos dados de demonstração.
+  await setOtavioManager("");
 });

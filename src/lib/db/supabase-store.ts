@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { TableName, Tables } from "./schema";
 import { TABLES } from "./schema";
-import type { ListOptions, NewRow, Patch, Store, StoredFile } from "./store";
+import type {
+  Filter,
+  ListOptions,
+  NewRow,
+  Patch,
+  Store,
+  StoredFile,
+} from "./store";
 import { hidesHeld, pickColumns, searchText } from "./store";
 import { storageFileName } from "../file-kinds";
 import {
@@ -129,14 +136,9 @@ export class SupabaseStore implements Store {
       });
       return options.limit ? merged.slice(0, options.limit) : merged;
     }
-    const params: string[] = [`select=${select}`];
-    for (const [key, value] of Object.entries(options.filter ?? {})) {
-      if (value === null) params.push(`${enc(key)}=is.null`);
-      else if (Array.isArray(value)) {
-        if (value.length === 0) return [];
-        params.push(`${enc(key)}=in.(${value.map(inValue).join(",")})`);
-      } else params.push(`${enc(key)}=eq.${enc(String(value))}`);
-    }
+    const where = filterParams(options.filter);
+    if (!where) return [];
+    const params: string[] = [`select=${select}`, ...where];
     // Histórico do Sankhya em espera (store.ts, hidesHeld).
     if (hidesHeld(table, options)) params.push("held=not.is.true");
     if (options.search) {
@@ -247,6 +249,49 @@ export class SupabaseStore implements Store {
     // Como o Appwrite: atualizar o que não existe é erro.
     if (!row) throw new SupabaseError(404, `${table}/${id} não encontrado`);
     return fromRow<Tables[K]>(table, row);
+  }
+
+  /** PATCH com o filtro: uma ida ao banco (listas longas em partes). */
+  async updateWhere<K extends TableName>(
+    table: K,
+    filter: Filter<Tables[K]>,
+    patch: Patch<Tables[K]>,
+  ) {
+    const big = Object.entries(filter).find(
+      ([, v]) => Array.isArray(v) && v.length > MAX_IN,
+    );
+    if (big) {
+      const [field, values] = big as [string, Array<string | number>];
+      for (let i = 0; i < values.length; i += MAX_IN)
+        await this.updateWhere(
+          table,
+          { ...filter, [field]: values.slice(i, i + MAX_IN) } as Filter<
+            Tables[K]
+          >,
+          patch,
+        );
+      return;
+    }
+    const where = filterParams(filter);
+    // Sem filtro nunca muda a tabela inteira.
+    if (!where?.length) return;
+    await this.rest(`${table}?${where.join("&")}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        ...toRow(table, patch as Row),
+        updatedAt: new Date().toISOString(),
+      }),
+    });
+  }
+
+  async count<K extends TableName>(table: K, filter: Filter<Tables[K]>) {
+    const where = filterParams(filter);
+    if (!where) return 0;
+    const { total } = await this.restCounted(
+      `${table}?${["select=id", ...where].join("&")}&limit=1`,
+    );
+    return total ?? 0;
   }
 
   async upsertMany<K extends TableName>(
@@ -490,6 +535,22 @@ export function nameFromKey(key: string) {
 function inValue(v: string | number) {
   if (typeof v === "number") return String(v);
   return enc(`"${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`);
+}
+
+/**
+ * Filtro em parâmetros do PostgREST (igual a / um destes / vazio); null
+ * quando uma lista vazia faz nada casar.
+ */
+function filterParams(filter: Record<string, unknown> = {}): string[] | null {
+  const params: string[] = [];
+  for (const [key, value] of Object.entries(filter)) {
+    if (value === null) params.push(`${enc(key)}=is.null`);
+    else if (Array.isArray(value)) {
+      if (value.length === 0) return null;
+      params.push(`${enc(key)}=in.(${value.map(inValue).join(",")})`);
+    } else params.push(`${enc(key)}=eq.${enc(String(value))}`);
+  }
+  return params;
 }
 
 function toRow(table: TableName, data: Row): Row {

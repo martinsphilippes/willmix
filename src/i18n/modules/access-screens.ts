@@ -25,6 +25,17 @@ export const pt = {
   "team.error.delete_self": "Você não pode excluir o próprio acesso.",
   "team.error.delete_last_admin":
     "Este é o último administrador ativo da equipe: o acesso não pode ser excluído.",
+  "team.delete.moveReports":
+    "Passar as {n} pessoa(s) que respondem a ela para {name}, a quem ela responde",
+  "team.delete.redistribute":
+    "Redistribuir as {n} pendência(s) aberta(s) dela pela divisão da linha de cada produto, como em “Distribuir agora”",
+  "team.saved.deleted.reports": "{n} pessoa(s) passaram a responder a {name}.",
+  "team.saved.deleted.work":
+    "{n} pendência(s) passaram para outras pessoas da divisão.",
+  "team.saved.deleted.left":
+    "{n} pendência(s) dela ficaram sem responsável (linha sem divisão ou divisão sem analista): ajuste na aba “Linha de produto e divisão” e use “Distribuir agora”.",
+  "team.error.delete_followup":
+    "O acesso foi excluído, mas não deu para passar tudo: confira “Responde a” de quem respondia a ela e use “Distribuir agora” na aba “Linha de produto e divisão”.",
   "team.block.data": "Dados",
   "team.block.functions": "Funções (o que a pessoa faz no processo)",
   "team.block.screens": "Telas que o login abre",
@@ -89,6 +100,17 @@ export const en: Record<keyof typeof pt, string> = {
   "team.error.delete_self": "You cannot delete your own access.",
   "team.error.delete_last_admin":
     "This is the last active administrator of the team: the access cannot be deleted.",
+  "team.delete.moveReports":
+    "Move the {n} person(s) who report to them to {name}, their manager",
+  "team.delete.redistribute":
+    "Redistribute their {n} open item(s) by the division of each product line, as in “Distribute now”",
+  "team.saved.deleted.reports": "{n} person(s) now report to {name}.",
+  "team.saved.deleted.work":
+    "{n} open item(s) were handed to other people in the division.",
+  "team.saved.deleted.left":
+    "{n} of their open item(s) were left without an owner (line without a division or division without an analyst): fix it on the “Product line and division” tab and use “Distribute now”.",
+  "team.error.delete_followup":
+    "The access was deleted, but not everything could be handed over: check “Reports to” for the people who reported to them and use “Distribute now” on the “Product line and division” tab.",
   "team.block.data": "Details",
   "team.block.functions": "Functions (what the person does in the process)",
   "team.block.screens": "Screens this login opens",
@@ -152,6 +174,15 @@ export const zh: Record<keyof typeof pt, string> = {
   "team.error.delete_self": "不能删除自己的权限。",
   "team.error.delete_last_admin":
     "这是团队中最后一位在职管理员：不能删除此权限。",
+  "team.delete.moveReports": "将向此人汇报的 {n} 人转给 {name}（此人的上级）",
+  "team.delete.redistribute":
+    "按每个产品线的事业部重新分配此人的 {n} 项未完成事项（与“立即分配”相同）",
+  "team.saved.deleted.reports": "{n} 人已改为向 {name} 汇报。",
+  "team.saved.deleted.work": "{n} 项未完成事项已转给该事业部的其他人。",
+  "team.saved.deleted.left":
+    "此人有 {n} 项未完成事项暂无负责人（产品线未设事业部或事业部没有分析员）：请在“产品线与部门”页调整并点击“立即分配”。",
+  "team.error.delete_followup":
+    "权限已删除，但未能全部转交：请检查原下属的“汇报对象”，并在“产品线与部门”页点击“立即分配”。",
   "team.block.data": "基本信息",
   "team.block.functions": "职能（此人在流程中做什么）",
   "team.block.screens": "此账号可打开的页面",
