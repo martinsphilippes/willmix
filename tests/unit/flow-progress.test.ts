@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { orderProgress } from "@/lib/flow-progress";
+import {
+  BOOK_PERCENT,
+  bookStep,
+  lateDaysSince,
+  orderProgress,
+  overallOf,
+  requestInNegotiation,
+  requestPercent,
+} from "@/lib/flow-progress";
 import type { Stage } from "@/lib/db/schema";
 
 /* Completude e atraso do pedido por bloco (docs/FLOW_MENU.md, "Visão do
@@ -89,5 +97,48 @@ describe("completude do pedido por bloco", () => {
     expect(p.overall).toBe(100);
     expect(p.current).toBe("delivery");
     expect(p.blocks.find((b) => b.block === "delivery")!.state).toBe("done");
+  });
+});
+
+describe("Produto novo: books e solicitações", () => {
+  it("book: passo e completude pela situação", () => {
+    expect(bookStep("preparing")).toBe("books");
+    expect(bookStep("draft")).toBe("books");
+    expect(bookStep("closed")).toBe("selection");
+    expect(bookStep("in_progress")).toBe("selection");
+    expect(bookStep("done")).toBeNull();
+    expect(bookStep("cancelled")).toBeNull();
+    expect(BOOK_PERCENT.draft).toBe(25);
+    expect(BOOK_PERCENT.done).toBe(100);
+    expect(BOOK_PERCENT.cancelled).toBeNull();
+  });
+
+  it("solicitação: completude e Negociações até a amostra aprovada", () => {
+    const r = (
+      status: "open" | "answered" | "approved" | "declined" | "cancelled",
+      sampling?: "pending" | "submitted" | "approved" | "rejected",
+    ) => ({
+      status,
+      createdAt: "2026-11-14T00:00:00Z",
+      sampling: sampling ? { status: sampling } : null,
+    });
+    expect(requestPercent(r("open"))).toBe(25);
+    expect(requestPercent(r("answered"))).toBe(50);
+    expect(requestPercent(r("approved"))).toBe(70);
+    expect(requestPercent(r("approved", "submitted"))).toBe(85);
+    expect(requestPercent(r("approved", "approved"))).toBe(100);
+    expect(requestPercent(r("declined"))).toBeNull();
+    expect(requestInNegotiation(r("approved", "rejected"))).toBe(true);
+    expect(requestInNegotiation(r("approved", "approved"))).toBe(false);
+    expect(requestInNegotiation(r("cancelled"))).toBe(false);
+  });
+
+  it("atraso em dias (o que passou do prazo já conta 1) e o geral com pedido", () => {
+    expect(lateDaysSince("2026-11-14T11:30:00Z", now)).toBe(1);
+    expect(lateDaysSince("2026-11-12T12:00:00Z", now)).toBe(2);
+    expect(lateDaysSince("2026-11-15T00:00:00Z", now)).toBe(0);
+    expect(lateDaysSince(null, now)).toBe(0);
+    expect(overallOf(70, 0, 0)).toBe(70);
+    expect(overallOf(100, 1, 20)).toBe(40); // (100 + 3 × 20) / 4
   });
 });

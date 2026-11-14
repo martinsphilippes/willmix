@@ -5,7 +5,23 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import { pendingTasksFor, type Task } from "./tasks";
 import { tasksForFunctions } from "@/lib/task-owner";
-import { orderProgress, type OrderProgress } from "@/lib/flow-progress";
+import {
+  BOOK_PERCENT,
+  blockOf,
+  bookStep,
+  isProgressBlock,
+  lateDaysSince,
+  orderProgress,
+  overallOf,
+  requestInNegotiation,
+  requestPercent,
+  type OrderProgress,
+} from "@/lib/flow-progress";
+import { getSettings } from "@/lib/settings";
+import {
+  supplierRequestLate,
+  supplierRequestSlaDue,
+} from "@/lib/supplier-requests";
 import {
   countByStep,
   flowStepsOf,
@@ -456,3 +472,186 @@ export async function flowBlockEntities(
   }
   return [...byOrder.values()].sort((a, b) => a.order.number - b.order.number);
 }
+
+/**
+ * Linha da tabela do Overview (dono, 14/11/2026): um pedido (Pedido,
+ * Produção, Entrega) ou, no Produto novo, um book ou uma solicitação ao
+ * fornecedor, com os passos do bloco em que está, a situação, desde quando, o
+ * atraso e a completude.
+ */
+export interface OverviewEntity {
+  kind: "order" | "book" | "request";
+  id: string;
+  number: number;
+  /** Tela da entidade, aberta na linha do tempo dela. */
+  href: string;
+  partyId: string | null;
+  steps: string[];
+  /** Situação: chave do dicionário. */
+  statusKey: string;
+  since: string | null;
+  lateDays: number;
+  /** Completude no bloco. */
+  percent: number;
+  /** Completude geral da entidade. */
+  overall: number;
+}
+
+/** As entidades de um bloco no Overview (só a Wellmix). */
+export async function flowOverviewEntities(
+  user: User,
+  block: FlowBlock,
+): Promise<OverviewEntity[]> {
+  if (!isWellmix(user)) return [];
+  if (block === "new-product") return newProductEntities(user);
+  if (!isProgressBlock(block)) return [];
+  return (await flowBlockEntities(user, block)).map((e) => {
+    const mine = e.progress ? blockOf(e.progress, block) : null;
+    return {
+      kind: "order",
+      id: e.order.id,
+      number: e.order.number,
+      href: `/app/orders/${e.order.id}?from=${block}#order-progress`,
+      partyId: e.order.supplierId || null,
+      steps: e.steps,
+      statusKey: `stage.${e.order.status}`,
+      since: mine?.startedAt ?? e.since,
+      lateDays: mine?.lateDays ?? 0,
+      percent: mine?.percent ?? 0,
+      overall: e.progress?.overall ?? 0,
+    };
+  });
+}
+
+/**
+ * Produto novo: os books em preenchimento, rascunho, fechados ou em
+ * andamento (Books ou Seleção de itens; Cotações quando há convite de book
+ * concorrente aberto) e as solicitações ao fornecedor em negociação ou
+ * aprovadas com a amostra ainda não aprovada e sem pedido (Negociações). A
+ * solicitação com vários produtos (mesmo `batchId`) é uma linha só.
+ */
+export const newProductEntities = cache(
+  async (user: User, now = new Date()): Promise<OverviewEntity[]> => {
+    if (!isWellmix(user)) return [];
+    const store = getStore();
+    const [lots, invites, requests, minutes] = await Promise.all([
+      canOpen(user, "booking")
+        ? store.list("booking_lots", {
+            filter: {
+              status: ["preparing", "draft", "closed", "in_progress"],
+            },
+          })
+        : Promise.resolve([]),
+      canOpen(user, "quotes")
+        ? store
+            .list("booking_invites", { filter: { status: "open" } })
+            .catch(() => [])
+        : Promise.resolve([]),
+      canOpen(user, "quotes")
+        ? store.list("supplier_requests", {
+            filter: { status: ["open", "answered", "approved"] },
+          })
+        : Promise.resolve([]),
+      (async () => (await getSettings()).supplierRequestSlaMinutes)(),
+    ]);
+    // Book já concluído com convite de book concorrente ainda aberto.
+    const missing = [
+      ...new Set(
+        invites
+          .map((i) => i.bookingLotId)
+          .filter((id) => !lots.some((l) => l.id === id)),
+      ),
+    ];
+    if (missing.length)
+      lots.push(
+        ...(await store.list("booking_lots", { filter: { id: missing } })),
+      );
+    const out: OverviewEntity[] = [];
+    // Pedidos em andamento que nasceram das solicitações de cada book.
+    const progress = await flowProgressFor(user);
+    const ordersOfLot = (lotId: string) => [
+      ...new Set(
+        requests
+          .filter((r) => r.bookingLotId === lotId && r.orderId)
+          .map((r) => progress.get(r.orderId!))
+          .filter((p): p is OrderProgress => !!p),
+      ),
+    ];
+    for (const lot of lots) {
+      const step = bookStep(lot.status);
+      const open = invites.filter((i) => i.bookingLotId === lot.id);
+      if (!step && !open.length) continue;
+      out.push({
+        kind: "book",
+        id: lot.id,
+        number: lot.number,
+        href: `/app/booking/lots/${lot.id}#entity-timeline`,
+        partyId: lot.supplierId ?? lot.partnerId ?? null,
+        steps: [...(step ? [step] : []), ...(open.length ? ["quotes"] : [])],
+        statusKey: `bookingLots.status.${lot.status}`,
+        since: lot.statusChangedAt ?? lot.createdAt ?? null,
+        lateDays: Math.max(0, ...open.map((i) => lateDaysSince(i.dueAt, now))),
+        percent: BOOK_PERCENT[lot.status] ?? 0,
+        overall: (() => {
+          const orders = ordersOfLot(lot.id);
+          return overallOf(
+            BOOK_PERCENT[lot.status] ?? 0,
+            orders.length,
+            orders.length
+              ? Math.round(
+                  orders.reduce((n, p) => n + p.overall, 0) / orders.length,
+                )
+              : 0,
+          );
+        })(),
+      });
+    }
+    const groups = new Map<string, typeof requests>();
+    for (const r of requests) {
+      if (r.orderId || !requestInNegotiation(r)) continue;
+      const key = r.batchId ?? r.id;
+      groups.set(key, [...(groups.get(key) ?? []), r]);
+    }
+    for (const list of groups.values()) {
+      const first = [...list].sort((a, b) =>
+        a.createdAt < b.createdAt ? -1 : 1,
+      )[0];
+      const percents = list.map((r) => requestPercent(r) ?? 0);
+      const percent = Math.round(
+        percents.reduce((a, b) => a + b, 0) / percents.length,
+      );
+      // A situação mais atrasada do grupo (aberta antes de respondida…).
+      const lowest = list.reduce((a, b) =>
+        (requestPercent(a) ?? 0) <= (requestPercent(b) ?? 0) ? a : b,
+      );
+      out.push({
+        kind: "request",
+        id: first.id,
+        number: first.number,
+        href: `/app/supplier-requests/${first.id}#entity-timeline`,
+        partyId: first.supplierId,
+        steps: ["negotiations"],
+        statusKey:
+          lowest.status === "approved"
+            ? `flow.np.sampling.${lowest.sampling?.status ?? "pending"}`
+            : `supplierRequests.status.${lowest.status}`,
+        since: first.createdAt ?? null,
+        lateDays: Math.max(
+          0,
+          ...list.map((r) =>
+            supplierRequestLate(r, minutes, now)
+              ? lateDaysSince(supplierRequestSlaDue(r, minutes), now)
+              : 0,
+          ),
+        ),
+        percent,
+        overall: percent,
+      });
+    }
+    return out.sort(
+      (a, b) =>
+        (a.kind === b.kind ? 0 : a.kind === "book" ? -1 : 1) ||
+        a.number - b.number,
+    );
+  },
+);

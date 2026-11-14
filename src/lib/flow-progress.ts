@@ -1,4 +1,10 @@
-import type { Stage, StageKey } from "@/lib/db/schema";
+import type {
+  BookingLot,
+  Stage,
+  StageKey,
+  SupplierRequest,
+  SupplierRequestSampling,
+} from "@/lib/db/schema";
 import type { FlowBlock } from "@/lib/flow";
 
 /*
@@ -184,3 +190,79 @@ export const blockOf = (
   block: FlowBlock,
 ): BlockProgress | null =>
   progress.blocks.find((b) => b.block === block) ?? null;
+
+/*
+ * Produto novo (dono, 14/11/2026): as entidades do bloco são os books
+ * (planilhas do fornecedor) e as solicitações ao fornecedor. Cada uma anda
+ * pelos passos do bloco (Books → Seleção de itens → Cotações → Negociações)
+ * e tem a completude pela situação em que está. Regra pura: sem banco.
+ */
+
+/** Situação do book → passo em que ele está (nulo: fora do bloco). */
+export function bookStep(
+  status: BookingLot["status"],
+): "books" | "selection" | null {
+  if (status === "preparing" || status === "draft") return "books";
+  if (status === "closed" || status === "in_progress") return "selection";
+  return null;
+}
+
+/** Completude do book pela situação (em preenchimento → concluído). */
+export const BOOK_PERCENT: Record<BookingLot["status"], number | null> = {
+  preparing: 10,
+  draft: 25,
+  closed: 50,
+  in_progress: 75,
+  done: 100,
+  cancelled: null,
+};
+
+type RequestLike = Pick<SupplierRequest, "status" | "createdAt"> & {
+  sampling?: Pick<SupplierRequestSampling, "status"> | null;
+};
+
+/**
+ * Completude da solicitação ao fornecedor: aberta 25%, respondida 50%,
+ * aprovada 70% (com a amostra enviada 85%) e a amostra aprovada 100%.
+ * Recusada ou cancelada fica fora (nulo).
+ */
+export function requestPercent(r: RequestLike): number | null {
+  if (r.status === "open") return 25;
+  if (r.status === "answered") return 50;
+  if (r.status !== "approved") return null;
+  const sampling = r.sampling?.status ?? "pending";
+  if (sampling === "approved") return 100;
+  if (sampling === "submitted") return 85;
+  return 70;
+}
+
+/** A solicitação está em Negociações: em andamento, ou aprovada com a amostra ainda não aprovada. */
+export const requestInNegotiation = (r: RequestLike) => {
+  const p = requestPercent(r);
+  return p !== null && p < 100;
+};
+
+/**
+ * Dias de atraso pelo prazo (arredondado para cima: o SLA da negociação é
+ * em minutos, e passou do prazo já conta 1 dia). 0: no prazo ou sem prazo.
+ */
+export function lateDaysSince(
+  dueAt: string | number | null,
+  now = new Date(),
+): number {
+  const due =
+    typeof dueAt === "number" ? dueAt : dueAt ? Date.parse(dueAt) : NaN;
+  if (!Number.isFinite(due) || due >= now.getTime()) return 0;
+  return Math.max(1, Math.ceil((now.getTime() - due) / DAY));
+}
+
+/**
+ * Completude geral da entidade do Produto novo: sem pedido, a do Produto
+ * novo; com pedido, o Produto novo vale como um bloco a mais ao lado dos três
+ * do pedido (média geral dos pedidos que nasceram dela).
+ */
+export const overallOf = (
+  percent: number,
+  orders: number,
+  orderOverall: number,
+) => (orders ? Math.round((percent + orderOverall * 3) / 4) : percent);
