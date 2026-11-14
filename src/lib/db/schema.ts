@@ -963,6 +963,15 @@ export interface Order extends BaseRow {
   ocpId?: string | null;
   /** Agência de marketing na China: amostras e fotos/vídeos reais. Opcional. */
   marketingAgencyId?: string | null;
+  /**
+   * Pedido pausado (mapa E7?/E11; dono, 14/11/2026): canal cinza ou vermelho
+   * pausa o pedido por tempo indeterminado até um administrador retomar.
+   */
+  pausedAt?: string | null;
+  /** Por que pausou (ex.: "channel_red", "channel_grey"). */
+  pauseReason?: string | null;
+  /** Porto de chegada (mapa E12?): decide a transportadora padrão. */
+  arrivalPort?: string | null;
   designerUserId?: string | null;
   closedAt: string | null;
   notes: string | null;
@@ -3444,6 +3453,9 @@ export const TABLES: Record<TableName, TableDef> = {
       logisticsId: id(false),
       ocpId: id(false),
       marketingAgencyId: id(false),
+      pausedAt: datetime(),
+      pauseReason: str(40),
+      arrivalPort: str(10),
       designerUserId: id(false),
       closedAt: datetime(),
       notes: text(),

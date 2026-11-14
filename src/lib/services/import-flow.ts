@@ -211,7 +211,9 @@ export const IMPORT_STEPS: StepTemplate[] = [
   },
   {
     key: "danfe",
-    actor: "wellmix",
+    // NF da mercadoria nacionalizada (mapa E16; dono, 14/11/2026): o
+    // financeiro emite no Sankhya e registra aqui o número e o arquivo.
+    actor: "finance",
     validator: null,
     input: "text_file",
     visibleTo: ["comex", "logistics"],
@@ -794,6 +796,8 @@ export async function submitStep(
   const order = await loadOrder(orderId);
   const tpl = stepTemplate(key);
   if (!(await canSubmitStep(user, order, key))) throw new ForbiddenError();
+  // Pedido pausado (canal cinza ou vermelho): nada anda até o admin retomar.
+  (await import("./delivery")).assertNotPaused(order);
   const store = getStore();
   const steps = await stepsOf(orderId);
   if (!ready(key, steps, order)) throw new ImportFlowError("previous_step");
@@ -905,6 +909,9 @@ export async function submitStep(
         body: t("importFlow.notify.channel.body"),
       }),
     });
+  // E o pedido pausa por tempo indeterminado (mapa E11; dono, 14/11/2026).
+  if (key === "channel" && (value === "red" || value === "grey"))
+    await (await import("./delivery")).pauseForChannel(user, order, value);
   // Selo de certificação: vai para quem faz a arte (agência ou Wellmix).
   if (key === "cert_seal")
     await handOverSeal(user, order, steps, current ?? null, step);
@@ -1154,6 +1161,7 @@ export async function validateStep(
   reason: string | null,
 ) {
   const order = await loadOrder(orderId);
+  (await import("./delivery")).assertNotPaused(order);
   const tpl = stepTemplate(key);
   if (!tpl.validator) throw new ImportFlowError("no_validation");
   if (!actsAs(user, order, tpl.validator)) throw new ForbiddenError();

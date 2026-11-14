@@ -118,3 +118,12 @@ A solicitação aberta do grupo leva a programação (`supplier_requests.schedul
 | Ação do botão                          | `src/app/app/actions/purchase-rounds.ts`                                                                                         |
 | Textos                                 | `src/i18n/modules/purchase-rounds.ts`                                                                                            |
 | Testes                                 | `tests/unit/purchase-rounds.test.ts`, `tests/unit/purchase-rounds-plan.test.ts` (gerador), `tests/e2e/booking-selection.spec.ts` |
+
+## Nova solicitação: o mesmo card (dono, 14/11/2026)
+
+- Na Nova solicitação (`/app/requests/new`), o card antigo "Programação de entregas" de cada produto deu lugar ao card **"Gerar programação pela quantidade"** da Seleção de itens: o mesmo componente (`SelectionQuantity`) e a mesma conta (`planPurchaseRounds`, `roundLoad`, margem de 95%, "+ Aumentar" e "− Diminuir" por programação). Os textos do gerador saem de `generateLabels` (`src/components/generate-labels.ts`), usado pelas duas telas.
+- **De qual produto**: o escolhido no campo "Produto" da própria linha (com a variação, quando houver); a caixa master (peças por caixa e CBM) vem do cadastro (variação, produto ou caixa medida) e, sem ela, da ficha mestre (`requestProductFills`). Sem produto escolhido, o card diz "Escolha o produto no campo acima" e não gera. Produto sem peças por caixa master (ou unidade que não é em peças) ou sem o CBM da caixa: o card diz qual dado falta. Linha "fora do catálogo": programação sem caixa master, dividida em partes iguais, como antes.
+- **Quantidade**: a do produto no formulário. "Total de caixas" e "Quantidade (peças)" do card e o campo "Quantidade" da linha são o mesmo número; com a programação, a quantidade é a soma das programações.
+- **Cada produto, a sua programação** (campos `p<n>.schedule.*`, até 6 programações, como antes). As entregas usam o intervalo e a 1ª data de sempre; "Sem programação (entrega única)" continua.
+- **Produto trocado depois de gerar**: a programação sai da tela, o card avisa para gerar de novo, e o servidor recusa a programação gerada para outro produto (`p<n>.schedule.for`, erro `schedule_product_changed`).
+- Testes: `tests/e2e/request-schedule-generator.spec.ts` (gerar pelo produto, sobra, ajuste manual, troca do produto, dois produtos, envio e reabertura) e `tests/unit/request-schedule-generator.test.ts`.

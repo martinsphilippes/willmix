@@ -45,17 +45,26 @@ export function parseRequestItems(form: FormData): RequestItemFields[] {
     .map((index) => {
       const p = `p${index}.`;
       const qty = text(`${p}quantity`).replace(",", ".");
+      const productId = text(`${p}productId`) || null;
+      const variantId = text(`${p}variantId`) || null;
+      const schedule = parseRequestSchedule(form, p);
+      // Programação gerada para outro produto (trocado depois de gerar): a
+      // tela já tira; o servidor recusa se ainda vier (dono, 14/11/2026).
+      const scheduleFor = text(`${p}schedule.for`);
+      const current = productId ? `${productId}:${variantId ?? ""}` : "outside";
+      if (schedule && scheduleFor && scheduleFor !== current)
+        throw new Error("schedule_product_changed");
       return {
         index,
-        productId: text(`${p}productId`) || null,
-        variantId: text(`${p}variantId`) || null,
+        productId,
+        variantId,
         productName: text(`${p}productName`),
         description: text(`${p}description`),
         specification: text(`${p}specification`) || null,
         quantity: qty === "" ? null : Number(qty),
         unit: text(`${p}unit`) || "un",
         sourcingDemand: form.get(`${p}sourcingDemand`) === "on",
-        schedule: parseRequestSchedule(form, p),
+        schedule,
         attachments: form
           .getAll(`${p}attachments`)
           .filter((f): f is File => f instanceof File && f.size > 0),

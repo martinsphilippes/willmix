@@ -52,9 +52,11 @@ export interface FullLoadProgress {
   done: boolean;
   /** Quantos ainda faltavam na última consulta. */
   remaining: number | null;
-  counts: Partial<Record<ImportOutcome, number>>;
+  counts: Partial<Record<ImportOutcome | "failed", number>>;
   /** Colunas do mapeamento que o ERP não tem (lidas com *). */
   missing: string[];
+  /** Fotos do Sankhya puladas por erro do gateway ("CODPROD COLUNA: erro"); a próxima passada tenta de novo. */
+  failed?: string[];
   startedAt: string | null;
   updatedAt: string | null;
 }

@@ -218,6 +218,10 @@ describe("embarque e desembaraço", () => {
       await getStore().list("notifications", { filter: { userId: admin.id } })
     ).length;
     expect(after).toBeGreaterThan(before);
+    // E pausa o pedido até um administrador retomar (docs/DELIVERY.md).
+    expect((await getStore().get("orders", order.id))!.pausedAt).toBeTruthy();
+    const { resumeOrder } = await import("@/lib/services/delivery");
+    await resumeOrder(admin, order.id, null);
   });
 
   it("arquivo de outro pedido não entra no passo", async () => {

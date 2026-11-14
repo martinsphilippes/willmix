@@ -135,6 +135,7 @@ import * as shippingDocs from "./shipping-docs";
 import * as supplierInvoice from "./supplier-invoice";
 import * as sampleFlow from "./sample-flow";
 import * as exwOrigin from "./exw-origin";
+import * as delivery from "./delivery";
 import * as purchaseRounds from "./purchase-rounds";
 import * as colorVariants from "./color-variants";
 import * as aiReferences from "./ai-references";
@@ -280,6 +281,7 @@ export const modulesPt = {
   ...supplierInvoice.pt,
   ...sampleFlow.pt,
   ...exwOrigin.pt,
+  ...delivery.pt,
   ...purchaseRounds.pt,
   ...colorVariants.pt,
   ...aiReferences.pt,
@@ -422,6 +424,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...supplierInvoice.en,
   ...sampleFlow.en,
   ...exwOrigin.en,
+  ...delivery.en,
   ...purchaseRounds.en,
   ...colorVariants.en,
   ...aiReferences.en,
@@ -564,6 +567,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...supplierInvoice.zh,
   ...sampleFlow.zh,
   ...exwOrigin.zh,
+  ...delivery.zh,
   ...purchaseRounds.zh,
   ...colorVariants.zh,
   ...aiReferences.zh,

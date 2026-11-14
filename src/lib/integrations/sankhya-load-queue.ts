@@ -195,7 +195,15 @@ export async function runServerLoadTick({
   try {
     done = (await runFullLoad(user, entity, budgetMs)).progress.done;
   } catch (e) {
-    error = String((e as Error)?.message ?? e).slice(0, 300);
+    // Com o texto do Sankhya (a tela mostrava só "sankhya_http").
+    const detail =
+      e && typeof e === "object" && "detail" in e
+        ? ` ${(e as { status?: number }).status ?? ""} ${String((e as { detail: unknown }).detail)}`
+        : "";
+    error = `${String((e as Error)?.message ?? e)}${detail}`
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 300);
     console.error("[sankhya-load-server]", entity, e);
   }
 
