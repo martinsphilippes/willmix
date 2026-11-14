@@ -272,6 +272,7 @@ alter table public."order_items" add column if not exists "unit" text;
 alter table public."order_items" add column if not exists "unitPrice" double precision;
 alter table public."order_items" add column if not exists "variantId" text;
 alter table public."order_items" add column if not exists "variant" jsonb;
+alter table public."order_items" add column if not exists "colors" jsonb;
 alter table public."order_items" add column if not exists "sankhyaCode" text;
 alter table public."order_items" add column if not exists "sankhyaRefs" jsonb;
 create index if not exists "order_items_by_order" on public."order_items" ("orderId");
@@ -1631,6 +1632,7 @@ alter table public."supplier_requests" add column if not exists "slaNotifiedAt" 
 alter table public."supplier_requests" add column if not exists "orderId" text;
 alter table public."supplier_requests" add column if not exists "batchId" text;
 alter table public."supplier_requests" add column if not exists "schedule" jsonb;
+alter table public."supplier_requests" add column if not exists "colorPlan" jsonb;
 alter table public."supplier_requests" add column if not exists "aiAssets" jsonb;
 alter table public."supplier_requests" add column if not exists "sampling" jsonb;
 create index if not exists "supplier_requests_by_supplier" on public."supplier_requests" ("supplierId");
@@ -1657,6 +1659,7 @@ alter table public."selection_groups" add column if not exists "requestedAt" tim
 alter table public."selection_groups" add column if not exists "createdByUserId" text;
 alter table public."selection_groups" add column if not exists "updatedByUserId" text;
 alter table public."selection_groups" add column if not exists "schedule" jsonb;
+alter table public."selection_groups" add column if not exists "colorPlan" jsonb;
 alter table public."selection_groups" add column if not exists "aiPrompts" jsonb;
 alter table public."selection_groups" add column if not exists "aiAssets" jsonb;
 create index if not exists "selection_groups_by_status" on public."selection_groups" ("status");

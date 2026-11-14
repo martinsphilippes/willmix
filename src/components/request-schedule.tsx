@@ -64,6 +64,7 @@ export function RequestScheduleFields({
   roundInfo,
   split,
   blocked = false,
+  after,
 }: {
   prefix: string;
   /** Quantidade total da linha (texto do campo). */
@@ -107,6 +108,12 @@ export function RequestScheduleFields({
    * precisa da caixa do item). O motivo aparece no gerador.
    */
   blocked?: boolean;
+  /**
+   * Bloco depois das rodadas (programação de compra: a composição por cor de
+   * cada data). Recebe as peças e a data (AAAA-MM-DD) de cada rodada; com a
+   * programação desligada, listas vazias.
+   */
+  after?: (quantities: number[], dates: string[]) => ReactNode;
 }) {
   const known = (SCHEDULE_INTERVALS as readonly number[]).includes(
     initial?.intervalDays ?? -1,
@@ -200,6 +207,7 @@ export function RequestScheduleFields({
         {generator ? (
           <div className="basis-full">{generator(apply, [])}</div>
         ) : null}
+        {after ? <div className="basis-full">{after([], [])}</div> : null}
       </div>
     );
 
@@ -392,6 +400,14 @@ export function RequestScheduleFields({
           {labels.off}
         </button>
       </div>
+      {after
+        ? after(
+            qtys.map(num),
+            qtys.map((_, i) =>
+              firstDate ? addDaysIso(firstDate, days * i) : "",
+            ),
+          )
+        : null}
     </fieldset>
   );
 }

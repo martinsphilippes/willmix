@@ -3,6 +3,7 @@ import type { Translate } from "@/i18n";
 import type { PurchaseRound, RequestSchedule } from "@/lib/db/schema";
 import { scheduleSummary } from "@/lib/purchase-rounds";
 import { formatDate } from "./ui";
+import { ColorLines } from "./color-lines";
 
 /*
  * Programação de compra (docs/PURCHASE_SCHEDULE.md) mostrada ao responsável
@@ -182,6 +183,16 @@ export function OrderRoundsCard({
                       : r.items
                           .reduce((sum, i) => sum + i.quantity, 0)
                           .toLocaleString(t.intl)}
+                    {/* Variações de cor: cada cor da rodada na própria linha. */}
+                    {r.items.map((i) => (
+                      <ColorLines
+                        key={`c-${i.productId}`}
+                        colors={i.colors}
+                        name={products.get(i.productId) ?? "—"}
+                        intl={t.intl}
+                        className="text-left"
+                      />
+                    ))}
                   </td>
                   <td className="py-1">
                     {r.orderId ? (
