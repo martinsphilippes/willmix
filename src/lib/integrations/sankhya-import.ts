@@ -819,7 +819,10 @@ export async function importSankhyaSet(
       erpNumber,
       sankhyaCode: nunota,
       sankhyaSyncedAt: syncedNow(),
-      agencyId: null,
+      // Agência de arte da linha (dono, 13/11/2026).
+      agencyId: await (
+        await import("@/lib/services/line-agency")
+      ).lineAgencyOf(firstProduct?.lineId),
       brokerId: null,
       shippingLineId: null,
       carrierId: carrierByCode.get(code(row.CODPARCTRANSP))?.id ?? null,

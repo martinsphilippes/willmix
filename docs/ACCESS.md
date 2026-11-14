@@ -149,3 +149,26 @@ Equipe e acessos → acessos de uma pessoa (`/app/team/[id]`), só para o admini
 - **Limite conhecido**: não há "reativar" na tela, e um login novo com o mesmo e-mail é recusado (`user_email_taken`), porque o cadastro inativo continua. Para voltar, hoje é preciso reativar no banco (`users.active = true`).
 - Peças: `removeTeamMemberAction` (`src/app/app/actions/team.ts`), `teamMemberRemoval` (os avisos da caixa), `forgetUserSessions` (`src/lib/auth/session.ts`), `QuickDialog` com `tone="danger"` e `disabled`. Textos `team.delete.*`, `team.saved.deleted`, `team.error.delete_self` e `team.error.delete_last_admin` nos três idiomas. Sem mudança no banco.
 - Testes: `tests/unit/team-delete.test.ts` e `tests/e2e/team-delete.spec.ts`.
+
+## Pendências por função (decisão do dono, 13/11/2026)
+
+Em Pendências (`/app/tasks`) o **operador** vê só o que as funções dele fazem; o administrador vê tudo, como antes. Cada pendência aponta para uma ação ou tela de Equipe → Funções e acessos (`src/lib/task-owner.ts`):
+
+| Pendência                                                                                                          | Quem (padrão)                                                                       |
+| ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Fazer a arte, arte final, selo na arte (sem agência)                                                               | ação "art.design" (Designer)                                                        |
+| Validar a arte, conferir o selo na arte                                                                            | ação "art.validate"                                                                 |
+| Assinar o documento pela Wellmix                                                                                   | ação "contract.sign" (diretorias)                                                   |
+| Enviar para assinatura, confirmar o pedido, nº no ERP, itens da linha, produção e inspeção, designar o despachante | ação "purchaseOrder.generate" (compras)                                             |
+| Embarque, desembaraço, transporte e entrega                                                                        | tela Frete                                                                          |
+| Numerário                                                                                                          | ação "numerario.manage"                                                             |
+| Solicitação nova, revisão, sourcing                                                                                | telas Solicitações, Revisão, Sourcing                                               |
+| Certificação (selo, validação do memorial, certificado)                                                            | despachante do pedido (a regra de "Quem recebe cada tarefa", docs/CERTIFICATION.md) |
+| Itens do fornecedor e dos parceiros                                                                                | não aparecem para o operador                                                        |
+| Mensagem a responder                                                                                               | o analista da conversa (sem analista: todos)                                        |
+
+O painel de SLA e as outras telas continuam com a lista completa da Wellmix.
+
+## Agência de arte por linha (decisão do dono, 13/11/2026)
+
+Em Linhas de produto, cada linha pode ter a **agência de arte** (`product_lines.agencyId`, só agências ativas). O pedido novo herda a agência da linha (antes da regra "a única agência ativa"); ao salvar, os pedidos abertos da linha ainda sem agência a recebem, com o mesmo efeito da troca em Parceiros do pedido (`src/lib/services/line-agency.ts`).

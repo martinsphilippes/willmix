@@ -15,9 +15,9 @@ import type { NotifyTarget } from "./notifications";
  * certificadora e a agência), o Designer do pedido (cartão Artes) e o
  * analista do pedido (`ownerUserId`, o mesmo do painel de SLA).
  *
- * - Selo: a certificadora (OCP) do pedido.
- * - Memorial descritivo: o responsável interno (o analista); a validação, a
- *   certificadora.
+ * - Selo: o despachante do pedido (a certificação é dele; dono, 13/11/2026).
+ * - Memorial descritivo: o responsável interno (o analista); a validação, o
+ *   despachante.
  * - Arte com o selo e correção da arte: o designer do pedido; sem ele, a
  *   agência quando é ela quem faz a arte; senão a Wellmix (quem tem a função
  *   Designer; sem ninguém, o analista).
@@ -35,6 +35,7 @@ export type { MissingAssignment } from "@/lib/assign-href";
 
 /** Por que a tarefa foi para esse destino (a tela diz "Com: …"). */
 export type RouteVia =
+  | "broker"
   | "ocp"
   | "agency"
   | "designer"
@@ -49,7 +50,7 @@ export interface Route {
   /** Logins certos (da Wellmix ou o designer da agência). */
   userIds?: string[];
   /** Empresa parceira: todos os logins ativos dela. */
-  party?: { role: "ocp" | "agency"; partyId: string };
+  party?: { role: "broker" | "ocp" | "agency"; partyId: string };
   /** Ninguém designado: a equipe Wellmix inteira. */
   team?: true;
   /** O que falta designar (sinalizado na visão interna). */
@@ -105,13 +106,20 @@ export function internalRoute(
   return owner ? { via: "analyst", userIds: [owner.id] } : team("analyst");
 }
 
-/** A certificadora (OCP) do pedido; sem ela, o responsável interno designa. */
+/**
+ * Quem certifica: o despachante do pedido (a Wellmix não trabalha com
+ * certificadora; dono, 13/11/2026). Sem ele, o responsável interno designa
+ * o despachante em Parceiros do pedido.
+ */
 export function ocpRoute(
-  order: Pick<Order, "ocpId" | "ownerUserId">,
+  order: Pick<Order, "brokerId" | "ownerUserId">,
   ctx: RoutingContext,
 ): Route {
-  if (order.ocpId)
-    return { via: "ocp", party: { role: "ocp", partyId: order.ocpId } };
+  if (order.brokerId)
+    return {
+      via: "broker",
+      party: { role: "broker", partyId: order.brokerId },
+    };
   return { ...internalRoute(order, ctx), missing: "ocp" };
 }
 

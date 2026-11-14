@@ -29,7 +29,7 @@ export const pt = {
   "importFlow.error.schema_pending":
     "Este passo ainda não está liberado no sistema. Avise a Wellmix e tente de novo depois.",
   "certFlow.sealHint":
-    "Selo de certificação: a certificadora (OCP) envia o selo do pedido. Quem faz a arte da embalagem (a agência do pedido ou a Wellmix) baixa o selo, aplica na arte e envia a arte com o selo. A Wellmix confere.",
+    "Selo de certificação: o despachante envia o selo do pedido. Quem faz a arte da embalagem (a agência do pedido ou a Wellmix) baixa o selo, aplica na arte e envia a arte com o selo. A Wellmix confere.",
   "certFlow.sheetNote": "Certificação pedida na ficha: {note}",
   "certFlow.sheet.intro":
     "Ficha de compra do pedido, para a certificação: fornecedor, produto, caixa, programação, fotos, preço e classificação fiscal. Só leitura.",
@@ -39,7 +39,7 @@ export const pt = {
   "certFlow.dossier.certs":
     "Certificações já registradas do produto e do fornecedor:",
   "certFlow.sealReplaced":
-    "A certificadora trocou o selo (o arquivo ou o número). Aplique o selo atual na arte e envie a arte de novo.",
+    "O despachante trocou o selo (o arquivo ou o número). Aplique o selo atual na arte e envie a arte de novo.",
   "certFlow.notify.sealRequested.subject":
     "Pedido #{n}: gerar o selo de certificação",
   "certFlow.notify.sealRequested.body":
@@ -47,16 +47,16 @@ export const pt = {
   "certFlow.notify.sealReady.subject":
     "Pedido #{n}: selo de certificação disponível",
   "certFlow.notify.sealReady.body":
-    "A certificadora enviou o selo de certificação. Baixe o selo no pedido, aplique na arte da embalagem e envie a arte com o selo.",
+    "O despachante enviou o selo de certificação. Baixe o selo no pedido, aplique na arte da embalagem e envie a arte com o selo.",
   "certFlow.notify.sealChanged.subject":
     "Pedido #{n}: selo de certificação trocado",
   "certFlow.notify.sealChanged.body":
-    "A certificadora enviou um selo novo. Baixe o selo no pedido, aplique na arte da embalagem e envie a arte com o selo de novo.",
-  "certFlow.notify.noOcp.subject": "Pedido #{n}: sem certificadora para o selo",
+    "O despachante enviou um selo novo. Baixe o selo no pedido, aplique na arte da embalagem e envie a arte com o selo de novo.",
+  "certFlow.notify.noOcp.subject": "Pedido #{n}: sem despachante para o selo",
   "certFlow.notify.noOcp.body":
-    "Todo pedido precisa do selo de certificação e este está sem certificadora (OCP). Designe a certificadora em Parceiros do pedido para o pedido chegar a ela.",
+    "Todo pedido precisa do selo de certificação e este está sem despachante. Designe o despachante em Parceiros do pedido: a certificação é dele.",
   "certFlow.brief.sealPending":
-    "Selo de certificação: aguardando a certificadora. Deixe o espaço do selo na arte.",
+    "Selo de certificação: aguardando o despachante. Deixe o espaço do selo na arte.",
   "certFlow.brief.sealReady":
     "Selo de certificação disponível: baixe no pedido, aplique na arte e envie a arte com o selo.",
   "certFlow.brief.sealSent": "Arte com o selo enviada; a Wellmix confere.",
@@ -77,12 +77,13 @@ export const pt = {
   "tasks.seal.validate.title": "Validar o selo aplicado na arte: pedido #{n}",
   "tasks.seal.validate.detail":
     "Confira o selo na arte e valide, ou recuse com o motivo.",
-  "tasks.seal.assign.title": "Designar a certificadora do selo: pedido #{n}",
+  "tasks.seal.assign.title":
+    "Designar o despachante da certificação: pedido #{n}",
   "tasks.seal.assign.detail":
-    "O pedido está sem certificadora. Designe em Parceiros do pedido, ou envie no cartão Certificação o selo recebido por fora.",
+    "O pedido está sem despachante. Designe em Parceiros do pedido (a certificação é dele), ou envie no cartão Certificação o selo recebido por fora.",
   "tasks.memorial.send.title": "Enviar o memorial descritivo: pedido #{n}",
   "tasks.memorial.send.detail":
-    "Anexe o memorial em PDF no quadro do alto do cartão Certificação. Depois do envio, a certificadora valida.",
+    "Anexe o memorial em PDF no quadro do alto do cartão Certificação. Depois do envio, o despachante valida.",
   "tasks.memorial.validate.title": "Validar o memorial descritivo: pedido #{n}",
   "tasks.memorial.validate.detail":
     "Confira o memorial no cartão Certificação e valide, ou recuse com o motivo.",
@@ -102,7 +103,7 @@ export const pt = {
   "certFlow.assignee.do": "Com: {name}",
   "certFlow.assignee.validate": "Para validar: {name}",
   "certFlow.assignee.team": "equipe Wellmix",
-  "certFlow.missing.ocp": "Sem certificadora.",
+  "certFlow.missing.ocp": "Sem despachante.",
   "certFlow.missing.designer": "Sem designer.",
   "certFlow.missing.analyst": "Sem analista.",
   "certFlow.assign.ocp": "Designar em Parceiros do pedido",
@@ -194,7 +195,7 @@ export const en: Record<keyof typeof pt, string> = {
   "importFlow.error.schema_pending":
     "This step is not available in the system yet. Tell Wellmix and try again later.",
   "certFlow.sealHint":
-    "Certification seal: the certification body (OCP) sends the seal for the order. Whoever makes the packaging artwork (the order's agency or Wellmix) downloads the seal, applies it to the artwork and sends the artwork with the seal. Wellmix checks it.",
+    "Certification seal: the customs broker sends the seal for the order. Whoever makes the packaging artwork (the order's agency or Wellmix) downloads the seal, applies it to the artwork and sends the artwork with the seal. Wellmix checks it.",
   "certFlow.sheetNote": "Certification requested on the sheet: {note}",
   "certFlow.sheet.intro":
     "Purchase sheet of the order, for certification: supplier, product, carton, schedule, photos, price and tax classification. Read only.",
@@ -205,7 +206,7 @@ export const en: Record<keyof typeof pt, string> = {
   "certFlow.dossier.certs":
     "Certifications already registered for the product and the supplier:",
   "certFlow.sealReplaced":
-    "The certification body replaced the seal (the file or the number). Apply the current seal to the artwork and send the artwork again.",
+    "The customs broker replaced the seal (the file or the number). Apply the current seal to the artwork and send the artwork again.",
   "certFlow.notify.sealRequested.subject":
     "Order #{n}: issue the certification seal",
   "certFlow.notify.sealRequested.body":
@@ -213,17 +214,16 @@ export const en: Record<keyof typeof pt, string> = {
   "certFlow.notify.sealReady.subject":
     "Order #{n}: certification seal available",
   "certFlow.notify.sealReady.body":
-    "The certification body sent the certification seal. Download the seal on the order, apply it to the packaging artwork and send the artwork with the seal.",
+    "The customs broker sent the certification seal. Download the seal on the order, apply it to the packaging artwork and send the artwork with the seal.",
   "certFlow.notify.sealChanged.subject":
     "Order #{n}: certification seal replaced",
   "certFlow.notify.sealChanged.body":
-    "The certification body sent a new seal. Download the seal on the order, apply it to the packaging artwork and send the artwork with the seal again.",
-  "certFlow.notify.noOcp.subject":
-    "Order #{n}: no certification body for the seal",
+    "The customs broker sent a new seal. Download the seal on the order, apply it to the packaging artwork and send the artwork with the seal again.",
+  "certFlow.notify.noOcp.subject": "Order #{n}: no customs broker for the seal",
   "certFlow.notify.noOcp.body":
-    "Every order needs the certification seal and this one has no certification body (OCP). Assign one under Order partners so the order reaches it.",
+    "Every order needs the certification seal and this one has no customs broker. Assign the customs broker under Order partners: certification is theirs.",
   "certFlow.brief.sealPending":
-    "Certification seal: waiting for the certification body. Leave room for the seal in the artwork.",
+    "Certification seal: waiting for the customs broker. Leave room for the seal in the artwork.",
   "certFlow.brief.sealReady":
     "Certification seal available: download it on the order, apply it to the artwork and send the artwork with the seal.",
   "certFlow.brief.sealSent":
@@ -247,12 +247,12 @@ export const en: Record<keyof typeof pt, string> = {
   "tasks.seal.validate.detail":
     "Check the seal on the artwork and validate it, or reject it with the reason.",
   "tasks.seal.assign.title":
-    "Assign the certification body for the seal: order #{n}",
+    "Assign the customs broker for certification: order #{n}",
   "tasks.seal.assign.detail":
-    "The order has no certification body. Assign one under Order partners, or send the seal you received elsewhere on the Certification card.",
+    "The order has no customs broker. Assign one under Order partners (certification is theirs), or send the seal you received elsewhere on the Certification card.",
   "tasks.memorial.send.title": "Send the technical description: order #{n}",
   "tasks.memorial.send.detail":
-    "Attach the technical description (PDF) in the box at the top of the Certification card. After you send it, the certification body validates it.",
+    "Attach the technical description (PDF) in the box at the top of the Certification card. After you send it, the customs broker validates it.",
   "tasks.memorial.validate.title":
     "Validate the technical description: order #{n}",
   "tasks.memorial.validate.detail":
@@ -272,7 +272,7 @@ export const en: Record<keyof typeof pt, string> = {
   "certFlow.assignee.do": "With: {name}",
   "certFlow.assignee.validate": "To validate: {name}",
   "certFlow.assignee.team": "Wellmix team",
-  "certFlow.missing.ocp": "No certification body.",
+  "certFlow.missing.ocp": "No customs broker.",
   "certFlow.missing.designer": "No designer.",
   "certFlow.missing.analyst": "No analyst.",
   "certFlow.assign.ocp": "Assign under Order partners",
@@ -363,7 +363,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "importFlow.error.schema_pending":
     "此步骤尚未在系统中开通。请通知 Wellmix，稍后再试。",
   "certFlow.sealHint":
-    "认证标志：认证机构（OCP）提交该订单的认证标志。负责包装设计稿的一方（订单的设计公司或 Wellmix）下载标志，放入设计稿，并提交带标志的设计稿。由 Wellmix 核对。",
+    "认证标志：报关行提交该订单的认证标志。负责包装设计稿的一方（订单的设计公司或 Wellmix）下载标志，放入设计稿，并提交带标志的设计稿。由 Wellmix 核对。",
   "certFlow.sheetNote": "采购单要求的认证：{note}",
   "certFlow.sheet.intro":
     "订单采购单（供认证使用）：供应商、产品、外箱、排期、照片和价格和税则归类。仅可查看。",
@@ -372,21 +372,21 @@ export const zh: Record<keyof typeof pt, string> = {
     "出具标志所需的完整订单资料都在这里：带照片和编码的产品明细、采购单（技术数据、价格和照片）以及订单文件。",
   "certFlow.dossier.certs": "产品和供应商已登记的认证：",
   "certFlow.sealReplaced":
-    "认证机构更换了认证标志（文件或编号）。请在设计稿中使用当前标志，并重新提交设计稿。",
+    "报关行更换了认证标志（文件或编号）。请在设计稿中使用当前标志，并重新提交设计稿。",
   "certFlow.notify.sealRequested.subject": "订单 #{n}：请出具认证标志",
   "certFlow.notify.sealRequested.body":
     "有新订单需要认证。请出具认证标志并在订单中提交文件。负责包装设计稿的一方会收到标志并放入设计稿。",
   "certFlow.notify.sealReady.subject": "订单 #{n}：认证标志已可用",
   "certFlow.notify.sealReady.body":
-    "认证机构已提交认证标志。请在订单中下载标志，放入包装设计稿，并提交带标志的设计稿。",
+    "报关行已提交认证标志。请在订单中下载标志，放入包装设计稿，并提交带标志的设计稿。",
   "certFlow.notify.sealChanged.subject": "订单 #{n}：认证标志已更换",
   "certFlow.notify.sealChanged.body":
-    "认证机构提交了新的认证标志。请在订单中下载标志，放入包装设计稿，并重新提交带标志的设计稿。",
-  "certFlow.notify.noOcp.subject": "订单 #{n}：尚未指定出具标志的认证机构",
+    "报关行提交了新的认证标志。请在订单中下载标志，放入包装设计稿，并重新提交带标志的设计稿。",
+  "certFlow.notify.noOcp.subject": "订单 #{n}：尚未指定负责标志的报关行",
   "certFlow.notify.noOcp.body":
-    "每个订单都需要认证标志，而此订单尚未指定认证机构（OCP）。请在“订单合作方”中指定认证机构，订单才会到达该机构。",
+    "每个订单都需要认证标志，而此订单尚未指定报关行。请在“订单合作方”中指定报关行：认证由其负责。",
   "certFlow.brief.sealPending":
-    "认证标志：等待认证机构提交。请在设计稿中预留标志位置。",
+    "认证标志：等待报关行提交。请在设计稿中预留标志位置。",
   "certFlow.brief.sealReady":
     "认证标志已可用：请在订单中下载，放入设计稿，并提交带标志的设计稿。",
   "certFlow.brief.sealSent": "带标志的设计稿已提交，Wellmix 正在核对。",
@@ -404,12 +404,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "tasks.seal.validate.title": "审核设计稿中的认证标志：订单 #{n}",
   "tasks.seal.validate.detail":
     "请核对设计稿中的标志并审核通过，或填写原因后退回。",
-  "tasks.seal.assign.title": "指定出具标志的认证机构：订单 #{n}",
+  "tasks.seal.assign.title": "指定负责认证的报关行：订单 #{n}",
   "tasks.seal.assign.detail":
-    "此订单尚未指定认证机构。请在“订单合作方”中指定，或在“认证”卡片中提交从其他渠道收到的标志。",
+    "此订单尚未指定报关行。请在“订单合作方”中指定（认证由其负责），或在“认证”卡片中提交从其他渠道收到的标志。",
   "tasks.memorial.send.title": "提交技术说明书：订单 #{n}",
   "tasks.memorial.send.detail":
-    "请在“认证”卡片顶部的方框中上传技术说明书（PDF）。提交后由认证机构审核。",
+    "请在“认证”卡片顶部的方框中上传技术说明书（PDF）。提交后由报关行审核。",
   "tasks.memorial.validate.title": "审核技术说明书：订单 #{n}",
   "tasks.memorial.validate.detail":
     "请在“认证”卡片中核对技术说明书并审核通过，或填写原因后退回。",
@@ -426,7 +426,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "certFlow.assignee.do": "负责人：{name}",
   "certFlow.assignee.validate": "审核人：{name}",
   "certFlow.assignee.team": "Wellmix 团队",
-  "certFlow.missing.ocp": "未指定认证机构。",
+  "certFlow.missing.ocp": "未指定报关行。",
   "certFlow.missing.designer": "未指定设计师。",
   "certFlow.missing.analyst": "未指定专员。",
   "certFlow.assign.ocp": "在订单合作方中指定",

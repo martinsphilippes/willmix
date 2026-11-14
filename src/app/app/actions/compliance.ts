@@ -292,3 +292,39 @@ export async function setLineCertificationsAction(form: FormData) {
     return `/app/lines?saved=${lineId}`;
   });
 }
+
+/**
+ * Agência de arte da linha (dono, 13/11/2026): os pedidos da linha a herdam;
+ * ao salvar, os pedidos abertos da linha ainda sem agência a recebem.
+ */
+export async function setLineAgencyAction(form: FormData) {
+  const user = await requireUser();
+  const lineId = str(form, "lineId");
+  await run("/app/lines", async () => {
+    assertWellmix(user);
+    assertScreen(user, "lines");
+    const store = getStore();
+    const line = await store.get("product_lines", lineId);
+    if (!line) throw new Error("line_not_found");
+    const agencyId =
+      field(form, "agencyId", z.string().max(64)) || null;
+    if (agencyId) {
+      const party = await store.get("parties", agencyId);
+      if (!party || party.type !== "agency" || !party.active)
+        throw new Error("invalid_agency");
+    }
+    await store.update("product_lines", lineId, { agencyId });
+    const { applyLineAgency } = await import("@/lib/services/line-agency");
+    const applied = agencyId ? await applyLineAgency(lineId) : 0;
+    await audit(
+      user,
+      "line.agency",
+      "product_line",
+      lineId,
+      `${line.name}: ${agencyId ?? "sem agência"}; pedidos abertos atualizados: ${applied}`,
+      { agencyId: line.agencyId ?? null },
+      { agencyId },
+    );
+    return `/app/lines?saved=${lineId}&agencyApplied=${applied}`;
+  });
+}

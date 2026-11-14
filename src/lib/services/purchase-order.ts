@@ -586,7 +586,8 @@ export async function syncLaneRoles(user: User, order: Order): Promise<number> {
   const store = getStore();
   const { getSettings } = await import("@/lib/settings");
   const art = artRole(order, (await getSettings()).agencyValidationEnabled);
-  const ocp = order.ocpId ? "ocp" : "operator";
+  // Certificado: do despachante (dono, 13/11/2026); sem ele, da Wellmix.
+  const ocp = order.brokerId ? "broker" : "operator";
   const open = (
     await store.list("requirements", { filter: { orderId: order.id } })
   ).filter((r) => r.status !== "done");

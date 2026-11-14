@@ -11,7 +11,8 @@ export const ASSIGN_HREF: Record<
   MissingAssignment,
   (orderId: string) => string
 > = {
-  // Certificadora: Parceiros do pedido.
+  // Quem certifica (o despachante; a chave "ocp" ficou do nome antigo):
+  // Parceiros do pedido.
   ocp: (orderId) => `/app/orders/${orderId}#order-partners`,
   // Designer do pedido: cartão Artes.
   designer: (orderId) => `/app/orders/${orderId}#artwork`,
