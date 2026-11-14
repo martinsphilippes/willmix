@@ -16,8 +16,10 @@ const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const UPLOADED_ID = z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/);
 
 /** Cartão de onde veio (embarque ou certificação). */
-const anchorOf = (form: FormData) =>
-  str(form, "anchor") === "certification" ? "certification" : "import-flow";
+const anchorOf = (form: FormData) => {
+  const a = str(form, "anchor");
+  return a === "certification" || a === "container-origin" ? a : "import-flow";
+};
 
 /** Aviso de "feito" no cartão de onde a ação veio (cada cartão lê o seu). */
 const doneParam = (form: FormData) =>
@@ -63,6 +65,8 @@ export async function submitImportStepAction(form: FormData) {
       orderId,
       type: "import_step",
       visibility: "internal",
+      // Container na origem: fotos e vídeos do container vazio e do carregamento.
+      video: key === "container_empty" || key === "container_loaded",
     } as const;
     let documentId: string | null = null;
     if (file) {
