@@ -24,7 +24,7 @@ import {
 } from "@/lib/services/messages";
 import { UnreadMessagesBar } from "@/components/unread-messages-bar";
 import { AppSidebar, MobileNav } from "@/components/app-nav";
-import { flowTasksFor } from "@/lib/services/flow";
+import { flowCasesFor, flowTasksFor } from "@/lib/services/flow";
 import { countByStep } from "@/lib/flow";
 import { WellmixLogo } from "@/components/brand";
 import { LogoutButton } from "@/components/logout-button";
@@ -251,7 +251,13 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         return [];
       })
     : [];
-  const flowCounts = countByStep(flowTasks);
+  // Os passos contam também os casos fora das Pendências (recebimento no CD);
+  // a bolinha de Pendências é o total da tela Pendências.
+  const flowCounts = countByStep(
+    canOpen(user, "tasks")
+      ? await flowCasesFor(user).catch(() => flowTasks)
+      : flowTasks,
+  );
   const tasksOverdue = flowTasks.filter((x) => x.overdue).length;
   const badgeOf = (l: NavLink) => {
     const c =

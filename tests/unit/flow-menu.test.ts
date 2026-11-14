@@ -37,6 +37,9 @@ describe("passos do menu", () => {
     expect(ids({ kind: "invoice_due" })).toEqual(["finance/finance"]);
     expect(ids({ kind: "ncm_classify" })).toEqual(["registry/products"]);
     expect(ids({ kind: "message_reply" })).toEqual([]);
+    // Recebimento no CD (casos do menu, fora das Pendências).
+    expect(ids({ kind: "receiving_storage" })).toEqual(["delivery/storage"]);
+    expect(ids({ kind: "receiving_return" })).toEqual(["delivery/return"]);
   });
 
   it("passos do embarque e da importação → passo do mapa", () => {
@@ -167,5 +170,29 @@ describe("resolver na tela do passo", () => {
       { label: "lane.input.certificate", documentId: "d-cert" },
     ]);
     expect(laneInputKeys("art__i1", reqs)).toEqual([]);
+  });
+});
+
+describe("itens com tela própria na tela do passo", () => {
+  it("contrato, amostras, pedido mínimo, prazo e ficha levam à tela deles", async () => {
+    const { ownScreenOf } = await import("@/components/flow-step-forms");
+    expect(ownScreenOf("order_signed_wellmix", "o1")?.href).toBe(
+      "/app/orders/o1/purchase-order",
+    );
+    expect(ownScreenOf("order_sign_send", "o1")?.href).toBe(
+      "/app/orders/o1/purchase-order",
+    );
+    expect(ownScreenOf("sample_order", "o1")?.href).toBe(
+      "/app/orders/o1/samples",
+    );
+    expect(ownScreenOf("moq_confirmed__i1", "o1")?.href).toBe(
+      "/app/orders/o1/die-cut",
+    );
+    expect(ownScreenOf("purchase_sheet", "o1")?.href).toBe(
+      "/app/orders/o1/purchase-sheet",
+    );
+    // Arte e medidas seguem com o formulário na própria tela do passo.
+    expect(ownScreenOf("art__i1", "o1")).toBeNull();
+    expect(ownScreenOf("gross_weight_measured", "o1")).toBeNull();
   });
 });

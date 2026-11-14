@@ -1,15 +1,25 @@
 import type { Requirement, User } from "@/lib/db/schema";
-import type { Task } from "@/lib/services/tasks";
+import type { FlowCase as Task } from "@/lib/services/flow";
 import { requirementLabel, type Translate } from "@/i18n";
 import { getStore } from "@/lib/db";
 import { isWellmix } from "@/lib/auth/permissions";
 import { canSubmitRequirement } from "@/lib/workflow/engine";
-import { isRoutedLaneKey, laneInputKeys } from "@/lib/purchase-lanes";
+import {
+  LANE_KEYS,
+  baseKeyOf,
+  isRoutedLaneKey,
+  isSampleOrderKey,
+  laneInputKeys,
+} from "@/lib/purchase-lanes";
+import { isOrderDocumentKey } from "@/lib/workflow/stages";
+import { dieCutHref } from "@/lib/die-cut-step";
+import type { DictionaryKey } from "@/i18n/dictionaries";
 import { itemsInStep, stepId, type FlowStep } from "@/lib/flow";
 import { RequirementForm } from "./requirement-form";
 import { ProductionCard } from "./production-card";
 import { ArtworkCard } from "./artwork-card";
-import { Badge, Card, TextLink } from "./ui";
+import { ReceivingCard } from "./receiving-card";
+import { Badge, Card, LinkButton, TextLink } from "./ui";
 
 /*
  * Resolver na tela do passo (dono, 14/11/2026; docs/FLOW_MENU.md), segunda
@@ -33,6 +43,36 @@ const ordersOf = (tasks: Task[], kinds: string[]) =>
         .map((x) => x.orderId as string),
     ),
   ].slice(0, MAX_ORDERS);
+
+/**
+ * Itens que têm tela e ação próprias (o envio comum recusa): o documento do
+ * pedido e as assinaturas, o pedido de amostras, o pedido mínimo e o prazo
+ * (quadro Die Cut) e a ficha de compra. Na tela do passo, o atalho para ela.
+ */
+export function ownScreenOf(
+  key: string,
+  orderId: string,
+): { href: string; label: DictionaryKey } | null {
+  if (isOrderDocumentKey(key))
+    return {
+      href: `/app/orders/${orderId}/purchase-order`,
+      label: "flow.work.openContract",
+    };
+  if (isSampleOrderKey(key))
+    return {
+      href: `/app/orders/${orderId}/samples`,
+      label: "flow.work.openSamples",
+    };
+  const base = baseKeyOf(key);
+  if (base === LANE_KEYS.moq || base === LANE_KEYS.leadTime)
+    return { href: dieCutHref(orderId), label: "flow.work.openDieCut" };
+  if (key === "purchase_sheet")
+    return {
+      href: `/app/orders/${orderId}/purchase-sheet`,
+      label: "flow.work.openSheet",
+    };
+  return null;
+}
 
 /** Itens de etapa do passo, pedido a pedido, com o formulário de cada um. */
 export async function FlowRequirementWork({
@@ -158,12 +198,27 @@ export async function FlowRequirementWork({
                     ) : null;
                   })}
                 </div>
-                <RequirementForm
-                  requirement={r}
-                  orderId={order.id}
-                  t={t}
-                  returnTo={returnTo}
-                />
+                {(() => {
+                  const own = ownScreenOf(r.key, order.id);
+                  return own ? (
+                    <div>
+                      <LinkButton
+                        href={own.href}
+                        variant="secondary"
+                        data-flow-requirement-own={r.key}
+                      >
+                        {t(own.label)}
+                      </LinkButton>
+                    </div>
+                  ) : (
+                    <RequirementForm
+                      requirement={r}
+                      orderId={order.id}
+                      t={t}
+                      returnTo={returnTo}
+                    />
+                  );
+                })()}
               </li>
             ))}
           </ul>
@@ -293,6 +348,58 @@ export async function FlowArtworkWork({
               view={view!}
               wellmix={isWellmix(user)}
               notice={notice}
+              returnTo={pathOf(step)}
+            />
+          </div>
+        ))}
+    </section>
+  );
+}
+
+/** Recebimento no CD: Armazenagem (descarga e contagem) ou Retorno (RIC, devolução, fechamento). */
+export async function FlowReceivingWork({
+  step,
+  tasks,
+  t,
+  notice,
+}: {
+  step: FlowStep;
+  tasks: Task[];
+  t: Translate;
+  notice: string | null;
+}) {
+  const storage = step.key === "storage";
+  const orderIds = ordersOf(tasks, [
+    storage ? "receiving_storage" : "receiving_return",
+  ]);
+  if (!orderIds.length) return null;
+  const store = getStore();
+  const svc = await import("@/lib/services/receiving");
+  const orders = await store.list("orders", { filter: { id: orderIds } });
+  const views = await Promise.all(
+    orders.map(async (order) => ({
+      order,
+      view: await svc.receivingView(order),
+    })),
+  );
+  return (
+    <section className="mt-6 space-y-4" data-flow-receiving={step.key}>
+      {views
+        .sort((a, b) => a.order.number - b.order.number)
+        .map(({ order, view }) => (
+          <div key={order.id} data-flow-receiving-order={order.id}>
+            <p className="mb-1 text-sm font-semibold text-zinc-800">
+              {t("flow.work.order", { n: order.number })} ·{" "}
+              <TextLink href={`/app/orders/${order.id}`}>
+                {t("flow.work.openOrder")}
+              </TextLink>
+            </p>
+            <ReceivingCard
+              t={t}
+              order={order}
+              view={view}
+              notice={notice}
+              sections={storage ? ["storage"] : ["return"]}
               returnTo={pathOf(step)}
             />
           </div>

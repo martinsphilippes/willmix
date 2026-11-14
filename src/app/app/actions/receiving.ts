@@ -4,7 +4,7 @@ import { z } from "zod";
 import { RECEIVING_CHECKS, YES_NO } from "@/lib/db/schema";
 import type { User } from "@/lib/db";
 import { assertScreen } from "@/lib/auth/screens";
-import { field, files, requireUser, run, str } from "./helpers";
+import { field, files, requireUser, run, str, flowReturnTo } from "./helpers";
 
 /*
  * Recebimento (docs/RECEIVING.md): só a Wellmix. Lacre/fotos/checklist,
@@ -15,6 +15,9 @@ const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 function back(form: FormData) {
+  // Tela do passo do menu de onde a ação veio (docs/FLOW_MENU.md).
+  const flow = flowReturnTo(form);
+  if (flow) return flow;
   const orderId = ID.safeParse(str(form, "orderId"));
   return orderId.success ? `/app/orders/${orderId.data}` : "/app/orders";
 }

@@ -1,4 +1,4 @@
-import type { Task } from "@/lib/services/tasks";
+import type { FlowCase as Task } from "@/lib/services/flow";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { caseHref, itemsInStep, type FlowStep } from "@/lib/flow";

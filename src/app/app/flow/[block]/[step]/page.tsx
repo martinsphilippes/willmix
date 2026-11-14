@@ -16,6 +16,7 @@ import { FlowStepWork } from "@/components/flow-step-work";
 import {
   FlowArtworkWork,
   FlowProductionWork,
+  FlowReceivingWork,
   FlowRequirementWork,
 } from "@/components/flow-step-forms";
 import { Alert } from "@/components/ui";
@@ -40,7 +41,7 @@ export default async function FlowStepPage({
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=/app/flow/${block}/${key}`);
   requireScreen(user, step.screen);
-  const { due, importStep, certStep, production, artwork, saved } =
+  const { due, importStep, certStep, production, artwork, receiving, saved } =
     await searchParams;
   const done = [importStep, certStep].find(
     (v) =>
@@ -61,6 +62,11 @@ export default async function FlowStepPage({
       production,
     )
       ? t(`production.done.${production}` as DictionaryKey)
+      : null;
+  const receivingNotice =
+    typeof receiving === "string" &&
+    ["saved", "counted", "ric", "returned", "closed"].includes(receiving)
+      ? t(`receiving.done.${receiving}` as DictionaryKey)
       : null;
   const artworkNotice =
     typeof artwork === "string" &&
@@ -119,6 +125,15 @@ export default async function FlowStepPage({
           tasks={all}
           t={t}
           notice={productionNotice}
+        />
+      ) : null}
+      {step.block === "delivery" &&
+      (step.key === "storage" || step.key === "return") ? (
+        <FlowReceivingWork
+          step={step}
+          tasks={all}
+          t={t}
+          notice={receivingNotice}
         />
       ) : null}
       {step.block === "order" && step.key === "art" ? (

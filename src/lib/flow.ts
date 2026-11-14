@@ -267,6 +267,9 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   ncm_classify: "registry/products",
   new_request: "sales/sale",
   after_sales: "sales/sale",
+  // Recebimento no CD (casos do menu, fora das Pendências; docs/FLOW_MENU.md).
+  receiving_storage: "delivery/storage",
+  receiving_return: "delivery/return",
 };
 
 const toStep = (ref: Ref | null | undefined): FlowStep | null => {

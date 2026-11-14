@@ -844,6 +844,17 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // 11. Entrega: o cliente do pedido é a própria Wellmix (CODEMP do
   // Sankhya), sem login; a Wellmix confirma o recebimento e o pedido encerra.
   await login(page, "admin@wellmix.com");
+  // Pedido entregue no CD: o recebimento aparece em Entrega → Armazenagem
+  // (descarga e contagem), sem as partes do Retorno (docs/FLOW_MENU.md).
+  await page.goto("/app/flow/delivery/storage");
+  const deliveredId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
+  const storageCard = page.locator(
+    `[data-flow-receiving-order="${deliveredId}"]`,
+  );
+  await expect(
+    storageCard.locator("[data-receiving-unloading-row]"),
+  ).toBeVisible();
+  await expect(storageCard.locator("[data-receiving-ric]")).toHaveCount(0);
   await page.goto(orderUrl);
   // Fatura ativa (R24): com o BL conferido, o faturamento já tem vencimento.
   await expect(page.locator("[data-invoice-due]")).toBeVisible();

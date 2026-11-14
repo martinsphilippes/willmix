@@ -1,5 +1,5 @@
 import type { User } from "@/lib/db/schema";
-import type { Task } from "@/lib/services/tasks";
+import type { FlowCase as Task } from "@/lib/services/flow";
 import type { Translate } from "@/i18n";
 import { getStore } from "@/lib/db";
 import { flowStepOfImportKey, stepId, type FlowStep } from "@/lib/flow";
