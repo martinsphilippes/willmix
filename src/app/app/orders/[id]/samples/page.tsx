@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getSampleOrderView } from "@/lib/services/sample-order";
 import { SAMPLES_PER_VARIANT, sampleTotal } from "@/lib/sample-order";
@@ -118,7 +119,7 @@ export default async function SampleOrderPage({
             <tbody>
               {lines.map((l) => (
                 <tr key={l.itemId} data-sample-line={l.itemId}>
-                  <Td>{l.name}</Td>
+                  <Td>{productNameText(t, l.name)}</Td>
                   <Td className="text-right">{l.variants}</Td>
                   <Td className="text-right font-medium" data-sample-qty>
                     {l.quantity}

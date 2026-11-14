@@ -10,7 +10,8 @@ import {
   type StageKey,
   type User,
 } from "@/lib/db";
-import { isAdmin, isWellmix } from "@/lib/auth/permissions";
+import { hasCertifier, isAdmin, isWellmix } from "@/lib/auth/permissions";
+import type { TaskItem } from "@/lib/task-owner";
 import { can } from "@/lib/auth/function-access";
 import {
   ORDER_SIGN_SEND,
@@ -22,6 +23,9 @@ import {
   isPurchaseFlow,
 } from "@/lib/workflow/stages";
 import { dieCutHref, dieCutItemOf, dieCutProducts } from "@/lib/die-cut-step";
+import { blockedBy } from "@/lib/purchase-lanes";
+import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
+import { isRoutedLaneKey } from "@/lib/purchase-lanes";
 
 export type TaskKind =
   | "booking_invite"
@@ -47,7 +51,9 @@ export type TaskKind =
   | "sampling"
   | "sampling_validate"
   | "art_fix"
-  | "art_review";
+  | "art_review"
+  | "invoice_due"
+  | "real_media";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -96,6 +102,10 @@ export interface Task {
   loadedAt?: string | null;
   /** Etapa do caminho do fornecedor (só nas pendências do fornecedor). */
   supplierStep?: SupplierStep;
+  /** Itens da etapa na pendência (filtro por função do operador, src/lib/task-owner.ts). */
+  items?: TaskItem[];
+  /** Passo do embarque ou da certificação ("assign": designar o despachante). */
+  stepKey?: string | null;
 }
 
 /*
@@ -237,6 +247,36 @@ const SIGN_AFTER: ReadonlyArray<[string, string]> = [
   [ORDER_SIGNED_WELLMIX, ORDER_SIGN_SEND],
   [ORDER_SIGNED_SUPPLIER, ORDER_SIGNED_WELLMIX],
 ];
+
+/**
+ * O item ainda espera outro e não vira pendência (nem tarefa de ninguém na
+ * linha do tempo): aprovar a arte antes de ela chegar; a cadeia do documento
+ * do pedido (enviar, a Wellmix assina, o fornecedor assina); enviar para
+ * assinatura sem o selo aplicado na arte; no pedido de compra, o passo
+ * anterior da raia. `open`: os itens abertos da etapa; `all`: todos os itens
+ * da etapa (a ordem das raias olha os concluídos).
+ */
+export function requirementWaiting(
+  r: Pick<Requirement, "key">,
+  stage: { open: readonly Pick<Requirement, "key">[]; all: Requirement[] },
+  options: { sealApplied: boolean; purchase: boolean },
+): boolean {
+  // Aprovar a arte só vira pendência depois que a arte chega.
+  if (r.key === "art_approval" && stage.open.some((x) => x.key === "art"))
+    return true;
+  // Documento do pedido (ordem nova): enviar para assinatura só depois da
+  // arte; a Wellmix assina depois do envio; o fornecedor, depois dela.
+  if (
+    SIGN_AFTER.some(
+      ([key, before]) =>
+        r.key === key && stage.open.some((x) => x.key === before),
+    )
+  )
+    return true;
+  if (r.key === ORDER_SIGN_SEND && !options.sealApplied) return true;
+  // Raias do pedido de compra: só o que já está liberado.
+  return options.purchase && blockedBy(r.key, stage.all).length > 0;
+}
 const KIND_ORDER: string[] = [
   "booking_invite",
   "new_request",
@@ -341,35 +381,25 @@ export function stageTaskDrafts(
     const order = orderById.get(stage.orderId);
     if (!order) continue;
     if (!isInvolved(user, order)) continue;
-    const mine = openRequirements.filter(
+    const stageOpen = openRequirements.filter((x) => x.stageId === stage.id);
+    const stageAll = lanes
+      ? lanes.all.filter((x) => x.stageId === stage.id)
+      : [];
+    const mine = stageOpen.filter(
       (r) =>
-        r.stageId === stage.id &&
-        (wellmix || r.role === user.role) &&
-        // Aprovar a arte só vira pendência depois que a arte chega.
-        !(
-          r.key === "art_approval" &&
-          openRequirements.some(
-            (x) => x.stageId === stage.id && x.key === "art",
-          )
-        ) &&
-        // Documento do pedido (ordem nova): enviar para assinatura só depois
-        // da arte; a Wellmix assina depois do envio; o fornecedor, depois dela.
-        !SIGN_AFTER.some(
-          ([key, before]) =>
-            r.key === key &&
-            openRequirements.some(
-              (x) => x.stageId === stage.id && x.key === before,
-            ),
-        ) &&
-        !(r.key === ORDER_SIGN_SEND && !sealApplied.has(r.orderId)) &&
-        // Raias do pedido de compra: só o que já está liberado.
-        !(
-          lanes &&
-          isPurchaseFlow(order) &&
-          lanes.blockedBy(
-            r.key,
-            lanes.all.filter((x) => x.stageId === stage.id),
-          ).length
+        (wellmix ||
+          r.role === user.role ||
+          // Arte e certificado do pedido de compra: o designer da agência e a
+          // certificadora recebem por login (routeLaneTasks), não pelo papel.
+          (isRoutedLaneKey(r.key) &&
+            (user.role === "agency" || user.role === "ocp"))) &&
+        !requirementWaiting(
+          r,
+          { open: stageOpen, all: stageAll },
+          {
+            sealApplied: sealApplied.has(r.orderId),
+            purchase: !!lanes && isPurchaseFlow(order),
+          },
         ),
     );
     if (mine.length === 0) continue;
@@ -436,7 +466,7 @@ export function stageTaskDrafts(
       out.push({
         kind: "requirement",
         title: `Pedido #${order.number}: ${stage.key}`,
-        detail: items.map((r) => r.label).join(", "),
+        detail: withoutPlaceholder(items.map((r) => r.label).join(", ")),
         link:
           step === "sign"
             ? `/app/orders/${order.id}/purchase-order`
@@ -449,6 +479,7 @@ export function stageTaskDrafts(
         requestId: order.requestId,
         orderId: order.id,
         sinceAt: stage.startedAt,
+        items: items.map((r) => ({ key: r.key, role: r.role, label: r.label })),
         ...(step ? { supplierStep: step } : {}),
       });
     }
@@ -457,21 +488,94 @@ export function stageTaskDrafts(
   return out;
 }
 
-/** Pedidos do login de fora da Wellmix (a mesma regra de `isInvolved`). */
+/**
+ * As quatro tarefas da Preparação do pedido de compra com dono por login
+ * (arte, validação, certificado e arte final; dono, 14/11/2026): cada item
+ * fica só com quem o recebe (`seesLaneTask`); o administrador vê todos. No
+ * painel da equipe (`team`), todos. Item sem dono certo diz o que falta
+ * designar. A pendência que fica sem item sai da lista.
+ */
+async function routeLaneTasks(
+  user: User,
+  tasks: Task[],
+  team: boolean,
+): Promise<Task[]> {
+  const routed = tasks.filter(
+    (t) =>
+      t.kind === "requirement" &&
+      !!t.orderId &&
+      t.items?.some((i) => isRoutedLaneKey(i.key)),
+  );
+  if (!routed.length) return tasks;
+  const ids = [...new Set(routed.map((t) => t.orderId as string))];
+  const store = getStore();
+  const { laneRoute, loadRoutingContext, seesLaneTask } =
+    await import("./cert-art-routing");
+  const [orders, requirements, ctx] = await Promise.all([
+    store.list("orders", { filter: { id: ids } }),
+    store.list("requirements", { filter: { orderId: ids } }),
+    loadRoutingContext(),
+  ]);
+  const orderById = new Map(orders.map((o) => [o.id, o]));
+  const out: Task[] = [];
+  for (const task of tasks) {
+    const order = task.orderId ? orderById.get(task.orderId) : undefined;
+    if (!routed.includes(task) || !order) {
+      out.push(task);
+      continue;
+    }
+    const siblings = requirements.filter((r) => r.orderId === order.id);
+    const items: TaskItem[] = [];
+    let missing: keyof typeof MISSING_TASK_TEXT | null = null;
+    for (const item of task.items ?? []) {
+      if (!isRoutedLaneKey(item.key)) {
+        items.push(item);
+        continue;
+      }
+      if (!team && !seesLaneTask(user, item.key, order, ctx, siblings))
+        continue;
+      items.push({ ...item, routed: true });
+      const route = laneRoute(item.key, order, ctx, siblings);
+      if (!missing && route?.missing && route.missing !== "ocp")
+        missing = route.missing;
+    }
+    if (!items.length) continue;
+    const detail = withoutPlaceholder(items.map((i) => i.label).join(", "));
+    out.push({
+      ...task,
+      items,
+      // O que falta designar e onde (ex.: o pedido sem certificadora).
+      detail: missing
+        ? `${detail} ${translator("pt")(MISSING_TASK_TEXT[missing])}`.trim()
+        : detail,
+    });
+  }
+  return out;
+}
+
+/**
+ * Pedidos do login de fora da Wellmix (a mesma regra de `isInvolved`), sem os
+ * do histórico do Sankhya em espera (pendências só depois do go-live).
+ */
 async function involvedOrderIds(user: User): Promise<string[]> {
   const { listColumns } = await import("@/lib/db/lookup");
   const store = getStore();
   if (user.role === "customer") {
     if (!user.partyId) return [];
     const rows = await listColumns(store, "orders", ["customerId"], {
-      filter: { customerId: user.partyId, requestedByUserId: user.id },
+      filter: {
+        customerId: user.partyId,
+        requestedByUserId: user.id,
+        held: null,
+      },
     });
     return rows.map((o) => o.id);
   }
   const field = ROLE_PARTY_FIELD[user.role];
   if (!field || !user.partyId) return [];
   const rows = await listColumns(store, "orders", [field], {
-    filter: { [field]: user.partyId },
+    // Pedido do histórico do Sankhya em espera: sem pendência até o go-live.
+    filter: { [field]: user.partyId, held: null },
   });
   return rows.map((o) => o.id);
 }
@@ -499,6 +603,9 @@ export async function pendingTasksFor(
   await (await import("./supplier-terms")).releaseOffFlowStages();
   // Arte e embalagem dos pedidos antigos: arte da agência, aprovação do fornecedor.
   await (await import("./packaging")).normalizePackaging();
+  // Tarefas de arte e certificado dos pedidos de compra: papel coerente com
+  // quem as recebe (as abertas antes de 14/11/2026).
+  await (await import("./purchase-order")).normalizeLaneRoles();
   const customer = user.role === "customer" && !!user.partyId;
   const agency = user.role === "agency" && !!user.partyId;
   const none = Promise.resolve([] as never[]);
@@ -618,9 +725,15 @@ export async function pendingTasksFor(
       }
     : null;
 
+  // Wellmix com os resumos em uso: as pendências por pedido vêm prontas do
+  // resumo de cada pedido (etapas, produção, embarque, certificação, artes e
+  // "Pagar fornecedor"), sem ler os pedidos (docs/RESUMOS.md, "Pendências").
+  const readyList = ready
+    ? await (await import("./order-summary")).wellmixReadyTasks()
+    : null;
   // Requisitos pendentes em etapas ativas/bloqueadas.
-  const drafts = ready
-    ? await (await import("./order-summary")).wellmixStageTaskDrafts()
+  const drafts = readyList
+    ? readyList.stage
     : stageTaskDrafts(user, {
         stages,
         orderById,
@@ -628,7 +741,15 @@ export async function pendingTasksFor(
         sealApplied,
         lanes,
       });
-  for (const draft of drafts) tasks.push(finish(draft, now));
+  // Arte, validação, certificado e arte final do pedido de compra: só com
+  // quem recebe cada uma (o resumo do pedido traz a lista da equipe toda).
+  tasks.push(
+    ...(await routeLaneTasks(
+      user,
+      drafts.map((draft) => finish(draft, now)),
+      !!options.team,
+    )),
+  );
 
   const { getSettings } = await import("@/lib/settings");
   const flowSettings = await getSettings();
@@ -768,7 +889,7 @@ export async function pendingTasksFor(
   // recebido) nos pedidos dele; confirma na conta corrente.
   if (supplier) {
     const myOrders = await store.list("orders", {
-      filter: { supplierId: user.partyId! },
+      filter: { supplierId: user.partyId!, held: null },
     });
     const open = myOrders.filter((o) => o.status !== "CANCELLED");
     // Pedido antigo: o recebimento já foi confirmado pela etapa de pagamento.
@@ -819,48 +940,110 @@ export async function pendingTasksFor(
 
   // Admin (financeiro é só dele): parcelas a pagar a fornecedores vencidas ou vencendo em 7 dias.
   if (isAdmin(user)) {
-    const { listPayables, payableRows } = await import("./supplier-terms");
-    for (const { payable, installment: i } of payableRows(
-      await listPayables(),
-    )) {
-      if (i.status !== "overdue" && i.status !== "due_soon") continue;
-      if (!(i.open > 0)) continue;
-      tasks.push(
-        finish(
-          {
-            kind: "supplier_payment",
-            title: `Pagar fornecedor: pedido #${payable.order.number}`,
-            detail: `${payable.supplier?.name ?? "—"} · parcela ${i.index}/${i.count} · ${payable.schedule.currency} ${i.open.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            link: `/app/orders/${payable.order.id}#supplier-payment`,
-            dueAt: i.dueDate,
-            orderNumber: payable.order.number,
-            customerId: payable.order.customerId,
-            ownerUserId: payable.order.ownerUserId ?? null,
-          },
-          now,
-        ),
+    const payTask = (
+      order: Pick<Order, "id" | "number" | "customerId" | "ownerUserId">,
+      supplierName: string | null,
+      currency: string,
+      i: { index: number; count: number; open: number; dueDate: string | null },
+    ) =>
+      finish(
+        {
+          kind: "supplier_payment",
+          title: `Pagar fornecedor: pedido #${order.number}`,
+          detail: `${supplierName ?? "—"} · parcela ${i.index}/${i.count} · ${currency} ${i.open.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          link: `/app/orders/${order.id}#supplier-payment`,
+          dueAt: i.dueDate,
+          orderNumber: order.number,
+          customerId: order.customerId,
+          ownerUserId: order.ownerUserId ?? null,
+        },
+        now,
       );
+    if (readyList) {
+      // Do resumo: a situação da parcela é a do dia (vence sem gravação).
+      const { installmentStatusOn } = await import("./order-summary");
+      const { brazilDay, INSTALLMENT_STATUS_ORDER } =
+        await import("@/lib/supplier-terms");
+      const today = brazilDay(now.toISOString()) as string;
+      const rank = (s: string) => INSTALLMENT_STATUS_ORDER.indexOf(s as never);
+      const rows = readyList.orders
+        .flatMap(({ order, tasks: t }) =>
+          (t.f?.parts ?? []).map((part) => ({
+            order,
+            f: t.f!,
+            part: { ...part, status: installmentStatusOn(part, today) },
+          })),
+        )
+        .filter(
+          (r) => r.part.status === "overdue" || r.part.status === "due_soon",
+        )
+        .sort(
+          (a, b) =>
+            rank(a.part.status) - rank(b.part.status) ||
+            (a.part.dueDate ?? "9999").localeCompare(
+              b.part.dueDate ?? "9999",
+            ) ||
+            a.order.number - b.order.number ||
+            a.part.index - b.part.index,
+        );
+      for (const r of rows)
+        tasks.push(payTask(r.order, r.f.supplier, r.f.currency, r.part));
+    } else {
+      const { listPayables, payableRows } = await import("./supplier-terms");
+      // Só os pedidos fora de espera: com os 16 mil do histórico do Sankhya,
+      // ler todos custava ~2.300 consultas a cada abertura de Pendências.
+      for (const { payable, installment: i } of payableRows(
+        await listPayables({ live: true }),
+      )) {
+        if (i.status !== "overdue" && i.status !== "due_soon") continue;
+        if (!(i.open > 0)) continue;
+        // Pedido do histórico do Sankhya em espera: fica em Contas a pagar,
+        // mas não vira pendência até o go-live.
+        if (payable.order.held) continue;
+        tasks.push(
+          payTask(
+            payable.order,
+            payable.supplier?.name ?? null,
+            payable.schedule.currency,
+            i,
+          ),
+        );
+      }
     }
   }
   // Produção (Fase C): follow 5/15/25 e reinspeção (Wellmix); SKU reprovado
   // a corrigir (fornecedor).
   if (wellmix || supplier) {
-    const orders = await store.list("orders", {
-      filter: supplier
-        ? { supplierId: user.partyId! }
-        : {
-            status: [
-              "ORDER_CREATED",
-              "PREPARATION",
-              "SUPPLIER_PAYMENT",
-              "PACKAGING",
-              "INSPECTION",
-              "SHIPPING",
-            ],
-          },
-    });
-    const { productionTasks } = await import("./production");
-    for (const p of await productionTasks(user, orders))
+    const { productionTasks, dueProductionCandidates } =
+      await import("./production");
+    const drafts = readyList
+      ? // Do resumo: o follow só depois da data dele.
+        readyList.orders.flatMap(({ order, tasks: t }) =>
+          dueProductionCandidates(t.p ?? [], now).map((c) => ({
+            ...c,
+            order,
+          })),
+        )
+      : await productionTasks(
+          user,
+          // Pedido do histórico do Sankhya em espera (held): sem pendência.
+          await store.list("orders", {
+            filter: supplier
+              ? { supplierId: user.partyId!, held: null }
+              : {
+                  held: null,
+                  status: [
+                    "ORDER_CREATED",
+                    "PREPARATION",
+                    "SUPPLIER_PAYMENT",
+                    "PACKAGING",
+                    "INSPECTION",
+                    "SHIPPING",
+                  ],
+                },
+          }),
+        );
+    for (const p of drafts)
       tasks.push(
         finish(
           {
@@ -886,48 +1069,69 @@ export async function pendingTasksFor(
     user.role === "comex" ||
     user.role === "logistics" ||
     user.role === "ocp" ||
-    user.role === "agency"
+    user.role === "agency" ||
+    // Despachante: a certificação é dele (dono, 13/11/2026).
+    user.role === "broker" ||
+    // Agência de marketing na China: amostras (docs/SAMPLE_FLOW.md).
+    user.role === "marketing_agency"
       ? user.role
       : null;
   if (wellmix || supplier || (importRole && user.partyId)) {
-    const { importTasks } = await import("./import-flow");
+    const { importTasks, readyImportTasks } = await import("./import-flow");
     const { isSchemaMissing } = await import("@/lib/db/errors");
     let orders: Order[] = [];
-    try {
-      orders = await store.list("orders", {
-        filter: importRole
-          ? {
-              [importRole === "comex"
-                ? "comexId"
-                : importRole === "ocp"
-                  ? "ocpId"
-                  : importRole === "agency"
-                    ? "agencyId"
-                    : "logisticsId"]: user.partyId!,
-            }
-          : supplier
-            ? { supplierId: user.partyId! }
-            : {
-                status: [
-                  // Pedido recém-criado: só o selo de certificação já vale.
-                  "ORDER_CREATED",
-                  "PREPARATION",
-                  "PACKAGING",
-                  "INSPECTION",
-                  "SHIPPING",
-                  "CUSTOMS",
-                  "TRANSPORT",
-                ],
-              },
-      });
-    } catch (error) {
-      // Coluna nova ainda não publicada no Appwrite: sem pendências.
-      if (!isSchemaMissing(error)) throw error;
-    }
+    if (!readyList)
+      try {
+        orders = await store.list("orders", {
+          filter: importRole
+            ? {
+                held: null,
+                [importRole === "comex"
+                  ? "comexId"
+                  : importRole === "ocp"
+                    ? "ocpId"
+                    : importRole === "agency"
+                      ? "agencyId"
+                      : importRole === "broker"
+                        ? "brokerId"
+                        : importRole === "marketing_agency"
+                          ? "marketingAgencyId"
+                          : "logisticsId"]: user.partyId!,
+              }
+            : supplier
+              ? { supplierId: user.partyId!, held: null }
+              : {
+                  held: null,
+                  status: [
+                    // Pedido recém-criado: só o selo de certificação já vale.
+                    "ORDER_CREATED",
+                    "PREPARATION",
+                    "PACKAGING",
+                    "INSPECTION",
+                    "SHIPPING",
+                    "CUSTOMS",
+                    "TRANSPORT",
+                  ],
+                },
+        });
+      } catch (error) {
+        // Coluna nova ainda não publicada no Appwrite: sem pendências.
+        if (!isSchemaMissing(error)) throw error;
+      }
     const ptText = translator("pt");
     // Certificação (docs/CERTIFICATION.md, "Quem recebe cada tarefa"): cada
     // passo já vem só para o login que o recebe, com o link direto.
-    for (const p of await importTasks(user, orders, { team: options.team })) {
+    const drafts = readyList
+      ? // Do resumo: só o encaminhamento do momento decide de quem é.
+        await readyImportTasks(
+          user,
+          readyList.orders
+            .filter(({ tasks: t }) => t.i?.length)
+            .map(({ order, tasks: t }) => ({ order, candidates: t.i! })),
+          { team: options.team },
+        )
+      : await importTasks(user, orders, { team: options.team });
+    for (const p of drafts) {
       const step = IMPORT_STEP_LABEL[p.key] ?? p.key;
       const cert = p.kind === "cert_step" || p.kind === "cert_validate";
       const validate =
@@ -935,7 +1139,9 @@ export async function pendingTasksFor(
       // Selo sem certificadora no pedido: a pendência é de quem designa a
       // certificadora em Parceiros do pedido (o analista ou a equipe).
       const assignOcp =
-        p.kind === "cert_step" && p.key === "cert_seal" && !p.order.ocpId;
+        p.kind === "cert_step" &&
+        p.key === "cert_seal" &&
+        !hasCertifier(p.order);
       // Selo e memorial: texto próprio, traduzido na tela.
       const seal =
         SEAL_TASK_TEXT[assignOcp ? "assign_ocp" : `${p.kind}:${p.key}`];
@@ -969,6 +1175,7 @@ export async function pendingTasksFor(
                 }
               : {}),
             link: p.link ?? `/app/orders/${p.order.id}#import-flow`,
+            stepKey: assignOcp ? "assign" : p.key,
             dueAt: null,
             requestId: p.order.requestId,
             sinceAt: p.sinceAt ?? null,
@@ -985,12 +1192,130 @@ export async function pendingTasksFor(
       );
     }
   }
+  // Fotos e vídeos reais (docs/SAMPLE_FLOW.md): a agência na China
+  // fotografa a amostra de cada produto; o marketing aprova e ativa a venda.
+  if (wellmix || user.role === "marketing_agency") {
+    try {
+      const { realMediaTasks } = await import("./sample-flow");
+      const ptText = translator("pt");
+      for (const p of await realMediaTasks(user)) {
+        const values = { n: p.order.number, count: p.count };
+        const title = `realMedia.task.${p.kind}.title` as DictionaryKey;
+        const detail = `realMedia.task.${p.kind}.detail` as DictionaryKey;
+        tasks.push(
+          finish(
+            {
+              kind: "real_media",
+              title: ptText(title, values),
+              detail: ptText(detail, values),
+              text: { title, detail, values },
+              link: `/app/orders/${p.order.id}/real-media`,
+              dueAt: null,
+              requestId: p.order.requestId,
+              orderNumber: p.order.number,
+              customerId: p.order.customerId,
+              ownerUserId: p.order.ownerUserId ?? null,
+            },
+            now,
+          ),
+        );
+      }
+    } catch (error) {
+      const { isSchemaMissing } = await import("@/lib/db/errors");
+      // Tabela nova ainda não publicada: sem estas pendências.
+      if (!isSchemaMissing(error)) throw error;
+    }
+  }
+  // Fatura ativa em N dias (mapa R24): com os documentos do embarque
+  // conferidos, o financeiro registra o faturamento até o vencimento.
+  if (wellmix) {
+    const { invoiceTasks } = await import("./supplier-invoice");
+    const ptText = translator("pt");
+    for (const p of await invoiceTasks(user)) {
+      const values = { n: p.order.number, days: p.due.days };
+      tasks.push(
+        finish(
+          {
+            kind: "invoice_due",
+            title: ptText("supplierInvoice.task.title", values),
+            detail: ptText("supplierInvoice.task.detail", values),
+            text: {
+              title: "supplierInvoice.task.title",
+              detail: "supplierInvoice.task.detail",
+              values,
+            },
+            link: `/app/orders/${p.order.id}`,
+            dueAt: p.due.dueAt,
+            sinceAt: p.due.activeAt,
+            requestId: p.order.requestId,
+            orderNumber: p.order.number,
+            customerId: p.order.customerId,
+            ownerUserId: p.order.ownerUserId ?? null,
+          },
+          now,
+        ),
+      );
+    }
+  }
+  // Documentos do embarque do pedido de compra (docs/SHIPPING_DOCS.md):
+  // check list e packing list do fornecedor, invoice da trading e BL da
+  // marítima (sem marítima designada, da Wellmix).
+  if (wellmix || user.role === "supplier" || user.role === "shipping_line") {
+    try {
+      const { shippingDocTasks } = await import("./shipping-docs");
+      const ptText = translator("pt");
+      for (const p of await shippingDocTasks(user)) {
+        const values = { n: p.order.number };
+        const title = `shippingDocs.task.${p.kind}.title` as DictionaryKey;
+        const detail = (
+          p.redo
+            ? "shippingDocs.task.redo.detail"
+            : `shippingDocs.task.${p.kind}.detail`
+        ) as DictionaryKey;
+        tasks.push(
+          finish(
+            {
+              kind: "import_step",
+              title: ptText(title, values),
+              detail: ptText(detail, values),
+              text: { title, detail, values },
+              link: `/app/orders/${p.order.id}/shipping-docs#${p.kind}`,
+              stepKey: `shipping_${p.kind}`,
+              dueAt: null,
+              requestId: p.order.requestId,
+              ...(user.role === "supplier"
+                ? { supplierStep: "shipping" as const }
+                : {}),
+              orderNumber: p.order.number,
+              customerId: p.order.customerId,
+              ownerUserId: p.order.ownerUserId ?? null,
+            },
+            now,
+          ),
+        );
+      }
+    } catch (error) {
+      const { isSchemaMissing } = await import("@/lib/db/errors");
+      // Tabela nova ainda não publicada: sem estas pendências.
+      if (!isSchemaMissing(error)) throw error;
+    }
+  }
   // Artes (cartão Artes do pedido): corrigir a não conformidade (quem faz a
   // arte) e conferir a correção (quem apontou ou quem valida a arte).
   if (wellmix || agency) {
-    const { artIssueTasks } = await import("./artwork");
+    const { artIssueTasks, readyArtTasks } = await import("./artwork");
     const ptText = translator("pt");
-    for (const a of await artIssueTasks(user, { team: options.team })) {
+    const drafts = readyList
+      ? // Do resumo: as não conformidades guardadas, na ordem de criação.
+        await readyArtTasks(
+          user,
+          readyList.orders.flatMap(({ order, tasks: t }) =>
+            (t.a ?? []).map((a) => ({ ...a, order })),
+          ),
+          { team: options.team },
+        )
+      : await artIssueTasks(user, { team: options.team });
+    for (const a of drafts) {
       const text = ART_TASK_TEXT[a.kind];
       const missing =
         a.missing && a.missing !== "ocp" ? MISSING_TASK_TEXT[a.missing] : null;
@@ -1116,7 +1441,7 @@ export async function pendingTasksFor(
                 ? "tasks.ncm.detail"
                 : "tasks.ncm.detailNoNumber",
               values: {
-                product: request.productName,
+                product: realName(request.productName) ?? "—",
                 n: request.number ?? "",
               },
             },
@@ -1210,6 +1535,20 @@ async function datesForSupplier(tasks: Task[]): Promise<void> {
 /** Passos do embarque/desembaraço (pendências saem em português, como as demais). */
 const IMPORT_STEP_LABEL: Record<string, string> = {
   booking: "Booking",
+  container_at_factory: "Container vazio na fábrica",
+  container_empty: "Fotos e vídeos do container vazio",
+  container_loaded: "Carregamento do container",
+  container_sealed: "Lacre e número do container",
+  container_at_port: "Container lacrado no porto",
+  container_tracking: "Rastreio do container",
+  samples_picked: "Retirada das amostras",
+  samples_brazil: "Envio das amostras ao Brasil",
+  samples_china: "Envio das amostras à agência na China",
+  samples_china_received: "Amostras recebidas pela agência",
+  samples_returned: "Devolução da amostra à trading",
+  origin_carrier: "Transportadora na origem (EXW)",
+  origin_carrier_eta: "Previsão do container na fábrica (EXW)",
+  origin_costs: "Custos de origem (POP)",
   draft_bl: "Draft do BL",
   invoice_packing: "Invoice e packing list",
   invoice_signed: "Invoice assinada",
@@ -1273,9 +1612,13 @@ const ART_TASK_TEXT: Record<
 };
 
 /** Pendência sem dono certo: o que falta designar e onde (traduzido na tela). */
-const MISSING_TASK_TEXT: Record<"designer" | "analyst", DictionaryKey> = {
+const MISSING_TASK_TEXT: Record<
+  "designer" | "analyst" | "certifier",
+  DictionaryKey
+> = {
   designer: "tasks.missing.designer",
   analyst: "tasks.missing.analyst",
+  certifier: "tasks.missing.certifier",
 };
 
 /*

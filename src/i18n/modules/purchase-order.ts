@@ -8,6 +8,8 @@ export const pt = {
     "Pedido de compra (solicitação ao fornecedor)",
   "purchaseOrder.stage.PREPARATION": "Preparação, arte e certificação",
   "purchaseOrder.stageRow.PREPARATION": "Die-Cut, Arte e Certificação",
+  "purchaseOrder.dieCut.title": "Die-Cut",
+  "purchaseOrder.dieCut.done": "Concluído",
   "purchaseOrder.stage.PACKAGING": "Contrato e assinaturas",
 
   "purchaseOrder.card.title": "Gerar pedido de compra",
@@ -45,6 +47,8 @@ export const pt = {
     "Comprador não encontrado: falta o cadastro de cliente da Wellmix com o código da empresa do Sankhya (CODEMP, hoje 3).",
   "purchaseOrder.error.purchase_order_qty_invalid":
     "Quantidade inválida: informe as peças (número inteiro maior que zero).",
+  "orders.error.lane_not_assignee":
+    "Esta tarefa é de outro responsável do pedido: só quem a recebe (ou o administrador) pode enviar, trocar o arquivo ou validar.",
   "orders.error.lane_prerequisite":
     "Ainda não: falta o passo anterior desta raia (validar só a arte enviada; a arte final pede a arte validada e o certificado).",
   "orderSign.error.signature_file_required":
@@ -76,7 +80,7 @@ export const pt = {
   "purchaseOrder.notify.review.subject":
     "Pedido de compra #{n}: validar a arte",
   "purchaseOrder.notify.review.body":
-    "A arte de {product} chegou: aprove ou devolva para a agência com o motivo.",
+    "A arte de {product} chegou: aprove ou devolva para o designer com o motivo.",
   "purchaseOrder.notify.final.subject":
     "Pedido de compra #{n}: arte final com o selo",
   "purchaseOrder.notify.final.body":
@@ -87,6 +91,8 @@ export const en: Record<keyof typeof pt, string> = {
   "orders.origin.supplier_request": "Purchase order (supplier request)",
   "purchaseOrder.stage.PREPARATION": "Preparation, artwork and certification",
   "purchaseOrder.stageRow.PREPARATION": "Die-Cut, Artwork and Certification",
+  "purchaseOrder.dieCut.title": "Die-Cut",
+  "purchaseOrder.dieCut.done": "Done",
   "purchaseOrder.stage.PACKAGING": "Contract and signatures",
 
   "purchaseOrder.card.title": "Create purchase order",
@@ -124,6 +130,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Buyer not found: the Wellmix customer record with the Sankhya company code (CODEMP, today 3) is missing.",
   "purchaseOrder.error.purchase_order_qty_invalid":
     "Invalid quantity: enter the pieces (a whole number above zero).",
+  "orders.error.lane_not_assignee":
+    "This task belongs to another assignee on the order: only the assignee (or an administrator) can submit, replace the file or validate.",
   "orders.error.lane_prerequisite":
     "Not yet: the previous step of this lane is missing (only submitted artwork can be reviewed; the final artwork needs the approved artwork and the certificate).",
   "orderSign.error.signature_file_required":
@@ -157,7 +165,7 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseOrder.notify.review.subject":
     "Purchase order #{n}: review the artwork",
   "purchaseOrder.notify.review.body":
-    "The artwork for {product} arrived: approve it or send it back to the agency with the reason.",
+    "The artwork for {product} arrived: approve it or send it back to the designer with the reason.",
   "purchaseOrder.notify.final.subject":
     "Purchase order #{n}: final artwork with the seal",
   "purchaseOrder.notify.final.body":
@@ -168,6 +176,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "orders.origin.supplier_request": "采购订单（供应商询单）",
   "purchaseOrder.stage.PREPARATION": "准备、设计与认证",
   "purchaseOrder.stageRow.PREPARATION": "刀模 (Die-Cut)、设计与认证",
+  "purchaseOrder.dieCut.title": "刀模 (Die-Cut)",
+  "purchaseOrder.dieCut.done": "已完成",
   "purchaseOrder.stage.PACKAGING": "合同与签署",
 
   "purchaseOrder.card.title": "生成采购订单",
@@ -201,6 +211,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "未找到采购方：缺少带有 Sankhya 公司代码（CODEMP，目前为 3）的 Wellmix 客户档案。",
   "purchaseOrder.error.purchase_order_qty_invalid":
     "数量无效：请填写件数（大于零的整数）。",
+  "orders.error.lane_not_assignee":
+    "此任务属于订单的其他负责人：只有负责人（或管理员）可以提交、更换文件或审核。",
   "orders.error.lane_prerequisite":
     "暂不可操作：本流程的上一步尚未完成（只能审核已提交的设计稿；最终设计稿需设计稿已通过且证书已出具）。",
   "orderSign.error.signature_file_required":
@@ -226,7 +238,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "请为订单中的产品进行认证，并提交每个产品的证书。",
   "purchaseOrder.notify.review.subject": "采购订单 #{n}：审核设计稿",
   "purchaseOrder.notify.review.body":
-    "{product} 的设计稿已提交：请批准或附原因退回设计公司。",
+    "{product} 的设计稿已提交：请批准或附原因退回设计师。",
   "purchaseOrder.notify.final.subject": "采购订单 #{n}：含认证标志的最终设计稿",
   "purchaseOrder.notify.final.body":
     "{product} 的设计稿已通过且证书已出具：请加上认证标志并提交最终设计稿。",

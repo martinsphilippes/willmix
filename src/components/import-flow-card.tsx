@@ -54,7 +54,13 @@ export function ImportFlowCard({
   hints = [],
   featured = [],
   featuredHint,
+  returnTo,
 }: {
+  /**
+   * Tela do passo do menu (/app/flow/<bloco>/<passo>, docs/FLOW_MENU.md): a
+   * ação volta para ela em vez do pedido.
+   */
+  returnTo?: string;
   t: Translate;
   order: Order;
   steps: StepView[];
@@ -64,7 +70,8 @@ export function ImportFlowCard({
   names: Map<string, string>;
   /** Certificação (Fase F) usa o mesmo cartão com outro título e âncora. */
   title?: string;
-  anchor?: "import-flow" | "certification";
+  anchor?:
+    "import-flow" | "certification" | "container-origin" | "samples-flow";
   /** Explicações do cartão (ex.: como anda o selo de certificação). */
   hints?: ReactNode[];
   /** Passos com quadro em destaque no alto (o envio deles sai da tabela). */
@@ -114,6 +121,9 @@ export function ImportFlowCard({
       <input type="hidden" name="orderId" value={order.id} />
       <input type="hidden" name="key" value={tpl.key} />
       <input type="hidden" name="anchor" value={anchor} />
+      {returnTo ? (
+        <input type="hidden" name="returnTo" value={returnTo} />
+      ) : null}
       {tpl.input === "text" || tpl.input === "text_file" ? (
         <Input
           name="value"
@@ -157,7 +167,22 @@ export function ImportFlowCard({
             placeholder={t("importFlow.amount")}
             defaultValue={step?.amount ?? ""}
           />
-          <input type="hidden" name="currency" value="BRL" />
+          {tpl.key === "origin_costs" ? (
+            // Custos de origem (POP): na moeda em que a trading pagou.
+            <Select
+              name="currency"
+              defaultValue={step?.currency ?? "USD"}
+              aria-label={t("importFlow.costCurrency")}
+            >
+              {["USD", "RMB", "BRL"].map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <input type="hidden" name="currency" value="BRL" />
+          )}
         </>
       ) : null}
       {["file", "text_file", "file_text", "money_file"].includes(tpl.input) ? (
@@ -441,6 +466,9 @@ export function ImportFlowCard({
                       <input type="hidden" name="orderId" value={order.id} />
                       <input type="hidden" name="key" value={tpl.key} />
                       <input type="hidden" name="anchor" value={anchor} />
+      {returnTo ? (
+        <input type="hidden" name="returnTo" value={returnTo} />
+      ) : null}
                       <Input
                         name="reason"
                         maxLength={1000}

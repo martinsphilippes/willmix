@@ -11,6 +11,7 @@ import {
 } from "@/lib/db";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
 import { WELLMIX_BASE, validScreens } from "@/lib/auth/screens";
+import { loginLabel } from "@/lib/auth/login-id";
 import { audit } from "./audit";
 
 /*
@@ -126,6 +127,159 @@ export async function setTeamMember(
   );
 }
 
+/**
+ * O que a tela mostra antes de excluir o acesso: quantas pessoas respondem a
+ * ela, para quem elas podem passar (o chefe dela, se ativo), quantas
+ * pendências abertas estão com ela e se é o último administrador.
+ */
+export async function teamMemberRemoval(
+  member: User,
+  team: User[],
+): Promise<{
+  reports: number;
+  moveTo: { id: string; name: string } | null;
+  openWork: number;
+  lastAdmin: boolean;
+}> {
+  const load = await openLoad([member]);
+  const boss = reportsTarget(member, team);
+  return {
+    reports: team.filter((u) => u.managerUserId === member.id).length,
+    moveTo: boss ? { id: boss.id, name: boss.name } : null,
+    openWork: load.get(member.id) ?? 0,
+    lastAdmin:
+      isAdmin(member) && !team.some((u) => isAdmin(u) && u.id !== member.id),
+  };
+}
+
+/** O chefe de quem sai, se ainda está ativo na equipe: recebe os subordinados. */
+function reportsTarget(member: User, team: User[]): User | null {
+  const boss = member.managerUserId
+    ? team.find((u) => u.id === member.managerUserId)
+    : null;
+  return boss && boss.id !== member.id ? boss : null;
+}
+
+/** Opções da confirmação de "Excluir acesso" (marcadas por padrão na tela). */
+export interface RemovalOptions {
+  /** Quem respondia à pessoa passa a responder ao chefe dela. */
+  moveReports?: boolean;
+  /** As pendências abertas dela vão para a divisão, como "Distribuir agora". */
+  redistribute?: boolean;
+}
+
+export interface RemovalResult {
+  removed: User;
+  /** Quantas pessoas passaram para o chefe dela, e quem é ele. */
+  moved: number;
+  movedTo: User | null;
+  /** Pendências que passaram para outra pessoa da divisão. */
+  redistributed: number;
+  /** Pendências dela que ficaram sem responsável (linha sem divisão etc.). */
+  unassigned: number;
+}
+
+/**
+ * Exclui o acesso de um login da equipe (pedido do dono, 13/11/2026): o login
+ * fica inativo e sai da equipe. Não entra mais no portal, e as sessões abertas
+ * caem na próxima página (a sessão relê o login a cada requisição). Nada é
+ * apagado: o cadastro, o histórico, os registros ligados a ele e a autoria
+ * das ações anteriores continuam. Só o administrador; não exclui o próprio
+ * acesso nem o último administrador ativo. Fica na Auditoria quem excluiu,
+ * qual acesso e quando.
+ */
+export async function removeTeamMember(
+  user: User,
+  targetId: string,
+  options: RemovalOptions = {},
+): Promise<RemovalResult> {
+  if (!isAdmin(user)) throw new ForbiddenError();
+  const store = getStore();
+  const team = await wellmixTeam();
+  const target = team.find((u) => u.id === targetId);
+  if (!target) throw new TeamError("not_found");
+  if (target.id === user.id) throw new TeamError("delete_self");
+  const otherAdmins = (list: User[]) =>
+    list.some((u) => isAdmin(u) && u.id !== target.id);
+  if (isAdmin(target) && !otherAdmins(team))
+    throw new TeamError("delete_last_admin");
+  await store.update("users", target.id, { active: false });
+  try {
+    // Dois administradores excluindo um ao outro ao mesmo tempo: se não
+    // sobrou nenhum ativo, esta exclusão é desfeita.
+    if (isAdmin(target) && !otherAdmins(await wellmixTeam()))
+      throw new TeamError("delete_last_admin");
+    await audit(
+      user,
+      "team.member.delete",
+      "user",
+      target.id,
+      `Acesso excluído: ${target.name} (${loginLabel(target.email)})`,
+      {
+        active: true,
+        role: target.role,
+        jobLevel: target.jobLevel ?? null,
+        managerUserId: target.managerUserId ?? null,
+        division: target.division ?? null,
+        functions: target.functions ?? [],
+        screens: target.screens ?? null,
+      },
+      { active: false },
+    );
+  } catch (error) {
+    // Nada pela metade: sem o registro na Auditoria (ou deixando a equipe sem
+    // administrador), o acesso volta como estava e a tela mostra o erro.
+    await store
+      .update("users", target.id, { active: true })
+      .catch((undo) => console.error("[team] desfazer exclusão", undo));
+    throw error;
+  }
+  const { forgetUserSessions } = await import("@/lib/auth/session");
+  forgetUserSessions(target.id);
+  const result: RemovalResult = {
+    removed: target,
+    moved: 0,
+    movedTo: null,
+    redistributed: 0,
+    unassigned: 0,
+  };
+  // Opções da confirmação, depois da exclusão já gravada. Se falharem, a
+  // exclusão fica (está na Auditoria) e a tela diz o que conferir; cada
+  // passagem também vai para a Auditoria (team.member e team.distribute).
+  try {
+    if (options.moveReports) {
+      const after = await wellmixTeam();
+      const boss = reportsTarget(target, after);
+      if (boss)
+        for (const report of after.filter(
+          (u) => u.managerUserId === target.id && u.id !== boss.id,
+        )) {
+          // Cadastro antigo com ciclo: essa pessoa fica para ajustar à mão.
+          if (descendantsOf(report.id, after).has(boss.id)) continue;
+          await setTeamMember(user, report.id, {
+            jobLevel: report.jobLevel ?? null,
+            managerUserId: boss.id,
+            division: report.division ?? null,
+          });
+          result.moved++;
+          result.movedTo = boss;
+        }
+    }
+    if (options.redistribute) {
+      const done = await distributeUnassigned(user, {
+        fromUserId: target.id,
+        fromName: target.name,
+      });
+      result.redistributed = done.requests + done.orders;
+      result.unassigned = done.left;
+    }
+  } catch (error) {
+    console.error("[team] depois de excluir o acesso", error);
+    throw new TeamError("delete_followup");
+  }
+  return result;
+}
+
 /** Define a divisão de uma linha de produto (só admin). */
 export async function setLineDivision(
   user: User,
@@ -221,26 +375,34 @@ export async function pickOwner(
  * Distribui o que está sem responsável (só admin): solicitações abertas pela
  * divisão da linha do produto; pedidos em andamento pela solicitação (ou pelo
  * produto do pedido). Para dados de antes da regra ou de antes da divisão.
+ * Com `fromUserId` (Excluir acesso), só as pendências daquele login; as
+ * outras sem responsável ficam para "Distribuir agora". `left`: as que não
+ * tinham para quem ir (linha sem divisão ou divisão sem analista).
  */
 export async function distributeUnassigned(
   user: User,
-): Promise<{ requests: number; orders: number }> {
+  scope: { fromUserId?: string; fromName?: string } = {},
+): Promise<{ requests: number; orders: number; left: number }> {
   if (!isAdmin(user)) throw new ForbiddenError();
   const store = getStore();
   const team = await wellmixTeam();
   const valid = (id: string | null | undefined) =>
     !!id && team.some((u) => u.id === id);
-  const result = { requests: 0, orders: 0 };
-  const [load, open, liveOrders] = await Promise.all([
+  const inScope = (id: string | null | undefined) =>
+    !scope.fromUserId || id === scope.fromUserId;
+  const result = { requests: 0, orders: 0, left: 0 };
+  const [load, openAll, liveOrders] = await Promise.all([
     openLoad(team),
     store.list("requests", { filter: { status: OPEN_REQUEST_STATUSES } }),
     store.list("orders"),
   ]);
+  const open = openAll.filter((r) => inScope(r.ownerUserId));
   const orders = liveOrders.filter(
     (o) =>
       o.status !== "CLOSED" &&
       o.status !== "CANCELLED" &&
-      !valid(o.ownerUserId),
+      !valid(o.ownerUserId) &&
+      inScope(o.ownerUserId),
   );
   // Lidos de uma vez (antes: solicitação, item, produto e linha por pedido).
   const [orderRequests, items] = await Promise.all([
@@ -284,7 +446,10 @@ export async function distributeUnassigned(
   for (const r of open) {
     if (valid(r.ownerUserId)) continue;
     const owner = await pickOwner(r.productId, context);
-    if (!owner) continue;
+    if (!owner) {
+      result.left++;
+      continue;
+    }
     await store.update("requests", r.id, { ownerUserId: owner });
     // O pedido desta solicitação herda o responsável logo abaixo (como antes,
     // quando a solicitação era lida de novo depois desta passada).
@@ -300,7 +465,10 @@ export async function distributeUnassigned(
         firstItem.get(o.id)?.productId ?? request?.productId,
         context,
       );
-    if (!owner) continue;
+    if (!owner) {
+      result.left++;
+      continue;
+    }
     await store.update("orders", o.id, { ownerUserId: owner });
     result.orders++;
   }
@@ -309,7 +477,9 @@ export async function distributeUnassigned(
     "team.distribute",
     "system",
     "team",
-    `Distribuição automática: ${result.requests} solicitação(ões) e ${result.orders} pedido(s)`,
+    scope.fromUserId
+      ? `Distribuição das pendências de ${scope.fromName ?? "acesso excluído"} (acesso excluído): ${result.requests} solicitação(ões) e ${result.orders} pedido(s)`
+      : `Distribuição automática: ${result.requests} solicitação(ões) e ${result.orders} pedido(s)`,
   );
   return result;
 }

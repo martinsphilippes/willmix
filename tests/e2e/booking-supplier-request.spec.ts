@@ -68,7 +68,7 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     "Cor âmbar",
   );
 
-  // 2b. Seleção → "Com solicitação aberta": o grupo é uma linha recolhida,
+  // 2b. Aba "Com Solicitação Aberta": o grupo é uma linha recolhida,
   // com o link da solicitação e o resumo do escolhido; a seta mostra o item
   // comparado que não foi escolhido e um novo clique recolhe.
   const requestPath = new URL(requestUrl).pathname;
@@ -99,9 +99,25 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     await expect(others).toBeHidden();
     return { row, toggle, others };
   };
+  // A lista fica só na aba Com Solicitação Aberta (dono, 14/11/2026): nem os
+  // blocos nem os filtros (que não valem para ela) aparecem ali, e a aba
+  // Blocos Sugeridos não repete a lista.
   await page.goto(
-    `/app/booking/selection?q=${encodeURIComponent(TAG)}&tab=selection`,
+    `/app/booking/selection?q=${encodeURIComponent(TAG)}&tab=blocks`,
   );
+  // O único bloco desta busca já tem solicitação: a aba diz isso e leva à
+  // lista, sem repeti-la.
+  const allRequested = page.locator("[data-selection-blocks-requested]");
+  await expect(allRequested).toBeVisible();
+  await expect(
+    page.locator('[data-selection-section="requested"]'),
+  ).toHaveCount(0);
+  await allRequested
+    .getByRole("link", { name: "Com Solicitação Aberta" })
+    .click();
+  await page.waitForURL(/tab=requested/);
+  await expect(page.locator("[data-selection-blocks]")).toHaveCount(0);
+  await expect(page.locator("[data-selection-search]")).toHaveCount(0);
   const listed = await checkRequestedRow();
   // O link fica fora do botão da seta: tocar nele não abre a linha (aqui com
   // a navegação impedida, para a linha continuar na tela)…
@@ -120,7 +136,7 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   const onlyChosen = encodeURIComponent(`${TAG} 350ml`);
   await page.goto(`/app/booking/selection?q=${onlyChosen}`);
   await expect(page.locator("[data-selection-item]")).toHaveCount(1);
-  await page.goto(`/app/booking/selection?q=${onlyChosen}&tab=selection`);
+  await page.goto(`/app/booking/selection?q=${onlyChosen}&tab=requested`);
   const filtered = await checkRequestedRow();
   // "Rever a escolha" continua abrindo o grupo para comparar.
   await filtered.row.locator("[data-selection-block-open]").click();
@@ -229,12 +245,54 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-table-master]")).toHaveText("48");
   await expect(page.locator("[data-supplier-table-book]")).toHaveCount(0);
   await expect(page.locator("[data-supplier-table-detail=ncm]")).toHaveCount(0);
-  // Três respostas por produto: confirmar a oferta do book (com o valor no
-  // botão), renegociar (formulário já preenchido com ela) ou recusar.
-  await expect(page.locator("[data-supplier-table-confirm]")).toContainText(
-    /1[.,]25 USD/,
-  );
-  await expect(page.locator("[data-supplier-table-refuse]")).toBeVisible();
+  // Três respostas por produto: aprovar a oferta do book (com o valor no
+  // nome do botão), renegociar (formulário já preenchido com ela) ou recusar.
+  // Só ícones, em duas linhas (dono, 14/11/2026): em cima mensagem e abrir o
+  // produto; embaixo aprovar, renegociar e recusar, nessa ordem, cada um com
+  // nome para leitor de tela e dica.
+  const actions = page.locator("[data-supplier-table-actions]");
+  await expect(actions.locator(":scope > div")).toHaveCount(2);
+  await expect(
+    actions
+      .locator(":scope > div")
+      .first()
+      .locator(":scope > button, :scope > a"),
+  ).toHaveCount(2);
+  const answers = actions
+    .locator("[data-supplier-table-offer]")
+    .locator(
+      "[data-supplier-table-confirm], [data-supplier-table-answer-open], [data-supplier-table-refuse]",
+    );
+  expect(
+    await answers.evaluateAll((list) =>
+      list.map((b) =>
+        ["confirm", "answer-open", "refuse"].find((a) =>
+          b.hasAttribute(`data-supplier-table-${a}`),
+        ),
+      ),
+    ),
+  ).toEqual(["confirm", "answer-open", "refuse"]);
+  await expect(answers).toHaveText(["", "", ""]);
+  await expect(
+    page.locator("[data-supplier-table-confirm]"),
+  ).toHaveAccessibleName(/1[.,]25 USD/);
+  for (const answer of await answers.all()) {
+    await expect(answer).toHaveAccessibleName(/\S/);
+    await expect(answer).toHaveAttribute("title", /\S/);
+  }
+  // A coluna ficou estreita (antes, os três botões com texto pediam 188 px)
+  // e a área de toque vai além do desenho: 3 px fora do ícone ainda é ele.
+  const actionsBox = await page
+    .locator("td[data-supplier-table-pin=actions]")
+    .boundingBox();
+  expect(actionsBox!.width).toBeLessThanOrEqual(121);
+  expect(
+    await page.locator("[data-supplier-table-refuse]").evaluate((b) => {
+      const r = b.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.right + 3, r.top + r.height / 2);
+      return !!hit && (hit === b || b.contains(hit));
+    }),
+  ).toBe(true);
   await page.locator("[data-supplier-table-answer-open]").click();
   await expect(
     page.locator("[data-supplier-table-answer-price-input]"),
@@ -350,10 +408,10 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await login(page, "supplier.a@china.com");
   await page.goto(requestUrl);
   await expect(page.locator("[data-supplier-table-pending]")).toBeVisible();
-  // A oferta vigente passou a ser a contraproposta: é ela que se confirma.
-  await expect(page.locator("[data-supplier-table-confirm]")).toContainText(
-    /1[.,]3 USD/,
-  );
+  // A oferta vigente passou a ser a contraproposta: é ela que se aprova.
+  await expect(
+    page.locator("[data-supplier-table-confirm]"),
+  ).toHaveAccessibleName(/1[.,]3 USD/);
   await page.locator("[data-supplier-table-message]").click();
   await page.fill("[data-supplier-table-message-text]", "Ok, segue a caixa.");
   await page.click("[data-supplier-table-message-submit]");
@@ -380,6 +438,30 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-answer]")).toContainText(
     /1[.,]3\b/,
   );
+  // "✓ Enviado" ao lado de "Enviar resposta" (dono, 14/11/2026): há resposta
+  // gravada; continua ao recarregar; some ao mudar um campo e volta ao
+  // gravar de novo.
+  const sent = page.locator("[data-supplier-answer-form] [data-sent-mark]");
+  await expect(sent).toHaveAttribute("data-sent-mark", "on");
+  // O fornecedor de teste usa o portal em chinês.
+  await expect(sent).toHaveText(/^(Enviado|Sent|已发送)$/);
+  await page.reload();
+  await expect(sent).toHaveAttribute("data-sent-mark", "on");
+  const answerNote = page.locator(
+    '[data-supplier-answer-form] textarea[name="note"]',
+  );
+  const noteBefore = await answerNote.inputValue();
+  await answerNote.fill("Caixa confirmada.");
+  await expect(sent).toHaveAttribute("data-sent-mark", "off");
+  await expect(sent).toBeHidden();
+  // Voltar ao que estava gravado mostra de novo.
+  await answerNote.fill(noteBefore);
+  await expect(sent).toHaveAttribute("data-sent-mark", "on");
+  await answerNote.fill("Caixa confirmada.");
+  await expect(sent).toBeHidden();
+  await page.click("[data-supplier-answer-submit]");
+  await expect(answerNote).toHaveValue("Caixa confirmada.");
+  await expect(sent).toHaveAttribute("data-sent-mark", "on");
   // Ficha negociada: o preço combinado, com o do booking riscado ao lado;
   // o Superplan refeito é só da Wellmix.
   await expect(page.locator('[data-negotiated-value="price"]')).toContainText(
@@ -546,4 +628,99 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   const leadTime = tasks.filter({ hasText: "Prazo de produção" });
   await expect(leadTime.locator("input[name=value]")).toHaveValue("35");
   await expect(leadTime.locator("button[type=submit]")).toBeVisible();
+});
+
+/*
+ * Aprovar e recusar pela tabela pedem confirmação (dono, 14/11/2026;
+ * docs/SUPPLIER_REQUESTS.md, "Ações só com ícones"): o ícone abre a caixa
+ * com o produto e as condições da oferta; Cancelar, Esc e tocar fora não
+ * enviam nada; só o botão da caixa grava, com o mesmo envio de antes.
+ */
+test("tabela da solicitação: aprovar e recusar pedem confirmação", async ({
+  page,
+}) => {
+  const tag = `OFR${Date.now().toString(36).toUpperCase()}`;
+  await login(page, "admin@wellmix.com");
+  await setManualFx(page);
+  await importAndClose(
+    page,
+    bookingSheet("Shenzhen Supplier A", `${tag}-A`, `Glass cup ${tag} 350ml`),
+    "Shenzhen Supplier A",
+  );
+  await importAndClose(
+    page,
+    bookingSheet(
+      "Guangzhou Supplier B",
+      `${tag}-B`,
+      `Glass cup ${tag} with handle`,
+    ),
+    "Guangzhou Supplier B",
+  );
+  const requestUrl = await selectAndOpenSupplierRequest(
+    page,
+    tag,
+    `${tag}-A`,
+    `${tag}-B`,
+    "Caixa com a marca",
+  );
+
+  await login(page, "supplier.a@china.com");
+  await page.goto(requestUrl);
+  const row = page.locator("[data-supplier-table-row]");
+  await expect(row).toHaveCount(1);
+  const offer = row.locator("[data-supplier-table-offer]");
+  const canDo = row.locator("[data-supplier-table-can-do]");
+  await expect(offer).toHaveAttribute("data-supplier-table-offer", "book");
+  await expect(canDo).toHaveAttribute("data-supplier-table-can-do", "waiting");
+  let posts = 0;
+  page.on("request", (r) => {
+    if (r.method() === "POST" && r.url().includes("/app/supplier-requests/"))
+      posts++;
+  });
+
+  // A caixa de aprovar mostra o produto e as condições do book.
+  const box = page.locator("dialog[open]");
+  await row.locator("[data-supplier-table-confirm]").click();
+  await expect(box).toContainText(`Glass cup ${tag} 350ml`);
+  await expect(
+    box.locator('[data-supplier-table-offer-summary-value="price"]'),
+  ).toHaveText(/1[.,]25 USD/);
+  await expect(
+    box.locator("[data-supplier-table-confirm-submit]"),
+  ).toBeVisible();
+  // Cancelar, Esc e tocar fora fecham sem enviar nada.
+  await box.locator("[data-supplier-table-confirm-cancel]").click();
+  await expect(box).toHaveCount(0);
+  await row.locator("[data-supplier-table-refuse]").click();
+  await expect(
+    box.locator("[data-supplier-table-refuse-submit]"),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(box).toHaveCount(0);
+  await row.locator("[data-supplier-table-confirm]").click();
+  await expect(box).toHaveCount(1);
+  await page.mouse.click(5, 5);
+  await expect(box).toHaveCount(0);
+  expect(posts).toBe(0);
+  await expect(canDo).toHaveAttribute("data-supplier-table-can-do", "waiting");
+
+  // Recusar pela caixa: grava "não faz" e a oferta volta a ser a do book.
+  await row.locator("[data-supplier-table-refuse]").click();
+  await box.locator("[data-supplier-table-refuse-submit]").click();
+  await page.waitForURL(/[?&]offer=refused/);
+  await expect(canDo).toHaveAttribute("data-supplier-table-can-do", "no");
+  await expect(offer).toHaveAttribute("data-supplier-table-offer", "book");
+
+  // Aprovar pela caixa: grava "faz" com as condições do book; a oferta passa
+  // a ser a dele, sem o que aprovar.
+  await row.locator("[data-supplier-table-confirm]").click();
+  await box.locator("[data-supplier-table-confirm-submit]").click();
+  await page.waitForURL(/[?&]offer=confirmed/);
+  await expect(canDo).toHaveAttribute("data-supplier-table-can-do", "yes");
+  await expect(offer).toHaveAttribute("data-supplier-table-offer", "own");
+  await expect(row.locator("[data-supplier-table-confirm]")).toHaveCount(0);
+  await expect(row.locator("[data-supplier-table-answer-price]")).toContainText(
+    /1[.,]25\b/,
+  );
+  expect(posts).toBe(2);
 });

@@ -27,6 +27,8 @@ import {
 } from "@/lib/superplan-defaults";
 import { estimatedGrossKg } from "@/lib/weights";
 import { SubmitButton } from "./submit-button";
+import { ProductPicker } from "./product-picker";
+import type { SearchPickerLabels } from "./search-picker";
 import {
   Alert,
   Button,
@@ -100,7 +102,8 @@ const fill = (text: string, params?: Record<string, string | number>) =>
 export function SuperplanCalculator({
   labels,
   intl,
-  products,
+  product,
+  productLabels,
   prefill,
   ctx,
   averageUsd,
@@ -111,7 +114,13 @@ export function SuperplanCalculator({
   labels: SuperplanLabels;
   /** Tag do idioma para os números (pt-BR, en-US, zh-CN). */
   intl: string;
-  products: SuperplanProductOption[];
+  /**
+   * Produto carregado (o campo de produto começa com ele). O campo busca por
+   * nome ou código (~17 mil produtos não cabem numa lista de seleção).
+   */
+  product: SuperplanProductOption | null;
+  /** Textos do campo de produto com busca. */
+  productLabels: SearchPickerLabels;
   prefill: SuperplanPrefill;
   ctx: SuperplanContext;
   /**
@@ -298,19 +307,18 @@ export function SuperplanCalculator({
             label={L("superplan.product")}
             hint={L("superplan.product.hint")}
           >
-            <Select
+            {/* Vazio = sem produto (preencher à mão), como a lista antiga. */}
+            <ProductPicker
               name="product"
-              defaultValue={prefill.productId ?? ""}
-              onChange={(e) => goTo(e.target.value)}
-              data-sp="product"
-            >
-              <option value="">{L("superplan.product.none")}</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </Select>
+              scope="active"
+              initial={product ? { id: product.id, name: product.label } : null}
+              ariaLabel={L("superplan.product")}
+              labels={{
+                ...productLabels,
+                placeholder: L("superplan.product.none"),
+              }}
+              onChoose={(option) => goTo(option?.id ?? "")}
+            />
           </Field>
         </div>
         <Button type="submit" variant="secondary" className="mb-5">

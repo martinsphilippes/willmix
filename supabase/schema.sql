@@ -86,6 +86,7 @@ alter table public."product_lines" add column if not exists "requiredCertificati
 alter table public."product_lines" add column if not exists "prompts" jsonb;
 alter table public."product_lines" add column if not exists "division" text;
 alter table public."product_lines" add column if not exists "sankhyaCode" text;
+alter table public."product_lines" add column if not exists "agencyId" text;
 create index if not exists "product_lines_by_sankhya" on public."product_lines" ("sankhyaCode");
 create index if not exists "product_lines_created" on public."product_lines" ("createdAt");
 create index if not exists "product_lines_created_id" on public."product_lines" ("createdAt", "id");
@@ -214,6 +215,7 @@ alter table public."orders" add column if not exists "carrierId" text;
 alter table public."orders" add column if not exists "comexId" text;
 alter table public."orders" add column if not exists "logisticsId" text;
 alter table public."orders" add column if not exists "ocpId" text;
+alter table public."orders" add column if not exists "marketingAgencyId" text;
 alter table public."orders" add column if not exists "designerUserId" text;
 alter table public."orders" add column if not exists "closedAt" timestamptz;
 alter table public."orders" add column if not exists "notes" text;
@@ -244,7 +246,9 @@ alter table public."orders" add column if not exists "sankhyaRefs" jsonb;
 alter table public."orders" add column if not exists "purchaseRounds" jsonb;
 alter table public."orders" add column if not exists "parentOrderId" text;
 alter table public."orders" add column if not exists "roundIndex" bigint;
+alter table public."orders" add column if not exists "held" boolean;
 create unique index if not exists "orders_number_unique" on public."orders" ("number");
+create index if not exists "orders_live_by_status" on public."orders" ("status") where "held" is null;
 create index if not exists "orders_by_parent" on public."orders" ("parentOrderId");
 create index if not exists "orders_by_sankhya" on public."orders" ("sankhyaCode");
 create index if not exists "orders_by_owner" on public."orders" ("ownerUserId");
@@ -268,6 +272,7 @@ alter table public."order_items" add column if not exists "unit" text;
 alter table public."order_items" add column if not exists "unitPrice" double precision;
 alter table public."order_items" add column if not exists "variantId" text;
 alter table public."order_items" add column if not exists "variant" jsonb;
+alter table public."order_items" add column if not exists "colors" jsonb;
 alter table public."order_items" add column if not exists "sankhyaCode" text;
 alter table public."order_items" add column if not exists "sankhyaRefs" jsonb;
 create index if not exists "order_items_by_order" on public."order_items" ("orderId");
@@ -293,8 +298,10 @@ alter table public."stages" add column if not exists "completedAt" timestamptz;
 alter table public."stages" add column if not exists "percent" bigint;
 alter table public."stages" add column if not exists "reminderSentAt" timestamptz;
 alter table public."stages" add column if not exists "blockReason" text;
+alter table public."stages" add column if not exists "held" boolean;
 create index if not exists "stages_by_order" on public."stages" ("orderId");
 create index if not exists "stages_by_status" on public."stages" ("status");
+create index if not exists "stages_live_by_status" on public."stages" ("status") where "held" is not true;
 create index if not exists "stages_created" on public."stages" ("createdAt");
 create index if not exists "stages_created_id" on public."stages" ("createdAt", "id");
 
@@ -317,8 +324,11 @@ alter table public."requirements" add column if not exists "documentId" text;
 alter table public."requirements" add column if not exists "submittedByUserId" text;
 alter table public."requirements" add column if not exists "submittedAt" timestamptz;
 alter table public."requirements" add column if not exists "note" text;
+alter table public."requirements" add column if not exists "held" boolean;
 create index if not exists "requirements_by_stage" on public."requirements" ("stageId");
 create index if not exists "requirements_by_order" on public."requirements" ("orderId");
+create index if not exists "requirements_live_by_status" on public."requirements" ("status") where "held" is not true;
+create index if not exists "requirements_live_by_key" on public."requirements" ("key") where "held" is not true;
 create index if not exists "requirements_created" on public."requirements" ("createdAt");
 create index if not exists "requirements_created_id" on public."requirements" ("createdAt", "id");
 
@@ -399,6 +409,7 @@ alter table public."notifications" add column if not exists "readAt" timestamptz
 alter table public."notifications" add column if not exists "kind" text;
 alter table public."notifications" add column if not exists "actor" text;
 create index if not exists "notifications_by_user" on public."notifications" ("userId");
+create index if not exists "notifications_by_user_channel_created" on public."notifications" ("userId", "channel", "createdAt");
 create index if not exists "notifications_created" on public."notifications" ("createdAt");
 create index if not exists "notifications_created_id" on public."notifications" ("createdAt", "id");
 
@@ -1230,6 +1241,50 @@ create unique index if not exists "production_tracks_order_unique" on public."pr
 create index if not exists "production_tracks_created" on public."production_tracks" ("createdAt");
 create index if not exists "production_tracks_created_id" on public."production_tracks" ("createdAt", "id");
 
+create table if not exists public."shipping_docs" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."shipping_docs" enable row level security;
+alter table public."shipping_docs" add column if not exists "orderId" text;
+alter table public."shipping_docs" add column if not exists "kind" text;
+alter table public."shipping_docs" add column if not exists "status" text;
+alter table public."shipping_docs" add column if not exists "number" text;
+alter table public."shipping_docs" add column if not exists "containerNumber" text;
+alter table public."shipping_docs" add column if not exists "lines" jsonb;
+alter table public."shipping_docs" add column if not exists "entries" jsonb;
+alter table public."shipping_docs" add column if not exists "mismatches" jsonb;
+alter table public."shipping_docs" add column if not exists "documentId" text;
+alter table public."shipping_docs" add column if not exists "currency" text;
+alter table public."shipping_docs" add column if not exists "version" bigint;
+alter table public."shipping_docs" add column if not exists "submittedByUserId" text;
+alter table public."shipping_docs" add column if not exists "submittedAt" timestamptz;
+create unique index if not exists "shipping_docs_order_kind_unique" on public."shipping_docs" ("orderId", "kind");
+create index if not exists "shipping_docs_created" on public."shipping_docs" ("createdAt");
+create index if not exists "shipping_docs_created_id" on public."shipping_docs" ("createdAt", "id");
+
+create table if not exists public."real_media" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."real_media" enable row level security;
+alter table public."real_media" add column if not exists "orderId" text;
+alter table public."real_media" add column if not exists "orderItemId" text;
+alter table public."real_media" add column if not exists "productId" text;
+alter table public."real_media" add column if not exists "status" text;
+alter table public."real_media" add column if not exists "documentIds" jsonb;
+alter table public."real_media" add column if not exists "reason" text;
+alter table public."real_media" add column if not exists "sentByUserId" text;
+alter table public."real_media" add column if not exists "sentAt" timestamptz;
+alter table public."real_media" add column if not exists "decidedByUserId" text;
+alter table public."real_media" add column if not exists "decidedAt" timestamptz;
+create unique index if not exists "real_media_item_unique" on public."real_media" ("orderItemId");
+create index if not exists "real_media_by_order" on public."real_media" ("orderId");
+create index if not exists "real_media_created" on public."real_media" ("createdAt");
+create index if not exists "real_media_created_id" on public."real_media" ("createdAt", "id");
+
 create table if not exists public."sku_inspections" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),
@@ -1577,6 +1632,7 @@ alter table public."supplier_requests" add column if not exists "slaNotifiedAt" 
 alter table public."supplier_requests" add column if not exists "orderId" text;
 alter table public."supplier_requests" add column if not exists "batchId" text;
 alter table public."supplier_requests" add column if not exists "schedule" jsonb;
+alter table public."supplier_requests" add column if not exists "colorPlan" jsonb;
 alter table public."supplier_requests" add column if not exists "aiAssets" jsonb;
 alter table public."supplier_requests" add column if not exists "sampling" jsonb;
 create index if not exists "supplier_requests_by_supplier" on public."supplier_requests" ("supplierId");
@@ -1603,6 +1659,7 @@ alter table public."selection_groups" add column if not exists "requestedAt" tim
 alter table public."selection_groups" add column if not exists "createdByUserId" text;
 alter table public."selection_groups" add column if not exists "updatedByUserId" text;
 alter table public."selection_groups" add column if not exists "schedule" jsonb;
+alter table public."selection_groups" add column if not exists "colorPlan" jsonb;
 alter table public."selection_groups" add column if not exists "aiPrompts" jsonb;
 alter table public."selection_groups" add column if not exists "aiAssets" jsonb;
 create index if not exists "selection_groups_by_status" on public."selection_groups" ("status");
@@ -1808,8 +1865,10 @@ alter table public."order_summaries" add column if not exists "facts" jsonb;
 alter table public."order_summaries" add column if not exists "computedAt" timestamptz;
 alter table public."order_summaries" add column if not exists "kpi" jsonb;
 alter table public."order_summaries" add column if not exists "tasks" jsonb;
+alter table public."order_summaries" add column if not exists "hasTasks" boolean;
 create index if not exists "order_summaries_by_order" on public."order_summaries" ("orderId");
 create index if not exists "order_summaries_by_live" on public."order_summaries" ("live");
+create index if not exists "order_summaries_by_has_tasks" on public."order_summaries" ("hasTasks");
 create index if not exists "order_summaries_created" on public."order_summaries" ("createdAt");
 create index if not exists "order_summaries_created_id" on public."order_summaries" ("createdAt", "id");
 

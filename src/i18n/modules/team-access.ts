@@ -20,8 +20,9 @@ export const pt = {
   "fn.view.screens": "Telas e links",
   "fn.view.actions": "Ações",
   "fn.screens.hint":
-    "Marque as telas que esta função abre. O que não estiver marcado não aparece no menu e não abre (o portal recusa, inclusive pelo endereço). As telas básicas valem para toda a equipe.",
+    "Marque as telas que esta função abre. O que não estiver marcado não aparece no menu e não abre (o portal recusa, inclusive pelo endereço). As telas do Início também são configuráveis por função: vêm marcadas e quem tem mais de uma função abre a tela se qualquer uma delas a liberar.",
   "fn.screens.base": "sempre, para toda a equipe",
+  "fn.screens.baseDefault": "do Início · marcada por padrão",
   "fn.screens.adminOnly": "normalmente só do administrador",
   "fn.actions.hint":
     "Marque o que esta função pode fazer dentro das telas. Sem a permissão, o botão some e o portal recusa a ação.",
@@ -92,6 +93,9 @@ export const pt = {
     "Receber o aviso de pedido de compra (Vendas)",
   "action.desc.purchaseOrder.salesNotice":
     "Fica sabendo dos produtos e quantidades de cada pedido de compra novo, para vender antes da chegada.",
+  "action.container.tracking": "Rastrear o container (todo dia)",
+  "action.desc.container.tracking":
+    "Recebe a pendência diária de conferir o status do container de cada pedido de compra, da fábrica até a chegada.",
   "action.receiving.follow": "Acompanhar o recebimento",
   "action.desc.receiving.follow": "Recebe os avisos da conferência no armazém.",
   "action.values.view": "Ver valores e margem",
@@ -117,8 +121,9 @@ export const en: Record<keyof typeof pt, string> = {
   "fn.view.screens": "Screens and links",
   "fn.view.actions": "Actions",
   "fn.screens.hint":
-    "Tick the screens this function opens. Anything unticked does not show in the menu and does not open (the portal refuses it, even by address). The basic screens apply to the whole team.",
+    "Tick the screens this function opens. Anything unticked does not show in the menu and does not open (the portal refuses it, even by address). The Home screens are also configurable per function: they come ticked, and someone with more than one function opens the screen if any of them allows it.",
   "fn.screens.base": "always, for the whole team",
+  "fn.screens.baseDefault": "Home · ticked by default",
   "fn.screens.adminOnly": "usually admin only",
   "fn.actions.hint":
     "Tick what this function can do inside the screens. Without the permission, the button disappears and the portal refuses the action.",
@@ -187,6 +192,9 @@ export const en: Record<keyof typeof pt, string> = {
   "action.purchaseOrder.salesNotice": "Get the purchase order notice (Sales)",
   "action.desc.purchaseOrder.salesNotice":
     "Learns the products and quantities of each new purchase order, to sell before arrival.",
+  "action.container.tracking": "Track the container (every day)",
+  "action.desc.container.tracking":
+    "Gets the daily task of checking the container status of each purchase order, from the factory to arrival.",
   "action.receiving.follow": "Follow receiving",
   "action.desc.receiving.follow": "Receives the warehouse check notices.",
   "action.values.view": "See values and margin",
@@ -212,8 +220,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "fn.view.screens": "页面与链接",
   "fn.view.actions": "操作",
   "fn.screens.hint":
-    "勾选此职能可打开的页面。未勾选的页面不会出现在菜单中，也无法打开（即使通过网址，门户也会拒绝）。基础页面对整个团队开放。",
+    "勾选此职能可打开的页面。未勾选的页面不会出现在菜单中，也无法打开（即使通过网址，门户也会拒绝）。首页的页面也可按职能设置：默认勾选；拥有多个职能的人，只要其中任一职能允许即可打开。",
   "fn.screens.base": "始终开放给整个团队",
+  "fn.screens.baseDefault": "首页 · 默认勾选",
   "fn.screens.adminOnly": "通常仅限管理员",
   "fn.actions.hint":
     "勾选此职能在页面内可以执行的操作。没有权限时按钮会隐藏，门户也会拒绝该操作。",
@@ -270,6 +279,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "action.purchaseOrder.salesNotice": "接收采购订单通知（销售）",
   "action.desc.purchaseOrder.salesNotice":
     "了解每个新采购订单的产品和数量，以便在到货前销售。",
+  "action.container.tracking": "跟踪集装箱（每天）",
+  "action.desc.container.tracking":
+    "每天收到核对每个采购订单集装箱状态的待办，从工厂到到港。",
   "action.receiving.follow": "跟进收货",
   "action.desc.receiving.follow": "接收仓库清点的通知。",
   "action.values.view": "查看金额与毛利",

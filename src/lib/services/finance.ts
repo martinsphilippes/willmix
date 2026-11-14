@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 import {
   columnsExcept,
   indexBy,
@@ -104,6 +105,57 @@ export interface OrderFinance {
   fxEffect: number | null;
   margin: number | null;
   marginPct: number | null;
+  /**
+   * Custos de origem (POP) da compra EXW, validados pela Wellmix, na moeda da
+   * venda (já dentro de `cost`). Nulo: sem câmbio para converter; 0: nenhum.
+   */
+  originCost: number | null;
+}
+
+/** Custo de origem (POP) validado: o valor e a moeda informados pela trading. */
+export interface OriginCost {
+  amount: number;
+  currency: string;
+}
+
+/** Custos de origem validados dos passos do pedido (passo "origin_costs"). */
+export function originCostsOf(
+  steps: Array<{
+    key: string;
+    status: string;
+    amount: number | null;
+    currency: string | null;
+  }>,
+): OriginCost[] {
+  return steps
+    .filter(
+      (s) =>
+        s.key === "origin_costs" &&
+        s.status === "validated" &&
+        typeof s.amount === "number" &&
+        s.amount > 0,
+    )
+    .map((s) => ({
+      amount: s.amount as number,
+      currency: s.currency ?? "BRL",
+    }));
+}
+
+/** Passos de custo de origem validados, por pedido (lista do financeiro). */
+async function originCostsByOrder(orderIds: string[] | null) {
+  const rows = await getStore()
+    .list("import_steps", {
+      filter: {
+        key: "origin_costs",
+        status: "validated",
+        ...(orderIds ? { orderId: orderIds } : {}),
+      },
+    })
+    .catch(() => []);
+  const map = new Map<string, OriginCost[]>();
+  for (const s of rows)
+    map.set(s.orderId, [...(map.get(s.orderId) ?? []), ...originCostsOf([s])]);
+  return map;
 }
 
 /** Pagamento ao fornecedor já feito, em moeda estrangeira, sem o câmbio do banco. */
@@ -194,7 +246,12 @@ export function computeOrderFinance(
   order: Order,
   payments: Payment[],
   names: { customer: string; supplier: string; product: string },
-  fx: { today?: FxToday | null; saleFx?: number | null } = {},
+  fx: {
+    today?: FxToday | null;
+    saleFx?: number | null;
+    /** Custos de origem (POP) validados (compra EXW; docs/ORIGIN_CONTAINER.md). */
+    originCosts?: OriginCost[];
+  } = {},
 ): OrderFinance {
   const sellCurrency = order.sellCurrency ?? "BRL";
   const fobCurrency = order.fobCurrency ?? "USD";
@@ -339,6 +396,30 @@ export function computeOrderFinance(
     fobRealUnits > 0 && sellBrl !== null && sellBrl > 0 && fxBasis !== "same"
       ? fobRealBrl / fobRealUnits / sellBrl
       : null;
+  // Custos de origem (POP, compra EXW): entram no custo na moeda da venda;
+  // em outra moeda, pelo câmbio do dia (estimado). Sem câmbio: custo pendente.
+  let originCost: number | null = 0;
+  for (const c of fx.originCosts ?? []) {
+    if (!(c.amount > 0) || originCost === null) continue;
+    if (sameCurrency(c.currency, sellCurrency)) {
+      originCost += c.amount;
+      continue;
+    }
+    const brl =
+      fxKey(c.currency) === "BRL"
+        ? c.amount
+        : rates
+          ? (rateFor(rates, c.currency) ?? NaN) * c.amount
+          : NaN;
+    if (!Number.isFinite(brl) || sellBrl === null || !(sellBrl > 0)) {
+      originCost = null;
+      continue;
+    }
+    originCost += brl / sellBrl;
+    estimated = true;
+  }
+  if (originCost === null) cost = null;
+  else if (cost !== null && originCost > 0) cost = cents(cost + originCost);
   const margin = cost !== null ? sell - cost : null;
   const marginPct = margin !== null && sell > 0 ? (margin / sell) * 100 : null;
   // Efeito do câmbio desde a venda: as mesmas unidades do FOB que entraram no
@@ -348,10 +429,12 @@ export function computeOrderFinance(
   const saleFx =
     fxBasis !== "same" && fx.saleFx && fx.saleFx > 0 ? fx.saleFx : null;
   const saleCost = saleFx !== null ? costedFob * saleFx : null;
-  const marginAtSale = saleCost !== null ? sell - saleCost : null;
+  // (Custos de origem fora: o efeito do câmbio é só o do FOB.)
+  const pop = originCost ?? 0;
+  const marginAtSale = saleCost !== null ? sell - saleCost - pop : null;
   const fxEffect =
     saleCost !== null && cost !== null && !cancelled
-      ? cents(saleCost - cost) || 0
+      ? cents(saleCost - (cost - pop)) || 0
       : null;
 
   return {
@@ -392,6 +475,7 @@ export function computeOrderFinance(
     fxEffect,
     margin,
     marginPct,
+    originCost: originCost === null ? null : cents(originCost),
   };
 }
 
@@ -449,7 +533,15 @@ async function saleRecords(
  */
 async function financeLookup(orders: Order[]) {
   const { factsForOrders } = await import("./order-summary");
-  const facts = await factsForOrders(orders);
+  // Só as partes do resumo que o financeiro lê (sem etapas, viagem e
+  // cronograma: auditoria de performance, 14/11/2026).
+  const facts = await factsForOrders(orders, [
+    "pays",
+    "customer",
+    "supplier",
+    "product",
+    "pop",
+  ]);
   if (facts) {
     const f = (o: Order) => facts.get(o.id);
     return {
@@ -457,6 +549,7 @@ async function financeLookup(orders: Order[]) {
       customer: (o: Order) => (o.customerId && f(o)?.customer) || "—",
       supplier: (o: Order) => (o.supplierId && f(o)?.supplier) || "—",
       product: (o: Order) => f(o)?.product ?? "—",
+      originCosts: async () => (o: Order) => f(o)?.pop ?? [],
     };
   }
   const store = getStore();
@@ -485,6 +578,10 @@ async function financeLookup(orders: Order[]) {
   }
   const name = (id: string | null) => (id && parties.get(id)?.name) || "—";
   return {
+    originCosts: async () => {
+      const map = await originCostsByOrder(null);
+      return (o: Order) => map.get(o.id) ?? [];
+    },
     payments: (o: Order) => paymentsByOrder.get(o.id) ?? [],
     customer: (o: Order) => name(o.customerId),
     supplier: (o: Order) => name(o.supplierId),
@@ -510,6 +607,7 @@ export async function loadFinance(
     { orderBy: "number", direction: "desc" },
   );
   const lookup = await financeLookup(orders);
+  const originOf = await lookup.originCosts();
   const estimate = options.estimate !== false;
   const [today, sales] = estimate
     ? await Promise.all([
@@ -533,6 +631,7 @@ export async function loadFinance(
           o.fobCurrency ?? "USD",
           o.sellCurrency ?? "BRL",
         ),
+        originCosts: originOf(o),
       },
     ),
   );
@@ -624,13 +723,14 @@ export async function loadOrderFinance(
         : Promise.resolve(new Map<string, PricingRecord>()),
     ] as const,
   );
+  const origin = await originCostsByOrder([order.id]);
   return computeOrderFinance(
     order,
     payments,
     {
       customer: customer?.name ?? "—",
       supplier: supplier?.name ?? "—",
-      product: items[0]?.name ?? "—",
+      product: realName(items[0]?.name) ?? "—",
     },
     {
       today,
@@ -639,6 +739,7 @@ export async function loadOrderFinance(
         order.fobCurrency ?? "USD",
         order.sellCurrency ?? "BRL",
       ),
+      originCosts: origin.get(order.id) ?? [],
     },
   );
 }

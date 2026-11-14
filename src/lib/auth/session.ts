@@ -153,6 +153,16 @@ export async function forgetCurrentSession() {
   if (secret) recentSessions.delete(sessionKey(secret));
 }
 
+/**
+ * Acesso excluído (Equipe e acessos): esquece as sessões conferidas daquele
+ * login nesta instância, para elas caírem já na próxima página. No Supabase e
+ * no modo memória a sessão relê o login a cada página; só o Appwrite guarda.
+ */
+export function forgetUserSessions(userId: string) {
+  for (const [key, hit] of recentSessions)
+    if (hit.user.id === userId) recentSessions.delete(key);
+}
+
 /** Usuário autenticado ou null. Nunca lança. Memoizado por requisição. */
 /**
  * Login da requisição, com as telas e ações das funções já resolvidas pela

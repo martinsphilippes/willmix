@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
 import {
   getStore,
@@ -509,7 +510,8 @@ export async function buildOperation(order: Order): Promise<Operation> {
     supplierId: order.supplierId,
     items: items.map((i) => ({
       id: i.id,
-      name: i.name,
+      // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+      name: realName(i.name) ?? "—",
       lineId: (i.productId ? lineOf.get(i.productId) : null) ?? order.lineId,
       quantity: i.quantity,
       amount:

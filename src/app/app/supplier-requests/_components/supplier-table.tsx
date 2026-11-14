@@ -1,4 +1,6 @@
 import type { SupplierRequest } from "@/lib/db/schema";
+import { ColorLines } from "@/components/color-lines";
+import { colorTotals } from "@/lib/color-split";
 import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -32,7 +34,7 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoGallery } from "@/components/photo-gallery";
-import { QuickDialog } from "@/components/quick-dialog";
+import { QuickDialog, QuickDialogClose } from "@/components/quick-dialog";
 import {
   answerSupplierRequestAction,
   postSupplierRequestMessageAction,
@@ -48,7 +50,13 @@ import {
 import Link from "next/link";
 import { roundsDates } from "@/components/purchase-rounds";
 import { dateTime } from "./negotiation";
-import { ChatBubbleIcon, OpenIcon } from "./icons";
+import {
+  ChatBubbleIcon,
+  CheckIcon,
+  OpenIcon,
+  RefuseIcon,
+  SwapIcon,
+} from "./icons";
 import { SlaDueToggle } from "./sla-due-toggle";
 import {
   requestItemSpecs,
@@ -58,9 +66,10 @@ import {
 /*
  * O que se vê primeiro ao abrir uma solicitação (docs/SUPPLIER_REQUESTS.md,
  * "Tabela da solicitação"): os produtos pedidos ao mesmo fornecedor no mesmo
- * booking, uma informação por coluna, e três ações rápidas por linha
- * (mensagem, resposta sim/não e abrir a tela do produto), só com ícones.
- * O fornecedor responde (só ele; a Wellmix não responde por ele).
+ * booking, uma informação por coluna, e as ações rápidas por linha, só com
+ * ícones: mensagem e abrir a tela do produto e, para o fornecedor que ainda
+ * responde, aprovar, renegociar ou recusar a oferta. O fornecedor responde
+ * (só ele; a Wellmix não responde por ele).
  */
 
 /*
@@ -77,14 +86,38 @@ import {
  */
 const PIN_VARS = "[--pin-pad:1.25rem] [--pin-status:8.5rem]";
 /**
- * Caixa das ações: só os dois ícones (mensagem e abrir) ou, para o
- * fornecedor que ainda responde, também os três botões de resposta
- * empilhados (o maior é "Confirmar 1,25 USD/peça").
+ * Caixa das ações (dono, 14/11/2026): só ícones, com 0,5rem entre eles. Dois
+ * por linha (mensagem e abrir) ou, para o fornecedor que ainda responde,
+ * três na segunda linha (aprovar, renegociar, recusar). Ícone de 1,75rem com
+ * mouse e de 2rem no toque (celular, iPad). Antes os três eram botões com
+ * texto empilhados e a caixa tinha 10,5rem.
  */
 const PIN_ACTIONS = {
-  icons: "[--pin-actions:5.25rem]",
-  answers: "[--pin-actions:10.5rem]",
+  icons: "[--pin-actions:4rem] pointer-coarse:[--pin-actions:4.5rem]",
+  answers: "[--pin-actions:6.25rem] pointer-coarse:[--pin-actions:7rem]",
 } as const;
+/**
+ * Botão só com ícone da coluna Ações: o desenho é um quadrado de 28px (o
+ * mesmo da paginação das tabelas; 32px no toque) e a área de toque vai 4px
+ * além dele para cada lado (o `after` invisível; 5px a partir de dentro da
+ * borda de 1px): 36px com mouse, 40px no toque. Com 8px entre os botões, as
+ * áreas de toque se encostam sem se sobrepor.
+ */
+const ICON_BUTTON =
+  "relative h-7 w-7 shrink-0 gap-0 rounded-md p-0 text-xs shadow-none after:absolute after:-inset-[5px] pointer-coarse:h-8 pointer-coarse:w-8";
+/** Cor de cada ação (a forma do ícone já distingue; a cor reforça). */
+const ICON_TONE = {
+  neutral:
+    "border border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50",
+  approve:
+    "border border-emerald-300 bg-white text-emerald-700 hover:border-emerald-400 hover:bg-emerald-50",
+  renegotiate:
+    "border border-amber-300 bg-white text-amber-600 hover:border-amber-400 hover:bg-amber-50",
+  refuse:
+    "border border-red-300 bg-white text-red-700 hover:border-red-400 hover:bg-red-50",
+} as const;
+/** Dica do botão só com ícone: o nome e, embaixo, o que ele faz. */
+const tooltip = (name: string, hint: string) => `${name}\n${hint}`;
 const PIN = {
   // A borda esquerda do conjunto: um fio e uma sombra separam do que rola.
   status:
@@ -169,7 +202,7 @@ export function SupplierRequestTable({
   const after = ["turn", "openedAt", "firstAnswerAt", "lastAnswerAt"];
   const nowrap = "whitespace-nowrap";
   // Só o fornecedor responde: enquanto pode, a linha tem as três respostas
-  // (confirmar, renegociar, recusar) embaixo dos ícones.
+  // (aprovar, renegociar, recusar) na segunda linha dos ícones.
   const canAnswerRow = (r: SupplierRequest) =>
     !wellmix && supplierCanAnswer(r.status);
   const actionSlots = rows.some(canAnswerRow) ? "answers" : "icons";
@@ -229,9 +262,31 @@ export function SupplierRequestTable({
 
   return (
     <Card title={k("title")}>
-      <p className="mb-3 text-xs text-zinc-500">
-        {k(wellmix ? "hintWellmix" : "hint")}
-      </p>
+      <div className="mb-3 space-y-1 text-xs text-zinc-500">
+        <p>{k(wellmix ? "hintWellmix" : "hint")}</p>
+        {/* Legenda das respostas com os mesmos ícones da coluna: no toque
+            (celular, iPad) não há dica ao passar o mouse. */}
+        {actionSlots === "answers" ? (
+          <p
+            className="flex flex-wrap items-center gap-x-2.5 gap-y-1"
+            data-supplier-table-legend
+          >
+            <span>{k("hintAnswers")}</span>
+            {(
+              [
+                ["approve", CheckIcon, "text-emerald-700"],
+                ["renegotiate", SwapIcon, "text-amber-600"],
+                ["refuse", RefuseIcon, "text-red-700"],
+              ] as const
+            ).map(([key, Icon, color]) => (
+              <span key={key} className="inline-flex items-center gap-1">
+                <Icon className={cx("h-3.5 w-3.5 shrink-0", color)} />
+                {k(key)}
+              </span>
+            ))}
+          </p>
+        ) : null}
+      </div>
       <Table className={cx(PIN_VARS, PIN_ACTIONS[actionSlots])}>
         <thead>
           <tr>
@@ -328,9 +383,64 @@ export function SupplierRequestTable({
             const current = r.id === currentId && !r.batchId;
             const pending = !!pendingProposal(r.negotiation);
             // Só o fornecedor responde (a Wellmix não responde por ele).
-            // Três respostas por produto: confirmar a oferta vigente,
+            // Três respostas por produto: aprovar a oferta vigente,
             // renegociar (formulário já preenchido) ou recusar.
             const offer = canAnswerRow(r) ? currentOffer(r) : null;
+            // Nome (com o preço) e explicação de aprovar: só na oferta que
+            // dá para aprovar direto (a regra é de `currentOffer`).
+            const approve = offer?.confirmable
+              ? {
+                  name: t("supplierRequests.table.confirm", {
+                    price: [
+                      num(offer.conditions.price),
+                      offer.conditions.currency,
+                    ]
+                      .filter(Boolean)
+                      .join(" "),
+                  }),
+                  hint: k(`confirmHint.${offer.source}`),
+                }
+              : null;
+            const refuseHint = offer ? k(`refuseHint.${offer.source}`) : "";
+            // Aprovar e recusar pedem confirmação (dono, 14/11/2026): a caixa
+            // mostra o produto e as condições da oferta que valem agora.
+            const offerSummary = offer ? (
+              <div className="space-y-2" data-supplier-table-offer-summary>
+                <p className="font-medium text-zinc-900">{name}</p>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 rounded-md border border-zinc-200 bg-zinc-50/70 p-2 text-xs">
+                  {(
+                    [
+                      [
+                        "price",
+                        offer.conditions.price === null
+                          ? "—"
+                          : [
+                              num(offer.conditions.price),
+                              offer.conditions.currency,
+                            ]
+                              .filter(Boolean)
+                              .join(" "),
+                      ],
+                      ["moq", num(offer.conditions.moq, 0)],
+                      ["incoterm", offer.conditions.incoterm ?? "—"],
+                      ["leadTime", num(offer.conditions.leadTimeDays, 0)],
+                    ] as const
+                  ).map(([key, value]) => (
+                    <div key={key}>
+                      <dt className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                        {k(`col.cond.${key}`)}
+                      </dt>
+                      <dd
+                        className="tabular-nums text-zinc-900"
+                        data-supplier-table-offer-summary-value={key}
+                      >
+                        {value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ) : null;
             // Aprovada: a amostragem (fotos e vídeos da amostra).
             const sampling = samplingOf(r);
             const pinBg = cx(PIN_BG, current && PIN_BG_CURRENT);
@@ -507,6 +617,12 @@ export function SupplierRequestTable({
                 </Td>
                 <Td className={cx(nowrap, "tabular-nums")}>
                   {r.quantity.toLocaleString(intl)}
+                  {/* Variações de cor: uma linha por cor, somando o total. */}
+                  <ColorLines
+                    colors={colorTotals(r.colorPlan)}
+                    name={it.description ?? it.productName ?? ""}
+                    intl={intl}
+                  />
                 </Td>
                 <Td
                   className={cx(nowrap, "tabular-nums")}
@@ -542,7 +658,10 @@ export function SupplierRequestTable({
                   </span>
                 </Td>
                 <Td className={nowrap}>
-                  <span data-supplier-table-answer-text={r.id}>
+                  <span
+                    data-supplier-table-answer-text={r.id}
+                    data-supplier-table-can-do={r.supplierCanDo ?? "waiting"}
+                  >
                     {r.supplierCanDo ? (
                       <Badge tone={yes ? "success" : "danger"}>
                         {k(yes ? "canDoYes" : "canDoNo")}
@@ -647,85 +766,129 @@ export function SupplierRequestTable({
                   className={cx(pinBg, PIN.actions)}
                   data-supplier-table-pin="actions"
                 >
-                  <span className="flex w-[var(--pin-actions)] flex-wrap items-start justify-end gap-1">
-                    {canPostMessage(r.status) ? (
-                      <QuickDialog
-                        label={<ChatBubbleIcon />}
-                        hint={k("message")}
-                        title={t("supplierRequests.table.messageTitle", {
-                          n: r.number,
-                        })}
-                        closeLabel={k("close")}
-                        data-supplier-table-message={r.id}
-                      >
-                        <form
-                          action={postSupplierRequestMessageAction}
-                          className="space-y-2"
-                          data-supplier-table-message-form
+                  {/* Duas linhas (dono, 14/11/2026), só ícones, à direita: em
+                      cima mensagem e abrir o produto; embaixo, enquanto o
+                      fornecedor responde, aprovar, renegociar e recusar.
+                      Sem resposta possível, não há a segunda linha. */}
+                  <div
+                    className="flex w-[var(--pin-actions)] flex-col items-end gap-2"
+                    data-supplier-table-actions={r.id}
+                  >
+                    <div className="flex items-center justify-end gap-2">
+                      {canPostMessage(r.status) ? (
+                        <QuickDialog
+                          label={<ChatBubbleIcon />}
+                          hint={k("message")}
+                          title={t("supplierRequests.table.messageTitle", {
+                            n: r.number,
+                          })}
+                          closeLabel={k("close")}
+                          className={cx(ICON_BUTTON, ICON_TONE.neutral)}
+                          data-supplier-table-message={r.id}
                         >
-                          <input type="hidden" name="id" value={r.id} />
-                          <input type="hidden" name="view" value="table" />
-                          <Field label={k("messageText")}>
-                            <Textarea
-                              name="text"
-                              rows={3}
-                              maxLength={4000}
-                              required
-                              data-supplier-table-message-text
-                            />
-                          </Field>
-                          <SubmitButton
-                            pendingText={k("sending")}
-                            data-supplier-table-message-submit
+                          <form
+                            action={postSupplierRequestMessageAction}
+                            className="space-y-2"
+                            data-supplier-table-message-form
                           >
-                            {k("send")}
-                          </SubmitButton>
-                        </form>
-                      </QuickDialog>
-                    ) : null}
-                    {offer ? (
-                      <span
-                        className="order-last flex w-full flex-col items-stretch gap-1"
-                        data-supplier-table-offer={offer.source}
-                      >
-                        {offer.confirmable ? (
-                          <form action={respondOfferAction}>
                             <input type="hidden" name="id" value={r.id} />
                             <input type="hidden" name="view" value="table" />
-                            <input
-                              type="hidden"
-                              name="action"
-                              value="confirm"
-                            />
-                            <input
-                              type="hidden"
-                              name="offer"
-                              value={offer.token}
-                            />
+                            <Field label={k("messageText")}>
+                              <Textarea
+                                name="text"
+                                rows={3}
+                                maxLength={4000}
+                                required
+                                data-supplier-table-message-text
+                              />
+                            </Field>
                             <SubmitButton
-                              className="w-full whitespace-nowrap px-2.5 py-1 text-xs"
                               pendingText={k("sending")}
-                              title={k(`confirmHint.${offer.source}`)}
-                              data-supplier-table-confirm={r.id}
+                              data-supplier-table-message-submit
                             >
-                              {t("supplierRequests.table.confirm", {
-                                price: [
-                                  num(offer.conditions.price),
-                                  offer.conditions.currency,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" "),
-                              })}
+                              {k("send")}
                             </SubmitButton>
                           </form>
+                        </QuickDialog>
+                      ) : null}
+                      <LinkButton
+                        href={href}
+                        className={cx(ICON_BUTTON, ICON_TONE.neutral)}
+                        title={k("open")}
+                        aria-label={k("open")}
+                        data-supplier-table-open={r.id}
+                      >
+                        <OpenIcon />
+                      </LinkButton>
+                    </div>
+                    {offer ? (
+                      <div
+                        className="flex items-center justify-end gap-2"
+                        data-supplier-table-offer={offer.source}
+                      >
+                        {approve ? (
+                          <QuickDialog
+                            label={<CheckIcon />}
+                            hint={tooltip(approve.name, approve.hint)}
+                            name={approve.name}
+                            description={approve.hint}
+                            title={t("supplierRequests.table.approveTitle", {
+                              n: r.number,
+                            })}
+                            closeLabel={k("close")}
+                            className={cx(ICON_BUTTON, ICON_TONE.approve)}
+                            data-supplier-table-confirm={r.id}
+                          >
+                            {/* Só "Aprovar oferta" envia; "Cancelar", o "×" e
+                                tocar fora fecham sem enviar nada. */}
+                            <form
+                              action={respondOfferAction}
+                              className="space-y-3 text-sm"
+                              data-supplier-table-confirm-form
+                            >
+                              <input type="hidden" name="id" value={r.id} />
+                              <input type="hidden" name="view" value="table" />
+                              <input
+                                type="hidden"
+                                name="action"
+                                value="confirm"
+                              />
+                              <input
+                                type="hidden"
+                                name="offer"
+                                value={offer.token}
+                              />
+                              {offerSummary}
+                              <p className="text-xs text-zinc-600">
+                                {approve.hint}
+                              </p>
+                              <div className="flex flex-wrap justify-end gap-2">
+                                <QuickDialogClose
+                                  label={t("common.cancel")}
+                                  data-supplier-table-confirm-cancel={r.id}
+                                />
+                                <SubmitButton
+                                  className="bg-emerald-700 shadow-emerald-900/10 hover:bg-emerald-800 active:bg-emerald-900"
+                                  pendingText={k("sending")}
+                                  data-supplier-table-confirm-submit
+                                >
+                                  <CheckIcon />
+                                  {k("approve")}
+                                </SubmitButton>
+                              </div>
+                            </form>
+                          </QuickDialog>
                         ) : null}
                         <QuickDialog
-                          label={k("renegotiate")}
-                          hint={k("renegotiateHint")}
+                          label={<SwapIcon />}
+                          hint={tooltip(k("renegotiate"), k("renegotiateHint"))}
+                          name={k("renegotiate")}
+                          description={k("renegotiateHint")}
                           title={t("supplierRequests.table.renegotiateTitle", {
                             n: r.number,
                           })}
                           closeLabel={k("close")}
+                          className={cx(ICON_BUTTON, ICON_TONE.renegotiate)}
                           data-supplier-table-answer-open={r.id}
                         >
                           {/* Com contraproposta esperando: nova proposta; sem,
@@ -844,37 +1007,56 @@ export function SupplierRequestTable({
                             </SubmitButton>
                           </form>
                         </QuickDialog>
-                        <form action={respondOfferAction}>
-                          <input type="hidden" name="id" value={r.id} />
-                          <input type="hidden" name="view" value="table" />
-                          <input type="hidden" name="action" value="refuse" />
-                          <input
-                            type="hidden"
-                            name="offer"
-                            value={offer.token}
-                          />
-                          <SubmitButton
-                            variant="danger"
-                            className="w-full whitespace-nowrap px-2.5 py-1 text-xs"
-                            pendingText={k("sending")}
-                            title={k(`refuseHint.${offer.source}`)}
-                            data-supplier-table-refuse={r.id}
+                        <QuickDialog
+                          label={<RefuseIcon />}
+                          hint={tooltip(k("refuse"), refuseHint)}
+                          name={k("refuse")}
+                          description={refuseHint}
+                          title={t("supplierRequests.table.refuseTitle", {
+                            n: r.number,
+                          })}
+                          closeLabel={k("close")}
+                          className={cx(ICON_BUTTON, ICON_TONE.refuse)}
+                          data-supplier-table-refuse={r.id}
+                        >
+                          {/* Só "Recusar oferta" envia (contorno vermelho, a
+                              regra da marca para ação destrutiva). */}
+                          <form
+                            action={respondOfferAction}
+                            className="space-y-3 text-sm"
+                            data-supplier-table-refuse-form
                           >
-                            {k("refuse")}
-                          </SubmitButton>
-                        </form>
-                      </span>
+                            <input type="hidden" name="id" value={r.id} />
+                            <input type="hidden" name="view" value="table" />
+                            <input type="hidden" name="action" value="refuse" />
+                            <input
+                              type="hidden"
+                              name="offer"
+                              value={offer.token}
+                            />
+                            {offerSummary}
+                            <p className="text-xs text-zinc-600">
+                              {refuseHint}
+                            </p>
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <QuickDialogClose
+                                label={t("common.cancel")}
+                                data-supplier-table-refuse-cancel={r.id}
+                              />
+                              <SubmitButton
+                                variant="danger"
+                                pendingText={k("sending")}
+                                data-supplier-table-refuse-submit
+                              >
+                                <RefuseIcon />
+                                {k("refuse")}
+                              </SubmitButton>
+                            </div>
+                          </form>
+                        </QuickDialog>
+                      </div>
                     ) : null}
-                    <LinkButton
-                      href={href}
-                      className="px-2.5 py-1"
-                      title={k("open")}
-                      aria-label={k("open")}
-                      data-supplier-table-open={r.id}
-                    >
-                      <OpenIcon />
-                    </LinkButton>
-                  </span>
+                  </div>
                 </Td>
               </tr>
             );

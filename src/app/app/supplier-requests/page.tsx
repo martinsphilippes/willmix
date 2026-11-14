@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { roundsLine } from "@/components/purchase-rounds";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
@@ -56,17 +57,27 @@ export default async function SupplierRequestsPage({
   requireScreen(user, "quotes");
   const t = await getT();
   // SLA estourado: avisa uma vez (Wellmix e fornecedor) ao abrir a lista.
-  await notifyLateSupplierRequests().catch((error) =>
-    console.error("notifyLateSupplierRequests", error),
-  );
-  await import("@/lib/services/supplier-request-sampling")
-    .then((m) => m.notifyLateSampling())
-    .catch((error) => console.error("notifyLateSampling", error));
-  const entries = await listSupplierRequests(user);
+  // Depois da resposta (`after`): os avisos gravam e mandam e-mail, e a
+  // lista não precisa esperar por eles (o selo de SLA é calculado na hora).
+  after(async () => {
+    await notifyLateSupplierRequests().catch((error) =>
+      console.error("notifyLateSupplierRequests", error),
+    );
+    await import("@/lib/services/supplier-request-sampling")
+      .then((m) => m.notifyLateSampling())
+      .catch((error) => console.error("notifyLateSampling", error));
+  });
   const wellmix = isWellmix(user);
-  const slaMinutes = await supplierRequestSlaMinutes();
+  const showPurchase =
+    wellmix && canOpen(user, "orders") && can(user, "purchaseOrder.generate");
+  // Leituras independentes em paralelo.
+  const [entries, slaMinutes, query, purchase] = await Promise.all([
+    listSupplierRequests(user),
+    supplierRequestSlaMinutes(),
+    searchParams,
+    showPurchase ? listPurchaseCandidates(user) : Promise.resolve(null),
+  ]);
   const now = new Date();
-  const query = await searchParams;
   const error = typeof query.error === "string" ? query.error : "";
   const errorKey = [
     `purchaseOrder.error.${error}`,
@@ -80,10 +91,6 @@ export default async function SupplierRequestsPage({
       : fallbackError(t, error);
   // Pedido de compra (docs/PURCHASE_ORDER.md): os produtos aprovados de cada
   // fornecedor que ainda não estão em pedido.
-  const purchase =
-    wellmix && canOpen(user, "orders") && can(user, "purchaseOrder.generate")
-      ? await listPurchaseCandidates(user)
-      : null;
   const purchaseCustomer = purchase?.length
     ? await purchaseOrderCustomer()
     : null;

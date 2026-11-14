@@ -24,6 +24,35 @@ export interface ListOptions<T> {
    * de cliente/fornecedor: ~26 mil clientes não cabem numa lista).
    */
   search?: { column: keyof T & string; text: string };
+  /**
+   * Em `listColumns`: das colunas JSON listadas, só estas chaves de primeiro
+   * nível (o banco devolve só elas; chave ausente volta nula). Ex.: do resumo
+   * por pedido, `{ facts: ["order", "reqs"] }` em vez dos ~2,7 kB de cada um.
+   */
+  jsonKeys?: { [C in keyof T & string]?: readonly string[] };
+}
+
+/** As colunas JSON da linha só com as chaves de `jsonKeys` (ausente: nula). */
+export function projectJson<T extends object>(
+  row: T,
+  jsonKeys?: ListOptions<T>["jsonKeys"],
+): T {
+  if (!jsonKeys) return row;
+  const out: Record<string, unknown> = { ...(row as Record<string, unknown>) };
+  for (const [column, keys] of Object.entries(jsonKeys) as Array<
+    [string, readonly string[] | undefined]
+  >) {
+    if (!keys || !(column in out)) continue;
+    const value = out[column];
+    const source =
+      value && typeof value === "object" && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+    out[column] = Object.fromEntries(
+      keys.map((k) => [k, source[k] === undefined ? null : source[k]]),
+    );
+  }
+  return out as T;
 }
 
 /** O texto da busca sem os caracteres especiais do LIKE e do PostgREST. */
@@ -51,6 +80,36 @@ export function matchesSearch<T extends object>(
     fold(value).includes(fold(searchText(search.text)))
   );
 }
+
+/**
+ * Etapas e pendências em espera (`held`): as dos pedidos da carga do
+ * histórico do Sankhya, ocultas até o go-live, quando uma sincronização traz
+ * a situação real (docs/SANKHYA.md, "Histórico em espera"). Ficam de fora
+ * das listas gerais (Pendências, lembretes, SLA, contagens), que filtram só
+ * por situação ou chave. A leitura de um pedido ou de linhas já escolhidas
+ * (filtro `orderId`, `stageId` ou `id`), a leitura por id (`get`) e quem
+ * filtra `held` de propósito continuam vendo tudo: as ações num pedido do
+ * histórico funcionam como antes.
+ */
+export const HELD_TABLES: ReadonlySet<TableName> = new Set<TableName>([
+  "stages",
+  "requirements",
+]);
+
+const SCOPED_FILTERS = ["orderId", "stageId", "id", "held"];
+
+export function hidesHeld(
+  table: TableName,
+  options: { filter?: object } = {},
+): boolean {
+  if (!HELD_TABLES.has(table)) return false;
+  const filter = (options.filter ?? {}) as Record<string, unknown>;
+  return !SCOPED_FILTERS.some((field) => field in filter);
+}
+
+/** Linha em espera (ver `hidesHeld`). */
+export const isHeld = (row: object) =>
+  (row as { held?: unknown }).held === true;
 
 export type NewRow<T extends BaseRow> = Omit<T, keyof BaseRow> & {
   id?: string;
@@ -90,6 +149,21 @@ export interface Store {
     table: K,
     rows: Array<NewRow<Tables[K]> & { id: string }>,
   ): Promise<void>;
+  /**
+   * Muda as linhas que casam com o filtro (igualdade ou lista de valores),
+   * numa ida ao banco. Opcional: sem ele, quem chama lista e grava uma a
+   * uma. Não refaz resumos (docs/RESUMOS.md): quem usa reconstrói depois.
+   */
+  updateWhere?<K extends TableName>(
+    table: K,
+    filter: Filter<Tables[K]>,
+    patch: Patch<Tables[K]>,
+  ): Promise<void>;
+  /** Quantas linhas casam com o filtro, sem trazê-las. Opcional. */
+  count?<K extends TableName>(
+    table: K,
+    filter: Filter<Tables[K]>,
+  ): Promise<number>;
   putFile(bytes: Uint8Array, name: string, mime: string): Promise<StoredFile>;
   /** Metadados de um arquivo já no armazenamento (ex.: enviado direto pelo navegador); null se não existe. */
   statFile(key: string): Promise<StoredFile | null>;

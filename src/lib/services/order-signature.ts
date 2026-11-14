@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 import { can } from "@/lib/auth/function-access";
 
 import { createHash } from "node:crypto";
@@ -9,7 +10,12 @@ import {
   type Requirement,
   type User,
 } from "@/lib/db";
-import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
+import {
+  ForbiddenError,
+  isAdmin,
+  isOrderCertifier,
+  isWellmix,
+} from "@/lib/auth/permissions";
 import {
   ORDER_CONFIRMED,
   ORDER_SIGN_SEND,
@@ -44,6 +50,11 @@ export interface OrderDocumentItem {
   /** Pedido de compra: MOQ e prazo negociados com o fornecedor, por produto. */
   moq?: number | null;
   leadTimeDays?: number | null;
+  /**
+   * Variações de cor (peças de cada cor do produto). Só existe com cores: o
+   * conteúdo dos pedidos sem variações (e o hash já assinado) não muda.
+   */
+  colors?: Array<{ color: string; quantity: number }>;
 }
 
 /** O conteúdo que as partes assinam. Mudou qualquer campo, muda a versão. */
@@ -119,11 +130,12 @@ export function isOrderSupplier(user: User, order: Pick<Order, "supplierId">) {
  */
 export function canViewOrderDocument(
   user: User,
-  order: Pick<Order, "supplierId"> & Partial<Pick<Order, "ocpId">>,
+  order: Pick<Order, "supplierId"> & Partial<Pick<Order, "ocpId" | "brokerId">>,
 ): boolean {
   if (isWellmix(user)) return true;
   if (isOrderSupplier(user, order)) return true;
-  return user.role === "ocp" && !!user.partyId && order.ocpId === user.partyId;
+  // Quem certifica: o despachante do pedido ou a certificadora.
+  return isOrderCertifier(user, order);
 }
 
 export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
@@ -141,12 +153,22 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
     .map((item) => {
       const unitPrice = item.unitPrice ?? sheet?.price ?? null;
       return {
-        name: item.name,
+        // Nome de exemplo vale como ausente (a tela mostra "Produto sem
+        // nome"); nome real fica igual, e o hash dos assinados não muda.
+        name: realName(item.name) ?? "",
         variant: item.variant?.name ?? null,
         quantity: item.quantity,
         unit: item.unit,
         unitPrice: unitPrice === null ? null : round(unitPrice, 4),
         total: unitPrice === null ? null : round(unitPrice * item.quantity, 2),
+        ...(item.colors?.length
+          ? {
+              colors: item.colors.map((c) => ({
+                color: c.color,
+                quantity: c.quantity,
+              })),
+            }
+          : {}),
       };
     });
   // Pedido de compra: MOQ e prazo negociados de cada produto, o incoterm da
@@ -209,7 +231,7 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
               : validated && r.key === `art__${item.id}` && r.status === "done",
           );
           return art?.documentId
-            ? { name: item.name, documentId: art.documentId }
+            ? { name: realName(item.name) ?? "", documentId: art.documentId }
             : null;
         })
         .filter((x): x is { name: string; documentId: string } => !!x),

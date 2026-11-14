@@ -15,7 +15,6 @@ import {
   Empty,
   LinkButton,
   PageHeader,
-  Select,
   Table,
   Td,
   TextLink,
@@ -25,6 +24,16 @@ import {
   rowClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { PartyPicker } from "@/components/party-picker";
+import { partyPickerLabels } from "@/components/party-picker-labels";
+import { ServerPager, SortTh } from "@/components/server-table";
+import {
+  SERVER_TABLE_FROM,
+  parseServerPage,
+  parseServerSort,
+  serverTable,
+  type ServerColumn,
+} from "@/lib/server-table";
 import { ChatOpenButton } from "@/components/chat-open-button";
 
 const interestTone = (v: string | null) =>
@@ -86,21 +95,23 @@ export default async function HistoryPage({
   // "Comprar de novo" leva ao cartão de recompra do pedido: só com Pedidos e
   // Solicitações no perfil (sem eles o cartão não existe e o botão não leva a nada).
   const canBuyAgain = canOpen(user, "orders") && canOpen(user, "requests");
-  const { customerId: customerParam, error } = await searchParams;
+  const sp = await searchParams;
+  const { customerId: customerParam, error } = sp;
+  const one = (v: string | string[] | undefined) =>
+    typeof v === "string" ? v : undefined;
   const customerId =
     wellmix && typeof customerParam === "string" && customerParam
       ? customerParam
       : undefined;
   const t = await getT();
   const showCosts = canSeeInternalCosts(user);
-  const [rows, customers] = await Promise.all([
+  // Filtro de cliente pela busca (como no Marketing): antes, um seletor com
+  // todos os clientes (26 mil em produção) em toda abertura da tela.
+  const [rows, chosen] = await Promise.all([
     loadCommercialHistory(user, { customerId }),
-    wellmix
-      ? getStore().list("parties", {
-          filter: { type: "customer" },
-          orderBy: "name",
-        })
-      : Promise.resolve([]),
+    wellmix && customerId
+      ? getStore().get("parties", customerId)
+      : Promise.resolve(null),
   ]);
   const money = (v: number | null, c: string | null) =>
     v !== null ? formatMoney(v, c ?? "BRL", t) : "—";
@@ -113,6 +124,78 @@ export default async function HistoryPage({
       <TextLink href={`/app/products/${r.productId}`}>{r.product}</TextLink>
     ) : (
       r.product
+    );
+  // Lista longa: busca, ordem e página no servidor (auditoria de performance,
+  // 14/11/2026: com o histórico do Sankhya a tela tinha 266 MB de HTML, a
+  // tabela e os cartões do celular com todas as linhas). Curta: como antes.
+  const interestText = (v: string | null) =>
+    v === "yes" || v === "maybe" || v === "no"
+      ? t(`orders.afterSales.repurchase.${v}`)
+      : "—";
+  const columns: ServerColumn<HistoryRow>[] = [
+    ...(wellmix
+      ? [{ key: "customer", text: (r: HistoryRow) => r.customer }]
+      : []),
+    { key: "product", text: (r) => r.product },
+    { key: "purchases", text: (r) => String(r.purchases) },
+    { key: "total", text: (r) => `${r.totalQuantity} ${r.unit}` },
+    { key: "last", text: (r) => `${r.lastQuantity} ${r.unit}` },
+    { key: "sell", text: (r) => money(r.lastSellUnit, r.sellCurrency) },
+    ...(showCosts
+      ? [
+          {
+            key: "fob",
+            text: (r: HistoryRow) =>
+              money(r.lastFobUnit, r.fobCurrency ?? "USD"),
+          },
+        ]
+      : []),
+    {
+      key: "period",
+      text: (r) => `${formatDate(r.firstAt, t)} ${formatDate(r.lastAt, t)}`,
+    },
+    { key: "interval", text: interval },
+    { key: "replenishments", text: (r) => String(r.replenishments) },
+    { key: "repurchase", text: (r) => interestText(r.repurchaseInterest) },
+    {
+      key: "order",
+      text: (r) => t("orders.number", { number: r.lastOrderNumber }),
+    },
+  ];
+  const serverMode = rows.length > SERVER_TABLE_FROM;
+  const sort = serverMode ? parseServerSort(one(sp.sort), columns) : null;
+  const shown = serverTable(rows, columns, {
+    sort,
+    page: parseServerPage(one(sp.page)),
+    size: serverMode ? undefined : Math.max(rows.length, 1),
+    decimalComma: t.locale === "pt",
+  });
+  const listHref = (patch: { sort?: string | null; page?: number }) => {
+    const params = new URLSearchParams();
+    if (customerId) params.set("customerId", customerId);
+    const sortValue =
+      patch.sort !== undefined
+        ? patch.sort
+        : sort
+          ? `${sort.desc ? "-" : ""}${sort.key}`
+          : null;
+    if (sortValue) params.set("sort", sortValue);
+    if (patch.page) params.set("page", String(patch.page + 1));
+    const query = params.toString();
+    return query ? `/app/history?${query}` : "/app/history";
+  };
+  const header = (label: string, column: string, className?: string) =>
+    serverMode ? (
+      <SortTh
+        label={label}
+        column={column}
+        sort={sort}
+        href={(value) => listHref({ sort: value })}
+        t={t}
+        className={className}
+      />
+    ) : (
+      <Th className={className}>{label}</Th>
     );
 
   return (
@@ -137,18 +220,17 @@ export default async function HistoryPage({
               <span className="block text-xs font-medium leading-5 text-zinc-700">
                 {t("common.customer")}
               </span>
-              <Select
+              <PartyPicker
                 name="customerId"
-                defaultValue={customerId ?? ""}
+                type="customer"
+                initial={chosen ? { id: chosen.id, name: chosen.name } : null}
+                ariaLabel={t("common.customer")}
                 className="w-full sm:w-64"
-              >
-                <option value="">{t("history.allCustomers")}</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
+                labels={{
+                  ...partyPickerLabels(t),
+                  placeholder: t("history.allCustomers"),
+                }}
+              />
             </label>
             <SubmitButton type="submit" variant="secondary">
               {t("history.filter")}
@@ -167,28 +249,32 @@ export default async function HistoryPage({
         <>
           {/* Tabela (tablet e mesa) */}
           <div className="hidden md:block">
-            <Table>
+            <Table tools={!serverMode}>
               <thead>
                 <tr>
-                  {wellmix ? <Th>{t("common.customer")}</Th> : null}
-                  <Th>{t("common.product")}</Th>
-                  <Th className="text-right">{t("history.purchases")}</Th>
-                  <Th className="text-right">{t("history.totalQuantity")}</Th>
-                  <Th className="text-right">{t("history.lastQuantity")}</Th>
-                  <Th className="text-right">{t("history.lastSellUnit")}</Th>
-                  {showCosts ? (
-                    <Th className="text-right">{t("history.lastFobUnit")}</Th>
-                  ) : null}
-                  <Th>{t("history.period")}</Th>
-                  <Th className="text-right">{t("history.avgInterval")}</Th>
-                  <Th className="text-right">{t("history.replenishments")}</Th>
-                  <Th>{t("history.repurchase")}</Th>
-                  <Th>{t("history.lastOrder")}</Th>
+                  {wellmix ? header(t("common.customer"), "customer") : null}
+                  {header(t("common.product"), "product")}
+                  {header(t("history.purchases"), "purchases", "text-right")}
+                  {header(t("history.totalQuantity"), "total", "text-right")}
+                  {header(t("history.lastQuantity"), "last", "text-right")}
+                  {header(t("history.lastSellUnit"), "sell", "text-right")}
+                  {showCosts
+                    ? header(t("history.lastFobUnit"), "fob", "text-right")
+                    : null}
+                  {header(t("history.period"), "period")}
+                  {header(t("history.avgInterval"), "interval", "text-right")}
+                  {header(
+                    t("history.replenishments"),
+                    "replenishments",
+                    "text-right",
+                  )}
+                  {header(t("history.repurchase"), "repurchase")}
+                  {header(t("history.lastOrder"), "order")}
                   <Th />
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {shown.rows.map((r) => (
                   <tr
                     key={`${r.customerId}|${r.productId ?? r.product}`}
                     className={rowClass}
@@ -252,7 +338,7 @@ export default async function HistoryPage({
 
           {/* Cards (celular) */}
           <ul className="grid gap-3 sm:grid-cols-2 md:hidden">
-            {rows.map((r) => (
+            {shown.rows.map((r) => (
               <li
                 key={`${r.customerId}|${r.productId ?? r.product}`}
                 className="min-w-0 rounded-2xl border border-zinc-200/80 bg-white p-3.5 shadow-sm shadow-zinc-900/[0.03]"
@@ -315,6 +401,13 @@ export default async function HistoryPage({
               </li>
             ))}
           </ul>
+          {serverMode ? (
+            <ServerPager
+              page={shown}
+              href={(page) => listHref({ page })}
+              t={t}
+            />
+          ) : null}
         </>
       )}
     </>

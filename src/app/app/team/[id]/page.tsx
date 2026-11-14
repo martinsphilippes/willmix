@@ -12,12 +12,17 @@ import {
   screensFor,
 } from "@/lib/auth/screens";
 import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
-import { accessFromFunctions, functionLabel } from "@/lib/auth/function-access";
+import {
+  accessFromFunctions,
+  functionDescription,
+  functionLabel,
+} from "@/lib/auth/function-access";
 import { loadFunctionDefs } from "@/lib/services/team-functions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
+  Button,
   Card,
   Field,
   PageHeader,
@@ -26,8 +31,16 @@ import {
   cx,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
-import { descendantsOf, wellmixTeam } from "@/lib/services/team";
-import { saveTeamMemberAction } from "../../actions/team";
+import { QuickDialog } from "@/components/quick-dialog";
+import {
+  descendantsOf,
+  teamMemberRemoval,
+  wellmixTeam,
+} from "@/lib/services/team";
+import {
+  removeTeamMemberAction,
+  saveTeamMemberAction,
+} from "../../actions/team";
 
 /*
  * Acessos de uma pessoa da equipe (só o administrador): três blocos, um
@@ -36,6 +49,11 @@ import { saveTeamMemberAction } from "../../actions/team";
  * (todas as telas do portal nos grupos do menu, com uma caixa por tela).
  * "Padrão das funções" segue as funções marcadas; "Personalizado" grava só
  * as caixas marcadas (o básico fica sempre). Regra em docs/ACCESS.md.
+ *
+ * "Excluir acesso" (pedido do dono, 13/11/2026), só para o administrador:
+ * abre a confirmação com o nome e o login da pessoa; confirmado, o login sai
+ * da equipe e não entra mais, sem apagar histórico nem autoria. Não exclui o
+ * próprio acesso nem o último administrador ativo (o servidor confere).
  */
 
 export default async function TeamMemberPage({
@@ -50,7 +68,13 @@ export default async function TeamMemberPage({
   const { error, created } = await searchParams;
   const [team, defs] = await Promise.all([wellmixTeam(), loadFunctionDefs()]);
   const member = team.find((m) => m.id === id);
-  if (!member) notFound();
+  // Já excluído (por outra pessoa, ou na tentativa que voltou com erro): a
+  // lista mostra o motivo, sem cair na página de "não encontrado".
+  if (!member) {
+    if (typeof error === "string" && error)
+      redirect(`/app/team?error=${encodeURIComponent(error.slice(0, 60))}`);
+    notFound();
+  }
   const below = descendantsOf(member.id, team);
   const admin = isAdmin(member);
   const custom = hasCustomScreens(member);
@@ -65,6 +89,16 @@ export default async function TeamMemberPage({
         ? t(errorKey as DictionaryKey)
         : t("common.error")
       : null;
+  // Excluir acesso: só o administrador vê; o próprio acesso e o último
+  // administrador ativo aparecem desligados, com o motivo.
+  const removal = isAdmin(user) ? await teamMemberRemoval(member, team) : null;
+  const blockedReason = !removal
+    ? null
+    : member.id === user.id
+      ? t("team.delete.self")
+      : removal.lastAdmin
+        ? t("team.delete.lastAdmin")
+        : null;
   const block = "space-y-3";
   const option = "inline-flex items-start gap-2 text-sm text-zinc-800";
 
@@ -74,7 +108,122 @@ export default async function TeamMemberPage({
         t={t}
         title={t("team.person.title", { name: member.name })}
         subtitle={`${t(`role.${member.role}` as DictionaryKey)} · ${loginLabel(member.email)}`}
-        actions={<TextLink href="/app/team">{t("team.person.back")}</TextLink>}
+        actions={
+          <>
+            {removal ? (
+              <span
+                className="flex flex-col items-end gap-0.5"
+                data-team-delete={blockedReason ? "blocked" : "on"}
+              >
+                <QuickDialog
+                  label={t("team.delete.open")}
+                  title={t("team.delete.title")}
+                  closeLabel={t("team.delete.close")}
+                  tone="danger"
+                  disabled={!!blockedReason}
+                  data-team-delete-open=""
+                >
+                  <div
+                    className="space-y-3 text-sm text-zinc-700"
+                    data-team-delete-dialog
+                  >
+                    <p
+                      className="font-semibold text-zinc-900"
+                      data-team-delete-who
+                    >
+                      {member.name} · {loginLabel(member.email)}
+                    </p>
+                    <p>{t("team.delete.body")}</p>
+                    {/* Opções (marcadas por padrão): os subordinados vão para o
+                        chefe dela e as pendências, para a divisão. Desmarcada,
+                        aparece o que fazer depois. Sem chefe ativo, só o aviso. */}
+                    {removal.reports && removal.moveTo ? (
+                      <div className="group space-y-1" data-team-delete-reports>
+                        <label className="flex items-start gap-2 font-medium text-zinc-800">
+                          <input
+                            type="checkbox"
+                            name="moveReports"
+                            form="team-delete-form"
+                            defaultChecked
+                            className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
+                            data-team-delete-move
+                          />
+                          <span>
+                            {t("team.delete.moveReports", {
+                              n: removal.reports,
+                              name: removal.moveTo.name,
+                            })}
+                          </span>
+                        </label>
+                        <p className="pl-6 text-amber-800 group-has-[:checked]:hidden">
+                          {t("team.delete.reports", { n: removal.reports })}
+                        </p>
+                      </div>
+                    ) : removal.reports ? (
+                      <p className="text-amber-800" data-team-delete-reports>
+                        {t("team.delete.reports", { n: removal.reports })}
+                      </p>
+                    ) : null}
+                    {removal.openWork ? (
+                      <div
+                        className="group space-y-1"
+                        data-team-delete-open-work
+                      >
+                        <label className="flex items-start gap-2 font-medium text-zinc-800">
+                          <input
+                            type="checkbox"
+                            name="redistribute"
+                            form="team-delete-form"
+                            defaultChecked
+                            className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
+                            data-team-delete-redistribute
+                          />
+                          <span>
+                            {t("team.delete.redistribute", {
+                              n: removal.openWork,
+                            })}
+                          </span>
+                        </label>
+                        <p className="pl-6 text-amber-800 group-has-[:checked]:hidden">
+                          {t("team.delete.openWork", { n: removal.openWork })}
+                        </p>
+                      </div>
+                    ) : null}
+                    <div className="flex flex-wrap justify-end gap-2 pt-1">
+                      <form method="dialog">
+                        <Button
+                          type="submit"
+                          variant="secondary"
+                          data-team-delete-cancel
+                        >
+                          {t("common.cancel")}
+                        </Button>
+                      </form>
+                      <form
+                        id="team-delete-form"
+                        action={removeTeamMemberAction}
+                      >
+                        <input type="hidden" name="userId" value={member.id} />
+                        <SubmitButton variant="danger" data-team-delete-confirm>
+                          {t("team.delete.confirm")}
+                        </SubmitButton>
+                      </form>
+                    </div>
+                  </div>
+                </QuickDialog>
+                {blockedReason ? (
+                  <span
+                    className="max-w-60 text-right text-[11px] leading-tight text-zinc-500"
+                    data-team-delete-why
+                  >
+                    {blockedReason}
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+            <TextLink href="/app/team">{t("team.person.back")}</TextLink>
+          </>
+        }
       />
       {errorText ? (
         <div className="mb-3">
@@ -151,9 +300,12 @@ export default async function TeamMemberPage({
                     <span className="font-medium">
                       {functionLabel(d.key, defs, (k) => t(k as DictionaryKey))}
                     </span>
-                    {d.builtin ? (
+                    {d.builtin &&
+                    functionDescription(d.key, (k) => t(k as DictionaryKey)) ? (
                       <span className="block text-xs text-zinc-500">
-                        {t(`function.desc.${d.key}` as DictionaryKey)}
+                        {functionDescription(d.key, (k) =>
+                          t(k as DictionaryKey),
+                        )}
                       </span>
                     ) : null}
                   </span>

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { realName } from "@/lib/placeholder-name";
 import {
   getStore,
   type ArtIssue,
@@ -19,6 +20,7 @@ import {
   type User,
 } from "@/lib/db";
 import { isSchemaMissing } from "@/lib/db/errors";
+import { isHeld, projectJson } from "@/lib/db/store";
 import {
   DUE_SOON_DAYS,
   addDays,
@@ -28,6 +30,7 @@ import {
 import { JOURNEY_REQUIREMENT_KEYS } from "./journey";
 import {
   computeOrderFinance,
+  originCostsOf,
   saleFxFromRecord,
   type FinanceSummaryRow,
 } from "./finance";
@@ -56,8 +59,14 @@ import type { BoardOrder, BoardStage } from "./tower-board";
  *   ou com resumo de outro formato, as telas usam o caminho antigo.
  */
 
-/** Formato de `facts`; mudar o formato = subir o número (as telas voltam ao caminho antigo até a reconstrução). */
-export const SUMMARY_VERSION = 4;
+/**
+ * Formato de `facts`; mudar o formato = subir o número (as telas voltam ao
+ * caminho antigo até a reconstrução, que em produção começa sozinha depois do
+ * deploy: summary-kick.ts). 9: `itemCount` (a tela Pedidos lê os itens só da
+ * página). 10: a contribuição de cada pedido para o Overview dos blocos
+ * (`kpi.f`, flow-contribution.ts; docs/FLOW_MENU.md).
+ */
+export const SUMMARY_VERSION = 10;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -86,8 +95,10 @@ export interface OrderFacts {
   /** Nome do cliente e do fornecedor como estão no cadastro (nulo: parceiro não encontrado). */
   customer: string | null;
   supplier: string | null;
-  /** Nome do primeiro item do pedido (nulo: sem itens). */
+  /** Nome do primeiro item do pedido (nulo: sem itens ou nome de exemplo). */
   product: string | null;
+  /** Quantos itens o pedido tem (a tela Pedidos lê os itens só da página mostrada). */
+  itemCount: number;
   /** Etapas em andamento ou bloqueadas, na ordem do banco. */
   active: Array<Omit<BoardStage, "orderId"> & Pick<Stage, "percent">>;
   /** Itens das etapas que dividem os quadros de posição (journey.ts). */
@@ -105,6 +116,8 @@ export interface OrderFacts {
   installments: Array<{ status: InstallmentStatus; dueDate: string | null }>;
   /** Pagamentos do pedido (sem os códigos do Sankhya): financeiro, cronograma, conta do cliente. */
   pays: FactPayment[];
+  /** Custos de origem (POP) validados da compra EXW (docs/ORIGIN_CONTAINER.md). */
+  pop?: import("./finance").OriginCost[];
   /** Etapas de embarque e entrega (marcos do cronograma de pagamento e da entrega). */
   ship: FactStage[];
   /** Itens das etapas do cronograma de pagamento (data de embarque, pagamento antigo). */
@@ -162,6 +175,8 @@ interface Sources {
   art: Map<string, ArtIssue[]>;
   receivings: Map<string, Receiving[]>;
   payments: Map<string, Payment[]>;
+  /** Sinal ao fornecedor e pedido de amostras (passos do Overview, flow-contribution.ts). */
+  flowRequirements: Map<string, Requirement[]>;
 }
 
 /**
@@ -199,6 +214,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
       art: new Map(),
       receivings: new Map(),
       payments: new Map(),
+      flowRequirements: new Map(),
     };
   const [
     parties,
@@ -213,6 +229,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     art,
     receivings,
     payments,
+    flowRequirements,
   ] = await Promise.all([
     partyIds.length
       ? store.list("parties", { filter: { id: partyIds } })
@@ -238,6 +255,9 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     ),
     safe(store.list("receivings", { filter: byOrder })),
     store.list("payments", { filter: byOrder }),
+    store.list("requirements", {
+      filter: { ...byOrder, key: ["down_payment", "sample_order"] },
+    }),
   ]);
   const partyMap = new Map<string, Party>();
   for (const p of parties) if (!partyMap.has(p.id)) partyMap.set(p.id, p);
@@ -255,6 +275,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     art: groupBy(art, (r) => r.orderId),
     receivings: groupBy(receivings, (r) => r.orderId),
     payments: groupBy(payments, (r) => r.orderId),
+    flowRequirements: groupBy(flowRequirements, (r) => r.orderId),
   };
 }
 
@@ -286,13 +307,14 @@ export function buildOrderFacts(
   const supplier = src.parties.get(order.supplierId) ?? null;
   const items = src.items.get(id) ?? [];
   const payments = src.payments.get(id) ?? [];
+  const pop = originCostsOf(src.steps.get(id) ?? []);
   const finance = computeOrderFinance(
     order,
     payments,
     {
       customer: customer?.name ?? "—",
       supplier: supplier?.name ?? "—",
-      product: items[0]?.name ?? "—",
+      product: realName(items[0]?.name) ?? "—",
     },
     {
       today: null,
@@ -301,6 +323,7 @@ export function buildOrderFacts(
         order.fobCurrency ?? "USD",
         order.sellCurrency ?? "BRL",
       ),
+      originCosts: pop,
     },
   );
   const payable = payableFor(
@@ -316,7 +339,9 @@ export function buildOrderFacts(
     order: pickOrder(order),
     customer: customer?.name ?? null,
     supplier: supplier?.name ?? null,
-    product: items[0]?.name ?? null,
+    // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+    product: realName(items[0]?.name),
+    itemCount: items.length,
     active: stages
       .filter((s) => ACTIVE.includes(s.status))
       .map((s) => ({
@@ -366,6 +391,7 @@ export function buildOrderFacts(
       dueDate: i.dueDate,
     })),
     pays: payments.map(withoutRefs),
+    ...(pop.length ? { pop } : {}),
     ship: stages
       .filter((x) => x.key === "SHIPPING" || x.key === "DELIVERED")
       .map((x) => ({
@@ -403,10 +429,11 @@ function summaryRow(
   facts: OrderFacts,
   computedAt: string,
   kpi: unknown,
-  tasks: unknown = [],
+  tasks: StoredTasks | null = null,
 ) {
   return {
     tasks,
+    hasTasks: !!tasks,
     id: facts.order.id,
     orderId: facts.order.id,
     number: facts.order.number,
@@ -419,10 +446,69 @@ function summaryRow(
   };
 }
 
-/** Pendência da Wellmix guardada no resumo: a ordem da etapa e a pendência. */
+/** Pendência de etapa da Wellmix guardada no resumo: a ordem da etapa e a pendência. */
 interface StoredTask {
   k: string;
   d: unknown;
+}
+
+/** O pedido nas pendências guardadas: só o que as pendências e o encaminhamento leem. */
+const TASK_ORDER_FIELDS = [
+  "id",
+  "number",
+  "createdAt",
+  "requestId",
+  "customerId",
+  "supplierId",
+  "status",
+  "flow",
+  "held",
+  "ownerUserId",
+  "designerUserId",
+  "agencyId",
+  "brokerId",
+  "ocpId",
+  "comexId",
+  "logisticsId",
+] as const satisfies readonly (keyof Order)[];
+export type TaskOrder = Pick<Order, (typeof TASK_ORDER_FIELDS)[number]>;
+
+/** Parcela ao fornecedor que vence ou pode vencer só com a passagem do tempo. */
+export interface StoredInstallment {
+  index: number;
+  count: number;
+  open: number;
+  dueDate: string | null;
+  status: InstallmentStatus;
+}
+
+/**
+ * Pendências da Wellmix guardadas no resumo do pedido (`order_summaries.tasks`,
+ * docs/RESUMOS.md). As de etapa vêm prontas. As outras guardam o que a
+ * leitura usa para saber de quem cada uma é (o pedido com os parceiros, o
+ * analista e o designer; quem enviou; quem apontou e quem corrigiu a arte),
+ * porque a equipe, as funções e as configurações mudam sem gravar no
+ * pedido; e as datas, porque o follow, o rastreio do container e a parcela
+ * vencem sem gravação. Pedido em espera (`held`) não guarda nada.
+ */
+export interface StoredTasks {
+  /** Etapas em andamento: a ordem da etapa e a pendência pronta. */
+  s: StoredTask[];
+  /** Ordem do pedido na lista (criação, id), a mesma da leitura dos pedidos. */
+  k: string;
+  o: TaskOrder;
+  /** Produção: follows ainda não registrados (com a data) e reinspeção. */
+  p?: import("./production").ProductionCandidate[];
+  /** Embarque, desembaraço e certificação, antes de saber quem vê. */
+  i?: import("./import-flow").ImportCandidate[];
+  /** Artes: as não conformidades abertas ou corrigidas (ordem de criação). */
+  a?: Array<{
+    k: string;
+    issue: import("./artwork").ArtIssueFields;
+    item: string;
+  }>;
+  /** "Pagar fornecedor": parcelas em aberto que vencem com o tempo. */
+  f?: { supplier: string | null; currency: string; parts: StoredInstallment[] };
 }
 
 /** Login genérico da Wellmix: as pendências de etapa são as mesmas para toda a equipe. */
@@ -432,14 +518,49 @@ const WELLMIX_VIEWER = {
   partyId: null,
 } as unknown as User;
 
+/** Etapas do pedido com pendência de produção da Wellmix (follow e reinspeção). */
+const PRODUCTION_STATUSES: readonly string[] = [
+  "ORDER_CREATED",
+  "PREPARATION",
+  "SUPPLIER_PAYMENT",
+  "PACKAGING",
+  "INSPECTION",
+  "SHIPPING",
+];
+
+/** Situações da parcela que mudam só com o dia (a pendência pode aparecer sem gravação). */
+const TIMED: readonly InstallmentStatus[] = [
+  "overdue",
+  "due_soon",
+  "scheduled",
+];
+
 /**
- * Pendências da Wellmix nas etapas em andamento de cada pedido, com a regra
- * de `pendingTasksFor` (`stageTaskDrafts`), e a ordem da etapa (criação, id)
- * para a lista sair na mesma ordem de antes.
+ * Pendências da Wellmix de cada pedido (`StoredTasks`), com as mesmas
+ * funções da leitura pelas tabelas: etapas (`stageTaskDrafts`), produção
+ * (`wellmixProductionCandidates`), embarque e certificação
+ * (`wellmixImportCandidates`), artes e "Pagar fornecedor" (`payableFor`,
+ * como em `listPayables`).
  */
-async function stageTasksOf(src: Sources): Promise<Map<string, StoredTask[]>> {
-  const { stageTaskDrafts } = await import("./tasks");
-  const out = new Map<string, StoredTask[]>();
+async function tasksOf(
+  src: Sources,
+  facts: OrderFacts[],
+  today: string,
+): Promise<Map<string, StoredTasks>> {
+  const [
+    { stageTaskDrafts },
+    { wellmixProductionCandidates, latestByItem },
+    { wellmixImportCandidates, WELLMIX_IMPORT_STATUSES },
+    { artIssueCounts },
+    { baseKeyOf, LANE_KEYS },
+  ] = await Promise.all([
+    import("./tasks"),
+    import("./production"),
+    import("./import-flow"),
+    import("./artwork"),
+    import("@/lib/purchase-lanes"),
+  ]);
+  const out = new Map<string, StoredTasks>();
   const portal = src.orders.filter(isPortal);
   const lanes = portal.length
     ? {
@@ -448,67 +569,159 @@ async function stageTasksOf(src: Sources): Promise<Map<string, StoredTask[]>> {
         all: portal.flatMap((o) => src.portalRequirements.get(o.id) ?? []),
       }
     : null;
+  const factsById = new Map(facts.map((f) => [f.order.id, f]));
   for (const order of src.orders) {
-    const stages = (src.stages.get(order.id) ?? []).filter((s) =>
-      ACTIVE.includes(s.status),
+    // Pedido do histórico do Sankhya em espera: sem pendência até o go-live.
+    if (order.held) continue;
+    const stored: StoredTasks = {
+      s: [],
+      k: `${order.createdAt ?? ""}|${order.id}`,
+      o: Object.fromEntries(
+        TASK_ORDER_FIELDS.map((f) => [f, order[f] ?? null]),
+      ) as TaskOrder,
+    };
+    // Etapas (etapa em espera também não entra).
+    const stages = (src.stages.get(order.id) ?? []).filter(
+      (s) => ACTIVE.includes(s.status) && !isHeld(s),
     );
-    if (!stages.length) continue;
-    const sealApplied = new Set(
-      (src.steps.get(order.id) ?? [])
-        .filter(
-          (s) =>
-            s.key === "cert_seal_art" &&
-            (s.status === "submitted" || s.status === "validated"),
-        )
-        .map((s) => s.orderId),
-    );
-    const byKey = new Map(stages.map((s) => [s.key, s]));
-    const drafts = stageTaskDrafts(WELLMIX_VIEWER, {
-      stages,
-      orderById: new Map([[order.id, order]]),
-      openRequirements: src.openRequirements.get(order.id) ?? [],
-      sealApplied,
-      lanes,
-    });
-    if (!drafts.length) continue;
-    out.set(
-      order.id,
-      drafts.map((d) => {
+    const steps = src.steps.get(order.id) ?? [];
+    if (stages.length) {
+      const sealApplied = new Set(
+        steps
+          .filter(
+            (s) =>
+              s.key === "cert_seal_art" &&
+              (s.status === "submitted" || s.status === "validated"),
+          )
+          .map((s) => s.orderId),
+      );
+      const byKey = new Map(stages.map((s) => [s.key, s]));
+      stored.s = stageTaskDrafts(WELLMIX_VIEWER, {
+        stages,
+        orderById: new Map([[order.id, order]]),
+        openRequirements: src.openRequirements.get(order.id) ?? [],
+        sealApplied,
+        lanes,
+      }).map((d) => {
         const stage = d.stageKey ? byKey.get(d.stageKey) : undefined;
-        return {
-          k: `${stage?.createdAt ?? ""}|${stage?.id ?? ""}`,
-          d,
+        return { k: `${stage?.createdAt ?? ""}|${stage?.id ?? ""}`, d };
+      });
+    }
+    // Produção (Fase C): follow 5/15/25 e reinspeção.
+    if (PRODUCTION_STATUSES.includes(order.status)) {
+      const track = (src.tracks.get(order.id) ?? [])[0] ?? null;
+      const p = wellmixProductionCandidates(order, track, [
+        ...latestByItem(src.skus.get(order.id) ?? []).values(),
+      ]);
+      if (p.length) stored.p = p;
+    }
+    // Embarque, desembaraço e certificação (Fases D e F).
+    if (WELLMIX_IMPORT_STATUSES.includes(order.status)) {
+      const needsCert =
+        isPortal(order) &&
+        (src.portalRequirements.get(order.id) ?? []).some(
+          (r) => baseKeyOf(r.key) === LANE_KEYS.certificate,
+        );
+      const i = wellmixImportCandidates(order, steps, needsCert);
+      if (i.length) stored.i = i;
+    }
+    // Artes: corrigir e conferir a correção.
+    if (artIssueCounts(order)) {
+      const items = src.items.get(order.id) ?? [];
+      const a = (src.art.get(order.id) ?? [])
+        .filter((x) => x.status === "open" || x.status === "fixed")
+        .map((x) => ({
+          k: `${x.createdAt ?? ""}|${x.id}`,
+          issue: {
+            id: x.id,
+            status: x.status,
+            reportedByUserId: x.reportedByUserId,
+            fixedByUserId: x.fixedByUserId ?? null,
+            updatedAt: x.updatedAt,
+            fixedAt: x.fixedAt ?? null,
+          },
+          // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+          item:
+            realName(items.find((it) => it.id === x.orderItemId)?.name) ?? "—",
+        }));
+      if (a.length) stored.a = a;
+    }
+    // "Pagar fornecedor": o cronograma como em Contas a pagar (do resumo).
+    const f = factsById.get(order.id);
+    if (f) {
+      const copy: Partial<Order> = { ...order };
+      delete copy.sankhyaRefs;
+      const supplier = src.parties.get(order.supplierId) ?? null;
+      const payable = payableFor(
+        copy as Order,
+        supplier,
+        (f.pays as Payment[]).filter((p) => p.direction === "supplier_out"),
+        f.ship as Stage[],
+        f.sreqs as Requirement[],
+        (f.product != null ? [{ name: f.product }] : []) as OrderItem[],
+        today,
+      );
+      const parts = payable.schedule.installments
+        .filter((i) => i.open > 0 && TIMED.includes(i.status))
+        .map((i) => ({
+          index: i.index,
+          count: i.count,
+          open: i.open,
+          dueDate: i.dueDate,
+          status: i.status,
+        }));
+      if (parts.length)
+        stored.f = {
+          supplier: payable.supplier?.name ?? null,
+          currency: payable.schedule.currency,
+          parts,
         };
-      }),
-    );
+    }
+    if (stored.s.length || stored.p || stored.i || stored.a || stored.f)
+      out.set(order.id, stored);
   }
   return out;
 }
 
+/** As pendências guardadas de um pedido, para a leitura. */
+export interface ReadyOrderTasks {
+  order: Order;
+  tasks: StoredTasks;
+}
+
 /**
- * As pendências de etapa da Wellmix, prontas (do resumo de cada pedido), na
- * ordem das etapas. Resumo de outro formato é recalculado antes.
+ * As pendências da Wellmix guardadas nos resumos (só as linhas com
+ * pendência, `hasTasks`), na ordem dos pedidos; as de etapa já na ordem das
+ * etapas. Resumo de outro formato é recalculado antes.
  */
-export async function wellmixStageTaskDrafts(): Promise<
-  Array<import("./tasks").TaskDraft>
-> {
+export async function wellmixReadyTasks(): Promise<{
+  stage: Array<import("./tasks").TaskDraft>;
+  orders: ReadyOrderTasks[];
+}> {
   const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
   await flushSummaryChanges();
   const { listColumns } = await import("@/lib/db/lookup");
-  const read = () =>
-    listColumns(getStore(), "order_summaries", ["tasks", "version"]);
-  let rows = await read();
-  const stale = rows
-    .filter((r) => r.version !== SUMMARY_VERSION)
-    .map((r) => r.id);
-  if (stale.length) {
-    await recomputeOrderSummaries(stale);
-    rows = await read();
-  }
-  return rows
-    .flatMap((r) => (r.tasks as StoredTask[] | null) ?? [])
+  const store = getStore();
+  const older = Array.from({ length: SUMMARY_VERSION - 1 }, (_, i) => i + 1);
+  const stale = older.length
+    ? await listColumns(store, "order_summaries", ["version"], {
+        filter: { version: older },
+      })
+    : [];
+  if (stale.length) await recomputeOrderSummaries(stale.map((r) => r.id));
+  const rows = await listColumns(store, "order_summaries", ["tasks"], {
+    filter: { hasTasks: true },
+  });
+  const orders = rows
+    .map((r) => r.tasks as StoredTasks | null)
+    .filter((t): t is StoredTasks => !!t?.o)
+    .sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0))
+    .map((tasks) => ({ order: tasks.o as Order, tasks }));
+  const stage = orders
+    .flatMap((o) => o.tasks.s)
     .sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0))
     .map((t) => t.d as import("./tasks").TaskDraft);
+  return { stage, orders };
 }
 
 /** Contribuição de cada pedido para os indicadores (src/lib/services/tower-kpis.ts). */
@@ -516,9 +729,45 @@ async function kpisOf(
   facts: OrderFacts[],
   now: Date,
   ids: string[] | null,
+  src?: Sources,
 ): Promise<Map<string, unknown>> {
   const { orderKpisFor } = await import("./tower-kpis");
-  return orderKpisFor(facts, now, ids);
+  const kpis = await orderKpisFor(facts, now, ids);
+  if (!src) return kpis;
+  // Contribuição para o Overview dos blocos (`f`, flow-contribution.ts).
+  const flows = await flowsOf(src);
+  return new Map(
+    [...kpis.entries()].map(([id, kpi]) => [
+      id,
+      { ...kpi, f: flows.get(id) ?? null },
+    ]),
+  );
+}
+
+/** Contribuição de cada pedido para o Overview dos blocos (docs/FLOW_MENU.md). */
+async function flowsOf(src: Sources) {
+  const { buildOrderFlow } = await import("./flow-contribution");
+  const out = new Map<string, unknown>();
+  for (const order of src.orders) {
+    const reqs = src.flowRequirements.get(order.id) ?? [];
+    out.set(
+      order.id,
+      buildOrderFlow({
+        order,
+        stages: src.stages.get(order.id) ?? [],
+        openRequirements: src.openRequirements.get(order.id) ?? [],
+        importSteps: src.steps.get(order.id) ?? [],
+        track: src.tracks.get(order.id)?.[0] ?? null,
+        receiving: src.receivings.get(order.id)?.[0] ?? null,
+        items: src.items.get(order.id) ?? [],
+        downPayment:
+          reqs.find((r) => r.key === "down_payment" && r.status === "done") ??
+          null,
+        sampleOrder: reqs.find((r) => r.key === "sample_order") ?? null,
+      }),
+    );
+  }
+  return out;
 }
 
 async function writeSummaries(rows: ReturnType<typeof summaryRow>[]) {
@@ -543,7 +792,13 @@ async function readMarker(): Promise<SummaryMarker | null> {
     limit: 1,
   });
   const value = row?.value as SummaryMarker | undefined;
-  return value?.builtAt ? value : null;
+  const marker = value?.builtAt ? value : null;
+  // Formato antigo depois de um deploy: pede a reconstrução (summary-kick.ts).
+  if (marker) {
+    const { kickStaleSummaries } = await import("./summary-kick");
+    kickStaleSummaries(marker.version, SUMMARY_VERSION);
+  }
+  return marker;
 }
 
 /** Os resumos estão em uso (houve uma reconstrução completa)? */
@@ -570,10 +825,11 @@ export async function recomputeOrderSummaries(
     facts,
     now,
     src.orders.map((o) => o.id),
+    src,
   );
-  const tasks = await stageTasksOf(src);
+  const tasks = await tasksOf(src, facts, today);
   const rows = facts.map((f) =>
-    summaryRow(f, at, kpis.get(f.order.id), tasks.get(f.order.id) ?? []),
+    summaryRow(f, at, kpis.get(f.order.id), tasks.get(f.order.id) ?? null),
   );
   await writeSummaries(rows);
   const found = new Set(src.orders.map((o) => o.id));
@@ -612,6 +868,9 @@ export async function applySummaryChanges(changes: {
   if (ids.length || changes.kpi) {
     const { rebuildTowerKpis } = await import("./tower-kpis");
     await rebuildTowerKpis();
+    // Overview dos blocos (flow-kpis.ts): o mesmo evento muda os números.
+    const { rebuildFlowKpis } = await import("./flow-kpis");
+    await rebuildFlowKpis();
   }
   return done;
 }
@@ -733,8 +992,9 @@ async function rebuildChunk(
     facts,
     now,
     src.orders.map((o) => o.id),
+    src,
   );
-  const tasks = await stageTasksOf(src);
+  const tasks = await tasksOf(src, facts, today);
   const existing = new Map(
     (
       await store.list("order_summaries", {
@@ -748,7 +1008,7 @@ async function rebuildChunk(
         f,
         startedAt,
         kpis.get(f.order.id),
-        tasks.get(f.order.id) ?? [],
+        tasks.get(f.order.id) ?? null,
       ),
     )
     .filter((row) => {
@@ -761,7 +1021,8 @@ async function rebuildChunk(
         old.number !== row.number ||
         stableJson(old.facts) !== stableJson(row.facts) ||
         stableJson(old.kpi ?? null) !== stableJson(row.kpi ?? null) ||
-        stableJson(old.tasks ?? null) !== stableJson(row.tasks)
+        stableJson(old.tasks ?? null) !== stableJson(row.tasks) ||
+        !!old.hasTasks !== row.hasTasks
       );
     });
   await writeSummaries(rows);
@@ -809,6 +1070,8 @@ async function finishRebuild(
   // Indicadores prontos refeitos sobre os resumos novos.
   const { rebuildTowerKpis } = await import("./tower-kpis");
   await rebuildTowerKpis(now);
+  const { rebuildFlowKpis } = await import("./flow-kpis");
+  await rebuildFlowKpis(now);
   return marker;
 }
 
@@ -912,10 +1175,15 @@ export async function rebuildOrderSummaries(
 /* Leitura                                                                    */
 /* ------------------------------------------------------------------------ */
 
-export interface SummaryView {
+export interface SummaryView<F = OrderFacts> {
   /** Resumos na ordem dos pedidos (número decrescente). */
-  facts: OrderFacts[];
+  facts: F[];
+  /** Id do pedido de cada resumo, na ordem de `facts` (readOrderSummaries). */
+  ids?: string[];
 }
+
+/** Uma parte do resumo (`readOrderSummaries` e `factsForOrders` com `keys`). */
+export type FactKey = keyof OrderFacts;
 
 /**
  * Os resumos de todos os pedidos, prontos para as telas; nulo quando ainda
@@ -925,31 +1193,50 @@ export interface SummaryView {
 export async function readOrderSummaries(
   /** Só os resumos destes pedidos (lista curta); sem ela, todos. */
   ids?: string[],
+): Promise<SummaryView | null>;
+/**
+ * Só as partes `keys` de cada resumo (auditoria de performance, 14/11/2026):
+ * o resumo inteiro tem ~2,7 kB por pedido (52 MB de JSON para os 16 mil
+ * pedidos); quem precisa só da etapa e da viagem lê um quarto disso.
+ */
+export async function readOrderSummaries<K extends FactKey>(
+  ids: string[] | undefined,
+  keys: readonly K[],
+): Promise<SummaryView<Pick<OrderFacts, K>> | null>;
+export async function readOrderSummaries(
+  ids?: string[],
+  keys?: readonly FactKey[],
 ): Promise<SummaryView | null> {
   const marker = await readMarker().catch(() => null);
   if (!marker || marker.version !== SUMMARY_VERSION) return null;
   const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
   await flushSummaryChanges();
-  let rows: OrderSummary[];
+  const options = {
+    ...(ids ? { filter: { id: ids } } : {}),
+    orderBy: "number" as const,
+    direction: "desc" as const,
+  };
+  let rows: Array<Pick<OrderSummary, "id" | "version" | "facts">>;
   try {
-    rows = ids
-      ? ids.length
-        ? await getStore().list("order_summaries", {
-            filter: { id: ids },
-            orderBy: "number",
-            direction: "desc",
-          })
-        : []
-      : await getStore().list("order_summaries", {
-          orderBy: "number",
-          direction: "desc",
-        });
+    if (ids && !ids.length) rows = [];
+    else if (keys) {
+      const { listColumns } = await import("@/lib/db/lookup");
+      rows = await listColumns(
+        getStore(),
+        "order_summaries",
+        ["version", "facts"],
+        { ...options, jsonKeys: { facts: keys } },
+      );
+    } else rows = await getStore().list("order_summaries", options);
   } catch (error) {
     if (isSchemaMissing(error)) return null;
     throw error;
   }
   if (rows.some((r) => r.version !== SUMMARY_VERSION)) return null;
-  return { facts: rows.map((r) => r.facts as OrderFacts) };
+  return {
+    facts: rows.map((r) => r.facts as OrderFacts),
+    ids: rows.map((r) => r.id),
+  };
 }
 
 /** Acima disto, lê todos os resumos de uma vez em vez de pedir pelos ids. */
@@ -962,20 +1249,41 @@ const BY_ID_LIMIT = 300;
  */
 export async function factsForOrders(
   orders: Array<Pick<Order, "id">>,
+): Promise<Map<string, OrderFacts> | null>;
+/** Só as partes `keys` de cada resumo (ver `readOrderSummaries`). */
+export async function factsForOrders<K extends FactKey>(
+  orders: Array<Pick<Order, "id">>,
+  keys: readonly K[],
+): Promise<Map<string, Pick<OrderFacts, K>> | null>;
+export async function factsForOrders(
+  orders: Array<Pick<Order, "id">>,
+  keys?: readonly FactKey[],
 ): Promise<Map<string, OrderFacts> | null> {
   const ids = [...new Set(orders.map((o) => o.id))];
-  const view = await readOrderSummaries(
-    ids.length <= BY_ID_LIMIT ? ids : undefined,
-  );
+  const wanted = ids.length <= BY_ID_LIMIT ? ids : undefined;
+  const view = keys
+    ? await readOrderSummaries(wanted, keys)
+    : await readOrderSummaries(wanted);
   if (!view) return null;
-  const map = new Map(view.facts.map((f) => [f.order.id, f]));
+  // O id do resumo é o do pedido (summaryRow).
+  const map = new Map(
+    view.facts.map((f, i) => [
+      view.ids?.[i] ?? (f as OrderFacts).order.id,
+      f as OrderFacts,
+    ]),
+  );
   const missing = ids.filter((id) => !map.has(id));
   if (missing.length) {
     await recomputeOrderSummaries(missing);
     for (const row of await getStore().list("order_summaries", {
       filter: { id: missing },
     }))
-      map.set(row.id, row.facts as OrderFacts);
+      map.set(
+        row.id,
+        (keys
+          ? projectJson({ facts: row.facts }, { facts: keys }).facts
+          : row.facts) as OrderFacts,
+      );
   }
   return map;
 }
@@ -984,7 +1292,9 @@ export async function factsForOrders(
  * Etapas e itens de etapa dos quadros e da viagem (journey.ts), montados do
  * resumo: a etapa de cada item vai num id sintético (pedido + chave).
  */
-export function journeyRowsFromFacts(facts: OrderFacts[]) {
+export function journeyRowsFromFacts(
+  facts: Array<Pick<OrderFacts, "order" | "reqs" | "lane">>,
+) {
   const stages: Array<Pick<Stage, "id" | "orderId" | "key">> = [];
   const requirements: Array<
     Pick<Requirement, "orderId" | "stageId" | "key" | "status" | "value">
@@ -1021,8 +1331,9 @@ export function journeyRowsFromFacts(facts: OrderFacts[]) {
 }
 
 /** Etapas em andamento ou bloqueadas de todos os pedidos dados. */
-export const activeStagesFromFacts = (facts: OrderFacts[]) =>
-  facts.flatMap((f) => f.active.map((s) => ({ ...s, orderId: f.order.id })));
+export const activeStagesFromFacts = (
+  facts: Array<Pick<OrderFacts, "order" | "active">>,
+) => facts.flatMap((f) => f.active.map((s) => ({ ...s, orderId: f.order.id })));
 
 /** Situação da parcela no dia (vencida, a vencer, agendada mudam com o tempo). */
 export function installmentStatusOn(

@@ -21,9 +21,12 @@ export const pt = {
   "nav.group.panels": "Painéis",
   "nav.group.myBookings": "Meus books",
   "nav.purchaseOrders": "Pedidos de compra",
+  "nav.production": "Produção",
   "nav.teamAccess": "Equipe e acessos",
   "nav.sidebar.collapse": "Recolher menu",
   "nav.sidebar.expand": "Expandir menu",
+  "nav.group.show": "Mostrar os itens de {name}",
+  "nav.group.hide": "Ocultar os itens de {name}",
   "parties.all.subtitle":
     "Clientes, fornecedores e demais parceiros num cadastro só. Use os filtros por tipo. Listas com a conta de cada um:",
 };
@@ -47,9 +50,12 @@ export const en: Record<keyof typeof pt, string> = {
   "nav.group.panels": "Dashboards",
   "nav.group.myBookings": "My books",
   "nav.purchaseOrders": "Purchase orders",
+  "nav.production": "Production",
   "nav.teamAccess": "Team and access",
   "nav.sidebar.collapse": "Collapse menu",
   "nav.sidebar.expand": "Expand menu",
+  "nav.group.show": "Show the {name} items",
+  "nav.group.hide": "Hide the {name} items",
   "parties.all.subtitle":
     "Customers, suppliers and other partners in one register. Filter by type. Lists with each account:",
 };
@@ -73,9 +79,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "nav.group.panels": "看板",
   "nav.group.myBookings": "我的 Book",
   "nav.purchaseOrders": "采购订单",
+  "nav.production": "生产",
   "nav.teamAccess": "团队与权限",
   "nav.sidebar.collapse": "收起菜单",
   "nav.sidebar.expand": "展开菜单",
+  "nav.group.show": "显示{name}的子项",
+  "nav.group.hide": "隐藏{name}的子项",
   "parties.all.subtitle":
     "客户、供应商和其他合作方统一登记，可按类型筛选。各自账户的列表：",
 };

@@ -29,6 +29,12 @@ export const pt = {
   "dieCut.terms.editAria": "Editar pedido mínimo e prazo de entrega: {product}",
   "dieCut.saved.dieline": "Die-cut enviado.",
   "dieCut.saved.hd": "Foto em alta enviada.",
+  "dieCut.photo.add": "Adicionar foto",
+  "dieCut.saved.photo": "Foto adicionada.",
+  "dieCut.saved.removed": "Foto excluída.",
+  "dieCut.error.die_cut_send_first":
+    "Envie primeiro o arquivo do item; depois o + acrescenta outras fotos.",
+  "dieCut.error.mime": "Escolha uma imagem (foto).",
   "dieCut.saved.terms": "Pedido mínimo e prazo de entrega confirmados.",
   "dieCut.error.invalid_moq":
     "Pedido mínimo inválido: informe um número inteiro de peças, maior que zero.",
@@ -86,6 +92,12 @@ export const en: Record<keyof typeof pt, string> = {
   "dieCut.terms.editAria": "Edit minimum order and lead time: {product}",
   "dieCut.saved.dieline": "Die-cut sent.",
   "dieCut.saved.hd": "High-resolution photo sent.",
+  "dieCut.photo.add": "Add photo",
+  "dieCut.saved.photo": "Photo added.",
+  "dieCut.saved.removed": "Photo deleted.",
+  "dieCut.error.die_cut_send_first":
+    "Send the item's file first; then + adds more photos.",
+  "dieCut.error.mime": "Choose an image (photo).",
   "dieCut.saved.terms": "Minimum order and lead time confirmed.",
   "dieCut.error.invalid_moq":
     "Invalid minimum order: enter a whole number of pieces, above zero.",
@@ -141,6 +153,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "dieCut.terms.editAria": "编辑起订量和交期：{product}",
   "dieCut.saved.dieline": "刀模已上传。",
   "dieCut.saved.hd": "高清照片已上传。",
+  "dieCut.photo.add": "添加照片",
+  "dieCut.saved.photo": "照片已添加。",
+  "dieCut.saved.removed": "照片已删除。",
+  "dieCut.error.die_cut_send_first":
+    "请先上传该项的文件；之后可用 + 添加更多照片。",
+  "dieCut.error.mime": "请选择图片（照片）。",
   "dieCut.saved.terms": "起订量和交期已确认。",
   "dieCut.error.invalid_moq": "起订量无效：请输入大于零的整数件数。",
   "dieCut.error.invalid_lead_time":

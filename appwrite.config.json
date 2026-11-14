@@ -52,7 +52,8 @@
             "legal",
             "comex",
             "logistics",
-            "ocp"
+            "ocp",
+            "marketing_agency"
           ]
         },
         {
@@ -205,6 +206,7 @@
             "comex",
             "logistics",
             "ocp",
+            "marketing_agency",
             "trading",
             "factory",
             "supplier_partner",
@@ -569,6 +571,14 @@
           "default": null,
           "type": "varchar",
           "size": 40
+        },
+        {
+          "key": "agencyId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -1426,6 +1436,14 @@
           "size": 36
         },
         {
+          "key": "marketingAgencyId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
           "key": "designerUserId",
           "required": false,
           "array": false,
@@ -1681,6 +1699,13 @@
           "array": false,
           "default": null,
           "type": "integer"
+        },
+        {
+          "key": "held",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
         }
       ],
       "indexes": [
@@ -1689,6 +1714,16 @@
           "type": "unique",
           "columns": [
             "number"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "live_by_status",
+          "type": "key",
+          "columns": [
+            "status"
           ],
           "orders": [
             "ASC"
@@ -1826,6 +1861,13 @@
           "type": "text"
         },
         {
+          "key": "colors",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
           "key": "sankhyaCode",
           "required": false,
           "array": false,
@@ -1931,7 +1973,8 @@
             "legal",
             "comex",
             "logistics",
-            "ocp"
+            "ocp",
+            "marketing_agency"
           ]
         },
         {
@@ -1983,6 +2026,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "held",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
         }
       ],
       "indexes": [
@@ -1998,6 +2048,16 @@
         },
         {
           "key": "by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "live_by_status",
           "type": "key",
           "columns": [
             "status"
@@ -2091,7 +2151,8 @@
             "legal",
             "comex",
             "logistics",
-            "ocp"
+            "ocp",
+            "marketing_agency"
           ]
         },
         {
@@ -2143,6 +2204,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "held",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
         }
       ],
       "indexes": [
@@ -2161,6 +2229,26 @@
           "type": "key",
           "columns": [
             "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "live_by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "live_by_key",
+          "type": "key",
+          "columns": [
+            "key"
           ],
           "orders": [
             "ASC"
@@ -2221,7 +2309,8 @@
             "other",
             "print_ready",
             "packaging_sample",
-            "import_step"
+            "import_step",
+            "real_media"
           ]
         },
         {
@@ -2591,7 +2680,8 @@
             "legal",
             "comex",
             "logistics",
-            "ocp"
+            "ocp",
+            "marketing_agency"
           ]
         },
         {
@@ -2681,6 +2771,20 @@
             "userId"
           ],
           "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_user_channel_created",
+          "type": "key",
+          "columns": [
+            "userId",
+            "channel",
+            "createdAt"
+          ],
+          "orders": [
+            "ASC",
+            "ASC",
             "ASC"
           ]
         }
@@ -3446,7 +3550,8 @@
             "prompt",
             "supplier",
             "hd",
-            "die_cut"
+            "die_cut",
+            "real"
           ]
         },
         {
@@ -4480,7 +4585,8 @@
             "legal",
             "comex",
             "logistics",
-            "ocp"
+            "ocp",
+            "marketing_agency"
           ]
         },
         {
@@ -7385,6 +7491,254 @@
       ]
     },
     {
+      "$id": "shipping_docs",
+      "databaseId": "willmix",
+      "name": "Documentos do embarque (check list, packing list, invoice, BL)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "kind",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "load",
+            "packing_list",
+            "invoice",
+            "bl"
+          ]
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "draft",
+            "submitted",
+            "accepted",
+            "rejected"
+          ]
+        },
+        {
+          "key": "number",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "containerNumber",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "lines",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "entries",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "mismatches",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "documentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "currency",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 3
+        },
+        {
+          "key": "version",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "submittedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "submittedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "order_kind_unique",
+          "type": "unique",
+          "columns": [
+            "orderId",
+            "kind"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "real_media",
+      "databaseId": "willmix",
+      "name": "Fotos e vídeos reais do produto (agência na China)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "orderItemId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "productId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "sent",
+            "approved",
+            "rejected"
+          ]
+        },
+        {
+          "key": "documentIds",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "reason",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sentByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "sentAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "decidedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "decidedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "item_unique",
+          "type": "unique",
+          "columns": [
+            "orderItemId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
       "$id": "sku_inspections",
       "databaseId": "willmix",
       "name": "Inspeção por SKU",
@@ -7536,7 +7890,21 @@
             "cert_lab",
             "cert_registration",
             "cert_seal",
-            "cert_seal_art"
+            "cert_seal_art",
+            "container_at_factory",
+            "container_empty",
+            "container_loaded",
+            "container_sealed",
+            "container_at_port",
+            "container_tracking",
+            "samples_picked",
+            "samples_brazil",
+            "samples_china",
+            "samples_china_received",
+            "samples_returned",
+            "origin_carrier",
+            "origin_carrier_eta",
+            "origin_costs"
           ]
         },
         {
@@ -9479,6 +9847,13 @@
           "type": "text"
         },
         {
+          "key": "colorPlan",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
           "key": "aiAssets",
           "required": false,
           "array": false,
@@ -9629,6 +10004,13 @@
         },
         {
           "key": "schedule",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "colorPlan",
           "required": false,
           "array": false,
           "default": null,
@@ -10721,6 +11103,13 @@
           "array": false,
           "default": null,
           "type": "longtext"
+        },
+        {
+          "key": "hasTasks",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
         }
       ],
       "indexes": [
@@ -10739,6 +11128,16 @@
           "type": "key",
           "columns": [
             "live"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_has_tasks",
+          "type": "key",
+          "columns": [
+            "hasTasks"
           ],
           "orders": [
             "ASC"

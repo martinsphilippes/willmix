@@ -34,6 +34,8 @@ import {
   requestStatusTone,
 } from "@/lib/services/order-status";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
+import { withoutPlaceholder } from "@/lib/placeholder-name";
 import {
   Alert,
   Badge,
@@ -175,7 +177,7 @@ export default async function RequestDetailPage({
       <PageHeader
         help={{ body: "help.request.body", steps: "help.request.steps" }}
         t={t}
-        title={request.productName}
+        title={productNameText(t, request.productName)}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             {request.number ? (
@@ -212,7 +214,9 @@ export default async function RequestDetailPage({
         }
         actions={
           <>
-            {/* Mensagens: assunto desta solicitação na conversa da empresa. */}
+            {/* Mensagens: assunto desta solicitação na conversa da empresa.
+                "Conversar com a empresa" (Wellmix) abre o chat numa caixa
+                flutuante na própria tela (dono, 14/11/2026). */}
             <ChatButtons
               back={`/app/requests/${request.id}`}
               requestId={request.id}
@@ -222,6 +226,7 @@ export default async function RequestDetailPage({
                       partyId: request.customerId,
                       label: t("messages.chatCompany"),
                       title: customer?.name,
+                      floating: true,
                     }
                   : { label: t("messages.chatWellmix") },
               ]}
@@ -266,7 +271,7 @@ export default async function RequestDetailPage({
               <span key={s.id}>
                 {i > 0 ? ", " : null}
                 <TextLink href={`/app/requests/${s.id}`}>
-                  {s.productName}
+                  {productNameText(t, s.productName)}
                 </TextLink>
               </span>
             ))}
@@ -358,7 +363,12 @@ export default async function RequestDetailPage({
                   : []),
                 [t("common.quantity"), `${request.quantity} ${request.unit}`],
                 [t("requests.deadline"), formatDate(request.deadline, t)],
-                [t("requests.description"), request.description],
+                [
+                  t("requests.description"),
+                  request.description
+                    ? withoutPlaceholder(request.description)
+                    : request.description,
+                ],
                 // Cada item da especificação na sua coluna.
                 ...specificationColumns(
                   request.specification,

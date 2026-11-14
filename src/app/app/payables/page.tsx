@@ -34,6 +34,14 @@ import {
   rowClass,
 } from "@/components/ui";
 import { ChatOpenButton } from "@/components/chat-open-button";
+import { ServerPager, SortTh } from "@/components/server-table";
+import {
+  SERVER_TABLE_FROM,
+  parseServerPage,
+  parseServerSort,
+  serverTable,
+  type ServerColumn,
+} from "@/lib/server-table";
 
 /*
  * Contas a pagar (só Wellmix): uma linha por parcela de pagamento ao
@@ -117,7 +125,87 @@ export default async function PayablesPage({
   const bySupplier = supplierId
     ? all.filter((r) => r.payable.order.supplierId === supplierId)
     : all;
-  const shown = bySupplier.filter((r) => inTab(tab, r.installment.status));
+  const inTabRows = bySupplier.filter((r) => inTab(tab, r.installment.status));
+  // Lista longa: ordem e página no servidor (auditoria de performance,
+  // 14/11/2026: 182 MB de HTML com o histórico do Sankhya). Curta: como antes.
+  // O total da aba continua sobre todas as linhas dela.
+  type PayRow = (typeof inTabRows)[number];
+  const pct = (n: number) =>
+    n.toLocaleString(t.intl, { maximumFractionDigits: 2 });
+  const payColumns: ServerColumn<PayRow>[] = [
+    {
+      key: "due",
+      text: ({ installment: i }) =>
+        i.dueDate
+          ? formatDay(i.dueDate, t)
+          : t("supplierTerms.waiting", { when: termWhen(t, i.base, i.days) }),
+    },
+    { key: "supplier", text: ({ payable }) => payable.supplier?.name ?? "—" },
+    {
+      key: "order",
+      text: ({ payable }) =>
+        `#${payable.order.number} ${payable.productName ?? ""}`,
+    },
+    {
+      key: "installment",
+      text: ({ installment: i }) =>
+        `${i.index}/${i.count} ${pct(i.percent)}% · ${termWhen(t, i.base, i.days)}`,
+    },
+    {
+      key: "amount",
+      text: ({ payable, installment: i }) =>
+        formatMoney(i.amount, payable.schedule.currency, t),
+    },
+    {
+      key: "status",
+      text: ({ installment: i }) =>
+        t(`supplierTerms.status.${i.status}` as DictionaryKey),
+    },
+  ];
+  const serverMode = inTabRows.length > SERVER_TABLE_FROM;
+  const sort = serverMode
+    ? parseServerSort(
+        typeof params.sort === "string" ? params.sort : undefined,
+        payColumns,
+      )
+    : null;
+  const paged = serverTable(inTabRows, payColumns, {
+    sort,
+    page: parseServerPage(
+      typeof params.page === "string" ? params.page : undefined,
+    ),
+    size: serverMode ? undefined : Math.max(inTabRows.length, 1),
+    decimalComma: t.locale === "pt",
+  });
+  const shown = paged.rows;
+  const listHref = (patch: { sort?: string | null; page?: number }) => {
+    const q = new URLSearchParams();
+    if (tab !== "open") q.set("status", tab);
+    if (supplierId) q.set("supplier", supplierId);
+    const sortValue =
+      patch.sort !== undefined
+        ? patch.sort
+        : sort
+          ? `${sort.desc ? "-" : ""}${sort.key}`
+          : null;
+    if (sortValue) q.set("sort", sortValue);
+    if (patch.page) q.set("page", String(patch.page + 1));
+    const str = q.toString();
+    return `/app/payables${str ? `?${str}` : ""}`;
+  };
+  const header = (label: string, column: string, className?: string) =>
+    serverMode ? (
+      <SortTh
+        label={label}
+        column={column}
+        sort={sort}
+        href={(value) => listHref({ sort: value })}
+        t={t}
+        className={className}
+      />
+    ) : (
+      <Th className={className}>{label}</Th>
+    );
   const count = (s: Tab) =>
     bySupplier.filter((r) => inTab(s, r.installment.status)).length;
   const fmtMap = (map: Record<string, number>) =>
@@ -260,15 +348,15 @@ export default async function PayablesPage({
         {shown.length === 0 ? (
           <Empty>{t("payables.empty")}</Empty>
         ) : (
-          <Table>
+          <Table tools={!serverMode}>
             <thead>
               <tr>
-                <Th>{t("payables.col.due")}</Th>
-                <Th>{t("payables.supplier")}</Th>
-                <Th>{t("payables.col.order")}</Th>
-                <Th>{t("payables.col.installment")}</Th>
-                <Th className="text-right">{t("payables.col.amount")}</Th>
-                <Th>{t("payables.col.status")}</Th>
+                {header(t("payables.col.due"), "due")}
+                {header(t("payables.supplier"), "supplier")}
+                {header(t("payables.col.order"), "order")}
+                {header(t("payables.col.installment"), "installment")}
+                {header(t("payables.col.amount"), "amount", "text-right")}
+                {header(t("payables.col.status"), "status")}
                 <Th>
                   <span className="sr-only">{t("payables.open")}</span>
                 </Th>
@@ -371,13 +459,16 @@ export default async function PayablesPage({
             </tbody>
           </Table>
         )}
+        {serverMode ? (
+          <ServerPager page={paged} href={(page) => listHref({ page })} t={t} />
+        ) : null}
         {/* "Todas" mistura em aberto e pago: um total só não diria nada. */}
         {shown.length && tab !== "all" ? (
           <p
             className="mt-2 text-right text-sm font-semibold tabular-nums text-zinc-700"
             data-payables-total
           >
-            {t("payables.total", { amount: fmtMap(sumBy(shown)) })}
+            {t("payables.total", { amount: fmtMap(sumBy(inTabRows)) })}
           </p>
         ) : null}
       </div>

@@ -8,6 +8,34 @@ export const pt = {
   "team.edit": "Editar acessos",
   "team.person.title": "Acessos de {name}",
   "team.person.back": "Voltar à equipe",
+  "team.delete.open": "Excluir acesso",
+  "team.delete.title": "Excluir acesso",
+  "team.delete.close": "Fechar",
+  "team.delete.body":
+    "Esta pessoa vai perder o acesso à equipe Wellmix: não entra mais no portal e, se estiver com ele aberto, é desconectada na próxima tela. O histórico, os registros e a autoria do que ela fez continuam guardados.",
+  "team.delete.reports":
+    "{n} pessoa(s) respondem a ela: depois, escolha outro chefe em “Responde a”.",
+  "team.delete.openWork":
+    "{n} pendência(s) aberta(s) estão com ela: depois, use “Distribuir agora” na aba “Linha de produto e divisão” para passá-las a outra pessoa da divisão.",
+  "team.delete.confirm": "Excluir acesso",
+  "team.delete.self": "Você não pode excluir o próprio acesso.",
+  "team.delete.lastAdmin":
+    "Último administrador ativo da equipe: o acesso não pode ser excluído.",
+  "team.saved.deleted": "Acesso excluído com sucesso",
+  "team.error.delete_self": "Você não pode excluir o próprio acesso.",
+  "team.error.delete_last_admin":
+    "Este é o último administrador ativo da equipe: o acesso não pode ser excluído.",
+  "team.delete.moveReports":
+    "Passar as {n} pessoa(s) que respondem a ela para {name}, a quem ela responde",
+  "team.delete.redistribute":
+    "Redistribuir as {n} pendência(s) aberta(s) dela pela divisão da linha de cada produto, como em “Distribuir agora”",
+  "team.saved.deleted.reports": "{n} pessoa(s) passaram a responder a {name}.",
+  "team.saved.deleted.work":
+    "{n} pendência(s) passaram para outras pessoas da divisão.",
+  "team.saved.deleted.left":
+    "{n} pendência(s) dela ficaram sem responsável (linha sem divisão ou divisão sem analista): ajuste na aba “Linha de produto e divisão” e use “Distribuir agora”.",
+  "team.error.delete_followup":
+    "O acesso foi excluído, mas não deu para passar tudo: confira “Responde a” de quem respondia a ela e use “Distribuir agora” na aba “Linha de produto e divisão”.",
   "team.block.data": "Dados",
   "team.block.functions": "Funções (o que a pessoa faz no processo)",
   "team.block.screens": "Telas que o login abre",
@@ -35,6 +63,8 @@ export const pt = {
   "function.desc.executive_director":
     "aprova o pré-custo acima do limite (3º nível), painéis e auditoria",
   "function.desc.designer": "artes, embalagem, fotos e marketing",
+  "function.desc.comex_internal":
+    "rastreia o container todo dia, da fábrica ao embarque; acompanha containers e fretes",
   "access.denied":
     "Você não tem acesso a {screen}. Peça ao administrador em Gestão → Equipe e divisões.",
   "access.noFunction":
@@ -55,6 +85,34 @@ export const en: Record<keyof typeof pt, string> = {
   "team.edit": "Edit access",
   "team.person.title": "Access for {name}",
   "team.person.back": "Back to team",
+  "team.delete.open": "Delete access",
+  "team.delete.title": "Delete access",
+  "team.delete.close": "Close",
+  "team.delete.body":
+    "This person will lose access to the Wellmix team: they can no longer sign in to the portal and, if it is open, they are signed out on the next screen. Their history, records and authorship of what they did are kept.",
+  "team.delete.reports":
+    "{n} person(s) report to them: afterwards, choose another manager under “Reports to”.",
+  "team.delete.openWork":
+    "{n} open item(s) are with them: afterwards, use “Distribute now” on the “Product line and division” tab to hand them to someone else in the division.",
+  "team.delete.confirm": "Delete access",
+  "team.delete.self": "You cannot delete your own access.",
+  "team.delete.lastAdmin":
+    "Last active administrator of the team: this access cannot be deleted.",
+  "team.saved.deleted": "Access deleted successfully",
+  "team.error.delete_self": "You cannot delete your own access.",
+  "team.error.delete_last_admin":
+    "This is the last active administrator of the team: the access cannot be deleted.",
+  "team.delete.moveReports":
+    "Move the {n} person(s) who report to them to {name}, their manager",
+  "team.delete.redistribute":
+    "Redistribute their {n} open item(s) by the division of each product line, as in “Distribute now”",
+  "team.saved.deleted.reports": "{n} person(s) now report to {name}.",
+  "team.saved.deleted.work":
+    "{n} open item(s) were handed to other people in the division.",
+  "team.saved.deleted.left":
+    "{n} of their open item(s) were left without an owner (line without a division or division without an analyst): fix it on the “Product line and division” tab and use “Distribute now”.",
+  "team.error.delete_followup":
+    "The access was deleted, but not everything could be handed over: check “Reports to” for the people who reported to them and use “Distribute now” on the “Product line and division” tab.",
   "team.block.data": "Details",
   "team.block.functions": "Functions (what the person does in the process)",
   "team.block.screens": "Screens this login opens",
@@ -82,6 +140,8 @@ export const en: Record<keyof typeof pt, string> = {
   "function.desc.executive_director":
     "approves pre-cost above the limit (level 3), dashboards and audit",
   "function.desc.designer": "artwork, packaging, photos and marketing",
+  "function.desc.comex_internal":
+    "tracks the container every day, from the factory to shipping; follows containers and freight",
   "access.denied":
     "You do not have access to {screen}. Ask the admin in Management → Team and divisions.",
   "access.noFunction":
@@ -102,6 +162,31 @@ export const zh: Record<keyof typeof pt, string> = {
   "team.edit": "编辑权限",
   "team.person.title": "{name} 的权限",
   "team.person.back": "返回团队",
+  "team.delete.open": "删除权限",
+  "team.delete.title": "删除权限",
+  "team.delete.close": "关闭",
+  "team.delete.body":
+    "此人将失去 Wellmix 团队的访问权限：无法再登录门户；如果门户正开着，会在下一个页面退出登录。其历史、记录以及所做操作的作者信息都会保留。",
+  "team.delete.reports":
+    "有 {n} 人向此人汇报：之后请在“汇报对象”中为他们选择新的上级。",
+  "team.delete.openWork":
+    "此人名下有 {n} 项未完成事项：之后请在“产品线与部门”页使用“立即分配”，交给该事业部的其他人。",
+  "team.delete.confirm": "删除权限",
+  "team.delete.self": "不能删除自己的权限。",
+  "team.delete.lastAdmin": "团队中最后一位在职管理员：不能删除此权限。",
+  "team.saved.deleted": "权限已删除",
+  "team.error.delete_self": "不能删除自己的权限。",
+  "team.error.delete_last_admin":
+    "这是团队中最后一位在职管理员：不能删除此权限。",
+  "team.delete.moveReports": "将向此人汇报的 {n} 人转给 {name}（此人的上级）",
+  "team.delete.redistribute":
+    "按每个产品线的事业部重新分配此人的 {n} 项未完成事项（与“立即分配”相同）",
+  "team.saved.deleted.reports": "{n} 人已改为向 {name} 汇报。",
+  "team.saved.deleted.work": "{n} 项未完成事项已转给该事业部的其他人。",
+  "team.saved.deleted.left":
+    "此人有 {n} 项未完成事项暂无负责人（产品线未设事业部或事业部没有分析员）：请在“产品线与部门”页调整并点击“立即分配”。",
+  "team.error.delete_followup":
+    "权限已删除，但未能全部转交：请检查原下属的“汇报对象”，并在“产品线与部门”页点击“立即分配”。",
   "team.block.data": "基本信息",
   "team.block.functions": "职能（此人在流程中做什么）",
   "team.block.screens": "此账号可打开的页面",
@@ -123,6 +208,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "function.desc.purchasing_director": "审批预成本（第二级）、看板和审计",
   "function.desc.executive_director": "审批超限预成本（第三级）、看板和审计",
   "function.desc.designer": "设计稿、包装、照片和营销",
+  "function.desc.comex_internal":
+    "每天跟踪集装箱（从工厂到装运），跟进集装箱和运费",
   "access.denied": "您无权访问{screen}。请联系管理员：管理 → 团队与事业部。",
   "access.noFunction":
     "您的账号尚未分配职能，目前只能看到基础页面：待办、SLA 面板、通知和消息。请管理员在“管理 → 团队与事业部”中设置职能。",

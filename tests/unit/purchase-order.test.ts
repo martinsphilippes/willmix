@@ -227,6 +227,7 @@ describe("pedido de compra", () => {
     const prep = reqs.filter((r) => r.key.includes("__"));
     expect(prep).toHaveLength(2 * 10);
     const roles = new Set(prep.map((r) => r.role));
+    // Certificado: da certificadora (OCP) do pedido (dono, 14/11/2026).
     expect(roles).toEqual(new Set(["supplier", "agency", "operator", "ocp"]));
     // Avisos das raias: fornecedor e certificadora na hora; a agência só com
     // a faca e a foto em alta; Vendas fica sabendo do que vem.
@@ -370,9 +371,7 @@ describe("pedido de compra", () => {
     const doc = await samples.decideSampleOrder(admin, order.id, {
       status: "ordered",
     });
-    expect(
-      doc.lines.map((l) => [l.itemId, l.variants, l.quantity]),
-    ).toEqual([
+    expect(doc.lines.map((l) => [l.itemId, l.variants, l.quantity])).toEqual([
       [itemA.id, 2, 30],
       [itemB.id, 1, 15],
     ]);
@@ -466,6 +465,8 @@ describe("pedido de compra", () => {
 async function signedPurchaseOrder(
   codes: [string, string],
   lineId: string | null = null,
+  /** Pedido de amostras: "none" (padrão) ou gerado e aceito pelo fornecedor. */
+  samplesStatus: "none" | "ordered" = "none",
 ) {
   const store = getStore();
   const [r1, r2] = await approvedProducts(null, codes, lineId);
@@ -496,14 +497,25 @@ async function signedPurchaseOrder(
   }
   await gates.readyOrderProducts(admin, order.id);
   expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
-  // Sem amostras neste pedido: o aceite do fornecedor fica dispensado.
   const samples = await import("@/lib/services/sample-order");
-  await samples.decideSampleOrder(admin, order.id, { status: "none" });
-  expect(
-    (await requirementsOf(order.id)).find(
-      (r) => r.key === "sample_order_supplier",
-    ),
-  ).toMatchObject({ status: "done", value: "not_applicable" });
+  if (samplesStatus === "ordered") {
+    const doc = await samples.decideSampleOrder(admin, order.id, {
+      status: "ordered",
+    });
+    await samples.acceptSampleOrder(supplierA, order.id, {
+      name: "Li Supplier",
+      agree: true,
+      hash: doc.hash,
+    });
+  } else {
+    // Sem amostras neste pedido: o aceite do fornecedor fica dispensado.
+    await samples.decideSampleOrder(admin, order.id, { status: "none" });
+    expect(
+      (await requirementsOf(order.id)).find(
+        (r) => r.key === "sample_order_supplier",
+      ),
+    ).toMatchObject({ status: "done", value: "not_applicable" });
+  }
   const view = (await signature.getOrderSignatureView(admin, order.id))!;
   for (const [who, name] of [
     [admin, "Ana Wellmix"],
@@ -716,6 +728,802 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     expect((await rowsOf(admin, "cadastro")).ncm).toHaveLength(0);
   });
 
+  it("inspeção: vídeo, conformidade, aprovação da Wellmix e tentativas (R3/R4?/R10)", async () => {
+    const store = getStore();
+    const terms = await import("@/lib/services/supplier-terms");
+    const production = await import("@/lib/services/production");
+    // Conta corrente: o pedido chega à inspeção com as duas assinaturas.
+    await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+      terms: [{ percent: 100, base: "delivered", days: 60 }],
+      note: null,
+    });
+    let order;
+    let items;
+    try {
+      ({ order, items } = await signedPurchaseOrder(["IN-1", "IN-2"]));
+    } finally {
+      await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+        terms: [
+          { percent: 30, base: "order_created", days: 0 },
+          { percent: 70, base: "delivered", days: 90 },
+        ],
+        note: null,
+      });
+    }
+    expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
+    await production.savePlan(admin, order.id, { etd: "2027-01-10" });
+    const media = async () => {
+      for (const key of ["photo_unpacked", "photo_packed", "photo_scale"])
+        await submit(supplierA, order.id, key, { file: `${key}.pdf` });
+      await submit(supplierA, order.id, "weight_measured", { value: "15" });
+      await submit(supplierA, order.id, "production_video", {
+        file: "video.pdf",
+      });
+      await submit(supplierA, order.id, "supplier_conformity", {
+        value: "ok",
+      });
+    };
+    const [a, b] = [...items].sort((x, y) =>
+      x.createdAt.localeCompare(y.createdAt),
+    );
+    // A declaração espera as fotos, o peso e o vídeo; a Wellmix, a declaração.
+    await expect(
+      submit(supplierA, order.id, "supplier_conformity", { value: "ok" }),
+    ).rejects.toThrow("lane_prerequisite");
+    await expect(
+      production.inspectSku(admin, order.id, {
+        orderItemId: a.id,
+        result: "approved",
+        note: null,
+      }),
+    ).rejects.toThrow("conformity_required");
+    await media();
+    // Reprovado 1 a 3 vezes: ETD +1 dia e volta à produção a cada vez.
+    for (let round = 1; round <= 3; round++) {
+      const row = await production.inspectSku(admin, order.id, {
+        orderItemId: a.id,
+        result: "rejected",
+        note: `Cor errada ${round}`,
+      });
+      expect(row.round).toBe(round);
+      const track = (await production.getTrack(order.id))!;
+      expect(track.etd!.slice(0, 10)).toBe(
+        new Date(Date.parse("2027-01-10") + round * 86_400_000)
+          .toISOString()
+          .slice(0, 10),
+      );
+      const video = (await requirementsOf(order.id)).find(
+        (r) => r.key === "production_video",
+      )!;
+      expect(video.status).toBe("pending");
+      await production.respondSku(supplierA, row.id, `Corrigido ${round}`);
+      await media();
+    }
+    // 4ª reprovação: passou do limite; a Wellmix confirma o cancelamento.
+    const last = await production.inspectSku(admin, order.id, {
+      orderItemId: a.id,
+      result: "rejected",
+      note: "Cor errada de novo",
+    });
+    expect(production.attemptsExhausted(last, 3)).toBe(true);
+    await production.respondSku(supplierA, last.id, "Tentamos de novo");
+    await expect(
+      production.inspectSku(admin, order.id, {
+        orderItemId: a.id,
+        result: "approved",
+        note: null,
+      }),
+    ).rejects.toThrow("attempts_exhausted");
+    expect(
+      (await store.list("audit_log", { filter: { entityId: order.id } })).some(
+        (e) => e.action === "production.attempts_exhausted",
+      ),
+    ).toBe(true);
+    // O outro produto aprovado não libera o embarque sozinho.
+    await production.inspectSku(admin, order.id, {
+      orderItemId: b.id,
+      result: "approved",
+      note: null,
+    });
+    expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
+  });
+
+  it("inspeção aprovada em todos os SKUs libera o embarque", async () => {
+    const store = getStore();
+    const terms = await import("@/lib/services/supplier-terms");
+    const production = await import("@/lib/services/production");
+    await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+      terms: [{ percent: 100, base: "delivered", days: 60 }],
+      note: null,
+    });
+    let order;
+    let items;
+    try {
+      ({ order, items } = await signedPurchaseOrder(["IN-3", "IN-4"]));
+    } finally {
+      await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+        terms: [
+          { percent: 30, base: "order_created", days: 0 },
+          { percent: 70, base: "delivered", days: 90 },
+        ],
+        note: null,
+      });
+    }
+    for (const key of ["photo_unpacked", "photo_packed", "photo_scale"])
+      await submit(supplierA, order.id, key, { file: `${key}.pdf` });
+    await submit(supplierA, order.id, "weight_measured", { value: "15" });
+    await submit(supplierA, order.id, "production_video", { file: "v.pdf" });
+    await submit(supplierA, order.id, "supplier_conformity", { value: "ok" });
+    expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
+    for (const item of items)
+      await production.inspectSku(admin, order.id, {
+        orderItemId: item.id,
+        result: "approved",
+        note: null,
+      });
+    expect(
+      (await requirementsOf(order.id)).find((r) => r.key === "sku_approved"),
+    ).toMatchObject({ status: "done", value: "approved" });
+    expect((await store.get("orders", order.id))!.status).toBe("SHIPPING");
+  });
+
+  it("container na origem e o rastreio diário do Comex interno (R19 a R26)", async () => {
+    const store = getStore();
+    const terms = await import("@/lib/services/supplier-terms");
+    const flow = await import("@/lib/services/import-flow");
+    await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+      terms: [{ percent: 100, base: "delivered", days: 60 }],
+      note: null,
+    });
+    let order;
+    try {
+      ({ order } = await signedPurchaseOrder(["OR-1", "OR-2"]));
+    } finally {
+      await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+        terms: [
+          { percent: 30, base: "order_created", days: 0 },
+          { percent: 70, base: "delivered", days: 90 },
+        ],
+        note: null,
+      });
+    }
+    order = (await store.get("orders", order.id))!;
+    expect(order.status).toBe("INSPECTION");
+    const doc = async (user: User, name: string) =>
+      (
+        await uploadDocument(user, pdf(name), {
+          orderId: order.id,
+          type: "import_step",
+        })
+      ).id;
+    const keysOf = async (user: User) =>
+      (await flow.importTasks(user, [order]))
+        .filter((t) => t.key.startsWith("container_"))
+        .map((t) => t.key);
+    // Antes do booking, nada do container.
+    expect(await keysOf(supplierA)).toEqual([]);
+    // Booking (sem agente designado, a Wellmix faz) e validado por outro login.
+    const ops = await store.create("users", {
+      email: "comex.interno@wellmix.com",
+      name: "Clara Comex",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      passwordHash: "x",
+      active: true,
+      importerId: null,
+      functions: ["comex_internal"],
+      screens: null,
+      mustChangePassword: false,
+    } as never);
+    await flow.submitStep(admin, order.id, "booking", { value: "BK-1" });
+    await flow.validateStep(ops, order.id, "booking", "validated", null);
+    // O fornecedor faz a sequência; cada passo só abre depois do anterior.
+    expect(await keysOf(supplierA)).toEqual(["container_at_factory"]);
+    await expect(
+      flow.submitStep(supplierA, order.id, "container_empty", {
+        documentId: await doc(supplierA, "vazio.pdf"),
+      }),
+    ).rejects.toThrow("previous_step");
+    await flow.submitStep(supplierA, order.id, "container_at_factory", {
+      value: "2027-01-12",
+    });
+    // Começou o rastreio: pendência diária do Comex interno.
+    expect(await keysOf(ops)).toContain("container_tracking");
+    await flow.submitStep(ops, order.id, "container_tracking", {
+      value: "Container no depósito da fábrica",
+    });
+    expect(await keysOf(ops)).not.toContain("container_tracking");
+    // O fornecedor não rastreia; o rastreio não é dele.
+    await expect(
+      flow.submitStep(supplierA, order.id, "container_tracking", {
+        value: "x",
+      }),
+    ).rejects.toThrow();
+    await flow.submitStep(supplierA, order.id, "container_empty", {
+      documentId: await doc(supplierA, "vazio.pdf"),
+    });
+    await flow.submitStep(supplierA, order.id, "container_loaded", {
+      value: "480 caixas, sem avarias",
+      documentId: await doc(supplierA, "carga.pdf"),
+    });
+    // O carregamento é conferido pela Wellmix antes do lacre.
+    await expect(
+      flow.submitStep(supplierA, order.id, "container_sealed", {
+        value: "MSCU1234567",
+        documentId: await doc(supplierA, "lacre.pdf"),
+      }),
+    ).rejects.toThrow("previous_step");
+    await flow.validateStep(
+      ops,
+      order.id,
+      "container_loaded",
+      "validated",
+      null,
+    );
+    await flow.submitStep(supplierA, order.id, "container_sealed", {
+      value: "MSCU1234567",
+      documentId: await doc(supplierA, "lacre.pdf"),
+    });
+    await flow.submitStep(supplierA, order.id, "container_at_port", {
+      value: "2027-01-15",
+    });
+    expect(await keysOf(supplierA)).toEqual([]);
+    // No dia seguinte o rastreio volta a ser pendência.
+    const [tracking] = await store.list("import_steps", {
+      filter: { orderId: order.id, key: "container_tracking" },
+    });
+    await store.update("import_steps", tracking.id, {
+      submittedAt: "2026-01-01T12:00:00.000Z",
+    });
+    expect(await keysOf(ops)).toContain("container_tracking");
+  });
+
+  it("documentos do embarque: check list, packing list, invoice e BL conferidos", async () => {
+    const store = getStore();
+    const terms = await import("@/lib/services/supplier-terms");
+    const flow = await import("@/lib/services/import-flow");
+    const docs = await import("@/lib/services/shipping-docs");
+    await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+      terms: [{ percent: 100, base: "delivered", days: 60 }],
+      note: null,
+    });
+    let order;
+    try {
+      ({ order } = await signedPurchaseOrder(["SD-1", "SD-2"]));
+    } finally {
+      await terms.saveSupplierPaymentTerms(admin, "fornecedor-a", {
+        terms: [
+          { percent: 30, base: "order_created", days: 0 },
+          { percent: 70, base: "delivered", days: 90 },
+        ],
+        note: null,
+      });
+    }
+    order = (await store.get("orders", order.id))!;
+    const items = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    // Caixa master de 10 peças, 0,5 kg líquido e 0,6 kg bruto por peça.
+    for (const i of items) {
+      await store.update("order_items", i.id, { quantity: 25, variant: null });
+      await store.update("products", i.productId!, {
+        masterBoxQty: 10,
+        netWeightKg: 0.5,
+        grossWeightKg: 0.6,
+      });
+    }
+    const [a, b] = items;
+    // Os passos antigos do despachante e do agente não aparecem no pedido de compra.
+    const shown = (await flow.importFlowView(admin, order)).map(
+      (s) => s.template.key,
+    );
+    expect(shown).not.toContain("invoice_packing");
+    expect(shown).not.toContain("draft_bl");
+    expect(shown).toContain("bl");
+    // Nem como pendência da Wellmix (lista pronta do resumo do pedido).
+    const shipping = { ...order, status: "SHIPPING" as const };
+    const candidates = flow
+      .wellmixImportCandidates(
+        shipping,
+        // Draft do BL enviado (de antes): a Wellmix o validaria sem comex.
+        [
+          {
+            id: "x",
+            createdAt: "",
+            updatedAt: "",
+            orderId: order.id,
+            key: "draft_bl",
+            status: "submitted",
+            value: null,
+            amount: null,
+            currency: null,
+            documentId: null,
+            submittedByUserId: "y",
+            submittedAt: "2026-11-01T00:00:00.000Z",
+            validatedByUserId: null,
+            validatedAt: null,
+            rejectReason: null,
+          } as never,
+        ],
+        false,
+      )
+      .map((c) => c.key);
+    expect(candidates).not.toContain("draft_bl");
+    expect(candidates).not.toContain("invoice_packing");
+    expect(candidates).not.toContain("invoice_signed");
+    // O check list só abre depois das fotos do container vazio.
+    await expect(
+      docs.addLoad(supplierA, order.id, [{ itemId: a.id, cartons: 1 }]),
+    ).rejects.toThrow("shipping_load_closed");
+    await flow.submitStep(admin, order.id, "booking", { value: "BK-9" });
+    const ops = await store.create("users", {
+      email: "comex.docs@wellmix.com",
+      name: "Caio Comex",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      passwordHash: "x",
+      active: true,
+      importerId: null,
+      functions: ["comex_internal"],
+      screens: null,
+      mustChangePassword: false,
+    } as never);
+    await flow.validateStep(ops, order.id, "booking", "validated", null);
+    await flow.submitStep(supplierA, order.id, "container_at_factory", {
+      value: "2027-01-12",
+    });
+    await flow.submitStep(supplierA, order.id, "container_empty", {
+      documentId: (
+        await uploadDocument(supplierA, pdf("vazio.pdf"), {
+          orderId: order.id,
+          type: "import_step",
+        })
+      ).id,
+    });
+    // Check list: 3 caixas por item (25 peças / 10 por caixa), abatendo.
+    let view = (await docs.shippingDocsView(supplierA, order.id))!;
+    expect(view.load.map((l) => l.expected)).toEqual([3, 3]);
+    await docs.addLoad(supplierA, order.id, [
+      { itemId: a.id, cartons: 2 },
+      { itemId: b.id, cartons: 3 },
+    ]);
+    await expect(
+      docs.addLoad(supplierA, order.id, [{ itemId: a.id, cartons: 2 }]),
+    ).rejects.toThrow("shipping_load_over");
+    expect(
+      (await docs.shippingDocTasks(supplierA))
+        .filter((t) => t.order.id === order.id)
+        .map((t) => t.kind),
+    ).toEqual(["load"]);
+    await docs.addLoad(supplierA, order.id, [{ itemId: a.id, cartons: 1 }]);
+    view = (await docs.shippingDocsView(supplierA, order.id))!;
+    expect(view.loadDone).toBe(true);
+    expect(view.open.load).toBe(false);
+    // Packing list: caixas do check list, peças e pesos pelo cadastro.
+    expect(view.suggestion).toEqual([
+      expect.objectContaining({
+        cartons: 3,
+        pieces: 25,
+        netKg: 12.5,
+        grossKg: 15,
+      }),
+      expect.objectContaining({
+        cartons: 3,
+        pieces: 25,
+        netKg: 12.5,
+        grossKg: 15,
+      }),
+    ]);
+    await expect(
+      docs.submitInvoice(supplierA, order.id, {
+        number: "INV-1",
+        lines: view.suggestion,
+        documentId: "x",
+        currency: null,
+      }),
+    ).rejects.toThrow("shipping_doc_closed");
+    await docs.submitPackingList(supplierA, order.id, {
+      // Caixas digitadas diferentes não valem: ficam as do check list.
+      lines: view.suggestion.map((l) => ({ ...l, cartons: 99 })),
+      documentId: null,
+    });
+    view = (await docs.shippingDocsView(supplierA, order.id))!;
+    expect(view.docs.packing_list!.lines.map((l) => l.cartons)).toEqual([3, 3]);
+    // Invoice da trading: uma linha com peso bruto diferente volta para refazer.
+    const file = (
+      await uploadDocument(supplierA, pdf("invoice.pdf"), {
+        orderId: order.id,
+        type: "attachment",
+        visibility: "supplier",
+      })
+    ).id;
+    const wrong = view.suggestion.map((l, i) =>
+      i === 1 ? { ...l, grossKg: 16, pieces: 24 } : l,
+    );
+    await docs.submitInvoice(supplierA, order.id, {
+      number: "INV-1",
+      lines: wrong,
+      documentId: file,
+      currency: null,
+    });
+    view = (await docs.shippingDocsView(supplierA, order.id))!;
+    expect(view.docs.invoice!.status).toBe("rejected");
+    expect(view.docs.invoice!.mismatches!.map((m) => m.field)).toEqual([
+      "pieces",
+      "grossKg",
+    ]);
+    expect(
+      (await docs.shippingDocTasks(supplierA)).filter(
+        (t) => t.order.id === order.id,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "invoice", redo: true }),
+      ]),
+    );
+    await docs.submitInvoice(supplierA, order.id, {
+      number: "INV-1",
+      lines: view.docs.packing_list!.lines,
+      documentId: null,
+      currency: null,
+    });
+    view = (await docs.shippingDocsView(supplierA, order.id))!;
+    expect(view.docs.invoice!.status).toBe("accepted");
+    expect(view.can.bl).toBe(false);
+    // BL: sem marítima no pedido, a Wellmix faz; conferido com a invoice.
+    expect(await docs.shipmentBlockers(order.id)).toEqual([
+      "container_at_port",
+      "bl",
+    ]);
+    await expect(
+      flow.submitStep(admin, order.id, "bl", { value: "BL-0" }),
+    ).rejects.toThrow();
+    const bl = (await docs.shippingDocsView(admin, order.id))!;
+    await docs.submitBl(admin, order.id, {
+      number: "BL-1",
+      containerNumber: "mscu1234567",
+      lines: bl.suggestion.map((l, i) => (i === 0 ? { ...l, cartons: 2 } : l)),
+      documentId: file,
+    });
+    expect(
+      (await docs.shippingDocsView(admin, order.id))!.docs.bl!.status,
+    ).toBe("rejected");
+    await docs.submitBl(admin, order.id, {
+      number: "BL-1",
+      containerNumber: "mscu1234567",
+      lines: bl.suggestion,
+      documentId: null,
+    });
+    const done = (await docs.shippingDocsView(admin, order.id))!;
+    expect(done.docs.bl).toMatchObject({
+      status: "accepted",
+      containerNumber: "MSCU1234567",
+    });
+    // BL conferido fecha o passo "BL" do desembaraço.
+    const [blStep] = await store.list("import_steps", {
+      filter: { orderId: order.id, key: "bl" },
+    });
+    expect(blStep).toMatchObject({ status: "validated", value: "BL-1" });
+    expect(await docs.shipmentBlockers(order.id)).toEqual([
+      "container_at_port",
+    ]);
+    // Fatura ativa (R24): N dias do fornecedor contados do BL conferido.
+    const inv = await import("@/lib/services/supplier-invoice");
+    await expect(
+      inv.setSupplierInvoiceDays(supplierA, "fornecedor-a", 15),
+    ).rejects.toThrow();
+    await inv.setSupplierInvoiceDays(admin, "fornecedor-a", 15);
+    try {
+      const fresh = (await store.get("orders", order.id))!;
+      const due = (await inv.invoiceDueOf(fresh))!;
+      expect(due.days).toBe(15);
+      expect(Date.parse(due.dueAt) - Date.parse(due.activeAt)).toBe(
+        15 * 24 * 60 * 60 * 1000,
+      );
+      expect((await inv.invoiceTasks(admin)).map((x) => x.order.id)).toContain(
+        order.id,
+      );
+      expect(await inv.invoiceTasks(supplierA)).toEqual([]);
+      const { registerOrderInvoice } =
+        await import("@/lib/services/order-invoicing");
+      await registerOrderInvoice(admin, order.id);
+      expect(
+        (await inv.invoiceTasks(admin)).map((x) => x.order.id),
+      ).not.toContain(order.id);
+    } finally {
+      await inv.setSupplierInvoiceDays(admin, "fornecedor-a", null);
+    }
+  });
+
+  it("amostras: retirada, Brasil 4×3×Nm e China 1×3×Nm, fotos reais aprovadas, devolução antes do carregamento", async () => {
+    const store = getStore();
+    const flow = await import("@/lib/services/import-flow");
+    const sf = await import("@/lib/services/sample-flow");
+    const { showcaseOf } = await import("@/lib/services/documents");
+    const { order, items } = await signedPurchaseOrder(
+      ["SF-1", "SF-2"],
+      null,
+      "ordered",
+    );
+    const mkt = (
+      await store.list("users", {
+        filter: { email: "agencia@marketing.cn" },
+      })
+    )[0]!;
+    await store.update("orders", order.id, {
+      marketingAgencyId: mkt.partyId,
+    });
+    const split = await sf.samplesSplitOf(order);
+    expect(split.map((l) => [l.brazil, l.china, l.total])).toEqual([
+      [12, 3, 15],
+      [12, 3, 15],
+    ]);
+    // Antes do SKU aprovado (ainda não está no Embarque): nada das amostras.
+    let fresh = (await store.get("orders", order.id))!;
+    expect(await flow.importFlowView(admin, fresh, "samples")).toEqual([]);
+    await expect(
+      flow.submitStep(supplierA, order.id, "samples_picked", {
+        value: "2026-11-20",
+      }),
+    ).rejects.toThrow("samples_closed");
+    // SKU aprovado: o pedido está no Embarque.
+    await store.update("orders", order.id, { status: "SHIPPING" });
+    fresh = (await store.get("orders", order.id))!;
+    expect(
+      (await flow.importFlowView(mkt, fresh, "samples")).map(
+        (s) => s.template.key,
+      ),
+    ).toEqual([
+      "samples_picked",
+      "samples_china",
+      "samples_china_received",
+      "samples_returned",
+    ]);
+    const doc = async (user: User, name: string) =>
+      (
+        await uploadDocument(user, pdf(name), {
+          orderId: order.id,
+          type: "import_step",
+        })
+      ).id;
+    await flow.submitStep(supplierA, order.id, "samples_picked", {
+      value: "2026-11-20",
+    });
+    await flow.submitStep(supplierA, order.id, "samples_brazil", {
+      value: "AWB-BR-1",
+      documentId: await doc(supplierA, "br.pdf"),
+    });
+    await flow.submitStep(supplierA, order.id, "samples_china", {
+      value: "SF-CN-1",
+      documentId: await doc(supplierA, "cn.pdf"),
+    });
+    // A agência recebe a pendência de confirmar o recebimento.
+    expect((await flow.importTasks(mkt, [fresh])).map((t) => t.key)).toContain(
+      "samples_china_received",
+    );
+    expect((await sf.realMediaView(mkt, order.id))!.open).toBe(false);
+    await flow.submitStep(mkt, order.id, "samples_china_received", {
+      value: "2026-11-24",
+    });
+    // Container vazio já registrado: o carregamento espera a amostra voltar.
+    await store.create("import_steps", {
+      orderId: order.id,
+      key: "container_empty",
+      status: "submitted",
+      value: null,
+      amount: null,
+      currency: null,
+      documentId: null,
+      submittedByUserId: supplierA.id,
+      submittedAt: new Date().toISOString(),
+      validatedByUserId: null,
+      validatedAt: null,
+      rejectReason: null,
+    });
+    await expect(
+      flow.submitStep(supplierA, order.id, "container_loaded", {
+        documentId: await doc(supplierA, "carga.pdf"),
+      }),
+    ).rejects.toThrow("samples_return_required");
+    // A amostra só volta com as fotos reais aprovadas.
+    await expect(
+      flow.submitStep(mkt, order.id, "samples_returned", {
+        value: "Entregue na trading",
+      }),
+    ).rejects.toThrow("real_media_required");
+    const png = (name: string) =>
+      new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], name, {
+        type: "image/png",
+      });
+    const [a, b] = items;
+    const media = async (itemId: string, productId: string) =>
+      (
+        await uploadDocument(mkt, png(`${itemId}.png`), {
+          productId,
+          type: "real_media",
+          visibility: "internal",
+        })
+      ).id;
+    let view = (await sf.realMediaView(mkt, order.id))!;
+    expect(view.canSend).toBe(true);
+    expect(view.canApprove).toBe(false);
+    await sf.sendRealMedia(mkt, order.id, a.id, [
+      await media(a.id, a.productId!),
+    ]);
+    await sf.sendRealMedia(mkt, order.id, b.id, [
+      await media(b.id, b.productId!),
+    ]);
+    expect(
+      (await sf.realMediaTasks(admin))
+        .filter((t) => t.order.id === order.id)
+        .map((t) => t.kind),
+    ).toEqual(["approve"]);
+    await expect(
+      sf.decideRealMedia(mkt, order.id, a.id, "approved", null),
+    ).rejects.toThrow();
+    await expect(
+      sf.decideRealMedia(admin, order.id, b.id, "rejected", null),
+    ).rejects.toThrow("reason_required");
+    await sf.decideRealMedia(admin, order.id, b.id, "rejected", "Fundo sujo");
+    await sf.decideRealMedia(admin, order.id, a.id, "approved", null);
+    // Aprovado: a foto real é a principal e a única na vitrine; o produto à venda.
+    const photos = await store.list("product_photos", {
+      filter: { productId: a.productId! },
+    });
+    const real = photos.filter((p) => p.kind === "real");
+    expect(real).toHaveLength(1);
+    expect(real[0].isPrimary).toBe(true);
+    expect(showcaseOf(photos).map((p) => p.kind)).toEqual(["real"]);
+    expect(photos.filter((p) => p.kind !== "real" && p.isPrimary)).toEqual([]);
+    const product = (await store.get("products", a.productId!))!;
+    expect(product).toMatchObject({
+      active: true,
+      primaryPhotoDocumentId: real[0].documentId,
+    });
+    // Refeito e aprovado: a amostra pode voltar à trading.
+    expect(
+      (await sf.realMediaTasks(mkt))
+        .filter((t) => t.order.id === order.id)
+        .map((t) => t.kind),
+    ).toEqual(["do"]);
+    await sf.sendRealMedia(mkt, order.id, b.id, [
+      await media(b.id, b.productId!),
+    ]);
+    await sf.decideRealMedia(admin, order.id, b.id, "approved", null);
+    view = (await sf.realMediaView(admin, order.id))!;
+    expect(view.complete).toBe(true);
+    await flow.submitStep(mkt, order.id, "samples_returned", {
+      value: "Entregue na trading com o pedido",
+    });
+    // A trading confirma que recebeu: o carregamento libera.
+    await flow.validateStep(
+      supplierA,
+      order.id,
+      "samples_returned",
+      "validated",
+      null,
+    );
+    await flow.submitStep(supplierA, order.id, "container_loaded", {
+      documentId: await doc(supplierA, "carga.pdf"),
+    });
+  });
+
+  it("compra EXW: transportadora e custos de origem validados antes do container na fábrica; custo entra no pedido", async () => {
+    const store = getStore();
+    const flow = await import("@/lib/services/import-flow");
+    const po2 = await import("@/lib/services/purchase-order");
+    const { computeOrderFinance } = await import("@/lib/services/finance");
+    const { order, items } = await signedPurchaseOrder(["EX-1", "EX-2"]);
+    // Incoterm pelos produtos: algum EXW, o pedido é EXW.
+    const [master] = await store.list("purchase_sheets", {
+      filter: { orderId: items[0].productId!, productId: items[0].productId! },
+    });
+    if (master) {
+      await store.update("purchase_sheets", master.id, { incoterm: "EXW" });
+      expect(await po2.incotermFromProducts(order.id)).toBe("EXW");
+    }
+    await po2.setPurchaseIncoterm(admin, order.id, "EXW");
+    await expect(
+      po2.setPurchaseIncoterm(supplierA, order.id, "FOB"),
+    ).rejects.toThrow();
+    let fresh = (await store.get("orders", order.id))!;
+    expect(fresh.incoterm).toBe("EXW");
+    const keys = async () =>
+      (await flow.importFlowView(admin, fresh, "origin")).map(
+        (s) => s.template.key,
+      );
+    expect((await keys()).slice(0, 4)).toEqual([
+      "origin_carrier",
+      "origin_carrier_eta",
+      "origin_costs",
+      "container_at_factory",
+    ]);
+    const ops = await store.create("users", {
+      email: "comex.exw@wellmix.com",
+      name: "Edu Comex",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      passwordHash: "x",
+      active: true,
+      importerId: null,
+      functions: ["comex_internal"],
+      screens: null,
+      mustChangePassword: false,
+    } as never);
+    await flow.submitStep(admin, order.id, "booking", { value: "BK-EXW" });
+    await flow.validateStep(ops, order.id, "booking", "validated", null);
+    // O container só chega à fábrica depois dos custos de origem validados.
+    await expect(
+      flow.submitStep(supplierA, order.id, "container_at_factory", {
+        value: "2027-01-12",
+      }),
+    ).rejects.toThrow("previous_step");
+    await flow.submitStep(supplierA, order.id, "origin_carrier", {
+      value: "Ningbo Trucking",
+    });
+    await flow.submitStep(supplierA, order.id, "origin_carrier_eta", {
+      value: "2027-01-10",
+    });
+    await flow.submitStep(supplierA, order.id, "origin_costs", {
+      amount: 350,
+      currency: "USD",
+      documentId: (
+        await uploadDocument(supplierA, pdf("pop.pdf"), {
+          orderId: order.id,
+          type: "import_step",
+        })
+      ).id,
+    });
+    await expect(
+      flow.submitStep(supplierA, order.id, "container_at_factory", {
+        value: "2027-01-12",
+      }),
+    ).rejects.toThrow("previous_step");
+    await flow.validateStep(ops, order.id, "origin_costs", "validated", null);
+    await flow.submitStep(supplierA, order.id, "container_at_factory", {
+      value: "2027-01-12",
+    });
+    // FOB: os passos da compra EXW não aparecem.
+    await po2.setPurchaseIncoterm(admin, order.id, "FOB");
+    fresh = (await store.get("orders", order.id))!;
+    expect(await keys()).not.toContain("origin_costs");
+    // Custo do pedido com os custos de origem (na moeda da venda; em outra
+    // moeda sem câmbio do dia, o custo fica pendente).
+    const base = {
+      ...fresh,
+      status: "SHIPPING" as const,
+      fobTotal: 1000,
+      fobCurrency: "BRL",
+      sellPrice: 3000,
+      sellCurrency: "BRL",
+    };
+    const names = { customer: "c", supplier: "s", product: "p" };
+    const brl = computeOrderFinance(base, [], names, {
+      originCosts: [{ amount: 200, currency: "BRL" }],
+    });
+    expect([brl.cost, brl.originCost, brl.margin]).toEqual([1200, 200, 1800]);
+    const usd = computeOrderFinance(base, [], names, {
+      originCosts: [{ amount: 50, currency: "USD" }],
+    });
+    expect([usd.cost, usd.originCost]).toEqual([null, null]);
+    const withFx = computeOrderFinance(base, [], names, {
+      today: {
+        rates: { USD: 5 },
+        status: "ok",
+        day: "2026-11-14",
+      } as never,
+      originCosts: [{ amount: 50, currency: "USD" }],
+    });
+    expect([withFx.cost, withFx.originCost, withFx.estimated]).toEqual([
+      1250,
+      250,
+      true,
+    ]);
+  });
+
   it("prazo de cada passo conta da liberação do anterior", async () => {
     const lanes = await import("@/lib/purchase-lanes");
     const sla = {
@@ -800,6 +1608,55 @@ describe("pedido em nome do responsável pelo booking (trading)", () => {
     // Na Produção, "trade": a fábrica do booking entra sozinha.
     const { bookingFactory } = await import("@/lib/services/production");
     expect((await bookingFactory(order))?.name).toBe("Shenzhen Supplier A");
+
+    // Visão do login Trading (dono, 13/11/2026): com a faca, a foto em alta
+    // e o prazo de cada produto enviados, a etapa 2 ("Die-Cut") aparece
+    // concluída para ele, contada do que está gravado. A etapa de verdade e
+    // o andamento do pedido seguem com a arte e o certificado em aberto.
+    const { supplierLaneView } = await import("@/lib/purchase-lanes");
+    const tradingUser = { ...supplierA, partyId: trading.id };
+    const [prep] = await store.list("stages", {
+      filter: { orderId: order.id, key: "PREPARATION" },
+    });
+    const prepReqs = async () =>
+      (await requirementsOf(order.id)).filter((r) => r.stageId === prep.id);
+    const items = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    expect(supplierLaneView(prep, await prepReqs())).toMatchObject({
+      status: "active",
+      done: 0,
+      total: 6,
+      percent: 0,
+    });
+    for (const [i, item] of items.entries()) {
+      const k = (base: string) => `${base}__${item.id}`;
+      await submit(tradingUser, order.id, k("die_cut"), { file: "faca.pdf" });
+      await submit(tradingUser, order.id, k("hd_photo"), { file: "hd.pdf" });
+      // Com a faca e a foto do primeiro produto, a visão é parcial (2 de 6).
+      if (i === 0)
+        expect(supplierLaneView(prep, await prepReqs())).toMatchObject({
+          done: 2,
+          percent: 33,
+          complete: false,
+        });
+      await submit(tradingUser, order.id, k("lead_time_confirmed"), {
+        value: "30",
+      });
+    }
+    const stage = (await store.get("stages", prep.id))!;
+    const view = supplierLaneView(stage, await prepReqs())!;
+    expect(view).toMatchObject({
+      status: "done",
+      done: 6,
+      total: 6,
+      percent: 100,
+      complete: true,
+    });
+    expect(view.completedAt).toBeTruthy();
+    expect(stage.status).toBe("active");
+    expect(stage.percent).toBeLessThan(100);
+    expect((await store.get("orders", order.id))!.status).toBe("PREPARATION");
   });
 
   it("pedido do próprio fornecedor: o contrato não ganha a chave da fábrica", async () => {

@@ -7,34 +7,34 @@ export const pt = {
   "supplierRequests.table.col.rounds": "Programações",
   "supplierRequests.table.col.perRound": "Peças por programação",
   "purchaseRounds.form.toggle": "Programação de compra",
-  "purchaseRounds.form.ask": "Comprar em rodadas nos próximos meses?",
+  "purchaseRounds.form.ask": "Comprar em programações nos próximos meses?",
   "purchaseRounds.form.hint":
-    "Divida o total em rodadas de pedido com intervalo fixo, a partir da data da 1ª rodada. A solicitação leva a programação ao responsável pelo book. Aprovada, o pedido de compra vira o pedido pai e cada rodada nasce como pedido filho no dia combinado, com a negociação e as artes do pai.",
-  "purchaseRounds.form.interval": "Intervalo entre rodadas",
+    "Divida o total em programações de pedido com intervalo fixo, a partir da data da 1ª programação. A solicitação leva a programação ao responsável pelo book. Aprovada, o pedido de compra vira o pedido pai e cada programação nasce como pedido filho no dia combinado, com a negociação e as artes do pai.",
+  "purchaseRounds.form.interval": "Intervalo entre programações",
   "purchaseRounds.form.days": "{n} dias",
   "purchaseRounds.form.custom": "Outro",
-  "purchaseRounds.form.firstDate": "Data da 1ª rodada",
-  "purchaseRounds.form.n": "Rodada {n}",
+  "purchaseRounds.form.firstDate": "Data da 1ª programação",
+  "purchaseRounds.form.n": "Programação {n}",
   "purchaseRounds.form.quantity": "Peças",
   "purchaseRounds.form.expected": "Pedido em",
-  "purchaseRounds.form.add": "Rodada",
-  "purchaseRounds.form.remove": "Remover rodada {n}",
+  "purchaseRounds.form.add": "Programação",
+  "purchaseRounds.form.remove": "Remover programação {n}",
   "purchaseRounds.form.total": "Total: {total} {unit}",
   "purchaseRounds.form.off": "Sem programação (pedido único)",
   "purchaseRounds.form.quantityOff":
-    "Com a programação de compra, a quantidade é a soma das rodadas.",
+    "Com a programação de compra, a quantidade é a soma das programações.",
   "purchaseRounds.gen.title": "Gerar programação pela quantidade",
   "purchaseRounds.gen.hint":
-    "Digite o total de caixas e o número de datas programadas: o total é dividido igualmente entre as rodadas, em caixas master inteiras. Os containers de cada rodada saem dessa conta. Em cada rodada, + Aumentar ou − Diminuir ajusta as peças para fechar o container (com 95% ou mais ele conta como cheio).",
+    "Digite o total de caixas e o número de datas programadas: o total é dividido igualmente entre as programações, em caixas master inteiras. Os containers de cada programação saem dessa conta. Em cada programação, + Aumentar ou − Diminuir ajusta as peças para fechar o container (com 95% ou mais ele conta como cheio).",
   "purchaseRounds.gen.total": "Total de caixas",
   "purchaseRounds.gen.container": "Container",
-  "purchaseRounds.gen.perRound": "Containers por rodada",
+  "purchaseRounds.gen.perRound": "Containers por programação",
   "purchaseRounds.gen.perRoundHint":
-    "Informativo: quantos containers cada rodada precisa. Sai das peças de cada rodada e muda quando uma rodada aumenta ou diminui.",
+    "Informativo: quantos containers cada programação precisa. Sai das peças de cada programação e muda quando uma programação aumenta ou diminui.",
   "purchaseRounds.gen.perRoundRange": "{min} a {max}",
   "purchaseRounds.gen.totalField": "Containers no total",
   "purchaseRounds.gen.totalFieldHint":
-    "Informativo: a soma dos containers de todas as rodadas. Muda quando uma rodada aumenta ou diminui.",
+    "Informativo: a soma dos containers de todas as programações. Muda quando uma programação aumenta ou diminui.",
   "purchaseRounds.gen.rounds": "Programações",
   "purchaseRounds.gen.submit": "Gerar programação",
   "purchaseRounds.gen.calc": "Cálculo",
@@ -43,24 +43,24 @@ export const pt = {
   "purchaseRounds.gen.selectItem":
     "Selecione um item na tabela para gerar a programação de compra",
   "purchaseRounds.gen.noCarton":
-    "O item escolhido não tem CBM da caixa (nem as medidas): sem ele não há conta de containers. As caixas são divididas igualmente pelas rodadas.",
+    "O item escolhido não tem CBM da caixa (nem as medidas): sem ele não há conta de containers. As caixas são divididas igualmente pelas programações.",
   "purchaseRounds.gen.noPieces":
-    "O item escolhido não tem peças por caixa master: não dá para converter caixas em peças. Marque outro item ou use “+ Programação de compra” e informe as peças de cada rodada.",
+    "O item escolhido não tem peças por caixa master: não dá para converter caixas em peças. Marque outro item ou use “+ Programação de compra” e informe as peças de cada programação.",
   "purchaseRounds.gen.tooBig":
     "A caixa master ({cbm} m³) não cabe no {container} ({cap} m³). Escolha um container maior.",
   "purchaseRounds.gen.errorTotal": "Digite o total de caixas (número inteiro).",
   "purchaseRounds.gen.errorRounds": "Informe de 1 a {max} programações.",
   "purchaseRounds.gen.result":
-    "{rounds} rodada(s) · {cartons} caixas ({pieces} peças) · {cbm} m³ · {containers} container(s) {container}",
+    "{rounds} programação(ões) · {cartons} caixas ({pieces} peças) · {cbm} m³ · {containers} container(s) {container}",
   "purchaseRounds.gen.extra":
     "Arredondado para caixas master inteiras: +{extra} peças.",
   "purchaseRounds.gen.reduced":
-    "São só {cartons} caixa(s) master: a programação ficou com {rounds} rodada(s).",
+    "São só {cartons} caixa(s) master: ficaram {rounds} programação(ões).",
   "purchaseRounds.gen.each":
-    "Cada rodada: {cartons} caixas · {cbm} m³ = {n} container {container}, com {pct}% ocupado.",
+    "Cada programação: {cartons} caixas · {cbm} m³ = {n} container {container}, com {pct}% ocupado.",
   "purchaseRounds.gen.eachMany":
-    "Cada rodada: {cartons} caixas · {cbm} m³ = {n} containers {container}, o último com {pct}% ocupado.",
-  "purchaseRounds.gen.list": "Containers por rodada: {list}.",
+    "Cada programação: {cartons} caixas · {cbm} m³ = {n} containers {container}, o último com {pct}% ocupado.",
+  "purchaseRounds.gen.list": "Containers por programação: {list}.",
   "purchaseRounds.gen.listItem": "{i}ª: {n} ({pct}% ocupado)",
   "purchaseRounds.gen.listItemMany": "{i}ª: {n} (o último {pct}% ocupado)",
   "purchaseRounds.gen.totalContainers": "Containers {container} no total: {n}.",
@@ -86,15 +86,15 @@ export const pt = {
 
   "purchaseRounds.summary.title": "Programação de compra",
   "purchaseRounds.summary.same":
-    "{rounds} rodadas de {perRound} peças · total {total} peças",
+    "{rounds} programações de {perRound} peças · total {total} peças",
   "purchaseRounds.summary.mixed":
-    "{rounds} rodadas ({list} peças) · total {total} peças",
+    "{rounds} programações ({list} peças) · total {total} peças",
   "purchaseRounds.summary.dates": "A cada {days} dias, de {first} a {last}",
-  "purchaseRounds.summary.short": "{rounds} rodadas a cada {days} dias",
-  "purchaseRounds.col.rounds": "Rodadas",
-  "purchaseRounds.col.perRound": "Peças por rodada",
+  "purchaseRounds.summary.short": "{rounds} programações a cada {days} dias",
+  "purchaseRounds.col.rounds": "Programações",
+  "purchaseRounds.col.perRound": "Peças por programação",
   "purchaseRounds.col.total": "Total",
-  "purchaseRounds.col.round": "Rodada",
+  "purchaseRounds.col.round": "Programação",
   "purchaseRounds.col.date": "Pedido em",
   "purchaseRounds.col.pieces": "Peças",
   "purchaseRounds.col.order": "Pedido",
@@ -102,27 +102,27 @@ export const pt = {
 
   "purchaseRounds.order.parentTitle": "Programação de compra (pedido pai)",
   "purchaseRounds.order.parentHint":
-    "Pedido pai: guarda o total, a negociação, as artes e o certificado. Ele não vai a contrato nem produção. Cada rodada nasce como pedido filho no dia combinado, com as artes e o certificado deste pedido e o seu próprio contrato.",
+    "Pedido pai: guarda o total, a negociação, as artes e o certificado. Ele não vai a contrato nem produção. Cada programação nasce como pedido filho no dia combinado, com as artes e o certificado deste pedido e o seu próprio contrato.",
   "purchaseRounds.order.waiting": "Nasce em {date}",
   "purchaseRounds.order.waitingPrep":
     "Dia chegou: nasce quando a preparação deste pedido concluir",
   "purchaseRounds.order.child": "Pedido #{n}",
-  "purchaseRounds.order.childOf": "Rodada {n} de {rounds} do pedido pai",
+  "purchaseRounds.order.childOf": "Programação {n} de {rounds} do pedido pai",
   "purchaseRounds.order.parentLink": "Abrir o pedido pai #{n}",
-  "purchaseRounds.order.spawn": "Gerar as rodadas do dia",
+  "purchaseRounds.order.spawn": "Gerar as programações do dia",
   "purchaseRounds.order.spawnPending": "Gerando…",
-  "purchaseRounds.order.spawned": "{n} rodada(s) viraram pedido.",
-  "purchaseRounds.order.none": "Nenhuma rodada para gerar hoje.",
+  "purchaseRounds.order.spawned": "{n} programação(ões) viraram pedido.",
+  "purchaseRounds.order.none": "Nenhuma programação para gerar hoje.",
 
   "purchaseRounds.notify.child.subject":
-    "Pedido de compra #{n}: rodada {round}",
+    "Pedido de compra #{n}: programação {round}",
   "purchaseRounds.notify.child.body":
-    "A rodada {round} do pedido #{parent} virou o pedido #{n}, com a negociação, as artes e o certificado do pai. Falta o contrato da rodada.",
+    "A programação {round} do pedido #{parent} virou o pedido #{n}, com a negociação, as artes e o certificado do pai. Falta o contrato da programação.",
 
   "purchaseOrder.error.purchase_order_schedule_mixed":
-    "Produtos com programação de compra só entram juntos no pedido quando as rodadas têm as mesmas datas (1ª data, intervalo e número de rodadas). Gere pedidos separados.",
+    "Produtos com programação de compra só entram juntos no pedido quando as programações têm as mesmas datas (1ª data, intervalo e número de programações). Gere pedidos separados.",
   "purchaseOrder.error.purchase_order_schedule_qty":
-    "Programação de compra inválida: cada rodada precisa de peças.",
+    "Programação de compra inválida: cada programação precisa de peças.",
   "orders.error.rounds_not_parent":
     "Este pedido não tem programação de compra.",
 };

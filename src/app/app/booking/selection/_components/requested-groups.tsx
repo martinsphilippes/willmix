@@ -281,6 +281,20 @@ export function RequestedGroups({
                         })}
                       </Part>
                     ) : null}
+                    {/* Variações de cor: as peças de cada cor incluída. */}
+                    {g.colorPlan?.rows.length ? (
+                      <Part
+                        data-selection-winner-colors={g.colorPlan.rows.length}
+                      >
+                        {t("colors.byColor")}:{" "}
+                        {g.colorPlan.rows
+                          .map(
+                            (r) =>
+                              `${r.color} ${r.quantity.toLocaleString(t.intl)}`,
+                          )
+                          .join(" · ")}
+                      </Part>
+                    ) : null}
                   </div>
                 </div>
               </div>

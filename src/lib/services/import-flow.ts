@@ -11,7 +11,9 @@ import {
 import {
   ForbiddenError,
   canViewOrder,
+  hasCertifier,
   isAdmin,
+  isOrderCertifier,
   isWellmix,
 } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
@@ -64,9 +66,24 @@ export const SEAL_REPLACED_REASON = "@seal_replaced";
 
 /** Quem age num passo. */
 export type StepActor =
-  "logistics" | "comex" | "ocp" | "agency" | "supplier" | "finance" | "wellmix";
+  | "logistics"
+  | "comex"
+  | "ocp"
+  | "agency"
+  | "supplier"
+  | "finance"
+  // Comex interno da Wellmix (função "Comex (interno)"): rastreio do container.
+  | "comex_internal"
+  // Agência de marketing na China: amostras e fotos/vídeos reais.
+  | "marketing_agency"
+  | "wellmix";
 /** Cartão do passo: embarque/desembaraço ou certificação (Fase F). */
-export type StepGroup = "import" | "certification";
+export type StepGroup =
+  | "import"
+  | "certification"
+  | "origin"
+  // Amostras depois da inspeção (pedido de compra com pedido de amostras).
+  | "samples";
 /** O que o passo pede ("file_text": arquivo obrigatório e texto opcional). */
 export type StepInput =
   | "text"
@@ -196,6 +213,143 @@ export const IMPORT_STEPS: StepTemplate[] = [
     visibleTo: ["comex", "logistics"],
     after: "di",
   },
+  /*
+   * Container na origem (mapa R19, R20, R7, R25, R26; docs/ORIGIN_CONTAINER.md):
+   * depois do booking, o fornecedor (ou a trading, que entra como fornecedor)
+   * registra o container vazio na fábrica, as fotos e vídeos dele, o
+   * carregamento com o check de carga, o lacre com o número do container e a
+   * volta ao porto. O Comex interno acompanha o rastreio todo dia.
+   */
+  // Compra EXW (mapa R17 e R18): antes do container na fábrica, a trading
+  // contrata a transportadora e registra os custos de origem (POP).
+  {
+    key: "origin_carrier",
+    actor: "supplier",
+    validator: null,
+    input: "text",
+    visibleTo: ["supplier", "logistics", "comex"],
+    after: "booking",
+    group: "origin",
+  },
+  {
+    key: "origin_carrier_eta",
+    actor: "supplier",
+    validator: null,
+    input: "date",
+    visibleTo: ["supplier", "logistics", "comex"],
+    after: "origin_carrier",
+    group: "origin",
+  },
+  {
+    key: "origin_costs",
+    actor: "supplier",
+    validator: "wellmix",
+    input: "money_file",
+    visibleTo: ["supplier"],
+    after: "origin_carrier_eta",
+    group: "origin",
+  },
+  {
+    key: "container_at_factory",
+    actor: "supplier",
+    validator: null,
+    input: "date",
+    visibleTo: ["supplier", "logistics", "comex"],
+    after: "booking",
+    group: "origin",
+  },
+  {
+    key: "container_empty",
+    actor: "supplier",
+    validator: null,
+    input: "file",
+    visibleTo: ["supplier", "logistics"],
+    after: "container_at_factory",
+    group: "origin",
+  },
+  {
+    key: "container_loaded",
+    actor: "supplier",
+    validator: "wellmix",
+    input: "file_text",
+    visibleTo: ["supplier", "logistics", "comex"],
+    after: "container_empty",
+    group: "origin",
+  },
+  {
+    key: "container_sealed",
+    actor: "supplier",
+    validator: null,
+    input: "text_file",
+    visibleTo: ["supplier", "logistics", "comex"],
+    after: "container_loaded",
+    group: "origin",
+  },
+  {
+    key: "container_at_port",
+    actor: "supplier",
+    validator: null,
+    input: "date",
+    visibleTo: ["supplier", "logistics", "comex"],
+    after: "container_sealed",
+    group: "origin",
+  },
+  {
+    key: "container_tracking",
+    actor: "comex_internal",
+    validator: null,
+    input: "text",
+    visibleTo: [],
+    after: "container_at_factory",
+    group: "origin",
+  },
+  // Amostras (mapa R12 a R14; docs/SAMPLE_FLOW.md): abrem com o SKU aprovado.
+  {
+    key: "samples_picked",
+    actor: "supplier",
+    validator: null,
+    input: "date",
+    visibleTo: ["supplier", "marketing_agency"],
+    group: "samples",
+  },
+  {
+    key: "samples_brazil",
+    actor: "supplier",
+    validator: null,
+    input: "text_file",
+    visibleTo: ["supplier"],
+    after: "samples_picked",
+    group: "samples",
+  },
+  {
+    key: "samples_china",
+    actor: "supplier",
+    validator: null,
+    input: "text_file",
+    visibleTo: ["supplier", "marketing_agency"],
+    after: "samples_picked",
+    group: "samples",
+  },
+  {
+    key: "samples_china_received",
+    actor: "marketing_agency",
+    validator: null,
+    input: "date",
+    visibleTo: ["supplier", "marketing_agency"],
+    after: "samples_china",
+    group: "samples",
+  },
+  {
+    // "Devolve": a amostra da China volta à trading para seguir com o
+    // pedido; a trading confirma que recebeu. Só depois das fotos reais.
+    key: "samples_returned",
+    actor: "marketing_agency",
+    validator: "supplier",
+    input: "text",
+    visibleTo: ["supplier", "marketing_agency"],
+    after: "samples_china_received",
+    group: "samples",
+  },
   // Certificação (Fase F, docs/CERTIFICATION.md): com o OCP do pedido.
   {
     key: "cert_memorial",
@@ -250,12 +404,33 @@ export const IMPORT_STEPS: StepTemplate[] = [
 export const stepTemplate = (key: ImportStepKey) =>
   IMPORT_STEPS.find((s) => s.key === key)!;
 
+/*
+ * Pedido de compra: packing list, invoice e BL saem dos documentos do
+ * embarque (docs/SHIPPING_DOCS.md: fornecedor, trading e marítima, conferidos
+ * pelo sistema). Os passos antigos do despachante e do agente não aparecem;
+ * o "BL" fica, concluído sozinho quando o BL é conferido.
+ */
+const PURCHASE_HIDDEN_STEPS: readonly ImportStepKey[] = [
+  "draft_bl",
+  "invoice_packing",
+  "invoice_signed",
+];
+
+/** O passo vale para o pedido (container na origem só no de compra; papéis antigos fora dele). */
+export function stepApplies(order: Order, key: ImportStepKey): boolean {
+  const purchase = isPurchaseFlow(order);
+  if (EXW_STEPS.includes(key)) return isExwOrder(order);
+  if (groupOf(stepTemplate(key)) === "origin") return purchase;
+  return !(purchase && PURCHASE_HIDDEN_STEPS.includes(key));
+}
+
 const PARTNER_FIELD = {
   logistics: "logisticsId",
   comex: "comexId",
   ocp: "ocpId",
   agency: "agencyId",
   supplier: "supplierId",
+  marketing_agency: "marketingAgencyId",
 } as const;
 
 /** Passos da certificação enviados no quadro em destaque do alto do cartão. */
@@ -274,6 +449,9 @@ export function stepLink(
   tpl: StepTemplate,
   action: "do" | "validate" = "validate",
 ): string {
+  if (groupOf(tpl) === "origin")
+    return `/app/orders/${orderId}#container-origin`;
+  if (groupOf(tpl) === "samples") return `/app/orders/${orderId}#samples-flow`;
   if (groupOf(tpl) !== "certification")
     return `/app/orders/${orderId}#import-flow`;
   if (action === "do" && CERT_FEATURED_STEPS.includes(tpl.key))
@@ -283,7 +461,17 @@ export function stepLink(
 
 /** Nome do cartão nos registros da auditoria. */
 const auditLabel = (tpl: StepTemplate) =>
-  groupOf(tpl) === "certification" ? "Certificação" : "Embarque/desembaraço";
+  groupOf(tpl) === "certification"
+    ? "Certificação"
+    : groupOf(tpl) === "origin"
+      ? "Container na origem"
+      : groupOf(tpl) === "samples"
+        ? "Amostras"
+        : "Embarque/desembaraço";
+
+/** Comex interno: permissão "Rastrear o container" (padrão: função Comex interno) ou admin. */
+export const isComexInternal = (user: User) =>
+  isAdmin(user) || (isWellmix(user) && can(user, "container.tracking"));
 
 /** Financeiro do pedido: permissão "Numerário" (padrão: função financeiro) ou admin. */
 export const isFinance = (user: User) =>
@@ -292,16 +480,24 @@ export const isFinance = (user: User) =>
 /** O usuário é quem age (ou valida) por esse papel neste pedido? */
 export function actsAs(user: User, order: Order, actor: StepActor): boolean {
   if (actor === "finance") return isFinance(user);
+  if (actor === "comex_internal") return isComexInternal(user);
   if (isWellmix(user)) return true;
   if (actor === "wellmix") return false;
+  // Certificação: o despachante do pedido (ou a certificadora designada).
+  if (actor === "ocp") return isOrderCertifier(user, order);
   const field = PARTNER_FIELD[actor];
   return user.role === actor && !!user.partyId && order[field] === user.partyId;
 }
 
-/** A certificadora (OCP) designada no pedido. */
-function isOrderOcp(user: User, order: Order) {
-  return user.role === "ocp" && !!user.partyId && order.ocpId === user.partyId;
-}
+/** Quem certifica pelo pedido: o despachante ou a certificadora (OCP) designada. */
+const isOrderOcp = (user: User, order: Order) => isOrderCertifier(user, order);
+
+/**
+ * O parceiro do papel está designado no pedido? Certificação: o despachante
+ * ou a certificadora (a certificação é do despachante, dono, 13/11/2026).
+ */
+const partnerAssigned = (order: Order, actor: keyof typeof PARTNER_FIELD) =>
+  actor === "ocp" ? hasCertifier(order) : !!order[PARTNER_FIELD[actor]];
 
 /**
  * Pode enviar o passo: quem age por ele. O passo da agência só é dela quando
@@ -314,6 +510,9 @@ export async function canSubmitStep(
   key: ImportStepKey,
 ): Promise<boolean> {
   const tpl = stepTemplate(key);
+  if (!stepApplies(order, key)) return false;
+  // Pedido de compra: o BL vem dos documentos do embarque, conferido.
+  if (key === "bl" && isPurchaseFlow(order)) return false;
   // Memorial: a certificadora do pedido também anexa (dono, 10/11/2026).
   if (key === "cert_memorial" && isOrderOcp(user, order)) return true;
   // Arte com o selo: o designer do pedido (login da agência escolhido em
@@ -335,7 +534,10 @@ async function isOrderDesigner(user: User, order: Order): Promise<boolean> {
 export function canSeeStep(user: User, order: Order, key: ImportStepKey) {
   if (isWellmix(user)) return true;
   if (!canViewOrder(user, order)) return false;
-  return stepTemplate(key).visibleTo.includes(user.role);
+  const visibleTo = stepTemplate(key).visibleTo;
+  // O despachante certifica: vê o que a certificadora vê.
+  if (user.role === "broker" && visibleTo.includes("ocp")) return true;
+  return visibleTo.includes(user.role);
 }
 
 /** O card aparece para o usuário (vê algum passo). */
@@ -363,9 +565,30 @@ const isDone = (step: ImportStep | undefined) => {
 /** Passo concluído: validado (se tem quem valide) ou enviado. Control Tower usa. */
 export const importStepDone = isDone;
 
+/** Compra EXW: pedido de compra com algum produto EXW (dono, 14/11/2026). */
+export const isExwOrder = (order: Pick<Order, "flow" | "incoterm">) =>
+  isPurchaseFlow(order as Order) && order.incoterm === "EXW";
+
+/** Passos só da compra EXW (transportadora e custos de origem). */
+const EXW_STEPS: readonly ImportStepKey[] = [
+  "origin_carrier",
+  "origin_carrier_eta",
+  "origin_costs",
+];
+
+/**
+ * Passo anterior: o do modelo; na compra EXW, o container só chega à fábrica
+ * depois dos custos de origem validados (mapa R17? → R17 → R18 → R19).
+ */
+function afterOf(key: ImportStepKey, order?: Order): ImportStepKey | undefined {
+  if (key === "container_at_factory" && order && isExwOrder(order))
+    return "origin_costs";
+  return stepTemplate(key).after;
+}
+
 /** O passo já pode ser feito (o anterior concluído)? */
-function ready(key: ImportStepKey, steps: ImportStep[]) {
-  const after = stepTemplate(key).after;
+function ready(key: ImportStepKey, steps: ImportStep[], order?: Order) {
+  const after = afterOf(key, order);
   return !after || isDone(steps.find((s) => s.key === after));
 }
 
@@ -393,18 +616,19 @@ async function targetFor(
   actor: StepActor,
 ): Promise<NotifyTarget> {
   // Quem faz a arte (o designer do pedido, a agência quando é ela quem faz a
-  // arte ou a Wellmix) e a certificadora: o mesmo destino das pendências.
+  // arte ou a Wellmix) e quem certifica (o despachante): o mesmo destino das
+  // pendências.
   if (actor === "agency")
     return notifyTargetOf(artMakerRoute(order, await loadRoutingContext()));
   if (actor === "ocp")
     return notifyTargetOf(ocpRoute(order, await loadRoutingContext()));
-  if (actor === "finance") {
+  if (actor === "finance" || actor === "comex_internal") {
     const team = await getStore().list("users", {
       filter: { role: ["admin", "operator"], active: true },
     });
     const finance = holdersOf(
       team,
-      "numerario.manage",
+      actor === "finance" ? "numerario.manage" : "container.tracking",
       await loadFunctionDefs(),
     );
     return {
@@ -465,6 +689,33 @@ export interface SubmitInput {
   documentId?: string | null;
 }
 
+/*
+ * Amostras (docs/SAMPLE_FLOW.md): os passos só valem com o SKU aprovado e o
+ * pedido de amostras; a amostra só volta à trading com as fotos reais de
+ * todos os produtos aprovadas; e o container só é carregado depois que ela
+ * voltou (a trading embarca a amostra com o pedido).
+ */
+async function assertSampleGates(
+  order: Order,
+  key: ImportStepKey,
+  steps: ImportStep[],
+) {
+  const tpl = stepTemplate(key);
+  if (groupOf(tpl) !== "samples" && key !== "container_loaded") return;
+  const flow = await import("./sample-flow");
+  if (groupOf(tpl) === "samples") {
+    if (!(await flow.samplesApply(order)))
+      throw new ImportFlowError("samples_closed");
+    if (key === "samples_returned" && !(await flow.realMediaComplete(order)))
+      throw new ImportFlowError("real_media_required");
+    return;
+  }
+  if (!(await flow.samplesOrdered(order))) return;
+  const returned = steps.find((s) => s.key === "samples_returned");
+  if (returned?.status !== "validated")
+    throw new ImportFlowError("samples_return_required");
+}
+
 /** Quem age envia o passo (número, data, canal, valor e/ou arquivo). */
 export async function submitStep(
   user: User,
@@ -477,7 +728,13 @@ export async function submitStep(
   if (!(await canSubmitStep(user, order, key))) throw new ForbiddenError();
   const store = getStore();
   const steps = await stepsOf(orderId);
-  if (!ready(key, steps)) throw new ImportFlowError("previous_step");
+  if (!ready(key, steps, order)) throw new ImportFlowError("previous_step");
+  await assertSampleGates(order, key, steps);
+  // Pedido de compra de antes, sem incoterm: o booking decide pelos produtos.
+  if (key === "booking" && isPurchaseFlow(order) && !order.incoterm) {
+    const { syncPurchaseIncoterm } = await import("./purchase-order");
+    await syncPurchaseIncoterm(order.id);
+  }
   const current = steps.find((s) => s.key === key);
   if (current && tpl.validator && current.status === "validated")
     throw new ImportFlowError("already_validated");
@@ -695,9 +952,10 @@ async function handOverSeal(
  */
 export async function notifySealRequested(order: Order): Promise<void> {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return;
-  if (order.ocpId) {
+  // Certificação: o despachante do pedido (dono, 13/11/2026).
+  if (order.brokerId) {
     await notify(
-      { role: "ocp", partyId: order.ocpId },
+      { role: "broker", partyId: order.brokerId },
       {
         link: stepLink(order.id, stepTemplate("cert_seal"), "do"),
         kind: "action",
@@ -729,15 +987,16 @@ export async function notifySealRequested(order: Order): Promise<void> {
  */
 export async function notifySealPartner(
   order: Order,
-  field: "ocpId" | "agencyId",
+  field: "ocpId" | "brokerId" | "agencyId",
   /** Quem estava no campo antes da troca (para não avisar de novo quem já fazia a arte). */
   previousPartyId?: string | null,
 ): Promise<void> {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return;
   const steps = await stepsOf(order.id);
   const sealDone = isDone(steps.find((s) => s.key === "cert_seal"));
-  if (field === "ocpId") {
-    if (order.ocpId && !sealDone) await notifySealRequested(order);
+  // Quem certifica mudou (certificadora ou despachante): o selo a emitir.
+  if (field === "ocpId" || field === "brokerId") {
+    if (hasCertifier(order) && !sealDone) await notifySealRequested(order);
     return;
   }
   if (previousPartyId !== undefined) {
@@ -909,11 +1168,20 @@ export async function importFlowView(
   order: Order,
   group: StepGroup = "import",
 ): Promise<StepView[]> {
+  // Amostras: só no pedido de compra com amostras pedidas e o SKU aprovado.
+  if (group === "samples") {
+    const { samplesApply } = await import("./sample-flow");
+    if (!(await samplesApply(order))) return [];
+  }
   const steps = await stepsOf(order.id);
   // Pedido encerrado: só leitura.
   const open = order.status !== "CLOSED" && order.status !== "CANCELLED";
   const shown = IMPORT_STEPS.filter(
-    (tpl) => groupOf(tpl) === group && canSeeStep(user, order, tpl.key),
+    (tpl) =>
+      groupOf(tpl) === group &&
+      // Container na origem só no pedido de compra; nele, sem os papéis antigos.
+      stepApplies(order, tpl.key) &&
+      canSeeStep(user, order, tpl.key),
   );
   // Passo da agência: só de quem faz a arte (a Wellmix sempre pode agir;
   // o designer do pedido também, mesmo login da agência).
@@ -953,15 +1221,21 @@ export async function importFlowView(
   return Promise.all(
     shown.map(async (tpl) => {
       const step = steps.find((s) => s.key === tpl.key) ?? null;
-      const isReady = ready(tpl.key, steps);
+      // Pedido de compra: o BL vem conferido dos documentos do embarque (sem
+      // o draft do agente antes dele, e ninguém envia por aqui).
+      const purchaseBl = tpl.key === "bl" && isPurchaseFlow(order);
+      const isReady = purchaseBl || ready(tpl.key, steps, order);
       const done = isDone(step ?? undefined);
       return {
-        template: tpl,
+        template: purchaseBl
+          ? { ...tpl, after: undefined }
+          : { ...tpl, after: afterOf(tpl.key, order) },
         step,
         ready: isReady,
         done,
         canSubmit:
           open &&
+          !purchaseBl &&
           isReady &&
           !(tpl.validator && step?.status === "validated") &&
           (actsAs(user, order, tpl.actor) ||
@@ -1072,12 +1346,23 @@ export async function purchaseNeedsCertification(
  * começado, a partir da Preparação. Pedido de compra: só com produto que
  * exige certificação (P6), e o memorial desde que o pedido nasce.
  */
+/** Até a chegada do navio: o rastreio diário do container vale nessas etapas. */
+const TRACKING_LIVE = ["INSPECTION", "SHIPPING", "CUSTOMS"];
+
+/** Hoje em Brasília (AAAA-MM-DD). */
+const todayInBrazil = () =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
 export async function importTasks(
   user: User,
   orders: Order[],
   options: ImportTasksOptions = {},
 ): Promise<ImportTaskDraft[]> {
-  const IMPORT_LIVE = ["INSPECTION", "SHIPPING", "CUSTOMS", "TRANSPORT"];
   const open = orders.filter(
     (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
   );
@@ -1092,41 +1377,56 @@ export async function importTasks(
     throw error;
   }
   const out: ImportTaskDraft[] = [];
-  const wellmix = isWellmix(user);
-  const teamView = wellmix && !!options.team;
   let agencyArt: boolean | null = null;
   // Certificação: quem recebe cada passo, lido uma vez para a lista toda.
   const ctx = await loadRoutingContext();
-  const teamIds = new Set(ctx.team.map((u) => u.id));
-  const mine = (route: Route) =>
-    teamView
-      ? !!route.team || (route.userIds ?? []).some((id) => teamIds.has(id))
-      : reaches(user, route);
   const certPurchase = await purchaseOrdersNeedingCert(open);
+  // Wellmix: a mesma regra que o resumo do pedido guarda (docs/RESUMOS.md),
+  // em duas partes: o que não depende de quem vê e, na hora, para quem é.
+  if (isWellmix(user)) {
+    const today = todayInBrazil();
+    for (const order of open) {
+      const steps = rows.filter((r) => r.orderId === order.id);
+      out.push(
+        ...routeImportCandidates(
+          user,
+          order,
+          wellmixImportCandidates(order, steps, certPurchase.has(order.id)),
+          ctx,
+          today,
+          options,
+        ),
+      );
+    }
+    return out;
+  }
   for (const order of open) {
     const steps = rows.filter((r) => r.orderId === order.id);
     const importLive = IMPORT_LIVE.includes(order.status);
     const gate = certGate(order, steps, certPurchase.has(order.id));
+    // Amostras: só com o pedido de amostras e o SKU aprovado.
+    const samplesOn =
+      isPurchaseFlow(order) &&
+      (await (await import("./sample-flow")).samplesApply(order));
     for (const tpl of IMPORT_STEPS) {
       const cert = groupOf(tpl) === "certification";
       if (!cert && !importLive) continue;
+      if (groupOf(tpl) === "samples" && !samplesOn) continue;
+      // Container na origem só no pedido de compra; nele, sem os papéis antigos.
+      if (!stepApplies(order, tpl.key)) continue;
       const step = steps.find((s) => s.key === tpl.key);
       if (cert) {
-        const task = certTask(order, tpl, step, steps, ctx, gate);
+        const candidate = certCandidate(order, tpl, step, steps, gate);
+        const task = candidate && routeCert(order, tpl, candidate, ctx);
         if (!task) continue;
         const { route, ...draft } = task;
-        if (!mine(route)) continue;
-        if (draft.kind === "cert_validate" && !teamView) {
-          // Quem enviou não valida o próprio envio; a arte com o selo, só
-          // quem pode validar arte.
-          if (step?.submittedByUserId === user.id) continue;
-          if (
-            wellmix &&
-            tpl.key === "cert_seal_art" &&
-            !canValidateArt(user, ctx)
-          )
-            continue;
-        }
+        if (!reaches(user, route)) continue;
+        // Quem enviou não valida o próprio envio.
+        if (
+          draft.kind === "cert_validate" &&
+          step?.submittedByUserId === user.id
+        )
+          continue;
         out.push({
           ...draft,
           order,
@@ -1139,47 +1439,256 @@ export async function importTasks(
         tpl.validator &&
         step?.status === "submitted" &&
         step.submittedByUserId !== user.id &&
-        actsAs(user, order, tpl.validator) &&
-        // Wellmix só valida no lugar do parceiro quando ele não foi designado.
-        (!wellmix ||
-          tpl.validator === "wellmix" ||
-          tpl.validator === "finance" ||
-          (tpl.validator !== "supplier" &&
-            !order[PARTNER_FIELD[tpl.validator]]))
+        actsAs(user, order, tpl.validator)
       ) {
         out.push({
           kind: "import_validate",
           order,
           key: tpl.key,
           sinceAt: step.submittedAt,
+          link: stepLink(order.id, tpl),
         });
         continue;
       }
-      // Fazer (ou refazer) o passo.
+      // Fazer (ou refazer) o passo. O rastreio do container é todo dia, até
+      // a chegada: a pendência volta quando o último registro não é de hoje.
       const todo =
-        !step || step.status === "pending" || step.status === "rejected";
-      if (!todo || !ready(tpl.key, steps)) continue;
+        !step ||
+        step.status === "pending" ||
+        step.status === "rejected" ||
+        (tpl.key === "container_tracking" &&
+          TRACKING_LIVE.includes(order.status) &&
+          (step.submittedAt ?? "").slice(0, 10) < todayInBrazil());
+      if (!todo || !ready(tpl.key, steps, order)) continue;
+      // Pedido de compra: o BL vem conferido dos documentos do embarque.
+      if (tpl.key === "bl" && isPurchaseFlow(order)) continue;
       if (!actsAs(user, order, tpl.actor)) continue;
       if (tpl.actor === "agency") {
         // Passo de quem faz a arte: a agência do pedido ou, sem ela, a Wellmix.
         agencyArt ??= (await getSettings()).agencyValidationEnabled;
-        const agencyDoes = artRole(order, agencyArt) === "agency";
-        if (wellmix ? agencyDoes : !agencyDoes) continue;
-      } else if (wellmix && tpl.actor !== "wellmix" && tpl.actor !== "finance")
-        continue;
+        if (artRole(order, agencyArt) !== "agency") continue;
+      }
       out.push({
         kind: "import_step",
         order,
         key: tpl.key,
-        // Recusado: desde a recusa; senão, desde que o passo anterior fechou.
-        sinceAt:
-          step?.status === "rejected"
-            ? step.validatedAt
-            : tpl.after
-              ? (steps.find((x) => x.key === tpl.after)?.validatedAt ?? null)
-              : null,
+        link: stepLink(order.id, tpl, "do"),
+        sinceAt: doSinceAt(tpl, step, steps),
       });
     }
+  }
+  return out;
+}
+
+/** Etapas do embarque e desembaraço (os passos que não são da certificação). */
+const IMPORT_LIVE = ["INSPECTION", "SHIPPING", "CUSTOMS", "TRANSPORT"];
+
+/** Recusado: desde a recusa; senão, desde que o passo anterior fechou. */
+function doSinceAt(
+  tpl: StepTemplate,
+  step: ImportStep | undefined,
+  steps: ImportStep[],
+): string | null {
+  return step?.status === "rejected"
+    ? step.validatedAt
+    : tpl.after
+      ? (steps.find((x) => x.key === tpl.after)?.validatedAt ?? null)
+      : null;
+}
+
+/** Papéis dos passos que a Wellmix faz e valida sempre (os demais, só no lugar do parceiro). */
+const WELLMIX_DOES: readonly StepActor[] = [
+  "wellmix",
+  "finance",
+  "comex_internal",
+];
+
+/**
+ * Pendência de embarque, desembaraço ou certificação da Wellmix antes de
+ * saber quem vê (guardada no resumo do pedido, docs/RESUMOS.md). Guarda o
+ * que a escolha do login usa: quem enviou (não valida o próprio envio), o
+ * papel de quem faz ou valida e, no rastreio do container, o dia do último
+ * registro (a pendência volta quando ele não é de hoje). A rota da
+ * certificação é calculada na leitura, com o encaminhamento do momento.
+ */
+export type ImportCandidate =
+  | {
+      c: "cert";
+      key: ImportStepKey;
+      mode: "do" | "validate";
+      sinceAt: string | null;
+      submitterId: string | null;
+    }
+  | {
+      c: "step";
+      key: ImportStepKey;
+      validate?: {
+        validator: StepActor;
+        submitterId: string | null;
+        sinceAt: string | null;
+      };
+      do?: {
+        actor: StepActor;
+        sinceAt: string | null;
+        /** Rastreio do container já registrado: o dia do último registro. */
+        tracking?: string;
+      };
+    };
+
+/** Etapas do pedido em que a Wellmix tem pendência de embarque e certificação. */
+export const WELLMIX_IMPORT_STATUSES: readonly string[] = [
+  // Pedido recém-criado: só o selo de certificação já vale.
+  "ORDER_CREATED",
+  "PREPARATION",
+  "PACKAGING",
+  "INSPECTION",
+  "SHIPPING",
+  "CUSTOMS",
+  "TRANSPORT",
+];
+
+/**
+ * Pendências de embarque, desembaraço e certificação da Wellmix num pedido,
+ * antes de saber quem vê (função pura). `purchaseNeedsCert`: pedido de
+ * compra com produto que exige certificação.
+ */
+export function wellmixImportCandidates(
+  order: Order,
+  steps: ImportStep[],
+  purchaseNeedsCert: boolean,
+): ImportCandidate[] {
+  if (order.status === "CLOSED" || order.status === "CANCELLED") return [];
+  const out: ImportCandidate[] = [];
+  const importLive = IMPORT_LIVE.includes(order.status);
+  const gate = certGate(order, steps, purchaseNeedsCert);
+  for (const tpl of IMPORT_STEPS) {
+    const cert = groupOf(tpl) === "certification";
+    if (!cert && !importLive) continue;
+    // Container na origem só no pedido de compra; nele, sem os passos antigos
+    // do despachante e do agente (docs/SHIPPING_DOCS.md).
+    if (!stepApplies(order, tpl.key)) continue;
+    // Amostras: passos da trading e da agência na China, nunca da Wellmix
+    // por esta lista (docs/SAMPLE_FLOW.md).
+    if (groupOf(tpl) === "samples") continue;
+    const step = steps.find((s) => s.key === tpl.key);
+    if (cert) {
+      const candidate = certCandidate(order, tpl, step, steps, gate);
+      if (candidate) out.push(candidate);
+      continue;
+    }
+    const candidate: Extract<ImportCandidate, { c: "step" }> = {
+      c: "step",
+      key: tpl.key,
+    };
+    // Validar o que foi enviado: a Wellmix só valida no lugar do parceiro
+    // quando ele não foi designado.
+    if (
+      tpl.validator &&
+      step?.status === "submitted" &&
+      (tpl.validator === "wellmix" ||
+        tpl.validator === "finance" ||
+        tpl.validator === "comex_internal" ||
+        (tpl.validator !== "supplier" &&
+          !partnerAssigned(order, tpl.validator)))
+    )
+      candidate.validate = {
+        validator: tpl.validator,
+        submitterId: step.submittedByUserId ?? null,
+        sinceAt: step.submittedAt,
+      };
+    // Fazer (ou refazer) o passo: o dela, o do financeiro, o do comex
+    // interno e o de quem faz a arte (quando não é a agência).
+    const always =
+      !step || step.status === "pending" || step.status === "rejected";
+    const tracking =
+      !always &&
+      tpl.key === "container_tracking" &&
+      TRACKING_LIVE.includes(order.status);
+    if (
+      (always || tracking) &&
+      ready(tpl.key, steps, order) &&
+      // Pedido de compra: o BL vem conferido dos documentos do embarque.
+      !(tpl.key === "bl" && isPurchaseFlow(order)) &&
+      (tpl.actor === "agency" || WELLMIX_DOES.includes(tpl.actor))
+    )
+      candidate.do = {
+        actor: tpl.actor,
+        sinceAt: doSinceAt(tpl, step, steps),
+        ...(tracking
+          ? { tracking: (step?.submittedAt ?? "").slice(0, 10) }
+          : {}),
+      };
+    if (candidate.validate || candidate.do) out.push(candidate);
+  }
+  return out;
+}
+
+/**
+ * As pendências de um pedido que são deste login da Wellmix (função pura
+ * sobre o encaminhamento do momento e o dia de hoje, AAAA-MM-DD em Brasília).
+ * `team`: painel de SLA, a certificação de qualquer login da Wellmix.
+ */
+export function routeImportCandidates(
+  user: User,
+  order: Order,
+  candidates: ImportCandidate[],
+  ctx: RoutingContext,
+  today: string,
+  options: ImportTasksOptions = {},
+): ImportTaskDraft[] {
+  const teamView = isWellmix(user) && !!options.team;
+  const mine = (route: Route) =>
+    teamView
+      ? !!route.team ||
+        (route.userIds ?? []).some((id) => ctx.team.some((u) => u.id === id))
+      : reaches(user, route);
+  const out: ImportTaskDraft[] = [];
+  for (const candidate of candidates) {
+    const tpl = stepTemplate(candidate.key);
+    if (candidate.c === "cert") {
+      const task = routeCert(order, tpl, candidate, ctx);
+      if (!task) continue;
+      const { route, ...draft } = task;
+      if (!mine(route)) continue;
+      if (draft.kind === "cert_validate" && !teamView) {
+        // Quem enviou não valida o próprio envio; a arte com o selo, só
+        // quem pode validar arte.
+        if (candidate.submitterId === user.id) continue;
+        if (tpl.key === "cert_seal_art" && !canValidateArt(user, ctx)) continue;
+      }
+      out.push({
+        ...draft,
+        order,
+        ownerUserId: routeOwnerUserId(route, order, ctx),
+      });
+      continue;
+    }
+    const v = candidate.validate;
+    if (v && v.submitterId !== user.id && actsAs(user, order, v.validator)) {
+      out.push({
+        kind: "import_validate",
+        order,
+        key: candidate.key,
+        sinceAt: v.sinceAt,
+        link: stepLink(order.id, tpl),
+      });
+      continue;
+    }
+    const d = candidate.do;
+    if (!d) continue;
+    // Rastreio do container: de novo quando o último registro não é de hoje.
+    if (d.tracking !== undefined && !(d.tracking < today)) continue;
+    if (!actsAs(user, order, d.actor)) continue;
+    // Passo de quem faz a arte: com a agência fazendo a arte, não é da Wellmix.
+    if (d.actor === "agency" && artRole(order, ctx.agencyDoesArt) === "agency")
+      continue;
+    out.push({
+      kind: "import_step",
+      order,
+      key: candidate.key,
+      sinceAt: d.sinceAt,
+      link: stepLink(order.id, tpl, "do"),
+    });
   }
   return out;
 }
@@ -1218,10 +1727,137 @@ function certGate(
       ? on
       : order.status === "ORDER_CREATED"
         ? classicStarted
-        : !!order.ocpId || classicStarted,
+        : hasCertifier(order) || classicStarted,
     classicDeep: steps.some(
       (s) => s.key === "cert_lab" || s.key === "cert_registration",
     ),
+  };
+}
+
+/**
+ * Passos que ainda vão ser deste login da Wellmix e não são pendência agora
+ * (linha do tempo do operador, em cinza; src/lib/services/order-timeline.ts).
+ * Mesmas regras das pendências: na certificação, quem faz e quem valida cada
+ * passo (certCandidate, certDoRoute e certValidateRoute); no embarque e
+ * desembaraço, o lado da Wellmix (o
+ * responsável interno, `analyst`) e o numerário (o financeiro). `openKeys`:
+ * os passos que já são pendência dele agora (não contam de novo).
+ */
+export async function laterStepsFor(
+  user: User,
+  order: Order,
+  options: { analyst: boolean; openKeys: ReadonlySet<string> },
+): Promise<{ certification: number; import: number }> {
+  const out = { certification: 0, import: 0 };
+  if (
+    !isWellmix(user) ||
+    order.status === "CLOSED" ||
+    order.status === "CANCELLED"
+  )
+    return out;
+  const steps = await stepsOf(order.id);
+  const ctx = await loadRoutingContext();
+  const gate = certGate(
+    order,
+    steps,
+    isPurchaseFlow(order) ? await purchaseNeedsCertification(order) : false,
+  );
+  for (const tpl of IMPORT_STEPS) {
+    if (options.openKeys.has(tpl.key)) continue;
+    const step = steps.find((x) => x.key === tpl.key);
+    if (isDone(step)) continue;
+    const group = groupOf(tpl);
+    if (group === "certification") {
+      if (!gate.on || (!tpl.seal && !gate.classicCert)) continue;
+      const submitted = step?.status === "submitted";
+      // Laudo e registro só valem no pedido que já os começou (certTask).
+      const inPlay =
+        submitted ||
+        ((tpl.seal || tpl.key === "cert_memorial" || gate.classicDeep) &&
+          !(tpl.actor === "ocp" && !tpl.seal && !hasCertifier(order)));
+      if (!inPlay) continue;
+      const doing = !submitted && reaches(user, certDoRoute(order, tpl, ctx));
+      const validateRoute = certValidateRoute(
+        order,
+        tpl,
+        ctx,
+        step?.submittedByUserId ?? null,
+      );
+      const validating =
+        !!validateRoute &&
+        reaches(user, validateRoute) &&
+        step?.submittedByUserId !== user.id &&
+        (tpl.key !== "cert_seal_art" || canValidateArt(user, ctx));
+      if (doing || validating) out.certification++;
+      continue;
+    }
+    if (group !== "import") continue;
+    // O lado da Wellmix: fazer (o responsável interno; o numerário, o
+    // financeiro) e validar no lugar do parceiro que o pedido não tem.
+    const side = (role: StepActor | null) =>
+      role === "finance"
+        ? isFinance(user)
+        : role === "wellmix"
+          ? options.analyst
+          : !!role &&
+            role !== "supplier" &&
+            role !== "comex_internal" &&
+            role !== "agency" &&
+            !partnerAssigned(order, role) &&
+            options.analyst;
+    const doing =
+      step?.status !== "submitted" &&
+      (tpl.actor === "finance" || tpl.actor === "wellmix") &&
+      side(tpl.actor);
+    if (doing || side(tpl.validator)) out.import++;
+  }
+  return out;
+}
+
+/**
+ * Passo da certificação que pede algo agora (fazer ou validar), antes de
+ * saber para quem vai; nulo quando o passo não pede nada.
+ */
+function certCandidate(
+  order: Order,
+  tpl: StepTemplate,
+  step: ImportStep | undefined,
+  steps: ImportStep[],
+  gate: CertGate,
+): Extract<ImportCandidate, { c: "cert" }> | null {
+  if (!gate.on) return null;
+  if (!tpl.seal && !gate.classicCert) return null;
+  // Validar o que foi enviado.
+  if (tpl.validator && step?.status === "submitted")
+    return {
+      c: "cert",
+      key: tpl.key,
+      mode: "validate",
+      sinceAt: step.submittedAt,
+      submitterId: step.submittedByUserId ?? null,
+    };
+  // Laudo e registro não viram pendência de começar: o PDF do memorial e do
+  // selo basta (dono, 10/11/2026). Pedido antigo com laudo ou registro já
+  // começados segue o caminho dele. O memorial é tarefa do responsável
+  // interno (dono, 13/11/2026).
+  if (!tpl.seal && tpl.key !== "cert_memorial" && !gate.classicDeep)
+    return null;
+  // Laudo e registro sem despachante: ninguém começa por ele.
+  if (tpl.actor === "ocp" && !tpl.seal && !hasCertifier(order)) return null;
+  // Fazer (ou refazer) o passo, quando o anterior já foi feito.
+  const todo = !step || step.status === "pending" || step.status === "rejected";
+  if (!todo || !ready(tpl.key, steps)) return null;
+  const before = tpl.after ? steps.find((x) => x.key === tpl.after) : null;
+  return {
+    c: "cert",
+    key: tpl.key,
+    mode: "do",
+    // Recusado: desde a recusa; senão, desde que o passo anterior fechou.
+    sinceAt:
+      step?.status === "rejected"
+        ? step.validatedAt
+        : (before?.validatedAt ?? before?.submittedAt ?? null),
+    submitterId: null,
   };
 }
 
@@ -1236,43 +1872,38 @@ function certTask(
   steps: ImportStep[],
   ctx: RoutingContext,
   gate: CertGate,
+) {
+  const candidate = certCandidate(order, tpl, step, steps, gate);
+  return candidate ? routeCert(order, tpl, candidate, ctx) : null;
+}
+
+/**
+ * Pendência de um passo da certificação e para quem ela vai, pelo
+ * encaminhamento do momento; nula quando ninguém valida.
+ */
+function routeCert(
+  order: Order,
+  tpl: StepTemplate,
+  candidate: Extract<ImportCandidate, { c: "cert" }>,
+  ctx: RoutingContext,
 ): (Omit<ImportTaskDraft, "order"> & { route: Route }) | null {
-  if (!gate.on) return null;
-  if (!tpl.seal && !gate.classicCert) return null;
-  // Validar o que foi enviado.
-  if (tpl.validator && step?.status === "submitted") {
-    const route = certValidateRoute(order, tpl, ctx, step.submittedByUserId);
+  if (candidate.mode === "validate") {
+    const route = certValidateRoute(order, tpl, ctx, candidate.submitterId);
     if (!route) return null;
     return {
       kind: "cert_validate",
       key: tpl.key,
-      sinceAt: step.submittedAt,
+      sinceAt: candidate.sinceAt,
       link: stepLink(order.id, tpl, "validate"),
       missing: route.missing ?? null,
       route,
     };
   }
-  // Laudo e registro não viram pendência de começar: o PDF do memorial e do
-  // selo basta (dono, 10/11/2026). Pedido antigo com laudo ou registro já
-  // começados segue o caminho dele. O memorial é tarefa do responsável
-  // interno (dono, 13/11/2026).
-  if (!tpl.seal && tpl.key !== "cert_memorial" && !gate.classicDeep)
-    return null;
-  // Laudo e registro sem certificadora: ninguém começa por ela.
-  if (tpl.actor === "ocp" && !tpl.seal && !order.ocpId) return null;
-  // Fazer (ou refazer) o passo, quando o anterior já foi feito.
-  const todo = !step || step.status === "pending" || step.status === "rejected";
-  if (!todo || !ready(tpl.key, steps)) return null;
   const route = certDoRoute(order, tpl, ctx);
-  const before = tpl.after ? steps.find((x) => x.key === tpl.after) : null;
   return {
     kind: "cert_step",
     key: tpl.key,
-    // Recusado: desde a recusa; senão, desde que o passo anterior fechou.
-    sinceAt:
-      step?.status === "rejected"
-        ? step.validatedAt
-        : (before?.validatedAt ?? before?.submittedAt ?? null),
+    sinceAt: candidate.sinceAt,
     // Selo sem certificadora: quem designa vai direto a Parceiros do pedido.
     link:
       tpl.key === "cert_seal" && route.missing === "ocp"
@@ -1281,4 +1912,61 @@ function certTask(
     missing: route.missing ?? null,
     route,
   };
+}
+
+/**
+ * Pendências de embarque, desembaraço e certificação do login da Wellmix a
+ * partir das guardadas no resumo de cada pedido (docs/RESUMOS.md), sem ler
+ * pedidos nem passos: só o encaminhamento do momento (equipe, funções e
+ * configurações).
+ */
+export async function readyImportTasks(
+  user: User,
+  entries: { order: Order; candidates: ImportCandidate[] }[],
+  options: ImportTasksOptions = {},
+): Promise<ImportTaskDraft[]> {
+  if (!entries.length) return [];
+  const ctx = await loadRoutingContext();
+  const today = todayInBrazil();
+  return entries.flatMap(({ order, candidates }) =>
+    routeImportCandidates(user, order, candidates, ctx, today, options),
+  );
+}
+
+/** Situações do pedido em que o embarque, a origem e as amostras andam. */
+const OPEN_FLOW_STATUSES: readonly string[] = [
+  "INSPECTION",
+  "SHIPPING",
+  "CUSTOMS",
+  "TRANSPORT",
+  "DELIVERED",
+];
+
+/**
+ * Passos abertos do pedido (prontos e ainda não concluídos), quem quer que
+ * os faça: a aba "Todos" das telas dos passos do menu (docs/FLOW_MENU.md).
+ * Embarque, origem e amostras só do pedido já na inspeção em diante; a
+ * certificação e as amostras só quando o chamador diz que valem para o
+ * pedido (certificação começada; amostras pedidas). O BL do pedido de compra
+ * vem dos documentos do embarque (não entra).
+ */
+export function openImportStepKeys(
+  order: Order,
+  steps: ImportStep[],
+  options: { certification: boolean; samples: boolean },
+): ImportStepKey[] {
+  if (order.status === "CANCELLED" || order.status === "CLOSED") return [];
+  const flowing = OPEN_FLOW_STATUSES.includes(order.status);
+  return IMPORT_STEPS.filter((tpl) => {
+    const group = groupOf(tpl);
+    if (group === "certification" ? !options.certification : !flowing)
+      return false;
+    if (group === "samples" && !options.samples) return false;
+    if (!stepApplies(order, tpl.key)) return false;
+    if (tpl.key === "bl" && isPurchaseFlow(order)) return false;
+    return (
+      ready(tpl.key, steps, order) &&
+      !isDone(steps.find((s) => s.key === tpl.key))
+    );
+  }).map((tpl) => tpl.key);
 }

@@ -22,6 +22,7 @@ import {
 } from "@/lib/services/notifications";
 import { STAGE_KEYS } from "@/lib/db/schema";
 import { requirementLabel } from "@/i18n";
+import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
 import {
   ROLE_PARTY_FIELD,
   STAGE_TEMPLATES,
@@ -34,6 +35,7 @@ import {
   ORDER_SIGNED_WELLMIX,
   nextStageKey,
   isPurchaseFlow,
+  SHIPPED_KEY,
 } from "./stages";
 import {
   compareInspection,
@@ -49,6 +51,7 @@ import {
   baseKeyOf,
   blockedBy,
   isAutoGateKey,
+  isRoutedLaneKey,
   isSampleOrderKey,
   prerequisitesOf,
   type LaneItem,
@@ -340,7 +343,9 @@ async function purchaseLaneItems(orderId: string): Promise<LaneItem[]> {
         : undefined;
       return {
         id: item.id,
-        name: item.name,
+        // Nome real do item; se ele ficou com o nome de exemplo, o do produto
+        // hoje; sem nenhum, a tarefa nasce só com o título.
+        name: realName(item.name) ?? realName(product?.name) ?? "",
         lineRequirements: line?.requirements ?? null,
         // Mapa do processo (P6): certificado e arte final com o selo só
         // quando a linha do produto exige certificação.
@@ -368,6 +373,21 @@ export interface SubmitInput {
   sampleOrder?: boolean;
 }
 
+/**
+ * Arte, validação, certificado e arte final do pedido de compra: só o login
+ * que recebe a tarefa (o designer, quem valida a arte, a certificadora do
+ * pedido) ou o administrador (src/lib/services/cert-art-routing.ts).
+ */
+async function assertLaneAssignee(
+  user: User,
+  order: Order,
+  requirement: Pick<Requirement, "key" | "orderId">,
+) {
+  if (!isPurchaseFlow(order) || !isRoutedLaneKey(requirement.key)) return;
+  const { assertLaneActor } = await import("@/lib/services/cert-art-routing");
+  await assertLaneActor(user, order, requirement);
+}
+
 /** Quem pode preencher: Wellmix sempre; o papel do requisito quando vinculado ao parceiro certo. */
 export function canSubmitRequirement(
   user: User,
@@ -385,6 +405,19 @@ export function canSubmitRequirement(
       return can(user, "art.validate");
     if (key === ORDER_SIGNED_WELLMIX) return can(user, "contract.sign");
     return true;
+  }
+  // Arte, validação, certificado e arte final do pedido de compra (dono,
+  // 14/11/2026): o certificado é da certificadora (OCP) do pedido; a arte e
+  // a arte final, da agência do pedido quando o designer é dela. O login
+  // exato (o designer, a certificadora) é conferido em assertLaneActor.
+  if (isRoutedLaneKey(requirement.key ?? "")) {
+    if (!user.partyId) return false;
+    const base = baseKeyOf(requirement.key ?? "");
+    if (base === LANE_KEYS.certificate)
+      return user.role === "ocp" && order.ocpId === user.partyId;
+    if (base === LANE_KEYS.art || base === LANE_KEYS.artFinal)
+      return user.role === "agency" && order.agencyId === user.partyId;
+    return false;
   }
   if (user.role !== requirement.role) return false;
   // Cliente: só o login solicitante do pedido.
@@ -409,6 +442,7 @@ export async function submitRequirement(
   if (!stage || !order) throw new WorkflowError("order_not_found");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
+  await assertLaneAssignee(user, order, requirement);
   // Validação da ficha pelo comprador: antes, a programação de compra
   // (que é da Wellmix) tem de estar feita.
   if (requirement.key === "sheet_validated") {
@@ -430,6 +464,13 @@ export async function submitRequirement(
     });
     if (blockedBy(requirement.key, siblings).length)
       throw new WorkflowError("lane_prerequisite");
+  }
+  // Embarque confirmado do pedido de compra: só com o container lacrado no
+  // porto e o BL conferido com a invoice (docs/SHIPPING_DOCS.md).
+  if (isPurchaseFlow(order) && requirement.key === SHIPPED_KEY) {
+    const { shipmentBlockers } = await import("@/lib/services/shipping-docs");
+    if ((await shipmentBlockers(order.id)).length)
+      throw new WorkflowError("shipping_docs_required");
   }
   if (
     stage.status !== "active" &&
@@ -489,7 +530,7 @@ export async function submitRequirement(
     "requirement.submit",
     "requirement",
     requirement.id,
-    `${stage.key}: ${requirement.label}`,
+    `${stage.key}: ${withoutPlaceholder(requirement.label)}`,
     before,
     {
       status: "done",
@@ -502,14 +543,14 @@ export async function submitRequirement(
       value: null,
       submittedByUserId: null,
       submittedAt: null,
-      note: `Refazer: a data informada antes (${String(r.value ?? "").slice(0, 10)}) era anterior à ${requirement.label.toLowerCase()} (${String(input.value).slice(0, 10)}).`,
+      note: `Refazer: a data informada antes (${String(r.value ?? "").slice(0, 10)}) era anterior à ${withoutPlaceholder(requirement.label).toLowerCase()} (${String(input.value).slice(0, 10)}).`,
     });
     await audit(
       user,
       "requirement.reopen",
       "requirement",
       r.id,
-      `${stage.key}: ${r.label} antes de ${requirement.label}`,
+      `${stage.key}: ${withoutPlaceholder(r.label)} antes de ${withoutPlaceholder(requirement.label)}`,
       { status: r.status, value: r.value },
       { status: "pending", value: null },
     );
@@ -622,7 +663,7 @@ export async function submitRequirement(
         "requirement.submit",
         "requirement",
         sibling.id,
-        `${stage.key}: ${sibling.label} (confirmação do fornecedor)`,
+        `${stage.key}: ${withoutPlaceholder(sibling.label)} (confirmação do fornecedor)`,
         { status: "pending" },
         { status: "done", value: "supplier_confirmed" },
       );
@@ -652,6 +693,7 @@ export async function clearRequirementDocument(
   if (!stage || !order) throw new WorkflowError("order_not_found");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
+  await assertLaneAssignee(user, order, requirement);
   if (
     stage.status !== "active" &&
     stage.status !== "blocked" &&
@@ -695,7 +737,7 @@ export async function clearRequirementDocument(
     "requirement.clear",
     "requirement",
     requirement.id,
-    `${stage.key}: ${requirement.label} (arquivo excluído)`,
+    `${stage.key}: ${withoutPlaceholder(requirement.label)} (arquivo excluído)`,
   );
   await evaluateStage(user, stage.id);
 }
@@ -716,6 +758,7 @@ export async function decideRequirement(
   if (!stage || !order) throw new WorkflowError("order_not_found");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
+  await assertLaneAssignee(user, order, requirement);
   if (order.status === "CANCELLED" || stage.status === "cancelled")
     throw new WorkflowError("stage_not_active");
   // Como no envio: só na etapa aberta. Decisão já tomada só a Wellmix refaz
@@ -765,7 +808,7 @@ export async function decideRequirement(
       "requirement.approve",
       "requirement",
       requirement.id,
-      `${stage.key}: ${requirement.label}`,
+      `${stage.key}: ${withoutPlaceholder(requirement.label)}`,
     );
     if (isPurchaseFlow(order)) {
       const { afterLaneStep } = await import("@/lib/services/purchase-order");
@@ -801,7 +844,7 @@ export async function decideRequirement(
       "requirement.reject",
       "requirement",
       requirement.id,
-      `${stage.key}: ${requirement.label}`,
+      `${stage.key}: ${withoutPlaceholder(requirement.label)}`,
     );
     // Avisa quem refaz (arte: agência ou Wellmix); sem origem, o fornecedor
     // (como antes). Parceiro sem empresa no pedido: avisa a Wellmix, nunca

@@ -1,6 +1,7 @@
 import {
   FUNCTION_SCREENS,
   SCREENS,
+  WELLMIX_BASE,
   canOpen,
   type Screen,
 } from "@/lib/auth/screens";
@@ -42,11 +43,17 @@ export const ACTION_GROUPS = [
   },
   {
     key: "order",
-    actions: ["art.validate", "art.design", "contract.sign", "order.cancel"],
+    actions: [
+      "art.validate",
+      "art.design",
+      "contract.sign",
+      "order.cancel",
+      "realMedia.approve",
+    ],
   },
   {
     key: "logistics",
-    actions: ["numerario.manage", "receiving.follow"],
+    actions: ["numerario.manage", "receiving.follow", "container.tracking"],
   },
   {
     key: "money",
@@ -87,8 +94,15 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
       return ["finance"];
     case "art.design":
       return ["designer"];
+    // Fotos e vídeos reais da agência na China: o marketing aprova, troca
+    // as fotos do catálogo e ativa a venda (mapa R5/R16; dono, 14/11/2026).
+    case "realMedia.approve":
+      return ["designer"];
     case "receiving.follow":
       return ["buyer"];
+    // Rastreio diário do container (mapa R19; dono, 13/11/2026).
+    case "container.tracking":
+      return ["comex_internal"];
     // Vendas fica sabendo do que vem (mapa, P2 → V1): quem cuida do pós-venda
     // e da recompra. O administrador muda em Equipe → Funções e acessos.
     case "purchaseOrder.salesNotice":
@@ -125,6 +139,11 @@ export interface FunctionDef {
   builtin: boolean;
   screens: Screen[];
   actions: ActionKey[];
+  /**
+   * Telas do Início (WELLMIX_BASE) que o administrador desmarcou nesta
+   * função. Vazio (o padrão) = a função abre todas, como antes.
+   */
+  baseOff: Screen[];
   /** Desativada: some das listas e não libera nada (só as criadas). */
   archived: boolean;
 }
@@ -136,6 +155,7 @@ export interface StoredFunctions {
     name?: string | null;
     screens?: unknown;
     actions?: unknown;
+    baseOff?: unknown;
     archived?: boolean;
   }>;
 }
@@ -162,6 +182,9 @@ export function customFunctionKey(name: string, taken: string[]): string {
 
 const validScreens = (v: unknown): Screen[] =>
   Array.isArray(v) ? SCREENS.filter((s) => (v as unknown[]).includes(s)) : [];
+/** Só telas do Início (o resto da lista gravada é ignorado). */
+const validBaseOff = (v: unknown): Screen[] =>
+  validScreens(v).filter((s) => WELLMIX_BASE.includes(s));
 const validActions = (v: unknown): ActionKey[] =>
   Array.isArray(v)
     ? ACTION_KEYS.filter((a) => (v as unknown[]).includes(a))
@@ -196,6 +219,7 @@ export function resolveFunctions(stored: unknown): FunctionDef[] {
         s?.actions !== undefined
           ? validActions(s.actions)
           : defaultActionsFor(key),
+      baseOff: validBaseOff(s?.baseOff),
       archived: false,
     };
   });
@@ -207,25 +231,40 @@ export function resolveFunctions(stored: unknown): FunctionDef[] {
       builtin: false,
       screens: validScreens(f.screens),
       actions: validActions(f.actions),
+      baseOff: validBaseOff(f.baseOff),
       archived: !!f.archived,
     }));
   return [...builtins, ...custom];
 }
 
-/** Telas e ações que as funções marcadas liberam (desativadas e desconhecidas não contam). */
+/**
+ * Telas e ações que as funções marcadas liberam (desativadas e desconhecidas
+ * não contam). Telas do Início (`base`): a união das que cada função deixa
+ * marcadas; sem nenhuma função ativa, todas (o acesso de sempre).
+ */
 export function accessFromFunctions(
   functions: readonly string[] | null | undefined,
   defs: FunctionDef[],
 ): ResolvedAccess {
   const screens = new Set<string>();
   const actions = new Set<string>();
+  const base = new Set<Screen>();
+  let active = 0;
   for (const key of functions ?? []) {
     const def = defs.find((d) => d.key === key && !d.archived);
     if (!def) continue;
+    active++;
     def.screens.forEach((s) => screens.add(s));
     def.actions.forEach((a) => actions.add(a));
+    WELLMIX_BASE.forEach((s) => {
+      if (!def.baseOff.includes(s)) base.add(s);
+    });
   }
-  return { screens: [...screens], actions: [...actions] };
+  return {
+    screens: [...screens],
+    actions: [...actions],
+    base: active ? WELLMIX_BASE.filter((s) => base.has(s)) : [...WELLMIX_BASE],
+  };
 }
 
 type Who = {
@@ -286,6 +325,20 @@ export function holdersOf<U extends Who>(
       isWellmixRole(u.role) &&
       accessFromFunctions(u.functions, defs).actions.includes(action),
   );
+}
+
+/**
+ * Descrição de uma função de fábrica (o que ela faz no processo), traduzida.
+ * Sem o texto no dicionário (função nova sem descrição), nada: a tela não
+ * mostra a chave crua.
+ */
+export function functionDescription(
+  key: string,
+  translate: (key: string) => string,
+): string | null {
+  if (!(WELLMIX_FUNCTIONS as readonly string[]).includes(key)) return null;
+  const text = translate(`function.desc.${key}`);
+  return text && text !== `function.desc.${key}` ? text : null;
 }
 
 /** Nome da função para mostrar: o dado pelo administrador, ou o de fábrica traduzido. */

@@ -19,6 +19,7 @@ export const STAGE_PARTY_FIELD = {
   comex: "comexId",
   logistics: "logisticsId",
   ocp: "ocpId",
+  marketing_agency: "marketingAgencyId",
 } as const satisfies Partial<Record<Role, keyof Order>>;
 
 export type StageChat =

@@ -14,7 +14,7 @@ Uma única lista de **telas** e uma única regra que diz quais telas cada login 
 
 1. **Admin**: todas as telas (sem mudança).
 2. **Operador Wellmix**: telas básicas + a união das telas das suas funções (padrão). O administrador pode, em Gestão → Equipe e divisões → Editar acessos, trocar para **Personalizado** e marcar as telas uma a uma (`users.screens`): aí valem só as caixas marcadas (mais o básico), seja qual for a função, inclusive Financeiro, Contas a pagar, Configurações, Equipe e Auditoria. "Padrão das funções" apaga a lista e volta à regra das funções. Sem função e sem tela marcada, vê só o básico e um aviso no início.
-   - Básico de todo login da Wellmix: Control Tower, Pendências, Painel de SLA, Notificações, Mensagens.
+   - Básico de todo login da Wellmix (card "Início"): Control Tower, Pendências, Painel de SLA, Notificações, Mensagens. Desde 13/11/2026 cada tela do Início é configurável por função (ver "Telas e links" abaixo); login sem função ou com telas marcadas uma a uma continua com o Início inteiro.
    - As funções continuam mandando no comportamento dentro das telas (quem aprova, quem libera dumping, quem valida numerário, quem é designer); a lista de telas só decide o que abre.
 3. **Financeiro é só do administrador** (ou de quem ele liberar tela a tela), seja qual for a função: Financeiro, Contas a pagar, conta corrente do fornecedor, a faixa "Financeiro" do Control Tower (vendido, recebido, a receber, comprado, pago, saldo), os valores em R$ dos cartões de Operação, o painel Financeiro em Painéis por área e, no pedido, o cartão financeiro (venda, custo, margem), os pagamentos do cliente e o pagamento ao fornecedor. O fornecedor continua vendo a previsão de pagamento dele; o cliente, os pagamentos dele. A função "financeiro" abre só a tela Pedidos, para validar e pagar o numerário dentro do pedido (docs/IMPORT_FLOW.md), sem ver pagamentos, valores nem margem; sem ninguém com ela, o admin faz.
 4. **Cliente, fornecedor e parceiros**: as mesmas telas de hoje, agora escritas na mesma tabela (nada foi removido).
@@ -28,6 +28,7 @@ Uma única lista de **telas** e uma única regra que diz quais telas cada login 
 | Booking (planilhas de fornecedor)                                            |     ✓     |      ✓       |    ✓    |    ✓     |      ✓       |       ✓        |          |
 | Solicitações (e cotações)                                                    |     ✓     |      ✓       |    ✓    |          |      ✓       |       ✓        |          |
 | Pedidos                                                                      |     ✓     |      ✓       |    ✓    |    ✓     |      ✓       |       ✓        |    ✓     |
+| Produção (13/11/2026)                                                        |     ✓     |              |    ✓    |          |      ✓       |       ✓        |          |
 | Sourcing                                                                     |     ✓     |      ✓       |         |    ✓     |      ✓       |       ✓        |          |
 | Fila de revisão                                                              |     ✓     |      ✓       |         |    ✓     |      ✓       |       ✓        |          |
 | Fretes e Tarifário de frete                                                  |     ✓     |              |    ✓    |          |      ✓       |       ✓        |          |
@@ -99,7 +100,7 @@ Gestão → Equipe (`/app/team`, só o administrador) ganhou três abas:
 
 1. **Equipe**: a equipe interna da Wellmix em linhas (como antes) e o botão **Novo usuário**, que abre o formulário de novo login num modal (`?tab=team&new=1`; erro volta para o modal).
 2. **Funções e acessos** (`?tab=functions&fn=CHAVE&view=screens|actions`): as funções à esquerda (2/12 da largura) e, no resto, a função escolhida em duas abas:
-   - **Telas e links**: as telas que a função abre, nos grupos do menu. O básico (Control Tower, Pendências, Painel de SLA, Notificações, Mensagens) fica sempre marcado. O que não estiver marcado não aparece no menu e não abre: a página volta ao início com o aviso e as Server Actions recusam (`requireScreen`/`assertScreen`, como antes). As telas "normalmente só do administrador" (Financeiro, Contas a pagar, Conta corrente, Configurações, Equipe, Superplan) podem ser liberadas por função, como já era possível login a login.
+   - **Telas e links**: as telas que a função abre, nos grupos do menu. As telas do card "Início" (Control Tower, Pendências, Painel de SLA, Notificações, Mensagens) também são configuráveis por função: vêm marcadas (padrão, o acesso de antes) e as desmarcadas ficam em `baseOff` da função, no mesmo `settings.teamFunctions`. O login abre uma tela do Início se qualquer função ativa dele a deixar marcada; sem função ativa, ou com telas marcadas uma a uma (`users.screens`), abre todas; o administrador abre tudo. Vale para o menu, os ícones do cabeçalho (mensagens e sino) e o endereço direto. Sem o Control Tower, `/app` leva à primeira tela do menu que o login abre (`startPathFor`); sem nenhuma, mostra só a saudação. O que não estiver marcado não aparece no menu e não abre: a página volta ao início com o aviso e as Server Actions recusam (`requireScreen`/`assertScreen`, como antes). As telas "normalmente só do administrador" (Financeiro, Contas a pagar, Conta corrente, Configurações, Equipe, Superplan) podem ser liberadas por função, como já era possível login a login.
    - **Ações**: o que a função pode fazer dentro das telas. Sem a permissão, o botão some e o servidor recusa (`can`/`assertCan`).
    - Criar função (chave `fn_<nome>`), renomear (a de fábrica volta ao nome original com o campo vazio), voltar ao padrão (as de fábrica) e desativar ou reativar (as criadas; desativada não libera nada, a marca continua no cadastro do login).
 3. **Linha de produto e divisão**: a divisão de cada linha e a distribuição das pendências (o mesmo de antes).
@@ -133,3 +134,45 @@ Registrar e confirmar pagamentos (sinal, pagamento ao fornecedor, marketing) con
 
 - Bloqueio por política no banco (RLS por usuário no Supabase): hoje o banco já é fechado e só o servidor do portal lê e grava; a conferência é no servidor (decisão do dono: não agora).
 - Pendências: um login sem a permissão de validar a arte ou assinar o contrato ainda pode ver a pendência em Minhas pendências; ao abrir, o botão não aparece.
+
+## Excluir acesso (pedido do dono, 13/11/2026)
+
+Equipe e acessos → acessos de uma pessoa (`/app/team/[id]`), só para o administrador: botão **Excluir acesso** no topo, ao lado de "Voltar à equipe".
+
+- **Confirmação**: a caixa mostra o nome e o login (e-mail ou nome de usuário) da pessoa e explica que ela perde o acesso à equipe Wellmix: não entra mais e, com o portal aberto, é desconectada na próxima tela; o histórico, os registros e a autoria continuam guardados. "Cancelar" fecha sem mudar nada.
+- **Opções da confirmação** (pedido do dono, 14/11/2026; marcadas por padrão, aparecem só quando se aplicam):
+  - **Passar quem responde a ela para o chefe dela**: cada subordinado direto passa a responder a quem ela respondia, pela mesma regra de "Responde a" (`setTeamMember`, com a Auditoria `team.member` de cada um); cargo e divisão de cada um ficam. Sem chefe ativo, a caixa não aparece e fica o aviso para escolher outro chefe depois. Cadastro antigo com ciclo: a pessoa do ciclo fica para ajustar à mão.
+  - **Redistribuir as pendências abertas dela**: só as dela (solicitações abertas e pedidos em andamento), pela divisão da linha de cada produto, a mesma regra de "Distribuir agora" (`distributeUnassigned` com `fromUserId`; Auditoria `team.distribute` com o nome dela). As que não têm para quem ir (produto sem linha, linha sem divisão, divisão sem analista) ficam sem responsável e são contadas. As de outros logins sem responsável não são mexidas.
+  - Desmarcada, aparece embaixo o que fazer depois. As opções rodam depois da exclusão gravada: se falharem, a exclusão fica e a lista mostra o que conferir (`delete_followup`).
+- **O que faz**: o login fica inativo (`users.active = false`, exclusão lógica). Sai da lista da equipe, da escolha de chefe, da distribuição e dos avisos (todos leem só os ativos); a entrada recusa o login; a sessão já aberta cai na próxima requisição (no Supabase e no modo memória a sessão relê o login a cada página; no Appwrite, a sessão conferida em cache é esquecida na hora naquela instância e, nas outras, em no máximo 60 s).
+- **Nada é apagado**: o cadastro do login, a Auditoria, o histórico, os registros com o id dele (dono de solicitação ou pedido, autor de mensagens, aprovações, documentos) e o chefe gravado de quem respondia a ele (sem a opção de passar para o chefe dela) ficam como estavam; as telas continuam mostrando o nome dele no que ele fez. As pendências abertas com ele contam como "sem responsável" em "Distribuir agora" (já era assim para login inativo).
+- **Regras no servidor** (`removeTeamMember`, `src/lib/services/team.ts`): só o administrador (`forbidden`); só logins ativos da equipe Wellmix (`not_found` para parceiros e para quem já foi excluído); não exclui o próprio acesso (`delete_self`); não exclui o último administrador ativo (`delete_last_admin`), conferido antes e depois de gravar: se dois administradores se excluírem ao mesmo tempo, a exclusão que deixaria a equipe sem administrador é desfeita. Na tela, nesses dois casos o botão aparece desligado, com o motivo.
+- **Auditoria**: `team.member.delete` (módulo Equipe) com quem excluiu, o acesso ("Acesso excluído: nome (login)"), a data e a hora, o antes (papel, cargo, chefe, divisão, funções, telas) e o depois (`active: false`). Se o registro na Auditoria não for gravado, a exclusão é desfeita e a tela mostra o erro: não há exclusão sem registro.
+- **Depois**: volta à lista (`/app/team?saved=deleted`) com "Acesso excluído com sucesso" e, quando as opções foram usadas, o resumo: quantas pessoas passaram para quem, quantas pendências foram redistribuídas e, em amarelo, as que ficaram sem responsável. Com erro, volta à pessoa com o motivo; se ela já não estiver na equipe (excluída em outra aba), à lista com o aviso. A página de quem foi excluído não abre mais.
+- **Uma equipe só**: o portal tem uma equipe (Wellmix); cada login é dela ou de um parceiro. A exclusão só mexe no login da equipe; logins de parceiros não passam por aqui.
+- **Limite conhecido**: não há "reativar" na tela, e um login novo com o mesmo e-mail é recusado (`user_email_taken`), porque o cadastro inativo continua. Para voltar, hoje é preciso reativar no banco (`users.active = true`).
+- Peças: `removeTeamMemberAction` (`src/app/app/actions/team.ts`), `teamMemberRemoval` (contagens e o chefe de destino da caixa), `forgetUserSessions` (`src/lib/auth/session.ts`), `QuickDialog` com `tone="danger"` e `disabled`. Textos `team.delete.*`, `team.saved.deleted`, `team.error.delete_self` e `team.error.delete_last_admin` nos três idiomas. Sem mudança no banco.
+- Testes: `tests/unit/team-delete.test.ts` e `tests/e2e/team-delete.spec.ts`.
+
+## Pendências por função (decisão do dono, 13/11/2026)
+
+Em Pendências (`/app/tasks`) o **operador** vê só o que as funções dele fazem; o administrador vê tudo, como antes. Cada pendência aponta para uma ação ou tela de Equipe → Funções e acessos (`src/lib/task-owner.ts`):
+
+| Pendência                                                                                                          | Quem (padrão)                                                                       |
+| ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Fazer a arte, arte final, selo na arte (sem agência)                                                               | ação "art.design" (Designer)                                                        |
+| Validar a arte, conferir o selo na arte                                                                            | ação "art.validate"                                                                 |
+| Assinar o documento pela Wellmix                                                                                   | ação "contract.sign" (diretorias)                                                   |
+| Enviar para assinatura, confirmar o pedido, nº no ERP, itens da linha, produção e inspeção, designar o despachante | ação "purchaseOrder.generate" (compras)                                             |
+| Embarque, desembaraço, transporte e entrega                                                                        | tela Frete                                                                          |
+| Numerário                                                                                                          | ação "numerario.manage"                                                             |
+| Solicitação nova, revisão, sourcing                                                                                | telas Solicitações, Revisão, Sourcing                                               |
+| Certificação (selo, validação do memorial, certificado)                                                            | despachante do pedido (a regra de "Quem recebe cada tarefa", docs/CERTIFICATION.md) |
+| Itens do fornecedor e dos parceiros                                                                                | não aparecem para o operador                                                        |
+| Mensagem a responder                                                                                               | o analista da conversa (sem analista: todos)                                        |
+
+O painel de SLA e as outras telas continuam com a lista completa da Wellmix.
+
+## Agência de arte por linha (decisão do dono, 13/11/2026)
+
+Em Linhas de produto, cada linha pode ter a **agência de arte** (`product_lines.agencyId`, só agências ativas). O pedido novo herda a agência da linha (antes da regra "a única agência ativa"); ao salvar, os pedidos abertos da linha ainda sem agência a recebem, com o mesmo efeito da troca em Parceiros do pedido (`src/lib/services/line-agency.ts`).

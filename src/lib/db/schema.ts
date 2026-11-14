@@ -27,6 +27,9 @@ export const ROLES = [
   "logistics",
   // Fase F: organismo de certificação de produto (logins próprios).
   "ocp",
+  // Agência de marketing na China (mapa R14/R15; dono, 14/11/2026): recebe
+  // as amostras e faz as fotos e vídeos do produto real.
+  "marketing_agency",
 ] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -41,6 +44,7 @@ export const PARTY_TYPES = [
   "comex",
   "logistics",
   "ocp",
+  "marketing_agency",
   // Parceiros à parte (decisão do dono, 11/11/2026; docs/PARTNER_TYPES.md):
   // não entram em cotação nem pedido como fornecedor. "supplier_partner" é o
   // tipo "Supplier" de Outros parceiros (a chave "supplier" é do Fornecedor).
@@ -170,6 +174,8 @@ export const DOCUMENT_TYPES = [
   "packaging_sample",
   // Embarque e desembaraço (Fase D): arquivo de um passo (acesso pelo passo).
   "import_step",
+  // Fotos e vídeos do produto real da agência de marketing na China.
+  "real_media",
 ] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
@@ -246,6 +252,9 @@ export const PHOTO_KINDS = [
   /* Fase B (fluxo de compras): foto HD do produto e die cut (faca) para o Marketing. */
   "hd",
   "die_cut",
+  /* Foto real do produto feita pela agência de marketing na China com a
+     amostra, aprovada pelo marketing: substitui as de referência na vitrine. */
+  "real",
 ] as const;
 export type PhotoKind = (typeof PHOTO_KINDS)[number];
 
@@ -524,6 +533,8 @@ export const WELLMIX_FUNCTIONS = [
   "executive_director",
   // Fase F: designer do marketing (artes e embalagens).
   "designer",
+  // Comex interno da Wellmix (não é o despachante): rastreio do container.
+  "comex_internal",
 ] as const;
 export type WellmixFunction = (typeof WELLMIX_FUNCTIONS)[number];
 
@@ -565,6 +576,31 @@ export const IMPORT_STEP_KEYS = [
   // aplica na arte da embalagem (docs/CERTIFICATION.md).
   "cert_seal",
   "cert_seal_art",
+  // Container na origem (mapa R19, R20, R7, R25, R26; docs/ORIGIN_CONTAINER.md):
+  // chegada do container vazio na fábrica, fotos e vídeos dele vazio, do
+  // carregamento (com o check de carga), do lacre (com o número do
+  // container) e a volta ao porto. O rastreio diário é do Comex interno.
+  "container_at_factory",
+  "container_empty",
+  "container_loaded",
+  "container_sealed",
+  "container_at_port",
+  "container_tracking",
+  // Amostras depois da inspeção (mapa R12 a R14; docs/SAMPLE_FLOW.md): a
+  // trading retira, envia 4 × 3 × Nm ao show room no Brasil e 1 × 3 × Nm à
+  // agência de marketing na China; a agência recebe, faz as fotos e vídeos
+  // reais e devolve a amostra à trading, que a embarca com o pedido.
+  "samples_picked",
+  "samples_brazil",
+  "samples_china",
+  "samples_china_received",
+  "samples_returned",
+  // Compra EXW (mapa R17 e R18; docs/ORIGIN_CONTAINER.md): a trading contrata
+  // a transportadora que leva o container à fábrica (nome e data prevista) e
+  // registra os custos do transporte na origem (POP), que a Wellmix valida.
+  "origin_carrier",
+  "origin_carrier_eta",
+  "origin_costs",
 ] as const;
 export type ImportStepKey = (typeof IMPORT_STEP_KEYS)[number];
 export const IMPORT_STEP_STATUSES = [
@@ -727,6 +763,8 @@ export interface ProductLine extends BaseRow {
   division?: Division | null;
   /** Código do grupo (CODGRUPOPROD) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
   sankhyaCode?: string | null;
+  /** Agência de arte da linha: os pedidos da linha a herdam (src/lib/services/line-agency.ts). */
+  agencyId?: string | null;
 }
 
 /** Configuração de IA e de validação por linha de produto. Tudo opcional; nulo = só o prompt base. */
@@ -895,6 +933,8 @@ export interface Order extends BaseRow {
   logisticsId?: string | null;
   /** Certificação (OCP) e designer das artes (Fase F). Opcionais. */
   ocpId?: string | null;
+  /** Agência de marketing na China: amostras e fotos/vídeos reais. Opcional. */
+  marketingAgencyId?: string | null;
   designerUserId?: string | null;
   closedAt: string | null;
   notes: string | null;
@@ -963,6 +1003,12 @@ export interface Order extends BaseRow {
   /** No pedido filho: o pedido pai e o nº da rodada (1, 2, 3…). */
   parentOrderId?: string | null;
   roundIndex?: number | null;
+  /**
+   * Pedido da carga do histórico do Sankhya em espera até o go-live
+   * (docs/SANKHYA.md): fora das pendências (tasks.ts usa `held: null`). As
+   * telas de pedidos continuam mostrando o pedido.
+   */
+  held?: boolean | null;
 }
 
 /** Uma rodada da programação de compra no pedido pai. */
@@ -971,8 +1017,12 @@ export interface PurchaseRound {
   index: number;
   /** AAAA-MM-DD: o dia em que o pedido filho nasce. */
   expectedAt: string;
-  /** Peças de cada produto nesta rodada. */
-  items: Array<{ productId: string; quantity: number }>;
+  /** Peças de cada produto nesta rodada (e de cada cor, quando há variações). */
+  items: Array<{
+    productId: string;
+    quantity: number;
+    colors?: ColorQuantity[] | null;
+  }>;
   /** Pedido filho desta rodada (nulo até nascer). */
   orderId: string | null;
   createdAt: string | null;
@@ -988,6 +1038,11 @@ export interface OrderItem extends BaseRow {
   /** Variação pedida e a cópia dos valores dela (copiadas da solicitação). */
   variantId?: string | null;
   variant?: VariantSnapshot | null;
+  /**
+   * Peças por cor do produto (variações escolhidas na Seleção): uma linha por
+   * cor na tela, somando `quantity`. Nulo = sem variações.
+   */
+  colors?: ColorQuantity[] | null;
   /** SEQUENCIA do item na nota do Sankhya (a nota é o sankhyaCode do pedido). */
   sankhyaCode?: string | null;
   /**
@@ -1011,6 +1066,11 @@ export interface Stage extends BaseRow {
   percent: number;
   reminderSentAt: string | null;
   blockReason: string | null;
+  /**
+   * Em espera até o go-live (pedido da carga do histórico do Sankhya): fora
+   * das listas gerais (Pendências, lembretes, SLA). Ver `hidesHeld` (store.ts).
+   */
+  held?: boolean | null;
 }
 
 export interface Requirement extends BaseRow {
@@ -1027,6 +1087,8 @@ export interface Requirement extends BaseRow {
   submittedByUserId: string | null;
   submittedAt: string | null;
   note: string | null;
+  /** Em espera até o go-live (ver Stage.held). */
+  held?: boolean | null;
 }
 
 export interface Document extends BaseRow {
@@ -1512,6 +1574,26 @@ export interface RequestScheduleItem {
   /** AAAA-MM-DD: 1ª data + intervalo × (n − 1). */
   expectedAt: string;
 }
+/** Peças de uma cor (linha por cor do produto, no pedido e na rodada). */
+export interface ColorQuantity {
+  color: string;
+  quantity: number;
+}
+
+/**
+ * Plano de cores da escolha e da solicitação ao fornecedor: todas as cores do
+ * item do Book (`colors`, que não mudam), as incluídas na compra e as peças de
+ * cada cor, no total e por data (`rounds` na ordem de `schedule.items`; sem
+ * programação, uma data só). As linhas somam a quantidade.
+ */
+export interface ColorPlan {
+  colors: string[];
+  included: string[];
+  rows: Array<{ color: string; quantity: number; rounds: number[] }>;
+  /** As caixas de cada cor foram digitadas na tela (não é a divisão igual). */
+  custom?: boolean;
+}
+
 export interface RequestSchedule {
   intervalDays: number;
   /** AAAA-MM-DD da 1ª entrega prevista. */
@@ -1948,6 +2030,97 @@ export interface ProductionFollowup {
 }
 
 /** Acompanhamento da produção de um pedido (um por pedido). */
+/*
+ * Documentos do embarque do pedido de compra (mapa R7, R21, R22?, R23,
+ * R23?; docs/SHIPPING_DOCS.md): o check list de carga do fornecedor, o
+ * packing list, a invoice da trading e o BL da marítima. Uma linha por
+ * pedido e documento; a conferência automática compara linha a linha.
+ */
+export const SHIPPING_DOC_KINDS = [
+  "load",
+  "packing_list",
+  "invoice",
+  "bl",
+] as const;
+export type ShippingDocKind = (typeof SHIPPING_DOC_KINDS)[number];
+export const SHIPPING_DOC_STATUSES = [
+  "draft",
+  "submitted",
+  "accepted",
+  "rejected",
+] as const;
+export type ShippingDocStatus = (typeof SHIPPING_DOC_STATUSES)[number];
+
+/** Uma linha (item do pedido) de um documento do embarque. */
+export interface ShippingDocLine {
+  itemId: string;
+  name: string;
+  cartons: number;
+  pieces: number;
+  netKg: number | null;
+  grossKg: number | null;
+  /** Invoice: preço por peça. */
+  unitPrice?: number | null;
+}
+
+/** Diferença achada na conferência automática. */
+export interface ShippingDocMismatch {
+  itemId: string;
+  field: "cartons" | "pieces" | "netKg" | "grossKg" | "item";
+  expected: number | null;
+  found: number | null;
+}
+
+/** Check list de carga: caixas de um item que subiram no container. */
+export interface LoadEntry {
+  itemId: string;
+  cartons: number;
+  at: string;
+  byUserId: string;
+}
+
+export interface ShippingDoc extends BaseRow {
+  orderId: string;
+  kind: ShippingDocKind;
+  status: ShippingDocStatus;
+  /** Nº da invoice ou do BL. */
+  number: string | null;
+  containerNumber: string | null;
+  lines: ShippingDocLine[];
+  /** Check list de carga: o que foi marcado, entrada a entrada. */
+  entries: LoadEntry[] | null;
+  /** Conferência com o documento anterior (vazio = bateu). */
+  mismatches: ShippingDocMismatch[] | null;
+  documentId: string | null;
+  currency: string | null;
+  version: number;
+  submittedByUserId: string | null;
+  submittedAt: string | null;
+}
+
+/*
+ * Fotos e vídeos do produto real (mapa R15, R16 e R5; docs/SAMPLE_FLOW.md):
+ * a agência de marketing na China fotografa a amostra de cada produto do
+ * pedido; o marketing aprova (troca as fotos do catálogo e ativa a venda) ou
+ * pede para refazer.
+ */
+export const REAL_MEDIA_STATUSES = ["sent", "approved", "rejected"] as const;
+export type RealMediaStatus = (typeof REAL_MEDIA_STATUSES)[number];
+
+export interface RealMedia extends BaseRow {
+  orderId: string;
+  orderItemId: string;
+  productId: string | null;
+  status: RealMediaStatus;
+  /** Fotos e vídeos enviados (documentos do produto, tipo real_media). */
+  documentIds: string[];
+  reason: string | null;
+  sentByUserId: string | null;
+  sentAt: string | null;
+  decidedByUserId: string | null;
+  decidedAt: string | null;
+}
+
 export interface ProductionTrack extends BaseRow {
   orderId: string;
   mode: ProductionMode | null;
@@ -2483,6 +2656,8 @@ export interface SupplierRequest extends BaseRow {
    * rodada e intervalo (docs/PURCHASE_SCHEDULE.md). `quantity` é o total.
    */
   schedule?: RequestSchedule | null;
+  /** Variações de cor copiadas da escolha (peças por cor e por data). */
+  colorPlan?: ColorPlan | null;
   /** Referências geradas por IA na escolha do grupo (imagens e ficha); o fornecedor vê. */
   aiAssets?: AiReferenceAsset[] | null;
   /**
@@ -2560,6 +2735,12 @@ export interface SelectionGroup extends BaseRow {
   updatedByUserId: string | null;
   /** Programação de compra: rodadas com peças e intervalo; `quantity` é o total. */
   schedule?: RequestSchedule | null;
+  /**
+   * Variações de cor do vencedor (docs/PURCHASE_SCHEDULE.md, "Cores"): as
+   * cores do Book, as incluídas e as peças de cada cor por data. Nulo = item
+   * sem variações (uma linha só).
+   */
+  colorPlan?: ColorPlan | null;
   /**
    * Prompts de IA da escolha (imagens e ficha para o fornecedor,
    * docs/SUPPLIER_REQUESTS.md "Referências por IA"). Nulo = os padrões das
@@ -2651,10 +2832,14 @@ export interface OrderSummary extends BaseRow {
    */
   kpi?: unknown;
   /**
-   * Pendências da Wellmix nas etapas em andamento do pedido (`TaskDraft`s com
-   * a ordem da etapa, src/lib/services/tasks.ts): as mesmas para toda a equipe.
+   * Pendências da Wellmix do pedido (`StoredTasks`, src/lib/services/order-summary.ts):
+   * as das etapas em andamento, prontas, e as de produção, embarque,
+   * certificação, artes e "Pagar fornecedor", com o que a leitura usa para
+   * saber de quem cada uma é (docs/RESUMOS.md, "Pendências").
    */
   tasks?: unknown;
+  /** O pedido tem pendência guardada em `tasks` (a tela de Pendências lê só esses). */
+  hasTasks?: boolean;
 }
 
 /**
@@ -2878,6 +3063,8 @@ export interface Tables {
   message_reads: MessageRead;
   production_tracks: ProductionTrack;
   sku_inspections: SkuInspection;
+  shipping_docs: ShippingDoc;
+  real_media: RealMedia;
   import_steps: ImportStep;
   receivings: Receiving;
   art_issues: ArtIssue;
@@ -2924,6 +3111,11 @@ export interface IndexDef {
   key: string;
   type: "key" | "unique";
   columns: string[];
+  /**
+   * Índice parcial (só Supabase/Postgres): a condição SQL. O Appwrite cria o
+   * índice inteiro.
+   */
+  where?: string;
   /**
    * Chaves de índices antigos que este substitui: o publicador
    * (scripts/appwrite-push.ts) apaga só estes antes de criar o novo; nunca
@@ -3049,6 +3241,7 @@ export const TABLES: Record<TableName, TableDef> = {
       prompts: json(),
       division: enumOf(DIVISIONS, false),
       sankhyaCode: str(40),
+      agencyId: id(false),
     },
     indexes: [{ key: "by_sankhya", type: "key", columns: ["sankhyaCode"] }],
   },
@@ -3168,6 +3361,7 @@ export const TABLES: Record<TableName, TableDef> = {
       comexId: id(false),
       logisticsId: id(false),
       ocpId: id(false),
+      marketingAgencyId: id(false),
       designerUserId: id(false),
       closedAt: datetime(),
       notes: text(),
@@ -3198,9 +3392,16 @@ export const TABLES: Record<TableName, TableDef> = {
       purchaseRounds: jsonLarge(),
       parentOrderId: id(false),
       roundIndex: int(),
+      held: bool(),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
+      {
+        key: "live_by_status",
+        type: "key",
+        columns: ["status"],
+        where: `"held" is null`,
+      },
       { key: "by_parent", type: "key", columns: ["parentOrderId"] },
       { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
       { key: "by_owner", type: "key", columns: ["ownerUserId"] },
@@ -3220,6 +3421,7 @@ export const TABLES: Record<TableName, TableDef> = {
       unitPrice: float(),
       variantId: id(false),
       variant: json(),
+      colors: json(),
       sankhyaCode: str(40),
       sankhyaRefs: json(),
     },
@@ -3240,10 +3442,17 @@ export const TABLES: Record<TableName, TableDef> = {
       percent: int(true),
       reminderSentAt: datetime(),
       blockReason: text(),
+      held: bool(),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_status", type: "key", columns: ["status"] },
+      {
+        key: "live_by_status",
+        type: "key",
+        columns: ["status"],
+        where: `"held" is not true`,
+      },
     ],
   },
   requirements: {
@@ -3262,10 +3471,23 @@ export const TABLES: Record<TableName, TableDef> = {
       submittedByUserId: id(false),
       submittedAt: datetime(),
       note: text(),
+      held: bool(),
     },
     indexes: [
       { key: "by_stage", type: "key", columns: ["stageId"] },
       { key: "by_order", type: "key", columns: ["orderId"] },
+      {
+        key: "live_by_status",
+        type: "key",
+        columns: ["status"],
+        where: `"held" is not true`,
+      },
+      {
+        key: "live_by_key",
+        type: "key",
+        columns: ["key"],
+        where: `"held" is not true`,
+      },
     ],
   },
   documents: {
@@ -3337,7 +3559,15 @@ export const TABLES: Record<TableName, TableDef> = {
       kind: enumOf(NOTIFICATION_KINDS, false),
       actor: str(40),
     },
-    indexes: [{ key: "by_user", type: "key", columns: ["userId"] }],
+    indexes: [
+      { key: "by_user", type: "key", columns: ["userId"] },
+      // Sino do cabeçalho (todas as telas): as últimas do usuário no app.
+      {
+        key: "by_user_channel_created",
+        type: "key",
+        columns: ["userId", "channel", "createdAt"],
+      },
+    ],
   },
   audit_log: {
     label: "Auditoria",
@@ -4094,6 +4324,50 @@ export const TABLES: Record<TableName, TableDef> = {
     },
     indexes: [{ key: "order_unique", type: "unique", columns: ["orderId"] }],
   },
+  shipping_docs: {
+    label: "Documentos do embarque (check list, packing list, invoice, BL)",
+    columns: {
+      orderId: id(),
+      kind: enumOf(SHIPPING_DOC_KINDS),
+      status: enumOf(SHIPPING_DOC_STATUSES),
+      number: str(80),
+      containerNumber: str(40),
+      lines: json(),
+      entries: json(),
+      mismatches: json(),
+      documentId: id(false),
+      currency: str(3),
+      version: int(),
+      submittedByUserId: id(false),
+      submittedAt: datetime(),
+    },
+    indexes: [
+      {
+        key: "order_kind_unique",
+        type: "unique",
+        columns: ["orderId", "kind"],
+      },
+    ],
+  },
+  real_media: {
+    label: "Fotos e vídeos reais do produto (agência na China)",
+    columns: {
+      orderId: id(),
+      orderItemId: id(),
+      productId: id(false),
+      status: enumOf(REAL_MEDIA_STATUSES),
+      documentIds: json(),
+      reason: text(),
+      sentByUserId: id(false),
+      sentAt: datetime(),
+      decidedByUserId: id(false),
+      decidedAt: datetime(),
+    },
+    indexes: [
+      { key: "item_unique", type: "unique", columns: ["orderItemId"] },
+      { key: "by_order", type: "key", columns: ["orderId"] },
+    ],
+  },
   sku_inspections: {
     label: "Inspeção por SKU",
     columns: {
@@ -4416,6 +4690,7 @@ export const TABLES: Record<TableName, TableDef> = {
       orderId: id(false),
       batchId: id(false),
       schedule: json(),
+      colorPlan: json(),
       aiAssets: json(),
       sampling: jsonLarge(),
     },
@@ -4440,6 +4715,7 @@ export const TABLES: Record<TableName, TableDef> = {
       createdByUserId: id(),
       updatedByUserId: id(false),
       schedule: json(),
+      colorPlan: json(),
       aiPrompts: json(),
       aiAssets: json(),
     },
@@ -4616,10 +4892,12 @@ export const TABLES: Record<TableName, TableDef> = {
       computedAt: datetime(),
       kpi: json(),
       tasks: jsonLarge(),
+      hasTasks: bool(),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_live", type: "key", columns: ["live"] },
+      { key: "by_has_tasks", type: "key", columns: ["hasTasks"] },
     ],
   },
   kpi_snapshots: {

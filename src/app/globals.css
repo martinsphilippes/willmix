@@ -252,3 +252,34 @@ th[data-table-sort]:focus-visible {
     display: none;
   }
 }
+
+/*
+ * Seleção de itens (docs/PURCHASE_SCHEDULE.md, "Cores"): "Escolher" marca o
+ * vencedor do grupo (o rádio `chosen`, escondido dentro do botão). Com um
+ * vencedor marcado, ele fica em destaque e os demais itens se recolhem, até
+ * "Rever opções" (`data-selection-review`) mostrar a comparação de novo.
+ */
+[data-selection-form]
+  tr[data-selection-item]:has(input[name="chosen"]:checked) {
+  background: var(--color-brand-50);
+  box-shadow: inset 4px 0 0 var(--color-brand-600);
+}
+[data-selection-form]:has(input[name="chosen"]:checked):not(
+    :has(input[data-selection-review]:checked)
+  )
+  tr[data-selection-item]:not(:has(input[name="chosen"]:checked)) {
+  display: none;
+}
+[data-selection-form]:not(:has(input[name="chosen"]:checked))
+  [data-selection-winner-bar] {
+  display: none;
+}
+
+/* Book: a célula do campo aberto pela lista de pendências do fechamento
+   (src/components/booking-pending-list.tsx) fica destacada por alguns segundos. */
+td[data-booking-field-target] {
+  outline: 3px solid var(--color-brand-600);
+  outline-offset: -3px;
+  background-color: var(--color-brand-50);
+  transition: background-color 0.3s ease;
+}

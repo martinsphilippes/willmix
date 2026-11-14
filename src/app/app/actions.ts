@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { PRODUCTION_VIDEO_KEY } from "@/lib/purchase-lanes";
 import { formatAmount, moneyValue, parseAmount } from "@/lib/workflow/money";
 import { CURRENCIES, isCurrency, parseCurrency } from "@/lib/currencies";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
@@ -61,7 +62,14 @@ import { importCsv } from "@/lib/services/import";
 import { confirmSupplierPaymentReceipt } from "@/lib/services/acknowledgements";
 
 /* Helpers compartilhados com src/app/app/actions/*.ts */
-import { num, requireUser, run, str, withQuery } from "./actions/helpers";
+import {
+  flowReturnTo,
+  num,
+  requireUser,
+  run,
+  str,
+  withQuery,
+} from "./actions/helpers";
 import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import { itemIdOf } from "@/lib/purchase-lanes";
 import { parseRequestItems } from "./actions/request-items";
@@ -291,7 +299,10 @@ export async function submitRequirementAction(form: FormData) {
   const requirementId = str(form, "requirementId");
   // Envio feito no quadro Die Cut do pedido: volta para ele (sucesso ou erro).
   const dieCut = str(form, "returnTo") === "die-cut";
-  const back = dieCut ? dieCutHref(orderId) : `/app/orders/${orderId}`;
+  // Tela do passo do menu (docs/FLOW_MENU.md): volta para ela.
+  const flow = flowReturnTo(form);
+  const back =
+    flow ?? (dieCut ? dieCutHref(orderId) : `/app/orders/${orderId}`);
   await run(back, async () => {
     assertScreen(user, "orders");
     const store = getStore();
@@ -304,6 +315,13 @@ export async function submitRequirementAction(form: FormData) {
     if (!order) throw new Error("not_found");
     if (!canSubmitRequirement(user, order, requirement))
       throw new ForbiddenError();
+    // Arte, validação, certificado e arte final do pedido de compra: só o
+    // login que recebe a tarefa (antes de subir o arquivo).
+    if (order.flow === "supplier_request") {
+      const { assertLaneActor } =
+        await import("@/lib/services/cert-art-routing");
+      await assertLaneActor(user, order, requirement);
+    }
     // "Ficha de compra" só se conclui pela própria ficha (campos e foto na balança).
     if (requirement.key === "purchase_sheet")
       throw new Error("use_purchase_sheet");
@@ -322,6 +340,8 @@ export async function submitRequirementAction(form: FormData) {
         orderId,
         requirementId,
         type,
+        // Vídeo da produção (inspeção do pedido de compra).
+        video: requirement.key === PRODUCTION_VIDEO_KEY,
       });
       documentId = doc.id;
     } else if (uploadedFileId) {
@@ -333,6 +353,8 @@ export async function submitRequirementAction(form: FormData) {
         orderId,
         requirementId,
         type,
+        // Vídeo da produção (inspeção do pedido de compra).
+        video: requirement.key === PRODUCTION_VIDEO_KEY,
       });
       documentId = doc.id;
     } else if (uploadedPhotoId) {
@@ -371,6 +393,7 @@ export async function submitRequirementAction(form: FormData) {
         );
       throw error;
     }
+    if (flow) return withQuery(flow, "saved", "1");
     if (dieCut) {
       const item = dieCutItemOf(requirement.key);
       return withQuery(
@@ -389,7 +412,9 @@ export async function clearRequirementDocumentAction(form: FormData) {
   const orderId = str(form, "orderId");
   const requirementId = str(form, "requirementId");
   const dieCut = str(form, "returnTo") === "die-cut";
-  const back = dieCut ? dieCutHref(orderId) : `/app/orders/${orderId}`;
+  const flow = flowReturnTo(form);
+  const back =
+    flow ?? (dieCut ? dieCutHref(orderId) : `/app/orders/${orderId}`);
   await run(back, async () => {
     assertScreen(user, "orders");
     const requirement = await getStore().get("requirements", requirementId);
@@ -397,6 +422,7 @@ export async function clearRequirementDocumentAction(form: FormData) {
       throw new Error("not_found");
     const { clearRequirementDocument } = await import("@/lib/workflow/engine");
     await clearRequirementDocument(user, requirementId);
+    if (flow) return flow;
     if (dieCut) return dieCutHref(orderId, itemIdOf(requirement.key));
     return `/app/orders/${orderId}#stage-${requirement.stageId}`;
   });
@@ -417,7 +443,9 @@ function docTypeForKey(key: string): DocumentType | null {
 export async function decideRequirementAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
-  await run(`/app/orders/${orderId}`, async () => {
+  // Tela do passo do menu (docs/FLOW_MENU.md): volta para ela.
+  const flow = flowReturnTo(form);
+  await run(flow ?? `/app/orders/${orderId}`, async () => {
     assertScreen(user, "orders");
     const decision = str(form, "decision") === "approve" ? "approve" : "reject";
     await decideRequirement(
@@ -453,6 +481,7 @@ export async function assignPartnerAction(form: FormData) {
       "comexId",
       "logisticsId",
       "ocpId",
+      "marketingAgencyId",
     ] as const;
     if (!(allowed as readonly string[]).includes(field))
       throw new Error("invalid_field");
@@ -471,6 +500,7 @@ export async function assignPartnerAction(form: FormData) {
       comexId: "comex",
       logisticsId: "logistics",
       ocpId: "ocp",
+      marketingAgencyId: "marketing_agency",
     };
     for (const stage of stages) {
       const reqs = await store.list("requirements", {
@@ -499,8 +529,9 @@ export async function assignPartnerAction(form: FormData) {
       }
     }
     // Pedido de compra: os itens abertos da arte e do certificado (raias da
-    // Preparação) passam para a agência ou a certificadora designada.
-    if (field === "agencyId" || field === "ocpId") {
+    // Preparação) passam para a agência ou o despachante designado (a
+    // certificação é dele; dono, 13/11/2026).
+    if (field === "agencyId" || field === "brokerId" || field === "ocpId") {
       const updated = await store.get("orders", orderId);
       const { syncLaneRoles } = await import("@/lib/services/purchase-order");
       if (updated) await syncLaneRoles(user, updated);
@@ -523,7 +554,7 @@ export async function assignPartnerAction(form: FormData) {
     // Selo de certificação: o OCP novo é avisado do selo a emitir; quem
     // passa a fazer a arte, do selo que já chegou. Só quando mudou de fato.
     if (
-      (field === "ocpId" || field === "agencyId") &&
+      (field === "ocpId" || field === "brokerId" || field === "agencyId") &&
       (order[field] ?? null) !== partyId
     ) {
       try {
@@ -913,6 +944,9 @@ export async function saveProductAction(form: FormData) {
         sku: str(form, "sku") || null,
         specification: str(form, "specification") || null,
       });
+    // "XPTO" é texto de exemplo, não nome (docs/PURCHASE_ORDER.md).
+    const { assertRealProductName } = await import("@/lib/placeholder-name");
+    assertRealProductName(parsed.name);
     const id = str(form, "id");
     const store = getStore();
     const saved = id
@@ -922,6 +956,12 @@ export async function saveProductAction(form: FormData) {
           ...parsed,
           active: true,
         });
+    // O nome chega aos pedidos e às tarefas que estavam sem ele.
+    if (id) {
+      const { fillProductNameCopies } =
+        await import("@/lib/services/product-name-copies");
+      await fillProductNameCopies(user, saved);
+    }
     // Produto novo ou alterado vai para o Sankhya (fase 3).
     const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
     await syncSoon(user, "product", saved.id);
@@ -1058,7 +1098,7 @@ export async function saveSettingsAction(form: FormData) {
       const current = DEFAULT_SETTINGS[key];
       let value: unknown = raw;
       if (typeof current === "boolean") value = raw === "on" || raw === "true";
-      else if (key === "productionStartDays") {
+      else if (key === "productionStartDays" || key === "invoiceDays") {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 0 || n > 365)
           throw new Error("invalid_input");
@@ -1103,7 +1143,10 @@ export async function saveSettingsAction(form: FormData) {
         key === "purchaseArtFinalSlaDays" ||
         key === "purchaseRegistrationSlaDays" ||
         key === "purchaseSignatureSlaDays" ||
-        key === "purchaseDownPaymentSlaDays"
+        key === "purchaseDownPaymentSlaDays" ||
+        key === "purchaseInspectionMediaSlaDays" ||
+        key === "purchaseInspectionReviewSlaDays" ||
+        key === "purchaseInspectionMaxAttempts"
       ) {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 1 || n > 365)

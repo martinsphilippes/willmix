@@ -5,6 +5,7 @@ Mapa do processo, "Mesas de trabalho" (personas GP, Cadastro e fiscal, Marketing
 - **Onde:** Pendências → **Mesa de trabalho** (`/app/tasks/desk`, `?desk=gp|cadastro|mkt|agency|ocp`). Fica dentro de Pendências: todos os papéis com mesa já abrem essa tela.
 - **Quem:** a Wellmix vê todas as mesas e abre na da função (Cadastro → cadastro, Designer → marketing, Gerente de produto → GP); a agência de arte e a certificadora veem só a delas, com os pedidos em que estão.
 - **Só leitura:** as filas saem dos mesmos itens das raias e das pendências; nada novo no banco. Um item só aparece quando já está liberado (o anterior feito).
+- **Só para quem recebe (dono, 14/11/2026):** arte, validação, certificado e arte final aparecem só para o login que recebe cada uma (docs/PURCHASE_ORDER.md, seção 2, "Quem faz cada tarefa"): a arte e a arte final, para o designer do pedido; a validação, para o operador responsável; o certificado, para a certificadora do pedido. O administrador vê todas.
 
 | Mesa | Filas |
 | --- | --- |
@@ -16,4 +17,4 @@ Mapa do processo, "Mesas de trabalho" (personas GP, Cadastro e fiscal, Marketing
 
 Prazo vencido aparece em vermelho, "atrasado". As outras mesas do mapa (diretoria, comprador, planner, financeiro, vendas, parceiros da logística) ficam para as próximas etapas.
 
-Código: `src/lib/services/desks.ts`, `src/app/app/tasks/desk/page.tsx`, textos em `src/i18n/modules/desks.ts`. Teste: `tests/unit/purchase-order.test.ts` ("mesas de trabalho") e o E2E do caminho principal.
+Código: `src/lib/services/desks.ts`, `src/app/app/tasks/desk/page.tsx`, textos em `src/i18n/modules/desks.ts`. Teste: `tests/unit/purchase-order.test.ts` ("mesas de trabalho"), `tests/unit/purchase-lane-owners.test.ts` ("mesas") e o E2E do caminho principal.

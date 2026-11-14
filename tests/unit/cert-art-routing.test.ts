@@ -5,8 +5,8 @@ import { xlsxBytes } from "./xlsx-fixture";
 /*
  * Pedido de compra: cada tarefa dos cartões Certificação e Artes no login
  * certo (docs/CERTIFICATION.md, "Quem recebe cada tarefa"; dono, 13/11/2026).
- * Selo → certificadora do pedido; memorial → analista, e a validação →
- * certificadora; aplicar o selo → designer do pedido, agência que faz a arte
+ * Selo → despachante do pedido (a certificação é dele; dono, 13/11/2026);
+ * memorial → analista, e a validação → despachante; aplicar o selo → designer do pedido, agência que faz a arte
  * ou Wellmix; validar a arte → analista que pode validar arte. O fornecedor
  * fica só com o que é dele. Sem responsável, a equipe fica com a tarefa e a
  * tela aponta onde designar. Trocar o responsável move a pendência aberta.
@@ -34,7 +34,7 @@ let admin: User;
 let operator: User;
 let supplierA: User;
 let agency: User;
-let ocp: User;
+let broker: User;
 /** Analista do pedido (responsável interno), que pode validar arte. */
 let analyst: User;
 /** Designer da Wellmix (função Designer). */
@@ -186,7 +186,8 @@ beforeAll(async () => {
   operator = by("operador@wellmix.com");
   supplierA = by("supplier.a@china.com");
   agency = users.find((u) => u.role === "agency")!;
-  ocp = by("ocp@certifica.com");
+  // Quem certifica: o despachante do pedido (dono, 13/11/2026).
+  broker = by("despachante@comex.com");
   const store = getStore();
   const wellmixLogin = (name: string, functions: string[]) =>
     store.create("users", {
@@ -211,16 +212,16 @@ describe("tudo designado: cada tarefa no login certo", () => {
     order = await purchaseOrder("RT-1");
   });
 
-  it("o pedido nasce com certificadora e agência, e o analista pode validar arte", () => {
+  it("o pedido nasce com despachante e agência, e o analista pode validar arte", () => {
     expect(order.flow).toBe("supplier_request");
-    expect(order.ocpId).toBe(ocp.partyId);
+    expect(order.brokerId).toBe(broker.partyId);
     expect(order.agencyId).toBe(agency.partyId);
     expect(can(analyst, "art.validate")).toBe(true);
     expect(can(noArt, "art.validate")).toBe(false);
   });
 
-  it("selo para a certificadora e memorial para o analista; mais ninguém", async () => {
-    expect(shape(await tasksOf(ocp, order))).toEqual([
+  it("selo para o despachante e memorial para o analista; mais ninguém", async () => {
+    expect(shape(await tasksOf(broker, order))).toEqual([
       ["cert_step", "tasks.seal.issue.title", featured(order)],
     ]);
     expect(shape(await tasksOf(analyst, order))).toEqual([
@@ -228,8 +229,8 @@ describe("tudo designado: cada tarefa no login certo", () => {
     ]);
     for (const user of [admin, operator, designer, agency, supplierA])
       expect(await tasksOf(user, order)).toHaveLength(0);
-    // A certificadora tem a ação de enviar o selo no quadro do alto.
-    const view = await f.importFlowView(ocp, order, "certification");
+    // O despachante tem a ação de enviar o selo no quadro do alto.
+    const view = await f.importFlowView(broker, order, "certification");
     expect(view.find((v) => v.template.key === "cert_seal")!.canSubmit).toBe(
       true,
     );
@@ -240,7 +241,7 @@ describe("tudo designado: cada tarefa no login certo", () => {
     const of = (key: string) =>
       view.find((v) => v.template.key === key)!.assignee;
     expect(of("cert_seal")).toMatchObject({
-      via: "ocp",
+      via: "broker",
       validating: false,
       missing: null,
     });
@@ -252,16 +253,16 @@ describe("tudo designado: cada tarefa no login certo", () => {
     // Aplicar o selo ainda espera o selo: sem pendência, sem dono.
     expect(of("cert_seal_art")).toBeNull();
     // Quem é de fora não vê o encaminhamento interno.
-    const forOcp = await f.importFlowView(ocp, order, "certification");
-    expect(forOcp.every((v) => !v.assignee)).toBe(true);
+    const forBroker = await f.importFlowView(broker, order, "certification");
+    expect(forBroker.every((v) => !v.assignee)).toBe(true);
   });
 
-  it("memorial enviado pelo analista: a validação vai para a certificadora", async () => {
+  it("memorial enviado pelo analista: a validação vai para o despachante", async () => {
     await f.submitStep(analyst, order.id, "cert_memorial", {
       documentId: (await doc(analyst, order, "memorial.pdf")).id,
     });
     expect(await tasksOf(analyst, order)).toHaveLength(0);
-    expect(shape(await tasksOf(ocp, order))).toEqual([
+    expect(shape(await tasksOf(broker, order))).toEqual([
       ["cert_step", "tasks.seal.issue.title", featured(order)],
       [
         "cert_validate",
@@ -269,16 +270,16 @@ describe("tudo designado: cada tarefa no login certo", () => {
         stepRow(order, "cert_memorial"),
       ],
     ]);
-    await f.validateStep(ocp, order.id, "cert_memorial", "validated", null);
-    expect(shape(await tasksOf(ocp, order))).toEqual([
+    await f.validateStep(broker, order.id, "cert_memorial", "validated", null);
+    expect(shape(await tasksOf(broker, order))).toEqual([
       ["cert_step", "tasks.seal.issue.title", featured(order)],
     ]);
   });
 
   it("selo enviado: só então aplicar o selo vai para a agência, com o arquivo para baixar", async () => {
-    const seal = await doc(ocp, order, "selo.pdf");
-    await f.submitStep(ocp, order.id, "cert_seal", { documentId: seal.id });
-    expect(await tasksOf(ocp, order)).toHaveLength(0);
+    const seal = await doc(broker, order, "selo.pdf");
+    await f.submitStep(broker, order.id, "cert_seal", { documentId: seal.id });
+    expect(await tasksOf(broker, order)).toHaveLength(0);
     expect(shape(await tasksOf(agency, order))).toEqual([
       ["cert_step", "tasks.seal.apply.title", stepRow(order, "cert_seal_art")],
     ]);
@@ -329,10 +330,10 @@ describe("tudo designado: cada tarefa no login certo", () => {
         stepRow(order, "cert_seal_art"),
       ],
     ]);
-    for (const user of [admin, operator, designer, noArt, ocp, supplierA])
+    for (const user of [admin, operator, designer, noArt, broker, supplierA])
       expect(await tasksOf(user, order)).toHaveLength(0);
     // Sem a ação "Validar a arte" a Wellmix não valida; parceiros também não.
-    for (const user of [noArt, ocp, supplierA, agency])
+    for (const user of [noArt, broker, supplierA, agency])
       await expect(
         f.validateStep(user, order.id, "cert_seal_art", "validated", null),
       ).rejects.toThrow();
@@ -341,7 +342,7 @@ describe("tudo designado: cada tarefa no login certo", () => {
       view.find((v) => v.template.key === "cert_seal_art")!.canValidate,
     ).toBe(false);
     await f.validateStep(analyst, order.id, "cert_seal_art", "validated", null);
-    for (const user of [admin, analyst, agency, ocp, designer])
+    for (const user of [admin, analyst, agency, broker, designer])
       expect(await tasksOf(user, order)).toHaveLength(0);
     // O histórico fica com quem fez e quem validou.
     const steps = await getStore().list("import_steps", {
@@ -371,18 +372,19 @@ describe("pedido sem responsável designado", () => {
   let order: Order;
   beforeAll(async () => {
     order = await purchaseOrder("RT-2");
-    // Parceiros retirados em Parceiros do pedido: as raias abertas voltam
-    // para a Wellmix, como na tela.
+    // Parceiros retirados em Parceiros do pedido: a arte e a arte final
+    // abertas voltam para a Wellmix, como na tela; o certificado das raias
+    // continua da certificadora (dono, 14/11/2026).
     order = await getStore().update("orders", order.id, {
-      ocpId: null,
+      brokerId: null,
       agencyId: null,
       designerUserId: null,
       ownerUserId: null,
     });
-    expect(await po.syncLaneRoles(admin, order)).toBe(3);
+    expect(await po.syncLaneRoles(admin, order)).toBe(2);
   });
 
-  it("a equipe fica com designar a certificadora e com o memorial, e a pendência diz onde designar", async () => {
+  it("a equipe fica com designar o despachante e com o memorial, e a pendência diz onde designar", async () => {
     for (const user of [admin, operator]) {
       const tasks = await tasksOf(user, order);
       expect(shape(tasks)).toEqual([
@@ -398,7 +400,7 @@ describe("pedido sem responsável designado", () => {
       )!;
       expect(memorial.text?.detailExtra).toBe("tasks.missing.analyst");
     }
-    expect(await tasksOf(ocp, order)).toHaveLength(0);
+    expect(await tasksOf(broker, order)).toHaveLength(0);
     expect(await tasksOf(supplierA, order)).toHaveLength(0);
   });
 
@@ -420,18 +422,20 @@ describe("pedido sem responsável designado", () => {
     });
   });
 
-  it("certificadora designada: a pendência passa para ela, as raias abertas também, sem duplicar", async () => {
+  it("despachante designado: o selo passa para ele, sem duplicar; o certificado das raias continua da certificadora", async () => {
     const store = getStore();
     const certificate = () =>
       store
         .list("requirements", { filter: { orderId: order.id } })
         .then((r) => r.filter((x) => x.key.startsWith("certificate__")));
-    expect((await certificate()).map((r) => r.role)).toEqual(["operator"]);
-    order = await store.update("orders", order.id, { ocpId: ocp.partyId });
-    expect(await po.syncLaneRoles(admin, order)).toBe(1);
-    await f.notifySealPartner(order, "ocpId", null);
     expect((await certificate()).map((r) => r.role)).toEqual(["ocp"]);
-    expect(shape(await tasksOf(ocp, order))).toEqual([
+    order = await store.update("orders", order.id, {
+      brokerId: broker.partyId,
+    });
+    expect(await po.syncLaneRoles(admin, order)).toBe(0);
+    await f.notifySealPartner(order, "brokerId", null);
+    expect((await certificate()).map((r) => r.role)).toEqual(["ocp"]);
+    expect(shape(await tasksOf(broker, order))).toEqual([
       ["cert_step", "tasks.seal.issue.title", featured(order)],
     ]);
     // A Wellmix fica só com o memorial (sem analista, a equipe).
@@ -466,8 +470,8 @@ describe("pedido sem responsável designado", () => {
   it("selo enviado com a arte da Wellmix e sem designer: aplicar vai para a função Designer", async () => {
     await setSetting("agencyValidationEnabled", false);
     try {
-      await f.submitStep(ocp, order.id, "cert_seal", {
-        documentId: (await doc(ocp, order, "selo.pdf")).id,
+      await f.submitStep(broker, order.id, "cert_seal", {
+        documentId: (await doc(broker, order, "selo.pdf")).id,
       });
       // (Sem analista, o memorial continua com a equipe toda, designer incluído.)
       const apply = async (user: User) =>
@@ -483,7 +487,7 @@ describe("pedido sem responsável designado", () => {
         ],
       ]);
       expect(tasks[0].text?.detailExtra).toBe("tasks.missing.designer");
-      for (const user of [admin, operator, agency, ocp, supplierA])
+      for (const user of [admin, operator, agency, broker, supplierA])
         expect(await apply(user)).toHaveLength(0);
       // A agência do pedido só acompanha: não envia a arte com o selo.
       await expect(
@@ -513,7 +517,7 @@ describe("pedido de compra sem produto que exige certificação", () => {
       if (r.key.startsWith("certificate__") || r.key.startsWith("art_final__"))
         await store.remove("requirements", r.id);
     expect(await f.purchaseNeedsCertification(order)).toBe(false);
-    for (const user of [admin, analyst, operator, ocp, agency, supplierA])
+    for (const user of [admin, analyst, operator, broker, agency, supplierA])
       expect(
         (await tasksOf(user, order)).filter((t) =>
           t.link.includes("#certification"),
@@ -546,7 +550,7 @@ describe("cartão Artes: não conformidade no login certo", () => {
     ]);
     // Na tela da agência, a correção entra na etapa "arte".
     expect((await artTasks(agency))[0].group).toBe("agency.art");
-    for (const user of [admin, analyst, operator, ocp, supplierA])
+    for (const user of [admin, analyst, operator, broker, supplierA])
       expect(await artTasks(user)).toHaveLength(0);
 
     await art.fixArtIssue(agency, issue.id, { fixNote: "Ajustado" });

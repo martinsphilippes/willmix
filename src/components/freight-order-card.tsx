@@ -31,6 +31,7 @@ export async function FreightOrderCard({
   notice,
   count,
   error,
+  returnTo,
 }: {
   t: Translate;
   user: User;
@@ -38,6 +39,8 @@ export async function FreightOrderCard({
   notice: string | null;
   count: number;
   error: string | null;
+  /** Tela do passo do menu (docs/FLOW_MENU.md): o pedido de frete volta para ela. */
+  returnTo?: string;
 }) {
   const rows = await freightForOrder(user, orderId);
   const carriers = rows.length
@@ -137,6 +140,9 @@ export async function FreightOrderCard({
         )}
         <form action={requestOrderFreightAction} className="mt-3">
           <input type="hidden" name="orderId" value={orderId} />
+          {returnTo ? (
+            <input type="hidden" name="returnTo" value={returnTo} />
+          ) : null}
           <SubmitButton variant="secondary" data-order-freight-request>
             {live ? t("freight.order.again") : t("freight.order.request")}
           </SubmitButton>

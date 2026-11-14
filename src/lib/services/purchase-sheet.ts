@@ -11,7 +11,12 @@ import {
   type PurchaseSheet,
   type User,
 } from "@/lib/db";
-import { assertWellmix, canViewOrder, isWellmix } from "@/lib/auth/permissions";
+import {
+  assertWellmix,
+  canViewOrder,
+  isOrderCertifier,
+  isWellmix,
+} from "@/lib/auth/permissions";
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
@@ -200,9 +205,10 @@ export const CERTIFIER_HIDDEN_FIELDS: readonly SheetField[] = [];
  */
 export function isSheetCertifier(
   user: Pick<User, "role" | "partyId">,
-  order: Pick<Order, "ocpId">,
+  order: Partial<Pick<Order, "ocpId" | "brokerId">>,
 ): boolean {
-  return user.role === "ocp" && !!user.partyId && order.ocpId === user.partyId;
+  // Quem certifica: o despachante do pedido (dono, 13/11/2026) ou a certificadora.
+  return isOrderCertifier(user, order);
 }
 
 /**

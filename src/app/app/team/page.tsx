@@ -15,6 +15,7 @@ import {
 import {
   ACTION_GROUPS,
   accessFromFunctions,
+  functionDescription,
   functionLabel,
   type FunctionDef,
 } from "@/lib/auth/function-access";
@@ -112,10 +113,26 @@ export default async function TeamPage({
         {
           member: "team.saved.member",
           line: "team.saved.line",
+          deleted: "team.saved.deleted",
         } as Record<string, DictionaryKey>
       )[saved] ?? (`fn.saved.${saved}` as DictionaryKey))
     : null;
   const savedText = savedKey && t(savedKey) !== savedKey ? t(savedKey) : null;
+  // Resumo de "Excluir acesso": quem passou para o novo chefe, as pendências
+  // redistribuídas e as que ficaram sem responsável.
+  const count = (key: string) => {
+    const value = one(key);
+    return value && /^\d{1,6}$/.test(value) ? Number(value) : 0;
+  };
+  const deleted =
+    saved === "deleted"
+      ? {
+          reports: count("reports"),
+          to: team.find((m) => m.id === one("to"))?.name ?? null,
+          work: count("work"),
+          left: count("left"),
+        }
+      : null;
   const distributed = one("distributed");
   const distributedCount =
     distributed && /^\d+$/.test(distributed) ? Number(distributed) : null;
@@ -162,7 +179,31 @@ export default async function TeamPage({
       ) : null}
       {savedText ? (
         <div className="mb-3" data-team-saved={saved}>
-          <Alert tone="success">{savedText}</Alert>
+          <Alert tone="success">
+            <span className="block" data-team-saved-text>
+              {savedText}
+            </span>
+            {deleted?.reports && deleted.to ? (
+              <span className="mt-1 block" data-team-deleted-reports>
+                {t("team.saved.deleted.reports", {
+                  n: deleted.reports,
+                  name: deleted.to,
+                })}
+              </span>
+            ) : null}
+            {deleted?.work ? (
+              <span className="mt-1 block" data-team-deleted-work>
+                {t("team.saved.deleted.work", { n: deleted.work })}
+              </span>
+            ) : null}
+          </Alert>
+        </div>
+      ) : null}
+      {deleted?.left ? (
+        <div className="mb-3" data-team-deleted-left>
+          <Alert tone="warning">
+            {t("team.saved.deleted.left", { n: deleted.left })}
+          </Alert>
         </div>
       ) : null}
       {distributedCount !== null ? (
@@ -609,9 +650,10 @@ function FunctionsTab({
               </span>
             }
           >
-            {current.builtin ? (
+            {current.builtin &&
+            functionDescription(current.key, (k) => t(k as DictionaryKey)) ? (
               <p className="mb-3 text-sm text-zinc-600">
-                {t(`function.desc.${current.key}` as DictionaryKey)}
+                {functionDescription(current.key, (k) => t(k as DictionaryKey))}
               </p>
             ) : null}
             <p className="mb-4 text-xs text-zinc-500">{t("fn.adminNote")}</p>
@@ -760,18 +802,21 @@ function ScreensForm({ t, def }: { t: Translate; def: FunctionDef }) {
           </legend>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {group.screens.map((s) => {
+              // Telas do Início: configuráveis por função (marcadas por
+              // padrão; desmarcadas ficam em baseOff).
               const base = WELLMIX_BASE.includes(s);
               return (
                 <CheckRow
                   key={s}
                   name="screens"
                   value={s}
-                  checked={base || def.screens.includes(s)}
-                  disabled={base}
+                  checked={
+                    base ? !def.baseOff.includes(s) : def.screens.includes(s)
+                  }
                   title={t(SCREEN_LABEL[s])}
                   note={
                     base
-                      ? t("fn.screens.base")
+                      ? t("fn.screens.baseDefault")
                       : ADMIN_ONLY.includes(s)
                         ? t("fn.screens.adminOnly")
                         : undefined

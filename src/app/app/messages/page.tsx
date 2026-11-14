@@ -3,14 +3,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
+import { MESSAGE_MAX_LENGTH, type PartyType, type Role } from "@/lib/db/schema";
 import {
-  MESSAGE_MAX_LENGTH,
-  PARTY_TYPES,
-  type PartyType,
-  type Role,
-} from "@/lib/db/schema";
-import {
-  chatDirectory,
+  chatTypeLabel,
   getConversationView,
   listConversationsFor,
   topicLabel,
@@ -34,12 +29,13 @@ import {
   Empty,
   Field,
   PageHeader,
-  Select,
   Textarea,
   TextLink,
   cx,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { SearchPicker } from "@/components/search-picker";
+import { partyPickerLabels } from "@/components/party-picker-labels";
 import { MessageAttach } from "@/components/message-attach";
 import { ChatAttachmentView } from "@/components/chat-attachment";
 import {
@@ -65,25 +61,9 @@ import {
  * tela (Server Action), não pela leitura da página.
  */
 
-/** Ordem dos grupos na escolha da empresa. */
-const PICKER_ORDER: PartyType[] = [
-  "customer",
-  "supplier",
-  "shipping_line",
-  "carrier",
-  "agency",
-  "broker",
-  "comex",
-  "logistics",
-  "ocp",
-  "legal",
-];
-
-function typeLabel(t: Translate, type: PartyType | Role | null) {
-  return type && (PARTY_TYPES as readonly string[]).includes(type)
-    ? t(`messages.type.${type as PartyType}`)
-    : "";
-}
+/** Rótulo do tipo da empresa ou do papel do login (messages.ts). */
+const typeLabel = (t: Translate, type: PartyType | Role | null) =>
+  chatTypeLabel(t, type);
 
 function formatWhen(value: string | null | undefined, intl: string) {
   if (!value) return "";
@@ -148,7 +128,9 @@ export default async function MessagesPage({
     };
   }
   const aiOn = view ? await translationOn() : false;
-  const directory = wellmix ? await chatDirectory(user) : null;
+  // Conversa nova (Wellmix): empresa ou login escolhidos por busca (a lista
+  // com as ~32 mil empresas deixava a tela com 8,9 MB).
+  const canStart = wellmix;
   const tree = view ? await topicTree(t, view.topics) : [];
   const errorText = !error
     ? null
@@ -194,7 +176,7 @@ export default async function MessagesPage({
       />
       <div className="mt-3 grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-4">
-          {directory ? (
+          {canStart ? (
             <Card dense title={t("messages.new")}>
               <form
                 action={startConversationAction}
@@ -203,37 +185,18 @@ export default async function MessagesPage({
               >
                 <div className="min-w-0 flex-1">
                   <Field label={t("messages.new.pick")}>
-                    <Select name="target" required defaultValue="">
-                      <option value="" disabled>
-                        {t("messages.new.choose")}
-                      </option>
-                      {PICKER_ORDER.map((type) => {
-                        const list = directory.parties.filter(
-                          (p) => p.type === type,
-                        );
-                        return list.length ? (
-                          <optgroup key={type} label={typeLabel(t, type)}>
-                            {list.map((p) => (
-                              <option key={p.id} value={`party:${p.id}`}>
-                                {p.name}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ) : null;
-                      })}
-                      {directory.users.length ? (
-                        <optgroup label={t("messages.new.noParty")}>
-                          {directory.users.map((u) => (
-                            <option key={u.id} value={`user:${u.id}`}>
-                              {u.name}
-                              {typeLabel(t, u.role)
-                                ? ` · ${typeLabel(t, u.role)}`
-                                : ""}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ) : null}
-                    </Select>
+                    <SearchPicker
+                      endpoint="/api/messages/targets"
+                      marker="chat-target"
+                      kind="new"
+                      name="target"
+                      required
+                      ariaLabel={t("messages.new.pick")}
+                      labels={{
+                        ...partyPickerLabels(t),
+                        placeholder: t("messages.new.choose"),
+                      }}
+                    />
                   </Field>
                 </div>
                 <SubmitButton variant="secondary">

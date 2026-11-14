@@ -3,8 +3,12 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
+import { listColumns } from "@/lib/db/lookup";
+import { PartyPicker } from "@/components/party-picker";
+import { partyPickerLabels } from "@/components/party-picker-labels";
 import { missingForCompletion } from "@/lib/services/purchase-sheet-calc";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
 import {
   listLinksForProducts,
   listLinksForSupplier,
@@ -76,7 +80,9 @@ export default async function ProductsPage({
   const [allProducts, lines, suppliers] = await Promise.all([
     store.list("products", { orderBy: "name" }),
     store.list("product_lines", { orderBy: "name" }),
-    store.list("parties", { filter: { type: "supplier" } }),
+    // Fornecedores: só id e nome (nome na coluna e na busca); o filtro
+    // escolhe por busca (~5,7 mil fornecedores não cabem numa lista).
+    listColumns(store, "parties", ["name"], { filter: { type: "supplier" } }),
   ]);
   // Excluídos (inativos) ficam fora da lista, em "Ver excluídos".
   const deletedCount = allProducts.filter((p) => !p.active).length;
@@ -192,7 +198,9 @@ export default async function ProductsPage({
           error === "nothing_purged" ||
           error === "purge_blocked"
             ? t(`productDelete.error.${error}` as DictionaryKey)
-            : t("common.error")}
+            : error === "product_name_placeholder"
+              ? t("productName.error.product_name_placeholder")
+              : t("common.error")}
         </Alert>
       ) : null}
       {deleted ? (
@@ -266,19 +274,25 @@ export default async function ProductsPage({
               </option>
             ))}
           </Select>
-          <Select
+          {/* Vazio = todos os fornecedores, como a opção da lista antiga. */}
+          <PartyPicker
             name="supplier"
-            defaultValue={filter.supplierId}
-            aria-label={t("common.supplier")}
-            className="w-auto"
-          >
-            <option value="">{t("prodList.allSuppliers")}</option>
-            {suppliers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
+            type="supplier"
+            initial={
+              filter.supplierId
+                ? {
+                    id: filter.supplierId,
+                    name: supplierNames.get(filter.supplierId) ?? "—",
+                  }
+                : null
+            }
+            ariaLabel={t("common.supplier")}
+            labels={{
+              ...partyPickerLabels(t),
+              placeholder: t("prodList.allSuppliers"),
+            }}
+            className="w-full sm:w-64"
+          />
           <Button type="submit" variant="primary">
             {t("prodList.searchButton")}
           </Button>
@@ -417,14 +431,14 @@ export default async function ProductsPage({
                         name="ids"
                         value={p.id}
                         form={BULK_FORM}
-                        aria-label={`${t("productDelete.selectOne")}: ${p.name}`}
+                        aria-label={`${t("productDelete.selectOne")}: ${productNameText(t, p.name)}`}
                         className="h-4 w-4 accent-brand-600"
                         data-product-select={p.id}
                       />
                     </Td>
                     <Td className="w-14">
                       <PhotoGallery
-                        name={p.name}
+                        name={productNameText(t, p.name)}
                         {...galleryProps(t, productPhotoList(p, productPhotos))}
                       />
                     </Td>
@@ -442,7 +456,7 @@ export default async function ProductsPage({
                         className="text-zinc-900"
                         title={t("catalog.open")}
                       >
-                        {p.name}
+                        {productNameText(t, p.name)}
                       </TextLink>
                       {(variants.get(p.id)?.length ?? 0) > 0 ? (
                         <span

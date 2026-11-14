@@ -3,7 +3,7 @@ import { InputFile } from "node-appwrite/file";
 import type { TableName, Tables } from "./schema";
 import { BUCKET_ID, DATABASE_ID, TABLES } from "./schema";
 import type { ListOptions, NewRow, Patch, Store, StoredFile } from "./store";
-import { matchesSearch } from "./store";
+import { hidesHeld, isHeld, matchesSearch } from "./store";
 import { downloadBytes } from "./download-bytes";
 import { storageFileName } from "../file-kinds";
 import {
@@ -119,7 +119,10 @@ export class AppwriteStore implements Store {
       if (result.rows.length < PAGE) break;
       cursor = (result.rows[result.rows.length - 1] as { $id: string }).$id;
     }
-    return rows.map((row) => fromAppwrite<Tables[K]>(table, row));
+    const out = rows.map((row) => fromAppwrite<Tables[K]>(table, row));
+    // Histórico em espera (store.ts): filtrado aqui (o Appwrite parou em
+    // 11/11/2026; só para os dois stores se comportarem igual).
+    return hidesHeld(table, options) ? out.filter((r) => !isHeld(r)) : out;
   }
 
   /**

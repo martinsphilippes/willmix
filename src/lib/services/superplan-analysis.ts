@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 
 import {
   getStore,
@@ -117,7 +118,9 @@ function prefillOf(
     (rates ? (rates.ipiNt ? 0 : (rates.ipi ?? null)) : null);
   return {
     productId: product.id,
-    productName: [product.sku, product.name].filter(Boolean).join(" · "),
+    productName: [product.sku, realName(product.name)]
+      .filter(Boolean)
+      .join(" · "),
     unitPrice: known ? price : null,
     currency: currency === "USD" ? "USD" : "RMB",
     otherCurrency: price !== null && currency && !known ? currency : null,

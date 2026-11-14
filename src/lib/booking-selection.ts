@@ -68,6 +68,27 @@ export function parseSelectionFilters(
   };
 }
 
+/**
+ * Abas da Seleção de itens (dono, 14/11/2026), nesta ordem: Itens → Seleção
+ * → Blocos Sugeridos → Com Solicitação Aberta. Cada aba mostra só o
+ * conteúdo dela.
+ */
+export const SELECTION_TABS = [
+  "items",
+  "selection",
+  "blocks",
+  "requested",
+] as const;
+export type SelectionTab = (typeof SELECTION_TABS)[number];
+
+/** A aba do endereço (`tab=`); sem ela, ou com um valor que não existe, Itens. */
+export function parseSelectionTab(
+  v: string | string[] | undefined,
+): SelectionTab {
+  const one = Array.isArray(v) ? v[0] : v;
+  return SELECTION_TABS.find((k) => k === one) ?? "items";
+}
+
 /** Os ids de um grupo (`ids=a,b,c`), sem repetição, até GROUP_MAX. */
 export function parseGroupIds(v: string | string[] | undefined): string[] {
   const raw = (Array.isArray(v) ? v.join(",") : (v ?? "")).split(",");

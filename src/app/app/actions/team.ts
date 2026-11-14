@@ -71,6 +71,38 @@ export async function saveTeamMemberAction(form: FormData) {
 }
 
 /**
+ * Exclui o acesso de um login da equipe (só o administrador; o serviço
+ * confere de novo, inclusive o próprio acesso e o último administrador).
+ * Opções da confirmação: passar quem respondia a ela para o chefe dela e
+ * redistribuir as pendências dela pela divisão. Feito, volta à lista com
+ * "Acesso excluído com sucesso" e o resumo; com erro, volta à pessoa com o
+ * motivo (a lista lê do banco, nada fica pela metade).
+ */
+export async function removeTeamMemberAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "userId");
+  const valid = ID.safeParse(raw).success;
+  await run(valid ? `/app/team/${raw}` : "/app/team", async () => {
+    assertRole(user, ["admin"]);
+    const targetId = ID.parse(raw);
+    const { removeTeamMember } = await import("@/lib/services/team");
+    const done = await removeTeamMember(user, targetId, {
+      moveReports: form.getAll("moveReports").includes("on"),
+      redistribute: form.getAll("redistribute").includes("on"),
+    });
+    // Resumo na lista: quantos passaram (e para quem) e o que ficou sem dono.
+    const summary = new URLSearchParams({ saved: "deleted" });
+    if (done.moved && done.movedTo) {
+      summary.set("reports", String(done.moved));
+      summary.set("to", done.movedTo.id);
+    }
+    if (done.redistributed) summary.set("work", String(done.redistributed));
+    if (done.unassigned) summary.set("left", String(done.unassigned));
+    return `/app/team?${summary.toString()}`;
+  });
+}
+
+/**
  * Novo login da equipe Wellmix (só o administrador): nome, login (e-mail ou
  * nome de usuário), senha e o lugar na hierarquia (cargo, divisão, a quem
  * responde, funções). Depois de criar, abre "Editar acessos" da pessoa, para

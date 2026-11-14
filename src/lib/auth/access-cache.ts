@@ -9,6 +9,11 @@
 export interface ResolvedAccess {
   /** Telas que as funções do login liberam (sem o básico). */
   screens: string[];
+  /**
+   * Telas do Início que as funções do login liberam (configuráveis por
+   * função). Ausente = todas, como antes.
+   */
+  base?: string[];
   /** Ações que as funções do login liberam. */
   actions: string[];
   /**

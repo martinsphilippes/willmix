@@ -434,6 +434,13 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   await page.locator('[data-partner-booking-send="bottom"]').click();
   await page.waitForURL(/[?&]sent=1/);
   await expect(page.locator("[data-partner-booking-sent]")).toBeVisible();
+  // Cabeçalho como na tela da Wellmix: Fornecedor e Fábrica do registro, sem
+  // o nome do arquivo.
+  const heading = page.locator("[data-booking-lot-heading]");
+  await expect(heading).toContainText("Book do Fornecedor ");
+  // A fábrica da planilha deste teste não está no cadastro.
+  await expect(heading).toContainText("Fábrica não informada");
+  await expect(heading).not.toContainText(".xlsx");
   // Depois de enviado: só consulta, com o preço corrigido.
   await expect(page.locator("[data-partner-booking-edit]")).toHaveCount(0);
   await expect(page.locator("[data-partner-booking-send]")).toHaveCount(0);

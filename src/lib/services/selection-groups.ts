@@ -57,6 +57,16 @@ export interface SaveSelectionGroupInput {
   /** Programação de compra (rodadas); com ela, a quantidade é a soma. */
   schedule?: RequestSchedule | null;
   /**
+   * Cores incluídas na compra (card "Variações" do vencedor). undefined =
+   * não vieram no formulário: todas as cores do Book do item escolhido.
+   */
+  colors?: string[] | null;
+  /**
+   * Caixas de cada cor digitadas no card "Variações" (dono, 14/11/2026). Nulo
+   * ou ausente: a divisão igual entre as cores.
+   */
+  colorCartons?: Record<string, number> | null;
+  /**
    * Prompts de IA digitados (undefined = não veio no formulário, fica o que
    * estava; null = os padrão das Configurações).
    */
@@ -106,6 +116,28 @@ export async function saveSelectionGroup(
     throw new SupplierRequestError("supplier_request_qty_required");
   const itemIds = items.map((i) => i.id);
   const needs = (input.needs ?? "").trim().slice(0, 4000) || null;
+  // Variações de cor do vencedor (docs/PURCHASE_SCHEDULE.md, "Cores"): as
+  // peças de cada data divididas entre as cores incluídas, em caixas master
+  // inteiras. Não fecha: recusa (a tela mostra o ajuste antes de gravar).
+  const { buildColorPlan } = await import("@/lib/color-split");
+  const colored = buildColorPlan({
+    assortment: chosen.colorAssortment,
+    included: input.colors ?? null,
+    rounds: schedule
+      ? schedule.items.map((i) => i.quantity)
+      : [Math.round(quantity)],
+    carton: chosen.masterCartonQty,
+    cartons: input.colorCartons ?? null,
+  });
+  if ("error" in colored)
+    throw new SupplierRequestError(
+      colored.error.error === "colors_none"
+        ? "selection_colors_none"
+        : colored.error.error === "colors_total"
+          ? "selection_colors_total"
+          : "selection_colors_cartons",
+    );
+  const colorPlan = colored.plan;
 
   const waiting = await schemaSafe(
     () => store.list("selection_groups", { filter: { status: "saved" } }),
@@ -125,6 +157,8 @@ export async function saveSelectionGroup(
     // Sem programação grava nulo só quando a escolha já tinha uma (o esquema
     // antigo, sem a coluna, continua gravando a escolha simples).
     ...(schedule ? { schedule } : {}),
+    // Cores: o mesmo cuidado (só grava quando o item tem variações).
+    ...(colorPlan ? { colorPlan } : {}),
     // Prompts de IA: o mesmo cuidado (só grava quando há prompt próprio).
     ...(input.aiPrompts ? { aiPrompts: input.aiPrompts } : {}),
   };
@@ -133,6 +167,7 @@ export async function saveSelectionGroup(
     ? await store.update("selection_groups", reuse.id, {
         ...values,
         ...(!schedule && reuse.schedule ? { schedule: null } : {}),
+        ...(!colorPlan && reuse.colorPlan ? { colorPlan: null } : {}),
         ...(input.aiPrompts === null && reuse.aiPrompts
           ? { aiPrompts: null }
           : {}),
@@ -155,7 +190,7 @@ export async function saveSelectionGroup(
     "selection_group.save",
     "selection_group",
     group.id,
-    `Escolha do grupo: ${chosen.description ?? chosen.productName ?? chosen.factoryItemCode ?? chosen.id}, ${group.quantity} pcs${schedule ? ` em ${schedule.items.length} rodadas (${schedule.items.map((i) => i.quantity).join(" + ")}), a cada ${schedule.intervalDays} dias desde ${schedule.firstDate}` : ""} (${itemIds.length} itens comparados)`,
+    `Escolha do grupo: ${chosen.description ?? chosen.productName ?? chosen.factoryItemCode ?? chosen.id}, ${group.quantity} pcs${schedule ? ` em ${schedule.items.length} programações (${schedule.items.map((i) => i.quantity).join(" + ")}), a cada ${schedule.intervalDays} dias desde ${schedule.firstDate}` : ""}${colorPlan ? `; cores: ${colorPlan.rows.map((r) => `${r.color} ${r.quantity}`).join(", ")}${colorPlan.included.length < colorPlan.colors.length ? ` (fora: ${colorPlan.colors.filter((c) => !colorPlan.included.includes(c)).join(", ")})` : ""}` : ""} (${itemIds.length} itens comparados)`,
   );
   return group;
 }
@@ -243,6 +278,7 @@ export async function openGroupRequests(
           needs: group.needs,
           searchQuery: null,
           schedule: group.schedule ?? null,
+          colorPlan: group.colorPlan ?? null,
         },
         batches,
       );

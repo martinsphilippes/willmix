@@ -1085,6 +1085,268 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - Peças: `confirmDieCutTermsAction` passa a devolver o erro ao formulário (`DieCutTermsState`, em `src/app/app/actions/die-cut-step.ts`), o bloco é `src/app/app/orders/[id]/die-cut/_components/die-cut-terms.tsx`, `formatTermsNumber` (`src/lib/die-cut-step.ts`) e `errorTextFor` (`src/i18n/error-text.ts`, o mesmo texto de erro do topo da página). Detalhes em `docs/PURCHASE_ORDER.md`, seção 2b.
 - Testes: `tests/unit/die-cut-terms.test.ts` (resumo com e sem "Editar", formulário, nada), `tests/unit/die-cut-step.test.ts` (formato "132.000 peças · 15 dias" e texto do erro) e o E2E do caminho principal (resumo depois de salvar e ao recarregar, "Editar" com os valores salvos, "Cancelar", recusa com o valor digitado e o erro no formulário sem trocar de tela, botão desativado enquanto grava e o resumo de volta).
 
+## Pedido de compra: etapa nº 2 "Die-Cut" na visão do login Trading
+
+- **Pedido do dono** (13/11/2026, com as fotos do pedido no login da trading: as três tarefas concluídas e a etapa ainda "Em andamento"): no login Trading, a etapa nº 2 se chama **"Die-Cut"**, mostra **"Responsável: Fornecedor"** (também quando a etapa passa para um operador da Wellmix) e calcula o andamento **só com as tarefas do fornecedor** (faca, foto em alta e prazo de produção de cada produto). Com todas feitas, a linha e o card mostram o selo verde "Concluído" e 100%; faltando alguma, o progresso é parcial.
+- **Na hora e com os registros gravados:** a conta usa o que já está salvo, então pedidos que já tinham tudo enviado aparecem concluídos. O último envio devolve a tela atualizada, e recarregar mantém o estado.
+- **Só a visão Trading da etapa nº 2:** a etapa de verdade, o andamento global do pedido, a visão interna da Wellmix, as tarefas de arte, embalagem e certificação dos responsáveis designados e a visão dos outros tipos de fornecedor ficam como estavam. Nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- Peças: `supplierLaneView` (`src/lib/purchase-lanes.ts`) e a página do pedido (linha da tabela e card). Textos novos nos três idiomas: `purchaseOrder.dieCut.title` e `purchaseOrder.dieCut.done`. Detalhes em `docs/PURCHASE_ORDER.md`, seção 2d.
+- Testes: `tests/unit/die-cut-step.test.ts` (parcial, completo, etapa bloqueada, pendente ou cancelada, sem tarefa do fornecedor) e `tests/unit/purchase-order.test.ts` (pedido em nome da trading: 0%, 33% e 100% com "Concluído", com a etapa real ainda em andamento). Conferido no navegador de teste: o último envio atualiza a tela sem recarregar, recarregar mantém, celular e chinês; a Wellmix e um fornecedor que não é trading continuam vendo a etapa como antes.
+
+## Equipe e acessos: "Excluir acesso" nos acessos de uma pessoa
+
+- **Pedido do dono** (13/11/2026, com a foto de "Acessos de Designer"): opção "Excluir acesso" para o administrador; confirmação com nome e e-mail explicando a perda do acesso; depois de confirmar, tirar o vínculo, tirar a pessoa da lista de acessos ativos e impedir que sessões abertas continuem; preservar acessos da mesma conta a outras equipes; validar no servidor; impedir a exclusão do último administrador ativo; preservar histórico, registros e autoria; registrar na Auditoria; voltar à lista com "Acesso excluído com sucesso"; com falha, mostrar o erro e manter a lista igual ao que está gravado.
+- **Aditivo**: exclusão lógica (o login fica inativo, `users.active`, coluna que já existia). Nenhum dado, tela, rota ou campo removido; sem mudança no banco. A lista da equipe, a escolha de chefe, a distribuição e os avisos já liam só os ativos.
+- **Decisões tomadas sem pergunta** (avisadas ao dono): o administrador não exclui o próprio acesso (evita se trancar fora; outro administrador faz); quem respondia à pessoa e as pendências dela não são mexidos (a caixa avisa e indica onde ajustar); sem "reativar" por enquanto.
+- Detalhes em `docs/ACCESS.md`, seção "Excluir acesso".
+- Testes: `tests/unit/team-delete.test.ts` (permissão, próprio acesso, fora da equipe, último administrador com sessão antiga e com exclusão simultânea, sessão aberta, Auditoria, exclusão desfeita sem o registro na Auditoria, nada apagado, destinos da tela) e `tests/e2e/team-delete.spec.ts` (confirmação com nome e login, cancelar, confirmar, mensagem na lista, sessão aberta cai, login recusado, Auditoria, próprio acesso desligado).
+
+## Produção: item próprio no menu e tela nova (primeira etapa)
+
+- **Pedido do dono** (13/11/2026, com a foto do bloco "Produção" do pedido): um item **Produção** no menu lateral, logo abaixo de **Pedidos de compra** e antes de **Revisão**, que abre uma tela nova com o título "Produção" e rota própria (`/app/production`), no layout padrão, com o item aceso no menu quando a tela está aberta.
+- **Lugar no menu**: o pedido dizia "fora de Pedidos e entrega", mas também "logo abaixo de Pedidos de compra e antes de Revisão", que ficam dentro do grupo. Valeu a posição exata: o item entrou no grupo **Pedidos e entrega**, entre os dois (fácil de mover se o dono preferir um item solto).
+- **Acesso** (padrão do portal, `src/lib/auth/screens.ts`): tela nova `production` no catálogo, com a rota, o rótulo e o lugar em **Equipe e acessos → Funções e acessos → Telas e links** (grupo dos pedidos, logo depois de Pedidos). O menu mostra e o endereço abre só para quem tem a tela; sem ela, o endereço volta ao início com o aviso de sempre (`requireScreen`). Padrão de fábrica: administrador, diretorias e as funções **comprador** e **planner** (quem acompanha produção, ETD e follow, docs/ACCESS.md). As outras funções recebem quando o administrador marca. Função com telas já gravadas pelo administrador não ganha a tela sozinha: ele marca em Telas e links. Tela interna da Wellmix: não entra em perfil externo (bloqueada na Gestão de telas).
+- **Primeira etapa**: só a tela, a rota e o item do menu. A tela diz que está em construção e que, por enquanto, a produção de cada pedido fica nos detalhes do pedido (com o link para Pedidos de compra). O bloco "Produção" do pedido, o follow da produção e as inspeções não mudaram. Nenhuma tela, rota, campo ou dado removido; sem mudança de banco.
+- Textos novos nos três idiomas: `nav.production` e `production.page.subtitle`, `.soon`, `.orders`.
+- Testes: `tests/unit/nav.test.ts` (posição no menu, quem vê, item aceso), `tests/unit/screens.test.ts` (rota, Telas e links, padrão por função, recusa sem a tela), `tests/unit/partner-access.test.ts` (interna) e o E2E `tests/e2e/production-screen.spec.ts` (menu, tela, item aceso, Telas e links e o endereço sem a tela).
+
+## Excluir acesso: passar subordinados e pendências na própria confirmação
+
+- **Pedido do dono** (14/11/2026, escolhendo entre as melhorias sugeridas): na confirmação de "Excluir acesso", a opção de passar os subordinados ao chefe de quem sai e redistribuir as pendências dela. Sem botão de reativar (o dono não quer); Wellmix e WellKids continuam divisões da mesma equipe.
+- **Tela**: duas caixas, marcadas por padrão e só quando se aplicam: "Passar as N pessoa(s) que respondem a ela para <chefe>" e "Redistribuir as N pendência(s) aberta(s) dela pela divisão". Desmarcada, aparece o que fazer depois (o aviso de antes). Na lista, embaixo de "Acesso excluído com sucesso", o resumo do que passou e, em amarelo, o que ficou sem responsável.
+- **Regras**: as mesmas de "Responde a" (`setTeamMember`) e de "Distribuir agora" (`distributeUnassigned`, agora com o escopo opcional `fromUserId`, só as pendências de quem saiu; o botão "Distribuir agora" segue igual). Cada passagem vai para a Auditoria. Sem chefe ativo, os subordinados ficam como estavam (aviso). As opções rodam depois da exclusão gravada; se falharem, a exclusão fica e a lista diz o que conferir.
+- **Aditivo**: nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- **Decisão sem pergunta** (avisada ao dono): as duas caixas começam marcadas.
+- Testes: `tests/unit/team-delete.test.ts` (chefe de destino, subordinados passados com cargo e divisão mantidos e Auditoria, sem chefe ativo nada muda, redistribuição só das dela com as sem destino contadas, falha depois da exclusão, resumo levado à lista) e `tests/e2e/team-delete.spec.ts` (caixa marcada, aviso ao desmarcar, resumo na lista e o novo chefe na linha).
+
+## Equipe e acessos: descrição da função "Comex (interno)"
+
+- **Pedido do dono** (14/11/2026): nos acessos de uma pessoa e em "Funções e acessos", a função "Comex (interno)" mostrava o texto cru "function.desc.comex_internal" no lugar da descrição (a função veio sem o texto).
+- **Correção**: a descrição nos três idiomas ("rastreia o container todo dia, da fábrica ao embarque; acompanha containers e fretes"). As duas telas passam a usar `functionDescription` (`src/lib/auth/function-access.ts`): sem texto no dicionário, não mostram nada em vez da chave crua.
+- **Teste**: `tests/unit/function-texts.test.ts` confere nome e descrição de toda função de fábrica em pt, en e zh, para uma função nova não voltar a aparecer crua.
+- Nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+
+## Pedido: o operador da Wellmix vê só as próprias tarefas em "Etapas do pedido"
+
+- **Pedido do dono** (14/11/2026, com a foto do login Comprador): na página do pedido, a tabela "Etapas do pedido" do operador da Wellmix mostra só as tarefas a fazer que cabem ao login, tarefa a tarefa, inclusive dentro das etapas e das subetapas compartilhadas (Certificação, Ficha de compra, Artes da embalagem, Documento do pedido...). Usa o encaminhamento que o pedido já tem (responsável interno, designer do pedido, parceiros, ações das funções) e as travas das pendências.
+- **Futuras em cinza** (decisão do dono, 14/11/2026, ao confirmar o PR): as tarefas do login que ainda esperam outro item ou a etapa começar aparecem em cinza, em vez de sumir; viram destaque quando ficam disponíveis. "Em andamento" = há tarefa dele liberada; "Pendente" (cinza) = só futuras. O administrador continua com a linha inteira (confirmado) e o tarifário do Embarque fica com quem tem tarefa na etapa (confirmado).
+- Cabeçalho da etapa só com tarefa do login dentro dela (liberada ou futura), numeração original; situação, andamento e contagem só das tarefas dele; a etapa sai quando ele conclui a última, mesmo com outros pendentes. "Ver detalhes", "Abrir todas as etapas" e o card aberto seguem o filtro. Sem tarefa (nem futura): "Nenhuma tarefa sua neste pedido" e o responsável interno.
+- **Aditivo**: só a tabela e os detalhes abertos por ela, para o operador. O administrador, os parceiros, o andamento global, as pendências, os avisos e as permissões não mudaram. Nenhuma tela, rota, campo ou dado removido; sem mudança no banco. Textos novos nos três idiomas: `orderView.mine.hint`, `orderView.mine.empty`, `orderView.mine.owner`.
+- Peças: `src/lib/services/order-timeline.ts`, `requirementWaiting` (`src/lib/services/tasks.ts`), `holdersRoute` (`cert-art-routing.ts`), `artIssueTasks(user, { orderId })` e a página do pedido. Detalhes em `docs/PURCHASE_ORDER.md`, seção 2e.
+- **Consequência para o operador**: a etapa sem tarefa dele some com o card dela; ferramentas da Wellmix que moram no card (como o tarifário de frete do Embarque) ficam com quem tem tarefa na etapa e com o administrador; o operador segue com a tela Tarifário de frete no menu. O E2E principal passou a conferir isso: no Embarque, o operador que não é o responsável interno vê "Nenhuma tarefa sua neste pedido" e nenhum card; o card do Embarque com o tarifário é conferido com o administrador.
+- Testes: `tests/unit/order-timeline.test.ts`. Conferido no navegador de teste com os logins Comprador (responsável interno: memorial, ficha de compra e validação da arte quando disponível), Designer (a arte quando liberada; some depois de enviada), outro Comprador e o pedido do Administrador sem parceiros (sem tarefa), e o administrador (linha inteira).
+
+## Produção: item pai do primeiro nível no menu
+
+- **Pedido do dono** (14/11/2026, com a foto do menu): "Produção" sai de dentro de **Pedidos e entrega** e vira item do **primeiro nível**, logo abaixo desse grupo, com ícone e o mesmo alinhamento dos outros itens principais. Aparece uma vez só no menu.
+- **Item pai**: Produção vai receber várias etapas como subitens. Por enquanto o próprio item abre a tela (`/app/production`), como um link do primeiro nível. Quando os subitens entrarem (`PRODUCTION_STEPS` em `src/lib/nav.ts`), o item vira grupo no padrão dos expansíveis: o nome continua abrindo a tela e a **seta** ao lado abre e recolhe os subitens; na tela do pai ou de um subitem, o grupo já vem aberto. Menu recolhido: só o ícone, que abre a tela.
+- **Peças**: `NavGroup.href` (grupo com tela própria) e `parentGroup` em `src/lib/nav.ts`; `ParentGroupRow` em `src/components/app-nav.tsx` (link do nome + botão da seta com `aria-expanded`); ícone novo `factory`; textos da seta nos três idiomas (`nav.group.show`, `nav.group.hide`).
+- **Não mudou**: a rota, a tela e as permissões (Telas e links, padrão por função, interna da Wellmix). Só a estrutura do menu.
+- Testes: `tests/unit/nav.test.ts` (primeiro nível, logo abaixo de Pedidos e entrega, uma vez só, com ícone), `tests/unit/app-nav-parent.test.ts` (item pai sem e com subitens: link, seta, aberto na tela do pai, subitem aceso) e o E2E `tests/e2e/production-screen.spec.ts` (ordem no menu, fora do grupo, ícone, só Produção acesa).
+
+## Programação de compra: "rodada" vira "programação" nos textos
+
+- **Pedido do dono** (14/11/2026): "rodada = programação". Em todos os textos em português da programação de compra (`src/i18n/modules/purchase-rounds.ts`), "rodada" passa a "programação" e "rodadas" a "programações": na Seleção de itens ("Programação 1", "+ Programação", "Intervalo entre programações", "Data da 1ª programação", "Containers por programação"), nos resumos, nas colunas, no pedido pai e nos filhos ("Programação 2 de 3 do pedido pai", "Gerar as programações do dia") e nos avisos. Os registros novos da auditoria da escolha do grupo e da solicitação ao fornecedor também dizem "em N programações".
+- **Só o nome na tela, em português**: as chaves, o código, as regras e o banco não mudaram; inglês e chinês ficam como estavam (como na troca das colunas da solicitação, #350). A palavra "rodada" com outro sentido continua: tentativas da inspeção por SKU, rodadas da amostragem, negociação da cotação e execuções técnicas (Sankhya, resumos, cópia do banco).
+- Teste: o E2E da seleção confere "a quantidade é a soma das programações".
+
+## Menu lateral sem "Mensagens" e "Notificações" (só os ícones do cabeçalho)
+
+- **Pedido do dono** (14/11/2026, com a foto do menu): ocultar do menu lateral esquerdo os itens "Mensagens" e "Notificações", com os contadores e o espaço das duas linhas, e manter os ícones de Mensagens e Notificações no canto superior direito, com os contadores, os links e as permissões de hoje.
+- **Como ficou:** a barra lateral (computador e tablet) e o menu do celular (o painel do botão "Menu") deixam de desenhar as duas linhas, para todos os logins. No alto ficam Control Tower e Pendências (ou só Pendências/Início, conforme o login), e os grupos seguem iguais, na mesma ordem.
+- **Não muda:** os ícones do cabeçalho (balão de mensagens e sino, com os números), as telas `/app/messages` e `/app/notifications`, os links, as permissões por função e por login, o "Voltar" e o painel lateral de chat. Nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- **Como:** `SIDEBAR_HIDDEN` e `sidebarNav` em `src/lib/nav.ts`; o layout (`src/app/app/layout.tsx`) passa a lista filtrada só para a barra lateral e o menu do celular. A lista completa (`navFor`) continua com as duas, porque o ícone de mensagens do cabeçalho e o "Voltar" saem dela. Para voltar a mostrar, basta tirar o endereço de `SIDEBAR_HIDDEN`.
+- **Testes:** `tests/unit/nav.test.ts` (nenhum papel vê as duas na barra; o resto do menu fica igual e na mesma ordem; a lista completa não muda) e o E2E `home-screens.spec.ts` (computador: nada das duas no menu e os ícones levam às telas; celular: ícones no alto e o menu aberto sem as duas).
+- Os roteiros de vídeo (`docs/videos`) que citam Mensagens e Notificações no menu ficam para a próxima revisão dos roteiros.
+
+## E2E sobre a versão compilada (memória do servidor de teste)
+
+- **Pedido do dono** (14/11/2026): investigar por que a suíte E2E caía no meio. O servidor de teste (`next dev`) era derrubado pela falta de memória da sessão (12 GB) durante o caminho principal, inclusive na base sem nenhuma mudança nova.
+- **Causa**: o compilador do modo de desenvolvimento (Turbopack), não o código do portal. Medição com os 5 primeiros testes:
+  - a base de antes das últimas mesclas também passava de 11 GB, então não foi um PR específico; a suíte só cresceu até passar do limite;
+  - o JavaScript do servidor tem limite de 2 GB e não estourou;
+  - a limpeza total do cache do Turbopack (`turbopackMemoryEviction: "full"`) não resolveu: o servidor morreu a 11,6 GB;
+  - compilado (`next build` + `next start`), o pico foi de 572 MB, em 2 minutos contra cerca de 5.
+- **Mudança**: `npm run test:e2e` compila o portal e testa a versão compilada (`playwright.config.ts`), em modo memória com dados isolados, como antes. Isso também confere o mesmo código que vai para a Vercel. `E2E_DEV=1` volta ao `next dev` para depurar. Nada mudou no portal.
+- Docs: `docs/AMBIENTE.md` (Testes) e `docs/HANDOVER.md`.
+
+## Book: lista de pendências quando "Fechar e analisar" para por campos vazios
+
+- **Pedido do dono** (14/11/2026, com a foto do aviso "Há itens com campos obrigatórios vazios"): o aviso passa a listar os itens incompletos, agrupados por item (nome e código; sem eles, a linha), com todos os campos obrigatórios que faltam em cada um, usando os nomes das colunas da tabela.
+- **Cada campo é clicável**: leva ao item, mostra a linha mesmo em outra página da tabela ou escondida pela busca, rola até o campo, dá o foco e destaca a célula. Nada é recarregado: o que já foi digitado continua.
+- **Mesma validação**: a lista sai de `bookingLotPending`, a mesma regra que trava o fechamento e monta o "Falta para fechar"; nenhuma exigência nova, a mesma contagem. Cada campo gravado atualiza a tela e a lista; sem pendências, o aviso diz para fechar de novo, e "Fechar e analisar" segue o fluxo normal.
+- **Aditivo**: só o aviso do fechamento e a capacidade da tabela de mostrar uma linha pedida (`TABLE_REVEAL_EVENT`, `src/components/table-tools.tsx`; nenhuma outra tabela muda). Nenhuma tela, rota, campo ou dado removido; sem mudança no banco. Textos novos nos três idiomas: `bookingLots.incomplete.*`.
+- Peças: `incompleteBookingItems` (`src/lib/booking-lots.ts`), `src/components/booking-pending-list.tsx`, a página do Book e o destaque da célula em `globals.css`. Detalhes em `docs/BOOKING.md`, item 6.
+- Testes: `tests/unit/booking-pending-list.test.ts` (mesmos itens e contagem da validação, vários campos no mesmo item, nome e código ou a linha, página da linha) e `tests/e2e/booking-pending-list.spec.ts` (Book com 16 itens incompletos, dois campos no mesmo item, item na segunda página, item escondido pela busca: cada link leva ao campo certo; gravar atualiza a lista; sem pendências, fecha).
+
+## Pedido: cartões de valores sem corte em qualquer largura
+
+- **Pedido do dono** (14/11/2026, com a foto dos cartões): no alto do pedido, "Valor de compra (FOB)", "A pagar ao fornecedor" e "Margem" saíam cortados (ex.: "RMB 339.187,50" e "~ -R$ 287.929,23", com o sinal numa linha e o número na outra).
+- **Grade pela área de conteúdo**: os cartões seguem a largura real da área (container query), com o menu lateral aberto ou recolhido: 1, 2, 3, 4 e, cabendo, todos por linha (de 4 vai direto a 7, sem sobrar linha com um ou dois soltos). Cada degrau garante cartões de pelo menos ~158 px. O cliente, com três cartões, nunca tem mais colunas que cartões.
+- **Valor**: a moeda numa linha menor ("R$", "RMB"; "~ R$" quando estimado) e, embaixo, o número inteiro numa linha só, com todos os dígitos, separadores e casas e o sinal junto ("-287.929,23"). Uma regra só para o tamanho, igual em todos os cartões: o maior número do conjunto cabe na largura do cartão, até 22 px. Primeiro caem cartões por linha; o número só diminui um pouco (no pior caso, dezenas de milhões num celular de 360 px, 15 px).
+- **Não mudou**: rótulos, cores, valores, cálculos e quem vê cada cartão. Só o layout (`src/components/color-cards.tsx`); o pedido passa valor e moeda em vez do texto pronto.
+- **Conferido no navegador**: 26 tamanhos de aparelho (celulares em retrato e paisagem, iPads, notebooks, MacBooks e desktops) e todas as larguras de 320 a 1920 px, de 16 em 16, com o menu aberto e recolhido. Casos: RMB longo (12.345.678,90), negativo em reais (-287.929,23 e -12.345.678,90) e zerados. Nenhum corte e nenhuma rolagem horizontal.
+- Teste: `tests/unit/color-cards.test.ts` (moeda à parte e sinal no número, degraus de colunas, mesmo tamanho em todos os cartões, grade pela área de conteúdo).
+
+## Performance: listas por keyset, resumos refeitos sozinhos e Pedidos sem todos os itens (14/11/2026)
+
+Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção (`pg_stat_statements`, `EXPLAIN` somente leitura, erros da Vercel).
+
+- **PR #396:**
+  - As listas do Supabase pegam a página seguinte pelo fim da anterior (keyset), e não mais por OFFSET. No EXPLAIN de uma página de `order_items`, o tempo caiu de 672 ms para 6 ms.
+  - As listas não pedem mais a contagem exata.
+  - Os resumos por pedido são refeitos sozinhos depois de um deploy que muda o formato. Antes, as telas ficavam no caminho antigo até a madrugada.
+- **Este PR:**
+  - As telas leem só as partes do resumo que usam (`jsonKeys`).
+  - O formato 9 do resumo traz `itemCount`.
+  - A tela Pedidos lê os itens inteiros só dos pedidos da página. Com filtro de produto, lê nome e variação de todos. Antes eram 184 mil itens a cada abertura.
+  - O Histórico comercial lê só as colunas usadas de pedidos e itens; com cliente escolhido, só os itens dele. Das solicitações, lê só as de reposição e proposta. O laço quadrático (16 mil × 16 mil) virou mapa.
+  - Revisões, Pós-venda e Multas leem só os pedidos citados, e não mais os 16 mil.
+- **Não mudou:** telas, filtros, ordem, colunas, cálculos e permissões. Os testes de equivalência comparam o resultado com o painel que lê todos os itens e com o caminho antigo.
+- **Ajuste aditivo:** a chave `itemCount` em `order_summaries.facts`, sem coluna nova. Depois do deploy, a reconstrução começa sozinha.
+
+## Performance: Parceiros, Clientes e Fornecedores paginados no servidor (14/11/2026)
+
+- **Problema medido.** Com o volume de produção, as listas mandavam todas as linhas ao navegador. Medido no servidor compilado, com 32 mil parceiros sintéticos:
+
+  | Tela         | HTML   | Tempo |
+  | ------------ | ------ | ----- |
+  | Parceiros    | 108 MB | 5 s   |
+  | Clientes     | 281 MB | 19 s  |
+  | Fornecedores | 54 MB  | 4 s   |
+
+- **O que mudou.** Acima de 200 linhas, busca, ordem e página acontecem no servidor (`src/lib/server-table.ts`, 50 por página), com as mesmas regras da tabela padrão sobre a lista inteira. Os parâmetros ficam no endereço (`q`, `sort`, `page`).
+- **Depois.** Parceiros: 258 KB em 0,25 s. Clientes: 625 KB em 0,3 s. Fornecedores: 560 KB em 0,1 s.
+- **Não mudou:**
+  - colunas, filtros por tipo e situação, busca do campo da lista, ações por linha e exportação;
+  - o lote ativar/desativar; "Selecionar todos" marca as linhas da página, e o lote já aceitava no máximo 500;
+  - a lista curta, que continua inteira na tabela padrão.
+- Testes: `tests/unit/server-table.test.ts`. Conferido no navegador sobre os 26 mil clientes sintéticos: ordem pelo cabeçalho nos dois sentidos, página seguinte com a ordem mantida, busca ao digitar e "Selecionar todos". Também conferido que uma lista curta continua na tabela padrão.
+
+## Performance: links de arquivo e de exportação sem pré-carregamento (14/11/2026)
+
+- **Problema.** Em produção, o Next pré-carrega todo `<Link>` que aparece na tela. Para um link de rota de API ou de exportação, o pré-carregamento executava a rota sem ninguém clicar:
+  - baixava o arquivo (`/api/files/...`; os logs da Vercel mostravam `/api/files/[id].rsc`, com 6 erros "body disturbed or locked");
+  - montava a exportação inteira (clientes, fornecedores, produtos, solicitações, estoque) a cada abertura da lista.
+- **O que mudou.** `TextLink` e `LinkButton` não pré-carregam endereços `/api/...` nem `.../export` (`routeHandlerHref` em `src/components/ui.tsx`). Clicar continua igual. Teste: `tests/unit/link-prefetch.test.ts`.
+
+## Performance: Histórico, Contas a pagar, Solicitações, Financeiro e Configurações sem a lista inteira (14/11/2026)
+
+- **Problema medido.** Medido no servidor compilado, com dados sintéticos do volume de produção (16 mil pedidos, 16 mil solicitações, 32 mil parceiros, 17 mil produtos):
+
+  | Tela                | HTML   | Tempo  |
+  | ------------------- | ------ | ------ |
+  | Histórico comercial | 266 MB | 25,7 s |
+  | Contas a pagar      | 182 MB | 14,7 s |
+  | Solicitações        | 134 MB | 16,6 s |
+  | Financeiro          | 129 MB | 14,9 s |
+  | Configurações       | 62 MB  | 2,2 s  |
+
+  Em Configurações, o peso vinha de um campo de margem para cada cliente. Clientes levava 31,9 s de servidor: a conta de cada cliente percorria todos os pedidos.
+
+- **O que mudou:**
+  - Nas listas longas, ordem e página passam ao servidor, com as mesmas regras da tabela padrão (`src/lib/server-table.ts`). A busca e os filtros continuam os da tela.
+  - No Histórico, o filtro de cliente passa a ser pela busca, como no Marketing (antes, um seletor com 26 mil clientes).
+  - No Financeiro, a linha que volta do "Informar câmbio" abre na página dela.
+  - Em Configurações, com o cadastro grande, a margem por cliente mostra os clientes que já têm margem, e a busca inclui outro (`MarginCustomers`). Os campos têm o mesmo nome e a gravação não muda.
+  - Contas dos clientes e fornecedores: dados agrupados uma vez por empresa, na mesma ordem (as somas não mudam).
+  - Solicitações: mapas no lugar de buscas na lista inteira por linha.
+- **Depois:**
+
+  | Tela           | HTML   | Tempo |
+  | -------------- | ------ | ----- |
+  | Histórico      | 890 KB | 1,1 s |
+  | Contas a pagar | 951 KB | 2,6 s |
+  | Solicitações   | 516 KB | 0,7 s |
+  | Financeiro     | 491 KB | 1,4 s |
+  | Configurações  | 242 KB | 0,2 s |
+  | Clientes       | —      | 1,7 s |
+
+- **Não mudou:** colunas, cálculos, totais (sobre todas as linhas da aba), ações por linha, lote e permissões. A lista curta continua inteira na tabela padrão.
+
+## Performance: vitrine, tabela de preços, avaliação de fornecedores e fluxo de caixa em páginas (14/11/2026)
+
+- **Problema medido.** Servidor compilado, dados sintéticos do volume de produção:
+
+  | Tela                                                                           | HTML  | Tempo  |
+  | ------------------------------------------------------------------------------ | ----- | ------ |
+  | Vitrine (`/app/explore`), com os 17 mil produtos em cartões, também no celular | 72 MB | 4,3 s  |
+  | Tabela de preços                                                               | 34 MB | 5,7 s  |
+  | Avaliação de fornecedores                                                      | 24 MB | 4,5 s  |
+  | Fluxo de caixa, com 43 mil parcelas dentro dos "detalhes" fechados             | 53 MB | 11,4 s |
+
+- **O que mudou:**
+  - A vitrine mostra 60 cartões por página. Busca, categoria e ordem valem para o catálogo inteiro. O produto que acabou de ir para o carrinho abre na página dele, e a volta do carrinho mantém a página.
+  - Tabela de preços e avaliação: acima de 200 linhas, busca, ordem e página no servidor. O CSV da tabela de preços continua inteiro.
+  - Fluxo de caixa: o detalhe de cada período mostra 50 parcelas por vez, com ‹ › (`?open=<período>&page=N`).
+- **Depois:**
+
+  | Tela             | HTML   | Tempo  |
+  | ---------------- | ------ | ------ |
+  | Vitrine          | 340 KB | 0,75 s |
+  | Tabela de preços | 172 KB | 4,1 s  |
+  | Avaliação        | 297 KB | 3,2 s  |
+  | Fluxo de caixa   | 228 KB | 4,4 s  |
+
+  O tempo que resta é o cálculo sobre todos os pedidos, não a página.
+
+## Performance: campos com busca no lugar das listas com o cadastro inteiro (14/11/2026)
+
+- **Pedido do dono** (14/11/2026): trocar pelas buscas os seletores grandes das 7 telas apontadas na auditoria (`PERFORMANCE_AUDIT.md`, "Pendências").
+- **Problema medido.** Servidor compilado, dados sintéticos do volume de produção (26 mil clientes, 32 mil empresas, 17 mil produtos). Cada tela mandava ao navegador uma lista de seleção com o cadastro inteiro:
+
+  | Tela                            | HTML    | Tempo  | Lista                                       |
+  | ------------------------------- | ------- | ------ | ------------------------------------------- |
+  | Nova solicitação                | 14,1 MB | 1,15 s | clientes e produtos, com a ficha de cada um |
+  | Novo kit de marketing           | 11,9 MB | 1,25 s | clientes e produtos                         |
+  | Mensagens                       | 8,6 MB  | 0,77 s | todas as empresas e logins sem empresa      |
+  | Containers                      | 6,7 MB  | 0,51 s | clientes                                    |
+  | Marketing (filtro)              | 5,3 MB  | 0,49 s | produtos                                    |
+  | Superplan                       | 4,1 MB  | 0,30 s | produtos                                    |
+  | Produtos (filtro de fornecedor) | 2,0 MB  | 0,36 s | fornecedores                                |
+
+- **O que mudou.** Os seletores viraram campos com busca (a partir de 2 letras, até 20 resultados), com o mesmo `name` de antes num campo escondido: formulários, filtros pelo endereço e Server Actions não mudam.
+  - Componente único `SearchPicker` (`src/components/search-picker.tsx`); o `PartyPicker` passa a usá-lo, com o mesmo comportamento.
+  - Produto: `ProductPicker` e a rota `/api/products/search` (nome ou código; o código igual ao digitado vem primeiro). Cada campo oferece o mesmo que a lista antiga: todos os produtos no filtro do Marketing, os ativos no Superplan, os ativos fora do Booking na nova solicitação e no novo kit. Cada escopo só para quem abre a tela que o usa; o cliente só busca no catálogo, e só com "Cliente pode criar solicitação" ligado (`src/lib/services/product-search.ts`).
+  - Nova solicitação: a ficha do produto escolhido (nome, descrição, especificação, fotos, estoque, mínimo e variações) vem de `/api/products/fill`, com as mesmas regras de antes (`src/lib/services/request-product-fill.ts`); a do produto que já chega escolhido (vitrine, busca por foto, programação de compra) vem pronta. Enquanto a ficha chega, a linha mostra "Carregando a ficha do produto…"; se não chegar, o campo volta vazio com o aviso. O cliente da Wellmix é escolhido por busca, e "Compra para estoque (sem cliente)" virou uma caixa ao lado (mesmo valor no campo `customerId`). O solicitante continua uma lista (são poucos logins de cliente), montada sem ler os 26 mil clientes.
+  - Mensagens: o destinatário da conversa nova é buscado em `/api/messages/targets` (as mesmas empresas e logins da lista antiga, com o tipo ao lado do nome; valor `party:<id>` ou `user:<id>`).
+  - Containers e novo kit: cliente por busca; a empresa interna "Estoque Wellmix" continua escolhível, como na lista antiga (`includeStock`). Marketing: produto do filtro por busca e nomes dos produtos só dos kits mostrados. Superplan: escolher na busca carrega a conta, como antes. Produtos: fornecedor do filtro por busca; a lista lê só id e nome dos fornecedores.
+  - Fotos do catálogo de poucos produtos (o escolhido, uma página da vitrine) são lidas só desses produtos, e não a tabela inteira de fotos (mesmo resultado).
+- **Depois** (mesmo servidor e base; mediana de 3 leituras):
+
+  | Tela                  | HTML   | Tempo  |
+  | --------------------- | ------ | ------ |
+  | Nova solicitação      | 87 KB  | 0,12 s |
+  | Novo kit de marketing | 73 KB  | 0,14 s |
+  | Mensagens             | 69 KB  | 0,08 s |
+  | Containers            | 80 KB  | 0,10 s |
+  | Marketing             | 94 KB  | 0,12 s |
+  | Superplan             | 474 KB | 0,12 s |
+  | Produtos              | 529 KB | 0,28 s |
+
+  As buscas: 30–70 ms locais; no banco de produção (só leitura), 24–52 ms por consulta de produto e até 102 ms de empresa, sem índice novo.
+
+- **Não mudou:** o que é gravado, as ações, as permissões das telas, as regras do catálogo (Booking, desativados) e do estoque (o cliente vê só "em estoque"). Quem é de fora com a tela Containers (Gestão de telas) busca só clientes, o que a lista da tela mostrava.
+- Testes: `tests/unit/search-pickers.test.ts` (escopos, quem busca, código exato primeiro, ficha, destinatário), `tests/unit/search-routes.test.ts` (quem cada rota atende) e `tests/e2e/search-pickers.spec.ts` (novo kit, nova solicitação com estoque e ficha, Superplan, filtro de fornecedor, Containers e Mensagens); o caminho principal escolhe o produto da nova solicitação pela busca.
+
+## Seleção de itens: abas "Blocos Sugeridos" e "Com Solicitação Aberta"
+
+- **Pedido do dono** (14/11/2026, com as fotos da tela no iPad): duas abas novas no cabeçalho da Seleção de itens, na mesma linha de "Itens" e "Seleção", nesta ordem: **Itens → Seleção → Blocos Sugeridos → Com Solicitação Aberta**. Cada bloco foi para a sua aba e saiu de onde aparecia (embaixo da aba Seleção); cada aba mostra só o conteúdo dela.
+- **Blocos Sugeridos** (`?tab=blocks`): o quadro "Blocos sugeridos" como era (resolvidos esperando a solicitação, "Por resolver", "Comparar e selecionar" e os botões "Abrir solicitação dos marcados" e "de todos"). Os filtros continuam valendo para os blocos.
+- **Com Solicitação Aberta** (`?tab=requested`): a lista compacta como era (uma linha expansível por grupo, o link da solicitação e "Rever a escolha"). A lista não depende dos filtros, então a aba não mostra o quadro de filtros; eles seguem no endereço para as outras abas.
+- **Seleção** fica com o grupo aberto para comparar. Sem grupo aberto, diz isso e leva a Blocos Sugeridos ou a Itens. **Itens** não mudou.
+- **Ações:** as mesmas. Depois de gravar a escolha, a tela vai para Blocos Sugeridos (antes: para a parte de baixo da Seleção), onde o grupo aparece resolvido; abrir as solicitações também volta para essa aba. "Gravar e gerar com IA" continua na Seleção, com o grupo aberto. Sem mudança no banco; nenhum dado, rota ou campo removido (`?tab=selection` continua abrindo a Seleção).
+- Peças: `SELECTION_TABS` e `parseSelectionTab` (`src/lib/booking-selection.ts`), a página (`src/app/app/booking/selection/page.tsx`), o retorno das ações (`selectionBack` em `src/app/app/actions/supplier-requests.ts`) e textos novos nos três idiomas (`supplierRequests.selection.tab.blocks`, `.tab.requested`, `.groupNone`, `.requestedEmpty`). Detalhes em `docs/SUPPLIER_REQUESTS.md`, "Seleção de itens".
+- Testes: `tests/unit/booking-selection.test.ts` (as quatro abas e a aba do endereço) e os E2E da seleção (ordem das abas, Seleção sem grupo, filtros nos blocos, Blocos Sugeridos sem a lista e Com Solicitação Aberta sem os blocos e sem os filtros, gravar levando a Blocos Sugeridos).
+
+## Solicitação: "Conversar com a empresa" abre o chat numa caixa flutuante
+
+- **Pedido do dono** (14/11/2026, com a foto da solicitação no iPad): na tela de detalhes da solicitação de produto novo, o botão "Conversar com a empresa" levava à página Mensagens. Agora abre o chat rápido numa **caixa flutuante no canto inferior direito** da própria tela, já na conversa da empresa sobre esta solicitação: histórico, campo de mensagem, fotos e arquivos.
+- **Sem sair da tela:** o endereço, a rolagem e os dados da página não mudam ao abrir ou fechar a caixa, e a tela de baixo continua usável (sem fundo escuro). Com a caixa já aberta na mesma conversa, o botão só a traz para frente, com o que já foi digitado.
+- **Tamanho:** no computador e no tablet, 24rem de largura no canto inferior direito; no celular, a largura da tela, abaixo do cabeçalho. Com o teclado do celular aberto, a caixa sobe e cabe na área visível (`visualViewport`, `keyboardOverlap`), com o campo de mensagem à vista. "Abrir em Mensagens" fecha a caixa e leva à página Mensagens.
+- **Reaproveita o chat de sempre:** `ChatDrawer` (`src/components/chat-drawer.tsx`) com `floating` no evento `CHAT_EVENT` (`src/lib/chat-target.ts`), aberto pelo botão `ChatFloatingForm` (`src/components/chat-floating-form.tsx`). Os ícones de conversa das outras telas continuam abrindo o painel lateral; "Conversar com a Wellmix" (cliente) e os botões do pedido não mudaram. Sem JavaScript, o botão continua indo para Mensagens. Permissões iguais: só quem tem a tela Mensagens vê o botão, e o serviço confere o acesso. Sem mudança no banco.
+- Testes: `tests/unit/chat-target.test.ts` (mesma conversa e teclado) e o E2E `request-chat-floating.spec.ts` (abrir, enviar, trazer para frente com o rascunho, fechar sem mudar o endereço e a rolagem, a conversa na página Mensagens e o celular).
+
 ## Book: na caixa "Dados do book" o Fornecedor fica à esquerda e a Fábrica à direita
 
 - **Pedido do dono** (13/11/2026, com a foto da caixa): inverter só a posição dos dois blocos da primeira linha da caixa "Dados do book" (`/app/booking/lots/[id]`).

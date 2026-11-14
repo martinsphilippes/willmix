@@ -1,4 +1,5 @@
 import "server-only";
+import { withoutPlaceholder } from "@/lib/placeholder-name";
 import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 
 import {
@@ -406,6 +407,7 @@ async function partnerDelays(
         o.comexId,
         o.logisticsId,
         o.ocpId,
+        o.marketingAgencyId,
         o.customerId,
       ]),
     );
@@ -434,6 +436,7 @@ async function partnerDelays(
         comex: "comexId",
         logistics: "logisticsId",
         ocp: "ocpId",
+        marketing_agency: "marketingAgencyId",
         customer: "customerId",
       };
       const parties = roles
@@ -450,7 +453,7 @@ async function partnerDelays(
               r.stageId === s.id &&
               !(WELLMIX_ROLES as readonly string[]).includes(r.role),
           )
-          .map((r) => r.label)
+          .map((r) => withoutPlaceholder(r.label))
           .join(", "),
         link: `/app/orders/${order.id}`,
         dueAt: s.dueAt,

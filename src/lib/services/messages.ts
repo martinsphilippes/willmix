@@ -4,6 +4,7 @@ import { after } from "next/server";
 import {
   getStore,
   MESSAGE_MAX_LENGTH,
+  PARTY_TYPES,
   type Conversation,
   type ConversationTopic,
   type Locale,
@@ -32,6 +33,8 @@ import {
   type TranslationDisplay,
 } from "@/lib/message-translation";
 import { isSchemaMissing } from "@/lib/db/errors";
+import { listColumns } from "@/lib/db/lookup";
+import { searchText } from "@/lib/db/store";
 import { isPlayableVideo, isPreviewImage } from "@/lib/file-kinds";
 import { notify } from "./notifications";
 import {
@@ -142,6 +145,7 @@ function orderParties(order: Order): string[] {
     order.comexId,
     order.logisticsId,
     order.ocpId,
+    order.marketingAgencyId,
   ].filter((id): id is string => !!id);
 }
 
@@ -959,6 +963,83 @@ export async function chatDirectory(user: User): Promise<{
     parties,
     users: users.filter((u) => !u.partyId && !isWellmix(u)),
   };
+}
+
+/** Tipos de empresa que a Wellmix chama numa conversa nova (ordem dos grupos). */
+export const CHAT_PARTY_TYPES: PartyType[] = [
+  "customer",
+  "supplier",
+  "shipping_line",
+  "carrier",
+  "agency",
+  "broker",
+  "comex",
+  "logistics",
+  "ocp",
+  "marketing_agency",
+  "legal",
+];
+
+/** Rótulo do tipo da empresa (ou do papel do login): "Cliente", "Fornecedor"… */
+export function chatTypeLabel(
+  t: Translate,
+  type: PartyType | Role | null | undefined,
+): string {
+  return type && (PARTY_TYPES as readonly string[]).includes(type)
+    ? t(`messages.type.${type as PartyType}`)
+    : "";
+}
+
+/** Quantas empresas a busca da conversa nova devolve por vez. */
+export const CHAT_TARGET_LIMIT = 20;
+
+export interface ChatTarget {
+  /** O valor do campo `target` da conversa nova: `party:<id>` ou `user:<id>`. */
+  id: string;
+  name: string;
+  /** Tipo da empresa ou papel do login sem empresa (para o rótulo). */
+  type: PartyType | Role;
+}
+
+/**
+ * Busca de quem a Wellmix chama numa conversa nova (auditoria de
+ * performance, 14/11/2026): as mesmas empresas e logins do chatDirectory
+ * (empresas ativas dos tipos da conversa e logins ativos sem empresa, fora da
+ * Wellmix), pelo nome, a partir de 2 letras. A lista inteira (~32 mil
+ * empresas) deixava a tela de Mensagens com 8,9 MB.
+ */
+export async function searchChatTargets(
+  user: User,
+  q: string,
+): Promise<ChatTarget[]> {
+  if (!isWellmix(user)) throw new ForbiddenError();
+  const text = searchText(q).slice(0, 80);
+  if (text.length < 2) return [];
+  const store = getStore();
+  const [parties, users] = await Promise.all([
+    listColumns(store, "parties", ["name", "type"], {
+      filter: { active: true, type: CHAT_PARTY_TYPES },
+      search: { column: "name", text },
+      orderBy: "name",
+      limit: CHAT_TARGET_LIMIT,
+    }),
+    // Logins são poucos: os que acham o nome, sem limite.
+    listColumns(store, "users", ["name", "role", "partyId"], {
+      filter: { active: true },
+      search: { column: "name", text },
+      orderBy: "name",
+    }),
+  ]);
+  return [
+    ...parties.map((p) => ({
+      id: `party:${p.id}`,
+      name: p.name,
+      type: p.type,
+    })),
+    ...users
+      .filter((u) => !u.partyId && !isWellmix(u))
+      .map((u) => ({ id: `user:${u.id}`, name: u.name, type: u.role })),
+  ];
 }
 
 /* ---------------------------------------------------------------------- */

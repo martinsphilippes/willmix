@@ -1,9 +1,9 @@
 import "server-only";
 import { getStore } from "@/lib/db";
 import type { Document, Order, Requirement, User } from "@/lib/db/schema";
-import { isWellmix } from "@/lib/auth/permissions";
+import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { isPurchaseFlow } from "@/lib/workflow/stages";
-import { itemIdOf, laneKey, LANE_KEYS } from "@/lib/purchase-lanes";
+import { baseKeyOf, itemIdOf, laneKey, LANE_KEYS } from "@/lib/purchase-lanes";
 import {
   dieCutItemOf,
   dieCutHref,
@@ -34,6 +34,12 @@ export interface DieCutView {
   canAct: boolean;
   products: DieCutViewProduct[];
   documents: Map<string, Document>;
+  /**
+   * Todas as fotos e arquivos enviados no die-cut e na foto em alta de cada
+   * produto (pelo id do item da raia), na ordem de envio: o principal do
+   * item e os acrescentados pelo "+".
+   */
+  attachments: Map<string, Document[]>;
 }
 
 /** Só a Wellmix e o fornecedor do pedido abrem o quadro. */
@@ -94,16 +100,147 @@ export async function getDieCutView(
   const docIds = products
     .flatMap((p) => [p.items.dieline?.documentId, p.items.hd?.documentId])
     .filter((id): id is string => !!id);
-  const docs = docIds.length
-    ? await store.list("documents", { filter: { id: docIds } })
-    : [];
+  const fileReqIds = products
+    .flatMap((p) => [p.items.dieline?.id, p.items.hd?.id])
+    .filter((id): id is string => !!id);
+  const [docs, attached] = await Promise.all([
+    docIds.length
+      ? store.list("documents", { filter: { id: docIds } })
+      : Promise.resolve([] as Document[]),
+    fileReqIds.length
+      ? store.list("documents", { filter: { requirementId: fileReqIds } })
+      : Promise.resolve([] as Document[]),
+  ]);
+  const attachments = new Map<string, Document[]>();
+  for (const d of [...attached].sort(
+    (a, b) => a.createdAt.localeCompare(b.createdAt) || a.version - b.version,
+  )) {
+    if (!d.requirementId) continue;
+    attachments.set(d.requirementId, [
+      ...(attachments.get(d.requirementId) ?? []),
+      d,
+    ]);
+  }
   return {
     order,
     open: !!stage && (stage.status === "active" || stage.status === "blocked"),
     canAct: isWellmix(user) || isOrderSupplier(user, order),
     products,
     documents: new Map(docs.map((d) => [d.id, d])),
+    attachments,
   };
+}
+
+export class DieCutPhotoError extends Error {}
+
+/**
+ * Die-cut ou foto em alta já feitos em que quem envia pode acrescentar ou
+ * tirar fotos (pedido do dono, 14/11/2026): as mesmas regras do envio do
+ * item (quem pode preencher, a raia, a etapa aberta). Só esses dois itens.
+ */
+async function photoTarget(user: User, orderId: string, requirementId: string) {
+  const store = getStore();
+  const [order, requirement] = await Promise.all([
+    store.get("orders", orderId),
+    store.get("requirements", requirementId),
+  ]);
+  if (!order || !requirement || requirement.orderId !== orderId)
+    throw new DieCutPhotoError("not_found");
+  const base = baseKeyOf(requirement.key);
+  if (base !== LANE_KEYS.dieCut && base !== LANE_KEYS.hdPhoto)
+    throw new DieCutPhotoError("not_found");
+  const { canSubmitRequirement } = await import("@/lib/workflow/engine");
+  if (
+    !canViewDieCut(user, order) ||
+    !canSubmitRequirement(user, order, requirement)
+  )
+    throw new ForbiddenError();
+  if (order.flow === "supplier_request") {
+    const { assertLaneActor } = await import("./cert-art-routing");
+    await assertLaneActor(user, order, requirement);
+  }
+  const stage = await store.get("stages", requirement.stageId);
+  if (!stage || (stage.status !== "active" && stage.status !== "blocked"))
+    throw new DieCutPhotoError("stage_not_active");
+  return { order, requirement };
+}
+
+/**
+ * "+" do die-cut e da foto em alta: cada foto vira um anexo próprio do item
+ * (mesmo produto e mesma seção). O item continua feito e o arquivo
+ * principal não muda; nada do que já foi enviado é apagado.
+ */
+export async function addDieCutPhotos(
+  user: User,
+  orderId: string,
+  requirementId: string,
+  input: { files: File[]; uploadedIds: string[] },
+): Promise<number> {
+  const { requirement } = await photoTarget(user, orderId, requirementId);
+  if (requirement.status !== "done")
+    throw new DieCutPhotoError("die_cut_send_first");
+  if (!input.files.length && !input.uploadedIds.length)
+    throw new DieCutPhotoError("photo_required");
+  const { uploadDocument, registerUploadedPhoto } = await import("./documents");
+  const target = {
+    orderId,
+    requirementId,
+    type:
+      requirement.type === "photo" ? ("photo" as const) : ("other" as const),
+  };
+  let added = 0;
+  // Só fotos (o "+" abre a câmera ou a galeria).
+  if (input.files.some((f) => !(f.type ?? "").startsWith("image/")))
+    throw new DieCutPhotoError("mime");
+  for (const file of input.files) {
+    await uploadDocument(user, file, target);
+    added++;
+  }
+  for (const id of input.uploadedIds) {
+    await registerUploadedPhoto(user, id, target);
+    added++;
+  }
+  return added;
+}
+
+/**
+ * Exclui só a foto escolhida. Sendo o arquivo principal do item e havendo
+ * outras, a mais recente vira a principal e o item continua feito; sendo a
+ * única, o item volta a pendente, como a exclusão de sempre.
+ */
+export async function removeDieCutPhoto(
+  user: User,
+  orderId: string,
+  requirementId: string,
+  documentId: string,
+): Promise<void> {
+  const { requirement } = await photoTarget(user, orderId, requirementId);
+  const store = getStore();
+  const doc = await store.get("documents", documentId);
+  if (!doc || doc.requirementId !== requirement.id)
+    throw new DieCutPhotoError("not_found");
+  if (doc.id === requirement.documentId) {
+    const others = (
+      await store.list("documents", {
+        filter: { requirementId: requirement.id },
+      })
+    )
+      .filter((d) => d.id !== doc.id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (!others.length) {
+      const { clearRequirementDocument } =
+        await import("@/lib/workflow/engine");
+      await clearRequirementDocument(user, requirement.id);
+      return;
+    }
+    await store.update("requirements", requirement.id, {
+      documentId: others[0].id,
+    });
+  }
+  await store.remove("documents", doc.id);
+  await store.removeFile(doc.storageKey).catch((error) => {
+    console.error("removeDieCutPhoto: arquivo não apagado", error);
+  });
 }
 
 /**
@@ -171,7 +308,7 @@ async function notifyDieCut(
           values.before
             ? "notif.dieCut.changedSubject"
             : "notif.dieCut.subject",
-          { product },
+          { product: product || t("productName.unnamed") },
         ),
       })}`,
       body: [

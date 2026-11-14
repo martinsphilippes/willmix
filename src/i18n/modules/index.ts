@@ -101,7 +101,9 @@ import * as sheetFill from "./sheet-fill";
 import * as productSheet from "./product-sheet";
 import * as sheetRecords from "./sheet-records";
 import * as navGroups from "./nav-groups";
+import * as flow from "./flow";
 import * as orderSummary from "./order-summary";
+import * as goLive from "./go-live";
 import * as placeholders from "./placeholders";
 import * as ncmSheet from "./ncm-sheet";
 import * as i18nSweep from "./i18n-sweep";
@@ -120,13 +122,20 @@ import * as bookingLots from "./booking-lots";
 import * as bookingInvites from "./booking-invites";
 import * as supplierRequests from "./supplier-requests";
 import * as supplierRequestProduct from "./supplier-request-product";
+import * as placeholderName from "./placeholder-name";
 import * as bookingNcm from "./booking-ncm";
 import * as supplierRequestNegotiation from "./supplier-request-negotiation";
 import * as purchaseOrder from "./purchase-order";
 import * as purchaseSequence from "./purchase-sequence";
 import * as sampleOrder from "./sample-order";
 import * as desks from "./desks";
+import * as inspectionSequence from "./inspection-sequence";
+import * as shippingDocs from "./shipping-docs";
+import * as supplierInvoice from "./supplier-invoice";
+import * as sampleFlow from "./sample-flow";
+import * as exwOrigin from "./exw-origin";
 import * as purchaseRounds from "./purchase-rounds";
+import * as colorVariants from "./color-variants";
 import * as aiReferences from "./ai-references";
 import * as sampling from "./sampling";
 import * as notifications from "./notifications";
@@ -212,7 +221,9 @@ export const modulesPt = {
   ...productSheet.pt,
   ...sheetRecords.pt,
   ...navGroups.pt,
+  ...flow.pt,
   ...orderSummary.pt,
+  ...goLive.pt,
   ...placeholders.pt,
   ...ncmSheet.pt,
   ...i18nSweep.pt,
@@ -255,13 +266,20 @@ export const modulesPt = {
   ...bookingInvites.pt,
   ...supplierRequests.pt,
   ...supplierRequestProduct.pt,
+  ...placeholderName.pt,
   ...bookingNcm.pt,
   ...supplierRequestNegotiation.pt,
   ...purchaseOrder.pt,
   ...purchaseSequence.pt,
   ...sampleOrder.pt,
   ...desks.pt,
+  ...inspectionSequence.pt,
+  ...shippingDocs.pt,
+  ...supplierInvoice.pt,
+  ...sampleFlow.pt,
+  ...exwOrigin.pt,
   ...purchaseRounds.pt,
+  ...colorVariants.pt,
   ...aiReferences.pt,
   ...sampling.pt,
   ...intro.pt,
@@ -344,7 +362,9 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...productSheet.en,
   ...sheetRecords.en,
   ...navGroups.en,
+  ...flow.en,
   ...orderSummary.en,
+  ...goLive.en,
   ...placeholders.en,
   ...ncmSheet.en,
   ...i18nSweep.en,
@@ -387,13 +407,20 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...bookingInvites.en,
   ...supplierRequests.en,
   ...supplierRequestProduct.en,
+  ...placeholderName.en,
   ...bookingNcm.en,
   ...supplierRequestNegotiation.en,
   ...purchaseOrder.en,
   ...purchaseSequence.en,
   ...sampleOrder.en,
   ...desks.en,
+  ...inspectionSequence.en,
+  ...shippingDocs.en,
+  ...supplierInvoice.en,
+  ...sampleFlow.en,
+  ...exwOrigin.en,
   ...purchaseRounds.en,
+  ...colorVariants.en,
   ...aiReferences.en,
   ...sampling.en,
   ...intro.en,
@@ -476,7 +503,9 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...productSheet.zh,
   ...sheetRecords.zh,
   ...navGroups.zh,
+  ...flow.zh,
   ...orderSummary.zh,
+  ...goLive.zh,
   ...placeholders.zh,
   ...ncmSheet.zh,
   ...i18nSweep.zh,
@@ -519,13 +548,20 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...bookingInvites.zh,
   ...supplierRequests.zh,
   ...supplierRequestProduct.zh,
+  ...placeholderName.zh,
   ...bookingNcm.zh,
   ...supplierRequestNegotiation.zh,
   ...purchaseOrder.zh,
   ...purchaseSequence.zh,
   ...sampleOrder.zh,
   ...desks.zh,
+  ...inspectionSequence.zh,
+  ...shippingDocs.zh,
+  ...supplierInvoice.zh,
+  ...sampleFlow.zh,
+  ...exwOrigin.zh,
   ...purchaseRounds.zh,
+  ...colorVariants.zh,
   ...aiReferences.zh,
   ...sampling.zh,
   ...intro.zh,

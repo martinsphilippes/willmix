@@ -1,8 +1,10 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 
 import {
   getStore,
+  type OrderItem,
   type Stage,
   type StageKey,
   type User,
@@ -86,16 +88,128 @@ export interface PipelineRow {
   groupHref: string | null;
   /** Número da solicitação (o mesmo para o lote). */
   requestNumber: number | null;
+  /** Quantos itens a linha tem (com os itens ainda não lidos, pelo resumo). */
+  itemCount: number;
+  /**
+   * Itens do pedido ainda não lidos (`lazyItems`): a tela Pedidos lê só os da
+   * página mostrada, ou só nome e variação para o filtro de produto
+   * (`loadPipelineItems`).
+   */
+  itemsPending?: boolean;
+  /** Moeda FOB do pedido e especificação da solicitação (itens lidos depois). */
+  fobCurrency?: string | null;
+  specification?: string | null;
+}
+
+/** Colunas do item que o painel usa. */
+const ITEM_COLUMNS = [
+  "orderId",
+  "name",
+  "variant",
+  "quantity",
+  "unit",
+  "unitPrice",
+  "productId",
+] as const;
+
+type ItemColumns = Pick<OrderItem, (typeof ITEM_COLUMNS)[number] | "id">;
+
+/** O item como o painel mostra (preço, produto e especificação só para a Wellmix). */
+function pipelineItem(
+  i: ItemColumns,
+  wellmix: boolean,
+  row: { fobCurrency?: string | null; specification?: string | null },
+): PipelineItem {
+  return {
+    id: i.id,
+    name: realName(i.name) ?? "—",
+    variant: i.variant?.name ?? null,
+    quantity: i.quantity,
+    unit: i.unit,
+    unitPrice: wellmix ? i.unitPrice : null,
+    currency: wellmix ? (row.fobCurrency ?? null) : null,
+    productId: wellmix ? i.productId : null,
+    variantData: wellmix ? (i.variant ?? null) : null,
+    specification: wellmix ? (row.specification ?? null) : null,
+  };
+}
+
+/** Partes do resumo que o painel lê (etapa, viagem, 1º produto e quantos itens). */
+const PIPELINE_FACTS = [
+  "order",
+  "active",
+  "reqs",
+  "lane",
+  "steps",
+  "product",
+  "itemCount",
+] as const;
+
+/**
+ * Lê os itens das linhas de pedido com `itemsPending` (tela Pedidos): `names`
+ * só nome e variação (filtro de produto em todas as linhas); `full` o item
+ * inteiro (as linhas da página). Mesmo resultado que o painel montava com
+ * todos os itens de todos os pedidos (auditoria de performance, 14/11/2026:
+ * 184 mil itens lidos a cada abertura da tela).
+ */
+export async function loadPipelineItems(
+  user: User,
+  rows: PipelineRow[],
+  mode: "names" | "full",
+): Promise<void> {
+  const pending = rows.filter((r) => r.kind === "order" && r.itemsPending);
+  if (!pending.length) return;
+  const orderIdOf = (r: PipelineRow) => r.key.slice("order:".length);
+  const ids = [...new Set(pending.map(orderIdOf))];
+  const items =
+    mode === "names"
+      ? (
+          await listColumns(
+            getStore(),
+            "order_items",
+            ["orderId", "name", "variant"],
+            {
+              filter: { orderId: ids },
+              jsonKeys: { variant: ["name"] },
+            },
+          )
+        ).map((i) => ({
+          ...i,
+          quantity: 0,
+          unit: "",
+          unitPrice: null,
+          productId: null,
+          // Só o nome da variação (a tela não mostra estas linhas).
+          variant: i.variant ? { name: i.variant.name } : null,
+        }))
+      : await listColumns(getStore(), "order_items", ITEM_COLUMNS, {
+          filter: { orderId: ids },
+        });
+  const byOrder = new Map<string, ItemColumns[]>();
+  for (const i of items as ItemColumns[]) {
+    const list = byOrder.get(i.orderId);
+    if (list) list.push(i);
+    else byOrder.set(i.orderId, [i]);
+  }
+  const wellmix = isWellmix(user);
+  for (const r of pending) {
+    r.items = (byOrder.get(orderIdOf(r)) ?? []).map((i) =>
+      pipelineItem(i, wellmix, r),
+    );
+    if (mode === "full") r.itemsPending = false;
+  }
 }
 
 /**
  * A mesma entrada de `loadJourneyInput`, montada do resumo dos pedidos dados
  * (etapas e itens de etapa, passos do embarque) e da revisão aberta.
  */
-async function journeyInputFromFacts(
-  facts: OrderFacts[],
+async function journeyInputFromFacts<
+  F extends Pick<OrderFacts, "steps" | "order" | "reqs" | "lane">,
+>(
+  facts: F[],
   activeStages: JourneyInput["activeStages"],
-  rowsOf: (f: OrderFacts[]) => {
+  rowsOf: (f: F[]) => {
     stages: JourneyInput["stages"];
     requirements: JourneyInput["requirements"];
   },
@@ -124,7 +238,17 @@ const STATE_ORDER: Record<PipelineState, number> = {
   cancelled: 3,
 };
 
-export async function pipelineFor(user: User): Promise<PipelineRow[]> {
+export async function pipelineFor(
+  user: User,
+  options: {
+    /**
+     * Com o resumo por pedido em uso, não lê os itens dos pedidos: o 1º
+     * produto e quantos itens vêm do resumo, e a tela lê os itens só onde
+     * precisa (`loadPipelineItems`). Sem o resumo, lê todos como antes.
+     */
+    lazyItems?: boolean;
+  } = {},
+): Promise<PipelineRow[]> {
   const store = getStore();
   const wellmix = isWellmix(user);
   // Só as colunas usadas: a cópia do registro do ERP (sankhyaRefs) era mais
@@ -143,7 +267,11 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
     "productId",
     "deadline",
   ] as const;
-  const [orders, items, requests] = await Promise.all([
+  const loadItems = () => listColumns(store, "order_items", ITEM_COLUMNS);
+  // Sem `lazyItems`, os itens vêm junto com o resto (como antes).
+  const itemsEarly = options.lazyItems ? null : loadItems();
+  itemsEarly?.catch(() => undefined);
+  const [orders, requests] = await Promise.all([
     listColumns(
       store,
       "orders",
@@ -157,23 +285,21 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
       ],
       { orderBy: "number", direction: "desc" },
     ),
-    listColumns(store, "order_items", [
-      "orderId",
-      "name",
-      "variant",
-      "quantity",
-      "unit",
-      "unitPrice",
-      "productId",
-    ]),
     wellmix
       ? listColumns(store, "requests", requestColumns)
       : Promise.resolve([]),
   ]);
-  // Etapas e viagem: do resumo por pedido (docs/RESUMOS.md) quando em uso.
+  // Etapas e viagem: do resumo por pedido (docs/RESUMOS.md) quando em uso,
+  // só as partes que o painel lê.
   const { factsForOrders, activeStagesFromFacts, journeyRowsFromFacts } =
     await import("./order-summary");
-  const facts = await factsForOrders(orders);
+  const facts = await factsForOrders(orders, PIPELINE_FACTS);
+  // Itens: nulo = ainda não lidos (lazyItems com o resumo em uso).
+  const items = itemsEarly
+    ? await itemsEarly
+    : facts
+      ? null
+      : await loadItems();
   const stages: Array<Pick<Stage, "orderId" | "status" | "percent" | "dueAt">> =
     facts
       ? activeStagesFromFacts([...facts.values()])
@@ -192,8 +318,8 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
     ]),
     "id",
   );
-  const itemsByOrder = new Map<string, typeof items>();
-  for (const i of items) {
+  const itemsByOrder = new Map<string, ItemColumns[]>();
+  for (const i of items ?? []) {
     const list = itemsByOrder.get(i.orderId);
     if (list) list.push(i);
     else itemsByOrder.set(i.orderId, [i]);
@@ -272,19 +398,23 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
           ? `/app/orders/${o.id}/purchase-order`
           : `/app/orders/${o.id}`,
       number: o.number,
-      product: itemsByOrder.get(o.id)?.[0]?.name ?? "—",
-      items: (itemsByOrder.get(o.id) ?? []).map((i) => ({
-        id: i.id,
-        name: i.name,
-        variant: i.variant?.name ?? null,
-        quantity: i.quantity,
-        unit: i.unit,
-        unitPrice: wellmix ? i.unitPrice : null,
-        currency: wellmix ? o.fobCurrency : null,
-        productId: wellmix ? i.productId : null,
-        variantData: wellmix ? (i.variant ?? null) : null,
-        specification: wellmix ? (request?.specification ?? null) : null,
-      })),
+      // Nome de exemplo ("Produto novo XPTO") vale como ausente (no resumo também).
+      product:
+        (items
+          ? realName(itemsByOrder.get(o.id)?.[0]?.name)
+          : facts?.get(o.id)?.product) ?? "—",
+      items: (itemsByOrder.get(o.id) ?? []).map((i) =>
+        pipelineItem(i, wellmix, {
+          fobCurrency: o.fobCurrency,
+          specification: request?.specification ?? null,
+        }),
+      ),
+      itemCount: items
+        ? (itemsByOrder.get(o.id)?.length ?? 0)
+        : (facts?.get(o.id)?.itemCount ?? 0),
+      ...(items ? {} : { itemsPending: true }),
+      fobCurrency: o.fobCurrency,
+      specification: request?.specification ?? null,
       ...group(request, `order:${o.id}`),
       requestNumber: request?.number ?? null,
       customer: wellmix ? name(o.customerId) : null,
@@ -318,10 +448,10 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
       kind: "request",
       href: `/app/requests/${r.id}`,
       number: r.number ?? null,
-      product: r.productName,
+      product: realName(r.productName) ?? "—",
       items: [
         {
-          name: r.productName,
+          name: realName(r.productName) ?? "—",
           variant: r.variant?.name ?? null,
           quantity: r.quantity,
           unit: r.unit,
@@ -335,6 +465,7 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
       ],
       ...group(r, `request:${r.id}`),
       requestNumber: r.number ?? null,
+      itemCount: 1,
       customer: name(r.customerId),
       supplier: null,
       phase: { kind: "request", key: r.status },

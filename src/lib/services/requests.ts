@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 
 import { randomUUID } from "node:crypto";
 
@@ -393,7 +394,8 @@ export async function createRequest(
   const productName = variant
     ? requestProductName(
         input.productName,
-        product?.name ?? input.productName,
+        // Nome de exemplo ("Produto novo XPTO") não vai para a solicitação.
+        realName(product?.name) ?? input.productName,
         variant.name,
       )
     : input.productName;
@@ -595,6 +597,13 @@ export async function assignDefaultPartners(
 ) {
   const store = getStore();
   const patch: Partial<Order> = {};
+  // Agência de arte da linha do pedido (dono, 13/11/2026) vem antes da regra
+  // "a única agência ativa".
+  if (!order.agencyId && !options.skipAgency) {
+    const { lineAgencyOf } = await import("./line-agency");
+    const agencyId = await lineAgencyOf(order.lineId);
+    if (agencyId) patch.agencyId = agencyId;
+  }
   for (const [type, field] of [
     ["agency", "agencyId"],
     ["broker", "brokerId"],
@@ -603,9 +612,10 @@ export async function assignDefaultPartners(
     ["comex", "comexId"],
     ["logistics", "logisticsId"],
     ["ocp", "ocpId"],
+    ["marketing_agency", "marketingAgencyId"],
   ] as const) {
     // Já designado (ex.: agência do briefing de embalagem) não é sobrescrito.
-    if (order[field]) continue;
+    if (order[field] || patch[field]) continue;
     if (field === "agencyId" && options.skipAgency) continue;
     const parties = await store.list("parties", {
       filter: { type, active: true },
@@ -656,7 +666,8 @@ export async function createFollowUpRequest(
       // Mesma variação do pedido (a cópia dos valores é refeita com a variação
       // de hoje; desativada, a recompra pede outra).
       variantId: item.variantId ?? previous?.variantId ?? null,
-      productName: item.name,
+      // Item com nome de exemplo: o nome real do produto, se ele já tiver.
+      productName: realName(item.name) ?? realName(product?.name) ?? item.name,
       description:
         previous?.description ??
         `${input.origin === "replenishment" ? "Reposição" : "Nova proposta"} do pedido #${order.number}`,

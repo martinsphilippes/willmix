@@ -5,6 +5,7 @@ import {
   type RequestSchedule,
 } from "@/lib/workflow/request-schedule";
 import { assertCan } from "@/lib/auth/function-access";
+import { planMatches } from "@/lib/color-split";
 
 import { assertWellmix, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
@@ -12,6 +13,7 @@ import {
   getStore,
   type BookingItem,
   type BookingLot,
+  type ColorPlan,
   type Party,
   type SheetCurrency,
   type SheetIncoterm,
@@ -239,6 +241,8 @@ export interface OpenSupplierRequestInput {
   searchQuery: string | null;
   /** Programação de compra da escolha do grupo (rodadas); a quantidade é o total. */
   schedule?: RequestSchedule | null;
+  /** Variações de cor da escolha (peças por cor e por data). */
+  colorPlan?: ColorPlan | null;
 }
 
 /**
@@ -323,6 +327,10 @@ export async function openSupplierRequest(
     number,
     ...(batch ? { batchId: batch.id } : {}),
     ...(schedule ? { schedule } : {}),
+    // As cores só seguem se as linhas somam a quantidade (nada muda sozinho).
+    ...(input.colorPlan && planMatches(input.colorPlan, quantity)
+      ? { colorPlan: input.colorPlan }
+      : {}),
     status: "open",
     supplierId: supplier.id,
     bookingItemId: item.id,
@@ -359,7 +367,7 @@ export async function openSupplierRequest(
     "supplier_request.open",
     "supplier_request",
     request.id,
-    `Solicitação ao fornecedor nº ${number}: ${supplier.name}, ${request.quantity} pcs${schedule ? ` em ${schedule.items.length} rodadas a cada ${schedule.intervalDays} dias` : ""} (book nº ${lot.number})`,
+    `Solicitação ao fornecedor nº ${number}: ${supplier.name}, ${request.quantity} pcs${schedule ? ` em ${schedule.items.length} programações a cada ${schedule.intervalDays} dias` : ""} (book nº ${lot.number})`,
   );
   if (batches) return request;
   const { notify } = await import("./notifications");

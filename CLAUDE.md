@@ -9,6 +9,8 @@ Portal Operacional de Importações. Next.js 16 na Vercel; Supabase em produçã
 - `docs/APPWRITE.md` e `docs/AMBIENTE.md`: esquema, permissões, variáveis e limitações da sessão cloud.
 - `docs/SUPABASE.md`: troca do Appwrite pelo Supabase (etapas, esquema gerado, publicação).
 - `docs/BOOKING.md`, `docs/SUPPLIER_REQUESTS.md`, `docs/SUPERPLAN.md`, `docs/ORDER_SIGNATURE.md`, `docs/PURCHASE_ORDER.md`, `docs/SAMPLE_ORDER.md`, `docs/PURCHASE_SCHEDULE.md` e `docs/SUPPLIER_SAMPLING.md`: do Booking ao pedido (bookings por planilha, seleção de itens e solicitação ao fornecedor, análise, negociação, amostragem (fotos e vídeos da amostra depois da aprovação), documento com as duas assinaturas, programação de compra com pedido pai e filhos). A RFQ e a cotação saíram em 11/11/2026 (`docs/QUOTE_FLOW.md`).
+- `docs/PRODUCTION.md` e `docs/ORIGIN_CONTAINER.md`: produção, inspeção pelo mapa (vídeo, conformidade, tentativas) e o container na origem com o rastreio diário do Comex interno; `docs/SHIPPING_DOCS.md`: check list de carga, packing list, invoice e BL conferidos linha a linha. `docs/SAMPLE_FLOW.md`: amostras depois da inspeção (Brasil 4 × 3 × Nm, China 1 × 3 × Nm), agência de marketing na China, fotos reais aprovadas pelo marketing e devolução da amostra antes do carregamento.
+- `docs/FLOW_MENU.md`: menu lateral pelos blocos do mapa (Produto novo, Pedido, Produção, Entrega, Vendas, Financeiro, Painéis, Cadastros), contadores por passo, Overview com linha do tempo e telas dos passos.
 - `docs/DESKS.md`: mesas de trabalho por papel (GP, cadastro, marketing, agência, certificadora) em Pendências.
 - `docs/RESUMOS.md`: indicadores prontos (`kpi_snapshots`) e resumo por pedido (`order_summaries`), atualizados por evento e reconstruídos toda noite; mudar o formato = subir `SUMMARY_VERSION`/`KPI_VERSION`. Regra: KPIs e indicadores leem tabelas agregadas no nível do indicador, nunca tabelas por pedido ou produto.
 - `docs/PWA.md`: aplicativo instalável (manifesto, service worker, tela sem conexão) e responsividade.
@@ -34,3 +36,12 @@ Exceções (parar e avisar o dono em vez de mesclar):
 - Conflito com a base ou outro PR aberto mexendo na mesma tela ou regra.
 - Decisão de negócio tomada sem confirmação do dono.
 - Mudança que apaga ou altera dados, telas, rotas ou campos existentes.
+
+## Mensagem final (pedido do dono, 13/11/2026)
+
+Toda vez que for parar de responder (a resposta que encerra o turno), termine com uma mensagem final em duas partes, para a próxima decisão ficar fácil:
+
+- **Do meu lado (Claude):** o que ainda falta fazer, o que está rodando ou esperando (CI, merge, publicação) e o que ficou de fora.
+- **Do seu lado (dono):** o que você precisa decidir, conferir ou fazer, com o link ou o caminho na tela.
+
+Se nada falta de um dos lados, diga isso ("Do meu lado: nada pendente").

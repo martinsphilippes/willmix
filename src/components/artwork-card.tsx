@@ -1,3 +1,4 @@
+import { productNameText } from "@/i18n";
 import type { Order } from "@/lib/db";
 import type { ArtworkView } from "@/lib/services/artwork";
 import {
@@ -39,14 +40,24 @@ export function ArtworkCard({
   view,
   wellmix,
   notice,
+  returnTo,
 }: {
+  /** Tela do passo do menu (docs/FLOW_MENU.md): a ação volta para ela. */
+  returnTo?: string;
   t: Translate;
   order: Order;
   view: ArtworkView;
   wellmix: boolean;
   notice: string | null;
 }) {
-  const hidden = <input type="hidden" name="orderId" value={order.id} />;
+  const hidden = (
+    <>
+      <input type="hidden" name="orderId" value={order.id} />
+      {returnTo ? (
+        <input type="hidden" name="returnTo" value={returnTo} />
+      ) : null}
+    </>
+  );
   const tone = (s: string) =>
     s === "accepted" ? "success" : s === "fixed" ? "warning" : "danger";
 
@@ -174,7 +185,9 @@ export function ArtworkCard({
                       className={rowClass}
                       data-artwork-item={item.id}
                     >
-                      <Td className="min-w-40 font-medium">{item.name}</Td>
+                      <Td className="min-w-40 font-medium">
+                        {productNameText(t, item.name)}
+                      </Td>
                       <Td className="whitespace-nowrap">
                         <Badge tone="neutral">{t("artwork.noIssues")}</Badge>
                       </Td>
@@ -191,7 +204,9 @@ export function ArtworkCard({
                       data-artwork-item={n === 0 ? item.id : undefined}
                       data-artwork-issue={issue.status}
                     >
-                      <Td className="min-w-40 font-medium">{item.name}</Td>
+                      <Td className="min-w-40 font-medium">
+                        {productNameText(t, item.name)}
+                      </Td>
                       <Td className="whitespace-nowrap">
                         <Badge tone={tone(issue.status)}>
                           {t(`artwork.status.${issue.status}`)}
@@ -324,7 +339,7 @@ export function ArtworkCard({
               >
                 {view.items.map(({ item }) => (
                   <option key={item.id} value={item.id}>
-                    {item.name}
+                    {productNameText(t, item.name)}
                   </option>
                 ))}
               </Select>

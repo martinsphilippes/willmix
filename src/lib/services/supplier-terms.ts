@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 import { columnsExcept, listColumns } from "@/lib/db/lookup";
 
 import {
@@ -256,7 +257,8 @@ export function payableFor(
   return {
     order,
     supplier,
-    productName: items[0]?.name ?? "—",
+    // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+    productName: realName(items[0]?.name) ?? "—",
     schedule,
     source,
     legacyReceivedAt: legacyReceivedAt(requirements),
@@ -296,7 +298,14 @@ export async function orderPayable(order: Order): Promise<OrderPayable> {
  * já foi pago continua aparecendo).
  */
 export async function listPayables(
-  filter: { supplierId?: string } = {},
+  filter: {
+    supplierId?: string;
+    /**
+     * Sem os pedidos do histórico do Sankhya em espera (docs/SANKHYA.md):
+     * as pendências (tasks.ts) só olham os outros. Contas a pagar lê todos.
+     */
+    live?: boolean;
+  } = {},
 ): Promise<OrderPayable[]> {
   const store = getStore();
   // Com a chave presente (mesmo vazia), só os pedidos daquele fornecedor.
@@ -308,10 +317,12 @@ export async function listPayables(
     "orders",
     columnsExcept("orders", ["sankhyaRefs"]),
     {
-      filter:
-        "supplierId" in filter
+      filter: {
+        ...("supplierId" in filter
           ? { supplierId: filter.supplierId ?? "" }
-          : undefined,
+          : {}),
+        ...(filter.live ? { held: null } : {}),
+      },
       orderBy: "number",
       direction: "desc",
     },
@@ -322,7 +333,13 @@ export async function listPayables(
   // Do resumo por pedido (docs/RESUMOS.md): pagamentos, marcos e itens do
   // cronograma sem ler as tabelas de pagamentos, etapas e requisitos.
   const { factsForOrders } = await import("./order-summary");
-  const facts = await factsForOrders(orders);
+  // Só pagamentos, marcos, itens do cronograma e o 1º produto.
+  const facts = await factsForOrders(orders, [
+    "pays",
+    "ship",
+    "sreqs",
+    "product",
+  ]);
   if (facts) {
     const suppliers = await listColumns(
       store,

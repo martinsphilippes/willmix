@@ -18,6 +18,10 @@ import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
 import { notify } from "./notifications";
 import { isSchemaMissing } from "@/lib/db/errors";
+import {
+  INSPECTION_MEDIA_KEYS,
+  SUPPLIER_CONFORMITY_KEY,
+} from "@/lib/purchase-lanes";
 
 /*
  * Produção (Fase C, docs/PRODUCTION.md), fora das etapas do pedido:
@@ -317,18 +321,28 @@ export async function savePlan(user: User, orderId: string, input: PlanInput) {
   return updated;
 }
 
-/** Follows que já venceram e ainda não foram registrados. */
-export function followupsDue(
+/** Follows ainda não registrados, vencidos ou não (com a data de cada um). */
+export function followupsOpen(
   track: Pick<ProductionTrack, "productionStartAt" | "followups"> | null,
-  now = new Date(),
 ): { day: number; dueAt: string }[] {
   if (!track?.productionStartAt) return [];
   const start = Date.parse(track.productionStartAt);
   if (Number.isNaN(start)) return [];
   const done = new Set((track.followups ?? []).map((f) => f.day));
-  return FOLLOWUP_DAYS.filter((d) => !done.has(d))
-    .map((d) => ({ day: d, dueAt: new Date(start + d * DAY).toISOString() }))
-    .filter((f) => Date.parse(f.dueAt) <= now.getTime());
+  return FOLLOWUP_DAYS.filter((d) => !done.has(d)).map((d) => ({
+    day: d,
+    dueAt: new Date(start + d * DAY).toISOString(),
+  }));
+}
+
+/** Follows que já venceram e ainda não foram registrados. */
+export function followupsDue(
+  track: Pick<ProductionTrack, "productionStartAt" | "followups"> | null,
+  now = new Date(),
+): { day: number; dueAt: string }[] {
+  return followupsOpen(track).filter(
+    (f) => Date.parse(f.dueAt) <= now.getTime(),
+  );
 }
 
 /** Wellmix registra o follow do dia (5, 15 ou 25). Atraso avisa o planner. */
@@ -475,6 +489,22 @@ export async function inspectSku(
   // Reprovado: espera o fornecedor dizer o que corrigiu antes da nova rodada.
   if (previous?.result === "rejected" && !previous.supplierRespondedAt)
     throw new ProductionError("waiting_supplier");
+  // Pedido de compra (mapa R4?/R10): a Wellmix inspeciona depois da
+  // declaração de conformidade do fornecedor; esgotadas as tentativas, a
+  // próxima decisão é o cancelamento, não outra rodada.
+  const purchase = order.flow === "supplier_request";
+  const { getSettings } = await import("@/lib/settings");
+  const maxAttempts = (await getSettings()).purchaseInspectionMaxAttempts;
+  if (purchase) {
+    if (previous?.result === "rejected" && previous.round > maxAttempts)
+      throw new ProductionError("attempts_exhausted");
+    const [conformity] = await store.list("requirements", {
+      filter: { orderId, key: SUPPLIER_CONFORMITY_KEY },
+      limit: 1,
+    });
+    if (conformity && conformity.status !== "done")
+      throw new ProductionError("conformity_required");
+  }
   const row = await store.create("sku_inspections", {
     orderId,
     orderItemId: item.id,
@@ -494,6 +524,13 @@ export async function inspectSku(
     orderId,
     `Inspeção ${row.round}ª rodada de ${item.name}: ${input.result === "approved" ? "aprovado" : "reprovado"}${row.note ? ` · ${row.note}` : ""}`,
   );
+  if (purchase) {
+    if (input.result === "rejected")
+      await afterPurchaseRejection(user, order, item, row, maxAttempts);
+    // Todos aprovados: a inspeção conclui e o pedido segue ao embarque.
+    const { refreshPurchaseGates } = await import("./purchase-gates");
+    await refreshPurchaseGates(orderId, user);
+  }
   if (input.result === "rejected")
     await notify(
       { role: "supplier", partyId: order.supplierId },
@@ -510,6 +547,85 @@ export async function inspectSku(
       },
     );
   return row;
+}
+
+/** Tentativa `round` reprovada passou do limite: a Wellmix decide o cancelamento. */
+export const attemptsExhausted = (
+  row: Pick<SkuInspection, "result" | "round"> | null | undefined,
+  maxAttempts: number,
+) => row?.result === "rejected" && row.round > maxAttempts;
+
+/**
+ * Pedido de compra, SKU reprovado (mapa R10/R11): até o limite de
+ * tentativas, o ETD ganha 1 dia e o pedido volta à produção (o fornecedor
+ * manda de novo fotos, peso, vídeo e a declaração). Passou do limite: a
+ * Wellmix é chamada a confirmar o cancelamento do pedido, com a mensagem ao
+ * fornecedor, e a escolher outro fornecedor na Seleção.
+ */
+async function afterPurchaseRejection(
+  user: User,
+  order: Order,
+  item: OrderItem,
+  row: SkuInspection,
+  maxAttempts: number,
+) {
+  const store = getStore();
+  if (attemptsExhausted(row, maxAttempts)) {
+    await audit(
+      user,
+      "production.attempts_exhausted",
+      "order",
+      order.id,
+      `${item.name}: ${row.round}ª reprovação (limite de ${maxAttempts} tentativas). Cancelamento a confirmar.`,
+    );
+    const { notifyWellmix } = await import("./notifications");
+    await notifyWellmix({
+      kind: "action",
+      subject: `Pedido #${order.number}: ${item.name} reprovado ${row.round} vezes`,
+      body: `Passou do limite de ${maxAttempts} tentativas na inspeção. Confirme o cancelamento do pedido no portal (com a mensagem ao fornecedor) e escolha outro fornecedor na Seleção de itens.`,
+      link: `/app/orders/${order.id}#inspection-cancel`,
+    });
+    return;
+  }
+  // ETD + 1 dia, registrado com o motivo.
+  const track = await getTrack(order.id);
+  if (track?.etd) {
+    const next = new Date(Date.parse(track.etd) + DAY).toISOString();
+    await store.update("production_tracks", track.id, {
+      etd: next,
+      etdHistory: [
+        ...(track.etdHistory ?? []),
+        {
+          from: track.etd,
+          to: next,
+          at: new Date().toISOString(),
+          byUserId: user.id,
+          reason: `Inspeção reprovada (tentativa ${row.round} de ${maxAttempts}): +1 dia`,
+        },
+      ],
+      updatedByUserId: user.id,
+    });
+  }
+  // Volta à produção: o fornecedor manda de novo o que vai para a inspeção.
+  const reqs = await store.list("requirements", {
+    filter: {
+      orderId: order.id,
+      key: [...INSPECTION_MEDIA_KEYS, SUPPLIER_CONFORMITY_KEY],
+    },
+  });
+  for (const r of reqs)
+    if (r.status === "done" || r.status === "rejected")
+      await store.update("requirements", r.id, {
+        status: "pending",
+        note: `Nova tentativa ${row.round + 1}: ${item.name} reprovado (${row.note ?? "—"})`,
+      });
+  await audit(
+    user,
+    "production.retry",
+    "order",
+    order.id,
+    `${item.name}: tentativa ${row.round} de ${maxAttempts} reprovada; ETD +1 dia e volta à produção`,
+  );
 }
 
 /** Fornecedor diz o que corrigiu no SKU reprovado (volta para a Wellmix). */
@@ -644,31 +760,16 @@ export async function productionTasks(
   const out: ProductionTaskDraft[] = [];
   const latest = [...latestByItem(rows).values()];
   const wellmix = isWellmix(user);
+  const now = new Date();
   for (const order of live) {
     if (wellmix) {
       const track = tracks.find((t) => t.orderId === order.id) ?? null;
-      for (const f of followupsDue(track))
-        out.push({
-          kind: "production_follow",
-          order,
-          title: `Follow de ${f.day} dias: pedido #${order.number}`,
-          detail: `ETD ${day(track?.etd ?? null)}`,
-          dueAt: f.dueAt,
-        });
-      const fixed = latest.filter(
-        (r) =>
-          r.orderId === order.id &&
-          r.result === "rejected" &&
-          r.supplierRespondedAt,
-      );
-      if (fixed.length)
-        out.push({
-          kind: "sku_inspection",
-          order,
-          title: `Inspecionar de novo: pedido #${order.number}`,
-          detail: `${fixed.length} SKU(s) corrigido(s) pelo fornecedor`,
-          dueAt: track?.inspectionScheduledAt ?? null,
-        });
+      const mine = latest.filter((r) => r.orderId === order.id);
+      for (const c of dueProductionCandidates(
+        wellmixProductionCandidates(order, track, mine),
+        now,
+      ))
+        out.push({ ...c, order });
     } else if (user.role === "supplier" && order.supplierId === user.partyId) {
       const open = latest.filter(
         (r) =>
@@ -695,4 +796,57 @@ export async function productionTasks(
     }
   }
   return out;
+}
+
+/**
+ * Pendência de produção da Wellmix antes do dia de hoje (guardada no resumo
+ * do pedido, docs/RESUMOS.md): o follow entra com a data dele, ainda que não
+ * tenha vencido; a leitura mostra só os vencidos (`dueProductionCandidates`).
+ */
+export type ProductionCandidate = Omit<ProductionTaskDraft, "order">;
+
+/**
+ * Pendências de produção da Wellmix de um pedido (função pura): follows
+ * 5/15/25 ainda não registrados e reinspeção dos SKUs corrigidos. `latest`:
+ * a última inspeção de cada SKU do pedido (`latestByItem`).
+ */
+export function wellmixProductionCandidates(
+  order: Pick<Order, "number">,
+  track: Pick<
+    ProductionTrack,
+    "productionStartAt" | "followups" | "etd" | "inspectionScheduledAt"
+  > | null,
+  latest: Pick<SkuInspection, "result" | "supplierRespondedAt">[],
+): ProductionCandidate[] {
+  const out: ProductionCandidate[] = [];
+  for (const f of followupsOpen(track))
+    out.push({
+      kind: "production_follow",
+      title: `Follow de ${f.day} dias: pedido #${order.number}`,
+      detail: `ETD ${day(track?.etd ?? null)}`,
+      dueAt: f.dueAt,
+    });
+  const fixed = latest.filter(
+    (r) => r.result === "rejected" && r.supplierRespondedAt,
+  );
+  if (fixed.length)
+    out.push({
+      kind: "sku_inspection",
+      title: `Inspecionar de novo: pedido #${order.number}`,
+      detail: `${fixed.length} SKU(s) corrigido(s) pelo fornecedor`,
+      dueAt: track?.inspectionScheduledAt ?? null,
+    });
+  return out;
+}
+
+/** O que já vale hoje: o follow só depois da data dele. */
+export function dueProductionCandidates<T extends ProductionCandidate>(
+  candidates: T[],
+  now: Date,
+): T[] {
+  return candidates.filter(
+    (c) =>
+      c.kind !== "production_follow" ||
+      (!!c.dueAt && Date.parse(c.dueAt) <= now.getTime()),
+  );
 }

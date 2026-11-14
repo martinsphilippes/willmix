@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { IMPORT_STEP_KEYS } from "@/lib/db/schema";
 import { assertScreen } from "@/lib/auth/screens";
-import { field, files, requireUser, run, str } from "./helpers";
+import { field, files, flowReturnTo, requireUser, run, str } from "./helpers";
 
 /*
  * Embarque e desembaraço (docs/IMPORT_FLOW.md): enviar um passo (número,
@@ -16,8 +16,14 @@ const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const UPLOADED_ID = z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/);
 
 /** Cartão de onde veio (embarque ou certificação). */
-const anchorOf = (form: FormData) =>
-  str(form, "anchor") === "certification" ? "certification" : "import-flow";
+const anchorOf = (form: FormData) => {
+  const a = str(form, "anchor");
+  return a === "certification" ||
+    a === "container-origin" ||
+    a === "samples-flow"
+    ? a
+    : "import-flow";
+};
 
 /** Aviso de "feito" no cartão de onde a ação veio (cada cartão lê o seu). */
 const doneParam = (form: FormData) =>
@@ -28,6 +34,9 @@ const errorBack = (form: FormData, to: string) =>
   `${to}?stepCard=${anchorOf(form)}#${anchorOf(form)}`;
 
 function back(form: FormData) {
+  // Tela do passo do menu de onde a ação veio (docs/FLOW_MENU.md).
+  const flow = flowReturnTo(form);
+  if (flow) return flow;
   const orderId = ID.safeParse(str(form, "orderId"));
   return orderId.success ? `/app/orders/${orderId.data}` : "/app/orders";
 }
@@ -63,6 +72,8 @@ export async function submitImportStepAction(form: FormData) {
       orderId,
       type: "import_step",
       visibility: "internal",
+      // Container na origem: fotos e vídeos do container vazio e do carregamento.
+      video: key === "container_empty" || key === "container_loaded",
     } as const;
     let documentId: string | null = null;
     if (file) {

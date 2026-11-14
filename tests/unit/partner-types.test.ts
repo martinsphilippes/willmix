@@ -53,6 +53,7 @@ describe("catálogo de tipos de parceiro", () => {
       "comex",
       "logistics",
       "ocp",
+      "marketing_agency",
     ]);
     expect(catalog.every((e) => e.active && e.rowId === null)).toBe(true);
     const agency = catalog.find((e) => e.value === "agency")!;

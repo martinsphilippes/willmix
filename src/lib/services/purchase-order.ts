@@ -1,6 +1,12 @@
 import "server-only";
 
+import {
+  nameOfLabel,
+  realName,
+  withoutPlaceholder,
+} from "@/lib/placeholder-name";
 import { buildPurchaseRounds } from "@/lib/purchase-rounds";
+import { colorTotals, planMatches, splitByColor } from "@/lib/color-split";
 import { assertCan } from "@/lib/auth/function-access";
 
 import { assertWellmix } from "@/lib/auth/permissions";
@@ -9,6 +15,7 @@ import {
   getStore,
   ORDER_EXTRA_DEFAULTS,
   REQUEST_EXTRA_DEFAULTS,
+  type ColorQuantity,
   type Order,
   type Party,
   type Product,
@@ -22,16 +29,14 @@ import {
   blockedBy,
   itemIdOf,
   laneKey,
+  isRoutedLaneKey,
   laneOf,
   type LaneSla,
 } from "@/lib/purchase-lanes";
-import {
-  ROLE_PARTY_FIELD,
-  artRole,
-  isPurchaseFlow,
-} from "@/lib/workflow/stages";
+import { ROLE_PARTY_FIELD, isPurchaseFlow } from "@/lib/workflow/stages";
 import { samplingApproved } from "@/lib/supplier-request-sampling";
 import { audit } from "./audit";
+import type { NotifyTarget } from "./notifications";
 
 /*
  * Pedido de compra (docs/PURCHASE_ORDER.md). Depois da solicitação ao
@@ -190,7 +195,12 @@ export async function createPurchaseOrder(
     if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 1e9)
       throw new PurchaseOrderError("purchase_order_qty_invalid");
     const unitPrice = request.supplierPrice ?? request.item.price ?? null;
-    return { request, product, quantity, unitPrice };
+    // Variações de cor (docs/PURCHASE_SCHEDULE.md, "Cores"): a divisão
+    // gravada na escolha. Quantidade mudada aqui (pedido sem programação):
+    // dividida de novo entre as mesmas cores, em caixas master inteiras; se
+    // não fecha, recusa (nada muda sozinho).
+    const colors = orderColors(request, quantity);
+    return { request, product, quantity, unitPrice, colors };
   });
   if (ordered.some((o) => !o.product))
     throw new PurchaseOrderError("purchase_order_not_ready");
@@ -200,6 +210,7 @@ export async function createPurchaseOrder(
     ordered.map((o) => ({
       productId: o.product.id,
       schedule: o.request.schedule ?? null,
+      colorPlan: o.request.colorPlan ?? null,
     })),
   );
   if ("error" in planned) throw new PurchaseOrderError(planned.error);
@@ -209,7 +220,10 @@ export async function createPurchaseOrder(
     : null;
   const first = ordered[0];
   const summary = ordered
-    .map((o) => `nº ${o.request.number} (${o.product.name})`)
+    .map((o) =>
+      // Produto ainda sem nome real: só o número da solicitação.
+      withoutPlaceholder(`nº ${o.request.number} (${o.product.name})`),
+    )
     .join(", ");
 
   // A solicitação do pedido (o pedido sempre tem uma): já nasce "pedido".
@@ -267,6 +281,7 @@ export async function createPurchaseOrder(
       quantity: o.quantity,
       unit: "pcs",
       unitPrice: o.unitPrice,
+      ...(o.colors ? { colors: o.colors } : {}),
     });
   for (const o of ordered)
     await store.update("supplier_requests", o.request.id, {
@@ -276,6 +291,8 @@ export async function createPurchaseOrder(
   await snapshotOrderPaymentTerms(order);
   const { assignDefaultPartners } = await import("./requests");
   await assignDefaultPartners(order);
+  // Compra EXW quando algum produto é EXW (mapa R17?; dono, 14/11/2026).
+  await syncPurchaseIncoterm(order.id);
   await audit(
     user,
     "order.create_purchase",
@@ -288,6 +305,27 @@ export async function createPurchaseOrder(
   await createStagesForOrder(fresh);
   await notifySalesOfPurchase(fresh);
   return (await store.get("orders", order.id)) ?? fresh;
+}
+
+/**
+ * Peças por cor do item do pedido: as da escolha (a soma bate com a
+ * quantidade) ou, com a quantidade mudada, a mesma divisão refeita entre as
+ * cores incluídas. Sem variações: nulo.
+ */
+export function orderColors(
+  request: Pick<SupplierRequest, "colorPlan" | "quantity" | "item">,
+  quantity: number,
+): ColorQuantity[] | null {
+  const plan = request.colorPlan;
+  if (!plan?.rows.length) return null;
+  if (planMatches(plan, quantity)) return colorTotals(plan);
+  const split = splitByColor({
+    rounds: [quantity],
+    colors: plan.included,
+    carton: request.item.masterCartonQty,
+  });
+  if (!split.ok) throw new PurchaseOrderError("purchase_order_colors_cartons");
+  return split.rows.map((r) => ({ color: r.color, quantity: r.quantity }));
 }
 
 /* ------------------------------------------------------------------------ */
@@ -307,21 +345,51 @@ function targetOf(order: Order, role: Requirement["role"]): Target {
   return { role, partyId };
 }
 
+/**
+ * Arte, validação, certificado e arte final: o aviso vai para quem recebe a
+ * tarefa (o designer, quem valida, a certificadora; cert-art-routing.ts).
+ */
+async function laneTarget(
+  order: Order,
+  key: string,
+  siblings: ReadonlyArray<Pick<Requirement, "key" | "submittedByUserId">> = [],
+): Promise<NotifyTarget | null> {
+  const { laneRoute, loadRoutingContext, notifyTargetOf } =
+    await import("./cert-art-routing");
+  const route = laneRoute(key, order, await loadRoutingContext(), siblings);
+  return route ? notifyTargetOf(route) : null;
+}
+
 async function send(
   order: Order,
-  role: Requirement["role"],
+  /** O papel de quem age (o parceiro do pedido ou a Wellmix) ou o destino exato. */
+  who: Requirement["role"] | NotifyTarget,
   subjectKey: string,
   bodyKey: string,
   vars: Record<string, string | number>,
 ) {
   const { notify } = await import("./notifications");
-  await notify(targetOf(order, role) as Parameters<typeof notify>[0], {
+  const target = typeof who === "string" ? targetOf(order, who) : who;
+  await notify(target as Parameters<typeof notify>[0], {
     kind: "action",
     link: `/app/orders/${order.id}`,
-    text: (t) => ({
-      subject: t(subjectKey as never, { n: order.number, ...vars }),
-      body: t(bodyKey as never, { n: order.number, ...vars }),
-    }),
+    text: (t) => {
+      // Produto sem nome real: o aviso diz isso, em vez de ficar em branco.
+      const values = {
+        n: order.number,
+        ...vars,
+        ...("product" in vars && !vars.product
+          ? { product: t("productName.unnamed") }
+          : {}),
+        ...("products" in vars && !vars.products
+          ? { products: t("productName.unnamed") }
+          : {}),
+      };
+      return {
+        subject: t(subjectKey as never, values),
+        body: t(bodyKey as never, values),
+      };
+    },
   }).catch((error) => console.error("notify(purchase_order)", error));
 }
 
@@ -344,14 +412,20 @@ export async function notifyLanesOpen(
     if (lane === "registration") continue;
     if (!byLane.has(lane)) byLane.set(lane, r.role);
   }
-  for (const [lane, role] of byLane)
+  for (const [lane, role] of byLane) {
+    // Arte e certificado: o login que recebe (o designer, a certificadora).
+    const first = pending.find(
+      (r) => laneOf(r.key) === lane && isRoutedLaneKey(r.key),
+    );
+    const target = first ? await laneTarget(order, first.key) : null;
     await send(
       order,
-      role,
+      target ?? role,
       `purchaseOrder.notify.lane.${lane}.subject`,
       `purchaseOrder.notify.lane.${lane}.body`,
       {},
     );
+  }
 }
 
 /**
@@ -385,7 +459,7 @@ export async function afterLaneStep(
       if (art && art.status !== "done" && !blockedBy(artKey, all).length)
         await send(
           order,
-          art.role,
+          (await laneTarget(order, artKey, all)) ?? art.role,
           "purchaseSequence.notify.artUnlocked.subject",
           "purchaseSequence.notify.artUnlocked.body",
           { product: productOf(art) },
@@ -401,7 +475,11 @@ export async function afterLaneStep(
   if (base === LANE_KEYS.art) {
     await send(
       order,
-      "operator",
+      (await laneTarget(
+        order,
+        laneKey(LANE_KEYS.artReview, item),
+        requirements,
+      )) ?? "operator",
       "purchaseOrder.notify.review.subject",
       "purchaseOrder.notify.review.body",
       { product },
@@ -415,7 +493,7 @@ export async function afterLaneStep(
     if (blockedBy(finalKey, requirements).length) return;
     await send(
       order,
-      final.role,
+      (await laneTarget(order, finalKey, requirements)) ?? final.role,
       "purchaseOrder.notify.final.subject",
       "purchaseOrder.notify.final.body",
       { product },
@@ -423,9 +501,11 @@ export async function afterLaneStep(
   }
 }
 
-/** O produto do rótulo do item da raia ("Arte · Copo" → "Copo"). */
-const productOf = (r: Pick<Requirement, "label">) =>
-  r.label.split(" · ").slice(1).join(" · ").trim();
+/**
+ * O produto do rótulo do item da raia ("Arte · Copo" → "Copo"); vazio sem
+ * produto ou com o nome de exemplo ("Produto novo XPTO").
+ */
+const productOf = (r: Pick<Requirement, "label">) => nameOfLabel(r.label);
 
 /**
  * Pedido de compra gerado (P2 → V1): o comercial fica sabendo do que vem, com
@@ -453,9 +533,6 @@ export async function notifySalesOfPurchase(order: Order): Promise<void> {
       ? holders
       : users.filter((u) => u.role === "admin");
     if (!sales.length) return;
-    const list = items
-      .map((i) => `${i.name} (${i.quantity} ${i.unit})`)
-      .join(", ");
     const { notify } = await import("./notifications");
     await notify(
       { userIds: sales.map((u) => u.id) },
@@ -466,7 +543,15 @@ export async function notifySalesOfPurchase(order: Order): Promise<void> {
           subject: t("purchaseSequence.notify.sales.subject", {
             n: order.number,
           }),
-          body: t("purchaseSequence.notify.sales.body", { items: list }),
+          body: t("purchaseSequence.notify.sales.body", {
+            // Nome de exemplo ("Produto novo XPTO") vira "Produto sem nome".
+            items: items
+              .map(
+                (i) =>
+                  `${realName(i.name) ?? t("productName.unnamed")} (${i.quantity} ${i.unit})`,
+              )
+              .join(", "),
+          }),
         }),
       },
     );
@@ -501,7 +586,7 @@ export async function notifyRegistrationOpen(order: Order): Promise<void> {
     (r) => laneOf(r.key) === "registration" && r.status !== "done",
   );
   if (!open.length) return;
-  const products = [...new Set(open.map(productOf))].join(", ");
+  const products = [...new Set(open.map(productOf))].filter(Boolean).join(", ");
   await send(
     order,
     "operator",
@@ -540,35 +625,33 @@ export async function purchaseLaneSla(): Promise<LaneSla> {
     registrationDays: s.purchaseRegistrationSlaDays,
     signatureDays: s.purchaseSignatureSlaDays,
     downPaymentDays: s.purchaseDownPaymentSlaDays,
+    inspectionMediaDays: s.purchaseInspectionMediaSlaDays,
+    inspectionReviewDays: s.purchaseInspectionReviewSlaDays,
   };
 }
 
 /**
- * Parceiro designado ou trocado depois (Parceiros do pedido): os itens das
- * raias ainda abertos passam para quem faz agora. O certificado vai para a
- * certificadora; a arte e a arte final com o selo, para a agência quando é
- * ela quem faz a arte. Sem o parceiro, voltam para a Wellmix. O que já foi
- * feito fica como está (o histórico de quem fez não muda) e nada é criado de
- * novo: a pendência aberta só troca de dono.
+ * Papel gravado nas tarefas abertas da arte, da validação e do certificado,
+ * coerente com quem as recebe (`laneRoleFor`, src/lib/services/
+ * cert-art-routing.ts): ao trocar o designer, a agência ou a certificadora,
+ * e na correção dos pedidos abertos. Só atualiza no lugar (sem duplicar);
+ * o que já foi feito não muda.
  */
-export async function syncLaneRoles(user: User, order: Order): Promise<number> {
+export async function syncLaneRoles(
+  user: User | null,
+  order: Order,
+): Promise<number> {
   if (!isPurchaseFlow(order)) return 0;
   const store = getStore();
-  const { getSettings } = await import("@/lib/settings");
-  const art = artRole(order, (await getSettings()).agencyValidationEnabled);
-  const ocp = order.ocpId ? "ocp" : "operator";
+  const { isRoutedLaneKey, laneRoleFor, loadRoutingContext } =
+    await import("./cert-art-routing");
+  const ctx = await loadRoutingContext();
   const open = (
     await store.list("requirements", { filter: { orderId: order.id } })
-  ).filter((r) => r.status !== "done");
+  ).filter((r) => r.status !== "done" && isRoutedLaneKey(r.key));
   let moved = 0;
   for (const r of open) {
-    const base = baseKeyOf(r.key);
-    const role =
-      base === LANE_KEYS.certificate
-        ? ocp
-        : base === LANE_KEYS.art || base === LANE_KEYS.artFinal
-          ? art
-          : null;
+    const role = laneRoleFor(r.key, order, ctx);
     if (!role || r.role === role) continue;
     await store.update("requirements", r.id, { role });
     moved++;
@@ -579,7 +662,104 @@ export async function syncLaneRoles(user: User, order: Order): Promise<number> {
       "order.lanes_reassigned",
       "order",
       order.id,
-      `Raias do pedido de compra: ${moved} item(ns) aberto(s) da arte e do certificado com o novo responsável`,
+      `Raias do pedido de compra: ${moved} item(ns) aberto(s) da arte, da validação e do certificado com o novo responsável`,
     );
   return moved;
+}
+
+/** Última passada geral sem nada a ajustar (nesta instância do servidor). */
+let lanesQuietSince = 0;
+const LANES_QUIET_MS = 10 * 60_000;
+
+/**
+ * Pedidos de compra abertos com o papel gravado das tarefas de arte e
+ * certificado diferente de quem as recebe (antes de 14/11/2026 tudo ficava
+ * com a Wellmix): um pedido (página do pedido) ou todos os abertos
+ * (Pendências, a cada 10 minutos; job diário com `force`). Nunca derruba a
+ * tela: falha vai para o log.
+ */
+export async function normalizeLaneRoles(
+  orderId?: string,
+  opts: { force?: boolean } = {},
+): Promise<number> {
+  if (!orderId && !opts.force && Date.now() - lanesQuietSince < LANES_QUIET_MS)
+    return 0;
+  try {
+    const store = getStore();
+    const orders = orderId
+      ? [await store.get("orders", orderId)].filter((o): o is Order => !!o)
+      : await store.list("orders", {
+          // As raias ficam na Preparação; o contrato vem logo depois.
+          filter: {
+            flow: "supplier_request",
+            status: ["ORDER_CREATED", "PREPARATION", "PACKAGING"],
+          },
+        });
+    let changed = 0;
+    for (const order of orders) {
+      if (!isPurchaseFlow(order)) continue;
+      if (order.status === "CLOSED" || order.status === "CANCELLED") continue;
+      changed += await syncLaneRoles(null, order);
+    }
+    if (!orderId) lanesQuietSince = changed === 0 ? Date.now() : 0;
+    return changed;
+  } catch (error) {
+    console.error("[purchase-order] papéis das raias não ajustados", error);
+    return 0;
+  }
+}
+
+/**
+ * Incoterm do pedido de compra pelo dos produtos (ficha mestre de cada um):
+ * EXW se algum é EXW, FOB se algum é FOB; sem incoterm nos produtos, fica
+ * como está. Decisão do dono (14/11/2026): a Wellmix pode trocar no pedido.
+ */
+export async function incotermFromProducts(
+  orderId: string,
+): Promise<"EXW" | "FOB" | null> {
+  const store = getStore();
+  const items = await store.list("order_items", { filter: { orderId } });
+  const ids = [
+    ...new Set(items.map((i) => i.productId).filter(Boolean)),
+  ] as string[];
+  if (!ids.length) return null;
+  const sheets = await store
+    .list("purchase_sheets", { filter: { orderId: ids } })
+    .catch(() => []);
+  const terms = sheets
+    .filter((s) => s.productId && s.orderId === s.productId)
+    .map((s) => s.incoterm);
+  if (terms.includes("EXW")) return "EXW";
+  if (terms.includes("FOB")) return "FOB";
+  return null;
+}
+
+export async function syncPurchaseIncoterm(orderId: string) {
+  const incoterm = await incotermFromProducts(orderId);
+  if (!incoterm) return;
+  const store = getStore();
+  const order = await store.get("orders", orderId);
+  if (order && order.incoterm !== incoterm)
+    await store.update("orders", orderId, { incoterm });
+}
+
+/** A Wellmix troca o incoterm do pedido de compra (FOB ou EXW). */
+export async function setPurchaseIncoterm(
+  user: User,
+  orderId: string,
+  incoterm: "EXW" | "FOB",
+) {
+  assertWellmix(user);
+  const store = getStore();
+  const order = await store.get("orders", orderId);
+  if (!order || order.flow !== "supplier_request") throw new Error("not_found");
+  if (order.incoterm === incoterm) return;
+  await store.update("orders", orderId, { incoterm });
+  await audit(
+    user,
+    "order.incoterm",
+    "order",
+    orderId,
+    `Incoterm do pedido #${order.number}: ${order.incoterm ?? "—"} → ${incoterm}`,
+  );
 }

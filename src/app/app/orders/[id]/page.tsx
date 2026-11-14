@@ -1,5 +1,9 @@
+import { OrderProgressCard } from "@/components/order-progress-card";
+import { isProgressBlock } from "@/lib/flow-progress";
 import { listByIds } from "@/lib/db/lookup";
+import { ColorLines } from "@/components/color-lines";
 import { registerOrderInvoiceAction } from "../../actions/order-invoice";
+import { setPurchaseIncotermAction } from "../../actions/purchase-order";
 import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
 import { ImportFlowCard } from "@/components/import-flow-card";
@@ -14,6 +18,7 @@ import { fallbackError } from "@/i18n/error-text";
 import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import {
   DOWN_PAYMENT_KEY,
+  SKU_APPROVED_KEY,
   LANE_KEYS,
   baseKeyOf,
   blockedBy,
@@ -21,9 +26,19 @@ import {
   isLeadTimeKey,
   isSampleOrderKey,
   itemIdOf,
+  laneInputKeys,
+  supplierLaneView,
   supplierSeesLaneRequirement,
 } from "@/lib/purchase-lanes";
 import { canViewDieCut, negotiatedTerms } from "@/lib/services/die-cut-step";
+import {
+  canActOnLane,
+  laneRoute,
+  loadRoutingContext,
+  routeLabel,
+  seesLaneTask,
+} from "@/lib/services/cert-art-routing";
+import { ASSIGN_HREF, type MissingAssignment } from "@/lib/assign-href";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -35,10 +50,17 @@ import {
   canSeeSupplier,
   canViewOrder,
   canViewRequest,
+  isOrderCertifier,
   isPartner,
   isWellmix,
 } from "@/lib/auth/permissions";
 import { partRowFor, stageRowFor, stageVisibleTo } from "@/lib/order-view";
+import {
+  myOrderTimeline,
+  myProgress,
+  myStageRow,
+  timelineMineOnly,
+} from "@/lib/services/order-timeline";
 import {
   ORDER_PART_PARALLEL,
   documentPart,
@@ -102,17 +124,18 @@ import {
 } from "@/lib/services/acknowledgements";
 import { containersForOrder } from "@/lib/services/containers";
 import { isInspectionMeasureKey } from "@/lib/services/inspection";
+import { inspectionReport } from "@/lib/services/inspection-report";
 import {
-  inspectionReport,
-  type InspectionReport,
-} from "@/lib/services/inspection-report";
+  InspectionResultCard,
+  formatDateTime,
+} from "@/components/inspection-result-card";
 import { getSnapshotForOrder } from "@/lib/services/snapshots";
 import { variantSnapshotSummary } from "@/lib/services/variant-sales";
 import { getSettings } from "@/lib/settings";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { getAfterSales } from "@/lib/services/after-sales";
 import { getT } from "@/i18n/server";
-import { requirementLabel, type Translate } from "@/i18n";
+import { productNameText, requirementLabel, type Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -151,6 +174,7 @@ import {
   CustomerCancelCard,
 } from "@/components/order-cancel";
 import { customerCanRequestCancel } from "@/lib/services/order-cancel";
+import { cancelOrderAction } from "../../actions/order-cancel";
 import {
   cancelledOrderIds,
   requestDisplayStatus,
@@ -222,11 +246,16 @@ export default async function OrderPage({
     freight: freightNotice,
     freightN,
     rounds: roundsSpawned,
+    incoterm: incotermNotice,
+    from: fromBlock,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
   // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
   await normalizePackaging(id);
+  // Pedido de compra: papel das tarefas de arte e certificado coerente com
+  // quem as recebe (corrige as abertas antes de 14/11/2026, sem duplicar).
+  await (await import("@/lib/services/purchase-order")).normalizeLaneRoles(id);
   await normalizeShipping(id);
   let progress = await loadOrderProgress(id);
   if (!progress || !canViewOrder(user, progress.order)) notFound();
@@ -258,7 +287,8 @@ export default async function OrderPage({
      preço de compra, a ficha inteira, o documento do pedido, as
      certificações já registradas e os arquivos. Só lê. O financeiro da
      Wellmix (preço de venda, margem, pagamentos) não é do pedido dela. */
-  const certifier = user.role === "ocp";
+  // O despachante do pedido certifica (dono, 13/11/2026): vê o mesmo.
+  const certifier = isOrderCertifier(user, progress.order);
   // Financeiro é só do administrador: pagamentos, valores e margem do pedido.
   const financeAccess = canOpen(user, "finance");
   /* Nova medição (inspeção bloqueada): só com ?remeasure=1; sem o parâmetro a tela é a de sempre. */
@@ -322,6 +352,49 @@ export default async function OrderPage({
   const importSteps =
     order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
       ? await importFlow.importFlowView(user, order)
+      : [];
+  /* Amostras depois da inspeção (docs/SAMPLE_FLOW.md): passos e divisão. */
+  const samplesSteps = purchaseFlow
+    ? await importFlow.importFlowView(user, order, "samples")
+    : [];
+  const samplesSplit =
+    samplesSteps.length && (isWellmix(user) || user.role === "supplier")
+      ? await (await import("@/lib/services/sample-flow")).samplesSplitOf(order)
+      : [];
+  const realMediaVisible =
+    samplesSteps.length > 0 &&
+    (isWellmix(user) || user.role === "marketing_agency");
+  /* Fatura ativa em N dias (mapa R24): depois do BL conferido. */
+  const invoiceDue =
+    purchaseFlow && isWellmix(user) && !order.invoicedAt
+      ? await (
+          await import("@/lib/services/supplier-invoice")
+        ).invoiceDueOf(order)
+      : null;
+  /* Documentos do embarque: a Wellmix, o fornecedor e a marítima do pedido. */
+  const shippingDocsVisible =
+    purchaseFlow &&
+    [
+      "INSPECTION",
+      "SHIPPING",
+      "CUSTOMS",
+      "TRANSPORT",
+      "DELIVERED",
+      "CLOSED",
+    ].includes(order.status) &&
+    (await import("@/lib/services/shipping-docs")).canView(user, order);
+  /* Container na origem (pedido de compra, mapa R19 a R26). */
+  const originSteps =
+    purchaseFlow &&
+    [
+      "INSPECTION",
+      "SHIPPING",
+      "CUSTOMS",
+      "TRANSPORT",
+      "DELIVERED",
+      "CLOSED",
+    ].includes(order.status)
+      ? await importFlow.importFlowView(user, order, "origin")
       : [];
   /* Certificação (Fase F). O selo de certificação vale para todo pedido,
      desde que ele nasce (já está na mão da certificadora). Memorial, laudo
@@ -417,7 +490,7 @@ export default async function OrderPage({
     order.shippingLineId === user.partyId;
   const [
     partiesOfOrder,
-    items,
+    storedItems,
     documents,
     payments,
     penalties,
@@ -456,6 +529,7 @@ export default async function OrderPage({
             "comex",
             "logistics",
             "ocp",
+            "marketing_agency",
           ],
         },
       }),
@@ -518,9 +592,54 @@ export default async function OrderPage({
     ].filter((id) => id && !known.has(id)),
   ))
     known.set(p.id, p);
+  // Nome de exemplo ("Produto novo XPTO") ou vazio: a tela mostra "Produto
+  // sem nome" (docs/PURCHASE_ORDER.md, "Nome de exemplo"); o dado não muda.
+  const items = storedItems.map((i) => ({
+    ...i,
+    name: productNameText(t, i.name),
+  }));
   const parties = [...known.values()];
   const partyName = (pid: string | null) =>
     (pid && known.get(pid)?.name) || "—";
+  /* Arte, validação, certificado e arte final do pedido de compra (dono,
+     14/11/2026): cada uma com o login que a recebe. Quem não a recebe não a
+     vê, nem na linha do tempo nem nos detalhes da etapa; o administrador vê
+     todas, com quem está cada uma e o que falta designar. */
+  const laneCtx = purchaseFlow ? await loadRoutingContext() : null;
+  const laneInfo = new Map<string, LaneRowInfo>();
+  if (laneCtx)
+    for (const r of requirements) {
+      const route = laneRoute(r.key, order, laneCtx, requirements);
+      if (!route) continue;
+      const missing =
+        route.missing && route.missing !== "ocp" ? route.missing : null;
+      laneInfo.set(r.id, {
+        sees: seesLaneTask(user, r.key, order, laneCtx, requirements),
+        canAct: canActOnLane(user, r.key, order, laneCtx, requirements),
+        // Sem a certificadora, ninguém faz o certificado: só falta designar.
+        who:
+          missing === "certifier"
+            ? null
+            : route.party
+              ? partyName(route.party.partyId)
+              : ((await routeLabel(route, laneCtx)) ??
+                t("certFlow.assignee.team")),
+        missing,
+      });
+    }
+  /** Itens que este login vê (as quatro tarefas, só quem as recebe). */
+  const visibleReqs = <T extends { id: string }>(list: T[]) =>
+    laneInfo.size ? list.filter((r) => laneInfo.get(r.id)?.sees ?? true) : list;
+  /* Os arquivos que a tarefa usa, de tarefas que este login pode não ver:
+     a validação traz a arte enviada; a arte final, a arte validada e o
+     certificado (o selo). */
+  const laneInputsOf = (r: Requirement): LaneInput[] =>
+    laneCtx
+      ? laneInputKeys(r.key, requirements).flatMap((input) => {
+          const doc = docById(input.documentId);
+          return doc ? [{ label: input.label, doc }] : [];
+        })
+      : [];
   /* Parceiro (agência, despachante, companhia, transportador): só a parte dele.
      O transportador ganha o cartão "Carga e entrega" no lugar do cartão do pedido. */
   const partner = isPartner(user);
@@ -684,6 +803,14 @@ export default async function OrderPage({
   const isCancelled = order.status === "CANCELLED";
   const admin = user.role === "admin";
   const canCancel = can(user, "order.cancel");
+  // Inspeção do pedido de compra: SKU reprovado além do limite de tentativas.
+  const maxAttempts = (await getSettings()).purchaseInspectionMaxAttempts;
+  const { attemptsExhausted } = await import("@/lib/services/production");
+  const exhaustedItems = purchaseFlow
+    ? (productionView?.items ?? []).filter((v) =>
+        attemptsExhausted(v.latest, maxAttempts),
+      )
+    : [];
   const canRequestCancel =
     user.role === "customer" && !isCancelled
       ? await customerCanRequestCancel(order)
@@ -814,8 +941,17 @@ export default async function OrderPage({
               <form
                 key="invoice"
                 action={registerOrderInvoiceAction}
-                className="inline"
+                className="inline-flex flex-wrap items-center gap-2"
               >
+                {invoiceDue ? (
+                  <Badge tone={invoiceDue.late ? "danger" : "warning"}>
+                    <span data-invoice-due={invoiceDue.dueAt.slice(0, 10)}>
+                      {t("supplierInvoice.due", {
+                        date: formatDate(invoiceDue.dueAt, t),
+                      })}
+                    </span>
+                  </Badge>
+                ) : null}
                 <input type="hidden" name="orderId" value={order.id} />
                 <SubmitButton
                   variant="secondary"
@@ -901,6 +1037,50 @@ export default async function OrderPage({
         ]
       : []),
   ];
+  /* Login Trading no pedido de compra (pedido do dono, 13/11/2026): a etapa 2
+     aparece como "Die-Cut", com o responsável "Fornecedor" (sempre, mesmo
+     quando a etapa passa para a Wellmix) e o andamento só das tarefas dele
+     (faca, foto em alta e prazo de cada produto), contado do que está
+     gravado. A etapa de verdade, o andamento do pedido e a visão da Wellmix
+     não mudam. */
+  const tradingView =
+    supplierLanes && known.get(order.supplierId)?.type === "trading";
+  const tradingDieCut = (s: (typeof stages)[number], reqs: Requirement[]) =>
+    tradingView && s.key === "PREPARATION" ? supplierLaneView(s, reqs) : null;
+  /* Operador da Wellmix (pedido do dono, 14/11/2026): a linha do tempo só
+     com as tarefas a fazer que cabem ao login, tarefa a tarefa, inclusive
+     dentro das etapas e das partes compartilhadas (regras em
+     src/lib/services/order-timeline.ts). As que ainda não estão liberadas
+     (esperam outro item ou a etapa começar) aparecem em cinza (decisão do
+     dono, 14/11/2026). Situação, andamento e contagem saem das tarefas
+     dele; a etapa sai da lista quando ele conclui a última.
+     O administrador e os outros papéis veem como antes; o andamento do
+     pedido inteiro não muda. */
+  const mineOnly = timelineMineOnly(user);
+  const myTimeline = mineOnly
+    ? await myOrderTimeline(user, {
+        order,
+        stages: flowStages,
+        requirements,
+        certSteps,
+        importSteps,
+        sheetMissing: sheetState ? sheetState.missing.length : null,
+        productionOpen: !!productionView && !productionView.allApproved,
+        artIssues: artworkView?.items.flatMap((i) => i.issues) ?? [],
+        supplierPaymentOpen:
+          financeAccess &&
+          order.status !== "CLOSED" &&
+          order.status !== "CANCELLED",
+        receivingOpen: !!receivingView && !receivingView.row?.closedAt,
+      })
+    : null;
+  const myStage = (s: (typeof stages)[number]) =>
+    myTimeline?.stages.get(s.id) ?? null;
+  /** O operador tem item nesta etapa (liberado ou que vem depois). */
+  const myStageOpen = (s: (typeof stages)[number]) => {
+    const mine = myStage(s);
+    return !!mine && mine.open.length + mine.later.length > 0;
+  };
   /* Etapas em linhas: quem vê a etapa abre os detalhes dela; a etapa em
      andamento (ou que ainda aceita dados, como o BL depois do embarque)
      fica aberta sempre. ?stage=CHAVE abre outra; ?stage=all, todas. */
@@ -908,7 +1088,7 @@ export default async function OrderPage({
     stageVisibleTo(
       user,
       s,
-      requirements.filter((r) => r.stageId === s.id),
+      visibleReqs(requirements.filter((r) => r.stageId === s.id)),
     );
   const defaultExpanded = (s: (typeof stages)[number]) =>
     s.status === "active" ||
@@ -919,7 +1099,11 @@ export default async function OrderPage({
         r.status !== "done" &&
         canCompleteLater(s, r, order),
     );
-  const openableStages = flowStages.filter(stageVisible);
+  // Operador: só as etapas em que ele tem tarefa a fazer abrem (também em
+  // "Abrir todas as etapas" e "Ver detalhes").
+  const openableStages = flowStages.filter(
+    (s) => stageVisible(s) && (!mineOnly || myStageOpen(s)),
+  );
   const expandedStageIds = new Set(
     openableStages
       .filter(
@@ -1024,6 +1208,24 @@ export default async function OrderPage({
         )
       : null,
   ]);
+  /* Operador: a linha de cada etapa só com tarefa dele dentro dela (nos itens
+     da etapa ou numa subetapa); a situação, o andamento e a contagem somam só
+     as tarefas dele ali. */
+  const myRows = new Map(
+    myTimeline
+      ? flowStages.map((s) => [
+          s.id,
+          myStageRow(
+            myTimeline,
+            s,
+            (partsByStage.get(s.key) ?? []).map((part) => part.key),
+          ),
+        ])
+      : [],
+  );
+  const myRow = (s: (typeof stages)[number]) => myRows.get(s.id) ?? null;
+  /** O operador tem alguma tarefa a fazer no pedido (etapa ou subetapa). */
+  const myAnything = [...myRows.values()].some((row) => !!row);
   /* Cartões coloridos do alto (como Clientes e Fornecedores): os mesmos
      valores e a mesma regra de quem vê do antigo cartão Financeiro (cliente:
      venda, recebido e a receber; administrador: também compra, pago, a pagar
@@ -1031,22 +1233,27 @@ export default async function OrderPage({
   const moneyCards: ColorCard[] =
     finance && (financeAccess || user.role === "customer")
       ? [
+          // Valores em dinheiro: o cartão põe a moeda numa linha menor e o
+          // número inteiro embaixo (mesmos valores e cálculos de antes).
           {
             key: "sell",
             label: t("orderView.money.sell"),
-            value: formatMoney(finance.sell, finance.sellCurrency, t),
+            money: { amount: finance.sell, currency: finance.sellCurrency },
             tone: "indigo",
           },
           {
             key: "received",
             label: t("orderView.money.received"),
-            value: formatMoney(finance.received, finance.sellCurrency, t),
+            money: { amount: finance.received, currency: finance.sellCurrency },
             tone: "emerald",
           },
           {
             key: "receivable",
             label: t("orderView.money.receivable"),
-            value: formatMoney(finance.receivable, finance.sellCurrency, t),
+            money: {
+              amount: finance.receivable,
+              currency: finance.sellCurrency,
+            },
             tone: "rose",
           },
           ...(wellmix
@@ -1054,46 +1261,48 @@ export default async function OrderPage({
                 {
                   key: "fob",
                   label: t("orderView.money.fob"),
-                  value: formatMoney(finance.fob, finance.fobCurrency, t),
+                  money: { amount: finance.fob, currency: finance.fobCurrency },
                   tone: "slate",
                 },
                 {
                   key: "paid",
                   label: t("orderView.money.paid"),
-                  value: (
-                    <>
-                      {formatMoney(finance.paid, finance.fobCurrency, t)}
-                      {/* Pago em outra moeda: à parte, na moeda dele. */}
-                      {Object.entries(finance.paidOther).map(([c, v]) => (
-                        <span
-                          key={c}
-                          className="block text-xs font-medium text-white/85"
-                          data-paid-other={c}
-                        >
+                  money: {
+                    amount: finance.paid,
+                    currency: finance.fobCurrency,
+                  },
+                  // Pago em outra moeda: à parte, na moeda dele.
+                  sub: Object.keys(finance.paidOther).length
+                    ? Object.entries(finance.paidOther).map(([c, v]) => (
+                        <span key={c} className="block" data-paid-other={c}>
                           + {formatMoney(v, c, t)}
                         </span>
-                      ))}
-                    </>
-                  ),
+                      ))
+                    : undefined,
                   tone: "sky",
                 },
                 {
                   key: "payable",
                   label: t("orderView.money.payable"),
-                  value: formatMoney(finance.payable, finance.fobCurrency, t),
+                  money: {
+                    amount: finance.payable,
+                    currency: finance.fobCurrency,
+                  },
                   tone: "orange",
                 },
                 {
                   key: "margin",
                   label: t("orderView.money.margin"),
                   // Cancelado não é venda: sem margem (como na tela Financeiro).
-                  value:
-                    finance.margin !== null && !isCancelled
-                      ? approx(
-                          formatMoney(finance.margin, finance.sellCurrency, t),
-                          finance.estimated,
-                        )
-                      : "—",
+                  ...(finance.margin !== null && !isCancelled
+                    ? {
+                        money: {
+                          amount: finance.margin,
+                          currency: finance.sellCurrency,
+                          approx: finance.estimated,
+                        },
+                      }
+                    : { value: "—" }),
                   sub:
                     finance.marginPct !== null &&
                     finance.margin !== null &&
@@ -1197,6 +1406,7 @@ export default async function OrderPage({
                       ["comex", order.comexId ?? null],
                       ["logistics", order.logisticsId ?? null],
                       ["ocp", order.ocpId ?? null],
+                      ["marketing_agency", order.marketingAgencyId ?? null],
                     ] as Array<[PartyType, string | null]>
                   ).flatMap(([type, pid]) =>
                     pid
@@ -1214,6 +1424,16 @@ export default async function OrderPage({
           />
         }
       />
+      {/* Linha do tempo do pedido entre os blocos (docs/FLOW_MENU.md). */}
+      {wellmix ? (
+        <OrderProgressCard
+          orderId={order.id}
+          stages={stages}
+          focus={isProgressBlock(fromBlock) ? fromBlock : null}
+          t={t}
+          locale={t}
+        />
+      ) : null}
       <ActionError
         t={t}
         code={error}
@@ -1298,7 +1518,7 @@ export default async function OrderPage({
           leva a cada parte. */}
 
       {moneyCards.length ? (
-        <ColorCards name="order" items={moneyCards} />
+        <ColorCards name="order" items={moneyCards} intl={t.intl} />
       ) : null}
 
       {cargo ? <CargoCard t={t} cargo={cargo} /> : null}
@@ -1390,6 +1610,14 @@ export default async function OrderPage({
                           {product.sku}
                         </span>
                       ) : null}
+                      {/* Variações de cor: cada cor na própria linha, do
+                          mesmo produto (a soma é a quantidade do item). */}
+                      <ColorLines
+                        colors={i.colors}
+                        name={i.name}
+                        unit={i.unit}
+                        intl={t.intl}
+                      />
                     </Td>
                     <Td className="min-w-40">{variantCell(i)}</Td>
                     <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
@@ -1473,63 +1701,96 @@ export default async function OrderPage({
           <tbody>
             {flowStages.map((s, index) => {
               const visible = stageVisible(s);
-              const reqs = requirements.filter((r) => r.stageId === s.id);
+              // Operador: os detalhes da etapa abrem quando há item dele na
+              // etapa; a tarefa só de subetapa abre pela linha da subetapa.
+              const details = visible && (!mineOnly || myStageOpen(s));
+              // Só o que este login vê (arte e certificado: quem recebe).
+              const reqs = visibleReqs(
+                requirements.filter((r) => r.stageId === s.id),
+              );
               // Fornecedor e parceiros: só as linhas que são do próprio
               // login (a numeração continua a do fluxo inteiro).
-              const ownStage = stageRowFor(user, s, reqs);
+              // Operador da Wellmix: só as etapas e partes com tarefa dele.
+              const mineRow = mineOnly ? myRow(s) : null;
+              const ownStage = mineOnly
+                ? !!mineRow
+                : stageRowFor(user, s, reqs);
               const ownParts = (partsByStage.get(s.key) ?? []).filter((part) =>
-                partRowFor(user, part.key),
+                mineOnly
+                  ? !!mineRow?.parts.includes(part.key)
+                  : partRowFor(user, part.key),
               );
               if (!ownStage && !ownParts.length) return null;
               const open = s.status === "active" || s.status === "blocked";
               const expanded = expandedStageIds.has(s.id);
+              // Login Trading: a etapa 2 como "Die-Cut", com o andamento dele.
+              const dieCut = tradingDieCut(s, reqs);
+              // Operador: situação, andamento e contagem das tarefas dele.
+              const mine = mineRow?.progress ?? null;
+              const status = mine?.status ?? dieCut?.status ?? s.status;
+              const rowName = dieCut
+                ? t("purchaseOrder.dieCut.title")
+                : stageRowName(s.key);
+              const completedAt = mine
+                ? null
+                : dieCut
+                  ? dieCut.completedAt
+                  : s.completedAt;
               return (
                 <Fragment key={s.id}>
                   {ownStage ? (
                     <tr
                       className={cx(
                         rowClass,
-                        s.status === "active" && "bg-brand-50/60",
-                        s.status === "blocked" && "bg-amber-50/70",
+                        status === "active" && "bg-brand-50/60",
+                        status === "blocked" && "bg-amber-50/70",
                       )}
                       data-stage-row={s.key}
+                      data-stage-status={status}
                     >
                       <Td className="w-10">
-                        <StepDot state={s.status}>{index + 1}</StepDot>
+                        <StepDot state={status}>{index + 1}</StepDot>
                       </Td>
                       <Td className="min-w-40">
                         <span
                           className={cx(
-                            s.status === "pending"
+                            status === "pending"
                               ? "text-zinc-500"
-                              : s.status === "active"
+                              : status === "active"
                                 ? "font-semibold text-brand-800"
-                                : s.status === "blocked"
+                                : status === "blocked"
                                   ? "font-semibold text-amber-900"
                                   : "font-medium text-zinc-900",
                           )}
                         >
-                          {visible ? (
+                          {details ? (
                             <a
                               href={stageHref(s)}
                               className="transition hover:text-brand-700"
                             >
-                              {stageRowName(s.key)}
+                              {rowName}
                             </a>
                           ) : (
-                            stageRowName(s.key)
+                            rowName
                           )}
                         </span>
                       </Td>
                       <Td className="whitespace-nowrap">
-                        <Badge tone={stageTone(s.status)}>
-                          {t(`stageStatus.${s.status}`)}
+                        <Badge tone={stageTone(status)}>
+                          {dieCut && status === "done"
+                            ? t("purchaseOrder.dieCut.done")
+                            : t(`stageStatus.${status}`)}
                         </Badge>
                       </Td>
                       <Td className="whitespace-nowrap text-zinc-700">
                         {visible ? (
-                          <span className="inline-flex items-center gap-1">
-                            {t(`role.${s.responsibleRole}`)}
+                          <span
+                            className="inline-flex items-center gap-1"
+                            data-stage-responsible={s.key}
+                          >
+                            {dieCut
+                              ? t("role.supplier")
+                              : t(`role.${s.responsibleRole}`)}
                             {(() => {
                               // Mensagem para o responsável da etapa (Wellmix: a
                               // empresa; quem é de fora: a Wellmix), já com a etapa escrita.
@@ -1539,7 +1800,9 @@ export default async function OrderPage({
                                 wellmix,
                               );
                               const draft = t("orderView.stage.chatDraft", {
-                                stage: stageName(s.key),
+                                stage: dieCut
+                                  ? t("purchaseOrder.dieCut.title")
+                                  : stageName(s.key),
                               });
                               if (!chat) return null;
                               if (chat.kind === "unassigned")
@@ -1589,7 +1852,10 @@ export default async function OrderPage({
                       <Td
                         className={cx(
                           "whitespace-nowrap tabular-nums",
-                          visible && open && isOverdue(s.dueAt)
+                          visible &&
+                            open &&
+                            !dieCut?.complete &&
+                            isOverdue(s.dueAt)
                             ? "font-semibold text-red-700"
                             : "text-zinc-700",
                         )}
@@ -1597,21 +1863,28 @@ export default async function OrderPage({
                         {visible && s.dueAt ? formatDate(s.dueAt, t) : "—"}
                       </Td>
                       <Td className="whitespace-nowrap tabular-nums text-zinc-700">
-                        {visible && s.completedAt
-                          ? formatDate(s.completedAt, t)
+                        {visible && completedAt
+                          ? formatDate(completedAt, t)
                           : "—"}
                       </Td>
                       <Td className="w-32">
-                        {open ? (
+                        {open || mine ? (
                           <span className="flex items-center gap-2">
                             <span className="w-16">
-                              <Progress percent={s.percent} />
+                              <Progress
+                                percent={
+                                  mine?.percent ?? dieCut?.percent ?? s.percent
+                                }
+                              />
                             </span>
-                            <span className="text-xs font-semibold tabular-nums text-zinc-600">
-                              {s.percent}%
+                            <span
+                              className="text-xs font-semibold tabular-nums text-zinc-600"
+                              data-stage-percent={s.key}
+                            >
+                              {mine?.percent ?? dieCut?.percent ?? s.percent}%
                             </span>
                           </span>
-                        ) : s.status === "done" ? (
+                        ) : status === "done" ? (
                           <span className="text-xs font-semibold text-emerald-700">
                             100%
                           </span>
@@ -1620,16 +1893,26 @@ export default async function OrderPage({
                         )}
                       </Td>
                       <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
-                        {visible && reqs.length
+                        {mine
                           ? t("orderView.stage.reqs", {
-                              done: reqs.filter((r) => r.status === "done")
-                                .length,
-                              total: reqs.length,
+                              done: mine.done,
+                              total: mine.total,
                             })
-                          : "—"}
+                          : visible && dieCut
+                            ? t("orderView.stage.reqs", {
+                                done: dieCut.done,
+                                total: dieCut.total,
+                              })
+                            : visible && reqs.length
+                              ? t("orderView.stage.reqs", {
+                                  done: reqs.filter((r) => r.status === "done")
+                                    .length,
+                                  total: reqs.length,
+                                })
+                              : "—"}
                       </Td>
                       <Td className="whitespace-nowrap text-right">
-                        {visible ? (
+                        {details ? (
                           expanded && !defaultExpanded(s) ? (
                             <TextLink
                               href={`/app/orders/${order.id}#order-stages`}
@@ -1653,70 +1936,111 @@ export default async function OrderPage({
                   {/* Partes do pedido que acontecem nesta altura do fluxo e têm
                     cartão (ou página) próprio: aparecem aqui, na ordem do
                     negócio, com a situação e o atalho. */}
-                  {ownParts.map((part) => (
-                    <tr
-                      key={part.key}
-                      className={cx(rowClass, "bg-zinc-50/60")}
-                      data-order-part={part.key}
-                      data-order-part-state={part.state}
-                    >
-                      <Td className="w-10 text-center text-zinc-400">↳</Td>
-                      <Td className="min-w-40">
-                        <a
-                          href={part.href}
-                          className="font-medium text-zinc-800 transition hover:text-brand-700"
-                        >
-                          {t(`orderParts.${part.key}` as DictionaryKey)}
-                        </a>
-                        {ORDER_PART_PARALLEL.includes(part.key) ? (
-                          <span className="ml-1.5 whitespace-nowrap rounded-full bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-800 ring-1 ring-inset ring-sky-200">
-                            {t("orderParts.parallel")}
-                          </span>
-                        ) : null}
-                      </Td>
-                      <Td className="whitespace-nowrap">
-                        <Badge
-                          tone={
-                            part.state === "done"
-                              ? "success"
-                              : part.state === "active"
-                                ? "warning"
-                                : "neutral"
-                          }
-                        >
-                          {t(`orderParts.state.${part.state}` as DictionaryKey)}
-                        </Badge>
-                      </Td>
-                      <Td className="whitespace-nowrap text-zinc-700">
-                        {t(`orderParts.who.${part.key}` as DictionaryKey)}
-                      </Td>
-                      <Td colSpan={3} className="text-xs text-zinc-600">
-                        {part.detail ?? "—"}
-                      </Td>
-                      <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
-                        {part.total
-                          ? t("orderView.stage.reqs", {
-                              done: part.done ?? 0,
-                              total: part.total,
-                            })
-                          : "—"}
-                      </Td>
-                      <Td className="whitespace-nowrap text-right">
-                        <TextLink
-                          href={part.href}
-                          className="text-sm"
-                          data-order-part-open={part.key}
-                        >
-                          {t("orderParts.open")}
-                        </TextLink>
-                      </Td>
-                    </tr>
-                  ))}
+                  {ownParts.map((part) => {
+                    // Operador: a parte com a situação e a contagem dele.
+                    const minePart = mineOnly
+                      ? myTimeline?.parts[part.key]
+                      : null;
+                    const partState = minePart
+                      ? myProgress(minePart).status
+                      : part.state;
+                    // Só o que vem depois: em cinza.
+                    const partMuted = !!minePart && minePart.open === 0;
+                    const partTotal = minePart
+                      ? minePart.open + minePart.later + minePart.done
+                      : 0;
+                    const partCount =
+                      minePart && partTotal > 0
+                        ? { done: minePart.done, total: partTotal }
+                        : !minePart && part.total
+                          ? { done: part.done ?? 0, total: part.total }
+                          : null;
+                    return (
+                      <tr
+                        key={part.key}
+                        className={cx(rowClass, "bg-zinc-50/60")}
+                        data-order-part={part.key}
+                        data-order-part-state={partState}
+                      >
+                        <Td className="w-10 text-center text-zinc-400">↳</Td>
+                        <Td className="min-w-40">
+                          <a
+                            href={part.href}
+                            className={cx(
+                              "font-medium transition hover:text-brand-700",
+                              partMuted ? "text-zinc-500" : "text-zinc-800",
+                            )}
+                          >
+                            {t(`orderParts.${part.key}` as DictionaryKey)}
+                          </a>
+                          {ORDER_PART_PARALLEL.includes(part.key) ? (
+                            <span className="ml-1.5 whitespace-nowrap rounded-full bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-800 ring-1 ring-inset ring-sky-200">
+                              {t("orderParts.parallel")}
+                            </span>
+                          ) : null}
+                        </Td>
+                        <Td className="whitespace-nowrap">
+                          <Badge
+                            tone={
+                              partState === "done"
+                                ? "success"
+                                : partState === "active"
+                                  ? "warning"
+                                  : "neutral"
+                            }
+                          >
+                            {t(
+                              `orderParts.state.${partState}` as DictionaryKey,
+                            )}
+                          </Badge>
+                        </Td>
+                        <Td className="whitespace-nowrap text-zinc-700">
+                          {t(`orderParts.who.${part.key}` as DictionaryKey)}
+                        </Td>
+                        <Td colSpan={3} className="text-xs text-zinc-600">
+                          {part.detail ?? "—"}
+                        </Td>
+                        <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
+                          {partCount
+                            ? t("orderView.stage.reqs", partCount)
+                            : "—"}
+                        </Td>
+                        <Td className="whitespace-nowrap text-right">
+                          <TextLink
+                            href={part.href}
+                            className="text-sm"
+                            data-order-part-open={part.key}
+                          >
+                            {t("orderParts.open")}
+                          </TextLink>
+                        </Td>
+                      </tr>
+                    );
+                  })}
                 </Fragment>
               );
             })}
+            {/* Operador sem tarefa neste pedido: diz isso e quem responde. */}
+            {mineOnly && !myAnything ? (
+              <tr data-stage-mine-empty>
+                <Td colSpan={9} className="text-sm text-zinc-600">
+                  {t("orderView.mine.empty")}
+                  {order.ownerUserId
+                    ? ` ${t("orderView.mine.owner", { name: userName(order.ownerUserId) })}`
+                    : ""}
+                </Td>
+              </tr>
+            ) : null}
           </tbody>
         </Table>
+        {mineOnly ? (
+          <p
+            className="mt-1.5 text-xs text-zinc-500 print:hidden"
+            data-stage-mine-hint
+          >
+            {t("orderView.mine.hint")}
+          </p>
+        ) : null}
         {openableStages.length > 1 ? (
           <p className="mt-1.5 text-xs text-zinc-500 print:hidden">
             {t("orderView.stage.hint")}
@@ -1739,29 +2063,52 @@ export default async function OrderPage({
               stage.status === "active" || stage.status === "blocked";
             // Pedido de compra, fornecedor: só a faca, a foto em alta e o prazo.
             const supplierView = supplierLanes && stage.key === "PREPARATION";
-            const shownReqs = supplierView
-              ? reqs.filter(supplierSeesLaneRequirement)
-              : reqs;
+            // Operador da Wellmix: só as tarefas abertas dele na etapa.
+            const mine = mineOnly ? (myRow(stage)?.progress ?? null) : null;
+            // As que vêm depois ficam em cinza, na ordem da etapa.
+            const mineIds = new Set(
+              [
+                ...(myStage(stage)?.open ?? []),
+                ...(myStage(stage)?.later ?? []),
+              ].map((r) => r.id),
+            );
+            const laterIds = new Set(
+              (myStage(stage)?.later ?? []).map((r) => r.id),
+            );
+            const shownReqs = mineOnly
+              ? reqs.filter((r) => mineIds.has(r.id))
+              : supplierView
+                ? reqs.filter(supplierSeesLaneRequirement)
+                : visibleReqs(reqs);
+            // Login Trading: a etapa 2 como "Die-Cut", com o andamento dele.
+            const dieCut = tradingDieCut(stage, reqs);
+            const status = mine?.status ?? dieCut?.status ?? stage.status;
             return (
               <Fragment key={stage.id}>
                 <Card
                   className={cx(
                     "mt-4",
-                    stage.status === "active" &&
+                    status === "active" &&
                       "border-brand-300! ring-4 ring-brand-50",
-                    stage.status === "blocked" &&
+                    status === "blocked" &&
                       "border-amber-400! ring-4 ring-amber-50",
                   )}
                   title={
                     <span
                       id={`stage-${stage.id}`}
                       className="flex scroll-mt-24 flex-wrap items-center gap-2"
+                      data-stage-card={stage.key}
+                      data-stage-status={status}
                     >
-                      {stageName(stage.key)}
-                      <Badge tone={stageTone(stage.status)}>
-                        {t(`stageStatus.${stage.status}`)}
+                      {dieCut
+                        ? t("purchaseOrder.dieCut.title")
+                        : stageName(stage.key)}
+                      <Badge tone={stageTone(status)}>
+                        {dieCut && status === "done"
+                          ? t("purchaseOrder.dieCut.done")
+                          : t(`stageStatus.${status}`)}
                       </Badge>
-                      {open && stage.dueAt ? (
+                      {open && !dieCut?.complete && stage.dueAt ? (
                         <span
                           className={cx(
                             "text-xs",
@@ -1780,12 +2127,26 @@ export default async function OrderPage({
                       <span className="flex items-center gap-2 text-xs text-zinc-500">
                         <span>
                           {t("common.responsible")}:{" "}
-                          <span className="font-semibold text-zinc-700">
-                            {t(`role.${stage.responsibleRole}`)}
+                          <span
+                            className="font-semibold text-zinc-700"
+                            data-stage-card-responsible={stage.key}
+                          >
+                            {dieCut
+                              ? t("role.supplier")
+                              : t(`role.${stage.responsibleRole}`)}
                           </span>
                         </span>
-                        <span className="w-24">
-                          <Progress percent={stage.percent} />
+                        <span
+                          className="w-24"
+                          data-stage-card-percent={
+                            mine?.percent ?? dieCut?.percent ?? stage.percent
+                          }
+                        >
+                          <Progress
+                            percent={
+                              mine?.percent ?? dieCut?.percent ?? stage.percent
+                            }
+                          />
                         </span>
                       </span>
                     ) : !defaultExpanded(stage) ? (
@@ -1867,6 +2228,7 @@ export default async function OrderPage({
                       {/* Pedido de compra: os quatro itens do fornecedor também
                           ficam juntos, produto a produto, no quadro Die Cut. */}
                       {purchaseFlow &&
+                      !mineOnly &&
                       stage.key === "PREPARATION" &&
                       canViewDieCut(user, progress.order) &&
                       reqs.some((r) => dieCutItemOf(r.key)) ? (
@@ -1908,6 +2270,9 @@ export default async function OrderPage({
                           order={order}
                           user={user}
                           t={t}
+                          lane={laneInfo.get(r.id) ?? null}
+                          laneInputs={laneInputsOf(r)}
+                          muted={laterIds.has(r.id)}
                           // O prazo registrado para o item só preenche o campo.
                           defaultValue={
                             supplierView && isLeadTimeKey(r.key)
@@ -2072,6 +2437,70 @@ export default async function OrderPage({
           />
         ) : null}
 
+        {/* Inspeção do pedido de compra (mapa R10): tentativas esgotadas, a
+            Wellmix confirma o cancelamento com a mensagem ao fornecedor. */}
+        {wellmix && exhaustedItems.length && order.status !== "CANCELLED" ? (
+          <div id="inspection-cancel" className="scroll-mt-24">
+            <Alert tone="danger">
+              <div className="space-y-2" data-inspection-cancel>
+                <p className="font-semibold">{t("inspectionCancel.title")}</p>
+                <p>
+                  {t("inspectionCancel.body", {
+                    items: exhaustedItems.map((v) => v.item.name).join(", "),
+                    n: String(Math.max(...exhaustedItems.map((v) => v.rounds))),
+                    max: String(maxAttempts),
+                  })}
+                </p>
+                {canCancel ? (
+                  <form action={cancelOrderAction} className="space-y-2">
+                    <input type="hidden" name="orderId" value={order.id} />
+                    <input
+                      type="hidden"
+                      name="reason"
+                      value="quality_rejected"
+                    />
+                    <Field label={t("inspectionCancel.message")}>
+                      <Textarea
+                        name="note"
+                        required
+                        minLength={3}
+                        maxLength={1000}
+                        rows={3}
+                        className="bg-white"
+                      />
+                    </Field>
+                    <label className="flex items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="confirm"
+                        value="1"
+                        required
+                        className="mt-0.5"
+                      />
+                      <span>{t("inspectionCancel.confirm")}</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <SubmitButton variant="danger">
+                        {t("inspectionCancel.submit")}
+                      </SubmitButton>
+                      <LinkButton
+                        href="/app/booking/selection"
+                        variant="secondary"
+                      >
+                        {t("inspectionCancel.selection")}
+                      </LinkButton>
+                    </div>
+                  </form>
+                ) : (
+                  <p className="text-xs">
+                    {t("inspectionCancel.noPermission")}
+                  </p>
+                )}
+              </div>
+            </Alert>
+          </div>
+        ) : null}
+
         {/* Produção (Fase C): ETD, follow 5/15/25, inspeção agendada e por SKU. */}
         {productionView ? (
           <ProductionCard
@@ -2092,6 +2521,143 @@ export default async function OrderPage({
           />
         ) : null}
 
+        {/* Incoterm do pedido de compra (mapa R17?): EXW abre a transportadora
+            e os custos de origem antes do container na fábrica. */}
+        {purchaseFlow && isWellmix(user) && originSteps.length ? (
+          <Card title={t("exw.title")} dense>
+            <p className="mb-3 text-sm text-zinc-600">{t("exw.hint")}</p>
+            {incotermNotice === "saved" ? (
+              <div className="mb-3">
+                <Alert tone="success">{t("exw.saved")}</Alert>
+              </div>
+            ) : null}
+            <form
+              action={setPurchaseIncotermAction}
+              className="flex flex-wrap items-end gap-2"
+              data-incoterm-form
+            >
+              <input type="hidden" name="orderId" value={order.id} />
+              <Select
+                name="incoterm"
+                defaultValue={order.incoterm === "EXW" ? "EXW" : "FOB"}
+                aria-label={t("exw.title")}
+              >
+                <option value="FOB">FOB</option>
+                <option value="EXW">EXW</option>
+              </Select>
+              <SubmitButton variant="secondary">{t("exw.save")}</SubmitButton>
+            </form>
+          </Card>
+        ) : null}
+        {/* Container na origem (mapa R19 a R26): vazio na fábrica, carregamento,
+            lacre e número, volta ao porto e o rastreio diário do Comex interno. */}
+        {originSteps.length ? (
+          <ImportFlowCard
+            t={t}
+            order={order}
+            steps={originSteps}
+            names={productionNames}
+            title={t("originFlow.title")}
+            anchor="container-origin"
+            error={stepCard === "container-origin" ? stepError : null}
+            notice={
+              typeof importNotice === "string" &&
+              ["submitted", "validated", "rejected"].includes(importNotice)
+                ? t(`importFlow.done.${importNotice}` as DictionaryKey)
+                : null
+            }
+          />
+        ) : null}
+        {/* Amostras (mapa R12 a R16): retirada, envios ao Brasil (4 × 3 × Nm)
+            e à China (1 × 3 × Nm), recebimento, fotos reais e devolução. */}
+        {samplesSteps.length ? (
+          <div id="samples" className="min-w-0 scroll-mt-24 space-y-3">
+            <Card title={t("samplesFlow.title")} dense>
+              <p className="mb-3 text-sm text-zinc-600">
+                {t("samplesFlow.hint")}
+              </p>
+              {samplesSplit.length ? (
+                <Table tools={false}>
+                  <thead>
+                    <tr>
+                      <Th>{t("samplesFlow.col.product")}</Th>
+                      <Th className="text-right">
+                        {t("samplesFlow.col.brazil")}
+                      </Th>
+                      <Th className="text-right">
+                        {t("samplesFlow.col.china")}
+                      </Th>
+                      <Th className="text-right">
+                        {t("samplesFlow.col.total")}
+                      </Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {samplesSplit.map((l) => (
+                      <tr key={l.itemId} data-sample-split={l.itemId}>
+                        <Td>{productNameText(t, l.name)}</Td>
+                        <Td className="text-right" data-split-brazil>
+                          {l.brazil}
+                        </Td>
+                        <Td className="text-right" data-split-china>
+                          {l.china}
+                        </Td>
+                        <Td className="text-right">{l.total}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              ) : null}
+              {realMediaVisible ? (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-zinc-600">
+                    {t("realMedia.orderHint")}
+                  </p>
+                  <LinkButton
+                    href={`/app/orders/${order.id}/real-media`}
+                    variant="secondary"
+                    data-real-media-link
+                  >
+                    {t("realMedia.open")}
+                  </LinkButton>
+                </div>
+              ) : null}
+            </Card>
+            <ImportFlowCard
+              t={t}
+              order={order}
+              steps={samplesSteps}
+              names={productionNames}
+              title={t("samplesFlow.title")}
+              anchor="samples-flow"
+              error={stepCard === "samples-flow" ? stepError : null}
+              notice={
+                typeof importNotice === "string" &&
+                ["submitted", "validated", "rejected"].includes(importNotice)
+                  ? t(`importFlow.done.${importNotice}` as DictionaryKey)
+                  : null
+              }
+            />
+          </div>
+        ) : null}
+        {/* Documentos do embarque (docs/SHIPPING_DOCS.md): check list de carga,
+            packing list, invoice e BL conferidos pelo sistema. */}
+        {shippingDocsVisible ? (
+          <Card title={t("shippingDocs.open")} dense>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-zinc-600">
+                {t("shippingDocs.orderHint")}
+              </p>
+              <LinkButton
+                href={`/app/orders/${order.id}/shipping-docs`}
+                variant="secondary"
+                data-shipping-docs-link
+              >
+                {t("shippingDocs.open")}
+              </LinkButton>
+            </div>
+          </Card>
+        ) : null}
         {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário, DI... */}
         <ImportFlowCard
           t={t}
@@ -2906,6 +3472,7 @@ export default async function OrderPage({
                   ["comexId", "comex"],
                   ["logisticsId", "logistics"],
                   ["ocpId", "ocp"],
+                  ["marketingAgencyId", "marketing_agency"],
                 ] as const
               ).map(([field, type]) => (
                 <tr key={field} className={rowClass} data-order-partner={type}>
@@ -3054,6 +3621,24 @@ const ROW_WIDE_3XL = {
   note: "@3xl:max-w-56 @3xl:shrink-0 @3xl:text-right",
 };
 
+/** Arte, validação, certificado e arte final: a tarefa vista por este login. */
+interface LaneRowInfo {
+  /** Este login vê a tarefa (quem a recebe; o administrador, todas). */
+  sees: boolean;
+  /** Este login pode enviar, trocar o arquivo ou validar. */
+  canAct: boolean;
+  /** Com quem está (nulo: ninguém faz até designar). */
+  who: string | null;
+  /** O que falta designar ("Responsável não definido"). */
+  missing: MissingAssignment | null;
+}
+
+/** Arquivo de outra tarefa que esta usa (ex.: a arte, na validação). */
+interface LaneInput {
+  label: DictionaryKey;
+  doc: { id: string; name: string; version: number };
+}
+
 function RequirementRow({
   requirement: r,
   order,
@@ -3071,8 +3656,23 @@ function RequirementRow({
   waiting,
   gateHref,
   defaultValue,
+  lane,
+  laneInputs,
+  muted = false,
 }: {
   requirement: Requirement;
+  /** Arquivos de outras tarefas que esta usa (a arte para validar; a arte e o certificado na arte final). */
+  laneInputs?: LaneInput[];
+  /**
+   * Arte, validação, certificado e arte final do pedido de compra: com quem
+   * está, o que falta designar e se este login pode agir (decidido por login).
+   */
+  lane?: LaneRowInfo | null;
+  /**
+   * Linha do tempo do operador: tarefa dele que ainda não está liberada
+   * (espera outro item ou a etapa começar), em cinza.
+   */
+  muted?: boolean;
   /**
    * Item conferido pelo sistema (NCM validado, ficha completa, sinal): o
    * atalho para a tela onde a área dona faz a parte dela.
@@ -3113,17 +3713,17 @@ function RequirementRow({
   } | null;
 }) {
   const isSheet = r.key === "purchase_sheet";
-  const canAct =
-    open &&
-    !waiting &&
-    r.status !== "done" &&
-    canSubmitRequirement(user, order as never, r);
+  // Arte e certificado do pedido de compra: o login que recebe a tarefa.
+  const allowed = lane
+    ? lane.canAct && canSubmitRequirement(user, order as never, r)
+    : canSubmitRequirement(user, order as never, r);
+  const canAct = open && !waiting && r.status !== "done" && allowed;
   /* Foto/arquivo enviado: dá para excluir e mandar outro enquanto a etapa está aberta. */
   const canClear =
     open &&
     r.status === "done" &&
     (r.type === "photo" || r.type === "file") &&
-    canSubmitRequirement(user, order as never, r);
+    allowed;
   const canRemeasure =
     remeasure &&
     r.status === "done" &&
@@ -3153,10 +3753,18 @@ function RequirementRow({
       ? ROW_WIDE_3XL
       : ROW_WIDE_XL;
   return (
-    <li className={cx("flex flex-col gap-2 py-2.5", wide.row)}>
+    <li
+      className={cx("flex flex-col gap-2 py-2.5", wide.row)}
+      data-requirement-later={muted ? "" : undefined}
+    >
       <div className="min-w-0 text-sm">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium text-zinc-900">
+          <span
+            className={cx(
+              "font-medium",
+              muted ? "text-zinc-500" : "text-zinc-900",
+            )}
+          >
             {requirementLabel(t, r)}
           </span>
           {!r.required ? (
@@ -3165,8 +3773,46 @@ function RequirementRow({
             </span>
           ) : null}
           <Badge tone={tone}>{t(`reqStatus.${r.status}`)}</Badge>
-          <span className="text-xs text-zinc-500">{t(`role.${r.role}`)}</span>
+          {lane ? (
+            lane.who ? (
+              <span className="text-xs text-zinc-500" data-lane-assignee>
+                {t("lane.with", { name: lane.who })}
+              </span>
+            ) : null
+          ) : (
+            <span className="text-xs text-zinc-500">{t(`role.${r.role}`)}</span>
+          )}
         </div>
+        {lane?.missing && wellmix && r.status !== "done" ? (
+          <p
+            className="mt-0.5 text-xs font-medium text-amber-700"
+            data-lane-missing={lane.missing}
+          >
+            {t("lane.undefined")} · {t(`certFlow.missing.${lane.missing}`)}{" "}
+            <TextLink
+              href={ASSIGN_HREF[lane.missing](order.id)}
+              className="text-brand-700"
+            >
+              {t(`certFlow.assign.${lane.missing}`)}
+            </TextLink>
+          </p>
+        ) : null}
+        {laneInputs?.length ? (
+          <div className="mt-0.5 text-xs text-zinc-600" data-lane-inputs>
+            {laneInputs.map((input) => (
+              <span
+                key={input.doc.id}
+                className="mr-3 inline-block"
+                data-lane-input={input.label}
+              >
+                {t(input.label)}:{" "}
+                <TextLink href={`/api/files/${input.doc.id}`} target="_blank">
+                  {input.doc.name} (v{input.doc.version})
+                </TextLink>
+              </span>
+            ))}
+          </div>
+        ) : null}
         {r.status !== "pending" ? (
           <div className="mt-0.5 text-xs text-zinc-500">
             {r.type !== "file" &&
@@ -3358,6 +4004,11 @@ function gateHrefOf(
       href: `/app/orders/${orderId}#supplier-payment`,
       label: "purchaseSequence.gate.downPayment",
     };
+  if (base === SKU_APPROVED_KEY)
+    return {
+      href: `/app/orders/${orderId}#production`,
+      label: "purchaseSequence.gate.sku",
+    };
   const productId = items.find((i) => i.id === itemIdOf(r.key))?.productId;
   if (!productId) return null;
   return base === LANE_KEYS.ncmValidated
@@ -3387,26 +4038,6 @@ function dateWaiting(
   return reqs.some((x) => x.key === pre.key && x.status !== "done")
     ? t(`orders.waiting.${pre.code}` as DictionaryKey)
     : null;
-}
-
-function formatDateTime(value: string | null | undefined, intl = "pt-BR") {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString(intl, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-/** Rótulo traduzido de um atributo do snapshot (cai no nome técnico se faltar chave). */
-function attrLabel(t: Translate, attribute: string) {
-  const key = `orders.inspection.attr.${attribute}` as DictionaryKey;
-  const translated = t(key);
-  return translated === key ? attribute : translated;
 }
 
 /** Enviado → visualizado → confirmado. Nomes só para a Wellmix; os demais veem datas. */
@@ -3596,333 +4227,6 @@ function SnapshotCard({
         <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
           <strong>{t("orders.snapshot.note")}:</strong> {snapshot.note}
         </p>
-      ) : null}
-    </Card>
-  );
-}
-
-/**
- * Relatório da inspeção (só Wellmix): resultado, medidas × comprado, fotos,
- * decisão da revisão, divergências registradas e linha do tempo.
- */
-function InspectionResultCard({
-  t,
-  report,
-  userName,
-}: {
-  t: Translate;
-  report: InspectionReport;
-  userName: (id: string | null) => string;
-}) {
-  const outcomeTone = {
-    waiting: "neutral",
-    approved: "success",
-    accepted: "success",
-    divergent: "danger",
-    remeasure: "warning",
-  } as const;
-  const review = report.review;
-  const decision = !review
-    ? t("inspReport.decision.none")
-    : review.status === "pending"
-      ? t("inspReport.decision.pending")
-      : review.status === "rejected"
-        ? t("inspReport.decision.rejected")
-        : review.value === "auto"
-          ? t("inspReport.decision.auto")
-          : t("inspReport.decision.approved");
-  const openCount = report.reviews.filter((r) => r.status === "open").length;
-  const eventLabel = (action: string) => {
-    const key = `inspReport.event.${action}` as DictionaryKey;
-    const text = t(key);
-    return text === key ? action : text;
-  };
-  return (
-    <Card
-      title={t("orders.inspection.title")}
-      actions={
-        <Badge tone={outcomeTone[report.outcome]}>
-          {t(`inspReport.outcome.${report.outcome}`)}
-        </Badge>
-      }
-    >
-      <p className="mb-3 text-xs leading-relaxed text-zinc-500">
-        {t("inspReport.hint")}
-      </p>
-
-      <h3 className="mb-2 text-sm font-semibold text-zinc-900">
-        {t("inspReport.measures")}
-      </h3>
-      {report.rows.length === 0 ? (
-        <Empty>{t("inspReport.noMeasures")}</Empty>
-      ) : (
-        <>
-          {!report.hasReference ? (
-            <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              {t("inspReport.noReference")}
-            </p>
-          ) : null}
-          <Table>
-            <thead>
-              <tr>
-                <Th>{t("orders.inspection.attribute")}</Th>
-                <Th className="text-right">
-                  {t("orders.inspection.expected")}
-                </Th>
-                <Th className="text-right">{t("orders.inspection.found")}</Th>
-                <Th className="text-right">
-                  {t("orders.inspection.tolerance")}
-                </Th>
-                <Th>{t("common.status")}</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.rows.map((row) => {
-                const c = row.comparison;
-                return (
-                  <tr key={row.requirement.id} className={rowClass}>
-                    <Td className="font-medium">
-                      {attrLabel(t, row.attribute)}
-                    </Td>
-                    <Td className="text-right tabular-nums">
-                      {row.attribute === "innerBoxQty" && c?.expected === 0
-                        ? t("carton.inner.none")
-                        : typeof c?.expected === "number"
-                          ? c.expected.toLocaleString(t.intl, {
-                              maximumFractionDigits: 4,
-                            })
-                          : (c?.expected ?? "—")}
-                    </Td>
-                    <Td
-                      className={cx(
-                        "text-right tabular-nums",
-                        c && !c.ok && "font-semibold text-red-700",
-                      )}
-                    >
-                      {row.requirement.value}
-                    </Td>
-                    <Td className="text-right tabular-nums">
-                      {c?.tolerancePercent != null
-                        ? `${c.tolerancePercent.toLocaleString(t.intl, { maximumFractionDigits: 2 })}%`
-                        : "—"}
-                    </Td>
-                    <Td>
-                      {row.awaitingRemeasure ? (
-                        <Badge tone="warning">
-                          {t("inspReport.awaitingRemeasure")}
-                        </Badge>
-                      ) : !c ? (
-                        <Badge tone="neutral">
-                          {t("inspReport.noExpected")}
-                        </Badge>
-                      ) : (
-                        <Badge tone={c.ok ? "success" : "danger"}>
-                          {c.ok
-                            ? t("orders.inspection.ok")
-                            : t("orders.inspection.divergent")}
-                        </Badge>
-                      )}
-                    </Td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </Table>
-          <p className="mt-2 text-xs text-zinc-500">
-            {t("orders.inspection.measuredBy")}:{" "}
-            {userName(report.rows[0].requirement.submittedByUserId)} ·{" "}
-            {formatDateTime(report.rows[0].requirement.submittedAt, t.intl)}
-          </p>
-        </>
-      )}
-
-      {report.photos.length > 0 ? (
-        <div className="mt-4">
-          <h3 className="mb-2 text-sm font-semibold text-zinc-900">
-            {t("inspReport.photos")}
-          </h3>
-          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-            {report.photos.map((p) => (
-              <li key={p.id}>
-                <a
-                  href={`/api/files/${p.documentId}`}
-                  target="_blank"
-                  className="block overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 transition hover:border-brand-300"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/api/files/${p.documentId}`}
-                    alt={requirementLabel(t, p)}
-                    loading="lazy"
-                    className="aspect-square w-full object-cover"
-                  />
-                </a>
-                <p className="mt-1 text-xs text-zinc-600">
-                  {requirementLabel(t, p)}
-                  {p.status === "rejected" ? (
-                    <span className="ml-1 text-amber-700">
-                      · {t("inspReport.awaitingRemeasure")}
-                    </span>
-                  ) : null}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {/* Decisão da revisão numa linha. */}
-      <div className="mt-4">
-        <h3 className="mb-2 text-sm font-semibold text-zinc-900">
-          {t("inspReport.decision")}
-        </h3>
-        <Table>
-          <thead>
-            <tr>
-              <Th>{t("inspReport.decision")}</Th>
-              <Th>{t("orderView.col.trail")}</Th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className={rowClass} data-inspection-decision>
-              <Td className="min-w-56 text-zinc-800">{decision}</Td>
-              <Td className="text-xs text-zinc-500">
-                {review && review.status !== "pending" ? (
-                  <>
-                    {review.value !== "auto"
-                      ? `${userName(review.submittedByUserId)} · `
-                      : ""}
-                    {formatDateTime(review.submittedAt, t.intl)}
-                    {review.note ? ` · ${review.note}` : ""}
-                  </>
-                ) : (
-                  "—"
-                )}
-              </Td>
-            </tr>
-          </tbody>
-        </Table>
-      </div>
-
-      {/* Divergências: uma por linha. */}
-      <div className="mt-4">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-zinc-900">
-            {t("inspReport.divergences")}
-            {openCount > 0 ? (
-              <span className="ml-2">
-                <Badge tone="warning">{openCount}</Badge>
-              </span>
-            ) : null}
-          </h3>
-          {openCount > 0 ? (
-            <TextLink href="/app/reviews" className="text-xs">
-              {t("orders.inspection.reviewsLink")} →
-            </TextLink>
-          ) : null}
-        </div>
-        {report.reviews.length === 0 ? (
-          <p className="text-xs text-zinc-500">
-            {t("inspReport.noDivergences")}
-          </p>
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <Th>{t("inspReport.col.problem")}</Th>
-                <Th className="text-right">
-                  {t("orders.inspection.expected")}
-                </Th>
-                <Th className="text-right">{t("orders.inspection.found")}</Th>
-                <Th>{t("inspReport.col.when")}</Th>
-                <Th>{t("common.status")}</Th>
-                <Th>{t("inspReport.resolvedBy")}</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.reviews.map((r) => (
-                <tr
-                  key={r.id}
-                  className={cx(
-                    rowClass,
-                    r.status === "open" && "bg-amber-50/60",
-                  )}
-                >
-                  <Td className="min-w-44 font-medium text-zinc-900">
-                    {r.problem}
-                  </Td>
-                  <Td className="whitespace-nowrap text-right tabular-nums">
-                    {r.expected ?? "—"}
-                  </Td>
-                  <Td className="whitespace-nowrap text-right font-medium tabular-nums text-red-700">
-                    {r.found ?? "—"}
-                  </Td>
-                  <Td className="whitespace-nowrap text-xs text-zinc-600">
-                    {formatDateTime(r.createdAt, t.intl)}
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    <Badge tone={r.status === "open" ? "warning" : "success"}>
-                      {t(`reviews.status.${r.status}`)}
-                    </Badge>
-                  </Td>
-                  <Td className="min-w-40 text-xs text-zinc-500">
-                    {r.status !== "open" ? (
-                      <>
-                        {userName(r.resolvedByUserId)} ·{" "}
-                        {formatDateTime(r.resolvedAt, t.intl)}
-                        {r.resolutionNote ? ` · ${r.resolutionNote}` : ""}
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-      </div>
-
-      {report.timeline.length > 0 ? (
-        <details className="mt-4">
-          <summary className="cursor-pointer text-sm font-semibold text-zinc-900">
-            {t("inspReport.timeline")} ({report.timeline.length})
-          </summary>
-          <div className="mt-2">
-            <Table>
-              <thead>
-                <tr>
-                  <Th>{t("inspReport.col.event")}</Th>
-                  <Th>{t("inspReport.col.detail")}</Th>
-                  <Th>{t("inspReport.col.who")}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.timeline.map((e) => (
-                  <tr key={e.id} className={rowClass}>
-                    <Td className="whitespace-nowrap font-medium text-zinc-800">
-                      {eventLabel(e.action)}
-                    </Td>
-                    <Td className="min-w-56 text-xs text-zinc-600">
-                      {e.summary.replace(/^INSPECTION:\s*/, "")}
-                      {e.action === "requirement.submit" &&
-                      e.after &&
-                      typeof e.after === "object" &&
-                      "value" in e.after &&
-                      (e.after as { value: unknown }).value
-                        ? ` = ${String((e.after as { value: unknown }).value)}`
-                        : ""}
-                    </Td>
-                    <Td className="whitespace-nowrap text-xs text-zinc-500">
-                      {userName(e.userId)} ·{" "}
-                      {formatDateTime(e.createdAt, t.intl)}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </div>
-        </details>
       ) : null}
     </Card>
   );
@@ -4326,7 +4630,7 @@ async function FollowUpCard({
                   className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200/80 px-3 py-2"
                 >
                   <TextLink href={`/app/requests/${r.id}`} className="min-w-0">
-                    {r.productName} · {r.quantity} {r.unit}
+                    {productNameText(t, r.productName)} · {r.quantity} {r.unit}
                   </TextLink>
                   {r.origin && r.origin !== "manual" ? (
                     <Badge tone="brand">{t(`orders.origin.${r.origin}`)}</Badge>

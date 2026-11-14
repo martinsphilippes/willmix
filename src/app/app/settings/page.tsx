@@ -6,10 +6,13 @@ import {
 } from "@/lib/supplier-requests";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
 import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
 import { getStore } from "@/lib/db";
 import { getFxRates } from "@/lib/services/fx";
 import { PricingSettings } from "@/components/pricing-settings";
+import { listByIds } from "@/lib/db/lookup";
+import { SERVER_TABLE_FROM } from "@/lib/server-table";
 import { FiscalTableCard, TaxRateFields } from "@/components/fiscal-settings";
 import { SettingsTabs } from "./_tabs";
 import { fiscalStatus } from "@/lib/services/fiscal";
@@ -99,16 +102,28 @@ export default async function SettingsPage({
     demoFailed,
   } = await searchParams;
   const t = await getT();
-  const [s, lineRows, customerRows, fx, fiscalInfo] = await Promise.all([
+  const store = getStore();
+  const [s, lineRows, customerCount, fx, fiscalInfo] = await Promise.all([
     getSettings(),
-    getStore().list("product_lines", { orderBy: "name" }),
-    getStore().list("parties", {
-      filter: { type: "customer" },
-      orderBy: "name",
-    }),
+    store.list("product_lines", { orderBy: "name" }),
+    store.count
+      ? store.count("parties", { type: "customer" })
+      : Promise.resolve(0),
     getFxRates(),
     fiscalStatus(),
   ]);
+  // Margem por cliente (auditoria de performance, 14/11/2026): com o cadastro
+  // grande, só os clientes que têm margem própria (a busca inclui outro); a
+  // lista com um campo por cliente fazia a tela sair com 62 MB (26 mil).
+  const fewCustomers = customerCount > SERVER_TABLE_FROM;
+  const customerRows = fewCustomers
+    ? (await listByIds(store, "parties", Object.keys(s.marginByCustomer)))
+        .filter((p) => p.type === "customer")
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+    : await store.list("parties", {
+        filter: { type: "customer" },
+        orderBy: "name",
+      });
   // "?fiscal=tec-10412-3": planilha carregada (tabela, NCMs, alíquotas alteradas).
   const fiscalMatch =
     typeof fiscal === "string" ? /^(tec|tipi)-(\d+)-(\d+)$/.exec(fiscal) : null;
@@ -222,6 +237,17 @@ export default async function SettingsPage({
         actions={
           // Só admin chega aqui: apagar as vendas de teste e recomeçar.
           <>
+            {/* Superplan (viabilidade, B3): saiu do menu lateral (dono, 14/11/2026). */}
+            {canOpen(user, "superplan") ? (
+              <LinkButton
+                href="/app/superplan"
+                variant="secondary"
+                title={t("settings.superplan.body")}
+                data-settings-superplan
+              >
+                {t("settings.superplan.open")}
+              </LinkButton>
+            ) : null}
             {/* ERP Sankhya: conexão, dicionário, consultas e envio de pedidos. */}
             <LinkButton href="/app/settings/sankhya" variant="secondary">
               {t("sankhya.open")}
@@ -233,6 +259,10 @@ export default async function SettingsPage({
             {/* Resumo dos pedidos da Control Tower (docs/RESUMOS.md). */}
             <LinkButton href="/app/settings/summaries" variant="secondary">
               {t("summaries.link")}
+            </LinkButton>
+            {/* Go-live do histórico do Sankhya (docs/SANKHYA.md). */}
+            <LinkButton href="/app/settings/go-live" variant="secondary">
+              {t("goLive.link")}
             </LinkButton>
             <LinkButton href="/app/settings/reset" variant="danger">
               {t("reset.link")}
@@ -277,6 +307,16 @@ export default async function SettingsPage({
                       min="0"
                       max="365"
                       defaultValue={s.productionStartDays}
+                    />
+                  </Field>
+                  <Field label={t("settings.label.invoiceDays")}>
+                    <Input
+                      name="invoiceDays"
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="365"
+                      defaultValue={s.invoiceDays}
                     />
                   </Field>
                   <Field label={t("settings.label.deliveryConfirmationMode")}>
@@ -478,6 +518,45 @@ export default async function SettingsPage({
                       step="1"
                       required
                       defaultValue={s.purchaseDownPaymentSlaDays}
+                    />
+                  </Field>
+                  <Field
+                    label={t("purchaseSequence.settings.inspectionMediaDays")}
+                  >
+                    <Input
+                      name="purchaseInspectionMediaSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseInspectionMediaSlaDays}
+                    />
+                  </Field>
+                  <Field
+                    label={t("purchaseSequence.settings.inspectionReviewDays")}
+                  >
+                    <Input
+                      name="purchaseInspectionReviewSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseInspectionReviewSlaDays}
+                    />
+                  </Field>
+                  <Field
+                    label={t("purchaseSequence.settings.inspectionMaxAttempts")}
+                  >
+                    <Input
+                      name="purchaseInspectionMaxAttempts"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step="1"
+                      required
+                      defaultValue={s.purchaseInspectionMaxAttempts}
                     />
                   </Field>
                 </div>
@@ -801,6 +880,7 @@ export default async function SettingsPage({
                 s={s}
                 lines={lines}
                 customers={customers}
+                fewCustomers={fewCustomers}
                 fx={fx}
               />
               {/* Tributos: PIS, COFINS, ICMS, seguro e links da tabela fiscal. */}

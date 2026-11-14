@@ -1,6 +1,6 @@
 import { TABLES, type TableName, type Tables } from "./schema";
 import type { ListOptions, Store } from "./store";
-import { pickColumns } from "./store";
+import { pickColumns, projectJson } from "./store";
 
 /**
  * Ajudas de leitura para telas que mostram nomes de cadastros grandes
@@ -51,7 +51,9 @@ export async function listColumns<
   options: ListOptions<Tables[K]> = {},
 ): Promise<Pick<Tables[K], C | "id" | "createdAt" | "updatedAt">[]> {
   if (store.listColumns) return store.listColumns(table, columns, options);
-  return (await store.list(table, options)).map((r) => pickColumns(r, columns));
+  return (await store.list(table, options)).map((r) =>
+    projectJson(pickColumns(r, columns), options.jsonKeys as never),
+  );
 }
 
 /**

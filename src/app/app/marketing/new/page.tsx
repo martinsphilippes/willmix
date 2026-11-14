@@ -5,6 +5,10 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { hiddenBookingProductIds } from "@/lib/services/booking-visibility";
+import {
+  hasCatalogProducts,
+  productOptionLabel,
+} from "@/lib/services/product-search";
 import { getT } from "@/i18n/server";
 import {
   Alert,
@@ -13,8 +17,13 @@ import {
   Input,
   LinkButton,
   PageHeader,
-  Select,
 } from "@/components/ui";
+import { PartyPicker } from "@/components/party-picker";
+import { ProductPicker } from "@/components/product-picker";
+import {
+  partyPickerLabels,
+  productPickerLabels,
+} from "@/components/party-picker-labels";
 import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
 import { createKitAction } from "../../actions/vision";
@@ -40,18 +49,31 @@ export default async function NewMarketingKitPage({
     typeof params.customerId === "string" ? params.customerId : "";
   const t = await getT();
   const store = getStore();
-  const [settings, activeProducts, customers, hiddenByBooking] =
+  // Produto e cliente são escolhidos por busca (~17 mil produtos e ~26 mil
+  // clientes não cabem numa lista; a página saía com 12 MB). Aqui só o que
+  // veio pré-escolhido no endereço.
+  const [settings, hiddenByBooking, presetProduct, presetCustomer] =
     await Promise.all([
       getSettings(),
-      store.list("products", { filter: { active: true }, orderBy: "name" }),
-      store.list("parties", {
-        filter: { type: "customer", active: true },
-        orderBy: "name",
-      }),
       hiddenBookingProductIds(),
+      presetProductId ? store.get("products", presetProductId) : null,
+      presetCustomerId ? store.get("parties", presetCustomerId) : null,
     ]);
   // Produto ainda em análise no Booking não vira kit (o cliente ainda não o vê).
-  const products = activeProducts.filter((p) => !hiddenByBooking.has(p.id));
+  const anyProduct = await hasCatalogProducts(hiddenByBooking);
+  const initialProduct =
+    presetProduct &&
+    presetProduct.active &&
+    !hiddenByBooking.has(presetProduct.id)
+      ? { id: presetProduct.id, name: productOptionLabel(t, presetProduct) }
+      : null;
+  // Como na lista antiga: só cliente ativo vem pré-escolhido.
+  const initialCustomer =
+    presetCustomer &&
+    presetCustomer.type === "customer" &&
+    presetCustomer.active
+      ? { id: presetCustomer.id, name: presetCustomer.name }
+      : null;
   const errorText = marketingError(t, params.error);
   // Em caso de erro a ação volta para cá mantendo produto e cliente pré-selecionados.
   const backQuery = new URLSearchParams();
@@ -77,7 +99,7 @@ export default async function NewMarketingKitPage({
         <div className="mt-3">
           <Alert tone="warning">{t("marketing.disabled")}</Alert>
         </div>
-      ) : products.length === 0 ? (
+      ) : !anyProduct ? (
         <div className="mt-3">
           <Alert tone="warning">{t("marketing.new.noProducts")}</Alert>
         </div>
@@ -90,30 +112,32 @@ export default async function NewMarketingKitPage({
           >
             <input type="hidden" name="back" value={back} />
             <Field label={t("marketing.new.product")}>
-              <Select name="productId" required defaultValue={presetProductId}>
-                <option value="" disabled>
-                  {t("common.select")}
-                </option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                    {p.sku ? ` (${p.sku})` : ""}
-                  </option>
-                ))}
-              </Select>
+              <ProductPicker
+                name="productId"
+                scope="catalog"
+                required
+                initial={initialProduct}
+                ariaLabel={t("marketing.new.product")}
+                labels={productPickerLabels(t)}
+              />
             </Field>
             <Field
               label={t("marketing.new.customer")}
               hint={t("marketing.new.customerHint")}
             >
-              <Select name="customerId" defaultValue={presetCustomerId}>
-                <option value="">{t("marketing.noCustomer")}</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
+              {/* Vazio = sem cliente, como a opção da lista antiga. */}
+              <PartyPicker
+                name="customerId"
+                type="customer"
+                activeOnly
+                includeStock
+                initial={initialCustomer}
+                ariaLabel={t("marketing.new.customer")}
+                labels={{
+                  ...partyPickerLabels(t),
+                  placeholder: t("marketing.noCustomer"),
+                }}
+              />
             </Field>
             <Field
               label={t("marketing.new.name")}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
-import { cx } from "./ui";
+import { useId, useRef, type ReactNode } from "react";
+import { Button, cx } from "./ui";
 
 /*
  * Botão de ação rápida que abre uma caixa pequena (um formulário curto) por
@@ -15,6 +15,10 @@ export function QuickDialog({
   closeLabel,
   tone = "secondary",
   hint,
+  name,
+  description,
+  className,
+  disabled = false,
   children,
   ...rest
 }: {
@@ -22,38 +26,63 @@ export function QuickDialog({
   label: ReactNode;
   title: string;
   closeLabel: string;
-  tone?: "primary" | "secondary";
+  /** "danger": ação sem volta (ex.: excluir acesso). */
+  tone?: "primary" | "secondary" | "danger";
   hint?: string;
+  /** Nome do botão para leitor de tela, quando a dica diz mais que o nome. */
+  name?: string;
+  /** Explicação lida depois do nome (não aparece na tela). */
+  description?: string;
+  /** Classes a mais do botão (ex.: só ícone, quadrado e com cor própria). */
+  className?: string;
+  /** Botão desligado: a caixa não abre (quem usa mostra o motivo ao lado). */
+  disabled?: boolean;
   children: ReactNode;
 } & { [key: `data-${string}`]: string | undefined }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const descriptionId = useId();
+  const titleId = useId();
   return (
     <>
       <button
         type="button"
         onClick={() => dialog.current?.showModal()}
+        disabled={disabled}
         title={hint}
-        aria-label={hint}
+        aria-label={name ?? hint}
+        aria-describedby={description ? descriptionId : undefined}
         className={cx(
-          "inline-flex items-center justify-center rounded-md px-2.5 py-1 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-brand-600",
+          "inline-flex items-center justify-center rounded-md px-2.5 py-1 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-50",
           tone === "primary"
             ? "bg-brand-600 text-white hover:bg-brand-700"
-            : "border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50",
+            : tone === "danger"
+              ? "border border-red-300 bg-white text-red-700 hover:bg-red-50 disabled:hover:bg-white"
+              : "border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50",
+          className,
         )}
         {...rest}
       >
         {label}
       </button>
+      {description ? (
+        <span id={descriptionId} hidden>
+          {description}
+        </span>
+      ) : null}
       <dialog
         ref={dialog}
         className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-zinc-200 bg-white p-0 text-left shadow-2xl backdrop:bg-zinc-900/40"
         onClick={(e) => {
           if (e.target === dialog.current) dialog.current?.close();
         }}
+        aria-labelledby={titleId}
         data-quick-dialog
       >
         <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-2.5">
-          <h2 className="truncate text-sm font-semibold text-zinc-900">
+          <h2
+            id={titleId}
+            className="truncate text-sm font-semibold text-zinc-900"
+          >
             {title}
           </h2>
           <button
@@ -74,5 +103,25 @@ export function QuickDialog({
         </div>
       </dialog>
     </>
+  );
+}
+
+/**
+ * "Cancelar" de uma confirmação dentro da caixa: fecha a caixa em que está e
+ * não envia nada (é `type="button"`, fora do envio do formulário).
+ */
+export function QuickDialogClose({
+  label,
+  ...rest
+}: { label: string } & { [key: `data-${string}`]: string | undefined }) {
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      onClick={(e) => e.currentTarget.closest("dialog")?.close()}
+      {...rest}
+    >
+      {label}
+    </Button>
   );
 }

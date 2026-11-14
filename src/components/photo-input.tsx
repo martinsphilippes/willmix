@@ -30,7 +30,13 @@ export function PhotoInput({
   direct = false,
   uploadingLabel,
   failedLabel,
+  plus = false,
 }: {
+  /**
+   * Com `compact`: botão quadrado só com "+" (o `label` vira o nome
+   * acessível). Usado para acrescentar fotos a um item já enviado.
+   */
+  plus?: boolean;
   /**
    * A Server Action do formulário aceita fotos já subidas (`uploadedPhotoId`):
    * lote acima do teto da requisição sobe direto ao armazenamento.
@@ -207,9 +213,11 @@ export function PhotoInput({
         data-photo-button=""
         onClick={openFromButton}
         className={`relative inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border font-semibold shadow-sm transition focus-within:ring-2 focus-within:ring-brand-200 ${
-          dense
-            ? "min-h-7 px-2.5 py-0.5 text-xs"
-            : "min-h-11 gap-2 rounded-lg px-4 py-2 text-sm"
+          plus
+            ? "h-9 w-9 text-sm"
+            : dense
+              ? "min-h-7 px-2.5 py-0.5 text-xs"
+              : "min-h-11 gap-2 rounded-lg px-4 py-2 text-sm"
         } ${
           disabled || working
             ? "pointer-events-none cursor-wait border-zinc-200 bg-zinc-50 text-zinc-500"
@@ -222,9 +230,18 @@ export function PhotoInput({
             className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent"
           />
         ) : (
-          <span aria-hidden>📷</span>
+          <span
+            aria-hidden
+            className={plus ? "text-lg leading-none" : undefined}
+          >
+            {plus ? "+" : "📷"}
+          </span>
         )}
-        <span aria-hidden>{working && workingText ? workingText : label}</span>
+        {plus ? null : (
+          <span aria-hidden>
+            {working && workingText ? workingText : label}
+          </span>
+        )}
         {input}
       </span>
     );

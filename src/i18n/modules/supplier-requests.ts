@@ -48,6 +48,14 @@ export const pt = {
   "supplierRequests.selection.similar": "ver parecidos",
   "supplierRequests.selection.tab.items": "Itens",
   "supplierRequests.selection.tab.selection": "Seleção",
+  "supplierRequests.selection.tab.blocks": "Blocos Sugeridos",
+  "supplierRequests.selection.tab.requested": "Com Solicitação Aberta",
+  "supplierRequests.selection.groupNone":
+    "Nenhum grupo aberto para comparar. Abra um bloco em Blocos Sugeridos ou agrupe itens na aba Itens.",
+  "supplierRequests.selection.requestedEmpty":
+    "Nenhum grupo com solicitação aberta.",
+  "supplierRequests.selection.blocks.allRequested":
+    "Os blocos destes filtros já estão com solicitação aberta.",
   "supplierRequests.selection.pick": "Agrupar",
   "supplierRequests.selection.pickAll": "Marcar todos os da tela",
   "supplierRequests.selection.pickHint":
@@ -178,6 +186,7 @@ export const pt = {
   "supplierRequests.detail.answer.moq": "Pedido mínimo (peças)",
   "supplierRequests.detail.answer.leadTime": "Prazo de produção (dias)",
   "supplierRequests.detail.answer.note": "Observação",
+  "supplierRequests.detail.answer.sent": "Enviado",
   "supplierRequests.detail.answer.submit": "Enviar resposta",
   "supplierRequests.detail.answer.pending": "Enviando…",
   "supplierRequests.detail.answer.at": "Respondido em {date}",
@@ -388,7 +397,11 @@ export const pt = {
   "supplierRequests.timeline.showcase": "Produto liberado na vitrine",
   "supplierRequests.timeline.erp": "CODPROD conferido no Sankhya",
   "supplierRequests.table.hint":
-    "Uma informação por coluna. Em Ações: mensagem à Wellmix, abrir a tela do produto e, por item, confirmar a oferta, renegociar ou recusar.",
+    "Uma informação por coluna. Em Ações, pelos ícones: mensagem à Wellmix e abrir a tela do produto.",
+  "supplierRequests.table.hintAnswers": "Na linha de baixo, por item:",
+  "supplierRequests.table.approve": "Aprovar oferta",
+  "supplierRequests.table.approveTitle": "Aprovar oferta · solicitação nº {n}",
+  "supplierRequests.table.refuseTitle": "Recusar oferta · solicitação nº {n}",
   "supplierRequests.table.answerHint":
     "Para responder sim, informe o preço por peça. Pedido mínimo e modalidade de entrega (FOB/EXW) vão junto; o prazo fica como está (mude na tela do produto).",
   "supplierRequests.table.col.initial": "Condições iniciais (book)",
@@ -410,7 +423,7 @@ export const pt = {
   "supplierRequests.table.state.accepted": "Aceita",
   "supplierRequests.table.state.rejected": "Recusada",
   "supplierRequests.table.state.counter": "Nova proposta do fornecedor",
-  "supplierRequests.table.confirm": "Confirmar {price}/peça",
+  "supplierRequests.table.confirm": "Aprovar oferta: {price}/peça",
   "supplierRequests.table.confirmHint.book":
     "Aceita a oferta do book como está: preço, moeda, pedido mínimo e entrega.",
   "supplierRequests.table.confirmHint.proposal":
@@ -497,6 +510,13 @@ export const en: typeof pt = {
   "supplierRequests.selection.similar": "see similar",
   "supplierRequests.selection.tab.items": "Items",
   "supplierRequests.selection.tab.selection": "Selection",
+  "supplierRequests.selection.tab.blocks": "Suggested Blocks",
+  "supplierRequests.selection.tab.requested": "With Open Request",
+  "supplierRequests.selection.groupNone":
+    "No group open to compare. Open a block in Suggested Blocks or group items in the Items tab.",
+  "supplierRequests.selection.requestedEmpty": "No group with an open request.",
+  "supplierRequests.selection.blocks.allRequested":
+    "The blocks for these filters already have an open request.",
   "supplierRequests.selection.pick": "Group",
   "supplierRequests.selection.pickAll": "Select all on screen",
   "supplierRequests.selection.pickHint":
@@ -626,6 +646,7 @@ export const en: typeof pt = {
   "supplierRequests.detail.answer.moq": "Minimum order (pieces)",
   "supplierRequests.detail.answer.leadTime": "Production lead time (days)",
   "supplierRequests.detail.answer.note": "Note",
+  "supplierRequests.detail.answer.sent": "Sent",
   "supplierRequests.detail.answer.submit": "Send answer",
   "supplierRequests.detail.answer.pending": "Sending…",
   "supplierRequests.detail.answer.at": "Answered on {date}",
@@ -759,7 +780,11 @@ export const en: typeof pt = {
   "supplierRequests.table.hintWellmix":
     "One piece of information per column. Icons: message the supplier and open the product screen. The answer comes from the supplier, through the portal.",
   "supplierRequests.table.hint":
-    "One piece of information per column. Under Actions: message Wellmix, open the product screen and, per item, confirm the offer, renegotiate or decline.",
+    "One piece of information per column. Under Actions, by icon: message Wellmix and open the product screen.",
+  "supplierRequests.table.hintAnswers": "On the line below, per item:",
+  "supplierRequests.table.approve": "Approve offer",
+  "supplierRequests.table.approveTitle": "Approve offer · request no. {n}",
+  "supplierRequests.table.refuseTitle": "Decline offer · request no. {n}",
   "supplierRequests.table.answerHint":
     "To answer yes, enter the price per piece. Minimum order and delivery terms (FOB/EXW) go with it; the lead time stays as it is (change it on the product screen).",
   "supplierRequests.table.proposalPendingWellmix":
@@ -853,7 +878,7 @@ export const en: typeof pt = {
   "supplierRequests.table.state.accepted": "Accepted",
   "supplierRequests.table.state.rejected": "Declined",
   "supplierRequests.table.state.counter": "New proposal from the supplier",
-  "supplierRequests.table.confirm": "Confirm {price}/pc",
+  "supplierRequests.table.confirm": "Approve offer: {price}/pc",
   "supplierRequests.table.confirmHint.book":
     "Accepts the book offer as is: price, currency, minimum order and delivery.",
   "supplierRequests.table.confirmHint.proposal":
@@ -938,6 +963,13 @@ export const zh: typeof pt = {
   "supplierRequests.selection.similar": "查看相似",
   "supplierRequests.selection.tab.items": "项目",
   "supplierRequests.selection.tab.selection": "选择",
+  "supplierRequests.selection.tab.blocks": "建议分组",
+  "supplierRequests.selection.tab.requested": "已打开询单",
+  "supplierRequests.selection.groupNone":
+    "没有打开的比较分组。请在“建议分组”中打开一个分组，或在“项目”标签中组合项目。",
+  "supplierRequests.selection.requestedEmpty": "没有已打开询单的分组。",
+  "supplierRequests.selection.blocks.allRequested":
+    "这些筛选条件下的分组都已打开询单。",
   "supplierRequests.selection.pick": "分组",
   "supplierRequests.selection.pickAll": "全选本页",
   "supplierRequests.selection.pickHint":
@@ -1063,6 +1095,7 @@ export const zh: typeof pt = {
   "supplierRequests.detail.answer.moq": "最小起订量（件）",
   "supplierRequests.detail.answer.leadTime": "生产周期（天）",
   "supplierRequests.detail.answer.note": "备注",
+  "supplierRequests.detail.answer.sent": "已发送",
   "supplierRequests.detail.answer.submit": "发送回复",
   "supplierRequests.detail.answer.pending": "正在发送…",
   "supplierRequests.detail.answer.at": "回复于 {date}",
@@ -1187,7 +1220,11 @@ export const zh: typeof pt = {
   "supplierRequests.table.hintWellmix":
     "每列一项信息。图标：给供应商留言、打开产品页面。答复由供应商通过门户提交。",
   "supplierRequests.table.hint":
-    "每列一项信息。操作栏：给 Wellmix 留言、打开产品页面，并可逐项确认报价、重新议价或拒绝。",
+    "每列一项信息。操作栏图标：给 Wellmix 留言、打开产品页面。",
+  "supplierRequests.table.hintAnswers": "下一行逐项：",
+  "supplierRequests.table.approve": "接受报价",
+  "supplierRequests.table.approveTitle": "接受报价 · 询单 {n} 号",
+  "supplierRequests.table.refuseTitle": "拒绝报价 · 询单 {n} 号",
   "supplierRequests.table.answerHint":
     "答复“是”时请填写单价。起订量和交货方式（FOB/EXW）一并提交；交期保持不变（可在产品页面修改）。",
   "supplierRequests.table.proposalPendingWellmix": "还价等待供应商答复。",
@@ -1274,7 +1311,7 @@ export const zh: typeof pt = {
   "supplierRequests.table.state.accepted": "已接受",
   "supplierRequests.table.state.rejected": "已拒绝",
   "supplierRequests.table.state.counter": "供应商新报价",
-  "supplierRequests.table.confirm": "确认 {price}/件",
+  "supplierRequests.table.confirm": "接受报价：{price}/件",
   "supplierRequests.table.confirmHint.book":
     "按原样接受 Book 报价：价格、币种、起订量和交货方式。",
   "supplierRequests.table.confirmHint.proposal": "按原样接受 Wellmix 的还价。",

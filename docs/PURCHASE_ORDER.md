@@ -49,10 +49,10 @@ Pedido gerado ──► Vendas avisada (P2 → V1)
 | NCM validado (`ncm_validated__item`) | Cadastro e fiscal, na tela fiscal do produto | pedido gerado | `purchaseRegistrationSlaDays` (3) do pedido | Wellmix, no pedido gerado, com os produtos que faltam |
 | Ficha mestre completa (`sheet_complete__item`) | Cadastro, na tela do produto (campos e 5 fotos) | pedido gerado | `purchaseRegistrationSlaDays` (3) do pedido | idem |
 | Faca, foto em alta, MOQ, prazo | Fornecedor (quadro Die Cut) | pedido gerado | `purchaseDieCutSlaDays` (7) do pedido | fornecedor, no pedido gerado |
-| Arte | Agência (sem ela, a Wellmix) | faca **e** foto em alta do produto | `purchaseArtSlaDays` (5) da faca/foto | agência, quando a faca e a foto chegam |
-| Validação da arte | Wellmix (`art.validate`) | arte | `purchaseArtReviewSlaDays` (2) do envio | Wellmix, a cada envio |
-| Certificado | Certificadora (sem ela, a Wellmix) | pedido gerado; só se a linha exige certificação | `purchaseCertSlaDays` (15) do pedido | certificadora, no pedido gerado |
-| Arte final com o selo | Agência | arte validada **e** certificado; só se a linha exige certificação | `purchaseArtFinalSlaDays` (3) da liberação | agência, quando libera |
+| Arte | Designer do pedido (seção 2, "Quem faz cada tarefa") | faca **e** foto em alta do produto | `purchaseArtSlaDays` (5) da faca/foto | o designer, quando a faca e a foto chegam |
+| Validação da arte | Operador responsável pelo pedido (`art.validate`) | arte | `purchaseArtReviewSlaDays` (2) do envio | quem valida, a cada envio |
+| Certificado | Certificadora (OCP) do pedido | pedido gerado; só se a linha exige certificação | `purchaseCertSlaDays` (15) do pedido | certificadora, no pedido gerado |
+| Arte final com o selo | Designer do pedido | arte validada **e** certificado; só se a linha exige certificação | `purchaseArtFinalSlaDays` (3) da liberação | o designer, quando libera |
 | Pedido de amostras (P17, docs/SAMPLE_ORDER.md) | Wellmix gera ou marca "sem amostras"; fornecedor aceita | todas as raias concluídas | `purchaseSignatureSlaDays` (2) | fornecedor, com o pedido de amostras gerado |
 | Assinatura da Wellmix | Diretorias (`contract.sign`) | raias concluídas **e** pedido de amostras definido | `purchaseSignatureSlaDays` (2) do início do contrato | responsável da etapa |
 | Assinatura do fornecedor | Fornecedor | assinatura da Wellmix | `purchaseSignatureSlaDays` (2) da Wellmix | fornecedor |
@@ -75,8 +75,8 @@ Pedido gerado ──► Vendas avisada (P2 → V1)
 | Raia                    | Quem                                           | Itens por produto                                                                                                                                     |
 | ----------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Fornecedor              | o fornecedor do pedido                         | Faca (die cut), Foto em alta resolução, os itens a mais do checklist da linha do produto, MOQ confirmado (peças), Prazo de produção confirmado (dias) |
-| Agência de arte         | a agência do pedido (sem ela, a Wellmix)       | Arte → **Validação da arte pela Wellmix** (aprova ou devolve com o motivo) → Arte final com o selo                                                    |
-| Certificadora (Inmetro) | a certificadora do pedido (sem ela, a Wellmix) | Certificado                                                                                                                                           |
+| Agência de arte         | o designer do pedido; a validação, o operador responsável pelo pedido | Arte → **Validação da arte pela Wellmix** (aprova ou devolve com o motivo) → Arte final com o selo                                                    |
+| Certificadora (Inmetro) | a certificadora (OCP) do pedido                | Certificado                                                                                                                                           |
 
 Regras:
 
@@ -85,18 +85,50 @@ Regras:
   - **a arte final só sobe com a arte validada e o certificado** (`lane_prerequisite`);
   - a pendência só aparece quando o passo anterior está feito.
 - **Devolver a arte:**
-  - a arte volta para a agência, que recebe o aviso com o motivo;
+  - a arte volta para o designer do pedido, que recebe o aviso com o motivo;
   - a arte reenviada volta para a validação.
 - **SLA** (Configurações → SLA, em dias corridos; todos os passos na seção 1a):
   - a arte de cada produto conta da faca e da foto em alta (`purchaseArtSlaDays`, padrão 5; antes de 13/11/2026, do pedido);
   - a validação da Wellmix conta do envio da arte (`purchaseArtReviewSlaDays`, padrão 2);
   - o prazo aparece em Minhas pendências e no Painel de SLA.
 - **Avisos:**
-  - arte enviada → a Wellmix valida;
-  - arte validada e certificado emitido → a agência faz a arte final.
-- **Passos do selo (dono, 13/11/2026):** os passos do cartão Certificação (selo, memorial e arte com o selo) viram pendência quando algum produto exige certificação, cada um no login responsável: selo para a certificadora, memorial para o analista (a validação, para a certificadora), aplicar o selo para o designer do pedido ou a agência que faz a arte, validar a arte com o selo para o analista que pode validar arte (docs/CERTIFICATION.md, seção 13). Até 13/11/2026 não viravam pendência.
-- **Parceiro designado depois:** designar ou trocar a certificadora ou a agência em Parceiros do pedido passa os itens abertos das raias para ela (certificado; arte e arte final com o selo, quando a agência faz a arte), sem duplicar; sem o parceiro, voltam para a Wellmix. O que já foi feito não muda.
+  - faca e foto em alta → o designer do pedido faz a arte;
+  - arte enviada → quem valida (o operador responsável pelo pedido);
+  - arte validada e certificado emitido → o designer faz a arte final.
+- **Passos do selo (dono, 13/11/2026):** os passos do cartão Certificação (selo, memorial e arte com o selo) viram pendência quando algum produto exige certificação, cada um no login responsável: selo para o despachante, memorial para o analista (a validação, para o despachante), aplicar o selo para o designer do pedido ou a agência que faz a arte, validar a arte com o selo para o analista que pode validar arte (docs/CERTIFICATION.md, seção 13). Até 13/11/2026 não viravam pendência.
+- **Responsável designado ou trocado depois:** designar ou trocar o designer (cartão Artes), a agência ou a certificadora (Parceiros do pedido) ou o analista passa as tarefas abertas para quem recebe agora, sem duplicar. O que já foi feito não muda (seção "Quem faz cada tarefa").
 - **Fim da etapa:** a etapa conclui quando todos os itens das três raias estão feitos.
+
+### Quem faz cada tarefa: arte, validação, certificado e arte final (dono, 14/11/2026)
+
+Até 14/11/2026, as quatro tarefas da etapa "Die-Cut, Arte e Certificação" apareciam para a equipe Wellmix inteira, como do Operador Wellmix. Agora cada uma, produto a produto, vai para um login só, pelo que o pedido já tem (regra única: `laneRoute`, em `src/lib/services/cert-art-routing.ts`):
+
+| Tarefa | Quem recebe | Sem ele |
+| --- | --- | --- |
+| Arte | o designer do pedido (cartão Artes: login da Wellmix ou da agência) | a agência, quando é ela quem faz a arte; senão quem tem a função Designer, com "Responsável não definido · Sem designer" |
+| Validação da arte pela Wellmix | o responsável pelo pedido (o analista, `orders.ownerUserId`), se pode validar arte (ação "Validar a arte"); com o Administrador como responsável (como #16280 e #16281), fica com ele, como na linha do tempo do operador (seção 2e); nunca quem faz a arte do pedido nem quem a enviou | quem tem a ação "Validar a arte" (Equipe → Funções e acessos), com "Responsável não definido · Sem analista" |
+| Certificado (Inmetro) | a certificadora (OCP) do pedido, em Parceiros do pedido (todos os logins dela) | ninguém envia: o responsável interno vê "Responsável não definido · Sem certificadora" e o link para vincular |
+| Arte final com o selo | o designer do pedido, como a arte | como a arte |
+
+- **Só no login designado:** cada tarefa aparece só para quem a recebe, em Pendências, nas mesas de trabalho (docs/DESKS.md), na tabela de etapas e nos detalhes da etapa. A linha do tempo do operador (seção 2e, `wellmixRequirementRoute`) usa esta mesma regra (`laneRoute`) para as quatro tarefas. Quem não a recebe não a vê. O administrador (gestão interna) vê as quatro, com "Com: …" (quem está com a tarefa) e o que falta designar. O fornecedor não vê nenhuma das quatro.
+- **Dependências, como antes:** a validação só depois da arte enviada; a arte final só depois da arte validada **e** do certificado.
+- **O servidor confere** antes de gravar e antes de subir o arquivo (`lane_not_assignee`): enviar ou trocar a arte e a arte final, só o designer do pedido; validar ou devolver, só quem recebe a validação; o certificado, só a certificadora do pedido. O administrador pode tudo.
+- **Arquivos:** a Wellmix abre todos (o operador abre a arte para validar). O designer da agência abre a faca, a foto em alta, a arte, o certificado (o selo) e a arte final do pedido (`laneDocumentAccess`); a certificadora, o certificado. O fornecedor não abre a arte nem o certificado.
+- **Arquivo na própria linha:** quem valida não vê a linha "Arte" (é do designer), então a linha da validação traz a arte enviada ("Arte para validar"); a linha da arte final traz a arte validada e o certificado ("Certificado (selo)"), que o designer não vê em outra linha.
+- **Avisos:** a arte liberada e a arte final avisam o designer; a arte enviada avisa quem valida; a abertura da certificação avisa a certificadora do pedido.
+- **Certificado com a certificadora, não com o despachante:** decisão do dono de 14/11/2026, só para o certificado das raias. O selo e o memorial do cartão Certificação continuam com o despachante (13/11/2026; docs/CERTIFICATION.md, seção 13).
+- **Pendências já abertas:** o papel gravado em cada tarefa acompanha quem a recebe (`laneRoleFor`): arte e arte final, "agency" quando o designer é da agência, senão "operator"; validação, "operator"; certificado, "ocp". As abertas antes de 14/11/2026 são corrigidas no lugar, sem duplicar, ao abrir o pedido, ao abrir Pendências (no máximo a cada 10 minutos) e no job diário (`normalizeLaneRoles`). Arquivos, conclusões e histórico ficam como estão; a auditoria registra `order.lanes_reassigned`.
+- Teste: `tests/unit/purchase-lane-owners.test.ts`.
+
+### Nome do produto nas tarefas e o nome de exemplo (pedido do dono, 13/11/2026)
+
+Cada tarefa das raias leva o produto no nome: "Faca (die cut) · Jarra de vidro". O nome é o do item do pedido; se ele não tiver nome real, vale o do produto do cadastro (`purchaseLaneItems`, em `src/lib/workflow/engine.ts`).
+
+- **Nome de exemplo:** "XPTO" e "Produto novo XPTO" foram digitados como marcador de um nome a preencher depois, e o sistema copiou o texto para o item do pedido, para o rótulo das tarefas e para a solicitação do pedido. Esse texto vale como **nome ausente** (`isPlaceholderName`, em `src/lib/placeholder-name.ts`): só ele ou junto de "produto"/"novo"; um nome real que contém a palavra ("Xpto Cargo", "Jarra XPTO 500 ml") é nome.
+- **Sem nome real:** a tarefa mostra só o título ("Faca (die cut)"), sem o "·" sobrando. Nas outras telas, o produto aparece como "Produto sem nome" (ou "—" nas colunas de lista). Os registros antigos ficam como estão no banco; só a exibição trata o texto como ausente (`requirementLabel`, `productNameText`, `realName`).
+- **Quando o nome chega:** ao salvar o nome real no cadastro do produto (tela do produto ou lista de produtos), as cópias vazias ou de exemplo recebem o nome (`fillProductNameCopies`, em `src/lib/services/product-name-copies.ts`): o item do pedido, o rótulo de cada tarefa do produto e a solicitação do pedido. Cópia com nome real não muda. Status, respostas, arquivos e o vínculo das tarefas (a chave `chave__item`) ficam como estão. **Pedido assinado (por qualquer lado), encerrado ou cancelado fica como está**: o contrato assinado não muda sozinho. A auditoria registra quantas cópias receberam o nome (`product.name_copies`).
+- **Não volta a nascer:** o cadastro do produto (tela do produto, lista de produtos e "Criar produto" da solicitação ao fornecedor) recusa o nome de exemplo (`product_name_placeholder`); a tela do produto com esse nome mostra o campo vazio, com a dica de preencher o nome real. A recompra, a solicitação com variação e o seletor da nova solicitação não copiam mais o nome de exemplo.
+- **Auditoria:** as linhas antigas da auditoria continuam com o texto que foi digitado (registro do que aconteceu).
 
 ## 2b. Quadro Die Cut (13/11/2026)
 
@@ -122,6 +154,33 @@ O que muda e o que não muda:
 - **MOQ:** continua sendo uma tarefa do fornecedor. Ele confirma no quadro Die Cut (o atalho "Abrir o Die Cut" continua na seção e fica em destaque enquanto faltar item), com o negociado já no campo; a Wellmix também pode confirmar.
 - **Textos:** para o fornecedor, a ajuda da seção e a frase do atalho do Die Cut falam só das três tarefas (`dieCut.stageHelp.supplier`, `dieCut.orderHint.supplier`).
 - **Regra** (`supplierSeesLaneRequirement`, `src/lib/purchase-lanes.ts`): uma lista fechada com as três chaves (`die_cut`, `hd_photo`, `lead_time_confirmed`) de cada item do pedido.
+
+## 2d. A etapa nº 2 na visão do login Trading (13/11/2026)
+
+Pedido do dono: no login de uma **trading** (parceiro do tipo Trading, que entra com o papel de fornecedor; docs/PARTNER_TYPES.md), a etapa nº 2 do pedido de compra mostra só o lado da trading. Vale na linha da tabela "Etapas do pedido" e no card de detalhes:
+
+- **Título "Die-Cut"** (zh: "刀模 (Die-Cut)") e **"Responsável: Fornecedor"**, sempre, mesmo quando a etapa passa para um operador da Wellmix. O responsável real da etapa não muda: só o que essa visão mostra.
+- **Andamento só das tarefas do fornecedor** (`supplierLaneView`, `src/lib/purchase-lanes.ts`): a faca, a foto em alta e o prazo de produção confirmado de cada produto, as mesmas três tarefas que o card já mostrava (seção 2c). A barra e o "X de Y" contam só essas. Arte, embalagem, certificação, MOQ, NCM e ficha de compra ficam fora da conta.
+- **Concluído:** com as três tarefas de todos os produtos feitas, a linha e o card mostram o selo verde "Concluído" e a barra em 100%; a linha mostra em "Concluída em" a data do último envio. Faltando alguma, o progresso é parcial, e o prazo da etapa continua à vista (em vermelho, se atrasado, só enquanto faltar tarefa dele).
+- **Na hora e ao recarregar:** a conta sai dos registros gravados sempre que a página abre. O último envio já devolve a tela atualizada, e pedidos que já tinham tudo enviado aparecem concluídos sem nenhuma ação.
+- **Etapa ainda não começada:** uma etapa pendente ou cancelada continua como está; só a etapa em andamento, bloqueada ou concluída vira "Concluído" nessa visão.
+- **Só na visão Trading da etapa nº 2.** Não mudam: a etapa de verdade (só conclui com todas as raias), o andamento global do pedido, a visão interna da Wellmix ("Die-Cut, Arte e Certificação", com o responsável e o andamento de todas as raias), as tarefas de arte, embalagem e certificação dos responsáveis designados e as outras etapas. Os outros logins com papel de fornecedor (fornecedor, fábrica, GP, parceiro do fornecedor) continuam vendo a etapa como antes, com o card de três tarefas da seção 2c. Sem mudança no banco.
+- **Quem é Trading:** o parceiro do pedido (`supplierId`) é do tipo `trading`. Um login de fornecedor só abre o pedido em que o parceiro é o dele (`canViewOrder`), então é o próprio login da trading.
+
+## 2e. "Etapas do pedido" do operador da Wellmix: só as tarefas dele (14/11/2026)
+
+Pedido do dono: na página do pedido, o **operador** da Wellmix vê na tabela "Etapas do pedido" só as tarefas a fazer que cabem ao login dele, tarefa a tarefa, inclusive dentro das etapas e das subetapas compartilhadas. O **administrador** continua vendo a linha do tempo inteira, como os outros papéis (fornecedor e parceiros seguem com as próprias linhas, `src/lib/order-view.ts`).
+
+- **Para quem vai cada item** (`wellmixRequirementRoute`, `src/lib/services/order-timeline.ts`, com as regras de `cert-art-routing.ts`): as quatro tarefas das raias (arte, validação, certificado e arte final) seguem `laneRoute` (seção 2, "Quem faz cada tarefa"): a arte e a arte final com o selo, para quem faz a arte (o designer do pedido; sem ele, a agência que faz a arte; senão quem tem a função Designer; sem ninguém, o analista); a validação da arte, para o analista que pode validar arte (senão quem pode; nunca o designer do pedido nem quem enviou); o certificado, da certificadora do pedido; a assinatura da Wellmix, para quem tem "Assinar o contrato pela Wellmix"; NCM validado e ficha mestre completa, para a função Cadastro; o sinal, para quem abre o Financeiro; o resto, para o **responsável interno** (o analista do pedido, `ownerUserId`: quem gerou o pedido ou a distribuição da equipe). Sem ninguém com a função ou sem analista, cai no analista ou na equipe inteira, como nas pendências.
+- **Item de parceiro**: o que é do fornecedor, do despachante, da certificadora, da agência, do armador etc. designado no pedido é só dele e não aparece para a Wellmix. Sem o parceiro no pedido, a Wellmix faz no lugar dele: vai para o responsável interno.
+- **Subetapas**: Certificação (memorial para o responsável interno; o selo e a validação do memorial são de quem certifica, hoje o despachante do pedido; aplicar o selo para quem faz a arte), Ficha de compra (o responsável interno, enquanto falta campo), Artes da embalagem (corrigir a não conformidade e conferir a correção), Documento do pedido (enviar para assinatura e a assinatura da Wellmix), Produção e inspeção (o responsável interno), Embarque e desembaraço (o lado da Wellmix, para o responsável interno; o numerário, para o financeiro), Pagamento ao fornecedor e Recebimento (quem abre o Financeiro; o responsável interno e quem acompanha o recebimento).
+- **Pedido do histórico em espera** (Sankhya, até o go-live): sem tarefa, como nas pendências.
+- **Liberadas em destaque, futuras em cinza** (decisão do dono, 14/11/2026): a tarefa está liberada na etapa em andamento (ou travada, ou no dado que ainda dá para completar depois, como o BL) quando não espera outro item. A que ainda espera (a validação da arte antes de a arte chegar; a arte antes da faca e da foto em alta; a assinatura antes do selo aplicado) ou que está numa etapa que não começou aparece em cinza, sem formulário, com o "Aguardando…" de sempre; vira destaque quando fica disponível. Tarefa concluída não aparece. O item que o sistema confere (NCM, ficha mestre, sinal) entra para quem faz a parte dele na tela dona (o atalho do item no quadro da etapa). Nas subetapas, as futuras são as mesmas das pendências: na Certificação, quem faz e quem valida cada passo (`laterStepsFor`, `src/lib/services/import-flow.ts`); no Embarque e desembaraço, o lado da Wellmix (o responsável interno) e o numerário (o financeiro); em Produção e inspeção, o acompanhamento do responsável interno.
+- **Linhas**: o cabeçalho da etapa fica só quando há tarefa do login dentro dela (nos itens da etapa ou numa subetapa), com a numeração original. Situação, andamento e "N de M" contam só as tarefas dele ali (as feitas, as liberadas e as futuras): "Em andamento" quando há tarefa dele liberada; "Pendente", em cinza, quando o que falta ainda vem depois. A parte já enviada por ele conta como feita, mesmo esperando a validação de outro. As assinaturas do Documento do pedido contam uma vez, na etapa. Quando ele conclui a última tarefa dele, a etapa sai da lista, mesmo com outros responsáveis pendentes; a conclusão continua no pedido (o item feito, quem fez e a auditoria) e nos cartões de baixo. Sem nenhuma tarefa (nem futura), a tabela diz "Nenhuma tarefa sua neste pedido" e o nome do responsável interno.
+- **Detalhes**: "Ver detalhes", "Abrir todas as etapas" e o card aberto da etapa seguem o mesmo filtro: abrem só as etapas com item dele (liberado ou futuro), e o card lista só os itens dele, os futuros em cinza (o quadro Die Cut do fornecedor fica fora). A etapa que aparece só por uma subetapa não abre detalhes; a subetapa tem o "Abrir" dela.
+- **Ferramentas do card**: o que mora no card da etapa e não é tarefa do login (o atalho do quadro Die Cut com os itens do fornecedor) não aparece para o operador; o tarifário de frete do Embarque aparece quando o card do Embarque abre para ele (tarefa dele na etapa). Sem tarefa no Embarque, o tarifário fica na tela Tarifário de frete do menu, e o administrador continua vendo o card inteiro.
+- **Não muda**: o andamento global do pedido, as etapas de verdade, as pendências e os avisos de cada perfil, quem pode enviar ou aprovar (o servidor confere como antes) e os cartões de baixo. Sem mudança no banco.
+- Testes: `tests/unit/order-timeline.test.ts` (Comprador responsável interno, Designer do pedido, outro Comprador, Cadastro, pedido do Administrador sem parceiros como os de produção, item de parceiro, contagem e etapa travada).
 
 ## 3. Contrato e assinaturas (etapa "Arte e embalagem")
 

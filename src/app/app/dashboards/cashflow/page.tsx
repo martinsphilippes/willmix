@@ -5,6 +5,9 @@ import { canOpen } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
 import { addDays } from "@/lib/supplier-terms";
 import { loadCashflow, type CashBucket } from "@/lib/services/cashflow";
+import { ServerPager } from "@/components/server-table";
+import { parseServerPage } from "@/lib/server-table";
+import { pageRange } from "@/lib/table-tools";
 import {
   Alert,
   Empty,
@@ -24,13 +27,39 @@ import {
  * sai para os fornecedores, com o saldo acumulado. Só quem abre Finanças;
  * leitura no servidor, nada é gravado.
  */
-export default async function CashflowPage() {
+export default async function CashflowPage({
+  searchParams,
+}: PageProps<"/app/dashboards/cashflow">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "dashboards");
   if (!canOpen(user, "finance")) redirect("/app/dashboards");
   const t = await getT();
   const d = await loadCashflow();
+  // Detalhe de cada período em páginas de 50 (auditoria de performance,
+  // 14/11/2026): com o histórico do Sankhya, os "detalhes" fechados levavam
+  // todas as parcelas, 43 mil linhas e 53 MB de HTML. ?open=<período>&page=N
+  // abre o detalhe daquele período na página pedida.
+  const sp = await searchParams;
+  const openBucket = typeof sp.open === "string" ? sp.open : null;
+  const detailPage = parseServerPage(
+    typeof sp.page === "string" ? sp.page : undefined,
+  );
+  const DETAIL_PAGE = 50;
+  const detailOf = (b: CashBucket) => {
+    const range = pageRange(
+      b.key === openBucket ? detailPage : 0,
+      DETAIL_PAGE,
+      b.items.length,
+    );
+    return {
+      range,
+      items: b.items.slice(
+        range.current * DETAIL_PAGE,
+        (range.current + 1) * DETAIL_PAGE,
+      ),
+    };
+  };
 
   const day = (s: string) =>
     new Date(`${s}T12:00:00Z`).toLocaleDateString(t.intl, {
@@ -102,7 +131,7 @@ export default async function CashflowPage() {
             {shown.map((b) => (
               <tr key={b.key} className={rowClass}>
                 <Td>
-                  <div data-cash-bucket={b.key}>
+                  <div data-cash-bucket={b.key} id={`cash-${b.key}`}>
                     <span
                       className={cx(
                         "font-medium",
@@ -117,12 +146,15 @@ export default async function CashflowPage() {
                       </span>
                     ) : null}
                     {b.items.length ? (
-                      <details className="mt-1">
+                      <details
+                        className="mt-1"
+                        open={b.key === openBucket || undefined}
+                      >
                         <summary className="cursor-pointer text-xs text-brand-700">
                           {t("cash.details", { n: b.items.length })}
                         </summary>
                         <ul className="mt-1 space-y-0.5 text-xs">
-                          {b.items.map(({ kind, item }, i) => (
+                          {detailOf(b).items.map(({ kind, item }, i) => (
                             <li key={i} className="flex flex-wrap gap-x-2">
                               <span className="text-zinc-500">
                                 {item.day ? day(item.day) : "—"}
@@ -145,6 +177,19 @@ export default async function CashflowPage() {
                             </li>
                           ))}
                         </ul>
+                        {b.items.length > DETAIL_PAGE ? (
+                          <ServerPager
+                            page={{
+                              ...detailOf(b).range,
+                              page: detailOf(b).range.current,
+                              matched: b.items.length,
+                            }}
+                            href={(page) =>
+                              `/app/dashboards/cashflow?open=${encodeURIComponent(b.key)}${page ? `&page=${page + 1}` : ""}#cash-${b.key}`
+                            }
+                            t={t}
+                          />
+                        ) : null}
                       </details>
                     ) : null}
                   </div>

@@ -50,14 +50,34 @@ export function Button({
   );
 }
 
+/**
+ * Endereço de rota de API ou de exportação (arquivo, CSV): o link não
+ * pré-carrega. Em produção o Next pré-carrega todo link que aparece na tela,
+ * e para uma rota dessas isso executava a rota: baixava o arquivo ou montava
+ * a exportação (todos os clientes, todos os produtos) a cada abertura da tela,
+ * sem ninguém clicar (auditoria de performance, 14/11/2026: erros
+ * "/api/files/[id].rsc" nos logs da Vercel).
+ */
+export function routeHandlerHref(href: ComponentProps<typeof Link>["href"]) {
+  const path = typeof href === "string" ? href : (href.pathname ?? "");
+  return path.startsWith("/api/") || /\/export(?:$|[?#/])/.test(path);
+}
+
+const noPrefetch = (
+  href: ComponentProps<typeof Link>["href"],
+  prefetch: ComponentProps<typeof Link>["prefetch"],
+) => prefetch ?? (routeHandlerHref(href) ? false : undefined);
+
 export function LinkButton({
   variant = "secondary",
   className,
+  prefetch,
   ...props
 }: ComponentProps<typeof Link> & { variant?: ButtonVariant }) {
   return (
     <Link
       {...props}
+      prefetch={noPrefetch(props.href, prefetch)}
       className={cx(buttonBase, buttonStyles[variant], className)}
     />
   );
@@ -67,8 +87,18 @@ export function LinkButton({
 export const linkClass =
   "font-medium text-brand-700 underline decoration-brand-200 underline-offset-2 transition hover:text-brand-800 hover:decoration-brand-600";
 
-export function TextLink({ className, ...props }: ComponentProps<typeof Link>) {
-  return <Link {...props} className={cx(linkClass, className)} />;
+export function TextLink({
+  className,
+  prefetch,
+  ...props
+}: ComponentProps<typeof Link>) {
+  return (
+    <Link
+      {...props}
+      prefetch={noPrefetch(props.href, prefetch)}
+      className={cx(linkClass, className)}
+    />
+  );
 }
 
 export function Card({
@@ -197,12 +227,7 @@ export function PageHeader({
 }
 
 export type Tone =
-  | "neutral"
-  | "info"
-  | "success"
-  | "warning"
-  | "danger"
-  | "brand";
+  "neutral" | "info" | "success" | "warning" | "danger" | "brand";
 const badgeStyles: Record<Tone, string> = {
   neutral: "bg-zinc-100 text-zinc-700 ring-zinc-200",
   info: "bg-sky-50 text-sky-800 ring-sky-200",

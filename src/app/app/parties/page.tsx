@@ -15,6 +15,7 @@ import { getT } from "@/i18n/server";
 import {
   Badge,
   Empty,
+  Input,
   LinkButton,
   PageHeader,
   Table,
@@ -24,6 +25,15 @@ import {
   cx,
   rowClass,
 } from "@/components/ui";
+import { LiveSearch } from "@/components/live-search";
+import { ServerPager, SortTh } from "@/components/server-table";
+import {
+  SERVER_TABLE_FROM,
+  parseServerPage,
+  parseServerSort,
+  serverTable,
+  type ServerColumn,
+} from "@/lib/server-table";
 
 /** Filtro por tipo: selecionado na cor da marca, demais neutros. */
 const chipClass = (selected: boolean) =>
@@ -40,7 +50,11 @@ export default async function PartiesPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "parties");
-  const { type: rawType } = await searchParams;
+  const sp = await searchParams;
+  const rawType = sp.type;
+  const one = (v: string | string[] | undefined) =>
+    typeof v === "string" ? v : undefined;
+  const q = (one(sp.q) ?? "").slice(0, 120);
   const t = await getT();
   const store = getStore();
   // Parceiros numa tela só (decisão do dono, 12/11/2026): clientes,
@@ -79,6 +93,59 @@ export default async function PartiesPage({
     const base = PARTY_TYPE_SCREEN[p.type as keyof typeof PARTY_TYPE_SCREEN];
     return `${base ?? "/app/parties"}/${p.id}`;
   };
+  const loginsLabel = (p: (typeof parties)[number]) =>
+    logins.get(p.id)
+      ? t("partnerAccess.login.count", { n: logins.get(p.id) ?? 0 })
+      : t("partnerAccess.login.create");
+  // Busca, ordem e página no servidor (auditoria de performance, 14/11/2026):
+  // com os 32 mil parceiros a tela mandava todas as linhas ao navegador (108 MB
+  // de HTML medidos com o volume de produção). Mesmas regras da TableTools
+  // (src/lib/server-table.ts), sobre a lista inteira.
+  const columns: ServerColumn<(typeof parties)[number]>[] = [
+    { key: "name", text: (p) => p.name },
+    { key: "type", text: (p) => partyTypeLabel(p, catalog, t) },
+    { key: "country", text: (p) => p.country ?? "—" },
+    { key: "email", text: (p) => p.email ?? "—" },
+    { key: "logins", text: loginsLabel },
+    {
+      key: "active",
+      text: (p) => (p.active ? t("common.yes") : t("common.no")),
+    },
+  ];
+  // Lista curta: inteira, com a TableTools de sempre. Longa: no servidor.
+  const serverMode = filtered.length > SERVER_TABLE_FROM;
+  const sort = serverMode ? parseServerSort(one(sp.sort), columns) : null;
+  const shown = serverTable(filtered, columns, {
+    q: serverMode ? q : "",
+    sort,
+    page: parseServerPage(one(sp.page)),
+    size: serverMode ? undefined : Math.max(filtered.length, 1),
+    decimalComma: t.locale === "pt",
+  });
+  const listHref = (patch: { sort?: string | null; page?: number }) => {
+    const params = new URLSearchParams();
+    if (type) params.set("type", type);
+    if (q) params.set("q", q);
+    const sortValue =
+      patch.sort !== undefined
+        ? patch.sort
+        : sort
+          ? `${sort.desc ? "-" : ""}${sort.key}`
+          : null;
+    if (sortValue) params.set("sort", sortValue);
+    if (patch.page) params.set("page", String(patch.page + 1));
+    const query = params.toString();
+    return query ? `/app/parties?${query}` : "/app/parties";
+  };
+  const sortHref = (value: string | null) => listHref({ sort: value });
+  const pageHref = (page: number) => listHref({ page });
+  /** Cabeçalho: ordena no servidor (lista longa) ou na TableTools (curta). */
+  const header = (label: string, column: string) =>
+    serverMode ? (
+      <SortTh label={label} column={column} sort={sort} href={sortHref} t={t} />
+    ) : (
+      <Th>{label}</Th>
+    );
 
   return (
     <>
@@ -159,48 +226,82 @@ export default async function PartiesPage({
       {filtered.length === 0 ? (
         <Empty>{t("common.none")}</Empty>
       ) : (
-        <Table>
-          <thead>
-            <tr>
-              <Th>{t("common.name")}</Th>
-              <Th>{t("parties.type")}</Th>
-              <Th>{t("parties.country")}</Th>
-              <Th>{t("common.email")}</Th>
-              <Th>{t("partnerAccess.login.col")}</Th>
-              <Th>{t("common.status")}</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((p) => (
-              <tr key={p.id} className={rowClass}>
-                <Td>
-                  <TextLink href={detailHref(p)}>{p.name}</TextLink>
-                </Td>
-                <Td>{partyTypeLabel(p, catalog, t)}</Td>
-                <Td>{p.country ?? "—"}</Td>
-                <Td>
-                  <span className="text-zinc-600">{p.email ?? "—"}</span>
-                </Td>
-                <Td>
-                  <TextLink href={`/app/parties/${p.id}#access`}>
-                    <span data-party-logins={logins.get(p.id) ?? 0}>
-                      {logins.get(p.id)
-                        ? t("partnerAccess.login.count", {
-                            n: logins.get(p.id) ?? 0,
-                          })
-                        : t("partnerAccess.login.create")}
-                    </span>
-                  </TextLink>
-                </Td>
-                <Td>
-                  <Badge tone={p.active ? "success" : "neutral"}>
-                    {p.active ? t("common.yes") : t("common.no")}
-                  </Badge>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+        <>
+          {/* Lista longa: busca (GET) no servidor; o resultado fica no endereço. */}
+          {serverMode ? (
+            <form
+              method="get"
+              action="/app/parties"
+              className="mb-3 flex flex-wrap items-center gap-2"
+              data-parties-search
+            >
+              {type ? <input type="hidden" name="type" value={type} /> : null}
+              {sort ? (
+                <input
+                  type="hidden"
+                  name="sort"
+                  value={`${sort.desc ? "-" : ""}${sort.key}`}
+                />
+              ) : null}
+              <Input
+                name="q"
+                type="search"
+                defaultValue={q}
+                placeholder={t("tableTools.search")}
+                aria-label={t("tableTools.search")}
+                className="w-full max-w-md"
+              />
+              <LiveSearch />
+            </form>
+          ) : null}
+          {shown.matched === 0 ? (
+            <Empty>{t("tableTools.none")}</Empty>
+          ) : (
+            <>
+              <Table tools={!serverMode}>
+                <thead>
+                  <tr>
+                    {header(t("common.name"), "name")}
+                    {header(t("parties.type"), "type")}
+                    {header(t("parties.country"), "country")}
+                    {header(t("common.email"), "email")}
+                    {header(t("partnerAccess.login.col"), "logins")}
+                    {header(t("common.status"), "active")}
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.rows.map((p) => (
+                    <tr key={p.id} className={rowClass}>
+                      <Td>
+                        <TextLink href={detailHref(p)}>{p.name}</TextLink>
+                      </Td>
+                      <Td>{partyTypeLabel(p, catalog, t)}</Td>
+                      <Td>{p.country ?? "—"}</Td>
+                      <Td>
+                        <span className="text-zinc-600">{p.email ?? "—"}</span>
+                      </Td>
+                      <Td>
+                        <TextLink href={`/app/parties/${p.id}#access`}>
+                          <span data-party-logins={logins.get(p.id) ?? 0}>
+                            {loginsLabel(p)}
+                          </span>
+                        </TextLink>
+                      </Td>
+                      <Td>
+                        <Badge tone={p.active ? "success" : "neutral"}>
+                          {p.active ? t("common.yes") : t("common.no")}
+                        </Badge>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+              {serverMode ? (
+                <ServerPager page={shown} href={pageHref} t={t} />
+              ) : null}
+            </>
+          )}
+        </>
       )}
     </>
   );

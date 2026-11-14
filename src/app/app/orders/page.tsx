@@ -6,7 +6,11 @@ import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { STAGE_KEYS, REQUEST_STATUSES } from "@/lib/db/schema";
 import { getStore, type Product, type ProductPhoto } from "@/lib/db";
-import { pipelineFor, type PipelineItem } from "@/lib/services/pipeline";
+import {
+  loadPipelineItems,
+  pipelineFor,
+  type PipelineItem,
+} from "@/lib/services/pipeline";
 import {
   ORDERS_FILTER_KEYS,
   ORDERS_PAGE_SIZE,
@@ -63,7 +67,9 @@ export default async function OrdersPage({
   requireScreen(user, "orders");
   const t = await getT();
   const params = await searchParams;
-  const rows = await pipelineFor(user);
+  // Itens dos pedidos lidos só onde a tela precisa (com o resumo em uso):
+  // ver abaixo e loadPipelineItems (auditoria de performance, 14/11/2026).
+  const rows = await pipelineFor(user, { lazyItems: true });
   const wellmix = isWellmix(user);
   const showCustomer = wellmix;
   const showSupplier = canSeeSupplier(user) && user.role !== "supplier";
@@ -332,6 +338,28 @@ export default async function OrdersPage({
   const today = brazilDay(new Date());
   const one = (v: string | string[] | undefined) =>
     typeof v === "string" ? v.slice(0, 120) : undefined;
+  // Itens ainda não lidos: o filtro de produto procura em todos os itens de
+  // todos os pedidos (lê só nome e variação); sem ele, basta saber se o
+  // pedido tem itens (o filtro de progresso conta o produto de cada pedido
+  // com itens), e o item fica com o nome do primeiro produto.
+  if ((one(params.p) ?? "").trim())
+    await loadPipelineItems(user, rows, "names");
+  else
+    for (const r of rows)
+      if (r.itemsPending && r.itemCount > 0 && !r.items.length)
+        r.items = [
+          {
+            name: r.product,
+            variant: null,
+            quantity: 0,
+            unit: "",
+            unitPrice: null,
+            currency: null,
+            productId: null,
+            variantData: null,
+            specification: null,
+          },
+        ];
   const entries = [...groups.values()].map((members) => ({
     members,
     row: buildRow(members, false),
@@ -350,6 +378,12 @@ export default async function OrdersPage({
   const pageEntries = matched
     .slice(start, start + ORDERS_PAGE_SIZE)
     .map((r) => entryOf.get(r)!);
+  // Os itens inteiros só dos pedidos da página.
+  await loadPipelineItems(
+    user,
+    pageEntries.flatMap((e) => e.members),
+    "full",
+  );
   const productIds = wellmix
     ? [
         ...new Set(

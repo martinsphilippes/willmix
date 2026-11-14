@@ -1,4 +1,10 @@
-import type { Order, PurchaseRound, RequestSchedule } from "@/lib/db/schema";
+import type {
+  ColorPlan,
+  Order,
+  PurchaseRound,
+  RequestSchedule,
+} from "@/lib/db/schema";
+import { colorsOfRound } from "@/lib/color-split";
 import { addDaysIso, scheduleTotal } from "@/lib/workflow/request-schedule";
 
 /*
@@ -59,7 +65,12 @@ export type PurchaseRoundsError =
  * mesma (datas iguais); cada rodada leva as peças de cada produto.
  */
 export function buildPurchaseRounds(
-  lines: Array<{ productId: string; schedule: RequestSchedule | null }>,
+  lines: Array<{
+    productId: string;
+    schedule: RequestSchedule | null;
+    /** Variações de cor da solicitação: as peças de cada cor por rodada. */
+    colorPlan?: ColorPlan | null;
+  }>,
 ): { rounds: PurchaseRound[] | null } | { error: PurchaseRoundsError } {
   const scheduled = lines.filter((l) => l.schedule?.items.length);
   if (!scheduled.length) return { rounds: null };
@@ -71,10 +82,14 @@ export function buildPurchaseRounds(
   const rounds = base.items.map((round, i) => ({
     index: i + 1,
     expectedAt: addDaysIso(base.firstDate, base.intervalDays * i),
-    items: scheduled.map((l) => ({
-      productId: l.productId,
-      quantity: Math.round(l.schedule!.items[i].quantity),
-    })),
+    items: scheduled.map((l) => {
+      const colors = colorsOfRound(l.colorPlan, i);
+      return {
+        productId: l.productId,
+        quantity: Math.round(l.schedule!.items[i].quantity),
+        ...(colors ? { colors } : {}),
+      };
+    }),
     orderId: null,
     createdAt: null,
   }));

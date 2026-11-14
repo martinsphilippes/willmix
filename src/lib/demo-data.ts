@@ -119,6 +119,13 @@ export const DEMO_USERS: Array<{
     locale: "pt",
   },
   {
+    email: "agencia@marketing.cn",
+    name: "Mei Marketing",
+    role: "marketing_agency",
+    party: "agencia-marketing-cn",
+    locale: "zh",
+  },
+  {
     email: "juridico@wellmix.com",
     name: "Júlia Jurídico",
     role: "legal",
@@ -238,6 +245,13 @@ export const DEMO_PARTIES: Array<{
     name: "Certifica OCP",
     country: "BR",
     email: "ocp@certifica.com",
+  },
+  {
+    id: "agencia-marketing-cn",
+    type: "marketing_agency",
+    name: "Yiwu Photo Studio",
+    country: "CN",
+    email: "agencia@marketing.cn",
   },
 ];
 

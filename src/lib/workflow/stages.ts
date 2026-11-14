@@ -8,6 +8,9 @@ import type {
 import { STAGE_KEYS } from "@/lib/db/schema";
 import {
   DOWN_PAYMENT_KEY,
+  PRODUCTION_VIDEO_KEY,
+  SKU_APPROVED_KEY,
+  SUPPLIER_CONFORMITY_KEY,
   SAMPLE_ORDER_KEY,
   SAMPLE_ORDER_SUPPLIER_KEY,
   laneRequirements,
@@ -259,6 +262,31 @@ export const PURCHASE_CONTRACT_REQUIREMENTS: RequirementTemplate[] = [
   },
 ];
 
+/** Inspeção do pedido de compra: vídeo, conformidade e aprovação dos SKUs. */
+export const PURCHASE_INSPECTION_REQUIREMENTS: RequirementTemplate[] = [
+  {
+    key: PRODUCTION_VIDEO_KEY,
+    label: "Vídeo da produção",
+    type: "file",
+    required: true,
+    role: "supplier",
+  },
+  {
+    key: SUPPLIER_CONFORMITY_KEY,
+    label: "Produto conforme o pedido (declaração do fornecedor)",
+    type: "confirm",
+    required: true,
+    role: "supplier",
+  },
+  {
+    key: SKU_APPROVED_KEY,
+    label: "Inspeção aprovada pela Wellmix (todos os SKUs)",
+    type: "confirm",
+    required: true,
+    role: "operator",
+  },
+];
+
 /**
  * Etapas que não seguram o pedido: concluem na hora em que começam (mesmo nos
  * pedidos antigos, que ainda têm itens nelas) e não aparecem no fluxo.
@@ -305,7 +333,10 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
       isPurchaseFlow(order)
         ? laneRequirements(items ?? [], {
             art: artRole(order, agencyValidationEnabled),
-            ocp: order.ocpId ? "ocp" : "operator",
+            // Certificado: da certificadora (OCP) do pedido (dono,
+            // 14/11/2026). Quem recebe cada tarefa sai de laneRoute
+            // (src/lib/services/cert-art-routing.ts); o papel é a etiqueta.
+            ocp: "ocp",
           })
         : [
             ...(line?.requirements?.length
@@ -384,7 +415,7 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     key: "INSPECTION",
     responsibleRole: "supplier",
     partyField: "supplierId",
-    requirements: ({ inspectionExtendedChecks }) => [
+    requirements: ({ order, inspectionExtendedChecks }) => [
       {
         key: "photo_unpacked",
         label: "Foto sem embalagem",
@@ -414,6 +445,10 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
         role: "supplier",
       },
       ...(inspectionExtendedChecks ? EXTENDED_INSPECTION_REQUIREMENTS : []),
+      // Pedido de compra (mapa R3/R4?, docs/PRODUCTION.md): o vídeo da
+      // produção, a declaração de conformidade do fornecedor (ou da trading)
+      // e a aprovação da Wellmix de todos os SKUs, que segura o embarque.
+      ...(isPurchaseFlow(order) ? PURCHASE_INSPECTION_REQUIREMENTS : []),
     ],
   },
   {
@@ -578,7 +613,8 @@ export type PartyField =
   | "carrierId"
   | "comexId"
   | "logisticsId"
-  | "ocpId";
+  | "ocpId"
+  | "marketingAgencyId";
 
 export const ROLE_PARTY_FIELD: Record<Role, PartyField | null> = {
   admin: null,
@@ -593,6 +629,7 @@ export const ROLE_PARTY_FIELD: Record<Role, PartyField | null> = {
   comex: "comexId",
   logistics: "logisticsId",
   ocp: "ocpId",
+  marketing_agency: "marketingAgencyId",
 };
 
 export const stageTemplate = (key: StageKey) =>
