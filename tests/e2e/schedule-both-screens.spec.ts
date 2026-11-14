@@ -28,6 +28,10 @@ async function snapshot(scope: Locator) {
       .locator('input[name*="schedule.qty."]')
       .evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value)),
     load: await scope.locator("[data-schedule-load]").allInnerTexts(),
+    cartons: await scope
+      .locator("[data-schedule-cartons]")
+      .evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value)),
+    calc: await scope.locator("[data-schedule-carton-calc]").allInnerTexts(),
     status: await scope.locator("[data-round-status]").allInnerTexts(),
   };
 }
@@ -71,6 +75,11 @@ test("Programação de compra: a mesma entrada nas duas telas e 13 datas gravada
   await expect(choice.locator("[data-schedule-item]")).toHaveCount(2);
   const selection = await snapshot(choice);
   expect(selection.pieces).toEqual(["7200", "7200"]);
+  expect(selection.cartons).toEqual(["150", "150"]);
+  expect(selection.calc).toEqual([
+    "150 caixas × 48 peças por caixa = 7.200 peças",
+    "150 caixas × 48 peças por caixa = 7.200 peças",
+  ]);
   expect(selection.result).toContain("300 caixas (14.400 peças)");
   expect(selection.perRound).toBe("1");
   expect(selection.total).toBe("2");

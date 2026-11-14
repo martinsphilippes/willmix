@@ -1430,3 +1430,9 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Mudou na regra**: sem teto de 6 (solicitação) nem de 12 (Seleção) datas; só o técnico, `MAX_SCHEDULE_ROUNDS` = 120, nas duas telas e no servidor. Com menos caixas que datas, nada é gerado: o aviso diz quantas caixas faltam, com "Aumentar o total" e "Reduzir as datas" (antes ficavam menos datas, sem perguntar).
 - **Nada foi removido**: `p<n>.quantity` e `p<n>.unit` continuam no formulário (ocultos; a unidade é "un") e no envio; rotas, Server Actions, permissões, banco e esquema iguais. A ficha de compra continua com os lotes dela (até 6), agora com a mesma distribuição (`splitEvenly`).
 - Peças: `purchaseScheduleLabels` em `src/components/generate-labels.ts`; `roundsShortage` e `MAX_SCHEDULE_ROUNDS`; `SelectionQuantity` (aviso, pedido mínimo) e `RequestScheduleFields` (quadro sempre à vista). Testes: `tests/e2e/request-schedule-generator.spec.ts`, `tests/e2e/schedule-both-screens.spec.ts`, `tests/unit/request-schedule-generator.test.ts` e `tests/unit/purchase-rounds.test.ts`. Docs: `docs/PURCHASE_SCHEDULE.md`.
+
+## Programação de compra: cada programação em caixas
+
+- **Pedido do dono** (14/11/2026, depois da publicação do bloco): nos cartões das programações, a quantidade de caixas; o campo de peças travado (só as caixas se editam); a conta pelas peças que vêm na caixa.
+- **Mudou na tela**: com as peças por caixa master do produto, cada cartão traz "Caixas" (editável), "Peças" travada (caixas × peças por caixa) e a conta escrita; o total diz as caixas; a linha do volume do cartão diz só os m³. Sem as peças por caixa master, as peças continuam editáveis.
+- **Nada foi removido**: o formulário continua mandando as peças de cada programação (`schedule.qty.N`) e o servidor grava como antes; rotas, Server Actions, banco e esquema iguais.

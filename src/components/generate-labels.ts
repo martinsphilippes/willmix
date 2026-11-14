@@ -35,6 +35,22 @@ export function purchaseScheduleLabels(
     remove: t("purchaseRounds.form.remove", { n: "{n}" }),
     total: t("purchaseRounds.form.total", { total: "{total}", unit: "{unit}" }),
     off: t("purchaseRounds.form.off"),
+    cartons: t("purchaseRounds.form.cartons"),
+    cartonCalc: t("purchaseRounds.form.cartonCalc", {
+      cartons: "{cartons}",
+      pcs: "{pcs}",
+      pieces: "{pieces}",
+    }),
+    cartonPartial: t("purchaseRounds.form.cartonPartial", {
+      cartons: "{cartons}",
+      pcs: "{pcs}",
+      pieces: "{pieces}",
+    }),
+    totalCartons: t("purchaseRounds.form.totalCartons", {
+      cartons: "{cartons}",
+      pcs: "{pcs}",
+    }),
+    piecesLocked: t("purchaseRounds.form.piecesLocked"),
   };
 }
 
