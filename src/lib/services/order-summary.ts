@@ -67,9 +67,10 @@ import type { BoardOrder, BoardStage } from "./tower-board";
  * (`kpi.f`, flow-contribution.ts; docs/FLOW_MENU.md). 11: o pedido do
  * histórico em espera também contribui (`f.h`), só pela situação. 12: o
  * passo LPCO (mapa E5) entra no pedido com produto de NCM que exige a
- * licença.
+ * licença. 13: o pedido em espera contribui pela situação real, como os
+ * outros, marcado (`f.h`; dono, 14/11/2026).
  */
-export const SUMMARY_VERSION = 12;
+export const SUMMARY_VERSION = 13;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";

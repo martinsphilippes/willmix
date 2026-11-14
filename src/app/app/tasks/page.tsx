@@ -5,6 +5,8 @@ import { TaskList } from "@/components/task-list";
 import { LinkButton } from "@/components/ui";
 import { getT } from "@/i18n/server";
 import { desksFor } from "@/lib/services/desks";
+import { HeldTasks } from "@/components/held-tasks";
+import { isWellmix } from "@/lib/auth/permissions";
 
 export default async function TasksPage({
   searchParams,
@@ -13,7 +15,7 @@ export default async function TasksPage({
   if (!user) redirect("/login?next=/app/tasks");
   requireScreen(user, "tasks");
   // Filtros: ?due=overdue|today|week|later|none e ?type=<etapa ou tipo>.
-  const { due, type } = await searchParams;
+  const { due, type, heldPage } = await searchParams;
   const t = await getT();
   return (
     <>
@@ -30,6 +32,14 @@ export default async function TasksPage({
         due={typeof due === "string" ? due : null}
         group={typeof type === "string" ? type : null}
       />
+      {/* Histórico do Sankhya em espera: a atividade em aberto, à parte. */}
+      {isWellmix(user) ? (
+        <HeldTasks
+          user={user}
+          page={Number(typeof heldPage === "string" ? heldPage : 1) || 1}
+          t={t}
+        />
+      ) : null}
     </>
   );
 }

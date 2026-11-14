@@ -124,11 +124,6 @@ async function expectSame(now: Date) {
       flow.flowOverviewEntities(admin, block),
     );
     expect(sortRows(rows), block).toEqual(sortRows(tableRows));
-    const held = await flow.flowHeldEntities(admin, block);
-    const heldTables = await withoutSummaries(() =>
-      flow.flowHeldEntities(admin, block),
-    );
-    expect(held, `held ${block}`).toEqual(heldTables);
   }
   return ready;
 }
@@ -200,22 +195,27 @@ describe("indicadores prontos do Overview dos blocos", () => {
     await expectSame(NOW);
   });
 
-  it("pedido do histórico em espera: à parte, pela situação, fora das linhas", async () => {
+  it("pedido do histórico em espera: na situação real, marcado", async () => {
     const store = getStore();
     const { a } = scenario.orders;
+    const before = await expectSame(NOW);
     await store.update("orders", a.id, { held: true });
     const kpis = await expectSame(NOW);
-    const order = await store.get("orders", a.id);
     const total = Object.values(kpis.held.blocks).reduce((x, y) => x + y, 0);
-    expect(total).toBe(1);
+    expect(total).toBeGreaterThan(0);
+    // Continua nos mesmos passos de antes, só marcado.
+    expect(kpis.steps).toEqual(before.steps);
+    let found = false;
     for (const block of k.ENTITY_BLOCKS) {
-      const rows = await flow.flowOverviewEntities(admin, block);
-      expect(rows.some((r) => r.id === a.id)).toBe(false);
+      const row = (await flow.flowOverviewEntities(admin, block)).find(
+        (r) => r.id === a.id,
+      );
+      if (row) {
+        found = true;
+        expect(row.held).toBe(true);
+      }
     }
-    const ref = (await import("@/lib/flow-progress")).heldStepOf(
-      order!.status,
-    )!;
-    expect(kpis.held.steps[ref]).toBe(1);
+    expect(found).toBe(true);
     await store.update("orders", a.id, { held: false });
     await expectSame(NOW);
   });

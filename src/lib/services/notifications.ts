@@ -66,7 +66,25 @@ export type NotifyMessage = {
  * E-mail e WhatsApp estão em modo mock: registram a notificação com status
  * "mock" para inspeção. Quando houver provedor, substituir sendEmail/sendWhatsapp.
  */
+/** Pedido do link do aviso (`/app/orders/<id>…`), se houver. */
+const ORDER_LINK = /\/app\/orders\/([0-9a-zA-Z_-]{8,})/;
+
+/**
+ * O aviso é de um pedido do histórico do Sankhya em espera até o go-live?
+ * Esses pedidos são trabalhados como os outros, mas não geram avisos nem
+ * mensagens (dono, 14/11/2026; docs/SANKHYA.md).
+ */
+export async function isHeldOrderLink(link: string | undefined | null) {
+  const id = link?.match(ORDER_LINK)?.[1];
+  if (!id) return false;
+  const order = await getStore()
+    .get("orders", id)
+    .catch(() => null);
+  return !!order?.held;
+}
+
 export async function notify(target: NotifyTarget, message: NotifyMessage) {
+  if (await isHeldOrderLink(message.link)) return;
   const users = await resolveUsers(target);
   const kind = message.kind ?? "info";
   const actor =

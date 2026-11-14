@@ -266,23 +266,3 @@ export const overallOf = (
   orders: number,
   orderOverall: number,
 ) => (orders ? Math.round((percent + orderOverall * 3) / 4) : percent);
-
-/*
- * Histórico do Sankhya em espera até o go-live (dono, 14/11/2026;
- * docs/SANKHYA.md): o pedido não tem pendência nem etapa liberada, então
- * entra no Overview só pela situação, num contador e lista à parte.
- */
-const HELD_STATUS_STEP: Partial<Record<StageKey, string>> = {
-  ORDER_CREATED: "order/orders",
-  PREPARATION: "order/orders",
-  PACKAGING: "order/art",
-  INSPECTION: "production/inspection",
-  SHIPPING: "production/shipment",
-  CUSTOMS: "delivery/cargo-presence",
-  TRANSPORT: "delivery/logistics",
-  DELIVERED: "delivery/delivery",
-};
-
-/** Passo (`bloco/passo`) do pedido em espera, pela situação; nulo fora dos blocos. */
-export const heldStepOf = (status: string): string | null =>
-  HELD_STATUS_STEP[status as StageKey] ?? null;

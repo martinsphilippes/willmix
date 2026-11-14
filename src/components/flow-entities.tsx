@@ -138,6 +138,11 @@ export async function FlowEntities({
                   <TextLink href={e.href} data-flow-entity-open>
                     {entityLabel(e, t)}
                   </TextLink>
+                  {e.held ? (
+                    <span className="ml-1" data-flow-entity-held>
+                      <Badge tone="neutral">{t("flow.held.badge")}</Badge>
+                    </span>
+                  ) : null}
                 </Td>
                 <Td>{(e.partyId && nameOf.get(e.partyId)) || "—"}</Td>
                 {showSteps ? (
@@ -180,59 +185,6 @@ export async function FlowEntities({
               </tr>
             );
           })}
-        </tbody>
-      </Table>
-    </>
-  );
-}
-
-/**
- * Pedidos do histórico do Sankhya em espera até o go-live (docs/SANKHYA.md):
- * só número, fornecedor e situação; sem atraso nem completude, que dependem
- * das etapas e pendências, em espera.
- */
-export async function FlowHeldEntities({
-  entities,
-  t,
-}: {
-  entities: OverviewEntity[];
-  t: Translate;
-}) {
-  const rows = entities.slice(0, ENTITY_ROWS);
-  const partyIds = [
-    ...new Set(rows.map((e) => e.partyId).filter((x): x is string => !!x)),
-  ];
-  const parties = partyIds.length
-    ? await getStore().list("parties", { filter: { id: partyIds } })
-    : [];
-  const nameOf = new Map(parties.map((p) => [p.id, p.name]));
-  return (
-    <>
-      {entities.length > rows.length ? (
-        <p className="mb-2 text-xs text-zinc-500">
-          {t("flow.held.capped", { n: rows.length, total: entities.length })}
-        </p>
-      ) : null}
-      <Table>
-        <thead>
-          <tr>
-            <Th>{t("flow.all.order")}</Th>
-            <Th>{t("flow.all.supplier")}</Th>
-            <Th>{t("flow.all.stage")}</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((e) => (
-            <tr key={e.id} className={rowClass} data-flow-held-order={e.id}>
-              <Td className="whitespace-nowrap font-medium">
-                <TextLink href={e.href}>{entityLabel(e, t)}</TextLink>
-              </Td>
-              <Td>{(e.partyId && nameOf.get(e.partyId)) || "—"}</Td>
-              <Td className="whitespace-nowrap">
-                {t(e.statusKey as DictionaryKey)}
-              </Td>
-            </tr>
-          ))}
         </tbody>
       </Table>
     </>

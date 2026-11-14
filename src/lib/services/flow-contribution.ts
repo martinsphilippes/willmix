@@ -67,9 +67,13 @@ export interface FlowEntry {
   since: string | null;
 }
 
-/** Pedido em andamento (nem encerrado, nem cancelado, nem do histórico em espera). */
-export const flowLive = (o: Pick<Order, "status" | "held">) =>
-  !o.held && o.status !== "CLOSED" && o.status !== "CANCELLED";
+/**
+ * Pedido em andamento (nem encerrado, nem cancelado). O do histórico do
+ * Sankhya em espera também (dono, 14/11/2026): aparece na situação real, nos
+ * passos em que tem atividade, só sem avisos (docs/SANKHYA.md).
+ */
+export const flowLive = (o: Pick<Order, "status">) =>
+  o.status !== "CLOSED" && o.status !== "CANCELLED";
 
 /** Peças da descarga (Armazenagem); o resto (RIC, devolução, fechamento) é Retorno. */
 const STORAGE_PARTS = ["seal", "photos", "checklist", "counts"] as const;
@@ -225,8 +229,8 @@ export interface OrderFlow {
   /** Início de cada bloco (a primeira etapa dele que começou). */
   b: (string | null)[];
   /**
-   * Histórico do Sankhya em espera até o go-live: entra no Overview só pela
-   * situação (`heldStepOf`), à parte, sem passos, atraso nem completude.
+   * Histórico do Sankhya em espera até o go-live: entra nos passos reais,
+   * como os outros, marcado (sem avisos; docs/SANKHYA.md).
    */
   h?: true;
 }
@@ -237,18 +241,6 @@ const inProgressBlocks = (step: string) =>
 
 export function buildOrderFlow(input: OrderFlowInput): OrderFlow | null {
   const { order } = input;
-  if (order.held && order.status !== "CLOSED" && order.status !== "CANCELLED")
-    return {
-      n: order.number,
-      st: order.status,
-      sup: order.supplierId || null,
-      s: {},
-      p: PROGRESS_BLOCKS.map(() => 0),
-      o: 0,
-      d: PROGRESS_BLOCKS.map(() => null),
-      b: PROGRESS_BLOCKS.map(() => null),
-      h: true,
-    };
   if (!flowLive(order)) return null;
   const s: Record<string, string | null> = {};
   for (const e of orderFlowEntries(input)) {
@@ -280,5 +272,6 @@ export function buildOrderFlow(input: OrderFlowInput): OrderFlow | null {
     b: PROGRESS_BLOCKS.map(
       (b) => progress.blocks.find((x) => x.block === b)!.startedAt,
     ),
+    ...(order.held ? { h: true as const } : {}),
   };
 }
