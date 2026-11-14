@@ -2,25 +2,43 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
- * Card "Telas que o login abre" de Editar acessos (dono, 14/11/2026;
- * docs/ACCESS.md): as caixas reagem na hora às funções marcadas, com a mesma
- * regra do servidor; no Personalizado, o que o administrador marca ou
- * desmarca à mão continua quando as funções mudam, e as telas do Início
- * também ficam livres (users.screensBaseOff). Admin continua com tudo.
+ * Equipe e acessos (dono, 14/11/2026; docs/ACCESS.md): a prévia de "Acessos
+ * efetivos" usa a mesma regra do servidor; o Personalizado guarda só as
+ * exceções (o que o administrador marcou ou desmarcou à mão, inclusive no
+ * Início), então mudar uma função muda o resultado dos logins com ela e a
+ * exceção continua; o administrador abre e faz tudo; abrir uma tela não
+ * concede as ações dela; e a recusa no servidor segue a configuração salva,
+ * já na próxima requisição de uma sessão aberta.
  */
 withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const team = await import("@/lib/services/team");
-const { WELLMIX_BASE, canOpen, customBaseFor, functionScreensFor, screensFor } =
-  await import("@/lib/auth/screens");
-const { accessFromFunctions, resolveFunctions } =
-  await import("@/lib/auth/function-access");
+const fns = await import("@/lib/services/team-functions");
+const c = await import("@/lib/services/order-cancel");
+const r = await import("@/lib/services/requests");
+const { orderFromRequest } = await import("./helpers/order");
+const { attachAccess } = await import("@/lib/auth/access-cache");
+const { accessStamp } = await import("@/lib/auth/access-stamp");
 const {
+  SCREENS,
+  WELLMIX_BASE,
+  canOpen,
+  functionScreensFor,
+  hasCustomScreens,
+  screensFor,
+} = await import("@/lib/auth/screens");
+const { ACTION_KEYS, accessFromFunctions, can, canSeeMoney, resolveFunctions } =
+  await import("@/lib/auth/function-access");
+const { PERMISSION_MODULES, RETIRED_ACTIONS } =
+  await import("@/lib/auth/permission-modules");
+const {
+  actionSources,
   combineFunctionScreens,
   exceptionsOf,
   inheritedScreens,
+  screenSources,
   toggleException,
   withExceptions,
 } = await import("@/lib/auth/screen-picker");
@@ -28,7 +46,28 @@ type User = import("@/lib/db").User;
 
 const sorted = (set: Iterable<string>) => [...set].sort();
 
-describe("regra das caixas (navegador e servidor)", () => {
+describe("módulos do portal nas telas de permissão", () => {
+  it("cada tela e cada ação que vale fica num módulo só", () => {
+    const screens = PERMISSION_MODULES.flatMap((m) => [...m.screens]);
+    expect(sorted(screens)).toEqual(sorted(SCREENS));
+    expect(new Set(screens).size).toBe(screens.length);
+    const actions = PERMISSION_MODULES.flatMap((m) => [...m.actions]);
+    expect(new Set(actions).size).toBe(actions.length);
+    expect(sorted([...actions, ...RETIRED_ACTIONS])).toEqual(
+      sorted(ACTION_KEYS),
+    );
+    // O Início tem as cinco telas livres por função e no Personalizado.
+    expect(PERMISSION_MODULES[0].screens).toEqual([
+      "home",
+      "tasks",
+      "sla",
+      "messages",
+      "notifications",
+    ]);
+  });
+});
+
+describe("regra da prévia (navegador e servidor)", () => {
   const defs = resolveFunctions(null);
   const selections = [
     [],
@@ -40,7 +79,7 @@ describe("regra das caixas (navegador e servidor)", () => {
     ["buyer", "desconhecida"],
   ];
 
-  it("o padrão das funções no card é o mesmo do servidor", () => {
+  it("o padrão das funções na prévia é o mesmo do servidor", () => {
     for (const selected of selections) {
       const server = functionScreensFor(
         { role: "operator", functions: selected },
@@ -49,28 +88,42 @@ describe("regra das caixas (navegador e servidor)", () => {
       expect(sorted(inheritedScreens(selected, defs, WELLMIX_BASE))).toEqual(
         sorted(server),
       );
+      expect(sorted(actionSources(selected, defs).keys())).toEqual(
+        sorted(accessFromFunctions(selected, defs).actions),
+      );
     }
   });
 
   it("Início: abre se alguma função ativa deixa marcada; sem função, todas", () => {
-    const fns = [
+    const list = [
       { key: "a", screens: ["orders"], baseOff: ["sla", "home"] },
       { key: "b", screens: ["products"], baseOff: ["sla"] },
     ];
-    expect(combineFunctionScreens([], fns, WELLMIX_BASE).base).toEqual([
+    expect(combineFunctionScreens([], list, WELLMIX_BASE).base).toEqual([
       ...WELLMIX_BASE,
     ]);
-    const onlyA = combineFunctionScreens(["a"], fns, WELLMIX_BASE);
+    const onlyA = combineFunctionScreens(["a"], list, WELLMIX_BASE);
     expect(onlyA.base).not.toContain("sla");
     expect(onlyA.base).not.toContain("home");
-    expect(onlyA.screens).toEqual(["orders"]);
-    const both = combineFunctionScreens(["a", "b"], fns, WELLMIX_BASE);
+    const both = combineFunctionScreens(["a", "b"], list, WELLMIX_BASE);
     expect(both.base).toContain("home");
     expect(both.base).not.toContain("sla");
-    expect(sorted(both.screens)).toEqual(["orders", "products"]);
   });
 
-  it("função desativada não libera nada (o servidor e o card não a contam)", () => {
+  it("origem de cada permissão: as funções que liberam, ou o padrão do portal", () => {
+    const from = screenSources(["buyer", "planner"], defs, WELLMIX_BASE);
+    expect(from.get("booking")).toEqual(["buyer", "planner"]);
+    expect(from.get("dashboards")).toEqual(["planner"]);
+    expect(from.get("home")).toEqual(["buyer", "planner"]);
+    expect(from.has("finance")).toBe(false);
+    // Sem função: o Início vem do padrão do portal (lista vazia).
+    expect(screenSources([], defs, WELLMIX_BASE).get("tasks")).toEqual([]);
+    expect(actionSources(["designer"], defs).get("art.design")).toEqual([
+      "designer",
+    ]);
+  });
+
+  it("função desativada não libera nada", () => {
     const withArchived = [
       ...defs,
       {
@@ -78,19 +131,19 @@ describe("regra das caixas (navegador e servidor)", () => {
         name: "Velha",
         builtin: false,
         screens: ["finance" as const],
-        actions: [],
+        actions: ["order.cancel" as const],
         baseOff: [],
         archived: true,
       },
     ];
     const access = accessFromFunctions(["fn_velha"], withArchived);
     expect(access.screens).toEqual([]);
+    expect(access.actions).toEqual([]);
     expect(access.base).toEqual([...WELLMIX_BASE]);
   });
 
   it("Personalizado: as exceções à mão ficam quando as funções mudam", () => {
     const designer = inheritedScreens(["designer"], defs, WELLMIX_BASE);
-    // À mão: tira Produtos (herdada) e põe Financeiro (não herdada).
     let ex = toggleException(
       { added: [], removed: [] },
       "products",
@@ -98,82 +151,94 @@ describe("regra das caixas (navegador e servidor)", () => {
       designer,
     );
     ex = toggleException(ex, "finance", true, designer);
-    expect(ex).toEqual({ added: ["finance"], removed: ["products"] });
-    // Marca o comprador (que também libera Produtos e o Book).
+    ex = toggleException(ex, "messages", false, designer);
+    expect(ex).toEqual({
+      added: ["finance"],
+      removed: ["products", "messages"],
+    });
     const both = inheritedScreens(["designer", "buyer"], defs, WELLMIX_BASE);
     const now = withExceptions(both, ex);
     expect(now.has("booking")).toBe(true);
     expect(now.has("products")).toBe(false);
+    expect(now.has("messages")).toBe(false);
     expect(now.has("finance")).toBe(true);
-    // Desmarca o comprador: o Book sai; as exceções continuam.
-    const back = withExceptions(designer, ex);
-    expect(back.has("booking")).toBe(false);
-    expect(back.has("products")).toBe(false);
-    expect(back.has("finance")).toBe(true);
     // Voltar a caixa ao padrão das funções apaga a exceção.
-    expect(toggleException(ex, "products", true, designer)).toEqual({
-      added: ["finance"],
-      removed: [],
-    });
-  });
-
-  it("lista gravada: as exceções são a diferença para o padrão das funções", () => {
-    const inherited = new Set(["home", "tasks", "orders"]);
-    expect(exceptionsOf(["home", "orders", "finance"], inherited)).toEqual({
-      added: ["finance"],
-      removed: ["tasks"],
-    });
+    expect(toggleException(ex, "products", true, designer).removed).toEqual([
+      "messages",
+    ]);
+    expect(
+      exceptionsOf(
+        ["home", "orders", "finance"],
+        new Set(["home", "tasks", "orders"]),
+      ),
+    ).toEqual({ added: ["finance"], removed: ["tasks"] });
   });
 });
 
-describe("Início no Personalizado (servidor)", () => {
+describe("Personalizado por exceções (servidor)", () => {
   const op = { role: "operator" as const, functions: ["designer"] };
 
-  it("as caixas do Início desmarcadas não abrem; nula = todas, como antes", () => {
-    const legacy = { ...op, screens: ["orders"] };
-    for (const s of WELLMIX_BASE) expect(canOpen(legacy, s)).toBe(true);
+  it("as funções de agora com as exceções por cima, inclusive no Início", () => {
     const custom = {
       ...op,
-      screens: ["orders"],
-      screensBaseOff: ["messages", "sla"],
+      screenExceptions: {
+        added: ["finance"],
+        removed: ["messages", "products"],
+      },
     };
-    expect(customBaseFor(custom)).toEqual(["home", "tasks", "notifications"]);
+    expect(hasCustomScreens(custom)).toBe(true);
+    expect(canOpen(custom, "finance")).toBe(true);
     expect(canOpen(custom, "messages")).toBe(false);
-    expect(canOpen(custom, "sla")).toBe(false);
+    expect(canOpen(custom, "products")).toBe(false);
+    expect(canOpen(custom, "marketing")).toBe(true);
     expect(canOpen(custom, "tasks")).toBe(true);
-    expect(canOpen(custom, "orders")).toBe(true);
-    // Tela do Início que sobrou na lista não vence o que foi desmarcado.
-    expect(
-      canOpen({ ...custom, screens: ["orders", "messages"] }, "messages"),
-    ).toBe(false);
+    // Lista antiga marcada uma a uma (de antes das exceções): como antes.
+    const legacy = { ...op, screens: ["orders"] };
+    expect(hasCustomScreens(legacy)).toBe(true);
+    for (const s of WELLMIX_BASE) expect(canOpen(legacy, s)).toBe(true);
+    expect(canOpen(legacy, "marketing")).toBe(false);
   });
 
-  it("no padrão das funções a lista do Início não vale; admin abre tudo", () => {
-    expect(canOpen({ ...op, screensBaseOff: ["messages"] }, "messages")).toBe(
-      true,
-    );
+  it("abrir uma tela não concede as ações dela; o administrador faz tudo", () => {
+    const custom = {
+      ...op,
+      screenExceptions: { added: ["finance", "orders"], removed: [] },
+    };
+    expect(canOpen(custom, "finance")).toBe(true);
+    expect(canSeeMoney(custom)).toBe(false);
+    expect(can(custom, "order.cancel")).toBe(false);
     const admin = {
       role: "admin" as const,
-      screens: [],
-      screensBaseOff: [...WELLMIX_BASE],
+      functions: [],
+      screenExceptions: { added: [], removed: [...SCREENS] },
     };
-    for (const s of WELLMIX_BASE) expect(canOpen(admin, s)).toBe(true);
-    expect(canOpen(admin, "finance")).toBe(true);
+    for (const s of SCREENS) expect(canOpen(admin, s)).toBe(true);
+    expect(canSeeMoney(admin)).toBe(true);
+    expect(can(admin, "order.cancel")).toBe(true);
   });
 });
 
-describe("gravação (setTeamMember)", () => {
+describe("gravação e aplicação (servidor)", () => {
   let admin: User;
-  let op: User;
+  let joao: User;
   const place = { jobLevel: null, managerUserId: null, division: null };
-  const reload = async () => (await getStore().get("users", op.id))!;
+  const store = () => getStore();
 
-  beforeAll(async () => {
-    const { users } = await seedDemo();
-    admin = users.find((u) => u.email === "admin@wellmix.com")!;
-    op = await getStore().create("users", {
-      email: "teo.telas@wellmix.com",
-      name: "Teo Telas",
+  /** Como o getCurrentUser de cada requisição: o login lido de novo, com as funções salvas. */
+  async function session(id: string): Promise<User> {
+    const user = (await store().get("users", id))!;
+    if (user.role === "operator")
+      attachAccess(
+        user,
+        accessFromFunctions(user.functions, await fns.loadFunctionDefs()),
+      );
+    return user;
+  }
+
+  async function newLogin(email: string, functions: string[]) {
+    const user = await store().create("users", {
+      email,
+      name: email.split("@")[0],
       role: "operator",
       partyId: null,
       locale: "pt",
@@ -181,51 +246,185 @@ describe("gravação (setTeamMember)", () => {
       active: true,
       importerId: null,
     });
+    await team.setTeamMember(admin, user.id, { ...place, functions });
+    return user.id;
+  }
+
+  async function designerMarks() {
+    const def = (await fns.loadFunctionDefs()).find(
+      (d) => d.key === "designer",
+    )!;
+    return {
+      screens: [
+        ...WELLMIX_BASE.filter((s) => !def.baseOff.includes(s)),
+        ...def.screens,
+      ],
+      actions: [...def.actions],
+    };
+  }
+
+  async function newOrder() {
+    const request = await r.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId: "prod-jarra",
+      productName: "Jarra",
+      description: "Teste de acesso",
+      specification: null,
+      quantity: 100,
+      unit: "un",
+      deadline: null,
+      notes: null,
+    });
+    return orderFromRequest(admin, request, { downPaymentAmount: 300 });
+  }
+
+  const cancelInput = {
+    reason: "customer_withdrew" as const,
+    note: "Teste de permissão",
+    settlement: null,
+  };
+
+  beforeAll(async () => {
+    const { users } = await seedDemo();
+    admin = users.find((u) => u.email === "admin@wellmix.com")!;
+    joao = users.find((u) => u.email === "joao@lojista.com")!;
   });
 
-  it("grava o Início desmarcado no Personalizado e o padrão limpa", async () => {
-    // Sem a lista do Início: a coluna nem é escrita (logins antigos ficam sem).
-    await team.setTeamMember(admin, op.id, {
+  it("Personalizado grava só as exceções; o padrão limpa; a lista antiga também vale", async () => {
+    const id = await newLogin("teo.telas@wellmix.com", ["designer"]);
+    let saved = (await store().get("users", id))!;
+    expect("screenExceptions" in saved).toBe(false);
+
+    await team.setTeamMember(admin, id, {
       ...place,
-      functions: ["designer"],
-      screens: ["orders", "products"],
-      screensBaseOff: [],
+      screenExceptions: {
+        added: ["finance", "lixo"],
+        removed: ["messages", "finance"],
+      },
     });
-    let saved = await reload();
-    expect(saved.screens).toEqual(["orders", "products"]);
-    expect("screensBaseOff" in saved).toBe(false);
-
-    // Só telas do Início, na ordem do menu.
-    await team.setTeamMember(admin, op.id, {
-      ...place,
-      screens: ["orders"],
-      screensBaseOff: ["sla", "orders", "messages", "lixo"],
+    saved = (await store().get("users", id))!;
+    expect(saved.screenExceptions).toEqual({
+      added: ["finance"],
+      removed: ["messages"],
     });
-    saved = await reload();
-    expect(saved.screensBaseOff).toEqual(["sla", "messages"]);
-    expect(sorted(screensFor(saved))).toEqual(
-      sorted(["home", "tasks", "notifications", "orders"]),
-    );
-
-    // Sem a lista no envio: não muda.
-    await team.setTeamMember(admin, op.id, { ...place, screens: ["orders"] });
-    expect((await reload()).screensBaseOff).toEqual(["sla", "messages"]);
-
-    // Padrão das funções: volta a nula (o Início segue as funções).
-    await team.setTeamMember(admin, op.id, { ...place, screens: null });
-    saved = await reload();
     expect(saved.screens ?? null).toBeNull();
-    expect(saved.screensBaseOff ?? null).toBeNull();
-    for (const s of WELLMIX_BASE) expect(canOpen(saved, s)).toBe(true);
+    expect(screensFor(await session(id)).has("messages")).toBe(false);
+
+    // Padrão das funções: as exceções saem.
+    await team.setTeamMember(admin, id, { ...place, screens: null });
+    saved = (await store().get("users", id))!;
+    expect(saved.screenExceptions ?? null).toBeNull();
+    expect(hasCustomScreens(saved)).toBe(false);
+
+    // Lista antiga (chamadas de antes): grava a lista, sem exceções.
+    await team.setTeamMember(admin, id, { ...place, screens: ["orders"] });
+    saved = (await store().get("users", id))!;
+    expect(saved.screens).toEqual(["orders"]);
+    expect(saved.screenExceptions ?? null).toBeNull();
   });
 
-  it("só o administrador muda", async () => {
+  it("função salva vale na hora para os logins com ela: duas funções, Personalizado e administrador", async () => {
+    const solo = await newLogin("dina.design@wellmix.com", ["designer"]);
+    const duo = await newLogin("duda.duas@wellmix.com", [
+      "designer",
+      "planner",
+    ]);
+    const custom = await newLogin("cris.custom@wellmix.com", ["designer"]);
+    await team.setTeamMember(admin, custom, {
+      ...place,
+      screenExceptions: { added: ["finance"], removed: ["products"] },
+    });
+    const before = accessStamp(await session(solo));
+    expect(canOpen(await session(solo), "sla")).toBe(true);
+    expect(canOpen(await session(custom), "dashboards")).toBe(false);
+
+    // O administrador tira o Painel de SLA do Início do Designer e dá Painéis.
+    const marks = await designerMarks();
+    await fns.setFunctionPermissions(
+      admin,
+      "designer",
+      [...marks.screens.filter((s) => s !== "sla"), "dashboards", "products"],
+      marks.actions,
+    );
+    expect(canOpen(await session(solo), "sla")).toBe(false);
+    expect(canOpen(await session(solo), "dashboards")).toBe(true);
+    expect(accessStamp(await session(solo))).not.toBe(before);
+    // Duas funções: o planner deixa o SLA marcado.
+    expect(canOpen(await session(duo), "sla")).toBe(true);
+    // Personalizado: ganha o que a função ganhou; as exceções continuam.
+    const c1 = await session(custom);
+    expect(canOpen(c1, "dashboards")).toBe(true);
+    expect(canOpen(c1, "sla")).toBe(false);
+    expect(canOpen(c1, "finance")).toBe(true);
+    expect(canOpen(c1, "products")).toBe(false);
+    // Administrador: tudo, sempre.
+    expect(canOpen(await session(admin.id), "sla")).toBe(true);
+
+    await fns.resetFunction(admin, "designer");
+    expect(canOpen(await session(solo), "sla")).toBe(true);
+  });
+
+  it("ação sem permissão é recusada pelo servidor; concedida, passa; retirada com a sessão aberta, volta a recusar", async () => {
+    const id = await newLogin("ana.acao@wellmix.com", ["designer"]);
+    const order1 = await newOrder();
     await expect(
-      team.setTeamMember(op, op.id, {
+      c.cancelOrder(await session(id), order1.id, cancelInput),
+    ).rejects.toThrow("forbidden");
+
+    const marks = await designerMarks();
+    await fns.setFunctionPermissions(admin, "designer", marks.screens, [
+      ...marks.actions,
+      "order.cancel",
+    ]);
+    expect(can(await session(id), "order.cancel")).toBe(true);
+    await expect(
+      c.cancelOrder(await session(id), order1.id, cancelInput),
+    ).resolves.not.toThrow();
+
+    // Retirada enquanto a pessoa está com o portal aberto: a próxima
+    // requisição já recusa.
+    await fns.setFunctionPermissions(
+      admin,
+      "designer",
+      marks.screens,
+      marks.actions,
+    );
+    const order2 = await newOrder();
+    await expect(
+      c.cancelOrder(await session(id), order2.id, cancelInput),
+    ).rejects.toThrow("forbidden");
+    await fns.resetFunction(admin, "designer");
+  });
+
+  it("salvar a função guarda as ações que saíram do portal como estavam", async () => {
+    const before = (await fns.loadFunctionDefs()).find(
+      (d) => d.key === "buyer",
+    )!;
+    expect(before.actions).toContain("dumping.release");
+    await fns.setFunctionPermissions(
+      admin,
+      "buyer",
+      [...WELLMIX_BASE, ...before.screens],
+      before.actions.filter((a) => a !== "dumping.release"),
+    );
+    const after = (await fns.loadFunctionDefs()).find(
+      (d) => d.key === "buyer",
+    )!;
+    expect(after.actions).toContain("dumping.release");
+    await fns.resetFunction(admin, "buyer");
+  });
+
+  it("só o administrador grava", async () => {
+    const id = await newLogin("otto.only@wellmix.com", ["designer"]);
+    const user = (await store().get("users", id))!;
+    await expect(
+      team.setTeamMember(user, id, {
         ...place,
-        screens: ["orders"],
-        screensBaseOff: ["tasks"],
+        screenExceptions: { added: ["finance"], removed: [] },
       }),
+    ).rejects.toThrow();
+    await expect(
+      fns.setFunctionPermissions(user, "designer", [], []),
     ).rejects.toThrow();
   });
 });

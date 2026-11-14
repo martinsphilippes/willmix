@@ -682,12 +682,20 @@ export interface User extends BaseRow {
    */
   screens?: string[] | null;
   /**
-   * Telas do Início (Control Tower, Pendências, Painel de SLA, Notificações,
-   * Mensagens) desmarcadas no Personalizado de Editar acessos (dono,
-   * 14/11/2026). Só vale com `screens` (Personalizado). Nula ou ausente: o
-   * login abre todas, como antes.
+   * Personalizado de Editar acessos (dono, 14/11/2026; docs/ACCESS.md): as
+   * telas que o administrador marcou (`added`) ou desmarcou (`removed`) à mão
+   * neste login, por cima do que as funções liberam. Mudou a função, muda o
+   * resultado; a exceção continua. Inclui as telas do Início. Nula ou
+   * ausente: sem Personalizado por exceções (vale `screens`, se houver, ou o
+   * padrão das funções).
    */
-  screensBaseOff?: string[] | null;
+  screenExceptions?: ScreenExceptionsValue | null;
+}
+
+/** Exceções do Personalizado (users.screenExceptions): chaves de tela. */
+export interface ScreenExceptionsValue {
+  added: string[];
+  removed: string[];
 }
 
 export interface Party extends BaseRow {
@@ -3189,7 +3197,7 @@ export const TABLES: Record<TableName, TableDef> = {
       functions: json(),
       screens: json(),
       mustChangePassword: bool(),
-      screensBaseOff: json(),
+      screenExceptions: json(),
     },
     indexes: [
       { key: "email_unique", type: "unique", columns: ["email"] },

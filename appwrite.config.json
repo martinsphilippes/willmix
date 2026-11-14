@@ -157,7 +157,7 @@
           "type": "boolean"
         },
         {
-          "key": "screensBaseOff",
+          "key": "screenExceptions",
           "required": false,
           "array": false,
           "default": null,

@@ -4,10 +4,13 @@ import { z } from "zod";
 import { assertRole } from "@/lib/auth/permissions";
 import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
 import { ACTION_KEYS } from "@/lib/auth/function-access";
-import { SCREENS, WELLMIX_BASE } from "@/lib/auth/screens";
+import { revalidatePath } from "next/cache";
+import { SCREENS } from "@/lib/auth/screens";
 import { LOCALES } from "@/lib/db/schema";
 import { loginLabel } from "@/lib/auth/login-id";
-import { requireUser, run, str } from "./helpers";
+import { getT } from "@/i18n/server";
+import { errorTextFor } from "@/i18n/error-text";
+import { errorCode, requireUser, run, str } from "./helpers";
 
 /*
  * Equipe e divisões (painel de SLA): cargo, chefe e divisão de cada login da
@@ -24,31 +27,57 @@ const division = z
   .union([z.literal(""), z.enum(DIVISIONS)])
   .transform((v) => v || null);
 
+const screenList = (form: FormData, key: string) =>
+  z
+    .array(z.enum(SCREENS))
+    .max(SCREENS.length)
+    .parse(form.getAll(key).filter((v): v is string => typeof v === "string"));
+
 /**
- * Card "Telas que o login abre": "default" volta ao padrão das funções (e o
- * Início volta a seguir as funções); "custom" grava as caixas marcadas. Com
- * o marcador `screens.__base` o card mandou também as caixas do Início
- * (dono, 14/11/2026): as desmarcadas ficam em `screensBaseOff`.
+ * Card "Telas que o login abre": "default" volta ao padrão das funções;
+ * "custom" grava as exceções (dono, 14/11/2026): `exAdded` são as telas
+ * marcadas à mão e `exRemoved` as desmarcadas, por cima das funções,
+ * inclusive as do Início. Formulário antigo (sem o marcador
+ * `screens.__exceptions`): a lista das caixas marcadas, como antes.
  */
 function screensFromForm(form: FormData): {
-  screens: string[] | null;
-  screensBaseOff?: string[] | null;
+  screens?: string[] | null;
+  screenExceptions?: { added: string[]; removed: string[] } | null;
 } {
   const mode = z
     .enum(["default", "custom"])
     .parse(str(form, "screensMode") || "default");
-  if (mode === "default") return { screens: null, screensBaseOff: null };
-  const screens = z
-    .array(z.enum(SCREENS))
-    .max(SCREENS.length)
-    .parse(
-      form.getAll("screens").filter((v): v is string => typeof v === "string"),
-    );
+  if (mode === "default") return { screens: null };
+  if (form.has("screens.__exceptions"))
+    return {
+      screenExceptions: {
+        added: screenList(form, "exAdded"),
+        removed: screenList(form, "exRemoved"),
+      },
+    };
+  return { screens: screenList(form, "screens") };
+}
+
+/** Os campos de Editar acessos (página e painel lateral). */
+function teamMemberInput(form: FormData) {
   return {
-    screens,
-    ...(form.has("screens.__base")
-      ? { screensBaseOff: WELLMIX_BASE.filter((s) => !screens.includes(s)) }
+    jobLevel: level.parse(str(form, "jobLevel")),
+    managerUserId: optionalId.parse(str(form, "managerUserId")),
+    division: division.parse(str(form, "division")),
+    // Funções marcadas (o formulário sempre manda o marcador).
+    ...(form.has("functions.__form")
+      ? {
+          functions: z
+            .array(z.string().regex(/^[a-z0-9_]{1,48}$/))
+            .max(60)
+            .parse(
+              form
+                .getAll("functions")
+                .filter((v): v is string => typeof v === "string"),
+            ),
+        }
       : {}),
+    ...(form.has("screens.__form") ? screensFromForm(form) : {}),
   };
 }
 
@@ -58,28 +87,58 @@ export async function saveTeamMemberAction(form: FormData) {
     assertRole(user, ["admin"]);
     const targetId = ID.parse(str(form, "userId"));
     const { setTeamMember } = await import("@/lib/services/team");
-    await setTeamMember(user, targetId, {
-      jobLevel: level.parse(str(form, "jobLevel")),
-      managerUserId: optionalId.parse(str(form, "managerUserId")),
-      division: division.parse(str(form, "division")),
-      // Caixas de marcação das funções (o formulário sempre manda o marcador).
-      ...(form.has("functions.__form")
-        ? {
-            functions: z
-              .array(z.string().regex(/^[a-z0-9_]{1,48}$/))
-              .max(60)
-              .parse(
-                form
-                  .getAll("functions")
-                  .filter((v): v is string => typeof v === "string"),
-              ),
-          }
-        : {}),
-      // Telas: "default" volta ao padrão das funções; "custom" grava as caixas marcadas.
-      ...(form.has("screens.__form") ? screensFromForm(form) : {}),
-    });
+    await setTeamMember(user, targetId, teamMemberInput(form));
     return `/app/team?saved=member#u-${targetId}`;
   });
+}
+
+/** Resultado de "Salvar" no painel Editar acessos e em Funções e acessos. */
+export interface TeamSaveState {
+  ok: boolean;
+  /** Código da recusa; nulo quando deu certo (ou antes de enviar). */
+  error: string | null;
+  /** Texto da recusa, no idioma de quem salvou. */
+  message: string | null;
+  /** Quando o servidor terminou de gravar (ISO). */
+  savedAt: string | null;
+}
+
+async function refused(back: string, error: unknown): Promise<TeamSaveState> {
+  const code = errorCode(back, error);
+  const t = await getT();
+  return {
+    ok: false,
+    error: code,
+    message: errorTextFor(t, code, ["team.error"]),
+    savedAt: null,
+  };
+}
+
+/**
+ * Editar acessos (painel lateral da lista e página da pessoa; dono,
+ * 14/11/2026): grava cargo, divisão, chefe, funções e telas e fica na mesma
+ * tela. A lista e o menu são atualizados no lugar (revalidatePath).
+ */
+export async function saveTeamAccessAction(
+  _prev: TeamSaveState,
+  form: FormData,
+): Promise<TeamSaveState> {
+  const user = await requireUser();
+  try {
+    assertRole(user, ["admin"]);
+    const targetId = ID.parse(str(form, "userId"));
+    const { setTeamMember } = await import("@/lib/services/team");
+    await setTeamMember(user, targetId, teamMemberInput(form));
+  } catch (error) {
+    return refused("/app/team", error);
+  }
+  revalidatePath("/app", "layout");
+  return {
+    ok: true,
+    error: null,
+    message: null,
+    savedAt: new Date().toISOString(),
+  };
 }
 
 /**
@@ -267,6 +326,48 @@ export async function saveFunctionActionsAction(form: FormData) {
     );
     return `${fnBack(key, "actions")}&saved=actions`;
   });
+}
+
+/**
+ * "Salvar permissões" de Funções e acessos (dono, 14/11/2026): telas e ações
+ * da função numa gravação só. Fica na mesma tela; o aviso de salvo aparece
+ * depois que o servidor terminou.
+ */
+export async function saveFunctionPermissionsAction(
+  _prev: TeamSaveState,
+  form: FormData,
+): Promise<TeamSaveState> {
+  const user = await requireUser();
+  const key = str(form, "key");
+  try {
+    assertRole(user, ["admin"]);
+    FN_KEY.parse(key);
+    const actions = z
+      .array(z.enum(ACTION_KEYS as [string, ...string[]]))
+      .max(ACTION_KEYS.length)
+      .parse(
+        form
+          .getAll("actions")
+          .filter((v): v is string => typeof v === "string"),
+      );
+    const { setFunctionPermissions } =
+      await import("@/lib/services/team-functions");
+    await setFunctionPermissions(
+      user,
+      key,
+      screenList(form, "screens"),
+      actions as (typeof ACTION_KEYS)[number][],
+    );
+  } catch (error) {
+    return refused(fnBack(key), error);
+  }
+  revalidatePath("/app", "layout");
+  return {
+    ok: true,
+    error: null,
+    message: null,
+    savedAt: new Date().toISOString(),
+  };
 }
 
 export async function resetFunctionAction(form: FormData) {

@@ -9,8 +9,14 @@ import {
   type RequestStatus,
   type User,
 } from "@/lib/db";
+import type { ScreenExceptionsValue } from "@/lib/db/schema";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
-import { WELLMIX_BASE, validScreens } from "@/lib/auth/screens";
+import {
+  SCREENS,
+  WELLMIX_BASE,
+  validScreens,
+  type Screen,
+} from "@/lib/auth/screens";
 import { loginLabel } from "@/lib/auth/login-id";
 import { audit } from "./audit";
 
@@ -69,16 +75,18 @@ export async function setTeamMember(
     /** Funções (de fábrica ou criadas); ausente = não muda. */
     functions?: string[];
     /**
-     * Telas marcadas uma a uma (docs/ACCESS.md): lista = personalizado;
-     * null = volta ao padrão das funções; ausente = não muda.
+     * Lista marcada uma a uma (formato de antes das exceções; docs/ACCESS.md):
+     * lista = personalizado; null = volta ao padrão das funções (e apaga as
+     * exceções); ausente = não muda.
      */
     screens?: string[] | null;
     /**
-     * Telas do Início desmarcadas no Personalizado (users.screensBaseOff):
-     * lista = grava; null = todas abrem; ausente = não muda. Com
-     * `screens: null` (padrão das funções) volta a nula.
+     * Personalizado por exceções (Editar acessos, dono, 14/11/2026): as telas
+     * marcadas (`added`) e desmarcadas (`removed`) à mão por cima das funções,
+     * inclusive as do Início. Objeto = grava (e apaga a lista antiga);
+     * null = apaga; ausente = não muda.
      */
-    screensBaseOff?: string[] | null;
+    screenExceptions?: ScreenExceptionsValue | null;
   },
 ): Promise<void> {
   if (!isAdmin(user)) throw new ForbiddenError();
@@ -100,7 +108,7 @@ export async function setTeamMember(
     division: target.division ?? null,
     functions: target.functions ?? [],
     screens: target.screens ?? null,
-    screensBaseOff: target.screensBaseOff ?? null,
+    screenExceptions: target.screenExceptions ?? null,
   };
   // Só funções existentes e ativas, na ordem da lista (Equipe → Funções e acessos).
   const defs = input.functions ? await loadFunctionDefs() : [];
@@ -109,35 +117,47 @@ export async function setTeamMember(
         .filter((d) => !d.archived && input.functions!.includes(d.key))
         .map((d) => d.key)
     : undefined;
-  // Telas: só chaves válidas, sem o Início (que tem a lista própria abaixo).
-  const screens =
-    input.screens === undefined
-      ? undefined
-      : input.screens === null
-        ? null
-        : validScreens(input.screens).filter((s) => !WELLMIX_BASE.includes(s));
-  // Início desmarcado no Personalizado: só telas do Início, na ordem do menu;
-  // vazia vira nula (todas abrem). Padrão das funções: nula. Grava só quando
-  // muda (o login que nunca teve a lista continua sem ela).
-  const baseOffInput = screens === null ? null : input.screensBaseOff;
-  const baseOffOf = (list: unknown) => {
-    const valid = validScreens(list);
-    const off = WELLMIX_BASE.filter((s) => valid.includes(s));
-    return off.length ? off : null;
-  };
-  const screensBaseOff =
-    baseOffInput === undefined ? undefined : baseOffOf(baseOffInput);
-  const baseOffChanged =
-    screensBaseOff !== undefined &&
-    JSON.stringify(screensBaseOff) !==
-      JSON.stringify(baseOffOf(target.screensBaseOff));
+  // Telas. Exceções (o card novo): só chaves válidas, na ordem do portal, e
+  // a lista antiga sai. Padrão das funções: as duas saem. Lista antiga
+  // (chamadas de antes): só chaves válidas, sem o Início, e as exceções saem.
+  let screens: Screen[] | null | undefined;
+  let screenExceptions: ScreenExceptionsValue | null | undefined;
+  const ex = input.screenExceptions;
+  if (ex && typeof ex === "object") {
+    const added = SCREENS.filter((s) => validScreens(ex.added).includes(s));
+    screenExceptions = {
+      added,
+      removed: SCREENS.filter(
+        (s) => validScreens(ex.removed).includes(s) && !added.includes(s),
+      ),
+    };
+    screens = null;
+  } else if (input.screens === null) {
+    screens = null;
+    screenExceptions = null;
+  } else if (Array.isArray(input.screens)) {
+    screens = validScreens(input.screens).filter(
+      (s) => !WELLMIX_BASE.includes(s),
+    );
+    screenExceptions = null;
+  } else if (ex === null) {
+    screenExceptions = null;
+  }
+  // Grava as exceções só quando mudam (o login que nunca teve fica sem).
+  const exceptionsChanged =
+    screenExceptions !== undefined &&
+    JSON.stringify(screenExceptions) !==
+      JSON.stringify(target.screenExceptions ?? null);
+  const screensChanged =
+    screens !== undefined &&
+    JSON.stringify(screens) !== JSON.stringify(target.screens ?? null);
   await store.update("users", target.id, {
     jobLevel: input.jobLevel,
     managerUserId: input.managerUserId,
     division: input.division,
     ...(functions ? { functions } : {}),
-    ...(screens !== undefined ? { screens } : {}),
-    ...(baseOffChanged ? { screensBaseOff } : {}),
+    ...(screensChanged ? { screens } : {}),
+    ...(exceptionsChanged ? { screenExceptions } : {}),
   });
   await audit(
     user,
@@ -149,7 +169,7 @@ export async function setTeamMember(
     {
       ...input,
       ...(screens !== undefined ? { screens } : {}),
-      ...(screensBaseOff !== undefined ? { screensBaseOff } : {}),
+      ...(screenExceptions !== undefined ? { screenExceptions } : {}),
     },
   );
 }

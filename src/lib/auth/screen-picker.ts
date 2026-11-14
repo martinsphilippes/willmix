@@ -106,3 +106,48 @@ export function toggleException(
   if (on !== inherited.has(screen)) (on ? added : removed).push(screen);
   return { added, removed };
 }
+
+/** Função ativa com as ações (a prévia de Acessos efetivos mostra as duas abas). */
+export interface FunctionAccess extends FunctionScreens {
+  actions: readonly string[];
+}
+
+/**
+ * De onde vem cada tela herdada: as funções marcadas que a liberam. Tela do
+ * Início sem função ativa no login: lista vazia (o padrão do portal abre).
+ */
+export function screenSources(
+  selected: readonly string[] | null | undefined,
+  defs: readonly FunctionScreens[],
+  base: readonly string[],
+): Map<string, string[]> {
+  const sources = new Map<string, string[]>();
+  const add = (screen: string, key: string) =>
+    sources.set(screen, [...(sources.get(screen) ?? []), key]);
+  const active = (selected ?? [])
+    .map((key) => defs.find((d) => d.key === key))
+    .filter((d): d is FunctionScreens => !!d);
+  for (const def of active) {
+    def.screens.forEach((s) => add(s, def.key));
+    base.forEach((s) => {
+      if (!def.baseOff.includes(s)) add(s, def.key);
+    });
+  }
+  if (!active.length) base.forEach((s) => sources.set(s, []));
+  return sources;
+}
+
+/** De onde vem cada ação: as funções marcadas que a liberam. */
+export function actionSources(
+  selected: readonly string[] | null | undefined,
+  defs: readonly FunctionAccess[],
+): Map<string, string[]> {
+  const sources = new Map<string, string[]>();
+  for (const key of selected ?? []) {
+    const def = defs.find((d) => d.key === key);
+    def?.actions.forEach((a) =>
+      sources.set(a, [...(sources.get(a) ?? []), def.key]),
+    );
+  }
+  return sources;
+}

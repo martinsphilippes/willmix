@@ -15,6 +15,7 @@ import {
   type StoredFunctions,
 } from "@/lib/auth/function-access";
 import { WELLMIX_FUNCTIONS } from "@/lib/db/schema";
+import { isRetiredAction } from "@/lib/auth/permission-modules";
 import { audit } from "./audit";
 
 /*
@@ -173,6 +174,50 @@ export async function setFunctionActions(
     "user",
     user.id,
     `Função ${key}: ${def.actions.join(", ") || "(nenhuma)"}`,
+  );
+}
+
+/**
+ * Telas e ações da função numa gravação só ("Salvar permissões" de Funções e
+ * acessos; dono, 14/11/2026). Telas do Início: as que não vierem marcadas
+ * ficam em `baseOff`. Ações que saíram do portal (pré-custo e dumping) não
+ * aparecem para marcar e ficam como estavam. Vale na próxima requisição de
+ * cada login com a função (o acesso é calculado de novo a cada página e a
+ * cada ação no servidor).
+ */
+export async function setFunctionPermissions(
+  user: User,
+  key: string,
+  screens: Screen[],
+  actions: ActionKey[],
+) {
+  assertAdmin(user);
+  const defs = await current();
+  const def = defs.find((d) => d.key === key);
+  if (!def) throw new TeamFunctionError("not_found");
+  const before = {
+    screens: def.screens,
+    baseOff: def.baseOff,
+    actions: def.actions,
+  };
+  def.screens = SCREENS.filter(
+    (s) => screens.includes(s) && !WELLMIX_BASE.includes(s),
+  );
+  def.baseOff = WELLMIX_BASE.filter((s) => !screens.includes(s));
+  def.actions = ACTION_KEYS.filter((a) =>
+    isRetiredAction(a) ? before.actions.includes(a) : actions.includes(a),
+  );
+  await writeDefs(defs);
+  await audit(
+    user,
+    "team.function_permissions",
+    "user",
+    user.id,
+    `Função ${key}: telas ${def.screens.join(", ") || "(só o Início)"}${
+      def.baseOff.length ? ` · Início sem: ${def.baseOff.join(", ")}` : ""
+    } · ações ${def.actions.filter((a) => !isRetiredAction(a)).join(", ") || "(nenhuma)"}`,
+    before,
+    { screens: def.screens, baseOff: def.baseOff, actions: def.actions },
   );
 }
 

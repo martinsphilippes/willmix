@@ -2,7 +2,6 @@ import {
   FUNCTION_SCREENS,
   SCREENS,
   WELLMIX_BASE,
-  canOpen,
   type Screen,
 } from "@/lib/auth/screens";
 import { accessOf, type ResolvedAccess } from "@/lib/auth/access-cache";
@@ -288,14 +287,13 @@ export function can(
 
 /**
  * Ver valores (venda, recebido, custo, margem) nas listas, exportações e na
- * Control Tower: quem abre Financeiro ou tem a permissão "Ver valores e
- * margem". Registrar e confirmar pagamentos continua sendo da tela Financeiro.
+ * Control Tower: quem tem a permissão "Ver valores e margem" (o
+ * administrador sempre). Abrir a tela Financeiro não concede a ação (dono,
+ * 14/11/2026: a tela controla a abertura; a ação, a execução). Registrar e
+ * confirmar pagamentos continua sendo da tela Financeiro.
  */
-export function canSeeMoney(user: Who & { screens?: unknown }): boolean {
-  return (
-    canOpen(user as Parameters<typeof canOpen>[0], "finance") ||
-    can(user, "values.view")
-  );
+export function canSeeMoney(user: Who): boolean {
+  return can(user, "values.view");
 }
 
 /** Server Actions e serviços: recusa (forbidden) quem não tem a ação. */
