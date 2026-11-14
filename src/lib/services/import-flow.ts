@@ -1932,3 +1932,41 @@ export async function readyImportTasks(
     routeImportCandidates(user, order, candidates, ctx, today, options),
   );
 }
+
+/** Situações do pedido em que o embarque, a origem e as amostras andam. */
+const OPEN_FLOW_STATUSES: readonly string[] = [
+  "INSPECTION",
+  "SHIPPING",
+  "CUSTOMS",
+  "TRANSPORT",
+  "DELIVERED",
+];
+
+/**
+ * Passos abertos do pedido (prontos e ainda não concluídos), quem quer que
+ * os faça: a aba "Todos" das telas dos passos do menu (docs/FLOW_MENU.md).
+ * Embarque, origem e amostras só do pedido já na inspeção em diante; a
+ * certificação e as amostras só quando o chamador diz que valem para o
+ * pedido (certificação começada; amostras pedidas). O BL do pedido de compra
+ * vem dos documentos do embarque (não entra).
+ */
+export function openImportStepKeys(
+  order: Order,
+  steps: ImportStep[],
+  options: { certification: boolean; samples: boolean },
+): ImportStepKey[] {
+  if (order.status === "CANCELLED" || order.status === "CLOSED") return [];
+  const flowing = OPEN_FLOW_STATUSES.includes(order.status);
+  return IMPORT_STEPS.filter((tpl) => {
+    const group = groupOf(tpl);
+    if (group === "certification" ? !options.certification : !flowing)
+      return false;
+    if (group === "samples" && !options.samples) return false;
+    if (!stepApplies(order, tpl.key)) return false;
+    if (tpl.key === "bl" && isPurchaseFlow(order)) return false;
+    return (
+      ready(tpl.key, steps, order) &&
+      !isDone(steps.find((s) => s.key === tpl.key))
+    );
+  }).map((tpl) => tpl.key);
+}

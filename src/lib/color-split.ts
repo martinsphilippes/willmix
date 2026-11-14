@@ -42,6 +42,16 @@ export type ColorSplitResult =
   | {
       ok: false;
       /**
+       * Caixas digitadas por cor (`cartons`) que não somam as caixas das
+       * datas: `expected` caixas nas datas, `got` caixas nas cores.
+       */
+      error: "colors_total";
+      expected: number;
+      got: number;
+    }
+  | {
+      ok: false;
+      /**
        * A data (rodada) não fecha caixas master inteiras para dividir entre as
        * cores: o ajuste é para `down` ou `up` peças (múltiplos da caixa).
        */
@@ -73,11 +83,20 @@ export function splitByColor(input: {
   colors: string[];
   /** Peças por caixa master do item escolhido (nulo: sem caixa). */
   carton: number | null | undefined;
+  /**
+   * Caixas de cada cor digitadas na tela (dono, 14/11/2026: a quantidade de
+   * caixas por cor é livre). Com elas, cada cor fica com as suas caixas,
+   * espalhadas pelas datas na proporção de cada data; a soma tem de bater
+   * com as caixas das datas. Sem elas: divisão igual.
+   */
+  cartons?: Record<string, number> | null;
 }): ColorSplitResult {
   const colors = input.colors;
   const rounds = input.rounds.map((q) => Math.max(0, Math.round(q)));
   if (!colors.length) return { ok: false, error: "colors_none" };
-  if (colors.length === 1)
+  const typed =
+    input.cartons && input.carton && input.carton >= 1 ? input.cartons : null;
+  if (colors.length === 1 && !typed)
     return {
       ok: true,
       rows: [
@@ -108,10 +127,16 @@ export function splitByColor(input: {
   const units = rounds.map((q) => q / carton);
   const total = units.reduce((s, u) => s + u, 0);
   const k = colors.length;
-  // Caixas de cada cor: iguais, o saldo para as primeiras.
-  const need = colors.map(
-    (_, c) => Math.floor(total / k) + (c < total % k ? 1 : 0),
-  );
+  // Caixas de cada cor: as digitadas ou, sem elas, iguais (o saldo para as
+  // primeiras).
+  const need = typed
+    ? colors.map((c) => Math.max(0, Math.round(typed[c] ?? 0)))
+    : colors.map((_, c) => Math.floor(total / k) + (c < total % k ? 1 : 0));
+  if (typed) {
+    const got = need.reduce((s, n) => s + n, 0);
+    if (got !== total)
+      return { ok: false, error: "colors_total", expected: total, got };
+  }
   const cells = colors.map(() => rounds.map(() => 0));
   let remaining = total;
   for (let r = 0; r < units.length; r++) {
@@ -166,6 +191,8 @@ export function buildColorPlan(input: {
   included?: string[] | null;
   rounds: number[];
   carton: number | null | undefined;
+  /** Caixas de cada cor digitadas na tela (nulo: divisão igual). */
+  cartons?: Record<string, number> | null;
 }): { plan: ColorPlan | null } | { error: ColorSplitResult & { ok: false } } {
   const colors = colorsOf(input.assortment);
   if (colors.length < 2) return { plan: null };
@@ -179,9 +206,44 @@ export function buildColorPlan(input: {
     rounds: input.rounds,
     colors: included,
     carton: input.carton,
+    cartons: input.cartons ?? null,
   });
   if (!split.ok) return { error: split };
-  return { plan: { colors, included, rows: split.rows } };
+  return {
+    plan: {
+      colors,
+      included,
+      rows: split.rows,
+      ...(input.cartons ? { custom: true } : {}),
+    },
+  };
+}
+
+/**
+ * Total de caixas espalhado por datas na proporção de `weights` (as peças de
+ * cada data), em caixas inteiras; o saldo pelas maiores frações (empate: as
+ * primeiras datas). Pesos zerados: partes iguais. Usado quando as caixas de
+ * uma cor mudam e o total das datas acompanha a soma das cores.
+ */
+export function spreadCartons(total: number, weights: number[]): number[] {
+  const n = weights.length;
+  if (!n) return [];
+  const t = Math.max(0, Math.round(total));
+  const sum = weights.reduce((s, w) => s + Math.max(0, w), 0);
+  const exact = weights.map((w) =>
+    sum > 0 ? (Math.max(0, w) * t) / sum : t / n,
+  );
+  const out = exact.map((x) => Math.floor(x));
+  let left = t - out.reduce((s, x) => s + x, 0);
+  const order = exact
+    .map((x, i) => ({ i, f: x - Math.floor(x) }))
+    .sort((a, b) => b.f - a.f || a.i - b.i);
+  for (const { i } of order) {
+    if (left <= 0) break;
+    out[i]++;
+    left--;
+  }
+  return out;
 }
 
 /** Peças de cada cor numa data do plano (para a rodada e o pedido filho). */

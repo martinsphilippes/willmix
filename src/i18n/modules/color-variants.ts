@@ -40,6 +40,13 @@ export const pt = {
     "A quantidade não fecha caixas master inteiras para dividir entre as cores. Ajuste como indicado na composição por cor e grave de novo.",
   "supplierRequests.error.selection_colors_none":
     "Inclua pelo menos uma cor na compra (card Variações) para gravar a escolha.",
+  "supplierRequests.error.selection_colors_total":
+    "As caixas por cor não somam o total do pedido. Confira as caixas de cada cor no card Variações e grave de novo.",
+  "colors.card.cartons": "Caixas",
+  "colors.card.cartonsOf": "Caixas de {color}",
+  "colors.card.custom":
+    "Caixas por cor digitadas: o total do pedido é a soma das cores.",
+  "colors.card.reset": "Dividir igualmente",
   "purchaseOrder.error.purchase_order_colors_cartons":
     "A quantidade de um produto com variações de cor não fecha caixas master inteiras para dividir entre as cores. Use um múltiplo da caixa master ou deixe a quantidade da solicitação.",
 };
@@ -80,6 +87,13 @@ export const en: Record<keyof typeof pt, string> = {
     "The quantity does not make whole master cartons to split across the colors. Adjust it as shown in the breakdown by color and save again.",
   "supplierRequests.error.selection_colors_none":
     "Include at least one color in the purchase (Variations card) to save the choice.",
+  "supplierRequests.error.selection_colors_total":
+    "The cartons per color do not add up to the order total. Check each color's cartons in the Variations card and save again.",
+  "colors.card.cartons": "Cartons",
+  "colors.card.cartonsOf": "Cartons of {color}",
+  "colors.card.custom":
+    "Cartons typed per color: the order total is the sum of the colors.",
+  "colors.card.reset": "Split evenly",
   "purchaseOrder.error.purchase_order_colors_cartons":
     "The quantity of a product with color variations does not make whole master cartons to split across the colors. Use a multiple of the master carton or keep the request quantity.",
 };
@@ -119,6 +133,12 @@ export const zh: Record<keyof typeof pt, string> = {
     "数量无法凑成整箱外箱来分配颜色。请按颜色分配中的提示调整后再保存。",
   "supplierRequests.error.selection_colors_none":
     "请至少选择一种颜色加入采购（颜色款式卡片）后再保存选择。",
+  "supplierRequests.error.selection_colors_total":
+    "各颜色的箱数之和与订单总数不符。请在颜色款式卡片中核对每种颜色的箱数后再保存。",
+  "colors.card.cartons": "箱数",
+  "colors.card.cartonsOf": "{color} 的箱数",
+  "colors.card.custom": "已按颜色输入箱数：订单总数为各颜色之和。",
+  "colors.card.reset": "平均分配",
   "purchaseOrder.error.purchase_order_colors_cartons":
     "有颜色款式的产品数量无法凑成整箱外箱来分配颜色。请使用外箱的倍数，或保留询价单的数量。",
 };

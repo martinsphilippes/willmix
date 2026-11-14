@@ -478,7 +478,22 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // por blocos, docs/FLOW_MENU.md): o menu conta a validação, a tela traz a
   // arte enviada e o aprovar; a ação volta para a tela do passo.
   await login(page, "admin@wellmix.com");
+  // Aba "Todos no passo": todos os pedidos no passo, de qualquer
+  // responsável, com o link para o detalhe (docs/FLOW_MENU.md).
+  await page.goto("/app/flow/order/art?tab=all");
+  const allOrderId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
+  await expect(
+    page.locator('[data-flow-tab="all"][aria-current="page"]'),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator(`[data-flow-all-order="${allOrderId}"] [data-flow-all-view]`)
+      .first(),
+  ).toHaveAttribute("href", `/app/orders/${allOrderId}`);
   await page.goto("/app/flow/order/art");
+  await expect(
+    page.locator('[data-flow-tab="pending"][aria-current="page"]'),
+  ).toBeVisible();
   await expect(
     page
       .locator('[data-nav-link="/app/flow/order/art"] [data-nav-badge]')

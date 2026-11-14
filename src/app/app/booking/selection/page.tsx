@@ -1,3 +1,4 @@
+import type { ColorPlan } from "@/lib/db/schema";
 import { isWellmix } from "@/lib/auth/permissions";
 import { LiveSearch } from "@/components/live-search";
 import Link from "next/link";
@@ -629,6 +630,7 @@ export default async function BookingSelectionPage({
               item.factoryItemCode ??
               item.id,
             colors: colorsOf(item.colorAssortment),
+            carton: item.masterCartonQty,
           }))}
           chosenItemId={current?.chosenItemId ?? null}
           savedColors={current?.colorPlan?.included ?? null}
@@ -645,6 +647,8 @@ export default async function BookingSelectionPage({
             count: t("colors.card.count", { n: "{n}", total: "{total}" }),
             pieces: t("colors.card.pieces", { n: "{n}" }),
             line: t("colors.line", { product: "{product}", color: "{color}" }),
+            cartons: t("colors.card.cartons"),
+            cartonsOf: t("colors.card.cartonsOf", { color: "{color}" }),
           }}
         />
 
@@ -700,7 +704,10 @@ export default async function BookingSelectionPage({
                   }),
                   adjustWhere: t("colors.adjustWhere", { n: "{n}" }),
                   none: t("colors.none"),
+                  custom: t("colors.card.custom"),
+                  reset: t("colors.card.reset"),
                 }}
+                savedCartons={savedCartonsOf(current, list)}
                 gen={{
                   title: t("purchaseRounds.gen.title"),
                   hint: t("purchaseRounds.gen.hint"),
@@ -1404,5 +1411,24 @@ export default async function BookingSelectionPage({
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Caixas por cor da escolha gravada, quando foram digitadas (plano
+ * `custom`): as peças de cada cor ÷ as peças por caixa master do vencedor.
+ */
+function savedCartonsOf(
+  group:
+    { chosenItemId: string; colorPlan?: ColorPlan | null } | null | undefined,
+  list: SelectionRow[],
+): Record<string, number> | null {
+  const plan = group?.colorPlan;
+  if (!plan?.custom) return null;
+  const per = list.find((r) => r.item.id === group!.chosenItemId)?.item
+    .masterCartonQty;
+  if (!per || per < 1) return null;
+  return Object.fromEntries(
+    plan.rows.map((r) => [r.color, Math.round(r.quantity / per)]),
   );
 }

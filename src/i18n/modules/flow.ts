@@ -3,6 +3,21 @@
  * telas dos passos; docs/FLOW_MENU.md): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "flow.all.production":
+    "Produção em andamento (ETD definido, aguardando a inspeção)",
+  "flow.tab.pending": "Pendências",
+  "flow.tab.all": "Todos no passo",
+  "flow.tabs": "Visão do passo",
+  "flow.all.empty": "Nenhum pedido neste passo agora.",
+  "flow.all.order": "Pedido",
+  "flow.all.supplier": "Fornecedor",
+  "flow.all.stage": "Etapa do pedido",
+  "flow.all.open": "Aberto neste passo",
+  "flow.all.since": "No passo há",
+  "flow.all.view": "Ver o pedido",
+  "flow.all.hint":
+    "Todos os pedidos que estão neste passo agora, de qualquer responsável. Clique para ver o detalhe.",
+  "flow.overview.inStep": "{n} no passo",
   "flow.preproduction.title": "Pré-produção do pedido #{n}",
   "flow.preproduction.detail":
     "Sinal pago: dados da produção (fábrica ou trade) e ETD",
@@ -152,6 +167,21 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "flow.all.production":
+    "Production under way (ETD set, waiting for inspection)",
+  "flow.tab.pending": "Pending",
+  "flow.tab.all": "All in this step",
+  "flow.tabs": "Step view",
+  "flow.all.empty": "No orders in this step right now.",
+  "flow.all.order": "Order",
+  "flow.all.supplier": "Supplier",
+  "flow.all.stage": "Order stage",
+  "flow.all.open": "Open in this step",
+  "flow.all.since": "In the step for",
+  "flow.all.view": "View order",
+  "flow.all.hint":
+    "Every order in this step right now, whoever is responsible. Click to see the details.",
+  "flow.overview.inStep": "{n} in the step",
   "flow.preproduction.title": "Pre-production for order #{n}",
   "flow.preproduction.detail":
     "Down payment cleared: production data (factory or trade) and ETD",
@@ -301,6 +331,19 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "flow.all.production": "生产进行中（已定 ETD，等待验货）",
+  "flow.tab.pending": "待处理",
+  "flow.tab.all": "本环节全部",
+  "flow.tabs": "环节视图",
+  "flow.all.empty": "目前本环节没有订单。",
+  "flow.all.order": "订单",
+  "flow.all.supplier": "供应商",
+  "flow.all.stage": "订单阶段",
+  "flow.all.open": "本环节未完成",
+  "flow.all.since": "已在本环节",
+  "flow.all.view": "查看订单",
+  "flow.all.hint": "目前处于本环节的所有订单，不论由谁负责。点击查看详情。",
+  "flow.overview.inStep": "本环节 {n} 个",
   "flow.preproduction.title": "订单 #{n} 产前",
   "flow.preproduction.detail": "定金已付：生产信息（工厂或贸易）和 ETD",
   "flow.receiving.title": "订单 #{n} 收货",

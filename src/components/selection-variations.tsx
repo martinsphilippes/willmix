@@ -3,8 +3,10 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { cx } from "@/components/ui";
 import {
+  CARTONS_EVENT,
   COLORS_EVENT,
   SPLIT_EVENT,
+  type CartonsEventDetail,
   type ColorsEventDetail,
   type SplitEventDetail,
 } from "@/components/selection-quantity";
@@ -25,6 +27,8 @@ export interface VariationItem {
   name: string;
   /** Cores do item no Book (duas ou mais = variações). */
   colors: string[];
+  /** Peças por caixa master (com ela, as caixas de cada cor são editáveis). */
+  carton?: number | null;
 }
 
 export interface VariationLabels {
@@ -40,6 +44,9 @@ export interface VariationLabels {
   count: string;
   pieces: string;
   line: string;
+  /** Campo "Caixas" ao lado das peças de cada cor e o rótulo acessível dele. */
+  cartons: string;
+  cartonsOf: string;
 }
 
 const fill = (s: string, vars: Record<string, string | number>) =>
@@ -137,6 +144,21 @@ export function SelectionVariations({
     }));
   };
 
+  // Caixas sendo digitadas (o campo mostra o texto até sair dele).
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const per = item?.carton && item.carton >= 1 ? Math.round(item.carton) : null;
+  /** Caixas digitadas para uma cor: o gerador refaz o total (a soma). */
+  const typeCartons = (color: string, text: string) => {
+    setDrafts((d) => ({ ...d, [color]: text }));
+    const n = Number(text.replace(/\D/g, ""));
+    if (!item || text.trim() === "" || !Number.isInteger(n) || n < 0) return;
+    ref.current?.closest("form")?.dispatchEvent(
+      new CustomEvent<CartonsEventDetail>(CARTONS_EVENT, {
+        detail: { itemId: item.id, color, cartons: n },
+      }),
+    );
+  };
+
   const pieces = (color: string) =>
     split?.itemId === item?.id
       ? (split?.rows?.find((r) => r.color === color)?.quantity ?? null)
@@ -213,11 +235,14 @@ export function SelectionVariations({
                 return (
                   <li
                     key={color}
-                    className={cx(!on && "bg-zinc-50 text-zinc-400")}
+                    className={cx(
+                      "flex flex-wrap items-center gap-x-3 gap-y-1 pr-3",
+                      !on && "bg-zinc-50 text-zinc-400",
+                    )}
                     data-selection-color={color}
                     data-selection-color-on={on ? "1" : "0"}
                   >
-                    <label className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm">
+                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 px-3 py-2 text-sm">
                       <input
                         type="checkbox"
                         name={`colors.${item.id}`}
@@ -242,17 +267,47 @@ export function SelectionVariations({
                           </span>
                         ) : null}
                       </span>
-                      {n !== null ? (
-                        <span
-                          className="shrink-0 text-xs font-semibold tabular-nums text-zinc-700"
-                          data-selection-color-pieces
-                        >
-                          {fill(labels.pieces, {
-                            n: n.toLocaleString(labels.intl),
-                          })}
-                        </span>
-                      ) : null}
                     </label>
+                    {/* Caixas da cor, livres (dono, 14/11/2026): mudar uma
+                        cor muda só ela, e o total vira a soma das cores. */}
+                    {on && per && n !== null ? (
+                      <label className="flex items-center gap-1.5 text-xs text-zinc-600">
+                        <span>{labels.cartons}</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={drafts[color] ?? String(Math.round(n / per))}
+                          onChange={(e) => typeCartons(color, e.target.value)}
+                          onBlur={() =>
+                            setDrafts((d) => {
+                              const rest = { ...d };
+                              delete rest[color];
+                              return rest;
+                            })
+                          }
+                          onKeyDown={(e) => {
+                            // Enter não grava a escolha: só confirma o campo.
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          aria-label={fill(labels.cartonsOf, { color })}
+                          className="h-8 w-20 rounded-md border border-zinc-300 bg-white px-2 text-right text-sm tabular-nums text-zinc-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+                          data-selection-color-cartons
+                        />
+                      </label>
+                    ) : null}
+                    {n !== null ? (
+                      <span
+                        className="shrink-0 text-xs font-semibold tabular-nums text-zinc-700"
+                        data-selection-color-pieces
+                      >
+                        {fill(labels.pieces, {
+                          n: n.toLocaleString(labels.intl),
+                        })}
+                      </span>
+                    ) : null}
                   </li>
                 );
               })}
