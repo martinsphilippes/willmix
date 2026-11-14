@@ -1263,3 +1263,29 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   | Clientes       | —      | 1,7 s |
 
 - **Não mudou:** colunas, cálculos, totais (sobre todas as linhas da aba), ações por linha, lote e permissões. A lista curta continua inteira na tabela padrão.
+
+## Performance: vitrine, tabela de preços, avaliação de fornecedores e fluxo de caixa em páginas (14/11/2026)
+
+- **Problema medido.** Servidor compilado, dados sintéticos do volume de produção:
+
+  | Tela                                                                           | HTML  | Tempo  |
+  | ------------------------------------------------------------------------------ | ----- | ------ |
+  | Vitrine (`/app/explore`), com os 17 mil produtos em cartões, também no celular | 72 MB | 4,3 s  |
+  | Tabela de preços                                                               | 34 MB | 5,7 s  |
+  | Avaliação de fornecedores                                                      | 24 MB | 4,5 s  |
+  | Fluxo de caixa, com 43 mil parcelas dentro dos "detalhes" fechados             | 53 MB | 11,4 s |
+
+- **O que mudou:**
+  - A vitrine mostra 60 cartões por página. Busca, categoria e ordem valem para o catálogo inteiro. O produto que acabou de ir para o carrinho abre na página dele, e a volta do carrinho mantém a página.
+  - Tabela de preços e avaliação: acima de 200 linhas, busca, ordem e página no servidor. O CSV da tabela de preços continua inteiro.
+  - Fluxo de caixa: o detalhe de cada período mostra 50 parcelas por vez, com ‹ › (`?open=<período>&page=N`).
+- **Depois:**
+
+  | Tela             | HTML   | Tempo  |
+  | ---------------- | ------ | ------ |
+  | Vitrine          | 340 KB | 0,75 s |
+  | Tabela de preços | 172 KB | 4,1 s  |
+  | Avaliação        | 297 KB | 3,2 s  |
+  | Fluxo de caixa   | 228 KB | 4,4 s  |
+
+  O tempo que resta é o cálculo sobre todos os pedidos, não a página.
