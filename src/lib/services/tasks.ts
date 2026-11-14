@@ -835,8 +835,10 @@ export async function pendingTasksFor(
   // Admin (financeiro é só dele): parcelas a pagar a fornecedores vencidas ou vencendo em 7 dias.
   if (isAdmin(user)) {
     const { listPayables, payableRows } = await import("./supplier-terms");
+    // Só os pedidos fora de espera: com os 16 mil do histórico do Sankhya,
+    // ler todos custava ~2.300 consultas a cada abertura de Pendências.
     for (const { payable, installment: i } of payableRows(
-      await listPayables(),
+      await listPayables({ live: true }),
     )) {
       if (i.status !== "overdue" && i.status !== "due_soon") continue;
       if (!(i.open > 0)) continue;
