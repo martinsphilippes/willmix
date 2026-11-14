@@ -94,6 +94,8 @@ export async function saveCountsAction(form: FormData) {
       received: count.parse(str(form, `received_${id}`) || "0"),
       damaged: count.parse(str(form, `damaged_${id}`) || "0"),
       note: field(form, `note_${id}`, z.string().trim().max(500)) || null,
+      // Por unidade ou por caixas (dono, 14/11/2026).
+      inCartons: str(form, `unit_${id}`) === "cartons",
     }));
     const { saveCounts } = await import("@/lib/services/receiving");
     await saveCounts(user, orderId, counts);
