@@ -271,5 +271,6 @@ Pedido do dono (14/11/2026): o Overview de Produto novo, Pedido, Produção e En
 2. **Escolha de itens do container:** a lista do formulário tem todos os itens dos pedidos em aberto.
 3. **Programação de compra do admin nas Pendências:** lê as etapas de Preparação em andamento e os pedidos delas.
 4. **Documentos do embarque nas Pendências** (`shippingDocTasks`, docs/SHIPPING_DOCS.md): lê os pedidos de compra em inspeção ou embarque e, de cada um, o container vazio, os itens e os documentos. São poucos pedidos; entram na lista pronta se crescerem.
+5. **Recebimento no show room nas Pendências** (`showroomTasks`, docs/SAMPLE_FLOW.md): lê o passo `samples_brazil` pela chave (envios das amostras ao Brasil), os pedidos deles por id e os recebimentos já registrados. Entra na lista pronta se crescer.
 
 As tarefas de embarque, produção, artes e "Pagar fornecedor" da Wellmix saíram desta lista em 14/11/2026 (lista pronta, acima).

@@ -5,6 +5,7 @@ import { listByIds } from "@/lib/db/lookup";
 import { ColorLines } from "@/components/color-lines";
 import { registerOrderInvoiceAction } from "../../actions/order-invoice";
 import { setPurchaseIncotermAction } from "../../actions/purchase-order";
+import { receiveShowroomAction } from "../../actions/sample-flow";
 import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
 import { ImportFlowCard } from "@/components/import-flow-card";
@@ -251,6 +252,8 @@ export default async function OrderPage({
     rounds: roundsSpawned,
     incoterm: incotermNotice,
     from: fromBlock,
+    showroom: showroomNotice,
+    showroomCard,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
@@ -364,6 +367,11 @@ export default async function OrderPage({
     samplesSteps.length && (isWellmix(user) || user.role === "supplier")
       ? await (await import("@/lib/services/sample-flow")).samplesSplitOf(order)
       : [];
+  const showroom = samplesSteps.length
+    ? await (
+        await import("@/lib/services/sample-flow")
+      ).showroomView(user, order)
+    : null;
   const realMediaVisible =
     samplesSteps.length > 0 &&
     (isWellmix(user) || user.role === "marketing_agency");
@@ -2711,6 +2719,133 @@ export default async function OrderPage({
                 </div>
               ) : null}
             </Card>
+            {showroom ? (
+              <Card title={t("showroom.title")} dense>
+                <div data-showroom>
+                  {showroomCard && typeof error === "string" ? (
+                    <div className="mb-3">
+                      <Alert tone="danger">
+                        {t(`showroom.error.${error}` as DictionaryKey) !==
+                        `showroom.error.${error}`
+                          ? t(`showroom.error.${error}` as DictionaryKey)
+                          : error}
+                      </Alert>
+                    </div>
+                  ) : null}
+                  {showroomNotice === "received" ? (
+                    <div className="mb-3">
+                      <Alert tone="success">{t("showroom.done")}</Alert>
+                    </div>
+                  ) : null}
+                  {showroom.receipt ? (
+                    <p className="mb-2 text-sm text-zinc-600">
+                      <Badge
+                        tone={showroom.receipt.divergent ? "danger" : "success"}
+                      >
+                        <span
+                          data-showroom-status={
+                            showroom.receipt.divergent ? "divergent" : "ok"
+                          }
+                        >
+                          {t(
+                            showroom.receipt.divergent
+                              ? "showroom.divergent"
+                              : "showroom.ok",
+                          )}
+                        </span>
+                      </Badge>{" "}
+                      {t("showroom.received", {
+                        date: formatDate(showroom.receipt.receivedAt, t),
+                        name:
+                          productionNames.get(
+                            showroom.receipt.receivedByUserId,
+                          ) ?? "",
+                      })}
+                      {showroom.receipt.note
+                        ? ` · ${showroom.receipt.note}`
+                        : ""}
+                    </p>
+                  ) : (
+                    <p className="mb-3 text-sm text-zinc-600">
+                      {showroom.open
+                        ? t("showroom.hint")
+                        : t("showroom.waiting")}
+                    </p>
+                  )}
+                  {showroom.open ? (
+                    <form
+                      action={receiveShowroomAction}
+                      className="space-y-3"
+                      data-showroom-form
+                    >
+                      <input type="hidden" name="orderId" value={order.id} />
+                      <Table tools={false}>
+                        <thead>
+                          <tr>
+                            <Th>{t("samplesFlow.col.product")}</Th>
+                            <Th className="text-right">
+                              {t("showroom.col.expected")}
+                            </Th>
+                            <Th className="text-right">
+                              {t("showroom.col.received")}
+                            </Th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {showroom.lines.map((l) => (
+                            <tr key={l.itemId} data-showroom-line={l.itemId}>
+                              <Td>{productNameText(t, l.name)}</Td>
+                              <Td className="text-right">{l.expected}</Td>
+                              <Td className="text-right">
+                                {showroom.canReceive ? (
+                                  <>
+                                    <input
+                                      type="hidden"
+                                      name="itemId"
+                                      value={l.itemId}
+                                    />
+                                    <Input
+                                      dense
+                                      type="number"
+                                      min={0}
+                                      step={1}
+                                      required
+                                      name={`received_${l.itemId}`}
+                                      defaultValue={l.received}
+                                      aria-label={t("showroom.col.received")}
+                                      className="w-24 text-right"
+                                    />
+                                  </>
+                                ) : (
+                                  l.received
+                                )}
+                              </Td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </Table>
+                      {showroom.canReceive ? (
+                        <>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <Field label={t("showroom.note")}>
+                              <Input name="note" maxLength={1000} />
+                            </Field>
+                            <Field label={t("showroom.photo")}>
+                              <Input
+                                type="file"
+                                name="photo"
+                                accept="image/*"
+                              />
+                            </Field>
+                          </div>
+                          <SubmitButton>{t("showroom.submit")}</SubmitButton>
+                        </>
+                      ) : null}
+                    </form>
+                  ) : null}
+                </div>
+              </Card>
+            ) : null}
             <ImportFlowCard
               t={t}
               order={order}

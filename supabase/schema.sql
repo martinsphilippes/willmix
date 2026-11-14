@@ -1267,6 +1267,23 @@ create unique index if not exists "shipping_docs_order_kind_unique" on public."s
 create index if not exists "shipping_docs_created" on public."shipping_docs" ("createdAt");
 create index if not exists "shipping_docs_created_id" on public."shipping_docs" ("createdAt", "id");
 
+create table if not exists public."showroom_receipts" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."showroom_receipts" enable row level security;
+alter table public."showroom_receipts" add column if not exists "orderId" text;
+alter table public."showroom_receipts" add column if not exists "lines" jsonb;
+alter table public."showroom_receipts" add column if not exists "divergent" boolean;
+alter table public."showroom_receipts" add column if not exists "note" text;
+alter table public."showroom_receipts" add column if not exists "documentId" text;
+alter table public."showroom_receipts" add column if not exists "receivedByUserId" text;
+alter table public."showroom_receipts" add column if not exists "receivedAt" timestamptz;
+create unique index if not exists "showroom_receipts_order_unique" on public."showroom_receipts" ("orderId");
+create index if not exists "showroom_receipts_created" on public."showroom_receipts" ("createdAt");
+create index if not exists "showroom_receipts_created_id" on public."showroom_receipts" ("createdAt", "id");
+
 create table if not exists public."real_media" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

@@ -271,7 +271,11 @@ describe("pendências da Wellmix pela lista pronta do resumo", () => {
       (r.table === "orders" &&
         (r.filter as { flow?: string }).flow === "supplier_request") ||
       (r.table === "import_steps" &&
-        (r.filter as { key?: string }).key === "container_empty");
+        (r.filter as { key?: string }).key === "container_empty") ||
+      // Show room (showroomTasks, docs/SAMPLE_FLOW.md): o envio das
+      // amostras ao Brasil, pela chave do passo.
+      (r.table === "import_steps" &&
+        (r.filter as { key?: string }).key === "samples_brazil");
     const rest = reads.filter((r) => !shippingDocs(r));
     for (const table of [
       "import_steps",

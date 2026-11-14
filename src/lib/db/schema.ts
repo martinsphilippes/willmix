@@ -596,6 +596,8 @@ export const IMPORT_STEP_KEYS = [
   "samples_brazil",
   "samples_china",
   "samples_china_received",
+  // Recebimento no show room do Brasil, com a conferência por produto.
+  "samples_brazil_received",
   "samples_returned",
   // Compra EXW (mapa R17 e R18; docs/ORIGIN_CONTAINER.md): a trading contrata
   // a transportadora que leva o container à fábrica (nome e data prevista) e
@@ -2177,6 +2179,26 @@ export interface RealMedia extends BaseRow {
   decidedAt: string | null;
 }
 
+/* Recebimento das amostras no show room do Brasil (docs/SAMPLE_FLOW.md). */
+export interface ShowroomLine {
+  itemId: string;
+  name: string;
+  /** Peças esperadas: 4 × 3 × Nm. */
+  expected: number;
+  received: number;
+}
+
+export interface ShowroomReceipt extends BaseRow {
+  orderId: string;
+  lines: ShowroomLine[];
+  /** Alguma linha com peças a mais ou a menos. */
+  divergent: boolean;
+  note: string | null;
+  documentId: string | null;
+  receivedByUserId: string;
+  receivedAt: string;
+}
+
 export interface ProductionTrack extends BaseRow {
   orderId: string;
   mode: ProductionMode | null;
@@ -3121,6 +3143,7 @@ export interface Tables {
   sku_inspections: SkuInspection;
   shipping_docs: ShippingDoc;
   real_media: RealMedia;
+  showroom_receipts: ShowroomReceipt;
   sales_offers: SalesOffer;
   import_steps: ImportStep;
   receivings: Receiving;
@@ -4408,6 +4431,19 @@ export const TABLES: Record<TableName, TableDef> = {
         columns: ["orderId", "kind"],
       },
     ],
+  },
+  showroom_receipts: {
+    label: "Recebimento das amostras no show room do Brasil",
+    columns: {
+      orderId: id(),
+      lines: json(),
+      divergent: bool(),
+      note: text(),
+      documentId: id(false),
+      receivedByUserId: id(),
+      receivedAt: datetime(),
+    },
+    indexes: [{ key: "order_unique", type: "unique", columns: ["orderId"] }],
   },
   real_media: {
     label: "Fotos e vídeos reais do produto (agência na China)",

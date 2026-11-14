@@ -71,7 +71,27 @@ O cartão mostra a divisão por produto (Brasil, China, total).
 Serviço em `src/lib/services/sample-flow.ts`; divisão em
 `src/lib/sample-order.ts` (`sampleSplit`).
 
-## Fica para depois
+## Recebimento no show room do Brasil
 
-- Recebimento das amostras no show room do Brasil (conferência e aviso a
-  vendas).
+Pedido do dono (14/11/2026): o recebimento das amostras no show room, com a
+conferência e o aviso a vendas.
+
+- Abre quando a trading registra o envio ao Brasil. Fica no cartão Amostras
+  do pedido, quadro **Recebimento no show room (Brasil)**, e vira pendência
+  "Receber as amostras no show room" para a Wellmix.
+- A Wellmix confere, por produto, as peças **esperadas (4 × 3 × Nm)** e as
+  **recebidas**. Com diferença, a observação é obrigatória. A foto é
+  opcional.
+- O registro conclui o passo "Amostras recebidas no show room"
+  (`samples_brazil_received`), que só se fecha por aqui.
+- Avisos:
+  - **vendas** recebe o aviso com os produtos que chegaram. São os logins
+    com a ação "Aviso de pedido de compra a vendas", em Equipe → Funções e
+    acessos;
+  - com diferença, a **trading** é avisada e a Wellmix recebe o alerta.
+- **Vendas → Amostras** (docs/FLOW_MENU.md) passa a contar a amostra a
+  partir do recebimento conferido, não mais do envio.
+- Dados: tabela `showroom_receipts`, uma por pedido, com as linhas
+  esperado/recebido, `divergent`, observação, foto, quem e quando.
+
+## Fica para depois

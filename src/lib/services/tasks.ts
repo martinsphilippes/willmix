@@ -1234,6 +1234,42 @@ export async function pendingTasksFor(
       if (!isSchemaMissing(error)) throw error;
     }
   }
+  // Show room do Brasil (docs/SAMPLE_FLOW.md): amostras enviadas pela
+  // trading ainda não conferidas no recebimento.
+  if (wellmix) {
+    try {
+      const { showroomTasks } = await import("./sample-flow");
+      const ptText = translator("pt");
+      for (const order of await showroomTasks(user)) {
+        const values = { n: order.number };
+        tasks.push(
+          finish(
+            {
+              kind: "real_media",
+              group: "showroom",
+              title: ptText("showroom.task.title", values),
+              detail: ptText("showroom.task.detail", values),
+              text: {
+                title: "showroom.task.title",
+                detail: "showroom.task.detail",
+                values,
+              },
+              link: `/app/orders/${order.id}#samples`,
+              dueAt: null,
+              requestId: order.requestId,
+              orderNumber: order.number,
+              customerId: order.customerId,
+              ownerUserId: order.ownerUserId ?? null,
+            },
+            now,
+          ),
+        );
+      }
+    } catch (error) {
+      const { isSchemaMissing } = await import("@/lib/db/errors");
+      if (!isSchemaMissing(error)) throw error;
+    }
+  }
   // Fatura ativa em N dias (mapa R24): com os documentos do embarque
   // conferidos, o financeiro registra o faturamento até o vencimento.
   if (wellmix) {
@@ -1554,6 +1590,7 @@ const IMPORT_STEP_LABEL: Record<string, string> = {
   samples_china: "Envio das amostras à agência na China",
   samples_china_received: "Amostras recebidas pela agência",
   samples_returned: "Devolução da amostra à trading",
+  samples_brazil_received: "Amostras recebidas no show room",
   origin_carrier: "Transportadora na origem (EXW)",
   origin_carrier_eta: "Previsão do container na fábrica (EXW)",
   origin_costs: "Custos de origem (POP)",

@@ -181,7 +181,8 @@ export const flowPreProductionCasesFor = cache(
 
 /**
  * Vendas (dono, 14/11/2026; docs/FLOW_MENU.md): a amostra que chegou ao
- * Brasil (passo samples_brazil concluído) ainda não oferecida a ninguém
+ * Brasil (recebida e conferida no show room, passo samples_brazil_received;
+ * docs/SAMPLE_FLOW.md) ainda não oferecida a ninguém
  * (Vendas → Amostras) e o produto com a venda ativada (foto real aprovada
  * pelo marketing, R5) ainda não oferecido (Vendas → Ofertas). A oferta fica
  * em sales_offers. Wellmix com a tela Produtos.
@@ -192,7 +193,9 @@ export const flowSalesCasesFor = cache(
     const store = getStore();
     const [arrived, approved, offers] = await Promise.all([
       store
-        .list("import_steps", { filter: { key: "samples_brazil" } })
+        .list("import_steps", {
+          filter: { key: "samples_brazil_received" },
+        })
         .catch(() => []),
       store
         .list("real_media", { filter: { status: "approved" } })
