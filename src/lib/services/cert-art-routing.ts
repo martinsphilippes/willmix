@@ -43,6 +43,7 @@ export type RouteVia =
   | "analyst"
   | "art_validate"
   | "reporter"
+  | "function"
   | "team";
 
 export interface Route {
@@ -173,6 +174,22 @@ export function artMakerRoute(
       missing: "designer",
     };
   return { ...internalRoute(order, ctx), missing: "designer" };
+}
+
+/**
+ * Logins da Wellmix com uma função ou ação (ex.: "Assinar o contrato pela
+ * Wellmix", a função Cadastro); sem ninguém, `fallback` (o analista ou a
+ * equipe).
+ */
+export function holdersRoute(
+  ctx: RoutingContext,
+  holds: (user: User) => boolean,
+  fallback: Route,
+): Route {
+  const holders = ctx.team.filter(holds);
+  return holders.length
+    ? { via: "function", userIds: holders.map((u) => u.id) }
+    : fallback;
 }
 
 /** Pode validar a arte (ação "Validar a arte"; o administrador sempre). */

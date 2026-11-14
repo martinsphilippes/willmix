@@ -1862,8 +1862,10 @@ alter table public."order_summaries" add column if not exists "facts" jsonb;
 alter table public."order_summaries" add column if not exists "computedAt" timestamptz;
 alter table public."order_summaries" add column if not exists "kpi" jsonb;
 alter table public."order_summaries" add column if not exists "tasks" jsonb;
+alter table public."order_summaries" add column if not exists "hasTasks" boolean;
 create index if not exists "order_summaries_by_order" on public."order_summaries" ("orderId");
 create index if not exists "order_summaries_by_live" on public."order_summaries" ("live");
+create index if not exists "order_summaries_by_has_tasks" on public."order_summaries" ("hasTasks");
 create index if not exists "order_summaries_created" on public."order_summaries" ("createdAt");
 create index if not exists "order_summaries_created_id" on public."order_summaries" ("createdAt", "id");
 

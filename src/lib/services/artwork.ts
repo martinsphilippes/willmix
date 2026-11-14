@@ -30,7 +30,7 @@ import {
   routeLabel,
   routeOwnerUserId,
   type MissingAssignment,
-  type Route,
+  type RoutingContext,
   type RouteVia,
 } from "./cert-art-routing";
 
@@ -385,7 +385,8 @@ export interface ArtTaskDraft {
  */
 export async function artIssueTasks(
   user: User,
-  options: { team?: boolean } = {},
+  /** `orderId`: só as de um pedido (linha do tempo do pedido). */
+  options: { team?: boolean; orderId?: string } = {},
 ): Promise<ArtTaskDraft[]> {
   const wellmix = isWellmix(user);
   const agency = user.role === "agency" && !!user.partyId;
@@ -402,6 +403,10 @@ export async function artIssueTasks(
         })
       ).map((o) => o.id);
       if (!orderIds.length) return [];
+    }
+    if (options.orderId) {
+      if (orderIds && !orderIds.includes(options.orderId)) return [];
+      orderIds = [options.orderId];
     }
     issues = await store.list("art_issues", {
       filter: {
@@ -423,45 +428,83 @@ export async function artIssueTasks(
     }),
   ]);
   const ctx = await loadRoutingContext();
-  const teamIds = new Set(ctx.team.map((u) => u.id));
-  const teamView = wellmix && !!options.team;
-  const mine = (route: Route) =>
-    teamView
-      ? !!route.team || (route.userIds ?? []).some((id) => teamIds.has(id))
-      : reaches(user, route);
   const out: ArtTaskDraft[] = [];
   for (const issue of issues) {
     const order = orders.find((o) => o.id === issue.orderId);
     // Pedido do histórico do Sankhya em espera (held): sem pendência.
-    if (
-      !order ||
-      order.held ||
-      order.status === "CANCELLED" ||
-      order.status === "CLOSED"
-    )
-      continue;
-    const fix = issue.status === "open";
-    const route = fix
-      ? artMakerRoute(order, ctx)
-      : artReviewRoute(order, issue, ctx);
-    if (!mine(route)) continue;
-    // Conferir é validar a arte: só quem pode (a equipe toda no painel).
-    if (!fix && !teamView && !canValidateArt(user, ctx)) continue;
-    out.push({
-      kind: fix ? "art_fix" : "art_review",
+    if (!order || !artIssueCounts(order)) continue;
+    const task = routeArtIssue(
+      user,
       order,
       issue,
       // Nome de exemplo ("Produto novo XPTO") vale como ausente.
-      itemName:
-        realName(items.find((i) => i.id === issue.orderItemId)?.name) ?? "—",
-      link: issueLink(order.id, issue.id),
-      missing: route.missing ?? null,
-      ownerUserId: routeOwnerUserId(route, order, ctx),
-      // Aberta: desde que foi apontada (ou reaberta); corrigida, desde a correção.
-      sinceAt: fix ? issue.updatedAt : issue.fixedAt,
-    });
+      realName(items.find((i) => i.id === issue.orderItemId)?.name) ?? "—",
+      ctx,
+      options,
+    );
+    if (task) out.push(task);
   }
   return out;
+}
+
+/** A não conformidade do pedido vira pendência (fora de espera, encerrado e cancelado)? */
+export const artIssueCounts = (order: Pick<Order, "held" | "status">) =>
+  !order.held && order.status !== "CANCELLED" && order.status !== "CLOSED";
+
+/** O que a pendência de uma não conformidade guarda dela (resumo do pedido). */
+export type ArtIssueFields = Pick<
+  ArtIssue,
+  | "id"
+  | "status"
+  | "reportedByUserId"
+  | "fixedByUserId"
+  | "updatedAt"
+  | "fixedAt"
+>;
+
+/**
+ * Para quem vai uma não conformidade da arte e a pendência dela; nula quando
+ * não é do login (função pura sobre o contexto do encaminhamento). A mesma
+ * regra para as tabelas e para o resumo do pedido (docs/RESUMOS.md).
+ */
+export function routeArtIssue(
+  user: User,
+  order: Order,
+  issue: ArtIssueFields,
+  itemName: string,
+  ctx: RoutingContext,
+  options: { team?: boolean } = {},
+): ArtTaskDraft | null {
+  const teamView = isWellmix(user) && !!options.team;
+  const fix = issue.status === "open";
+  const route = fix
+    ? artMakerRoute(order, ctx)
+    : artReviewRoute(
+        order,
+        {
+          reportedByUserId: issue.reportedByUserId,
+          fixedByUserId: issue.fixedByUserId,
+        },
+        ctx,
+      );
+  const mine = teamView
+    ? !!route.team ||
+      (route.userIds ?? []).some((id) => ctx.team.some((u) => u.id === id))
+    : reaches(user, route);
+  if (!mine) return null;
+  // Conferir é validar a arte: só quem pode (a equipe toda no painel).
+  if (!fix && !teamView && !canValidateArt(user, ctx)) return null;
+  return {
+    kind: fix ? "art_fix" : "art_review",
+    order,
+    issue: issue as ArtIssue,
+    itemName,
+    link: issueLink(order.id, issue.id),
+    missing: route.missing ?? null,
+    ownerUserId: routeOwnerUserId(route, order, ctx),
+    // Aberta: desde que foi apontada (ou reaberta); corrigida, desde a correção.
+    sinceAt: fix ? issue.updatedAt : issue.fixedAt,
+  };
 }
 
 /** Artes do pedido que o usuário pode abrir (para o zip). */
@@ -495,4 +538,27 @@ export async function artworkDocuments(
   if (seal && !seen.has(seal.id) && (await canAccessDocument(user, seal)))
     out.push(seal);
   return out;
+}
+
+/**
+ * Pendências do cartão Artes do login da Wellmix a partir das guardadas no
+ * resumo de cada pedido (docs/RESUMOS.md), na ordem de criação das não
+ * conformidades, sem ler pedidos, artes nem itens.
+ */
+export async function readyArtTasks(
+  user: User,
+  entries: {
+    order: Order;
+    k: string;
+    issue: ArtIssueFields;
+    item: string;
+  }[],
+  options: { team?: boolean } = {},
+): Promise<ArtTaskDraft[]> {
+  if (!entries.length) return [];
+  const ctx = await loadRoutingContext();
+  return [...entries]
+    .sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0))
+    .map((e) => routeArtIssue(user, e.order, e.issue, e.item, ctx, options))
+    .filter((t): t is ArtTaskDraft => !!t);
 }

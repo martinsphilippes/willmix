@@ -59,7 +59,7 @@ import type { BoardOrder, BoardStage } from "./tower-board";
  */
 
 /** Formato de `facts`; mudar o formato = subir o número (as telas voltam ao caminho antigo até a reconstrução). */
-export const SUMMARY_VERSION = 5;
+export const SUMMARY_VERSION = 7;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -406,10 +406,11 @@ function summaryRow(
   facts: OrderFacts,
   computedAt: string,
   kpi: unknown,
-  tasks: unknown = [],
+  tasks: StoredTasks | null = null,
 ) {
   return {
     tasks,
+    hasTasks: !!tasks,
     id: facts.order.id,
     orderId: facts.order.id,
     number: facts.order.number,
@@ -422,10 +423,69 @@ function summaryRow(
   };
 }
 
-/** Pendência da Wellmix guardada no resumo: a ordem da etapa e a pendência. */
+/** Pendência de etapa da Wellmix guardada no resumo: a ordem da etapa e a pendência. */
 interface StoredTask {
   k: string;
   d: unknown;
+}
+
+/** O pedido nas pendências guardadas: só o que as pendências e o encaminhamento leem. */
+const TASK_ORDER_FIELDS = [
+  "id",
+  "number",
+  "createdAt",
+  "requestId",
+  "customerId",
+  "supplierId",
+  "status",
+  "flow",
+  "held",
+  "ownerUserId",
+  "designerUserId",
+  "agencyId",
+  "brokerId",
+  "ocpId",
+  "comexId",
+  "logisticsId",
+] as const satisfies readonly (keyof Order)[];
+export type TaskOrder = Pick<Order, (typeof TASK_ORDER_FIELDS)[number]>;
+
+/** Parcela ao fornecedor que vence ou pode vencer só com a passagem do tempo. */
+export interface StoredInstallment {
+  index: number;
+  count: number;
+  open: number;
+  dueDate: string | null;
+  status: InstallmentStatus;
+}
+
+/**
+ * Pendências da Wellmix guardadas no resumo do pedido (`order_summaries.tasks`,
+ * docs/RESUMOS.md). As de etapa vêm prontas. As outras guardam o que a
+ * leitura usa para saber de quem cada uma é (o pedido com os parceiros, o
+ * analista e o designer; quem enviou; quem apontou e quem corrigiu a arte),
+ * porque a equipe, as funções e as configurações mudam sem gravar no
+ * pedido; e as datas, porque o follow, o rastreio do container e a parcela
+ * vencem sem gravação. Pedido em espera (`held`) não guarda nada.
+ */
+export interface StoredTasks {
+  /** Etapas em andamento: a ordem da etapa e a pendência pronta. */
+  s: StoredTask[];
+  /** Ordem do pedido na lista (criação, id), a mesma da leitura dos pedidos. */
+  k: string;
+  o: TaskOrder;
+  /** Produção: follows ainda não registrados (com a data) e reinspeção. */
+  p?: import("./production").ProductionCandidate[];
+  /** Embarque, desembaraço e certificação, antes de saber quem vê. */
+  i?: import("./import-flow").ImportCandidate[];
+  /** Artes: as não conformidades abertas ou corrigidas (ordem de criação). */
+  a?: Array<{
+    k: string;
+    issue: import("./artwork").ArtIssueFields;
+    item: string;
+  }>;
+  /** "Pagar fornecedor": parcelas em aberto que vencem com o tempo. */
+  f?: { supplier: string | null; currency: string; parts: StoredInstallment[] };
 }
 
 /** Login genérico da Wellmix: as pendências de etapa são as mesmas para toda a equipe. */
@@ -435,14 +495,49 @@ const WELLMIX_VIEWER = {
   partyId: null,
 } as unknown as User;
 
+/** Etapas do pedido com pendência de produção da Wellmix (follow e reinspeção). */
+const PRODUCTION_STATUSES: readonly string[] = [
+  "ORDER_CREATED",
+  "PREPARATION",
+  "SUPPLIER_PAYMENT",
+  "PACKAGING",
+  "INSPECTION",
+  "SHIPPING",
+];
+
+/** Situações da parcela que mudam só com o dia (a pendência pode aparecer sem gravação). */
+const TIMED: readonly InstallmentStatus[] = [
+  "overdue",
+  "due_soon",
+  "scheduled",
+];
+
 /**
- * Pendências da Wellmix nas etapas em andamento de cada pedido, com a regra
- * de `pendingTasksFor` (`stageTaskDrafts`), e a ordem da etapa (criação, id)
- * para a lista sair na mesma ordem de antes.
+ * Pendências da Wellmix de cada pedido (`StoredTasks`), com as mesmas
+ * funções da leitura pelas tabelas: etapas (`stageTaskDrafts`), produção
+ * (`wellmixProductionCandidates`), embarque e certificação
+ * (`wellmixImportCandidates`), artes e "Pagar fornecedor" (`payableFor`,
+ * como em `listPayables`).
  */
-async function stageTasksOf(src: Sources): Promise<Map<string, StoredTask[]>> {
-  const { stageTaskDrafts } = await import("./tasks");
-  const out = new Map<string, StoredTask[]>();
+async function tasksOf(
+  src: Sources,
+  facts: OrderFacts[],
+  today: string,
+): Promise<Map<string, StoredTasks>> {
+  const [
+    { stageTaskDrafts },
+    { wellmixProductionCandidates, latestByItem },
+    { wellmixImportCandidates, WELLMIX_IMPORT_STATUSES },
+    { artIssueCounts },
+    { baseKeyOf, LANE_KEYS },
+  ] = await Promise.all([
+    import("./tasks"),
+    import("./production"),
+    import("./import-flow"),
+    import("./artwork"),
+    import("@/lib/purchase-lanes"),
+  ]);
+  const out = new Map<string, StoredTasks>();
   const portal = src.orders.filter(isPortal);
   const lanes = portal.length
     ? {
@@ -451,68 +546,159 @@ async function stageTasksOf(src: Sources): Promise<Map<string, StoredTask[]>> {
         all: portal.flatMap((o) => src.portalRequirements.get(o.id) ?? []),
       }
     : null;
+  const factsById = new Map(facts.map((f) => [f.order.id, f]));
   for (const order of src.orders) {
-    // Etapa em espera (histórico do Sankhya até o go-live): sem pendência.
+    // Pedido do histórico do Sankhya em espera: sem pendência até o go-live.
+    if (order.held) continue;
+    const stored: StoredTasks = {
+      s: [],
+      k: `${order.createdAt ?? ""}|${order.id}`,
+      o: Object.fromEntries(
+        TASK_ORDER_FIELDS.map((f) => [f, order[f] ?? null]),
+      ) as TaskOrder,
+    };
+    // Etapas (etapa em espera também não entra).
     const stages = (src.stages.get(order.id) ?? []).filter(
       (s) => ACTIVE.includes(s.status) && !isHeld(s),
     );
-    if (!stages.length) continue;
-    const sealApplied = new Set(
-      (src.steps.get(order.id) ?? [])
-        .filter(
-          (s) =>
-            s.key === "cert_seal_art" &&
-            (s.status === "submitted" || s.status === "validated"),
-        )
-        .map((s) => s.orderId),
-    );
-    const byKey = new Map(stages.map((s) => [s.key, s]));
-    const drafts = stageTaskDrafts(WELLMIX_VIEWER, {
-      stages,
-      orderById: new Map([[order.id, order]]),
-      openRequirements: src.openRequirements.get(order.id) ?? [],
-      sealApplied,
-      lanes,
-    });
-    if (!drafts.length) continue;
-    out.set(
-      order.id,
-      drafts.map((d) => {
+    const steps = src.steps.get(order.id) ?? [];
+    if (stages.length) {
+      const sealApplied = new Set(
+        steps
+          .filter(
+            (s) =>
+              s.key === "cert_seal_art" &&
+              (s.status === "submitted" || s.status === "validated"),
+          )
+          .map((s) => s.orderId),
+      );
+      const byKey = new Map(stages.map((s) => [s.key, s]));
+      stored.s = stageTaskDrafts(WELLMIX_VIEWER, {
+        stages,
+        orderById: new Map([[order.id, order]]),
+        openRequirements: src.openRequirements.get(order.id) ?? [],
+        sealApplied,
+        lanes,
+      }).map((d) => {
         const stage = d.stageKey ? byKey.get(d.stageKey) : undefined;
-        return {
-          k: `${stage?.createdAt ?? ""}|${stage?.id ?? ""}`,
-          d,
+        return { k: `${stage?.createdAt ?? ""}|${stage?.id ?? ""}`, d };
+      });
+    }
+    // Produção (Fase C): follow 5/15/25 e reinspeção.
+    if (PRODUCTION_STATUSES.includes(order.status)) {
+      const track = (src.tracks.get(order.id) ?? [])[0] ?? null;
+      const p = wellmixProductionCandidates(order, track, [
+        ...latestByItem(src.skus.get(order.id) ?? []).values(),
+      ]);
+      if (p.length) stored.p = p;
+    }
+    // Embarque, desembaraço e certificação (Fases D e F).
+    if (WELLMIX_IMPORT_STATUSES.includes(order.status)) {
+      const needsCert =
+        isPortal(order) &&
+        (src.portalRequirements.get(order.id) ?? []).some(
+          (r) => baseKeyOf(r.key) === LANE_KEYS.certificate,
+        );
+      const i = wellmixImportCandidates(order, steps, needsCert);
+      if (i.length) stored.i = i;
+    }
+    // Artes: corrigir e conferir a correção.
+    if (artIssueCounts(order)) {
+      const items = src.items.get(order.id) ?? [];
+      const a = (src.art.get(order.id) ?? [])
+        .filter((x) => x.status === "open" || x.status === "fixed")
+        .map((x) => ({
+          k: `${x.createdAt ?? ""}|${x.id}`,
+          issue: {
+            id: x.id,
+            status: x.status,
+            reportedByUserId: x.reportedByUserId,
+            fixedByUserId: x.fixedByUserId ?? null,
+            updatedAt: x.updatedAt,
+            fixedAt: x.fixedAt ?? null,
+          },
+          // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+          item:
+            realName(items.find((it) => it.id === x.orderItemId)?.name) ?? "—",
+        }));
+      if (a.length) stored.a = a;
+    }
+    // "Pagar fornecedor": o cronograma como em Contas a pagar (do resumo).
+    const f = factsById.get(order.id);
+    if (f) {
+      const copy: Partial<Order> = { ...order };
+      delete copy.sankhyaRefs;
+      const supplier = src.parties.get(order.supplierId) ?? null;
+      const payable = payableFor(
+        copy as Order,
+        supplier,
+        (f.pays as Payment[]).filter((p) => p.direction === "supplier_out"),
+        f.ship as Stage[],
+        f.sreqs as Requirement[],
+        (f.product != null ? [{ name: f.product }] : []) as OrderItem[],
+        today,
+      );
+      const parts = payable.schedule.installments
+        .filter((i) => i.open > 0 && TIMED.includes(i.status))
+        .map((i) => ({
+          index: i.index,
+          count: i.count,
+          open: i.open,
+          dueDate: i.dueDate,
+          status: i.status,
+        }));
+      if (parts.length)
+        stored.f = {
+          supplier: payable.supplier?.name ?? null,
+          currency: payable.schedule.currency,
+          parts,
         };
-      }),
-    );
+    }
+    if (stored.s.length || stored.p || stored.i || stored.a || stored.f)
+      out.set(order.id, stored);
   }
   return out;
 }
 
+/** As pendências guardadas de um pedido, para a leitura. */
+export interface ReadyOrderTasks {
+  order: Order;
+  tasks: StoredTasks;
+}
+
 /**
- * As pendências de etapa da Wellmix, prontas (do resumo de cada pedido), na
- * ordem das etapas. Resumo de outro formato é recalculado antes.
+ * As pendências da Wellmix guardadas nos resumos (só as linhas com
+ * pendência, `hasTasks`), na ordem dos pedidos; as de etapa já na ordem das
+ * etapas. Resumo de outro formato é recalculado antes.
  */
-export async function wellmixStageTaskDrafts(): Promise<
-  Array<import("./tasks").TaskDraft>
-> {
+export async function wellmixReadyTasks(): Promise<{
+  stage: Array<import("./tasks").TaskDraft>;
+  orders: ReadyOrderTasks[];
+}> {
   const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
   await flushSummaryChanges();
   const { listColumns } = await import("@/lib/db/lookup");
-  const read = () =>
-    listColumns(getStore(), "order_summaries", ["tasks", "version"]);
-  let rows = await read();
-  const stale = rows
-    .filter((r) => r.version !== SUMMARY_VERSION)
-    .map((r) => r.id);
-  if (stale.length) {
-    await recomputeOrderSummaries(stale);
-    rows = await read();
-  }
-  return rows
-    .flatMap((r) => (r.tasks as StoredTask[] | null) ?? [])
+  const store = getStore();
+  const older = Array.from({ length: SUMMARY_VERSION - 1 }, (_, i) => i + 1);
+  const stale = older.length
+    ? await listColumns(store, "order_summaries", ["version"], {
+        filter: { version: older },
+      })
+    : [];
+  if (stale.length) await recomputeOrderSummaries(stale.map((r) => r.id));
+  const rows = await listColumns(store, "order_summaries", ["tasks"], {
+    filter: { hasTasks: true },
+  });
+  const orders = rows
+    .map((r) => r.tasks as StoredTasks | null)
+    .filter((t): t is StoredTasks => !!t?.o)
+    .sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0))
+    .map((tasks) => ({ order: tasks.o as Order, tasks }));
+  const stage = orders
+    .flatMap((o) => o.tasks.s)
     .sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0))
     .map((t) => t.d as import("./tasks").TaskDraft);
+  return { stage, orders };
 }
 
 /** Contribuição de cada pedido para os indicadores (src/lib/services/tower-kpis.ts). */
@@ -575,9 +761,9 @@ export async function recomputeOrderSummaries(
     now,
     src.orders.map((o) => o.id),
   );
-  const tasks = await stageTasksOf(src);
+  const tasks = await tasksOf(src, facts, today);
   const rows = facts.map((f) =>
-    summaryRow(f, at, kpis.get(f.order.id), tasks.get(f.order.id) ?? []),
+    summaryRow(f, at, kpis.get(f.order.id), tasks.get(f.order.id) ?? null),
   );
   await writeSummaries(rows);
   const found = new Set(src.orders.map((o) => o.id));
@@ -738,7 +924,7 @@ async function rebuildChunk(
     now,
     src.orders.map((o) => o.id),
   );
-  const tasks = await stageTasksOf(src);
+  const tasks = await tasksOf(src, facts, today);
   const existing = new Map(
     (
       await store.list("order_summaries", {
@@ -752,7 +938,7 @@ async function rebuildChunk(
         f,
         startedAt,
         kpis.get(f.order.id),
-        tasks.get(f.order.id) ?? [],
+        tasks.get(f.order.id) ?? null,
       ),
     )
     .filter((row) => {
@@ -765,7 +951,8 @@ async function rebuildChunk(
         old.number !== row.number ||
         stableJson(old.facts) !== stableJson(row.facts) ||
         stableJson(old.kpi ?? null) !== stableJson(row.kpi ?? null) ||
-        stableJson(old.tasks ?? null) !== stableJson(row.tasks)
+        stableJson(old.tasks ?? null) !== stableJson(row.tasks) ||
+        !!old.hasTasks !== row.hasTasks
       );
     });
   await writeSummaries(rows);

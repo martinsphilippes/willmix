@@ -1028,6 +1028,37 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     expect(shown).not.toContain("invoice_packing");
     expect(shown).not.toContain("draft_bl");
     expect(shown).toContain("bl");
+    // Nem como pendência da Wellmix (lista pronta do resumo do pedido).
+    const shipping = { ...order, status: "SHIPPING" as const };
+    const candidates = flow
+      .wellmixImportCandidates(
+        shipping,
+        // Draft do BL enviado (de antes): a Wellmix o validaria sem comex.
+        [
+          {
+            id: "x",
+            createdAt: "",
+            updatedAt: "",
+            orderId: order.id,
+            key: "draft_bl",
+            status: "submitted",
+            value: null,
+            amount: null,
+            currency: null,
+            documentId: null,
+            submittedByUserId: "y",
+            submittedAt: "2026-11-01T00:00:00.000Z",
+            validatedByUserId: null,
+            validatedAt: null,
+            rejectReason: null,
+          } as never,
+        ],
+        false,
+      )
+      .map((c) => c.key);
+    expect(candidates).not.toContain("draft_bl");
+    expect(candidates).not.toContain("invoice_packing");
+    expect(candidates).not.toContain("invoice_signed");
     // O check list só abre depois das fotos do container vazio.
     await expect(
       docs.addLoad(supplierA, order.id, [{ itemId: a.id, cartons: 1 }]),
