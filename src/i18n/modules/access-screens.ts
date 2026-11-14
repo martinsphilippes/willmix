@@ -63,6 +63,8 @@ export const pt = {
   "function.desc.executive_director":
     "aprova o pré-custo acima do limite (3º nível), painéis e auditoria",
   "function.desc.designer": "artes, embalagem, fotos e marketing",
+  "function.desc.comex_internal":
+    "rastreia o container todo dia, da fábrica ao embarque; acompanha containers e fretes",
   "access.denied":
     "Você não tem acesso a {screen}. Peça ao administrador em Gestão → Equipe e divisões.",
   "access.noFunction":
@@ -138,6 +140,8 @@ export const en: Record<keyof typeof pt, string> = {
   "function.desc.executive_director":
     "approves pre-cost above the limit (level 3), dashboards and audit",
   "function.desc.designer": "artwork, packaging, photos and marketing",
+  "function.desc.comex_internal":
+    "tracks the container every day, from the factory to shipping; follows containers and freight",
   "access.denied":
     "You do not have access to {screen}. Ask the admin in Management → Team and divisions.",
   "access.noFunction":
@@ -204,6 +208,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "function.desc.purchasing_director": "审批预成本（第二级）、看板和审计",
   "function.desc.executive_director": "审批超限预成本（第三级）、看板和审计",
   "function.desc.designer": "设计稿、包装、照片和营销",
+  "function.desc.comex_internal":
+    "每天跟踪集装箱（从工厂到装运），跟进集装箱和运费",
   "access.denied": "您无权访问{screen}。请联系管理员：管理 → 团队与事业部。",
   "access.noFunction":
     "您的账号尚未分配职能，目前只能看到基础页面：待办、SLA 面板、通知和消息。请管理员在“管理 → 团队与事业部”中设置职能。",

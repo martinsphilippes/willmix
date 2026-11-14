@@ -1118,3 +1118,10 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Aditivo**: nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
 - **Decisão sem pergunta** (avisada ao dono): as duas caixas começam marcadas.
 - Testes: `tests/unit/team-delete.test.ts` (chefe de destino, subordinados passados com cargo e divisão mantidos e Auditoria, sem chefe ativo nada muda, redistribuição só das dela com as sem destino contadas, falha depois da exclusão, resumo levado à lista) e `tests/e2e/team-delete.spec.ts` (caixa marcada, aviso ao desmarcar, resumo na lista e o novo chefe na linha).
+
+## Equipe e acessos: descrição da função "Comex (interno)"
+
+- **Pedido do dono** (14/11/2026): nos acessos de uma pessoa e em "Funções e acessos", a função "Comex (interno)" mostrava o texto cru "function.desc.comex_internal" no lugar da descrição (a função veio sem o texto).
+- **Correção**: a descrição nos três idiomas ("rastreia o container todo dia, da fábrica ao embarque; acompanha containers e fretes"). As duas telas passam a usar `functionDescription` (`src/lib/auth/function-access.ts`): sem texto no dicionário, não mostram nada em vez da chave crua.
+- **Teste**: `tests/unit/function-texts.test.ts` confere nome e descrição de toda função de fábrica em pt, en e zh, para uma função nova não voltar a aparecer crua.
+- Nenhuma tela, rota, campo ou dado removido; sem mudança no banco.

@@ -35,6 +35,7 @@ import {
   ORDER_SIGNED_WELLMIX,
   nextStageKey,
   isPurchaseFlow,
+  SHIPPED_KEY,
 } from "./stages";
 import {
   compareInspection,
@@ -463,6 +464,13 @@ export async function submitRequirement(
     });
     if (blockedBy(requirement.key, siblings).length)
       throw new WorkflowError("lane_prerequisite");
+  }
+  // Embarque confirmado do pedido de compra: só com o container lacrado no
+  // porto e o BL conferido com a invoice (docs/SHIPPING_DOCS.md).
+  if (isPurchaseFlow(order) && requirement.key === SHIPPED_KEY) {
+    const { shipmentBlockers } = await import("@/lib/services/shipping-docs");
+    if ((await shipmentBlockers(order.id)).length)
+      throw new WorkflowError("shipping_docs_required");
   }
   if (
     stage.status !== "active" &&

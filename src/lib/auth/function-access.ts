@@ -317,6 +317,20 @@ export function holdersOf<U extends Who>(
   );
 }
 
+/**
+ * Descrição de uma função de fábrica (o que ela faz no processo), traduzida.
+ * Sem o texto no dicionário (função nova sem descrição), nada: a tela não
+ * mostra a chave crua.
+ */
+export function functionDescription(
+  key: string,
+  translate: (key: string) => string,
+): string | null {
+  if (!(WELLMIX_FUNCTIONS as readonly string[]).includes(key)) return null;
+  const text = translate(`function.desc.${key}`);
+  return text && text !== `function.desc.${key}` ? text : null;
+}
+
 /** Nome da função para mostrar: o dado pelo administrador, ou o de fábrica traduzido. */
 export function functionLabel(
   key: string,

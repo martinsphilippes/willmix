@@ -1975,6 +1975,74 @@ export interface ProductionFollowup {
 }
 
 /** Acompanhamento da produção de um pedido (um por pedido). */
+/*
+ * Documentos do embarque do pedido de compra (mapa R7, R21, R22?, R23,
+ * R23?; docs/SHIPPING_DOCS.md): o check list de carga do fornecedor, o
+ * packing list, a invoice da trading e o BL da marítima. Uma linha por
+ * pedido e documento; a conferência automática compara linha a linha.
+ */
+export const SHIPPING_DOC_KINDS = [
+  "load",
+  "packing_list",
+  "invoice",
+  "bl",
+] as const;
+export type ShippingDocKind = (typeof SHIPPING_DOC_KINDS)[number];
+export const SHIPPING_DOC_STATUSES = [
+  "draft",
+  "submitted",
+  "accepted",
+  "rejected",
+] as const;
+export type ShippingDocStatus = (typeof SHIPPING_DOC_STATUSES)[number];
+
+/** Uma linha (item do pedido) de um documento do embarque. */
+export interface ShippingDocLine {
+  itemId: string;
+  name: string;
+  cartons: number;
+  pieces: number;
+  netKg: number | null;
+  grossKg: number | null;
+  /** Invoice: preço por peça. */
+  unitPrice?: number | null;
+}
+
+/** Diferença achada na conferência automática. */
+export interface ShippingDocMismatch {
+  itemId: string;
+  field: "cartons" | "pieces" | "netKg" | "grossKg" | "item";
+  expected: number | null;
+  found: number | null;
+}
+
+/** Check list de carga: caixas de um item que subiram no container. */
+export interface LoadEntry {
+  itemId: string;
+  cartons: number;
+  at: string;
+  byUserId: string;
+}
+
+export interface ShippingDoc extends BaseRow {
+  orderId: string;
+  kind: ShippingDocKind;
+  status: ShippingDocStatus;
+  /** Nº da invoice ou do BL. */
+  number: string | null;
+  containerNumber: string | null;
+  lines: ShippingDocLine[];
+  /** Check list de carga: o que foi marcado, entrada a entrada. */
+  entries: LoadEntry[] | null;
+  /** Conferência com o documento anterior (vazio = bateu). */
+  mismatches: ShippingDocMismatch[] | null;
+  documentId: string | null;
+  currency: string | null;
+  version: number;
+  submittedByUserId: string | null;
+  submittedAt: string | null;
+}
+
 export interface ProductionTrack extends BaseRow {
   orderId: string;
   mode: ProductionMode | null;
@@ -2905,6 +2973,7 @@ export interface Tables {
   message_reads: MessageRead;
   production_tracks: ProductionTrack;
   sku_inspections: SkuInspection;
+  shipping_docs: ShippingDoc;
   import_steps: ImportStep;
   receivings: Receiving;
   art_issues: ArtIssue;
@@ -4161,6 +4230,31 @@ export const TABLES: Record<TableName, TableDef> = {
       updatedByUserId: id(false),
     },
     indexes: [{ key: "order_unique", type: "unique", columns: ["orderId"] }],
+  },
+  shipping_docs: {
+    label: "Documentos do embarque (check list, packing list, invoice, BL)",
+    columns: {
+      orderId: id(),
+      kind: enumOf(SHIPPING_DOC_KINDS),
+      status: enumOf(SHIPPING_DOC_STATUSES),
+      number: str(80),
+      containerNumber: str(40),
+      lines: json(),
+      entries: json(),
+      mismatches: json(),
+      documentId: id(false),
+      currency: str(3),
+      version: int(),
+      submittedByUserId: id(false),
+      submittedAt: datetime(),
+    },
+    indexes: [
+      {
+        key: "order_kind_unique",
+        type: "unique",
+        columns: ["orderId", "kind"],
+      },
+    ],
   },
   sku_inspections: {
     label: "Inspeção por SKU",

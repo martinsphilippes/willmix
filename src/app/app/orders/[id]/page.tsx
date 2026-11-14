@@ -340,6 +340,18 @@ export default async function OrderPage({
     order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
       ? await importFlow.importFlowView(user, order)
       : [];
+  /* Documentos do embarque: a Wellmix, o fornecedor e a marítima do pedido. */
+  const shippingDocsVisible =
+    purchaseFlow &&
+    [
+      "INSPECTION",
+      "SHIPPING",
+      "CUSTOMS",
+      "TRANSPORT",
+      "DELIVERED",
+      "CLOSED",
+    ].includes(order.status) &&
+    (await import("@/lib/services/shipping-docs")).canView(user, order);
   /* Container na origem (pedido de compra, mapa R19 a R26). */
   const originSteps =
     purchaseFlow &&
@@ -2342,6 +2354,24 @@ export default async function OrderPage({
                 : null
             }
           />
+        ) : null}
+        {/* Documentos do embarque (docs/SHIPPING_DOCS.md): check list de carga,
+            packing list, invoice e BL conferidos pelo sistema. */}
+        {shippingDocsVisible ? (
+          <Card title={t("shippingDocs.open")} dense>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-zinc-600">
+                {t("shippingDocs.orderHint")}
+              </p>
+              <LinkButton
+                href={`/app/orders/${order.id}/shipping-docs`}
+                variant="secondary"
+                data-shipping-docs-link
+              >
+                {t("shippingDocs.open")}
+              </LinkButton>
+            </div>
+          </Card>
         ) : null}
         {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário, DI... */}
         <ImportFlowCard
