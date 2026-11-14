@@ -17,7 +17,6 @@ const signature = await import("@/lib/services/order-signature");
 const { uploadDocument } = await import("@/lib/services/documents");
 const rounds = await import("@/lib/services/purchase-rounds");
 const groups = await import("@/lib/services/selection-groups");
-const pure = await import("@/lib/purchase-rounds");
 const { buildSchedule, todayIso, addDaysIso } =
   await import("@/lib/workflow/request-schedule");
 type User = import("@/lib/db").User;
