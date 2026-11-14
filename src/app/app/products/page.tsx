@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
+import { listColumns } from "@/lib/db/lookup";
+import { PartyPicker } from "@/components/party-picker";
+import { partyPickerLabels } from "@/components/party-picker-labels";
 import { missingForCompletion } from "@/lib/services/purchase-sheet-calc";
 import { getT } from "@/i18n/server";
 import { productNameText } from "@/i18n";
@@ -77,7 +80,9 @@ export default async function ProductsPage({
   const [allProducts, lines, suppliers] = await Promise.all([
     store.list("products", { orderBy: "name" }),
     store.list("product_lines", { orderBy: "name" }),
-    store.list("parties", { filter: { type: "supplier" } }),
+    // Fornecedores: só id e nome (nome na coluna e na busca); o filtro
+    // escolhe por busca (~5,7 mil fornecedores não cabem numa lista).
+    listColumns(store, "parties", ["name"], { filter: { type: "supplier" } }),
   ]);
   // Excluídos (inativos) ficam fora da lista, em "Ver excluídos".
   const deletedCount = allProducts.filter((p) => !p.active).length;
@@ -269,19 +274,25 @@ export default async function ProductsPage({
               </option>
             ))}
           </Select>
-          <Select
+          {/* Vazio = todos os fornecedores, como a opção da lista antiga. */}
+          <PartyPicker
             name="supplier"
-            defaultValue={filter.supplierId}
-            aria-label={t("common.supplier")}
-            className="w-auto"
-          >
-            <option value="">{t("prodList.allSuppliers")}</option>
-            {suppliers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
+            type="supplier"
+            initial={
+              filter.supplierId
+                ? {
+                    id: filter.supplierId,
+                    name: supplierNames.get(filter.supplierId) ?? "—",
+                  }
+                : null
+            }
+            ariaLabel={t("common.supplier")}
+            labels={{
+              ...partyPickerLabels(t),
+              placeholder: t("prodList.allSuppliers"),
+            }}
+            className="w-full sm:w-64"
+          />
           <Button type="submit" variant="primary">
             {t("prodList.searchButton")}
           </Button>

@@ -13,7 +13,8 @@ import {
   type SuperplanPrefill,
 } from "@/lib/superplan-defaults";
 import { getT } from "@/i18n/server";
-import { realName } from "@/lib/placeholder-name";
+import { productOptionLabel } from "@/lib/services/product-search";
+import { productPickerLabels } from "@/components/party-picker-labels";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import { pt as superplanTexts } from "@/i18n/modules/superplan";
@@ -75,11 +76,13 @@ export default async function SuperplanPage({
       ? query.product
       : null;
 
-  const [ctx, products, prefills, fiscalTableLoaded] = await Promise.all([
+  const [ctx, product, prefills, fiscalTableLoaded] = await Promise.all([
     loadSuperplanContext({
       formatDay: (day) => formatDate(`${day}T12:00:00Z`, t),
     }),
-    getStore().list("products", { filter: { active: true }, orderBy: "name" }),
+    // Produto escolhido por busca (~17 mil produtos não cabem numa lista;
+    // a página saía com 4,2 MB): aqui só o carregado, para o campo.
+    productId ? getStore().get("products", productId) : null,
     // Produto desativado continua abrindo pelo endereço, como sempre abriu.
     productId
       ? superplanPrefillsFor([productId], { includeInactive: true })
@@ -120,10 +123,12 @@ export default async function SuperplanPage({
         key={`${prefill.productId ?? "none"}:${hash(JSON.stringify(params))}`}
         labels={labelsFor(t)}
         intl={t.intl}
-        products={products.map((p) => ({
-          id: p.id,
-          label: [p.sku, realName(p.name)].filter(Boolean).join(" · "),
-        }))}
+        product={
+          product
+            ? { id: product.id, label: productOptionLabel(t, product) }
+            : null
+        }
+        productLabels={productPickerLabels(t)}
         prefill={prefill}
         // Média do despachante (ficha mestre): só informação na tela.
         averageUsd={loaded ? loaded.averageUsd : undefined}

@@ -4,9 +4,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
+import { listByIds } from "@/lib/db/lookup";
 import { getT } from "@/i18n/server";
-import { productNameText } from "@/i18n";
-import { realName } from "@/lib/placeholder-name";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -23,19 +22,18 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
-import type { ProductFill } from "@/components/request-product-fields";
 import { RequestItems } from "@/components/request-items";
-import { effectiveMoq } from "@/lib/moq";
-import { buildProductSpec, productSpecLabels } from "@/lib/product-spec";
-import { variantsByProduct } from "@/lib/services/product-variants";
-import { variantSpecData } from "@/lib/services/variant-sales";
+import { RequestCustomerField } from "@/components/request-customer-field";
+import {
+  partyPickerLabels,
+  productPickerLabels,
+} from "@/components/party-picker-labels";
+import { requestProductFills } from "@/lib/services/request-product-fill";
 import { getSettings } from "@/lib/settings";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { getAiAdapter } from "@/lib/integrations/ai";
 import { getLookup, STRONG_REASONS } from "@/lib/services/product-lookup";
-import { catalogShowcasePhotos } from "@/lib/services/documents";
 import { hiddenBookingProductIds } from "@/lib/services/booking-visibility";
-import { availableStockByProduct } from "@/lib/services/containers";
 import type { LookupField } from "@/lib/db";
 import { createRequestAction } from "../../actions";
 import { canAddProducts } from "@/lib/services/requests";
@@ -90,31 +88,65 @@ export default async function NewRequestPage({
     schedule?.quantity ?? (typeof quantity === "string" ? quantity : "");
   const presetCustomerId =
     schedule?.customerId ?? (typeof customerId === "string" ? customerId : "");
-  const [activeProducts, hiddenByBooking, customers, customerUsers] =
-    await Promise.all([
-      store.list("products", { filter: { active: true }, orderBy: "name" }),
-      // Booking: produto ainda não aprovado lá não é oferecido aqui, nem ao
-      // cliente nem à Wellmix (para ela, a porta é "Gerar solicitação" no Booking).
-      hiddenBookingProductIds(),
-      isWellmix(user)
-        ? store.list("parties", {
-            filter: { type: "customer", active: true },
-            orderBy: "name",
-          })
-        : Promise.resolve([]),
-      // Logins de cliente, para a Wellmix indicar o solicitante (só ele verá o pedido).
-      isWellmix(user)
-        ? store.list("users", {
-            filter: { role: "customer", active: true },
-            orderBy: "name",
-          })
-        : Promise.resolve([]),
-    ]);
-  const products = activeProducts.filter((p) => !hiddenByBooking.has(p.id));
+  // Produto e cliente são escolhidos por busca (auditoria de performance,
+  // 14/11/2026): o catálogo inteiro (~15 mil produtos, com a ficha de cada
+  // um) e os ~26 mil clientes deixavam a página com 15 MB. Aqui só o que já
+  // chega escolhido; a ficha de cada produto escolhido vem de
+  // /api/products/fill (src/lib/services/request-product-fill.ts).
+  const [hiddenByBooking, customerUsers, presetCustomer] = await Promise.all([
+    // Booking: produto ainda não aprovado lá não é oferecido aqui, nem ao
+    // cliente nem à Wellmix (para ela, a porta é "Gerar solicitação" no Booking).
+    hiddenBookingProductIds(),
+    // Logins de cliente, para a Wellmix indicar o solicitante (só ele verá o pedido).
+    isWellmix(user)
+      ? store.list("users", {
+          filter: { role: "customer", active: true },
+          orderBy: "name",
+        })
+      : Promise.resolve([]),
+    isWellmix(user) &&
+    presetCustomerId &&
+    presetCustomerId !== STOCK_OPTION &&
+    !isStockCustomer(presetCustomerId)
+      ? store.get("parties", presetCustomerId)
+      : Promise.resolve(null),
+  ]);
+  // Produto do catálogo: ativo e fora do Booking (a regra da lista antiga).
+  const inCatalog = (p: { active: boolean; id: string } | null | undefined) =>
+    !!p && p.active && !hiddenByBooking.has(p.id);
+  // Empresas dos logins de cliente (grupos do campo "solicitante"): só os
+  // clientes ativos, em ordem alfabética, como a lista antiga.
+  const requesterCustomers = isWellmix(user)
+    ? (
+        await listByIds(
+          store,
+          "parties",
+          customerUsers.map((u) => u.partyId),
+        )
+      )
+        .filter((p) => p.type === "customer" && p.active)
+        .sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+  // Cliente pré-escolhido (programação de compra, endereço): só cliente ativo.
+  const initialCustomer =
+    presetCustomer &&
+    presetCustomer.type === "customer" &&
+    presetCustomer.active &&
+    !isStockCustomer(presetCustomer.id)
+      ? { id: presetCustomer.id, name: presetCustomer.name }
+      : null;
 
   /* Busca por foto ou link: resultado guardado em product_lookups (só de quem buscou ou Wellmix). */
   const found =
     typeof lookup === "string" ? await getLookup(user, lookup) : null;
+  // Produtos sugeridos pela busca por foto/link e o pré-escolhido: só eles.
+  const listedProducts = (
+    await listByIds(store, "products", [
+      ...(found?.matches ?? []).map((m) => m.productId),
+      presetProductId,
+    ])
+  ).filter(inCatalog);
+  const productById = new Map(listedProducts.map((p) => [p.id, p]));
   const settings = await getSettings();
   // Cliente com "Cliente pode criar solicitação" desligado: explica em vez de
   // mostrar um formulário que seria recusado só no envio.
@@ -130,7 +162,7 @@ export default async function NewRequestPage({
   /* Busca por foto/link pausada até a IA externa ter cartão (Configurações → lookupPaused). */
   const lookupPaused = settings.lookupPaused;
   const matched = (found?.matches ?? [])
-    .map((m) => ({ m, p: products.find((p) => p.id === m.productId) }))
+    .map((m) => ({ m, p: productById.get(m.productId) }))
     .filter((x) => !!x.p);
   /* "Parece ser o seu" (mesma foto, nome, IA) × "relacionado" (mesma categoria, palavra em comum). */
   const strong = matched.filter(({ m }) =>
@@ -167,92 +199,12 @@ export default async function NewRequestPage({
         : typeof error === "string" && t(batchKey as DictionaryKey) !== batchKey
           ? t(batchKey as DictionaryKey)
           : t("common.error");
-  /* Dados da ficha para preencher a solicitação ao escolher o produto (sem preço nem fornecedor). */
-  const dims = (a: number | null, b: number | null, c: number | null) =>
-    a !== null && b !== null && c !== null ? `${a} × ${b} × ${c}` : null;
-  // Fotos do cadastro que aparecem ao escolher o produto (o cliente abre só estas).
-  const [showcase, stockByProduct, masterSheets, variants] = await Promise.all([
-    catalogShowcasePhotos(products.map((p) => p.id)),
-    availableStockByProduct(),
-    // Pedido mínimo: o da ficha mestre (gravada com orderId = id do produto), senão o do cadastro.
-    products.length
-      ? store.list("purchase_sheets", {
-          filter: { orderId: products.map((p) => p.id) },
-        })
-      : Promise.resolve([]),
-    // Variações ativas (produto com variações exige escolher uma).
-    variantsByProduct(products.map((p) => p.id)),
-  ]);
-  const sheetMoq = new Map(masterSheets.map((s) => [s.orderId, s.moq]));
-  const specLabels = productSpecLabels(t);
-  // Estoque: o cliente vê só "em estoque"; quantidades ficam para a Wellmix.
-  const qty = (n: number) => n.toLocaleString(t.intl);
-  const stockFor = (productId: string): ProductFill["stock"] => {
-    const st = stockByProduct.get(productId);
-    if (!st) return { available: false, detail: null };
-    if (!isWellmix(user)) return { available: true, detail: null };
-    const parts = [
-      t("reqProduct.inStockQty", { qty: qty(st.quantity), unit: st.unit }),
-      st.inTransit > 0
-        ? t("reqProduct.inTransit", { qty: qty(st.inTransit) })
-        : null,
-    ];
-    return { available: true, detail: parts.filter(Boolean).join(" · ") };
-  };
-  const productFills: ProductFill[] = products.map((p) => ({
-    id: p.id,
-    stock: stockFor(p.id),
-    moq: effectiveMoq(null, sheetMoq.get(p.id), p.moq),
-    // Cada variação com o próprio mínimo (variação > ficha mestre > cadastro),
-    // a especificação montada com os dados dela e a foto (sem preço nem fornecedor).
-    variants: (variants.get(p.id) ?? []).map((v) => ({
-      id: v.id,
-      name: v.name,
-      moq: effectiveMoq(v.moq, sheetMoq.get(p.id), p.moq),
-      specification: [
-        p.category ? `${t("catalog.category")}: ${p.category}` : null,
-        buildProductSpec(variantSpecData(v), specLabels),
-      ]
-        .filter(Boolean)
-        .join("\n"),
-      photoDocumentId: v.photoDocumentId,
-    })),
-    photos: (showcase.get(p.id) ?? []).map((ph) => ({
-      documentId: ph.documentId,
-      caption: ph.caption?.trim() || productNameText(t, p.name),
-    })),
-    // Nome de exemplo ("Produto novo XPTO"): "Produto sem nome" no seletor
-    // e nada no nome e na descrição da solicitação (quem pede preenche).
-    label: `${productNameText(t, p.name)}${p.sku ? ` (${p.sku})` : ""}`,
-    productName: realName(p.name) ?? "",
-    description: [realName(p.name), p.category].filter(Boolean).join(" — "),
-    // A especificação do cadastro (montada com os dados ou escrita à mão)
-    // vale; produto antigo sem ela: os dados das colunas.
-    specification: p.specification?.trim()
-      ? [
-          p.category ? `${t("catalog.category")}: ${p.category}` : null,
-          p.specification.trim(),
-        ]
-          .filter(Boolean)
-          .join("\n")
-      : [
-          p.category ? `${t("catalog.category")}: ${p.category}` : null,
-          p.material ? `${t("catalog.material")}: ${p.material}` : null,
-          p.color ? `${t("catalog.color")}: ${p.color}` : null,
-          p.pantone ? `${t("catalog.pantone")}: ${p.pantone}` : null,
-          dims(p.lengthCm, p.widthCm, p.heightCm)
-            ? `${t("catalog.dimensions")}: ${dims(p.lengthCm, p.widthCm, p.heightCm)}`
-            : null,
-          p.netWeightKg !== null
-            ? `${t("catalog.netWeight")}: ${p.netWeightKg}`
-            : null,
-          p.masterBoxQty !== null
-            ? `${t("catalog.masterBoxQty")}: ${p.masterBoxQty}`
-            : null,
-        ]
-          .filter(Boolean)
-          .join("\n"),
-  }));
+  /* Ficha do produto que já chega escolhido (vitrine, busca por foto,
+     programação de compra): preenche a primeira linha sem esperar a busca. */
+  const presetProduct = productById.get(presetProductId);
+  const productFills = presetProduct
+    ? await requestProductFills(user, t, [presetProduct])
+    : [];
 
   const renderMatches = (items: typeof matched) => (
     <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200">
@@ -532,39 +484,35 @@ export default async function NewRequestPage({
             {/* Cliente e solicitante lado a lado (Wellmix). */}
             {isWellmix(user) && !addToRequest ? (
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label={t("common.customer")}>
-                  <Select
-                    name="customerId"
-                    required
-                    defaultValue={
-                      isStockCustomer(presetCustomerId)
-                        ? STOCK_OPTION
-                        : presetCustomerId
-                    }
+                {/* Cliente por busca ou origem interna: compra para estoque,
+                    sem cliente nem sinal (o mesmo campo customerId). Fora do
+                    <label> do Field: o bloco tem a caixa de estoque. */}
+                <div className="min-w-0 space-y-1">
+                  <span
+                    className="block text-xs font-medium leading-5 text-zinc-700"
+                    data-field-label=""
                   >
-                    <option value="" disabled>
-                      {t("common.select")}
-                    </option>
-                    {/* Origem interna: compra para estoque, sem cliente nem sinal. */}
-                    <option value={STOCK_OPTION} data-stock-option>
-                      {t("purchaseFlow.stock.option")}
-                    </option>
-                    {customers
-                      .filter((c) => !isStockCustomer(c.id))
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                  </Select>
-                </Field>
+                    {t("common.customer")}
+                  </span>
+                  <RequestCustomerField
+                    stockValue={STOCK_OPTION}
+                    stockLabel={t("purchaseFlow.stock.option")}
+                    initial={initialCustomer}
+                    initialStock={
+                      isStockCustomer(presetCustomerId) ||
+                      presetCustomerId === STOCK_OPTION
+                    }
+                    ariaLabel={t("common.customer")}
+                    labels={partyPickerLabels(t)}
+                  />
+                </div>
                 <Field
                   label={t("access.requester")}
                   hint={t("access.requesterHint")}
                 >
                   <Select name="requestedForUserId" defaultValue="">
                     <option value="">{t("access.requesterNone")}</option>
-                    {customers.map((c) => {
+                    {requesterCustomers.map((c) => {
                       const logins = customerUsers.filter(
                         (u) => u.partyId === c.id,
                       );
@@ -640,7 +588,6 @@ export default async function NewRequestPage({
                     : "requests.sourcingDemand.hintStandby",
                 ),
                 product: t("common.product"),
-                select: t("common.select"),
                 variant: t("reqProduct.variant"),
                 variantChoose: t("reqProduct.variantChoose"),
                 variantHint: t("reqProduct.variantHint"),
@@ -657,7 +604,10 @@ export default async function NewRequestPage({
                 attachmentsHint: t("lookup.fill.attachmentsHint"),
                 suggestionsHint: t("lookup.suggestionsHint"),
                 none: t("lookup.noneOption"),
+                fillLoading: t("productPicker.fillLoading"),
+                fillError: t("productPicker.fillError"),
               }}
+              pickerLabels={productPickerLabels(t)}
             />
             {/* Prazo (data, estreito) ao lado da observação. Adicionando a uma
               solicitação: o prazo é o SLA e a observação fica a dela. */}

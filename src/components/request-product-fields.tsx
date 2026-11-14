@@ -1,16 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { inputClass } from "@/components/ui";
+import { ProductPicker } from "@/components/product-picker";
+import type {
+  SearchOption,
+  SearchPickerLabels,
+} from "@/components/search-picker";
 
 /*
  * Parte "produto" da nova solicitação:
  * 1) "Produto não está no catálogo" vem primeiro; marcado, desliga a escolha
  *    de produto e mostra os anexos (fotos/arquivos do produto procurado).
  * 2) Escolher um produto da Wellmix preenche nome, descrição e especificação
- *    com a ficha (campos seguem editáveis). Os dados vêm prontos do servidor,
- *    só com o que o cliente pode ver (sem preço nem fornecedor).
+ *    com a ficha (campos seguem editáveis). Os dados vêm do servidor, só com
+ *    o que o cliente pode ver (sem preço nem fornecedor).
  * 3) Sugestões da busca por foto/link continuam como botões por campo.
+ *
+ * O produto é escolhido por busca (nome ou código) desde a auditoria de
+ * performance (14/11/2026): a lista com o catálogo inteiro (~15 mil
+ * produtos, com a ficha de cada um) deixava a página com 15 MB. A ficha do
+ * produto escolhido vem de /api/products/fill; a do produto que já chega
+ * escolhido (vitrine, busca por foto, programação de compra) vem pronta em
+ * `products`.
  */
 export interface ProductFill {
   id: string;
@@ -50,15 +62,24 @@ export function RequestProductFields({
   suggestions,
   sourceLabels,
   labels,
+  pickerLabels,
   prefix = "",
   onProductChange,
 }: {
+  /** Fichas já prontas (o produto que chega escolhido); as outras vêm sob demanda. */
   products: ProductFill[];
   /**
    * Produto ou variação escolhidos mudaram ("" = nenhum): a linha ajusta a
-   * quantidade ao mínimo (da variação, quando há uma).
+   * quantidade ao mínimo (da variação, quando há uma). `fill` é a ficha do
+   * produto (nula sem produto).
    */
-  onProductChange?: (productId: string, variantId: string) => void;
+  onProductChange?: (
+    productId: string,
+    variantId: string,
+    fill: ProductFill | null,
+  ) => void;
+  /** Textos do campo de produto com busca. */
+  pickerLabels: SearchPickerLabels;
   /** Prefixo dos nomes dos campos (várias linhas de produto no mesmo formulário). */
   prefix?: string;
   presetProductId: string;
@@ -75,7 +96,6 @@ export function RequestProductFields({
     notInCatalog: string;
     notInCatalogHint: string;
     product: string;
-    select: string;
     variant: string;
     variantChoose: string;
     variantHint: string;
@@ -92,9 +112,23 @@ export function RequestProductFields({
     attachmentsHint: string;
     suggestionsHint: string;
     none: string;
+    /** Carregando a ficha do produto escolhido. */
+    fillLoading: string;
+    /** A ficha não veio (rede, produto saiu do catálogo). */
+    fillError: string;
   };
 }) {
   const initial = products.find((p) => p.id === presetProductId) ?? null;
+  // Fichas conhecidas nesta linha (a pronta e as que vieram da busca).
+  const [fills, setFills] = useState<Record<string, ProductFill>>(() =>
+    Object.fromEntries(products.map((p) => [p.id, p])),
+  );
+  // Ficha pedida e ainda não chegada; só a última escolha vale.
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [fillFailed, setFillFailed] = useState(false);
+  const wanted = useRef<string>(presetProductId);
+  // Remonta o campo de busca vazio quando a ficha não vem.
+  const [pickerKey, setPickerKey] = useState(0);
   const initialVariant =
     initial?.variants.find((v) => v.id === presetVariantId) ?? null;
   const [notInCatalog, setNotInCatalog] = useState(
@@ -118,12 +152,13 @@ export function RequestProductFields({
     initial?.id ?? null,
   );
 
-  function fillFrom(id: string) {
+  function fillFrom(id: string, p: ProductFill | null) {
+    wanted.current = id;
+    setLoadingId(null);
     setProductId(id);
     // Outro produto: a variação começa do zero (o campo fica obrigatório).
     setVariantId("");
-    onProductChange?.(id, "");
-    const p = products.find((x) => x.id === id);
+    onProductChange?.(id, "", p);
     setPicked({ productName: null, description: null, specification: null });
     if (p) {
       setValues({
@@ -139,11 +174,51 @@ export function RequestProductFields({
     }
   }
 
+  /** Produto escolhido na busca: a ficha (já conhecida ou pedida ao servidor) preenche os campos. */
+  async function choose(option: SearchOption | null) {
+    setFillFailed(false);
+    if (!option) {
+      fillFrom("", null);
+      return;
+    }
+    const known = fills[option.id];
+    if (known) {
+      fillFrom(option.id, known);
+      return;
+    }
+    // Já vale o produto novo: o que veio da ficha anterior sai na hora (a
+    // solicitação nunca leva o texto de um produto com o código de outro).
+    fillFrom(option.id, null);
+    setLoadingId(option.id);
+    try {
+      const res = await fetch(
+        `/api/products/fill?id=${encodeURIComponent(option.id)}`,
+      );
+      const body = (await res.json()) as { fill?: ProductFill };
+      if (!res.ok || !body.fill) throw new Error(String(res.status));
+      const fill = body.fill;
+      setFills((all) => ({ ...all, [fill.id]: fill }));
+      // Escolheu outro enquanto esperava: esta ficha não preenche nada.
+      if (wanted.current === option.id) fillFrom(option.id, fill);
+    } catch {
+      if (wanted.current !== option.id) return;
+      // Sem a ficha, nada fica escolhido (o campo volta vazio); o que a
+      // pessoa digitou enquanto esperava fica.
+      wanted.current = "";
+      setLoadingId(null);
+      setProductId("");
+      setVariantId("");
+      onProductChange?.("", "", null);
+      setFillFailed(true);
+      setPickerKey((k) => k + 1);
+    }
+  }
+
   /** Variação escolhida: a especificação passa a ser a dela (o nome é composto no servidor). */
   function pickVariant(id: string) {
     setVariantId(id);
-    onProductChange?.(productId, id);
-    const p = products.find((x) => x.id === productId);
+    const p = fills[productId] ?? null;
+    onProductChange?.(productId, id, p);
     const v = p?.variants.find((x) => x.id === id);
     setPicked((k) => ({ ...k, specification: null }));
     setValues((cur) => ({
@@ -154,10 +229,11 @@ export function RequestProductFields({
 
   function toggleNotInCatalog(checked: boolean) {
     setNotInCatalog(checked);
-    if (checked && productId) fillFrom("");
+    setFillFailed(false);
+    if (checked && (productId || loadingId)) fillFrom("", null);
   }
 
-  const selected = products.find((p) => p.id === productId) ?? null;
+  const selected = (productId && fills[productId]) || null;
   const selectedVariant =
     selected?.variants.find((v) => v.id === variantId) ?? null;
 
@@ -308,20 +384,30 @@ export function RequestProductFields({
           >
             {labels.product}
           </label>
-          <select
-            id={`rp-${prefix}productId`}
+          <ProductPicker
+            key={pickerKey}
+            scope="catalog"
+            inputId={`rp-${prefix}productId`}
             name={`${prefix}productId`}
-            value={productId}
-            onChange={(e) => fillFrom(e.target.value)}
-            className={inputClass}
-          >
-            <option value="">{labels.select}</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+            initial={
+              selected ? { id: selected.id, name: selected.label } : null
+            }
+            ariaLabel={labels.product}
+            labels={pickerLabels}
+            onChoose={(option) => void choose(option)}
+          />
+          {loadingId ? (
+            <p className="text-xs text-zinc-500" data-request-fill-loading>
+              {labels.fillLoading}
+            </p>
+          ) : fillFailed ? (
+            <p
+              className="text-xs font-medium text-red-700"
+              data-request-fill-error
+            >
+              {labels.fillError}
+            </p>
+          ) : null}
           <p className="text-xs text-zinc-500">
             {filledFrom ? (
               <span className="mr-1.5 inline-block rounded bg-emerald-50 px-1.5 py-0.5 font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
