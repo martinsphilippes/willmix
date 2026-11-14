@@ -1347,6 +1347,15 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Reaproveita o chat de sempre:** `ChatDrawer` (`src/components/chat-drawer.tsx`) com `floating` no evento `CHAT_EVENT` (`src/lib/chat-target.ts`), aberto pelo botão `ChatFloatingForm` (`src/components/chat-floating-form.tsx`). Os ícones de conversa das outras telas continuam abrindo o painel lateral; "Conversar com a Wellmix" (cliente) e os botões do pedido não mudaram. Sem JavaScript, o botão continua indo para Mensagens. Permissões iguais: só quem tem a tela Mensagens vê o botão, e o serviço confere o acesso. Sem mudança no banco.
 - Testes: `tests/unit/chat-target.test.ts` (mesma conversa e teclado) e o E2E `request-chat-floating.spec.ts` (abrir, enviar, trazer para frente com o rascunho, fechar sem mudar o endereço e a rolagem, a conversa na página Mensagens e o celular).
 
+## Primeiro acesso: seguir sem trocar a senha provisória
+
+- **Pedido do dono** (14/11/2026, com a foto da tela "Primeiro acesso: escolha a sua senha"): "Tem que ser possível seguir sem alterar senha". Até aqui, um login criado com senha provisória só via a troca de senha até trocar (decisão de 11/11/2026).
+- **Como ficou**: o cartão do primeiro acesso ganha, embaixo do formulário, o botão secundário **"Continuar sem trocar a senha"**, com a explicação "Dá para trocar depois, no menu da sua conta (Trocar senha)". O aviso amarelo agora recomenda trocar, sem obrigar. Ao continuar, a marca `mustChangePassword` some, a tela aberta segue no mesmo endereço e o portal não pede mais a troca (nem ao recarregar, nem ao entrar de novo). A senha provisória continua valendo.
+- **Rastro**: a auditoria registra `user.password_change_skipped` (quem seguiu sem trocar). Só vale para o próprio login (`skipPasswordChangeAction`, `src/app/app/actions/password.ts`).
+- **Não mudou**: a troca de senha (primeiro acesso e "Trocar senha"), as regras da senha nova, a criação de login com a troca marcada (Equipe e acessos) e o banco (a coluna é a mesma).
+- Textos nos três idiomas: `password.first.hint` (agora recomenda), `password.first.skip`, `password.first.skipHint`. Docs: `docs/ACCESS.md`.
+- Testes: `tests/unit/password-change.test.ts` (a marca some, a senha provisória continua valendo, uma auditoria só) e o E2E `tests/e2e/first-access.spec.ts` (login novo com a troca marcada, "Continuar sem trocar a senha", mesma tela, não pede mais ao recarregar nem ao entrar de novo, "Trocar senha" disponível).
+
 ## Book: na caixa "Dados do book" o Fornecedor fica à esquerda e a Fábrica à direita
 
 - **Pedido do dono** (13/11/2026, com a foto da caixa): inverter só a posição dos dois blocos da primeira linha da caixa "Dados do book" (`/app/booking/lots/[id]`).

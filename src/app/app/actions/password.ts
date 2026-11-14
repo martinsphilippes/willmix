@@ -1,9 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   PasswordChangeError,
   changeOwnPassword,
+  skipPasswordChange,
 } from "@/lib/services/password-change";
 import { requireUser } from "./helpers";
 
@@ -40,4 +42,15 @@ export async function changePasswordAction(
     return { error: "failed" };
   }
   return { error: null, done: true };
+}
+
+/**
+ * Primeiro acesso: seguir sem trocar a senha provisória (pedido do dono,
+ * 14/11/2026). Só vale para o próprio login; a tela aberta recarrega já com
+ * o portal (sem trocar de endereço).
+ */
+export async function skipPasswordChangeAction() {
+  const user = await requireUser();
+  await skipPasswordChange(user);
+  revalidatePath("/app", "layout");
 }
