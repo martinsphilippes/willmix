@@ -1077,7 +1077,7 @@ export async function pendingTasksFor(
       ? user.role
       : null;
   if (wellmix || supplier || (importRole && user.partyId)) {
-    const { importTasks, isOcpOnlyStep, readyImportTasks } =
+    const { importTasks, isDivergenceStep, isOcpOnlyStep, readyImportTasks } =
       await import("./import-flow");
     const { isSchemaMissing } = await import("@/lib/db/errors");
     let orders: Order[] = [];
@@ -1112,6 +1112,8 @@ export async function pendingTasksFor(
                     "SHIPPING",
                     "CUSTOMS",
                     "TRANSPORT",
+                    // Entregue: só a divergência no recebimento (E24 a E27).
+                    "DELIVERED",
                   ],
                 },
         });
@@ -1131,7 +1133,13 @@ export async function pendingTasksFor(
             .map(({ order, tasks: t }) => ({ order, candidates: t.i! })),
           { team: options.team },
         )
-      : await importTasks(user, orders, { team: options.team });
+      : (await importTasks(user, orders, { team: options.team })).filter(
+          // Pedido entregue: só a divergência no recebimento (como o resumo).
+          (p) =>
+            !wellmix ||
+            p.order.status !== "DELIVERED" ||
+            isDivergenceStep(p.key),
+        );
     // Pedidos que já ganharam a pendência de vincular a certificadora.
     const assigningOcp = new Set<string>();
     for (const p of drafts) {
@@ -1647,6 +1655,10 @@ const IMPORT_STEP_LABEL: Record<string, string> = {
   cert_registration: "Número de registro (certificado)",
   cert_seal: "Selo",
   cert_seal_art: "Selo aplicado na arte",
+  divergence_purchasing: "Divergência: comunicar a Compras",
+  divergence_supplier: "Divergência: resposta do fornecedor",
+  divergence_evidence: "Divergência: evidência",
+  divergence_finance: "Divergência: resultado no financeiro",
 };
 
 /** Pendências do selo de certificação (tipo da pendência + passo): título e detalhe traduzidos. */

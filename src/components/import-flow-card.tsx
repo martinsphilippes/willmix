@@ -4,6 +4,7 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import { CUSTOMS_CHANNELS } from "@/lib/db/schema";
 import {
   SEAL_REPLACED_REASON,
+  parseChoice,
   type StepAssignee,
   type StepView,
 } from "@/lib/services/import-flow";
@@ -78,7 +79,11 @@ export function ImportFlowCard({
   /** Certificação (Fase F) usa o mesmo cartão com outro título e âncora. */
   title?: string;
   anchor?:
-    "import-flow" | "certification" | "container-origin" | "samples-flow";
+    | "import-flow"
+    | "certification"
+    | "container-origin"
+    | "samples-flow"
+    | "divergence-flow";
   /** Explicações do cartão (ex.: como anda o selo de certificação). */
   hints?: ReactNode[];
   /** Passos com quadro em destaque no alto (o envio deles sai da tabela). */
@@ -135,6 +140,45 @@ export function ImportFlowCard({
       <input type="hidden" name="anchor" value={anchor} />
       {returnTo ? (
         <input type="hidden" name="returnTo" value={returnTo} />
+      ) : null}
+      {tpl.choices?.length ? (
+        // Divergência: aceita / contesta / repõe; desconto, crédito, multa
+        // ou sem valor.
+        <Select
+          name="choice"
+          required
+          aria-label={t("importFlow.choiceLabel")}
+          defaultValue={parseChoice(tpl, step?.value).choice ?? tpl.choices[0]}
+        >
+          {tpl.choices.map((c) => (
+            <option key={c} value={c}>
+              {t(`importFlow.choice.${c}` as DictionaryKey)}
+            </option>
+          ))}
+        </Select>
+      ) : null}
+      {tpl.input === "reply" || tpl.input === "outcome" ? (
+        <Input
+          name="value"
+          required={tpl.input === "reply"}
+          maxLength={180}
+          defaultValue={parseChoice(tpl, step?.value).text ?? ""}
+          placeholder={t(`importFlow.ph.${tpl.key}` as DictionaryKey)}
+        />
+      ) : null}
+      {tpl.input === "outcome" ? (
+        <>
+          <Input
+            name="amount"
+            inputMode="decimal"
+            placeholder={t("importFlow.amount")}
+            defaultValue={step?.amount ?? ""}
+          />
+          <input type="hidden" name="currency" value="BRL" />
+          <span className="w-full text-xs text-zinc-500">
+            {t("importFlow.outcomeHint")}
+          </span>
+        </>
       ) : null}
       {tpl.input === "text" || tpl.input === "text_file" ? (
         <Input
@@ -197,12 +241,25 @@ export function ImportFlowCard({
           )}
         </>
       ) : null}
-      {["file", "text_file", "file_text", "money_file"].includes(tpl.input) ? (
+      {[
+        "file",
+        "text_file",
+        "file_text",
+        "money_file",
+        "reply",
+        "outcome",
+      ].includes(tpl.input) ? (
         // Arquivo grande (ex.: a arte com o selo) sobe direto
-        // ao armazenamento; o formulário leva só o id.
+        // ao armazenamento; o formulário leva só o id. Na resposta do
+        // fornecedor e no resultado do financeiro, opcional aqui (o serviço
+        // confere: o resultado com valor exige o arquivo).
         <DirectFileInput
           name="file"
-          required={!step?.documentId}
+          required={
+            !step?.documentId &&
+            tpl.input !== "reply" &&
+            tpl.input !== "outcome"
+          }
           className={fileClass}
           label={t("importFlow.file")}
           uploadingLabel={t("requirement.file.uploading")}
@@ -448,15 +505,30 @@ export function ImportFlowCard({
                 <Td className="min-w-32">
                   {step && step.status !== "pending" ? (
                     <>
-                      {step.value
-                        ? tpl.input === "channel"
-                          ? t(
-                              `importFlow.channel.${step.value}` as DictionaryKey,
-                            )
-                          : tpl.input === "date"
-                            ? formatDate(step.value, t)
-                            : step.value
-                        : null}
+                      {step.value && tpl.choices?.length
+                        ? (() => {
+                            const c = parseChoice(tpl, step.value);
+                            return (
+                              <span data-import-choice={c.choice ?? ""}>
+                                {c.choice
+                                  ? t(
+                                      `importFlow.choice.${c.choice}` as DictionaryKey,
+                                    )
+                                  : null}
+                                {c.choice && c.text ? " · " : null}
+                                {c.text}
+                              </span>
+                            );
+                          })()
+                        : step.value
+                          ? tpl.input === "channel"
+                            ? t(
+                                `importFlow.channel.${step.value}` as DictionaryKey,
+                              )
+                            : tpl.input === "date"
+                              ? formatDate(step.value, t)
+                              : step.value
+                          : null}
                       {step.amount !== null ? (
                         <span className="block tabular-nums">
                           {formatMoney(step.amount, step.currency ?? "BRL", t)}

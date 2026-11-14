@@ -20,7 +20,8 @@ const anchorOf = (form: FormData) => {
   const a = str(form, "anchor");
   return a === "certification" ||
     a === "container-origin" ||
-    a === "samples-flow"
+    a === "samples-flow" ||
+    a === "divergence-flow"
     ? a
     : "import-flow";
 };
@@ -75,6 +76,13 @@ export async function submitImportStepAction(form: FormData) {
           .regex(/^[A-Z]{3}$/)
           .parse(str(form, "currency"))
       : null;
+    // Passo com escolhas (divergência no recebimento): o serviço confere.
+    const choice = str(form, "choice")
+      ? z
+          .string()
+          .regex(/^[a-z_]{1,20}$/)
+          .parse(str(form, "choice"))
+      : null;
     const svc = await import("@/lib/services/import-flow");
     const { getStore } = await import("@/lib/db");
     const order = await getStore().get("orders", orderId);
@@ -90,7 +98,11 @@ export async function submitImportStepAction(form: FormData) {
       type: "import_step",
       visibility: "internal",
       // Container na origem: fotos e vídeos do container vazio e do carregamento.
-      video: key === "container_empty" || key === "container_loaded",
+      video:
+        key === "container_empty" ||
+        key === "container_loaded" ||
+        // Divergência: fotos, vídeos ou laudo da evidência.
+        key === "divergence_evidence",
     } as const;
     let documentId: string | null = null;
     if (file) {
@@ -113,6 +125,7 @@ export async function submitImportStepAction(form: FormData) {
       amount,
       currency,
       documentId,
+      choice,
       replace: !!replace,
     });
     // Arquivo substituído: o quadro do documento diz ali mesmo.
