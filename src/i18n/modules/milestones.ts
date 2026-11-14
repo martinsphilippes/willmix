@@ -1,0 +1,81 @@
+/**
+ * Dicionário do módulo "milestones" (os 16 marcos do pedido, fase 2 do
+ * plano; docs/MILESTONES.md): mesmas chaves em pt, en e zh.
+ */
+export const pt = {
+  "milestone.registration": "Cadastro e fiscal",
+  "milestone.art-material": "Material de arte",
+  "milestone.art": "Arte",
+  "milestone.certification": "Certificação",
+  "milestone.contract": "Contrato",
+  "milestone.down-payment": "Sinal",
+  "milestone.pre-production": "Pré-produção",
+  "milestone.production": "Produção",
+  "milestone.inspection": "Inspeção",
+  "milestone.samples": "Amostras",
+  "milestone.booking": "Booking e logística",
+  "milestone.loading": "Carregamento e documentos",
+  "milestone.shipment": "Embarque",
+  "milestone.customs": "Desembaraço",
+  "milestone.invoice-transport": "Nota fiscal e transporte",
+  "milestone.delivery": "Entrega e recebimento",
+  "milestone.state.done": "Concluído",
+  "milestone.state.active": "Em andamento",
+  "milestone.state.waiting": "Aguardando {name}",
+  "milestone.state.na": "Não se aplica",
+  "milestone.title": "Marcos do pedido",
+  "milestone.hint":
+    "Os 16 marcos do mapa do processo, na ordem. Cada marco junta as subtarefas do pedido e só libera quando os anteriores concluem.",
+};
+
+export const en: Record<keyof typeof pt, string> = {
+  "milestone.registration": "Registration and tax",
+  "milestone.art-material": "Art material",
+  "milestone.art": "Artwork",
+  "milestone.certification": "Certification",
+  "milestone.contract": "Contract",
+  "milestone.down-payment": "Down payment",
+  "milestone.pre-production": "Pre-production",
+  "milestone.production": "Production",
+  "milestone.inspection": "Inspection",
+  "milestone.samples": "Samples",
+  "milestone.booking": "Booking and logistics",
+  "milestone.loading": "Loading and documents",
+  "milestone.shipment": "Shipment",
+  "milestone.customs": "Customs clearance",
+  "milestone.invoice-transport": "Invoice and transport",
+  "milestone.delivery": "Delivery and receiving",
+  "milestone.state.done": "Done",
+  "milestone.state.active": "In progress",
+  "milestone.state.waiting": "Waiting for {name}",
+  "milestone.state.na": "Not applicable",
+  "milestone.title": "Order milestones",
+  "milestone.hint":
+    "The 16 milestones of the process map, in order. Each groups the order's subtasks and opens only when the previous ones are done.",
+};
+
+export const zh: Record<keyof typeof pt, string> = {
+  "milestone.registration": "登记与税务",
+  "milestone.art-material": "美工素材",
+  "milestone.art": "美工",
+  "milestone.certification": "认证",
+  "milestone.contract": "合同",
+  "milestone.down-payment": "定金",
+  "milestone.pre-production": "生产准备",
+  "milestone.production": "生产",
+  "milestone.inspection": "验货",
+  "milestone.samples": "样品",
+  "milestone.booking": "订舱与物流",
+  "milestone.loading": "装柜与单证",
+  "milestone.shipment": "出运",
+  "milestone.customs": "清关",
+  "milestone.invoice-transport": "发票与运输",
+  "milestone.delivery": "交付与收货",
+  "milestone.state.done": "已完成",
+  "milestone.state.active": "进行中",
+  "milestone.state.waiting": "等待{name}",
+  "milestone.state.na": "不适用",
+  "milestone.title": "订单里程碑",
+  "milestone.hint":
+    "流程图中的 16 个里程碑，按顺序排列。每个里程碑汇总订单的子任务，只有前面的完成后才会开放。",
+};

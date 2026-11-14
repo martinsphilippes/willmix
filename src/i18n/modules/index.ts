@@ -104,6 +104,7 @@ import * as navGroups from "./nav-groups";
 import * as flow from "./flow";
 import * as orderSummary from "./order-summary";
 import * as goLive from "./go-live";
+import * as milestones from "./milestones";
 import * as placeholders from "./placeholders";
 import * as ncmSheet from "./ncm-sheet";
 import * as i18nSweep from "./i18n-sweep";
@@ -224,6 +225,7 @@ export const modulesPt = {
   ...flow.pt,
   ...orderSummary.pt,
   ...goLive.pt,
+  ...milestones.pt,
   ...placeholders.pt,
   ...ncmSheet.pt,
   ...i18nSweep.pt,
@@ -365,6 +367,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...flow.en,
   ...orderSummary.en,
   ...goLive.en,
+  ...milestones.en,
   ...placeholders.en,
   ...ncmSheet.en,
   ...i18nSweep.en,
@@ -506,6 +509,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...flow.zh,
   ...orderSummary.zh,
   ...goLive.zh,
+  ...milestones.zh,
   ...placeholders.zh,
   ...ncmSheet.zh,
   ...i18nSweep.zh,

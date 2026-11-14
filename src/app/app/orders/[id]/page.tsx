@@ -1,3 +1,5 @@
+import { OrderMilestonesCard } from "@/components/order-milestones-card";
+import { milestonesOf } from "@/lib/services/milestones";
 import { OrderProgressCard } from "@/components/order-progress-card";
 import { isProgressBlock } from "@/lib/flow-progress";
 import { laneWaiting } from "@/lib/requirement-waiting";
@@ -1428,6 +1430,10 @@ export default async function OrderPage({
         }
       />
       {/* Linha do tempo do pedido entre os blocos (docs/FLOW_MENU.md). */}
+      {/* Marcos do pedido (fase 2, docs/MILESTONES.md). */}
+      {wellmix ? (
+        <OrderMilestonesCard milestones={await milestonesOf(order)} t={t} />
+      ) : null}
       {wellmix ? (
         <OrderProgressCard
           orderId={order.id}
