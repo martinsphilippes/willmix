@@ -1074,15 +1074,19 @@ export async function importFlowView(
   return Promise.all(
     shown.map(async (tpl) => {
       const step = steps.find((s) => s.key === tpl.key) ?? null;
-      const isReady = ready(tpl.key, steps);
+      // Pedido de compra: o BL vem conferido dos documentos do embarque (sem
+      // o draft do agente antes dele, e ninguém envia por aqui).
+      const purchaseBl = tpl.key === "bl" && isPurchaseFlow(order);
+      const isReady = purchaseBl || ready(tpl.key, steps);
       const done = isDone(step ?? undefined);
       return {
-        template: tpl,
+        template: purchaseBl ? { ...tpl, after: undefined } : tpl,
         step,
         ready: isReady,
         done,
         canSubmit:
           open &&
+          !purchaseBl &&
           isReady &&
           !(tpl.validator && step?.status === "validated") &&
           (actsAs(user, order, tpl.actor) ||

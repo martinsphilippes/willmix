@@ -44,6 +44,7 @@ async function sendStep(
   input: { value?: string; file?: boolean },
 ) {
   await page.goto(`${orderUrl}#${anchor}`);
+  await page.waitForLoadState("networkidle");
   const row = page.locator(`#${anchor}-step-${key}`);
   if (input.value !== undefined)
     await row.locator("input[name=value]").fill(input.value);
@@ -61,6 +62,7 @@ async function validateStep(
   key: string,
 ) {
   await page.goto(`${orderUrl}#${anchor}`);
+  await page.waitForLoadState("networkidle");
   await Promise.all([
     page.waitForURL(/importStep=validated/),
     page
@@ -88,6 +90,8 @@ async function fillMissingWeights(
 test("booking → seleção → solicitação ao fornecedor → produto → pedido de compra → raias → contrato → pagamento → inspeção → embarque → desembaraço → transporte → entrega", async ({
   page,
 }) => {
+  // Caminho inteiro, do Booking à entrega (com o container e os documentos do embarque).
+  test.slow();
   const codeA = `${TAG}-A`;
   const codeB = `${TAG}-B`;
   const productName = `Copo de vidro ${TAG}`;
