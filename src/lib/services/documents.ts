@@ -368,13 +368,18 @@ export async function canAccessDocument(
       (await isCatalogShowcasePhoto(doc.productId, doc.id))
     )
       return true;
-    // Certificadora (OCP): as fotos de vitrine dos produtos dos pedidos em
-    // que está (precisa ver o produto para gerar o selo de certificação).
+    // Quem certifica (o despachante; a certificadora, papel sem uso): as
+    // fotos de vitrine dos produtos dos pedidos em que está (precisa ver o
+    // produto para gerar o selo de certificação; dono, 13/11/2026).
     if (
       doc.productId &&
-      user.role === "ocp" &&
+      (user.role === "ocp" || user.role === "broker") &&
       !!user.partyId &&
-      (await ocpHasOrderWithProduct(user.partyId, doc.productId)) &&
+      (await ocpHasOrderWithProduct(
+        user.partyId,
+        doc.productId,
+        user.role === "broker" ? "brokerId" : "ocpId",
+      )) &&
       (await isShowcaseDocument(doc.productId, doc.id))
     )
       return true;
@@ -604,20 +609,24 @@ async function isShowcaseDocument(
   return showcaseOf(photos).some((p) => p.documentId === documentId);
 }
 
-/** Pedidos (não cancelados) em que a empresa é a certificadora (OCP). */
-async function ocpOrders(partyId: string): Promise<Order[]> {
+/** Pedidos (não cancelados) em que a empresa certifica (OCP ou despachante). */
+async function ocpOrders(
+  partyId: string,
+  field: "ocpId" | "brokerId" = "ocpId",
+): Promise<Order[]> {
   const orders = await getStore().list("orders", {
-    filter: { ocpId: partyId },
+    filter: { [field]: partyId },
   });
   return orders.filter((o) => o.status !== "CANCELLED");
 }
 
-/** O produto está em algum pedido em que a empresa é a certificadora? */
+/** O produto está em algum pedido em que a empresa certifica? */
 async function ocpHasOrderWithProduct(
   partyId: string,
   productId: string,
+  field: "ocpId" | "brokerId" = "ocpId",
 ): Promise<boolean> {
-  const orders = await ocpOrders(partyId);
+  const orders = await ocpOrders(partyId, field);
   if (!orders.length) return false;
   const items = await getStore().list("order_items", {
     filter: { orderId: orders.map((o) => o.id), productId },

@@ -14,6 +14,7 @@ import {
   Field,
   Input,
   PageHeader,
+  Select,
   Table,
   Td,
   Textarea,
@@ -24,7 +25,10 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { saveLineAction } from "../actions";
-import { setLineCertificationsAction } from "../actions/compliance";
+import {
+  setLineAgencyAction,
+  setLineCertificationsAction,
+} from "../actions/compliance";
 import { saveLinePromptsAction } from "../actions/vision";
 import { catalogError } from "../products/_components/shared";
 import { visionError } from "../products/_components/ai-section";
@@ -36,7 +40,7 @@ export default async function LinesPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "lines");
-  const { error, edit, saved } = await searchParams;
+  const { error, edit, saved, agencyApplied } = await searchParams;
   const t = await getT();
   const store = getStore();
   const lines = await store.list("product_lines", { orderBy: "name" });
@@ -48,6 +52,10 @@ export default async function LinesPage({
         ? saved
         : null;
   const products = await store.list("products", { filter: { active: true } });
+  // Agências ativas (Parceiros): a agência de arte de cada linha.
+  const agencies = await store.list("parties", {
+    filter: { type: "agency", active: true },
+  });
   const productCount = new Map<string, number>();
   for (const p of products)
     productCount.set(p.lineId, (productCount.get(p.lineId) ?? 0) + 1);
@@ -65,7 +73,13 @@ export default async function LinesPage({
         t={t}
         title={t("lines.title")}
       />
-      {saved ? <Alert tone="success">{t("catalog.saved")}</Alert> : null}
+      {saved ? (
+        <Alert tone="success">
+          {typeof agencyApplied === "string"
+            ? t("catalog.lines.agency.applied", { n: agencyApplied })
+            : t("catalog.saved")}
+        </Alert>
+      ) : null}
       {error ? (
         <Alert tone="danger">
           {visionError(t, error) ?? catalogError(t, error) ?? t("common.error")}
@@ -247,6 +261,45 @@ export default async function LinesPage({
                                 </div>
                                 <p className="mt-1 text-xs text-zinc-500">
                                   {t("catalog.lines.certificationsHint")}
+                                </p>
+                              </form>
+                            </Card>
+                            <Card title={t("catalog.lines.agency")}>
+                              <form
+                                action={setLineAgencyAction}
+                                data-line-agency={l.id}
+                              >
+                                <input
+                                  type="hidden"
+                                  name="lineId"
+                                  value={l.id}
+                                />
+                                <div className="flex gap-2">
+                                  <Select
+                                    name="agencyId"
+                                    defaultValue={l.agencyId ?? ""}
+                                    aria-label={t("catalog.lines.agency")}
+                                    className="min-w-0 flex-1"
+                                  >
+                                    <option value="">
+                                      {t("catalog.lines.agency.none")}
+                                    </option>
+                                    {agencies.map((a) => (
+                                      <option key={a.id} value={a.id}>
+                                        {a.name}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                  <SubmitButton
+                                    variant="secondary"
+                                    className="shrink-0"
+                                    pendingText="…"
+                                  >
+                                    {t("common.save")}
+                                  </SubmitButton>
+                                </div>
+                                <p className="mt-1 text-xs text-zinc-500">
+                                  {t("catalog.lines.agencyHint")}
                                 </p>
                               </form>
                             </Card>

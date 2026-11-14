@@ -10,7 +10,8 @@ import {
   type StageKey,
   type User,
 } from "@/lib/db";
-import { isAdmin, isWellmix } from "@/lib/auth/permissions";
+import { hasCertifier, isAdmin, isWellmix } from "@/lib/auth/permissions";
+import type { TaskItem } from "@/lib/task-owner";
 import { can } from "@/lib/auth/function-access";
 import {
   ORDER_SIGN_SEND,
@@ -97,6 +98,10 @@ export interface Task {
   loadedAt?: string | null;
   /** Etapa do caminho do fornecedor (só nas pendências do fornecedor). */
   supplierStep?: SupplierStep;
+  /** Itens da etapa na pendência (filtro por função do operador, src/lib/task-owner.ts). */
+  items?: TaskItem[];
+  /** Passo do embarque ou da certificação ("assign": designar o despachante). */
+  stepKey?: string | null;
 }
 
 /*
@@ -450,6 +455,7 @@ export function stageTaskDrafts(
         requestId: order.requestId,
         orderId: order.id,
         sinceAt: stage.startedAt,
+        items: items.map((r) => ({ key: r.key, role: r.role, label: r.label })),
         ...(step ? { supplierStep: step } : {}),
       });
     }
@@ -887,7 +893,9 @@ export async function pendingTasksFor(
     user.role === "comex" ||
     user.role === "logistics" ||
     user.role === "ocp" ||
-    user.role === "agency"
+    user.role === "agency" ||
+    // Despachante: a certificação é dele (dono, 13/11/2026).
+    user.role === "broker"
       ? user.role
       : null;
   if (wellmix || supplier || (importRole && user.partyId)) {
@@ -904,7 +912,9 @@ export async function pendingTasksFor(
                   ? "ocpId"
                   : importRole === "agency"
                     ? "agencyId"
-                    : "logisticsId"]: user.partyId!,
+                    : importRole === "broker"
+                      ? "brokerId"
+                      : "logisticsId"]: user.partyId!,
             }
           : supplier
             ? { supplierId: user.partyId! }
@@ -936,7 +946,9 @@ export async function pendingTasksFor(
       // Selo sem certificadora no pedido: a pendência é de quem designa a
       // certificadora em Parceiros do pedido (o analista ou a equipe).
       const assignOcp =
-        p.kind === "cert_step" && p.key === "cert_seal" && !p.order.ocpId;
+        p.kind === "cert_step" &&
+        p.key === "cert_seal" &&
+        !hasCertifier(p.order);
       // Selo e memorial: texto próprio, traduzido na tela.
       const seal =
         SEAL_TASK_TEXT[assignOcp ? "assign_ocp" : `${p.kind}:${p.key}`];
@@ -970,6 +982,7 @@ export async function pendingTasksFor(
                 }
               : {}),
             link: p.link ?? `/app/orders/${p.order.id}#import-flow`,
+            stepKey: assignOcp ? "assign" : p.key,
             dueAt: null,
             requestId: p.order.requestId,
             sinceAt: p.sinceAt ?? null,

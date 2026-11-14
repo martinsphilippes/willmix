@@ -257,6 +257,12 @@ export const pt = {
   "catalog.lines.certificationsHint":
     "Separadas por vírgula (ex.: Inmetro, Anvisa). Sem certificação válida no produto, o pedido entra na fila de revisão.",
   "catalog.lines.certifications.none": "Nenhuma exigida",
+  "catalog.lines.agency": "Agência de arte",
+  "catalog.lines.agencyHint":
+    "Os pedidos da linha herdam esta agência para a arte da embalagem. Ao salvar, os pedidos abertos da linha sem agência a recebem. Só aparecem as agências ativas em Parceiros.",
+  "catalog.lines.agency.none": "Sem agência (a Wellmix faz a arte)",
+  "catalog.lines.agency.applied":
+    "Agência salva. Pedidos abertos que a receberam: {n}.",
   "help.catalog.lines.steps":
     "Novo / editar: nome, manual em PDF e checklist de preparação que o fornecedor cumpre.\nCertificações obrigatórias: liste o que todo produto da linha precisa ter válido (ex.: Inmetro); o gate de conformidade usa esta lista ao criar pedidos.",
 
@@ -539,6 +545,12 @@ export const en: Record<keyof typeof pt, string> = {
   "catalog.lines.certificationsHint":
     "Comma separated (e.g. Inmetro, Anvisa). Without a valid certification on the product, the order goes to the review queue.",
   "catalog.lines.certifications.none": "None required",
+  "catalog.lines.agency": "Artwork agency",
+  "catalog.lines.agencyHint":
+    "Orders in this line inherit this agency for the packaging artwork. On save, the line's open orders without an agency receive it. Only agencies active in Partners are listed.",
+  "catalog.lines.agency.none": "No agency (Wellmix does the artwork)",
+  "catalog.lines.agency.applied":
+    "Agency saved. Open orders that received it: {n}.",
   "help.catalog.lines.steps":
     "New / edit: name, PDF manual and the preparation checklist the supplier fulfils.\nRequired certifications: list what every product of the line must have valid (e.g. Inmetro); the compliance gate uses this list when orders are created.",
 
@@ -809,6 +821,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "catalog.lines.certificationsHint":
     "以逗号分隔（如 Inmetro, Anvisa）。产品没有有效认证时，订单会进入审核队列。",
   "catalog.lines.certifications.none": "无要求",
+  "catalog.lines.agency": "设计代理机构",
+  "catalog.lines.agencyHint":
+    "该产品线的订单继承此代理机构来制作包装设计。保存后，该产品线中尚无代理机构的未完成订单将获得此机构。仅显示在“合作方”中处于启用状态的代理机构。",
+  "catalog.lines.agency.none": "无代理机构（由 Wellmix 制作设计）",
+  "catalog.lines.agency.applied":
+    "代理机构已保存。获得该机构的未完成订单：{n}。",
   "help.catalog.lines.steps":
     "新建 / 编辑：名称、PDF 手册和供应商需完成的备货清单。\n必需认证：列出该产品线所有产品必须持有的有效认证（如 Inmetro）；创建订单时合规检查会使用此列表。",
 

@@ -504,8 +504,9 @@ export async function assignPartnerAction(form: FormData) {
       }
     }
     // Pedido de compra: os itens abertos da arte e do certificado (raias da
-    // Preparação) passam para a agência ou a certificadora designada.
-    if (field === "agencyId" || field === "ocpId") {
+    // Preparação) passam para a agência ou o despachante designado (a
+    // certificação é dele; dono, 13/11/2026).
+    if (field === "agencyId" || field === "brokerId" || field === "ocpId") {
       const updated = await store.get("orders", orderId);
       const { syncLaneRoles } = await import("@/lib/services/purchase-order");
       if (updated) await syncLaneRoles(user, updated);
@@ -528,7 +529,7 @@ export async function assignPartnerAction(form: FormData) {
     // Selo de certificação: o OCP novo é avisado do selo a emitir; quem
     // passa a fazer a arte, do selo que já chegou. Só quando mudou de fato.
     if (
-      (field === "ocpId" || field === "agencyId") &&
+      (field === "ocpId" || field === "brokerId" || field === "agencyId") &&
       (order[field] ?? null) !== partyId
     ) {
       try {

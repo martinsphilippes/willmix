@@ -597,6 +597,13 @@ export async function assignDefaultPartners(
 ) {
   const store = getStore();
   const patch: Partial<Order> = {};
+  // Agência de arte da linha do pedido (dono, 13/11/2026) vem antes da regra
+  // "a única agência ativa".
+  if (!order.agencyId && !options.skipAgency) {
+    const { lineAgencyOf } = await import("./line-agency");
+    const agencyId = await lineAgencyOf(order.lineId);
+    if (agencyId) patch.agencyId = agencyId;
+  }
   for (const [type, field] of [
     ["agency", "agencyId"],
     ["broker", "brokerId"],
@@ -607,7 +614,7 @@ export async function assignDefaultPartners(
     ["ocp", "ocpId"],
   ] as const) {
     // Já designado (ex.: agência do briefing de embalagem) não é sobrescrito.
-    if (order[field]) continue;
+    if (order[field] || patch[field]) continue;
     if (field === "agencyId" && options.skipAgency) continue;
     const parties = await store.list("parties", {
       filter: { type, active: true },
