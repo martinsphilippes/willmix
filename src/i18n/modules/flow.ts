@@ -3,6 +3,9 @@
  * telas dos passos; docs/FLOW_MENU.md): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "flow.preproduction.title": "Pré-produção do pedido #{n}",
+  "flow.preproduction.detail":
+    "Sinal pago: dados da produção (fábrica ou trade) e ETD",
   "flow.receiving.title": "Recebimento do pedido #{n}",
   "flow.receiving.storage":
     "Descarga no CD: lacre, fotos, checklist e contagem por SKU",
@@ -82,7 +85,7 @@ export const pt = {
     "Documento do pedido, contratos de amostras e as duas assinaturas (P10, P11, P17).",
   "flow.step.production.pre-production": "Pré-produção",
   "flow.help.production.pre-production":
-    "Do sinal pago ao início da produção. Ainda sem pendências próprias: os pedidos aparecem aqui quando o passo ganhar as dele.",
+    "Do sinal pago ao início da produção: pedidos de compra sem os dados da produção e o ETD.",
   "flow.step.production.inspection": "Inspeção",
   "flow.help.production.inspection":
     "Fotos, peso e vídeo da produção, conformidade e aprovação dos SKUs (R3, R4?, R10).",
@@ -149,6 +152,9 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "flow.preproduction.title": "Pre-production for order #{n}",
+  "flow.preproduction.detail":
+    "Down payment cleared: production data (factory or trade) and ETD",
   "flow.receiving.title": "Receiving for order #{n}",
   "flow.receiving.storage":
     "Unloading at the DC: seal, photos, checklist and count per SKU",
@@ -228,7 +234,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Order document, sample contracts and both signatures (P10, P11, P17).",
   "flow.step.production.pre-production": "Pre-production",
   "flow.help.production.pre-production":
-    "From the down payment to the start of production. No tasks of its own yet: orders will show here once the step gets them.",
+    "From the down payment to the start of production: purchase orders without production data and ETD.",
   "flow.step.production.inspection": "Inspection",
   "flow.help.production.inspection":
     "Production photos, weight and video, conformity and SKU approval (R3, R4?, R10).",
@@ -295,6 +301,8 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "flow.preproduction.title": "订单 #{n} 产前",
+  "flow.preproduction.detail": "定金已付：生产信息（工厂或贸易）和 ETD",
   "flow.receiving.title": "订单 #{n} 收货",
   "flow.receiving.storage": "配送中心卸货：铅封、照片、检查表和按 SKU 清点",
   "flow.receiving.return": "设备交接单、还柜和收货结单",
@@ -367,7 +375,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.help.order.contract": "订单文件、样品合同和双方签字（P10、P11、P17）。",
   "flow.step.production.pre-production": "产前",
   "flow.help.production.pre-production":
-    "从支付定金到开始生产。暂无自己的待办：该环节有待办后订单会显示在这里。",
+    "从支付定金到开始生产：尚未填写生产信息和 ETD 的采购订单。",
   "flow.step.production.inspection": "验货",
   "flow.help.production.inspection":
     "生产照片、重量和视频，合规声明及 SKU 批准（R3、R4?、R10）。",

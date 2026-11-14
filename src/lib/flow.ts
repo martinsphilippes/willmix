@@ -269,6 +269,8 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   after_sales: "sales/sale",
   // Recebimento no CD (casos do menu, fora das Pendências; docs/FLOW_MENU.md).
   receiving_storage: "delivery/storage",
+  // Pré-produção: sinal pago e a produção sem ETD (casos do menu).
+  preproduction_plan: "production/pre-production",
   receiving_return: "delivery/return",
 };
 

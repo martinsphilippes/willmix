@@ -5,7 +5,7 @@ import { CURRENCIES } from "@/lib/currencies";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import { answerFreight } from "@/lib/services/freight";
-import { field, requireUser, run, str } from "./helpers";
+import { field, requireUser, run, str, flowReturnTo } from "./helpers";
 import { parseNumberInput } from "@/lib/number-input";
 
 /*
@@ -67,7 +67,9 @@ export async function answerFreightAction(form: FormData) {
 export async function requestOrderFreightAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId").slice(0, 64);
-  const back = `/app/orders/${encodeURIComponent(orderId)}`;
+  // Tela do passo do menu de onde a ação veio (docs/FLOW_MENU.md).
+  const back =
+    flowReturnTo(form) ?? `/app/orders/${encodeURIComponent(orderId)}`;
   await run(`${back}#freight`, async () => {
     ID.parse(orderId);
     if (!isWellmix(user)) throw new ForbiddenError();

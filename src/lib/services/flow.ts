@@ -28,7 +28,11 @@ export const flowTasksFor = cache(async (user: User): Promise<Task[]> =>
 
 /** Caso do menu: uma pendência ou um recebimento aberto. */
 export type FlowCase = Omit<Task, "kind"> & {
-  kind: Task["kind"] | "receiving_storage" | "receiving_return";
+  kind:
+    | Task["kind"]
+    | "receiving_storage"
+    | "receiving_return"
+    | "preproduction_plan";
 };
 
 /** Peças da descarga (Armazenagem); o resto (RIC, devolução, fechamento) é Retorno. */
@@ -94,11 +98,71 @@ export const flowReceivingCasesFor = cache(
   },
 );
 
+/** Pedidos em andamento (os encerrados e cancelados não entram). */
+const LIVE = (status: string) => status !== "CLOSED" && status !== "CANCELLED";
+
+/**
+ * Pré-produção (mapa, P12 → R1): pedido de compra com o sinal pago (ou a
+ * conta corrente) e a produção sem ETD. Resolve-se com os dados da produção
+ * e o ETD (cartão de produção, parte "dados e ETD"). Wellmix com a tela
+ * Produção.
+ */
+export const flowPreProductionCasesFor = cache(
+  async (user: User): Promise<FlowCase[]> => {
+    if (!isWellmix(user) || !canOpen(user, "production")) return [];
+    const store = getStore();
+    const paid = await store.list("requirements", {
+      filter: { key: "down_payment", status: "done" },
+    });
+    const ids = [...new Set(paid.map((r) => r.orderId))];
+    if (!ids.length) return [];
+    const [orders, tracks] = await Promise.all([
+      store.list("orders", { filter: { id: ids } }),
+      store
+        .list("production_tracks", { filter: { orderId: ids } })
+        .catch(() => []),
+    ]);
+    const out: FlowCase[] = [];
+    for (const order of orders) {
+      if (!LIVE(order.status) || order.held) continue;
+      const track = tracks.find((x) => x.orderId === order.id) ?? null;
+      if (track?.etd) continue;
+      const since = paid.find((r) => r.orderId === order.id);
+      out.push({
+        kind: "preproduction_plan",
+        title: `Pedido #${order.number}`,
+        detail: "",
+        text: {
+          title: "flow.preproduction.title",
+          detail: "flow.preproduction.detail",
+          values: { n: order.number },
+        },
+        link: `/app/orders/${order.id}#production`,
+        dueAt: null,
+        overdue: false,
+        orderNumber: order.number,
+        orderId: order.id,
+        customerId: order.customerId,
+        ownerUserId: order.ownerUserId ?? null,
+        sinceAt: since?.submittedAt ?? since?.updatedAt ?? null,
+        group: "preproduction_plan",
+        due: "none",
+        daysLeft: null,
+      });
+    }
+    return out;
+  },
+);
+
 /** Todos os casos do menu do login: as pendências e os recebimentos abertos. */
 export const flowCasesFor = cache(async (user: User): Promise<FlowCase[]> => [
   ...(await flowTasksFor(user)),
   ...(await flowReceivingCasesFor(user).catch((error: unknown) => {
     console.error("flowReceivingCasesFor failed", error);
+    return [];
+  })),
+  ...(await flowPreProductionCasesFor(user).catch((error: unknown) => {
+    console.error("flowPreProductionCasesFor failed", error);
     return [];
   })),
 ]);
