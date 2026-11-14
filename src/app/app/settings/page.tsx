@@ -234,6 +234,10 @@ export default async function SettingsPage({
             <LinkButton href="/app/settings/summaries" variant="secondary">
               {t("summaries.link")}
             </LinkButton>
+            {/* Go-live do histórico do Sankhya (docs/SANKHYA.md). */}
+            <LinkButton href="/app/settings/go-live" variant="secondary">
+              {t("goLive.link")}
+            </LinkButton>
             <LinkButton href="/app/settings/reset" variant="danger">
               {t("reset.link")}
             </LinkButton>

@@ -977,6 +977,12 @@ export interface Order extends BaseRow {
   /** No pedido filho: o pedido pai e o nº da rodada (1, 2, 3…). */
   parentOrderId?: string | null;
   roundIndex?: number | null;
+  /**
+   * Pedido da carga do histórico do Sankhya em espera até o go-live
+   * (docs/SANKHYA.md): fora das pendências (tasks.ts usa `held: null`). As
+   * telas de pedidos continuam mostrando o pedido.
+   */
+  held?: boolean | null;
 }
 
 /** Uma rodada da programação de compra no pedido pai. */
@@ -3294,9 +3300,16 @@ export const TABLES: Record<TableName, TableDef> = {
       purchaseRounds: jsonLarge(),
       parentOrderId: id(false),
       roundIndex: int(),
+      held: bool(),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
+      {
+        key: "live_by_status",
+        type: "key",
+        columns: ["status"],
+        where: `"held" is null`,
+      },
       { key: "by_parent", type: "key", columns: ["parentOrderId"] },
       { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
       { key: "by_owner", type: "key", columns: ["ownerUserId"] },
