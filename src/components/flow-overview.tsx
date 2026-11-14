@@ -11,7 +11,6 @@ import {
 import {
   flowAllFor,
   flowBlockSummary,
-  flowHeldEntities,
   flowOverviewEntities,
   flowOverviewKpis,
 } from "@/lib/services/flow";
@@ -19,12 +18,7 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { overviewHref, stepId } from "@/lib/flow";
 import { ENTITY_BLOCKS } from "@/lib/services/flow-kpis";
 import { FlowCases } from "./flow-cases";
-import {
-  FlowEntities,
-  FlowHeldEntities,
-  PercentBar,
-  daysSince,
-} from "./flow-entities";
+import { FlowEntities, PercentBar, daysSince } from "./flow-entities";
 import { Card, PageHeader, Stat, TextLink, cx } from "./ui";
 
 /*
@@ -199,12 +193,10 @@ async function EntityOverview({
   const now = new Date();
   // Os números vêm prontos (kpi_snapshots "flow", docs/RESUMOS.md); a lista
   // só do bloco aberto, para a tabela.
-  const [summary, kpis, entities, heldRows] = await Promise.all([
+  const [summary, kpis, entities] = await Promise.all([
     flowBlockSummary(user, block, now),
     flowOverviewKpis(user, now),
     flowOverviewEntities(user, block),
-    // Histórico do Sankhya em espera até o go-live, à parte (docs/SANKHYA.md).
-    flowHeldEntities(user, block),
   ]);
   const heldCount = kpis.held.blocks[block] ?? 0;
   const heldIn = (key: string) => kpis.held.steps[`${block}/${key}`] ?? 0;
@@ -213,9 +205,7 @@ async function EntityOverview({
   const shown = current
     ? entities.filter((e) => e.steps.includes(current.step.key))
     : entities;
-  const heldShown = current
-    ? heldRows.filter((e) => e.steps.includes(current.step.key))
-    : heldRows;
+
   const inStep = (key: string) => kpis.steps[`${block}/${key}`] ?? 0;
   const late = mine?.late ?? 0;
   const np = block === "new-product";
@@ -502,17 +492,6 @@ async function EntityOverview({
               })}
             >
               <FlowCases step={current.step} tasks={current.tasks} t={t} />
-            </Card>
-          ) : null}
-          {heldShown.length ? (
-            <Card
-              title={t("flow.held.title", { n: heldShown.length })}
-              className="border-dashed"
-            >
-              <p className="mb-3 text-sm text-zinc-600">
-                {t("flow.held.hint")}
-              </p>
-              <FlowHeldEntities entities={heldShown} t={t} />
             </Card>
           ) : null}
         </div>

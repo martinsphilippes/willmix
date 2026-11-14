@@ -65,9 +65,11 @@ import type { BoardOrder, BoardStage } from "./tower-board";
  * deploy: summary-kick.ts). 9: `itemCount` (a tela Pedidos lê os itens só da
  * página). 10: a contribuição de cada pedido para o Overview dos blocos
  * (`kpi.f`, flow-contribution.ts; docs/FLOW_MENU.md). 11: o pedido do
- * histórico em espera também contribui (`f.h`), só pela situação.
+ * histórico em espera também contribui (`f.h`), só pela situação. 12: o
+ * pedido em espera contribui pela situação real, como os outros, marcado
+ * (`f.h`; dono, 14/11/2026).
  */
-export const SUMMARY_VERSION = 11;
+export const SUMMARY_VERSION = 12;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";

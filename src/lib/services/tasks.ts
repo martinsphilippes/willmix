@@ -1812,3 +1812,87 @@ export function isInvolved(user: User, order: Order): boolean {
   if (!field || !user.partyId) return false;
   return order[field] === user.partyId;
 }
+
+/** Pedidos do histórico mostrados por página na tela Pendências. */
+export const HELD_TASKS_PAGE = 50;
+
+/**
+ * Pendências dos pedidos do histórico do Sankhya em espera até o go-live
+ * (dono, 14/11/2026; docs/SANKHYA.md): só as da atividade em aberto (os
+ * itens das etapas em andamento ou bloqueadas), com a mesma regra de quem
+ * faz cada uma (`stageTaskDrafts` e o encaminhamento das raias). Ficam fora
+ * das pendências gerais, das bolinhas do menu, do SLA e dos avisos: a tela
+ * Pendências lê esta lista à parte, por página de pedidos (os 16 mil do
+ * histórico de uma vez repetiriam a lentidão de 13/11/2026). Só a Wellmix.
+ */
+export async function heldTasksFor(
+  user: User,
+  page = 1,
+  now = new Date(),
+): Promise<{ tasks: Task[]; orders: number; page: number; pages: number }> {
+  const empty = { tasks: [], orders: 0, page: 1, pages: 1 };
+  if (!isWellmix(user)) return empty;
+  const store = getStore();
+  const { listColumns } = await import("@/lib/db/lookup");
+  const held = (
+    await listColumns(store, "orders", ["number", "status", "held"], {
+      filter: { held: true },
+    })
+  )
+    .filter((o) => o.held && o.status !== "CLOSED" && o.status !== "CANCELLED")
+    .sort((a, b) => b.number - a.number);
+  if (!held.length) return empty;
+  const pages = Math.max(1, Math.ceil(held.length / HELD_TASKS_PAGE));
+  const current = Math.min(Math.max(1, Math.floor(page) || 1), pages);
+  const ids = held
+    .slice((current - 1) * HELD_TASKS_PAGE, current * HELD_TASKS_PAGE)
+    .map((o) => o.id);
+  // Leituras pelo pedido (orderId): veem as linhas em espera.
+  const [orders, stages, openRequirements, seals] = await Promise.all([
+    store.list("orders", { filter: { id: ids } }),
+    store.list("stages", {
+      filter: { orderId: ids, status: ["active", "blocked"] },
+    }),
+    store.list("requirements", {
+      filter: { orderId: ids, status: ["pending", "rejected"] },
+    }),
+    store
+      .list("import_steps", { filter: { orderId: ids, key: "cert_seal_art" } })
+      .catch(() => []),
+  ]);
+  const purchase = orders.filter((o) => isPurchaseFlow(o)).map((o) => o.id);
+  const lanes = purchase.length
+    ? {
+        ...(await import("@/lib/purchase-lanes")),
+        sla: await (await import("./purchase-order")).purchaseLaneSla(),
+        all: await store.list("requirements", {
+          filter: { orderId: purchase },
+        }),
+      }
+    : null;
+  const drafts = stageTaskDrafts(user, {
+    stages,
+    orderById: new Map(orders.map((o) => [o.id, o])),
+    openRequirements,
+    sealApplied: new Set(
+      seals
+        .filter((s) => s.status === "submitted" || s.status === "validated")
+        .map((s) => s.orderId),
+    ),
+    lanes,
+  });
+  const tasks = await routeLaneTasks(
+    user,
+    drafts.map((d) => finish(d, now)),
+    false,
+  );
+  const { tasksForFunctions } = await import("@/lib/task-owner");
+  return {
+    tasks: tasksForFunctions(user, tasks).sort(
+      (a, b) => (b.orderNumber ?? 0) - (a.orderNumber ?? 0),
+    ),
+    orders: held.length,
+    page: current,
+    pages,
+  };
+}

@@ -72,7 +72,7 @@ Pedido do dono: o Overview de Pedido, Produção e Entrega (só a Wellmix) passa
   - A tela do book (`/app/booking/lots/[id]`) e a da solicitação (`/app/supplier-requests/[id]`) ganham, para a Wellmix, o cartão **Linha do tempo** (`EntityTimelineCard`, `src/lib/services/entity-timeline.ts`): os passos do Produto novo em cor, com a situação e o atraso, e Pedido, Produção e Entrega em cinza com o percentual dos pedidos dela.
   - A linha do tempo geral do Overview passa a ter os quatro blocos.
 - Os logins de fora da Wellmix seguem com o Overview das pendências.
-- **Histórico do Sankhya em espera** (terceira parte, 14/11/2026, decisão do dono: opção 1, sem go-live): os 16.268 pedidos da carga do histórico (`held`, docs/SANKHYA.md) aparecem à parte, pela situação do pedido (`heldStepOf`): Pedido pré-aprovado e Preparação em Pedidos; Arte e embalagem em Arte; Inspeção e Embarque em Produção; Desembaraço, Transporte e Entregue em Entrega. No Overview: o indicador "Histórico em espera", "+N em espera" em cada bloco da linha do tempo geral e em cada passo, e a lista deles (número, fornecedor, situação; até 500) abaixo da tabela. Não entram nas linhas, no atraso nem na completude, e continuam sem pendências e avisos. O go-live (Configurações → Go-live) traz esses pedidos de vez para os passos.
+- **Histórico do Sankhya em espera** (14/11/2026, decisão do dono): os pedidos da carga do histórico (`held`) aparecem na situação real, nos passos em que têm atividade, como os outros, com o selo "Histórico" na tabela; o indicador "Do histórico (sem avisos)" e o "N do histórico" em cada bloco e passo dizem quantos são. Sem avisos; as pendências deles ficam à parte na tela Pendências (docs/SANKHYA.md).
 
 ## Parceiros nos passos (14/11/2026)
 

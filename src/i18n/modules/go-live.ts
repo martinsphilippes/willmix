@@ -27,6 +27,15 @@ export const pt = {
   "goLive.rebuild": "Reconstruir os resumos dos pedidos",
   "goLive.error": "Não foi possível fazer o go-live: {detail}",
   "goLive.error.confirm": "Marque a confirmação para fazer o go-live.",
+  "goLive.held.title":
+    "Histórico do Sankhya: atividade em aberto ({n} pedidos)",
+  "goLive.held.hint":
+    "Pendências da atividade em aberto dos pedidos do histórico, em espera até o go-live. São trabalhadas como as outras, mas não geram avisos e ficam fora das bolinhas do menu e do SLA.",
+  "goLive.held.empty": "Nenhuma pendência sua nesta página do histórico.",
+  "goLive.held.page": "Página {page} de {pages}",
+  "goLive.held.prev": "Anterior",
+  "goLive.held.next": "Próxima",
+  "goLive.held.open": "Abrir",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -54,6 +63,14 @@ export const en: Record<keyof typeof pt, string> = {
   "goLive.rebuild": "Rebuild order summaries",
   "goLive.error": "Go-live failed: {detail}",
   "goLive.error.confirm": "Tick the confirmation to go live.",
+  "goLive.held.title": "Sankhya history: open activity ({n} orders)",
+  "goLive.held.hint":
+    "Tasks of the open activity of the history orders, on hold until go-live. They are worked like the others, but send no alerts and stay out of the menu badges and SLA.",
+  "goLive.held.empty": "No tasks of yours on this history page.",
+  "goLive.held.page": "Page {page} of {pages}",
+  "goLive.held.prev": "Previous",
+  "goLive.held.next": "Next",
+  "goLive.held.open": "Open",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -80,4 +97,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "goLive.rebuild": "重建订单摘要",
   "goLive.error": "无法正式上线：{detail}",
   "goLive.error.confirm": "请勾选确认后再正式上线。",
+  "goLive.held.title": "Sankhya 历史订单：进行中的活动（{n} 个订单）",
+  "goLive.held.hint":
+    "暂缓至上线的历史订单中进行中活动的待办。可像其他订单一样处理，但不发送提醒，也不计入菜单角标和 SLA。",
+  "goLive.held.empty": "本页历史订单中没有您的待办。",
+  "goLive.held.page": "第 {page} 页，共 {pages} 页",
+  "goLive.held.prev": "上一页",
+  "goLive.held.next": "下一页",
+  "goLive.held.open": "打开",
 };

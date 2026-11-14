@@ -296,8 +296,9 @@ const flowAllData = cache(
     const empty = { entities: new Map(), progress: new Map() };
     if (!isWellmix(user)) return empty;
     const store = getStore();
+    // O histórico em espera também: na situação real, só sem avisos.
     const orders = (await store.list("orders")).filter(
-      (o) => !o.held && o.status !== "CLOSED" && o.status !== "CANCELLED",
+      (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
     );
     if (!orders.length) return empty;
     const orderById = new Map(orders.map((o) => [o.id, o]));
@@ -451,6 +452,8 @@ export interface OverviewEntity {
   percent: number;
   /** Completude geral da entidade. */
   overall: number;
+  /** Pedido do histórico do Sankhya em espera até o go-live (sem avisos). */
+  held?: boolean;
 }
 
 /** As entidades de um bloco no Overview (só a Wellmix). */
@@ -485,6 +488,7 @@ export async function flowOverviewEntities(
       lateDays: mine?.lateDays ?? 0,
       percent: mine?.percent ?? 0,
       overall: e.progress?.overall ?? 0,
+      ...(e.order.held ? { held: true } : {}),
     };
   });
 }
@@ -792,42 +796,7 @@ export async function flowOverviewKpis(
   const ready = await k.readFlowKpis(now);
   if (ready) return ready;
   const byBlock = new Map<FlowBlock, OverviewEntity[]>();
-  const held = new Map<FlowBlock, OverviewEntity[]>();
-  for (const block of k.ENTITY_BLOCKS) {
+  for (const block of k.ENTITY_BLOCKS)
     byBlock.set(block, await flowOverviewEntities(user, block));
-    held.set(block, await flowHeldEntities(user, block));
-  }
-  return k.aggregateFlow(byBlock, held);
-}
-
-/**
- * Os pedidos do histórico do Sankhya em espera até o go-live num bloco
- * (dono, 14/11/2026; docs/SANKHYA.md), pela situação: da contribuição
- * guardada no resumo ou, sem os resumos em uso, dos pedidos marcados (só
- * número, situação e fornecedor). Só a Wellmix; sem pendências nem atraso.
- */
-export async function flowHeldEntities(
-  user: User,
-  block: FlowBlock,
-): Promise<OverviewEntity[]> {
-  if (!isWellmix(user) || !isProgressBlock(block)) return [];
-  const k = await import("./flow-kpis");
-  const { summariesReady } = await import("./order-summary");
-  if (await summariesReady()) {
-    const flows = await k.readLiveOrderFlows();
-    if (flows) return k.heldFromFlows(flows, block);
-  }
-  const { listColumns } = await import("@/lib/db/lookup");
-  const orders = await listColumns(
-    getStore(),
-    "orders",
-    ["number", "status", "supplierId", "held"],
-    { filter: { held: true } },
-  );
-  return k.heldOfBlock(
-    orders.filter(
-      (o) => o.held && o.status !== "CLOSED" && o.status !== "CANCELLED",
-    ),
-    block,
-  );
+  return k.aggregateFlow(byBlock);
 }

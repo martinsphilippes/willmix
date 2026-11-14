@@ -580,10 +580,13 @@ describe("contagem da etapa", () => {
 });
 
 describe("pedido do histórico em espera até o go-live", () => {
-  it("não tem tarefa para o operador, como nas pendências", async () => {
+  // Dono, 14/11/2026: o histórico é trabalhado como os outros pedidos, só
+  // sem avisos (docs/SANKHYA.md).
+  it("tem as mesmas tarefas para o operador", async () => {
     let order = await purchaseOrder("TL-3", buyer);
-    expect(Object.keys(await rowsOf(buyer, order)).length).toBeGreaterThan(0);
+    const before = await rowsOf(buyer, order);
+    expect(Object.keys(before).length).toBeGreaterThan(0);
     order = await getStore().update("orders", order.id, { held: true });
-    expect(await rowsOf(buyer, order)).toEqual({});
+    expect(await rowsOf(buyer, order)).toEqual(before);
   });
 });

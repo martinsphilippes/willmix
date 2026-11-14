@@ -161,8 +161,6 @@ export function myStageTasks(
   // Etapa que ainda não começou: as tarefas dele nela vêm depois.
   const upcoming = stage.status === "pending";
   for (const r of stageReqs) {
-    // Item do histórico do Sankhya em espera até o go-live: sem tarefa.
-    if (r.held) continue;
     const route = wellmixRequirementRoute(order, r, stageReqs, ctx);
     const mine = !!route && reaches(user, route);
     if (r.status === "done") {
@@ -238,9 +236,8 @@ export async function myOrderTimeline(
   input: TimelineInput,
 ): Promise<MyTimeline> {
   const { order, stages, requirements } = input;
-  // Pedido do histórico do Sankhya em espera até o go-live: sem tarefa, como
-  // nas pendências (tasks.ts usa `held: null`).
-  if (order.held) return { stages: new Map(), parts: {} };
+  // Pedido do histórico do Sankhya em espera: trabalhado como os outros, só
+  // sem avisos (dono, 14/11/2026; docs/SANKHYA.md).
   const ctx = await loadRoutingContext();
   const sealApplied = input.certSteps.some(
     (v) =>
@@ -252,9 +249,7 @@ export async function myOrderTimeline(
     const reqs = requirements.filter((r) => r.stageId === stage.id);
     byStage.set(
       stage.id,
-      stage.held
-        ? { open: [], later: [], done: 0 }
-        : myStageTasks(user, order, stage, reqs, ctx, sealApplied),
+      myStageTasks(user, order, stage, reqs, ctx, sealApplied),
     );
   }
   const analyst = internalRoute(order, ctx);
