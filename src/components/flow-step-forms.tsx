@@ -20,6 +20,7 @@ import { ProductionCard } from "./production-card";
 import { ArtworkCard } from "./artwork-card";
 import { ReceivingCard } from "./receiving-card";
 import { FreightOrderCard } from "./freight-order-card";
+import { InspectionResultCard } from "./inspection-result-card";
 import { Badge, Card, LinkButton, TextLink } from "./ui";
 
 /*
@@ -245,14 +246,15 @@ export async function FlowProductionWork({
 }) {
   const inspection = step.key === "inspection";
   const pre = step.key === "pre-production";
-  const orderIds = ordersOf(
-    tasks,
-    inspection
-      ? ["sku_inspection", "sku_fix"]
-      : pre
-        ? ["preproduction_plan"]
-        : ["production_follow"],
-  );
+  // Inspeção: todo pedido com caso no passo (o item "inspeção aprovada"
+  // da etapa, a inspeção e a correção por SKU); os outros, pelo tipo.
+  const orderIds = inspection
+    ? [
+        ...new Set(
+          tasks.filter((x) => x.orderId).map((x) => x.orderId as string),
+        ),
+      ].slice(0, MAX_ORDERS)
+    : ordersOf(tasks, pre ? ["preproduction_plan"] : ["production_follow"]);
   if (!orderIds.length) return null;
   const store = getStore();
   const { productionView } = await import("@/lib/services/production");
@@ -266,11 +268,34 @@ export async function FlowProductionWork({
     )
   ).filter((v) => v.view);
   if (!views.length) return null;
+  // Inspeção: o relatório do pedido (medidas × comprado, fotos, decisão),
+  // como no detalhe do pedido, ao lado da decisão por SKU (só a Wellmix).
+  const { inspectionReport } = await import("@/lib/services/inspection-report");
+  const reports = new Map(
+    inspection && isWellmix(user)
+      ? await Promise.all(
+          views.map(
+            async ({ order }) =>
+              [
+                order.id,
+                await inspectionReport(order.id).catch(() => null),
+              ] as const,
+          ),
+        )
+      : [],
+  );
   const userIds = new Set<string>();
   for (const { view } of views) {
     for (const h of view?.track?.etdHistory ?? []) userIds.add(h.byUserId);
     for (const f of view?.track?.followups ?? []) userIds.add(f.byUserId);
   }
+  // Quem enviou e decidiu no relatório (os campos *UserId dele).
+  for (const report of reports.values())
+    JSON.stringify(report, (key, value) => {
+      if (key.endsWith("UserId") && typeof value === "string")
+        userIds.add(value);
+      return value;
+    });
   const names = new Map(
     (userIds.size
       ? await store.list("users", { filter: { id: [...userIds] } })
@@ -289,6 +314,15 @@ export async function FlowProductionWork({
                 {t("flow.work.openOrder")}
               </TextLink>
             </p>
+            {reports.get(order.id) ? (
+              <div className="mb-3" data-flow-inspection-report>
+                <InspectionResultCard
+                  t={t}
+                  report={reports.get(order.id)!}
+                  userName={(id) => (id ? (names.get(id) ?? "—") : "—")}
+                />
+              </div>
+            ) : null}
             <ProductionCard
               t={t}
               user={user}
