@@ -8,15 +8,16 @@ import { searchParties } from "@/lib/services/party-search";
 
 export const dynamic = "force-dynamic";
 
+/** Telas com o campo de busca de parceiro (reservas, marketing, sourcing). */
+const PICKER_SCREENS: Screen[] = ["products", "marketing", "sourcing"];
+
 /**
- * Telas com o campo de busca de parceiro (reservas, marketing, sourcing,
- * containers). Todas já mostravam a lista inteira a quem as abre.
+ * Telas em que quem é de fora (Gestão de telas) busca só um tipo: o que a
+ * lista antiga da tela mostrava. Containers: os clientes do novo container
+ * (14/11/2026; antes, a tela trazia a lista dos clientes ativos).
  */
-const PICKER_SCREENS: Screen[] = [
-  "products",
-  "marketing",
-  "sourcing",
-  "containers",
+const PICKER_SCREEN_TYPES: ReadonlyArray<[Screen, PartyType]> = [
+  ["containers", "customer"],
 ];
 
 /**
@@ -27,13 +28,17 @@ const PICKER_SCREENS: Screen[] = [
  */
 export async function GET(request: Request) {
   const user = await getCurrentUser();
-  const allowed =
-    !!user &&
-    (isWellmix(user) || PICKER_SCREENS.some((screen) => canOpen(user, screen)));
-  if (!allowed)
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
   const params = new URL(request.url).searchParams;
   const type = params.get("type") ?? "";
+  const allowed =
+    !!user &&
+    (isWellmix(user) ||
+      PICKER_SCREENS.some((screen) => canOpen(user, screen)) ||
+      PICKER_SCREEN_TYPES.some(
+        ([screen, only]) => only === type && canOpen(user, screen),
+      ));
+  if (!allowed)
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
   if (!(PARTY_TYPES as readonly string[]).includes(type))
     return NextResponse.json({ error: "type" }, { status: 400 });
   const options = await searchParties({

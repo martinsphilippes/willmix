@@ -1312,5 +1312,19 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - Mensagens: o destinatário da conversa nova é buscado em `/api/messages/targets` (as mesmas empresas e logins da lista antiga, com o tipo ao lado do nome; valor `party:<id>` ou `user:<id>`).
   - Containers e novo kit: cliente por busca; a empresa interna "Estoque Wellmix" continua escolhível, como na lista antiga (`includeStock`). Marketing: produto do filtro por busca e nomes dos produtos só dos kits mostrados. Superplan: escolher na busca carrega a conta, como antes. Produtos: fornecedor do filtro por busca; a lista lê só id e nome dos fornecedores.
   - Fotos do catálogo de poucos produtos (o escolhido, uma página da vitrine) são lidas só desses produtos, e não a tabela inteira de fotos (mesmo resultado).
-- **Não mudou:** o que é gravado, as ações, as permissões das telas, as regras do catálogo (Booking, desativados) e do estoque (o cliente vê só "em estoque").
-- Testes: `tests/unit/search-pickers.test.ts` (escopos, quem busca, código exato primeiro, ficha, destinatário) e `tests/e2e/search-pickers.spec.ts` (novo kit, nova solicitação com estoque e ficha, Superplan, filtro de fornecedor, Containers e Mensagens); o caminho principal escolhe o produto da nova solicitação pela busca.
+- **Depois** (mesmo servidor e base; mediana de 3 leituras):
+
+  | Tela                  | HTML   | Tempo  |
+  | --------------------- | ------ | ------ |
+  | Nova solicitação      | 87 KB  | 0,12 s |
+  | Novo kit de marketing | 73 KB  | 0,14 s |
+  | Mensagens             | 69 KB  | 0,08 s |
+  | Containers            | 80 KB  | 0,10 s |
+  | Marketing             | 94 KB  | 0,12 s |
+  | Superplan             | 474 KB | 0,12 s |
+  | Produtos              | 529 KB | 0,28 s |
+
+  As buscas: 30–70 ms locais; no banco de produção (só leitura), 24–52 ms por consulta de produto e até 102 ms de empresa, sem índice novo.
+
+- **Não mudou:** o que é gravado, as ações, as permissões das telas, as regras do catálogo (Booking, desativados) e do estoque (o cliente vê só "em estoque"). Quem é de fora com a tela Containers (Gestão de telas) busca só clientes, o que a lista da tela mostrava.
+- Testes: `tests/unit/search-pickers.test.ts` (escopos, quem busca, código exato primeiro, ficha, destinatário), `tests/unit/search-routes.test.ts` (quem cada rota atende) e `tests/e2e/search-pickers.spec.ts` (novo kit, nova solicitação com estoque e ficha, Superplan, filtro de fornecedor, Containers e Mensagens); o caminho principal escolhe o produto da nova solicitação pela busca.
