@@ -135,6 +135,7 @@ O que a carga guarda para não perder vínculos:
 - **Resumos:** não trazem pendência de etapa em espera (`order_summaries.tasks` desses pedidos foi esvaziado).
 - **Avisos:** os gerados por esses pedidos foram apagados.
 - **Carga:** marca sozinha os pedidos novos do histórico até o go-live.
+- **Overview dos blocos** (14/11/2026): aparecem à parte, pela situação ("+N em espera" em cada bloco e passo, e a lista), sem pendências, atraso nem completude (docs/FLOW_MENU.md).
 
 **Go-live** (Configurações → Go-live, `/app/settings/go-live`, só admin): mostra quantos pedidos, etapas e pendências estão em espera. Antes, traga a situação real do Sankhya; depois, marque a confirmação e clique em "Fazer o go-live". A liberação desliga a marca nas cargas seguintes e tira `held` em partes, 100 pedidos por gravação e até 1.500 por rodada, com barra de andamento (`src/lib/services/go-live.ts`). Em 13/11/2026 uma gravação única das 613 mil linhas encheu o disco do banco. Fechou a tela: para onde estava e continua na volta. No fim, reconstrua os resumos (Configurações → Resumos dos pedidos) ou espere a reconstrução da noite. Estado em `settings` (`sankhya_history_hold`); auditoria `sankhya.go_live.start` e `sankhya.go_live`.
 
