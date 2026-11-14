@@ -1308,6 +1308,34 @@ create index if not exists "real_media_by_order" on public."real_media" ("orderI
 create index if not exists "real_media_created" on public."real_media" ("createdAt");
 create index if not exists "real_media_created_id" on public."real_media" ("createdAt", "id");
 
+create table if not exists public."sales_orders" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."sales_orders" enable row level security;
+alter table public."sales_orders" add column if not exists "number" bigint;
+alter table public."sales_orders" add column if not exists "customerId" text;
+alter table public."sales_orders" add column if not exists "offerId" text;
+alter table public."sales_orders" add column if not exists "purchaseOrderId" text;
+alter table public."sales_orders" add column if not exists "lines" jsonb;
+alter table public."sales_orders" add column if not exists "currency" text;
+alter table public."sales_orders" add column if not exists "paymentConditionId" text;
+alter table public."sales_orders" add column if not exists "status" text;
+alter table public."sales_orders" add column if not exists "deliveryDate" text;
+alter table public."sales_orders" add column if not exists "deliveryWindow" text;
+alter table public."sales_orders" add column if not exists "note" text;
+alter table public."sales_orders" add column if not exists "erpStatus" text;
+alter table public."sales_orders" add column if not exists "erpNumber" text;
+alter table public."sales_orders" add column if not exists "erpError" text;
+alter table public."sales_orders" add column if not exists "createdByUserId" text;
+alter table public."sales_orders" add column if not exists "confirmedAt" timestamptz;
+alter table public."sales_orders" add column if not exists "confirmedByUserId" text;
+create unique index if not exists "sales_orders_number_unique" on public."sales_orders" ("number");
+create index if not exists "sales_orders_by_customer" on public."sales_orders" ("customerId");
+create index if not exists "sales_orders_created" on public."sales_orders" ("createdAt");
+create index if not exists "sales_orders_created_id" on public."sales_orders" ("createdAt", "id");
+
 create table if not exists public."sales_offers" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),
@@ -1322,6 +1350,11 @@ alter table public."sales_offers" add column if not exists "customerId" text;
 alter table public."sales_offers" add column if not exists "note" text;
 alter table public."sales_offers" add column if not exists "offeredByUserId" text;
 alter table public."sales_offers" add column if not exists "offeredAt" timestamptz;
+alter table public."sales_offers" add column if not exists "decision" text;
+alter table public."sales_offers" add column if not exists "decisionNote" text;
+alter table public."sales_offers" add column if not exists "decidedAt" timestamptz;
+alter table public."sales_offers" add column if not exists "decidedByUserId" text;
+alter table public."sales_offers" add column if not exists "salesOrderId" text;
 create index if not exists "sales_offers_by_order" on public."sales_offers" ("orderId");
 create index if not exists "sales_offers_by_product" on public."sales_offers" ("productId");
 create index if not exists "sales_offers_created" on public."sales_offers" ("createdAt");

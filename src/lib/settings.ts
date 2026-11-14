@@ -125,6 +125,11 @@ export const DEFAULT_SETTINGS = {
    */
   carrierItapoaName: "West Log",
   carrierDefaultName: "Edual",
+  /**
+   * TOP de venda no Sankhya (CODTIPOPER) da ordem de venda (mapa V7). Vazio:
+   * a ordem fica "a lançar" e vendas informa o número do Sankhya à mão.
+   */
+  salesTop: null as number | null,
   /** Dias para lembrar antes do vencimento e depois. */
   reminderDaysBeforeDue: 1,
   /* ---- Evolução incremental (docs/EVOLUTION_PLAN.md) ---- */

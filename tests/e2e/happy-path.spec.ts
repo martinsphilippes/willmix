@@ -1269,6 +1269,11 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.locator("[data-flow-sales-offer]", { hasText: "Rede Exemplo E2E" }),
   ).toBeVisible();
+  // V3 e V7 (docs/SALES_ORDERS.md): a decisão do cliente fica na oferta e a
+  // tela das ordens de venda abre com a agenda.
+  await expect(page.locator("[data-offer-decide]").first()).toBeVisible();
+  await page.goto("/app/sales-orders");
+  await expect(page.locator("[data-sales-order-new]")).toBeVisible();
   await sendStep(page, orderUrl, "samples-flow", "samples_returned", {
     value: "Amostra devolvida à trading",
   });
@@ -1352,9 +1357,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   const deliveredId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
   await expect(page.locator("[data-flow-receiving]")).toHaveCount(0);
   await Promise.all([
-    page.waitForURL(
-      new RegExp(`/app/flow/delivery/storage/${deliveredId}$`),
-    ),
+    page.waitForURL(new RegExp(`/app/flow/delivery/storage/${deliveredId}$`)),
     page
       .locator(`[data-flow-case-order="${deliveredId}"] [data-flow-case-open]`)
       .first()

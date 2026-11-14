@@ -1098,7 +1098,14 @@ export async function saveSettingsAction(form: FormData) {
       const current = DEFAULT_SETTINGS[key];
       let value: unknown = raw;
       if (typeof current === "boolean") value = raw === "on" || raw === "true";
-      else if (key === "carrierItapoaName" || key === "carrierDefaultName") {
+      else if (key === "salesTop") {
+        // TOP de venda do Sankhya (mapa V7): inteiro ou vazio.
+        const text = String(raw).trim();
+        const n = text === "" ? null : Number(text);
+        if (n !== null && !(Number.isInteger(n) && n > 0 && n < 100_000))
+          throw new Error("invalid_input");
+        value = n;
+      } else if (key === "carrierItapoaName" || key === "carrierDefaultName") {
         // Transportadora padrão pelo porto (mapa E12?): o nome do cadastro.
         value = String(raw).trim().slice(0, 120);
       } else if (key === "lpcoNcmPrefixes") {
