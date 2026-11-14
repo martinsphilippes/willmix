@@ -43,6 +43,10 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
   - produção em andamento: pedido na etapa de inspeção com ETD.
 - O Overview do bloco mostra, em cada passo da linha do tempo, quantos pedidos estão nele ("N no passo"), além das pendências. Passos com tela de antes (Books, Pedidos, Revisão, Estoque) listam na própria tela.
 
+## Detalhe do pedido enxuto (14/11/2026)
+
+Para a Wellmix, os cartões das partes do pedido (certificação, artes, pagamento ao fornecedor, produção, inspeção esgotada, frete, compra EXW, container na origem, amostras, documentos do embarque, embarque e desembaraço, recebimento) viraram partes que abrem e fecham (`src/components/order-part.tsx`). Abertas só as da fase em que o pedido está (`ORDER_PART_PHASES` no detalhe do pedido); as outras ficam fechadas, com o título, a um clique. "Abrir todas as partes" (`?parts=all`) abre tudo. Link com âncora para dentro de uma parte fechada (as pendências usam `#production`, `#import-flow`…) abre a parte sozinho (`OpenPartFromHash`). Resumo, itens, etapas (a etapa atual já abria sozinha), containers, financeiro, pagamentos, documentos, multas e parceiros não mudam. Os parceiros veem a tela como antes (só a parte deles, aberta). Nada foi removido: o conteúdo das partes fechadas continua na página.
+
 ## De onde vem o contador
 
 - As mesmas pendências da tela Pendências (`pendingTasksFor` + `tasksForFunctions`: o operador vê só as das funções dele), lidas uma vez por página (`flowTasksFor`, cache do React). Só leitura; nada novo no banco. A bolinha de Pendências é o total.

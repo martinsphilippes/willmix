@@ -612,6 +612,19 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   );
   // Produção: o cartão aparece para a Wellmix no pedido.
   await expect(page.locator("[data-production-card]")).toBeVisible();
+  // Tela enxuta (docs/FLOW_MENU.md): abertas só as partes da fase do pedido;
+  // o embarque fica fechado, abre pelo link com a âncora e com "Abrir todas".
+  await expect(
+    page.locator('[data-order-collapse="production"]'),
+  ).toHaveAttribute("data-order-collapse-open", "1");
+  const importPart = page.locator('[data-order-collapse="importFlow"]');
+  await expect(importPart).toHaveAttribute("data-order-collapse-open", "0");
+  await expect(importPart).not.toHaveAttribute("open", "");
+  await page.goto(`${orderUrl}#import-flow`);
+  await expect(importPart).toHaveAttribute("open", "");
+  await page.goto(`${orderUrl}?parts=all`);
+  await expect(importPart).toHaveAttribute("data-order-collapse-open", "1");
+  await page.goto(orderUrl);
   // O fornecedor confirma o recebimento na conta corrente.
   await login(page, "supplier.a@china.com");
   await page.goto("/app/account");

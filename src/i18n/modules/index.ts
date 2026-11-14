@@ -102,6 +102,7 @@ import * as productSheet from "./product-sheet";
 import * as sheetRecords from "./sheet-records";
 import * as navGroups from "./nav-groups";
 import * as flow from "./flow";
+import * as orderCollapse from "./order-collapse";
 import * as orderSummary from "./order-summary";
 import * as goLive from "./go-live";
 import * as placeholders from "./placeholders";
@@ -222,6 +223,7 @@ export const modulesPt = {
   ...sheetRecords.pt,
   ...navGroups.pt,
   ...flow.pt,
+  ...orderCollapse.pt,
   ...orderSummary.pt,
   ...goLive.pt,
   ...placeholders.pt,
@@ -363,6 +365,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sheetRecords.en,
   ...navGroups.en,
   ...flow.en,
+  ...orderCollapse.en,
   ...orderSummary.en,
   ...goLive.en,
   ...placeholders.en,
@@ -504,6 +507,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sheetRecords.zh,
   ...navGroups.zh,
   ...flow.zh,
+  ...orderCollapse.zh,
   ...orderSummary.zh,
   ...goLive.zh,
   ...placeholders.zh,
