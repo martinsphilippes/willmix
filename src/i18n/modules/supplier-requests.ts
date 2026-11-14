@@ -388,7 +388,9 @@ export const pt = {
   "supplierRequests.timeline.showcase": "Produto liberado na vitrine",
   "supplierRequests.timeline.erp": "CODPROD conferido no Sankhya",
   "supplierRequests.table.hint":
-    "Uma informação por coluna. Em Ações: mensagem à Wellmix, abrir a tela do produto e, por item, confirmar a oferta, renegociar ou recusar.",
+    "Uma informação por coluna. Em Ações, pelos ícones: mensagem à Wellmix e abrir a tela do produto.",
+  "supplierRequests.table.hintAnswers": "Na linha de baixo, por item:",
+  "supplierRequests.table.approve": "Aprovar oferta",
   "supplierRequests.table.answerHint":
     "Para responder sim, informe o preço por peça. Pedido mínimo e modalidade de entrega (FOB/EXW) vão junto; o prazo fica como está (mude na tela do produto).",
   "supplierRequests.table.col.initial": "Condições iniciais (book)",
@@ -410,7 +412,7 @@ export const pt = {
   "supplierRequests.table.state.accepted": "Aceita",
   "supplierRequests.table.state.rejected": "Recusada",
   "supplierRequests.table.state.counter": "Nova proposta do fornecedor",
-  "supplierRequests.table.confirm": "Confirmar {price}/peça",
+  "supplierRequests.table.confirm": "Aprovar oferta: {price}/peça",
   "supplierRequests.table.confirmHint.book":
     "Aceita a oferta do book como está: preço, moeda, pedido mínimo e entrega.",
   "supplierRequests.table.confirmHint.proposal":
@@ -759,7 +761,9 @@ export const en: typeof pt = {
   "supplierRequests.table.hintWellmix":
     "One piece of information per column. Icons: message the supplier and open the product screen. The answer comes from the supplier, through the portal.",
   "supplierRequests.table.hint":
-    "One piece of information per column. Under Actions: message Wellmix, open the product screen and, per item, confirm the offer, renegotiate or decline.",
+    "One piece of information per column. Under Actions, by icon: message Wellmix and open the product screen.",
+  "supplierRequests.table.hintAnswers": "On the line below, per item:",
+  "supplierRequests.table.approve": "Approve offer",
   "supplierRequests.table.answerHint":
     "To answer yes, enter the price per piece. Minimum order and delivery terms (FOB/EXW) go with it; the lead time stays as it is (change it on the product screen).",
   "supplierRequests.table.proposalPendingWellmix":
@@ -853,7 +857,7 @@ export const en: typeof pt = {
   "supplierRequests.table.state.accepted": "Accepted",
   "supplierRequests.table.state.rejected": "Declined",
   "supplierRequests.table.state.counter": "New proposal from the supplier",
-  "supplierRequests.table.confirm": "Confirm {price}/pc",
+  "supplierRequests.table.confirm": "Approve offer: {price}/pc",
   "supplierRequests.table.confirmHint.book":
     "Accepts the book offer as is: price, currency, minimum order and delivery.",
   "supplierRequests.table.confirmHint.proposal":
@@ -1187,7 +1191,9 @@ export const zh: typeof pt = {
   "supplierRequests.table.hintWellmix":
     "每列一项信息。图标：给供应商留言、打开产品页面。答复由供应商通过门户提交。",
   "supplierRequests.table.hint":
-    "每列一项信息。操作栏：给 Wellmix 留言、打开产品页面，并可逐项确认报价、重新议价或拒绝。",
+    "每列一项信息。操作栏图标：给 Wellmix 留言、打开产品页面。",
+  "supplierRequests.table.hintAnswers": "下一行逐项：",
+  "supplierRequests.table.approve": "接受报价",
   "supplierRequests.table.answerHint":
     "答复“是”时请填写单价。起订量和交货方式（FOB/EXW）一并提交；交期保持不变（可在产品页面修改）。",
   "supplierRequests.table.proposalPendingWellmix": "还价等待供应商答复。",
@@ -1274,7 +1280,7 @@ export const zh: typeof pt = {
   "supplierRequests.table.state.accepted": "已接受",
   "supplierRequests.table.state.rejected": "已拒绝",
   "supplierRequests.table.state.counter": "供应商新报价",
-  "supplierRequests.table.confirm": "确认 {price}/件",
+  "supplierRequests.table.confirm": "接受报价：{price}/件",
   "supplierRequests.table.confirmHint.book":
     "按原样接受 Book 报价：价格、币种、起订量和交货方式。",
   "supplierRequests.table.confirmHint.proposal": "按原样接受 Wellmix 的还价。",

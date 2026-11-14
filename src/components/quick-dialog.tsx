@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 import { cx } from "./ui";
 
 /*
@@ -15,6 +15,9 @@ export function QuickDialog({
   closeLabel,
   tone = "secondary",
   hint,
+  name,
+  description,
+  className,
   disabled = false,
   children,
   ...rest
@@ -26,11 +29,18 @@ export function QuickDialog({
   /** "danger": ação sem volta (ex.: excluir acesso). */
   tone?: "primary" | "secondary" | "danger";
   hint?: string;
+  /** Nome do botão para leitor de tela, quando a dica diz mais que o nome. */
+  name?: string;
+  /** Explicação lida depois do nome (não aparece na tela). */
+  description?: string;
+  /** Classes a mais do botão (ex.: só ícone, quadrado e com cor própria). */
+  className?: string;
   /** Botão desligado: a caixa não abre (quem usa mostra o motivo ao lado). */
   disabled?: boolean;
   children: ReactNode;
 } & { [key: `data-${string}`]: string | undefined }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const descriptionId = useId();
   return (
     <>
       <button
@@ -38,7 +48,8 @@ export function QuickDialog({
         onClick={() => dialog.current?.showModal()}
         disabled={disabled}
         title={hint}
-        aria-label={hint}
+        aria-label={name ?? hint}
+        aria-describedby={description ? descriptionId : undefined}
         className={cx(
           "inline-flex items-center justify-center rounded-md px-2.5 py-1 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-50",
           tone === "primary"
@@ -46,11 +57,17 @@ export function QuickDialog({
             : tone === "danger"
               ? "border border-red-300 bg-white text-red-700 hover:bg-red-50 disabled:hover:bg-white"
               : "border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50",
+          className,
         )}
         {...rest}
       >
         {label}
       </button>
+      {description ? (
+        <span id={descriptionId} hidden>
+          {description}
+        </span>
+      ) : null}
       <dialog
         ref={dialog}
         className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-zinc-200 bg-white p-0 text-left shadow-2xl backdrop:bg-zinc-900/40"
