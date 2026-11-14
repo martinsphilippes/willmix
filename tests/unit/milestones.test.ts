@@ -45,7 +45,7 @@ describe("marcos do pedido", () => {
     expect(v.get("art-material")!.state).toBe("active");
     expect(v.get("art")!.state).toBe("waiting");
     expect(v.get("art")!.waitingFor).toBe("art-material");
-    expect(v.get("registration")!.state).toBe("done");
+    expect(v.get("new-order")!.state).toBe("done");
     expect(v.get("contract")!.state).toBe("waiting");
     expect(v.get("contract")!.waitingFor).toBe("art");
     // Sem subtarefa: não se aplica (e não segura os seguintes).

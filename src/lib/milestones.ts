@@ -12,16 +12,16 @@ import type { FlowBlock } from "@/lib/flow";
  */
 
 export const MILESTONE_KEYS = [
-  "registration",
+  "new-order",
+  "certification",
   "art-material",
   "art",
-  "certification",
   "contract",
   "down-payment",
   "pre-production",
-  "production",
   "inspection",
   "samples",
+  "production",
   "booking",
   "loading",
   "shipment",
@@ -51,17 +51,27 @@ const m = (
   map: string[],
 ): MilestoneDef => ({ key, block, steps, deps, map });
 
-/** Os 16 marcos, na ordem do mapa, com as dependências. */
+/**
+ * Os 16 marcos, na ordem definida pelo dono (14/11/2026), com as
+ * dependências do mapa (sempre para trás).
+ */
 export const MILESTONES: MilestoneDef[] = [
   // Pedido.
   m(
-    "registration",
+    "new-order",
     "order",
-    ["registry/products"],
+    ["order/orders", "registry/products"],
     [],
-    ["P1", "P9", "P14", "P16"],
+    ["P1", "P2", "P3", "P9", "P14", "P16"],
   ),
-  m("art-material", "order", ["order/art-material"], [], ["P4"]),
+  m(
+    "certification",
+    "order",
+    ["order/certification"],
+    ["new-order"],
+    ["P6", "P8", "P15"],
+  ),
+  m("art-material", "order", ["order/art-material"], ["new-order"], ["P4"]),
   m(
     "art",
     "order",
@@ -69,13 +79,12 @@ export const MILESTONES: MilestoneDef[] = [
     ["art-material"],
     ["P5", "P5?", "P7?", "P7"],
   ),
-  m("certification", "order", ["order/certification"], [], ["P6", "P8", "P15"]),
   m(
     "contract",
     "order",
-    ["order/orders", "order/contract"],
-    ["registration", "art", "certification"],
-    ["P2", "P3", "P10", "P17", "P11"],
+    ["order/contract"],
+    ["new-order", "certification", "art"],
+    ["P10", "P17", "P11"],
   ),
   m(
     "down-payment",
@@ -93,17 +102,10 @@ export const MILESTONES: MilestoneDef[] = [
     ["R1"],
   ),
   m(
-    "production",
-    "production",
-    ["production/production"],
-    ["pre-production"],
-    ["R1"],
-  ),
-  m(
     "inspection",
     "production",
     ["production/inspection"],
-    ["production"],
+    ["pre-production"],
     ["R3", "R4?", "R10", "R11"],
   ),
   m(
@@ -113,11 +115,19 @@ export const MILESTONES: MilestoneDef[] = [
     ["inspection"],
     ["R12", "R13", "R14", "R15", "R5", "R16"],
   ),
+  // Produção concluída: liberada para carregar depois da inspeção aprovada.
+  m(
+    "production",
+    "production",
+    ["production/production"],
+    ["inspection"],
+    ["R1"],
+  ),
   m(
     "booking",
     "production",
     ["production/booking", "production/logistics"],
-    ["inspection"],
+    ["production"],
     ["R8", "R17?", "R17", "R18", "R19"],
   ),
   m(

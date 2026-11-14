@@ -3,7 +3,7 @@
  * plano; docs/MILESTONES.md): mesmas chaves em pt, en e zh.
  */
 export const pt = {
-  "milestone.registration": "Cadastro e fiscal",
+  "milestone.new-order": "Pedido novo",
   "milestone.art-material": "Material de arte",
   "milestone.art": "Arte",
   "milestone.certification": "Certificação",
@@ -29,7 +29,7 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
-  "milestone.registration": "Registration and tax",
+  "milestone.new-order": "New order",
   "milestone.art-material": "Art material",
   "milestone.art": "Artwork",
   "milestone.certification": "Certification",
@@ -55,7 +55,7 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
-  "milestone.registration": "登记与税务",
+  "milestone.new-order": "新订单",
   "milestone.art-material": "美工素材",
   "milestone.art": "美工",
   "milestone.certification": "认证",

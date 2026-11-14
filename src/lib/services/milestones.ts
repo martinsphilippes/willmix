@@ -92,8 +92,8 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
       done: importStepDone(saved.get(tpl.key)),
     });
   }
-  // Produção: dados e ETD depois do sinal; a produção conclui quando a
-  // inspeção começa.
+  // Produção: dados e ETD depois do sinal; a produção conclui (liberada
+  // para carregar) quando a inspeção conclui.
   const paid = input.requirements.some(
     (r) => r.key === "down_payment" && r.status === "done",
   );
@@ -109,7 +109,7 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
     out.push({
       step: "production/production",
       key: "production",
-      done: inspecting,
+      done: inspection.status === "done",
     });
   // Recebimento no CD (descarga, contagem, RIC e fechamento).
   if (
