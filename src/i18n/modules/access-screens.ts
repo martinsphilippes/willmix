@@ -42,10 +42,9 @@ export const pt = {
   "team.screens.mode.default": "Padrão das funções",
   "team.screens.mode.custom": "Personalizado (marcar uma a uma)",
   "team.screens.mode.hint":
-    "No padrão, as telas seguem as funções marcadas acima. No personalizado, valem só as caixas marcadas abaixo (o básico fica sempre). O administrador pode liberar qualquer tela, inclusive Financeiro.",
+    "No padrão, as caixas mostram as telas que as funções marcadas acima liberam e mudam na hora. No personalizado, valem só as caixas marcadas abaixo, inclusive as do Início; o que você marcar ou desmarcar à mão continua quando as funções mudarem. O cargo não muda as telas. O administrador pode liberar qualquer tela, inclusive Financeiro.",
   "team.screens.custom": "Personalizado ({n} telas)",
   "team.screens.default": "Padrão das funções ({n} telas)",
-  "team.screens.alwaysOn": "sempre",
   "team.screens.adminNote":
     "Administrador: abre todas as telas; não há o que marcar.",
   "team.screens.saveHint": "As telas valem na próxima tela que a pessoa abrir.",
@@ -119,10 +118,9 @@ export const en: Record<keyof typeof pt, string> = {
   "team.screens.mode.default": "Function defaults",
   "team.screens.mode.custom": "Custom (tick one by one)",
   "team.screens.mode.hint":
-    "With defaults, screens follow the functions ticked above. With custom, only the boxes ticked below count (the basics always stay). The admin can grant any screen, including Finance.",
+    "With defaults, the boxes show the screens the functions ticked above grant, and they update right away. With custom, only the boxes ticked below count, including the Home ones; whatever you tick or untick by hand stays when the functions change. The position does not change screens. The admin can grant any screen, including Finance.",
   "team.screens.custom": "Custom ({n} screens)",
   "team.screens.default": "Function defaults ({n} screens)",
-  "team.screens.alwaysOn": "always",
   "team.screens.adminNote": "Admin: opens every screen; nothing to tick.",
   "team.screens.saveHint": "Screens apply on the next page the person opens.",
   "function.desc.buyer":
@@ -193,10 +191,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "team.screens.mode.default": "按职能默认",
   "team.screens.mode.custom": "自定义（逐个勾选）",
   "team.screens.mode.hint":
-    "默认模式下，页面随上方勾选的职能。自定义模式下，只有下方勾选的页面有效（基础页面始终保留）。管理员可开放任何页面，包括财务。",
+    "默认模式下，复选框显示上方勾选的职能开放的页面，并立即更新。自定义模式下，只有下方勾选的页面有效，包括首页中的页面；手动勾选或取消的页面在职能变化时保留。职位不改变页面。管理员可开放任何页面，包括财务。",
   "team.screens.custom": "自定义（{n} 个页面）",
   "team.screens.default": "按职能默认（{n} 个页面）",
-  "team.screens.alwaysOn": "始终",
   "team.screens.adminNote": "管理员：可打开所有页面，无需勾选。",
   "team.screens.saveHint": "此人下次打开页面时生效。",
   "function.desc.buyer": "发起询价、选定供应商、审核资料和图片、跟进生产和收货",

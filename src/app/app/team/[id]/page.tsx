@@ -7,7 +7,6 @@ import {
   SCREEN_GROUPS,
   SCREEN_LABEL,
   WELLMIX_BASE,
-  functionScreensFor,
   hasCustomScreens,
   screensFor,
 } from "@/lib/auth/screens";
@@ -28,7 +27,6 @@ import {
   PageHeader,
   Select,
   TextLink,
-  cx,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { QuickDialog } from "@/components/quick-dialog";
@@ -41,6 +39,7 @@ import {
   removeTeamMemberAction,
   saveTeamMemberAction,
 } from "../../actions/team";
+import { TeamAccessCards } from "./_components/team-access-cards";
 
 /*
  * Acessos de uma pessoa da equipe (só o administrador): três blocos, um
@@ -48,7 +47,8 @@ import {
  * ela faz no processo: aprova, libera dumping, valida numerário…); Telas
  * (todas as telas do portal nos grupos do menu, com uma caixa por tela).
  * "Padrão das funções" segue as funções marcadas; "Personalizado" grava só
- * as caixas marcadas (o básico fica sempre). Regra em docs/ACCESS.md.
+ * as caixas marcadas, inclusive as do Início. As caixas reagem na hora às
+ * funções (TeamAccessCards, no navegador). Regra em docs/ACCESS.md.
  *
  * "Excluir acesso" (pedido do dono, 13/11/2026), só para o administrador:
  * abre a confirmação com o nome e o login da pessoa; confirmado, o login sai
@@ -78,10 +78,12 @@ export default async function TeamMemberPage({
   const below = descendantsOf(member.id, team);
   const admin = isAdmin(member);
   const custom = hasCustomScreens(member);
-  // Telas pelas funções, com a configuração de Equipe → Funções e acessos.
-  const access = accessFromFunctions(member.functions, defs);
-  const effective = screensFor(member, access);
-  const byFunctions = functionScreensFor(member, access);
+  // Telas que o login abre hoje (no Personalizado, a lista gravada com o
+  // Início que ficou marcado), com a configuração de Equipe → Funções.
+  const effective = screensFor(
+    member,
+    accessFromFunctions(member.functions, defs),
+  );
   const errorKey = `team.error.${typeof error === "string" ? error : ""}`;
   const errorText =
     typeof error === "string" && error
@@ -99,8 +101,6 @@ export default async function TeamMemberPage({
       : removal.lastAdmin
         ? t("team.delete.lastAdmin")
         : null;
-  const block = "space-y-3";
-  const option = "inline-flex items-start gap-2 text-sm text-zinc-800";
 
   return (
     <>
@@ -281,121 +281,43 @@ export default async function TeamMemberPage({
           </div>
         </Card>
 
-        <Card title={t("team.block.functions")}>
-          <input type="hidden" name="functions.__form" value="1" />
-          <div className={cx(block, "grid gap-2 sm:grid-cols-2")}>
-            {defs
-              .filter((d) => !d.archived)
-              .map((d) => (
-                <label key={d.key} className={option}>
-                  <input
-                    type="checkbox"
-                    name="functions"
-                    value={d.key}
-                    defaultChecked={(member.functions ?? []).includes(d.key)}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
-                    data-team-function={d.key}
-                  />
-                  <span>
-                    <span className="font-medium">
-                      {functionLabel(d.key, defs, (k) => t(k as DictionaryKey))}
-                    </span>
-                    {d.builtin &&
-                    functionDescription(d.key, (k) => t(k as DictionaryKey)) ? (
-                      <span className="block text-xs text-zinc-500">
-                        {functionDescription(d.key, (k) =>
-                          t(k as DictionaryKey),
-                        )}
-                      </span>
-                    ) : null}
-                  </span>
-                </label>
-              ))}
-          </div>
-        </Card>
-
-        <Card title={t("team.block.screens")}>
-          {admin ? (
-            <Alert tone="info">{t("team.screens.adminNote")}</Alert>
-          ) : (
-            <>
-              <input type="hidden" name="screens.__form" value="1" />
-              <p className="mb-3 text-xs text-zinc-500">
-                {t("team.screens.mode.hint")}
-              </p>
-              <div className="mb-4 flex flex-wrap gap-4">
-                <label className={option}>
-                  <input
-                    type="radio"
-                    name="screensMode"
-                    value="default"
-                    defaultChecked={!custom}
-                    className="mt-0.5 h-4 w-4 accent-brand-600"
-                    data-team-screens-mode="default"
-                  />
-                  <span>
-                    {t("team.screens.mode.default")}
-                    <span className="block text-xs text-zinc-500">
-                      {[...byFunctions]
-                        .filter((s) => !WELLMIX_BASE.includes(s))
-                        .map((s) => t(SCREEN_LABEL[s]))
-                        .join(", ") || t("team.screens.base")}
-                    </span>
-                  </span>
-                </label>
-                <label className={option}>
-                  <input
-                    type="radio"
-                    name="screensMode"
-                    value="custom"
-                    defaultChecked={custom}
-                    className="mt-0.5 h-4 w-4 accent-brand-600"
-                    data-team-screens-mode="custom"
-                  />
-                  <span>{t("team.screens.mode.custom")}</span>
-                </label>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {SCREEN_GROUPS.map((group) => (
-                  <fieldset
-                    key={group.key}
-                    className="rounded-xl border border-zinc-200/80 p-3"
-                  >
-                    <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      {t(group.key)}
-                    </legend>
-                    <div className="grid gap-1.5 sm:grid-cols-2">
-                      {group.screens.map((screen) => {
-                        const base = WELLMIX_BASE.includes(screen);
-                        return (
-                          <label key={screen} className={option}>
-                            <input
-                              type="checkbox"
-                              name="screens"
-                              value={screen}
-                              defaultChecked={effective.has(screen)}
-                              disabled={base}
-                              className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
-                              data-team-screen={screen}
-                            />
-                            <span>
-                              {t(SCREEN_LABEL[screen])}
-                              {base ? (
-                                <span className="ml-1 text-xs text-zinc-400">
-                                  ({t("team.screens.alwaysOn")})
-                                </span>
-                              ) : null}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </fieldset>
-                ))}
-              </div>
-            </>
-          )}
-        </Card>
+        {/* Funções e telas no navegador: as caixas de telas reagem na hora
+            às funções marcadas (dono, 14/11/2026). */}
+        <TeamAccessCards
+          functions={defs
+            .filter((d) => !d.archived)
+            .map((d) => ({
+              key: d.key,
+              label: functionLabel(d.key, defs, (k) => t(k as DictionaryKey)),
+              description: d.builtin
+                ? functionDescription(d.key, (k) => t(k as DictionaryKey))
+                : null,
+              screens: d.screens,
+              baseOff: d.baseOff,
+            }))}
+          selected={member.functions ?? []}
+          admin={admin}
+          custom={custom}
+          saved={[...effective]}
+          base={[...WELLMIX_BASE]}
+          groups={SCREEN_GROUPS.map((group) => ({
+            key: group.key,
+            label: t(group.key),
+            screens: group.screens.map((screen) => ({
+              key: screen,
+              label: t(SCREEN_LABEL[screen]),
+            })),
+          }))}
+          texts={{
+            functionsTitle: t("team.block.functions"),
+            screensTitle: t("team.block.screens"),
+            modeHint: t("team.screens.mode.hint"),
+            modeDefault: t("team.screens.mode.default"),
+            modeCustom: t("team.screens.mode.custom"),
+            baseOnly: t("team.screens.base"),
+            adminNote: t("team.screens.adminNote"),
+          }}
+        />
 
         <div className="flex flex-wrap items-center gap-3">
           <SubmitButton data-team-save>{t("team.save")}</SubmitButton>

@@ -73,6 +73,12 @@ export async function setTeamMember(
      * null = volta ao padrão das funções; ausente = não muda.
      */
     screens?: string[] | null;
+    /**
+     * Telas do Início desmarcadas no Personalizado (users.screensBaseOff):
+     * lista = grava; null = todas abrem; ausente = não muda. Com
+     * `screens: null` (padrão das funções) volta a nula.
+     */
+    screensBaseOff?: string[] | null;
   },
 ): Promise<void> {
   if (!isAdmin(user)) throw new ForbiddenError();
@@ -94,6 +100,7 @@ export async function setTeamMember(
     division: target.division ?? null,
     functions: target.functions ?? [],
     screens: target.screens ?? null,
+    screensBaseOff: target.screensBaseOff ?? null,
   };
   // Só funções existentes e ativas, na ordem da lista (Equipe → Funções e acessos).
   const defs = input.functions ? await loadFunctionDefs() : [];
@@ -102,19 +109,35 @@ export async function setTeamMember(
         .filter((d) => !d.archived && input.functions!.includes(d.key))
         .map((d) => d.key)
     : undefined;
-  // Telas: só chaves válidas, sem o básico (que todo login da Wellmix já tem).
+  // Telas: só chaves válidas, sem o Início (que tem a lista própria abaixo).
   const screens =
     input.screens === undefined
       ? undefined
       : input.screens === null
         ? null
         : validScreens(input.screens).filter((s) => !WELLMIX_BASE.includes(s));
+  // Início desmarcado no Personalizado: só telas do Início, na ordem do menu;
+  // vazia vira nula (todas abrem). Padrão das funções: nula. Grava só quando
+  // muda (o login que nunca teve a lista continua sem ela).
+  const baseOffInput = screens === null ? null : input.screensBaseOff;
+  const baseOffOf = (list: unknown) => {
+    const valid = validScreens(list);
+    const off = WELLMIX_BASE.filter((s) => valid.includes(s));
+    return off.length ? off : null;
+  };
+  const screensBaseOff =
+    baseOffInput === undefined ? undefined : baseOffOf(baseOffInput);
+  const baseOffChanged =
+    screensBaseOff !== undefined &&
+    JSON.stringify(screensBaseOff) !==
+      JSON.stringify(baseOffOf(target.screensBaseOff));
   await store.update("users", target.id, {
     jobLevel: input.jobLevel,
     managerUserId: input.managerUserId,
     division: input.division,
     ...(functions ? { functions } : {}),
     ...(screens !== undefined ? { screens } : {}),
+    ...(baseOffChanged ? { screensBaseOff } : {}),
   });
   await audit(
     user,
@@ -123,7 +146,11 @@ export async function setTeamMember(
     target.id,
     `Equipe: ${target.name} (cargo, chefe, divisão, funções e telas)`,
     before,
-    { ...input, ...(screens !== undefined ? { screens } : {}) },
+    {
+      ...input,
+      ...(screens !== undefined ? { screens } : {}),
+      ...(screensBaseOff !== undefined ? { screensBaseOff } : {}),
+    },
   );
 }
 

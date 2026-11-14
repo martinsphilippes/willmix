@@ -148,8 +148,9 @@ export const SCREEN_LABEL: Record<Screen, DictionaryKey> = {
 /**
  * Telas do Início (card "Início" em Equipe → Funções). Todo login da Wellmix
  * as abre por padrão; o administrador pode desmarcar cada uma por função
- * (FunctionDef.baseOff). Login sem função, ou com telas marcadas uma a uma,
- * continua abrindo todas.
+ * (FunctionDef.baseOff) e, no Personalizado de Editar acessos, login a login
+ * (users.screensBaseOff, desde 14/11/2026). Login sem função continua abrindo
+ * todas.
  */
 export const WELLMIX_BASE: readonly Screen[] = [
   "home",
@@ -282,7 +283,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   comex_internal: ["orders", "containers", "freight", "history"],
 };
 
-type Who = Pick<User, "role"> & Partial<Pick<User, "functions" | "screens">>;
+type Who = Pick<User, "role"> &
+  Partial<Pick<User, "functions" | "screens" | "screensBaseOff">>;
 
 /** Grupos do menu, com todas as telas (a tela de acessos mostra as caixas assim). */
 export const SCREEN_GROUPS: ReadonlyArray<{
@@ -368,9 +370,20 @@ export const hasCustomScreens = (user: Who) =>
   isWellmix(user) && !isAdmin(user) && Array.isArray(user.screens);
 
 /**
- * Telas que o login abre (menu e guarda das páginas saem daqui). Admin: todas.
- * Operador: a lista marcada pelo administrador (mais o básico), se houver;
- * senão o padrão das funções. Cliente, fornecedor e parceiros: a lista do papel.
+ * Telas do Início no Personalizado: todas, menos as que o administrador
+ * desmarcou neste login (users.screensBaseOff). Nula ou ausente (logins
+ * gravados antes de 14/11/2026): todas, como antes.
+ */
+export function customBaseFor(user: Who): Screen[] {
+  const off = validScreens(user.screensBaseOff);
+  return WELLMIX_BASE.filter((s) => !off.includes(s));
+}
+
+/**
+ * Telas que o login abre (menu, ícones do cabeçalho e guarda das páginas saem
+ * daqui). Admin: todas. Operador: a lista marcada pelo administrador (mais as
+ * telas do Início que ele deixou marcadas), se houver; senão o padrão das
+ * funções. Cliente, fornecedor e parceiros: a lista do papel.
  */
 export function screensFor(
   user: Who,
@@ -379,7 +392,11 @@ export function screensFor(
   if (isAdmin(user)) return new Set(SCREENS);
   if (isWellmix(user)) {
     if (Array.isArray(user.screens))
-      return new Set<Screen>([...WELLMIX_BASE, ...validScreens(user.screens)]);
+      return new Set<Screen>([
+        ...customBaseFor(user),
+        // O Início vem só de customBaseFor (a lista grava as outras telas).
+        ...validScreens(user.screens).filter((s) => !WELLMIX_BASE.includes(s)),
+      ]);
     return functionScreensFor(user, access);
   }
   // Externo: o perfil configurado na Gestão de telas (guardado nesta

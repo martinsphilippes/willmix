@@ -14,7 +14,7 @@ Uma única lista de **telas** e uma única regra que diz quais telas cada login 
 
 1. **Admin**: todas as telas (sem mudança).
 2. **Operador Wellmix**: telas básicas + a união das telas das suas funções (padrão). O administrador pode, em Gestão → Equipe e divisões → Editar acessos, trocar para **Personalizado** e marcar as telas uma a uma (`users.screens`): aí valem só as caixas marcadas (mais o básico), seja qual for a função, inclusive Financeiro, Contas a pagar, Configurações, Equipe e Auditoria. "Padrão das funções" apaga a lista e volta à regra das funções. Sem função e sem tela marcada, vê só o básico e um aviso no início.
-   - Básico de todo login da Wellmix (card "Início"): Control Tower, Pendências, Painel de SLA, Notificações, Mensagens. Desde 13/11/2026 cada tela do Início é configurável por função (ver "Telas e links" abaixo); login sem função ou com telas marcadas uma a uma continua com o Início inteiro.
+   - Básico de todo login da Wellmix (card "Início"): Control Tower, Pendências, Painel de SLA, Notificações, Mensagens. Desde 13/11/2026 cada tela do Início é configurável por função (ver "Telas e links" abaixo); login sem função continua com o Início inteiro. Desde 14/11/2026, no Personalizado de Editar acessos, as telas do Início também podem ser desmarcadas login a login (ver "Editar acessos: telas na hora e Início no Personalizado" abaixo).
    - As funções continuam mandando no comportamento dentro das telas (quem aprova, quem libera dumping, quem valida numerário, quem é designer); a lista de telas só decide o que abre.
 3. **Financeiro é só do administrador** (ou de quem ele liberar tela a tela), seja qual for a função: Financeiro, Contas a pagar, conta corrente do fornecedor, a faixa "Financeiro" do Control Tower (vendido, recebido, a receber, comprado, pago, saldo), os valores em R$ dos cartões de Operação, o painel Financeiro em Painéis por área e, no pedido, o cartão financeiro (venda, custo, margem), os pagamentos do cliente e o pagamento ao fornecedor. O fornecedor continua vendo a previsão de pagamento dele; o cliente, os pagamentos dele. A função "financeiro" abre só a tela Pedidos, para validar e pagar o numerário dentro do pedido (docs/IMPORT_FLOW.md), sem ver pagamentos, valores nem margem; sem ninguém com ela, o admin faz.
 4. **Cliente, fornecedor e parceiros**: as mesmas telas de hoje, agora escritas na mesma tabela (nada foi removido).
@@ -66,12 +66,12 @@ Motivos (das especificações já escritas): comprador abre RFQ, escolhe fornece
 ## 6. Onde fica no código
 
 - `src/lib/auth/screens.ts`: lista de telas (`SCREENS`), grupos do menu (`SCREEN_GROUPS`), rota → tela (`screenOfPath`), telas por papel (`ROLE_SCREENS`), por função (`FUNCTION_SCREENS`), só do admin por padrão (`ADMIN_ONLY`), `functionScreensFor(user)` (padrão), `screensFor(user)` (lista marcada uma a uma, se houver; senão o padrão), `hasCustomScreens`, `canOpen(user, tela)` e `assertScreen(user, tela)` (Server Actions).
-- `users.screens` (json, opcional): a lista marcada uma a uma; nula = padrão das funções. `setTeamMember` (src/lib/services/team.ts) grava só chaves válidas, sem o básico; auditoria `team.member`.
+- `users.screens` (json, opcional): a lista marcada uma a uma; nula = padrão das funções. `users.screensBaseOff` (json, opcional, 14/11/2026): as telas do Início desmarcadas no Personalizado; nula = todas. `setTeamMember` (src/lib/services/team.ts) grava só chaves válidas, sem o Início na lista (ele fica em `screensBaseOff`); auditoria `team.member`.
 - `src/lib/auth/guard.ts`: `requireScreen(user, tela)` nas páginas (volta ao início com `?denied=tela`).
 - `src/lib/nav.ts`: o menu lateral é montado a partir de `screensFor(user)` (grupos e ordem em docs/ARQUITETURA.md, "Menu lateral"; telas fora do fluxo em `MENU_HIDDEN`).
 - Cada `page.tsx` chama `requireScreen` (no lugar de `assertWellmix`/`redirect("/app")`); as Server Actions da Wellmix chamam `assertScreen`; as de pagamento, só o admin.
 - Control Tower: faixa Financeiro, valores em R$ e "Comercial por container" só com a tela Financeiro; cartões e tabela de pedidos só com a tela Pedidos; avisos de acesso negado e de login sem função.
-- Gestão → Equipe e divisões: lista em linhas (nome, cargo, divisão, responde a, funções, telas: "Todas", "Padrão das funções (N)", "Personalizado (N)" ou "Só o básico") com "Editar acessos" → `/app/team/[id]`: Dados, Funções (com o que cada uma faz) e Telas (caixas por grupo do menu; básico sempre marcado; rádio Padrão das funções × Personalizado). Aviso quando há login só com o básico.
+- Gestão → Equipe e divisões: lista em linhas (nome, cargo, divisão, responde a, funções, telas: "Todas", "Padrão das funções (N)", "Personalizado (N)" ou "Só o básico") com "Editar acessos" → `/app/team/[id]`: Dados, Funções (com o que cada uma faz) e Telas (caixas por grupo do menu; rádio Padrão das funções × Personalizado; as caixas reagem na hora às funções e, no Personalizado, as do Início também podem ser desmarcadas). Aviso quando há login só com o básico.
 - Contas de demonstração: o operador de demonstração tem as funções comprador e planner (`src/lib/demo-data.ts`); "Criar as contas que faltam" também preenche as funções do operador de demonstração que ainda não tem nenhuma.
 
 ## 7. Impacto ao publicar
@@ -134,6 +134,18 @@ Registrar e confirmar pagamentos (sinal, pagamento ao fornecedor, marketing) con
 
 - Bloqueio por política no banco (RLS por usuário no Supabase): hoje o banco já é fechado e só o servidor do portal lê e grava; a conferência é no servidor (decisão do dono: não agora).
 - Pendências: um login sem a permissão de validar a arte ou assinar o contrato ainda pode ver a pendência em Minhas pendências; ao abrir, o botão não aparece.
+
+## Editar acessos: telas na hora e Início no Personalizado (pedido do dono, 14/11/2026)
+
+Em Equipe e acessos → Editar acessos (`/app/team/[id]`), o card "Telas que o login abre" reage na hora ao que se marca no card "Funções", sem salvar nem recarregar (`src/app/app/team/[id]/_components/team-access-cards.tsx`):
+
+- **Padrão das funções**: as caixas mostram o resultado das funções marcadas (só leitura) e a linha embaixo do rádio lista as telas. A regra é a mesma do servidor, num módulo sem dependência de servidor (`src/lib/auth/screen-picker.ts`, usado também por `accessFromFunctions`): Início = a tela abre se alguma função ativa a deixa marcada (sem função ativa, todas); demais telas = a união das telas das funções; função desativada não conta.
+- **Personalizado**: todas as caixas ficam livres, inclusive as do Início (Control Tower, Pendências, Painel de SLA, Notificações e Mensagens; o rótulo "(sempre)" saiu). O que o administrador marca ou desmarca à mão é uma exceção ao padrão das funções e continua quando as funções mudam; as outras caixas acompanham as funções. Ao abrir um cadastro já personalizado, as exceções são a diferença entre a lista gravada e o padrão das funções marcadas.
+- **Cargo**: o cargo não libera telas (nenhum cargo tem telas cadastradas; quem libera são as funções). Trocar o cargo não muda as caixas.
+- **Gravação**: o Personalizado grava as telas marcadas em `users.screens` (sem as do Início) e as do Início desmarcadas em `users.screensBaseOff` (coluna opcional; o card manda o marcador `screens.__base`). Voltar ao Padrão das funções limpa as duas. A coluna só é escrita quando muda: login que nunca teve a lista continua sem ela e abre o Início inteiro, como antes.
+- **Onde vale**: `screensFor` tira do Personalizado as telas do Início desmarcadas (`customBaseFor`), então valem o menu lateral, os ícones do cabeçalho (mensagens e sino), os contadores de Pendências e o endereço direto (`requireScreen`; sem o Control Tower, `/app` leva à primeira tela que o login abre). O administrador continua abrindo tudo: o card dele só mostra o aviso.
+- **Auditoria**: `team.member` registra também `screensBaseOff` (antes e depois).
+- **Testes**: `tests/unit/team-screens.test.ts` (a regra do card igual à do servidor, exceções, Início no Personalizado, gravação) e `tests/e2e/team-screens.spec.ts` (troca de cargo, troca de função, exceções, Mensagens desmarcada salva e reaberta, e o login editado sem o ícone de mensagens e sem abrir `/app/messages`).
 
 ## Excluir acesso (pedido do dono, 13/11/2026)
 

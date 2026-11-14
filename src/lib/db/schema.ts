@@ -681,6 +681,13 @@ export interface User extends BaseRow {
    * src/lib/auth/screens.ts (validadas ao salvar e ao ler).
    */
   screens?: string[] | null;
+  /**
+   * Telas do Início (Control Tower, Pendências, Painel de SLA, Notificações,
+   * Mensagens) desmarcadas no Personalizado de Editar acessos (dono,
+   * 14/11/2026). Só vale com `screens` (Personalizado). Nula ou ausente: o
+   * login abre todas, como antes.
+   */
+  screensBaseOff?: string[] | null;
 }
 
 export interface Party extends BaseRow {
@@ -3182,6 +3189,7 @@ export const TABLES: Record<TableName, TableDef> = {
       functions: json(),
       screens: json(),
       mustChangePassword: bool(),
+      screensBaseOff: json(),
     },
     indexes: [
       { key: "email_unique", type: "unique", columns: ["email"] },

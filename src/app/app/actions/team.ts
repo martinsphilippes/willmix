@@ -4,7 +4,7 @@ import { z } from "zod";
 import { assertRole } from "@/lib/auth/permissions";
 import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
 import { ACTION_KEYS } from "@/lib/auth/function-access";
-import { SCREENS } from "@/lib/auth/screens";
+import { SCREENS, WELLMIX_BASE } from "@/lib/auth/screens";
 import { LOCALES } from "@/lib/db/schema";
 import { loginLabel } from "@/lib/auth/login-id";
 import { requireUser, run, str } from "./helpers";
@@ -23,6 +23,34 @@ const level = z
 const division = z
   .union([z.literal(""), z.enum(DIVISIONS)])
   .transform((v) => v || null);
+
+/**
+ * Card "Telas que o login abre": "default" volta ao padrão das funções (e o
+ * Início volta a seguir as funções); "custom" grava as caixas marcadas. Com
+ * o marcador `screens.__base` o card mandou também as caixas do Início
+ * (dono, 14/11/2026): as desmarcadas ficam em `screensBaseOff`.
+ */
+function screensFromForm(form: FormData): {
+  screens: string[] | null;
+  screensBaseOff?: string[] | null;
+} {
+  const mode = z
+    .enum(["default", "custom"])
+    .parse(str(form, "screensMode") || "default");
+  if (mode === "default") return { screens: null, screensBaseOff: null };
+  const screens = z
+    .array(z.enum(SCREENS))
+    .max(SCREENS.length)
+    .parse(
+      form.getAll("screens").filter((v): v is string => typeof v === "string"),
+    );
+  return {
+    screens,
+    ...(form.has("screens.__base")
+      ? { screensBaseOff: WELLMIX_BASE.filter((s) => !screens.includes(s)) }
+      : {}),
+  };
+}
 
 export async function saveTeamMemberAction(form: FormData) {
   const user = await requireUser();
@@ -48,23 +76,7 @@ export async function saveTeamMemberAction(form: FormData) {
           }
         : {}),
       // Telas: "default" volta ao padrão das funções; "custom" grava as caixas marcadas.
-      ...(form.has("screens.__form")
-        ? {
-            screens:
-              z
-                .enum(["default", "custom"])
-                .parse(str(form, "screensMode") || "default") === "default"
-                ? null
-                : z
-                    .array(z.enum(SCREENS))
-                    .max(SCREENS.length)
-                    .parse(
-                      form
-                        .getAll("screens")
-                        .filter((v): v is string => typeof v === "string"),
-                    ),
-          }
-        : {}),
+      ...(form.has("screens.__form") ? screensFromForm(form) : {}),
     });
     return `/app/team?saved=member#u-${targetId}`;
   });

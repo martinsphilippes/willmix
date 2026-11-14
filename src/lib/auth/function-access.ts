@@ -6,6 +6,7 @@ import {
   type Screen,
 } from "@/lib/auth/screens";
 import { accessOf, type ResolvedAccess } from "@/lib/auth/access-cache";
+import { combineFunctionScreens } from "@/lib/auth/screen-picker";
 import { WELLMIX_FUNCTIONS, type WellmixFunction } from "@/lib/db/schema";
 import { ForbiddenError } from "@/lib/auth/permissions";
 
@@ -246,25 +247,17 @@ export function accessFromFunctions(
   functions: readonly string[] | null | undefined,
   defs: FunctionDef[],
 ): ResolvedAccess {
-  const screens = new Set<string>();
+  const active = defs.filter((d) => !d.archived);
+  // Telas e Início: a mesma regra que o card de Editar acessos usa na hora.
+  const { screens, base } = combineFunctionScreens(
+    functions,
+    active,
+    WELLMIX_BASE,
+  );
   const actions = new Set<string>();
-  const base = new Set<Screen>();
-  let active = 0;
-  for (const key of functions ?? []) {
-    const def = defs.find((d) => d.key === key && !d.archived);
-    if (!def) continue;
-    active++;
-    def.screens.forEach((s) => screens.add(s));
-    def.actions.forEach((a) => actions.add(a));
-    WELLMIX_BASE.forEach((s) => {
-      if (!def.baseOff.includes(s)) base.add(s);
-    });
-  }
-  return {
-    screens: [...screens],
-    actions: [...actions],
-    base: active ? WELLMIX_BASE.filter((s) => base.has(s)) : [...WELLMIX_BASE],
-  };
+  for (const key of functions ?? [])
+    active.find((d) => d.key === key)?.actions.forEach((a) => actions.add(a));
+  return { screens, actions: [...actions], base };
 }
 
 type Who = {
