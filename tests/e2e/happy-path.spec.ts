@@ -677,66 +677,27 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.locator('[data-order-progress-stage="PACKAGING"]'),
   ).toBeVisible();
-  // A tela Arte é só a tabela (dono, 14/11/2026): sem os cartões dos pedidos
-  // embaixo. O Resolver da linha abre a tarefa daquele produto no detalhe do
-  // pedido, em destaque; aprovar ali volta para ela, e a lista, a aba e o
-  // menu contam uma a menos.
   await page.goto("/app/flow/order/art");
   await expect(
     page.locator('[data-flow-tab="pending"][aria-current="page"]'),
   ).toBeVisible();
-  const artBadge = page
-    .locator('[data-nav-link="/app/flow/order/art"] [data-nav-badge]')
-    .filter({ visible: true })
-    .first();
-  await expect(artBadge).toBeVisible();
   await expect(
-    page.locator("[data-flow-requirements], [data-flow-artwork], [data-flow-work]"),
-  ).toHaveCount(0);
-  await expect(page.getByText(/Abrir o pedido completo/)).toHaveCount(0);
+    page
+      .locator('[data-nav-link="/app/flow/order/art"] [data-nav-badge]')
+      .filter({ visible: true })
+      .first(),
+  ).toBeVisible();
   const orderId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
-  const artRows = page.locator("[data-flow-case]");
-  const rowsBefore = await artRows.count();
-  // O menu conta o mesmo que a tabela lista (uma linha por produto).
-  expect(Number(await artBadge.getAttribute("data-nav-badge"))).toBe(
-    rowsBefore,
-  );
-  await expect(page.locator('[data-flow-tab="pending"]')).toContainText(
-    `(${rowsBefore})`,
-  );
-  const resolveReview = page.locator(
-    `[data-flow-case-open][href^="/app/orders/${orderId}?focus=art_review__"]`,
-  );
-  await expect(resolveReview).toHaveCount(1);
-  await resolveReview.click();
-  await page.waitForURL(
-    new RegExp(
-      `/app/orders/${orderId}\\?focus=art_review__[^#]+#requirement-art_review__`,
-    ),
-  );
-  const focusedReview = page.locator('[data-requirement-focus^="art_review__"]');
-  await expect(focusedReview).toHaveCount(1);
-  await expect(focusedReview).toHaveAttribute("aria-current", "true");
-  await expect(focusedReview).toContainText(/Validação da arte pela Wellmix/);
-  await expect(focusedReview).toBeInViewport();
-  // Quem valida abre a arte enviada na própria linha, como antes.
-  await expect(focusedReview.locator("[data-lane-inputs] a")).toHaveCount(1);
-  await focusedReview.locator("button[value=approve]").click();
-  await expect(focusedReview.locator("button[value=approve]")).toHaveCount(0);
-  await expect(focusedReview).toContainText(/Concluído/);
-  expect(page.url()).toMatch(/focus=art_review__[^#]+#requirement-art_review__/);
-  await page.goto("/app/flow/order/art");
-  await expect(resolveReview).toHaveCount(0);
-  await expect(artRows).toHaveCount(rowsBefore - 1);
-  await expect(page.locator('[data-flow-tab="pending"]')).toContainText(
-    `(${rowsBefore - 1})`,
-  );
-  if (rowsBefore > 1)
-    await expect(artBadge).toHaveAttribute(
-      "data-nav-badge",
-      String(rowsBefore - 1),
-    );
-  else await expect(artBadge).toHaveCount(0);
+  const artCard = page.locator(`[data-flow-requirement-order="${orderId}"]`);
+  const artReview = artCard.locator('[data-flow-requirement^="art_review"]');
+  await expect(artReview.locator("[data-lane-input] a")).toHaveCount(1);
+  await Promise.all([
+    page.waitForURL(/\/app\/flow\/order\/art(\?|$)/),
+    artReview.locator("button[value=approve]").click(),
+  ]);
+  await expect(
+    artCard.locator('[data-flow-requirement^="art_review"]'),
+  ).toHaveCount(0);
   await page.goto(orderUrl);
   await expect(
     requirementRow(page, /Validação da arte pela Wellmix/),
@@ -756,6 +717,43 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expectOrderBlocks(page, orderUrl);
   await expectDocumentAck(page, orderUrl);
   await login(page, "ocp@certifica.com");
+  // Pedido → Certificação (dono, 14/11/2026): a tela do passo é só a lista,
+  // uma linha por produto, com as abas, os filtros e os contadores, sem os
+  // cartões dos pedidos embaixo. O "Resolver" da linha abre o produto no
+  // detalhe do pedido no passo, com a foto e o arquivo para enviar, e o
+  // envio volta ao mesmo produto.
+  await page.goto("/app/flow/order/certification");
+  await expect(page.locator("[data-flow-tab]")).toHaveCount(2);
+  await expect(page.locator("[data-flow-filter]")).toHaveCount(4);
+  await expect(page.locator("[data-flow-requirements]")).toHaveCount(0);
+  await expect(page.locator("[data-flow-work]")).toHaveCount(0);
+  const certRow = page.locator(
+    `[data-flow-case][data-flow-case-order="${orderId}"][data-flow-case-item]`,
+  );
+  await expect(certRow).toHaveCount(1);
+  const certItem = (await certRow.getAttribute("data-flow-case-item"))!;
+  await Promise.all([
+    page.waitForURL(
+      new RegExp(
+        `/app/flow/order/certification/${orderId}\\?item=${certItem}$`,
+      ),
+    ),
+    certRow.locator("[data-flow-case-open]").click(),
+  ]);
+  await expect(page.locator("[data-flow-order-focus]")).toBeVisible();
+  await expect(page.locator("[data-flow-order-requirement]")).toHaveCount(1);
+  const certReq = page.locator(
+    `[data-flow-order-requirement="certificate__${certItem}"]`,
+  );
+  await expect(certReq).toHaveAttribute("data-flow-order-item", certItem);
+  const certForms = certReq.locator("[data-requirement-upload] form");
+  await expect(certForms).toHaveCount(2);
+  await Promise.all([
+    page.waitForURL(/[?&]saved=1/),
+    certForms.last().locator("input[type=file]").setInputFiles(pdf),
+  ]);
+  expect(page.url()).toContain(`item=${certItem}`);
+  await expect(certReq).not.toHaveAttribute("data-status", "pending");
   await fillMyRequirements(page, orderUrl);
   // Memorial e selo: as pendências são dela e levam ao quadro do alto do
   // cartão Certificação, onde ela preenche e envia os dois.

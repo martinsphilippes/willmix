@@ -17,6 +17,11 @@ export const pt = {
   "flow.order.quantity": "Quantidade",
   "flow.order.items.step": "Itens deste passo",
   "flow.order.empty": "Nada deste passo para este pedido.",
+  "flow.order.focus.title": "Este produto no passo",
+  "flow.order.focus.hint": "Só o produto da linha que você abriu.",
+  "flow.order.focus.all": "Ver tudo do pedido neste passo",
+  "flow.order.focus.missing":
+    "O produto do link não tem itens neste passo. Abaixo, tudo do pedido no passo.",
   "flow.all.production":
     "Produção em andamento (ETD definido, aguardando a inspeção)",
   "flow.tab.pending": "Pendências",
@@ -274,6 +279,11 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.order.quantity": "Quantity",
   "flow.order.items.step": "Items in this step",
   "flow.order.empty": "Nothing in this step for this order.",
+  "flow.order.focus.title": "This product in the step",
+  "flow.order.focus.hint": "Only the product from the row you opened.",
+  "flow.order.focus.all": "See everything for this order in this step",
+  "flow.order.focus.missing":
+    "The product in the link has no items in this step. Below is everything for the order in this step.",
   "flow.all.production":
     "Production under way (ETD set, waiting for inspection)",
   "flow.tab.pending": "Pending",
@@ -530,6 +540,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.order.quantity": "数量",
   "flow.order.items.step": "本环节事项",
   "flow.order.empty": "该订单在本环节没有事项。",
+  "flow.order.focus.title": "该产品在本环节的事项",
+  "flow.order.focus.hint": "仅显示您打开的那一行的产品。",
+  "flow.order.focus.all": "查看该订单在本环节的全部事项",
+  "flow.order.focus.missing":
+    "链接中的产品在本环节没有事项。下面是该订单在本环节的全部事项。",
   "flow.all.production": "生产进行中（已定 ETD，等待验货）",
   "flow.tab.pending": "待处理",
   "flow.tab.all": "本环节全部",

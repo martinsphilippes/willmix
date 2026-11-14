@@ -197,7 +197,7 @@ export async function flowCountsFor(
 
 /**
  * Os casos de um passo, das atrasadas às sem prazo (a ordem das Pendências);
- * no passo Arte, um por produto (a mesma conta do menu).
+ * nos passos por produto (Certificação), uma linha por produto.
  */
 export async function flowCasesOf(
   user: User,

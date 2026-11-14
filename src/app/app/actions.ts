@@ -66,12 +66,10 @@ import {
   flowReturnTo,
   num,
   requireUser,
-  requirementFocus,
   run,
   str,
   withQuery,
 } from "./actions/helpers";
-import { requirementHref } from "@/lib/flow";
 import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import { itemIdOf } from "@/lib/purchase-lanes";
 import { parseRequestItems } from "./actions/request-items";
@@ -303,16 +301,8 @@ export async function submitRequirementAction(form: FormData) {
   const dieCut = str(form, "returnTo") === "die-cut";
   // Tela do passo do menu (docs/FLOW_MENU.md): volta para ela.
   const flow = flowReturnTo(form);
-  // Tarefa aberta pelo Resolver (?focus=): o envio volta para a linha dela;
-  // a recusa, ao topo do pedido (onde fica o aviso), com ela em destaque.
-  const focus = flow || dieCut ? null : requirementFocus(form);
   const back =
-    flow ??
-    (dieCut
-      ? dieCutHref(orderId)
-      : focus
-        ? withQuery(`/app/orders/${orderId}`, "focus", focus)
-        : `/app/orders/${orderId}`);
+    flow ?? (dieCut ? dieCutHref(orderId) : `/app/orders/${orderId}`);
   await run(back, async () => {
     assertScreen(user, "orders");
     const store = getStore();
@@ -412,7 +402,6 @@ export async function submitRequirementAction(form: FormData) {
         item === "dieline" || item === "hd" ? item : "terms",
       );
     }
-    if (focus) return requirementHref(orderId, focus);
     return `/app/orders/${orderId}#stage-${requirement.stageId}`;
   });
 }
@@ -456,15 +445,7 @@ export async function decideRequirementAction(form: FormData) {
   const orderId = str(form, "orderId");
   // Tela do passo do menu (docs/FLOW_MENU.md): volta para ela.
   const flow = flowReturnTo(form);
-  // Tarefa aberta pelo Resolver (?focus=): a decisão volta para a linha dela;
-  // a recusa, ao topo do pedido (onde fica o aviso), com ela em destaque.
-  const focus = flow ? null : requirementFocus(form);
-  const back =
-    flow ??
-    (focus
-      ? withQuery(`/app/orders/${orderId}`, "focus", focus)
-      : `/app/orders/${orderId}`);
-  await run(back, async () => {
+  await run(flow ?? `/app/orders/${orderId}`, async () => {
     assertScreen(user, "orders");
     const decision = str(form, "decision") === "approve" ? "approve" : "reject";
     await decideRequirement(
@@ -473,7 +454,6 @@ export async function decideRequirementAction(form: FormData) {
       decision,
       str(form, "note") || null,
     );
-    return focus ? requirementHref(orderId, focus) : undefined;
   });
 }
 

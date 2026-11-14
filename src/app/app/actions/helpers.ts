@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { ZodError, type z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import type { User } from "@/lib/db";
-import { REQUIREMENT_FOCUS } from "@/lib/flow";
 
 /*
  * Utilitários compartilhados pelas Server Actions (src/app/app/actions.ts e
@@ -19,26 +18,17 @@ export async function requireUser(): Promise<User> {
 /**
  * Tela do passo do menu de onde a ação veio (docs/FLOW_MENU.md): só
  * /app/flow/<bloco>/<passo> ou /app/flow/<bloco>/<passo>/<pedido> (o pedido
- * no passo); qualquer outra coisa é ignorada (volta ao pedido).
+ * no passo), este com ?item=<item do pedido> opcional (o produto da linha,
+ * na Certificação); qualquer outra coisa é ignorada (volta ao pedido).
  */
 export function flowReturnTo(form: FormData): string | null {
   const v = form.get("returnTo");
   return typeof v === "string" &&
-    /^\/app\/flow\/[a-z-]{1,40}\/[a-z-]{1,40}(\/[A-Za-z0-9_-]{1,64})?$/.test(
+    /^\/app\/flow\/[a-z-]{1,40}\/[a-z-]{1,40}(\/[A-Za-z0-9_-]{1,64}(\?item=[A-Za-z0-9_-]{1,64})?)?$/.test(
       v.trim(),
     )
     ? v.trim()
     : null;
-}
-
-/**
- * Tarefa aberta pelo Resolver da tela do passo (?focus= no detalhe do pedido,
- * docs/FLOW_MENU.md): a chave do item, para o envio voltar para a linha
- * dela. Qualquer outra coisa é ignorada.
- */
-export function requirementFocus(form: FormData): string | null {
-  const v = str(form, "focus");
-  return v && REQUIREMENT_FOCUS.test(v) ? v : null;
 }
 
 export function str(form: FormData, key: string) {
