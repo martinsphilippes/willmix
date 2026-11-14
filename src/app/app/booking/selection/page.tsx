@@ -55,7 +55,10 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { SelectionQuantity } from "@/components/selection-quantity";
-import { generateLabels } from "@/components/generate-labels";
+import {
+  generateLabels,
+  purchaseScheduleLabels,
+} from "@/components/generate-labels";
 import { SelectionVariations } from "@/components/selection-variations";
 import { colorsOf } from "@/lib/color-split";
 import {
@@ -719,26 +722,7 @@ export default async function BookingSelectionPage({
                 }}
                 savedCartons={savedCartonsOf(current, list)}
                 gen={generateLabels(t)}
-                labels={{
-                  intl,
-                  toggle: t("purchaseRounds.form.toggle"),
-                  ask: t("purchaseRounds.form.ask"),
-                  hint: t("purchaseRounds.form.hint"),
-                  interval: t("purchaseRounds.form.interval"),
-                  days: t("purchaseRounds.form.days", { n: "{n}" }),
-                  custom: t("purchaseRounds.form.custom"),
-                  firstDate: t("purchaseRounds.form.firstDate"),
-                  n: t("purchaseRounds.form.n", { n: "{n}" }),
-                  quantity: t("purchaseRounds.form.quantity"),
-                  expected: t("purchaseRounds.form.expected"),
-                  add: t("purchaseRounds.form.add"),
-                  remove: t("purchaseRounds.form.remove", { n: "{n}" }),
-                  total: t("purchaseRounds.form.total", {
-                    total: "{total}",
-                    unit: "{unit}",
-                  }),
-                  off: t("purchaseRounds.form.off"),
-                }}
+                labels={purchaseScheduleLabels(t, intl)}
               />
               <div className="md:col-span-3">
                 <Field

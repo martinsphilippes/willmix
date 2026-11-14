@@ -1,5 +1,6 @@
 import type { PurchaseLot, PurchaseSheet } from "@/lib/db/schema";
 import { cbmFromDimensions } from "@/lib/logistics/cbm";
+import { splitEvenly } from "@/lib/workflow/request-schedule";
 
 /*
  * Contas da ficha de compra (as mesmas da planilha COMPRAS), sem banco:
@@ -575,12 +576,12 @@ export function generateLots(input: {
     return { error: "total" };
   if (!days(intervalDays)) return { error: "interval" };
   if (!days(firstDays)) return { error: "first" };
-  const base = Math.floor(totalCartons / count);
-  const rest = totalCartons - base * count;
+  // A mesma distribuição da programação de compra e da solicitação
+  // (`splitEvenly`): caixas iguais, o resto para as primeiras.
   return {
-    lots: Array.from({ length: count }, (_, i) => ({
+    lots: splitEvenly(totalCartons, count, MAX_LOTS).map((cartons, i) => ({
       departureIntervalDays: i === 0 ? firstDays : intervalDays,
-      masterCartons: base + (i < rest ? 1 : 0),
+      masterCartons: cartons,
     })),
   };
 }

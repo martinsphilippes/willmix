@@ -5,7 +5,12 @@ import type {
   RequestSchedule,
 } from "@/lib/db/schema";
 import { colorsOfRound } from "@/lib/color-split";
-import { addDaysIso, scheduleTotal } from "@/lib/workflow/request-schedule";
+import {
+  MAX_SCHEDULE_ROUNDS,
+  addDaysIso,
+  scheduleTotal,
+  splitEvenly,
+} from "@/lib/workflow/request-schedule";
 
 /*
  * Programação de compra (docs/PURCHASE_SCHEDULE.md): na escolha do grupo a
@@ -15,8 +20,12 @@ import { addDaysIso, scheduleTotal } from "@/lib/workflow/request-schedule";
  * vira um pedido filho no dia combinado. Só a conta, sem banco.
  */
 
-/** Rodadas de compra que a escolha do grupo aceita (a solicitação do cliente fica em 6). */
-export const MAX_PURCHASE_ROUNDS = 12;
+/**
+ * Rodadas de compra aceitas: o teto técnico do portal (dono, 14/11/2026: sem
+ * o teto de 12 da Seleção nem o de 6 da solicitação). O limite de verdade é
+ * uma caixa master por data (`roundsShortage`).
+ */
+export const MAX_PURCHASE_ROUNDS = MAX_SCHEDULE_ROUNDS;
 
 export interface ScheduleSummary {
   rounds: number;
@@ -147,7 +156,7 @@ export const CONTAINER_FULL_MARGIN_PCT = 5;
 export interface RoundsPlanInput {
   /** Peças desejadas no total. */
   total: number;
-  /** Rodadas informadas (1 a `maxRounds`). */
+  /** Rodadas informadas (1 a `maxRounds`, padrão: o teto técnico). */
   rounds: number;
   masterCartonQty: number | null | undefined;
   cbmPerCarton: number | null | undefined;
@@ -175,11 +184,33 @@ export interface RoundsPlan {
   containers: number;
   cartonsPerContainer: number;
   piecesPerContainer: number;
-  /** Menos rodadas que as pedidas: não há uma caixa inteira para cada uma. */
-  reduced: boolean;
 }
 
 export type RoundsPlanError = "total" | "rounds" | "carton" | "too_big";
+
+/**
+ * Caixas que faltam para dar pelo menos uma caixa master a cada data (dono,
+ * 14/11/2026). Até então a conta ficava com menos datas, sem perguntar; agora
+ * nada é gerado e a tela diz quantas caixas faltam, com as duas saídas:
+ * aumentar o total para `rounds` caixas ou reduzir para `cartons` datas.
+ */
+export interface RoundsShortage {
+  /** Datas pedidas. */
+  rounds: number;
+  /** Caixas master do total. */
+  cartons: number;
+  /** Caixas que faltam (datas − caixas). */
+  missing: number;
+}
+
+export function roundsShortage(
+  cartons: number,
+  rounds: number,
+): RoundsShortage | null {
+  return cartons < rounds
+    ? { rounds, cartons, missing: rounds - cartons }
+    : null;
+}
 
 const pos = (n: number | null | undefined): n is number =>
   typeof n === "number" && Number.isFinite(n) && n > 0;
@@ -301,7 +332,10 @@ export function scheduleOnItemChange(input: {
 
 export function planPurchaseRounds(
   input: RoundsPlanInput,
-): { plan: RoundsPlan } | { error: RoundsPlanError } {
+):
+  | { plan: RoundsPlan }
+  | { error: RoundsPlanError }
+  | { short: RoundsShortage } {
   const max = Math.max(1, Math.floor(input.maxRounds ?? MAX_PURCHASE_ROUNDS));
   const { masterCartonQty: perCarton, cbmPerCarton, containerCbm } = input;
   if (!pos(input.total) || input.total > 100_000_000) return { error: "total" };
@@ -313,19 +347,17 @@ export function planPurchaseRounds(
   const perContainer = cartonsPerContainer(cbmPerCarton, containerCbm);
   if (perContainer < 1) return { error: "too_big" };
   const cartons = Math.ceil(input.total / perCarton - 1e-9);
-  // Caixa é inteira: com menos caixas que rodadas, ficam as rodadas que dá.
-  const count = Math.min(asked, cartons);
-  const base = Math.floor(cartons / count);
-  const rest = cartons - base * count;
-  const rounds: PlannedRound[] = Array.from({ length: count }, (_, i) => {
-    const c = base + (i < rest ? 1 : 0);
-    return {
-      pieces: c * perCarton,
-      cartons: c,
-      cbm: r4(c * cbmPerCarton),
-      containers: r6(c / perContainer),
-    };
-  });
+  // Caixa é inteira: cada data precisa de pelo menos uma. Faltando, nada é
+  // gerado e a tela diz quantas faltam (dono, 14/11/2026).
+  const short = roundsShortage(cartons, asked);
+  if (short) return { short };
+  // A distribuição do portal: caixas iguais, o resto para as primeiras.
+  const rounds: PlannedRound[] = splitEvenly(cartons, asked, max).map((c) => ({
+    pieces: c * perCarton,
+    cartons: c,
+    cbm: r4(c * cbmPerCarton),
+    containers: r6(c / perContainer),
+  }));
   return {
     plan: {
       rounds,
@@ -336,7 +368,6 @@ export function planPurchaseRounds(
       containers: r6(cartons / perContainer),
       cartonsPerContainer: perContainer,
       piecesPerContainer: perContainer * perCarton,
-      reduced: count < asked,
     },
   };
 }

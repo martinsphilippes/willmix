@@ -18,7 +18,10 @@ test("solicitação: Conversar com a empresa abre o chat na caixa flutuante", as
   await page.check('[data-request-item="0"] input[name="p0.sourcingDemand"]');
   await page.fill('input[name="p0.productName"]', `Pote ${tag}`);
   await page.fill('textarea[name="p0.description"]', `Pote de vidro ${tag}`);
-  await page.fill('input[name="p0.quantity"]', "500");
+  // A quantidade se digita no bloco "Programação de compra" (pedido único).
+  await page
+    .locator('[data-request-item="0"] [data-selection-quantity]')
+    .fill("500");
   await page.getByRole("button", { name: /enviar|send/i }).click();
   await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+/);
   const requestPath = new URL(page.url()).pathname;

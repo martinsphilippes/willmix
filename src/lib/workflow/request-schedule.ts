@@ -13,7 +13,16 @@ import type {
 
 export type { RequestSchedule, RequestScheduleItem };
 
-export const MAX_REQUEST_SCHEDULE = 6;
+/**
+ * Teto técnico de programações (dono, 14/11/2026: sem o teto de 6 datas da
+ * solicitação nem o de 12 da Seleção). Não é regra de negócio: o limite real
+ * é ter ao menos uma caixa master por data. Só protege o servidor de um envio
+ * absurdo (120 = dez anos de programações mensais). Vale para as duas telas,
+ * para o servidor e para a gravação.
+ */
+export const MAX_SCHEDULE_ROUNDS = 120;
+/** O mesmo teto, com o nome antigo da solicitação do cliente. */
+export const MAX_REQUEST_SCHEDULE = MAX_SCHEDULE_ROUNDS;
 export const SCHEDULE_INTERVALS = [30, 45, 60] as const;
 export const DEFAULT_SCHEDULE_INTERVAL = 45;
 
@@ -35,11 +44,15 @@ export function todayIso(now = new Date()): string {
   }).format(now);
 }
 
-/** Divide a quantidade em n partes inteiras; o resto vai para as primeiras. */
+/**
+ * A distribuição do portal (programação de compra, solicitação e lotes da
+ * ficha de compra): divide a quantidade em n partes inteiras e o resto vai
+ * para as primeiras. Em caixas master, as caixas; sem elas, as peças.
+ */
 export function splitEvenly(
   total: number,
   n: number,
-  max: number = MAX_REQUEST_SCHEDULE,
+  max: number = MAX_SCHEDULE_ROUNDS,
 ): number[] {
   const count = Math.max(1, Math.min(max, Math.floor(n)));
   const whole = Math.max(0, Math.floor(total));
@@ -76,7 +89,7 @@ export function scheduleTotal(schedule: RequestSchedule): number {
 export function parseRequestSchedule(
   form: FormData,
   prefix: string,
-  max: number = MAX_REQUEST_SCHEDULE,
+  max: number = MAX_SCHEDULE_ROUNDS,
 ): RequestSchedule | null {
   const get = (k: string) => {
     const v = form.get(`${prefix}schedule.${k}`);

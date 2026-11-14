@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { cx, inputClass } from "@/components/ui";
 import {
   DEFAULT_SCHEDULE_INTERVAL,
-  MAX_REQUEST_SCHEDULE,
+  MAX_SCHEDULE_ROUNDS,
   SCHEDULE_INTERVALS,
   addDaysIso,
   splitEvenly,
@@ -13,10 +13,13 @@ import {
 } from "@/lib/workflow/request-schedule";
 
 /*
- * Programação de entregas na solicitação: "+ Programação de entregas" liga o
- * bloco; a quantidade total é dividida nas programações (1, 2, 3…), cada uma
- * com quantidade editável e data prevista calculada (1ª data + intervalo).
- * O total da solicitação passa a ser a soma das programações.
+ * O bloco "Programação de compra" do portal (Seleção de itens e Nova
+ * solicitação, docs/PURCHASE_SCHEDULE.md): o título e a explicação ficam
+ * sempre à vista, com o gerador logo abaixo; "+ Programação de compra" (ou
+ * "Gerar programação") liga as programações. A quantidade total é dividida
+ * nas programações (1, 2, 3…), cada uma com quantidade editável e data
+ * calculada (1ª data + intervalo), e passa a ser a soma delas. Sem teto de
+ * datas além do técnico (`MAX_SCHEDULE_ROUNDS`, dono, 14/11/2026).
  */
 export interface ScheduleLabels {
   /** Tag Intl do idioma (datas e números): pt-BR, en-US, zh-CN. */
@@ -56,13 +59,14 @@ export function RequestScheduleFields({
   unit,
   onTotalChange,
   labels,
-  max = MAX_REQUEST_SCHEDULE,
+  max = MAX_SCHEDULE_ROUNDS,
   initial = null,
   className,
   onToggle,
   generator,
   roundInfo,
   split,
+  onShort,
   blocked = false,
   after,
 }: {
@@ -73,11 +77,11 @@ export function RequestScheduleFields({
   /** Soma das programações muda a quantidade total da linha. */
   onTotalChange: (total: string) => void;
   labels: ScheduleLabels;
-  /** Máximo de programações (padrão: as 6 da solicitação do cliente). */
+  /** Teto de programações (padrão: o técnico do portal). */
   max?: number;
   /** Programação já gravada (reabrir para rever): começa ligada com ela. */
   initial?: RequestSchedule | null;
-  /** Classes do bloco (fora da grade da linha de produto). */
+  /** Classes extras do quadro do bloco. */
   className?: string;
   /** Avisa quando a programação liga ou desliga. */
   onToggle?: (on: boolean) => void;
@@ -99,9 +103,14 @@ export function RequestScheduleFields({
   /**
    * Como dividir um total em N rodadas ao ligar, acrescentar ou tirar uma
    * rodada (programação de compra: em caixas master inteiras). Padrão: em
-   * partes iguais.
+   * partes iguais. Nulo: não há uma caixa por data (`onShort` avisa).
    */
-  split?: (total: number, count: number) => number[];
+  split?: (total: number, count: number) => number[] | null;
+  /**
+   * Ligar ou "+ Programação" sem uma caixa master por data: nada muda e o
+   * gerador mostra quantas caixas faltam (dono, 14/11/2026).
+   */
+  onShort?: (total: number, count: number) => void;
   /**
    * Programação de compra sem o item escolhido marcado na tabela (pedido do
    * dono, 13/11/2026): não liga, não acrescenta nem tira rodada (a conta
@@ -143,6 +152,10 @@ export function RequestScheduleFields({
     if (blocked) return;
     const n = Math.max(0, Number(String(total).replace(",", ".")) || 0);
     const parts = divide(n, 2);
+    if (!parts) {
+      onShort?.(n, 2);
+      return;
+    }
     setQtys(parts.map(String));
     setOn(true);
     onToggle?.(true);
@@ -175,53 +188,64 @@ export function RequestScheduleFields({
   }
   function add() {
     if (blocked || qtys.length >= max) return;
-    update(divide(sum(qtys), qtys.length + 1).map(String));
+    // Cada clique acrescenta uma data: o total é dividido de novo entre elas
+    // (em caixas master inteiras); sem uma caixa por data, o aviso.
+    const parts = divide(sum(qtys), qtys.length + 1);
+    if (!parts) {
+      onShort?.(sum(qtys), qtys.length + 1);
+      return;
+    }
+    update(parts.map(String));
   }
   function remove() {
     if (blocked || qtys.length <= 2) return;
-    update(divide(sum(qtys), qtys.length - 1).map(String));
+    const parts = divide(sum(qtys), qtys.length - 1);
+    if (parts) update(parts.map(String));
   }
 
-  /* Na grade da linha de produto (RequestItems): desligada, fica ao lado de
-     quantidade e unidade; ligada, ocupa a linha toda. */
+  // O bloco tem o mesmo quadro, título e explicação ligado ou desligado
+  // (dono, 14/11/2026: "Programação de compra" seguido do gerador): sem
+  // programação, o pedido único (a quantidade do gerador) e o botão que liga.
+  const frame = cx(
+    "min-w-0 max-w-full space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5",
+    className,
+  );
+  const legend = (
+    <legend className="px-1 text-sm font-semibold text-zinc-800">
+      {labels.toggle}
+    </legend>
+  );
+  const hint = (
+    <p className="text-xs leading-relaxed text-zinc-600" data-schedule-hint>
+      {labels.hint}
+    </p>
+  );
   if (!on)
     return (
-      <div
-        className={
-          className ??
-          "col-span-2 flex flex-wrap items-center gap-x-2 gap-y-1 self-end sm:min-h-8"
-        }
-        data-request-schedule="off"
-      >
-        <span className="text-xs text-zinc-500">{labels.ask}</span>
-        <button
-          type="button"
-          onClick={enable}
-          disabled={blocked}
-          data-schedule-on
-          className="inline-flex items-center gap-1 rounded-md border border-dashed border-brand-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
-        >
-          <span aria-hidden>+</span>
-          {labels.toggle}
-        </button>
-        {generator ? (
-          <div className="basis-full">{generator(apply, [])}</div>
-        ) : null}
-        {after ? <div className="basis-full">{after([], [])}</div> : null}
-      </div>
+      <fieldset className={frame} data-request-schedule="off">
+        {legend}
+        {hint}
+        {generator ? generator(apply, []) : null}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-xs text-zinc-500">{labels.ask}</span>
+          <button
+            type="button"
+            onClick={enable}
+            disabled={blocked}
+            data-schedule-on
+            className="inline-flex items-center gap-1 rounded-md border border-dashed border-brand-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
+          >
+            <span aria-hidden>+</span>
+            {labels.toggle}
+          </button>
+        </div>
+        {after ? after([], []) : null}
+      </fieldset>
     );
 
   return (
-    <fieldset
-      className={cx(
-        "min-w-0 max-w-full space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5",
-        className ? null : "col-span-2 sm:col-span-4",
-      )}
-      data-request-schedule="on"
-    >
-      <legend className="px-1 text-sm font-semibold text-zinc-800">
-        {labels.toggle}
-      </legend>
+    <fieldset className={frame} data-request-schedule="on">
+      {legend}
       <input
         type="hidden"
         name={`${prefix}schedule.count`}
@@ -237,7 +261,7 @@ export function RequestScheduleFields({
         name={`${prefix}schedule.firstDate`}
         value={firstDate}
       />
-      <p className="text-xs leading-relaxed text-zinc-600">{labels.hint}</p>
+      {hint}
       {generator ? generator(apply, qtys.map(num)) : null}
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
