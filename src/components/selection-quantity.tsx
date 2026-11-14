@@ -297,6 +297,7 @@ export function SelectionQuantity({
   const moqHintId = useId();
   const selectItemId = useId();
   const piecesRef = useRef<HTMLInputElement>(null);
+  const cartonsRef = useRef<HTMLInputElement>(null);
   const [ownQty, setOwnQty] = useState(
     defaultQuantity === null ? "" : String(defaultQuantity),
   );
@@ -542,14 +543,22 @@ export function SelectionQuantity({
     setError(null);
     setShort(null);
   };
+  // Peças travadas (dono, 14/11/2026): com as peças por caixa master do
+  // item, só "Total de caixas" se digita; "Quantidade (peças)" é caixas ×
+  // peças por caixa. Sem elas não há conversão e as peças seguem editáveis.
+  const piecesLocked = !!perCarton;
   // Pedido mínimo (Nova solicitação): a quantidade do formulário abaixo dele
-  // bloqueia o envio, com o aviso no campo de peças.
+  // bloqueia o envio, com o aviso no campo que se digita (as caixas quando
+  // as peças estão travadas; o navegador não valida campo travado).
   const qtyNumber = Number(String(qty).replace(",", ".")) || 0;
   const belowMoq = !!moq && String(qty).trim() !== "" && qtyNumber < moq.min;
   const belowText = moq?.below ?? "";
   useEffect(() => {
-    piecesRef.current?.setCustomValidity(belowMoq ? belowText : "");
-  }, [belowMoq, belowText]);
+    const active = piecesLocked ? cartonsRef.current : piecesRef.current;
+    const other = piecesLocked ? piecesRef.current : cartonsRef.current;
+    active?.setCustomValidity(belowMoq ? belowText : "");
+    other?.setCustomValidity("");
+  }, [belowMoq, belowText, piecesLocked]);
   const hasCarton = !!(item && usable(item) && capacity);
   const perContainer =
     hasCarton && item
@@ -1043,12 +1052,25 @@ export function SelectionQuantity({
           <label className="min-w-0 space-y-1">
             <span className="block font-medium text-zinc-700">{gen.total}</span>
             <input
+              ref={cartonsRef}
               type="text"
               inputMode="numeric"
               value={total}
               onChange={(e) => typeAmount("cartons", e.target.value)}
+              // Peças travadas: as caixas são a quantidade que se digita
+              // (obrigatória no pedido único; abaixo do mínimo, sobe a ele).
+              required={quantityRequired && !scheduled && piecesLocked}
+              // Só no pedido único: com a programação, a quantidade é a soma
+              // das datas (abaixo do mínimo, o aviso bloqueia o envio).
+              onBlur={piecesLocked && !scheduled ? onQuantityBlur : undefined}
+              aria-describedby={moq && piecesLocked ? moqHintId : undefined}
+              aria-invalid={(piecesLocked && belowMoq) || undefined}
               data-generate-total
-              className={cx(inputDenseClass, "w-full tabular-nums")}
+              className={cx(
+                inputDenseClass,
+                "w-full tabular-nums",
+                piecesLocked && belowMoq && "border-red-400",
+              )}
             />
           </label>
           {/* A quantidade da escolha, em peças: só vai no formulário sem
@@ -1063,19 +1085,25 @@ export function SelectionQuantity({
               name={scheduled || controlledQty ? undefined : "quantity"}
               inputMode="numeric"
               autoComplete="off"
-              required={quantityRequired && !scheduled}
+              required={quantityRequired && !scheduled && !piecesLocked}
+              readOnly={piecesLocked}
+              tabIndex={piecesLocked ? -1 : undefined}
+              aria-readonly={piecesLocked || undefined}
+              title={piecesLocked ? labels.piecesLocked : undefined}
               value={pieces}
               onChange={(e) => typeAmount("pieces", e.target.value)}
-              onBlur={onQuantityBlur}
+              onBlur={!piecesLocked && !scheduled ? onQuantityBlur : undefined}
               aria-describedby={
                 moq ? `${quantityHintId} ${moqHintId}` : quantityHintId
               }
-              aria-invalid={belowMoq || undefined}
+              aria-invalid={(!piecesLocked && belowMoq) || undefined}
               data-selection-quantity
+              data-selection-quantity-locked={piecesLocked || undefined}
               className={cx(
                 inputDenseClass,
                 "w-full tabular-nums",
-                belowMoq && "border-red-400",
+                piecesLocked && "cursor-not-allowed bg-zinc-100 text-zinc-600",
+                !piecesLocked && belowMoq && "border-red-400",
               )}
             />
           </label>

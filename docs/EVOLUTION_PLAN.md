@@ -1436,6 +1436,7 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Pedido do dono** (14/11/2026, depois da publicação do bloco): nos cartões das programações, a quantidade de caixas; o campo de peças travado (só as caixas se editam); a conta pelas peças que vêm na caixa.
 - **Mudou na tela**: com as peças por caixa master do produto, cada cartão traz "Caixas" (editável), "Peças" travada (caixas × peças por caixa) e a conta escrita; o total diz as caixas; a linha do volume do cartão diz só os m³. Sem as peças por caixa master, as peças continuam editáveis.
 - **Nada foi removido**: o formulário continua mandando as peças de cada programação (`schedule.qty.N`) e o servidor grava como antes; rotas, Server Actions, banco e esquema iguais.
+- **Depois (mesmo dia)**: "Quantidade (peças)" do gerador também travada; só "Total de caixas" se digita. O pedido mínimo da Nova solicitação sobe para caixas inteiras (2.000 de 48 = 42 caixas = 2.016 peças). Nada removido: a quantidade em peças continua indo no formulário.
 
 ## Nova solicitação: Histórico de compras do cliente
 

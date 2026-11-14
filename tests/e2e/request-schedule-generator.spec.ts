@@ -79,20 +79,27 @@ test("Nova solicitação: o bloco Programação de compra, pedido único, sobra,
   await expect(gen.locator("[data-generate-submit]")).toBeDisabled();
   await expect(first.locator("[data-schedule-on]")).toBeDisabled();
 
-  // 2. Boneca: a quantidade (pedido único) se digita no bloco, com o pedido
-  // mínimo. Abaixo dele, o aviso; ao sair do campo, volta ao mínimo.
+  // 2. Boneca: a quantidade (pedido único) se digita no bloco, em CAIXAS: as
+  // peças ficam travadas (caixas × 48; dono, 14/11/2026). O pedido mínimo
+  // (2.000) vira caixas inteiras: 42 caixas = 2.016 peças. Abaixo dele, o
+  // aviso; ao sair do campo das caixas, volta ao mínimo.
   await pick(page, 0, "boneca", "prod-boneca");
   await expect(gen).not.toContainText("Escolha o produto no campo acima");
-  await expect(pieces).toHaveValue("2000");
+  const boxes = gen.locator("[data-generate-total]");
+  await expect(pieces).toHaveAttribute("readonly", "");
+  await expect(pieces).toHaveValue("2016");
+  await expect(boxes).toHaveValue("42");
   const moqHint = gen.locator("[data-request-moq-hint]");
-  await expect(moqHint).toHaveText("Pedido mínimo: 2.000 un");
-  await pieces.fill("1000");
+  await expect(moqHint).toHaveText("Pedido mínimo: 2.000 un (42 caixas)");
+  await boxes.fill("20");
+  await expect(pieces).toHaveValue("960");
   await expect(moqHint).toHaveAttribute("data-request-moq-hint", "below");
-  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("1000");
-  await pieces.blur();
-  await expect(pieces).toHaveValue("2000");
+  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("960");
+  await boxes.blur();
+  await expect(boxes).toHaveValue("42");
+  await expect(pieces).toHaveValue("2016");
   await expect(moqHint).toHaveAttribute("data-request-moq-hint", "ok");
-  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("2000");
+  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("2016");
 
   // 3. O exemplo da captura: 300 caixas de 48 em 2 programações = 14.400
   // peças, 150 caixas e 7.200 peças por data. Containers previstos (1 por
