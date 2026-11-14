@@ -618,6 +618,15 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     "received",
   );
 
+  // Sinal pago e a produção sem ETD: o pedido aparece em Produção →
+  // Pré-produção, com os dados da produção e o ETD (docs/FLOW_MENU.md).
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/flow/production/pre-production");
+  const preId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
+  const preCard = page.locator(`[data-flow-production-order="${preId}"]`);
+  await expect(preCard.locator("[data-production-plan]")).toBeVisible();
+  await expect(preCard.locator("[data-production-etd]")).toBeVisible();
+
   // 9. Inspeção (mapa R3/R4?): o fornecedor manda as fotos, o peso, o vídeo
   // da produção e a declaração de conformidade. Nestes pedidos não há peso
   // declarado para comparar (sem ficha de compra).

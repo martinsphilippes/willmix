@@ -26,8 +26,11 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
 - **Terceira parte** (14/11/2026):
   - **Itens com tela e ação próprias** não ganham o formulário comum na tela do passo (o envio comum recusa): o documento do pedido e as assinaturas (documento do pedido), o pedido de amostras, o pedido mínimo e o prazo (quadro Die Cut) e a ficha de compra. No lugar, o botão para a tela deles (`ownScreenOf` em `src/components/flow-step-forms.tsx`).
   - **Recebimento no CD** em Entrega: Armazenagem (descarga, lacre, fotos, checklist e contagem por SKU) e Retorno (RIC, devolução do container e fechamento), com o cartão de recebimento do pedido dividido em duas partes (`sections`). Os casos saem dos recebimentos abertos de pedidos já entregues no CD (ou com a descarga começada): falta descarga ou contagem, Armazenagem; senão, Retorno. Contam no menu, mas não são pendências: a tela Pendências e a bolinha dela não mudam (`flowReceivingCasesFor` em `src/lib/services/flow.ts`, só para a Wellmix com a tela Containers).
+- **Quarta parte** (14/11/2026):
+  - **Pré-produção** ganha casos: pedido em andamento com o sinal ao fornecedor pago (item `down_payment` concluído) e a produção sem ETD. A tela mostra a parte "dados e ETD" do cartão de produção; salvar o ETD tira o caso. Contam no menu, fora das Pendências (`flowPreProductionCasesFor`, Wellmix com a tela Produção).
+  - **Produção → Logística** traz o frete marítimo do pedido (pedir às companhias e as respostas), para os pedidos com caso no passo. O pedido de frete aceita `returnTo` e volta para a tela do passo.
 - Passos que já tinham tela (Books, Seleção, Cotações, Negociações, Pedidos, Revisão, Estoque) abrem a tela de sempre, com o contador.
-- Passos sem fonte de pendência ainda (Pré-produção, LPCO, Amostras e Ofertas de Vendas) aparecem com a tela vazia e a explicação; nada inventado.
+- Passos sem fonte de pendência ainda (LPCO, Amostras e Ofertas de Vendas) aparecem com a tela vazia e a explicação; nada inventado.
 
 ## De onde vem o contador
 

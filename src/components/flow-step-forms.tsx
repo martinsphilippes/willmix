@@ -19,6 +19,7 @@ import { RequirementForm } from "./requirement-form";
 import { ProductionCard } from "./production-card";
 import { ArtworkCard } from "./artwork-card";
 import { ReceivingCard } from "./receiving-card";
+import { FreightOrderCard } from "./freight-order-card";
 import { Badge, Card, LinkButton, TextLink } from "./ui";
 
 /*
@@ -243,9 +244,14 @@ export async function FlowProductionWork({
   notice: string | null;
 }) {
   const inspection = step.key === "inspection";
+  const pre = step.key === "pre-production";
   const orderIds = ordersOf(
     tasks,
-    inspection ? ["sku_inspection", "sku_fix"] : ["production_follow"],
+    inspection
+      ? ["sku_inspection", "sku_fix"]
+      : pre
+        ? ["preproduction_plan"]
+        : ["production_follow"],
   );
   if (!orderIds.length) return null;
   const store = getStore();
@@ -291,7 +297,13 @@ export async function FlowProductionWork({
               wellmix={isWellmix(user)}
               names={names}
               notice={notice}
-              sections={inspection ? ["inspection"] : ["plan", "followup"]}
+              sections={
+                inspection
+                  ? ["inspection"]
+                  : pre
+                    ? ["plan"]
+                    : ["plan", "followup"]
+              }
               returnTo={pathOf(step)}
             />
           </div>
@@ -400,6 +412,65 @@ export async function FlowReceivingWork({
               view={view}
               notice={notice}
               sections={storage ? ["storage"] : ["return"]}
+              returnTo={pathOf(step)}
+            />
+          </div>
+        ))}
+    </section>
+  );
+}
+
+/**
+ * Frete marítimo do pedido (Produção → Logística, só a Wellmix): pedir ou
+ * pedir de novo às companhias, com as respostas, para os pedidos com caso
+ * no passo.
+ */
+export async function FlowFreightWork({
+  user,
+  step,
+  tasks,
+  t,
+  notice,
+  count,
+}: {
+  user: User;
+  step: FlowStep;
+  tasks: Task[];
+  t: Translate;
+  notice: string | null;
+  count: number;
+}) {
+  if (!isWellmix(user)) return null;
+  const orderIds = [
+    ...new Set(tasks.filter((x) => x.orderId).map((x) => x.orderId as string)),
+  ].slice(0, MAX_ORDERS);
+  if (!orderIds.length) return null;
+  const orders = await getStore().list("orders", {
+    filter: { id: orderIds },
+  });
+  const live = orders.filter(
+    (o) => o.status !== "CANCELLED" && o.status !== "CLOSED",
+  );
+  if (!live.length) return null;
+  return (
+    <section className="mt-6 space-y-4" data-flow-freight>
+      {live
+        .sort((a, b) => a.number - b.number)
+        .map((order) => (
+          <div key={order.id} data-flow-freight-order={order.id}>
+            <p className="mb-1 text-sm font-semibold text-zinc-800">
+              {t("flow.work.order", { n: order.number })} ·{" "}
+              <TextLink href={`/app/orders/${order.id}`}>
+                {t("flow.work.openOrder")}
+              </TextLink>
+            </p>
+            <FreightOrderCard
+              t={t}
+              user={user}
+              orderId={order.id}
+              notice={notice}
+              count={count}
+              error={null}
               returnTo={pathOf(step)}
             />
           </div>

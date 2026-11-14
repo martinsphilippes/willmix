@@ -15,6 +15,7 @@ import { FlowCases } from "@/components/flow-cases";
 import { FlowStepWork } from "@/components/flow-step-work";
 import {
   FlowArtworkWork,
+  FlowFreightWork,
   FlowProductionWork,
   FlowReceivingWork,
   FlowRequirementWork,
@@ -41,8 +42,17 @@ export default async function FlowStepPage({
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=/app/flow/${block}/${key}`);
   requireScreen(user, step.screen);
-  const { due, importStep, certStep, production, artwork, receiving, saved } =
-    await searchParams;
+  const {
+    due,
+    importStep,
+    certStep,
+    production,
+    artwork,
+    receiving,
+    freight,
+    freightN,
+    saved,
+  } = await searchParams;
   const done = [importStep, certStep].find(
     (v) =>
       typeof v === "string" &&
@@ -118,13 +128,29 @@ export default async function FlowStepPage({
       <FlowCases step={step} tasks={tasks} t={t} />
       <FlowRequirementWork user={user} step={step} tasks={all} t={t} />
       {step.block === "production" &&
-      (step.key === "production" || step.key === "inspection") ? (
+      (step.key === "production" ||
+        step.key === "inspection" ||
+        step.key === "pre-production") ? (
         <FlowProductionWork
           user={user}
           step={step}
           tasks={all}
           t={t}
           notice={productionNotice}
+        />
+      ) : null}
+      {step.block === "production" && step.key === "logistics" ? (
+        <FlowFreightWork
+          user={user}
+          step={step}
+          tasks={all}
+          t={t}
+          notice={typeof freight === "string" ? freight : null}
+          count={
+            typeof freightN === "string" && /^\d{1,3}$/.test(freightN)
+              ? Number(freightN)
+              : 0
+          }
         />
       ) : null}
       {step.block === "delivery" &&

@@ -40,6 +40,9 @@ describe("passos do menu", () => {
     // Recebimento no CD (casos do menu, fora das Pendências).
     expect(ids({ kind: "receiving_storage" })).toEqual(["delivery/storage"]);
     expect(ids({ kind: "receiving_return" })).toEqual(["delivery/return"]);
+    expect(ids({ kind: "preproduction_plan" })).toEqual([
+      "production/pre-production",
+    ]);
   });
 
   it("passos do embarque e da importação → passo do mapa", () => {
