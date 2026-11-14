@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 
 import { after } from "next/server";
 import {
@@ -379,7 +380,8 @@ export async function notifyNcmPending(created: Request[]) {
           pending.length === 1
             ? {
                 subject: t("ncm.notify.one.subject", {
-                  product: first.productName,
+                  product:
+                    realName(first.productName) ?? t("productName.unnamed"),
                 }),
                 body: t("ncm.notify.one.body"),
               }

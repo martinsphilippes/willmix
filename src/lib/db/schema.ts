@@ -1013,6 +1013,11 @@ export interface Stage extends BaseRow {
   percent: number;
   reminderSentAt: string | null;
   blockReason: string | null;
+  /**
+   * Em espera até o go-live (pedido da carga do histórico do Sankhya): fora
+   * das listas gerais (Pendências, lembretes, SLA). Ver `hidesHeld` (store.ts).
+   */
+  held?: boolean | null;
 }
 
 export interface Requirement extends BaseRow {
@@ -1029,6 +1034,8 @@ export interface Requirement extends BaseRow {
   submittedByUserId: string | null;
   submittedAt: string | null;
   note: string | null;
+  /** Em espera até o go-live (ver Stage.held). */
+  held?: boolean | null;
 }
 
 export interface Document extends BaseRow {
@@ -2927,6 +2934,11 @@ export interface IndexDef {
   type: "key" | "unique";
   columns: string[];
   /**
+   * Índice parcial (só Supabase/Postgres): a condição SQL. O Appwrite cria o
+   * índice inteiro.
+   */
+  where?: string;
+  /**
    * Chaves de índices antigos que este substitui: o publicador
    * (scripts/appwrite-push.ts) apaga só estes antes de criar o novo; nunca
    * outros. Ex.: `user_product_unique` → `user_product_variant_unique`.
@@ -3243,10 +3255,17 @@ export const TABLES: Record<TableName, TableDef> = {
       percent: int(true),
       reminderSentAt: datetime(),
       blockReason: text(),
+      held: bool(),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_status", type: "key", columns: ["status"] },
+      {
+        key: "live_by_status",
+        type: "key",
+        columns: ["status"],
+        where: `"held" is not true`,
+      },
     ],
   },
   requirements: {
@@ -3265,10 +3284,23 @@ export const TABLES: Record<TableName, TableDef> = {
       submittedByUserId: id(false),
       submittedAt: datetime(),
       note: text(),
+      held: bool(),
     },
     indexes: [
       { key: "by_stage", type: "key", columns: ["stageId"] },
       { key: "by_order", type: "key", columns: ["orderId"] },
+      {
+        key: "live_by_status",
+        type: "key",
+        columns: ["status"],
+        where: `"held" is not true`,
+      },
+      {
+        key: "live_by_key",
+        type: "key",
+        columns: ["key"],
+        where: `"held" is not true`,
+      },
     ],
   },
   documents: {
@@ -3340,7 +3372,15 @@ export const TABLES: Record<TableName, TableDef> = {
       kind: enumOf(NOTIFICATION_KINDS, false),
       actor: str(40),
     },
-    indexes: [{ key: "by_user", type: "key", columns: ["userId"] }],
+    indexes: [
+      { key: "by_user", type: "key", columns: ["userId"] },
+      // Sino do cabeçalho (todas as telas): as últimas do usuário no app.
+      {
+        key: "by_user_channel_created",
+        type: "key",
+        columns: ["userId", "channel", "createdAt"],
+      },
+    ],
   },
   audit_log: {
     label: "Auditoria",

@@ -1,3 +1,4 @@
+import { realName } from "@/lib/placeholder-name";
 import type { Translate } from "@/i18n";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -441,7 +442,7 @@ export async function ControlTower({
                       <TextLink href={row.link}>{row.number}</TextLink>
                     </Td>
                     <Td>{row.customer}</Td>
-                    <Td>{row.product}</Td>
+                    <Td>{realName(row.product) ?? "—"}</Td>
                     <Td className="whitespace-nowrap">
                       {row.kind === "cert" ? (
                         <Badge tone="warning">{t("board.cert")}</Badge>

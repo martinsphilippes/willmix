@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 import { columnsExcept, listColumns } from "@/lib/db/lookup";
 
 import {
@@ -256,7 +257,8 @@ export function payableFor(
   return {
     order,
     supplier,
-    productName: items[0]?.name ?? "—",
+    // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+    productName: realName(items[0]?.name) ?? "—",
     schedule,
     source,
     legacyReceivedAt: legacyReceivedAt(requirements),

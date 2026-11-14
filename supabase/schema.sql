@@ -294,8 +294,10 @@ alter table public."stages" add column if not exists "completedAt" timestamptz;
 alter table public."stages" add column if not exists "percent" bigint;
 alter table public."stages" add column if not exists "reminderSentAt" timestamptz;
 alter table public."stages" add column if not exists "blockReason" text;
+alter table public."stages" add column if not exists "held" boolean;
 create index if not exists "stages_by_order" on public."stages" ("orderId");
 create index if not exists "stages_by_status" on public."stages" ("status");
+create index if not exists "stages_live_by_status" on public."stages" ("status") where "held" is not true;
 create index if not exists "stages_created" on public."stages" ("createdAt");
 create index if not exists "stages_created_id" on public."stages" ("createdAt", "id");
 
@@ -318,8 +320,11 @@ alter table public."requirements" add column if not exists "documentId" text;
 alter table public."requirements" add column if not exists "submittedByUserId" text;
 alter table public."requirements" add column if not exists "submittedAt" timestamptz;
 alter table public."requirements" add column if not exists "note" text;
+alter table public."requirements" add column if not exists "held" boolean;
 create index if not exists "requirements_by_stage" on public."requirements" ("stageId");
 create index if not exists "requirements_by_order" on public."requirements" ("orderId");
+create index if not exists "requirements_live_by_status" on public."requirements" ("status") where "held" is not true;
+create index if not exists "requirements_live_by_key" on public."requirements" ("key") where "held" is not true;
 create index if not exists "requirements_created" on public."requirements" ("createdAt");
 create index if not exists "requirements_created_id" on public."requirements" ("createdAt", "id");
 
@@ -400,6 +405,7 @@ alter table public."notifications" add column if not exists "readAt" timestamptz
 alter table public."notifications" add column if not exists "kind" text;
 alter table public."notifications" add column if not exists "actor" text;
 create index if not exists "notifications_by_user" on public."notifications" ("userId");
+create index if not exists "notifications_by_user_channel_created" on public."notifications" ("userId", "channel", "createdAt");
 create index if not exists "notifications_created" on public."notifications" ("createdAt");
 create index if not exists "notifications_created_id" on public."notifications" ("createdAt", "id");
 

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { realName } from "@/lib/placeholder-name";
 import {
   getStore,
   type ArtIssue,
@@ -19,6 +20,7 @@ import {
   type User,
 } from "@/lib/db";
 import { isSchemaMissing } from "@/lib/db/errors";
+import { isHeld } from "@/lib/db/store";
 import {
   DUE_SOON_DAYS,
   addDays,
@@ -292,7 +294,7 @@ export function buildOrderFacts(
     {
       customer: customer?.name ?? "—",
       supplier: supplier?.name ?? "—",
-      product: items[0]?.name ?? "—",
+      product: realName(items[0]?.name) ?? "—",
     },
     {
       today: null,
@@ -316,7 +318,8 @@ export function buildOrderFacts(
     order: pickOrder(order),
     customer: customer?.name ?? null,
     supplier: supplier?.name ?? null,
-    product: items[0]?.name ?? null,
+    // Nome de exemplo ("Produto novo XPTO") vale como ausente.
+    product: realName(items[0]?.name),
     active: stages
       .filter((s) => ACTIVE.includes(s.status))
       .map((s) => ({
@@ -449,8 +452,9 @@ async function stageTasksOf(src: Sources): Promise<Map<string, StoredTask[]>> {
       }
     : null;
   for (const order of src.orders) {
-    const stages = (src.stages.get(order.id) ?? []).filter((s) =>
-      ACTIVE.includes(s.status),
+    // Etapa em espera (histórico do Sankhya até o go-live): sem pendência.
+    const stages = (src.stages.get(order.id) ?? []).filter(
+      (s) => ACTIVE.includes(s.status) && !isHeld(s),
     );
     if (!stages.length) continue;
     const sealApplied = new Set(

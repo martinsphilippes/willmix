@@ -1,5 +1,9 @@
 import "server-only";
 
+import {
+  PLACEHOLDER_NAME_ERROR,
+  isPlaceholderName,
+} from "@/lib/placeholder-name";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import {
@@ -405,6 +409,9 @@ export async function createProductFromRequest(
   await assertSampleApproved(request);
   const name = clip(input.name, 160);
   if (!name) throw new RequestProductError("request_product_name_required");
+  // "XPTO" é texto de exemplo, não nome (docs/PURCHASE_ORDER.md).
+  if (isPlaceholderName(name))
+    throw new RequestProductError(PLACEHOLDER_NAME_ERROR);
   const line = await store.get("product_lines", input.lineId);
   if (!line || !line.active)
     throw new RequestProductError("request_product_line_invalid");

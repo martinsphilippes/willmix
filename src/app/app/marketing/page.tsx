@@ -13,6 +13,7 @@ import {
 import { listKits } from "@/lib/services/marketing";
 import { getSettings } from "@/lib/settings";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -204,7 +205,7 @@ export default async function MarketingPage({
                   <option value="">{t("common.all")}</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name}
+                      {productNameText(t, p.name)}
                       {p.sku ? ` (${p.sku})` : ""}
                     </option>
                   ))}

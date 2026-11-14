@@ -7,6 +7,7 @@ import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore, type StockReservation } from "@/lib/db";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
 import { listStockReservations, loadInventory } from "@/lib/services/inventory";
 import {
   RESERVATION_DEFAULT_DAYS,
@@ -178,7 +179,7 @@ export default async function ReservationsPage({
                   const p = product(r.productId);
                   return (
                     <option key={r.productId} value={r.productId}>
-                      {p?.name ?? r.productId}
+                      {p ? productNameText(t, p.name) : r.productId}
                       {p?.sku ? ` (${p.sku})` : ""} ·{" "}
                       {t("res.free", { n: num(r.free) })}
                     </option>

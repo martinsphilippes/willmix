@@ -306,12 +306,8 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
         ? laneRequirements(items ?? [], {
             art: artRole(order, agencyValidationEnabled),
             // Certificado: do despachante (dono, 13/11/2026); sem ele, da
-            // certificadora; sem nenhum, da Wellmix.
-            ocp: order.brokerId
-              ? "broker"
-              : order.ocpId
-                ? "ocp"
-                : "operator",
+            // Wellmix.
+            ocp: order.brokerId ? "broker" : "operator",
           })
         : [
             ...(line?.requirements?.length

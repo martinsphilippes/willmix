@@ -20,9 +20,11 @@ export const isPartner = (user: Pick<User, "role">) =>
   PARTNER_ROLES.includes(user.role);
 
 /**
- * Quem certifica pelo pedido: o despachante do pedido (a certificação é dele,
- * decisão do dono, 13/11/2026) ou a certificadora (OCP) designada, que segue
- * podendo agir como antes.
+ * Quem certifica pelo pedido: o despachante do pedido. A Wellmix não trabalha
+ * com certificadora (OCP); a certificação do produto é do despachante
+ * (decisão do dono, 13/11/2026). O papel `ocp` continua no código (evolução
+ * aditiva) e, se um dia houver uma designada, ela ainda pode agir no pedido,
+ * mas não recebe tarefa nem aviso.
  */
 export function isOrderCertifier(
   user: Pick<User, "role" | "partyId">,
@@ -34,10 +36,9 @@ export function isOrderCertifier(
   return false;
 }
 
-/** O pedido tem quem certifique (despachante ou certificadora)? */
-export const hasCertifier = (
-  order: Partial<Pick<Order, "brokerId" | "ocpId">>,
-) => !!order.brokerId || !!order.ocpId;
+/** O pedido tem quem certifique (o despachante)? */
+export const hasCertifier = (order: Partial<Pick<Order, "brokerId">>) =>
+  !!order.brokerId;
 
 export class ForbiddenError extends Error {
   constructor(message = "forbidden") {

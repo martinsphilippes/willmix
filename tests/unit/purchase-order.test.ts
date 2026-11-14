@@ -378,9 +378,7 @@ describe("pedido de compra", () => {
     const doc = await samples.decideSampleOrder(admin, order.id, {
       status: "ordered",
     });
-    expect(
-      doc.lines.map((l) => [l.itemId, l.variants, l.quantity]),
-    ).toEqual([
+    expect(doc.lines.map((l) => [l.itemId, l.variants, l.quantity])).toEqual([
       [itemA.id, 2, 30],
       [itemB.id, 1, 15],
     ]);
@@ -808,6 +806,55 @@ describe("pedido em nome do responsável pelo booking (trading)", () => {
     // Na Produção, "trade": a fábrica do booking entra sozinha.
     const { bookingFactory } = await import("@/lib/services/production");
     expect((await bookingFactory(order))?.name).toBe("Shenzhen Supplier A");
+
+    // Visão do login Trading (dono, 13/11/2026): com a faca, a foto em alta
+    // e o prazo de cada produto enviados, a etapa 2 ("Die-Cut") aparece
+    // concluída para ele, contada do que está gravado. A etapa de verdade e
+    // o andamento do pedido seguem com a arte e o certificado em aberto.
+    const { supplierLaneView } = await import("@/lib/purchase-lanes");
+    const tradingUser = { ...supplierA, partyId: trading.id };
+    const [prep] = await store.list("stages", {
+      filter: { orderId: order.id, key: "PREPARATION" },
+    });
+    const prepReqs = async () =>
+      (await requirementsOf(order.id)).filter((r) => r.stageId === prep.id);
+    const items = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    expect(supplierLaneView(prep, await prepReqs())).toMatchObject({
+      status: "active",
+      done: 0,
+      total: 6,
+      percent: 0,
+    });
+    for (const [i, item] of items.entries()) {
+      const k = (base: string) => `${base}__${item.id}`;
+      await submit(tradingUser, order.id, k("die_cut"), { file: "faca.pdf" });
+      await submit(tradingUser, order.id, k("hd_photo"), { file: "hd.pdf" });
+      // Com a faca e a foto do primeiro produto, a visão é parcial (2 de 6).
+      if (i === 0)
+        expect(supplierLaneView(prep, await prepReqs())).toMatchObject({
+          done: 2,
+          percent: 33,
+          complete: false,
+        });
+      await submit(tradingUser, order.id, k("lead_time_confirmed"), {
+        value: "30",
+      });
+    }
+    const stage = (await store.get("stages", prep.id))!;
+    const view = supplierLaneView(stage, await prepReqs())!;
+    expect(view).toMatchObject({
+      status: "done",
+      done: 6,
+      total: 6,
+      percent: 100,
+      complete: true,
+    });
+    expect(view.completedAt).toBeTruthy();
+    expect(stage.status).toBe("active");
+    expect(stage.percent).toBeLessThan(100);
+    expect((await store.get("orders", order.id))!.status).toBe("PREPARATION");
   });
 
   it("pedido do próprio fornecedor: o contrato não ganha a chave da fábrica", async () => {

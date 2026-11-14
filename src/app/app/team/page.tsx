@@ -112,6 +112,7 @@ export default async function TeamPage({
         {
           member: "team.saved.member",
           line: "team.saved.line",
+          deleted: "team.saved.deleted",
         } as Record<string, DictionaryKey>
       )[saved] ?? (`fn.saved.${saved}` as DictionaryKey))
     : null;
@@ -888,7 +889,11 @@ function LinesTab({ t, lines }: { t: Translate; lines: ProductLine[] }) {
           })}
         </tbody>
       </Table>
-      <form action={distributeUnassignedAction} className="mt-3">
+      <form
+        id="distribute"
+        action={distributeUnassignedAction}
+        className="mt-3 scroll-mt-24"
+      >
         <p className="mb-2 text-xs text-zinc-500">{t("team.distributeHint")}</p>
         <SubmitButton variant="secondary" data-team-distribute>
           {t("team.distribute")}

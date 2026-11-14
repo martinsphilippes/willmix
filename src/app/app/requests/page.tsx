@@ -32,6 +32,7 @@ import { deleteRequestsAction } from "../actions/requests";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
+import { productNameText } from "@/i18n";
 import {
   Alert,
   Badge,
@@ -242,7 +243,7 @@ export default async function RequestsPage({
     const p = r.productId ? products.find((x) => x.id === r.productId) : null;
     return (
       <PhotoGallery
-        name={r.productName}
+        name={productNameText(t, r.productName)}
         {...galleryProps(t, p ? productPhotoList(p, photos) : [])}
       />
     );
@@ -364,7 +365,7 @@ export default async function RequestsPage({
                                 #{o.order.number}
                               </p>
                               <p className="font-semibold text-zinc-900">
-                                {o.productName}
+                                {productNameText(t, o.productName)}
                               </p>
                             </div>
                             <Badge
@@ -616,7 +617,9 @@ export default async function RequestsPage({
                   a.createdAt.localeCompare(b.createdAt),
                 );
                 const deletable = rows.filter((r) => canDeleteRequest(user, r));
-                const names = rows.map((r) => r.productName);
+                const names = rows.map((r) =>
+                  productNameText(t, r.productName),
+                );
                 // Próximos passos diferentes do lote (o primeiro e quantos mais).
                 const steps = [
                   ...new Map(
@@ -789,7 +792,7 @@ export default async function RequestsPage({
                           name="ids"
                           value={r.id}
                           form={BULK_FORM}
-                          aria-label={`${t("reqDelete.selectOne")}: ${r.productName}`}
+                          aria-label={`${t("reqDelete.selectOne")}: ${productNameText(t, r.productName)}`}
                           className="h-4 w-4 accent-brand-600"
                         />
                       ) : (
@@ -813,7 +816,7 @@ export default async function RequestsPage({
                       className="text-zinc-900 no-underline hover:underline"
                       data-request-open
                     >
-                      {r.productName}
+                      {productNameText(t, r.productName)}
                     </TextLink>
                     {r.groupId && (groupSize.get(r.groupId) ?? 0) > 1 ? (
                       <TextLink

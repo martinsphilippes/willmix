@@ -161,7 +161,9 @@ export async function addPhotos(
       replacesSupplier = ownBefore.length === 0;
     }
     if (replacesSupplier)
-      await store.update("product_photos", existing[0].id, { isPrimary: false });
+      await store.update("product_photos", existing[0].id, {
+        isPrimary: false,
+      });
     let photo: ProductPhoto;
     try {
       photo = await store.create("product_photos", {

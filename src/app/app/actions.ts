@@ -498,26 +498,13 @@ export async function assignPartnerAction(form: FormData) {
         await store.update("stages", stage.id, { responsiblePartyId: partyId });
       }
     }
-    if (field === "brokerId" || field === "ocpId") {
-      // Certificado de cada produto (pedido de compra): do despachante
-      // (dono, 13/11/2026); sem ele, da certificadora; sem nenhum, da Wellmix.
-      const { LANE_KEYS, baseKeyOf } = await import("@/lib/purchase-lanes");
-      const next = { ...order, [field]: partyId };
-      const certRole = next.brokerId
-        ? "broker"
-        : next.ocpId
-          ? "ocp"
-          : "operator";
-      const certs = (
-        await store.list("requirements", { filter: { orderId } })
-      ).filter(
-        (r) =>
-          r.status !== "done" &&
-          baseKeyOf(r.key) === LANE_KEYS.certificate &&
-          r.role !== certRole,
-      );
-      for (const r of certs)
-        await store.update("requirements", r.id, { role: certRole });
+    // Pedido de compra: os itens abertos da arte e do certificado (raias da
+    // Preparação) passam para a agência ou o despachante designado (a
+    // certificação é dele; dono, 13/11/2026).
+    if (field === "agencyId" || field === "brokerId" || field === "ocpId") {
+      const updated = await store.get("orders", orderId);
+      const { syncLaneRoles } = await import("@/lib/services/purchase-order");
+      if (updated) await syncLaneRoles(user, updated);
     }
     if (field === "agencyId") {
       // Arte e embalagem: a arte ainda não enviada passa a ser da agência
@@ -927,6 +914,9 @@ export async function saveProductAction(form: FormData) {
         sku: str(form, "sku") || null,
         specification: str(form, "specification") || null,
       });
+    // "XPTO" é texto de exemplo, não nome (docs/PURCHASE_ORDER.md).
+    const { assertRealProductName } = await import("@/lib/placeholder-name");
+    assertRealProductName(parsed.name);
     const id = str(form, "id");
     const store = getStore();
     const saved = id
@@ -936,6 +926,12 @@ export async function saveProductAction(form: FormData) {
           ...parsed,
           active: true,
         });
+    // O nome chega aos pedidos e às tarefas que estavam sem ele.
+    if (id) {
+      const { fillProductNameCopies } =
+        await import("@/lib/services/product-name-copies");
+      await fillProductNameCopies(user, saved);
+    }
     // Produto novo ou alterado vai para o Sankhya (fase 3).
     const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
     await syncSoon(user, "product", saved.id);

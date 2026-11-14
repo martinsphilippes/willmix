@@ -67,7 +67,7 @@ export function tableSql(table: TableName): string {
   for (const idx of def.indexes ?? []) {
     const cols = idx.columns.map((c) => q(c)).join(", ");
     lines.push(
-      `create ${idx.type === "unique" ? "unique " : ""}index if not exists ${q(indexName(table, idx.key))} on public.${q(table)} (${cols});`,
+      `create ${idx.type === "unique" ? "unique " : ""}index if not exists ${q(indexName(table, idx.key))} on public.${q(table)} (${cols})${idx.where ? ` where ${idx.where}` : ""};`,
     );
   }
   lines.push(

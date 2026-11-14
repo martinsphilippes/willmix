@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 import { indexBy, listByIds } from "@/lib/db/lookup";
 
 import { getStore, type User } from "@/lib/db";
@@ -100,7 +101,7 @@ export async function loadCommercialHistory(
         customerId: order.customerId,
         customer: nameOf(order.customerId),
         productId: item.productId,
-        product: item.name,
+        product: realName(item.name) ?? "—",
         purchases: 1,
         totalQuantity: item.quantity,
         unit: item.unit,

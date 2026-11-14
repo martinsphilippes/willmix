@@ -3,7 +3,9 @@ import type {
   RequirementTemplate,
   RequirementType,
   Role,
+  StageStatus,
 } from "@/lib/db/schema";
+import { titleWithName } from "@/lib/placeholder-name";
 
 /*
  * Pedido de compra das solicitações ao fornecedor (docs/PURCHASE_ORDER.md):
@@ -180,6 +182,56 @@ export function supplierSeesLaneRequirement(
   );
 }
 
+/**
+ * A etapa 2 do pedido de compra como o login Trading a vê (pedido do dono,
+ * 13/11/2026): "Die-Cut", com o andamento só das tarefas dele (as de
+ * `supplierSeesLaneRequirement`), contado do que está gravado. Com todas
+ * feitas, a etapa aparece concluída para ele, mesmo com a arte, a validação
+ * ou o certificado ainda abertos para os outros. A etapa de verdade não muda.
+ * Nulo quando a etapa não tem tarefa dele (pedido do fluxo antigo).
+ */
+export interface SupplierLaneView {
+  /** Situação mostrada: concluída quando as tarefas dele estão feitas. */
+  status: StageStatus;
+  done: number;
+  total: number;
+  percent: number;
+  complete: boolean;
+  /** Data do último envio, quando a etapa aparece concluída para ele. */
+  completedAt: string | null;
+}
+
+export function supplierLaneView(
+  stage: { status: StageStatus },
+  requirements: Array<Pick<Requirement, "key" | "status" | "submittedAt">>,
+): SupplierLaneView | null {
+  const mine = requirements.filter(supplierSeesLaneRequirement);
+  if (!mine.length) return null;
+  const done = mine.filter((r) => r.status === "done");
+  const complete = done.length === mine.length;
+  // Só a etapa que já começou (aberta, parada ou concluída) vira concluída,
+  // e só ela mostra a data de conclusão.
+  const shownDone =
+    complete &&
+    (stage.status === "active" ||
+      stage.status === "blocked" ||
+      stage.status === "done");
+  return {
+    status: shownDone ? "done" : stage.status,
+    done: done.length,
+    total: mine.length,
+    percent: Math.round((done.length / mine.length) * 100),
+    complete,
+    completedAt: shownDone
+      ? (done
+          .map((r) => r.submittedAt)
+          .filter((at): at is string => !!at)
+          .sort()
+          .at(-1) ?? null)
+      : null,
+  };
+}
+
 /** O prazo de produção confirmado de um item do pedido (`lead_time_confirmed__item`). */
 export const isLeadTimeKey = (key: string) =>
   !!itemIdOf(key) && baseKeyOf(key) === LANE_KEYS.leadTime;
@@ -213,7 +265,8 @@ export function laneRequirements(
 ): RequirementTemplate[] {
   const out: RequirementTemplate[] = [];
   for (const item of items) {
-    const of = (label: string) => `${label} · ${item.name}`;
+    // Sem nome real (vazio ou de exemplo), fica só o título da tarefa.
+    const of = (label: string) => titleWithName(label, item.name);
     const certified = item.certificationRequired !== false;
     // Cadastro e fiscal: NCM validado e ficha mestre completa (o sistema confere).
     out.push(

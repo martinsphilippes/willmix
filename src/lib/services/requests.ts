@@ -1,4 +1,5 @@
 import "server-only";
+import { realName } from "@/lib/placeholder-name";
 
 import { randomUUID } from "node:crypto";
 
@@ -393,7 +394,8 @@ export async function createRequest(
   const productName = variant
     ? requestProductName(
         input.productName,
-        product?.name ?? input.productName,
+        // Nome de exemplo ("Produto novo XPTO") não vai para a solicitação.
+        realName(product?.name) ?? input.productName,
         variant.name,
       )
     : input.productName;
@@ -663,7 +665,8 @@ export async function createFollowUpRequest(
       // Mesma variação do pedido (a cópia dos valores é refeita com a variação
       // de hoje; desativada, a recompra pede outra).
       variantId: item.variantId ?? previous?.variantId ?? null,
-      productName: item.name,
+      // Item com nome de exemplo: o nome real do produto, se ele já tiver.
+      productName: realName(item.name) ?? realName(product?.name) ?? item.name,
       description:
         previous?.description ??
         `${input.origin === "replenishment" ? "Reposição" : "Nova proposta"} do pedido #${order.number}`,
