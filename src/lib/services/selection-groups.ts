@@ -155,7 +155,7 @@ export async function saveSelectionGroup(
     "selection_group.save",
     "selection_group",
     group.id,
-    `Escolha do grupo: ${chosen.description ?? chosen.productName ?? chosen.factoryItemCode ?? chosen.id}, ${group.quantity} pcs${schedule ? ` em ${schedule.items.length} rodadas (${schedule.items.map((i) => i.quantity).join(" + ")}), a cada ${schedule.intervalDays} dias desde ${schedule.firstDate}` : ""} (${itemIds.length} itens comparados)`,
+    `Escolha do grupo: ${chosen.description ?? chosen.productName ?? chosen.factoryItemCode ?? chosen.id}, ${group.quantity} pcs${schedule ? ` em ${schedule.items.length} programações (${schedule.items.map((i) => i.quantity).join(" + ")}), a cada ${schedule.intervalDays} dias desde ${schedule.firstDate}` : ""} (${itemIds.length} itens comparados)`,
   );
   return group;
 }

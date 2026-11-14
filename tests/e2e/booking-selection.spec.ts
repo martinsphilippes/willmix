@@ -486,7 +486,7 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   // quantidade de peças muda em consequência: a da rodada, a soma e o total
   // do gerador, em caixas (mesmo com outro número digitado nele antes).
   await expect(page.locator("[data-selection-quantity-hint]")).toHaveText(
-    "Com a programação de compra, a quantidade é a soma das rodadas.",
+    "Com a programação de compra, a quantidade é a soma das programações.",
   );
   // Com a programação aberta, o campo das peças não vai no formulário (a
   // quantidade gravada é a soma das rodadas) e os dois continuam ligados.

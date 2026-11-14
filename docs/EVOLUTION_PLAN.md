@@ -1144,3 +1144,9 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Não mudou**: a rota, a tela e as permissões (Telas e links, padrão por função, interna da Wellmix). Só a estrutura do menu.
 - Testes: `tests/unit/nav.test.ts` (primeiro nível, logo abaixo de Pedidos e entrega, uma vez só, com ícone), `tests/unit/app-nav-parent.test.ts` (item pai sem e com subitens: link, seta, aberto na tela do pai, subitem aceso) e o E2E `tests/e2e/production-screen.spec.ts` (ordem no menu, fora do grupo, ícone, só Produção acesa).
 
+## Programação de compra: "rodada" vira "programação" nos textos
+
+- **Pedido do dono** (14/11/2026): "rodada = programação". Em todos os textos em português da programação de compra (`src/i18n/modules/purchase-rounds.ts`), "rodada" passa a "programação" e "rodadas" a "programações": na Seleção de itens ("Programação 1", "+ Programação", "Intervalo entre programações", "Data da 1ª programação", "Containers por programação"), nos resumos, nas colunas, no pedido pai e nos filhos ("Programação 2 de 3 do pedido pai", "Gerar as programações do dia") e nos avisos. Os registros novos da auditoria da escolha do grupo e da solicitação ao fornecedor também dizem "em N programações".
+- **Só o nome na tela, em português**: as chaves, o código, as regras e o banco não mudaram; inglês e chinês ficam como estavam (como na troca das colunas da solicitação, #350). A palavra "rodada" com outro sentido continua: tentativas da inspeção por SKU, rodadas da amostragem, negociação da cotação e execuções técnicas (Sankhya, resumos, cópia do banco).
+- Teste: o E2E da seleção confere "a quantidade é a soma das programações".
+
