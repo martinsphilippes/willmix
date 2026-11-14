@@ -274,3 +274,41 @@ describe("passos dos parceiros", () => {
     expect(partnerStepsOf("legal")).toEqual([]);
   });
 });
+
+describe("LPCO, Amostras e Ofertas", () => {
+  it("LPCO só no pedido com produto de NCM da lista (prefixo, com ou sem pontos)", async () => {
+    const { lpcoPrefixes, ncmNeedsLpco, stepApplies, openImportStepKeys } =
+      await import("@/lib/services/import-flow");
+    const prefixes = lpcoPrefixes("3304, 9503.00;  8516\n x 1");
+    expect(prefixes).toEqual(["3304", "950300", "8516"]);
+    expect(ncmNeedsLpco("3304.99.10", prefixes)).toBe(true);
+    expect(ncmNeedsLpco("95030099", prefixes)).toBe(true);
+    expect(ncmNeedsLpco("9504.50.00", prefixes)).toBe(false);
+    expect(ncmNeedsLpco(null, prefixes)).toBe(false);
+    expect(lpcoPrefixes("")).toEqual([]);
+    const order = {
+      id: "o1",
+      status: "SHIPPING",
+      flow: "customer_request",
+      incoterm: null,
+    } as never;
+    expect(stepApplies(order, "lpco")).toBe(false);
+    expect(stepApplies(order, "lpco", true)).toBe(true);
+    const opts = { certification: false, samples: false };
+    expect(openImportStepKeys(order, [], opts)).not.toContain("lpco");
+    expect(openImportStepKeys(order, [], { ...opts, lpco: true })).toContain(
+      "lpco",
+    );
+    // Entrega → LPCO, também no menu do comex.
+    expect(ids({ kind: "import_step", stepKey: "lpco" })).toEqual([
+      "delivery/lpco",
+    ]);
+    const { PARTNER_FLOW_STEPS } = await import("@/lib/flow");
+    expect(PARTNER_FLOW_STEPS.comex).toContain("delivery/lpco");
+  });
+
+  it("amostra no Brasil e produto com a venda ativada caem em Vendas", () => {
+    expect(ids({ kind: "sales_sample" })).toEqual(["sales/samples"]);
+    expect(ids({ kind: "sales_product" })).toEqual(["sales/offers"]);
+  });
+});

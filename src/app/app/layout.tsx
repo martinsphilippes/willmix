@@ -36,6 +36,8 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { dataMode } from "@/lib/env";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
+import { AccessWatcher } from "@/components/access-watcher";
+import { accessStamp } from "@/lib/auth/access-stamp";
 import { ChatDrawer } from "@/components/chat-drawer";
 import { ChatAccess } from "@/components/chat-access";
 import {
@@ -354,6 +356,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <Suspense fallback={null}>
+        <AccessWatcher stamp={accessStamp(user)} />
         <NavigationProgress />
         <SelectOnFocus />
         <SubmitTracker />

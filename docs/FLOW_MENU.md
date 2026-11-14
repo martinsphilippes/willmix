@@ -31,7 +31,7 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
   - **Produção → Logística** traz o frete marítimo do pedido (pedir às companhias e as respostas), para os pedidos com caso no passo. O pedido de frete aceita `returnTo` e volta para a tela do passo.
 - **Quinta parte** (14/11/2026): o **relatório da inspeção** (medidas × comprado, fotos, decisão da revisão, divergências) saiu do detalhe do pedido para um componente próprio (`src/components/inspection-result-card.tsx`) e aparece também em Produção → Inspeção, ao lado da agenda e da decisão por SKU, para todo pedido com caso no passo (inclusive o item "inspeção aprovada pela Wellmix" da etapa). O caminho principal aprova o SKU nessa tela.
 - Passos que já tinham tela (Books, Seleção, Cotações, Negociações, Pedidos, Revisão, Estoque) abrem a tela de sempre, com o contador.
-- Passos sem fonte de pendência ainda (LPCO, Amostras e Ofertas de Vendas) aparecem com a tela vazia e a explicação; nada inventado.
+- Todos os passos do menu têm fonte de pendência (LPCO, Amostras e Ofertas desde 14/11/2026).
 
 ## Abas da tela do passo (14/11/2026)
 
@@ -69,7 +69,7 @@ Pedido do dono (com a foto da tela no login admin): os cartões dos pedidos emba
 Pedido do dono: em Pedido → Arte, a mesma simplificação da Certificação; depois, "em outras telas também, semelhantemente, no acesso dos ADMs e gestores". Padrão escolhido pelo dono para o "Resolver": o pedido no passo, já no produto (o mesmo da Certificação).
 
 - **Arte**, para todos os logins, igual à Certificação: só a lista, uma linha por produto (arte, validação e arte final do produto; `PER_PRODUCT_STEPS` e `LIST_ONLY_STEPS` em `src/lib/flow.ts`) e o "Resolver" em `/app/flow/order/art/<pedido>?item=<item do pedido>`, com os botões da tarefa (foto e arquivo; aprovar e reprovar na validação) para quem pode agir. O menu, as abas, os filtros e o Overview contam as linhas (confirmado pelo dono). A não conformidade da arte abre o pedido no passo, com o cartão Artes.
-- **Wellmix nos outros passos** (administradores e operadores; `listOnlyFor`): toda tela de passo é só a lista, sem os cartões por pedido embaixo (itens de etapa, produção, inspeção, frete, recebimento e os passos do embarque e da certificação). O "Resolver" abre o pedido no passo (ou a tela focada, quando existe: Die Cut, documento do pedido, documentos do embarque, amostras, fotos reais), onde ficam os mesmos cartões e formulários; as ações voltam para o pedido no passo. Nesses passos, uma linha por pendência, como antes.
+- **Wellmix nos outros passos** (administradores e operadores; `listOnlyFor`): toda tela de passo é só a lista, sem os cartões por pedido embaixo (itens de etapa, produção, inspeção, frete, recebimento e os passos do embarque e da certificação). O "Resolver" abre o pedido no passo (ou a tela focada, quando existe: Die Cut, documento do pedido, documentos do embarque, amostras, fotos reais), onde ficam os mesmos cartões e formulários; as ações voltam para o pedido no passo. Nesses passos, uma linha por pendência, como antes. Exceção: Vendas → Amostras e Ofertas seguem com o registro de a quem foi oferecido e o histórico embaixo da lista, porque esse registro só existe ali (não repete a lista).
 - **Parceiros** nos outros passos deles (fornecedor na Inspeção, nos Documentos de carga etc.): os cartões continuam na tela do passo, como antes.
 - **No pedido no passo, só o que dá para fazer agora**: a tarefa que espera outra diz o que falta, como no detalhe do pedido, sem os botões (a validação espera a arte; a arte final, a validação e o certificado; a aprovação da arte do pedido antigo, a arte; `stepWaiting` em `src/lib/requirement-waiting.ts`, a mesma regra do detalhe). Antes, os botões apareciam e o servidor recusava.
 - `FlowArtworkWork` (as não conformidades da arte na tela do passo) saiu: a Arte é só a lista para todos, e o cartão Artes segue no pedido no passo e no detalhe do pedido.
@@ -113,6 +113,13 @@ Os parceiros (fornecedor, agência, certificadora, despachante, comex, agente de
 - A tela do passo do parceiro tem as duas abas: Pendências (o que espera ação dele) e Todos no passo (os pedidos dele no passo, só com o que é dele: itens de etapa do papel ou que ele pode fazer e os passos que ele vê; sem a coluna do fornecedor; `flowPartnerAllFor`).
 - O pedido no passo abre para o parceiro só nos passos dele e só nos pedidos dele (`canViewOrder`): os itens do papel, os passos que ele vê, o cartão de produção só para o fornecedor do pedido, sem o fornecedor e o cliente no cabeçalho. Recebimento, relatório da inspeção, frete e a criação do pedido seguem só da Wellmix. Passo que não é do parceiro não abre (404).
 - Sem Overview para os parceiros. O detalhe do pedido (`/app/orders/[id]`) continua como estava para eles.
+
+## LPCO, Amostras e Ofertas (14/11/2026)
+
+- **Entrega → LPCO** (mapa E5, E5?): passo novo do embarque, `lpco` (`IMPORT_STEPS`): o comex registra o pedido da licença (número e arquivo) e a Wellmix marca deferida ou indeferida. Só no pedido com produto cujo NCM começa por um dos prefixos de Configurações → "NCMs que exigem LPCO" (`lpcoNcmPrefixes`; vazio, em nenhum pedido). A regra é `lpcoApplies` / `lpcoOrderIds` em `src/lib/services/import-flow.ts`; `stepApplies` recebe o resultado (sem ele, o LPCO não aparece). Não segura a presença de carga (passo sem dependente). Também no menu do comex. O resumo do pedido subiu para a versão 11 (o LPCO entra na contribuição do Overview).
+- **Vendas → Amostras** (E23): a amostra que chegou ao Brasil (passo `samples_brazil` concluído) e ainda não foi oferecida. A tela tem o registro de a quem foi oferecida e a lista das ofertas registradas.
+- **Vendas → Ofertas** (V2): o produto com a venda ativada (foto real aprovada pelo marketing, R5, `real_media` aprovada) e ainda não oferecido, com o mesmo registro.
+- As ofertas ficam na tabela nova `sales_offers` (tipo amostra ou produto, pedido, produto, a quem, observação, quem e quando); `recordSalesOfferAction` (só a Wellmix, com a tela Produtos). Os casos contam no menu, fora das Pendências (`flowSalesCasesFor`). Limpar dados de teste apaga as ofertas.
 
 ## De onde vem o contador
 

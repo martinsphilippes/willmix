@@ -26,6 +26,7 @@ import {
   FlowProductionWork,
   FlowReceivingWork,
   FlowRequirementWork,
+  FlowSalesWork,
 } from "@/components/flow-step-forms";
 import { Alert } from "@/components/ui";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -261,6 +262,14 @@ export default async function FlowStepPage({
           />
         </>
       )}
+      {/* Vendas → Amostras e Ofertas (Wellmix): o registro de a quem foi
+          oferecido e o histórico só existem aqui (não repetem a lista), então
+          seguem também no "só a lista". */}
+      {step.block === "sales" &&
+      (step.key === "samples" || step.key === "offers") &&
+      wellmix ? (
+        <FlowSalesWork step={step} tasks={all} t={t} />
+      ) : null}
     </div>
   );
 }

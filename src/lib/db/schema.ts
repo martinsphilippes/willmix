@@ -568,6 +568,8 @@ export const IMPORT_STEP_KEYS = [
   "ce_mercante",
   "ci",
   "danfe",
+  // LPCO (mapa E5, E5?): licença da importação, só quando o NCM exige.
+  "lpco",
   // Certificação (Fase F): memorial, laboratório e registro, com o OCP.
   "cert_memorial",
   "cert_lab",
@@ -681,6 +683,21 @@ export interface User extends BaseRow {
    * src/lib/auth/screens.ts (validadas ao salvar e ao ler).
    */
   screens?: string[] | null;
+  /**
+   * Personalizado de Editar acessos (dono, 14/11/2026; docs/ACCESS.md): as
+   * telas que o administrador marcou (`added`) ou desmarcou (`removed`) à mão
+   * neste login, por cima do que as funções liberam. Mudou a função, muda o
+   * resultado; a exceção continua. Inclui as telas do Início. Nula ou
+   * ausente: sem Personalizado por exceções (vale `screens`, se houver, ou o
+   * padrão das funções).
+   */
+  screenExceptions?: ScreenExceptionsValue | null;
+}
+
+/** Exceções do Personalizado (users.screenExceptions): chaves de tela. */
+export interface ScreenExceptionsValue {
+  added: string[];
+  removed: string[];
 }
 
 export interface Party extends BaseRow {
@@ -2107,6 +2124,30 @@ export interface ShippingDoc extends BaseRow {
 export const REAL_MEDIA_STATUSES = ["sent", "approved", "rejected"] as const;
 export type RealMediaStatus = (typeof REAL_MEDIA_STATUSES)[number];
 
+/*
+ * Ofertas da equipe de vendas (mapa E23 e V2; dono, 14/11/2026;
+ * docs/FLOW_MENU.md): a amostra que chegou ao Brasil oferecida a um cliente
+ * (Vendas → Amostras) e o produto com a venda ativada (foto real aprovada,
+ * R5) oferecido a um cliente (Vendas → Ofertas). Uma linha por oferta.
+ */
+export const SALES_OFFER_KINDS = ["sample", "product"] as const;
+export type SalesOfferKind = (typeof SALES_OFFER_KINDS)[number];
+
+export interface SalesOffer extends BaseRow {
+  kind: SalesOfferKind;
+  /** Amostra: o pedido de onde veio. */
+  orderId: string | null;
+  /** Produto oferecido (na amostra, quando o pedido tem um só). */
+  productId: string | null;
+  /** A quem foi oferecido (nome do cliente ou contato). */
+  offeredTo: string;
+  /** O cliente cadastrado, quando é um. */
+  customerId: string | null;
+  note: string | null;
+  offeredByUserId: string;
+  offeredAt: string;
+}
+
 export interface RealMedia extends BaseRow {
   orderId: string;
   orderItemId: string;
@@ -3065,6 +3106,7 @@ export interface Tables {
   sku_inspections: SkuInspection;
   shipping_docs: ShippingDoc;
   real_media: RealMedia;
+  sales_offers: SalesOffer;
   import_steps: ImportStep;
   receivings: Receiving;
   art_issues: ArtIssue;
@@ -3182,6 +3224,7 @@ export const TABLES: Record<TableName, TableDef> = {
       functions: json(),
       screens: json(),
       mustChangePassword: bool(),
+      screenExceptions: json(),
     },
     indexes: [
       { key: "email_unique", type: "unique", columns: ["email"] },
@@ -4366,6 +4409,23 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "item_unique", type: "unique", columns: ["orderItemId"] },
       { key: "by_order", type: "key", columns: ["orderId"] },
+    ],
+  },
+  sales_offers: {
+    label: "Ofertas de amostras e produtos a clientes (Vendas)",
+    columns: {
+      kind: enumOf(SALES_OFFER_KINDS),
+      orderId: id(false),
+      productId: id(false),
+      offeredTo: str(200, true),
+      customerId: id(false),
+      note: text(),
+      offeredByUserId: id(),
+      offeredAt: datetime(true),
+    },
+    indexes: [
+      { key: "by_order", type: "key", columns: ["orderId"] },
+      { key: "by_product", type: "key", columns: ["productId"] },
     ],
   },
   sku_inspections: {
