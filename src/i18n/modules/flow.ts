@@ -104,6 +104,12 @@ export const pt = {
   "flow.np.sampling.submitted": "Aprovada · amostra enviada",
   "flow.np.sampling.approved": "Aprovada · amostra aprovada",
   "flow.np.sampling.rejected": "Aprovada · amostra reprovada",
+  "flow.held.kpi": "Histórico em espera",
+  "flow.held.count": "+{n} em espera",
+  "flow.held.title": "Histórico do Sankhya em espera ({n})",
+  "flow.held.hint":
+    "Pedidos da carga do histórico do Sankhya, em espera até o go-live (Configurações → Go-live). Aparecem pela situação, sem pendências, atraso nem completude.",
+  "flow.held.capped": "Mostrando {n} de {total} pedidos em espera.",
   "flow.overview.inStep": "{n} no passo",
   "flow.preproduction.title": "Pré-produção do pedido #{n}",
   "flow.preproduction.detail":
@@ -354,6 +360,12 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.np.sampling.submitted": "Approved · sample sent",
   "flow.np.sampling.approved": "Approved · sample approved",
   "flow.np.sampling.rejected": "Approved · sample rejected",
+  "flow.held.kpi": "History on hold",
+  "flow.held.count": "+{n} on hold",
+  "flow.held.title": "Sankhya history on hold ({n})",
+  "flow.held.hint":
+    "Orders from the Sankhya history load, on hold until go-live (Settings → Go-live). They show by status, without tasks, delay or completion.",
+  "flow.held.capped": "Showing {n} of {total} orders on hold.",
   "flow.overview.inStep": "{n} in the step",
   "flow.preproduction.title": "Pre-production for order #{n}",
   "flow.preproduction.detail":
@@ -602,6 +614,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.np.sampling.submitted": "已批准 · 样品已提交",
   "flow.np.sampling.approved": "已批准 · 样品已批准",
   "flow.np.sampling.rejected": "已批准 · 样品被拒",
+  "flow.held.kpi": "暂缓的历史订单",
+  "flow.held.count": "+{n} 暂缓",
+  "flow.held.title": "Sankhya 历史订单暂缓（{n}）",
+  "flow.held.hint":
+    "来自 Sankhya 历史导入的订单，暂缓至上线（设置 → 上线）。按状态显示，不含待办、延误和完成度。",
+  "flow.held.capped": "显示 {total} 个暂缓订单中的 {n} 个。",
   "flow.overview.inStep": "本环节 {n} 个",
   "flow.preproduction.title": "订单 #{n} 产前",
   "flow.preproduction.detail": "定金已付：生产信息（工厂或贸易）和 ETD",

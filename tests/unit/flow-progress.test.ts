@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BOOK_PERCENT,
   bookStep,
+  heldStepOf,
   lateDaysSince,
   orderProgress,
   overallOf,
@@ -140,5 +141,17 @@ describe("Produto novo: books e solicitações", () => {
     expect(lateDaysSince(null, now)).toBe(0);
     expect(overallOf(70, 0, 0)).toBe(70);
     expect(overallOf(100, 1, 20)).toBe(40); // (100 + 3 × 20) / 4
+  });
+});
+
+describe("histórico em espera: passo pela situação", () => {
+  it("cada situação cai num passo dos blocos; encerrado e cancelado, fora", () => {
+    expect(heldStepOf("ORDER_CREATED")).toBe("order/orders");
+    expect(heldStepOf("PACKAGING")).toBe("order/art");
+    expect(heldStepOf("SHIPPING")).toBe("production/shipment");
+    expect(heldStepOf("CUSTOMS")).toBe("delivery/cargo-presence");
+    expect(heldStepOf("TRANSPORT")).toBe("delivery/logistics");
+    expect(heldStepOf("CLOSED")).toBeNull();
+    expect(heldStepOf("CANCELLED")).toBeNull();
   });
 });

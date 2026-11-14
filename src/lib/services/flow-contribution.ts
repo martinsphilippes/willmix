@@ -221,6 +221,11 @@ export interface OrderFlow {
   d: (string | null)[];
   /** Início de cada bloco (a primeira etapa dele que começou). */
   b: (string | null)[];
+  /**
+   * Histórico do Sankhya em espera até o go-live: entra no Overview só pela
+   * situação (`heldStepOf`), à parte, sem passos, atraso nem completude.
+   */
+  h?: true;
 }
 
 /** Só os passos dos blocos com Overview pelos pedidos. */
@@ -228,7 +233,20 @@ const inProgressBlocks = (step: string) =>
   (PROGRESS_BLOCKS as readonly string[]).includes(step.split("/")[0]);
 
 export function buildOrderFlow(input: OrderFlowInput): OrderFlow | null {
-  if (!flowLive(input.order)) return null;
+  const { order } = input;
+  if (order.held && order.status !== "CLOSED" && order.status !== "CANCELLED")
+    return {
+      n: order.number,
+      st: order.status,
+      sup: order.supplierId || null,
+      s: {},
+      p: PROGRESS_BLOCKS.map(() => 0),
+      o: 0,
+      d: PROGRESS_BLOCKS.map(() => null),
+      b: PROGRESS_BLOCKS.map(() => null),
+      h: true,
+    };
+  if (!flowLive(order)) return null;
   const s: Record<string, string | null> = {};
   for (const e of orderFlowEntries(input)) {
     if (!inProgressBlocks(e.step)) continue;
