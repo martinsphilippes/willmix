@@ -31,7 +31,7 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
   - **Produção → Logística** traz o frete marítimo do pedido (pedir às companhias e as respostas), para os pedidos com caso no passo. O pedido de frete aceita `returnTo` e volta para a tela do passo.
 - **Quinta parte** (14/11/2026): o **relatório da inspeção** (medidas × comprado, fotos, decisão da revisão, divergências) saiu do detalhe do pedido para um componente próprio (`src/components/inspection-result-card.tsx`) e aparece também em Produção → Inspeção, ao lado da agenda e da decisão por SKU, para todo pedido com caso no passo (inclusive o item "inspeção aprovada pela Wellmix" da etapa). O caminho principal aprova o SKU nessa tela.
 - Passos que já tinham tela (Books, Seleção, Cotações, Negociações, Pedidos, Revisão, Estoque) abrem a tela de sempre, com o contador.
-- Passos sem fonte de pendência ainda (LPCO, Amostras e Ofertas de Vendas) aparecem com a tela vazia e a explicação; nada inventado.
+- Todos os passos do menu têm fonte de pendência (LPCO, Amostras e Ofertas desde 14/11/2026).
 
 ## Abas da tela do passo (14/11/2026)
 
@@ -103,6 +103,13 @@ Os parceiros (fornecedor, agência, certificadora, despachante, comex, agente de
 - A tela do passo do parceiro tem as duas abas: Pendências (o que espera ação dele) e Todos no passo (os pedidos dele no passo, só com o que é dele: itens de etapa do papel ou que ele pode fazer e os passos que ele vê; sem a coluna do fornecedor; `flowPartnerAllFor`).
 - O pedido no passo abre para o parceiro só nos passos dele e só nos pedidos dele (`canViewOrder`): os itens do papel, os passos que ele vê, o cartão de produção só para o fornecedor do pedido, sem o fornecedor e o cliente no cabeçalho. Recebimento, relatório da inspeção, frete e a criação do pedido seguem só da Wellmix. Passo que não é do parceiro não abre (404).
 - Sem Overview para os parceiros. O detalhe do pedido (`/app/orders/[id]`) continua como estava para eles.
+
+## LPCO, Amostras e Ofertas (14/11/2026)
+
+- **Entrega → LPCO** (mapa E5, E5?): passo novo do embarque, `lpco` (`IMPORT_STEPS`): o comex registra o pedido da licença (número e arquivo) e a Wellmix marca deferida ou indeferida. Só no pedido com produto cujo NCM começa por um dos prefixos de Configurações → "NCMs que exigem LPCO" (`lpcoNcmPrefixes`; vazio, em nenhum pedido). A regra é `lpcoApplies` / `lpcoOrderIds` em `src/lib/services/import-flow.ts`; `stepApplies` recebe o resultado (sem ele, o LPCO não aparece). Não segura a presença de carga (passo sem dependente). Também no menu do comex. O resumo do pedido subiu para a versão 11 (o LPCO entra na contribuição do Overview).
+- **Vendas → Amostras** (E23): a amostra que chegou ao Brasil (passo `samples_brazil` concluído) e ainda não foi oferecida. A tela tem o registro de a quem foi oferecida e a lista das ofertas registradas.
+- **Vendas → Ofertas** (V2): o produto com a venda ativada (foto real aprovada pelo marketing, R5, `real_media` aprovada) e ainda não oferecido, com o mesmo registro.
+- As ofertas ficam na tabela nova `sales_offers` (tipo amostra ou produto, pedido, produto, a quem, observação, quem e quando); `recordSalesOfferAction` (só a Wellmix, com a tela Produtos). Os casos contam no menu, fora das Pendências (`flowSalesCasesFor`). Limpar dados de teste apaga as ofertas.
 
 ## De onde vem o contador
 

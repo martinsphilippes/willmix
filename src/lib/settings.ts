@@ -99,6 +99,12 @@ export const DEFAULT_SETTINGS = {
    */
   productionStartDays: 0,
   /**
+   * LPCO (mapa E5; dono, 14/11/2026): prefixos de NCM que exigem a licença
+   * (separados por vírgula ou espaço). O passo LPCO aparece só no pedido com
+   * produto de NCM que começa por um deles; vazio, em nenhum.
+   */
+  lpcoNcmPrefixes: "",
+  /**
    * O mesmo prazo, por fornecedor (id do fornecedor → dias): quem tem valor
    * aqui usa o dele; os outros, o padrão acima. Só o administrador grava,
    * no cadastro do fornecedor.

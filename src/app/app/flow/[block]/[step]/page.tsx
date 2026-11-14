@@ -27,6 +27,7 @@ import {
   FlowProductionWork,
   FlowReceivingWork,
   FlowRequirementWork,
+  FlowSalesWork,
 } from "@/components/flow-step-forms";
 import { Alert } from "@/components/ui";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -252,6 +253,11 @@ export default async function FlowStepPage({
           t={t}
           notice={receivingNotice}
         />
+      ) : null}
+      {step.block === "sales" &&
+      (step.key === "samples" || step.key === "offers") &&
+      wellmix ? (
+        <FlowSalesWork step={step} tasks={all} t={t} />
       ) : null}
       {step.block === "order" && step.key === "art" ? (
         <FlowArtworkWork

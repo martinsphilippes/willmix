@@ -1163,6 +1163,33 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.locator("[data-real-media-status]").first(),
   ).toHaveAttribute("data-real-media-status", "approved");
+  // Vendas (docs/FLOW_MENU.md): a amostra que chegou ao Brasil vira caso em
+  // Vendas → Amostras; o produto com a venda ativada (foto real aprovada),
+  // em Vendas → Ofertas. Registrar a quem foi oferecido tira o caso.
+  const salesOrderId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
+  await page.goto("/app/flow/sales/samples");
+  const sampleCase = page.locator(`[data-flow-sales-case="${salesOrderId}"]`);
+  await sampleCase.locator("[data-flow-sales-to]").fill("Loja Exemplo E2E");
+  await Promise.all([
+    page.waitForURL(/\/app\/flow\/sales\/samples\?saved=1/),
+    sampleCase.locator("[data-flow-sales-submit]").click(),
+  ]);
+  await expect(
+    page.locator(`[data-flow-sales-case="${salesOrderId}"]`),
+  ).toHaveCount(0);
+  await expect(
+    page.locator("[data-flow-sales-offer]", { hasText: "Loja Exemplo E2E" }),
+  ).toBeVisible();
+  await page.goto("/app/flow/sales/offers");
+  const productCase = page.locator("[data-flow-sales-case]").first();
+  await productCase.locator("[data-flow-sales-to]").fill("Rede Exemplo E2E");
+  await Promise.all([
+    page.waitForURL(/\/app\/flow\/sales\/offers\?saved=1/),
+    productCase.locator("[data-flow-sales-submit]").click(),
+  ]);
+  await expect(
+    page.locator("[data-flow-sales-offer]", { hasText: "Rede Exemplo E2E" }),
+  ).toBeVisible();
   await sendStep(page, orderUrl, "samples-flow", "samples_returned", {
     value: "Amostra devolvida à trading",
   });

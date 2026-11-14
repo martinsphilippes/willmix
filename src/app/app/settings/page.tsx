@@ -309,6 +309,18 @@ export default async function SettingsPage({
                       defaultValue={s.productionStartDays}
                     />
                   </Field>
+                  {/* LPCO (mapa E5): NCMs que exigem a licença da importação. */}
+                  <Field
+                    label={t("settings.label.lpcoNcmPrefixes")}
+                    hint={t("settings.hint.lpcoNcmPrefixes")}
+                  >
+                    <Input
+                      name="lpcoNcmPrefixes"
+                      defaultValue={s.lpcoNcmPrefixes}
+                      placeholder="3304, 9503.00"
+                      data-settings-lpco
+                    />
+                  </Field>
                   <Field label={t("settings.label.invoiceDays")}>
                     <Input
                       name="invoiceDays"

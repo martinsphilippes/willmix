@@ -1285,6 +1285,25 @@ create index if not exists "real_media_by_order" on public."real_media" ("orderI
 create index if not exists "real_media_created" on public."real_media" ("createdAt");
 create index if not exists "real_media_created_id" on public."real_media" ("createdAt", "id");
 
+create table if not exists public."sales_offers" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."sales_offers" enable row level security;
+alter table public."sales_offers" add column if not exists "kind" text;
+alter table public."sales_offers" add column if not exists "orderId" text;
+alter table public."sales_offers" add column if not exists "productId" text;
+alter table public."sales_offers" add column if not exists "offeredTo" text;
+alter table public."sales_offers" add column if not exists "customerId" text;
+alter table public."sales_offers" add column if not exists "note" text;
+alter table public."sales_offers" add column if not exists "offeredByUserId" text;
+alter table public."sales_offers" add column if not exists "offeredAt" timestamptz;
+create index if not exists "sales_offers_by_order" on public."sales_offers" ("orderId");
+create index if not exists "sales_offers_by_product" on public."sales_offers" ("productId");
+create index if not exists "sales_offers_created" on public."sales_offers" ("createdAt");
+create index if not exists "sales_offers_created_id" on public."sales_offers" ("createdAt", "id");
+
 create table if not exists public."sku_inspections" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

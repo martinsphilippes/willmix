@@ -3,6 +3,22 @@
  * telas dos passos; docs/FLOW_MENU.md): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "flow.sales.sample.title": "Amostras do pedido #{n} no Brasil",
+  "flow.sales.sample.detail":
+    "Oferecer a amostra a um cliente e registrar a quem",
+  "flow.sales.product.title": "{name}",
+  "flow.sales.product.detail":
+    "Venda ativada (foto real aprovada): oferecer a um cliente",
+  "flow.sales.offeredTo": "Oferecido a",
+  "flow.sales.note": "Observação",
+  "flow.sales.submit": "Registrar oferta",
+  "flow.sales.history": "Ofertas registradas",
+  "flow.sales.historyEmpty": "Nenhuma oferta registrada ainda.",
+  "flow.sales.when": "Quando",
+  "flow.sales.by": "Por",
+  "settings.label.lpcoNcmPrefixes": "NCMs que exigem LPCO",
+  "settings.hint.lpcoNcmPrefixes":
+    "Prefixos de NCM separados por vírgula (ex.: 3304, 9503.00). O passo LPCO aparece só no pedido com produto de um desses NCMs; vazio, em nenhum.",
   "flow.all.hint.partner":
     "Todos os seus pedidos que estão neste passo agora, com o que é seu. Clique para abrir o pedido no passo.",
   "flow.orders.list": "Lista de todos os pedidos",
@@ -224,7 +240,7 @@ export const pt = {
     "Container de volta ao porto, rastreio e embarque (R26, R27).",
   "flow.step.delivery.lpco": "LPCO",
   "flow.help.delivery.lpco":
-    "Licenças, permissões e certificados da importação (E5). Ainda sem pendências no sistema.",
+    "LPCO da importação (E5, E5?): o comex registra o pedido da licença e a Wellmix marca deferida ou indeferida. Só no pedido com produto de NCM que exige (Configurações).",
   "flow.step.delivery.cargo-presence": "Presença de carga",
   "flow.help.delivery.cargo-presence":
     "Presença de carga, numerário, DI, despacho e liberação (E6, E7).",
@@ -249,10 +265,10 @@ export const pt = {
   "flow.help.sales.stock": "Estoque em produção, em trânsito e no Brasil.",
   "flow.step.sales.samples": "Amostras",
   "flow.help.sales.samples":
-    "Oferta de amostras aos clientes (E23). Ainda sem pendências no sistema.",
+    "Oferta de amostras aos clientes (E23): a amostra que chegou ao Brasil, a oferecer a um cliente, com o registro de a quem foi oferecida.",
   "flow.step.sales.offers": "Ofertas",
   "flow.help.sales.offers":
-    "Oferta ativa aos clientes e oferta na vitrine (V2, V5). Ainda sem pendências no sistema.",
+    "Oferta ativa aos clientes (V2): o produto com a venda ativada (foto real aprovada, R5), a oferecer a um cliente, com o registro de a quem foi oferecido.",
   "flow.step.sales.sale": "Venda",
   "flow.help.sales.sale":
     "Pedidos de clientes, ordem de venda e pós-venda (V6, V7, E10).",
@@ -265,6 +281,22 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "flow.sales.sample.title": "Samples from order #{n} in Brazil",
+  "flow.sales.sample.detail":
+    "Offer the sample to a customer and record to whom",
+  "flow.sales.product.title": "{name}",
+  "flow.sales.product.detail":
+    "Sale activated (real photo approved): offer it to a customer",
+  "flow.sales.offeredTo": "Offered to",
+  "flow.sales.note": "Note",
+  "flow.sales.submit": "Record offer",
+  "flow.sales.history": "Recorded offers",
+  "flow.sales.historyEmpty": "No offers recorded yet.",
+  "flow.sales.when": "When",
+  "flow.sales.by": "By",
+  "settings.label.lpcoNcmPrefixes": "NCMs that require an LPCO",
+  "settings.hint.lpcoNcmPrefixes":
+    "NCM prefixes separated by commas (e.g. 3304, 9503.00). The LPCO step shows only on orders with a product under one of these NCMs; empty, on none.",
   "flow.all.hint.partner":
     "All your orders in this step right now, with what is yours. Click to open the order in the step.",
   "flow.orders.list": "List of all orders",
@@ -485,7 +517,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Container back at the port, tracking and shipment (R26, R27).",
   "flow.step.delivery.lpco": "LPCO",
   "flow.help.delivery.lpco":
-    "Import licences, permits and certificates (E5). No tasks in the system yet.",
+    "Import LPCO (E5, E5?): comex records the licence request and Wellmix marks it granted or rejected. Only on orders with a product whose NCM requires it (Settings).",
   "flow.step.delivery.cargo-presence": "Cargo presence",
   "flow.help.delivery.cargo-presence":
     "Cargo presence, customs advance, import declaration, clearance and release (E6, E7).",
@@ -510,10 +542,10 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.help.sales.stock": "Inventory in production, in transit and in Brazil.",
   "flow.step.sales.samples": "Samples",
   "flow.help.sales.samples":
-    "Offering samples to customers (E23). No tasks in the system yet.",
+    "Offering samples to customers (E23): samples that reached Brazil, to offer to a customer, recording to whom.",
   "flow.step.sales.offers": "Offers",
   "flow.help.sales.offers":
-    "Active offers to customers and storefront offers (V2, V5). No tasks in the system yet.",
+    "Active offers to customers (V2): products with the sale activated (real photo approved, R5), to offer to a customer, recording to whom.",
   "flow.step.sales.sale": "Sale",
   "flow.help.sales.sale":
     "Customer requests, sales order and after-sales (V6, V7, E10).",
@@ -526,6 +558,20 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "flow.sales.sample.title": "订单 #{n} 的样品已到巴西",
+  "flow.sales.sample.detail": "向客户提供样品并记录提供给谁",
+  "flow.sales.product.title": "{name}",
+  "flow.sales.product.detail": "已开始销售（实拍照片已批准）：向客户推荐",
+  "flow.sales.offeredTo": "提供给",
+  "flow.sales.note": "备注",
+  "flow.sales.submit": "记录推荐",
+  "flow.sales.history": "已记录的推荐",
+  "flow.sales.historyEmpty": "尚未记录推荐。",
+  "flow.sales.when": "时间",
+  "flow.sales.by": "记录人",
+  "settings.label.lpcoNcmPrefixes": "需要 LPCO 的 NCM",
+  "settings.hint.lpcoNcmPrefixes":
+    "NCM 前缀，用逗号分隔（例如 3304, 9503.00）。只有含这些 NCM 产品的订单才会出现 LPCO 环节；留空则都不出现。",
   "flow.all.hint.partner":
     "您目前处于本环节的全部订单（只含属于您的事项）。点击在本环节打开订单。",
   "flow.orders.list": "全部订单列表",
@@ -734,7 +780,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.step.production.shipment": "装船",
   "flow.help.production.shipment": "集装箱返港、跟踪和装船（R26、R27）。",
   "flow.step.delivery.lpco": "LPCO",
-  "flow.help.delivery.lpco": "进口许可证和证书（E5）。系统中暂无待办。",
+  "flow.help.delivery.lpco":
+    "进口 LPCO（E5、E5?）：清关代理登记许可申请，Wellmix 标记批准或驳回。仅限含需要许可的 NCM 产品的订单（设置）。",
   "flow.step.delivery.cargo-presence": "货物到港",
   "flow.help.delivery.cargo-presence":
     "货物到港、清关预付款、进口申报、清关和放行（E6、E7）。",
@@ -756,10 +803,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.step.sales.stock": "库存",
   "flow.help.sales.stock": "生产中、在途和巴西的库存。",
   "flow.step.sales.samples": "样品",
-  "flow.help.sales.samples": "向客户提供样品（E23）。系统中暂无待办。",
+  "flow.help.sales.samples":
+    "向客户提供样品（E23）：已到巴西的样品，向客户提供并记录提供给谁。",
   "flow.step.sales.offers": "报价推广",
   "flow.help.sales.offers":
-    "主动向客户推荐和橱窗推荐（V2、V5）。系统中暂无待办。",
+    "主动向客户推荐（V2）：已开始销售的产品（实拍照片已批准，R5），向客户推荐并记录推荐给谁。",
   "flow.step.sales.sale": "销售",
   "flow.help.sales.sale": "客户需求、销售订单和售后（V6、V7、E10）。",
   "flow.step.finance.finance": "财务",
