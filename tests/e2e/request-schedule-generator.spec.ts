@@ -100,12 +100,20 @@ test("Nova solicitação: gerar programação pelo produto escolhido, trocar, do
   // A boneca segue com a dela.
   await expect(qty(0, 1)).toHaveValue("1488");
 
+  // As datas de cada entrega, como estão na tela antes de enviar.
+  const datesOf = (n: number) =>
+    row(page, n).locator("[data-schedule-date]").allInnerTexts();
+  const bonecaDates = await datesOf(0);
+  const piscinaDates = await datesOf(1);
+  expect(bonecaDates).toHaveLength(2);
+  expect(piscinaDates).toHaveLength(3);
+
   // Envia e reabre: cada produto com as datas e quantidades confirmadas.
   await page.getByRole("button", { name: /enviar|send/i }).click();
   await page.waitForURL(/\/app\/requests\/batch\/[^?]+\?created=2$/);
   for (const [text, values] of [
-    ["Boneca articulada", ["1.488", "1.440", "2.928"]],
-    ["Piscina inflável", ["120", "360"]],
+    ["Boneca articulada", ["1.488", "1.440", "2.928", ...bonecaDates]],
+    ["Piscina inflável", ["120", "360", ...piscinaDates]],
   ] as const) {
     const batchUrl = page.url();
     await page
