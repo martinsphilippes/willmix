@@ -135,7 +135,12 @@ export const SCREEN_LABEL: Record<Screen, DictionaryKey> = {
   audit: "nav.audit",
 };
 
-/** Todo login da Wellmix, com ou sem função. */
+/**
+ * Telas do Início (card "Início" em Equipe → Funções). Todo login da Wellmix
+ * as abre por padrão; o administrador pode desmarcar cada uma por função
+ * (FunctionDef.baseOff). Login sem função, ou com telas marcadas uma a uma,
+ * continua abrindo todas.
+ */
 export const WELLMIX_BASE: readonly Screen[] = [
   "home",
   "tasks",
@@ -327,8 +332,11 @@ export function functionScreensFor(
   user: Who,
   access?: ResolvedAccess | null,
 ): Set<Screen> {
-  const set = new Set<Screen>(WELLMIX_BASE);
   const resolved = access ?? accessOf(user);
+  // Telas do Início: as que as funções deixam marcadas (padrão: todas).
+  const set = new Set<Screen>(
+    resolved?.base !== undefined ? validScreens(resolved.base) : WELLMIX_BASE,
+  );
   if (resolved) {
     for (const screen of validScreens(resolved.screens)) set.add(screen);
     return set;
@@ -392,3 +400,25 @@ export const hasNoFunction = (user: Who) =>
   isWellmix(user) &&
   !isAdmin(user) &&
   [...screensFor(user)].every((s) => WELLMIX_BASE.includes(s));
+
+/** Endereço de cada tela (o primeiro prefixo dela em SCREEN_ROUTES). */
+export function screenPath(screen: Screen): string {
+  if (screen === "home") return "/app";
+  return SCREEN_ROUTES.find(([, s]) => s === screen)?.[0] ?? "/app";
+}
+
+/**
+ * Para onde vai quem não abre o Control Tower (tela do Início desmarcada na
+ * função): a primeira tela do menu que o login abre, na ordem do menu. Nulo
+ * se não abre nenhuma (o início mostra só a saudação).
+ */
+export function startPathFor(user: Who): string | null {
+  const menu = menuScreensFor(user);
+  const has = screensFor(user);
+  const order = SCREEN_GROUPS.flatMap((g) => g.screens).filter(
+    (s) => s !== "home",
+  );
+  const first =
+    order.find((s) => menu.has(s)) ?? order.find((s) => has.has(s)) ?? null;
+  return first ? screenPath(first) : null;
+}

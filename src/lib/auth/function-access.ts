@@ -1,6 +1,7 @@
 import {
   FUNCTION_SCREENS,
   SCREENS,
+  WELLMIX_BASE,
   canOpen,
   type Screen,
 } from "@/lib/auth/screens";
@@ -125,6 +126,11 @@ export interface FunctionDef {
   builtin: boolean;
   screens: Screen[];
   actions: ActionKey[];
+  /**
+   * Telas do Início (WELLMIX_BASE) que o administrador desmarcou nesta
+   * função. Vazio (o padrão) = a função abre todas, como antes.
+   */
+  baseOff: Screen[];
   /** Desativada: some das listas e não libera nada (só as criadas). */
   archived: boolean;
 }
@@ -136,6 +142,7 @@ export interface StoredFunctions {
     name?: string | null;
     screens?: unknown;
     actions?: unknown;
+    baseOff?: unknown;
     archived?: boolean;
   }>;
 }
@@ -162,6 +169,9 @@ export function customFunctionKey(name: string, taken: string[]): string {
 
 const validScreens = (v: unknown): Screen[] =>
   Array.isArray(v) ? SCREENS.filter((s) => (v as unknown[]).includes(s)) : [];
+/** Só telas do Início (o resto da lista gravada é ignorado). */
+const validBaseOff = (v: unknown): Screen[] =>
+  validScreens(v).filter((s) => WELLMIX_BASE.includes(s));
 const validActions = (v: unknown): ActionKey[] =>
   Array.isArray(v)
     ? ACTION_KEYS.filter((a) => (v as unknown[]).includes(a))
@@ -196,6 +206,7 @@ export function resolveFunctions(stored: unknown): FunctionDef[] {
         s?.actions !== undefined
           ? validActions(s.actions)
           : defaultActionsFor(key),
+      baseOff: validBaseOff(s?.baseOff),
       archived: false,
     };
   });
@@ -207,25 +218,40 @@ export function resolveFunctions(stored: unknown): FunctionDef[] {
       builtin: false,
       screens: validScreens(f.screens),
       actions: validActions(f.actions),
+      baseOff: validBaseOff(f.baseOff),
       archived: !!f.archived,
     }));
   return [...builtins, ...custom];
 }
 
-/** Telas e ações que as funções marcadas liberam (desativadas e desconhecidas não contam). */
+/**
+ * Telas e ações que as funções marcadas liberam (desativadas e desconhecidas
+ * não contam). Telas do Início (`base`): a união das que cada função deixa
+ * marcadas; sem nenhuma função ativa, todas (o acesso de sempre).
+ */
 export function accessFromFunctions(
   functions: readonly string[] | null | undefined,
   defs: FunctionDef[],
 ): ResolvedAccess {
   const screens = new Set<string>();
   const actions = new Set<string>();
+  const base = new Set<Screen>();
+  let active = 0;
   for (const key of functions ?? []) {
     const def = defs.find((d) => d.key === key && !d.archived);
     if (!def) continue;
+    active++;
     def.screens.forEach((s) => screens.add(s));
     def.actions.forEach((a) => actions.add(a));
+    WELLMIX_BASE.forEach((s) => {
+      if (!def.baseOff.includes(s)) base.add(s);
+    });
   }
-  return { screens: [...screens], actions: [...actions] };
+  return {
+    screens: [...screens],
+    actions: [...actions],
+    base: active ? WELLMIX_BASE.filter((s) => base.has(s)) : [...WELLMIX_BASE],
+  };
 }
 
 type Who = {

@@ -3,6 +3,7 @@ import {
   SCREENS,
   SCREEN_LABEL,
   canOpen,
+  startPathFor,
   type Screen,
 } from "@/lib/auth/screens";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -20,7 +21,18 @@ export default async function AppHome({ searchParams }: PageProps<"/app">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app");
   const { filter, card, stage, group, denied } = await searchParams;
-  if (isWellmix(user)) {
+  // Tela negada (?denied=…): o aviso segue para o início de cada papel.
+  const deniedQs =
+    typeof denied === "string" && /^[a-zA-Z]{1,30}$/.test(denied)
+      ? `?denied=${denied}`
+      : "";
+  // Control Tower desmarcado nas funções do login (Equipe → Funções, card
+  // "Início"): vai à primeira tela do menu que ele abre. Sem nenhuma, fica
+  // aqui com a saudação (abaixo), sem entrar em ciclo.
+  if (isWellmix(user) && !canOpen(user, "home")) {
+    const start = startPathFor(user);
+    if (start && start !== "/app") redirect(`${start}${deniedQs}`);
+  } else if (isWellmix(user)) {
     return (
       <ControlTower
         user={user}
@@ -32,11 +44,6 @@ export default async function AppHome({ searchParams }: PageProps<"/app">) {
       />
     );
   }
-  // Tela negada (?denied=…): o aviso segue para o início de cada papel.
-  const deniedQs =
-    typeof denied === "string" && /^[a-zA-Z]{1,30}$/.test(denied)
-      ? `?denied=${denied}`
-      : "";
   // Cliente: a vitrine; sem empresa vinculada, a lista de solicitações.
   // Sem a vitrine no perfil (Gestão de telas), vai às solicitações; sem as
   // duas, fica aqui, nas pendências (não entra em ciclo).

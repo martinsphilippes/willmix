@@ -4,7 +4,7 @@ import { cache } from "react";
 import { getStore, type User } from "@/lib/db";
 import { isAdmin } from "@/lib/auth/permissions";
 import { ForbiddenError } from "@/lib/auth/permissions";
-import { SCREENS, type Screen } from "@/lib/auth/screens";
+import { SCREENS, WELLMIX_BASE, type Screen } from "@/lib/auth/screens";
 import {
   ACTION_KEYS,
   customFunctionKey,
@@ -53,6 +53,7 @@ async function writeDefs(defs: FunctionDef[]) {
       name: d.name,
       screens: d.screens,
       actions: d.actions,
+      baseOff: d.baseOff,
       archived: d.archived,
     })),
   };
@@ -92,6 +93,7 @@ export async function createFunction(
     builtin: false,
     screens: [],
     actions: [],
+    baseOff: [],
     archived: false,
   };
   await writeDefs([...defs, def]);
@@ -124,7 +126,10 @@ export async function renameFunction(user: User, key: string, name: string) {
   );
 }
 
-/** Telas da função. */
+/**
+ * Telas da função. As do Início vêm na mesma lista: as que não vierem marcadas
+ * ficam em `baseOff` (desmarcadas só nesta função).
+ */
 export async function setFunctionScreens(
   user: User,
   key: string,
@@ -134,14 +139,19 @@ export async function setFunctionScreens(
   const defs = await current();
   const def = defs.find((d) => d.key === key);
   if (!def) throw new TeamFunctionError("not_found");
-  def.screens = SCREENS.filter((s) => screens.includes(s));
+  def.screens = SCREENS.filter(
+    (s) => screens.includes(s) && !WELLMIX_BASE.includes(s),
+  );
+  def.baseOff = WELLMIX_BASE.filter((s) => !screens.includes(s));
   await writeDefs(defs);
   await audit(
     user,
     "team.function_screens",
     "user",
     user.id,
-    `Função ${key}: ${def.screens.join(", ") || "(só o básico)"}`,
+    `Função ${key}: ${def.screens.join(", ") || "(só o básico)"}${
+      def.baseOff.length ? ` · Início sem: ${def.baseOff.join(", ")}` : ""
+    }`,
   );
 }
 

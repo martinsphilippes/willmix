@@ -761,18 +761,21 @@ function ScreensForm({ t, def }: { t: Translate; def: FunctionDef }) {
           </legend>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {group.screens.map((s) => {
+              // Telas do Início: configuráveis por função (marcadas por
+              // padrão; desmarcadas ficam em baseOff).
               const base = WELLMIX_BASE.includes(s);
               return (
                 <CheckRow
                   key={s}
                   name="screens"
                   value={s}
-                  checked={base || def.screens.includes(s)}
-                  disabled={base}
+                  checked={
+                    base ? !def.baseOff.includes(s) : def.screens.includes(s)
+                  }
                   title={t(SCREEN_LABEL[s])}
                   note={
                     base
-                      ? t("fn.screens.base")
+                      ? t("fn.screens.baseDefault")
                       : ADMIN_ONLY.includes(s)
                         ? t("fn.screens.adminOnly")
                         : undefined
