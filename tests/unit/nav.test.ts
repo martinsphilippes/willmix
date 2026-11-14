@@ -10,65 +10,96 @@ import {
 } from "@/lib/nav";
 import { ROLES, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
 
-/* Menu lateral (12/11/2026): links do dia a dia no alto, grupos na ordem do
+/* Menu lateral (12/11/2026; blocos do mapa desde 14/11/2026,
+   docs/FLOW_MENU.md): Control Tower e Pendências no alto, blocos na ordem do
    fluxo, Configurações/Equipe/Auditoria fixos embaixo; grupo com uma tela só
    vira link; grupo vazio some; telas fora do fluxo de hoje (MENU_HIDDEN) não
    aparecem para ninguém. O menu segue as telas do login
    (src/lib/auth/screens.ts): nenhuma tela se repete. */
 const ADMIN = { role: "admin" as const };
+/** O que a barra lateral desenha (sem Mensagens e Notificações, só no cabeçalho). */
 const view = (user: Parameters<typeof navFor>[0]) =>
-  navFor(user).map((e) =>
+  sidebarNav(navFor(user)).map((e) =>
     isNavGroup(e)
       ? { group: e.key, items: e.items.map((i) => i.href) }
       : { link: e.href },
   );
 const hrefsOf = (user: Parameters<typeof navFor>[0]) =>
   flattenNav(navFor(user)).map((l) => l.href);
-const TOP = ["/app", "/app/tasks", "/app/messages", "/app/notifications"];
+const TOP = ["/app", "/app/tasks"];
+
+/** Blocos do fluxo do admin, na ordem do mapa (docs/FLOW_MENU.md). */
+const NEW_PRODUCT = [
+  "/app/flow/new-product",
+  "/app/booking",
+  "/app/booking/selection",
+  "/app/supplier-requests/invites",
+  "/app/supplier-requests",
+];
+const ORDER = [
+  "/app/flow/order",
+  "/app/orders",
+  "/app/flow/order/certification",
+  "/app/flow/order/art-material",
+  "/app/flow/order/art",
+  "/app/reviews",
+  "/app/flow/order/contract",
+];
+const PRODUCTION = [
+  "/app/production",
+  "/app/flow/production/pre-production",
+  "/app/flow/production/inspection",
+  "/app/flow/production/sample",
+  "/app/flow/production/production",
+  "/app/flow/production/booking",
+  "/app/flow/production/logistics",
+  "/app/flow/production/loading",
+  "/app/flow/production/cargo-docs",
+  "/app/flow/production/shipment",
+];
+const DELIVERY = [
+  "/app/flow/delivery",
+  "/app/flow/delivery/lpco",
+  "/app/flow/delivery/cargo-presence",
+  "/app/flow/delivery/channel",
+  "/app/flow/delivery/logistics",
+  "/app/flow/delivery/invoice",
+  "/app/flow/delivery/delivery",
+  "/app/flow/delivery/return",
+  "/app/flow/delivery/storage",
+  "/app/containers",
+  "/app/freight",
+  "/app/freight/tariff",
+];
+const SALES = [
+  "/app/inventory",
+  "/app/flow/sales/samples",
+  "/app/flow/sales/offers",
+  "/app/flow/sales/sale",
+];
 
 describe("menu lateral", () => {
-  it("admin: dia a dia no alto e cinco grupos na ordem do fluxo; ajustes embaixo", () => {
+  it("admin: Control Tower e Pendências no alto, os blocos do mapa na ordem; ajustes embaixo", () => {
     expect(view(ADMIN)).toEqual([
       ...TOP.map((link) => ({ link })),
-      {
-        group: "nav.group.purchasing",
-        items: [
-          "/app/booking",
-          "/app/booking/selection",
-          "/app/supplier-requests/invites",
-          "/app/supplier-requests",
-        ],
-      },
-      {
-        group: "nav.group.delivery",
-        items: [
-          "/app/orders",
-          "/app/reviews",
-          "/app/containers",
-          "/app/freight",
-          "/app/freight/tariff",
-          "/app/inventory",
-        ],
-      },
-      { link: "/app/production" },
+      { group: "nav.group.newProduct", items: NEW_PRODUCT },
+      { group: "nav.group.order", items: ORDER },
+      { group: "nav.production", items: PRODUCTION },
+      { group: "nav.group.arrival", items: DELIVERY },
+      { group: "nav.group.sales", items: SALES },
       {
         group: "nav.group.finance",
         items: [
           "/app/finance",
           "/app/payables",
+          "/app/dashboards/cashflow",
           "/app/commissions",
           "/app/penalties",
         ],
       },
       {
         group: "nav.group.panels",
-        items: [
-          "/app/dashboards/owner",
-          "/app/dashboards/cashflow",
-          "/app/superplan",
-          "/app/dashboards",
-          "/app/sla",
-        ],
+        items: ["/app/dashboards/owner", "/app/dashboards", "/app/sla"],
       },
       {
         group: "nav.group.registry",
@@ -80,48 +111,39 @@ describe("menu lateral", () => {
       ["/app/team", "nav.teamAccess"],
       ["/app/audit", "nav.audit"],
     ]);
-    // Pedidos de compra e Parceiros (clientes, fornecedores e demais numa tela só).
+    // Superplan foi para Configurações (fora do menu lateral).
+    expect(hrefsOf(ADMIN)).not.toContain("/app/superplan");
     const links = flattenNav(navFor(ADMIN));
-    expect(links.find((l) => l.href === "/app/orders")?.key).toBe(
-      "nav.purchaseOrders",
-    );
     expect(links.find((l) => l.href === "/app/parties")?.key).toBe(
       "nav.parties",
     );
     for (const href of ["/app/customers", "/app/suppliers"])
       expect(links.map((l) => l.href)).not.toContain(href);
-    // Todo grupo e todo link solto têm ícone.
+    // Nenhuma tela se repete; todo grupo e todo link solto têm ícone.
+    expect(new Set(hrefsOf(ADMIN)).size).toBe(hrefsOf(ADMIN).length);
     for (const e of navFor(ADMIN)) expect(e.icon).toBeTruthy();
+    // Contadores: Pendências com o total; cada passo com o seu.
+    expect(links.find((l) => l.href === "/app/tasks")?.badge).toBe("tasks");
+    expect(links.find((l) => l.href === "/app/flow/order/art")?.step).toBe(
+      "order/art",
+    );
+    expect(links.find((l) => l.href === "/app/finance")?.step).toBe(
+      "finance/finance",
+    );
+    expect(links.find((l) => l.href === "/app/products")?.step).toBe(
+      "registry/products",
+    );
   });
 
-  it("Produção: item do primeiro nível, logo abaixo de Pedidos e entrega, uma vez só", () => {
+  it("Produção: grupo com o Overview (/app/production) e os passos, uma vez só", () => {
     const entries = navFor(ADMIN);
-    const at = entries.findIndex(
-      (e) => !isNavGroup(e) && e.href === "/app/production",
+    const prod = entries.find(
+      (e) => isNavGroup(e) && e.key === "nav.production",
     );
-    const entry = entries[at];
-    expect(entry && !isNavGroup(entry) ? entry.key : null).toBe(
-      "nav.production",
-    );
-    // Com ícone, como os outros itens principais.
-    expect(entry?.icon).toBe("factory");
-    const before = entries[at - 1];
-    expect(before && isNavGroup(before) ? before.key : null).toBe(
-      "nav.group.delivery",
-    );
-    // Saiu de dentro de Pedidos e entrega: aparece uma vez só no menu.
+    expect(prod?.icon).toBe("factory");
     expect(hrefsOf(ADMIN).filter((h) => h === "/app/production")).toHaveLength(
       1,
     );
-    // Quem acompanha a produção vê no mesmo lugar (logo abaixo do grupo).
-    const buyer = navFor({ role: "operator", functions: ["buyer"] });
-    const buyerAt = buyer.findIndex(
-      (e) => !isNavGroup(e) && e.href === "/app/production",
-    );
-    const buyerBefore = buyer[buyerAt - 1];
-    expect(
-      buyerBefore && isNavGroup(buyerBefore) ? buyerBefore.key : null,
-    ).toBe("nav.group.delivery");
     // Padrão das funções: quem acompanha a produção (comprador e planner) e
     // as diretorias; as outras recebem em Equipe e acessos → Telas e links.
     for (const fn of [
@@ -145,10 +167,14 @@ describe("menu lateral", () => {
     // Tela interna: nenhum login de fora vê.
     for (const role of ROLES.filter((r) => r !== "admin" && r !== "operator"))
       expect(hrefsOf({ role })).not.toContain("/app/production");
-    // Acesa na própria tela (e nas subpáginas); Pedidos de compra não acende.
     expect(isActiveHref("/app/production", "/app/production")).toBe(true);
     expect(isActiveHref("/app/orders", "/app/production")).toBe(false);
-    expect(isActiveHref("/app/production", "/app/orders")).toBe(false);
+    // Overview do bloco acende só na própria tela, não nos passos.
+    expect(isActiveHref("/app/flow/order", "/app/flow/order")).toBe(true);
+    expect(isActiveHref("/app/flow/order", "/app/flow/order/art")).toBe(false);
+    expect(isActiveHref("/app/flow/order/art", "/app/flow/order/art")).toBe(
+      true,
+    );
   });
 
   it("telas fora do fluxo de hoje não aparecem no menu de ninguém", () => {
@@ -186,7 +212,6 @@ describe("menu lateral", () => {
             "/app/finance",
             "/app/commissions",
             "/app/payables",
-            "/app/superplan",
             "/app/dashboards/owner",
             "/app/dashboards/cashflow",
           ].includes(h),
@@ -199,7 +224,7 @@ describe("menu lateral", () => {
     ).not.toContain("/app/settings");
   });
 
-  it("operador por função: comprador vê Compras e Pedidos e entrega; financeiro só o admin", () => {
+  it("operador por função: comprador vê Produto novo e Pedido; financeiro só o admin", () => {
     const buyer = hrefsOf({ role: "operator", functions: ["buyer"] });
     expect(buyer).toContain("/app/booking");
     expect(buyer).toContain("/app/orders");
@@ -210,27 +235,24 @@ describe("menu lateral", () => {
     expect(view({ role: "operator", functions: ["designer"] })).toEqual([
       ...TOP.map((link) => ({ link })),
       {
-        group: "nav.group.delivery",
-        items: ["/app/orders", "/app/inventory"],
+        group: "nav.group.order",
+        items: ORDER.filter((h) => h !== "/app/reviews"),
       },
+      { group: "nav.group.sales", items: SALES },
       { link: "/app/sla" },
       { link: "/app/products" },
     ]);
   });
 
-  it("cliente: o dia a dia e os pedidos (a vitrine ainda não abriu)", () => {
+  it("cliente: Pendências e os pedidos (a vitrine ainda não abriu)", () => {
     expect(view({ role: "customer" })).toEqual([
       { link: "/app/tasks" },
-      { link: "/app/messages" },
-      { link: "/app/notifications" },
       { link: "/app/orders" },
     ]);
   });
 
-  it("fornecedores e parceiros: Pendências, Mensagens, Notificações e um grupo com a tela do papel", () => {
-    const top = ["/app", "/app/messages", "/app/notifications"].map((link) => ({
-      link,
-    }));
+  it("fornecedores e parceiros: Pendências e um grupo com a tela do papel", () => {
+    const top = [{ link: "/app" }];
     expect(view({ role: "supplier" })).toEqual([
       ...top,
       {
@@ -279,21 +301,15 @@ describe("menu lateral", () => {
     }
   });
 
-  it("Mensagens e Notificações no menu de todos os papéis, com o selo de não lidas", () => {
-    for (const role of ROLES) {
-      const links = flattenNav(navFor({ role, functions: null }));
-      expect(links.filter((l) => l.href === "/app/messages")).toEqual([
-        {
-          href: "/app/messages",
-          key: "nav.messages",
-          badge: "messages",
-          icon: "messages",
-        },
-      ]);
-      expect(links.find((l) => l.href === "/app/notifications")?.badge).toBe(
-        "notifications",
-      );
-    }
+  it("Mensagens e Notificações fora da barra de todos os papéis (ficam no cabeçalho)", () => {
+    for (const role of ROLES)
+      for (const functions of [null, [...WELLMIX_FUNCTIONS]]) {
+        const bar = flattenNav(sidebarNav(navFor({ role, functions }))).map(
+          (l) => l.href,
+        );
+        expect(bar).not.toContain("/app/messages");
+        expect(bar).not.toContain("/app/notifications");
+      }
   });
 
   it("tela atual: /app só na própria página; os demais também nas subpáginas", () => {

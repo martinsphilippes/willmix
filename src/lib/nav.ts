@@ -2,17 +2,25 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen, menuScreensFor, type Screen } from "@/lib/auth/screens";
 import type { User } from "@/lib/db/schema";
+import {
+  FLOW_OVERVIEW_BLOCKS,
+  overviewHref,
+  stepHref,
+  stepId,
+  stepLabelKey,
+  stepsOf,
+  type FlowBlock,
+} from "@/lib/flow";
 
 /*
- * Menu lateral do portal (decisão do dono, 12/11/2026). O que cada login vê
- * vem de uma regra só (src/lib/auth/screens.ts, docs/ACCESS.md): o menu mostra
- * as telas que o login abre. No alto, links soltos do dia a dia (Control
- * Tower, Pendências, Mensagens, Notificações; as duas últimas ficam só nos
- * ícones do cabeçalho, fora da barra lateral: SIDEBAR_HIDDEN); depois os grupos, cada um na
- * ordem do fluxo (Compras: Booking → Seleção → Convites → Solicitações ao
- * fornecedor; Pedidos e entrega: Pedidos de compra → Revisão → Containers →
- * Fretes → Tarifário → Estoque; Produção, item pai logo abaixo de Pedidos e
- * entrega; Financeiro; Painéis; Cadastros). Configurações,
+ * Menu lateral do portal. O que cada login vê vem de uma regra só
+ * (src/lib/auth/screens.ts, docs/ACCESS.md): o menu mostra as telas que o
+ * login abre. No alto, Control Tower e Pendências (Mensagens e Notificações
+ * continuam na lista, mas ficam só nos ícones do cabeçalho: SIDEBAR_HIDDEN;
+ * dono, 14/11/2026). Depois os blocos na ordem do mapa do processo
+ * (docs/FLOW_MENU.md): Produto novo, Pedido, Produção, Entrega, Vendas,
+ * Financeiro, Painéis e Cadastros; cada passo com o contador do que espera
+ * ação do login (src/lib/flow.ts). Configurações,
  * Equipe e acessos e Auditoria ficam fixos embaixo (navFooterFor). Grupo com
  * uma tela só vira link direto; grupo vazio some. Telas fora do fluxo de hoje
  * ficam fora do menu de todos (MENU_HIDDEN), mas continuam abrindo pelo
@@ -35,13 +43,19 @@ export type NavIcon =
   | "shield"
   | "home"
   | "box"
-  | "factory";
+  | "factory"
+  | "tag";
 
 export interface NavLink {
   href: string;
   key: DictionaryKey;
-  /** Contador ao lado do item (mensagens ou notificações não lidas), preenchido pelo layout. */
-  badge?: "messages" | "notifications";
+  /**
+   * Contador ao lado do item, preenchido pelo layout: o total das Pendências
+   * ou as não lidas (Mensagens e Notificações, que só o cabeçalho mostra).
+   */
+  badge?: "tasks" | "messages" | "notifications";
+  /** Passo do fluxo (`bloco/passo`, src/lib/flow.ts): o contador do que espera ação ali. */
+  step?: string;
   icon?: NavIcon;
 }
 
@@ -129,30 +143,34 @@ function group(
     : [{ key, icon, items }];
 }
 
-/**
- * Item pai com tela própria (Produção, dono, 14/11/2026): sem subitens, é um
- * link do primeiro nível, com o ícone; com subitens, vira grupo, e o nome
- * continua abrindo a tela (a seta abre e fecha). Sem a tela do pai, os
- * subitens seguem como um grupo comum.
- */
-function parentGroup(
-  parent: NavLink | undefined,
-  key: DictionaryKey,
-  icon: NavIcon,
-  items: NavLink[],
-): NavEntry[] {
-  if (!parent) return group(key, icon, items);
-  if (items.length === 0) return [{ ...parent, icon: parent.icon ?? icon }];
-  return [{ key, icon, href: parent.href, items }];
-}
-
 type Entry = [Screen, NavLink];
 
 /**
- * Etapas que vão entrar como subitens de Produção (dono, 14/11/2026), na
- * ordem do fluxo. Vazio por enquanto: Produção é só o link da tela.
+ * Overview e passos de um bloco do fluxo (src/lib/flow.ts), na ordem do
+ * mapa: cada passo com a tela que já existia ou a tela própria, e o contador.
  */
-const PRODUCTION_STEPS: Entry[] = [];
+function flowEntries(block: FlowBlock): Entry[] {
+  const steps = stepsOf(block).filter((x) => !x.badgeOnly);
+  const overview: Entry[] = FLOW_OVERVIEW_BLOCKS.includes(block)
+    ? [
+        [
+          steps[0]?.screen ?? "tasks",
+          { href: overviewHref(block), key: "flow.overview" },
+        ],
+      ]
+    : [];
+  return [
+    ...overview,
+    ...steps.map((step): Entry => [
+      step.screen,
+      {
+        href: stepHref(step),
+        key: stepLabelKey(step),
+        step: stepId(step),
+      },
+    ]),
+  ];
+}
 
 /**
  * Só os links das telas que o login abre, na ordem dada, sem os ocultos. A
@@ -206,90 +224,93 @@ export function navFor(
     return [
       ...pick(has, [
         ["home", { href: "/app", key: "nav.controlTower", icon: "tower" }],
-        ["tasks", { href: "/app/tasks", key: "nav.tasks", icon: "tasks" }],
+        [
+          "tasks",
+          {
+            href: "/app/tasks",
+            key: "nav.tasks",
+            icon: "tasks",
+            badge: "tasks",
+          },
+        ],
         ["messages", MESSAGES],
         ["notifications", NOTIFICATIONS],
       ]),
-      // Do booking ao pedido gerado.
+      // Blocos na ordem do mapa do processo (docs/FLOW_MENU.md): cada passo
+      // com o contador do que espera ação do login.
+      // Produto novo: do book à negociação com o fornecedor. O Superplan foi
+      // para Configurações (dono, 14/11/2026).
       ...group(
-        "nav.group.purchasing",
+        "nav.group.newProduct",
         "cart",
         pick(has, [
-          // Bookings: as planilhas de fornecedor (docs/BOOKING.md).
-          ["booking", { href: "/app/booking", key: "nav.booking" }],
-          // Itens dos bookings comparados e a solicitação ao fornecedor do escolhido.
-          [
-            "booking",
-            { href: "/app/booking/selection", key: "nav.bookingSelection" },
-          ],
-          [
-            "quotes",
-            {
-              href: "/app/supplier-requests/invites",
-              key: "nav.bookingInvites",
-            },
-          ],
-          [
-            "quotes",
-            { href: "/app/supplier-requests", key: "nav.supplierRequests" },
-          ],
-          // Fora do menu (MENU_HIDDEN): Solicitações do cliente e Sourcing.
-          ["requests", { href: "/app/requests", key: "nav.requests" }],
+          ...flowEntries("new-product"),
+          // Fora do menu (MENU_HIDDEN): Sourcing.
           ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],
         ]),
       ),
-      // Do pedido de compra ao estoque.
+      // Pedido: do pedido de compra ao contrato assinado.
+      ...group("nav.group.order", "box", pick(has, flowEntries("order"))),
+      // Produção: da pré-produção ao embarque.
       ...group(
-        "nav.group.delivery",
+        "nav.production",
+        "factory",
+        pick(has, flowEntries("production")),
+      ),
+      // Entrega: da LPCO à armazenagem; Containers, Fretes e Tarifário
+      // seguem no fim do bloco (telas que já existiam).
+      ...group(
+        "nav.group.arrival",
         "ship",
         pick(has, [
-          ["orders", { href: "/app/orders", key: "nav.purchaseOrders" }],
-          ["reviews", { href: "/app/reviews", key: "nav.reviews" }],
+          ...flowEntries("delivery"),
           ["containers", { href: "/app/containers", key: "nav.containers" }],
           ["freight", { href: "/app/freight", key: "nav.freight" }],
           [
             "freightTariff",
             { href: "/app/freight/tariff", key: "nav.freightTariff" },
           ],
-          // Estoque: em produção, em trânsito e no Brasil.
-          ["products", { href: "/app/inventory", key: "nav.inventory" }],
-          // Fora do menu (MENU_HIDDEN): Pós-venda.
-          ["afterSales", { href: "/app/after-sales", key: "nav.afterSales" }],
         ]),
       ),
-      // Produção (dono, 14/11/2026): item pai do primeiro nível, logo abaixo
-      // de Pedidos e entrega (saiu de dentro do grupo). Vai receber as etapas
-      // como subitens; por enquanto, o próprio item abre a tela.
-      ...parentGroup(
+      // Vendas: estoque, amostras, ofertas e venda.
+      ...group(
+        "nav.group.sales",
+        "tag",
         pick(has, [
-          ["production", { href: "/app/production", key: "nav.production" }],
-        ])[0],
-        "nav.production",
-        "factory",
-        pick(has, PRODUCTION_STEPS),
+          ...flowEntries("sales"),
+          // Fora do menu (MENU_HIDDEN): Solicitações do cliente e Pós-venda.
+          ["requests", { href: "/app/requests", key: "nav.requests" }],
+          ["afterSales", { href: "/app/after-sales", key: "nav.afterSales" }],
+        ]),
       ),
       ...group(
         "nav.group.finance",
         "money",
         pick(has, [
-          ["finance", { href: "/app/finance", key: "nav.finance" }],
+          [
+            "finance",
+            {
+              href: "/app/finance",
+              key: "nav.finance",
+              step: "finance/finance",
+            },
+          ],
           ["payables", { href: "/app/payables", key: "nav.payables" }],
-          ["finance", { href: "/app/commissions", key: "nav.commissions" }],
-          ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
-        ]),
-      ),
-      ...group(
-        "nav.group.panels",
-        "chart",
-        pick(has, [
-          // Painel do dono e fluxo de caixa: números de Finanças.
-          ["finance", { href: "/app/dashboards/owner", key: "nav.owner" }],
+          // Fluxo de caixa: saiu de Painéis (dono, 14/11/2026).
           [
             "finance",
             { href: "/app/dashboards/cashflow", key: "nav.cashflow" },
           ],
-          // Viabilidade de um produto (só o administrador).
-          ["superplan", { href: "/app/superplan", key: "nav.superplan" }],
+          ["finance", { href: "/app/commissions", key: "nav.commissions" }],
+          ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
+        ]),
+      ),
+      // Painéis: só leitura, sem contador.
+      ...group(
+        "nav.group.panels",
+        "chart",
+        pick(has, [
+          ["finance", { href: "/app/dashboards/owner", key: "nav.owner" }],
           ["dashboards", { href: "/app/dashboards", key: "nav.dashboards" }],
           // O que cada operador deve, pelo prazo, na carteira dele.
           ["sla", { href: "/app/sla", key: "nav.sla" }],
@@ -305,7 +326,15 @@ export function navFor(
           // Clientes, fornecedores e demais parceiros numa tela só, com filtro
           // por tipo (as listas de Clientes e Fornecedores seguem pelo endereço).
           ["parties", { href: "/app/parties", key: "nav.parties" }],
-          ["products", { href: "/app/products", key: "nav.products" }],
+          // NCM a classificar e fichas incompletas contam aqui.
+          [
+            "products",
+            {
+              href: "/app/products",
+              key: "nav.products",
+              step: "registry/products",
+            },
+          ],
           ["lines", { href: "/app/lines", key: "nav.lines" }],
           // Fora do menu (MENU_HIDDEN): a vitrine como o cliente vê.
           ["explore", { href: "/app/explore", key: "nav.explorePreview" }],
@@ -318,7 +347,15 @@ export function navFor(
     // fora do menu): o cliente fica com os pedidos e o dia a dia.
     return [
       ...pick(has, [
-        ["tasks", { href: "/app/tasks", key: "nav.tasks", icon: "tasks" }],
+        [
+          "tasks",
+          {
+            href: "/app/tasks",
+            key: "nav.tasks",
+            icon: "tasks",
+            badge: "tasks",
+          },
+        ],
         ["messages", MESSAGES],
         ["notifications", NOTIFICATIONS],
       ]),
@@ -385,7 +422,7 @@ export function navFor(
       [
         "home",
         canOpen(user, "tasks")
-          ? { href: "/app", key: "nav.tasks", icon: "tasks" }
+          ? { href: "/app", key: "nav.tasks", icon: "tasks", badge: "tasks" }
           : { href: "/app", key: "nav.home", icon: "home" },
       ],
       ["messages", MESSAGES],
@@ -438,6 +475,8 @@ const OWN_LINK_SUBPAGES = [
 /** O link vale para a tela atual? "/app" só na própria página; os demais também nas subpáginas. */
 export function isActiveHref(href: string, pathname: string): boolean {
   if (href === "/app") return pathname === "/app";
+  // Overview do bloco (/app/flow/<bloco>): só na própria tela, não nos passos.
+  if (/^\/app\/flow\/[^/]+$/.test(href)) return pathname === href;
   if (pathname === href) return true;
   if (!pathname.startsWith(`${href}/`)) return false;
   return !OWN_LINK_SUBPAGES.some(

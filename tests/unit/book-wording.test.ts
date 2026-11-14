@@ -15,6 +15,9 @@ const SHIP_BOOKING: string[] = [
   "importFlow.step.booking",
   "importFlow.ph.booking",
   "board.card.ordBooking",
+  // Passo Booking do bloco Produção do menu (R8, reserva com a marítima).
+  "flow.step.production.booking",
+  "flow.help.production.booking",
 ];
 
 const LOCALES = ["pt", "en", "zh"] as const;

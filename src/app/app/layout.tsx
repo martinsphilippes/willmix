@@ -24,6 +24,8 @@ import {
 } from "@/lib/services/messages";
 import { UnreadMessagesBar } from "@/components/unread-messages-bar";
 import { AppSidebar, MobileNav } from "@/components/app-nav";
+import { flowTasksFor } from "@/lib/services/flow";
+import { countByStep } from "@/lib/flow";
 import { WellmixLogo } from "@/components/brand";
 import { LogoutButton } from "@/components/logout-button";
 import { PasswordChangeCard } from "@/components/password-change-card";
@@ -240,18 +242,33 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         })
       ).filter((n) => !n.readAt).length
     : 0;
-  const badgeOf = (l: NavLink) =>
-    l.badge === "messages" && unreadMessages > 0
-      ? {
-          badge: unreadMessages,
-          badgeLabel: t("messages.unread", { n: unreadMessages }),
-        }
-      : l.badge === "notifications" && unread > 0
-        ? {
-            badge: unread,
-            badgeLabel: t("nav.notifications.unread", { n: String(unread) }),
-          }
-        : {};
+  // Contadores do menu (docs/FLOW_MENU.md): o que espera ação do login em
+  // cada passo, das mesmas pendências da tela Pendências; vermelho quando
+  // alguma já passou do prazo. Falha aqui não derruba o portal.
+  const flowTasks = canOpen(user, "tasks")
+    ? await flowTasksFor(user).catch((error: unknown) => {
+        console.error("flowTasksFor failed", error);
+        return [];
+      })
+    : [];
+  const flowCounts = countByStep(flowTasks);
+  const tasksOverdue = flowTasks.filter((x) => x.overdue).length;
+  const badgeOf = (l: NavLink) => {
+    const c =
+      l.badge === "tasks"
+        ? { count: flowTasks.length, overdue: tasksOverdue }
+        : l.step
+          ? flowCounts.get(l.step)
+          : undefined;
+    if (!c || c.count <= 0) return {};
+    return {
+      badge: c.count,
+      badgeLabel: c.overdue
+        ? t("flow.badge.overdue", { n: c.count, late: c.overdue })
+        : t("flow.badge", { n: c.count }),
+      ...(c.overdue ? { badgeAlert: true } : {}),
+    };
+  };
   const link = (l: NavLink) => ({
     href: l.href,
     label: t(l.key),

@@ -6,6 +6,7 @@ import {
 } from "@/lib/supplier-requests";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
 import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
 import { getStore } from "@/lib/db";
 import { getFxRates } from "@/lib/services/fx";
@@ -222,6 +223,17 @@ export default async function SettingsPage({
         actions={
           // Só admin chega aqui: apagar as vendas de teste e recomeçar.
           <>
+            {/* Superplan (viabilidade, B3): saiu do menu lateral (dono, 14/11/2026). */}
+            {canOpen(user, "superplan") ? (
+              <LinkButton
+                href="/app/superplan"
+                variant="secondary"
+                title={t("settings.superplan.body")}
+                data-settings-superplan
+              >
+                {t("settings.superplan.open")}
+              </LinkButton>
+            ) : null}
             {/* ERP Sankhya: conexão, dicionário, consultas e envio de pedidos. */}
             <LinkButton href="/app/settings/sankhya" variant="secondary">
               {t("sankhya.open")}
