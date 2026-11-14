@@ -1,9 +1,10 @@
 import "server-only";
 import { realName } from "@/lib/placeholder-name";
-import { indexBy, listByIds } from "@/lib/db/lookup";
+import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 
 import { getStore, type User } from "@/lib/db";
 import {
+  ORDER_ACCESS_FIELDS,
   canSeeInternalCosts,
   canViewOrder,
   isWellmix,
@@ -51,11 +52,48 @@ export async function loadCommercialHistory(
   if (user.role === "customer" && !user.partyId) return [];
   const customerId =
     user.role === "customer" ? (user.partyId ?? undefined) : filter.customerId;
+  // Só as colunas usadas (auditoria de performance, 14/11/2026): antes, as
+  // tabelas inteiras com a cópia do registro do ERP (sankhyaRefs, ~60% de
+  // pedidos e itens; 16 mil pedidos e 184 mil itens em produção). Com um
+  // cliente, só os itens dos pedidos dele.
+  const ordersP = listColumns(
+    store,
+    "orders",
+    [
+      ...ORDER_ACCESS_FIELDS,
+      "status",
+      "number",
+      "sellPrice",
+      "fobTotal",
+      "sellCurrency",
+      "fobCurrency",
+    ],
+    customerId ? { filter: { customerId } } : {},
+  );
+  const itemColumns = [
+    "orderId",
+    "productId",
+    "name",
+    "quantity",
+    "unit",
+    "unitPrice",
+  ] as const;
   const [orders, items, requests, afterSales] = await Promise.all([
-    store.list("orders", customerId ? { filter: { customerId } } : {}),
-    store.list("order_items"),
-    store.list("requests"),
-    store.list("after_sales"),
+    ordersP,
+    customerId
+      ? ordersP.then((list) =>
+          list.length
+            ? listColumns(store, "order_items", itemColumns, {
+                filter: { orderId: list.map((o) => o.id) },
+              })
+            : [],
+        )
+      : listColumns(store, "order_items", itemColumns),
+    // Só as que contam como reposição (as outras não entram na conta).
+    listColumns(store, "requests", ["sourceOrderId", "origin"], {
+      filter: { origin: ["replenishment", "proposal"] },
+    }),
+    listColumns(store, "after_sales", ["orderId", "repurchaseInterest"]),
   ]);
   // Só os clientes dos pedidos (antes: a tabela inteira, ~32 mil).
   const parties = indexBy(
@@ -67,6 +105,16 @@ export async function loadCommercialHistory(
     "id",
   );
   const itemByOrder = indexBy(items, "orderId");
+  // Reposições por pedido de origem e o primeiro pós-venda de cada pedido
+  // (antes, uma busca na lista inteira por pedido: 16 mil × 16 mil).
+  const replenishmentsOf = new Map<string, number>();
+  for (const r of requests)
+    if (r.sourceOrderId)
+      replenishmentsOf.set(
+        r.sourceOrderId,
+        (replenishmentsOf.get(r.sourceOrderId) ?? 0) + 1,
+      );
+  const afterByOrder = indexBy(afterSales, "orderId");
   const nameOf = (id: string) => parties.get(id)?.name ?? "—";
   const groups = new Map<string, HistoryRow & { dates: number[] }>();
   const sorted = [...orders].sort((a, b) =>
@@ -89,12 +137,8 @@ export async function loadCommercialHistory(
       order.fobTotal !== null && item.quantity > 0
         ? order.fobTotal / item.quantity
         : item.unitPrice;
-    const replenishments = requests.filter(
-      (r) =>
-        r.sourceOrderId === order.id &&
-        (r.origin === "replenishment" || r.origin === "proposal"),
-    ).length;
-    const after = afterSales.find((a) => a.orderId === order.id);
+    const replenishments = replenishmentsOf.get(order.id) ?? 0;
+    const after = afterByOrder.get(order.id);
     const row = groups.get(key);
     if (!row) {
       groups.set(key, {

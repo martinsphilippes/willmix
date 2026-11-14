@@ -9,8 +9,11 @@ const { seedDemo } = await import("@/lib/seed");
 const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const { cancelOrder } = await import("@/lib/services/order-cancel");
-const { pipelineFor } = await import("@/lib/services/pipeline");
+const { pipelineFor, loadPipelineItems } =
+  await import("@/lib/services/pipeline");
+const { rebuildOrderSummaries } = await import("@/lib/services/order-summary");
 type User = import("@/lib/db").User;
+type PipelineRow = import("@/lib/services/pipeline").PipelineRow;
 
 let admin: User;
 let joao: User;
@@ -180,5 +183,91 @@ describe("painel de pedidos", () => {
     expect(mine.find((x) => x.key === `order:${placed.id}`)?.journey).toBe(
       "ordCreated",
     );
+  });
+});
+
+/*
+ * Auditoria de performance (14/11/2026): com o resumo por pedido em uso, a
+ * tela Pedidos não lê mais os itens de todos os pedidos (184 mil em produção)
+ * a cada abertura. O painel vem com o 1º produto e a quantidade de itens do
+ * resumo, e a tela lê os itens só onde precisa: nome e variação de todos para
+ * o filtro de produto, e o item inteiro só nas linhas da página. O resultado
+ * é o mesmo do painel com todos os itens.
+ */
+describe("painel de pedidos sem ler todos os itens", () => {
+  /** A linha sem os campos de controle da leitura adiada. */
+  const plain = (row: PipelineRow) => {
+    const { itemsPending: _pending, ...rest } = row;
+    void _pending;
+    return rest;
+  };
+
+  it("com o resumo em uso: 1º produto e quantos itens do resumo; os itens lidos depois são os mesmos", async () => {
+    const one = await order("Bule lento");
+    const two = await order("Xícara lenta");
+    // Um pedido com dois itens e variação.
+    await getStore().create("order_items", {
+      orderId: two.id,
+      productId: null,
+      name: "Pires da xícara",
+      variant: { name: "Azul" } as never,
+      quantity: 500,
+      unit: "un",
+      unitPrice: 1.5,
+    } as never);
+    await rebuildOrderSummaries();
+    for (const user of [admin, joao, supplierA]) {
+      const full = await pipelineFor(user);
+      const lazy = await pipelineFor(user, { lazyItems: true });
+      expect(lazy.map((x) => x.key)).toEqual(full.map((x) => x.key));
+      for (const id of [one.id, two.id]) {
+        const f = full.find((x) => x.key === `order:${id}`);
+        const l = lazy.find((x) => x.key === `order:${id}`);
+        if (!f) {
+          expect(l).toBeUndefined();
+          continue;
+        }
+        expect(l!.itemsPending).toBe(true);
+        expect(l!.items).toEqual([]);
+        expect(l!.product).toBe(f.product);
+        expect(l!.itemCount).toBe(f.items.length);
+      }
+      expect(full.find((x) => x.key === `order:${two.id}`)?.itemCount).toBe(
+        full.find((x) => x.key === `order:${two.id}`) ? 2 : undefined,
+      );
+      // Filtro de produto: nome e variação de todos os itens.
+      const names = await pipelineFor(user, { lazyItems: true });
+      await loadPipelineItems(user, names, "names");
+      expect(
+        names.map((x) => x.items.map((i) => `${i.name}|${i.variant ?? ""}`)),
+      ).toEqual(
+        full.map((x) => x.items.map((i) => `${i.name}|${i.variant ?? ""}`)),
+      );
+      // Linhas da página: o item inteiro, igual ao painel com todos os itens.
+      await loadPipelineItems(user, lazy, "full");
+      expect(lazy.map(plain)).toEqual(full.map(plain));
+    }
+  });
+
+  it("sem o resumo em uso, lê os itens como antes", async () => {
+    const store = getStore();
+    const placed = await order("Prato sem resumo");
+    const [marker] = await store.list("settings", {
+      filter: { key: "orderSummaries" },
+    });
+    await store.remove("settings", marker.id);
+    try {
+      const rows = await pipelineFor(admin, { lazyItems: true });
+      const row = rows.find((x) => x.key === `order:${placed.id}`)!;
+      expect(row.itemsPending).toBeUndefined();
+      expect(row.items.map((i) => i.name)).toEqual(["Prato sem resumo"]);
+      expect(row.itemCount).toBe(1);
+    } finally {
+      await store.create("settings", {
+        id: marker.id,
+        key: marker.key,
+        value: marker.value,
+      });
+    }
   });
 });

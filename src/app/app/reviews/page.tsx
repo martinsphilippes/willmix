@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { getStore, REVIEW_STATUSES, type ReviewStatus } from "@/lib/db";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
 import { fallbackError } from "@/i18n/error-text";
@@ -59,18 +60,27 @@ export default async function ReviewsPage({
       : "open";
   const t = await getT();
   const store = getStore();
-  const [all, orders, containers, users] = await Promise.all([
+  const [all, containers, users] = await Promise.all([
     store.list("review_items", { orderBy: "createdAt", direction: "desc" }),
-    store.list("orders"),
     store.list("containers"),
     store.list("users"),
   ]);
+  // Só os pedidos dos itens (auditoria de performance, 14/11/2026: antes, a
+  // tabela inteira de pedidos, 16 mil com o histórico do Sankhya, e uma busca
+  // nela por item).
+  const orderById = indexBy(
+    await listByIds(
+      store,
+      "orders",
+      all.map((r) => r.orderId ?? r.entityId),
+    ),
+    "id",
+  );
   // Item aberto de pedido cancelado (antes de o cancelamento descartar a
   // fila sozinho) aparece como descartado: não é mais trabalho a fazer.
   const orderOf = (r: (typeof all)[number]) =>
-    orders.find(
-      (o) => o.id === (r.orderId ?? (r.entity === "order" ? r.entityId : "")),
-    ) ?? null;
+    orderById.get(r.orderId ?? (r.entity === "order" ? r.entityId : "")) ??
+    null;
   const shown = all.map((r) =>
     r.status === "open" && orderOf(r)?.status === "CANCELLED"
       ? { ...r, status: "dismissed" as const }
@@ -85,8 +95,7 @@ export default async function ReviewsPage({
       const c = containers.find((x) => x.id === r.entityId);
       return `${t("reviews.entity.container")} ${c?.code ?? r.entityId}`;
     }
-    const order =
-      orders.find((o) => o.id === (r.orderId ?? r.entityId)) ?? null;
+    const order = orderById.get(r.orderId ?? r.entityId) ?? null;
     return order
       ? t("orders.number", { number: order.number })
       : `${t("reviews.entity.order")} ${r.entityId}`;

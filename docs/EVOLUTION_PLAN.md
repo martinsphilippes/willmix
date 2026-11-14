@@ -1187,3 +1187,20 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Não mudou**: rótulos, cores, valores, cálculos e quem vê cada cartão. Só o layout (`src/components/color-cards.tsx`); o pedido passa valor e moeda em vez do texto pronto.
 - **Conferido no navegador**: 26 tamanhos de aparelho (celulares em retrato e paisagem, iPads, notebooks, MacBooks e desktops) e todas as larguras de 320 a 1920 px, de 16 em 16, com o menu aberto e recolhido. Casos: RMB longo (12.345.678,90), negativo em reais (-287.929,23 e -12.345.678,90) e zerados. Nenhum corte e nenhuma rolagem horizontal.
 - Teste: `tests/unit/color-cards.test.ts` (moeda à parte e sinal no número, degraus de colunas, mesmo tamanho em todos os cartões, grade pela área de conteúdo).
+
+## Performance: listas por keyset, resumos refeitos sozinhos e Pedidos sem todos os itens (14/11/2026)
+
+Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção (`pg_stat_statements`, `EXPLAIN` somente leitura, erros da Vercel).
+
+- **PR #396:**
+  - As listas do Supabase pegam a página seguinte pelo fim da anterior (keyset), e não mais por OFFSET. No EXPLAIN de uma página de `order_items`, o tempo caiu de 672 ms para 6 ms.
+  - As listas não pedem mais a contagem exata.
+  - Os resumos por pedido são refeitos sozinhos depois de um deploy que muda o formato. Antes, as telas ficavam no caminho antigo até a madrugada.
+- **Este PR:**
+  - As telas leem só as partes do resumo que usam (`jsonKeys`).
+  - O formato 9 do resumo traz `itemCount`.
+  - A tela Pedidos lê os itens inteiros só dos pedidos da página. Com filtro de produto, lê nome e variação de todos. Antes eram 184 mil itens a cada abertura.
+  - O Histórico comercial lê só as colunas usadas de pedidos e itens; com cliente escolhido, só os itens dele. Das solicitações, lê só as de reposição e proposta. O laço quadrático (16 mil × 16 mil) virou mapa.
+  - Revisões, Pós-venda e Multas leem só os pedidos citados, e não mais os 16 mil.
+- **Não mudou:** telas, filtros, ordem, colunas, cálculos e permissões. Os testes de equivalência comparam o resultado com o painel que lê todos os itens e com o caminho antigo.
+- **Ajuste aditivo:** a chave `itemCount` em `order_summaries.facts`, sem coluna nova. Depois do deploy, a reconstrução começa sozinha.

@@ -20,7 +20,7 @@ import {
   type User,
 } from "@/lib/db";
 import { isSchemaMissing } from "@/lib/db/errors";
-import { isHeld } from "@/lib/db/store";
+import { isHeld, projectJson } from "@/lib/db/store";
 import {
   DUE_SOON_DAYS,
   addDays,
@@ -59,8 +59,13 @@ import type { BoardOrder, BoardStage } from "./tower-board";
  *   ou com resumo de outro formato, as telas usam o caminho antigo.
  */
 
-/** Formato de `facts`; mudar o formato = subir o número (as telas voltam ao caminho antigo até a reconstrução). */
-export const SUMMARY_VERSION = 8;
+/**
+ * Formato de `facts`; mudar o formato = subir o número (as telas voltam ao
+ * caminho antigo até a reconstrução, que em produção começa sozinha depois do
+ * deploy: summary-kick.ts). 9: `itemCount` (a tela Pedidos lê os itens só da
+ * página).
+ */
+export const SUMMARY_VERSION = 9;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -89,8 +94,10 @@ export interface OrderFacts {
   /** Nome do cliente e do fornecedor como estão no cadastro (nulo: parceiro não encontrado). */
   customer: string | null;
   supplier: string | null;
-  /** Nome do primeiro item do pedido (nulo: sem itens). */
+  /** Nome do primeiro item do pedido (nulo: sem itens ou nome de exemplo). */
   product: string | null;
+  /** Quantos itens o pedido tem (a tela Pedidos lê os itens só da página mostrada). */
+  itemCount: number;
   /** Etapas em andamento ou bloqueadas, na ordem do banco. */
   active: Array<Omit<BoardStage, "orderId"> & Pick<Stage, "percent">>;
   /** Itens das etapas que dividem os quadros de posição (journey.ts). */
@@ -325,6 +332,7 @@ export function buildOrderFacts(
     supplier: supplier?.name ?? null,
     // Nome de exemplo ("Produto novo XPTO") vale como ausente.
     product: realName(items[0]?.name),
+    itemCount: items.length,
     active: stages
       .filter((s) => ACTIVE.includes(s.status))
       .map((s) => ({
@@ -1115,10 +1123,15 @@ export async function rebuildOrderSummaries(
 /* Leitura                                                                    */
 /* ------------------------------------------------------------------------ */
 
-export interface SummaryView {
+export interface SummaryView<F = OrderFacts> {
   /** Resumos na ordem dos pedidos (número decrescente). */
-  facts: OrderFacts[];
+  facts: F[];
+  /** Id do pedido de cada resumo, na ordem de `facts` (readOrderSummaries). */
+  ids?: string[];
 }
+
+/** Uma parte do resumo (`readOrderSummaries` e `factsForOrders` com `keys`). */
+export type FactKey = keyof OrderFacts;
 
 /**
  * Os resumos de todos os pedidos, prontos para as telas; nulo quando ainda
@@ -1128,31 +1141,50 @@ export interface SummaryView {
 export async function readOrderSummaries(
   /** Só os resumos destes pedidos (lista curta); sem ela, todos. */
   ids?: string[],
+): Promise<SummaryView | null>;
+/**
+ * Só as partes `keys` de cada resumo (auditoria de performance, 14/11/2026):
+ * o resumo inteiro tem ~2,7 kB por pedido (52 MB de JSON para os 16 mil
+ * pedidos); quem precisa só da etapa e da viagem lê um quarto disso.
+ */
+export async function readOrderSummaries<K extends FactKey>(
+  ids: string[] | undefined,
+  keys: readonly K[],
+): Promise<SummaryView<Pick<OrderFacts, K>> | null>;
+export async function readOrderSummaries(
+  ids?: string[],
+  keys?: readonly FactKey[],
 ): Promise<SummaryView | null> {
   const marker = await readMarker().catch(() => null);
   if (!marker || marker.version !== SUMMARY_VERSION) return null;
   const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
   await flushSummaryChanges();
-  let rows: OrderSummary[];
+  const options = {
+    ...(ids ? { filter: { id: ids } } : {}),
+    orderBy: "number" as const,
+    direction: "desc" as const,
+  };
+  let rows: Array<Pick<OrderSummary, "id" | "version" | "facts">>;
   try {
-    rows = ids
-      ? ids.length
-        ? await getStore().list("order_summaries", {
-            filter: { id: ids },
-            orderBy: "number",
-            direction: "desc",
-          })
-        : []
-      : await getStore().list("order_summaries", {
-          orderBy: "number",
-          direction: "desc",
-        });
+    if (ids && !ids.length) rows = [];
+    else if (keys) {
+      const { listColumns } = await import("@/lib/db/lookup");
+      rows = await listColumns(
+        getStore(),
+        "order_summaries",
+        ["version", "facts"],
+        { ...options, jsonKeys: { facts: keys } },
+      );
+    } else rows = await getStore().list("order_summaries", options);
   } catch (error) {
     if (isSchemaMissing(error)) return null;
     throw error;
   }
   if (rows.some((r) => r.version !== SUMMARY_VERSION)) return null;
-  return { facts: rows.map((r) => r.facts as OrderFacts) };
+  return {
+    facts: rows.map((r) => r.facts as OrderFacts),
+    ids: rows.map((r) => r.id),
+  };
 }
 
 /** Acima disto, lê todos os resumos de uma vez em vez de pedir pelos ids. */
@@ -1165,20 +1197,41 @@ const BY_ID_LIMIT = 300;
  */
 export async function factsForOrders(
   orders: Array<Pick<Order, "id">>,
+): Promise<Map<string, OrderFacts> | null>;
+/** Só as partes `keys` de cada resumo (ver `readOrderSummaries`). */
+export async function factsForOrders<K extends FactKey>(
+  orders: Array<Pick<Order, "id">>,
+  keys: readonly K[],
+): Promise<Map<string, Pick<OrderFacts, K>> | null>;
+export async function factsForOrders(
+  orders: Array<Pick<Order, "id">>,
+  keys?: readonly FactKey[],
 ): Promise<Map<string, OrderFacts> | null> {
   const ids = [...new Set(orders.map((o) => o.id))];
-  const view = await readOrderSummaries(
-    ids.length <= BY_ID_LIMIT ? ids : undefined,
-  );
+  const wanted = ids.length <= BY_ID_LIMIT ? ids : undefined;
+  const view = keys
+    ? await readOrderSummaries(wanted, keys)
+    : await readOrderSummaries(wanted);
   if (!view) return null;
-  const map = new Map(view.facts.map((f) => [f.order.id, f]));
+  // O id do resumo é o do pedido (summaryRow).
+  const map = new Map(
+    view.facts.map((f, i) => [
+      view.ids?.[i] ?? (f as OrderFacts).order.id,
+      f as OrderFacts,
+    ]),
+  );
   const missing = ids.filter((id) => !map.has(id));
   if (missing.length) {
     await recomputeOrderSummaries(missing);
     for (const row of await getStore().list("order_summaries", {
       filter: { id: missing },
     }))
-      map.set(row.id, row.facts as OrderFacts);
+      map.set(
+        row.id,
+        (keys
+          ? projectJson({ facts: row.facts }, { facts: keys }).facts
+          : row.facts) as OrderFacts,
+      );
   }
   return map;
 }
@@ -1187,7 +1240,9 @@ export async function factsForOrders(
  * Etapas e itens de etapa dos quadros e da viagem (journey.ts), montados do
  * resumo: a etapa de cada item vai num id sintético (pedido + chave).
  */
-export function journeyRowsFromFacts(facts: OrderFacts[]) {
+export function journeyRowsFromFacts(
+  facts: Array<Pick<OrderFacts, "order" | "reqs" | "lane">>,
+) {
   const stages: Array<Pick<Stage, "id" | "orderId" | "key">> = [];
   const requirements: Array<
     Pick<Requirement, "orderId" | "stageId" | "key" | "status" | "value">
@@ -1224,8 +1279,9 @@ export function journeyRowsFromFacts(facts: OrderFacts[]) {
 }
 
 /** Etapas em andamento ou bloqueadas de todos os pedidos dados. */
-export const activeStagesFromFacts = (facts: OrderFacts[]) =>
-  facts.flatMap((f) => f.active.map((s) => ({ ...s, orderId: f.order.id })));
+export const activeStagesFromFacts = (
+  facts: Array<Pick<OrderFacts, "order" | "active">>,
+) => facts.flatMap((f) => f.active.map((s) => ({ ...s, orderId: f.order.id })));
 
 /** Situação da parcela no dia (vencida, a vencer, agendada mudam com o tempo). */
 export function installmentStatusOn(

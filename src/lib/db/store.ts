@@ -24,6 +24,35 @@ export interface ListOptions<T> {
    * de cliente/fornecedor: ~26 mil clientes não cabem numa lista).
    */
   search?: { column: keyof T & string; text: string };
+  /**
+   * Em `listColumns`: das colunas JSON listadas, só estas chaves de primeiro
+   * nível (o banco devolve só elas; chave ausente volta nula). Ex.: do resumo
+   * por pedido, `{ facts: ["order", "reqs"] }` em vez dos ~2,7 kB de cada um.
+   */
+  jsonKeys?: { [C in keyof T & string]?: readonly string[] };
+}
+
+/** As colunas JSON da linha só com as chaves de `jsonKeys` (ausente: nula). */
+export function projectJson<T extends object>(
+  row: T,
+  jsonKeys?: ListOptions<T>["jsonKeys"],
+): T {
+  if (!jsonKeys) return row;
+  const out: Record<string, unknown> = { ...(row as Record<string, unknown>) };
+  for (const [column, keys] of Object.entries(jsonKeys) as Array<
+    [string, readonly string[] | undefined]
+  >) {
+    if (!keys || !(column in out)) continue;
+    const value = out[column];
+    const source =
+      value && typeof value === "object" && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+    out[column] = Object.fromEntries(
+      keys.map((k) => [k, source[k] === undefined ? null : source[k]]),
+    );
+  }
+  return out as T;
 }
 
 /** O texto da busca sem os caracteres especiais do LIKE e do PostgREST. */

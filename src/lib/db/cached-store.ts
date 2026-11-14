@@ -1,7 +1,7 @@
 import { cache } from "react";
 import type { TableName, Tables } from "./schema";
 import type { Filter, ListOptions, NewRow, Patch, Store } from "./store";
-import { pickColumns } from "./store";
+import { pickColumns, projectJson } from "./store";
 import type { ByteRange } from "@/lib/http-range";
 import { noteWrite, removalNeedsRow } from "./summary-dirty";
 
@@ -84,7 +84,7 @@ export class CachedStore implements Store {
         this.base.listColumns
           ? this.base.listColumns(table, columns, options)
           : (await this.base.list(table, options)).map((r) =>
-              pickColumns(r, columns),
+              projectJson(pickColumns(r, columns), options.jsonKeys as never),
             ),
     );
   }
