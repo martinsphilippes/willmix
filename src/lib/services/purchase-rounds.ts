@@ -135,7 +135,9 @@ async function createRoundOrder(
   const lines = round.items
     .map((it) => {
       const item = parentItems.find((p) => p.productId === it.productId);
-      return item ? { item, quantity: it.quantity } : null;
+      return item
+        ? { item, quantity: it.quantity, colors: it.colors ?? null }
+        : null;
     })
     .filter((x): x is NonNullable<typeof x> => !!x && x.quantity > 0);
   if (!lines.length) throw new PurchaseRoundsError("rounds_empty");
@@ -212,6 +214,8 @@ async function createRoundOrder(
       ...(l.item.variantId
         ? { variantId: l.item.variantId, variant: l.item.variant ?? null }
         : {}),
+      // Peças de cada cor desta rodada (gravadas no pai; nada é refeito).
+      ...(l.colors?.length ? { colors: l.colors } : {}),
     });
   await audit(
     user,

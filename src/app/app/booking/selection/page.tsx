@@ -51,6 +51,8 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { SelectionQuantity } from "@/components/selection-quantity";
+import { SelectionVariations } from "@/components/selection-variations";
+import { colorsOf } from "@/lib/color-split";
 import {
   openGroupRequestsAction,
   saveSelectionGroupAction,
@@ -378,22 +380,44 @@ export default async function BookingSelectionPage({
                 {basket ? null : (
                   <>
                     <td className={cx(td, "text-center")}>
-                      <input
-                        type="radio"
-                        name="chosen"
-                        value={item.id}
-                        disabled={busy}
-                        defaultChecked={
-                          !busy && current?.chosenItemId === item.id
-                        }
+                      {/* Botão "Escolher" (dono, 14/11/2026): o rádio
+                          `chosen` fica dentro dele, escondido; o clique marca
+                          o vencedor (o destaque e o recolher dos demais são
+                          do CSS) e "Gravar escolha" grava. */}
+                      <label
+                        className={cx(
+                          "inline-flex cursor-pointer items-center justify-center rounded-md border px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition",
+                          "border-brand-300 bg-white text-brand-700 hover:bg-brand-50",
+                          "has-[:checked]:border-brand-600 has-[:checked]:bg-brand-600 has-[:checked]:text-white",
+                          "has-[:disabled]:cursor-not-allowed has-[:disabled]:border-zinc-200 has-[:disabled]:bg-zinc-50 has-[:disabled]:text-zinc-400",
+                          "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-600",
+                        )}
                         title={
                           draft
                             ? t("supplierRequests.selection.draftHint")
-                            : undefined
+                            : t("colors.chooseHint")
                         }
-                        aria-label={`${col("choose")} ${item.description ?? item.factoryItemCode ?? ""}`}
-                        data-selection-choose={item.id}
-                      />
+                        data-selection-choose-button={item.id}
+                      >
+                        <input
+                          type="radio"
+                          name="chosen"
+                          value={item.id}
+                          disabled={busy}
+                          defaultChecked={
+                            !busy && current?.chosenItemId === item.id
+                          }
+                          className="peer sr-only"
+                          aria-label={`${col("choose")} ${item.description ?? item.factoryItemCode ?? ""}`}
+                          data-selection-choose={item.id}
+                        />
+                        <span className="peer-checked:hidden">
+                          {t("colors.choose")}
+                        </span>
+                        <span className="hidden peer-checked:inline">
+                          ✓ {t("colors.chosen")}
+                        </span>
+                      </label>
                     </td>
                   </>
                 )}
@@ -594,6 +618,35 @@ export default async function BookingSelectionPage({
         />
         {costHint}
         {table}
+        {/* Vencedor marcado: a barra com "Rever opções" e o card "Variações"
+            (cores do Book do item) logo abaixo dele (dono, 14/11/2026). */}
+        <SelectionVariations
+          items={list.map(({ item }) => ({
+            id: item.id,
+            name:
+              item.description ??
+              item.productName ??
+              item.factoryItemCode ??
+              item.id,
+            colors: colorsOf(item.colorAssortment),
+          }))}
+          chosenItemId={current?.chosenItemId ?? null}
+          savedColors={current?.colorPlan?.included ?? null}
+          labels={{
+            intl,
+            chosen: t("colors.chosen"),
+            collapsed: t("colors.collapsed", { n: "{n}" }),
+            review: t("colors.review"),
+            reviewHint: t("colors.reviewHint"),
+            title: t("colors.card.title"),
+            hint: t("colors.card.hint"),
+            include: t("colors.card.include", { color: "{color}" }),
+            excluded: t("colors.card.excluded"),
+            count: t("colors.card.count", { n: "{n}", total: "{total}" }),
+            pieces: t("colors.card.pieces", { n: "{n}" }),
+            line: t("colors.line", { product: "{product}", color: "{color}" }),
+          }}
+        />
 
         {/* A escolha em cima e os prompts de IA logo abaixo: cada cartão ocupa
             a largura toda da área de conteúdo (pedido do dono, 13/11/2026). */}
@@ -622,7 +675,32 @@ export default async function BookingSelectionPage({
                       item.heightCm,
                     ),
                   sheetQty: sheetQuantity(item),
+                  colors: colorsOf(item.colorAssortment),
                 }))}
+                savedColors={current?.colorPlan?.included ?? null}
+                colorLabels={{
+                  title: t("colors.preview.title"),
+                  hint: t("colors.preview.hint"),
+                  single: t("colors.preview.single"),
+                  round: t("colors.preview.round", {
+                    n: "{n}",
+                    date: "{date}",
+                  }),
+                  subtotal: t("colors.preview.subtotal"),
+                  total: t("colors.preview.total"),
+                  color: t("colors.preview.color"),
+                  pieces: t("colors.preview.pieces"),
+                  cartons: t("colors.preview.cartons"),
+                  adjust: t("colors.adjust", {
+                    pieces: "{pieces}",
+                    where: "{where}",
+                    carton: "{carton}",
+                    down: "{down}",
+                    up: "{up}",
+                  }),
+                  adjustWhere: t("colors.adjustWhere", { n: "{n}" }),
+                  none: t("colors.none"),
+                }}
                 gen={{
                   title: t("purchaseRounds.gen.title"),
                   hint: t("purchaseRounds.gen.hint"),
@@ -1245,6 +1323,14 @@ export default async function BookingSelectionPage({
                                                           .intervalDays,
                                                       },
                                                     )}`
+                                                  : null}
+                                                {g!.colorPlan?.rows.length
+                                                  ? ` · ${t("colors.byColor")}: ${g!.colorPlan.rows
+                                                      .map(
+                                                        (r) =>
+                                                          `${r.color} ${r.quantity.toLocaleString(intl)}`,
+                                                      )
+                                                      .join(", ")}`
                                                   : null}
                                               </span>
                                             ) : (

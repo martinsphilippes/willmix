@@ -1011,8 +1011,12 @@ export interface PurchaseRound {
   index: number;
   /** AAAA-MM-DD: o dia em que o pedido filho nasce. */
   expectedAt: string;
-  /** Peças de cada produto nesta rodada. */
-  items: Array<{ productId: string; quantity: number }>;
+  /** Peças de cada produto nesta rodada (e de cada cor, quando há variações). */
+  items: Array<{
+    productId: string;
+    quantity: number;
+    colors?: ColorQuantity[] | null;
+  }>;
   /** Pedido filho desta rodada (nulo até nascer). */
   orderId: string | null;
   createdAt: string | null;
@@ -1028,6 +1032,11 @@ export interface OrderItem extends BaseRow {
   /** Variação pedida e a cópia dos valores dela (copiadas da solicitação). */
   variantId?: string | null;
   variant?: VariantSnapshot | null;
+  /**
+   * Peças por cor do produto (variações escolhidas na Seleção): uma linha por
+   * cor na tela, somando `quantity`. Nulo = sem variações.
+   */
+  colors?: ColorQuantity[] | null;
   /** SEQUENCIA do item na nota do Sankhya (a nota é o sankhyaCode do pedido). */
   sankhyaCode?: string | null;
   /**
@@ -1559,6 +1568,24 @@ export interface RequestScheduleItem {
   /** AAAA-MM-DD: 1ª data + intervalo × (n − 1). */
   expectedAt: string;
 }
+/** Peças de uma cor (linha por cor do produto, no pedido e na rodada). */
+export interface ColorQuantity {
+  color: string;
+  quantity: number;
+}
+
+/**
+ * Plano de cores da escolha e da solicitação ao fornecedor: todas as cores do
+ * item do Book (`colors`, que não mudam), as incluídas na compra e as peças de
+ * cada cor, no total e por data (`rounds` na ordem de `schedule.items`; sem
+ * programação, uma data só). As linhas somam a quantidade.
+ */
+export interface ColorPlan {
+  colors: string[];
+  included: string[];
+  rows: Array<{ color: string; quantity: number; rounds: number[] }>;
+}
+
 export interface RequestSchedule {
   intervalDays: number;
   /** AAAA-MM-DD da 1ª entrega prevista. */
@@ -2621,6 +2648,8 @@ export interface SupplierRequest extends BaseRow {
    * rodada e intervalo (docs/PURCHASE_SCHEDULE.md). `quantity` é o total.
    */
   schedule?: RequestSchedule | null;
+  /** Variações de cor copiadas da escolha (peças por cor e por data). */
+  colorPlan?: ColorPlan | null;
   /** Referências geradas por IA na escolha do grupo (imagens e ficha); o fornecedor vê. */
   aiAssets?: AiReferenceAsset[] | null;
   /**
@@ -2698,6 +2727,12 @@ export interface SelectionGroup extends BaseRow {
   updatedByUserId: string | null;
   /** Programação de compra: rodadas com peças e intervalo; `quantity` é o total. */
   schedule?: RequestSchedule | null;
+  /**
+   * Variações de cor do vencedor (docs/PURCHASE_SCHEDULE.md, "Cores"): as
+   * cores do Book, as incluídas e as peças de cada cor por data. Nulo = item
+   * sem variações (uma linha só).
+   */
+  colorPlan?: ColorPlan | null;
   /**
    * Prompts de IA da escolha (imagens e ficha para o fornecedor,
    * docs/SUPPLIER_REQUESTS.md "Referências por IA"). Nulo = os padrões das
@@ -3378,6 +3413,7 @@ export const TABLES: Record<TableName, TableDef> = {
       unitPrice: float(),
       variantId: id(false),
       variant: json(),
+      colors: json(),
       sankhyaCode: str(40),
       sankhyaRefs: json(),
     },
@@ -4646,6 +4682,7 @@ export const TABLES: Record<TableName, TableDef> = {
       orderId: id(false),
       batchId: id(false),
       schedule: json(),
+      colorPlan: json(),
       aiAssets: json(),
       sampling: jsonLarge(),
     },
@@ -4670,6 +4707,7 @@ export const TABLES: Record<TableName, TableDef> = {
       createdByUserId: id(),
       updatedByUserId: id(false),
       schedule: json(),
+      colorPlan: json(),
       aiPrompts: json(),
       aiAssets: json(),
     },

@@ -50,6 +50,11 @@ export interface OrderDocumentItem {
   /** Pedido de compra: MOQ e prazo negociados com o fornecedor, por produto. */
   moq?: number | null;
   leadTimeDays?: number | null;
+  /**
+   * Variações de cor (peças de cada cor do produto). Só existe com cores: o
+   * conteúdo dos pedidos sem variações (e o hash já assinado) não muda.
+   */
+  colors?: Array<{ color: string; quantity: number }>;
 }
 
 /** O conteúdo que as partes assinam. Mudou qualquer campo, muda a versão. */
@@ -156,6 +161,14 @@ export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
         unit: item.unit,
         unitPrice: unitPrice === null ? null : round(unitPrice, 4),
         total: unitPrice === null ? null : round(unitPrice * item.quantity, 2),
+        ...(item.colors?.length
+          ? {
+              colors: item.colors.map((c) => ({
+                color: c.color,
+                quantity: c.quantity,
+              })),
+            }
+          : {}),
       };
     });
   // Pedido de compra: MOQ e prazo negociados de cada produto, o incoterm da

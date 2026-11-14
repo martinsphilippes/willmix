@@ -78,6 +78,8 @@ export function bookingSheet(
   supplier: string,
   code: string,
   description: string,
+  /** Cores do item (coluna COLOR ASSORTMENT), ex.: "BEGE / CARVALHO / MARROM". */
+  colors?: string,
 ) {
   const row = [
     "2026.10.13",
@@ -107,7 +109,17 @@ export function bookingSheet(
     mimeType:
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     buffer: Buffer.from(
-      xlsxBytes([{ name: "BOOKING", cells: [BOOKING_HEADER, row] }]),
+      xlsxBytes([
+        {
+          name: "BOOKING",
+          cells: colors
+            ? [
+                [...BOOKING_HEADER, "COLOR ASSORTMENT"],
+                [...row, colors],
+              ]
+            : [BOOKING_HEADER, row],
+        },
+      ]),
     ),
   };
 }
@@ -209,6 +221,22 @@ export async function importAndClose(
 }
 
 /**
+ * "Escolher" na linha do item (Seleção de itens): o botão marca o vencedor e
+ * recolhe os demais. Com a linha recolhida, abre "Rever opções" antes.
+ */
+export async function chooseItem(page: Page, hasText: string) {
+  const row = page.locator("[data-selection-item]", { hasText });
+  if (!(await row.isVisible()))
+    await page
+      .locator(
+        "[data-selection-winner-bar] label:has(input[data-selection-review])",
+      )
+      .click();
+  await row.locator("[data-selection-choose-button]").click();
+  await expect(row.locator("input[data-selection-choose]")).toBeChecked();
+}
+
+/**
  * Seleção de itens (docs/SUPPLIER_REQUESTS.md): a busca pela marca traz os
  * dois itens; agrupa, escolhe `chosen` (código) com `alternative` de
  * alternativa, grava e abre a solicitação ao fornecedor do escolhido.
@@ -234,10 +262,7 @@ export async function selectAndOpenSupplierRequest(
   await page.click("[data-selection-group]");
   await page.waitForURL(/tab=selection&ids=/);
   await expect(page.locator("[data-selection-item]")).toHaveCount(2);
-  await page
-    .locator("[data-selection-item]", { hasText: chosen })
-    .locator("input[data-selection-choose]")
-    .check();
+  await chooseItem(page, chosen);
   // Sem a coluna "Alternativa" (dono, 13/11/2026): só se escolhe o ganhador
   // e "Foto" vem logo depois de "Escolher". O outro item do grupo continua
   // indo como alternativa da solicitação (quem chama confere mais adiante).

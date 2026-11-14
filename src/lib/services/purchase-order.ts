@@ -6,6 +6,7 @@ import {
   withoutPlaceholder,
 } from "@/lib/placeholder-name";
 import { buildPurchaseRounds } from "@/lib/purchase-rounds";
+import { colorTotals, planMatches, splitByColor } from "@/lib/color-split";
 import { assertCan } from "@/lib/auth/function-access";
 
 import { assertWellmix } from "@/lib/auth/permissions";
@@ -14,6 +15,7 @@ import {
   getStore,
   ORDER_EXTRA_DEFAULTS,
   REQUEST_EXTRA_DEFAULTS,
+  type ColorQuantity,
   type Order,
   type Party,
   type Product,
@@ -193,7 +195,12 @@ export async function createPurchaseOrder(
     if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 1e9)
       throw new PurchaseOrderError("purchase_order_qty_invalid");
     const unitPrice = request.supplierPrice ?? request.item.price ?? null;
-    return { request, product, quantity, unitPrice };
+    // Variações de cor (docs/PURCHASE_SCHEDULE.md, "Cores"): a divisão
+    // gravada na escolha. Quantidade mudada aqui (pedido sem programação):
+    // dividida de novo entre as mesmas cores, em caixas master inteiras; se
+    // não fecha, recusa (nada muda sozinho).
+    const colors = orderColors(request, quantity);
+    return { request, product, quantity, unitPrice, colors };
   });
   if (ordered.some((o) => !o.product))
     throw new PurchaseOrderError("purchase_order_not_ready");
@@ -203,6 +210,7 @@ export async function createPurchaseOrder(
     ordered.map((o) => ({
       productId: o.product.id,
       schedule: o.request.schedule ?? null,
+      colorPlan: o.request.colorPlan ?? null,
     })),
   );
   if ("error" in planned) throw new PurchaseOrderError(planned.error);
@@ -273,6 +281,7 @@ export async function createPurchaseOrder(
       quantity: o.quantity,
       unit: "pcs",
       unitPrice: o.unitPrice,
+      ...(o.colors ? { colors: o.colors } : {}),
     });
   for (const o of ordered)
     await store.update("supplier_requests", o.request.id, {
@@ -294,6 +303,27 @@ export async function createPurchaseOrder(
   await createStagesForOrder(fresh);
   await notifySalesOfPurchase(fresh);
   return (await store.get("orders", order.id)) ?? fresh;
+}
+
+/**
+ * Peças por cor do item do pedido: as da escolha (a soma bate com a
+ * quantidade) ou, com a quantidade mudada, a mesma divisão refeita entre as
+ * cores incluídas. Sem variações: nulo.
+ */
+export function orderColors(
+  request: Pick<SupplierRequest, "colorPlan" | "quantity" | "item">,
+  quantity: number,
+): ColorQuantity[] | null {
+  const plan = request.colorPlan;
+  if (!plan?.rows.length) return null;
+  if (planMatches(plan, quantity)) return colorTotals(plan);
+  const split = splitByColor({
+    rounds: [quantity],
+    colors: plan.included,
+    carton: request.item.masterCartonQty,
+  });
+  if (!split.ok) throw new PurchaseOrderError("purchase_order_colors_cartons");
+  return split.rows.map((r) => ({ color: r.color, quantity: r.quantity }));
 }
 
 /* ------------------------------------------------------------------------ */
