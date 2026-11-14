@@ -321,18 +321,28 @@ export async function savePlan(user: User, orderId: string, input: PlanInput) {
   return updated;
 }
 
-/** Follows que já venceram e ainda não foram registrados. */
-export function followupsDue(
+/** Follows ainda não registrados, vencidos ou não (com a data de cada um). */
+export function followupsOpen(
   track: Pick<ProductionTrack, "productionStartAt" | "followups"> | null,
-  now = new Date(),
 ): { day: number; dueAt: string }[] {
   if (!track?.productionStartAt) return [];
   const start = Date.parse(track.productionStartAt);
   if (Number.isNaN(start)) return [];
   const done = new Set((track.followups ?? []).map((f) => f.day));
-  return FOLLOWUP_DAYS.filter((d) => !done.has(d))
-    .map((d) => ({ day: d, dueAt: new Date(start + d * DAY).toISOString() }))
-    .filter((f) => Date.parse(f.dueAt) <= now.getTime());
+  return FOLLOWUP_DAYS.filter((d) => !done.has(d)).map((d) => ({
+    day: d,
+    dueAt: new Date(start + d * DAY).toISOString(),
+  }));
+}
+
+/** Follows que já venceram e ainda não foram registrados. */
+export function followupsDue(
+  track: Pick<ProductionTrack, "productionStartAt" | "followups"> | null,
+  now = new Date(),
+): { day: number; dueAt: string }[] {
+  return followupsOpen(track).filter(
+    (f) => Date.parse(f.dueAt) <= now.getTime(),
+  );
 }
 
 /** Wellmix registra o follow do dia (5, 15 ou 25). Atraso avisa o planner. */
@@ -750,31 +760,16 @@ export async function productionTasks(
   const out: ProductionTaskDraft[] = [];
   const latest = [...latestByItem(rows).values()];
   const wellmix = isWellmix(user);
+  const now = new Date();
   for (const order of live) {
     if (wellmix) {
       const track = tracks.find((t) => t.orderId === order.id) ?? null;
-      for (const f of followupsDue(track))
-        out.push({
-          kind: "production_follow",
-          order,
-          title: `Follow de ${f.day} dias: pedido #${order.number}`,
-          detail: `ETD ${day(track?.etd ?? null)}`,
-          dueAt: f.dueAt,
-        });
-      const fixed = latest.filter(
-        (r) =>
-          r.orderId === order.id &&
-          r.result === "rejected" &&
-          r.supplierRespondedAt,
-      );
-      if (fixed.length)
-        out.push({
-          kind: "sku_inspection",
-          order,
-          title: `Inspecionar de novo: pedido #${order.number}`,
-          detail: `${fixed.length} SKU(s) corrigido(s) pelo fornecedor`,
-          dueAt: track?.inspectionScheduledAt ?? null,
-        });
+      const mine = latest.filter((r) => r.orderId === order.id);
+      for (const c of dueProductionCandidates(
+        wellmixProductionCandidates(order, track, mine),
+        now,
+      ))
+        out.push({ ...c, order });
     } else if (user.role === "supplier" && order.supplierId === user.partyId) {
       const open = latest.filter(
         (r) =>
@@ -801,4 +796,57 @@ export async function productionTasks(
     }
   }
   return out;
+}
+
+/**
+ * Pendência de produção da Wellmix antes do dia de hoje (guardada no resumo
+ * do pedido, docs/RESUMOS.md): o follow entra com a data dele, ainda que não
+ * tenha vencido; a leitura mostra só os vencidos (`dueProductionCandidates`).
+ */
+export type ProductionCandidate = Omit<ProductionTaskDraft, "order">;
+
+/**
+ * Pendências de produção da Wellmix de um pedido (função pura): follows
+ * 5/15/25 ainda não registrados e reinspeção dos SKUs corrigidos. `latest`:
+ * a última inspeção de cada SKU do pedido (`latestByItem`).
+ */
+export function wellmixProductionCandidates(
+  order: Pick<Order, "number">,
+  track: Pick<
+    ProductionTrack,
+    "productionStartAt" | "followups" | "etd" | "inspectionScheduledAt"
+  > | null,
+  latest: Pick<SkuInspection, "result" | "supplierRespondedAt">[],
+): ProductionCandidate[] {
+  const out: ProductionCandidate[] = [];
+  for (const f of followupsOpen(track))
+    out.push({
+      kind: "production_follow",
+      title: `Follow de ${f.day} dias: pedido #${order.number}`,
+      detail: `ETD ${day(track?.etd ?? null)}`,
+      dueAt: f.dueAt,
+    });
+  const fixed = latest.filter(
+    (r) => r.result === "rejected" && r.supplierRespondedAt,
+  );
+  if (fixed.length)
+    out.push({
+      kind: "sku_inspection",
+      title: `Inspecionar de novo: pedido #${order.number}`,
+      detail: `${fixed.length} SKU(s) corrigido(s) pelo fornecedor`,
+      dueAt: track?.inspectionScheduledAt ?? null,
+    });
+  return out;
+}
+
+/** O que já vale hoje: o follow só depois da data dele. */
+export function dueProductionCandidates<T extends ProductionCandidate>(
+  candidates: T[],
+  now: Date,
+): T[] {
+  return candidates.filter(
+    (c) =>
+      c.kind !== "production_follow" ||
+      (!!c.dueAt && Date.parse(c.dueAt) <= now.getTime()),
+  );
 }

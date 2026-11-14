@@ -2746,10 +2746,14 @@ export interface OrderSummary extends BaseRow {
    */
   kpi?: unknown;
   /**
-   * Pendências da Wellmix nas etapas em andamento do pedido (`TaskDraft`s com
-   * a ordem da etapa, src/lib/services/tasks.ts): as mesmas para toda a equipe.
+   * Pendências da Wellmix do pedido (`StoredTasks`, src/lib/services/order-summary.ts):
+   * as das etapas em andamento, prontas, e as de produção, embarque,
+   * certificação, artes e "Pagar fornecedor", com o que a leitura usa para
+   * saber de quem cada uma é (docs/RESUMOS.md, "Pendências").
    */
   tasks?: unknown;
+  /** O pedido tem pendência guardada em `tasks` (a tela de Pendências lê só esses). */
+  hasTasks?: boolean;
 }
 
 /**
@@ -4778,10 +4782,12 @@ export const TABLES: Record<TableName, TableDef> = {
       computedAt: datetime(),
       kpi: json(),
       tasks: jsonLarge(),
+      hasTasks: bool(),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_live", type: "key", columns: ["live"] },
+      { key: "by_has_tasks", type: "key", columns: ["hasTasks"] },
     ],
   },
   kpi_snapshots: {
