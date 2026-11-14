@@ -21,7 +21,7 @@ import {
   type TypedQuantity,
 } from "@/lib/purchase-rounds";
 import { scheduleTotal, splitEvenly } from "@/lib/workflow/request-schedule";
-import { splitByColor } from "@/lib/color-split";
+import { splitByColor, spreadCartons } from "@/lib/color-split";
 
 /*
  * Quantidade da escolha do grupo com a programação de compra
@@ -85,6 +85,10 @@ export interface ColorPreviewLabels {
   /** " na programação {n}". */
   adjustWhere: string;
   none: string;
+  /** Caixas por cor digitadas: o total é a soma. */
+  custom: string;
+  /** Voltar à divisão igual. */
+  reset: string;
 }
 
 /** Evento do formulário com as cores incluídas do vencedor (card "Variações"). */
@@ -95,6 +99,17 @@ export const SPLIT_EVENT = "selection:split";
 export interface ColorsEventDetail {
   itemId: string;
   colors: string[];
+}
+/**
+ * Evento do card "Variações": caixas digitadas para uma cor (dono,
+ * 14/11/2026), ou `reset` para voltar à divisão igual.
+ */
+export const CARTONS_EVENT = "selection:cartons";
+export interface CartonsEventDetail {
+  itemId: string;
+  color?: string;
+  cartons?: number;
+  reset?: boolean;
 }
 export interface SplitEventDetail {
   itemId: string | null;
@@ -194,6 +209,7 @@ export function SelectionQuantity({
   chosenItemId,
   containerTypes,
   savedColors = null,
+  savedCartons = null,
   colorLabels,
 }: {
   label: string;
@@ -210,6 +226,8 @@ export function SelectionQuantity({
   containerTypes: Array<{ code: string; capacityCbm: number }>;
   /** Cores incluídas na escolha gravada (do item `chosenItemId`). */
   savedColors?: string[] | null;
+  /** Caixas por cor digitadas na escolha gravada (do `chosenItemId`). */
+  savedCartons?: Record<string, number> | null;
   colorLabels: ColorPreviewLabels;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -265,6 +283,25 @@ export function SelectionQuantity({
   const [colorsPicked, setColorsPicked] = useState<ColorsEventDetail | null>(
     null,
   );
+  // Caixas digitadas por cor (o total do pedido passa a ser a soma). Valem
+  // enquanto somam as peças da tela; mexer no total ou nas datas depois
+  // volta à divisão igual.
+  const [custom, setCustom] = useState<{
+    itemId: string;
+    cartons: Record<string, number>;
+  } | null>(() =>
+    chosenItemId && savedCartons
+      ? { itemId: chosenItemId, cartons: savedCartons }
+      : null,
+  );
+  // O que a última renderização mostrou: as rodadas da tela, o `apply` da
+  // programação e a divisão por cor (para editar a partir dela).
+  const liveRef = useRef<number[]>([]);
+  const applyRef = useRef<((q: number[]) => void) | null>(null);
+  const shownRef = useRef<{
+    itemId: string;
+    cartons: Record<string, number>;
+  } | null>(null);
 
   // Marcou outro item (ou nenhum): o que vinha do anterior sai. O aviso e o
   // arredondamento anotados somem; a programação ainda não gravada sai da
@@ -315,8 +352,11 @@ export function SelectionQuantity({
       if (el instanceof HTMLInputElement && el.name === "chosen" && el.checked)
         markItem(el.value);
     };
-    const onColors = (e: Event) =>
-      setColorsPicked((e as CustomEvent<ColorsEventDetail>).detail);
+    const onColors = (e: Event) => {
+      const detail = (e as CustomEvent<ColorsEventDetail>).detail;
+      colorsChanged(detail);
+      setColorsPicked(detail);
+    };
     // Variações: com a composição por cor sem fechar caixas inteiras, nada é
     // gravado; a tela já diz o ajuste (o servidor também recusa).
     const onSubmit = (e: SubmitEvent) => {
@@ -327,15 +367,19 @@ export function SelectionQuantity({
       e.preventDefault();
       blocked.scrollIntoView({ block: "center", behavior: "smooth" });
     };
+    const onCartons = (e: Event) =>
+      typeCartons((e as CustomEvent<CartonsEventDetail>).detail);
     const frame = requestAnimationFrame(sync);
     form.addEventListener("change", onChange);
     form.addEventListener(COLORS_EVENT, onColors);
+    form.addEventListener(CARTONS_EVENT, onCartons);
     form.addEventListener("submit", onSubmit);
     window.addEventListener("pageshow", sync);
     return () => {
       cancelAnimationFrame(frame);
       form.removeEventListener("change", onChange);
       form.removeEventListener(COLORS_EVENT, onColors);
+      form.removeEventListener(CARTONS_EVENT, onCartons);
       form.removeEventListener("submit", onSubmit);
       window.removeEventListener("pageshow", sync);
     };
@@ -635,7 +679,84 @@ export function SelectionQuantity({
     );
   };
 
+  /**
+   * Caixas de uma cor digitadas no card (dono, 14/11/2026): as outras cores
+   * ficam como estão e o total do pedido vira a soma das cores. Com a
+   * programação, o novo total é espalhado pelas datas na proporção de cada
+   * uma (caixas inteiras); sem ela, vira a quantidade.
+   */
+  const typeCartons = useEffectEvent((d: CartonsEventDetail) => {
+    if (!item || item.id !== d.itemId) return;
+    if (d.reset) {
+      setCustom(null);
+      return;
+    }
+    const per = item.masterCartonQty;
+    if (!per || per < 1 || !d.color || d.cartons === undefined) return;
+    const base =
+      shownRef.current?.itemId === item.id ? shownRef.current.cartons : {};
+    retotal(
+      item.id,
+      per,
+      {
+        ...(custom?.itemId === item.id ? custom.cartons : {}),
+        ...base,
+        [d.color]: Math.max(0, Math.round(d.cartons)),
+      },
+      Object.keys(base),
+    );
+  });
+
+  /** Grava as caixas por cor e faz do total a soma das cores incluídas. */
+  function retotal(
+    itemId: string,
+    per: number,
+    map: Record<string, number>,
+    included: string[],
+  ) {
+    const total = included.reduce((s, c) => s + (map[c] ?? 0), 0);
+    setCustom({ itemId, cartons: map });
+    setNote(null);
+    setError(null);
+    const live = liveRef.current;
+    if (scheduled && live.length && applyRef.current)
+      applyRef.current(spreadCartons(total, live).map((n) => n * per));
+    else {
+      setQty(String(total * per));
+      setAmountEdit(null);
+    }
+  }
+
+  /**
+   * Com caixas digitadas, tirar uma cor tira as caixas dela do total; pôr de
+   * volta devolve as que ela tinha (ou a média das outras).
+   */
+  const colorsChanged = useEffectEvent((d: ColorsEventDetail) => {
+    const before = shownRef.current;
+    if (!item || item.id !== d.itemId || custom?.itemId !== item.id) return;
+    if (!before || before.itemId !== item.id) return;
+    const was = Object.keys(before.cartons);
+    if (
+      was.length === d.colors.length &&
+      d.colors.every((c) => was.includes(c))
+    )
+      return;
+    const per = item.masterCartonQty;
+    if (!per || per < 1 || !d.colors.length) return;
+    const known = d.colors.filter((c) => c in before.cartons);
+    const avg = known.length
+      ? Math.round(
+          known.reduce((s, c) => s + before.cartons[c], 0) / known.length,
+        )
+      : 0;
+    const map = { ...custom.cartons, ...before.cartons };
+    for (const c of d.colors) if (!(c in map)) map[c] = avg;
+    retotal(item.id, per, map, d.colors);
+  });
+
   const generator = (apply: (q: number[]) => void, live: number[]) => {
+    applyRef.current = apply;
+    liveRef.current = live;
     const roundsValue =
       roundsEdit && roundsEdit.at === live.length
         ? roundsEdit.text
@@ -911,11 +1032,33 @@ export function SelectionQuantity({
         </div>
       );
     if (!(rounds.reduce((s, q) => s + q, 0) > 0)) return null;
+    // Caixas digitadas por cor: valem enquanto somam as peças da tela.
+    const per = item.masterCartonQty ?? 0;
+    const typed =
+      custom?.itemId === item.id && per > 0
+        ? Object.fromEntries(
+            included.map((c) => [c, custom.cartons[c] ?? 0] as const),
+          )
+        : null;
+    const active =
+      !!typed &&
+      Object.values(typed).reduce((s, n) => s + n, 0) * per ===
+        rounds.reduce((s, q) => s + q, 0);
     const out = splitByColor({
       rounds,
       colors: included,
       carton: item.masterCartonQty,
+      cartons: active ? typed : null,
     });
+    shownRef.current =
+      out.ok && per > 0
+        ? {
+            itemId: item.id,
+            cartons: Object.fromEntries(
+              out.rows.map((r) => [r.color, Math.round(r.quantity / per)]),
+            ),
+          }
+        : null;
     const where = (i: number) =>
       single ? "" : fill(cl.adjustWhere, { n: i + 1 });
     if (!out.ok)
@@ -929,13 +1072,15 @@ export function SelectionQuantity({
           >
             {out.error === "colors_none"
               ? cl.none
-              : fill(cl.adjust, {
-                  pieces: fmt(out.pieces),
-                  where: where(out.round),
-                  carton: fmt(out.carton),
-                  down: fmt(out.down),
-                  up: fmt(out.up),
-                })}
+              : out.error === "colors_total"
+                ? cl.none
+                : fill(cl.adjust, {
+                    pieces: fmt(out.pieces),
+                    where: where(out.round),
+                    carton: fmt(out.carton),
+                    down: fmt(out.down),
+                    up: fmt(out.up),
+                  })}
           </p>
         </div>
       );
@@ -968,7 +1113,29 @@ export function SelectionQuantity({
           }}
         />
         <p className="text-xs font-semibold text-zinc-800">{cl.title}</p>
-        <p className="text-[11px] text-zinc-500">{cl.hint}</p>
+        {active ? (
+          <p
+            className="flex flex-wrap items-center gap-x-2 text-[11px] text-zinc-600"
+            data-color-custom
+          >
+            <input
+              type="hidden"
+              name={`colorCartons.${item.id}`}
+              value={JSON.stringify(typed)}
+            />
+            <span>{cl.custom}</span>
+            <button
+              type="button"
+              onClick={() => setCustom(null)}
+              className="font-medium text-brand-700 underline underline-offset-2"
+              data-color-reset
+            >
+              {cl.reset}
+            </button>
+          </p>
+        ) : (
+          <p className="text-[11px] text-zinc-500">{cl.hint}</p>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full min-w-72 text-xs">
             <thead>

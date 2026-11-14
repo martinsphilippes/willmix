@@ -62,6 +62,11 @@ export interface SaveSelectionGroupInput {
    */
   colors?: string[] | null;
   /**
+   * Caixas de cada cor digitadas no card "Variações" (dono, 14/11/2026). Nulo
+   * ou ausente: a divisão igual entre as cores.
+   */
+  colorCartons?: Record<string, number> | null;
+  /**
    * Prompts de IA digitados (undefined = não veio no formulário, fica o que
    * estava; null = os padrão das Configurações).
    */
@@ -122,12 +127,15 @@ export async function saveSelectionGroup(
       ? schedule.items.map((i) => i.quantity)
       : [Math.round(quantity)],
     carton: chosen.masterCartonQty,
+    cartons: input.colorCartons ?? null,
   });
   if ("error" in colored)
     throw new SupplierRequestError(
       colored.error.error === "colors_none"
         ? "selection_colors_none"
-        : "selection_colors_cartons",
+        : colored.error.error === "colors_total"
+          ? "selection_colors_total"
+          : "selection_colors_cartons",
     );
   const colorPlan = colored.plan;
 

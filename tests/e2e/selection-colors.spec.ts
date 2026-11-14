@@ -112,7 +112,9 @@ test("vencedor, variações de cor e composição por data até a solicitação"
   await expect(preview.locator("[data-color-grand]")).toHaveText("2.880");
 
   // 5. Cor retirada: só BEGE e MARROM, 720 de cada por data.
-  await card.locator('[data-selection-color="CARVALHO"] input').uncheck();
+  await card
+    .locator('[data-selection-color="CARVALHO"] input[type=checkbox]')
+    .uncheck();
   await expect(card.locator("[data-selection-variations-count]")).toHaveText(
     "2 de 3 cores na compra",
   );
@@ -123,7 +125,9 @@ test("vencedor, variações de cor e composição por data até a solicitação"
   await expect(
     round(1).locator('[data-color-line="BEGE"] [data-color-pieces]'),
   ).toHaveText("720");
-  await card.locator('[data-selection-color="CARVALHO"] input').check();
+  await card
+    .locator('[data-selection-color="CARVALHO"] input[type=checkbox]')
+    .check();
 
   // 6. Divisão desigual: 61 caixas em 2 datas (31 + 30) e 3 cores. A 1ª
   // data dá 11, 10 e 10 caixas; a 2ª, 10 de cada (o saldo vai para a 1ª cor).
@@ -156,6 +160,42 @@ test("vencedor, variações de cor e composição por data até a solicitação"
   await expect(adjust).toHaveCount(0);
   await expect(preview.locator("[data-color-grand]")).toHaveText("2.928");
 
+  // 7b. Caixas por cor livres (dono, 14/11/2026): BEGE vai de 21 para 30
+  // caixas, as outras ficam com 20 e o total vira a soma (70 caixas = 3.360
+  // peças), espalhada pelas datas (36 + 34 caixas).
+  const bege = card.locator(
+    '[data-selection-color="BEGE"] [data-selection-color-cartons]',
+  );
+  await expect(bege).toHaveValue("21");
+  await bege.fill("30");
+  await bege.press("Enter");
+  await expect(page.locator("[data-selection-quantity]")).toHaveValue("3360");
+  await expect(preview.locator("[data-color-grand]")).toHaveText("3.360");
+  await expect(preview.locator('[data-color-total="BEGE"]')).toContainText(
+    "1.440",
+  );
+  await expect(preview.locator('[data-color-total="MARROM"]')).toContainText(
+    "960",
+  );
+  await expect(round(1).locator("[data-color-subtotal]")).toHaveText("1.728");
+  await expect(round(2).locator("[data-color-subtotal]")).toHaveText("1.632");
+  await expect(
+    card.locator('[data-selection-color="BEGE"] [data-selection-color-pieces]'),
+  ).toHaveText("1.440 peças");
+  await expect(
+    card.locator(
+      '[data-selection-color="CARVALHO"] [data-selection-color-cartons]',
+    ),
+  ).toHaveValue("20");
+  await expect(
+    preview.locator('[data-color-custom] input[name^="colorCartons."]'),
+  ).toHaveValue('{"BEGE":30,"CARVALHO":20,"MARROM":20}');
+  // "Dividir igualmente" volta à divisão igual, com o mesmo total.
+  await preview.locator("[data-color-reset]").click();
+  await expect(preview.locator("[data-color-custom]")).toHaveCount(0);
+  await expect(bege).toHaveValue("24");
+  await expect(preview.locator("[data-color-grand]")).toHaveText("3.360");
+
   // 8. Produto sem variações: sem o card, uma linha só (fluxo de sempre).
   await chooseItem(page, plain);
   await expect(rowA).toBeHidden();
@@ -167,7 +207,9 @@ test("vencedor, variações de cor e composição por data até a solicitação"
   // 9. Grava com CARVALHO fora e duas datas.
   await page.locator("[data-generate-total]").fill("61");
   await gen.locator("[data-generate-submit]").click();
-  await card.locator('[data-selection-color="CARVALHO"] input').uncheck();
+  await card
+    .locator('[data-selection-color="CARVALHO"] input[type=checkbox]')
+    .uncheck();
   await expect(
     round(1).locator('[data-color-line="BEGE"] [data-color-pieces]'),
   ).toHaveText("768");
@@ -181,13 +223,17 @@ test("vencedor, variações de cor e composição por data até a solicitação"
 
   // 10. Rever a escolha: volta com as cores e a composição gravadas.
   await resolved.locator("[data-selection-block-open]").click();
-  await page.waitForURL(/ids=/);
+  // Depois de gravar, o endereço já tem `ids=`: espera a página de rever
+  // (sem o `saved=1`).
+  await page.waitForURL(
+    (u) => u.searchParams.has("ids") && !u.searchParams.has("saved"),
+  );
   await expect(rowB).toBeHidden();
   await expect(
-    card.locator('[data-selection-color="CARVALHO"] input'),
+    card.locator('[data-selection-color="CARVALHO"] input[type=checkbox]'),
   ).not.toBeChecked();
   await expect(
-    card.locator('[data-selection-color="BEGE"] input'),
+    card.locator('[data-selection-color="BEGE"] input[type=checkbox]'),
   ).toBeChecked();
   await expect(preview.locator("[data-color-grand]")).toHaveText("2.928");
   // "Rever opções" mostra a comparação de novo.
