@@ -1,3 +1,5 @@
+import { EntityTimelineCard } from "@/components/entity-timeline-card";
+import { bookTimeline } from "@/lib/services/entity-timeline";
 import { isWellmix } from "@/lib/auth/permissions";
 import { PartnerBookingLotView } from "../../_components/partner-booking";
 import { notFound, redirect } from "next/navigation";
@@ -471,6 +473,8 @@ export default async function BookingLotPage({
           </LinkButton>
         }
       />
+      {/* Linha do tempo do book entre os blocos (docs/FLOW_MENU.md). */}
+      <EntityTimelineCard timeline={await bookTimeline(lot)} t={t} />
 
       <div className="mb-3 space-y-2" data-booking-lot-notices>
         <SupplierNoLoginAlert

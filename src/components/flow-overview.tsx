@@ -10,19 +10,13 @@ import {
 } from "@/lib/flow";
 import {
   flowAllFor,
-  flowBlockEntities,
   flowBlockSummary,
-  flowProgressFor,
-  type FlowBlockEntity,
+  flowOverviewEntities,
+  type OverviewEntity,
 } from "@/lib/services/flow";
 import { isWellmix } from "@/lib/auth/permissions";
 import { overviewHref, stepId } from "@/lib/flow";
-import {
-  PROGRESS_BLOCKS,
-  blockOf,
-  isProgressBlock,
-  type ProgressBlock,
-} from "@/lib/flow-progress";
+import { PROGRESS_BLOCKS } from "@/lib/flow-progress";
 import { FlowCases } from "./flow-cases";
 import { FlowEntities, PercentBar, daysSince } from "./flow-entities";
 import { Card, PageHeader, Stat, TextLink, cx } from "./ui";
@@ -52,7 +46,7 @@ export async function FlowOverview({
   // (dono, 14/11/2026), com KPIs, a linha do tempo geral entre os blocos e a
   // tabela dos pedidos filtrada pelo passo; as pendências ficam em segundo
   // plano (número menor). Os outros logins e o Produto novo seguem como antes.
-  if (isWellmix(user) && isProgressBlock(block))
+  if (isWellmix(user) && (ENTITY_BLOCKS as readonly string[]).includes(block))
     return (
       <EntityOverview
         user={user}
@@ -183,6 +177,9 @@ export async function FlowOverview({
   );
 }
 
+/** Blocos com o Overview pelas entidades, na ordem do mapa. */
+const ENTITY_BLOCKS: readonly FlowBlock[] = ["new-product", ...PROGRESS_BLOCKS];
+
 /** Média dos percentuais (0 sem pedidos). */
 const avg = (xs: number[]) =>
   xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0;
@@ -195,22 +192,21 @@ async function EntityOverview({
   basePath,
 }: {
   user: User;
-  block: ProgressBlock;
+  block: FlowBlock;
   selected: string | null;
   t: Translate;
   basePath: string;
 }) {
   const now = new Date();
-  const [summary, progress, byBlock] = await Promise.all([
+  const [summary, byBlock] = await Promise.all([
     flowBlockSummary(user, block, now),
-    flowProgressFor(user),
     Promise.all(
-      PROGRESS_BLOCKS.map(
-        async (b) => [b, await flowBlockEntities(user, b)] as const,
+      ENTITY_BLOCKS.map(
+        async (b) => [b, await flowOverviewEntities(user, b)] as const,
       ),
     ),
   ]);
-  const blockEntities = new Map<ProgressBlock, FlowBlockEntity[]>(byBlock);
+  const blockEntities = new Map<FlowBlock, OverviewEntity[]>(byBlock);
   const entities = blockEntities.get(block) ?? [];
   const current = summary.find((s) => s.step.key === selected) ?? null;
   const shown = current
@@ -218,14 +214,11 @@ async function EntityOverview({
     : entities;
   const inStep = (key: string) =>
     entities.filter((e) => e.steps.includes(key)).length;
-  const mineOf = (e: FlowBlockEntity) =>
-    e.progress ? blockOf(e.progress, block) : null;
-  const late = entities.filter((e) => (mineOf(e)?.lateDays ?? 0) > 0).length;
+  const late = entities.filter((e) => e.lateDays > 0).length;
+  const np = block === "new-product";
   const oldest = Math.max(
     0,
-    ...entities.map(
-      (e) => daysSince(mineOf(e)?.startedAt ?? e.since, now) ?? 0,
-    ),
+    ...entities.map((e) => daysSince(e.since, now) ?? 0),
   );
   const tasks = summary.reduce((n, s) => n + s.count, 0);
   const lateTasks = summary.reduce((n, s) => n + s.overdue, 0);
@@ -233,7 +226,7 @@ async function EntityOverview({
     <div data-flow-overview={block} data-flow-entity-mode>
       <PageHeader
         title={t(blockLabelKey(block))}
-        subtitle={t("flow.entities.subtitle", {
+        subtitle={t(np ? "flow.np.subtitle" : "flow.entities.subtitle", {
           n: entities.length,
           late,
           tasks,
@@ -244,7 +237,7 @@ async function EntityOverview({
         data-flow-kpis
       >
         <Stat
-          label={t("flow.kpi.entities")}
+          label={np ? t("flow.np.kpiEntities") : t("flow.kpi.entities")}
           value={<span data-flow-kpi="entities">{entities.length}</span>}
         />
         <Stat
@@ -256,7 +249,7 @@ async function EntityOverview({
           label={t("flow.kpi.blockPercent")}
           value={
             <span data-flow-kpi="block">
-              {avg(entities.map((e) => mineOf(e)?.percent ?? 0))}%
+              {avg(entities.map((e) => e.percent))}%
             </span>
           }
         />
@@ -264,7 +257,7 @@ async function EntityOverview({
           label={t("flow.kpi.overall")}
           value={
             <span data-flow-kpi="overall">
-              {avg(entities.map((e) => e.progress?.overall ?? 0))}%
+              {avg(entities.map((e) => e.overall))}%
             </span>
           }
         />
@@ -282,16 +275,15 @@ async function EntityOverview({
         />
       </div>
       <Card className="mb-4" title={t("flow.general.title")}>
-        <p className="mb-3 text-xs text-zinc-500">
-          {t("flow.general.hint", { n: progress.size })}
-        </p>
-        <ol className="grid gap-2 sm:grid-cols-3" data-flow-general>
-          {PROGRESS_BLOCKS.map((b, i) => {
+        <p className="mb-3 text-xs text-zinc-500">{t("flow.general.hint")}</p>
+        <ol
+          className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
+          data-flow-general
+        >
+          {ENTITY_BLOCKS.map((b, i) => {
             const list = blockEntities.get(b) ?? [];
             const here = b === block;
-            const lateHere = list.filter(
-              (e) => (e.progress ? blockOf(e.progress, b)?.lateDays : 0) ?? 0,
-            ).length;
+            const lateHere = list.filter((e) => e.lateDays > 0).length;
             return (
               <li key={b} className="relative">
                 <Link
@@ -326,13 +318,7 @@ async function EntityOverview({
                   </div>
                   <div className="mt-1">
                     <PercentBar
-                      percent={avg(
-                        list.map((e) =>
-                          e.progress
-                            ? (blockOf(e.progress, b)?.percent ?? 0)
-                            : 0,
-                        ),
-                      )}
+                      percent={avg(list.map((e) => e.percent))}
                       muted={!here}
                     />
                   </div>
@@ -462,10 +448,12 @@ async function EntityOverview({
           <Card
             title={
               current
-                ? t("flow.entities.titleStep", {
+                ? t(np ? "flow.np.titleStep" : "flow.entities.titleStep", {
                     step: t(stepLabelKey(current.step)),
                   })
-                : t("flow.entities.title", { block: t(blockLabelKey(block)) })
+                : t(np ? "flow.np.title" : "flow.entities.title", {
+                    block: t(blockLabelKey(block)),
+                  })
             }
             actions={
               current ? (
@@ -476,7 +464,9 @@ async function EntityOverview({
             }
           >
             <p className="mb-3 text-sm text-zinc-600">
-              {current ? t(stepHelpKey(current.step)) : t("flow.entities.hint")}
+              {current
+                ? t(stepHelpKey(current.step))
+                : t(np ? "flow.np.hint" : "flow.entities.hint")}
             </p>
             <FlowEntities
               block={block}

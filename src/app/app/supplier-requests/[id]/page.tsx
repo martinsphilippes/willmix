@@ -1,3 +1,5 @@
+import { EntityTimelineCard } from "@/components/entity-timeline-card";
+import { requestTimeline } from "@/lib/services/entity-timeline";
 import Link from "next/link";
 import { RequestColorPlan } from "@/components/color-lines";
 import type { ReactNode } from "react";
@@ -215,6 +217,10 @@ export default async function SupplierRequestPage({
       ))}
     </div>
   );
+  // Linha do tempo da solicitação entre os blocos (docs/FLOW_MENU.md).
+  const timelineCard = wellmix ? (
+    <EntityTimelineCard timeline={await requestTimeline(r)} t={t} />
+  ) : null;
   if (!itemView) {
     const [rows, slaMinutes] = await Promise.all([
       supplierRequestGroup(user, r),
@@ -246,6 +252,7 @@ export default async function SupplierRequestPage({
             </LinkButton>
           }
         />
+        {timelineCard}
         {noticeBlock}
         <div data-supplier-table>
           <SupplierRequestTable
@@ -464,6 +471,7 @@ export default async function SupplierRequestPage({
           </LinkButton>
         }
       />
+      {timelineCard}
       {noticeBlock}
       {askingMe && canResolve ? (
         <div className="mb-3" data-linked-ask>
