@@ -1,5 +1,6 @@
 import { OrderProgressCard } from "@/components/order-progress-card";
 import { isProgressBlock } from "@/lib/flow-progress";
+import { laneWaiting } from "@/lib/requirement-waiting";
 import { listByIds } from "@/lib/db/lookup";
 import { ColorLines } from "@/components/color-lines";
 import { registerOrderInvoiceAction } from "../../actions/order-invoice";
@@ -21,7 +22,6 @@ import {
   SKU_APPROVED_KEY,
   LANE_KEYS,
   baseKeyOf,
-  blockedBy,
   isAutoGateKey,
   isLeadTimeKey,
   isSampleOrderKey,
@@ -3999,26 +3999,6 @@ function RequirementRow({
 /* ------------------------------------------------------------------------ */
 /* Evolução incremental: trilha, snapshot, resultado da inspeção, containers  */
 /* ------------------------------------------------------------------------ */
-
-/**
- * Pedido de compra: o item espera o anterior da raia ou do contrato (a arte
- * espera a faca e a foto em alta; a arte final, a arte validada e o
- * certificado; o sinal, as duas assinaturas). Diz o que falta.
- */
-function laneWaiting(
-  t: Translate,
-  r: Requirement,
-  reqs: Requirement[],
-): string | null {
-  if (r.status === "done") return null;
-  const missing = blockedBy(r.key, reqs);
-  if (!missing.length) return null;
-  const labels = missing
-    .map((k) => reqs.find((x) => x.key === k))
-    .filter((x): x is Requirement => !!x)
-    .map((x) => requirementLabel(t, x).split(" · ")[0]);
-  return t("purchaseSequence.waiting", { items: labels.join(", ") });
-}
 
 /** Atalho dos itens que o sistema confere: onde a área dona faz a parte dela. */
 function gateHrefOf(

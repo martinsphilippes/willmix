@@ -145,10 +145,11 @@ const html = async (
   user: User,
   orderId: string,
   focus: string | null,
+  step = CERT,
 ): Promise<string> => {
   const view = await FlowOrderInStep({
     user,
-    step: CERT,
+    step,
     orderId,
     t: translator("pt"),
     focus,
@@ -195,9 +196,15 @@ describe("regra pura da Certificação por produto", () => {
     // Um produto só: a própria pendência.
     const one = task(["certificate__i1", "art__i1"]);
     expect(flow.splitByProduct(CERT, one)).toEqual([one]);
-    // Os outros passos não mudam (a arte de dois produtos é uma linha).
-    const art = task(["art__i1", "art__i2"]);
-    expect(flow.splitByProduct(ART, art)).toEqual([art]);
+    // Arte (dono, 14/11/2026): também uma linha por produto.
+    expect(
+      flow
+        .splitByProduct(ART, task(["art__i1", "art_review__i2"]))
+        .map((r) => r.items!.map((i) => i.key)),
+    ).toEqual([["art__i1"], ["art_review__i2"]]);
+    // Os outros passos não mudam (o Die Cut de dois produtos é uma linha).
+    const dieCut = task(["die_cut__i1", "die_cut__i2"]);
+    expect(flow.splitByProduct(ART_MATERIAL, dieCut)).toEqual([dieCut]);
     // Pendência sem item de etapa (embarque, certificação do pedido): igual.
     const memorial = { kind: "cert_step", stepKey: "cert_memorial" };
     expect(flow.splitByProduct(CERT, memorial)).toEqual([memorial]);
@@ -222,9 +229,16 @@ describe("regra pura da Certificação por produto", () => {
       overdue: 2,
     });
     expect(flow.casesInStep(CERT, tasks)).toHaveLength(3);
-    // A arte da mesma pendência conta uma vez, como antes.
+    // A arte de um produto só na mesma pendência: uma linha.
     expect(counts.get("order/art")).toEqual({ count: 1, overdue: 1 });
     expect(flow.casesInStep(ART, tasks)).toHaveLength(1);
+    // Arte de dois produtos: duas linhas no menu e na tela.
+    const arts = [task(["art__i1", "art_review__i2"], { overdue: true })];
+    expect(flow.countByStep(arts).get("order/art")).toEqual({
+      count: 2,
+      overdue: 2,
+    });
+    expect(flow.casesInStep(ART, arts)).toHaveLength(2);
   });
 
   it("Resolver: o produto da linha no detalhe do pedido no passo", () => {
@@ -262,9 +276,21 @@ describe("regra pura da Certificação por produto", () => {
         link: "/app/orders/o1#order-partners",
       }),
     ).toBe("/app/flow/order/certification/o1");
-    // Os outros passos não mudam.
+    // Arte (dono, 14/11/2026): o mesmo padrão, no produto da linha; a não
+    // conformidade da arte abre o pedido no passo (cartão Artes).
     expect(flow.caseHref(ART, task(["art__i1"]))).toBe(
-      "/app/flow/order/art/o1",
+      "/app/flow/order/art/o1?item=i1",
+    );
+    expect(
+      flow.caseHref(ART, {
+        kind: "art_fix",
+        orderId: "o1",
+        link: "/app/orders/o1#artwork-issue-x",
+      }),
+    ).toBe("/app/flow/order/art/o1");
+    // Os outros passos não mudam.
+    expect(flow.caseHref(ART_MATERIAL, task(["die_cut__i1"]))).toBe(
+      "/app/orders/o1/die-cut",
     );
     expect(
       flow.caseHref(flow.findStep("production", "cargo-docs")!, {
@@ -278,12 +304,30 @@ describe("regra pura da Certificação por produto", () => {
     );
   });
 
-  it("só a Certificação perde os cartões de baixo da lista", () => {
+  it("Certificação e Arte perdem os cartões para todos; os outros passos, para a Wellmix", () => {
     expect(flow.isListOnlyStep(CERT)).toBe(true);
-    for (const step of flow.FLOW_STEPS.filter((s) => s !== CERT))
+    expect(flow.isListOnlyStep(ART)).toBe(true);
+    for (const step of flow.FLOW_STEPS.filter((s) => s !== CERT && s !== ART))
       expect(flow.isListOnlyStep(step)).toBe(false);
     expect(flow.isPerProductStep(CERT)).toBe(true);
-    expect(flow.isPerProductStep(ART)).toBe(false);
+    expect(flow.isPerProductStep(ART)).toBe(true);
+    expect(flow.isPerProductStep(ART_MATERIAL)).toBe(false);
+    // "No acesso dos ADMs e gestores" (dono, 14/11/2026): a Wellmix fica só
+    // com a lista em todos os passos; o parceiro, só na Certificação e na
+    // Arte (nos outros passos dele, os cartões seguem).
+    for (const step of flow.FLOW_STEPS) {
+      expect(flow.listOnlyFor({ role: "admin" }, step)).toBe(true);
+      expect(flow.listOnlyFor({ role: "operator" }, step)).toBe(true);
+    }
+    expect(flow.listOnlyFor({ role: "ocp" }, CERT)).toBe(true);
+    expect(flow.listOnlyFor({ role: "agency" }, ART)).toBe(true);
+    expect(flow.listOnlyFor({ role: "supplier" }, ART_MATERIAL)).toBe(false);
+    expect(
+      flow.listOnlyFor(
+        { role: "supplier" },
+        flow.findStep("production", "inspection")!,
+      ),
+    ).toBe(false);
   });
 
   it("depois do envio, volta ao mesmo produto (e só a endereço do passo)", async () => {
@@ -420,5 +464,106 @@ describe("pedido com dois produtos na Certificação", () => {
       expect(stray).toContain(`data-flow-order-item="${item}"`);
     // Outra empresa não abre o pedido, nem com o link do produto.
     expect(await html(supplierB, order.id, itemIds[0])).toBe("");
+  });
+});
+
+/*
+ * Pedido → Arte no mesmo padrão (dono, 14/11/2026): uma linha por produto,
+ * o "Resolver" no pedido no passo já no produto, e ali só o que pode ser
+ * feito agora: a validação e a arte final esperam (sem botões) até a arte
+ * chegar, como no detalhe do pedido.
+ */
+describe("pedido com dois produtos na Arte", () => {
+  let order: Order;
+  let itemIds: string[];
+
+  beforeAll(async () => {
+    order = await certifiedOrder(["FA-1", "FA-2"]);
+    itemIds = (
+      await getStore().list("order_items", { filter: { orderId: order.id } })
+    )
+      .map((i) => i.id)
+      .sort();
+    // O fornecedor envia a faca e a foto em alta dos dois: a arte libera.
+    const { uploadDocument } = await import("@/lib/services/documents");
+    const engine = await import("@/lib/workflow/engine");
+    const reqs = await getStore().list("requirements", {
+      filter: { orderId: order.id },
+    });
+    for (const item of itemIds)
+      for (const base of ["die_cut", "hd_photo"]) {
+        const r = reqs.find((x) => x.key === `${base}__${item}`)!;
+        const photo = r.type === "photo";
+        const doc = await uploadDocument(
+          supplierA,
+          new File([new Uint8Array([137, 80, 78, 71])], `${base}.png`, {
+            type: photo ? "image/png" : "application/pdf",
+          }),
+          { orderId: order.id, requirementId: r.id, type: "other" },
+        );
+        await engine.submitRequirement(supplierA, r.id, {
+          value: null,
+          documentId: doc.id,
+        });
+      }
+  });
+
+  it("uma linha por produto, cada Resolver no seu produto", async () => {
+    const rows = (await flowSvc.flowCasesOf(admin, ART)).filter(
+      (r) => r.orderId === order.id,
+    );
+    expect(rows.map((r) => flow.productOfCase(ART, r)).sort()).toEqual(
+      itemIds,
+    );
+    for (const r of rows) {
+      const item = flow.productOfCase(ART, r)!;
+      expect(flow.itemsInStep(ART, r).map((i) => i.key)).toEqual([
+        `art__${item}`,
+      ]);
+      expect(flow.caseHref(ART, r)).toBe(
+        `/app/flow/order/art/${order.id}?item=${item}`,
+      );
+    }
+    // O menu conta as mesmas linhas.
+    const all = await flowSvc.flowCasesOf(admin, ART);
+    expect((await flowSvc.flowCountsFor(admin)).get("order/art")?.count).toBe(
+      all.length,
+    );
+  });
+
+  it("no produto: a arte com os botões; a validação e a arte final esperam", async () => {
+    const reqs = await getStore().list("requirements", {
+      filter: { orderId: order.id },
+    });
+    const [item, other] = itemIds;
+    const page = await html(admin, order.id, item, ART);
+    expect(page).toContain("data-flow-order-focus");
+    expect(page).not.toContain(`data-flow-order-item="${other}"`);
+    const art = reqs.find((r) => r.key === `art__${item}`)!;
+    expect(page).toContain(`value="${art.id}"`);
+    expect(page).toMatch(/type="file"/);
+    // A validação e a arte final dizem o que falta, sem aprovar nem enviar.
+    expect(page.match(/data-flow-order-waiting/g)).toHaveLength(2);
+    expect(page).not.toContain('value="approve"');
+    for (const key of [`art_review__${item}`, `art_final__${item}`])
+      expect(page).not.toContain(
+        `value="${reqs.find((r) => r.key === key)!.id}"`,
+      );
+    // Depois da arte, a validação libera (com o aprovar).
+    const { uploadDocument } = await import("@/lib/services/documents");
+    const engine = await import("@/lib/workflow/engine");
+    const doc = await uploadDocument(
+      admin,
+      new File(["%PDF-1.4 arte"], "arte.pdf", { type: "application/pdf" }),
+      { orderId: order.id, requirementId: art.id, type: "other" },
+    );
+    await engine.submitRequirement(admin, art.id, {
+      value: null,
+      documentId: doc.id,
+    });
+    const after = await html(admin, order.id, item, ART);
+    expect(after).toContain('value="approve"');
+    // A arte final ainda espera a validação e o certificado.
+    expect(after.match(/data-flow-order-waiting/g)).toHaveLength(1);
   });
 });

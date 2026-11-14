@@ -6,7 +6,7 @@ import {
   FLOW_OVERVIEW_BLOCKS,
   blockLabelKey,
   findStep,
-  isListOnlyStep,
+  listOnlyFor,
   overviewHref,
   stepHelpKey,
   stepLabelKey,
@@ -22,7 +22,6 @@ import { partnerStepsOf, stepId } from "@/lib/flow";
 import { FlowCases } from "@/components/flow-cases";
 import { FlowStepWork } from "@/components/flow-step-work";
 import {
-  FlowArtworkWork,
   FlowFreightWork,
   FlowProductionWork,
   FlowReceivingWork,
@@ -40,9 +39,11 @@ import { PageHeader, TextLink } from "@/components/ui";
  * (?due=overdue|today|week). Duas abas (dono, 14/11/2026): Pendências (o
  * que espera ação do login, padrão) e "Todos no passo" (?tab=all: todos os
  * pedidos que estão no passo agora, de qualquer responsável; só a Wellmix).
- * Na Certificação (dono, 14/11/2026) a tela é só a lista, uma linha por
- * produto: o "Resolver" abre o produto no detalhe do pedido no passo, onde
- * ficam o envio da foto ou do arquivo e a validação.
+ * Na Certificação e na Arte (dono, 14/11/2026) a tela é só a lista, uma
+ * linha por produto: o "Resolver" abre o produto no detalhe do pedido no
+ * passo, onde ficam o envio da foto ou do arquivo e a validação. Para a
+ * Wellmix (administradores e operadores), todos os passos são só a lista,
+ * com o trabalho no pedido no passo (listOnlyFor).
  */
 const DUES = ["overdue", "today", "week"] as const;
 
@@ -71,7 +72,6 @@ export default async function FlowStepPage({
     importStep,
     certStep,
     production,
-    artwork,
     receiving,
     freight,
     freightN,
@@ -84,8 +84,10 @@ export default async function FlowStepPage({
   ) as string | undefined;
   const t = await getT();
   const all = await flowCasesOf(user, step);
-  // Sem os cartões por pedido embaixo da lista (o trabalho fica no detalhe).
-  const listOnly = isListOnlyStep(step);
+  // Sem os cartões por pedido embaixo da lista (o trabalho fica no pedido no
+  // passo, aberto pelo "Resolver"): Certificação e Arte para todos; os
+  // outros passos para a Wellmix (administradores e operadores).
+  const listOnly = listOnlyFor(user, step);
   const filter = (DUES as readonly string[]).includes(String(due))
     ? String(due)
     : null;
@@ -160,11 +162,6 @@ export default async function FlowStepPage({
     ["saved", "counted", "ric", "returned", "closed"].includes(receiving)
       ? t(`receiving.done.${receiving}` as DictionaryKey)
       : null;
-  const artworkNotice =
-    typeof artwork === "string" &&
-    ["designer", "reported", "fixed", "accepted", "reopened"].includes(artwork)
-      ? t(`artwork.done.${artwork}` as DictionaryKey)
-      : null;
   return (
     <div data-flow-step={`${block}/${key}`}>
       <PageHeader
@@ -217,66 +214,62 @@ export default async function FlowStepPage({
       ) : null}
       <FlowCases step={step} tasks={tasks} t={t} />
       {listOnly ? null : (
-        <FlowRequirementWork user={user} step={step} tasks={all} t={t} />
+        <>
+          <FlowRequirementWork user={user} step={step} tasks={all} t={t} />
+          {step.block === "production" &&
+          (step.key === "production" ||
+            step.key === "inspection" ||
+            step.key === "pre-production") ? (
+            <FlowProductionWork
+              user={user}
+              step={step}
+              tasks={all}
+              t={t}
+              notice={productionNotice}
+            />
+          ) : null}
+          {step.block === "production" && step.key === "logistics" ? (
+            <FlowFreightWork
+              user={user}
+              step={step}
+              tasks={all}
+              t={t}
+              notice={typeof freight === "string" ? freight : null}
+              count={
+                typeof freightN === "string" && /^\d{1,3}$/.test(freightN)
+                  ? Number(freightN)
+                  : 0
+              }
+            />
+          ) : null}
+          {step.block === "delivery" &&
+          (step.key === "storage" || step.key === "return") ? (
+            <FlowReceivingWork
+              step={step}
+              tasks={all}
+              t={t}
+              notice={receivingNotice}
+            />
+          ) : null}
+          <FlowStepWork
+            user={user}
+            step={step}
+            tasks={all}
+            t={t}
+            notice={
+              done ? t(`importFlow.done.${done}` as DictionaryKey) : null
+            }
+          />
+        </>
       )}
-      {step.block === "production" &&
-      (step.key === "production" ||
-        step.key === "inspection" ||
-        step.key === "pre-production") ? (
-        <FlowProductionWork
-          user={user}
-          step={step}
-          tasks={all}
-          t={t}
-          notice={productionNotice}
-        />
-      ) : null}
-      {step.block === "production" && step.key === "logistics" ? (
-        <FlowFreightWork
-          user={user}
-          step={step}
-          tasks={all}
-          t={t}
-          notice={typeof freight === "string" ? freight : null}
-          count={
-            typeof freightN === "string" && /^\d{1,3}$/.test(freightN)
-              ? Number(freightN)
-              : 0
-          }
-        />
-      ) : null}
-      {step.block === "delivery" &&
-      (step.key === "storage" || step.key === "return") ? (
-        <FlowReceivingWork
-          step={step}
-          tasks={all}
-          t={t}
-          notice={receivingNotice}
-        />
-      ) : null}
+      {/* Vendas → Amostras e Ofertas (Wellmix): o registro de a quem foi
+          oferecido e o histórico só existem aqui (não repetem a lista), então
+          seguem também no "só a lista". */}
       {step.block === "sales" &&
       (step.key === "samples" || step.key === "offers") &&
       wellmix ? (
         <FlowSalesWork step={step} tasks={all} t={t} />
       ) : null}
-      {step.block === "order" && step.key === "art" ? (
-        <FlowArtworkWork
-          user={user}
-          step={step}
-          tasks={all}
-          t={t}
-          notice={artworkNotice}
-        />
-      ) : null}
-      {listOnly ? null : (
-        <FlowStepWork
-          user={user}
-          step={step}
-          tasks={all}
-          t={t}
-          notice={done ? t(`importFlow.done.${done}` as DictionaryKey) : null}
-        />
-      )}
     </div>
   );
 }
