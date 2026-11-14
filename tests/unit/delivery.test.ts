@@ -187,4 +187,58 @@ describe("entrega", () => {
       order.id,
     );
   });
+
+  it("contagem por unidade ou por caixas (caixas × caixa master do cadastro)", async () => {
+    const store = getStore();
+    const rec = await import("@/lib/services/receiving");
+    const req = await r.createRequest(
+      (
+        await store.list("users", { filter: { email: "joao@lojista.com" } })
+      )[0]!,
+      {
+        customerId: "cliente-joao",
+        productId: null,
+        productName: "Copo caixas",
+        description: "Copo",
+        specification: null,
+        quantity: 120,
+        unit: "un",
+        deadline: null,
+        notes: null,
+      },
+    );
+    let o = await orderFromRequest(admin, req, { sellPrice: 500 });
+    o = await store.update("orders", o.id, { status: "DELIVERED" });
+    const [item] = await store.list("order_items", {
+      filter: { orderId: o.id },
+    });
+    // Sem caixa master no cadastro: só por unidade.
+    await expect(
+      rec.saveCounts(admin, o.id, [
+        {
+          orderItemId: item.id,
+          received: 10,
+          damaged: 0,
+          note: null,
+          inCartons: true,
+        },
+      ]),
+    ).rejects.toThrow("no_master_box");
+    await store.update("order_items", item.id, {
+      variant: { ...(item.variant ?? {}), masterBoxQty: 12 } as never,
+    });
+    expect((await rec.receivingView(o)).perBox[item.id]).toBe(12);
+    await rec.saveCounts(admin, o.id, [
+      {
+        orderItemId: item.id,
+        received: 10,
+        damaged: 0,
+        note: null,
+        inCartons: true,
+      },
+    ]);
+    const row = (await rec.getReceiving(o.id))!;
+    expect(row.items[0]).toMatchObject({ received: 120, cartons: 10 });
+    expect((await rec.receivingView(o)).divergences).toBe(0);
+  });
 });
