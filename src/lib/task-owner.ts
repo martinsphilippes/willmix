@@ -29,6 +29,12 @@ export interface TaskItem {
   key: string;
   role: Role;
   label: string;
+  /**
+   * Item com dono por login (arte, validação, certificado e arte final do
+   * pedido de compra): já foi decidido que é deste login; a função não
+   * filtra de novo.
+   */
+  routed?: boolean;
 }
 
 const COMPRAS: TaskGate = { action: "purchaseOrder.generate" };
@@ -154,8 +160,9 @@ export function tasksForFunctions<T extends Filterable>(
       }
       const mine = items.filter(
         (i) =>
-          i.role === "operator" &&
-          passesGate(user, requirementGate(i.key, task.stageKey)),
+          i.routed ||
+          (i.role === "operator" &&
+            passesGate(user, requirementGate(i.key, task.stageKey))),
       );
       if (!mine.length) continue;
       out.push(

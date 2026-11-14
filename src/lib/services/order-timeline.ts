@@ -8,8 +8,7 @@ import {
   LANE_KEYS,
   baseKeyOf,
   isAutoGateKey,
-  itemIdOf,
-  laneKey,
+  isRoutedLaneKey,
 } from "@/lib/purchase-lanes";
 import {
   ORDER_SIGN_SEND,
@@ -21,9 +20,9 @@ import {
 import { canSubmitRequirement } from "@/lib/workflow/engine";
 import {
   artMakerRoute,
-  artValidatorRoute,
   holdersRoute,
   internalRoute,
+  laneRoute,
   loadRoutingContext,
   reaches,
   type Route,
@@ -116,19 +115,18 @@ export function wellmixRequirementRoute(
   ctx: RoutingContext,
 ): Route | null {
   const base = baseKeyOf(r.key);
-  // A arte e a arte final com o selo: de quem faz a arte, seja a agência, o
-  // designer do pedido (mesmo com a agência no pedido) ou a Wellmix.
+  // Arte, validação, certificado e arte final do pedido de compra, produto a
+  // produto: a mesma regra das pendências e do servidor (`laneRoute`, dono,
+  // 14/11/2026). Arte e arte final, de quem faz a arte; a validação, do
+  // responsável que pode validar (nunca o designer nem quem enviou); o
+  // certificado, da certificadora do pedido (sem ela, o responsável interno
+  // vincula).
+  if (isRoutedLaneKey(r.key)) return laneRoute(r.key, order, ctx, stageReqs);
+  // A arte e a arte final do pedido (fora das raias): de quem faz a arte.
   if (base === LANE_KEYS.art || base === LANE_KEYS.artFinal)
     return artMakerRoute(order, ctx);
   if (!isWellmixItem(r) && !partnerMissing(order, r)) return null;
   const analyst = internalRoute(order, ctx);
-  if (base === LANE_KEYS.artReview) {
-    const item = itemIdOf(r.key);
-    const art = item
-      ? stageReqs.find((x) => x.key === laneKey(LANE_KEYS.art, item))
-      : undefined;
-    return artValidatorRoute(order, ctx, art?.submittedByUserId ?? null);
-  }
   if (r.key === ORDER_SIGNED_WELLMIX)
     return holdersRoute(ctx, (u) => can(u, "contract.sign", ctx.defs), analyst);
   if (base === LANE_KEYS.ncmValidated || base === LANE_KEYS.sheetComplete)

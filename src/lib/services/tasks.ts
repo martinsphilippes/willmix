@@ -25,6 +25,7 @@ import {
 import { dieCutHref, dieCutItemOf, dieCutProducts } from "@/lib/die-cut-step";
 import { blockedBy } from "@/lib/purchase-lanes";
 import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
+import { isRoutedLaneKey } from "@/lib/purchase-lanes";
 
 export type TaskKind =
   | "booking_invite"
@@ -386,7 +387,12 @@ export function stageTaskDrafts(
       : [];
     const mine = stageOpen.filter(
       (r) =>
-        (wellmix || r.role === user.role) &&
+        (wellmix ||
+          r.role === user.role ||
+          // Arte e certificado do pedido de compra: o designer da agência e a
+          // certificadora recebem por login (routeLaneTasks), não pelo papel.
+          (isRoutedLaneKey(r.key) &&
+            (user.role === "agency" || user.role === "ocp"))) &&
         !requirementWaiting(
           r,
           { open: stageOpen, all: stageAll },
@@ -483,6 +489,71 @@ export function stageTaskDrafts(
 }
 
 /**
+ * As quatro tarefas da Preparação do pedido de compra com dono por login
+ * (arte, validação, certificado e arte final; dono, 14/11/2026): cada item
+ * fica só com quem o recebe (`seesLaneTask`); o administrador vê todos. No
+ * painel da equipe (`team`), todos. Item sem dono certo diz o que falta
+ * designar. A pendência que fica sem item sai da lista.
+ */
+async function routeLaneTasks(
+  user: User,
+  tasks: Task[],
+  team: boolean,
+): Promise<Task[]> {
+  const routed = tasks.filter(
+    (t) =>
+      t.kind === "requirement" &&
+      !!t.orderId &&
+      t.items?.some((i) => isRoutedLaneKey(i.key)),
+  );
+  if (!routed.length) return tasks;
+  const ids = [...new Set(routed.map((t) => t.orderId as string))];
+  const store = getStore();
+  const { laneRoute, loadRoutingContext, seesLaneTask } =
+    await import("./cert-art-routing");
+  const [orders, requirements, ctx] = await Promise.all([
+    store.list("orders", { filter: { id: ids } }),
+    store.list("requirements", { filter: { orderId: ids } }),
+    loadRoutingContext(),
+  ]);
+  const orderById = new Map(orders.map((o) => [o.id, o]));
+  const out: Task[] = [];
+  for (const task of tasks) {
+    const order = task.orderId ? orderById.get(task.orderId) : undefined;
+    if (!routed.includes(task) || !order) {
+      out.push(task);
+      continue;
+    }
+    const siblings = requirements.filter((r) => r.orderId === order.id);
+    const items: TaskItem[] = [];
+    let missing: keyof typeof MISSING_TASK_TEXT | null = null;
+    for (const item of task.items ?? []) {
+      if (!isRoutedLaneKey(item.key)) {
+        items.push(item);
+        continue;
+      }
+      if (!team && !seesLaneTask(user, item.key, order, ctx, siblings))
+        continue;
+      items.push({ ...item, routed: true });
+      const route = laneRoute(item.key, order, ctx, siblings);
+      if (!missing && route?.missing && route.missing !== "ocp")
+        missing = route.missing;
+    }
+    if (!items.length) continue;
+    const detail = withoutPlaceholder(items.map((i) => i.label).join(", "));
+    out.push({
+      ...task,
+      items,
+      // O que falta designar e onde (ex.: o pedido sem certificadora).
+      detail: missing
+        ? `${detail} ${translator("pt")(MISSING_TASK_TEXT[missing])}`.trim()
+        : detail,
+    });
+  }
+  return out;
+}
+
+/**
  * Pedidos do login de fora da Wellmix (a mesma regra de `isInvolved`), sem os
  * do histórico do Sankhya em espera (pendências só depois do go-live).
  */
@@ -532,6 +603,9 @@ export async function pendingTasksFor(
   await (await import("./supplier-terms")).releaseOffFlowStages();
   // Arte e embalagem dos pedidos antigos: arte da agência, aprovação do fornecedor.
   await (await import("./packaging")).normalizePackaging();
+  // Tarefas de arte e certificado dos pedidos de compra: papel coerente com
+  // quem as recebe (as abertas antes de 14/11/2026).
+  await (await import("./purchase-order")).normalizeLaneRoles();
   const customer = user.role === "customer" && !!user.partyId;
   const agency = user.role === "agency" && !!user.partyId;
   const none = Promise.resolve([] as never[]);
@@ -667,7 +741,15 @@ export async function pendingTasksFor(
         sealApplied,
         lanes,
       });
-  for (const draft of drafts) tasks.push(finish(draft, now));
+  // Arte, validação, certificado e arte final do pedido de compra: só com
+  // quem recebe cada uma (o resumo do pedido traz a lista da equipe toda).
+  tasks.push(
+    ...(await routeLaneTasks(
+      user,
+      drafts.map((draft) => finish(draft, now)),
+      !!options.team,
+    )),
+  );
 
   const { getSettings } = await import("@/lib/settings");
   const flowSettings = await getSettings();
@@ -1527,9 +1609,13 @@ const ART_TASK_TEXT: Record<
 };
 
 /** Pendência sem dono certo: o que falta designar e onde (traduzido na tela). */
-const MISSING_TASK_TEXT: Record<"designer" | "analyst", DictionaryKey> = {
+const MISSING_TASK_TEXT: Record<
+  "designer" | "analyst" | "certifier",
+  DictionaryKey
+> = {
   designer: "tasks.missing.designer",
   analyst: "tasks.missing.analyst",
+  certifier: "tasks.missing.certifier",
 };
 
 /*

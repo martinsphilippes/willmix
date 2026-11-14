@@ -349,6 +349,17 @@ export async function canAccessDocument(
   if (doc.orderId) {
     const order = await store.get("orders", doc.orderId);
     if (!order || !canViewOrder(user, order)) return false;
+    // Pedido de compra: o designer do pedido abre a faca, a foto em alta, a
+    // arte, o certificado e a arte final (gravados como internos), e a
+    // certificadora o certificado (dono, 14/11/2026; cert-art-routing.ts).
+    if (
+      doc.requirementId &&
+      (user.role === "agency" || user.role === "ocp") &&
+      order.flow === "supplier_request"
+    ) {
+      const { laneDocumentAccess } = await import("./cert-art-routing");
+      if (await laneDocumentAccess(user, order, doc.requirementId)) return true;
+    }
   } else if (doc.requestId) {
     const request = await store.get("requests", doc.requestId);
     if (!request || !canViewRequest(user, request)) return false;
