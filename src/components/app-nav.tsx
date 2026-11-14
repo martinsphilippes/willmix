@@ -36,11 +36,14 @@ export interface NavEntryView {
   /** Chave estável do grupo (para lembrar se está aberto). */
   id?: string;
   label: string;
+  /** Link solto; num grupo, a tela do item pai (o nome abre, a seta abre e fecha). */
   href?: string;
   icon?: NavIcon;
   items?: NavItemView[];
   badge?: number;
   badgeLabel?: string;
+  /** Item pai: nome da seta para leitores de tela (mostrar / ocultar os subitens). */
+  toggle?: { show: string; hide: string };
 }
 
 const ICON_PATHS: Record<NavIcon, ReactNode> = {
@@ -124,6 +127,13 @@ const ICON_PATHS: Record<NavIcon, ReactNode> = {
     <>
       <path d="M4 7.5 12 4l8 3.5v9L12 20l-8-3.5v-9Z" />
       <path d="M4 7.5 12 11l8-3.5M12 11v9" />
+    </>
+  ),
+  factory: (
+    <>
+      <path d="M4 20V10.5l5 3v-3l5 3V6h4v14" />
+      <path d="M3 20h18" />
+      <path d="M7 17h2M11 17h2M15.5 17h1" />
     </>
   ),
 };
@@ -272,6 +282,20 @@ function NavGroupRow({
   const id = useId();
   const active = items.some((i) => isActiveHref(i.href, pathname));
   const badge = groupBadge(items);
+  if (entry.href)
+    return (
+      <ParentGroupRow
+        entry={{ ...entry, href: entry.href }}
+        items={items}
+        open={open}
+        collapsed={collapsed}
+        childActive={active}
+        badge={badge}
+        listId={id}
+        onToggle={onToggle}
+        onNavigate={onNavigate}
+      />
+    );
   return (
     <div data-nav-group={entry.label}>
       <button
@@ -328,6 +352,106 @@ function NavGroupRow({
   );
 }
 
+/**
+ * Item pai com tela própria (ex.: Produção): o nome é o link da tela, com o
+ * ícone, alinhado aos outros itens do primeiro nível; a seta ao lado abre e
+ * fecha os subitens. Menu recolhido: só o ícone, que abre a tela.
+ */
+function ParentGroupRow({
+  entry,
+  items,
+  open,
+  collapsed,
+  childActive,
+  badge,
+  listId,
+  onToggle,
+  onNavigate,
+}: {
+  entry: NavEntryView & { href: string };
+  items: NavItemView[];
+  open: boolean;
+  collapsed: boolean;
+  childActive: boolean;
+  badge: number;
+  listId: string;
+  onToggle: () => void;
+  onNavigate?: () => void;
+}) {
+  const pathname = usePathname();
+  const here = !childActive && isActiveHref(entry.href, pathname);
+  const toggleLabel = open ? entry.toggle?.hide : entry.toggle?.show;
+  return (
+    <div data-nav-group={entry.label} data-nav-parent={entry.href}>
+      <div className="flex items-center gap-0.5">
+        <Link
+          href={entry.href}
+          aria-current={here ? "page" : undefined}
+          title={collapsed ? entry.label : undefined}
+          aria-label={collapsed ? entry.label : undefined}
+          onClick={onNavigate}
+          data-nav-link={entry.href}
+          className={`${rowBase} min-w-0 flex-1 ${
+            here
+              ? rowActive
+              : childActive
+                ? "font-semibold text-brand-700 hover:bg-zinc-100"
+                : rowIdle
+          } ${collapsed ? "justify-center px-0" : ""}`}
+        >
+          <Icon name={entry.icon} className="h-5 w-5 shrink-0" />
+          {collapsed ? (
+            <CountBadge n={badge} dot />
+          ) : (
+            <>
+              <span className="truncate">{entry.label}</span>
+              {open ? null : <CountBadge n={badge} />}
+            </>
+          )}
+        </Link>
+        {collapsed ? null : (
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={listId}
+            aria-label={toggleLabel}
+            title={toggleLabel}
+            onClick={onToggle}
+            data-nav-group-toggle={entry.href}
+            className="inline-flex h-9 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-600"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden
+              className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`}
+            >
+              <path
+                fillRule="evenodd"
+                d="M5.3 7.3a1 1 0 0 1 1.4 0L10 10.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.4Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        )}
+      </div>
+      {open && !collapsed ? (
+        <div id={listId} role="group" className="mt-0.5 space-y-0.5">
+          {items.map((item) => (
+            <NavRow
+              key={item.href}
+              item={item}
+              collapsed={false}
+              nested
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** Lista do menu (computador e celular). */
 function NavList({
   entries,
@@ -351,8 +475,10 @@ function NavList({
   bottom?: ReactNode;
 }) {
   const pathname = usePathname();
-  const current = entries.find((e) =>
-    e.items?.some((i) => isActiveHref(i.href, pathname)),
+  const current = entries.find(
+    (e) =>
+      e.items?.some((i) => isActiveHref(i.href, pathname)) ||
+      (!!e.items && !!e.href && isActiveHref(e.href, pathname)),
   )?.id;
   // Já no servidor o grupo da tela atual vem aberto (sem piscar).
   const [open, setOpen] = useState<string[]>(current ? [current] : []);

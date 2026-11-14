@@ -42,7 +42,6 @@ describe("menu lateral", () => {
         group: "nav.group.delivery",
         items: [
           "/app/orders",
-          "/app/production",
           "/app/reviews",
           "/app/containers",
           "/app/freight",
@@ -50,6 +49,7 @@ describe("menu lateral", () => {
           "/app/inventory",
         ],
       },
+      { link: "/app/production" },
       {
         group: "nav.group.finance",
         items: [
@@ -93,15 +93,34 @@ describe("menu lateral", () => {
     for (const e of navFor(ADMIN)) expect(e.icon).toBeTruthy();
   });
 
-  it("Produção: em Pedidos e entrega, logo abaixo de Pedidos de compra e antes de Revisão", () => {
-    const delivery = navFor(ADMIN).find(
-      (e) => isNavGroup(e) && e.key === "nav.group.delivery",
+  it("Produção: item do primeiro nível, logo abaixo de Pedidos e entrega, uma vez só", () => {
+    const entries = navFor(ADMIN);
+    const at = entries.findIndex(
+      (e) => !isNavGroup(e) && e.href === "/app/production",
     );
-    const items = delivery && isNavGroup(delivery) ? delivery.items : [];
-    const at = items.findIndex((l) => l.href === "/app/production");
-    expect(items[at]?.key).toBe("nav.production");
-    expect(items[at - 1]?.href).toBe("/app/orders");
-    expect(items[at + 1]?.href).toBe("/app/reviews");
+    const entry = entries[at];
+    expect(entry && !isNavGroup(entry) ? entry.key : null).toBe(
+      "nav.production",
+    );
+    // Com ícone, como os outros itens principais.
+    expect(entry?.icon).toBe("factory");
+    const before = entries[at - 1];
+    expect(before && isNavGroup(before) ? before.key : null).toBe(
+      "nav.group.delivery",
+    );
+    // Saiu de dentro de Pedidos e entrega: aparece uma vez só no menu.
+    expect(hrefsOf(ADMIN).filter((h) => h === "/app/production")).toHaveLength(
+      1,
+    );
+    // Quem acompanha a produção vê no mesmo lugar (logo abaixo do grupo).
+    const buyer = navFor({ role: "operator", functions: ["buyer"] });
+    const buyerAt = buyer.findIndex(
+      (e) => !isNavGroup(e) && e.href === "/app/production",
+    );
+    const buyerBefore = buyer[buyerAt - 1];
+    expect(
+      buyerBefore && isNavGroup(buyerBefore) ? buyerBefore.key : null,
+    ).toBe("nav.group.delivery");
     // Padrão das funções: quem acompanha a produção (comprador e planner) e
     // as diretorias; as outras recebem em Equipe e acessos → Telas e links.
     for (const fn of [
