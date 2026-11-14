@@ -1681,6 +1681,13 @@
           "array": false,
           "default": null,
           "type": "integer"
+        },
+        {
+          "key": "held",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
         }
       ],
       "indexes": [
@@ -1689,6 +1696,16 @@
           "type": "unique",
           "columns": [
             "number"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "live_by_status",
+          "type": "key",
+          "columns": [
+            "status"
           ],
           "orders": [
             "ASC"

@@ -458,21 +458,29 @@ export function stageTaskDrafts(
   return out;
 }
 
-/** Pedidos do login de fora da Wellmix (a mesma regra de `isInvolved`). */
+/**
+ * Pedidos do login de fora da Wellmix (a mesma regra de `isInvolved`), sem os
+ * do histórico do Sankhya em espera (pendências só depois do go-live).
+ */
 async function involvedOrderIds(user: User): Promise<string[]> {
   const { listColumns } = await import("@/lib/db/lookup");
   const store = getStore();
   if (user.role === "customer") {
     if (!user.partyId) return [];
     const rows = await listColumns(store, "orders", ["customerId"], {
-      filter: { customerId: user.partyId, requestedByUserId: user.id },
+      filter: {
+        customerId: user.partyId,
+        requestedByUserId: user.id,
+        held: null,
+      },
     });
     return rows.map((o) => o.id);
   }
   const field = ROLE_PARTY_FIELD[user.role];
   if (!field || !user.partyId) return [];
   const rows = await listColumns(store, "orders", [field], {
-    filter: { [field]: user.partyId },
+    // Pedido do histórico do Sankhya em espera: sem pendência até o go-live.
+    filter: { [field]: user.partyId, held: null },
   });
   return rows.map((o) => o.id);
 }
@@ -769,7 +777,7 @@ export async function pendingTasksFor(
   // recebido) nos pedidos dele; confirma na conta corrente.
   if (supplier) {
     const myOrders = await store.list("orders", {
-      filter: { supplierId: user.partyId! },
+      filter: { supplierId: user.partyId!, held: null },
     });
     const open = myOrders.filter((o) => o.status !== "CANCELLED");
     // Pedido antigo: o recebimento já foi confirmado pela etapa de pagamento.
@@ -826,6 +834,9 @@ export async function pendingTasksFor(
     )) {
       if (i.status !== "overdue" && i.status !== "due_soon") continue;
       if (!(i.open > 0)) continue;
+      // Pedido do histórico do Sankhya em espera: fica em Contas a pagar,
+      // mas não vira pendência até o go-live.
+      if (payable.order.held) continue;
       tasks.push(
         finish(
           {
@@ -846,10 +857,12 @@ export async function pendingTasksFor(
   // Produção (Fase C): follow 5/15/25 e reinspeção (Wellmix); SKU reprovado
   // a corrigir (fornecedor).
   if (wellmix || supplier) {
+    // Pedido do histórico do Sankhya em espera (held): sem pendência.
     const orders = await store.list("orders", {
       filter: supplier
-        ? { supplierId: user.partyId! }
+        ? { supplierId: user.partyId!, held: null }
         : {
+            held: null,
             status: [
               "ORDER_CREATED",
               "PREPARATION",
@@ -898,6 +911,7 @@ export async function pendingTasksFor(
       orders = await store.list("orders", {
         filter: importRole
           ? {
+              held: null,
               [importRole === "comex"
                 ? "comexId"
                 : importRole === "ocp"
@@ -907,8 +921,9 @@ export async function pendingTasksFor(
                     : "logisticsId"]: user.partyId!,
             }
           : supplier
-            ? { supplierId: user.partyId! }
+            ? { supplierId: user.partyId!, held: null }
             : {
+                held: null,
                 status: [
                   // Pedido recém-criado: só o selo de certificação já vale.
                   "ORDER_CREATED",
