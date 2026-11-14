@@ -24,6 +24,7 @@ As colunas `number`, `status` e `live` servem para ordenar e filtrar.
 **As regras não mudaram.** O resumo guarda os dados de entrada já filtrados. Os quadros (`buildTowerBoard`), as visões gerais e exceções (`buildControlTower`) e os totais (`summarizeFinance`) continuam sendo montados pelas mesmas funções, na hora da leitura.
 
 O que depende do tempo é calculado contra o "agora" da leitura:
+
 - prazo vencido;
 - parcela vencida ou a vencer (`installmentStatusOn`);
 - produção atrasada;
@@ -32,6 +33,7 @@ O que depende do tempo é calculado contra o "agora" da leitura:
 Por isso a passagem do tempo não precisa de job.
 
 Continuam lidas na hora, por serem pequenas:
+
 - multas em aberto;
 - itens recusados;
 - revisão;
@@ -77,6 +79,7 @@ Cada fatia grava em lote (`upsertMany`), só o que mudou. A comparação ignora 
 Ao terminar, grava o marcador `orderSummaries` em `settings`: quando, quantos pedidos, quantos gravados e apagados, duração.
 
 **Caminho antigo.** As telas leem as tabelas inteiras, como antes, em três casos:
+
 - enquanto não houver marcador;
 - com o formato do resumo diferente de `SUMMARY_VERSION`;
 - com a tabela ainda não publicada.
@@ -117,6 +120,7 @@ O teste `tests/unit/order-summary.test.ts` compara todas essas telas pelos dois 
 KPIs e indicadores (números de quadrados, contagens, totais, "no prazo") leem uma tabela agregada no nível do indicador (`kpi_snapshots`), e não tabelas por pedido ou produto. A tabela por pedido (`order_summaries`) serve de contribuição para somar o agregado e para montar a lista de um quadrado quando ele é escolhido.
 
 Cada indicador:
+
 - é refeito por evento, na gravação que muda o número;
 - é refeito quando passa o `validUntil`, o próximo instante em que um prazo vence ou o dia vira;
 - tem a reconstrução noturna (00h05 em Brasília) como reserva;
@@ -125,12 +129,14 @@ Cada indicador:
 ## Indicadores prontos da Control Tower (`kpi_snapshots`, chave "tower")
 
 A tela lê uma linha só. Com o indicador válido, são duas consultas: o marcador em `settings` e a linha agregada. A linha traz:
+
 - a contagem, os atrasados, os em risco e o valor de cada quadrado;
 - as visões gerais e o total de exceções;
 - os totais da faixa do financeiro e a visão comercial;
 - `validUntil`.
 
 **Contribuição de cada pedido** (`order_summaries.kpi`, `OrderKpi`, em `src/lib/services/tower-kpis.ts`):
+
 - em que quadrados entra, e se está atrasado ou em risco;
 - em que visões gerais aparece;
 - quantas exceções tem;
@@ -140,6 +146,7 @@ A tela lê uma linha só. Com o indicador válido, são duas consultas: o marcad
 A contribuição é calculada pelas mesmas funções da tela (`buildTowerBoard`, `buildControlTower`) só com o pedido, as multas, os itens recusados e a revisão dele.
 
 O momento em que a contribuição muda (`nextChange`) é o mais próximo entre:
+
 - o prazo da etapa;
 - dois dias antes do prazo (entrada em "em risco");
 - as datas de chegada e embarque;
@@ -148,6 +155,7 @@ O momento em que a contribuição muda (`nextChange`) é o mais próximo entre:
 - a virada do mês, para encerrados e cancelados.
 
 **Agregado** (`rebuildTowerKpis`):
+
 - lê só a coluna `kpi`;
 - recalcula antes os pedidos com a contribuição vencida;
 - soma, e o valor de cada quadrado só conta na moeda principal;
@@ -155,6 +163,7 @@ O momento em que a contribuição muda (`nextChange`) é o mais próximo entre:
 - grava a linha.
 
 **Quando é refeito:**
+
 - a cada leva de gravações, depois do recálculo dos pedidos marcados;
 - em gravações de bookings, solicitações, certificações, containers, revisão e configurações, que marcam `kpi`;
 - antes da leitura, se o `validUntil` passou.
@@ -164,6 +173,7 @@ O momento em que a contribuição muda (`nextChange`) é o mais próximo entre:
 **Etapas:** os passos que não são "em paralelo" são exclusivos, então a etapa é a soma dos passos (`buildTowerStages` usa as contagens).
 
 **Testes** (`tests/unit/tower-kpis.test.ts`): o indicador comparado ao cálculo completo em cada quadrado, etapa, visão, exceções, totais e listas:
+
 - logo depois da reconstrução;
 - quando um prazo vence, sem gravação;
 - 40 dias depois;
@@ -175,8 +185,36 @@ Outro teste confere que, com o indicador válido, a leitura são só as duas con
 ## Pendências
 
 - **Parceiros e cliente** (a tela inicial deles): leem só as etapas dos próprios pedidos (`involvedOrderIds`, a regra de `isInvolved`). Antes, liam as 13 mil etapas em andamento e os 50 mil itens pendentes.
-- **Wellmix:** as tarefas dos itens das etapas em andamento são as mesmas para toda a equipe. São pré-calculadas no resumo de cada pedido (`order_summaries.tasks`) pela mesma função (`stageTaskDrafts`) e guardam a ordem da etapa. Na leitura, só o prazo é calculado. Teste: admin e operador com a mesma lista pelo resumo e pelas tabelas, antes e depois de gravações.
-- Seguem calculadas na hora as tarefas que dependem de quem está logado (validação de passos de embarque, pagamentos e programação de compra do admin, mensagens) e as que não são de etapa.
+- **Wellmix: lista pronta por pedido (formato 6, 14/11/2026).** Decisão do dono: as pendências por pedido ficam guardadas no resumo de cada pedido (`order_summaries.tasks`, `StoredTasks` em `src/lib/services/order-summary.ts`), atualizadas por evento e reconstruídas toda noite. A tela de Pendências e o painel de SLA (opção `team`) leem só as linhas com pendência (coluna `hasTasks`, com índice) e não leem pedidos, passos de embarque, produção, artes nem pagamentos. Assim a tela não depende do número de pedidos: no go-live, os 16 mil do histórico voltam a contar só quando tiverem pendência.
+- **Pedido em espera** (`held`, histórico do Sankhya): não guarda pendência nenhuma (`hasTasks` falso).
+
+O que cada pedido guarda:
+
+| Tipo                                  | O que fica no resumo                                                                                                                                                                      | O que a leitura decide                                                                                                                                                                                                                                                                                                         |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Etapas (itens pendentes)              | a pendência pronta e a ordem da etapa (`stageTaskDrafts`, as mesmas para toda a equipe)                                                                                                   | só o prazo                                                                                                                                                                                                                                                                                                                     |
+| Produção (follow 5/15/25, reinspeção) | todos os follows ainda não registrados, com a data, e a reinspeção (`wellmixProductionCandidates`)                                                                                        | o follow aparece quando a data passa (`dueProductionCandidates`)                                                                                                                                                                                                                                                               |
+| Embarque, desembaraço e certificação  | os passos que pedem algo da Wellmix agora (`wellmixImportCandidates`): fazer ou validar, quem enviou, o papel de quem faz ou valida e, no rastreio do container, o dia do último registro | para quem é (`routeImportCandidates`): a rota da certificação (`Route`, pelo encaminhamento do momento), o dono (`routeOwnerUserId`), quem enviou não valida, as funções do login (financeiro, comex interno, validar arte), a arte pela agência (Configurações) e o rastreio que volta quando o último registro não é de hoje |
+| Artes (corrigir, conferir)            | as não conformidades abertas ou corrigidas: quem apontou, quem corrigiu, datas e o nome do item                                                                                           | para quem é (`routeArtIssue`): a rota, o dono e quem pode validar arte                                                                                                                                                                                                                                                         |
+| "Pagar fornecedor" (admin)            | as parcelas em aberto vencidas, vencendo ou agendadas, com vencimento, valor, moeda e o nome do fornecedor (`payableFor`, como em Contas a pagar)                                         | a situação do dia (`installmentStatusOn`): vencida ou vencendo em 7 dias                                                                                                                                                                                                                                                       |
+
+Junto vai o pedido só com o que as pendências e o encaminhamento leem (`TaskOrder`: número, cliente, solicitação, situação, fluxo, analista, designer, agência, despachante e os outros parceiros) e a ordem do pedido (criação, id), para a lista sair na mesma ordem de antes.
+
+**Por que a rota não é gravada pronta.** Quem recebe a certificação e a arte depende da equipe ativa, das funções e das Configurações (arte feita pela agência), que mudam sem gravar no pedido. O resumo guarda o que a rota usa (os campos do pedido, quem enviou, quem apontou e quem corrigiu) e a leitura calcula a rota com o encaminhamento do momento (`loadRoutingContext`: usuários ativos, funções e configurações, tabelas pequenas). Trocar o analista, o designer ou o despachante grava no pedido e marca o resumo.
+
+**Prazos que vencem sem gravação.** O follow guarda a data; o rastreio do container guarda o dia do último registro; a parcela guarda o vencimento e a situação é refeita com o dia da leitura. Nada disso precisa de job.
+
+**Mesma regra nos dois caminhos.** As funções puras (`wellmixProductionCandidates`, `wellmixImportCandidates` e `routeImportCandidates`, `routeArtIssue`) também montam o caminho pelas tabelas, que segue igual sem os resumos prontos.
+
+**Recálculo por evento.** As gravações que mudam essas pendências já marcam o pedido: o próprio pedido (situação, espera, analista, designer, parceiros, condição de pagamento), etapas, requisitos (certificado do pedido de compra, marcos do cronograma), itens (nome na arte), pagamentos, passos de embarque e certificação, produção, inspeção por SKU, artes e o nome ou a condição de pagamento do fornecedor. Equipe, funções e configurações não precisam: entram na leitura.
+
+**Testes** (`tests/unit/tasks-ready-list.test.ts`): cada login da Wellmix, também com a opção `team`, recebe a mesma lista pelos dois caminhos, com cada tipo presente; também 1, 6, 15 e 22 dias depois sem gravação (follow de 25 dias, rastreio, 2ª parcela), depois de gravações (follow registrado, analista, despachante, designer, pagamento, arte aceita) e com o encaminhamento mudado sem gravar no pedido (arte pela agência desligada, operador inativo). Outro teste confere que a leitura não toca `import_steps`, `production_tracks`, `sku_inspections`, `art_issues` nem `payments`, e que pedidos só são lidos por id. O pedido em espera não guarda nada.
+
+**Fora da lista pronta** (seguem calculadas na hora):
+
+- as do fornecedor, dos parceiros, da agência e do cliente, que leem só os pedidos deles;
+- solicitações novas, revisão, Sourcing, mensagens, amostragem e NCM, que não são por pedido;
+- a programação de compra do admin (etapas de Preparação em andamento e os pedidos delas, por id).
 
 ## Painel de SLA
 
@@ -191,5 +229,8 @@ Outro teste confere que, com o indicador válido, a leitura são só as duas con
 ## O que ainda pesa
 
 1. **Pedidos:** a lista lê todos os itens, só com as colunas usadas, para filtrar e ordenar no servidor (página de 50).
-2. **Tarefas de embarque e produção da Wellmix nas Pendências:** leem os pedidos nas etapas de produção e embarque. Dependem de quem valida, então não foram pré-calculadas.
-3. **Escolha de itens do container:** a lista do formulário tem todos os itens dos pedidos em aberto.
+2. **Escolha de itens do container:** a lista do formulário tem todos os itens dos pedidos em aberto.
+3. **Programação de compra do admin nas Pendências:** lê as etapas de Preparação em andamento e os pedidos delas.
+4. **Documentos do embarque nas Pendências** (`shippingDocTasks`, docs/SHIPPING_DOCS.md): lê os pedidos de compra em inspeção ou embarque e, de cada um, o container vazio, os itens e os documentos. São poucos pedidos; entram na lista pronta se crescerem.
+
+As tarefas de embarque, produção, artes e "Pagar fornecedor" da Wellmix saíram desta lista em 14/11/2026 (lista pronta, acima).
