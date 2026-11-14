@@ -88,7 +88,9 @@ export async function FlowOverview({
                     <span
                       className={cx(
                         "text-sm",
-                        active ? "font-semibold text-brand-700" : "text-zinc-800",
+                        active
+                          ? "font-semibold text-brand-700"
+                          : "text-zinc-800",
                       )}
                     >
                       {t(stepLabelKey(s.step))}
@@ -98,7 +100,9 @@ export async function FlowOverview({
                     </span>
                   </div>
                   <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500">
-                    <span className={s.overdue ? "font-semibold text-red-700" : ""}>
+                    <span
+                      className={s.overdue ? "font-semibold text-red-700" : ""}
+                    >
                       {t("flow.overview.late", { n: s.overdue })}
                     </span>
                     {s.avgDays !== null ? (

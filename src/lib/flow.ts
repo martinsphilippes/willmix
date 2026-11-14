@@ -370,3 +370,8 @@ export function itemsInStep<T extends { key: string }>(
     flowStepsOf({ ...task, items: [item] }).some((x) => stepId(x) === id),
   );
 }
+
+/** Passo do menu de um passo do embarque, da importação ou da certificação. */
+export function flowStepOfImportKey(key: string): FlowStep | null {
+  return toStep(importStep(key));
+}

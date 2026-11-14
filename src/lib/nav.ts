@@ -117,16 +117,14 @@ function flowEntries(block: FlowBlock): Entry[] {
     : [];
   return [
     ...overview,
-    ...steps.map(
-      (step): Entry => [
-        step.screen,
-        {
-          href: stepHref(step),
-          key: stepLabelKey(step),
-          step: stepId(step),
-        },
-      ],
-    ),
+    ...steps.map((step): Entry => [
+      step.screen,
+      {
+        href: stepHref(step),
+        key: stepLabelKey(step),
+        step: stepId(step),
+      },
+    ]),
   ];
 }
 
@@ -184,7 +182,12 @@ export function navFor(
         ["home", { href: "/app", key: "nav.controlTower", icon: "tower" }],
         [
           "tasks",
-          { href: "/app/tasks", key: "nav.tasks", icon: "tasks", badge: "tasks" },
+          {
+            href: "/app/tasks",
+            key: "nav.tasks",
+            icon: "tasks",
+            badge: "tasks",
+          },
         ],
       ]),
       // Blocos na ordem do mapa do processo (docs/FLOW_MENU.md): cada passo
@@ -240,7 +243,11 @@ export function navFor(
         pick(has, [
           [
             "finance",
-            { href: "/app/finance", key: "nav.finance", step: "finance/finance" },
+            {
+              href: "/app/finance",
+              key: "nav.finance",
+              step: "finance/finance",
+            },
           ],
           ["payables", { href: "/app/payables", key: "nav.payables" }],
           // Fluxo de caixa: saiu de Painéis (dono, 14/11/2026).
@@ -296,7 +303,12 @@ export function navFor(
       ...pick(has, [
         [
           "tasks",
-          { href: "/app/tasks", key: "nav.tasks", icon: "tasks", badge: "tasks" },
+          {
+            href: "/app/tasks",
+            key: "nav.tasks",
+            icon: "tasks",
+            badge: "tasks",
+          },
         ],
       ]),
       ...group(

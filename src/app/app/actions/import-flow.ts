@@ -33,7 +33,12 @@ const doneParam = (form: FormData) =>
 const errorBack = (form: FormData, to: string) =>
   `${to}?stepCard=${anchorOf(form)}#${anchorOf(form)}`;
 
+/** Tela do passo do menu de onde a ação veio (docs/FLOW_MENU.md). */
+const FLOW_STEP_PATH = /^\/app\/flow\/[a-z-]{1,40}\/[a-z-]{1,40}$/;
+
 function back(form: FormData) {
+  const returnTo = str(form, "returnTo");
+  if (FLOW_STEP_PATH.test(returnTo)) return returnTo;
   const orderId = ID.safeParse(str(form, "orderId"));
   return orderId.success ? `/app/orders/${orderId.data}` : "/app/orders";
 }

@@ -135,7 +135,9 @@ describe("menu lateral", () => {
 
   it("Produção: grupo com o Overview (/app/production) e os passos, uma vez só", () => {
     const entries = navFor(ADMIN);
-    const prod = entries.find((e) => isNavGroup(e) && e.key === "nav.production");
+    const prod = entries.find(
+      (e) => isNavGroup(e) && e.key === "nav.production",
+    );
     expect(prod?.icon).toBe("factory");
     expect(hrefsOf(ADMIN).filter((h) => h === "/app/production")).toHaveLength(
       1,

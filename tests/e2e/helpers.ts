@@ -139,7 +139,7 @@ export async function importAndClose(
     page.getByRole("heading", { name: "Fechar o book" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Books", exact: true }).first(),
+    page.getByRole("link", { name: /^Books?$/ }).first(),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: /booking/i })).toHaveCount(0);
   // Na caixa "Dados do book" (dono, 13/11/2026): quem fabrica é a

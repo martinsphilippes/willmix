@@ -2,7 +2,16 @@ import type { Task } from "@/lib/services/tasks";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { caseHref, itemsInStep, type FlowStep } from "@/lib/flow";
-import { Badge, Empty, Table, Td, TextLink, Th, formatDate, rowClass } from "./ui";
+import {
+  Badge,
+  Empty,
+  Table,
+  Td,
+  TextLink,
+  Th,
+  formatDate,
+  rowClass,
+} from "./ui";
 
 /*
  * Casos de um passo do fluxo (docs/FLOW_MENU.md): o que espera ação do login,
@@ -85,9 +94,7 @@ export function FlowCases({
                 )}
               </Td>
               <Td className="whitespace-nowrap">
-                {days === null
-                  ? "—"
-                  : t("flow.cases.days", { n: days })}
+                {days === null ? "—" : t("flow.cases.days", { n: days })}
               </Td>
               <Td className="whitespace-nowrap text-right">
                 <TextLink href={caseHref(step, task)} data-flow-case-open>

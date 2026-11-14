@@ -12,6 +12,8 @@ import {
 } from "@/lib/flow";
 import { flowCasesOf } from "@/lib/services/flow";
 import { FlowCases } from "@/components/flow-cases";
+import { FlowStepWork } from "@/components/flow-step-work";
+import type { DictionaryKey } from "@/i18n/dictionaries";
 import { PageHeader, TextLink } from "@/components/ui";
 
 /*
@@ -32,7 +34,12 @@ export default async function FlowStepPage({
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=/app/flow/${block}/${key}`);
   requireScreen(user, step.screen);
-  const { due } = await searchParams;
+  const { due, importStep, certStep } = await searchParams;
+  const done = [importStep, certStep].find(
+    (v) =>
+      typeof v === "string" &&
+      ["submitted", "validated", "rejected"].includes(v),
+  ) as string | undefined;
   const t = await getT();
   const all = await flowCasesOf(user, step);
   const filter = (DUES as readonly string[]).includes(String(due))
@@ -78,6 +85,13 @@ export default async function FlowStepPage({
         })}
       </nav>
       <FlowCases step={step} tasks={tasks} t={t} />
+      <FlowStepWork
+        user={user}
+        step={step}
+        tasks={all}
+        t={t}
+        notice={done ? t(`importFlow.done.${done}` as DictionaryKey) : null}
+      />
     </div>
   );
 }

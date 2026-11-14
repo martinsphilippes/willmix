@@ -3,6 +3,7 @@ import {
   FLOW_STEPS,
   caseHref,
   countByStep,
+  flowStepOfImportKey,
   flowStepsOf,
   itemsInStep,
   stepId,
@@ -50,6 +51,18 @@ describe("passos do menu", () => {
     expect(ids({ kind: "import_validate", stepKey: "assign" })).toEqual([
       "order/certification",
     ]);
+  });
+
+  it("todo passo do embarque, da importação e da certificação tem o passo do menu", async () => {
+    const { IMPORT_STEP_KEYS } = await import("@/lib/db/schema");
+    expect(IMPORT_STEP_KEYS.filter((k) => !flowStepOfImportKey(k))).toEqual([]);
+    expect(
+      flowStepOfImportKey("cert_seal") &&
+        stepId(flowStepOfImportKey("cert_seal")!),
+    ).toBe("order/certification");
+    expect(stepId(flowStepOfImportKey("container_sealed")!)).toBe(
+      "production/loading",
+    );
   });
 
   it("pendência de etapa: cada item no passo dele, sem repetir", () => {
