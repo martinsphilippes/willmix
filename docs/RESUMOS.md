@@ -84,7 +84,7 @@ Ao terminar, grava o marcador `orderSummaries` em `settings`: quando, quantos pe
 - com o formato do resumo diferente de `SUMMARY_VERSION`;
 - com a tabela ainda não publicada.
 
-Mudou o formato de `facts`? Suba `SUMMARY_VERSION`. As telas voltam ao caminho antigo até a próxima reconstrução.
+Mudou o formato de `facts`? Suba `SUMMARY_VERSION`. **Formato 10 (14/11/2026):** entrou a contribuição de cada pedido para o Overview dos blocos (`kpi.f`, abaixo). As telas voltam ao caminho antigo até a próxima reconstrução.
 
 **Reconstrução depois do deploy (auditoria de performance, 14/11/2026).** Antes, subir `SUMMARY_VERSION` deixava todas as telas no caminho antigo até a reconstrução da madrugada (até 24 h). Em 14/11 o banco estava na versão 6 e o código na 8; as telas liam tabelas inteiras, e houve timeouts de 60 s e quedas por falta de memória. Agora `readMarker` chama `kickStaleSummaries` (`src/lib/services/summary-kick.ts`): a primeira tela que encontra o formato mais velho que o do código pede ao `/api/jobs/summaries` da própria publicação (`VERCEL_URL`, com `CRON_SECRET`) que comece a reconstrução, depois da resposta. Isso só acontece em produção, só quando o formato do código é mais novo (rollback não refaz o resumo) e no máximo uma vez a cada 2 minutos por instância; a trava do job descarta os pedidos repetidos. A janela lenta cai para o tempo da reconstrução (cerca de 2 minutos para 16 mil pedidos na madrugada de 14/11).
 
@@ -233,6 +233,27 @@ Junto vai o pedido só com o que as pendências e o encaminhamento leem (`TaskOr
 - as do fornecedor, dos parceiros, da agência e do cliente, que leem só os pedidos deles;
 - solicitações novas, revisão, Sourcing, mensagens, amostragem e NCM, que não são por pedido;
 - a programação de compra do admin (etapas de Preparação em andamento e os pedidos delas, por id).
+
+## Indicadores prontos do Overview dos blocos (`kpi_snapshots`, chave "flow")
+
+Pedido do dono (14/11/2026): o Overview de Produto novo, Pedido, Produção e Entrega (docs/FLOW_MENU.md) lê os números de uma linha só.
+
+**Regra única** (`src/lib/services/flow-contribution.ts`, pura): em que passo o pedido está (`orderFlowEntries`: itens de etapa abertos das etapas em andamento, passos do embarque, da origem, da certificação e das amostras, produção em andamento, recebimento no CD e pré-produção) e a contribuição dele (`buildOrderFlow`). O "Todos no passo" lido das tabelas usa a mesma função, com as leituras em lote (antes, uma leitura das amostras por pedido).
+
+**Contribuição de cada pedido** (`order_summaries.kpi.f`, `OrderFlow`, desde o formato 10 do resumo): número, situação, fornecedor, os passos em que está e desde quando, a completude de Pedido, Produção e Entrega e a geral, o prazo mais antigo das etapas abertas de cada bloco e o início de cada bloco. Só datas e números: o atraso é contado na leitura. Pedido encerrado, cancelado ou em espera não contribui.
+
+**Agregado** (`src/lib/services/flow-kpis.ts`, `rebuildFlowKpis`):
+
+- lê só `kpi->f` dos resumos em andamento (`live`);
+- monta as linhas de cada bloco (`entitiesFromFlows`) e as do Produto novo das tabelas pequenas (books, convites e solicitações ao fornecedor, lidas na hora; `newProductData`);
+- soma por bloco (quantas, atrasadas, completude média do bloco e geral, a mais antiga) e por passo (`aggregateFlow`);
+- grava a linha com `validUntil`: o próximo instante em que um atraso muda (um dia inteiro depois do prazo de uma etapa aberta; o prazo do convite e o SLA da negociação).
+
+**Quando é refeito:** junto com o da Control Tower, a cada leva de gravações (pedido, etapa, item, embarque, recebimento…; book, convite e solicitação ao fornecedor marcam `kpi`), no fim da reconstrução dos resumos e antes da leitura, se o `validUntil` passou. Mudou o formato? Suba `FLOW_KPI_VERSION` (a linha) ou `SUMMARY_VERSION` (a contribuição).
+
+**Tela:** os números vêm da linha pronta; a tabela, da contribuição dos pedidos em andamento (o bloco aberto) ou das tabelas pequenas (Produto novo). Sem os resumos em uso (marcador ausente ou de outro formato), tudo é somado das tabelas pela mesma regra (`flowOverviewKpis`).
+
+**Testes** (`tests/unit/flow-kpis.test.ts`): números e listas de cada bloco pelo resumo e pelas tabelas, iguais logo depois da reconstrução, quando um prazo vence (um dia depois, sem gravação), 40 dias depois e depois de gravações; com a linha válida, a leitura não toca etapas, itens, pedidos nem passos do embarque.
 
 ## Painel de SLA
 

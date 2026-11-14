@@ -35,6 +35,8 @@ const ORDER_TABLES = new Set<TableName>([
  */
 const KPI_TABLES = new Set<TableName>([
   "booking_lots",
+  // Convites de book concorrente (Cotações do Overview do Produto novo).
+  "booking_invites",
   "supplier_requests",
   "requests",
   "certifications",

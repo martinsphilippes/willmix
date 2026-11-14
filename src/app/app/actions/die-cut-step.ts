@@ -78,3 +78,59 @@ export async function confirmDieCutTermsAction(
   revalidatePath("/app", "layout");
   redirect(withQuery(back, "saved", "terms"));
 }
+
+/**
+ * "+" do die-cut e da foto em alta (pedido do dono, 14/11/2026): cada foto
+ * escolhida vira um anexo próprio do item. Volta para o quadro com o aviso.
+ */
+export async function addDieCutPhotosAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId");
+  const requirementId = str(form, "requirementId");
+  let to = dieCutHref(orderId);
+  try {
+    assertScreen(user, "orders");
+    z.string().regex(ID).parse(orderId);
+    z.string().regex(ID).parse(requirementId);
+    const files = form
+      .getAll("file")
+      .filter((f): f is File => f instanceof File && f.size > 0)
+      .slice(0, 20);
+    const uploadedIds = z
+      .array(z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/))
+      .max(20)
+      .parse(
+        form
+          .getAll("uploadedPhotoId")
+          .filter((v): v is string => typeof v === "string" && !!v),
+      );
+    const { addDieCutPhotos } = await import("@/lib/services/die-cut-step");
+    await addDieCutPhotos(user, orderId, requirementId, { files, uploadedIds });
+    to = withQuery(to, "saved", "photo");
+  } catch (error) {
+    to = withQuery(to, "error", errorCode(to, error));
+  }
+  revalidatePath(`/app/orders/${orderId}/die-cut`);
+  redirect(to);
+}
+
+/** Exclui só a foto escolhida do die-cut ou da foto em alta. */
+export async function removeDieCutPhotoAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId");
+  const requirementId = str(form, "requirementId");
+  const documentId = str(form, "documentId");
+  let to = dieCutHref(orderId);
+  try {
+    assertScreen(user, "orders");
+    for (const v of [orderId, requirementId, documentId])
+      z.string().regex(ID).parse(v);
+    const { removeDieCutPhoto } = await import("@/lib/services/die-cut-step");
+    await removeDieCutPhoto(user, orderId, requirementId, documentId);
+    to = withQuery(to, "saved", "removed");
+  } catch (error) {
+    to = withQuery(to, "error", errorCode(to, error));
+  }
+  revalidatePath(`/app/orders/${orderId}/die-cut`);
+  redirect(to);
+}

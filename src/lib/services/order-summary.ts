@@ -63,9 +63,10 @@ import type { BoardOrder, BoardStage } from "./tower-board";
  * Formato de `facts`; mudar o formato = subir o número (as telas voltam ao
  * caminho antigo até a reconstrução, que em produção começa sozinha depois do
  * deploy: summary-kick.ts). 9: `itemCount` (a tela Pedidos lê os itens só da
- * página).
+ * página). 10: a contribuição de cada pedido para o Overview dos blocos
+ * (`kpi.f`, flow-contribution.ts; docs/FLOW_MENU.md).
  */
-export const SUMMARY_VERSION = 9;
+export const SUMMARY_VERSION = 10;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -174,6 +175,8 @@ interface Sources {
   art: Map<string, ArtIssue[]>;
   receivings: Map<string, Receiving[]>;
   payments: Map<string, Payment[]>;
+  /** Sinal ao fornecedor e pedido de amostras (passos do Overview, flow-contribution.ts). */
+  flowRequirements: Map<string, Requirement[]>;
 }
 
 /**
@@ -211,6 +214,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
       art: new Map(),
       receivings: new Map(),
       payments: new Map(),
+      flowRequirements: new Map(),
     };
   const [
     parties,
@@ -225,6 +229,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     art,
     receivings,
     payments,
+    flowRequirements,
   ] = await Promise.all([
     partyIds.length
       ? store.list("parties", { filter: { id: partyIds } })
@@ -250,6 +255,9 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     ),
     safe(store.list("receivings", { filter: byOrder })),
     store.list("payments", { filter: byOrder }),
+    store.list("requirements", {
+      filter: { ...byOrder, key: ["down_payment", "sample_order"] },
+    }),
   ]);
   const partyMap = new Map<string, Party>();
   for (const p of parties) if (!partyMap.has(p.id)) partyMap.set(p.id, p);
@@ -267,6 +275,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     art: groupBy(art, (r) => r.orderId),
     receivings: groupBy(receivings, (r) => r.orderId),
     payments: groupBy(payments, (r) => r.orderId),
+    flowRequirements: groupBy(flowRequirements, (r) => r.orderId),
   };
 }
 
@@ -720,9 +729,45 @@ async function kpisOf(
   facts: OrderFacts[],
   now: Date,
   ids: string[] | null,
+  src?: Sources,
 ): Promise<Map<string, unknown>> {
   const { orderKpisFor } = await import("./tower-kpis");
-  return orderKpisFor(facts, now, ids);
+  const kpis = await orderKpisFor(facts, now, ids);
+  if (!src) return kpis;
+  // Contribuição para o Overview dos blocos (`f`, flow-contribution.ts).
+  const flows = await flowsOf(src);
+  return new Map(
+    [...kpis.entries()].map(([id, kpi]) => [
+      id,
+      { ...kpi, f: flows.get(id) ?? null },
+    ]),
+  );
+}
+
+/** Contribuição de cada pedido para o Overview dos blocos (docs/FLOW_MENU.md). */
+async function flowsOf(src: Sources) {
+  const { buildOrderFlow } = await import("./flow-contribution");
+  const out = new Map<string, unknown>();
+  for (const order of src.orders) {
+    const reqs = src.flowRequirements.get(order.id) ?? [];
+    out.set(
+      order.id,
+      buildOrderFlow({
+        order,
+        stages: src.stages.get(order.id) ?? [],
+        openRequirements: src.openRequirements.get(order.id) ?? [],
+        importSteps: src.steps.get(order.id) ?? [],
+        track: src.tracks.get(order.id)?.[0] ?? null,
+        receiving: src.receivings.get(order.id)?.[0] ?? null,
+        items: src.items.get(order.id) ?? [],
+        downPayment:
+          reqs.find((r) => r.key === "down_payment" && r.status === "done") ??
+          null,
+        sampleOrder: reqs.find((r) => r.key === "sample_order") ?? null,
+      }),
+    );
+  }
+  return out;
 }
 
 async function writeSummaries(rows: ReturnType<typeof summaryRow>[]) {
@@ -780,6 +825,7 @@ export async function recomputeOrderSummaries(
     facts,
     now,
     src.orders.map((o) => o.id),
+    src,
   );
   const tasks = await tasksOf(src, facts, today);
   const rows = facts.map((f) =>
@@ -822,6 +868,9 @@ export async function applySummaryChanges(changes: {
   if (ids.length || changes.kpi) {
     const { rebuildTowerKpis } = await import("./tower-kpis");
     await rebuildTowerKpis();
+    // Overview dos blocos (flow-kpis.ts): o mesmo evento muda os números.
+    const { rebuildFlowKpis } = await import("./flow-kpis");
+    await rebuildFlowKpis();
   }
   return done;
 }
@@ -943,6 +992,7 @@ async function rebuildChunk(
     facts,
     now,
     src.orders.map((o) => o.id),
+    src,
   );
   const tasks = await tasksOf(src, facts, today);
   const existing = new Map(
@@ -1020,6 +1070,8 @@ async function finishRebuild(
   // Indicadores prontos refeitos sobre os resumos novos.
   const { rebuildTowerKpis } = await import("./tower-kpis");
   await rebuildTowerKpis(now);
+  const { rebuildFlowKpis } = await import("./flow-kpis");
+  await rebuildFlowKpis(now);
   return marker;
 }
 

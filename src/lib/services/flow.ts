@@ -18,6 +18,9 @@ import {
   type OrderProgress,
 } from "@/lib/flow-progress";
 import { getSettings } from "@/lib/settings";
+import { SAMPLE_ORDER_KEY } from "@/lib/purchase-lanes";
+import { RECEIVING_STATUSES } from "./receiving";
+import { orderFlowEntries, type OrderFlowInput } from "./flow-contribution";
 import {
   supplierRequestLate,
   supplierRequestSlaDue,
@@ -247,10 +250,8 @@ export async function flowBlockSummary(
 }
 
 /** Item aberto de um pedido num passo (aba "Todos" da tela do passo). */
-export type FlowEntityItem =
-  | { kind: "requirement"; requirement: import("@/lib/db/schema").Requirement }
-  | { kind: "import"; key: string }
-  | { kind: "case"; title: FlowCase["text"] };
+export type { FlowEntityItem } from "./flow-contribution";
+type FlowEntityItem = import("./flow-contribution").FlowEntityItem;
 
 /** Pedido que está num passo agora, com o que está aberto nele. */
 export interface FlowEntity {
@@ -317,112 +318,67 @@ const flowAllData = cache(
       byOrder.set(orderId, entity);
       out.set(stepKey, byOrder);
     };
-    const [stages, importSteps, tracks] = await Promise.all([
+    const [
+      stages,
+      importSteps,
+      tracks,
+      openRequirements,
+      receivings,
+      downPayments,
+      sampleOrders,
+    ] = await Promise.all([
       store.list("stages", { filter: { orderId: ids } }),
       store.list("import_steps", { filter: { orderId: ids } }).catch(() => []),
       store
         .list("production_tracks", { filter: { orderId: ids } })
         .catch(() => []),
+      store.list("requirements", {
+        filter: { orderId: ids, status: ["pending", "rejected"] },
+      }),
+      store.list("receivings", { filter: { orderId: ids } }).catch(() => []),
+      store.list("requirements", {
+        filter: { orderId: ids, key: "down_payment", status: "done" },
+      }),
+      store.list("requirements", {
+        filter: { orderId: ids, key: SAMPLE_ORDER_KEY },
+      }),
     ]);
-    const now = new Date();
-    const stagesByOrder = new Map<string, typeof stages>();
-    for (const st of stages) {
-      const list = stagesByOrder.get(st.orderId) ?? [];
-      list.push(st);
-      stagesByOrder.set(st.orderId, list);
-    }
-    const progress = new Map(
-      orders.map((o) => [
-        o.id,
-        orderProgress(stagesByOrder.get(o.id) ?? [], now),
-      ]),
-    );
-    // Itens de etapa abertos das etapas em andamento (ou bloqueadas).
-    const live = stages.filter(
-      (s) => s.status === "active" || s.status === "blocked",
-    );
-    const stageById = new Map(live.map((s) => [s.id, s]));
-    const requirements = live.length
-      ? await store.list("requirements", {
-          filter: { stageId: live.map((s) => s.id) },
-        })
+    // Itens do pedido só de quem está no recebimento (a contagem por SKU).
+    const receivingIds = orders
+      .filter((o) =>
+        (RECEIVING_STATUSES as readonly string[]).includes(o.status),
+      )
+      .map((o) => o.id);
+    const items = receivingIds.length
+      ? await store.list("order_items", { filter: { orderId: receivingIds } })
       : [];
-    for (const r of requirements) {
-      if (r.status === "done") continue;
-      const stage = stageById.get(r.stageId);
-      if (!stage) continue;
-      for (const step of flowStepsOf({
-        kind: "requirement",
-        stageKey: stage.key,
-        items: [{ key: r.key }],
-      }))
-        add(
-          stepId(step),
-          r.orderId,
-          { kind: "requirement", requirement: r },
-          stage.startedAt ?? null,
-        );
-    }
-    // Passos do embarque, da origem, da certificação e das amostras.
-    const flow = await import("./import-flow");
-    const { samplesApply } = await import("./sample-flow");
-    const { flowStepOfImportKey } = await import("@/lib/flow");
+    const group = <T extends { orderId: string }>(rows: T[]) => {
+      const m = new Map<string, T[]>();
+      for (const r of rows) m.set(r.orderId, [...(m.get(r.orderId) ?? []), r]);
+      return m;
+    };
+    const byStages = group(stages);
+    const byReqs = group(openRequirements);
+    const bySteps = group(importSteps);
+    const byItems = group(items);
+    const now = new Date();
+    const progress = new Map<string, OrderProgress>();
     for (const order of orders) {
-      const steps = importSteps.filter((s) => s.orderId === order.id);
-      const certification = steps.some((s) => s.key.startsWith("cert_"));
-      const samples =
-        [
-          "INSPECTION",
-          "SHIPPING",
-          "CUSTOMS",
-          "TRANSPORT",
-          "DELIVERED",
-        ].includes(order.status) &&
-        (await samplesApply(order).catch(() => false));
-      for (const key of flow.openImportStepKeys(order, steps, {
-        certification,
-        samples,
-      })) {
-        const step = flowStepOfImportKey(key);
-        if (!step) continue;
-        const after = steps
-          .filter((s) => s.orderId === order.id)
-          .map((s) => s.updatedAt ?? s.createdAt ?? null)
-          .filter((d): d is string => !!d)
-          .sort()
-          .pop();
-        add(stepId(step), order.id, { kind: "import", key }, after ?? null);
-      }
-      // Produção em andamento: com ETD e na etapa de inspeção.
-      const track = tracks.find((x) => x.orderId === order.id);
-      if (track?.etd && order.status === "INSPECTION")
-        add(
-          "production/production",
-          order.id,
-          {
-            kind: "case",
-            title: {
-              title: "flow.all.production",
-              detail: "flow.all.production",
-              values: { n: order.number },
-            },
-          },
-          track.productionStartAt ?? null,
-        );
+      const input: OrderFlowInput = {
+        order,
+        stages: byStages.get(order.id) ?? [],
+        openRequirements: byReqs.get(order.id) ?? [],
+        importSteps: bySteps.get(order.id) ?? [],
+        track: tracks.find((x) => x.orderId === order.id) ?? null,
+        receiving: receivings.find((x) => x.orderId === order.id) ?? null,
+        items: byItems.get(order.id) ?? [],
+        downPayment: downPayments.find((x) => x.orderId === order.id) ?? null,
+        sampleOrder: sampleOrders.find((x) => x.orderId === order.id) ?? null,
+      };
+      progress.set(order.id, orderProgress(input.stages, now));
+      for (const e of orderFlowEntries(input))
+        add(e.step, order.id, e.item, e.since);
     }
-    // Recebimento no CD e pré-produção: os mesmos casos do menu.
-    for (const c of [
-      ...(await flowReceivingCasesFor(user).catch(() => [])),
-      ...(await flowPreProductionCasesFor(user).catch(() => [])),
-    ])
-      for (const step of flowStepsOf(c))
-        if (c.orderId)
-          add(
-            stepId(step),
-            c.orderId,
-            { kind: "case", title: c.text },
-            c.sinceAt ?? null,
-          );
     const entities = new Map(
       [...out.entries()].map(([k, byOrder]) => [
         k,
@@ -505,6 +461,15 @@ export async function flowOverviewEntities(
   if (!isWellmix(user)) return [];
   if (block === "new-product") return newProductEntities(user);
   if (!isProgressBlock(block)) return [];
+  // Com os resumos em uso: da contribuição de cada pedido (docs/RESUMOS.md).
+  const { summariesReady } = await import("./order-summary");
+  if (await summariesReady()) {
+    const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
+    await flushSummaryChanges();
+    const { readOrderFlows, entitiesFromFlows } = await import("./flow-kpis");
+    const flows = await readOrderFlows();
+    if (flows) return entitiesFromFlows(flows, block, new Date());
+  }
   return (await flowBlockEntities(user, block)).map((e) => {
     const mine = e.progress ? blockOf(e.progress, block) : null;
     return {
@@ -533,128 +498,170 @@ export async function flowOverviewEntities(
 export const newProductEntities = cache(
   async (user: User, now = new Date()): Promise<OverviewEntity[]> => {
     if (!isWellmix(user)) return [];
-    const store = getStore();
-    const [lots, invites, requests, minutes] = await Promise.all([
-      canOpen(user, "booking")
-        ? store.list("booking_lots", {
-            filter: {
-              status: ["preparing", "draft", "closed", "in_progress"],
-            },
-          })
-        : Promise.resolve([]),
-      canOpen(user, "quotes")
-        ? store
-            .list("booking_invites", { filter: { status: "open" } })
-            .catch(() => [])
-        : Promise.resolve([]),
-      canOpen(user, "quotes")
-        ? store.list("supplier_requests", {
-            filter: { status: ["open", "answered", "approved"] },
-          })
-        : Promise.resolve([]),
-      (async () => (await getSettings()).supplierRequestSlaMinutes)(),
-    ]);
-    // Book já concluído com convite de book concorrente ainda aberto.
-    const missing = [
-      ...new Set(
-        invites
-          .map((i) => i.bookingLotId)
-          .filter((id) => !lots.some((l) => l.id === id)),
-      ),
-    ];
-    if (missing.length)
-      lots.push(
-        ...(await store.list("booking_lots", { filter: { id: missing } })),
-      );
-    const out: OverviewEntity[] = [];
-    // Pedidos em andamento que nasceram das solicitações de cada book.
-    const progress = await flowProgressFor(user);
-    const ordersOfLot = (lotId: string) => [
+    const { summariesReady } = await import("./order-summary");
+    const ready = await summariesReady();
+    return (
+      await newProductData(user, now, async (ids) => {
+        // Completude geral dos pedidos: do resumo (indicadores prontos) ou
+        // das etapas lidas na hora (sem os resumos em uso).
+        if (ready) {
+          const { readOrderFlows } = await import("./flow-kpis");
+          const flows = ids.length ? await readOrderFlows(ids) : [];
+          if (flows) return new Map(flows.map(({ id, f }) => [id, f.o]));
+        }
+        const progress = await flowProgressFor(user);
+        return new Map([...progress].map(([id, p]) => [id, p.overall]));
+      })
+    ).rows;
+  },
+);
+
+/**
+ * As linhas do Produto novo e os prazos que mudam o atraso delas (convite
+ * vencido, SLA da negociação). Sem login (`null`): todas, para os
+ * indicadores prontos (flow-kpis.ts); com login, só as telas que ele abre.
+ * `overall`: a completude geral dos pedidos em andamento, por id (ou a
+ * função que a lê, com os ids dos pedidos das solicitações).
+ */
+export async function newProductData(
+  user: User | null,
+  now: Date,
+  overall:
+    | Map<string, number>
+    | ((orderIds: string[]) => Promise<Map<string, number>>),
+): Promise<{ rows: OverviewEntity[]; dues: number[] }> {
+  const store = getStore();
+  const sees = (screen: "booking" | "quotes") => !user || canOpen(user, screen);
+  const [lots, invites, requests, minutes] = await Promise.all([
+    sees("booking")
+      ? store.list("booking_lots", {
+          filter: {
+            status: ["preparing", "draft", "closed", "in_progress"],
+          },
+        })
+      : Promise.resolve([]),
+    sees("quotes")
+      ? store
+          .list("booking_invites", { filter: { status: "open" } })
+          .catch(() => [])
+      : Promise.resolve([]),
+    sees("quotes")
+      ? store.list("supplier_requests", {
+          filter: { status: ["open", "answered", "approved"] },
+        })
+      : Promise.resolve([]),
+    (async () => (await getSettings()).supplierRequestSlaMinutes)(),
+  ]);
+  // Book já concluído com convite de book concorrente ainda aberto.
+  const missing = [
+    ...new Set(
+      invites
+        .map((i) => i.bookingLotId)
+        .filter((id) => !lots.some((l) => l.id === id)),
+    ),
+  ];
+  if (missing.length)
+    lots.push(
+      ...(await store.list("booking_lots", { filter: { id: missing } })),
+    );
+  const orderIds = [
+    ...new Set(requests.map((r) => r.orderId).filter((x): x is string => !!x)),
+  ];
+  const overallById =
+    typeof overall === "function" ? await overall(orderIds) : overall;
+  const out: OverviewEntity[] = [];
+  const dues: number[] = [];
+  // Pedidos em andamento que nasceram das solicitações de cada book.
+  const ordersOfLot = (lotId: string) =>
+    [
       ...new Set(
         requests
           .filter((r) => r.bookingLotId === lotId && r.orderId)
-          .map((r) => progress.get(r.orderId!))
-          .filter((p): p is OrderProgress => !!p),
+          .map((r) => r.orderId!),
       ),
-    ];
-    for (const lot of lots) {
-      const step = bookStep(lot.status);
-      const open = invites.filter((i) => i.bookingLotId === lot.id);
-      if (!step && !open.length) continue;
-      out.push({
-        kind: "book",
-        id: lot.id,
-        number: lot.number,
-        href: `/app/booking/lots/${lot.id}#entity-timeline`,
-        partyId: lot.supplierId ?? lot.partnerId ?? null,
-        steps: [...(step ? [step] : []), ...(open.length ? ["quotes"] : [])],
-        statusKey: `bookingLots.status.${lot.status}`,
-        since: lot.statusChangedAt ?? lot.createdAt ?? null,
-        lateDays: Math.max(0, ...open.map((i) => lateDaysSince(i.dueAt, now))),
-        percent: BOOK_PERCENT[lot.status] ?? 0,
-        overall: (() => {
-          const orders = ordersOfLot(lot.id);
-          return overallOf(
-            BOOK_PERCENT[lot.status] ?? 0,
-            orders.length,
-            orders.length
-              ? Math.round(
-                  orders.reduce((n, p) => n + p.overall, 0) / orders.length,
-                )
-              : 0,
-          );
-        })(),
-      });
-    }
-    const groups = new Map<string, typeof requests>();
-    for (const r of requests) {
-      if (r.orderId || !requestInNegotiation(r)) continue;
-      const key = r.batchId ?? r.id;
-      groups.set(key, [...(groups.get(key) ?? []), r]);
-    }
-    for (const list of groups.values()) {
-      const first = [...list].sort((a, b) =>
-        a.createdAt < b.createdAt ? -1 : 1,
-      )[0];
-      const percents = list.map((r) => requestPercent(r) ?? 0);
-      const percent = Math.round(
-        percents.reduce((a, b) => a + b, 0) / percents.length,
-      );
-      // A situação mais atrasada do grupo (aberta antes de respondida…).
-      const lowest = list.reduce((a, b) =>
-        (requestPercent(a) ?? 0) <= (requestPercent(b) ?? 0) ? a : b,
-      );
-      out.push({
-        kind: "request",
-        id: first.id,
-        number: first.number,
-        href: `/app/supplier-requests/${first.id}#entity-timeline`,
-        partyId: first.supplierId,
-        steps: ["negotiations"],
-        statusKey:
-          lowest.status === "approved"
-            ? `flow.np.sampling.${lowest.sampling?.status ?? "pending"}`
-            : `supplierRequests.status.${lowest.status}`,
-        since: first.createdAt ?? null,
-        lateDays: Math.max(
-          0,
-          ...list.map((r) =>
-            supplierRequestLate(r, minutes, now)
-              ? lateDaysSince(supplierRequestSlaDue(r, minutes), now)
-              : 0,
-          ),
+    ]
+      .map((id) => overallById.get(id))
+      .filter((o): o is number => o !== undefined);
+  for (const lot of lots) {
+    const step = bookStep(lot.status);
+    const open = invites.filter((i) => i.bookingLotId === lot.id);
+    if (!step && !open.length) continue;
+    for (const i of open) dues.push(Date.parse(i.dueAt));
+    const orders = ordersOfLot(lot.id);
+    out.push({
+      kind: "book",
+      id: lot.id,
+      number: lot.number,
+      href: `/app/booking/lots/${lot.id}#entity-timeline`,
+      partyId: lot.supplierId ?? lot.partnerId ?? null,
+      steps: [...(step ? [step] : []), ...(open.length ? ["quotes"] : [])],
+      statusKey: `bookingLots.status.${lot.status}`,
+      since: lot.statusChangedAt ?? lot.createdAt ?? null,
+      lateDays: Math.max(0, ...open.map((i) => lateDaysSince(i.dueAt, now))),
+      percent: BOOK_PERCENT[lot.status] ?? 0,
+      overall: overallOf(
+        BOOK_PERCENT[lot.status] ?? 0,
+        orders.length,
+        orders.length
+          ? Math.round(orders.reduce((n, o) => n + o, 0) / orders.length)
+          : 0,
+      ),
+    });
+  }
+  const groups = new Map<string, typeof requests>();
+  for (const r of requests) {
+    if (r.orderId || !requestInNegotiation(r)) continue;
+    const key = r.batchId ?? r.id;
+    groups.set(key, [...(groups.get(key) ?? []), r]);
+  }
+  for (const list of groups.values()) {
+    const first = [...list].sort((a, b) =>
+      a.createdAt < b.createdAt ? -1 : 1,
+    )[0];
+    const percents = list.map((r) => requestPercent(r) ?? 0);
+    const percent = Math.round(
+      percents.reduce((a, b) => a + b, 0) / percents.length,
+    );
+    // A situação mais atrasada do grupo (aberta antes de respondida…).
+    const lowest = list.reduce((a, b) =>
+      (requestPercent(a) ?? 0) <= (requestPercent(b) ?? 0) ? a : b,
+    );
+    for (const r of list)
+      if (r.status === "open" || r.status === "answered")
+        dues.push(Date.parse(supplierRequestSlaDue(r, minutes)));
+    out.push({
+      kind: "request",
+      id: first.id,
+      number: first.number,
+      href: `/app/supplier-requests/${first.id}#entity-timeline`,
+      partyId: first.supplierId,
+      steps: ["negotiations"],
+      statusKey:
+        lowest.status === "approved"
+          ? `flow.np.sampling.${lowest.sampling?.status ?? "pending"}`
+          : `supplierRequests.status.${lowest.status}`,
+      since: first.createdAt ?? null,
+      lateDays: Math.max(
+        0,
+        ...list.map((r) =>
+          supplierRequestLate(r, minutes, now)
+            ? lateDaysSince(supplierRequestSlaDue(r, minutes), now)
+            : 0,
         ),
-        percent,
-        overall: percent,
-      });
-    }
-    return out.sort(
+      ),
+      percent,
+      overall: percent,
+    });
+  }
+  return {
+    rows: out.sort(
       (a, b) =>
         (a.kind === b.kind ? 0 : a.kind === "book" ? -1 : 1) ||
         a.number - b.number,
-    );
-  },
-);
+    ),
+    dues,
+  };
+}
 
 /**
  * Aba "Todos no passo" do parceiro (dono, 14/11/2026; docs/FLOW_MENU.md):
@@ -769,3 +776,22 @@ export const flowPartnerAllFor = cache(
     );
   },
 );
+
+/**
+ * Os números do Overview: os indicadores prontos (`kpi_snapshots`, chave
+ * "flow") com os resumos em uso; sem eles, somados das linhas lidas das
+ * tabelas, pela mesma conta (flow-kpis.ts, `aggregateFlow`).
+ */
+export async function flowOverviewKpis(
+  user: User,
+  now = new Date(),
+): Promise<Pick<import("./flow-kpis").FlowKpis, "blocks" | "steps">> {
+  const k = await import("./flow-kpis");
+  if (!isWellmix(user)) return k.aggregateFlow(new Map());
+  const ready = await k.readFlowKpis(now);
+  if (ready) return ready;
+  const byBlock = new Map<FlowBlock, OverviewEntity[]>();
+  for (const block of k.ENTITY_BLOCKS)
+    byBlock.set(block, await flowOverviewEntities(user, block));
+  return k.aggregateFlow(byBlock);
+}
