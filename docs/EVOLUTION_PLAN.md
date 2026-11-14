@@ -1355,3 +1355,12 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Não mudou**: a troca de senha (primeiro acesso e "Trocar senha"), as regras da senha nova, a criação de login com a troca marcada (Equipe e acessos) e o banco (a coluna é a mesma).
 - Textos nos três idiomas: `password.first.hint` (agora recomenda), `password.first.skip`, `password.first.skipHint`. Docs: `docs/ACCESS.md`.
 - Testes: `tests/unit/password-change.test.ts` (a marca some, a senha provisória continua valendo, uma auditoria só) e o E2E `tests/e2e/first-access.spec.ts` (login novo com a troca marcada, "Continuar sem trocar a senha", mesma tela, não pede mais ao recarregar nem ao entrar de novo, "Trocar senha" disponível).
+
+## Detalhe do pedido: Documentos no alto e Embarque e desembaraço no fim
+
+- **Pedido do dono** (14/11/2026, com as fotos da tela do pedido no login Despachante): "Documentos" sobe para logo depois da tabela "Etapas do pedido", antes dos demais blocos; o quadro "Embarque e desembaraço" vai para o fim da tela, como a última seção antes do rodapé.
+- **Como ficou** (`src/app/app/orders/[id]/page.tsx`): os mesmos blocos, só em outra ordem, para todos os logins. A seção Etapas do pedido continua com a etapa aberta embaixo da tabela (quando há uma em andamento), e Documentos vem logo depois dela. As outras seções seguem na ordem de antes, inclusive a Certificação. A linha "Embarque e desembaraço" continua no mesmo lugar dentro da tabela Etapas do pedido.
+- **Atalhos**: são as âncoras de sempre e acompanham os blocos. A linha da tabela leva a `#import-flow` (agora no fim) e o link "Documentos" da Certificação leva a `#order-documents` (agora embaixo das etapas).
+- **Não mudou**: quem vê cada bloco, os arquivos e as versões, e "Confirmar leitura": abrir o arquivo registra "Visualizado"; confirmar continua sendo o botão. Nenhuma tela, rota, campo ou dado saiu.
+- Docs: `docs/WORKFLOW.md` (tela do pedido em linhas).
+- Testes: no E2E do caminho principal, o login Despachante confere a ordem (Documentos logo depois de Etapas do pedido, a Certificação no meio, Embarque e desembaraço por último) e os dois atalhos no desktop, no iPad e no celular. O mesmo trecho confere que abrir o arquivo registra "Visualizado" sem confirmar e que "Confirmar leitura" confirma.
