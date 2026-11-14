@@ -1590,6 +1590,8 @@ export interface ColorPlan {
   colors: string[];
   included: string[];
   rows: Array<{ color: string; quantity: number; rounds: number[] }>;
+  /** As caixas de cada cor foram digitadas na tela (não é a divisão igual). */
+  custom?: boolean;
 }
 
 export interface RequestSchedule {

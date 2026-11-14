@@ -147,11 +147,20 @@ export async function saveSelectionGroupAction(form: FormData) {
               .filter((v): v is string => typeof v === "string"),
           )
       : undefined;
+    // Caixas digitadas por cor (o gerador manda só quando valem): JSON
+    // { cor: caixas }.
+    const typedCartons = str(form, `colorCartons.${chosen}`);
+    const colorCartons = typedCartons
+      ? z
+          .record(z.string().min(1).max(60), z.number().int().min(0).max(1e7))
+          .parse(JSON.parse(typedCartons))
+      : null;
     const saved = await saveSelectionGroup(user, {
       ...input,
       quantity: schedule ? null : number(form, "quantity", true),
       schedule,
       colors,
+      colorCartons,
       aiPrompts,
     });
     // "Gravar e gerar com IA": grava e gera as imagens e a ficha. A escolha
