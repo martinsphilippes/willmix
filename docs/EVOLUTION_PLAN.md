@@ -1169,3 +1169,13 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
   - compilado (`next build` + `next start`), o pico foi de 572 MB, em 2 minutos contra cerca de 5.
 - **Mudança**: `npm run test:e2e` compila o portal e testa a versão compilada (`playwright.config.ts`), em modo memória com dados isolados, como antes. Isso também confere o mesmo código que vai para a Vercel. `E2E_DEV=1` volta ao `next dev` para depurar. Nada mudou no portal.
 - Docs: `docs/AMBIENTE.md` (Testes) e `docs/HANDOVER.md`.
+
+## Pedido: cartões de valores sem corte em qualquer largura
+
+- **Pedido do dono** (14/11/2026, com a foto dos cartões): no alto do pedido, "Valor de compra (FOB)", "A pagar ao fornecedor" e "Margem" saíam cortados (ex.: "RMB 339.187,50" e "~ -R$ 287.929,23", com o sinal numa linha e o número na outra).
+- **Grade pela área de conteúdo**: os cartões seguem a largura real da área (container query), com o menu lateral aberto ou recolhido: 1, 2, 3, 4 e, cabendo, todos por linha (de 4 vai direto a 7, sem sobrar linha com um ou dois soltos). Cada degrau garante cartões de pelo menos ~158 px. O cliente, com três cartões, nunca tem mais colunas que cartões.
+- **Valor**: a moeda numa linha menor ("R$", "RMB"; "~ R$" quando estimado) e, embaixo, o número inteiro numa linha só, com todos os dígitos, separadores e casas e o sinal junto ("-287.929,23"). Uma regra só para o tamanho, igual em todos os cartões: o maior número do conjunto cabe na largura do cartão, até 22 px. Primeiro caem cartões por linha; o número só diminui um pouco (no pior caso, dezenas de milhões num celular de 360 px, 15 px).
+- **Não mudou**: rótulos, cores, valores, cálculos e quem vê cada cartão. Só o layout (`src/components/color-cards.tsx`); o pedido passa valor e moeda em vez do texto pronto.
+- **Conferido no navegador**: 26 tamanhos de aparelho (celulares em retrato e paisagem, iPads, notebooks, MacBooks e desktops) e todas as larguras de 320 a 1920 px, de 16 em 16, com o menu aberto e recolhido. Casos: RMB longo (12.345.678,90), negativo em reais (-287.929,23 e -12.345.678,90) e zerados. Nenhum corte e nenhuma rolagem horizontal.
+- Teste: `tests/unit/color-cards.test.ts` (moeda à parte e sinal no número, degraus de colunas, mesmo tamanho em todos os cartões, grade pela área de conteúdo).
+
