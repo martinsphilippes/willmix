@@ -26,9 +26,12 @@ export async function FlowAll({
   step,
   entities,
   t,
+  partner = false,
   now = new Date(),
 }: {
   step: FlowStep;
+  /** Parceiro: os pedidos dele, sem a coluna do fornecedor. */
+  partner?: boolean;
   entities: FlowEntity[];
   t: Translate;
   now?: Date;
@@ -37,18 +40,21 @@ export async function FlowAll({
   const supplierIds = [
     ...new Set(entities.map((e) => e.order.supplierId).filter(Boolean)),
   ];
-  const parties = supplierIds.length
-    ? await getStore().list("parties", { filter: { id: supplierIds } })
-    : [];
+  const parties =
+    !partner && supplierIds.length
+      ? await getStore().list("parties", { filter: { id: supplierIds } })
+      : [];
   const nameOf = (id: string) => parties.find((p) => p.id === id)?.name ?? "—";
   return (
     <>
-      <p className="mb-2 text-sm text-zinc-600">{t("flow.all.hint")}</p>
+      <p className="mb-2 text-sm text-zinc-600">
+        {t(partner ? "flow.all.hint.partner" : "flow.all.hint")}
+      </p>
       <Table>
         <thead>
           <tr>
             <Th>{t("flow.all.order")}</Th>
-            <Th>{t("flow.all.supplier")}</Th>
+            {partner ? null : <Th>{t("flow.all.supplier")}</Th>}
             <Th>{t("flow.all.stage")}</Th>
             <Th>{t("flow.all.open")}</Th>
             <Th>{t("flow.all.since")}</Th>
@@ -73,7 +79,7 @@ export async function FlowAll({
                 <Td className="whitespace-nowrap font-medium text-zinc-900">
                   #{e.order.number}
                 </Td>
-                <Td>{nameOf(e.order.supplierId)}</Td>
+                {partner ? null : <Td>{nameOf(e.order.supplierId)}</Td>}
                 <Td className="whitespace-nowrap">
                   {t(`stage.${e.order.status}` as DictionaryKey)}
                 </Td>

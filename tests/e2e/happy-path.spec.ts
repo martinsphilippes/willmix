@@ -706,6 +706,40 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(preCard.locator("[data-production-plan]")).toBeVisible();
   await expect(preCard.locator("[data-production-etd]")).toBeVisible();
 
+  // De volta ao fornecedor: a inspeção é dele.
+  await login(page, "supplier.a@china.com");
+  // Menu do parceiro pelos passos dele (docs/FLOW_MENU.md): Produção →
+  // Inspeção com o contador; a aba Todos traz o pedido dele; o pedido no
+  // passo mostra só o que é dele (sem o cliente).
+  await page.goto("/app/flow/production/inspection");
+  await expect(
+    page
+      .locator(
+        '[data-nav-link="/app/flow/production/inspection"] [data-nav-badge]',
+      )
+      .filter({ visible: true })
+      .first(),
+  ).toBeVisible();
+  await expect(page.locator("[data-flow-case]").first()).toBeVisible();
+  await page.goto("/app/flow/production/inspection?tab=all");
+  await page
+    .locator(`[data-flow-all-order="${preId}"] [data-flow-all-view]`)
+    .first()
+    .click();
+  await page.waitForURL(
+    new RegExp(`/app/flow/production/inspection/${preId}$`),
+  );
+  await expect(
+    page.locator('[data-flow-order-requirement="photo_unpacked"]'),
+  ).toBeVisible();
+  await expect(page.locator(`[data-flow-order="${preId}"]`)).not.toContainText(
+    /Cliente|Customer|客户/,
+  );
+  // Passo que não é dele: não abre.
+  expect(
+    (await page.goto(`/app/flow/delivery/storage/${preId}`))?.status(),
+  ).toBe(404);
+
   // 9. Inspeção (mapa R3/R4?): o fornecedor manda as fotos, o peso, o vídeo
   // da produção e a declaração de conformidade. Nestes pedidos não há peso
   // declarado para comparar (sem ficha de compra).

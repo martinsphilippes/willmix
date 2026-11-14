@@ -251,3 +251,26 @@ describe("aba Todos no passo", () => {
     ).toContain("cert_memorial");
   });
 });
+
+describe("passos dos parceiros", () => {
+  it("todo passo do mapa dos parceiros existe; nenhum leva a passo só da Wellmix", async () => {
+    const { PARTNER_FLOW_STEPS, partnerStepsOf } = await import("@/lib/flow");
+    for (const [role, ids] of Object.entries(PARTNER_FLOW_STEPS)) {
+      expect(partnerStepsOf(role).map(stepId)).toEqual(
+        FLOW_STEPS.map(stepId).filter((id) => ids.includes(id)),
+      );
+      expect(partnerStepsOf(role)).toHaveLength(ids.length);
+      // Telas da Wellmix (recebimento, pré-produção, produção, frete do
+      // pedido, Overview) ficam fora do menu dos parceiros.
+      for (const id of [
+        "delivery/storage",
+        "delivery/return",
+        "production/pre-production",
+        "production/production",
+      ])
+        expect(ids).not.toContain(id);
+    }
+    expect(partnerStepsOf("customer")).toEqual([]);
+    expect(partnerStepsOf("legal")).toEqual([]);
+  });
+});

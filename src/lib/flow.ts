@@ -398,3 +398,66 @@ export function itemsInStep<T extends { key: string }>(
 export function flowStepOfImportKey(key: string): FlowStep | null {
   return toStep(importStep(key));
 }
+
+/*
+ * Passos de cada parceiro no menu (dono, 14/11/2026; docs/FLOW_MENU.md):
+ * onde o papel faz, valida ou acompanha algo no mapa, tirado de quem faz
+ * cada passo do embarque e da certificação (IMPORT_STEPS: actor, validator,
+ * visibleTo) e do responsável de cada etapa do pedido (STAGE_TEMPLATES).
+ * O cliente e o jurídico não têm passos (seguem com a tela de hoje).
+ */
+export const PARTNER_FLOW_STEPS: Readonly<Record<string, readonly string[]>> = {
+  // Ficha e medidas, Die Cut, assinatura, inspeção, amostras, container na
+  // origem, documentos do embarque (invoice assinada) e embarque.
+  supplier: [
+    "order/orders",
+    "order/art-material",
+    "order/contract",
+    "production/inspection",
+    "production/sample",
+    "production/logistics",
+    "production/loading",
+    "production/cargo-docs",
+    "production/shipment",
+  ],
+  // Arte, arte final e a arte com o selo.
+  agency: ["order/art", "order/certification"],
+  // Memorial, laudo, registro e selo.
+  ocp: ["order/certification"],
+  // Desembaraço (responsável da etapa) e o BL.
+  broker: ["production/cargo-docs", "delivery/cargo-presence"],
+  // Registro da certificação, documentos, origem, presença, canal e NF.
+  comex: [
+    "order/certification",
+    "production/logistics",
+    "production/loading",
+    "production/cargo-docs",
+    "production/shipment",
+    "delivery/cargo-presence",
+    "delivery/channel",
+    "delivery/invoice",
+  ],
+  // Booking, draft BL e BL; acompanha a origem, a chegada e o canal.
+  logistics: [
+    "production/booking",
+    "production/logistics",
+    "production/loading",
+    "production/cargo-docs",
+    "production/shipment",
+    "delivery/cargo-presence",
+    "delivery/channel",
+    "delivery/invoice",
+  ],
+  // Etapa de embarque (data, ETA, navio, BL).
+  shipping_line: ["production/shipment"],
+  // Transporte e entrega.
+  carrier: ["delivery/logistics", "delivery/delivery"],
+  // Recebe as amostras e devolve (R14/R15).
+  marketing_agency: ["production/sample"],
+};
+
+/** Passos do parceiro, na ordem do mapa (vazio para quem não tem). */
+export function partnerStepsOf(role: string): FlowStep[] {
+  const ids = PARTNER_FLOW_STEPS[role] ?? [];
+  return FLOW_STEPS.filter((s) => ids.includes(stepId(s)));
+}

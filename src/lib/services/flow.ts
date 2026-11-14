@@ -655,3 +655,117 @@ export const newProductEntities = cache(
     );
   },
 );
+
+/**
+ * Aba "Todos no passo" do parceiro (dono, 14/11/2026; docs/FLOW_MENU.md):
+ * os pedidos dele (a regra de canViewOrder) que estão em cada passo dele
+ * agora, só com o que é dele: os itens de etapa abertos que o papel faz e os
+ * passos do embarque, da origem, da certificação e das amostras prontos que
+ * o papel vê (canSeeStep). Só os passos do parceiro (PARTNER_FLOW_STEPS).
+ */
+export const flowPartnerAllFor = cache(
+  async (user: User): Promise<Map<string, FlowEntity[]>> => {
+    const { canViewOrder } = await import("@/lib/auth/permissions");
+    const { partnerStepsOf, flowStepOfImportKey } = await import("@/lib/flow");
+    const { canSubmitRequirement } = await import("@/lib/workflow/engine");
+    if (isWellmix(user) || !user.partyId) return new Map();
+    const mine = new Set(partnerStepsOf(user.role).map(stepId));
+    if (!mine.size) return new Map();
+    const store = getStore();
+    const orders = (await store.list("orders")).filter(
+      (o) =>
+        !o.held &&
+        o.status !== "CLOSED" &&
+        o.status !== "CANCELLED" &&
+        canViewOrder(user, o),
+    );
+    if (!orders.length) return new Map();
+    const ids = orders.map((o) => o.id);
+    const orderById = new Map(orders.map((o) => [o.id, o]));
+    const out = new Map<string, Map<string, FlowEntity>>();
+    const add = (
+      key: string,
+      orderId: string,
+      item: FlowEntityItem,
+      since: string | null,
+    ) => {
+      if (!mine.has(key)) return;
+      const order = orderById.get(orderId);
+      if (!order) return;
+      const byOrder = out.get(key) ?? new Map<string, FlowEntity>();
+      const entity = byOrder.get(orderId) ?? { order, items: [], since: null };
+      entity.items.push(item);
+      if (since && (!entity.since || since < entity.since))
+        entity.since = since;
+      byOrder.set(orderId, entity);
+      out.set(key, byOrder);
+    };
+    const [stages, importSteps] = await Promise.all([
+      store.list("stages", { filter: { orderId: ids } }),
+      store.list("import_steps", { filter: { orderId: ids } }).catch(() => []),
+    ]);
+    const live = stages.filter(
+      (s) => s.status === "active" || s.status === "blocked",
+    );
+    const stageById = new Map(live.map((s) => [s.id, s]));
+    const requirements = live.length
+      ? await store.list("requirements", {
+          filter: { stageId: live.map((s) => s.id) },
+        })
+      : [];
+    for (const r of requirements) {
+      if (r.status === "done") continue;
+      const stage = stageById.get(r.stageId);
+      const order = orderById.get(r.orderId);
+      if (!stage || !order) continue;
+      // Só o que é do papel: o item dele ou o que ele pode fazer.
+      if (r.role !== user.role && !canSubmitRequirement(user, order, r))
+        continue;
+      for (const step of flowStepsOf({
+        kind: "requirement",
+        stageKey: stage.key,
+        items: [{ key: r.key }],
+      }))
+        add(
+          stepId(step),
+          r.orderId,
+          { kind: "requirement", requirement: r },
+          stage.startedAt ?? null,
+        );
+    }
+    const flow = await import("./import-flow");
+    const { samplesApply } = await import("./sample-flow");
+    for (const order of orders) {
+      const steps = importSteps.filter((s) => s.orderId === order.id);
+      const samples =
+        [
+          "INSPECTION",
+          "SHIPPING",
+          "CUSTOMS",
+          "TRANSPORT",
+          "DELIVERED",
+        ].includes(order.status) &&
+        (await samplesApply(order).catch(() => false));
+      for (const key of flow.openImportStepKeys(order, steps, {
+        certification: steps.some((s) => s.key.startsWith("cert_")),
+        samples,
+      })) {
+        if (!flow.canSeeStep(user, order, key)) continue;
+        const step = flowStepOfImportKey(key);
+        if (step)
+          add(
+            stepId(step),
+            order.id,
+            { kind: "import", key },
+            order.updatedAt ?? null,
+          );
+      }
+    }
+    return new Map(
+      [...out.entries()].map(([k, byOrder]) => [
+        k,
+        [...byOrder.values()].sort((a, b) => a.order.number - b.order.number),
+      ]),
+    );
+  },
+);
