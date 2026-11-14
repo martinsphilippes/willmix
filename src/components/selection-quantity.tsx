@@ -151,6 +151,11 @@ export interface GenerateLabels {
   item: string;
   /** Nenhum item marcado em "Escolher": nada é calculado nem gerado. */
   selectItem: string;
+  /**
+   * O item (produto) mudou depois de gerar: a programação saiu e precisa ser
+   * gerada de novo. Sem ele, nada é dito (Seleção de itens).
+   */
+  regenerate?: string;
   /** O item não tem peças por caixa master: caixas não viram peças. */
   noPieces: string;
   noCarton: string;
@@ -211,6 +216,13 @@ export function SelectionQuantity({
   savedColors = null,
   savedCartons = null,
   colorLabels,
+  prefix = "",
+  maxRounds = MAX_PURCHASE_ROUNDS,
+  controlledItemId,
+  quantityValue,
+  onQuantityChange,
+  unit = "pcs",
+  className = "md:col-span-3",
 }: {
   label: string;
   hint: string;
@@ -228,18 +240,52 @@ export function SelectionQuantity({
   savedColors?: string[] | null;
   /** Caixas por cor digitadas na escolha gravada (do `chosenItemId`). */
   savedCartons?: Record<string, number> | null;
-  colorLabels: ColorPreviewLabels;
+  /** Sem ele, nada da composição por cor (Nova solicitação). */
+  colorLabels?: ColorPreviewLabels;
+  /**
+   * Prefixo dos campos da programação no formulário (Nova solicitação:
+   * `p<n>.`, um por produto).
+   */
+  prefix?: string;
+  /** Máximo de programações (Seleção: 12; Nova solicitação: as 6 de sempre). */
+  maxRounds?: number;
+  /**
+   * Item dado pela tela (Nova solicitação: o produto escolhido no campo
+   * acima), em vez do rádio "Escolher" da tabela. `undefined` = o rádio.
+   */
+  controlledItemId?: string | null;
+  /**
+   * Quantidade do formulário (Nova solicitação): o card lê e escreve nela,
+   * e o campo de peças do card não vai no formulário (vai o do produto).
+   */
+  quantityValue?: string;
+  onQuantityChange?: (quantity: string) => void;
+  /** Unidade mostrada no total das programações. */
+  unit?: string;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const perRoundId = useId();
   const totalFieldId = useId();
   const quantityHintId = useId();
   const selectItemId = useId();
-  const [qty, setQty] = useState(
+  const [ownQty, setOwnQty] = useState(
     defaultQuantity === null ? "" : String(defaultQuantity),
   );
+  const controlledQty = quantityValue !== undefined;
+  const qty = controlledQty ? quantityValue : ownQty;
+  const setQty = (v: string) => {
+    if (onQuantityChange) onQuantityChange(v);
+    if (!controlledQty) setOwnQty(v);
+  };
+  const radioMode = controlledItemId === undefined;
   const [scheduled, setScheduled] = useState(!!schedule?.items.length);
-  const [chosen, setChosen] = useState<string | null>(chosenItemId);
+  const [chosen, setChosen] = useState<string | null>(
+    radioMode ? chosenItemId : (controlledItemId ?? null),
+  );
+  // Programação desfeita porque o item (produto) mudou: avisa que é preciso
+  // gerar de novo.
+  const [regenerate, setRegenerate] = useState(false);
   // A programação gravada é do item da escolha gravada. Ela sai da tela
   // quando outro item é marcado e volta com ele, a não ser que o usuário a
   // desligue ("Sem programação") com esse item marcado.
@@ -332,8 +378,18 @@ export function SelectionQuantity({
     } else if (rounds) {
       // Sem as rodadas, "Programações" continua com quantas eram.
       setRoundsEdit({ text: String(rounds), at: 0 });
+      setRegenerate(true);
     }
   });
+
+  // Nova solicitação: o item é o produto escolhido no campo acima.
+  useEffect(() => {
+    if (radioMode) return;
+    const frame = requestAnimationFrame(() =>
+      markItem(controlledItemId ?? null),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [radioMode, controlledItemId]);
 
   // O item escolhido é o rádio "chosen" da tabela (no mesmo formulário). Além
   // de ouvir a troca, lê o que está marcado ao abrir e ao voltar para a
@@ -342,12 +398,14 @@ export function SelectionQuantity({
     const form = ref.current?.closest("form");
     if (!form) return;
     const sync = () => {
+      if (!radioMode) return;
       const el = form.querySelector<HTMLInputElement>(
         'input[name="chosen"]:checked',
       );
       markItem(el ? el.value : null);
     };
     const onChange = (e: Event) => {
+      if (!radioMode) return;
       const el = e.target;
       if (el instanceof HTMLInputElement && el.name === "chosen" && el.checked)
         markItem(el.value);
@@ -383,7 +441,7 @@ export function SelectionQuantity({
       form.removeEventListener("submit", onSubmit);
       window.removeEventListener("pageshow", sync);
     };
-  }, []);
+  }, [radioMode]);
 
   const intl = labels.intl;
   const fmt = (n: number, digits = 0) =>
@@ -430,6 +488,12 @@ export function SelectionQuantity({
     });
     setError(null);
   };
+  // Nova solicitação: sem programação, o que se digita no card (caixas ou
+  // peças) é a quantidade do produto no formulário.
+  useEffect(() => {
+    if (controlledQty && !scheduled && typed && pieces !== qty)
+      onQuantityChange?.(pieces);
+  });
   const hasCarton = !!(item && usable(item) && capacity);
   const perContainer =
     hasCarton && item
@@ -443,14 +507,14 @@ export function SelectionQuantity({
     if (hasCarton && amount > 0) {
       const out = planPurchaseRounds({
         total: amount,
-        rounds: Math.max(1, Math.min(MAX_PURCHASE_ROUNDS, Math.floor(count))),
+        rounds: Math.max(1, Math.min(maxRounds, Math.floor(count))),
         masterCartonQty: item!.masterCartonQty,
         cbmPerCarton: item!.cbmPerCarton,
         containerCbm: capacity,
       });
       if ("plan" in out) return out.plan.rounds.map((r) => r.pieces);
     }
-    return splitEvenly(amount, count, MAX_PURCHASE_ROUNDS);
+    return splitEvenly(amount, count, maxRounds);
   }
 
   function generate(apply: (q: number[]) => void, roundsValue: string) {
@@ -463,8 +527,8 @@ export function SelectionQuantity({
       return;
     }
     const count = parseCount(roundsValue);
-    if (!Number.isInteger(count) || count < 1 || count > MAX_PURCHASE_ROUNDS) {
-      setError(fill(gen.errorRounds, { max: MAX_PURCHASE_ROUNDS }));
+    if (!Number.isInteger(count) || count < 1 || count > maxRounds) {
+      setError(fill(gen.errorRounds, { max: maxRounds }));
       return;
     }
     // Caixas → peças: sem as peças por caixa master do item não há conversão.
@@ -480,7 +544,7 @@ export function SelectionQuantity({
       // divididas igualmente (rodada sem caixa não entra).
       setNote(null);
       apply(
-        splitEvenly(boxes, count, MAX_PURCHASE_ROUNDS)
+        splitEvenly(boxes, count, maxRounds)
           .filter((b) => b > 0)
           .map((b) => b * perCarton),
       );
@@ -502,7 +566,7 @@ export function SelectionQuantity({
                 cap: fmt(capacity!, 2),
               })
             : out.error === "rounds"
-              ? fill(gen.errorRounds, { max: MAX_PURCHASE_ROUNDS })
+              ? fill(gen.errorRounds, { max: maxRounds })
               : gen.errorTotal,
         );
         return;
@@ -562,7 +626,7 @@ export function SelectionQuantity({
       typedTotal > 0 &&
       Number.isInteger(typedRounds) &&
       typedRounds >= 1 &&
-      typedRounds <= MAX_PURCHASE_ROUNDS
+      typedRounds <= maxRounds
         ? planPurchaseRounds({
             total: typedTotal,
             rounds: typedRounds,
@@ -771,7 +835,7 @@ export function SelectionQuantity({
           typedTotal > 0 &&
           Number.isInteger(typedRounds) &&
           typedRounds >= 1 &&
-          typedRounds <= MAX_PURCHASE_ROUNDS
+          typedRounds <= maxRounds
         ? divide(typedTotal, typedRounds)
         : [];
     const range = hasCarton
@@ -839,7 +903,7 @@ export function SelectionQuantity({
             <span className="block font-medium text-zinc-700">{label}</span>
             <input
               type="text"
-              name={scheduled ? undefined : "quantity"}
+              name={scheduled || controlledQty ? undefined : "quantity"}
               inputMode="numeric"
               autoComplete="off"
               value={pieces}
@@ -856,7 +920,7 @@ export function SelectionQuantity({
             <input
               type="number"
               min="1"
-              max={MAX_PURCHASE_ROUNDS}
+              max={maxRounds}
               value={roundsValue}
               onChange={(e) => {
                 setRoundsEdit({ text: e.target.value, at: live.length });
@@ -1012,13 +1076,13 @@ export function SelectionQuantity({
    * mesma conta do servidor (`splitByColor`); sem fechar caixas, diz o ajuste.
    */
   const colorPreview = (live: number[], dates: string[]) => {
-    if (!item || !variants) return null;
+    if (!item || !variants || !colorLabels) return null;
     const single = !live.length;
     const typedPieces = parseCount(pieces);
     const rounds = single
       ? [typedPieces > 0 ? typedPieces : (item.sheetQty ?? 0)]
       : live;
-    const cl = colorLabels;
+    const cl = colorLabels!;
     if (!included.length)
       return (
         <div data-color-preview="none">
@@ -1290,15 +1354,29 @@ export function SelectionQuantity({
   return (
     <div
       ref={ref}
-      className="space-y-3 md:col-span-3"
+      className={cx("space-y-3", className)}
       data-selection-quantity-block
     >
+      {/* De qual produto é a programação: o servidor recusa a programação
+          gerada para outro produto (Nova solicitação). */}
+      {scheduled && chosen && !radioMode ? (
+        <input type="hidden" name={`${prefix}schedule.for`} value={chosen} />
+      ) : null}
+      {regenerate && gen.regenerate && !scheduled ? (
+        <p
+          className="rounded-md bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800"
+          role="status"
+          data-schedule-regenerate
+        >
+          {gen.regenerate}
+        </p>
+      ) : null}
       <div>
         <RequestScheduleFields
           key={seed.key}
-          prefix=""
+          prefix={prefix}
           total={pieces}
-          unit="pcs"
+          unit={unit}
           onTotalChange={(t) => {
             // As rodadas mudaram: a quantidade é a soma e os campos do
             // gerador voltam a acompanhar a tela (o digitado neles caduca).
@@ -1307,12 +1385,15 @@ export function SelectionQuantity({
             setRoundsEdit(null);
           }}
           labels={labels}
-          max={MAX_PURCHASE_ROUNDS}
+          max={maxRounds}
           initial={seed.initial}
           className="flex flex-wrap items-center gap-x-2 gap-y-1"
           onToggle={(on) => {
             setScheduled(on);
-            if (on) return;
+            if (on) {
+              setRegenerate(false);
+              return;
+            }
             setNote(null);
             // "Sem programação" com o item da escolha gravada: a gravada
             // não volta mais ao remarcar o item.

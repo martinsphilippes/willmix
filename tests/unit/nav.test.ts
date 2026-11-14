@@ -244,10 +244,13 @@ describe("menu lateral", () => {
     ]);
   });
 
-  it("cliente: Pendências e os pedidos (a vitrine ainda não abriu)", () => {
+  it("cliente: Pendências, Criar pedido e os pedidos (a vitrine ainda não abriu)", () => {
     expect(view({ role: "customer" })).toEqual([
       { link: "/app/tasks" },
-      { link: "/app/orders" },
+      {
+        group: "nav.group.myOrders",
+        items: ["/app/requests/new", "/app/orders"],
+      },
     ]);
   });
 

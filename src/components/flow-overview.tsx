@@ -18,6 +18,7 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { overviewHref, stepId } from "@/lib/flow";
 import { ENTITY_BLOCKS } from "@/lib/services/flow-kpis";
 import { FlowCases } from "./flow-cases";
+import { CreateOrderButton } from "./create-order-button";
 import { FlowEntities, PercentBar, daysSince } from "./flow-entities";
 import { Card, PageHeader, Stat, TextLink, cx } from "./ui";
 
@@ -77,6 +78,9 @@ export async function FlowOverview({
       <PageHeader
         title={t(blockLabelKey(block))}
         subtitle={t("flow.overview.subtitle", { n: total, late })}
+        actions={
+          block === "order" ? <CreateOrderButton user={user} t={t} /> : null
+        }
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(16rem,20rem)_1fr]">
         <ol className="relative space-y-1" data-flow-timeline>
@@ -221,6 +225,9 @@ async function EntityOverview({
           late,
           tasks,
         })}
+        actions={
+          block === "order" ? <CreateOrderButton user={user} t={t} /> : null
+        }
       />
       <div
         className={cx(

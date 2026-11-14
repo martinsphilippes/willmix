@@ -11,6 +11,7 @@ import { catalogShowcasePhotos } from "./documents";
 import { productOptionLabel } from "./product-search";
 import { variantsByProduct } from "./product-variants";
 import { variantSpecData } from "./variant-sales";
+import { cbmFromDimensions } from "@/lib/logistics/cbm";
 
 /**
  * Dados da ficha que preenchem a nova solicitação ao escolher o produto
@@ -39,6 +40,23 @@ export async function requestProductFills(
     variantsByProduct(ids),
   ]);
   const sheetMoq = new Map(masterSheets.map((s) => [s.orderId, s.moq]));
+  const sheetOf = new Map(masterSheets.map((s) => [s.orderId, s]));
+  /** Caixa master do produto: cadastro, senão ficha mestre (programação pela quantidade). */
+  const cartonOf = (p: Product) => {
+    const sheet = sheetOf.get(p.id);
+    const positive = (n: number | null | undefined) =>
+      n !== null && n !== undefined && Number.isFinite(n) && n > 0 ? n : null;
+    return {
+      masterCartonQty:
+        positive(p.masterBoxQty) ?? positive(sheet?.masterCartonQty),
+      cbmPerCarton:
+        positive(p.cbm) ??
+        positive(
+          cbmFromDimensions(p.boxLengthCm, p.boxWidthCm, p.boxHeightCm),
+        ) ??
+        positive(sheet?.cbmPerCarton),
+    };
+  };
   const specLabels = productSpecLabels(t);
   const dims = (a: number | null, b: number | null, c: number | null) =>
     a !== null && b !== null && c !== null ? `${a} × ${b} × ${c}` : null;
@@ -60,12 +78,18 @@ export async function requestProductFills(
     id: p.id,
     stock: stockFor(p.id),
     moq: effectiveMoq(null, sheetMoq.get(p.id), p.moq),
+    ...cartonOf(p),
     // Cada variação com o próprio mínimo (variação > ficha mestre > cadastro),
     // a especificação montada com os dados dela e a foto (sem preço nem fornecedor).
     variants: (variants.get(p.id) ?? []).map((v) => ({
       id: v.id,
       name: v.name,
       moq: effectiveMoq(v.moq, sheetMoq.get(p.id), p.moq),
+      masterCartonQty:
+        v.masterBoxQty && v.masterBoxQty > 0
+          ? v.masterBoxQty
+          : cartonOf(p).masterCartonQty,
+      cbmPerCarton: v.cbm && v.cbm > 0 ? v.cbm : cartonOf(p).cbmPerCarton,
       specification: [
         p.category ? `${t("catalog.category")}: ${p.category}` : null,
         buildProductSpec(variantSpecData(v), specLabels),

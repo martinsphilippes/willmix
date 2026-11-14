@@ -37,6 +37,13 @@ export interface ProductFill {
   /** Pedido mínimo em peças (ficha mestre, senão cadastro); nulo sem mínimo. */
   moq: number | null;
   /**
+   * Caixa master do produto para gerar a programação pela quantidade (peças
+   * por caixa e CBM por caixa; cadastro, senão ficha mestre). Nulos quando
+   * não se sabe.
+   */
+  masterCartonQty?: number | null;
+  cbmPerCarton?: number | null;
+  /**
    * Variações do produto (vazio = produto sem variações, como sempre). Com
    * variações, a escolha é obrigatória e preenche especificação, mínimo e foto.
    */
@@ -47,6 +54,9 @@ export interface ProductVariantFill {
   name: string;
   /** Mínimo da variação (senão ficha mestre, senão cadastro); nulo sem mínimo. */
   moq: number | null;
+  /** Caixa master da variação (senão a do produto). */
+  masterCartonQty?: number | null;
+  cbmPerCarton?: number | null;
   /** Especificação montada com os dados da variação. */
   specification: string;
   photoDocumentId: string | null;
@@ -65,6 +75,7 @@ export function RequestProductFields({
   pickerLabels,
   prefix = "",
   onProductChange,
+  onCatalogModeChange,
 }: {
   /** Fichas já prontas (o produto que chega escolhido); as outras vêm sob demanda. */
   products: ProductFill[];
@@ -78,6 +89,8 @@ export function RequestProductFields({
     variantId: string,
     fill: ProductFill | null,
   ) => void;
+  /** "Fora do catálogo" marcado ou desmarcado (a programação usa). */
+  onCatalogModeChange?: (notInCatalog: boolean) => void;
   /** Textos do campo de produto com busca. */
   pickerLabels: SearchPickerLabels;
   /** Prefixo dos nomes dos campos (várias linhas de produto no mesmo formulário). */
@@ -229,6 +242,7 @@ export function RequestProductFields({
 
   function toggleNotInCatalog(checked: boolean) {
     setNotInCatalog(checked);
+    onCatalogModeChange?.(checked);
     setFillFailed(false);
     if (checked && (productId || loadingId)) fillFrom("", null);
   }

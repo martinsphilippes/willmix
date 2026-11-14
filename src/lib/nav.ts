@@ -368,6 +368,12 @@ export function navFor(
           [
             ["explore", { href: "/app/explore", key: "nav.explore" }],
             ["requests", { href: "/app/requests", key: "nav.myQuotes" }],
+            // A lista de solicitações segue fora do menu (MENU_HIDDEN); a
+            // entrada da encomenda fica à vista (dono, 14/11/2026).
+            [
+              "requests",
+              { href: "/app/requests/new", key: "flow.orders.create" },
+            ],
             ["orders", { href: "/app/orders", key: "nav.orders" }],
             ["history", { href: "/app/history", key: "nav.history" }],
             ["marketing", { href: "/app/marketing", key: "nav.marketing" }],

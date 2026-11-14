@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { generateLabels } from "@/components/generate-labels";
 import { STOCK_OPTION, isStockCustomer } from "@/lib/services/stock-party";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -533,6 +534,10 @@ export default async function NewRequestPage({
             {/* Produtos: uma linha por produto ("+ Adicionar outro produto"); cada um vira uma solicitação do mesmo lote.
               Em cada linha: "fora do catálogo" primeiro; escolher um produto preenche os campos com a ficha; anexos só fora do catálogo. */}
             <RequestItems
+              containerTypes={settings.containerTypes.map((c) => ({
+                code: c.code,
+                capacityCbm: c.capacityCbm,
+              }))}
               products={productFills}
               presetProductId={presetProductId}
               presetVariantId={presetVariantId}
@@ -576,6 +581,17 @@ export default async function NewRequestPage({
                   }),
                   off: t("reqSchedule.off"),
                 },
+                // O card "Gerar programação pela quantidade" da Seleção de
+                // itens, com os textos do produto escolhido acima.
+                generate: {
+                  ...generateLabels(t, t("reqSchedule.gen.chooseProduct")),
+                  noPieces: t("reqSchedule.gen.noPieces"),
+                  noCarton: t("reqSchedule.gen.noCarton"),
+                  regenerate: t("reqSchedule.gen.regenerate"),
+                },
+                pieces: t("reqSchedule.pieces"),
+                piecesHint: t("reqSchedule.piecesHint"),
+                piecesScheduledHint: t("reqSchedule.piecesScheduledHint"),
                 fromCatalog: t("reqProduct.fromCatalog"),
                 inStock: t("reqProduct.inStock"),
                 noStock: t("reqProduct.noStock"),
