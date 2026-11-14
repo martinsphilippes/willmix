@@ -1,6 +1,6 @@
 # Mapa do processo (fonte: attilasm/wellmix-presentation, data.json)
 
-Copiado em 14/11/2026 do repositório da apresentação (aba Mapa) para guiar o motor por marcos (docs/FLOW_MENU.md, plano em 5 fases). Os 4 últimos passos da Entrega, "A definir" no mapa, foram nomeados pelo dono em 14/11/2026: Compras, Fornecedor, Evidência e Financeiro. RACI: R faz, A aprova, C é consultado, I é informado.
+Copiado em 14/11/2026 do repositório da apresentação (aba Mapa) para guiar o motor por marcos (docs/FLOW_MENU.md, plano em 5 fases). Os 4 últimos passos da Entrega, "A definir" no mapa, foram nomeados pelo dono em 14/11/2026: Comunicar a Compras, Fornecedor, Evidência e Financeiro (o caminho da divergência no recebimento). RACI: R faz, A aprova, C é consultado, I é informado.
 
 ## Personas
 
@@ -140,7 +140,7 @@ Copiado em 14/11/2026 do repositório da apresentação (aba Mapa) para guiar o 
 | E21   | Lote                                    | qualidade:R, planner:A                               |                                                                                                                      | todo             |
 | E22   | Armazenamento                           | qualidade:R, planner:A                               |                                                                                                                      | todo             |
 | E23   | Oferta de amostra                       | vendas:R, gp:A, mkt:C                                |                                                                                                                      | todo             |
-| E24   | Compras                                 |                                                      |                                                                                                                      | todo             |
+| E24   | Comunicar a Compras                     |                                                      |                                                                                                                      | todo             |
 | E25   | Fornecedor                              |                                                      |                                                                                                                      | todo             |
 | E26   | Evidência                               |                                                      |                                                                                                                      | todo             |
 | E27   | Financeiro                              |                                                      |                                                                                                                      | todo             |
@@ -281,7 +281,7 @@ Copiado em 14/11/2026 do repositório da apresentação (aba Mapa) para guiar o 
 - E19? Divergência no produto → E22 Armazenamento (n)
 - E22 Armazenamento → E23 Oferta de amostra
 - V8 Agendamento da entrega → E15 Programar entrega (entrega agendada)
-- E21 Lote → E24 Compras
-- E24 Compras → E25 Fornecedor
+- E21 Lote → E24 Comunicar a Compras
+- E24 Comunicar a Compras → E25 Fornecedor
 - E25 Fornecedor → E26 Evidência
 - E26 Evidência → E27 Financeiro

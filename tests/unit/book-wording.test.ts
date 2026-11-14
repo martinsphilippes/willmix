@@ -18,6 +18,8 @@ const SHIP_BOOKING: string[] = [
   // Passo Booking do bloco Produção do menu (R8, reserva com a marítima).
   "flow.step.production.booking",
   "flow.help.production.booking",
+  // Marco 11 "Booking e logística" (R8, reserva com a marítima; docs/MILESTONES.md).
+  "milestone.booking",
 ];
 
 const LOCALES = ["pt", "en", "zh"] as const;
