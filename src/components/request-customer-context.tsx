@@ -23,13 +23,19 @@ interface RequestCustomerState {
 
 const RequestCustomerContext = createContext<RequestCustomerState | null>(null);
 
+/**
+ * Também é o contêiner da tela (a grade da Nova solicitação, `className`):
+ * o formulário e o histórico ficam dentro dele sem mais um nível na página.
+ */
 export function RequestCustomerProvider({
   initial,
   initialStock,
+  className,
   children,
 }: {
   initial: SearchOption | null;
   initialStock: boolean;
+  className?: string;
   children: ReactNode;
 }) {
   const [customer, setCustomer] = useState(initial);
@@ -40,7 +46,7 @@ export function RequestCustomerProvider({
   );
   return (
     <RequestCustomerContext.Provider value={value}>
-      {children}
+      <div className={className}>{children}</div>
     </RequestCustomerContext.Provider>
   );
 }
