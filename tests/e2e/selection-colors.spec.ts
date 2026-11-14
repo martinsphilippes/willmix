@@ -95,6 +95,18 @@ test("vencedor, variações de cor e composição por data até a solicitação"
       '[data-selection-color="MARROM"] [data-selection-color-pieces]',
     ),
   ).toHaveText("960 peças");
+  // Pedido único em peças que não fecham caixas: diz o ajuste e não grava.
+  const adjust = page.locator('[data-colors-error="cartons"]');
+  await page.locator("[data-selection-quantity]").fill("2900");
+  await expect(adjust).toContainText(
+    "2.900 peças não fecham caixas master inteiras de 48",
+  );
+  await expect(adjust).toContainText("Ajuste para 2.880 ou 2.928 peças");
+  await page.click("[data-selection-submit]");
+  await expect(page).not.toHaveURL(/[?&]saved=1/);
+  await page.locator("[data-generate-total]").fill("60");
+  await expect(adjust).toHaveCount(0);
+  await expect(preview.locator("[data-color-grand]")).toHaveText("2.880");
 
   // 4. Duas datas (exemplo do dono): 480 de cada cor por data, 1.440 por data.
   const gen = page.locator("[data-rounds-generator]");
@@ -146,18 +158,18 @@ test("vencedor, variações de cor e composição por data até a solicitação"
   );
   await expect(preview.locator("[data-color-grand]")).toHaveText("2.928");
 
-  // 7. Quantidade que não fecha caixas: diz o ajuste e não grava.
+  // 7. Cada programação em caixas (dono, 14/11/2026): as peças ficam
+  // travadas e a programação sempre fecha caixas inteiras para as cores.
   const qty1 = page.locator('input[name="schedule.qty.1"]');
-  await qty1.fill("1500");
-  const adjust = page.locator('[data-colors-error="cartons"]');
-  await expect(adjust).toContainText(
-    "1.500 peças na programação 1 não fecham caixas master inteiras de 48",
-  );
-  await expect(adjust).toContainText("Ajuste para 1.488 ou 1.536 peças");
-  await page.click("[data-selection-submit]");
-  await expect(page).not.toHaveURL(/[?&]saved=1/);
-  await qty1.fill("1488");
+  await expect(qty1).toHaveAttribute("readonly", "");
+  const boxes1 = page.locator('[data-schedule-cartons="1"]');
+  await expect(boxes1).toHaveValue("31");
+  await boxes1.fill("32");
+  await expect(qty1).toHaveValue("1536");
   await expect(adjust).toHaveCount(0);
+  await expect(round(1).locator("[data-color-subtotal]")).toHaveText("1.536");
+  await boxes1.fill("31");
+  await expect(qty1).toHaveValue("1488");
   await expect(preview.locator("[data-color-grand]")).toHaveText("2.928");
 
   // 7b. Caixas por cor livres (dono, 14/11/2026): BEGE vai de 21 para 30

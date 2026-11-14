@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
-import { generateLabels } from "@/components/generate-labels";
+import {
+  generateLabels,
+  purchaseScheduleLabels,
+} from "@/components/generate-labels";
 import { STOCK_OPTION, isStockCustomer } from "@/lib/services/stock-party";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -25,6 +28,8 @@ import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
 import { RequestItems } from "@/components/request-items";
 import { RequestCustomerField } from "@/components/request-customer-field";
+import { RequestCustomerProvider } from "@/components/request-customer-context";
+import { CustomerPurchaseHistory } from "@/components/customer-purchase-history";
 import {
   partyPickerLabels,
   productPickerLabels,
@@ -280,12 +285,25 @@ export default async function NewRequestPage({
         </div>
       ) : null}
 
-      {/* Telas grandes: busca por foto/link (estreita) ao lado do formulário. */}
-      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+      {/* Telas grandes: busca por foto/link (estreita) ao lado do formulário
+          e, embaixo dela, o histórico de compras do cliente (o formulário
+          ocupa as duas linhas à direita, com a largura de sempre). No celular
+          e no iPad em pé: busca, formulário e, por último, o histórico. A
+          grade é o próprio provedor do cliente escolhido (o histórico lê). */}
+      <RequestCustomerProvider
+        className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr]"
+        initial={initialCustomer}
+        initialStock={
+          isStockCustomer(presetCustomerId) || presetCustomerId === STOCK_OPTION
+        }
+      >
         {/* Busca do produto por foto ou link: procura no catálogo e sugere os campos.
           Fora do modo "adicionar à solicitação" (a busca recarrega a tela sem ele). */}
         {addToRequest ? null : (
-          <Card title={t("lookup.title")} className="max-w-2xl lg:max-w-none">
+          <Card
+            title={t("lookup.title")}
+            className="max-w-2xl lg:col-start-1 lg:row-start-1 lg:max-w-none"
+          >
             <div id="lookup" className="scroll-mt-4" />
             <p className="mb-2 text-sm text-zinc-600">{t("lookup.intro")}</p>
             {lookupPaused ? (
@@ -463,7 +481,9 @@ export default async function NewRequestPage({
         <Card
           className={cx(
             "max-w-2xl lg:max-w-none",
-            addToRequest && "lg:col-span-2",
+            addToRequest
+              ? "lg:col-span-2"
+              : "lg:col-start-2 lg:row-span-2 lg:row-start-1",
           )}
         >
           {/* key: ao escolher um produto da busca (mesma rota, outro ?productId) o formulário
@@ -561,37 +581,27 @@ export default async function NewRequestPage({
                   unit: "{unit}",
                 }),
                 intl: t.intl,
-                schedule: {
-                  intl: t.intl,
-                  toggle: t("reqSchedule.toggle"),
-                  ask: t("reqSchedule.ask"),
-                  hint: t("reqSchedule.hint"),
-                  interval: t("reqSchedule.interval"),
-                  days: t("reqSchedule.days", { n: "{n}" }),
-                  custom: t("reqSchedule.custom"),
-                  firstDate: t("reqSchedule.firstDate"),
-                  n: t("reqSchedule.n", { n: "{n}" }),
-                  quantity: t("reqSchedule.quantity"),
-                  expected: t("reqSchedule.expected"),
-                  add: t("reqSchedule.add"),
-                  remove: t("reqSchedule.remove", { n: "{n}" }),
-                  total: t("reqSchedule.total", {
-                    total: "{total}",
-                    unit: "{unit}",
-                  }),
-                  off: t("reqSchedule.off"),
-                },
+                // O bloco "Programação de compra" da Seleção de itens (dono,
+                // 14/11/2026): os mesmos textos; a explicação diz para onde a
+                // programação da solicitação vai.
+                schedule: purchaseScheduleLabels(
+                  t,
+                  t.intl,
+                  t("purchaseRounds.form.hintRequest"),
+                ),
                 // O card "Gerar programação pela quantidade" da Seleção de
                 // itens, com os textos do produto escolhido acima.
                 generate: {
                   ...generateLabels(t, t("reqSchedule.gen.chooseProduct")),
                   noPieces: t("reqSchedule.gen.noPieces"),
                   noCarton: t("reqSchedule.gen.noCarton"),
+                  noData: t("reqSchedule.gen.noData"),
                   regenerate: t("reqSchedule.gen.regenerate"),
                 },
+                generateOutside: t("reqSchedule.gen.outside"),
                 pieces: t("reqSchedule.pieces"),
                 piecesHint: t("reqSchedule.piecesHint"),
-                piecesScheduledHint: t("reqSchedule.piecesScheduledHint"),
+                piecesScheduledHint: t("purchaseRounds.form.quantityOff"),
                 fromCatalog: t("reqProduct.fromCatalog"),
                 inStock: t("reqProduct.inStock"),
                 noStock: t("reqProduct.noStock"),
@@ -677,7 +687,34 @@ export default async function NewRequestPage({
             </div>
           </form>
         </Card>
-      </div>
+
+        {/* Histórico de compras do cliente (dono, 14/11/2026;
+            docs/PURCHASE_HISTORY.md): os pedidos do cliente escolhido; o login
+            do cliente vê os dele. Fora do "adicionar à solicitação" (o cliente
+            já é o da solicitação). */}
+        {addToRequest ? null : (
+          <CustomerPurchaseHistory
+            self={!isWellmix(user)}
+            className="max-w-2xl lg:col-start-1 lg:row-start-2 lg:max-w-none"
+            labels={{
+              title: t("purchaseHistory.title"),
+              select: t("purchaseHistory.select"),
+              loading: t("purchaseHistory.loading"),
+              empty: t("purchaseHistory.empty"),
+              error: t("purchaseHistory.error"),
+              retry: t("purchaseHistory.retry"),
+              more: t("purchaseHistory.more"),
+              hint: t("purchaseHistory.hint"),
+              current: t("purchaseHistory.current"),
+              currentHint: t("purchaseHistory.currentHint"),
+              rounds: t("purchaseHistory.rounds"),
+              noItems: t("purchaseHistory.noItems"),
+              details: t("purchaseHistory.details", { n: "{n}" }),
+              open: t("purchaseHistory.open", { n: "{n}" }),
+            }}
+          />
+        )}
+      </RequestCustomerProvider>
     </>
   );
 }

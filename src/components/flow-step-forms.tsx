@@ -35,6 +35,9 @@ import {
 } from "./ui";
 import { SubmitButton } from "./submit-button";
 import { recordSalesOfferAction } from "@/app/app/actions/sales-offers";
+import { decideOfferAction } from "@/app/app/actions/sales-orders";
+import { PartyPicker } from "./party-picker";
+import { partyPickerLabels } from "./party-picker-labels";
 
 /*
  * Resolver na tela do passo (dono, 14/11/2026; docs/FLOW_MENU.md), segunda
@@ -587,6 +590,11 @@ export async function FlowSalesWork({
           </ul>
         </Card>
       ) : null}
+      <p className="text-sm">
+        <TextLink href="/app/sales-orders">
+          {t("salesOrder.list.title")}
+        </TextLink>
+      </p>
       <Card title={t("flow.sales.history")}>
         {offers.length ? (
           <Table tools={false}>
@@ -599,6 +607,7 @@ export async function FlowSalesWork({
                 <Th>{t("flow.sales.offeredTo")}</Th>
                 <Th>{t("flow.sales.note")}</Th>
                 <Th>{t("flow.sales.by")}</Th>
+                <Th>{t("salesOrder.decision")}</Th>
               </tr>
             </thead>
             <tbody>
@@ -612,6 +621,66 @@ export async function FlowSalesWork({
                   <Td className="text-xs text-zinc-600">{o.note ?? "—"}</Td>
                   <Td className="text-xs">
                     {users.find((u) => u.id === o.offeredByUserId)?.name ?? "—"}
+                  </Td>
+                  <Td className="min-w-72 text-xs">
+                    {/* V3: a decisão do cliente (vendas registra). */}
+                    {o.decision === "closed" && o.salesOrderId ? (
+                      <TextLink href={`/app/sales-orders/${o.salesOrderId}`}>
+                        {t("salesOrder.decision.closed")}
+                      </TextLink>
+                    ) : o.decision === "declined" ? (
+                      <span className="text-zinc-600">
+                        {t("salesOrder.decision.declined")}
+                        {o.decisionNote ? ` · ${o.decisionNote}` : ""}
+                      </span>
+                    ) : (
+                      <form
+                        action={decideOfferAction}
+                        className="flex flex-wrap items-end gap-1"
+                        data-offer-decide={o.id}
+                      >
+                        <input type="hidden" name="offerId" value={o.id} />
+                        <input type="hidden" name="returnTo" value={returnTo} />
+                        <PartyPicker
+                          name="customerId"
+                          type="customer"
+                          activeOnly
+                          dense
+                          labels={partyPickerLabels(t)}
+                          ariaLabel={t("salesOrder.customer")}
+                        />
+                        <Input
+                          dense
+                          name="quantity"
+                          inputMode="decimal"
+                          placeholder={t("salesOrder.quantity")}
+                          className="w-20"
+                        />
+                        <Input
+                          dense
+                          name="decisionNote"
+                          maxLength={1000}
+                          placeholder={t("salesOrder.decisionNote")}
+                          className="w-36"
+                        />
+                        <SubmitButton
+                          name="decision"
+                          value="closed"
+                          className="px-2 py-1 text-xs"
+                          data-offer-closed
+                        >
+                          {t("salesOrder.decision.close")}
+                        </SubmitButton>
+                        <SubmitButton
+                          name="decision"
+                          value="declined"
+                          variant="secondary"
+                          className="px-2 py-1 text-xs"
+                        >
+                          {t("salesOrder.decision.decline")}
+                        </SubmitButton>
+                      </form>
+                    )}
                   </Td>
                 </tr>
               ))}

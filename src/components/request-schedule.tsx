@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { cx, inputClass } from "@/components/ui";
 import {
   DEFAULT_SCHEDULE_INTERVAL,
-  MAX_REQUEST_SCHEDULE,
+  MAX_SCHEDULE_ROUNDS,
   SCHEDULE_INTERVALS,
   addDaysIso,
   splitEvenly,
@@ -13,10 +13,13 @@ import {
 } from "@/lib/workflow/request-schedule";
 
 /*
- * Programação de entregas na solicitação: "+ Programação de entregas" liga o
- * bloco; a quantidade total é dividida nas programações (1, 2, 3…), cada uma
- * com quantidade editável e data prevista calculada (1ª data + intervalo).
- * O total da solicitação passa a ser a soma das programações.
+ * O bloco "Programação de compra" do portal (Seleção de itens e Nova
+ * solicitação, docs/PURCHASE_SCHEDULE.md): o título e a explicação ficam
+ * sempre à vista, com o gerador logo abaixo; "+ Programação de compra" (ou
+ * "Gerar programação") liga as programações. A quantidade total é dividida
+ * nas programações (1, 2, 3…), cada uma com quantidade editável e data
+ * calculada (1ª data + intervalo), e passa a ser a soma delas. Sem teto de
+ * datas além do técnico (`MAX_SCHEDULE_ROUNDS`, dono, 14/11/2026).
  */
 export interface ScheduleLabels {
   /** Tag Intl do idioma (datas e números): pt-BR, en-US, zh-CN. */
@@ -35,6 +38,18 @@ export interface ScheduleLabels {
   remove: string;
   total: string;
   off: string;
+  /**
+   * Caixas master por programação (dono, 14/11/2026): o campo editável de
+   * cada cartão, a conta "{cartons} caixas × {pcs} peças por caixa =
+   * {pieces} peças", o aviso de peças que não fecham caixas inteiras e as
+   * caixas do total. Sem eles, os cartões ficam só com as peças.
+   */
+  cartons?: string;
+  cartonCalc?: string;
+  cartonPartial?: string;
+  totalCartons?: string;
+  /** Dica do campo de peças travado (sai das caixas). */
+  piecesLocked?: string;
 }
 
 const fill = (s: string, vars: Record<string, string | number>) =>
@@ -56,13 +71,15 @@ export function RequestScheduleFields({
   unit,
   onTotalChange,
   labels,
-  max = MAX_REQUEST_SCHEDULE,
+  max = MAX_SCHEDULE_ROUNDS,
   initial = null,
   className,
   onToggle,
   generator,
   roundInfo,
   split,
+  onShort,
+  carton = null,
   blocked = false,
   after,
 }: {
@@ -73,11 +90,11 @@ export function RequestScheduleFields({
   /** Soma das programações muda a quantidade total da linha. */
   onTotalChange: (total: string) => void;
   labels: ScheduleLabels;
-  /** Máximo de programações (padrão: as 6 da solicitação do cliente). */
+  /** Teto de programações (padrão: o técnico do portal). */
   max?: number;
   /** Programação já gravada (reabrir para rever): começa ligada com ela. */
   initial?: RequestSchedule | null;
-  /** Classes do bloco (fora da grade da linha de produto). */
+  /** Classes extras do quadro do bloco. */
   className?: string;
   /** Avisa quando a programação liga ou desliga. */
   onToggle?: (on: boolean) => void;
@@ -99,9 +116,21 @@ export function RequestScheduleFields({
   /**
    * Como dividir um total em N rodadas ao ligar, acrescentar ou tirar uma
    * rodada (programação de compra: em caixas master inteiras). Padrão: em
-   * partes iguais.
+   * partes iguais. Nulo: não há uma caixa por data (`onShort` avisa).
    */
-  split?: (total: number, count: number) => number[];
+  split?: (total: number, count: number) => number[] | null;
+  /**
+   * Ligar ou "+ Programação" sem uma caixa master por data: nada muda e o
+   * gerador mostra quantas caixas faltam (dono, 14/11/2026).
+   */
+  onShort?: (total: number, count: number) => void;
+  /**
+   * Peças por caixa master do item (do produto): cada cartão ganha o campo
+   * "Caixas", o único editável; as peças ficam travadas (caixas × peças por
+   * caixa) e a conta fica escrita (dono, 14/11/2026). Sem ele (produto sem
+   * peças por caixa master), as peças continuam editáveis.
+   */
+  carton?: number | null;
   /**
    * Programação de compra sem o item escolhido marcado na tabela (pedido do
    * dono, 13/11/2026): não liga, não acrescenta nem tira rodada (a conta
@@ -115,6 +144,7 @@ export function RequestScheduleFields({
    */
   after?: (quantities: number[], dates: string[]) => ReactNode;
 }) {
+  const titleId = useId();
   const known = (SCHEDULE_INTERVALS as readonly number[]).includes(
     initial?.intervalDays ?? -1,
   );
@@ -136,6 +166,100 @@ export function RequestScheduleFields({
   const days =
     interval > 0 ? interval : Math.max(0, Number(customInterval) || 0);
   const num = (q: string) => Number(String(q).replace(",", ".")) || 0;
+  const fmtN = (n: number) =>
+    n.toLocaleString(labels.intl, { maximumFractionDigits: 2 });
+  // Caixas por programação: só com as peças por caixa master do item e os
+  // textos do campo (os dois vêm do gerador).
+  const perCarton =
+    carton && carton > 0 && labels.cartons && labels.cartonCalc ? carton : null;
+
+  /**
+   * O cartão em caixas (dono, 14/11/2026): "Caixas" é o campo editável; as
+   * peças ficam travadas e vão no formulário (o servidor grava as peças,
+   * como sempre); a conta fica escrita logo abaixo.
+   */
+  function cartonFields(q: string, i: number, per: number) {
+    const pieces = num(q);
+    const boxes = pieces / per;
+    const whole = Number.isInteger(boxes);
+    return (
+      <>
+        <label className="block space-y-0.5">
+          <span className="block text-[11px] text-zinc-500">
+            {labels.cartons}
+          </span>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            required
+            inputMode="numeric"
+            value={
+              String(q).trim() === ""
+                ? ""
+                : String(whole ? boxes : Math.round(boxes * 100) / 100)
+            }
+            onChange={(e) => {
+              const v = e.target.value;
+              const n = Math.floor(Number(v));
+              update(
+                qtys.map((x, j) =>
+                  j !== i
+                    ? x
+                    : v.trim() === ""
+                      ? ""
+                      : Number.isFinite(n) && n >= 0
+                        ? String(n * per)
+                        : x,
+                ),
+              );
+            }}
+            data-schedule-cartons={i + 1}
+            className={cx(inputClass, "tabular-nums")}
+          />
+        </label>
+        <label className="block space-y-0.5">
+          <span className="block text-[11px] text-zinc-500">
+            {labels.quantity}
+          </span>
+          <input
+            name={`${prefix}schedule.qty.${i + 1}`}
+            readOnly
+            tabIndex={-1}
+            aria-readonly
+            title={labels.piecesLocked}
+            value={q}
+            data-schedule-pieces-locked
+            className={cx(
+              inputClass,
+              "cursor-not-allowed bg-zinc-100 text-zinc-600 tabular-nums",
+            )}
+          />
+        </label>
+        {String(q).trim() !== "" ? (
+          <p
+            className={cx(
+              "text-[11px] leading-snug",
+              whole ? "text-zinc-600" : "font-medium text-amber-800",
+            )}
+            data-schedule-carton-calc
+          >
+            {whole
+              ? fill(labels.cartonCalc!, {
+                  cartons: fmtN(boxes),
+                  pcs: fmtN(per),
+                  pieces: fmtN(pieces),
+                })
+              : fill(labels.cartonPartial ?? labels.cartonCalc!, {
+                  cartons: fmtN(boxes),
+                  pcs: fmtN(per),
+                  pieces: fmtN(pieces),
+                })}
+          </p>
+        ) : null}
+      </>
+    );
+  }
   const divide = (amount: number, count: number) =>
     split ? split(amount, count) : splitEvenly(amount, count, max);
 
@@ -143,6 +267,10 @@ export function RequestScheduleFields({
     if (blocked) return;
     const n = Math.max(0, Number(String(total).replace(",", ".")) || 0);
     const parts = divide(n, 2);
+    if (!parts) {
+      onShort?.(n, 2);
+      return;
+    }
     setQtys(parts.map(String));
     setOn(true);
     onToggle?.(true);
@@ -175,53 +303,82 @@ export function RequestScheduleFields({
   }
   function add() {
     if (blocked || qtys.length >= max) return;
-    update(divide(sum(qtys), qtys.length + 1).map(String));
+    // Cada clique acrescenta uma data: o total é dividido de novo entre elas
+    // (em caixas master inteiras); sem uma caixa por data, o aviso.
+    const parts = divide(sum(qtys), qtys.length + 1);
+    if (!parts) {
+      onShort?.(sum(qtys), qtys.length + 1);
+      return;
+    }
+    update(parts.map(String));
   }
   function remove() {
     if (blocked || qtys.length <= 2) return;
-    update(divide(sum(qtys), qtys.length - 1).map(String));
+    const parts = divide(sum(qtys), qtys.length - 1);
+    if (parts) update(parts.map(String));
   }
 
-  /* Na grade da linha de produto (RequestItems): desligada, fica ao lado de
-     quantidade e unidade; ligada, ocupa a linha toda. */
+  // O bloco tem o mesmo quadro, título e explicação ligado ou desligado
+  // (dono, 14/11/2026: "Programação de compra" seguido do gerador): sem
+  // programação, o pedido único (a quantidade do gerador) e o botão que liga.
+  // O quadro é um grupo com título (não <fieldset>): na Seleção, marcar o
+  // vencedor muda os seletores `:has()` do formulário, e o navegador deixava
+  // os campos do gerador dentro do <fieldset> com tamanho zero até a página
+  // se recalcular. O título fica sobre a borda, como a legenda de antes.
+  const frame = cx(
+    "mt-3 min-w-0 max-w-full space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5",
+    className,
+  );
+  const legend = (
+    <h3
+      id={titleId}
+      className="-mt-[21px] w-fit bg-white px-1 text-sm leading-5 font-semibold text-zinc-800"
+      data-schedule-title
+    >
+      {labels.toggle}
+    </h3>
+  );
+  const hint = (
+    <p className="text-xs leading-relaxed text-zinc-600" data-schedule-hint>
+      {labels.hint}
+    </p>
+  );
   if (!on)
     return (
       <div
-        className={
-          className ??
-          "col-span-2 flex flex-wrap items-center gap-x-2 gap-y-1 self-end sm:min-h-8"
-        }
+        role="group"
+        aria-labelledby={titleId}
+        className={frame}
         data-request-schedule="off"
       >
-        <span className="text-xs text-zinc-500">{labels.ask}</span>
-        <button
-          type="button"
-          onClick={enable}
-          disabled={blocked}
-          data-schedule-on
-          className="inline-flex items-center gap-1 rounded-md border border-dashed border-brand-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
-        >
-          <span aria-hidden>+</span>
-          {labels.toggle}
-        </button>
-        {generator ? (
-          <div className="basis-full">{generator(apply, [])}</div>
-        ) : null}
-        {after ? <div className="basis-full">{after([], [])}</div> : null}
+        {legend}
+        {hint}
+        {generator ? generator(apply, []) : null}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-xs text-zinc-500">{labels.ask}</span>
+          <button
+            type="button"
+            onClick={enable}
+            disabled={blocked}
+            data-schedule-on
+            className="inline-flex items-center gap-1 rounded-md border border-dashed border-brand-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
+          >
+            <span aria-hidden>+</span>
+            {labels.toggle}
+          </button>
+        </div>
+        {after ? after([], []) : null}
       </div>
     );
 
   return (
-    <fieldset
-      className={cx(
-        "min-w-0 max-w-full space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5",
-        className ? null : "col-span-2 sm:col-span-4",
-      )}
+    <div
+      role="group"
+      aria-labelledby={titleId}
+      className={frame}
       data-request-schedule="on"
     >
-      <legend className="px-1 text-sm font-semibold text-zinc-800">
-        {labels.toggle}
-      </legend>
+      {legend}
       <input
         type="hidden"
         name={`${prefix}schedule.count`}
@@ -237,7 +394,7 @@ export function RequestScheduleFields({
         name={`${prefix}schedule.firstDate`}
         value={firstDate}
       />
-      <p className="text-xs leading-relaxed text-zinc-600">{labels.hint}</p>
+      {hint}
       {generator ? generator(apply, qtys.map(num)) : null}
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
@@ -337,23 +494,27 @@ export function RequestScheduleFields({
                   </button>
                 ) : null}
               </div>
-              <label className="block space-y-0.5">
-                <span className="block text-[11px] text-zinc-500">
-                  {labels.quantity}
-                </span>
-                <input
-                  name={`${prefix}schedule.qty.${i + 1}`}
-                  type="number"
-                  min="1"
-                  step="any"
-                  required
-                  value={q}
-                  onChange={(e) =>
-                    update(qtys.map((x, j) => (j === i ? e.target.value : x)))
-                  }
-                  className={cx(inputClass, "tabular-nums")}
-                />
-              </label>
+              {perCarton ? (
+                cartonFields(q, i, perCarton)
+              ) : (
+                <label className="block space-y-0.5">
+                  <span className="block text-[11px] text-zinc-500">
+                    {labels.quantity}
+                  </span>
+                  <input
+                    name={`${prefix}schedule.qty.${i + 1}`}
+                    type="number"
+                    min="1"
+                    step="any"
+                    required
+                    value={q}
+                    onChange={(e) =>
+                      update(qtys.map((x, j) => (j === i ? e.target.value : x)))
+                    }
+                    className={cx(inputClass, "tabular-nums")}
+                  />
+                </label>
+              )}
               <p className="text-[11px] text-zinc-500">
                 {labels.expected}:{" "}
                 <span className="font-medium text-zinc-800" data-schedule-date>
@@ -391,6 +552,18 @@ export function RequestScheduleFields({
             total: sum(qtys).toLocaleString(labels.intl),
             unit,
           })}
+          {perCarton && labels.totalCartons ? (
+            <span
+              className="ml-1.5 font-normal text-zinc-600"
+              data-schedule-total-cartons
+            >
+              ·{" "}
+              {fill(labels.totalCartons, {
+                cartons: fmtN(sum(qtys) / perCarton),
+                pcs: fmtN(perCarton),
+              })}
+            </span>
+          ) : null}
         </span>
         <button
           type="button"
@@ -408,6 +581,6 @@ export function RequestScheduleFields({
             ),
           )
         : null}
-    </fieldset>
+    </div>
   );
 }

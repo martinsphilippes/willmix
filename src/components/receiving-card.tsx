@@ -255,15 +255,46 @@ export function ReceivingCard({
                         <Td className="whitespace-nowrap text-right tabular-nums">
                           {item.quantity.toLocaleString(t.intl)} {item.unit}
                         </Td>
-                        <Td className="min-w-28">
-                          <Input
-                            form={countsForm}
-                            name={`received_${item.id}`}
-                            inputMode="numeric"
-                            defaultValue={c?.received ?? ""}
-                            disabled={closed}
-                            aria-label={`${t("receiving.received")}: ${item.name}`}
-                          />
+                        <Td className="min-w-40">
+                          {/* Por unidade ou por caixas (caixas × caixa master). */}
+                          <div className="flex items-center gap-1">
+                            <Input
+                              form={countsForm}
+                              name={`received_${item.id}`}
+                              inputMode="numeric"
+                              defaultValue={c?.cartons ?? c?.received ?? ""}
+                              disabled={closed}
+                              aria-label={`${t("receiving.received")}: ${item.name}`}
+                            />
+                            {view.perBox[item.id] ? (
+                              <Select
+                                form={countsForm}
+                                name={`unit_${item.id}`}
+                                defaultValue={
+                                  c?.cartons != null ? "cartons" : "units"
+                                }
+                                disabled={closed}
+                                aria-label={t("receiving.unit")}
+                                data-receiving-unit={item.id}
+                              >
+                                <option value="units">
+                                  {t("receiving.unit.units")}
+                                </option>
+                                <option value="cartons">
+                                  {t("receiving.unit.cartons", {
+                                    n: String(view.perBox[item.id]),
+                                  })}
+                                </option>
+                              </Select>
+                            ) : null}
+                          </div>
+                          {c?.cartons != null ? (
+                            <span className="text-xs text-zinc-500">
+                              {t("receiving.unit.converted", {
+                                n: c.received.toLocaleString(t.intl),
+                              })}
+                            </span>
+                          ) : null}
                         </Td>
                         <Td className="min-w-28">
                           <Input

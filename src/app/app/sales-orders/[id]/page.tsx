@@ -1,0 +1,374 @@
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
+import { getT } from "@/i18n/server";
+import type { DictionaryKey } from "@/i18n/dictionaries";
+import { getStore } from "@/lib/db";
+import { canSell } from "@/lib/services/sales-orders";
+import {
+  Alert,
+  Badge,
+  Card,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+  Table,
+  Td,
+  Th,
+  formatDate,
+  linkClass,
+} from "@/components/ui";
+import { ProductPicker } from "@/components/product-picker";
+import { productPickerLabels } from "@/components/party-picker-labels";
+import { SubmitButton } from "@/components/submit-button";
+import { ActionError } from "@/components/action-error";
+import {
+  cancelSalesOrderAction,
+  confirmSalesOrderAction,
+  setSalesOrderErpNumberAction,
+  updateSalesOrderAction,
+} from "../../actions/sales-orders";
+
+/*
+ * Ordem de venda (mapa V7 e V8; docs/SALES_ORDERS.md): itens, preço,
+ * condição de pagamento, entrega agendada; confirmar reserva e manda ao
+ * Sankhya (ou deixa "a lançar" para o número à mão).
+ */
+export default async function SalesOrderPage({
+  params,
+  searchParams,
+}: PageProps<"/app/sales-orders/[id]">) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  requireScreen(user, "products");
+  if (!canSell(user)) notFound();
+  const { id } = await params;
+  const { error, created, saved, confirmed, erp, cancelled } =
+    await searchParams;
+  const store = getStore();
+  const order = await store.get("sales_orders", id);
+  if (!order) notFound();
+  const t = await getT();
+  const [customer, conditions, purchase] = await Promise.all([
+    store.get("parties", order.customerId),
+    store.list("payment_conditions").catch(() => []),
+    order.purchaseOrderId
+      ? store.get("orders", order.purchaseOrderId)
+      : Promise.resolve(null),
+  ]);
+  const editable = order.status === "draft";
+  const errorCode = typeof error === "string" ? error : "";
+  const errorKey = `salesOrder.error.${errorCode}` as DictionaryKey;
+  const errorText = errorCode && t(errorKey) !== errorKey ? t(errorKey) : null;
+  const notice = created
+    ? "salesOrder.done.created"
+    : saved
+      ? "salesOrder.done.saved"
+      : confirmed
+        ? "salesOrder.done.confirmed"
+        : erp
+          ? "salesOrder.done.erp"
+          : cancelled
+            ? "salesOrder.done.cancelled"
+            : null;
+  const total = order.lines.reduce(
+    (s, l) => s + (l.unitPrice ?? 0) * l.quantity,
+    0,
+  );
+  return (
+    <>
+      <PageHeader
+        t={t}
+        title={t("salesOrder.title", { n: String(order.number) })}
+        subtitle={customer?.name ?? ""}
+        actions={
+          <Link href="/app/sales-orders" className={linkClass}>
+            {t("salesOrder.back")}
+          </Link>
+        }
+      />
+      <ActionError t={t} code={errorCode} text={errorText} fields={null} />
+      {notice ? (
+        <Alert tone="success">{t(notice as DictionaryKey)}</Alert>
+      ) : null}
+      <Card
+        title={t("salesOrder.items")}
+        actions={
+          <Badge
+            tone={
+              order.status === "confirmed"
+                ? "success"
+                : order.status === "cancelled"
+                  ? "danger"
+                  : "neutral"
+            }
+          >
+            <span data-sales-order-status={order.status}>
+              {t(`salesOrder.status.${order.status}` as DictionaryKey)}
+            </span>
+          </Badge>
+        }
+      >
+        <form
+          action={updateSalesOrderAction}
+          className="space-y-3"
+          data-sales-order-form
+        >
+          <input type="hidden" name="id" value={order.id} />
+          <Table tools={false}>
+            <thead>
+              <tr>
+                <Th>{t("salesOrder.product")}</Th>
+                <Th className="text-right">{t("salesOrder.quantity")}</Th>
+                <Th className="text-right">
+                  {t("salesOrder.unitPrice")} ({order.currency})
+                </Th>
+                <Th>{t("salesOrder.reservation")}</Th>
+                {editable ? <Th>{t("salesOrder.remove")}</Th> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {order.lines.map((l, i) => (
+                <tr key={`${l.productId}-${i}`} data-sales-order-line={i}>
+                  <Td>
+                    <input type="hidden" name="productId" value={l.productId} />
+                    {l.name}
+                  </Td>
+                  <Td className="text-right">
+                    {editable ? (
+                      <Input
+                        dense
+                        name={`quantity_${i}`}
+                        inputMode="decimal"
+                        defaultValue={l.quantity}
+                        className="w-24 text-right"
+                        aria-label={t("salesOrder.quantity")}
+                      />
+                    ) : (
+                      `${l.quantity} ${l.unit}`
+                    )}
+                  </Td>
+                  <Td className="text-right">
+                    {editable ? (
+                      <Input
+                        dense
+                        name={`unitPrice_${i}`}
+                        inputMode="decimal"
+                        defaultValue={l.unitPrice ?? ""}
+                        className="w-28 text-right"
+                        aria-label={t("salesOrder.unitPrice")}
+                      />
+                    ) : (
+                      (l.unitPrice ?? "—")
+                    )}
+                  </Td>
+                  <Td className="text-xs">
+                    {order.status !== "confirmed"
+                      ? "—"
+                      : l.reservationId
+                        ? t("salesOrder.reserved.stock")
+                        : t("salesOrder.reserved.arrival")}
+                  </Td>
+                  {editable ? (
+                    <Td>
+                      <input
+                        type="checkbox"
+                        name={`remove_${i}`}
+                        aria-label={t("salesOrder.remove")}
+                      />
+                    </Td>
+                  ) : null}
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+          <p className="text-sm text-zinc-700">
+            {t("salesOrder.total")}: {order.currency}{" "}
+            {total.toLocaleString(t.intl, { minimumFractionDigits: 2 })}
+          </p>
+          {editable ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label={t("salesOrder.addProduct")}>
+                  <ProductPicker
+                    scope="active"
+                    name="newProductId"
+                    labels={productPickerLabels(t)}
+                  />
+                </Field>
+                <Field label={t("salesOrder.quantity")}>
+                  <Input name="newQuantity" inputMode="decimal" />
+                </Field>
+                <Field label={t("salesOrder.unitPrice")}>
+                  <Input name="newUnitPrice" inputMode="decimal" />
+                </Field>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label={t("salesOrder.paymentCondition")}>
+                  <Select
+                    name="paymentConditionId"
+                    defaultValue={order.paymentConditionId ?? ""}
+                  >
+                    <option value="">—</option>
+                    {conditions
+                      .filter((c) => c.active)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+                <Field label={t("salesOrder.currency")}>
+                  <Select name="currency" defaultValue={order.currency}>
+                    {["BRL", "USD"].map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label={t("salesOrder.purchaseOrder")}>
+                  <Input
+                    name="purchaseOrderNumber"
+                    inputMode="numeric"
+                    defaultValue={purchase ? String(purchase.number) : ""}
+                    placeholder={t("salesOrder.purchaseOrderHint")}
+                  />
+                </Field>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label={t("salesOrder.deliveryDate")}>
+                  <Input
+                    type="date"
+                    name="deliveryDate"
+                    defaultValue={order.deliveryDate ?? ""}
+                  />
+                </Field>
+                <Field label={t("salesOrder.deliveryWindow")}>
+                  <Input
+                    name="deliveryWindow"
+                    maxLength={60}
+                    defaultValue={order.deliveryWindow ?? ""}
+                    placeholder={t("salesOrder.deliveryWindowHint")}
+                  />
+                </Field>
+                <Field label={t("salesOrder.note")}>
+                  <Input
+                    name="note"
+                    maxLength={1000}
+                    defaultValue={order.note ?? ""}
+                  />
+                </Field>
+              </div>
+              <SubmitButton variant="secondary" data-sales-order-save>
+                {t("salesOrder.save")}
+              </SubmitButton>
+            </>
+          ) : (
+            <dl className="grid gap-2 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-xs text-zinc-500">
+                  {t("salesOrder.deliveryDate")}
+                </dt>
+                <dd>
+                  {order.deliveryDate
+                    ? formatDate(`${order.deliveryDate}T12:00:00Z`, t)
+                    : "—"}
+                  {order.deliveryWindow ? ` · ${order.deliveryWindow}` : ""}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500">
+                  {t("salesOrder.paymentCondition")}
+                </dt>
+                <dd>
+                  {conditions.find((c) => c.id === order.paymentConditionId)
+                    ?.name ?? "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500">
+                  {t("salesOrder.purchaseOrder")}
+                </dt>
+                <dd>
+                  {purchase ? (
+                    <Link
+                      href={`/app/orders/${purchase.id}`}
+                      className={linkClass}
+                    >
+                      #{purchase.number}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </dd>
+              </div>
+            </dl>
+          )}
+        </form>
+        {editable ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <form action={confirmSalesOrderAction}>
+              <input type="hidden" name="id" value={order.id} />
+              <SubmitButton data-sales-order-confirm>
+                {t("salesOrder.confirm")}
+              </SubmitButton>
+            </form>
+            <form action={cancelSalesOrderAction}>
+              <input type="hidden" name="id" value={order.id} />
+              <SubmitButton variant="danger">
+                {t("salesOrder.cancel")}
+              </SubmitButton>
+            </form>
+          </div>
+        ) : null}
+      </Card>
+      {order.status === "confirmed" ? (
+        <Card title={t("salesOrder.erp")} dense>
+          <div data-sales-order-erp={order.erpStatus}>
+            {order.erpStatus === "synced" ? (
+              <p className="text-sm text-emerald-700">
+                {t("salesOrder.erp.syncedAs", { n: order.erpNumber ?? "" })}
+              </p>
+            ) : (
+              <>
+                <p className="mb-2 text-sm text-zinc-600">
+                  {order.erpStatus === "error"
+                    ? t("salesOrder.erp.errorHint", {
+                        reason: order.erpError ?? "",
+                      })
+                    : t("salesOrder.erp.pendingHint")}
+                </p>
+                <form
+                  action={setSalesOrderErpNumberAction}
+                  className="flex flex-wrap items-end gap-2"
+                  data-sales-order-erp-form
+                >
+                  <input type="hidden" name="id" value={order.id} />
+                  <Input
+                    name="erpNumber"
+                    required
+                    maxLength={40}
+                    placeholder={t("salesOrder.erp.number")}
+                  />
+                  <SubmitButton variant="secondary">
+                    {t("salesOrder.erp.save")}
+                  </SubmitButton>
+                </form>
+              </>
+            )}
+          </div>
+          <form action={cancelSalesOrderAction} className="mt-3">
+            <input type="hidden" name="id" value={order.id} />
+            <SubmitButton variant="danger">
+              {t("salesOrder.cancel")}
+            </SubmitButton>
+          </form>
+        </Card>
+      ) : null}
+    </>
+  );
+}

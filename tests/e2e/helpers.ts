@@ -80,6 +80,8 @@ export function bookingSheet(
   description: string,
   /** Cores do item (coluna COLOR ASSORTMENT), ex.: "BEGE / CARVALHO / MARROM". */
   colors?: string,
+  /** CBM da caixa master (padrão: 0,12). */
+  { cbm = "0.12" }: { cbm?: string } = {},
 ) {
   const row = [
     "2026.10.13",
@@ -94,7 +96,7 @@ export function bookingSheet(
     "12",
     "0.3",
     "0.35",
-    "0.12",
+    cbm,
     "10",
     "8",
     "20",

@@ -137,6 +137,7 @@ import * as sampleFlow from "./sample-flow";
 import * as exwOrigin from "./exw-origin";
 import * as receivingDivergence from "./receiving-divergence";
 import * as delivery from "./delivery";
+import * as salesOrders from "./sales-orders";
 import * as purchaseRounds from "./purchase-rounds";
 import * as colorVariants from "./color-variants";
 import * as aiReferences from "./ai-references";
@@ -145,6 +146,7 @@ import * as notifications from "./notifications";
 import * as productSheetImport from "./product-sheet-import";
 import * as productVariants from "./product-variants";
 import * as messages from "./messages";
+import * as purchaseHistory from "./purchase-history";
 
 export const modulesPt = {
   ...messages.pt,
@@ -284,11 +286,13 @@ export const modulesPt = {
   ...exwOrigin.pt,
   ...receivingDivergence.pt,
   ...delivery.pt,
+  ...salesOrders.pt,
   ...purchaseRounds.pt,
   ...colorVariants.pt,
   ...aiReferences.pt,
   ...sampling.pt,
   ...intro.pt,
+  ...purchaseHistory.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -428,11 +432,13 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...exwOrigin.en,
   ...receivingDivergence.en,
   ...delivery.en,
+  ...salesOrders.en,
   ...purchaseRounds.en,
   ...colorVariants.en,
   ...aiReferences.en,
   ...sampling.en,
   ...intro.en,
+  ...purchaseHistory.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -572,9 +578,11 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...exwOrigin.zh,
   ...receivingDivergence.zh,
   ...delivery.zh,
+  ...salesOrders.zh,
   ...purchaseRounds.zh,
   ...colorVariants.zh,
   ...aiReferences.zh,
   ...sampling.zh,
   ...intro.zh,
+  ...purchaseHistory.zh,
 };

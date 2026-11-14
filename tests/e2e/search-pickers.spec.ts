@@ -51,21 +51,40 @@ test("nova solicitação (Wellmix): compra para estoque, cliente e produto com a
   await login(page, "admin@wellmix.com");
   await page.goto("/app/requests/new");
   const customerBlock = page.locator("[data-request-customer]");
-  // Compra para estoque: o campo de cliente fica desligado e vai a opção de estoque.
+  // Histórico de compras do cliente (docs/PURCHASE_HISTORY.md): sem cliente,
+  // o pedido para escolher.
+  const history = page.locator("[data-purchase-history]");
+  await expect(history).toHaveAttribute("data-purchase-history-state", "select");
+  await expect(history.locator("[data-purchase-history-select]")).toBeVisible();
+  // Compra para estoque: o campo de cliente fica desligado e vai a opção de
+  // estoque; o histórico some.
   await customerBlock.locator("[data-stock-option]").check();
   await expect(
     customerBlock.locator("[data-party-picker-input]"),
   ).toBeDisabled();
   await expect(page.locator('input[name="customerId"]')).toHaveValue("__stock");
+  await expect(history).toHaveCount(0);
   await customerBlock.locator("[data-stock-option]").uncheck();
-  await choose(
-    customerBlock.locator('[data-party-picker="customer"]'),
-    "party-picker",
-    "loja",
-    "cliente-joao",
+  await expect(history).toHaveAttribute("data-purchase-history-state", "select");
+  const customerPicker = customerBlock.locator(
+    '[data-party-picker="customer"]',
   );
+  await choose(customerPicker, "party-picker", "loja", "cliente-joao");
   await expect(page.locator('input[name="customerId"]')).toHaveValue(
     "cliente-joao",
+  );
+  // Escolhido o cliente, o histórico dele carrega (com ou sem compras).
+  await expect(history).toHaveAttribute(
+    "data-purchase-history-state",
+    /^(ready|empty)$/,
+  );
+  // Voltou a digitar sem escolher: o histórico volta a pedir o cliente.
+  await customerPicker.locator("[data-party-picker-input]").fill("lo");
+  await expect(history).toHaveAttribute("data-purchase-history-state", "select");
+  await choose(customerPicker, "party-picker", "loja", "cliente-joao");
+  await expect(history).toHaveAttribute(
+    "data-purchase-history-state",
+    /^(ready|empty)$/,
   );
   // Produto pelo nome: a ficha vem do servidor e preenche nome e descrição.
   const item = page.locator('[data-request-item="0"]');

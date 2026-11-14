@@ -374,6 +374,46 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page.locator(`[data-purchase-candidate="${requestId}"]`),
   ).toHaveCount(0);
 
+  // Histórico de compras do cliente na Nova solicitação (dono, 14/11/2026;
+  // docs/PURCHASE_HISTORY.md): o pedido de compra entra no histórico do
+  // cliente dele (a Wellmix SC), o mais recente primeiro, com o produto e a
+  // quantidade no detalhe; sem venda gravada, o valor fica "—".
+  await page.goto("/app/requests/new");
+  const purchaseHistory = page.locator("[data-purchase-history]");
+  await expect(purchaseHistory).toHaveAttribute(
+    "data-purchase-history-state",
+    "select",
+  );
+  const historyCustomer = page.locator(
+    '[data-request-customer] [data-party-picker="customer"]',
+  );
+  await historyCustomer.locator("[data-party-picker-input]").fill("wellmix sc");
+  await historyCustomer
+    .locator('[data-party-picker-option="wellmix-sc"]')
+    .click();
+  const historyRow = purchaseHistory.locator(
+    `[data-purchase-history-order="${orderNumber}"]`,
+  );
+  await expect(historyRow).toBeVisible();
+  await expect(
+    purchaseHistory.locator("[data-purchase-history-order]").first(),
+  ).toHaveAttribute("data-purchase-history-order", orderNumber!);
+  await historyRow.getByRole("button").first().click();
+  const historyItem = historyRow
+    .locator("[data-purchase-history-item]")
+    .first();
+  await expect(historyItem).toBeVisible();
+  await expect(
+    historyItem.locator('[data-purchase-history-field="quantity"]'),
+  ).toContainText(/\d/);
+  await expect(
+    historyItem.locator('[data-purchase-history-field="unitSale"]'),
+  ).toContainText("—");
+  // O pedido abre em outra aba (a solicitação em andamento fica).
+  const historyOpen = historyRow.locator("[data-purchase-history-open]");
+  await expect(historyOpen).toHaveAttribute("href", orderPath);
+  await expect(historyOpen).toHaveAttribute("target", "_blank");
+
   // 5b. Cadastro e fiscal (mapa, P9/P14): o contrato espera o NCM validado e
   // a ficha mestre completa. O sistema confere; o atalho leva à tela dona.
   // A mesa do cadastro mostra o NCM e a ficha a fazer (docs/DESKS.md).
@@ -1287,6 +1327,11 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.locator("[data-flow-sales-offer]", { hasText: "Rede Exemplo E2E" }),
   ).toBeVisible();
+  // V3 e V7 (docs/SALES_ORDERS.md): a decisão do cliente fica na oferta e a
+  // tela das ordens de venda abre com a agenda.
+  await expect(page.locator("[data-offer-decide]").first()).toBeVisible();
+  await page.goto("/app/sales-orders");
+  await expect(page.locator("[data-sales-order-new]")).toBeVisible();
   await sendStep(page, orderUrl, "samples-flow", "samples_returned", {
     value: "Amostra devolvida à trading",
   });
@@ -1458,10 +1503,16 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   ).toBeVisible();
   await page.fill('textarea[name="p0.description"]', "Jarra de vidro");
   // A quantidade fica acima do pedido mínimo da jarra, se houver (a tela
-  // sobe e o servidor recusa abaixo dele).
-  await page.fill('input[name="p0.quantity"]', "1000");
-  // Programação de entregas: 2 entregas (500 + 500), "+ Programação" → 3 (334 + 333 + 333),
-  // intervalo 30 dias; a 3ª vira 340 → total 1007 e a quantidade acompanha.
+  // sobe e o servidor recusa abaixo dele). Ela se digita no bloco
+  // "Programação de compra" (a linha de quantidade saiu da tela, dono,
+  // 14/11/2026) e vai no formulário como p0.quantity.
+  await page
+    .locator('[data-request-item="0"] [data-selection-quantity]')
+    .fill("1000");
+  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("1000");
+  // Programação de compra (a jarra não tem caixa master no cadastro: em
+  // peças): 2 programações (500 + 500), "+ Programação" → 3 (334 + 333 +
+  // 333), intervalo 30 dias; a 3ª vira 340 → total 1007 e a quantidade acompanha.
   await page.click('[data-request-item="0"] [data-schedule-on]');
   await expect(
     page.locator('[data-request-item="0"] [data-schedule-item]'),
@@ -1480,7 +1531,10 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await page.check('[data-request-item="1"] input[name="p1.sourcingDemand"]');
   await page.fill('input[name="p1.productName"]', "Copo de vidro");
   await page.fill('textarea[name="p1.description"]', "Copo de vidro 300 ml");
-  await page.fill('input[name="p1.quantity"]', "200");
+  await page
+    .locator('[data-request-item="1"] [data-selection-quantity]')
+    .fill("200");
+  await expect(page.locator('input[name="p1.quantity"]')).toHaveValue("200");
   // Terceira linha adicionada e removida: não vira solicitação.
   await page.click("[data-add-request-item]");
   await page.getByRole("button", { name: /Remover: Produto 3/ }).click();

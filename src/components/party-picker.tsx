@@ -32,6 +32,7 @@ export function PartyPicker({
   ariaLabel,
   labels,
   onChoose,
+  onDeselect,
 }: {
   name?: string;
   type: "customer" | "supplier";
@@ -55,6 +56,8 @@ export function PartyPicker({
   labels: PartyPickerLabels;
   /** Avisado a cada escolha (ex.: incluir a empresa numa lista). */
   onChoose?: (option: SearchOption | null) => void;
+  /** Avisado quando a escolha some porque a pessoa voltou a digitar. */
+  onDeselect?: () => void;
 }) {
   const params = new URLSearchParams({ type });
   if (activeOnly) params.set("active", "1");
@@ -75,6 +78,7 @@ export function PartyPicker({
       ariaLabel={ariaLabel}
       labels={labels}
       onChoose={onChoose}
+      onDeselect={onDeselect}
     />
   );
 }
