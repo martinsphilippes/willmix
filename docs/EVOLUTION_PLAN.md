@@ -1204,3 +1204,28 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - Revisões, Pós-venda e Multas leem só os pedidos citados, e não mais os 16 mil.
 - **Não mudou:** telas, filtros, ordem, colunas, cálculos e permissões. Os testes de equivalência comparam o resultado com o painel que lê todos os itens e com o caminho antigo.
 - **Ajuste aditivo:** a chave `itemCount` em `order_summaries.facts`, sem coluna nova. Depois do deploy, a reconstrução começa sozinha.
+
+## Performance: Parceiros, Clientes e Fornecedores paginados no servidor (14/11/2026)
+
+- **Problema medido.** Com o volume de produção, as listas mandavam todas as linhas ao navegador. Medido no servidor compilado, com 32 mil parceiros sintéticos:
+
+  | Tela         | HTML   | Tempo |
+  | ------------ | ------ | ----- |
+  | Parceiros    | 108 MB | 5 s   |
+  | Clientes     | 281 MB | 19 s  |
+  | Fornecedores | 54 MB  | 4 s   |
+
+- **O que mudou.** Acima de 200 linhas, busca, ordem e página acontecem no servidor (`src/lib/server-table.ts`, 50 por página), com as mesmas regras da tabela padrão sobre a lista inteira. Os parâmetros ficam no endereço (`q`, `sort`, `page`).
+- **Depois.** Parceiros: 258 KB em 0,25 s. Clientes: 625 KB em 0,3 s. Fornecedores: 560 KB em 0,1 s.
+- **Não mudou:**
+  - colunas, filtros por tipo e situação, busca do campo da lista, ações por linha e exportação;
+  - o lote ativar/desativar; "Selecionar todos" marca as linhas da página, e o lote já aceitava no máximo 500;
+  - a lista curta, que continua inteira na tabela padrão.
+- Testes: `tests/unit/server-table.test.ts`. Conferido no navegador sobre os 26 mil clientes sintéticos: ordem pelo cabeçalho nos dois sentidos, página seguinte com a ordem mantida, busca ao digitar e "Selecionar todos". Também conferido que uma lista curta continua na tabela padrão.
+
+## Performance: links de arquivo e de exportação sem pré-carregamento (14/11/2026)
+
+- **Problema.** Em produção, o Next pré-carrega todo `<Link>` que aparece na tela. Para um link de rota de API ou de exportação, o pré-carregamento executava a rota sem ninguém clicar:
+  - baixava o arquivo (`/api/files/...`; os logs da Vercel mostravam `/api/files/[id].rsc`, com 6 erros "body disturbed or locked");
+  - montava a exportação inteira (clientes, fornecedores, produtos, solicitações, estoque) a cada abertura da lista.
+- **O que mudou.** `TextLink` e `LinkButton` não pré-carregam endereços `/api/...` nem `.../export` (`routeHandlerHref` em `src/components/ui.tsx`). Clicar continua igual. Teste: `tests/unit/link-prefetch.test.ts`.
