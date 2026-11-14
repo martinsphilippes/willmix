@@ -1,4 +1,12 @@
-import { listByIds } from "@/lib/db/lookup";
+import { indexBy, listByIds } from "@/lib/db/lookup";
+import { ServerPager, SortTh } from "@/components/server-table";
+import {
+  SERVER_TABLE_FROM,
+  parseServerPage,
+  parseServerSort,
+  serverTable,
+  type ServerColumn,
+} from "@/lib/server-table";
 import { LiveSearch } from "@/components/live-search";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -143,8 +151,10 @@ export default async function RequestsPage({
     : "all";
   const q = typeof sp.q === "string" ? sp.q.slice(0, 120) : "";
   const today = todayBrazil();
-  const customerName = (id: string) =>
-    parties.find((p) => p.id === id)?.name ?? "";
+  // Mapas no lugar de buscas na lista inteira a cada linha (auditoria de
+  // performance, 14/11/2026: 16 mil solicitações × milhares de parceiros).
+  const partyById = indexBy(parties, "id");
+  const customerName = (id: string) => partyById.get(id)?.name ?? "";
   const situationCounts = Object.fromEntries(
     REQUEST_SITUATIONS.map((k) => [
       k,
@@ -169,8 +179,9 @@ export default async function RequestsPage({
     wellmix && orderIds.length
       ? await store.list("orders", { filter: { id: orderIds } })
       : [];
+  const orderById = indexBy(orders, "id");
   const orderNumber = (id: string | null) =>
-    id ? (orders.find((o) => o.id === id)?.number ?? null) : null;
+    id ? (orderById.get(id)?.number ?? null) : null;
   /* Wellmix: foto do produto e a etapa atual do pedido, numa rodada só. */
   const productIds = [
     ...new Set(requests.map((r) => r.productId).filter(Boolean)),
@@ -193,10 +204,13 @@ export default async function RequestsPage({
           : Promise.resolve([]),
       ])
     : [[], [], []];
+  const stageById = indexBy(stages, "id");
+  const productById = indexBy(products, "id");
+  const teamById = indexBy(team, "id");
   const nextOf = (r: (typeof requests)[number]): NextStep => {
-    const order = r.orderId ? orders.find((o) => o.id === r.orderId) : null;
+    const order = r.orderId ? orderById.get(r.orderId) : null;
     const stage = order?.currentStageId
-      ? stages.find((st) => st.id === order.currentStageId)
+      ? stageById.get(order.currentStageId)
       : null;
     return requestNextStep({
       status: r.status,
@@ -240,7 +254,7 @@ export default async function RequestsPage({
       </span>
     );
   const photoCell = (r: (typeof requests)[number]) => {
-    const p = r.productId ? products.find((x) => x.id === r.productId) : null;
+    const p = r.productId ? productById.get(r.productId) : null;
     return (
       <PhotoGallery
         name={productNameText(t, r.productName)}
@@ -249,7 +263,7 @@ export default async function RequestsPage({
     );
   };
   const ownerName = (id: string | null | undefined) =>
-    id ? (team.find((u) => u.id === id)?.name ?? "—") : "—";
+    id ? (teamById.get(id)?.name ?? "—") : "—";
   const listQuery = (patch: Record<string, string | null>) => {
     const p = new URLSearchParams();
     const merged: Record<string, string | null> = {
@@ -274,6 +288,123 @@ export default async function RequestsPage({
     : groupRequestRows(requests);
   const batchHref = (id: string) =>
     `/app/requests/batch/${encodeURIComponent(id)}`;
+  // Lista longa: ordem e página no servidor (auditoria de performance,
+  // 14/11/2026: 134 MB de HTML com as 16 mil solicitações do histórico).
+  // Curta: inteira, como antes. Busca e situação continuam as do servidor.
+  type Entry = (typeof entries)[number];
+  const rowsOf = (e: Entry) =>
+    e.kind === "batch"
+      ? [...e.rows].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      : [e.row];
+  const entryColumns: ServerColumn<Entry>[] = [
+    {
+      key: "number",
+      text: (e) => String(rowsOf(e).find((r) => r.number)?.number ?? "—"),
+    },
+    {
+      key: "product",
+      text: (e) =>
+        rowsOf(e)
+          .map((r) => productNameText(t, r.productName))
+          .join(", "),
+    },
+    {
+      key: "quantity",
+      text: (e) =>
+        rowsOf(e)
+          .map((r) => `${r.quantity} ${r.unit}`)
+          .join(" · "),
+    },
+    ...(isWellmix(user)
+      ? [
+          {
+            key: "customer",
+            text: (e: Entry) => customerName(rowsOf(e)[0].customerId) || "—",
+          },
+        ]
+      : []),
+    {
+      key: "status",
+      text: (e) =>
+        rowsOf(e)
+          .map((r) => t(`reqStatusLabel.${requestDisplayStatus(r, cancelled)}`))
+          .join(" "),
+    },
+    ...(wellmix
+      ? [
+          {
+            key: "next",
+            text: (e: Entry) => {
+              const n = nextOf(rowsOf(e)[0]);
+              return n.key === "none" ? "—" : nextText(n);
+            },
+          },
+        ]
+      : []),
+    {
+      key: "deadline",
+      text: (e) =>
+        formatDate(
+          e.kind === "batch" ? earliestDeadline(rowsOf(e)) : e.row.deadline,
+          t,
+        ),
+    },
+    ...(wellmix
+      ? [
+          {
+            key: "order",
+            text: (e: Entry) => {
+              const r = rowsOf(e)[0];
+              return r.orderId ? `#${orderNumber(r.orderId) ?? "?"}` : "—";
+            },
+          },
+          {
+            key: "owner",
+            text: (e: Entry) => ownerName(rowsOf(e)[0].ownerUserId),
+          },
+          {
+            key: "date",
+            text: (e: Entry) => formatDate(rowsOf(e)[0].createdAt, t),
+          },
+        ]
+      : []),
+  ];
+  const serverMode = entries.length > SERVER_TABLE_FROM;
+  const one = (v: string | string[] | undefined) =>
+    typeof v === "string" ? v : undefined;
+  const sort = serverMode ? parseServerSort(one(sp.sort), entryColumns) : null;
+  const paged = serverTable(entries, entryColumns, {
+    sort,
+    page: parseServerPage(one(sp.page)),
+    size: serverMode ? undefined : Math.max(entries.length, 1),
+    decimalComma: t.locale === "pt",
+  });
+  const sortValue = sort ? `${sort.desc ? "-" : ""}${sort.key}` : null;
+  const pageListHref = (patch: { sort?: string | null; page?: number }) => {
+    const p = new URLSearchParams();
+    if (situation !== "all") p.set("situ", situation);
+    if (q) p.set("q", q);
+    if (showDeleted) p.set("view", "deleted");
+    if (groupId) p.set("group", groupId);
+    const value = patch.sort !== undefined ? patch.sort : sortValue;
+    if (value) p.set("sort", value);
+    if (patch.page) p.set("page", String(patch.page + 1));
+    const str = p.toString();
+    return str ? `/app/requests?${str}` : "/app/requests";
+  };
+  const header = (label: string, column: string, className?: string) =>
+    serverMode ? (
+      <SortTh
+        label={label}
+        column={column}
+        sort={sort}
+        href={(value) => pageListHref({ sort: value })}
+        t={t}
+        className={className}
+      />
+    ) : (
+      <Th className={className}>{label}</Th>
+    );
   const anyDeletable = requests.some((r) => canDeleteRequest(user, r));
   const count = (v: string | string[] | undefined) =>
     typeof v === "string" && /^\d+$/.test(v) ? Number(v) : 0;
@@ -582,7 +713,7 @@ export default async function RequestsPage({
               : t("common.none")}
         </Empty>
       ) : (
-        <Table>
+        <Table tools={!serverMode}>
           <thead>
             <tr>
               {!showDeleted && anyDeletable ? (
@@ -593,24 +724,26 @@ export default async function RequestsPage({
                   />
                 </Th>
               ) : null}
-              <Th className="w-14">{t("requests.numberShort")}</Th>
+              {header(t("requests.numberShort"), "number", "w-14")}
               {wellmix ? (
                 <Th className="w-14">{t("reqList.col.photo")}</Th>
               ) : null}
-              <Th>{t("common.product")}</Th>
-              <Th>{t("common.quantity")}</Th>
-              {isWellmix(user) ? <Th>{t("common.customer")}</Th> : null}
-              <Th>{t("common.status")}</Th>
-              {wellmix ? <Th>{t("reqList.col.next")}</Th> : null}
-              <Th>{t("requests.deadline")}</Th>
-              {wellmix ? <Th>{t("reqList.col.order")}</Th> : null}
-              {wellmix ? <Th>{t("reqList.col.owner")}</Th> : null}
-              {wellmix ? <Th>{t("reqList.col.date")}</Th> : null}
+              {header(t("common.product"), "product")}
+              {header(t("common.quantity"), "quantity")}
+              {isWellmix(user)
+                ? header(t("common.customer"), "customer")
+                : null}
+              {header(t("common.status"), "status")}
+              {wellmix ? header(t("reqList.col.next"), "next") : null}
+              {header(t("requests.deadline"), "deadline")}
+              {wellmix ? header(t("reqList.col.order"), "order") : null}
+              {wellmix ? header(t("reqList.col.owner"), "owner") : null}
+              {wellmix ? header(t("reqList.col.date"), "date") : null}
               <Th />
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry) => {
+            {paged.rows.map((entry) => {
               if (entry.kind === "batch") {
                 // Na ordem em que foram pedidos (igual à página do lote).
                 const rows = [...entry.rows].sort((a, b) =>
@@ -690,8 +823,7 @@ export default async function RequestsPage({
                     </Td>
                     {isWellmix(user) ? (
                       <Td className="min-w-32">
-                        {parties.find((p) => p.id === rows[0].customerId)
-                          ?.name ?? "—"}
+                        {partyById.get(rows[0].customerId)?.name ?? "—"}
                       </Td>
                     ) : null}
                     <Td>
@@ -899,6 +1031,13 @@ export default async function RequestsPage({
           </tbody>
         </Table>
       )}
+      {serverMode && entries.length ? (
+        <ServerPager
+          page={paged}
+          href={(page) => pageListHref({ page })}
+          t={t}
+        />
+      ) : null}
     </>
   );
 }

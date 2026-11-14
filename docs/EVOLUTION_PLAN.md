@@ -1229,3 +1229,37 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - baixava o arquivo (`/api/files/...`; os logs da Vercel mostravam `/api/files/[id].rsc`, com 6 erros "body disturbed or locked");
   - montava a exportação inteira (clientes, fornecedores, produtos, solicitações, estoque) a cada abertura da lista.
 - **O que mudou.** `TextLink` e `LinkButton` não pré-carregam endereços `/api/...` nem `.../export` (`routeHandlerHref` em `src/components/ui.tsx`). Clicar continua igual. Teste: `tests/unit/link-prefetch.test.ts`.
+
+## Performance: Histórico, Contas a pagar, Solicitações, Financeiro e Configurações sem a lista inteira (14/11/2026)
+
+- **Problema medido.** Medido no servidor compilado, com dados sintéticos do volume de produção (16 mil pedidos, 16 mil solicitações, 32 mil parceiros, 17 mil produtos):
+
+  | Tela                | HTML   | Tempo  |
+  | ------------------- | ------ | ------ |
+  | Histórico comercial | 266 MB | 25,7 s |
+  | Contas a pagar      | 182 MB | 14,7 s |
+  | Solicitações        | 134 MB | 16,6 s |
+  | Financeiro          | 129 MB | 14,9 s |
+  | Configurações       | 62 MB  | 2,2 s  |
+
+  Em Configurações, o peso vinha de um campo de margem para cada cliente. Clientes levava 31,9 s de servidor: a conta de cada cliente percorria todos os pedidos.
+
+- **O que mudou:**
+  - Nas listas longas, ordem e página passam ao servidor, com as mesmas regras da tabela padrão (`src/lib/server-table.ts`). A busca e os filtros continuam os da tela.
+  - No Histórico, o filtro de cliente passa a ser pela busca, como no Marketing (antes, um seletor com 26 mil clientes).
+  - No Financeiro, a linha que volta do "Informar câmbio" abre na página dela.
+  - Em Configurações, com o cadastro grande, a margem por cliente mostra os clientes que já têm margem, e a busca inclui outro (`MarginCustomers`). Os campos têm o mesmo nome e a gravação não muda.
+  - Contas dos clientes e fornecedores: dados agrupados uma vez por empresa, na mesma ordem (as somas não mudam).
+  - Solicitações: mapas no lugar de buscas na lista inteira por linha.
+- **Depois:**
+
+  | Tela           | HTML   | Tempo |
+  | -------------- | ------ | ----- |
+  | Histórico      | 890 KB | 1,1 s |
+  | Contas a pagar | 951 KB | 2,6 s |
+  | Solicitações   | 516 KB | 0,7 s |
+  | Financeiro     | 491 KB | 1,4 s |
+  | Configurações  | 242 KB | 0,2 s |
+  | Clientes       | —      | 1,7 s |
+
+- **Não mudou:** colunas, cálculos, totais (sobre todas as linhas da aba), ações por linha, lote e permissões. A lista curta continua inteira na tabela padrão.

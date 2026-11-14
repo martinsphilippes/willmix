@@ -96,6 +96,12 @@ describe("tabela paginada no servidor", () => {
     expect(last.rows.map((r) => r.name)).toEqual(
       many.slice(100).map((r) => r.name),
     );
+    // Linha que precisa aparecer: a página dela.
+    const revealed = serverTable(many, columns, {
+      reveal: (r) => r.name === "Cliente 77",
+    });
+    expect(revealed.page).toBe(1);
+    expect(revealed.rows.some((r) => r.name === "Cliente 77")).toBe(true);
     // A ordem vale antes da página: a primeira página tem os maiores.
     const desc = serverTable(many, columns, {
       sort: { key: "orders", desc: true },

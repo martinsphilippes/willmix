@@ -43,6 +43,9 @@ export const pt = {
   "pricing.settings.byCustomerHint":
     "Vazio: usa a da linha ou a geral. Tem prioridade sobre as demais.",
   "pricing.settings.inherit": "linha/geral",
+  "pricing.settings.byCustomerFew":
+    "Aparecem os clientes com margem própria. Para dar margem a outro, busque abaixo.",
+  "pricing.settings.addCustomer": "Incluir cliente",
   "pricing.fx.status.today": "Cotação de hoje",
   "pricing.fx.status.stale":
     "Busca falhou: usando a última PTAX ({day}) como sugestão",
@@ -146,6 +149,9 @@ export const en: Record<keyof typeof pt, string> = {
   "pricing.settings.byCustomerHint":
     "Empty: uses the line or default margin. Takes priority over the others.",
   "pricing.settings.inherit": "line/default",
+  "pricing.settings.byCustomerFew":
+    "Customers with their own margin are listed. To set a margin for another one, search below.",
+  "pricing.settings.addCustomer": "Add customer",
   "pricing.fx.status.today": "Today's rate",
   "pricing.fx.status.stale":
     "Fetch failed: using the last PTAX ({day}) as a suggestion",
@@ -241,6 +247,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "pricing.settings.byCustomerHint":
     "留空：使用产品线或默认利润率。优先于其他设置。",
   "pricing.settings.inherit": "产品线/默认",
+  "pricing.settings.byCustomerFew":
+    "列出已有单独利润率的客户。要为其他客户设置，请在下方搜索。",
+  "pricing.settings.addCustomer": "添加客户",
   "pricing.fx.status.today": "今日汇率",
   "pricing.fx.status.stale": "获取失败：使用最近的 PTAX（{day}）作为建议",
   "pricing.fx.status.manual": "无 PTAX：使用手动汇率",

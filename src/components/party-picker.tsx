@@ -42,6 +42,7 @@ export function PartyPicker({
   className,
   ariaLabel,
   labels,
+  onChoose,
 }: {
   name?: string;
   type: "customer" | "supplier";
@@ -54,6 +55,8 @@ export function PartyPicker({
   className?: string;
   ariaLabel?: string;
   labels: PartyPickerLabels;
+  /** Avisado a cada escolha (ex.: incluir a empresa numa lista). */
+  onChoose?: (option: Option | null) => void;
 }) {
   const listId = useId();
   const input = useRef<HTMLInputElement>(null);
@@ -105,6 +108,7 @@ export function PartyPicker({
     setSelected(option);
     setText(option?.name ?? "");
     setOpen(false);
+    onChoose?.(option);
   };
 
   const hint =
