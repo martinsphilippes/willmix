@@ -328,6 +328,13 @@ export default async function OrderPage({
     order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
       ? await importFlow.importFlowView(user, order)
       : [];
+  /* Fatura ativa em N dias (mapa R24): depois do BL conferido. */
+  const invoiceDue =
+    purchaseFlow && isWellmix(user) && !order.invoicedAt
+      ? await (
+          await import("@/lib/services/supplier-invoice")
+        ).invoiceDueOf(order)
+      : null;
   /* Documentos do embarque: a Wellmix, o fornecedor e a marítima do pedido. */
   const shippingDocsVisible =
     purchaseFlow &&
@@ -858,8 +865,17 @@ export default async function OrderPage({
               <form
                 key="invoice"
                 action={registerOrderInvoiceAction}
-                className="inline"
+                className="inline-flex flex-wrap items-center gap-2"
               >
+                {invoiceDue ? (
+                  <Badge tone={invoiceDue.late ? "danger" : "warning"}>
+                    <span data-invoice-due={invoiceDue.dueAt.slice(0, 10)}>
+                      {t("supplierInvoice.due", {
+                        date: formatDate(invoiceDue.dueAt, t),
+                      })}
+                    </span>
+                  </Badge>
+                ) : null}
                 <input type="hidden" name="orderId" value={order.id} />
                 <SubmitButton
                   variant="secondary"

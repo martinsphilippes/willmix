@@ -58,7 +58,23 @@ na invoice, preço), `entries` (lançamentos do check list), `mismatches`
 em `src/lib/services/shipping-docs.ts`; ações em
 `src/app/app/actions/shipping-docs.ts`.
 
-## Fica para depois
+## Fatura ativa em N dias (R24)
 
-- Fatura do fornecedor com N dias fixos por fornecedor contados dos
-  documentos conferidos (pendência do financeiro).
+Decisão do dono (14/11/2026): **N é fixo por fornecedor**. Com o BL
+conferido (packing list, invoice e BL batendo), a fatura do pedido fica
+ativa e o faturamento vence N dias depois.
+
+- N fica no cadastro do fornecedor, cartão **Fatura ativa** (só o
+  administrador). Vazio: o padrão de Configurações → "Fatura ativa" (0 = no
+  dia). Guardado em `settings.invoiceDaysBySupplier` / `settings.invoiceDays`,
+  como o prazo de início da produção.
+- BL conferido → aviso ao financeiro (permissão "Numerário"; sem ninguém
+  nela, os administradores) com o vencimento.
+- Pendência **Registrar faturamento** (grupo Faturamento) para o financeiro,
+  com o prazo; some quando o pedido é faturado ("Registrar faturamento" no
+  pedido, que dispara o evento "Pedido faturado" e escreve no Sankhya pela
+  regra de Processos).
+- No pedido, ao lado do botão, o selo "Fatura ativa · vence dd/mm"
+  (vermelho depois do vencimento).
+
+Serviço em `src/lib/services/supplier-invoice.ts`.

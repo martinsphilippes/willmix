@@ -104,6 +104,14 @@ export const DEFAULT_SETTINGS = {
    * no cadastro do fornecedor.
    */
   productionStartDaysBySupplier: {} as Record<string, number>,
+  /**
+   * Fatura ativa (mapa R24): dias depois dos documentos do embarque
+   * conferidos (BL bate com a invoice) para o faturamento vencer. Padrão
+   * para fornecedor sem prazo próprio.
+   */
+  invoiceDays: 0,
+  /** O mesmo prazo, por fornecedor (id → dias); só o administrador grava. */
+  invoiceDaysBySupplier: {} as Record<string, number>,
   /** Dias para lembrar antes do vencimento e depois. */
   reminderDaysBeforeDue: 1,
   /* ---- Evolução incremental (docs/EVOLUTION_PLAN.md) ---- */

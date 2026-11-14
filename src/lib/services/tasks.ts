@@ -49,7 +49,8 @@ export type TaskKind =
   | "sampling"
   | "sampling_validate"
   | "art_fix"
-  | "art_review";
+  | "art_review"
+  | "invoice_due";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -1010,6 +1011,37 @@ export async function pendingTasksFor(
               p.ownerUserId !== undefined
                 ? p.ownerUserId
                 : (p.order.ownerUserId ?? null),
+          },
+          now,
+        ),
+      );
+    }
+  }
+  // Fatura ativa em N dias (mapa R24): com os documentos do embarque
+  // conferidos, o financeiro registra o faturamento até o vencimento.
+  if (wellmix) {
+    const { invoiceTasks } = await import("./supplier-invoice");
+    const ptText = translator("pt");
+    for (const p of await invoiceTasks(user)) {
+      const values = { n: p.order.number, days: p.due.days };
+      tasks.push(
+        finish(
+          {
+            kind: "invoice_due",
+            title: ptText("supplierInvoice.task.title", values),
+            detail: ptText("supplierInvoice.task.detail", values),
+            text: {
+              title: "supplierInvoice.task.title",
+              detail: "supplierInvoice.task.detail",
+              values,
+            },
+            link: `/app/orders/${p.order.id}`,
+            dueAt: p.due.dueAt,
+            sinceAt: p.due.activeAt,
+            requestId: p.order.requestId,
+            orderNumber: p.order.number,
+            customerId: p.order.customerId,
+            ownerUserId: p.order.ownerUserId ?? null,
           },
           now,
         ),
