@@ -22,6 +22,7 @@ import {
   isLeadTimeKey,
   isSampleOrderKey,
   itemIdOf,
+  laneKey,
   supplierLaneView,
   supplierSeesLaneRequirement,
 } from "@/lib/purchase-lanes";
@@ -585,6 +586,35 @@ export default async function OrderPage({
   /** Itens que este login vê (as quatro tarefas, só quem as recebe). */
   const visibleReqs = <T extends { id: string }>(list: T[]) =>
     laneInfo.size ? list.filter((r) => laneInfo.get(r.id)?.sees ?? true) : list;
+  /* Os arquivos que a tarefa usa, de tarefas que este login pode não ver:
+     a validação traz a arte enviada; a arte final, a arte validada e o
+     certificado (o selo). */
+  const laneInputsOf = (r: Requirement): LaneInput[] => {
+    const item = laneCtx ? itemIdOf(r.key) : null;
+    if (!item) return [];
+    const base = baseKeyOf(r.key);
+    if (base !== LANE_KEYS.artReview && base !== LANE_KEYS.artFinal) return [];
+    const sibling = (source: string) =>
+      requirements.find((x) => x.key === laneKey(source, item));
+    const fileOf = (source: string) => {
+      const src = sibling(source);
+      return src?.status === "done" ? docById(src.documentId) : null;
+    };
+    const reviewed = sibling(LANE_KEYS.artReview)?.status === "done";
+    const out: LaneInput[] = [];
+    // A validação mostra a arte enviada; a arte final, só a arte validada.
+    const art = fileOf(LANE_KEYS.art);
+    if (art && (base === LANE_KEYS.artReview || reviewed))
+      out.push({
+        label: reviewed ? "lane.input.art" : "lane.input.review",
+        doc: art,
+      });
+    const certificate =
+      base === LANE_KEYS.artFinal ? fileOf(LANE_KEYS.certificate) : null;
+    if (certificate)
+      out.push({ label: "lane.input.certificate", doc: certificate });
+    return out;
+  };
   /* Parceiro (agência, despachante, companhia, transportador): só a parte dele.
      O transportador ganha o cartão "Carga e entrega" no lugar do cartão do pedido. */
   const partner = isPartner(user);
@@ -2045,6 +2075,7 @@ export default async function OrderPage({
                           user={user}
                           t={t}
                           lane={laneInfo.get(r.id) ?? null}
+                          laneInputs={laneInputsOf(r)}
                           // O prazo registrado para o item só preenche o campo.
                           defaultValue={
                             supplierView && isLeadTimeKey(r.key)
@@ -3286,6 +3317,12 @@ interface LaneRowInfo {
   missing: MissingAssignment | null;
 }
 
+/** Arquivo de outra tarefa que esta usa (ex.: a arte, na validação). */
+interface LaneInput {
+  label: DictionaryKey;
+  doc: { id: string; name: string; version: number };
+}
+
 function RequirementRow({
   requirement: r,
   order,
@@ -3304,8 +3341,11 @@ function RequirementRow({
   gateHref,
   defaultValue,
   lane,
+  laneInputs,
 }: {
   requirement: Requirement;
+  /** Arquivos de outras tarefas que esta usa (a arte para validar; a arte e o certificado na arte final). */
+  laneInputs?: LaneInput[];
   /**
    * Arte, validação, certificado e arte final do pedido de compra: com quem
    * está, o que falta designar e se este login pode agir (decidido por login).
@@ -3426,6 +3466,22 @@ function RequirementRow({
               {t(`certFlow.assign.${lane.missing}`)}
             </TextLink>
           </p>
+        ) : null}
+        {laneInputs?.length ? (
+          <div className="mt-0.5 text-xs text-zinc-600" data-lane-inputs>
+            {laneInputs.map((input) => (
+              <span
+                key={input.doc.id}
+                className="mr-3 inline-block"
+                data-lane-input={input.label}
+              >
+                {t(input.label)}:{" "}
+                <TextLink href={`/api/files/${input.doc.id}`} target="_blank">
+                  {input.doc.name} (v{input.doc.version})
+                </TextLink>
+              </span>
+            ))}
+          </div>
         ) : null}
         {r.status !== "pending" ? (
           <div className="mt-0.5 text-xs text-zinc-500">

@@ -115,6 +115,9 @@ export const pt = {
   "certFlow.assign.certifier": "Vincular em Parceiros do pedido",
   "lane.with": "Com: {name}",
   "lane.undefined": "Responsável não definido",
+  "lane.input.review": "Arte para validar",
+  "lane.input.art": "Arte validada",
+  "lane.input.certificate": "Certificado (selo)",
   "certFlow.assign.analyst": "Distribuir em Equipe e acessos",
   "certFlow.missingHint.designer":
     "A arte deste pedido é feita pela Wellmix e ele está sem designer: a aplicação do selo e as correções da arte ficam com {who}. Escolha o designer no cartão Artes.",
@@ -291,6 +294,9 @@ export const en: Record<keyof typeof pt, string> = {
   "certFlow.assign.certifier": "Link under Order partners",
   "lane.with": "With: {name}",
   "lane.undefined": "No assignee defined",
+  "lane.input.review": "Artwork to validate",
+  "lane.input.art": "Validated artwork",
+  "lane.input.certificate": "Certificate (seal)",
   "certFlow.assign.analyst": "Distribute under Team and access",
   "certFlow.missingHint.designer":
     "Wellmix makes the artwork of this order and it has no designer: applying the seal and fixing the artwork stay with {who}. Choose the designer on the Artwork card.",
@@ -451,6 +457,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "certFlow.assign.certifier": "在订单合作方中关联",
   "lane.with": "负责：{name}",
   "lane.undefined": "未指定负责人",
+  "lane.input.review": "待审核的设计稿",
+  "lane.input.art": "已审核的设计稿",
+  "lane.input.certificate": "证书（标志）",
   "certFlow.assign.analyst": "在团队与权限中分配",
   "certFlow.missingHint.designer":
     "此订单的设计稿由 Wellmix 制作，且未指定设计师：放入标志和修改设计稿由 {who} 负责。请在“设计稿”卡片中选择设计师。",

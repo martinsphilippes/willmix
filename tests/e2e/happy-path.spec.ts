@@ -408,6 +408,8 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await login(page, "admin@wellmix.com");
   await page.goto(orderUrl);
   const review = requirementRow(page, /Validação da arte pela Wellmix/);
+  // Quem valida abre a arte enviada na própria linha da validação.
+  await expect(review.locator("[data-lane-inputs] a")).toHaveCount(1);
   await review.locator("input[name=note]").fill("Logo maior");
   await review.locator("button[value=reject]").click();
   await page.waitForLoadState("networkidle");
