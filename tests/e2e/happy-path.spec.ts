@@ -623,8 +623,20 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     "data-sku-status",
     "approved",
   );
+  // Operador da Wellmix: "Etapas do pedido" só com as tarefas dele
+  // (docs/PURCHASE_ORDER.md, seção 2e). O pedido de compra é de quem o gerou
+  // (o administrador, responsável interno) e os itens do Embarque são do
+  // armador designado: nenhuma tarefa dele aqui, nem o card do Embarque.
   await login(page, "operador@wellmix.com");
   await page.goto(orderUrl);
+  await expect(page.locator("[data-stage-mine-hint]")).toBeVisible();
+  await expect(page.locator("[data-stage-mine-empty]")).toBeVisible();
+  await expect(page.locator("[data-stage-row]")).toHaveCount(0);
+  await expect(page.locator("[data-stage-card]")).toHaveCount(0);
+  // O administrador continua com a linha do tempo inteira.
+  await login(page, "admin@wellmix.com");
+  await page.goto(orderUrl);
+  await expect(page.locator("[data-stage-mine-hint]")).toHaveCount(0);
   await expect(page.getByText(/Revisão necessária/)).toHaveCount(0);
   await expect(
     page
@@ -768,6 +780,8 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // Sankhya), sem login; a Wellmix confirma o recebimento e o pedido encerra.
   await login(page, "admin@wellmix.com");
   await page.goto(orderUrl);
+  // Fatura ativa (R24): com o BL conferido, o faturamento já tem vencimento.
+  await expect(page.locator("[data-invoice-due]")).toBeVisible();
   await page
     .locator("[data-requirement-form=receipt_confirmed] button[type=submit]")
     .click();

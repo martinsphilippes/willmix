@@ -1165,6 +1165,32 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     expect(await docs.shipmentBlockers(order.id)).toEqual([
       "container_at_port",
     ]);
+    // Fatura ativa (R24): N dias do fornecedor contados do BL conferido.
+    const inv = await import("@/lib/services/supplier-invoice");
+    await expect(
+      inv.setSupplierInvoiceDays(supplierA, "fornecedor-a", 15),
+    ).rejects.toThrow();
+    await inv.setSupplierInvoiceDays(admin, "fornecedor-a", 15);
+    try {
+      const fresh = (await store.get("orders", order.id))!;
+      const due = (await inv.invoiceDueOf(fresh))!;
+      expect(due.days).toBe(15);
+      expect(Date.parse(due.dueAt) - Date.parse(due.activeAt)).toBe(
+        15 * 24 * 60 * 60 * 1000,
+      );
+      expect((await inv.invoiceTasks(admin)).map((x) => x.order.id)).toContain(
+        order.id,
+      );
+      expect(await inv.invoiceTasks(supplierA)).toEqual([]);
+      const { registerOrderInvoice } =
+        await import("@/lib/services/order-invoicing");
+      await registerOrderInvoice(admin, order.id);
+      expect(
+        (await inv.invoiceTasks(admin)).map((x) => x.order.id),
+      ).not.toContain(order.id);
+    } finally {
+      await inv.setSupplierInvoiceDays(admin, "fornecedor-a", null);
+    }
   });
 
   it("prazo de cada passo conta da liberação do anterior", async () => {

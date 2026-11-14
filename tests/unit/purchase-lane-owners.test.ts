@@ -446,7 +446,7 @@ describe("designer da agência: arte e arte final no login dela, com os arquivos
   });
 });
 
-describe("responsável do pedido é o administrador (como em produção): a validação vai para os operadores", () => {
+describe("responsável do pedido é o administrador (como em produção): a validação fica com ele", () => {
   let order: Order;
   let otherBuyer: User;
   beforeAll(async () => {
@@ -469,43 +469,56 @@ describe("responsável do pedido é o administrador (como em produção): a vali
     order = await fresh(order);
   });
 
-  it("antes da arte, o designer não vê a validação nem na linha do tempo; os operadores que validam, sim", async () => {
+  it("a validação é do responsável (o administrador), como na linha do tempo do operador; o designer nunca a recebe", async () => {
     const ctx = await routing.loadRoutingContext();
     const siblings = await getStore().list("requirements", {
       filter: { orderId: order.id },
     });
     const review = (await requirementOf(order, "art_review")).key;
+    expect(routing.laneRoute(review, order, ctx, siblings)?.userIds).toEqual([
+      admin.id,
+    ]);
     const sees = (user: User) =>
       routing.seesLaneTask(user, review, order, ctx, siblings);
-    expect(sees(designer)).toBe(false);
-    expect(sees(operator)).toBe(true);
-    expect(sees(otherBuyer)).toBe(true);
-    // Sem a ação "Validar a arte", não.
-    expect(sees(other)).toBe(false);
-    // O administrador vê todas, mas não recebe como responsável.
+    for (const user of [designer, operator, otherBuyer, other])
+      expect(sees(user)).toBe(false);
     expect(sees(admin)).toBe(true);
-    expect(
-      routing.laneRoute(review, order, ctx, siblings)?.userIds,
-    ).not.toContain(admin.id);
   });
 
-  it("arte enviada pelo designer: só os operadores que validam veem e validam", async () => {
+  it("arte enviada pelo designer: os operadores não recebem a validação; o administrador valida", async () => {
     await submit(supplierA, order, "die_cut", "faca.pdf");
     await submit(supplierA, order, "hd_photo", "foto.png");
     await submit(designer, order, "art", "arte.pdf");
-    expect(await laneTasksOf(operator, order)).toEqual(["art_review"]);
-    expect(await laneTasksOf(otherBuyer, order)).toEqual(["art_review"]);
-    for (const user of [designer, other, supplierA])
+    for (const user of [designer, operator, otherBuyer, other, supplierA])
       expect(await laneTasksOf(user, order)).toEqual([]);
     expect(await laneTasksOf(ocp, order)).toEqual(["certificate"]);
+    expect(await laneTasksOf(admin, order)).toEqual([
+      "art_review",
+      "certificate",
+    ]);
     const review = await requirementOf(order, "art_review");
-    await expect(
-      engine.decideRequirement(designer, review.id, "approve"),
-    ).rejects.toThrow("lane_not_assignee");
-    await engine.decideRequirement(otherBuyer, review.id, "approve");
+    for (const user of [designer, otherBuyer])
+      await expect(
+        engine.decideRequirement(user, review.id, "approve"),
+      ).rejects.toThrow("lane_not_assignee");
+    await engine.decideRequirement(admin, review.id, "approve");
     expect((await requirementOf(order, "art_review")).submittedByUserId).toBe(
-      otherBuyer.id,
+      admin.id,
     );
+  });
+
+  it("com um operador como responsável, a validação passa para ele, sem duplicar", async () => {
+    const second = await purchaseOrder("LO-6");
+    await art.assignDesigner(admin, second.id, designer.id);
+    const order2 = await getStore().update("orders", second.id, {
+      ownerUserId: otherBuyer.id,
+    });
+    await submit(supplierA, order2, "die_cut", "faca.pdf");
+    await submit(supplierA, order2, "hd_photo", "foto.png");
+    await submit(designer, order2, "art", "arte.pdf");
+    expect(await laneTasksOf(otherBuyer, order2)).toEqual(["art_review"]);
+    for (const user of [operator, designer])
+      expect(await laneTasksOf(user, order2)).toEqual([]);
   });
 });
 

@@ -56,6 +56,7 @@ export type RouteVia =
   | "analyst"
   | "art_validate"
   | "reporter"
+  | "function"
   | "team";
 
 export interface Route {
@@ -186,6 +187,22 @@ export function artMakerRoute(
       missing: "designer",
     };
   return { ...internalRoute(order, ctx), missing: "designer" };
+}
+
+/**
+ * Logins da Wellmix com uma função ou ação (ex.: "Assinar o contrato pela
+ * Wellmix", a função Cadastro); sem ninguém, `fallback` (o analista ou a
+ * equipe).
+ */
+export function holdersRoute(
+  ctx: RoutingContext,
+  holds: (user: User) => boolean,
+  fallback: Route,
+): Route {
+  const holders = ctx.team.filter(holds);
+  return holders.length
+    ? { via: "function", userIds: holders.map((u) => u.id) }
+    : fallback;
 }
 
 /** Pode validar a arte (ação "Validar a arte"; o administrador sempre). */
@@ -321,10 +338,9 @@ export async function routeLabel(
  *
  * - Arte e arte final com o selo: o designer do pedido (cartão Artes), pela
  *   mesma regra de quem faz a arte (`artMakerRoute`).
- * - Validação da arte pela Wellmix: o Operador Wellmix responsável pelo
- *   pedido (o analista), se ele pode validar arte; senão os operadores com a
- *   ação "Validar a arte". Nunca quem faz a arte do pedido nem quem a enviou
- *   (`laneReviewRoute`).
+ * - Validação da arte pela Wellmix: o responsável pelo pedido (o analista),
+ *   se ele pode validar arte; senão quem tem a ação "Validar a arte". Nunca
+ *   quem faz a arte do pedido nem quem a enviou (`laneReviewRoute`).
  * - Certificado (Inmetro): a certificadora (OCP) do pedido, em Parceiros do
  *   pedido. Sem ela, o responsável interno designa (`missing: "certifier"`).
  *   Só o certificado das raias: o selo e o memorial do cartão Certificação
@@ -358,12 +374,11 @@ export function laneCertificateRoute(
 }
 
 /**
- * Validação da arte das raias: o Operador Wellmix responsável pelo pedido (o
- * analista), se ele pode validar arte; senão os operadores com a ação
- * "Validar a arte" (Equipe → Funções e acessos). Nunca quem faz a arte do
- * pedido (o designer) nem quem a enviou. O administrador vê todas, mas não
- * é o responsável: pedido com o administrador como analista vai para os
- * operadores. Sem operador que possa, a regra dos cartões (`artValidatorRoute`).
+ * Validação da arte das raias: o responsável pelo pedido (o analista), se ele
+ * pode validar arte, como na linha do tempo do operador (dono, 14/11/2026:
+ * pedido com o Administrador como responsável fica com ele); senão quem tem a
+ * ação "Validar a arte". Nunca quem faz a arte do pedido (o designer vê só a
+ * arte e a arte final) nem quem a enviou.
  */
 export function laneReviewRoute(
   order: LaneOrder,
@@ -372,11 +387,7 @@ export function laneReviewRoute(
 ): Route {
   const makers = new Set(artMakerRoute(order, ctx).userIds ?? []);
   const able = ctx.team.filter(
-    (u) =>
-      u.role === "operator" &&
-      u.id !== submitterId &&
-      !makers.has(u.id) &&
-      canValidateArt(u, ctx),
+    (u) => u.id !== submitterId && !makers.has(u.id) && canValidateArt(u, ctx),
   );
   const owner = analystOf(order, ctx);
   if (owner && able.some((u) => u.id === owner.id))

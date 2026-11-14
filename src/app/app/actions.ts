@@ -1080,7 +1080,7 @@ export async function saveSettingsAction(form: FormData) {
       const current = DEFAULT_SETTINGS[key];
       let value: unknown = raw;
       if (typeof current === "boolean") value = raw === "on" || raw === "true";
-      else if (key === "productionStartDays") {
+      else if (key === "productionStartDays" || key === "invoiceDays") {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 0 || n > 365)
           throw new Error("invalid_input");

@@ -91,6 +91,26 @@ export async function saveSupplierProductionStartAction(form: FormData) {
   });
 }
 
+/** Fatura ativa: dias depois dos documentos conferidos, por fornecedor (só o administrador). */
+export async function saveSupplierInvoiceDaysAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "id");
+  await run(`/app/parties/${id}#invoice-days`, async () => {
+    assertRole(user, ["admin"]);
+    const partyId = z
+      .string()
+      .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/)
+      .parse(id);
+    const raw = str(form, "invoiceDays");
+    const days =
+      raw === "" ? null : z.coerce.number().int().min(0).max(365).parse(raw);
+    const { setSupplierInvoiceDays } =
+      await import("@/lib/services/supplier-invoice");
+    await setSupplierInvoiceDays(user, partyId, days);
+    return `/app/parties/${partyId}?saved=invoice#invoice-days`;
+  });
+}
+
 export async function applySupplierTermsAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
