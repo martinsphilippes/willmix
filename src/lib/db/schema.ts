@@ -27,6 +27,9 @@ export const ROLES = [
   "logistics",
   // Fase F: organismo de certificação de produto (logins próprios).
   "ocp",
+  // Agência de marketing na China (mapa R14/R15; dono, 14/11/2026): recebe
+  // as amostras e faz as fotos e vídeos do produto real.
+  "marketing_agency",
 ] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -41,6 +44,7 @@ export const PARTY_TYPES = [
   "comex",
   "logistics",
   "ocp",
+  "marketing_agency",
   // Parceiros à parte (decisão do dono, 11/11/2026; docs/PARTNER_TYPES.md):
   // não entram em cotação nem pedido como fornecedor. "supplier_partner" é o
   // tipo "Supplier" de Outros parceiros (a chave "supplier" é do Fornecedor).
@@ -170,6 +174,8 @@ export const DOCUMENT_TYPES = [
   "packaging_sample",
   // Embarque e desembaraço (Fase D): arquivo de um passo (acesso pelo passo).
   "import_step",
+  // Fotos e vídeos do produto real da agência de marketing na China.
+  "real_media",
 ] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
@@ -246,6 +252,9 @@ export const PHOTO_KINDS = [
   /* Fase B (fluxo de compras): foto HD do produto e die cut (faca) para o Marketing. */
   "hd",
   "die_cut",
+  /* Foto real do produto feita pela agência de marketing na China com a
+     amostra, aprovada pelo marketing: substitui as de referência na vitrine. */
+  "real",
 ] as const;
 export type PhotoKind = (typeof PHOTO_KINDS)[number];
 
@@ -577,6 +586,15 @@ export const IMPORT_STEP_KEYS = [
   "container_sealed",
   "container_at_port",
   "container_tracking",
+  // Amostras depois da inspeção (mapa R12 a R14; docs/SAMPLE_FLOW.md): a
+  // trading retira, envia 4 × 3 × Nm ao show room no Brasil e 1 × 3 × Nm à
+  // agência de marketing na China; a agência recebe, faz as fotos e vídeos
+  // reais e devolve a amostra à trading, que a embarca com o pedido.
+  "samples_picked",
+  "samples_brazil",
+  "samples_china",
+  "samples_china_received",
+  "samples_returned",
 ] as const;
 export type ImportStepKey = (typeof IMPORT_STEP_KEYS)[number];
 export const IMPORT_STEP_STATUSES = [
@@ -909,6 +927,8 @@ export interface Order extends BaseRow {
   logisticsId?: string | null;
   /** Certificação (OCP) e designer das artes (Fase F). Opcionais. */
   ocpId?: string | null;
+  /** Agência de marketing na China: amostras e fotos/vídeos reais. Opcional. */
+  marketingAgencyId?: string | null;
   designerUserId?: string | null;
   closedAt: string | null;
   notes: string | null;
@@ -2043,6 +2063,29 @@ export interface ShippingDoc extends BaseRow {
   submittedAt: string | null;
 }
 
+/*
+ * Fotos e vídeos do produto real (mapa R15, R16 e R5; docs/SAMPLE_FLOW.md):
+ * a agência de marketing na China fotografa a amostra de cada produto do
+ * pedido; o marketing aprova (troca as fotos do catálogo e ativa a venda) ou
+ * pede para refazer.
+ */
+export const REAL_MEDIA_STATUSES = ["sent", "approved", "rejected"] as const;
+export type RealMediaStatus = (typeof REAL_MEDIA_STATUSES)[number];
+
+export interface RealMedia extends BaseRow {
+  orderId: string;
+  orderItemId: string;
+  productId: string | null;
+  status: RealMediaStatus;
+  /** Fotos e vídeos enviados (documentos do produto, tipo real_media). */
+  documentIds: string[];
+  reason: string | null;
+  sentByUserId: string | null;
+  sentAt: string | null;
+  decidedByUserId: string | null;
+  decidedAt: string | null;
+}
+
 export interface ProductionTrack extends BaseRow {
   orderId: string;
   mode: ProductionMode | null;
@@ -2974,6 +3017,7 @@ export interface Tables {
   production_tracks: ProductionTrack;
   sku_inspections: SkuInspection;
   shipping_docs: ShippingDoc;
+  real_media: RealMedia;
   import_steps: ImportStep;
   receivings: Receiving;
   art_issues: ArtIssue;
@@ -3270,6 +3314,7 @@ export const TABLES: Record<TableName, TableDef> = {
       comexId: id(false),
       logisticsId: id(false),
       ocpId: id(false),
+      marketingAgencyId: id(false),
       designerUserId: id(false),
       closedAt: datetime(),
       notes: text(),
@@ -4254,6 +4299,25 @@ export const TABLES: Record<TableName, TableDef> = {
         type: "unique",
         columns: ["orderId", "kind"],
       },
+    ],
+  },
+  real_media: {
+    label: "Fotos e vídeos reais do produto (agência na China)",
+    columns: {
+      orderId: id(),
+      orderItemId: id(),
+      productId: id(false),
+      status: enumOf(REAL_MEDIA_STATUSES),
+      documentIds: json(),
+      reason: text(),
+      sentByUserId: id(false),
+      sentAt: datetime(),
+      decidedByUserId: id(false),
+      decidedAt: datetime(),
+    },
+    indexes: [
+      { key: "item_unique", type: "unique", columns: ["orderItemId"] },
+      { key: "by_order", type: "key", columns: ["orderId"] },
     ],
   },
   sku_inspections: {

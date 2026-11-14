@@ -472,6 +472,8 @@ describe("pedido de compra", () => {
 async function signedPurchaseOrder(
   codes: [string, string],
   lineId: string | null = null,
+  /** Pedido de amostras: "none" (padrão) ou gerado e aceito pelo fornecedor. */
+  samplesStatus: "none" | "ordered" = "none",
 ) {
   const store = getStore();
   const [r1, r2] = await approvedProducts(null, codes, lineId);
@@ -502,14 +504,25 @@ async function signedPurchaseOrder(
   }
   await gates.readyOrderProducts(admin, order.id);
   expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
-  // Sem amostras neste pedido: o aceite do fornecedor fica dispensado.
   const samples = await import("@/lib/services/sample-order");
-  await samples.decideSampleOrder(admin, order.id, { status: "none" });
-  expect(
-    (await requirementsOf(order.id)).find(
-      (r) => r.key === "sample_order_supplier",
-    ),
-  ).toMatchObject({ status: "done", value: "not_applicable" });
+  if (samplesStatus === "ordered") {
+    const doc = await samples.decideSampleOrder(admin, order.id, {
+      status: "ordered",
+    });
+    await samples.acceptSampleOrder(supplierA, order.id, {
+      name: "Li Supplier",
+      agree: true,
+      hash: doc.hash,
+    });
+  } else {
+    // Sem amostras neste pedido: o aceite do fornecedor fica dispensado.
+    await samples.decideSampleOrder(admin, order.id, { status: "none" });
+    expect(
+      (await requirementsOf(order.id)).find(
+        (r) => r.key === "sample_order_supplier",
+      ),
+    ).toMatchObject({ status: "done", value: "not_applicable" });
+  }
   const view = (await signature.getOrderSignatureView(admin, order.id))!;
   for (const [who, name] of [
     [admin, "Ana Wellmix"],
@@ -1198,6 +1211,179 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     } finally {
       await inv.setSupplierInvoiceDays(admin, "fornecedor-a", null);
     }
+  });
+
+  it("amostras: retirada, Brasil 4×3×Nm e China 1×3×Nm, fotos reais aprovadas, devolução antes do carregamento", async () => {
+    const store = getStore();
+    const flow = await import("@/lib/services/import-flow");
+    const sf = await import("@/lib/services/sample-flow");
+    const { showcaseOf } = await import("@/lib/services/documents");
+    const { order, items } = await signedPurchaseOrder(
+      ["SF-1", "SF-2"],
+      null,
+      "ordered",
+    );
+    const mkt = (
+      await store.list("users", {
+        filter: { email: "agencia@marketing.cn" },
+      })
+    )[0]!;
+    await store.update("orders", order.id, {
+      marketingAgencyId: mkt.partyId,
+    });
+    const split = await sf.samplesSplitOf(order);
+    expect(split.map((l) => [l.brazil, l.china, l.total])).toEqual([
+      [12, 3, 15],
+      [12, 3, 15],
+    ]);
+    // Antes do SKU aprovado (ainda não está no Embarque): nada das amostras.
+    let fresh = (await store.get("orders", order.id))!;
+    expect(await flow.importFlowView(admin, fresh, "samples")).toEqual([]);
+    await expect(
+      flow.submitStep(supplierA, order.id, "samples_picked", {
+        value: "2026-11-20",
+      }),
+    ).rejects.toThrow("samples_closed");
+    // SKU aprovado: o pedido está no Embarque.
+    await store.update("orders", order.id, { status: "SHIPPING" });
+    fresh = (await store.get("orders", order.id))!;
+    expect(
+      (await flow.importFlowView(mkt, fresh, "samples")).map(
+        (s) => s.template.key,
+      ),
+    ).toEqual([
+      "samples_picked",
+      "samples_china",
+      "samples_china_received",
+      "samples_returned",
+    ]);
+    const doc = async (user: User, name: string) =>
+      (
+        await uploadDocument(user, pdf(name), {
+          orderId: order.id,
+          type: "import_step",
+        })
+      ).id;
+    await flow.submitStep(supplierA, order.id, "samples_picked", {
+      value: "2026-11-20",
+    });
+    await flow.submitStep(supplierA, order.id, "samples_brazil", {
+      value: "AWB-BR-1",
+      documentId: await doc(supplierA, "br.pdf"),
+    });
+    await flow.submitStep(supplierA, order.id, "samples_china", {
+      value: "SF-CN-1",
+      documentId: await doc(supplierA, "cn.pdf"),
+    });
+    // A agência recebe a pendência de confirmar o recebimento.
+    expect((await flow.importTasks(mkt, [fresh])).map((t) => t.key)).toContain(
+      "samples_china_received",
+    );
+    expect((await sf.realMediaView(mkt, order.id))!.open).toBe(false);
+    await flow.submitStep(mkt, order.id, "samples_china_received", {
+      value: "2026-11-24",
+    });
+    // Container vazio já registrado: o carregamento espera a amostra voltar.
+    await store.create("import_steps", {
+      orderId: order.id,
+      key: "container_empty",
+      status: "submitted",
+      value: null,
+      amount: null,
+      currency: null,
+      documentId: null,
+      submittedByUserId: supplierA.id,
+      submittedAt: new Date().toISOString(),
+      validatedByUserId: null,
+      validatedAt: null,
+      rejectReason: null,
+    });
+    await expect(
+      flow.submitStep(supplierA, order.id, "container_loaded", {
+        documentId: await doc(supplierA, "carga.pdf"),
+      }),
+    ).rejects.toThrow("samples_return_required");
+    // A amostra só volta com as fotos reais aprovadas.
+    await expect(
+      flow.submitStep(mkt, order.id, "samples_returned", {
+        value: "Entregue na trading",
+      }),
+    ).rejects.toThrow("real_media_required");
+    const png = (name: string) =>
+      new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], name, {
+        type: "image/png",
+      });
+    const [a, b] = items;
+    const media = async (itemId: string, productId: string) =>
+      (
+        await uploadDocument(mkt, png(`${itemId}.png`), {
+          productId,
+          type: "real_media",
+          visibility: "internal",
+        })
+      ).id;
+    let view = (await sf.realMediaView(mkt, order.id))!;
+    expect(view.canSend).toBe(true);
+    expect(view.canApprove).toBe(false);
+    await sf.sendRealMedia(mkt, order.id, a.id, [
+      await media(a.id, a.productId!),
+    ]);
+    await sf.sendRealMedia(mkt, order.id, b.id, [
+      await media(b.id, b.productId!),
+    ]);
+    expect(
+      (await sf.realMediaTasks(admin))
+        .filter((t) => t.order.id === order.id)
+        .map((t) => t.kind),
+    ).toEqual(["approve"]);
+    await expect(
+      sf.decideRealMedia(mkt, order.id, a.id, "approved", null),
+    ).rejects.toThrow();
+    await expect(
+      sf.decideRealMedia(admin, order.id, b.id, "rejected", null),
+    ).rejects.toThrow("reason_required");
+    await sf.decideRealMedia(admin, order.id, b.id, "rejected", "Fundo sujo");
+    await sf.decideRealMedia(admin, order.id, a.id, "approved", null);
+    // Aprovado: a foto real é a principal e a única na vitrine; o produto à venda.
+    const photos = await store.list("product_photos", {
+      filter: { productId: a.productId! },
+    });
+    const real = photos.filter((p) => p.kind === "real");
+    expect(real).toHaveLength(1);
+    expect(real[0].isPrimary).toBe(true);
+    expect(showcaseOf(photos).map((p) => p.kind)).toEqual(["real"]);
+    expect(photos.filter((p) => p.kind !== "real" && p.isPrimary)).toEqual([]);
+    const product = (await store.get("products", a.productId!))!;
+    expect(product).toMatchObject({
+      active: true,
+      primaryPhotoDocumentId: real[0].documentId,
+    });
+    // Refeito e aprovado: a amostra pode voltar à trading.
+    expect(
+      (await sf.realMediaTasks(mkt))
+        .filter((t) => t.order.id === order.id)
+        .map((t) => t.kind),
+    ).toEqual(["do"]);
+    await sf.sendRealMedia(mkt, order.id, b.id, [
+      await media(b.id, b.productId!),
+    ]);
+    await sf.decideRealMedia(admin, order.id, b.id, "approved", null);
+    view = (await sf.realMediaView(admin, order.id))!;
+    expect(view.complete).toBe(true);
+    await flow.submitStep(mkt, order.id, "samples_returned", {
+      value: "Entregue na trading com o pedido",
+    });
+    // A trading confirma que recebeu: o carregamento libera.
+    await flow.validateStep(
+      supplierA,
+      order.id,
+      "samples_returned",
+      "validated",
+      null,
+    );
+    await flow.submitStep(supplierA, order.id, "container_loaded", {
+      documentId: await doc(supplierA, "carga.pdf"),
+    });
   });
 
   it("prazo de cada passo conta da liberação do anterior", async () => {

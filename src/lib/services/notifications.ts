@@ -175,6 +175,7 @@ const PARTNER_ROLES: Role[] = [
   "comex",
   "logistics",
   "ocp",
+  "marketing_agency",
 ];
 
 async function resolveUsers(target: NotifyTarget): Promise<User[]> {

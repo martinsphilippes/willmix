@@ -74,9 +74,16 @@ export type StepActor =
   | "finance"
   // Comex interno da Wellmix (função "Comex (interno)"): rastreio do container.
   | "comex_internal"
+  // Agência de marketing na China: amostras e fotos/vídeos reais.
+  | "marketing_agency"
   | "wellmix";
 /** Cartão do passo: embarque/desembaraço ou certificação (Fase F). */
-export type StepGroup = "import" | "certification" | "origin";
+export type StepGroup =
+  | "import"
+  | "certification"
+  | "origin"
+  // Amostras depois da inspeção (pedido de compra com pedido de amostras).
+  | "samples";
 /** O que o passo pede ("file_text": arquivo obrigatório e texto opcional). */
 export type StepInput =
   | "text"
@@ -267,6 +274,53 @@ export const IMPORT_STEPS: StepTemplate[] = [
     after: "container_at_factory",
     group: "origin",
   },
+  // Amostras (mapa R12 a R14; docs/SAMPLE_FLOW.md): abrem com o SKU aprovado.
+  {
+    key: "samples_picked",
+    actor: "supplier",
+    validator: null,
+    input: "date",
+    visibleTo: ["supplier", "marketing_agency"],
+    group: "samples",
+  },
+  {
+    key: "samples_brazil",
+    actor: "supplier",
+    validator: null,
+    input: "text_file",
+    visibleTo: ["supplier"],
+    after: "samples_picked",
+    group: "samples",
+  },
+  {
+    key: "samples_china",
+    actor: "supplier",
+    validator: null,
+    input: "text_file",
+    visibleTo: ["supplier", "marketing_agency"],
+    after: "samples_picked",
+    group: "samples",
+  },
+  {
+    key: "samples_china_received",
+    actor: "marketing_agency",
+    validator: null,
+    input: "date",
+    visibleTo: ["supplier", "marketing_agency"],
+    after: "samples_china",
+    group: "samples",
+  },
+  {
+    // "Devolve": a amostra da China volta à trading para seguir com o
+    // pedido; a trading confirma que recebeu. Só depois das fotos reais.
+    key: "samples_returned",
+    actor: "marketing_agency",
+    validator: "supplier",
+    input: "text",
+    visibleTo: ["supplier", "marketing_agency"],
+    after: "samples_china_received",
+    group: "samples",
+  },
   // Certificação (Fase F, docs/CERTIFICATION.md): com o OCP do pedido.
   {
     key: "cert_memorial",
@@ -346,6 +400,7 @@ const PARTNER_FIELD = {
   ocp: "ocpId",
   agency: "agencyId",
   supplier: "supplierId",
+  marketing_agency: "marketingAgencyId",
 } as const;
 
 /** Passos da certificação enviados no quadro em destaque do alto do cartão. */
@@ -366,6 +421,7 @@ export function stepLink(
 ): string {
   if (groupOf(tpl) === "origin")
     return `/app/orders/${orderId}#container-origin`;
+  if (groupOf(tpl) === "samples") return `/app/orders/${orderId}#samples-flow`;
   if (groupOf(tpl) !== "certification")
     return `/app/orders/${orderId}#import-flow`;
   if (action === "do" && CERT_FEATURED_STEPS.includes(tpl.key))
@@ -379,7 +435,9 @@ const auditLabel = (tpl: StepTemplate) =>
     ? "Certificação"
     : groupOf(tpl) === "origin"
       ? "Container na origem"
-      : "Embarque/desembaraço";
+      : groupOf(tpl) === "samples"
+        ? "Amostras"
+        : "Embarque/desembaraço";
 
 /** Comex interno: permissão "Rastrear o container" (padrão: função Comex interno) ou admin. */
 export const isComexInternal = (user: User) =>
@@ -580,6 +638,33 @@ export interface SubmitInput {
   documentId?: string | null;
 }
 
+/*
+ * Amostras (docs/SAMPLE_FLOW.md): os passos só valem com o SKU aprovado e o
+ * pedido de amostras; a amostra só volta à trading com as fotos reais de
+ * todos os produtos aprovadas; e o container só é carregado depois que ela
+ * voltou (a trading embarca a amostra com o pedido).
+ */
+async function assertSampleGates(
+  order: Order,
+  key: ImportStepKey,
+  steps: ImportStep[],
+) {
+  const tpl = stepTemplate(key);
+  if (groupOf(tpl) !== "samples" && key !== "container_loaded") return;
+  const flow = await import("./sample-flow");
+  if (groupOf(tpl) === "samples") {
+    if (!(await flow.samplesApply(order)))
+      throw new ImportFlowError("samples_closed");
+    if (key === "samples_returned" && !(await flow.realMediaComplete(order)))
+      throw new ImportFlowError("real_media_required");
+    return;
+  }
+  if (!(await flow.samplesOrdered(order))) return;
+  const returned = steps.find((s) => s.key === "samples_returned");
+  if (returned?.status !== "validated")
+    throw new ImportFlowError("samples_return_required");
+}
+
 /** Quem age envia o passo (número, data, canal, valor e/ou arquivo). */
 export async function submitStep(
   user: User,
@@ -593,6 +678,7 @@ export async function submitStep(
   const store = getStore();
   const steps = await stepsOf(orderId);
   if (!ready(key, steps)) throw new ImportFlowError("previous_step");
+  await assertSampleGates(order, key, steps);
   const current = steps.find((s) => s.key === key);
   if (current && tpl.validator && current.status === "validated")
     throw new ImportFlowError("already_validated");
@@ -1026,6 +1112,11 @@ export async function importFlowView(
   order: Order,
   group: StepGroup = "import",
 ): Promise<StepView[]> {
+  // Amostras: só no pedido de compra com amostras pedidas e o SKU aprovado.
+  if (group === "samples") {
+    const { samplesApply } = await import("./sample-flow");
+    if (!(await samplesApply(order))) return [];
+  }
   const steps = await stepsOf(order.id);
   // Pedido encerrado: só leitura.
   const open = order.status !== "CLOSED" && order.status !== "CANCELLED";
@@ -1244,9 +1335,14 @@ export async function importTasks(
     const steps = rows.filter((r) => r.orderId === order.id);
     const importLive = IMPORT_LIVE.includes(order.status);
     const gate = certGate(order, steps, certPurchase.has(order.id));
+    // Amostras: só com o pedido de amostras e o SKU aprovado.
+    const samplesOn =
+      isPurchaseFlow(order) &&
+      (await (await import("./sample-flow")).samplesApply(order));
     for (const tpl of IMPORT_STEPS) {
       const cert = groupOf(tpl) === "certification";
       if (!cert && !importLive) continue;
+      if (groupOf(tpl) === "samples" && !samplesOn) continue;
       // Container na origem só no pedido de compra; nele, sem os papéis antigos.
       if (!stepApplies(order, tpl.key)) continue;
       const step = steps.find((s) => s.key === tpl.key);
