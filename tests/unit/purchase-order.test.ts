@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
+import { approveMilestones } from "./helpers/approvals";
 import { xlsxBytes } from "./xlsx-fixture";
 
 /*
@@ -343,6 +344,8 @@ describe("pedido de compra", () => {
       )!.status,
     ).toBe("done");
     await gates.readyOrderProducts(admin, order.id);
+    // Aprovações do mapa no fim dos marcos (docs/MILESTONES.md).
+    await approveMilestones(admin, order.id);
 
     // Raias concluídas: o contrato (com a arte final) espera as duas assinaturas.
     const afterLanes = (await store.get("orders", order.id))!;
@@ -496,6 +499,8 @@ async function signedPurchaseOrder(
     await engine.decideRequirement(admin, review.id, "approve");
   }
   await gates.readyOrderProducts(admin, order.id);
+  // Aprovações do mapa no fim dos marcos (docs/MILESTONES.md).
+  await approveMilestones(admin, order.id);
   expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
   const samples = await import("@/lib/services/sample-order");
   if (samplesStatus === "ordered") {
@@ -527,6 +532,8 @@ async function signedPurchaseOrder(
       hash: view.hash,
       signedFile: pdf(`${name}.pdf`),
     });
+  // Conta corrente: o sinal conclui com as assinaturas; a Diretoria aprova.
+  await approveMilestones(admin, order.id);
   return { order, items };
 }
 
@@ -576,6 +583,8 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     });
     expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
     await pay.markSupplierPaymentPaid(admin, order.id, requested.id, {});
+    // A Diretoria de compras aprova o sinal (docs/MILESTONES.md).
+    await approveMilestones(admin, order.id);
     const released = (await store.get("orders", order.id))!;
     expect(released.status).toBe("INSPECTION");
     const down = (await requirementsOf(order.id)).find(
@@ -1844,7 +1853,8 @@ describe("pedido em nome do responsável pelo booking (trading)", () => {
     const ofPrep = async () =>
       (await requirementsOf(order.id)).filter((r) => r.stageId === prep.id);
     const reqs = await ofPrep();
-    expect(reqs).toHaveLength(16);
+    // 16 das raias + as aprovações do GP (cadastro) e do Comprador (material).
+    expect(reqs).toHaveLength(18);
     const seen = reqs.filter(supplierSeesLaneRequirement);
     expect(seen).toHaveLength(6);
     expect([...new Set(seen.map((r) => baseKeyOf(r.key)))].sort()).toEqual([
@@ -1877,5 +1887,79 @@ describe("pedido em nome do responsável pelo booking (trading)", () => {
     expect(view.products.find((p) => p.itemId === registered.id)).toMatchObject(
       { missing: ["dieline", "hd", "moq"], negotiatedMoq: 1000 },
     );
+  });
+});
+
+describe("pedido de compra: aprovações do mapa no fim dos marcos", () => {
+  it("o contrato espera as aprovações; cada uma só libera com o marco feito e só quem tem a ação aprova", async () => {
+    const store = getStore();
+    const [r1] = await approvedProducts(null, ["AP-1", "AP-2"]);
+    const order = await po.createPurchaseOrder(admin, [
+      { requestId: r1.id, quantity: null },
+    ]);
+    const [item] = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    const k = (base: string) => `${base}__${item.id}`;
+    const req = async (key: string) =>
+      (await requirementsOf(order.id)).find((r) => r.key === key)!;
+    const { blockedBy } = await import("@/lib/purchase-lanes");
+    // Nasce com as aprovações do GP (cadastro) e do Comprador (material).
+    const keys = (await requirementsOf(order.id)).map((r) => r.key);
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        "approval_registration",
+        "approval_art_material",
+        "approval_down_payment",
+        "approval_pre_production",
+      ]),
+    );
+    // O material de arte só libera a aprovação do Comprador quando a faca,
+    // a foto, o MOQ e o prazo estão feitos.
+    expect(
+      blockedBy("approval_art_material", await requirementsOf(order.id)),
+    ).toHaveLength(4);
+    await submit(supplierA, order.id, k("die_cut"), { file: "f.pdf" });
+    await submit(supplierA, order.id, k("hd_photo"), { file: "h.pdf" });
+    await submit(supplierA, order.id, k("moq_confirmed"), { value: "1000" });
+    await submit(supplierA, order.id, k("lead_time_confirmed"), {
+      value: "30",
+    });
+    expect(
+      blockedBy("approval_art_material", await requirementsOf(order.id)),
+    ).toEqual([]);
+    // Só quem tem a ação aprova: um operador sem a função de Comprador não.
+    const outsider = await store.create("users", {
+      email: "sem-acao@wellmix.com",
+      name: "Sem ação",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      active: true,
+      functions: ["catalog"],
+    } as never);
+    const material = await req("approval_art_material");
+    expect(engine.canSubmitRequirement(outsider, order, material)).toBe(false);
+    const buyer = await store.create("users", {
+      email: "comprador-ap@wellmix.com",
+      name: "Comprador",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      active: true,
+      functions: ["buyer"],
+    } as never);
+    expect(engine.canSubmitRequirement(buyer, order, material)).toBe(true);
+    // Arte validada e cadastro pronto: sem as aprovações, segue na Preparação.
+    await submit(agency, order.id, k("art"), { file: "a.pdf" });
+    await engine.decideRequirement(
+      admin,
+      (await req(k("art_review"))).id,
+      "approve",
+    );
+    await gates.readyOrderProducts(admin, order.id);
+    expect((await store.get("orders", order.id))!.status).toBe("PREPARATION");
+    await approveMilestones(admin, order.id);
+    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
   });
 });

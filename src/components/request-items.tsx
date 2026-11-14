@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { cx, inputClass } from "@/components/ui";
 import { isPieceUnit } from "@/lib/moq";
 import {
   RequestProductFields,
@@ -12,7 +11,6 @@ import {
   SelectionQuantity,
   type GenerateLabels,
 } from "@/components/selection-quantity";
-import { MAX_REQUEST_SCHEDULE } from "@/lib/workflow/request-schedule";
 
 type ProductFieldsProps = Omit<
   React.ComponentProps<typeof RequestProductFields>,
@@ -65,6 +63,8 @@ export function RequestItems({
     schedule: ScheduleLabels;
     /** Card "Gerar programação pela quantidade" (o mesmo da Seleção de itens). */
     generate: GenerateLabels;
+    /** O mesmo aviso de "sem peças por caixa" para o produto fora do catálogo. */
+    generateOutside: string;
     /** "Quantidade (peças)" do card e as dicas dele. */
     pieces: string;
     piecesHint: string;
@@ -103,7 +103,9 @@ export function RequestItems({
     const preset = Number(presetQuantity.replace(",", ".")) || 0;
     return { 0: moq && preset < moq ? String(moq) : presetQuantity };
   });
-  const [unit, setUnit] = useState<Record<number, string>>({ 0: "un" });
+  // Unidade por linha: o campo saiu da tela (dono, 14/11/2026) e a
+  // solicitação vai em peças ("un"), como o bloco "Programação de compra".
+  const [unit] = useState<Record<number, string>>({ 0: "un" });
   // Linhas "fora do catálogo": sem produto do cadastro, a programação é feita
   // sem caixa master (dividida em partes iguais), como antes.
   const [outside, setOutside] = useState<Record<number, boolean>>({
@@ -198,8 +200,6 @@ export function RequestItems({
         const moq = moqOf(product[index]);
         const rowUnit = unit[index] ?? "un";
         const moqApplies = !!moq && isPieceUnit(rowUnit);
-        const current = Number((qty[index] ?? "").replace(",", ".")) || 0;
-        const below = moqApplies && (qty[index] ?? "") !== "" && current < moq!;
         return (
           <fieldset
             key={index}
@@ -222,7 +222,7 @@ export function RequestItems({
               ) : null}
             </legend>
             {/* Grade de 4 colunas (2 no celular): textos em meia linha ou linha
-                cheia; quantidade e unidade estreitas, ao lado da programação. */}
+                cheia; o bloco "Programação de compra" na linha toda. */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <RequestProductFields
                 {...fields}
@@ -239,53 +239,20 @@ export function RequestItems({
                   setOutside((o) => ({ ...o, [index]: on }))
                 }
               />
-              <label className="block min-w-0 space-y-1">
-                <span className="block text-xs font-medium leading-5 text-zinc-700">
-                  {labels.quantity}
-                </span>
-                <input
-                  name={`${prefix}quantity`}
-                  type="number"
-                  // Produto com pedido mínimo: o campo não aceita menos (nem o navegador deixa enviar).
-                  min={moqApplies ? moq! : "0.01"}
-                  step="any"
-                  required
-                  value={qty[index] ?? ""}
-                  onChange={(e) =>
-                    setQty((q) => ({ ...q, [index]: e.target.value }))
-                  }
-                  onBlur={() => floorToMoq(index)}
-                  aria-describedby={moq ? `moq-${index}` : undefined}
-                  data-request-moq={moq ?? undefined}
-                  className={cx(inputClass, below && "border-red-400")}
-                />
-                {moq ? (
-                  <span
-                    id={`moq-${index}`}
-                    data-request-moq-hint={below ? "below" : "ok"}
-                    className={cx(
-                      "block text-xs leading-snug",
-                      below ? "font-medium text-red-700" : "text-zinc-500",
-                    )}
-                  >
-                    {fill(below ? labels.belowMoq : labels.moq, moq, rowUnit)}
-                  </span>
-                ) : null}
-              </label>
-              <label className="block min-w-0 space-y-1">
-                <span className="block text-xs font-medium leading-5 text-zinc-700">
-                  {labels.unit}
-                </span>
-                <input
-                  name={`${prefix}unit`}
-                  value={unit[index] ?? "un"}
-                  onChange={(e) =>
-                    setUnit((u) => ({ ...u, [index]: e.target.value }))
-                  }
-                  required
-                  className={inputClass}
-                />
-              </label>
+              {/* Quantidade e unidade saíram da tela (dono, 14/11/2026): a
+                  quantidade se digita no bloco "Programação de compra"
+                  (pedido único) ou é a soma das programações; os dois
+                  continuam no formulário e no envio. */}
+              <input
+                type="hidden"
+                name={`${prefix}quantity`}
+                value={qty[index] ?? ""}
+              />
+              <input
+                type="hidden"
+                name={`${prefix}unit`}
+                value={unit[index] ?? "un"}
+              />
               {/* Programação de entregas pela quantidade (dono, 14/11/2026): o
                   mesmo card da Seleção de itens, ligado ao produto escolhido
                   acima e à quantidade desta linha; as entregas geradas vão
@@ -300,18 +267,35 @@ export function RequestItems({
                     defaultQuantity={null}
                     schedule={null}
                     labels={labels.schedule}
-                    gen={labels.generate}
+                    gen={
+                      item?.id === "outside"
+                        ? {
+                            ...labels.generate,
+                            noPieces: labels.generateOutside,
+                          }
+                        : labels.generate
+                    }
                     items={item ? [item] : []}
                     chosenItemId={null}
                     controlledItemId={item?.id ?? null}
                     containerTypes={containerTypes}
                     prefix={prefix}
-                    maxRounds={MAX_REQUEST_SCHEDULE}
                     quantityValue={qty[index] ?? ""}
                     onQuantityChange={(total) =>
                       setQty((q) => ({ ...q, [index]: total }))
                     }
-                    unit={unit[index] ?? "un"}
+                    unit={rowUnit}
+                    quantityRequired
+                    moq={
+                      moqApplies
+                        ? {
+                            min: moq!,
+                            hint: fill(labels.moq, moq!, rowUnit),
+                            below: fill(labels.belowMoq, moq!, rowUnit),
+                          }
+                        : null
+                    }
+                    onQuantityBlur={() => floorToMoq(index)}
                     className="col-span-2 sm:col-span-4"
                   />
                 );

@@ -17,7 +17,9 @@ describe("conta da programação", () => {
     expect(splitEvenly(1001, 4)).toEqual([251, 250, 250, 250]);
     expect(splitEvenly(5, 3)).toEqual([2, 2, 1]);
     expect(splitEvenly(0, 2)).toEqual([0, 0]);
-    expect(splitEvenly(10, 99)).toHaveLength(MAX_REQUEST_SCHEDULE);
+    // Sem o teto de 6 datas (dono, 14/11/2026): só o técnico.
+    expect(splitEvenly(10, 99)).toHaveLength(99);
+    expect(splitEvenly(10, 999)).toHaveLength(MAX_REQUEST_SCHEDULE);
   });
 
   it("datas previstas: 1ª data + intervalo × (n − 1)", () => {

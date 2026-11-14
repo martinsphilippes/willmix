@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 import {
+  approveMilestoneRows,
   bookingSheet,
   fillMyRequirements,
   gotoProduct,
@@ -941,6 +942,14 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // 6e. Agência: com a arte validada e o certificado, a arte final com o selo.
   await login(page, "agencia@design.com");
   await fillMyRequirements(page, orderUrl);
+  // 6f. Aprovações do mapa no fim dos marcos (docs/MILESTONES.md): o GP
+  // aprova o cadastro e a certificação, o Comprador o material de arte.
+  await login(page, "admin@wellmix.com");
+  await approveMilestoneRows(page, orderUrl, [
+    /Cadastro e fiscal aprovados pelo GP/,
+    /Material de arte aprovado pelo Comprador/,
+    /Certificação aprovada pelo GP/,
+  ]);
 
   // 7. Contrato: o documento traz a arte final; a Wellmix sobe o arquivo
   // assinado e carimbado, depois o fornecedor.
@@ -1044,6 +1053,11 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     "received",
   );
 
+  // Sinal recebido: a Diretoria de compras aprova (docs/MILESTONES.md).
+  await login(page, "admin@wellmix.com");
+  await approveMilestoneRows(page, orderUrl, [
+    /Sinal aprovado pela Diretoria de compras/,
+  ]);
   // Sinal pago e a produção sem ETD: o pedido aparece em Produção →
   // Pré-produção, com os dados da produção e o ETD (docs/FLOW_MENU.md).
   // Para a Wellmix a tela do passo é só a lista (dono, 14/11/2026: "no acesso
@@ -1144,6 +1158,10 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     "data-sku-status",
     "approved",
   );
+  // O Planner aprova a pré-produção (docs/MILESTONES.md).
+  await approveMilestoneRows(page, orderUrl, [
+    /Pré-produção \(dados e ETD\) aprovada pelo Planner/,
+  ]);
   // Operador da Wellmix: "Etapas do pedido" só com as tarefas dele
   // (docs/PURCHASE_ORDER.md, seção 2e). O pedido de compra é de quem o gerou
   // (o administrador, responsável interno) e os itens do Embarque são do
@@ -1480,10 +1498,16 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   ).toBeVisible();
   await page.fill('textarea[name="p0.description"]', "Jarra de vidro");
   // A quantidade fica acima do pedido mínimo da jarra, se houver (a tela
-  // sobe e o servidor recusa abaixo dele).
-  await page.fill('input[name="p0.quantity"]', "1000");
-  // Programação de entregas: 2 entregas (500 + 500), "+ Programação" → 3 (334 + 333 + 333),
-  // intervalo 30 dias; a 3ª vira 340 → total 1007 e a quantidade acompanha.
+  // sobe e o servidor recusa abaixo dele). Ela se digita no bloco
+  // "Programação de compra" (a linha de quantidade saiu da tela, dono,
+  // 14/11/2026) e vai no formulário como p0.quantity.
+  await page
+    .locator('[data-request-item="0"] [data-selection-quantity]')
+    .fill("1000");
+  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("1000");
+  // Programação de compra (a jarra não tem caixa master no cadastro: em
+  // peças): 2 programações (500 + 500), "+ Programação" → 3 (334 + 333 +
+  // 333), intervalo 30 dias; a 3ª vira 340 → total 1007 e a quantidade acompanha.
   await page.click('[data-request-item="0"] [data-schedule-on]');
   await expect(
     page.locator('[data-request-item="0"] [data-schedule-item]'),
@@ -1502,7 +1526,10 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await page.check('[data-request-item="1"] input[name="p1.sourcingDemand"]');
   await page.fill('input[name="p1.productName"]', "Copo de vidro");
   await page.fill('textarea[name="p1.description"]', "Copo de vidro 300 ml");
-  await page.fill('input[name="p1.quantity"]', "200");
+  await page
+    .locator('[data-request-item="1"] [data-selection-quantity]')
+    .fill("200");
+  await expect(page.locator('input[name="p1.quantity"]')).toHaveValue("200");
   // Terceira linha adicionada e removida: não vira solicitação.
   await page.click("[data-add-request-item]");
   await page.getByRole("button", { name: /Remover: Produto 3/ }).click();

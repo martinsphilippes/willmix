@@ -151,6 +151,25 @@ export async function saveUnloading(
 const hasDivergence = (i: ReceivingItem) =>
   i.received !== i.expected || i.damaged > 0;
 
+/** Caixa master de cada item do pedido (variante, senão produto). */
+export async function perBoxOf(
+  items: OrderItem[],
+): Promise<Map<string, number | null>> {
+  const ids = [
+    ...new Set(items.map((i) => i.productId).filter(Boolean)),
+  ] as string[];
+  const products = ids.length
+    ? await getStore().list("products", { filter: { id: ids } })
+    : [];
+  return new Map(
+    items.map((i) => {
+      const p = products.find((x) => x.id === i.productId);
+      const box = i.variant?.masterBoxQty ?? p?.masterBoxQty ?? null;
+      return [i.id, box && box > 0 ? box : null];
+    }),
+  );
+}
+
 /** Quantidade recebida e avariada por SKU; divergência nova avisa. */
 export async function saveCounts(
   user: User,
@@ -160,12 +179,15 @@ export async function saveCounts(
     received: number;
     damaged: number;
     note: string | null;
+    /** Contado em caixas: `received` são caixas, convertidas pela caixa master. */
+    inCartons?: boolean;
   }[],
 ) {
   const { order, current } = await load(user, orderId);
   const items = await getStore().list("order_items", {
     filter: { orderId },
   });
+  const perBox = await perBoxOf(items);
   const rows: ReceivingItem[] = [];
   for (const item of items) {
     const c = counts.find((x) => x.orderItemId === item.id);
@@ -173,6 +195,13 @@ export async function saveCounts(
       const kept = current?.items.find((x) => x.orderItemId === item.id);
       if (kept) rows.push(kept);
       continue;
+    }
+    // Por caixas: as caixas contadas × a caixa master do cadastro.
+    const cartons = c.inCartons ? c.received : null;
+    if (c.inCartons) {
+      const box = perBox.get(item.id);
+      if (!box) throw new ReceivingError("no_master_box");
+      c.received = c.received * box;
     }
     if (
       !Number.isFinite(c.received) ||
@@ -188,6 +217,7 @@ export async function saveCounts(
       received: c.received,
       damaged: c.damaged,
       note: c.note?.trim() || null,
+      cartons: c.inCartons ? cartons : null,
     });
   }
   const before = new Set(
@@ -435,6 +465,8 @@ export async function financialSummary(
 export interface ReceivingView {
   row: Receiving | null;
   items: OrderItem[];
+  /** Caixa master por item (contagem por caixas). */
+  perBox: Record<string, number | null>;
   missing: (keyof ReceivingMissing)[];
   divergences: number;
   finance: FinancialSummary;
@@ -449,6 +481,7 @@ export async function receivingView(order: Order): Promise<ReceivingView> {
   return {
     row,
     items,
+    perBox: Object.fromEntries(await perBoxOf(items)),
     missing: missingForClose(row, items),
     divergences: (row?.items ?? []).filter(hasDivergence).length,
     finance,

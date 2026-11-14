@@ -80,6 +80,8 @@ export function bookingSheet(
   description: string,
   /** Cores do item (coluna COLOR ASSORTMENT), ex.: "BEGE / CARVALHO / MARROM". */
   colors?: string,
+  /** CBM da caixa master (padrão: 0,12). */
+  { cbm = "0.12" }: { cbm?: string } = {},
 ) {
   const row = [
     "2026.10.13",
@@ -94,7 +96,7 @@ export function bookingSheet(
     "12",
     "0.3",
     "0.35",
-    "0.12",
+    cbm,
     "10",
     "8",
     "20",
@@ -418,5 +420,33 @@ export async function fillMyRequirements(
         `Falha ao enviar "${label}": ${page.url()}\n${alert.slice(0, 400)}`,
       );
     }
+  }
+}
+
+/**
+ * Aprovações do mapa no fim dos marcos (docs/MILESTONES.md): o login (com a
+ * ação, ou o administrador) aprova cada item pelo rótulo, na página do pedido.
+ */
+export async function approveMilestoneRows(
+  page: Page,
+  orderUrl: string,
+  labels: RegExp[],
+) {
+  // A mesma linha de item que o caminho principal usa (o <li> do rótulo).
+  const requirementRow = (p: Page, label: RegExp) =>
+    p.locator("li").filter({
+      has: p.locator("span.font-medium", { hasText: label }),
+    });
+  for (const label of labels) {
+    await page.goto(orderUrl);
+    const row = requirementRow(page, label).first();
+    await expect(row).toBeVisible();
+    await Promise.all([
+      page.waitForResponse((r) => r.request().method() === "POST"),
+      row.locator("form button[type=submit]").first().click(),
+    ]);
+    await page.waitForLoadState("networkidle");
+    // A última aprovação pode concluir a etapa (a linha some com ela).
+    expect(page.url()).not.toContain("error=");
   }
 }

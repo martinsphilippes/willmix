@@ -1,12 +1,43 @@
 import type { Translate } from "@/i18n";
 import type { GenerateLabels } from "@/components/selection-quantity";
+import type { ScheduleLabels } from "@/components/request-schedule";
 
 /*
- * Textos do card "Gerar programação pela quantidade" (Seleção de itens e
- * Nova solicitação usam o mesmo card, docs/PURCHASE_SCHEDULE.md). `selectItem`
- * muda por tela: a Seleção pede o item da tabela; a solicitação, o produto do
- * campo acima.
+ * Textos do bloco "Programação de compra" com o card "Gerar programação pela
+ * quantidade" (Seleção de itens e Nova solicitação usam o mesmo bloco,
+ * docs/PURCHASE_SCHEDULE.md). `selectItem` muda por tela: a Seleção pede o
+ * item da tabela; a solicitação, o produto do campo acima.
  */
+
+/**
+ * Textos do bloco (título, datas, programações e pedido único), os mesmos nas
+ * duas telas (dono, 14/11/2026). Só a explicação pode mudar: a da Nova
+ * solicitação diz para onde a programação vai.
+ */
+export function purchaseScheduleLabels(
+  t: Translate,
+  intl: string,
+  hint: string = t("purchaseRounds.form.hint"),
+): ScheduleLabels {
+  return {
+    intl,
+    toggle: t("purchaseRounds.form.toggle"),
+    ask: t("purchaseRounds.form.ask"),
+    hint,
+    interval: t("purchaseRounds.form.interval"),
+    days: t("purchaseRounds.form.days", { n: "{n}" }),
+    custom: t("purchaseRounds.form.custom"),
+    firstDate: t("purchaseRounds.form.firstDate"),
+    n: t("purchaseRounds.form.n", { n: "{n}" }),
+    quantity: t("purchaseRounds.form.quantity"),
+    expected: t("purchaseRounds.form.expected"),
+    add: t("purchaseRounds.form.add"),
+    remove: t("purchaseRounds.form.remove", { n: "{n}" }),
+    total: t("purchaseRounds.form.total", { total: "{total}", unit: "{unit}" }),
+    off: t("purchaseRounds.form.off"),
+  };
+}
+
 export function generateLabels(
   t: Translate,
   selectItem: string = t("purchaseRounds.gen.selectItem"),
@@ -37,6 +68,7 @@ export function generateLabels(
     selectItem,
     noCarton: t("purchaseRounds.gen.noCarton"),
     noPieces: t("purchaseRounds.gen.noPieces"),
+    noData: t("purchaseRounds.gen.noData"),
     tooBig: t("purchaseRounds.gen.tooBig", {
       cbm: "{cbm}",
       container: "{container}",
@@ -55,10 +87,15 @@ export function generateLabels(
       container: "{container}",
     }),
     extra: t("purchaseRounds.gen.extra", { extra: "{extra}" }),
-    reduced: t("purchaseRounds.gen.reduced", {
-      cartons: "{cartons}",
+    short: t("purchaseRounds.gen.short", {
+      missing: "{missing}",
       rounds: "{rounds}",
+      cartons: "{cartons}",
     }),
+    shortUp: t("purchaseRounds.gen.shortUp", { cartons: "{cartons}" }),
+    shortDown: t("purchaseRounds.gen.shortDown", { rounds: "{rounds}" }),
+    shortDownOne: t("purchaseRounds.gen.shortDownOne"),
+    shortKeep: t("purchaseRounds.gen.shortKeep", { rounds: "{rounds}" }),
     each: t("purchaseRounds.gen.each", {
       cartons: "{cartons}",
       cbm: "{cbm}",

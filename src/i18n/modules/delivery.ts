@@ -87,6 +87,12 @@ export const pt = {
   "buyerDelivery.confirm": "Quem confirma o recebimento",
   "buyerDelivery.confirmBuyer": "O comprador (etapa Entrega)",
   "receiving.done.quality": "Conferência da qualidade concluída.",
+  "receiving.unit": "Contado em",
+  "receiving.unit.units": "un",
+  "receiving.unit.cartons": "caixas ({n} un)",
+  "receiving.unit.converted": "= {n} un",
+  "receiving.error.no_master_box":
+    "Este item não tem caixa master no cadastro: conte por unidade.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -173,6 +179,12 @@ export const en: Record<keyof typeof pt, string> = {
   "buyerDelivery.confirm": "Who confirms receipt",
   "buyerDelivery.confirmBuyer": "The buyer (Delivery stage)",
   "receiving.done.quality": "Quality check concluded.",
+  "receiving.unit": "Counted in",
+  "receiving.unit.units": "pcs",
+  "receiving.unit.cartons": "cartons ({n} pcs)",
+  "receiving.unit.converted": "= {n} pcs",
+  "receiving.error.no_master_box":
+    "This item has no master carton in the registry: count by unit.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -250,4 +262,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "buyerDelivery.confirm": "确认收货方",
   "buyerDelivery.confirmBuyer": "买方（交付阶段）",
   "receiving.done.quality": "质检已完成。",
+  "receiving.unit": "计数单位",
+  "receiving.unit.units": "件",
+  "receiving.unit.cartons": "箱（{n} 件）",
+  "receiving.unit.converted": "= {n} 件",
+  "receiving.error.no_master_box": "该项目在资料中没有外箱数量：请按件计数。",
 };

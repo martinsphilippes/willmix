@@ -10,6 +10,8 @@ export const pt = {
   "purchaseRounds.form.ask": "Comprar em programações nos próximos meses?",
   "purchaseRounds.form.hint":
     "Divida o total em programações de pedido com intervalo fixo, a partir da data da 1ª programação. A solicitação leva a programação ao responsável pelo book. Aprovada, o pedido de compra vira o pedido pai e cada programação nasce como pedido filho no dia combinado, com a negociação e as artes do pai.",
+  "purchaseRounds.form.hintRequest":
+    "Divida o total em programações de pedido com intervalo fixo, a partir da data da 1ª programação. A programação de cada produto vai com a solicitação para a Wellmix.",
   "purchaseRounds.form.interval": "Intervalo entre programações",
   "purchaseRounds.form.days": "{n} dias",
   "purchaseRounds.form.custom": "Outro",
@@ -46,34 +48,42 @@ export const pt = {
     "O item escolhido não tem CBM da caixa (nem as medidas): sem ele não há conta de containers. As caixas são divididas igualmente pelas programações.",
   "purchaseRounds.gen.noPieces":
     "O item escolhido não tem peças por caixa master: não dá para converter caixas em peças. Marque outro item ou use “+ Programação de compra” e informe as peças de cada programação.",
+  "purchaseRounds.gen.noData":
+    "O item escolhido não tem peças por caixa master nem o CBM da caixa (nem as medidas): sem eles não dá para converter caixas em peças nem calcular containers. Marque outro item ou use “+ Programação de compra” e informe as peças de cada programação.",
   "purchaseRounds.gen.tooBig":
     "A caixa master ({cbm} m³) não cabe no {container} ({cap} m³). Escolha um container maior.",
   "purchaseRounds.gen.errorTotal": "Digite o total de caixas (número inteiro).",
   "purchaseRounds.gen.errorRounds": "Informe de 1 a {max} programações.",
   "purchaseRounds.gen.result":
-    "{rounds} programação(ões) · {cartons} caixas ({pieces} peças) · {cbm} m³ · {containers} container(s) {container}",
+    "{rounds} programação(ões) · {cartons} caixas ({pieces} peças) · {cbm} m³ · ocupação efetiva de {containers} container(s) {container}",
   "purchaseRounds.gen.extra":
     "Arredondado para caixas master inteiras: +{extra} peças.",
-  "purchaseRounds.gen.reduced":
-    "São só {cartons} caixa(s) master: ficaram {rounds} programação(ões).",
+  "purchaseRounds.gen.short":
+    "Faltam {missing} caixa(s) master para dar pelo menos 1 caixa a cada uma das {rounds} datas: o total tem {cartons} caixa(s).",
+  "purchaseRounds.gen.shortUp": "Aumentar o total para {cartons} caixas",
+  "purchaseRounds.gen.shortDown": "Reduzir para {rounds} datas",
+  "purchaseRounds.gen.shortDownOne": "Reduzir para 1 data",
+  "purchaseRounds.gen.shortKeep": "Manter {rounds} datas",
   "purchaseRounds.gen.each":
-    "Cada programação: {cartons} caixas · {cbm} m³ = {n} container {container}, com {pct}% ocupado.",
+    "Cada programação: {cartons} caixas · {cbm} m³ → {n} container {container} previsto, com {pct}% ocupado.",
   "purchaseRounds.gen.eachMany":
-    "Cada programação: {cartons} caixas · {cbm} m³ = {n} containers {container}, o último com {pct}% ocupado.",
-  "purchaseRounds.gen.list": "Containers por programação: {list}.",
+    "Cada programação: {cartons} caixas · {cbm} m³ → {n} containers {container} previstos, o último com {pct}% ocupado.",
+  "purchaseRounds.gen.list": "Containers previstos por programação: {list}.",
   "purchaseRounds.gen.listItem": "{i}ª: {n} ({pct}% ocupado)",
   "purchaseRounds.gen.listItemMany": "{i}ª: {n} (o último {pct}% ocupado)",
-  "purchaseRounds.gen.totalContainers": "Containers {container} no total: {n}.",
-  "purchaseRounds.gen.load":
-    "{cartons} cx · {cbm} m³ · {containers} × {container}",
-  "purchaseRounds.gen.cardPartial": "{n} container: {pct}% ocupado",
-  "purchaseRounds.gen.cardPartialMany": "{n} containers: o último com {pct}%",
-  "purchaseRounds.gen.cardFull": "{n} container cheio",
-  "purchaseRounds.gen.cardFullMany": "{n} containers cheios",
+  "purchaseRounds.gen.totalContainers":
+    "Containers {container} previstos no total: {n}.",
+  "purchaseRounds.gen.load": "{cartons} caixas master · {cbm} m³",
+  "purchaseRounds.gen.cardPartial": "{n} container previsto · {pct}% ocupado",
+  "purchaseRounds.gen.cardPartialMany":
+    "{n} containers previstos · o último {pct}% ocupado",
+  "purchaseRounds.gen.cardFull":
+    "{n} container previsto · cheio (100% ocupado)",
+  "purchaseRounds.gen.cardFullMany": "{n} containers previstos · todos cheios",
   "purchaseRounds.gen.cardFullMargin":
-    "{n} container cheio ({pct}%, margem de 5%)",
+    "{n} container previsto · cheio ({pct}% ocupado, margem de 5%)",
   "purchaseRounds.gen.cardFullMarginMany":
-    "{n} containers cheios (o último com {pct}%, margem de 5%)",
+    "{n} containers previstos · cheios (o último {pct}% ocupado, margem de 5%)",
   "purchaseRounds.gen.up": "+ Aumentar {pieces}",
   "purchaseRounds.gen.upTo": "fecha {n} container",
   "purchaseRounds.gen.upToMany": "fecha {n} containers",
@@ -134,6 +144,8 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseRounds.form.ask": "Buy in rounds over the coming months?",
   "purchaseRounds.form.hint":
     "Split the total into order rounds at a fixed interval, starting on the 1st round date. The request carries the schedule to the book owner. Once approved, the purchase order becomes the parent order and each round is born as a child order on the agreed day, with the parent's negotiation and artwork.",
+  "purchaseRounds.form.hintRequest":
+    "Split the total into order rounds at a fixed interval, starting on the 1st round date. Each product's schedule goes to Wellmix with the request.",
   "purchaseRounds.form.interval": "Interval between rounds",
   "purchaseRounds.form.days": "{n} days",
   "purchaseRounds.form.custom": "Other",
@@ -170,33 +182,41 @@ export const en: Record<keyof typeof pt, string> = {
     "The chosen item has no carton CBM (nor dimensions): without it there is no container calculation. The cartons are split evenly across the rounds.",
   "purchaseRounds.gen.noPieces":
     "The chosen item has no pieces per master carton: cartons cannot be converted to pieces. Mark another item or use “+ Purchase schedule” and enter the pieces of each round.",
+  "purchaseRounds.gen.noData":
+    "The chosen item has neither pieces per master carton nor carton CBM (nor dimensions): without them cartons cannot be converted into pieces and containers cannot be calculated. Pick another item or use “+ Purchase schedule” and enter the pieces of each round.",
   "purchaseRounds.gen.tooBig":
     "The master carton ({cbm} m³) does not fit in the {container} ({cap} m³). Pick a larger container.",
   "purchaseRounds.gen.errorTotal": "Type the total cartons (a whole number).",
   "purchaseRounds.gen.errorRounds": "Enter 1 to {max} schedules.",
   "purchaseRounds.gen.result":
-    "{rounds} round(s) · {cartons} cartons ({pieces} pieces) · {cbm} m³ · {containers} container(s) {container}",
+    "{rounds} round(s) · {cartons} cartons ({pieces} pieces) · {cbm} m³ · actual load of {containers} {container} container(s)",
   "purchaseRounds.gen.extra":
     "Rounded up to whole master cartons: +{extra} pieces.",
-  "purchaseRounds.gen.reduced":
-    "There are only {cartons} master carton(s): the schedule has {rounds} round(s).",
+  "purchaseRounds.gen.short":
+    "{missing} more master carton(s) needed to give each of the {rounds} dates at least 1 carton: the total has {cartons} carton(s).",
+  "purchaseRounds.gen.shortUp": "Raise the total to {cartons} cartons",
+  "purchaseRounds.gen.shortDown": "Reduce to {rounds} dates",
+  "purchaseRounds.gen.shortDownOne": "Reduce to 1 date",
+  "purchaseRounds.gen.shortKeep": "Keep {rounds} dates",
   "purchaseRounds.gen.each":
-    "Each round: {cartons} cartons · {cbm} m³ = {n} {container} container, {pct}% used.",
+    "Each round: {cartons} cartons · {cbm} m³ → {n} {container} container planned, {pct}% used.",
   "purchaseRounds.gen.eachMany":
-    "Each round: {cartons} cartons · {cbm} m³ = {n} {container} containers, the last one {pct}% used.",
-  "purchaseRounds.gen.list": "Containers per round: {list}.",
+    "Each round: {cartons} cartons · {cbm} m³ → {n} {container} containers planned, the last one {pct}% used.",
+  "purchaseRounds.gen.list": "Planned containers per round: {list}.",
   "purchaseRounds.gen.listItem": "#{i}: {n} ({pct}% used)",
   "purchaseRounds.gen.listItemMany": "#{i}: {n} (last one {pct}% used)",
-  "purchaseRounds.gen.totalContainers": "{container} containers in total: {n}.",
-  "purchaseRounds.gen.load":
-    "{cartons} ctn · {cbm} m³ · {containers} × {container}",
-  "purchaseRounds.gen.cardPartial": "{n} container: {pct}% used",
-  "purchaseRounds.gen.cardPartialMany": "{n} containers: last one at {pct}%",
-  "purchaseRounds.gen.cardFull": "{n} container full",
-  "purchaseRounds.gen.cardFullMany": "{n} containers full",
-  "purchaseRounds.gen.cardFullMargin": "{n} container full ({pct}%, 5% margin)",
+  "purchaseRounds.gen.totalContainers":
+    "Planned {container} containers in total: {n}.",
+  "purchaseRounds.gen.load": "{cartons} master cartons · {cbm} m³",
+  "purchaseRounds.gen.cardPartial": "{n} container planned · {pct}% used",
+  "purchaseRounds.gen.cardPartialMany":
+    "{n} containers planned · last one {pct}% used",
+  "purchaseRounds.gen.cardFull": "{n} container planned · full (100% used)",
+  "purchaseRounds.gen.cardFullMany": "{n} containers planned · all full",
+  "purchaseRounds.gen.cardFullMargin":
+    "{n} container planned · full ({pct}% used, 5% margin)",
   "purchaseRounds.gen.cardFullMarginMany":
-    "{n} containers full (last one at {pct}%, 5% margin)",
+    "{n} containers planned · full (last one {pct}% used, 5% margin)",
   "purchaseRounds.gen.up": "+ Increase {pieces}",
   "purchaseRounds.gen.upTo": "closes {n} container",
   "purchaseRounds.gen.upToMany": "closes {n} containers",
@@ -255,6 +275,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.form.ask": "未来几个月分批下单？",
   "purchaseRounds.form.hint":
     "从第 1 批日期开始，按固定间隔将总数分成多批订单。询单会把计划交给 Book 负责人。批准后，采购订单成为父订单，每一批在约定日期生成子订单，沿用父订单的谈判和设计稿。",
+  "purchaseRounds.form.hintRequest":
+    "将总量按固定间隔分成多个订单批次，从第 1 批日期开始。每个产品的计划随申请一起发送给 Wellmix。",
   "purchaseRounds.form.interval": "批次间隔",
   "purchaseRounds.form.days": "{n} 天",
   "purchaseRounds.form.custom": "其他",
@@ -289,31 +311,39 @@ export const zh: Record<keyof typeof pt, string> = {
     "所选产品没有外箱体积（也没有尺寸）：无法计算集装箱。箱数平均分配到各批。",
   "purchaseRounds.gen.noPieces":
     "所选产品没有每外箱件数：无法把箱数换算成件数。请选择其他产品，或使用“+ 采购计划”并填写每批的件数。",
+  "purchaseRounds.gen.noData":
+    "所选产品既没有每外箱件数，也没有外箱体积（或尺寸）：无法把箱数换算成件数，也无法计算集装箱。请选择其他产品，或使用“+ 采购计划”并填写每批的件数。",
   "purchaseRounds.gen.tooBig":
     "外箱（{cbm} m³）装不进 {container}（{cap} m³）。请选择更大的集装箱。",
   "purchaseRounds.gen.errorTotal": "请输入总箱数（整数）。",
   "purchaseRounds.gen.errorRounds": "请输入 1 到 {max} 个计划。",
   "purchaseRounds.gen.result":
-    "{rounds} 批 · {cartons} 箱（{pieces} 件） · {cbm} m³ · {containers} 个 {container}",
+    "{rounds} 批 · {cartons} 箱（{pieces} 件） · {cbm} m³ · 实际占用 {containers} 个 {container}",
   "purchaseRounds.gen.extra": "按整箱向上取整：多 {extra} 件。",
-  "purchaseRounds.gen.reduced": "只有 {cartons} 个外箱：计划为 {rounds} 批。",
+  "purchaseRounds.gen.short":
+    "还差 {missing} 个外箱，才能让 {rounds} 个日期每个至少 1 箱：总数只有 {cartons} 箱。",
+  "purchaseRounds.gen.shortUp": "将总数增加到 {cartons} 箱",
+  "purchaseRounds.gen.shortDown": "减少到 {rounds} 个日期",
+  "purchaseRounds.gen.shortDownOne": "减少到 1 个日期",
+  "purchaseRounds.gen.shortKeep": "保留 {rounds} 个日期",
   "purchaseRounds.gen.each":
-    "每批：{cartons} 箱 · {cbm} m³ = {n} 个 {container}，已用 {pct}%。",
+    "每批：{cartons} 箱 · {cbm} m³ → 计划 {n} 个 {container}，已用 {pct}%。",
   "purchaseRounds.gen.eachMany":
-    "每批：{cartons} 箱 · {cbm} m³ = {n} 个 {container}，最后一个已用 {pct}%。",
-  "purchaseRounds.gen.list": "每批集装箱数：{list}。",
+    "每批：{cartons} 箱 · {cbm} m³ → 计划 {n} 个 {container}，最后一个已用 {pct}%。",
+  "purchaseRounds.gen.list": "每批计划集装箱数：{list}。",
   "purchaseRounds.gen.listItem": "第{i}批：{n}（已用 {pct}%）",
   "purchaseRounds.gen.listItemMany": "第{i}批：{n}（最后一个已用 {pct}%）",
-  "purchaseRounds.gen.totalContainers": "{container} 合计：{n} 个。",
-  "purchaseRounds.gen.load":
-    "{cartons} 箱 · {cbm} m³ · {containers} × {container}",
-  "purchaseRounds.gen.cardPartial": "{n} 个集装箱：已用 {pct}%",
-  "purchaseRounds.gen.cardPartialMany": "{n} 个集装箱：最后一个已用 {pct}%",
-  "purchaseRounds.gen.cardFull": "{n} 个集装箱已装满",
-  "purchaseRounds.gen.cardFullMany": "{n} 个集装箱已装满",
-  "purchaseRounds.gen.cardFullMargin": "{n} 个集装箱已装满（{pct}%，5% 容差）",
+  "purchaseRounds.gen.totalContainers": "计划 {container} 合计：{n} 个。",
+  "purchaseRounds.gen.load": "{cartons} 个外箱 · {cbm} m³",
+  "purchaseRounds.gen.cardPartial": "计划 {n} 个集装箱 · 已用 {pct}%",
+  "purchaseRounds.gen.cardPartialMany":
+    "计划 {n} 个集装箱 · 最后一个已用 {pct}%",
+  "purchaseRounds.gen.cardFull": "计划 {n} 个集装箱 · 已装满（100%）",
+  "purchaseRounds.gen.cardFullMany": "计划 {n} 个集装箱 · 全部装满",
+  "purchaseRounds.gen.cardFullMargin":
+    "计划 {n} 个集装箱 · 已装满（已用 {pct}%，5% 容差）",
   "purchaseRounds.gen.cardFullMarginMany":
-    "{n} 个集装箱已装满（最后一个 {pct}%，5% 容差）",
+    "计划 {n} 个集装箱 · 已装满（最后一个已用 {pct}%，5% 容差）",
   "purchaseRounds.gen.up": "+ 增加 {pieces}",
   "purchaseRounds.gen.upTo": "装满 {n} 个集装箱",
   "purchaseRounds.gen.upToMany": "装满 {n} 个集装箱",

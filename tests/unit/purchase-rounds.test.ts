@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
+import { approveMilestones } from "./helpers/approvals";
 import { xlsxBytes } from "./xlsx-fixture";
 
 /*
@@ -211,6 +212,8 @@ async function finishLanes(orderId: string) {
   }
   // Cadastro e fiscal: NCM validado e ficha completa de cada produto.
   await gates.readyOrderProducts(admin, orderId);
+  // Aprovações do mapa no fim dos marcos (docs/MILESTONES.md).
+  await approveMilestones(admin, orderId);
 }
 
 describe("regras puras da programação de compra", () => {
@@ -427,6 +430,43 @@ describe("programação de compra de ponta a ponta", () => {
     expect(thirdItems.map((i) => i.quantity).sort()).toEqual(
       [1000, 500].sort(),
     );
+  });
+
+  it("sem o teto de 12 datas: 13 programações viram o pai e 13 filhos, um por data", async () => {
+    // Dono, 14/11/2026: o teto de 6 (solicitação) e o de 12 (Seleção) saíram.
+    const store = getStore();
+    const today = todayIso();
+    const schedule = buildSchedule({
+      intervalDays: 30,
+      firstDate: today,
+      quantities: Array.from({ length: 13 }, () => 480),
+    });
+    const { requests } = await approvedWith(["R13-1"], [schedule]);
+    const parent = await po.createPurchaseOrder(admin, [
+      { requestId: requests[0].id, quantity: null },
+    ]);
+    expect(parent.purchaseRounds).toHaveLength(13);
+    expect(parent.purchaseRounds!.map((r) => r.expectedAt)).toEqual(
+      schedule.items.map((i) => i.expectedAt),
+    );
+    const parentItems = await store.list("order_items", {
+      filter: { orderId: parent.id },
+    });
+    expect(parentItems.map((i) => i.quantity)).toEqual([13 * 480]);
+    // A Preparação do pai faz nascer a 1ª; a 13ª é de hoje + 12 × 30 dias.
+    await finishLanes(parent.id);
+    const later = new Date(`${addDaysIso(today, 30 * 12)}T15:00:00Z`);
+    const born = await rounds.spawnDueRounds(null, { now: later });
+    expect(born.map((o) => o.roundIndex)).toEqual(
+      Array.from({ length: 12 }, (_, i) => i + 2),
+    );
+    const closed = (await store.get("orders", parent.id))!;
+    expect(closed.status).toBe("CLOSED");
+    expect(closed.purchaseRounds!.every((r) => r.orderId)).toBe(true);
+    const last = await store.list("order_items", {
+      filter: { orderId: born[born.length - 1].id },
+    });
+    expect(last.map((i) => i.quantity)).toEqual([480]);
   });
 
   it("recusa programações com datas diferentes no mesmo pedido", async () => {

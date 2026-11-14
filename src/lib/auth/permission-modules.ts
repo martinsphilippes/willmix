@@ -43,13 +43,16 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
       "art.design",
       "contract.sign",
       "order.cancel",
+      "approve.productManager",
+      "approve.buyer",
+      "approve.purchasingDirector",
     ],
   },
   {
     key: "production",
     label: "nav.production",
     screens: ["production"],
-    actions: ["container.tracking", "realMedia.approve"],
+    actions: ["container.tracking", "realMedia.approve", "approve.planner"],
   },
   {
     key: "delivery",
