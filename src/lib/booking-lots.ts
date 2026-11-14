@@ -264,6 +264,46 @@ export function bookingLotPending(
 export const bookingLotReady = (p: BookingLotPending) =>
   !p.supplier && !p.date && !p.noItems && p.items.size === 0;
 
+/** Item incompleto na lista de pendências do fechamento. */
+export interface IncompleteBookingItem {
+  itemId: string;
+  /** Nome do item (sem ele, a descrição, encurtada). */
+  name: string | null;
+  /** SKU / código da fábrica (sem ele, o nº do item da planilha). */
+  code: string | null;
+  /** Linha na tabela (a coluna #): identifica o item sem nome nem código. */
+  line: number;
+  /** Campos obrigatórios que faltam, na ordem da validação. */
+  fields: BookingItemRequiredField[];
+}
+
+const shown = (v: string | null | undefined, max: number) => {
+  const text = (v ?? "").replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+};
+
+/**
+ * Lista de pendências do aviso de "Fechar e analisar" (dono, 14/11/2026):
+ * os itens incompletos, na ordem da tabela, cada um com os campos que faltam.
+ * Sai de `bookingLotPending`, a mesma validação que trava o fechamento: a
+ * lista e o "Falta para fechar" contam os mesmos itens.
+ */
+export function incompleteBookingItems(
+  items: readonly BookingItem[],
+  pending: Pick<BookingLotPending, "items">,
+): IncompleteBookingItem[] {
+  return items
+    .filter((item) => pending.items.has(item.id))
+    .map((item) => ({
+      itemId: item.id,
+      name: shown(item.productName, 80) ?? shown(item.description, 60),
+      code: shown(item.factoryItemCode, 60) ?? shown(item.itemNumber, 40),
+      line: item.position + 1,
+      fields: pending.items.get(item.id) ?? [],
+    }));
+}
+
 /** Só o rascunho é editável (fornecedor, data e itens). */
 export const bookingLotEditable = (status: BookingLotStatus) =>
   status === "draft";

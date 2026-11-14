@@ -252,3 +252,12 @@ th[data-table-sort]:focus-visible {
     display: none;
   }
 }
+
+/* Book: a célula do campo aberto pela lista de pendências do fechamento
+   (src/components/booking-pending-list.tsx) fica destacada por alguns segundos. */
+td[data-booking-field-target] {
+  outline: 3px solid var(--color-brand-600);
+  outline-offset: -3px;
+  background-color: var(--color-brand-50);
+  transition: background-color 0.3s ease;
+}
