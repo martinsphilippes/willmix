@@ -228,3 +228,155 @@ export async function flowBlockSummary(
       };
     });
 }
+
+/** Item aberto de um pedido num passo (aba "Todos" da tela do passo). */
+export type FlowEntityItem =
+  | { kind: "requirement"; requirement: import("@/lib/db/schema").Requirement }
+  | { kind: "import"; key: string }
+  | { kind: "case"; title: FlowCase["text"] };
+
+/** Pedido que está num passo agora, com o que está aberto nele. */
+export interface FlowEntity {
+  order: import("@/lib/db/schema").Order;
+  items: FlowEntityItem[];
+  /** Desde quando o pedido está no passo (o item aberto mais antigo). */
+  since: string | null;
+}
+
+/**
+ * Tudo o que está em cada passo agora, de qualquer responsável (aba "Todos",
+ * docs/FLOW_MENU.md): os itens de etapa abertos das etapas em andamento, os
+ * passos do embarque, da origem, da certificação e das amostras prontos e não
+ * concluídos, os recebimentos abertos, a pré-produção e a produção em
+ * andamento (com ETD, na etapa de inspeção). Pedidos em andamento, sem os do
+ * histórico em espera. Só a Wellmix; leitura sob demanda (a tela do passo e
+ * o Overview), não entra no menu.
+ */
+export const flowAllFor = cache(
+  async (user: User): Promise<Map<string, FlowEntity[]>> => {
+    const out = new Map<string, Map<string, FlowEntity>>();
+    if (!isWellmix(user)) return new Map();
+    const store = getStore();
+    const orders = (await store.list("orders")).filter(
+      (o) => !o.held && o.status !== "CLOSED" && o.status !== "CANCELLED",
+    );
+    if (!orders.length) return new Map();
+    const orderById = new Map(orders.map((o) => [o.id, o]));
+    const ids = orders.map((o) => o.id);
+    const add = (
+      stepKey: string,
+      orderId: string,
+      item: FlowEntityItem,
+      since: string | null,
+    ) => {
+      const order = orderById.get(orderId);
+      if (!order) return;
+      const byOrder = out.get(stepKey) ?? new Map<string, FlowEntity>();
+      const entity = byOrder.get(orderId) ?? { order, items: [], since: null };
+      entity.items.push(item);
+      if (since && (!entity.since || since < entity.since))
+        entity.since = since;
+      byOrder.set(orderId, entity);
+      out.set(stepKey, byOrder);
+    };
+    const [stages, importSteps, tracks] = await Promise.all([
+      store.list("stages", { filter: { orderId: ids } }),
+      store.list("import_steps", { filter: { orderId: ids } }).catch(() => []),
+      store
+        .list("production_tracks", { filter: { orderId: ids } })
+        .catch(() => []),
+    ]);
+    // Itens de etapa abertos das etapas em andamento (ou bloqueadas).
+    const live = stages.filter(
+      (s) => s.status === "active" || s.status === "blocked",
+    );
+    const stageById = new Map(live.map((s) => [s.id, s]));
+    const requirements = live.length
+      ? await store.list("requirements", {
+          filter: { stageId: live.map((s) => s.id) },
+        })
+      : [];
+    for (const r of requirements) {
+      if (r.status === "done") continue;
+      const stage = stageById.get(r.stageId);
+      if (!stage) continue;
+      for (const step of flowStepsOf({
+        kind: "requirement",
+        stageKey: stage.key,
+        items: [{ key: r.key }],
+      }))
+        add(
+          stepId(step),
+          r.orderId,
+          { kind: "requirement", requirement: r },
+          stage.startedAt ?? null,
+        );
+    }
+    // Passos do embarque, da origem, da certificação e das amostras.
+    const flow = await import("./import-flow");
+    const { samplesApply } = await import("./sample-flow");
+    const { flowStepOfImportKey } = await import("@/lib/flow");
+    for (const order of orders) {
+      const steps = importSteps.filter((s) => s.orderId === order.id);
+      const certification = steps.some((s) => s.key.startsWith("cert_"));
+      const samples =
+        [
+          "INSPECTION",
+          "SHIPPING",
+          "CUSTOMS",
+          "TRANSPORT",
+          "DELIVERED",
+        ].includes(order.status) &&
+        (await samplesApply(order).catch(() => false));
+      for (const key of flow.openImportStepKeys(order, steps, {
+        certification,
+        samples,
+      })) {
+        const step = flowStepOfImportKey(key);
+        if (!step) continue;
+        const after = steps
+          .filter((s) => s.orderId === order.id)
+          .map((s) => s.updatedAt ?? s.createdAt ?? null)
+          .filter((d): d is string => !!d)
+          .sort()
+          .pop();
+        add(stepId(step), order.id, { kind: "import", key }, after ?? null);
+      }
+      // Produção em andamento: com ETD e na etapa de inspeção.
+      const track = tracks.find((x) => x.orderId === order.id);
+      if (track?.etd && order.status === "INSPECTION")
+        add(
+          "production/production",
+          order.id,
+          {
+            kind: "case",
+            title: {
+              title: "flow.all.production",
+              detail: "flow.all.production",
+              values: { n: order.number },
+            },
+          },
+          track.productionStartAt ?? null,
+        );
+    }
+    // Recebimento no CD e pré-produção: os mesmos casos do menu.
+    for (const c of [
+      ...(await flowReceivingCasesFor(user).catch(() => [])),
+      ...(await flowPreProductionCasesFor(user).catch(() => [])),
+    ])
+      for (const step of flowStepsOf(c))
+        if (c.orderId)
+          add(
+            stepId(step),
+            c.orderId,
+            { kind: "case", title: c.text },
+            c.sinceAt ?? null,
+          );
+    return new Map(
+      [...out.entries()].map(([k, byOrder]) => [
+        k,
+        [...byOrder.values()].sort((a, b) => a.order.number - b.order.number),
+      ]),
+    );
+  },
+);

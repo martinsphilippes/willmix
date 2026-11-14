@@ -199,3 +199,41 @@ describe("itens com tela própria na tela do passo", () => {
     expect(ownScreenOf("gross_weight_measured", "o1")).toBeNull();
   });
 });
+
+describe("aba Todos no passo", () => {
+  it("passos abertos do pedido: prontos, não concluídos, só na fase deles", async () => {
+    const { openImportStepKeys } = await import("@/lib/services/import-flow");
+    const order = {
+      id: "o1",
+      status: "SHIPPING",
+      flow: "customer_request",
+      incoterm: null,
+    } as never;
+    const opts = { certification: false, samples: false };
+    const open = openImportStepKeys(order, [], opts);
+    // O primeiro passo do embarque está pronto; os que dependem dele, não.
+    expect(open).toContain("booking");
+    expect(open).not.toContain("draft_bl");
+    // Concluído sai; o seguinte fica pronto.
+    const booked = [
+      { orderId: "o1", key: "booking", status: "validated" },
+    ] as never[];
+    const next = openImportStepKeys(order, booked, opts);
+    expect(next).not.toContain("booking");
+    expect(next).toContain("draft_bl");
+    // Antes da inspeção, o embarque não está em andamento.
+    expect(
+      openImportStepKeys(
+        { ...(order as object), status: "PREPARATION" } as never,
+        [],
+        opts,
+      ),
+    ).toEqual([]);
+    // Certificação e amostras só quando o chamador diz que valem.
+    expect(open.some((k) => k.startsWith("cert_"))).toBe(false);
+    expect(open.some((k) => k.startsWith("samples_"))).toBe(false);
+    expect(
+      openImportStepKeys(order, [], { certification: true, samples: false }),
+    ).toContain("cert_memorial");
+  });
+});

@@ -10,7 +10,10 @@ import {
   stepHelpKey,
   stepLabelKey,
 } from "@/lib/flow";
-import { flowCasesOf } from "@/lib/services/flow";
+import { flowAllFor, flowCasesOf } from "@/lib/services/flow";
+import { FlowAll } from "@/components/flow-all";
+import { isWellmix } from "@/lib/auth/permissions";
+import { stepId } from "@/lib/flow";
 import { FlowCases } from "@/components/flow-cases";
 import { FlowStepWork } from "@/components/flow-step-work";
 import {
@@ -28,7 +31,9 @@ import { PageHeader, TextLink } from "@/components/ui";
  * Tela de um passo do fluxo (dono, 14/11/2026; docs/FLOW_MENU.md): o que
  * espera ação do login naquele passo, com o prazo, há quantos dias chegou e
  * o atalho para a tela focada onde se resolve. Os filtros de prazo são links
- * (?due=overdue|today|week).
+ * (?due=overdue|today|week). Duas abas (dono, 14/11/2026): Pendências (o
+ * que espera ação do login, padrão) e "Todos no passo" (?tab=all: todos os
+ * pedidos que estão no passo agora, de qualquer responsável; só a Wellmix).
  */
 const DUES = ["overdue", "today", "week"] as const;
 
@@ -43,6 +48,7 @@ export default async function FlowStepPage({
   if (!user) redirect(`/login?next=/app/flow/${block}/${key}`);
   requireScreen(user, step.screen);
   const {
+    tab,
     due,
     importStep,
     certStep,
@@ -65,6 +71,61 @@ export default async function FlowStepPage({
     : null;
   const tasks = filter ? all.filter((x) => x.due === filter) : all;
   const base = `/app/flow/${block}/${key}`;
+  // Aba "Todos no passo": só a Wellmix (os parceiros veem só o que é deles).
+  const wellmix = isWellmix(user);
+  const showAll = wellmix && tab === "all";
+  const entities = wellmix
+    ? ((await flowAllFor(user)).get(stepId(step)) ?? [])
+    : [];
+  const tabs = wellmix ? (
+    <nav
+      aria-label={t("flow.tabs")}
+      className="mb-4 flex gap-1 border-b border-zinc-200 text-sm"
+      data-flow-tabs
+    >
+      {(
+        [
+          ["pending", base, all.length],
+          ["all", `${base}?tab=all`, entities.length],
+        ] as const
+      ).map(([id, href, n]) => {
+        const active = (id === "all") === showAll;
+        return (
+          <a
+            key={id}
+            href={href}
+            aria-current={active ? "page" : undefined}
+            data-flow-tab={id}
+            className={`-mb-px border-b-2 px-3 py-2 ${
+              active
+                ? "border-brand-600 font-semibold text-brand-700"
+                : "border-transparent text-zinc-600 hover:text-zinc-900"
+            }`}
+          >
+            {t(id === "all" ? "flow.tab.all" : "flow.tab.pending")} ({n})
+          </a>
+        );
+      })}
+    </nav>
+  ) : null;
+  if (showAll)
+    return (
+      <div data-flow-step={`${block}/${key}`}>
+        <PageHeader
+          title={t(stepLabelKey(step))}
+          subtitle={t(stepHelpKey(step))}
+          actions={
+            FLOW_OVERVIEW_BLOCKS.includes(step.block) ? (
+              <TextLink href={overviewHref(step.block)} data-flow-back>
+                {t("flow.step.back", { block: t(blockLabelKey(step.block)) })}
+              </TextLink>
+            ) : null
+          }
+        />
+        {tabs}
+        <FlowAll entities={entities} t={t} />
+      </div>
+    );
   // Aviso de "feito" das ações da produção e da arte (os cartões leem o seu).
   const productionNotice =
     typeof production === "string" &&
@@ -96,6 +157,7 @@ export default async function FlowStepPage({
           ) : null
         }
       />
+      {tabs}
       <nav
         aria-label={t("flow.cases.filter")}
         className="mb-3 flex flex-wrap gap-2 text-sm"

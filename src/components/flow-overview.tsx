@@ -8,7 +8,9 @@ import {
   stepLabelKey,
   type FlowBlock,
 } from "@/lib/flow";
-import { flowBlockSummary } from "@/lib/services/flow";
+import { flowAllFor, flowBlockSummary } from "@/lib/services/flow";
+import { isWellmix } from "@/lib/auth/permissions";
+import { stepId } from "@/lib/flow";
 import { FlowCases } from "./flow-cases";
 import { Card, PageHeader, TextLink, cx } from "./ui";
 
@@ -34,6 +36,14 @@ export async function FlowOverview({
   basePath: string;
 }) {
   const summary = await flowBlockSummary(user, block);
+  // Quantos pedidos estão em cada passo agora, de qualquer responsável (só a
+  // Wellmix; a aba "Todos no passo" da tela do passo lista).
+  const all = isWellmix(user) ? await flowAllFor(user) : null;
+  // Passos com tela própria de antes (Books, Pedidos, Revisão…) listam lá.
+  const inStep = (key: string) =>
+    all && !summary.find((x) => x.step.key === key)?.step.href
+      ? (all.get(stepId({ block, key }))?.length ?? 0)
+      : null;
   const total = summary.reduce((n, s) => n + s.count, 0);
   const late = summary.reduce((n, s) => n + s.overdue, 0);
   const current =
@@ -100,6 +110,13 @@ export async function FlowOverview({
                     </span>
                   </div>
                   <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500">
+                    {inStep(s.step.key) !== null ? (
+                      <span data-flow-in-step={inStep(s.step.key) ?? 0}>
+                        {t("flow.overview.inStep", {
+                          n: inStep(s.step.key) ?? 0,
+                        })}
+                      </span>
+                    ) : null}
                     <span
                       className={s.overdue ? "font-semibold text-red-700" : ""}
                     >
