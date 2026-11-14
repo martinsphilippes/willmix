@@ -1,7 +1,8 @@
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { Screen } from "@/lib/auth/screens";
 import { baseKeyOf, itemIdOf } from "@/lib/purchase-lanes";
-import type { StageKey } from "@/lib/db/schema";
+import type { StageKey, User } from "@/lib/db/schema";
+import { isWellmix } from "@/lib/auth/permissions";
 
 /*
  * Blocos e passos do menu lateral (dono, 14/11/2026; docs/FLOW_MENU.md),
@@ -328,11 +329,15 @@ export const stepId = (step: Pick<FlowStep, "block" | "key">) =>
 
 /**
  * Passos com uma linha por produto (dono, 14/11/2026): na Certificação cada
- * produto do pedido tem o seu certificado, então a pendência de etapa que
- * junta vários produtos vira uma linha para cada um, com o "Resolver" do
- * produto. Os outros passos seguem com uma linha por pendência.
+ * produto do pedido tem o seu certificado e, na Arte, a sua arte, validação
+ * e arte final; a pendência de etapa que junta vários produtos vira uma
+ * linha para cada um, com o "Resolver" do produto. Os outros passos seguem
+ * com uma linha por pendência.
  */
-const PER_PRODUCT_STEPS: ReadonlySet<string> = new Set(["order/certification"]);
+const PER_PRODUCT_STEPS: ReadonlySet<string> = new Set([
+  "order/certification",
+  "order/art",
+]);
 
 export const isPerProductStep = (step: Pick<FlowStep, "block" | "key">) =>
   PER_PRODUCT_STEPS.has(stepId(step));
@@ -470,10 +475,25 @@ export const orderInStepHref = (
  * ou arquivo, validar) fica no detalhe do pedido no passo, aberto pelo
  * "Resolver" da linha.
  */
-const LIST_ONLY_STEPS: ReadonlySet<string> = new Set(["order/certification"]);
+const LIST_ONLY_STEPS: ReadonlySet<string> = new Set([
+  "order/certification",
+  "order/art",
+]);
 
 export const isListOnlyStep = (step: Pick<FlowStep, "block" | "key">) =>
   LIST_ONLY_STEPS.has(stepId(step));
+
+/**
+ * A tela do passo é só a lista para este login? Certificação e Arte, para
+ * todos; os outros passos, para a Wellmix (administradores e operadores, dono
+ * 14/11/2026: "no acesso dos ADMs e gestores"), com o trabalho no pedido no
+ * passo, aberto pelo "Resolver". Os parceiros seguem com os cartões nos
+ * outros passos.
+ */
+export const listOnlyFor = (
+  user: Pick<User, "role">,
+  step: Pick<FlowStep, "block" | "key">,
+) => isListOnlyStep(step) || isWellmix(user);
 
 /** Itens da pendência de etapa que caem neste passo (o resto aparece no passo deles). */
 export function itemsInStep<T extends { key: string }>(

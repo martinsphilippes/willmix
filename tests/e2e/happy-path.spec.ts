@@ -677,27 +677,68 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.locator('[data-order-progress-stage="PACKAGING"]'),
   ).toBeVisible();
+  // Pedido → Arte (dono, 14/11/2026), o padrão da Certificação: só a lista,
+  // uma linha por produto, sem os cartões dos pedidos embaixo. O "Resolver"
+  // abre o produto no pedido no passo, onde a Wellmix valida a arte
+  // reenviada; a ação volta ao mesmo produto, e a lista, a aba e o menu
+  // contam uma a menos.
   await page.goto("/app/flow/order/art");
   await expect(
     page.locator('[data-flow-tab="pending"][aria-current="page"]'),
   ).toBeVisible();
+  const artBadge = page
+    .locator('[data-nav-link="/app/flow/order/art"] [data-nav-badge]')
+    .filter({ visible: true })
+    .first();
+  await expect(artBadge).toBeVisible();
   await expect(
-    page
-      .locator('[data-nav-link="/app/flow/order/art"] [data-nav-badge]')
-      .filter({ visible: true })
-      .first(),
-  ).toBeVisible();
-  const orderId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
-  const artCard = page.locator(`[data-flow-requirement-order="${orderId}"]`);
-  const artReview = artCard.locator('[data-flow-requirement^="art_review"]');
-  await expect(artReview.locator("[data-lane-input] a")).toHaveCount(1);
-  await Promise.all([
-    page.waitForURL(/\/app\/flow\/order\/art(\?|$)/),
-    artReview.locator("button[value=approve]").click(),
-  ]);
-  await expect(
-    artCard.locator('[data-flow-requirement^="art_review"]'),
+    page.locator(
+      "[data-flow-requirements], [data-flow-artwork], [data-flow-work]",
+    ),
   ).toHaveCount(0);
+  const orderId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
+  const artRows = page.locator("[data-flow-case]");
+  const rowsBefore = await artRows.count();
+  // O menu conta o mesmo que a lista mostra (uma linha por produto).
+  expect(Number(await artBadge.getAttribute("data-nav-badge"))).toBe(
+    rowsBefore,
+  );
+  await expect(page.locator('[data-flow-tab="pending"]')).toContainText(
+    `(${rowsBefore})`,
+  );
+  const artRow = page.locator(
+    `[data-flow-case][data-flow-case-order="${orderId}"][data-flow-case-item]`,
+  );
+  await expect(artRow).toHaveCount(1);
+  const artItem = (await artRow.getAttribute("data-flow-case-item"))!;
+  await Promise.all([
+    page.waitForURL(
+      new RegExp(`/app/flow/order/art/${orderId}\\?item=${artItem}$`),
+    ),
+    artRow.locator("[data-flow-case-open]").click(),
+  ]);
+  await expect(page.locator("[data-flow-order-focus]")).toBeVisible();
+  const artReview = page.locator(
+    `[data-flow-order-requirement="art_review__${artItem}"]`,
+  );
+  await expect(artReview).toHaveAttribute("data-status", "pending");
+  // Quem valida abre a arte enviada na própria linha.
+  await expect(artReview.locator('a[href^="/api/files/"]')).toHaveCount(1);
+  await artReview.locator("button[value=approve]").click();
+  await expect(artReview).toHaveAttribute("data-status", "done");
+  expect(page.url()).toContain(`item=${artItem}`);
+  await page.goto("/app/flow/order/art");
+  await expect(artRow).toHaveCount(0);
+  await expect(artRows).toHaveCount(rowsBefore - 1);
+  await expect(page.locator('[data-flow-tab="pending"]')).toContainText(
+    `(${rowsBefore - 1})`,
+  );
+  if (rowsBefore > 1)
+    await expect(artBadge).toHaveAttribute(
+      "data-nav-badge",
+      String(rowsBefore - 1),
+    );
+  else await expect(artBadge).toHaveCount(0);
   await page.goto(orderUrl);
   await expect(
     requirementRow(page, /Validação da arte pela Wellmix/),
@@ -965,12 +1006,23 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
 
   // Sinal pago e a produção sem ETD: o pedido aparece em Produção →
   // Pré-produção, com os dados da produção e o ETD (docs/FLOW_MENU.md).
+  // Para a Wellmix a tela do passo é só a lista (dono, 14/11/2026: "no acesso
+  // dos ADMs e gestores"); o "Resolver" abre o pedido no passo.
   await login(page, "admin@wellmix.com");
   await page.goto("/app/flow/production/pre-production");
   const preId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
-  const preCard = page.locator(`[data-flow-production-order="${preId}"]`);
-  await expect(preCard.locator("[data-production-plan]")).toBeVisible();
-  await expect(preCard.locator("[data-production-etd]")).toBeVisible();
+  await expect(page.locator("[data-flow-production]")).toHaveCount(0);
+  await Promise.all([
+    page.waitForURL(
+      new RegExp(`/app/flow/production/pre-production/${preId}$`),
+    ),
+    page
+      .locator(`[data-flow-case-order="${preId}"] [data-flow-case-open]`)
+      .first()
+      .click(),
+  ]);
+  await expect(page.locator("[data-production-plan]")).toBeVisible();
+  await expect(page.locator("[data-production-etd]")).toBeVisible();
 
   // De volta ao fornecedor: a inspeção é dele.
   await login(page, "supplier.a@china.com");
@@ -987,6 +1039,11 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
       .first(),
   ).toBeVisible();
   await expect(page.locator("[data-flow-case]").first()).toBeVisible();
+  // O parceiro segue com os cartões nos passos dele (só a Wellmix e as
+  // telas de Arte e Certificação ficam só com a lista).
+  await expect(
+    page.locator("[data-flow-requirements], [data-flow-production]"),
+  ).not.toHaveCount(0);
   await page.goto("/app/flow/production/inspection?tab=all");
   await page
     .locator(`[data-flow-all-order="${preId}"] [data-flow-all-view]`)
@@ -1016,21 +1073,31 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     { 重量: "15", weight: "15", peso: "15" },
     20,
   );
-  // A Wellmix aprova o SKU na tela do passo Produção → Inspeção, com o
-  // relatório da inspeção ao lado (docs/FLOW_MENU.md): só então vai ao
-  // Embarque. A ação volta para a tela do passo.
+  // A Wellmix aprova o SKU pelo "Resolver" de Produção → Inspeção (a tela
+  // do passo é só a lista para ela): o pedido no passo traz o relatório da
+  // inspeção e a decisão por SKU (docs/FLOW_MENU.md); só então vai ao
+  // Embarque. A ação volta para o pedido no passo.
   await login(page, "admin@wellmix.com");
   await page.goto("/app/flow/production/inspection");
   const inspId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
-  const inspCard = page.locator(`[data-flow-production-order="${inspId}"]`);
-  await expect(inspCard.locator("[data-flow-inspection-report]")).toBeVisible();
-  await expect(inspCard.locator("[data-production-plan]")).toHaveCount(0);
-  const skuRow = inspCard.locator("[data-sku-item]").first();
-  await expect(skuRow).toHaveAttribute("data-sku-status", "pending");
+  await expect(page.locator("[data-flow-production]")).toHaveCount(0);
   await Promise.all([
-    page.waitForURL(/\/app\/flow\/production\/inspection/),
-    skuRow.locator("[data-sku-approve]").click(),
+    page.waitForURL(new RegExp(`/app/flow/production/inspection/${inspId}$`)),
+    page
+      .locator(`[data-flow-case-order="${inspId}"] [data-flow-case-open]`)
+      .first()
+      .click(),
   ]);
+  await expect(page.locator("[data-flow-inspection-report]")).toBeVisible();
+  await expect(page.locator("[data-production-plan]")).toHaveCount(0);
+  const skuRow = page.locator("[data-sku-item]").first();
+  await expect(skuRow).toHaveAttribute("data-sku-status", "pending");
+  await skuRow.locator("[data-sku-approve]").click();
+  await expect(page.locator("[data-sku-item]").first()).not.toHaveAttribute(
+    "data-sku-status",
+    "pending",
+  );
+  expect(page.url()).toContain(`/app/flow/production/inspection/${inspId}`);
   await page.waitForLoadState("networkidle");
   await page.goto(orderUrl);
   await expect(page.locator("[data-sku-item]").first()).toHaveAttribute(
@@ -1241,15 +1308,21 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await login(page, "admin@wellmix.com");
   // Pedido entregue no CD: o recebimento aparece em Entrega → Armazenagem
   // (descarga e contagem), sem as partes do Retorno (docs/FLOW_MENU.md).
+  // Só a lista para a Wellmix; o "Resolver" abre o pedido no passo.
   await page.goto("/app/flow/delivery/storage");
   const deliveredId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
-  const storageCard = page.locator(
-    `[data-flow-receiving-order="${deliveredId}"]`,
-  );
-  await expect(
-    storageCard.locator("[data-receiving-unloading-row]"),
-  ).toBeVisible();
-  await expect(storageCard.locator("[data-receiving-ric]")).toHaveCount(0);
+  await expect(page.locator("[data-flow-receiving]")).toHaveCount(0);
+  await Promise.all([
+    page.waitForURL(
+      new RegExp(`/app/flow/delivery/storage/${deliveredId}$`),
+    ),
+    page
+      .locator(`[data-flow-case-order="${deliveredId}"] [data-flow-case-open]`)
+      .first()
+      .click(),
+  ]);
+  await expect(page.locator("[data-receiving-unloading-row]")).toBeVisible();
+  await expect(page.locator("[data-receiving-ric]")).toHaveCount(0);
   await page.goto(orderUrl);
   // Fatura ativa (R24): com o BL conferido, o faturamento já tem vencimento.
   await expect(page.locator("[data-invoice-due]")).toBeVisible();
