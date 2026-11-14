@@ -34,7 +34,7 @@ export const pt = {
     "A programação de um produto foi gerada para outro produto. Gere a programação de novo e envie.",
   "reqSchedule.pieces": "Quantidade (peças)",
   "reqSchedule.piecesHint":
-    "A quantidade do produto, em peças. Sem programação, vai num pedido único.",
+    "Digite as caixas: as peças saem delas (caixas × peças por caixa master). Sem programação, vai num pedido único.",
   "reqSchedule.piecesScheduledHint":
     "Com a programação, a quantidade é a soma das programações.",
   "reqSchedule.summary":
@@ -76,7 +76,7 @@ export const en: Record<keyof typeof pt, string> = {
     "A product schedule was generated for another product. Generate the schedule again and send.",
   "reqSchedule.pieces": "Quantity (pieces)",
   "reqSchedule.piecesHint":
-    "The product quantity, in pieces. Without a schedule, it goes in a single order.",
+    "Type the cartons: the pieces come from them (cartons × pieces per master carton). Without a schedule, it goes in a single order.",
   "reqSchedule.piecesScheduledHint":
     "With a schedule, the quantity is the sum of the schedules.",
   "reqSchedule.summary": "{n} rounds every {days} days, starting {date}",
@@ -116,7 +116,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqBatch.error.schedule_product_changed":
     "某产品的计划是为另一个产品生成的。请重新生成计划后再发送。",
   "reqSchedule.pieces": "数量（件）",
-  "reqSchedule.piecesHint": "产品数量，以件计。不分批时为单次订单。",
+  "reqSchedule.piecesHint":
+    "请填写箱数：件数由箱数计算（箱数 × 每外箱件数）。不分批时为单次订单。",
   "reqSchedule.piecesScheduledHint": "有交货计划时，数量为各批次之和。",
   "reqSchedule.summary": "共 {n} 批，每 {days} 天一批，自 {date} 起",
   "reqSchedule.requested": "客户需求：{quantity} {unit}，{date}",

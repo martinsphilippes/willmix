@@ -95,18 +95,11 @@ test("vencedor, variações de cor e composição por data até a solicitação"
       '[data-selection-color="MARROM"] [data-selection-color-pieces]',
     ),
   ).toHaveText("960 peças");
-  // Pedido único em peças que não fecham caixas: diz o ajuste e não grava.
+  // As peças do gerador ficam travadas (dono, 14/11/2026): só as caixas se
+  // digitam, e o que se digita sempre fecha caixas inteiras para as cores.
   const adjust = page.locator('[data-colors-error="cartons"]');
-  await page.locator("[data-selection-quantity]").fill("2900");
-  await expect(adjust).toContainText(
-    "2.900 peças não fecham caixas master inteiras de 48",
-  );
-  await expect(adjust).toContainText("Ajuste para 2.880 ou 2.928 peças");
-  await page.click("[data-selection-submit]");
-  await expect(page).not.toHaveURL(/[?&]saved=1/);
-  await page.locator("[data-generate-total]").fill("60");
+  await expect(page.locator("[data-selection-quantity]")).not.toBeEditable();
   await expect(adjust).toHaveCount(0);
-  await expect(preview.locator("[data-color-grand]")).toHaveText("2.880");
 
   // 4. Duas datas (exemplo do dono): 480 de cada cor por data, 1.440 por data.
   const gen = page.locator("[data-rounds-generator]");

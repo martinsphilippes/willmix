@@ -13,6 +13,9 @@ export const pt = {
   "reqProduct.moq": "Pedido mínimo: {n} {unit}",
   "reqProduct.belowMoq":
     "Abaixo do pedido mínimo ({n} {unit}). Ao sair do campo, a quantidade sobe para o mínimo.",
+  "reqProduct.moqCartons": "Pedido mínimo: {n} {unit} ({cartons} caixas)",
+  "reqProduct.belowMoqCartons":
+    "Abaixo do pedido mínimo ({n} {unit}, {cartons} caixas). Ao sair do campo, a quantidade sobe para o mínimo em caixas inteiras.",
   "reqProduct.variant": "Variação",
   "reqProduct.variantChoose": "Escolha a variação",
   "reqProduct.variantHint":
@@ -31,6 +34,9 @@ export const en: Record<keyof typeof pt, string> = {
   "reqProduct.moq": "Minimum order: {n} {unit}",
   "reqProduct.belowMoq":
     "Below the minimum order ({n} {unit}). When you leave the field, the quantity goes up to the minimum.",
+  "reqProduct.moqCartons": "Minimum order: {n} {unit} ({cartons} cartons)",
+  "reqProduct.belowMoqCartons":
+    "Below the minimum order ({n} {unit}, {cartons} cartons). When you leave the field, the quantity goes up to the minimum in whole cartons.",
   "reqProduct.variant": "Variation",
   "reqProduct.variantChoose": "Choose the variation",
   "reqProduct.variantHint":
@@ -48,6 +54,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqProduct.moq": "起订量：{n} {unit}",
   "reqProduct.belowMoq":
     "低于起订量（{n} {unit}）。离开输入框后数量将提升至起订量。",
+  "reqProduct.moqCartons": "起订量：{n} {unit}（{cartons} 箱）",
+  "reqProduct.belowMoqCartons":
+    "低于起订量（{n} {unit}，{cartons} 箱）。离开输入框后数量将按整箱提升至起订量。",
   "reqProduct.variant": "款式",
   "reqProduct.variantChoose": "请选择款式",
   "reqProduct.variantHint":

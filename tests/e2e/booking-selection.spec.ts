@@ -393,27 +393,22 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   ).toBeVisible();
   await expect(gen.locator("[data-generate-total]")).toHaveValue("63");
   // "Total de caixas" e "Quantidade (peças)" são o mesmo número em duas
-  // unidades (dono, 13/11/2026): o que se digita num aparece no outro, pelas
-  // 48 peças por caixa master do item escolhido. Sem programação, as peças
-  // são a quantidade da escolha (em branco = a da planilha).
+  // unidades, pelas 48 peças por caixa master do item escolhido. Só as
+  // caixas se digitam (dono, 14/11/2026): as peças ficam travadas (caixas ×
+  // peças por caixa). Sem programação, as peças são a quantidade da escolha
+  // (em branco = a da planilha).
   const boxesField = gen.locator("[data-generate-total]");
   const piecesField = gen.locator("[data-selection-quantity]");
   await expect(
     gen.getByLabel("Quantidade (peças)", { exact: true }),
   ).toBeVisible();
   await expect(piecesField).toHaveValue("");
-  await expect(piecesField).toBeEditable();
+  await expect(piecesField).not.toBeEditable();
   await expect(piecesField).toHaveAttribute("name", "quantity");
   await boxesField.fill("10");
   await expect(piecesField).toHaveValue("480");
-  // 500 peças = 10,4 caixas: 11 (inteiras, para cima).
-  await piecesField.fill("500");
-  await expect(boxesField).toHaveValue("11");
-  await expect(calc.locator("[data-generate-extra]")).toContainText("28");
-  // Apagar as peças volta à quantidade da planilha; apagar as caixas não
-  // devolve o número antigo enquanto se digita.
-  await piecesField.fill("");
-  await expect(boxesField).toHaveValue("63");
+  // Apagar as caixas deixa as peças em branco (vale a quantidade da
+  // planilha) e não devolve o número antigo enquanto se digita.
   await boxesField.fill("");
   await expect(piecesField).toHaveValue("");
   await expect(boxesField).toHaveValue("");
@@ -483,8 +478,7 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   // Com a programação aberta, o campo das peças não vai no formulário (a
   // quantidade gravada é a soma das rodadas) e os dois continuam ligados.
   await expect(piecesField).not.toHaveAttribute("name", "quantity");
-  await piecesField.fill("24000");
-  await expect(boxesField).toHaveValue("500");
+  await expect(piecesField).not.toBeEditable();
   await gen.locator("[data-generate-total]").fill("1000");
   await expect(piecesField).toHaveValue("48000");
   await card(1).locator("[data-round-up]").click();
@@ -562,12 +556,13 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await page.waitForURL(/ids=/);
   await expect(page.locator("[data-selection-item]")).toHaveCount(3);
 
-  // 7. "Quantidade (peças)" nos dois modos, com o mesmo valor. Com a
-  // programação aberta, Enter no campo gera de novo com o total digitado
-  // (como em "Total de caixas"); fechada, o campo continua na tela, é ele
-  // que a escolha grava (10 caixas de 48 = 480 peças) e Enter grava, como
-  // antes. Nada é gravado aqui: a escolha gravada com as caixas digitadas e
-  // a volta dela aos dois campos estão em booking-supplier-request.spec.ts.
+  // 7. "Quantidade (peças)" nos dois modos, com o mesmo valor e travada (só
+  // as caixas se digitam, dono, 14/11/2026). Com a programação aberta, Enter
+  // em "Total de caixas" gera de novo com o total digitado; fechada, as
+  // peças continuam na tela e são elas que a escolha grava (10 caixas de 48
+  // = 480 peças). Nada é gravado aqui: a escolha gravada com as caixas
+  // digitadas e a volta dela aos dois campos estão em
+  // booking-supplier-request.spec.ts.
   await chooseItem(page, `${TAG}-A`);
   const savedBoxes = page.locator("[data-generate-total]");
   const savedPieces = page.locator("[data-selection-quantity]");
@@ -592,8 +587,8 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(page.locator("[data-schedule-item]")).toHaveCount(2);
   await expect(savedPieces).toHaveValue("4800");
   expect(await formQuantity()).toBeNull();
-  await savedPieces.fill("9600");
-  await savedPieces.press("Enter");
+  await savedBoxes.fill("200");
+  await savedBoxes.press("Enter");
   await expect(page.locator('input[name="schedule.qty.1"]')).toHaveValue(
     "4800",
   );
@@ -609,13 +604,13 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(page.locator('[data-request-schedule="off"]')).toBeVisible();
   await expect(savedPieces).toHaveValue("9600");
   await expect(savedBoxes).toHaveValue("200");
-  await expect(savedPieces).toBeEditable();
+  await expect(savedPieces).not.toBeEditable();
   await expect(savedPieces).toHaveAttribute("name", "quantity");
   await savedBoxes.fill("10");
   await expect(savedPieces).toHaveValue("480");
   expect(await formQuantity()).toBe("480");
   expect(await enterTaken()).toBe(false);
   // Em branco, o formulário manda a quantidade vazia: vale a da planilha.
-  await savedPieces.fill("");
+  await savedBoxes.fill("");
   expect(await formQuantity()).toBe("");
 });

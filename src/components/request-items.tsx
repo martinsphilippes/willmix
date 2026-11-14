@@ -58,6 +58,9 @@ export function RequestItems({
     moq: string;
     /** Quantidade digitada abaixo do mínimo ({n}, {unit}). */
     belowMoq: string;
+    /** Os mesmos, com o mínimo em caixas ({cartons}) quando as peças vêm das caixas. */
+    moqCartons?: string;
+    belowMoqCartons?: string;
     /** Idioma dos números (ex.: "pt-BR"). */
     intl: string;
     schedule: ScheduleLabels;
@@ -92,16 +95,38 @@ export function RequestItems({
       : null;
     return (v ? v.moq : p.moq) || null;
   };
+  /** Peças por caixa master do produto (ou da variação) da linha. */
+  const perCartonOf = (chosen: Chosen | undefined, rowUnit = "un") => {
+    if (!chosen?.id || !isPieceUnit(rowUnit)) return null;
+    const p = chosen.fill;
+    const v = chosen.variantId
+      ? p?.variants.find((x) => x.id === chosen.variantId)
+      : null;
+    const per = (v ? v.masterCartonQty : p?.masterCartonQty) ?? null;
+    return per && per > 0 ? per : null;
+  };
+  /**
+   * O pedido mínimo em caixas inteiras quando as peças vêm das caixas (dono,
+   * 14/11/2026): 2.000 peças de 48 por caixa = 42 caixas = 2.016 peças.
+   */
+  const minQty = (moq: number, per: number | null) =>
+    per ? Math.ceil(moq / per - 1e-9) * per : moq;
   // Quantidade e unidade por linha (a programação de entregas soma na quantidade).
   // Produto com pedido mínimo já começa nele (nunca abaixo).
   const [qty, setQty] = useState<Record<number, string>>(() => {
-    const moq = moqOf({
+    const chosen: Chosen = {
       id: presetProductId,
       variantId: presetVariantId,
       fill: fields.products.find((x) => x.id === presetProductId) ?? null,
-    });
+    };
+    const moq = moqOf(chosen);
     const preset = Number(presetQuantity.replace(",", ".")) || 0;
-    return { 0: moq && preset < moq ? String(moq) : presetQuantity };
+    return {
+      0:
+        moq && preset < moq
+          ? String(minQty(moq, perCartonOf(chosen)))
+          : presetQuantity,
+    };
   });
   // Unidade por linha: o campo saiu da tela (dono, 14/11/2026) e a
   // solicitação vai em peças ("un"), como o bloco "Programação de compra".
@@ -155,10 +180,11 @@ export function RequestItems({
     setProduct((p) => ({ ...p, [index]: { id, variantId, fill } }));
     const moq = moqOf({ id, variantId, fill });
     if (!moq) return;
+    const per = perCartonOf({ id, variantId, fill }, unit[index]);
     setQty((q) => {
       const current = Number((q[index] ?? "").replace(",", ".")) || 0;
       return current < moq && isPieceUnit(unit[index])
-        ? { ...q, [index]: String(moq) }
+        ? { ...q, [index]: String(minQty(moq, per)) }
         : q;
     });
   }
@@ -166,13 +192,17 @@ export function RequestItems({
   function floorToMoq(index: number) {
     const moq = moqOf(product[index]);
     if (!moq || !isPieceUnit(unit[index])) return;
+    const per = perCartonOf(product[index], unit[index]);
     setQty((q) => {
       const current = Number((q[index] ?? "").replace(",", ".")) || 0;
-      return current < moq ? { ...q, [index]: String(moq) } : q;
+      return current < moq ? { ...q, [index]: String(minQty(moq, per)) } : q;
     });
   }
-  const fill = (text: string, n: number, u: string) =>
-    text.replace("{n}", n.toLocaleString(labels.intl)).replace("{unit}", u);
+  const fill = (text: string, n: number, u: string, cartons?: number) =>
+    text
+      .replace("{n}", n.toLocaleString(labels.intl))
+      .replace("{unit}", u)
+      .replace("{cartons}", (cartons ?? 0).toLocaleString(labels.intl));
 
   function add() {
     setRows((r) => [...r, next]);
@@ -286,15 +316,24 @@ export function RequestItems({
                     }
                     unit={rowUnit}
                     quantityRequired
-                    moq={
-                      moqApplies
-                        ? {
-                            min: moq!,
-                            hint: fill(labels.moq, moq!, rowUnit),
-                            below: fill(labels.belowMoq, moq!, rowUnit),
-                          }
-                        : null
-                    }
+                    moq={(() => {
+                      if (!moqApplies) return null;
+                      // Com as peças travadas (vêm das caixas), o mínimo
+                      // também em caixas: "2.000 un (42 caixas)".
+                      const per = perCartonOf(product[index], rowUnit);
+                      const boxes = per ? Math.ceil(moq! / per - 1e-9) : 0;
+                      return {
+                        min: moq!,
+                        hint:
+                          per && labels.moqCartons
+                            ? fill(labels.moqCartons, moq!, rowUnit, boxes)
+                            : fill(labels.moq, moq!, rowUnit),
+                        below:
+                          per && labels.belowMoqCartons
+                            ? fill(labels.belowMoqCartons, moq!, rowUnit, boxes)
+                            : fill(labels.belowMoq, moq!, rowUnit),
+                      };
+                    })()}
                     onQuantityBlur={() => floorToMoq(index)}
                     className="col-span-2 sm:col-span-4"
                   />
