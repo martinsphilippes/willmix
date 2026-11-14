@@ -4,6 +4,11 @@
  */
 export const pt = {
   "production.title": "Produção",
+  "production.page.subtitle":
+    "Acompanhamento da produção dos pedidos de compra.",
+  "production.page.soon":
+    "Esta tela ainda está em construção. Por enquanto, a produção de cada pedido (ETD, follow e inspeções) fica nos detalhes do pedido.",
+  "production.page.orders": "Ver os pedidos de compra",
   "production.mode": "Fornecedor é",
   "production.mode.factory": "Fábrica",
   "production.mode.trade": "Trade (revenda)",
@@ -89,6 +94,10 @@ export const pt = {
 
 export const en: Record<keyof typeof pt, string> = {
   "production.title": "Production",
+  "production.page.subtitle": "Production follow-up of purchase orders.",
+  "production.page.soon":
+    "This screen is still being built. For now, the production of each order (ETD, follow-ups and inspections) is in the order details.",
+  "production.page.orders": "See purchase orders",
   "production.mode": "Supplier is",
   "production.mode.factory": "Factory",
   "production.mode.trade": "Trading company",
@@ -177,6 +186,10 @@ export const en: Record<keyof typeof pt, string> = {
 
 export const zh: Record<keyof typeof pt, string> = {
   "production.title": "生产",
+  "production.page.subtitle": "采购订单的生产跟进。",
+  "production.page.soon":
+    "此页面仍在建设中。目前，每个订单的生产信息（ETD、跟进和验货）在订单详情中。",
+  "production.page.orders": "查看采购订单",
   "production.mode": "供应商类型",
   "production.mode.factory": "工厂",
   "production.mode.trade": "贸易公司",

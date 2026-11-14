@@ -42,6 +42,7 @@ describe("menu lateral", () => {
         group: "nav.group.delivery",
         items: [
           "/app/orders",
+          "/app/production",
           "/app/reviews",
           "/app/containers",
           "/app/freight",
@@ -90,6 +91,44 @@ describe("menu lateral", () => {
       expect(links.map((l) => l.href)).not.toContain(href);
     // Todo grupo e todo link solto têm ícone.
     for (const e of navFor(ADMIN)) expect(e.icon).toBeTruthy();
+  });
+
+  it("Produção: em Pedidos e entrega, logo abaixo de Pedidos de compra e antes de Revisão", () => {
+    const delivery = navFor(ADMIN).find(
+      (e) => isNavGroup(e) && e.key === "nav.group.delivery",
+    );
+    const items = delivery && isNavGroup(delivery) ? delivery.items : [];
+    const at = items.findIndex((l) => l.href === "/app/production");
+    expect(items[at]?.key).toBe("nav.production");
+    expect(items[at - 1]?.href).toBe("/app/orders");
+    expect(items[at + 1]?.href).toBe("/app/reviews");
+    // Padrão das funções: quem acompanha a produção (comprador e planner) e
+    // as diretorias; as outras recebem em Equipe e acessos → Telas e links.
+    for (const fn of [
+      "buyer",
+      "planner",
+      "purchasing_director",
+      "executive_director",
+    ] as const)
+      expect(hrefsOf({ role: "operator", functions: [fn] })).toContain(
+        "/app/production",
+      );
+    for (const fn of [
+      "product_manager",
+      "catalog",
+      "finance",
+      "designer",
+    ] as const)
+      expect(hrefsOf({ role: "operator", functions: [fn] })).not.toContain(
+        "/app/production",
+      );
+    // Tela interna: nenhum login de fora vê.
+    for (const role of ROLES.filter((r) => r !== "admin" && r !== "operator"))
+      expect(hrefsOf({ role })).not.toContain("/app/production");
+    // Acesa na própria tela (e nas subpáginas); Pedidos de compra não acende.
+    expect(isActiveHref("/app/production", "/app/production")).toBe(true);
+    expect(isActiveHref("/app/orders", "/app/production")).toBe(false);
+    expect(isActiveHref("/app/production", "/app/orders")).toBe(false);
   });
 
   it("telas fora do fluxo de hoje não aparecem no menu de ninguém", () => {

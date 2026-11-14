@@ -74,7 +74,7 @@ Nada disso é feito agora; a regra é só não tomar decisões que tornem isso i
 - Onde a marca aparece: cabeçalho vermelho numa faixa só (marca, idioma, conta de demonstração, mensagens e sino); menu lateral branco (veja "Menu lateral", abaixo; painel no celular); login com painel vermelho (apresentação e fluxo) e formulário branco; rodapé com logo colorido; barra do navegador no celular (`themeColor`).
 - **Menu lateral** (decisão do dono, 12/11/2026; modelo em `src/lib/nav.ts`, barra em `src/components/app-nav.tsx`). Barra fixa à esquerda, abaixo do cabeçalho. No alto ficam os links do dia a dia: Control Tower, Pendências, Mensagens e Notificações, com contador de não lidas. Mensagens e Notificações continuam também no cabeçalho. Depois vêm os grupos, cada um na ordem do fluxo:
   - **Compras**: Booking → Seleção de itens → Convites de booking → Solicitações ao fornecedor.
-  - **Pedidos e entrega**: Pedidos de compra → Revisão → Containers → Fretes → Tarifário de frete → Estoque.
+  - **Pedidos e entrega**: Pedidos de compra → Produção → Revisão → Containers → Fretes → Tarifário de frete → Estoque.
   - **Financeiro**: Financeiro, Contas a pagar, Acordos e comissões, Multas.
   - **Painéis**: Painel do dono, Fluxo de caixa, Superplan, Painéis por área, Painel de SLA.
   - **Cadastros**: Parceiros, Produtos, Linhas.
