@@ -214,7 +214,9 @@ export default async function RequestDetailPage({
         }
         actions={
           <>
-            {/* Mensagens: assunto desta solicitação na conversa da empresa. */}
+            {/* Mensagens: assunto desta solicitação na conversa da empresa.
+                "Conversar com a empresa" (Wellmix) abre o chat numa caixa
+                flutuante na própria tela (dono, 14/11/2026). */}
             <ChatButtons
               back={`/app/requests/${request.id}`}
               requestId={request.id}
@@ -224,6 +226,7 @@ export default async function RequestDetailPage({
                       partyId: request.customerId,
                       label: t("messages.chatCompany"),
                       title: customer?.name,
+                      floating: true,
                     }
                   : { label: t("messages.chatWellmix") },
               ]}

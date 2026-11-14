@@ -1,5 +1,6 @@
 import { openChatAction } from "@/app/app/actions/messages";
 import { ChatOnly } from "./chat-access";
+import { ChatFloatingForm } from "./chat-floating-form";
 import { SubmitButton } from "./submit-button";
 
 /*
@@ -8,6 +9,8 @@ import { SubmitButton } from "./submit-button";
  * conversa da empresa e leva até ele. Quem é de fora tem um botão (a própria
  * empresa); a Wellmix, um por empresa participante. Perfil sem a tela
  * Mensagens (Gestão de telas) não vê os botões: a ação recusaria.
+ * Com `floating`, o botão abre a conversa numa caixa flutuante na própria
+ * tela (ChatFloatingForm), sem ir para Mensagens.
  */
 
 export interface ChatTarget {
@@ -16,6 +19,8 @@ export interface ChatTarget {
   label: string;
   /** Texto de apoio (ex.: nome da empresa). */
   title?: string;
+  /** Abre a caixa flutuante do chat na própria tela (sem ir para Mensagens). */
+  floating?: boolean;
 }
 
 function ChatIcon() {
@@ -57,29 +62,43 @@ export function ChatButtons({
         {prefix ? (
           <span className="text-xs font-medium text-zinc-500">{prefix}</span>
         ) : null}
-        {targets.map((target) => (
-          <form key={target.partyId ?? "own"} action={openChatAction}>
-            <input type="hidden" name="back" value={back} />
-            {requestId ? (
-              <input type="hidden" name="requestId" value={requestId} />
-            ) : null}
-            {orderId ? (
-              <input type="hidden" name="orderId" value={orderId} />
-            ) : null}
-            {target.partyId ? (
-              <input type="hidden" name="partyId" value={target.partyId} />
-            ) : null}
-            {/* Mesmo tamanho dos outros botões do topo da página. */}
-            <SubmitButton
-              variant="secondary"
+        {targets.map((target) =>
+          target.floating ? (
+            <ChatFloatingForm
+              key={target.partyId ?? "own"}
+              back={back}
+              requestId={requestId}
+              orderId={orderId}
+              partyId={target.partyId}
               title={target.title}
-              data-chat-target={target.partyId ?? "own"}
             >
               <ChatIcon />
               {target.label}
-            </SubmitButton>
-          </form>
-        ))}
+            </ChatFloatingForm>
+          ) : (
+            <form key={target.partyId ?? "own"} action={openChatAction}>
+              <input type="hidden" name="back" value={back} />
+              {requestId ? (
+                <input type="hidden" name="requestId" value={requestId} />
+              ) : null}
+              {orderId ? (
+                <input type="hidden" name="orderId" value={orderId} />
+              ) : null}
+              {target.partyId ? (
+                <input type="hidden" name="partyId" value={target.partyId} />
+              ) : null}
+              {/* Mesmo tamanho dos outros botões do topo da página. */}
+              <SubmitButton
+                variant="secondary"
+                title={target.title}
+                data-chat-target={target.partyId ?? "own"}
+              >
+                <ChatIcon />
+                {target.label}
+              </SubmitButton>
+            </form>
+          ),
+        )}
       </div>
     </ChatOnly>
   );
