@@ -134,6 +134,18 @@ export async function FullLoadCard({ t, q }: { t: Translate; q: Params }) {
                     })}
                   </span>
                 ) : null}
+                {p.failed?.length ? (
+                  <details className="mt-1 text-amber-700">
+                    <summary className="cursor-pointer">
+                      {t("sankhyaLoad.full.failed", { n: p.failed.length })}
+                    </summary>
+                    <ul className="mt-1 max-h-40 overflow-auto font-mono text-[11px]">
+                      {p.failed.map((f, i) => (
+                        <li key={i}>{f}</li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
               </Td>
               <Td className="text-xs">
                 {Object.entries(p.counts)

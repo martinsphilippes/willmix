@@ -72,7 +72,7 @@ interface FakeRow {
 }
 
 /** Sankhya falso: TGFPRO com imagens; AD_IMAGEM04 não existe no ERP. */
-function fakeSankhya(rows: FakeRow[]) {
+function fakeSankhya(rows: FakeRow[], broken: number[] = []) {
   const sqls: string[] = [];
   const reply = (columns: string[], data: unknown[][]) =>
     new Response(
@@ -125,6 +125,12 @@ function fakeSankhya(rows: FakeRow[]) {
             matching.length,
           ],
         ],
+      );
+    // Foto que o gateway não entrega (HTTP 500 toda vez, como em 14/11/2026).
+    if (eq && broken.includes(Number(eq[1])))
+      return new Response(
+        JSON.stringify({ status: 500, error: "Internal Server Error" }),
+        { status: 500 },
       );
     if (eq) {
       const col = imageCols.find((c) => sql.includes(`, ${c} FROM`))!;
@@ -287,5 +293,68 @@ describe("fotos do Sankhya", () => {
     for (let i = 0; i < 20 && !progress.done; i++)
       progress = (await runFullLoad(admin, "productImages", 1)).progress;
     expect(progress.done).toBe(true);
+  });
+
+  it("HTTP 500 numa foto: tenta de novo, pula, anota e segue; a próxima passada tenta de novo", async () => {
+    const rows: FakeRow[] = [
+      { CODPROD: 50000, NUVERSAOIMG: 1, IMAGEM: jpegHex },
+      { CODPROD: 50001, NUVERSAOIMG: 1, IMAGEM: jpegHex },
+    ];
+    const store = getStore();
+    const products = await store.list("products");
+    const c = await store.update("products", products[2].id, {
+      sankhyaCode: "50000",
+    });
+    const d = await store.update("products", products[3].id, {
+      sankhyaCode: "50001",
+    });
+    let sqls = fakeSankhya(rows, [50000]);
+    sk.resetSankhyaTokenCache();
+    await resetFullLoad("productImages");
+    const first = await img.runImageLoad(admin, 60_000, undefined, 0);
+    expect(first.done).toBe(true);
+    expect(first.counts).toMatchObject({ failed: 1 });
+    expect(first.failed).toHaveLength(1);
+    expect(first.failed![0]).toMatch(/^50000 IMAGEM: sankhya_http 500/);
+    // Uma nova tentativa na quebrada (2 chamadas) e a outra baixou.
+    expect(downloads(sqls).filter((q) => q.endsWith("= 50000"))).toHaveLength(
+      2,
+    );
+    expect(
+      (await store.get("products", d.id))?.sankhyaImages?.photos.IMAGEM,
+    ).toBeTruthy();
+    expect(
+      (await store.get("products", c.id))?.sankhyaImages ?? null,
+    ).toBeNull();
+
+    // O Sankhya voltou a entregar: a passada seguinte baixa só a que faltou.
+    sqls = fakeSankhya(rows);
+    await resetFullLoad("productImages");
+    const again = await img.runImageLoad(admin, 60_000, undefined, 0);
+    expect(again.counts).toMatchObject({ created: 1, existing: 1 });
+    expect(downloads(sqls)).toHaveLength(1);
+    expect(
+      (await store.get("products", c.id))?.sankhyaImages?.photos.IMAGEM,
+    ).toBeTruthy();
+  });
+
+  it("erro que não é do gateway (permissão) para a rodada", async () => {
+    vi.stubGlobal("fetch", (async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/authenticate"))
+        return new Response(
+          JSON.stringify({ access_token: "t", expires_in: 300 }),
+        );
+      return new Response(
+        JSON.stringify({
+          status: "0",
+          statusMessage: "Usuário sem acesso ao DbExplorerSP",
+        }),
+      );
+    }) as typeof fetch);
+    sk.resetSankhyaTokenCache();
+    await resetFullLoad("productImages");
+    await expect(
+      img.runImageLoad(admin, 60_000, undefined, 0),
+    ).rejects.toThrow();
   });
 });

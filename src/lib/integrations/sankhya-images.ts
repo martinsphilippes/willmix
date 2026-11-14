@@ -9,7 +9,7 @@ import {
 } from "@/lib/db";
 import { audit } from "@/lib/services/audit";
 import { imageHashOf } from "@/lib/services/image-hash";
-import { executeQuery, type SankhyaRow } from "./sankhya-client";
+import { executeQuery, SankhyaError, type SankhyaRow } from "./sankhya-client";
 import type { FullLoadProgress } from "./sankhya-full-load";
 import { readSetting, writeSetting } from "./sankhya-settings";
 
@@ -203,12 +203,20 @@ export async function makeThumbnail(
 
 /* ---- Gravação ---- */
 
-export type ImageOutcome = "created" | "updated" | "existing" | "skipped";
+export type ImageOutcome =
+  "created" | "updated" | "existing" | "skipped" | "failed";
+
+/** Fotos que falharam guardadas no progresso (as mais recentes). */
+const MAX_FAILED = 100;
 
 interface ImageCtx {
   user: User;
   counts: Partial<Record<ImageOutcome, number>>;
   photos: number;
+  /** Espera antes da nova tentativa (0 nos testes). */
+  retryMs: number;
+  /** "CODPROD COLUNA: erro" das fotos que o Sankhya não entregou nesta rodada. */
+  failed: string[];
 }
 
 /** Grava uma imagem como documento + foto do produto (com a miniatura). */
@@ -279,6 +287,46 @@ async function unlinkPhoto(photoId: string): Promise<boolean> {
   return photo.isPrimary;
 }
 
+/**
+ * O gateway da Sankhya respondeu com erro do servidor (HTTP 5xx) ou caiu a
+ * conexão: problema daquela chamada (em 14/11/2026, uma foto dava HTTP 500
+ * toda vez e parava a fila). Erro de permissão ou de SQL não entra aqui.
+ */
+function transient(error: unknown): error is SankhyaError {
+  return (
+    error instanceof SankhyaError &&
+    (error.code === "sankhya_network" ||
+      (error.code === "sankhya_http" && (error.status ?? 0) >= 500))
+  );
+}
+
+/**
+ * Baixa uma imagem com uma nova tentativa depois de 1 s; se falhar de novo,
+ * devolve o erro para a foto ser pulada (a próxima passada tenta de novo).
+ */
+async function fetchImageOrFail(
+  codProd: number,
+  column: string,
+  retryMs = 1_000,
+): Promise<
+  { image: DecodedImage | null; version: string | null } | { error: string }
+> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetchImage(codProd, column);
+    } catch (error) {
+      if (!transient(error)) throw error;
+      if (attempt >= 1)
+        return {
+          error: `${error.code} ${error.status ?? ""} ${error.detail}`
+            .replace(/\s+/g, " ")
+            .slice(0, 200),
+        };
+      if (retryMs > 0) await new Promise((r) => setTimeout(r, retryMs));
+    }
+  }
+}
+
 /** Baixa uma imagem do Sankhya (uma por chamada). */
 async function fetchImage(
   codProd: number,
@@ -326,6 +374,7 @@ async function syncProduct(
   let changed = false;
   let primaryDocumentId: string | null | undefined;
   let primaryLost = false;
+  let failed = false;
 
   for (const col of columns) {
     const has = hasFlag(row, col.column);
@@ -339,7 +388,17 @@ async function syncProduct(
       }
       continue;
     }
-    const { image } = await fetchImage(codProd, col.column);
+    const fetched = await fetchImageOrFail(codProd, col.column, ctx.retryMs);
+    if ("error" in fetched) {
+      // Fica como estava (a foto anterior, se havia); a próxima passada tenta de novo.
+      console.warn(
+        `[sankhya-images] CODPROD ${codProd} ${col.column}: ${fetched.error}`,
+      );
+      ctx.failed.push(`${codProd} ${col.column}: ${fetched.error}`);
+      failed = true;
+      continue;
+    }
+    const { image } = fetched;
     if (!image) {
       // Coluna preenchida com algo que não é imagem: fica sem foto.
       if (previous) {
@@ -370,7 +429,9 @@ async function syncProduct(
   }
 
   const state: SankhyaImagesState = {
-    version,
+    // Com foto pulada, guarda a versão anterior: a próxima passada vê a
+    // versão diferente e tenta de novo.
+    version: failed ? (before?.version ?? null) : version,
     photos,
     syncedAt: new Date().toISOString(),
   };
@@ -379,8 +440,9 @@ async function syncProduct(
   else if (primaryLost) patch.primaryPhotoDocumentId = null;
   // Sem nada novo, só grava a versão quando ela mudou (evita uma gravação
   // por produto na passada diária).
-  if (changed || !sameVersion)
+  if (changed || (!sameVersion && !failed))
     await store.update("products", product.id, patch);
+  if (failed) return "failed";
   if (!changed) return "existing";
   return before && Object.keys(before.photos).length ? "updated" : "created";
 }
@@ -409,7 +471,9 @@ async function availableColumns(
     for (const col of SANKHYA_IMAGE_COLUMNS) {
       try {
         await executeQuery(columnProbeSql(col.column));
-      } catch {
+      } catch (error) {
+        // Gateway fora não diz nada sobre a coluna: a rodada para e tenta depois.
+        if (transient(error)) throw error;
         missing.push(col.column);
       }
     }
@@ -429,6 +493,7 @@ export async function runImageLoad(
   user: User,
   budgetMs = 30_000,
   now: () => number = () => Date.now(),
+  retryMs = 1_000,
 ): Promise<FullLoadProgress> {
   const started = now();
   const progress: FullLoadProgress = {
@@ -439,12 +504,17 @@ export async function runImageLoad(
   const columns = await availableColumns(progress);
   progress.startedAt ??= new Date().toISOString();
   const names = columns.map((c) => c.column);
-  const ctx: ImageCtx = { user, counts: {}, photos: 0 };
+  const ctx: ImageCtx = { user, counts: {}, photos: 0, retryMs, failed: [] };
   const persist = async () => {
     for (const [o, n] of Object.entries(ctx.counts))
       progress.counts[o as ImageOutcome] =
         (progress.counts[o as ImageOutcome] ?? 0) + (n ?? 0);
     ctx.counts = {};
+    if (ctx.failed.length)
+      progress.failed = [...(progress.failed ?? []), ...ctx.failed].slice(
+        -MAX_FAILED,
+      );
+    ctx.failed = [];
     progress.updatedAt = new Date().toISOString();
     await writeSetting(KEY, progress);
   };
