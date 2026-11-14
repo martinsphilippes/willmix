@@ -6,6 +6,7 @@ import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   findStep,
+  isPerProductStep,
   partnerStepsOf,
   stepHelpKey,
   stepLabelKey,
@@ -18,6 +19,8 @@ import { Alert, PageHeader } from "@/components/ui";
  * que o passo tem para este pedido, feito e aberto, com o formulário onde
  * ainda dá para agir; as ações voltam para cá. A Wellmix vê tudo do passo;
  * o parceiro, só os passos dele e só o que é dele (dono, 14/11/2026).
+ * Nos passos por produto (Certificação), ?item=<item do pedido> abre só o
+ * produto da linha em que se clicou "Resolver".
  */
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -47,11 +50,13 @@ export default async function FlowOrderStepPage({
   const oneOf = (v: string | null, list: string[], prefix: string) =>
     v && list.includes(v) ? t(`${prefix}.${v}` as DictionaryKey) : null;
   const done = str("importStep") ?? str("certStep");
+  const item = str("item");
   const view = await FlowOrderInStep({
     user,
     step,
     orderId,
     t,
+    focus: item && isPerProductStep(step) && ID.test(item) ? item : null,
     notices: {
       import: oneOf(
         done,

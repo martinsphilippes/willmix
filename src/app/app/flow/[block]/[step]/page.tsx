@@ -6,6 +6,7 @@ import {
   FLOW_OVERVIEW_BLOCKS,
   blockLabelKey,
   findStep,
+  isListOnlyStep,
   overviewHref,
   stepHelpKey,
   stepLabelKey,
@@ -38,6 +39,9 @@ import { PageHeader, TextLink } from "@/components/ui";
  * (?due=overdue|today|week). Duas abas (dono, 14/11/2026): Pendências (o
  * que espera ação do login, padrão) e "Todos no passo" (?tab=all: todos os
  * pedidos que estão no passo agora, de qualquer responsável; só a Wellmix).
+ * Na Certificação (dono, 14/11/2026) a tela é só a lista, uma linha por
+ * produto: o "Resolver" abre o produto no detalhe do pedido no passo, onde
+ * ficam o envio da foto ou do arquivo e a validação.
  */
 const DUES = ["overdue", "today", "week"] as const;
 
@@ -79,6 +83,8 @@ export default async function FlowStepPage({
   ) as string | undefined;
   const t = await getT();
   const all = await flowCasesOf(user, step);
+  // Sem os cartões por pedido embaixo da lista (o trabalho fica no detalhe).
+  const listOnly = isListOnlyStep(step);
   const filter = (DUES as readonly string[]).includes(String(due))
     ? String(due)
     : null;
@@ -209,7 +215,9 @@ export default async function FlowStepPage({
         </div>
       ) : null}
       <FlowCases step={step} tasks={tasks} t={t} />
-      <FlowRequirementWork user={user} step={step} tasks={all} t={t} />
+      {listOnly ? null : (
+        <FlowRequirementWork user={user} step={step} tasks={all} t={t} />
+      )}
       {step.block === "production" &&
       (step.key === "production" ||
         step.key === "inspection" ||
@@ -254,13 +262,15 @@ export default async function FlowStepPage({
           notice={artworkNotice}
         />
       ) : null}
-      <FlowStepWork
-        user={user}
-        step={step}
-        tasks={all}
-        t={t}
-        notice={done ? t(`importFlow.done.${done}` as DictionaryKey) : null}
-      />
+      {listOnly ? null : (
+        <FlowStepWork
+          user={user}
+          step={step}
+          tasks={all}
+          t={t}
+          notice={done ? t(`importFlow.done.${done}` as DictionaryKey) : null}
+        />
+      )}
     </div>
   );
 }

@@ -18,12 +18,13 @@ export async function requireUser(): Promise<User> {
 /**
  * Tela do passo do menu de onde a ação veio (docs/FLOW_MENU.md): só
  * /app/flow/<bloco>/<passo> ou /app/flow/<bloco>/<passo>/<pedido> (o pedido
- * no passo); qualquer outra coisa é ignorada (volta ao pedido).
+ * no passo), este com ?item=<item do pedido> opcional (o produto da linha,
+ * na Certificação); qualquer outra coisa é ignorada (volta ao pedido).
  */
 export function flowReturnTo(form: FormData): string | null {
   const v = form.get("returnTo");
   return typeof v === "string" &&
-    /^\/app\/flow\/[a-z-]{1,40}\/[a-z-]{1,40}(\/[A-Za-z0-9_-]{1,64})?$/.test(
+    /^\/app\/flow\/[a-z-]{1,40}\/[a-z-]{1,40}(\/[A-Za-z0-9_-]{1,64}(\?item=[A-Za-z0-9_-]{1,64})?)?$/.test(
       v.trim(),
     )
     ? v.trim()
