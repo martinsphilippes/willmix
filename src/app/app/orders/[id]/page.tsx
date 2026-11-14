@@ -1,5 +1,6 @@
 import { listByIds } from "@/lib/db/lookup";
 import { registerOrderInvoiceAction } from "../../actions/order-invoice";
+import { setPurchaseIncotermAction } from "../../actions/purchase-order";
 import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
 import { ImportFlowCard } from "@/components/import-flow-card";
@@ -241,6 +242,7 @@ export default async function OrderPage({
     freight: freightNotice,
     freightN,
     rounds: roundsSpawned,
+    incoterm: incotermNotice,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
@@ -1245,22 +1247,27 @@ export default async function OrderPage({
   const moneyCards: ColorCard[] =
     finance && (financeAccess || user.role === "customer")
       ? [
+          // Valores em dinheiro: o cartão põe a moeda numa linha menor e o
+          // número inteiro embaixo (mesmos valores e cálculos de antes).
           {
             key: "sell",
             label: t("orderView.money.sell"),
-            value: formatMoney(finance.sell, finance.sellCurrency, t),
+            money: { amount: finance.sell, currency: finance.sellCurrency },
             tone: "indigo",
           },
           {
             key: "received",
             label: t("orderView.money.received"),
-            value: formatMoney(finance.received, finance.sellCurrency, t),
+            money: { amount: finance.received, currency: finance.sellCurrency },
             tone: "emerald",
           },
           {
             key: "receivable",
             label: t("orderView.money.receivable"),
-            value: formatMoney(finance.receivable, finance.sellCurrency, t),
+            money: {
+              amount: finance.receivable,
+              currency: finance.sellCurrency,
+            },
             tone: "rose",
           },
           ...(wellmix
@@ -1268,46 +1275,48 @@ export default async function OrderPage({
                 {
                   key: "fob",
                   label: t("orderView.money.fob"),
-                  value: formatMoney(finance.fob, finance.fobCurrency, t),
+                  money: { amount: finance.fob, currency: finance.fobCurrency },
                   tone: "slate",
                 },
                 {
                   key: "paid",
                   label: t("orderView.money.paid"),
-                  value: (
-                    <>
-                      {formatMoney(finance.paid, finance.fobCurrency, t)}
-                      {/* Pago em outra moeda: à parte, na moeda dele. */}
-                      {Object.entries(finance.paidOther).map(([c, v]) => (
-                        <span
-                          key={c}
-                          className="block text-xs font-medium text-white/85"
-                          data-paid-other={c}
-                        >
+                  money: {
+                    amount: finance.paid,
+                    currency: finance.fobCurrency,
+                  },
+                  // Pago em outra moeda: à parte, na moeda dele.
+                  sub: Object.keys(finance.paidOther).length
+                    ? Object.entries(finance.paidOther).map(([c, v]) => (
+                        <span key={c} className="block" data-paid-other={c}>
                           + {formatMoney(v, c, t)}
                         </span>
-                      ))}
-                    </>
-                  ),
+                      ))
+                    : undefined,
                   tone: "sky",
                 },
                 {
                   key: "payable",
                   label: t("orderView.money.payable"),
-                  value: formatMoney(finance.payable, finance.fobCurrency, t),
+                  money: {
+                    amount: finance.payable,
+                    currency: finance.fobCurrency,
+                  },
                   tone: "orange",
                 },
                 {
                   key: "margin",
                   label: t("orderView.money.margin"),
                   // Cancelado não é venda: sem margem (como na tela Financeiro).
-                  value:
-                    finance.margin !== null && !isCancelled
-                      ? approx(
-                          formatMoney(finance.margin, finance.sellCurrency, t),
-                          finance.estimated,
-                        )
-                      : "—",
+                  ...(finance.margin !== null && !isCancelled
+                    ? {
+                        money: {
+                          amount: finance.margin,
+                          currency: finance.sellCurrency,
+                          approx: finance.estimated,
+                        },
+                      }
+                    : { value: "—" }),
                   sub:
                     finance.marginPct !== null &&
                     finance.margin !== null &&
@@ -1513,7 +1522,7 @@ export default async function OrderPage({
           leva a cada parte. */}
 
       {moneyCards.length ? (
-        <ColorCards name="order" items={moneyCards} />
+        <ColorCards name="order" items={moneyCards} intl={t.intl} />
       ) : null}
 
       {cargo ? <CargoCard t={t} cargo={cargo} /> : null}
@@ -2508,6 +2517,34 @@ export default async function OrderPage({
           />
         ) : null}
 
+        {/* Incoterm do pedido de compra (mapa R17?): EXW abre a transportadora
+            e os custos de origem antes do container na fábrica. */}
+        {purchaseFlow && isWellmix(user) && originSteps.length ? (
+          <Card title={t("exw.title")} dense>
+            <p className="mb-3 text-sm text-zinc-600">{t("exw.hint")}</p>
+            {incotermNotice === "saved" ? (
+              <div className="mb-3">
+                <Alert tone="success">{t("exw.saved")}</Alert>
+              </div>
+            ) : null}
+            <form
+              action={setPurchaseIncotermAction}
+              className="flex flex-wrap items-end gap-2"
+              data-incoterm-form
+            >
+              <input type="hidden" name="orderId" value={order.id} />
+              <Select
+                name="incoterm"
+                defaultValue={order.incoterm === "EXW" ? "EXW" : "FOB"}
+                aria-label={t("exw.title")}
+              >
+                <option value="FOB">FOB</option>
+                <option value="EXW">EXW</option>
+              </Select>
+              <SubmitButton variant="secondary">{t("exw.save")}</SubmitButton>
+            </form>
+          </Card>
+        ) : null}
         {/* Container na origem (mapa R19 a R26): vazio na fábrica, carregamento,
             lacre e número, volta ao porto e o rastreio diário do Comex interno. */}
         {originSteps.length ? (

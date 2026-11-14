@@ -11,8 +11,10 @@ import {
 import * as copy from "@/i18n/modules/table-tools";
 import {
   PAGE_SIZES,
+  TABLE_REVEAL_EVENT,
   compareKeys,
   matchesQuery,
+  pageOfIndex,
   pageRange,
   sortKey,
   type PageSize,
@@ -31,6 +33,9 @@ import { twMerge } from "tailwind-merge";
  * Linhas são escondidas com `hidden` e reordenadas dentro do mesmo <tbody>;
  * o React continua dono delas (atualiza texto e atributos no lugar) e, quando
  * linhas entram ou saem, um MutationObserver reaplica busca e ordem.
+ *
+ * Uma linha pode pedir para aparecer (evento TABLE_REVEAL_EVENT, disparado
+ * nela): a busca que a esconde é limpa e a tabela vai à página dela.
  *
  * Tabelas que não são lista (célula com rowSpan, mais de um <tbody>, linhas
  * de grupo com colSpan) ficam como estão. Com menos de MIN_ROWS linhas só a
@@ -208,6 +213,10 @@ export function TableTools({
     paged: boolean;
   } | null>(null);
   const [version, setVersion] = useState(0);
+  /** Linhas que passam na busca, na ordem da tela (para achar a página de uma linha). */
+  const matchedRef = useRef<HTMLTableRowElement[]>([]);
+  /** Linha que pediu para aparecer (TABLE_REVEAL_EVENT), até a tabela ir à página dela. */
+  const revealRef = useRef<HTMLTableRowElement | null>(null);
 
   const apply = useCallback(() => {
     const table = tableRef.current;
@@ -273,7 +282,14 @@ export function TableTools({
     const matched = ordered.filter(
       (row) => !useTools || !searchable || matchesQuery(rowText(row), query),
     );
-    const { current } = pageRange(page, pageSize, matched.length);
+    matchedRef.current = matched;
+    let { current } = pageRange(page, pageSize, matched.length);
+    // Linha que pediu para aparecer: a página dela.
+    const wanted = revealRef.current;
+    if (wanted && matched.includes(wanted)) {
+      revealRef.current = null;
+      if (paged) current = pageOfIndex(matched.indexOf(wanted), pageSize);
+    }
     const start = current * pageSize;
     const visible = new Set(
       paged ? matched.slice(start, start + pageSize) : matched,
@@ -291,6 +307,21 @@ export function TableTools({
         : { rows: rows.length, matched: matched.length, paged },
     );
   }, [sortable, searchable, paginated, sort, query, page, pageSize, labels]);
+
+  // Uma linha pede para aparecer: limpa a busca que a esconde e reaplica.
+  useEffect(() => {
+    const table = tableRef.current;
+    if (!table) return;
+    const onReveal = (event: Event) => {
+      const row = (event.target as Element | null)?.closest?.("tr");
+      if (!row || row.closest("table") !== table) return;
+      revealRef.current = row;
+      if (!matchedRef.current.includes(row)) setQuery("");
+      setVersion((v) => v + 1);
+    };
+    table.addEventListener(TABLE_REVEAL_EVENT, onReveal);
+    return () => table.removeEventListener(TABLE_REVEAL_EVENT, onReveal);
+  }, []);
 
   // Reaplica quando o React troca as linhas (nova consulta, item excluído).
   useEffect(() => {

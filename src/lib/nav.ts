@@ -16,10 +16,11 @@ import {
  * Menu lateral do portal. O que cada login vê vem de uma regra só
  * (src/lib/auth/screens.ts, docs/ACCESS.md): o menu mostra as telas que o
  * login abre. No alto, Control Tower e Pendências (Mensagens e Notificações
- * ficam só no cabeçalho, dono, 14/11/2026). Depois os blocos na ordem do
- * mapa do processo (docs/FLOW_MENU.md): Produto novo, Pedido, Produção,
- * Entrega, Vendas, Financeiro, Painéis e Cadastros; cada passo com o
- * contador do que espera ação do login (src/lib/flow.ts). Configurações,
+ * continuam na lista, mas ficam só nos ícones do cabeçalho: SIDEBAR_HIDDEN;
+ * dono, 14/11/2026). Depois os blocos na ordem do mapa do processo
+ * (docs/FLOW_MENU.md): Produto novo, Pedido, Produção, Entrega, Vendas,
+ * Financeiro, Painéis e Cadastros; cada passo com o contador do que espera
+ * ação do login (src/lib/flow.ts). Configurações,
  * Equipe e acessos e Auditoria ficam fixos embaixo (navFooterFor). Grupo com
  * uma tela só vira link direto; grupo vazio some. Telas fora do fluxo de hoje
  * ficam fora do menu de todos (MENU_HIDDEN), mas continuam abrindo pelo
@@ -48,12 +49,29 @@ export type NavIcon =
 export interface NavLink {
   href: string;
   key: DictionaryKey;
-  /** Contador ao lado do item: o total das Pendências, preenchido pelo layout. */
-  badge?: "tasks";
+  /**
+   * Contador ao lado do item, preenchido pelo layout: o total das Pendências
+   * ou as não lidas (Mensagens e Notificações, que só o cabeçalho mostra).
+   */
+  badge?: "tasks" | "messages" | "notifications";
   /** Passo do fluxo (`bloco/passo`, src/lib/flow.ts): o contador do que espera ação ali. */
   step?: string;
   icon?: NavIcon;
 }
+
+/** Mensagens (chat com a Wellmix / com as empresas): todo papel que entra no portal. */
+const MESSAGES: NavLink = {
+  href: "/app/messages",
+  key: "nav.messages",
+  badge: "messages",
+  icon: "messages",
+};
+const NOTIFICATIONS: NavLink = {
+  href: "/app/notifications",
+  key: "nav.notifications",
+  badge: "notifications",
+  icon: "bell",
+};
 
 export interface NavGroup {
   key: DictionaryKey;
@@ -86,6 +104,32 @@ export const MENU_HIDDEN: readonly string[] = [
   "/app/after-sales",
   "/app/history",
 ];
+
+/**
+ * Fora da barra lateral (pedido do dono, 14/11/2026): Mensagens e Notificações
+ * aparecem só nos ícones do cabeçalho, no alto à direita, com os contadores.
+ * Continuam em navFor, porque o ícone de mensagens do cabeçalho e o "Voltar"
+ * saem dessa lista; só a barra lateral e o menu do celular deixam de desenhar
+ * as duas linhas. As telas, os links e as permissões não mudam.
+ */
+export const SIDEBAR_HIDDEN: readonly string[] = [
+  "/app/messages",
+  "/app/notifications",
+];
+
+/** O menu como a barra lateral e o menu do celular mostram: sem SIDEBAR_HIDDEN. */
+export function sidebarNav(entries: NavEntry[]): NavEntry[] {
+  return entries.flatMap((entry): NavEntry[] => {
+    if (!isNavGroup(entry))
+      return SIDEBAR_HIDDEN.includes(entry.href) ? [] : [entry];
+    const items = entry.items.filter((l) => !SIDEBAR_HIDDEN.includes(l.href));
+    if (items.length) return [{ ...entry, items }];
+    // Item pai sem subitens à vista: fica o link da tela dele.
+    return entry.href
+      ? [{ href: entry.href, key: entry.key, icon: entry.icon }]
+      : [];
+  });
+}
 
 /** Grupo do menu; com uma tela só, vira o próprio link (com o ícone do grupo); vazio, some. */
 function group(
@@ -189,6 +233,8 @@ export function navFor(
             badge: "tasks",
           },
         ],
+        ["messages", MESSAGES],
+        ["notifications", NOTIFICATIONS],
       ]),
       // Blocos na ordem do mapa do processo (docs/FLOW_MENU.md): cada passo
       // com o contador do que espera ação do login.
@@ -310,6 +356,8 @@ export function navFor(
             badge: "tasks",
           },
         ],
+        ["messages", MESSAGES],
+        ["notifications", NOTIFICATIONS],
       ]),
       ...group(
         "nav.group.myOrders",
@@ -377,6 +425,8 @@ export function navFor(
           ? { href: "/app", key: "nav.tasks", icon: "tasks", badge: "tasks" }
           : { href: "/app", key: "nav.home", icon: "home" },
       ],
+      ["messages", MESSAGES],
+      ["notifications", NOTIFICATIONS],
     ]),
     ...group(
       bookings ? "nav.group.myBookings" : "nav.group.orders",

@@ -209,6 +209,10 @@ function importStep(stepKey: string): Ref | null {
   switch (stepKey) {
     case "booking":
       return "production/booking";
+    // Compra EXW: transportadora e custos de origem (R17, R18).
+    case "origin_carrier":
+    case "origin_carrier_eta":
+    case "origin_costs":
     case "container_at_factory":
     case "container_empty":
       return "production/logistics";

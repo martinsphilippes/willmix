@@ -27,7 +27,7 @@ npm test                                   # vitest
 PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e   # Playwright (na sessão cloud; local não precisa da variável)
 ```
 
-O E2E sobe o próprio servidor em `localhost:3100` com `DATA_DIR=.data-e2e`. Não deixe outro `next dev` rodando na mesma pasta.
+O E2E compila o portal (`next build`, cerca de 1 minuto) e sobe a versão compilada (`next start`) em `localhost:3100`, em modo memória com `DATA_DIR=.data-e2e`. Antes ele subia o `next dev`, e a suíte inteira passava de 12 GB de memória: o compilador do modo de desenvolvimento guarda cada tela compilada, e a sessão derrubava o servidor no meio do caminho principal. Compilado, fica abaixo de 1 GB, roda mais rápido e testa o mesmo código que vai para a Vercel (medição de 14/11/2026). `E2E_DEV=1 npm run test:e2e` volta ao `next dev`, com recarga automática, para depurar. Não deixe outro servidor ocupando a porta 3100; o `next start` aparece na lista de processos como `next-server`.
 
 ## Limitações conhecidas da sessão cloud
 

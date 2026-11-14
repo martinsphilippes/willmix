@@ -45,7 +45,7 @@ Antes de abrir um PR:
 
 ```bash
 npm run lint && npm run typecheck && npm test   # obrigatório
-npm run test:e2e                                 # caminho principal (sobe o dev server em modo memória)
+npm run test:e2e                                 # caminho principal (compila e sobe o portal em modo memória)
 ```
 
 Regras fixas (detalhe em `CLAUDE.md`): toda escrita passa por Server Action com zod e checagem de papel; textos novos em `src/i18n/modules/*.ts` (pt/en/zh, mesmas chaves); evolução aditiva (nada é removido: telas, rotas, campos, dados); leitura só no servidor; esquema em `src/lib/db/schema.ts`; `TablesDB` (não `Databases`) no SDK do Appwrite; isolamento entre clientes, entre fornecedores e nos documentos nunca é enfraquecido.

@@ -1150,3 +1150,40 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Só o nome na tela, em português**: as chaves, o código, as regras e o banco não mudaram; inglês e chinês ficam como estavam (como na troca das colunas da solicitação, #350). A palavra "rodada" com outro sentido continua: tentativas da inspeção por SKU, rodadas da amostragem, negociação da cotação e execuções técnicas (Sankhya, resumos, cópia do banco).
 - Teste: o E2E da seleção confere "a quantidade é a soma das programações".
 
+## Menu lateral sem "Mensagens" e "Notificações" (só os ícones do cabeçalho)
+
+- **Pedido do dono** (14/11/2026, com a foto do menu): ocultar do menu lateral esquerdo os itens "Mensagens" e "Notificações", com os contadores e o espaço das duas linhas, e manter os ícones de Mensagens e Notificações no canto superior direito, com os contadores, os links e as permissões de hoje.
+- **Como ficou:** a barra lateral (computador e tablet) e o menu do celular (o painel do botão "Menu") deixam de desenhar as duas linhas, para todos os logins. No alto ficam Control Tower e Pendências (ou só Pendências/Início, conforme o login), e os grupos seguem iguais, na mesma ordem.
+- **Não muda:** os ícones do cabeçalho (balão de mensagens e sino, com os números), as telas `/app/messages` e `/app/notifications`, os links, as permissões por função e por login, o "Voltar" e o painel lateral de chat. Nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- **Como:** `SIDEBAR_HIDDEN` e `sidebarNav` em `src/lib/nav.ts`; o layout (`src/app/app/layout.tsx`) passa a lista filtrada só para a barra lateral e o menu do celular. A lista completa (`navFor`) continua com as duas, porque o ícone de mensagens do cabeçalho e o "Voltar" saem dela. Para voltar a mostrar, basta tirar o endereço de `SIDEBAR_HIDDEN`.
+- **Testes:** `tests/unit/nav.test.ts` (nenhum papel vê as duas na barra; o resto do menu fica igual e na mesma ordem; a lista completa não muda) e o E2E `home-screens.spec.ts` (computador: nada das duas no menu e os ícones levam às telas; celular: ícones no alto e o menu aberto sem as duas).
+- Os roteiros de vídeo (`docs/videos`) que citam Mensagens e Notificações no menu ficam para a próxima revisão dos roteiros.
+
+## E2E sobre a versão compilada (memória do servidor de teste)
+
+- **Pedido do dono** (14/11/2026): investigar por que a suíte E2E caía no meio. O servidor de teste (`next dev`) era derrubado pela falta de memória da sessão (12 GB) durante o caminho principal, inclusive na base sem nenhuma mudança nova.
+- **Causa**: o compilador do modo de desenvolvimento (Turbopack), não o código do portal. Medição com os 5 primeiros testes:
+  - a base de antes das últimas mesclas também passava de 11 GB, então não foi um PR específico; a suíte só cresceu até passar do limite;
+  - o JavaScript do servidor tem limite de 2 GB e não estourou;
+  - a limpeza total do cache do Turbopack (`turbopackMemoryEviction: "full"`) não resolveu: o servidor morreu a 11,6 GB;
+  - compilado (`next build` + `next start`), o pico foi de 572 MB, em 2 minutos contra cerca de 5.
+- **Mudança**: `npm run test:e2e` compila o portal e testa a versão compilada (`playwright.config.ts`), em modo memória com dados isolados, como antes. Isso também confere o mesmo código que vai para a Vercel. `E2E_DEV=1` volta ao `next dev` para depurar. Nada mudou no portal.
+- Docs: `docs/AMBIENTE.md` (Testes) e `docs/HANDOVER.md`.
+
+## Book: lista de pendências quando "Fechar e analisar" para por campos vazios
+
+- **Pedido do dono** (14/11/2026, com a foto do aviso "Há itens com campos obrigatórios vazios"): o aviso passa a listar os itens incompletos, agrupados por item (nome e código; sem eles, a linha), com todos os campos obrigatórios que faltam em cada um, usando os nomes das colunas da tabela.
+- **Cada campo é clicável**: leva ao item, mostra a linha mesmo em outra página da tabela ou escondida pela busca, rola até o campo, dá o foco e destaca a célula. Nada é recarregado: o que já foi digitado continua.
+- **Mesma validação**: a lista sai de `bookingLotPending`, a mesma regra que trava o fechamento e monta o "Falta para fechar"; nenhuma exigência nova, a mesma contagem. Cada campo gravado atualiza a tela e a lista; sem pendências, o aviso diz para fechar de novo, e "Fechar e analisar" segue o fluxo normal.
+- **Aditivo**: só o aviso do fechamento e a capacidade da tabela de mostrar uma linha pedida (`TABLE_REVEAL_EVENT`, `src/components/table-tools.tsx`; nenhuma outra tabela muda). Nenhuma tela, rota, campo ou dado removido; sem mudança no banco. Textos novos nos três idiomas: `bookingLots.incomplete.*`.
+- Peças: `incompleteBookingItems` (`src/lib/booking-lots.ts`), `src/components/booking-pending-list.tsx`, a página do Book e o destaque da célula em `globals.css`. Detalhes em `docs/BOOKING.md`, item 6.
+- Testes: `tests/unit/booking-pending-list.test.ts` (mesmos itens e contagem da validação, vários campos no mesmo item, nome e código ou a linha, página da linha) e `tests/e2e/booking-pending-list.spec.ts` (Book com 16 itens incompletos, dois campos no mesmo item, item na segunda página, item escondido pela busca: cada link leva ao campo certo; gravar atualiza a lista; sem pendências, fecha).
+
+## Pedido: cartões de valores sem corte em qualquer largura
+
+- **Pedido do dono** (14/11/2026, com a foto dos cartões): no alto do pedido, "Valor de compra (FOB)", "A pagar ao fornecedor" e "Margem" saíam cortados (ex.: "RMB 339.187,50" e "~ -R$ 287.929,23", com o sinal numa linha e o número na outra).
+- **Grade pela área de conteúdo**: os cartões seguem a largura real da área (container query), com o menu lateral aberto ou recolhido: 1, 2, 3, 4 e, cabendo, todos por linha (de 4 vai direto a 7, sem sobrar linha com um ou dois soltos). Cada degrau garante cartões de pelo menos ~158 px. O cliente, com três cartões, nunca tem mais colunas que cartões.
+- **Valor**: a moeda numa linha menor ("R$", "RMB"; "~ R$" quando estimado) e, embaixo, o número inteiro numa linha só, com todos os dígitos, separadores e casas e o sinal junto ("-287.929,23"). Uma regra só para o tamanho, igual em todos os cartões: o maior número do conjunto cabe na largura do cartão, até 22 px. Primeiro caem cartões por linha; o número só diminui um pouco (no pior caso, dezenas de milhões num celular de 360 px, 15 px).
+- **Não mudou**: rótulos, cores, valores, cálculos e quem vê cada cartão. Só o layout (`src/components/color-cards.tsx`); o pedido passa valor e moeda em vez do texto pronto.
+- **Conferido no navegador**: 26 tamanhos de aparelho (celulares em retrato e paisagem, iPads, notebooks, MacBooks e desktops) e todas as larguras de 320 a 1920 px, de 16 em 16, com o menu aberto e recolhido. Casos: RMB longo (12.345.678,90), negativo em reais (-287.929,23 e -12.345.678,90) e zerados. Nenhum corte e nenhuma rolagem horizontal.
+- Teste: `tests/unit/color-cards.test.ts` (moeda à parte e sinal no número, degraus de colunas, mesmo tamanho em todos os cartões, grade pela área de conteúdo).

@@ -10,10 +10,11 @@ import {
   isNavGroup,
   navFooterFor,
   navFor,
+  sidebarNav,
   type NavLink,
 } from "@/lib/nav";
 import { isWellmix } from "@/lib/auth/permissions";
-import { canOpen, menuScreensFor } from "@/lib/auth/screens";
+import { canOpen } from "@/lib/auth/screens";
 import { partnerTypeLabelOf } from "@/lib/services/partner-access";
 import {
   topicLabel,
@@ -275,7 +276,10 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
     ...badgeOf(l),
   });
   const nav = navFor(user);
-  const entries = nav.map((entry) =>
+  // Barra lateral e menu do celular sem Mensagens e Notificações (só nos
+  // ícones do cabeçalho; dono, 14/11/2026). O cabeçalho e o "Voltar" seguem
+  // a lista inteira (nav).
+  const entries = sidebarNav(nav).map((entry) =>
     isNavGroup(entry)
       ? {
           id: entry.key,
@@ -325,9 +329,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
       unreadLabel={t("nav.notifications.unread", { n: String(unread) })}
     />
   ) : null;
-  // Mensagens ficam só no cabeçalho (dono, 14/11/2026): o botão aparece para
-  // quem tem a tela no menu do perfil.
-  const hasMessages = menuScreensFor(user).has("messages");
+  const hasMessages = flattenNav(nav).some((l) => l.href === "/app/messages");
 
   // Cartão da conta no pé da barra lateral: senha e Sair.
   const account = (

@@ -6,6 +6,7 @@ import {
   isNavGroup,
   navFooterFor,
   navFor,
+  sidebarNav,
 } from "@/lib/nav";
 import { ROLES, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
 
@@ -16,8 +17,9 @@ import { ROLES, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
    aparecem para ninguém. O menu segue as telas do login
    (src/lib/auth/screens.ts): nenhuma tela se repete. */
 const ADMIN = { role: "admin" as const };
+/** O que a barra lateral desenha (sem Mensagens e Notificações, só no cabeçalho). */
 const view = (user: Parameters<typeof navFor>[0]) =>
-  navFor(user).map((e) =>
+  sidebarNav(navFor(user)).map((e) =>
     isNavGroup(e)
       ? { group: e.key, items: e.items.map((i) => i.href) }
       : { link: e.href },
@@ -299,12 +301,14 @@ describe("menu lateral", () => {
     }
   });
 
-  it("Mensagens e Notificações saíram do menu de todos os papéis (ficam no cabeçalho)", () => {
+  it("Mensagens e Notificações fora da barra de todos os papéis (ficam no cabeçalho)", () => {
     for (const role of ROLES)
       for (const functions of [null, [...WELLMIX_FUNCTIONS]]) {
-        const hrefs = hrefsOf({ role, functions });
-        expect(hrefs).not.toContain("/app/messages");
-        expect(hrefs).not.toContain("/app/notifications");
+        const bar = flattenNav(sidebarNav(navFor({ role, functions }))).map(
+          (l) => l.href,
+        );
+        expect(bar).not.toContain("/app/messages");
+        expect(bar).not.toContain("/app/notifications");
       }
   });
 
@@ -348,5 +352,77 @@ describe("menu lateral", () => {
       expect(flattenNav(navFor({ role })).map((l) => l.href)).not.toContain(
         "/app/freight/tariff",
       );
+  });
+});
+
+/* Barra lateral sem Mensagens e Notificações (dono, 14/11/2026): as duas
+   ficam só nos ícones do cabeçalho. A lista do menu (navFor) continua com
+   elas, porque o ícone de mensagens do cabeçalho e o "Voltar" saem dela. */
+describe("barra lateral sem Mensagens e Notificações", () => {
+  const HIDDEN = ["/app/messages", "/app/notifications"];
+  const sidebarHrefs = (user: Parameters<typeof navFor>[0]) =>
+    flattenNav(sidebarNav(navFor(user))).map((l) => l.href);
+
+  it("nenhum papel vê as duas linhas na barra; o resto do menu fica igual, na mesma ordem", () => {
+    for (const role of ROLES) {
+      const user = { role, functions: null };
+      const all = hrefsOf(user);
+      expect(all).toEqual(expect.arrayContaining(HIDDEN));
+      expect(sidebarHrefs(user)).toEqual(
+        all.filter((href) => !HIDDEN.includes(href)),
+      );
+    }
+  });
+
+  it("admin: Control Tower e Pendências no alto, depois os mesmos grupos", () => {
+    const full = navFor(ADMIN);
+    const bar = sidebarNav(full);
+    expect(
+      bar.slice(0, 2).map((e) => (isNavGroup(e) ? e.key : e.href)),
+    ).toEqual(["/app", "/app/tasks"]);
+    expect(bar.filter(isNavGroup)).toEqual(full.filter(isNavGroup));
+  });
+
+  it("não mexe na lista do menu (cabeçalho e Voltar) e tira as duas também de dentro de um grupo", () => {
+    const full = navFor({ role: "supplier" });
+    const copy = structuredClone(full);
+    sidebarNav(full);
+    expect(full).toEqual(copy);
+    expect(
+      sidebarNav([
+        {
+          key: "nav.group.orders",
+          icon: "box",
+          items: [
+            { href: "/app/messages", key: "nav.messages" },
+            { href: "/app/orders", key: "nav.orders" },
+          ],
+        },
+        {
+          key: "nav.group.panels",
+          icon: "chart",
+          items: [{ href: "/app/notifications", key: "nav.notifications" }],
+        },
+      ]),
+    ).toEqual([
+      {
+        key: "nav.group.orders",
+        icon: "box",
+        items: [{ href: "/app/orders", key: "nav.orders" }],
+      },
+    ]);
+    // Item pai (com tela própria) que perde os subitens vira o link da tela.
+    expect(
+      sidebarNav([
+        {
+          key: "nav.production",
+          icon: "box",
+          href: "/app/production",
+          items: [{ href: "/app/messages", key: "nav.messages" }],
+        },
+      ]),
+    ).toEqual([
+      { href: "/app/production", key: "nav.production", icon: "box" },
+    ]);
   });
 });
