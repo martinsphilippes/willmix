@@ -467,7 +467,10 @@ describe("programação de compra de ponta a ponta", () => {
       filter: { orderId: born[born.length - 1].id },
     });
     expect(last.map((i) => i.quantity)).toEqual([480]);
-  });
+    // Cria 13 pedidos filhos completos (etapas, raias, itens): ~5 s aqui e,
+    // no CI com os 239 arquivos em paralelo, passou dos 15 s do padrão
+    // (vitest.config.mts) uma vez. Limite próprio, só para este cenário.
+  }, 60_000);
 
   it("recusa programações com datas diferentes no mesmo pedido", async () => {
     const today = todayIso();

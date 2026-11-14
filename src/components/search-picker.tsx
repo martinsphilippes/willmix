@@ -54,6 +54,7 @@ export function SearchPicker({
   ariaLabel,
   labels,
   onChoose,
+  onDeselect,
 }: {
   /** Rota de busca, com os parâmetros fixos (ex.: `/api/products/search?scope=catalog`). */
   endpoint: string;
@@ -76,6 +77,11 @@ export function SearchPicker({
   labels: SearchPickerLabels;
   /** Avisado a cada escolha (ex.: preencher a ficha do produto). */
   onChoose?: (option: SearchOption | null) => void;
+  /**
+   * Avisado quando a escolha some porque a pessoa voltou a digitar (sem
+   * escolher outra). O `onChoose` não é chamado nesse caso.
+   */
+  onDeselect?: () => void;
 }) {
   const listId = useId();
   const input = useRef<HTMLInputElement>(null);
@@ -174,7 +180,10 @@ export function SearchPicker({
           onChange={(e) => {
             setText(e.target.value);
             // Mudou o texto: a escolha anterior não vale mais.
-            if (selected && e.target.value !== selected.name) setSelected(null);
+            if (selected && e.target.value !== selected.name) {
+              setSelected(null);
+              onDeselect?.();
+            }
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}

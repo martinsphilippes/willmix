@@ -28,6 +28,8 @@ import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
 import { RequestItems } from "@/components/request-items";
 import { RequestCustomerField } from "@/components/request-customer-field";
+import { RequestCustomerProvider } from "@/components/request-customer-context";
+import { CustomerPurchaseHistory } from "@/components/customer-purchase-history";
 import {
   partyPickerLabels,
   productPickerLabels,
@@ -283,12 +285,25 @@ export default async function NewRequestPage({
         </div>
       ) : null}
 
-      {/* Telas grandes: busca por foto/link (estreita) ao lado do formulário. */}
-      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+      {/* Telas grandes: busca por foto/link (estreita) ao lado do formulário
+          e, embaixo dela, o histórico de compras do cliente (o formulário
+          ocupa as duas linhas à direita, com a largura de sempre). No celular
+          e no iPad em pé: busca, formulário e, por último, o histórico. A
+          grade é o próprio provedor do cliente escolhido (o histórico lê). */}
+      <RequestCustomerProvider
+        className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr]"
+        initial={initialCustomer}
+        initialStock={
+          isStockCustomer(presetCustomerId) || presetCustomerId === STOCK_OPTION
+        }
+      >
         {/* Busca do produto por foto ou link: procura no catálogo e sugere os campos.
           Fora do modo "adicionar à solicitação" (a busca recarrega a tela sem ele). */}
         {addToRequest ? null : (
-          <Card title={t("lookup.title")} className="max-w-2xl lg:max-w-none">
+          <Card
+            title={t("lookup.title")}
+            className="max-w-2xl lg:col-start-1 lg:row-start-1 lg:max-w-none"
+          >
             <div id="lookup" className="scroll-mt-4" />
             <p className="mb-2 text-sm text-zinc-600">{t("lookup.intro")}</p>
             {lookupPaused ? (
@@ -466,7 +481,9 @@ export default async function NewRequestPage({
         <Card
           className={cx(
             "max-w-2xl lg:max-w-none",
-            addToRequest && "lg:col-span-2",
+            addToRequest
+              ? "lg:col-span-2"
+              : "lg:col-start-2 lg:row-span-2 lg:row-start-1",
           )}
         >
           {/* key: ao escolher um produto da busca (mesma rota, outro ?productId) o formulário
@@ -670,7 +687,34 @@ export default async function NewRequestPage({
             </div>
           </form>
         </Card>
-      </div>
+
+        {/* Histórico de compras do cliente (dono, 14/11/2026;
+            docs/PURCHASE_HISTORY.md): os pedidos do cliente escolhido; o login
+            do cliente vê os dele. Fora do "adicionar à solicitação" (o cliente
+            já é o da solicitação). */}
+        {addToRequest ? null : (
+          <CustomerPurchaseHistory
+            self={!isWellmix(user)}
+            className="max-w-2xl lg:col-start-1 lg:row-start-2 lg:max-w-none"
+            labels={{
+              title: t("purchaseHistory.title"),
+              select: t("purchaseHistory.select"),
+              loading: t("purchaseHistory.loading"),
+              empty: t("purchaseHistory.empty"),
+              error: t("purchaseHistory.error"),
+              retry: t("purchaseHistory.retry"),
+              more: t("purchaseHistory.more"),
+              hint: t("purchaseHistory.hint"),
+              current: t("purchaseHistory.current"),
+              currentHint: t("purchaseHistory.currentHint"),
+              rounds: t("purchaseHistory.rounds"),
+              noItems: t("purchaseHistory.noItems"),
+              details: t("purchaseHistory.details", { n: "{n}" }),
+              open: t("purchaseHistory.open", { n: "{n}" }),
+            }}
+          />
+        )}
+      </RequestCustomerProvider>
     </>
   );
 }
