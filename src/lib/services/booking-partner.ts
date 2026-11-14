@@ -153,15 +153,33 @@ export async function listPartnerBookingLots(
 export async function getPartnerBookingLot(
   user: User,
   lotId: string,
-): Promise<{ lot: PartnerBookingLot; items: PartnerBookingItem[] } | null> {
+): Promise<{
+  lot: PartnerBookingLot;
+  items: PartnerBookingItem[];
+  /** Nome do Fornecedor (responsável pelo book) e da Fábrica, do cadastro. */
+  partnerName: string | null;
+  factoryName: string | null;
+} | null> {
   const partyId = assertPartnerBooking(user);
   const store = getStore();
   const lot = await store.get("booking_lots", lotId);
   if (!lot || !isOwnLot(lot, partyId)) return null;
   const items = await store.list("booking_items", { filter: { lotId } });
+  // Cabeçalho (dono, 14/11/2026): o Fornecedor e a Fábrica do registro, pelo
+  // cadastro (nunca pelo nome do arquivo), como na tela da Wellmix.
+  const partyIds = [lot.partnerId, lot.supplierId].filter(
+    (id): id is string => !!id,
+  );
+  const parties = partyIds.length
+    ? await store.list("parties", { filter: { id: partyIds } })
+    : [];
+  const nameOf = (id: string | null | undefined) =>
+    (id && parties.find((p) => p.id === id)?.name) || null;
   return {
     lot: lotView(lot),
     items: items.sort((a, b) => a.position - b.position).map(itemView),
+    partnerName: nameOf(lot.partnerId),
+    factoryName: nameOf(lot.supplierId),
   };
 }
 
