@@ -1,5 +1,6 @@
 import { listByIds } from "@/lib/db/lookup";
 import { registerOrderInvoiceAction } from "../../actions/order-invoice";
+import { setPurchaseIncotermAction } from "../../actions/purchase-order";
 import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
 import { ImportFlowCard } from "@/components/import-flow-card";
@@ -241,6 +242,7 @@ export default async function OrderPage({
     freight: freightNotice,
     freightN,
     rounds: roundsSpawned,
+    incoterm: incotermNotice,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
@@ -2508,6 +2510,34 @@ export default async function OrderPage({
           />
         ) : null}
 
+        {/* Incoterm do pedido de compra (mapa R17?): EXW abre a transportadora
+            e os custos de origem antes do container na fábrica. */}
+        {purchaseFlow && isWellmix(user) && originSteps.length ? (
+          <Card title={t("exw.title")} dense>
+            <p className="mb-3 text-sm text-zinc-600">{t("exw.hint")}</p>
+            {incotermNotice === "saved" ? (
+              <div className="mb-3">
+                <Alert tone="success">{t("exw.saved")}</Alert>
+              </div>
+            ) : null}
+            <form
+              action={setPurchaseIncotermAction}
+              className="flex flex-wrap items-end gap-2"
+              data-incoterm-form
+            >
+              <input type="hidden" name="orderId" value={order.id} />
+              <Select
+                name="incoterm"
+                defaultValue={order.incoterm === "EXW" ? "EXW" : "FOB"}
+                aria-label={t("exw.title")}
+              >
+                <option value="FOB">FOB</option>
+                <option value="EXW">EXW</option>
+              </Select>
+              <SubmitButton variant="secondary">{t("exw.save")}</SubmitButton>
+            </form>
+          </Card>
+        ) : null}
         {/* Container na origem (mapa R19 a R26): vazio na fábrica, carregamento,
             lacre e número, volta ao porto e o rastreio diário do Comex interno. */}
         {originSteps.length ? (

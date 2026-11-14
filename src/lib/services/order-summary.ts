@@ -30,6 +30,7 @@ import {
 import { JOURNEY_REQUIREMENT_KEYS } from "./journey";
 import {
   computeOrderFinance,
+  originCostsOf,
   saleFxFromRecord,
   type FinanceSummaryRow,
 } from "./finance";
@@ -59,7 +60,7 @@ import type { BoardOrder, BoardStage } from "./tower-board";
  */
 
 /** Formato de `facts`; mudar o formato = subir o número (as telas voltam ao caminho antigo até a reconstrução). */
-export const SUMMARY_VERSION = 7;
+export const SUMMARY_VERSION = 8;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -107,6 +108,8 @@ export interface OrderFacts {
   installments: Array<{ status: InstallmentStatus; dueDate: string | null }>;
   /** Pagamentos do pedido (sem os códigos do Sankhya): financeiro, cronograma, conta do cliente. */
   pays: FactPayment[];
+  /** Custos de origem (POP) validados da compra EXW (docs/ORIGIN_CONTAINER.md). */
+  pop?: import("./finance").OriginCost[];
   /** Etapas de embarque e entrega (marcos do cronograma de pagamento e da entrega). */
   ship: FactStage[];
   /** Itens das etapas do cronograma de pagamento (data de embarque, pagamento antigo). */
@@ -288,6 +291,7 @@ export function buildOrderFacts(
   const supplier = src.parties.get(order.supplierId) ?? null;
   const items = src.items.get(id) ?? [];
   const payments = src.payments.get(id) ?? [];
+  const pop = originCostsOf(src.steps.get(id) ?? []);
   const finance = computeOrderFinance(
     order,
     payments,
@@ -303,6 +307,7 @@ export function buildOrderFacts(
         order.fobCurrency ?? "USD",
         order.sellCurrency ?? "BRL",
       ),
+      originCosts: pop,
     },
   );
   const payable = payableFor(
@@ -369,6 +374,7 @@ export function buildOrderFacts(
       dueDate: i.dueDate,
     })),
     pays: payments.map(withoutRefs),
+    ...(pop.length ? { pop } : {}),
     ship: stages
       .filter((x) => x.key === "SHIPPING" || x.key === "DELIVERED")
       .map((x) => ({
