@@ -69,7 +69,7 @@ export function PhotoGallery({
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
         <img
-          src={`/api/files/${photos[0].id}`}
+          src={`/api/files/${photos[0].id}?thumb=1`}
           alt={name}
           loading="lazy"
           className="h-full w-full object-cover"
@@ -143,7 +143,7 @@ export function PhotoGallery({
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
                   <img
-                    src={`/api/files/${ph.id}`}
+                    src={`/api/files/${ph.id}?thumb=1`}
                     alt={ph.label ?? name}
                     loading="lazy"
                     className="h-full w-full object-cover"

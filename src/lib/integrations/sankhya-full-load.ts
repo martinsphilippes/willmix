@@ -126,6 +126,8 @@ const ROWS: Record<FullLoadEntity, { min: number; max: number }> = {
   // a consulta ao Sankhya (custo quase fixo por lote) pesava mais que a
   // gravação; o cursor continua gravado a cada lote.
   orders: { min: 3, max: 8 },
+  // Fotos: a faixa e os lotes ficam em sankhya-images.ts.
+  productImages: { min: 60, max: 200 },
 };
 
 export interface FullLoadResult {
@@ -143,6 +145,10 @@ export async function runFullLoad(
   entity: FullLoadEntity,
   budgetMs = 30_000,
 ): Promise<FullLoadResult> {
+  if (entity === "productImages") {
+    const { runImageLoad } = await import("./sankhya-images");
+    return { progress: await runImageLoad(user, budgetMs), lines: [] };
+  }
   const started = Date.now();
   const progress = await getFullLoadProgress(entity);
   if (progress.done) return { progress, lines: [] };

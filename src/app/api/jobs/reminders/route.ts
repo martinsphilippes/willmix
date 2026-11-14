@@ -40,6 +40,13 @@ export async function GET(request: Request) {
       console.error("[reminders] sankhya-sync", error);
       return null;
     });
+  // Fotos do Sankhya: recomeça a passada (só baixa o NUVERSAOIMG que mudou).
+  const sankhyaImages = await import("@/lib/integrations/sankhya-images")
+    .then((m) => m.scheduleImageRefresh())
+    .catch((error) => {
+      console.error("[reminders] sankhya-images", error);
+      return null;
+    });
   // Solicitações ao fornecedor que passaram do SLA da negociação.
   const supplierRequestsLate =
     await import("@/lib/services/supplier-request-negotiation")
@@ -84,5 +91,6 @@ export async function GET(request: Request) {
     payablesDue,
     toConfirm,
     sankhya,
+    sankhyaImages,
   });
 }

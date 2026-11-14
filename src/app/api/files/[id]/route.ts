@@ -26,6 +26,21 @@ export async function GET(
   if (!doc || !(await canAccessDocument(user, doc))) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
+  // Miniatura (?thumb=1): as listas pedem a pequena; sem miniatura, o original.
+  if (doc.thumbKey && new URL(request.url).searchParams.get("thumb") === "1") {
+    const thumb = await store.streamFile(doc.thumbKey);
+    if (thumb)
+      return new NextResponse(thumb.body, {
+        headers: {
+          "Content-Type": thumb.mime || "image/jpeg",
+          "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(thumb.name)}`,
+          "Cache-Control": "private, max-age=3600",
+          "X-Content-Type-Options": "nosniff",
+          "Content-Security-Policy":
+            "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox",
+        },
+      });
+  }
   const range = parseByteRange(request.headers.get("range"), doc.size);
   if (range === "unsatisfiable")
     return new NextResponse(null, {

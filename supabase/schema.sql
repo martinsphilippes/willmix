@@ -138,6 +138,7 @@ alter table public."products" add column if not exists "minStock" double precisi
 alter table public."products" add column if not exists "sankhyaCode" text;
 alter table public."products" add column if not exists "ean" text;
 alter table public."products" add column if not exists "sankhyaSyncedAt" timestamptz;
+alter table public."products" add column if not exists "sankhyaImages" jsonb;
 create index if not exists "products_by_sankhya" on public."products" ("sankhyaCode");
 create index if not exists "products_by_line" on public."products" ("lineId");
 create index if not exists "products_by_supplier" on public."products" ("supplierId");
@@ -356,6 +357,7 @@ alter table public."documents" add column if not exists "kitId" text;
 alter table public."documents" add column if not exists "imageHash" text;
 alter table public."documents" add column if not exists "conversationTopicId" text;
 alter table public."documents" add column if not exists "supplierRequestId" text;
+alter table public."documents" add column if not exists "thumbKey" text;
 create index if not exists "documents_by_order" on public."documents" ("orderId");
 create index if not exists "documents_by_request" on public."documents" ("requestId");
 create index if not exists "documents_by_product" on public."documents" ("productId");
