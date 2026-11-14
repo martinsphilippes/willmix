@@ -227,11 +227,8 @@ describe("pedido de compra", () => {
     const prep = reqs.filter((r) => r.key.includes("__"));
     expect(prep).toHaveLength(2 * 10);
     const roles = new Set(prep.map((r) => r.role));
-    // Certificado: do despachante do pedido (dono, 13/11/2026).
-    expect(order.brokerId).toBeTruthy();
-    expect(roles).toEqual(
-      new Set(["supplier", "agency", "operator", "broker"]),
-    );
+    // Certificado: da certificadora (OCP) do pedido (dono, 14/11/2026).
+    expect(roles).toEqual(new Set(["supplier", "agency", "operator", "ocp"]));
     // Avisos das raias: fornecedor e certificadora na hora; a agência só com
     // a faca e a foto em alta; Vendas fica sabendo do que vem.
     const linked = async (u: User) =>
@@ -240,11 +237,7 @@ describe("pedido de compra", () => {
           filter: { userId: u.id, channel: "inapp" },
         })
       ).filter((n) => n.link === `/app/orders/${order.id}`);
-    const broker = (await store.list("users")).find(
-      (u) => u.role === "broker" && u.partyId === order.brokerId,
-    )!;
-    for (const u of [supplierA, broker])
-      expect((await linked(u)).length).toBe(1);
+    for (const u of [supplierA, ocp]) expect((await linked(u)).length).toBe(1);
     expect(await linked(agency)).toHaveLength(0);
     // Vendas: quem tem a ação "Receber o aviso de pedido de compra" (padrão:
     // quem abre Pós-venda, como o operador de compras do seed).

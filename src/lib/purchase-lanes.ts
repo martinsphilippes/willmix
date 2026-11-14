@@ -111,6 +111,22 @@ export const AUTO_GATE_KEYS: readonly string[] = [
 export const isAutoGateKey = (key: string) =>
   AUTO_GATE_KEYS.includes(baseKeyOf(key));
 
+/**
+ * As quatro tarefas da Preparação com dono por login (dono, 14/11/2026):
+ * arte, validação da arte, certificado e arte final com o selo. Quem recebe
+ * cada uma sai de `laneRoute` (src/lib/services/cert-art-routing.ts).
+ */
+const ROUTED_LANE_BASES = new Set<string>([
+  LANE_KEYS.art,
+  LANE_KEYS.artReview,
+  LANE_KEYS.certificate,
+  LANE_KEYS.artFinal,
+]);
+
+/** É uma das quatro (`art__item`, `certificate__item`…)? */
+export const isRoutedLaneKey = (key: string) =>
+  !!itemIdOf(key) && ROUTED_LANE_BASES.has(baseKeyOf(key));
+
 export type Lane = "supplier" | "art" | "certification" | "registration";
 
 const ART_KEYS = new Set<string>([

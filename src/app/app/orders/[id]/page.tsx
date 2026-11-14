@@ -22,10 +22,19 @@ import {
   isLeadTimeKey,
   isSampleOrderKey,
   itemIdOf,
+  laneKey,
   supplierLaneView,
   supplierSeesLaneRequirement,
 } from "@/lib/purchase-lanes";
 import { canViewDieCut, negotiatedTerms } from "@/lib/services/die-cut-step";
+import {
+  canActOnLane,
+  laneRoute,
+  loadRoutingContext,
+  routeLabel,
+  seesLaneTask,
+} from "@/lib/services/cert-art-routing";
+import { ASSIGN_HREF, type MissingAssignment } from "@/lib/assign-href";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -237,6 +246,9 @@ export default async function OrderPage({
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
   // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
   await normalizePackaging(id);
+  // Pedido de compra: papel das tarefas de arte e certificado coerente com
+  // quem as recebe (corrige as abertas antes de 14/11/2026, sem duplicar).
+  await (await import("@/lib/services/purchase-order")).normalizeLaneRoles(id);
   await normalizeShipping(id);
   let progress = await loadOrderProgress(id);
   if (!progress || !canViewOrder(user, progress.order)) notFound();
@@ -582,6 +594,64 @@ export default async function OrderPage({
   const parties = [...known.values()];
   const partyName = (pid: string | null) =>
     (pid && known.get(pid)?.name) || "—";
+  /* Arte, validação, certificado e arte final do pedido de compra (dono,
+     14/11/2026): cada uma com o login que a recebe. Quem não a recebe não a
+     vê, nem na linha do tempo nem nos detalhes da etapa; o administrador vê
+     todas, com quem está cada uma e o que falta designar. */
+  const laneCtx = purchaseFlow ? await loadRoutingContext() : null;
+  const laneInfo = new Map<string, LaneRowInfo>();
+  if (laneCtx)
+    for (const r of requirements) {
+      const route = laneRoute(r.key, order, laneCtx, requirements);
+      if (!route) continue;
+      const missing =
+        route.missing && route.missing !== "ocp" ? route.missing : null;
+      laneInfo.set(r.id, {
+        sees: seesLaneTask(user, r.key, order, laneCtx, requirements),
+        canAct: canActOnLane(user, r.key, order, laneCtx, requirements),
+        // Sem a certificadora, ninguém faz o certificado: só falta designar.
+        who:
+          missing === "certifier"
+            ? null
+            : route.party
+              ? partyName(route.party.partyId)
+              : ((await routeLabel(route, laneCtx)) ??
+                t("certFlow.assignee.team")),
+        missing,
+      });
+    }
+  /** Itens que este login vê (as quatro tarefas, só quem as recebe). */
+  const visibleReqs = <T extends { id: string }>(list: T[]) =>
+    laneInfo.size ? list.filter((r) => laneInfo.get(r.id)?.sees ?? true) : list;
+  /* Os arquivos que a tarefa usa, de tarefas que este login pode não ver:
+     a validação traz a arte enviada; a arte final, a arte validada e o
+     certificado (o selo). */
+  const laneInputsOf = (r: Requirement): LaneInput[] => {
+    const item = laneCtx ? itemIdOf(r.key) : null;
+    if (!item) return [];
+    const base = baseKeyOf(r.key);
+    if (base !== LANE_KEYS.artReview && base !== LANE_KEYS.artFinal) return [];
+    const sibling = (source: string) =>
+      requirements.find((x) => x.key === laneKey(source, item));
+    const fileOf = (source: string) => {
+      const src = sibling(source);
+      return src?.status === "done" ? docById(src.documentId) : null;
+    };
+    const reviewed = sibling(LANE_KEYS.artReview)?.status === "done";
+    const out: LaneInput[] = [];
+    // A validação mostra a arte enviada; a arte final, só a arte validada.
+    const art = fileOf(LANE_KEYS.art);
+    if (art && (base === LANE_KEYS.artReview || reviewed))
+      out.push({
+        label: reviewed ? "lane.input.art" : "lane.input.review",
+        doc: art,
+      });
+    const certificate =
+      base === LANE_KEYS.artFinal ? fileOf(LANE_KEYS.certificate) : null;
+    if (certificate)
+      out.push({ label: "lane.input.certificate", doc: certificate });
+    return out;
+  };
   /* Parceiro (agência, despachante, companhia, transportador): só a parte dele.
      O transportador ganha o cartão "Carga e entrega" no lugar do cartão do pedido. */
   const partner = isPartner(user);
@@ -1030,7 +1100,7 @@ export default async function OrderPage({
     stageVisibleTo(
       user,
       s,
-      requirements.filter((r) => r.stageId === s.id),
+      visibleReqs(requirements.filter((r) => r.stageId === s.id)),
     );
   const defaultExpanded = (s: (typeof stages)[number]) =>
     s.status === "active" ||
@@ -1621,7 +1691,10 @@ export default async function OrderPage({
               // Operador: os detalhes da etapa abrem quando há item dele na
               // etapa; a tarefa só de subetapa abre pela linha da subetapa.
               const details = visible && (!mineOnly || myStageOpen(s));
-              const reqs = requirements.filter((r) => r.stageId === s.id);
+              // Só o que este login vê (arte e certificado: quem recebe).
+              const reqs = visibleReqs(
+                requirements.filter((r) => r.stageId === s.id),
+              );
               // Fornecedor e parceiros: só as linhas que são do próprio
               // login (a numeração continua a do fluxo inteiro).
               // Operador da Wellmix: só as etapas e partes com tarefa dele.
@@ -1993,7 +2066,7 @@ export default async function OrderPage({
               ? reqs.filter((r) => mineIds.has(r.id))
               : supplierView
                 ? reqs.filter(supplierSeesLaneRequirement)
-                : reqs;
+                : visibleReqs(reqs);
             // Login Trading: a etapa 2 como "Die-Cut", com o andamento dele.
             const dieCut = tradingDieCut(stage, reqs);
             const status = mine?.status ?? dieCut?.status ?? stage.status;
@@ -2184,6 +2257,8 @@ export default async function OrderPage({
                           order={order}
                           user={user}
                           t={t}
+                          lane={laneInfo.get(r.id) ?? null}
+                          laneInputs={laneInputsOf(r)}
                           muted={laterIds.has(r.id)}
                           // O prazo registrado para o item só preenche o campo.
                           defaultValue={
@@ -3505,6 +3580,24 @@ const ROW_WIDE_3XL = {
   note: "@3xl:max-w-56 @3xl:shrink-0 @3xl:text-right",
 };
 
+/** Arte, validação, certificado e arte final: a tarefa vista por este login. */
+interface LaneRowInfo {
+  /** Este login vê a tarefa (quem a recebe; o administrador, todas). */
+  sees: boolean;
+  /** Este login pode enviar, trocar o arquivo ou validar. */
+  canAct: boolean;
+  /** Com quem está (nulo: ninguém faz até designar). */
+  who: string | null;
+  /** O que falta designar ("Responsável não definido"). */
+  missing: MissingAssignment | null;
+}
+
+/** Arquivo de outra tarefa que esta usa (ex.: a arte, na validação). */
+interface LaneInput {
+  label: DictionaryKey;
+  doc: { id: string; name: string; version: number };
+}
+
 function RequirementRow({
   requirement: r,
   order,
@@ -3522,9 +3615,18 @@ function RequirementRow({
   waiting,
   gateHref,
   defaultValue,
+  lane,
+  laneInputs,
   muted = false,
 }: {
   requirement: Requirement;
+  /** Arquivos de outras tarefas que esta usa (a arte para validar; a arte e o certificado na arte final). */
+  laneInputs?: LaneInput[];
+  /**
+   * Arte, validação, certificado e arte final do pedido de compra: com quem
+   * está, o que falta designar e se este login pode agir (decidido por login).
+   */
+  lane?: LaneRowInfo | null;
   /**
    * Linha do tempo do operador: tarefa dele que ainda não está liberada
    * (espera outro item ou a etapa começar), em cinza.
@@ -3570,17 +3672,17 @@ function RequirementRow({
   } | null;
 }) {
   const isSheet = r.key === "purchase_sheet";
-  const canAct =
-    open &&
-    !waiting &&
-    r.status !== "done" &&
-    canSubmitRequirement(user, order as never, r);
+  // Arte e certificado do pedido de compra: o login que recebe a tarefa.
+  const allowed = lane
+    ? lane.canAct && canSubmitRequirement(user, order as never, r)
+    : canSubmitRequirement(user, order as never, r);
+  const canAct = open && !waiting && r.status !== "done" && allowed;
   /* Foto/arquivo enviado: dá para excluir e mandar outro enquanto a etapa está aberta. */
   const canClear =
     open &&
     r.status === "done" &&
     (r.type === "photo" || r.type === "file") &&
-    canSubmitRequirement(user, order as never, r);
+    allowed;
   const canRemeasure =
     remeasure &&
     r.status === "done" &&
@@ -3630,8 +3732,46 @@ function RequirementRow({
             </span>
           ) : null}
           <Badge tone={tone}>{t(`reqStatus.${r.status}`)}</Badge>
-          <span className="text-xs text-zinc-500">{t(`role.${r.role}`)}</span>
+          {lane ? (
+            lane.who ? (
+              <span className="text-xs text-zinc-500" data-lane-assignee>
+                {t("lane.with", { name: lane.who })}
+              </span>
+            ) : null
+          ) : (
+            <span className="text-xs text-zinc-500">{t(`role.${r.role}`)}</span>
+          )}
         </div>
+        {lane?.missing && wellmix && r.status !== "done" ? (
+          <p
+            className="mt-0.5 text-xs font-medium text-amber-700"
+            data-lane-missing={lane.missing}
+          >
+            {t("lane.undefined")} · {t(`certFlow.missing.${lane.missing}`)}{" "}
+            <TextLink
+              href={ASSIGN_HREF[lane.missing](order.id)}
+              className="text-brand-700"
+            >
+              {t(`certFlow.assign.${lane.missing}`)}
+            </TextLink>
+          </p>
+        ) : null}
+        {laneInputs?.length ? (
+          <div className="mt-0.5 text-xs text-zinc-600" data-lane-inputs>
+            {laneInputs.map((input) => (
+              <span
+                key={input.doc.id}
+                className="mr-3 inline-block"
+                data-lane-input={input.label}
+              >
+                {t(input.label)}:{" "}
+                <TextLink href={`/api/files/${input.doc.id}`} target="_blank">
+                  {input.doc.name} (v{input.doc.version})
+                </TextLink>
+              </span>
+            ))}
+          </div>
+        ) : null}
         {r.status !== "pending" ? (
           <div className="mt-0.5 text-xs text-zinc-500">
             {r.type !== "file" &&

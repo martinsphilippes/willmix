@@ -2,7 +2,20 @@ import "server-only";
 import { cache } from "react";
 import { can, holdersOf, type FunctionDef } from "@/lib/auth/function-access";
 import { isWellmix, WELLMIX_ROLES } from "@/lib/auth/permissions";
-import { getStore, type Order, type User } from "@/lib/db";
+import {
+  getStore,
+  type Order,
+  type Requirement,
+  type Role,
+  type User,
+} from "@/lib/db";
+import {
+  LANE_KEYS,
+  baseKeyOf,
+  isRoutedLaneKey,
+  itemIdOf,
+  laneKey,
+} from "@/lib/purchase-lanes";
 import { getSettings } from "@/lib/settings";
 import { artRole } from "@/lib/workflow/stages";
 import { loadFunctionDefs } from "./team-functions";
@@ -312,4 +325,235 @@ export async function routeLabel(
     return names.length ? names.join(", ") : null;
   }
   return null;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Raias do pedido de compra: arte, validação, certificado e arte final      */
+/* ------------------------------------------------------------------------ */
+
+/*
+ * As quatro tarefas da etapa "Die-Cut, Arte e Certificação" do pedido de
+ * compra, produto a produto, cada uma no login responsável (dono,
+ * 14/11/2026; docs/PURCHASE_ORDER.md, "Quem faz cada tarefa"):
+ *
+ * - Arte e arte final com o selo: o designer do pedido (cartão Artes), pela
+ *   mesma regra de quem faz a arte (`artMakerRoute`).
+ * - Validação da arte pela Wellmix: o responsável pelo pedido (o analista),
+ *   se ele pode validar arte; senão quem tem a ação "Validar a arte". Nunca
+ *   quem faz a arte do pedido nem quem a enviou (`laneReviewRoute`).
+ * - Certificado (Inmetro): a certificadora (OCP) do pedido, em Parceiros do
+ *   pedido. Sem ela, o responsável interno designa (`missing: "certifier"`).
+ *   Só o certificado das raias: o selo e o memorial do cartão Certificação
+ *   continuam com o despachante (dono, 13/11/2026).
+ *
+ * Quem vê e quem age sai daqui, calculado na hora a partir do pedido: trocar
+ * o designer, a certificadora ou o analista muda o dono da tarefa aberta, sem
+ * duplicar; o que já foi feito continua com quem fez. O administrador vê
+ * todas (gestão interna) e pode agir em qualquer uma.
+ */
+
+export { isRoutedLaneKey };
+
+/** O que o encaminhamento das raias lê do pedido. */
+export type LaneOrder = Pick<
+  Order,
+  "designerUserId" | "agencyId" | "ownerUserId" | "ocpId"
+>;
+
+/** Os outros itens do pedido (quem enviou a arte não valida a própria arte). */
+export type LaneSibling = Pick<Requirement, "key" | "submittedByUserId">;
+
+/** Certificado das raias: a certificadora (OCP) do pedido; sem ela, o responsável interno designa. */
+export function laneCertificateRoute(
+  order: Pick<Order, "ocpId" | "ownerUserId">,
+  ctx: RoutingContext,
+): Route {
+  if (order.ocpId)
+    return { via: "ocp", party: { role: "ocp", partyId: order.ocpId } };
+  return { ...internalRoute(order, ctx), missing: "certifier" };
+}
+
+/**
+ * Validação da arte das raias: o responsável pelo pedido (o analista), se ele
+ * pode validar arte, como na linha do tempo do operador (dono, 14/11/2026:
+ * pedido com o Administrador como responsável fica com ele); senão quem tem a
+ * ação "Validar a arte". Nunca quem faz a arte do pedido (o designer vê só a
+ * arte e a arte final) nem quem a enviou.
+ */
+export function laneReviewRoute(
+  order: LaneOrder,
+  ctx: RoutingContext,
+  submitterId: string | null,
+): Route {
+  const makers = new Set(artMakerRoute(order, ctx).userIds ?? []);
+  const able = ctx.team.filter(
+    (u) => u.id !== submitterId && !makers.has(u.id) && canValidateArt(u, ctx),
+  );
+  const owner = analystOf(order, ctx);
+  if (owner && able.some((u) => u.id === owner.id))
+    return { via: "analyst", userIds: [owner.id] };
+  if (able.length)
+    return {
+      via: "art_validate",
+      userIds: able.map((u) => u.id),
+      ...(owner ? {} : { missing: "analyst" as const }),
+    };
+  return artValidatorRoute(order, ctx, submitterId);
+}
+
+/** Quem enviou a arte do mesmo produto (a validação não fica com ele). */
+const artSubmitterOf = (key: string, siblings: readonly LaneSibling[]) => {
+  const item = itemIdOf(key);
+  if (!item) return null;
+  const artKey = laneKey(LANE_KEYS.art, item);
+  return siblings.find((r) => r.key === artKey)?.submittedByUserId ?? null;
+};
+
+/** Quem recebe a tarefa; nulo quando não é uma das quatro. */
+export function laneRoute(
+  key: string,
+  order: LaneOrder,
+  ctx: RoutingContext,
+  siblings: readonly LaneSibling[] = [],
+): Route | null {
+  if (!isRoutedLaneKey(key)) return null;
+  switch (baseKeyOf(key)) {
+    case LANE_KEYS.art:
+    case LANE_KEYS.artFinal:
+      return artMakerRoute(order, ctx);
+    case LANE_KEYS.artReview:
+      return laneReviewRoute(order, ctx, artSubmitterOf(key, siblings));
+    default:
+      return laneCertificateRoute(order, ctx);
+  }
+}
+
+type LaneUser = Pick<User, "id" | "role" | "partyId"> &
+  Partial<Pick<User, "functions" | "screens">>;
+
+/**
+ * Vê a tarefa (Pendências, linha do tempo e detalhes da etapa): quem a
+ * recebe; o administrador vê todas. Validar a arte, só quem pode validar.
+ */
+export function seesLaneTask(
+  user: LaneUser,
+  key: string,
+  order: LaneOrder,
+  ctx: RoutingContext,
+  siblings: readonly LaneSibling[] = [],
+): boolean {
+  const route = laneRoute(key, order, ctx, siblings);
+  if (!route || user.role === "admin") return true;
+  if (!reaches(user, route)) return false;
+  if (baseKeyOf(key) === LANE_KEYS.artReview)
+    return canValidateArt(user as User, ctx);
+  return true;
+}
+
+/**
+ * Pode agir (enviar, trocar o arquivo, validar ou devolver): quem recebe a
+ * tarefa; o administrador sempre. O certificado só a certificadora do pedido
+ * (o responsável interno que o recebe sem ela só designa); a validação, só
+ * quem pode validar arte e nunca quem enviou a arte.
+ */
+export function canActOnLane(
+  user: LaneUser,
+  key: string,
+  order: LaneOrder,
+  ctx: RoutingContext,
+  siblings: readonly LaneSibling[] = [],
+): boolean {
+  const route = laneRoute(key, order, ctx, siblings);
+  if (!route || user.role === "admin") return true;
+  if (!reaches(user, route)) return false;
+  const base = baseKeyOf(key);
+  if (base === LANE_KEYS.certificate) return !!route.party;
+  if (base === LANE_KEYS.artReview)
+    return (
+      canValidateArt(user as User, ctx) &&
+      artSubmitterOf(key, siblings) !== user.id
+    );
+  return true;
+}
+
+/**
+ * Papel gravado na tarefa, coerente com quem a recebe (a etiqueta e os
+ * filtros por papel usam): arte e arte final, a agência quando é ela quem faz
+ * a arte (o designer da agência ou a agência sem designer); senão a Wellmix.
+ * Validação, a Wellmix; certificado, a certificadora.
+ */
+export function laneRoleFor(
+  key: string,
+  order: LaneOrder,
+  ctx: RoutingContext,
+): Role | null {
+  if (!isRoutedLaneKey(key)) return null;
+  switch (baseKeyOf(key)) {
+    case LANE_KEYS.art:
+    case LANE_KEYS.artFinal:
+      return artMakerRoute(order, ctx).party?.role === "agency" ||
+        orderDesigner(order, ctx)?.role === "agency"
+        ? "agency"
+        : "operator";
+    case LANE_KEYS.artReview:
+      return "operator";
+    default:
+      return "ocp";
+  }
+}
+
+/** Confere no servidor, antes de gravar, se o login pode agir na tarefa. */
+export async function assertLaneActor(
+  user: User,
+  order: Order,
+  requirement: Pick<Requirement, "key" | "orderId">,
+): Promise<void> {
+  if (!isRoutedLaneKey(requirement.key)) return;
+  if (user.role === "admin") return;
+  const [ctx, siblings] = await Promise.all([
+    loadRoutingContext(),
+    getStore().list("requirements", {
+      filter: { orderId: requirement.orderId },
+    }),
+  ]);
+  if (!canActOnLane(user, requirement.key, order, ctx, siblings)) {
+    const { WorkflowError } = await import("@/lib/workflow/engine");
+    throw new WorkflowError("lane_not_assignee");
+  }
+}
+
+/**
+ * O que quem faz a arte abre no pedido: a faca e a foto em alta do
+ * fornecedor (a base da arte), a arte, o certificado (o selo) e a arte final.
+ */
+const ART_MAKER_FILES = new Set<string>([
+  LANE_KEYS.dieCut,
+  LANE_KEYS.hdPhoto,
+  LANE_KEYS.art,
+  LANE_KEYS.certificate,
+  LANE_KEYS.artFinal,
+]);
+
+/**
+ * Arquivos das raias para quem faz a arte (e para a certificadora o dela):
+ * o designer do pedido abre a faca, a foto em alta, a arte, o certificado e a
+ * arte final, mesmo os gravados como internos (precisa deles para fazer e
+ * finalizar a arte); a certificadora, o certificado.
+ */
+export async function laneDocumentAccess(
+  user: User,
+  order: Order,
+  requirementId: string,
+): Promise<boolean> {
+  const requirement = await getStore().get("requirements", requirementId);
+  if (!requirement || requirement.orderId !== order.id) return false;
+  if (!itemIdOf(requirement.key)) return false;
+  const base = baseKeyOf(requirement.key);
+  if (!ART_MAKER_FILES.has(base)) return false;
+  const ctx = await loadRoutingContext();
+  if (reaches(user, artMakerRoute(order, ctx))) return true;
+  return (
+    base === LANE_KEYS.certificate &&
+    reaches(user, laneCertificateRoute(order, ctx))
+  );
 }

@@ -11,6 +11,7 @@ import {
   LANE_KEYS,
   baseKeyOf,
   blockedBy,
+  isRoutedLaneKey,
   itemIdOf,
   laneDueAt,
 } from "@/lib/purchase-lanes";
@@ -119,17 +120,40 @@ async function laneData(
   };
 }
 
+/** Quem vê cada item da mesa (arte, validação e certificado: por login). */
+type Visible = (
+  order: Order,
+  r: Requirement,
+  siblings: Requirement[],
+) => boolean;
+
+/**
+ * Arte, validação, certificado e arte final do pedido de compra: só com quem
+ * recebe cada uma (dono, 14/11/2026; src/lib/services/cert-art-routing.ts);
+ * o administrador vê todas. Os outros itens, como antes.
+ */
+async function laneVisibility(user: User): Promise<Visible> {
+  if (user.role === "admin") return () => true;
+  const { loadRoutingContext, seesLaneTask } =
+    await import("./cert-art-routing");
+  const ctx = await loadRoutingContext();
+  return (order, r, siblings) =>
+    !isRoutedLaneKey(r.key) || seesLaneTask(user, r.key, order, ctx, siblings);
+}
+
 /** Itens abertos e já liberados com a chave base dada. */
 function openLane(
   data: LaneData,
   bases: string[],
   link: (order: Order, r: Requirement, productId: string | null) => string,
+  visible: Visible = () => true,
 ): DeskRow[] {
   const rows: DeskRow[] = [];
   for (const order of data.orders) {
     const mine = data.requirements.filter((r) => r.orderId === order.id);
     for (const r of mine) {
       if (r.status === "done" || !bases.includes(baseKeyOf(r.key))) continue;
+      if (!visible(order, r, mine)) continue;
       const stage = mine.filter((x) => x.stageId === r.stageId);
       if (blockedBy(r.key, stage).length) continue;
       const productId = data.items.get(itemIdOf(r.key) ?? "") ?? null;
@@ -176,6 +200,7 @@ async function queuesOf(user: User, desk: DeskKey): Promise<DeskQueue[]> {
   if (!desksFor(user).includes(desk)) return [];
   const store = getStore();
   const wellmix = isWellmix(user);
+  const visible = await laneVisibility(user);
   switch (desk) {
     case "gp": {
       const data = await laneData();
@@ -204,6 +229,7 @@ async function queuesOf(user: User, desk: DeskKey): Promise<DeskQueue[]> {
             data,
             [LANE_KEYS.certificate],
             orderLink("#certification"),
+            visible,
           ),
         },
       ];
@@ -272,7 +298,7 @@ async function queuesOf(user: User, desk: DeskKey): Promise<DeskQueue[]> {
       return [
         {
           key: "artReview",
-          rows: openLane(data, [LANE_KEYS.artReview], orderLink()),
+          rows: openLane(data, [LANE_KEYS.artReview], orderLink(), visible),
         },
         {
           key: "showcase",
@@ -294,10 +320,13 @@ async function queuesOf(user: User, desk: DeskKey): Promise<DeskQueue[]> {
         wellmix ? {} : { agencyId: user.partyId ?? "__none__" },
       );
       return [
-        { key: "art", rows: openLane(data, [LANE_KEYS.art], orderLink()) },
+        {
+          key: "art",
+          rows: openLane(data, [LANE_KEYS.art], orderLink(), visible),
+        },
         {
           key: "artFinal",
-          rows: openLane(data, [LANE_KEYS.artFinal], orderLink()),
+          rows: openLane(data, [LANE_KEYS.artFinal], orderLink(), visible),
         },
       ];
     }
@@ -312,6 +341,7 @@ async function queuesOf(user: User, desk: DeskKey): Promise<DeskQueue[]> {
             data,
             [LANE_KEYS.certificate],
             orderLink("#certification"),
+            visible,
           ),
         },
       ];

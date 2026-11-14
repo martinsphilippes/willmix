@@ -372,15 +372,16 @@ describe("pedido sem responsável designado", () => {
   let order: Order;
   beforeAll(async () => {
     order = await purchaseOrder("RT-2");
-    // Parceiros retirados em Parceiros do pedido: as raias abertas voltam
-    // para a Wellmix, como na tela.
+    // Parceiros retirados em Parceiros do pedido: a arte e a arte final
+    // abertas voltam para a Wellmix, como na tela; o certificado das raias
+    // continua da certificadora (dono, 14/11/2026).
     order = await getStore().update("orders", order.id, {
       brokerId: null,
       agencyId: null,
       designerUserId: null,
       ownerUserId: null,
     });
-    expect(await po.syncLaneRoles(admin, order)).toBe(3);
+    expect(await po.syncLaneRoles(admin, order)).toBe(2);
   });
 
   it("a equipe fica com designar o despachante e com o memorial, e a pendência diz onde designar", async () => {
@@ -421,19 +422,19 @@ describe("pedido sem responsável designado", () => {
     });
   });
 
-  it("despachante designado: a pendência passa para ele, as raias abertas também, sem duplicar", async () => {
+  it("despachante designado: o selo passa para ele, sem duplicar; o certificado das raias continua da certificadora", async () => {
     const store = getStore();
     const certificate = () =>
       store
         .list("requirements", { filter: { orderId: order.id } })
         .then((r) => r.filter((x) => x.key.startsWith("certificate__")));
-    expect((await certificate()).map((r) => r.role)).toEqual(["operator"]);
+    expect((await certificate()).map((r) => r.role)).toEqual(["ocp"]);
     order = await store.update("orders", order.id, {
       brokerId: broker.partyId,
     });
-    expect(await po.syncLaneRoles(admin, order)).toBe(1);
+    expect(await po.syncLaneRoles(admin, order)).toBe(0);
     await f.notifySealPartner(order, "brokerId", null);
-    expect((await certificate()).map((r) => r.role)).toEqual(["broker"]);
+    expect((await certificate()).map((r) => r.role)).toEqual(["ocp"]);
     expect(shape(await tasksOf(broker, order))).toEqual([
       ["cert_step", "tasks.seal.issue.title", featured(order)],
     ]);
