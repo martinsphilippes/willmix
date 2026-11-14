@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
-import { generateLabels } from "@/components/generate-labels";
+import {
+  generateLabels,
+  purchaseScheduleLabels,
+} from "@/components/generate-labels";
 import { STOCK_OPTION, isStockCustomer } from "@/lib/services/stock-party";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -561,37 +564,27 @@ export default async function NewRequestPage({
                   unit: "{unit}",
                 }),
                 intl: t.intl,
-                schedule: {
-                  intl: t.intl,
-                  toggle: t("reqSchedule.toggle"),
-                  ask: t("reqSchedule.ask"),
-                  hint: t("reqSchedule.hint"),
-                  interval: t("reqSchedule.interval"),
-                  days: t("reqSchedule.days", { n: "{n}" }),
-                  custom: t("reqSchedule.custom"),
-                  firstDate: t("reqSchedule.firstDate"),
-                  n: t("reqSchedule.n", { n: "{n}" }),
-                  quantity: t("reqSchedule.quantity"),
-                  expected: t("reqSchedule.expected"),
-                  add: t("reqSchedule.add"),
-                  remove: t("reqSchedule.remove", { n: "{n}" }),
-                  total: t("reqSchedule.total", {
-                    total: "{total}",
-                    unit: "{unit}",
-                  }),
-                  off: t("reqSchedule.off"),
-                },
+                // O bloco "Programação de compra" da Seleção de itens (dono,
+                // 14/11/2026): os mesmos textos; a explicação diz para onde a
+                // programação da solicitação vai.
+                schedule: purchaseScheduleLabels(
+                  t,
+                  t.intl,
+                  t("purchaseRounds.form.hintRequest"),
+                ),
                 // O card "Gerar programação pela quantidade" da Seleção de
                 // itens, com os textos do produto escolhido acima.
                 generate: {
                   ...generateLabels(t, t("reqSchedule.gen.chooseProduct")),
                   noPieces: t("reqSchedule.gen.noPieces"),
                   noCarton: t("reqSchedule.gen.noCarton"),
+                  noData: t("reqSchedule.gen.noData"),
                   regenerate: t("reqSchedule.gen.regenerate"),
                 },
+                generateOutside: t("reqSchedule.gen.outside"),
                 pieces: t("reqSchedule.pieces"),
                 piecesHint: t("reqSchedule.piecesHint"),
-                piecesScheduledHint: t("reqSchedule.piecesScheduledHint"),
+                piecesScheduledHint: t("purchaseRounds.form.quantityOff"),
                 fromCatalog: t("reqProduct.fromCatalog"),
                 inStock: t("reqProduct.inStock"),
                 noStock: t("reqProduct.noStock"),

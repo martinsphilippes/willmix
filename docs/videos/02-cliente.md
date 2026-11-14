@@ -209,18 +209,18 @@ Antes de cada episódio, veja a série [GER · Primeiros passos](01-primeiros-pa
 - 🔤 Na tela: `[PASSO 2/7] Escolha o produto`; `[SETA]` "Preenchido com a ficha" no selo verde; `[ZOOM 150 %]` na caixa verde "Produto do catálogo Wellmix".
 - ✂️ Edição: manter 2 s parado na caixa verde para a leitura.
 
-**Cena 6 · 1:15–1:40 · Descrição, quantidade e unidade · `/app/requests/new`**
+**Cena 6 · 1:15–1:40 · Descrição e quantidade · `/app/requests/new`**
 
-- 🎬 Imagem: no campo "Descrição" digitar "Jarra de vidro com tampa de bambu". Em "Quantidade" digitar 1200; mostrar "Unidade" = "un". Passar o cursor sobre "Especificação" (opcional).
-- 🎙 Narração: "Na Descrição, conte o que você precisa, como o material e a tampa. Em Quantidade, digite mil e duzentos e confira a Unidade. A Especificação é opcional."
+- 🎬 Imagem: no campo "Descrição" digitar "Jarra de vidro com tampa de bambu". No bloco **Programação de compra**, em "Quantidade (peças)", digitar 1200 (a linha separada de "Quantidade" e "Unidade" saiu da tela em 14/11/2026). Passar o cursor sobre "Especificação" (opcional).
+- 🎙 Narração: "Na Descrição, conte o que você precisa, como o material e a tampa. No bloco Programação de compra, em Quantidade, digite mil e duzentas peças. A Especificação é opcional."
 - 🔤 Na tela: `[PASSO 3/7] Descreva e informe a quantidade`; `[SETA]` "Obrigatório" em Descrição e Quantidade; `[DICA]` "Quanto mais detalhe, menos perguntas da Wellmix."
 - ✂️ Edição: digitação em tempo real, sem aceleração (texto curto).
 
-**Cena 7 · 1:40–2:15 · Programação de entregas · `/app/requests/new`**
+**Cena 7 · 1:40–2:15 · Programação de compra · `/app/requests/new`**
 
-- 🎬 Imagem: clicar em **+ Programação de entregas** ("Quer receber em mais de uma entrega?"). O painel **Programação de entregas** abre com duas programações de 600 un. Clicar em **30 dias** (intervalo) e ver as datas em "Previsão" mudarem. Mostrar "1ª entrega prevista" e "Total: 1.200 un". Mostrar também o botão "+ Programação" e o link "Sem programação (entrega única)".
-- 🎙 Narração: "Quer receber em mais de uma entrega? Clique em Programação de entregas. Escolha o intervalo, trinta, quarenta e cinco ou sessenta dias, e a data da primeira entrega. Divida a quantidade: o sistema calcula a previsão de cada uma, e o total acompanha."
-- 🔤 Na tela: `[PASSO 4/7] Programe as entregas (opcional)`; `[BOTÃO] "+ Programação de entregas"`; `[SETA]` "As datas previstas são calculadas" em "Previsão"; `[ATENÇÃO]` "A Wellmix e o fornecedor seguem esta programação na ficha de compra."
+- 🎬 Imagem: no bloco **Programação de compra** (o mesmo da Seleção de itens), clicar em **+ Programação de compra** ("Comprar em programações nos próximos meses?"). Abrem duas programações de 600 un. Clicar em **30 dias** ("Intervalo entre programações") e ver as datas em "Pedido em" mudarem. Mostrar "Data da 1ª programação", o botão "+ Programação" (cada clique acrescenta uma data, sem limite de seis) e "Total: 1.200 un". Com um produto que tem caixa master, mostrar também "Gerar programação pela quantidade": total de caixas e número de datas, os containers previstos e o percentual ocupado de cada programação. Mostrar o link "Sem programação (pedido único)".
+- 🎙 Narração: "Quer comprar em várias programações? Clique em Programação de compra. Escolha o intervalo, trinta, quarenta e cinco ou sessenta dias, e a data da primeira. Divida a quantidade, ou gere pelo total de caixas: o sistema calcula as datas, os containers e o total."
+- 🔤 Na tela: `[PASSO 4/7] Programe as compras (opcional)`; `[BOTÃO] "+ Programação de compra"`; `[SETA]` "As datas são calculadas" em "Pedido em"; `[ATENÇÃO]` "A programação de cada produto vai com a solicitação para a Wellmix."
 - ✂️ Edição: `[ZOOM 150 %]` nos cartões "Programação 1" e "Programação 2" quando o intervalo muda; pausa de 1 s no "Total: 1.200 un".
 
 **Cena 8 · 2:15–2:50 · Mais de um produto e pedido mínimo · `/app/requests/new`**
@@ -277,8 +277,8 @@ Antes de cada episódio, veja a série [GER · Primeiros passos](01-primeiros-pa
 1. No menu, abra **Meus pedidos** e clique em **Orçamentos**.
 2. Clique em **+ Nova solicitação**.
 3. Em **Produto**, escolha o item do catálogo. O nome, a descrição e a especificação vêm da ficha e podem ser editados. Se o produto não está no catálogo, marque **Produto ainda não está no catálogo: quero que a Wellmix encontre fornecedores** e descreva o que procura.
-4. Preencha **Descrição**, **Quantidade** e **Unidade**. A **Especificação** é opcional. A quantidade não pode ficar abaixo do pedido mínimo do produto.
-5. Para receber em mais de uma entrega, clique em **+ Programação de entregas**, escolha o **Intervalo entre entregas** (30, 45, 60 dias ou outro), a **1ª entrega prevista** e divida a quantidade. O total acompanha as entregas.
+4. Preencha a **Descrição** e, no bloco **Programação de compra**, a **Quantidade (peças)**. A **Especificação** é opcional. A quantidade não pode ficar abaixo do pedido mínimo do produto.
+5. Para comprar em mais de uma programação, clique em **+ Programação de compra** (ou em **Gerar programação**, com o total de caixas e o número de datas), escolha o **Intervalo entre programações** (30, 45, 60 dias ou outro) e a **Data da 1ª programação**. O total acompanha as programações; **+ Programação** acrescenta uma data.
 6. Para pedir outro produto, clique em **+ Adicionar outro produto**. Cada produto vira uma solicitação própria, e todas nascem juntas, num lote.
 7. Confira o **Prazo de resposta (SLA)**, definido pela Wellmix, e use **Observação** para qualquer detalhe extra.
 8. Clique em **Enviar**. A solicitação nasce com um número e a situação **Solicitado**.

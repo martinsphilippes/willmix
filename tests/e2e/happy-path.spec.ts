@@ -1458,10 +1458,16 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   ).toBeVisible();
   await page.fill('textarea[name="p0.description"]', "Jarra de vidro");
   // A quantidade fica acima do pedido mínimo da jarra, se houver (a tela
-  // sobe e o servidor recusa abaixo dele).
-  await page.fill('input[name="p0.quantity"]', "1000");
-  // Programação de entregas: 2 entregas (500 + 500), "+ Programação" → 3 (334 + 333 + 333),
-  // intervalo 30 dias; a 3ª vira 340 → total 1007 e a quantidade acompanha.
+  // sobe e o servidor recusa abaixo dele). Ela se digita no bloco
+  // "Programação de compra" (a linha de quantidade saiu da tela, dono,
+  // 14/11/2026) e vai no formulário como p0.quantity.
+  await page
+    .locator('[data-request-item="0"] [data-selection-quantity]')
+    .fill("1000");
+  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("1000");
+  // Programação de compra (a jarra não tem caixa master no cadastro: em
+  // peças): 2 programações (500 + 500), "+ Programação" → 3 (334 + 333 +
+  // 333), intervalo 30 dias; a 3ª vira 340 → total 1007 e a quantidade acompanha.
   await page.click('[data-request-item="0"] [data-schedule-on]');
   await expect(
     page.locator('[data-request-item="0"] [data-schedule-item]'),
@@ -1480,7 +1486,10 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await page.check('[data-request-item="1"] input[name="p1.sourcingDemand"]');
   await page.fill('input[name="p1.productName"]', "Copo de vidro");
   await page.fill('textarea[name="p1.description"]', "Copo de vidro 300 ml");
-  await page.fill('input[name="p1.quantity"]', "200");
+  await page
+    .locator('[data-request-item="1"] [data-selection-quantity]')
+    .fill("200");
+  await expect(page.locator('input[name="p1.quantity"]')).toHaveValue("200");
   // Terceira linha adicionada e removida: não vira solicitação.
   await page.click("[data-add-request-item]");
   await page.getByRole("button", { name: /Remover: Produto 3/ }).click();

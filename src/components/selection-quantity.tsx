@@ -15,9 +15,11 @@ import {
   planPurchaseRounds,
   quantityFields,
   roundLoad,
+  roundsShortage,
   scheduleOnItemChange,
   type RoundLoad,
   type RoundStep,
+  type RoundsShortage,
   type TypedQuantity,
 } from "@/lib/purchase-rounds";
 import { scheduleTotal, splitEvenly } from "@/lib/workflow/request-schedule";
@@ -159,12 +161,24 @@ export interface GenerateLabels {
   /** O item não tem peças por caixa master: caixas não viram peças. */
   noPieces: string;
   noCarton: string;
+  /** Faltam os dois (peças por caixa master e CBM): diz os dois de uma vez. */
+  noData?: string;
   tooBig: string;
   errorTotal: string;
   errorRounds: string;
   result: string;
   extra: string;
-  reduced: string;
+  /**
+   * Caixas que não dão uma por data (dono, 14/11/2026): "Faltam {missing}
+   * caixa(s)…" ({missing}, {rounds}, {cartons}) e as saídas: aumentar o
+   * total para {cartons} caixas, reduzir para {rounds} datas (uma só:
+   * `shortDownOne`) ou, no "+ Programação", manter as {rounds} datas.
+   */
+  short: string;
+  shortUp: string;
+  shortDown: string;
+  shortDownOne: string;
+  shortKeep: string;
   /** Rodadas iguais: "Cada rodada: … = {n} container…". */
   each: string;
   eachMany: string;
@@ -223,6 +237,9 @@ export function SelectionQuantity({
   onQuantityChange,
   unit = "pcs",
   className = "md:col-span-3",
+  quantityRequired = false,
+  moq = null,
+  onQuantityBlur,
 }: {
   label: string;
   hint: string;
@@ -263,12 +280,23 @@ export function SelectionQuantity({
   /** Unidade mostrada no total das programações. */
   unit?: string;
   className?: string;
+  /** Nova solicitação: a quantidade do card é obrigatória (pedido único). */
+  quantityRequired?: boolean;
+  /**
+   * Pedido mínimo do produto (Nova solicitação): a dica abaixo dos campos e,
+   * abaixo do mínimo, o aviso; o envio fica bloqueado.
+   */
+  moq?: { min: number; hint: string; below: string } | null;
+  /** Saiu do campo de peças (Nova solicitação: abaixo do mínimo, volta a ele). */
+  onQuantityBlur?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const perRoundId = useId();
   const totalFieldId = useId();
   const quantityHintId = useId();
+  const moqHintId = useId();
   const selectItemId = useId();
+  const piecesRef = useRef<HTMLInputElement>(null);
   const [ownQty, setOwnQty] = useState(
     defaultQuantity === null ? "" : String(defaultQuantity),
   );
@@ -319,12 +347,15 @@ export function SelectionQuantity({
   } | null>(null);
   // O que a última geração arredondou (some quando as rodadas ou o item
   // mudam).
-  const [note, setNote] = useState<{
-    pieces: number;
-    extra: number;
-    reduced: { cartons: number; rounds: number } | null;
-  } | null>(null);
+  const [note, setNote] = useState<{ pieces: number; extra: number } | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
+  // Caixas que não dão uma por data (dono, 14/11/2026): nada é gerado e o
+  // aviso diz quantas faltam, com as saídas. `add`: veio do "+ Programação".
+  const [short, setShort] = useState<
+    (RoundsShortage & { kind: "generate" | "add" }) | null
+  >(null);
   // Cores incluídas do vencedor, vindas do card "Variações" (evento).
   const [colorsPicked, setColorsPicked] = useState<ColorsEventDetail | null>(
     null,
@@ -357,6 +388,11 @@ export function SelectionQuantity({
     setChosen(next);
     setNote(null);
     setError(null);
+    setShort(null);
+    // Nova solicitação: as caixas digitadas eram da caixa do produto
+    // anterior; a quantidade do formulário (em peças) fica e as caixas saem
+    // da caixa do novo.
+    if (controlledQty) setAmountEdit(null);
     const action = scheduleOnItemChange({
       on: scheduled,
       next,
@@ -480,20 +516,40 @@ export function SelectionQuantity({
       ? parseCount(typed.text)
       : (piecesFromCartons(parseCount(total), perCarton) ?? NaN);
   const typeAmount = (unit: TypedQuantity["unit"], text: string) => {
-    setAmountEdit({
+    const next: TypedQuantity = {
       unit,
       text,
       pieces: unit === "pieces" ? text : pieces,
-      at: qty,
-    });
+    };
+    // Nova solicitação: sem programação, o que se digita no card (caixas ou
+    // peças) é a quantidade do produto no formulário, na hora. O digitado
+    // vale enquanto ela for essa; mudou de fora (o pedido mínimo ao sair do
+    // campo, por exemplo), o card volta a mostrar a do formulário.
+    let at = qty;
+    if (controlledQty && !scheduled) {
+      const now = quantityFields({
+        typed: next,
+        base: qty,
+        masterCartonQty: perCarton,
+        sheetQty: item?.sheetQty,
+      }).pieces;
+      if (now !== qty) {
+        onQuantityChange?.(now);
+        at = now;
+      }
+    }
+    setAmountEdit({ ...next, at });
     setError(null);
+    setShort(null);
   };
-  // Nova solicitação: sem programação, o que se digita no card (caixas ou
-  // peças) é a quantidade do produto no formulário.
+  // Pedido mínimo (Nova solicitação): a quantidade do formulário abaixo dele
+  // bloqueia o envio, com o aviso no campo de peças.
+  const qtyNumber = Number(String(qty).replace(",", ".")) || 0;
+  const belowMoq = !!moq && String(qty).trim() !== "" && qtyNumber < moq.min;
+  const belowText = moq?.below ?? "";
   useEffect(() => {
-    if (controlledQty && !scheduled && typed && pieces !== qty)
-      onQuantityChange?.(pieces);
-  });
+    piecesRef.current?.setCustomValidity(belowMoq ? belowText : "");
+  }, [belowMoq, belowText]);
   const hasCarton = !!(item && usable(item) && capacity);
   const perContainer =
     hasCarton && item
@@ -502,19 +558,52 @@ export function SelectionQuantity({
   const loadOf = (pieces: number) =>
     roundLoad(pieces, item?.masterCartonQty, item?.cbmPerCarton, capacity);
 
-  /** Total em N rodadas iguais: caixas master inteiras quando o item as tem. */
-  function divide(amount: number, count: number): number[] {
-    if (hasCarton && amount > 0) {
-      const out = planPurchaseRounds({
-        total: amount,
-        rounds: Math.max(1, Math.min(maxRounds, Math.floor(count))),
-        masterCartonQty: item!.masterCartonQty,
-        cbmPerCarton: item!.cbmPerCarton,
-        containerCbm: capacity,
-      });
-      if ("plan" in out) return out.plan.rounds.map((r) => r.pieces);
+  /**
+   * Total em N rodadas iguais: com as peças por caixa master do item, em
+   * caixas inteiras (a conta de `planPurchaseRounds`); nulo quando não há uma
+   * caixa por data (o "+ Programação" mostra o aviso). Sem elas, em peças.
+   */
+  function divide(amount: number, count: number): number[] | null {
+    const n = Math.max(1, Math.min(maxRounds, Math.floor(count)));
+    if (perCarton && amount > 0) {
+      const boxes = Math.ceil(amount / perCarton - 1e-9);
+      if (roundsShortage(boxes, n)) return null;
+      return splitEvenly(boxes, n, maxRounds).map((b) => b * perCarton);
     }
-    return splitEvenly(amount, count, maxRounds);
+    return splitEvenly(amount, n, maxRounds);
+  }
+
+  /**
+   * Gera com caixas e datas já resolvidas (as saídas do aviso de caixas que
+   * faltam): a mesma conta do "Gerar programação".
+   */
+  function generateCartons(
+    apply: (q: number[]) => void,
+    cartons: number,
+    count: number,
+  ) {
+    if (!item || !perCarton || cartons < count || count < 1) return;
+    setError(null);
+    setShort(null);
+    const out = hasCarton
+      ? planPurchaseRounds({
+          total: cartons * perCarton,
+          rounds: count,
+          masterCartonQty: item.masterCartonQty,
+          cbmPerCarton: item.cbmPerCarton,
+          containerCbm: capacity,
+          maxRounds,
+        })
+      : null;
+    if (out && "plan" in out) {
+      setNote({ pieces: out.plan.pieces, extra: out.plan.extraPieces });
+      apply(out.plan.rounds.map((r) => r.pieces));
+    } else {
+      setNote(null);
+      apply(splitEvenly(cartons, count, maxRounds).map((b) => b * perCarton));
+    }
+    setAmountEdit(null);
+    setRoundsEdit(null);
   }
 
   function generate(apply: (q: number[]) => void, roundsValue: string) {
@@ -535,19 +624,23 @@ export function SelectionQuantity({
     const n = totalPieces();
     if (!perCarton || !(n > 0)) {
       setNote(null);
-      setError(gen.noPieces);
+      // Diz o dado que falta; faltando também o CBM, os dois.
+      setError(!item.cbmPerCarton && gen.noData ? gen.noData : gen.noPieces);
       return;
     }
     setError(null);
     if (!hasCarton) {
       // Sem o CBM da caixa não há conta de containers: as caixas são
-      // divididas igualmente (rodada sem caixa não entra).
+      // divididas igualmente. Sem uma caixa por data, o aviso.
+      const missing = roundsShortage(boxes, count);
+      if (missing) {
+        setNote(null);
+        setShort({ ...missing, kind: "generate" });
+        return;
+      }
+      setShort(null);
       setNote(null);
-      apply(
-        splitEvenly(boxes, count, maxRounds)
-          .filter((b) => b > 0)
-          .map((b) => b * perCarton),
-      );
+      apply(splitEvenly(boxes, count, maxRounds).map((b) => b * perCarton));
     } else {
       const out = planPurchaseRounds({
         total: n,
@@ -555,7 +648,15 @@ export function SelectionQuantity({
         masterCartonQty: item!.masterCartonQty,
         cbmPerCarton: item!.cbmPerCarton,
         containerCbm: capacity,
+        maxRounds,
       });
+      if ("short" in out) {
+        // Faltam caixas para uma por data: nada é gerado (dono, 14/11/2026).
+        setNote(null);
+        setShort({ ...out.short, kind: "generate" });
+        return;
+      }
+      setShort(null);
       if ("error" in out) {
         setNote(null);
         setError(
@@ -572,13 +673,7 @@ export function SelectionQuantity({
         return;
       }
       const { plan } = out;
-      setNote({
-        pieces: plan.pieces,
-        extra: plan.extraPieces,
-        reduced: plan.reduced
-          ? { cartons: plan.cartons, rounds: plan.rounds.length }
-          : null,
-      });
+      setNote({ pieces: plan.pieces, extra: plan.extraPieces });
       apply(plan.rounds.map((r) => r.pieces));
     }
     // Gerado: os campos voltam a acompanhar as rodadas da tela.
@@ -607,17 +702,29 @@ export function SelectionQuantity({
           {gen.selectItem}
         </p>
       );
-    if (!hasCarton || perContainer === null)
+    if (!hasCarton || perContainer === null) {
+      // Com as peças por caixa a conversão vale (só não há containers);
+      // sem elas, caixas não viram peças. Faltando os dois, os dois.
+      const noCbm = !item.cbmPerCarton;
       return (
-        // Com as peças por caixa a conversão vale (só não há containers);
-        // sem elas, caixas não viram peças.
         <p
           className="text-amber-800"
-          data-generate-item={perCarton ? "missing" : "no-pieces"}
+          data-generate-item={
+            perCarton
+              ? "missing"
+              : noCbm && gen.noData
+                ? "no-data"
+                : "no-pieces"
+          }
         >
-          {perCarton ? gen.noCarton : gen.noPieces}
+          {perCarton
+            ? gen.noCarton
+            : noCbm && gen.noData
+              ? gen.noData
+              : gen.noPieces}
         </p>
       );
+    }
     // Rodadas da tela; sem programação, a prévia do que seria gerado.
     const typedTotal = totalPieces();
     const typedRounds = parseCount(roundsValue);
@@ -633,6 +740,7 @@ export function SelectionQuantity({
             masterCartonQty: item.masterCartonQty,
             cbmPerCarton: item.cbmPerCarton,
             containerCbm: capacity,
+            maxRounds,
           })
         : null;
     const preview = planned && "plan" in planned ? planned.plan : null;
@@ -653,12 +761,7 @@ export function SelectionQuantity({
     const rounding = live.length
       ? fresh
       : preview
-        ? {
-            extra: preview.extraPieces,
-            reduced: preview.reduced
-              ? { cartons: preview.cartons, rounds: preview.rounds.length }
-              : null,
-          }
+        ? { extra: preview.extraPieces }
         : null;
     const first = loads[0];
     const same =
@@ -700,14 +803,6 @@ export function SelectionQuantity({
             {rounding && rounding.extra > 0 ? (
               <p data-generate-extra>
                 {fill(gen.extra, { extra: fmt(rounding.extra) })}
-              </p>
-            ) : null}
-            {rounding?.reduced ? (
-              <p className="text-amber-800" data-generate-reduced>
-                {fill(gen.reduced, {
-                  cartons: fmt(rounding.reduced.cartons),
-                  rounds: rounding.reduced.rounds,
-                })}
               </p>
             ) : null}
             <p data-generate-each>
@@ -818,6 +913,65 @@ export function SelectionQuantity({
     retotal(item.id, per, map, d.colors);
   });
 
+  /**
+   * Caixas que não dão uma por data (dono, 14/11/2026): quantas faltam e as
+   * saídas. Aumentar o total para uma caixa por data ou, ao gerar, reduzir as
+   * datas às caixas que há; no "+ Programação", manter as datas da tela.
+   */
+  const shortNotice = (
+    apply: (q: number[]) => void,
+    s: RoundsShortage & { kind: "generate" | "add" },
+  ) => {
+    const button =
+      "rounded-md border border-amber-300 bg-white px-2.5 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100";
+    return (
+      <div
+        role="alert"
+        className="space-y-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-amber-900"
+        data-generate-short={s.missing}
+      >
+        <p className="font-medium">
+          {fill(gen.short, {
+            missing: fmt(s.missing),
+            rounds: fmt(s.rounds),
+            cartons: fmt(s.cartons),
+          })}
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => generateCartons(apply, s.rounds, s.rounds)}
+            data-generate-short-up={s.rounds}
+            className={button}
+          >
+            {fill(gen.shortUp, { cartons: fmt(s.rounds) })}
+          </button>
+          {s.kind === "add" ? (
+            <button
+              type="button"
+              onClick={() => setShort(null)}
+              data-generate-short-keep
+              className={button}
+            >
+              {fill(gen.shortKeep, { rounds: fmt(s.rounds - 1) })}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => generateCartons(apply, s.cartons, s.cartons)}
+              data-generate-short-down={s.cartons}
+              className={button}
+            >
+              {s.cartons === 1
+                ? gen.shortDownOne
+                : fill(gen.shortDown, { rounds: fmt(s.cartons) })}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const generator = (apply: (q: number[]) => void, live: number[]) => {
     applyRef.current = apply;
     liveRef.current = live;
@@ -836,7 +990,7 @@ export function SelectionQuantity({
           Number.isInteger(typedRounds) &&
           typedRounds >= 1 &&
           typedRounds <= maxRounds
-        ? divide(typedTotal, typedRounds)
+        ? (divide(typedTotal, typedRounds) ?? [])
         : [];
     const range = hasCarton
       ? containersPerRound(
@@ -901,16 +1055,28 @@ export function SelectionQuantity({
               programação (com ela, a quantidade é a soma das rodadas). */}
           <label className="min-w-0 space-y-1">
             <span className="block font-medium text-zinc-700">{label}</span>
+            {/* Nova solicitação: o pedido único também se digita aqui (a
+                linha de quantidade saiu da tela), com o pedido mínimo. */}
             <input
+              ref={piecesRef}
               type="text"
               name={scheduled || controlledQty ? undefined : "quantity"}
               inputMode="numeric"
               autoComplete="off"
+              required={quantityRequired && !scheduled}
               value={pieces}
               onChange={(e) => typeAmount("pieces", e.target.value)}
-              aria-describedby={quantityHintId}
+              onBlur={onQuantityBlur}
+              aria-describedby={
+                moq ? `${quantityHintId} ${moqHintId}` : quantityHintId
+              }
+              aria-invalid={belowMoq || undefined}
               data-selection-quantity
-              className={cx(inputDenseClass, "w-full tabular-nums")}
+              className={cx(
+                inputDenseClass,
+                "w-full tabular-nums",
+                belowMoq && "border-red-400",
+              )}
             />
           </label>
           <label className="min-w-0 space-y-1">
@@ -925,6 +1091,7 @@ export function SelectionQuantity({
               onChange={(e) => {
                 setRoundsEdit({ text: e.target.value, at: live.length });
                 setError(null);
+                setShort(null);
               }}
               data-generate-rounds
               className={cx(inputDenseClass, "w-full tabular-nums")}
@@ -1001,8 +1168,22 @@ export function SelectionQuantity({
           >
             {scheduled ? scheduledHint : hint}
           </p>
+          {moq ? (
+            <p
+              id={moqHintId}
+              className={cx(
+                "col-span-full",
+                belowMoq ? "font-medium text-red-700" : "text-zinc-500",
+              )}
+              data-request-moq={moq.min}
+              data-request-moq-hint={belowMoq ? "below" : "ok"}
+            >
+              {belowMoq ? moq.below : moq.hint}
+            </p>
+          ) : null}
         </div>
         {calculation(live, roundsValue)}
+        {short ? shortNotice(apply, short) : null}
         {error ? (
           <p
             role="alert"
@@ -1383,13 +1564,14 @@ export function SelectionQuantity({
             setQty(t);
             setAmountEdit(null);
             setRoundsEdit(null);
+            setShort(null);
           }}
           labels={labels}
           max={maxRounds}
           initial={seed.initial}
-          className="flex flex-wrap items-center gap-x-2 gap-y-1"
           onToggle={(on) => {
             setScheduled(on);
+            setShort(null);
             if (on) {
               setRegenerate(false);
               return;
@@ -1403,6 +1585,20 @@ export function SelectionQuantity({
           generator={generator}
           roundInfo={roundInfo}
           split={divide}
+          onShort={(amount, count) => {
+            // "+ Programação de compra" ou "+ Programação" sem uma caixa por
+            // data: o aviso, com as saídas (dono, 14/11/2026).
+            if (!perCarton) return;
+            const missing = roundsShortage(
+              Math.ceil(amount / perCarton - 1e-9),
+              count,
+            );
+            if (missing)
+              setShort({
+                ...missing,
+                kind: liveRef.current.length ? "add" : "generate",
+              });
+          }}
           after={colorPreview}
         />
       </div>

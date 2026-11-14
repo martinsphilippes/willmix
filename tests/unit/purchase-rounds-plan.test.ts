@@ -9,6 +9,7 @@ import {
   planPurchaseRounds,
   quantityFields,
   roundLoad,
+  roundsShortage,
   scheduleOnItemChange,
 } from "@/lib/purchase-rounds";
 
@@ -25,6 +26,7 @@ const base = { masterCartonQty: 24, cbmPerCarton: 0.1, containerCbm: 68 };
 const plan = (input: Parameters<typeof planPurchaseRounds>[0]) => {
   const out = planPurchaseRounds(input);
   if ("error" in out) throw new Error(out.error);
+  if ("short" in out) throw new Error(`short ${out.short.missing}`);
   return out.plan;
 };
 
@@ -252,7 +254,6 @@ describe("planPurchaseRounds", () => {
     expect(p.rounds.map((r) => r.pieces)).toEqual([13_344, 13_344, 13_320]);
     expect(p.pieces).toBe(40_008);
     expect(p.extraPieces).toBe(8);
-    expect(p.reduced).toBe(false);
     // Os containers são consequência da quantidade: 1.667 ÷ 680.
     expect(p.containers).toBeCloseTo(1667 / 680, 4);
     expect(p.rounds[0].containers).toBeCloseTo(556 / 680, 4);
@@ -279,11 +280,37 @@ describe("planPurchaseRounds", () => {
     expect(p.rounds[0].pieces).toBe(120);
   });
 
-  it("menos caixas que rodadas: ficam as rodadas que dá", () => {
-    // 30 peças = 2 caixas; pedir 5 rodadas dá 2 (uma caixa em cada).
-    const p = plan({ ...base, total: 30, rounds: 5 });
-    expect(p.rounds.map((r) => r.pieces)).toEqual([24, 24]);
-    expect(p.reduced).toBe(true);
+  it("menos caixas que datas: nada é gerado e diz quantas caixas faltam", () => {
+    // 30 peças = 2 caixas; 5 datas pedem 5 caixas: faltam 3 (dono,
+    // 14/11/2026; antes ficavam 2 datas, sem perguntar).
+    expect(planPurchaseRounds({ ...base, total: 30, rounds: 5 })).toEqual({
+      short: { rounds: 5, cartons: 2, missing: 3 },
+    });
+    // As duas saídas do aviso: 5 caixas em 5 datas, ou 2 caixas em 2 datas.
+    expect(plan({ ...base, total: 5 * 24, rounds: 5 }).rounds).toHaveLength(5);
+    expect(plan({ ...base, total: 30, rounds: 2 }).rounds).toHaveLength(2);
+    expect(roundsShortage(7, 7)).toBeNull();
+    expect(roundsShortage(5, 7)).toEqual({ rounds: 7, cartons: 5, missing: 2 });
+  });
+
+  it("sem o teto de 6 nem de 12 datas: 7, 12 e 13 programações", () => {
+    // 300 caixas de 48 (o exemplo do dono) em 7: 43 × 6 + 42 = 300 caixas.
+    const seven = plan({
+      total: 300 * 48,
+      rounds: 7,
+      masterCartonQty: 48,
+      cbmPerCarton: 0.0195,
+      containerCbm: 68,
+    });
+    expect(seven.rounds.map((r) => r.cartons)).toEqual([
+      43, 43, 43, 43, 43, 43, 42,
+    ]);
+    expect(seven.pieces).toBe(14_400);
+    for (const rounds of [12, 13, 24]) {
+      const p = plan({ ...base, total: 1000 * 24, rounds });
+      expect(p.rounds).toHaveLength(rounds);
+      expect(p.rounds.reduce((a, r) => a + r.cartons, 0)).toBe(1000);
+    }
   });
 
   it("diz o que falta", () => {
