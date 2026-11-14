@@ -121,6 +121,7 @@ Gestão → Equipe (`/app/team`, só o administrador) ganhou três abas:
 | Numerário e financeiro do pedido                              | `isFinance` (numerário) e avisos de recebimento encerrado                                                                                 | financeiro                    |
 | Acompanhar o recebimento                                      | avisos da conferência no armazém                                                                                                          | comprador                     |
 | Ver valores e margem                                          | `canSeeMoney`: Control Tower (faixa Financeiro e valores), Solicitações, Estoque, Clientes/Fornecedores (conta e vendas) e as exportações | ninguém (só o admin)          |
+| Gravar a venda ao cliente                                     | `recordOrderSale`; card "Venda ao cliente" no detalhe do pedido (docs/ORDER_SALE.md)                                                      | ninguém (só o admin)          |
 
 Registrar e confirmar pagamentos (sinal, pagamento ao fornecedor, marketing) continua exigindo a tela Financeiro.
 

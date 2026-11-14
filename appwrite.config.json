@@ -1883,6 +1883,13 @@
           "type": "double"
         },
         {
+          "key": "sellUnitPrice",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
           "key": "variantId",
           "required": false,
           "array": false,

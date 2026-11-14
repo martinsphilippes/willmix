@@ -82,6 +82,7 @@ export function buildSaleLines(input: {
     | "unit"
     | "variant"
     | "unitPrice"
+    | "sellUnitPrice"
   >[];
   /** Cliente: preço de venda; fornecedor: preço FOB do item e embarque como entrega. */
   side?: AccountSide;
@@ -105,7 +106,11 @@ export function buildSaleLines(input: {
     const req = input.requests.find((r) => r.orderId === o.id);
     for (const it of items) {
       const p = it.productId ? (product.get(it.productId) ?? null) : null;
-      const unit = supplier ? (it.unitPrice ?? null) : sellUnit;
+      // Cliente: a venda gravada por produto (docs/ORDER_SALE.md); sem ela,
+      // a média do pedido (total ÷ peças), como antes.
+      const unit = supplier
+        ? (it.unitPrice ?? null)
+        : (it.sellUnitPrice ?? sellUnit);
       const v = it.variant ?? null;
       // Mesma conta da lista de Pedidos (código, caixas, volume e peso).
       const l = itemLogistics({

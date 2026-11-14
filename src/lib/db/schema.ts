@@ -1074,6 +1074,12 @@ export interface OrderItem extends BaseRow {
   quantity: number;
   unit: string;
   unitPrice: number | null;
+  /**
+   * Venda ao cliente por unidade deste item, na moeda de venda do pedido
+   * (`orders.sellCurrency`). Nulo = sem preço gravado. Com todos os itens com
+   * preço, `orders.sellPrice` é a soma (preço × quantidade); docs/ORDER_SALE.md.
+   */
+  sellUnitPrice?: number | null;
   /** Variação pedida e a cópia dos valores dela (copiadas da solicitação). */
   variantId?: string | null;
   variant?: VariantSnapshot | null;
@@ -3587,6 +3593,7 @@ export const TABLES: Record<TableName, TableDef> = {
       quantity: float(true),
       unit: str(20, true),
       unitPrice: float(),
+      sellUnitPrice: float(),
       variantId: id(false),
       variant: json(),
       colors: json(),

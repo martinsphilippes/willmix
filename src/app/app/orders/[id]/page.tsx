@@ -51,6 +51,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
 import { OrderRoundsSection } from "./_components/rounds";
+import { OrderSaleContent } from "./_components/order-sale";
 import {
   canSeeInternalCosts,
   canSeeSellPrice,
@@ -221,7 +222,7 @@ import {
 } from "@/components/freight-tariff-box";
 import { myTariffStatus, orderTariffView } from "@/lib/services/freight-tariff";
 import { FreightOrderCard } from "@/components/freight-order-card";
-import { can } from "@/lib/auth/function-access";
+import { can, canSeeMoney } from "@/lib/auth/function-access";
 
 export default async function OrderPage({
   params,
@@ -263,6 +264,7 @@ export default async function OrderPage({
     showroomCard,
     resumed: resumedNotice,
     port: portNotice,
+    sale: saleNotice,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
@@ -1751,6 +1753,26 @@ export default async function OrderPage({
               })}
             </tbody>
           </Table>
+        </OrderSection>
+      )}
+
+      {/* Venda ao cliente por pedido e por produto (dono, 14/11/2026;
+          docs/ORDER_SALE.md): o preço de cada produto e o total (a soma).
+          Vê quem vê valores na Wellmix (ou grava) e o cliente do pedido;
+          grava quem tem "Gravar a venda ao cliente". */}
+      {cargo ||
+      !(wellmix
+        ? canSeeMoney(user) || can(user, "sale.record")
+        : canSeeSellPrice(user)) ? null : (
+        <OrderSection id="order-sale" title={t("orderSale.title")}>
+          <OrderSaleContent
+            order={order}
+            items={items}
+            editable={wellmix && can(user, "sale.record") && !isCancelled}
+            readOnlyNote={wellmix && !can(user, "sale.record")}
+            saved={saleNotice === "saved"}
+            t={t}
+          />
         </OrderSection>
       )}
 

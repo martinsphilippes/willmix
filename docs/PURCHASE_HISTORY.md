@@ -53,7 +53,7 @@ Cada dado vem primeiro do que ficou **gravado no pedido** (o pedido, os itens, a
 | Peso líquido e bruto por peça, kg | `purchase_sheets.netWeightPcKg/grossWeightPcKg` → `variant.netWeightKg/grossWeightKg` | `products.netWeightKg/grossWeightKg` | Wellmix |
 | NCM | `purchase_sheets.ncm` | `products.ncm` | Wellmix |
 | EAN | — | `products.ean` | Wellmix |
-| Valor unitário (venda) e Subtotal (venda), com a moeda | A venda é gravada no pedido inteiro (`orders.sellPrice`). Pedido de um produto: subtotal = total do pedido e unitário = total ÷ quantidade. Pedido de vários produtos: "—" por item (o total fica na linha do pedido). | — | quem vê valores (seção 5) |
+| Valor unitário (venda) e Subtotal (venda), com a moeda | O preço de venda gravado no produto (`order_items.sellUnitPrice`, na moeda do pedido; docs/ORDER_SALE.md) e subtotal = preço × quantidade. Sem ele (pedidos antigos, com a venda só no pedido inteiro): pedido de um produto, unitário = total ÷ quantidade e subtotal = total; pedido de vários produtos, "—" por item. | — | quem vê valores (seção 5) |
 
 - **Solicitação de apoio** (pedido da carga do Sankhya, pedido de compra pela solicitação ao fornecedor e rodada da programação): o texto da solicitação ("Importado do Sankhya…", "Rodada 1 de 2…") não é descrição de produto e não aparece.
 - **Rodada sem ficha de compra própria** usa a do pedido pai.
@@ -85,7 +85,7 @@ Consulta só de leitura no Supabase: 16.270 pedidos (16.268 da carga do Sankhya)
 | --- | --- | --- |
 | Data original do pedido no Sankhya | 11.209 importados têm (etapa "Pedido criado" concluída); 5.059 não têm, e o pedido não guarda a DTNEG em coluna própria | "—" com a dica |
 | Valor de venda ao cliente | nenhum pedido tem venda gravada | total, unitário e subtotal "—" |
-| Venda por produto | o portal grava a venda só no pedido inteiro | "—" por item em pedido de vários produtos |
+| Venda por produto | gravada no card "Venda ao cliente" do pedido desde 14/11/2026 (docs/ORDER_SALE.md); os pedidos antigos não têm | "—" por item nos antigos de vários produtos |
 | Ficha de compra do pedido | 2 no banco todo | caixa, medidas da caixa, cubagem e dados técnicos "gravados no pedido" quase nunca existem |
 | Cópia da variação no item | 0 itens | medidas do produto só pela ficha atual |
 | Peças por caixa | ficha atual: 15.009 produtos | aparece com o selo "Ficha atual" |
@@ -99,7 +99,7 @@ Consulta só de leitura no Supabase: 16.270 pedidos (16.268 da carga do Sankhya)
 | Programação | 1 pedido pai com rodadas, nenhum filho ainda | as rodadas aparecem como previstas |
 | Custo do fornecedor (FOB, VLRUNIT) | existe nos importados | não aparece (custo interno, fora do pedido) |
 
-Para o histórico ficar completo: gravar a venda ao cliente (por item, se o comercial quiser unitário por produto), trazer a DTNEG de todos os pedidos do Sankhya e preencher a caixa master e a cubagem nos produtos (ou a ficha de compra nos pedidos novos).
+Para o histórico ficar completo: gravar a venda ao cliente nos pedidos (card "Venda ao cliente", por produto), trazer a DTNEG de todos os pedidos do Sankhya e preencher a caixa master e a cubagem nos produtos (ou a ficha de compra nos pedidos novos).
 
 ## 8. Código e testes
 

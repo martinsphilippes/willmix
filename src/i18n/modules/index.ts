@@ -146,6 +146,7 @@ import * as productSheetImport from "./product-sheet-import";
 import * as productVariants from "./product-variants";
 import * as messages from "./messages";
 import * as purchaseHistory from "./purchase-history";
+import * as orderSale from "./order-sale";
 
 export const modulesPt = {
   ...messages.pt,
@@ -291,6 +292,7 @@ export const modulesPt = {
   ...sampling.pt,
   ...intro.pt,
   ...purchaseHistory.pt,
+  ...orderSale.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -436,6 +438,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sampling.en,
   ...intro.en,
   ...purchaseHistory.en,
+  ...orderSale.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -581,4 +584,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sampling.zh,
   ...intro.zh,
   ...purchaseHistory.zh,
+  ...orderSale.zh,
 };

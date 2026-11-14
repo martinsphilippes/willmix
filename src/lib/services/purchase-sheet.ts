@@ -20,6 +20,7 @@ import {
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
+import { itemsSale } from "./order-sale";
 import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
 import { completeFromOrderSheet } from "./variant-sales";
 import {
@@ -832,7 +833,14 @@ async function applyQuantity(
     item.unitPrice !== null
       ? Math.round(item.unitPrice * pieces * 100) / 100
       : money(order.fobTotal);
-  const sellPrice = money(order.sellPrice);
+  // Venda por produto (docs/ORDER_SALE.md): com o preço de todos os
+  // produtos, o total é a soma com a quantidade nova; sem, a proporção.
+  const sale = itemsSale(
+    (await store.list("order_items", { filter: { orderId: order.id } })).map(
+      (i) => (i.id === item.id ? { ...i, quantity: pieces } : i),
+    ),
+  );
+  const sellPrice = sale.complete ? sale.sum : money(order.sellPrice);
   await store.update("order_items", item.id, { quantity: pieces });
   await store.update("orders", order.id, { fobTotal, sellPrice });
   await audit(

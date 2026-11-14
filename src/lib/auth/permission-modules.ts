@@ -70,7 +70,7 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
     key: "finance",
     label: "nav.group.finance",
     screens: ["finance", "payables", "penalties", "account"],
-    actions: ["numerario.manage", "values.view"],
+    actions: ["numerario.manage", "values.view", "sale.record"],
   },
   {
     key: "panels",

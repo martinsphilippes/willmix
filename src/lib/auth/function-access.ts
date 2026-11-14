@@ -68,7 +68,9 @@ export const ACTION_GROUPS = [
   },
   {
     key: "money",
-    actions: ["values.view"],
+    // Gravar a venda ao cliente por pedido e por produto (dono, 14/11/2026;
+    // docs/ORDER_SALE.md).
+    actions: ["values.view", "sale.record"],
   },
 ] as const;
 
@@ -147,9 +149,11 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
       return ["planner"];
     case "approve.purchasingDirector":
       return ["purchasing_director"];
-    // Só o administrador, como antes.
+    // Só o administrador, como antes. A venda ao cliente (dono, 14/11/2026):
+    // só o administrador por padrão; ele libera em Funções e acessos.
     case "order.cancel":
     case "values.view":
+    case "sale.record":
       return [];
   }
 }
