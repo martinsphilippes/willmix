@@ -20,6 +20,89 @@ afterEach(() => vi.unstubAllGlobals());
 
 type Row = Record<string, unknown>;
 
+/** Ordem do Postgres: número como número; nulo por último em ordem crescente. */
+function pgCompare(x: unknown, y: unknown, dir: string) {
+  // Nulo é o maior: por último em ordem crescente, primeiro em decrescente.
+  const c =
+    x == null || y == null
+      ? x == null && y == null
+        ? 0
+        : x == null
+          ? 1
+          : -1
+      : typeof x === "number" && typeof y === "number"
+        ? x - y
+        : String(x) < String(y)
+          ? -1
+          : String(x) > String(y)
+            ? 1
+            : 0;
+  return dir === "desc" ? -c : c;
+}
+
+/** Itens de uma lista da árvore lógica (vírgulas fora de aspas e parênteses). */
+function splitTop(s: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let quote = false;
+  let cur = "";
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (quote) {
+      cur += c;
+      if (c === "\\") cur += s[++i];
+      else if (c === '"') quote = false;
+      continue;
+    }
+    if (c === '"') quote = true;
+    else if (c === "(") depth++;
+    else if (c === ")") depth--;
+    else if (c === "," && depth === 0) {
+      out.push(cur);
+      cur = "";
+      continue;
+    }
+    cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+
+const unquote = (v: string) =>
+  v.startsWith('"') ? v.slice(1, -1).replace(/\\(.)/g, "$1") : v;
+
+/** `col.op.valor` (gt, gte, lt, lte, eq, is.null, not.is.null, not.is.true). */
+function condition(row: Row, expr: string): boolean {
+  const dot = expr.indexOf(".");
+  const col = expr.slice(0, dot);
+  let rest = expr.slice(dot + 1);
+  const negate = rest.startsWith("not.");
+  if (negate) rest = rest.slice(4);
+  const op = rest.slice(0, rest.indexOf("."));
+  const raw = unquote(rest.slice(op.length + 1));
+  const x = row[col];
+  const value = typeof x === "number" ? Number(raw) : raw;
+  let ok: boolean;
+  if (op === "is")
+    ok = raw === "null" ? x == null : raw === "true" ? x === true : x === false;
+  else if (x == null) ok = false;
+  else if (op === "eq") ok = pgCompare(x, value, "asc") === 0;
+  else if (op === "gt") ok = pgCompare(x, value, "asc") > 0;
+  else if (op === "lt") ok = pgCompare(x, value, "asc") < 0;
+  else if (op === "gte") ok = pgCompare(x, value, "asc") >= 0;
+  else if (op === "lte") ok = pgCompare(x, value, "asc") <= 0;
+  else throw new Error(`operador não suportado: ${op}`);
+  return negate ? !ok : ok;
+}
+
+/** `or(...)`, `and(...)` ou uma condição. */
+function logic(row: Row, expr: string): boolean {
+  const m = /^(or|and)\((.*)\)$/.exec(expr);
+  if (!m) return condition(row, expr);
+  const items = splitTop(m[2]).map((e) => logic(row, e));
+  return m[1] === "or" ? items.some(Boolean) : items.every(Boolean);
+}
+
 /** PostgREST + Storage falsos: o suficiente do protocolo que o store usa. */
 function fakeSupabase() {
   const db: Record<string, Row[]> = {};
@@ -36,12 +119,16 @@ function fakeSupabase() {
   const match = (row: Row, params: URLSearchParams) => {
     for (const [k, v] of params) {
       if (["select", "order", "limit", "offset"].includes(k)) continue;
-      if (v === "is.null") {
+      if (k === "or") {
+        if (!logic(row, `or${v}`)) return false;
+      } else if (v === "is.null") {
         if (row[k] != null) return false;
       } else if (v.startsWith("in.")) {
         if (!decodeIn(v.slice(3)).includes(row[k] as never)) return false;
       } else if (v.startsWith("eq.")) {
         if (String(row[k]) !== v.slice(3)) return false;
+      } else if (/^(gte?|lte?|not)\./.test(v)) {
+        if (!condition(row, `${k}.${v}`)) return false;
       }
     }
     return true;
@@ -89,9 +176,8 @@ function fakeSupabase() {
         .map((o) => o.split("."));
       hit.sort((a, b) => {
         for (const [col, dir] of order) {
-          const x = String(a[col] ?? "");
-          const y = String(b[col] ?? "");
-          if (x !== y) return (x < y ? -1 : 1) * (dir === "desc" ? -1 : 1);
+          const c = pgCompare(a[col], b[col], dir);
+          if (c) return c;
         }
         return 0;
       });
@@ -417,6 +503,78 @@ describe("listas grandes", () => {
       1500,
     );
   });
+
+  /*
+   * Auditoria de performance (14/11/2026): a página seguinte vem pelo fim da
+   * anterior (keyset), não por OFFSET (que relia as linhas puladas: N² ao ler
+   * a tabela inteira), e sem a contagem exata (que rodava a consulta de novo).
+   */
+  it("páginas pelo fim da anterior: sem OFFSET, sem contagem, mesma ordem e conjunto", async () => {
+    const fake = fakeSupabase();
+    const store = new SupabaseStore("https://x.supabase.co", "key");
+    fake.db.product_lines = Array.from({ length: 3_456 }, (_, i) => ({
+      id: `p${String(i).padStart(6, "0")}`,
+      // Muitas linhas no mesmo instante: o id desempata.
+      createdAt: `2026-11-11T00:00:0${i % 7}.123456+00:00`,
+      updatedAt: "2026-11-11T00:00:00.000Z",
+      name: `Produto ${i}`,
+    }));
+    const all = await store.list("product_lines");
+    expect(all).toHaveLength(3_456);
+    expect(new Set(all.map((r) => r.id)).size).toBe(3_456);
+    const lists = fake.calls.filter((c) => c.includes("/product_lines?"));
+    expect(lists).toHaveLength(4);
+    expect(lists.some((c) => c.includes("offset="))).toBe(false);
+    // Fim da 1ª página: 494 linhas no segundo 0, 494 no 1 e 12 no 2 (a 12ª é a 79).
+    // Na forma que o índice atende: coluna >= v e (coluna > v ou id > id).
+    expect(decodeURIComponent(lists[1])).toContain(
+      'createdAt=gte.2026-11-11T00:00:02.123456+00:00&or=(createdAt.gt."2026-11-11T00:00:02.123456+00:00",id.gt."p000079")',
+    );
+    expect(lists[0]).not.toContain("or=");
+    const expected = [...fake.db.product_lines].sort(
+      (a, b) =>
+        pgCompare(a.createdAt, b.createdAt, "asc") ||
+        pgCompare(a.id, b.id, "asc"),
+    );
+    expect(all.map((r) => r.id)).toEqual(expected.map((r) => r.id));
+    // Limite acima de uma página: para nele, na mesma ordem.
+    const some = await store.list("product_lines", { limit: 2_500 });
+    expect(some.map((r) => r.id)).toEqual(
+      expected.slice(0, 2_500).map((r) => r.id),
+    );
+  });
+
+  it("ordem por coluna com repetidos e nulos, crescente e decrescente, com filtro", async () => {
+    const fake = fakeSupabase();
+    const store = new SupabaseStore("https://x.supabase.co", "key");
+    // Nomes repetidos, vazios e com vírgula, ponto, parênteses e aspas.
+    const names = [null, 'Ação "A", (1).', "B", "b", null, "Zé", "B"];
+    fake.db.parties = Array.from({ length: 2_345 }, (_, i) => ({
+      id: `id-${String((i * 7919) % 2_345).padStart(5, "0")}`,
+      createdAt: "2026-11-11T00:00:00.000Z",
+      updatedAt: "2026-11-11T00:00:00.000Z",
+      name: names[i % names.length],
+      type: i % 3 === 0 ? "customer" : "supplier",
+      number: i % 11,
+    }));
+    for (const direction of ["asc", "desc"] as const)
+      for (const orderBy of ["name", "number", "id"] as const) {
+        const got = await store.list("parties", {
+          filter: { type: "supplier" },
+          // "number" não é coluna de parceiros: só a ordem do PostgREST falso.
+          orderBy: orderBy as "name",
+          direction,
+        });
+        const expected = fake.db.parties
+          .filter((r) => r.type === "supplier")
+          .sort(
+            (a, b) =>
+              pgCompare(a[orderBy], b[orderBy], direction) ||
+              pgCompare(a.id, b.id, direction),
+          );
+        expect(got.map((r) => r.id)).toEqual(expected.map((r) => r.id));
+      }
+  });
 });
 
 describe("SupabaseStore.listColumns", () => {
@@ -482,9 +640,13 @@ describe("SupabaseStore: gravação em lote e contagem", () => {
     const { calls } = fakeSupabase();
     const store = new SupabaseStore("https://x.supabase.co", "service");
     const ids = Array.from({ length: 150 }, (_, i) => `o${i}`);
-    await store.updateWhere("requirements", { orderId: ids, held: true }, {
-      held: null,
-    });
+    await store.updateWhere(
+      "requirements",
+      { orderId: ids, held: true },
+      {
+        held: null,
+      },
+    );
     const patches = calls.filter((c) => c.startsWith("PATCH"));
     expect(patches).toHaveLength(2);
     for (const call of patches) expect(call).toContain("held=eq.true");

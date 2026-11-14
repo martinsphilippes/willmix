@@ -152,35 +152,44 @@ export class SupabaseStore implements Store {
     );
     // Sem limite: a tabela inteira (até 11/11/2026 parava em 10 mil linhas
     // sem avisar, e a carga do Sankhya duplicava cadastros por não achar os
-    // que já existiam). A primeira página traz o total; as outras vêm em
-    // paralelo.
+    // que já existiam).
+    //
+    // Página seguinte pelo fim da anterior (keyset), não por OFFSET (auditoria
+    // de performance, 14/11/2026): com OFFSET o banco percorre de novo todas
+    // as linhas puladas a cada página, e ler a tabela inteira custa N²; nos
+    // itens de pedido (184 mil linhas) cada página levava ~600 ms e a leitura
+    // completa ~110 s de banco. Pelo fim da página anterior cada página custa
+    // o mesmo (o índice createdAt,id já existe), a ordem e o conjunto são os
+    // mesmos, e linha gravada durante a leitura não duplica nem some da lista.
+    // Sem Prefer: count=exact: a contagem rodava a consulta inteira de novo.
     const wanted = options.limit ?? Infinity;
     const query = params.join("&");
-    const first = await this.restCounted(
-      `${table}?${query}&limit=${Math.min(PAGE, wanted)}&offset=0`,
-    );
-    const rows: Row[] = [...first.rows];
-    const total = Math.min(wanted, first.total ?? wanted);
-    if (first.rows.length === PAGE && rows.length < total) {
-      if (Number.isFinite(total)) {
-        const offsets: number[] = [];
-        for (let o = PAGE; o < total; o += PAGE) offsets.push(o);
-        const pages = await inBatches(offsets, PARALLEL, (o) =>
-          this.rest(
-            `${table}?${query}&limit=${Math.min(PAGE, total - o)}&offset=${o}`,
-          ),
-        );
-        for (const page of pages) rows.push(...page);
-      } else {
-        // Sem total (não deveria acontecer): uma página por vez até o fim.
-        for (;;) {
-          const page = await this.rest(
-            `${table}?${query}&limit=${PAGE}&offset=${rows.length}`,
-          );
-          rows.push(...page);
-          if (page.length < PAGE) break;
-        }
+    const orderBy = options.orderBy ?? "createdAt";
+    const rows: Row[] = [];
+    // Condição da página (vazia na primeira) e a da faixa seguinte quando
+    // esta acabar (os nulos da coluna, que o Postgres põe no fim ou no começo).
+    let cond: string[] | null = [];
+    let tail: string[] | null = null;
+    for (;;) {
+      const size = Math.min(PAGE, wanted - rows.length);
+      const page: Row[] = await this.rest(
+        cond
+          ? `${table}?${[query, ...cond].join("&")}&limit=${size}`
+          : // Sem a coluna da ordem na linha (não deveria acontecer): OFFSET.
+            `${table}?${query}&limit=${size}&offset=${rows.length}`,
+      );
+      rows.push(...page);
+      if (rows.length >= wanted) break;
+      if (page.length < size) {
+        if (!tail) break;
+        [cond, tail] = [tail, null];
+        continue;
       }
+      const next: ReturnType<typeof keysetAfter> = cond
+        ? keysetAfter(orderBy, dir, page[page.length - 1])
+        : null;
+      cond = next?.cond ?? null;
+      if (next) tail = next.tail;
     }
     return rows.map((r) => fromRow<Tables[K]>(table, r));
   }
@@ -541,6 +550,54 @@ function inValue(v: string | number) {
  * Filtro em parâmetros do PostgREST (igual a / um destes / vazio); null
  * quando uma lista vazia faz nada casar.
  */
+/** Valor entre aspas na árvore lógica do PostgREST (vírgula, ponto, dois-pontos e parênteses são reservados). */
+const quoted = (value: unknown) =>
+  `"${String(value).replace(/[\\"]/g, (c) => `\\${c}`)}"`;
+
+/**
+ * Filtro das linhas depois de `last` na ordem `coluna dir, id dir` (keyset),
+ * na forma que o índice da coluna atende: `coluna >= v e (coluna > v ou id >
+ * id)` (com OR puro o Postgres percorria o índice desde o começo: 1,2 s numa
+ * página dos itens de pedido, contra 6 ms assim; EXPLAIN em 14/11/2026).
+ * Como no Postgres, nulo vem por último em ordem crescente e primeiro em
+ * decrescente: `tail` é a faixa seguinte quando esta acabar (os nulos depois
+ * dos valores; os valores depois dos nulos). Nulo quando a linha não traz a
+ * coluna da ordem (a lista volta ao OFFSET).
+ */
+export function keysetAfter(
+  orderBy: string,
+  dir: "asc" | "desc",
+  last: Row,
+): { cond: string[]; tail: string[] | null } | null {
+  // id, createdAt e updatedAt nunca são nulos (supabase-sql.ts): sem a faixa dos nulos.
+  const notNull = ["id", "createdAt", "updatedAt"].includes(orderBy);
+  const id = last.id;
+  if (typeof id !== "string" && typeof id !== "number") return null;
+  const op = dir === "asc" ? "gt" : "lt";
+  const byId = `id=${op}.${enc(String(id))}`;
+  if (orderBy === "id") return { cond: [byId], tail: null };
+  if (!(orderBy in last)) return null;
+  const value = last[orderBy];
+  if (value !== null && typeof value === "object") return null;
+  const col = enc(orderBy);
+  if (value === null || value === undefined)
+    return {
+      // Nos nulos: os de id seguinte.
+      cond: [`${col}=is.null`, byId],
+      // Em ordem decrescente os nulos vêm antes: depois deles, os valores.
+      tail: dir === "desc" ? [`${col}=not.is.null`] : null,
+    };
+  const v = quoted(value);
+  return {
+    cond: [
+      `${col}=${dir === "asc" ? "gte" : "lte"}.${enc(String(value))}`,
+      `or=${enc(`(${orderBy}.${op}.${v},id.${op}.${quoted(id)})`)}`,
+    ],
+    // Em ordem crescente os nulos vêm depois dos valores.
+    tail: dir === "asc" && !notNull ? [`${col}=is.null`] : null,
+  };
+}
+
 function filterParams(filter: Record<string, unknown> = {}): string[] | null {
   const params: string[] = [];
   for (const [key, value] of Object.entries(filter)) {
