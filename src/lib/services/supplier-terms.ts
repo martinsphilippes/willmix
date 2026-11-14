@@ -333,7 +333,13 @@ export async function listPayables(
   // Do resumo por pedido (docs/RESUMOS.md): pagamentos, marcos e itens do
   // cronograma sem ler as tabelas de pagamentos, etapas e requisitos.
   const { factsForOrders } = await import("./order-summary");
-  const facts = await factsForOrders(orders);
+  // Só pagamentos, marcos, itens do cronograma e o 1º produto.
+  const facts = await factsForOrders(orders, [
+    "pays",
+    "ship",
+    "sreqs",
+    "product",
+  ]);
   if (facts) {
     const suppliers = await listColumns(
       store,

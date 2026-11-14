@@ -183,7 +183,29 @@ function fakeSupabase() {
       });
       const offset = Number(params.get("offset") ?? 0);
       const limit = Number(params.get("limit") ?? 1000);
-      const page = hit.slice(offset, offset + limit);
+      // select: colunas, `apelido:coluna` e `apelido:coluna->chave` (JSON).
+      const select = params.get("select") ?? "*";
+      const project = (row: Row): Row =>
+        select === "*"
+          ? row
+          : Object.fromEntries(
+              select.split(",").map((item) => {
+                const [alias, expr = alias] = item.includes(":")
+                  ? item.split(":")
+                  : [item];
+                const [col, key] = expr.split("->");
+                const value = row[col];
+                return [
+                  alias,
+                  key === undefined
+                    ? value
+                    : value && typeof value === "object"
+                      ? ((value as Row)[key] ?? null)
+                      : null,
+                ];
+              }),
+            );
+      const page = hit.slice(offset, offset + limit).map(project);
       // Prefer: count=exact → total no Content-Range, como o PostgREST.
       const prefer = (init.headers as Record<string, string> | undefined)
         ?.Prefer;
@@ -602,6 +624,57 @@ describe("SupabaseStore.listColumns", () => {
     expect(Object.keys(rows[0]).sort()).toEqual(
       ["createdAt", "id", "name", "orderId", "updatedAt"].sort(),
     );
+  });
+
+  /*
+   * Auditoria de performance (14/11/2026): do resumo por pedido (~2,7 kB de
+   * JSON cada), só as partes que a tela usa (`jsonKeys`).
+   */
+  it("coluna JSON só com as chaves pedidas (ausente volta nula)", async () => {
+    const fake = fakeSupabase();
+    const store = new SupabaseStore("https://x.supabase.co", "service");
+    fake.db.order_summaries = Array.from({ length: 1_234 }, (_, i) => ({
+      id: `o${String(i).padStart(5, "0")}`,
+      createdAt: "2026-11-14T00:00:00.000Z",
+      updatedAt: "2026-11-14T00:00:00.000Z",
+      number: i,
+      version: 9,
+      facts: {
+        order: { id: `o${i}` },
+        reqs: [i],
+        pays: ["grande"],
+        product: null,
+      },
+      kpi: { pesado: true },
+    }));
+    const rows = await store.listColumns(
+      "order_summaries",
+      ["version", "facts"],
+      {
+        orderBy: "number",
+        direction: "desc",
+        jsonKeys: { facts: ["order", "reqs", "product", "lane"] },
+      },
+    );
+    expect(decodeURIComponent(fake.calls[0])).toContain(
+      "select=id,createdAt,updatedAt,version,facts__order:facts->order,facts__reqs:facts->reqs,facts__product:facts->product,facts__lane:facts->lane,number&",
+    );
+    expect(rows).toHaveLength(1_234);
+    expect(rows[0].facts).toEqual({
+      order: { id: "o1233" },
+      reqs: [1233],
+      product: null,
+      lane: null,
+    });
+    expect(rows[0]).not.toHaveProperty("kpi");
+    // Duas páginas, pelo fim da anterior na ordem do número.
+    expect(rows.map((r) => r.version)).toEqual(Array(1_234).fill(9));
+    expect(rows.at(-1)!.facts).toEqual({
+      order: { id: "o0" },
+      reqs: [0],
+      product: null,
+      lane: null,
+    });
   });
 });
 

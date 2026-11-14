@@ -1,4 +1,4 @@
-import { listByIds } from "@/lib/db/lookup";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -28,10 +28,20 @@ export default async function PenaltiesPage() {
   requireScreen(user, "penalties");
   const t = await getT();
   const store = getStore();
-  const [allPenalties, orders] = await Promise.all([
-    store.list("penalties", { orderBy: "createdAt", direction: "desc" }),
-    store.list("orders"),
-  ]);
+  const allPenalties = await store.list("penalties", {
+    orderBy: "createdAt",
+    direction: "desc",
+  });
+  // Só os pedidos das multas (auditoria de performance, 14/11/2026: antes, a
+  // tabela inteira de pedidos, 16 mil com o histórico do Sankhya).
+  const orderById = indexBy(
+    await listByIds(
+      store,
+      "orders",
+      allPenalties.map((p) => p.orderId),
+    ),
+    "id",
+  );
   // Só os responsáveis das multas (antes: a tabela inteira, ~32 mil).
   const parties = await listByIds(
     store,
@@ -72,7 +82,7 @@ export default async function PenaltiesPage() {
           </thead>
           <tbody>
             {penalties.map((p) => {
-              const order = orders.find((o) => o.id === p.orderId);
+              const order = orderById.get(p.orderId);
               return (
                 <tr key={p.id} className={rowClass}>
                   <Td>

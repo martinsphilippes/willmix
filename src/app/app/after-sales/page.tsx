@@ -1,4 +1,4 @@
-import { listByIds } from "@/lib/db/lookup";
+import { indexBy, listByIds } from "@/lib/db/lookup";
 import type { ReactNode } from "react";
 import { fallbackError } from "@/i18n/error-text";
 import Link from "next/link";
@@ -87,10 +87,15 @@ export default async function AfterSalesPage({
       : "open";
   const t = await getT();
   const store = getStore();
-  const [all, orders] = await Promise.all([
-    listAfterSales(),
-    store.list("orders"),
-  ]);
+  const all = await listAfterSales();
+  // Só os pedidos dos pós-vendas (auditoria de performance, 14/11/2026:
+  // antes, a tabela inteira de pedidos, 16 mil com o histórico do Sankhya).
+  const orders = await listByIds(
+    store,
+    "orders",
+    all.map((a) => a.orderId),
+  );
+  const orderById = indexBy(orders, "id");
   // Só os clientes dos pós-vendas (antes: todos, ~26 mil).
   const parties = (
     await listByIds(
@@ -99,7 +104,7 @@ export default async function AfterSalesPage({
       all.map((a) => a.customerId),
     )
   ).filter((p) => p.type === "customer");
-  const orderOf = (a: AfterSales) => orders.find((o) => o.id === a.orderId);
+  const orderOf = (a: AfterSales) => orderById.get(a.orderId);
   // Pedido cancelado: pós-venda ainda aberto (cancelado antes de o
   // cancelamento encerrar o pós-venda) aparece encerrado, como os de agora.
   const shown = all.map((a) =>

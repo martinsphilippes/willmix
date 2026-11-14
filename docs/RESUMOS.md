@@ -86,6 +86,24 @@ Ao terminar, grava o marcador `orderSummaries` em `settings`: quando, quantos pe
 
 Mudou o formato de `facts`? Suba `SUMMARY_VERSION`. As telas voltam ao caminho antigo até a próxima reconstrução.
 
+**Reconstrução depois do deploy (auditoria de performance, 14/11/2026).** Antes, subir `SUMMARY_VERSION` deixava todas as telas no caminho antigo até a reconstrução da madrugada (até 24 h). Em 14/11 o banco estava na versão 6 e o código na 8; as telas liam tabelas inteiras, e houve timeouts de 60 s e quedas por falta de memória. Agora `readMarker` chama `kickStaleSummaries` (`src/lib/services/summary-kick.ts`): a primeira tela que encontra o formato mais velho que o do código pede ao `/api/jobs/summaries` da própria publicação (`VERCEL_URL`, com `CRON_SECRET`) que comece a reconstrução, depois da resposta. Isso só acontece em produção, só quando o formato do código é mais novo (rollback não refaz o resumo) e no máximo uma vez a cada 2 minutos por instância; a trava do job descarta os pedidos repetidos. A janela lenta cai para o tempo da reconstrução (cerca de 2 minutos para 16 mil pedidos na madrugada de 14/11).
+
+**Só as partes do resumo que a tela usa (14/11/2026).** `readOrderSummaries(ids, keys)` e `factsForOrders(orders, keys)` pedem ao banco só as chaves de `facts` que a tela lê (`listColumns` com `jsonKeys`: `facts__chave:facts->chave` no PostgREST). O tipo de volta é `Pick<OrderFacts, chaves>`, e o compilador recusa uma chave que a tela usa sem pedir. O resumo inteiro tem cerca de 2,7 kB por pedido (44 MB de JSON para os 16 mil pedidos); os pagamentos sozinhos são 15 MB. Partes lidas por tela:
+
+- Pedidos: `order`, `active`, `reqs`, `lane`, `steps`, `product` e `itemCount`.
+- Financeiro: `pays`, `customer`, `supplier`, `product` e `pop`.
+- Contas a pagar: `pays`, `ship`, `sreqs` e `product`.
+- Fluxo de caixa: `ship`.
+
+As outras telas leem o resumo inteiro, como antes.
+
+**Formato 9 (14/11/2026).** Entrou `itemCount`, a quantidade de itens do pedido. Com o resumo em uso, a tela Pedidos não lê mais os itens de todos os pedidos: em produção eram 184 mil itens a cada abertura, 2.533 consultas de 465 ms em média em 10 h. O painel (`pipelineFor(user, { lazyItems: true })`) vem com o primeiro produto e a quantidade de itens do resumo. A tela lê os itens com `loadPipelineItems`:
+
+- o item inteiro só dos pedidos da página;
+- só nome e variação de todos os pedidos, quando há filtro de produto.
+
+O resultado é o mesmo do painel com todos os itens (`tests/unit/pipeline.test.ts`).
+
 Sem marcador, as gravações não recalculam nada; custam uma leitura de `settings` por requisição com escrita.
 
 ## Outros ganhos nesta etapa
@@ -228,7 +246,7 @@ Junto vai o pedido só com o que as pendências e o encaminhamento leem (`TaskOr
 
 ## O que ainda pesa
 
-1. **Pedidos:** a lista lê todos os itens, só com as colunas usadas, para filtrar e ordenar no servidor (página de 50).
+1. **Pedidos:** a lista ainda lê todos os pedidos, as solicitações e as partes do resumo de todos para filtrar e ordenar no servidor (página de 50). Desde 14/11/2026 os itens são lidos só da página. Com filtro de produto, a tela lê nome e variação de todos os itens.
 2. **Escolha de itens do container:** a lista do formulário tem todos os itens dos pedidos em aberto.
 3. **Programação de compra do admin nas Pendências:** lê as etapas de Preparação em andamento e os pedidos delas.
 4. **Documentos do embarque nas Pendências** (`shippingDocTasks`, docs/SHIPPING_DOCS.md): lê os pedidos de compra em inspeção ou embarque e, de cada um, o container vazio, os itens e os documentos. São poucos pedidos; entram na lista pronta se crescerem.

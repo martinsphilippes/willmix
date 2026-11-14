@@ -533,7 +533,15 @@ async function saleRecords(
  */
 async function financeLookup(orders: Order[]) {
   const { factsForOrders } = await import("./order-summary");
-  const facts = await factsForOrders(orders);
+  // Só as partes do resumo que o financeiro lê (sem etapas, viagem e
+  // cronograma: auditoria de performance, 14/11/2026).
+  const facts = await factsForOrders(orders, [
+    "pays",
+    "customer",
+    "supplier",
+    "product",
+    "pop",
+  ]);
   if (facts) {
     const f = (o: Order) => facts.get(o.id);
     return {

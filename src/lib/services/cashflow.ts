@@ -140,7 +140,11 @@ export async function loadCashflow(weeks = 12, now = new Date()) {
   // Etapa "Entregue" de cada pedido: do resumo por pedido (docs/RESUMOS.md)
   // ou, sem ele, da tabela de etapas. Clientes: só os das solicitações.
   const { factsForOrders } = await import("./order-summary");
-  const facts = await factsForOrders(rows.map((r) => r.order));
+  // Só a etapa de entrega do resumo (auditoria de performance, 14/11/2026).
+  const facts = await factsForOrders(
+    rows.map((r) => r.order),
+    ["ship"],
+  );
   const deliveredStages = facts
     ? null
     : await store.list("stages", { filter: { key: "DELIVERED" } });

@@ -104,6 +104,17 @@ export class SupabaseStore implements Store {
     /** Colunas pedidas ao banco (padrão: todas). Ver listColumns. */
     select = "*",
   ): Promise<Tables[K][]> {
+    return (await this.listRaw(table, options, select)).map((r) =>
+      fromRow<Tables[K]>(table, r),
+    );
+  }
+
+  /** As linhas como o PostgREST devolve (antes de `fromRow`). */
+  private async listRaw<K extends TableName>(
+    table: K,
+    options: ListOptions<Tables[K]>,
+    select: string,
+  ): Promise<Row[]> {
     // Listas grandes no "igual a um destes" viram consultas em partes (URL
     // curta), juntadas e reordenadas aqui, como no Appwrite.
     const big = Object.entries(options.filter ?? {}).find(
@@ -115,7 +126,7 @@ export class SupabaseStore implements Store {
       for (let i = 0; i < values.length; i += MAX_IN)
         chunks.push(values.slice(i, i + MAX_IN));
       const parts = await inBatches(chunks, PARALLEL, (chunk) =>
-        this.list(
+        this.listRaw(
           table,
           {
             ...options,
@@ -130,8 +141,8 @@ export class SupabaseStore implements Store {
       const orderBy = (options.orderBy ?? "createdAt") as string;
       const dir = options.direction === "desc" ? -1 : 1;
       const merged = parts.flat().sort((a, b) => {
-        const x = (a as unknown as Record<string, string | number>)[orderBy];
-        const y = (b as unknown as Record<string, string | number>)[orderBy];
+        const x = a[orderBy] as string | number;
+        const y = b[orderBy] as string | number;
         return x < y ? -dir : x > y ? dir : 0;
       });
       return options.limit ? merged.slice(0, options.limit) : merged;
@@ -191,7 +202,7 @@ export class SupabaseStore implements Store {
       cond = next?.cond ?? null;
       if (next) tail = next.tail;
     }
-    return rows.map((r) => fromRow<Tables[K]>(table, r));
+    return rows;
   }
 
   /**
@@ -213,12 +224,29 @@ export class SupabaseStore implements Store {
         ...(options.orderBy ? [options.orderBy] : []),
       ]),
     ];
-    const rows = await this.list(
-      table,
-      options,
-      wanted.map((c) => enc(c)).join(","),
-    );
-    return rows.map((r) => pickColumns(r, columns));
+    // Coluna JSON com `jsonKeys`: só as chaves pedidas (`apelido:coluna->chave`).
+    const json = (options.jsonKeys ?? {}) as Record<
+      string,
+      readonly string[] | undefined
+    >;
+    const alias = (column: string, key: string) => `${column}__${key}`;
+    const select = wanted
+      .flatMap((c) =>
+        json[c]
+          ? json[c].map((k) => `${enc(alias(c, k))}:${enc(c)}->${enc(k)}`)
+          : [enc(c)],
+      )
+      .join(",");
+    const rows = await this.listRaw(table, options, select);
+    return rows.map((raw) => {
+      const row = fromRow<Record<string, unknown>>(table, raw);
+      for (const c of wanted)
+        if (json[c])
+          row[c] = Object.fromEntries(
+            json[c].map((k) => [k, raw[alias(c, k)] ?? null]),
+          );
+      return pickColumns(row as unknown as Tables[K], columns);
+    });
   }
 
   async get<K extends TableName>(table: K, id: string) {
