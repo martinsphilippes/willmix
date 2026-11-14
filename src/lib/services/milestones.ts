@@ -82,7 +82,8 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
     const group = groupOf(tpl);
     if (group === "certification" && !certification) continue;
     if (group === "samples" && !samples) continue;
-    if (!stepApplies(order, tpl.key, input.lpco)) continue;
+    // Divergência no recebimento: só com as linhas dos passos (contagem com divergência).
+    if (!stepApplies(order, tpl.key, input.lpco, input.importSteps)) continue;
     if (tpl.key === "bl" && isPurchaseFlow(order)) continue;
     const step = flowStepOfImportKey(tpl.key);
     if (!step) continue;

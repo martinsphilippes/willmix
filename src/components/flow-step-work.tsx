@@ -15,7 +15,14 @@ import { TextLink } from "./ui";
  * Actions do pedido; a ação volta para esta tela. O detalhe do pedido
  * continua com tudo.
  */
-const GROUPS = ["certification", "origin", "import", "samples"] as const;
+const GROUPS = [
+  "certification",
+  "origin",
+  "import",
+  "samples",
+  // Divergência no recebimento (Armazenagem, mapa E24 a E27).
+  "divergence",
+] as const;
 /** Pedidos por tela (os demais seguem na tabela, com o atalho). */
 const MAX_ORDERS = 15;
 

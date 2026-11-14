@@ -211,6 +211,9 @@ export async function saveCounts(
       .join("; "),
   );
   if (fresh.length) {
+    // Caminho da divergência (mapa E24 a E27; docs/RECEIVING.md): os quatro
+    // passos nascem na primeira divergência (idempotente).
+    await (await import("./import-flow")).openDivergenceSteps(user, order);
     const detail = fresh
       .map(
         (i) =>
