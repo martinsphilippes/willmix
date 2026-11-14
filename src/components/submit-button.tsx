@@ -63,18 +63,12 @@ export function SubmitButton({
   children,
   pendingText,
   confirmText,
-  iconOnly = false,
   form,
   ...props
 }: ComponentProps<typeof Button> & {
   pendingText?: string;
   /** Pergunta antes de enviar (ações que não têm volta, ex.: excluir todas). */
   confirmText?: string;
-  /**
-   * Botão só com ícone: no envio, o indicador toma o lugar do ícone e o
-   * botão não muda de tamanho (o nome fica no `aria-label`).
-   */
-  iconOnly?: boolean;
 }) {
   const status = useFormStatus();
   const external = useExternalFormPending(form);
@@ -99,11 +93,7 @@ export function SubmitButton({
       }}
     >
       {pending ? <Spinner /> : null}
-      {pending && iconOnly
-        ? null
-        : pending && pendingText
-          ? pendingText
-          : children}
+      {pending && pendingText ? pendingText : children}
     </Button>
   );
 }

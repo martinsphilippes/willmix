@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, type ReactNode } from "react";
-import { cx } from "./ui";
+import { Button, cx } from "./ui";
 
 /*
  * Botão de ação rápida que abre uma caixa pequena (um formulário curto) por
@@ -41,6 +41,7 @@ export function QuickDialog({
 } & { [key: `data-${string}`]: string | undefined }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const descriptionId = useId();
+  const titleId = useId();
   return (
     <>
       <button
@@ -74,10 +75,14 @@ export function QuickDialog({
         onClick={(e) => {
           if (e.target === dialog.current) dialog.current?.close();
         }}
+        aria-labelledby={titleId}
         data-quick-dialog
       >
         <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-2.5">
-          <h2 className="truncate text-sm font-semibold text-zinc-900">
+          <h2
+            id={titleId}
+            className="truncate text-sm font-semibold text-zinc-900"
+          >
             {title}
           </h2>
           <button
@@ -98,5 +103,25 @@ export function QuickDialog({
         </div>
       </dialog>
     </>
+  );
+}
+
+/**
+ * "Cancelar" de uma confirmação dentro da caixa: fecha a caixa em que está e
+ * não envia nada (é `type="button"`, fora do envio do formulário).
+ */
+export function QuickDialogClose({
+  label,
+  ...rest
+}: { label: string } & { [key: `data-${string}`]: string | undefined }) {
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      onClick={(e) => e.currentTarget.closest("dialog")?.close()}
+      {...rest}
+    >
+      {label}
+    </Button>
   );
 }

@@ -400,6 +400,8 @@ export const pt = {
     "Uma informação por coluna. Em Ações, pelos ícones: mensagem à Wellmix e abrir a tela do produto.",
   "supplierRequests.table.hintAnswers": "Na linha de baixo, por item:",
   "supplierRequests.table.approve": "Aprovar oferta",
+  "supplierRequests.table.approveTitle": "Aprovar oferta · solicitação nº {n}",
+  "supplierRequests.table.refuseTitle": "Recusar oferta · solicitação nº {n}",
   "supplierRequests.table.answerHint":
     "Para responder sim, informe o preço por peça. Pedido mínimo e modalidade de entrega (FOB/EXW) vão junto; o prazo fica como está (mude na tela do produto).",
   "supplierRequests.table.col.initial": "Condições iniciais (book)",
@@ -781,6 +783,8 @@ export const en: typeof pt = {
     "One piece of information per column. Under Actions, by icon: message Wellmix and open the product screen.",
   "supplierRequests.table.hintAnswers": "On the line below, per item:",
   "supplierRequests.table.approve": "Approve offer",
+  "supplierRequests.table.approveTitle": "Approve offer · request no. {n}",
+  "supplierRequests.table.refuseTitle": "Decline offer · request no. {n}",
   "supplierRequests.table.answerHint":
     "To answer yes, enter the price per piece. Minimum order and delivery terms (FOB/EXW) go with it; the lead time stays as it is (change it on the product screen).",
   "supplierRequests.table.proposalPendingWellmix":
@@ -1219,6 +1223,8 @@ export const zh: typeof pt = {
     "每列一项信息。操作栏图标：给 Wellmix 留言、打开产品页面。",
   "supplierRequests.table.hintAnswers": "下一行逐项：",
   "supplierRequests.table.approve": "接受报价",
+  "supplierRequests.table.approveTitle": "接受报价 · 询单 {n} 号",
+  "supplierRequests.table.refuseTitle": "拒绝报价 · 询单 {n} 号",
   "supplierRequests.table.answerHint":
     "答复“是”时请填写单价。起订量和交货方式（FOB/EXW）一并提交；交期保持不变（可在产品页面修改）。",
   "supplierRequests.table.proposalPendingWellmix": "还价等待供应商答复。",
