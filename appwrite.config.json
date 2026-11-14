@@ -910,6 +910,13 @@
           "array": false,
           "default": null,
           "type": "datetime"
+        },
+        {
+          "key": "sankhyaImages",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -2435,6 +2442,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "thumbKey",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 255
         }
       ],
       "indexes": [

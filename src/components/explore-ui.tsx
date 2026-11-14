@@ -344,7 +344,7 @@ export function ProductCard({
           {photo ? (
             /* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */
             <img
-              src={`/api/files/${photo.documentId}`}
+              src={`/api/files/${photo.documentId}?thumb=1`}
               alt={photo.caption}
               loading="lazy"
               className="h-full w-full object-contain p-3 transition duration-300 group-hover:scale-[1.03]"

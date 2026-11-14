@@ -649,6 +649,8 @@ export const FULL_LOAD_ENTITIES = [
   "stockLocations",
   "stockBalances",
   "orders",
+  /* Fotos dos produtos (TGFPRO.IMAGEM e AD_IMAGEM*; sankhya-images.ts). */
+  "productImages",
 ] as const;
 export type FullLoadEntity = (typeof FULL_LOAD_ENTITIES)[number];
 
@@ -702,6 +704,8 @@ export function fullLoadSql(
     return `SELECT C.* FROM TGFCAB C WHERE C.CODTIPOPER IN (${IMPORT_TOPS}) AND ${range("C.NUNOTA")} ORDER BY C.NUNOTA`;
   if (entity === "paymentConditions")
     return `SELECT CODTIPVENDA, MAX(DESCRTIPVENDA) AS DESCRTIPVENDA FROM TGFTPV WHERE CODTIPVENDA > ${int0(after)} AND CODTIPVENDA <= ${int0(upTo)} GROUP BY CODTIPVENDA ORDER BY CODTIPVENDA`;
+  if (entity === "productImages")
+    throw new Error("productImages: SQL em sankhya-images.ts");
   const t = FULL_LOAD_TABLE[entity];
   const a = t.alias;
   return `SELECT ${star ? `${a}.*` : cols(t.entity, a)} FROM ${t.table} ${a} WHERE ${t.where} AND ${a}.${t.key} > ${int0(after)} AND ${a}.${t.key} <= ${int0(upTo)} ORDER BY ${a}.${t.key}`;
@@ -726,6 +730,8 @@ export function fullLoadProbeSql(
     return `SELECT MIN(C.NUNOTA) AS NEXTCODE, COUNT(*) AS REMAINING FROM TGFCAB C WHERE C.CODTIPOPER IN (${IMPORT_TOPS}) AND C.NUNOTA > ${int0(after)}`;
   if (entity === "paymentConditions")
     return `SELECT MIN(CODTIPVENDA) AS NEXTCODE, COUNT(DISTINCT CODTIPVENDA) AS REMAINING FROM TGFTPV WHERE CODTIPVENDA > ${int0(after)}`;
+  if (entity === "productImages")
+    throw new Error("productImages: SQL em sankhya-images.ts");
   const t = FULL_LOAD_TABLE[entity];
   const a = t.alias;
   return `SELECT MIN(${a}.${t.key}) AS NEXTCODE, COUNT(*) AS REMAINING FROM ${t.table} ${a} WHERE ${t.where} AND ${a}.${t.key} > ${int0(after)}`;
@@ -738,6 +744,7 @@ export const FULL_LOAD_KEY: Record<FullLoadEntity, string> = {
   stockLocations: "CODLOCAL",
   stockBalances: "CODPROD",
   orders: "NUNOTA",
+  productImages: "CODPROD",
 };
 
 /* ---- Códigos do Sankhya guardados no registro (sankhyaRefs) ---- */

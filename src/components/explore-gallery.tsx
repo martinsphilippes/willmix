@@ -48,7 +48,7 @@ export function ExploreGallery({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
                 <img
-                  src={`/api/files/${photo.documentId}`}
+                  src={`/api/files/${photo.documentId}?thumb=1`}
                   alt=""
                   className="h-full w-full object-contain"
                 />

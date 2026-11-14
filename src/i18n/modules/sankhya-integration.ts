@@ -47,6 +47,8 @@ export const pt = {
   "sankhyaLoad.full.entity.stockBalances": "Saldos de estoque por local",
   "sankhyaLoad.full.entity.orders":
     "Histórico de pedidos (notas de importação)",
+  "sankhyaLoad.full.entity.productImages":
+    "Fotos dos produtos (só baixa o que mudou)",
   "sankhyaLoad.full.auto": "Rodar até o fim",
   "sankhyaLoad.server.on": "Rodando no servidor",
   "sankhyaLoad.server.queue": "Fila: {list}. Última rodada: {last}. Pode fechar o navegador.",
@@ -361,6 +363,8 @@ export const en: Record<keyof typeof pt, string> = {
   "sankhyaLoad.full.entity.stockLocations": "Stock locations",
   "sankhyaLoad.full.entity.stockBalances": "Stock balances by location",
   "sankhyaLoad.full.entity.orders": "Order history (import notes)",
+  "sankhyaLoad.full.entity.productImages":
+    "Product photos (downloads only what changed)",
   "sankhyaLoad.full.auto": "Run to the end",
   "sankhyaLoad.server.on": "Running on the server",
   "sankhyaLoad.server.queue": "Queue: {list}. Last round: {last}. You can close the browser.",
@@ -670,6 +674,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sankhyaLoad.full.entity.stockLocations": "库位",
   "sankhyaLoad.full.entity.stockBalances": "各库位库存结存",
   "sankhyaLoad.full.entity.orders": "订单历史（进口单据）",
+  "sankhyaLoad.full.entity.productImages": "产品照片（只下载有变化的）",
   "sankhyaLoad.full.auto": "一直运行到结束",
   "sankhyaLoad.server.on": "正在服务器上运行",
   "sankhyaLoad.server.queue": "队列：{list}。上一轮：{last}。可以关闭浏览器。",

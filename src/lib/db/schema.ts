@@ -856,6 +856,15 @@ export interface Product extends BaseRow {
   ean?: string | null;
   /** Última sincronização com o Sankhya (docs/SANKHYA.md, fase 3). Alterado depois = pendente. */
   sankhyaSyncedAt?: string | null;
+  /** Fotos que vieram do Sankhya (TGFPRO.IMAGEM e AD_IMAGEM*): versão e foto de cada coluna. */
+  sankhyaImages?: SankhyaImagesState | null;
+}
+
+/** Fotos do Sankhya de um produto: NUVERSAOIMG lido e a foto (product_photos.id) de cada coluna. */
+export interface SankhyaImagesState {
+  version: string | null;
+  photos: Record<string, string>;
+  syncedAt: string;
 }
 
 export interface PriceTier {
@@ -1138,6 +1147,12 @@ export interface Document extends BaseRow {
    * fornecedor dela abrem. Opcional: documentos antigos ficam sem.
    */
   supplierRequestId?: string | null;
+  /**
+   * Miniatura (lado maior 640 px, JPEG) no armazenamento: as listas pedem
+   * `/api/files/<id>?thumb=1`. Nulo = sem miniatura (serve o original).
+   * Hoje só nas fotos que vêm do Sankhya (docs/SANKHYA.md, "Fotos").
+   */
+  thumbKey?: string | null;
 }
 
 export interface Payment extends BaseRow {
@@ -3331,6 +3346,7 @@ export const TABLES: Record<TableName, TableDef> = {
       sankhyaCode: str(40),
       ean: str(20),
       sankhyaSyncedAt: datetime(),
+      sankhyaImages: json(),
     },
     indexes: [
       { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
@@ -3554,6 +3570,7 @@ export const TABLES: Record<TableName, TableDef> = {
       imageHash: str(32),
       conversationTopicId: id(false),
       supplierRequestId: id(false),
+      thumbKey: str(255),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
