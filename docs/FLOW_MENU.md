@@ -83,22 +83,23 @@ Pedido do dono: o Overview de Pedido, Produção e Entrega (só a Wellmix) passa
   - A tela do book (`/app/booking/lots/[id]`) e a da solicitação (`/app/supplier-requests/[id]`) ganham, para a Wellmix, o cartão **Linha do tempo** (`EntityTimelineCard`, `src/lib/services/entity-timeline.ts`): os passos do Produto novo em cor, com a situação e o atraso, e Pedido, Produção e Entrega em cinza com o percentual dos pedidos dela.
   - A linha do tempo geral do Overview passa a ter os quatro blocos.
 - Os logins de fora da Wellmix seguem com o Overview das pendências.
+- **Histórico do Sankhya em espera** (terceira parte, 14/11/2026, decisão do dono: opção 1, sem go-live): os 16.268 pedidos da carga do histórico (`held`, docs/SANKHYA.md) aparecem à parte, pela situação do pedido (`heldStepOf`): Pedido pré-aprovado e Preparação em Pedidos; Arte e embalagem em Arte; Inspeção e Embarque em Produção; Desembaraço, Transporte e Entregue em Entrega. No Overview: o indicador "Histórico em espera", "+N em espera" em cada bloco da linha do tempo geral e em cada passo, e a lista deles (número, fornecedor, situação; até 500) abaixo da tabela. Não entram nas linhas, no atraso nem na completude, e continuam sem pendências e avisos. O go-live (Configurações → Go-live) traz esses pedidos de vez para os passos.
 
 ## Parceiros nos passos (14/11/2026)
 
 Os parceiros (fornecedor, agência, certificadora, despachante, comex, agente de carga, companhia marítima, transportador e agência de marketing) ganham no menu os passos deles no mapa, por bloco, com o contador do que espera ação deles (`PARTNER_FLOW_STEPS` em `src/lib/flow.ts`, tirado de quem faz, valida e vê cada passo do embarque e da certificação e do responsável de cada etapa do pedido). O grupo com as telas do papel (bookings, pedidos, fretes, conta corrente, multas) continua embaixo. O cliente e o jurídico não mudam.
 
-| Parceiro | Passos |
-| --- | --- |
-| Fornecedor | Pedidos (ficha e medidas), Material de arte, Contrato, Inspeção, Amostra, Logística, Carregamento, Documentos de carga, Embarque |
-| Agência | Certificação (arte com o selo), Arte |
-| Certificadora | Certificação |
-| Despachante | Documentos de carga, Presença de carga |
-| Comex | Certificação, Logística, Carregamento, Documentos de carga, Embarque, Presença de carga, Canal, Nota fiscal |
-| Agente de carga | Booking, Logística, Carregamento, Documentos de carga, Embarque, Presença de carga, Canal, Nota fiscal |
-| Companhia marítima | Embarque |
-| Transportador | Logística, Entrega |
-| Agência de marketing | Amostra |
+| Parceiro             | Passos                                                                                                                           |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Fornecedor           | Pedidos (ficha e medidas), Material de arte, Contrato, Inspeção, Amostra, Logística, Carregamento, Documentos de carga, Embarque |
+| Agência              | Certificação (arte com o selo), Arte                                                                                             |
+| Certificadora        | Certificação                                                                                                                     |
+| Despachante          | Documentos de carga, Presença de carga                                                                                           |
+| Comex                | Certificação, Logística, Carregamento, Documentos de carga, Embarque, Presença de carga, Canal, Nota fiscal                      |
+| Agente de carga      | Booking, Logística, Carregamento, Documentos de carga, Embarque, Presença de carga, Canal, Nota fiscal                           |
+| Companhia marítima   | Embarque                                                                                                                         |
+| Transportador        | Logística, Entrega                                                                                                               |
+| Agência de marketing | Amostra                                                                                                                          |
 
 - A tela do passo do parceiro tem as duas abas: Pendências (o que espera ação dele) e Todos no passo (os pedidos dele no passo, só com o que é dele: itens de etapa do papel ou que ele pode fazer e os passos que ele vê; sem a coluna do fornecedor; `flowPartnerAllFor`).
 - O pedido no passo abre para o parceiro só nos passos dele e só nos pedidos dele (`canViewOrder`): os itens do papel, os passos que ele vê, o cartão de produção só para o fornecedor do pedido, sem o fornecedor e o cliente no cabeçalho. Recebimento, relatório da inspeção, frete e a criação do pedido seguem só da Wellmix. Passo que não é do parceiro não abre (404).
