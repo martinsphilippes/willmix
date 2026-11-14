@@ -121,6 +121,25 @@ export const pt = {
   "lane.input.art": "Arte validada",
   "lane.input.certificate": "Certificado (selo)",
   "certFlow.assign.analyst": "Distribuir em Equipe e acessos",
+  "certFlow.replace.start": "Substituir arquivo",
+  "certFlow.replace.chosen": "Novo arquivo: {name}",
+  "certFlow.replace.confirm": "Confirmar substituição",
+  "certFlow.replace.cancel": "Cancelar",
+  "certFlow.replace.pending": "Substituindo…",
+  "certFlow.replace.done": "Arquivo substituído",
+  "certFlow.replace.failed":
+    "A substituição não foi feita: {reason} O arquivo anterior continua valendo.",
+  "certFlow.replace.uploadFailed":
+    "O envio do arquivo falhou. O arquivo anterior continua valendo.",
+  "certFlow.featured.number": "Nº do selo ou do registro: {value}",
+  "importFlow.error.replace_nothing":
+    "Não há arquivo para substituir: envie o primeiro arquivo.",
+  "importFlow.error.replace_not_allowed":
+    "Este documento não pode ser substituído por aqui.",
+  "importFlow.error.mime":
+    "Formato de arquivo não aceito: envie PDF, imagem ou planilha.",
+  "importFlow.error.empty": "O arquivo está vazio.",
+  "importFlow.error.too_large": "O arquivo passa do tamanho máximo (50 MB).",
   "certFlow.missingHint.designer":
     "A arte deste pedido é feita pela Wellmix e ele está sem designer: a aplicação do selo e as correções da arte ficam com {who}. Escolha o designer no cartão Artes.",
   "certFlow.missingHint.analyst":
@@ -302,6 +321,25 @@ export const en: Record<keyof typeof pt, string> = {
   "lane.input.art": "Validated artwork",
   "lane.input.certificate": "Certificate (seal)",
   "certFlow.assign.analyst": "Distribute under Team and access",
+  "certFlow.replace.start": "Replace file",
+  "certFlow.replace.chosen": "New file: {name}",
+  "certFlow.replace.confirm": "Confirm replacement",
+  "certFlow.replace.cancel": "Cancel",
+  "certFlow.replace.pending": "Replacing…",
+  "certFlow.replace.done": "File replaced",
+  "certFlow.replace.failed":
+    "The file was not replaced: {reason} The previous file is still in use.",
+  "certFlow.replace.uploadFailed":
+    "Uploading the file failed. The previous file is still in use.",
+  "certFlow.featured.number": "Seal or registration no.: {value}",
+  "importFlow.error.replace_nothing":
+    "There is no file to replace: send the first file.",
+  "importFlow.error.replace_not_allowed":
+    "This document cannot be replaced here.",
+  "importFlow.error.mime":
+    "File format not accepted: upload a PDF, image or spreadsheet.",
+  "importFlow.error.empty": "The file is empty.",
+  "importFlow.error.too_large": "The file is over the maximum size (50 MB).",
   "certFlow.missingHint.designer":
     "Wellmix makes the artwork of this order and it has no designer: applying the seal and fixing the artwork stay with {who}. Choose the designer on the Artwork card.",
   "certFlow.missingHint.analyst":
@@ -468,6 +506,20 @@ export const zh: Record<keyof typeof pt, string> = {
   "lane.input.art": "已审核的设计稿",
   "lane.input.certificate": "证书（标志）",
   "certFlow.assign.analyst": "在团队与权限中分配",
+  "certFlow.replace.start": "替换文件",
+  "certFlow.replace.chosen": "新文件：{name}",
+  "certFlow.replace.confirm": "确认替换",
+  "certFlow.replace.cancel": "取消",
+  "certFlow.replace.pending": "正在替换…",
+  "certFlow.replace.done": "文件已替换",
+  "certFlow.replace.failed": "文件未替换：{reason} 之前的文件仍然有效。",
+  "certFlow.replace.uploadFailed": "文件上传失败。之前的文件仍然有效。",
+  "certFlow.featured.number": "标志或注册编号：{value}",
+  "importFlow.error.replace_nothing": "没有可替换的文件：请先提交文件。",
+  "importFlow.error.replace_not_allowed": "此文件不能在此替换。",
+  "importFlow.error.mime": "不支持的文件格式：请上传 PDF、图片或表格。",
+  "importFlow.error.empty": "文件为空。",
+  "importFlow.error.too_large": "文件超过最大限制（50 MB）。",
   "certFlow.missingHint.designer":
     "此订单的设计稿由 Wellmix 制作，且未指定设计师：放入标志和修改设计稿由 {who} 负责。请在“设计稿”卡片中选择设计师。",
   "certFlow.missingHint.analyst":

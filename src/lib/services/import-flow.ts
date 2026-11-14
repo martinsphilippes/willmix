@@ -715,7 +715,17 @@ export interface SubmitInput {
   amount?: number | null;
   currency?: string | null;
   documentId?: string | null;
+  /**
+   * Substituir o arquivo (quadro do alto da Certificação, dono, 14/11/2026):
+   * troca só o arquivo de um documento já enviado. O número do selo (e o
+   * resto do passo) fica como estava; o arquivo antigo continua nos
+   * documentos do pedido e na auditoria.
+   */
+  replace?: boolean;
 }
+
+/** Documentos com "Substituir arquivo" no quadro do alto: o selo e o memorial. */
+export const REPLACEABLE_STEPS: readonly ImportStepKey[] = CERT_FEATURED_STEPS;
 
 /*
  * Amostras (docs/SAMPLE_FLOW.md): os passos só valem com o SKU aprovado e o
@@ -764,10 +774,21 @@ export async function submitStep(
     await syncPurchaseIncoterm(order.id);
   }
   const current = steps.find((s) => s.key === key);
+  // Substituir: só o selo e o memorial, que já têm arquivo, por outro arquivo.
+  const replacing = !!input.replace;
+  if (replacing) {
+    if (!REPLACEABLE_STEPS.includes(key))
+      throw new ImportFlowError("replace_not_allowed");
+    if (!current?.documentId) throw new ImportFlowError("replace_nothing");
+    if (!input.documentId) throw new ImportFlowError("file_required");
+  }
   if (current && tpl.validator && current.status === "validated")
     throw new ImportFlowError("already_validated");
-  // O que cada tipo de passo exige.
-  const value = input.value?.trim() || null;
+  // O que cada tipo de passo exige. Na substituição, o número do selo (o
+  // valor do passo) fica como estava: só o arquivo muda.
+  const value = replacing
+    ? (current?.value ?? null)
+    : input.value?.trim() || null;
   const needsValue = ["text", "text_file", "channel", "date"].includes(
     tpl.input,
   );
@@ -818,10 +839,14 @@ export async function submitStep(
   }
   await audit(
     user,
-    "import.step_submitted",
+    replacing ? "import.step_file_replaced" : "import.step_submitted",
     "order",
     orderId,
-    `${auditLabel(tpl)}: ${key} enviado${value ? ` (${value})` : ""}${data.amount ? ` · ${data.currency} ${data.amount}` : ""}`,
+    replacing
+      ? `${auditLabel(tpl)}: ${key} com arquivo substituído (o anterior fica nos documentos do pedido)`
+      : `${auditLabel(tpl)}: ${key} enviado${value ? ` (${value})` : ""}${data.amount ? ` · ${data.currency} ${data.amount}` : ""}`,
+    replacing ? { documentId: current?.documentId ?? null } : null,
+    replacing ? { documentId } : null,
   );
   const link = stepLink(orderId, tpl);
   if (tpl.validator)

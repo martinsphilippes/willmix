@@ -239,6 +239,9 @@ export default async function OrderPage({
     production: productionNotice,
     importStep: importNotice,
     certStep: certNotice,
+    // Quadro do alto da Certificação: arquivo substituído ou falha na troca.
+    certReplaced,
+    replaceFailed,
     stepCard,
     receiving: receivingNotice,
     artwork: artworkNotice,
@@ -2777,6 +2780,12 @@ export default async function OrderPage({
               : "certFlow.featured.follow",
           )}
           error={stepCard === "certification" ? stepError : null}
+          replaced={typeof certReplaced === "string" ? certReplaced : null}
+          replaceFailed={
+            stepCard === "certification" && typeof replaceFailed === "string"
+              ? replaceFailed
+              : null
+          }
           hints={[
             ...(certSteps.some((v) => v.template.key === "cert_seal")
               ? [t("certFlow.sealHint")]
