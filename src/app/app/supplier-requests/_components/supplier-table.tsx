@@ -1,4 +1,6 @@
 import type { SupplierRequest } from "@/lib/db/schema";
+import { ColorLines } from "@/components/color-lines";
+import { colorTotals } from "@/lib/color-split";
 import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -507,6 +509,12 @@ export function SupplierRequestTable({
                 </Td>
                 <Td className={cx(nowrap, "tabular-nums")}>
                   {r.quantity.toLocaleString(intl)}
+                  {/* Variações de cor: uma linha por cor, somando o total. */}
+                  <ColorLines
+                    colors={colorTotals(r.colorPlan)}
+                    name={it.description ?? it.productName ?? ""}
+                    intl={intl}
+                  />
                 </Td>
                 <Td
                   className={cx(nowrap, "tabular-nums")}

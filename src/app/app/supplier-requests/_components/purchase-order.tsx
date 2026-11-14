@@ -1,4 +1,6 @@
 import { roundsDates, roundsLine } from "@/components/purchase-rounds";
+import { ColorLines } from "@/components/color-lines";
+import { colorTotals } from "@/lib/color-split";
 import type { Party } from "@/lib/db/schema";
 import type { Translate } from "@/i18n";
 import type { PurchaseCandidateGroup } from "@/lib/services/purchase-order";
@@ -117,6 +119,15 @@ export function PurchaseOrderCard({
                           data-purchase-qty={r.id}
                         />
                       )}
+                      {/* Variações de cor: cada cor na própria linha (as
+                          peças da escolha; quantidade mudada é dividida de
+                          novo entre as mesmas cores ao gerar). */}
+                      <ColorLines
+                        colors={colorTotals(r.colorPlan)}
+                        name={product.name}
+                        intl={t.intl}
+                        className="max-w-72"
+                      />
                     </Td>
                   </tr>
                 ))}

@@ -1861,6 +1861,13 @@
           "type": "text"
         },
         {
+          "key": "colors",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
           "key": "sankhyaCode",
           "required": false,
           "array": false,
@@ -9840,6 +9847,13 @@
           "type": "text"
         },
         {
+          "key": "colorPlan",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
           "key": "aiAssets",
           "required": false,
           "array": false,
@@ -9990,6 +10004,13 @@
         },
         {
           "key": "schedule",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "colorPlan",
           "required": false,
           "array": false,
           "default": null,

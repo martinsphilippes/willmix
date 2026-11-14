@@ -1,4 +1,5 @@
 import { listByIds } from "@/lib/db/lookup";
+import { ColorLines } from "@/components/color-lines";
 import { registerOrderInvoiceAction } from "../../actions/order-invoice";
 import { setPurchaseIncotermAction } from "../../actions/purchase-order";
 import { ArtworkCard } from "@/components/artwork-card";
@@ -1595,6 +1596,14 @@ export default async function OrderPage({
                           {product.sku}
                         </span>
                       ) : null}
+                      {/* Variações de cor: cada cor na própria linha, do
+                          mesmo produto (a soma é a quantidade do item). */}
+                      <ColorLines
+                        colors={i.colors}
+                        name={i.name}
+                        unit={i.unit}
+                        intl={t.intl}
+                      />
                     </Td>
                     <Td className="min-w-40">{variantCell(i)}</Td>
                     <Td className="whitespace-nowrap text-right font-semibold tabular-nums">

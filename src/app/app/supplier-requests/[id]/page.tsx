@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RequestColorPlan } from "@/components/color-lines";
 import type { ReactNode } from "react";
 import {
   PurchaseScheduleTable,
@@ -645,6 +646,18 @@ export default async function SupplierRequestPage({
                 {r.needs ?? t("supplierRequests.detail.needsNone")}
               </p>
               <PurchaseScheduleTable schedule={r.schedule} t={t} />
+              {/* Variações de cor: cada cor na própria linha, por data. */}
+              <RequestColorPlan
+                plan={r.colorPlan}
+                schedule={r.schedule}
+                name={
+                  it.description ??
+                  it.productName ??
+                  it.factoryItemCode ??
+                  t("productName.unnamed")
+                }
+                t={t}
+              />
             </div>
             <div className="mt-4">
               <DescriptionList

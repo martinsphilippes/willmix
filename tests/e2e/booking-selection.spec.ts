@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { xlsxBytes } from "../unit/xlsx-fixture";
+import { chooseItem } from "./helpers";
 
 /*
  * Seleção de itens, abas Itens e Seleção (docs/SUPPLIER_REQUESTS.md): o
@@ -377,10 +378,7 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await gen.locator("[data-selection-quantity]").fill("");
   await gen.locator("[data-generate-rounds]").fill("2");
   // Com o item marcado, o fluxo volta ao normal, com a caixa dele.
-  await page
-    .locator("[data-selection-item]", { hasText: `${TAG}-A` })
-    .locator("[data-selection-choose]")
-    .check();
+  await chooseItem(page, `${TAG}-A`);
   await expect(selectItem).toHaveCount(0);
   await expect(gen.locator("[data-generate-item]")).toHaveAttribute(
     "data-generate-item",
@@ -446,10 +444,7 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   // Trocar o item marcado desfaz a programação ainda não gravada do item
   // anterior: as rodadas saem e a quantidade (peças) volta a ir sozinha no
   // formulário. "Programações" e as peças ficam para gerar de novo.
-  await page
-    .locator("[data-selection-item]", { hasText: `${TAG}-B` })
-    .locator("[data-selection-choose]")
-    .check();
+  await chooseItem(page, `${TAG}-B`);
   await expect(page.locator("[data-schedule-item]")).toHaveCount(0);
   await expect(page.locator('[data-request-schedule="off"]')).toBeVisible();
   await expect(gen.locator("[data-generate-rounds]")).toHaveValue("3");
@@ -459,10 +454,7 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
     "quantity",
   );
   // Voltar ao A não traz de volta o que não foi gravado: gera de novo.
-  await page
-    .locator("[data-selection-item]", { hasText: `${TAG}-A` })
-    .locator("[data-selection-choose]")
-    .check();
+  await chooseItem(page, `${TAG}-A`);
   await expect(page.locator("[data-schedule-item]")).toHaveCount(0);
   await gen.locator("[data-generate-submit]").click();
   await expect(page.locator("[data-schedule-item]")).toHaveCount(3);
@@ -547,10 +539,7 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   // que a escolha grava (10 caixas de 48 = 480 peças) e Enter grava, como
   // antes. Nada é gravado aqui: a escolha gravada com as caixas digitadas e
   // a volta dela aos dois campos estão em booking-supplier-request.spec.ts.
-  await page
-    .locator("[data-selection-item]", { hasText: `${TAG}-A` })
-    .locator("[data-selection-choose]")
-    .check();
+  await chooseItem(page, `${TAG}-A`);
   const savedBoxes = page.locator("[data-generate-total]");
   const savedPieces = page.locator("[data-selection-quantity]");
   /** Enter no campo: o gerador ficou com ele (true) ou deixou o formulário gravar. */

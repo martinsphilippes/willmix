@@ -42,6 +42,38 @@ O mecanismo é o mesmo da programação de entregas da solicitação do cliente 
 - Com a programação ligada, **a quantidade é a soma das rodadas**: é ela que a escolha grava (até 13/11/2026 o campo ficava só para leitura; agora ele e "Total de caixas" são o total do gerador, ver "Os dois campos de quantidade"). "Sem programação (pedido único)" desliga.
 - Fica em `selection_groups.schedule`. O bloco resolvido mostra "N rodadas a cada X dias" ao lado da quantidade. "Rever a escolha" reabre com a programação.
 
+## Cores: vencedor e variações (dono, 14/11/2026)
+
+### Escolha do vencedor
+
+- A coluna "Escolher" da tabela do grupo virou um **botão pequeno "Escolher"** em cada linha (o rádio `chosen` continua no formulário, escondido dentro do botão). O clique marca aquele item exato do Book como vencedor: a linha fica em destaque (fundo e faixa da marca, botão "✓ Escolhido") e as outras se recolhem (CSS, `globals.css`).
+- Logo abaixo da tabela, a barra "✓ Escolhido: <item> · N outros itens recolhidos" tem **"Rever opções"**, que mostra a comparação de novo para trocar a escolha; escolher outro item recolhe de novo.
+- O clique só marca. **Gravar escolha** continua sendo quem grava, e o servidor continua exigindo o vencedor marcado (também para a programação).
+
+### Variações (card abaixo do vencedor)
+
+- Com o vencedor marcado, o card recolhível **"Variações"** traz uma linha por cor do item no Book (`booking_items.colorAssortment`, separadas por "/", ",", ";", "|", "+" ou quebra de linha; `colorsOf`, em `src/lib/color-split.ts`), uma abaixo da outra: "Produto · Cor", com as peças da cor ao lado.
+- Todas começam **incluídas**; cada uma pode ser retirada ou reincluída. Vale só para o pedido em preparação: as cores do Book não mudam.
+- **Produto sem variações** (nenhuma ou uma cor no Book): não há card; segue o fluxo de uma linha só, sem regra nova.
+
+### Composição por cor (prévia e gravação)
+
+- O total de peças do produto é dividido entre as cores incluídas da forma mais igual possível, sempre em **caixas master inteiras** do item escolhido; o saldo vai para as primeiras cores, na ordem do Book. Com a programação, as peças de cada cor são espalhadas pelas datas na proporção de cada data: cada data soma exatamente as peças dela e cada cor soma o seu total (`splitByColor`).
+- Exemplo do dono: 2.880 peças, 3 cores e 2 datas → 480 de cada cor por data, 1.440 por data e 2.880 no pedido. Divisão desigual: 61 caixas de 48 em 2 datas (31 + 30) e 3 cores → 1ª data 11, 10 e 10 caixas; 2ª data 10 de cada.
+- A prévia **"Composição por cor"** fica no bloco da quantidade (logo abaixo das programações, ou abaixo do gerador no pedido único): por data, uma linha por cor com peças e caixas e o subtotal da data; no fim, o total de cada cor e o total do pedido. Ela é refeita quando mudam o total, as cores ou as datas.
+- **Não fecha caixas inteiras** (ex.: 1.500 peças com caixa de 48): a prévia diz o ajuste ("Ajuste para 1.488 ou 1.536 peças"), "Gravar escolha" não envia e o servidor também recusa (`selection_colors_cartons`). Nada é mudado sozinho. Todas as cores retiradas: `selection_colors_none`. Uma cor só incluída fica com tudo (sem regra de caixa); sem peças por caixa master, a divisão é em peças.
+- Gravado em `selection_groups.colorPlan` (`ColorPlan`: `colors` do Book, `included` e `rows` com o total e as peças por data, na ordem de `schedule.items`). "Rever a escolha" reabre com as cores e a composição gravadas. O bloco resolvido mostra "Por cor: BEGE 1.488, MARROM 1.440".
+
+### Continuidade até o fechamento
+
+- **Solicitação ao fornecedor**: recebe o mesmo plano (`supplier_requests.colorPlan`, só se as linhas somam a quantidade). A tela do produto mostra a composição por data com cada cor na própria linha e as cores fora da compra; a tabela das solicitações, uma linha por cor sob a quantidade.
+- **Pedido de compra (pai)**: continua **um item por produto** (a Preparação, as artes e o contrato são por produto e não se duplicam), com as peças de cada cor em `order_items.colors`. Cada rodada de `orders.purchaseRounds` leva as peças de cada cor daquela data (`items[].colors`). No quadro "Gerar pedido de compra", cada cor aparece na própria linha. Pedido sem programação com a quantidade mudada ali: a mesma divisão é refeita entre as mesmas cores; se não fecha caixas inteiras, o pedido é recusado (`purchase_order_colors_cartons`).
+- **Pedidos filhos**: copiam as peças de cada cor da rodada gravada no pai (nada é recalculado nem duplicado).
+- **Telas e documento**: itens do pedido, cartão de programação do pai e o documento do pedido de compra (o que as partes assinam) mostram cada cor na própria linha, ligada ao mesmo produto. O documento só ganha o campo `colors` quando há cores, então o conteúdo (e o hash) dos pedidos já assinados não muda.
+- Pedidos e escolhas gravados antes desta mudança ficam como estão (sem cores).
+
+Onde está: regras em `src/lib/color-split.ts`; card e barra em `src/components/selection-variations.tsx`; prévia em `src/components/selection-quantity.tsx`; linhas por cor em `src/components/color-lines.tsx`; textos em `src/i18n/modules/color-variants.ts`; testes em `tests/unit/color-split.test.ts`, `tests/unit/color-plan-flow.test.ts` e `tests/e2e/selection-colors.spec.ts`.
+
 ## 2. Na solicitação ao fornecedor (o que o responsável pelo booking vê)
 
 A solicitação aberta do grupo leva a programação (`supplier_requests.schedule`). O responsável pelo booking passa a ver **rodadas, peças por rodada e total**, em vez de só a quantidade:
@@ -72,6 +104,7 @@ A solicitação aberta do grupo leva a programação (`supplier_requests.schedul
 
 - `selection_groups.schedule` e `supplier_requests.schedule` (JSON: `intervalDays`, `firstDate`, `items[index, quantity, expectedAt]`).
 - `orders.purchaseRounds` (JSON grande), `orders.parentOrderId` (índice `by_parent`), `orders.roundIndex`.
+- Cores (14/11/2026): `selection_groups.colorPlan`, `supplier_requests.colorPlan` e `order_items.colors` (JSON); `purchaseRounds[].items[].colors`.
 
 ## Onde está
 

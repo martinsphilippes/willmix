@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -469,21 +470,41 @@ export default async function PurchaseOrderPage({
               </thead>
               <tbody>
                 {doc.items.map((item, i) => (
-                  <tr key={i}>
-                    <td className={cell}>
-                      {productNameText(t, item.name)}
-                      {item.variant ? ` · ${item.variant}` : ""}
-                    </td>
-                    <td className={`${cell} text-right tabular-nums`}>
-                      {item.quantity.toLocaleString(t.intl)} {item.unit}
-                    </td>
-                    <td className={`${cell} text-right tabular-nums`}>
-                      {money(item.unitPrice, 4)}
-                    </td>
-                    <td className={`${cell} text-right tabular-nums`}>
-                      {money(item.total)}
-                    </td>
-                  </tr>
+                  <Fragment key={i}>
+                    <tr>
+                      <td className={cell}>
+                        {productNameText(t, item.name)}
+                        {item.variant ? ` · ${item.variant}` : ""}
+                      </td>
+                      <td className={`${cell} text-right tabular-nums`}>
+                        {item.quantity.toLocaleString(t.intl)} {item.unit}
+                      </td>
+                      <td className={`${cell} text-right tabular-nums`}>
+                        {money(item.unitPrice, 4)}
+                      </td>
+                      <td className={`${cell} text-right tabular-nums`}>
+                        {money(item.total)}
+                      </td>
+                    </tr>
+                    {/* Variações de cor: cada cor na própria linha, do mesmo
+                        produto (as peças somam a linha de cima). */}
+                    {(item.colors ?? []).map((c) => (
+                      <tr
+                        key={`${i}-${c.color}`}
+                        className="text-zinc-600"
+                        data-doc-color={c.color}
+                      >
+                        <td className={`${cell} pl-6`}>
+                          {productNameText(t, item.name)} · {c.color}
+                        </td>
+                        <td className={`${cell} text-right tabular-nums`}>
+                          {c.quantity.toLocaleString(t.intl)} {item.unit}
+                        </td>
+                        <td className={cell} />
+                        <td className={cell} />
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
                 <tr className="font-semibold">
                   <td className={cell} colSpan={3}>

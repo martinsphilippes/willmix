@@ -135,10 +135,23 @@ export async function saveSelectionGroupAction(form: FormData) {
       const { getSettings } = await import("@/lib/settings");
       aiPrompts = promptsToSave(typed, defaultPrompts(await getSettings()));
     }
+    // Variações do vencedor: as cores marcadas no card dele (o card vai no
+    // formulário com a marca `colorsSent.<item>`; sem ela, todas as cores).
+    const colors = form.has(`colorsSent.${chosen}`)
+      ? z
+          .array(z.string().trim().min(1).max(60))
+          .max(30)
+          .parse(
+            form
+              .getAll(`colors.${chosen}`)
+              .filter((v): v is string => typeof v === "string"),
+          )
+      : undefined;
     const saved = await saveSelectionGroup(user, {
       ...input,
       quantity: schedule ? null : number(form, "quantity", true),
       schedule,
+      colors,
       aiPrompts,
     });
     // "Gravar e gerar com IA": grava e gera as imagens e a ficha. A escolha
