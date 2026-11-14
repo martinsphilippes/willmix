@@ -595,6 +595,12 @@ export const IMPORT_STEP_KEYS = [
   "samples_china",
   "samples_china_received",
   "samples_returned",
+  // Compra EXW (mapa R17 e R18; docs/ORIGIN_CONTAINER.md): a trading contrata
+  // a transportadora que leva o container à fábrica (nome e data prevista) e
+  // registra os custos do transporte na origem (POP), que a Wellmix valida.
+  "origin_carrier",
+  "origin_carrier_eta",
+  "origin_costs",
 ] as const;
 export type ImportStepKey = (typeof IMPORT_STEP_KEYS)[number];
 export const IMPORT_STEP_STATUSES = [
