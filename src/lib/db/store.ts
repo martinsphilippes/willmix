@@ -120,6 +120,21 @@ export interface Store {
     table: K,
     rows: Array<NewRow<Tables[K]> & { id: string }>,
   ): Promise<void>;
+  /**
+   * Muda as linhas que casam com o filtro (igualdade ou lista de valores),
+   * numa ida ao banco. Opcional: sem ele, quem chama lista e grava uma a
+   * uma. Não refaz resumos (docs/RESUMOS.md): quem usa reconstrói depois.
+   */
+  updateWhere?<K extends TableName>(
+    table: K,
+    filter: Filter<Tables[K]>,
+    patch: Patch<Tables[K]>,
+  ): Promise<void>;
+  /** Quantas linhas casam com o filtro, sem trazê-las. Opcional. */
+  count?<K extends TableName>(
+    table: K,
+    filter: Filter<Tables[K]>,
+  ): Promise<number>;
   putFile(bytes: Uint8Array, name: string, mime: string): Promise<StoredFile>;
   /** Metadados de um arquivo já no armazenamento (ex.: enviado direto pelo navegador); null se não existe. */
   statFile(key: string): Promise<StoredFile | null>;
