@@ -54,7 +54,9 @@ export const FLOW_STEPS: FlowStep[] = [
   s("new-product", "quotes", "quotes", "/app/supplier-requests/invites"),
   s("new-product", "negotiations", "quotes", "/app/supplier-requests"),
   // Pedido.
-  s("order", "orders", "orders", "/app/orders"),
+  // Pedidos: o passo em que o pedido é criado (dono, 14/11/2026), com tela
+  // própria (a lista /app/orders continua pelo endereço e pelo link da tela).
+  s("order", "orders", "orders"),
   s("order", "certification", "orders"),
   s("order", "art-material", "orders"),
   s("order", "art", "orders"),
@@ -365,8 +367,20 @@ export function caseHref(
     !task.link.includes("/samples")
   )
     return `/app/orders/${order}/samples`;
+  // Telas focadas do pedido que já existem (Die Cut, documento do pedido,
+  // documentos do embarque, amostras, fotos reais, ficha): o atalho direto.
+  if (/\/app\/orders\/[^/]+\/[a-z-]+/.test(task.link)) return task.link;
+  // O resto: o pedido na tela do passo (dono, 14/11/2026: a visão é do
+  // passo e das necessidades dele, não do pedido inteiro).
+  if (order) return orderInStepHref(step, order);
   return task.link;
 }
+
+/** O pedido aberto na tela do passo: tudo do passo para esse pedido. */
+export const orderInStepHref = (
+  step: Pick<FlowStep, "block" | "key">,
+  orderId: string,
+) => `/app/flow/${step.block}/${step.key}/${encodeURIComponent(orderId)}`;
 
 /** Itens da pendência de etapa que caem neste passo (o resto aparece no passo deles). */
 export function itemsInStep<T extends { key: string }>(

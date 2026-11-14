@@ -3,6 +3,18 @@
  * telas dos passos; docs/FLOW_MENU.md): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "flow.orders.list": "Lista de todos os pedidos",
+  "flow.order.title": "Pedido #{n} em {step}",
+  "flow.order.back": "Voltar a {step}",
+  "flow.order.customer": "Cliente",
+  "flow.order.created": "Criado em",
+  "flow.order.hint":
+    "Visão do passo: tudo o que este passo tem para o pedido, feito e aberto. O pedido inteiro fica na visão do pedido.",
+  "flow.order.items": "Itens do pedido",
+  "flow.order.product": "Produto",
+  "flow.order.quantity": "Quantidade",
+  "flow.order.items.step": "Itens deste passo",
+  "flow.order.empty": "Nada deste passo para este pedido.",
   "flow.all.production":
     "Produção em andamento (ETD definido, aguardando a inspeção)",
   "flow.tab.pending": "Pendências",
@@ -167,6 +179,18 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "flow.orders.list": "List of all orders",
+  "flow.order.title": "Order #{n} in {step}",
+  "flow.order.back": "Back to {step}",
+  "flow.order.customer": "Customer",
+  "flow.order.created": "Created on",
+  "flow.order.hint":
+    "Step view: everything this step has for the order, done and open. The whole order is in the order view.",
+  "flow.order.items": "Order items",
+  "flow.order.product": "Product",
+  "flow.order.quantity": "Quantity",
+  "flow.order.items.step": "Items in this step",
+  "flow.order.empty": "Nothing in this step for this order.",
   "flow.all.production":
     "Production under way (ETD set, waiting for inspection)",
   "flow.tab.pending": "Pending",
@@ -331,6 +355,18 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "flow.orders.list": "全部订单列表",
+  "flow.order.title": "订单 #{n} · {step}",
+  "flow.order.back": "返回{step}",
+  "flow.order.customer": "客户",
+  "flow.order.created": "创建于",
+  "flow.order.hint":
+    "环节视图：本环节针对该订单的全部事项（已完成和未完成）。完整订单见订单视图。",
+  "flow.order.items": "订单商品",
+  "flow.order.product": "产品",
+  "flow.order.quantity": "数量",
+  "flow.order.items.step": "本环节事项",
+  "flow.order.empty": "该订单在本环节没有事项。",
   "flow.all.production": "生产进行中（已定 ETD，等待验货）",
   "flow.tab.pending": "待处理",
   "flow.tab.all": "本环节全部",

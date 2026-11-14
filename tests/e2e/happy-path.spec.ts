@@ -489,7 +489,21 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page
       .locator(`[data-flow-all-order="${allOrderId}"] [data-flow-all-view]`)
       .first(),
-  ).toHaveAttribute("href", `/app/orders/${allOrderId}`);
+  ).toHaveAttribute("href", `/app/flow/order/art/${allOrderId}`);
+  // O pedido na tela do passo: tudo do passo para ele (feito e aberto).
+  await page
+    .locator(`[data-flow-all-order="${allOrderId}"] [data-flow-all-view]`)
+    .first()
+    .click();
+  await page.waitForURL(new RegExp(`/app/flow/order/art/${allOrderId}$`));
+  await expect(page.locator(`[data-flow-order="${allOrderId}"]`)).toBeVisible();
+  await expect(
+    page.locator('[data-flow-order-requirement^="art"]').first(),
+  ).toBeVisible();
+  // No passo Pedidos (onde o pedido é criado): só a criação, com os itens.
+  await page.goto(`/app/flow/order/orders/${allOrderId}`);
+  await expect(page.locator("[data-flow-order-item]").first()).toBeVisible();
+  await expect(page.locator("[data-production-card]")).toHaveCount(0);
   await page.goto("/app/flow/order/art");
   await expect(
     page.locator('[data-flow-tab="pending"][aria-current="page"]'),

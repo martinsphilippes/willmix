@@ -38,7 +38,7 @@ const NEW_PRODUCT = [
 ];
 const ORDER = [
   "/app/flow/order",
-  "/app/orders",
+  "/app/flow/order/orders",
   "/app/flow/order/certification",
   "/app/flow/order/art-material",
   "/app/flow/order/art",
@@ -227,7 +227,7 @@ describe("menu lateral", () => {
   it("operador por função: comprador vê Produto novo e Pedido; financeiro só o admin", () => {
     const buyer = hrefsOf({ role: "operator", functions: ["buyer"] });
     expect(buyer).toContain("/app/booking");
-    expect(buyer).toContain("/app/orders");
+    expect(buyer).toContain("/app/flow/order/orders");
     expect(buyer).toContain("/app/products");
     expect(buyer).not.toContain("/app/lines");
     expect(buyer).not.toContain("/app/finance");
