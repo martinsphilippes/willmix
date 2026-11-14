@@ -616,63 +616,80 @@ export function AppSidebar({
     setCollapsed(value);
     save(COLLAPSED_KEY, value ? "1" : "0");
   }
+  const width = collapsed ? "w-16" : "w-64";
+  /*
+   * A barra fica fixa logo abaixo do cabeçalho (dono, 14/11/2026). Antes era
+   * "sticky" com a altura da tela: no fim da página, a margem da barrinha de
+   * início do iPad (env(safe-area-inset-bottom), no body) empurrava a barra
+   * para cima e o botão de recolher ficava embaixo do cabeçalho. Fixa, ela
+   * não acompanha o fim da página; o espaço dela na linha fica com o bloco
+   * vazio ao lado (mesma largura, mesma transição).
+   */
   return (
-    <aside
-      data-sidebar
-      data-sidebar-collapsed={collapsed ? "1" : "0"}
-      className={`sticky top-(--wm-header) hidden h-[calc(100dvh-var(--wm-header))] shrink-0 flex-col border-r border-zinc-200 bg-white transition-[width] duration-150 md:flex print:hidden ${
-        collapsed ? "w-16" : "w-64"
-      }`}
-    >
+    <>
       <div
-        className={`flex px-2 pt-2 ${collapsed ? "justify-center" : "justify-end"}`}
-      >
-        <button
-          type="button"
-          onClick={() => setAndSave(!collapsed)}
-          aria-label={collapsed ? labels.expand : labels.collapse}
-          title={collapsed ? labels.expand : labels.collapse}
-          data-sidebar-toggle
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 focus-visible:outline-2 focus-visible:outline-brand-600"
-        >
-          <svg
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-            className={`h-4 w-4 transition ${collapsed ? "rotate-180" : ""}`}
-          >
-            <path d="m11 5-5 5 5 5M16 5l-5 5 5 5" />
-          </svg>
-        </button>
-      </div>
-      <NavList
-        entries={entries}
-        footer={footer}
-        label={labels.main}
-        collapsed={collapsed}
-        onExpand={() => setAndSave(false)}
-        bottom={
-          account ? (
-            <div className="mt-2 border-t border-zinc-100 pt-2">
-              <UserMenu
-                name={account.name}
-                role={account.role}
-                email={account.email}
-                label={account.label}
-                placement="sidebar"
-                compact={collapsed}
-              >
-                {account.menu}
-              </UserMenu>
-            </div>
-          ) : null
-        }
+        aria-hidden
+        data-sidebar-space
+        className={`hidden shrink-0 transition-[width] duration-150 md:block print:hidden ${width}`}
       />
-    </aside>
+      <aside
+        data-sidebar
+        data-sidebar-collapsed={collapsed ? "1" : "0"}
+        className={`fixed bottom-0 left-[env(safe-area-inset-left)] top-(--wm-header) hidden flex-col border-r border-zinc-200 bg-white pb-[env(safe-area-inset-bottom)] transition-[width] duration-150 md:flex print:hidden ${width}`}
+      >
+        {/* Área própria do botão, no alto da barra: no centro com a barra
+            recolhida e à direita com ela aberta; 44 px para o toque. */}
+        <div
+          className={`flex shrink-0 px-2 pt-2 ${collapsed ? "justify-center" : "justify-end"}`}
+          data-sidebar-toggle-area
+        >
+          <button
+            type="button"
+            onClick={() => setAndSave(!collapsed)}
+            aria-label={collapsed ? labels.expand : labels.collapse}
+            title={collapsed ? labels.expand : labels.collapse}
+            data-sidebar-toggle
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 focus-visible:outline-2 focus-visible:outline-brand-600"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+              className={`h-4 w-4 transition ${collapsed ? "rotate-180" : ""}`}
+            >
+              <path d="m11 5-5 5 5 5M16 5l-5 5 5 5" />
+            </svg>
+          </button>
+        </div>
+        <NavList
+          entries={entries}
+          footer={footer}
+          label={labels.main}
+          collapsed={collapsed}
+          onExpand={() => setAndSave(false)}
+          bottom={
+            account ? (
+              <div className="mt-2 border-t border-zinc-100 pt-2">
+                <UserMenu
+                  name={account.name}
+                  role={account.role}
+                  email={account.email}
+                  label={account.label}
+                  placement="sidebar"
+                  compact={collapsed}
+                >
+                  {account.menu}
+                </UserMenu>
+              </div>
+            ) : null
+          }
+        />
+      </aside>
+    </>
   );
 }
 
