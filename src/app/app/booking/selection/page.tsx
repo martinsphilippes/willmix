@@ -1245,7 +1245,7 @@ export default async function BookingSelectionPage({
                                 { n: section.cards.length },
                               )}
                             </h3>
-                            <div className="grid gap-3 lg:grid-cols-2">
+                            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                               {section.cards.map((b) => {
                                 const g = b.entry?.group ?? null;
                                 const saved = g?.status === "saved";
