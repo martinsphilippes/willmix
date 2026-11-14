@@ -64,6 +64,7 @@ const SALES_TABLES = [
   "showroom_receipts",
   // Ofertas de amostras e produtos a clientes (Vendas).
   "sales_offers",
+  "sales_orders",
   "receivings",
   "art_issues",
   "art_issues",
@@ -86,6 +87,7 @@ const OPTIONAL_TABLES = new Set<TableName>([
   "real_media",
   "showroom_receipts",
   "sales_offers",
+  "sales_orders",
   "receivings",
   "production_tracks",
   "sku_inspections",
