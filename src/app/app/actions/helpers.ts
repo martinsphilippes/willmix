@@ -15,6 +15,18 @@ export async function requireUser(): Promise<User> {
   return user;
 }
 
+/**
+ * Tela do passo do menu de onde a ação veio (docs/FLOW_MENU.md): só
+ * /app/flow/<bloco>/<passo>; qualquer outra coisa é ignorada (volta ao pedido).
+ */
+export function flowReturnTo(form: FormData): string | null {
+  const v = form.get("returnTo");
+  return typeof v === "string" &&
+    /^\/app\/flow\/[a-z-]{1,40}\/[a-z-]{1,40}$/.test(v.trim())
+    ? v.trim()
+    : null;
+}
+
 export function str(form: FormData, key: string) {
   const v = form.get(key);
   return typeof v === "string" ? v.trim() : "";

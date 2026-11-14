@@ -13,6 +13,12 @@ import {
 import { flowCasesOf } from "@/lib/services/flow";
 import { FlowCases } from "@/components/flow-cases";
 import { FlowStepWork } from "@/components/flow-step-work";
+import {
+  FlowArtworkWork,
+  FlowProductionWork,
+  FlowRequirementWork,
+} from "@/components/flow-step-forms";
+import { Alert } from "@/components/ui";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { PageHeader, TextLink } from "@/components/ui";
 
@@ -34,7 +40,8 @@ export default async function FlowStepPage({
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=/app/flow/${block}/${key}`);
   requireScreen(user, step.screen);
-  const { due, importStep, certStep } = await searchParams;
+  const { due, importStep, certStep, production, artwork, saved } =
+    await searchParams;
   const done = [importStep, certStep].find(
     (v) =>
       typeof v === "string" &&
@@ -47,6 +54,19 @@ export default async function FlowStepPage({
     : null;
   const tasks = filter ? all.filter((x) => x.due === filter) : all;
   const base = `/app/flow/${block}/${key}`;
+  // Aviso de "feito" das ações da produção e da arte (os cartões leem o seu).
+  const productionNotice =
+    typeof production === "string" &&
+    ["saved", "followup", "scheduled", "inspected", "fixed"].includes(
+      production,
+    )
+      ? t(`production.done.${production}` as DictionaryKey)
+      : null;
+  const artworkNotice =
+    typeof artwork === "string" &&
+    ["designer", "reported", "fixed", "accepted", "reopened"].includes(artwork)
+      ? t(`artwork.done.${artwork}` as DictionaryKey)
+      : null;
   return (
     <div data-flow-step={`${block}/${key}`}>
       <PageHeader
@@ -84,7 +104,32 @@ export default async function FlowStepPage({
           );
         })}
       </nav>
+      {saved === "1" ? (
+        <div className="mb-3">
+          <Alert tone="success">{t("flow.work.saved")}</Alert>
+        </div>
+      ) : null}
       <FlowCases step={step} tasks={tasks} t={t} />
+      <FlowRequirementWork user={user} step={step} tasks={all} t={t} />
+      {step.block === "production" &&
+      (step.key === "production" || step.key === "inspection") ? (
+        <FlowProductionWork
+          user={user}
+          step={step}
+          tasks={all}
+          t={t}
+          notice={productionNotice}
+        />
+      ) : null}
+      {step.block === "order" && step.key === "art" ? (
+        <FlowArtworkWork
+          user={user}
+          step={step}
+          tasks={all}
+          t={t}
+          notice={artworkNotice}
+        />
+      ) : null}
       <FlowStepWork
         user={user}
         step={step}

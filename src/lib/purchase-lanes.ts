@@ -478,3 +478,42 @@ export function laneDueAt(
   const from = unlockedAt(key, orderCreatedAt, requirements, stageStartedAt);
   return from ? addDays(from, days) : null;
 }
+
+/**
+ * Arquivos de outras tarefas que esta usa (dono, 14/11/2026): a validação
+ * traz a arte enviada; a arte final, a arte validada e o certificado (o
+ * selo). Só a chave do rótulo e o documento; quem chama busca o arquivo.
+ * Usado no detalhe do pedido e na tela do passo do menu (docs/FLOW_MENU.md).
+ */
+export function laneInputKeys(
+  key: string,
+  requirements: readonly Pick<Requirement, "key" | "status" | "documentId">[],
+): {
+  label: "lane.input.art" | "lane.input.review" | "lane.input.certificate";
+  documentId: string;
+}[] {
+  const item = itemIdOf(key);
+  if (!item) return [];
+  const base = baseKeyOf(key);
+  if (base !== LANE_KEYS.artReview && base !== LANE_KEYS.artFinal) return [];
+  const sibling = (source: string) =>
+    requirements.find((x) => x.key === laneKey(source, item));
+  const fileOf = (source: string) => {
+    const src = sibling(source);
+    return src?.status === "done" ? (src.documentId ?? null) : null;
+  };
+  const reviewed = sibling(LANE_KEYS.artReview)?.status === "done";
+  const out: ReturnType<typeof laneInputKeys> = [];
+  // A validação mostra a arte enviada; a arte final, só a arte validada.
+  const art = fileOf(LANE_KEYS.art);
+  if (art && (base === LANE_KEYS.artReview || reviewed))
+    out.push({
+      label: reviewed ? "lane.input.art" : "lane.input.review",
+      documentId: art,
+    });
+  const certificate =
+    base === LANE_KEYS.artFinal ? fileOf(LANE_KEYS.certificate) : null;
+  if (certificate)
+    out.push({ label: "lane.input.certificate", documentId: certificate });
+  return out;
+}

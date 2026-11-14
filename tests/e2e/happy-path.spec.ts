@@ -474,13 +474,32 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   );
   await expect(page.locator("main")).toContainText("Logo maior");
   await fillMyRequirements(page, orderUrl, {}, 1);
-  // A Wellmix valida a arte reenviada.
+  // A Wellmix valida a arte reenviada na tela do passo Pedido → Arte (menu
+  // por blocos, docs/FLOW_MENU.md): o menu conta a validação, a tela traz a
+  // arte enviada e o aprovar; a ação volta para a tela do passo.
   await login(page, "admin@wellmix.com");
+  await page.goto("/app/flow/order/art");
+  await expect(
+    page
+      .locator('[data-nav-link="/app/flow/order/art"] [data-nav-badge]')
+      .filter({ visible: true })
+      .first(),
+  ).toBeVisible();
+  const orderId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
+  const artCard = page.locator(`[data-flow-requirement-order="${orderId}"]`);
+  const artReview = artCard.locator('[data-flow-requirement^="art_review"]');
+  await expect(artReview.locator("[data-lane-input] a")).toHaveCount(1);
+  await Promise.all([
+    page.waitForURL(/\/app\/flow\/order\/art(\?|$)/),
+    artReview.locator("button[value=approve]").click(),
+  ]);
+  await expect(
+    artCard.locator('[data-flow-requirement^="art_review"]'),
+  ).toHaveCount(0);
   await page.goto(orderUrl);
-  await requirementRow(page, /Validação da arte pela Wellmix/)
-    .locator("button[value=approve]")
-    .click();
-  await page.waitForLoadState("networkidle");
+  await expect(
+    requirementRow(page, /Validação da arte pela Wellmix/),
+  ).toContainText(/Concluído/);
   // 6d. Certificadora (OCP) do pedido: o certificado das raias (dono,
   // 14/11/2026; o selo do cartão Certificação continua com o despachante).
   // O despachante não envia o certificado.

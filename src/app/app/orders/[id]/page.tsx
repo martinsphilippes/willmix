@@ -23,7 +23,7 @@ import {
   isLeadTimeKey,
   isSampleOrderKey,
   itemIdOf,
-  laneKey,
+  laneInputKeys,
   supplierLaneView,
   supplierSeesLaneRequirement,
 } from "@/lib/purchase-lanes";
@@ -628,32 +628,13 @@ export default async function OrderPage({
   /* Os arquivos que a tarefa usa, de tarefas que este login pode não ver:
      a validação traz a arte enviada; a arte final, a arte validada e o
      certificado (o selo). */
-  const laneInputsOf = (r: Requirement): LaneInput[] => {
-    const item = laneCtx ? itemIdOf(r.key) : null;
-    if (!item) return [];
-    const base = baseKeyOf(r.key);
-    if (base !== LANE_KEYS.artReview && base !== LANE_KEYS.artFinal) return [];
-    const sibling = (source: string) =>
-      requirements.find((x) => x.key === laneKey(source, item));
-    const fileOf = (source: string) => {
-      const src = sibling(source);
-      return src?.status === "done" ? docById(src.documentId) : null;
-    };
-    const reviewed = sibling(LANE_KEYS.artReview)?.status === "done";
-    const out: LaneInput[] = [];
-    // A validação mostra a arte enviada; a arte final, só a arte validada.
-    const art = fileOf(LANE_KEYS.art);
-    if (art && (base === LANE_KEYS.artReview || reviewed))
-      out.push({
-        label: reviewed ? "lane.input.art" : "lane.input.review",
-        doc: art,
-      });
-    const certificate =
-      base === LANE_KEYS.artFinal ? fileOf(LANE_KEYS.certificate) : null;
-    if (certificate)
-      out.push({ label: "lane.input.certificate", doc: certificate });
-    return out;
-  };
+  const laneInputsOf = (r: Requirement): LaneInput[] =>
+    laneCtx
+      ? laneInputKeys(r.key, requirements).flatMap((input) => {
+          const doc = docById(input.documentId);
+          return doc ? [{ label: input.label, doc }] : [];
+        })
+      : [];
   /* Parceiro (agência, despachante, companhia, transportador): só a parte dele.
      O transportador ganha o cartão "Carga e entrega" no lugar do cartão do pedido. */
   const partner = isPartner(user);

@@ -40,14 +40,24 @@ export function ArtworkCard({
   view,
   wellmix,
   notice,
+  returnTo,
 }: {
+  /** Tela do passo do menu (docs/FLOW_MENU.md): a ação volta para ela. */
+  returnTo?: string;
   t: Translate;
   order: Order;
   view: ArtworkView;
   wellmix: boolean;
   notice: string | null;
 }) {
-  const hidden = <input type="hidden" name="orderId" value={order.id} />;
+  const hidden = (
+    <>
+      <input type="hidden" name="orderId" value={order.id} />
+      {returnTo ? (
+        <input type="hidden" name="returnTo" value={returnTo} />
+      ) : null}
+    </>
+  );
   const tone = (s: string) =>
     s === "accepted" ? "success" : s === "fixed" ? "warning" : "danger";
 

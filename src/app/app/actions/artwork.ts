@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { assertScreen } from "@/lib/auth/screens";
-import { field, files, requireUser, run, str } from "./helpers";
+import { field, files, requireUser, run, str, flowReturnTo } from "./helpers";
 
 /*
  * Artes do pedido (docs/ARTWORK.md): designer, não conformidade por SKU,
@@ -13,6 +13,9 @@ import { field, files, requireUser, run, str } from "./helpers";
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 
 function back(form: FormData) {
+  // Tela do passo do menu de onde a ação veio (docs/FLOW_MENU.md).
+  const flow = flowReturnTo(form);
+  if (flow) return flow;
   const orderId = ID.safeParse(str(form, "orderId"));
   return orderId.success ? `/app/orders/${orderId.data}` : "/app/orders";
 }

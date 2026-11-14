@@ -62,7 +62,14 @@ import { importCsv } from "@/lib/services/import";
 import { confirmSupplierPaymentReceipt } from "@/lib/services/acknowledgements";
 
 /* Helpers compartilhados com src/app/app/actions/*.ts */
-import { num, requireUser, run, str, withQuery } from "./actions/helpers";
+import {
+  flowReturnTo,
+  num,
+  requireUser,
+  run,
+  str,
+  withQuery,
+} from "./actions/helpers";
 import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import { itemIdOf } from "@/lib/purchase-lanes";
 import { parseRequestItems } from "./actions/request-items";
@@ -292,7 +299,10 @@ export async function submitRequirementAction(form: FormData) {
   const requirementId = str(form, "requirementId");
   // Envio feito no quadro Die Cut do pedido: volta para ele (sucesso ou erro).
   const dieCut = str(form, "returnTo") === "die-cut";
-  const back = dieCut ? dieCutHref(orderId) : `/app/orders/${orderId}`;
+  // Tela do passo do menu (docs/FLOW_MENU.md): volta para ela.
+  const flow = flowReturnTo(form);
+  const back =
+    flow ?? (dieCut ? dieCutHref(orderId) : `/app/orders/${orderId}`);
   await run(back, async () => {
     assertScreen(user, "orders");
     const store = getStore();
@@ -383,6 +393,7 @@ export async function submitRequirementAction(form: FormData) {
         );
       throw error;
     }
+    if (flow) return withQuery(flow, "saved", "1");
     if (dieCut) {
       const item = dieCutItemOf(requirement.key);
       return withQuery(
@@ -401,7 +412,9 @@ export async function clearRequirementDocumentAction(form: FormData) {
   const orderId = str(form, "orderId");
   const requirementId = str(form, "requirementId");
   const dieCut = str(form, "returnTo") === "die-cut";
-  const back = dieCut ? dieCutHref(orderId) : `/app/orders/${orderId}`;
+  const flow = flowReturnTo(form);
+  const back =
+    flow ?? (dieCut ? dieCutHref(orderId) : `/app/orders/${orderId}`);
   await run(back, async () => {
     assertScreen(user, "orders");
     const requirement = await getStore().get("requirements", requirementId);
@@ -409,6 +422,7 @@ export async function clearRequirementDocumentAction(form: FormData) {
       throw new Error("not_found");
     const { clearRequirementDocument } = await import("@/lib/workflow/engine");
     await clearRequirementDocument(user, requirementId);
+    if (flow) return flow;
     if (dieCut) return dieCutHref(orderId, itemIdOf(requirement.key));
     return `/app/orders/${orderId}#stage-${requirement.stageId}`;
   });
@@ -429,7 +443,9 @@ function docTypeForKey(key: string): DocumentType | null {
 export async function decideRequirementAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
-  await run(`/app/orders/${orderId}`, async () => {
+  // Tela do passo do menu (docs/FLOW_MENU.md): volta para ela.
+  const flow = flowReturnTo(form);
+  await run(flow ?? `/app/orders/${orderId}`, async () => {
     assertScreen(user, "orders");
     const decision = str(form, "decision") === "approve" ? "approve" : "reject";
     await decideRequirement(

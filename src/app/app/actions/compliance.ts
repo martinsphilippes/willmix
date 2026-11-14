@@ -306,8 +306,7 @@ export async function setLineAgencyAction(form: FormData) {
     const store = getStore();
     const line = await store.get("product_lines", lineId);
     if (!line) throw new Error("line_not_found");
-    const agencyId =
-      field(form, "agencyId", z.string().max(64)) || null;
+    const agencyId = field(form, "agencyId", z.string().max(64)) || null;
     if (agencyId) {
       const party = await store.get("parties", agencyId);
       if (!party || party.type !== "agency" || !party.active)
