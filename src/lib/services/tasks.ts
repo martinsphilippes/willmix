@@ -10,7 +10,7 @@ import {
   type StageKey,
   type User,
 } from "@/lib/db";
-import { hasCertifier, isAdmin, isWellmix } from "@/lib/auth/permissions";
+import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import type { TaskItem } from "@/lib/task-owner";
 import { can } from "@/lib/auth/function-access";
 import {
@@ -104,7 +104,7 @@ export interface Task {
   supplierStep?: SupplierStep;
   /** Itens da etapa na pendência (filtro por função do operador, src/lib/task-owner.ts). */
   items?: TaskItem[];
-  /** Passo do embarque ou da certificação ("assign": vincular a certificadora). */
+  /** Passo do embarque ou da certificação ("assign": designar o despachante). */
   stepKey?: string | null;
 }
 
@@ -1070,14 +1070,15 @@ export async function pendingTasksFor(
     user.role === "logistics" ||
     user.role === "ocp" ||
     user.role === "agency" ||
-    // O despachante não tem passo aqui: a certificação é da certificadora
-    // (OCP) do pedido (dono, 14/11/2026).
+    // Despachante: a certificação é dele (dono, 13/11/2026).
+    user.role === "broker" ||
     // Agência de marketing na China: amostras (docs/SAMPLE_FLOW.md).
     user.role === "marketing_agency"
       ? user.role
       : null;
   if (wellmix || supplier || (importRole && user.partyId)) {
-    const { importTasks, readyImportTasks } = await import("./import-flow");
+    const { importTasks, isOcpOnlyStep, readyImportTasks } =
+      await import("./import-flow");
     const { isSchemaMissing } = await import("@/lib/db/errors");
     let orders: Order[] = [];
     if (!readyList)
@@ -1092,9 +1093,11 @@ export async function pendingTasksFor(
                     ? "ocpId"
                     : importRole === "agency"
                       ? "agencyId"
-                      : importRole === "marketing_agency"
-                        ? "marketingAgencyId"
-                        : "logisticsId"]: user.partyId!,
+                      : importRole === "broker"
+                        ? "brokerId"
+                        : importRole === "marketing_agency"
+                          ? "marketingAgencyId"
+                          : "logisticsId"]: user.partyId!,
               }
             : supplier
               ? { supplierId: user.partyId!, held: null }
@@ -1129,24 +1132,31 @@ export async function pendingTasksFor(
           { team: options.team },
         )
       : await importTasks(user, orders, { team: options.team });
+    // Pedidos que já ganharam a pendência de vincular a certificadora.
+    const assigningOcp = new Set<string>();
     for (const p of drafts) {
       const step = IMPORT_STEP_LABEL[p.key] ?? p.key;
       const cert = p.kind === "cert_step" || p.kind === "cert_validate";
       const validate =
         p.kind === "import_validate" || p.kind === "cert_validate";
-      // Selo sem certificadora no pedido: a pendência é de quem designa a
-      // certificadora em Parceiros do pedido (o analista ou a equipe).
+      // Memorial ou selo sem certificadora (OCP) no pedido: a pendência é de
+      // quem vincula a certificadora em Parceiros do pedido (o analista ou a
+      // equipe), uma só por pedido; só ela envia os dois (dono, 14/11/2026).
       const assignOcp =
         p.kind === "cert_step" &&
-        p.key === "cert_seal" &&
-        !hasCertifier(p.order);
+        isOcpOnlyStep(p.key) &&
+        p.missing === "certifier";
+      if (assignOcp) {
+        if (assigningOcp.has(p.order.id)) continue;
+        assigningOcp.add(p.order.id);
+      }
       // Selo e memorial: texto próprio, traduzido na tela.
       const seal =
         SEAL_TASK_TEXT[assignOcp ? "assign_ocp" : `${p.kind}:${p.key}`];
       // Sem designer (arte feita pela Wellmix) ou sem analista: a pendência
       // diz o que falta designar e onde (a certificadora tem texto próprio).
       const missing =
-        cert && p.missing && p.missing !== "ocp"
+        cert && p.missing && p.missing !== "ocp" && !assignOcp
           ? MISSING_TASK_TEXT[p.missing]
           : null;
       const values = { n: p.order.number };

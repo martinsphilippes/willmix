@@ -4,15 +4,20 @@ import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { findStep, stepHelpKey, stepLabelKey } from "@/lib/flow";
+import {
+  findStep,
+  partnerStepsOf,
+  stepHelpKey,
+  stepLabelKey,
+} from "@/lib/flow";
 import { FlowOrderInStep } from "@/components/flow-order-step";
 import { Alert, PageHeader } from "@/components/ui";
 
 /*
  * O pedido na tela do passo (dono, 14/11/2026; docs/FLOW_MENU.md): tudo o
  * que o passo tem para este pedido, feito e aberto, com o formulário onde
- * ainda dá para agir; as ações voltam para cá. Só a Wellmix (os parceiros
- * seguem no detalhe do pedido).
+ * ainda dá para agir; as ações voltam para cá. A Wellmix vê tudo do passo;
+ * o parceiro, só os passos dele e só o que é dele (dono, 14/11/2026).
  */
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -25,8 +30,17 @@ export default async function FlowOrderStepPage({
   if (!step || step.badgeOnly || !ID.test(orderId)) notFound();
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=/app/flow/${block}/${key}/${orderId}`);
-  requireScreen(user, step.screen);
-  if (!isWellmix(user)) redirect(`/app/orders/${orderId}`);
+  // Parceiro (dono, 14/11/2026): só os passos dele e os pedidos dele (a
+  // checagem do pedido, canViewOrder, fica no componente).
+  const wellmix = isWellmix(user);
+  if (
+    !wellmix &&
+    !partnerStepsOf(user.role).some(
+      (x) => x.block === step.block && x.key === step.key,
+    )
+  )
+    notFound();
+  requireScreen(user, wellmix ? step.screen : "orders");
   const sp = await searchParams;
   const str = (k: string) => (typeof sp[k] === "string" ? String(sp[k]) : null);
   const t = await getT();

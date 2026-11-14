@@ -3,6 +3,8 @@
  * telas dos passos; docs/FLOW_MENU.md): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "flow.all.hint.partner":
+    "Todos os seus pedidos que estão neste passo agora, com o que é seu. Clique para abrir o pedido no passo.",
   "flow.orders.list": "Lista de todos os pedidos",
   "flow.order.title": "Pedido #{n} em {step}",
   "flow.order.back": "Voltar a {step}",
@@ -252,6 +254,8 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "flow.all.hint.partner":
+    "All your orders in this step right now, with what is yours. Click to open the order in the step.",
   "flow.orders.list": "List of all orders",
   "flow.order.title": "Order #{n} in {step}",
   "flow.order.back": "Back to {step}",
@@ -500,6 +504,8 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "flow.all.hint.partner":
+    "您目前处于本环节的全部订单（只含属于您的事项）。点击在本环节打开订单。",
   "flow.orders.list": "全部订单列表",
   "flow.order.title": "订单 #{n} · {step}",
   "flow.order.back": "返回{step}",

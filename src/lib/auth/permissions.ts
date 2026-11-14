@@ -21,21 +21,40 @@ export const isPartner = (user: Pick<User, "role">) =>
   PARTNER_ROLES.includes(user.role);
 
 /**
- * Quem certifica pelo pedido: a certificadora (OCP) vinculada em Parceiros do
- * pedido. Ela envia e substitui o selo e o memorial descritivo, faz o laudo e
- * o registro e valida o memorial (dono, 14/11/2026). De 13/11 a 14/11/2026 a
- * certificação ficou com o despachante; ele não certifica mais.
+ * Quem certifica pelo pedido: o despachante ou a certificadora (OCP) do
+ * pedido. Vale para ler o pedido, a ficha e os documentos de certificação.
+ * O despachante faz o laudo e o registro (decisão do dono, 13/11/2026); o
+ * memorial descritivo e o selo são só da certificadora do pedido
+ * (`isOrderOcp`, dono, 14/11/2026).
  */
 export function isOrderCertifier(
+  user: Pick<User, "role" | "partyId">,
+  order: Partial<Pick<Order, "brokerId" | "ocpId">>,
+): boolean {
+  if (!user.partyId) return false;
+  if (user.role === "broker") return order.brokerId === user.partyId;
+  if (user.role === "ocp") return order.ocpId === user.partyId;
+  return false;
+}
+
+/** O pedido tem quem certifique (o despachante)? */
+export const hasCertifier = (order: Partial<Pick<Order, "brokerId">>) =>
+  !!order.brokerId;
+
+/**
+ * A certificadora (OCP) vinculada ao pedido (Parceiros do pedido). Só ela
+ * preenche e envia o memorial descritivo e o selo de certificação (dono,
+ * 14/11/2026): nem a Wellmix, nem o despachante.
+ */
+export function isOrderOcp(
   user: Pick<User, "role" | "partyId">,
   order: Partial<Pick<Order, "ocpId">>,
 ): boolean {
   return user.role === "ocp" && !!user.partyId && order.ocpId === user.partyId;
 }
 
-/** O pedido tem quem certifique (a certificadora)? */
-export const hasCertifier = (order: Partial<Pick<Order, "ocpId">>) =>
-  !!order.ocpId;
+/** O pedido tem certificadora (OCP) vinculada? */
+export const hasOcp = (order: Partial<Pick<Order, "ocpId">>) => !!order.ocpId;
 
 export class ForbiddenError extends Error {
   constructor(message = "forbidden") {

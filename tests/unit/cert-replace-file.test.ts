@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
- * Certificação, quadro do alto (dono, 14/11/2026): a certificadora (OCP) do
+ * Certificação, quadro do alto (dono, 14/11/2026): só a certificadora (OCP) do
  * pedido envia e substitui o selo e o memorial descritivo; o despachante só
  * lê. Substituir troca só o arquivo: o número do selo fica, o arquivo antigo
  * continua nos documentos e a auditoria registra a troca. Sem arquivo antes,
@@ -172,58 +172,46 @@ describe("selo: primeiro envio e substituição", () => {
   });
 });
 
-describe("memorial: substituição com a validação", () => {
+describe("memorial: só a certificadora envia e substitui", () => {
   let order: Order;
   beforeAll(async () => {
     order = await newOrder();
   });
 
-  it("anexado pela certificadora, já vale; substituído por ela, continua valendo", async () => {
+  it("anexado pela certificadora, conclui; substituído por ela, continua concluído com o arquivo novo", async () => {
     await f.submitStep(ocp, order.id, "cert_memorial", {
       documentId: (await doc(ocp, order, "memorial.pdf")).id,
     });
-    expect((await stepOf(order, "cert_memorial")).status).toBe("validated");
-    // O quadro mostra "Substituir arquivo" para ela (e para a Wellmix), não
-    // para o despachante.
+    expect((await stepOf(order, "cert_memorial")).status).toBe("submitted");
+    // O quadro mostra "Substituir arquivo" só para ela.
     const memorialFor = async (user: User) =>
       (await f.importFlowView(user, order, "certification")).find(
         (v) => v.template.key === "cert_memorial",
       )!;
     expect((await memorialFor(ocp)).canSubmit).toBe(true);
-    expect((await memorialFor(admin)).canSubmit).toBe(true);
-    expect((await memorialFor(broker)).canSubmit).toBe(false);
-    // Antes da regra nova, o validado não aceitava outro envio.
+    expect((await memorialFor(ocp)).done).toBe(true);
+    for (const user of [admin, broker])
+      expect((await memorialFor(user)).canSubmit).toBe(false);
     const next = await doc(ocp, order, "memorial-v2.pdf");
     await f.submitStep(ocp, order.id, "cert_memorial", {
       documentId: next.id,
       replace: true,
     });
     const after = await stepOf(order, "cert_memorial");
-    expect([after.status, after.documentId]).toEqual(["validated", next.id]);
-    // Reenviar sem ser substituição continua recusado.
-    await expect(
-      f.submitStep(ocp, order.id, "cert_memorial", { documentId: next.id }),
-    ).rejects.toThrow("already_validated");
+    expect([after.status, after.documentId]).toEqual(["submitted", next.id]);
   });
 
-  it("substituído pela Wellmix, volta para a certificadora validar", async () => {
-    const next = await doc(admin, order, "memorial-wellmix.pdf");
-    await f.submitStep(admin, order.id, "cert_memorial", {
-      documentId: next.id,
-      replace: true,
-    });
-    const after = await stepOf(order, "cert_memorial");
-    expect([after.status, after.documentId]).toEqual(["submitted", next.id]);
-    const tasks = (await pendingTasksFor(ocp)).filter(
-      (t) =>
-        t.link.startsWith(`/app/orders/${order.id}#certification`) &&
-        t.kind === "cert_validate",
+  it("a Wellmix e o despachante não substituem: o servidor recusa e o arquivo fica", async () => {
+    const before = await stepOf(order, "cert_memorial");
+    for (const user of [admin, broker])
+      await expect(
+        f.submitStep(user, order.id, "cert_memorial", {
+          documentId: (await doc(user, order, `memorial-${user.role}.pdf`)).id,
+          replace: true,
+        }),
+      ).rejects.toThrow();
+    expect((await stepOf(order, "cert_memorial")).documentId).toBe(
+      before.documentId,
     );
-    expect(tasks).toHaveLength(1);
-    await expect(
-      f.validateStep(broker, order.id, "cert_memorial", "validated", null),
-    ).rejects.toThrow();
-    await f.validateStep(ocp, order.id, "cert_memorial", "validated", null);
-    expect((await stepOf(order, "cert_memorial")).status).toBe("validated");
   });
 });

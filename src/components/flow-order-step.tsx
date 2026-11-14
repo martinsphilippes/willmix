@@ -2,6 +2,7 @@ import type { Requirement, User } from "@/lib/db/schema";
 import { requirementLabel, productNameText, type Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
+import { canViewOrder, isWellmix } from "@/lib/auth/permissions";
 import { canSubmitRequirement } from "@/lib/workflow/engine";
 import { isRoutedLaneKey, laneInputKeys } from "@/lib/purchase-lanes";
 import {
@@ -69,7 +70,9 @@ export async function FlowOrderInStep({
 }) {
   const store = getStore();
   const order = await store.get("orders", orderId);
-  if (!order) return null;
+  // Parceiro: só o pedido dele (a mesma regra do detalhe do pedido).
+  const wellmix = isWellmix(user);
+  if (!order || !canViewOrder(user, order)) return null;
   const id = stepId(step);
   const returnTo = orderInStepHref(step, order.id);
   const [stages, requirements, supplier, customer] = await Promise.all([
@@ -83,8 +86,13 @@ export async function FlowOrderInStep({
       : Promise.resolve(null),
   ]);
   const stageById = new Map(stages.map((s) => [s.id, s]));
-  // Itens de etapa do passo (de qualquer etapa do pedido), feitos e abertos.
+  // Itens de etapa do passo (de qualquer etapa do pedido), feitos e abertos;
+  // o parceiro só vê os do papel dele (ou os que ele pode fazer).
   const mine = requirements
+    .filter(
+      (r) =>
+        wellmix || r.role === user.role || canSubmitRequirement(user, order, r),
+    )
     .filter((r) => {
       const stage = stageById.get(r.stageId);
       return flowStepsOf({
@@ -142,7 +150,10 @@ export async function FlowOrderInStep({
           });
 
   // Cartão do passo para este pedido.
+  // Produção: a Wellmix e o fornecedor do pedido (a regra do pedido).
   const production =
+    (wellmix ||
+      (user.role === "supplier" && order.supplierId === user.partyId)) &&
     step.block === "production" &&
     ["pre-production", "production", "inspection"].includes(step.key)
       ? await (
@@ -152,7 +163,7 @@ export async function FlowOrderInStep({
           .catch(() => null)
       : null;
   const report =
-    step.block === "production" && step.key === "inspection"
+    wellmix && step.block === "production" && step.key === "inspection"
       ? await (
           await import("@/lib/services/inspection-report")
         )
@@ -161,6 +172,7 @@ export async function FlowOrderInStep({
       : null;
   const receivingSvc = await import("@/lib/services/receiving");
   const receiving =
+    wellmix &&
     step.block === "delivery" &&
     (step.key === "storage" || step.key === "return") &&
     (receivingSvc.RECEIVING_STATUSES as readonly string[]).includes(
@@ -178,6 +190,7 @@ export async function FlowOrderInStep({
       ? await artworkSvc.artworkView(user, order).catch(() => null)
       : null;
   const freight =
+    wellmix &&
     step.block === "production" &&
     step.key === "logistics" &&
     order.status !== "CANCELLED";
@@ -208,7 +221,7 @@ export async function FlowOrderInStep({
     (uid && names.get(uid)) || "—";
 
   // Passo Pedidos (criação): resumo, itens e programação de compra.
-  const creation = step.block === "order" && step.key === "orders";
+  const creation = wellmix && step.block === "order" && step.key === "orders";
   const items = creation
     ? await store.list("order_items", { filter: { orderId: order.id } })
     : [];
@@ -242,20 +255,27 @@ export async function FlowOrderInStep({
         }
       >
         <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <dt className="text-xs text-zinc-500">{t("flow.all.supplier")}</dt>
-            <dd className="font-medium text-zinc-900">
-              {supplier?.name ?? "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-zinc-500">
-              {t("flow.order.customer")}
-            </dt>
-            <dd className="font-medium text-zinc-900">
-              {customer?.name ?? "—"}
-            </dd>
-          </div>
+          {/* Fornecedor e cliente: só a Wellmix (o parceiro vê o pedido dele). */}
+          {wellmix ? (
+            <>
+              <div>
+                <dt className="text-xs text-zinc-500">
+                  {t("flow.all.supplier")}
+                </dt>
+                <dd className="font-medium text-zinc-900">
+                  {supplier?.name ?? "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500">
+                  {t("flow.order.customer")}
+                </dt>
+                <dd className="font-medium text-zinc-900">
+                  {customer?.name ?? "—"}
+                </dd>
+              </div>
+            </>
+          ) : null}
           <div>
             <dt className="text-xs text-zinc-500">{t("flow.all.stage")}</dt>
             <dd className="font-medium text-zinc-900" data-flow-order-stage>
@@ -418,7 +438,7 @@ export async function FlowOrderInStep({
           user={user}
           order={order}
           view={production}
-          wellmix
+          wellmix={wellmix}
           names={names}
           notice={notices.production}
           sections={
@@ -446,7 +466,7 @@ export async function FlowOrderInStep({
           t={t}
           order={order}
           view={artwork}
-          wellmix
+          wellmix={wellmix}
           notice={notices.artwork}
           returnTo={returnTo}
         />

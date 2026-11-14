@@ -134,7 +134,7 @@ export function canViewOrderDocument(
 ): boolean {
   if (isWellmix(user)) return true;
   if (isOrderSupplier(user, order)) return true;
-  // Quem certifica: a certificadora (OCP) do pedido (dono, 14/11/2026).
+  // Quem certifica: o despachante do pedido ou a certificadora.
   return isOrderCertifier(user, order);
 }
 

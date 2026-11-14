@@ -159,18 +159,18 @@ Equipe e acessos → acessos de uma pessoa (`/app/team/[id]`), só para o admini
 
 Em Pendências (`/app/tasks`) o **operador** vê só o que as funções dele fazem; o administrador vê tudo, como antes. Cada pendência aponta para uma ação ou tela de Equipe → Funções e acessos (`src/lib/task-owner.ts`):
 
-| Pendência                                                                                                          | Quem (padrão)                                                                       |
-| ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| Fazer a arte, arte final, selo na arte (sem agência)                                                               | ação "art.design" (Designer)                                                        |
-| Validar a arte, conferir o selo na arte                                                                            | ação "art.validate"                                                                 |
-| Assinar o documento pela Wellmix                                                                                   | ação "contract.sign" (diretorias)                                                   |
-| Enviar para assinatura, confirmar o pedido, nº no ERP, itens da linha, produção e inspeção, vincular a certificadora | ação "purchaseOrder.generate" (compras)                                             |
-| Embarque, desembaraço, transporte e entrega                                                                        | tela Frete                                                                          |
-| Numerário                                                                                                          | ação "numerario.manage"                                                             |
-| Solicitação nova, revisão, sourcing                                                                                | telas Solicitações, Revisão, Sourcing                                               |
-| Certificação (selo, validação do memorial, certificado)                                                            | certificadora (OCP) do pedido (a regra de "Quem recebe cada tarefa", docs/CERTIFICATION.md) |
-| Itens do fornecedor e dos parceiros                                                                                | não aparecem para o operador                                                        |
-| Mensagem a responder                                                                                               | o analista da conversa (sem analista: todos)                                        |
+| Pendência                                                                                                          | Quem (padrão)                                                   |
+| ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| Fazer a arte, arte final, selo na arte (sem agência)                                                               | ação "art.design" (Designer)                                    |
+| Validar a arte, conferir o selo na arte                                                                            | ação "art.validate"                                             |
+| Assinar o documento pela Wellmix                                                                                   | ação "contract.sign" (diretorias)                               |
+| Enviar para assinatura, confirmar o pedido, nº no ERP, itens da linha, produção e inspeção, designar o despachante | ação "purchaseOrder.generate" (compras)                         |
+| Embarque, desembaraço, transporte e entrega                                                                        | tela Frete                                                      |
+| Numerário                                                                                                          | ação "numerario.manage"                                         |
+| Solicitação nova, revisão, sourcing                                                                                | telas Solicitações, Revisão, Sourcing                           |
+| Certificação: memorial e selo (só a certificadora do pedido; sem ela, "Vincular a certificadora" é de Compras)     | certificadora (OCP) do pedido (docs/CERTIFICATION.md, seção 14) |
+| Itens do fornecedor e dos parceiros                                                                                | não aparecem para o operador                                    |
+| Mensagem a responder                                                                                               | o analista da conversa (sem analista: todos)                    |
 
 O painel de SLA e as outras telas continuam com a lista completa da Wellmix.
 

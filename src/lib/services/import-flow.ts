@@ -12,8 +12,10 @@ import {
   ForbiddenError,
   canViewOrder,
   hasCertifier,
+  hasOcp,
   isAdmin,
   isOrderCertifier,
+  isOrderOcp,
   isWellmix,
 } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
@@ -26,6 +28,7 @@ import {
   artMakerRoute,
   artValidatorRoute,
   canValidateArt,
+  certifierRoute,
   internalRoute,
   loadRoutingContext,
   notifyTargetOf,
@@ -351,10 +354,13 @@ export const IMPORT_STEPS: StepTemplate[] = [
     group: "samples",
   },
   // Certificação (Fase F, docs/CERTIFICATION.md): com o OCP do pedido.
+  // Memorial descritivo: a certificadora (OCP) vinculada ao pedido preenche e
+  // envia (dono, 14/11/2026; antes a Wellmix enviava e a certificadora
+  // validava). Sem validação: o envio dela conclui o passo.
   {
     key: "cert_memorial",
-    actor: "wellmix",
-    validator: "ocp",
+    actor: "ocp",
+    validator: null,
     input: "file",
     visibleTo: ["ocp"],
     group: "certification",
@@ -440,6 +446,20 @@ export const CERT_FEATURED_STEPS: ImportStepKey[] = [
 ];
 
 /**
+ * Passos que só a certificadora (OCP) vinculada ao pedido preenche e envia
+ * (dono, 14/11/2026): o memorial descritivo e o selo (número e arquivo). A
+ * Wellmix (inclusive o administrador) e o despachante só acompanham; sem
+ * certificadora, a equipe interna vincula uma em Parceiros do pedido.
+ */
+export const OCP_ONLY_STEPS: readonly ImportStepKey[] = [
+  "cert_memorial",
+  "cert_seal",
+];
+
+export const isOcpOnlyStep = (key: ImportStepKey) =>
+  OCP_ONLY_STEPS.includes(key);
+
+/**
  * Link direto para a tarefa no pedido: o quadro em destaque (selo e memorial
  * a enviar) ou a linha do passo no cartão Certificação; embarque e
  * desembaraço, o cartão.
@@ -483,18 +503,24 @@ export function actsAs(user: User, order: Order, actor: StepActor): boolean {
   if (actor === "comex_internal") return isComexInternal(user);
   if (isWellmix(user)) return true;
   if (actor === "wellmix") return false;
-  // Certificação: a certificadora (OCP) do pedido (dono, 14/11/2026).
+  // Certificação: o despachante do pedido (ou a certificadora designada).
   if (actor === "ocp") return isOrderCertifier(user, order);
   const field = PARTNER_FIELD[actor];
   return user.role === actor && !!user.partyId && order[field] === user.partyId;
 }
 
-/** Quem certifica pelo pedido: a certificadora (OCP) vinculada ao pedido. */
-const isOrderOcp = (user: User, order: Order) => isOrderCertifier(user, order);
+/**
+ * Faz o passo: memorial e selo, só a certificadora (OCP) do pedido; os
+ * demais, quem age pelo papel do passo (`actsAs`).
+ */
+function doesStep(user: User, order: Order, key: ImportStepKey): boolean {
+  if (isOcpOnlyStep(key)) return isOrderOcp(user, order);
+  return actsAs(user, order, stepTemplate(key).actor);
+}
 
 /**
- * O parceiro do papel está designado no pedido? Certificação: a certificadora
- * (OCP) do pedido (dono, 14/11/2026).
+ * O parceiro do papel está designado no pedido? Certificação: o despachante
+ * ou a certificadora (a certificação é do despachante, dono, 13/11/2026).
  */
 const partnerAssigned = (order: Order, actor: keyof typeof PARTNER_FIELD) =>
   actor === "ocp" ? hasCertifier(order) : !!order[PARTNER_FIELD[actor]];
@@ -513,8 +539,8 @@ export async function canSubmitStep(
   if (!stepApplies(order, key)) return false;
   // Pedido de compra: o BL vem dos documentos do embarque, conferido.
   if (key === "bl" && isPurchaseFlow(order)) return false;
-  // Memorial: a certificadora do pedido também anexa (dono, 10/11/2026).
-  if (key === "cert_memorial" && isOrderOcp(user, order)) return true;
+  // Memorial e selo: só a certificadora (OCP) do pedido (dono, 14/11/2026).
+  if (isOcpOnlyStep(key)) return isOrderOcp(user, order);
   // Arte com o selo: o designer do pedido (login da agência escolhido em
   // Artes → Designer do pedido) envia, mesmo com a arte feita pela Wellmix.
   if (tpl.actor === "agency" && (await isOrderDesigner(user, order)))
@@ -535,8 +561,7 @@ export function canSeeStep(user: User, order: Order, key: ImportStepKey) {
   if (isWellmix(user)) return true;
   if (!canViewOrder(user, order)) return false;
   const visibleTo = stepTemplate(key).visibleTo;
-  // O despachante acompanha a certificação só para ler (o passo é da
-  // certificadora do pedido; dono, 14/11/2026): vê, mas não envia.
+  // O despachante certifica: vê o que a certificadora vê.
   if (user.role === "broker" && visibleTo.includes("ocp")) return true;
   return visibleTo.includes(user.role);
 }
@@ -617,7 +642,7 @@ async function targetFor(
   actor: StepActor,
 ): Promise<NotifyTarget> {
   // Quem faz a arte (o designer do pedido, a agência quando é ela quem faz a
-  // arte ou a Wellmix) e quem certifica (a certificadora): o mesmo destino das
+  // arte ou a Wellmix) e quem certifica (o despachante): o mesmo destino das
   // pendências.
   if (actor === "agency")
     return notifyTargetOf(artMakerRoute(order, await loadRoutingContext()));
@@ -650,14 +675,16 @@ async function targetFor(
 
 /**
  * Certificação: quem faz o passo (docs/CERTIFICATION.md, "Quem recebe cada
- * tarefa"). Selo, laudo e registro: a certificadora; arte com o selo: quem
- * faz a arte; memorial: o responsável interno da Wellmix.
+ * tarefa"). Memorial e selo: a certificadora (OCP) do pedido (dono,
+ * 14/11/2026); laudo e registro: o despachante; arte com o selo: quem faz a
+ * arte.
  */
 function certDoRoute(
   order: Order,
   tpl: StepTemplate,
   ctx: RoutingContext,
 ): Route {
+  if (isOcpOnlyStep(tpl.key)) return certifierRoute(order, ctx);
   if (tpl.actor === "ocp") return ocpRoute(order, ctx);
   if (tpl.actor === "agency") return artMakerRoute(order, ctx);
   return internalRoute(order, ctx);
@@ -698,10 +725,7 @@ export interface SubmitInput {
 }
 
 /** Documentos com "Substituir arquivo" no quadro do alto: o selo e o memorial. */
-export const REPLACEABLE_STEPS: readonly ImportStepKey[] = [
-  "cert_seal",
-  "cert_memorial",
-];
+export const REPLACEABLE_STEPS: readonly ImportStepKey[] = CERT_FEATURED_STEPS;
 
 /*
  * Amostras (docs/SAMPLE_FLOW.md): os passos só valem com o SKU aprovado e o
@@ -758,10 +782,7 @@ export async function submitStep(
     if (!current?.documentId) throw new ImportFlowError("replace_nothing");
     if (!input.documentId) throw new ImportFlowError("file_required");
   }
-  // Passo validado não se reenvia; o arquivo do selo e do memorial pode ser
-  // substituído (o memorial volta a esperar a validação da certificadora,
-  // salvo quando é ela quem substitui).
-  if (current && tpl.validator && current.status === "validated" && !replacing)
+  if (current && tpl.validator && current.status === "validated")
     throw new ImportFlowError("already_validated");
   // O que cada tipo de passo exige. Na substituição, o número do selo (o
   // valor do passo) fica como estava: só o arquivo muda.
@@ -802,14 +823,6 @@ export async function submitStep(
     validatedByUserId: null,
     validatedAt: null,
     rejectReason: null,
-    // Memorial anexado pela própria certificadora (quem o validaria): já vale.
-    ...(key === "cert_memorial" && isOrderOcp(user, order)
-      ? {
-          status: "validated" as const,
-          validatedByUserId: user.id,
-          validatedAt: now,
-        }
-      : {}),
   };
   let step: ImportStep;
   try {
@@ -979,12 +992,12 @@ async function handOverSeal(
  * Pedido novo (ou OCP designado depois): avisa a certificadora de que há um
  * selo a emitir; a pendência dela nasce junto. Todo pedido precisa de selo:
  * sem certificadora no pedido (nenhuma ou mais de uma ativa; com uma só ela
- * é designada sozinha), a Wellmix é avisada para designar, e a pendência
- * fica com ela.
+ * é designada sozinha), a Wellmix é avisada para vincular, e a pendência de
+ * vincular fica com ela (só a certificadora envia o selo e o memorial).
  */
 export async function notifySealRequested(order: Order): Promise<void> {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return;
-  // Certificação: a certificadora (OCP) do pedido (dono, 14/11/2026).
+  // Selo e memorial: a certificadora (OCP) do pedido (dono, 14/11/2026).
   if (order.ocpId) {
     await notify(
       { role: "ocp", partyId: order.ocpId },
@@ -1026,13 +1039,13 @@ export async function notifySealPartner(
   if (order.status === "CANCELLED" || order.status === "CLOSED") return;
   const steps = await stepsOf(order.id);
   const sealDone = isDone(steps.find((s) => s.key === "cert_seal"));
-  // Quem certifica mudou (a certificadora do pedido): o selo a emitir.
-  if (field === "ocpId") {
-    if (hasCertifier(order) && !sealDone) await notifySealRequested(order);
+  // Certificadora vinculada ou trocada: o selo a emitir é dela. O
+  // despachante (laudo e registro) não recebe o selo (dono, 14/11/2026).
+  if (field === "ocpId" || field === "brokerId") {
+    if (field === "ocpId" && hasOcp(order) && !sealDone)
+      await notifySealRequested(order);
     return;
   }
-  // O despachante não certifica (dono, 14/11/2026): nada a avisar.
-  if (field === "brokerId") return;
   if (previousPartyId !== undefined) {
     // Quem faz a arte não mudou (ex.: arte feita pela Wellmix nas
     // configurações, ou o designer do pedido continua o mesmo, e só a
@@ -1271,16 +1284,10 @@ export async function importFlowView(
           open &&
           !purchaseBl &&
           isReady &&
-          // Validado não se reenvia; o selo e o memorial com arquivo podem
-          // ter o arquivo substituído (quadro do alto, dono, 14/11/2026).
-          !(
-            tpl.validator &&
-            step?.status === "validated" &&
-            !(REPLACEABLE_STEPS.includes(tpl.key) && step.documentId)
-          ) &&
-          (actsAs(user, order, tpl.actor) ||
-            // Memorial: a certificadora do pedido também anexa.
-            (tpl.key === "cert_memorial" && isOrderOcp(user, order))) &&
+          !(tpl.validator && step?.status === "validated") &&
+          // Memorial e selo: só a certificadora (OCP) do pedido; quem mais
+          // vê o passo só acompanha (situação e arquivo).
+          doesStep(user, order, tpl.key) &&
           (tpl.actor !== "agency" || agencyActs),
         canValidate:
           open &&
@@ -1767,7 +1774,9 @@ function certGate(
       ? on
       : order.status === "ORDER_CREATED"
         ? classicStarted
-        : hasCertifier(order) || classicStarted,
+        : // O memorial é da certificadora (dono, 14/11/2026): com ela
+          // vinculada, vale como com o despachante.
+          hasCertifier(order) || hasOcp(order) || classicStarted,
     classicDeep: steps.some(
       (s) => s.key === "cert_lab" || s.key === "cert_registration",
     ),
@@ -1814,7 +1823,11 @@ export async function laterStepsFor(
       const inPlay =
         submitted ||
         ((tpl.seal || tpl.key === "cert_memorial" || gate.classicDeep) &&
-          !(tpl.actor === "ocp" && !tpl.seal && !hasCertifier(order)));
+          !(
+            tpl.actor === "ocp" &&
+            !isOcpOnlyStep(tpl.key) &&
+            !hasCertifier(order)
+          ));
       if (!inPlay) continue;
       const doing = !submitted && reaches(user, certDoRoute(order, tpl, ctx));
       const validateRoute = certValidateRoute(
@@ -1878,12 +1891,14 @@ function certCandidate(
     };
   // Laudo e registro não viram pendência de começar: o PDF do memorial e do
   // selo basta (dono, 10/11/2026). Pedido antigo com laudo ou registro já
-  // começados segue o caminho dele. O memorial é tarefa do responsável
-  // interno (dono, 13/11/2026).
+  // começados segue o caminho dele. O memorial e o selo são da
+  // certificadora (OCP) do pedido (dono, 14/11/2026); sem ela, a equipe
+  // interna recebe a pendência de vincular (`certifierRoute`).
   if (!tpl.seal && tpl.key !== "cert_memorial" && !gate.classicDeep)
     return null;
-  // Laudo e registro sem certificadora: ninguém começa por ela.
-  if (tpl.actor === "ocp" && !tpl.seal && !hasCertifier(order)) return null;
+  // Laudo e registro sem despachante: ninguém começa por ele.
+  if (tpl.actor === "ocp" && !isOcpOnlyStep(tpl.key) && !hasCertifier(order))
+    return null;
   // Fazer (ou refazer) o passo, quando o anterior já foi feito.
   const todo = !step || step.status === "pending" || step.status === "rejected";
   if (!todo || !ready(tpl.key, steps)) return null;
@@ -1944,9 +1959,10 @@ function routeCert(
     kind: "cert_step",
     key: tpl.key,
     sinceAt: candidate.sinceAt,
-    // Selo sem certificadora: quem designa vai direto a Parceiros do pedido.
+    // Memorial e selo sem certificadora: quem vincula vai direto a
+    // Parceiros do pedido.
     link:
-      tpl.key === "cert_seal" && route.missing === "ocp"
+      isOcpOnlyStep(tpl.key) && route.missing === "certifier"
         ? `/app/orders/${order.id}#order-partners`
         : stepLink(order.id, tpl, "do"),
     missing: route.missing ?? null,

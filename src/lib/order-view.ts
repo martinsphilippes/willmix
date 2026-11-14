@@ -58,8 +58,7 @@ export function stageVisibleTo(
 export const ORDER_PART_ROLES: Record<OrderPartKey, readonly Role[]> = {
   document: ["supplier"],
   sheet: ["supplier"],
-  // Certificação: a certificadora faz; o despachante acompanha só para ler
-  // (dono, 14/11/2026).
+  // Certificação: a certificadora e o despachante (dono, 13/11/2026).
   certification: ["ocp", "broker"],
   artwork: ["agency"],
   // Pagamento ao fornecedor e recebimento: só a Wellmix age.

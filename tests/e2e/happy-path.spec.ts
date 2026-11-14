@@ -20,6 +20,97 @@ const requirementRow = (page: Page, label: RegExp) =>
   });
 
 /**
+ * Ordem dos blocos no detalhe do pedido (dono, 14/11/2026), no login do
+ * despachante, no desktop, no iPad e no celular: Documentos logo depois de
+ * Etapas do pedido; a Certificação no meio, na ordem de antes; Embarque e
+ * desembaraço por último. A linha da tabela e o link Documentos da
+ * Certificação levam às posições novas.
+ */
+async function expectOrderBlocks(page: Page, orderUrl: string) {
+  const initial = page.viewportSize();
+  for (const size of [
+    { width: 1440, height: 900 },
+    { width: 820, height: 1180 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(size);
+    await page.goto(orderUrl);
+    const layout = await page.evaluate(() => {
+      const stages = document.querySelector(
+        '[data-order-section="order-stages"]',
+      );
+      const docs = document.querySelector(
+        '[data-order-section="order-documents"]',
+      );
+      const cert = document.getElementById("certification");
+      const flow = document.querySelector("[data-order-import-flow]");
+      const main = document.querySelector("main");
+      if (!stages || !docs || !cert || !flow || !main) return null;
+      const follows = (a: Element, b: Element) =>
+        !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return {
+        docsRightAfterStages: stages.nextElementSibling === docs,
+        certAfterDocs: follows(docs, cert),
+        flowAfterCert: follows(cert, flow),
+        // Nenhuma seção de conteúdo depois do Embarque e desembaraço.
+        sectionsAfterFlow: [...main.querySelectorAll("section")].filter(
+          (el) => !flow.contains(el) && follows(flow, el),
+        ).length,
+      };
+    });
+    expect(layout, `${size.width}×${size.height}`).toEqual({
+      docsRightAfterStages: true,
+      certAfterDocs: true,
+      flowAfterCert: true,
+      sectionsAfterFlow: 0,
+    });
+    // Linha "Embarque e desembaraço" da tabela: leva ao quadro no fim.
+    await page
+      .locator('[data-order-part="import"] [data-order-part-open="import"]')
+      .click();
+    await expect(page).toHaveURL(/#import-flow$/);
+    await expect(page.locator("#import-flow")).toBeInViewport();
+    // Link "Documentos" da Certificação: leva à tabela embaixo das etapas.
+    await page
+      .locator('[data-certifier-dossier] a[href="#order-documents"]')
+      .click();
+    await expect(page).toHaveURL(/#order-documents$/);
+    await expect(
+      page.locator('[data-order-section="order-documents"] h2'),
+    ).toBeInViewport();
+  }
+  if (initial) await page.setViewportSize(initial);
+}
+
+/**
+ * Documentos do pedido (no lugar novo): abrir o arquivo registra
+ * "Visualizado" e não confirma; confirmar a leitura é o botão.
+ */
+async function expectDocumentAck(page: Page, orderUrl: string) {
+  await page.goto(orderUrl);
+  const docs = page.locator('[data-order-section="order-documents"]');
+  const href = await docs
+    .locator("[data-order-document]", { has: page.locator("form button") })
+    .first()
+    .locator("a[href^='/api/files/']")
+    .getAttribute("href");
+  expect(href).toBeTruthy();
+  expect((await page.request.get(href!)).status()).toBe(200);
+  await page.goto(orderUrl);
+  const row = docs.locator("[data-order-document]", {
+    has: page.locator(`a[href="${href}"]`),
+  });
+  await expect(row).toContainText(/Visualizado \d{2}\/\d{2}\/\d{4}/);
+  const confirm = row.getByRole("button", { name: "Confirmar leitura" });
+  await expect(confirm).toBeVisible();
+  await Promise.all([page.waitForLoadState("load"), confirm.click()]);
+  await expect(row).toContainText("Leitura confirmada");
+  await expect(
+    row.getByRole("button", { name: "Confirmar leitura" }),
+  ).toHaveCount(0);
+}
+
+/**
  * Contrato do pedido de compra (docs/PURCHASE_ORDER.md, seção 3): baixa o
  * PDF, assina, carimba e sobe o arquivo (sem o aceite no portal). Escolher o
  * arquivo já registra a assinatura.
@@ -259,16 +350,13 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page.getByRole("link", { name: "Die-Cut, Arte e Certificação" }),
   ).toHaveCount(1);
   // Certificação no login responsável (docs/CERTIFICATION.md, seção 13): o
-  // memorial é do analista do pedido (quem gerou), com o link direto para o
-  // quadro do alto do cartão Certificação.
+  // memorial e o selo são da certificadora (OCP) do pedido (dono,
+  // 14/11/2026); o analista do pedido (quem gerou) não recebe nenhum dos dois.
   const orderPath = new URL(orderUrl).pathname;
+  const certFeaturedTask = `[data-task-row] a[href="${orderPath}#certification-featured"]`;
   await page.goto("/app/tasks");
-  // (A lista pagina no navegador: a linha pode estar em outra página.)
-  await expect(
-    page.locator(
-      `[data-task-row] a[href="${orderPath}#certification-featured"]`,
-    ),
-  ).not.toHaveCount(0);
+  // (A lista pagina no navegador: as linhas das outras páginas também contam.)
+  await expect(page.locator(certFeaturedTask)).toHaveCount(0);
   await page.goto(orderUrl);
   // Transportador: o pedido só designa sozinho quando há exatamente um ativo
   // no cadastro. Outros testes cadastram mais transportadores (que nascem
@@ -615,8 +703,8 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     requirementRow(page, /Validação da arte pela Wellmix/),
   ).toContainText(/Concluído/);
   // 6d. Certificadora (OCP) do pedido: o certificado das raias e, no cartão
-  // Certificação, o selo e o memorial (dono, 14/11/2026). O despachante não
-  // envia o certificado.
+  // Certificação, o memorial e o selo (dono, 14/11/2026). O despachante não
+  // envia nenhum deles.
   await login(page, "despachante@comex.com");
   await page.goto(orderUrl);
   await expect(
@@ -624,29 +712,46 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
       "form:has(input[name=requirementId])",
     ),
   ).toHaveCount(0);
+  // Detalhe do pedido no login do despachante (dono, 14/11/2026): a ordem
+  // dos blocos, os atalhos e a confirmação de leitura dos documentos.
+  await expectOrderBlocks(page, orderUrl);
+  await expectDocumentAck(page, orderUrl);
   await login(page, "ocp@certifica.com");
   await fillMyRequirements(page, orderUrl);
-  // Selo no quadro do alto da Certificação: o primeiro envio com o número;
-  // depois, o formulário recolhe (também ao recarregar) e fica o botão
-  // "Substituir arquivo". Cancelar e falhar mantêm o arquivo atual; trocar
-  // atualiza o link, diz "Arquivo substituído" e mantém o número.
-  await page.goto(orderUrl);
-  const sealBox = page.locator('[data-import-featured="cert_seal"]');
-  await expect(sealBox).toHaveAttribute("data-import-featured-state", "empty");
-  await sealBox.locator('input[name="value"]').fill("BR-E2E-1");
-  await sealBox
-    .locator('input[type=file][name="file"]')
-    .setInputFiles({ ...pdf, name: "selo.pdf" });
-  await Promise.all([
-    page.waitForURL(/certStep=submitted/),
-    sealBox.locator('[data-import-submit="cert_seal"]').click(),
-  ]);
+  // Memorial e selo: as pendências são dela e levam ao quadro do alto do
+  // cartão Certificação, onde ela preenche e envia os dois.
+  await page.goto("/app/tasks");
+  await expect(page.locator(certFeaturedTask)).not.toHaveCount(0);
+  for (const key of ["cert_memorial", "cert_seal"] as const) {
+    await page.goto(`${orderUrl}#certification`);
+    await page.waitForLoadState("networkidle");
+    const box = page.locator(`[data-import-featured="${key}"]`);
+    if (key === "cert_seal")
+      await box.locator("input[name=value]").fill("SELO-E2E-1");
+    await box.locator("input[type=file]").setInputFiles(pdf);
+    await Promise.all([
+      page.waitForURL(/certStep=submitted/),
+      box.locator(`[data-import-submit="${key}"]`).click(),
+    ]);
+  }
+  await page.goto("/app/tasks");
+  await expect(page.locator(certFeaturedTask)).toHaveCount(0);
+  // Depois do envio, cada quadro recolhe (também ao recarregar): sem "Enviar
+  // de novo", com o botão "Substituir arquivo". Cancelar e falhar mantêm o
+  // arquivo atual; trocar atualiza o link, diz "Arquivo substituído" e
+  // mantém o número do selo.
+  await page.goto(`${orderUrl}#certification`);
   await page.reload();
-  await expect(sealBox).toHaveAttribute("data-import-featured-state", "sent");
-  await expect(sealBox.locator("[data-import-submit]")).toHaveCount(0);
-  await expect(sealBox).not.toContainText("Enviar de novo");
+  const sealBox = page.locator('[data-import-featured="cert_seal"]');
+  for (const key of ["cert_memorial", "cert_seal"] as const) {
+    const box = page.locator(`[data-import-featured="${key}"]`);
+    await expect(box).toHaveAttribute("data-import-featured-state", "sent");
+    await expect(box.locator("[data-import-submit]")).toHaveCount(0);
+    await expect(box).not.toContainText("Enviar de novo");
+    await expect(box.locator(`[data-replace-start="${key}"]`)).toBeVisible();
+  }
   await expect(sealBox.locator("[data-import-featured-value]")).toContainText(
-    "BR-E2E-1",
+    "SELO-E2E-1",
   );
   const sealLink = sealBox.locator("[data-import-featured-file]");
   const firstSeal = await sealLink.getAttribute("href");
@@ -680,15 +785,41 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   );
   await expect(sealLink).not.toHaveAttribute("href", firstSeal!);
   await expect(sealBox.locator("[data-import-featured-value]")).toContainText(
-    "BR-E2E-1",
+    "SELO-E2E-1",
   );
   // O despachante vê o cartão, mas não envia nem substitui.
   await login(page, "despachante@comex.com");
-  await page.goto(orderUrl);
+  await page.goto(`${orderUrl}#certification`);
   await expect(sealBox).toBeVisible();
   await expect(
-    sealBox.locator("[data-replace-start], [data-import-submit]"),
+    page.locator(
+      "#certification-featured [data-replace-start], #certification-featured [data-import-submit]",
+    ),
   ).toHaveCount(0);
+  // O Comprador acompanha o mesmo pedido: a situação, quem faz e os arquivos
+  // enviados, sem campo, seletor de arquivo nem botão de envio (o servidor
+  // também recusa: tests/unit/cert-seal.test.ts).
+  await login(page, "operador@wellmix.com");
+  await page.goto(`${orderUrl}#certification`);
+  for (const key of ["cert_memorial", "cert_seal"] as const) {
+    const box = page.locator(`[data-import-featured="${key}"]`);
+    await expect(box).toBeVisible();
+    await expect(box.locator("form, input, [data-import-submit]")).toHaveCount(
+      0,
+    );
+    const file = box.locator("[data-import-featured-file]");
+    await expect(file).toBeVisible();
+    const opened = await page.request.get((await file.getAttribute("href"))!);
+    expect(opened.status()).toBe(200);
+    const row = page.locator(`#certification-step-${key}`);
+    await expect(row).toContainText("Faz: OCP");
+    await expect(
+      row.locator("form, input, [data-import-submit], a[href$='-featured']"),
+    ).toHaveCount(0);
+  }
+  await expect(page.locator("#certification-step-cert_seal")).toContainText(
+    "SELO-E2E-1",
+  );
   // 6e. Agência: com a arte validada e o certificado, a arte final com o selo.
   await login(page, "agencia@design.com");
   await fillMyRequirements(page, orderUrl);
@@ -803,6 +934,40 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   const preCard = page.locator(`[data-flow-production-order="${preId}"]`);
   await expect(preCard.locator("[data-production-plan]")).toBeVisible();
   await expect(preCard.locator("[data-production-etd]")).toBeVisible();
+
+  // De volta ao fornecedor: a inspeção é dele.
+  await login(page, "supplier.a@china.com");
+  // Menu do parceiro pelos passos dele (docs/FLOW_MENU.md): Produção →
+  // Inspeção com o contador; a aba Todos traz o pedido dele; o pedido no
+  // passo mostra só o que é dele (sem o cliente).
+  await page.goto("/app/flow/production/inspection");
+  await expect(
+    page
+      .locator(
+        '[data-nav-link="/app/flow/production/inspection"] [data-nav-badge]',
+      )
+      .filter({ visible: true })
+      .first(),
+  ).toBeVisible();
+  await expect(page.locator("[data-flow-case]").first()).toBeVisible();
+  await page.goto("/app/flow/production/inspection?tab=all");
+  await page
+    .locator(`[data-flow-all-order="${preId}"] [data-flow-all-view]`)
+    .first()
+    .click();
+  await page.waitForURL(
+    new RegExp(`/app/flow/production/inspection/${preId}$`),
+  );
+  await expect(
+    page.locator('[data-flow-order-requirement="photo_unpacked"]'),
+  ).toBeVisible();
+  await expect(page.locator(`[data-flow-order="${preId}"]`)).not.toContainText(
+    /Cliente|Customer|客户/,
+  );
+  // Passo que não é dele: não abre.
+  expect(
+    (await page.goto(`/app/flow/delivery/storage/${preId}`))?.status(),
+  ).toBe(404);
 
   // 9. Inspeção (mapa R3/R4?): o fornecedor manda as fotos, o peso, o vídeo
   // da produção e a declaração de conformidade. Nestes pedidos não há peso

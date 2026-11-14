@@ -28,10 +28,10 @@ import type { NotifyTarget } from "./notifications";
  * certificadora e a agência), o Designer do pedido (cartão Artes) e o
  * analista do pedido (`ownerUserId`, o mesmo do painel de SLA).
  *
- * - Selo: a certificadora (OCP) do pedido (a certificação é dela; dono,
- *   14/11/2026; de 13/11 a 14/11/2026 foi do despachante).
- * - Memorial descritivo: o responsável interno (o analista) ou a própria
- *   certificadora; a validação, a certificadora.
+ * - Selo e memorial descritivo: a certificadora (OCP) vinculada ao pedido,
+ *   só ela envia (dono, 14/11/2026). Sem ela, o responsável interno vincula
+ *   a certificadora em Parceiros do pedido (`certifierRoute`).
+ * - Laudo e registro: o despachante do pedido (dono, 13/11/2026).
  * - Arte com o selo e correção da arte: o designer do pedido; sem ele, a
  *   agência quando é ela quem faz a arte; senão a Wellmix (quem tem a função
  *   Designer; sem ninguém, o analista).
@@ -122,15 +122,33 @@ export function internalRoute(
 }
 
 /**
- * Quem certifica: a certificadora (OCP) do pedido (dono, 14/11/2026). Sem
- * ela, o responsável interno vincula a certificadora em Parceiros do pedido.
+ * A certificadora (OCP) vinculada ao pedido: o memorial descritivo e o selo
+ * (dono, 14/11/2026) e o certificado das raias do pedido de compra. Sem ela,
+ * o responsável interno vincula a certificadora em Parceiros do pedido
+ * (`missing: "certifier"`); ele só vincula, não envia no lugar dela.
  */
-export function ocpRoute(
+export function certifierRoute(
   order: Pick<Order, "ocpId" | "ownerUserId">,
   ctx: RoutingContext,
 ): Route {
   if (order.ocpId)
     return { via: "ocp", party: { role: "ocp", partyId: order.ocpId } };
+  return { ...internalRoute(order, ctx), missing: "certifier" };
+}
+
+/**
+ * Laudo e registro: o despachante do pedido (dono, 13/11/2026). Sem ele, o
+ * responsável interno designa o despachante em Parceiros do pedido.
+ */
+export function ocpRoute(
+  order: Pick<Order, "brokerId" | "ownerUserId">,
+  ctx: RoutingContext,
+): Route {
+  if (order.brokerId)
+    return {
+      via: "broker",
+      party: { role: "broker", partyId: order.brokerId },
+    };
   return { ...internalRoute(order, ctx), missing: "ocp" };
 }
 
@@ -340,7 +358,8 @@ export async function routeLabel(
  *   quem faz a arte do pedido nem quem a enviou (`laneReviewRoute`).
  * - Certificado (Inmetro): a certificadora (OCP) do pedido, em Parceiros do
  *   pedido. Sem ela, o responsável interno designa (`missing: "certifier"`).
- *   O selo e o memorial do cartão Certificação também são dela (`ocpRoute`).
+ *   O selo e o memorial do cartão Certificação também são dela (dono,
+ *   14/11/2026; `certifierRoute`).
  *
  * Quem vê e quem age sai daqui, calculado na hora a partir do pedido: trocar
  * o designer, a certificadora ou o analista muda o dono da tarefa aberta, sem
@@ -360,14 +379,7 @@ export type LaneOrder = Pick<
 export type LaneSibling = Pick<Requirement, "key" | "submittedByUserId">;
 
 /** Certificado das raias: a certificadora (OCP) do pedido; sem ela, o responsável interno designa. */
-export function laneCertificateRoute(
-  order: Pick<Order, "ocpId" | "ownerUserId">,
-  ctx: RoutingContext,
-): Route {
-  if (order.ocpId)
-    return { via: "ocp", party: { role: "ocp", partyId: order.ocpId } };
-  return { ...internalRoute(order, ctx), missing: "certifier" };
-}
+export const laneCertificateRoute = certifierRoute;
 
 /**
  * Validação da arte das raias: o responsável pelo pedido (o analista), se ele
