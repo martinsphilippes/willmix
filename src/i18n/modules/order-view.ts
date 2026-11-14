@@ -53,6 +53,10 @@ export const pt = {
   "orderView.stage.chatDraft": "Etapa {stage}: ",
   "orderView.stage.close": "Fechar",
   "orderView.stage.all": "Abrir todas as etapas",
+  "orderView.mine.hint":
+    "Só as tarefas a fazer do seu login neste pedido. O que é de outros responsáveis e o que já foi feito não aparecem aqui.",
+  "orderView.mine.empty": "Nenhuma tarefa sua neste pedido agora.",
+  "orderView.mine.owner": "Responsável interno: {name}.",
   "orderView.stage.current": "Mostrar só a etapa em andamento",
   "orderView.stage.hint":
     'A etapa em andamento já aparece aberta embaixo da tabela. Toque em "Ver detalhes" para ver o que foi feito em outra etapa.',
@@ -141,6 +145,10 @@ export const en: Record<keyof typeof pt, string> = {
   "orderView.stage.chatDraft": "Stage {stage}: ",
   "orderView.stage.close": "Close",
   "orderView.stage.all": "Open all stages",
+  "orderView.mine.hint":
+    "Only the tasks your login has to do on this order. Other people's tasks and what is already done are not shown here.",
+  "orderView.mine.empty": "No tasks of yours on this order right now.",
+  "orderView.mine.owner": "Internal owner: {name}.",
   "orderView.stage.current": "Show only the stage in progress",
   "orderView.stage.hint":
     'The stage in progress is already open below the table. Tap "See details" to see what was done in another stage.',
@@ -229,6 +237,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderView.stage.chatDraft": "阶段 {stage}：",
   "orderView.stage.close": "关闭",
   "orderView.stage.all": "展开所有阶段",
+  "orderView.mine.hint":
+    "这里只显示您在此订单中需要处理的任务。其他负责人的任务和已完成的任务不在此显示。",
+  "orderView.mine.empty": "您目前在此订单中没有任务。",
+  "orderView.mine.owner": "内部负责人：{name}。",
   "orderView.stage.current": "只显示进行中的阶段",
   "orderView.stage.hint":
     "进行中的阶段已在表格下方展开。点击“查看详情”查看其他阶段已完成的内容。",

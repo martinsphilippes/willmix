@@ -23,6 +23,7 @@ import {
   isPurchaseFlow,
 } from "@/lib/workflow/stages";
 import { dieCutHref, dieCutItemOf, dieCutProducts } from "@/lib/die-cut-step";
+import { blockedBy } from "@/lib/purchase-lanes";
 import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
 
 export type TaskKind =
@@ -243,6 +244,36 @@ const SIGN_AFTER: ReadonlyArray<[string, string]> = [
   [ORDER_SIGNED_WELLMIX, ORDER_SIGN_SEND],
   [ORDER_SIGNED_SUPPLIER, ORDER_SIGNED_WELLMIX],
 ];
+
+/**
+ * O item ainda espera outro e não vira pendência (nem tarefa de ninguém na
+ * linha do tempo): aprovar a arte antes de ela chegar; a cadeia do documento
+ * do pedido (enviar, a Wellmix assina, o fornecedor assina); enviar para
+ * assinatura sem o selo aplicado na arte; no pedido de compra, o passo
+ * anterior da raia. `open`: os itens abertos da etapa; `all`: todos os itens
+ * da etapa (a ordem das raias olha os concluídos).
+ */
+export function requirementWaiting(
+  r: Pick<Requirement, "key">,
+  stage: { open: readonly Pick<Requirement, "key">[]; all: Requirement[] },
+  options: { sealApplied: boolean; purchase: boolean },
+): boolean {
+  // Aprovar a arte só vira pendência depois que a arte chega.
+  if (r.key === "art_approval" && stage.open.some((x) => x.key === "art"))
+    return true;
+  // Documento do pedido (ordem nova): enviar para assinatura só depois da
+  // arte; a Wellmix assina depois do envio; o fornecedor, depois dela.
+  if (
+    SIGN_AFTER.some(
+      ([key, before]) =>
+        r.key === key && stage.open.some((x) => x.key === before),
+    )
+  )
+    return true;
+  if (r.key === ORDER_SIGN_SEND && !options.sealApplied) return true;
+  // Raias do pedido de compra: só o que já está liberado.
+  return options.purchase && blockedBy(r.key, stage.all).length > 0;
+}
 const KIND_ORDER: string[] = [
   "booking_invite",
   "new_request",
@@ -347,35 +378,20 @@ export function stageTaskDrafts(
     const order = orderById.get(stage.orderId);
     if (!order) continue;
     if (!isInvolved(user, order)) continue;
-    const mine = openRequirements.filter(
+    const stageOpen = openRequirements.filter((x) => x.stageId === stage.id);
+    const stageAll = lanes
+      ? lanes.all.filter((x) => x.stageId === stage.id)
+      : [];
+    const mine = stageOpen.filter(
       (r) =>
-        r.stageId === stage.id &&
         (wellmix || r.role === user.role) &&
-        // Aprovar a arte só vira pendência depois que a arte chega.
-        !(
-          r.key === "art_approval" &&
-          openRequirements.some(
-            (x) => x.stageId === stage.id && x.key === "art",
-          )
-        ) &&
-        // Documento do pedido (ordem nova): enviar para assinatura só depois
-        // da arte; a Wellmix assina depois do envio; o fornecedor, depois dela.
-        !SIGN_AFTER.some(
-          ([key, before]) =>
-            r.key === key &&
-            openRequirements.some(
-              (x) => x.stageId === stage.id && x.key === before,
-            ),
-        ) &&
-        !(r.key === ORDER_SIGN_SEND && !sealApplied.has(r.orderId)) &&
-        // Raias do pedido de compra: só o que já está liberado.
-        !(
-          lanes &&
-          isPurchaseFlow(order) &&
-          lanes.blockedBy(
-            r.key,
-            lanes.all.filter((x) => x.stageId === stage.id),
-          ).length
+        !requirementWaiting(
+          r,
+          { open: stageOpen, all: stageAll },
+          {
+            sealApplied: sealApplied.has(r.orderId),
+            purchase: !!lanes && isPurchaseFlow(order),
+          },
         ),
     );
     if (mine.length === 0) continue;

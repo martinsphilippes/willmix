@@ -558,8 +558,20 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     "data-sku-status",
     "approved",
   );
+  // Operador da Wellmix: "Etapas do pedido" só com as tarefas dele
+  // (docs/PURCHASE_ORDER.md, seção 2e). O pedido de compra é de quem o gerou
+  // (o administrador, responsável interno) e os itens do Embarque são do
+  // armador designado: nenhuma tarefa dele aqui, nem o card do Embarque.
   await login(page, "operador@wellmix.com");
   await page.goto(orderUrl);
+  await expect(page.locator("[data-stage-mine-hint]")).toBeVisible();
+  await expect(page.locator("[data-stage-mine-empty]")).toBeVisible();
+  await expect(page.locator("[data-stage-row]")).toHaveCount(0);
+  await expect(page.locator("[data-stage-card]")).toHaveCount(0);
+  // O administrador continua com a linha do tempo inteira.
+  await login(page, "admin@wellmix.com");
+  await page.goto(orderUrl);
+  await expect(page.locator("[data-stage-mine-hint]")).toHaveCount(0);
   await expect(page.getByText(/Revisão necessária/)).toHaveCount(0);
   await expect(
     page

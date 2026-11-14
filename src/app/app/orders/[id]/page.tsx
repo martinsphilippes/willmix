@@ -43,6 +43,12 @@ import {
 } from "@/lib/auth/permissions";
 import { partRowFor, stageRowFor, stageVisibleTo } from "@/lib/order-view";
 import {
+  myOrderTimeline,
+  myProgress,
+  myStageRow,
+  timelineMineOnly,
+} from "@/lib/services/order-timeline";
+import {
   ORDER_PART_PARALLEL,
   documentPart,
   orderPartsByStage,
@@ -943,6 +949,37 @@ export default async function OrderPage({
     supplierLanes && known.get(order.supplierId)?.type === "trading";
   const tradingDieCut = (s: (typeof stages)[number], reqs: Requirement[]) =>
     tradingView && s.key === "PREPARATION" ? supplierLaneView(s, reqs) : null;
+  /* Operador da Wellmix (pedido do dono, 14/11/2026): a linha do tempo só
+     com as tarefas a fazer que cabem ao login, tarefa a tarefa, inclusive
+     dentro das etapas e das partes compartilhadas (regras em
+     src/lib/services/order-timeline.ts). Situação, andamento e contagem
+     saem das tarefas dele; a etapa sai da lista quando ele conclui a última.
+     O administrador e os outros papéis veem como antes; o andamento do
+     pedido inteiro não muda. */
+  const mineOnly = timelineMineOnly(user);
+  const myTimeline = mineOnly
+    ? await myOrderTimeline(user, {
+        order,
+        stages: flowStages,
+        requirements,
+        certSteps,
+        importSteps,
+        sheetMissing: sheetState ? sheetState.missing.length : null,
+        sheetStarted:
+          !!sheetState &&
+          (sheetState.saved || sheetState.prefillSource !== "catalog"),
+        artIssues: artworkView?.items.flatMap((i) => i.issues) ?? [],
+        supplierPaymentOpen:
+          financeAccess &&
+          order.status !== "CLOSED" &&
+          order.status !== "CANCELLED",
+        receivingOpen: !!receivingView && !receivingView.row?.closedAt,
+      })
+    : null;
+  const myStage = (s: (typeof stages)[number]) =>
+    myTimeline?.stages.get(s.id) ?? null;
+  const myStageOpen = (s: (typeof stages)[number]) =>
+    (myStage(s)?.open.length ?? 0) > 0;
   /* Etapas em linhas: quem vê a etapa abre os detalhes dela; a etapa em
      andamento (ou que ainda aceita dados, como o BL depois do embarque)
      fica aberta sempre. ?stage=CHAVE abre outra; ?stage=all, todas. */
@@ -961,7 +998,11 @@ export default async function OrderPage({
         r.status !== "done" &&
         canCompleteLater(s, r, order),
     );
-  const openableStages = flowStages.filter(stageVisible);
+  // Operador: só as etapas em que ele tem tarefa a fazer abrem (também em
+  // "Abrir todas as etapas" e "Ver detalhes").
+  const openableStages = flowStages.filter(
+    (s) => stageVisible(s) && (!mineOnly || myStageOpen(s)),
+  );
   const expandedStageIds = new Set(
     openableStages
       .filter(
@@ -1066,6 +1107,24 @@ export default async function OrderPage({
         )
       : null,
   ]);
+  /* Operador: a linha de cada etapa só com tarefa dele dentro dela (nos itens
+     da etapa ou numa subetapa); a situação, o andamento e a contagem somam só
+     as tarefas dele ali. */
+  const myRows = new Map(
+    myTimeline
+      ? flowStages.map((s) => [
+          s.id,
+          myStageRow(
+            myTimeline,
+            s,
+            (partsByStage.get(s.key) ?? []).map((part) => part.key),
+          ),
+        ])
+      : [],
+  );
+  const myRow = (s: (typeof stages)[number]) => myRows.get(s.id) ?? null;
+  /** O operador tem alguma tarefa a fazer no pedido (etapa ou subetapa). */
+  const myAnything = [...myRows.values()].some((row) => !!row);
   /* Cartões coloridos do alto (como Clientes e Fornecedores): os mesmos
      valores e a mesma regra de quem vê do antigo cartão Financeiro (cliente:
      venda, recebido e a receber; administrador: também compra, pago, a pagar
@@ -1515,23 +1574,38 @@ export default async function OrderPage({
           <tbody>
             {flowStages.map((s, index) => {
               const visible = stageVisible(s);
+              // Operador: os detalhes da etapa abrem quando há item dele na
+              // etapa; a tarefa só de subetapa abre pela linha da subetapa.
+              const details = visible && (!mineOnly || myStageOpen(s));
               const reqs = requirements.filter((r) => r.stageId === s.id);
               // Fornecedor e parceiros: só as linhas que são do próprio
               // login (a numeração continua a do fluxo inteiro).
-              const ownStage = stageRowFor(user, s, reqs);
+              // Operador da Wellmix: só as etapas e partes com tarefa dele.
+              const mineRow = mineOnly ? myRow(s) : null;
+              const ownStage = mineOnly
+                ? !!mineRow
+                : stageRowFor(user, s, reqs);
               const ownParts = (partsByStage.get(s.key) ?? []).filter((part) =>
-                partRowFor(user, part.key),
+                mineOnly
+                  ? !!mineRow?.parts.includes(part.key)
+                  : partRowFor(user, part.key),
               );
               if (!ownStage && !ownParts.length) return null;
               const open = s.status === "active" || s.status === "blocked";
               const expanded = expandedStageIds.has(s.id);
               // Login Trading: a etapa 2 como "Die-Cut", com o andamento dele.
               const dieCut = tradingDieCut(s, reqs);
-              const status = dieCut?.status ?? s.status;
+              // Operador: situação, andamento e contagem das tarefas dele.
+              const mine = mineRow?.progress ?? null;
+              const status = mine?.status ?? dieCut?.status ?? s.status;
               const rowName = dieCut
                 ? t("purchaseOrder.dieCut.title")
                 : stageRowName(s.key);
-              const completedAt = dieCut ? dieCut.completedAt : s.completedAt;
+              const completedAt = mine
+                ? null
+                : dieCut
+                  ? dieCut.completedAt
+                  : s.completedAt;
               return (
                 <Fragment key={s.id}>
                   {ownStage ? (
@@ -1559,7 +1633,7 @@ export default async function OrderPage({
                                   : "font-medium text-zinc-900",
                           )}
                         >
-                          {visible ? (
+                          {details ? (
                             <a
                               href={stageHref(s)}
                               className="transition hover:text-brand-700"
@@ -1664,18 +1738,20 @@ export default async function OrderPage({
                           : "—"}
                       </Td>
                       <Td className="w-32">
-                        {open ? (
+                        {open || mine ? (
                           <span className="flex items-center gap-2">
                             <span className="w-16">
                               <Progress
-                                percent={dieCut?.percent ?? s.percent}
+                                percent={
+                                  mine?.percent ?? dieCut?.percent ?? s.percent
+                                }
                               />
                             </span>
                             <span
                               className="text-xs font-semibold tabular-nums text-zinc-600"
                               data-stage-percent={s.key}
                             >
-                              {dieCut?.percent ?? s.percent}%
+                              {mine?.percent ?? dieCut?.percent ?? s.percent}%
                             </span>
                           </span>
                         ) : status === "done" ? (
@@ -1687,21 +1763,26 @@ export default async function OrderPage({
                         )}
                       </Td>
                       <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
-                        {visible && dieCut
+                        {mine
                           ? t("orderView.stage.reqs", {
-                              done: dieCut.done,
-                              total: dieCut.total,
+                              done: mine.done,
+                              total: mine.total,
                             })
-                          : visible && reqs.length
+                          : visible && dieCut
                             ? t("orderView.stage.reqs", {
-                                done: reqs.filter((r) => r.status === "done")
-                                  .length,
-                                total: reqs.length,
+                                done: dieCut.done,
+                                total: dieCut.total,
                               })
-                            : "—"}
+                            : visible && reqs.length
+                              ? t("orderView.stage.reqs", {
+                                  done: reqs.filter((r) => r.status === "done")
+                                    .length,
+                                  total: reqs.length,
+                                })
+                              : "—"}
                       </Td>
                       <Td className="whitespace-nowrap text-right">
-                        {visible ? (
+                        {details ? (
                           expanded && !defaultExpanded(s) ? (
                             <TextLink
                               href={`/app/orders/${order.id}#order-stages`}
@@ -1725,70 +1806,106 @@ export default async function OrderPage({
                   {/* Partes do pedido que acontecem nesta altura do fluxo e têm
                     cartão (ou página) próprio: aparecem aqui, na ordem do
                     negócio, com a situação e o atalho. */}
-                  {ownParts.map((part) => (
-                    <tr
-                      key={part.key}
-                      className={cx(rowClass, "bg-zinc-50/60")}
-                      data-order-part={part.key}
-                      data-order-part-state={part.state}
-                    >
-                      <Td className="w-10 text-center text-zinc-400">↳</Td>
-                      <Td className="min-w-40">
-                        <a
-                          href={part.href}
-                          className="font-medium text-zinc-800 transition hover:text-brand-700"
-                        >
-                          {t(`orderParts.${part.key}` as DictionaryKey)}
-                        </a>
-                        {ORDER_PART_PARALLEL.includes(part.key) ? (
-                          <span className="ml-1.5 whitespace-nowrap rounded-full bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-800 ring-1 ring-inset ring-sky-200">
-                            {t("orderParts.parallel")}
-                          </span>
-                        ) : null}
-                      </Td>
-                      <Td className="whitespace-nowrap">
-                        <Badge
-                          tone={
-                            part.state === "done"
-                              ? "success"
-                              : part.state === "active"
-                                ? "warning"
-                                : "neutral"
+                  {ownParts.map((part) => {
+                    // Operador: a parte com a situação e a contagem dele.
+                    const minePart = mineOnly
+                      ? myTimeline?.parts[part.key]
+                      : null;
+                    const partState = minePart
+                      ? myProgress(minePart).status
+                      : part.state;
+                    const partCount =
+                      minePart && minePart.open + minePart.done > 0
+                        ? {
+                            done: minePart.done,
+                            total: minePart.open + minePart.done,
                           }
-                        >
-                          {t(`orderParts.state.${part.state}` as DictionaryKey)}
-                        </Badge>
-                      </Td>
-                      <Td className="whitespace-nowrap text-zinc-700">
-                        {t(`orderParts.who.${part.key}` as DictionaryKey)}
-                      </Td>
-                      <Td colSpan={3} className="text-xs text-zinc-600">
-                        {part.detail ?? "—"}
-                      </Td>
-                      <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
-                        {part.total
-                          ? t("orderView.stage.reqs", {
-                              done: part.done ?? 0,
-                              total: part.total,
-                            })
-                          : "—"}
-                      </Td>
-                      <Td className="whitespace-nowrap text-right">
-                        <TextLink
-                          href={part.href}
-                          className="text-sm"
-                          data-order-part-open={part.key}
-                        >
-                          {t("orderParts.open")}
-                        </TextLink>
-                      </Td>
-                    </tr>
-                  ))}
+                        : !minePart && part.total
+                          ? { done: part.done ?? 0, total: part.total }
+                          : null;
+                    return (
+                      <tr
+                        key={part.key}
+                        className={cx(rowClass, "bg-zinc-50/60")}
+                        data-order-part={part.key}
+                        data-order-part-state={partState}
+                      >
+                        <Td className="w-10 text-center text-zinc-400">↳</Td>
+                        <Td className="min-w-40">
+                          <a
+                            href={part.href}
+                            className="font-medium text-zinc-800 transition hover:text-brand-700"
+                          >
+                            {t(`orderParts.${part.key}` as DictionaryKey)}
+                          </a>
+                          {ORDER_PART_PARALLEL.includes(part.key) ? (
+                            <span className="ml-1.5 whitespace-nowrap rounded-full bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-800 ring-1 ring-inset ring-sky-200">
+                              {t("orderParts.parallel")}
+                            </span>
+                          ) : null}
+                        </Td>
+                        <Td className="whitespace-nowrap">
+                          <Badge
+                            tone={
+                              partState === "done"
+                                ? "success"
+                                : partState === "active"
+                                  ? "warning"
+                                  : "neutral"
+                            }
+                          >
+                            {t(
+                              `orderParts.state.${partState}` as DictionaryKey,
+                            )}
+                          </Badge>
+                        </Td>
+                        <Td className="whitespace-nowrap text-zinc-700">
+                          {t(`orderParts.who.${part.key}` as DictionaryKey)}
+                        </Td>
+                        <Td colSpan={3} className="text-xs text-zinc-600">
+                          {part.detail ?? "—"}
+                        </Td>
+                        <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
+                          {partCount
+                            ? t("orderView.stage.reqs", partCount)
+                            : "—"}
+                        </Td>
+                        <Td className="whitespace-nowrap text-right">
+                          <TextLink
+                            href={part.href}
+                            className="text-sm"
+                            data-order-part-open={part.key}
+                          >
+                            {t("orderParts.open")}
+                          </TextLink>
+                        </Td>
+                      </tr>
+                    );
+                  })}
                 </Fragment>
               );
             })}
+            {/* Operador sem tarefa neste pedido: diz isso e quem responde. */}
+            {mineOnly && !myAnything ? (
+              <tr data-stage-mine-empty>
+                <Td colSpan={9} className="text-sm text-zinc-600">
+                  {t("orderView.mine.empty")}
+                  {order.ownerUserId
+                    ? ` ${t("orderView.mine.owner", { name: userName(order.ownerUserId) })}`
+                    : ""}
+                </Td>
+              </tr>
+            ) : null}
           </tbody>
         </Table>
+        {mineOnly ? (
+          <p
+            className="mt-1.5 text-xs text-zinc-500 print:hidden"
+            data-stage-mine-hint
+          >
+            {t("orderView.mine.hint")}
+          </p>
+        ) : null}
         {openableStages.length > 1 ? (
           <p className="mt-1.5 text-xs text-zinc-500 print:hidden">
             {t("orderView.stage.hint")}
@@ -1811,12 +1928,16 @@ export default async function OrderPage({
               stage.status === "active" || stage.status === "blocked";
             // Pedido de compra, fornecedor: só a faca, a foto em alta e o prazo.
             const supplierView = supplierLanes && stage.key === "PREPARATION";
-            const shownReqs = supplierView
-              ? reqs.filter(supplierSeesLaneRequirement)
-              : reqs;
+            // Operador da Wellmix: só as tarefas abertas dele na etapa.
+            const mine = mineOnly ? (myRow(stage)?.progress ?? null) : null;
+            const shownReqs = mineOnly
+              ? (myStage(stage)?.open ?? [])
+              : supplierView
+                ? reqs.filter(supplierSeesLaneRequirement)
+                : reqs;
             // Login Trading: a etapa 2 como "Die-Cut", com o andamento dele.
             const dieCut = tradingDieCut(stage, reqs);
-            const status = dieCut?.status ?? stage.status;
+            const status = mine?.status ?? dieCut?.status ?? stage.status;
             return (
               <Fragment key={stage.id}>
                 <Card
@@ -1873,11 +1994,13 @@ export default async function OrderPage({
                         <span
                           className="w-24"
                           data-stage-card-percent={
-                            dieCut?.percent ?? stage.percent
+                            mine?.percent ?? dieCut?.percent ?? stage.percent
                           }
                         >
                           <Progress
-                            percent={dieCut?.percent ?? stage.percent}
+                            percent={
+                              mine?.percent ?? dieCut?.percent ?? stage.percent
+                            }
                           />
                         </span>
                       </span>
@@ -1960,6 +2083,7 @@ export default async function OrderPage({
                       {/* Pedido de compra: os quatro itens do fornecedor também
                           ficam juntos, produto a produto, no quadro Die Cut. */}
                       {purchaseFlow &&
+                      !mineOnly &&
                       stage.key === "PREPARATION" &&
                       canViewDieCut(user, progress.order) &&
                       reqs.some((r) => dieCutItemOf(r.key)) ? (

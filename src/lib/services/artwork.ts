@@ -385,7 +385,8 @@ export interface ArtTaskDraft {
  */
 export async function artIssueTasks(
   user: User,
-  options: { team?: boolean } = {},
+  /** `orderId`: só as de um pedido (linha do tempo do pedido). */
+  options: { team?: boolean; orderId?: string } = {},
 ): Promise<ArtTaskDraft[]> {
   const wellmix = isWellmix(user);
   const agency = user.role === "agency" && !!user.partyId;
@@ -402,6 +403,10 @@ export async function artIssueTasks(
         })
       ).map((o) => o.id);
       if (!orderIds.length) return [];
+    }
+    if (options.orderId) {
+      if (orderIds && !orderIds.includes(options.orderId)) return [];
+      orderIds = [options.orderId];
     }
     issues = await store.list("art_issues", {
       filter: {
