@@ -59,6 +59,7 @@ const SALES_TABLES = [
   "sku_inspections",
   // Embarque e desembaraço dos pedidos de teste.
   "import_steps",
+  "shipping_docs",
   "receivings",
   "art_issues",
   "art_issues",
@@ -77,6 +78,7 @@ const SALES_TABLES = [
 /** Tabelas que podem ainda não existir no Appwrite (esquema não publicado). */
 const OPTIONAL_TABLES = new Set<TableName>([
   "import_steps",
+  "shipping_docs",
   "receivings",
   "production_tracks",
   "sku_inspections",

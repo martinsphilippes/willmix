@@ -1088,6 +1088,49 @@ export async function pendingTasksFor(
       );
     }
   }
+  // Documentos do embarque do pedido de compra (docs/SHIPPING_DOCS.md):
+  // check list e packing list do fornecedor, invoice da trading e BL da
+  // marítima (sem marítima designada, da Wellmix).
+  if (wellmix || user.role === "supplier" || user.role === "shipping_line") {
+    try {
+      const { shippingDocTasks } = await import("./shipping-docs");
+      const ptText = translator("pt");
+      for (const p of await shippingDocTasks(user)) {
+        const values = { n: p.order.number };
+        const title = `shippingDocs.task.${p.kind}.title` as DictionaryKey;
+        const detail = (
+          p.redo
+            ? "shippingDocs.task.redo.detail"
+            : `shippingDocs.task.${p.kind}.detail`
+        ) as DictionaryKey;
+        tasks.push(
+          finish(
+            {
+              kind: "import_step",
+              title: ptText(title, values),
+              detail: ptText(detail, values),
+              text: { title, detail, values },
+              link: `/app/orders/${p.order.id}/shipping-docs#${p.kind}`,
+              stepKey: `shipping_${p.kind}`,
+              dueAt: null,
+              requestId: p.order.requestId,
+              ...(user.role === "supplier"
+                ? { supplierStep: "shipping" as const }
+                : {}),
+              orderNumber: p.order.number,
+              customerId: p.order.customerId,
+              ownerUserId: p.order.ownerUserId ?? null,
+            },
+            now,
+          ),
+        );
+      }
+    } catch (error) {
+      const { isSchemaMissing } = await import("@/lib/db/errors");
+      // Tabela nova ainda não publicada: sem estas pendências.
+      if (!isSchemaMissing(error)) throw error;
+    }
+  }
   // Artes (cartão Artes do pedido): corrigir a não conformidade (quem faz a
   // arte) e conferir a correção (quem apontou ou quem valida a arte).
   if (wellmix || agency) {
@@ -1323,6 +1366,12 @@ async function datesForSupplier(tasks: Task[]): Promise<void> {
 /** Passos do embarque/desembaraço (pendências saem em português, como as demais). */
 const IMPORT_STEP_LABEL: Record<string, string> = {
   booking: "Booking",
+  container_at_factory: "Container vazio na fábrica",
+  container_empty: "Fotos e vídeos do container vazio",
+  container_loaded: "Carregamento do container",
+  container_sealed: "Lacre e número do container",
+  container_at_port: "Container lacrado no porto",
+  container_tracking: "Rastreio do container",
   draft_bl: "Draft do BL",
   invoice_packing: "Invoice e packing list",
   invoice_signed: "Invoice assinada",

@@ -231,5 +231,6 @@ Junto vai o pedido só com o que as pendências e o encaminhamento leem (`TaskOr
 1. **Pedidos:** a lista lê todos os itens, só com as colunas usadas, para filtrar e ordenar no servidor (página de 50).
 2. **Escolha de itens do container:** a lista do formulário tem todos os itens dos pedidos em aberto.
 3. **Programação de compra do admin nas Pendências:** lê as etapas de Preparação em andamento e os pedidos delas.
+4. **Documentos do embarque nas Pendências** (`shippingDocTasks`, docs/SHIPPING_DOCS.md): lê os pedidos de compra em inspeção ou embarque e, de cada um, o container vazio, os itens e os documentos. São poucos pedidos; entram na lista pronta se crescerem.
 
 As tarefas de embarque, produção, artes e "Pagar fornecedor" da Wellmix saíram desta lista em 14/11/2026 (lista pronta, acima).

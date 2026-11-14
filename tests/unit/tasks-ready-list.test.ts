@@ -261,6 +261,15 @@ describe("pendências da Wellmix pela lista pronta do resumo", () => {
           (r.filter as { hasTasks?: boolean }).hasTasks === true,
       ),
     ).toBe(true);
+    // Fora da lista pronta (docs/RESUMOS.md, "O que ainda pesa"): os
+    // documentos do embarque do pedido de compra (shippingDocTasks) leem os
+    // pedidos de compra em inspeção ou embarque e o container vazio de cada um.
+    const shippingDocs = (r: { table: string; filter: object }) =>
+      (r.table === "orders" &&
+        (r.filter as { flow?: string }).flow === "supplier_request") ||
+      (r.table === "import_steps" &&
+        (r.filter as { key?: string }).key === "container_empty");
+    const rest = reads.filter((r) => !shippingDocs(r));
     for (const table of [
       "import_steps",
       "production_tracks",
@@ -269,13 +278,13 @@ describe("pendências da Wellmix pela lista pronta do resumo", () => {
       "payments",
     ])
       expect(
-        reads.filter((r) => r.table === table),
+        rest.filter((r) => r.table === table),
         table,
       ).toEqual([]);
     // Pedidos: só os já escolhidos por id (revisão, programação de compra),
     // nunca a lista por situação ou fora de espera.
     expect(
-      reads.filter((r) => r.table === "orders" && !("id" in r.filter)),
+      rest.filter((r) => r.table === "orders" && !("id" in r.filter)),
     ).toEqual([]);
   });
 

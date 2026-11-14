@@ -1239,6 +1239,29 @@ create unique index if not exists "production_tracks_order_unique" on public."pr
 create index if not exists "production_tracks_created" on public."production_tracks" ("createdAt");
 create index if not exists "production_tracks_created_id" on public."production_tracks" ("createdAt", "id");
 
+create table if not exists public."shipping_docs" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."shipping_docs" enable row level security;
+alter table public."shipping_docs" add column if not exists "orderId" text;
+alter table public."shipping_docs" add column if not exists "kind" text;
+alter table public."shipping_docs" add column if not exists "status" text;
+alter table public."shipping_docs" add column if not exists "number" text;
+alter table public."shipping_docs" add column if not exists "containerNumber" text;
+alter table public."shipping_docs" add column if not exists "lines" jsonb;
+alter table public."shipping_docs" add column if not exists "entries" jsonb;
+alter table public."shipping_docs" add column if not exists "mismatches" jsonb;
+alter table public."shipping_docs" add column if not exists "documentId" text;
+alter table public."shipping_docs" add column if not exists "currency" text;
+alter table public."shipping_docs" add column if not exists "version" bigint;
+alter table public."shipping_docs" add column if not exists "submittedByUserId" text;
+alter table public."shipping_docs" add column if not exists "submittedAt" timestamptz;
+create unique index if not exists "shipping_docs_order_kind_unique" on public."shipping_docs" ("orderId", "kind");
+create index if not exists "shipping_docs_created" on public."shipping_docs" ("createdAt");
+create index if not exists "shipping_docs_created_id" on public."shipping_docs" ("createdAt", "id");
+
 create table if not exists public."sku_inspections" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),
