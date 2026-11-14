@@ -9,8 +9,8 @@ import type { User } from "@/lib/db/schema";
  * as telas que o login abre. No alto, links soltos do dia a dia (Control
  * Tower, Pendências, Mensagens, Notificações); depois os grupos, cada um na
  * ordem do fluxo (Compras: Booking → Seleção → Convites → Solicitações ao
- * fornecedor; Pedidos e entrega: Pedidos de compra → Revisão → Containers →
- * Fretes → Tarifário → Estoque; Financeiro; Painéis; Cadastros). Configurações,
+ * fornecedor; Pedidos e entrega: Pedidos de compra → Produção → Revisão →
+ * Containers → Fretes → Tarifário → Estoque; Financeiro; Painéis; Cadastros). Configurações,
  * Equipe e acessos e Auditoria ficam fixos embaixo (navFooterFor). Grupo com
  * uma tela só vira link direto; grupo vazio some. Telas fora do fluxo de hoje
  * ficam fora do menu de todos (MENU_HIDDEN), mas continuam abrindo pelo
@@ -187,6 +187,8 @@ export function navFor(
         "ship",
         pick(has, [
           ["orders", { href: "/app/orders", key: "nav.purchaseOrders" }],
+          // Produção dos pedidos de compra (dono, 13/11/2026).
+          ["production", { href: "/app/production", key: "nav.production" }],
           ["reviews", { href: "/app/reviews", key: "nav.reviews" }],
           ["containers", { href: "/app/containers", key: "nav.containers" }],
           ["freight", { href: "/app/freight", key: "nav.freight" }],

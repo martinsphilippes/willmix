@@ -144,6 +144,47 @@ describe("telas por papel e por função", () => {
     expect(screenOfPath("/app/freight/x1")).toBe("freight");
     expect(screenOfPath("/app/products/p1/tax")).toBe("products");
     expect(screenOfPath("/app/after-sales")).toBe("afterSales");
+    expect(screenOfPath("/app/production")).toBe("production");
     expect(screenOfPath("/login")).toBeNull();
+  });
+
+  it("Produção (13/11/2026): tela própria, em Telas e links logo depois de Pedidos", () => {
+    // Na tela de acessos, no grupo dos pedidos, logo depois de Pedidos.
+    const orders = SCREEN_GROUPS.find((g) => g.screens.includes("orders"));
+    const list = [...(orders?.screens ?? [])];
+    expect(list[list.indexOf("orders") + 1]).toBe("production");
+    // Padrão: comprador e planner (quem acompanha produção, ETD e follow),
+    // as diretorias e o admin; as outras funções só se o admin marcar.
+    expect(FUNCTION_SCREENS.buyer).toContain("production");
+    expect(FUNCTION_SCREENS.planner).toContain("production");
+    for (const fn of ["purchasing_director", "executive_director"] as const)
+      expect(canOpen({ role: "operator", functions: [fn] }, "production")).toBe(
+        true,
+      );
+    for (const fn of [
+      "product_manager",
+      "catalog",
+      "finance",
+      "designer",
+    ] as const)
+      expect(canOpen({ role: "operator", functions: [fn] }, "production")).toBe(
+        false,
+      );
+    expect(canOpen({ role: "admin" }, "production")).toBe(true);
+    expect(ADMIN_ONLY).not.toContain("production");
+    // Marcada uma a uma pelo administrador: abre mesmo sem a função.
+    expect(
+      canOpen(
+        { role: "operator", functions: ["designer"], screens: ["production"] },
+        "production",
+      ),
+    ).toBe(true);
+    // Sem a tela, a Server Action e o endereço recusam.
+    expect(() =>
+      assertScreen({ role: "operator", functions: ["designer"] }, "production"),
+    ).toThrow();
+    // Ninguém de fora abre (tela interna da Wellmix).
+    for (const role of ROLES.filter((r) => r !== "admin" && r !== "operator"))
+      expect(canOpen({ role }, "production")).toBe(false);
   });
 });
