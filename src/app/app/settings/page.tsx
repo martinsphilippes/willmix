@@ -299,6 +299,13 @@ export default async function SettingsPage({
                       <option value="false">{t("common.no")}</option>
                     </Select>
                   </Field>
+                  <Field label={t("settings.label.salesTop")}>
+                    <Input
+                      name="salesTop"
+                      inputMode="numeric"
+                      defaultValue={s.salesTop ?? ""}
+                    />
+                  </Field>
                   <Field label={t("settings.label.carrierItapoaName")}>
                     <Input
                       name="carrierItapoaName"
