@@ -637,15 +637,22 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     { 重量: "15", weight: "15", peso: "15" },
     20,
   );
-  // A Wellmix aprova o SKU no cartão Produção: só então vai ao Embarque.
+  // A Wellmix aprova o SKU na tela do passo Produção → Inspeção, com o
+  // relatório da inspeção ao lado (docs/FLOW_MENU.md): só então vai ao
+  // Embarque. A ação volta para a tela do passo.
   await login(page, "admin@wellmix.com");
-  await page.goto(`${orderUrl}#production`);
-  const skuRow = page.locator("[data-sku-item]").first();
+  await page.goto("/app/flow/production/inspection");
+  const inspId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
+  const inspCard = page.locator(`[data-flow-production-order="${inspId}"]`);
+  await expect(inspCard.locator("[data-flow-inspection-report]")).toBeVisible();
+  await expect(inspCard.locator("[data-production-plan]")).toHaveCount(0);
+  const skuRow = inspCard.locator("[data-sku-item]").first();
   await expect(skuRow).toHaveAttribute("data-sku-status", "pending");
   await Promise.all([
-    page.waitForLoadState("networkidle"),
+    page.waitForURL(/\/app\/flow\/production\/inspection/),
     skuRow.locator("[data-sku-approve]").click(),
   ]);
+  await page.waitForLoadState("networkidle");
   await page.goto(orderUrl);
   await expect(page.locator("[data-sku-item]").first()).toHaveAttribute(
     "data-sku-status",

@@ -29,6 +29,7 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
 - **Quarta parte** (14/11/2026):
   - **Pré-produção** ganha casos: pedido em andamento com o sinal ao fornecedor pago (item `down_payment` concluído) e a produção sem ETD. A tela mostra a parte "dados e ETD" do cartão de produção; salvar o ETD tira o caso. Contam no menu, fora das Pendências (`flowPreProductionCasesFor`, Wellmix com a tela Produção).
   - **Produção → Logística** traz o frete marítimo do pedido (pedir às companhias e as respostas), para os pedidos com caso no passo. O pedido de frete aceita `returnTo` e volta para a tela do passo.
+- **Quinta parte** (14/11/2026): o **relatório da inspeção** (medidas × comprado, fotos, decisão da revisão, divergências) saiu do detalhe do pedido para um componente próprio (`src/components/inspection-result-card.tsx`) e aparece também em Produção → Inspeção, ao lado da agenda e da decisão por SKU, para todo pedido com caso no passo (inclusive o item "inspeção aprovada pela Wellmix" da etapa). O caminho principal aprova o SKU nessa tela.
 - Passos que já tinham tela (Books, Seleção, Cotações, Negociações, Pedidos, Revisão, Estoque) abrem a tela de sempre, com o contador.
 - Passos sem fonte de pendência ainda (LPCO, Amostras e Ofertas de Vendas) aparecem com a tela vazia e a explicação; nada inventado.
 
