@@ -500,7 +500,12 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   // Diminuir: 30.000 peças passam de um container (o segundo com 10%): a
   // rodada precisa de 2 e o informativo mostra "1 a 2". Tirar o excedente
   // deixa a rodada 2 com um container cheio.
-  await qty(2).fill("30000");
+  // Os cartões das programações recebem CAIXAS (dono, 14/11/2026): as
+  // peças ficam travadas (caixas × 48). 625 caixas = 30.000 peças.
+  const boxes = (n: number) => page.locator(`[data-schedule-cartons="${n}"]`);
+  await expect(qty(2)).toHaveAttribute("readonly", "");
+  await boxes(2).fill("625");
+  await expect(qty(2)).toHaveValue("30000");
   await expect(card(2).locator("[data-round-status]")).toContainText("10%");
   await expect(perRound).toHaveText("1 a 2");
   await expect(totalContainers).toHaveText("4");
@@ -511,7 +516,8 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(perRound).toHaveText("1");
   await expect(totalContainers).toHaveText("3");
   // Margem de 5%: 26.000 peças = 542 caixas = 95% do container: cheio.
-  await qty(3).fill("26000");
+  // 542 caixas = 26.016 peças = 95% do container.
+  await boxes(3).fill("542");
   await expect(card(3).locator("[data-round-fill]")).toHaveAttribute(
     "data-round-fill",
     "full",

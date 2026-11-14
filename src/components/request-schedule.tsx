@@ -38,6 +38,18 @@ export interface ScheduleLabels {
   remove: string;
   total: string;
   off: string;
+  /**
+   * Caixas master por programação (dono, 14/11/2026): o campo editável de
+   * cada cartão, a conta "{cartons} caixas × {pcs} peças por caixa =
+   * {pieces} peças", o aviso de peças que não fecham caixas inteiras e as
+   * caixas do total. Sem eles, os cartões ficam só com as peças.
+   */
+  cartons?: string;
+  cartonCalc?: string;
+  cartonPartial?: string;
+  totalCartons?: string;
+  /** Dica do campo de peças travado (sai das caixas). */
+  piecesLocked?: string;
 }
 
 const fill = (s: string, vars: Record<string, string | number>) =>
@@ -67,6 +79,7 @@ export function RequestScheduleFields({
   roundInfo,
   split,
   onShort,
+  carton = null,
   blocked = false,
   after,
 }: {
@@ -112,6 +125,13 @@ export function RequestScheduleFields({
    */
   onShort?: (total: number, count: number) => void;
   /**
+   * Peças por caixa master do item (do produto): cada cartão ganha o campo
+   * "Caixas", o único editável; as peças ficam travadas (caixas × peças por
+   * caixa) e a conta fica escrita (dono, 14/11/2026). Sem ele (produto sem
+   * peças por caixa master), as peças continuam editáveis.
+   */
+  carton?: number | null;
+  /**
    * Programação de compra sem o item escolhido marcado na tabela (pedido do
    * dono, 13/11/2026): não liga, não acrescenta nem tira rodada (a conta
    * precisa da caixa do item). O motivo aparece no gerador.
@@ -146,6 +166,100 @@ export function RequestScheduleFields({
   const days =
     interval > 0 ? interval : Math.max(0, Number(customInterval) || 0);
   const num = (q: string) => Number(String(q).replace(",", ".")) || 0;
+  const fmtN = (n: number) =>
+    n.toLocaleString(labels.intl, { maximumFractionDigits: 2 });
+  // Caixas por programação: só com as peças por caixa master do item e os
+  // textos do campo (os dois vêm do gerador).
+  const perCarton =
+    carton && carton > 0 && labels.cartons && labels.cartonCalc ? carton : null;
+
+  /**
+   * O cartão em caixas (dono, 14/11/2026): "Caixas" é o campo editável; as
+   * peças ficam travadas e vão no formulário (o servidor grava as peças,
+   * como sempre); a conta fica escrita logo abaixo.
+   */
+  function cartonFields(q: string, i: number, per: number) {
+    const pieces = num(q);
+    const boxes = pieces / per;
+    const whole = Number.isInteger(boxes);
+    return (
+      <>
+        <label className="block space-y-0.5">
+          <span className="block text-[11px] text-zinc-500">
+            {labels.cartons}
+          </span>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            required
+            inputMode="numeric"
+            value={
+              String(q).trim() === ""
+                ? ""
+                : String(whole ? boxes : Math.round(boxes * 100) / 100)
+            }
+            onChange={(e) => {
+              const v = e.target.value;
+              const n = Math.floor(Number(v));
+              update(
+                qtys.map((x, j) =>
+                  j !== i
+                    ? x
+                    : v.trim() === ""
+                      ? ""
+                      : Number.isFinite(n) && n >= 0
+                        ? String(n * per)
+                        : x,
+                ),
+              );
+            }}
+            data-schedule-cartons={i + 1}
+            className={cx(inputClass, "tabular-nums")}
+          />
+        </label>
+        <label className="block space-y-0.5">
+          <span className="block text-[11px] text-zinc-500">
+            {labels.quantity}
+          </span>
+          <input
+            name={`${prefix}schedule.qty.${i + 1}`}
+            readOnly
+            tabIndex={-1}
+            aria-readonly
+            title={labels.piecesLocked}
+            value={q}
+            data-schedule-pieces-locked
+            className={cx(
+              inputClass,
+              "cursor-not-allowed bg-zinc-100 text-zinc-600 tabular-nums",
+            )}
+          />
+        </label>
+        {String(q).trim() !== "" ? (
+          <p
+            className={cx(
+              "text-[11px] leading-snug",
+              whole ? "text-zinc-600" : "font-medium text-amber-800",
+            )}
+            data-schedule-carton-calc
+          >
+            {whole
+              ? fill(labels.cartonCalc!, {
+                  cartons: fmtN(boxes),
+                  pcs: fmtN(per),
+                  pieces: fmtN(pieces),
+                })
+              : fill(labels.cartonPartial ?? labels.cartonCalc!, {
+                  cartons: fmtN(boxes),
+                  pcs: fmtN(per),
+                  pieces: fmtN(pieces),
+                })}
+          </p>
+        ) : null}
+      </>
+    );
+  }
   const divide = (amount: number, count: number) =>
     split ? split(amount, count) : splitEvenly(amount, count, max);
 
@@ -380,23 +494,27 @@ export function RequestScheduleFields({
                   </button>
                 ) : null}
               </div>
-              <label className="block space-y-0.5">
-                <span className="block text-[11px] text-zinc-500">
-                  {labels.quantity}
-                </span>
-                <input
-                  name={`${prefix}schedule.qty.${i + 1}`}
-                  type="number"
-                  min="1"
-                  step="any"
-                  required
-                  value={q}
-                  onChange={(e) =>
-                    update(qtys.map((x, j) => (j === i ? e.target.value : x)))
-                  }
-                  className={cx(inputClass, "tabular-nums")}
-                />
-              </label>
+              {perCarton ? (
+                cartonFields(q, i, perCarton)
+              ) : (
+                <label className="block space-y-0.5">
+                  <span className="block text-[11px] text-zinc-500">
+                    {labels.quantity}
+                  </span>
+                  <input
+                    name={`${prefix}schedule.qty.${i + 1}`}
+                    type="number"
+                    min="1"
+                    step="any"
+                    required
+                    value={q}
+                    onChange={(e) =>
+                      update(qtys.map((x, j) => (j === i ? e.target.value : x)))
+                    }
+                    className={cx(inputClass, "tabular-nums")}
+                  />
+                </label>
+              )}
               <p className="text-[11px] text-zinc-500">
                 {labels.expected}:{" "}
                 <span className="font-medium text-zinc-800" data-schedule-date>
@@ -434,6 +552,18 @@ export function RequestScheduleFields({
             total: sum(qtys).toLocaleString(labels.intl),
             unit,
           })}
+          {perCarton && labels.totalCartons ? (
+            <span
+              className="ml-1.5 font-normal text-zinc-600"
+              data-schedule-total-cartons
+            >
+              ·{" "}
+              {fill(labels.totalCartons, {
+                cartons: fmtN(sum(qtys) / perCarton),
+                pcs: fmtN(perCarton),
+              })}
+            </span>
+          ) : null}
         </span>
         <button
           type="button"

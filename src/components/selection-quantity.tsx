@@ -1585,6 +1585,7 @@ export function SelectionQuantity({
           generator={generator}
           roundInfo={roundInfo}
           split={divide}
+          carton={perCarton}
           onShort={(amount, count) => {
             // "+ Programação de compra" ou "+ Programação" sem uma caixa por
             // data: o aviso, com as saídas (dono, 14/11/2026).
