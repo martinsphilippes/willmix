@@ -1110,6 +1110,15 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - Textos novos nos três idiomas: `nav.production` e `production.page.subtitle`, `.soon`, `.orders`.
 - Testes: `tests/unit/nav.test.ts` (posição no menu, quem vê, item aceso), `tests/unit/screens.test.ts` (rota, Telas e links, padrão por função, recusa sem a tela), `tests/unit/partner-access.test.ts` (interna) e o E2E `tests/e2e/production-screen.spec.ts` (menu, tela, item aceso, Telas e links e o endereço sem a tela).
 
+## Excluir acesso: passar subordinados e pendências na própria confirmação
+
+- **Pedido do dono** (14/11/2026, escolhendo entre as melhorias sugeridas): na confirmação de "Excluir acesso", a opção de passar os subordinados ao chefe de quem sai e redistribuir as pendências dela. Sem botão de reativar (o dono não quer); Wellmix e WellKids continuam divisões da mesma equipe.
+- **Tela**: duas caixas, marcadas por padrão e só quando se aplicam: "Passar as N pessoa(s) que respondem a ela para <chefe>" e "Redistribuir as N pendência(s) aberta(s) dela pela divisão". Desmarcada, aparece o que fazer depois (o aviso de antes). Na lista, embaixo de "Acesso excluído com sucesso", o resumo do que passou e, em amarelo, o que ficou sem responsável.
+- **Regras**: as mesmas de "Responde a" (`setTeamMember`) e de "Distribuir agora" (`distributeUnassigned`, agora com o escopo opcional `fromUserId`, só as pendências de quem saiu; o botão "Distribuir agora" segue igual). Cada passagem vai para a Auditoria. Sem chefe ativo, os subordinados ficam como estavam (aviso). As opções rodam depois da exclusão gravada; se falharem, a exclusão fica e a lista diz o que conferir.
+- **Aditivo**: nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- **Decisão sem pergunta** (avisada ao dono): as duas caixas começam marcadas.
+- Testes: `tests/unit/team-delete.test.ts` (chefe de destino, subordinados passados com cargo e divisão mantidos e Auditoria, sem chefe ativo nada muda, redistribuição só das dela com as sem destino contadas, falha depois da exclusão, resumo levado à lista) e `tests/e2e/team-delete.spec.ts` (caixa marcada, aviso ao desmarcar, resumo na lista e o novo chefe na linha).
+
 ## Pedido: o operador da Wellmix vê só as próprias tarefas em "Etapas do pedido"
 
 - **Pedido do dono** (14/11/2026, com a foto do login Comprador): na página do pedido, a tabela "Etapas do pedido" do operador da Wellmix mostra só as tarefas a fazer que cabem ao login, tarefa a tarefa, inclusive dentro das etapas e das subetapas compartilhadas (Certificação, Ficha de compra, Artes da embalagem, Documento do pedido...). Usa o encaminhamento que o pedido já tem (responsável interno, designer do pedido, parceiros, ações das funções) e as travas das pendências.
