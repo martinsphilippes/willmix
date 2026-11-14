@@ -7,12 +7,7 @@ const nextConfig: NextConfig = {
   // Fotos e planilhas chegam pelas Server Actions; o padrão (1 MB) não basta.
   // Na Vercel o corpo da requisição tem teto próprio (~4,5 MB): o PhotoInput
   // comprime as fotos no aparelho antes de enviar.
-  experimental: {
-    serverActions: { bodySizeLimit: "10mb" },
-    ...(process.env.E2E_TURBO_EVICT === "full"
-      ? { turbopackMemoryEviction: "full" as const }
-      : {}),
-  },
+  experimental: { serverActions: { bodySizeLimit: "10mb" } },
   async headers() {
     return [
       {

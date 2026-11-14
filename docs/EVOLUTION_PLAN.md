@@ -1150,3 +1150,14 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Só o nome na tela, em português**: as chaves, o código, as regras e o banco não mudaram; inglês e chinês ficam como estavam (como na troca das colunas da solicitação, #350). A palavra "rodada" com outro sentido continua: tentativas da inspeção por SKU, rodadas da amostragem, negociação da cotação e execuções técnicas (Sankhya, resumos, cópia do banco).
 - Teste: o E2E da seleção confere "a quantidade é a soma das programações".
 
+## E2E sobre a versão compilada (memória do servidor de teste)
+
+- **Pedido do dono** (14/11/2026): investigar por que a suíte E2E caía no meio. O servidor de teste (`next dev`) era derrubado pela falta de memória da sessão (12 GB) durante o caminho principal, inclusive na base sem nenhuma mudança nova.
+- **Causa**: o compilador do modo de desenvolvimento (Turbopack), não o código do portal. Medição com os 5 primeiros testes:
+  - a base de antes das últimas mesclas também passava de 11 GB, então não foi um PR específico; a suíte só cresceu até passar do limite;
+  - o JavaScript do servidor tem limite de 2 GB e não estourou;
+  - a limpeza total do cache do Turbopack (`turbopackMemoryEviction: "full"`) não resolveu: o servidor morreu a 11,6 GB;
+  - compilado (`next build` + `next start`), o pico foi de 572 MB, em 2 minutos contra cerca de 5.
+- **Mudança**: `npm run test:e2e` compila o portal e testa a versão compilada (`playwright.config.ts`), em modo memória com dados isolados, como antes. Isso também confere o mesmo código que vai para a Vercel. `E2E_DEV=1` volta ao `next dev` para depurar. Nada mudou no portal.
+- Docs: `docs/AMBIENTE.md` (Testes) e `docs/HANDOVER.md`.
+
