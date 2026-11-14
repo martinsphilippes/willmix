@@ -32,6 +32,31 @@ export function AnswerIcon({ className = "h-4 w-4" }) {
   );
 }
 
+/*
+ * Resposta à oferta, na segunda linha das ações da tabela (dono,
+ * 14/11/2026): visto, setas opostas e xis. A forma já diz a ação, mesmo
+ * sem a cor (verde, âmbar e vermelho).
+ */
+
+/** Aprovar a oferta: visto. */
+export function CheckIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="m4 12.5 5 5L20 6.5" />
+    </svg>
+  );
+}
+
+/** Renegociar: duas setas opostas (a proposta vai e volta). */
+export function SwapIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M5 8.5h14M16 5.5l3 3-3 3" />
+      <path d="M19 15.5H5M8 12.5l-3 3 3 3" />
+    </svg>
+  );
+}
+
 /** Abrir a tela do produto da solicitação. */
 export function OpenIcon({ className = "h-4 w-4" }) {
   return (
@@ -50,6 +75,9 @@ export function CloseIcon({ className = "h-4 w-4" }) {
     </svg>
   );
 }
+
+/** Recusar a oferta: o mesmo xis de fechar. */
+export const RefuseIcon = CloseIcon;
 
 export function SendIcon({ className = "h-4 w-4" }) {
   return (
