@@ -69,10 +69,8 @@ export const pt = {
   "partnerAccess.copy.to": "Destino",
   "partnerAccess.copy.screens": "Telas a copiar",
   "partnerAccess.copy.mode": "Como aplicar",
-  "partnerAccess.copy.mode.add":
-    "Adicionar (só acrescenta ao destino o que a origem tem)",
-  "partnerAccess.copy.mode.replace":
-    "Substituir (cada tela escolhida fica igual à da origem, mesmo que tire)",
+  "partnerAccess.copy.mode.add": "Adicionar (só acrescenta)",
+  "partnerAccess.copy.mode.replace": "Substituir (iguala à origem; pode tirar)",
   "partnerAccess.copy.preview": "Ver o que muda",
   "partnerAccess.copy.previewTitle": "Prévia: {from} → {to}",
   "partnerAccess.copy.apply": "Aplicar a cópia",
@@ -113,6 +111,71 @@ export const pt = {
   "partnerAccess.login.card": "Logins de acesso ao portal",
   "partnerAccess.login.col": "Login de acesso",
   "partnerAccess.login.count": "{n} login(s)",
+  "partnerAccess.kind.groups.type": "Tipos de parceiro",
+  "partnerAccess.kind.groups.role": "Papéis de login",
+  "partnerAccess.kindHint":
+    "Tipo de parceiro é a categoria do cadastro (Trading, Factory, Supplier, GP e os criados no painel). Papel de login é como a pessoa entra no portal (Fornecedor, Cliente, Agência…). “Supplier” é um tipo de parceiro; “Fornecedor” é um papel de login: cada um tem as suas telas.",
+  "partnerAccess.state.hidden": "Liberada, fora do menu",
+  "partnerAccess.filter.state.open": "Liberada (abre)",
+  "partnerAccess.filter.state.hidden": "Fora do menu (abre pelo endereço)",
+  "partnerAccess.filter.state.blocked": "Bloqueada",
+  "partnerAccess.filter.state.internal": "Interna da Wellmix",
+  "partnerAccess.search.placeholder": "Nome ou endereço (ex.: /app/orders)",
+  "partnerAccess.col.sourceShort": "Origem",
+  "partnerAccess.col.logins": "Logins ativos",
+  "partnerAccess.source.removed": "Bloqueada fora do padrão",
+  "partnerAccess.source.menuHidden": "Tirada do menu à mão",
+  "partnerAccess.notApplicable": "Não se aplica",
+  "partnerAccess.row.details": "Detalhes",
+  "partnerAccess.row.detailsOf": "Ver detalhes de {screen}",
+  "partnerAccess.row.routes": "Endereços",
+  "partnerAccess.module.count": "{open} de {n} abrem",
+  "partnerAccess.locked":
+    "Sempre aberta: não pode ser bloqueada nem tirada do menu",
+  "partnerAccess.menuNeedsOpen": "Só aparece no menu se a tela abrir",
+  "partnerAccess.hiddenNote":
+    "Abre pelo endereço direto (e pelos links das outras telas), mas não tem atalho no menu.",
+  "partnerAccess.blockedNote":
+    "Não abre para este perfil: o menu não mostra e o endereço direto recusa.",
+  "partnerAccess.noMatch": "Nenhuma tela com esse filtro.",
+  "partnerAccess.saveTarget": "Salvando em:",
+  "partnerAccess.saveAll": "Salvar alterações",
+  "partnerAccess.unsaved": "Alterações não salvas",
+  "partnerAccess.saved.profile":
+    "Acessos de {profile} salvos no servidor: {n} mudança(s).",
+  "partnerAccess.saved.copy":
+    "Cópia aplicada em {profile} e salva no servidor: {n} mudança(s).",
+  "partnerAccess.view.label": "Visão",
+  "partnerAccess.edit": "Editar",
+  "partnerAccess.panel.close": "Fechar",
+  "partnerAccess.compare.title": "Comparar acessos",
+  "partnerAccess.compare.hint": "Só consulta: nada é gravado daqui.",
+  "partnerAccess.compare.showAll":
+    "Mostrar todas as telas (não só as diferenças)",
+  "partnerAccess.compare.summary":
+    "{n} tela(s) diferentes · em “Abre”: {open} · em “No menu”: {menu}",
+  "partnerAccess.compare.menuNote":
+    "“No menu” só se compara quando os dois perfis abrem a tela; “—” quer dizer que a tela não abre.",
+  "partnerAccess.copy.title": "Copiar acesso",
+  "partnerAccess.copy.selected": "Telas selecionadas",
+  "partnerAccess.copy.whatChanges": "Ver o que muda",
+  "partnerAccess.copy.pickHint":
+    "Escolha a origem, o destino e as telas: a prévia aparece aqui, tela a tela, antes de aplicar.",
+  "partnerAccess.copy.summary":
+    "{n} mudança(s) em {to}, para {users} login(s) ativo(s).",
+  "partnerAccess.copy.noChange.title": "Nenhuma alteração necessária",
+  "partnerAccess.copy.noChange.body":
+    "{to} já tem os mesmos acessos nas telas selecionadas.",
+  "partnerAccess.copy.result": "O que acontece",
+  "partnerAccess.copy.unchanged": "Sem mudança",
+  "partnerAccess.copy.becomes": "passa a",
+  "partnerAccess.copy.applyButton": "Aplicar cópia",
+  "partnerAccess.copy.confirm":
+    "Aplicar a cópia de {from} para {to}? {n} mudança(s) em {to}, para {users} login(s) ativo(s). A origem não muda.",
+  "partnerAccess.error.partner_access_stale":
+    "Os acessos do destino mudaram depois da prévia. Confira a prévia nova e aplique de novo.",
+  "partnerAccess.copy.mode.hint":
+    "Adicionar só acrescenta ao destino o que a origem abre. Substituir deixa cada tela escolhida igual à da origem, mesmo que tire acesso do destino.",
 };
 
 export const en: typeof pt = {
@@ -182,10 +245,8 @@ export const en: typeof pt = {
   "partnerAccess.copy.to": "Destination",
   "partnerAccess.copy.screens": "Screens to copy",
   "partnerAccess.copy.mode": "How to apply",
-  "partnerAccess.copy.mode.add":
-    "Add (only adds to the destination what the source has)",
-  "partnerAccess.copy.mode.replace":
-    "Replace (each chosen screen becomes equal to the source, even if removed)",
+  "partnerAccess.copy.mode.add": "Add (only adds)",
+  "partnerAccess.copy.mode.replace": "Replace (matches the source; may remove)",
   "partnerAccess.copy.preview": "See what changes",
   "partnerAccess.copy.previewTitle": "Preview: {from} → {to}",
   "partnerAccess.copy.apply": "Apply the copy",
@@ -228,6 +289,71 @@ export const en: typeof pt = {
   "partnerAccess.login.card": "Portal logins",
   "partnerAccess.login.col": "Portal login",
   "partnerAccess.login.count": "{n} login(s)",
+  "partnerAccess.kind.groups.type": "Partner types",
+  "partnerAccess.kind.groups.role": "Login roles",
+  "partnerAccess.kindHint":
+    "A partner type is the category of the record (Trading, Factory, Supplier, GP and the ones created in the panel). A login role is how the person signs in to the portal (Supplier role, Customer, Agency…). “Supplier” the partner type and “Fornecedor” the login role are different: each has its own screens.",
+  "partnerAccess.state.hidden": "Allowed, off the menu",
+  "partnerAccess.filter.state.open": "Allowed (opens)",
+  "partnerAccess.filter.state.hidden": "Off the menu (opens by address)",
+  "partnerAccess.filter.state.blocked": "Blocked",
+  "partnerAccess.filter.state.internal": "Wellmix internal",
+  "partnerAccess.search.placeholder": "Name or address (e.g. /app/orders)",
+  "partnerAccess.col.sourceShort": "Source",
+  "partnerAccess.col.logins": "Active logins",
+  "partnerAccess.source.removed": "Blocked off the default",
+  "partnerAccess.source.menuHidden": "Taken off the menu by hand",
+  "partnerAccess.notApplicable": "Not applicable",
+  "partnerAccess.row.details": "Details",
+  "partnerAccess.row.detailsOf": "Show details of {screen}",
+  "partnerAccess.row.routes": "Addresses",
+  "partnerAccess.module.count": "{open} of {n} open",
+  "partnerAccess.locked":
+    "Always open: cannot be blocked or taken off the menu",
+  "partnerAccess.menuNeedsOpen": "Only shows in the menu if the screen opens",
+  "partnerAccess.hiddenNote":
+    "Opens by direct address (and by links from other screens), but has no menu shortcut.",
+  "partnerAccess.blockedNote":
+    "Does not open for this profile: the menu hides it and the direct address is refused.",
+  "partnerAccess.noMatch": "No screen matches this filter.",
+  "partnerAccess.saveTarget": "Saving to:",
+  "partnerAccess.saveAll": "Save changes",
+  "partnerAccess.unsaved": "Unsaved changes",
+  "partnerAccess.saved.profile":
+    "Access for {profile} saved on the server: {n} change(s).",
+  "partnerAccess.saved.copy":
+    "Copy applied to {profile} and saved on the server: {n} change(s).",
+  "partnerAccess.view.label": "View",
+  "partnerAccess.edit": "Edit",
+  "partnerAccess.panel.close": "Close",
+  "partnerAccess.compare.title": "Compare access",
+  "partnerAccess.compare.hint": "Read only: nothing is saved from here.",
+  "partnerAccess.compare.showAll":
+    "Show all screens (not only the differences)",
+  "partnerAccess.compare.summary":
+    "{n} screen(s) differ · in “Opens”: {open} · in “In menu”: {menu}",
+  "partnerAccess.compare.menuNote":
+    "“In menu” is only compared when both profiles open the screen; “—” means the screen does not open.",
+  "partnerAccess.copy.title": "Copy access",
+  "partnerAccess.copy.selected": "Selected screens",
+  "partnerAccess.copy.whatChanges": "What changes",
+  "partnerAccess.copy.pickHint":
+    "Choose the source, the target and the screens: the preview shows up here, screen by screen, before applying.",
+  "partnerAccess.copy.summary":
+    "{n} change(s) in {to}, for {users} active login(s).",
+  "partnerAccess.copy.noChange.title": "No change needed",
+  "partnerAccess.copy.noChange.body":
+    "{to} already has the same access on the selected screens.",
+  "partnerAccess.copy.result": "What happens",
+  "partnerAccess.copy.unchanged": "No change",
+  "partnerAccess.copy.becomes": "becomes",
+  "partnerAccess.copy.applyButton": "Apply copy",
+  "partnerAccess.copy.confirm":
+    "Apply the copy from {from} to {to}? {n} change(s) in {to}, for {users} active login(s). The source does not change.",
+  "partnerAccess.error.partner_access_stale":
+    "The target's access changed after the preview. Check the new preview and apply again.",
+  "partnerAccess.copy.mode.hint":
+    "Add only adds to the target what the source opens. Replace makes each chosen screen equal to the source, even if it removes access from the target.",
 };
 
 export const zh: typeof pt = {
@@ -296,9 +422,8 @@ export const zh: typeof pt = {
   "partnerAccess.copy.to": "目标",
   "partnerAccess.copy.screens": "要复制的页面",
   "partnerAccess.copy.mode": "应用方式",
-  "partnerAccess.copy.mode.add": "追加（只把来源已有的加到目标）",
-  "partnerAccess.copy.mode.replace":
-    "替换（所选页面与来源保持一致，可能会移除）",
+  "partnerAccess.copy.mode.add": "追加（只增加）",
+  "partnerAccess.copy.mode.replace": "替换（与来源一致；可能移除）",
   "partnerAccess.copy.preview": "查看变更",
   "partnerAccess.copy.previewTitle": "预览：{from} → {to}",
   "partnerAccess.copy.apply": "应用复制",
@@ -336,4 +461,64 @@ export const zh: typeof pt = {
   "partnerAccess.login.card": "门户登录账号",
   "partnerAccess.login.col": "登录账号",
   "partnerAccess.login.count": "{n} 个账号",
+  "partnerAccess.kind.groups.type": "合作方类型",
+  "partnerAccess.kind.groups.role": "登录角色",
+  "partnerAccess.kindHint":
+    "合作方类型是档案的分类（Trading、Factory、Supplier、GP 以及在面板中创建的类型）。登录角色是此人登录门户的身份（供应商、客户、代理……）。“Supplier”是合作方类型，“供应商”是登录角色：各自有自己的页面。",
+  "partnerAccess.state.hidden": "已开放，不在菜单中",
+  "partnerAccess.filter.state.open": "已开放（可打开）",
+  "partnerAccess.filter.state.hidden": "不在菜单中（可通过地址打开）",
+  "partnerAccess.filter.state.blocked": "已屏蔽",
+  "partnerAccess.filter.state.internal": "Wellmix 内部",
+  "partnerAccess.search.placeholder": "名称或地址（例如 /app/orders）",
+  "partnerAccess.col.sourceShort": "来源",
+  "partnerAccess.col.logins": "活跃登录",
+  "partnerAccess.source.removed": "按默认之外屏蔽",
+  "partnerAccess.source.menuHidden": "手动移出菜单",
+  "partnerAccess.notApplicable": "不适用",
+  "partnerAccess.row.details": "详情",
+  "partnerAccess.row.detailsOf": "查看 {screen} 的详情",
+  "partnerAccess.row.routes": "地址",
+  "partnerAccess.module.count": "{n} 个中开放 {open} 个",
+  "partnerAccess.locked": "始终开放：不能屏蔽，也不能移出菜单",
+  "partnerAccess.menuNeedsOpen": "页面开放后才会出现在菜单中",
+  "partnerAccess.hiddenNote":
+    "可通过直接地址（以及其他页面的链接）打开，但菜单中没有快捷方式。",
+  "partnerAccess.blockedNote": "此配置不开放：菜单不显示，直接地址也会被拒绝。",
+  "partnerAccess.noMatch": "没有符合此筛选的页面。",
+  "partnerAccess.saveTarget": "保存到：",
+  "partnerAccess.saveAll": "保存更改",
+  "partnerAccess.unsaved": "有未保存的更改",
+  "partnerAccess.saved.profile":
+    "{profile} 的访问权限已在服务器保存：{n} 处更改。",
+  "partnerAccess.saved.copy": "已复制到 {profile} 并在服务器保存：{n} 处更改。",
+  "partnerAccess.view.label": "视图",
+  "partnerAccess.edit": "编辑",
+  "partnerAccess.panel.close": "关闭",
+  "partnerAccess.compare.title": "比较访问权限",
+  "partnerAccess.compare.hint": "仅供查看：此处不保存任何内容。",
+  "partnerAccess.compare.showAll": "显示所有页面（不只是差异）",
+  "partnerAccess.compare.summary":
+    "{n} 个页面不同 · “可打开”：{open} · “在菜单中”：{menu}",
+  "partnerAccess.compare.menuNote":
+    "只有两个配置都能打开页面时才比较“在菜单中”；“—”表示页面不开放。",
+  "partnerAccess.copy.title": "复制访问权限",
+  "partnerAccess.copy.selected": "已选页面",
+  "partnerAccess.copy.whatChanges": "查看变化",
+  "partnerAccess.copy.pickHint":
+    "选择来源、目标和页面：应用前会在这里逐页显示预览。",
+  "partnerAccess.copy.summary":
+    "{to} 将有 {n} 处更改，影响 {users} 个活跃登录。",
+  "partnerAccess.copy.noChange.title": "无需更改",
+  "partnerAccess.copy.noChange.body": "{to} 在所选页面上已有相同的访问权限。",
+  "partnerAccess.copy.result": "结果",
+  "partnerAccess.copy.unchanged": "无变化",
+  "partnerAccess.copy.becomes": "变为",
+  "partnerAccess.copy.applyButton": "应用复制",
+  "partnerAccess.copy.confirm":
+    "将 {from} 复制到 {to}？{to} 将有 {n} 处更改，影响 {users} 个活跃登录。来源不变。",
+  "partnerAccess.error.partner_access_stale":
+    "预览之后目标的访问权限已更改。请查看新的预览后再应用。",
+  "partnerAccess.copy.mode.hint":
+    "追加只把来源能打开的页面加到目标。替换让所选的每个页面与来源一致，即使会移除目标的访问权限。",
 };

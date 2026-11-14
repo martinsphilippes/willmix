@@ -6,8 +6,11 @@ import { getStore, type Party, type User } from "@/lib/db";
 import { FEATURED_PARTY_TYPES } from "@/lib/party-types";
 import {
   EXTERNAL_ROLES,
+  changesKey,
+  copyPreview,
   copyScreens,
   diffProfiles,
+  type CopyPreviewRow,
   isProfileKey,
   resetProfile,
   resolveProfile,
@@ -273,13 +276,33 @@ export async function previewCopy(
   return diffProfiles(resolveProfile(config, to), resolveProfile(next, to));
 }
 
-/** Copiar acesso à tela, de um perfil para outro (em qualquer direção). */
+/**
+ * Prévia da cópia tela a tela (painel "Copiar acesso"): o valor atual do
+ * destino e o que será gravado em "Abre" e "No menu", lidos do servidor.
+ */
+export async function previewCopyRows(
+  from: string,
+  to: string,
+  screens: string[],
+  mode: "add" | "replace",
+): Promise<{ rows: CopyPreviewRow[]; changes: ScreenChange[] }> {
+  const { config } = await readConfig();
+  return copyPreview(config, from, to, screens, mode);
+}
+
+/**
+ * Copiar acesso à tela, de um perfil para outro (em qualquer direção).
+ * `expect`: as mudanças mostradas na prévia (changesKey). Se a configuração
+ * mudou depois da prévia, nada é gravado (partner_access_stale): o que se
+ * aplica é sempre o que se viu.
+ */
 export async function copyProfileScreens(
   user: User,
   from: string,
   to: string,
   screens: string[],
   mode: "add" | "replace",
+  expect?: string,
 ): Promise<ScreenChange[]> {
   assertAdmin(user);
   await knownProfile(from);
@@ -288,6 +311,8 @@ export async function copyProfileScreens(
   const before = resolveProfile(config, to);
   const next = copyScreens(config, from, to, screens, mode);
   const changes = diffProfiles(before, resolveProfile(next, to));
+  if (expect !== undefined && changesKey(changes) !== expect)
+    throw new Error("partner_access_stale");
   await write(
     user,
     "partner_access.copy",
