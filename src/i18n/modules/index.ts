@@ -128,6 +128,7 @@ import * as purchaseOrder from "./purchase-order";
 import * as purchaseSequence from "./purchase-sequence";
 import * as sampleOrder from "./sample-order";
 import * as desks from "./desks";
+import * as inspectionSequence from "./inspection-sequence";
 import * as purchaseRounds from "./purchase-rounds";
 import * as aiReferences from "./ai-references";
 import * as sampling from "./sampling";
@@ -265,6 +266,7 @@ export const modulesPt = {
   ...purchaseSequence.pt,
   ...sampleOrder.pt,
   ...desks.pt,
+  ...inspectionSequence.pt,
   ...purchaseRounds.pt,
   ...aiReferences.pt,
   ...sampling.pt,
@@ -399,6 +401,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...purchaseSequence.en,
   ...sampleOrder.en,
   ...desks.en,
+  ...inspectionSequence.en,
   ...purchaseRounds.en,
   ...aiReferences.en,
   ...sampling.en,
@@ -533,6 +536,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...purchaseSequence.zh,
   ...sampleOrder.zh,
   ...desks.zh,
+  ...inspectionSequence.zh,
   ...purchaseRounds.zh,
   ...aiReferences.zh,
   ...sampling.zh,

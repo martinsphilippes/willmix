@@ -79,6 +79,24 @@ export const SAMPLE_ORDER_KEYS: readonly string[] = [
 export const isSampleOrderKey = (key: string) =>
   SAMPLE_ORDER_KEYS.includes(key);
 
+/*
+ * Inspeção do pedido de compra (mapa, R3/R4?; docs/PRODUCTION.md, "Sequência
+ * da inspeção"): fotos, peso e vídeo da produção do fornecedor; a declaração
+ * de conformidade do fornecedor (ou da trading) depois deles; e a aprovação
+ * da Wellmix de todos os SKUs, que o sistema confere e segura o embarque.
+ */
+export const PRODUCTION_VIDEO_KEY = "production_video";
+export const SUPPLIER_CONFORMITY_KEY = "supplier_conformity";
+export const SKU_APPROVED_KEY = "sku_approved";
+/** O que o fornecedor manda para a inspeção (volta a pendente a cada reprovação). */
+export const INSPECTION_MEDIA_KEYS: readonly string[] = [
+  "photo_unpacked",
+  "photo_packed",
+  "photo_scale",
+  "weight_measured",
+  PRODUCTION_VIDEO_KEY,
+];
+
 /**
  * Itens que o sistema confere sozinho (ninguém marca à mão): o NCM validado
  * na tela fiscal, a ficha mestre completa e o sinal pago (ou a conta corrente).
@@ -87,6 +105,7 @@ export const AUTO_GATE_KEYS: readonly string[] = [
   LANE_KEYS.ncmValidated,
   LANE_KEYS.sheetComplete,
   DOWN_PAYMENT_KEY,
+  SKU_APPROVED_KEY,
 ];
 
 export const isAutoGateKey = (key: string) =>
@@ -119,6 +138,10 @@ export function prerequisitesOf(key: string): string[] {
   // fornecedor aceita o pedido de amostras depois de gerado.
   if (key === SIGNED_WELLMIX) return [SAMPLE_ORDER_KEY];
   if (key === SAMPLE_ORDER_SUPPLIER_KEY) return [SAMPLE_ORDER_KEY];
+  // Inspeção: a declaração depois das fotos, do peso e do vídeo; a
+  // aprovação da Wellmix depois da declaração.
+  if (key === SUPPLIER_CONFORMITY_KEY) return [...INSPECTION_MEDIA_KEYS];
+  if (key === SKU_APPROVED_KEY) return [SUPPLIER_CONFORMITY_KEY];
   if (key === DOWN_PAYMENT_KEY) return [SIGNED_WELLMIX, SIGNED_SUPPLIER];
   const item = itemIdOf(key);
   if (!item) return [];
@@ -357,6 +380,10 @@ export interface LaneSla {
   signatureDays?: number;
   /** Dias do financeiro para pagar o sinal, desde as duas assinaturas. */
   downPaymentDays?: number;
+  /** Dias do fornecedor para fotos, vídeo e declaração, desde o início da produção. */
+  inspectionMediaDays?: number;
+  /** Dias da Wellmix para aprovar os SKUs, desde a declaração do fornecedor. */
+  inspectionReviewDays?: number;
 }
 
 /** Dias do passo pela chave, ou nulo quando o passo segue o prazo da etapa. */
@@ -369,6 +396,9 @@ function daysOf(key: string, sla: LaneSla): number | null {
   )
     return sla.signatureDays ?? null;
   if (key === DOWN_PAYMENT_KEY) return sla.downPaymentDays ?? null;
+  if (INSPECTION_MEDIA_KEYS.includes(key) || key === SUPPLIER_CONFORMITY_KEY)
+    return sla.inspectionMediaDays ?? null;
+  if (key === SKU_APPROVED_KEY) return sla.inspectionReviewDays ?? null;
   if (!itemIdOf(key)) return null;
   switch (baseKeyOf(key)) {
     case LANE_KEYS.art:
@@ -399,6 +429,8 @@ export function unlockedAt(
   stageStartedAt?: string | null,
 ): string | null {
   if (blockedBy(key, requirements).length) return null;
+  // Fotos, vídeo e declaração: o mesmo prazo, do início da produção (R3).
+  if (key === SUPPLIER_CONFORMITY_KEY) return stageStartedAt ?? null;
   const present = prerequisitesOf(key)
     .map((k) => requirements.find((r) => r.key === k))
     .filter((r): r is NonNullable<typeof r> => !!r);
@@ -409,6 +441,7 @@ export function unlockedAt(
   if (times.length) return times.at(-1)!;
   if (key === SIGNED_WELLMIX || key === SAMPLE_ORDER_KEY)
     return stageStartedAt ?? null;
+  if (INSPECTION_MEDIA_KEYS.includes(key)) return stageStartedAt ?? null;
   return orderCreatedAt;
 }
 

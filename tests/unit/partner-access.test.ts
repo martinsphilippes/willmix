@@ -132,7 +132,14 @@ describe("regras puras", () => {
   it("telas internas da Wellmix não entram em perfil externo", () => {
     expect(lib.isGrantable("orders")).toBe(true);
     expect(lib.isGrantable("explore")).toBe(true);
-    for (const internal of ["finance", "parties", "settings", "superplan"])
+    // Produção (13/11/2026) também é interna: fica bloqueada no catálogo.
+    for (const internal of [
+      "finance",
+      "parties",
+      "settings",
+      "superplan",
+      "production",
+    ])
       expect(lib.isGrantable(internal as never)).toBe(false);
     expect(() =>
       lib.setProfileScreens({}, "type:trading", {
