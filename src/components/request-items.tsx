@@ -7,10 +7,12 @@ import {
   RequestProductFields,
   type ProductFill,
 } from "@/components/request-product-fields";
+import type { ScheduleLabels } from "@/components/request-schedule";
 import {
-  RequestScheduleFields,
-  type ScheduleLabels,
-} from "@/components/request-schedule";
+  SelectionQuantity,
+  type GenerateLabels,
+} from "@/components/selection-quantity";
+import { MAX_REQUEST_SCHEDULE } from "@/lib/workflow/request-schedule";
 
 type ProductFieldsProps = Omit<
   React.ComponentProps<typeof RequestProductFields>,
@@ -19,6 +21,7 @@ type ProductFieldsProps = Omit<
   | "presetVariantId"
   | "defaultNotInCatalog"
   | "suggestions"
+  | "onCatalogModeChange"
 >;
 
 /**
@@ -34,8 +37,11 @@ export function RequestItems({
   defaultNotInCatalog,
   suggestions,
   labels,
+  containerTypes,
   ...fields
 }: ProductFieldsProps & {
+  /** Containers das Configurações (o card de gerar a programação). */
+  containerTypes: Array<{ code: string; capacityCbm: number }>;
   presetProductId: string;
   /** Variação pré-escolhida (?variantId=) da primeira linha. */
   presetVariantId?: string;
@@ -57,6 +63,12 @@ export function RequestItems({
     /** Idioma dos números (ex.: "pt-BR"). */
     intl: string;
     schedule: ScheduleLabels;
+    /** Card "Gerar programação pela quantidade" (o mesmo da Seleção de itens). */
+    generate: GenerateLabels;
+    /** "Quantidade (peças)" do card e as dicas dele. */
+    pieces: string;
+    piecesHint: string;
+    piecesScheduledHint: string;
   };
 }) {
   const [rows, setRows] = useState<number[]>([0]);
@@ -92,6 +104,44 @@ export function RequestItems({
     return { 0: moq && preset < moq ? String(moq) : presetQuantity };
   });
   const [unit, setUnit] = useState<Record<number, string>>({ 0: "un" });
+  // Linhas "fora do catálogo": sem produto do cadastro, a programação é feita
+  // sem caixa master (dividida em partes iguais), como antes.
+  const [outside, setOutside] = useState<Record<number, boolean>>({
+    0: defaultNotInCatalog,
+  });
+
+  /**
+   * O item do card de programação: o produto (e a variação) escolhido no
+   * campo acima, com a caixa master dele. Fora do catálogo, um item sem
+   * caixa; sem produto escolhido, nenhum (o card pede o produto).
+   */
+  const cartonOf = (index: number) => {
+    const chosen = product[index];
+    const pieceUnit = isPieceUnit(unit[index] ?? "un");
+    if (outside[index] && !chosen?.id)
+      return {
+        id: "outside",
+        masterCartonQty: null,
+        cbmPerCarton: null,
+        sheetQty: null,
+      };
+    if (!chosen?.id) return null;
+    const p = chosen.fill;
+    const v = chosen.variantId
+      ? p?.variants.find((x) => x.id === chosen.variantId)
+      : null;
+    return {
+      id: `${chosen.id}:${chosen.variantId}`,
+      // Caixa master só vale com a quantidade em peças.
+      masterCartonQty: pieceUnit
+        ? ((v ? v.masterCartonQty : p?.masterCartonQty) ?? null)
+        : null,
+      cbmPerCarton: pieceUnit
+        ? ((v ? v.cbmPerCarton : p?.cbmPerCarton) ?? null)
+        : null,
+      sheetQty: null,
+    };
+  };
 
   /** Produto ou variação da linha mudou: quantidade vazia ou abaixo do mínimo sobe para ele. */
   function onProductChange(
@@ -185,6 +235,9 @@ export function RequestItems({
                 onProductChange={(id, variantId, fill) =>
                   onProductChange(index, id, variantId, fill)
                 }
+                onCatalogModeChange={(on) =>
+                  setOutside((o) => ({ ...o, [index]: on }))
+                }
               />
               <label className="block min-w-0 space-y-1">
                 <span className="block text-xs font-medium leading-5 text-zinc-700">
@@ -233,16 +286,36 @@ export function RequestItems({
                   className={inputClass}
                 />
               </label>
-              {/* Programação de entregas: divide a quantidade em entregas com intervalo e datas previstas. */}
-              <RequestScheduleFields
-                prefix={prefix}
-                total={qty[index] ?? ""}
-                unit={unit[index] ?? "un"}
-                onTotalChange={(total) =>
-                  setQty((q) => ({ ...q, [index]: total }))
-                }
-                labels={labels.schedule}
-              />
+              {/* Programação de entregas pela quantidade (dono, 14/11/2026): o
+                  mesmo card da Seleção de itens, ligado ao produto escolhido
+                  acima e à quantidade desta linha; as entregas geradas vão
+                  com as datas e o intervalo de sempre. */}
+              {(() => {
+                const item = cartonOf(index);
+                return (
+                  <SelectionQuantity
+                    label={labels.pieces}
+                    hint={labels.piecesHint}
+                    scheduledHint={labels.piecesScheduledHint}
+                    defaultQuantity={null}
+                    schedule={null}
+                    labels={labels.schedule}
+                    gen={labels.generate}
+                    items={item ? [item] : []}
+                    chosenItemId={null}
+                    controlledItemId={item?.id ?? null}
+                    containerTypes={containerTypes}
+                    prefix={prefix}
+                    maxRounds={MAX_REQUEST_SCHEDULE}
+                    quantityValue={qty[index] ?? ""}
+                    onQuantityChange={(total) =>
+                      setQty((q) => ({ ...q, [index]: total }))
+                    }
+                    unit={unit[index] ?? "un"}
+                    className="col-span-2 sm:col-span-4"
+                  />
+                );
+              })()}
             </div>
           </fieldset>
         );
