@@ -1,19 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isAdmin } from "@/lib/auth/permissions";
+import { WELLMIX_BASE, hasCustomScreens, screensFor } from "@/lib/auth/screens";
 import {
-  ADMIN_ONLY,
-  SCREEN_GROUPS,
-  SCREEN_LABEL,
-  WELLMIX_BASE,
-  hasCustomScreens,
-  screensFor,
-} from "@/lib/auth/screens";
-import {
-  ACTION_GROUPS,
   accessFromFunctions,
   functionDescription,
   functionLabel,
@@ -48,17 +39,23 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { wellmixTeam } from "@/lib/services/team";
 import { loadFunctionDefs } from "@/lib/services/team-functions";
+import { isRetiredAction } from "@/lib/auth/permission-modules";
 import {
-  archiveFunctionAction,
-  createFunctionAction,
   createTeamLoginAction,
   distributeUnassignedAction,
-  renameFunctionAction,
-  resetFunctionAction,
-  saveFunctionActionsAction,
-  saveFunctionScreensAction,
   setLineDivisionAction,
 } from "../actions/team";
+import { FunctionList } from "./_components/function-list";
+import { FunctionPermissions } from "./_components/function-permissions";
+import { TeamAccessDrawer } from "./_components/team-access-drawer";
+import {
+  editorFunctions,
+  editorMember,
+  editorOptions,
+  editorTexts,
+  functionScreenMarks,
+  permissionGroups,
+} from "./_components/access-payload";
 
 /*
  * Equipe (só o administrador), em três abas (docs/ACCESS.md):
@@ -272,8 +269,21 @@ function TeamTab({
       !hasCustomScreens(m) &&
       [...screensFor(m, accessOf(m))].every((s) => WELLMIX_BASE.includes(s)),
   );
+  const groups = permissionGroups(t);
   return (
     <>
+      {/* Editar acessos em painel lateral, por cima da lista (dono,
+          14/11/2026). */}
+      <TeamAccessDrawer
+        members={team.map((m) => editorMember(m, team, defs))}
+        functions={editorFunctions(defs, t)}
+        screenGroups={groups.screens}
+        actionGroups={groups.actions}
+        base={[...WELLMIX_BASE]}
+        options={editorOptions(team, t)}
+        texts={editorTexts(t)}
+        savedText={t("access.savedFor")}
+      />
       {noFunction.length > 0 ? (
         <div className="mb-3" data-team-no-function>
           <Alert tone="warning">
@@ -372,6 +382,7 @@ function TeamTab({
                     href={`/app/team/${member.id}`}
                     className="text-xs"
                     data-team-edit={member.id}
+                    data-team-open={member.id}
                   >
                     {t("team.edit")}
                   </TextLink>
@@ -570,298 +581,97 @@ function FunctionsTab({
     team.filter((m) => (m.functions ?? []).includes(key)).length;
   const membersText = (n: number) =>
     n === 1 ? t("fn.members.one") : t("fn.members.many", { n });
-  const href = (key: string, v = view) =>
-    `/app/team?tab=functions&fn=${encodeURIComponent(key)}&view=${v}`;
+  const kindOf = (d: FunctionDef) =>
+    d.archived
+      ? t("fn.archived")
+      : d.builtin
+        ? t("fn.builtin")
+        : t("fn.custom");
+  const groups = permissionGroups(t);
   return (
     <div className="grid items-start gap-4 lg:grid-cols-12">
-      <aside className="lg:col-span-2" data-fn-list>
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-600">
-          {t("fn.list")}
-        </h2>
-        <ul className="space-y-1">
-          {ordered.map((d) => {
-            const active = current?.key === d.key;
-            return (
-              <li key={d.key}>
-                <Link
-                  href={href(d.key)}
-                  aria-current={active ? "true" : undefined}
-                  className={cx(
-                    "block rounded-lg border px-3 py-2 text-sm transition",
-                    active
-                      ? "border-brand-600 bg-brand-50 font-semibold text-brand-800"
-                      : "border-zinc-200/80 bg-white text-zinc-800 hover:border-zinc-300",
-                    d.archived && "opacity-60",
-                  )}
-                  data-fn-item={d.key}
-                >
-                  <span className="block leading-tight">{label(d.key)}</span>
-                  <span className="mt-0.5 block text-[11px] font-normal text-zinc-500">
-                    {d.archived
-                      ? t("fn.archived")
-                      : d.builtin
-                        ? t("fn.builtin")
-                        : t("fn.custom")}{" "}
-                    · {membersText(members(d.key))}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-        <form
-          action={createFunctionAction}
-          className="mt-3 space-y-2 rounded-lg border border-dashed border-zinc-300 p-2"
-          data-fn-new
-        >
-          <Field label={t("fn.new")}>
-            <Input
-              name="name"
-              required
-              minLength={2}
-              maxLength={60}
-              placeholder={t("fn.new.name")}
-              dense
-            />
-          </Field>
-          <SubmitButton variant="secondary" className="w-full text-xs">
-            {t("fn.new.submit")}
-          </SubmitButton>
-        </form>
-      </aside>
-
-      <section className="min-w-0 lg:col-span-10" data-fn-detail={current?.key}>
+      <div className="lg:col-span-3">
+        <FunctionList
+          items={ordered.map((d) => ({
+            key: d.key,
+            label: label(d.key),
+            meta: `${kindOf(d)} · ${membersText(members(d.key))}`,
+            href: `/app/team?tab=functions&fn=${encodeURIComponent(d.key)}`,
+            active: current?.key === d.key,
+            archived: d.archived,
+          }))}
+          texts={{
+            title: t("fn.list"),
+            search: t("fn.searchFunction"),
+            none: t("perm.empty"),
+            add: t("fn.new"),
+            name: t("fn.new.name"),
+            create: t("fn.new.submit"),
+            cancel: t("common.cancel"),
+          }}
+        />
+      </div>
+      <div className="min-w-0 lg:col-span-9">
         {!current ? (
           <Card>
             <p className="text-sm text-zinc-500">{t("fn.choose")}</p>
           </Card>
         ) : (
-          <Card
-            title={
-              <span className="flex flex-wrap items-center gap-2">
-                {label(current.key)}
-                <Badge tone={current.archived ? "warning" : "neutral"}>
-                  {current.archived
-                    ? t("fn.archived")
-                    : current.builtin
-                      ? t("fn.builtin")
-                      : t("fn.custom")}
-                </Badge>
-              </span>
-            }
-          >
-            {current.builtin &&
-            functionDescription(current.key, (k) => t(k as DictionaryKey)) ? (
-              <p className="mb-3 text-sm text-zinc-600">
-                {functionDescription(current.key, (k) => t(k as DictionaryKey))}
-              </p>
-            ) : null}
-            <p className="mb-4 text-xs text-zinc-500">{t("fn.adminNote")}</p>
-
-            <div className="mb-4 flex flex-wrap items-end gap-3">
-              <form
-                action={renameFunctionAction}
-                className="flex flex-wrap items-end gap-2"
-                data-fn-rename
-              >
-                <input type="hidden" name="key" value={current.key} />
-                <Field
-                  label={t("fn.rename")}
-                  hint={current.builtin ? t("fn.rename.hint") : undefined}
-                >
-                  <Input
-                    name="name"
-                    defaultValue={current.name ?? ""}
-                    placeholder={label(current.key)}
-                    maxLength={60}
-                    dense
-                  />
-                </Field>
-                <SubmitButton variant="secondary" className="text-xs">
-                  {t("fn.save")}
-                </SubmitButton>
-              </form>
-              {current.builtin ? (
-                <form action={resetFunctionAction} data-fn-reset>
-                  <input type="hidden" name="key" value={current.key} />
-                  <SubmitButton
-                    variant="secondary"
-                    className="text-xs"
-                    confirmText={t("fn.reset.hint")}
-                  >
-                    {t("fn.reset")}
-                  </SubmitButton>
-                </form>
-              ) : (
-                <form action={archiveFunctionAction} data-fn-archive>
-                  <input type="hidden" name="key" value={current.key} />
-                  <input
-                    type="hidden"
-                    name="archived"
-                    value={current.archived ? "0" : "1"}
-                  />
-                  <SubmitButton
-                    variant="secondary"
-                    className="text-xs"
-                    confirmText={
-                      current.archived ? undefined : t("fn.archive.hint")
-                    }
-                  >
-                    {current.archived ? t("fn.restore") : t("fn.archive")}
-                  </SubmitButton>
-                </form>
-              )}
-            </div>
-
-            <nav className="mb-4 flex gap-1 border-b border-zinc-200">
-              {(["screens", "actions"] as const).map((v) => (
-                <Link
-                  key={v}
-                  href={href(current.key, v)}
-                  aria-current={view === v ? "page" : undefined}
-                  className={cx(
-                    "border-b-2 px-3 py-1.5 text-sm font-semibold",
-                    view === v
-                      ? "border-brand-600 text-brand-700"
-                      : "border-transparent text-zinc-500 hover:text-zinc-800",
-                  )}
-                  data-fn-view={v}
-                >
-                  {v === "screens"
-                    ? t("fn.view.screens")
-                    : t("fn.view.actions")}
-                </Link>
-              ))}
-            </nav>
-
-            {view === "screens" ? (
-              <ScreensForm t={t} def={current} />
-            ) : (
-              <ActionsForm t={t} def={current} />
-            )}
-          </Card>
+          <FunctionPermissions
+            key={current.key}
+            fn={{
+              key: current.key,
+              label: label(current.key),
+              builtin: current.builtin,
+              archived: current.archived,
+              customName: current.builtin ? current.name : null,
+              description: current.builtin
+                ? functionDescription(current.key, (k) => t(k as DictionaryKey))
+                : null,
+              members:
+                members(current.key) === 1
+                  ? t("fn.membersIn.one")
+                  : t("fn.membersIn.many", { n: members(current.key) }),
+              kind: kindOf(current),
+            }}
+            screenGroups={groups.screens}
+            actionGroups={groups.actions}
+            initialScreens={functionScreenMarks(current)}
+            initialActions={current.actions.filter((a) => !isRetiredAction(a))}
+            initialView={view}
+            texts={{
+              screensTab: t("fn.view.screens"),
+              actionsTab: t("fn.view.actions"),
+              search: t("perm.search"),
+              empty: t("perm.empty"),
+              count: t("perm.count"),
+              save: t("fn.savePermissions"),
+              saving: t("access.saving"),
+              saved: t("fn.permissionsSaved"),
+              dirty: t("access.dirty"),
+              menu: t("fn.menu"),
+              rename: t("fn.menu.rename"),
+              renameLabel: t("fn.new.name"),
+              renameHint: t("fn.rename.hint"),
+              renameSave: t("fn.menu.renameSave"),
+              cancel: t("common.cancel"),
+              restoreName: t("fn.menu.restoreName"),
+              restoreNameNone: t("fn.menu.restoreNameNone"),
+              reset: t("fn.menu.reset"),
+              resetConfirm: t("fn.reset.hint"),
+              archive: t("fn.archive"),
+              archiveConfirm: t("fn.archive.hint"),
+              unarchive: t("fn.restore"),
+              discard: t("access.discard"),
+              screensHint: t("fn.screens.hint"),
+              actionsHint: t("fn.actions.hint"),
+              adminNote: t("fn.adminNote"),
+              intl: t.intl,
+            }}
+          />
         )}
-      </section>
+      </div>
     </div>
-  );
-}
-
-function CheckRow({
-  name,
-  value,
-  checked,
-  disabled,
-  title,
-  note,
-}: {
-  name: string;
-  value: string;
-  checked: boolean;
-  disabled?: boolean;
-  title: ReactNode;
-  note?: ReactNode;
-}) {
-  return (
-    <label
-      className={cx(
-        "flex items-start gap-2 rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-sm text-zinc-800",
-        disabled && "bg-zinc-50 text-zinc-500",
-      )}
-    >
-      <input
-        type="checkbox"
-        name={disabled ? undefined : name}
-        value={value}
-        defaultChecked={checked}
-        disabled={disabled}
-        className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
-      />
-      <span className="min-w-0">
-        <span className="block font-medium leading-tight">{title}</span>
-        {note ? (
-          <span className="mt-0.5 block text-xs text-zinc-500">{note}</span>
-        ) : null}
-      </span>
-    </label>
-  );
-}
-
-function ScreensForm({ t, def }: { t: Translate; def: FunctionDef }) {
-  return (
-    <form
-      action={saveFunctionScreensAction}
-      className="space-y-4"
-      data-fn-screens={def.key}
-    >
-      <input type="hidden" name="key" value={def.key} />
-      <p className="text-xs text-zinc-500">{t("fn.screens.hint")}</p>
-      {SCREEN_GROUPS.map((group) => (
-        <fieldset key={group.key}>
-          <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-600">
-            {t(group.key)}
-          </legend>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {group.screens.map((s) => {
-              // Telas do Início: configuráveis por função (marcadas por
-              // padrão; desmarcadas ficam em baseOff).
-              const base = WELLMIX_BASE.includes(s);
-              return (
-                <CheckRow
-                  key={s}
-                  name="screens"
-                  value={s}
-                  checked={
-                    base ? !def.baseOff.includes(s) : def.screens.includes(s)
-                  }
-                  title={t(SCREEN_LABEL[s])}
-                  note={
-                    base
-                      ? t("fn.screens.baseDefault")
-                      : ADMIN_ONLY.includes(s)
-                        ? t("fn.screens.adminOnly")
-                        : undefined
-                  }
-                />
-              );
-            })}
-          </div>
-        </fieldset>
-      ))}
-      <SubmitButton data-fn-save-screens>{t("fn.save")}</SubmitButton>
-    </form>
-  );
-}
-
-function ActionsForm({ t, def }: { t: Translate; def: FunctionDef }) {
-  return (
-    <form
-      action={saveFunctionActionsAction}
-      className="space-y-4"
-      data-fn-actions={def.key}
-    >
-      <input type="hidden" name="key" value={def.key} />
-      <p className="text-xs text-zinc-500">{t("fn.actions.hint")}</p>
-      {ACTION_GROUPS.map((group) => (
-        <fieldset key={group.key}>
-          <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-600">
-            {t(`action.group.${group.key}` as DictionaryKey)}
-          </legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {group.actions.map((a) => (
-              <CheckRow
-                key={a}
-                name="actions"
-                value={a}
-                checked={(def.actions as string[]).includes(a)}
-                title={t(`action.${a}` as DictionaryKey)}
-                note={t(`action.desc.${a}` as DictionaryKey)}
-              />
-            ))}
-          </div>
-        </fieldset>
-      ))}
-      <SubmitButton data-fn-save-actions>{t("fn.save")}</SubmitButton>
-    </form>
   );
 }
 

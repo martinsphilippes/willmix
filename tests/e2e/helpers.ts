@@ -168,6 +168,15 @@ export async function importAndClose(
     data.getByText("Fornecedor", { exact: true }).first(),
   ).toBeVisible();
   await expect(data).not.toContainText(/Responsável pelo book/);
+  // Primeira linha da caixa (dono, 13/11/2026): o Fornecedor (dono do book) à
+  // esquerda e a Fábrica à direita, lado a lado.
+  const labels = data.locator("dt");
+  await expect(labels.nth(0)).toHaveText("Fornecedor");
+  await expect(labels.nth(1)).toHaveText("Fábrica");
+  const ownerLabel = (await labels.nth(0).boundingBox())!;
+  const factoryLabel = (await labels.nth(1).boundingBox())!;
+  expect(ownerLabel.x).toBeLessThan(factoryLabel.x);
+  expect(Math.abs(ownerLabel.y - factoryLabel.y)).toBeLessThan(2);
   // Fornecedor do cadastro (tem login): nenhum aviso de "sem acesso".
   await expect(page.locator("[data-supplier-no-login]")).toHaveCount(0);
   const combo = page.locator(
