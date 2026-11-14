@@ -399,6 +399,41 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
       board.locator(`[data-die-cut-item="${item}"]`),
     ).toHaveAttribute("data-done", "yes");
   }
+  // "+" (dono, 14/11/2026): mais uma foto em cada seção, como anexo próprio;
+  // as duas continuam ao recarregar, a faca (PDF) inclusive. Excluir uma
+  // tira só ela.
+  for (const item of ["dieline", "hd"] as const) {
+    const section = board.locator(`[data-die-cut-item="${item}"]`);
+    const add = section.locator(`[data-die-cut-add="${item}"]`);
+    // Nome acessível do "+" (o fornecedor de teste usa o portal em chinês).
+    await expect(add.locator("input[type=file]")).toHaveAttribute(
+      "aria-label",
+      /^(Adicionar foto|Add photo|添加照片)$/,
+    );
+    await add.locator("input[type=file]").setInputFiles(png);
+    await page.waitForURL(/saved=photo/);
+    await expect(section.locator("[data-die-cut-file]")).toHaveCount(2);
+    await expect(section).toHaveAttribute("data-done", "yes");
+  }
+  await page.reload();
+  await expect(
+    board.locator('[data-die-cut-item="dieline"] [data-die-cut-file]'),
+  ).toHaveCount(2);
+  await expect(
+    board.locator('[data-die-cut-item="dieline"] [data-die-cut-file]').first(),
+  ).toContainText(".pdf");
+  await expect(
+    board.locator('[data-die-cut-item="hd"] [data-die-cut-file] img'),
+  ).toHaveCount(2);
+  // Exclui só a segunda foto em alta.
+  const hdFiles = board.locator('[data-die-cut-item="hd"] [data-die-cut-file]');
+  page.once("dialog", (d) => d.accept());
+  await hdFiles.nth(1).locator("button").click();
+  await expect(hdFiles).toHaveCount(1);
+  await expect(board.locator('[data-die-cut-item="hd"]')).toHaveAttribute(
+    "data-done",
+    "yes",
+  );
   // O pedido mínimo e o prazo vêm com o negociado; ele corrige o prazo.
   const termsItem = board.locator('[data-die-cut-item="terms"]');
   const terms = termsItem.locator("[data-die-cut-terms]");
