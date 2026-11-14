@@ -13,6 +13,7 @@ Portal Operacional de Importações. Next.js 16 na Vercel; Supabase em produçã
 - `docs/DELIVERY.md`: Entrega (canal cinza ou vermelho pausa o pedido até o admin retomar, transportadora padrão pelo porto de chegada, NF do financeiro no passo DANFE).
 - `docs/FLOW_MENU.md`: menu lateral pelos blocos do mapa (Produto novo, Pedido, Produção, Entrega, Vendas, Financeiro, Painéis, Cadastros), contadores por passo, Overview com linha do tempo e telas dos passos.
 - `docs/DESKS.md`: mesas de trabalho por papel (GP, cadastro, marketing, agência, certificadora) em Pendências.
+- `docs/PURCHASE_HISTORY.md`: histórico de compras do cliente na Nova solicitação (origem de cada campo, "Ficha atual", programação pai/filhos, permissões e o que falta nos dados).
 - `docs/RESUMOS.md`: indicadores prontos (`kpi_snapshots`) e resumo por pedido (`order_summaries`), atualizados por evento e reconstruídos toda noite; mudar o formato = subir `SUMMARY_VERSION`/`KPI_VERSION`. Regra: KPIs e indicadores leem tabelas agregadas no nível do indicador, nunca tabelas por pedido ou produto.
 - `docs/PWA.md`: aplicativo instalável (manifesto, service worker, tela sem conexão) e responsividade.
 - `docs/INTEGRATIONS.md`: adaptadores mock/manual e dependências externas pendentes; `docs/SANKHYA.md` para o ERP.

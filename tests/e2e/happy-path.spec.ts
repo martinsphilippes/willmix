@@ -373,6 +373,46 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page.locator(`[data-purchase-candidate="${requestId}"]`),
   ).toHaveCount(0);
 
+  // Histórico de compras do cliente na Nova solicitação (dono, 14/11/2026;
+  // docs/PURCHASE_HISTORY.md): o pedido de compra entra no histórico do
+  // cliente dele (a Wellmix SC), o mais recente primeiro, com o produto e a
+  // quantidade no detalhe; sem venda gravada, o valor fica "—".
+  await page.goto("/app/requests/new");
+  const purchaseHistory = page.locator("[data-purchase-history]");
+  await expect(purchaseHistory).toHaveAttribute(
+    "data-purchase-history-state",
+    "select",
+  );
+  const historyCustomer = page.locator(
+    '[data-request-customer] [data-party-picker="customer"]',
+  );
+  await historyCustomer.locator("[data-party-picker-input]").fill("wellmix sc");
+  await historyCustomer
+    .locator('[data-party-picker-option="wellmix-sc"]')
+    .click();
+  const historyRow = purchaseHistory.locator(
+    `[data-purchase-history-order="${orderNumber}"]`,
+  );
+  await expect(historyRow).toBeVisible();
+  await expect(
+    purchaseHistory.locator("[data-purchase-history-order]").first(),
+  ).toHaveAttribute("data-purchase-history-order", orderNumber!);
+  await historyRow.getByRole("button").first().click();
+  const historyItem = historyRow
+    .locator("[data-purchase-history-item]")
+    .first();
+  await expect(historyItem).toBeVisible();
+  await expect(
+    historyItem.locator('[data-purchase-history-field="quantity"]'),
+  ).toContainText(/\d/);
+  await expect(
+    historyItem.locator('[data-purchase-history-field="unitSale"]'),
+  ).toContainText("—");
+  // O pedido abre em outra aba (a solicitação em andamento fica).
+  const historyOpen = historyRow.locator("[data-purchase-history-open]");
+  await expect(historyOpen).toHaveAttribute("href", orderPath);
+  await expect(historyOpen).toHaveAttribute("target", "_blank");
+
   // 5b. Cadastro e fiscal (mapa, P9/P14): o contrato espera o NCM validado e
   // a ficha mestre completa. O sistema confere; o atalho leva à tela dona.
   // A mesa do cadastro mostra o NCM e a ficha a fazer (docs/DESKS.md).
@@ -1352,9 +1392,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   const deliveredId = new URL(orderUrl, "http://x").pathname.split("/").pop()!;
   await expect(page.locator("[data-flow-receiving]")).toHaveCount(0);
   await Promise.all([
-    page.waitForURL(
-      new RegExp(`/app/flow/delivery/storage/${deliveredId}$`),
-    ),
+    page.waitForURL(new RegExp(`/app/flow/delivery/storage/${deliveredId}$`)),
     page
       .locator(`[data-flow-case-order="${deliveredId}"] [data-flow-case-open]`)
       .first()
