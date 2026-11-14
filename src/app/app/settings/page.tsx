@@ -11,6 +11,8 @@ import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
 import { getStore } from "@/lib/db";
 import { getFxRates } from "@/lib/services/fx";
 import { PricingSettings } from "@/components/pricing-settings";
+import { listByIds } from "@/lib/db/lookup";
+import { SERVER_TABLE_FROM } from "@/lib/server-table";
 import { FiscalTableCard, TaxRateFields } from "@/components/fiscal-settings";
 import { SettingsTabs } from "./_tabs";
 import { fiscalStatus } from "@/lib/services/fiscal";
@@ -100,16 +102,28 @@ export default async function SettingsPage({
     demoFailed,
   } = await searchParams;
   const t = await getT();
-  const [s, lineRows, customerRows, fx, fiscalInfo] = await Promise.all([
+  const store = getStore();
+  const [s, lineRows, customerCount, fx, fiscalInfo] = await Promise.all([
     getSettings(),
-    getStore().list("product_lines", { orderBy: "name" }),
-    getStore().list("parties", {
-      filter: { type: "customer" },
-      orderBy: "name",
-    }),
+    store.list("product_lines", { orderBy: "name" }),
+    store.count
+      ? store.count("parties", { type: "customer" })
+      : Promise.resolve(0),
     getFxRates(),
     fiscalStatus(),
   ]);
+  // Margem por cliente (auditoria de performance, 14/11/2026): com o cadastro
+  // grande, só os clientes que têm margem própria (a busca inclui outro); a
+  // lista com um campo por cliente fazia a tela sair com 62 MB (26 mil).
+  const fewCustomers = customerCount > SERVER_TABLE_FROM;
+  const customerRows = fewCustomers
+    ? (await listByIds(store, "parties", Object.keys(s.marginByCustomer)))
+        .filter((p) => p.type === "customer")
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+    : await store.list("parties", {
+        filter: { type: "customer" },
+        orderBy: "name",
+      });
   // "?fiscal=tec-10412-3": planilha carregada (tabela, NCMs, alíquotas alteradas).
   const fiscalMatch =
     typeof fiscal === "string" ? /^(tec|tipi)-(\d+)-(\d+)$/.exec(fiscal) : null;
@@ -866,6 +880,7 @@ export default async function SettingsPage({
                 s={s}
                 lines={lines}
                 customers={customers}
+                fewCustomers={fewCustomers}
                 fx={fx}
               />
               {/* Tributos: PIS, COFINS, ICMS, seguro e links da tabela fiscal. */}

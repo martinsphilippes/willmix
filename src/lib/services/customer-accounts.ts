@@ -188,6 +188,27 @@ interface Loaded {
   requestPayments: Payment[];
   /** Fornecedor: solicitações ao fornecedor em andamento (abertas ou respondidas). */
   openQuotes: Map<string, number>;
+  /**
+   * Por empresa, na ordem das listas acima (auditoria de performance,
+   * 14/11/2026): a conta de cada uma filtrava as listas inteiras, 26 mil
+   * clientes × 16 mil pedidos (31,9 s medidos com o volume de produção).
+   */
+  financeByOwner: Map<string, OrderFinance[]>;
+  requestsByCustomer: Map<string, Request[]>;
+  requestPaymentsByCustomer: Map<string, Payment[]>;
+}
+
+/** Agrupa mantendo a ordem da lista (as somas saem na mesma ordem de antes). */
+function groupInOrder<T>(rows: readonly T[], keyOf: (row: T) => string | null) {
+  const map = new Map<string, T[]>();
+  for (const row of rows) {
+    const key = keyOf(row);
+    if (key === null) continue;
+    const list = map.get(key);
+    if (list) list.push(row);
+    else map.set(key, [row]);
+  }
+  return map;
 }
 
 async function load(side: AccountSide): Promise<Loaded> {
@@ -214,13 +235,20 @@ async function load(side: AccountSide): Promise<Loaded> {
   const openQuotes = new Map<string, number>();
   for (const q of quotes)
     openQuotes.set(q.supplierId, (openQuotes.get(q.supplierId) ?? 0) + 1);
+  const requestPayments = payments.filter((p) => !p.orderId && p.requestId);
+  const customerOfRequest = new Map(requests.map((r) => [r.id, r.customerId]));
   return {
     side,
     parties,
     finance: rows,
     requests,
-    requestPayments: payments.filter((p) => !p.orderId && p.requestId),
+    requestPayments,
     openQuotes,
+    financeByOwner: groupInOrder(rows, (f) => ownerOf(f, side)),
+    requestsByCustomer: groupInOrder(requests, (r) => r.customerId),
+    requestPaymentsByCustomer: groupInOrder(requestPayments, (p) =>
+      p.requestId ? (customerOfRequest.get(p.requestId) ?? null) : null,
+    ),
   };
 }
 
@@ -228,10 +256,9 @@ const ownerOf = (f: OrderFinance, side: AccountSide) =>
   side === "supplier" ? f.order.supplierId : f.order.customerId;
 
 function accountOf(party: Party, data: Loaded): CustomerAccount {
-  const mine = data.finance.filter((f) => ownerOf(f, data.side) === party.id);
+  const mine = data.financeByOwner.get(party.id) ?? [];
   const rows = mine.map((f) => orderRow(f, data.side));
-  const myRequests = data.requests.filter((r) => r.customerId === party.id);
-  const requestIds = new Set(myRequests.map((r) => r.id));
+  const myRequests = data.requestsByCustomer.get(party.id) ?? [];
   return {
     party,
     orders: rows.length,
@@ -245,9 +272,7 @@ function accountOf(party: Party, data: Loaded): CustomerAccount {
       null,
     totals: accountTotals(
       rows,
-      data.requestPayments.filter(
-        (p) => p.requestId && requestIds.has(p.requestId),
-      ),
+      data.requestPaymentsByCustomer.get(party.id) ?? [],
     ),
   };
 }

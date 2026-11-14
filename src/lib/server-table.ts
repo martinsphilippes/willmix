@@ -97,6 +97,11 @@ export function serverTable<T>(
     size?: number;
     /** Vírgula decimal (pt); en e zh usam ponto. */
     decimalComma?: boolean;
+    /**
+     * Linha que precisa aparecer (ex.: a volta de uma ação nela): a página
+     * dela, no lugar da pedida, como o "mostrar a linha" da TableTools.
+     */
+    reveal?: (row: T) => boolean;
   },
 ): ServerTablePage<T> {
   const size = state.size ?? SERVER_PAGE_SIZE;
@@ -122,8 +127,9 @@ export function serverTable<T>(
         original.get(a)! - original.get(b)!,
     );
   }
+  const wanted = state.reveal ? matched.findIndex(state.reveal) : -1;
   const { pages, current, from, to } = pageRange(
-    state.page ?? 0,
+    wanted >= 0 ? Math.floor(wanted / size) : (state.page ?? 0),
     size,
     matched.length,
   );

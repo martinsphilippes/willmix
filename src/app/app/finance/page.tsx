@@ -30,6 +30,14 @@ import {
   rowClass,
 } from "@/components/ui";
 import { ChatOpenButton } from "@/components/chat-open-button";
+import { ServerPager, SortTh } from "@/components/server-table";
+import {
+  SERVER_TABLE_FROM,
+  parseServerPage,
+  parseServerSort,
+  serverTable,
+  type ServerColumn,
+} from "@/lib/server-table";
 
 /** Valor no card: um pouco menor que o padrão do Stat, para caber seis cards numa linha. */
 function Money({ children }: { children: ReactNode }) {
@@ -51,7 +59,8 @@ export default async function FinancePage({
   const t = await getT();
   const { rows, summary } = await loadFinance();
   // Volta do "Informar câmbio" da linha: ?row=<pedido>&fx=saved ou &error=<código>.
-  const { row, fx: fxSaved, error } = await searchParams;
+  const sp = await searchParams;
+  const { row, fx: fxSaved, error } = sp;
   const rowId = typeof row === "string" ? row : null;
   const errorText =
     typeof error === "string" && error
@@ -63,6 +72,90 @@ export default async function FinancePage({
   const rowShown = rows.some(
     (r) => r.order.id === rowId && r.order.status !== "CANCELLED",
   );
+  // Lista longa: ordem e página no servidor (auditoria de performance,
+  // 14/11/2026: 129 MB de HTML com o histórico do Sankhya). Curta: como antes.
+  // A linha que volta do "Informar câmbio" (?row=) abre na página dela.
+  type Row = (typeof rows)[number];
+  const live = (r: Row) => r.order.status !== "CANCELLED";
+  const financeColumns: ServerColumn<Row>[] = [
+    {
+      key: "number",
+      text: (r) =>
+        `#${r.order.number} ${live(r) ? t(`stage.${r.order.status}` as DictionaryKey) : t("stage.CANCELLED")}`,
+    },
+    { key: "customer", text: (r) => r.customerName },
+    { key: "product", text: (r) => realName(r.productName) ?? "—" },
+    { key: "sell", text: (r) => formatMoney(r.sell, r.sellCurrency, t) },
+    {
+      key: "received",
+      text: (r) => formatMoney(r.received, r.sellCurrency, t),
+    },
+    {
+      key: "receivable",
+      text: (r) => formatMoney(r.receivable, r.sellCurrency, t),
+    },
+    { key: "fob", text: (r) => formatMoney(r.fob, r.fobCurrency, t) },
+    { key: "paid", text: (r) => formatMoney(r.paid, r.fobCurrency, t) },
+    { key: "payable", text: (r) => formatMoney(r.payable, r.fobCurrency, t) },
+    {
+      key: "fx",
+      text: (r) => (live(r) ? (fxRateLines(t, r)?.main ?? "—") : "—"),
+    },
+    {
+      key: "cost",
+      text: (r) =>
+        !live(r)
+          ? "—"
+          : r.cost !== null
+            ? approx(formatMoney(r.cost, r.sellCurrency, t), r.estimated)
+            : t("finance.fxMissing"),
+    },
+    {
+      key: "margin",
+      text: (r) =>
+        r.margin !== null && live(r)
+          ? approx(formatMoney(r.margin, r.sellCurrency, t), r.estimated)
+          : "—",
+    },
+  ];
+  const serverMode = rows.length > SERVER_TABLE_FROM;
+  const one = (v: string | string[] | undefined) =>
+    typeof v === "string" ? v : undefined;
+  const sort = serverMode
+    ? parseServerSort(one(sp.sort), financeColumns)
+    : null;
+  const paged = serverTable(rows, financeColumns, {
+    sort,
+    page: parseServerPage(one(sp.page)),
+    size: serverMode ? undefined : Math.max(rows.length, 1),
+    decimalComma: t.locale === "pt",
+    reveal: rowId ? (r) => r.order.id === rowId : undefined,
+  });
+  const listHref = (patch: { sort?: string | null; page?: number }) => {
+    const params = new URLSearchParams();
+    const sortValue =
+      patch.sort !== undefined
+        ? patch.sort
+        : sort
+          ? `${sort.desc ? "-" : ""}${sort.key}`
+          : null;
+    if (sortValue) params.set("sort", sortValue);
+    if (patch.page) params.set("page", String(patch.page + 1));
+    const query = params.toString();
+    return query ? `/app/finance?${query}` : "/app/finance";
+  };
+  const header = (label: string, column: string) =>
+    serverMode ? (
+      <SortTh
+        label={label}
+        column={column}
+        sort={sort}
+        href={(value) => listHref({ sort: value })}
+        t={t}
+      />
+    ) : (
+      <Th>{label}</Th>
+    );
   const fmtBy = (map: Record<string, number>) =>
     Object.entries(map)
       .filter(([, v]) => v > 0.005)
@@ -180,26 +273,26 @@ export default async function FinancePage({
         {rows.length === 0 ? (
           <Empty>{t("common.none")}</Empty>
         ) : (
-          <Table>
+          <Table tools={!serverMode}>
             <thead>
               <tr>
-                <Th>#</Th>
-                <Th>{t("common.customer")}</Th>
-                <Th>{t("common.product")}</Th>
-                <Th>{t("finance.sale")}</Th>
-                <Th>{t("finance.received")}</Th>
-                <Th>{t("finance.receivable")}</Th>
-                <Th>{t("orders.fob")}</Th>
-                <Th>{t("finance.paid")}</Th>
-                <Th>{t("finance.payable")}</Th>
-                <Th>{t("finance.fx")}</Th>
-                <Th>{t("finance.cost")}</Th>
-                <Th>{t("finance.margin")}</Th>
+                {header("#", "number")}
+                {header(t("common.customer"), "customer")}
+                {header(t("common.product"), "product")}
+                {header(t("finance.sale"), "sell")}
+                {header(t("finance.received"), "received")}
+                {header(t("finance.receivable"), "receivable")}
+                {header(t("orders.fob"), "fob")}
+                {header(t("finance.paid"), "paid")}
+                {header(t("finance.payable"), "payable")}
+                {header(t("finance.fx"), "fx")}
+                {header(t("finance.cost"), "cost")}
+                {header(t("finance.margin"), "margin")}
                 <Th />
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {paged.rows.map((r) => (
                 <tr
                   key={r.order.id}
                   // Âncora da volta do "Informar câmbio" (#fx-<pedido>).
@@ -395,6 +488,9 @@ export default async function FinancePage({
             </tbody>
           </Table>
         )}
+        {serverMode ? (
+          <ServerPager page={paged} href={(page) => listHref({ page })} t={t} />
+        ) : null}
         {/* Legenda do "~" sempre que alguma linha mostra estimativa (inclusive
             pedidos vendidos em outra moeda, fora do total). */}
         {rows.some((r) => r.estimated && r.order.status !== "CANCELLED") ? (

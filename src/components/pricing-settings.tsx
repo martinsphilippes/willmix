@@ -5,6 +5,8 @@ import { CurrencySelect } from "@/components/currency-select";
 import { Badge, Field, Input } from "@/components/ui";
 import { FxManualFields } from "@/components/fx-manual-field";
 import { MoneyInput } from "./money-input";
+import { MarginCustomers } from "./margin-customers";
+import { partyPickerLabels } from "./party-picker-labels";
 
 /*
  * Configurações do preço ao cliente (dentro do formulário de Configurações):
@@ -17,12 +19,19 @@ export function PricingSettings({
   s,
   lines,
   customers,
+  fewCustomers = false,
   fx,
 }: {
   t: Translate;
   s: Settings;
   lines: Array<{ id: string; name: string }>;
+  /** Todos os clientes; com `fewCustomers`, só os que têm margem própria. */
   customers: Array<{ id: string; name: string }>;
+  /**
+   * Cadastro grande (auditoria de performance, 14/11/2026): só os clientes
+   * com margem própria, e a busca inclui outro (MarginCustomers).
+   */
+  fewCustomers?: boolean;
   fx: FxView;
 }) {
   const fxTone =
@@ -134,14 +143,34 @@ export function PricingSettings({
         values={s.marginByLine}
         placeholder={`${s.marginPercent}%`}
       />
-      <MarginTable
-        title={t("pricing.settings.byCustomer")}
-        hint={t("pricing.settings.byCustomerHint")}
-        field="marginByCustomer"
-        rows={customers}
-        values={s.marginByCustomer}
-        placeholder={t("pricing.settings.inherit")}
-      />
+      {fewCustomers ? (
+        <details className="rounded-xl border border-zinc-200 p-3" open>
+          <summary className="cursor-pointer text-sm font-medium text-zinc-900">
+            {t("pricing.settings.byCustomer")}
+          </summary>
+          <p className="mt-1 text-xs text-zinc-500">
+            {t("pricing.settings.byCustomerHint")}{" "}
+            {t("pricing.settings.byCustomerFew")}
+          </p>
+          <input type="hidden" name="marginByCustomer.__form" value="1" />
+          <MarginCustomers
+            rows={customers}
+            values={s.marginByCustomer}
+            placeholder={t("pricing.settings.inherit")}
+            addLabel={t("pricing.settings.addCustomer")}
+            pickerLabels={partyPickerLabels(t)}
+          />
+        </details>
+      ) : (
+        <MarginTable
+          title={t("pricing.settings.byCustomer")}
+          hint={t("pricing.settings.byCustomerHint")}
+          field="marginByCustomer"
+          rows={customers}
+          values={s.marginByCustomer}
+          placeholder={t("pricing.settings.inherit")}
+        />
+      )}
     </div>
   );
 }
