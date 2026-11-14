@@ -3,6 +3,16 @@
  * telas dos passos; docs/FLOW_MENU.md): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "flow.receiving.title": "Recebimento do pedido #{n}",
+  "flow.receiving.storage":
+    "Descarga no CD: lacre, fotos, checklist e contagem por SKU",
+  "flow.receiving.return":
+    "RIC, devolução do container e fechamento do recebimento",
+  "flow.work.receiving": "Recebimento no CD",
+  "flow.work.openContract": "Abrir o documento do pedido",
+  "flow.work.openSamples": "Abrir o pedido de amostras",
+  "flow.work.openDieCut": "Abrir o quadro Die Cut",
+  "flow.work.openSheet": "Abrir a ficha de compra",
   "flow.work.saved": "Salvo.",
   "flow.work.title": "Resolver aqui",
   "flow.work.order": "Pedido #{n}",
@@ -115,10 +125,10 @@ export const pt = {
     "Entrega no CD da Wellmix ou do comprador e confirmação do recebimento (E9, E18).",
   "flow.step.delivery.return": "Retorno",
   "flow.help.delivery.return":
-    "RIC da transportadora, qualidade e divergência no produto (E19, E20). Ainda sem pendências no sistema.",
+    "RIC da transportadora, devolução do container e fechamento do recebimento (E19, E20).",
   "flow.step.delivery.storage": "Armazenagem",
   "flow.help.delivery.storage":
-    "Lote e armazenamento (E21, E22). Ainda sem pendências no sistema.",
+    "Descarga no CD, lacre, fotos, checklist e contagem por SKU, antes do lote e do armazenamento (E21, E22).",
   "flow.step.sales.stock": "Estoque",
   "flow.help.sales.stock": "Estoque em produção, em trânsito e no Brasil.",
   "flow.step.sales.samples": "Amostras",
@@ -139,6 +149,16 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "flow.receiving.title": "Receiving for order #{n}",
+  "flow.receiving.storage":
+    "Unloading at the DC: seal, photos, checklist and count per SKU",
+  "flow.receiving.return":
+    "Container receipt, container return and closing the receiving",
+  "flow.work.receiving": "Receiving at the DC",
+  "flow.work.openContract": "Open the order document",
+  "flow.work.openSamples": "Open the sample order",
+  "flow.work.openDieCut": "Open the Die Cut board",
+  "flow.work.openSheet": "Open the purchase sheet",
   "flow.work.saved": "Saved.",
   "flow.work.title": "Resolve here",
   "flow.work.order": "Order #{n}",
@@ -251,10 +271,10 @@ export const en: Record<keyof typeof pt, string> = {
     "Delivery to the Wellmix or buyer DC and receipt confirmation (E9, E18).",
   "flow.step.delivery.return": "Return",
   "flow.help.delivery.return":
-    "Carrier container receipt, quality and product discrepancies (E19, E20). No tasks in the system yet.",
+    "Carrier container receipt, container return and closing the receiving (E19, E20).",
   "flow.step.delivery.storage": "Storage",
   "flow.help.delivery.storage":
-    "Lot and storage (E21, E22). No tasks in the system yet.",
+    "Unloading at the DC, seal, photos, checklist and count per SKU, before lot and storage (E21, E22).",
   "flow.step.sales.stock": "Inventory",
   "flow.help.sales.stock": "Inventory in production, in transit and in Brazil.",
   "flow.step.sales.samples": "Samples",
@@ -275,6 +295,14 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "flow.receiving.title": "订单 #{n} 收货",
+  "flow.receiving.storage": "配送中心卸货：铅封、照片、检查表和按 SKU 清点",
+  "flow.receiving.return": "设备交接单、还柜和收货结单",
+  "flow.work.receiving": "配送中心收货",
+  "flow.work.openContract": "打开订单文件",
+  "flow.work.openSamples": "打开样品订单",
+  "flow.work.openDieCut": "打开刀模图面板",
+  "flow.work.openSheet": "打开采购表",
   "flow.work.saved": "已保存。",
   "flow.work.title": "在此处理",
   "flow.work.order": "订单 #{n}",
@@ -378,10 +406,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.help.delivery.delivery":
     "送达 Wellmix 或买家配送中心并确认收货（E9、E18）。",
   "flow.step.delivery.return": "返回",
-  "flow.help.delivery.return":
-    "承运商设备交接单、质量和产品差异（E19、E20）。系统中暂无待办。",
+  "flow.help.delivery.return": "承运商设备交接单、还柜和收货结单（E19、E20）。",
   "flow.step.delivery.storage": "仓储",
-  "flow.help.delivery.storage": "批次和仓储（E21、E22）。系统中暂无待办。",
+  "flow.help.delivery.storage":
+    "配送中心卸货、铅封、照片、检查表和按 SKU 清点，之后入批次和仓储（E21、E22）。",
   "flow.step.sales.stock": "库存",
   "flow.help.sales.stock": "生产中、在途和巴西的库存。",
   "flow.step.sales.samples": "样品",
