@@ -96,67 +96,104 @@ export function OrderSaleForm({
         ? "legacy"
         : "empty";
 
+  // Computador e iPad: uma linha por produto em quatro colunas. Celular: o
+  // produto em cima, quantidade e subtotal lado a lado e o preço na largura
+  // toda (nada fica escondido numa rolagem de lado).
+  const columns =
+    "grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-[minmax(0,1fr)_7.5rem_11rem_8.5rem] sm:items-center";
   const table = (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[32rem] text-sm">
-        <thead>
-          <tr className="border-b border-zinc-200 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            <th className="py-2 pr-3">{labels.colProduct}</th>
-            <th className="py-2 pr-3 text-right">{labels.colQty}</th>
-            <th className="w-44 py-2 pr-3 text-right">{labels.colUnit}</th>
-            <th className="py-2 text-right">{labels.colSubtotal}</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-zinc-100">
-          {lines.map((l, i) => {
-            const unit = unitOf(l.itemId);
-            const subtotal = subtotals[i];
-            return (
-              <tr key={l.itemId} data-order-sale-line={l.itemId}>
-                <td className="py-2 pr-3 font-medium text-zinc-900">
-                  {l.name}
-                </td>
-                <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">
-                  {l.quantity.toLocaleString(locale)} {l.unit}
-                </td>
-                <td className="py-2 pr-3 text-right tabular-nums">
-                  {editable ? (
-                    <>
-                      <label
-                        htmlFor={`sale-price-${l.itemId}`}
-                        className="sr-only"
-                      >
-                        {fill(labels.priceOf, { name: l.name })}
-                      </label>
-                      <MoneyInput
-                        id={`sale-price-${l.itemId}`}
-                        name={`price.${l.itemId}`}
-                        watchField="currency"
-                        defaultAmount={l.unitPrice}
-                        locale={locale}
-                        className="w-40"
-                        onValueChange={(v) =>
-                          setRaw((prev) => ({ ...prev, [l.itemId]: v }))
-                        }
-                      />
-                    </>
-                  ) : unit !== null ? (
-                    money(unit)
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td
-                  className="whitespace-nowrap py-2 text-right tabular-nums"
-                  data-order-sale-subtotal
-                >
-                  {subtotal !== null ? money(subtotal) : "—"}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="text-sm" role="table">
+      <div
+        className={cx(
+          columns,
+          "hidden border-b border-zinc-200 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:grid",
+        )}
+        role="row"
+      >
+        <span role="columnheader">{labels.colProduct}</span>
+        <span role="columnheader" className="text-right">
+          {labels.colQty}
+        </span>
+        <span role="columnheader" className="text-right">
+          {labels.colUnit}
+        </span>
+        <span role="columnheader" className="text-right">
+          {labels.colSubtotal}
+        </span>
+      </div>
+      <div className="divide-y divide-zinc-100">
+        {lines.map((l, i) => {
+          const unit = unitOf(l.itemId);
+          const subtotal = subtotals[i];
+          return (
+            <div
+              key={l.itemId}
+              className={cx(columns, "py-2.5")}
+              role="row"
+              data-order-sale-line={l.itemId}
+            >
+              <span
+                role="cell"
+                className="col-span-2 min-w-0 break-words font-medium text-zinc-900 sm:col-span-1"
+              >
+                {l.name}
+              </span>
+              <span
+                role="cell"
+                className="whitespace-nowrap tabular-nums text-zinc-700 sm:text-right"
+              >
+                <span className="mr-1 text-xs text-zinc-500 sm:hidden">
+                  {labels.colQty}:
+                </span>
+                {l.quantity.toLocaleString(locale)} {l.unit}
+              </span>
+              <span
+                role="cell"
+                className="col-span-2 row-start-3 tabular-nums sm:col-span-1 sm:row-start-auto sm:text-right"
+              >
+                {editable ? (
+                  <>
+                    <label
+                      htmlFor={`sale-price-${l.itemId}`}
+                      className="mb-0.5 block text-xs text-zinc-500 sm:sr-only"
+                    >
+                      {fill(labels.priceOf, { name: l.name })}
+                    </label>
+                    <MoneyInput
+                      id={`sale-price-${l.itemId}`}
+                      name={`price.${l.itemId}`}
+                      watchField="currency"
+                      defaultAmount={l.unitPrice}
+                      locale={locale}
+                      className="w-full sm:w-40"
+                      onValueChange={(v) =>
+                        setRaw((prev) => ({ ...prev, [l.itemId]: v }))
+                      }
+                    />
+                  </>
+                ) : (
+                  <>
+                    <span className="mr-1 text-xs text-zinc-500 sm:hidden">
+                      {labels.colUnit}:
+                    </span>
+                    {unit !== null ? money(unit) : "—"}
+                  </>
+                )}
+              </span>
+              <span
+                role="cell"
+                className="whitespace-nowrap text-right tabular-nums text-zinc-900"
+                data-order-sale-subtotal
+              >
+                <span className="mr-1 text-xs text-zinc-500 sm:hidden">
+                  {labels.colSubtotal}:
+                </span>
+                {subtotal !== null ? money(subtotal) : "—"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 
