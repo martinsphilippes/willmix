@@ -440,6 +440,8 @@ export async function submitRequirement(
   const stage = await store.get("stages", requirement.stageId);
   const order = await store.get("orders", requirement.orderId);
   if (!stage || !order) throw new WorkflowError("order_not_found");
+  // Pedido pausado (canal cinza ou vermelho): só depois de o admin retomar.
+  if (order.pausedAt) throw new WorkflowError("order_paused");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
   await assertLaneAssignee(user, order, requirement);
@@ -691,6 +693,8 @@ export async function clearRequirementDocument(
     store.get("orders", requirement.orderId),
   ]);
   if (!stage || !order) throw new WorkflowError("order_not_found");
+  // Pedido pausado (canal cinza ou vermelho): só depois de o admin retomar.
+  if (order.pausedAt) throw new WorkflowError("order_paused");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
   await assertLaneAssignee(user, order, requirement);
@@ -756,6 +760,8 @@ export async function decideRequirement(
   const stage = await store.get("stages", requirement.stageId);
   const order = await store.get("orders", requirement.orderId);
   if (!stage || !order) throw new WorkflowError("order_not_found");
+  // Pedido pausado (canal cinza ou vermelho): só depois de o admin retomar.
+  if (order.pausedAt) throw new WorkflowError("order_paused");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
   await assertLaneAssignee(user, order, requirement);

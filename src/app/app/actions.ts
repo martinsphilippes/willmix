@@ -1098,7 +1098,10 @@ export async function saveSettingsAction(form: FormData) {
       const current = DEFAULT_SETTINGS[key];
       let value: unknown = raw;
       if (typeof current === "boolean") value = raw === "on" || raw === "true";
-      else if (key === "lpcoNcmPrefixes") {
+      else if (key === "carrierItapoaName" || key === "carrierDefaultName") {
+        // Transportadora padrão pelo porto (mapa E12?): o nome do cadastro.
+        value = String(raw).trim().slice(0, 120);
+      } else if (key === "lpcoNcmPrefixes") {
         // LPCO (mapa E5): prefixos de NCM, só dígitos, pontos e separadores.
         const text = String(raw).trim();
         if (text.length > 2000 || !/^[\d.,;\s]*$/.test(text))
