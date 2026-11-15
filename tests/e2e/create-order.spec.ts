@@ -19,6 +19,12 @@ test("Criar pedido: Wellmix e cliente chegam à encomenda", async ({ page }) => 
     await expect(button).toBeVisible();
     await expect(button).toHaveAttribute("href", "/app/requests/new");
   }
+  // Aba "Todos no passo" (paginada) abre.
+  await page.goto("/app/flow/order/orders?tab=all");
+  await expect(page.locator('[data-flow-tab="all"]')).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   await page.locator("[data-create-order]").click();
   await page.waitForURL(/\/app\/requests\/new/);
 

@@ -43,6 +43,11 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
   - produção em andamento: pedido na etapa de inspeção com ETD.
 - O Overview do bloco mostra, em cada passo da linha do tempo, quantos pedidos estão nele ("N no passo"), além das pendências. Passos com tela de antes (Books, Pedidos, Revisão, Estoque) listam na própria tela.
 
+## "Todos no passo" paginado (15/11/2026)
+
+- Com o histórico do Sankhya são milhares de pedidos em alguns passos (4.974 em Pedidos), e a tela do passo estourava a memória lendo etapas e itens de todos. Agora a contagem da aba vem da contribuição de cada pedido (`order_summaries.kpi.f`) e a aba "Todos no passo" lê só os 50 pedidos da página (`?tab=all&page=N`, `flowStepEntities`): os em andamento primeiro, depois o histórico em espera, cada grupo pelo número.
+- Sem os resumos em uso, ou num passo fora de Pedido, Produção e Entrega, a lista vem das tabelas sem o histórico em espera (que não tem pendência).
+
 ## O pedido na tela do passo (14/11/2026)
 
 A visão é do passo e das necessidades operacionais dele, não do pedido inteiro (a visão do pedido, com entidades e linha do tempo, é outra frente). Abrir um pedido de dentro de um passo leva a `/app/flow/<bloco>/<passo>/<pedido>` (só a Wellmix; os parceiros seguem no detalhe do pedido):

@@ -12,10 +12,12 @@ import {
   stepLabelKey,
 } from "@/lib/flow";
 import {
-  flowAllFor,
+  FLOW_STEP_PAGE,
   flowCasesOf,
   flowPartnerAllFor,
+  flowStepEntities,
 } from "@/lib/services/flow";
+import { ServerPager } from "@/components/server-table";
 import { FlowAll } from "@/components/flow-all";
 import { isWellmix } from "@/lib/auth/permissions";
 import { partnerStepsOf, stepId } from "@/lib/flow";
@@ -69,6 +71,7 @@ export default async function FlowStepPage({
   requireScreen(user, wellmix ? step.screen : "orders");
   const {
     tab,
+    page,
     due,
     importStep,
     certStep,
@@ -97,10 +100,20 @@ export default async function FlowStepPage({
   // Aba "Todos no passo": a Wellmix vê todos; o parceiro, os pedidos dele,
   // só com o que é dele.
   const showAll = tab === "all";
-  const entities =
-    (await (wellmix ? flowAllFor(user) : flowPartnerAllFor(user))).get(
-      stepId(step),
-    ) ?? [];
+  // Wellmix: só a página mostrada é lida (com o histórico do Sankhya são
+  // milhares de pedidos no passo); na aba Pendências, só a contagem.
+  const pageNumber =
+    typeof page === "string" && /^\d{1,5}$/.test(page) ? Number(page) : 1;
+  const stepAll = wellmix
+    ? await flowStepEntities(user, step, {
+        page: pageNumber,
+        load: showAll,
+      })
+    : null;
+  const entities = stepAll
+    ? stepAll.entities
+    : ((await flowPartnerAllFor(user)).get(stepId(step)) ?? []);
+  const allCount = stepAll ? stepAll.total : entities.length;
   // Voltar ao Overview (Wellmix) e, no passo Pedidos, "Criar pedido" (dono,
   // 14/11/2026: a entrada da encomenda do cliente).
   const headerActions = (
@@ -124,7 +137,7 @@ export default async function FlowStepPage({
       {(
         [
           ["pending", base, all.length],
-          ["all", `${base}?tab=all`, entities.length],
+          ["all", `${base}?tab=all`, allCount],
         ] as const
       ).map(([id, href, n]) => {
         const active = (id === "all") === showAll;
@@ -156,6 +169,19 @@ export default async function FlowStepPage({
         />
         {tabs}
         <FlowAll step={step} entities={entities} t={t} partner={!wellmix} />
+        {stepAll && stepAll.pages > 1 ? (
+          <ServerPager
+            page={{
+              page: stepAll.page - 1,
+              pages: stepAll.pages,
+              from: (stepAll.page - 1) * FLOW_STEP_PAGE + 1,
+              to: Math.min(stepAll.total, stepAll.page * FLOW_STEP_PAGE),
+              matched: stepAll.total,
+            }}
+            href={(n) => `${base}?tab=all${n ? `&page=${n + 1}` : ""}`}
+            t={t}
+          />
+        ) : null}
       </div>
     );
   // Aviso de "feito" das ações da produção e da arte (os cartões leem o seu).
@@ -259,9 +285,7 @@ export default async function FlowStepPage({
             step={step}
             tasks={all}
             t={t}
-            notice={
-              done ? t(`importFlow.done.${done}` as DictionaryKey) : null
-            }
+            notice={done ? t(`importFlow.done.${done}` as DictionaryKey) : null}
           />
         </>
       )}
