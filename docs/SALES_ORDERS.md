@@ -130,7 +130,15 @@ saída "Frete de venda", em reais, na semana do vencimento. Sem vencimento,
 fica em "sem data". O link do item leva a Contas a pagar. Pago, sai do fluxo
 (`freightOutflows` em `src/lib/services/cashflow.ts`).
 
+**Custo e margem** (dono, 15/11/2026): quando a ordem de venda aponta o
+pedido de compra de origem, o frete entra no custo desse pedido no Financeiro
+desde a expedição, pago ou não, e a margem cai. Ele é convertido para a moeda
+da venda como os custos de origem: sem câmbio do dia, o custo fica pendente.
+Sem pedido de compra ligado, o frete fica só na ordem de venda. Código:
+`salesFreightByOrder` e `OrderFinance.salesFreight` em
+`src/lib/services/finance.ts`; no resumo por pedido, o campo `sfr`.
+
 ## Fica para depois
 
-- O frete da venda nos painéis do Financeiro (custo e margem da venda).
+- Mostrar o frete da venda como linha separada no Financeiro do pedido (hoje ele entra no custo e na margem, como os custos de origem).
 - A NF de devolução e a de venda emitidas pelo próprio portal no Sankhya.

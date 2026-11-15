@@ -109,6 +109,13 @@ export function noteWrite(
     const orderId = r?.orderId ?? (r?.entity === "order" ? r.entityId : null);
     if (orderId) pending.orders.add(orderId);
     pending.kpi = true;
+  } else if (table === "sales_orders") {
+    // Frete da ordem de venda: entra no custo do pedido de compra ligado
+    // (docs/SALES_ORDERS.md).
+    const orderId = (row as { purchaseOrderId?: unknown } | null)
+      ?.purchaseOrderId;
+    if (typeof orderId !== "string" || !orderId) return;
+    pending.orders.add(orderId);
   } else if (KPI_TABLES.has(table)) pending.kpi = true;
   else return;
   schedule();

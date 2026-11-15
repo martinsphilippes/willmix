@@ -120,6 +120,12 @@ export interface OrderFinance {
    * venda (já dentro de `cost`). Nulo: sem câmbio para converter; 0: nenhum.
    */
   originCost: number | null;
+  /**
+   * Frete das ordens de venda expedidas ligadas a este pedido de compra
+   * (docs/SALES_ORDERS.md; dono, 15/11/2026), na moeda da venda (já dentro
+   * de `cost`). Nulo: sem câmbio para converter; 0: nenhum.
+   */
+  salesFreight?: number | null;
 }
 
 /** Custo de origem (POP) validado: o valor e a moeda informados pela trading. */
@@ -165,6 +171,32 @@ async function originCostsByOrder(orderIds: string[] | null) {
   const map = new Map<string, OriginCost[]>();
   for (const s of rows)
     map.set(s.orderId, [...(map.get(s.orderId) ?? []), ...originCostsOf([s])]);
+  return map;
+}
+
+/**
+ * Frete das ordens de venda expedidas (ou entregues) com transportadora,
+ * por pedido de compra ligado: conta como custo desde a expedição, pago ou
+ * não (dono, 15/11/2026). O frete é em reais.
+ */
+export async function salesFreightByOrder(orderIds: string[] | null) {
+  const rows = await getStore()
+    .list("sales_orders", {
+      filter: {
+        status: ["shipped", "delivered"],
+        ...(orderIds ? { purchaseOrderId: orderIds } : {}),
+      },
+    })
+    .catch(() => []);
+  const map = new Map<string, OriginCost[]>();
+  for (const o of rows) {
+    if (!o.purchaseOrderId || !o.carrierId || !((o.freightValue ?? 0) > 0))
+      continue;
+    map.set(o.purchaseOrderId, [
+      ...(map.get(o.purchaseOrderId) ?? []),
+      { amount: o.freightValue!, currency: "BRL" },
+    ]);
+  }
   return map;
 }
 
@@ -261,6 +293,8 @@ export function computeOrderFinance(
     saleFx?: number | null;
     /** Custos de origem (POP) validados (compra EXW; docs/ORIGIN_CONTAINER.md). */
     originCosts?: OriginCost[];
+    /** Frete das ordens de venda ligadas (docs/SALES_ORDERS.md). */
+    salesFreights?: OriginCost[];
   } = {},
 ): OrderFinance {
   const sellCurrency = order.sellCurrency ?? "BRL";
@@ -408,28 +442,35 @@ export function computeOrderFinance(
       : null;
   // Custos de origem (POP, compra EXW): entram no custo na moeda da venda;
   // em outra moeda, pelo câmbio do dia (estimado). Sem câmbio: custo pendente.
-  let originCost: number | null = 0;
-  for (const c of fx.originCosts ?? []) {
-    if (!(c.amount > 0) || originCost === null) continue;
-    if (sameCurrency(c.currency, sellCurrency)) {
-      originCost += c.amount;
-      continue;
+  // O frete das ordens de venda ligadas (em reais) entra do mesmo jeito.
+  const inSell = (list: OriginCost[] | undefined): number | null => {
+    let total: number | null = 0;
+    for (const c of list ?? []) {
+      if (!(c.amount > 0) || total === null) continue;
+      if (sameCurrency(c.currency, sellCurrency)) {
+        total += c.amount;
+        continue;
+      }
+      const brl =
+        fxKey(c.currency) === "BRL"
+          ? c.amount
+          : rates
+            ? (rateFor(rates, c.currency) ?? NaN) * c.amount
+            : NaN;
+      if (!Number.isFinite(brl) || sellBrl === null || !(sellBrl > 0)) {
+        total = null;
+        continue;
+      }
+      total += brl / sellBrl;
+      estimated = true;
     }
-    const brl =
-      fxKey(c.currency) === "BRL"
-        ? c.amount
-        : rates
-          ? (rateFor(rates, c.currency) ?? NaN) * c.amount
-          : NaN;
-    if (!Number.isFinite(brl) || sellBrl === null || !(sellBrl > 0)) {
-      originCost = null;
-      continue;
-    }
-    originCost += brl / sellBrl;
-    estimated = true;
-  }
-  if (originCost === null) cost = null;
-  else if (cost !== null && originCost > 0) cost = cents(cost + originCost);
+    return total;
+  };
+  const originCost = inSell(fx.originCosts);
+  const salesFreight = inSell(fx.salesFreights);
+  if (originCost === null || salesFreight === null) cost = null;
+  else if (cost !== null && originCost + salesFreight > 0)
+    cost = cents(cost + originCost + salesFreight);
   const margin = cost !== null ? sell - cost : null;
   const marginPct = margin !== null && sell > 0 ? (margin / sell) * 100 : null;
   // Efeito do câmbio desde a venda: as mesmas unidades do FOB que entraram no
@@ -439,8 +480,8 @@ export function computeOrderFinance(
   const saleFx =
     fxBasis !== "same" && fx.saleFx && fx.saleFx > 0 ? fx.saleFx : null;
   const saleCost = saleFx !== null ? costedFob * saleFx : null;
-  // (Custos de origem fora: o efeito do câmbio é só o do FOB.)
-  const pop = originCost ?? 0;
+  // (Custos de origem e frete da venda fora: o efeito do câmbio é só o do FOB.)
+  const pop = (originCost ?? 0) + (salesFreight ?? 0);
   const marginAtSale = saleCost !== null ? sell - saleCost - pop : null;
   const fxEffect =
     saleCost !== null && cost !== null && !cancelled
@@ -486,6 +527,7 @@ export function computeOrderFinance(
     margin,
     marginPct,
     originCost: originCost === null ? null : cents(originCost),
+    salesFreight: salesFreight === null ? null : cents(salesFreight),
   };
 }
 
@@ -551,6 +593,7 @@ async function financeLookup(orders: Order[]) {
     "supplier",
     "product",
     "pop",
+    "sfr",
     "m",
   ]);
   if (facts) {
@@ -562,6 +605,7 @@ async function financeLookup(orders: Order[]) {
       supplier: (o: Order) => (o.supplierId && f(o)?.supplier) || "—",
       product: (o: Order) => f(o)?.product ?? "—",
       originCosts: async () => (o: Order) => f(o)?.pop ?? [],
+      salesFreights: async () => (o: Order) => f(o)?.sfr ?? [],
     };
   }
   const store = getStore();
@@ -595,6 +639,10 @@ async function financeLookup(orders: Order[]) {
       const map = await originCostsByOrder(null);
       return (o: Order) => map.get(o.id) ?? [];
     },
+    salesFreights: async () => {
+      const map = await salesFreightByOrder(null);
+      return (o: Order) => map.get(o.id) ?? [];
+    },
     payments: (o: Order) => paymentsByOrder.get(o.id) ?? [],
     customer: (o: Order) => name(o.customerId),
     supplier: (o: Order) => name(o.supplierId),
@@ -621,6 +669,7 @@ export async function loadFinance(
   );
   const lookup = await financeLookup(orders);
   const originOf = await lookup.originCosts();
+  const freightOf = await lookup.salesFreights();
   const estimate = options.estimate !== false;
   const [today, sales] = estimate
     ? await Promise.all([
@@ -645,6 +694,7 @@ export async function loadFinance(
           o.sellCurrency ?? "BRL",
         ),
         originCosts: originOf(o),
+        salesFreights: freightOf(o),
       },
     ),
     milestone: lookup.milestone(o),
@@ -737,7 +787,10 @@ export async function loadOrderFinance(
         : Promise.resolve(new Map<string, PricingRecord>()),
     ] as const,
   );
-  const origin = await originCostsByOrder([order.id]);
+  const [origin, freight] = await Promise.all([
+    originCostsByOrder([order.id]),
+    salesFreightByOrder([order.id]),
+  ]);
   return computeOrderFinance(
     order,
     payments,
@@ -754,6 +807,7 @@ export async function loadOrderFinance(
         order.sellCurrency ?? "BRL",
       ),
       originCosts: origin.get(order.id) ?? [],
+      salesFreights: freight.get(order.id) ?? [],
     },
   );
 }

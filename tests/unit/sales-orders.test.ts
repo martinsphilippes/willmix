@@ -461,4 +461,79 @@ describe("venda", () => {
       ),
     ).toEqual([]);
   });
+
+  it("frete da venda entra no custo e na margem do pedido de compra ligado, desde a expedição", async () => {
+    const store = getStore();
+    const { loadOrderFinance, computeOrderFinance } =
+      await import("@/lib/services/finance");
+    const { orderFromRequest } = await import("./helpers/order");
+    const r = await import("@/lib/services/requests");
+    const joao = (await store.list("users")).find(
+      (u) => u.email === "joao@lojista.com",
+    )!;
+    const req = await r.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId: null,
+      productName: "Panela margem",
+      description: "Panela margem",
+      specification: null,
+      quantity: 10,
+      unit: "un",
+      deadline: null,
+      notes: null,
+    });
+    const seeded = await orderFromRequest(admin, req);
+    const po = await store.update("orders", seeded.id, {
+      status: "DELIVERED",
+      fobTotal: 1000,
+      fobCurrency: "BRL",
+      sellPrice: 3000,
+      sellCurrency: "BRL",
+    });
+    const before = await loadOrderFinance(po, { estimate: false });
+    const carrier = await store.create("parties", {
+      type: "carrier",
+      name: "Transportes Margem",
+      active: true,
+    } as never);
+    const order = await so.openSalesOrder(admin, customerId);
+    await so.updateSalesOrder(admin, order.id, {
+      lines: [{ productId: "prod-panela", quantity: 1, unitPrice: 25 }],
+      paymentConditionId: null,
+      currency: "BRL",
+      deliveryDate: "2099-06-10",
+      deliveryWindow: null,
+      note: null,
+      purchaseOrderId: po.id,
+    });
+    await so.confirmSalesOrder(admin, order.id);
+    // Confirmada, ainda sem expedir: o frete não conta.
+    expect((await loadOrderFinance(po, { estimate: false })).cost).toBe(
+      before.cost,
+    );
+    await so.registerSalesInvoice(admin, order.id, {
+      number: "NF-8001",
+      documentId: null,
+    });
+    await so.shipSalesOrder(admin, order.id, {
+      carrierId: carrier.id,
+      customerPickup: false,
+      freightValue: 120,
+      shippedOn: "2099-06-09",
+      freightDays: 0,
+    });
+    // Expedida (ainda não paga): o frete já é custo do pedido de compra.
+    const after = await loadOrderFinance(po, { estimate: false });
+    expect(after.salesFreight).toBe(120);
+    expect(after.cost).toBe((before.cost ?? 0) + 120);
+    expect(after.margin).toBe((before.margin ?? 0) - 120);
+    // Venda em outra moeda sem câmbio do dia: o custo fica pendente.
+    const usd = computeOrderFinance(
+      { ...po, sellCurrency: "USD", fobCurrency: "USD" },
+      [],
+      { customer: "c", supplier: "s", product: "p" },
+      { salesFreights: [{ amount: 120, currency: "BRL" }] },
+    );
+    expect([usd.cost, usd.salesFreight]).toEqual([null, null]);
+  });
 });
