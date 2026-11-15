@@ -73,6 +73,7 @@ Confirmado pelo dono (14/11/2026): a contagem por SKU basta, por unidade ou por 
   unidade (`no_master_box`).
 - Pendência **"Conferir a carga no CD"** (grupo Qualidade) com a descarga
   registrada e a conferência por concluir.
+  No menu, ela conta em **Entrega → Armazenagem** (tipo `quality_check`).
 - Dados: em `receivings`, `qualityResult` (`ok`/`divergent`),
   `qualityAt`, `qualityByUserId`, `qualityNote` e `storedAt`.
 
