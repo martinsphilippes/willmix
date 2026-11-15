@@ -81,7 +81,7 @@ export const PARTNER_READ_MILESTONES: Partial<
   logistics: ["shipment"],
 };
 
-type ViewStage = Pick<ItemGroup, "id" | "key" | "status" | "responsibleRole">;
+type ViewGroup = Pick<ItemGroup, "id" | "key" | "status" | "responsibleRole">;
 type ViewRequirement = Pick<Requirement, "id" | "key" | "role"> & {
   step?: string | null;
   milestoneKey?: string | null;
@@ -101,7 +101,7 @@ export function requirementMilestone(
 export function requirementVisibleTo(
   user: Pick<User, "role">,
   r: ViewRequirement,
-  stage: ViewStage,
+  stage: ViewGroup,
   stageReqs: readonly Pick<Requirement, "role">[],
   /**
    * Fase 5d: a situação dos marcos do pedido. Liberado = o marco do item em
@@ -127,27 +127,27 @@ export function requirementVisibleTo(
 
 /**
  * Os itens que o login vê, por marco (na ordem dos 16; dentro do marco, na
- * ordem dos grupos e dos itens). `stages`: os grupos do pedido
+ * ordem dos grupos e dos itens). `groups`: os grupos do pedido
  * (`itemGroupsOf`); `groupOf`: o grupo de cada item (`itemGroupId`).
  */
 export function requirementsByMilestone<R extends ViewRequirement>(
   user: Pick<User, "role">,
-  stages: readonly ViewStage[],
+  groups: readonly ViewGroup[],
   requirements: readonly R[],
   /** Fase 5d: a situação dos marcos (o "liberado" de `requirementVisibleTo`). */
   states: ReadonlyMap<MilestoneKey, MilestoneState>,
   groupOf: (r: R) => string,
-): Map<MilestoneKey, Array<{ r: R; stage: ViewStage }>> {
-  const byStage = new Map<string, R[]>();
+): Map<MilestoneKey, Array<{ r: R; stage: ViewGroup }>> {
+  const byGroup = new Map<string, R[]>();
   for (const r of requirements) {
     const id = groupOf(r);
-    const list = byStage.get(id);
+    const list = byGroup.get(id);
     if (list) list.push(r);
-    else byStage.set(id, [r]);
+    else byGroup.set(id, [r]);
   }
-  const found = new Map<MilestoneKey, Array<{ r: R; stage: ViewStage }>>();
-  for (const stage of stages) {
-    const reqs = byStage.get(stage.id) ?? [];
+  const found = new Map<MilestoneKey, Array<{ r: R; stage: ViewGroup }>>();
+  for (const stage of groups) {
+    const reqs = byGroup.get(stage.id) ?? [];
     for (const r of reqs) {
       if (!requirementVisibleTo(user, r, stage, reqs, states)) continue;
       const key = requirementMilestone(r);
@@ -157,7 +157,7 @@ export function requirementsByMilestone<R extends ViewRequirement>(
       else found.set(key, [{ r, stage }]);
     }
   }
-  const out = new Map<MilestoneKey, Array<{ r: R; stage: ViewStage }>>();
+  const out = new Map<MilestoneKey, Array<{ r: R; stage: ViewGroup }>>();
   for (const key of MILESTONE_KEYS) {
     const list = found.get(key);
     if (list) out.set(key, list);

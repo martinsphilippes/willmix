@@ -140,7 +140,7 @@ export function plainPart(
 }
 
 /** As partes de cada etapa, na ordem do negócio. */
-export function orderPartsByStage(
+export function orderPartsByGroup(
   parts: Array<OrderPart | null>,
 ): Map<StageKey, OrderPart[]> {
   const map = new Map<StageKey, OrderPart[]>();

@@ -3,7 +3,6 @@ import {
   MILESTONE_KEYS,
   MILESTONES,
   isOffFlowItem,
-  milestoneOfRequirement,
   milestoneOfStoredItem,
   milestoneRank,
   type MilestoneKey,
@@ -44,20 +43,9 @@ export function releaseOf(
 export const ROUNDS_PARENT_MILESTONES: readonly MilestoneKey[] =
   MILESTONE_KEYS.slice(0, 4);
 
-/**
- * Marco do item: o gravado (fase 5b); sem ele, pelo passo gravado ou pela
- * chave (fase 5g). A etapa antiga só entra se quem chama a tiver (a
- * conferência da migração).
- */
-export function milestoneOfItem(
-  r: StoredItem,
-  legacyStage?: { key: string } | null,
-): MilestoneKey | null {
-  return (
-    milestoneOfStoredItem(r) ??
-    (legacyStage ? milestoneOfRequirement(legacyStage.key, r.key) : null)
-  );
-}
+/** Marco do item: o gravado (fase 5b); sem ele, pelo passo ou pela chave (fase 5g). */
+export const milestoneOfItem = (r: StoredItem): MilestoneKey | null =>
+  milestoneOfStoredItem(r);
 
 /**
  * O item está liberado (pode ser enviado, trocado ou decidido agora)?

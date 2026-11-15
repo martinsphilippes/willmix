@@ -303,12 +303,12 @@ function ItemsTable({
 /** Tabela das etapas por trás de "Etapas no prazo (30 dias)". */
 function StagesTable({
   t,
-  stages,
+  rows: doneRows,
   showOwner,
   nameOf,
 }: {
   t: Translate;
-  stages: SlaBoard["recentStages"];
+  rows: SlaBoard["recentDone"];
   showOwner: boolean;
   nameOf: (id: string) => string;
 }) {
@@ -326,7 +326,7 @@ function StagesTable({
         </tr>
       </thead>
       <tbody>
-        {stages.map((s, i) => (
+        {doneRows.map((s, i) => (
           <tr
             key={`${s.orderId}-${s.milestone ?? s.stageKey}-${i}`}
             className={rowClass}
@@ -440,7 +440,7 @@ export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
     onTime: t("sla.col.onTime"),
   };
   const shown = show === "onTime" ? [] : itemsOf(board.items, show);
-  const count = show === "onTime" ? board.recentStages.length : shown.length;
+  const count = show === "onTime" ? board.recentDone.length : shown.length;
 
   return (
     <>
@@ -608,12 +608,12 @@ export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
               <p className="mb-2 text-xs text-zinc-500">
                 {t("sla.onTimeHint")}
               </p>
-              {board.recentStages.length === 0 ? (
+              {board.recentDone.length === 0 ? (
                 <Empty>{t("sla.onTimeEmpty")}</Empty>
               ) : (
                 <StagesTable
                   t={t}
-                  stages={board.recentStages}
+                  rows={board.recentDone}
                   showOwner={showOwner}
                   nameOf={nameOf}
                 />

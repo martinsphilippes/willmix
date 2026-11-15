@@ -220,17 +220,15 @@ describe("painel de SLA por divisão", () => {
 
   it("as etapas por trás de 'no prazo' acompanham o indicador e a pessoa escolhida", async () => {
     const all = await slaBoardFor(admin, ALL);
-    expect(all.recentStages.length).toBe(all.onTime.total);
-    expect(all.recentStages.filter((s) => s.onTime).length).toBe(
-      all.onTime.done,
-    );
-    for (const s of all.recentStages) {
+    expect(all.recentDone.length).toBe(all.onTime.total);
+    expect(all.recentDone.filter((s) => s.onTime).length).toBe(all.onTime.done);
+    for (const s of all.recentDone) {
       expect(s.link).toBe(`/app/orders/${s.orderId}`);
       expect(typeof s.onTime).toBe("boolean");
     }
     const one = await slaBoardFor(admin, analyst.id);
-    expect(one.recentStages.every((s) => s.ownerId === analyst.id)).toBe(true);
-    expect(one.recentStages.length).toBe(one.onTime.total);
+    expect(one.recentDone.every((s) => s.ownerId === analyst.id)).toBe(true);
+    expect(one.recentDone.length).toBe(one.onTime.total);
   });
 
   it("'no prazo' vem do indicador pronto, refeito quando um marco com prazo é concluído", async () => {
@@ -264,12 +262,12 @@ describe("painel de SLA por divisão", () => {
     const after = await slaBoardFor(admin, ALL);
     expect(after.onTime.total).toBe(before.onTime.total + 1);
     expect(after.onTime.done).toBe(before.onTime.done + 1);
-    const line = after.recentStages.find((x) => x.orderId === order.id);
+    const line = after.recentDone.find((x) => x.orderId === order.id);
     expect(line?.milestone).toBe("new-order");
     // Etapa concluída com prazo não conta mais sozinha (só o marco).
-    expect(
-      after.recentStages.filter((x) => x.orderId === order.id),
-    ).toHaveLength(1);
+    expect(after.recentDone.filter((x) => x.orderId === order.id)).toHaveLength(
+      1,
+    );
     const snapshot = await store.get("kpi_snapshots", "sla.done");
     expect(snapshot).not.toBeNull();
   });

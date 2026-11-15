@@ -357,8 +357,8 @@ export function flowStepsOf(task: FlowTaskLike): FlowStep[] {
       if (step) steps.set(`${step.block}/${step.key}`, step);
     }
     if (steps.size) return [...steps.values()];
-    const byStage = toStep(STAGE_STEP[task.stageKey ?? ""]);
-    return byStage ? [byStage] : [];
+    const byGroup = toStep(STAGE_STEP[task.stageKey ?? ""]);
+    return byGroup ? [byGroup] : [];
   }
   if (
     (task.kind === "import_step" || task.kind === "import_validate") &&
@@ -371,8 +371,8 @@ export function flowStepsOf(task: FlowTaskLike): FlowStep[] {
     return [toStep("order/certification")!];
   const byKind = toStep(KIND_STEP[task.kind]);
   if (byKind) return [byKind];
-  const byStage = toStep(STAGE_STEP[task.stageKey ?? ""]);
-  return byStage ? [byStage] : [];
+  const byGroup = toStep(STAGE_STEP[task.stageKey ?? ""]);
+  return byGroup ? [byGroup] : [];
 }
 
 /** Contagem de um passo: quantas esperam ação e quantas já passaram do prazo. */

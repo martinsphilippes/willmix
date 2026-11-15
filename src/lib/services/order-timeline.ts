@@ -96,7 +96,7 @@ export interface MyPartTasks {
 
 export interface MyTimeline {
   /** Tarefas do login por grupo de itens (`ItemGroup.id`; fase 5g). */
-  stages: Map<string, MyStageTasks>;
+  groups: Map<string, MyStageTasks>;
   parts: Partial<Record<OrderPartKey, MyPartTasks>>;
 }
 
@@ -233,7 +233,7 @@ const doneBy = (user: User, steps: readonly StepView[]) =>
 export interface TimelineInput {
   order: Order;
   /** Grupos de itens do pedido (fase 5g, `itemGroupsOf`). */
-  stages: ItemGroup[];
+  groups: ItemGroup[];
   requirements: Requirement[];
   /** Passos da certificação e do embarque que o login vê (cartões do pedido). */
   certSteps: StepView[];
@@ -260,7 +260,7 @@ export async function myOrderTimeline(
   user: User,
   input: TimelineInput,
 ): Promise<MyTimeline> {
-  const { order, stages, requirements } = input;
+  const { order, groups, requirements } = input;
   // Pedido do histórico do Sankhya em espera: trabalhado como os outros, só
   // sem avisos (dono, 14/11/2026; docs/SANKHYA.md).
   const ctx = await loadRoutingContext();
@@ -274,10 +274,10 @@ export async function myOrderTimeline(
     (await (await import("./order-milestones")).orderRelease(order.id))
       ?.release ??
     releaseOf([]);
-  const byStage = new Map<string, MyStageTasks>();
-  for (const stage of stages) {
+  const byGroup = new Map<string, MyStageTasks>();
+  for (const stage of groups) {
     const reqs = requirements.filter((r) => itemGroupId(r, order) === stage.id);
-    byStage.set(
+    byGroup.set(
       stage.id,
       myStageTasks(user, order, stage, reqs, ctx, sealApplied, release),
     );
@@ -337,7 +337,7 @@ export async function myOrderTimeline(
   let docOpen = 0;
   let docLater = 0;
   let docDone = 0;
-  for (const mine of byStage.values()) {
+  for (const mine of byGroup.values()) {
     docOpen += mine.open.filter((r) => signKeys.includes(r.key)).length;
     docLater += mine.later.filter((r) => signKeys.includes(r.key)).length;
   }
@@ -388,7 +388,7 @@ export async function myOrderTimeline(
     later: 0,
     done: 0,
   };
-  return { stages: byStage, parts };
+  return { groups: byGroup, parts };
 }
 
 export interface MyStageRow {
@@ -414,7 +414,7 @@ export function myStageRow(
   stage: Pick<ItemGroup, "id" | "status">,
   partKeys: readonly OrderPartKey[],
 ): MyStageRow | null {
-  const own = mine.stages.get(stage.id);
+  const own = mine.groups.get(stage.id);
   const parts = partKeys.filter((k) => {
     const part = mine.parts[k];
     return !!part && part.open + part.later > 0;

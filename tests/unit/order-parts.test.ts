@@ -4,7 +4,7 @@ import {
   ORDER_PART_PARALLEL,
   ORDER_PART_STAGE,
   documentPart,
-  orderPartsByStage,
+  orderPartsByGroup,
   plainPart,
   sheetPart,
   stepsPart,
@@ -69,7 +69,7 @@ describe("partes do pedido na tabela de etapas", () => {
   });
 
   it("agrupa por etapa na ordem do negócio e ignora o que o login não vê", () => {
-    const map = orderPartsByStage([
+    const map = orderPartsByGroup([
       plainPart("production", "active", "#production"),
       null,
       plainPart("artwork", "pending", "#artwork"),
@@ -98,7 +98,7 @@ describe("partes do pedido na tabela de etapas", () => {
       0,
       2,
     ]);
-    const map = orderPartsByStage([
+    const map = orderPartsByGroup([
       stepsPart("certification", [{ done: false, started: false }], "#c"),
       document,
       sheetPart({ missing: 1, started: false }, "/s", null),
@@ -122,7 +122,7 @@ describe("partes do pedido na tabela de etapas", () => {
   });
 
   it("fase 5g: o documento fica sempre no grupo do contrato (as assinaturas são do marco Contrato)", () => {
-    const map = orderPartsByStage([
+    const map = orderPartsByGroup([
       stepsPart("certification", [{ done: false, started: false }], "#c"),
       documentPart(
         [

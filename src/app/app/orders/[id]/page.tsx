@@ -100,7 +100,7 @@ import {
   type OrderPart,
   type OrderPartKey,
   documentPart,
-  orderPartsByStage,
+  orderPartsByGroup,
   plainPart,
   sheetPart,
   stepsPart,
@@ -1154,13 +1154,13 @@ export default async function OrderPage({
      ainda usam (linha do tempo do operador, ajuda, ficha) saem dos itens e
      dos marcos (`itemGroupsOf`); o pagamento ao fornecedor antigo tem card
      próprio, fora deles. */
-  const stages = itemGroupsOf(
+  const groups = itemGroupsOf(
     order,
     requirements,
     new Map(orderViews.map((v) => [v.key, v.state])),
     milestoneRows,
   );
-  const flowStages = stages.filter((s) => s.key !== "SUPPLIER_PAYMENT");
+  const flowGroups = groups.filter((s) => s.key !== "SUPPLIER_PAYMENT");
   /* Fase 5e: situação, prazo e trava pelo marco atual e pelas linhas de
      `order_milestones` (a etapa não aparece mais). */
   const blockedRows = milestoneRows
@@ -1190,7 +1190,7 @@ export default async function OrderPage({
   const myTimeline = mineOnly
     ? await myOrderTimeline(user, {
         order,
-        stages: flowStages,
+        groups: flowGroups,
         requirements,
         certSteps,
         importSteps,
@@ -1205,13 +1205,13 @@ export default async function OrderPage({
   /* A etapa em andamento (ou que ainda aceita dados, como o BL depois do
      embarque) abre o marco dos itens dela; ?stage=CHAVE abre outra;
      ?stage=all, todas. */
-  const defaultExpanded = (s: (typeof stages)[number]) =>
+  const defaultExpanded = (s: (typeof groups)[number]) =>
     requirements.some(
       (r) =>
         itemGroupId(r, order) === s.id && r.status !== "done" && released(r),
     );
   const expandedStageIds = new Set(
-    flowStages
+    flowGroups
       .filter(
         (s) =>
           defaultExpanded(s) || stageParam === "all" || stageParam === s.key,
@@ -1230,7 +1230,7 @@ export default async function OrderPage({
     customerSide && delivered && !!items[0] && canOpen(user, "requests");
   /* Partes do pedido na tabela de etapas (ordem do negócio): só as que este
      login já vê nos cartões de baixo; cada linha leva ao cartão ou à página. */
-  const partsByStage = orderPartsByStage([
+  const partsByGroup = orderPartsByGroup([
     wellmix || (user.role === "supplier" && order.supplierId === user.partyId)
       ? documentPart(requirements, `/app/orders/${order.id}/purchase-order`)
       : null,
@@ -1313,12 +1313,12 @@ export default async function OrderPage({
      as tarefas dele ali. */
   const myRows = new Map(
     myTimeline
-      ? flowStages.map((s) => [
+      ? flowGroups.map((s) => [
           s.id,
           myStageRow(
             myTimeline,
             s,
-            (partsByStage.get(s.key) ?? []).map((part) => part.key),
+            (partsByGroup.get(s.key) ?? []).map((part) => part.key),
           ),
         ])
       : [],
@@ -1420,7 +1420,7 @@ export default async function OrderPage({
      (Wellmix, fase 3 de docs/MILESTONES.md). */
   const requirementRowOf = (
     r: Requirement,
-    stage: (typeof stages)[number],
+    stage: (typeof groups)[number],
     {
       open,
       muted = false,
@@ -1508,27 +1508,27 @@ export default async function OrderPage({
   const milestoneItems: MilestoneTimelineItem[] = [];
   if (wellmix) {
     const views = orderViews;
-    const stageLive = (_s: (typeof stages)[number], r: Requirement) =>
+    const groupLive = (_s: (typeof groups)[number], r: Requirement) =>
       released(r);
     const myOpen = new Set(
-      [...(myTimeline?.stages.values() ?? [])].flatMap((m) =>
+      [...(myTimeline?.groups.values() ?? [])].flatMap((m) =>
         m.open.map((r) => r.id),
       ),
     );
     const myLater = new Set(
-      [...(myTimeline?.stages.values() ?? [])].flatMap((m) =>
+      [...(myTimeline?.groups.values() ?? [])].flatMap((m) =>
         m.later.map((r) => r.id),
       ),
     );
     /** O login pode preencher este item agora (formulário no marco). */
-    const formFor = (s: (typeof stages)[number], r: Requirement) =>
-      mineOnly ? myOpen.has(r.id) : stageLive(s, r);
+    const formFor = (s: (typeof groups)[number], r: Requirement) =>
+      mineOnly ? myOpen.has(r.id) : groupLive(s, r);
     // Itens do pedido por marco, na ordem das etapas.
     const reqsOf = new Map<
       MilestoneKey,
-      Array<{ r: Requirement; stage: (typeof stages)[number] }>
+      Array<{ r: Requirement; stage: (typeof groups)[number] }>
     >();
-    for (const stage of flowStages) {
+    for (const stage of flowGroups) {
       if (stage.status === "cancelled") continue;
       for (const r of visibleReqs(
         requirements.filter((x) => itemGroupId(x, order) === stage.id),
@@ -1573,7 +1573,7 @@ export default async function OrderPage({
         ]);
       }
     // Partes do pedido com cartão ou página própria: o atalho no marco.
-    const allParts = [...partsByStage.values()].flat();
+    const allParts = [...partsByGroup.values()].flat();
     const partsOf = (key: MilestoneKey) =>
       allParts.filter((part) => MILESTONE_PARTS[part.key]?.includes(key));
     const partMine = (key: MilestoneKey) => {
@@ -1595,9 +1595,9 @@ export default async function OrderPage({
       requirements.some(
         (r) => inInspection(r) && r.status === "done" && isRemeasurable(r),
       );
-    const prepStage = flowStages.find((s) => s.key === "PREPARATION");
-    const prepReqs = prepStage
-      ? requirements.filter((r) => itemGroupId(r, order) === prepStage.id)
+    const prepGroup = flowGroups.find((s) => s.key === "PREPARATION");
+    const prepReqs = prepGroup
+      ? requirements.filter((r) => itemGroupId(r, order) === prepGroup.id)
       : [];
     const showDieCutLink =
       purchaseFlow &&
@@ -1613,7 +1613,7 @@ export default async function OrderPage({
         reqRows.some(({ r, stage }) =>
           mineOnly
             ? myOpen.has(r.id)
-            : r.status !== "done" && stageLive(stage, r),
+            : r.status !== "done" && groupLive(stage, r),
         ) ||
         // Passos do embarque e das amostras: só no marco já liberado (o
         // passo "pronto" olha só o passo anterior); a certificação corre
@@ -1713,7 +1713,7 @@ export default async function OrderPage({
         rows.push(
           <Fragment key={r.id}>
             {requirementRowOf(r, stage, {
-              open: form && stageLive(stage, r),
+              open: form && groupLive(stage, r),
               muted: myLater.has(r.id),
             })}
           </Fragment>,
@@ -1859,15 +1859,15 @@ export default async function OrderPage({
     const views = orderViews;
     const byMilestone = requirementsByMilestone(
       user,
-      flowStages,
+      flowGroups,
       requirements,
       release.states,
       (r) => itemGroupId(r, order),
     );
-    const stageById = new Map(flowStages.map((s) => [s.id, s]));
-    const live = (_s: (typeof stages)[number], r: Requirement) => released(r);
+    const stageById = new Map(flowGroups.map((s) => [s.id, s]));
+    const live = (_s: (typeof groups)[number], r: Requirement) => released(r);
     // Partes do pedido em que o login atua (cartão ou página própria).
-    const parts = [...partsByStage.values()]
+    const parts = [...partsByGroup.values()]
       .flat()
       .filter((part) => partRowFor(user, part.key));
     const seesAll = user.role === "customer";
@@ -1887,8 +1887,8 @@ export default async function OrderPage({
         return [{ r, stage: s, supplierView }];
       });
       if (!rows.length && !(seesAll && view.state !== "na")) continue;
-      const rowStages = [...new Set(rows.map((x) => x.stage))];
-      const expanded = rowStages.some((s) => expandedStageIds.has(s.id));
+      const rowGroups = [...new Set(rows.map((x) => x.stage))];
+      const expanded = rowGroups.some((s) => expandedStageIds.has(s.id));
       const mineNow = rows.some(
         ({ r, stage }) =>
           r.role === user.role && r.status !== "done" && live(stage, r),
@@ -1897,12 +1897,12 @@ export default async function OrderPage({
         ({ r, stage }) =>
           r.role === user.role && r.status !== "done" && !live(stage, r),
       );
-      const prepStage = rowStages.find((s) => s.key === "PREPARATION");
-      const prepReqs = prepStage
-        ? requirements.filter((r) => itemGroupId(r, order) === prepStage.id)
+      const prepGroup = rowGroups.find((s) => s.key === "PREPARATION");
+      const prepReqs = prepGroup
+        ? requirements.filter((r) => itemGroupId(r, order) === prepGroup.id)
         : [];
       const supplierView = rows.some((x) => x.supplierView);
-      const shipping = rowStages.find(
+      const shipping = rowGroups.find(
         (s) => s.key === "SHIPPING" && expandedStageIds.has(s.id),
       );
       const done = rows.filter(({ r }) => r.status === "done").length;
@@ -1916,7 +1916,7 @@ export default async function OrderPage({
         : view;
       const detail = (
         <div data-milestone-partner={view.key}>
-          {rowStages.map((s) => (
+          {rowGroups.map((s) => (
             <p
               key={`help-${s.id}`}
               className="mb-2 mt-1 text-xs leading-relaxed text-zinc-500"
@@ -1975,13 +1975,13 @@ export default async function OrderPage({
               data-milestone-tasks={view.key}
               // Alias de antes (testes e atalhos): a etapa dos itens, quando é uma só.
               data-stage-tasks={
-                rowStages.length === 1 ? rowStages[0].key : undefined
+                rowGroups.length === 1 ? rowGroups[0].key : undefined
               }
             >
               {/* Pedido de compra: os itens do fornecedor também ficam
                   juntos, produto a produto, no quadro Die Cut. */}
               {purchaseFlow &&
-              prepStage &&
+              prepGroup &&
               canViewDieCut(user, progress.order) &&
               rows.some(({ r }) => dieCutItemOf(r.key)) ? (
                 <li

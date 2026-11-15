@@ -203,7 +203,7 @@ async function timelineOf(user: User, orderId: string) {
     : null;
   const mine = await tl.myOrderTimeline(user, {
     order,
-    stages,
+    groups: stages,
     requirements,
     certSteps: await f.importFlowView(user, order, "certification"),
     importSteps: await f.importFlowView(user, order),
@@ -559,7 +559,7 @@ describe("contagem da etapa", () => {
   it("as assinaturas do documento do pedido contam uma vez, na etapa", () => {
     const row = tl.myStageRow(
       {
-        stages: new Map([["s1", { open: [sign], later: [], done: 1 }]]),
+        groups: new Map([["s1", { open: [sign], later: [], done: 1 }]]),
         parts: { document: { open: 1, later: 0, done: 0, mirror: true } },
       },
       stage,
@@ -577,7 +577,7 @@ describe("contagem da etapa", () => {
     expect(
       tl.myStageRow(
         {
-          stages: new Map([["s1", { open: [], later: [sign], done: 1 }]]),
+          groups: new Map([["s1", { open: [], later: [sign], done: 1 }]]),
           parts: {},
         },
         { id: "s1", status: "pending" },
@@ -595,7 +595,7 @@ describe("contagem da etapa", () => {
     expect(
       tl.myStageRow(
         {
-          stages: new Map([["s1", { open: [], later: [], done: 3 }]]),
+          groups: new Map([["s1", { open: [], later: [], done: 3 }]]),
           parts: { production: { open: 0, later: 0, done: 2 } },
         },
         stage,
@@ -608,7 +608,7 @@ describe("contagem da etapa", () => {
     expect(
       tl.myStageRow(
         {
-          stages: new Map([["s1", { open: [sign], later: [], done: 0 }]]),
+          groups: new Map([["s1", { open: [sign], later: [], done: 0 }]]),
           parts: {},
         },
         { id: "s1", status: "blocked" },
