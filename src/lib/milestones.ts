@@ -73,10 +73,12 @@ export const MILESTONES: MilestoneDef[] = [
     "certification",
     "order",
     ["order/certification"],
-    ["new-order"],
+    // As três frentes começam juntas com o pedido gerado, em paralelo com o
+    // cadastro (docs/PURCHASE_ORDER.md, 1a); só o Contrato espera todas.
+    [],
     ["P6", "P8", "P15"],
   ),
-  m("art-material", "order", ["order/art-material"], ["new-order"], ["P4"]),
+  m("art-material", "order", ["order/art-material"], [], ["P4"]),
   m(
     "art",
     "order",
