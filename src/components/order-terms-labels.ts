@@ -52,6 +52,10 @@ export function orderTermsLabels(t: Translate): RequestOrderTermsLabels {
     productsCount: t("orderTerms.productsCount", { n: "{n}" }),
     stock: t("orderTerms.stock"),
     confirmNote: t("orderTerms.confirmNote"),
+    switchTitle: t("orderTerms.switchTitle"),
+    switchBody: t("orderTerms.switchBody"),
+    switchKeep: t("orderTerms.switchKeep"),
+    switchConfirm: t("orderTerms.switchConfirm"),
   };
 }
 

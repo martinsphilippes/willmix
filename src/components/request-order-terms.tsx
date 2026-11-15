@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRequestCustomer } from "./request-customer-context";
 import { Field, Select } from "./ui";
 import {
@@ -52,6 +52,11 @@ export interface RequestOrderTermsLabels {
   productsCount: string;
   stock: string;
   confirmNote: string;
+  /** Aviso ao trocar o país ou a família com produtos no pedido. */
+  switchTitle: string;
+  switchBody: string;
+  switchKeep: string;
+  switchConfirm: string;
 }
 
 /** Valores já escolhidos (rascunho). */
@@ -125,6 +130,31 @@ export function RequestOrderTerms({
   const [groupsFailed, setGroupsFailed] = useState(false);
   const [family, setFamily] = useState(initial.productFamily ?? "");
   const setOrigin = shared?.setOrigin;
+  // Trocar o país ou a família com produto no pedido (dono, 15/11/2026): o
+  // aviso recomenda terminar este pedido e começar outro; "trocar" limpa os
+  // produtos.
+  const hasProducts = (shared?.chosenProductIds.length ?? 0) > 0;
+  const switchDialog = useRef<HTMLDialogElement>(null);
+  const [pendingSwitch, setPendingSwitch] = useState<{
+    kind: "country" | "family";
+    value: string;
+  } | null>(null);
+  const applySwitch = (kind: "country" | "family", value: string) => {
+    if (kind === "country") {
+      setCountry(value);
+      setFamily("");
+    } else setFamily(value);
+  };
+  const askSwitch = (kind: "country" | "family", value: string) => {
+    const current = kind === "country" ? country : family;
+    if (value === current) return;
+    if (!hasProducts) {
+      applySwitch(kind, value);
+      return;
+    }
+    setPendingSwitch({ kind, value });
+    switchDialog.current?.showModal();
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -354,10 +384,7 @@ export function RequestOrderTerms({
               value={country}
               required
               disabled={!options}
-              onChange={(e) => {
-                setCountry(e.target.value);
-                setFamily("");
-              }}
+              onChange={(e) => askSwitch("country", e.target.value)}
               data-order-terms-country
             >
               <option value="" disabled>
@@ -382,7 +409,7 @@ export function RequestOrderTerms({
               value={family}
               required
               disabled={!myGroups || !myGroups.length}
-              onChange={(e) => setFamily(e.target.value)}
+              onChange={(e) => askSwitch("family", e.target.value)}
               data-order-terms-group
             >
               <option value="" disabled>
@@ -406,6 +433,51 @@ export function RequestOrderTerms({
         </div>
         <p className="text-xs text-zinc-500">{labels.originHint}</p>
       </div>
+
+      <dialog
+        ref={switchDialog}
+        aria-labelledby="order-terms-switch-title"
+        className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-2xl p-0 shadow-xl backdrop:bg-zinc-900/40"
+        onClose={() => setPendingSwitch(null)}
+        data-order-terms-switch
+      >
+        <div className="space-y-3 p-5">
+          <h3
+            id="order-terms-switch-title"
+            className="text-base font-semibold text-zinc-900"
+          >
+            {labels.switchTitle}
+          </h3>
+          <p className="text-sm leading-relaxed text-zinc-700">
+            {labels.switchBody}
+          </p>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => switchDialog.current?.close()}
+              className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+              data-order-terms-switch-keep
+              autoFocus
+            >
+              {labels.switchKeep}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (pendingSwitch) {
+                  shared?.requestClearProducts();
+                  applySwitch(pendingSwitch.kind, pendingSwitch.value);
+                }
+                switchDialog.current?.close();
+              }}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              data-order-terms-switch-confirm
+            >
+              {labels.switchConfirm}
+            </button>
+          </div>
+        </div>
+      </dialog>
 
       {/* O aviso "sem devoluções" agora é do cliente (dono, 15/11/2026). */}
       <p

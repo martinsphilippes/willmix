@@ -320,4 +320,28 @@ test("Histórico do cliente → pedido: filtra pela família, acrescenta com um 
   await expect(composition).toBeInViewport();
   await composition.locator('[data-composition-goto="row-1"]').click();
   await expect(row).toBeInViewport();
+
+  // Trocar a família com produto no pedido: o aviso recomenda terminar este
+  // pedido; "Manter" desfaz a troca, "Trocar" limpa os produtos.
+  const family = page.locator("[data-order-terms-group]");
+  const dialog = page.locator("[data-order-terms-switch]");
+  await family.selectOption("fm:INFLAVEIS");
+  await expect(dialog).toBeVisible();
+  await dialog.locator("[data-order-terms-switch-keep]").click();
+  await expect(dialog).toBeHidden();
+  await expect(family).toHaveValue("fm:BRINQUEDOS");
+  await expect(
+    row.locator('[data-product-picker="catalog"] [data-product-picker-input]'),
+  ).toHaveValue(/Boneca/);
+  await family.selectOption("fm:INFLAVEIS");
+  await dialog.locator("[data-order-terms-switch-confirm]").click();
+  await expect(dialog).toBeHidden();
+  await expect(family).toHaveValue("fm:INFLAVEIS");
+  await expect(page.locator("[data-request-item]")).toHaveCount(1);
+  await expect(row).toHaveCount(0);
+  await expect(
+    page.locator(
+      '[data-request-item] [data-product-picker="catalog"] [data-product-picker-input]',
+    ),
+  ).toHaveValue("");
 });
