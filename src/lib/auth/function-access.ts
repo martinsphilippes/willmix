@@ -47,6 +47,10 @@ export const ACTION_GROUPS = [
       // de compras aprova.
       "purchaseStrategy.choose",
       "purchaseStrategy.approve",
+      // Cotação de compra (mapa B13): o Comprador escolhe a vencedora, a
+      // Diretoria de compras aprova.
+      "purchaseQuote.choose",
+      "purchaseQuote.approve",
     ],
   },
   {
@@ -150,6 +154,10 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
     case "purchaseStrategy.choose":
       return ["buyer"];
     case "purchaseStrategy.approve":
+      return ["purchasing_director"];
+    case "purchaseQuote.choose":
+      return ["buyer"];
+    case "purchaseQuote.approve":
       return ["purchasing_director"];
     // Assinar o contrato pela Wellmix: só as diretorias (decisão do dono,
     // 13/11/2026; mapa do processo, P11: a Diretoria de compras aprova). O

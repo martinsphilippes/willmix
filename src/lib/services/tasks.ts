@@ -42,6 +42,10 @@ export type TaskKind =
   | "purchase_strategy"
   | "purchase_strategy_approve"
   | "purchase_strategy_order"
+  | "purchase_quote_answer"
+  | "purchase_quote_choose"
+  | "purchase_quote_empty"
+  | "purchase_quote_approve"
   | "requirement"
   | "review"
   | "after_sales"
@@ -335,6 +339,10 @@ const KIND_ORDER: string[] = [
   "purchase_strategy",
   "purchase_strategy_approve",
   "purchase_strategy_order",
+  "purchase_quote_answer",
+  "purchase_quote_choose",
+  "purchase_quote_empty",
+  "purchase_quote_approve",
   "supplier_request",
   "sampling_validate",
   "freight_quote",
@@ -854,6 +862,16 @@ export async function pendingTasksFor(
         await (
           await import("./purchase-strategy")
         ).strategyTaskDrafts(newRequests)
+      ).map((draft) => finish(draft, now)),
+    );
+  // Cotação de compra (docs/PURCHASE_DEMAND.md): o fornecedor responde; a
+  // Wellmix escolhe, decide sem resposta ou aprova.
+  if (supplier || wellmix)
+    tasks.push(
+      ...(
+        await (await import("./purchase-quote"))
+          .quoteTaskDrafts(user, now)
+          .catch(() => [])
       ).map((draft) => finish(draft, now)),
     );
   if (supplier) tasks.push(...(await supplierRequestTasks(user, now)));

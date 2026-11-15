@@ -4,16 +4,16 @@ Pedido do dono (14/11/2026): o menu lateral segue os blocos do mapa do processo 
 
 ## Estrutura
 
-| Bloco (mapa)        | Itens                                                                                                                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Produto novo (Book) | Overview, Books, Seleção de itens, Convites de book, Encomendas (B14), Reposição (B10), Estratégia de compra (B10?), Negociações (solicitações ao fornecedor, com a amostragem) |
-| Pedido              | Overview, Pedidos, Certificação, Material de arte, Arte, Revisão, Contrato                                                                                                      |
-| Produção            | Overview (`/app/production`), Pré-produção, Inspeção, Amostra, Produção, Booking (marítima), Logística, Carregamento, Documentos de carga, Embarque                             |
-| Entrega             | Overview, LPCO, Presença de carga, Canal cinza ou vermelho, Logística, Nota fiscal, Entrega, Retorno, Armazenagem; Containers, Fretes e Tarifário seguem no fim                 |
-| Vendas              | Estoque, Amostras, Ofertas, Venda                                                                                                                                               |
-| Financeiro          | Financeiro, Contas a pagar, Fluxo de caixa (saiu de Painéis), Acordos e comissões, Multas                                                                                       |
-| Painéis             | Painel do dono, Painéis por área, Painel de SLA (só leitura, sem contador)                                                                                                      |
-| Cadastros           | Parceiros, Produtos, Linhas                                                                                                                                                     |
+| Bloco (mapa)        | Itens                                                                                                                                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Produto novo (Book) | Overview, Books, Seleção de itens, Convites de book, Encomendas (B14), Reposição (B10), Estratégia de compra (B10?), Cotação de compra (B13), Negociações (solicitações ao fornecedor, com a amostragem) |
+| Pedido              | Overview, Pedidos, Certificação, Material de arte, Arte, Revisão, Contrato                                                                                                                               |
+| Produção            | Overview (`/app/production`), Pré-produção, Inspeção, Amostra, Produção, Booking (marítima), Logística, Carregamento, Documentos de carga, Embarque                                                      |
+| Entrega             | Overview, LPCO, Presença de carga, Canal cinza ou vermelho, Logística, Nota fiscal, Entrega, Retorno, Armazenagem; Containers, Fretes e Tarifário seguem no fim                                          |
+| Vendas              | Estoque, Amostras, Ofertas, Venda                                                                                                                                                                        |
+| Financeiro          | Financeiro, Contas a pagar, Fluxo de caixa (saiu de Painéis), Acordos e comissões, Multas                                                                                                                |
+| Painéis             | Painel do dono, Painéis por área, Painel de SLA (só leitura, sem contador)                                                                                                                               |
+| Cadastros           | Parceiros, Produtos, Linhas                                                                                                                                                                              |
 
 Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeçalho, com o contador de não lidas. O Superplan saiu de Painéis e virou atalho em Configurações. Nenhuma tela ou rota foi removida.
 
@@ -52,6 +52,7 @@ Compra por demanda (docs/PURCHASE_DEMAND.md): dois passos novos no bloco Produto
 - "Cotações" (os convites de book) passou a se chamar **Convites de book**: a tela, a rota e o atalho continuam; a cotação de preço é a Cotação de compra (B13, PR 4).
 - O link "Solicitações" que ficava no bloco Vendas (fora do menu) saiu: as encomendas estão no Produto novo.
 - **Estratégia de compra** (`new-product/strategy`, tela `/app/purchase-strategy`, 15/11/2026): a fila do Comprador com reposições e encomendas, a aprovação da Diretoria de compras e o pedido de compra direto. Contadores: `purchase_strategy`, `purchase_strategy_approve` e `purchase_strategy_order`.
+- **Cotação de compra** (`new-product/purchase-quotes`, tela `/app/purchase-quotes`, 15/11/2026): as cotações abertas pelo sistema, o quadro comparativo, a escolha, a aprovação e o que fazer sem resposta. Contadores: `purchase_quote_choose`, `purchase_quote_empty` e `purchase_quote_approve`; o fornecedor tem "Cotações de compra" no menu dele e a pendência `purchase_quote_answer`.
 
 ## "Todos no passo" paginado (15/11/2026)
 

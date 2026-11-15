@@ -94,8 +94,17 @@ export async function GET(request: Request) {
       console.error("[reminders] customer-charges", error);
       return null;
     });
+  // Cotação de compra (docs/PURCHASE_DEMAND.md): lembrete antes de vencer e
+  // o aviso de "sem resposta" (também correm a cada abertura das telas).
+  const purchaseQuotes = await import("@/lib/services/purchase-quote")
+    .then((m) => m.sweepQuotes())
+    .catch((error) => {
+      console.error("[reminders] purchase-quotes", error);
+      return null;
+    });
   return NextResponse.json({
     ...result,
+    purchaseQuotes,
     chargesToIssue,
     chargesSynced,
     purchaseRounds,

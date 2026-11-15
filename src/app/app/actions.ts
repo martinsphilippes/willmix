@@ -1223,6 +1223,13 @@ export async function saveSettingsAction(form: FormData) {
         if (!Number.isInteger(n) || n < 1 || n > 730)
           throw new Error("certification_horizon_invalid");
         value = n;
+      } else if (key === "purchaseQuoteHours") {
+        // Horas corridas; aceita fração (0,5 = 30 min; o mínimo, 0,01 h,
+        // serve aos testes de ponta a ponta que esperam o prazo vencer).
+        const n = Number(String(raw).replace(",", "."));
+        if (!Number.isFinite(n) || n < 0.01 || n > 240)
+          throw new Error("purchase_quote_hours_invalid");
+        value = n;
       } else if (key === "bookingInviteSlaDays") {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 1 || n > 30)

@@ -263,8 +263,12 @@ export async function decideStrategy(
         : `Motivo: ${input.note}`,
     },
   );
-  // "Cotar entre fornecedores" aprovada: a Cotação de compra (B13) é aberta
-  // pelo sistema (PR 4 de 5; docs/PURCHASE_DEMAND.md).
+  // "Cotar entre fornecedores" aprovada: o sistema abre a Cotação de compra
+  // (B13), sem ação manual (docs/PURCHASE_DEMAND.md).
+  if (input.approve && decision.choice === "quote") {
+    const { openQuoteForDecision } = await import("./purchase-quote");
+    await openQuoteForDecision(user, updated);
+  }
   return updated;
 }
 
@@ -346,6 +350,27 @@ export async function orderFromStrategy(
  * então vale quando a mercadoria chega. Vendas fica sabendo pelo aviso do
  * pedido de compra (V1).
  */
+export async function linkDemandsToOrder(
+  user: User,
+  order: Order,
+  demandIds: readonly string[],
+): Promise<void> {
+  if (!demandIds.length) return;
+  const store = getStore();
+  const demands = await store.list("requests", {
+    filter: { id: [...demandIds] },
+  });
+  await store.update("orders", order.id, { demandIds: [...demandIds] });
+  for (const d of demands) {
+    await store.update("requests", d.id, {
+      status: "ORDERED",
+      orderId: order.id,
+    });
+    if (demandKind(d) === "order" && !isStockCustomer(d.customerId))
+      await reserveOnArrival(user, d, order);
+  }
+}
+
 async function reserveOnArrival(user: User, demand: Request, order: Order) {
   if (!demand.productId) return;
   const store = getStore();
