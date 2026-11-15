@@ -1102,8 +1102,10 @@ export default async function OrderPage({
           ] as [string, ReactNode],
         ]
       : []),
-    /* Certificadora: o documento do pedido (itens, preços e condições), para ler. */
-    ...(certifier
+    /* Despachante: o documento do pedido (itens, preços e condições), para
+       ler. A certificadora (OCP) não abre: tem o preço de compra (dono,
+       15/11/2026). */
+    ...(certifier && user.role === "broker"
       ? [
           [
             t("orderSign.link.title"),

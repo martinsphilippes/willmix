@@ -64,10 +64,19 @@ const COLUMNS: Array<{ key: BookingLotSortKey; numeric?: boolean }> = [
 export function BookingLotsTable({
   rows,
   labels,
+  showSignals = true,
 }: {
   rows: BookingLotRow[];
   labels: BookingLotsTableLabels;
+  /**
+   * Sinais do Superplan: falso sem "Ver preço de compra" (dono, 15/11/2026;
+   * docs/LINHA_DE_VISAO.md, seção 7).
+   */
+  showSignals?: boolean;
 }) {
+  const columns = showSignals
+    ? COLUMNS
+    : COLUMNS.filter((c) => c.key !== "viable");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{
     key: BookingLotSortKey;
@@ -83,7 +92,7 @@ export function BookingLotsTable({
         ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
         : {
             key,
-            dir: COLUMNS.find((c) => c.key === key)?.numeric ? "desc" : "asc",
+            dir: columns.find((c) => c.key === key)?.numeric ? "desc" : "asc",
           },
     );
 
@@ -180,7 +189,7 @@ export function BookingLotsTable({
         >
           <thead>
             <tr>
-              {COLUMNS.map(({ key, numeric }) => {
+              {columns.map(({ key, numeric }) => {
                 const active = sort.key === key;
                 return (
                   <th
@@ -224,7 +233,7 @@ export function BookingLotsTable({
                 className="transition hover:bg-brand-50/40"
                 data-booking-lot-row={row.id}
               >
-                {COLUMNS.map(({ key, numeric }) => (
+                {columns.map(({ key, numeric }) => (
                   <td
                     key={key}
                     className={cx(

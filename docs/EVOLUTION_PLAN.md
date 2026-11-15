@@ -1520,6 +1520,18 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - `tests/unit/sankhya-history-products.test.ts`: valor por produto, item sem valor, sem permissão e as quatro ordens, com a ordem por unidades diferente da ordem por valor.
   - `tests/e2e/purchase-history-products.spec.ts`: as quatro ordens na tela, os dois totais, a coluna estreita (iPad em pé e deitado e celular) e o login sem valores.
 
+## Gerar programação: "Resultado da programação" numa faixa
+
+- **Pedido do dono** (15/11/2026): embaixo de "Gerar programação", nas duas telas (Nova solicitação e Seleção de itens), trocar o texto corrido do "Cálculo" pelo título "Resultado da programação" e uma faixa horizontal compacta com três grupos: Caixa master e capacidade, Por programação e Total programado. No total, "Ocupação equivalente" no lugar de "Containers previstos".
+- **Como ficou**: docs/PURCHASE_SCHEDULE.md, item "O resultado fica sempre à vista".
+- **Não mudou**: os campos e botões de cima (inclusive "Containers por programação" e "Containers no total"), os cartões de cada programação, a geração, a ocupação por programação, as datas e a gravação. Nenhuma rota, Server Action, permissão ou dado mudou; sem mudança no banco.
+- **Saiu da tela**: as linhas do texto do Cálculo (a caixa, o total, cada programação e os containers no total) e o aviso do arredondamento para caixas inteiras. Os mesmos números estão na faixa e nos campos de cima.
+- **Dados novos na tela, sem mudança no banco**: a caixa inner e o peso líquido por peça. Na Seleção vêm do item do Book; na Nova solicitação, do produto (`innerBoxQty`, `netWeightKg`), com a variação e a ficha mestre.
+- **Como**: `scheduleResult` e `equivalentPercent` (`src/lib/purchase-rounds.ts`), textos `purchaseRounds.res.*` e a faixa em `SelectionQuantity`. A sombra da rolagem fica em `src/app/globals.css`.
+- Testes:
+  - `tests/unit/schedule-result.test.ts`: as contas, acima de 100%, "<1", os grupos e campos na tela, a caixa inner com e sem quantidade e as três bases do peso.
+  - `tests/e2e/schedule-result-strip.spec.ts`: as duas telas, a troca de 20GP, 40GP e 40HC, a caixa inner com e sem quantidade, o peso por peça e a faixa no celular.
+
 ## RCA do cliente no cadastro e na Nova solicitação
 
 - **Pedido do dono** (15/11/2026, com as fotos da Nova solicitação e de Cadastros → Parceiros no iPad): o campo "RCA responsável" no cadastro do cliente; na Nova solicitação, o "RCA do cliente" ao lado do "Solicitante", o solicitante preenchido com quem está criando e o seletor de antes como "Login do cliente com acesso". Decisões: o RCA é o vendedor do Sankhya (TGFVEN, pelo código) e o Sankhya manda (a carga sobrescreve o portal).

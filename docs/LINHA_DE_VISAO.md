@@ -127,8 +127,9 @@ O servidor só lê e só monta o que o login pode ver; o que fica de fora não s
 
 | Dado | Quem vê |
 | --- | --- |
-| Compra (Book, negociação, pedido, cadastro, faixas de preço) | permissão **"Ver preço de compra"** (Equipe → Funções e acessos). Padrão: Comprador, Gerente de produto, Diretoria de compras, Diretoria executiva, Financeiro; o administrador sempre; e quem tem "Ver valores e margem". Fora da Wellmix: o **fornecedor**, só a dele; o **despachante** do pedido. A certificadora e o cliente nunca. |
-| Custo interno, Superplan e margem | "Ver valores e margem" |
+| Compra (Book, negociação, pedido, cadastro, faixas de preço) | permissão **"Ver preço de compra"** (Equipe → Funções e acessos). Padrão: Comprador, Gerente de produto, Planejamento (15/11/2026), Diretoria de compras, Diretoria executiva, Financeiro; o administrador sempre; e quem tem "Ver valores e margem". Fora da Wellmix: o **fornecedor**, só a dele; o **despachante** do pedido. A certificadora e o cliente nunca. |
+| Superplan no Book, na Seleção de itens e na negociação (custo por peça, mínimo, meta, veredito) | "Ver preço de compra" (dono, 15/11/2026: o Comprador decide a compra com ele) |
+| Custo interno e margem (ficha da solicitação: custo nacionalizado, venda sugerida, margem prevista) | "Ver valores e margem" |
 | Venda e forma de pagamento do cliente | "Ver valores e margem" ou "Gravar a venda ao cliente"; o cliente vê a dele (docs/ORDER_SALE.md, docs/CUSTOMER_PAYMENT.md) |
 | Nome do fornecedor | regra de sempre: o cliente e o transportador nunca |
 | Identificação, peça, caixa, cubagem, programação | quem vê o item na tela |
@@ -154,9 +155,14 @@ O servidor só lê e só monta o que o login pode ver; o que fica de fora não s
 - Cotação de compra: o quadro comparativo mostra fornecedores, situação e condições; preços por item, total e a linha "Última compra" só com a permissão, com o aviso de quem vê.
 - Sourcing: preço na lista, na visita e no item; faixas de preço (lista, texto e o botão de salvar, que o servidor recusa). Salvar o item sem a permissão mantém o preço e a moeda gravados.
 
-**Quem abre essas telas sem a permissão (padrão de fábrica):** o Planejamento (solicitação ao fornecedor, estratégia e cotação de compra) e o Cadastro (Sourcing), além de funções criadas pelo administrador. Em 15/11/2026 nenhum login de produção tinha essas funções. **Para decidir com o dono:** o Planejamento decide a solicitação ao fornecedor e gera o pedido de compra por padrão, sem ver o preço (recomendação: dar "Ver preço de compra" ao Planejamento).
+**Quem abre essas telas sem a permissão (padrão de fábrica):** o Cadastro (Sourcing, confirmado pelo dono em 15/11/2026: quem vai à feira, Comprador ou GP, grava o preço) e funções criadas pelo administrador. O Planejamento passou a ter "Ver preço de compra" por padrão (dono, 15/11/2026): ele decide a solicitação ao fornecedor e gera o pedido de compra.
 
-**Para decidir com o dono:** documentos com preço que hoje chegam a parceiros: o pedido de compra (tela e PDF) para a certificadora; a invoice comercial para o comex e a logística; as linhas da invoice para a companhia marítima; os arquivos de invoice e packing list para agência, transportador e jurídico. E o Superplan (custo nacionalizado, margem e veredito) no Book, na Seleção e na negociação, hoje para toda a Wellmix com a tela.
+**Decidido pelo dono (15/11/2026):**
+
+- O pedido de compra (tela e PDF) saiu da certificadora (`canViewOrderDocument`); o despachante do pedido continua lendo. A invoice comercial (comex e logística), as linhas da invoice (companhia marítima) e os arquivos de invoice e packing list (agência, transportador e jurídico) continuam com quem precisa deles para embarque e alfândega.
+- O Superplan no Book (coluna e cartão da análise), na Seleção de itens (custo por peça, coluna Superplan e o destaque do melhor custo) e na negociação segue "Ver preço de compra".
+
+**Em conversa com o dono:** o preço da última compra na Nova solicitação (PR #488) aparece para toda a Wellmix, inclusive Vendas; nada muda até o dono decidir.
 
 ## 9. O que o inventário mostrou (15/11/2026)
 

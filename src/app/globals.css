@@ -275,6 +275,26 @@ th[data-table-sort]:focus-visible {
   display: none;
 }
 
+/*
+ * "Resultado da programação" (src/components/selection-quantity.tsx): no card
+ * estreito a faixa rola para o lado. Uma sombra discreta na borda mostra que
+ * há mais dados daquele lado e some quando a rolagem chega ao fim. Só CSS: as
+ * capas cinza acompanham o conteúdo (local) e cobrem a sombra da borda
+ * (scroll) quando não há mais nada para aquele lado.
+ */
+[data-generate-strip] {
+  background:
+    linear-gradient(to right, var(--color-zinc-100) 40%, transparent) left
+      center / 2rem 100% no-repeat local,
+    linear-gradient(to left, var(--color-zinc-100) 40%, transparent) right
+      center / 2rem 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 0.16), transparent) left
+      center / 0.75rem 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 0.16), transparent)
+      right center / 0.75rem 100% no-repeat scroll,
+    var(--color-zinc-100);
+}
+
 /* Book: a célula do campo aberto pela lista de pendências do fechamento
    (src/components/booking-pending-list.tsx) fica destacada por alguns segundos. */
 td[data-booking-field-target] {

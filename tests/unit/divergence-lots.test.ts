@@ -178,6 +178,16 @@ describe("lote com divergência (E21, E24 a E27)", () => {
     expect(
       (await lots.lotTasks(director)).map((x) => `${x.step}:${x.kind}`),
     ).toContain("supplier:do");
+    // Menu: a pendência do lote conta na Entrega → Armazenagem (marco 16).
+    const { pendingTasksFor } = await import("@/lib/services/tasks");
+    const { flowStepsOf } = await import("@/lib/flow");
+    const lotTask = (await pendingTasksFor(director)).find(
+      (x) => x.kind === "divergence_lot",
+    )!;
+    expect(lotTask.link).toContain(`/lots/${lot.id}`);
+    expect(flowStepsOf(lotTask)).toEqual([
+      expect.objectContaining({ block: "delivery", key: "storage" }),
+    ]);
     await expect(submit(quality, lot.id, "supplier")).rejects.toThrow();
     await expect(
       submit(director, lot.id, "supplier", { text: " " }),

@@ -247,6 +247,14 @@ export function RequestItems({
         ? ((v ? v.cbmPerCarton : p?.cbmPerCarton) ?? null)
         : null,
       sheetQty: null,
+      // "Resultado da programação" (dono, 15/11/2026): caixa inner e peso
+      // líquido do cadastro, que é por peça (kg).
+      innerQty: (v ? v.innerBoxQty : p?.innerBoxQty) ?? null,
+      netWeight: {
+        value: (v ? v.netWeightKg : p?.netWeightKg) ?? null,
+        unit: "kg",
+        basis: "piece" as const,
+      },
     };
   };
 
