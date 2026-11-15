@@ -142,7 +142,27 @@ Esta seção vale por cima das anteriores onde elas divergem.
 - `requests.orderTerms` ganha `redispatchRequired`, `productFamily`, `productFamilyName` e `confirmation`; os campos da rodada anterior (`redispatch`, `productLineId`, `productLineName`, `noReturnsAccepted`) ficam para as solicitações já gravadas.
 - Tabela nova `request_drafts`.
 
-## 10. Em aberto (para o dono)
+## 10. Quarta rodada (dono, 15/11/2026): família, histórico → pedido e composição
+
+### 10.1 Família
+
+- A família ficou **dois níveis acima da linha** (o avô no Sankhya; o pai ainda era detalhado demais): `FAMILY_LEVELS_UP = 2` em `src/lib/services/product-origin.ts`. Árvore mais rasa: o nível mais alto abaixo do topo.
+- **Mesmo nome = mesma família:** grupos do Sankhya com o mesmo nome em ramos diferentes viram uma família só, com todos os produtos deles (antes apareciam vários "iguais"). A chave é o nome sem acento e sem caixa: `fm:<NOME>` (ex.: `fm:UTILIDADES_DOMESTICAS`).
+
+### 10.2 Histórico de compras do cliente → pedido
+
+- **Filtro pela família:** com a família escolhida nas condições do pedido, o histórico (Sankhya: lista de pedidos e visão Produto; portal: pedidos gravados) mostra só os produtos dela, com o aviso "Só os produtos da família escolhida (N de outras famílias não aparecem)". Sem família, todos.
+- **Clique no produto = mais um produto no pedido:** o nome do produto do catálogo é clicável ("Acrescentar ao pedido"); ele entra como uma linha nova (no lugar da primeira linha, se ela ainda está vazia), com a ficha e o mínimo dele, e a página rola até a linha. Item sem produto do catálogo (código do Sankhya sem produto no portal) não é clicável.
+- **Marca de "já entrou":** produto que já está nas linhas aparece riscado com o check "✓ No pedido".
+- Como o histórico sabe o produto e a família: o servidor liga o `CODPROD` de cada item do Sankhya ao produto do portal (`products.sankhyaCode`) e à família (`originsByCode`); no histórico do portal, pelo `productId` do item do pedido.
+- Só na venda pela Wellmix; o login do cliente vê o histórico como antes.
+- Código: `src/components/history-product-pick.tsx`; o contexto `request-customer-context.tsx` guarda os produtos das linhas e o pedido de acrescentar.
+
+### 10.3 Composição de containers
+
+- Com a linha do container aberta, **clicar no nome do produto leva a página até a linha dele no pedido**, com um destaque rápido.
+
+## 11. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.
 - **Carga no banco (outro dia):** o fornecedor de cada produto (`TGFPRO.CODPARCFORN`) e a árvore de grupos (`TGFGRU.CODGRUPAI`), para não depender da leitura pela API.

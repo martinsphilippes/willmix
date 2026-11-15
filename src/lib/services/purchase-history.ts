@@ -91,6 +91,8 @@ export interface HistoryItemSheet {
 }
 
 export interface HistoryItem {
+  /** Produto do catálogo do item (nulo fora do catálogo). */
+  productId?: string | null;
   name: string;
   quantity: number;
   unit: string;
@@ -559,6 +561,7 @@ export async function loadPurchaseHistory(
       const sheet = wellmix ? sheetOf(o, item) : null;
       const single = list.length === 1;
       return {
+        productId: item.productId ?? null,
         name: realName(item.name) ?? "—",
         quantity: item.quantity,
         unit: item.unit,
@@ -700,6 +703,13 @@ export interface HistoryLineView {
 export interface HistoryItemView {
   name: string;
   lines: HistoryLineView[];
+  /**
+   * Produto do catálogo e a família dele (Nova solicitação; dono,
+   * 15/11/2026; docs/ORDER_TERMS.md seção 10): o histórico filtra pela
+   * família escolhida e um clique leva o produto ao pedido.
+   */
+  productId?: string | null;
+  family?: string | null;
 }
 
 export interface HistoryRoundView {
@@ -872,7 +882,7 @@ export function purchaseHistoryView(
         current: false,
       },
     );
-    return { name: item.name, lines };
+    return { name: item.name, lines, productId: item.productId ?? null };
   };
   // Marco do pedido pela situação (docs/MILESTONES.md, fase 4a).
   const status = (s: string) => orderMilestoneText(t, s);
@@ -924,5 +934,34 @@ export function purchaseHistoryView(
         };
       }),
     })),
+  };
+}
+
+/** Acrescenta a família (do índice de origem) a cada item do histórico. */
+export async function withHistoryFamilies(
+  view: HistoryPageView,
+): Promise<HistoryPageView> {
+  const { productOrigin } = await import("./product-origin");
+  const cache = new Map<string, string | null>();
+  const familyOf = async (id: string | null | undefined) => {
+    if (!id) return null;
+    if (!cache.has(id)) cache.set(id, (await productOrigin(id))?.family ?? null);
+    return cache.get(id) ?? null;
+  };
+  const items = async (list: HistoryItemView[]) =>
+    Promise.all(
+      list.map(async (i) => ({ ...i, family: await familyOf(i.productId) })),
+    );
+  return {
+    ...view,
+    purchases: await Promise.all(
+      view.purchases.map(async (p) => ({
+        ...p,
+        items: await items(p.items),
+        rounds: await Promise.all(
+          p.rounds.map(async (r) => ({ ...r, items: await items(r.items) })),
+        ),
+      })),
+    ),
   };
 }

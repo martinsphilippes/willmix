@@ -121,6 +121,7 @@ export function compositionLabels(t: Translate): ContainerCompositionLabels {
     missing: t("composition.missing", { names: "{names}" }),
     tooBig: t("composition.tooBig", { names: "{names}" }),
     cartons: t("composition.cartons", { cartons: "{cartons}" }),
+    goTo: t("composition.goTo"),
     intl: t.intl,
   };
 }

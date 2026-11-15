@@ -203,3 +203,113 @@ test("Nova solicitação do próprio cliente: segue com a busca por foto ou link
   await expect(page.locator("[data-customer-contacts]")).toHaveCount(0);
   await expect(page.locator("[data-order-terms]")).toHaveCount(0);
 });
+
+test("Histórico do cliente → pedido: filtra pela família, acrescenta com um clique e marca; a composição leva ao produto", async ({
+  page,
+}) => {
+  // Histórico do Sankhya simulado (visão Produto) com um produto da família
+  // escolhida (a boneca) e outro de outra família (a jarra).
+  const product = (
+    code: number,
+    name: string,
+    productId: string,
+    family: string,
+  ) => ({
+    key: String(code),
+    code,
+    name,
+    total: [{ unit: "UN", quantity: 480 }],
+    value: null,
+    days: [{ date: "2026-09-01", quantities: [{ unit: "UN", quantity: 480 }] }],
+    productId,
+    family,
+  });
+  await page.route("**/api/purchase-history/sankhya?**", async (route) => {
+    const url = new URL(route.request().url());
+    await route.fulfill({
+      json:
+        url.searchParams.get("view") === "products"
+          ? {
+              state: "ok",
+              products: [
+                product(
+                  11,
+                  "Boneca articulada 30 cm",
+                  "prod-boneca",
+                  "fm:BRINQUEDOS",
+                ),
+                product(
+                  12,
+                  "Jarra de vidro 1,5 L",
+                  "prod-jarra",
+                  "fm:UTILIDADES_DOMESTICAS",
+                ),
+              ],
+              orders: 1,
+              from: "2026-09-01",
+              to: "2026-09-01",
+              complete: true,
+              money: false,
+            }
+          : {
+              state: "ok",
+              orders: [
+                {
+                  nunota: 9001,
+                  numnota: 1,
+                  date: "2026-09-01",
+                  company: 1,
+                  top: 1,
+                  topName: "VENDA",
+                  pending: false,
+                  status: "L",
+                  totalBrl: null,
+                  items: 2,
+                },
+              ],
+              next: null,
+            },
+    });
+  });
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/requests/new");
+  await chooseCustomer(page, "loja", "cliente-joao");
+  await chooseCustomerLogin(page, "joao@lojista.com");
+  await fillOrderTerms(page);
+  const history = page.locator("[data-sankhya-history]");
+  await history
+    .locator('[data-sankhya-history-view-button="products"]')
+    .click();
+  // Só a família escolhida (Brinquedos): a jarra fica de fora, com o aviso.
+  await expect(
+    history.locator('[data-history-pick="prod-boneca"]'),
+  ).toBeVisible();
+  await expect(history.locator('[data-history-pick="prod-jarra"]')).toHaveCount(
+    0,
+  );
+  await expect(history.locator("[data-history-family-filtered]")).toBeVisible();
+  // Clique: a boneca entra no pedido (no lugar da linha vazia) e fica marcada.
+  await history.locator('[data-history-pick="prod-boneca"]').click();
+  const row = page.locator('[data-request-item="1"]');
+  await expect(
+    row.locator('[data-product-picker="catalog"] [data-product-picker-input]'),
+  ).toHaveValue(/Boneca/);
+  await expect(page.locator('[data-request-item="0"]')).toHaveCount(0);
+  await expect(
+    history.locator('[data-history-pick="prod-boneca"]'),
+  ).toHaveAttribute("data-history-pick-state", "in-order");
+  await expect(history.locator("[data-history-in-order]")).toBeVisible();
+  // Composição: abrir o container e clicar no produto leva até a linha dele.
+  await row
+    .locator("[data-rounds-generator] [data-generate-total]")
+    .fill("100");
+  const composition = page.locator("[data-container-composition]");
+  await expect(composition).toHaveAttribute(
+    "data-container-composition",
+    "ready",
+  );
+  await composition.locator('[data-composition-toggle="1"]').click();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await composition.locator('[data-composition-goto="row-1"]').click();
+  await expect(row).toBeInViewport();
+});

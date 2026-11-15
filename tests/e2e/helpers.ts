@@ -509,7 +509,7 @@ export async function approveMilestoneRows(
 export async function chooseOrderOrigin(
   page: Page,
   country = "CHINA",
-  family = "ln:linha-brinquedos",
+  family = "fm:BRINQUEDOS",
 ) {
   const terms = page.locator("[data-order-terms]");
   const countrySelect = terms.locator("[data-order-terms-country]");

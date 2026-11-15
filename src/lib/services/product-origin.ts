@@ -11,11 +11,11 @@ import { sankhyaProductGroups } from "./sankhya-product-families";
  * docs/ORDER_TERMS.md): o vendedor escolhe o país e depois o grupo, e só os
  * produtos daquele país e grupo entram no pedido.
  *
- * - Grupo de produto = a família, um nível acima da linha (dono,
- *   15/11/2026): o grupo pai da linha no Sankhya (TGFGRU.CODGRUPAI), lido
- *   pela API (sankhya-product-families.ts). Chave "sk:<código do pai>".
- *   Linha sem código do Sankhya, sem pai ou sem o Sankhya: a própria linha
- *   é a família (chave "ln:<id da linha>").
+ * - Grupo de produto = a família, dois níveis acima da linha (dono,
+ *   15/11/2026): o grupo avô da linha no Sankhya (TGFGRU.CODGRUPAI do
+ *   CODGRUPAI), lido pela API (sankhya-product-families.ts). Famílias com o
+ *   mesmo nome são uma só (chave "fm:<NOME>"). Linha sem código do Sankhya
+ *   ou sem o Sankhya: o nome da própria linha.
  * - País de origem = o país do fornecedor do produto: o fornecedor do
  *   cadastro (`supplierId`) ou, sem ele, o fornecedor que veio do Sankhya
  *   (`sankhyaRefs.CODPARCFORN` → parceiro com esse código). Sem nenhum dos
@@ -54,9 +54,29 @@ interface OriginIndex {
   families: Map<string, { name: string; lineIds: Set<string> }>;
   /** linha → família */
   lineFamily: Map<string, string>;
+  /** CODPROD do Sankhya → produto do portal */
+  byCode: Map<string, string>;
 }
 
 const TTL_MS = 10 * 60 * 1000;
+
+/**
+ * Chave da família pelo nome: sem acento, sem caixa e só letras e números
+ * ("Utilidades Domésticas" e "UTILIDADES DOMESTICAS" = "fm:UTILIDADES_DOMESTICAS").
+ */
+export function familyKey(name: string | null | undefined): string | null {
+  const slug = (name ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 60);
+  return slug ? `fm:${slug}` : null;
+}
+
+/** Quantos níveis acima da linha fica a família (dono, 15/11/2026: 2). */
+export const FAMILY_LEVELS_UP = 2;
 let cached: OriginIndex | null = null;
 let pending: Promise<OriginIndex> | null = null;
 
@@ -85,16 +105,26 @@ async function buildIndex(): Promise<OriginIndex> {
     listColumns(store, "product_lines", ["name", "sankhyaCode"]),
     sankhyaProductGroups(),
   ]);
-  // Família de cada linha: o grupo pai no Sankhya; sem ele, a própria linha.
+  // Família de cada linha: o grupo do Sankhya FAMILY_LEVELS_UP níveis acima
+  // dela (dono, 15/11/2026: o avô; o pai ainda era detalhado demais). Árvore
+  // mais rasa: o mais alto que houver. Sem o Sankhya: a própria linha.
   const families = new Map<string, { name: string; lineIds: Set<string> }>();
   const lineFamily = new Map<string, string>();
   for (const l of lines) {
-    const own = l.sankhyaCode
-      ? groups.get(String(Number(l.sankhyaCode)))
-      : null;
-    const parent = own?.parent ? groups.get(own.parent) : null;
-    const key = own?.parent ? `sk:${own.parent}` : `ln:${l.id}`;
-    const name = own?.parent ? (parent?.name ?? own.parent) : l.name;
+    let code: string | null = null;
+    let at = l.sankhyaCode ? groups.get(String(Number(l.sankhyaCode))) : null;
+    for (let up = 0; up < FAMILY_LEVELS_UP && at?.parent; up++) {
+      // O topo da árvore (sem pai) não é família: agruparia tudo.
+      const next = groups.get(at.parent);
+      if (up > 0 && !next?.parent) break;
+      code = at.parent;
+      at = next ?? null;
+    }
+    const name = code ? (groups.get(code)?.name ?? code) : l.name;
+    // Mesmo nome = mesma família (dono, 15/11/2026): grupos do Sankhya com o
+    // mesmo nome em ramos diferentes viram uma família só, com todos os
+    // produtos deles.
+    const key = familyKey(name) ?? `ln:${l.id}`;
     const family = families.get(key) ?? { name, lineIds: new Set<string>() };
     family.lineIds.add(l.id);
     families.set(key, family);
@@ -164,7 +194,18 @@ async function buildIndex(): Promise<OriginIndex> {
       family: lineFamily.get(p.lineId) ?? `ln:${p.lineId}`,
     });
   }
-  return { at: Date.now(), byProduct, countryNames, families, lineFamily };
+  const byCode = new Map<string, string>();
+  for (const p of products)
+    if (p.sankhyaCode && byProduct.has(p.id))
+      byCode.set(String(Number(p.sankhyaCode)), p.id);
+  return {
+    at: Date.now(),
+    byProduct,
+    countryNames,
+    families,
+    lineFamily,
+    byCode,
+  };
 }
 
 async function originIndex(): Promise<OriginIndex> {
@@ -259,4 +300,23 @@ export async function productIdsOfOrigin(
   for (const [id, o] of index.byProduct)
     if (o.country === country && o.family === family) ids.add(id);
   return ids;
+}
+
+/**
+ * Produto do portal, país e família de cada código do Sankhya (CODPROD),
+ * para o histórico de compras do cliente (docs/ORDER_TERMS.md seção 10):
+ * só os do catálogo (ativos, fora do Booking).
+ */
+export async function originsByCode(
+  codes: Array<number | null>,
+): Promise<Map<number, ProductOrigin & { productId: string }>> {
+  const index = await originIndex();
+  const out = new Map<number, ProductOrigin & { productId: string }>();
+  for (const code of codes) {
+    if (code === null || out.has(code)) continue;
+    const productId = index.byCode.get(String(code));
+    const origin = productId ? index.byProduct.get(productId) : null;
+    if (productId && origin) out.set(code, { ...origin, productId });
+  }
+  return out;
 }

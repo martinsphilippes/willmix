@@ -144,8 +144,19 @@ export interface SankhyaQuantity {
   quantity: number;
 }
 
+/**
+ * O produto do portal de um código do Sankhya e a família dele (Nova
+ * solicitação, dono, 15/11/2026; docs/ORDER_TERMS.md seção 10): o histórico
+ * filtra pela família escolhida e um clique leva o produto ao pedido. Nulos
+ * quando o código não é de um produto do catálogo.
+ */
+export interface SankhyaCatalogLink {
+  productId?: string | null;
+  family?: string | null;
+}
+
 /** Um produto da visão Produto: o total do período e cada data. */
-export interface SankhyaHistoryProduct {
+export interface SankhyaHistoryProduct extends SankhyaCatalogLink {
   /** CODPROD (ou o nome, se o item vier sem código). */
   key: string;
   code: number | null;
@@ -271,7 +282,7 @@ export interface SankhyaHistoryOrder {
   items: number;
 }
 
-export interface SankhyaHistoryItem {
+export interface SankhyaHistoryItem extends SankhyaCatalogLink {
   sequence: number;
   code: number | null;
   name: string;
@@ -438,7 +449,7 @@ export async function sankhyaOrderItems(
       if (rows.length < ITEMS_PAGE || last <= after) break;
       after = last;
     }
-    return { state: "ok", items };
+    return { state: "ok", items: await withCatalog(items) };
   } catch (e) {
     return failure(e);
   }
@@ -536,7 +547,7 @@ export async function sankhyaCustomerProducts(
     }
     return {
       state: "ok",
-      products: productHistory(rows),
+      products: await withCatalog(productHistory(rows)),
       complete,
       money,
       ...period,
@@ -544,4 +555,16 @@ export async function sankhyaCustomerProducts(
   } catch (e) {
     return failure(e);
   }
+}
+
+/** Liga cada linha (pelo CODPROD) ao produto do catálogo e à família dele. */
+async function withCatalog<T extends { code: number | null }>(
+  rows: T[],
+): Promise<Array<T & SankhyaCatalogLink>> {
+  const { originsByCode } = await import("./product-origin");
+  const origins = await originsByCode(rows.map((r) => r.code));
+  return rows.map((r) => {
+    const o = r.code === null ? null : origins.get(r.code);
+    return { ...r, productId: o?.productId ?? null, family: o?.family ?? null };
+  });
 }

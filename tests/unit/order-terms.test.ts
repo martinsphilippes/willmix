@@ -24,29 +24,30 @@ vi.mock("@/lib/integrations/sankhya-client", async (importOriginal) => ({
   executeQuery: async (sql: string) => {
     if (!sankhya.rows) throw new Error("Sankhya fora do ar");
     // Grupos de produto (TGFGRU): a família é o grupo pai da linha.
-    if (/FROM TGFGRU/.test(sql))
+    if (/FROM TGFGRU/.test(sql)) {
+      // Dois ramos com uma família de mesmo nome (caixa diferente): a
+      // família é o avô da linha e junta os dois.
+      const g = (code: number, name: string, parent: number) => ({
+        CODGRUPOPROD: code,
+        DESCRGRUPOPROD: name,
+        CODGRUPAI: parent,
+      });
       return {
         columns: ["CODGRUPOPROD", "DESCRGRUPOPROD", "CODGRUPAI"],
         rows: /CODGRUPOPROD > 0\b/.test(sql)
           ? [
-              {
-                CODGRUPOPROD: 12007,
-                DESCRGRUPOPROD: "BRINQUEDOS GERAIS",
-                CODGRUPAI: 12000,
-              },
-              {
-                CODGRUPOPROD: 12007001,
-                DESCRGRUPOPROD: "BRINQUEDOS",
-                CODGRUPAI: 12007,
-              },
-              {
-                CODGRUPOPROD: 12007002,
-                DESCRGRUPOPROD: "INFLAVEIS",
-                CODGRUPAI: 12007,
-              },
+              g(12, "BRINQ", 0),
+              g(14, "OUTROS", 0),
+              g(1200, "BRINQUEDOS GERAIS", 12),
+              g(1400, "Brinquedos Gerais", 14),
+              g(12007, "BONECAS", 1200),
+              g(14005, "PISCINAS", 1400),
+              g(12007001, "BRINQUEDOS", 12007),
+              g(14005002, "INFLAVEIS", 14005),
             ]
           : [],
       };
+    }
     // Fornecedor de cada produto (TGFPRO.CODPARCFORN), pela API.
     if (/FROM TGFPRO/.test(sql))
       return {
@@ -182,14 +183,14 @@ describe("país de origem, grupo e entrega", () => {
     origin.resetOriginIndex();
     families.resetSankhyaProductFamilies();
     expect((await origin.originGroups("CHINA")).map((g) => g.id)).toContain(
-      "ln:linha-brinquedos",
+      "fm:BRINQUEDOS",
     );
     // Com o código: Brinquedos e Infláveis sob a família "BRINQUEDOS GERAIS".
     await getStore().update("product_lines", "linha-brinquedos", {
       sankhyaCode: "12007001",
     });
     await getStore().update("product_lines", "linha-inflaveis", {
-      sankhyaCode: "12007002",
+      sankhyaCode: "14005002",
     });
     origin.resetOriginIndex();
     families.resetSankhyaProductFamilies();
@@ -198,23 +199,43 @@ describe("país de origem, grupo e entrega", () => {
       0,
     );
     const groups = await origin.originGroups("CHINA");
-    expect(groups.find((g) => g.id === "sk:12007")).toMatchObject({
+    expect(groups.find((g) => g.id === "fm:BRINQUEDOS_GERAIS")).toMatchObject({
       name: "BRINQUEDOS GERAIS",
     });
-    expect(groups.map((g) => g.id)).not.toContain("ln:linha-brinquedos");
+    expect(groups.map((g) => g.id)).not.toContain("fm:BRINQUEDOS");
     const search = (q: string, family: string) =>
       searchProducts({
         q,
         scope: "catalog",
         origin: { country: "CHINA", family },
       }).then((hits) => hits.map((p) => p.id));
-    expect(await search("boneca", "sk:12007")).toContain("prod-boneca");
-    expect(await search("piscina", "sk:12007")).toContain("prod-piscina");
-    expect(await search("boneca", "ln:linha-utilidades")).not.toContain(
+    expect(await search("boneca", "fm:BRINQUEDOS_GERAIS")).toContain(
       "prod-boneca",
     );
+    expect(await search("piscina", "fm:BRINQUEDOS_GERAIS")).toContain(
+      "prod-piscina",
+    );
+    expect(await search("boneca", "fm:UTILIDADES_DOMESTICAS")).not.toContain(
+      "prod-boneca",
+    );
+    // Mesmo nome em ramos diferentes = uma família só, com os dois.
+    expect(
+      groups.filter((g) => g.name.toUpperCase() === "BRINQUEDOS GERAIS"),
+    ).toHaveLength(1);
+    expect(origin.familyKey("Utilidades Domésticas")).toBe(
+      "fm:UTILIDADES_DOMESTICAS",
+    );
+    // Histórico de compras: o código do Sankhya leva ao produto e à família.
+    await getStore().update("products", "prod-boneca", { sankhyaCode: "777" });
+    origin.resetOriginIndex();
+    const byCode = await origin.originsByCode([777, 999, null]);
+    expect(byCode.get(777)).toMatchObject({
+      productId: "prod-boneca",
+      family: "fm:BRINQUEDOS_GERAIS",
+    });
+    expect(byCode.has(999)).toBe(false);
     expect(await origin.productOrigin("prod-piscina")).toMatchObject({
-      family: "sk:12007",
+      family: "fm:BRINQUEDOS_GERAIS",
     });
   });
 
@@ -275,7 +296,7 @@ describe("país de origem, grupo e entrega", () => {
       carrier: "portal:transportador",
       redispatch: "yes",
       originCountry: "CHINA",
-      productFamily: "sk:12007",
+      productFamily: "fm:BRINQUEDOS_GERAIS",
     };
     const resolved = await orderTerms.resolveOrderTerms(base);
     expect(resolved).toMatchObject({
@@ -285,7 +306,7 @@ describe("país de origem, grupo e entrega", () => {
       carrier: { source: "portal", name: "Trans Rodo" },
       redispatchRequired: true,
       originCountryName: "CHINA",
-      productFamily: "sk:12007",
+      productFamily: "fm:BRINQUEDOS_GERAIS",
       productFamilyName: "BRINQUEDOS GERAIS",
       confirmation: null,
     });
@@ -328,7 +349,7 @@ describe("país de origem, grupo e entrega", () => {
       new Request("http://x/api/requests/order-options?country=CHINA"),
     );
     const body = (await res.json()) as { groups: Array<{ id: string }> };
-    expect(body.groups.map((g) => g.id)).toContain("sk:12007");
+    expect(body.groups.map((g) => g.id)).toContain("fm:BRINQUEDOS_GERAIS");
     current = null;
   });
 });
@@ -353,7 +374,7 @@ describe("confirmação do cliente e rascunho", () => {
       carrier: "portal:transportador",
       redispatch: "yes",
       originCountry: "CHINA",
-      productFamily: "sk:12007",
+      productFamily: "fm:BRINQUEDOS_GERAIS",
     });
     const [request] = await createRequestBatch(
       admin,
