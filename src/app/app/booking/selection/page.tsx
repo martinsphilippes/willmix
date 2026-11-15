@@ -1135,7 +1135,7 @@ export default async function BookingSelectionPage({
                                   <div
                                     key={b.key}
                                     className={cx(
-                                      "rounded-xl border p-3",
+                                      "min-w-0 rounded-xl border p-3",
                                       g
                                         ? "border-emerald-300 bg-emerald-50/40"
                                         : "border-zinc-200",
@@ -1198,11 +1198,16 @@ export default async function BookingSelectionPage({
                                           item.currency,
                                           rmbPerUsd,
                                         );
+                                        // Tudo dentro do card (dono, 15/11/2026: o
+                                        // preço do escolhido vazava da borda): o
+                                        // item, o fornecedor e o preço numa linha,
+                                        // que encolhe com reticências; no escolhido,
+                                        // o resumo (peças, programações, cores)
+                                        // embaixo, quebrando a linha.
                                         return (
                                           <li
                                             key={id}
                                             className={cx(
-                                              "flex items-center gap-2",
                                               winner &&
                                                 "rounded-md bg-emerald-100 px-1.5 py-1 font-semibold text-emerald-900",
                                             )}
@@ -1210,14 +1215,35 @@ export default async function BookingSelectionPage({
                                               winner || undefined
                                             }
                                           >
-                                            <span className="min-w-0 flex-1 truncate">
-                                              {winner ? "✓ " : ""}
-                                              {item.description ??
-                                                item.productName ??
-                                                "—"}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                              <span className="min-w-0 flex-1 truncate">
+                                                {winner ? "✓ " : ""}
+                                                {item.description ??
+                                                  item.productName ??
+                                                  "—"}
+                                              </span>
+                                              <span
+                                                className={cx(
+                                                  "min-w-0 max-w-[45%] truncate",
+                                                  winner
+                                                    ? "font-medium"
+                                                    : "text-zinc-500",
+                                                )}
+                                              >
+                                                {rowById.get(id)?.supplier
+                                                  ?.name ?? "—"}
+                                              </span>
+                                              <span className="min-w-20 shrink-0 text-right whitespace-nowrap tabular-nums">
+                                                {usdPrice === null
+                                                  ? "—"
+                                                  : `US$ ${num(usdPrice, 3)}`}
+                                              </span>
+                                            </div>
                                             {winner ? (
-                                              <span className="shrink-0 text-xs">
+                                              <p
+                                                className="mt-0.5 text-xs [overflow-wrap:anywhere]"
+                                                data-selection-winner-summary
+                                              >
                                                 {t(
                                                   "supplierRequests.selection.winner",
                                                   {
@@ -1246,18 +1272,8 @@ export default async function BookingSelectionPage({
                                                       )
                                                       .join(", ")}`
                                                   : null}
-                                              </span>
-                                            ) : (
-                                              <span className="shrink-0 text-zinc-500">
-                                                {rowById.get(id)?.supplier
-                                                  ?.name ?? "—"}
-                                              </span>
-                                            )}
-                                            <span className="w-20 shrink-0 text-right tabular-nums">
-                                              {usdPrice === null
-                                                ? "—"
-                                                : `US$ ${num(usdPrice, 3)}`}
-                                            </span>
+                                              </p>
+                                            ) : null}
                                           </li>
                                         );
                                       })}
