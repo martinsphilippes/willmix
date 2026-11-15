@@ -44,6 +44,15 @@ export interface OrderPaymentPlan {
   decisionNote: string | null;
   /** NUNOTA do pedido de venda no Sankhya (os boletos são títulos dele). */
   saleNunota: string | null;
+  /**
+   * Parcelas liberadas pelo administrador (dono, 15/11/2026): a parcela em
+   * aberto trava o pedido e só o administrador destrava; a liberada não
+   * trava de novo.
+   */
+  releases?: Record<
+    string,
+    { byUserId: string; at: string; note: string | null }
+  > | null;
 }
 
 /** Boleto de uma parcela (lido do Sankhya ou registrado à mão pelo financeiro). */
@@ -238,4 +247,28 @@ export function chargesFromTitles(
     source: "sankhya" as const,
     updatedAt: now,
   }));
+}
+
+/** Motivo da pausa do pedido por parcela em aberto (`orders.pauseReason`). */
+export const PAYMENT_HOLD_REASON = "payment_open";
+
+/**
+ * Parcelas que travam o pedido (dono, 15/11/2026): com valor, vencidas (o
+ * vencimento chegou) e sem pagamento, e não liberadas pelo administrador.
+ */
+export function blockingInstallments(
+  rows: readonly InstallmentView[],
+  releases: OrderPaymentPlan["releases"],
+  today: string,
+): InstallmentView[] {
+  return rows.filter(
+    (r) =>
+      r.percent > 0 &&
+      r.state !== "paid" &&
+      r.state !== "no_charge" &&
+      r.state !== "waiting_event" &&
+      !!r.dueDate &&
+      r.dueDate <= today &&
+      !releases?.[String(r.index)],
+  );
 }

@@ -14,6 +14,7 @@ const { seedDemo } = await import("@/lib/seed");
 const { PRODUCT_EXTRA_DEFAULTS, REQUEST_EXTRA_DEFAULTS } =
   await import("@/lib/db/schema");
 const rs = await import("@/lib/services/request-sheet");
+const { orderFromRequest } = await import("./helpers/order");
 const { parseRequestSpec, normLabel } = await import("@/lib/request-spec-parse");
 const { translator } = await import("@/i18n");
 type User = import("@/lib/db").User;
@@ -521,5 +522,77 @@ describe("solicitação com vários produtos", () => {
     // Quantidade gravada (2.400) diferente da programação (2.000): aviso.
     expect(view.rows[1].main.pieces.value).toBe("2.000 peças");
     expect(view.rows[1].warnings[0]).toContain("2.400");
+  });
+});
+
+describe("forma de pagamento do cliente no pedido (docs/CUSTOMER_PAYMENT.md)", () => {
+  it("aprovada: forma, parcelas com valor, sinal e prazo; em aprovação o cliente não vê", async () => {
+    const store = getStore();
+    const p = await product({ sku: "WB-PAY" });
+    const r = await request(p.id);
+    const order = await orderFromRequest(admin, r, {
+      sellPrice: 10000,
+      sellCurrency: "BRL",
+    });
+    const plan = {
+      planId: "forma-10-90",
+      name: "10% no pedido; 90% no embarque",
+      installments: [
+        { percent: 10, event: "order", days: 0 },
+        { percent: 90, event: "shipment", days: 0 },
+      ],
+      monthlyInterestPercent: null,
+      requiresApproval: false,
+      approverUserId: null,
+      status: "approved",
+      chosenByUserId: admin.id,
+      chosenAt: "2026-11-15T12:00:00.000Z",
+      decidedByUserId: null,
+      decidedAt: null,
+      decisionNote: null,
+      saleNunota: null,
+    };
+    await store.update("orders", order.id, {
+      customerPaymentPlan: plan,
+      paymentPlanStatus: "approved",
+    } as never);
+    const fresh = (await store.get("requests", r.id))!;
+    const spaces = (v: string | null) => v?.replace(/\s/g, " ") ?? null;
+
+    // Administrador: a forma do pedido, com a origem e a situação.
+    const [row] = (await sheetOf(admin, fresh)).rows;
+    expect(shown(fieldOf(row, "payment", "saleTerms"))).toEqual({
+      value: "10% no pedido; 90% no embarque",
+      source: `Pedido nº ${order.number}`,
+    });
+    expect(fieldOf(row, "payment", "saleTerms").note).toBe("Aprovada");
+    expect(spaces(fieldOf(row, "payment", "saleInstallments").value)).toBe(
+      "10% no pedido (R$ 1.000,00) 90% no embarque (R$ 9.000,00)",
+    );
+    expect(fieldOf(row, "payment", "saleDeposit").value).toBe(
+      "10% na data do pedido",
+    );
+    expect(fieldOf(row, "payment", "saleTerm").value).toBe("No embarque");
+
+    // O cliente do pedido vê a forma aprovada.
+    const [mine] = (await sheetOf(joao, fresh)).rows;
+    expect(fieldOf(mine, "payment", "saleTerms").value).toBe(
+      "10% no pedido; 90% no embarque",
+    );
+
+    // Em aprovação: o cliente ainda não vê; a Wellmix vê com a situação.
+    await store.update("orders", order.id, {
+      customerPaymentPlan: { ...plan, status: "pending" },
+      paymentPlanStatus: "pending",
+    } as never);
+    const [pending] = (await sheetOf(joao, fresh)).rows;
+    expect(fieldOf(pending, "payment", "saleTerms").value).toBeNull();
+    expect(fieldOf(pending, "payment", "saleInstallments").value).toBeNull();
+    const [wellmix] = (await sheetOf(admin, fresh)).rows;
+    expect(fieldOf(wellmix, "payment", "saleTerms").note).toBe("Em aprovação");
+
+    // Operador sem "Ver valores e margem": o pagamento continua fechado.
+    const [op] = (await sheetOf(operator, fresh)).rows;
+    expect(op.groups.find((g) => g.key === "payment")!.sections).toEqual([]);
   });
 });

@@ -170,6 +170,12 @@ export function parseRequestSchedule(
   form: FormData,
   prefix: string,
   max: number = MAX_SCHEDULE_ROUNDS,
+  /**
+   * Nova solicitação (dono, 15/11/2026): as datas são do pedido e um produto
+   * pode ficar sem quantidade numa delas (0 ou em branco). O total do
+   * produto continua maior que zero.
+   */
+  options: { allowZero?: boolean } = {},
 ): RequestSchedule | null {
   const get = (k: string) => {
     const v = form.get(`${prefix}schedule.${k}`);
@@ -188,8 +194,15 @@ export function parseRequestSchedule(
   const quantities: number[] = [];
   const pins: Array<string | null> = [];
   for (let i = 1; i <= count; i++) {
-    const q = Number(get(`qty.${i}`).replace(",", "."));
-    if (!Number.isFinite(q) || q <= 0 || q > 100_000_000)
+    const raw = get(`qty.${i}`);
+    const q =
+      options.allowZero && raw === "" ? 0 : Number(raw.replace(",", "."));
+    if (
+      !Number.isFinite(q) ||
+      q < 0 ||
+      (q === 0 && !options.allowZero) ||
+      q > 100_000_000
+    )
       throw new Error("invalid_input");
     quantities.push(q);
     const pin = get(`manual.${i}`) === "1" ? get(`date.${i}`) : "";
@@ -197,6 +210,7 @@ export function parseRequestSchedule(
       throw new Error("invalid_input");
     pins.push(pin || null);
   }
+  if (!quantities.some((q) => q > 0)) throw new Error("invalid_input");
   return buildSchedule({ intervalDays, firstDate, quantities, pins });
 }
 

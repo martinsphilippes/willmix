@@ -86,6 +86,15 @@ export const pt = {
     "Boleto da parcela {i} do pedido #{n}",
   "customerPayment.notify.chargeBody":
     "Vencimento {due}. Linha digitável: {barcode}. O boleto está no pedido, em Pagamento do cliente.",
+  "customerPayment.notify.holdSubject":
+    "Pedido #{n} travado: parcela em aberto",
+  "customerPayment.notify.holdBody":
+    "A(s) parcela(s) {list} venceu(ram) sem pagamento. O pedido fica travado até o pagamento entrar ou um administrador destravar.",
+  "delivery.paused.payment_open":
+    "Pedido travado em {date}: parcela do cliente vencida sem pagamento (Pagamento do cliente). Destrava sozinho quando o pagamento entrar; só um administrador pode destravar antes.",
+  "customerPayment.released": "Liberada pelo administrador em {date}",
+  "customerPayment.holdHint":
+    "Parcela vencida sem pagamento trava o pedido; só um administrador destrava antes do pagamento. Uma data pode ficar sem quantidade para um produto.",
   "paymentPlans.title": "Formas de pagamento do cliente",
   "paymentPlans.intro":
     "As formas que a Wellmix escolhe no pedido: cada parcela é um percentual da venda ao cliente que vence num evento do pedido (mais dias, se houver). A soma tem de dar 100%.",
@@ -246,6 +255,14 @@ export const en: Record<keyof typeof pt, string> = {
     "Boleto for installment {i} of order #{n}",
   "customerPayment.notify.chargeBody":
     "Due {due}. Payment line: {barcode}. The boleto is on the order, under Customer payment.",
+  "customerPayment.notify.holdSubject": "Order #{n} on hold: open installment",
+  "customerPayment.notify.holdBody":
+    "Installment(s) {list} are past due without payment. The order stays on hold until payment comes in or an administrator releases it.",
+  "delivery.paused.payment_open":
+    "Order on hold since {date}: customer installment past due without payment (Customer payment). It releases itself when payment comes in; only an administrator can release it earlier.",
+  "customerPayment.released": "Released by the administrator on {date}",
+  "customerPayment.holdHint":
+    "A past-due unpaid installment puts the order on hold; only an administrator can release it before payment. A date may have no quantity for a product.",
   "paymentPlans.title": "Customer payment methods",
   "paymentPlans.intro":
     "The methods Wellmix chooses on the order: each installment is a percentage of the customer sale due at an order event (plus days, if any). The total must be 100%.",
@@ -399,6 +416,14 @@ export const zh: Record<keyof typeof pt, string> = {
   "customerPayment.notify.chargeSubject": "订单 #{n} 第 {i} 期 boleto",
   "customerPayment.notify.chargeBody":
     "到期 {due}。付款码：{barcode}。Boleto 在订单的“客户付款”中。",
+  "customerPayment.notify.holdSubject": "订单 #{n} 已冻结：有未付分期",
+  "customerPayment.notify.holdBody":
+    "第 {list} 期已到期未付。在付款到账或管理员解除之前，订单保持冻结。",
+  "delivery.paused.payment_open":
+    "订单自 {date} 起冻结：客户分期到期未付（客户付款）。付款到账后自动解除；只有管理员可以提前解除。",
+  "customerPayment.released": "管理员于 {date} 解除",
+  "customerPayment.holdHint":
+    "到期未付的分期会冻结订单；付款前只有管理员可以解除。某个日期可以没有某产品的数量。",
   "paymentPlans.title": "客户付款方式",
   "paymentPlans.intro":
     "Wellmix 在订单中选择的方式：每期是客户销售额的百分比，在订单的某个事件（加天数）到期。合计必须为 100%。",

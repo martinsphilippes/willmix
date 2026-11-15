@@ -184,6 +184,12 @@ export async function CustomerPaymentGate({
         {/* As parcelas e os boletos. */}
         {plan ? (
           <div className="overflow-x-auto">
+            <p
+              className="mb-2 text-xs text-zinc-500"
+              data-customer-payment-hold-hint
+            >
+              {t("customerPayment.holdHint")}
+            </p>
             {view.sellTotal === null ? (
               <p className="mb-2 text-xs text-amber-800">
                 {t("customerPayment.noSale")}
@@ -264,6 +270,18 @@ export async function CustomerPaymentGate({
                           `customerPayment.state.${row.state}` as DictionaryKey,
                         )}
                       </span>
+                      {wellmix && plan.releases?.[String(row.index)] ? (
+                        <span
+                          className="block text-xs text-amber-700"
+                          data-customer-installment-released
+                        >
+                          {t("customerPayment.released", {
+                            date: day(
+                              plan.releases[String(row.index)].at.slice(0, 10),
+                            ),
+                          })}
+                        </span>
+                      ) : null}
                       {row.charge ? (
                         <div className="mt-1 space-y-0.5 text-xs text-zinc-700">
                           {row.charge.barcode ? (

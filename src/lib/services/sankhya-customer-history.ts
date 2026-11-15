@@ -103,6 +103,141 @@ export function orderItemsSql(
     .join(" ");
 }
 
+/** Linhas por consulta da visão Produto (os itens de vários pedidos). */
+const PRODUCT_ROWS_PAGE = 500;
+/** Teto de consultas da visão Produto (40 × 500 itens). */
+const PRODUCT_ROWS_MAX_PAGES = 40;
+
+/**
+ * Visão Produto (dono, 15/11/2026): os itens dos pedidos lidos na lista, com
+ * o cliente e os pedidos no filtro, só o que a soma usa. A página seguinte
+ * vem por (NUNOTA, SEQUENCIA), só com inteiros no SQL.
+ */
+export function customerItemsSql(
+  codCliente: number,
+  nunotas: number[],
+  after: { nunota: number; sequence: number } | null = null,
+): string {
+  const cod = assertInt(codCliente);
+  const list = [...new Set(nunotas.map(assertInt))];
+  if (!list.length) throw new Error("invalid_input");
+  const where = [`COD_CLIENTE = ${cod}`, `NUNOTA IN (${list.join(", ")})`];
+  if (after) {
+    const nota = assertInt(after.nunota);
+    const seq = Math.max(0, Math.floor(after.sequence));
+    where.push(
+      `(NUNOTA > ${nota} OR (NUNOTA = ${nota} AND SEQUENCIA > ${seq}))`,
+    );
+  }
+  return [
+    `SELECT TOP ${PRODUCT_ROWS_PAGE} NUNOTA, SEQUENCIA, DATA_PEDIDO, CODPROD,`,
+    "DESCRICAO_PRODUTO, UNIDADE_NEGOCIADA, QTD_NEGOCIADA",
+    `FROM ${VIEW} WHERE ${where.join(" AND ")}`,
+    "ORDER BY NUNOTA, SEQUENCIA",
+  ].join(" ");
+}
+
+/** Quantidade numa unidade do Sankhya (UN, CX…; nula sem unidade). */
+export interface SankhyaQuantity {
+  unit: string | null;
+  quantity: number;
+}
+
+/** Um produto da visão Produto: o total do período e cada data. */
+export interface SankhyaHistoryProduct {
+  /** CODPROD (ou o nome, se o item vier sem código). */
+  key: string;
+  code: number | null;
+  name: string;
+  /** Soma das quantidades pedidas no período, por unidade. */
+  total: SankhyaQuantity[];
+  /** Da data mais recente para a mais antiga; pedidos do mesmo dia somados. */
+  days: Array<{ date: string | null; quantities: SankhyaQuantity[] }>;
+}
+
+/** Item lido para a soma (um por item de pedido). */
+export interface SankhyaProductRow {
+  date: string | null;
+  code: number | null;
+  name: string;
+  unit: string | null;
+  quantity: number | null;
+}
+
+/** Soma sem o resto do ponto flutuante (0,1 + 0,2). */
+const add = (a: number, b: number) => Math.round((a + b) * 1e6) / 1e6;
+
+function sumByUnit(map: Map<string | null, number>): SankhyaQuantity[] {
+  return [...map.entries()]
+    .map(([unit, quantity]) => ({ unit, quantity }))
+    .sort((a, b) => (a.unit ?? "").localeCompare(b.unit ?? ""));
+}
+
+/** Data mais recente primeiro; sem data, por último. */
+const byDateDesc = (a: string | null, b: string | null) =>
+  a === b ? 0 : a === null ? 1 : b === null ? -1 : a < b ? 1 : -1;
+
+/**
+ * Visão Produto: agrupa pelo código do produto no Sankhya; em cada produto,
+ * soma a quantidade pedida de cada data (vários pedidos no mesmo dia viram
+ * uma linha) e o total do período, sempre por unidade (UN e CX não se somam).
+ * O nome é o do pedido mais recente. Produtos do comprado mais recentemente
+ * para o mais antigo.
+ */
+export function productHistory(
+  rows: SankhyaProductRow[],
+): SankhyaHistoryProduct[] {
+  const products = new Map<
+    string,
+    {
+      code: number | null;
+      name: string;
+      nameDate: string | null;
+      total: Map<string | null, number>;
+      days: Map<string | null, Map<string | null, number>>;
+    }
+  >();
+  for (const row of rows) {
+    if (row.quantity === null) continue;
+    const key = row.code !== null ? String(row.code) : `nome:${row.name}`;
+    let p = products.get(key);
+    if (!p) {
+      p = {
+        code: row.code,
+        name: row.name,
+        nameDate: row.date,
+        total: new Map(),
+        days: new Map(),
+      };
+      products.set(key, p);
+    } else if (byDateDesc(row.date, p.nameDate) < 0) {
+      p.name = row.name;
+      p.nameDate = row.date;
+    }
+    const unit = row.unit;
+    p.total.set(unit, add(p.total.get(unit) ?? 0, row.quantity));
+    const day = p.days.get(row.date) ?? new Map<string | null, number>();
+    day.set(unit, add(day.get(unit) ?? 0, row.quantity));
+    p.days.set(row.date, day);
+  }
+  return [...products.entries()]
+    .map(([key, p]) => ({
+      key,
+      code: p.code,
+      name: p.name,
+      total: sumByUnit(p.total),
+      days: [...p.days.entries()]
+        .sort(([a], [b]) => byDateDesc(a, b))
+        .map(([date, units]) => ({ date, quantities: sumByUnit(units) })),
+    }))
+    .sort(
+      (a, b) =>
+        byDateDesc(a.days[0]?.date ?? null, b.days[0]?.date ?? null) ||
+        a.name.localeCompare(b.name, "pt-BR") ||
+        a.key.localeCompare(b.key),
+    );
+}
+
 export interface SankhyaHistoryOrder {
   nunota: number;
   numnota: number | null;
@@ -287,6 +422,97 @@ export async function sankhyaOrderItems(
       after = last;
     }
     return { state: "ok", items };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+/**
+ * Visão Produto do histórico (dono, 15/11/2026): os produtos dos `shown`
+ * pedidos mais recentes do cliente (os mesmos da lista, na mesma ordem),
+ * somados por código do produto e por data. O período é o desses pedidos
+ * (`from` a `to`); `complete` é falso se o teto de leituras cortou itens.
+ */
+export async function sankhyaCustomerProducts(
+  user: User,
+  partyId: string,
+  shown = SANKHYA_HISTORY_PAGE,
+  options: SankhyaClientOptions = {},
+): Promise<
+  SankhyaHistoryResult<{
+    products: SankhyaHistoryProduct[];
+    orders: number;
+    from: string | null;
+    to: string | null;
+    complete: boolean;
+  }>
+> {
+  const who = await customerCode(user, partyId);
+  if (who.state !== "ok") return who;
+  const count = Math.max(
+    1,
+    Math.min(Math.floor(shown) || SANKHYA_HISTORY_PAGE, SANKHYA_HISTORY_MAX),
+  );
+  try {
+    const list = await executeQuery(
+      customerOrdersSql(who.code, count),
+      options,
+    );
+    const orders = list.rows
+      .map((r) => toOrder(r, false))
+      .filter((o) => o.nunota > 0)
+      .slice(0, count);
+    const dates = orders
+      .map((o) => o.date)
+      .filter((d): d is string => !!d)
+      .sort();
+    const period = {
+      orders: orders.length,
+      from: dates[0] ?? null,
+      to: dates.at(-1) ?? null,
+    };
+    if (!orders.length)
+      return { state: "ok", products: [], complete: true, ...period };
+    const dateOf = new Map(orders.map((o) => [o.nunota, o.date]));
+    const nunotas = orders.map((o) => o.nunota);
+    const rows: SankhyaProductRow[] = [];
+    let after: { nunota: number; sequence: number } | null = null;
+    let complete = false;
+    for (let page = 0; page < PRODUCT_ROWS_MAX_PAGES; page++) {
+      const table = await executeQuery(
+        customerItemsSql(who.code, nunotas, after),
+        options,
+      );
+      for (const r of table.rows) {
+        const nunota = num(r.NUNOTA) ?? 0;
+        rows.push({
+          // A data do pedido (a mesma da lista), para o item sem a dele.
+          date: sankhyaDate(r.DATA_PEDIDO) ?? dateOf.get(nunota) ?? null,
+          code: num(r.CODPROD),
+          name: text(r.DESCRICAO_PRODUTO) ?? "—",
+          unit: text(r.UNIDADE_NEGOCIADA),
+          quantity: num(r.QTD_NEGOCIADA),
+        });
+      }
+      const last = table.rows.at(-1);
+      const next = last
+        ? { nunota: num(last.NUNOTA) ?? 0, sequence: num(last.SEQUENCIA) ?? 0 }
+        : null;
+      // Menos de uma página, ou posição que não avança: acabou.
+      if (
+        table.rows.length < PRODUCT_ROWS_PAGE ||
+        !next ||
+        next.nunota <= 0 ||
+        (after &&
+          (next.nunota < after.nunota ||
+            (next.nunota === after.nunota && next.sequence <= after.sequence)))
+      ) {
+        complete = true;
+        break;
+      }
+      after = next;
+    }
+    return { state: "ok", products: productHistory(rows), complete, ...period };
   } catch (e) {
     return failure(e);
   }

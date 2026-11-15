@@ -2226,7 +2226,8 @@ export default async function OrderPage({
             <p>
               {t(
                 (order.pauseReason === "channel_red" ||
-                order.pauseReason === "channel_grey"
+                order.pauseReason === "channel_grey" ||
+                order.pauseReason === "payment_open"
                   ? `delivery.paused.${order.pauseReason}`
                   : "delivery.paused.other") as DictionaryKey,
                 { date: formatDate(order.pausedAt, t) },
