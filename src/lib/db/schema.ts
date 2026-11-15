@@ -11,6 +11,20 @@
  */
 
 import type { FreightTariffData } from "@/lib/services/freight-tariff-calc";
+import type {
+  ChargeNotices,
+  CustomerCharge,
+  OrderPaymentPlan,
+  PaymentPlanInstallment,
+  PaymentPlanStatus,
+} from "@/lib/customer-payment";
+
+/** Situação da forma de pagamento do cliente no pedido (src/lib/customer-payment.ts). */
+export const PAYMENT_PLAN_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+] as const;
 
 export const ROLES = [
   "admin",
@@ -1067,6 +1081,19 @@ export interface Order extends BaseRow {
   milestoneKey?: string | null;
   /** Marco em que o pedido estava quando foi cancelado (ao lado de `cancelStageKey`). */
   cancelMilestoneKey?: string | null;
+  /**
+   * Forma de pagamento do cliente (dono, 15/11/2026; docs/CUSTOMER_PAYMENT.md):
+   * a cópia da forma escolhida, com a alçada. `paymentPlanStatus` repete a
+   * situação para filtrar (aviso de boletos a gerar).
+   */
+  customerPaymentPlan?: OrderPaymentPlan | null;
+  paymentPlanStatus?: PaymentPlanStatus | null;
+  /** Boletos das parcelas (do Sankhya, TGFFIN, ou registrados à mão). */
+  customerCharges?: CustomerCharge[] | null;
+  /** Avisos de "gerar o boleto" já enviados por parcela. */
+  chargeNotices?: ChargeNotices | null;
+  /** Vendedor do pedido (login da Wellmix): acompanha e cobra os boletos. */
+  sellerUserId?: string | null;
 }
 
 /** Uma rodada da programação de compra no pedido pai. */
@@ -3131,6 +3158,20 @@ export interface StockLocation extends BaseRow {
   sankhyaCode: string | null;
 }
 
+/** Forma de pagamento do cliente (dono, 15/11/2026; docs/CUSTOMER_PAYMENT.md). */
+export interface PaymentPlan extends BaseRow {
+  name: string;
+  installments: PaymentPlanInstallment[];
+  /** Precisa de aprovação por alçada; quem responde é `approverUserId`. */
+  requiresApproval: boolean;
+  approverUserId: string | null;
+  /** Juros compostos ao mês das parcelas depois da entrega (%). */
+  monthlyInterestPercent: number | null;
+  active: boolean;
+  sortOrder: number | null;
+  updatedByUserId: string | null;
+}
+
 export interface PaymentCondition extends BaseRow {
   /** CODTIPVENDA no Sankhya (único). */
   code: number;
@@ -3370,6 +3411,7 @@ export interface Tables {
   booking_invites: BookingInvite;
   selection_groups: SelectionGroup;
   payment_conditions: PaymentCondition;
+  payment_plans: PaymentPlan;
   stock_locations: StockLocation;
   process_events: ProcessEvent;
   order_summaries: OrderSummary;
@@ -3692,9 +3734,15 @@ export const TABLES: Record<TableName, TableDef> = {
       held: bool(),
       milestoneKey: str(40),
       cancelMilestoneKey: str(40),
+      customerPaymentPlan: json(),
+      paymentPlanStatus: enumOf(PAYMENT_PLAN_STATUSES, false),
+      customerCharges: jsonLarge(),
+      chargeNotices: json(),
+      sellerUserId: id(false),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
+      { key: "by_payment_plan", type: "key", columns: ["paymentPlanStatus"] },
       {
         key: "live_by_status",
         type: "key",
@@ -5278,6 +5326,19 @@ export const TABLES: Record<TableName, TableDef> = {
       updatedByUserId: id(false),
     },
     indexes: [{ key: "key_unique", type: "unique", columns: ["key"] }],
+  },
+  payment_plans: {
+    label: "Formas de pagamento do cliente (parcelas, alçada e juros)",
+    columns: {
+      name: str(160, true),
+      installments: json(),
+      requiresApproval: bool(),
+      approverUserId: id(false),
+      monthlyInterestPercent: float(),
+      active: bool(),
+      sortOrder: int(),
+      updatedByUserId: id(false),
+    },
   },
   payment_conditions: {
     label: "Condições de pagamento (Sankhya TGFTPV)",

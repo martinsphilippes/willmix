@@ -254,7 +254,13 @@ alter table public."orders" add column if not exists "roundIndex" bigint;
 alter table public."orders" add column if not exists "held" boolean;
 alter table public."orders" add column if not exists "milestoneKey" text;
 alter table public."orders" add column if not exists "cancelMilestoneKey" text;
+alter table public."orders" add column if not exists "customerPaymentPlan" jsonb;
+alter table public."orders" add column if not exists "paymentPlanStatus" text;
+alter table public."orders" add column if not exists "customerCharges" jsonb;
+alter table public."orders" add column if not exists "chargeNotices" jsonb;
+alter table public."orders" add column if not exists "sellerUserId" text;
 create unique index if not exists "orders_number_unique" on public."orders" ("number");
+create index if not exists "orders_by_payment_plan" on public."orders" ("paymentPlanStatus");
 create index if not exists "orders_live_by_status" on public."orders" ("status") where "held" is null;
 create index if not exists "orders_by_parent" on public."orders" ("parentOrderId");
 create index if not exists "orders_by_sankhya" on public."orders" ("sankhyaCode");
@@ -1953,6 +1959,24 @@ create unique index if not exists "partner_types_key_unique" on public."partner_
 create index if not exists "partner_types_created" on public."partner_types" ("createdAt");
 create index if not exists "partner_types_created_id" on public."partner_types" ("createdAt", "id");
 create index if not exists "partner_types_name_id" on public."partner_types" ("name", "id");
+
+create table if not exists public."payment_plans" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."payment_plans" enable row level security;
+alter table public."payment_plans" add column if not exists "name" text;
+alter table public."payment_plans" add column if not exists "installments" jsonb;
+alter table public."payment_plans" add column if not exists "requiresApproval" boolean;
+alter table public."payment_plans" add column if not exists "approverUserId" text;
+alter table public."payment_plans" add column if not exists "monthlyInterestPercent" double precision;
+alter table public."payment_plans" add column if not exists "active" boolean;
+alter table public."payment_plans" add column if not exists "sortOrder" bigint;
+alter table public."payment_plans" add column if not exists "updatedByUserId" text;
+create index if not exists "payment_plans_created" on public."payment_plans" ("createdAt");
+create index if not exists "payment_plans_created_id" on public."payment_plans" ("createdAt", "id");
+create index if not exists "payment_plans_name_id" on public."payment_plans" ("name", "id");
 
 create table if not exists public."payment_conditions" (
   "id" text primary key,
