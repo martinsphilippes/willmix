@@ -2271,6 +2271,47 @@ export interface SalesOrder extends BaseRow {
   receivedBy?: string | null;
   proofDocumentId?: string | null;
   deliveredByUserId?: string | null;
+  /*
+   * Frete da venda como conta a pagar à transportadora (dono, 15/11/2026):
+   * vence na saída + o prazo informado; o financeiro marca como pago.
+   */
+  freightDueDate?: string | null;
+  freightPaidAt?: string | null;
+  freightPaidByUserId?: string | null;
+  freightProofDocumentId?: string | null;
+}
+
+/*
+ * Devolução de venda (docs/SALES_ORDERS.md; dono, 15/11/2026): parcial por
+ * item; o financeiro registra a NF de devolução; a qualidade confere e o que
+ * está bom volta ao estoque livre no Brasil, o resto fica como perda.
+ */
+export const SALES_RETURN_STATUSES = ["open", "closed", "cancelled"] as const;
+export type SalesReturnStatus = (typeof SALES_RETURN_STATUSES)[number];
+
+export interface SalesReturnLine {
+  productId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  /** Conferência da qualidade: bom (volta ao estoque) e perda. */
+  goodQty?: number | null;
+  lossQty?: number | null;
+}
+
+export interface SalesReturn extends BaseRow {
+  salesOrderId: string;
+  lines: SalesReturnLine[];
+  reason: string;
+  status: SalesReturnStatus;
+  createdByUserId: string;
+  invoiceNumber: string | null;
+  invoiceDocumentId: string | null;
+  invoicedAt: string | null;
+  invoicedByUserId: string | null;
+  checkedAt: string | null;
+  checkedByUserId: string | null;
+  lossNote: string | null;
 }
 
 export interface RealMedia extends BaseRow {
@@ -2432,6 +2473,8 @@ export const STOCK_MOVEMENT_KINDS = [
   "process_out",
   /** Ajuste para o saldo do Sankhya (TGFEST) por local, na carga. */
   "sankhya_balance",
+  /** Devolução de venda conferida pela qualidade (volta ao estoque livre). */
+  "return_in",
 ] as const;
 export type StockMovementKind = (typeof STOCK_MOVEMENT_KINDS)[number];
 
@@ -3272,6 +3315,7 @@ export interface Tables {
   showroom_receipts: ShowroomReceipt;
   sales_offers: SalesOffer;
   sales_orders: SalesOrder;
+  sales_returns: SalesReturn;
   import_steps: ImportStep;
   receivings: Receiving;
   art_issues: ArtIssue;
@@ -4628,10 +4672,34 @@ export const TABLES: Record<TableName, TableDef> = {
       receivedBy: str(120),
       proofDocumentId: id(false),
       deliveredByUserId: id(false),
+      freightDueDate: str(10),
+      freightPaidAt: datetime(),
+      freightPaidByUserId: id(false),
+      freightProofDocumentId: id(false),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
       { key: "by_customer", type: "key", columns: ["customerId"] },
+    ],
+  },
+  sales_returns: {
+    label: "Devoluções de venda (Vendas)",
+    columns: {
+      salesOrderId: id(),
+      lines: json(),
+      reason: text(),
+      status: enumOf(SALES_RETURN_STATUSES),
+      createdByUserId: id(),
+      invoiceNumber: str(40),
+      invoiceDocumentId: id(false),
+      invoicedAt: datetime(),
+      invoicedByUserId: id(false),
+      checkedAt: datetime(),
+      checkedByUserId: id(false),
+      lossNote: text(),
+    },
+    indexes: [
+      { key: "by_sales_order", type: "key", columns: ["salesOrderId"] },
     ],
   },
   sales_offers: {

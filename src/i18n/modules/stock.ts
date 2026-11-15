@@ -5,6 +5,8 @@
 export const pt = {
   "stockMov.kind.sankhya_balance": "Saldo do Sankhya",
   "stockMov.tab.sankhya_balance": "Saldos do Sankhya",
+  "stockMov.kind.return_in": "Devolução de venda",
+  "stockMov.tab.return_in": "Devoluções de venda",
   "stockMov.col.location": "Local",
   "inv.locations": "Por local",
   "stockOut.title": "Baixa por venda",
@@ -120,6 +122,8 @@ export const pt = {
 export const en: Record<keyof typeof pt, string> = {
   "stockMov.kind.sankhya_balance": "Sankhya balance",
   "stockMov.tab.sankhya_balance": "Sankhya balances",
+  "stockMov.kind.return_in": "Sales return",
+  "stockMov.tab.return_in": "Sales returns",
   "stockMov.col.location": "Location",
   "inv.locations": "By location",
   "stockOut.title": "Sale write-off",
@@ -234,6 +238,8 @@ export const en: Record<keyof typeof pt, string> = {
 export const zh: Record<keyof typeof pt, string> = {
   "stockMov.kind.sankhya_balance": "Sankhya 结存",
   "stockMov.tab.sankhya_balance": "Sankhya 结存",
+  "stockMov.kind.return_in": "销售退货",
+  "stockMov.tab.return_in": "销售退货",
   "stockMov.col.location": "库位",
   "inv.locations": "按库位",
   "stockOut.title": "销售出库",

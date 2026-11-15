@@ -1345,10 +1345,36 @@ alter table public."sales_orders" add column if not exists "deliveredAt" timesta
 alter table public."sales_orders" add column if not exists "receivedBy" text;
 alter table public."sales_orders" add column if not exists "proofDocumentId" text;
 alter table public."sales_orders" add column if not exists "deliveredByUserId" text;
+alter table public."sales_orders" add column if not exists "freightDueDate" text;
+alter table public."sales_orders" add column if not exists "freightPaidAt" timestamptz;
+alter table public."sales_orders" add column if not exists "freightPaidByUserId" text;
+alter table public."sales_orders" add column if not exists "freightProofDocumentId" text;
 create unique index if not exists "sales_orders_number_unique" on public."sales_orders" ("number");
 create index if not exists "sales_orders_by_customer" on public."sales_orders" ("customerId");
 create index if not exists "sales_orders_created" on public."sales_orders" ("createdAt");
 create index if not exists "sales_orders_created_id" on public."sales_orders" ("createdAt", "id");
+
+create table if not exists public."sales_returns" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."sales_returns" enable row level security;
+alter table public."sales_returns" add column if not exists "salesOrderId" text;
+alter table public."sales_returns" add column if not exists "lines" jsonb;
+alter table public."sales_returns" add column if not exists "reason" text;
+alter table public."sales_returns" add column if not exists "status" text;
+alter table public."sales_returns" add column if not exists "createdByUserId" text;
+alter table public."sales_returns" add column if not exists "invoiceNumber" text;
+alter table public."sales_returns" add column if not exists "invoiceDocumentId" text;
+alter table public."sales_returns" add column if not exists "invoicedAt" timestamptz;
+alter table public."sales_returns" add column if not exists "invoicedByUserId" text;
+alter table public."sales_returns" add column if not exists "checkedAt" timestamptz;
+alter table public."sales_returns" add column if not exists "checkedByUserId" text;
+alter table public."sales_returns" add column if not exists "lossNote" text;
+create index if not exists "sales_returns_by_sales_order" on public."sales_returns" ("salesOrderId");
+create index if not exists "sales_returns_created" on public."sales_returns" ("createdAt");
+create index if not exists "sales_returns_created_id" on public."sales_returns" ("createdAt", "id");
 
 create table if not exists public."sales_offers" (
   "id" text primary key,

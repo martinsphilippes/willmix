@@ -10,6 +10,7 @@ import {
   type User,
 } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
+import { addDays } from "@/lib/supplier-terms";
 import { audit } from "./audit";
 import { notify } from "./notifications";
 
@@ -544,6 +545,8 @@ export async function shipSalesOrder(
     customerPickup: boolean;
     freightValue: number | null;
     shippedOn: string | null;
+    /** Prazo do frete em dias depois da saída (conta a pagar). */
+    freightDays?: number | null;
   },
 ) {
   assertSeller(user);
@@ -563,7 +566,16 @@ export async function shipSalesOrder(
   }
   if (input.freightValue != null && !(input.freightValue >= 0))
     throw new SalesOrderError("freight_invalid");
+  const days = input.freightDays ?? 0;
+  if (!(Number.isInteger(days) && days >= 0 && days <= 365))
+    throw new SalesOrderError("freight_days_invalid");
   const shippedAt = dayAt(input.shippedOn);
+  // Frete da transportadora vira conta a pagar (o cliente retira: sem frete).
+  const freightValue = pickup ? null : input.freightValue;
+  const freightDueDate =
+    freightValue && freightValue > 0
+      ? addDays(shippedAt.slice(0, 10), days)
+      : null;
 
   const { stockInBrazil, consumeReservation, recordSaleOut } =
     await import("./stock");
@@ -607,7 +619,8 @@ export async function shipSalesOrder(
     status: "shipped",
     carrierId: pickup ? null : input.carrierId,
     customerPickup: pickup,
-    freightValue: input.freightValue,
+    freightValue,
+    freightDueDate,
     shippedAt,
     shippedByUserId: user.id,
   });
@@ -653,5 +666,91 @@ export async function deliverSalesOrder(
     "sales_order",
     id,
     `Ordem de venda #${order.number} entregue (recebido por ${receivedBy})`,
+  );
+}
+
+/* ---- Frete da venda no Financeiro (dono, 15/11/2026) -------------------- */
+
+/** Quem baixa o frete: a tela Contas a pagar ou o administrador. */
+export const canPayFreight = (user: User) =>
+  isAdmin(user) || (isWellmix(user) && canOpen(user, "payables"));
+
+export interface FreightPayable {
+  id: string;
+  number: number;
+  customerName: string;
+  carrierName: string;
+  value: number;
+  dueDate: string | null;
+  paidAt: string | null;
+  proofDocumentId: string | null;
+  /** Em aberto e com o vencimento antes de hoje (Brasil). */
+  overdue: boolean;
+}
+
+/** Fretes de venda (contas a pagar às transportadoras): em aberto primeiro. */
+export async function listFreightPayables(
+  user: User,
+): Promise<FreightPayable[]> {
+  if (!canPayFreight(user)) return [];
+  const store = getStore();
+  const orders = (
+    await store
+      .list("sales_orders", { filter: { status: ["shipped", "delivered"] } })
+      .catch(() => [] as SalesOrder[])
+  ).filter((o) => (o.freightValue ?? 0) > 0 && !!o.carrierId);
+  const ids = [...new Set(orders.flatMap((o) => [o.customerId, o.carrierId!]))];
+  const parties = ids.length
+    ? await store.list("parties", { filter: { id: ids } })
+    : [];
+  const name = (id: string | null | undefined) =>
+    parties.find((p) => p.id === id)?.name ?? "—";
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date());
+  return orders
+    .map((o) => ({
+      id: o.id,
+      number: o.number,
+      customerName: name(o.customerId),
+      carrierName: name(o.carrierId),
+      value: o.freightValue!,
+      dueDate: o.freightDueDate ?? null,
+      paidAt: o.freightPaidAt ?? null,
+      proofDocumentId: o.freightProofDocumentId ?? null,
+      overdue:
+        !o.freightPaidAt && !!o.freightDueDate && o.freightDueDate < today,
+    }))
+    .sort(
+      (a, b) =>
+        Number(!!a.paidAt) - Number(!!b.paidAt) ||
+        (a.dueDate ?? "").localeCompare(b.dueDate ?? ""),
+    );
+}
+
+/** O financeiro marca o frete como pago, com o comprovante. */
+export async function payFreight(
+  user: User,
+  id: string,
+  input: { proofDocumentId: string | null },
+) {
+  if (!canPayFreight(user)) throw new ForbiddenError();
+  const store = getStore();
+  const order = await store.get("sales_orders", id);
+  if (!order || !(order.freightValue && order.freightValue > 0))
+    throw new SalesOrderError("freight_not_found");
+  if (order.freightPaidAt) throw new SalesOrderError("freight_paid");
+  if (!input.proofDocumentId) throw new SalesOrderError("proof_required");
+  await store.update("sales_orders", id, {
+    freightPaidAt: new Date().toISOString(),
+    freightPaidByUserId: user.id,
+    freightProofDocumentId: input.proofDocumentId,
+  });
+  await audit(
+    user,
+    "sales.freight_paid",
+    "sales_order",
+    id,
+    `Frete da ordem de venda #${order.number} pago (R$ ${order.freightValue})`,
   );
 }

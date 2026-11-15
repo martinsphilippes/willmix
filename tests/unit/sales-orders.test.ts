@@ -212,7 +212,8 @@ describe("venda", () => {
     expect(shipped).toMatchObject({
       status: "shipped",
       customerPickup: true,
-      freightValue: 150,
+      // O cliente retira: sem frete (dono, 15/11/2026).
+      freightValue: null,
     });
     // A reserva virou baixa por venda ligada à ordem.
     expect((await store.get("stock_reservations", reservationId))!.status).toBe(
@@ -274,5 +275,129 @@ describe("venda", () => {
     expect((await getStore().get("sales_orders", order.id))!.status).toBe(
       "confirmed",
     );
+  });
+
+  it("devolução parcial: NF do financeiro, qualidade confere, o bom volta ao estoque; frete vira conta a pagar", async () => {
+    const store = getStore();
+    const { stockInBrazil } = await import("@/lib/services/stock");
+    const sr = await import("@/lib/services/sales-returns");
+    const carrier = await store.create("parties", {
+      type: "carrier",
+      name: "Transportes Teste",
+      active: true,
+    } as never);
+    const order = await so.openSalesOrder(admin, customerId);
+    await so.updateSalesOrder(admin, order.id, {
+      lines: [{ productId: "prod-panela", quantity: 10, unitPrice: 25 }],
+      paymentConditionId: null,
+      currency: "BRL",
+      deliveryDate: "2099-04-10",
+      deliveryWindow: null,
+      note: null,
+      purchaseOrderId: null,
+    });
+    await so.confirmSalesOrder(admin, order.id);
+    await so.registerSalesInvoice(admin, order.id, {
+      number: "NF-6001",
+      documentId: null,
+    });
+    // Ainda não expedida: não devolve.
+    await expect(
+      sr.openSalesReturn(admin, order.id, {
+        lines: [{ productId: "prod-panela", quantity: 1 }],
+        reason: "Avaria",
+      }),
+    ).rejects.toThrow("sales_order_not_shipped");
+    await so.shipSalesOrder(admin, order.id, {
+      carrierId: carrier.id,
+      customerPickup: false,
+      freightValue: 300,
+      shippedOn: "2099-04-09",
+      freightDays: 15,
+    });
+    // Frete: conta a pagar com vencimento na saída + 15 dias.
+    const freight = (await so.listFreightPayables(admin)).find(
+      (f) => f.id === order.id,
+    )!;
+    expect(freight).toMatchObject({
+      value: 300,
+      dueDate: "2099-04-24",
+      paidAt: null,
+      carrierName: "Transportes Teste",
+    });
+    await expect(
+      so.payFreight(admin, order.id, { proofDocumentId: null }),
+    ).rejects.toThrow("proof_required");
+    await so.payFreight(admin, order.id, { proofDocumentId: "doc-frete" });
+    expect(
+      (await store.get("sales_orders", order.id))!.freightPaidAt,
+    ).toBeTruthy();
+    await expect(
+      so.payFreight(admin, order.id, { proofDocumentId: "doc-frete" }),
+    ).rejects.toThrow("freight_paid");
+
+    const before = (await stockInBrazil("prod-panela")).quantity;
+    await expect(
+      sr.openSalesReturn(admin, order.id, {
+        lines: [{ productId: "prod-panela", quantity: 11 }],
+        reason: "Avaria",
+      }),
+    ).rejects.toThrow("return_too_much");
+    await expect(
+      sr.openSalesReturn(admin, order.id, {
+        lines: [{ productId: "prod-panela", quantity: 4 }],
+        reason: " ",
+      }),
+    ).rejects.toThrow("return_reason_required");
+    const ret = await sr.openSalesReturn(admin, order.id, {
+      lines: [{ productId: "prod-panela", quantity: 4 }],
+      reason: "Caixa amassada",
+    });
+    // Sem a NF de devolução a qualidade não fecha.
+    await expect(
+      sr.checkSalesReturn(admin, ret.id, {
+        lines: [{ productId: "prod-panela", goodQty: 3 }],
+        lossNote: "Uma quebrada",
+      }),
+    ).rejects.toThrow("invoice_required");
+    await expect(
+      sr.registerReturnInvoice(supplier, ret.id, {
+        number: "1",
+        documentId: null,
+      }),
+    ).rejects.toThrow();
+    await sr.registerReturnInvoice(admin, ret.id, {
+      number: "NFD-77",
+      documentId: null,
+    });
+    await expect(
+      sr.checkSalesReturn(admin, ret.id, {
+        lines: [{ productId: "prod-panela", goodQty: 3 }],
+        lossNote: null,
+      }),
+    ).rejects.toThrow("loss_note_required");
+    await sr.checkSalesReturn(admin, ret.id, {
+      lines: [{ productId: "prod-panela", goodQty: 3 }],
+      lossNote: "Uma quebrada",
+    });
+    const closed = (await store.get("sales_returns", ret.id))!;
+    expect(closed.status).toBe("closed");
+    expect(closed.lines[0]).toMatchObject({ goodQty: 3, lossQty: 1 });
+    expect((await stockInBrazil("prod-panela")).quantity).toBe(before + 3);
+    const moves = await store.list("stock_movements", {
+      filter: { salesOrderId: order.id, kind: "return_in" },
+    });
+    expect(moves).toEqual([expect.objectContaining({ quantity: 3 })]);
+    // O que resta para devolver: 10 − 4 = 6.
+    await expect(
+      sr.openSalesReturn(admin, order.id, {
+        lines: [{ productId: "prod-panela", quantity: 7 }],
+        reason: "Mais avaria",
+      }),
+    ).rejects.toThrow("return_too_much");
+    await sr.openSalesReturn(admin, order.id, {
+      lines: [{ productId: "prod-panela", quantity: 6 }],
+      reason: "Cliente desistiu",
+    });
   });
 });

@@ -223,12 +223,17 @@ export async function shipSalesOrderAction(form: FormData) {
         : null;
     const freightRaw = str(form, "freightValue");
     const freightValue = freightRaw ? parseNumberInput(freightRaw) : null;
+    const daysRaw = str(form, "freightDays");
+    const freightDays = daysRaw
+      ? z.coerce.number().int().min(0).max(365).parse(daysRaw)
+      : 0;
     const { shipSalesOrder } = await import("@/lib/services/sales-orders");
     await shipSalesOrder(user, id, {
       carrierId,
       customerPickup: pickup,
       freightValue: freightValue ?? null,
       shippedOn: dayOf(form, "shippedOn"),
+      freightDays,
     });
     return `${backOf(id)}?shipped=1`;
   });
@@ -261,5 +266,97 @@ export async function deliverSalesOrderAction(form: FormData) {
       proofDocumentId,
     });
     return `${backOf(id)}?delivered=1`;
+  });
+}
+
+/* ---- Devolução de venda e frete no Financeiro (dono, 15/11/2026) -------- */
+
+const NUMBER = z.string().trim().min(1).max(40);
+
+/** Vendas registra a devolução: quantidade por produto e o motivo. */
+export async function openSalesReturnAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "id");
+  await run(backOf(id), async () => {
+    assertScreen(user, "products");
+    ID.parse(id);
+    const lines = form.getAll("productId").map((v, i) => ({
+      productId: ID.parse(String(v)),
+      quantity: parseNumberInput(str(form, `returnQty_${i}`)) ?? 0,
+    }));
+    const reason = z
+      .string()
+      .trim()
+      .min(1)
+      .max(1000)
+      .parse(str(form, "reason"));
+    const { openSalesReturn } = await import("@/lib/services/sales-returns");
+    await openSalesReturn(user, id, { lines, reason });
+    return `${backOf(id)}?returned=1`;
+  });
+}
+
+/** O financeiro registra a NF de devolução (número e arquivo). */
+export async function registerReturnInvoiceAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "id");
+  await run(backOf(id), async () => {
+    ID.parse(id);
+    const returnId = ID.parse(str(form, "returnId"));
+    const { canInvoice } = await import("@/lib/services/sales-orders");
+    if (!canInvoice(user)) throw new Error("forbidden");
+    const number = NUMBER.parse(str(form, "invoiceNumber"));
+    const documentId = await uploadOf(form, "invoiceFile");
+    const { registerReturnInvoice } =
+      await import("@/lib/services/sales-returns");
+    await registerReturnInvoice(user, returnId, { number, documentId });
+    return `${backOf(id)}?returnInvoiced=1`;
+  });
+}
+
+/** A qualidade confere: quanto está bom de cada produto; o resto é perda. */
+export async function checkSalesReturnAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "id");
+  await run(backOf(id), async () => {
+    ID.parse(id);
+    const returnId = ID.parse(str(form, "returnId"));
+    const lines = form.getAll("productId").map((v, i) => ({
+      productId: ID.parse(String(v)),
+      goodQty: parseNumberInput(str(form, `goodQty_${i}`)) ?? -1,
+    }));
+    const lossNote =
+      field(form, "lossNote", z.string().trim().max(1000)) || null;
+    const { checkSalesReturn } = await import("@/lib/services/sales-returns");
+    await checkSalesReturn(user, returnId, { lines, lossNote });
+    return `${backOf(id)}?returnChecked=1`;
+  });
+}
+
+export async function cancelSalesReturnAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "id");
+  await run(backOf(id), async () => {
+    ID.parse(id);
+    const returnId = ID.parse(str(form, "returnId"));
+    const { cancelSalesReturn } = await import("@/lib/services/sales-returns");
+    await cancelSalesReturn(user, returnId);
+    return `${backOf(id)}?returnCancelled=1`;
+  });
+}
+
+/** Contas a pagar: o financeiro baixa o frete da venda com o comprovante. */
+export async function payFreightAction(form: FormData) {
+  const user = await requireUser();
+  const back = "/app/payables";
+  await run(back, async () => {
+    const id = ID.parse(str(form, "id"));
+    const { canPayFreight, payFreight } =
+      await import("@/lib/services/sales-orders");
+    if (!canPayFreight(user)) throw new Error("forbidden");
+    const proofDocumentId = await uploadOf(form, "proofFile");
+    if (!proofDocumentId) throw new Error("proof_required");
+    await payFreight(user, id, { proofDocumentId });
+    return withQuery(back, "freightPaid", "1");
   });
 }
