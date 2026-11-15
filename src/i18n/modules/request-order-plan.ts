@@ -13,6 +13,22 @@ export const pt = {
   "orderPlan.single": "Pedido único: cada produto com uma quantidade só.",
   "orderPlan.n": "Programação {n}",
   "orderPlan.dates": "Datas das programações",
+  "orderPlan.minDate":
+    "Primeira data permitida: {date} (lançamento em {launch} + 120 dias).",
+  "orderPlan.tooSoon":
+    "A 1ª programação precisa ser a partir de {date} (lançamento + 120 dias).",
+  "orderPlan.datesHint":
+    "Toque numa data para trocar só aquela programação. A data trocada fica fixada: mudar o intervalo recalcula só as outras.",
+  "orderPlan.manual": "fixada",
+  "orderPlan.edit": "Trocar a data da Programação {n}",
+  "orderPlan.unpin": "Voltar à data automática da Programação {n}",
+  "orderPlan.issues": "Ajuste antes de enviar:",
+  "orderPlan.issue":
+    "Programação {n}: a data precisa ser depois da Programação {prev} ({date}).",
+  "reqBatch.error.schedule_too_soon":
+    "A 1ª programação precisa ser a partir de {date}: 120 dias depois do lançamento da solicitação.",
+  "reqBatch.error.schedule_out_of_order":
+    "As datas das programações estão fora de ordem: cada programação precisa ser depois da anterior.",
   "orderPlan.roundsFixed":
     "O número de programações é o do pedido (bloco Programação de compra do pedido).",
   "orderPlan.lockedHint":
@@ -83,6 +99,21 @@ export const en: Record<keyof typeof pt, string> = {
   "orderPlan.single": "Single order: each product with one quantity.",
   "orderPlan.n": "Round {n}",
   "orderPlan.dates": "Round dates",
+  "orderPlan.minDate":
+    "First allowed date: {date} (launched on {launch} + 120 days).",
+  "orderPlan.tooSoon":
+    "The 1st round must be on or after {date} (launch + 120 days).",
+  "orderPlan.datesHint":
+    "Tap a date to change only that round. The changed date stays fixed: changing the interval recalculates only the others.",
+  "orderPlan.manual": "fixed",
+  "orderPlan.edit": "Change the date of Round {n}",
+  "orderPlan.unpin": "Back to the automatic date of Round {n}",
+  "orderPlan.issues": "Adjust before sending:",
+  "orderPlan.issue": "Round {n}: the date must be after Round {prev} ({date}).",
+  "reqBatch.error.schedule_too_soon":
+    "The 1st round must be on or after {date}: 120 days after the request was launched.",
+  "reqBatch.error.schedule_out_of_order":
+    "The round dates are out of order: each round must be after the previous one.",
   "orderPlan.roundsFixed":
     "The number of rounds comes from the order (Order purchase schedule block).",
   "orderPlan.lockedHint":
@@ -153,6 +184,19 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderPlan.single": "单次订单：每个产品只有一个数量。",
   "orderPlan.n": "第 {n} 批",
   "orderPlan.dates": "各批次日期",
+  "orderPlan.minDate": "最早可选日期：{date}（{launch} 发起 + 120 天）。",
+  "orderPlan.tooSoon": "第 1 批必须在 {date} 或之后（发起日 + 120 天）。",
+  "orderPlan.datesHint":
+    "点击日期只修改该批次。修改后的日期会被固定：更改间隔只重新计算其他日期。",
+  "orderPlan.manual": "已固定",
+  "orderPlan.edit": "修改第 {n} 批的日期",
+  "orderPlan.unpin": "恢复第 {n} 批的自动日期",
+  "orderPlan.issues": "发送前请调整：",
+  "orderPlan.issue": "第 {n} 批：日期必须晚于第 {prev} 批（{date}）。",
+  "reqBatch.error.schedule_too_soon":
+    "第 1 批必须在 {date} 或之后：需求发起后 120 天。",
+  "reqBatch.error.schedule_out_of_order":
+    "各批次日期顺序不对：每一批必须晚于前一批。",
   "orderPlan.roundsFixed": "批次数来自订单（订单采购计划）。",
   "orderPlan.lockedHint": "产品资料数据：在需求中不能修改。",
   "reqBatch.error.schedule_mismatch":

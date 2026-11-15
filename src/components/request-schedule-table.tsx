@@ -46,8 +46,18 @@ export function RequestScheduleTable({
                 <td className="py-1 pr-4 text-right tabular-nums">
                   {item.quantity.toLocaleString(t.intl)} {unit}
                 </td>
-                <td className="py-1 tabular-nums">
+                <td
+                  className="py-1 tabular-nums"
+                  data-request-schedule-date={item.index}
+                  data-request-schedule-manual={item.manual ? "1" : undefined}
+                >
                   {formatDate(item.expectedAt, t)}
+                  {/* Data trocada à mão na Nova solicitação (dono, 15/11/2026). */}
+                  {item.manual ? (
+                    <span className="ml-1.5 text-[11px] font-medium text-sky-700">
+                      ({t("reqSchedule.manual")})
+                    </span>
+                  ) : null}
                 </td>
               </tr>
             ))}

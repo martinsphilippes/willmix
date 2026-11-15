@@ -1471,3 +1471,11 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Não mudou**: os dados do card, os botões, a aba "Com Solicitação Aberta" (que já quebrava a linha) e o banco.
 - Docs: `docs/SUPPLIER_REQUESTS.md` (Blocos sugeridos).
 - Testes: o E2E `tests/e2e/selection-colors.spec.ts` confere, no computador, no iPad e no celular, que nenhuma parte da linha do escolhido passa da borda do card (com o código antigo, passava 100 px).
+
+## Nova solicitação: Cliente → Programação → Produtos, 1ª data em 120 dias e datas editáveis
+
+- **Pedido do dono** (15/11/2026, com 3 fotos da tela no iPad): (1) a ordem Cliente → Programação → Produtos, com o bloco inteiro "Programação de compra do pedido" logo abaixo de Cliente e Solicitante, antes do título "Produtos"; (2) a 1ª data a partir do lançamento + 120 dias corridos (o 120º incluso), à vista junto ao campo, os dias antes desabilitados no calendário e a regra também no servidor; (3) cada data da lista editável sozinha e fixada, sem deslocar as outras; trocar o intervalo recalcula só as automáticas; datas fora de ordem apontadas antes de enviar; a data de cada programação gravada, igual ao reabrir e usada nos produtos e nos pedidos filhos.
+- **Como ficou**: docs/PURCHASE_SCHEDULE.md ("Nova solicitação: ordem, 120 dias e datas editáveis").
+- **Não mudou**: nenhuma tela, rota, campo ou dado saiu. Solicitações já gravadas continuam com as datas delas. A Seleção de itens e a solicitação ao fornecedor seguem como estavam.
+- **Banco**: sem coluna nova (campo opcional `manual` dentro do JSON `requests.schedule`).
+- Testes: `tests/unit/request-order-plan-dates.test.ts` e `tests/e2e/request-order-plan-dates.spec.ts`.

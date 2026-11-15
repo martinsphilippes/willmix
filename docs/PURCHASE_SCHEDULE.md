@@ -104,6 +104,7 @@ A solicitação aberta do grupo leva a programação (`supplier_requests.schedul
 ## Banco (só colunas opcionais)
 
 - `selection_groups.schedule` e `supplier_requests.schedule` (JSON: `intervalDays`, `firstDate`, `items[index, quantity, expectedAt]`).
+- `requests.schedule` (o mesmo JSON). Na Nova solicitação (15/11/2026), `items[].manual` marca a data fixada à mão; `expectedAt` é sempre a data que vale.
 - `orders.purchaseRounds` (JSON grande), `orders.parentOrderId` (índice `by_parent`), `orders.roundIndex`.
 - Cores (14/11/2026): `selection_groups.colorPlan`, `supplier_requests.colorPlan` e `order_items.colors` (JSON); `purchaseRounds[].items[].colors`.
 
@@ -137,11 +138,24 @@ A solicitação aberta do grupo leva a programação (`supplier_requests.schedul
 
 As datas da programação de compra não são do produto: são as datas em que **todos os produtos do pedido** acontecem. Na Nova solicitação:
 
-- **Bloco "Programação de compra do pedido"** (acima dos produtos, `OrderPlan` em `src/components/request-items.tsx`): "Programações" (1 = pedido único), intervalo (30, 45, 60 dias ou outro) e 1ª data, com a lista das datas. Vale para todas as linhas de produto.
+- **Bloco "Programação de compra do pedido"** (acima dos produtos, logo abaixo de Cliente e Solicitante desde 15/11/2026; `OrderPlan` em `src/components/request-items.tsx`): "Programações" (1 = pedido único), intervalo (30, 45, 60 dias ou outro) e 1ª data, com a lista das datas. Vale para todas as linhas de produto.
 - **Bloco "Programação de compra" de cada produto**: o mesmo componente de antes (`SelectionQuantity` com `RequestScheduleFields`, prop `fixed`/`fixedPlan`), mas sem ligar, desligar, acrescentar ("+ Programação") nem tirar ("×") datas e sem intervalo e 1ª data próprios. "Programações" do gerador fica travado no número do pedido; "Gerar programação" reparte o total de caixas do produto nessas datas (caixas inteiras, containers e "+ Aumentar" / "− Diminuir" como antes). Cada data aceita a quantidade do produto; a quantidade da linha é a soma. No pedido único, o bloco do produto é só a quantidade (sem "Programações" nem "Gerar programação"). No aviso de caixas que faltam, só a saída "Aumentar o total" (reduzir as datas mudaria o pedido).
 - **Trocar o número de programações do pedido** reparte de novo a quantidade de cada produto nas datas novas (em caixas inteiras quando o produto tem caixa master).
-- **Servidor**: todas as linhas com a mesma programação (número, 1ª data e intervalo) ou nenhuma; senão, erro `schedule_mismatch` (`assertSameSchedule` em `src/app/app/actions/request-items.ts`). O formato gravado não muda (`requests.schedule` em cada solicitação do lote).
+- **Servidor**: todas as linhas com a mesma programação (número, 1ª data, intervalo e, desde 15/11/2026, a data de cada programação) ou nenhuma; senão, erro `schedule_mismatch` (`assertSameSchedule` em `src/app/app/actions/request-items.ts`). O formato gravado não muda (`requests.schedule` em cada solicitação do lote).
 - Cada data ainda precisa de quantidade maior que zero em cada produto (a regra de sempre do `parseRequestSchedule`).
+
+## Nova solicitação: ordem, 120 dias e datas editáveis (dono, 15/11/2026)
+
+- **Ordem do formulário**: Cliente e Solicitante → bloco "Programação de compra do pedido" inteiro (com a lista das datas) → título "Produtos", a explicação e o "Produto 1". As datas continuam do pedido; cada produto reparte as quantidades dele nelas.
+- **1ª data a partir do lançamento + 120 dias corridos**, o 120º dia incluso (lançamento em 15/11/2026 → 1ª data permitida 15/03/2027). A data permitida aparece junto ao campo ("Primeira data permitida: 15/03/2027 (lançamento em 15/11/2026 + 120 dias)."), o calendário não deixa escolher os dias antes (`min`) e a 1ª data já começa nela. Antes da permitida, o texto fica vermelho e o envio para no campo.
+- **Lançamento** = o dia (em Brasília) em que a solicitação foi gravada (`createdAt`); na nova, hoje (`launchDateOf`). Reaberta para acrescentar produtos (`?addTo=`), vale o lançamento gravado dela, não o dia de hoje.
+- **Servidor** (`assertScheduleWindow` em `src/lib/workflow/request-schedule.ts`, chamado em `createRequestAction`): recusa a 1ª programação antes do lançamento + 120 dias (`schedule_too_soon`, a mensagem diz a data permitida) e datas fora de ordem (`schedule_out_of_order`), também com a data digitada ou trocada na lista.
+- **Cada data editável sozinha**: o intervalo gera as datas iniciais. Tocar numa data da lista "Datas das programações" abre o calendário e troca só aquela programação, que fica **fixada** (marca "fixada", em azul, e ↺ para voltar à automática). As outras não mudam. Mudar o intervalo ou a 1ª data recalcula só as automáticas (`planDates`). Datas fora de ordem (igual ou antes da anterior, `outOfOrderDates`) ficam em vermelho, com o aviso "Ajuste antes de enviar" dizendo qual programação, e o envio fica parado até corrigir.
+- **Gravação**: a data que vale de cada programação vai em `requests.schedule.items[].expectedAt`; a fixada leva `manual: true`. O formulário manda `p<n>.schedule.manual.N` e `p<n>.schedule.date.N` só das fixadas; as automáticas o servidor calcula (data mandada sem a marca não vale). Na solicitação aberta, a tabela mostra a data gravada e "(ajustada à mão)" na fixada; reaberta para acrescentar produtos, o bloco volta com as mesmas datas, o mesmo intervalo e as fixadas.
+- **Produtos e pedidos filhos**: os produtos do pedido repartem as quantidades nessas datas (as do bloco de cada produto são as do pedido, inclusive as fixadas) e precisam das mesmas datas (`assertSameSchedule`, `sameDates`). O pedido pai e os filhos usam a data gravada de cada programação (`roundDate` em `src/lib/purchase-rounds.ts`).
+- **Onde vale**: na Nova solicitação. A Seleção de itens e a solicitação ao fornecedor seguem como estavam.
+- **Banco**: nada novo (o `manual` é opcional, dentro do JSON `requests.schedule`). Solicitações gravadas antes seguem iguais: sem a marca, a data de cada programação é a de sempre.
+- Testes: `tests/unit/request-order-plan-dates.test.ts` (15/11/2026 → 15/03/2027, 119º dia recusado e 120º aceito no servidor, edição isolada, troca do intervalo com a fixada, fora de ordem, gravação e pedidos filhos) e `tests/e2e/request-order-plan-dates.spec.ts` (ordem do formulário, 119º dia recusado na tela e no servidor, 120º aceito, Programação 2 trocada sozinha, intervalo de 30 dias com a data fixada, fora de ordem, envio e reabertura com as datas gravadas).
 
 ## Nova solicitação: o mesmo card (dono, 14/11/2026)
 

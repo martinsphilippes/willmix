@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cx, inputClass } from "@/components/ui";
 import {
   DEFAULT_SCHEDULE_INTERVAL,
   MAX_SCHEDULE_ROUNDS,
   SCHEDULE_INTERVALS,
-  addDaysIso,
-  todayIso,
+  minFirstDate,
+  outOfOrderDates,
+  planDates,
+  type RequestSchedule,
 } from "@/lib/workflow/request-schedule";
 import type { FixedSchedulePlan } from "@/components/request-schedule";
 import {
@@ -49,10 +51,22 @@ export function RequestItems({
   suggestions,
   labels,
   containerTypes,
+  launchDate,
+  initialPlan = null,
   ...fields
 }: ProductFieldsProps & {
   /** Containers das Configurações (o card de gerar a programação). */
   containerTypes: Array<{ code: string; capacityCbm: number }>;
+  /**
+   * Data de lançamento da solicitação (AAAA-MM-DD, a gravada; na nova,
+   * hoje): a 1ª programação vale a partir dela + 120 dias (dono, 15/11/2026).
+   */
+  launchDate: string;
+  /**
+   * Programação já gravada do pedido (acrescentar produto a uma solicitação
+   * lançada): as mesmas datas, com as fixadas à mão, voltam iguais.
+   */
+  initialPlan?: RequestSchedule | null;
   presetProductId: string;
   /** Variação pré-escolhida (?variantId=) da primeira linha. */
   presetVariantId?: string;
@@ -97,13 +111,32 @@ export function RequestItems({
   const [rows, setRows] = useState<number[]>([0]);
   // Programação do pedido (dono, 15/11/2026): quantas programações e as
   // datas são do pedido; cada produto só reparte a quantidade dele nelas.
-  const [planCount, setPlanCount] = useState("1");
-  const [planInterval, setPlanInterval] = useState<number>(
-    DEFAULT_SCHEDULE_INTERVAL,
+  // A 1ª data vale a partir do lançamento + 120 dias; começa nela.
+  const minDate = minFirstDate(launchDate);
+  const initial = initialPlan?.items.length ? initialPlan : null;
+  const knownInterval = (SCHEDULE_INTERVALS as readonly number[]).includes(
+    initial?.intervalDays ?? -1,
   );
-  const [planCustom, setPlanCustom] = useState("");
-  const [planFirst, setPlanFirst] = useState(() =>
-    addDaysIso(todayIso(), DEFAULT_SCHEDULE_INTERVAL),
+  const [planCount, setPlanCount] = useState(() =>
+    String(initial?.items.length ?? 1),
+  );
+  const [planInterval, setPlanInterval] = useState<number>(() =>
+    initial
+      ? knownInterval
+        ? initial.intervalDays
+        : 0
+      : DEFAULT_SCHEDULE_INTERVAL,
+  );
+  const [planCustom, setPlanCustom] = useState(() =>
+    initial && !knownInterval ? String(initial.intervalDays) : "",
+  );
+  const [planFirst, setPlanFirst] = useState(
+    () => initial?.firstDate ?? minDate,
+  );
+  // Datas fixadas à mão, por programação (nulo = a automática). Trocar o
+  // intervalo ou a 1ª data recalcula só as automáticas.
+  const [pins, setPins] = useState<Array<string | null>>(
+    () => initial?.items.map((i) => (i.manual ? i.expectedAt : null)) ?? [],
   );
   const countNumber = Math.floor(Number(planCount));
   const count =
@@ -112,10 +145,16 @@ export function RequestItems({
       : 1;
   const intervalDays =
     planInterval > 0 ? planInterval : Math.max(0, Number(planCustom) || 0);
-  const plan = useMemo<FixedSchedulePlan>(
-    () => ({ count, firstDate: planFirst, intervalDays }),
-    [count, planFirst, intervalDays],
-  );
+  const plan = useMemo<FixedSchedulePlan>(() => {
+    const dates = planDates(count, planFirst, intervalDays, pins);
+    return {
+      count,
+      firstDate: planFirst,
+      intervalDays,
+      dates,
+      manual: dates.map((_, i) => !!pins[i]),
+    };
+  }, [count, planFirst, intervalDays, pins]);
   const [next, setNext] = useState(1);
   // Produto (e variação) escolhidos por linha, com a ficha: o pedido mínimo
   // deles vale para a quantidade; com variação escolhida, o mínimo é o dela.
@@ -255,17 +294,19 @@ export function RequestItems({
 
   return (
     <div className="space-y-3">
-      <div>
-        <p className="text-sm font-semibold text-zinc-900">{labels.products}</p>
-        <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">
-          {labels.hint}
-        </p>
-      </div>
+      {/* Cliente → Programação → Produtos (dono, 15/11/2026): as datas do
+          pedido vêm antes dos produtos, que repartem a quantidade nelas. */}
       <OrderPlan
         labels={labels.plan}
         intl={labels.intl}
         countText={planCount}
-        onCount={setPlanCount}
+        onCount={(v) => {
+          setPlanCount(v);
+          // Menos programações: as fixadas das que saíram não voltam.
+          const n = Math.floor(Number(v));
+          if (Number.isFinite(n) && n >= 1)
+            setPins((p) => (p.length > n ? p.slice(0, n) : p));
+        }}
         count={count}
         interval={planInterval}
         onInterval={setPlanInterval}
@@ -273,8 +314,25 @@ export function RequestItems({
         onCustom={setPlanCustom}
         firstDate={planFirst}
         onFirstDate={setPlanFirst}
-        intervalDays={intervalDays}
+        dates={plan.dates ?? []}
+        manual={plan.manual ?? []}
+        onPin={(i, date) =>
+          setPins((p) => {
+            const next = [...p];
+            while (next.length <= i) next.push(null);
+            next[i] = date;
+            return next;
+          })
+        }
+        minDate={minDate}
+        launchDate={launchDate}
       />
+      <div data-request-products-title>
+        <p className="text-sm font-semibold text-zinc-900">{labels.products}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">
+          {labels.hint}
+        </p>
+      </div>
       {rows.map((index, position) => {
         const prefix = `p${index}.`;
         const first = index === 0;
@@ -435,6 +493,22 @@ export interface OrderPlanLabels {
   /** "Programação {n}". */
   n: string;
   dates: string;
+  /** "Primeira data permitida: {date} (lançamento em {launch} + 120 dias)." */
+  minDate: string;
+  /** Data antes da permitida ({date}). */
+  tooSoon: string;
+  /** Como trocar uma data da lista. */
+  datesHint: string;
+  /** Marca da data fixada à mão. */
+  manual: string;
+  /** "Trocar a data da Programação {n}". */
+  edit: string;
+  /** "Voltar à data automática da Programação {n}". */
+  unpin: string;
+  /** "Ajuste antes de enviar:". */
+  issues: string;
+  /** "Programação {n}: a data precisa ser depois da Programação {prev} ({date})." */
+  issue: string;
 }
 
 const fillText = (s: string, vars: Record<string, string | number>) =>
@@ -444,7 +518,10 @@ const fillText = (s: string, vars: Record<string, string | number>) =>
  * Programação de compra do pedido (dono, 15/11/2026): as datas não são do
  * produto. O número de programações, a 1ª data e o intervalo valem para
  * todos os produtos; o bloco de cada produto só reparte a quantidade dele
- * nessas datas. 1 programação = pedido único.
+ * nessas datas. 1 programação = pedido único. A 1ª data vale a partir do
+ * lançamento + 120 dias (os dias antes ficam desabilitados no calendário);
+ * cada data da lista abre o calendário e fica fixada à mão, sem deslocar as
+ * outras; datas fora de ordem são apontadas e não deixam enviar.
  */
 function OrderPlan({
   labels,
@@ -458,7 +535,11 @@ function OrderPlan({
   onCustom,
   firstDate,
   onFirstDate,
-  intervalDays,
+  dates,
+  manual,
+  onPin,
+  minDate,
+  launchDate,
 }: {
   labels: OrderPlanLabels;
   intl: string;
@@ -471,23 +552,55 @@ function OrderPlan({
   onCustom: (v: string) => void;
   firstDate: string;
   onFirstDate: (v: string) => void;
-  intervalDays: number;
+  /** A data que vale em cada programação (automática ou fixada). */
+  dates: string[];
+  manual: boolean[];
+  /** Fixa a data de uma programação (nulo: volta à automática). */
+  onPin: (index: number, date: string | null) => void;
+  /** 1ª data permitida (lançamento + 120 dias). */
+  minDate: string;
+  launchDate: string;
 }) {
   const fmtDate = (iso: string) => {
     const d = new Date(`${iso}T00:00:00`);
-    return Number.isNaN(d.getTime())
-      ? iso
+    return !iso || Number.isNaN(d.getTime())
+      ? iso || "—"
       : d.toLocaleDateString(intl, {
           day: "2-digit",
           month: "2-digit",
           year: "numeric",
         });
   };
+  const scheduled = count >= 2;
+  // Fora de ordem: cada data precisa ser depois da anterior.
+  const issues = scheduled ? outOfOrderDates(dates) : [];
+  const issueOf = new Map(issues.map((x) => [x.n, x]));
+  const involved = new Set(issues.flatMap((x) => [x.n, x.prev]));
+  const tooSoon = fillText(labels.tooSoon, { date: fmtDate(minDate) });
+  /** A mensagem que segura o envio na data de uma programação (ou nada). */
+  const problemOf = (i: number) => {
+    if (dates[i] && dates[i] < minDate) return tooSoon;
+    const issue = issueOf.get(i + 1);
+    return issue
+      ? fillText(labels.issue, {
+          n: issue.n,
+          prev: issue.prev,
+          date: fmtDate(dates[issue.prev - 1]),
+        })
+      : "";
+  };
+  const firstRef = useRef<HTMLInputElement>(null);
+  // A 1ª data antes da permitida: a mensagem no campo (o envio para nele).
+  useEffect(() => {
+    firstRef.current?.setCustomValidity(
+      scheduled && firstDate && firstDate < minDate ? tooSoon : "",
+    );
+  }, [scheduled, firstDate, minDate, tooSoon]);
   return (
     <section
       className="space-y-2 rounded-xl border border-brand-200 bg-brand-50/40 p-3"
       aria-label={labels.title}
-      data-order-plan={count >= 2 ? count : "single"}
+      data-order-plan={scheduled ? count : "single"}
     >
       <div>
         <p className="text-sm font-semibold text-zinc-900">{labels.title}</p>
@@ -513,7 +626,7 @@ function OrderPlan({
             className={cx(inputClass, "w-24 tabular-nums")}
           />
         </label>
-        {count >= 2 ? (
+        {scheduled ? (
           <>
             <div className="space-y-1">
               <span className="block text-xs font-medium text-zinc-700">
@@ -563,10 +676,13 @@ function OrderPlan({
                 {labels.firstDate}
               </span>
               <input
+                ref={firstRef}
                 type="date"
                 value={firstDate}
+                min={minDate}
                 required
                 onChange={(e) => onFirstDate(e.target.value)}
+                aria-describedby="order-plan-min"
                 data-order-plan-first
                 className={cx(inputClass, "w-40")}
               />
@@ -574,26 +690,65 @@ function OrderPlan({
           </>
         ) : null}
       </div>
-      {count >= 2 ? (
+      {scheduled ? (
+        <p
+          id="order-plan-min"
+          className={cx(
+            "text-xs",
+            firstDate && firstDate < minDate
+              ? "font-medium text-red-700"
+              : "text-zinc-600",
+          )}
+          data-order-plan-min={minDate}
+        >
+          {fillText(labels.minDate, {
+            date: fmtDate(minDate),
+            launch: fmtDate(launchDate),
+          })}
+        </p>
+      ) : null}
+      {scheduled ? (
         <div>
           <p className="text-xs font-medium text-zinc-700">{labels.dates}</p>
           <ol className="mt-1 flex flex-wrap gap-1.5" data-order-plan-dates>
             {Array.from({ length: count }, (_, i) => (
-              <li
+              <PlanDate
                 key={i}
-                className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-700"
-                data-order-plan-date={i + 1}
-              >
-                <span className="font-semibold">
-                  {fillText(labels.n, { n: i + 1 })}
-                </span>
-                {": "}
-                {firstDate && intervalDays > 0
-                  ? fmtDate(addDaysIso(firstDate, intervalDays * i))
-                  : "—"}
-              </li>
+                index={i}
+                date={dates[i] ?? ""}
+                text={fmtDate(dates[i] ?? "")}
+                manual={!!manual[i]}
+                problem={problemOf(i)}
+                flagged={
+                  involved.has(i + 1) || (!!dates[i] && dates[i] < minDate)
+                }
+                minDate={minDate}
+                labels={labels}
+                onPin={onPin}
+              />
             ))}
           </ol>
+          <p className="mt-1 text-[11px] text-zinc-500">{labels.datesHint}</p>
+          {issues.length ? (
+            <div
+              className="mt-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-800"
+              role="alert"
+              data-order-plan-issues={issues.map((x) => x.n).join(",")}
+            >
+              <p className="font-semibold">{labels.issues}</p>
+              <ul className="mt-0.5 list-disc pl-4">
+                {issues.map((x) => (
+                  <li key={x.n}>
+                    {fillText(labels.issue, {
+                      n: x.n,
+                      prev: x.prev,
+                      date: fmtDate(dates[x.prev - 1]),
+                    })}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="text-xs text-zinc-600" data-order-plan-single>
@@ -602,5 +757,104 @@ function OrderPlan({
       )}
       <p className="text-xs text-zinc-500">{labels.countHint}</p>
     </section>
+  );
+}
+
+/**
+ * Uma data da lista "Datas das programações": tocar abre o calendário (o
+ * campo de data, invisível, cobre o rótulo); escolher fixa a data só desta
+ * programação. Fixada, mostra a marca e o botão de voltar à automática.
+ */
+function PlanDate({
+  index,
+  date,
+  text,
+  manual,
+  problem,
+  flagged,
+  minDate,
+  labels,
+  onPin,
+}: {
+  index: number;
+  date: string;
+  text: string;
+  manual: boolean;
+  /** Mensagem que segura o envio (data antes da permitida ou fora de ordem). */
+  problem: string;
+  flagged: boolean;
+  minDate: string;
+  labels: OrderPlanLabels;
+  onPin: (index: number, date: string | null) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    ref.current?.setCustomValidity(problem);
+  }, [problem]);
+  const n = index + 1;
+  return (
+    <li
+      className={cx(
+        "flex items-center gap-1 rounded-md border bg-white text-xs text-zinc-700",
+        // Vermelho só para o que segura o envio; a fixada à mão em azul
+        // (a cor da marca é vermelha e confundiria com erro).
+        flagged
+          ? "border-red-400 bg-red-50 text-red-800"
+          : manual
+            ? "border-sky-300 bg-sky-50/60"
+            : "border-zinc-200",
+      )}
+      data-order-plan-date={n}
+      data-order-plan-manual={manual ? "1" : undefined}
+      data-order-plan-flagged={flagged ? "1" : undefined}
+    >
+      <label className="relative cursor-pointer rounded-md px-2 py-1 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-500">
+        <span className="font-semibold">{fillText(labels.n, { n })}</span>
+        {": "}
+        <span data-order-plan-date-text>{text}</span>
+        <input
+          ref={ref}
+          type="date"
+          value={date}
+          min={minDate}
+          required
+          aria-label={fillText(labels.edit, { n })}
+          onClick={(e) => {
+            // Computador: o clique abre o calendário (no iPad o toque já abre).
+            try {
+              e.currentTarget.showPicker?.();
+            } catch {
+              /* sem suporte: o campo continua editável pelo teclado */
+            }
+          }}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v) onPin(index, v);
+          }}
+          data-order-plan-date-input={n}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        />
+      </label>
+      {manual ? (
+        <>
+          <span
+            className="rounded bg-sky-100 px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800"
+            data-order-plan-manual-badge
+          >
+            {labels.manual}
+          </span>
+          <button
+            type="button"
+            onClick={() => onPin(index, null)}
+            aria-label={fillText(labels.unpin, { n })}
+            title={fillText(labels.unpin, { n })}
+            data-order-plan-unpin={n}
+            className="mr-1 rounded px-1 text-sm leading-none text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+          >
+            ↺
+          </button>
+        </>
+      ) : null}
+    </li>
   );
 }

@@ -1699,8 +1699,17 @@ export interface RequestScheduleItem {
   /** 1, 2, 3… */
   index: number;
   quantity: number;
-  /** AAAA-MM-DD: 1ª data + intervalo × (n − 1). */
+  /**
+   * AAAA-MM-DD: 1ª data + intervalo × (n − 1), ou a data fixada à mão
+   * (`manual`). É a data que vale (tela, pedido pai e filhos).
+   */
   expectedAt: string;
+  /**
+   * Data escolhida à mão nesta programação (Nova solicitação, dono,
+   * 15/11/2026): trocar o intervalo não a muda. Fica no JSON da programação
+   * (sem coluna nova).
+   */
+  manual?: boolean;
 }
 /** Peças de uma cor (linha por cor do produto, no pedido e na rodada). */
 export interface ColorQuantity {
