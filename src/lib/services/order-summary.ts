@@ -86,8 +86,10 @@ import { releaseOf } from "@/lib/milestone-release";
  * 17: o motor libera pelos marcos (fase 5d): o item opcional não segura o
  * marco seguinte (`m`) e as pendências das etapas (`s`) são os itens
  * liberados pelo marco, não pela etapa em andamento.
+ * 18: frete das ordens de venda ligadas ao pedido (`sfr`), no custo e na
+ * margem do financeiro (docs/SALES_ORDERS.md).
  */
-export const SUMMARY_VERSION = 17;
+export const SUMMARY_VERSION = 18;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
