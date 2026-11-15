@@ -22,19 +22,20 @@ async function pick(page: Page, n: number, search: string, id: string) {
   await picker.locator("[data-product-picker-input]").fill(search);
   await picker.locator(`[data-product-picker-option="${id}"]`).click();
   await expect(row(page, n).locator('[role="status"]').first()).toBeVisible();
-  await expect(
-    row(page, n).locator('[data-generate-item="ok"]'),
-  ).toBeVisible();
 }
 
-async function generate(page: Page, n: number, cartons: string, rounds: string) {
+/** Programações do pedido (bloco "Programação de compra do pedido"). */
+async function setPlan(page: Page, count: string) {
+  const input = page.locator("[data-order-plan-count]");
+  await input.fill(count);
+  await input.blur();
+}
+
+/** O gerador do produto reparte o total de caixas nas datas do pedido. */
+async function generate(page: Page, n: number, cartons: string) {
   const gen = row(page, n).locator("[data-rounds-generator]");
   await gen.locator("[data-generate-total]").fill(cartons);
-  await gen.locator("[data-generate-rounds]").fill(rounds);
   await gen.locator("[data-generate-submit]").click();
-  await expect(row(page, n).locator("[data-schedule-item]")).toHaveCount(
-    Number(rounds),
-  );
 }
 
 const current = (page: Page) =>
@@ -57,20 +58,21 @@ async function noSideScroll(page: Page) {
 test("Solicitações: uma linha por produto, ficha completa nos quatro grupos, permissões e telas estreitas", async ({
   page,
 }) => {
-  // 1. O cliente pede dois produtos de uma vez: a boneca em 2 programações
-  // (300 caixas = 14.400 peças) e a piscina em pedido único.
+  // 1. O cliente pede dois produtos de uma vez, num pedido em 2
+  // programações (as datas são do pedido): a boneca com 300 caixas (150 +
+  // 150 = 14.400 peças) e a piscina com 50 (25 + 25 = 300 peças).
   await login(page, "joao@lojista.com");
   await page.goto("/app/requests/new");
   await pick(page, 0, "boneca", "prod-boneca");
-  await generate(page, 0, "300", "2");
-  await page.fill('textarea[name="p0.description"]', "Boneca da ficha");
+  await setPlan(page, "2");
+  await expect(row(page, 0).locator("[data-schedule-item]")).toHaveCount(2);
+  await generate(page, 0, "300");
+  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("14400");
   await page.click("[data-add-request-item]");
   await pick(page, 1, "piscina", "prod-piscina");
-  await row(page, 1)
-    .locator("[data-rounds-generator] [data-generate-total]")
-    .fill("50");
+  await expect(row(page, 1).locator("[data-schedule-item]")).toHaveCount(2);
+  await generate(page, 1, "50");
   await expect(page.locator('input[name="p1.quantity"]')).toHaveValue("300");
-  await page.fill('textarea[name="p1.description"]', "Piscina da ficha");
   await page.getByRole("button", { name: /enviar|send/i }).click();
   await page.waitForURL(/\/app\/requests\/batch\/[^?]+\?created=2$/);
   await page
