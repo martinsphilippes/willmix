@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { assertScreen } from "@/lib/auth/screens";
 import { parseNumberInput } from "@/lib/number-input";
+import { getStore } from "@/lib/db";
 import { field, requireUser, run, str } from "./helpers";
 
 /*
@@ -75,6 +76,9 @@ export async function decideStrategyAction(form: FormData) {
       approve: approve === "approve",
       note,
     });
+    // "Cotar" aprovada: o sistema abriu a cotação de compra; a tela vai a ela.
+    const fresh = await getStore().get("purchase_decisions", decision.id);
+    if (fresh?.quoteId) return `/app/purchase-quotes/${fresh.quoteId}?opened=1`;
     return `/app/purchase-strategy?decided=${decision.number}#decision-${decision.id}`;
   });
 }

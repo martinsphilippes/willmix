@@ -260,9 +260,9 @@ export default async function PurchaseQuotePage({
           0,
         )
       : null;
-  const notice = (["chosen", "decided", "reopened", "invited"] as const).find(
-    (k) => typeof sp[k] === "string",
-  );
+  const notice = (
+    ["opened", "chosen", "decided", "reopened", "invited"] as const
+  ).find((k) => typeof sp[k] === "string");
   return (
     <div data-quote-board={quote.id} data-quote-status={quote.status}>
       <PageHeader

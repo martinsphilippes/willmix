@@ -234,6 +234,8 @@ export const pt = {
   "quote.lines.save": "Gravar as linhas",
   "quote.lines.saved": "Linhas gravadas.",
   "strategy.openQuote": "Abrir a cotação",
+  "quote.notice.opened":
+    "Estratégia aprovada: o sistema abriu a cotação de compra e convidou os fornecedores da linha.",
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
@@ -468,6 +470,8 @@ export const en: Record<keyof typeof pt, string> = {
   "quote.lines.save": "Save lines",
   "quote.lines.saved": "Lines saved.",
   "strategy.openQuote": "Open the quote",
+  "quote.notice.opened":
+    "Strategy approved: the system opened the purchase quote and invited the line's suppliers.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -685,4 +689,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.lines.save": "保存产品线",
   "quote.lines.saved": "产品线已保存。",
   "strategy.openQuote": "打开询价",
+  "quote.notice.opened":
+    "策略已批准：系统已发起采购询价并邀请该产品线的供应商。",
 };

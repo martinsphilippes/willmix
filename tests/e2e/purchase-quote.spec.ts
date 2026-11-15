@@ -89,11 +89,11 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   await login(page, "diretoria@wellmix.com");
   await page.goto("/app/purchase-strategy");
   await page.locator(`#decision-${decisionId} [data-strategy-approve]`).click();
-  await page.waitForURL(/[?&]decided=\d+/);
-  const quoteId = await page
-    .locator(`#decision-${decisionId} [data-strategy-quote-link]`)
-    .getAttribute("data-strategy-quote-link");
+  // O sistema abriu a cotação: a tela vai direto a ela.
+  await page.waitForURL(/\/app\/purchase-quotes\/[^/?]+\?opened=1/);
+  const quoteId = new URL(page.url()).pathname.split("/").pop();
   expect(quoteId).toBeTruthy();
+  await expect(page.locator("[data-quote-response]")).toHaveCount(3);
 
   // A e B respondem; C não.
   await answer(page, "supplier.a@china.com", quoteId!, "2,10");
