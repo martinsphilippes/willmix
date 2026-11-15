@@ -2,6 +2,7 @@ import { REQUEST_STATUSES, STAGE_KEYS } from "@/lib/db/schema";
 import type { FlowBlock } from "@/lib/flow";
 import {
   MILESTONE_BLOCKS,
+  milestoneOfStatus,
   milestonesOfBlock,
   type MilestoneKey,
 } from "@/lib/milestones";
@@ -50,8 +51,9 @@ export type ProcessEventKey =
 /**
  * Grupos do editor de regras (fase 4d, docs/MILESTONES.md "Sankhya, regras e
  * painéis"): as solicitações, o pedido assinado, os 16 marcos por bloco
- * (começa/conclui), as etapas antigas (continuam valendo e disparando, para
- * as regras gravadas seguirem funcionando) e o faturamento e o cancelamento.
+ * (começa/conclui), as etapas antigas (sem efeito desde a fase 5d: o motor
+ * não dispara mais `stage:*`; ficam para o administrador trocar cada regra
+ * gravada para o marco) e o faturamento e o cancelamento.
  */
 export interface ProcessEventGroup {
   kind: "request" | "order" | "milestone" | "stage";
@@ -100,8 +102,52 @@ export const PROCESS_EVENTS: ProcessEventKey[] = PROCESS_EVENT_GROUPS.flatMap(
 export const isMilestoneEvent = (event: string): event is MilestoneEventKey =>
   event.startsWith("milestone:");
 
-/** Evento da etapa antiga (continua disparando até a fase 5)? */
+/**
+ * Evento da etapa antiga? Desde a fase 5d o motor anda pelos marcos e não
+ * dispara mais `stage:*`: a regra gravada com ele fica sem efeito até o
+ * administrador trocá-la para o marco (`stageRuleMilestoneEvent`).
+ */
 export const isStageEvent = (event: string) => event.startsWith("stage:");
+
+/**
+ * Evento de marco proposto para a regra de etapa antiga (fase 5d):
+ * `stage:X:start|done` → `milestone:<marco da etapa X>:start|done`, pelo
+ * de-para etapa → marco (`milestoneOfStatus`). Sem marco: nulo.
+ */
+export function stageRuleMilestoneEvent(
+  event: string,
+): MilestoneEventKey | null {
+  const [kind, stage, moment] = event.split(":");
+  if (kind !== "stage" || (moment !== "start" && moment !== "done"))
+    return null;
+  const key = milestoneOfStatus(stage);
+  return key ? milestoneEvent(key, moment) : null;
+}
+
+/** As regras sem a de etapa antiga dada, que passa para o evento de marco. */
+export function rewriteStageRule(
+  rules: readonly ProcessRule[],
+  event: ProcessEventKey,
+):
+  | { ok: true; rules: ProcessRule[]; target: MilestoneEventKey }
+  | { ok: false; error: "not_stage_rule" | "no_milestone" | "target_in_use" } {
+  const rule = rules.find((r) => r.event === event);
+  if (!rule || !isStageEvent(event) || !ruleDoesSomething(rule))
+    return { ok: false, error: "not_stage_rule" };
+  const target = stageRuleMilestoneEvent(event);
+  if (!target) return { ok: false, error: "no_milestone" };
+  // Nunca por cima de uma regra de marco que já faz alguma coisa.
+  const current = rules.find((r) => r.event === target);
+  if (current && ruleDoesSomething(current))
+    return { ok: false, error: "target_in_use" };
+  const { event: _old, ...action } = rule;
+  void _old;
+  const next = rules
+    .filter((r) => r.event !== target)
+    .map((r) => (r.event === event ? { event, ...EMPTY } : r));
+  next.push({ ...action, event: target });
+  return { ok: true, rules: next, target };
+}
 
 export interface ProcessRule {
   event: ProcessEventKey;

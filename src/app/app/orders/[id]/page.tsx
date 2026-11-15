@@ -12,6 +12,7 @@ import {
   type MilestoneKey,
 } from "@/lib/milestones";
 import { milestonesOf } from "@/lib/services/milestones";
+import { releaseOf, requirementReleased } from "@/lib/milestone-release";
 import type { StepView } from "@/lib/services/import-flow";
 import { OrderProgressCard } from "@/components/order-progress-card";
 import { OrderOriginLinks } from "@/components/entity-links";
@@ -122,7 +123,6 @@ import {
 } from "@/lib/workflow/engine";
 import { formatMoneyValue, isMoneyRequirement } from "@/lib/workflow/money";
 import {
-  canCompleteLater,
   isOffFlowStage,
   isOrderSignatureKey,
   ORDER_SIGN_SEND,
@@ -1137,6 +1137,11 @@ export default async function OrderPage({
      O administrador e os outros papéis veem como antes; o andamento do
      pedido inteiro não muda. */
   const mineOnly = timelineMineOnly(user);
+  /* Fase 5d: o item está liberado pelo marco dele (dependências do mapa
+     concluídas), não mais pela etapa em andamento. */
+  const orderViews = await milestonesOf(order);
+  const release = releaseOf(orderViews, stages);
+  const released = (r: Requirement) => requirementReleased(order, r, release);
   const myTimeline = mineOnly
     ? await myOrderTimeline(user, {
         order,
@@ -1149,19 +1154,15 @@ export default async function OrderPage({
         artIssues: artworkView?.items.flatMap((i) => i.issues) ?? [],
         supplierPaymentOpen: financeAccess && isOrderOpen(order.status),
         receivingOpen: !!receivingView && !receivingView.row?.closedAt,
+        release,
       })
     : null;
   /* A etapa em andamento (ou que ainda aceita dados, como o BL depois do
      embarque) abre o marco dos itens dela; ?stage=CHAVE abre outra;
      ?stage=all, todas. */
   const defaultExpanded = (s: (typeof stages)[number]) =>
-    s.status === "active" ||
-    s.status === "blocked" ||
     requirements.some(
-      (r) =>
-        r.stageId === s.id &&
-        r.status !== "done" &&
-        canCompleteLater(s, r, order),
+      (r) => r.stageId === s.id && r.status !== "done" && released(r),
     );
   const expandedStageIds = new Set(
     flowStages
@@ -1466,11 +1467,9 @@ export default async function OrderPage({
      leitura. O motor continua nas etapas por baixo (fases 4 e 5). */
   const milestoneItems: MilestoneTimelineItem[] = [];
   if (wellmix) {
-    const views = await milestonesOf(order);
-    const stageLive = (s: (typeof stages)[number], r: Requirement) =>
-      s.status === "active" ||
-      s.status === "blocked" ||
-      canCompleteLater(s, r, order);
+    const views = orderViews;
+    const stageLive = (_s: (typeof stages)[number], r: Requirement) =>
+      released(r);
     const myOpen = new Set(
       [...(myTimeline?.stages.values() ?? [])].flatMap((m) =>
         m.open.map((r) => r.id),
@@ -1644,10 +1643,14 @@ export default async function OrderPage({
             )}
           </li>,
         );
-      // Tarifário de frete: com o marco aberto (tarefa liberada no Embarque),
-      // como no card da etapa antes.
+      // Tarifário de frete: com o marco aberto, como no card da etapa antes.
+      // Fase 5d: o frete é do Booking e logística (o Embarque só libera
+      // depois do booking e do carregamento); no Embarque, só quando o
+      // Booking já não está em andamento.
+      const bookingOpen =
+        views.find((v) => v.key === "booking")?.state === "active";
       if (
-        view.key === "shipment" &&
+        (view.key === "booking" || (view.key === "shipment" && !bookingOpen)) &&
         expanded &&
         shippingStage &&
         (showTariff || showMyTariff)
@@ -1821,13 +1824,15 @@ export default async function OrderPage({
   /** Partes do pedido em que o login atua, sempre à vista, na ordem dos marcos. */
   const partnerParts: Array<{ part: OrderPart; milestone: MilestoneKey }> = [];
   if (!wellmix) {
-    const views = await milestonesOf(order);
-    const byMilestone = requirementsByMilestone(user, flowStages, requirements);
+    const views = orderViews;
+    const byMilestone = requirementsByMilestone(
+      user,
+      flowStages,
+      requirements,
+      release.states,
+    );
     const stageById = new Map(flowStages.map((s) => [s.id, s]));
-    const live = (s: (typeof stages)[number], r: Requirement) =>
-      s.status === "active" ||
-      s.status === "blocked" ||
-      canCompleteLater(s, r, order);
+    const live = (_s: (typeof stages)[number], r: Requirement) => released(r);
     // Partes do pedido em que o login atua (cartão ou página própria).
     const parts = [...partsByStage.values()]
       .flat()

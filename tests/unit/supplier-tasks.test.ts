@@ -23,6 +23,7 @@ const {
   taskGroups,
 } = await import("@/lib/services/tasks");
 const { translator } = await import("@/i18n");
+const { decideRequirement } = await import("@/lib/workflow/engine");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -98,9 +99,9 @@ describe("pendências do fornecedor por etapa", () => {
     expect((await ofOrder()).some((t) => t.group === "supplier.sheet")).toBe(
       false,
     );
-    // Arte enviada e documento enviado para assinatura: a arte chega a ele;
-    // a assinatura ainda espera a Wellmix.
-    await reachSignature(admin, order.id);
+    // Arte enviada: a aprovação da arte chega a ele (fase 5d: antes do
+    // contrato, que espera o marco Arte).
+    await reachSignature(admin, order.id, "art");
     let tasks = await ofOrder();
     const art = tasks.find((t) => t.group === "supplier.art")!;
     expect(art.kind).toBe("requirement");
@@ -121,25 +122,32 @@ describe("pendências do fornecedor por etapa", () => {
     });
     expect(art.sinceAt).toBe(artRow.submittedAt);
     expect(art.loadedAt).toBeTruthy();
-    // A Wellmix assina: a assinatura passa a ser dele, em linha própria,
-    // levando direto ao documento.
+    // Ele aprova a arte; o documento vai para assinatura e a Wellmix assina:
+    // a assinatura passa a ser dele, em linha própria, levando direto ao
+    // documento.
+    const [approval] = await getStore().list("requirements", {
+      filter: { orderId: order.id, key: "art_approval" },
+    });
+    await decideRequirement(supplierA, approval.id, "approve");
+    await reachSignature(admin, order.id);
+    expect((await ofOrder()).some((t) => t.group === "supplier.sign")).toBe(
+      false,
+    );
     await signOrderAs(admin, order.id);
     tasks = await ofOrder();
     const sign = tasks.find((t) => t.group === "supplier.sign")!;
     expect(sign.link).toBe(`/app/orders/${order.id}/purchase-order`);
     expect(sign.detail).toContain("assinado pelo fornecedor");
-    expect(tasks.find((t) => t.group === "supplier.art")!.detail).not.toContain(
-      "assinado",
-    );
+    expect(tasks.some((t) => t.group === "supplier.art")).toBe(false);
     const [wellmixRow] = await getStore().list("requirements", {
       filter: { orderId: order.id, key: "order_signed_wellmix" },
     });
     expect(sign.sinceAt).toBe(wellmixRow.submittedAt);
     // Etapas na ordem do caminho (arte antes de assinar).
-    const groups = taskGroups(tasks).map((g) => g.group);
-    expect(groups.indexOf("supplier.art")).toBeLessThan(
-      groups.indexOf("supplier.sign"),
+    expect(SUPPLIER_STEPS.indexOf("art")).toBeLessThan(
+      SUPPLIER_STEPS.indexOf("sign"),
     );
+    expect(taskGroups(tasks).map((g) => g.group)).toContain("supplier.sign");
     // Assinou: a pendência da assinatura some.
     await signOrderAs(supplierA, order.id);
     expect((await ofOrder()).some((t) => t.group === "supplier.sign")).toBe(

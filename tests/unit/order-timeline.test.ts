@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
+import { approveMilestones } from "./helpers/approvals";
 import { xlsxBytes } from "./xlsx-fixture";
 
 /*
@@ -159,8 +160,18 @@ async function requirementOf(order: Order, base: string): Promise<Requirement> {
 }
 
 /** Envia um item do pedido com um arquivo (a faca, a foto, a arte...). */
-async function submit(user: User, order: Order, base: string) {
+async function submit(
+  user: User,
+  order: Order,
+  base: string,
+  /** Item de texto (pedido mínimo, prazo): o valor no lugar do arquivo. */
+  value?: string,
+) {
   const req = await requirementOf(order, base);
+  if (value !== undefined) {
+    await engine.submitRequirement(user, req.id, { value });
+    return;
+  }
   const documentId = (
     await uploadDocument(user, pdf(`${base}.pdf`), {
       orderId: order.id,
@@ -340,9 +351,26 @@ describe("pedido do Comprador, com designer da Wellmix e parceiros", () => {
     expect(await rowsOf(otherBuyer, order)).toEqual({});
   });
 
-  it("faca e foto em alta enviadas: a arte fica liberada para o designer do pedido", async () => {
+  it("material de arte completo e aprovado pelo Comprador: a arte fica liberada para o designer do pedido", async () => {
     await submit(supplierA, order, "die_cut");
     await submit(supplierA, order, "hd_photo");
+    // Fase 5d: só a faca e a foto não liberam a arte (o marco Arte espera o
+    // Material de arte inteiro, com a aprovação do Comprador).
+    expect((await rowsOf(designer, order)).PREPARATION).toMatchObject({
+      open: [],
+      later: ["art", "art_final"],
+    });
+    await submit(supplierA, order, "moq_confirmed", "1000");
+    await submit(supplierA, order, "lead_time_confirmed", "30");
+    expect((await rowsOf(buyer, order)).PREPARATION).toMatchObject({
+      open: ["approval_art_material"],
+      later: ["art_review"],
+    });
+    await engine.submitRequirement(
+      buyer,
+      (await requirementOf(order, "approval_art_material")).id,
+      {},
+    );
     expect((await rowsOf(designer, order)).PREPARATION).toEqual({
       open: ["art"],
       later: ["art_final"],
@@ -352,7 +380,7 @@ describe("pedido do Comprador, com designer da Wellmix e parceiros", () => {
     // A validação continua em cinza para o Comprador.
     expect((await rowsOf(buyer, order)).PREPARATION).toMatchObject({
       open: [],
-      later: ["approval_art_material", "art_review"],
+      later: ["art_review"],
     });
   });
 
@@ -372,21 +400,21 @@ describe("pedido do Comprador, com designer da Wellmix e parceiros", () => {
     });
     expect((await rowsOf(buyer, order)).PREPARATION).toEqual({
       open: ["art_review"],
-      later: ["approval_art_material"],
+      later: [],
       parts: ["sheet"],
-      progress: { status: "active", percent: 0, done: 0, total: 3 },
+      progress: { status: "active", percent: 33, done: 1, total: 3 },
     });
     expect(await rowsOf(otherBuyer, order)).toEqual({});
   });
 
-  it("arte validada: a etapa do Comprador fica com a ficha de compra e a aprovação do material, contando a feita", async () => {
+  it("arte validada: a etapa do Comprador fica com a ficha de compra, contando as feitas", async () => {
     const review = await requirementOf(order, "art_review");
     await engine.decideRequirement(buyer, review.id, "approve");
     expect((await rowsOf(buyer, order)).PREPARATION).toEqual({
       open: [],
-      later: ["approval_art_material"],
+      later: [],
       parts: ["sheet"],
-      progress: { status: "active", percent: 33, done: 1, total: 3 },
+      progress: { status: "active", percent: 67, done: 2, total: 3 },
     });
   });
 
@@ -403,7 +431,7 @@ describe("pedido do Comprador, com designer da Wellmix e parceiros", () => {
       reqs.some(
         (r) =>
           r.status !== "done" &&
-          ["moq_confirmed", "lead_time_confirmed"].includes(baseKeyOf(r.key)),
+          ["ncm_validated", "sheet_complete"].includes(baseKeyOf(r.key)),
       ),
     ).toBe(true);
     // O que é dele depois (aplicar o selo) continua em cinza.
@@ -466,13 +494,17 @@ describe("pedido do Administrador, sem parceiros (como os de produção)", () =>
     expect(await rowsOf(otherBuyer, order)).toEqual({});
   });
 
-  it("sem agência, a arte é da função Designer: em cinza até a faca e a foto, depois liberada", async () => {
+  it("sem agência, a arte é da função Designer: em cinza até o material de arte, depois liberada", async () => {
     expect((await rowsOf(designer, order)).PREPARATION).toMatchObject({
       open: [],
       later: ["art", "art_final"],
     });
     await submit(supplierA, order, "die_cut");
     await submit(supplierA, order, "hd_photo");
+    // Fase 5d: o marco Material de arte inteiro, com a aprovação.
+    await submit(supplierA, order, "moq_confirmed", "1000");
+    await submit(supplierA, order, "lead_time_confirmed", "30");
+    await approveMilestones(admin, order.id);
     expect((await rowsOf(designer, order)).PREPARATION).toMatchObject({
       open: ["art"],
       later: ["art_final"],

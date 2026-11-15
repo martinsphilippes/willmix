@@ -299,12 +299,12 @@ describe("painel de SLA por divisão", () => {
       s.items.find(
         (i) => i.source === "partner" && i.link === `/app/orders/${order.id}`,
       );
-    // Os itens do fornecedor do marco estão numa etapa que ainda não começou.
-    expect(item(await slaBoardFor(admin, ALL))).toBeUndefined();
+    // Fase 5d: os itens do fornecedor do marco em andamento já estão
+    // liberados (pelo marco), mesmo com a etapa deles ainda pendente.
     const [prep] = await store.list("stages", {
       filter: { orderId: order.id, key: "PREPARATION" },
     });
-    await store.update("stages", prep.id, { status: "active" });
+    expect(prep.status).toBe("pending");
     const late = item(await slaBoardFor(admin, ALL));
     expect(late?.milestone).toBe("new-order");
     expect(late?.waitingOn).toEqual(["supplier"]);

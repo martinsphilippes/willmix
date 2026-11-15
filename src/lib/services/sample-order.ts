@@ -58,10 +58,11 @@ async function sampleRequirements(orderId: string) {
   };
 }
 
+/** Fase 5d: o item liberado pelo marco (Contrato), não pela etapa. */
 async function stageOpen(req: Requirement | null) {
   if (!req) return false;
-  const stage = await getStore().get("stages", req.stageId);
-  return stage?.status === "active" || stage?.status === "blocked";
+  const { requirementIsReleased } = await import("./order-milestones");
+  return requirementIsReleased(req);
 }
 
 /** As linhas pela regra: variantes ativas de cada produto do pedido. */

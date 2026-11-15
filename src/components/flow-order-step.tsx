@@ -143,11 +143,16 @@ export async function FlowOrderInStep({
     ? await import("@/lib/services/cert-art-routing")
     : null;
   const ctx = routing ? await routing.loadRoutingContext() : null;
+  // Fase 5d: liberado pelo marco do item, não pela etapa em andamento.
+  const { orderRelease } = await import("@/lib/services/order-milestones");
+  const { requirementReleased } = await import("@/lib/milestone-release");
+  const release = (await orderRelease(order.id))?.release ?? null;
+  const live = (r: Requirement) =>
+    !!release && requirementReleased(order, r, release);
   const canAct = (r: Requirement) => {
-    const stage = stageById.get(r.stageId);
     return (
       r.status !== "done" &&
-      (stage?.status === "active" || stage?.status === "blocked") &&
+      live(r) &&
       canSubmitRequirement(user, order, r) &&
       (!routing ||
         !ctx ||
@@ -158,12 +163,10 @@ export async function FlowOrderInStep({
   // O que a tarefa ainda espera, com a etapa aberta (a mesma regra do
   // detalhe do pedido): a validação espera a arte; a arte final, a
   // validação e o certificado; a aprovação da arte antiga, a arte.
-  const waitingOf = (r: Requirement) => {
-    const stage = stageById.get(r.stageId);
-    return stage?.status === "active" || stage?.status === "blocked"
+  const waitingOf = (r: Requirement) =>
+    live(r)
       ? stepWaiting(t, r, requirements, order.flow === "supplier_request")
       : null;
-  };
 
   // Passos do embarque, da origem, da certificação e das amostras do passo.
   const importFlow = await import("@/lib/services/import-flow");

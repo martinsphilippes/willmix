@@ -23,18 +23,20 @@ import { audit } from "./audit";
  * Preparação vêm feitos (cópia dos do pai, com os mesmos arquivos) e o filho
  * começa no contrato, que cada rodada assina de novo.
  *
- * Quem chama: o job diário (/api/jobs/reminders), a conclusão da Preparação
- * do pai e o botão "Gerar as rodadas do dia" no pedido pai.
+ * Quem chama: o job diário (/api/jobs/reminders), os marcos 1 a 4 do pai
+ * prontos (`syncMilestones`, fase 5d) e o botão "Gerar as rodadas do dia" no pedido pai.
  */
 
 export class PurchaseRoundsError extends Error {}
 
 /** Preparação do pai concluída: as artes e o certificado existem para copiar. */
 async function preparationDone(orderId: string): Promise<boolean> {
-  const [stage] = await getStore().list("stages", {
-    filter: { orderId, key: "PREPARATION" },
-  });
-  return stage?.status === "done";
+  // Fase 5d: os marcos 1 a 4 (pedido novo, certificação, material de arte e
+  // arte) prontos = o contrato (marco 5) não aguarda mais nenhum deles.
+  const { orderRelease } = await import("./order-milestones");
+  const found = await orderRelease(orderId);
+  const contract = found?.views.find((v) => v.key === "contract");
+  return contract?.state === "active" || contract?.state === "done";
 }
 
 /**

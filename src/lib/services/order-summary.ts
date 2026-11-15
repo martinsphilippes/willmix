@@ -39,13 +39,9 @@ import {
 } from "./finance";
 import { SCHEDULE_REQUIREMENT_KEYS, payableFor } from "./supplier-terms";
 import type { BoardOrder, BoardStage } from "./tower-board";
-import {
-  compactMilestones,
-  newlyDoneMilestones,
-  newlyStartedMilestones,
-  type CompactMilestone,
-} from "@/lib/milestones";
+import { compactMilestones, type CompactMilestone } from "@/lib/milestones";
 import { milestoneViews } from "./milestones";
+import { releaseOf } from "@/lib/milestone-release";
 
 /*
  * Resumo por pedido (docs/RESUMOS.md). A Control Tower lia, a cada abertura,
@@ -87,8 +83,11 @@ import { milestoneViews } from "./milestones";
  * gravado (`requirements.step`) e o prazo do marco em andamento vem de
  * `order_milestones.dueAt`; a contribuição da Control Tower (`kpi.c`) põe
  * o pedido no quadrado pelo marco atual (fase 5c, docs/MILESTONES.md).
+ * 17: o motor libera pelos marcos (fase 5d): o item opcional não segura o
+ * marco seguinte (`m`) e as pendências das etapas (`s`) são os itens
+ * liberados pelo marco, não pela etapa em andamento.
  */
-export const SUMMARY_VERSION = 16;
+export const SUMMARY_VERSION = 17;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -309,7 +308,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
       store,
       "requirements",
       // Fase 5c: o passo gravado no item (`step`) agrupa as subtarefas.
-      ["orderId", "stageId", "key", "status", "step"],
+      ["orderId", "stageId", "key", "status", "step", "required"],
       { filter: byOrder },
     ),
     import("./import-flow").then((m) => m.lpcoOrderIds(orderIds)),
@@ -676,12 +675,14 @@ async function tasksOf(
         TASK_ORDER_FIELDS.map((f) => [f, order[f] ?? null]),
       ) as TaskOrder,
     };
-    // Etapas (etapa em espera também não entra).
+    // Itens liberados pelos marcos (fase 5d), em qualquer etapa não
+    // cancelada (etapa em espera também não entra).
     const stages = (src.stages.get(order.id) ?? []).filter(
-      (s) => ACTIVE.includes(s.status) && !isHeld(s),
+      (s) => s.status !== "cancelled" && !isHeld(s),
     );
+    const m = factsById.get(order.id)?.m ?? [];
     const steps = src.steps.get(order.id) ?? [];
-    if (stages.length) {
+    if (stages.length && m.some((x) => x.s === "active")) {
       const sealApplied = new Set(
         steps
           .filter(
@@ -698,6 +699,15 @@ async function tasksOf(
         openRequirements: src.openRequirements.get(order.id) ?? [],
         sealApplied,
         lanes,
+        release: new Map([
+          [
+            order.id,
+            releaseOf(
+              m.map((x) => ({ key: x.k, state: x.s })),
+              stages,
+            ),
+          ],
+        ]),
       }).map((d) => {
         const stage = d.stageKey ? byKey.get(d.stageKey) : undefined;
         return { k: `${stage?.createdAt ?? ""}|${stage?.id ?? ""}`, d };
@@ -919,20 +929,9 @@ export async function summaryStatus(): Promise<SummaryMarker | null> {
 export async function recomputeOrderSummaries(
   ids: string[],
   now: Date = new Date(),
-  options: {
-    /**
-     * Recálculo por evento: avisa os informados dos marcos que acabaram de
-     * concluir (fase 4c, docs/MILESTONES.md). A reconstrução e os outros
-     * recálculos não avisam.
-     */
-    informMilestones?: boolean;
-  } = {},
 ): Promise<number> {
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return 0;
-  const previous = options.informMilestones
-    ? await storedMilestones(unique)
-    : null;
   const src = await loadSources(unique);
   const today = brazilDay(now.toISOString()) as string;
   const at = now.toISOString();
@@ -948,78 +947,12 @@ export async function recomputeOrderSummaries(
     summaryRow(f, at, kpis.get(f.order.id), tasks.get(f.order.id) ?? null),
   );
   await writeSummaries(rows);
-  if (previous) await informNewlyDone(src.orders, facts, previous);
   const found = new Set(src.orders.map((o) => o.id));
   const store = getStore();
   for (const id of unique)
     if (!found.has(id))
       await store.remove("order_summaries", id).catch(() => undefined);
   return rows.length;
-}
-
-/**
- * Os marcos guardados no resumo (só `facts.m`), no formato atual. Resumo de
- * outro formato ou sem `m`: fica de fora (sem comparação, sem aviso).
- */
-async function storedMilestones(
-  ids: string[],
-): Promise<Map<string, CompactMilestone[]>> {
-  const rows = await listColumnsOf(
-    getStore(),
-    "order_summaries",
-    ["version", "facts"],
-    { filter: { id: ids }, jsonKeys: { facts: ["m"] } },
-  ).catch(() => []);
-  const out = new Map<string, CompactMilestone[]>();
-  for (const row of rows) {
-    const m = (row.facts as Partial<OrderFacts> | null)?.m;
-    if (row.version === SUMMARY_VERSION && m?.length) out.set(row.id, m);
-  }
-  return out;
-}
-
-/**
- * Avisa os informados dos marcos que concluíram neste recálculo e dispara
- * os eventos de marco das regras de processo (`milestone:<marco>:start` e
- * `:done`, fase 4d). Os dois só aqui: nunca na reconstrução.
- */
-async function informNewlyDone(
-  orders: Order[],
-  facts: OrderFacts[],
-  previous: Map<string, CompactMilestone[]>,
-) {
-  const byId = new Map(facts.map((f) => [f.order.id, f]));
-  let rules: Promise<import("@/lib/process-rules").ProcessRule[]> | null = null;
-  for (const order of orders) {
-    // Histórico do Sankhya em espera: sem avisos nem eventos (fase 1).
-    if (isHeld(order)) continue;
-    const before = previous.get(order.id);
-    const after = byId.get(order.id)?.m;
-    const keys = newlyDoneMilestones(before, after);
-    const started = newlyStartedMilestones(before, after);
-    if (keys.length)
-      try {
-        const { informMilestones } = await import("./milestone-notify");
-        await informMilestones(order, keys);
-      } catch (error) {
-        // O aviso não derruba o resumo (já gravado).
-        console.error("[milestones] aviso aos informados falhou", error);
-      }
-    if (keys.length || started.length)
-      try {
-        const { emitMilestoneEvents, milestoneTransitionEvents } =
-          await import("./milestone-events");
-        const { getProcessRules } = await import("./process-engine");
-        rules ??= getProcessRules();
-        await emitMilestoneEvents(
-          order,
-          milestoneTransitionEvents(started, keys),
-          await rules,
-        );
-      } catch (error) {
-        console.error("[milestones] eventos das regras falharam", error);
-      }
-  }
 }
 
 /** Pedidos de um parceiro (nome ou condição de pagamento mudou). */
@@ -1045,9 +978,9 @@ export async function applySummaryChanges(changes: {
 }): Promise<number> {
   if (!(await summariesReady())) return 0;
   const ids = [...changes.orders, ...(await ordersOfParties(changes.parties))];
-  const done = await recomputeOrderSummaries(ids, new Date(), {
-    informMilestones: true,
-  });
+  // Fase 5d: o aviso aos informados e os eventos `milestone:*` saem da
+  // sincronização dos marcos (`syncMilestones`), não mais daqui.
+  const done = await recomputeOrderSummaries(ids, new Date());
   // Indicadores prontos: refeitos depois de cada leva de gravações.
   if (ids.length || changes.kpi) {
     const { rebuildTowerKpis } = await import("./tower-kpis");

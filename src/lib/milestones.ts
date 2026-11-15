@@ -316,6 +316,12 @@ export interface Subtask {
   done: boolean;
   /** Prazo da subtarefa, se tiver. */
   dueAt?: string | null;
+  /**
+   * Fase 5d: item opcional do pedido (`required: false`) ou da etapa fora do
+   * fluxo. Conta no andamento, mas não segura os marcos seguintes: o marco
+   * libera os que dependem dele quando todas as obrigatórias estão feitas.
+   */
+  optional?: boolean;
 }
 
 export type MilestoneState = "done" | "active" | "waiting" | "na";
@@ -353,26 +359,40 @@ export function orderMilestones(
   }
   const out = new Map<MilestoneKey, MilestoneView>();
   const defs = new Map(MILESTONES.map((d) => [d.key, d]));
-  // Concluído para os seguintes: feito, ou que não se aplica e com as
-  // dependências dele concluídas (o marco que não se aplica é transparente).
+  // Todas as subtarefas obrigatórias feitas (fase 5d: o opcional não segura).
+  const cleared = new Map<MilestoneKey, boolean>();
+  // Concluído para os seguintes: feito; ou que não se aplica, ou com as
+  // obrigatórias feitas, e com as dependências dele concluídas (o marco que
+  // não se aplica é transparente).
   const finished = (key: MilestoneKey): boolean => {
     const v = out.get(key);
     if (!v) return true;
     if (v.state === "done") return true;
-    if (v.state !== "na") return false;
+    if (v.state !== "na" && !cleared.get(key)) return false;
     return defs.get(key)!.deps.every(finished);
   };
   // O primeiro marco não concluído na corrente de dependências.
   const blocker = (key: MilestoneKey): MilestoneKey | null => {
     for (const d of defs.get(key)!.deps) {
       if (finished(d)) continue;
-      return out.get(d)?.state === "na" ? blocker(d) : d;
+      // Transparente (sem aplicação, ou só com opcionais abertos): quem
+      // segura é o marco antes dele.
+      return out.get(d)?.state === "na" || cleared.get(d)
+        ? (blocker(d) ?? d)
+        : d;
     }
     return null;
   };
   for (const def of MILESTONES) {
     const list = groups.get(def.key) ?? [];
     const done = list.filter((s) => s.done).length;
+    // Fase 5d: concluído com todas as obrigatórias feitas (o opcional
+    // aberto, como o BL que chega depois do embarque, não segura); marco só
+    // com opcionais, com todas feitas.
+    const complete = list.some((s) => !s.optional)
+      ? list.every((s) => s.done || s.optional)
+      : done === list.length;
+    cleared.set(def.key, complete);
     const open = list
       .filter((s) => !s.done && s.dueAt)
       .map((s) => s.dueAt!)
@@ -381,7 +401,7 @@ export function orderMilestones(
     const state: MilestoneState =
       !list.length || status === "CANCELLED"
         ? "na"
-        : done === list.length || status === "CLOSED"
+        : complete || status === "CLOSED"
           ? "done"
           : waitingFor
             ? "waiting"

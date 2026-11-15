@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
 import { approveMilestones } from "./helpers/approvals";
+import { completeCertification } from "./helpers/certification";
 import { xlsxBytes } from "./xlsx-fixture";
 
 /*
@@ -194,6 +195,10 @@ async function finishLanes(orderId: string) {
     await submit(supplierA, orderId, k("lead_time_confirmed", item.id), {
       value: "30",
     });
+  }
+  // Fase 5d: a arte só depois do marco Material de arte (com a aprovação).
+  await approveMilestones(admin, orderId);
+  for (const item of items) {
     await submit(agency, orderId, k("art", item.id), { file: "arte.pdf" });
     const review = (await requirementsOf(orderId)).find(
       (r) => r.key === k("art_review", item.id),
@@ -214,6 +219,13 @@ async function finishLanes(orderId: string) {
   await gates.readyOrderProducts(admin, orderId);
   // Aprovações do mapa no fim dos marcos (docs/MILESTONES.md).
   await approveMilestones(admin, orderId);
+  // Linha com certificação: os passos dela também fecham o marco (fase 5d).
+  if (
+    (await requirementsOf(orderId)).some((r) =>
+      r.key.startsWith("certificate__"),
+    )
+  )
+    await completeCertification(admin, orderId);
 }
 
 describe("regras puras da programação de compra", () => {

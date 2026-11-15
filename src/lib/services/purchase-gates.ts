@@ -202,15 +202,19 @@ async function refresh(orderId: string, user: User | null): Promise<number> {
   const store = getStore();
   const order = await store.get("orders", orderId);
   if (!order || !isPurchaseFlow(order) || closed(order)) return 0;
-  const [requirements, stages, items] = await Promise.all([
+  const [requirements, items] = await Promise.all([
     store.list("requirements", { filter: { orderId } }),
-    store.list("stages", { filter: { orderId } }),
     store.list("order_items", { filter: { orderId } }),
   ]);
-  const gates = openGates(requirements).filter((r) => {
-    const stage = stages.find((s) => s.id === r.stageId);
-    return stage?.status === "active" || stage?.status === "blocked";
-  });
+  // Fase 5d: só o item liberado pelo marco dele (não pela etapa).
+  const { orderRelease } = await import("./order-milestones");
+  const { requirementReleased } = await import("@/lib/milestone-release");
+  const release = (await orderRelease(orderId))?.release;
+  const gates = release
+    ? openGates(requirements).filter((r) =>
+        requirementReleased(order, r, release),
+      )
+    : [];
   if (!gates.length) return 0;
   const touched = new Set<string>();
   let done = 0;
