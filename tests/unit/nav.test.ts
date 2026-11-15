@@ -36,6 +36,7 @@ const NEW_PRODUCT = [
   "/app/supplier-requests/invites",
   "/app/requests",
   "/app/replenishment",
+  "/app/purchase-strategy",
   "/app/supplier-requests",
 ];
 const ORDER = [

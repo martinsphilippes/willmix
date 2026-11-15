@@ -39,6 +39,9 @@ export type TaskKind =
   | "booking_invite"
   | "new_request"
   | "replenishment_request"
+  | "purchase_strategy"
+  | "purchase_strategy_approve"
+  | "purchase_strategy_order"
   | "requirement"
   | "review"
   | "after_sales"
@@ -329,6 +332,9 @@ const KIND_ORDER: string[] = [
   "booking_invite",
   "new_request",
   "replenishment_request",
+  "purchase_strategy",
+  "purchase_strategy_approve",
+  "purchase_strategy_order",
   "supplier_request",
   "sampling_validate",
   "freight_quote",
@@ -815,8 +821,14 @@ export async function pendingTasksFor(
   const { getSettings } = await import("@/lib/settings");
   const flowSettings = await getSettings();
   // Encomenda nova do cliente e reposição (docs/PURCHASE_DEMAND.md): esperam
-  // a estratégia de compra.
-  for (const request of newRequests)
+  // a estratégia de compra. Quem escolhe a estratégia (o Comprador) as vê no
+  // passo Estratégia de compra; os outros, em Encomendas e Reposição. A que
+  // já está numa estratégia sai daqui.
+  const strategist =
+    wellmix && !options.team && can(user, "purchaseStrategy.choose");
+  for (const request of newRequests.filter(
+    (r) => !r.purchaseDecisionId && !strategist,
+  ))
     tasks.push(
       finish(
         {
@@ -825,9 +837,7 @@ export async function pendingTasksFor(
               ? "replenishment_request"
               : "new_request",
           title: `${
-            request.origin === "replenishment"
-              ? "Reposição"
-              : "Encomenda nova"
+            request.origin === "replenishment" ? "Reposição" : "Encomenda nova"
           }: ${request.productName}`,
           detail: `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
           link: `/app/requests/${request.id}`,
@@ -837,6 +847,14 @@ export async function pendingTasksFor(
         },
         now,
       ),
+    );
+  if (wellmix)
+    tasks.push(
+      ...(
+        await (
+          await import("./purchase-strategy")
+        ).strategyTaskDrafts(newRequests)
+      ).map((draft) => finish(draft, now)),
     );
   if (supplier) tasks.push(...(await supplierRequestTasks(user, now)));
   // Amostragem: o responsável envia; a Wellmix (com a ação) valida.
