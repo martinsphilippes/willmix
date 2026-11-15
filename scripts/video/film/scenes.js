@@ -43,16 +43,19 @@ function smooth(pts) {
 function worldMap(ctx, cls = "") {
   const w = ctx.world;
   return `<svg class="world ${cls}" viewBox="0 0 1920 1080">
-    <g class="land">${w.land.map((d) => `<path d="${d}"/>`).join("")}</g>
-    <path class="china" d="${w.china}"/><path class="brazil" d="${w.brazil}"/>
+    <g class="land">${[...w.land, w.china].map((d) => `<path d="${d}"/>`).join("")}</g>
+    <path class="brazil" d="${w.brazil}"/>
   </svg>`;
 }
 
 export const SCENES = {
-  /** Abertura: o mapa da vinheta volta, com a rota da China ao Brasil. */
+  /** Abertura: o mapa da vinheta volta, com rotas de várias origens no
+   *  exterior até o Brasil (nenhum país de origem em destaque). */
   route(s, ctx) {
     const p = s.props;
     const P = ctx.world.points;
+    // Rota principal (por mar, pelo Cabo): é nela que aparecem as mãos por
+    // onde a carga passa.
     const d = smooth([
       P.shenzhen,
       P.singapore,
@@ -60,16 +63,36 @@ export const SCENES = {
       P.midAtlantic,
       P.santos,
     ]);
+    // Demais origens: arcos até o Brasil, curvados para o lado indicado.
+    const arc = (o, bend) => {
+      const [x1, y1] = o;
+      const [x2, y2] = P.santos;
+      const [mx, my] = [(x1 + x2) / 2, (y1 + y2) / 2];
+      const [nx, ny] = [y2 - y1, x1 - x2]; // perpendicular ao trecho
+      return `M${x1},${y1} Q${(mx + nx * bend).toFixed(1)},${(my + ny * bend).toFixed(1)} ${x2},${y2}`;
+    };
+    const others = [
+      [P.hoChiMinh, 0.2],
+      [P.mumbai, 0.22],
+      [P.istanbul, 0.24],
+      [P.genoa, 0.22],
+    ];
     const t0 = 1.0;
     const hand = p.handoffsC != null ? s.cue[p.handoffsC] : (p.handoffsAt ?? 2);
     return `${s.cls?.includes("first") ? `<div class="paper"></div>` : ""}
       ${worldMap(ctx, "a a-fade")}
       <svg class="route" viewBox="0 0 1920 1080">
+        ${others.map(([o, bend], i) => `<path class="arc a a-draw" pathLength="1" d="${arc(o, bend)}" style="${at(t0 + 0.15 + i * 0.16, 1.9)}"/>`).join("")}
         <path class="glow a a-draw" pathLength="1" d="${d}" style="${at(t0, 2.6)}"/>
         <path class="line a a-draw" pathLength="1" d="${d}" style="${at(t0, 2.6)}"/>
       </svg>
       <div class="ship" style="offset-path:path('${d}');${at(t0, 2.6)}"></div>
-      <div class="pin cn a a-pop" style="left:${P.shenzhen[0]}px;top:${P.shenzhen[1]}px;${at(0.7, 0.6)}"><i></i><b>China</b></div>
+      ${[[P.shenzhen], ...others]
+        .map(
+          ([o], i) =>
+            `<div class="origin" style="left:${o[0]}px;top:${o[1]}px"><i class="a a-pop" style="${at(0.65 + i * 0.09, 0.55)}"></i></div>`,
+        )
+        .join("")}
       <div class="pin br a a-pop" style="left:${P.santos[0]}px;top:${P.santos[1]}px;${at(t0 + 2.3, 0.6)}"><i></i><b>Brazil</b></div>
       ${p.handoffs
         .map((h, i) => {

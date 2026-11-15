@@ -658,11 +658,6 @@ html[data-lang="zh"] #sub-box {
   stroke: rgba(255, 255, 255, 0.1);
   stroke-width: 0.7;
 }
-.world .china {
-  fill: #b81f25;
-  stroke: #ff6b70;
-  stroke-width: 1;
-}
 .world .brazil {
   fill: #1c9654;
   stroke: #57e59a;
@@ -671,7 +666,6 @@ html[data-lang="zh"] #sub-box {
 .world.dim {
   opacity: 0.16;
 }
-.world.dim .china,
 .world.dim .brazil {
   fill: #13151b;
   stroke: rgba(255, 255, 255, 0.1);
@@ -684,6 +678,24 @@ html[data-lang="zh"] #sub-box {
 .route .line {
   stroke: #fff;
   stroke-width: 2.4;
+}
+.route .arc {
+  stroke: rgba(255, 255, 255, 0.5);
+  stroke-width: 1.6;
+}
+.origin {
+  position: absolute;
+  translate: -50% -50%;
+}
+.origin i {
+  display: block;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 0 6px rgba(229, 37, 44, 0.32),
+    0 0 28px 9px rgba(229, 37, 44, 0.6);
 }
 .route .glow {
   stroke: var(--red);

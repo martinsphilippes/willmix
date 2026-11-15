@@ -70,9 +70,9 @@ export const VIDEOS = {
         },
         say: [
           {
-            en: "From a factory in China to a customer in Brazil, an import takes dozens of handoffs.",
-            pt: "Da fábrica na China ao cliente no Brasil,|uma importação passa por dezenas de mãos.",
-            zh: "从中国工厂到巴西客户，||一次进口要经过|几十次交接。",
+            en: "From a factory abroad to a customer in Brazil, an import takes dozens of handoffs.",
+            pt: "Da fábrica no exterior|ao cliente no Brasil,||uma importação passa|por dezenas de mãos.",
+            zh: "从海外工厂到巴西客户，||一次进口要经过|几十次交接。",
           },
         ],
       },
@@ -232,8 +232,8 @@ export const VIDEOS = {
         say: [
           {
             en: "Wellmix. Imports from order to delivery, in one place.",
-            pt: "Wellmix. Importação do pedido|à entrega, em um só lugar.",
-            zh: "Wellmix：从订单到交付，|尽在一处。",
+            pt: "Wellmix. Importação do pedido à entrega,|em um só lugar.",
+            zh: "Wellmix：从下单到交付，|进口全程尽在一处。",
           },
         ],
       },
@@ -257,9 +257,9 @@ export const VIDEOS = {
         },
         say: [
           {
-            en: "Bringing a product from a factory in China to a customer in Brazil is a long relay.",
-            pt: "Trazer um produto da fábrica na China|até o cliente no Brasil||é um longo revezamento.",
-            zh: "把产品从中国工厂|送到巴西客户手中，||是一场漫长的接力。",
+            en: "Bringing a product from a factory abroad to a customer in Brazil is a long relay.",
+            pt: "Trazer um produto da fábrica no exterior|até o cliente no Brasil||é um longo revezamento.",
+            zh: "把产品从海外工厂|送到巴西客户手中，||是一场漫长的接力。",
           },
           {
             en: "Suppliers, agencies, certifiers, freight, customs, carriers.",
@@ -306,8 +306,8 @@ export const VIDEOS = {
           },
           {
             en: "One workflow, shared by Wellmix, its suppliers, its service partners and its customers.",
-            pt: "Um só fluxo, compartilhado pela Wellmix,|fornecedores, parceiros e clientes.",
-            zh: "一条流程，由 Wellmix、|供应商、||服务伙伴和客户共用。",
+            pt: "Um só fluxo, compartilhado pela Wellmix,|seus fornecedores, parceiros e clientes.",
+            zh: "一条流程，|由 Wellmix、供应商、||服务伙伴和客户共用。",
           },
           {
             en: "Each login sees only its own part.",
@@ -380,16 +380,16 @@ export const VIDEOS = {
           {
             en: "Book: supplier price books, item selection, negotiation and samples.",
             pt: "Book: planilhas dos fornecedores,|seleção de itens, negociação e amostras.",
-            zh: "选品：供应商报价表、|选品、谈判和样品。",
+            zh: "Book：供应商报价表、|选品、谈判和样品。",
           },
           {
             en: "Order: the purchase order, artwork, certification and the signed contract.",
             pt: "Pedido: pedido de compra, arte,|certificação e contrato assinado.",
-            zh: "订单：采购订单、包装设计、|认证和签署的合同。",
+            zh: "订单：采购订单、包装设计、|认证和合同签署。",
           },
           {
             en: "Production: follow-ups, inspection, loading and shipping documents.",
-            pt: "Produção: acompanhamento, inspeção,|carregamento e documentos de embarque.",
+            pt: "Produção: acompanhamento, inspeção,|carregamento e documentos de carga.",
             zh: "生产：跟进、验货、|装柜和出运单据。",
           },
           {
@@ -400,7 +400,7 @@ export const VIDEOS = {
           {
             en: "And Sales: offers, sales orders and the delivery schedule.",
             pt: "E Vendas: ofertas, ordens de venda|e agenda de entregas.",
-            zh: "销售：报价、销售订单|和交货日程。",
+            zh: "销售：报价、销售订单|和送货日程。",
           },
           {
             en: "Every step has an owner, a deadline and a status.",
@@ -434,7 +434,7 @@ export const VIDEOS = {
           {
             en: "The payment plan, instalments and bank slips are on the same screen.",
             pt: "Forma de pagamento, parcelas|e boletos ficam na mesma tela.",
-            zh: "付款方案、分期和付款单|都在同一页面。",
+            zh: "付款方式、分期和银行付款单|都在同一页面。",
           },
           {
             en: "On arrival, they confirm receipt and rate the purchase.",
@@ -468,7 +468,7 @@ export const VIDEOS = {
         say: [
           {
             en: "The supplier works from a single task list, in Chinese or English.",
-            pt: "O fornecedor trabalha com uma única|lista de tarefas, em chinês ou inglês.",
+            pt: "O fornecedor trabalha com uma lista única|de tarefas, em chinês ou inglês.",
             zh: "供应商只需一份待办清单，|中文或英文均可。",
           },
           {
@@ -484,7 +484,7 @@ export const VIDEOS = {
           {
             en: "And they see the payment forecast for every order.",
             pt: "E consulta a previsão de pagamento|de cada pedido.",
-            zh: "还能查看每笔订单的|付款预测。",
+            zh: "还能查看|每笔订单的付款预计。",
           },
         ],
       },
@@ -514,7 +514,7 @@ export const VIDEOS = {
           {
             en: "The art agency receives the die cut and the product photos in its workdesk.",
             pt: "A agência de arte recebe a faca e as fotos|do produto na sua mesa de trabalho.",
-            zh: "设计代理在工作台收到|刀模和产品照片。",
+            zh: "设计公司在工作台收到|刀模和产品照片。",
           },
           {
             en: "It uploads the artwork and gets feedback with a clear reason.",
@@ -540,7 +540,7 @@ export const VIDEOS = {
           oy: "14%",
           bullets: [
             {
-              t: "Reads the <b>purchase sheet</b> and the order document",
+              t: "Reads the <b>purchase sheet</b> and the product photos",
               c: 1,
             },
             {
@@ -559,7 +559,7 @@ export const VIDEOS = {
           {
             en: "It reads the purchase sheet and uploads the technical description, the seal and the certificate.",
             pt: "Consulta a ficha de compra e envia|o memorial, o selo e o certificado.",
-            zh: "查看采购资料，||上传技术说明、|认证标志和证书。",
+            zh: "查看采购单，||上传技术说明书、|认证标志和证书。",
           },
         ],
       },
@@ -567,7 +567,7 @@ export const VIDEOS = {
         id: "marketing",
         type: "role",
         props: {
-          role: "Marketing agency · China",
+          role: "Marketing agency · at origin",
           icon: "camera",
           title: "Real photos before the cargo ships",
           shot: "marketing",
@@ -584,13 +584,13 @@ export const VIDEOS = {
         },
         say: [
           {
-            en: "In China, the marketing agency confirms that the sample has arrived.",
-            pt: "Na China, a agência de marketing|confirma a chegada da amostra.",
-            zh: "在中国，营销代理|确认样品已送达。",
+            en: "At origin, the marketing agency confirms that the sample has arrived.",
+            pt: "Na origem, a agência de marketing|confirma a chegada da amostra.",
+            zh: "在原产地，营销代理|确认样品已送达。",
           },
           {
             en: "It uploads real photos and videos of each product, and returns the sample.",
-            pt: "Envia fotos e vídeos reais|de cada produto e devolve a amostra.",
+            pt: "Envia fotos e vídeos reais de cada produto|e devolve a amostra.",
             zh: "上传每个产品的|实拍照片和视频，||然后归还样品。",
           },
         ],
@@ -603,7 +603,7 @@ export const VIDEOS = {
             {
               role: "Freight forwarder",
               icon: "container",
-              title: "Ocean booking and bill of lading",
+              title: "Ocean booking and container at origin",
               shot: "forwarder",
               oy: "40%",
               c: 0,
@@ -611,7 +611,7 @@ export const VIDEOS = {
             {
               role: "Shipping line",
               icon: "ship",
-              title: "Freight quotes and shipment confirmation",
+              title: "Freight quotes, bill of lading, shipment",
               shot: "line",
               oy: "10%",
               c: 1,
@@ -620,14 +620,14 @@ export const VIDEOS = {
         },
         say: [
           {
-            en: "The freight forwarder registers the ocean booking and uploads the bill of lading.",
-            pt: "O agente de carga registra a reserva|no navio e envia o BL.",
-            zh: "货运代理登记订舱，|并上传提单。",
+            en: "The freight forwarder registers the ocean booking and follows the container at origin.",
+            pt: "O agente de carga registra|a reserva no navio||e acompanha o container na origem.",
+            zh: "货运代理登记订舱，|并跟进起运地的货柜。",
           },
           {
-            en: "The shipping line answers freight requests and confirms the shipment: date, vessel and arrival.",
-            pt: "A companhia marítima responde|às cotações de frete||e confirma o embarque:|data, navio e chegada.",
-            zh: "船公司回复运费询价，||并确认出运：日期、|船名和到港时间。",
+            en: "The shipping line answers freight requests, issues the bill of lading and confirms the shipment.",
+            pt: "A companhia marítima responde|às cotações de frete,||emite o BL e confirma o embarque.",
+            zh: "船公司回复运费询价，||签发提单并确认出运。",
           },
         ],
       },
@@ -661,7 +661,7 @@ export const VIDEOS = {
           {
             en: "In Brazil, the foreign trade advisory and the customs broker handle licences, documents and clearance.",
             pt: "No Brasil, a assessoria de comex|e o despachante||cuidam de licenças,|documentos e desembaraço.",
-            zh: "在巴西，外贸顾问和报关行||负责许可、单据和清关。",
+            zh: "在巴西，外贸代理和报关行||负责许可、单据和清关。",
           },
           {
             en: "Every step shows who does it and who validates it.",
@@ -694,7 +694,7 @@ export const VIDEOS = {
         say: [
           {
             en: "The carrier sees the cargo and the delivery address on one card.",
-            pt: "O transportador vê a carga e o endereço|de entrega em um só cartão.",
+            pt: "O transportador vê a carga|e o endereço de entrega em um só cartão.",
             zh: "运输公司在一张卡片上|看到货物和送货地址。",
           },
           {
@@ -709,7 +709,7 @@ export const VIDEOS = {
         type: "team",
         props: {
           kicker: "Inside Wellmix",
-          title: "Every function has *its own desk*",
+          title: "Every function has *its own view*",
           tiles: [
             {
               icon: "shopping-cart",
@@ -753,9 +753,9 @@ export const VIDEOS = {
         },
         say: [
           {
-            en: "Inside Wellmix, every function has its own desk.",
-            pt: "Dentro da Wellmix, cada função|tem a sua mesa de trabalho.",
-            zh: "在 Wellmix 内部，|每个职能都有自己的工作台。",
+            en: "Inside Wellmix, every function has its own screens and tasks.",
+            pt: "Dentro da Wellmix, cada função|tem as suas telas e pendências.",
+            zh: "在 Wellmix 内部，|每个职能都有自己的页面和待办。",
           },
           {
             en: "Buyers import supplier books, select items and negotiate.",
@@ -774,8 +774,8 @@ export const VIDEOS = {
           },
           {
             en: "Registration validates tax codes and master data.",
-            pt: "O cadastro valida a classificação fiscal|e os dados mestres.",
-            zh: "资料专员审核|税则归类和主数据。",
+            pt: "O cadastro valida a classificação fiscal|e a ficha mestre.",
+            zh: "建档专员审核|税则归类和主数据。",
           },
         ],
       },
@@ -828,23 +828,23 @@ export const VIDEOS = {
         say: [
           {
             en: "Finance validates import costs and registers the invoice.",
-            pt: "O financeiro valida os custos|de importação e registra a nota fiscal.",
+            pt: "O financeiro valida custos de importação|e registra a nota fiscal.",
             zh: "财务审核进口费用，|并登记发票。",
           },
           {
             en: "Quality checks every container on arrival: seal, photos and count.",
             pt: "A qualidade confere cada container|na chegada: lacre, fotos e contagem.",
-            zh: "质检在到货时检查货柜：|封条、照片和点数。",
+            zh: "质检在到货时检查每个货柜：|铅封、照片和清点。",
           },
           {
             en: "Sales records offers, opens sales orders and schedules deliveries.",
-            pt: "Vendas registra ofertas, abre ordens|de venda e agenda as entregas.",
-            zh: "销售登记报价、|创建销售订单并安排交货。",
+            pt: "Vendas registra ofertas,|abre ordens de venda e agenda as entregas.",
+            zh: "销售登记报价、|创建销售订单并安排送货。",
           },
           {
             en: "Directors approve the purchase strategy and sign the contract.",
-            pt: "A diretoria aprova a estratégia|de compra e assina o contrato.",
-            zh: "管理层审批采购策略，|并签署合同。",
+            pt: "A diretoria aprova a estratégia de compra|e assina o contrato.",
+            zh: "总监审批采购策略，|并签署合同。",
           },
           {
             en: "And the administrator controls access, deadlines and settings.",
@@ -910,7 +910,7 @@ export const VIDEOS = {
           },
           {
             en: "Each company has one conversation with Wellmix, organised by order and by item.",
-            pt: "Cada empresa tem uma só conversa|com a Wellmix, por pedido e por item.",
+            pt: "Cada empresa tem uma só conversa|com a Wellmix,||organizada por pedido e por item.",
             zh: "每家公司与 Wellmix|只有一个会话，||按订单和产品分类。",
           },
           {
@@ -970,10 +970,10 @@ export const VIDEOS = {
               d: 0.5,
             },
             {
-              role: "Shipping line",
-              icon: "ship",
-              sees: ["Freight requests", "Shipment to confirm"],
-              hidden: ["Prices", "Supplier", "Customer"],
+              role: "Carrier",
+              icon: "truck",
+              sees: ["Cargo and delivery address", "Delivery to confirm"],
+              hidden: ["Prices", "Supplier"],
               c: 1,
               d: 1.0,
             },
@@ -1000,6 +1000,7 @@ export const VIDEOS = {
       {
         id: "evidence",
         type: "focus",
+        post: 0.4,
         cls: "flip",
         props: {
           kicker: "Quality",
@@ -1023,7 +1024,7 @@ export const VIDEOS = {
             },
             {
               icon: "container",
-              label: "Loading · photos and seal number",
+              label: "Loading · photos, seal, container number",
               c: 2,
             },
             {
@@ -1045,9 +1046,9 @@ export const VIDEOS = {
             zh: "验货：照片、重量和视频。",
           },
           {
-            en: "Container loading with photos and seal number.",
-            pt: "Carregamento do container|com fotos e número do lacre.",
-            zh: "装柜：照片和封条号。",
+            en: "Container loading with photos, seal and container number.",
+            pt: "Carregamento do container com fotos,|lacre e número do container.",
+            zh: "装柜：照片、铅封和柜号。",
           },
           {
             en: "Packing list, invoice and bill of lading, checked line by line.",
@@ -1059,6 +1060,7 @@ export const VIDEOS = {
       {
         id: "control",
         type: "focus",
+        post: 0.45,
         props: {
           kicker: "For management",
           title: "The whole process, *by stage*",
@@ -1091,14 +1093,14 @@ export const VIDEOS = {
           {
             en: "Dashboards and a full audit trail complete the picture.",
             pt: "Painéis e uma trilha de auditoria|completam o quadro.",
-            zh: "再加上看板和|完整的审计记录。",
+            zh: "再加上看板|和完整的审计记录。",
           },
         ],
       },
       {
         id: "devices",
         type: "devices",
-        post: 0.35,
+        post: 0.15,
         props: {
           kicker: "Anywhere",
           title: "Any screen.\n*Installs like an app.*",
@@ -1113,8 +1115,8 @@ export const VIDEOS = {
         say: [
           {
             en: "It works on any screen, and installs like an app on a phone.",
-            pt: "Funciona em qualquer tela e instala|como um aplicativo no celular.",
-            zh: "适配任何屏幕，||还能像应用一样|安装到手机上。",
+            pt: "Funciona em qualquer tela|e se instala como aplicativo no celular.",
+            zh: "适配任何屏幕，|还能像应用一样安装到手机上。",
           },
           {
             en: "And it is built to work with Sankhya, the company's ERP.",
@@ -1135,7 +1137,7 @@ export const VIDEOS = {
           {
             en: "Wellmix. Imports from order to delivery.",
             pt: "Wellmix. Importação do pedido à entrega.",
-            zh: "Wellmix：|从订单到交付的进口。",
+            zh: "Wellmix：|从下单到交付的进口管理。",
           },
         ],
       },

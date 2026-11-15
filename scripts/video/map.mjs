@@ -1,8 +1,8 @@
 /*
  * Mapa-múndi dos vídeos institucionais: gera film/assets/world.json com os
  * contornos (Natural Earth 110m, pacote world-atlas) já projetados para um
- * quadro de 1920 × 1080, e os pontos das rotas (China → Brasil e as demais
- * origens que a abertura do portal mostra). Rodar: node map.mjs
+ * quadro de 1920 × 1080, e os pontos das rotas (várias origens no exterior →
+ * Brasil, como a abertura do portal mostra). Rodar: node map.mjs
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { feature } from "topojson-client";
@@ -41,6 +41,12 @@ const out = {
   points: {
     // Portos e praças reais do fluxo (longitude, latitude).
     shenzhen: pt(114.06, 22.54),
+    // Outras origens (a Wellmix não importa só da China): pontos sem rótulo,
+    // em regiões que a vinheta do portal também mostra.
+    hoChiMinh: pt(106.66, 10.82),
+    mumbai: pt(72.88, 19.08),
+    istanbul: pt(28.98, 41.01),
+    genoa: pt(8.93, 44.41),
     yiwu: pt(120.07, 29.31),
     shanghai: pt(121.47, 31.23),
     santos: pt(-46.33, -23.96),

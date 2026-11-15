@@ -1,49 +1,54 @@
 1
-00:00:07,833 --> 00:00:13,117
-Da fábrica na China ao cliente no Brasil,
-uma importação passa por dezenas de mãos.
+00:00:07,833 --> 00:00:10,311
+Da fábrica no exterior
+ao cliente no Brasil,
 
 2
-00:00:14,287 --> 00:00:17,475
+00:00:10,311 --> 00:00:12,796
+uma importação passa
+por dezenas de mãos.
+
+3
+00:00:13,966 --> 00:00:17,155
 Fornecedores, agências, frete,
 alfândega, transportadoras.
 
-3
-00:00:17,635 --> 00:00:20,728
+4
+00:00:17,274 --> 00:00:20,368
 Cada um em um e-mail, uma planilha
 e uma conversa diferente.
 
-4
-00:00:21,898 --> 00:00:25,038
+5
+00:00:21,538 --> 00:00:24,678
 O Portal Wellmix reúne todos
 em um único fluxo.
 
-5
-00:00:26,208 --> 00:00:29,311
+6
+00:00:25,848 --> 00:00:28,951
 Cada etapa tem um responsável,
 um prazo e uma situação.
 
-6
-00:00:30,481 --> 00:00:33,947
+7
+00:00:30,121 --> 00:00:33,587
 Cada mensagem, foto e documento
 fica junto do pedido.
 
-7
-00:00:35,117 --> 00:00:39,905
+8
+00:00:34,757 --> 00:00:39,545
 Cada parceiro vê só a sua parte,
 em português, inglês ou chinês.
 
-8
-00:00:41,075 --> 00:00:45,628
+9
+00:00:40,715 --> 00:00:45,268
 Inspeções, amostras e documentos de carga
 são conferidos antes do embarque.
 
-9
-00:00:46,798 --> 00:00:51,074
+10
+00:00:46,438 --> 00:00:50,714
 E a gestão vê o que está atrasado,
 o que vem a seguir e quem é o responsável.
 
-10
-00:00:52,244 --> 00:00:55,510
-Wellmix. Importação do pedido
-à entrega, em um só lugar.
+11
+00:00:51,884 --> 00:00:55,150
+Wellmix. Importação do pedido à entrega,
+em um só lugar.
