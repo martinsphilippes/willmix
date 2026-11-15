@@ -28,6 +28,10 @@ A solicitação do cliente (vitrine, tabela `requests`) e a reposição pedida p
 
 - **Programação de compra:** produtos com rodadas fazem do pedido o **pedido pai**; cada rodada nasce como pedido filho no dia combinado (docs/PURCHASE_SCHEDULE.md).
 
+## 1b. Pedido de compra direto, pela estratégia de compra (15/11/2026)
+
+Na reposição e na encomenda do cliente, a estratégia "fornecedor da última compra" aprovada pela Diretoria de compras gera o pedido direto (docs/PURCHASE_DEMAND.md): sem solicitação ao fornecedor e sem amostragem nova, com o fornecedor, o preço, a moeda, o prazo e o incoterm da última compra, conferidos e editáveis pelo Comprador. O pedido nasce igual ao de cima (comprador Wellmix, `flow: supplier_request`, etapas, raias, parceiros e condição de pagamento) e guarda as demandas de origem em `orders.demandIds`.
+
 ## 1a. Sequência e dependências (mapa do processo, 13/11/2026)
 
 Decisões do dono (13/11/2026), a partir do mapeamento dos processos (etapa Pedido, passos P1 a P17): vale o mapa. As dependências bloqueiam: um passo só abre quando o anterior conclui, e nenhuma etapa conclui com um passo aberto.

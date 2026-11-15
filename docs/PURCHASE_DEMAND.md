@@ -2,7 +2,7 @@
 
 Desenho do dono de 15/11/2026 (mapa do processo, layout 15; docs/MAPA_PROCESSO.md). Reposição (B10) e Encomenda do cliente (B14) entram na mesma decisão, "Qual a estratégia de compra?" (B10?), que leva direto ao pedido de compra (P2) ou à Cotação de compra (B13), cuja vencedora vira a Solicitação ao fornecedor (B7). As decisões estão em docs/OPEN_DECISIONS.md.
 
-Situação: **PR 2 de 5 (demanda única, encomenda pelas quatro portas e reposição manual)**. As seções abaixo descrevem o alvo; cada PR marca o que entregou em "Andamento".
+Situação: **PR 3 de 5 (estratégia de compra, aprovação e pedido de compra direto)**. As seções abaixo descrevem o alvo; cada PR marca o que entregou em "Andamento".
 
 ## O caminho
 
@@ -76,12 +76,27 @@ V6 (vitrine) manda para a ordem de venda (V7) o que o estoque livre ou uma compr
 - **Menu**: passos Encomendas e Reposição (docs/FLOW_MENU.md); "Cotações" virou "Convites de book".
 - **Testes**: `tests/unit/purchase-demand.test.ts` (portas, carrinho, reposição, permissões, isolamento do cliente), `tests/unit/function-access.test.ts` (ações novas) e `tests/e2e/purchase-demand.spec.ts` (vendedor e operador em nome do cliente; carrinho com pronta entrega e encomenda; reposição do Planner).
 
+## O que o PR 3 entregou
+
+- **Tela** `/app/purchase-strategy` (passo "Estratégia de compra" do Produto novo; tela `quotes`, a de quem abre Solicitações ao fornecedor): uma fila só, com reposições e encomendas que esperam a escolha (`REQUESTED`, sem estratégia), agrupadas pela linha do produto. Cada produto mostra a **última compra** (`lastPurchases`): o pedido de compra mais recente com o produto, não cancelado; fornecedor, preço unitário e moeda do item, data e incoterm do pedido; prazo de produção e pedido mínimo do vínculo produto × fornecedor (`product_suppliers`).
+- **Escolha** (`chooseStrategy`, ação `purchaseStrategy.choose`, padrão: Comprador): as demandas marcadas, do mesmo produto ou da mesma linha, viram uma `purchase_decisions` "pendente"; cada demanda guarda `purchaseDecisionId` e sai da fila. "Fornecedor da última compra" só com um produto e com compra anterior; sem ela, só "Cotar entre fornecedores", com o motivo escrito. Demanda sem produto do catálogo fica à parte (cadastrar o produto antes).
+- **Aprovação** (`decideStrategy`, ação `purchaseStrategy.approve`, padrão: Diretoria de compras; o administrador sempre): aprovar ou recusar (com o motivo). Recusada, as demandas voltam para a fila. Não há tabela genérica de aprovações (saiu em 11/11/2026): a aprovação fica na própria decisão, com quem e quando, aviso e auditoria.
+- **Pedido de compra direto** (`orderFromStrategy` → `createDirectPurchaseOrder`, ação `purchaseOrder.generate`): com a estratégia "fornecedor da última compra" aprovada, o formulário vem com a quantidade somada e as condições da última compra (preço, moeda, prazo, incoterm), editáveis. O pedido nasce no fluxo do pedido de compra (`flow: supplier_request`, etapas, raias, parceiros, condição de pagamento), sem nova solicitação ao fornecedor e sem nova amostragem, com `orders.demandIds`. As demandas viram "Pedido" (`ORDERED`, `orderId`). Vendas é avisada como no V1.
+- **Reserva da encomenda**: para cada encomenda (não reposição), uma reserva ativa para o cliente, sem validade, com `requestId` e a nota "Encomenda nº N: pedido de compra #M (reservada na chegada)". A reserva conta só no que chegou ao Brasil, então vale quando a mercadoria chega.
+- **"Cotar entre fornecedores" aprovada** fica esperando a Cotação de compra (PR 4).
+- **Pendências** (passo Estratégia de compra): `purchase_strategy` (cada demanda esperando a escolha, para quem escolhe), `purchase_strategy_approve` (cada estratégia pendente, para quem aprova) e `purchase_strategy_order` (aprovada sem pedido, para quem gera pedido de compra). Quem escolhe a estratégia não recebe também a pendência "Encomenda nova"/"Reposição" da mesma demanda.
+- **O cliente** não vê o botão do pedido de compra na encomenda (o pedido é da Wellmix); continua sem fornecedor, custo nem cotação.
+- **Reposição**: a busca de produto passou a ser a de produtos ativos (também os que ainda não estão na vitrine).
+- **Demonstração**: `diretoria@wellmix.com` (Diretoria de compras).
+- **Esquema (aditivo)**: tabela `purchase_decisions`; `requests.purchaseDecisionId`; `orders.demandIds`; `stock_reservations.requestId`.
+- **Testes**: `tests/unit/purchase-strategy.test.ts` (última compra, produto sem compra anterior, junção por produto e linha, aprovação, recusa, pedido com vínculo e reserva) e `tests/e2e/purchase-strategy.spec.ts` ((a) reposição → última compra → pedido; (c) encomenda do cliente → estratégia → pedido com o vínculo e a reserva).
+
 ## Andamento
 
 | PR  | Entrega                                                                                       | Situação |
 | --- | --------------------------------------------------------------------------------------------- | -------- |
 | 1   | Mapa (MAPA_PROCESSO.md gerado do data.json), decisões e este documento                        | feito    |
 | 2   | Demanda única: encomenda pelas 4 portas, divisão do carrinho, reposição manual, função Vendas | feito    |
-| 3   | Estratégia de compra, aprovação e pedido de compra direto                                     | a fazer  |
+| 3   | Estratégia de compra, aprovação e pedido de compra direto                                     | feito    |
 | 4   | Cotação de compra: fornecedor × linha, 24 h, isolamento, quadro comparativo                   | a fazer  |
 | 5   | Limpeza dos restos da RFQ                                                                     | a fazer  |

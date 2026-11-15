@@ -232,7 +232,9 @@ export default async function RequestDetailPage({
                 {t("reqAdd.button")}
               </LinkButton>
             ) : null}
-            {request.orderId ? (
+            {/* Encomenda comprada pela Wellmix (docs/PURCHASE_DEMAND.md): o
+                pedido de compra é da Wellmix; o cliente não o abre. */}
+            {request.orderId && order && canViewOrder(user, order) ? (
               <LinkButton
                 href={`/app/orders/${request.orderId}`}
                 variant="primary"

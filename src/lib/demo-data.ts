@@ -52,6 +52,16 @@ export const DEMO_USERS: Array<{
     functions: ["sales"],
   },
   {
+    // Diretoria de compras: aprova a estratégia de compra e a cotação
+    // vencedora (docs/PURCHASE_DEMAND.md).
+    email: "diretoria@wellmix.com",
+    name: "Diana Diretoria",
+    role: "operator",
+    party: null,
+    locale: "pt",
+    functions: ["purchasing_director"],
+  },
+  {
     email: "joao@lojista.com",
     name: "João Cliente",
     role: "customer",

@@ -61,6 +61,8 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/requests", "requests"],
   // Reposição (mapa B10; docs/PURCHASE_DEMAND.md): a fila do Planner.
   ["/app/replenishment", "requests"],
+  // Estratégia de compra (mapa B10?): quem abre Solicitações ao fornecedor.
+  ["/app/purchase-strategy", "quotes"],
   // Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): quem abre Cotações.
   ["/app/supplier-requests", "quotes"],
   ["/app/orders", "orders"],

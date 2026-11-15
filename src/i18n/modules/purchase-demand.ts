@@ -62,6 +62,74 @@ export const pt = {
     "Reposição automática pelo estoque",
   "settings.hint.autoReplenishmentByStock":
     "Desligada e sem efeito: o estoque ainda não é controlado no portal (dono, 15/11/2026).",
+  "strategy.title": "Estratégia de compra",
+  "strategy.subtitle":
+    "Reposições e encomendas esperando a decisão: repetir o fornecedor da última compra ou cotar entre fornecedores. A Diretoria de compras aprova.",
+  "strategy.waiting": "Esperando a escolha ({n})",
+  "strategy.waitingEmpty": "Nenhuma demanda esperando a estratégia.",
+  "strategy.noLine": "Sem linha",
+  "strategy.noProduct": "Produto fora do catálogo",
+  "strategy.noProductHint":
+    "Cadastre o produto (ou associe a encomenda a um produto) antes de escolher a estratégia.",
+  "strategy.question": "Qual a estratégia de compra?",
+  "strategy.choice.last_supplier": "Fornecedor da última compra",
+  "strategy.choice.quote": "Cotar entre fornecedores",
+  "strategy.noLastPurchase":
+    "Sem compra anterior deste produto: só dá para cotar entre fornecedores.",
+  "strategy.lastOneProduct":
+    "Fornecedor da última compra: marque as demandas de um produto só, com compra anterior.",
+  "strategy.submit": "Enviar para aprovação",
+  "strategy.chosen":
+    "Estratégia nº {n} enviada para a aprovação da Diretoria de compras.",
+  "strategy.decided": "Estratégia nº {n} decidida.",
+  "strategy.open": "Em andamento ({n})",
+  "strategy.openEmpty": "Nenhuma estratégia em andamento.",
+  "strategy.decision": "Estratégia nº {n}",
+  "strategy.status.pending": "Esperando aprovação",
+  "strategy.status.approved": "Aprovada",
+  "strategy.status.rejected": "Recusada",
+  "strategy.status.done": "Concluída",
+  "strategy.approvalNote": "Observação da aprovação (obrigatória para recusar)",
+  "strategy.approve": "Aprovar",
+  "strategy.reject": "Recusar",
+  "strategy.waitingApproval": "Esperando a aprovação da Diretoria de compras.",
+  "strategy.waitingOrder":
+    "Aprovada: quem gera pedido de compra gera o pedido.",
+  "strategy.generateOrder": "Gerar pedido de compra",
+  "strategy.quotePending":
+    "Aprovada para cotar entre fornecedores: a Cotação de compra (B13) segue daqui.",
+  "strategy.currency": "Moeda",
+  "strategy.days": "{n} dias",
+  "strategy.last.supplier": "Fornecedor da última compra",
+  "strategy.last.price": "Preço unitário",
+  "strategy.last.date": "Pedido e data",
+  "strategy.last.leadTime": "Prazo de produção",
+  "strategy.last.incoterm": "Incoterm",
+  "strategy.last.moq": "Pedido mínimo",
+  "strategy.error.forbidden": "Seu acesso não permite esta ação.",
+  "strategy.error.not_found": "Demanda ou estratégia não encontrada.",
+  "strategy.error.strategy_choose_demands": "Marque ao menos uma demanda.",
+  "strategy.error.strategy_demand_taken":
+    "Alguma demanda já está em outra estratégia ou já virou pedido.",
+  "strategy.error.strategy_product_missing":
+    "Demanda sem produto do catálogo: cadastre o produto antes.",
+  "strategy.error.strategy_same_line":
+    "Junte só demandas do mesmo produto ou da mesma linha.",
+  "strategy.error.strategy_last_one_product":
+    '"Fornecedor da última compra" vale para um produto só.',
+  "strategy.error.strategy_no_last_purchase":
+    "Produto sem compra anterior: só dá para cotar.",
+  "strategy.error.strategy_decided": "Esta estratégia já foi decidida.",
+  "strategy.error.strategy_reject_note": "Para recusar, escreva o motivo.",
+  "strategy.error.strategy_not_ready":
+    "A estratégia ainda não está aprovada (ou já gerou o pedido).",
+  "strategy.error.invalid_input": "Confira os campos.",
+  "action.purchaseStrategy.choose": "Escolher a estratégia de compra",
+  "action.desc.purchaseStrategy.choose":
+    "Na reposição e na encomenda, escolhe entre o fornecedor da última compra e cotar entre fornecedores.",
+  "action.purchaseStrategy.approve": "Aprovar a estratégia de compra",
+  "action.desc.purchaseStrategy.approve":
+    "Aprova ou recusa a estratégia escolhida pelo Comprador (Diretoria de compras).",
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
@@ -125,6 +193,74 @@ export const en: Record<keyof typeof pt, string> = {
     "Automatic replenishment from stock",
   "settings.hint.autoReplenishmentByStock":
     "Off and without effect: stock is not controlled in the portal yet (owner, 15/11/2026).",
+  "strategy.title": "Purchase strategy",
+  "strategy.subtitle":
+    "Replenishments and customer orders waiting for a decision: repeat the last purchase's supplier or quote among suppliers. The Purchasing board approves.",
+  "strategy.waiting": "Waiting for a choice ({n})",
+  "strategy.waitingEmpty": "No demand waiting for a strategy.",
+  "strategy.noLine": "No line",
+  "strategy.noProduct": "Product not in the catalog",
+  "strategy.noProductHint":
+    "Register the product (or link the order to a product) before choosing the strategy.",
+  "strategy.question": "Which purchase strategy?",
+  "strategy.choice.last_supplier": "Last purchase's supplier",
+  "strategy.choice.quote": "Quote among suppliers",
+  "strategy.noLastPurchase":
+    "No previous purchase of this product: only quoting among suppliers is possible.",
+  "strategy.lastOneProduct":
+    "Last purchase's supplier: select the demands of a single product with a previous purchase.",
+  "strategy.submit": "Send for approval",
+  "strategy.chosen":
+    "Strategy no. {n} sent to the Purchasing board for approval.",
+  "strategy.decided": "Strategy no. {n} decided.",
+  "strategy.open": "In progress ({n})",
+  "strategy.openEmpty": "No strategy in progress.",
+  "strategy.decision": "Strategy no. {n}",
+  "strategy.status.pending": "Waiting for approval",
+  "strategy.status.approved": "Approved",
+  "strategy.status.rejected": "Rejected",
+  "strategy.status.done": "Done",
+  "strategy.approvalNote": "Approval note (required to reject)",
+  "strategy.approve": "Approve",
+  "strategy.reject": "Reject",
+  "strategy.waitingApproval": "Waiting for the Purchasing board's approval.",
+  "strategy.waitingOrder":
+    "Approved: whoever generates purchase orders creates the order.",
+  "strategy.generateOrder": "Generate purchase order",
+  "strategy.quotePending":
+    "Approved to quote among suppliers: the Purchase quote (B13) continues from here.",
+  "strategy.currency": "Currency",
+  "strategy.days": "{n} days",
+  "strategy.last.supplier": "Last purchase's supplier",
+  "strategy.last.price": "Unit price",
+  "strategy.last.date": "Order and date",
+  "strategy.last.leadTime": "Production lead time",
+  "strategy.last.incoterm": "Incoterm",
+  "strategy.last.moq": "Minimum order",
+  "strategy.error.forbidden": "Your access does not allow this action.",
+  "strategy.error.not_found": "Demand or strategy not found.",
+  "strategy.error.strategy_choose_demands": "Select at least one demand.",
+  "strategy.error.strategy_demand_taken":
+    "A demand is already in another strategy or became an order.",
+  "strategy.error.strategy_product_missing":
+    "Demand without a catalog product: register the product first.",
+  "strategy.error.strategy_same_line":
+    "Group only demands of the same product or the same line.",
+  "strategy.error.strategy_last_one_product":
+    '"Last purchase\'s supplier" applies to a single product.',
+  "strategy.error.strategy_no_last_purchase":
+    "Product without a previous purchase: quoting only.",
+  "strategy.error.strategy_decided": "This strategy was already decided.",
+  "strategy.error.strategy_reject_note": "Write the reason to reject.",
+  "strategy.error.strategy_not_ready":
+    "The strategy is not approved yet (or already generated the order).",
+  "strategy.error.invalid_input": "Check the fields.",
+  "action.purchaseStrategy.choose": "Choose the purchase strategy",
+  "action.desc.purchaseStrategy.choose":
+    "For replenishments and customer orders, chooses between the last purchase's supplier and quoting among suppliers.",
+  "action.purchaseStrategy.approve": "Approve the purchase strategy",
+  "action.desc.purchaseStrategy.approve":
+    "Approves or rejects the strategy chosen by the Buyer (Purchasing board).",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -183,4 +319,64 @@ export const zh: Record<keyof typeof pt, string> = {
   "settings.label.autoReplenishmentByStock": "按库存自动补货",
   "settings.hint.autoReplenishmentByStock":
     "已关闭且不生效：门户尚未管理库存（业主，2026/11/15）。",
+  "strategy.title": "采购策略",
+  "strategy.subtitle":
+    "等待决定的补货和客户订货：沿用上次采购的供应商，或在供应商之间询价。由采购总监批准。",
+  "strategy.waiting": "等待选择（{n}）",
+  "strategy.waitingEmpty": "没有等待采购策略的需求。",
+  "strategy.noLine": "无产品线",
+  "strategy.noProduct": "不在目录中的产品",
+  "strategy.noProductHint": "选择策略前，请先登记产品（或将订货关联到产品）。",
+  "strategy.question": "采用哪种采购策略？",
+  "strategy.choice.last_supplier": "上次采购的供应商",
+  "strategy.choice.quote": "在供应商之间询价",
+  "strategy.noLastPurchase": "该产品没有采购记录：只能在供应商之间询价。",
+  "strategy.lastOneProduct":
+    "上次采购的供应商：只勾选同一个有采购记录的产品的需求。",
+  "strategy.submit": "提交审批",
+  "strategy.chosen": "第 {n} 号策略已提交采购总监审批。",
+  "strategy.decided": "第 {n} 号策略已决定。",
+  "strategy.open": "进行中（{n}）",
+  "strategy.openEmpty": "没有进行中的策略。",
+  "strategy.decision": "第 {n} 号策略",
+  "strategy.status.pending": "等待审批",
+  "strategy.status.approved": "已批准",
+  "strategy.status.rejected": "已拒绝",
+  "strategy.status.done": "已完成",
+  "strategy.approvalNote": "审批备注（拒绝时必填）",
+  "strategy.approve": "批准",
+  "strategy.reject": "拒绝",
+  "strategy.waitingApproval": "等待采购总监审批。",
+  "strategy.waitingOrder": "已批准：由负责生成采购订单的人员生成订单。",
+  "strategy.generateOrder": "生成采购订单",
+  "strategy.quotePending":
+    "已批准在供应商之间询价：从这里进入采购询价（B13）。",
+  "strategy.currency": "币种",
+  "strategy.days": "{n} 天",
+  "strategy.last.supplier": "上次采购的供应商",
+  "strategy.last.price": "单价",
+  "strategy.last.date": "订单和日期",
+  "strategy.last.leadTime": "生产周期",
+  "strategy.last.incoterm": "贸易术语",
+  "strategy.last.moq": "最小起订量",
+  "strategy.error.forbidden": "您的权限不允许此操作。",
+  "strategy.error.not_found": "未找到需求或策略。",
+  "strategy.error.strategy_choose_demands": "请至少勾选一个需求。",
+  "strategy.error.strategy_demand_taken":
+    "某个需求已在其他策略中或已生成订单。",
+  "strategy.error.strategy_product_missing": "需求没有目录产品：请先登记产品。",
+  "strategy.error.strategy_same_line": "只能合并同一产品或同一产品线的需求。",
+  "strategy.error.strategy_last_one_product":
+    "“上次采购的供应商”只适用于单个产品。",
+  "strategy.error.strategy_no_last_purchase": "产品没有采购记录：只能询价。",
+  "strategy.error.strategy_decided": "该策略已决定。",
+  "strategy.error.strategy_reject_note": "拒绝时请填写原因。",
+  "strategy.error.strategy_not_ready": "策略尚未批准（或已生成订单）。",
+  "strategy.error.invalid_input": "请检查字段。",
+  "action.purchaseStrategy.choose": "选择采购策略",
+  "action.desc.purchaseStrategy.choose":
+    "在补货和客户订货中，选择上次采购的供应商或在供应商之间询价。",
+  "action.purchaseStrategy.approve": "批准采购策略",
+  "action.desc.purchaseStrategy.approve":
+    "批准或拒绝采购员选择的策略（采购总监）。",
 };
