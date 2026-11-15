@@ -48,7 +48,10 @@ async function worker(index, first, last) {
       "-i",
       "-",
       "-vf",
-      "scale=in_range=pc:out_range=tv:out_color_matrix=bt709,format=yuv420p",
+      // JPEG (BT.601, faixa cheia) → vídeo (BT.709, faixa de TV) com arredondamento
+      // exato: sem isso o cinza neutro saía com 1 nível a menos de croma
+      // (branco levemente esverdeado e um degrau na emenda com a vinheta).
+      "scale=in_range=pc:out_range=tv:in_color_matrix=bt601:out_color_matrix=bt709:flags=accurate_rnd+full_chroma_int,format=yuv420p",
       "-c:v",
       "libx264",
       "-preset",

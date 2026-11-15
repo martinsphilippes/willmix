@@ -111,6 +111,11 @@ const headFrames = patched
     )
   : 0;
 const final = join(out, `wellmix-${video}-${lang}.mp4`);
+// --chroma-fix: só para filmes renderizados antes da correção de arredondamento
+// de render.mjs (15/11/2026): devolve o nível de croma que faltava nos neutros.
+const chroma = process.argv.includes("--chroma-fix")
+  ? "lutyuv=u=val+1:v=val+1,"
+  : "";
 const crf = process.argv.includes("--crf")
   ? process.argv[process.argv.indexOf("--crf") + 1]
   : "18";
@@ -125,8 +130,8 @@ ff([
   "-filter_complex",
   "[0:v]fps=60,scale=1920:1080:in_color_matrix=bt709:out_color_matrix=bt709,format=yuv420p,setsar=1[i];" +
     (patched
-      ? `[3:v]fps=60,format=yuv420p,setsar=1[h];[1:v]fps=60,trim=start_frame=${headFrames},setpts=PTS-STARTPTS,format=yuv420p,setsar=1[f];[i][h][f]concat=n=3:v=1:a=0[v]`
-      : "[1:v]fps=60,format=yuv420p,setsar=1[f];[i][f]concat=n=2:v=1:a=0[v]"),
+      ? `[3:v]fps=60,format=yuv420p,setsar=1[h];[1:v]fps=60,trim=start_frame=${headFrames},setpts=PTS-STARTPTS,${chroma}format=yuv420p,setsar=1[f];[i][h][f]concat=n=3:v=1:a=0[v]`
+      : `[1:v]fps=60,${chroma}format=yuv420p,setsar=1[f];[i][f]concat=n=2:v=1:a=0[v]`),
   "-map",
   "[v]",
   "-map",
