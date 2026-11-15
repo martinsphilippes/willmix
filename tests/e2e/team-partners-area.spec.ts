@@ -122,6 +122,22 @@ test("links antigos de Parceiros abrem a mesma tela, com os filtros e os parâme
     "type:trading",
   );
   await expectArea(page, "Parceiros");
+  // A tela de entrada (/app) no perfil externo (dono, 15/11/2026): o nome diz
+  // o que o login vê ali (as Pendências dele, se o perfil abre Pendências),
+  // nunca "Control Tower", que é só da equipe Wellmix.
+  const homeName = page.locator('[data-access-screen-name="home"]');
+  const tasksBlocked =
+    (await page
+      .locator('[data-access-screen="tasks"]')
+      .getAttribute("data-access-situation")) === "blocked";
+  await expect(homeName).toHaveText(
+    tasksBlocked ? "Início" : "Início (Pendências do login)",
+  );
+  await expect(page.locator("[data-access-home-hint]")).toContainText(
+    "Na equipe Wellmix esta tela é o Control Tower",
+  );
+  await page.goto("/app/parties/access?profile=role:customer");
+  await expect(homeName).toHaveText("Início (vitrine ou solicitações)");
 
   // Tipos, cadastro novo, ficha do parceiro e a lista de Fornecedores
   // (Clientes é de Cadastros: tests/e2e/customers-registry.spec.ts).

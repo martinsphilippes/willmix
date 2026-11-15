@@ -1566,3 +1566,11 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Não mudou**: os cadastros, IDs, RCA, logins, solicitações, pedidos e o seletor de cliente; a ficha e o cadastro do cliente; as permissões (Clientes para quem abre Parceiros); nenhuma rota saiu.
 - **Banco**: sem mudança.
 - Testes: `tests/unit/nav.test.ts` ("Cadastros → Clientes") e `tests/e2e/customers-registry.spec.ts`; ajustados `tests/e2e/team-partners-area.spec.ts` e `tests/e2e/partner-access.spec.ts`.
+
+## Acessos externos: a tela de entrada com o nome do que o parceiro vê
+
+- **Pedido do dono** (15/11/2026, com a foto do perfil Trading): no gerenciador de acessos externos, a linha "Control Tower" aparecia como "Sempre aberta" para a Trading, mas o login da Trading não vê o Control Tower. Isso confundia.
+- **Por quê**: a tela de entrada (`/app`) é uma só. Na equipe Wellmix ela mostra o Control Tower; no login externo, a página de entrada dele: as Pendências, ou a vitrine e as solicitações no cliente. O gerenciador usava o nome da Wellmix para essa linha.
+- **Como ficou**: nos perfis externos a linha passou a se chamar "Início (Pendências do login)", "Início" ou "Início (vitrine ou solicitações)", com a dica "Na equipe Wellmix esta tela é o Control Tower" (docs/PARTNER_ACCESS.md).
+- **Não mudou**: a regra da tela (sempre aberta e travada), os acessos, o menu dos parceiros e o nome "Control Tower" na equipe Wellmix (Funções e acessos e o menu dela). Sem mudança no banco.
+- Testes: `tests/unit/access-home-label.test.ts` e `tests/e2e/team-partners-area.spec.ts`.
