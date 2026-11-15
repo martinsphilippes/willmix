@@ -1,5 +1,10 @@
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import type { FlowBlock } from "@/lib/flow";
+import {
+  flowStepOfImportKey,
+  flowStepsOf,
+  stepId,
+  type FlowBlock,
+} from "@/lib/flow";
 
 /*
  * Marcos do pedido (dono, 14/11/2026; fase 2 do plano, docs/MILESTONES.md):
@@ -189,6 +194,46 @@ for (const def of MILESTONES)
 /** Marco de um passo do menu (`bloco/passo`); nulo fora dos marcos. */
 export const milestoneOfStep = (step: string): MilestoneKey | null =>
   BY_STEP.get(step) ?? null;
+
+/** Etapa antiga → marco, para o item que nenhum passo do menu reclama. */
+const STAGE_MILESTONE: Partial<Record<string, MilestoneKey>> = {
+  ORDER_CREATED: "new-order",
+  PREPARATION: "new-order",
+  PACKAGING: "contract",
+  SUPPLIER_PAYMENT: "down-payment",
+  INSPECTION: "inspection",
+  SHIPPING: "shipment",
+  CUSTOMS: "customs",
+  TRANSPORT: "invoice-transport",
+  DELIVERED: "delivery",
+  CLOSED: "delivery",
+};
+
+/**
+ * Marco de um item do pedido (fase 3, tela do pedido): pelo passo do menu do
+ * item (`flowStepsOf`), o mesmo das subtarefas; sem passo nos marcos, pela
+ * etapa dele.
+ */
+export function milestoneOfRequirement(
+  stageKey: string,
+  key: string,
+): MilestoneKey | null {
+  for (const step of flowStepsOf({
+    kind: "requirement",
+    stageKey,
+    items: [{ key }],
+  })) {
+    const found = milestoneOfStep(stepId(step));
+    if (found) return found;
+  }
+  return STAGE_MILESTONE[stageKey] ?? null;
+}
+
+/** Marco de um passo do embarque, da certificação, das amostras ou da origem. */
+export function milestoneOfImportKey(key: string): MilestoneKey | null {
+  const step = flowStepOfImportKey(key);
+  return step ? milestoneOfStep(stepId(step)) : null;
+}
 
 export const milestoneLabelKey = (key: MilestoneKey) =>
   `milestone.${key}` as DictionaryKey;

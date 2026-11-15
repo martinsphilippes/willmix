@@ -346,10 +346,13 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.getByText("Preparação, arte e certificação").first(),
   ).toBeVisible();
-  // Na tabela "Etapas do pedido", a linha da etapa 2 leva o nome novo.
+  // Wellmix (fase 3, docs/MILESTONES.md): a linha do tempo dos 16 marcos no
+  // lugar da tabela "Etapas do pedido" (que não aparece mais para ela).
+  await expect(page.locator("[data-milestone]")).toHaveCount(16);
   await expect(
-    page.getByRole("link", { name: "Die-Cut, Arte e Certificação" }),
-  ).toHaveCount(1);
+    page.locator('[data-milestone="new-order"] [data-milestone-name]'),
+  ).toHaveText("Pedido novo");
+  await expect(page.locator("[data-stage-row]")).toHaveCount(0);
   // Certificação no login responsável (docs/CERTIFICATION.md, seção 13): o
   // memorial e o selo são da certificadora (OCP) do pedido (dono,
   // 14/11/2026); o analista do pedido (quem gerou) não recebe nenhum dos dois.
@@ -362,7 +365,10 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // Transportador: o pedido só designa sozinho quando há exatamente um ativo
   // no cadastro. Outros testes cadastram mais transportadores (que nascem
   // ativos), então a Wellmix designa aqui, em Parceiros do pedido.
+  // Parceiros do pedido: botão no alto que abre a janela (fase 3).
   const carrierRow = page.locator('[data-order-partner="carrier"]');
+  await expect(carrierRow).toBeHidden();
+  await page.locator("[data-order-partners-open]").click();
   await carrierRow.locator("select").selectOption({ label: "Trans Rodo" });
   await carrierRow.locator("button[type=submit]").click();
   await page.waitForLoadState("networkidle");
@@ -1198,12 +1204,11 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.goto(orderUrl);
   await expect(page.locator("[data-stage-mine-hint]")).toHaveCount(0);
   await expect(page.getByText(/Revisão necessária/)).toHaveCount(0);
+  // A etapa do Embarque em andamento: o marco Embarque abre sozinho, com os
+  // campos do administrador (fase 3, docs/MILESTONES.md).
   await expect(
-    page
-      .locator("main h2")
-      .filter({ hasText: /^Embarque/ })
-      .first(),
-  ).toContainText(/Em andamento/);
+    page.locator('[data-milestone-details="shipment"]'),
+  ).toHaveAttribute("open", "");
   // Embarque (Wellmix): botão de importar a planilha da companhia marítima
   // (tarifário de frete), que leva ao tarifário e volta ao pedido.
   const tariffBox = page.locator("[data-tariff-box]");

@@ -25,7 +25,17 @@ export const pt = {
   "milestone.state.na": "Não se aplica",
   "milestone.title": "Marcos do pedido",
   "milestone.hint":
-    "Os 16 marcos do mapa do processo, na ordem. Cada marco junta as subtarefas do pedido e só libera quando os anteriores concluem.",
+    'Os 16 marcos do mapa do processo, na ordem. Cada marco junta as subtarefas do pedido e só libera quando os anteriores concluem. Os campos aparecem nos marcos em que há tarefa liberada agora; os outros abrem em "Ver detalhes", só leitura.',
+  "milestone.mineHint":
+    'Você vê todos os marcos do pedido. Os campos aparecem só nos marcos em que você tem tarefa liberada agora; as suas que ainda esperam outro item ou a etapa começar ficam em cinza. O resto abre em "Ver detalhes", só leitura.',
+  "milestone.details": "Ver detalhes",
+  "milestone.mine.now": "Sua tarefa",
+  "milestone.mine.later": "Sua tarefa depois",
+  "milestone.empty": "Nenhuma subtarefa neste pedido.",
+  "milestone.blocked": "Etapa {stage} bloqueada",
+  "milestone.subtask.production_plan": "Dados da produção e ETD",
+  "milestone.subtask.production": "Produção liberada para carregar",
+  "milestone.subtask.receiving": "Recebimento no CD",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -51,7 +61,17 @@ export const en: Record<keyof typeof pt, string> = {
   "milestone.state.na": "Not applicable",
   "milestone.title": "Order milestones",
   "milestone.hint":
-    "The 16 milestones of the process map, in order. Each groups the order's subtasks and opens only when the previous ones are done.",
+    'The 16 milestones of the process map, in order. Each groups the order\'s subtasks and opens only when the previous ones are done. Fields appear in the milestones with a task released now; the others open in "See details", read-only.',
+  "milestone.mineHint":
+    'You see all the order\'s milestones. Fields appear only in the milestones where you have a task released now; yours that still wait for another item or the stage to start are greyed out. The rest opens in "See details", read-only.',
+  "milestone.details": "See details",
+  "milestone.mine.now": "Your task",
+  "milestone.mine.later": "Your task later",
+  "milestone.empty": "No subtasks in this order.",
+  "milestone.blocked": "Stage {stage} blocked",
+  "milestone.subtask.production_plan": "Production data and ETD",
+  "milestone.subtask.production": "Production released for loading",
+  "milestone.subtask.receiving": "Receiving at the DC",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -77,5 +97,15 @@ export const zh: Record<keyof typeof pt, string> = {
   "milestone.state.na": "不适用",
   "milestone.title": "订单里程碑",
   "milestone.hint":
-    "流程图中的 16 个里程碑，按顺序排列。每个里程碑汇总订单的子任务，只有前面的完成后才会开放。",
+    "流程图中的 16 个里程碑，按顺序排列。每个里程碑汇总订单的子任务，只有前面的完成后才会开放。当前有任务的里程碑显示填写栏；其他里程碑在“查看详情”中只读显示。",
+  "milestone.mineHint":
+    "您可以看到订单的所有里程碑。只有当前有您的任务的里程碑才显示填写栏；您的仍在等待其他事项或阶段开始的任务显示为灰色。其余内容在“查看详情”中只读显示。",
+  "milestone.details": "查看详情",
+  "milestone.mine.now": "您的任务",
+  "milestone.mine.later": "您稍后的任务",
+  "milestone.empty": "此订单没有子任务。",
+  "milestone.blocked": "阶段 {stage} 已阻塞",
+  "milestone.subtask.production_plan": "生产数据和 ETD",
+  "milestone.subtask.production": "生产完成，可装柜",
+  "milestone.subtask.receiving": "仓库收货",
 };

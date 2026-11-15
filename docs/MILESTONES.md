@@ -4,13 +4,13 @@ Pedido do dono (14/11/2026). As 10 etapas antigas do motor (Pedido criado, Prepa
 
 ## Plano em fases (aprovado pelo dono em 14/11/2026)
 
-| Fase | O que entra                                                                                                                                                                     | Apaga dados?          | Situação                                                                                                                              |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Histórico do Sankhya na situação real, sem avisos                                                                                                                               | Não                   | Feita: PR #430                                                                                                                        |
-| 2    | Modelo dos 16 marcos, com dependências do mapa e situação calculada das subtarefas                                                                                              | Não                   | Esta entrega: regra (`src/lib/milestones.ts`), subtarefas (`src/lib/services/milestones.ts`) e cartão "Marcos do pedido" (só leitura) |
-| 3    | Tela do pedido nova: linha do tempo dos marcos no lugar de "Etapas do pedido"; formulários só nos marcos em que o login tem tarefa; "Parceiros do pedido" vira botão com janela | Não                   | A fazer                                                                                                                               |
-| 4    | Pendências, lembretes, SLA, Control Tower, Financeiro e Sankhya leem os marcos; book, seleção, produto e pedido ligados pelo mapa                                               | Não                   | A fazer                                                                                                                               |
-| 5    | Migração dos dados para os marcos e remoção das etapas antigas (código e banco), com backup e conferência                                                                       | **Sim, irreversível** | Só com o "ok" do dono na hora                                                                                                         |
+| Fase | O que entra                                                                                                                                                                     | Apaga dados?          | Situação                                                                                                                                    |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Histórico do Sankhya na situação real, sem avisos                                                                                                                               | Não                   | Feita: PR #430                                                                                                                              |
+| 2    | Modelo dos 16 marcos, com dependências do mapa e situação calculada das subtarefas                                                                                              | Não                   | Feita: regra (`src/lib/milestones.ts`), subtarefas (`src/lib/services/milestones.ts`); o cartão só leitura virou a linha do tempo da fase 3 |
+| 3    | Tela do pedido nova: linha do tempo dos marcos no lugar de "Etapas do pedido"; formulários só nos marcos em que o login tem tarefa; "Parceiros do pedido" vira botão com janela | Não                   | Feita (15/11/2026): seção "A tela do pedido (fase 3)" abaixo                                                                                |
+| 4    | Pendências, lembretes, SLA, Control Tower, Financeiro e Sankhya leem os marcos; book, seleção, produto e pedido ligados pelo mapa                                               | Não                   | A fazer                                                                                                                                     |
+| 5    | Migração dos dados para os marcos e remoção das etapas antigas (código e banco), com backup e conferência                                                                       | **Sim, irreversível** | Só com o "ok" do dono na hora                                                                                                               |
 
 ## Situação de um marco
 
@@ -63,6 +63,18 @@ Também ficam fora dos 16 marcos: a Revisão (fila da Wellmix, não é do pedido
 - **Parceiros** (fornecedor, trading, agência, OCP, marítima, despachante, transportador): veem só os marcos e as subtarefas deles, como hoje (`src/lib/order-view.ts`).
 - **Informados (I):** recebem aviso quando o marco conclui. Pedido do histórico em espera não gera aviso (fase 1).
 
+## A tela do pedido (fase 3, feita em 15/11/2026)
+
+Na página do pedido, a Wellmix (administrador e operador) vê a seção **"Marcos do pedido"** no lugar da antiga tabela "Etapas do pedido" e do cartão só leitura da fase 2:
+
+- **Linha do tempo única:** os 16 marcos numerados de 1 a 16, agrupados em Pedido, Produção e Entrega. Cada linha traz a situação ("Concluído", "Em andamento", "Aguardando <marco>", "Não se aplica"), o andamento (feitas de total, com a barra) e o prazo da subtarefa aberta mais antiga, em vermelho quando atrasou.
+- **Ver detalhes:** cada marco abre com as subtarefas dele: os itens do pedido que caem no marco (pelo passo do menu, `milestoneOfRequirement`), os passos da certificação, da origem, das amostras, do embarque e da divergência (`milestoneOfImportKey`, com "Abrir" que leva ao passo no quadro dele), a produção e o recebimento (atalho para o cartão) e as partes com cartão ou página própria (ficha de compra, artes, documento do pedido, pagamento ao fornecedor).
+- **Campos só onde o login tem tarefa liberada agora:** o operador vê os campos dos itens que `myOrderTimeline` diz que são dele e estão liberados (as mesmas regras de encaminhamento, `wellmixRequirementRoute` e `canSubmitRequirement`); as dele que ainda esperam ficam em cinza, sem campo. Nos passos do embarque e da certificação, a tarefa dele sai de `canSubmit`/`canValidate` do quadro (o formulário continua no quadro do passo). O marco com tarefa liberada abre sozinho, com "Sua tarefa"; o que só tem tarefa futura mostra "Sua tarefa depois"; o resto vem fechado e só leitura. O **administrador** vê os campos de tudo o que o motor liberou (como antes), e esses marcos abrem sozinhos.
+- **Ferramentas que moravam nos cartões das etapas:** o atalho do quadro Die Cut (marco Material de arte), a nova medição da inspeção (marco Inspeção), o tarifário de frete (marco Embarque), "Desbloquear" da etapa travada (no alto da seção) e o relatório da inspeção (embaixo da linha do tempo). As ações voltam para a mesma âncora `#stage-…` de antes, no alto da seção.
+- **Parceiros do pedido** saiu do meio da tela: virou o botão "Parceiros do pedido" no alto, ao lado das mensagens, que abre a janela com a mesma tabela e o mesmo "Designar" (`assignPartnerAction`). Os links antigos `#order-partners` abrem a janela.
+- **Fornecedor, parceiros e cliente** continuam com a tabela "Etapas do pedido" e as próprias linhas (`src/lib/order-view.ts`), como antes.
+- **Não muda:** o motor por etapas por baixo (até as fases 4 e 5), as regras de quem pode enviar ou aprovar (o servidor confere como antes), os cartões de baixo e o banco.
+
 ## Aprovações do mapa (decisão do dono, 14/11/2026)
 
 Cada aprovação é um item obrigatório do pedido de compra, no fim do marco (`MILESTONE_APPROVALS`, `src/lib/purchase-lanes.ts`):
@@ -94,6 +106,6 @@ Nenhuma. **E24–E27** (decisão do dono, 14/11/2026) entraram como passos do ma
 
 - Regra pura: `src/lib/milestones.ts` (`MILESTONES`, `orderMilestones`). Os marcos juntam os passos do menu (`src/lib/flow.ts`), então cada item do pedido e cada passo do embarque já cai no marco certo.
 - Subtarefas de um pedido: `src/lib/services/milestones.ts` (`orderSubtasks`, `milestonesOf`).
-- Tela: cartão "Marcos do pedido" no detalhe do pedido (Wellmix), `src/components/order-milestones-card.tsx`.
+- Tela: linha do tempo "Marcos do pedido" no detalhe do pedido (Wellmix), `src/components/order-milestone-timeline.tsx`; o detalhe de cada marco é montado em `src/app/app/orders/[id]/page.tsx` (mesmos `RequirementRow` e Server Actions de antes). A janela de parceiros usa `src/components/quick-dialog.tsx`.
 - Textos: `src/i18n/modules/milestones.ts`.
 - Testes: `tests/unit/milestones.test.ts` e `tests/unit/milestones-order.test.ts`.
