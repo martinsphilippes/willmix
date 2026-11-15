@@ -713,21 +713,27 @@ describe("certificadora vê o pedido completo (papel sem uso, mantido)", () => {
       expect(await ps.getSheetForUser(user, order.id)).toBeNull();
   });
 
-  it("abre o documento do pedido para ler, mas não assina", async () => {
+  it("não abre o documento do pedido (tem o preço de compra); o despachante lê, mas não assina", async () => {
+    // Dono, 15/11/2026 (docs/LINHA_DE_VISAO.md, seção 7): o pedido de compra
+    // (tela e PDF) sai da certificadora; o despachante do pedido continua.
     const sig = await import("@/lib/services/order-signature");
-    expect(sig.canViewOrderDocument(ocp, order)).toBe(true);
+    expect(sig.canViewOrderDocument(ocp, order)).toBe(false);
+    expect(await sig.getOrderSignatureView(ocp, order.id)).toBeNull();
     expect(sig.canViewOrderDocument(otherOcp(), order)).toBe(false);
     expect(sig.canViewOrderDocument(agency, order)).toBe(false);
-    const view = (await sig.getOrderSignatureView(ocp, order.id))!;
-    expect(view.canSign).toBeNull();
-    expect(view.waitingWellmix).toBe(false);
+    const withBroker = { ...order, brokerId: broker.partyId };
+    expect(sig.canViewOrderDocument(broker, withBroker)).toBe(true);
+    expect(sig.canViewOrderDocument(broker, { ...order, brokerId: null })).toBe(
+      false,
+    );
+    const admins = (await sig.getOrderSignatureView(admin, order.id))!;
     await expect(
       sig.signOrderDocument(ocp, order.id, {
         name: "Certificadora",
         agree: true,
-        hash: view.hash,
+        hash: admins.hash,
       }),
-    ).rejects.toThrow("forbidden");
+    ).rejects.toThrow();
   });
 
   it("abre as fotos de vitrine do produto, não o cartão do fabricante", async () => {
