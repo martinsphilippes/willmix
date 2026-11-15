@@ -130,6 +130,8 @@ const ROWS: Record<FullLoadEntity, { min: number; max: number }> = {
   orders: { min: 3, max: 8 },
   // Fotos: a faixa e os lotes ficam em sankhya-images.ts.
   productImages: { min: 60, max: 200 },
+  // Caixas: a faixa e os lotes ficam em sankhya-cartons.ts.
+  productCartons: { min: 100, max: 600 },
 };
 
 export interface FullLoadResult {
@@ -147,6 +149,10 @@ export async function runFullLoad(
   entity: FullLoadEntity,
   budgetMs = 30_000,
 ): Promise<FullLoadResult> {
+  if (entity === "productCartons") {
+    const { runCartonLoad } = await import("./sankhya-cartons");
+    return { progress: await runCartonLoad(user, budgetMs), lines: [] };
+  }
   if (entity === "productImages") {
     const { runImageLoad } = await import("./sankhya-images");
     return { progress: await runImageLoad(user, budgetMs), lines: [] };

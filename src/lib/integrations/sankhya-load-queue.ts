@@ -35,6 +35,8 @@ export const SERVER_LOAD_ORDER: FullLoadEntity[] = [
   "orders",
   // Fotos por último: só dos produtos que já estão no portal.
   "productImages",
+  // Caixas (CBM, peças, C1) dos produtos que já estão no portal.
+  "productCartons",
 ];
 
 export interface ServerLoadState {

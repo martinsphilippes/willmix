@@ -54,6 +54,7 @@ export function ProposalFields({
   bookingMinimum,
   intl,
   labels: l,
+  showPrice = true,
 }: {
   values: {
     price: number | null;
@@ -70,6 +71,11 @@ export function ProposalFields({
   bookingMinimum: number | null;
   intl: string;
   labels: ProposalFieldsLabels;
+  /**
+   * Preço e moeda: falso para a Wellmix sem "Ver preço de compra" (propõe
+   * MOQ, prazo e FOB/EXW; o servidor ignora preço dela).
+   */
+  showPrice?: boolean;
 }) {
   const decimal = intl.startsWith("pt") ? "," : ".";
   const raw = (n: number | null) =>
@@ -102,28 +108,32 @@ export function ProposalFields({
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
-        <Field label={l.price}>
-          <Input
-            name="price"
-            inputMode="decimal"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            data-negotiation-price
-          />
-        </Field>
-        <Field label={l.currency}>
-          <Select
-            name="currency"
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-          >
-            {currencies.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        {showPrice ? (
+          <>
+            <Field label={l.price}>
+              <Input
+                name="price"
+                inputMode="decimal"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                data-negotiation-price
+              />
+            </Field>
+            <Field label={l.currency}>
+              <Select
+                name="currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+              >
+                {currencies.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </>
+        ) : null}
         <Field label={l.moq}>
           <Input
             name="moq"
@@ -155,7 +165,7 @@ export function ProposalFields({
         </Field>
       </div>
 
-      {base ? (
+      {base && showPrice ? (
         <div
           className="space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2 text-xs"
           data-proposal-sim

@@ -669,6 +669,8 @@ export const FULL_LOAD_ENTITIES = [
   "orders",
   /* Fotos dos produtos (TGFPRO.IMAGEM e AD_IMAGEM*; sankhya-images.ts). */
   "productImages",
+  /* Caixas dos produtos (TGFVOA: CBM, peças, C1; sankhya-cartons.ts). */
+  "productCartons",
 ] as const;
 export type FullLoadEntity = (typeof FULL_LOAD_ENTITIES)[number];
 
@@ -722,8 +724,8 @@ export function fullLoadSql(
     return `SELECT C.* FROM TGFCAB C WHERE C.CODTIPOPER IN (${IMPORT_TOPS}) AND ${range("C.NUNOTA")} ORDER BY C.NUNOTA`;
   if (entity === "paymentConditions")
     return `SELECT CODTIPVENDA, MAX(DESCRTIPVENDA) AS DESCRTIPVENDA FROM TGFTPV WHERE CODTIPVENDA > ${int0(after)} AND CODTIPVENDA <= ${int0(upTo)} GROUP BY CODTIPVENDA ORDER BY CODTIPVENDA`;
-  if (entity === "productImages")
-    throw new Error("productImages: SQL em sankhya-images.ts");
+  if (entity === "productImages" || entity === "productCartons")
+    throw new Error(`${entity}: SQL no módulo próprio`);
   const t = FULL_LOAD_TABLE[entity];
   const a = t.alias;
   return `SELECT ${star ? `${a}.*` : cols(t.entity, a)} FROM ${t.table} ${a} WHERE ${t.where} AND ${a}.${t.key} > ${int0(after)} AND ${a}.${t.key} <= ${int0(upTo)} ORDER BY ${a}.${t.key}`;
@@ -748,8 +750,8 @@ export function fullLoadProbeSql(
     return `SELECT MIN(C.NUNOTA) AS NEXTCODE, COUNT(*) AS REMAINING FROM TGFCAB C WHERE C.CODTIPOPER IN (${IMPORT_TOPS}) AND C.NUNOTA > ${int0(after)}`;
   if (entity === "paymentConditions")
     return `SELECT MIN(CODTIPVENDA) AS NEXTCODE, COUNT(DISTINCT CODTIPVENDA) AS REMAINING FROM TGFTPV WHERE CODTIPVENDA > ${int0(after)}`;
-  if (entity === "productImages")
-    throw new Error("productImages: SQL em sankhya-images.ts");
+  if (entity === "productImages" || entity === "productCartons")
+    throw new Error(`${entity}: SQL no módulo próprio`);
   const t = FULL_LOAD_TABLE[entity];
   const a = t.alias;
   return `SELECT MIN(${a}.${t.key}) AS NEXTCODE, COUNT(*) AS REMAINING FROM ${t.table} ${a} WHERE ${t.where} AND ${a}.${t.key} > ${int0(after)}`;
@@ -763,6 +765,7 @@ export const FULL_LOAD_KEY: Record<FullLoadEntity, string> = {
   stockBalances: "CODPROD",
   orders: "NUNOTA",
   productImages: "CODPROD",
+  productCartons: "CODPROD",
 };
 
 /* ---- Códigos do Sankhya guardados no registro (sankhyaRefs) ---- */
@@ -859,6 +862,12 @@ export function isInternalGroup(code: unknown): boolean {
 }
 
 /**
+ * Volumes que não contam como caixa (dono, 15/11/2026): o C1 é resto de um
+ * processo antigo de cadastro (no WBU2191, C1 de 196 ao lado da CX de 240).
+ */
+export const IGNORED_VOLUMES = new Set(["C1"]);
+
+/**
  * Volumes alternativos do produto (TGFVOA: CX = 24 UN...): o maior vira a
  * caixa master; com dois ou mais, o menor acima de 1 vira a caixa interna.
  * O M3 do volume é o CBM daquela caixa (dono, 15/11/2026; no WBU2191 a CX de
@@ -867,7 +876,13 @@ export function isInternalGroup(code: unknown): boolean {
  */
 export function boxQuantities(rows: Row[]) {
   const multiplying = rows.filter(
-    (r) => String(r.DIVIDEMULTIPLICA ?? "M").toUpperCase() !== "D",
+    (r) =>
+      String(r.DIVIDEMULTIPLICA ?? "M").toUpperCase() !== "D" &&
+      !IGNORED_VOLUMES.has(
+        String(r.CODVOL ?? "")
+          .trim()
+          .toUpperCase(),
+      ),
   );
   const qty = [
     ...new Set(

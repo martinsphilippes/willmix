@@ -221,7 +221,7 @@ const isoCurrency = (c: string | null | undefined) => {
   return v === "RMB" ? "CNY" : v || null;
 };
 
-function moneyText(
+export function moneyText(
   t: Translate,
   amount: number,
   currency: string | null | undefined,

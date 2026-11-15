@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { login } from "./helpers";
+import { createTeamLogin, login } from "./helpers";
 
 /*
  * Cotação de compra (mapa B13; dono, 15/11/2026; docs/PURCHASE_DEMAND.md):
@@ -133,6 +133,27 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   await page.locator("[data-quote-supplier-request]").first().click();
   await page.waitForURL(/\/app\/supplier-requests\/[^/?]+/);
   await expect(page.locator("main")).toContainText(/1[,.]85/);
+  const bornRequest = page.url();
+
+  // Sem "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md,
+  // seção 7): um login só de Planejamento vê o quadro com os fornecedores,
+  // a situação e as condições, sem preços, total nem a última compra; a
+  // solicitação que nasceu também sem o preço cotado.
+  await login(page, "admin@wellmix.com");
+  const plannerEmail = `planejamento.${quoteId}@wellmix.com`;
+  await createTeamLogin(page, "Planejamento cotação", plannerEmail, [
+    "planner",
+  ]);
+  await login(page, plannerEmail);
+  await page.goto(`/app/purchase-quotes/${quoteId}`);
+  await expect(page.locator("[data-quote-response]").first()).toBeVisible();
+  await expect(page.locator("[data-quote-reference]")).toHaveCount(0);
+  await expect(page.locator("[data-quote-price-restricted]")).toBeVisible();
+  const plannerBoard = await page.locator("[data-quote-board]").innerText();
+  expect(plannerBoard).not.toMatch(/1[,.]85/);
+  await page.goto(bornRequest);
+  await expect(page.locator("[data-supplier-table-row]").first()).toBeVisible();
+  expect(await page.locator("main").innerText()).not.toMatch(/1[,.]85/);
 
   // O cliente não abre a demanda de outra empresa (a reposição da Wellmix).
   await login(page, "joao@lojista.com");

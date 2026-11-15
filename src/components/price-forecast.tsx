@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { PriceForecastAnswer } from "@/lib/integrations/price-forecast";
+import type {
+  PriceForecastAnswer,
+  SuperplanAudit,
+} from "@/lib/integrations/price-forecast";
 import { useRequestCustomer } from "./request-customer-context";
 import { cx, inputDenseClass } from "./ui";
 
@@ -32,6 +35,12 @@ export interface PriceForecastLabels {
   /** Sem "Ver valores e margem": o preço máximo de compra não aparece. */
   targetLocked?: string;
   source: string;
+  /** Memória de cálculo do Sankhya (só com "Ver valores e margem"). */
+  auditTitle?: string;
+  /** "Enviado à função {fn}". */
+  auditInputs?: string;
+  auditDefaults?: string;
+  auditOutputs?: string;
   /** Vê o preço máximo de compra (custo): só com "Ver valores e margem". */
   canSolve?: boolean;
 }
@@ -271,8 +280,71 @@ export function PriceForecast({
               </dl>
             )
           ) : null}
+          {shown &&
+          shown.value !== "error" &&
+          shown.value.mode === "api" &&
+          shown.value.audit ? (
+            <AuditBox audit={shown.value.audit} labels={labels} />
+          ) : null}
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Memória de cálculo da SuperPlan para auditoria: o que foi enviado à
+ * função e todas as colunas que ela devolveu, como vieram do Sankhya.
+ */
+function AuditBox({
+  audit,
+  labels,
+}: {
+  audit: SuperplanAudit;
+  labels: PriceForecastLabels;
+}) {
+  const value = (v: string | number | null) =>
+    v === null || v === ""
+      ? "—"
+      : typeof v === "number"
+        ? v.toLocaleString(labels.intl, { maximumFractionDigits: 8 })
+        : v;
+  const table = (
+    rows: Array<[string, string | number | null]>,
+    key: string,
+  ) => (
+    <dl
+      className="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 gap-y-0.5 font-mono text-[11px]"
+      data-price-forecast-audit={key}
+    >
+      {rows.map(([name, v]) => (
+        <div key={name} className="contents">
+          <dt className="break-all text-zinc-600">{name}</dt>
+          <dd className="break-all tabular-nums text-zinc-900">{value(v)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+  return (
+    <details className="rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1.5">
+      <summary className="cursor-pointer font-semibold text-zinc-800">
+        {labels.auditTitle ?? "Sankhya"}
+      </summary>
+      <div className="mt-2 space-y-3">
+        <section className="space-y-1">
+          <p className="font-medium text-zinc-700">
+            {(labels.auditInputs ?? "{fn}").replace("{fn}", audit.fn)}
+          </p>
+          {table(audit.inputs, "inputs")}
+          {labels.auditDefaults ? (
+            <p className="text-[11px] text-zinc-500">{labels.auditDefaults}</p>
+          ) : null}
+        </section>
+        <section className="space-y-1">
+          <p className="font-medium text-zinc-700">{labels.auditOutputs}</p>
+          {table(audit.outputs, "outputs")}
+        </section>
+      </div>
+    </details>
   );
 }

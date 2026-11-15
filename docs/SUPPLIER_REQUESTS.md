@@ -220,6 +220,7 @@ Com a tela Cadastros, cada nome leva ao quadro de acesso do cadastro (`/app/part
 - O fornecedor vê só as solicitações do próprio cadastro (`supplierId` = `user.partyId`); a de outro dá 404. Não vê as alternativas (outros fornecedores), o Superplan nem o booking.
 - A foto do item (documento interno do booking) abre para o fornecedor dono de uma solicitação com aquela foto (`supplierSeesRequestPhoto`, em `canAccessDocument`). Outro fornecedor, não.
 - Cliente e demais parceiros não abrem as telas.
+- Na Wellmix, o preço de compra (booking, resposta, condições, linha do tempo, negociado, alternativas, pedido de compra) e o Superplan aparecem só com "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md, seções 7 e 8). Quem abre a tela sem a permissão vê a resposta como "Faz" e faz contraproposta de MOQ, prazo e FOB/EXW, sem preço; o servidor ignora preço enviado por ele (`proposeCounter`).
 
 ## Banco
 

@@ -45,6 +45,18 @@ export interface ProductFill {
   masterCartonQty?: number | null;
   cbmPerCarton?: number | null;
   /**
+   * "Resultado da programação" (dono, 15/11/2026): peças por caixa inner e
+   * peso líquido por peça em kg (cadastro, senão ficha mestre). Nulos quando
+   * não informados.
+   */
+  innerBoxQty?: number | null;
+  netWeightKg?: number | null;
+  /**
+   * Preço da última compra ao fornecedor, já em texto (pedido mais recente,
+   * senão o cadastro). Só para a Wellmix; nulo para o cliente e sem compra.
+   */
+  lastPurchase?: string | null;
+  /**
    * Variações do produto (vazio = produto sem variações, como sempre). Com
    * variações, a escolha é obrigatória e preenche especificação, mínimo e foto.
    */
@@ -58,6 +70,9 @@ export interface ProductVariantFill {
   /** Caixa master da variação (senão a do produto). */
   masterCartonQty?: number | null;
   cbmPerCarton?: number | null;
+  /** Caixa inner e peso líquido por peça da variação (senão os do produto). */
+  innerBoxQty?: number | null;
+  netWeightKg?: number | null;
   /** Especificação montada com os dados da variação. */
   specification: string;
   photoDocumentId: string | null;
@@ -365,6 +380,11 @@ export function RequestProductFields({
                   : labels.noStock}
               </span>
             )}
+            {selected.lastPurchase ? (
+              <span className="mt-0.5 block text-xs leading-relaxed text-emerald-900">
+                {selected.lastPurchase}
+              </span>
+            ) : null}
             <button
               type="button"
               onClick={() => toggleNotInCatalog(true)}

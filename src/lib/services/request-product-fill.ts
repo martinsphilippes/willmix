@@ -7,6 +7,7 @@ import { realName } from "@/lib/placeholder-name";
 import { buildProductSpec, productSpecLabels } from "@/lib/product-spec";
 import type { ProductFill } from "@/components/request-product-fields";
 import { availableStockByProduct } from "./containers";
+import { lastPurchaseTexts } from "./last-purchase";
 import { catalogShowcasePhotos } from "./documents";
 import { productOptionLabel } from "./product-search";
 import { variantsByProduct } from "./product-variants";
@@ -16,7 +17,8 @@ import { sankhyaCartons } from "@/lib/integrations/sankhya-carton";
 
 /**
  * Dados da ficha que preenchem a nova solicitação ao escolher o produto
- * (sem preço nem fornecedor): nome, descrição, especificação, fotos do
+ * (sem preço nem fornecedor para o cliente; a Wellmix vê o preço da última
+ * compra): nome, descrição, especificação, fotos do
  * cadastro, estoque, pedido mínimo e variações.
  *
  * Antes a página montava isto para o catálogo inteiro (~15 mil produtos, a
@@ -31,15 +33,20 @@ export async function requestProductFills(
 ): Promise<ProductFill[]> {
   if (!products.length) return [];
   const ids = products.map((p) => p.id);
-  const [showcase, stockByProduct, masterSheets, variants] = await Promise.all([
-    // Fotos do cadastro que aparecem ao escolher o produto (o cliente abre só estas).
-    catalogShowcasePhotos(ids),
-    availableStockByProduct(),
-    // Pedido mínimo: o da ficha mestre (gravada com orderId = id do produto), senão o do cadastro.
-    getStore().list("purchase_sheets", { filter: { orderId: ids } }),
-    // Variações ativas (produto com variações exige escolher uma).
-    variantsByProduct(ids),
-  ]);
+  const [showcase, stockByProduct, masterSheets, variants, lastPurchase] =
+    await Promise.all([
+      // Fotos do cadastro que aparecem ao escolher o produto (o cliente abre só estas).
+      catalogShowcasePhotos(ids),
+      availableStockByProduct(),
+      // Pedido mínimo: o da ficha mestre (gravada com orderId = id do produto), senão o do cadastro.
+      getStore().list("purchase_sheets", { filter: { orderId: ids } }),
+      // Variações ativas (produto com variações exige escolher uma).
+      variantsByProduct(ids),
+      // Preço da última compra ao fornecedor: só a Wellmix vê.
+      isWellmix(user)
+        ? lastPurchaseTexts(t, products)
+        : Promise.resolve(new Map<string, string>()),
+    ]);
   const sheetMoq = new Map(masterSheets.map((s) => [s.orderId, s.moq]));
   const sheetOf = new Map(masterSheets.map((s) => [s.orderId, s]));
   const positive = (n: number | null | undefined) =>
@@ -82,6 +89,17 @@ export async function requestProductFills(
         (erp?.masterBoxQty === masterCartonQty ? positive(erp?.cbm) : null),
     };
   };
+  /**
+   * Caixa inner e peso líquido por peça (kg) para o "Resultado da
+   * programação": cadastro, senão ficha mestre.
+   */
+  const packOf = (p: Product) => {
+    const sheet = sheetOf.get(p.id);
+    return {
+      innerBoxQty: positive(p.innerBoxQty) ?? positive(sheet?.innerQty),
+      netWeightKg: positive(p.netWeightKg) ?? positive(sheet?.netWeightPcKg),
+    };
+  };
   const specLabels = productSpecLabels(t);
   // Estoque: o cliente vê só "em estoque"; quantidades ficam para a Wellmix.
   const qty = (n: number) => n.toLocaleString(t.intl);
@@ -102,6 +120,8 @@ export async function requestProductFills(
     stock: stockFor(p.id),
     moq: effectiveMoq(null, sheetMoq.get(p.id), p.moq),
     ...cartonOf(p),
+    ...packOf(p),
+    lastPurchase: lastPurchase.get(p.id) ?? null,
     // Cada variação com o próprio mínimo (variação > ficha mestre > cadastro),
     // a especificação montada com os dados dela e a foto (sem preço nem fornecedor).
     variants: (variants.get(p.id) ?? []).map((v) => ({
@@ -113,6 +133,8 @@ export async function requestProductFills(
           ? v.masterBoxQty
           : cartonOf(p).masterCartonQty,
       cbmPerCarton: v.cbm && v.cbm > 0 ? v.cbm : cartonOf(p).cbmPerCarton,
+      innerBoxQty: positive(v.innerBoxQty) ?? packOf(p).innerBoxQty,
+      netWeightKg: positive(v.netWeightKg) ?? packOf(p).netWeightKg,
       specification: variantSpecificationText(t, p, v, specLabels),
       photoDocumentId: v.photoDocumentId,
     })),
