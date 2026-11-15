@@ -10,6 +10,8 @@ import { withTempStore } from "./setup";
 withTempStore();
 
 const {
+  downPaymentStateOf,
+  shipmentStepsOpen,
   compactMilestones,
   milestoneBlockedOf,
   milestoneDueOf,
@@ -135,5 +137,54 @@ describe("trava da inspeção na linha do marco", () => {
     expect(
       (await store.list("order_milestones", { filter: { orderId } }))[0],
     ).toMatchObject({ status: "active", blockReason: null });
+  });
+});
+
+describe("passos do embarque e da origem (dono, 15/11/2026)", () => {
+  const purchase = { status: "INSPECTION", flow: "supplier_request" };
+  const contractDone = [
+    { key: "contract", status: "done" },
+    { key: "down-payment", status: "active" },
+  ];
+  it("contrato assinado e confirmado e, sem conta corrente, o sinal pago", () => {
+    // Contrato ainda aberto: não abrem, nem com o sinal resolvido.
+    expect(
+      shipmentStepsOpen(
+        purchase,
+        [{ key: "contract", status: "active" }],
+        "done",
+      ),
+    ).toBe(false);
+    // Contrato concluído, sinal ainda por pagar (sem conta corrente): não.
+    expect(shipmentStepsOpen(purchase, contractDone, "pending")).toBe(false);
+    // Sinal pago, ou conta corrente (o item conclui sozinho): abrem, sem
+    // esperar a aprovação da Diretoria de compras.
+    expect(shipmentStepsOpen(purchase, contractDone, "done")).toBe(true);
+    // Pedido clássico: só o contrato.
+    expect(
+      shipmentStepsOpen({ status: "INSPECTION" }, contractDone, "pending"),
+    ).toBe(true);
+    // Encerrado ou cancelado: não.
+    expect(
+      shipmentStepsOpen(
+        { ...purchase, status: "CLOSED" },
+        contractDone,
+        "done",
+      ),
+    ).toBe(false);
+    // Sem marcos gravados: pela situação antiga (Inspeção em diante).
+    expect(shipmentStepsOpen(purchase, [], "pending")).toBe(true);
+    expect(
+      shipmentStepsOpen({ ...purchase, status: "PACKAGING" }, null, "done"),
+    ).toBe(false);
+  });
+  it("estado do sinal pelo item down_payment", () => {
+    expect(downPaymentStateOf([])).toBe("absent");
+    expect(
+      downPaymentStateOf([{ key: "down_payment", status: "pending" }]),
+    ).toBe("pending");
+    expect(downPaymentStateOf([{ key: "down_payment", status: "done" }])).toBe(
+      "done",
+    );
   });
 });

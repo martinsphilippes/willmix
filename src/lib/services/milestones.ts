@@ -26,6 +26,7 @@ import {
   groupOf,
   importStepDone,
   lpcoApplies,
+  sealArtApplies,
   stepApplies,
 } from "./import-flow";
 
@@ -133,6 +134,11 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
   const fullCertification =
     isPurchaseFlow(order) &&
     input.requirements.some((r) => baseKeyOf(r.key) === LANE_KEYS.certificate);
+  // Reposição e encomenda sem certificado novo: sem a arte com o selo.
+  const sealArt = sealArtApplies(
+    order,
+    input.requirements.map((r) => r.key),
+  );
   for (const tpl of IMPORT_STEPS) {
     const group = groupOf(tpl);
     if (group === "certification" && !certification) continue;
@@ -144,7 +150,8 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
       continue;
     if (group === "samples" && !samples) continue;
     // Divergência no recebimento: só com as linhas dos passos (contagem com divergência).
-    if (!stepApplies(order, tpl.key, input.lpco, input.importSteps)) continue;
+    if (!stepApplies(order, tpl.key, input.lpco, input.importSteps, sealArt))
+      continue;
     if (tpl.key === "bl" && isPurchaseFlow(order)) continue;
     const step = flowStepOfImportKey(tpl.key);
     if (!step) continue;

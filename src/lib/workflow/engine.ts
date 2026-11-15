@@ -251,14 +251,15 @@ export async function createStagesForOrder(
     : null;
   // Pedido de compra: as raias são produto a produto, com o checklist da
   // linha de cada produto (docs/PURCHASE_ORDER.md).
-  const items = isPurchaseFlow(order)
-    ? await purchaseLaneItems(order.id)
-    : undefined;
   // Reposição ou encomenda (ou rodada de uma): sem Material de arte e Arte.
   const parent =
     isPurchaseFlow(order) && order.parentOrderId
       ? await store.get("orders", order.parentOrderId)
       : null;
+  const withoutArt = purchaseWithoutArt(order, parent);
+  const items = isPurchaseFlow(order)
+    ? await purchaseLaneItems(order.id, withoutArt)
+    : undefined;
   const ctx = {
     order,
     line,
@@ -266,7 +267,7 @@ export async function createStagesForOrder(
     deliveryConfirmationMode: settings.deliveryConfirmationMode,
     inspectionExtendedChecks: settings.inspectionExtendedChecks,
     items,
-    withoutArt: purchaseWithoutArt(order, parent),
+    withoutArt,
   };
 
   let firstStageId: string | null = null;
@@ -343,8 +344,15 @@ export async function createStagesForOrder(
   return firstStageId;
 }
 
-/** Produtos do pedido de compra, com o checklist da linha de cada um. */
-async function purchaseLaneItems(orderId: string): Promise<LaneItem[]> {
+/**
+ * Produtos do pedido de compra, com o checklist da linha de cada um. Sem arte
+ * (reposição e encomenda), também se a certificação válida do produto cobre
+ * o período do pedido (sem certificado novo, sem arte final).
+ */
+async function purchaseLaneItems(
+  orderId: string,
+  withoutArt = false,
+): Promise<LaneItem[]> {
   const store = getStore();
   const items = await store.list("order_items", { filter: { orderId } });
   const productIds = [
@@ -357,6 +365,13 @@ async function purchaseLaneItems(orderId: string): Promise<LaneItem[]> {
   const lines = lineIds.length
     ? await store.list("product_lines", { filter: { id: lineIds } })
     : [];
+  const covered = new Set<string>();
+  if (withoutArt) {
+    const { certificationCoversHorizon } =
+      await import("@/lib/services/purchase-gates");
+    for (const id of productIds)
+      if ((await certificationCoversHorizon(id)).covered) covered.add(id);
+  }
   return [...items]
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .map((item) => {
@@ -375,6 +390,7 @@ async function purchaseLaneItems(orderId: string): Promise<LaneItem[]> {
         certificationRequired: !!line?.requiredCertifications?.some((k) =>
           k.trim(),
         ),
+        certificationCovered: !!item.productId && covered.has(item.productId),
       };
     });
 }

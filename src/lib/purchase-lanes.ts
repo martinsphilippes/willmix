@@ -393,6 +393,13 @@ export interface LaneItem {
    * selo. Sem valor, entra (comportamento de antes).
    */
   certificationRequired?: boolean;
+  /**
+   * O produto já tem certificação válida de cada tipo que a linha exige pelo
+   * período do pedido (`certificationCoversHorizon`): sem certificado novo.
+   * Só a reposição e a encomenda leem (sem arte, a arte final só nasce com
+   * certificado novo).
+   */
+  certificationCovered?: boolean;
 }
 
 const req = (
@@ -424,7 +431,9 @@ export function laneRequirements(
    * Sem os marcos Material de arte e Arte (dono, 15/11/2026): o pedido de
    * compra da reposição ou da encomenda repete a arte já aprovada ("Não tem
    * arte"). Só o pedido de produto novo (do Book) faz faca, foto, MOQ,
-   * prazo, arte, validação e arte final.
+   * prazo, arte e validação. Na reposição e na encomenda, a arte final com
+   * o selo só nasce quando o produto precisa de certificado novo (a linha
+   * exige e a certificação válida não cobre o período do pedido).
    */
   options: { art?: boolean } = {},
 ): RequirementTemplate[] {
@@ -497,8 +506,9 @@ export function laneRequirements(
           "file",
           roles.ocp,
         ),
-        // A arte final com o selo é do marco Arte: sem arte, não nasce.
-        ...(withArt
+        // A arte final com o selo é do marco Arte: sem arte, só com
+        // certificado novo.
+        ...(withArt || !item.certificationCovered
           ? [
               req(
                 laneKey(LANE_KEYS.artFinal, item.id),

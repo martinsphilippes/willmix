@@ -20,6 +20,7 @@ import { isPurchaseFlow } from "@/lib/workflow/stages";
 import { parseSampleOrder } from "@/lib/sample-order";
 import { openImportStepKeys } from "./import-flow";
 import {
+  downPaymentStateOf,
   milestoneReached,
   type MilestoneKey,
   type MilestoneProgressLike,
@@ -67,9 +68,11 @@ export interface OrderFlowInput {
   lpco?: boolean;
   /**
    * Marcos gravados do pedido (`order_milestones`, fase 5e): onde ele está
-   * (pré-produção, amostras, entrega), no lugar da situação antiga.
+   * (contrato, amostras, entrega), no lugar da situação antiga.
    */
   milestones?: readonly MilestoneProgressLike[] | null;
+  /** A arte com o selo vale (`sealArtApplies`); sem valor, vale. */
+  sealArt?: boolean;
 }
 
 export interface FlowEntry {
@@ -143,6 +146,10 @@ export function orderFlowEntries(input: OrderFlowInput): FlowEntry[] {
     samples,
     lpco: input.lpco ?? false,
     milestones: input.milestones,
+    downPayment: input.downPayment
+      ? "done"
+      : downPaymentStateOf(input.openRequirements),
+    sealArt: input.sealArt,
   })) {
     const step = flowStepOfImportKey(key);
     if (step)

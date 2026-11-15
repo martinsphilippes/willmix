@@ -2,11 +2,14 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
- * Decisão do dono (15/11/2026, docs/MILESTONES.md "Pedido de compra sem
+ * Respostas do dono (15/11/2026, docs/MILESTONES.md "Pedido de compra sem
  * arte"): a arte esperar o Material de arte inteiro vale só para o pedido de
- * produto novo (do Book). O pedido de compra da reposição ou da encomenda
- * ("Não tem arte") repete a arte já aprovada: não nascem os itens dos marcos
- * Material de arte e Arte, e o Contrato espera só Pedido novo e Certificação.
+ * produto novo (do Book). Na reposição e na encomenda (`orders.demandIds`):
+ * - sem certificado novo (a linha não exige, ou a certificação válida cobre
+ *   o período do pedido): nenhuma arte, nem a arte com o selo; Material de
+ *   arte e Arte "não se aplica";
+ * - com certificado novo: o marco Arte tem só a arte final, e a arte com o
+ *   selo segue a certificação.
  */
 withTempStore();
 
@@ -16,6 +19,7 @@ const requests = await import("@/lib/services/requests");
 const purchase = await import("@/lib/services/purchase-order");
 const { milestonesOf } = await import("@/lib/services/milestones");
 const { baseKeyOf, LANE_KEYS } = await import("@/lib/purchase-lanes");
+const { ordersWithoutSealArt } = await import("@/lib/services/import-flow");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -27,71 +31,114 @@ beforeAll(async () => {
   joao = users.find((u) => u.email === "joao@lojista.com")!;
 });
 
-const ART_BASES = [
+const ART_MATERIAL = [
   LANE_KEYS.dieCut,
   LANE_KEYS.hdPhoto,
   LANE_KEYS.moq,
   LANE_KEYS.leadTime,
-  LANE_KEYS.art,
-  LANE_KEYS.artReview,
-  LANE_KEYS.artFinal,
 ] as string[];
+const ART_ONLY = [LANE_KEYS.art, LANE_KEYS.artReview] as string[];
 
-async function directOrder(demandIds: string[]) {
+async function directOrder(productId: string, demandIds: string[]) {
   return purchase.createDirectPurchaseOrder(admin, {
     supplierId: "fornecedor-a",
     currency: "USD",
     incoterm: "FOB",
     leadTimeDays: 45,
-    lines: [{ productId: "prod-panela", quantity: 1000, unitPrice: 3.5 }],
+    lines: [{ productId, quantity: 1000, unitPrice: 3.5 }],
     demandIds,
     summary: "teste",
   });
 }
 
-const stateOf = (views: { key: string; state: string }[], key: string) =>
-  views.find((v) => v.key === key)?.state;
+async function demandOrder(productId: string) {
+  const demand = await requests.createRequest(joao, {
+    customerId: "cliente-joao",
+    productId,
+    productName: productId,
+    description: "Encomenda",
+    quantity: 5000,
+    unit: "un",
+  });
+  return directOrder(productId, [demand.id]);
+}
 
-describe("pedido de compra sem arte (reposição e encomenda)", () => {
-  it("com demanda ligada: sem itens de Material de arte e Arte; Contrato espera só Pedido novo e Certificação", async () => {
-    const demand = await requests.createRequest(joao, {
-      customerId: "cliente-joao",
-      productId: "prod-panela",
-      productName: "prod-panela",
-      description: "Encomenda",
-      quantity: 1000,
-      unit: "un",
-    });
-    const order = await directOrder([demand.id]);
-    const reqs = await getStore().list("requirements", {
-      filter: { orderId: order.id },
-    });
-    expect(reqs.some((r) => ART_BASES.includes(baseKeyOf(r.key)))).toBe(false);
-    expect(reqs.some((r) => r.key === "approval_art_material")).toBe(false);
-    // O cadastro continua.
-    expect(reqs.some((r) => baseKeyOf(r.key) === LANE_KEYS.ncmValidated)).toBe(
-      true,
-    );
+const view = (views: { key: string }[], key: string) =>
+  views.find((v) => v.key === key) as Awaited<
+    ReturnType<typeof milestonesOf>
+  >[number];
+
+const bases = async (orderId: string) =>
+  (await getStore().list("requirements", { filter: { orderId } })).map((r) =>
+    baseKeyOf(r.key),
+  );
+
+describe("reposição e encomenda sem certificado novo: nenhuma arte", () => {
+  it("linha sem certificação: Material de arte e Arte não se aplicam; o Contrato espera Pedido novo", async () => {
+    const order = await demandOrder("prod-panela");
+    const keys = await bases(order.id);
+    expect(keys.some((k) => ART_MATERIAL.includes(k))).toBe(false);
+    expect(keys.some((k) => ART_ONLY.includes(k))).toBe(false);
+    expect(keys).not.toContain(LANE_KEYS.artFinal);
+    expect(keys).not.toContain("approval_art_material");
+    expect(keys).toContain(LANE_KEYS.ncmValidated);
     const views = await milestonesOf(order);
-    expect(stateOf(views, "art-material")).toBe("na");
-    expect(stateOf(views, "art")).toBe("na");
-    const contract = views.find((v) => v.key === "contract")!;
-    expect(contract.state).toBe("waiting");
-    expect(["new-order", "certification"]).toContain(contract.waitingFor);
+    expect(view(views, "art-material").state).toBe("na");
+    expect(view(views, "art").state).toBe("na");
+    expect(view(views, "contract").state).toBe("waiting");
+    expect(["new-order", "certification"]).toContain(
+      view(views, "contract").waitingFor,
+    );
   });
 
-  it("do Book (sem demanda): a arte espera o Material de arte inteiro", async () => {
-    const order = await directOrder([]);
-    const reqs = await getStore().list("requirements", {
-      filter: { orderId: order.id },
-    });
-    expect(reqs.some((r) => baseKeyOf(r.key) === LANE_KEYS.dieCut)).toBe(true);
-    expect(reqs.some((r) => baseKeyOf(r.key) === LANE_KEYS.art)).toBe(true);
-    expect(reqs.some((r) => r.key === "approval_art_material")).toBe(true);
+  it("linha com certificação e certificado válido pelo período: sem arte final e sem a arte com o selo", async () => {
+    const order = await demandOrder("prod-boneca");
+    const keys = await bases(order.id);
+    expect(keys).toContain(LANE_KEYS.certificate);
+    expect(keys).not.toContain(LANE_KEYS.artFinal);
+    expect(keys.some((k) => ART_ONLY.includes(k))).toBe(false);
     const views = await milestonesOf(order);
-    expect(stateOf(views, "art-material")).toBe("active");
-    const art = views.find((v) => v.key === "art")!;
-    expect(art.state).toBe("waiting");
-    expect(art.waitingFor).toBe("art-material");
+    expect(view(views, "art").state).toBe("na");
+    expect(view(views, "art-material").state).toBe("na");
+    expect(
+      view(views, "certification").subtasks.map((s) => s.key),
+    ).not.toContain("cert_seal_art");
+    expect((await ordersWithoutSealArt([order])).has(order.id)).toBe(true);
+  });
+});
+
+describe("reposição e encomenda com certificado novo: só a arte final", () => {
+  it("linha com certificação sem certificado válido: o marco Arte tem só a arte final; a arte com o selo segue a certificação", async () => {
+    const order = await demandOrder("prod-piscina");
+    const keys = await bases(order.id);
+    expect(keys).toContain(LANE_KEYS.certificate);
+    expect(keys).toContain(LANE_KEYS.artFinal);
+    expect(keys.some((k) => ART_ONLY.includes(k))).toBe(false);
+    expect(keys.some((k) => ART_MATERIAL.includes(k))).toBe(false);
+    const views = await milestonesOf(order);
+    expect(view(views, "art-material").state).toBe("na");
+    expect(view(views, "art").subtasks.map((s) => baseKeyOf(s.key))).toEqual([
+      LANE_KEYS.artFinal,
+    ]);
+    // A arte final não espera faca nem validação (não existem no pedido).
+    expect(view(views, "art").state).toBe("active");
+    expect(view(views, "certification").subtasks.map((s) => s.key)).toContain(
+      "cert_seal_art",
+    );
+    expect((await ordersWithoutSealArt([order])).has(order.id)).toBe(false);
+  });
+});
+
+describe("pedido do Book (sem demanda)", () => {
+  it("a arte espera o Material de arte inteiro", async () => {
+    const order = await directOrder("prod-panela", []);
+    const keys = await bases(order.id);
+    expect(keys).toContain(LANE_KEYS.dieCut);
+    expect(keys).toContain(LANE_KEYS.art);
+    expect(keys).toContain("approval_art_material");
+    const views = await milestonesOf(order);
+    expect(view(views, "art-material").state).toBe("active");
+    expect(view(views, "art").state).toBe("waiting");
+    expect(view(views, "art").waitingFor).toBe("art-material");
   });
 });

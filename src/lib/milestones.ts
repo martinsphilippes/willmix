@@ -765,3 +765,40 @@ export function milestoneBlockedOf(
   if (rows?.length) return rows.some((r) => r.status === "blocked");
   return undefined;
 }
+
+/** Sinal ao fornecedor do pedido (item `down_payment`): feito, aberto ou sem o item. */
+export type DownPaymentState = "done" | "pending" | "absent";
+
+/** Estado do sinal pelos itens do pedido (o item `down_payment`). */
+export function downPaymentStateOf(
+  requirements: readonly { key: string; status: string }[],
+): DownPaymentState {
+  const items = requirements.filter((r) => r.key === "down_payment");
+  if (!items.length) return "absent";
+  return items.every((r) => r.status === "done") ? "done" : "pending";
+}
+
+/**
+ * Passos do embarque e da origem abertos (decisão do dono, 15/11/2026): o
+ * contrato assinado e confirmado (marco Contrato concluído) e, no pedido de
+ * compra, o sinal resolvido: o item `down_payment` conclui sozinho com a
+ * conta corrente com o fornecedor (sem parcela antes da produção) ou com o
+ * sinal pago (purchase-gates.ts). A aprovação da Diretoria de compras não
+ * entra. Pedido sem marcos gravados (antes da migração e nos testes): pela
+ * situação antiga, da Inspeção em diante.
+ */
+export function shipmentStepsOpen(
+  order: { status: string | null | undefined; flow?: string | null },
+  milestones: readonly MilestoneProgressLike[] | null | undefined,
+  downPayment: DownPaymentState,
+): boolean {
+  if (order.status === "CLOSED" || order.status === "CANCELLED") return false;
+  if (!milestones?.length)
+    return milestoneReached(order, milestones, "pre-production");
+  const contract = milestones.find((m) => m.key === "contract");
+  const contractDone =
+    !!contract && (contract.state ?? contract.status) === "done";
+  if (!contractDone) return false;
+  if (order.flow !== "supplier_request") return true;
+  return downPayment !== "pending";
+}

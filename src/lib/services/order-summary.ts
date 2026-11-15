@@ -677,7 +677,12 @@ async function tasksOf(
   const [
     { stageTaskDrafts },
     { wellmixProductionCandidates, latestByItem },
-    { wellmixImportCandidates, WELLMIX_IMPORT_STATUSES, isDivergenceStep },
+    {
+      wellmixImportCandidates,
+      WELLMIX_IMPORT_STATUSES,
+      isDivergenceStep,
+      sealArtApplies,
+    },
     { artIssueCounts },
     { baseKeyOf, LANE_KEYS },
   ] = await Promise.all([
@@ -760,7 +765,16 @@ async function tasksOf(
         (src.portalRequirements.get(order.id) ?? []).some(
           (r) => baseKeyOf(r.key) === LANE_KEYS.certificate,
         );
-      const i = wellmixImportCandidates(order, steps, needsCert);
+      const i = wellmixImportCandidates(
+        order,
+        steps,
+        needsCert,
+        false,
+        sealArtApplies(
+          order,
+          (src.portalRequirements.get(order.id) ?? []).map((r) => r.key),
+        ),
+      );
       if (i.length) stored.i = i;
     } else if (order.status === "DELIVERED") {
       // Entregue: só a divergência no recebimento (mapa E24 a E27).
@@ -891,6 +905,7 @@ async function kpisOf(
 /** Contribuição de cada pedido para o Overview dos blocos (docs/FLOW_MENU.md). */
 async function flowsOf(src: Sources) {
   const { buildOrderFlow } = await import("./flow-contribution");
+  const { sealArtApplies } = await import("./import-flow");
   // LPCO: lido uma vez com as fontes (loadSources).
   const lpco = src.lpco;
   const out = new Map<string, unknown>();
@@ -912,6 +927,10 @@ async function flowsOf(src: Sources) {
         sampleOrder: reqs.find((r) => r.key === "sample_order") ?? null,
         lpco: lpco.has(order.id),
         milestones: src.milestoneRows.get(order.id) ?? [],
+        sealArt: sealArtApplies(
+          order,
+          (src.milestoneRequirements.get(order.id) ?? []).map((r) => r.key),
+        ),
       }),
     );
   }
