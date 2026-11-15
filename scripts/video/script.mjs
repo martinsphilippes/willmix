@@ -80,8 +80,7 @@ export const VIDEOS = {
         id: "chaos",
         type: "chaos",
         props: {
-          title:
-            "Different inboxes.\nDifferent spreadsheets.\nDifferent *chats.*",
+          title: "Different inboxes,\nspreadsheets\nand *chats.*",
         },
         say: [
           {
@@ -209,7 +208,7 @@ export const VIDEOS = {
         type: "focus",
         props: {
           kicker: "Control Tower",
-          title: "What is late.\nWhat is next.\n*Who is responsible.*",
+          title: "What is late.\nWhat is next.\n*Who owns it.*",
           shots: [{ shot: "tower", ox: "62%", oy: "34%", zoom: 1.12 }],
         },
         say: [
@@ -272,8 +271,7 @@ export const VIDEOS = {
         id: "chaos",
         type: "chaos",
         props: {
-          title:
-            "Different inboxes.\nDifferent spreadsheets.\nDifferent *chats.*",
+          title: "Different inboxes,\nspreadsheets\nand *chats.*",
         },
         say: [
           {

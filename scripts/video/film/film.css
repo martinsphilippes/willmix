@@ -808,7 +808,8 @@ html[data-lang="zh"] #sub-box {
 .s-route .copy {
   position: absolute;
   left: 96px;
-  top: 150px;
+  /* Mais alto que as outras cenas: o fim do título fica longe dos pontos do mapa. */
+  top: 118px;
   gap: 30px;
 }
 .s-route .h1 {
@@ -1495,6 +1496,7 @@ html[data-lang="zh"] #sub-box {
 }
 
 /* ───────── Cena: tela em destaque ───────── */
+
 .s-focus .shot {
   left: 812px;
 }

@@ -75,7 +75,7 @@ export const SCENES = {
       [P.hoChiMinh, 0.2],
       [P.mumbai, 0.22],
       [P.istanbul, 0.24],
-      [P.genoa, 0.22],
+      [P.dubai, 0.22],
     ];
     const t0 = 1.0;
     const hand = p.handoffsC != null ? s.cue[p.handoffsC] : (p.handoffsAt ?? 2);
