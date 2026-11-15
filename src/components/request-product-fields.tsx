@@ -13,7 +13,8 @@ import type {
  * 1) "Produto não está no catálogo" vem primeiro; marcado, desliga a escolha
  *    de produto e mostra os anexos (fotos/arquivos do produto procurado).
  * 2) Escolher um produto da Wellmix preenche nome, descrição e especificação
- *    com a ficha (campos seguem editáveis). Os dados vêm do servidor, só com
+ *    com a ficha, só para leitura (dono, 15/11/2026: o produto achado não se
+ *    altera; descrição e especificação ficam à direita da busca). Os dados vêm do servidor, só com
  *    o que o cliente pode ver (sem preço nem fornecedor).
  * 3) Sugestões da busca por foto/link continuam como botões por campo.
  *
@@ -129,6 +130,8 @@ export function RequestProductFields({
     fillLoading: string;
     /** A ficha não veio (rede, produto saiu do catálogo). */
     fillError: string;
+    /** Dica sob a descrição e a especificação travadas (produto do catálogo). */
+    lockedHint?: string;
   };
 }) {
   const initial = products.find((p) => p.id === presetProductId) ?? null;
@@ -250,6 +253,8 @@ export function RequestProductFields({
   const selected = (productId && fills[productId]) || null;
   const selectedVariant =
     selected?.variants.find((v) => v.id === variantId) ?? null;
+  // Ficha do catálogo com nome de verdade: textos travados (só leitura).
+  const locked = !!selected && !!selected.productName && !notInCatalog;
 
   const chip =
     "inline-flex max-w-full items-start gap-2 rounded-lg border px-3 py-2 text-left text-sm transition";
@@ -422,7 +427,7 @@ export function RequestProductFields({
               {labels.fillError}
             </p>
           ) : null}
-          <p className="text-xs text-zinc-500">
+          <p className={locked ? "hidden" : "text-xs text-zinc-500"}>
             {filledFrom ? (
               <span className="mr-1.5 inline-block rounded bg-emerald-50 px-1.5 py-0.5 font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
                 {labels.filledBadge}
@@ -510,9 +515,64 @@ export function RequestProductFields({
         </div>
       ) : null}
 
-      {field("productName", labels.productName, false)}
-      {field("description", labels.description, true)}
-      {field("specification", labels.specification, true)}
+      {/* Produto do catálogo (dono, 15/11/2026): nada da ficha se edita.
+          Descrição e especificação ficam à direita da busca, só para ler; o
+          nome já está no campo de busca e não se repete. Os textos vão no
+          formulário (o servidor grava os da ficha de qualquer forma). Nome
+          de exemplo ("Produto novo XPTO"): quem pede preenche, como antes. */}
+      {locked ? (
+        <div
+          className="col-span-2 min-w-0 space-y-2 rounded-xl border border-zinc-200 bg-white px-3 py-2"
+          data-request-product-locked
+        >
+          <input
+            type="hidden"
+            name={`${prefix}productName`}
+            value={values.productName}
+          />
+          <input
+            type="hidden"
+            name={`${prefix}description`}
+            value={values.description}
+          />
+          <input
+            type="hidden"
+            name={`${prefix}specification`}
+            value={values.specification}
+          />
+          <div>
+            <p className="text-xs font-medium leading-5 text-zinc-700">
+              {labels.description}
+            </p>
+            <p
+              className="text-sm whitespace-pre-line break-words text-zinc-900"
+              data-request-product-description
+            >
+              {values.description || "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-medium leading-5 text-zinc-700">
+              {labels.specification}
+            </p>
+            <p
+              className="text-sm whitespace-pre-line break-words text-zinc-900"
+              data-request-product-specification
+            >
+              {values.specification || "—"}
+            </p>
+          </div>
+          {labels.lockedHint ? (
+            <p className="text-xs text-zinc-500">{labels.lockedHint}</p>
+          ) : null}
+        </div>
+      ) : (
+        <>
+          {field("productName", labels.productName, false)}
+          {field("description", labels.description, true)}
+          {field("specification", labels.specification, true)}
+        </>
+      )}
 
       {/* 3) Anexos só para produto fora do catálogo (fotos do que se procura). */}
       {notInCatalog ? (

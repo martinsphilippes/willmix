@@ -71,3 +71,19 @@ export function parseRequestItems(form: FormData): RequestItemFields[] {
       };
     });
 }
+
+/**
+ * Programação do pedido (dono, 15/11/2026): as datas e o número de
+ * programações são do pedido, iguais para todos os produtos; cada produto
+ * só reparte a quantidade dele nelas. Ou todas as linhas têm a mesma
+ * programação (número, 1ª data e intervalo), ou nenhuma tem (pedido único).
+ * Fora disso: Error("schedule_mismatch").
+ */
+export function assertSameSchedule(rows: RequestItemFields[]): void {
+  const plans = rows.map((r) =>
+    r.schedule
+      ? `${r.schedule.items.length}|${r.schedule.firstDate}|${r.schedule.intervalDays}`
+      : "",
+  );
+  if (new Set(plans).size > 1) throw new Error("schedule_mismatch");
+}

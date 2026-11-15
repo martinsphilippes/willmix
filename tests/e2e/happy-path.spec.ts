@@ -1536,27 +1536,25 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await expect(
     page.locator('[data-request-item="0"] [role="status"]'),
   ).toBeVisible();
-  await page.fill('textarea[name="p0.description"]', "Jarra de vidro");
-  // A quantidade fica acima do pedido mínimo da jarra, se houver (a tela
-  // sobe e o servidor recusa abaixo dele). Ela se digita no bloco
-  // "Programação de compra" (a linha de quantidade saiu da tela, dono,
-  // 14/11/2026) e vai no formulário como p0.quantity.
-  await page
-    .locator('[data-request-item="0"] [data-selection-quantity]')
-    .fill("1000");
-  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("1000");
-  // Programação de compra (a jarra não tem caixa master no cadastro: em
-  // peças): 2 programações (500 + 500), "+ Programação" → 3 (334 + 333 +
-  // 333), intervalo 30 dias; a 3ª vira 340 → total 1007 e a quantidade acompanha.
-  await page.click('[data-request-item="0"] [data-schedule-on]');
+  // Produto do catálogo (dono, 15/11/2026): descrição e especificação só
+  // para leitura, à direita da busca; nada da ficha se digita.
   await expect(
-    page.locator('[data-request-item="0"] [data-schedule-item]'),
-  ).toHaveCount(2);
-  await page.click('[data-request-item="0"] [data-schedule-add]');
+    page.locator('[data-request-item="0"] [data-request-product-locked]'),
+  ).toBeVisible();
+  await expect(page.locator('textarea[name="p0.description"]')).toHaveCount(0);
+  // Programação do pedido (dono, 15/11/2026): 3 programações a cada 30
+  // dias, as mesmas datas para os dois produtos. A jarra não tem caixa
+  // master no cadastro: as peças de cada data se digitam (334 + 333 + 340 =
+  // 1.007) e a quantidade acompanha.
+  const planCount = page.locator("[data-order-plan-count]");
+  await planCount.fill("3");
+  await planCount.blur();
+  await page.click('[data-order-plan-interval="30"]');
   await expect(
     page.locator('[data-request-item="0"] [data-schedule-item]'),
   ).toHaveCount(3);
-  await page.click('[data-request-item="0"] [data-schedule-interval="30"]');
+  await page.fill('input[name="p0.schedule.qty.1"]', "334");
+  await page.fill('input[name="p0.schedule.qty.2"]', "333");
   await page.fill('input[name="p0.schedule.qty.3"]', "340");
   await expect(
     page.locator('[data-request-item="0"] [data-schedule-total]'),
@@ -1564,11 +1562,15 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("1007");
   await page.click("[data-add-request-item]");
   await page.check('[data-request-item="1"] input[name="p1.sourcingDemand"]');
+  // Fora do catálogo: os textos se digitam, como sempre.
   await page.fill('input[name="p1.productName"]', "Copo de vidro");
   await page.fill('textarea[name="p1.description"]', "Copo de vidro 300 ml");
-  await page
-    .locator('[data-request-item="1"] [data-selection-quantity]')
-    .fill("200");
+  await expect(
+    page.locator('[data-request-item="1"] [data-schedule-item]'),
+  ).toHaveCount(3);
+  await page.fill('input[name="p1.schedule.qty.1"]', "100");
+  await page.fill('input[name="p1.schedule.qty.2"]', "50");
+  await page.fill('input[name="p1.schedule.qty.3"]', "50");
   await expect(page.locator('input[name="p1.quantity"]')).toHaveValue("200");
   // Terceira linha adicionada e removida: não vira solicitação.
   await page.click("[data-add-request-item]");

@@ -133,7 +133,19 @@ A solicitação aberta do grupo leva a programação (`supplier_requests.schedul
 - **Ficha de compra (lotes)**: o "Gerar programação" dos lotes usa a mesma distribuição, mas a tela continua a dela (lotes contados a partir do início da produção, até 6 lotes, `MAX_LOTS`). Levar o bloco e tirar o teto de 6 lotes ali é decisão pendente do dono.
 - Testes: `tests/e2e/schedule-both-screens.spec.ts` (a mesma entrada nas duas telas dá o mesmo cálculo; 13 datas gravadas na Seleção, de volta ao rever e na solicitação ao fornecedor), `tests/unit/request-schedule-generator.test.ts` (o exemplo do dono: 300 caixas de 48 em 2 datas = 14.400 peças, 150 caixas e 7.200 por data, 1 container previsto e 4% ocupado com 0,0195 m³; 7 e 12 datas no servidor) e `tests/unit/purchase-rounds.test.ts` (13 programações viram o pai e 13 filhos, um por data).
 
+## Nova solicitação: a programação é do pedido (dono, 15/11/2026)
+
+As datas da programação de compra não são do produto: são as datas em que **todos os produtos do pedido** acontecem. Na Nova solicitação:
+
+- **Bloco "Programação de compra do pedido"** (acima dos produtos, `OrderPlan` em `src/components/request-items.tsx`): "Programações" (1 = pedido único), intervalo (30, 45, 60 dias ou outro) e 1ª data, com a lista das datas. Vale para todas as linhas de produto.
+- **Bloco "Programação de compra" de cada produto**: o mesmo componente de antes (`SelectionQuantity` com `RequestScheduleFields`, prop `fixed`/`fixedPlan`), mas sem ligar, desligar, acrescentar ("+ Programação") nem tirar ("×") datas e sem intervalo e 1ª data próprios. "Programações" do gerador fica travado no número do pedido; "Gerar programação" reparte o total de caixas do produto nessas datas (caixas inteiras, containers e "+ Aumentar" / "− Diminuir" como antes). Cada data aceita a quantidade do produto; a quantidade da linha é a soma. No pedido único, o bloco do produto é só a quantidade (sem "Programações" nem "Gerar programação"). No aviso de caixas que faltam, só a saída "Aumentar o total" (reduzir as datas mudaria o pedido).
+- **Trocar o número de programações do pedido** reparte de novo a quantidade de cada produto nas datas novas (em caixas inteiras quando o produto tem caixa master).
+- **Servidor**: todas as linhas com a mesma programação (número, 1ª data e intervalo) ou nenhuma; senão, erro `schedule_mismatch` (`assertSameSchedule` em `src/app/app/actions/request-items.ts`). O formato gravado não muda (`requests.schedule` em cada solicitação do lote).
+- Cada data ainda precisa de quantidade maior que zero em cada produto (a regra de sempre do `parseRequestSchedule`).
+
 ## Nova solicitação: o mesmo card (dono, 14/11/2026)
+
+> **Substituído em 15/11/2026** quanto às datas: ver a seção acima (a programação é do pedido).
 
 > **Atualizado no mesmo dia** (pedido do dono): o card virou o **bloco "Programação de compra" completo** da Seleção (título, explicação, gerador, datas e cartões, ver "Um gerador só no portal") e a **linha "Quantidade" e "Unidade" saiu da tela**: os dois continuam no formulário (`p<n>.quantity` e `p<n>.unit`, ocultos; a unidade é "un"). O pedido único se digita em "Quantidade (peças)" do bloco, obrigatória, com o pedido mínimo do produto ("Pedido mínimo: 2.000 un"; abaixo dele, o aviso e o envio bloqueado; ao sair do campo, sobe ao mínimo). Com a programação, a quantidade é a soma das programações. Sem o teto de 6 datas. A explicação do bloco diz que a programação de cada produto vai com a solicitação para a Wellmix: a solicitação do cliente não vira pedido pai e filhos sozinha (esse caminho é Seleção → solicitação ao fornecedor → pedido de compra). Na solicitação aberta, a tabela se chama "Programação de compra" ("N programações a cada X dias", coluna "Data"). Os itens abaixo descrevem a primeira versão.
 
