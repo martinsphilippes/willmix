@@ -79,7 +79,34 @@ test("Nova solicitação (Wellmix): bloco do cliente, condições do pedido e av
     .locator("[data-order-terms-carrier]")
     .selectOption("portal:transportador");
   await expect(page.locator("[data-request-origin-missing]")).toHaveCount(0);
+  // Composição de containers: vazia sem produto; com a boneca, o container
+  // 1 da programação 1 com a ocupação, fechado; abre para ver o produto.
+  const composition = page.locator("[data-container-composition]");
+  await expect(composition).toHaveAttribute(
+    "data-container-composition",
+    "empty",
+  );
   await pickDoll(page);
+  await expect(composition).toHaveAttribute(
+    "data-container-composition",
+    "ready",
+  );
+  await expect(composition.locator('[data-composition-cell="1-1"]')).toHaveText(
+    /^\d+%$/,
+  );
+  await expect(composition.locator("[data-composition-product]")).toHaveCount(
+    0,
+  );
+  await composition.locator('[data-composition-toggle="1"]').click();
+  await expect(
+    composition.locator("[data-composition-product]").first(),
+  ).toContainText("Boneca");
+  // A lateral (composição e histórico) acompanha a rolagem (sticky).
+  expect(
+    await page
+      .locator("[data-request-side-sticky]")
+      .evaluate((el) => getComputedStyle(el).position),
+  ).toBe("sticky");
 
   // Contato igual ao do vendedor (o próprio login): recusado.
   await fillCustomerContacts(page, "mercado-maria");
@@ -123,6 +150,10 @@ test("Nova solicitação (Wellmix): bloco do cliente, condições do pedido e av
   await chooseOrderOrigin(page);
   await page.locator('[data-order-terms-operation-option="sale"]').check();
   await page.locator('[data-order-terms-format-option="wd"]').check();
+  await page
+    .locator("[data-order-terms-carrier]")
+    .selectOption("portal:transportador");
+  await page.locator("[data-order-terms-accept]").check();
   await pickDoll(page);
   await send(page);
 

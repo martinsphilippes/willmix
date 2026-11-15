@@ -7,6 +7,7 @@ import {
 } from "@/lib/order-terms";
 import type { RequestOrderTermsLabels } from "./request-order-terms";
 import type { RequestCustomerContactsLabels } from "./request-customer-contacts";
+import type { ContainerCompositionLabels } from "./container-composition";
 
 const record = <K extends string>(
   keys: readonly K[],
@@ -48,6 +49,7 @@ export function orderTermsLabels(t: Translate): RequestOrderTermsLabels {
     stock: t("orderTerms.stock"),
     disclaimerTitle: t("orderTerms.disclaimerTitle"),
     disclaimer: t("orderTerms.disclaimer"),
+    accept: t("orderTerms.accept"),
   };
 }
 
@@ -71,5 +73,26 @@ export function customerContactsLabels(
     email: t("customerContacts.email"),
     rule: t("customerContacts.rule"),
     roles: record(CONTACT_ROLES, (k) => t(`customerContacts.role.${k}`)),
+  };
+}
+
+/** Textos da Composição de containers, no idioma de quem vê. */
+export function compositionLabels(t: Translate): ContainerCompositionLabels {
+  return {
+    title: t("composition.title"),
+    hint: t("composition.hint"),
+    empty: t("composition.empty"),
+    container: t("composition.container"),
+    containerN: t("composition.containerN", { n: "{n}" }),
+    roundN: t("composition.roundN", { n: "{n}" }),
+    expand: t("composition.expand"),
+    collapse: t("composition.collapse"),
+    unused: t("composition.unused"),
+    reference: t("composition.reference", { code: "{code}", cbm: "{cbm}" }),
+    mixed: t("composition.mixed"),
+    missing: t("composition.missing", { names: "{names}" }),
+    tooBig: t("composition.tooBig", { names: "{names}" }),
+    cartons: t("composition.cartons", { cartons: "{cartons}" }),
+    intl: t.intl,
   };
 }

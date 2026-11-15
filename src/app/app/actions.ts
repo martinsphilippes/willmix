@@ -285,6 +285,7 @@ export async function createRequestAction(form: FormData) {
           originSet: str(form, "originSet"),
           originCountry: str(form, "originCountry"),
           productLineId: str(form, "productLineId"),
+          noReturnsAccepted: str(form, "noReturnsAccepted"),
         });
         await assertProductsMatchOrigin(
           items.map((i) => i.productId),

@@ -26,15 +26,15 @@ Pedido do dono (15/11/2026) para a tela `/app/requests/new`: um bloco do cliente
 
 Card "Condições do pedido", logo abaixo de Cliente/Solicitante/RCA. Valem para todos os produtos do lote (cada solicitação do lote guarda a mesma cópia).
 
-| Campo                            | Opções                                     | Obrigatório             |
-| -------------------------------- | ------------------------------------------ | ----------------------- |
-| Tipo de operação                 | TS (Trading Sales) · Venda                 | Sim                     |
-| Formato de venda                 | WD · Wellmix                               | Sim                     |
-| Formato Wellmix (só com Wellmix) | Pleno · Mega · Hiper · Ultra · Evo · Super | Sim, com Wellmix        |
-| Entrega → Transportador          | Transportadoras do portal e do Sankhya     | Não ("Não escolhido")   |
-| Entrega → Re-despacho            | As mesmas                                  | Não ("Sem re-despacho") |
-| País (de origem)                 | Países dos produtos do catálogo            | Sim                     |
-| Grupo de produto                 | Grupos com produto no país escolhido       | Sim                     |
+| Campo                            | Opções                                     | Obrigatório                        |
+| -------------------------------- | ------------------------------------------ | ---------------------------------- |
+| Tipo de operação                 | TS (Trading Sales) · Venda                 | Sim                                |
+| Formato de venda                 | WD · Wellmix                               | Sim                                |
+| Formato Wellmix (só com Wellmix) | Pleno · Mega · Hiper · Ultra · Evo · Super | Sim, com Wellmix                   |
+| Entrega → Transportador          | Transportadoras do portal e do Sankhya     | Sim (dono, 15/11/2026: ao menos 1) |
+| Entrega → Re-despacho            | As mesmas                                  | Não ("Sem re-despacho")            |
+| País (de origem)                 | Países dos produtos do catálogo            | Sim                                |
+| Grupo de produto                 | Grupos com produto no país escolhido       | Sim                                |
 
 ### 3.1 Entrega (Transportador e Re-despacho)
 
@@ -48,7 +48,7 @@ Card "Condições do pedido", logo abaixo de Cliente/Solicitante/RCA. Valem para
 - A ordem é essa: escolher o país libera os grupos daquele país; com os dois escolhidos, a busca de produto de cada linha só oferece os produtos deles (`/api/products/search?scope=catalog&country=…&line=…`). Sem os dois, o campo de produto espera ("Escolha o país de origem e o grupo de produto…").
 - **Grupo de produto** = a linha do produto (`products.lineId`), que é o grupo do Sankhya (TGFGRU, `CODGRUPOPROD`).
 - **País de origem** = o país do fornecedor do produto: o fornecedor do cadastro (`supplierId`) ou, sem ele, o fornecedor que veio do Sankhya (`sankhyaRefs.CODPARCFORN` → parceiro com esse código). Siglas e grafias se juntam ("CN", "China" e "CHINA" = CHINA).
-- **Sem fornecedor com país:** o produto fica em "País não informado no cadastro", que também se escolhe (nada é inventado). Produção em 15/11/2026 (consulta de leitura): de ~14 mil produtos ativos, ~3,6 mil têm país pelo fornecedor do cadastro e ~0,7 mil pelo fornecedor do Sankhya; o resto cai em "não informado" até o cadastro do fornecedor ser completado.
+- **Sem país, não vende (dono, 15/11/2026):** produto sem fornecedor com país não aparece na lista de países nem na busca do pedido, e o servidor recusa. Produção em 15/11/2026 (consulta de leitura): de 13.909 produtos ativos, 4.184 têm país; **9.725 não têm fornecedor ligado no portal** (nem `supplierId` nem `CODPARCFORN` na carga, que trouxe só CODPROD, CODVOL e grupo da maioria). Exemplos: 25260 JARRA VIDRO BOROSSILICATO COM TAMPA LUME 1,5L (JARRAS INDIVIDUAIS), 25255 BOLA DE FUTEBOL SOCIAL N5 KICK PRO COLORFUL (BOLAS), 25250 CJ 4 PORTA CONDIMENTOS BOROSSILICATO HAPPY PRETO (PORTA TEMPEROS), 25246 BOLA INTERATIVA PARA PET BALLROPE (BRINQUEDOS), 25244 CJ 3 FORMAS ANTIADERENTE FENDI DELLY (FORMAS). Eles voltam assim que o fornecedor (e o país dele) chegar ao portal.
 - O índice produto → país e grupo é lido do banco e guardado por 10 minutos por instância (`src/lib/services/product-origin.ts`).
 - **Servidor:** todo produto do catálogo do lote precisa ser do país e do grupo escolhidos; senão o envio é recusado ("Há produto de outro país ou grupo…"). Produto fora do catálogo (sourcing) não tem cadastro para conferir e passa.
 
@@ -83,10 +83,26 @@ Nada existente foi removido ou alterado.
 - Tela: `src/components/request-order-terms.tsx`, `request-customer-contacts.tsx`, `request-order-terms-view.tsx`.
 - Testes: `tests/unit/order-terms.test.ts` e `tests/e2e/order-terms.spec.ts`.
 
-## 7. Em aberto (para o dono)
+## 7. Decisões do dono (15/11/2026, segunda rodada)
 
-- **Telefone do representante/vendedor:** o login do portal não tem telefone. Para a regra "não pode ser igual ao do representante" valer também no telefone, falta de onde ler o telefone dele (campo no login ou o e-mail/telefone do vendedor no Sankhya, TGFVEN).
-- **País dos produtos sem fornecedor:** ~10 mil produtos ativos sem país pelo fornecedor. Opções: completar o país no cadastro dos fornecedores ou ler o país de origem do produto no Sankhya (TGFPRO `CODPAIS`, preenchido só em ~190 produtos na carga atual).
-- **Transportador obrigatório?** Hoje é opcional ("Não escolhido").
-- **Aceite do aviso:** hoje é só exibido e registrado; dá para pedir uma caixa "Li e concordo" se quiser.
+- Os contatos são do cliente (sócio, comprador, financeiro e logística dele) e ficam gravados no banco do portal (`parties.customerContacts`).
+- Ao menos 1 transportador é obrigatório (o Re-despacho segue opcional).
+- O aviso tem a caixa obrigatória **"Li e concordo"**; a solicitação grava `noReturnsAccepted: true`.
+- Produto sem país de origem não é vendido: não aparece.
+- A busca por foto ou link sai da tela da Wellmix (o login do cliente continua com ela).
+
+## 8. Composição de containers (lateral direita)
+
+- Card "Composição de containers" abaixo do bloco do cliente e acima do "Histórico de compras do cliente".
+- **Tabela:** linhas = containers (Container 1, 2…); colunas = programações do pedido (nº e data).
+- **Célula:** ocupação do container naquela programação = soma das caixas dos produtos do pedido dentro dele (CBM das caixas ÷ CBM do container), para baixo, como nos cartões das programações ("<1%" para quase nada). Cores: verde a partir de 95% (cheio), âmbar de 60%, cinza abaixo.
+- **Conta (`src/lib/container-composition.ts`):** por programação, os produtos enchem os containers na ordem das linhas do formulário, em caixas master inteiras; a caixa que não cabe no que sobra vai para o container seguinte. Container de referência = o escolhido (20GP, 40GP, 40HC) na 1ª linha de produto; se outra linha escolheu outro, a tela avisa.
+- **Linhas fechadas ao abrir**; "▸ Container N" abre a linha e mostra, por produto, a ocupação dele naquele container e as caixas.
+- Produto sem caixa master ou CBM no cadastro, ou com a caixa maior que o container, fica fora da conta e é listado embaixo.
+- **Fixo na lateral:** a composição e o histórico ficam juntos num painel `sticky` (abaixo da barra do topo, `z-index` 20) que acompanha a rolagem da página nas telas grandes; no celular e no iPad em pé, ficam depois do formulário.
+
+## 9. Em aberto (para o dono)
+
+- **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" hoje confere só o e-mail.
+- **Fornecedor dos 9.725 produtos sem país:** trazer o `CODPARCFORN` (e o país do fornecedor) do Sankhya na carga, para eles voltarem à venda.
 - **Envio ao Sankhya:** tipo de operação, formato e transportadora ainda não vão para a nota do Sankhya (falta saber os campos/TOP de cada um).

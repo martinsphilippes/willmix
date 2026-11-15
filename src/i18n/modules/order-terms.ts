@@ -22,7 +22,7 @@ export const pt = {
   "orderTerms.tier.super": "Super",
   "orderTerms.delivery": "Entrega",
   "orderTerms.carrier": "Transportador",
-  "orderTerms.carrierNone": "Não escolhido",
+  "orderTerms.carrierNone": "Escolha o transportador",
   "orderTerms.redispatch": "Re-despacho",
   "orderTerms.redispatchNone": "Sem re-despacho",
   "orderTerms.carrierSankhya": "Sankhya",
@@ -49,6 +49,30 @@ export const pt = {
   "orderTerms.disclaimerTitle": "Atenção: sem devoluções",
   "orderTerms.disclaimer":
     "Não nos responsabilizamos por defeitos ou quebras de produtos neste modelo de venda, ou seja, não há devoluções previstas para esta operação. Isto acontece, pois nosso processo prevê que o cliente seja o responsável pelas inspeções e aprovações necessárias durante o processo de produção.",
+  "orderTerms.accept": "Li e concordo",
+  "reqBatch.error.order_terms_accept":
+    'Marque "Li e concordo" no aviso de que não há devoluções.',
+  "reqBatch.error.order_terms_carrier_required":
+    "Escolha ao menos o transportador.",
+  "composition.title": "Composição de containers",
+  "composition.hint":
+    "Ocupação de cada container em cada programação, somando os produtos do pedido (em caixas master inteiras, pelo CBM). Abra a linha para ver cada produto.",
+  "composition.empty":
+    "Escolha os produtos e as quantidades: a ocupação aparece aqui.",
+  "composition.container": "Container",
+  "composition.containerN": "Container {n}",
+  "composition.roundN": "Programação {n}",
+  "composition.expand": "Abrir",
+  "composition.collapse": "Fechar",
+  "composition.unused": "—",
+  "composition.reference": "Container de referência: {code} ({cbm} m³).",
+  "composition.mixed":
+    "Há produto com outro container escolhido; a conta usa este.",
+  "composition.missing":
+    "Sem caixa master ou CBM no cadastro (fora da conta): {names}.",
+  "composition.tooBig":
+    "A caixa não cabe no container (fora da conta): {names}.",
+  "composition.cartons": "{cartons} cx",
   "orderTerms.view.title": "Condições do pedido",
   "orderTerms.view.none": "—",
   "reqBatch.error.order_terms_operation":
@@ -115,7 +139,7 @@ export const en: Record<keyof typeof pt, string> = {
   "orderTerms.tier.super": "Super",
   "orderTerms.delivery": "Delivery",
   "orderTerms.carrier": "Carrier",
-  "orderTerms.carrierNone": "Not chosen",
+  "orderTerms.carrierNone": "Choose the carrier",
   "orderTerms.redispatch": "Redispatch",
   "orderTerms.redispatchNone": "No redispatch",
   "orderTerms.carrierSankhya": "Sankhya",
@@ -142,6 +166,29 @@ export const en: Record<keyof typeof pt, string> = {
   "orderTerms.disclaimerTitle": "Attention: no returns",
   "orderTerms.disclaimer":
     "We are not responsible for product defects or breakage in this sales model, that is, no returns are foreseen for this operation. This is because our process provides that the customer is responsible for the inspections and approvals required during production.",
+  "orderTerms.accept": "I have read and agree",
+  "reqBatch.error.order_terms_accept":
+    'Tick "I have read and agree" on the no-returns notice.',
+  "reqBatch.error.order_terms_carrier_required": "Choose at least the carrier.",
+  "composition.title": "Container composition",
+  "composition.hint":
+    "Occupancy of each container in each schedule, adding up the order's products (whole master cartons, by CBM). Open a row to see each product.",
+  "composition.empty":
+    "Choose the products and quantities: the occupancy shows up here.",
+  "composition.container": "Container",
+  "composition.containerN": "Container {n}",
+  "composition.roundN": "Schedule {n}",
+  "composition.expand": "Open",
+  "composition.collapse": "Close",
+  "composition.unused": "—",
+  "composition.reference": "Reference container: {code} ({cbm} m³).",
+  "composition.mixed":
+    "A product has another container chosen; the calculation uses this one.",
+  "composition.missing":
+    "No master carton or CBM registered (left out): {names}.",
+  "composition.tooBig":
+    "The carton does not fit the container (left out): {names}.",
+  "composition.cartons": "{cartons} ctn",
   "orderTerms.view.title": "Order terms",
   "orderTerms.view.none": "—",
   "reqBatch.error.order_terms_operation":
@@ -207,7 +254,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderTerms.tier.super": "Super",
   "orderTerms.delivery": "交货",
   "orderTerms.carrier": "承运商",
-  "orderTerms.carrierNone": "未选择",
+  "orderTerms.carrierNone": "请选择承运商",
   "orderTerms.redispatch": "转运",
   "orderTerms.redispatchNone": "无转运",
   "orderTerms.carrierSankhya": "Sankhya",
@@ -232,6 +279,25 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderTerms.disclaimerTitle": "注意：不予退货",
   "orderTerms.disclaimer":
     "在此销售模式下，我们不对产品缺陷或破损负责，即本业务不提供退货。这是因为我们的流程规定，客户负责生产过程中所需的检验和确认。",
+  "orderTerms.accept": "我已阅读并同意",
+  "reqBatch.error.order_terms_accept":
+    "请在不予退货的提示中勾选“我已阅读并同意”。",
+  "reqBatch.error.order_terms_carrier_required": "请至少选择承运商。",
+  "composition.title": "集装箱组成",
+  "composition.hint":
+    "每个排程中每个集装箱的占用率，按订单产品合计（整箱外箱，按 CBM）。展开一行查看每个产品。",
+  "composition.empty": "选择产品和数量后，占用率会显示在这里。",
+  "composition.container": "集装箱",
+  "composition.containerN": "集装箱 {n}",
+  "composition.roundN": "排程 {n}",
+  "composition.expand": "展开",
+  "composition.collapse": "收起",
+  "composition.unused": "—",
+  "composition.reference": "参考集装箱：{code}（{cbm} m³）。",
+  "composition.mixed": "有产品选择了其他集装箱；计算使用此集装箱。",
+  "composition.missing": "未登记外箱或 CBM（不计入）：{names}。",
+  "composition.tooBig": "外箱放不进集装箱（不计入）：{names}。",
+  "composition.cartons": "{cartons} 箱",
   "orderTerms.view.title": "订单条件",
   "orderTerms.view.none": "—",
   "reqBatch.error.order_terms_operation": "请选择业务类型（TS 或销售）。",

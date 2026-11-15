@@ -519,6 +519,11 @@ export async function fillOrderTerms(
     await terms
       .locator("[data-order-terms-tier]")
       .selectOption(options.tier ?? "pleno");
+  // Ao menos o transportador e o "Li e concordo" do aviso (obrigatórios).
+  await terms
+    .locator("[data-order-terms-carrier]")
+    .selectOption("portal:transportador");
+  await terms.locator("[data-order-terms-accept]").check();
   await chooseOrderOrigin(page, options.country, options.lineId);
 }
 

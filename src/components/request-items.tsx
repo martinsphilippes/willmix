@@ -22,6 +22,7 @@ import {
   type ProductFill,
 } from "@/components/request-product-fields";
 import type { ScheduleLabels } from "@/components/request-schedule";
+import { useRequestCustomer } from "@/components/request-customer-context";
 import {
   SelectionQuantity,
   type GenerateLabels,
@@ -155,6 +156,14 @@ export function RequestItems({
       manual: dates.map((_, i) => !!pins[i]),
     };
   }, [count, planFirst, intervalDays, pins]);
+  // Composição de containers (docs/ORDER_TERMS.md seção 8): as datas das
+  // programações e a carga de cada linha vão para o bloco ao lado.
+  const shared = useRequestCustomer();
+  const setPlanDates = shared?.setPlanDates;
+  const setLoad = shared?.setLoad;
+  useEffect(() => {
+    setPlanDates?.(plan.dates ?? []);
+  }, [plan.dates, setPlanDates]);
   const [next, setNext] = useState(1);
   // Produto (e variação) escolhidos por linha, com a ficha: o pedido mínimo
   // deles vale para a quantidade; com variação escolhida, o mínimo é o dela.
@@ -297,6 +306,7 @@ export function RequestItems({
     setNext((n) => n + 1);
   }
   function remove(index: number) {
+    setLoad?.(`row-${index}`, null);
     setRows((r) => (r.length > 1 ? r.filter((i) => i !== index) : r));
   }
 
@@ -457,6 +467,21 @@ export function RequestItems({
                     })()}
                     onQuantityBlur={() => floorToMoq(index)}
                     fixedPlan={plan}
+                    onLoadChange={(load) =>
+                      setLoad?.(
+                        `row-${index}`,
+                        load
+                          ? {
+                              ...load,
+                              key: `row-${index}`,
+                              name:
+                                product[index]?.fill?.productName ||
+                                product[index]?.fill?.label ||
+                                productLabel,
+                            }
+                          : null,
+                      )
+                    }
                     className="col-span-2 sm:col-span-4"
                   />
                 );

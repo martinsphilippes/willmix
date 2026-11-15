@@ -46,6 +46,7 @@ export interface RequestOrderTermsLabels {
   stock: string;
   disclaimerTitle: string;
   disclaimer: string;
+  accept: string;
 }
 
 interface Country {
@@ -70,9 +71,6 @@ interface Options {
   carriers: Carrier[];
   sankhya: "ok" | "off" | "error";
 }
-
-/** Valor do <select> do país: a chave, ou "~" para "não informado" (chave ""). */
-const UNKNOWN = "~";
 
 /**
  * Condições do pedido na Nova solicitação (dono, 15/11/2026;
@@ -119,11 +117,10 @@ export function RequestOrderTerms({
   useEffect(() => {
     if (!country) return;
     const controller = new AbortController();
-    const key = country === UNKNOWN ? "" : country;
     (async () => {
       try {
         const res = await fetch(
-          `/api/requests/order-options?country=${encodeURIComponent(key)}`,
+          `/api/requests/order-options?country=${encodeURIComponent(country)}`,
           { signal: controller.signal },
         );
         if (!res.ok) throw new Error(String(res.status));
@@ -139,11 +136,7 @@ export function RequestOrderTerms({
 
   // A busca de produto lê o país e o grupo escolhidos.
   useEffect(() => {
-    setOrigin?.(
-      country && lineId
-        ? { country: country === UNKNOWN ? "" : country, lineId }
-        : null,
-    );
+    setOrigin?.(country && lineId ? { country, lineId } : null);
   }, [country, lineId, setOrigin]);
 
   if (stock)
@@ -256,8 +249,15 @@ export function RequestOrderTerms({
           <>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label={labels.carrier}>
-                <Select name="carrier" defaultValue="" data-order-terms-carrier>
-                  <option value="">{labels.carrierNone}</option>
+                <Select
+                  name="carrier"
+                  defaultValue=""
+                  required
+                  data-order-terms-carrier
+                >
+                  <option value="" disabled>
+                    {labels.carrierNone}
+                  </option>
                   {options.carriers.map((c) => (
                     <option key={carrierValue(c)} value={carrierValue(c)}>
                       {carrierLabel(c)}
@@ -311,11 +311,14 @@ export function RequestOrderTerms({
               <option value="" disabled>
                 {labels.countryChoose}
               </option>
-              {(options?.countries ?? []).map((c) => (
-                <option key={c.key || UNKNOWN} value={c.key || UNKNOWN}>
-                  {`${c.key ? c.name : labels.countryUnknown} — ${count(c.products)}`}
-                </option>
-              ))}
+              {/* Produto sem país não é vendido (dono, 15/11/2026). */}
+              {(options?.countries ?? [])
+                .filter((c) => c.key)
+                .map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {`${c.name} — ${count(c.products)}`}
+                  </option>
+                ))}
             </Select>
           </Field>
           <Field label={labels.group}>
@@ -345,11 +348,7 @@ export function RequestOrderTerms({
             </Select>
           </Field>
         </div>
-        <input
-          type="hidden"
-          name="originCountry"
-          value={country === UNKNOWN ? "" : country}
-        />
+        <input type="hidden" name="originCountry" value={country} />
         <input type="hidden" name="originSet" value={country ? "1" : ""} />
         <input type="hidden" name="productLineId" value={lineId} />
         <p className="text-xs text-zinc-500">{labels.originHint}</p>
@@ -364,6 +363,18 @@ export function RequestOrderTerms({
         <p className="font-semibold">{labels.disclaimerTitle}</p>
         <p className="mt-1 leading-relaxed">{labels.disclaimer}</p>
         <input type="hidden" name="noReturnsNotice" value="1" />
+        {/* "Li e concordo" obrigatório (dono, 15/11/2026). */}
+        <label className="mt-2 flex cursor-pointer items-start gap-2 font-semibold">
+          <input
+            type="checkbox"
+            name="noReturnsAccepted"
+            value="1"
+            required
+            className="mt-0.5 h-4 w-4 shrink-0"
+            data-order-terms-accept
+          />
+          <span>{labels.accept}</span>
+        </label>
       </div>
     </section>
   );

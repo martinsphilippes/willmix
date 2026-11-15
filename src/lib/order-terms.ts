@@ -51,11 +51,11 @@ export interface OrderTerms {
   saleFormat: SaleFormat;
   /** Só com o formato Wellmix. */
   wellmixTier: WellmixTier | null;
-  /** Transportador; nulo = não escolhido. */
+  /** Transportador (obrigatório desde 15/11/2026; nulo só nas antigas). */
   carrier: CarrierChoice | null;
   /** Re-despacho; nulo = sem re-despacho. */
   redispatch: CarrierChoice | null;
-  /** País de origem (chave normalizada, ver `countryKey`); "" = não informado no cadastro. */
+  /** País de origem (chave normalizada, ver `countryKey`). Produto sem país não é vendido. */
   originCountry: string;
   /** Nome do país como a tela mostrou. */
   originCountryName: string;
@@ -64,6 +64,8 @@ export interface OrderTerms {
   productLineName: string;
   /** O aviso "sem devoluções" estava na tela no envio. */
   noReturnsNotice: true;
+  /** Quem lançou marcou "Li e concordo" no aviso (obrigatório). */
+  noReturnsAccepted?: boolean;
 }
 
 /* ------------------------------------------------------------------ */

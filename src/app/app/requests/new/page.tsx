@@ -39,9 +39,11 @@ import { CustomerPurchaseHistory } from "@/components/customer-purchase-history"
 import { RequestCustomerContacts } from "@/components/request-customer-contacts";
 import { RequestOrderTerms } from "@/components/request-order-terms";
 import {
+  compositionLabels,
   customerContactsLabels,
   orderTermsLabels,
 } from "@/components/order-terms-labels";
+import { ContainerComposition } from "@/components/container-composition";
 import { SankhyaPurchaseHistory } from "@/components/sankhya-purchase-history";
 import { sankhyaHistoryLabels } from "@/components/sankhya-history-labels";
 import {
@@ -881,25 +883,37 @@ export default async function NewRequestPage({
           </form>
         </Card>
 
-        {/* Histórico de compras do cliente (dono, 14/11/2026;
+        {/* Lateral fixa (dono, 15/11/2026): a Composição de containers e,
+            embaixo dela, o Histórico de compras do cliente acompanham a
+            rolagem da página (sticky), sempre na lateral nas telas grandes.
+            Fora do "adicionar à solicitação". */}
+        {addToRequest ? null : (
+          <div
+            className="min-w-0 max-w-2xl lg:col-start-2 lg:row-start-2 lg:max-w-none lg:self-stretch"
+            data-request-side
+          >
+            <div
+              className="space-y-4 lg:sticky lg:top-[4.75rem] lg:z-20 lg:max-h-[calc(100dvh-5.75rem)] lg:overflow-y-auto"
+              data-request-side-sticky
+            >
+              <ContainerComposition labels={compositionLabels(t)} />
+              {/* Histórico de compras do cliente (dono, 14/11/2026;
             docs/PURCHASE_HISTORY.md): os pedidos do cliente escolhido; o login
             do cliente vê os dele. Fora do "adicionar à solicitação" (o cliente
             já é o da solicitação). */}
-        {addToRequest ? null : isWellmix(user) ? (
-          // Wellmix (dono, 15/11/2026): o histórico lido na hora no Sankhya
-          // (docs/PURCHASE_HISTORY.md seção 9); sem Sankhya configurado ou
-          // sem o código do cliente, o histórico gravado no portal.
-          <SankhyaPurchaseHistory
-            className="max-w-2xl lg:col-start-2 lg:row-start-2 lg:max-w-none"
-            labels={sankhyaHistoryLabels(t)}
-            fallback={<CustomerPurchaseHistory labels={historyLabels} />}
-          />
-        ) : (
-          <CustomerPurchaseHistory
-            self
-            className="max-w-2xl lg:col-start-2 lg:row-start-2 lg:max-w-none"
-            labels={historyLabels}
-          />
+              {addToRequest ? null : isWellmix(user) ? (
+                // Wellmix (dono, 15/11/2026): o histórico lido na hora no Sankhya
+                // (docs/PURCHASE_HISTORY.md seção 9); sem Sankhya configurado ou
+                // sem o código do cliente, o histórico gravado no portal.
+                <SankhyaPurchaseHistory
+                  labels={sankhyaHistoryLabels(t)}
+                  fallback={<CustomerPurchaseHistory labels={historyLabels} />}
+                />
+              ) : (
+                <CustomerPurchaseHistory self labels={historyLabels} />
+              )}
+            </div>
+          </div>
         )}
       </RequestCustomerProvider>
     </>

@@ -23,10 +23,11 @@ const RAW = z.object({
   operationType: z.enum(OPERATION_TYPES, { error: "order_terms_operation" }),
   saleFormat: z.enum(SALE_FORMATS, { error: "order_terms_format" }),
   wellmixTier: z.enum(WELLMIX_TIERS).nullable(),
-  carrier: z.string().max(80),
+  carrier: z.string().min(1, { error: "order_terms_carrier_required" }).max(80),
   redispatch: z.string().max(80),
   originSet: z.literal("1", { error: "order_terms_origin" }),
-  originCountry: z.string().max(80),
+  originCountry: z.string().min(1, { error: "order_terms_origin" }).max(80),
+  noReturnsAccepted: z.literal("1", { error: "order_terms_accept" }),
   productLineId: z
     .string()
     .regex(/^[A-Za-z0-9_-]{1,64}$/, { error: "order_terms_origin" }),
@@ -75,6 +76,7 @@ export async function resolveOrderTerms(
     productLineId: line.id,
     productLineName: line.name,
     noReturnsNotice: true,
+    noReturnsAccepted: true,
   };
 }
 

@@ -202,6 +202,7 @@ describe("país de origem, grupo e entrega", () => {
       originSet: "1",
       originCountry: "CHINA",
       productLineId: "linha-brinquedos",
+      noReturnsAccepted: "1",
     });
     expect(resolved).toMatchObject({
       operationType: "ts",
@@ -211,6 +212,7 @@ describe("país de origem, grupo e entrega", () => {
       redispatch: { source: "sankhya", code: "812", name: "RODONAVES" },
       originCountryName: "CHINA",
       productLineId: "linha-brinquedos",
+      noReturnsAccepted: true,
     });
     await expect(
       orderTerms.assertProductsMatchOrigin(["prod-boneca", null], resolved),
@@ -223,11 +225,12 @@ describe("país de origem, grupo e entrega", () => {
         operationType: "sale",
         saleFormat: "wellmix",
         wellmixTier: "",
-        carrier: "",
+        carrier: "portal:transportador",
         redispatch: "",
         originSet: "1",
         originCountry: "CHINA",
         productLineId: "linha-brinquedos",
+        noReturnsAccepted: "1",
       }),
     ).rejects.toThrow("order_terms_tier");
     await expect(
@@ -240,8 +243,36 @@ describe("país de origem, grupo e entrega", () => {
         originSet: "1",
         originCountry: "CHINA",
         productLineId: "linha-brinquedos",
+        noReturnsAccepted: "1",
       }),
     ).rejects.toThrow("order_terms_operation");
+  });
+
+  it('transportador e "Li e concordo" obrigatórios; sem país não vende', async () => {
+    const base = {
+      operationType: "sale",
+      saleFormat: "wd",
+      wellmixTier: "",
+      carrier: "portal:transportador",
+      redispatch: "",
+      originSet: "1",
+      originCountry: "CHINA",
+      productLineId: "linha-brinquedos",
+      noReturnsAccepted: "1",
+    };
+    await expect(
+      orderTerms.resolveOrderTerms({ ...base, carrier: "" }),
+    ).rejects.toThrow("order_terms_carrier_required");
+    await expect(
+      orderTerms.resolveOrderTerms({ ...base, noReturnsAccepted: "" }),
+    ).rejects.toThrow("order_terms_accept");
+    await expect(
+      orderTerms.resolveOrderTerms({ ...base, originCountry: "" }),
+    ).rejects.toThrow("order_terms_origin");
+    expect((await origin.originCountries()).every((c) => c.key !== "")).toBe(
+      true,
+    );
+    expect(await origin.originGroups("")).toEqual([]);
   });
 
   it("a rota das opções é só da Wellmix", async () => {

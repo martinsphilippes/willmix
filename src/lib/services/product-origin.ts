@@ -14,8 +14,8 @@ import { hiddenBookingProductIds } from "./booking-visibility";
  * - País de origem = o país do fornecedor do produto: o fornecedor do
  *   cadastro (`supplierId`) ou, sem ele, o fornecedor que veio do Sankhya
  *   (`sankhyaRefs.CODPARCFORN` → parceiro com esse código). Sem nenhum dos
- *   dois, o produto fica em "País não informado" (chave ""), que também se
- *   escolhe: nada é inventado.
+ *   dois, o produto não tem país e não é vendido por aqui (dono,
+ *   15/11/2026): não aparece na lista nem na busca.
  *
  * O índice (produto → país e grupo) é lido do banco e guardado por alguns
  * minutos por instância: são ~14 mil produtos e ~6 mil fornecedores.
@@ -111,12 +111,15 @@ export async function productOrigin(
   return { country: countryKey(supplier?.country), lineId: product.lineId };
 }
 
-/** Os países de origem dos produtos do catálogo, o "não informado" por último. */
+/**
+ * Os países de origem dos produtos do catálogo. Produto sem país não é
+ * vendido (dono, 15/11/2026): fica fora da lista e da busca do pedido.
+ */
 export async function originCountries(): Promise<OriginCountry[]> {
   const index = await originIndex();
   const counts = new Map<string, number>();
   for (const { country } of index.byProduct.values())
-    counts.set(country, (counts.get(country) ?? 0) + 1);
+    if (country) counts.set(country, (counts.get(country) ?? 0) + 1);
   return [...counts.entries()]
     .map(([key, products]) => ({
       key,
@@ -130,6 +133,7 @@ export async function originCountries(): Promise<OriginCountry[]> {
 
 /** Os grupos (linhas) com produto do catálogo no país escolhido. */
 export async function originGroups(country: string): Promise<OriginGroup[]> {
+  if (!country) return [];
   const index = await originIndex();
   const counts = new Map<string, number>();
   for (const o of index.byProduct.values())
@@ -155,8 +159,9 @@ export async function productIdsOfOrigin(
   country: string,
   lineId: string,
 ): Promise<Set<string>> {
-  const index = await originIndex();
   const ids = new Set<string>();
+  if (!country) return ids;
+  const index = await originIndex();
   for (const [id, o] of index.byProduct)
     if (o.country === country && o.lineId === lineId) ids.add(id);
   return ids;

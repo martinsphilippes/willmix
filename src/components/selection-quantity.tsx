@@ -267,6 +267,15 @@ const fill = (s: string, vars: Record<string, string | number>) =>
 
 const usable = (i: SelectionCarton) => !!(i.masterCartonQty && i.cbmPerCarton);
 
+/** A carga de um produto para a Composição de containers. */
+export interface SelectionLoad {
+  pieces: number[];
+  masterCartonQty: number | null;
+  cbmPerCarton: number | null;
+  containerCode: string | null;
+  capacityCbm: number | null;
+}
+
 export function SelectionQuantity({
   label,
   hint,
@@ -292,6 +301,7 @@ export function SelectionQuantity({
   moq = null,
   onQuantityBlur,
   fixedPlan = null,
+  onLoadChange,
 }: {
   label: string;
   hint: string;
@@ -348,6 +358,12 @@ export function SelectionQuantity({
    * único, só a quantidade.
    */
   fixedPlan?: FixedSchedulePlan | null;
+  /**
+   * Composição de containers (Nova solicitação; docs/ORDER_TERMS.md seção
+   * 8): as peças de cada programação, a caixa do item e o container
+   * escolhido, a cada mudança. Nulo = sem item.
+   */
+  onLoadChange?: (load: SelectionLoad | null) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const perRoundId = useId();
@@ -612,6 +628,34 @@ export function SelectionQuantity({
     active?.setCustomValidity(belowMoq ? belowText : "");
     other?.setCustomValidity("");
   }, [belowMoq, belowText, piecesLocked]);
+  // Composição de containers: a carga deste produto, depois de cada
+  // renderização (as rodadas da tela estão em `liveRef`, escritas pelo gerador).
+  const lastLoad = useRef<string>("");
+  const emitLoad = useEffectEvent(() => {
+    if (!onLoadChange) return;
+    const single = Number(String(qty).replace(",", ".")) || 0;
+    const live = liveRef.current.length
+      ? liveRef.current
+      : single > 0
+        ? [single]
+        : [];
+    const load: SelectionLoad | null = item
+      ? {
+          pieces: [...live],
+          masterCartonQty: item.masterCartonQty ?? null,
+          cbmPerCarton: item.cbmPerCarton ?? null,
+          containerCode: container || null,
+          capacityCbm: capacity,
+        }
+      : null;
+    const text = JSON.stringify(load);
+    if (text === lastLoad.current) return;
+    lastLoad.current = text;
+    onLoadChange(load);
+  });
+  useEffect(() => {
+    emitLoad();
+  });
   const hasCarton = !!(item && usable(item) && capacity);
   const perContainer =
     hasCarton && item
