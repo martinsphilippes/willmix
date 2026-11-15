@@ -346,7 +346,8 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   )?.match(/#(\d+)/)?.[1];
   expect(orderNumber).toBeTruthy();
   await expect(
-    page.getByText("Preparação, arte e certificação").first(),
+    // Fase 5e: o selo do pedido mostra o marco atual (não a etapa).
+    page.getByText("1. Pedido novo").first(),
   ).toBeVisible();
   // Wellmix (fase 3, docs/MILESTONES.md): a linha do tempo dos 16 marcos no
   // lugar da tabela "Etapas do pedido" (que não aparece mais para ela).
