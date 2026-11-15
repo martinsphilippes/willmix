@@ -171,4 +171,108 @@ describe("venda", () => {
     const r = await store.get("stock_reservations", panela.reservationId!);
     expect(r!.status).toBe("cancelled");
   });
+
+  it("NF do financeiro, expedição com baixa no estoque e entrega com comprovante", async () => {
+    const store = getStore();
+    const { stockInBrazil } = await import("@/lib/services/stock");
+    const before = (await stockInBrazil("prod-panela")).quantity;
+    const order = await so.openSalesOrder(admin, customerId);
+    await so.updateSalesOrder(admin, order.id, {
+      lines: [{ productId: "prod-panela", quantity: 20, unitPrice: 25 }],
+      paymentConditionId: null,
+      currency: "BRL",
+      deliveryDate: "2099-02-10",
+      deliveryWindow: null,
+      note: null,
+      purchaseOrderId: null,
+    });
+    const confirmed = await so.confirmSalesOrder(admin, order.id);
+    const reservationId = confirmed.lines[0].reservationId!;
+    const ship = (carrierId: string | null, customerPickup: boolean) =>
+      so.shipSalesOrder(admin, order.id, {
+        carrierId,
+        customerPickup,
+        freightValue: 150,
+        shippedOn: "2099-02-09",
+      });
+    // Sem a NF de venda não expede; só o financeiro (ou o admin) registra.
+    await expect(ship(null, true)).rejects.toThrow("invoice_required");
+    await expect(
+      so.registerSalesInvoice(supplier, order.id, {
+        number: "1",
+        documentId: null,
+      }),
+    ).rejects.toThrow();
+    await so.registerSalesInvoice(admin, order.id, {
+      number: "NF-5501",
+      documentId: null,
+    });
+    await expect(ship("nao-existe", false)).rejects.toThrow("carrier_required");
+    const shipped = await ship(null, true);
+    expect(shipped).toMatchObject({
+      status: "shipped",
+      customerPickup: true,
+      freightValue: 150,
+    });
+    // A reserva virou baixa por venda ligada à ordem.
+    expect((await store.get("stock_reservations", reservationId))!.status).toBe(
+      "used",
+    );
+    const moves = await store.list("stock_movements", {
+      filter: { salesOrderId: order.id },
+    });
+    expect(moves).toEqual([
+      expect.objectContaining({ kind: "sale_out", quantity: -20 }),
+    ]);
+    expect((await stockInBrazil("prod-panela")).quantity).toBe(before - 20);
+    await expect(so.cancelSalesOrder(admin, order.id)).rejects.toThrow(
+      "sales_order_shipped",
+    );
+    // Entrega: quem recebeu e o comprovante.
+    await expect(
+      so.deliverSalesOrder(admin, order.id, {
+        deliveredOn: null,
+        receivedBy: "Maria",
+        proofDocumentId: null,
+      }),
+    ).rejects.toThrow("proof_required");
+    await so.deliverSalesOrder(admin, order.id, {
+      deliveredOn: "2099-02-10",
+      receivedBy: "Maria",
+      proofDocumentId: "doc-canhoto",
+    });
+    expect((await store.get("sales_orders", order.id))!).toMatchObject({
+      status: "delivered",
+      receivedBy: "Maria",
+    });
+  });
+
+  it("linha na chegada só expede com estoque livre no Brasil", async () => {
+    const order = await so.openSalesOrder(admin, customerId);
+    await so.updateSalesOrder(admin, order.id, {
+      lines: [{ productId: "prod-jarra", quantity: 10, unitPrice: 30 }],
+      paymentConditionId: null,
+      currency: "BRL",
+      deliveryDate: "2099-03-01",
+      deliveryWindow: null,
+      note: null,
+      purchaseOrderId: null,
+    });
+    await so.confirmSalesOrder(admin, order.id);
+    await so.registerSalesInvoice(admin, order.id, {
+      number: "NF-5502",
+      documentId: null,
+    });
+    await expect(
+      so.shipSalesOrder(admin, order.id, {
+        carrierId: null,
+        customerPickup: true,
+        freightValue: null,
+        shippedOn: null,
+      }),
+    ).rejects.toThrow("stock_insufficient");
+    expect((await getStore().get("sales_orders", order.id))!.status).toBe(
+      "confirmed",
+    );
+  });
 });

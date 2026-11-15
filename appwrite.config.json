@@ -7936,7 +7936,9 @@
           "elements": [
             "draft",
             "confirmed",
-            "cancelled"
+            "cancelled",
+            "shipped",
+            "delivered"
           ]
         },
         {
@@ -8007,6 +8009,105 @@
         },
         {
           "key": "confirmedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "invoiceNumber",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "invoiceDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "invoicedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "invoicedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "carrierId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "customerPickup",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "freightValue",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "shippedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "shippedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "deliveredAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "receivedBy",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "proofDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "deliveredByUserId",
           "required": false,
           "array": false,
           "default": null,
@@ -8905,6 +9006,14 @@
         },
         {
           "key": "locationId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "salesOrderId",
           "required": false,
           "array": false,
           "default": null,

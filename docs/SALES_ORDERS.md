@@ -45,12 +45,44 @@ Produtos.
 ## V8: agendamento da entrega
 
 Data e janela ficam na ordem. A **Agenda de entregas** em
-`/app/sales-orders` lista as ordens confirmadas de hoje em diante.
+`/app/sales-orders` lista as ordens confirmadas ou expedidas (ainda não
+entregues) de hoje em diante.
 
 Código: `src/lib/services/sales-orders.ts`, ações em
 `src/app/app/actions/sales-orders.ts`. Teste: `tests/unit/sales-orders.test.ts`.
 
+## NF de venda, expedição (baixa) e entrega ao cliente
+
+Decisões do dono (15/11/2026):
+
+1. **NF de venda antes da expedição.** Ao confirmar a ordem, o financeiro
+   (função "finance"; sem ninguém, os administradores) é avisado. Ele emite a
+   NF no Sankhya e registra na ordem o número e, se quiser, o arquivo. Quem
+   registra: a tela Financeiro aberta ou o administrador. Sem a NF a ordem não
+   expede (`invoice_required`).
+2. **Baixa na expedição.** "Expedir e dar baixa no estoque" grava a
+   transportadora cadastrada (ou "o cliente retira"), a data de saída e o frete
+   (R$). A ordem fica **Expedida** e cada linha sai do estoque no Brasil:
+   - a reserva viva da ordem vira baixa por venda (reserva "usada");
+   - a linha sem reserva viva (na chegada ou com a reserva vencida) sai do
+     estoque livre. Antes de gravar qualquer baixa, o sistema confere se o
+     livre basta para todas as linhas (`stock_insufficient`).
+
+   Toda baixa é um `stock_movements` do tipo `sale_out` com `salesOrderId`.
+   Expedida, a ordem não cancela mais.
+3. **Entrega.** "Confirmar a entrega" pede a data, quem recebeu e o
+   comprovante (canhoto). A ordem fica **Entregue**.
+
+| Dado | Onde |
+| --- | --- |
+| NF de venda | `sales_orders.invoiceNumber`, `invoiceDocumentId`, `invoicedAt`, `invoicedByUserId` |
+| Expedição | `carrierId`, `customerPickup`, `freightValue`, `shippedAt`, `shippedByUserId` |
+| Entrega | `deliveredAt`, `receivedBy`, `proofDocumentId`, `deliveredByUserId` |
+| Baixa | `stock_movements.salesOrderId` |
+
+Os arquivos (NF e comprovante) são documentos internos da Wellmix.
+
 ## Fica para depois
 
-- Ligar a ordem de venda à baixa por venda (usar a reserva na entrega) e à
-  programação do transporte até o cliente.
+- Devolução depois da expedição (estorno da baixa).
+- Frete da venda no Financeiro (contas a pagar da transportadora).

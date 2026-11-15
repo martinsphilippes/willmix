@@ -76,6 +76,8 @@ export async function recordSaleOut(
     quantity: number;
     orderId: string | null;
     note: string | null;
+    /** Ordem de venda expedida (docs/SALES_ORDERS.md). */
+    salesOrderId?: string | null;
   },
 ) {
   assertStockUser(user);
@@ -109,6 +111,7 @@ export async function recordSaleOut(
     countItemId: null,
     note: input.note,
     createdByUserId: user.id,
+    salesOrderId: input.salesOrderId ?? null,
   });
   await audit(
     user,
@@ -471,6 +474,7 @@ export async function consumeReservation(
   user: User,
   id: string,
   orderId: string | null,
+  salesOrderId: string | null = null,
 ) {
   const r = await liveReservation(user, id);
   const store = getStore();
@@ -495,6 +499,7 @@ export async function consumeReservation(
     countItemId: null,
     note: [customer?.name, r.note].filter(Boolean).join(" · ") || null,
     createdByUserId: user.id,
+    salesOrderId,
   });
   await store.update("stock_reservations", r.id, {
     status: "used",

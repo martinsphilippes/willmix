@@ -89,6 +89,56 @@ export const pt = {
   "salesOrder.error.erp_number_required": "Informe o número do Sankhya.",
   "salesOrder.error.purchase_order_not_found":
     "Pedido de compra não encontrado.",
+  "salesOrder.status.shipped": "Expedida",
+  "salesOrder.status.delivered": "Entregue",
+  "salesOrder.reserved.out": "Baixado do estoque",
+  "salesOrder.invoice": "NF de venda",
+  "salesOrder.invoice.hint":
+    "O financeiro emite a NF de venda no Sankhya e registra aqui o número e o arquivo. Sem ela a ordem não expede.",
+  "salesOrder.invoice.number": "Nº da NF",
+  "salesOrder.invoice.file": "Arquivo da NF (opcional)",
+  "salesOrder.invoice.save": "Registrar a NF",
+  "salesOrder.invoice.done": "NF {n}",
+  "salesOrder.invoice.waiting":
+    "Aguardando o financeiro registrar a NF de venda.",
+  "salesOrder.invoice.open": "Abrir o arquivo",
+  "salesOrder.ship": "Expedição",
+  "salesOrder.ship.hint":
+    "Ao expedir, a reserva vira baixa por venda no estoque no Brasil; o que não tinha reserva sai do estoque livre.",
+  "salesOrder.ship.carrier": "Transportadora",
+  "salesOrder.ship.pickup": "O cliente retira",
+  "salesOrder.ship.date": "Data de saída",
+  "salesOrder.ship.freight": "Frete (R$)",
+  "salesOrder.ship.submit": "Expedir e dar baixa no estoque",
+  "salesOrder.ship.done": "Saiu em {date} · {carrier}",
+  "salesOrder.deliver": "Entrega ao cliente",
+  "salesOrder.deliver.date": "Data da entrega",
+  "salesOrder.deliver.receivedBy": "Quem recebeu",
+  "salesOrder.deliver.proof": "Comprovante (canhoto)",
+  "salesOrder.deliver.submit": "Confirmar a entrega",
+  "salesOrder.deliver.done": "Entregue em {date}, recebido por {who}",
+  "salesOrder.done.invoiced": "NF de venda registrada.",
+  "salesOrder.done.shipped":
+    "Ordem expedida: baixa por venda feita no estoque.",
+  "salesOrder.done.delivered": "Entrega confirmada.",
+  "salesOrder.notify.invoice.subject":
+    "Ordem de venda #{n}: emitir a NF de venda",
+  "salesOrder.notify.invoice.body":
+    "Emita a NF no Sankhya e registre o número na ordem para ela poder expedir.",
+  "salesOrder.error.sales_order_shipped":
+    "A ordem já foi expedida; não dá para cancelar.",
+  "salesOrder.error.invoice_required":
+    "Falta a NF de venda: o financeiro precisa registrá-la antes da expedição.",
+  "salesOrder.error.invoice_number_required": "Informe o número da NF.",
+  "salesOrder.error.carrier_required":
+    'Escolha a transportadora cadastrada ou "o cliente retira".',
+  "salesOrder.error.freight_invalid": "Frete inválido.",
+  "salesOrder.error.stock_insufficient":
+    "Não há estoque livre no Brasil para expedir todos os itens.",
+  "salesOrder.error.sales_order_not_shipped": "A ordem ainda não foi expedida.",
+  "salesOrder.error.received_by_required": "Informe quem recebeu.",
+  "salesOrder.error.proof_required": "Anexe o comprovante da entrega.",
+  "salesOrder.error.date_invalid": "Data inválida.",
   "settings.label.salesTop":
     "TOP de venda no Sankhya (pedido de venda da ordem de venda; vazio: lançar à mão)",
 };
@@ -179,6 +229,55 @@ export const en: Record<keyof typeof pt, string> = {
     "Schedule the delivery date before confirming.",
   "salesOrder.error.erp_number_required": "Enter the Sankhya number.",
   "salesOrder.error.purchase_order_not_found": "Purchase order not found.",
+  "salesOrder.status.shipped": "Shipped",
+  "salesOrder.status.delivered": "Delivered",
+  "salesOrder.reserved.out": "Taken out of stock",
+  "salesOrder.invoice": "Sales invoice (NF)",
+  "salesOrder.invoice.hint":
+    "Finance issues the sales invoice in Sankhya and records its number and file here. The order cannot ship without it.",
+  "salesOrder.invoice.number": "Invoice number",
+  "salesOrder.invoice.file": "Invoice file (optional)",
+  "salesOrder.invoice.save": "Record the invoice",
+  "salesOrder.invoice.done": "Invoice {n}",
+  "salesOrder.invoice.waiting":
+    "Waiting for finance to record the sales invoice.",
+  "salesOrder.invoice.open": "Open the file",
+  "salesOrder.ship": "Shipping",
+  "salesOrder.ship.hint":
+    "On shipping, the reservation becomes a sale stock-out in Brazil; lines without a reservation come out of free stock.",
+  "salesOrder.ship.carrier": "Carrier",
+  "salesOrder.ship.pickup": "Customer picks up",
+  "salesOrder.ship.date": "Departure date",
+  "salesOrder.ship.freight": "Freight (R$)",
+  "salesOrder.ship.submit": "Ship and take out of stock",
+  "salesOrder.ship.done": "Left on {date} · {carrier}",
+  "salesOrder.deliver": "Delivery to the customer",
+  "salesOrder.deliver.date": "Delivery date",
+  "salesOrder.deliver.receivedBy": "Received by",
+  "salesOrder.deliver.proof": "Proof of delivery",
+  "salesOrder.deliver.submit": "Confirm delivery",
+  "salesOrder.deliver.done": "Delivered on {date}, received by {who}",
+  "salesOrder.done.invoiced": "Sales invoice recorded.",
+  "salesOrder.done.shipped": "Order shipped: sale stock-out recorded.",
+  "salesOrder.done.delivered": "Delivery confirmed.",
+  "salesOrder.notify.invoice.subject":
+    "Sales order #{n}: issue the sales invoice",
+  "salesOrder.notify.invoice.body":
+    "Issue the invoice in Sankhya and record its number on the order so it can ship.",
+  "salesOrder.error.sales_order_shipped":
+    "The order has already shipped and cannot be cancelled.",
+  "salesOrder.error.invoice_required":
+    "The sales invoice is missing: finance must record it before shipping.",
+  "salesOrder.error.invoice_number_required": "Enter the invoice number.",
+  "salesOrder.error.carrier_required":
+    'Choose a registered carrier or "customer picks up".',
+  "salesOrder.error.freight_invalid": "Invalid freight.",
+  "salesOrder.error.stock_insufficient":
+    "There is not enough free stock in Brazil to ship every item.",
+  "salesOrder.error.sales_order_not_shipped": "The order has not shipped yet.",
+  "salesOrder.error.received_by_required": "Enter who received it.",
+  "salesOrder.error.proof_required": "Attach the proof of delivery.",
+  "salesOrder.error.date_invalid": "Invalid date.",
   "settings.label.salesTop":
     "Sales TOP in Sankhya (sales order of the sales order; empty: post by hand)",
 };
@@ -261,6 +360,49 @@ export const zh: Record<keyof typeof pt, string> = {
   "salesOrder.error.delivery_date_required": "确认前请安排送货日期。",
   "salesOrder.error.erp_number_required": "请填写 Sankhya 单号。",
   "salesOrder.error.purchase_order_not_found": "未找到采购订单。",
+  "salesOrder.status.shipped": "已发货",
+  "salesOrder.status.delivered": "已送达",
+  "salesOrder.reserved.out": "已出库",
+  "salesOrder.invoice": "销售发票 (NF)",
+  "salesOrder.invoice.hint":
+    "财务在 Sankhya 开具销售发票，并在此登记号码和文件。没有发票订单不能发货。",
+  "salesOrder.invoice.number": "发票号码",
+  "salesOrder.invoice.file": "发票文件（可选）",
+  "salesOrder.invoice.save": "登记发票",
+  "salesOrder.invoice.done": "发票 {n}",
+  "salesOrder.invoice.waiting": "等待财务登记销售发票。",
+  "salesOrder.invoice.open": "打开文件",
+  "salesOrder.ship": "发货",
+  "salesOrder.ship.hint":
+    "发货时，预留转为巴西库存的销售出库；没有预留的行从可用库存中扣除。",
+  "salesOrder.ship.carrier": "承运商",
+  "salesOrder.ship.pickup": "客户自提",
+  "salesOrder.ship.date": "发出日期",
+  "salesOrder.ship.freight": "运费 (R$)",
+  "salesOrder.ship.submit": "发货并出库",
+  "salesOrder.ship.done": "{date} 发出 · {carrier}",
+  "salesOrder.deliver": "交付客户",
+  "salesOrder.deliver.date": "交付日期",
+  "salesOrder.deliver.receivedBy": "签收人",
+  "salesOrder.deliver.proof": "签收凭证",
+  "salesOrder.deliver.submit": "确认交付",
+  "salesOrder.deliver.done": "{date} 交付，签收人 {who}",
+  "salesOrder.done.invoiced": "销售发票已登记。",
+  "salesOrder.done.shipped": "订单已发货：已登记销售出库。",
+  "salesOrder.done.delivered": "已确认交付。",
+  "salesOrder.notify.invoice.subject": "销售订单 #{n}：开具销售发票",
+  "salesOrder.notify.invoice.body":
+    "请在 Sankhya 开具发票并在订单上登记号码，以便发货。",
+  "salesOrder.error.sales_order_shipped": "订单已发货，无法取消。",
+  "salesOrder.error.invoice_required": "缺少销售发票：发货前财务需先登记。",
+  "salesOrder.error.invoice_number_required": "请输入发票号码。",
+  "salesOrder.error.carrier_required": "请选择已登记的承运商或“客户自提”。",
+  "salesOrder.error.freight_invalid": "运费无效。",
+  "salesOrder.error.stock_insufficient": "巴西可用库存不足，无法发出全部商品。",
+  "salesOrder.error.sales_order_not_shipped": "订单尚未发货。",
+  "salesOrder.error.received_by_required": "请输入签收人。",
+  "salesOrder.error.proof_required": "请附上签收凭证。",
+  "salesOrder.error.date_invalid": "日期无效。",
   "settings.label.salesTop":
     "Sankhya 销售 TOP（销售订单的销售单；留空：手工录入）",
 };
