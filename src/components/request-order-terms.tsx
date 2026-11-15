@@ -10,6 +10,7 @@ import {
   WELLMIX_TIERS,
   carrierValue,
   countryAllowed,
+  formatCnpj,
   type OperationType,
   type SaleFormat,
   type WellmixTier,
@@ -52,6 +53,11 @@ export interface RequestOrderTermsLabels {
   productsCount: string;
   stock: string;
   confirmNote: string;
+  /** "Buscar por nome, código ou CNPJ". */
+  carrierSearch: string;
+  /** "Código {code}" e "CNPJ {cnpj}" no resumo abaixo do campo. */
+  summaryCode: string;
+  summaryCnpj: string;
   /** Aviso ao trocar o país ou a família com produtos no pedido. */
   switchTitle: string;
   switchBody: string;
@@ -85,7 +91,15 @@ interface Carrier {
   code: string;
   name: string;
   city: string | null;
+  erpCode?: string | null;
+  taxId?: string | null;
 }
+
+const foldText = (v: string) =>
+  v
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 
 interface Options {
   countries: Country[];
@@ -130,6 +144,10 @@ export function RequestOrderTerms({
   const [groupsFailed, setGroupsFailed] = useState(false);
   const [family, setFamily] = useState(initial.productFamily ?? "");
   const setOrigin = shared?.setOrigin;
+  // Transportador: busca por nome, código ou CNPJ (dono, 15/11/2026) e o
+  // resumo do escolhido (código, CNPJ e nome) abaixo do campo.
+  const [carrierQuery, setCarrierQuery] = useState("");
+  const [carrierPick, setCarrierPick] = useState(initial.carrier ?? "");
   // Trocar o país ou a família com produto no pedido (dono, 15/11/2026): o
   // aviso recomenda terminar este pedido e começar outro; "trocar" limpa os
   // produtos.
@@ -211,7 +229,7 @@ export function RequestOrderTerms({
   const count = (n: number) =>
     labels.productsCount.replace("{n}", n.toLocaleString("pt-BR"));
   const carrierLabel = (c: Carrier) =>
-    `${c.name}${c.city ? ` · ${c.city}` : ""}${c.source === "sankhya" ? ` (${labels.carrierSankhya})` : ""}`;
+    `${c.erpCode ? `${c.erpCode} · ` : ""}${c.name}${c.city ? ` · ${c.city}` : ""}${c.source === "sankhya" ? ` (${labels.carrierSankhya})` : ""}`;
 
   return (
     <section
@@ -316,29 +334,82 @@ export function RequestOrderTerms({
             ) : !options ? (
               <p className="text-xs text-zinc-500">{labels.loading}</p>
             ) : (
-              <Field label={labels.carrier}>
-                <Select
-                  name="carrier"
-                  defaultValue={
-                    options.carriers.some(
-                      (c) => carrierValue(c) === initial.carrier,
-                    )
-                      ? initial.carrier
-                      : ""
-                  }
-                  required
-                  data-order-terms-carrier
-                >
-                  <option value="" disabled>
-                    {labels.carrierNone}
-                  </option>
-                  {options.carriers.map((c) => (
-                    <option key={carrierValue(c)} value={carrierValue(c)}>
-                      {carrierLabel(c)}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+              <div className="space-y-1">
+                <Field label={labels.carrier}>
+                  <input
+                    type="search"
+                    value={carrierQuery}
+                    onChange={(e) => setCarrierQuery(e.target.value)}
+                    placeholder={labels.carrierSearch}
+                    aria-label={labels.carrierSearch}
+                    className="mb-1 w-full rounded-lg border border-zinc-300 px-2.5 py-1.5 text-sm"
+                    data-order-terms-carrier-search
+                  />
+                </Field>
+                {(() => {
+                  const q = foldText(carrierQuery.trim());
+                  const digits = carrierQuery.replace(/\D/g, "");
+                  const matches = (c: Carrier) =>
+                    !q ||
+                    foldText(c.name).includes(q) ||
+                    (!!digits &&
+                      (!!c.erpCode?.includes(digits) ||
+                        !!c.taxId?.includes(digits)));
+                  const value = options.carriers.some(
+                    (c) => carrierValue(c) === carrierPick,
+                  )
+                    ? carrierPick
+                    : "";
+                  const picked = options.carriers.find(
+                    (c) => carrierValue(c) === value,
+                  );
+                  return (
+                    <>
+                      <Select
+                        name="carrier"
+                        value={value}
+                        onChange={(e) => setCarrierPick(e.target.value)}
+                        required
+                        aria-label={labels.carrier}
+                        data-order-terms-carrier
+                      >
+                        <option value="" disabled>
+                          {labels.carrierNone}
+                        </option>
+                        {options.carriers
+                          .filter(
+                            (c) => carrierValue(c) === value || matches(c),
+                          )
+                          .map((c) => (
+                            <option
+                              key={carrierValue(c)}
+                              value={carrierValue(c)}
+                            >
+                              {carrierLabel(c)}
+                            </option>
+                          ))}
+                      </Select>
+                      {picked ? (
+                        <p
+                          className="text-xs text-zinc-600"
+                          data-order-terms-carrier-summary
+                        >
+                          <span className="font-medium text-zinc-800">
+                            {labels.summaryCode.replace(
+                              "{code}",
+                              picked.erpCode || "—",
+                            )}
+                          </span>
+                          {picked.taxId
+                            ? ` · ${labels.summaryCnpj.replace("{cnpj}", formatCnpj(picked.taxId))}`
+                            : ""}
+                          {` · ${picked.name}`}
+                        </p>
+                      ) : null}
+                    </>
+                  );
+                })()}
+              </div>
             )}
           </div>
           <fieldset className="min-w-0 space-y-1" data-order-terms-redispatch>

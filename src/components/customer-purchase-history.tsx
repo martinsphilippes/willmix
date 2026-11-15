@@ -182,7 +182,15 @@ export function CustomerPurchaseHistory({
       data-purchase-history
       data-purchase-history-state={state}
     >
-      <Card title={labels.title}>
+      <Card>
+        {/* Cabeçalho fixo (dono, 15/11/2026): só a lista rola (na lateral
+            fixa da Nova solicitação). */}
+        <h2
+          className="mb-3 text-base font-semibold tracking-tight text-zinc-900 lg:sticky lg:top-0 lg:z-10 lg:-mx-4 lg:-mt-4 lg:rounded-t-2xl lg:border-b lg:border-zinc-100 lg:bg-white lg:px-4 lg:py-3"
+          data-history-header
+        >
+          {labels.title}
+        </h2>
         {state === "select" ? (
           <p className="text-sm text-zinc-500" data-purchase-history-select>
             {labels.select}
@@ -404,6 +412,7 @@ function ItemBlock({
       <HistoryProductName
         name={item.name}
         productId={item.productId}
+        photoId={item.photoId}
         labels={labels.pick}
       />
       <div className="mt-1 space-y-0.5 text-xs leading-relaxed">

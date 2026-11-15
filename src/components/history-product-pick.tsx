@@ -34,13 +34,55 @@ export function useHistoryFamilyFilter() {
 export function HistoryProductName({
   name,
   productId,
+  photoId,
   labels,
   className = "text-sm font-medium text-zinc-900",
 }: {
   name: string;
   productId: string | null | undefined;
+  /** Foto principal do produto (miniatura à esquerda do nome). */
+  photoId?: string | null;
   labels?: HistoryPickLabels;
   className?: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-start gap-2">
+      {/* Foto do produto (dono, 15/11/2026); sem foto, um quadro vazio. */}
+      {photoId ? (
+        // eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão
+        <img
+          src={`/api/files/${photoId}`}
+          alt=""
+          loading="lazy"
+          className="h-10 w-10 shrink-0 rounded-md border border-zinc-200 bg-white object-cover"
+          data-history-photo
+        />
+      ) : (
+        <span
+          aria-hidden
+          className="h-10 w-10 shrink-0 rounded-md border border-dashed border-zinc-200 bg-zinc-50"
+        />
+      )}
+      <NameText
+        name={name}
+        productId={productId}
+        labels={labels}
+        className={className}
+      />
+    </div>
+  );
+}
+
+function NameText({
+  name,
+  productId,
+  labels,
+  className,
+}: {
+  name: string;
+  productId: string | null | undefined;
+  labels?: HistoryPickLabels;
+  className: string;
 }) {
   const shared = useRequestCustomer();
   const inOrder = !!productId && !!shared?.chosenProductIds.includes(productId);

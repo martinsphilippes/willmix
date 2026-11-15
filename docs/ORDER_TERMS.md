@@ -196,6 +196,12 @@ WHERE P.ATIVO = 'S' AND P.CODPROD > <último> ORDER BY P.CODPROD
 - **Trocar e remover os produtos**: a troca vale e todas as linhas de produto saem (fica uma linha vazia; a composição e as marcas do histórico acompanham).
 - Sem produto do catálogo no pedido, a troca é direta, sem aviso.
 
+### 11.4 Histórico com cabeçalho fixo, foto e código Wellmix; resumo do cliente e do transportador (dono, 15/11/2026)
+
+- **Histórico de compras do cliente**: o cabeçalho (título, filtros e abas) fica fixo no topo do bloco e só a lista rola. Cada produto mostra à esquerda a foto principal do cadastro (`products.photoIds[0]`, por `/api/files`; sem foto, um quadro vazio) e o código é o **da Wellmix** (`products.sku`); o código do Sankhya só aparece quando o produto não está no catálogo do portal. A ligação é por `src/lib/services/product-faces.ts` (SKU e foto por id, em lotes de 200).
+- **Cliente** (busca no topo): ao escolher, logo abaixo aparece "Código X · Nome" (código do parceiro no Sankhya, `parties.sankhyaCode`; sem ele, "—").
+- **Transportador**: um campo de busca filtra a lista por nome, código (CODPARC) ou CNPJ, e abaixo do escolhido aparece "Código · CNPJ · Nome". O CNPJ vem de `TGFPAR.CGC_CPF` (Sankhya) ou de `parties.taxId` (portal); o código, de `CODPARC` ou `parties.sankhyaCode`. A lista mostra o código antes do nome.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

@@ -153,6 +153,9 @@ export interface SankhyaQuantity {
 export interface SankhyaCatalogLink {
   productId?: string | null;
   family?: string | null;
+  /** Código Wellmix (SKU) e foto principal do produto (dono, 15/11/2026). */
+  sku?: string | null;
+  photoId?: string | null;
 }
 
 /** Um produto da visão Produto: o total do período e cada data. */
@@ -557,14 +560,28 @@ export async function sankhyaCustomerProducts(
   }
 }
 
-/** Liga cada linha (pelo CODPROD) ao produto do catálogo e à família dele. */
+/**
+ * Liga cada linha (pelo CODPROD) ao produto do catálogo, à família dele, ao
+ * código Wellmix (SKU) e à foto principal.
+ */
 async function withCatalog<T extends { code: number | null }>(
   rows: T[],
 ): Promise<Array<T & SankhyaCatalogLink>> {
   const { originsByCode } = await import("./product-origin");
+  const { productFaces } = await import("./product-faces");
   const origins = await originsByCode(rows.map((r) => r.code));
+  const faces = await productFaces(
+    [...origins.values()].map((o) => o.productId),
+  );
   return rows.map((r) => {
     const o = r.code === null ? null : origins.get(r.code);
-    return { ...r, productId: o?.productId ?? null, family: o?.family ?? null };
+    const face = o ? faces.get(o.productId) : null;
+    return {
+      ...r,
+      productId: o?.productId ?? null,
+      family: o?.family ?? null,
+      sku: face?.sku ?? null,
+      photoId: face?.photoId ?? null,
+    };
   });
 }

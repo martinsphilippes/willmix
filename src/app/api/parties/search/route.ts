@@ -65,7 +65,7 @@ export async function GET(request: Request) {
       options: options.map((o) => ({
         id: o.id,
         name: o.name,
-        ...(t ? { hint: partyHint(t, o) } : {}),
+        ...(t ? { hint: partyHint(t, o), code: o.code ?? null } : {}),
       })),
     },
     { headers: { "Cache-Control": "private, no-store" } },

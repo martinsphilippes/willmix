@@ -104,6 +104,19 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await chooseCustomerLogin(page, "joao@lojista.com");
   await fillOrderTerms(page, { format: "wd", redispatch: "yes" });
   await expect(page.locator("[data-request-origin-missing]")).toHaveCount(0);
+  // Cliente e transportador escolhidos: código (e CNPJ do transportador) e
+  // nome logo abaixo; o transportador também se busca por código ou CNPJ.
+  await expect(page.locator("[data-request-customer-summary]")).toContainText(
+    "Código",
+  );
+  await expect(
+    page.locator("[data-order-terms-carrier-summary]"),
+  ).toBeVisible();
+  await terms.locator("[data-order-terms-carrier-search]").fill("zzzz-nada");
+  await expect(terms.locator("[data-order-terms-carrier]")).toHaveValue(
+    "portal:transportador",
+  );
+  await terms.locator("[data-order-terms-carrier-search]").fill("");
   // Composição de containers: vazia sem produto; com a boneca, o container
   // 1 da programação 1 com a ocupação, fechado; abre para ver o produto.
   const composition = page.locator("[data-container-composition]");

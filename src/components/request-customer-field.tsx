@@ -20,6 +20,7 @@ export function RequestCustomerField({
   initialStock,
   ariaLabel,
   labels,
+  summary,
 }: {
   /** Valor gravado para compra para estoque (STOCK_OPTION). */
   stockValue: string;
@@ -29,6 +30,11 @@ export function RequestCustomerField({
   initialStock: boolean;
   ariaLabel: string;
   labels: SearchPickerLabels;
+  /**
+   * Resumo abaixo do campo com o cliente escolhido (dono, 15/11/2026):
+   * "Código {code} · {name}". Sem ele, nada.
+   */
+  summary?: { code: string; none: string };
 }) {
   const shared = useRequestCustomer();
   const [localStock, setLocalStock] = useState(initialStock);
@@ -50,6 +56,18 @@ export function RequestCustomerField({
         onChoose={(option) => shared?.setCustomer(option)}
         onDeselect={() => shared?.setCustomer(null)}
       />
+      {summary && !stock && shared?.customer ? (
+        <p className="text-xs text-zinc-600" data-request-customer-summary>
+          <span className="font-medium text-zinc-800">
+            {summary.code.replace(
+              "{code}",
+              shared.customer.code || summary.none,
+            )}
+          </span>
+          {" · "}
+          {shared.customer.name}
+        </p>
+      ) : null}
       <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-700">
         <input
           type="checkbox"
