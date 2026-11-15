@@ -12,6 +12,7 @@ import { productOptionLabel } from "./product-search";
 import { variantsByProduct } from "./product-variants";
 import { variantSpecData } from "./variant-sales";
 import { cbmFromDimensions } from "@/lib/logistics/cbm";
+import { sankhyaCartons } from "@/lib/integrations/sankhya-carton";
 
 /**
  * Dados da ficha que preenchem a nova solicitação ao escolher o produto
@@ -41,11 +42,11 @@ export async function requestProductFills(
   ]);
   const sheetMoq = new Map(masterSheets.map((s) => [s.orderId, s.moq]));
   const sheetOf = new Map(masterSheets.map((s) => [s.orderId, s]));
+  const positive = (n: number | null | undefined) =>
+    n !== null && n !== undefined && Number.isFinite(n) && n > 0 ? n : null;
   /** Caixa master do produto: cadastro, senão ficha mestre (programação pela quantidade). */
-  const cartonOf = (p: Product) => {
+  const localCarton = (p: Product) => {
     const sheet = sheetOf.get(p.id);
-    const positive = (n: number | null | undefined) =>
-      n !== null && n !== undefined && Number.isFinite(n) && n > 0 ? n : null;
     return {
       masterCartonQty:
         positive(p.masterBoxQty) ?? positive(sheet?.masterCartonQty),
@@ -55,6 +56,30 @@ export async function requestProductFills(
           cbmFromDimensions(p.boxLengthCm, p.boxWidthCm, p.boxHeightCm),
         ) ??
         positive(sheet?.cbmPerCarton),
+    };
+  };
+  // Faltou caixa ou CBM no portal: busca no Sankhya na hora (volumes
+  // alternativos, só leitura) os produtos que vieram de lá. A carga de
+  // produtos grava os mesmos valores no cadastro.
+  const live = await sankhyaCartons(
+    products
+      .filter((p) => {
+        const c = localCarton(p);
+        return p.sankhyaCode && (!c.masterCartonQty || !c.cbmPerCarton);
+      })
+      .map((p) => p.sankhyaCode),
+  );
+  const cartonOf = (p: Product) => {
+    const local = localCarton(p);
+    const erp = p.sankhyaCode ? live.get(p.sankhyaCode) : undefined;
+    const masterCartonQty =
+      local.masterCartonQty ?? positive(erp?.masterBoxQty);
+    return {
+      masterCartonQty,
+      // O CBM do Sankhya é o da caixa dele: só vale para a mesma quantidade.
+      cbmPerCarton:
+        local.cbmPerCarton ??
+        (erp?.masterBoxQty === masterCartonQty ? positive(erp?.cbm) : null),
     };
   };
   const specLabels = productSpecLabels(t);

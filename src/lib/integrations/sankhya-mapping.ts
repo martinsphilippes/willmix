@@ -384,6 +384,12 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
         via: "TGFVOA",
         note: "Com dois ou mais volumes, o menor vira a caixa interna (só se vazio)",
       },
+      {
+        sankhya: "TGFVOA.M3 (volume da caixa master)",
+        portal: "cbm",
+        via: "TGFVOA",
+        note: "CBM da caixa master: o M3 do volume da master (só se vazio)",
+      },
       { sankhya: "ESTMIN", portal: "minStock", transform: "number" },
       { sankhya: "ATIVO", portal: "active", transform: "sn" },
     ],
@@ -855,18 +861,36 @@ export function isInternalGroup(code: unknown): boolean {
 /**
  * Volumes alternativos do produto (TGFVOA: CX = 24 UN...): o maior vira a
  * caixa master; com dois ou mais, o menor acima de 1 vira a caixa interna.
+ * O M3 do volume é o CBM daquela caixa (dono, 15/11/2026; no WBU2191 a CX de
+ * 240 tem 0,31 × 0,635 × 0,75 m = 0,1476375 m³, o mesmo M3 do volume). O M3
+ * do produto (TGFPRO) é por peça e não serve como CBM da caixa.
  */
 export function boxQuantities(rows: Row[]) {
+  const multiplying = rows.filter(
+    (r) => String(r.DIVIDEMULTIPLICA ?? "M").toUpperCase() !== "D",
+  );
   const qty = [
     ...new Set(
-      rows
-        .filter((r) => String(r.DIVIDEMULTIPLICA ?? "M").toUpperCase() !== "D")
+      multiplying
         .map((r) => num(r.QUANTIDADE))
         .filter((n): n is number => n != null && n > 1),
     ),
   ].sort((a, b) => a - b);
+  const masterBoxQty = qty.length ? qty[qty.length - 1] : null;
   return {
-    masterBoxQty: qty.length ? qty[qty.length - 1] : null,
+    masterBoxQty,
     innerBoxQty: qty.length > 1 ? qty[0] : null,
+    masterCbm:
+      masterBoxQty == null ? null : volumeCbm(multiplying, masterBoxQty),
   };
+}
+
+/** M3 do volume com essa quantidade (positivo e até 10 m³; senão nulo). */
+function volumeCbm(rows: Row[], quantity: number): number | null {
+  for (const r of rows) {
+    if (num(r.QUANTIDADE) !== quantity) continue;
+    const m3 = num(r.M3);
+    if (m3 != null && m3 > 0 && m3 <= 10) return m3;
+  }
+  return null;
 }

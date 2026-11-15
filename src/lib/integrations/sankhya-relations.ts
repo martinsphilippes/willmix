@@ -118,6 +118,8 @@ export interface ProductExtra {
   lastNunota: string | null;
   masterBoxQty: number | null;
   innerBoxQty: number | null;
+  /** CBM da caixa master (M3 do volume da master no TGFVOA). */
+  masterCbm: number | null;
 }
 
 export async function productExtras(

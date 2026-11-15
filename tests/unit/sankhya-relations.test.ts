@@ -99,11 +99,22 @@ describe("regras puras", () => {
         { QUANTIDADE: 1 },
         { QUANTIDADE: 2, DIVIDEMULTIPLICA: "D" },
       ]),
-    ).toEqual({ masterBoxQty: 24, innerBoxQty: 6 });
+    ).toEqual({ masterBoxQty: 24, innerBoxQty: 6, masterCbm: null });
     expect(m.boxQuantities([{ QUANTIDADE: 12 }])).toEqual({
       masterBoxQty: 12,
       innerBoxQty: null,
+      masterCbm: null,
     });
+    // WBU2191: o M3 do volume da master (CX 240) é o CBM da caixa.
+    expect(
+      m.boxQuantities([
+        { CODVOL: "C1", QUANTIDADE: 196, DIVIDEMULTIPLICA: "M", M3: 0.1220625 },
+        { CODVOL: "CX", QUANTIDADE: 240, DIVIDEMULTIPLICA: "M", M3: 0.1476375 },
+      ]),
+    ).toEqual({ masterBoxQty: 240, innerBoxQty: 196, masterCbm: 0.1476375 });
+    // M3 zerado ou absurdo: sem CBM.
+    expect(m.boxQuantities([{ QUANTIDADE: 24, M3: 0 }]).masterCbm).toBeNull();
+    expect(m.boxQuantities([{ QUANTIDADE: 24, M3: 50 }]).masterCbm).toBeNull();
     expect(m.convert("incoterm", "F", {})).toBe("FOB");
     expect(m.convert("incoterm", "C", {})).toBe("CIF");
     expect(m.convert("incoterm", "S", {})).toBeNull();
@@ -165,7 +176,13 @@ describe("carga com ligações", () => {
       TGFVOA: {
         key: "CODPROD",
         rows: [
-          { CODPROD: 60, CODVOL: "CX", QUANTIDADE: 48, DIVIDEMULTIPLICA: "M" },
+          {
+            CODPROD: 60,
+            CODVOL: "CX",
+            QUANTIDADE: 48,
+            DIVIDEMULTIPLICA: "M",
+            M3: 0.0912,
+          },
           { CODPROD: 60, CODVOL: "PC", QUANTIDADE: 12, DIVIDEMULTIPLICA: "M" },
         ],
       },
@@ -281,6 +298,7 @@ describe("carga com ligações", () => {
       currency: "USD",
       masterBoxQty: 48,
       innerBoxQty: 12,
+      cbm: 0.0912,
       notes: "Vidro 300 ml",
       brand: "WELLMIX",
     });
@@ -305,5 +323,29 @@ describe("carga com ligações", () => {
       filter: { sankhyaCode: "8001" },
     });
     expect(payment).toMatchObject({ method: "CÂMBIO", fxRate: 5.16 });
+  });
+});
+
+describe("caixa master direto do Sankhya", () => {
+  it("lê peças por caixa e CBM pelos volumes, só leitura", async () => {
+    const { sankhyaCartons } =
+      await import("@/lib/integrations/sankhya-carton");
+    const sqls = fakeSankhya({
+      TGFVOA: {
+        key: "CODPROD",
+        rows: [
+          { CODPROD: 2549, CODVOL: "C1", QUANTIDADE: 196, M3: 0.1220625 },
+          { CODPROD: 2549, CODVOL: "CX", QUANTIDADE: 240, M3: 0.1476375 },
+        ],
+      },
+    });
+    sk.resetSankhyaTokenCache();
+    const cartons = await sankhyaCartons(["2549", "23484", null]);
+    expect(cartons.get("2549")).toEqual({ masterBoxQty: 240, cbm: 0.1476375 });
+    // Produto sem volume no Sankhya: fica sem dado.
+    expect(cartons.has("23484")).toBe(false);
+    expect(sqls.some((s) => /TGFVOA/.test(s))).toBe(true);
+    // Sem código: nem consulta.
+    expect((await sankhyaCartons([null, "abc"])).size).toBe(0);
   });
 });
