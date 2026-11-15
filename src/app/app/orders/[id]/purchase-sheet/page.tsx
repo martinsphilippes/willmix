@@ -246,6 +246,7 @@ export default async function PurchaseSheetPage({
       <div className="grid gap-4 lg:grid-cols-2" data-sheet-sections-root>
         {view.access.editSupplier ? (
           <SheetBoardReader
+            showPrice={canSeeOrderPurchasePrice(user, view.order)}
             t={t}
             scope="order"
             sheetKey={id}

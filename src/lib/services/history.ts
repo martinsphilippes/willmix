@@ -1,11 +1,11 @@
 import "server-only";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { realName } from "@/lib/placeholder-name";
 import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 
 import { getStore, type User } from "@/lib/db";
 import {
   ORDER_ACCESS_FIELDS,
-  canSeeInternalCosts,
   canViewOrder,
   isWellmix,
 } from "@/lib/auth/permissions";
@@ -157,8 +157,8 @@ export async function loadCommercialHistory(
         lastQuantity: item.quantity,
         lastSellUnit: sellUnit,
         sellCurrency: order.sellCurrency ?? "BRL",
-        lastFobUnit: canSeeInternalCosts(user) ? fobUnit : null,
-        fobCurrency: canSeeInternalCosts(user) ? order.fobCurrency : null,
+        lastFobUnit: canSeePurchasePrice(user) ? fobUnit : null,
+        fobCurrency: canSeePurchasePrice(user) ? order.fobCurrency : null,
         firstAt: order.createdAt,
         lastAt: order.createdAt,
         lastOrderId: order.id,
@@ -173,7 +173,7 @@ export async function loadCommercialHistory(
       row.totalQuantity += item.quantity;
       row.lastQuantity = item.quantity;
       row.lastSellUnit = sellUnit;
-      row.lastFobUnit = canSeeInternalCosts(user) ? fobUnit : null;
+      row.lastFobUnit = canSeePurchasePrice(user) ? fobUnit : null;
       row.lastAt = order.createdAt;
       row.lastOrderId = order.id;
       row.lastOrderNumber = order.number;

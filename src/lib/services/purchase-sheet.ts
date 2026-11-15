@@ -1064,8 +1064,10 @@ async function syncRequirements(
   ) {
     const container = await containerCapacity(sheet.containerType);
     const plan = planSheet(sheet, container.capacity);
+    // Sem o preço (dono, 15/11/2026): o resumo aparece para quem acompanha a
+    // Preparação, inclusive quem não vê o preço de compra.
     const summary = [
-      `${sheet.incoterm ?? ""} ${sheet.currency ?? ""} ${sheet.price ?? ""}`.trim(),
+      sheet.incoterm ?? null,
       plan.totalPieces !== null ? `${plan.totalPieces} pcs` : null,
       plan.totalCbm !== null ? `${plan.totalCbm} m³` : null,
     ]

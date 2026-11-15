@@ -139,6 +139,13 @@ export async function updateProductSheetAction(form: FormData) {
         ? form.getAll("notesToEcommerce").includes("on")
         : (product.notesToEcommerce ?? null),
     });
+    // Preço de compra: quem não vê não edita (dono, 15/11/2026;
+    // docs/LINHA_DE_VISAO.md). Os campos não vêm no formulário dele; sem isto
+    // o envio apagaria o preço e a moeda gravados.
+    if (!canSeePurchasePrice(user)) {
+      parsed.price = product.price;
+      parsed.currency = product.currency;
+    }
     if (!(await store.get("product_lines", parsed.lineId)))
       throw new Error("line_not_found");
     if (parsed.supplierId) {

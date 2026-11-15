@@ -162,10 +162,20 @@ test("Solicitações: uma linha por produto, ficha completa nos quatro grupos, p
   await expect(field(page, "cost")).toBeVisible();
   await noSideScroll(page);
 
-  // 6. Operador sem "Ver valores e margem": a ficha técnica, sem custo,
-  // compra, venda nem condições.
+  // 6. Comprador (operador: "Ver preço de compra", sem "Ver valores e
+  // margem"; dono, 15/11/2026, docs/LINHA_DE_VISAO.md): vê o custo
+  // registrado e a compra; a venda, não.
   await page.setViewportSize({ width: 1280, height: 900 });
   await login(page, "operador@wellmix.com");
+  await page.goto(url);
+  await expect(cell(page, "boxes")).toContainText("300 caixas");
+  await expect(cell(page, "cost")).toContainText("US$ 3,20");
+  await expect(cell(page, "purchase")).toHaveCount(1);
+  await expect(cell(page, "sale")).toHaveCount(0);
+
+  // 7. Vendas (sem "Ver preço de compra"): a ficha técnica, sem custo,
+  // compra, venda nem condições.
+  await login(page, "vendas@wellmix.com");
   await page.goto(url);
   await expect(cell(page, "boxes")).toContainText("300 caixas");
   for (const key of ["cost", "purchase", "sale"])
@@ -173,7 +183,7 @@ test("Solicitações: uma linha por produto, ficha completa nos quatro grupos, p
   await current(page).locator("[data-sheet-toggle]").click();
   await expect(
     current(page).locator('[data-sheet-group="values"] [data-sheet-restricted]'),
-  ).toContainText("Ver valores e margem");
+  ).toContainText("Ver preço de compra");
   await expect(current(page).locator("[data-sheet-detail]")).not.toContainText(
     "3,20",
   );

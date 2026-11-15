@@ -63,6 +63,7 @@ import {
 import { ASSIGN_HREF, type MissingAssignment } from "@/lib/assign-href";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { sheetSummaryWithoutPrice } from "@/lib/services/purchase-sheet-calc";
 import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
 import { OrderRoundsSection } from "./_components/rounds";
@@ -933,7 +934,8 @@ export default async function OrderPage({
     if (!i.variant) return "—";
     const summary = wellmix
       ? variantSnapshotSummary(
-          i.variant,
+          // Preço da cópia: só com "Ver preço de compra" (docs/LINHA_DE_VISAO.md).
+          canSeePurchasePrice(user) ? i.variant : { ...i.variant, price: null },
           {
             price: t("productVariants.col.price"),
             moq: t("productVariants.col.moq"),
@@ -3476,6 +3478,8 @@ export default async function OrderPage({
             order={order}
             view={receivingView}
             canQuality={await receivingSvc.canDoQuality(user)}
+            showCustomerValues={canSeeMoney(user) || can(user, "sale.record")}
+            showSupplierValues={canSeePurchasePrice(user)}
             notice={
               typeof receivingNotice === "string" &&
               [
@@ -4394,7 +4398,15 @@ function RequirementRow({
             r.type !== "approval" &&
             r.value ? (
               <span className="mr-2 text-zinc-800">
-                {formatMoneyValue(r.value, t.intl)}
+                {formatMoneyValue(
+                  // Resumo antigo da ficha de compra guardava o preço: quem
+                  // não vê o preço de compra lê sem ele (docs/LINHA_DE_VISAO.md).
+                  r.key === "purchase_sheet" &&
+                    !canSeeOrderPurchasePrice(user, order)
+                    ? sheetSummaryWithoutPrice(r.value)
+                    : r.value,
+                  t.intl,
+                )}
               </span>
             ) : null}
             {doc ? (

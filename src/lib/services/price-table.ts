@@ -2,6 +2,7 @@ import "server-only";
 
 import { getStore, type User } from "@/lib/db";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 
 /*
  * Tabela de preços (Fase F, docs/ARTWORK.md): para o marketing e o comercial,
@@ -27,6 +28,9 @@ const SOLD = ["WAITING_DOWN_PAYMENT", "ORDERED"];
 
 export async function priceTable(user: User): Promise<PriceRow[]> {
   if (!isWellmix(user)) throw new ForbiddenError();
+  // FOB unitário (preço de compra do cadastro): só com "Ver preço de compra"
+  // (dono, 15/11/2026; docs/LINHA_DE_VISAO.md); sem ela, vazio na tela e no CSV.
+  const seesPrice = canSeePurchasePrice(user);
   const store = getStore();
   const [products, lines, requests] = await Promise.all([
     store.list("products", { filter: { active: true }, orderBy: "name" }),
@@ -49,8 +53,8 @@ export async function priceTable(user: User): Promise<PriceRow[]> {
         ? Math.round(((last.sellPrice ?? 0) / last.quantity) * 10000) / 10000
         : null,
       currency: last?.sellCurrency ?? null,
-      fobUnit: p.price ?? null,
-      fobCurrency: p.currency ?? null,
+      fobUnit: seesPrice ? (p.price ?? null) : null,
+      fobCurrency: seesPrice ? (p.currency ?? null) : null,
       soldAt: last?.updatedAt ?? null,
     };
   });

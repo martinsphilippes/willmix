@@ -585,3 +585,18 @@ export function generateLots(input: {
     })),
   };
 }
+
+/**
+ * Resumo do requisito "Ficha de compra" ("FOB USD 3 · 5000 pcs · 2.68 m³")
+ * sem a moeda e o preço, para quem não vê o preço de compra (dono,
+ * 15/11/2026; docs/LINHA_DE_VISAO.md). Os resumos gravados antes guardavam
+ * o preço; os novos já saem sem ele. Texto que não é esse resumo fica como
+ * está.
+ */
+export function sheetSummaryWithoutPrice(value: string): string {
+  const parts = value.split(" · ");
+  const head = parts[0].trim();
+  const m = /^(FOB|EXW)?\s*(USD|RMB|BRL|EUR)?\s*([\d.,]*)$/.exec(head);
+  if (!m || (!m[2] && !m[3])) return value;
+  return [m[1] ?? null, ...parts.slice(1)].filter(Boolean).join(" · ") || "—";
+}

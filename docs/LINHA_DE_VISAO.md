@@ -140,7 +140,18 @@ O servidor só lê e só monta o que o login pode ver; o que fica de fora não s
 | Solicitação do cliente, seção "Solicitações" (docs/REQUEST_SHEET.md) | ficha completa em linha horizontal: aprovada pelo dono em 15/11/2026, em implantação |
 | Demais telas | quando o dono pedir "use a linha de visão de produto nesta tela" |
 
-A permissão "Ver preço de compra" (seção 7) foi aprovada em 15/11/2026 e entra nas telas que mostram preço de compra.
+**Permissão "Ver preço de compra" (seção 7), já aplicada** (`canSeePurchasePrice`, `canSeeOrderPurchasePrice` em `src/lib/auth/function-access.ts`; o servidor não envia o valor e recusa a gravação de quem não vê):
+
+- Produtos: lista (coluna Preço), exportação CSV (Preço e Moeda vazios), ficha (preço e moeda, faixas e oportunidade, preço de cada fornecedor, preço das variações, divergência de preço na leitura da planilha por foto). Salvar a ficha sem os campos de preço mantém o preço gravado.
+- Book (grade do lote: colunas Preço e Moeda; o servidor recusa a edição) e Seleção de itens (preço e preço em US$, também nos grupos já pedidos).
+- Pedido: FOB, preço por item e total, cópia da compra, preço da variação, fechamento do recebimento (lado do fornecedor; o lado do cliente segue "Ver valores e margem" ou "Gravar a venda"), lista de pedidos (preço dos itens). A certificadora deixou de ver o preço do pedido.
+- Ficha de compra do pedido (moeda e preço; o servidor descarta de quem não vê). O resumo do requisito "Ficha de compra" deixou de levar o preço (o antigo aparece sem ele para quem não vê).
+- Ficha da solicitação (compra, custo registrado, faixas e condições do fornecedor; a análise do Superplan continua com "Ver valores e margem").
+- Histórico comercial (FOB unitário da última compra), produtos do fornecedor (Cadastros → Fornecedores) e a tabela de preços do marketing (FOB unitário, também no CSV).
+
+**Ainda não aplicada** (próximo PR): solicitação ao fornecedor (tabela, negociação, contraproposta, pedido de compra ao fornecedor), estratégia e cotação de compra, sourcing.
+
+**Para decidir com o dono:** documentos com preço que hoje chegam a parceiros: o pedido de compra (tela e PDF) para a certificadora; a invoice comercial para o comex e a logística; as linhas da invoice para a companhia marítima; os arquivos de invoice e packing list para agência, transportador e jurídico. E o Superplan (custo nacionalizado, margem e veredito) no Book, na Seleção e na negociação, hoje para toda a Wellmix com a tela.
 
 ## 9. O que o inventário mostrou (15/11/2026)
 

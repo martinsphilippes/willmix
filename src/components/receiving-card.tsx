@@ -45,6 +45,8 @@ export function ReceivingCard({
   sections = ["storage", "return"],
   returnTo,
   canQuality = false,
+  showCustomerValues = true,
+  showSupplierValues = true,
 }: {
   t: Translate;
   order: Order;
@@ -60,6 +62,10 @@ export function ReceivingCard({
   returnTo?: string;
   /** Quem vê pode concluir a conferência da qualidade (mapa E19). */
   canQuality?: boolean;
+  /** Fechamento, lado do cliente (venda): só com "Ver valores e margem". */
+  showCustomerValues?: boolean;
+  /** Fechamento, lado do fornecedor (FOB): só com "Ver preço de compra" (docs/LINHA_DE_VISAO.md). */
+  showSupplierValues?: boolean;
 }) {
   const row = view.row;
   const closed = !!row?.closedAt;
@@ -523,74 +529,78 @@ export function ReceivingCard({
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className={rowClass}>
-                    <Td className="whitespace-nowrap font-medium">
-                      {t("receiving.customerSide")}
-                    </Td>
-                    <Td className="whitespace-nowrap tabular-nums">
-                      {t("receiving.paidOf", {
-                        paid: money(
-                          view.finance.customerPaid,
-                          view.finance.customerCurrency,
-                        ),
-                        total: money(
-                          view.finance.customerTotal,
-                          view.finance.customerCurrency,
-                        ),
-                      })}
-                    </Td>
-                    <Td className="whitespace-nowrap text-right tabular-nums">
-                      {view.finance.customerDue !== null ? (
-                        <strong
-                          className={
-                            view.finance.customerDue > 0
-                              ? "text-amber-700"
-                              : "text-emerald-700"
-                          }
-                        >
-                          {t("receiving.due", {
-                            due: money(
-                              view.finance.customerDue,
-                              view.finance.customerCurrency,
-                            ),
-                          })}
-                        </strong>
-                      ) : (
-                        "—"
-                      )}
-                    </Td>
-                  </tr>
-                  <tr className={rowClass}>
-                    <Td className="whitespace-nowrap font-medium">
-                      {t("receiving.supplierSide")}
-                    </Td>
-                    <Td className="whitespace-nowrap tabular-nums">
-                      {t("receiving.paidOf", {
-                        paid: money(
-                          view.finance.supplierPaid,
-                          view.finance.supplierCurrency,
-                        ),
-                        total: money(
-                          view.finance.supplierTotal,
-                          view.finance.supplierCurrency,
-                        ),
-                      })}
-                    </Td>
-                    <Td className="whitespace-nowrap text-right tabular-nums">
-                      {view.finance.supplierDue !== null ? (
-                        <strong>
-                          {t("receiving.due", {
-                            due: money(
-                              view.finance.supplierDue,
-                              view.finance.supplierCurrency,
-                            ),
-                          })}
-                        </strong>
-                      ) : (
-                        "—"
-                      )}
-                    </Td>
-                  </tr>
+                  {showCustomerValues ? (
+                    <tr className={rowClass}>
+                      <Td className="whitespace-nowrap font-medium">
+                        {t("receiving.customerSide")}
+                      </Td>
+                      <Td className="whitespace-nowrap tabular-nums">
+                        {t("receiving.paidOf", {
+                          paid: money(
+                            view.finance.customerPaid,
+                            view.finance.customerCurrency,
+                          ),
+                          total: money(
+                            view.finance.customerTotal,
+                            view.finance.customerCurrency,
+                          ),
+                        })}
+                      </Td>
+                      <Td className="whitespace-nowrap text-right tabular-nums">
+                        {view.finance.customerDue !== null ? (
+                          <strong
+                            className={
+                              view.finance.customerDue > 0
+                                ? "text-amber-700"
+                                : "text-emerald-700"
+                            }
+                          >
+                            {t("receiving.due", {
+                              due: money(
+                                view.finance.customerDue,
+                                view.finance.customerCurrency,
+                              ),
+                            })}
+                          </strong>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                    </tr>
+                  ) : null}
+                  {showSupplierValues ? (
+                    <tr className={rowClass}>
+                      <Td className="whitespace-nowrap font-medium">
+                        {t("receiving.supplierSide")}
+                      </Td>
+                      <Td className="whitespace-nowrap tabular-nums">
+                        {t("receiving.paidOf", {
+                          paid: money(
+                            view.finance.supplierPaid,
+                            view.finance.supplierCurrency,
+                          ),
+                          total: money(
+                            view.finance.supplierTotal,
+                            view.finance.supplierCurrency,
+                          ),
+                        })}
+                      </Td>
+                      <Td className="whitespace-nowrap text-right tabular-nums">
+                        {view.finance.supplierDue !== null ? (
+                          <strong>
+                            {t("receiving.due", {
+                              due: money(
+                                view.finance.supplierDue,
+                                view.finance.supplierCurrency,
+                              ),
+                            })}
+                          </strong>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                    </tr>
+                  ) : null}
                 </tbody>
               </Table>
               {closed ? (

@@ -27,6 +27,7 @@ export function SheetBoardReader({
   error,
   board,
   className,
+  showPrice = true,
 }: {
   t: Translate;
   scope: SheetReadingScope;
@@ -40,6 +41,11 @@ export function SheetBoardReader({
   /** Volta da leitura: "preenchidos-divergentes" ou "resolved". */
   board?: string | string[];
   className?: string;
+  /**
+   * Preço e moeda nas divergências: só para quem vê o preço de compra
+   * (docs/LINHA_DE_VISAO.md); sem ele, essas linhas não aparecem.
+   */
+  showPrice?: boolean;
 }) {
   if (!canRead && !view) return null;
   const label = (f: ReadingField) => t(`sheet.field.${f}` as DictionaryKey);
@@ -60,7 +66,9 @@ export function SheetBoardReader({
             : t("board.error.failed", { code })))
         : null;
   const done = typeof board === "string" ? board.match(/^(\d+)-(\d+)$/) : null;
-  const divergences = view?.divergences ?? [];
+  const divergences = (view?.divergences ?? []).filter(
+    (d) => showPrice || (d.field !== "price" && d.field !== "currency"),
+  );
 
   return (
     <Card

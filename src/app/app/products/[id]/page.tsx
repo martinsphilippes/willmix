@@ -968,6 +968,7 @@ export default async function ProductSheetPage({
           </p>
           {/* Foto do quadro: preenche a ficha mestre e aponta divergências. */}
           <SheetBoardReader
+            showPrice={seesPrice}
             t={t}
             scope="product"
             sheetKey={product.id}
