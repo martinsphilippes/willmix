@@ -53,6 +53,7 @@ Até aqui, todos os logins da Wellmix viam a mesma lista de Pendências. Nada er
 - **Início → Painel de SLA** (`/app/sla`, toda a Wellmix):
   - Tabela da equipe (quem tem equipe): pessoa (recuada pela árvore), cargo, divisão, atrasadas, vencem hoje, próximos 7 dias, parceiros atrasados e % no prazo.
   - Cartões de totais menores, que funcionam como filtros (`?show=overdue|today|week|later|partner|onTime`): tocar num deles abre, embaixo, na mesma tela, a tabela em linhas daquele grupo (pendência, detalhe, cliente, responsável quando a visão é de todos, aguardando quem, prazo e Abrir). Sem escolha, a tabela mostra todas as pendências da pessoa. O cartão "Etapas no prazo (30 dias)" abre a tabela das etapas por trás do indicador (pedido, etapa, cliente, prazo, concluída em, no prazo ou fora do prazo).
+  - Marcos (fase 4c, docs/MILESTONES.md): as linhas mostram o marco do pedido no lugar da etapa, e o cartão "Por marco" traz os mesmos números da visão escolhida agrupados pelos 16 marcos. Os prazos continuam os das etapas.
 - **Gestão → Equipe e divisões** (`/app/team`, só admin): cargo, divisão e "responde a" de cada login (a lista do chefe já esconde ele mesmo e quem está abaixo), a divisão de cada linha de produto e o botão "Distribuir agora".
 
 ## 7. Segurança

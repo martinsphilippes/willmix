@@ -32,6 +32,7 @@ import {
   type SlaItem,
   type SlaPerson,
 } from "@/lib/services/sla-panel";
+import { milestoneTitle, type MilestoneKey } from "@/lib/milestones";
 
 /*
  * Painel de SLA (docs/SLA_PANEL.md): o que cada operador deve, pelo prazo, na
@@ -103,6 +104,82 @@ function OnTime({
   );
 }
 
+/**
+ * Marco do item (fase 4c, docs/MILESTONES.md): "N. Marco"; sem marco, a
+ * etapa antiga (se houver) ou "Fora dos marcos".
+ */
+function milestoneText(
+  t: Translate,
+  milestone: MilestoneKey | null,
+  stageKey?: string,
+) {
+  if (milestone) return milestoneTitle(t, milestone);
+  return stageKey
+    ? t(`stage.${stageKey}` as DictionaryKey)
+    : t("milestone.none");
+}
+
+/** Os números da visão escolhida, por marco (fase 4c). */
+function MilestonesTable({
+  t,
+  rows,
+}: {
+  t: Translate;
+  rows: SlaBoard["byMilestone"];
+}) {
+  return (
+    <Table>
+      <thead>
+        <tr>
+          <Th>{t("milestone.label")}</Th>
+          <Th className="text-right">{t("milestone.sla.open")}</Th>
+          <Th className="text-right">{t("milestone.sla.late")}</Th>
+          <Th className="text-right">{t("milestone.sla.partner")}</Th>
+          <Th className="text-right">{t("sla.col.onTime")}</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr
+            key={r.milestone ?? "none"}
+            className={rowClass}
+            data-sla-milestone={r.milestone ?? "none"}
+          >
+            <Td className="whitespace-nowrap font-medium text-zinc-900">
+              {milestoneText(t, r.milestone)}
+            </Td>
+            <Td className="text-right tabular-nums">
+              {r.counts.overdue +
+                r.counts.today +
+                r.counts.week +
+                r.counts.later}
+            </Td>
+            <Td
+              className={cx(
+                "text-right tabular-nums",
+                r.counts.overdue > 0 && "font-semibold text-red-700",
+              )}
+            >
+              {r.counts.overdue}
+            </Td>
+            <Td
+              className={cx(
+                "text-right tabular-nums",
+                r.counts.partnerLate > 0 && "font-semibold text-amber-700",
+              )}
+            >
+              {r.counts.partnerLate}
+            </Td>
+            <Td className="text-right">
+              {r.onTime.total ? <OnTime t={t} value={r.onTime} /> : "—"}
+            </Td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
+  );
+}
+
 function dueText(t: Translate, item: SlaItem) {
   if (item.daysLeft === null) return t("sla.noDue");
   if (item.daysLeft < 0) return t("sla.daysLate", { n: -item.daysLeft });
@@ -150,9 +227,9 @@ function ItemsTable({
               <TextLink href={item.link} className="font-semibold">
                 {item.title}
               </TextLink>
-              {item.stageKey ? (
+              {item.milestone || item.stageKey ? (
                 <span className="block text-xs font-normal text-zinc-500">
-                  {t(`stage.${item.stageKey}` as DictionaryKey)}
+                  {milestoneText(t, item.milestone, item.stageKey)}
                 </span>
               ) : null}
             </Td>
@@ -240,7 +317,7 @@ function StagesTable({
       <thead>
         <tr>
           <Th>#</Th>
-          <Th>{t("orders.stage")}</Th>
+          <Th>{t("milestone.label")}</Th>
           <Th>{t("common.customer")}</Th>
           {showOwner ? <Th>{t("common.responsible")}</Th> : null}
           <Th>{t("common.due")}</Th>
@@ -259,7 +336,7 @@ function StagesTable({
               <TextLink href={s.link}>#{s.orderNumber || "—"}</TextLink>
             </Td>
             <Td className="whitespace-nowrap font-medium text-zinc-900">
-              {t(`stage.${s.stageKey}` as DictionaryKey)}
+              {milestoneText(t, s.milestone, s.stageKey)}
             </Td>
             <Td className="text-zinc-700">{s.customerName ?? "—"}</Td>
             {showOwner ? (
@@ -499,6 +576,17 @@ export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
           />
         ))}
       </div>
+
+      {board.byMilestone.length ? (
+        <Card title={t("milestone.sla.title")} className="mb-4">
+          <p className="mb-2 text-xs text-zinc-500">
+            {t("milestone.sla.hint")}
+          </p>
+          <div data-sla-milestones>
+            <MilestonesTable t={t} rows={board.byMilestone} />
+          </div>
+        </Card>
+      ) : null}
 
       <Card
         title={`${sectionTitle[show]} (${count})`}

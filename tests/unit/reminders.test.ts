@@ -69,6 +69,20 @@ describe("lembretes de prazo", () => {
     expect(first.sent).toBeGreaterThanOrEqual(1);
     expect((await store.list("notifications")).length).toBeGreaterThan(before);
     expect(sentB ?? null).toBeNull();
+    // O texto nomeia o marco dos itens pendentes (fase 4c), não a etapa.
+    const { milestoneOfItems, milestoneTitle } =
+      await import("@/lib/milestones");
+    const { translator } = await import("@/i18n");
+    const milestone = milestoneOfItems(
+      a.stage.key,
+      a.pending.map((x) => x.key),
+    )!;
+    const subjects = (await store.list("notifications"))
+      .filter((n) => n.link === `/app/orders/${a.order.id}`)
+      .map((n) => n.subject);
+    expect(subjects).toContain(
+      `Atrasado: pedido #${a.order.number}, ${milestoneTitle(translator("pt"), milestone)}`,
+    );
     const again = await runReminders();
     expect(again.sent).toBe(0);
   });
