@@ -2,7 +2,7 @@
 
 Desenho do dono de 15/11/2026 (mapa do processo, layout 15; docs/MAPA_PROCESSO.md). Reposição (B10) e Encomenda do cliente (B14) entram na mesma decisão, "Qual a estratégia de compra?" (B10?), que leva direto ao pedido de compra (P2) ou à Cotação de compra (B13), cuja vencedora vira a Solicitação ao fornecedor (B7). As decisões estão em docs/OPEN_DECISIONS.md.
 
-Situação: **PR 4 de 5 (cotação de compra)**. As seções abaixo descrevem o alvo; cada PR marca o que entregou em "Andamento".
+Situação: **PRs 1 a 5 entregues (15/11/2026)**. As seções abaixo descrevem o alvo; cada PR marca o que entregou em "Andamento".
 
 ## O caminho
 
@@ -104,6 +104,13 @@ V6 (vitrine) manda para a ordem de venda (V7) o que o estoque livre ou uma compr
 - **Esquema (aditivo)**: `purchase_quotes`, `purchase_quote_responses`, `supplier_lines`; `supplier_requests.quoteResponseId` e `demandIds`.
 - **Testes**: `tests/unit/purchase-quote.test.ts` (fornecedores pela linha, prazo de 24 h com data e fuso explícitos, isolamento, escolha e aprovação até a B7, um responde e outro não, sem nenhuma resposta, lembrete) e `tests/e2e/purchase-quote.spec.ts` ((b) e o isolamento entre fornecedores e do cliente).
 
+## O que o PR 5 entregou (limpeza da RFQ)
+
+- Um modelo de cotação só: a Cotação de compra (B13). As tabelas `quotes` e `approvals` já tinham saído em 11/11/2026; os status antigos da solicitação foram reaproveitados (docs/QUOTE_FLOW.md, "Desde 15/11/2026").
+- Saíram 684 textos sem uso (grupos `rfq`, `rfqStandby`, `quoteFlow`, `quoteSheet`, `quoteSent`, `quotes`, `spRfq` e `approvals` menos `approvals.error.*`) e o rótulo da configuração `quotationExpirationDays`. Ficaram as chaves ainda lidas pelo código, inclusive as montadas na hora (erros, nomes de funções, origens).
+- Ficaram, de propósito: a chave de tela `quotes` (gravada nas funções), as ações aposentadas em `RETIRED_ACTIONS` e `quoteSlaBusinessDays`, renomeada na tela para "SLA de resposta da encomenda".
+- docs/QUOTE_FLOW.md, docs/RFQ_STANDBY.md e docs/APPROVALS.md apontam para a cotação de compra.
+
 ## Andamento
 
 | PR  | Entrega                                                                                       | Situação |
@@ -112,4 +119,4 @@ V6 (vitrine) manda para a ordem de venda (V7) o que o estoque livre ou uma compr
 | 2   | Demanda única: encomenda pelas 4 portas, divisão do carrinho, reposição manual, função Vendas | feito    |
 | 3   | Estratégia de compra, aprovação e pedido de compra direto                                     | feito    |
 | 4   | Cotação de compra: fornecedor × linha, 24 h, isolamento, quadro comparativo                   | feito    |
-| 5   | Limpeza dos restos da RFQ                                                                     | a fazer  |
+| 5   | Limpeza dos restos da RFQ                                                                     | feito    |

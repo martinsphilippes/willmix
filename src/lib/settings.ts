@@ -39,7 +39,7 @@ export const DEFAULT_SETTINGS = {
   sankhyaMode: "MOCK" as "MOCK" | "MANUAL",
   whatsappMode: "MOCK" as const,
   emailMode: "MOCK" as const,
-  /** SLA de resposta da cotação: dias úteis para a Wellmix responder uma solicitação. */
+  /** SLA de resposta da encomenda: dias úteis para a Wellmix responder uma solicitação (a chave ficou com o nome antigo). */
   quoteSlaBusinessDays: 5,
   /**
    * SLA da negociação com o fornecedor, em minutos: da abertura da
