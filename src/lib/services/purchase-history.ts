@@ -736,13 +736,18 @@ export function purchaseHistoryView(
     n.toLocaleString(t.intl, { maximumFractionDigits: digits });
   const date = (iso: string | null) => {
     if (!iso) return DASH;
-    const d = new Date(iso);
+    // "AAAA-MM-DD" (data prevista da rodada) é um dia do calendário, não um
+    // instante: new Date() leria meia-noite UTC e, no fuso do Brasil, o dia
+    // anterior. Formata em UTC para mostrar o mesmo dia gravado.
+    const dayOnly = /^\d{4}-\d{2}-\d{2}$/.test(iso);
+    const d = new Date(dayOnly ? `${iso}T00:00:00Z` : iso);
     return Number.isNaN(d.getTime())
       ? DASH
       : d.toLocaleDateString(t.intl, {
           day: "2-digit",
           month: "2-digit",
           year: "numeric",
+          ...(dayOnly ? { timeZone: "UTC" } : {}),
         });
   };
   const money = (m: Money | null) =>
