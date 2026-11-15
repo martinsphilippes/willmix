@@ -50,15 +50,17 @@ async function overdueOrder(name: string) {
     dueAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
     reminderSentAt: null,
   });
-  const stages = await store.list("stages", {
-    filter: { orderId: order.id, status: ["active", "blocked"] },
-  });
+  const stages = (
+    await store.list("stages", { filter: { orderId: order.id } })
+  ).filter((st) => st.status !== "cancelled");
   const reqs = await store.list("requirements", {
     filter: { orderId: order.id },
   });
   return {
     order,
     milestone,
+    // Fase 5d: os itens do marco em andamento já podem ser feitos, em
+    // qualquer etapa (o marco libera, não a etapa).
     pending: reqs.filter(
       (x) =>
         x.required &&

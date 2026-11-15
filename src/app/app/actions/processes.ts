@@ -8,10 +8,15 @@ import {
   PROCESS_EVENTS,
   SANKHYA_ACTIONS,
   STOCK_ACTIONS,
+  isStageEvent,
+  rewriteStageRule,
   type ProcessEventKey,
   type ProcessRule,
 } from "@/lib/process-rules";
-import { saveProcessRules } from "@/lib/services/process-engine";
+import {
+  getProcessRules,
+  saveProcessRules,
+} from "@/lib/services/process-engine";
 import {
   getSankhyaErpSettings,
   saveSankhyaErpSettings,
@@ -85,6 +90,42 @@ export async function saveProcessRulesAction(form: FormData) {
     ).slice(0, 600)}#rules`;
   }
   redirect(target);
+}
+
+const STAGE_EVENTS = PROCESS_EVENTS.filter(isStageEvent) as [
+  ProcessEventKey,
+  ...ProcessEventKey[],
+];
+
+/**
+ * Fase 5d (docs/MILESTONES.md, docs/PROCESSES.md): troca uma regra gravada
+ * com evento de etapa antiga (sem efeito desde que o motor anda pelos
+ * marcos) para o evento de marco proposto. Só o administrador, uma regra por
+ * vez, nunca por cima de uma regra de marco que já faz alguma coisa.
+ */
+export async function rewriteStageRuleAction(form: FormData) {
+  const user = await admin();
+  const parsed = z
+    .object({ event: z.enum(STAGE_EVENTS) })
+    .safeParse({ event: str(form, "legacyEvent") });
+  if (!parsed.success)
+    return redirect(`${BACK}&error=invalid_input&detail=event#rules`);
+  const rules = await getProcessRules();
+  const result = rewriteStageRule(rules, parsed.data.event);
+  if (!result.ok) return redirect(`${BACK}&rewriteError=${result.error}#rules`);
+  await saveProcessRules(user, result.rules);
+  await audit(
+    user,
+    "process.rule.rewrite",
+    "settings",
+    "processRules",
+    `Regra ${parsed.data.event} trocada para ${result.target}`,
+    { event: parsed.data.event },
+    { event: result.target },
+  );
+  redirect(
+    `${BACK}&rewritten=${encodeURIComponent(result.target)}#rule-${encodeURIComponent(result.target)}`,
+  );
 }
 
 /** Liga/desliga a execução das ações no Sankhya (pedidos e notas). */

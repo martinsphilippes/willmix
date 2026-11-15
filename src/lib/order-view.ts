@@ -4,6 +4,7 @@ import {
   MILESTONE_KEYS,
   milestoneOfRequirement,
   type MilestoneKey,
+  type MilestoneState,
 } from "@/lib/milestones";
 import type { OrderPartKey } from "@/lib/order-parts";
 
@@ -143,12 +144,20 @@ export function requirementVisibleTo(
   r: ViewRequirement,
   stage: ViewStage,
   stageReqs: readonly Pick<Requirement, "role">[],
+  /**
+   * Fase 5d: a situação dos marcos do pedido. Liberado = o marco do item em
+   * andamento ou concluído (não "aguardando"). Sem ela, pela etapa começada.
+   */
+  states?: ReadonlyMap<MilestoneKey, MilestoneState>,
 ): boolean {
   if (stage.key === "CLOSED") return false;
   if (isWellmix(user)) return true;
   if (stage.status === "cancelled") return false;
-  // Liberado: o motor já começou o item (até a fase 5d, pela etapa).
-  const released = stage.status !== "pending";
+  // Liberado: o marco do item começou (fase 5d; sem os marcos, a etapa).
+  const milestoneState = states?.get(requirementMilestone(r, stage) as never);
+  const released = states
+    ? milestoneState === "active" || milestoneState === "done"
+    : stage.status !== "pending";
   if (isPartner(user)) {
     // O item dele e os que andam junto com os dele, mesmo antes de começar.
     if (r.role === user.role) return true;
@@ -169,6 +178,8 @@ export function requirementsByMilestone<R extends ViewRequirement>(
   user: Pick<User, "role">,
   stages: readonly ViewStage[],
   requirements: readonly R[],
+  /** Fase 5d: a situação dos marcos (o "liberado" de `requirementVisibleTo`). */
+  states?: ReadonlyMap<MilestoneKey, MilestoneState>,
 ): Map<MilestoneKey, Array<{ r: R; stage: ViewStage }>> {
   const byStage = new Map<string, R[]>();
   for (const r of requirements) {
@@ -180,7 +191,7 @@ export function requirementsByMilestone<R extends ViewRequirement>(
   for (const stage of stages) {
     const reqs = byStage.get(stage.id) ?? [];
     for (const r of reqs) {
-      if (!requirementVisibleTo(user, r, stage, reqs)) continue;
+      if (!requirementVisibleTo(user, r, stage, reqs, states)) continue;
       const key = requirementMilestone(r, stage);
       if (!key) continue;
       const list = found.get(key);

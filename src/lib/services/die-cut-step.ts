@@ -76,6 +76,14 @@ export async function negotiatedTerms(
   return out;
 }
 
+/** Fase 5d: o quadro aceita envio quando o marco Material de arte libera. */
+async function dieCutOpen(requirements: Requirement[]): Promise<boolean> {
+  const sample = requirements.find((r) => dieCutItemOf(r.key));
+  if (!sample) return false;
+  const { requirementIsReleased } = await import("./order-milestones");
+  return requirementIsReleased(sample);
+}
+
 export async function getDieCutView(
   user: User,
   orderId: string,
@@ -123,7 +131,8 @@ export async function getDieCutView(
   }
   return {
     order,
-    open: !!stage && (stage.status === "active" || stage.status === "blocked"),
+    // Fase 5d: aberto quando o marco Material de arte libera os itens.
+    open: await dieCutOpen(mine),
     canAct: isWellmix(user) || isOrderSupplier(user, order),
     products,
     documents: new Map(docs.map((d) => [d.id, d])),
@@ -159,8 +168,8 @@ async function photoTarget(user: User, orderId: string, requirementId: string) {
     const { assertLaneActor } = await import("./cert-art-routing");
     await assertLaneActor(user, order, requirement);
   }
-  const stage = await store.get("stages", requirement.stageId);
-  if (!stage || (stage.status !== "active" && stage.status !== "blocked"))
+  const { requirementIsReleased } = await import("./order-milestones");
+  if (!(await requirementIsReleased(requirement)))
     throw new DieCutPhotoError("stage_not_active");
   return { order, requirement };
 }

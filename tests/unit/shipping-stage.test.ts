@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
+import { completeMilestonesBefore } from "./helpers/milestones";
 
 /*
  * Embarque mais simples: data de embarque, previsão de chegada, navio e BL
@@ -68,6 +69,8 @@ async function orderAtShipping(shippingLineId: string | null = "armador") {
     status: "SHIPPING",
     currentStageId: shipping.id,
   });
+  // Fase 5d: o Embarque libera pelos marcos anteriores concluídos.
+  await completeMilestonesBefore(order.id, "shipment");
   return { order, shipping };
 }
 

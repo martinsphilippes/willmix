@@ -1,4 +1,5 @@
 import "server-only";
+import { isHeld } from "@/lib/db/store";
 import { isOrderOpen } from "@/lib/order-status";
 
 import { translator } from "@/i18n";
@@ -6,6 +7,7 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   getStore,
   type Order,
+  type OrderMilestone,
   type Requirement,
   type Stage,
   type StageKey,
@@ -33,7 +35,13 @@ import {
   milestoneOfStatus,
   milestoneRank,
   type MilestoneKey,
+  type MilestoneState,
 } from "@/lib/milestones";
+import {
+  milestoneOfItem,
+  requirementReleased,
+  type MilestoneRelease,
+} from "@/lib/milestone-release";
 
 export type TaskKind =
   | "booking_invite"
@@ -423,6 +431,94 @@ function finish(
   };
 }
 
+/**
+ * Itens abertos liberados pelo marco (fase 5d): o obrigatório liberado; o
+ * opcional liberado só com obrigatória aberta e liberada no mesmo marco.
+ */
+function releasedOpen(
+  open: readonly Requirement[],
+  stages: readonly Stage[],
+  orderById: ReadonlyMap<string, Order>,
+  release: ReadonlyMap<string, MilestoneRelease>,
+): Requirement[] {
+  const stageById = new Map(stages.map((st) => [st.id, st]));
+  const released = open.filter((r) => {
+    const order = orderById.get(r.orderId);
+    const rel = release.get(r.orderId);
+    return !!order && !!rel && requirementReleased(order, r, rel);
+  });
+  const milestoneOf = (r: Requirement) => {
+    const stage = stageById.get(r.stageId);
+    return stage ? milestoneOfItem(r, stage) : null;
+  };
+  const requiredOpen = new Set(
+    released
+      .filter((r) => r.required)
+      .map((r) => `${r.orderId}|${milestoneOf(r)}`),
+  );
+  return released.filter(
+    (r) => r.required || requiredOpen.has(`${r.orderId}|${milestoneOf(r)}`),
+  );
+}
+
+/**
+ * Liberação pelas linhas abertas de `order_milestones` (fase 5d): o marco
+ * com linha "active" ou "blocked" está em andamento; o resto, aguardando.
+ */
+export function releaseFromRows(
+  rows: readonly Pick<OrderMilestone, "orderId" | "key" | "status">[],
+  stages: readonly Stage[],
+): Map<string, MilestoneRelease> {
+  const out = new Map<string, MilestoneRelease>();
+  const states = new Map<string, Map<MilestoneKey, MilestoneState>>();
+  for (const row of rows) {
+    if (!(MILESTONE_KEYS as readonly string[]).includes(row.key)) continue;
+    const map = states.get(row.orderId) ?? new Map();
+    map.set(row.key as MilestoneKey, row.status === "done" ? "done" : "active");
+    states.set(row.orderId, map);
+  }
+  const stagesOf = new Map<string, Stage[]>();
+  for (const st of stages)
+    stagesOf.set(st.orderId, [...(stagesOf.get(st.orderId) ?? []), st]);
+  for (const [orderId, map] of states)
+    out.set(orderId, {
+      states: map,
+      stages: new Map((stagesOf.get(orderId) ?? []).map((st) => [st.id, st])),
+    });
+  return out;
+}
+
+/**
+ * Etapas e liberação dos pedidos com marco em andamento (fase 5d): as linhas
+ * abertas de `order_milestones` (dos pedidos dados, ou de todos) e todas as
+ * etapas não canceladas desses pedidos (o item liberado pode estar numa
+ * etapa que o registro antigo ainda não começou).
+ */
+async function releasedStageSources(
+  scope: string[] | null,
+): Promise<{ stages: Stage[]; release: Map<string, MilestoneRelease> }> {
+  const empty = { stages: [], release: new Map<string, MilestoneRelease>() };
+  if (scope && !scope.length) return empty;
+  const store = getStore();
+  const rows = await store
+    .list("order_milestones", {
+      filter: {
+        ...(scope ? { orderId: scope } : {}),
+        status: ["active", "blocked"],
+      },
+    })
+    // Tabela ainda não publicada: nenhum marco em andamento.
+    .catch(() => [] as OrderMilestone[]);
+  const ids = [...new Set(rows.map((r) => r.orderId))];
+  if (!ids.length) return empty;
+  // Na lista geral, a etapa em espera (histórico do Sankhya) fica de fora,
+  // como na leitura por situação; a lista à parte passa os pedidos dela.
+  const stages = (
+    await store.list("stages", { filter: { orderId: ids } })
+  ).filter((st) => st.status !== "cancelled" && (!!scope || !isHeld(st)));
+  return { stages, release: releaseFromRows(rows, stages) };
+}
+
 /** Pendência antes de `finish` (prazo e grupo calculados na hora da leitura). */
 export type TaskDraft = Parameters<typeof finish>[0];
 
@@ -432,9 +528,15 @@ type Lanes = typeof import("@/lib/purchase-lanes") & {
 };
 
 /**
- * Pendências dos itens das etapas em andamento ou bloqueadas (função pura):
- * a regra de `pendingTasksFor`, também usada no resumo de cada pedido para a
- * Wellmix (as mesmas para toda a equipe).
+ * Pendências dos itens liberados do pedido (função pura): a regra de
+ * `pendingTasksFor`, também usada no resumo de cada pedido para a Wellmix
+ * (as mesmas para toda a equipe).
+ *
+ * Fase 5d: com `release`, o item entra quando o marco dele o libera
+ * (`requirementReleased`), em qualquer etapa; o opcional só enquanto o
+ * marco dele ainda tem obrigatória aberta (o dado do Embarque que chega
+ * depois não vira pendência). Sem `release` (chamadas antigas), as etapas
+ * dadas são as em andamento.
  */
 export function stageTaskDrafts(
   user: User,
@@ -444,9 +546,13 @@ export function stageTaskDrafts(
     openRequirements: Requirement[];
     sealApplied: Set<string>;
     lanes: Lanes | null;
+    release?: ReadonlyMap<string, MilestoneRelease>;
   },
 ): TaskDraft[] {
-  const { stages, orderById, openRequirements, sealApplied, lanes } = input;
+  const { stages, orderById, sealApplied, lanes, release } = input;
+  const openRequirements = release
+    ? releasedOpen(input.openRequirements, stages, orderById, release)
+    : input.openRequirements;
   const wellmix = isWellmix(user);
   const supplier = user.role === "supplier" && !!user.partyId;
   const out: TaskDraft[] = [];
@@ -694,17 +800,11 @@ export async function pendingTasksFor(
   const ready = wellmix
     ? await (await import("./order-summary")).summariesReady()
     : false;
-  const [stages, newRequests, demands, reviews, openAfterSales] =
+  const [released, newRequests, demands, reviews, openAfterSales] =
     await Promise.all([
-      ready
-        ? none
-        : scope
-          ? scope.length
-            ? store.list("stages", {
-                filter: { orderId: scope, status: ["active", "blocked"] },
-              })
-            : none
-          : store.list("stages", { filter: { status: ["active", "blocked"] } }),
+      // Fase 5d: os itens liberados pelos marcos em andamento (linhas
+      // abertas de `order_milestones`), em qualquer etapa.
+      ready ? { stages: [], release: new Map() } : releasedStageSources(scope),
       // Solicitação do cliente ainda sem pedido (as situações da RFQ e do sinal
       // só existem nas antigas): a Wellmix dá o próximo passo.
       wellmix
@@ -739,6 +839,7 @@ export async function pendingTasksFor(
         : none,
     ]);
 
+  const { stages, release } = released;
   // Pedidos, requisitos e solicitações citados acima, em uma rodada paralela.
   // Os pedidos dos itens de revisão entram para pular os de pedido cancelado.
   const orderIds = [
@@ -815,6 +916,7 @@ export async function pendingTasksFor(
         openRequirements,
         sealApplied,
         lanes,
+        release,
       });
   // Arte, validação, certificado e arte final do pedido de compra: só com
   // quem recebe cada uma (o resumo do pedido traz a lista da equipe toda).
@@ -2077,18 +2179,19 @@ export async function heldTasksFor(
     .slice((current - 1) * HELD_TASKS_PAGE, current * HELD_TASKS_PAGE)
     .map((o) => o.id);
   // Leituras pelo pedido (orderId): veem as linhas em espera.
-  const [orders, stages, openRequirements, seals] = await Promise.all([
-    store.list("orders", { filter: { id: ids } }),
-    store.list("stages", {
-      filter: { orderId: ids, status: ["active", "blocked"] },
-    }),
-    store.list("requirements", {
-      filter: { orderId: ids, status: ["pending", "rejected"] },
-    }),
-    store
-      .list("import_steps", { filter: { orderId: ids, key: "cert_seal_art" } })
-      .catch(() => []),
-  ]);
+  const [orders, { stages, release }, openRequirements, seals] =
+    await Promise.all([
+      store.list("orders", { filter: { id: ids } }),
+      releasedStageSources(ids),
+      store.list("requirements", {
+        filter: { orderId: ids, status: ["pending", "rejected"] },
+      }),
+      store
+        .list("import_steps", {
+          filter: { orderId: ids, key: "cert_seal_art" },
+        })
+        .catch(() => []),
+    ]);
   const purchase = orders.filter((o) => isPurchaseFlow(o)).map((o) => o.id);
   const lanes = purchase.length
     ? {
@@ -2109,6 +2212,7 @@ export async function heldTasksFor(
         .map((s) => s.orderId),
     ),
     lanes,
+    release,
   });
   const tasks = await routeLaneTasks(
     user,

@@ -17,7 +17,10 @@ import { getStore } from "@/lib/db";
 import {
   SANKHYA_ACTIONS,
   STOCK_ACTIONS,
+  isStageEvent,
+  ruleDoesSomething,
   ruleProblem,
+  stageRuleMilestoneEvent,
   type ProcessEventKey,
 } from "@/lib/process-rules";
 import {
@@ -28,6 +31,7 @@ import {
 import { getProcessRules } from "@/lib/services/process-engine";
 import { getSankhyaErpSettings } from "@/lib/integrations/sankhya-settings";
 import {
+  rewriteStageRuleAction,
   runSankhyaSyncAction,
   saveProcessRulesAction,
   saveSyncDefaultsAction,
@@ -220,6 +224,20 @@ export async function ProcessTab({ t, q }: { t: Translate; q: Params }) {
           {t("processes.rules.hint")}
         </p>
         {saved ? <Alert tone="success">{t("processes.saved")}</Alert> : null}
+        {one(q.rewritten) ? (
+          <Alert tone="success">
+            {t("processes.legacy.rewritten", {
+              event: eventLabel(t, one(q.rewritten) as ProcessEventKey),
+            })}
+          </Alert>
+        ) : null}
+        {one(q.rewriteError) ? (
+          <Alert tone="danger">
+            {t(
+              `processes.legacy.error.${one(q.rewriteError)}` as DictionaryKey,
+            )}
+          </Alert>
+        ) : null}
         {error ? (
           <Alert tone="danger">
             {t("sankhyaInt.error.invalid_input", {
@@ -243,6 +261,13 @@ export async function ProcessTab({ t, q }: { t: Translate; q: Params }) {
             <tbody>
               {rules.map((rule, i) => {
                 const problem = ruleProblem(rule);
+                // Fase 5d: etapa antiga não dispara mais; a regra que faz
+                // alguma coisa ganha o evento de marco proposto e o botão.
+                const legacy = isStageEvent(rule.event);
+                const proposed =
+                  legacy && ruleDoesSomething(rule)
+                    ? stageRuleMilestoneEvent(rule.event)
+                    : null;
                 const group = groupAtEvent(rule.event);
                 const head = group ? groupLabel(t, group) : null;
                 return (
@@ -264,7 +289,11 @@ export async function ProcessTab({ t, q }: { t: Translate; q: Params }) {
                         </Td>
                       </tr>
                     ) : null}
-                    <tr data-process-event={rule.event}>
+                    <tr
+                      id={`rule-${rule.event}`}
+                      data-process-event={rule.event}
+                      data-process-legacy={legacy ? "1" : undefined}
+                    >
                       <Td className="min-w-52 text-sm font-medium">
                         <input
                           type="hidden"
@@ -272,6 +301,36 @@ export async function ProcessTab({ t, q }: { t: Translate; q: Params }) {
                           value={rule.event}
                         />
                         {eventLabel(t, rule.event)}
+                        {legacy ? (
+                          <span
+                            className="block text-xs text-zinc-500"
+                            data-process-no-effect
+                          >
+                            {t("processes.legacy.noEffect")}
+                          </span>
+                        ) : null}
+                        {proposed ? (
+                          <span className="mt-1 block text-xs">
+                            <span
+                              className="block text-zinc-600"
+                              data-process-proposed={proposed}
+                            >
+                              {t("processes.legacy.proposed", {
+                                event: eventLabel(t, proposed),
+                              })}
+                            </span>
+                            <button
+                              type="submit"
+                              formAction={rewriteStageRuleAction}
+                              name="legacyEvent"
+                              value={rule.event}
+                              data-process-rewrite={rule.event}
+                              className="mt-1 rounded-md border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-800 hover:bg-zinc-100"
+                            >
+                              {t("processes.legacy.rewrite")}
+                            </button>
+                          </span>
+                        ) : null}
                         {problem ? (
                           <span className="block text-xs text-amber-700">
                             {t(`processes.problem.${problem}` as DictionaryKey)}

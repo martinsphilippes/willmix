@@ -85,6 +85,15 @@ export function SearchPicker({
 }) {
   const listId = useId();
   const input = useRef<HTMLInputElement>(null);
+  // Fechar a lista ao sair do campo espera o clique na lista; voltar ao
+  // campo antes disso cancela o fechamento (senão a lista aberta de novo
+  // fechava sozinha).
+  const closing = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClose = () => {
+    if (closing.current) clearTimeout(closing.current);
+    closing.current = null;
+  };
+  useEffect(() => cancelClose, []);
   const [selected, setSelected] = useState<SearchOption | null>(
     initial ?? null,
   );
@@ -186,10 +195,17 @@ export function SearchPicker({
             }
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            cancelClose();
+            setOpen(true);
+          }}
           onBlur={() => {
             // Deixa o clique na lista acontecer antes de fechar.
-            setTimeout(() => setOpen(false), 150);
+            cancelClose();
+            closing.current = setTimeout(() => {
+              closing.current = null;
+              setOpen(false);
+            }, 150);
           }}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {

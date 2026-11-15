@@ -73,6 +73,8 @@ async function orderFor(
   return (await store.get("orders", order.id)) ?? order;
 }
 
+const { completeMilestonesBefore } = await import("./helpers/milestones");
+
 /** Preenche tudo até encerrar o pedido (Wellmix pode preencher qualquer requisito). */
 async function completeOrder(orderId: string) {
   const store = getStore();
@@ -87,6 +89,9 @@ async function completeOrder(orderId: string) {
       (r) => r.stageId === stage.id && r.status !== "done" && r.required,
     );
     if (pending.length === 0) return;
+    // Fase 5d: os passos do embarque, do desembaraço e da NF fazem parte dos
+    // marcos que liberam as etapas seguintes.
+    await completeMilestonesBefore(orderId, "delivery", { stepsOnly: true });
     for (const r of pending) {
       // Documento do pedido (ordem nova): o envio para assinatura pede o
       // selo aplicado na arte.

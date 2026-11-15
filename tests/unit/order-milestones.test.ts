@@ -101,7 +101,7 @@ describe("itens novos com passo e marco", () => {
   });
 });
 
-describe("syncMilestones em sombra", () => {
+describe("syncMilestones em sombra e pela fila", () => {
   it("grava os marcos abertos e o marco atual, sem aviso nem evento", async () => {
     const order = scenario.orders.b;
     for (const row of await store.list("order_milestones", {
@@ -155,11 +155,14 @@ describe("syncMilestones em sombra", () => {
     await setSetting("milestoneDueDays", null);
   });
 
-  it("o motor só põe o pedido na fila (fora de uma requisição, sem gravar)", async () => {
+  it("o motor põe o pedido na fila; a fila sincroniza fora da sombra (fase 5d) e não repete", async () => {
     expect(om.queuedMilestoneSyncs().length).toBeGreaterThan(0);
-    const before = await counts();
     await om.flushMilestoneSync();
     expect(om.queuedMilestoneSyncs()).toEqual([]);
+    // De novo, sem nada mudar: nenhum aviso, evento ou auditoria a mais.
+    const before = await counts();
+    for (const o of Object.values(scenario.orders)) om.queueMilestoneSync(o.id);
+    await om.flushMilestoneSync();
     expect(await counts()).toEqual(before);
     const order = (await store.get("orders", scenario.orders.a.id))!;
     expect(order.milestoneKey).toBeTruthy();

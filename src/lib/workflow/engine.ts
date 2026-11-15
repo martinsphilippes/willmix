@@ -15,11 +15,7 @@ import {
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { audit } from "@/lib/services/audit";
-import {
-  requesterTarget,
-  notify,
-  notifyWellmix,
-} from "@/lib/services/notifications";
+import { notify, notifyWellmix } from "@/lib/services/notifications";
 import { STAGE_KEYS } from "@/lib/db/schema";
 import { requirementLabel } from "@/i18n";
 import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
@@ -27,9 +23,7 @@ import {
   ROLE_PARTY_FIELD,
   STAGE_TEMPLATES,
   artRole,
-  canCompleteLater,
   isOffFlowStage,
-  isOrderDocumentKey,
   isOrderSignatureKey,
   ORDER_SIGN_SEND,
   ORDER_SIGNED_WELLMIX,
@@ -42,11 +36,15 @@ import {
   isInspectionMeasureKey,
 } from "@/lib/services/inspection";
 import { openReview, resolveReviews } from "@/lib/services/reviews";
-import { openAfterSales } from "@/lib/services/after-sales";
 
 import { isMoneyRequirement, parseMoneyValue } from "./money";
 import { requirementFlowFields } from "@/lib/milestones";
-import { queueMilestoneSync } from "@/lib/services/order-milestones";
+import {
+  orderRelease,
+  queueMilestoneSync,
+  syncMilestones,
+} from "@/lib/services/order-milestones";
+import { requirementReleased } from "@/lib/milestone-release";
 import {
   approvalSourceOf,
   LANE_KEYS,
@@ -231,6 +229,11 @@ export async function createStagesForOrder(
    * de uma programação de compra copia ali os itens já feitos no pai).
    */
   beforeStart?: () => Promise<void>,
+  /**
+   * Carga do histórico do Sankhya: os marcos são gravados em sombra (sem
+   * avisos nem eventos), como a carga sempre fez.
+   */
+  options: { shadow?: boolean } = {},
 ) {
   const store = getStore();
   const settings = await getSettings();
@@ -323,6 +326,9 @@ export async function createStagesForOrder(
       await import("@/lib/services/purchase-order");
     await notifyRegistrationOpen(order);
   }
+  // Fase 5d: os marcos que já nascem liberados (pedido novo, certificação,
+  // material de arte...) avisam quem faz os itens deles.
+  await syncMilestones(order.id, { shadow: options.shadow });
   return firstStageId;
 }
 
@@ -392,6 +398,16 @@ async function assertLaneAssignee(
   if (!isPurchaseFlow(order) || !isRoutedLaneKey(requirement.key)) return;
   const { assertLaneActor } = await import("@/lib/services/cert-art-routing");
   await assertLaneActor(user, order, requirement);
+}
+
+/**
+ * O item está liberado pelo marco (fase 5d, docs/MILESTONES.md)? Recusa com
+ * o mesmo código de antes (`stage_not_active`), que as telas já traduzem.
+ */
+async function assertReleased(order: Order, requirement: Requirement) {
+  const found = await orderRelease(order.id);
+  if (!found || !requirementReleased(order, requirement, found.release))
+    throw new WorkflowError("stage_not_active");
 }
 
 /** Quem pode preencher: Wellmix sempre; o papel do requisito quando vinculado ao parceiro certo. */
@@ -485,14 +501,6 @@ export async function submitRequirement(
     if ((await shipmentBlockers(order.id)).length)
       throw new WorkflowError("shipping_docs_required");
   }
-  if (
-    stage.status !== "active" &&
-    stage.status !== "blocked" &&
-    // Embarque confirmado: BL, datas e navio ainda podem chegar depois.
-    !canCompleteLater(stage, requirement, order)
-  ) {
-    throw new WorkflowError("stage_not_active");
-  }
   // "Enviar para assinatura": só com a arte enviada e o selo da certificadora
   // já aplicado nela (decisão do dono). A recusa diz o que falta.
   if (requirement.key === ORDER_SIGN_SEND) {
@@ -500,6 +508,10 @@ export async function submitRequirement(
     const [missing] = await signSendBlockers(order.id, stage.id);
     if (missing) throw new WorkflowError(`sign_send_${missing}_required`);
   }
+  // Fase 5d: liberado pelo marco (dependências do mapa concluídas), não
+  // mais pela etapa em andamento; o dado do Embarque que ainda pode chegar
+  // depois continua aceito.
+  await assertReleased(order, requirement);
 
   if (requirement.type === "file" || requirement.type === "photo") {
     if (!input.documentId) throw new WorkflowError("document_required");
@@ -684,6 +696,7 @@ export async function submitRequirement(
   }
 
   await evaluateStage(user, stage.id);
+  await syncMilestones(order.id, { user });
   return updated;
 }
 
@@ -711,12 +724,7 @@ export async function clearRequirementDocument(
   // Fase 5b: marcos do pedido em sombra, depois da resposta.
   queueMilestoneSync(order.id);
   await assertLaneAssignee(user, order, requirement);
-  if (
-    stage.status !== "active" &&
-    stage.status !== "blocked" &&
-    !canCompleteLater(stage, requirement, order)
-  )
-    throw new WorkflowError("stage_not_active");
+  await assertReleased(order, requirement);
   if (requirement.type !== "photo" && requirement.type !== "file")
     throw new WorkflowError("not_a_file");
   const documentId = requirement.documentId;
@@ -757,6 +765,7 @@ export async function clearRequirementDocument(
     `${stage.key}: ${withoutPlaceholder(requirement.label)} (arquivo excluído)`,
   );
   await evaluateStage(user, stage.id);
+  await syncMilestones(order.id, { user });
 }
 
 /** Aprova ou reprova um requisito do tipo approval (agência, revisão Wellmix). */
@@ -780,12 +789,10 @@ export async function decideRequirement(
   // Fase 5b: marcos do pedido em sombra, depois da resposta.
   queueMilestoneSync(order.id);
   await assertLaneAssignee(user, order, requirement);
-  if (order.status === "CANCELLED" || stage.status === "cancelled")
-    throw new WorkflowError("stage_not_active");
-  // Como no envio: só na etapa aberta. Decisão já tomada só a Wellmix refaz
-  // (a aprovação do fornecedor é a prova de que a arte foi aceita).
-  if (stage.status !== "active" && stage.status !== "blocked")
-    throw new WorkflowError("stage_not_active");
+  // Como no envio: só com o marco liberado (fase 5d). Decisão já tomada só
+  // a Wellmix refaz (a aprovação do fornecedor é a prova de que a arte foi
+  // aceita).
+  await assertReleased(order, requirement);
   if (requirement.status === "done" && !isWellmix(user))
     throw new WorkflowError("already_decided");
   // Aprovação da arte: só depois de a arte ser enviada (nada a aprovar antes).
@@ -891,6 +898,7 @@ export async function decideRequirement(
     );
   }
   await evaluateStage(user, stage.id);
+  await syncMilestones(order.id, { user });
 }
 
 /**
@@ -1092,16 +1100,6 @@ export async function evaluateStage(user: User | null, stageId: string) {
   await completeStage(user, stage);
 }
 
-/** Regras de processo do evento de etapa (docs/PROCESSES.md). Nunca lança. */
-async function emitStageEvent(
-  user: User | null,
-  orderId: string,
-  event: `stage:${StageKey}:${"start" | "done"}`,
-) {
-  const { emitProcessEvent } = await import("@/lib/services/process-engine");
-  await emitProcessEvent(user, event, { orderId });
-}
-
 async function completeStage(user: User | null, stage: Stage) {
   const store = getStore();
   queueMilestoneSync(stage.orderId);
@@ -1119,23 +1117,17 @@ async function completeStage(user: User | null, stage: Stage) {
     stage.id,
     `${stage.key} concluída`,
   );
-  await emitStageEvent(user, stage.orderId, `stage:${stage.key}:done`);
+  // Fase 5d: sem evento `stage:*` (as regras andam pelos marcos) e sem
+  // efeitos: o pós-venda (Entrega e recebimento concluída) e as rodadas do
+  // pedido pai (marcos 1 a 4 prontos) saem de `syncMilestones`.
 
   const order = await store.get("orders", stage.orderId);
   // Pedido cancelado não avança.
   if (!order || order.status === "CANCELLED") return;
-  // Entregue: o processo continua no pós-venda (entidade própria; as etapas não mudam).
-  if (stage.key === "DELIVERED") await openAfterSales(user, order);
-  // Pedido pai de uma programação de compra (docs/PURCHASE_SCHEDULE.md): para
-  // depois da Preparação (artes e certificado prontos). Contrato e produção
-  // são de cada rodada; as que já chegaram ao dia nascem agora.
-  if (stage.key === "PREPARATION" && isRoundsParent(order)) {
-    const { spawnDueRounds } = await import("@/lib/services/purchase-rounds");
-    await spawnDueRounds(user, { orderId: order.id }).catch((error) =>
-      console.error("spawnDueRounds", error),
-    );
-    return;
-  }
+  // Pedido pai de uma programação de compra (docs/PURCHASE_SCHEDULE.md): o
+  // registro das etapas para depois da Preparação (contrato e produção são
+  // de cada rodada).
+  if (stage.key === "PREPARATION" && isRoundsParent(order)) return;
   const next = nextStageKey(stage.key);
   if (!next) {
     await store.update("orders", order.id, {
@@ -1187,32 +1179,9 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
     currentStageId: stage.id,
   });
   await audit(user, "stage.activate", "stage", stage.id, `${key} iniciada`);
-  await emitStageEvent(user, order.id, `stage:${key}:start`);
-
-  // Pedido de compra: as três raias começam juntas, cada uma com o seu aviso.
-  if (
-    key === "PREPARATION" &&
-    isPurchaseFlow(order) &&
-    pendingRequired.length > 0
-  ) {
-    const { notifyLanesOpen } = await import("@/lib/services/purchase-order");
-    await notifyLanesOpen(order, pendingRequired);
-    return;
-  }
-
-  // Preparação com a ficha completa desde a cotação: conclui sem pedir nada ao fornecedor.
-  if (
-    key === "PREPARATION" &&
-    user &&
-    required.length > 0 &&
-    !isPurchaseFlow(order)
-  ) {
-    const { syncPreparationFromSheet } =
-      await import("@/lib/services/purchase-sheet");
-    await syncPreparationFromSheet(user, order.id);
-    const fresh = await store.get("stages", stage.id);
-    if (fresh?.status === "done") return;
-  }
+  // Fase 5d: sem evento `stage:*` e sem aviso aqui. Quem faz os itens é
+  // avisado quando o marco deles libera (`syncMilestones`: raias do pedido
+  // de compra, ficha de compra na Preparação e o aviso de cada papel).
 
   if (required.length === 0) {
     // Etapa sem requisitos (CLOSED) ou fora do fluxo conclui na hora.
@@ -1223,37 +1192,7 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
   if (pendingRequired.length === 0) {
     // Tudo já estava feito: conclui e segue (mesma regra de evaluateStage).
     await evaluateStage(user, stage.id);
-    return;
   }
-
-  const role = pendingRequired[0].role;
-  const partyField = ROLE_PARTY_FIELD[role];
-  const firstSteps = pendingRequired.filter((r) => !isOrderDocumentKey(r.key));
-  await notify(
-    role === "customer"
-      ? requesterTarget(order.requestedByUserId)
-      : {
-          role: role === "operator" ? ["admin", "operator"] : role,
-          partyId: partyField ? order[partyField] : null,
-        },
-    {
-      kind: "action",
-      link: `/app/orders/${order.id}`,
-      text: (t) => ({
-        subject: t("notif.stage.subject", {
-          n: order.number,
-          stage: t(`stage.${key}`),
-        }),
-        body: t("notif.stage.body", {
-          // O envio para assinatura e as assinaturas vêm depois, cada um com
-          // o seu aviso: aqui vai só o que já dá para fazer.
-          items: (firstSteps.length ? firstSteps : pendingRequired)
-            .map((r) => requirementLabel(t, r))
-            .join(", "),
-        }),
-      }),
-    },
-  );
 }
 
 /** Wellmix pode reabrir a etapa ativa após uma revisão (ex.: inspeção). */
@@ -1275,6 +1214,7 @@ export async function unblockStage(user: User, stageId: string) {
     });
   await audit(user, "stage.unblock", "stage", stageId, "Etapa desbloqueada");
   await evaluateStage(user, stageId);
+  if (stage) await syncMilestones(stage.orderId, { user });
 }
 
 function dueDate(days: number | undefined) {

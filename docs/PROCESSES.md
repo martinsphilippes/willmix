@@ -8,12 +8,22 @@ Uma regra por evento (`src/lib/process-rules.ts`, `PROCESS_EVENTS`):
 
 - **Solicitação**: RFQ aberta, cotações recebidas, fornecedor selecionado, aguardando sinal, pedido criado, excluída.
 - **Pedido assinado pelos dois** (documento do pedido, docs/ORDER_SIGNATURE.md).
-- **Marcos do pedido** (fase 4d, 15/11/2026; docs/MILESTONES.md "Sankhya, regras e painéis"): `milestone:<marco>:start` (o marco passa a em andamento) e `milestone:<marco>:done` (o marco conclui com todas as subtarefas feitas), para os 16 marcos. No editor vêm agrupados por bloco (Pedido, Produção, Entrega), "N. Marco — começa/conclui", antes das etapas antigas.
-- **Etapas do pedido (etapa antiga)**: início e conclusão de cada etapa (Pedido criado … Encerramento). Continuam valendo e disparando como antes, para as regras gravadas seguirem funcionando; o editor mostra "(etapa antiga)". Saem só na fase 5.
+- **Marcos do pedido** (fase 4d, 15/11/2026; docs/MILESTONES.md "Sankhya, regras e painéis"): `milestone:<marco>:start` (o marco passa a em andamento) e `milestone:<marco>:done` (o marco conclui com todas as subtarefas obrigatórias feitas; desde a fase 5d o item opcional não segura), para os 16 marcos. No editor vêm agrupados por bloco (Pedido, Produção, Entrega), "N. Marco — começa/conclui", antes das etapas antigas.
+- **Etapas do pedido (etapa antiga)**: início e conclusão de cada etapa (Pedido criado … Encerramento). **Sem efeito desde a fase 5d** (o motor anda pelos marcos e não dispara mais `stage:*`). O editor mostra cada linha com "Etapa antiga — sem efeito"; a regra gravada que faz alguma coisa mostra também o **evento de marco proposto** e o botão **"Trocar para o marco"** (procedimento abaixo). Nada é reescrito sozinho.
 - **Pedido faturado**: botão "Registrar faturamento" no pedido (Wellmix), linha Faturamento; grava `orders.invoicedAt` (`src/lib/services/order-invoicing.ts`).
 - **Pedido cancelado**.
 
-Onde são disparados: `src/lib/services/requests.ts` (status da solicitação), `superplan-rfq.ts`, `order-signature.ts`, `order-cancel.ts`, `order-invoicing.ts` e `src/lib/workflow/engine.ts` (início e conclusão de etapa). A carga do histórico do Sankhya não dispara nada. Os eventos de marco saem do recálculo do resumo do pedido por evento (`applySummaryChanges` → `emitMilestoneEvents`, `src/lib/services/milestone-events.ts`), o mesmo ponto do aviso aos informados: nunca na reconstrução, nem em pedido do histórico em espera ou cancelado, e uma vez por evento e pedido (auditoria `milestone.event`).
+Onde são disparados: `src/lib/services/requests.ts` (status da solicitação), `superplan-rfq.ts`, `order-signature.ts`, `order-cancel.ts` e `order-invoicing.ts`. A carga do histórico do Sankhya não dispara nada. Os eventos de marco saem da sincronização dos marcos (fase 5d: `syncMilestones` → `emitMilestoneEvents`, `src/lib/services/order-milestones.ts` e `milestone-events.ts`), chamada pelo motor depois de cada envio, decisão ou criação do pedido e pela fila depois das gravações dos passos do embarque, da certificação, das amostras e da produção; o mesmo ponto do aviso aos informados. "Começa" = o marco em andamento sem linha aberta antes em `order_milestones` (inclusive os que já nascem liberados na criação do pedido); "conclui" = concluído agora com as obrigatórias feitas (o encerramento, que conclui tudo pela situação, não conta). Nunca na reconstrução nem no recálculo do resumo, nem em pedido do histórico em espera ou cancelado, e uma vez por evento e pedido (auditoria `milestone.event`).
+
+### Trocar uma regra de etapa antiga para o marco (fase 5d)
+
+Procedimento do dono, regra por regra (nada é trocado sozinho):
+
+1. Configurações → Sankhya → Processos, tabela das regras, grupo "Etapas antigas".
+2. Cada regra gravada que faz alguma coisa mostra "Etapa antiga — sem efeito" e "Evento proposto: N. Marco — começa/conclui". O de-para é o da etapa para o marco (`stage:X:start|done` → `milestone:<marco da etapa X>:start|done`, `stageRuleMilestoneEvent`): Pedido criado e Preparação → 1. Pedido novo; Arte e embalagem → 5. Contrato; Pagamento → 6. Sinal; Inspeção → 8. Inspeção; Embarque → 13. Embarque; Desembaraço → 14. Desembaraço; Transporte → 15. Nota fiscal e transporte; Entregue e Encerramento → 16. Entrega e recebimento.
+3. Confira se o marco proposto é o momento certo (o marco pode começar antes da etapa antiga, porque as frentes andam em paralelo) e clique em **"Trocar para o marco"**. A regra (ativa, estoque, Sankhya, TOP, local e observação) passa para o evento de marco; a linha da etapa fica vazia (inativa). Fica na auditoria (`process.rule.rewrite`).
+4. Se o evento de marco proposto já tem uma regra que faz alguma coisa, a troca é recusada ("ajuste as duas à mão"): edite as duas linhas e salve.
+5. Ação só do administrador (Server Action `rewriteStageRuleAction`, `src/app/app/actions/processes.ts`, com zod); os outros perfis não abrem a tela.
 
 ## Ações
 

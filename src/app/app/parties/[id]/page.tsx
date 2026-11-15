@@ -44,6 +44,7 @@ import {
   rowClass,
 } from "@/components/ui";
 import { PartyForm } from "@/components/party-form";
+import { loadRcaList, rcaCodeOf } from "@/lib/services/rca";
 import {
   loginTypeLabel,
   partnerTypeName,
@@ -110,7 +111,13 @@ export default async function PartyPage({
   if (!user) redirect("/login");
   requireScreen(user, "parties");
   const { id } = await params;
-  const { error, saved, login: savedLogin } = await searchParams;
+  const {
+    error,
+    saved,
+    login: savedLogin,
+    rca: rcaNotice,
+    n: rcaListed,
+  } = await searchParams;
   const store = getStore();
   const party = await store.get("parties", id);
   if (!party) notFound();
@@ -137,6 +144,9 @@ export default async function PartyPage({
       store.list("users"),
       isCustomer ? getSettings() : Promise.resolve(null),
     ]);
+  // RCA responsável do cliente (docs/CUSTOMER_RCA.md): a lista de
+  // vendedores do Sankhya guardada no portal e o RCA atual.
+  const rcaList = isCustomer ? await loadRcaList() : null;
   // Início da produção: o prazo deste fornecedor e o padrão das Configurações.
   const allSettings = await getSettings();
   const productionStart = {
@@ -315,6 +325,13 @@ export default async function PartyPage({
         </Alert>
       ) : null}
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+      {rcaNotice === "listed" ? (
+        <Alert tone="success">
+          {t("rca.refreshed", {
+            n: Number(typeof rcaListed === "string" ? rcaListed : 0) || 0,
+          })}
+        </Alert>
+      ) : null}
       <PartyProfile
         party={party}
         users={users}
@@ -332,6 +349,16 @@ export default async function PartyPage({
               t={t}
               types={typeOptions}
               selected={partyTypeValue(party)}
+              rca={
+                rcaList
+                  ? {
+                      current: rcaCodeOf(party),
+                      sellers: rcaList.sellers,
+                      syncedAt: rcaList.syncedAt,
+                      demo: rcaList.demo,
+                    }
+                  : undefined
+              }
             />
           </Card>
           {/* Acesso ao portal: o login nasce aqui, preso a este cadastro

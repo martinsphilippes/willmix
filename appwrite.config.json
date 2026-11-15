@@ -428,6 +428,14 @@
           "size": 36
         },
         {
+          "key": "rcaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
           "key": "sankhyaCode",
           "required": false,
           "array": false,

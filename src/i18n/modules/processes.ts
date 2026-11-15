@@ -74,7 +74,18 @@ export const pt = {
   "processes.group.milestone": "Marcos · {block}",
   "processes.group.stage": "Etapas antigas",
   "processes.group.stageHint":
-    "Continuam valendo e disparando: as regras gravadas nelas seguem funcionando. Para regras novas, use os marcos acima.",
+    'Sem efeito desde que o motor anda pelos marcos: as etapas não disparam mais. Cada regra gravada aqui mostra o evento de marco proposto; clique em "Trocar para o marco" para reescrevê-la (uma por vez).',
+  "processes.legacy.noEffect": "Etapa antiga — sem efeito",
+  "processes.legacy.proposed": "Evento proposto: {event}",
+  "processes.legacy.rewrite": "Trocar para o marco",
+  "processes.legacy.rewritten":
+    "Regra trocada para {event}. Confira a linha do marco.",
+  "processes.legacy.error.not_stage_rule":
+    "Essa regra de etapa antiga não faz nada; não há o que trocar.",
+  "processes.legacy.error.no_milestone":
+    "Essa etapa não tem marco correspondente; ajuste a regra à mão nos marcos.",
+  "processes.legacy.error.target_in_use":
+    "O evento de marco proposto já tem uma regra que faz alguma coisa. Ajuste as duas à mão.",
   "processes.group.milestoneHint":
     "Começa: o marco passa a em andamento. Conclui: todas as subtarefas do marco feitas. Cada evento roda uma vez por pedido (não roda no pedido do histórico em espera).",
   "processes.stock.none": "Nada",
@@ -170,7 +181,18 @@ export const en: Record<keyof typeof pt, string> = {
   "processes.group.milestone": "Milestones · {block}",
   "processes.group.stage": "Old stages",
   "processes.group.stageHint":
-    "Still valid and still firing: rules saved on them keep working. For new rules, use the milestones above.",
+    'No effect since the engine runs by milestones: stages no longer fire. Each rule saved here shows the proposed milestone event; click "Switch to the milestone" to rewrite it (one at a time).',
+  "processes.legacy.noEffect": "Old stage — no effect",
+  "processes.legacy.proposed": "Proposed event: {event}",
+  "processes.legacy.rewrite": "Switch to the milestone",
+  "processes.legacy.rewritten":
+    "Rule switched to {event}. Check the milestone row.",
+  "processes.legacy.error.not_stage_rule":
+    "This old stage rule does nothing; there is nothing to switch.",
+  "processes.legacy.error.no_milestone":
+    "This stage has no matching milestone; adjust the rule by hand on the milestones.",
+  "processes.legacy.error.target_in_use":
+    "The proposed milestone event already has a rule that does something. Adjust both by hand.",
   "processes.group.milestoneHint":
     "Starts: the milestone becomes in progress. Completes: every subtask of the milestone done. Each event runs once per order (not on held history orders).",
   "processes.stock.none": "Nothing",
@@ -266,7 +288,17 @@ export const zh: Record<keyof typeof pt, string> = {
   "processes.group.milestone": "里程碑 · {block}",
   "processes.group.stage": "旧阶段",
   "processes.group.stageHint":
-    "仍然有效并继续触发：已保存的规则照常运行。新规则请使用上面的里程碑。",
+    "引擎按里程碑运行后不再生效：阶段不再触发。这里保存的每条规则都显示建议的里程碑事件；点击“改为里程碑”逐条改写。",
+  "processes.legacy.noEffect": "旧阶段 — 不生效",
+  "processes.legacy.proposed": "建议事件：{event}",
+  "processes.legacy.rewrite": "改为里程碑",
+  "processes.legacy.rewritten": "规则已改为 {event}。请检查该里程碑的行。",
+  "processes.legacy.error.not_stage_rule":
+    "这条旧阶段规则没有任何动作，无需改写。",
+  "processes.legacy.error.no_milestone":
+    "该阶段没有对应的里程碑；请在里程碑中手动调整规则。",
+  "processes.legacy.error.target_in_use":
+    "建议的里程碑事件已有生效的规则。请手动调整两条规则。",
   "processes.group.milestoneHint":
     "开始：里程碑进入进行中。完成：里程碑的所有子任务已完成。每个事件对每个订单只运行一次（暂停的历史订单不运行）。",
   "processes.stock.none": "无",

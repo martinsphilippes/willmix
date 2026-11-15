@@ -38,8 +38,9 @@ export const milestonePendingKey = (orderId: string, key: string) =>
   `${orderId}:${key}`;
 
 /**
- * Itens pendentes (ou recusados) dos pedidos dados, por pedido e marco, só
- * os que já podem ser feitos (etapa em andamento ou bloqueada).
+ * Itens pendentes (ou recusados) dos pedidos dados, por pedido e marco. Quem
+ * chama lê só os marcos em andamento (linhas abertas de `order_milestones`),
+ * cujos itens já podem ser feitos (fase 5d: liberados pelo marco).
  */
 export async function pendingByMilestone(
   orderIds: readonly string[],
@@ -58,9 +59,10 @@ export async function pendingByMilestone(
   ]);
   const stageById = new Map(stages.map((s) => [s.id, s]));
   for (const r of requirements) {
+    // Fase 5d: o marco em andamento (a linha aberta) libera os itens dele
+    // em qualquer etapa; só a etapa cancelada e a fora do fluxo ficam de fora.
     const stage = stageById.get(r.stageId);
-    if (!stage || (stage.status !== "active" && stage.status !== "blocked"))
-      continue;
+    if (!stage || stage.status === "cancelled") continue;
     if (isOffFlowStage(stage.key)) continue;
     const key: MilestoneKey | null =
       storedMilestone(r.milestoneKey) ??

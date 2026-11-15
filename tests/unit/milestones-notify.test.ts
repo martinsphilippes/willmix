@@ -3,7 +3,8 @@ import { withTempStore } from "./setup";
 
 /*
  * Fase 4c (docs/MILESTONES.md, "Avisos, lembretes e SLA"): o marco que
- * conclui avisa os informados uma vez, só no recálculo do resumo por evento;
+ * conclui avisa os informados uma vez, pela sincronização dos marcos (fase
+ * 5d; antes, o recálculo do resumo por evento);
  * a reconstrução não avisa e o pedido do histórico em espera também não. O
  * lembrete nomeia o marco; o SLA agrupa pelo marco.
  */
@@ -15,6 +16,7 @@ const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const summary = await import("@/lib/services/order-summary");
 const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
+const { syncMilestones } = await import("@/lib/services/order-milestones");
 const { MILESTONE_INFORMED_ACTION } =
   await import("@/lib/services/milestone-notify");
 const { MILESTONES, MILESTONE_KEYS, milestoneOfItems, newlyDoneMilestones } =
@@ -125,11 +127,13 @@ describe("marcos: quem é informado", () => {
 });
 
 describe("aviso do marco concluído", () => {
-  it("avisa uma vez pelo recálculo por evento, com link para os marcos", async () => {
+  it("avisa uma vez pela sincronização dos marcos (fase 5d), com link para os marcos", async () => {
     const order = await placeOrder("Garrafa marco");
-    await forgetDone(order);
     await finishRequirements(order);
+    // O recálculo do resumo não avisa mais (fase 5d): só a sincronização.
     await flushSummaryChanges();
+    expect(await informedAudits(order)).toEqual([]);
+    await syncMilestones(order.id);
     const notes = await milestoneNotes(order);
     const audits = await informedAudits(order);
     expect(audits.length).toBeGreaterThan(0);
@@ -142,14 +146,13 @@ describe("aviso do marco concluído", () => {
     );
     expect(new Set(keys).size).toBe(keys.length);
 
-    // De novo (o resumo esquece e o mesmo marco "conclui" outra vez): não repete.
-    await forgetDone(order);
-    const [req] = await getStore().list("requirements", {
+    // De novo (as linhas dos marcos somem e o mesmo marco "conclui" outra
+    // vez): não repete.
+    for (const row of await getStore().list("order_milestones", {
       filter: { orderId: order.id },
-      limit: 1,
-    });
-    await getStore().update("requirements", req.id, { status: "done" });
-    await flushSummaryChanges();
+    }))
+      await getStore().remove("order_milestones", row.id);
+    await syncMilestones(order.id);
     expect(await milestoneNotes(order)).toHaveLength(notes.length);
     expect(await informedAudits(order)).toHaveLength(audits.length);
   });
@@ -175,6 +178,7 @@ describe("aviso do marco concluído", () => {
     await flushSummaryChanges();
     await forgetDone(order);
     await finishRequirements(order);
+    await syncMilestones(order.id);
     await flushSummaryChanges();
     expect(await milestoneNotes(order)).toEqual([]);
     expect(await informedAudits(order)).toEqual([]);

@@ -97,9 +97,9 @@ export const IMPORT_TOPS = Object.keys(TOP_STAGES).join(", ");
 
 /**
  * Marco do pedido que a TOP dá (fase 4d, docs/MILESTONES.md): TOP → etapa
- * (`TOP_STAGES`, a carga continua gravando a etapa) → marco
- * (`milestoneOfStatus`). Só para mostrar em Configurações → Sankhya; TOP
- * fora da tabela: nulo.
+ * (`TOP_STAGES`) → marco (`milestoneOfStatus`). Mostrado em Configurações →
+ * Sankhya e, desde a fase 5d, usado pela carga (`advanceMilestones`): os
+ * itens dos marcos antes dele ficam feitos. TOP fora da tabela: nulo.
  */
 export function topMilestone(top: number): MilestoneKey | null {
   const s = TOP_STAGES[top];

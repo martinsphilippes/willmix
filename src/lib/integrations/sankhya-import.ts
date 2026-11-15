@@ -24,7 +24,10 @@ import {
   refsOf,
   sankhyaDate,
   TOP_STAGES,
+  topMilestone,
 } from "./sankhya-mapping";
+import { milestoneRank } from "@/lib/milestones";
+import { milestoneOfItem } from "@/lib/milestone-release";
 import type { ImportSet } from "./sankhya-sample";
 import {
   partnerExtras,
@@ -464,6 +467,15 @@ export async function upsertParty(
           ? data.sankhyaRefs
           : null,
     }),
+    // RCA do cliente (docs/CUSTOMER_RCA.md): o vendedor do Sankhya. O
+    // Sankhya manda (dono, 15/11/2026): a carga sobrescreve o que foi
+    // escolhido no portal. "0" = sem vendedor.
+    ...(data.type === "customer" &&
+    data.sankhyaRefs &&
+    data.sankhyaRefs.CODVEND !== undefined &&
+    data.sankhyaRefs.CODVEND !== null
+      ? { rcaCode: String(data.sankhyaRefs.CODVEND).trim() || "0" }
+      : {}),
   };
   if (party && ctx.update) {
     party = await store.update("parties", party.id, {
@@ -869,8 +881,8 @@ export async function importSankhyaSet(
     };
     for (let i = 0; i < items.length; i += 8)
       await Promise.all(items.slice(i, i + 8).map(createItem));
-    await createStagesForOrder(order);
-    await advanceStages(order.id, target.stage, !!target.closed, createdAt);
+    await createStagesForOrder(order, undefined, { shadow: true });
+    await advanceMilestones(order.id, top, createdAt);
     const saved = (await store.get("orders", order.id)) ?? order;
     orderByNunota.set(nunota, saved);
     out.push({
@@ -1134,14 +1146,34 @@ export async function auditImport(
  */
 
 /**
- * Pedido histórico: as etapas antes da etapa da TOP ficam concluídas (com os
- * requisitos dados como feitos), a da TOP fica ativa; FINALIZADO encerra tudo.
+ * Pedido histórico pelos marcos (fase 5d, docs/SANKHYA.md): TOP → marco
+ * (`topMilestone`). Os itens dos marcos antes do marco da TOP ficam feitos;
+ * FINALIZADO encerra tudo. O registro das etapas continua gravado como
+ * antes (as etapas antes da etapa da TOP concluídas, com os itens delas
+ * feitos; a da TOP ativa), para os dados ficarem coerentes até a fase 5f.
+ * Os marcos são sincronizados em sombra, com a espera do pedido e sem
+ * avisos nem eventos.
  */
+async function advanceMilestones(orderId: string, top: number, at: string) {
+  const target = TOP_STAGES[top];
+  if (!target) return;
+  const milestone = topMilestone(top);
+  await advanceStages(
+    orderId,
+    target.stage,
+    !!target.closed,
+    at,
+    milestone ? milestoneRank(milestone) : 0,
+  );
+}
+
 async function advanceStages(
   orderId: string,
   target: (typeof STAGE_KEYS)[number],
   closed: boolean,
   at: string,
+  /** Ordem do marco da TOP: os itens dos marcos antes dele ficam feitos. */
+  targetRank: number,
 ) {
   const store = getStore();
   // Etapas e requisitos lidos uma vez; as gravações vão em paralelo (uma por
@@ -1158,6 +1190,13 @@ async function advanceStages(
   const { historyHoldActive } = await import("@/lib/services/go-live");
   const holding = await historyHoldActive();
   const hold = holding ? { held: true } : {};
+  // Itens dos marcos antes do marco da TOP (fase 5d), em qualquer etapa.
+  const stageKeyOf = new Map(stages.map((st) => [st.id, st.key]));
+  const beforeTarget = (req: (typeof requirements)[number]) => {
+    const stageKey = stageKeyOf.get(req.stageId);
+    const key = stageKey ? milestoneOfItem(req, { key: stageKey }) : null;
+    return !!key && milestoneRank(key) < targetRank;
+  };
   for (const stage of stages) {
     const index = STAGE_KEYS.indexOf(stage.key);
     const done = closed || index < targetIndex;
@@ -1203,10 +1242,24 @@ async function advanceStages(
         }),
       );
     }
-    // Pendências das etapas ativa e seguintes: em espera também.
-    if (!done && holding)
+    // Pendências das etapas ativa e seguintes: os itens dos marcos antes
+    // do da TOP ficam feitos; todas em espera também.
+    if (!done)
       for (const req of requirements)
-        if (req.stageId === stage.id)
+        if (
+          req.stageId === stage.id &&
+          req.status === "pending" &&
+          beforeTarget(req)
+        )
+          writes.push(() =>
+            store.update("requirements", req.id, {
+              status: "done",
+              note: "Marco concluído no Sankhya (carga do histórico)",
+              submittedAt: at,
+              ...hold,
+            }),
+          );
+        else if (req.stageId === stage.id && holding)
           writes.push(() => store.update("requirements", req.id, hold));
   }
   for (let i = 0; i < writes.length; i += 8)
