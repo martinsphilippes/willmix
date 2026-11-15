@@ -196,6 +196,9 @@ export const pt = {
   "flow.step.new-product.replenishment": "Reposição",
   "flow.help.new-product.replenishment":
     "Reposição de produto ativo aberta pelo Planner ou vinda do pós-venda (B10). Segue para a estratégia de compra.",
+  "flow.step.new-product.strategy": "Estratégia de compra",
+  "flow.help.new-product.strategy":
+    "Reposições e encomendas: repetir o fornecedor da última compra ou cotar entre fornecedores, com a aprovação da Diretoria de compras (B10?).",
   "flow.step.new-product.negotiations": "Negociações",
   "flow.help.new-product.negotiations":
     "Solicitações ao fornecedor: análise, negociação e amostragem até a aprovação da amostra (B7 a B9).",
@@ -477,6 +480,9 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.step.new-product.replenishment": "Replenishment",
   "flow.help.new-product.replenishment":
     "Replenishment of an active product opened by the Planner or coming from after-sales (B10). It goes to the purchase strategy.",
+  "flow.step.new-product.strategy": "Purchase strategy",
+  "flow.help.new-product.strategy":
+    "Replenishments and customer orders: repeat the last purchase's supplier or quote among suppliers, approved by the Purchasing board (B10?).",
   "flow.step.new-product.negotiations": "Negotiations",
   "flow.help.new-product.negotiations":
     "Supplier requests: review, negotiation and sampling up to sample approval (B7 to B9).",
@@ -750,6 +756,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.step.new-product.replenishment": "补货",
   "flow.help.new-product.replenishment":
     "由计划员发起或来自售后的在售产品补货（B10）。之后进入采购策略。",
+  "flow.step.new-product.strategy": "采购策略",
+  "flow.help.new-product.strategy":
+    "补货和客户订货：沿用上次采购的供应商或在供应商之间询价，由采购总监批准（B10?）。",
   "flow.step.new-product.negotiations": "谈判",
   "flow.help.new-product.negotiations":
     "供应商请求：分析、谈判和打样，直到样品批准（B7–B9）。",
