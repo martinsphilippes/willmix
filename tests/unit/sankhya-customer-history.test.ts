@@ -16,8 +16,6 @@ const sh = await import("@/lib/services/sankhya-customer-history");
 const { SankhyaError } = await import("@/lib/integrations/sankhya-client");
 const { assertSameSchedule } = await import("@/app/app/actions/request-items");
 const { buildSchedule } = await import("@/lib/workflow/request-schedule");
-const { getPriceForecastAdapter } =
-  await import("@/lib/integrations/price-forecast");
 type User = import("@/lib/db").User;
 
 const CUSTOMER = "cliente-joao";
@@ -344,21 +342,166 @@ describe("programação do pedido (as datas são do pedido)", () => {
   });
 });
 
-describe("previsão de preço ao cliente final", () => {
-  it("sem a API: modo manual, nenhum preço", async () => {
-    const adapter = getPriceForecastAdapter();
-    expect(adapter.mode).toBe("manual");
-    const query = {
-      productId: "prod-boneca",
-      sankhyaCode: null,
-      sku: null,
-      quantity: 2016,
-      customerId: CUSTOMER,
-      customerSankhyaCode: "66550",
-    };
-    expect(await adapter.forecast(query)).toEqual({ mode: "manual" });
+describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
+  const pf = () => import("@/lib/integrations/price-forecast");
+  const query = {
+    productId: "prod-boneca",
+    sankhyaCode: "21952",
+    sku: null,
+    quantity: 6192,
+    customerId: CUSTOMER,
+    customerSankhyaCode: "66550",
+    ncm: "7323.99.00",
+    netWeightKg: 0.985,
+    grossWeightKg: 2.2144,
+    masterBoxQty: 9,
+    cbmPerCarton: 0.099456,
+    price: 23.5,
+    currency: "CNY",
+  };
+  const args = (sql: string) => /\((.*)\)$/.exec(sql)![1].split(", ");
+
+  it("69 parâmetros na ordem do anexo; DEFAULT no que não vai; alvo no 48º", async () => {
+    const { superplanSql, SUPERPLAN_PARAMS } = await pf();
+    expect(SUPERPLAN_PARAMS).toHaveLength(69);
+    const ida = superplanSql("FN_AD_SUPERPLAN_WELL", {
+      CODPROD: 21952,
+      QTD_PECAS: 6192,
+    });
+    expect(ida).toMatch(/^SELECT \* FROM sankhya\.FN_AD_SUPERPLAN_WELL\(/);
+    const a = args(ida);
+    expect(a).toHaveLength(69);
+    expect(a[41]).toBe("21952"); // 42 CODPROD
+    expect(a[6]).toBe("6192"); // 7 QTD_PECAS
+    expect(a.filter((x) => x === "DEFAULT")).toHaveLength(67);
+    const volta = superplanSql("FN_AD_SUPERPLAN_INVERSA_WELL", {
+      CODPROD: 21952,
+      PRECO_VENDA_ALVO: 9.2615,
+    });
+    expect(args(volta)[47]).toBe("9.2615");
+    expect(() =>
+      superplanSql("FN_AD_SUPERPLAN_WELL", { NCM: "7323'; DROP" }),
+    ).toThrow("invalid_input");
+    expect(() =>
+      superplanSql("FN_AD_SUPERPLAN_WELL", { PRECO_ORIGEM: "abc" }),
+    ).toThrow("invalid_input");
+  });
+
+  it("com código do Sankhya, só CODPROD e peças; sem ele, a ficha do portal", async () => {
+    const { productInput } = await pf();
+    expect(productInput(query)).toEqual({ CODPROD: 21952, QTD_PECAS: 6192 });
+    expect(productInput(query, true)).toMatchObject({
+      PRECO_ORIGEM: 23.5,
+      MOEDA_ORIGEM: "RMB",
+    });
+    expect(productInput({ ...query, sankhyaCode: null })).toEqual({
+      NCM: "73239900",
+      PESO_LIQ_PECA: 0.985,
+      PESO_BRUTO_PECA: 2.2144,
+      PECAS_CAIXA: 9,
+      CBM_CAIXA: 0.099456,
+      QTD_PECAS: 6192,
+      PRECO_ORIGEM: 23.5,
+      MOEDA_ORIGEM: "RMB",
+    });
+  });
+
+  const sale = {
+    columns: [
+      "OK",
+      "MENSAGEM",
+      "CUSTO_BASE_VENDA",
+      "VENDA_IPI",
+      "PRECO_TABELA_COM_IPI",
+      "SUGESTAO_ATACADO",
+      "SUGESTAO_LOJA",
+      "PRECO_VENDA_META",
+      "LUCRO_LIQUIDO_PERC",
+      "META_LUCRO_PERC",
+      "MENSAGEM_VENDA",
+    ],
+    rows: [["S", null, 5.1, 9.18, 11.475, 14.688, 16.524, 8.9, 24.1, 22, "ok"]],
+  };
+
+  it("ida: os preços de venda; custo e lucro só para quem vê valores", async () => {
+    const { getPriceForecastAdapter } = await pf();
+    const { sqls, options } = fakeSankhya(() => sale);
+    const full = await getPriceForecastAdapter(true, options).forecast(query);
+    expect(full).toMatchObject({
+      mode: "api",
+      kind: "forecast",
+      salePrice: 9.18,
+      retailPrice: 16.524,
+      wholesalePrice: 14.688,
+      tablePrice: 11.475,
+      targetPrice: 8.9,
+      cost: 5.1,
+      profitPercent: 24.1,
+      goalPercent: 22,
+    });
+    expect(sqls[0]).toContain("FN_AD_SUPERPLAN_WELL(");
+    const plain = await getPriceForecastAdapter(false, options).forecast(query);
+    expect(plain).toMatchObject({ cost: null, profitPercent: null });
+  });
+
+  it("volta: o preço máximo de compra para o preço de venda desejado", async () => {
+    const { getPriceForecastAdapter } = await pf();
+    const { sqls, options } = fakeSankhya(() => ({
+      columns: [
+        "PRECO_MAX_COMPRA_ORIGEM",
+        "MOEDA_COMPRA",
+        "PRECO_MAX_COMPRA_USD",
+        "MENSAGEM_INVERSA",
+      ],
+      rows: [[4.6, "RMB", 0.64, "ok"]],
+    }));
+    const answer = await getPriceForecastAdapter(true, options).solve({
+      ...query,
+      targetFinalPriceBrl: 9.2615,
+    });
+    expect(answer).toEqual({
+      mode: "api",
+      kind: "solve",
+      maxPurchasePrice: 4.6,
+      maxPurchaseCurrency: "RMB",
+      maxPurchaseUsd: 0.64,
+    });
+    expect(sqls[0]).toContain("FN_AD_SUPERPLAN_INVERSA_WELL(");
+    expect(args(sqls[0])[47]).toBe("9.2615");
+  });
+
+  it("produto nunca importado: pede o preço e a conta roda de novo com o do portal", async () => {
+    const { getPriceForecastAdapter } = await pf();
+    const { sqls, options } = fakeSankhya((sql) =>
+      args(sql)[5] === "DEFAULT"
+        ? {
+            columns: ["OK", "MENSAGEM"],
+            rows: [["N", "PRECO_ORIGEM obrigatorio (com CODPROD...)"]],
+          }
+        : sale,
+    );
+    const answer = await getPriceForecastAdapter(true, options).forecast(query);
+    expect(answer).toMatchObject({ kind: "forecast", salePrice: 9.18 });
+    expect(sqls).toHaveLength(2);
+    expect(args(sqls[1])[5]).toBe("23.5");
+    expect(args(sqls[1])[8]).toBe("'RMB'");
+  });
+
+  it("mensagem da função e erro do Sankhya chegam à tela; sem Sankhya, manual", async () => {
+    const { getPriceForecastAdapter } = await pf();
+    const meta = fakeSankhya(() => ({
+      columns: ["OK", "MENSAGEM_VENDA"],
+      rows: [["S", "meta inatingivel com estas despesas de venda"]],
+    }));
     expect(
-      await adapter.solve({ ...query, targetFinalPriceBrl: 39.9 }),
+      await getPriceForecastAdapter(true, meta.options).forecast(query),
+    ).toEqual({
+      mode: "api",
+      kind: "error",
+      message: "meta inatingivel com estas despesas de venda",
+    });
+    expect(
+      await getPriceForecastAdapter(true, { config: null }).forecast(query),
     ).toEqual({ mode: "manual" });
   });
 });

@@ -4,7 +4,9 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
+import { canSeeMoney } from "@/lib/auth/function-access";
 import { getPriceForecastAdapter } from "@/lib/integrations/price-forecast";
+import { cbmFromDimensions } from "@/lib/logistics/cbm";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +30,10 @@ const QUERY = z.object({
 
 /**
  * Previsão de preço ao cliente final de um produto (Nova solicitação;
- * src/lib/integrations/price-forecast.ts). Só a Wellmix. Sem `target`: o
- * preço previsto; com `target`: o preço para chegar ao preço de venda
- * desejado. Sem a API configurada: `{ mode: "manual" }` (nenhum preço).
+ * src/lib/integrations/price-forecast.ts, SuperPlan do Sankhya). Só a
+ * Wellmix. Sem `target`: os preços de venda previstos; com `target` (só com
+ * "Ver valores e margem"): o preço máximo de compra para o preço de venda
+ * desejado. Sem o Sankhya configurado: `{ mode: "manual" }` (nenhum preço).
  */
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -61,8 +64,27 @@ export async function GET(request: Request) {
     customerId: customer?.type === "customer" ? customer.id : null,
     customerSankhyaCode:
       customer?.type === "customer" ? (customer.sankhyaCode ?? null) : null,
+    ncm: product.ncm,
+    netWeightKg: product.netWeightKg,
+    grossWeightKg: product.grossWeightKg,
+    masterBoxQty: product.masterBoxQty,
+    cbmPerCarton:
+      product.cbm && product.cbm > 0
+        ? product.cbm
+        : cbmFromDimensions(
+            product.boxLengthCm,
+            product.boxWidthCm,
+            product.boxHeightCm,
+          ),
+    price: product.price,
+    currency: product.currency,
   };
-  const adapter = getPriceForecastAdapter();
+  const money = canSeeMoney(user);
+  // O preço máximo de compra é custo do fornecedor: só com "Ver valores e
+  // margem" (a mesma regra das listas).
+  if (target && !money)
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const adapter = getPriceForecastAdapter(money);
   const answer = target
     ? await adapter.solve({ ...query, targetFinalPriceBrl: target })
     : await adapter.forecast(query);
