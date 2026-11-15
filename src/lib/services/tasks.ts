@@ -1401,6 +1401,45 @@ export async function pendingTasksFor(
       if (!isSchemaMissing(error)) throw error;
     }
   }
+  // Lotes com divergência (mapa E21, E24 a E27; docs/RECEIVING.md): quem
+  // faz o passo do lote e a Trading (ou o Agente de carga) que decide.
+  if (wellmix || user.role === "supplier" || user.role === "logistics") {
+    try {
+      const { lotTasks } = await import("./divergence-lots");
+      const ptText = translator("pt");
+      for (const p of await lotTasks(user)) {
+        const stepKey = `lot.step.${p.step}` as DictionaryKey;
+        const values = {
+          n: p.lot.number,
+          order: p.order.number,
+          step: ptText(stepKey),
+        };
+        const title = `lot.task.${p.kind}.title` as DictionaryKey;
+        const detail = `lot.task.${p.kind}.detail` as DictionaryKey;
+        tasks.push(
+          finish(
+            {
+              kind: "real_media",
+              group: "divergence_lot",
+              title: ptText(title, values),
+              detail: ptText(detail, values),
+              text: { title, detail, values },
+              link: `/app/orders/${p.order.id}/lots/${p.lot.id}`,
+              dueAt: null,
+              requestId: p.order.requestId,
+              orderNumber: p.order.number,
+              customerId: p.order.customerId,
+              ownerUserId: p.order.ownerUserId ?? null,
+            },
+            now,
+          ),
+        );
+      }
+    } catch (error) {
+      const { isSchemaMissing } = await import("@/lib/db/errors");
+      if (!isSchemaMissing(error)) throw error;
+    }
+  }
   // Fatura ativa em N dias (mapa R24): com os documentos do embarque
   // conferidos, o financeiro registra o faturamento até o vencimento.
   if (wellmix) {

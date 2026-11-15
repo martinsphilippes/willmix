@@ -1391,6 +1391,29 @@ create index if not exists "sales_orders_by_customer" on public."sales_orders" (
 create index if not exists "sales_orders_created" on public."sales_orders" ("createdAt");
 create index if not exists "sales_orders_created_id" on public."sales_orders" ("createdAt", "id");
 
+create table if not exists public."divergence_lots" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."divergence_lots" enable row level security;
+alter table public."divergence_lots" add column if not exists "number" bigint;
+alter table public."divergence_lots" add column if not exists "orderId" text;
+alter table public."divergence_lots" add column if not exists "items" jsonb;
+alter table public."divergence_lots" add column if not exists "status" text;
+alter table public."divergence_lots" add column if not exists "note" text;
+alter table public."divergence_lots" add column if not exists "createdByUserId" text;
+alter table public."divergence_lots" add column if not exists "purchasingNotifiedAt" timestamptz;
+alter table public."divergence_lots" add column if not exists "purchasingUserIds" jsonb;
+alter table public."divergence_lots" add column if not exists "supplierStep" jsonb;
+alter table public."divergence_lots" add column if not exists "evidenceStep" jsonb;
+alter table public."divergence_lots" add column if not exists "financeStep" jsonb;
+alter table public."divergence_lots" add column if not exists "closedAt" timestamptz;
+create unique index if not exists "divergence_lots_number_unique" on public."divergence_lots" ("number");
+create index if not exists "divergence_lots_by_order" on public."divergence_lots" ("orderId");
+create index if not exists "divergence_lots_created" on public."divergence_lots" ("createdAt");
+create index if not exists "divergence_lots_created_id" on public."divergence_lots" ("createdAt", "id");
+
 create table if not exists public."sales_returns" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

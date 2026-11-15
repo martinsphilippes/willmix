@@ -2493,6 +2493,64 @@ export interface ReceivingItem {
   cartons?: number | null;
 }
 
+/*
+ * Lote com divergência (mapa E21, E24 a E27; dono, 15/11/2026): cada
+ * divergência da contagem por SKU vira um lote numerado, com os itens e
+ * quantidades com problema e os quatro passos dentro dele:
+ * E24 o sistema avisa Compras (automático); E25 a Diretoria de compras abre
+ * a divergência com o fornecedor e a Trading responde (aceita, contesta ou
+ * repõe); E26 Compras com a Logística juntam fotos e vídeos e a Trading
+ * aprova; E27 o Financeiro (com o Agente de carga) registra a mitigação e a
+ * Trading aprova o Acordo de Divergência, que fecha o lote.
+ */
+export const DIVERGENCE_LOT_STATUSES = ["open", "closed"] as const;
+export type DivergenceLotStatus = (typeof DIVERGENCE_LOT_STATUSES)[number];
+export const DIVERGENCE_KINDS = ["shortage", "excess", "damage"] as const;
+export type DivergenceKind = (typeof DIVERGENCE_KINDS)[number];
+
+export interface DivergenceLotItem {
+  orderItemId: string;
+  productId: string | null;
+  name: string;
+  expected: number;
+  received: number;
+  damaged: number;
+  kinds: DivergenceKind[];
+}
+
+/** Um passo do lote: quem faz envia; a Trading aprova (ou devolve). */
+export interface DivergenceLotStep {
+  status: "pending" | "submitted" | "approved" | "rejected";
+  text: string | null;
+  /** E25: resposta da Trading; E27: tipo da mitigação. */
+  choice: string | null;
+  amount: number | null;
+  currency: string | null;
+  documentIds: string[];
+  submittedByUserId: string | null;
+  submittedAt: string | null;
+  decidedByUserId: string | null;
+  decidedAt: string | null;
+  /** Resposta da Trading (E25) ou motivo da devolução (E26/E27). */
+  decisionText: string | null;
+}
+
+export interface DivergenceLot extends BaseRow {
+  number: number;
+  orderId: string;
+  items: DivergenceLotItem[];
+  status: DivergenceLotStatus;
+  note: string | null;
+  createdByUserId: string;
+  /** E24: quando o sistema avisou Compras e quem foi avisado. */
+  purchasingNotifiedAt: string | null;
+  purchasingUserIds: string[];
+  supplierStep: DivergenceLotStep;
+  evidenceStep: DivergenceLotStep;
+  financeStep: DivergenceLotStep;
+  closedAt: string | null;
+}
+
 /** Recebimento do container no armazém (um por pedido). */
 export interface Receiving extends BaseRow {
   orderId: string;
@@ -3495,6 +3553,7 @@ export interface Tables {
   sales_offers: SalesOffer;
   sales_orders: SalesOrder;
   sales_returns: SalesReturn;
+  divergence_lots: DivergenceLot;
   import_steps: ImportStep;
   receivings: Receiving;
   art_issues: ArtIssue;
@@ -4906,6 +4965,27 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
       { key: "by_customer", type: "key", columns: ["customerId"] },
+    ],
+  },
+  divergence_lots: {
+    label: "Lotes com divergência no recebimento",
+    columns: {
+      number: int(true),
+      orderId: id(),
+      items: json(),
+      status: enumOf(DIVERGENCE_LOT_STATUSES),
+      note: text(),
+      createdByUserId: id(),
+      purchasingNotifiedAt: datetime(),
+      purchasingUserIds: json(),
+      supplierStep: json(),
+      evidenceStep: json(),
+      financeStep: json(),
+      closedAt: datetime(),
+    },
+    indexes: [
+      { key: "number_unique", type: "unique", columns: ["number"] },
+      { key: "by_order", type: "key", columns: ["orderId"] },
     ],
   },
   sales_returns: {
