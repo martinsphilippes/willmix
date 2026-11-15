@@ -46,17 +46,23 @@ export default async function PartiesPage({
   const one = (v: string | string[] | undefined) =>
     typeof v === "string" ? v : undefined;
   const q = (one(sp.q) ?? "").slice(0, 120);
+  // Clientes saíram de Parceiros (dono, 15/11/2026): a lista deles é
+  // Cadastros → Clientes (/app/customers). O endereço antigo leva para lá,
+  // com a busca e a ordem que valem lá (por nome).
+  if (rawType === "customer") redirect(customersHref(q, one(sp.sort)));
   const t = await getT();
   const store = getStore();
-  // Parceiros numa tela só (decisão do dono, 12/11/2026): clientes,
-  // fornecedores e os demais tipos (agência, despachante, armador, OCP… e os
-  // criados no painel), com filtro por tipo. A ficha de cliente e de
+  // Parceiros numa tela só (decisão do dono, 12/11/2026): fornecedores e os
+  // demais tipos (agência, despachante, armador, OCP… e os criados no
+  // painel), com filtro por tipo. Sem os clientes, nem em "Todos os tipos"
+  // (dono, 15/11/2026): eles ficam em Cadastros → Clientes. A ficha de
   // fornecedor continua na tela própria (conta, scorecard, exportação).
-  const [parties, catalog, users] = await Promise.all([
+  const [allParties, catalog, users] = await Promise.all([
     store.list("parties", { orderBy: "name" }),
     getPartnerTypeCatalog(),
     store.list("users"),
   ]);
+  const parties = allParties.filter((p) => p.type !== "customer");
   // Logins ativos de cada parceiro (a coluna leva ao quadro de acesso).
   const logins = new Map<string, number>();
   for (const u of users)
@@ -65,10 +71,7 @@ export default async function PartiesPage({
   // Filtros: Clientes, Fornecedores e os tipos ativos e os inativos que ainda
   // têm cadastro.
   const inUse = new Set(parties.map(partyTypeValue));
-  const own = [
-    { value: "customer", label: t("nav.customers") },
-    { value: "supplier", label: t("nav.suppliers") },
-  ];
+  const own = [{ value: "supplier", label: t("nav.suppliers") }];
   const chips = catalog.filter((e) => e.active || inUse.has(e.value));
   const type =
     typeof rawType === "string" &&
@@ -162,8 +165,6 @@ export default async function PartiesPage({
         subtitle={
           <span data-parties-all>
             {t("parties.all.subtitle")}{" "}
-            <TextLink href="/app/customers">{t("nav.customers")}</TextLink>
-            {" · "}
             <TextLink href="/app/suppliers">{t("nav.suppliers")}</TextLink>
           </span>
         }
@@ -289,4 +290,17 @@ export default async function PartiesPage({
       )}
     </>
   );
+}
+
+/**
+ * Cadastros → Clientes com o que vale lá do endereço antigo
+ * (/app/parties?type=customer): a busca e a ordem por nome (as outras
+ * colunas de Parceiros não existem em Clientes).
+ */
+function customersHref(q: string, sort: string | undefined) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (sort && /^-?name$/.test(sort)) params.set("sort", sort);
+  const query = params.toString();
+  return query ? `/app/customers?${query}` : "/app/customers";
 }

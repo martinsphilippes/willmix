@@ -37,6 +37,7 @@ import { setCustomersActiveAction } from "../actions/customers";
 import { accountBase, accountLabels } from "./labels";
 import { startConversationAction } from "../actions/messages";
 import { canSeeMoney } from "@/lib/auth/function-access";
+import { getStore } from "@/lib/db";
 import { ServerPager, SortTh } from "@/components/server-table";
 import {
   SERVER_TABLE_FROM,
@@ -52,6 +53,11 @@ import {
  * operação em lote (ativar, desativar, exportar) e uma linha por cliente com
  * a conta dele e os atalhos: nova solicitação, ficha, cadastro e conversa.
  * Valores só para quem abre Finanças (o mesmo dinheiro daquela tela).
+ *
+ * Clientes é a página de Cadastros → Clientes (dono, 15/11/2026; antes a
+ * lista de clientes ficava em Parceiros, filtro Clientes). Dela vieram o
+ * Login de acesso de cada cliente (os logins ativos, com o link para o
+ * quadro de acesso do cadastro, embaixo do nome) e o Importar CSV.
  */
 
 const STATUSES = ["active", "inactive", "all"] as const;
@@ -88,7 +94,26 @@ export async function PartyAccountList({
     ? (param(sp.status) as Status)
     : "active";
   const money = canSeeMoney(user);
-  const { rows, totals } = await customerAccounts({ q, status }, side);
+  const customers = side === "customer";
+  const [{ rows, totals }, logins] = await Promise.all([
+    customerAccounts({ q, status }, side),
+    // Logins ativos de cada cliente (a coluna leva ao quadro de acesso).
+    customers
+      ? getStore()
+          .list("users", { filter: { role: "customer", active: true } })
+          .then((users) => {
+            const count = new Map<string, number>();
+            for (const u of users)
+              if (u.partyId)
+                count.set(u.partyId, (count.get(u.partyId) ?? 0) + 1);
+            return count;
+          })
+      : Promise.resolve(new Map<string, number>()),
+  ]);
+  const loginsLabel = (partyId: string) =>
+    logins.get(partyId)
+      ? t("partnerAccess.login.count", { n: logins.get(partyId) ?? 0 })
+      : t("partnerAccess.login.create");
   const fallback = mainCurrency(totals);
 
   // Ordem e página no servidor (auditoria de performance, 14/11/2026): com
@@ -207,9 +232,18 @@ export async function PartyAccountList({
                 {t("score.link")}
               </LinkButton>
             ) : null}
+            {customers ? (
+              <LinkButton
+                href="/app/import?entity=parties"
+                data-customers-import
+              >
+                {t("parties.import")}
+              </LinkButton>
+            ) : null}
             <LinkButton
               href={`/app/parties/new?type=${side}`}
               variant="primary"
+              data-customers-new
             >
               + {L("new")}
             </LinkButton>
@@ -367,6 +401,19 @@ export async function PartyAccountList({
                       ) : null}
                       {!party.active ? (
                         <Badge tone="neutral">{L("inactive")}</Badge>
+                      ) : null}
+                      {/* Login de acesso (vindo de Parceiros): os logins
+                          ativos e o quadro de acesso do cadastro. Embaixo do
+                          nome, sem coluna nova (a tabela segue cabendo). */}
+                      {customers ? (
+                        <TextLink
+                          href={`/app/parties/${party.id}#access`}
+                          title={t("partnerAccess.login.col")}
+                        >
+                          <span data-party-logins={logins.get(party.id) ?? 0}>
+                            {loginsLabel(party.id)}
+                          </span>
+                        </TextLink>
                       ) : null}
                     </span>
                   </Td>

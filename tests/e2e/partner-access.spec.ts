@@ -69,15 +69,16 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
     .evaluateAll((els) =>
       els.map((el) => el.getAttribute("data-party-type-filter-option")),
     );
-  expect(values.slice(0, 7)).toEqual([
+  // Clientes saíram de Parceiros (Cadastros → Clientes, 15/11/2026).
+  expect(values.slice(0, 6)).toEqual([
     "",
-    "customer",
     "supplier",
     "trading",
     "factory",
     "supplier_partner",
     "gp",
   ]);
+  expect(values).not.toContain("customer");
   await input.press("Escape");
   await expect(page.locator('[data-parties-tab="access"]')).toBeVisible();
 
