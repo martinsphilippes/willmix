@@ -47,6 +47,13 @@ export type TaskKind =
   | "booking_invite"
   | "new_request"
   | "replenishment_request"
+  | "purchase_strategy"
+  | "purchase_strategy_approve"
+  | "purchase_strategy_order"
+  | "purchase_quote_answer"
+  | "purchase_quote_choose"
+  | "purchase_quote_empty"
+  | "purchase_quote_approve"
   | "requirement"
   | "review"
   | "after_sales"
@@ -337,6 +344,13 @@ const KIND_ORDER: string[] = [
   "booking_invite",
   "new_request",
   "replenishment_request",
+  "purchase_strategy",
+  "purchase_strategy_approve",
+  "purchase_strategy_order",
+  "purchase_quote_answer",
+  "purchase_quote_choose",
+  "purchase_quote_empty",
+  "purchase_quote_approve",
   "supplier_request",
   "sampling_validate",
   "freight_quote",
@@ -917,8 +931,14 @@ export async function pendingTasksFor(
   const { getSettings } = await import("@/lib/settings");
   const flowSettings = await getSettings();
   // Encomenda nova do cliente e reposição (docs/PURCHASE_DEMAND.md): esperam
-  // a estratégia de compra.
-  for (const request of newRequests)
+  // a estratégia de compra. Quem escolhe a estratégia (o Comprador) as vê no
+  // passo Estratégia de compra; os outros, em Encomendas e Reposição. A que
+  // já está numa estratégia sai daqui.
+  const strategist =
+    wellmix && !options.team && can(user, "purchaseStrategy.choose");
+  for (const request of newRequests.filter(
+    (r) => !r.purchaseDecisionId && !strategist,
+  ))
     tasks.push(
       finish(
         {
@@ -937,6 +957,24 @@ export async function pendingTasksFor(
         },
         now,
       ),
+    );
+  if (wellmix)
+    tasks.push(
+      ...(
+        await (
+          await import("./purchase-strategy")
+        ).strategyTaskDrafts(newRequests)
+      ).map((draft) => finish(draft, now)),
+    );
+  // Cotação de compra (docs/PURCHASE_DEMAND.md): o fornecedor responde; a
+  // Wellmix escolhe, decide sem resposta ou aprova.
+  if (supplier || wellmix)
+    tasks.push(
+      ...(
+        await (await import("./purchase-quote"))
+          .quoteTaskDrafts(user, now)
+          .catch(() => [])
+      ).map((draft) => finish(draft, now)),
     );
   if (supplier) tasks.push(...(await supplierRequestTasks(user, now)));
   // Amostragem: o responsável envia; a Wellmix (com a ação) valida.
@@ -1473,6 +1511,45 @@ export async function pendingTasksFor(
               orderNumber: order.number,
               customerId: order.customerId,
               ownerUserId: order.ownerUserId ?? null,
+            },
+            now,
+          ),
+        );
+      }
+    } catch (error) {
+      const { isSchemaMissing } = await import("@/lib/db/errors");
+      if (!isSchemaMissing(error)) throw error;
+    }
+  }
+  // Lotes com divergência (mapa E21, E24 a E27; docs/RECEIVING.md): quem
+  // faz o passo do lote e a Trading (ou o Agente de carga) que decide.
+  if (wellmix || user.role === "supplier" || user.role === "logistics") {
+    try {
+      const { lotTasks } = await import("./divergence-lots");
+      const ptText = translator("pt");
+      for (const p of await lotTasks(user)) {
+        const stepKey = `lot.step.${p.step}` as DictionaryKey;
+        const values = {
+          n: p.lot.number,
+          order: p.order.number,
+          step: ptText(stepKey),
+        };
+        const title = `lot.task.${p.kind}.title` as DictionaryKey;
+        const detail = `lot.task.${p.kind}.detail` as DictionaryKey;
+        tasks.push(
+          finish(
+            {
+              kind: "real_media",
+              group: "divergence_lot",
+              title: ptText(title, values),
+              detail: ptText(detail, values),
+              text: { title, detail, values },
+              link: `/app/orders/${p.order.id}/lots/${p.lot.id}`,
+              dueAt: null,
+              requestId: p.order.requestId,
+              orderNumber: p.order.number,
+              customerId: p.order.customerId,
+              ownerUserId: p.order.ownerUserId ?? null,
             },
             now,
           ),

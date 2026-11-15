@@ -141,6 +141,7 @@ import * as exwOrigin from "./exw-origin";
 import * as receivingDivergence from "./receiving-divergence";
 import * as delivery from "./delivery";
 import * as salesOrders from "./sales-orders";
+import * as divergenceLots from "./divergence-lots";
 import * as purchaseRounds from "./purchase-rounds";
 import * as colorVariants from "./color-variants";
 import * as aiReferences from "./ai-references";
@@ -150,7 +151,9 @@ import * as productSheetImport from "./product-sheet-import";
 import * as productVariants from "./product-variants";
 import * as messages from "./messages";
 import * as purchaseHistory from "./purchase-history";
+import * as requestSheet from "./request-sheet";
 import * as requestOrderPlan from "./request-order-plan";
+import * as customerPayment from "./customer-payment";
 import * as orderSale from "./order-sale";
 
 export const modulesPt = {
@@ -295,13 +298,16 @@ export const modulesPt = {
   ...receivingDivergence.pt,
   ...delivery.pt,
   ...salesOrders.pt,
+  ...divergenceLots.pt,
   ...purchaseRounds.pt,
   ...colorVariants.pt,
   ...aiReferences.pt,
   ...sampling.pt,
   ...intro.pt,
   ...purchaseHistory.pt,
+  ...requestSheet.pt,
   ...requestOrderPlan.pt,
+  ...customerPayment.pt,
   ...orderSale.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
@@ -446,13 +452,16 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...receivingDivergence.en,
   ...delivery.en,
   ...salesOrders.en,
+  ...divergenceLots.en,
   ...purchaseRounds.en,
   ...colorVariants.en,
   ...aiReferences.en,
   ...sampling.en,
   ...intro.en,
   ...purchaseHistory.en,
+  ...requestSheet.en,
   ...requestOrderPlan.en,
+  ...customerPayment.en,
   ...orderSale.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
@@ -597,12 +606,15 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...receivingDivergence.zh,
   ...delivery.zh,
   ...salesOrders.zh,
+  ...divergenceLots.zh,
   ...purchaseRounds.zh,
   ...colorVariants.zh,
   ...aiReferences.zh,
   ...sampling.zh,
   ...intro.zh,
   ...purchaseHistory.zh,
+  ...requestSheet.zh,
   ...requestOrderPlan.zh,
+  ...customerPayment.zh,
   ...orderSale.zh,
 };

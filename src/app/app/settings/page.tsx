@@ -248,6 +248,16 @@ export default async function SettingsPage({
                 {t("settings.superplan.open")}
               </LinkButton>
             ) : null}
+            {/* Formas de pagamento do cliente (docs/CUSTOMER_PAYMENT.md). */}
+            {user.role === "admin" ? (
+              <LinkButton
+                href="/app/settings/payment-plans"
+                variant="secondary"
+                data-settings-payment-plans
+              >
+                {t("paymentPlans.title")}
+              </LinkButton>
+            ) : null}
             {/* ERP Sankhya: conexão, dicionário, consultas e envio de pedidos. */}
             <LinkButton href="/app/settings/sankhya" variant="secondary">
               {t("sankhya.open")}
@@ -414,7 +424,7 @@ export default async function SettingsPage({
                 </Field>
               </div>
 
-              {/* SLA de resposta da cotação: prazo de toda nova solicitação. */}
+              {/* SLA de resposta da encomenda: prazo de toda nova solicitação. */}
               <div className={section}>
                 <h3 className={h3}>{t("sla.settings.title")}</h3>
                 <p className={hintP}>{t("sla.settings.hint")}</p>
@@ -443,6 +453,21 @@ export default async function SettingsPage({
                       required
                       defaultValue={s.supplierRequestSlaMinutes}
                       data-setting-supplier-request-sla
+                    />
+                  </Field>
+                  <Field
+                    label={t("quote.settings.hours")}
+                    hint={t("quote.settings.hoursHint")}
+                  >
+                    <Input
+                      name="purchaseQuoteHours"
+                      type="number"
+                      min={0.01}
+                      max={240}
+                      step="any"
+                      required
+                      defaultValue={s.purchaseQuoteHours}
+                      data-setting-purchase-quote-hours
                     />
                   </Field>
                   <Field

@@ -401,6 +401,11 @@ export function navFor(
         "quotes",
         { href: "/app/supplier-requests", key: "nav.supplierRequests" },
       ],
+      // Cotação de compra (mapa B13): os convites de preço do fornecedor.
+      [
+        "quotes",
+        { href: "/app/purchase-quotes", key: "nav.purchaseQuotes" },
+      ],
       ["orders", { href: "/app/orders", key: "nav.orders" }],
       ["freight", { href: "/app/freight", key: "nav.freight" }],
       // A companhia envia a própria tabela de fretes (só vê as dela).

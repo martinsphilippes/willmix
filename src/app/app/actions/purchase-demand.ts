@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { assertScreen } from "@/lib/auth/screens";
 import { parseNumberInput } from "@/lib/number-input";
+import { getStore } from "@/lib/db";
 import { field, requireUser, run, str } from "./helpers";
 
 /*
@@ -30,9 +31,8 @@ export async function openReplenishmentAction(form: FormData) {
     const day = str(form, "desiredAt");
     const desiredAt = day ? `${DAY.parse(day)}T12:00:00.000Z` : null;
     const notes = field(form, "notes", z.string().trim().max(2000)) || null;
-    const { openReplenishment } = await import(
-      "@/lib/services/purchase-demand"
-    );
+    const { openReplenishment } =
+      await import("@/lib/services/purchase-demand");
     const request = await openReplenishment(user, {
       productId,
       quantity,
@@ -40,5 +40,226 @@ export async function openReplenishmentAction(form: FormData) {
       notes,
     });
     return `/app/replenishment?opened=${encodeURIComponent(request.id)}`;
+  });
+}
+
+const CHOICE = z.enum(["last_supplier", "quote"]);
+
+/** Estratégia de compra (mapa B10?): o Comprador escolhe para as demandas marcadas. */
+export async function chooseStrategyAction(form: FormData) {
+  const user = await requireUser();
+  await run("/app/purchase-strategy", async () => {
+    assertScreen(user, "quotes");
+    const demandIds = z
+      .array(ID)
+      .min(1)
+      .max(200)
+      .parse(form.getAll("demandIds").map(String));
+    const choice = CHOICE.parse(str(form, "choice"));
+    const note = field(form, "note", z.string().trim().max(2000)) || null;
+    const { chooseStrategy } = await import("@/lib/services/purchase-strategy");
+    const decision = await chooseStrategy(user, { demandIds, choice, note });
+    return `/app/purchase-strategy?chosen=${decision.number}#decision-${decision.id}`;
+  });
+}
+
+/** A Diretoria de compras aprova ou recusa a estratégia. */
+export async function decideStrategyAction(form: FormData) {
+  const user = await requireUser();
+  await run("/app/purchase-strategy", async () => {
+    assertScreen(user, "quotes");
+    const id = ID.parse(str(form, "id"));
+    const approve = z.enum(["approve", "reject"]).parse(str(form, "decision"));
+    const note = field(form, "note", z.string().trim().max(2000)) || null;
+    const { decideStrategy } = await import("@/lib/services/purchase-strategy");
+    const decision = await decideStrategy(user, id, {
+      approve: approve === "approve",
+      note,
+    });
+    // "Cotar" aprovada: o sistema abriu a cotação de compra; a tela vai a ela.
+    const fresh = await getStore().get("purchase_decisions", decision.id);
+    if (fresh?.quoteId) return `/app/purchase-quotes/${fresh.quoteId}?opened=1`;
+    return `/app/purchase-strategy?decided=${decision.number}#decision-${decision.id}`;
+  });
+}
+
+/** Pedido de compra da estratégia "fornecedor da última compra", com as condições conferidas. */
+export async function orderFromStrategyAction(form: FormData) {
+  const user = await requireUser();
+  await run("/app/purchase-strategy", async () => {
+    assertScreen(user, "quotes");
+    assertScreen(user, "orders");
+    const id = ID.parse(str(form, "id"));
+    const quantity = z
+      .number()
+      .positive()
+      .max(1e9)
+      .parse(parseNumberInput(str(form, "quantity")));
+    const priceRaw = str(form, "unitPrice");
+    const unitPrice = priceRaw
+      ? z.number().nonnegative().max(1e9).parse(parseNumberInput(priceRaw))
+      : null;
+    const currency = z
+      .string()
+      .trim()
+      .regex(/^[A-Z]{3}$/)
+      .parse(str(form, "currency").toUpperCase());
+    const leadRaw = str(form, "leadTimeDays");
+    const leadTimeDays = leadRaw
+      ? z
+          .number()
+          .int()
+          .min(0)
+          .max(1000)
+          .parse(parseNumberInput(leadRaw, { int: true }))
+      : null;
+    const incotermRaw = str(form, "incoterm");
+    const incoterm = incotermRaw
+      ? z.enum(["EXW", "FOB"]).parse(incotermRaw)
+      : null;
+    const { orderFromStrategy } =
+      await import("@/lib/services/purchase-strategy");
+    const order = await orderFromStrategy(user, id, {
+      unitPrice,
+      currency,
+      quantity,
+      leadTimeDays,
+      incoterm,
+    });
+    return `/app/orders/${order.id}?created=1`;
+  });
+}
+
+/* Cotação de compra (mapa B13; docs/PURCHASE_DEMAND.md). */
+
+const quoteBack = (id: string) =>
+  ID.safeParse(id).success
+    ? `/app/purchase-quotes/${id}`
+    : "/app/purchase-quotes";
+
+/** O fornecedor responde (preço por item e condição de envio) ou recusa. */
+export async function answerQuoteAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "quoteId");
+  await run(quoteBack(id), async () => {
+    assertScreen(user, "quotes");
+    const quoteId = ID.parse(id);
+    const decline = str(form, "decline") === "1";
+    const productIds = form.getAll("productId").map(String);
+    const prices = decline
+      ? []
+      : productIds.map((productId) => ({
+          productId: ID.parse(productId),
+          unitPrice: z
+            .number()
+            .nonnegative()
+            .max(1e9)
+            .parse(parseNumberInput(str(form, `price.${productId}`))),
+        }));
+    const optionalNumber = (key: string, int = false) => {
+      const raw = str(form, key);
+      return raw
+        ? z
+            .number()
+            .nonnegative()
+            .max(1e9)
+            .parse(parseNumberInput(raw, { int }))
+        : null;
+    };
+    const { answerQuote } = await import("@/lib/services/purchase-quote");
+    await answerQuote(user, quoteId, {
+      decline,
+      prices,
+      currency: decline ? null : str(form, "currency").toUpperCase() || null,
+      incoterm: decline ? null : str(form, "incoterm").toUpperCase() || null,
+      leadTimeDays: decline ? null : optionalNumber("leadTimeDays", true),
+      port: decline
+        ? null
+        : field(form, "port", z.string().trim().max(120)) || null,
+      moq: decline ? null : optionalNumber("moq"),
+      note: field(form, "note", z.string().trim().max(2000)) || null,
+    });
+    return `/app/purchase-quotes/${quoteId}?answered=${decline ? "declined" : "1"}`;
+  });
+}
+
+/** O Comprador escolhe a vencedora. */
+export async function chooseQuoteWinnerAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "quoteId");
+  await run(quoteBack(id), async () => {
+    assertScreen(user, "quotes");
+    const quoteId = ID.parse(id);
+    const responseId = ID.parse(str(form, "responseId"));
+    const note = field(form, "note", z.string().trim().max(2000)) || null;
+    const { chooseWinner } = await import("@/lib/services/purchase-quote");
+    await chooseWinner(user, quoteId, responseId, note);
+    return `/app/purchase-quotes/${quoteId}?chosen=1`;
+  });
+}
+
+/** A Diretoria de compras aprova ou recusa a vencedora. */
+export async function decideQuoteWinnerAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "quoteId");
+  await run(quoteBack(id), async () => {
+    assertScreen(user, "quotes");
+    const quoteId = ID.parse(id);
+    const approve = z.enum(["approve", "reject"]).parse(str(form, "decision"));
+    const note = field(form, "note", z.string().trim().max(2000)) || null;
+    const { decideWinner } = await import("@/lib/services/purchase-quote");
+    await decideWinner(user, quoteId, {
+      approve: approve === "approve",
+      note,
+    });
+    return `/app/purchase-quotes/${quoteId}?decided=${approve}`;
+  });
+}
+
+/** Sem resposta: reabrir, convidar outros ou voltar para a estratégia. */
+export async function quoteNoAnswerAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "quoteId");
+  await run(quoteBack(id), async () => {
+    assertScreen(user, "quotes");
+    const quoteId = ID.parse(id);
+    const what = z
+      .enum(["reopen", "invite", "strategy"])
+      .parse(str(form, "what"));
+    const q = await import("@/lib/services/purchase-quote");
+    if (what === "reopen") {
+      await q.reopenQuote(user, quoteId);
+      return `/app/purchase-quotes/${quoteId}?reopened=1`;
+    }
+    if (what === "invite") {
+      const supplierIds = z
+        .array(ID)
+        .min(1)
+        .max(30)
+        .parse(form.getAll("supplierId").map(String).filter(Boolean));
+      await q.inviteMore(user, quoteId, supplierIds);
+      return `/app/purchase-quotes/${quoteId}?invited=1`;
+    }
+    await q.backToStrategy(user, quoteId);
+    return "/app/purchase-strategy?back=1";
+  });
+}
+
+/** Linhas que o fornecedor atende (Cadastros → fornecedor). */
+export async function setSupplierLinesAction(form: FormData) {
+  const user = await requireUser();
+  const supplierId = str(form, "supplierId");
+  const back = ID.safeParse(supplierId).success
+    ? `/app/suppliers/${supplierId}?tab=info`
+    : "/app/suppliers";
+  await run(back, async () => {
+    assertScreen(user, "parties");
+    const lineIds = z
+      .array(ID)
+      .max(200)
+      .parse(form.getAll("lineId").map(String));
+    const { setSupplierLines } = await import("@/lib/services/purchase-quote");
+    await setSupplierLines(user, ID.parse(supplierId), lineIds);
+    return `${back}&lines=saved`;
   });
 }

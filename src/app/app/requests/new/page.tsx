@@ -7,6 +7,7 @@ import { STOCK_OPTION, isStockCustomer } from "@/lib/services/stock-party";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
+import { canSeeMoney } from "@/lib/auth/function-access";
 import { getStore } from "@/lib/db";
 import { listByIds } from "@/lib/db/lookup";
 import { getT } from "@/i18n/server";
@@ -23,6 +24,7 @@ import {
   Textarea,
   TextLink,
   cx,
+  formatDate,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
@@ -45,6 +47,7 @@ import { hiddenBookingProductIds } from "@/lib/services/booking-visibility";
 import type { LookupField } from "@/lib/db";
 import { createRequestAction } from "../../actions";
 import { canAddProducts } from "@/lib/services/requests";
+import { launchDateOf, minFirstDate } from "@/lib/workflow/request-schedule";
 import { lookupProductAction } from "../../actions/lookup";
 import { aiErrorText } from "@/i18n/ai-error";
 
@@ -82,6 +85,10 @@ export default async function NewRequestPage({
   const addToCustomer = addToRequest
     ? await store.get("parties", addToRequest.customerId)
     : null;
+  // Lançamento da solicitação (dono, 15/11/2026): a 1ª programação vale a
+  // partir dele + 120 dias. Reaberta para acrescentar produtos, o gravado
+  // nela; nova, hoje (ela é lançada ao enviar).
+  const launchDate = launchDateOf(addToRequest?.createdAt ?? null);
   // Pré-preenchimento vindo da ficha do produto ou de uma programação de compra.
   // A programação de compra é da Wellmix: só ela abre o formulário por uma.
   const schedule =
@@ -205,7 +212,10 @@ export default async function NewRequestPage({
       : typeof error === "string" && t(accessKey as DictionaryKey) !== accessKey
         ? t(accessKey as DictionaryKey)
         : typeof error === "string" && t(batchKey as DictionaryKey) !== batchKey
-          ? t(batchKey as DictionaryKey)
+          ? t(batchKey as DictionaryKey, {
+              // A 1ª data permitida (schedule_too_soon).
+              date: formatDate(minFirstDate(launchDate), t),
+            })
           : t("common.error");
   /* Ficha do produto que já chega escolhido (vitrine, busca por foto,
      programação de compra): preenche a primeira linha sem esperar a busca. */
@@ -578,6 +588,8 @@ export default async function NewRequestPage({
                 code: c.code,
                 capacityCbm: c.capacityCbm,
               }))}
+              launchDate={launchDate}
+              initialPlan={addToRequest?.schedule ?? null}
               products={productFills}
               presetProductId={presetProductId}
               presetVariantId={presetVariantId}
@@ -641,6 +653,21 @@ export default async function NewRequestPage({
                   firstDate: t("purchaseRounds.form.firstDate"),
                   n: t("orderPlan.n", { n: "{n}" }),
                   dates: t("orderPlan.dates"),
+                  minDate: t("orderPlan.minDate", {
+                    date: "{date}",
+                    launch: "{launch}",
+                  }),
+                  tooSoon: t("orderPlan.tooSoon", { date: "{date}" }),
+                  datesHint: t("orderPlan.datesHint"),
+                  manual: t("orderPlan.manual"),
+                  edit: t("orderPlan.edit", { n: "{n}" }),
+                  unpin: t("orderPlan.unpin", { n: "{n}" }),
+                  issues: t("orderPlan.issues"),
+                  issue: t("orderPlan.issue", {
+                    n: "{n}",
+                    prev: "{prev}",
+                    date: "{date}",
+                  }),
                 },
                 generateOutside: t("reqSchedule.gen.outside"),
                 pieces: t("reqSchedule.pieces"),
@@ -691,11 +718,22 @@ export default async function NewRequestPage({
                         noProduct: t("priceForecast.noProduct"),
                         manual: t("priceForecast.manual"),
                         error: t("priceForecast.error"),
-                        result: t("priceForecast.result", { price: "{price}" }),
+                        sale: t("priceForecast.sale"),
+                        table: t("priceForecast.table"),
+                        wholesale: t("priceForecast.wholesale"),
+                        retail: t("priceForecast.retail"),
+                        goal: t("priceForecast.goal"),
+                        cost: t("priceForecast.cost"),
+                        profit: t("priceForecast.profit"),
+                        profitValue: t("priceForecast.profitValue", {
+                          profit: "{profit}",
+                          goal: "{goal}",
+                        }),
                         resultTarget: t("priceForecast.resultTarget", {
                           target: "{target}",
-                          price: "{price}",
                         }),
+                        source: t("priceForecast.source"),
+                        canSolve: canSeeMoney(user),
                       },
                     }
                   : {}),

@@ -2,7 +2,7 @@
 
 Desenho do dono de 15/11/2026 (mapa do processo, layout 15; docs/MAPA_PROCESSO.md). Reposição (B10) e Encomenda do cliente (B14) entram na mesma decisão, "Qual a estratégia de compra?" (B10?), que leva direto ao pedido de compra (P2) ou à Cotação de compra (B13), cuja vencedora vira a Solicitação ao fornecedor (B7). As decisões estão em docs/OPEN_DECISIONS.md.
 
-Situação: **PR 2 de 5 (demanda única, encomenda pelas quatro portas e reposição manual)**. As seções abaixo descrevem o alvo; cada PR marca o que entregou em "Andamento".
+Situação: **PRs 1 a 5 entregues (15/11/2026)**. As seções abaixo descrevem o alvo; cada PR marca o que entregou em "Andamento".
 
 ## O caminho
 
@@ -76,12 +76,47 @@ V6 (vitrine) manda para a ordem de venda (V7) o que o estoque livre ou uma compr
 - **Menu**: passos Encomendas e Reposição (docs/FLOW_MENU.md); "Cotações" virou "Convites de book".
 - **Testes**: `tests/unit/purchase-demand.test.ts` (portas, carrinho, reposição, permissões, isolamento do cliente), `tests/unit/function-access.test.ts` (ações novas) e `tests/e2e/purchase-demand.spec.ts` (vendedor e operador em nome do cliente; carrinho com pronta entrega e encomenda; reposição do Planner).
 
+## O que o PR 3 entregou
+
+- **Tela** `/app/purchase-strategy` (passo "Estratégia de compra" do Produto novo; tela `quotes`, a de quem abre Solicitações ao fornecedor): uma fila só, com reposições e encomendas que esperam a escolha (`REQUESTED`, sem estratégia), agrupadas pela linha do produto. Cada produto mostra a **última compra** (`lastPurchases`): o pedido de compra mais recente com o produto, não cancelado; fornecedor, preço unitário e moeda do item, data e incoterm do pedido; prazo de produção e pedido mínimo do vínculo produto × fornecedor (`product_suppliers`).
+- **Escolha** (`chooseStrategy`, ação `purchaseStrategy.choose`, padrão: Comprador): as demandas marcadas, do mesmo produto ou da mesma linha, viram uma `purchase_decisions` "pendente"; cada demanda guarda `purchaseDecisionId` e sai da fila. "Fornecedor da última compra" só com um produto e com compra anterior; sem ela, só "Cotar entre fornecedores", com o motivo escrito. Demanda sem produto do catálogo fica à parte (cadastrar o produto antes).
+- **Aprovação** (`decideStrategy`, ação `purchaseStrategy.approve`, padrão: Diretoria de compras; o administrador sempre): aprovar ou recusar (com o motivo). Recusada, as demandas voltam para a fila. Não há tabela genérica de aprovações (saiu em 11/11/2026): a aprovação fica na própria decisão, com quem e quando, aviso e auditoria.
+- **Pedido de compra direto** (`orderFromStrategy` → `createDirectPurchaseOrder`, ação `purchaseOrder.generate`): com a estratégia "fornecedor da última compra" aprovada, o formulário vem com a quantidade somada e as condições da última compra (preço, moeda, prazo, incoterm), editáveis. O pedido nasce no fluxo do pedido de compra (`flow: supplier_request`, etapas, raias, parceiros, condição de pagamento), sem nova solicitação ao fornecedor e sem nova amostragem, com `orders.demandIds`. As demandas viram "Pedido" (`ORDERED`, `orderId`). Vendas é avisada como no V1.
+- **Reserva da encomenda**: para cada encomenda (não reposição), uma reserva ativa para o cliente, sem validade, com `requestId` e a nota "Encomenda nº N: pedido de compra #M (reservada na chegada)". A reserva conta só no que chegou ao Brasil, então vale quando a mercadoria chega.
+- **"Cotar entre fornecedores" aprovada** fica esperando a Cotação de compra (PR 4).
+- **Pendências** (passo Estratégia de compra): `purchase_strategy` (cada demanda esperando a escolha, para quem escolhe), `purchase_strategy_approve` (cada estratégia pendente, para quem aprova) e `purchase_strategy_order` (aprovada sem pedido, para quem gera pedido de compra). Quem escolhe a estratégia não recebe também a pendência "Encomenda nova"/"Reposição" da mesma demanda.
+- **O cliente** não vê o botão do pedido de compra na encomenda (o pedido é da Wellmix); continua sem fornecedor, custo nem cotação.
+- **Reposição**: a busca de produto passou a ser a de produtos ativos (também os que ainda não estão na vitrine).
+- **Demonstração**: `diretoria@wellmix.com` (Diretoria de compras).
+- **Esquema (aditivo)**: tabela `purchase_decisions`; `requests.purchaseDecisionId`; `orders.demandIds`; `stock_reservations.requestId`.
+- **Testes**: `tests/unit/purchase-strategy.test.ts` (última compra, produto sem compra anterior, junção por produto e linha, aprovação, recusa, pedido com vínculo e reserva) e `tests/e2e/purchase-strategy.spec.ts` ((a) reposição → última compra → pedido; (c) encomenda do cliente → estratégia → pedido com o vínculo e a reserva).
+
+## O que o PR 4 entregou
+
+- **Abertura sem ação manual**: quando a Diretoria de compras aprova a estratégia "cotar entre fornecedores", `openQuoteForDecision` cria a `purchase_quotes` (produtos das demandas somados por produto) e uma `purchase_quote_responses` por fornecedor convidado; as demandas vão para `RFQ_OPEN`.
+- **Quem é convidado** (`supplierIdsForLines`): os fornecedores **ativos** com o vínculo cadastrado na linha (`supplier_lines`, tela Cadastros → fornecedor → "Linhas atendidas"), o fornecedor principal dos produtos ativos da linha e os fornecedores ligados aos produtos cotados (`product_suppliers`). Sem nenhum, a cotação nasce vazia e o Comprador é avisado.
+- **Prazo**: `purchaseQuoteHours` (Configurações → SLA, padrão 24, aceita fração de hora) a partir do convite, gravado em UTC (`dueAt`); a tela mostra o que falta e a hora em Brasília e na China. O vencimento é calculado na leitura (`responseState`), exato. O lembrete ao fornecedor sai uma vez, a 1/6 do prazo do fim (4 h em 24 h), e o aviso "sem resposta" ao Comprador, uma vez: os dois rodam no agendamento diário (`/api/jobs/reminders`) e a cada abertura das telas da cotação (`sweepQuotes`). Um agendamento de hora em hora na Vercel ficou de fora (o plano não foi confirmado).
+- **Fornecedor** (`/app/purchase-quotes`, no menu dele como "Cotações de compra"): vê só os próprios convites; responde no idioma dele (PT, EN, ZH) com preço por item, moeda, incoterm, prazo de produção, porto, pedido mínimo e observação, ou recusa; pode corrigir enquanto o prazo corre. O servidor lê só a resposta dele (`ownResponse` por `supplierId`): nunca quem mais foi convidado, as outras respostas, as demandas nem o cliente.
+- **Quadro comparativo** (`/app/purchase-quotes/[id]`, Wellmix): uma linha por fornecedor com a situação, o preço de cada item, o total e a condição de envio, e a última compra de cada produto como referência. A escolha abre quando todos responderam ou o prazo de todos passou.
+- **Escolha e aprovação**: o Comprador escolhe a vencedora (ação `purchaseQuote.choose`); a Diretoria de compras aprova ou recusa com o motivo (`purchaseQuote.approve`). Aprovada, nasce a **Solicitação ao fornecedor (B7)**, uma por produto com o mesmo número, já "respondida" com o preço, a moeda, o incoterm, o prazo e o pedido mínimo cotados, o produto do catálogo ligado e sem item de book; guarda `quoteResponseId` e `demandIds`. As demandas vão para `SUPPLIER_SELECTED`. O resto é o caminho de sempre (decisão, amostragem, pedido de compra); ao gerar o pedido de compra dessas solicitações, as demandas viram "pedido" e a encomenda ganha a reserva para o cliente.
+- **Sem nenhuma resposta**: o Comprador reabre por mais um prazo (para quem não respondeu), convida outro fornecedor ativo (com o prazo cheio) ou volta para a estratégia (a cotação é cancelada e as demandas voltam para a fila).
+- **Pendências** (passo "Cotação de compra"): `purchase_quote_answer` (fornecedor), `purchase_quote_choose` e `purchase_quote_empty` (Comprador), `purchase_quote_approve` (Diretoria). Avisos (e-mail e WhatsApp simulados): convite, lembrete, reabertura, nova resposta, vencedora escolhida, aprovada ou recusada, vencedora avisada. Auditoria de abertura, resposta, recusa, escolha, aprovação, reabertura, convite e volta à estratégia.
+- **Esquema (aditivo)**: `purchase_quotes`, `purchase_quote_responses`, `supplier_lines`; `supplier_requests.quoteResponseId` e `demandIds`.
+- **Testes**: `tests/unit/purchase-quote.test.ts` (fornecedores pela linha, prazo de 24 h com data e fuso explícitos, isolamento, escolha e aprovação até a B7, um responde e outro não, sem nenhuma resposta, lembrete) e `tests/e2e/purchase-quote.spec.ts` ((b) e o isolamento entre fornecedores e do cliente).
+
+## O que o PR 5 entregou (limpeza da RFQ)
+
+- Um modelo de cotação só: a Cotação de compra (B13). As tabelas `quotes` e `approvals` já tinham saído em 11/11/2026; os status antigos da solicitação foram reaproveitados (docs/QUOTE_FLOW.md, "Desde 15/11/2026").
+- Saíram 684 textos sem uso (grupos `rfq`, `rfqStandby`, `quoteFlow`, `quoteSheet`, `quoteSent`, `quotes`, `spRfq` e `approvals` menos `approvals.error.*`) e o rótulo da configuração `quotationExpirationDays`. Ficaram as chaves ainda lidas pelo código, inclusive as montadas na hora (erros, nomes de funções, origens).
+- Ficaram, de propósito: a chave de tela `quotes` (gravada nas funções), as ações aposentadas em `RETIRED_ACTIONS` e `quoteSlaBusinessDays`, renomeada na tela para "SLA de resposta da encomenda".
+- docs/QUOTE_FLOW.md, docs/RFQ_STANDBY.md e docs/APPROVALS.md apontam para a cotação de compra.
+
 ## Andamento
 
 | PR  | Entrega                                                                                       | Situação |
 | --- | --------------------------------------------------------------------------------------------- | -------- |
 | 1   | Mapa (MAPA_PROCESSO.md gerado do data.json), decisões e este documento                        | feito    |
 | 2   | Demanda única: encomenda pelas 4 portas, divisão do carrinho, reposição manual, função Vendas | feito    |
-| 3   | Estratégia de compra, aprovação e pedido de compra direto                                     | a fazer  |
-| 4   | Cotação de compra: fornecedor × linha, 24 h, isolamento, quadro comparativo                   | a fazer  |
-| 5   | Limpeza dos restos da RFQ                                                                     | a fazer  |
+| 3   | Estratégia de compra, aprovação e pedido de compra direto                                     | feito    |
+| 4   | Cotação de compra: fornecedor × linha, 24 h, isolamento, quadro comparativo                   | feito    |
+| 5   | Limpeza dos restos da RFQ                                                                     | feito    |

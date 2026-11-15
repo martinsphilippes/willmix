@@ -287,6 +287,16 @@ export async function createPurchaseOrder(
     await store.update("supplier_requests", o.request.id, {
       orderId: order.id,
     });
+  // Solicitações nascidas da cotação de compra (docs/PURCHASE_DEMAND.md): o
+  // pedido guarda as demandas, que viram "pedido", e a encomenda reserva a
+  // mercadoria para o cliente.
+  const demandIds = [
+    ...new Set(ordered.flatMap((o) => o.request.demandIds ?? [])),
+  ];
+  if (demandIds.length) {
+    const { linkDemandsToOrder } = await import("./purchase-strategy");
+    await linkDemandsToOrder(user, order, demandIds);
+  }
   const { snapshotOrderPaymentTerms } = await import("./supplier-terms");
   await snapshotOrderPaymentTerms(order);
   const { assignDefaultPartners } = await import("./requests");
@@ -299,6 +309,134 @@ export async function createPurchaseOrder(
     "order",
     order.id,
     `Pedido de compra #${order.number}: ${ordered.length} produto(s) de ${supplierId}, ${summary}${rounds ? `; pedido pai de ${rounds.length} rodadas (${rounds.map((r) => r.expectedAt).join(", ")})` : ""}`,
+  );
+  const { createStagesForOrder } = await import("@/lib/workflow/engine");
+  const fresh = (await store.get("orders", order.id)) ?? order;
+  await createStagesForOrder(fresh);
+  await notifySalesOfPurchase(fresh);
+  return (await store.get("orders", order.id)) ?? fresh;
+}
+
+/**
+ * Pedido de compra direto do fornecedor da última compra (mapa B10? → P2;
+ * dono, 15/11/2026; docs/PURCHASE_DEMAND.md): sem nova solicitação ao
+ * fornecedor e sem nova amostragem (o produto já foi comprado). As
+ * condições vêm da última compra, conferidas e editadas pelo Comprador. O
+ * pedido guarda de quais demandas (encomendas e reposições) veio.
+ */
+export async function createDirectPurchaseOrder(
+  user: User,
+  input: {
+    supplierId: string;
+    currency: string;
+    incoterm: "EXW" | "FOB" | null;
+    leadTimeDays: number | null;
+    lines: Array<{
+      productId: string;
+      quantity: number;
+      unitPrice: number | null;
+    }>;
+    demandIds: string[];
+    summary: string;
+  },
+): Promise<Order> {
+  assertWellmix(user);
+  assertCan(user, "purchaseOrder.generate");
+  if (!input.lines.length)
+    throw new PurchaseOrderError("purchase_order_choose_items");
+  const store = getStore();
+  const supplier = await store.get("parties", input.supplierId);
+  if (!supplier || supplier.type !== "supplier")
+    throw new PurchaseOrderError("purchase_order_supplier_missing");
+  const customer = await purchaseOrderCustomer();
+  if (!customer)
+    throw new PurchaseOrderError("purchase_order_customer_missing");
+  const products = await store.list("products", {
+    filter: { id: input.lines.map((l) => l.productId) },
+  });
+  const ordered = input.lines.map((l) => {
+    const product = products.find((p) => p.id === l.productId);
+    if (!product) throw new PurchaseOrderError("purchase_order_not_ready");
+    const quantity = Math.round(l.quantity);
+    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 1e9)
+      throw new PurchaseOrderError("purchase_order_qty_invalid");
+    return { product, quantity, unitPrice: l.unitPrice };
+  });
+  const fobTotal = ordered.every((o) => o.unitPrice !== null)
+    ? ordered.reduce((sum, o) => sum + o.unitPrice! * o.quantity, 0)
+    : null;
+  const first = ordered[0];
+  const backing = await store.create("requests", {
+    ...REQUEST_EXTRA_DEFAULTS,
+    customerId: customer.id,
+    createdByUserId: user.id,
+    productId: first.product.id,
+    productName: first.product.name,
+    description: `Pedido de compra direto (fornecedor da última compra): ${input.summary}`,
+    specification: null,
+    quantity: first.quantity,
+    unit: "pcs",
+    deadline: null,
+    status: "ORDERED",
+    orderId: null,
+    sellPrice: null,
+    sellCurrency: null,
+    downPaymentAmount: null,
+    notes: null,
+    origin: "supplier_request",
+    ownerUserId: user.id,
+  });
+  const order = await store.create("orders", {
+    ...ORDER_EXTRA_DEFAULTS,
+    number: await store.nextNumber("order_number"),
+    requestId: backing.id,
+    customerId: customer.id,
+    supplierId: supplier.id,
+    lineId: first.product.lineId ?? null,
+    status: "ORDER_CREATED",
+    currentStageId: null,
+    fobTotal,
+    fobCurrency: input.currency,
+    sellPrice: null,
+    sellCurrency: null,
+    erpSyncStatus: "pending",
+    erpNumber: null,
+    agencyId: null,
+    brokerId: null,
+    shippingLineId: null,
+    carrierId: null,
+    closedAt: null,
+    notes:
+      input.leadTimeDays !== null
+        ? `Prazo de produção combinado: ${input.leadTimeDays} dias (última compra).`
+        : null,
+    ownerUserId: user.id,
+    flow: "supplier_request",
+    demandIds: input.demandIds,
+    ...(input.incoterm ? { incoterm: input.incoterm } : {}),
+  });
+  await store.update("requests", backing.id, { orderId: order.id });
+  for (const o of ordered)
+    await store.create("order_items", {
+      orderId: order.id,
+      productId: o.product.id,
+      name: o.product.name,
+      quantity: o.quantity,
+      unit: "pcs",
+      unitPrice: o.unitPrice,
+    });
+  const { snapshotOrderPaymentTerms } = await import("./supplier-terms");
+  await snapshotOrderPaymentTerms(order);
+  const { assignDefaultPartners } = await import("./requests");
+  await assignDefaultPartners(order);
+  // Incoterm escolhido na estratégia; sem ele, o das fichas (EXW vence).
+  if (!input.incoterm) await syncPurchaseIncoterm(order.id);
+  await audit(
+    user,
+    "order.create_purchase_direct",
+    "order",
+    order.id,
+    `Pedido de compra #${order.number} direto de ${supplier.name} (fornecedor da última compra): ${input.summary}`,
   );
   const { createStagesForOrder } = await import("@/lib/workflow/engine");
   const fresh = (await store.get("orders", order.id)) ?? order;

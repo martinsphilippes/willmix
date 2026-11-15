@@ -261,7 +261,14 @@ export function agreedConditions(request: SupplierRequest): {
   };
 }
 
-/** Ficha mestre do produto: o item do booking, com as condições combinadas (preço, moeda, MOQ, entrega). */
+/**
+ * Ficha mestre do produto: o item do booking, com as condições combinadas
+ * (preço, moeda, MOQ, entrega). As medidas do Book (SIZE LENGTH/WIDTH/HEIGHT)
+ * são da peça e vão para o produto (`createProductFromRequest`), como na
+ * importação; as da ficha são as da caixa master, que o Book não traz. Por
+ * isso não entram aqui: com elas, o CBM da caixa seria recalculado pelo
+ * volume da peça (dono, 15/11/2026; docs/SUPPLIER_REQUESTS.md).
+ */
 export function sheetFromRequest(
   request: SupplierRequest,
   item: BookingItem | null,
@@ -281,9 +288,6 @@ export function sheetFromRequest(
     netWeightPcKg: it.netWeightPcKg ?? undefined,
     grossWeightPcKg: it.grossWeightPcKg ?? undefined,
     cbmPerCarton: it.cbmPerCarton ?? undefined,
-    heightCm: it.heightCm ?? undefined,
-    widthCm: it.widthCm ?? undefined,
-    lengthCm: it.lengthCm ?? undefined,
     capacityMl: it.capacityMl ?? undefined,
     packageType: it.packageType ?? undefined,
     colorAssortment: it.colorAssortment ?? undefined,

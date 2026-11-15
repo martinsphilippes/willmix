@@ -23,8 +23,12 @@ let users: Record<string, User> = {};
 
 beforeAll(async () => {
   const seeded = await seedDemo();
+  // O primeiro login de cada papel e empresa (o operador de compras, não o
+  // de Vendas nem o da Diretoria de compras).
   users = Object.fromEntries(
-    seeded.users.map((u) => [u.role + ":" + (u.partyId ?? ""), u]),
+    [...seeded.users]
+      .reverse()
+      .map((u) => [u.role + ":" + (u.partyId ?? ""), u]),
   );
 });
 

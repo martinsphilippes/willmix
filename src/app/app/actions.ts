@@ -79,7 +79,11 @@ import {
 import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import { itemIdOf } from "@/lib/purchase-lanes";
 import { assertSameSchedule, parseRequestItems } from "./actions/request-items";
-import { scheduleTotal } from "@/lib/workflow/request-schedule";
+import {
+  assertScheduleWindow,
+  launchDateOf,
+  scheduleTotal,
+} from "@/lib/workflow/request-schedule";
 
 /* ------------------------------------------------------------------------ */
 /* Idioma                                                                    */
@@ -145,6 +149,14 @@ export async function createRequestAction(form: FormData) {
       const rows = parseRequestItems(form);
       if (!rows.length) throw new Error("no_products");
       assertSameSchedule(rows);
+      // 1ª programação a partir do lançamento + 120 dias e datas em ordem
+      // (dono, 15/11/2026), também se a data veio digitada ou trocada na
+      // tabela. O lançamento é o gravado: o da solicitação reaberta para
+      // acrescentar produtos; na nova, hoje (ela é lançada agora).
+      const launch = launchDateOf(
+        addTo ? (await store.get("requests", addTo))?.createdAt : null,
+      );
+      for (const row of rows) assertScheduleWindow(row.schedule, launch);
       const items: RequestBatchItem[] = [];
       // Booking: produtos ainda escondidos do cliente (uma consulta só, e só
       // quando um login de fora da Wellmix manda produto sem nome).
@@ -1210,6 +1222,13 @@ export async function saveSettingsAction(form: FormData) {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 1 || n > 730)
           throw new Error("certification_horizon_invalid");
+        value = n;
+      } else if (key === "purchaseQuoteHours") {
+        // Horas corridas; aceita fração (0,5 = 30 min; o mínimo, 0,01 h,
+        // serve aos testes de ponta a ponta que esperam o prazo vencer).
+        const n = Number(String(raw).replace(",", "."));
+        if (!Number.isFinite(n) || n < 0.01 || n > 240)
+          throw new Error("purchase_quote_hours_invalid");
         value = n;
       } else if (key === "bookingInviteSlaDays") {
         const n = Number(raw);

@@ -13,6 +13,22 @@ export const pt = {
   "orderPlan.single": "Pedido único: cada produto com uma quantidade só.",
   "orderPlan.n": "Programação {n}",
   "orderPlan.dates": "Datas das programações",
+  "orderPlan.minDate":
+    "Primeira data permitida: {date} (lançamento em {launch} + 120 dias).",
+  "orderPlan.tooSoon":
+    "A 1ª programação precisa ser a partir de {date} (lançamento + 120 dias).",
+  "orderPlan.datesHint":
+    "Toque numa data para trocar só aquela programação. A data trocada fica fixada: mudar o intervalo recalcula só as outras.",
+  "orderPlan.manual": "fixada",
+  "orderPlan.edit": "Trocar a data da Programação {n}",
+  "orderPlan.unpin": "Voltar à data automática da Programação {n}",
+  "orderPlan.issues": "Ajuste antes de enviar:",
+  "orderPlan.issue":
+    "Programação {n}: a data precisa ser depois da Programação {prev} ({date}).",
+  "reqBatch.error.schedule_too_soon":
+    "A 1ª programação precisa ser a partir de {date}: 120 dias depois do lançamento da solicitação.",
+  "reqBatch.error.schedule_out_of_order":
+    "As datas das programações estão fora de ordem: cada programação precisa ser depois da anterior.",
   "orderPlan.roundsFixed":
     "O número de programações é o do pedido (bloco Programação de compra do pedido).",
   "orderPlan.lockedHint":
@@ -21,20 +37,29 @@ export const pt = {
     "As programações dos produtos não batem: as datas são do pedido e precisam ser as mesmas em todos os produtos.",
   "priceForecast.title": "Previsão de preço ao cliente final",
   "priceForecast.hint":
-    "Veja o preço previsto ao cliente final ou informe o preço de venda desejado para encontrar o preço.",
+    "Pela SuperPlan do Sankhya: veja os preços de venda previstos do produto ou informe o preço de venda desejado para encontrar o preço máximo de compra.",
   "priceForecast.view": "Ver o preço previsto",
   "priceForecast.target": "Informar o preço de venda desejado",
-  "priceForecast.targetField": "Preço de venda desejado (R$ por peça)",
   "priceForecast.calculate": "Calcular",
   "priceForecast.loading": "Calculando…",
   "priceForecast.noProduct":
     "Escolha um produto do catálogo para ver a previsão de preço.",
   "priceForecast.manual":
-    "A integração de previsão de preço ainda não está ligada (falta a documentação da API). Nenhum preço é estimado.",
-  "priceForecast.error": "Não deu para calcular a previsão de preço.",
-  "priceForecast.result": "Preço previsto ao cliente final: {price} por peça.",
+    "Sankhya não configurado: a previsão de preço (SuperPlan) não está disponível. Nenhum preço é estimado.",
   "priceForecast.resultTarget":
-    "Para vender a {target} ao cliente final: {price} por peça.",
+    "Para vender a {target} por peça, o preço máximo de compra é",
+  "priceForecast.targetField": "Preço de venda desejado (R$ por peça, com IPI)",
+  "priceForecast.error": "A SuperPlan não devolveu preço:",
+  "priceForecast.sale": "Preço de venda (com IPI)",
+  "priceForecast.table": "Preço de tabela (com IPI)",
+  "priceForecast.wholesale": "Sugestão para o atacado",
+  "priceForecast.retail": "Sugestão ao cliente final (loja)",
+  "priceForecast.goal": "Preço que dá a meta de lucro",
+  "priceForecast.cost": "Custo por peça",
+  "priceForecast.profit": "Lucro líquido",
+  "priceForecast.profitValue": "{profit}% (meta {goal}%)",
+  "priceForecast.source":
+    "Valores por peça, da SuperPlan do Sankhya (consulta agora).",
   "sankhyaHistory.source": "Do Sankhya, consultado agora",
   "sankhyaHistory.empty": "Nenhum pedido deste cliente no Sankhya.",
   "sankhyaHistory.error": "Não deu para consultar o Sankhya.",
@@ -74,6 +99,21 @@ export const en: Record<keyof typeof pt, string> = {
   "orderPlan.single": "Single order: each product with one quantity.",
   "orderPlan.n": "Round {n}",
   "orderPlan.dates": "Round dates",
+  "orderPlan.minDate":
+    "First allowed date: {date} (launched on {launch} + 120 days).",
+  "orderPlan.tooSoon":
+    "The 1st round must be on or after {date} (launch + 120 days).",
+  "orderPlan.datesHint":
+    "Tap a date to change only that round. The changed date stays fixed: changing the interval recalculates only the others.",
+  "orderPlan.manual": "fixed",
+  "orderPlan.edit": "Change the date of Round {n}",
+  "orderPlan.unpin": "Back to the automatic date of Round {n}",
+  "orderPlan.issues": "Adjust before sending:",
+  "orderPlan.issue": "Round {n}: the date must be after Round {prev} ({date}).",
+  "reqBatch.error.schedule_too_soon":
+    "The 1st round must be on or after {date}: 120 days after the request was launched.",
+  "reqBatch.error.schedule_out_of_order":
+    "The round dates are out of order: each round must be after the previous one.",
   "orderPlan.roundsFixed":
     "The number of rounds comes from the order (Order purchase schedule block).",
   "orderPlan.lockedHint":
@@ -82,20 +122,29 @@ export const en: Record<keyof typeof pt, string> = {
     "The products' schedules do not match: the dates belong to the order and must be the same for every product.",
   "priceForecast.title": "End-customer price forecast",
   "priceForecast.hint":
-    "See the forecast end-customer price or enter the desired sale price to find the price.",
+    "From Sankhya's SuperPlan: see the product's forecast sale prices or enter the desired sale price to find the maximum purchase price.",
   "priceForecast.view": "See the forecast price",
   "priceForecast.target": "Enter the desired sale price",
-  "priceForecast.targetField": "Desired sale price (R$ per piece)",
   "priceForecast.calculate": "Calculate",
   "priceForecast.loading": "Calculating…",
   "priceForecast.noProduct":
     "Choose a catalog product to see the price forecast.",
   "priceForecast.manual":
-    "The price forecast integration is not connected yet (the API documentation is missing). No price is estimated.",
-  "priceForecast.error": "Could not calculate the price forecast.",
-  "priceForecast.result": "Forecast end-customer price: {price} per piece.",
+    "Sankhya is not configured: the price forecast (SuperPlan) is unavailable. No price is estimated.",
   "priceForecast.resultTarget":
-    "To sell at {target} to the end customer: {price} per piece.",
+    "To sell at {target} per piece, the maximum purchase price is",
+  "priceForecast.targetField": "Desired sale price (R$ per piece, with IPI)",
+  "priceForecast.error": "SuperPlan returned no price:",
+  "priceForecast.sale": "Sale price (with IPI)",
+  "priceForecast.table": "List price (with IPI)",
+  "priceForecast.wholesale": "Wholesale suggestion",
+  "priceForecast.retail": "End-customer suggestion (retail)",
+  "priceForecast.goal": "Price that reaches the profit goal",
+  "priceForecast.cost": "Cost per piece",
+  "priceForecast.profit": "Net profit",
+  "priceForecast.profitValue": "{profit}% (goal {goal}%)",
+  "priceForecast.source":
+    "Per-piece values from Sankhya's SuperPlan (queried now).",
   "sankhyaHistory.source": "From Sankhya, queried now",
   "sankhyaHistory.empty": "No orders from this customer in Sankhya.",
   "sankhyaHistory.error": "Could not query Sankhya.",
@@ -135,23 +184,45 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderPlan.single": "单次订单：每个产品只有一个数量。",
   "orderPlan.n": "第 {n} 批",
   "orderPlan.dates": "各批次日期",
+  "orderPlan.minDate": "最早可选日期：{date}（{launch} 发起 + 120 天）。",
+  "orderPlan.tooSoon": "第 1 批必须在 {date} 或之后（发起日 + 120 天）。",
+  "orderPlan.datesHint":
+    "点击日期只修改该批次。修改后的日期会被固定：更改间隔只重新计算其他日期。",
+  "orderPlan.manual": "已固定",
+  "orderPlan.edit": "修改第 {n} 批的日期",
+  "orderPlan.unpin": "恢复第 {n} 批的自动日期",
+  "orderPlan.issues": "发送前请调整：",
+  "orderPlan.issue": "第 {n} 批：日期必须晚于第 {prev} 批（{date}）。",
+  "reqBatch.error.schedule_too_soon":
+    "第 1 批必须在 {date} 或之后：需求发起后 120 天。",
+  "reqBatch.error.schedule_out_of_order":
+    "各批次日期顺序不对：每一批必须晚于前一批。",
   "orderPlan.roundsFixed": "批次数来自订单（订单采购计划）。",
   "orderPlan.lockedHint": "产品资料数据：在需求中不能修改。",
   "reqBatch.error.schedule_mismatch":
     "各产品的计划不一致：日期属于订单，所有产品必须相同。",
   "priceForecast.title": "终端客户价格预测",
-  "priceForecast.hint": "查看预测的终端客户价格，或输入期望售价以求出价格。",
   "priceForecast.view": "查看预测价格",
   "priceForecast.target": "输入期望售价",
-  "priceForecast.targetField": "期望售价（每件 R$）",
   "priceForecast.calculate": "计算",
   "priceForecast.loading": "计算中…",
   "priceForecast.noProduct": "请选择目录中的产品以查看价格预测。",
   "priceForecast.manual":
-    "价格预测接口尚未接通（缺少 API 文档）。不估算任何价格。",
-  "priceForecast.error": "无法计算价格预测。",
-  "priceForecast.result": "预测终端客户价格：每件 {price}。",
-  "priceForecast.resultTarget": "若以 {target} 卖给终端客户：每件 {price}。",
+    "未配置 Sankhya：价格预测（SuperPlan）不可用。不估算任何价格。",
+  "priceForecast.hint":
+    "来自 Sankhya 的 SuperPlan：查看产品的预测售价，或输入期望售价以求出最高采购价。",
+  "priceForecast.targetField": "期望售价（每件 R$，含 IPI）",
+  "priceForecast.error": "SuperPlan 未返回价格：",
+  "priceForecast.sale": "售价（含 IPI）",
+  "priceForecast.table": "目录价（含 IPI）",
+  "priceForecast.wholesale": "批发建议价",
+  "priceForecast.retail": "终端客户建议价（零售）",
+  "priceForecast.goal": "达到利润目标的价格",
+  "priceForecast.cost": "每件成本",
+  "priceForecast.profit": "净利润",
+  "priceForecast.profitValue": "{profit}%（目标 {goal}%）",
+  "priceForecast.resultTarget": "若以每件 {target} 出售，最高采购价为",
+  "priceForecast.source": "每件数值，来自 Sankhya 的 SuperPlan（实时查询）。",
   "sankhyaHistory.source": "来自 Sankhya，实时查询",
   "sankhyaHistory.empty": "Sankhya 中没有该客户的订单。",
   "sankhyaHistory.error": "无法查询 Sankhya。",

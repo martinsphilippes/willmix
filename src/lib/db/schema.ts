@@ -11,6 +11,20 @@
  */
 
 import type { FreightTariffData } from "@/lib/services/freight-tariff-calc";
+import type {
+  ChargeNotices,
+  CustomerCharge,
+  OrderPaymentPlan,
+  PaymentPlanInstallment,
+  PaymentPlanStatus,
+} from "@/lib/customer-payment";
+
+/** Situação da forma de pagamento do cliente no pedido (src/lib/customer-payment.ts). */
+export const PAYMENT_PLAN_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+] as const;
 
 export const ROLES = [
   "admin",
@@ -971,6 +985,8 @@ export interface Request extends BaseRow {
   channel?: DemandChannel | null;
   /** Data desejada pelo cliente ou pelo Planner (encomenda e reposição). */
   desiredAt?: string | null;
+  /** Estratégia de compra em que a demanda está (docs/PURCHASE_DEMAND.md). */
+  purchaseDecisionId?: string | null;
 }
 
 export interface Order extends BaseRow {
@@ -1072,6 +1088,11 @@ export interface Order extends BaseRow {
    * nem produção. Nulo nos pedidos sem programação.
    */
   purchaseRounds?: PurchaseRound[] | null;
+  /**
+   * Demandas de compra (encomendas e reposições) de onde o pedido de compra
+   * veio (docs/PURCHASE_DEMAND.md).
+   */
+  demandIds?: string[] | null;
   /** No pedido filho: o pedido pai e o nº da rodada (1, 2, 3…). */
   parentOrderId?: string | null;
   roundIndex?: number | null;
@@ -1090,6 +1111,19 @@ export interface Order extends BaseRow {
   milestoneKey?: string | null;
   /** Marco em que o pedido estava quando foi cancelado (ao lado de `cancelStageKey`). */
   cancelMilestoneKey?: string | null;
+  /**
+   * Forma de pagamento do cliente (dono, 15/11/2026; docs/CUSTOMER_PAYMENT.md):
+   * a cópia da forma escolhida, com a alçada. `paymentPlanStatus` repete a
+   * situação para filtrar (aviso de boletos a gerar).
+   */
+  customerPaymentPlan?: OrderPaymentPlan | null;
+  paymentPlanStatus?: PaymentPlanStatus | null;
+  /** Boletos das parcelas (do Sankhya, TGFFIN, ou registrados à mão). */
+  customerCharges?: CustomerCharge[] | null;
+  /** Avisos de "gerar o boleto" já enviados por parcela. */
+  chargeNotices?: ChargeNotices | null;
+  /** Vendedor do pedido (login da Wellmix): acompanha e cobra os boletos. */
+  sellerUserId?: string | null;
 }
 
 /** Uma rodada da programação de compra no pedido pai. */
@@ -1672,8 +1706,17 @@ export interface RequestScheduleItem {
   /** 1, 2, 3… */
   index: number;
   quantity: number;
-  /** AAAA-MM-DD: 1ª data + intervalo × (n − 1). */
+  /**
+   * AAAA-MM-DD: 1ª data + intervalo × (n − 1), ou a data fixada à mão
+   * (`manual`). É a data que vale (tela, pedido pai e filhos).
+   */
   expectedAt: string;
+  /**
+   * Data escolhida à mão nesta programação (Nova solicitação, dono,
+   * 15/11/2026): trocar o intervalo não a muda. Fica no JSON da programação
+   * (sem coluna nova).
+   */
+  manual?: boolean;
 }
 /** Peças de uma cor (linha por cor do produto, no pedido e na rodada). */
 export interface ColorQuantity {
@@ -1829,7 +1872,7 @@ export interface FreightQuote extends BaseRow {
 /**
  * Cartão do fabricante (foto ou PDF) de um produto: diz quem fabrica. Um
  * produto pode ter vários (por fornecedor e ao longo do tempo); a cada
- * negociação o fornecedor confirma qual vale (quotes.manufacturerCardId).
+ * negociação o fornecedor confirma qual vale (o cartão escolhido na solicitação ao fornecedor).
  * Só a Wellmix e o próprio fornecedor veem; o cliente nunca (não pode ir
  * direto à fábrica) e outro fornecedor também não.
  */
@@ -2450,6 +2493,64 @@ export interface ReceivingItem {
   cartons?: number | null;
 }
 
+/*
+ * Lote com divergência (mapa E21, E24 a E27; dono, 15/11/2026): cada
+ * divergência da contagem por SKU vira um lote numerado, com os itens e
+ * quantidades com problema e os quatro passos dentro dele:
+ * E24 o sistema avisa Compras (automático); E25 a Diretoria de compras abre
+ * a divergência com o fornecedor e a Trading responde (aceita, contesta ou
+ * repõe); E26 Compras com a Logística juntam fotos e vídeos e a Trading
+ * aprova; E27 o Financeiro (com o Agente de carga) registra a mitigação e a
+ * Trading aprova o Acordo de Divergência, que fecha o lote.
+ */
+export const DIVERGENCE_LOT_STATUSES = ["open", "closed"] as const;
+export type DivergenceLotStatus = (typeof DIVERGENCE_LOT_STATUSES)[number];
+export const DIVERGENCE_KINDS = ["shortage", "excess", "damage"] as const;
+export type DivergenceKind = (typeof DIVERGENCE_KINDS)[number];
+
+export interface DivergenceLotItem {
+  orderItemId: string;
+  productId: string | null;
+  name: string;
+  expected: number;
+  received: number;
+  damaged: number;
+  kinds: DivergenceKind[];
+}
+
+/** Um passo do lote: quem faz envia; a Trading aprova (ou devolve). */
+export interface DivergenceLotStep {
+  status: "pending" | "submitted" | "approved" | "rejected";
+  text: string | null;
+  /** E25: resposta da Trading; E27: tipo da mitigação. */
+  choice: string | null;
+  amount: number | null;
+  currency: string | null;
+  documentIds: string[];
+  submittedByUserId: string | null;
+  submittedAt: string | null;
+  decidedByUserId: string | null;
+  decidedAt: string | null;
+  /** Resposta da Trading (E25) ou motivo da devolução (E26/E27). */
+  decisionText: string | null;
+}
+
+export interface DivergenceLot extends BaseRow {
+  number: number;
+  orderId: string;
+  items: DivergenceLotItem[];
+  status: DivergenceLotStatus;
+  note: string | null;
+  createdByUserId: string;
+  /** E24: quando o sistema avisou Compras e quem foi avisado. */
+  purchasingNotifiedAt: string | null;
+  purchasingUserIds: string[];
+  supplierStep: DivergenceLotStep;
+  evidenceStep: DivergenceLotStep;
+  financeStep: DivergenceLotStep;
+  closedAt: string | null;
+}
+
 /** Recebimento do container no armazém (um por pedido). */
 export interface Receiving extends BaseRow {
   orderId: string;
@@ -2848,6 +2949,146 @@ export interface SupplierRequestEvent {
  * têm o mesmo `groupId`. O parceiro responde subindo a planilha do booking
  * (que nasce com ele como responsável) até `dueAt` (SLA em Configurações).
  */
+/*
+ * Estratégia de compra (mapa B10?, dono 15/11/2026; docs/PURCHASE_DEMAND.md):
+ * o Comprador escolhe, para uma ou mais demandas (encomenda ou reposição) do
+ * mesmo produto ou da mesma linha, entre o fornecedor da última compra e a
+ * cotação entre fornecedores; a Diretoria de compras aprova.
+ */
+export const PURCHASE_DECISION_CHOICES = ["last_supplier", "quote"] as const;
+export type PurchaseDecisionChoice = (typeof PURCHASE_DECISION_CHOICES)[number];
+export const PURCHASE_DECISION_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+  "done",
+] as const;
+export type PurchaseDecisionStatus =
+  (typeof PURCHASE_DECISION_STATUSES)[number];
+
+/** A última compra de um produto (referência da estratégia e da cotação). */
+export interface LastPurchase {
+  productId: string;
+  supplierId: string;
+  supplierName: string | null;
+  unitPrice: number | null;
+  currency: string | null;
+  /** Data do pedido de compra (ISO). */
+  date: string;
+  orderId: string;
+  orderNumber: number;
+  leadTimeDays: number | null;
+  incoterm: string | null;
+  moq: number | null;
+}
+
+export interface PurchaseDecision extends BaseRow {
+  number: number;
+  /** Produto (todas as demandas do mesmo produto) ou nulo (vários da linha). */
+  productId: string | null;
+  lineId: string | null;
+  demandIds: string[];
+  quantity: number;
+  choice: PurchaseDecisionChoice;
+  /** Última compra de cada produto, na hora da escolha. */
+  reference: LastPurchase[] | null;
+  note: string | null;
+  status: PurchaseDecisionStatus;
+  chosenByUserId: string;
+  chosenAt: string;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  approvalNote: string | null;
+  /** Pedido de compra gerado (fornecedor da última compra). */
+  orderId: string | null;
+  /** Cotação de compra aberta (cotar entre fornecedores; docs/PURCHASE_DEMAND.md). */
+  quoteId: string | null;
+}
+
+/*
+ * Cotação de compra (mapa B13, dono 15/11/2026; docs/PURCHASE_DEMAND.md):
+ * aberta pelo sistema quando a estratégia "cotar entre fornecedores" é
+ * aprovada, para os fornecedores ativos que atendem as linhas dos produtos.
+ * Cada fornecedor tem o próprio prazo (24 h por padrão) e responde preço por
+ * item e condição de envio, ou recusa. O Comprador escolhe a vencedora e a
+ * Diretoria de compras aprova; a vencedora vira a Solicitação ao fornecedor.
+ */
+export const PURCHASE_QUOTE_STATUSES = [
+  "open",
+  "chosen",
+  "approved",
+  "cancelled",
+] as const;
+export type PurchaseQuoteStatus = (typeof PURCHASE_QUOTE_STATUSES)[number];
+export const QUOTE_RESPONSE_STATUSES = [
+  "invited",
+  "answered",
+  "declined",
+] as const;
+export type QuoteResponseStatus = (typeof QUOTE_RESPONSE_STATUSES)[number];
+
+export interface PurchaseQuoteItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
+export interface PurchaseQuote extends BaseRow {
+  number: number;
+  decisionId: string;
+  demandIds: string[];
+  lineIds: string[];
+  items: PurchaseQuoteItem[];
+  status: PurchaseQuoteStatus;
+  /** Horas de prazo de cada fornecedor (Configurações, padrão 24). */
+  hours: number;
+  openedByUserId: string;
+  winnerResponseId: string | null;
+  chosenByUserId: string | null;
+  chosenAt: string | null;
+  chosenNote: string | null;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  approvalNote: string | null;
+  /** Solicitações ao fornecedor (B7) criadas da vencedora. */
+  supplierRequestIds: string[] | null;
+  /** Quando o Comprador foi avisado de que ninguém respondeu no prazo. */
+  emptyNotifiedAt: string | null;
+}
+
+export interface QuoteResponsePrice {
+  productId: string;
+  unitPrice: number;
+}
+
+export interface PurchaseQuoteResponse extends BaseRow {
+  quoteId: string;
+  supplierId: string;
+  status: QuoteResponseStatus;
+  invitedAt: string;
+  /** Prazo deste fornecedor (ISO, UTC). */
+  dueAt: string;
+  prices: QuoteResponsePrice[] | null;
+  currency: string | null;
+  incoterm: string | null;
+  leadTimeDays: number | null;
+  port: string | null;
+  moq: number | null;
+  note: string | null;
+  answeredAt: string | null;
+  answeredByUserId: string | null;
+  /** Lembrete antes de vencer, enviado uma vez. */
+  reminderSentAt: string | null;
+}
+
+/** Fornecedor × linha de produto (quem atende cada linha; docs/PURCHASE_DEMAND.md). */
+export interface SupplierLine extends BaseRow {
+  supplierId: string;
+  lineId: string;
+  createdByUserId: string | null;
+}
+
 export interface BookingInvite extends BaseRow {
   number: number;
   groupId: string;
@@ -2953,6 +3194,12 @@ export interface SupplierRequest extends BaseRow {
    * Wellmix valida. Nulo nas aprovadas antes da etapa (lida como pendente).
    */
   sampling?: SupplierRequestSampling | null;
+  /**
+   * Cotação de compra de onde a solicitação veio (a resposta vencedora) e as
+   * demandas (encomendas e reposições) que ela atende (docs/PURCHASE_DEMAND.md).
+   */
+  quoteResponseId?: string | null;
+  demandIds?: string[] | null;
 }
 
 export const SAMPLING_STATUSES = [
@@ -3069,6 +3316,8 @@ export interface StockReservation extends BaseRow {
   movementId: string | null;
   closedByUserId: string | null;
   closedAt: string | null;
+  /** Encomenda do cliente que a reserva atende (reserva na chegada). */
+  requestId?: string | null;
 }
 
 /** Condição de pagamento (tabela de tipos de negociação do Sankhya, TGFTPV): vale para compra e venda. */
@@ -3152,6 +3401,20 @@ export interface StockLocation extends BaseRow {
   active: boolean;
   notes: string | null;
   sankhyaCode: string | null;
+}
+
+/** Forma de pagamento do cliente (dono, 15/11/2026; docs/CUSTOMER_PAYMENT.md). */
+export interface PaymentPlan extends BaseRow {
+  name: string;
+  installments: PaymentPlanInstallment[];
+  /** Precisa de aprovação por alçada; quem responde é `approverUserId`. */
+  requiresApproval: boolean;
+  approverUserId: string | null;
+  /** Juros compostos ao mês das parcelas depois da entrega (%). */
+  monthlyInterestPercent: number | null;
+  active: boolean;
+  sortOrder: number | null;
+  updatedByUserId: string | null;
 }
 
 export interface PaymentCondition extends BaseRow {
@@ -3380,6 +3643,7 @@ export interface Tables {
   sales_offers: SalesOffer;
   sales_orders: SalesOrder;
   sales_returns: SalesReturn;
+  divergence_lots: DivergenceLot;
   import_steps: ImportStep;
   receivings: Receiving;
   art_issues: ArtIssue;
@@ -3391,8 +3655,13 @@ export interface Tables {
   booking_items: BookingItem;
   supplier_requests: SupplierRequest;
   booking_invites: BookingInvite;
+  purchase_decisions: PurchaseDecision;
+  purchase_quotes: PurchaseQuote;
+  purchase_quote_responses: PurchaseQuoteResponse;
+  supplier_lines: SupplierLine;
   selection_groups: SelectionGroup;
   payment_conditions: PaymentCondition;
+  payment_plans: PaymentPlan;
   stock_locations: StockLocation;
   process_events: ProcessEvent;
   order_summaries: OrderSummary;
@@ -3649,6 +3918,7 @@ export const TABLES: Record<TableName, TableDef> = {
       // Compra por demanda (docs/PURCHASE_DEMAND.md): porta e data desejada.
       channel: enumOf(DEMAND_CHANNELS, false),
       desiredAt: datetime(),
+      purchaseDecisionId: id(false),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -3714,14 +3984,21 @@ export const TABLES: Record<TableName, TableDef> = {
       fxRate: float(),
       sankhyaRefs: json(),
       purchaseRounds: jsonLarge(),
+      demandIds: json(),
       parentOrderId: id(false),
       roundIndex: int(),
       held: bool(),
       milestoneKey: str(40),
       cancelMilestoneKey: str(40),
+      customerPaymentPlan: json(),
+      paymentPlanStatus: enumOf(PAYMENT_PLAN_STATUSES, false),
+      customerCharges: jsonLarge(),
+      chargeNotices: json(),
+      sellerUserId: id(false),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
+      { key: "by_payment_plan", type: "key", columns: ["paymentPlanStatus"] },
       {
         key: "live_by_status",
         type: "key",
@@ -4783,6 +5060,27 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_customer", type: "key", columns: ["customerId"] },
     ],
   },
+  divergence_lots: {
+    label: "Lotes com divergência no recebimento",
+    columns: {
+      number: int(true),
+      orderId: id(),
+      items: json(),
+      status: enumOf(DIVERGENCE_LOT_STATUSES),
+      note: text(),
+      createdByUserId: id(),
+      purchasingNotifiedAt: datetime(),
+      purchasingUserIds: json(),
+      supplierStep: json(),
+      evidenceStep: json(),
+      financeStep: json(),
+      closedAt: datetime(),
+    },
+    indexes: [
+      { key: "number_unique", type: "unique", columns: ["number"] },
+      { key: "by_order", type: "key", columns: ["orderId"] },
+    ],
+  },
   sales_returns: {
     label: "Devoluções de venda (Vendas)",
     columns: {
@@ -5001,6 +5299,7 @@ export const TABLES: Record<TableName, TableDef> = {
       movementId: id(false),
       closedByUserId: id(false),
       closedAt: datetime(),
+      requestId: id(false),
     },
     indexes: [
       { key: "by_product", type: "key", columns: ["productId"] },
@@ -5090,6 +5389,93 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_product", type: "key", columns: ["productId"] },
     ],
   },
+  purchase_quotes: {
+    label: "Cotações de compra",
+    columns: {
+      number: int(true),
+      decisionId: id(),
+      demandIds: json(),
+      lineIds: json(),
+      items: json(),
+      status: enumOf(PURCHASE_QUOTE_STATUSES),
+      hours: float(true),
+      openedByUserId: id(),
+      winnerResponseId: id(false),
+      chosenByUserId: id(false),
+      chosenAt: datetime(),
+      chosenNote: text(),
+      approvedByUserId: id(false),
+      approvedAt: datetime(),
+      approvalNote: text(),
+      supplierRequestIds: json(),
+      emptyNotifiedAt: datetime(),
+    },
+    indexes: [
+      { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_decision", type: "key", columns: ["decisionId"] },
+    ],
+  },
+  purchase_quote_responses: {
+    label: "Respostas das cotações de compra",
+    columns: {
+      quoteId: id(),
+      supplierId: id(),
+      status: enumOf(QUOTE_RESPONSE_STATUSES),
+      invitedAt: datetime(true),
+      dueAt: datetime(true),
+      prices: json(),
+      currency: str(3),
+      incoterm: str(10),
+      leadTimeDays: int(),
+      port: str(120),
+      moq: float(),
+      note: text(),
+      answeredAt: datetime(),
+      answeredByUserId: id(false),
+      reminderSentAt: datetime(),
+    },
+    indexes: [
+      { key: "by_quote", type: "key", columns: ["quoteId"] },
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
+    ],
+  },
+  supplier_lines: {
+    label: "Fornecedores por linha de produto",
+    columns: {
+      supplierId: id(),
+      lineId: id(),
+      createdByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
+      { key: "by_line", type: "key", columns: ["lineId"] },
+    ],
+  },
+  purchase_decisions: {
+    label: "Estratégias de compra",
+    columns: {
+      number: int(true),
+      productId: id(false),
+      lineId: id(false),
+      demandIds: json(),
+      quantity: float(true),
+      choice: enumOf(PURCHASE_DECISION_CHOICES),
+      reference: json(),
+      note: text(),
+      status: enumOf(PURCHASE_DECISION_STATUSES),
+      chosenByUserId: id(),
+      chosenAt: datetime(true),
+      approvedByUserId: id(false),
+      approvedAt: datetime(),
+      approvalNote: text(),
+      orderId: id(false),
+      quoteId: id(false),
+    },
+    indexes: [
+      { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_product", type: "key", columns: ["productId"] },
+    ],
+  },
   booking_invites: {
     label: "Convites para booking concorrente",
     columns: {
@@ -5156,6 +5542,8 @@ export const TABLES: Record<TableName, TableDef> = {
       colorPlan: json(),
       aiAssets: json(),
       sampling: jsonLarge(),
+      quoteResponseId: id(false),
+      demandIds: json(),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
@@ -5305,6 +5693,19 @@ export const TABLES: Record<TableName, TableDef> = {
       updatedByUserId: id(false),
     },
     indexes: [{ key: "key_unique", type: "unique", columns: ["key"] }],
+  },
+  payment_plans: {
+    label: "Formas de pagamento do cliente (parcelas, alçada e juros)",
+    columns: {
+      name: str(160, true),
+      installments: json(),
+      requiresApproval: bool(),
+      approverUserId: id(false),
+      monthlyInterestPercent: float(),
+      active: bool(),
+      sortOrder: int(),
+      updatedByUserId: id(false),
+    },
   },
   payment_conditions: {
     label: "Condições de pagamento (Sankhya TGFTPV)",

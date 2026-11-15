@@ -20,6 +20,7 @@ import { audit } from "@/lib/services/audit";
 import type { SankhyaRow } from "./sankhya-client";
 import {
   convert,
+  isInternalGroup,
   refsOf,
   sankhyaDate,
   TOP_STAGES,
@@ -276,7 +277,10 @@ function productFields(row: SankhyaRow) {
     minStock: number(row, "ESTMIN"),
     brand: text(row, "MARCA"),
     sankhyaRefs: refsOf(row),
-    active: convert("sn", row.ATIVO, row) !== false,
+    // Grupo interno (material de consumo, hardware, folha...): sempre inativo.
+    active:
+      convert("sn", row.ATIVO, row) !== false &&
+      !isInternalGroup(row.CODGRUPOPROD),
   };
 }
 

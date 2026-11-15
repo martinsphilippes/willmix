@@ -84,6 +84,12 @@ export async function resumeOrder(
   const order = await store.get("orders", orderId);
   if (!order) throw new DeliveryError("order_not_found");
   if (!isPaused(order)) return;
+  // Parcela em aberto (docs/CUSTOMER_PAYMENT.md): o administrador destrava e
+  // as parcelas que travavam ficam liberadas (não travam de novo).
+  if (order.pauseReason === "payment_open")
+    await (
+      await import("./customer-payment")
+    ).releasePaymentHold(user, order, note);
   await store.update("orders", orderId, { pausedAt: null, pauseReason: null });
   await audit(
     user,

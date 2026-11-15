@@ -35,6 +35,10 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
       "supplierRequest.decide",
       "sampling.validate",
       "replenishment.open",
+      "purchaseStrategy.choose",
+      "purchaseStrategy.approve",
+      "purchaseQuote.choose",
+      "purchaseQuote.approve",
     ],
   },
   {

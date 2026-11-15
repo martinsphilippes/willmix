@@ -29,6 +29,7 @@ import {
 } from "../../actions/delivery";
 import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
+import { OrderDivergenceLots } from "./_components/divergence-lots";
 import { ImportFlowCard } from "@/components/import-flow-card";
 import { ProductionCard } from "@/components/production-card";
 import {
@@ -66,6 +67,7 @@ import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
 import { OrderRoundsSection } from "./_components/rounds";
 import { OrderSaleContent } from "./_components/order-sale";
+import { CustomerPaymentGate } from "./_components/customer-payment";
 import {
   canSeeInternalCosts,
   canSeeSellPrice,
@@ -279,6 +281,9 @@ export default async function OrderPage({
     resumed: resumedNotice,
     port: portNotice,
     sale: saleNotice,
+    payment: paymentNotice,
+    charges: chargesNotice,
+    charge: chargeNotice,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
@@ -2226,7 +2231,8 @@ export default async function OrderPage({
             <p>
               {t(
                 (order.pauseReason === "channel_red" ||
-                order.pauseReason === "channel_grey"
+                order.pauseReason === "channel_grey" ||
+                order.pauseReason === "payment_open"
                   ? `delivery.paused.${order.pauseReason}`
                   : "delivery.paused.other") as DictionaryKey,
                 { date: formatDate(order.pausedAt, t) },
@@ -2506,6 +2512,25 @@ export default async function OrderPage({
             t={t}
           />
         </OrderSection>
+      )}
+
+      {/* Pagamento do cliente (dono, 15/11/2026; docs/CUSTOMER_PAYMENT.md):
+          a forma de pagamento com a alçada, o vendedor, as parcelas e os
+          boletos do Sankhya. O componente decide quem vê (nada = some). */}
+      {cargo ? null : (
+        <CustomerPaymentGate
+          user={user}
+          order={order}
+          notice={{
+            payment:
+              typeof paymentNotice === "string" ? paymentNotice : undefined,
+            charges:
+              typeof chargesNotice === "string" ? chargesNotice : undefined,
+            charge: typeof chargeNotice === "string" ? chargeNotice : undefined,
+          }}
+          title={t("customerPayment.title")}
+          t={t}
+        />
       )}
 
       {/* Wellmix (fase 3, docs/MILESTONES.md): a linha do tempo dos 16 marcos
@@ -3456,6 +3481,8 @@ export default async function OrderPage({
             }
           />
         ) : null}
+        {/* Lotes com divergência (mapa E21, E24 a E27; dono, 15/11/2026). */}
+        <OrderDivergenceLots user={user} order={order} t={t} />
         {/* Divergência no recebimento: Comunicar a Compras, Fornecedor,
             Evidência e Financeiro (mapa E24 a E27). */}
         <ImportFlowCard

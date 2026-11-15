@@ -3,68 +3,8 @@
  * funções da equipe Wellmix): mesmas chaves em pt, en e zh.
  */
 export const pt = {
-  "approvals.title": "Aprovação do pré-custo",
-  "approvals.intro":
-    "A escolha do fornecedor e o valor ao cliente só valem depois de aprovados, nível a nível. O cliente não vê esta etapa.",
-  "approvals.level.planner": "Planner",
-  "approvals.level.purchasing_director": "Diretoria de compras",
-  "approvals.level.executive_director": "Diretoria executiva",
-  "approvals.status.pending": "Aguardando aprovação",
-  "approvals.status.approved": "Aprovada",
-  "approvals.status.rejected": "Reprovada",
-  "approvals.status.cancelled": "Cancelada",
-  "approvals.status.failed": "Aprovada, mas não gravada",
-  "approvals.value": "Valor ao cliente",
-  "approvals.valueBrl": "Em reais",
-  "approvals.noFx": "sem câmbio: vai até a diretoria executiva",
-  "approvals.requestedBy": "Enviada por {name} em {date}",
-  "approvals.step.approved": "Aprovado por {name} em {date}",
-  "approvals.step.rejected": "Reprovado por {name} em {date}",
-  "approvals.step.waiting": "Aguardando",
-  "approvals.step.skipped": "Não precisa (abaixo do limite)",
-  "approvals.approve": "Aprovar",
-  "approvals.approveAll": "Aprovar todos os níveis",
-  "approvals.reject": "Reprovar",
-  "approvals.reason": "Motivo (obrigatório para reprovar)",
-  "approvals.cancel": "Cancelar aprovação",
-  "approvals.history": "Aprovações anteriores",
-  "approvals.reasonLabel": "Motivo: {reason}",
-  "approvals.waitingYou": "Sua aprovação é necessária neste nível.",
-  "approvals.waitingOther": "Aguardando: {level}.",
-  "approvals.sent":
-    "Escolha enviada para aprovação. A proposta só vai ao cliente depois de aprovada.",
-  "approvals.submit": "Enviar para aprovação",
-  "approvals.decided.approved": "Aprovação registrada.",
-  "approvals.applying.badge": "Aprovada · gravando a escolha",
-  "approvals.applying.staleBadge": "Aprovada · gravação interrompida",
-  "approvals.applying.body":
-    "Aprovada em todos os níveis. O sistema está gravando a escolha do fornecedor e criando o pedido. Leva alguns segundos e esta tela se atualiza sozinha.",
-  "approvals.applying.stale":
-    "Aprovada em todos os níveis, mas a gravação da escolha parou antes de terminar. Toque em “Tentar concluir de novo”: o sistema retoma de onde parou, sem pedir outra aprovação.",
   "approvals.error.approval_applying":
     "A escolha aprovada está sendo gravada. Aguarde alguns segundos.",
-  "approvals.retry.hint":
-    "Todos os níveis aprovaram, mas a gravação da escolha foi interrompida. Tente concluir de novo: o sistema retoma de onde parou, sem pedir outra aprovação.",
-  "approvals.retry.submit": "Tentar concluir de novo",
-  "approvals.retry.failed":
-    "Ainda não foi possível gravar a escolha. Veja o motivo no histórico abaixo.",
-  "approvals.decided.rejected":
-    "Reprovação registrada. O comprador foi avisado.",
-  "approvals.blocked":
-    "Há uma escolha aguardando aprovação. Enviar outra substitui a atual.",
-  "approvals.task.title": "Aprovar pré-custo ({level}): {product}",
-  "approvals.task.detail": "Valor ao cliente {value}",
-  "approvals.notify.next.subject": "Aprovação do pré-custo: {product}",
-  "approvals.notify.next.body": "Aguardando sua decisão ({level}).",
-  "approvals.notify.approved.subject": "Pré-custo aprovado: {product}",
-  "approvals.notify.approved.body":
-    "A escolha do fornecedor foi gravada e a proposta segue para o cliente.",
-  "approvals.notify.rejected.subject": "Pré-custo reprovado: {product}",
-  "approvals.notify.rejected.body": "Motivo: {reason}",
-  "approvals.notify.failed.subject":
-    "Pré-custo aprovado, mas não gravado: {product}",
-  "approvals.notify.failed.body":
-    "A escolha precisa ser refeita (a cotação ou a ficha mudou). Detalhe: {reason}",
   "approvals.error.reason_required": "Escreva o motivo para reprovar.",
   "approvals.error.invalid_quote": "Essa cotação não está mais disponível.",
   "approvals.error.invalid_status":
@@ -88,67 +28,8 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
-  "approvals.title": "Pre-cost approval",
-  "approvals.intro":
-    "The supplier choice and the customer price only take effect after approval, level by level. The customer does not see this step.",
-  "approvals.level.planner": "Planner",
-  "approvals.level.purchasing_director": "Purchasing director",
-  "approvals.level.executive_director": "Executive director",
-  "approvals.status.pending": "Awaiting approval",
-  "approvals.status.approved": "Approved",
-  "approvals.status.rejected": "Rejected",
-  "approvals.status.cancelled": "Cancelled",
-  "approvals.status.failed": "Approved, but not saved",
-  "approvals.value": "Customer price",
-  "approvals.valueBrl": "In BRL",
-  "approvals.noFx": "no exchange rate: goes up to the executive director",
-  "approvals.requestedBy": "Sent by {name} on {date}",
-  "approvals.step.approved": "Approved by {name} on {date}",
-  "approvals.step.rejected": "Rejected by {name} on {date}",
-  "approvals.step.waiting": "Waiting",
-  "approvals.step.skipped": "Not needed (below the threshold)",
-  "approvals.approve": "Approve",
-  "approvals.approveAll": "Approve all levels",
-  "approvals.reject": "Reject",
-  "approvals.reason": "Reason (required to reject)",
-  "approvals.cancel": "Cancel approval",
-  "approvals.history": "Previous approvals",
-  "approvals.reasonLabel": "Reason: {reason}",
-  "approvals.waitingYou": "Your approval is needed at this level.",
-  "approvals.waitingOther": "Waiting on: {level}.",
-  "approvals.sent":
-    "Choice sent for approval. The proposal only goes to the customer once approved.",
-  "approvals.submit": "Send for approval",
-  "approvals.decided.approved": "Approval recorded.",
-  "approvals.applying.badge": "Approved · saving the choice",
-  "approvals.applying.staleBadge": "Approved · saving interrupted",
-  "approvals.applying.body":
-    "Approved at every level. The system is saving the supplier choice and creating the order. It takes a few seconds and this screen refreshes by itself.",
-  "approvals.applying.stale":
-    "Approved at every level, but saving the choice stopped before finishing. Tap “Try to finish again”: the system resumes where it stopped, without asking for another approval.",
   "approvals.error.approval_applying":
     "The approved choice is being saved. Wait a few seconds.",
-  "approvals.retry.hint":
-    "Every level approved, but saving the choice was interrupted. Try to finish again: the system resumes where it stopped, without asking for another approval.",
-  "approvals.retry.submit": "Try to finish again",
-  "approvals.retry.failed":
-    "The choice still could not be saved. See the reason in the history below.",
-  "approvals.decided.rejected": "Rejection recorded. The buyer was notified.",
-  "approvals.blocked":
-    "A choice is awaiting approval. Sending another replaces it.",
-  "approvals.task.title": "Approve pre-cost ({level}): {product}",
-  "approvals.task.detail": "Customer price {value}",
-  "approvals.notify.next.subject": "Pre-cost approval: {product}",
-  "approvals.notify.next.body": "Awaiting your decision ({level}).",
-  "approvals.notify.approved.subject": "Pre-cost approved: {product}",
-  "approvals.notify.approved.body":
-    "The supplier choice was saved and the proposal goes to the customer.",
-  "approvals.notify.rejected.subject": "Pre-cost rejected: {product}",
-  "approvals.notify.rejected.body": "Reason: {reason}",
-  "approvals.notify.failed.subject":
-    "Pre-cost approved, but not saved: {product}",
-  "approvals.notify.failed.body":
-    "The choice must be redone (the quote or the sheet changed). Detail: {reason}",
   "approvals.error.reason_required": "Write the reason to reject.",
   "approvals.error.invalid_quote": "This quote is no longer available.",
   "approvals.error.invalid_status":
@@ -172,61 +53,7 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
-  "approvals.title": "预成本审批",
-  "approvals.intro":
-    "供应商选择和客户价格需逐级审批后才生效。客户看不到此步骤。",
-  "approvals.level.planner": "计划员",
-  "approvals.level.purchasing_director": "采购总监",
-  "approvals.level.executive_director": "执行总监",
-  "approvals.status.pending": "待审批",
-  "approvals.status.approved": "已批准",
-  "approvals.status.rejected": "已驳回",
-  "approvals.status.cancelled": "已取消",
-  "approvals.status.failed": "已批准但未保存",
-  "approvals.value": "客户价格",
-  "approvals.valueBrl": "折合雷亚尔",
-  "approvals.noFx": "无汇率：需执行总监审批",
-  "approvals.requestedBy": "{name} 于 {date} 提交",
-  "approvals.step.approved": "{name} 于 {date} 批准",
-  "approvals.step.rejected": "{name} 于 {date} 驳回",
-  "approvals.step.waiting": "等待中",
-  "approvals.step.skipped": "无需（低于限额）",
-  "approvals.approve": "批准",
-  "approvals.approveAll": "批准所有层级",
-  "approvals.reject": "驳回",
-  "approvals.reason": "原因（驳回必填）",
-  "approvals.cancel": "取消审批",
-  "approvals.history": "以往审批",
-  "approvals.reasonLabel": "原因：{reason}",
-  "approvals.waitingYou": "此级别需要您审批。",
-  "approvals.waitingOther": "等待：{level}。",
-  "approvals.sent": "已提交审批。批准后报价才会发给客户。",
-  "approvals.submit": "提交审批",
-  "approvals.decided.approved": "已记录批准。",
-  "approvals.applying.badge": "已批准 · 正在保存选择",
-  "approvals.applying.staleBadge": "已批准 · 保存中断",
-  "approvals.applying.body":
-    "各级均已批准。系统正在保存供应商选择并创建订单，需要几秒钟，本页面会自动刷新。",
-  "approvals.applying.stale":
-    "各级均已批准，但保存选择的过程中断了。请点击“再次尝试完成”：系统会从中断处继续，无需重新审批。",
   "approvals.error.approval_applying": "已批准的选择正在保存中，请稍候几秒。",
-  "approvals.retry.hint":
-    "所有级别均已批准，但保存选择时被中断。请再次尝试完成：系统会从中断处继续，无需重新审批。",
-  "approvals.retry.submit": "再次尝试完成",
-  "approvals.retry.failed": "仍无法保存选择。原因见下方历史记录。",
-  "approvals.decided.rejected": "已记录驳回，已通知采购员。",
-  "approvals.blocked": "有一个选择正在等待审批。再次提交将替换它。",
-  "approvals.task.title": "审批预成本（{level}）：{product}",
-  "approvals.task.detail": "客户价格 {value}",
-  "approvals.notify.next.subject": "预成本审批：{product}",
-  "approvals.notify.next.body": "等待您的决定（{level}）。",
-  "approvals.notify.approved.subject": "预成本已批准：{product}",
-  "approvals.notify.approved.body": "供应商选择已保存，报价将发给客户。",
-  "approvals.notify.rejected.subject": "预成本被驳回：{product}",
-  "approvals.notify.rejected.body": "原因：{reason}",
-  "approvals.notify.failed.subject": "预成本已批准但未保存：{product}",
-  "approvals.notify.failed.body":
-    "需重新选择（报价或表单已变更）。详情：{reason}",
   "approvals.error.reason_required": "驳回请填写原因。",
   "approvals.error.invalid_quote": "该报价已不可用。",
   "approvals.error.invalid_status": "该需求已不在选择供应商阶段。",

@@ -43,6 +43,14 @@ export const ACTION_GROUPS = [
       // lançar a encomenda em nome do cliente (B14) e abrir a reposição (B10).
       "demand.createForCustomer",
       "replenishment.open",
+      // Estratégia de compra (mapa B10?): o Comprador escolhe, a Diretoria
+      // de compras aprova.
+      "purchaseStrategy.choose",
+      "purchaseStrategy.approve",
+      // Cotação de compra (mapa B13): o Comprador escolhe a vencedora, a
+      // Diretoria de compras aprova.
+      "purchaseQuote.choose",
+      "purchaseQuote.approve",
     ],
   },
   {
@@ -143,6 +151,14 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
     // Reposição aberta à mão (mapa B10): o Planner.
     case "replenishment.open":
       return ["planner"];
+    case "purchaseStrategy.choose":
+      return ["buyer"];
+    case "purchaseStrategy.approve":
+      return ["purchasing_director"];
+    case "purchaseQuote.choose":
+      return ["buyer"];
+    case "purchaseQuote.approve":
+      return ["purchasing_director"];
     // Assinar o contrato pela Wellmix: só as diretorias (decisão do dono,
     // 13/11/2026; mapa do processo, P11: a Diretoria de compras aprova). O
     // administrador muda em Equipe → Funções e acessos.

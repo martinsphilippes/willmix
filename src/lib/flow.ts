@@ -58,6 +58,11 @@ export const FLOW_STEPS: FlowStep[] = [
   // docs/PURCHASE_DEMAND.md): encomendas do cliente e reposição do Planner.
   s("new-product", "demands", "requests", "/app/requests"),
   s("new-product", "replenishment", "requests", "/app/replenishment"),
+  // Estratégia de compra (mapa B10?): fila do Comprador, aprovação da
+  // Diretoria de compras e o pedido de compra direto.
+  s("new-product", "strategy", "quotes", "/app/purchase-strategy"),
+  // Cotação de compra (mapa B13): aberta pelo sistema, 24 h por fornecedor.
+  s("new-product", "purchase-quotes", "quotes", "/app/purchase-quotes"),
   s("new-product", "negotiations", "quotes", "/app/supplier-requests"),
   // Pedido.
   // Pedidos: o passo em que o pedido é criado (dono, 14/11/2026), com tela
@@ -293,6 +298,13 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   // Encomenda do cliente e reposição (docs/PURCHASE_DEMAND.md).
   new_request: "new-product/demands",
   replenishment_request: "new-product/replenishment",
+  purchase_strategy: "new-product/strategy",
+  purchase_strategy_approve: "new-product/strategy",
+  purchase_strategy_order: "new-product/strategy",
+  purchase_quote_answer: "new-product/purchase-quotes",
+  purchase_quote_choose: "new-product/purchase-quotes",
+  purchase_quote_empty: "new-product/purchase-quotes",
+  purchase_quote_approve: "new-product/purchase-quotes",
   after_sales: "sales/sale",
   // Recebimento no CD (casos do menu, fora das Pendências; docs/FLOW_MENU.md).
   receiving_storage: "delivery/storage",

@@ -39,7 +39,7 @@ export const DEFAULT_SETTINGS = {
   sankhyaMode: "MOCK" as "MOCK" | "MANUAL",
   whatsappMode: "MOCK" as const,
   emailMode: "MOCK" as const,
-  /** SLA de resposta da cotação: dias úteis para a Wellmix responder uma solicitação. */
+  /** SLA de resposta da encomenda: dias úteis para a Wellmix responder uma solicitação (a chave ficou com o nome antigo). */
   quoteSlaBusinessDays: 5,
   /**
    * SLA da negociação com o fornecedor, em minutos: da abertura da
@@ -53,6 +53,11 @@ export const DEFAULT_SETTINGS = {
    * prazo para o parceiro subir o booking (docs/BOOKING_INVITES.md).
    */
   bookingInviteSlaDays: 1,
+  /**
+   * Cotação de compra (mapa B13; dono, 15/11/2026): horas corridas que cada
+   * fornecedor tem para responder (padrão 24).
+   */
+  purchaseQuoteHours: 24,
   /**
    * SLA da amostragem, em dias corridos: da aprovação da solicitação (ou da
    * reprovação da amostra) até o responsável enviar as fotos e vídeos

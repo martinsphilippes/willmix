@@ -39,7 +39,7 @@ export const pt = {
   "nav.cashflow": "Fluxo de caixa",
   "cash.title": "Fluxo de caixa previsto",
   "cash.subtitle":
-    "Semana a semana: o que deve entrar dos clientes e sair para os fornecedores. Entradas: sinal das solicitações aguardando pagamento (agora) e saldo dos pedidos na entrega ao cliente. Saídas: parcelas ao fornecedor pela condição de pagamento.",
+    "Semana a semana: o que deve entrar dos clientes e sair para os fornecedores. Entradas: sinal das solicitações aguardando pagamento (agora) e saldo dos pedidos na entrega ao cliente. Saídas: parcelas ao fornecedor pela condição de pagamento e frete das vendas à transportadora, no vencimento.",
   "cash.link": "Fluxo de caixa",
   "cash.col.week": "Semana",
   "cash.col.in": "Entradas",
@@ -54,6 +54,7 @@ export const pt = {
   "cash.type.down": "Sinal",
   "cash.type.balance": "Saldo do pedido",
   "cash.type.installment": "Parcela ao fornecedor",
+  "cash.type.freight": "Frete de venda",
   "cash.details": "Ver {n} lançamento(s)",
   "cash.missingRate":
     "Sem câmbio do dia para {list}: essas saídas aparecem na moeda delas, mas ficam fora do saldo em reais.",
@@ -98,7 +99,7 @@ export const en: Record<keyof typeof pt, string> = {
   "nav.cashflow": "Cash flow",
   "cash.title": "Projected cash flow",
   "cash.subtitle":
-    "Week by week: what should come in from customers and go out to suppliers. Inflows: down payment of requests waiting for payment (now) and order balance on delivery to the customer. Outflows: supplier installments by the payment terms.",
+    "Week by week: what should come in from customers and go out to suppliers. Inflows: down payment of requests waiting for payment (now) and order balance on delivery to the customer. Outflows: supplier installments by the payment terms and sales freight to carriers, on the due date.",
   "cash.link": "Cash flow",
   "cash.col.week": "Week",
   "cash.col.in": "Inflows",
@@ -113,6 +114,7 @@ export const en: Record<keyof typeof pt, string> = {
   "cash.type.down": "Down payment",
   "cash.type.balance": "Order balance",
   "cash.type.installment": "Supplier installment",
+  "cash.type.freight": "Sales freight",
   "cash.details": "See {n} entry(ies)",
   "cash.missingRate":
     "No exchange rate today for {list}: those outflows show in their currency but stay out of the BRL balance.",
@@ -158,7 +160,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "nav.cashflow": "现金流",
   "cash.title": "现金流预测",
   "cash.subtitle":
-    "按周显示：客户应收入账与供应商应付支出。收入：待付定金的询价（立即）和订单余款（交货时）。支出：按付款条件的供应商分期。",
+    "按周显示：客户应收入账与供应商应付支出。收入：待付定金的询价（立即）和订单余款（交货时）。支出：按付款条件的供应商分期，以及到期应付承运商的销售运费。",
   "cash.link": "现金流",
   "cash.col.week": "周",
   "cash.col.in": "收入",
@@ -173,6 +175,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "cash.type.down": "定金",
   "cash.type.balance": "订单余款",
   "cash.type.installment": "供应商分期",
+  "cash.type.freight": "销售运费",
   "cash.details": "查看 {n} 条",
   "cash.missingRate":
     "缺少 {list} 的当日汇率：这些支出按原币显示，不计入 BRL 结余。",

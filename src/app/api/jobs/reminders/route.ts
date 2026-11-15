@@ -78,8 +78,35 @@ export async function GET(request: Request) {
       console.error("[reminders] purchase-gates", error);
       return null;
     });
+  // Boletos do Sankhya: busca diária dos títulos a receber dos pedidos com
+  // forma de pagamento (o boleto pago destrava o pedido; docs/CUSTOMER_PAYMENT.md).
+  const chargesSynced = await import("@/lib/services/customer-payment")
+    .then((m) => m.syncAllSankhyaCharges())
+    .catch((error) => {
+      console.error("[reminders] customer-charges-sync", error);
+      return null;
+    });
+  // Forma de pagamento do cliente: parcela que chegou ao momento sem boleto
+  // avisa o financeiro (gerar no Sankhya) e o vendedor (docs/CUSTOMER_PAYMENT.md).
+  const chargesToIssue = await import("@/lib/services/customer-payment")
+    .then((m) => m.notifyChargesToIssue())
+    .catch((error) => {
+      console.error("[reminders] customer-charges", error);
+      return null;
+    });
+  // Cotação de compra (docs/PURCHASE_DEMAND.md): lembrete antes de vencer e
+  // o aviso de "sem resposta" (também correm a cada abertura das telas).
+  const purchaseQuotes = await import("@/lib/services/purchase-quote")
+    .then((m) => m.sweepQuotes())
+    .catch((error) => {
+      console.error("[reminders] purchase-quotes", error);
+      return null;
+    });
   return NextResponse.json({
     ...result,
+    purchaseQuotes,
+    chargesToIssue,
+    chargesSynced,
     purchaseRounds,
     purchaseGates,
     supplierRequestsLate,

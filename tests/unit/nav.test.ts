@@ -36,6 +36,8 @@ const NEW_PRODUCT = [
   "/app/supplier-requests/invites",
   "/app/requests",
   "/app/replenishment",
+  "/app/purchase-strategy",
+  "/app/purchase-quotes",
   "/app/supplier-requests",
 ];
 const ORDER = [
@@ -285,6 +287,7 @@ describe("menu lateral", () => {
         items: [
           "/app/supplier-requests/invites",
           "/app/supplier-requests",
+          "/app/purchase-quotes",
           "/app/orders",
           "/app/account",
         ],

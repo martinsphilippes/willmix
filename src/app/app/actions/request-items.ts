@@ -47,7 +47,9 @@ export function parseRequestItems(form: FormData): RequestItemFields[] {
       const qty = text(`${p}quantity`).replace(",", ".");
       const productId = text(`${p}productId`) || null;
       const variantId = text(`${p}variantId`) || null;
-      const schedule = parseRequestSchedule(form, p);
+      const schedule = parseRequestSchedule(form, p, undefined, {
+        allowZero: true,
+      });
       // Programação gerada para outro produto (trocado depois de gerar): a
       // tela já tira; o servidor recusa se ainda vier (dono, 14/11/2026).
       const scheduleFor = text(`${p}schedule.for`);
@@ -76,13 +78,14 @@ export function parseRequestItems(form: FormData): RequestItemFields[] {
  * Programação do pedido (dono, 15/11/2026): as datas e o número de
  * programações são do pedido, iguais para todos os produtos; cada produto
  * só reparte a quantidade dele nelas. Ou todas as linhas têm a mesma
- * programação (número, 1ª data e intervalo), ou nenhuma tem (pedido único).
+ * programação (número, 1ª data, intervalo e a data de cada programação,
+ * inclusive as fixadas à mão), ou nenhuma tem (pedido único).
  * Fora disso: Error("schedule_mismatch").
  */
 export function assertSameSchedule(rows: RequestItemFields[]): void {
   const plans = rows.map((r) =>
     r.schedule
-      ? `${r.schedule.items.length}|${r.schedule.firstDate}|${r.schedule.intervalDays}`
+      ? `${r.schedule.items.length}|${r.schedule.firstDate}|${r.schedule.intervalDays}|${r.schedule.items.map((i) => i.expectedAt).join(",")}`
       : "",
   );
   if (new Set(plans).size > 1) throw new Error("schedule_mismatch");

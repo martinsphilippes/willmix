@@ -15,14 +15,19 @@ import { STOCK_PARTY_ID } from "./stock-party";
  *   (data prevista da etapa "Entregue"; já entregue e não pago = atrasado);
  * - saídas: as parcelas ao fornecedor pela condição de pagamento (as mesmas
  *   de Contas a pagar), com o vencimento de cada uma; parcela que espera o
- *   embarque ou a entrega fica em "sem data".
+ *   embarque ou a entrega fica em "sem data"; e o frete das ordens de venda
+ *   expedidas ainda não pago à transportadora, no vencimento (saída + prazo;
+ *   docs/SALES_ORDERS.md), em reais.
  * Saídas em outra moeda entram no saldo em reais pelo câmbio do dia; sem
  * câmbio, o saldo daquela moeda não é inventado (fica de fora e é avisado).
  */
 
 export interface CashItem {
-  /** Sinal da solicitação, saldo do pedido do cliente ou parcela ao fornecedor. */
-  type: "down" | "balance" | "installment";
+  /**
+   * Sinal da solicitação, saldo do pedido do cliente, parcela ao fornecedor
+   * ou frete da venda à transportadora.
+   */
+  type: "down" | "balance" | "installment" | "freight";
   day: string | null;
   amount: number;
   currency: string;
@@ -227,8 +232,43 @@ export async function loadCashflow(weeks = 12, now = new Date()) {
       href: `/app/orders/${r.payable.order.id}#supplier-payment`,
     }));
 
+  outflows.push(...(await freightOutflows()));
+
   return {
     today,
     ...buildCashflow({ inflows, outflows, today, weeks, rate }),
   };
+}
+
+/**
+ * Fretes de venda a pagar (docs/SALES_ORDERS.md): ordens expedidas ou
+ * entregues com transportadora e frete, ainda sem o pagamento. Vencem na
+ * saída + o prazo (sem vencimento: "sem data"); o frete é em reais.
+ */
+export async function freightOutflows(): Promise<CashItem[]> {
+  const store = getStore();
+  const orders = (
+    await store
+      .list("sales_orders", { filter: { status: ["shipped", "delivered"] } })
+      .catch(() => [])
+  ).filter(
+    (o) => (o.freightValue ?? 0) > 0 && !!o.carrierId && !o.freightPaidAt,
+  );
+  if (!orders.length) return [];
+  const carriers = indexBy(
+    await listByIds(
+      store,
+      "parties",
+      orders.map((o) => o.carrierId!),
+    ),
+    "id",
+  );
+  return orders.map((o) => ({
+    type: "freight" as const,
+    day: o.freightDueDate ?? null,
+    amount: o.freightValue!,
+    currency: "BRL",
+    label: `OV #${o.number} · ${carriers.get(o.carrierId!)?.name ?? ""}`,
+    href: "/app/payables",
+  }));
 }

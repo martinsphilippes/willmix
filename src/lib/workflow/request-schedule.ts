@@ -45,6 +45,77 @@ export function todayIso(now = new Date()): string {
 }
 
 /**
+ * Prazo da 1ª programação na Nova solicitação (dono, 15/11/2026): a data de
+ * lançamento da solicitação + 120 dias corridos, o 120º dia incluso
+ * (lançamento em 15/11/2026: a 1ª data permitida é 15/03/2027).
+ */
+export const MIN_FIRST_DATE_DAYS = 120;
+
+/** A 1ª data permitida (AAAA-MM-DD) para uma data de lançamento. */
+export const minFirstDate = (launchIso: string) =>
+  addDaysIso(launchIso, MIN_FIRST_DATE_DAYS);
+
+/**
+ * A data de lançamento (AAAA-MM-DD, em Brasília) de uma solicitação gravada;
+ * sem data gravada, hoje (a solicitação nova é lançada ao enviar).
+ */
+export function launchDateOf(createdAt: string | null | undefined): string {
+  const ms = createdAt ? Date.parse(createdAt) : NaN;
+  return todayIso(Number.isFinite(ms) ? new Date(ms) : new Date());
+}
+
+/**
+ * As datas das programações (AAAA-MM-DD): a automática é 1ª data +
+ * intervalo × (n − 1); a fixada à mão (`pins[i]`, dono, 15/11/2026) vale
+ * no lugar dela e não desloca as outras.
+ */
+export function planDates(
+  count: number,
+  firstDate: string,
+  intervalDays: number,
+  pins: ReadonlyArray<string | null | undefined> = [],
+): string[] {
+  return Array.from(
+    { length: Math.max(0, Math.floor(count)) },
+    (_, i) =>
+      pins[i] ||
+      (firstDate && intervalDays > 0
+        ? addDaysIso(firstDate, intervalDays * i)
+        : firstDate),
+  );
+}
+
+/**
+ * Programações fora de ordem: cada data precisa ser depois da anterior.
+ * Devolve, para cada uma que não é, o número dela e o da anterior (1, 2…).
+ */
+export function outOfOrderDates(
+  dates: ReadonlyArray<string>,
+): Array<{ n: number; prev: number }> {
+  const out: Array<{ n: number; prev: number }> = [];
+  // Data em branco não entra (o campo obrigatório já avisa).
+  for (let i = 1; i < dates.length; i++)
+    if (dates[i] && dates[i - 1] && dates[i] <= dates[i - 1])
+      out.push({ n: i + 1, prev: i });
+  return out;
+}
+
+/**
+ * A janela das datas da Nova solicitação, no servidor: a 1ª programação a
+ * partir do lançamento + 120 dias (Error("schedule_too_soon")) e cada data
+ * depois da anterior (Error("schedule_out_of_order")).
+ */
+export function assertScheduleWindow(
+  schedule: RequestSchedule | null | undefined,
+  launchIso: string,
+): void {
+  if (!schedule?.items.length) return;
+  const dates = schedule.items.map((i) => i.expectedAt);
+  if (outOfOrderDates(dates).length) throw new Error("schedule_out_of_order");
+  if (dates[0] < minFirstDate(launchIso)) throw new Error("schedule_too_soon");
+}
+
+/**
  * A distribuição do portal (programação de compra, solicitação e lotes da
  * ficha de compra): divide a quantidade em n partes inteiras e o resto vai
  * para as primeiras. Em caixas master, as caixas; sem elas, as peças.
@@ -65,15 +136,21 @@ export function buildSchedule(input: {
   intervalDays: number;
   firstDate: string;
   quantities: number[];
+  /** Datas fixadas à mão (dono, 15/11/2026); nulo = a automática. */
+  pins?: ReadonlyArray<string | null | undefined>;
 }): RequestSchedule {
   return {
     intervalDays: input.intervalDays,
     firstDate: input.firstDate,
-    items: input.quantities.map((quantity, i) => ({
-      index: i + 1,
-      quantity,
-      expectedAt: addDaysIso(input.firstDate, input.intervalDays * i),
-    })),
+    items: input.quantities.map((quantity, i) => {
+      const pin = input.pins?.[i];
+      return {
+        index: i + 1,
+        quantity,
+        expectedAt: pin || addDaysIso(input.firstDate, input.intervalDays * i),
+        ...(pin ? { manual: true } : {}),
+      };
+    }),
   };
 }
 
@@ -84,12 +161,21 @@ export function scheduleTotal(schedule: RequestSchedule): number {
 /**
  * Lê a programação do formulário da solicitação (campos `p<n>.schedule.*`):
  * count, intervalDays, firstDate e qty.1..N. Sem count (ou 0): nulo.
+ * Data fixada à mão numa programação (Nova solicitação, dono, 15/11/2026):
+ * `manual.<n>` = "1" e a data em `date.<n>`; as outras são sempre as
+ * automáticas (o servidor não confia na data automática da tela).
  * Entrada inválida: Error("invalid_input").
  */
 export function parseRequestSchedule(
   form: FormData,
   prefix: string,
   max: number = MAX_SCHEDULE_ROUNDS,
+  /**
+   * Nova solicitação (dono, 15/11/2026): as datas são do pedido e um produto
+   * pode ficar sem quantidade numa delas (0 ou em branco). O total do
+   * produto continua maior que zero.
+   */
+  options: { allowZero?: boolean } = {},
 ): RequestSchedule | null {
   const get = (k: string) => {
     const v = form.get(`${prefix}schedule.${k}`);
@@ -106,13 +192,26 @@ export function parseRequestSchedule(
   if (!DAY.test(firstDate) || Number.isNaN(Date.parse(firstDate)))
     throw new Error("invalid_input");
   const quantities: number[] = [];
+  const pins: Array<string | null> = [];
   for (let i = 1; i <= count; i++) {
-    const q = Number(get(`qty.${i}`).replace(",", "."));
-    if (!Number.isFinite(q) || q <= 0 || q > 100_000_000)
+    const raw = get(`qty.${i}`);
+    const q =
+      options.allowZero && raw === "" ? 0 : Number(raw.replace(",", "."));
+    if (
+      !Number.isFinite(q) ||
+      q < 0 ||
+      (q === 0 && !options.allowZero) ||
+      q > 100_000_000
+    )
       throw new Error("invalid_input");
     quantities.push(q);
+    const pin = get(`manual.${i}`) === "1" ? get(`date.${i}`) : "";
+    if (pin && (!DAY.test(pin) || Number.isNaN(Date.parse(pin))))
+      throw new Error("invalid_input");
+    pins.push(pin || null);
   }
-  return buildSchedule({ intervalDays, firstDate, quantities });
+  if (!quantities.some((q) => q > 0)) throw new Error("invalid_input");
+  return buildSchedule({ intervalDays, firstDate, quantities, pins });
 }
 
 /**

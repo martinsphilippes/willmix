@@ -62,6 +62,13 @@ export interface FixedSchedulePlan {
   count: number;
   firstDate: string;
   intervalDays: number;
+  /**
+   * A data que vale em cada programação (AAAA-MM-DD): a automática ou a
+   * fixada à mão no bloco do pedido (dono, 15/11/2026). Sem ela, a conta.
+   */
+  dates?: string[];
+  /** Programações com a data fixada à mão (vão no formulário). */
+  manual?: boolean[];
 }
 
 const fill = (s: string, vars: Record<string, string | number>) =>
@@ -212,6 +219,9 @@ export function RequestScheduleFields({
       ? interval
       : Math.max(0, Number(customInterval) || 0);
   const firstDay = fixed ? fixed.firstDate : firstDate;
+  /** A data de cada programação: a do pedido (inclusive a fixada) ou a conta. */
+  const dateOf = (i: number) =>
+    fixed?.dates?.[i] || (firstDay ? addDaysIso(firstDay, days * i) : "");
   const fmtN = (n: number) =>
     n.toLocaleString(labels.intl, { maximumFractionDigits: 2 });
   // Caixas por programação: só com as peças por caixa master do item e os
@@ -236,9 +246,11 @@ export function RequestScheduleFields({
           </span>
           <input
             type="number"
-            min="1"
+            // Programação do pedido (dono, 15/11/2026): o produto pode ficar
+            // sem quantidade numa data (0 ou em branco).
+            min={fixed ? "0" : "1"}
             step="1"
-            required
+            required={!fixed}
             inputMode="numeric"
             value={
               String(q).trim() === ""
@@ -465,6 +477,26 @@ export function RequestScheduleFields({
         name={`${prefix}schedule.firstDate`}
         value={firstDay}
       />
+      {/* Data fixada à mão numa programação do pedido (dono, 15/11/2026):
+          vai com a data; o servidor calcula as outras. */}
+      {fixed
+        ? qtys.map((_, i) =>
+            fixed.manual?.[i] ? (
+              <span key={i} hidden>
+                <input
+                  type="hidden"
+                  name={`${prefix}schedule.manual.${i + 1}`}
+                  value="1"
+                />
+                <input
+                  type="hidden"
+                  name={`${prefix}schedule.date.${i + 1}`}
+                  value={dateOf(i)}
+                />
+              </span>
+            ) : null,
+          )
+        : null}
       {hint}
       {generator ? generator(apply, qtys.map(num)) : null}
       <div className={fixed ? "hidden" : "flex flex-wrap items-end gap-3"}>
@@ -575,9 +607,9 @@ export function RequestScheduleFields({
                   <input
                     name={`${prefix}schedule.qty.${i + 1}`}
                     type="number"
-                    min="1"
+                    min={fixed ? "0" : "1"}
                     step="any"
-                    required
+                    required={!fixed}
                     value={q}
                     onChange={(e) =>
                       update(qtys.map((x, j) => (j === i ? e.target.value : x)))
@@ -589,9 +621,7 @@ export function RequestScheduleFields({
               <p className="text-[11px] text-zinc-500">
                 {labels.expected}:{" "}
                 <span className="font-medium text-zinc-800" data-schedule-date>
-                  {firstDay
-                    ? fmtDate(addDaysIso(firstDay, days * i), labels.intl)
-                    : "—"}
+                  {dateOf(i) ? fmtDate(dateOf(i), labels.intl) : "—"}
                 </span>
               </p>
               {roundInfo
@@ -649,9 +679,7 @@ export function RequestScheduleFields({
       {after
         ? after(
             qtys.map(num),
-            qtys.map((_, i) =>
-              firstDay ? addDaysIso(firstDay, days * i) : "",
-            ),
+            qtys.map((_, i) => dateOf(i)),
           )
         : null}
     </div>
