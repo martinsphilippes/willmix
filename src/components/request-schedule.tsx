@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { cx, inputClass } from "@/components/ui";
 import {
   DEFAULT_SCHEDULE_INTERVAL,
@@ -52,6 +52,18 @@ export interface ScheduleLabels {
   piecesLocked?: string;
 }
 
+/**
+ * Programação do pedido (Nova solicitação, dono, 15/11/2026): quantas
+ * programações e as datas valem para todos os produtos do pedido; cada
+ * produto só reparte a quantidade dele nessas datas. `count` menor que 2 =
+ * pedido único (sem programação).
+ */
+export interface FixedSchedulePlan {
+  count: number;
+  firstDate: string;
+  intervalDays: number;
+}
+
 const fill = (s: string, vars: Record<string, string | number>) =>
   s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : `{${k}}`));
 
@@ -82,6 +94,7 @@ export function RequestScheduleFields({
   carton = null,
   blocked = false,
   after,
+  fixed = null,
 }: {
   prefix: string;
   /** Quantidade total da linha (texto do campo). */
@@ -143,6 +156,12 @@ export function RequestScheduleFields({
    * programação desligada, listas vazias.
    */
   after?: (quantities: number[], dates: string[]) => ReactNode;
+  /**
+   * Programação do pedido (Nova solicitação): número de programações e datas
+   * fixos, de fora. O bloco não liga, desliga, acrescenta nem tira datas e
+   * não mostra intervalo nem 1ª data: só as quantidades de cada data.
+   */
+  fixed?: FixedSchedulePlan | null;
 }) {
   const titleId = useId();
   const known = (SCHEDULE_INTERVALS as readonly number[]).includes(
@@ -159,13 +178,40 @@ export function RequestScheduleFields({
     () =>
       initial?.firstDate ?? addDaysIso(todayIso(), DEFAULT_SCHEDULE_INTERVAL),
   );
-  const [qtys, setQtys] = useState<string[]>(
-    () => initial?.items.map((i) => String(i.quantity)) ?? [],
-  );
-
-  const days =
-    interval > 0 ? interval : Math.max(0, Number(customInterval) || 0);
   const num = (q: string) => Number(String(q).replace(",", ".")) || 0;
+  const fixedOn = !!fixed && fixed.count >= 2;
+  /** As datas do pedido: o total da linha repartido nelas (vazias sem total). */
+  const fixedParts = (amount: number, count: number) => {
+    const parts =
+      amount > 0
+        ? split
+          ? split(amount, count)
+          : splitEvenly(amount, count, max)
+        : null;
+    return parts ? parts.map(String) : Array<string>(count).fill("");
+  };
+  const [qtys, setQtys] = useState<string[]>(() =>
+    fixed
+      ? fixedOn
+        ? fixedParts(num(total), fixed.count)
+        : []
+      : (initial?.items.map((i) => String(i.quantity)) ?? []),
+  );
+  // O número de programações do pedido mudou: a quantidade da linha é
+  // repartida de novo nas datas novas (em caixas inteiras, pelo `split`).
+  const [fixedSeen, setFixedSeen] = useState(fixed?.count ?? null);
+  if (fixed && fixed.count !== fixedSeen) {
+    setFixedSeen(fixed.count);
+    const amount = qtys.reduce((a, q) => a + num(q), 0) || num(total);
+    setQtys(fixed.count >= 2 ? fixedParts(amount, fixed.count) : []);
+  }
+
+  const days = fixed
+    ? fixed.intervalDays
+    : interval > 0
+      ? interval
+      : Math.max(0, Number(customInterval) || 0);
+  const firstDay = fixed ? fixed.firstDate : firstDate;
   const fmtN = (n: number) =>
     n.toLocaleString(labels.intl, { maximumFractionDigits: 2 });
   // Caixas por programação: só com as peças por caixa master do item e os
@@ -263,6 +309,20 @@ export function RequestScheduleFields({
   const divide = (amount: number, count: number) =>
     split ? split(amount, count) : splitEvenly(amount, count, max);
 
+  // Programação do pedido: a linha liga ou desliga junto com o pedido e a
+  // quantidade dela passa a ser a soma das datas (de fora, sem clique aqui).
+  const fixedKey = fixed ? fixed.count : null;
+  useEffect(() => {
+    if (fixedKey === null) return;
+    onToggle?.(fixedKey >= 2);
+    if (fixedKey >= 2) {
+      const filled = qtys.some((q) => String(q).trim() !== "");
+      onTotalChange(filled ? String(sum(qtys)) : "");
+    }
+    // Só quando o número de programações do pedido muda (e ao montar).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixedKey]);
+
   function enable() {
     if (blocked) return;
     const n = Math.max(0, Number(String(total).replace(",", ".")) || 0);
@@ -279,6 +339,12 @@ export function RequestScheduleFields({
   function apply(list: number[]) {
     const clean = list.slice(0, max).map((q) => Math.max(0, Math.round(q)));
     if (!clean.length) return;
+    // Programação do pedido: só as quantidades das datas que já existem.
+    if (fixed) {
+      if (!fixedOn || clean.length !== fixed.count) return;
+      update(clean.map(String));
+      return;
+    }
     setQtys(clean.map(String));
     if (!on) {
       setOn(true);
@@ -302,7 +368,7 @@ export function RequestScheduleFields({
     onTotalChange(String(sum(list)));
   }
   function add() {
-    if (blocked || qtys.length >= max) return;
+    if (fixed || blocked || qtys.length >= max) return;
     // Cada clique acrescenta uma data: o total é dividido de novo entre elas
     // (em caixas master inteiras); sem uma caixa por data, o aviso.
     const parts = divide(sum(qtys), qtys.length + 1);
@@ -313,7 +379,7 @@ export function RequestScheduleFields({
     update(parts.map(String));
   }
   function remove() {
-    if (blocked || qtys.length <= 2) return;
+    if (fixed || blocked || qtys.length <= 2) return;
     const parts = divide(sum(qtys), qtys.length - 1);
     if (parts) update(parts.map(String));
   }
@@ -343,7 +409,7 @@ export function RequestScheduleFields({
       {labels.hint}
     </p>
   );
-  if (!on)
+  if (fixed ? !fixedOn : !on)
     return (
       <div
         role="group"
@@ -354,19 +420,23 @@ export function RequestScheduleFields({
         {legend}
         {hint}
         {generator ? generator(apply, []) : null}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-xs text-zinc-500">{labels.ask}</span>
-          <button
-            type="button"
-            onClick={enable}
-            disabled={blocked}
-            data-schedule-on
-            className="inline-flex items-center gap-1 rounded-md border border-dashed border-brand-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
-          >
-            <span aria-hidden>+</span>
-            {labels.toggle}
-          </button>
-        </div>
+        {/* Programação do pedido: pedido único para todos os produtos (a
+            programação liga no bloco do pedido, não aqui). */}
+        {fixed ? null : (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-xs text-zinc-500">{labels.ask}</span>
+            <button
+              type="button"
+              onClick={enable}
+              disabled={blocked}
+              data-schedule-on
+              className="inline-flex items-center gap-1 rounded-md border border-dashed border-brand-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
+            >
+              <span aria-hidden>+</span>
+              {labels.toggle}
+            </button>
+          </div>
+        )}
         {after ? after([], []) : null}
       </div>
     );
@@ -377,6 +447,7 @@ export function RequestScheduleFields({
       aria-labelledby={titleId}
       className={frame}
       data-request-schedule="on"
+      data-request-schedule-fixed={fixed ? "" : undefined}
     >
       {legend}
       <input
@@ -392,11 +463,11 @@ export function RequestScheduleFields({
       <input
         type="hidden"
         name={`${prefix}schedule.firstDate`}
-        value={firstDate}
+        value={firstDay}
       />
       {hint}
       {generator ? generator(apply, qtys.map(num)) : null}
-      <div className="flex flex-wrap items-end gap-3">
+      <div className={fixed ? "hidden" : "flex flex-wrap items-end gap-3"}>
         <div className="space-y-1">
           <span className="block text-xs font-medium text-zinc-700">
             {labels.interval}
@@ -482,7 +553,7 @@ export function RequestScheduleFields({
                 <span className="text-xs font-semibold text-zinc-800">
                   {fill(labels.n, { n: i + 1 })}
                 </span>
-                {qtys.length > 2 ? (
+                {qtys.length > 2 && !fixed ? (
                   <button
                     type="button"
                     onClick={() => remove()}
@@ -518,8 +589,8 @@ export function RequestScheduleFields({
               <p className="text-[11px] text-zinc-500">
                 {labels.expected}:{" "}
                 <span className="font-medium text-zinc-800" data-schedule-date>
-                  {firstDate
-                    ? fmtDate(addDaysIso(firstDate, days * i), labels.intl)
+                  {firstDay
+                    ? fmtDate(addDaysIso(firstDay, days * i), labels.intl)
                     : "—"}
                 </span>
               </p>
@@ -530,7 +601,7 @@ export function RequestScheduleFields({
                 : null}
             </div>
           ))}
-          {qtys.length < max ? (
+          {qtys.length < max && !fixed ? (
             <button
               type="button"
               onClick={add}
@@ -565,19 +636,21 @@ export function RequestScheduleFields({
             </span>
           ) : null}
         </span>
-        <button
-          type="button"
-          onClick={disable}
-          className="text-zinc-500 underline underline-offset-2 hover:text-zinc-800"
-        >
-          {labels.off}
-        </button>
+        {fixed ? null : (
+          <button
+            type="button"
+            onClick={disable}
+            className="text-zinc-500 underline underline-offset-2 hover:text-zinc-800"
+          >
+            {labels.off}
+          </button>
+        )}
       </div>
       {after
         ? after(
             qtys.map(num),
             qtys.map((_, i) =>
-              firstDate ? addDaysIso(firstDate, days * i) : "",
+              firstDay ? addDaysIso(firstDay, days * i) : "",
             ),
           )
         : null}

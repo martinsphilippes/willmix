@@ -58,8 +58,6 @@ export async function requestProductFills(
     };
   };
   const specLabels = productSpecLabels(t);
-  const dims = (a: number | null, b: number | null, c: number | null) =>
-    a !== null && b !== null && c !== null ? `${a} × ${b} × ${c}` : null;
   // Estoque: o cliente vê só "em estoque"; quantidades ficam para a Wellmix.
   const qty = (n: number) => n.toLocaleString(t.intl);
   const stockFor = (productId: string): ProductFill["stock"] => {
@@ -90,21 +88,34 @@ export async function requestProductFills(
           ? v.masterBoxQty
           : cartonOf(p).masterCartonQty,
       cbmPerCarton: v.cbm && v.cbm > 0 ? v.cbm : cartonOf(p).cbmPerCarton,
-      specification: [
-        p.category ? `${t("catalog.category")}: ${p.category}` : null,
-        buildProductSpec(variantSpecData(v), specLabels),
-      ]
-        .filter(Boolean)
-        .join("\n"),
+      specification: variantSpecificationText(t, p, v, specLabels),
       photoDocumentId: v.photoDocumentId,
     })),
     photos: (showcase.get(p.id) ?? []).map((ph) => ({
       documentId: ph.documentId,
       caption: ph.caption?.trim() || productNameText(t, p.name),
     })),
-    // Nome de exemplo ("Produto novo XPTO"): "Produto sem nome" no campo
-    // e nada no nome e na descrição da solicitação (quem pede preenche).
+    // "Produto sem nome" no campo para o nome de exemplo.
     label: productOptionLabel(t, p),
+    ...productTexts(t, p),
+  }));
+}
+
+const dims = (a: number | null, b: number | null, c: number | null) =>
+  a !== null && b !== null && c !== null ? `${a} × ${b} × ${c}` : null;
+
+/**
+ * Nome, descrição e especificação da ficha (o que a Nova solicitação mostra
+ * do produto escolhido). O servidor usa a mesma conta ao gravar: produto do
+ * catálogo não tem esses textos editados na tela (dono, 15/11/2026).
+ */
+export function productTexts(
+  t: Translate,
+  p: Product,
+): Pick<ProductFill, "productName" | "description" | "specification"> {
+  return {
+    // Nome de exemplo ("Produto novo XPTO"): nada no nome e na descrição da
+    // solicitação (quem pede preenche).
     productName: realName(p.name) ?? "",
     description: [realName(p.name), p.category].filter(Boolean).join(" — "),
     // A especificação do cadastro (montada com os dados ou escrita à mão)
@@ -133,5 +144,20 @@ export async function requestProductFills(
         ]
           .filter(Boolean)
           .join("\n"),
-  }));
+  };
+}
+
+/** Especificação de uma variação (categoria + dados da variação). */
+export function variantSpecificationText(
+  t: Translate,
+  p: Product,
+  v: Parameters<typeof variantSpecData>[0],
+  specLabels = productSpecLabels(t),
+): string {
+  return [
+    p.category ? `${t("catalog.category")}: ${p.category}` : null,
+    buildProductSpec(variantSpecData(v), specLabels),
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

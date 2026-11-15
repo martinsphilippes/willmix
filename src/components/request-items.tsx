@@ -1,6 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { cx, inputClass } from "@/components/ui";
+import {
+  DEFAULT_SCHEDULE_INTERVAL,
+  MAX_SCHEDULE_ROUNDS,
+  SCHEDULE_INTERVALS,
+  addDaysIso,
+  todayIso,
+} from "@/lib/workflow/request-schedule";
+import type { FixedSchedulePlan } from "@/components/request-schedule";
+import {
+  PriceForecast,
+  type PriceForecastLabels,
+} from "@/components/price-forecast";
 import { isPieceUnit } from "@/lib/moq";
 import {
   RequestProductFields,
@@ -72,9 +85,37 @@ export function RequestItems({
     pieces: string;
     piecesHint: string;
     piecesScheduledHint: string;
+    /** Bloco "Programação de compra do pedido" (dono, 15/11/2026). */
+    plan: OrderPlanLabels;
+    /**
+     * Previsão de preço ao cliente final por produto (Wellmix; dono,
+     * 15/11/2026). Sem ela (login do cliente), o bloco não aparece.
+     */
+    forecast?: PriceForecastLabels;
   };
 }) {
   const [rows, setRows] = useState<number[]>([0]);
+  // Programação do pedido (dono, 15/11/2026): quantas programações e as
+  // datas são do pedido; cada produto só reparte a quantidade dele nelas.
+  const [planCount, setPlanCount] = useState("1");
+  const [planInterval, setPlanInterval] = useState<number>(
+    DEFAULT_SCHEDULE_INTERVAL,
+  );
+  const [planCustom, setPlanCustom] = useState("");
+  const [planFirst, setPlanFirst] = useState(() =>
+    addDaysIso(todayIso(), DEFAULT_SCHEDULE_INTERVAL),
+  );
+  const countNumber = Math.floor(Number(planCount));
+  const count =
+    Number.isFinite(countNumber) && countNumber >= 1
+      ? Math.min(countNumber, MAX_SCHEDULE_ROUNDS)
+      : 1;
+  const intervalDays =
+    planInterval > 0 ? planInterval : Math.max(0, Number(planCustom) || 0);
+  const plan = useMemo<FixedSchedulePlan>(
+    () => ({ count, firstDate: planFirst, intervalDays }),
+    [count, planFirst, intervalDays],
+  );
   const [next, setNext] = useState(1);
   // Produto (e variação) escolhidos por linha, com a ficha: o pedido mínimo
   // deles vale para a quantidade; com variação escolhida, o mínimo é o dela.
@@ -220,6 +261,20 @@ export function RequestItems({
           {labels.hint}
         </p>
       </div>
+      <OrderPlan
+        labels={labels.plan}
+        intl={labels.intl}
+        countText={planCount}
+        onCount={setPlanCount}
+        count={count}
+        interval={planInterval}
+        onInterval={setPlanInterval}
+        custom={planCustom}
+        onCustom={setPlanCustom}
+        firstDate={planFirst}
+        onFirstDate={setPlanFirst}
+        intervalDays={intervalDays}
+      />
       {rows.map((index, position) => {
         const prefix = `p${index}.`;
         const first = index === 0;
@@ -335,10 +390,20 @@ export function RequestItems({
                       };
                     })()}
                     onQuantityBlur={() => floorToMoq(index)}
+                    fixedPlan={plan}
                     className="col-span-2 sm:col-span-4"
                   />
                 );
               })()}
+              {labels.forecast ? (
+                <PriceForecast
+                  key={product[index]?.id ?? ""}
+                  productId={outside[index] ? "" : (product[index]?.id ?? "")}
+                  quantity={qty[index] ?? ""}
+                  labels={labels.forecast}
+                  className="col-span-2 sm:col-span-4"
+                />
+              ) : null}
             </div>
           </fieldset>
         );
@@ -353,5 +418,189 @@ export function RequestItems({
         {labels.add}
       </button>
     </div>
+  );
+}
+
+/** Textos do bloco "Programação de compra do pedido". */
+export interface OrderPlanLabels {
+  title: string;
+  hint: string;
+  count: string;
+  countHint: string;
+  single: string;
+  interval: string;
+  days: string;
+  custom: string;
+  firstDate: string;
+  /** "Programação {n}". */
+  n: string;
+  dates: string;
+}
+
+const fillText = (s: string, vars: Record<string, string | number>) =>
+  s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : `{${k}}`));
+
+/**
+ * Programação de compra do pedido (dono, 15/11/2026): as datas não são do
+ * produto. O número de programações, a 1ª data e o intervalo valem para
+ * todos os produtos; o bloco de cada produto só reparte a quantidade dele
+ * nessas datas. 1 programação = pedido único.
+ */
+function OrderPlan({
+  labels,
+  intl,
+  countText,
+  onCount,
+  count,
+  interval,
+  onInterval,
+  custom,
+  onCustom,
+  firstDate,
+  onFirstDate,
+  intervalDays,
+}: {
+  labels: OrderPlanLabels;
+  intl: string;
+  countText: string;
+  onCount: (v: string) => void;
+  count: number;
+  interval: number;
+  onInterval: (v: number) => void;
+  custom: string;
+  onCustom: (v: string) => void;
+  firstDate: string;
+  onFirstDate: (v: string) => void;
+  intervalDays: number;
+}) {
+  const fmtDate = (iso: string) => {
+    const d = new Date(`${iso}T00:00:00`);
+    return Number.isNaN(d.getTime())
+      ? iso
+      : d.toLocaleDateString(intl, {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+  };
+  return (
+    <section
+      className="space-y-2 rounded-xl border border-brand-200 bg-brand-50/40 p-3"
+      aria-label={labels.title}
+      data-order-plan={count >= 2 ? count : "single"}
+    >
+      <div>
+        <p className="text-sm font-semibold text-zinc-900">{labels.title}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-zinc-600">
+          {labels.hint}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="space-y-1">
+          <span className="block text-xs font-medium text-zinc-700">
+            {labels.count}
+          </span>
+          <input
+            type="number"
+            min="1"
+            max={MAX_SCHEDULE_ROUNDS}
+            step="1"
+            inputMode="numeric"
+            value={countText}
+            onChange={(e) => onCount(e.target.value)}
+            onBlur={() => onCount(String(count))}
+            data-order-plan-count
+            className={cx(inputClass, "w-24 tabular-nums")}
+          />
+        </label>
+        {count >= 2 ? (
+          <>
+            <div className="space-y-1">
+              <span className="block text-xs font-medium text-zinc-700">
+                {labels.interval}
+              </span>
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="group"
+                aria-label={labels.interval}
+              >
+                {SCHEDULE_INTERVALS.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={interval === d}
+                    onClick={() => onInterval(d)}
+                    data-order-plan-interval={d}
+                    className={cx(
+                      "rounded-md border px-2.5 py-1 text-xs font-semibold",
+                      interval === d
+                        ? "border-brand-600 bg-brand-600 text-white"
+                        : "border-zinc-300 bg-white text-zinc-700 hover:bg-brand-50",
+                    )}
+                  >
+                    {fillText(labels.days, { n: d })}
+                  </button>
+                ))}
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  placeholder={labels.custom}
+                  value={interval === 0 ? custom : ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    onCustom(v);
+                    if (v.trim() !== "" || interval === 0) onInterval(0);
+                  }}
+                  aria-label={labels.custom}
+                  data-order-plan-custom
+                  className={cx(inputClass, "w-20 py-1 text-xs")}
+                />
+              </div>
+            </div>
+            <label className="space-y-1">
+              <span className="block text-xs font-medium text-zinc-700">
+                {labels.firstDate}
+              </span>
+              <input
+                type="date"
+                value={firstDate}
+                required
+                onChange={(e) => onFirstDate(e.target.value)}
+                data-order-plan-first
+                className={cx(inputClass, "w-40")}
+              />
+            </label>
+          </>
+        ) : null}
+      </div>
+      {count >= 2 ? (
+        <div>
+          <p className="text-xs font-medium text-zinc-700">{labels.dates}</p>
+          <ol className="mt-1 flex flex-wrap gap-1.5" data-order-plan-dates>
+            {Array.from({ length: count }, (_, i) => (
+              <li
+                key={i}
+                className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-700"
+                data-order-plan-date={i + 1}
+              >
+                <span className="font-semibold">
+                  {fillText(labels.n, { n: i + 1 })}
+                </span>
+                {": "}
+                {firstDate && intervalDays > 0
+                  ? fmtDate(addDaysIso(firstDate, intervalDays * i))
+                  : "—"}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        <p className="text-xs text-zinc-600" data-order-plan-single>
+          {labels.single}
+        </p>
+      )}
+      <p className="text-xs text-zinc-500">{labels.countHint}</p>
+    </section>
   );
 }

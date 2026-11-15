@@ -30,6 +30,8 @@ import { RequestItems } from "@/components/request-items";
 import { RequestCustomerField } from "@/components/request-customer-field";
 import { RequestCustomerProvider } from "@/components/request-customer-context";
 import { CustomerPurchaseHistory } from "@/components/customer-purchase-history";
+import { SankhyaPurchaseHistory } from "@/components/sankhya-purchase-history";
+import { sankhyaHistoryLabels } from "@/components/sankhya-history-labels";
 import {
   partyPickerLabels,
   productPickerLabels,
@@ -251,6 +253,23 @@ export default async function NewRequestPage({
       })}
     </ul>
   );
+  // Textos do histórico gravado no portal (o card de sempre).
+  const historyLabels = {
+    title: t("purchaseHistory.title"),
+    select: t("purchaseHistory.select"),
+    loading: t("purchaseHistory.loading"),
+    empty: t("purchaseHistory.empty"),
+    error: t("purchaseHistory.error"),
+    retry: t("purchaseHistory.retry"),
+    more: t("purchaseHistory.more"),
+    hint: t("purchaseHistory.hint"),
+    current: t("purchaseHistory.current"),
+    currentHint: t("purchaseHistory.currentHint"),
+    rounds: t("purchaseHistory.rounds"),
+    noItems: t("purchaseHistory.noItems"),
+    details: t("purchaseHistory.details", { n: "{n}" }),
+    open: t("purchaseHistory.open", { n: "{n}" }),
+  };
   const referenceNote = found?.url
     ? `${t("lookup.referenceNote")} ${found.url}`
     : "";
@@ -285,13 +304,14 @@ export default async function NewRequestPage({
         </div>
       ) : null}
 
-      {/* Telas grandes: busca por foto/link (estreita) ao lado do formulário
-          e, embaixo dela, o histórico de compras do cliente (o formulário
-          ocupa as duas linhas à direita, com a largura de sempre). No celular
-          e no iPad em pé: busca, formulário e, por último, o histórico. A
-          grade é o próprio provedor do cliente escolhido (o histórico lê). */}
+      {/* Telas grandes: o formulário à esquerda (as duas linhas) e, à
+          direita, a busca por foto/link e, embaixo dela, o histórico de
+          compras do cliente, com as larguras de sempre (dono, 15/11/2026; antes
+          a coluna estreita ficava à esquerda). No celular e no iPad em pé:
+          busca, formulário e, por último, o histórico. A grade é o próprio
+          provedor do cliente escolhido (o histórico lê). */}
       <RequestCustomerProvider
-        className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr]"
+        className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:grid-rows-[auto_1fr]"
         initial={initialCustomer}
         initialStock={
           isStockCustomer(presetCustomerId) || presetCustomerId === STOCK_OPTION
@@ -302,7 +322,7 @@ export default async function NewRequestPage({
         {addToRequest ? null : (
           <Card
             title={t("lookup.title")}
-            className="max-w-2xl lg:col-start-1 lg:row-start-1 lg:max-w-none"
+            className="max-w-2xl lg:col-start-2 lg:row-start-1 lg:max-w-none"
           >
             <div id="lookup" className="scroll-mt-4" />
             <p className="mb-2 text-sm text-zinc-600">{t("lookup.intro")}</p>
@@ -483,7 +503,7 @@ export default async function NewRequestPage({
             "max-w-2xl lg:max-w-none",
             addToRequest
               ? "lg:col-span-2"
-              : "lg:col-start-2 lg:row-span-2 lg:row-start-1",
+              : "lg:col-start-1 lg:row-span-2 lg:row-start-1",
           )}
         >
           {/* key: ao escolher um produto da busca (mesma rota, outro ?productId) o formulário
@@ -607,6 +627,20 @@ export default async function NewRequestPage({
                   noCarton: t("reqSchedule.gen.noCarton"),
                   noData: t("reqSchedule.gen.noData"),
                   regenerate: t("reqSchedule.gen.regenerate"),
+                  roundsFixed: t("orderPlan.roundsFixed"),
+                },
+                plan: {
+                  title: t("orderPlan.title"),
+                  hint: t("orderPlan.hint"),
+                  count: t("orderPlan.count"),
+                  countHint: t("orderPlan.countHint"),
+                  single: t("orderPlan.single"),
+                  interval: t("purchaseRounds.form.interval"),
+                  days: t("purchaseRounds.form.days", { n: "{n}" }),
+                  custom: t("purchaseRounds.form.custom"),
+                  firstDate: t("purchaseRounds.form.firstDate"),
+                  n: t("orderPlan.n", { n: "{n}" }),
+                  dates: t("orderPlan.dates"),
                 },
                 generateOutside: t("reqSchedule.gen.outside"),
                 pieces: t("reqSchedule.pieces"),
@@ -642,6 +676,29 @@ export default async function NewRequestPage({
                 none: t("lookup.noneOption"),
                 fillLoading: t("productPicker.fillLoading"),
                 fillError: t("productPicker.fillError"),
+                lockedHint: t("orderPlan.lockedHint"),
+                ...(isWellmix(user)
+                  ? {
+                      forecast: {
+                        intl: t.intl,
+                        title: t("priceForecast.title"),
+                        hint: t("priceForecast.hint"),
+                        view: t("priceForecast.view"),
+                        target: t("priceForecast.target"),
+                        targetField: t("priceForecast.targetField"),
+                        calculate: t("priceForecast.calculate"),
+                        loading: t("priceForecast.loading"),
+                        noProduct: t("priceForecast.noProduct"),
+                        manual: t("priceForecast.manual"),
+                        error: t("priceForecast.error"),
+                        result: t("priceForecast.result", { price: "{price}" }),
+                        resultTarget: t("priceForecast.resultTarget", {
+                          target: "{target}",
+                          price: "{price}",
+                        }),
+                      },
+                    }
+                  : {}),
               }}
               pickerLabels={productPickerLabels(t)}
             />
@@ -702,26 +759,20 @@ export default async function NewRequestPage({
             docs/PURCHASE_HISTORY.md): os pedidos do cliente escolhido; o login
             do cliente vê os dele. Fora do "adicionar à solicitação" (o cliente
             já é o da solicitação). */}
-        {addToRequest ? null : (
+        {addToRequest ? null : isWellmix(user) ? (
+          // Wellmix (dono, 15/11/2026): o histórico lido na hora no Sankhya
+          // (docs/PURCHASE_HISTORY.md seção 9); sem Sankhya configurado ou
+          // sem o código do cliente, o histórico gravado no portal.
+          <SankhyaPurchaseHistory
+            className="max-w-2xl lg:col-start-2 lg:row-start-2 lg:max-w-none"
+            labels={sankhyaHistoryLabels(t)}
+            fallback={<CustomerPurchaseHistory labels={historyLabels} />}
+          />
+        ) : (
           <CustomerPurchaseHistory
-            self={!isWellmix(user)}
-            className="max-w-2xl lg:col-start-1 lg:row-start-2 lg:max-w-none"
-            labels={{
-              title: t("purchaseHistory.title"),
-              select: t("purchaseHistory.select"),
-              loading: t("purchaseHistory.loading"),
-              empty: t("purchaseHistory.empty"),
-              error: t("purchaseHistory.error"),
-              retry: t("purchaseHistory.retry"),
-              more: t("purchaseHistory.more"),
-              hint: t("purchaseHistory.hint"),
-              current: t("purchaseHistory.current"),
-              currentHint: t("purchaseHistory.currentHint"),
-              rounds: t("purchaseHistory.rounds"),
-              noItems: t("purchaseHistory.noItems"),
-              details: t("purchaseHistory.details", { n: "{n}" }),
-              open: t("purchaseHistory.open", { n: "{n}" }),
-            }}
+            self
+            className="max-w-2xl lg:col-start-2 lg:row-start-2 lg:max-w-none"
+            labels={historyLabels}
           />
         )}
       </RequestCustomerProvider>

@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import { cx, inputDenseClass } from "@/components/ui";
 import {
   RequestScheduleFields,
+  type FixedSchedulePlan,
   type ScheduleLabels,
 } from "@/components/request-schedule";
 import type { RequestSchedule } from "@/lib/db/schema";
@@ -149,6 +150,8 @@ export interface GenerateLabels {
   submit: string;
   /** Título do cálculo escrito. */
   calc: string;
+  /** "Programações" travado: o número vem da programação do pedido. */
+  roundsFixed?: string;
   /** A caixa do item escolhido. */
   item: string;
   /** Nenhum item marcado em "Escolher": nada é calculado nem gerado. */
@@ -240,6 +243,7 @@ export function SelectionQuantity({
   quantityRequired = false,
   moq = null,
   onQuantityBlur,
+  fixedPlan = null,
 }: {
   label: string;
   hint: string;
@@ -289,6 +293,13 @@ export function SelectionQuantity({
   moq?: { min: number; hint: string; below: string } | null;
   /** Saiu do campo de peças (Nova solicitação: abaixo do mínimo, volta a ele). */
   onQuantityBlur?: () => void;
+  /**
+   * Programação do pedido (Nova solicitação, dono, 15/11/2026): o número de
+   * programações e as datas são do pedido. O gerador só reparte a
+   * quantidade deste produto nelas ("Programações" travado); no pedido
+   * único, só a quantidade.
+   */
+  fixedPlan?: FixedSchedulePlan | null;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const perRoundId = useId();
@@ -955,7 +966,7 @@ export function SelectionQuantity({
           >
             {fill(gen.shortUp, { cartons: fmt(s.rounds) })}
           </button>
-          {s.kind === "add" ? (
+          {fixedPlan ? null : s.kind === "add" ? (
             <button
               type="button"
               onClick={() => setShort(null)}
@@ -984,10 +995,13 @@ export function SelectionQuantity({
   const generator = (apply: (q: number[]) => void, live: number[]) => {
     applyRef.current = apply;
     liveRef.current = live;
-    const roundsValue =
-      roundsEdit && roundsEdit.at === live.length
+    const roundsValue = fixedPlan
+      ? String(Math.max(1, fixedPlan.count))
+      : roundsEdit && roundsEdit.at === live.length
         ? roundsEdit.text
         : String(live.length || 2);
+    // Pedido único do pedido inteiro: nada a gerar, só a quantidade.
+    const single = !!fixedPlan && fixedPlan.count < 2;
     // "Containers por rodada": o que as rodadas da tela precisam; sem
     // programação, o que a prévia (total ÷ rodadas) precisaria.
     const typedTotal = totalPieces();
@@ -1107,7 +1121,7 @@ export function SelectionQuantity({
               )}
             />
           </label>
-          <label className="min-w-0 space-y-1">
+          <label className={single ? "hidden" : "min-w-0 space-y-1"}>
             <span className="block font-medium text-zinc-700">
               {gen.rounds}
             </span>
@@ -1116,13 +1130,22 @@ export function SelectionQuantity({
               min="1"
               max={maxRounds}
               value={roundsValue}
+              readOnly={!!fixedPlan}
+              aria-readonly={!!fixedPlan || undefined}
+              tabIndex={fixedPlan ? -1 : undefined}
+              title={fixedPlan ? gen.roundsFixed : undefined}
               onChange={(e) => {
+                if (fixedPlan) return;
                 setRoundsEdit({ text: e.target.value, at: live.length });
                 setError(null);
                 setShort(null);
               }}
               data-generate-rounds
-              className={cx(inputDenseClass, "w-full tabular-nums")}
+              className={cx(
+                inputDenseClass,
+                "w-full tabular-nums",
+                fixedPlan && "cursor-not-allowed bg-zinc-100 text-zinc-600",
+              )}
             />
           </label>
           <div className="min-w-0 space-y-1">
@@ -1183,6 +1206,7 @@ export function SelectionQuantity({
             disabled={!item || !total}
             aria-describedby={item ? undefined : selectItemId}
             data-generate-submit
+            hidden={single}
             className="order-1 min-h-8 justify-self-start whitespace-nowrap rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50 @[57rem]:order-none"
           >
             {gen.submit}
@@ -1629,6 +1653,7 @@ export function SelectionQuantity({
               });
           }}
           after={colorPreview}
+          fixed={fixedPlan}
         />
       </div>
     </div>
