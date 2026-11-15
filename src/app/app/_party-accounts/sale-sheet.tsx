@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import { orderMilestoneText } from "@/lib/milestones";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -150,7 +151,7 @@ export async function PartySaleSheet({
               [S("info.date"), formatDate(order.createdAt, t)],
               [S("info.shipping"), stageText(sheet.shipping)],
               [S("info.delivery"), stageText(sheet.delivery)],
-              [S("info.status"), t(`stage.${order.status}` as DictionaryKey)],
+              [S("info.status"), orderMilestoneText(t, order.status)],
               [S("info.owner"), owner?.name ?? "—"],
               [
                 S("info.address"),
@@ -325,7 +326,7 @@ export async function PartySaleSheet({
                         #{l.orderNumber}
                       </TextLink>
                       <span className="block text-xs text-zinc-500">
-                        {t(`stage.${l.orderStatus}` as DictionaryKey)}
+                        {orderMilestoneText(t, l.orderStatus)}
                       </span>
                     </Td>
                     <Td>

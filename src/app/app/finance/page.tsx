@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { loadFinance } from "@/lib/services/finance";
+import { milestoneTitle } from "@/lib/milestones";
 import {
   approx,
   costEstimateNote,
@@ -77,11 +78,16 @@ export default async function FinancePage({
   // A linha que volta do "Informar câmbio" (?row=) abre na página dela.
   type Row = (typeof rows)[number];
   const live = (r: Row) => r.order.status !== "CANCELLED";
+  // Marco atual do pedido (fase 4a, docs/MILESTONES.md) no lugar da etapa.
+  const stageText = (r: Row) =>
+    r.milestone
+      ? milestoneTitle(t, r.milestone)
+      : t(`stage.${r.order.status}` as DictionaryKey);
   const financeColumns: ServerColumn<Row>[] = [
     {
       key: "number",
       text: (r) =>
-        `#${r.order.number} ${live(r) ? t(`stage.${r.order.status}` as DictionaryKey) : t("stage.CANCELLED")}`,
+        `#${r.order.number} ${live(r) ? stageText(r) : t("stage.CANCELLED")}`,
     },
     { key: "customer", text: (r) => r.customerName },
     { key: "product", text: (r) => realName(r.productName) ?? "—" },
@@ -310,7 +316,7 @@ export default async function FinancePage({
                       </div>
                     ) : (
                       <div className="mt-0.5 text-xs text-zinc-500">
-                        {t(`stage.${r.order.status}`)}
+                        {stageText(r)}
                       </div>
                     )}
                   </Td>

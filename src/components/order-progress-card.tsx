@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { milestoneOfStatus, milestoneTitle } from "@/lib/milestones";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { Stage } from "@/lib/db/schema";
@@ -169,7 +170,17 @@ export function OrderProgressCard({
                 data-order-progress-stage={s.key}
               >
                 <Td className="whitespace-nowrap font-medium text-zinc-900">
-                  {t(`stage.${s.key}` as DictionaryKey)}
+                  {/* Marco da etapa (fase 4a); a etapa embaixo, porque duas etapas podem cair no mesmo marco. */}
+                  {milestoneOfStatus(s.key) ? (
+                    <>
+                      {milestoneTitle(t, milestoneOfStatus(s.key)!)}
+                      <span className="block text-xs font-normal text-zinc-500">
+                        {t(`stage.${s.key}` as DictionaryKey)}
+                      </span>
+                    </>
+                  ) : (
+                    t(`stage.${s.key}` as DictionaryKey)
+                  )}
                 </Td>
                 <Td>
                   <Badge tone={TONE[s.state]}>

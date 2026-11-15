@@ -333,3 +333,121 @@ export function orderMilestones(
   }
   return MILESTONES.map((d) => out.get(d.key)!);
 }
+
+/*
+ * Fase 4a (docs/MILESTONES.md, "Telas que leem os marcos"): as listas e os
+ * painéis mostram o marco atual do pedido no lugar da etapa antiga.
+ */
+
+/** Número do marco (1 a 16, na ordem do dono). */
+export const milestoneNumber = (key: MilestoneKey) =>
+  MILESTONE_KEYS.indexOf(key) + 1;
+
+/**
+ * Marco de uma situação do pedido (etapa antiga, `orders.status`): para o
+ * resumo de formato antigo e as telas que não têm os marcos à mão. Cancelado
+ * (ou situação desconhecida): nulo.
+ */
+export const milestoneOfStatus = (
+  status: string | null | undefined,
+): MilestoneKey | null => (status ? (STAGE_MILESTONE[status] ?? null) : null);
+
+type MilestoneLike = Pick<MilestoneView, "key" | "state">;
+
+/** Os marcos em andamento (podem correr em paralelo), na ordem do dono. */
+export function activeMilestones(
+  views: readonly MilestoneLike[],
+): MilestoneKey[] {
+  const active = new Set(
+    views.filter((v) => v.state === "active").map((v) => v.key),
+  );
+  return MILESTONE_KEYS.filter((k) => active.has(k));
+}
+
+/**
+ * O marco atual do pedido (a manchete das listas): o primeiro em andamento,
+ * na ordem do dono; sem nenhum, o primeiro aguardando; tudo concluído (ou sem
+ * aplicação), "Entrega e recebimento" (encerrado). Pedido cancelado, ou sem
+ * nenhum marco que se aplique (e não encerrado): nulo.
+ */
+export function currentMilestone(
+  views: readonly MilestoneLike[],
+  status?: string | null,
+): MilestoneKey | null {
+  if (status === "CANCELLED") return null;
+  const state = new Map(views.map((v) => [v.key, v.state]));
+  const first = (s: MilestoneState) =>
+    MILESTONE_KEYS.find((k) => state.get(k) === s) ?? null;
+  const found = first("active") ?? first("waiting");
+  if (found) return found;
+  if (status === "CLOSED" || views.some((v) => v.state === "done"))
+    return "delivery";
+  return null;
+}
+
+/**
+ * Marco no resumo do pedido (`order_summaries.facts.m`, docs/RESUMOS.md):
+ * chave, situação, feitas, total e prazo da subtarefa aberta mais antiga.
+ */
+export interface CompactMilestone {
+  k: MilestoneKey;
+  s: MilestoneState;
+  d: number;
+  t: number;
+  due?: string;
+}
+
+/** Os marcos no formato curto do resumo. */
+export const compactMilestones = (
+  views: readonly MilestoneView[],
+): CompactMilestone[] =>
+  views.map((v) => ({
+    k: v.key,
+    s: v.state,
+    d: v.done,
+    t: v.total,
+    ...(v.dueAt ? { due: v.dueAt } : {}),
+  }));
+
+/**
+ * Marco atual pelo resumo; resumo sem `m` (formato antigo até a
+ * reconstrução) ou sem marco que se aplique, pela situação do pedido
+ * (`milestoneOfStatus`). Cancelado: nulo.
+ */
+export function milestoneOfFacts(
+  m: readonly CompactMilestone[] | null | undefined,
+  status: string | null | undefined,
+): MilestoneKey | null {
+  if (status === "CANCELLED") return null;
+  const found = m?.length
+    ? currentMilestone(
+        m.map((x) => ({ key: x.k, state: x.s })),
+        status,
+      )
+    : null;
+  return found ?? milestoneOfStatus(status);
+}
+
+/** Texto "N. Marco" para listas, filtros e cabeçalhos. */
+export const milestoneTitle = (
+  t: (key: DictionaryKey) => string,
+  key: MilestoneKey,
+) => `${milestoneNumber(key)}. ${t(milestoneLabelKey(key))}`;
+
+/**
+ * Texto da situação do pedido pelo marco (listas sem os marcos à mão):
+ * "N. Marco" pelo resumo (`m`) ou pela situação; cancelado ou situação sem
+ * marco, o nome antigo (`stage.<situação>`).
+ */
+export function orderMilestoneText(
+  t: (key: DictionaryKey) => string,
+  status: string,
+  m?: readonly CompactMilestone[] | null,
+): string {
+  const key = milestoneOfFacts(m, status);
+  return key ? milestoneTitle(t, key) : t(`stage.${status}` as DictionaryKey);
+}
+
+/** Ordem de um marco (0 a 15); sem marco, depois de todos. */
+export const milestoneRank = (key: MilestoneKey | null | undefined) =>
+  key ? MILESTONE_KEYS.indexOf(key) : MILESTONE_KEYS.length;

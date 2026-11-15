@@ -353,6 +353,15 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page.locator('[data-milestone="new-order"] [data-milestone-name]'),
   ).toHaveText("Pedido novo");
   await expect(page.locator("[data-stage-row]")).toHaveCount(0);
+  // Origem do pedido (fase 4b, docs/MILESTONES.md): o book e a solicitação.
+  await expect(
+    page.locator(
+      `[data-order-origin] a[href="/app/supplier-requests/${requestId}"]`,
+    ),
+  ).toBeVisible();
+  await expect(
+    page.locator('[data-order-origin] [data-entity-link="book"]').first(),
+  ).toBeVisible();
   // Certificação no login responsável (docs/CERTIFICATION.md, seção 13): o
   // memorial e o selo são da certificadora (OCP) do pedido (dono,
   // 14/11/2026); o analista do pedido (quem gerou) não recebe nenhum dos dois.

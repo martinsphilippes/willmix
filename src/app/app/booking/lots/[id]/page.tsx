@@ -65,6 +65,12 @@ import {
   setBookingLotNoteAction,
 } from "../../../actions/booking-lots";
 import { reclassifyBookingNcmAction } from "../../../actions/booking-ncm";
+import {
+  entityLinkAccess,
+  linksForLot,
+  linksOfItem,
+} from "@/lib/services/entity-links";
+import { EntityLinkList, entityLinkNodes } from "@/components/entity-links";
 import type { NcmSuggestion } from "@/lib/ncm-match";
 import { TableTools } from "@/components/table-tools";
 import {
@@ -194,6 +200,9 @@ export default async function BookingLotPage({
   const pending = bookingLotPending(lot, items);
   const ready = bookingLotReady(pending);
   const businessTypes = await superplanBusinessTypes();
+  // Ligações de cada item (fase 4b): solicitações, produto e pedidos.
+  const linkAccess = entityLinkAccess(user);
+  const lotLinks = await linksForLot(lot.id);
 
   const intl = t.intl;
   const decimal = intl.startsWith("pt") ? "," : ".";
@@ -868,6 +877,9 @@ export default async function BookingLotPage({
                       {colLabel(k)}
                     </th>
                   ))}
+                  <th className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                    {t("entityLinks.col")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1006,6 +1018,26 @@ export default async function BookingLotPage({
                       </td>
                       <td className="border-b border-zinc-100 px-2 py-2 align-top">
                         {analysisCell(item)}
+                      </td>
+                      <td
+                        className="border-b border-zinc-100 px-2 py-2 align-top text-xs"
+                        data-booking-item-links=""
+                      >
+                        <EntityLinkList
+                          className="max-w-48 gap-y-0.5"
+                          nodes={entityLinkNodes({
+                            t,
+                            links: linksOfItem(lotLinks, item.id),
+                            access: linkAccess,
+                            kinds: [
+                              "selection",
+                              "supplierRequests",
+                              "products",
+                              "orders",
+                            ],
+                          })}
+                          empty={muted}
+                        />
                       </td>
                     </tr>
                   );

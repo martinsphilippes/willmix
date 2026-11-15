@@ -7,6 +7,8 @@
  * mandar tudo ao navegador estourava o tempo da Vercel.
  */
 
+import { milestoneOfStatus } from "@/lib/milestones";
+
 export type OrdersRowState = "active" | "blocked" | "done" | "cancelled";
 
 export type OrdersFilterKey =
@@ -180,6 +182,18 @@ export function filterOrderRows<T extends OrdersFilterRow>(
     return sort.desc ? -cmp : cmp;
   });
   return keyed.map((k) => k.r);
+}
+
+/**
+ * Filtro de marco (`ph`, docs/MILESTONES.md fase 4a): a coluna mostra o
+ * marco atual (`milestone:<marco>`). Link antigo pela etapa
+ * (`stage:PREPARATION` ou só `PREPARATION`) vira o marco da etapa.
+ */
+export function ordersPhaseFilter(raw: string | undefined): string {
+  const value = raw ?? "";
+  const old = /^(?:stage:)?([A-Z_]+)$/.exec(value);
+  const key = old && old[1] !== "CANCELLED" ? milestoneOfStatus(old[1]) : null;
+  return key ? `milestone:${key}` : value;
 }
 
 /** Página pedida (1, 2, ...) dentro do total; fora dele, a última que existe. */

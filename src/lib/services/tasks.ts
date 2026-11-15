@@ -26,6 +26,13 @@ import { dieCutHref, dieCutItemOf, dieCutProducts } from "@/lib/die-cut-step";
 import { blockedBy } from "@/lib/purchase-lanes";
 import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
 import { isRoutedLaneKey } from "@/lib/purchase-lanes";
+import {
+  MILESTONE_KEYS,
+  milestoneOfRequirement,
+  milestoneOfStatus,
+  milestoneRank,
+  type MilestoneKey,
+} from "@/lib/milestones";
 
 export type TaskKind =
   | "booking_invite"
@@ -70,6 +77,11 @@ export interface Task {
   orderNumber?: number;
   /** Requisito de etapa: a etapa (a tela traduz). */
   stageKey?: StageKey;
+  /**
+   * Requisito de etapa: o marco do pedido (docs/MILESTONES.md, fase 4a),
+   * o que a tela mostra no lugar da etapa (`taskMilestone`).
+   */
+  milestone?: MilestoneKey | null;
   /**
    * Título e detalhe traduzidos na tela (chave e valores), para pendência de
    * quem usa outro idioma (ex.: fornecedor chinês); sem isto valem `title` e
@@ -234,9 +246,43 @@ export function filterTasks(tasks: Task[], filter: TaskFilter): Task[] {
     ? (filter.due as TaskDue)
     : null;
   const group = filter.group || null;
+  // Link antigo pela etapa (?type=PREPARATION): as pendências daquela etapa.
+  const stage = !!group && STAGE_ORDER.includes(group);
   return tasks.filter(
-    (t) => (!due || t.due === due) && (!group || t.group === group),
+    (t) =>
+      (!due || t.due === due) &&
+      (!group ||
+        t.group === group ||
+        (stage && t.stageKey === group && !t.supplierStep)),
   );
+}
+
+/** Grupo das pendências de um marco (filtro "tipo" das Pendências). */
+export const milestoneGroup = (key: MilestoneKey) => `m:${key}`;
+
+/** O marco de um grupo `m:<marco>`; nulo nos demais. */
+export function milestoneOfGroup(group: string): MilestoneKey | null {
+  const key = group.startsWith("m:") ? group.slice(2) : "";
+  return (MILESTONE_KEYS as readonly string[]).includes(key)
+    ? (key as MilestoneKey)
+    : null;
+}
+
+/**
+ * Marco de uma pendência de etapa (docs/MILESTONES.md, fase 4a): pelo passo
+ * de cada item (`milestoneOfRequirement`), o primeiro na ordem dos 16; sem
+ * item, pela etapa (`milestoneOfStatus`). Sem etapa: nulo.
+ */
+export function taskMilestone(
+  task: Pick<Task, "stageKey" | "items">,
+): MilestoneKey | null {
+  const stageKey = task.stageKey;
+  if (!stageKey) return null;
+  const found = (task.items ?? [])
+    .map((i) => milestoneOfRequirement(stageKey, i.key))
+    .filter((k): k is MilestoneKey => !!k)
+    .sort((a, b) => milestoneRank(a) - milestoneRank(b));
+  return found[0] ?? milestoneOfStatus(stageKey);
 }
 
 const STAGE_ORDER: string[] = STAGE_TEMPLATES.map((s) => s.key);
@@ -307,11 +353,17 @@ const AGENCY_STEP_OF_KIND: Partial<Record<TaskKind, AgencyStep>> = {
 const GROUP_ORDER = [
   ...SUPPLIER_STEPS.map(supplierGroup),
   ...AGENCY_STEPS.map(agencyGroup),
+  // Os 16 marcos na ordem do dono (fase 4a); as etapas ficam para o grupo
+  // de pendência montado à mão (testes, telas antigas).
+  ...MILESTONE_KEYS.map(milestoneGroup),
   ...STAGE_ORDER,
   ...KIND_ORDER,
 ];
 
-/** Grupos presentes (etapas na ordem do fluxo, depois os tipos), com contagem. */
+/**
+ * Grupos presentes (marcos na ordem do dono, depois os tipos), com contagem.
+ * `stage`: grupo de etapa ou de marco (a tela mostra o nome do marco).
+ */
 export function taskGroups(
   tasks: Task[],
 ): { group: string; stage: boolean; count: number }[] {
@@ -321,7 +373,7 @@ export function taskGroups(
     .sort((a, b) => GROUP_ORDER.indexOf(a[0]) - GROUP_ORDER.indexOf(b[0]))
     .map(([group, count]) => ({
       group,
-      stage: STAGE_ORDER.includes(group),
+      stage: STAGE_ORDER.includes(group) || !!milestoneOfGroup(group),
       count,
     }));
 }
@@ -335,13 +387,19 @@ function finish(
 ): Task {
   const daysLeft = daysUntil(task.dueAt, now);
   const due = dueBucket(daysLeft);
+  // Pendência de etapa: o marco do pedido (fase 4a), calculado na leitura
+  // (as pendências guardadas no resumo não mudam de formato).
+  const milestone = task.stageKey ? taskMilestone(task) : null;
   return {
     ...task,
+    ...(task.stageKey ? { milestone } : {}),
     group:
       task.group ??
       (task.supplierStep
         ? supplierGroup(task.supplierStep)
-        : (task.stageKey ?? task.kind)),
+        : milestone
+          ? milestoneGroup(milestone)
+          : (task.stageKey ?? task.kind)),
     due,
     daysLeft,
     overdue: due === "overdue",

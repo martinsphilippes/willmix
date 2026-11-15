@@ -1,5 +1,6 @@
 import "server-only";
 import { getStore, type User } from "@/lib/db";
+import { orderMilestoneText } from "@/lib/milestones";
 import type {
   Order,
   OrderItem,
@@ -868,7 +869,8 @@ export function purchaseHistoryView(
     );
     return { name: item.name, lines };
   };
-  const status = (s: string) => t(`stage.${s}` as DictionaryKey);
+  // Marco do pedido pela situação (docs/MILESTONES.md, fase 4a).
+  const status = (s: string) => orderMilestoneText(t, s);
   return {
     next: page.next,
     purchases: page.purchases.map((p) => ({

@@ -28,6 +28,11 @@ import { reviewOrderId, type TowerRow } from "./control-tower";
 import { stepTemplate } from "./import-flow";
 import { JOURNEY_REQUIREMENT_KEYS, journeyIndex } from "./journey";
 import { isSchemaMissing } from "@/lib/db/errors";
+import {
+  milestoneOfFacts,
+  milestoneOfStatus,
+  type CompactMilestone,
+} from "@/lib/milestones";
 import type { Container } from "@/lib/db";
 import {
   activeStagesFromFacts,
@@ -299,6 +304,11 @@ export interface BoardInput {
   /** Valor de venda e saldo a receber por pedido (só com Finanças). */
   money: Map<string, { sell: number; currency: string; receivable: number }>;
   currency: string;
+  /**
+   * Os marcos de cada pedido, do resumo (`facts.m`, docs/MILESTONES.md fase
+   * 4a); sem eles (caminho antigo ou resumo antigo), o marco sai da situação.
+   */
+  milestones?: Map<string, CompactMilestone[] | undefined>;
 }
 
 /** Monta os quadrados (função pura; `loadTowerBoard` busca os dados). */
@@ -357,6 +367,9 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
       customer: partyName(o.customerId),
       product: firstItem.get(o.id) ?? "—",
       stageKey: cancelled ? (o.cancelStageKey ?? null) : (o.status as StageKey),
+      milestone: cancelled
+        ? milestoneOfStatus(o.cancelStageKey)
+        : milestoneOfFacts(input.milestones?.get(o.id), o.status),
       requestStatus: null,
       responsible:
         closed || cancelled || !portal
@@ -988,5 +1001,6 @@ export async function boardFromSummaries(
         : [],
     ),
     currency,
+    milestones: new Map(facts.map((f) => [f.order.id, f.m])),
   });
 }

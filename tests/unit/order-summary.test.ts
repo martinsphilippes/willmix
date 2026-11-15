@@ -320,6 +320,32 @@ describe("resumo por pedido", () => {
     expect(read("import_steps", () => true)).toEqual([]);
   });
 
+  it("os 16 marcos no resumo (facts.m) são os mesmos da tela do pedido", async () => {
+    const { milestonesOf } = await import("@/lib/services/milestones");
+    const { compactMilestones, milestoneOfFacts } =
+      await import("@/lib/milestones");
+    const orders = await getStore().list("orders");
+    const facts = await summary.factsForOrders(orders, ["m", "order"]);
+    expect(facts).not.toBeNull();
+    for (const order of orders) {
+      const m = facts!.get(order.id)?.m;
+      expect(m, order.number.toString()).toHaveLength(16);
+      expect(m).toEqual(compactMilestones(await milestonesOf(order)));
+      const current = milestoneOfFacts(m, order.status);
+      if (order.status === "CANCELLED") expect(current).toBeNull();
+      else if (order.status === "CLOSED") expect(current).toBe("delivery");
+      else expect(current).toBeTruthy();
+    }
+    // A tela Pedidos mostra o marco do resumo; o cancelado, o da etapa em que parou.
+    const rows = await pipelineFor(admin);
+    const cancelled = orders.find((o) => o.status === "CANCELLED")!;
+    expect(
+      rows.find((row) => row.key === `order:${cancelled.id}`)?.milestone,
+    ).toBe("new-order");
+    for (const row of rows.filter((x) => x.kind === "order"))
+      if (!row.key.endsWith(cancelled.id)) expect(row.milestone).toBeTruthy();
+  });
+
   it("reconstruir de novo sem mudança não grava nada", async () => {
     const again = await summary.rebuildOrderSummaries();
     expect(again.written).toBe(0);

@@ -1,4 +1,5 @@
 import type { Translate } from "@/i18n";
+import { orderMilestoneText } from "@/lib/milestones";
 import { requirementLabel } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
@@ -81,7 +82,7 @@ export async function FlowAll({
                 </Td>
                 {partner ? null : <Td>{nameOf(e.order.supplierId)}</Td>}
                 <Td className="whitespace-nowrap">
-                  {t(`stage.${e.order.status}` as DictionaryKey)}
+                  {orderMilestoneText(t, e.order.status)}
                 </Td>
                 <Td className="text-xs text-zinc-600">{labels.join(", ")}</Td>
                 <Td className="whitespace-nowrap">

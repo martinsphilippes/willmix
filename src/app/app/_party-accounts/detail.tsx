@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { orderMilestoneText } from "@/lib/milestones";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -306,7 +307,7 @@ export async function PartyAccountDetail({
                       </Badge>
                       {r.delivery === "in_progress" ? (
                         <span className="block text-xs text-zinc-500">
-                          {t(`stage.${r.status}` as DictionaryKey)}
+                          {orderMilestoneText(t, r.status)}
                         </span>
                       ) : null}
                     </Td>

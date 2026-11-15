@@ -8,6 +8,11 @@ import {
 } from "@/lib/db/lookup";
 
 import { getStore, type Order, type Payment } from "@/lib/db";
+import {
+  milestoneOfFacts,
+  milestoneOfStatus,
+  type MilestoneKey,
+} from "@/lib/milestones";
 import { fxKey, rateFor, type FxRates } from "@/lib/pricing";
 import type { FxStatus } from "./fx";
 
@@ -42,6 +47,11 @@ const cents = (n: number) => Math.round(n * 100) / 100;
 
 export interface OrderFinance {
   order: Order;
+  /**
+   * Marco atual do pedido (docs/MILESTONES.md, fase 4a): pelo resumo ou pela
+   * situação. Só na lista do financeiro (`loadFinance`).
+   */
+  milestone?: MilestoneKey | null;
   customerName: string;
   supplierName: string;
   productName: string;
@@ -541,10 +551,12 @@ async function financeLookup(orders: Order[]) {
     "supplier",
     "product",
     "pop",
+    "m",
   ]);
   if (facts) {
     const f = (o: Order) => facts.get(o.id);
     return {
+      milestone: (o: Order) => milestoneOfFacts(f(o)?.m, o.status),
       payments: (o: Order) => (f(o)?.pays ?? []) as Payment[],
       customer: (o: Order) => (o.customerId && f(o)?.customer) || "—",
       supplier: (o: Order) => (o.supplierId && f(o)?.supplier) || "—",
@@ -578,6 +590,7 @@ async function financeLookup(orders: Order[]) {
   }
   const name = (id: string | null) => (id && parties.get(id)?.name) || "—";
   return {
+    milestone: (o: Order) => milestoneOfStatus(o.status),
     originCosts: async () => {
       const map = await originCostsByOrder(null);
       return (o: Order) => map.get(o.id) ?? [];
@@ -615,8 +628,8 @@ export async function loadFinance(
         saleRecords(orders.map((o) => o.requestId)),
       ])
     : [null, new Map<string, PricingRecord>()];
-  const rows = orders.map((o) =>
-    computeOrderFinance(
+  const rows = orders.map((o) => ({
+    ...computeOrderFinance(
       o,
       lookup.payments(o),
       {
@@ -634,7 +647,8 @@ export async function loadFinance(
         originCosts: originOf(o),
       },
     ),
-  );
+    milestone: lookup.milestone(o),
+  }));
   return { rows, summary: summarizeFinance(rows) };
 }
 

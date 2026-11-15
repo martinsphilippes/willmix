@@ -4,7 +4,9 @@ import { requireScreen } from "@/lib/auth/guard";
 import { canSeeSupplier, isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { STAGE_KEYS, REQUEST_STATUSES } from "@/lib/db/schema";
+import { REQUEST_STATUSES } from "@/lib/db/schema";
+import { blockLabelKey } from "@/lib/flow";
+import { MILESTONES, milestoneRank, milestoneTitle } from "@/lib/milestones";
 import { getStore, type Product, type ProductPhoto } from "@/lib/db";
 import {
   loadPipelineItems,
@@ -16,6 +18,7 @@ import {
   ORDERS_PAGE_SIZE,
   filterOrderRows,
   ordersPage,
+  ordersPhaseFilter,
   parseOrdersSort,
 } from "@/lib/orders-filter";
 import {
@@ -75,19 +78,27 @@ export default async function OrdersPage({
   const showCustomer = wellmix;
   const showSupplier = canSeeSupplier(user) && user.role !== "supplier";
 
-  // Ordem das etapas no fluxo: solicitação antes do pedido; cancelada por último.
+  // Marco atual do pedido (docs/MILESTONES.md, fase 4a) na coluna e no
+  // filtro, na ordem dos 16 marcos: solicitação antes do pedido; cancelada
+  // (sem a etapa em que parou) por último.
   const rank = (row: (typeof rows)[number]) =>
-    row.phase.kind === "stage"
-      ? 100 + STAGE_KEYS.indexOf(row.phase.key)
-      : row.phase.key === "CANCELLED"
-        ? 999
-        : REQUEST_STATUSES.indexOf(
-            row.phase.key as (typeof REQUEST_STATUSES)[number],
-          );
+    row.milestone
+      ? 100 + milestoneRank(row.milestone)
+      : row.phase.kind === "stage"
+        ? 100 + milestoneRank(null)
+        : row.phase.key === "CANCELLED"
+          ? 999
+          : REQUEST_STATUSES.indexOf(
+              row.phase.key as (typeof REQUEST_STATUSES)[number],
+            );
   const phaseLabel = (r: (typeof rows)[number]) =>
-    r.phase.kind === "stage"
-      ? t(`stage.${r.phase.key}` as DictionaryKey)
-      : t(`reqStatusLabel.${r.phase.key}` as DictionaryKey);
+    r.milestone
+      ? milestoneTitle(t, r.milestone)
+      : r.phase.kind === "stage"
+        ? t(`stage.${r.phase.key}` as DictionaryKey)
+        : t(`reqStatusLabel.${r.phase.key}` as DictionaryKey);
+  const phaseKeyOf = (r: (typeof rows)[number]) =>
+    r.milestone ? `milestone:${r.milestone}` : `${r.phase.kind}:${r.phase.key}`;
   const refLabel = (r: (typeof rows)[number]) =>
     r.kind === "order"
       ? `#${r.number ?? "—"}`
@@ -316,7 +327,7 @@ export default async function OrdersPage({
       customer: first.customer ?? "",
       supplier: suppliers.join(", "),
       phase: phaseLabel(lead),
-      phaseKey: `${lead.phase.kind}:${lead.phase.key}`,
+      phaseKey: phaseKeyOf(lead),
       phaseRank: rank(lead),
       state,
       progress: stepPercent(journeyLead.journey),
@@ -368,6 +379,8 @@ export default async function OrdersPage({
   const filters = Object.fromEntries(
     ORDERS_FILTER_KEYS.map((k) => [k, one(params[k]) ?? ""]),
   );
+  // Link antigo pela etapa (?ph=stage:PREPARATION ou só a chave): o marco dela.
+  filters.ph = ordersPhaseFilter(filters.ph);
   const entryOf = new Map(entries.map((e) => [e.row, e]));
   const matched = filterOrderRows(
     entries.map((e) => e.row),
@@ -406,14 +419,28 @@ export default async function OrdersPage({
   const tableRows: OrdersTableRow[] = pageEntries.map((e) =>
     buildRow(e.members, true),
   );
-  // As listas dos filtros (etapas e situações) vêm de todas as linhas.
+  // As listas dos filtros vêm de todas as linhas (situações das
+  // solicitações); os 16 marcos entram sempre, agrupados pelo bloco.
   const phaseSeen = new Map<string, { label: string; rank: number }>();
   for (const { row } of entries)
     if (!phaseSeen.has(row.phaseKey))
       phaseSeen.set(row.phaseKey, { label: row.phase, rank: row.phaseRank });
-  const phaseOptions = [...phaseSeen.entries()]
+  const seenOptions = [...phaseSeen.entries()]
+    .filter(([key]) => !key.startsWith("milestone:"))
     .sort((a, b) => a[1].rank - b[1].rank)
     .map(([key, v]) => [key, v.label] as [string, string]);
+  const phaseOptions: Array<[string, string, string?]> = [
+    ...seenOptions.filter(([key]) => key !== "request:CANCELLED"),
+    ...MILESTONES.map(
+      (m) =>
+        [
+          `milestone:${m.key}`,
+          milestoneTitle(t, m.key),
+          t(blockLabelKey(m.block)),
+        ] as [string, string, string],
+    ),
+    ...seenOptions.filter(([key]) => key === "request:CANCELLED"),
+  ];
   const stateOptions = (
     ["blocked", "active", "done", "cancelled"] as const
   ).filter((st) => entries.some((e) => e.row.state === st));
@@ -446,7 +473,7 @@ export default async function OrdersPage({
             p: one(params.p),
             c: one(params.c),
             s: one(params.s),
-            ph: one(params.ph),
+            ph: filters.ph || undefined,
             st: one(params.st),
             pr: one(params.pr),
             d: one(params.d),
@@ -458,7 +485,7 @@ export default async function OrdersPage({
             product: t("common.product"),
             customer: t("common.customer"),
             supplier: t("common.supplier"),
-            phase: t("orders.stage"),
+            phase: t("milestone.current"),
             state: t("common.status"),
             progress: t("common.progress"),
             due: t("common.due"),

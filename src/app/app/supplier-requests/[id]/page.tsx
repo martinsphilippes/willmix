@@ -42,6 +42,7 @@ import {
   Select,
   Textarea,
   formatMoney,
+  cx,
   linkClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
@@ -81,6 +82,11 @@ import { RequestAiReferences } from "@/components/selection-ai-prompts";
 import { SamplingCard } from "../_components/sampling";
 import { samplingSlaDays } from "@/lib/services/supplier-request-sampling";
 import { samplingApproved } from "@/lib/supplier-request-sampling";
+import {
+  entityLinkAccess,
+  linksForSupplierRequest,
+  selectionHref,
+} from "@/lib/services/entity-links";
 
 /*
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
@@ -124,6 +130,13 @@ export default async function SupplierRequestPage({
   if (!detail) notFound();
   const { request: r, supplier, lot, chosen, alternatives } = detail;
   const wellmix = isWellmix(user);
+  // Grupo da seleção de onde a solicitação saiu (fase 4b, docs/MILESTONES.md).
+  const selections =
+    wellmix && entityLinkAccess(user).book
+      ? ((await linksForSupplierRequest(r.id))?.selections ?? []).filter(
+          (g) => g.supplierRequestId === r.id,
+        )
+      : [];
   // Fornecedor sem login (só a Wellmix vê o aviso): enquanto a solicitação
   // está em andamento, ele não vê nem responde até ganhar o acesso.
   const noLoginNow =
@@ -1120,6 +1133,16 @@ export default async function SupplierRequestPage({
                     })}
                   </Link>
                 ) : null}
+                {selections.map((g) => (
+                  <Link
+                    key={g.id}
+                    href={selectionHref(g)}
+                    className={cx(linkClass, "block")}
+                    data-supplier-request-selection
+                  >
+                    {t("entityLinks.selection")}
+                  </Link>
+                ))}
                 {chosen?.analysis ? (
                   <div className="pt-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
