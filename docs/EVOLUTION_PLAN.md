@@ -1471,3 +1471,15 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Não mudou**: os dados do card, os botões, a aba "Com Solicitação Aberta" (que já quebrava a linha) e o banco.
 - Docs: `docs/SUPPLIER_REQUESTS.md` (Blocos sugeridos).
 - Testes: o E2E `tests/e2e/selection-colors.spec.ts` confere, no computador, no iPad e no celular, que nenhuma parte da linha do escolhido passa da borda do card (com o código antigo, passava 100 px).
+
+## Histórico de compras do cliente: seletor Pedido | Produto
+
+- **Pedido do dono** (15/11/2026, com a foto do card na Nova solicitação): um seletor "Pedido | Produto" no topo do card "Histórico de compras do cliente", com Pedido por padrão e uma visão por vez no mesmo card.
+- **Pedido:** a lista do Sankhya de sempre, com a expansão do pedido.
+- **Produto:** abre direto pelo seletor. Mostra os produtos dos pedidos da lista pelo código no Sankhya, com o nome à esquerda e o total do período à direita. Embaixo, a quantidade de cada data, da mais recente para a mais antiga, com pedidos do mesmo dia somados e as unidades do Sankhya.
+- **Período:** os pedidos já lidos na lista (10 de início; "Carregar mais pedidos" amplia).
+- **Troca de cliente:** atualiza a visão.
+- **Como:** `sankhyaCustomerProducts`, `customerItemsSql` e `productHistory` (`src/lib/services/sankhya-customer-history.ts`), `view=products` na rota `src/app/api/purchase-history/sankhya/route.ts` e `ProductsPanel` no card (`src/components/sankhya-purchase-history.tsx`).
+- **Não mudou:** a visão Pedido e a expansão, as permissões, o histórico gravado no portal (login do cliente e sem Sankhya) e o resto da Nova solicitação. Sem mudança no banco.
+- Docs: `docs/PURCHASE_HISTORY.md` seção 11.
+- Testes: `tests/unit/sankhya-history-products.test.ts` e `tests/e2e/purchase-history-products.spec.ts`.
