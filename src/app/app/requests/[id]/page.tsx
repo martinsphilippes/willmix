@@ -62,6 +62,7 @@ export default async function RequestDetailPage({
     at: errorToken,
     fromCart,
     sale,
+    ficha,
   } = await searchParams;
   const request = await getRequestForUser(user, id);
   if (!request) notFound();
@@ -333,10 +334,19 @@ export default async function RequestDetailPage({
       <div className="mt-4 flex flex-col gap-4">
         <div className="contents">
           <Card title={t("requests.title")}>
-            {/* Uma linha por produto com os dados principais e "Ver ficha
-                completa" (Produto, Embalagem e cubagem, Valores e Pagamento);
-                a programação de compra desta solicitação logo abaixo. */}
-            <RequestSheetTable view={sheet} t={t} />
+            {/* Uma linha por produto com os dados principais; "Ver ficha
+                completa" (botão no alto da tabela, para todas as linhas; dono,
+                15/11/2026) continua cada linha para a direita com Produto,
+                Embalagem e cubagem, Valores e Pagamento. A programação de
+                compra desta solicitação logo abaixo. */}
+            <div id="solicitacoes" className="scroll-mt-24" />
+            <RequestSheetTable
+              view={sheet}
+              t={t}
+              full={ficha === "completa"}
+              summaryHref={`/app/requests/${encodeURIComponent(id)}#solicitacoes`}
+              fullHref={`/app/requests/${encodeURIComponent(id)}?ficha=completa#solicitacoes`}
+            />
             <RequestScheduleTable
               schedule={request.schedule}
               unit={request.unit}

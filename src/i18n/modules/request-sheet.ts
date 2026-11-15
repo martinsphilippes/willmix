@@ -8,6 +8,10 @@ export const pt = {
   "requestSheet.legend":
     "Origem de cada dado: Solicitação e Programação (gravados nesta solicitação), Pedido, Negociação, Book, Ficha atual (cadastro do produto, quando a solicitação não gravou o dado) e Calculado (regras do portal, com os dados gravados).",
   "requestSheet.open": "Ver ficha completa",
+  "requestSheet.mode.summary": "Linha resumida",
+  "requestSheet.mode.label": "Como mostrar os produtos",
+  "requestSheet.full.hint":
+    "A linha de cada produto continua para a direita; o produto fica fixo à esquerda.",
   "requestSheet.close": "Ocultar ficha",
   "requestSheet.openAria": "Ver ficha completa de {name}",
   "requestSheet.notInformed": "Não informado",
@@ -161,6 +165,10 @@ export const en: Record<keyof typeof pt, string> = {
   "requestSheet.legend":
     "Source of each item: Request and Schedule (recorded in this request), Order, Negotiation, Book, Current sheet (product record, when the request did not record the item) and Calculated (portal rules, from recorded data).",
   "requestSheet.open": "See full sheet",
+  "requestSheet.mode.summary": "Summary line",
+  "requestSheet.mode.label": "How to show the products",
+  "requestSheet.full.hint":
+    "Each product's line continues to the right; the product stays fixed on the left.",
   "requestSheet.close": "Hide sheet",
   "requestSheet.openAria": "See the full sheet of {name}",
   "requestSheet.notInformed": "Not informed",
@@ -314,6 +322,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "requestSheet.legend":
     "每项数据的来源：申请和计划（本申请记录）、订单、谈判、Book、当前资料（申请未记录时取自产品档案）和计算值（按门户规则用已记录数据计算）。",
   "requestSheet.open": "查看完整资料",
+  "requestSheet.mode.summary": "简要行",
+  "requestSheet.mode.label": "产品显示方式",
+  "requestSheet.full.hint": "每个产品的行向右延伸；产品列固定在左侧。",
   "requestSheet.close": "收起资料",
   "requestSheet.openAria": "查看 {name} 的完整资料",
   "requestSheet.notInformed": "未提供",

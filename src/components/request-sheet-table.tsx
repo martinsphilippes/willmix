@@ -1,9 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
+import Link from "next/link";
 import type { Translate } from "@/i18n";
 import type {
   RequestSheetView,
   SheetField,
-  SheetGroup,
+  SheetGroupKey,
   SheetRow,
   SheetSource,
 } from "@/lib/services/request-sheet";
@@ -11,15 +12,22 @@ import { cx, formatDate, TextLink } from "./ui";
 
 /*
  * "Solicitações" no detalhe da solicitação (dono, 15/11/2026;
- * docs/REQUEST_SHEET.md): uma linha por produto com os dados principais e
- * "Ver ficha completa" na própria linha. A ficha abre na largura do cartão,
- * em quatro grupos (Produto, Embalagem e cubagem, Valores, Pagamento).
+ * docs/REQUEST_SHEET.md e docs/LINHA_DE_VISAO.md): uma linha por produto.
  *
- * A tabela não corta colunas: pela largura do cartão (@container), em tela
- * larga as linhas viram colunas com cabeçalho; no iPad e no celular cada
- * linha vira um cartão com o título de cada dado. Sem JavaScript: a ficha
- * abre e fecha com <details>. Tudo o que chega aqui já passou pelas
- * permissões no servidor (src/lib/services/request-sheet.ts).
+ * - Linha resumida: os dados principais. Pela largura do cartão
+ *   (@container), em tela larga as linhas viram colunas com cabeçalho; no
+ *   iPad e no celular cada linha vira um cartão com o título de cada dado.
+ * - Ver ficha completa (botão no alto da tabela, vale para todas as linhas;
+ *   é um link, sem JavaScript): a linha de cada produto continua para a
+ *   direita, em linha horizontal, com todos os campos de Produto,
+ *   Embalagem e cubagem, Valores e Pagamento, faixas de grupo em cima e o
+ *   produto fixo à esquerda. Nunca um bloco embaixo da linha (dono). A
+ *   página não rola de lado: só a tabela.
+ *
+ * Sem dado: "—" ("Não informado" para o leitor de tela e na dica). Grupo
+ * que o perfil não vê não aparece; o aviso de quem vê fica embaixo. Tudo o
+ * que chega aqui já passou pelas permissões no servidor
+ * (src/lib/services/request-sheet.ts).
  */
 
 const TAG_STYLE: Partial<Record<SheetSource["kind"], string>> = {
@@ -31,13 +39,17 @@ function SourceTag({
   source,
   t,
   linked = false,
+  stacked = false,
 }: {
   source: SheetSource;
   t: Translate;
   linked?: boolean;
+  /** Embaixo do valor (ficha completa), em vez de ao lado. */
+  stacked?: boolean;
 }) {
   const className = cx(
-    "ml-1.5 inline-block whitespace-nowrap rounded px-1 align-baseline text-[10px] font-medium ring-1",
+    "whitespace-nowrap rounded px-1 text-[10px] font-medium ring-1",
+    stacked ? "mt-1 block w-fit" : "ml-1.5 inline-block align-baseline",
     TAG_STYLE[source.kind] ?? "bg-zinc-100 text-zinc-600 ring-zinc-200",
   );
   const title =
@@ -64,31 +76,51 @@ function SourceTag({
   );
 }
 
+/** "—" para dado ausente; o leitor de tela e a dica dizem "Não informado". */
+function Missing({ t }: { t: Translate }) {
+  return (
+    <span
+      className="text-zinc-400"
+      title={t("requestSheet.notInformed")}
+      aria-label={t("requestSheet.notInformed")}
+      data-sheet-missing
+    >
+      —
+    </span>
+  );
+}
+
 function FieldValue({
   field,
   t,
   linked = false,
   compact = false,
+  stacked = false,
 }: {
   field: SheetField;
   t: Translate;
   linked?: boolean;
-  /** Na linha principal: sem a conta (ela fica na ficha completa). */
+  /** Na linha resumida: sem a conta (ela fica na ficha completa). */
   compact?: boolean;
+  /** Ficha completa: a origem embaixo do valor. */
+  stacked?: boolean;
 }) {
   return (
     <>
       {field.value === null ? (
-        <span className="italic text-zinc-400" data-sheet-missing>
-          {t("requestSheet.notInformed")}
-        </span>
+        <Missing t={t} />
       ) : (
         <span className="whitespace-pre-line" data-sheet-value>
           {field.value}
         </span>
       )}
       {field.source ? (
-        <SourceTag source={field.source} t={t} linked={linked} />
+        <SourceTag
+          source={field.source}
+          t={t}
+          linked={linked}
+          stacked={stacked}
+        />
       ) : null}
       {field.note && !compact ? (
         <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500">
@@ -124,51 +156,65 @@ function Cell({
   );
 }
 
-function Group({ group, t }: { group: SheetGroup; t: Translate }) {
+/** Nome, código, variação e de qual solicitação é a linha. */
+function ProductName({ row, t }: { row: SheetRow; t: Translate }) {
   return (
-    <section
-      className="@container min-w-0 rounded-lg border border-zinc-200 bg-white p-3"
-      data-sheet-group={group.key}
-    >
-      <h4 className="text-sm font-semibold text-zinc-900">{group.title}</h4>
-      {group.restricted ? (
-        <p className="mt-1 text-xs text-zinc-500" data-sheet-restricted>
-          {group.restricted}
-        </p>
+    <>
+      <span
+        className={cx(
+          "font-medium",
+          row.current ? "text-zinc-900" : "text-zinc-700",
+        )}
+      >
+        {row.name}
+      </span>
+      {row.code ? (
+        <span
+          className="ml-1.5 text-xs tabular-nums text-zinc-500"
+          data-sheet-code
+        >
+          {row.code}
+        </span>
+      ) : null}
+      {row.variant ? (
+        <span className="block text-xs text-zinc-500" data-request-variant>
+          {row.variant}
+        </span>
+      ) : null}
+      {row.current ? (
+        <span className="mt-0.5 block text-[11px] font-medium text-brand-700">
+          {t("requestSheet.thisRequest")}
+        </span>
       ) : (
-        group.sections.map((section) => (
-          <div
-            key={section.key}
-            className="mt-2.5"
-            data-sheet-section={section.key}
-          >
-            {section.title ? (
-              <h5 className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                {section.title}
-              </h5>
-            ) : null}
-            <dl className="mt-1 divide-y divide-zinc-100">
-              {section.fields.map((field) => (
-                <div
-                  key={field.key}
-                  className="grid grid-cols-1 gap-x-3 py-1.5 @sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]"
-                  data-sheet-field={field.key}
-                >
-                  <dt className="text-xs text-zinc-500">{field.label}</dt>
-                  <dd className="min-w-0 break-words text-sm text-zinc-800">
-                    <FieldValue field={field} t={t} linked />
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        ))
+        <TextLink
+          href={`/app/requests/${row.requestId}`}
+          className="mt-0.5 block text-[11px]"
+          data-sheet-open-request
+        >
+          {t("requestSheet.openRequest")} →
+        </TextLink>
       )}
-    </section>
+    </>
   );
 }
 
-function Row({
+function Warnings({ row }: { row: SheetRow }) {
+  return row.warnings.map((w, i) => (
+    <p
+      key={i}
+      className="col-span-full mt-1 rounded bg-amber-50 px-2 py-1 text-xs whitespace-normal text-amber-900 ring-1 ring-amber-200"
+      data-sheet-warning
+    >
+      {w}
+    </p>
+  ));
+}
+
+/* ------------------------------------------------------------------------ */
+/* Linha resumida                                                            */
+/* ------------------------------------------------------------------------ */
+
+function SummaryRow({
   row,
   columns,
   template,
@@ -202,126 +248,40 @@ function Row({
       data-sheet-row={row.requestId}
       data-sheet-current={row.current ? "" : undefined}
     >
-      <details className="group">
-        <summary
-          className="grid cursor-pointer list-none grid-cols-2 gap-x-3 gap-y-2 p-3 @md:grid-cols-3 @2xl:grid-cols-4 @4xl:items-start @4xl:[grid-template-columns:var(--sheet-cols)] [&::-webkit-details-marker]:hidden"
-          style={{ "--sheet-cols": template } as CSSProperties}
-          aria-label={t("requestSheet.openAria", { name: row.name })}
+      <div
+        className="grid grid-cols-2 gap-x-3 gap-y-2 p-3 @md:grid-cols-3 @2xl:grid-cols-4 @4xl:items-start @4xl:[grid-template-columns:var(--sheet-cols)]"
+        style={{ "--sheet-cols": template } as CSSProperties}
+      >
+        <Cell
+          column={col("product") as Column}
+          className="col-span-full @4xl:col-span-1"
         >
-          <Cell
-            column={col("product") as Column}
-            className="col-span-full @4xl:col-span-1"
-          >
-            <span
-              className={cx(
-                "font-medium",
-                row.current ? "text-zinc-900" : "text-zinc-700",
-              )}
-            >
-              {row.name}
-            </span>
-            {row.code ? (
-              <span
-                className="ml-1.5 text-xs tabular-nums text-zinc-500"
-                data-sheet-code
-              >
-                {row.code}
+          <ProductName row={row} t={t} />
+        </Cell>
+        {main("pieces", row.main.pieces)}
+        {main("boxes", row.main.boxes)}
+        {main("cbm", row.main.cbm)}
+        {deadline ? (
+          <Cell column={deadline}>
+            {row.main.deadline ? (
+              <span className="whitespace-nowrap tabular-nums">
+                {formatDate(row.main.deadline, t)}
               </span>
-            ) : null}
-            {row.variant ? (
-              <span
-                className="block text-xs text-zinc-500"
-                data-request-variant
-              >
-                {row.variant}
-              </span>
-            ) : null}
-            {row.current ? (
-              <span className="mt-0.5 block text-[11px] font-medium text-brand-700">
-                {t("requestSheet.thisRequest")}
-              </span>
-            ) : null}
+            ) : (
+              <Missing t={t} />
+            )}
           </Cell>
-          {main("pieces", row.main.pieces)}
-          {main("boxes", row.main.boxes)}
-          {main("cbm", row.main.cbm)}
-          {deadline ? (
-            <Cell column={deadline}>
-              {row.main.deadline ? (
-                <span className="whitespace-nowrap tabular-nums">
-                  {formatDate(row.main.deadline, t)}
-                </span>
-              ) : (
-                <span className="italic text-zinc-400">
-                  {t("requestSheet.notInformed")}
-                </span>
-              )}
-            </Cell>
-          ) : null}
-          {main("cost", row.main.cost)}
-          {main("purchase", row.main.purchase)}
-          {main("sale", row.main.sale)}
-          <div className="col-span-full flex items-start @4xl:col-span-1 @4xl:justify-end">
-            <span
-              className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-800 shadow-xs group-open:border-brand-300 group-open:text-brand-700"
-              data-sheet-toggle
-            >
-              <span className="group-open:hidden">
-                {t("requestSheet.open")}
-              </span>
-              <span className="hidden group-open:inline">
-                {t("requestSheet.close")}
-              </span>
-              <svg
-                aria-hidden
-                viewBox="0 0 20 20"
-                className="size-3.5 transition group-open:rotate-180"
-                fill="currentColor"
-              >
-                <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" />
-              </svg>
-            </span>
-          </div>
-          {row.warnings.map((w, i) => (
-            <p
-              key={i}
-              className="col-span-full rounded bg-amber-50 px-2 py-1 text-xs text-amber-900 ring-1 ring-amber-200"
-              data-sheet-warning
-            >
-              {w}
-            </p>
-          ))}
-        </summary>
-        <div
-          className="@container border-t border-zinc-100 bg-zinc-50/60 p-3"
-          data-sheet-detail
-        >
-          {!row.current ? (
-            <p className="mb-2 text-sm">
-              <TextLink href={`/app/requests/${row.requestId}`}>
-                {t("requestSheet.openRequest")} →
-              </TextLink>
-            </p>
-          ) : null}
-          <div className="grid gap-3 @3xl:grid-cols-2">
-            {row.groups.map((group) => (
-              <Group key={group.key} group={group} t={t} />
-            ))}
-          </div>
-        </div>
-      </details>
+        ) : null}
+        {main("cost", row.main.cost)}
+        {main("purchase", row.main.purchase)}
+        {main("sale", row.main.sale)}
+        <Warnings row={row} />
+      </div>
     </li>
   );
 }
 
-export function RequestSheetTable({
-  view,
-  t,
-}: {
-  view: RequestSheetView;
-  t: Translate;
-}) {
-  if (!view.rows.length) return null;
+function SummaryList({ view, t }: { view: RequestSheetView; t: Translate }) {
   const { access } = view;
   const columns: Column[] = [
     {
@@ -376,11 +336,10 @@ export function RequestSheetTable({
           },
         ]
       : []),
-    { key: "toggle", label: "", width: "auto" },
   ];
   const template = columns.map((c) => c.width).join(" ");
   return (
-    <div className="@container" data-request-sheet>
+    <>
       <div
         className="hidden gap-x-3 px-3 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500 @4xl:grid @4xl:[grid-template-columns:var(--sheet-cols)]"
         style={{ "--sheet-cols": template } as CSSProperties}
@@ -394,7 +353,7 @@ export function RequestSheetTable({
       </div>
       <ul className="space-y-2">
         {view.rows.map((row) => (
-          <Row
+          <SummaryRow
             key={row.requestId}
             row={row}
             columns={columns}
@@ -403,6 +362,259 @@ export function RequestSheetTable({
           />
         ))}
       </ul>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Ficha completa: a linha continua para a direita                           */
+/* ------------------------------------------------------------------------ */
+
+const GROUP_ORDER: SheetGroupKey[] = [
+  "product",
+  "packing",
+  "values",
+  "payment",
+];
+const GROUP_TINT: Record<SheetGroupKey, string> = {
+  product: "bg-indigo-50",
+  packing: "bg-sky-50",
+  values: "bg-amber-50",
+  payment: "bg-violet-50",
+};
+
+interface FullGroup {
+  key: SheetGroupKey;
+  title: string;
+  /** Campos na ordem em que aparecem nas linhas (todos os produtos). */
+  fields: Array<{ key: string; label: string }>;
+  /** Nenhuma linha mostra o grupo: o aviso de quem vê. */
+  restricted: string | null;
+}
+
+/** As colunas da ficha: a união dos campos de cada grupo em todas as linhas. */
+function fullGroups(view: RequestSheetView): FullGroup[] {
+  return GROUP_ORDER.map((key) => {
+    const fields = new Map<string, string>();
+    let title = "";
+    let restricted: string | null = null;
+    for (const row of view.rows) {
+      const group = row.groups.find((g) => g.key === key);
+      if (!group) continue;
+      title = group.title;
+      if (group.restricted) {
+        restricted ??= group.restricted;
+        continue;
+      }
+      for (const section of group.sections)
+        for (const field of section.fields)
+          if (!fields.has(field.key)) fields.set(field.key, field.label);
+    }
+    return {
+      key,
+      title,
+      fields: [...fields].map(([k, label]) => ({ key: k, label })),
+      restricted: fields.size ? null : restricted,
+    };
+  });
+}
+
+function fieldOf(row: SheetRow, group: SheetGroupKey, key: string) {
+  for (const g of row.groups)
+    if (g.key === group && !g.restricted)
+      for (const s of g.sections)
+        for (const f of s.fields) if (f.key === key) return f;
+  return null;
+}
+
+const STICKY = "sticky left-0 z-10 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.18)]";
+const BAND =
+  "border-b border-zinc-200 px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-700";
+const HEAD =
+  "border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide whitespace-nowrap text-zinc-500";
+const CELL =
+  "border-b border-zinc-100 px-3 py-2 align-top text-sm text-zinc-800";
+
+function FullTable({ view, t }: { view: RequestSheetView; t: Translate }) {
+  const groups = fullGroups(view);
+  const shown = groups.filter((g) => g.fields.length);
+  const hidden = groups.filter((g) => !g.fields.length && g.restricted);
+  // Primeira coluna de cada grupo: a borda que separa os grupos.
+  const edge = "border-l-2 border-l-zinc-300";
+  return (
+    <>
+      <p className="mb-2 text-xs text-zinc-500">
+        {t("requestSheet.full.hint")}
+      </p>
+      <div
+        className="max-w-full overflow-x-auto rounded-lg border border-zinc-200"
+        data-sheet-full
+      >
+        <table className="w-max min-w-full border-separate border-spacing-0">
+          <thead>
+            <tr>
+              {/* Separadas: só a do produto fica fixa (a do prazo rola). */}
+              <th className={cx(BAND, STICKY, "bg-white")} aria-hidden />
+              <th className={cx(BAND, "bg-white")} aria-hidden />
+              {shown.map((g) => (
+                <th
+                  key={g.key}
+                  colSpan={g.fields.length}
+                  className={cx(BAND, GROUP_TINT[g.key], edge)}
+                  data-sheet-group={g.key}
+                >
+                  {g.title}
+                </th>
+              ))}
+            </tr>
+            <tr>
+              <th className={cx(HEAD, STICKY, "min-w-44")}>
+                {t("requestSheet.col.product")}
+              </th>
+              <th className={HEAD}>{t("requestSheet.col.deadline")}</th>
+              {shown.flatMap((g) =>
+                g.fields.map((f, i) => (
+                  <th
+                    key={`${g.key}.${f.key}`}
+                    className={cx(HEAD, i === 0 && edge)}
+                  >
+                    {f.label}
+                  </th>
+                )),
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {view.rows.map((row) => (
+              <tr
+                key={row.requestId}
+                data-sheet-row={row.requestId}
+                data-sheet-current={row.current ? "" : undefined}
+              >
+                <td
+                  className={cx(
+                    CELL,
+                    STICKY,
+                    "min-w-44 max-w-64",
+                    row.current ? "bg-white" : "bg-zinc-50",
+                  )}
+                  data-sheet-cell="product"
+                >
+                  <ProductName row={row} t={t} />
+                  <Warnings row={row} />
+                </td>
+                <td
+                  className={cx(CELL, "whitespace-nowrap tabular-nums")}
+                  data-sheet-field="deadline"
+                >
+                  {row.main.deadline ? (
+                    formatDate(row.main.deadline, t)
+                  ) : (
+                    <Missing t={t} />
+                  )}
+                </td>
+                {shown.flatMap((g) =>
+                  g.fields.map((f, i) => {
+                    const field = fieldOf(row, g.key, f.key);
+                    return (
+                      <td
+                        key={`${g.key}.${f.key}`}
+                        className={cx(
+                          CELL,
+                          "min-w-32 max-w-80",
+                          i === 0 && edge,
+                        )}
+                        data-sheet-field={f.key}
+                      >
+                        {field ? (
+                          <FieldValue field={field} t={t} linked stacked />
+                        ) : (
+                          <Missing t={t} />
+                        )}
+                      </td>
+                    );
+                  }),
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {hidden.map((g) => (
+        <p
+          key={g.key}
+          className="mt-2 text-xs text-zinc-500"
+          data-sheet-restricted={g.key}
+        >
+          <span className="font-medium text-zinc-700">{g.title}:</span>{" "}
+          {g.restricted}
+        </p>
+      ))}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* A tabela                                                                  */
+/* ------------------------------------------------------------------------ */
+
+export function RequestSheetTable({
+  view,
+  t,
+  full = false,
+  summaryHref,
+  fullHref,
+}: {
+  view: RequestSheetView;
+  t: Translate;
+  /** Ficha completa (todas as linhas abertas para a direita). */
+  full?: boolean;
+  /** Endereços do botão no alto da tabela (a mesma tela, com e sem a ficha). */
+  summaryHref?: string;
+  fullHref?: string;
+}) {
+  if (!view.rows.length) return null;
+  const option = (on: boolean) =>
+    cx(
+      "px-3 py-1.5 no-underline",
+      on ? "bg-zinc-900 text-white" : "bg-white text-zinc-700 hover:bg-zinc-50",
+    );
+  return (
+    <div
+      className="@container min-w-0"
+      data-request-sheet
+      data-sheet-mode={full ? "full" : "summary"}
+    >
+      {summaryHref && fullHref ? (
+        <nav
+          className="mb-2 flex justify-end"
+          aria-label={t("requestSheet.mode.label")}
+        >
+          <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 text-xs font-semibold">
+            <Link
+              href={summaryHref}
+              className={option(!full)}
+              aria-current={!full ? "true" : undefined}
+              data-sheet-mode-link="summary"
+            >
+              {t("requestSheet.mode.summary")}
+            </Link>
+            <Link
+              href={fullHref}
+              className={option(full)}
+              aria-current={full ? "true" : undefined}
+              data-sheet-mode-link="full"
+            >
+              {t("requestSheet.open")}
+            </Link>
+          </div>
+        </nav>
+      ) : null}
+      {full ? (
+        <FullTable view={view} t={t} />
+      ) : (
+        <SummaryList view={view} t={t} />
+      )}
       <p className="mt-2 text-[11px] leading-snug text-zinc-500">
         {t("requestSheet.legend")}
       </p>
