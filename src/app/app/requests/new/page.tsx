@@ -365,6 +365,10 @@ export default async function NewRequestPage({
       })}
     </ul>
   );
+  // Venda ao cliente pela Wellmix (nova solicitação): bloco do cliente e
+  // condições do pedido (docs/ORDER_TERMS.md). Fora da compra para estoque
+  // (a tela esconde quando a caixa de estoque é marcada).
+  const sellsToCustomer = isWellmix(user) && !addToRequest;
   // Textos do histórico gravado no portal (o card de sempre).
   const historyLabels = {
     title: t("purchaseHistory.title"),
@@ -381,11 +385,18 @@ export default async function NewRequestPage({
     noItems: t("purchaseHistory.noItems"),
     details: t("purchaseHistory.details", { n: "{n}" }),
     open: t("purchaseHistory.open", { n: "{n}" }),
+    // Histórico → pedido (docs/ORDER_TERMS.md seção 10): só na venda pela
+    // Wellmix (o login do cliente vê o histórico sem acrescentar).
+    ...(sellsToCustomer
+      ? {
+          pick: {
+            add: t("historyPick.add"),
+            inOrder: t("historyPick.inOrder"),
+            filtered: t("historyPick.filtered", { n: "{n}" }),
+          },
+        }
+      : {}),
   };
-  // Venda ao cliente pela Wellmix (nova solicitação): bloco do cliente e
-  // condições do pedido (docs/ORDER_TERMS.md). Fora da compra para estoque
-  // (a tela esconde quando a caixa de estoque é marcada).
-  const sellsToCustomer = isWellmix(user) && !addToRequest;
   const referenceNote = found?.url
     ? `${t("lookup.referenceNote")} ${found.url}`
     : "";

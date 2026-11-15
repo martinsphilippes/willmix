@@ -33,7 +33,7 @@ const RAW = z.object({
   originCountry: z.string().min(1, { error: "order_terms_origin" }).max(80),
   productFamily: z
     .string()
-    .regex(/^(sk|ln):[A-Za-z0-9_-]{1,64}$/, { error: "order_terms_origin" }),
+    .regex(/^(fm|sk|ln):[A-Za-z0-9_-]{1,64}$/, { error: "order_terms_origin" }),
 });
 
 export type OrderTermsInput = z.input<typeof RAW>;

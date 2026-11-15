@@ -38,6 +38,15 @@ interface RequestCustomerState {
   setPlanDates: (dates: string[]) => void;
   loads: Record<string, RowLoad>;
   setLoad: (key: string, load: RowLoad | null) => void;
+  /**
+   * Histórico de compras → pedido (dono, 15/11/2026; docs/ORDER_TERMS.md
+   * seção 10): os produtos que já estão nas linhas (o histórico marca) e o
+   * pedido de acrescentar um produto (as linhas atendem).
+   */
+  chosenProductIds: string[];
+  setChosenProductIds: (ids: string[]) => void;
+  addRequest: { productId: string; seq: number } | null;
+  requestAddProduct: (productId: string) => void;
 }
 
 export interface RowLoad extends CompositionItem {
@@ -77,6 +86,17 @@ export function RequestCustomerProvider({
   const originRequired = originTerms && !stock;
   const [planDates, setPlanDatesState] = useState<string[]>([]);
   const [loads, setLoads] = useState<Record<string, RowLoad>>({});
+  const [chosenProductIds, setChosenState] = useState<string[]>([]);
+  const setChosenProductIds = useCallback((ids: string[]) => {
+    setChosenState((prev) => (prev.join("|") === ids.join("|") ? prev : ids));
+  }, []);
+  const [addRequest, setAddRequest] = useState<{
+    productId: string;
+    seq: number;
+  } | null>(null);
+  const requestAddProduct = useCallback((productId: string) => {
+    setAddRequest((prev) => ({ productId, seq: (prev?.seq ?? 0) + 1 }));
+  }, []);
   const setPlanDates = useCallback((dates: string[]) => {
     setPlanDatesState((prev) =>
       prev.join("|") === dates.join("|") ? prev : dates,
@@ -107,8 +127,16 @@ export function RequestCustomerProvider({
       setPlanDates,
       loads,
       setLoad,
+      chosenProductIds,
+      setChosenProductIds,
+      addRequest,
+      requestAddProduct,
     }),
     [
+      chosenProductIds,
+      setChosenProductIds,
+      addRequest,
+      requestAddProduct,
       customer,
       stock,
       origin,

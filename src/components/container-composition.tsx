@@ -30,6 +30,24 @@ export interface ContainerCompositionLabels {
   /** "{cartons} cx" */
   cartons: string;
   intl: string;
+  /** "Ir para o produto no pedido" (dica do nome clicável). */
+  goTo?: string;
+}
+
+/** Leva a página até a linha do produto no formulário (chave "row-<n>"). */
+function goToRow(key: string) {
+  const index = key.replace(/^row-/, "");
+  const row = document.querySelector<HTMLElement>(
+    `[data-request-item="${CSS.escape(index)}"]`,
+  );
+  if (!row) return;
+  row.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Um destaque rápido, para o olho achar a linha.
+  row.classList.add("ring-2", "ring-brand-400");
+  window.setTimeout(
+    () => row.classList.remove("ring-2", "ring-brand-400"),
+    1600,
+  );
 }
 
 /**
@@ -179,7 +197,17 @@ export function ContainerComposition({
                               data-composition-product={`${row.n}-${key}`}
                             >
                               <td className="sticky left-0 max-w-40 truncate bg-zinc-50 py-1 pl-6 pr-2 text-zinc-600">
-                                {name}
+                                {/* Clique: a página corre até a linha do
+                                    produto no pedido (dono, 15/11/2026). */}
+                                <button
+                                  type="button"
+                                  title={labels.goTo}
+                                  onClick={() => goToRow(key)}
+                                  className="max-w-full truncate text-left underline decoration-dotted underline-offset-2 hover:text-brand-700"
+                                  data-composition-goto={key}
+                                >
+                                  {name}
+                                </button>
                               </td>
                               {row.cells.map((cell, r) => {
                                 const share = cell?.products.find(

@@ -342,6 +342,75 @@ export function RequestItems({
     setRows((r) => [...r, next]);
     setNext((n) => n + 1);
   }
+
+  // Histórico de compras → pedido (dono, 15/11/2026; docs/ORDER_TERMS.md
+  // seção 10): o produto clicado no histórico entra como mais uma linha (a
+  // primeira, se ainda está vazia), com a ficha dele; a tela rola até ela.
+  const [historyRows, setHistoryRows] = useState<
+    Record<number, { productId: string; fill: ProductFill }>
+  >({});
+  const addRequest = shared?.addRequest ?? null;
+  const handledAdd = useRef(0);
+  useEffect(() => {
+    if (!addRequest || addRequest.seq === handledAdd.current) return;
+    handledAdd.current = addRequest.seq;
+    const productId = addRequest.productId;
+    void (async () => {
+      let productFill: ProductFill | null = null;
+      try {
+        const res = await fetch(
+          `/api/products/fill?id=${encodeURIComponent(productId)}`,
+        );
+        if (res.ok)
+          productFill = ((await res.json()) as { fill: ProductFill }).fill;
+      } catch {
+        productFill = null;
+      }
+      if (!productFill) return;
+      const fillOk = productFill;
+      const index = next;
+      setHistoryRows((h) => ({
+        ...h,
+        [index]: { productId, fill: fillOk },
+      }));
+      setProduct((p) => ({
+        ...p,
+        [index]: { id: productId, variantId: "", fill: fillOk },
+      }));
+      setOutside((o) => ({ ...o, [index]: false }));
+      const moq = fillOk.moq;
+      if (moq)
+        setQty((q) => ({
+          ...q,
+          [index]: String(minQty(moq, fillOk.masterCartonQty ?? null)),
+        }));
+      // A primeira linha ainda vazia sai: o produto entra no lugar dela.
+      setRows((r) => {
+        const empty = r.filter(
+          (i) => !product[i]?.id && !outside[i] && !historyRows[i],
+        );
+        const kept = r.length === 1 && empty.length === 1 ? [] : r;
+        return [...kept, index];
+      });
+      setNext((n) => n + 1);
+      requestAnimationFrame(() =>
+        document
+          .querySelector(`[data-request-item="${index}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
+    })();
+  }, [addRequest, next, product, outside, historyRows]);
+
+  // Os produtos que já estão nas linhas: o histórico marca com o check.
+  const setChosenProductIds = shared?.setChosenProductIds;
+  const chosenIds = rows
+    .filter((i) => !outside[i])
+    .map((i) => product[i]?.id)
+    .filter((id): id is string => !!id);
+  const chosenKey = [...new Set(chosenIds)].sort().join("|");
+  useEffect(() => {
+    setChosenProductIds?.(chosenKey ? chosenKey.split("|") : []);
+  }, [chosenKey, setChosenProductIds]);
   function remove(index: number) {
     setLoad?.(`row-${index}`, null);
     setRows((r) => (r.length > 1 ? r.filter((i) => i !== index) : r));
@@ -424,14 +493,21 @@ export function RequestItems({
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <RequestProductFields
                 {...fields}
+                products={
+                  historyRows[index]
+                    ? [...fields.products, historyRows[index].fill]
+                    : fields.products
+                }
                 labels={labels}
                 prefix={prefix}
                 presetProductId={
-                  draftRows
-                    ? (draftRows[index]?.productId ?? "")
-                    : first
-                      ? presetProductId
-                      : ""
+                  historyRows[index]
+                    ? historyRows[index].productId
+                    : draftRows
+                      ? (draftRows[index]?.productId ?? "")
+                      : first
+                        ? presetProductId
+                        : ""
                 }
                 presetVariantId={
                   draftRows

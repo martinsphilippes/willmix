@@ -144,6 +144,11 @@ export const pt = {
   "requestDraft.delete": "Apagar",
   "reqBatch.error.draft_not_found":
     "Rascunho não encontrado (já enviado ou apagado).",
+  "historyPick.add": "Acrescentar ao pedido",
+  "historyPick.inOrder": "No pedido",
+  "historyPick.filtered":
+    "Só os produtos da família escolhida ({n} de outras famílias não aparecem).",
+  "composition.goTo": "Ir para o produto no pedido",
   "orderTerms.view.title": "Condições do pedido",
   "orderTerms.view.none": "—",
   "reqBatch.error.order_terms_operation":
@@ -330,6 +335,11 @@ export const en: Record<keyof typeof pt, string> = {
   "requestDraft.delete": "Delete",
   "reqBatch.error.draft_not_found":
     "Draft not found (already sent or deleted).",
+  "historyPick.add": "Add to the order",
+  "historyPick.inOrder": "In the order",
+  "historyPick.filtered":
+    "Only products of the chosen family ({n} from other families are hidden).",
+  "composition.goTo": "Go to the product in the order",
   "orderTerms.view.title": "Order terms",
   "orderTerms.view.none": "—",
   "reqBatch.error.order_terms_operation":
@@ -500,6 +510,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "requestDraft.resume": "继续",
   "requestDraft.delete": "删除",
   "reqBatch.error.draft_not_found": "未找到草稿（已提交或已删除）。",
+  "historyPick.add": "加入订单",
+  "historyPick.inOrder": "已在订单中",
+  "historyPick.filtered":
+    "只显示所选产品系列的产品（其他系列的 {n} 个已隐藏）。",
+  "composition.goTo": "跳转到订单中的该产品",
   "orderTerms.view.title": "订单条件",
   "orderTerms.view.none": "—",
   "reqBatch.error.order_terms_operation": "请选择业务类型（TS 或销售）。",
