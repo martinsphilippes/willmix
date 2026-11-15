@@ -15,6 +15,10 @@ import type { CarrierChoice } from "@/lib/order-terms";
 
 export interface CarrierOption extends CarrierChoice {
   city: string | null;
+  /** Código do parceiro no Sankhya (CODPARC); nulo sem ele. */
+  erpCode: string | null;
+  /** CNPJ/CPF (só números); nulo sem ele. */
+  taxId: string | null;
 }
 
 export interface CarrierList {
@@ -31,7 +35,7 @@ export function resetCarrierCache() {
 }
 
 const SQL =
-  "SELECT P.CODPARC, P.NOMEPARC, C.NOMECID FROM TGFPAR P LEFT JOIN TSICID C ON C.CODCID = P.CODCID WHERE P.TRANSPORTADORA = 'S' AND P.ATIVO = 'S' ORDER BY P.NOMEPARC";
+  "SELECT P.CODPARC, P.NOMEPARC, P.CGC_CPF, C.NOMECID FROM TGFPAR P LEFT JOIN TSICID C ON C.CODCID = P.CODCID WHERE P.TRANSPORTADORA = 'S' AND P.ATIVO = 'S' ORDER BY P.NOMEPARC";
 
 async function sankhyaCarriers(): Promise<CarrierOption[]> {
   if (cached && Date.now() - cached.at < TTL_MS) return cached.rows;
@@ -42,6 +46,8 @@ async function sankhyaCarriers(): Promise<CarrierOption[]> {
       code: String(r.CODPARC ?? "").trim(),
       name: String(r.NOMEPARC ?? "").trim(),
       city: r.NOMECID ? String(r.NOMECID).trim() : null,
+      erpCode: String(r.CODPARC ?? "").trim() || null,
+      taxId: String(r.CGC_CPF ?? "").replace(/\D/g, "") || null,
     }))
     .filter((c) => /^\d{1,10}$/.test(c.code) && c.name);
   cached = { at: Date.now(), rows };
@@ -53,7 +59,7 @@ export async function deliveryCarriers(): Promise<CarrierList> {
   const portal = await listColumns(
     getStore(),
     "parties",
-    ["name", "city", "sankhyaCode"],
+    ["name", "city", "sankhyaCode", "taxId"],
     { filter: { type: "carrier", active: true }, orderBy: "name" },
   );
   let fromSankhya: CarrierOption[] = [];
@@ -76,6 +82,8 @@ export async function deliveryCarriers(): Promise<CarrierList> {
       code: p.id,
       name: p.name,
       city: p.city ?? null,
+      erpCode: p.sankhyaCode ?? null,
+      taxId: (p.taxId ?? "").replace(/\D/g, "") || null,
     })),
     ...fromSankhya.filter((c) => !linked.has(c.code)),
   ];

@@ -25,6 +25,8 @@ export interface SearchOption {
   name: string;
   /** Texto curto ao lado do nome (ex.: o tipo da empresa). */
   hint?: string | null;
+  /** Código do parceiro no Sankhya (Wellmix; resumo abaixo do campo). */
+  code?: string | null;
 }
 
 /**

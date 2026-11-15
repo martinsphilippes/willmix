@@ -329,35 +329,45 @@ export function SankhyaPurchaseHistory({
       data-purchase-history-state={state}
       data-sankhya-history-view={view}
     >
-      <Card title={labels.title}>
-        <p className="-mt-1 mb-2 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
-          {labels.source}
-        </p>
-        {/* Pedido | Produto (dono, 15/11/2026): uma visão por vez, aqui
-            embaixo, no mesmo card. */}
+      <Card>
+        {/* Cabeçalho fixo (dono, 15/11/2026): título, fonte e Pedido |
+            Produto ficam no alto; só a lista rola (na lateral fixa). */}
         <div
-          role="group"
-          aria-label={labels.view.label}
-          className="mb-3 grid grid-cols-2 gap-1 rounded-lg bg-zinc-100 p-1"
-          data-sankhya-history-views
+          className="lg:sticky lg:top-0 lg:z-10 lg:-mx-4 lg:-mt-4 lg:mb-3 lg:rounded-t-2xl lg:border-b lg:border-zinc-100 lg:bg-white lg:px-4 lg:pt-4"
+          data-history-header
         >
-          {(["orders", "products"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              aria-pressed={view === v}
-              onClick={() => setView(v)}
-              data-sankhya-history-view-button={v}
-              className={cx(
-                "min-h-10 rounded-md px-3 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-600",
-                view === v
-                  ? "bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200"
-                  : "text-zinc-600 hover:text-zinc-900",
-              )}
-            >
-              {v === "orders" ? labels.view.orders : labels.view.products}
-            </button>
-          ))}
+          <h2 className="mb-3 text-base font-semibold tracking-tight text-zinc-900">
+            {labels.title}
+          </h2>
+          <p className="-mt-1 mb-2 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
+            {labels.source}
+          </p>
+          {/* Pedido | Produto (dono, 15/11/2026): uma visão por vez, aqui
+            embaixo, no mesmo card. */}
+          <div
+            role="group"
+            aria-label={labels.view.label}
+            className="mb-3 grid grid-cols-2 gap-1 rounded-lg bg-zinc-100 p-1"
+            data-sankhya-history-views
+          >
+            {(["orders", "products"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => setView(v)}
+                data-sankhya-history-view-button={v}
+                className={cx(
+                  "min-h-10 rounded-md px-3 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-600",
+                  view === v
+                    ? "bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200"
+                    : "text-zinc-600 hover:text-zinc-900",
+                )}
+              >
+                {v === "orders" ? labels.view.orders : labels.view.products}
+              </button>
+            ))}
+          </div>
         </div>
         {state === "select" ? (
           <p className="text-sm text-zinc-500" data-purchase-history-select>
@@ -642,7 +652,13 @@ function ItemBlock({
 }) {
   const unit = item.unit ? ` ${item.unit}` : "";
   const lines: Array<[string, string, string]> = [
-    ["code", labels.f.code, item.code === null ? DASH : String(item.code)],
+    // Código Wellmix (SKU) no lugar do código do Sankhya (dono, 15/11/2026);
+    // sem produto no portal, o do Sankhya.
+    [
+      "code",
+      labels.f.code,
+      item.sku ?? (item.code === null ? DASH : String(item.code)),
+    ],
     ["reference", labels.f.reference, item.reference ?? DASH],
     [
       "supplierReference",
@@ -667,6 +683,7 @@ function ItemBlock({
       <HistoryProductName
         name={item.name}
         productId={item.productId}
+        photoId={item.photoId}
         labels={labels.pick}
       />
       <div className="mt-1 space-y-0.5 text-xs leading-relaxed">
@@ -831,6 +848,7 @@ function ProductsPanel({
                 <HistoryProductName
                   name={p.name}
                   productId={p.productId}
+                  photoId={p.photoId}
                   labels={labels.pick}
                 />
                 {/* Totais do período, um embaixo do outro: unidades e valor
@@ -851,9 +869,9 @@ function ProductsPanel({
                   </p>
                 </div>
               </div>
-              {p.code !== null ? (
+              {p.sku || p.code !== null ? (
                 <p className="text-[11px] text-zinc-500">
-                  {labels.f.code}: {p.code}
+                  {labels.f.code}: {p.sku ?? p.code}
                 </p>
               ) : null}
               <ul className="mt-1.5 space-y-0.5 border-t border-zinc-100 pt-1.5 text-xs">

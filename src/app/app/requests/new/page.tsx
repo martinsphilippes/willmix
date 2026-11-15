@@ -240,7 +240,11 @@ export default async function NewRequestPage({
     presetCustomer.type === "customer" &&
     presetCustomer.active &&
     !isStockCustomer(presetCustomer.id)
-      ? { id: presetCustomer.id, name: presetCustomer.name }
+      ? {
+          id: presetCustomer.id,
+          name: presetCustomer.name,
+          code: presetCustomer.sankhyaCode ?? null,
+        }
       : null;
 
   /* Busca por foto ou link: resultado guardado em product_lookups (só de quem buscou ou Wellmix). */
@@ -761,6 +765,10 @@ export default async function NewRequestPage({
                     }
                     ariaLabel={t("common.customer")}
                     labels={partyPickerLabels(t, true)}
+                    summary={{
+                      code: t("orderTerms.summaryCode", { code: "{code}" }),
+                      none: "—",
+                    }}
                   />
                 </div>
                 <RequestPeopleFields

@@ -715,6 +715,8 @@ export interface HistoryItemView {
    */
   productId?: string | null;
   family?: string | null;
+  /** Foto principal do produto (miniatura ao lado do nome). */
+  photoId?: string | null;
 }
 
 export interface HistoryRoundView {
@@ -947,15 +949,27 @@ export async function withHistoryFamilies(
   view: HistoryPageView,
 ): Promise<HistoryPageView> {
   const { productOrigin } = await import("./product-origin");
+  const { productFaces } = await import("./product-faces");
+  const ids = view.purchases.flatMap((p) =>
+    [...p.items, ...p.rounds.flatMap((r) => r.items)].map(
+      (i) => i.productId ?? "",
+    ),
+  );
+  const faces = await productFaces(ids);
   const cache = new Map<string, string | null>();
   const familyOf = async (id: string | null | undefined) => {
     if (!id) return null;
-    if (!cache.has(id)) cache.set(id, (await productOrigin(id))?.family ?? null);
+    if (!cache.has(id))
+      cache.set(id, (await productOrigin(id))?.family ?? null);
     return cache.get(id) ?? null;
   };
   const items = async (list: HistoryItemView[]) =>
     Promise.all(
-      list.map(async (i) => ({ ...i, family: await familyOf(i.productId) })),
+      list.map(async (i) => ({
+        ...i,
+        family: await familyOf(i.productId),
+        photoId: i.productId ? (faces.get(i.productId)?.photoId ?? null) : null,
+      })),
     );
   return {
     ...view,

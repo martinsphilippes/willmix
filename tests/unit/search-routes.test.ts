@@ -171,6 +171,7 @@ describe("/api/parties/search: código do Sankhya e CNPJ/CPF (Wellmix)", () => {
     expect(found[0]).toEqual({
       id: "cliente-joao",
       name: expect.any(String),
+      code: "4455",
       hint: "Cód. 4455 · CNPJ 12.345.678/0001-90",
     });
     // O nome com o número também aparece, depois.
@@ -211,6 +212,7 @@ describe("/api/parties/search: código do Sankhya e CNPJ/CPF (Wellmix)", () => {
       {
         id: "cliente-joao-filial",
         name: "Loja do João Filial Centro",
+        code: "4456",
         hint: "Cód. 4456 · CNPJ 12.345.678/0002-71",
       },
     ]);
@@ -223,6 +225,8 @@ describe("/api/parties/search: código do Sankhya e CNPJ/CPF (Wellmix)", () => {
     expect(await options("12345678000190", containersOnly)).toEqual([]);
     for (const o of await options("loja", containersOnly))
       expect(o).not.toHaveProperty("hint");
+    for (const o of await options("loja", containersOnly))
+      expect(o).not.toHaveProperty("code");
   });
 });
 
