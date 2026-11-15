@@ -20,7 +20,6 @@ import {
   Input,
   LinkButton,
   PageHeader,
-  Select,
   Textarea,
   TextLink,
   cx,
@@ -31,6 +30,11 @@ import { PhotoInput } from "@/components/photo-input";
 import { RequestItems } from "@/components/request-items";
 import { RequestCustomerField } from "@/components/request-customer-field";
 import { RequestCustomerProvider } from "@/components/request-customer-context";
+import {
+  RequestPeopleFields,
+  type CustomerLogin,
+  type RequestPeopleLabels,
+} from "@/components/request-people-fields";
 import { CustomerPurchaseHistory } from "@/components/customer-purchase-history";
 import { SankhyaPurchaseHistory } from "@/components/sankhya-purchase-history";
 import { sankhyaHistoryLabels } from "@/components/sankhya-history-labels";
@@ -112,7 +116,8 @@ export default async function NewRequestPage({
     // Booking: produto ainda não aprovado lá não é oferecido aqui, nem ao
     // cliente nem à Wellmix (para ela, a porta é "Gerar solicitação" no Booking).
     hiddenBookingProductIds(),
-    // Logins de cliente, para a Wellmix indicar o solicitante (só ele verá o pedido).
+    // Logins de cliente, para a Wellmix indicar o login do cliente com
+    // acesso (só ele, do lado do cliente, verá a solicitação e o pedido).
     isWellmix(user)
       ? store.list("users", {
           filter: { role: "customer", active: true },
@@ -129,8 +134,8 @@ export default async function NewRequestPage({
   // Produto do catálogo: ativo e fora do Booking (a regra da lista antiga).
   const inCatalog = (p: { active: boolean; id: string } | null | undefined) =>
     !!p && p.active && !hiddenByBooking.has(p.id);
-  // Empresas dos logins de cliente (grupos do campo "solicitante"): só os
-  // clientes ativos, em ordem alfabética, como a lista antiga.
+  // Empresas dos logins de cliente: só os clientes ativos (a regra da
+  // lista antiga do campo).
   const requesterCustomers = isWellmix(user)
     ? (
         await listByIds(
@@ -142,6 +147,33 @@ export default async function NewRequestPage({
         .filter((p) => p.type === "customer" && p.active)
         .sort((a, b) => a.name.localeCompare(b.name))
     : [];
+  // Logins de cada cliente, para o campo "Login do cliente com acesso": só
+  // os do cliente escolhido aparecem (o servidor recusa login de outro).
+  const loginsByCustomer: Record<string, CustomerLogin[]> = {};
+  for (const c of requesterCustomers) {
+    const logins = customerUsers
+      .filter((u) => u.partyId === c.id)
+      .map((u) => ({ id: u.id, name: u.name, email: u.email }));
+    if (logins.length) loginsByCustomer[c.id] = logins;
+  }
+  const requestPeopleLabels: RequestPeopleLabels = {
+    requester: t("requestPeople.requester"),
+    requesterHint: t("requestPeople.requesterHint"),
+    rca: t("requestPeople.rca"),
+    rcaHint: t("requestPeople.rcaHint"),
+    rcaNone: t("requestPeople.rcaNone"),
+    rcaPick: t("requestPeople.rcaPick"),
+    rcaLoading: t("requestPeople.rcaLoading"),
+    rcaError: t("requestPeople.rcaError"),
+    rcaStock: t("requestPeople.rcaStock"),
+    rcaUnknown: t("requestPeople.rcaUnknown", { code: "{code}" }),
+    access: t("requestPeople.access"),
+    accessHint: t("requestPeople.accessHint"),
+    accessNone: t("requestPeople.accessNone"),
+    accessPick: t("requestPeople.accessPick"),
+    accessNoLogins: t("requestPeople.accessNoLogins"),
+    accessStock: t("requestPeople.accessStock"),
+  };
   // Cliente pré-escolhido (programação de compra, endereço): só cliente ativo.
   const initialCustomer =
     presetCustomer &&
@@ -532,9 +564,11 @@ export default async function NewRequestPage({
             {schedule ? (
               <input type="hidden" name="scheduleId" value={schedule.id} />
             ) : null}
-            {/* Cliente e solicitante lado a lado (Wellmix). */}
+            {/* Cliente e as pessoas da solicitação (Wellmix; dono,
+                15/11/2026, docs/CUSTOMER_RCA.md): Cliente | Login do cliente
+                com acesso; Solicitante | RCA do cliente. */}
             {isWellmix(user) && !addToRequest ? (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2" data-request-people>
                 {/* Cliente por busca ou origem interna: compra para estoque,
                     sem cliente nem sinal (o mesmo campo customerId). Fora do
                     <label> do Field: o bloco tem a caixa de estoque. */}
@@ -557,27 +591,41 @@ export default async function NewRequestPage({
                     labels={partyPickerLabels(t, true)}
                   />
                 </div>
+                <RequestPeopleFields
+                  requesterName={user.name}
+                  loginsByCustomer={loginsByCustomer}
+                  labels={requestPeopleLabels}
+                />
+              </div>
+            ) : null}
+            {/* O próprio cliente (dono, 15/11/2026): ele é o solicitante e o
+                login com acesso (o servidor grava pela sessão). */}
+            {user.role === "customer" && !addToRequest ? (
+              <div
+                className="grid gap-3 sm:grid-cols-2"
+                data-request-people="self"
+              >
                 <Field
-                  label={t("access.requester")}
-                  hint={t("access.requesterHint")}
+                  label={t("requestPeople.requester")}
+                  hint={t("requestPeople.requesterHint")}
                 >
-                  <Select name="requestedForUserId" defaultValue="">
-                    <option value="">{t("access.requesterNone")}</option>
-                    {requesterCustomers.map((c) => {
-                      const logins = customerUsers.filter(
-                        (u) => u.partyId === c.id,
-                      );
-                      return logins.length ? (
-                        <optgroup key={c.id} label={c.name}>
-                          {logins.map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.name} ({u.email})
-                            </option>
-                          ))}
-                        </optgroup>
-                      ) : null;
-                    })}
-                  </Select>
+                  <Input
+                    readOnly
+                    value={user.name}
+                    className="bg-zinc-50 text-zinc-700"
+                    data-request-requester
+                  />
+                </Field>
+                <Field
+                  label={t("requestPeople.access")}
+                  hint={t("requestPeople.self")}
+                >
+                  <Input
+                    readOnly
+                    value={`${user.name} (${user.email})`}
+                    className="bg-zinc-50 text-zinc-700"
+                    data-request-access="self"
+                  />
                 </Field>
               </div>
             ) : null}

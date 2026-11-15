@@ -786,6 +786,13 @@ export interface Party extends BaseRow {
    * (solicitações, pedidos, etapas) cai no painel de SLA dele. Opcional.
    */
   ownerUserId?: string | null;
+  /**
+   * Cliente: RCA responsável, o código do vendedor no Sankhya (TGFVEN.CODVEND;
+   * docs/CUSTOMER_RCA.md). "0" = sem RCA. Nulo = nunca gravado: vale o
+   * vendedor que veio na carga (`sankhyaRefs.CODVEND`). A carga do Sankhya
+   * sobrescreve o que foi escolhido no portal (dono, 15/11/2026).
+   */
+  rcaCode?: string | null;
   /** Código do parceiro (CODPARC) ou da empresa (EMP-CODEMP) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
   sankhyaCode?: string | null;
   /** Última sincronização com o Sankhya (docs/SANKHYA.md, fase 3). Alterado depois = pendente. */
@@ -3802,6 +3809,7 @@ export const TABLES: Record<TableName, TableDef> = {
       paymentTerms: json(),
       paymentTermsNote: text(),
       ownerUserId: id(false),
+      rcaCode: str(20),
       sankhyaCode: str(40),
       sankhyaSyncedAt: datetime(),
       legalName: str(160),

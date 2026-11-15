@@ -2,6 +2,8 @@ import type { Party } from "@/lib/db";
 import type { Translate } from "@/i18n";
 import { savePartyAction } from "@/app/app/actions";
 import { quickPartnerTypeAction } from "@/app/app/actions/partner-types";
+import { refreshRcaListAction } from "@/app/app/actions/customer-rca";
+import type { RcaSeller } from "@/lib/services/rca";
 import type { PartyDraft } from "@/lib/party-draft";
 import { Field, Input, Select, Textarea } from "./ui";
 import { SubmitButton } from "./submit-button";
@@ -16,6 +18,17 @@ export interface PartyTypeOption {
   label: string;
 }
 
+/** RCA responsável do cliente (docs/CUSTOMER_RCA.md): vendedores do Sankhya. */
+export interface PartyRcaField {
+  /** Código do RCA atual (nulo = sem RCA). */
+  current: string | null;
+  sellers: RcaSeller[];
+  /** Quando a lista veio do Sankhya (nulo = ainda não veio). */
+  syncedAt: string | null;
+  /** Lista de demonstração (modo memória), não veio do Sankhya. */
+  demo?: boolean;
+}
+
 export function PartyForm({
   party,
   t,
@@ -23,6 +36,7 @@ export function PartyForm({
   selected,
   draft,
   quickType,
+  rca,
 }: {
   party?: Party | null;
   t: Translate;
@@ -34,6 +48,8 @@ export function PartyForm({
   draft?: PartyDraft;
   /** Atalho "+ Novo tipo" ao lado do campo (só o administrador). */
   quickType?: boolean;
+  /** Só no cadastro de cliente: o campo "RCA responsável". */
+  rca?: PartyRcaField;
 }) {
   const value = (field: keyof PartyDraft, saved: string | null | undefined) =>
     draft?.[field] ?? saved ?? "";
@@ -99,6 +115,60 @@ export function PartyForm({
             <Input name="taxId" defaultValue={value("taxId", party?.taxId)} />
           </Field>
         </div>
+        {rca ? (
+          <div
+            id="party-rca"
+            className="min-w-0 scroll-mt-24 @sm:col-span-2 @lg:col-span-6"
+            data-party-rca
+          >
+            <Field label={t("rca.field")} hint={t("rca.hint")}>
+              <Select
+                name="rcaCode"
+                defaultValue={rca.current ?? "0"}
+                data-party-rca-select
+              >
+                <option value="0">{t("rca.none")}</option>
+                {rca.current &&
+                !rca.sellers.some((s) => s.code === rca.current) ? (
+                  <option value={rca.current}>
+                    {t("rca.unknown", { code: rca.current })}
+                  </option>
+                ) : null}
+                {rca.sellers
+                  .filter((s) => s.active || s.code === rca.current)
+                  .map((s) => (
+                    <option key={s.code} value={s.code}>
+                      {(s.active
+                        ? s.name
+                        : t("rca.inactive", { name: s.name })) + ` (${s.code})`}
+                    </option>
+                  ))}
+              </Select>
+            </Field>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-zinc-500">
+              <span data-party-rca-list>
+                {rca.demo
+                  ? t("rca.listDemo", { n: rca.sellers.length })
+                  : rca.syncedAt
+                    ? t("rca.listDate", {
+                        date: new Date(rca.syncedAt).toLocaleDateString(t.intl),
+                        n: rca.sellers.length,
+                      })
+                    : t("rca.listEmpty")}
+              </span>
+              <SubmitButton
+                variant="secondary"
+                formAction={refreshRcaListAction}
+                formNoValidate
+                pendingText={t("rca.refreshing")}
+                className="px-2.5 py-1 text-xs"
+                data-party-rca-refresh
+              >
+                {t("rca.refresh")}
+              </SubmitButton>
+            </div>
+          </div>
+        ) : null}
       </div>
       {quickType ? (
         <details
