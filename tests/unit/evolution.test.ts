@@ -1,4 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { itemGroupKey } from "@/lib/order-groups";
+import { groupOf } from "./helpers/groups";
 import { sendForSignature, withTempStore } from "./setup";
 
 /*
@@ -158,12 +160,14 @@ describe("comparação comprado × inspecionado", () => {
     // Avança até a inspeção preenchendo tudo que vier antes.
     for (let guard = 0; guard < 40; guard++) {
       const progress = (await loadOrderProgress(orderId))!;
-      const stage = progress.stages.find(
-        (s) => s.status === "active" || s.status === "blocked",
-      )!;
+      // Fase 5g: o grupo pela situação derivada dos marcos.
+      const stage = { key: progress.order.status };
       if (stage.key === "INSPECTION") break;
       const pending = progress.requirements.filter(
-        (r) => r.stageId === stage.id && r.status !== "done" && r.required,
+        (r) =>
+          itemGroupKey(r, progress.order) === stage.key &&
+          r.status !== "done" &&
+          r.required,
       );
       for (const r of pending) {
         // Documento do pedido (ordem nova): o envio para assinatura pede o
@@ -211,11 +215,12 @@ describe("comparação comprado × inspecionado", () => {
       }
     }
     let progress = (await loadOrderProgress(orderId))!;
-    const inspection = progress.stages.find((s) => s.key === "INSPECTION")!;
+    const inspection = await groupOf(orderId, "INSPECTION");
     expect(inspection.status).toBe("active");
     const req = (key: string) =>
       progress.requirements.find(
-        (r) => r.stageId === inspection.id && r.key === key,
+        (r) =>
+          itemGroupKey(r, progress.order) === inspection.key && r.key === key,
       )!;
     expect(req("material_found")).toBeDefined();
 
@@ -224,9 +229,7 @@ describe("comparação comprado × inspecionado", () => {
       value: "Ferro fundido",
     });
     progress = (await loadOrderProgress(orderId))!;
-    expect(progress.stages.find((s) => s.key === "INSPECTION")!.status).toBe(
-      "blocked",
-    );
+    expect((await groupOf(orderId, "INSPECTION")).status).toBe("blocked");
     const open = await listOpenReviews(orderId);
     expect(open.map((r) => r.rule)).toContain("inspection.material");
     const result = await latestInspectionResult(orderId);
@@ -243,7 +246,9 @@ describe("comparação comprado × inspecionado", () => {
     // Wellmix aprova a revisão: itens resolvidos, etapa liberada; um único requisito de revisão.
     progress = (await loadOrderProgress(orderId))!;
     const reviews = progress.requirements.filter(
-      (r) => r.stageId === inspection.id && r.key === "inspection_review",
+      (r) =>
+        itemGroupKey(r, progress.order) === inspection.key &&
+        r.key === "inspection_review",
     );
     expect(reviews).toHaveLength(1);
     await decideRequirement(
@@ -254,9 +259,7 @@ describe("comparação comprado × inspecionado", () => {
     );
     expect(await listOpenReviews(orderId)).toHaveLength(0);
     progress = (await loadOrderProgress(orderId))!;
-    expect(
-      progress.stages.find((s) => s.key === "INSPECTION")!.status,
-    ).not.toBe("blocked");
+    expect((await groupOf(orderId, "INSPECTION")).status).not.toBe("blocked");
   });
 });
 

@@ -8,6 +8,7 @@ import type {
   Requirement,
   Stage,
 } from "@/lib/db/schema";
+import { isOffFlowItem, stepOfItem } from "@/lib/milestones";
 import { getStore } from "@/lib/db";
 import { flowStepOfImportKey, flowStepsOf, stepId } from "@/lib/flow";
 import {
@@ -20,7 +21,7 @@ import {
 } from "@/lib/milestones";
 import { baseKeyOf, LANE_KEYS, SAMPLE_ORDER_KEY } from "@/lib/purchase-lanes";
 import { parseSampleOrder } from "@/lib/sample-order";
-import { isOffFlowStage, isPurchaseFlow } from "@/lib/workflow/stages";
+import { isPurchaseFlow } from "@/lib/workflow/templates";
 import {
   IMPORT_STEPS,
   groupOf,
@@ -40,7 +41,14 @@ import {
 
 export interface MilestoneInput {
   order: Order;
-  stages: Stage[];
+  /**
+   * Só a conferência da migração (fase 5b, `source: "stages"`) lê as etapas
+   * antigas dos itens que ainda têm uma; o resto do sistema não (fase 5g).
+   */
+  legacyStages?: readonly Pick<
+    Stage,
+    "id" | "key" | "status" | "blockReason"
+  >[];
   /** Todos os itens do pedido, de qualquer situação. */
   requirements: Requirement[];
   importSteps: ImportStep[];
@@ -53,23 +61,25 @@ export interface MilestoneInput {
    * migração): devolve o passo gravado no item (`requirements.step`) ou nulo
    * (o item não entra). Sem ele, o passo sai da etapa e da chave.
    */
-  requirementStep?: (r: Requirement, stage: Stage) => string | null;
+  requirementStep?: (r: Requirement) => string | null;
   /**
    * De onde sai o passo do item (fase 5c): "stored" (o padrão) lê o passo
-   * gravado no item (`requirements.step`) e só cai no de-para pela etapa
-   * quando ele está vazio; "stages" usa sempre a etapa (a conta antiga, para
-   * a conferência da migração).
+   * gravado no item (`requirements.step`; sem ele, pela chave); "stages" usa
+   * a etapa antiga do item quando ele tem uma (a conta antiga, para a
+   * conferência da migração; o item sem etapa vai pelo passo gravado).
    */
   source?: "stored" | "stages";
 }
 
-/** Passos de um item: o gravado (fase 5c) ou, sem ele, pela etapa e a chave. */
+/** Passos de um item: o gravado (fase 5c) ou, na conta antiga, pela etapa. */
 function stepsOfRequirement(
   r: Pick<Requirement, "key" | "step">,
-  stage: Pick<Stage, "key">,
-  source: "stored" | "stages",
+  stage: Pick<Stage, "key"> | undefined,
 ): string[] {
-  if (source === "stored" && r.step) return [r.step];
+  if (!stage) {
+    const step = stepOfItem(r);
+    return step ? [step] : [];
+  }
   return flowStepsOf({
     kind: "requirement",
     stageKey: stage.key,
@@ -84,34 +94,30 @@ const startedStep = (step: ImportStep | undefined) =>
 /** As subtarefas do pedido, cada uma no passo do menu dela (função pura). */
 export function orderSubtasks(input: MilestoneInput): Subtask[] {
   const { order } = input;
-  const stageById = new Map(input.stages.map((s) => [s.id, s]));
+  // Etapas antigas (só a migração e a conferência as passam): o item de
+  // etapa cancelada não conta, nas duas contas, como antes.
+  const legacy = input.legacyStages?.length
+    ? new Map(input.legacyStages.map((s) => [s.id, s]))
+    : null;
+  const byStage = input.source === "stages";
   const out: Subtask[] = [];
-  // Itens do pedido (etapa cancelada não conta).
+  // Itens do pedido (fase 5g: pelo passo gravado; o pedido cancelado não
+  // conta, `orderMilestones`).
   for (const r of input.requirements) {
-    const stage = stageById.get(r.stageId);
-    if (!stage || stage.status === "cancelled") continue;
-    // Fase 5d: o item opcional (e o da etapa fora do fluxo) não segura os
-    // marcos seguintes.
+    const stage = legacy && r.stageId ? legacy.get(r.stageId) : undefined;
+    if (stage?.status === "cancelled") continue;
+    // Fase 5d: o item opcional (e o do pagamento antigo, fora do fluxo) não
+    // segura os marcos seguintes.
     const optional =
-      r.required === false || isOffFlowStage(stage.key) ? true : undefined;
-    if (input.requirementStep) {
-      const step = input.requirementStep(r, stage);
-      if (step)
-        out.push({
-          step,
-          key: r.key,
-          done: r.status === "done",
-          dueAt: r.status === "done" ? null : (stage.dueAt ?? null),
-          ...(optional ? { optional } : {}),
-        });
-      continue;
-    }
-    for (const step of stepsOfRequirement(r, stage, input.source ?? "stored"))
+      r.required === false || isOffFlowItem(r) ? true : undefined;
+    const steps = input.requirementStep
+      ? [input.requirementStep(r)].filter((x): x is string => !!x)
+      : stepsOfRequirement(r, byStage ? stage : undefined);
+    for (const step of steps)
       out.push({
         step,
         key: r.key,
         done: r.status === "done",
-        dueAt: r.status === "done" ? null : (stage.dueAt ?? null),
         ...(optional ? { optional } : {}),
       });
   }
@@ -279,9 +285,8 @@ export async function milestonesOf(input: Order): Promise<MilestoneView[]> {
   // A situação de agora (o pedido pode ter mudado depois de lido).
   const order = (await store.get("orders", input.id)) ?? input;
   const filter = { orderId: order.id };
-  const [stages, requirements, importSteps, tracks, receivings, lpco, rows] =
+  const [requirements, importSteps, tracks, receivings, lpco, rows] =
     await Promise.all([
-      store.list("stages", { filter }),
       store.list("requirements", { filter }),
       store.list("import_steps", { filter }).catch(() => []),
       store.list("production_tracks", { filter }).catch(() => []),
@@ -291,7 +296,6 @@ export async function milestonesOf(input: Order): Promise<MilestoneView[]> {
     ]);
   return milestoneViews({
     order,
-    stages,
     requirements,
     importSteps,
     track: tracks[0] ?? null,

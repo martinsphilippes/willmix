@@ -1,221 +1,155 @@
 import { describe, expect, it } from "vitest";
 import {
   partRowFor,
+  requirementVisibleTo,
   stageOfRole,
-  stageRowFor,
-  stageVisibleTo,
 } from "@/lib/order-view";
 
 /*
- * Quem vê qual etapa na tela do pedido: a Wellmix tudo; cliente e fornecedor
- * o andamento; o parceiro só a etapa dele (e o despachante lê o Embarque),
- * nunca as etapas (e os valores) dos outros.
+ * Quem vê o quê na tela do pedido (fase 5g: sem etapas; o "liberado" é o
+ * marco do item em andamento ou concluído). A Wellmix vê tudo; cliente e
+ * fornecedor, o que já começou; o parceiro, o que é dele (e o despachante lê
+ * o Embarque depois que ele começa), nunca os itens dos outros. A tabela
+ * antiga "Etapas do pedido" (`stageVisibleTo`, `stageRowFor`) saiu na 5e/5g.
  */
-const stage = (key: string, status: string, responsibleRole = "operator") =>
-  ({ key, status, responsibleRole }) as never;
+const group = (key: string, status: string, responsibleRole = "operator") =>
+  ({ id: `o|${key}`, key, status, responsibleRole }) as never;
 const reqs = (...roles: string[]) => roles.map((role) => ({ role })) as never;
 const user = (role: string) => ({ role }) as never;
+const item = (role: string, step: string, key = "x") =>
+  ({ id: key, key, role, step }) as never;
+const states = (entries: Record<string, string>) =>
+  new Map(Object.entries(entries)) as never;
 
-describe("etapas visíveis por papel", () => {
-  it("Wellmix vê tudo (menos a etapa final); cliente e fornecedor veem o que já começou", () => {
-    expect(
-      stageVisibleTo(
-        user("admin"),
-        stage("CUSTOMS", "pending"),
-        reqs("broker"),
-      ),
-    ).toBe(true);
-    expect(
-      stageVisibleTo(user("operator"), stage("CLOSED", "done"), reqs()),
-    ).toBe(false);
-    expect(
-      stageVisibleTo(
-        user("customer"),
-        stage("CUSTOMS", "done"),
-        reqs("broker"),
-      ),
-    ).toBe(true);
-    expect(
-      stageVisibleTo(
-        user("customer"),
-        stage("CUSTOMS", "pending"),
-        reqs("broker"),
-      ),
-    ).toBe(false);
-    expect(
-      stageVisibleTo(
-        user("supplier"),
-        stage("TRANSPORT", "active"),
-        reqs("carrier"),
-      ),
-    ).toBe(true);
-    expect(
-      stageVisibleTo(
-        user("supplier"),
-        stage("TRANSPORT", "cancelled"),
-        reqs("carrier"),
-      ),
-    ).toBe(false);
-  });
-
-  it("transportador: só o Transporte (mesmo antes de começar); nada do desembaraço nem do embarque", () => {
-    const carrier = user("carrier");
-    expect(
-      stageVisibleTo(
-        carrier,
-        stage("TRANSPORT", "pending", "carrier"),
-        reqs("carrier"),
-      ),
-    ).toBe(true);
-    expect(
-      stageVisibleTo(
-        carrier,
-        stage("TRANSPORT", "active"),
-        reqs("carrier", "carrier"),
-      ),
-    ).toBe(true);
-    // Transportador designado depois: os itens já viraram dele, o responsável da etapa ainda não.
-    expect(
-      stageVisibleTo(
-        carrier,
-        stage("TRANSPORT", "active", "operator"),
-        reqs("carrier"),
-      ),
-    ).toBe(true);
-    expect(
-      stageVisibleTo(
-        carrier,
-        stage("CUSTOMS", "done", "broker"),
-        reqs("broker"),
-      ),
-    ).toBe(false);
-    expect(
-      stageVisibleTo(carrier, stage("SHIPPING", "done"), reqs("shipping_line")),
-    ).toBe(false);
-    expect(
-      stageVisibleTo(carrier, stage("INSPECTION", "done"), reqs("supplier")),
-    ).toBe(false);
-    // Sem transportador no pedido (itens do operador): não é dele.
-    expect(
-      stageVisibleTo(
-        carrier,
-        stage("TRANSPORT", "active", "operator"),
-        reqs("operator"),
-      ),
-    ).toBe(false);
-  });
-
-  it("despachante: o Desembaraço e o Embarque já começado; companhia e agência: só a própria etapa", () => {
-    const broker = user("broker");
-    expect(
-      stageVisibleTo(
-        broker,
-        stage("CUSTOMS", "active", "broker"),
-        reqs("broker"),
-      ),
-    ).toBe(true);
-    expect(
-      stageVisibleTo(broker, stage("SHIPPING", "done"), reqs("shipping_line")),
-    ).toBe(true);
-    expect(
-      stageVisibleTo(
-        broker,
-        stage("SHIPPING", "pending"),
-        reqs("shipping_line"),
-      ),
-    ).toBe(false);
-    expect(
-      stageVisibleTo(broker, stage("TRANSPORT", "done"), reqs("carrier")),
-    ).toBe(false);
-    expect(
-      stageVisibleTo(
-        user("shipping_line"),
-        stage("CUSTOMS", "done"),
-        reqs("broker"),
-      ),
-    ).toBe(false);
-    expect(
-      stageVisibleTo(
-        user("shipping_line"),
-        stage("SHIPPING", "done", "shipping_line"),
-        reqs("shipping_line"),
-      ),
-    ).toBe(true);
-    expect(
-      stageVisibleTo(
-        user("agency"),
-        stage("PACKAGING", "active"),
-        reqs("agency", "supplier"),
-      ),
-    ).toBe(true);
-    expect(
-      stageVisibleTo(user("agency"), stage("CUSTOMS", "done"), reqs("broker")),
-    ).toBe(false);
-    expect(
-      stageOfRole(
-        stage("PACKAGING", "active", "agency"),
-        reqs("supplier"),
-        "agency",
-      ),
-    ).toBe(true);
-  });
-});
-
-describe("linhas da tabela Etapas do pedido por login", () => {
-  it("Wellmix e cliente veem o fluxo inteiro", () => {
-    for (const role of ["admin", "operator", "customer"]) {
+describe("itens visíveis por papel", () => {
+  it("Wellmix vê tudo; cliente e fornecedor veem o que já começou", () => {
+    const shipping = item("shipping_line", "production/shipment", "vessel");
+    for (const role of ["admin", "operator"])
       expect(
-        stageRowFor(user(role), stage("CUSTOMS", "pending"), reqs("broker")),
+        requirementVisibleTo(
+          user(role),
+          shipping,
+          group("SHIPPING", "pending"),
+          reqs("shipping_line"),
+          states({ shipment: "waiting" }),
+        ),
       ).toBe(true);
-      expect(partRowFor(user(role), "supplier_payment")).toBe(true);
+    for (const role of ["customer", "supplier"]) {
+      expect(
+        requirementVisibleTo(
+          user(role),
+          shipping,
+          group("SHIPPING", "pending"),
+          reqs("shipping_line"),
+          states({ shipment: "waiting" }),
+        ),
+      ).toBe(false);
+      expect(
+        requirementVisibleTo(
+          user(role),
+          shipping,
+          group("SHIPPING", "active"),
+          reqs("shipping_line"),
+          states({ shipment: "active" }),
+        ),
+      ).toBe(true);
     }
   });
 
-  it("fornecedor: só as etapas e partes em que ele tem responsabilidade", () => {
-    const supplier = user("supplier");
-    // Responde pela etapa, ou tem item nela.
+  it("parceiro: o item dele mesmo antes de começar; o despachante lê o Embarque já começado", () => {
+    const broker = user("broker");
+    const customs = item("broker", "delivery/cargo-presence", "release");
     expect(
-      stageRowFor(
-        supplier,
-        stage("PREPARATION", "pending", "supplier"),
+      requirementVisibleTo(
+        broker,
+        customs,
+        group("CUSTOMS", "pending"),
+        reqs("broker"),
+        states({ customs: "waiting" }),
+      ),
+    ).toBe(true);
+    const vessel = item("shipping_line", "production/shipment", "vessel");
+    expect(
+      requirementVisibleTo(
+        broker,
+        vessel,
+        group("SHIPPING", "pending", "shipping_line"),
+        reqs("shipping_line"),
+        states({ shipment: "waiting" }),
+      ),
+    ).toBe(false);
+    expect(
+      requirementVisibleTo(
+        broker,
+        vessel,
+        group("SHIPPING", "active", "shipping_line"),
+        reqs("shipping_line"),
+        states({ shipment: "active" }),
+      ),
+    ).toBe(true);
+    // Itens de outro parceiro, de marco que ele não lê: nunca.
+    const plate = item("carrier", "delivery/logistics", "plate");
+    expect(
+      requirementVisibleTo(
+        broker,
+        plate,
+        group("TRANSPORT", "active", "carrier"),
+        reqs("carrier"),
+        states({ "invoice-transport": "active" }),
+      ),
+    ).toBe(false);
+    // Cancelado: nada para quem é de fora.
+    expect(
+      requirementVisibleTo(
+        broker,
+        customs,
+        group("CUSTOMS", "cancelled"),
+        reqs("broker"),
+        states({ customs: "active" }),
+      ),
+    ).toBe(false);
+  });
+
+  it("o grupo é do parceiro quando ele responde por ele ou tem item nele", () => {
+    expect(
+      stageOfRole(
+        group("TRANSPORT", "pending", "carrier"),
         reqs(),
+        "carrier" as never,
       ),
     ).toBe(true);
     expect(
-      stageRowFor(
-        supplier,
-        stage("ORDER_CREATED", "active"),
-        reqs("operator", "supplier"),
+      stageOfRole(
+        group("CUSTOMS", "pending"),
+        reqs("broker"),
+        "broker" as never,
       ),
     ).toBe(true);
-    // Etapas dos outros somem, mesmo já começadas ou concluídas.
     expect(
-      stageRowFor(supplier, stage("CUSTOMS", "done"), reqs("broker")),
+      stageOfRole(
+        group("CUSTOMS", "pending"),
+        reqs("broker"),
+        "carrier" as never,
+      ),
     ).toBe(false);
-    expect(
-      stageRowFor(supplier, stage("TRANSPORT", "active", "carrier"), reqs()),
-    ).toBe(false);
-    // Partes: documento, ficha e produção são dele; pagamento, embarque e
-    // recebimento, não.
+  });
+});
+
+describe("partes do pedido por login", () => {
+  it("Wellmix e cliente veem todas", () => {
+    for (const role of ["admin", "operator", "customer"])
+      expect(partRowFor(user(role), "supplier_payment")).toBe(true);
+  });
+
+  it("fornecedor e parceiros: só as partes em que atuam", () => {
+    const supplier = user("supplier");
     expect(partRowFor(supplier, "document")).toBe(true);
     expect(partRowFor(supplier, "sheet")).toBe(true);
     expect(partRowFor(supplier, "production")).toBe(true);
     expect(partRowFor(supplier, "supplier_payment")).toBe(false);
     expect(partRowFor(supplier, "import")).toBe(false);
     expect(partRowFor(supplier, "receiving")).toBe(false);
-  });
-
-  it("parceiro: a etapa dele, a que precisa ler e a parte em que atua", () => {
     const broker = user("broker");
-    expect(
-      stageRowFor(broker, stage("CUSTOMS", "pending"), reqs("broker")),
-    ).toBe(true);
-    // O despachante lê o Embarque depois que ele começa.
-    expect(stageRowFor(broker, stage("SHIPPING", "done"), reqs())).toBe(true);
-    expect(stageRowFor(broker, stage("SHIPPING", "pending"), reqs())).toBe(
-      false,
-    );
-    expect(stageRowFor(broker, stage("PACKAGING", "done"), reqs())).toBe(false);
     expect(partRowFor(broker, "import")).toBe(true);
     expect(partRowFor(broker, "production")).toBe(false);
     expect(partRowFor(user("ocp"), "certification")).toBe(true);

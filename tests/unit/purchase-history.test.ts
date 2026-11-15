@@ -382,22 +382,26 @@ describe("medida zero é não preenchida", () => {
 });
 
 describe("carga do Sankhya: a data do pedido lá", () => {
-  it("vem do fim da etapa Pedido criado; sem ela, a data fica em branco", async () => {
+  it("vem da conclusão de Pedido conferido pela carga; sem ela, a data fica em branco", async () => {
     const dated = await bare({ sankhyaCode: "91001" });
     await item(dated.id, { sankhyaRefs: { CODPROD: 4455, NUNOTA: 91001 } });
-    await getStore().create("stages", {
+    // Fase 5g: a data é a da conclusão de "Pedido conferido" pela carga.
+    await getStore().create("requirements", {
       orderId: dated.id,
-      key: "ORDER_CREATED",
-      sequence: 1,
+      stageId: null,
+      key: "order_confirmed",
+      label: "Pedido conferido e liberado ao fornecedor",
+      type: "confirm",
+      required: true,
+      role: "operator",
       status: "done",
-      responsibleRole: "operator",
-      responsiblePartyId: null,
-      dueAt: null,
-      startedAt: new Date().toISOString(),
-      completedAt: "2023-05-10T12:00:00.000Z",
-      percent: 100,
-      reminderSentAt: null,
-      blockReason: null,
+      value: null,
+      documentId: null,
+      submittedByUserId: null,
+      submittedAt: "2023-05-10T12:00:00.000Z",
+      note: "Marco concluído no Sankhya (carga do histórico)",
+      step: "order/orders",
+      milestoneKey: "new-order",
     } as never);
     const undated = await bare({
       sankhyaCode: "91002",

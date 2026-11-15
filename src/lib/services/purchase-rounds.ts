@@ -11,6 +11,7 @@ import {
   type User,
 } from "@/lib/db";
 import { dueRounds, isRoundsParent, mapLaneKey } from "@/lib/purchase-rounds";
+import { legacyGroupOfItem, stepOfItem } from "@/lib/milestones";
 import { todayIso } from "@/lib/workflow/request-schedule";
 import type { Translate } from "@/i18n";
 import { audit } from "./audit";
@@ -227,9 +228,9 @@ async function createRoundOrder(
     `Rodada ${round.index} de ${totalRounds} do pedido de compra #${parent.number} (programado para ${round.expectedAt}): pedido #${child.number}, ${pieces} pcs`,
   );
 
-  // Etapas do filho com a Preparação copiada do pai: ele começa no contrato.
-  const { createStagesForOrder } = await import("@/lib/workflow/engine");
-  await createStagesForOrder(child, () =>
+  // Itens do filho com a Preparação copiada do pai: ele começa no contrato.
+  const { createOrderRequirements } = await import("@/lib/workflow/engine");
+  await createOrderRequirements(child, () =>
     copyPreparation(parent.id, child.id, parentItems),
   );
   const fresh = (await store.get("orders", child.id)) ?? child;
@@ -265,23 +266,21 @@ async function copyPreparation(
   parentItems: Array<{ id: string; productId: string | null }>,
 ): Promise<void> {
   const store = getStore();
-  const [parentStages, childStages, parentReqs, childReqs, childItems] =
-    await Promise.all([
-      store.list("stages", { filter: { orderId: parentId } }),
-      store.list("stages", { filter: { orderId: childId } }),
-      store.list("requirements", { filter: { orderId: parentId } }),
-      store.list("requirements", { filter: { orderId: childId } }),
-      store.list("order_items", { filter: { orderId: childId } }),
-    ]);
-  const parentPrep = parentStages.find((s) => s.key === "PREPARATION");
-  const childPrep = childStages.find((s) => s.key === "PREPARATION");
-  if (!parentPrep || !childPrep) return;
+  const [parentReqs, childReqs, childItems] = await Promise.all([
+    store.list("requirements", { filter: { orderId: parentId } }),
+    store.list("requirements", { filter: { orderId: childId } }),
+    store.list("order_items", { filter: { orderId: childId } }),
+  ]);
+  // Fase 5g: os itens da Preparação (raias e aprovações) pelo marco e pela
+  // chave; o do filho é o do mesmo passo com a chave do item dele.
+  const prep = (r: (typeof parentReqs)[number]) =>
+    legacyGroupOfItem(r, { flow: "supplier_request" }) === "PREPARATION";
   for (const req of parentReqs) {
-    if (req.stageId !== parentPrep.id || req.status !== "done") continue;
+    if (!prep(req) || req.status !== "done") continue;
     const key = mapLaneKey(req.key, parentItems, childItems);
     if (!key) continue;
     const target = childReqs.find(
-      (r) => r.stageId === childPrep.id && r.key === key,
+      (r) => prep(r) && r.key === key && stepOfItem(r) === stepOfItem(req),
     );
     if (!target || target.status === "done") continue;
     await store.update("requirements", target.id, {

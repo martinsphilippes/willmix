@@ -16,14 +16,13 @@ import {
   type Receiving,
   type Requirement,
   type RequirementStatus,
+  type Role,
   type SkuInspection,
-  type Stage,
-  type StageKey,
   type User,
 } from "@/lib/db";
 import { isSchemaMissing } from "@/lib/db/errors";
 import { listColumns as listColumnsOf } from "@/lib/db/lookup";
-import { isHeld, projectJson } from "@/lib/db/store";
+import { projectJson } from "@/lib/db/store";
 import {
   DUE_SOON_DAYS,
   addDays,
@@ -38,8 +37,15 @@ import {
   type FinanceSummaryRow,
 } from "./finance";
 import { SCHEDULE_REQUIREMENT_KEYS, payableFor } from "./supplier-terms";
-import type { BoardOrder, BoardStage } from "./tower-board";
-import { compactMilestones, type CompactMilestone } from "@/lib/milestones";
+import type { BoardOrder } from "./tower-board";
+import {
+  compactMilestones,
+  downPaymentStateOf,
+  milestoneOfFacts,
+  milestoneReached,
+  responsibleOfItems,
+  type CompactMilestone,
+} from "@/lib/milestones";
 import { milestoneViews } from "./milestones";
 import { releaseOf } from "@/lib/milestone-release";
 
@@ -92,8 +98,14 @@ import { releaseOf } from "@/lib/milestone-release";
  * inspeção mora em `order_milestones`); a produção e o recebimento dos
  * marcos e os passos abertos do embarque pelos marcos (não pela etapa nem
  * pela situação); a Control Tower lê prazo e trava pelo marco.
+ * 20: fase 5g (docs/MILESTONES.md), sem etapas: os itens dos quadros
+ * (`reqs`, `lane`) levam o passo (`p`) no lugar da etapa; `active` saiu e
+ * deu lugar a quem age agora (`resp`, o papel do próximo item obrigatório
+ * do marco atual); `ship` são as linhas dos marcos Embarque e Entrega e
+ * recebimento do cronograma de pagamento, e `sreqs` leva o passo; as
+ * pendências (`s`) saem pelos marcos dos itens.
  */
-export const SUMMARY_VERSION = 19;
+export const SUMMARY_VERSION = 20;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -107,10 +119,11 @@ export interface SummaryMarker {
   ms: number;
 }
 
-/** Item de etapa como os quadros leem (etapa pela chave, não pelo id). */
+/** Item do pedido como os quadros leem (fase 5g: passo e chave). */
 export interface FactRequirement {
   k: string;
-  s: StageKey | null;
+  /** Passo do item (`requirements.step`). */
+  p: string | null;
   st: RequirementStatus;
   v: string | null;
 }
@@ -126,9 +139,12 @@ export interface OrderFacts {
   product: string | null;
   /** Quantos itens o pedido tem (a tela Pedidos lê os itens só da página mostrada). */
   itemCount: number;
-  /** Etapas em andamento ou bloqueadas, na ordem do banco. */
-  active: Array<Omit<BoardStage, "orderId"> & Pick<Stage, "percent">>;
-  /** Itens das etapas que dividem os quadros de posição (journey.ts). */
+  /**
+   * Quem age agora (fase 5g, no lugar da etapa em andamento): o papel do
+   * próximo item obrigatório do marco atual.
+   */
+  resp: Role | null;
+  /** Itens que dividem os quadros de posição (journey.ts). */
   reqs: FactRequirement[];
   /** Todos os itens do pedido de compra (raias e contrato); nulo no importado. */
   lane: Array<Omit<FactRequirement, "v">> | null;
@@ -147,9 +163,9 @@ export interface OrderFacts {
   pop?: import("./finance").OriginCost[];
   /** Frete das ordens de venda ligadas, em reais (docs/SALES_ORDERS.md). */
   sfr?: import("./finance").OriginCost[];
-  /** Etapas de embarque e entrega (marcos do cronograma de pagamento e da entrega). */
-  ship: FactStage[];
-  /** Itens das etapas do cronograma de pagamento (data de embarque, pagamento antigo). */
+  /** Marcos Embarque e Entrega e recebimento gravados (cronograma de pagamento). */
+  ship: FactMilestoneRow[];
+  /** Itens do cronograma de pagamento (datas de embarque e entrega, pagamento antigo). */
   sreqs: FactScheduleRequirement[];
   /**
    * Os 16 marcos do pedido (docs/MILESTONES.md, fase 4a). Opcional: resumo
@@ -159,18 +175,18 @@ export interface OrderFacts {
 }
 
 export type FactPayment = Omit<Payment, "sankhyaRefs">;
-export type FactStage = Pick<
-  Stage,
-  "id" | "key" | "status" | "startedAt" | "completedAt" | "dueAt"
->;
+export type FactMilestoneRow = Pick<
+  OrderMilestone,
+  "key" | "status" | "completedAt"
+> &
+  Partial<Pick<OrderMilestone, "startedAt" | "dueAt">>;
 export type FactScheduleRequirement = Pick<
   Requirement,
-  "id" | "stageId" | "key" | "status" | "value" | "submittedAt" | "updatedAt"
+  "id" | "step" | "key" | "status" | "value" | "submittedAt" | "updatedAt"
 >;
 
 const BOARD_KEYS: readonly string[] = JOURNEY_REQUIREMENT_KEYS;
 const SCHEDULE_KEYS: readonly string[] = SCHEDULE_REQUIREMENT_KEYS;
-const ACTIVE: Stage["status"][] = ["active", "blocked"];
 
 const isPortal = (o: Pick<Order, "flow">) => o.flow === "supplier_request";
 
@@ -198,10 +214,9 @@ interface Sources {
   orders: Order[];
   parties: Map<string, Party>;
   items: Map<string, OrderItem[]>;
-  stages: Map<string, Stage[]>;
   requirements: Map<string, Requirement[]>;
   portalRequirements: Map<string, Requirement[]>;
-  /** Itens pendentes ou recusados (pendências das etapas em andamento). */
+  /** Itens pendentes ou recusados (pendências dos marcos em andamento). */
   openRequirements: Map<string, Requirement[]>;
   steps: Map<string, ImportStep[]>;
   /** Frete das ordens de venda ligadas ao pedido (docs/SALES_ORDERS.md). */
@@ -226,7 +241,13 @@ interface Sources {
     Array<
       Pick<
         OrderMilestone,
-        "orderId" | "key" | "dueAt" | "status" | "blockReason"
+        | "orderId"
+        | "key"
+        | "dueAt"
+        | "status"
+        | "blockReason"
+        | "startedAt"
+        | "completedAt"
       >
     >
   >;
@@ -257,7 +278,6 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
       orders,
       parties: new Map(),
       items: new Map(),
-      stages: new Map(),
       requirements: new Map(),
       portalRequirements: new Map(),
       openRequirements: new Map(),
@@ -276,7 +296,6 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
   const [
     parties,
     items,
-    stages,
     requirements,
     portalRequirements,
     openRequirements,
@@ -296,7 +315,6 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
       ? store.list("parties", { filter: { id: partyIds } })
       : Promise.resolve([]),
     store.list("order_items", { filter: byOrder }),
-    store.list("stages", { filter: byOrder }),
     store.list("requirements", {
       filter: { ...byOrder, key: [...BOARD_KEYS, ...SCHEDULE_KEYS] },
     }),
@@ -325,7 +343,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
       store,
       "requirements",
       // Fase 5c: o passo gravado no item (`step`) agrupa as subtarefas.
-      ["orderId", "stageId", "key", "status", "step", "required"],
+      ["orderId", "key", "status", "step", "milestoneKey", "required", "role"],
       { filter: byOrder },
     ),
     import("./import-flow").then((m) => m.lpcoOrderIds(orderIds)),
@@ -335,7 +353,15 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
       listColumnsOf(
         store,
         "order_milestones",
-        ["orderId", "key", "dueAt", "status", "blockReason"],
+        [
+          "orderId",
+          "key",
+          "dueAt",
+          "status",
+          "blockReason",
+          "startedAt",
+          "completedAt",
+        ],
         { filter: byOrder },
       ),
     ),
@@ -349,7 +375,6 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     orders,
     parties: partyMap,
     items: groupBy(items, (r) => r.orderId),
-    stages: groupBy(stages, (r) => r.orderId),
     requirements: groupBy(requirements, (r) => r.orderId),
     portalRequirements: groupBy(portalRequirements, (r) => r.orderId),
     openRequirements: groupBy(openRequirements, (r) => r.orderId),
@@ -386,7 +411,6 @@ export function factMilestones(
   return compactMilestones(
     milestoneViews({
       order,
-      stages: src.stages.get(id) ?? [],
       requirements,
       importSteps: src.steps.get(id) ?? [],
       track: src.tracks.get(id)?.[0] ?? null,
@@ -423,9 +447,16 @@ export function buildOrderFacts(
   today: string,
 ): OrderFacts {
   const id = order.id;
-  const stages = src.stages.get(id) ?? [];
-  const keyOf = new Map(stages.map((s) => [s.id, s.key]));
   const reqs = src.requirements.get(id) ?? [];
+  const shipRows = (src.milestoneRows.get(id) ?? [])
+    .filter((r) => r.key === "shipment" || r.key === "delivery")
+    .map((r) => ({
+      key: r.key,
+      status: r.status,
+      startedAt: r.startedAt ?? null,
+      completedAt: r.completedAt ?? null,
+      dueAt: r.dueAt ?? null,
+    }));
   const customer = src.parties.get(order.customerId) ?? null;
   const supplier = src.parties.get(order.supplierId) ?? null;
   const items = src.items.get(id) ?? [];
@@ -455,11 +486,12 @@ export function buildOrderFacts(
     order,
     supplier,
     payments.filter((p) => p.direction === "supplier_out"),
-    stages.filter((s) => s.key === "SHIPPING" || s.key === "DELIVERED"),
+    shipRows,
     reqs.filter((r) => SCHEDULE_KEYS.includes(r.key)),
     items,
     today,
   );
+  const m = factMilestones(order, src);
   return {
     order: pickOrder(order),
     customer: customer?.name ?? null,
@@ -467,28 +499,22 @@ export function buildOrderFacts(
     // Nome de exemplo ("Produto novo XPTO") vale como ausente.
     product: realName(items[0]?.name),
     itemCount: items.length,
-    active: stages
-      .filter((s) => ACTIVE.includes(s.status))
-      .map((s) => ({
-        id: s.id,
-        key: s.key,
-        status: s.status,
-        dueAt: s.dueAt ?? null,
-        responsibleRole: s.responsibleRole,
-        percent: s.percent,
-      })),
+    resp: responsibleOfItems(
+      milestoneOfFacts(m, order.status),
+      src.milestoneRequirements.get(id) ?? [],
+    ),
     reqs: reqs
       .filter((r) => BOARD_KEYS.includes(r.key))
       .map((r) => ({
         k: r.key,
-        s: keyOf.get(r.stageId) ?? null,
+        p: r.step ?? null,
         st: r.status,
         v: r.value ?? null,
       })),
     lane: isPortal(order)
       ? (src.portalRequirements.get(id) ?? []).map((r) => ({
           k: r.key,
-          s: keyOf.get(r.stageId) ?? null,
+          p: r.step ?? null,
           st: r.status,
         }))
       : null,
@@ -518,28 +544,19 @@ export function buildOrderFacts(
     pays: payments.map(withoutRefs),
     ...(pop.length ? { pop } : {}),
     ...(sfr.length ? { sfr } : {}),
-    ship: stages
-      .filter((x) => x.key === "SHIPPING" || x.key === "DELIVERED")
-      .map((x) => ({
-        id: x.id,
-        key: x.key,
-        status: x.status,
-        startedAt: x.startedAt ?? null,
-        completedAt: x.completedAt ?? null,
-        dueAt: x.dueAt ?? null,
-      })),
+    ship: shipRows,
     sreqs: reqs
       .filter((r) => SCHEDULE_KEYS.includes(r.key))
       .map((r) => ({
         id: r.id,
-        stageId: r.stageId,
+        step: r.step ?? null,
         key: r.key,
         status: r.status,
         value: r.value ?? null,
         submittedAt: r.submittedAt ?? null,
         updatedAt: r.updatedAt,
       })),
-    m: factMilestones(order, src),
+    m,
   };
 }
 
@@ -645,16 +662,6 @@ const WELLMIX_VIEWER = {
   partyId: null,
 } as unknown as User;
 
-/** Etapas do pedido com pendência de produção da Wellmix (follow e reinspeção). */
-const PRODUCTION_STATUSES: readonly string[] = [
-  "ORDER_CREATED",
-  "PREPARATION",
-  "SUPPLIER_PAYMENT",
-  "PACKAGING",
-  "INSPECTION",
-  "SHIPPING",
-];
-
 /** Situações da parcela que mudam só com o dia (a pendência pode aparecer sem gravação). */
 const TIMED: readonly InstallmentStatus[] = [
   "overdue",
@@ -677,12 +684,7 @@ async function tasksOf(
   const [
     { stageTaskDrafts },
     { wellmixProductionCandidates, latestByItem },
-    {
-      wellmixImportCandidates,
-      WELLMIX_IMPORT_STATUSES,
-      isDivergenceStep,
-      sealArtApplies,
-    },
+    { wellmixImportCandidates, importPhase, isDivergenceStep, sealArtApplies },
     { artIssueCounts },
     { baseKeyOf, LANE_KEYS },
   ] = await Promise.all([
@@ -712,14 +714,10 @@ async function tasksOf(
         TASK_ORDER_FIELDS.map((f) => [f, order[f] ?? null]),
       ) as TaskOrder,
     };
-    // Itens liberados pelos marcos (fase 5d), em qualquer etapa não
-    // cancelada (etapa em espera também não entra).
-    const stages = (src.stages.get(order.id) ?? []).filter(
-      (s) => s.status !== "cancelled" && !isHeld(s),
-    );
+    // Itens liberados pelos marcos (fase 5d; fase 5g: sem etapas).
     const m = factsById.get(order.id)?.m ?? [];
     const steps = src.steps.get(order.id) ?? [];
-    if (stages.length && m.some((x) => x.s === "active")) {
+    if (order.status !== "CANCELLED" && m.some((x) => x.s === "active")) {
       const sealApplied = new Set(
         steps
           .filter(
@@ -729,29 +727,34 @@ async function tasksOf(
           )
           .map((s) => s.orderId),
       );
-      const byKey = new Map(stages.map((s) => [s.key, s]));
       stored.s = stageTaskDrafts(WELLMIX_VIEWER, {
-        stages,
         orderById: new Map([[order.id, order]]),
         openRequirements: src.openRequirements.get(order.id) ?? [],
         sealApplied,
         lanes,
         release: new Map([
-          [
-            order.id,
-            releaseOf(
-              m.map((x) => ({ key: x.k, state: x.s })),
-              stages,
-            ),
-          ],
+          [order.id, releaseOf(m.map((x) => ({ key: x.k, state: x.s })))],
         ]),
-      }).map((d) => {
-        const stage = d.stageKey ? byKey.get(d.stageKey) : undefined;
-        return { k: `${stage?.createdAt ?? ""}|${stage?.id ?? ""}`, d };
-      });
+        milestoneRows: src.milestoneRows.get(order.id) ?? [],
+      }).map((d, i) => ({
+        k: `${order.createdAt ?? ""}|${order.id}|${String(i).padStart(3, "0")}`,
+        d,
+      }));
     }
-    // Produção (Fase C): follow 5/15/25 e reinspeção.
-    if (PRODUCTION_STATUSES.includes(order.status)) {
+    // Fase 5g: onde o pedido está pelos marcos gravados (as mesmas linhas
+    // que as Pendências pelas tabelas leem), não pela situação.
+    const phaseInput = {
+      milestones: src.milestoneRows.get(order.id) ?? [],
+      downPayment: downPaymentStateOf(
+        src.milestoneRequirements.get(order.id) ?? [],
+      ),
+    };
+    const phase = importPhase(order, phaseInput);
+    // Produção (Fase C): follow 5/15/25 e reinspeção, até o Desembaraço.
+    if (
+      isOrderOpen(order.status) &&
+      !milestoneReached(order, phaseInput.milestones, "customs")
+    ) {
       const track = (src.tracks.get(order.id) ?? [])[0] ?? null;
       const p = wellmixProductionCandidates(order, track, [
         ...latestByItem(src.skus.get(order.id) ?? []).values(),
@@ -759,7 +762,7 @@ async function tasksOf(
       if (p.length) stored.p = p;
     }
     // Embarque, desembaraço e certificação (Fases D e F).
-    if (WELLMIX_IMPORT_STATUSES.includes(order.status)) {
+    if (phase.beforeDelivery) {
       const needsCert =
         isPortal(order) &&
         (src.portalRequirements.get(order.id) ?? []).some(
@@ -774,13 +777,19 @@ async function tasksOf(
           order,
           (src.portalRequirements.get(order.id) ?? []).map((r) => r.key),
         ),
+        phaseInput,
       );
       if (i.length) stored.i = i;
-    } else if (order.status === "DELIVERED") {
-      // Entregue: só a divergência no recebimento (mapa E24 a E27).
-      const i = wellmixImportCandidates(order, steps, false).filter((c) =>
-        isDivergenceStep(c.key),
-      );
+    } else if (isOrderOpen(order.status)) {
+      // Entrega e recebimento: só a divergência no recebimento (mapa E24 a E27).
+      const i = wellmixImportCandidates(
+        order,
+        steps,
+        false,
+        false,
+        true,
+        phaseInput,
+      ).filter((c) => isDivergenceStep(c.key));
       if (i.length) stored.i = i;
     }
     // Artes: corrigir e conferir a correção.
@@ -814,7 +823,7 @@ async function tasksOf(
         copy as Order,
         supplier,
         (f.pays as Payment[]).filter((p) => p.direction === "supplier_out"),
-        f.ship as Stage[],
+        f.ship ?? [],
         f.sreqs as Requirement[],
         (f.product != null ? [{ name: f.product }] : []) as OrderItem[],
         today,
@@ -915,7 +924,7 @@ async function flowsOf(src: Sources) {
       order.id,
       buildOrderFlow({
         order,
-        stages: src.stages.get(order.id) ?? [],
+        views: factMilestones(order, src),
         openRequirements: src.openRequirements.get(order.id) ?? [],
         importSteps: src.steps.get(order.id) ?? [],
         track: src.tracks.get(order.id)?.[0] ?? null,
@@ -1458,51 +1467,38 @@ export async function factsForOrders(
 }
 
 /**
- * Etapas e itens de etapa dos quadros e da viagem (journey.ts), montados do
- * resumo: a etapa de cada item vai num id sintético (pedido + chave).
+ * Itens dos quadros e da viagem (journey.ts), montados do resumo: o passo e
+ * a chave de cada item (fase 5g, sem etapas).
  */
 export function journeyRowsFromFacts(
   facts: Array<Pick<OrderFacts, "order" | "reqs" | "lane">>,
 ) {
-  const stages: Array<Pick<Stage, "id" | "orderId" | "key">> = [];
   const requirements: Array<
-    Pick<Requirement, "orderId" | "stageId" | "key" | "status" | "value">
+    Pick<Requirement, "orderId" | "key" | "status" | "value" | "step">
   > = [];
   const laneRequirements: Array<
-    Pick<Requirement, "orderId" | "stageId" | "key" | "status">
+    Pick<Requirement, "orderId" | "key" | "status" | "step">
   > = [];
   for (const f of facts) {
     const orderId = f.order.id;
-    const keys = new Set<StageKey>();
-    for (const r of f.reqs) {
-      if (r.s) keys.add(r.s);
+    for (const r of f.reqs)
       requirements.push({
         orderId,
-        stageId: factStageId(orderId, r.s),
+        step: r.p ?? null,
         key: r.k,
         status: r.st,
         value: r.v,
       });
-    }
-    for (const r of f.lane ?? []) {
-      if (r.s) keys.add(r.s);
+    for (const r of f.lane ?? [])
       laneRequirements.push({
         orderId,
-        stageId: factStageId(orderId, r.s),
+        step: r.p ?? null,
         key: r.k,
         status: r.st,
       });
-    }
-    for (const key of keys)
-      stages.push({ id: factStageId(orderId, key), orderId, key });
   }
-  return { stages, requirements, laneRequirements };
+  return { requirements, laneRequirements };
 }
-
-/** Etapas em andamento ou bloqueadas de todos os pedidos dados. */
-export const activeStagesFromFacts = (
-  facts: Array<Pick<OrderFacts, "order" | "active">>,
-) => facts.flatMap((f) => f.active.map((s) => ({ ...s, orderId: f.order.id })));
 
 /** Situação da parcela no dia (vencida, a vencer, agendada mudam com o tempo). */
 export function installmentStatusOn(
@@ -1523,9 +1519,5 @@ export function installmentStatusOn(
       ? "due_soon"
       : "scheduled";
 }
-
-/** Id sintético da etapa de um item (os quadros só precisam saber de que etapa ele é). */
-export const factStageId = (orderId: string, key: StageKey | null) =>
-  key ? `${orderId}|${key}` : "";
 
 export { live as isLiveStatus };

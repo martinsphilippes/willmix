@@ -29,6 +29,8 @@ export interface TaskItem {
   key: string;
   role: Role;
   label: string;
+  /** Passo do item (fase 5g: o item é identificado pelo passo e pela chave). */
+  step?: string;
   /**
    * Item com dono por login (arte, validação, certificado e arte final do
    * pedido de compra): já foi decidido que é deste login; a função não

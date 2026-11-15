@@ -20,7 +20,7 @@ import {
   type SampleLine,
   type SampleSplit,
 } from "@/lib/sample-order";
-import { isPurchaseFlow } from "@/lib/workflow/stages";
+import { isPurchaseFlow } from "@/lib/workflow/templates";
 import { audit } from "./audit";
 import { notify, notifyWellmix, type NotifyTarget } from "./notifications";
 import { loadFunctionDefs } from "./team-functions";

@@ -147,14 +147,8 @@ export async function cancelOrder(
     await import("./order-milestones");
   const cancelMilestoneKey = await milestoneNow(order);
 
-  // Etapas que ainda não terminaram não acontecem mais.
-  const stages = await store.list("stages", { filter: { orderId } });
-  for (const stage of stages)
-    if (stage.status !== "done")
-      await store.update("stages", stage.id, {
-        status: "cancelled",
-        blockReason: null,
-      });
+  // Fase 5g: sem etapas para cancelar; os marcos do pedido cancelado não
+  // se aplicam mais (`orderMilestones`) e nenhum item é liberado.
   // Sai dos containers e dos fretes em aberto.
   const items = await store.list("container_items", { filter: { orderId } });
   if (items.length) {

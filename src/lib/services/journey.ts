@@ -8,9 +8,9 @@ import {
   type Request,
   type Requirement,
   type ReviewItem,
-  type Stage,
   type StageKey,
 } from "@/lib/db";
+import { stepOfItem, type MilestoneKey } from "@/lib/milestones";
 import { brazilDay } from "@/lib/supplier-terms";
 import { reviewOrderId } from "./control-tower";
 import { isSchemaMissing } from "@/lib/db/errors";
@@ -59,7 +59,7 @@ export const journeyPercent = (step: JourneyStep) =>
 export const stepOfCard = (card: OrderCard | RequestCard): JourneyStep =>
   card === "ordInspectionIssue" ? "ordInspection" : card;
 
-/** Itens das etapas que dividem os passos. */
+/** Itens que dividem os passos. */
 export const JOURNEY_REQUIREMENT_KEYS = [
   "inspection_review",
   "ship_date",
@@ -68,20 +68,65 @@ export const JOURNEY_REQUIREMENT_KEYS = [
   "plate",
 ];
 
+/**
+ * Grupo de quadrados de cada marco (fase 5c): a situação antiga equivalente,
+ * que divide os quadrados do bloco 2 como antes.
+ */
+export const MILESTONE_CARD_STAGE: Record<MilestoneKey, StageKey> = {
+  "new-order": "PREPARATION",
+  certification: "PREPARATION",
+  "art-material": "PREPARATION",
+  art: "PREPARATION",
+  contract: "PACKAGING",
+  "down-payment": "PACKAGING",
+  "pre-production": "INSPECTION",
+  inspection: "INSPECTION",
+  samples: "INSPECTION",
+  production: "INSPECTION",
+  booking: "SHIPPING",
+  loading: "SHIPPING",
+  shipment: "SHIPPING",
+  customs: "CUSTOMS",
+  "invoice-transport": "TRANSPORT",
+  delivery: "DELIVERED",
+};
+
+/**
+ * Grupo de quadrados do pedido pelo marco atual (fase 5g). No Pedido novo, a
+ * situação gravada (derivada dos marcos) ainda separa "Pedido criado" (o
+ * pedido por conferir) da Preparação.
+ */
+export function cardStageOf(
+  current: MilestoneKey | null | undefined,
+  status: string,
+): StageKey | undefined {
+  if (!current) return undefined;
+  if (current === "new-order" && status === "ORDER_CREATED")
+    return "ORDER_CREATED";
+  return MILESTONE_CARD_STAGE[current];
+}
+
+/** Passo do menu dos itens que a viagem olha em cada situação antiga. */
+const CARD_STEP: Partial<Record<StageKey, string>> = {
+  INSPECTION: "production/inspection",
+  SHIPPING: "production/shipment",
+  TRANSPORT: "delivery/logistics",
+};
+
 /** Passos que só acontecem com a carga no porto. */
 const ARRIVAL_STEPS: ImportStep["key"][] = ["cargo_presence", "channel", "di"];
 
 export interface JourneyInput {
   now: Date;
-  /** Etapa em andamento ou bloqueada de cada pedido. */
-  activeStages: Pick<Stage, "orderId" | "status">[];
-  /** Etapas dos pedidos (de que etapa é cada item). */
-  stages: Pick<Stage, "id" | "orderId" | "key">[];
-  /** Itens das etapas com as chaves de JOURNEY_REQUIREMENT_KEYS. */
-  requirements: Pick<
-    Requirement,
-    "orderId" | "stageId" | "key" | "status" | "value"
-  >[];
+  /**
+   * Pedidos com marco travado (fase 5g: a trava da inspeção mora no marco,
+   * `order_milestones.status = "blocked"`).
+   */
+  blocked?: ReadonlySet<string>;
+  /** Itens com as chaves de JOURNEY_REQUIREMENT_KEYS (passo e chave, fase 5g). */
+  requirements: (Pick<Requirement, "orderId" | "key" | "status" | "value"> & {
+    step?: string | null;
+  })[];
   steps: Pick<ImportStep, "orderId" | "key" | "status">[];
   reviews: Pick<ReviewItem, "orderId" | "entity" | "entityId" | "rule">[];
 }
@@ -89,12 +134,7 @@ export interface JourneyInput {
 /** Regras da viagem sobre os dados lidos (função pura). */
 export function journeyIndex(input: JourneyInput) {
   const today = brazilDay(input.now) ?? "";
-  const blocked = new Set(
-    input.activeStages
-      .filter((s) => s.status === "blocked")
-      .map((s) => s.orderId),
-  );
-  const stageKeyById = new Map(input.stages.map((s) => [s.id, s.key]));
+  const blocked = input.blocked ?? new Set<string>();
   const by = <T extends { orderId: string | null }>(rows: T[]) => {
     const map = new Map<string, T[]>();
     for (const row of rows) {
@@ -113,9 +153,11 @@ export function journeyIndex(input: JourneyInput) {
       .map((r) => reviewOrderId(r as ReviewItem))
       .filter((id): id is string => !!id),
   );
+  // Fase 5g: o item pelo passo e pela chave (`eta` existe no Embarque e no
+  // Transporte).
   const req = (orderId: string, key: string, stageKey: StageKey) =>
     (reqsBy.get(orderId) ?? []).find(
-      (r) => r.key === key && stageKeyById.get(r.stageId) === stageKey,
+      (r) => r.key === key && stepOfItem(r) === CARD_STEP[stageKey],
     );
   const reqDone = (orderId: string, key: string, stageKey: StageKey) =>
     req(orderId, key, stageKey)?.status === "done";
@@ -147,7 +189,7 @@ export function journeyIndex(input: JourneyInput) {
         return "ordContract";
       case "INSPECTION": {
         const review = req(o.id, "inspection_review", stageKey);
-        return (o.status === "INSPECTION" && blocked.has(o.id)) ||
+        return blocked.has(o.id) ||
           openInspectionReview.has(o.id) ||
           (review && review.status !== "done")
           ? "ordInspectionIssue"
@@ -185,15 +227,26 @@ export function journeyIndex(input: JourneyInput) {
     r.status === "ORDERED" || r.status === "CANCELLED" ? null : "reqNew";
   /** Passo do pedido: encerrado = 100%; cancelado = onde parou (nulo se não se sabe). */
   const orderStep = (
-    o: Pick<Order, "id" | "status" | "cancelStageKey">,
+    o: Pick<Order, "id" | "status" | "cancelStageKey"> & {
+      cancelMilestoneKey?: string | null;
+    },
+    /** Marco atual (fase 5g); sem ele, a situação gravada (derivada dos marcos). */
+    current?: MilestoneKey | null,
   ): JourneyStep | null => {
     if (o.status === "CLOSED") return "ordClosed";
     if (o.status === "CANCELLED") {
-      const at = o.cancelStageKey ?? null;
+      const byMilestone =
+        o.cancelMilestoneKey && o.cancelMilestoneKey in MILESTONE_CARD_STAGE
+          ? cardStageOf(
+              o.cancelMilestoneKey as MilestoneKey,
+              o.cancelStageKey ?? "",
+            )
+          : null;
+      const at = byMilestone ?? o.cancelStageKey ?? null;
       if (!at) return null;
       return at === "CLOSED" ? "ordClosed" : stepOfCard(orderCard(o, at));
     }
-    return stepOfCard(orderCard(o));
+    return stepOfCard(orderCard(o, cardStageOf(current, o.status)));
   };
 
   const requestStep = (
@@ -225,23 +278,22 @@ export async function loadJourneyInput(
 ): Promise<JourneyInput> {
   const store = getStore();
   const none = <T>() => Promise.resolve([] as T[]);
-  const [activeStages, stages, requirements, steps, reviews] =
+  const [blockedRows, requirements, steps, reviews] =
     // Só as colunas usadas (com milhares de pedidos do Sankhya, as linhas
-    // inteiras de etapas e itens de etapa passavam de 80 MB).
+    // inteiras dos itens passavam de 80 MB).
     await Promise.all([
-      listColumns(store, "stages", ["orderId", "status"], {
-        filter: { status: ["active", "blocked"] },
-      }),
       orderIds.length
-        ? listColumns(store, "stages", ["orderId", "key"], {
-            filter: { orderId: orderIds },
-          })
-        : none<Pick<Stage, "id" | "orderId" | "key">>(),
+        ? safe(
+            listColumns(store, "order_milestones", ["orderId"], {
+              filter: { orderId: orderIds, status: "blocked" },
+            }),
+          )
+        : none<{ orderId: string }>(),
       orderIds.length
         ? listColumns(
             store,
             "requirements",
-            ["orderId", "stageId", "key", "status", "value"],
+            ["orderId", "step", "key", "status", "value"],
             { filter: { orderId: orderIds, key: JOURNEY_REQUIREMENT_KEYS } },
           )
         : none<JourneyInput["requirements"][number]>(),
@@ -260,8 +312,7 @@ export async function loadJourneyInput(
     ]);
   return {
     now,
-    activeStages,
-    stages,
+    blocked: new Set(blockedRows.map((r) => r.orderId)),
     requirements,
     steps,
     reviews,

@@ -122,33 +122,30 @@ describe("parseTerms", () => {
 });
 
 describe("marcos do pedido", () => {
-  it("embarque pela data informada; entrega pelo início da etapa Entregue", () => {
-    const stages = [
-      {
-        id: "s-ship",
-        key: "SHIPPING",
-        status: "done",
-        startedAt: "2026-11-01T10:00:00.000Z",
-        completedAt: "2026-11-20T10:00:00.000Z",
-      },
-      {
-        id: "s-del",
-        key: "DELIVERED",
-        status: "active",
-        startedAt: "2027-01-10T02:00:00.000Z",
-        completedAt: null,
-      },
-    ];
+  it("embarque pela data informada; entrega pela entrega realizada (fase 5g: itens e marcos)", () => {
     const reqs = [
       {
-        stageId: "s-ship",
+        step: "production/shipment",
         key: "ship_date",
         status: "done",
         value: "2026-11-15",
       },
+      {
+        step: "delivery/delivery",
+        key: "delivered",
+        status: "done",
+        value: "ok",
+        submittedAt: "2027-01-10T02:00:00.000Z",
+      },
     ];
     expect(
-      paymentEventsFor({ createdAt: "2026-10-01T15:00:00.000Z" }, stages, reqs),
+      paymentEventsFor({ createdAt: "2026-10-01T15:00:00.000Z" }, reqs, [
+        {
+          key: "shipment",
+          status: "done",
+          completedAt: "2026-11-20T10:00:00.000Z",
+        },
+      ]),
     ).toEqual({
       order_created: "2026-10-01",
       shipped: "2026-11-15",
@@ -157,36 +154,57 @@ describe("marcos do pedido", () => {
     });
   });
 
-  it("sem data de embarque, vale a conclusão da etapa; etapas por vir ficam sem data", () => {
-    const done = paymentEventsFor(
-      { createdAt: "2026-10-01T15:00:00.000Z" },
+  it("sem data de embarque, vale o embarque confirmado (ou o marco concluído); o que não aconteceu fica sem data", () => {
+    const base = { createdAt: "2026-10-01T15:00:00.000Z" };
+    const rejected = {
+      step: "production/shipment",
+      key: "ship_date",
+      status: "rejected",
+      value: "2026-11-01",
+    };
+    const byMilestone = paymentEventsFor(
+      base,
+      [rejected],
       [
         {
-          id: "s",
-          key: "SHIPPING",
+          key: "shipment",
           status: "done",
-          startedAt: null,
           completedAt: "2026-11-20T15:00:00.000Z",
         },
-        {
-          id: "d",
-          key: "DELIVERED",
-          status: "pending",
-          startedAt: null,
-          completedAt: null,
-        },
-      ],
-      [
-        {
-          stageId: "s",
-          key: "ship_date",
-          status: "rejected",
-          value: "2026-11-01",
-        },
+        { key: "delivery", status: "active", completedAt: null },
       ],
     );
-    expect(done.shipped).toBe("2026-11-20");
-    expect(done.delivered).toBeNull();
+    expect(byMilestone.shipped).toBe("2026-11-20");
+    expect(byMilestone.delivered).toBeNull();
+    const byItem = paymentEventsFor(
+      base,
+      [
+        rejected,
+        {
+          key: "shipped",
+          status: "done",
+          value: "ok",
+          submittedAt: "2026-11-18T15:00:00.000Z",
+        },
+      ],
+      [],
+    );
+    expect(byItem.shipped).toBe("2026-11-18");
+    // A previsão de entrega do Transporte (outro passo) não é o embarque.
+    expect(
+      paymentEventsFor(
+        base,
+        [
+          {
+            step: "delivery/logistics",
+            key: "ship_date",
+            status: "done",
+            value: "2026-12-01",
+          },
+        ],
+        [],
+      ).shipped,
+    ).toBeNull();
   });
 
   it("soma dias atravessando mês e ano", () => {

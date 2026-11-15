@@ -446,7 +446,7 @@ export async function loadPurchaseHistory(
   const full = await listByIds(store, "orders", ids);
   const byId = new Map(full.map((o) => [o.id, o]));
   const imported = full.filter((o) => !!o.sankhyaCode).map((o) => o.id);
-  const [items, stages, requests] = await Promise.all([
+  const [items, confirmed, requests] = await Promise.all([
     listColumns(
       store,
       "order_items",
@@ -463,14 +463,19 @@ export async function loadPurchaseHistory(
       { filter: { orderId: ids }, jsonKeys: { sankhyaRefs: ["CODPROD"] } },
     ),
     // A carga do Sankhya não grava a data do pedido lá (DTNEG) no pedido:
-    // ela fica no fim da etapa "Pedido criado" quando a nota já passou dela.
+    // ela fica na conclusão de "Pedido conferido" quando a nota já passou
+    // dele (fase 5g: pelo item, no lugar do fim da etapa "Pedido criado").
     imported.length
       ? listColumns(
           store,
-          "stages",
-          ["orderId", "key", "status", "completedAt"],
+          "requirements",
+          ["orderId", "key", "status", "submittedAt"],
           {
-            filter: { orderId: imported, key: "ORDER_CREATED" },
+            filter: {
+              orderId: imported,
+              key: "order_confirmed",
+              status: "done",
+            },
           },
         )
       : Promise.resolve([]),
@@ -516,9 +521,9 @@ export async function loadPurchaseHistory(
   const productById = new Map(products.map((p) => [p.id, p]));
   const requestById = new Map(requests.map((r) => [r.id, r]));
   const erpDate = new Map(
-    stages
-      .filter((s) => s.status === "done" && s.completedAt)
-      .map((s) => [s.orderId, s.completedAt as string]),
+    confirmed
+      .filter((r) => r.status === "done" && r.submittedAt)
+      .map((r) => [r.orderId, r.submittedAt as string]),
   );
   const itemsOf = (orderId: string) =>
     items.filter((i) => i.orderId === orderId);

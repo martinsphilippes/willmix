@@ -4,7 +4,7 @@ import {
   ORDER_PART_PARALLEL,
   ORDER_PART_STAGE,
   documentPart,
-  orderPartsByStage,
+  orderPartsByGroup,
   plainPart,
   sheetPart,
   stepsPart,
@@ -69,7 +69,7 @@ describe("partes do pedido na tabela de etapas", () => {
   });
 
   it("agrupa por etapa na ordem do negócio e ignora o que o login não vê", () => {
-    const map = orderPartsByStage([
+    const map = orderPartsByGroup([
       plainPart("production", "active", "#production"),
       null,
       plainPart("artwork", "pending", "#artwork"),
@@ -86,23 +86,19 @@ describe("partes do pedido na tabela de etapas", () => {
   });
 
   it("ordem nova: a certificação corre desde Pedido criado e o documento do pedido vem depois da arte, antes da produção", () => {
-    const stages = [
-      { id: "s1", key: "ORDER_CREATED" },
-      { id: "s3", key: "PACKAGING" },
-    ];
     const reqs = [
-      { key: "order_sign_send", status: "pending", stageId: "s3" },
-      { key: "order_signed_wellmix", status: "pending", stageId: "s3" },
-      { key: "order_signed_supplier", status: "pending", stageId: "s3" },
+      { key: "order_sign_send", status: "pending" },
+      { key: "order_signed_wellmix", status: "pending" },
+      { key: "order_signed_supplier", status: "pending" },
     ];
-    const document = documentPart(reqs, "/doc", stages)!;
+    const document = documentPart(reqs, "/doc")!;
     // Antes do "Enviar para assinatura" a parte ainda não começou.
     expect([document.state, document.done, document.total]).toEqual([
       "pending",
       0,
       2,
     ]);
-    const map = orderPartsByStage([
+    const map = orderPartsByGroup([
       stepsPart("certification", [{ done: false, started: false }], "#c"),
       document,
       sheetPart({ missing: 1, started: false }, "/s", null),
@@ -120,36 +116,27 @@ describe("partes do pedido na tabela de etapas", () => {
     ]);
     // Enviado para assinatura: a parte fica em andamento.
     expect(
-      documentPart(
-        [{ ...reqs[0], status: "done" }, reqs[1], reqs[2]],
-        "/doc",
-        stages,
-      )!.state,
+      documentPart([{ ...reqs[0], status: "done" }, reqs[1], reqs[2]], "/doc")!
+        .state,
     ).toBe("active");
   });
 
-  it("pedido de antes da ordem nova: o documento continua logo abaixo de Pedido criado, antes da certificação", () => {
-    const stages = [
-      { id: "s1", key: "ORDER_CREATED" },
-      { id: "s2", key: "PREPARATION" },
-    ];
-    const map = orderPartsByStage([
+  it("fase 5g: o documento fica sempre no grupo do contrato (as assinaturas são do marco Contrato)", () => {
+    const map = orderPartsByGroup([
       stepsPart("certification", [{ done: false, started: false }], "#c"),
       documentPart(
         [
-          { key: "order_signed_wellmix", status: "pending", stageId: "s1" },
-          { key: "order_signed_supplier", status: "pending", stageId: "s2" },
+          { key: "order_signed_wellmix", status: "pending" },
+          { key: "order_signed_supplier", status: "pending" },
         ],
         "/doc",
-        stages,
       ),
       sheetPart({ missing: 1, started: false }, "/s", null),
     ]);
     expect(map.get("ORDER_CREATED")?.map((p) => p.key)).toEqual([
-      "document",
       "certification",
     ]);
     expect(map.get("PREPARATION")?.map((p) => p.key)).toEqual(["sheet"]);
-    expect(map.has("PACKAGING")).toBe(false);
+    expect(map.get("PACKAGING")?.map((p) => p.key)).toEqual(["document"]);
   });
 });

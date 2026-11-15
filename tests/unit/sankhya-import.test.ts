@@ -222,19 +222,17 @@ describe("carga da amostra do Sankhya", () => {
         ["PRATO RASO", 600, 2],
       ]),
     );
-    const stages = (
-      await store.list("stages", { filter: { orderId: order!.id } })
-    ).sort((a, b) => a.sequence - b.sequence);
-    const byKey = Object.fromEntries(stages.map((s) => [s.key, s.status]));
-    expect(byKey).toMatchObject({
-      ORDER_CREATED: "done",
-      SHIPPING: "done",
-      CUSTOMS: "active",
-      TRANSPORT: "pending",
-    });
-    expect(order!.currentStageId).toBe(
-      stages.find((s) => s.key === "CUSTOMS")!.id,
-    );
+    // Fase 5g: sem etapas; os grupos de itens pelos marcos (antes da TOP
+    // concluídos, o da TOP em andamento).
+    const { groupOf } = await import("./helpers/groups");
+    expect((await groupOf(order!.id, "ORDER_CREATED")).status).toBe("done");
+    expect((await groupOf(order!.id, "SHIPPING")).status).toBe("done");
+    expect((await groupOf(order!.id, "CUSTOMS")).status).toBe("active");
+    expect((await groupOf(order!.id, "TRANSPORT")).status).toBe("pending");
+    expect(
+      await store.list("stages", { filter: { orderId: order!.id } }),
+    ).toEqual([]);
+    expect(order!.currentStageId ?? null).toBeNull();
     const request = await store.get("requests", order!.requestId);
     expect(request).toMatchObject({ status: "ORDERED", orderId: order!.id });
     // Fase 5d (advanceMilestones): TOP → marco (1107 → Desembaraço). Os
@@ -284,10 +282,12 @@ describe("carga da amostra do Sankhya", () => {
     // TOP 1403 (FINALIZADO) → pedido encerrado, tudo concluído.
     const closed = await store.get("orders", of("orders", "899").id!);
     expect(closed?.closedAt).toBeTruthy();
-    const closedStages = await store.list("stages", {
-      filter: { orderId: closed!.id },
-    });
-    expect(closedStages.every((s) => s.status === "done")).toBe(true);
+    expect(closed?.status).toBe("CLOSED");
+    expect(
+      (
+        await store.list("requirements", { filter: { orderId: closed!.id } })
+      ).every((r) => r.status === "done"),
+    ).toBe(true);
 
     // TOP 1002 (cotação) não vira pedido; o título dela também fica de fora.
     expect(of("orders", "898")).toMatchObject({ outcome: "skipped" });
@@ -328,9 +328,8 @@ describe("carga da amostra do Sankhya", () => {
   });
 
   it("produto de grupo interno (material de consumo, folha...) entra inativo", async () => {
-    const { isInternalGroup } = await import(
-      "@/lib/integrations/sankhya-mapping"
-    );
+    const { isInternalGroup } =
+      await import("@/lib/integrations/sankhya-mapping");
     expect(isInternalGroup(910101001)).toBe(true);
     expect(isInternalGroup("900101001")).toBe(true);
     // Mercadoria: grupos de 8 dígitos 901... (limpeza) e amostras 920...

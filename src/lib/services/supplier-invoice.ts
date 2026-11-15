@@ -4,7 +4,7 @@ import { holdersOf } from "@/lib/auth/function-access";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
 import { getStore, type Order, type User } from "@/lib/db";
 import { getSettings, setSetting } from "@/lib/settings";
-import { isPurchaseFlow } from "@/lib/workflow/stages";
+import { isPurchaseFlow } from "@/lib/workflow/templates";
 import { audit } from "./audit";
 import { isFinance } from "./import-flow";
 import { notify } from "./notifications";

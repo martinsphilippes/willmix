@@ -143,11 +143,6 @@ export async function towerScenario(now: Date) {
   const store = getStore();
   await enrich(b);
   await store.update("orders", a.id, { flow: "supplier_request" });
-  const [stage] = await store.list("stages", {
-    filter: { orderId: a.id, status: ["active", "blocked"] },
-    limit: 1,
-  });
-  if (stage) await store.update("stages", stage.id, { dueAt: day(-3) });
   // Fase 5e: o prazo vencido é o dos marcos em andamento.
   for (const row of await store.list("order_milestones", {
     filter: { orderId: a.id, status: ["active", "blocked"] },

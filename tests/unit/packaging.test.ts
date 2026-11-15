@@ -1,11 +1,13 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { groupItems, groupOf } from "./helpers/groups";
 import { translator } from "@/i18n";
 import { completeOrderDocument, withTempStore } from "./setup";
 
 /*
  * Arte e embalagem: a agência (ou a Wellmix, sem agência) faz e envia a arte;
- * o fornecedor confere e aprova para produzir. Pedidos de antes da inversão
- * passam para o fluxo novo.
+ * o fornecedor confere e aprova para produzir. Fase 5g: designar ou trocar
+ * a agência passa a arte ainda não enviada para quem faz a arte agora (a
+ * passada dos pedidos de antes da inversão saiu com as etapas).
  */
 withTempStore();
 
@@ -15,8 +17,7 @@ const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const { submitRequirement, decideRequirement } =
   await import("@/lib/workflow/engine");
-const { normalizePackaging, normalizePackagingStage } =
-  await import("@/lib/services/packaging");
+const { reassignOrderArt } = await import("@/lib/services/packaging");
 const { pendingTasksFor } = await import("@/lib/services/tasks");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
@@ -44,13 +45,10 @@ async function inPackaging(): Promise<Order> {
     downPaymentAmount: 300,
   });
   for (const key of ["ORDER_CREATED", "PREPARATION"]) {
-    const [stage] = await store.list("stages", {
-      filter: { orderId: order.id, key: key as never },
-    });
-    for (const req of await store.list("requirements", {
-      filter: { stageId: stage.id, status: "pending" },
-    }))
-      if ((await store.get("stages", stage.id))?.status === "active")
+    for (const req of (await groupItems(order.id, key)).filter(
+      (r) => r.status === "pending",
+    ))
+      if ((await groupOf(order.id, key)).status === "active")
         await submitRequirement(admin, req.id, { value: "1", signature: true });
   }
   const fresh = (await store.get("orders", order.id))!;
@@ -59,13 +57,8 @@ async function inPackaging(): Promise<Order> {
 }
 
 async function packagingReqs(orderId: string) {
-  const store = getStore();
-  const [pack] = await store.list("stages", {
-    filter: { orderId, key: "PACKAGING" },
-  });
-  const reqs = await store.list("requirements", {
-    filter: { stageId: pack.id },
-  });
+  const pack = await groupOf(orderId, "PACKAGING");
+  const reqs = await groupItems(orderId, "PACKAGING");
   return {
     pack,
     art: reqs.find((x) => x.key === "art")!,
@@ -171,55 +164,16 @@ describe("arte e embalagem", () => {
     const store = getStore();
     const order = await inPackaging();
     await store.update("orders", order.id, { agencyId: null });
-    const { pack, art } = await packagingReqs(order.id);
-    expect(await normalizePackagingStage(pack.id)).toBe(true);
+    const { art } = await packagingReqs(order.id);
+    expect(await reassignOrderArt(order.id)).toBe(true);
     expect((await store.get("requirements", art.id))!.role).toBe("operator");
     // Idempotente.
-    expect(await normalizePackagingStage(pack.id)).toBe(false);
+    expect(await reassignOrderArt(order.id)).toBe(false);
 
-    // Mudar a configuração ou passar a passada automática não tira a arte de
-    // quem a tem; designar a agência no pedido (reassign) passa para ela.
+    // Designar a agência no pedido passa a arte ainda não enviada para ela.
     await store.update("orders", order.id, { agencyId: "agencia" });
-    expect(await normalizePackagingStage(pack.id)).toBe(false);
-    expect(await normalizePackagingStage(pack.id, { reassign: true })).toBe(
-      true,
-    );
+    expect(await reassignOrderArt(order.id)).toBe(true);
     expect((await store.get("requirements", art.id))!.role).toBe("agency");
-  });
-
-  it("pedido de antes da inversão passa para o fluxo novo (inclusive aprovação concluída sem arte)", async () => {
-    const store = getStore();
-    const order = await inPackaging();
-    const { pack, art, approval } = await packagingReqs(order.id);
-    // Como era: arte do fornecedor; aprovação da agência "concluída" sem arte.
-    await store.update("requirements", art.id, { role: "supplier" });
-    await store.update("requirements", approval.id, {
-      role: "agency",
-      label: "Aprovação da arte pela agência",
-      status: "done",
-      value: "approved",
-      submittedByUserId: admin.id,
-      submittedAt: new Date().toISOString(),
-    });
-    // Outro pedido antigo sem a aprovação (sem agência quando nasceu).
-    const other = await inPackaging();
-    const otherReqs = await packagingReqs(other.id);
-    await store.update("requirements", otherReqs.art.id, { role: "supplier" });
-    await store.remove("requirements", otherReqs.approval.id);
-
-    expect(await normalizePackaging(undefined, { force: true })).toBe(2);
-    const fixedArt = (await store.get("requirements", art.id))!;
-    const fixedApproval = (await store.get("requirements", approval.id))!;
-    expect(fixedArt.role).toBe("agency");
-    expect(fixedApproval.role).toBe("supplier");
-    expect(fixedApproval.status).toBe("pending");
-    expect(fixedApproval.label).toBe("Aprovação da arte pelo fornecedor");
-    expect((await store.get("stages", pack.id))!.status).toBe("active");
-    const created = (await packagingReqs(other.id)).approval;
-    expect(created.role).toBe("supplier");
-    expect(created.status).toBe("pending");
-    // Nada mais a ajustar.
-    expect(await normalizePackaging(undefined, { force: true })).toBe(0);
   });
 });
 
@@ -300,31 +254,6 @@ describe("arte e embalagem: correções da revisão", () => {
     expect(kept.value).toBe("approved");
   });
 
-  it("aprovação duplicada (duas passadas ao mesmo tempo) fica uma só", async () => {
-    const store = getStore();
-    const order = await inPackaging();
-    const { pack, approval } = await packagingReqs(order.id);
-    await store.create("requirements", {
-      ...approval,
-      id: undefined,
-    } as never);
-    expect(
-      (
-        await store.list("requirements", {
-          filter: { stageId: pack.id, key: "art_approval" },
-        })
-      ).length,
-    ).toBe(2);
-    expect(await normalizePackagingStage(pack.id)).toBe(true);
-    expect(
-      (
-        await store.list("requirements", {
-          filter: { stageId: pack.id, key: "art_approval" },
-        })
-      ).length,
-    ).toBe(1);
-  });
-
   it("pedido antigo mostra 'aprovação pela agência' no histórico; o novo, 'pelo fornecedor'", async () => {
     const { requirementLabel } = await import("@/i18n");
     const { dictionaries } = await import("@/i18n/dictionaries");
@@ -350,17 +279,14 @@ describe("arte e embalagem: correções da revisão", () => {
     const store = getStore();
     const order = await inPackaging();
     await store.update("orders", order.id, { agencyId: null });
-    const { pack } = await packagingReqs(order.id);
-    await normalizePackagingStage(pack.id); // arte vai para a Wellmix
+    await reassignOrderArt(order.id); // arte vai para a Wellmix
     await store.update("orders", order.id, { agencyId: "agencia" });
     const before = (
       await store.list("notifications", {
         filter: { userId: agency.id, channel: "inapp" },
       })
     ).length;
-    expect(await normalizePackagingStage(pack.id, { reassign: true })).toBe(
-      true,
-    );
+    expect(await reassignOrderArt(order.id)).toBe(true);
     const after = await store.list("notifications", {
       filter: { userId: agency.id, channel: "inapp" },
     });

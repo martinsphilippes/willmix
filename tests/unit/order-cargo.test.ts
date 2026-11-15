@@ -10,7 +10,7 @@ withTempStore();
 
 const { getStore, ORDER_EXTRA_DEFAULTS } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
-const { createStagesForOrder } = await import("@/lib/workflow/engine");
+const { createOrderRequirements } = await import("@/lib/workflow/engine");
 const { cargoViewForOrder } = await import("@/lib/services/order-cargo");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
@@ -64,7 +64,7 @@ describe("carga e entrega do transportador", () => {
       closedAt: null,
       notes: null,
     } as never)) as Order;
-    await createStagesForOrder(order);
+    await createOrderRequirements(order);
     await store.create("order_items", {
       orderId: order.id,
       productId: null,
@@ -88,15 +88,16 @@ describe("carga e entrega do transportador", () => {
       phone: "(47) 99999-0000",
       contactName: "João",
     });
-    const stages = await store.list("stages", {
-      filter: { orderId: order.id },
-    });
     const reqs = await store.list("requirements", {
       filter: { orderId: order.id },
     });
+    // Fase 5g: o item pelo passo e pela chave.
+    const STEP: Record<string, string> = {
+      SHIPPING: "production/shipment",
+      CUSTOMS: "delivery/cargo-presence",
+    };
     const done = async (stageKey: string, key: string, value: string) => {
-      const stage = stages.find((s) => s.key === stageKey)!;
-      const r = reqs.find((x) => x.stageId === stage.id && x.key === key)!;
+      const r = reqs.find((x) => x.step === STEP[stageKey] && x.key === key)!;
       await store.update("requirements", r.id, {
         status: "done",
         value,
@@ -115,7 +116,6 @@ describe("carga e entrega do transportador", () => {
     const load = async (user: User) =>
       cargoViewForOrder(user, order, {
         items,
-        stages,
         requirements: await store.list("requirements", {
           filter: { orderId: order.id },
         }),

@@ -14,8 +14,12 @@ import type { TableName } from "./schema";
 
 /** Tabelas com `orderId` que entram no resumo do pedido. */
 const ORDER_TABLES = new Set<TableName>([
+  // Legado (fase 5g: nada grava mais etapas; fica até a tabela sair, 5f).
   "stages",
   "requirements",
+  // Fase 5g: prazos, trava e datas dos marcos entram no resumo (a gravação
+  // em lote de `syncMilestones` avisa à parte, `noteMilestoneWrite`).
+  "order_milestones",
   "order_items",
   "payments",
   "import_steps",

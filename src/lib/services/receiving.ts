@@ -1,4 +1,9 @@
 import "server-only";
+import {
+  milestoneReached,
+  type MilestoneKey,
+  type MilestoneProgressLike,
+} from "@/lib/milestones";
 import { holdersOf } from "@/lib/auth/function-access";
 import { loadFunctionDefs } from "./team-functions";
 
@@ -30,13 +35,18 @@ import { isSchemaMissing } from "@/lib/db/errors";
 
 export class ReceivingError extends Error {}
 
-/** O recebimento aparece do desembaraço em diante. */
-export const RECEIVING_STATUSES = [
-  "CUSTOMS",
-  "TRANSPORT",
-  "DELIVERED",
-  "CLOSED",
-] as const;
+/** Marco a partir do qual o recebimento aparece (o Desembaraço em diante). */
+export const RECEIVING_FROM: MilestoneKey = "customs";
+
+/**
+ * O recebimento aparece do Desembaraço em diante (fase 5g: pelos marcos do
+ * pedido, `milestoneReached`; encerrado também), no lugar das situações
+ * antigas.
+ */
+export const receivingApplies = (
+  order: { status: string },
+  milestones: readonly MilestoneProgressLike[] | null | undefined,
+) => milestoneReached(order, milestones, RECEIVING_FROM);
 
 export async function getReceiving(orderId: string): Promise<Receiving | null> {
   try {

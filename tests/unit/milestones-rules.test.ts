@@ -407,7 +407,7 @@ describe("Control Tower pelos marcos", () => {
       orders,
       partyName: () => "Cliente",
       productOf: () => "Produto",
-      stageOf: () => undefined,
+      responsibleOf: () => null,
       milestonesOf: (id) => (id === "o10" ? m10 : undefined),
       requests: [],
       penalties: [],

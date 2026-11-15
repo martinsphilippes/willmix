@@ -14,8 +14,6 @@ const NOW = new Date("2026-11-08T15:00:00Z");
 const input = (over: Partial<JourneyInput> = {}): JourneyInput =>
   ({
     now: NOW,
-    activeStages: [],
-    stages: [],
     requirements: [],
     steps: [],
     reviews: [],
@@ -51,17 +49,14 @@ describe("passo de cada pedido e solicitação", () => {
     ({ id, status, cancelStageKey: cancelStageKey ?? null }) as never;
 
   it("encerrado no fim; cancelado mostra onde parou; inspeção com problema é o passo da inspeção", () => {
+    // Fase 5g: a trava pelo marco; o item pelo passo e pela chave.
     const j = journeyIndex(
       input({
-        activeStages: [{ orderId: "insp", status: "blocked" }],
-        stages: [
-          { id: "s-ship", orderId: "gone", key: "SHIPPING" },
-          { id: "s-eta", orderId: "port", key: "SHIPPING" },
-        ],
+        blocked: new Set(["insp"]),
         requirements: [
           {
             orderId: "port",
-            stageId: "s-eta",
+            step: "production/shipment",
             key: "eta",
             status: "done",
             value: "2026-11-05",
@@ -81,6 +76,13 @@ describe("passo de cada pedido e solicitação", () => {
     expect(j.orderStep(order("old", "CANCELLED"))).toBeNull();
     expect(j.orderStep(order("insp", "INSPECTION"))).toBe("ordInspection");
     expect(j.orderCard(order("insp", "INSPECTION"))).toBe("ordInspectionIssue");
+    // Pelo marco atual (fase 5g): o quadrado do grupo do marco.
+    expect(j.orderStep(order("prep", "PREPARATION"), "contract")).toBe(
+      "ordContract",
+    );
+    expect(j.orderStep(order("x", "PREPARATION"), "inspection")).toBe(
+      "ordInspection",
+    );
     // Previsão de chegada (no Embarque) já passou: está no porto.
     expect(j.orderStep(order("port", "CUSTOMS"))).toBe("ordPort");
   });

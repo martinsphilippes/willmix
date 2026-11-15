@@ -41,17 +41,24 @@ async function heldOrder() {
   });
   const order = await orderFromRequest(admin, request);
   const store = getStore();
-  const stages = await store.list("stages", { filter: { orderId: order.id } });
+  // Fase 5g: sem etapas; os marcos do pedido em espera ficam marcados como
+  // ele (a carga do Sankhya grava assim), um deles vencido.
+  const stages = await store.list("order_milestones", {
+    filter: { orderId: order.id },
+  });
   const reqs = await store.list("requirements", {
     filter: { orderId: order.id },
   });
   const overdue = new Date(Date.now() - 3 * 86_400_000).toISOString();
   for (const s of stages)
-    await store.update("stages", s.id, {
+    await store.update("order_milestones", s.id, {
       held: true,
-      ...(s.status === "active" ? { dueAt: overdue, reminderSentAt: null } : {}),
+      ...(s.status === "active"
+        ? { dueAt: overdue, reminderSentAt: null }
+        : {}),
     });
-  for (const q of reqs) await store.update("requirements", q.id, { held: true });
+  for (const q of reqs)
+    await store.update("requirements", q.id, { held: true });
   await store.update("orders", order.id, { held: true });
   return { order, stages, reqs };
 }
@@ -75,7 +82,7 @@ describe("histórico em espera", () => {
   it("some das listas gerais e não gera lembrete; o pedido continua inteiro", async () => {
     const { order, stages, reqs } = await heldOrder();
     const store = getStore();
-    const active = await store.list("stages", {
+    const active = await store.list("order_milestones", {
       filter: { status: ["active", "blocked"] },
     });
     expect(active.some((s) => s.orderId === order.id)).toBe(false);
@@ -85,7 +92,7 @@ describe("histórico em espera", () => {
     expect(pending.some((q) => q.orderId === order.id)).toBe(false);
     // O pedido, por ele mesmo, segue igual.
     expect(
-      await store.list("stages", { filter: { orderId: order.id } }),
+      await store.list("order_milestones", { filter: { orderId: order.id } }),
     ).toHaveLength(stages.length);
     expect(
       await store.list("requirements", { filter: { orderId: order.id } }),

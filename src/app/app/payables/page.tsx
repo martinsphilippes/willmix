@@ -8,7 +8,6 @@ import type { InstallmentStatus } from "@/lib/supplier-terms";
 import {
   listPayables,
   payableRows,
-  releaseOffFlowStages,
   type PayableRow,
 } from "@/lib/services/supplier-terms";
 import {
@@ -112,8 +111,6 @@ export default async function PayablesPage({
       ? params.supplier
       : null;
 
-  // Pedidos antigos parados na etapa de pagamento seguem o fluxo.
-  await releaseOffFlowStages();
   const payables = await listPayables();
   const all = payableRows(payables);
   const suppliers = [

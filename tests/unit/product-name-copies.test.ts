@@ -14,10 +14,10 @@ const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const { ORDER_EXTRA_DEFAULTS, PRODUCT_EXTRA_DEFAULTS, REQUEST_EXTRA_DEFAULTS } =
   await import("@/lib/db/schema");
-const { createStagesForOrder } = await import("@/lib/workflow/engine");
+const { createOrderRequirements } = await import("@/lib/workflow/engine");
 const { fillProductNameCopies } =
   await import("@/lib/services/product-name-copies");
-const { ORDER_SIGNED_WELLMIX } = await import("@/lib/workflow/stages");
+const { ORDER_SIGNED_WELLMIX } = await import("@/lib/workflow/templates");
 type User = import("@/lib/db").User;
 
 const XPTO = "Produto novo XPTO";
@@ -98,7 +98,7 @@ async function purchaseOrder(productId: string, itemName: string) {
     unit: "pcs",
     unitPrice: 1,
   });
-  await createStagesForOrder(order);
+  await createOrderRequirements(order);
   return { order, item, request };
 }
 

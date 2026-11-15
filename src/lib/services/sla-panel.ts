@@ -13,12 +13,7 @@ import {
 } from "@/lib/db";
 import { WELLMIX_ROLES, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { ForbiddenError } from "@/lib/auth/permissions";
-import { isOffFlowStage } from "@/lib/workflow/stages";
-import {
-  MILESTONE_KEYS,
-  MILESTONE_STAGES,
-  type MilestoneKey,
-} from "@/lib/milestones";
+import { MILESTONE_KEYS, type MilestoneKey } from "@/lib/milestones";
 import { isOrderOpen } from "@/lib/order-status";
 import {
   milestonePendingKey,
@@ -103,7 +98,7 @@ export interface SlaPerson {
  * indicador "no prazo". Desde a fase 5c, de `order_milestones` (prazo e
  * conclusão gravados); antes era a etapa.
  */
-export interface SlaStage {
+export interface SlaDoneRow {
   orderId: string;
   orderNumber: number;
   link: string;
@@ -131,7 +126,7 @@ export interface SlaBoard {
   totals: SlaCounts;
   onTime: { done: number; total: number };
   /** As etapas por trás de `onTime` (mais recentes primeiro), para a tabela do cartão. */
-  recentStages: SlaStage[];
+  recentDone: SlaDoneRow[];
   /** O login tem equipe (ou é admin): mostra a tabela da equipe. */
   manages: boolean;
   /**
@@ -151,7 +146,7 @@ export interface SlaMilestoneRow {
 /** Agrupa pendências e etapas concluídas pelo marco (ordem dos 16). */
 export function groupByMilestone(
   items: readonly Pick<SlaItem, "milestone" | "source" | "due">[],
-  stages: readonly Pick<SlaStage, "milestone" | "onTime">[],
+  done: readonly Pick<SlaDoneRow, "milestone" | "onTime">[],
 ): SlaMilestoneRow[] {
   const rows = new Map<MilestoneKey | null, SlaMilestoneRow>();
   const row = (milestone: MilestoneKey | null) => {
@@ -167,7 +162,7 @@ export function groupByMilestone(
     return found;
   };
   for (const i of items) addTo(row(i.milestone).counts, i as SlaItem);
-  for (const st of stages) {
+  for (const st of done) {
     const r = row(st.milestone);
     r.onTime.total++;
     if (st.onTime) r.onTime.done++;
@@ -247,7 +242,7 @@ export async function slaBoardFor(
   const admin = isAdmin(viewer);
   const manages = admin || visible.size > 1;
 
-  const [tasks, partnerItems, recentStages] = await Promise.all([
+  const [tasks, partnerItems, recentDone] = await Promise.all([
     // Equipe: as pendências de certificação e artes de qualquer login da
     // Wellmix, cada uma com quem a recebeu como dono (acompanhamento).
     pendingTasksFor(viewer, { team: true }),
@@ -304,7 +299,7 @@ export async function slaBoardFor(
 
   // Marcos concluídos nos últimos 30 dias (com prazo): no prazo ou não.
   const since = new Date(now.getTime() - 30 * 86_400_000).toISOString();
-  const doneStages = recentStages.filter(
+  const doneStages = recentDone.filter(
     (s) =>
       !!s.completedAt &&
       !!s.dueAt &&
@@ -379,7 +374,7 @@ export async function slaBoardFor(
     pick === ALL
       ? (o: string) => visible.has(o) || (admin && o === UNASSIGNED)
       : match;
-  const stageRows: SlaStage[] = doneStages
+  const stageRows: SlaDoneRow[] = doneStages
     .filter((s) => onTimeMatch(stageOwner.get(s.id)!))
     .map((s) => {
       const order = orders.find((o) => o.id === s.orderId);
@@ -406,7 +401,7 @@ export async function slaBoardFor(
     items,
     totals: countsFor(match),
     onTime: onTimeFor(onTimeMatch),
-    recentStages: stageRows,
+    recentDone: stageRows,
     manages,
     byMilestone: groupByMilestone(items, stageRows),
   };
@@ -558,31 +553,33 @@ async function partnerDelays(
 const SLA_DONE_KEY = "sla.done";
 /**
  * Formato do indicador. 2 (fase 5c): os marcos concluídos com prazo
- * (`order_milestones`), no lugar das etapas.
+ * (`order_milestones`), no lugar das etapas. 3 (fase 5g): a lista no campo
+ * `done` (antes `stages`).
  */
-const SLA_DONE_VERSION = 2;
+const SLA_DONE_VERSION = 3;
 const WINDOW_MS = 30 * 86_400_000;
 
 /** Marco concluído com prazo (a chave é a do marco). */
-type DoneStage = Pick<
+type DoneRow = Pick<
   OrderMilestone,
   "id" | "orderId" | "key" | "dueAt" | "completedAt"
 >;
 
 /**
- * Marco fora do fluxo (só etapas fora do fluxo por trás, ex.: o pagamento ao
- * fornecedor, que tem Contas a pagar): não conta prazo, como a etapa antes.
+ * Marco fora do fluxo (o Sinal, que só tinha por trás a etapa antiga do
+ * pagamento ao fornecedor, cobrado em Contas a pagar): não conta prazo, como
+ * a etapa antes (fase 5g: a regra fica no marco).
  */
-export function isOffFlowMilestone(key: string): boolean {
-  const stages = MILESTONE_STAGES[key as MilestoneKey] ?? [];
-  return stages.length > 0 && stages.every((s) => isOffFlowStage(s));
-}
+const OFF_FLOW_MILESTONES: readonly string[] = ["down-payment"];
+
+export const isOffFlowMilestone = (key: string): boolean =>
+  OFF_FLOW_MILESTONES.includes(key);
 
 interface SlaDone {
   version: number;
   computedAt: string;
   validUntil: string | null;
-  stages: DoneStage[];
+  done: DoneRow[];
 }
 
 /**
@@ -597,23 +594,23 @@ export async function rebuildSlaDone(now: Date = new Date()): Promise<SlaDone> {
     "order_milestones",
     ["orderId", "key", "dueAt", "completedAt"],
     { filter: { status: "done" } },
-  ).catch(() => [] as DoneStage[]);
+  ).catch(() => [] as DoneRow[]);
   const since = new Date(now.getTime() - WINDOW_MS).toISOString();
-  const stages = rows.filter(
+  const done = rows.filter(
     (s) =>
       !!s.completedAt &&
       !!s.dueAt &&
       s.completedAt >= since &&
       !isOffFlowMilestone(s.key),
   );
-  const leaves = stages.map((s) => Date.parse(s.completedAt!) + WINDOW_MS);
+  const leaves = done.map((s) => Date.parse(s.completedAt!) + WINDOW_MS);
   const snapshot: SlaDone = {
     version: SLA_DONE_VERSION,
     computedAt: now.toISOString(),
     validUntil: leaves.length
       ? new Date(Math.min(...leaves)).toISOString()
       : null,
-    stages: stages.map((s) => ({
+    done: done.map((s) => ({
       id: s.id,
       orderId: s.orderId,
       key: s.key,
@@ -645,7 +642,7 @@ export async function rebuildSlaDone(now: Date = new Date()): Promise<SlaDone> {
 }
 
 /** Os marcos concluídos com prazo dos últimos 30 dias (indicador pronto). */
-async function readSlaDone(now: Date): Promise<DoneStage[]> {
+async function readSlaDone(now: Date): Promise<DoneRow[]> {
   const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
   await flushSummaryChanges();
   const row = await getStore()
@@ -657,6 +654,6 @@ async function readSlaDone(now: Date): Promise<DoneStage[]> {
     data.version === SLA_DONE_VERSION &&
     (!data.validUntil || Date.parse(data.validUntil) > now.getTime())
   )
-    return data.stages;
-  return (await rebuildSlaDone(now)).stages;
+    return data.done;
+  return (await rebuildSlaDone(now)).done;
 }

@@ -30,7 +30,6 @@ const { loadRoutingContext, internalRoute } =
 const { sheetProgress } = await import("@/lib/services/purchase-sheet");
 const { uploadDocument } = await import("@/lib/services/documents");
 const { ORDER_PART_KEYS, ORDER_PART_STAGE } = await import("@/lib/order-parts");
-const { isOffFlowStage } = await import("@/lib/workflow/stages");
 const { baseKeyOf } = await import("@/lib/purchase-lanes");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
@@ -186,19 +185,25 @@ async function submit(
 async function timelineOf(user: User, orderId: string) {
   const store = getStore();
   const order = (await store.get("orders", orderId))!;
-  const stages = (await store.list("stages", { filter: { orderId } }))
-    .filter((s) => !isOffFlowStage(s.key))
-    .sort((a, b) => a.sequence - b.sequence);
   const requirements = await store.list("requirements", {
     filter: { orderId },
   });
+  // Fase 5g: os grupos de itens no lugar das etapas (como a tela do pedido).
+  const { itemGroupsOf } = await import("@/lib/order-groups");
+  const { orderRelease } = await import("@/lib/services/order-milestones");
+  const stages = itemGroupsOf(
+    order,
+    requirements,
+    (await orderRelease(orderId))?.release.states ?? new Map(),
+    await store.list("order_milestones", { filter: { orderId } }),
+  ).filter((s) => s.key !== "SUPPLIER_PAYMENT");
   const sheet = await sheetProgress(order);
   const artwork = art.canFixArt(user, order)
     ? await art.artworkView(user, order)
     : null;
   const mine = await tl.myOrderTimeline(user, {
     order,
-    stages,
+    groups: stages,
     requirements,
     certSteps: await f.importFlowView(user, order, "certification"),
     importSteps: await f.importFlowView(user, order),
@@ -554,7 +559,7 @@ describe("contagem da etapa", () => {
   it("as assinaturas do documento do pedido contam uma vez, na etapa", () => {
     const row = tl.myStageRow(
       {
-        stages: new Map([["s1", { open: [sign], later: [], done: 1 }]]),
+        groups: new Map([["s1", { open: [sign], later: [], done: 1 }]]),
         parts: { document: { open: 1, later: 0, done: 0, mirror: true } },
       },
       stage,
@@ -572,7 +577,7 @@ describe("contagem da etapa", () => {
     expect(
       tl.myStageRow(
         {
-          stages: new Map([["s1", { open: [], later: [sign], done: 1 }]]),
+          groups: new Map([["s1", { open: [], later: [sign], done: 1 }]]),
           parts: {},
         },
         { id: "s1", status: "pending" },
@@ -590,7 +595,7 @@ describe("contagem da etapa", () => {
     expect(
       tl.myStageRow(
         {
-          stages: new Map([["s1", { open: [], later: [], done: 3 }]]),
+          groups: new Map([["s1", { open: [], later: [], done: 3 }]]),
           parts: { production: { open: 0, later: 0, done: 2 } },
         },
         stage,
@@ -603,7 +608,7 @@ describe("contagem da etapa", () => {
     expect(
       tl.myStageRow(
         {
-          stages: new Map([["s1", { open: [sign], later: [], done: 0 }]]),
+          groups: new Map([["s1", { open: [sign], later: [], done: 0 }]]),
           parts: {},
         },
         { id: "s1", status: "blocked" },

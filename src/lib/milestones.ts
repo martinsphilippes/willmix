@@ -1,10 +1,13 @@
 import type { DictionaryKey } from "@/i18n/dictionaries";
+import type { StageKey } from "@/lib/db/schema";
 import {
   flowStepOfImportKey,
   flowStepsOf,
+  requirementStepOfKey,
   stepId,
   type FlowBlock,
 } from "@/lib/flow";
+import { baseKeyOf } from "@/lib/purchase-lanes";
 
 /*
  * Marcos do pedido (dono, 14/11/2026; fase 2 do plano, docs/MILESTONES.md):
@@ -801,4 +804,225 @@ export function shipmentStepsOpen(
   if (!contractDone) return false;
   if (order.flow !== "supplier_request") return true;
   return downPayment !== "pending";
+}
+
+/*
+ * Fase 5g (docs/MILESTONES.md): o motor sem etapas. O item do pedido é
+ * identificado pelo passo do menu e pela chave (`requirements.step` +
+ * `key`; a chave sozinha só é única dentro do passo: `eta` existe no
+ * Embarque e no Transporte) e anda pelo marco gravado
+ * (`requirements.milestoneKey`). A etapa (`requirements.stageId`) fica nula
+ * nos itens novos; a dos itens antigos não é mais lida.
+ */
+
+/** Item como os marcos o leem: a chave, o passo e o marco gravados. */
+export interface StoredItem {
+  key: string;
+  step?: string | null;
+  milestoneKey?: string | null;
+}
+
+/** Passo do item: o gravado; sem ele (dado de antes da fase 5b), pela chave. */
+export const stepOfItem = (r: StoredItem): string | null =>
+  r.step || requirementStepOfKey(r.key);
+
+const isMilestoneKey = (key: string | null | undefined): key is MilestoneKey =>
+  !!key && (MILESTONE_KEYS as readonly string[]).includes(key);
+
+/** Marco do item: o gravado; sem ele, pelo passo. */
+export function milestoneOfStoredItem(r: StoredItem): MilestoneKey | null {
+  if (isMilestoneKey(r.milestoneKey)) return r.milestoneKey;
+  const step = stepOfItem(r);
+  return step ? milestoneOfStep(step) : null;
+}
+
+/** Os dois itens do Financeiro que andam no fluxo (o sinal e a aprovação dele). */
+const FINANCE_FLOW_KEYS: ReadonlySet<string> = new Set([
+  "down_payment",
+  "approval_down_payment",
+]);
+
+/**
+ * Item do pagamento ao fornecedor antigo, fora do fluxo (a etapa
+ * "Pagamento ao fornecedor" dos pedidos antigos: pagamento registrado,
+ * recebimento confirmado): no passo do Financeiro, sem ser o sinal. Não
+ * segura marco nenhum e não é mais tarefa (o pagamento vive em Contas a
+ * pagar).
+ */
+export const isOffFlowItem = (r: StoredItem): boolean =>
+  stepOfItem(r) === "finance/finance" &&
+  !FINANCE_FLOW_KEYS.has(baseKeyOf(r.key));
+
+/** Mesmo item: mesmo passo e mesma chave (fase 5g). */
+export const sameItem = (a: StoredItem, b: StoredItem): boolean =>
+  a.key === b.key && (stepOfItem(a) ?? "") === (stepOfItem(b) ?? "");
+
+/**
+ * Valor antigo de `orders.status` equivalente a cada marco (fase 5g): a
+ * coluna continua gravada para relatórios e integrações que ainda a leem,
+ * derivada do marco atual. Quando o marco cobre duas situações antigas, a
+ * primeira que ainda tem item obrigatório aberto (`legacyGroupOfItem`).
+ */
+const MILESTONE_LEGACY_STATUS: Record<MilestoneKey, StageKey[]> = {
+  "new-order": ["ORDER_CREATED", "PREPARATION"],
+  certification: ["PREPARATION"],
+  "art-material": ["PREPARATION"],
+  // Pedido de compra: a arte era da Preparação; nos outros, da etapa Arte e
+  // embalagem (ajuste em `legacyStatusOf`).
+  art: ["PREPARATION"],
+  contract: ["PACKAGING"],
+  "down-payment": ["PACKAGING"],
+  "pre-production": ["INSPECTION"],
+  inspection: ["INSPECTION"],
+  samples: ["SHIPPING"],
+  production: ["SHIPPING"],
+  booking: ["SHIPPING"],
+  loading: ["SHIPPING"],
+  shipment: ["SHIPPING"],
+  customs: ["CUSTOMS"],
+  "invoice-transport": ["TRANSPORT"],
+  delivery: ["TRANSPORT", "DELIVERED"],
+};
+
+const isPurchase = (order: { flow?: string | null }) =>
+  order.flow === "supplier_request";
+
+/**
+ * Situação antiga do item (o grupo em que ele nascia), pelo marco e pela
+ * chave: só para derivar `orders.status` (fase 5g). Fora dos marcos: nulo.
+ */
+export function legacyGroupOfItem(
+  r: StoredItem,
+  order: { flow?: string | null },
+): StageKey | null {
+  const key = milestoneOfStoredItem(r);
+  if (!key) return null;
+  const base = baseKeyOf(r.key);
+  switch (key) {
+    case "new-order":
+      return base === "order_confirmed" ||
+        base === "erp_number" ||
+        base === "compliance_check"
+        ? "ORDER_CREATED"
+        : "PREPARATION";
+    case "art":
+      return isPurchase(order) ? "PREPARATION" : "PACKAGING";
+    case "down-payment":
+      return isOffFlowItem(r) ? "SUPPLIER_PAYMENT" : "PACKAGING";
+    case "delivery":
+      return base === "receipt_confirmed" ? "DELIVERED" : "TRANSPORT";
+    default:
+      return MILESTONE_LEGACY_STATUS[key][0];
+  }
+}
+
+/**
+ * `orders.status` derivado dos marcos (fase 5g, função pura; o valor "em
+ * andamento" novo depende do dono, fase 5f): encerrado e cancelado ficam
+ * como estão; o pedido aberto ganha a situação antiga do marco atual, só
+ * para a frente (nunca volta para uma situação anterior à gravada). O pedido
+ * pai de uma programação de compra para na Preparação (como o registro das
+ * etapas parava). Sem marco atual: a situação de agora.
+ */
+export function legacyStatusOf(
+  order: { status: string; flow?: string | null },
+  current: MilestoneKey | null,
+  requirements: readonly (StoredItem & {
+    required?: boolean;
+    status?: string;
+  })[],
+  options: { roundsParent?: boolean } = {},
+): string {
+  if (order.status === "CLOSED" || order.status === "CANCELLED")
+    return order.status;
+  if (!current) return order.status;
+  let candidates = MILESTONE_LEGACY_STATUS[current];
+  if (current === "art" && !isPurchase(order)) candidates = ["PACKAGING"];
+  let status: StageKey = candidates[candidates.length - 1];
+  if (candidates.length > 1) {
+    const open = new Set(
+      requirements
+        .filter((r) => r.required !== false && r.status !== "done")
+        .map((r) => legacyGroupOfItem(r, order)),
+    );
+    status = candidates.find((c) => open.has(c)) ?? status;
+  }
+  if (
+    options.roundsParent &&
+    status !== "ORDER_CREATED" &&
+    status !== "PREPARATION"
+  )
+    status = "PREPARATION";
+  // Só para a frente, como o registro das etapas andava: um marco que reabre
+  // (ou o pedido do histórico do Sankhya, que entra na situação da TOP com
+  // passos do embarque que não existem) não volta a situação gravada.
+  const order0 = LEGACY_ORDER.indexOf(order.status as StageKey);
+  if (order0 > LEGACY_ORDER.indexOf(status)) return order.status;
+  return status;
+}
+
+/** Ordem das situações antigas (só para a frente, `legacyStatusOf`). */
+const LEGACY_ORDER: readonly StageKey[] = [
+  "ORDER_CREATED",
+  "PREPARATION",
+  "SUPPLIER_PAYMENT",
+  "PACKAGING",
+  "INSPECTION",
+  "SHIPPING",
+  "CUSTOMS",
+  "TRANSPORT",
+  "DELIVERED",
+];
+
+/**
+ * O pedido encerra pelo último marco (fase 5g; antes, a conclusão da última
+ * etapa): os itens obrigatórios de Entrega e recebimento feitos (o
+ * recebimento confirmado) e nenhum item obrigatório aberto no pedido (os do
+ * pagamento antigo, fora do fluxo, não contam). O recebimento no CD e os
+ * passos sem item (devolução, divergência) não seguram o encerramento, como
+ * antes. Pedido pai da programação de compra não encerra (as rodadas, sim).
+ */
+export function closesOrder(
+  order: { status: string },
+  requirements: readonly (StoredItem & {
+    required?: boolean;
+    status?: string;
+  })[],
+  options: { roundsParent?: boolean } = {},
+): boolean {
+  if (order.status === "CLOSED" || order.status === "CANCELLED") return false;
+  if (options.roundsParent) return false;
+  const flow = requirements.filter(
+    (r) => r.required !== false && !isOffFlowItem(r),
+  );
+  const last = flow.filter((r) => milestoneOfStoredItem(r) === "delivery");
+  return (
+    last.length > 0 &&
+    last.every((r) => r.status === "done") &&
+    flow.every((r) => r.status === "done")
+  );
+}
+
+/**
+ * Quem age agora no pedido (fase 5g, no lugar do responsável da etapa em
+ * andamento): o papel do primeiro item obrigatório aberto do marco atual, na
+ * ordem em que os itens nasceram. Sem item aberto nele: nulo.
+ */
+export function responsibleOfItems<R extends string>(
+  current: MilestoneKey | null,
+  requirements: readonly (StoredItem & {
+    required?: boolean;
+    status?: string;
+    role?: R;
+  })[],
+): R | null {
+  if (!current) return null;
+  const next = requirements.find(
+    (r) =>
+      r.required !== false &&
+      r.status !== "done" &&
+      !isOffFlowItem(r) &&
+      milestoneOfStoredItem(r) === current,
+  );
+  return next?.role ?? null;
 }

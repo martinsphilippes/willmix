@@ -8,24 +8,27 @@ import type {
   ProductionTrack,
   Receiving,
   Requirement,
-  Stage,
 } from "@/lib/db/schema";
 import { flowStepOfImportKey, flowStepsOf, stepId } from "@/lib/flow";
 import {
   PROGRESS_BLOCKS,
   orderProgress,
+  type MilestoneProgressRow,
+  type MilestoneProgressView,
   type ProgressBlock,
 } from "@/lib/flow-progress";
-import { isPurchaseFlow } from "@/lib/workflow/stages";
+import { isPurchaseFlow } from "@/lib/workflow/templates";
 import { parseSampleOrder } from "@/lib/sample-order";
 import { openImportStepKeys } from "./import-flow";
 import {
   downPaymentStateOf,
+  milestoneOfStoredItem,
   milestoneReached,
+  stepOfItem,
   type MilestoneKey,
   type MilestoneProgressLike,
 } from "@/lib/milestones";
-import { RECEIVING_STATUSES, missingForClose } from "./receiving";
+import { missingForClose, receivingApplies } from "./receiving";
 
 /*
  * Em que passo do menu cada pedido está agora e a contribuição dele para o
@@ -51,9 +54,7 @@ export type FlowEntityItem =
 /** O que a regra lê de um pedido. */
 export interface OrderFlowInput {
   order: Order;
-  /** Todas as etapas do pedido. */
-  stages: Stage[];
-  /** Itens de etapa não concluídos (pendentes ou recusados). */
+  /** Itens do pedido não concluídos (pendentes ou recusados). */
   openRequirements: Requirement[];
   importSteps: ImportStep[];
   track: ProductionTrack | null;
@@ -70,9 +71,40 @@ export interface OrderFlowInput {
    * Marcos gravados do pedido (`order_milestones`, fase 5e): onde ele está
    * (contrato, amostras, entrega), no lugar da situação antiga.
    */
-  milestones?: readonly MilestoneProgressLike[] | null;
+  milestones?: readonly (MilestoneProgressLike & MilestoneProgressRow)[] | null;
+  /**
+   * Situação dos 16 marcos (o formato curto do resumo, `facts.m`): a
+   * completude por bloco (fase 5g); sem ela, pelas linhas gravadas.
+   */
+  views?: readonly MilestoneProgressView[] | null;
   /** A arte com o selo vale (`sealArtApplies`); sem valor, vale. */
   sealArt?: boolean;
+}
+
+/**
+ * Itens abertos dos marcos em andamento (fase 5g, no lugar dos itens das
+ * etapas em andamento): o passo de cada um e desde quando o marco dele está
+ * aberto (`order_milestones.startedAt`).
+ */
+export function openMilestoneItems(
+  open: readonly Requirement[],
+  rows: readonly MilestoneProgressRow[] | null | undefined,
+): Array<{ step: string; requirement: Requirement; since: string | null }> {
+  const rowOf = new Map((rows ?? []).map((r) => [r.key, r]));
+  const out: Array<{
+    step: string;
+    requirement: Requirement;
+    since: string | null;
+  }> = [];
+  for (const r of open) {
+    if (r.status === "done") continue;
+    const key = milestoneOfStoredItem(r);
+    const row = key ? rowOf.get(key) : undefined;
+    if (!row || (row.status !== "active" && row.status !== "blocked")) continue;
+    const step = stepOfItem(r);
+    if (step) out.push({ step, requirement: r, since: row.startedAt ?? null });
+  }
+  return out;
 }
 
 export interface FlowEntry {
@@ -92,37 +124,23 @@ export const flowLive = (o: Pick<Order, "status">) => isOrderOpen(o.status);
 const STORAGE_PARTS = ["seal", "photos", "checklist", "counts"] as const;
 
 /**
- * Tudo o que está aberto no pedido, passo a passo: os itens de etapa das
- * etapas em andamento (ou bloqueadas), os passos do embarque, da origem, da
+ * Tudo o que está aberto no pedido, passo a passo: os itens abertos dos
+ * marcos em andamento (ou travados), os passos do embarque, da origem, da
  * certificação e das amostras prontos e não concluídos, a produção em
- * andamento (com ETD, na etapa de inspeção), o recebimento no CD e a
+ * andamento (com ETD, da pré-produção ao booking), o recebimento no CD e a
  * pré-produção. Vazio para pedido fora de andamento.
  */
 export function orderFlowEntries(input: OrderFlowInput): FlowEntry[] {
   const { order } = input;
   if (!flowLive(order)) return [];
   const out: FlowEntry[] = [];
-  // Itens de etapa abertos das etapas em andamento (ou bloqueadas).
-  const live = new Map(
-    input.stages
-      .filter((s) => s.status === "active" || s.status === "blocked")
-      .map((s) => [s.id, s]),
-  );
-  for (const r of input.openRequirements) {
-    if (r.status === "done") continue;
-    const stage = live.get(r.stageId);
-    if (!stage) continue;
-    for (const step of flowStepsOf({
-      kind: "requirement",
-      stageKey: stage.key,
-      items: [{ key: r.key }],
-    }))
-      out.push({
-        step: stepId(step),
-        item: { kind: "requirement", requirement: r },
-        since: stage.startedAt ?? null,
-      });
-  }
+  // Itens abertos dos marcos em andamento (ou travados).
+  for (const e of openMilestoneItems(input.openRequirements, input.milestones))
+    out.push({
+      step: e.step,
+      item: { kind: "requirement", requirement: e.requirement },
+      since: e.since,
+    });
   // Passos do embarque, da origem, da certificação e das amostras.
   const steps = input.importSteps;
   const certification = steps.some((s) => s.key.startsWith("cert_"));
@@ -176,7 +194,7 @@ export function orderFlowEntries(input: OrderFlowInput): FlowEntry[] {
   // Recebimento no CD: entregue (ou com a descarga começada) e aberto.
   const row = input.receiving;
   if (
-    (RECEIVING_STATUSES as readonly string[]).includes(order.status) &&
+    receivingApplies(order, input.milestones) &&
     !row?.closedAt &&
     (row || reached("delivery"))
   ) {
@@ -228,7 +246,7 @@ export function orderFlowEntries(input: OrderFlowInput): FlowEntry[] {
 export interface OrderFlow {
   /** Número do pedido. */
   n: number;
-  /** Situação do pedido (a etapa). */
+  /** Situação do pedido (`orders.status`, derivada dos marcos). */
   st: string;
   /** Fornecedor. */
   sup: string | null;
@@ -238,9 +256,9 @@ export interface OrderFlow {
   p: number[];
   /** Completude geral. */
   o: number;
-  /** Prazo mais antigo das etapas abertas de cada bloco (atraso). */
+  /** Prazo mais antigo dos marcos abertos de cada bloco (atraso). */
   d: (string | null)[];
-  /** Início de cada bloco (a primeira etapa dele que começou). */
+  /** Início de cada bloco (o primeiro marco dele que começou). */
   b: (string | null)[];
   /**
    * Histórico do Sankhya em espera até o go-live: entra nos passos reais,
@@ -263,11 +281,11 @@ export function buildOrderFlow(input: OrderFlowInput): OrderFlow | null {
     if (!(e.step in s)) s[e.step] = e.since;
     else if (e.since && (!prev || e.since < prev)) s[e.step] = e.since;
   }
-  const progress = orderProgress(input.stages);
+  const progress = orderProgress(input.views, input.milestones);
   const due = (block: ProgressBlock) => {
     const dates = progress.blocks
       .find((b) => b.block === block)!
-      .stages.filter((x) => x.state === "active" || x.state === "blocked")
+      .milestones.filter((x) => x.state === "active" || x.state === "blocked")
       .map((x) => x.dueAt)
       .filter((d): d is string => !!d && Number.isFinite(Date.parse(d)))
       .sort((a, b) => Date.parse(a) - Date.parse(b));

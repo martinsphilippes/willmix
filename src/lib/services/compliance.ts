@@ -240,17 +240,15 @@ export async function runComplianceGate(
       "Registrar a certificação (ou ensaio) na ficha do produto antes de liberar ao fornecedor.",
     link: `/app/products/${product.id}`,
   });
-  const [stage] = await store.list("stages", {
-    filter: { orderId: order.id, key: "ORDER_CREATED" },
-  });
-  if (stage) {
+  // Fase 5g: o item nasce no pedido com o passo e o marco dele (sem etapa).
+  {
     const [existing] = await store.list("requirements", {
-      filter: { stageId: stage.id, key: "compliance_check" },
+      filter: { orderId: order.id, key: "compliance_check" },
     });
     if (!existing)
       await store.create("requirements", {
         orderId: order.id,
-        stageId: stage.id,
+        stageId: null,
         key: "compliance_check",
         label: "Conformidade: certificação obrigatória conferida",
         type: "confirm",
@@ -262,7 +260,7 @@ export async function runComplianceGate(
         submittedByUserId: null,
         submittedAt: null,
         note: `Faltam: ${check.missing.join(", ")}`,
-        ...requirementFlowFields(stage.key, "compliance_check"),
+        ...requirementFlowFields("ORDER_CREATED", "compliance_check"),
       });
   }
   await audit(

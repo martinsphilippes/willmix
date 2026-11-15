@@ -3,7 +3,7 @@ import "server-only";
 import { getStore, type Requirement } from "@/lib/db";
 import { indexBy, listByIds } from "@/lib/db/lookup";
 import { getSettings } from "@/lib/settings";
-import { ROLE_PARTY_FIELD } from "@/lib/workflow/stages";
+import { ROLE_PARTY_FIELD } from "@/lib/workflow/templates";
 import { requirementLabel } from "@/i18n";
 import { milestoneTitle, type MilestoneKey } from "@/lib/milestones";
 import { isOrderOpen } from "@/lib/order-status";

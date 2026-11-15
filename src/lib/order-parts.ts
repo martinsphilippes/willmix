@@ -64,9 +64,8 @@ export interface OrderPart {
 
 /** Documento do pedido: os dois itens de assinatura (pedido antigo: sem a parte). */
 export function documentPart(
-  requirements: Array<{ key: string; status: string; stageId?: string }>,
+  requirements: Array<{ key: string; status: string }>,
   href: string,
-  stages: Array<{ id: string; key: string }> = [],
 ): OrderPart | null {
   const signatures = requirements.filter(
     (r) =>
@@ -76,10 +75,8 @@ export function documentPart(
   const done = signatures.filter((r) => r.status === "done").length;
   // Pedido novo: antes do "Enviar para assinatura" a parte ainda não começou.
   const send = requirements.find((r) => r.key === "order_sign_send");
-  // A parte fica debaixo da etapa em que a Wellmix assina neste pedido.
-  const wellmix = signatures.find((r) => r.key === "order_signed_wellmix");
-  const stage = stages.find((s) => s.id === wellmix?.stageId)?.key as
-    StageKey | undefined;
+  // Fase 5g: a parte fica sempre no grupo do contrato (as assinaturas são do
+  // marco Contrato, pelo passo gravado no item).
   return {
     key: "document",
     state:
@@ -91,7 +88,6 @@ export function documentPart(
     done,
     total: signatures.length,
     href,
-    ...(stage && stage !== ORDER_PART_STAGE.document ? { stage } : {}),
   };
 }
 
@@ -144,7 +140,7 @@ export function plainPart(
 }
 
 /** As partes de cada etapa, na ordem do negócio. */
-export function orderPartsByStage(
+export function orderPartsByGroup(
   parts: Array<OrderPart | null>,
 ): Map<StageKey, OrderPart[]> {
   const map = new Map<StageKey, OrderPart[]>();

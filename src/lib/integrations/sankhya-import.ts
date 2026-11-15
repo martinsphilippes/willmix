@@ -14,8 +14,8 @@ import {
   type User,
 } from "@/lib/db";
 import { STAGE_KEYS } from "@/lib/db/schema";
-import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/stages";
-import { createStagesForOrder } from "@/lib/workflow/engine";
+import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/templates";
+import { createOrderRequirements } from "@/lib/workflow/engine";
 import { audit } from "@/lib/services/audit";
 import type { SankhyaRow } from "./sankhya-client";
 import {
@@ -26,7 +26,7 @@ import {
   TOP_STAGES,
   topMilestone,
 } from "./sankhya-mapping";
-import { milestoneRank } from "@/lib/milestones";
+import { legacyGroupOfItem, milestoneRank } from "@/lib/milestones";
 import { milestoneOfItem } from "@/lib/milestone-release";
 import type { ImportSet } from "./sankhya-sample";
 import {
@@ -881,7 +881,7 @@ export async function importSankhyaSet(
     };
     for (let i = 0; i < items.length; i += 8)
       await Promise.all(items.slice(i, i + 8).map(createItem));
-    await createStagesForOrder(order, undefined, { shadow: true });
+    await createOrderRequirements(order, undefined, { shadow: true });
     await advanceMilestones(order.id, top, createdAt);
     const saved = (await store.get("orders", order.id)) ?? order;
     orderByNunota.set(nunota, saved);
@@ -1147,127 +1147,58 @@ export async function auditImport(
 
 /**
  * Pedido histórico pelos marcos (fase 5d, docs/SANKHYA.md): TOP → marco
- * (`topMilestone`). Os itens dos marcos antes do marco da TOP ficam feitos;
- * FINALIZADO encerra tudo. O registro das etapas continua gravado como
- * antes (as etapas antes da etapa da TOP concluídas, com os itens delas
- * feitos; a da TOP ativa), para os dados ficarem coerentes até a fase 5f.
- * Os marcos são sincronizados em sombra, com a espera do pedido e sem
- * avisos nem eventos.
+ * (`topMilestone`). Os itens dos marcos antes do marco da TOP ficam feitos
+ * (e os que nasciam nas situações antigas antes da situação da TOP, como
+ * antes); FINALIZADO encerra tudo. Fase 5g: sem etapas; os marcos são
+ * sincronizados em sombra, com a espera do pedido e sem avisos nem eventos,
+ * e gravam `orders.status` derivado do marco atual.
  */
 async function advanceMilestones(orderId: string, top: number, at: string) {
   const target = TOP_STAGES[top];
   if (!target) return;
   const milestone = topMilestone(top);
-  await advanceStages(
-    orderId,
-    target.stage,
-    !!target.closed,
-    at,
-    milestone ? milestoneRank(milestone) : 0,
-  );
-}
-
-async function advanceStages(
-  orderId: string,
-  target: (typeof STAGE_KEYS)[number],
-  closed: boolean,
-  at: string,
-  /** Ordem do marco da TOP: os itens dos marcos antes dele ficam feitos. */
-  targetRank: number,
-) {
   const store = getStore();
-  // Etapas e requisitos lidos uma vez; as gravações vão em paralelo (uma por
-  // vez, a nota levava ~15 s só aqui, mesmo com poucos itens).
-  const [stages, requirements] = await Promise.all([
-    store
-      .list("stages", { filter: { orderId } })
-      .then((list) => list.sort((a, b) => a.sequence - b.sequence)),
+  const [order, requirements] = await Promise.all([
+    store.get("orders", orderId),
     store.list("requirements", { filter: { orderId } }),
   ]);
-  const targetIndex = STAGE_KEYS.indexOf(target);
-  let current: string | null = null;
-  const writes: Array<() => Promise<unknown>> = [];
+  if (!order) return;
+  const closed = !!target.closed;
+  const targetRank = milestone ? milestoneRank(milestone) : 0;
+  const targetIndex = STAGE_KEYS.indexOf(target.stage);
   const { historyHoldActive } = await import("@/lib/services/go-live");
   const holding = await historyHoldActive();
   const hold = holding ? { held: true } : {};
-  // Itens dos marcos antes do marco da TOP (fase 5d), em qualquer etapa.
-  const stageKeyOf = new Map(stages.map((st) => [st.id, st.key]));
-  const beforeTarget = (req: (typeof requirements)[number]) => {
-    const stageKey = stageKeyOf.get(req.stageId);
-    const key = stageKey ? milestoneOfItem(req, { key: stageKey }) : null;
-    return !!key && milestoneRank(key) < targetRank;
+  // Feito pela carga: o pedido encerrado, o item de um marco antes do da
+  // TOP ou da situação antiga antes da dela.
+  const before = (req: (typeof requirements)[number]) => {
+    if (closed) return true;
+    const key = milestoneOfItem(req);
+    if (key && milestoneRank(key) < targetRank) return true;
+    const group = legacyGroupOfItem(req, order);
+    return !!group && STAGE_KEYS.indexOf(group) < targetIndex;
   };
-  for (const stage of stages) {
-    const index = STAGE_KEYS.indexOf(stage.key);
-    const done = closed || index < targetIndex;
-    if (done) {
+  // As gravações vão em paralelo (uma por vez, a nota levava ~15 s só aqui).
+  const writes: Array<() => Promise<unknown>> = [];
+  for (const req of requirements)
+    if (req.status === "pending" && before(req))
       writes.push(() =>
-        store.update("stages", stage.id, {
+        store.update("requirements", req.id, {
           status: "done",
-          percent: 100,
-          startedAt: stage.startedAt ?? at,
-          completedAt: at,
-          dueAt: null,
+          note: "Marco concluído no Sankhya (carga do histórico)",
+          submittedAt: at,
           ...hold,
         }),
       );
-      for (const req of requirements)
-        if (req.stageId === stage.id && req.status === "pending")
-          writes.push(() =>
-            store.update("requirements", req.id, {
-              status: "done",
-              note: "Etapa concluída no Sankhya (carga do histórico)",
-              submittedAt: at,
-              ...hold,
-            }),
-          );
-        else if (req.stageId === stage.id && holding)
-          writes.push(() => store.update("requirements", req.id, hold));
-    } else if (index === targetIndex) {
-      writes.push(() =>
-        store.update("stages", stage.id, {
-          status: "active",
-          startedAt: at,
-          ...hold,
-        }),
-      );
-      current = stage.id;
-    } else {
-      writes.push(() =>
-        store.update("stages", stage.id, {
-          status: "pending",
-          startedAt: null,
-          dueAt: null,
-          ...hold,
-        }),
-      );
-    }
-    // Pendências das etapas ativa e seguintes: os itens dos marcos antes
-    // do da TOP ficam feitos; todas em espera também.
-    if (!done)
-      for (const req of requirements)
-        if (
-          req.stageId === stage.id &&
-          req.status === "pending" &&
-          beforeTarget(req)
-        )
-          writes.push(() =>
-            store.update("requirements", req.id, {
-              status: "done",
-              note: "Marco concluído no Sankhya (carga do histórico)",
-              submittedAt: at,
-              ...hold,
-            }),
-          );
-        else if (req.stageId === stage.id && holding)
-          writes.push(() => store.update("requirements", req.id, hold));
-  }
+    else if (holding)
+      writes.push(() => store.update("requirements", req.id, hold));
   for (let i = 0; i < writes.length; i += 8)
     await Promise.all(writes.slice(i, i + 8).map((w) => w()));
-  const last = stages[stages.length - 1];
+  // A situação da TOP (fase 5g: os marcos sincronizados a seguir só a
+  // levam para a frente, `legacyStatusOf`).
   await store.update("orders", orderId, {
-    status: target,
-    currentStageId: closed ? (last?.id ?? null) : current,
+    status: closed ? "CLOSED" : target.stage,
+    currentStageId: null,
     closedAt: closed ? at : null,
     ...hold,
   });

@@ -17,7 +17,7 @@ import {
   laneKey,
 } from "@/lib/purchase-lanes";
 import { getSettings } from "@/lib/settings";
-import { artRole } from "@/lib/workflow/stages";
+import { artRole } from "@/lib/workflow/templates";
 import { loadFunctionDefs } from "./team-functions";
 import type { NotifyTarget } from "./notifications";
 

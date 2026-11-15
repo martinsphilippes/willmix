@@ -222,7 +222,7 @@ Com o sinal pago (ou a conta corrente) a produção começa (seção 1a); as out
 | Raias (regras puras: itens, ordem, prazos) | `src/lib/purchase-lanes.ts`                                                                                         |
 | Gerar o pedido, avisos das raias, SLA      | `src/lib/services/purchase-order.ts`                                                                                |
 | Itens conferidos pelo sistema              | `src/lib/services/purchase-gates.ts` (NCM, ficha, certificação válida, sinal)                                       |
-| Etapas do pedido de compra                 | `src/lib/workflow/stages.ts` (`isPurchaseFlow`, `PURCHASE_CONTRACT_REQUIREMENTS`), `src/lib/workflow/engine.ts`     |
+| Etapas do pedido de compra                 | `src/lib/workflow/templates.ts` (`isPurchaseFlow`, `PURCHASE_CONTRACT_REQUIREMENTS`), `src/lib/workflow/engine.ts`     |
 | Contrato                                   | `src/lib/services/order-signature.ts` (`finalArts`, arquivo obrigatório), `src/app/app/orders/[id]/purchase-order/` |
 | Ação                                       | `src/app/app/actions/purchase-order.ts`                                                                             |
 | Tela                                       | `src/app/app/supplier-requests/_components/purchase-order.tsx`                                                      |

@@ -422,12 +422,13 @@ describe("resumo por pedido", () => {
       (await store.list("orders")).find(
         (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
       )!;
-    // Etapa vencida, pagamento do cliente, item apagado e cliente renomeado.
-    const [stage] = await store.list("stages", {
+    // Marco vencido e travado (fase 5g: sem etapas), pagamento do cliente,
+    // item apagado e cliente renomeado.
+    const [stage] = await store.list("order_milestones", {
       filter: { orderId: target.id, status: ["active", "blocked"] },
       limit: 1,
     });
-    await store.update("stages", stage.id, {
+    await store.update("order_milestones", stage.id, {
       dueAt: day(-10),
       status: "blocked",
     });

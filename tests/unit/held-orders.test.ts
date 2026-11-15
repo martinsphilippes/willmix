@@ -21,12 +21,12 @@ beforeAll(async () => {
   scenario = await towerScenario(NOW);
 });
 
-/** Marca o pedido, as etapas e os itens como a carga do histórico faz. */
+/** Marca o pedido, os marcos e os itens como a carga do histórico faz. */
 async function hold(orderId: string) {
   const store = getStore();
   await store.update("orders", orderId, { held: true });
-  for (const s of await store.list("stages", { filter: { orderId } }))
-    await store.update("stages", s.id, { held: true });
+  for (const s of await store.list("order_milestones", { filter: { orderId } }))
+    await store.update("order_milestones", s.id, { held: true });
   for (const r of await store.list("requirements", { filter: { orderId } }))
     await store.update("requirements", r.id, { held: true });
 }

@@ -1,5 +1,6 @@
 import "server-only";
 import { isOrderOpen } from "@/lib/order-status";
+import { legacyGroupOfItem } from "@/lib/milestones";
 
 import { formatAmount } from "@/lib/workflow/money";
 import { formatNcm, normalizeNcm } from "@/lib/fiscal";
@@ -437,18 +438,13 @@ async function photoKindsDone(orderId: string, photos: ProductPhoto[]) {
     : null;
   for (const k of await catalogPhotoKinds(request0?.productId)) kinds.add(k);
   if (!kinds.has("weight_scale")) {
-    const store = getStore();
-    const [stage] = await store.list("stages", {
-      filter: { orderId, key: "PREPARATION" },
+    // A foto na balança já enviada no checklist do pedido (fase 5g: pelo
+    // item, sem a etapa).
+    const [req] = await getStore().list("requirements", {
+      filter: { orderId, key: "photo_scale", status: "done" },
       limit: 1,
     });
-    if (stage) {
-      const [req] = await store.list("requirements", {
-        filter: { stageId: stage.id, key: "photo_scale", status: "done" },
-        limit: 1,
-      });
-      if (req) kinds.add("weight_scale");
-    }
+    if (req) kinds.add("weight_scale");
   }
   return [...kinds];
 }
@@ -1002,18 +998,24 @@ export async function removeSheetPhoto(
   );
 }
 
+/**
+ * Os itens da Preparação do pedido aberto (fase 5g: pelo marco e pela chave
+ * dos itens, sem a etapa), com o Pedido novo liberado. Nulo fora disso.
+ */
 async function activePreparation(orderId: string) {
   const store = getStore();
-  const [stage] = await store.list("stages", {
-    filter: { orderId, key: "PREPARATION" },
-    limit: 1,
-  });
-  if (!stage || (stage.status !== "active" && stage.status !== "blocked"))
-    return null;
-  const requirements = await store.list("requirements", {
-    filter: { stageId: stage.id },
-  });
-  return { stage, requirements };
+  const order = await store.get("orders", orderId);
+  if (!order || !isOrderOpen(order.status)) return null;
+  const all = await store.list("requirements", { filter: { orderId } });
+  const requirements = all.filter(
+    (r) => legacyGroupOfItem(r, order) === "PREPARATION",
+  );
+  if (!requirements.length) return null;
+  const { orderRelease } = await import("./order-milestones");
+  const states = (await orderRelease(orderId))?.release.states;
+  const state = states?.get("new-order");
+  if (state !== "active" && state !== "done") return null;
+  return { requirements };
 }
 
 /**

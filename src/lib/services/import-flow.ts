@@ -1,6 +1,8 @@
 import "server-only";
 import { isOrderOpen } from "@/lib/order-status";
 import {
+  downPaymentStateOf,
+  milestoneReached,
   shipmentStepsOpen,
   type DownPaymentState,
   type MilestoneProgressLike,
@@ -26,7 +28,7 @@ import {
   isWellmix,
 } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
-import { artRole, isPurchaseFlow } from "@/lib/workflow/stages";
+import { artRole, isPurchaseFlow } from "@/lib/workflow/templates";
 import { baseKeyOf, LANE_KEYS } from "@/lib/purchase-lanes";
 import { audit } from "./audit";
 import { notify, type NotifyTarget } from "./notifications";
@@ -526,12 +528,41 @@ export const isDivergenceStep = (key: string) =>
 export const hasDivergence = (steps: readonly Pick<ImportStep, "key">[]) =>
   steps.some((s) => isDivergenceStep(s.key));
 
-/** Etapas do pedido em que o caminho da divergência anda (recebimento aberto). */
-export const DIVERGENCE_LIVE: readonly string[] = [
-  "CUSTOMS",
-  "TRANSPORT",
-  "DELIVERED",
-];
+/**
+ * Onde o pedido está para os passos do embarque, da divergência e do
+ * rastreio (fase 5g: pelos marcos, não pela situação antiga):
+ * - `live`: embarque, origem e desembaraço abertos (`shipmentStepsOpen`: o
+ *   contrato concluído e o sinal resolvido; no pedido clássico, o contrato),
+ *   a mesma regra da aba "Todos no passo";
+ * - `divergence`: o caminho da divergência no recebimento anda (do
+ *   Desembaraço em diante, com o pedido aberto);
+ * - `tracking`: o rastreio diário do container (aberto e antes da Nota
+ *   fiscal e transporte);
+ * - `beforeDelivery`: antes da Entrega e recebimento (a Wellmix ainda tem
+ *   passos do embarque e da certificação).
+ */
+export interface ImportPhaseInput {
+  milestones?: readonly MilestoneProgressLike[] | null;
+  downPayment?: DownPaymentState;
+}
+
+export function importPhase(
+  order: Pick<Order, "status" | "flow">,
+  input: ImportPhaseInput = {},
+) {
+  const open = isOrderOpen(order.status);
+  const reached = (key: Parameters<typeof milestoneReached>[2]) =>
+    milestoneReached(order, input.milestones, key);
+  const live =
+    open &&
+    shipmentStepsOpen(order, input.milestones, input.downPayment ?? "absent");
+  return {
+    live,
+    divergence: open && reached("customs"),
+    tracking: live && !reached("invoice-transport"),
+    beforeDelivery: open && !reached("delivery"),
+  };
+}
 
 /**
  * Escolha e texto de um passo com escolhas ("reply", "outcome"): o valor é
@@ -1777,8 +1808,6 @@ export async function purchaseNeedsCertification(
  * começado, a partir da Preparação. Pedido de compra: só com produto que
  * exige certificação (P6), e o memorial desde que o pedido nasce.
  */
-/** Até a chegada do navio: o rastreio diário do container vale nessas etapas. */
-const TRACKING_LIVE = ["INSPECTION", "SHIPPING", "CUSTOMS"];
 
 /** Hoje em Brasília (AAAA-MM-DD). */
 const todayInBrazil = () =>
@@ -1805,6 +1834,8 @@ export async function importTasks(
     if (isSchemaMissing(error)) return [];
     throw error;
   }
+  // Fase 5g: onde cada pedido está pelos marcos gravados e pelo sinal.
+  const phaseOf = await importPhases(open);
   const out: ImportTaskDraft[] = [];
   let agencyArt: boolean | null = null;
   // Certificação: quem recebe cada passo, lido uma vez para a lista toda.
@@ -1827,6 +1858,7 @@ export async function importTasks(
             certPurchase.has(order.id),
             await lpcoApplies(order),
             !noSealArt.has(order.id),
+            phaseOf.get(order.id),
           ),
           ctx,
           today,
@@ -1838,7 +1870,8 @@ export async function importTasks(
   }
   for (const order of open) {
     const steps = rows.filter((r) => r.orderId === order.id);
-    const importLive = IMPORT_LIVE.includes(order.status);
+    const phase = importPhase(order, phaseOf.get(order.id));
+    const importLive = phase.live;
     const gate = certGate(order, steps, certPurchase.has(order.id));
     // Amostras: só com o pedido de amostras e o SKU aprovado.
     const samplesOn =
@@ -1848,12 +1881,7 @@ export async function importTasks(
     for (const tpl of IMPORT_STEPS) {
       const cert = groupOf(tpl) === "certification";
       const divergence = groupOf(tpl) === "divergence";
-      if (
-        divergence
-          ? !DIVERGENCE_LIVE.includes(order.status)
-          : !cert && !importLive
-      )
-        continue;
+      if (divergence ? !phase.divergence : !cert && !importLive) continue;
       if (groupOf(tpl) === "samples" && !samplesOn) continue;
       // Container na origem só no pedido de compra; nele, sem os papéis antigos.
       if (!stepApplies(order, tpl.key, lpco, steps, !noSealArt.has(order.id)))
@@ -1901,7 +1929,7 @@ export async function importTasks(
         step.status === "pending" ||
         step.status === "rejected" ||
         (tpl.key === "container_tracking" &&
-          TRACKING_LIVE.includes(order.status) &&
+          phase.tracking &&
           (step.submittedAt ?? "").slice(0, 10) < todayInBrazil());
       if (!todo || !ready(tpl.key, steps, order)) continue;
       // Pedido de compra: o BL vem conferido dos documentos do embarque.
@@ -1925,8 +1953,32 @@ export async function importTasks(
   return out;
 }
 
-/** Etapas do embarque e desembaraço (os passos que não são da certificação). */
-const IMPORT_LIVE = ["INSPECTION", "SHIPPING", "CUSTOMS", "TRANSPORT"];
+/**
+ * Marcos gravados e sinal de cada pedido (fase 5g), para `importPhase`.
+ * Tabela ainda não publicada: sem marcos (a regra cai na situação).
+ */
+async function importPhases(
+  orders: readonly Order[],
+): Promise<Map<string, ImportPhaseInput>> {
+  const ids = orders.map((o) => o.id);
+  const out = new Map<string, ImportPhaseInput>();
+  if (!ids.length) return out;
+  const store = getStore();
+  const [rows, payments] = await Promise.all([
+    store
+      .list("order_milestones", { filter: { orderId: ids } })
+      .catch(() => []),
+    store.list("requirements", {
+      filter: { orderId: ids, key: "down_payment" },
+    }),
+  ]);
+  for (const id of ids)
+    out.set(id, {
+      milestones: rows.filter((r) => r.orderId === id),
+      downPayment: downPaymentStateOf(payments.filter((r) => r.orderId === id)),
+    });
+  return out;
+}
 
 /** Recusado: desde a recusa; senão, desde que o passo anterior fechou. */
 function doSinceAt(
@@ -1991,18 +2043,6 @@ export type ImportCandidate =
       };
     };
 
-/** Etapas do pedido em que a Wellmix tem pendência de embarque e certificação. */
-export const WELLMIX_IMPORT_STATUSES: readonly string[] = [
-  // Pedido recém-criado: só o selo de certificação já vale.
-  "ORDER_CREATED",
-  "PREPARATION",
-  "PACKAGING",
-  "INSPECTION",
-  "SHIPPING",
-  "CUSTOMS",
-  "TRANSPORT",
-];
-
 /**
  * Pendências de embarque, desembaraço e certificação da Wellmix num pedido,
  * antes de saber quem vê (função pura). `purchaseNeedsCert`: pedido de
@@ -2016,17 +2056,20 @@ export function wellmixImportCandidates(
   lpcoRequired = false,
   /** A arte com o selo vale (`sealArtApplies`). */
   sealArt = true,
+  /** Marcos e sinal do pedido (fase 5g, `importPhase`). */
+  phaseInput: ImportPhaseInput = {},
 ): ImportCandidate[] {
   if (order.status === "CLOSED" || order.status === "CANCELLED") return [];
   const out: ImportCandidate[] = [];
-  const importLive = IMPORT_LIVE.includes(order.status);
+  const phase = importPhase(order, phaseInput);
+  const importLive = phase.live;
   const gate = certGate(order, steps, purchaseNeedsCert);
   const lpco = importLive && lpcoRequired;
   for (const tpl of IMPORT_STEPS) {
     const cert = groupOf(tpl) === "certification";
     // Divergência no recebimento: do desembaraço à entrega, com as linhas.
     if (groupOf(tpl) === "divergence") {
-      if (!DIVERGENCE_LIVE.includes(order.status)) continue;
+      if (!phase.divergence) continue;
     } else if (!cert && !importLive) continue;
     // Container na origem só no pedido de compra; nele, sem os passos antigos
     // do despachante e do agente (docs/SHIPPING_DOCS.md).
@@ -2064,9 +2107,7 @@ export function wellmixImportCandidates(
     const always =
       !step || step.status === "pending" || step.status === "rejected";
     const tracking =
-      !always &&
-      tpl.key === "container_tracking" &&
-      TRACKING_LIVE.includes(order.status);
+      !always && tpl.key === "container_tracking" && phase.tracking;
     if (
       (always || tracking) &&
       ready(tpl.key, steps, order) &&

@@ -617,42 +617,30 @@ export async function assignPartnerAction(form: FormData) {
     const order = await store.get("orders", orderId);
     if (!order) throw new Error("not_found");
     await store.update("orders", orderId, { [field]: partyId });
-    // Etapas ainda não iniciadas passam a apontar para o novo parceiro.
-    const stages = await store.list("stages", { filter: { orderId } });
+    // Os itens abertos do Desembaraço, do Embarque e do Transporte que o
+    // operador assumiu por falta de parceiro voltam ao papel do parceiro
+    // (fase 5g: pelo marco e pela chave do item, sem etapas).
     const roleByField: Record<string, string> = {
-      agencyId: "agency",
       brokerId: "broker",
       shippingLineId: "shipping_line",
       carrierId: "carrier",
-      comexId: "comex",
-      logisticsId: "logistics",
-      ocpId: "ocp",
-      marketingAgencyId: "marketing_agency",
     };
-    for (const stage of stages) {
+    const groupByField: Record<string, string> = {
+      brokerId: "CUSTOMS",
+      shippingLineId: "SHIPPING",
+      carrierId: "TRANSPORT",
+    };
+    if (groupByField[field]) {
+      const { legacyGroupOfItem } = await import("@/lib/milestones");
       const reqs = await store.list("requirements", {
-        filter: { stageId: stage.id },
+        filter: { orderId, status: "pending" },
       });
       for (const req of reqs) {
-        if (req.status !== "pending") continue;
-        // Requisitos que o operador assumiu por falta de parceiro voltam ao papel do parceiro.
-        const stageRole = roleByField[field];
-        const belongs =
-          (field === "brokerId" && stage.key === "CUSTOMS") ||
-          (field === "shippingLineId" && stage.key === "SHIPPING") ||
-          (field === "carrierId" && stage.key === "TRANSPORT");
-        if (belongs && req.key !== "inspection_review") {
-          await store.update("requirements", req.id, {
-            role: (partyId ? stageRole : "operator") as never,
-          });
-        }
-      }
-      if (
-        (field === "brokerId" && stage.key === "CUSTOMS") ||
-        (field === "shippingLineId" && stage.key === "SHIPPING") ||
-        (field === "carrierId" && stage.key === "TRANSPORT")
-      ) {
-        await store.update("stages", stage.id, { responsiblePartyId: partyId });
+        if (req.key === "inspection_review") continue;
+        if (legacyGroupOfItem(req, order) !== groupByField[field]) continue;
+        await store.update("requirements", req.id, {
+          role: (partyId ? roleByField[field] : "operator") as never,
+        });
       }
     }
     // Pedido de compra: os itens abertos da arte e do certificado (raias da
@@ -666,10 +654,8 @@ export async function assignPartnerAction(form: FormData) {
     if (field === "agencyId") {
       // Arte e embalagem: a arte ainda não enviada passa a ser da agência
       // (ou volta à Wellmix sem agência); a aprovação é sempre do fornecedor.
-      const { normalizePackagingStage } =
-        await import("@/lib/services/packaging");
-      const [pack] = stages.filter((s) => s.key === "PACKAGING");
-      if (pack) await normalizePackagingStage(pack.id, { reassign: true });
+      const { reassignOrderArt } = await import("@/lib/services/packaging");
+      await reassignOrderArt(orderId);
     }
     await audit(
       user,

@@ -57,13 +57,13 @@ describe("fotos e arquivos do checklist", () => {
   it("excluir a foto volta o item a pendente e apaga o arquivo", async () => {
     const store = getStore();
     const order = await newOrder();
-    const [stage] = await store.list("stages", {
-      filter: { orderId: order.id, key: "ORDER_CREATED" },
-    });
-    // Foto do fornecedor numa etapa aberta.
+    // Foto do fornecedor num marco aberto (fase 5g: o item pelo passo e
+    // pelo marco, sem etapa).
     const req = await store.create("requirements", {
       orderId: order.id,
-      stageId: stage.id,
+      stageId: null,
+      step: "order/orders",
+      milestoneKey: "new-order",
       key: "photo_test",
       label: "Foto de teste",
       type: "photo",

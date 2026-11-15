@@ -813,7 +813,8 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page.locator('[data-order-progress-block="order"]'),
   ).toHaveAttribute("aria-current", "step");
   await expect(
-    page.locator('[data-order-progress-stage="PACKAGING"]'),
+    // Fase 5g: as linhas do bloco são os marcos (o Contrato no bloco Pedido).
+    page.locator('[data-order-progress-milestone="contract"]'),
   ).toBeVisible();
   // Pedido → Arte (dono, 14/11/2026), o padrão da Certificação: só a lista,
   // uma linha por produto, sem os cartões dos pedidos embaixo. O "Resolver"

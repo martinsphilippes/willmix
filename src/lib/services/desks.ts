@@ -15,7 +15,7 @@ import {
   itemIdOf,
   laneDueAt,
 } from "@/lib/purchase-lanes";
-import { requirementReleased } from "@/lib/milestone-release";
+import { milestoneOfItem, requirementReleased } from "@/lib/milestone-release";
 
 /*
  * Mesas de trabalho por papel (mapa do processo, "Mesas de trabalho";
@@ -98,35 +98,44 @@ async function laneData(
   const store = getStore();
   const orders = (
     await store.list("orders", {
+      // Fase 5g: pelo marco atual (Pedido novo ao Sinal), não pela situação.
       filter: {
         flow: "supplier_request",
-        status: ["PREPARATION", "PACKAGING"],
+        milestoneKey: [
+          "new-order",
+          "certification",
+          "art-material",
+          "art",
+          "contract",
+          "down-payment",
+        ],
         ...filter,
       },
     })
   ).sort((a, b) => a.number - b.number);
   const ids = orders.map((o) => o.id);
-  const [requirements, stages, items, rows] = ids.length
+  const [requirements, items, rows] = ids.length
     ? await Promise.all([
         store.list("requirements", { filter: { orderId: ids } }),
-        store.list("stages", { filter: { orderId: ids } }),
         store.list("order_items", { filter: { orderId: ids } }),
         store
           .list("order_milestones", { filter: { orderId: ids } })
           .catch(() => []),
       ])
-    : [[], [], [], []];
+    : [[], [], []];
   const { purchaseLaneSla } = await import("./purchase-order");
   const { releaseFromRows } = await import("./tasks");
   return {
     orders,
     requirements,
-    stageStart: new Map(stages.map((s) => [s.id, s.startedAt])),
+    // Início de cada marco do pedido (prazo das raias).
+    stageStart: new Map(
+      rows.map((r) => [`${r.orderId}|${r.key}`, r.startedAt ?? null]),
+    ),
     items: new Map(items.map((i) => [i.id, i.productId ?? null])),
     sla: await purchaseLaneSla(),
     release: releaseFromRows(
       rows.filter((r) => r.status === "active" || r.status === "blocked"),
-      stages,
     ),
   };
 }
@@ -167,7 +176,8 @@ function openLane(
       if (!visible(order, r, mine)) continue;
       const release = data.release.get(order.id);
       if (!release || !requirementReleased(order, r, release)) continue;
-      const stage = mine.filter((x) => x.stageId === r.stageId);
+      // Fase 5g: a ordem das raias entre os itens do pedido.
+      const stage = mine;
       if (blockedBy(r.key, stage).length) continue;
       const productId = data.items.get(itemIdOf(r.key) ?? "") ?? null;
       rows.push({
@@ -180,7 +190,7 @@ function openLane(
           order.createdAt,
           stage,
           data.sla,
-          data.stageStart.get(r.stageId) ?? null,
+          data.stageStart.get(`${order.id}|${milestoneOfItem(r)}`) ?? null,
         ),
         link: link(order, r, productId),
       });

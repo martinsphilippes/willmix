@@ -109,7 +109,7 @@ export async function orderFromRequest(
   await snapshotOrderPaymentTerms(order);
   const { assignDefaultPartners } = await import("@/lib/services/requests");
   await assignDefaultPartners(order);
-  const { createStagesForOrder } = await import("@/lib/workflow/engine");
-  await createStagesForOrder((await store.get("orders", order.id)) ?? order);
+  const { createOrderRequirements } = await import("@/lib/workflow/engine");
+  await createOrderRequirements((await store.get("orders", order.id)) ?? order);
   return (await store.get("orders", order.id)) ?? order;
 }

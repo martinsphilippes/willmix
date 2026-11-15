@@ -19,7 +19,7 @@ import {
   suggestedLine,
   type LoadLine,
 } from "@/lib/shipping-docs";
-import { isPurchaseFlow } from "@/lib/workflow/stages";
+import { isPurchaseFlow } from "@/lib/workflow/templates";
 import { audit } from "./audit";
 import { notify, notifyWellmix } from "./notifications";
 

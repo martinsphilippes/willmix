@@ -12,7 +12,7 @@ import {
 } from "@/lib/db";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { boxCbm } from "@/lib/logistics/cbm";
-import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/stages";
+import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/templates";
 import { audit } from "./audit";
 import { parseCsv } from "./import";
 import { uploadDocument } from "./documents";

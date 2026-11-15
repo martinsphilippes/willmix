@@ -139,61 +139,64 @@ export function addDays(day: string, days: number): string {
 /** Data de cada marco do pedido (AAAA-MM-DD); nulo = ainda não aconteceu. */
 export type PaymentEvents = Record<PaymentTermBase, string | null>;
 
-interface EventStage {
-  id: string;
+/** Marco gravado do pedido (`order_milestones`): só o que o cronograma lê. */
+export interface EventMilestone {
   key: string;
   status: string;
-  startedAt: string | null;
-  completedAt: string | null;
+  completedAt?: string | null;
 }
 
-interface EventRequirement {
-  stageId: string;
+export interface EventRequirement {
   key: string;
+  /** Passo do item (fase 5g: o item é identificado pelo passo e pela chave). */
+  step?: string | null;
   status: string;
   value: string | null;
+  submittedAt?: string | null;
 }
 
+const SHIPMENT_STEP = "production/shipment";
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}/;
+
 /**
- * Marcos do pedido:
+ * Marcos do pedido para o cronograma (fase 5g: pelos itens e pelos marcos,
+ * não mais pelas etapas):
  * - pedido gerado: criação do pedido;
- * - embarque: a "Data de embarque" informada no embarque (ou, sem ela, o dia
- *   em que a etapa de embarque foi concluída);
- * - entrega ao cliente: o dia em que a entrega foi registrada (início da
- *   etapa "Entregue"; sem ele, a conclusão dela).
+ * - embarque: a "Data de embarque" informada no Embarque (ou, sem ela, o dia
+ *   em que o "Embarque confirmado" foi feito ou o marco Embarque concluiu);
+ * - entrega ao cliente: o dia em que a entrega foi registrada (o item
+ *   "Entrega realizada"; sem ele, o recebimento confirmado ou a conclusão do
+ *   marco Entrega e recebimento).
  */
 export function paymentEventsFor(
   order: { createdAt: string },
-  stages: EventStage[],
-  requirements: EventRequirement[],
+  requirements: readonly EventRequirement[],
+  milestones: readonly EventMilestone[] = [],
 ): PaymentEvents {
-  const shipping = stages.find((s) => s.key === "SHIPPING");
-  const delivered = stages.find((s) => s.key === "DELIVERED");
-  const shipDate = shipping
-    ? requirements.find(
-        (r) =>
-          r.stageId === shipping.id &&
-          r.key === "ship_date" &&
-          r.status === "done" &&
-          !!r.value &&
-          /^\d{4}-\d{2}-\d{2}/.test(r.value),
-      )?.value
-    : null;
-  const deliveredStarted =
-    delivered &&
-    (delivered.status === "active" ||
-      delivered.status === "blocked" ||
-      delivered.status === "done")
-      ? (delivered.startedAt ?? delivered.completedAt)
-      : null;
+  const done = (key: string, step?: string) =>
+    requirements.find(
+      (r) =>
+        r.key === key &&
+        r.status === "done" &&
+        (!step || (r.step ?? SHIPMENT_STEP) === step),
+    );
+  const shipDate = done("ship_date", SHIPMENT_STEP)?.value;
+  const row = (key: string) =>
+    milestones.find((m) => m.key === key && m.status === "done");
+  const delivered =
+    done("delivered")?.submittedAt ??
+    done("receipt_confirmed")?.submittedAt ??
+    row("delivery")?.completedAt ??
+    null;
   return {
     order_created: brazilDay(order.createdAt),
-    shipped: shipDate
-      ? shipDate.slice(0, 10)
-      : shipping?.status === "done"
-        ? brazilDay(shipping.completedAt)
-        : null,
-    delivered: brazilDay(deliveredStarted),
+    shipped:
+      shipDate && ISO_DAY.test(shipDate)
+        ? shipDate.slice(0, 10)
+        : brazilDay(
+            done("shipped")?.submittedAt ?? row("shipment")?.completedAt,
+          ),
+    delivered: brazilDay(delivered),
   };
 }
 

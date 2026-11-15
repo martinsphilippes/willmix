@@ -121,14 +121,19 @@ export async function reachSignature(
         { orderId, requirementId, type: "other", visibility: "internal" },
       )
     ).id;
+  const { itemGroupKey } = await import("@/lib/order-groups");
   for (let guard = 0; guard < 40; guard++) {
     const progress = (await loadOrderProgress(orderId))!;
-    const stage = progress.stages.find(
-      (s) => s.status === "active" || s.status === "blocked",
-    );
-    if (!stage) throw new Error("order_has_no_open_stage");
+    // Fase 5g: sem etapas; a situação derivada dos marcos (`orders.status`)
+    // diz em que grupo de itens o pedido está.
+    const stage = { key: progress.order.status };
+    if (!["ORDER_CREATED", "PREPARATION", "PACKAGING"].includes(stage.key))
+      throw new Error("order_has_no_open_stage");
     const pending = progress.requirements.filter(
-      (r) => r.stageId === stage.id && r.status !== "done" && r.required,
+      (r) =>
+        itemGroupKey(r, progress.order) === stage.key &&
+        r.status !== "done" &&
+        r.required,
     );
     if (stage.key === "PACKAGING") {
       if (stopAt === "packaging") return;
@@ -157,8 +162,8 @@ export async function reachSignature(
     }
     if (!pending.length) throw new Error(`stage_${stage.key}_stuck`);
     for (const r of pending) {
-      const fresh = await getStore().get("stages", stage.id);
-      if (fresh?.status !== "active" && fresh?.status !== "blocked") break;
+      const fresh = await getStore().get("orders", orderId);
+      if (fresh?.status !== stage.key) break;
       if (r.type === "file" || r.type === "photo")
         await submitRequirement(admin, r.id, {
           documentId: await fileFor(r.id),

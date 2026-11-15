@@ -12,7 +12,7 @@ import { itemIdOf } from "@/lib/purchase-lanes";
 import {
   ORDER_SIGNED_SUPPLIER,
   ORDER_SIGNED_WELLMIX,
-} from "@/lib/workflow/stages";
+} from "@/lib/workflow/templates";
 import { audit } from "./audit";
 
 /*

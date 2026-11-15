@@ -91,8 +91,7 @@ export async function FlowOrderInStep({
   if (!order || !canViewOrder(user, order)) return null;
   const id = stepId(step);
   const returnTo = orderInStepHref(step, order.id);
-  const [stages, requirements, supplier, customer] = await Promise.all([
-    store.list("stages", { filter: { orderId: order.id } }),
+  const [requirements, supplier, customer] = await Promise.all([
     store.list("requirements", { filter: { orderId: order.id } }),
     order.supplierId
       ? store.get("parties", order.supplierId)
@@ -101,22 +100,19 @@ export async function FlowOrderInStep({
       ? store.get("parties", order.customerId)
       : Promise.resolve(null),
   ]);
-  const stageById = new Map(stages.map((s) => [s.id, s]));
-  // Itens de etapa do passo (de qualquer etapa do pedido), feitos e abertos;
+  // Itens do passo (fase 5g: pelo passo gravado no item), feitos e abertos;
   // o parceiro só vê os do papel dele (ou os que ele pode fazer).
   const mine = requirements
     .filter(
       (r) =>
         wellmix || r.role === user.role || canSubmitRequirement(user, order, r),
     )
-    .filter((r) => {
-      const stage = stageById.get(r.stageId);
-      return flowStepsOf({
+    .filter((r) =>
+      flowStepsOf({
         kind: "requirement",
-        stageKey: stage?.key ?? null,
-        items: [{ key: r.key }],
-      }).some((x) => stepId(x) === id);
-    })
+        items: [{ key: r.key, step: r.step }],
+      }).some((x) => stepId(x) === id),
+    )
     .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
   // Produto da linha: só os itens dele (o link de outro pedido ou de um
   // produto sem itens no passo cai em tudo do passo, com o aviso).
@@ -214,8 +210,11 @@ export async function FlowOrderInStep({
     wellmix &&
     step.block === "delivery" &&
     (step.key === "storage" || step.key === "return") &&
-    (receivingSvc.RECEIVING_STATUSES as readonly string[]).includes(
-      order.status,
+    receivingSvc.receivingApplies(
+      order,
+      await store
+        .list("order_milestones", { filter: { orderId: order.id } })
+        .catch(() => []),
     )
       ? await receivingSvc.receivingView(order)
       : null;

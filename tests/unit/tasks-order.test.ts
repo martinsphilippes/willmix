@@ -226,12 +226,13 @@ describe("pendências reais", () => {
     }
     expect(mine.some((t) => t.kind === "requirement")).toBe(true);
 
-    // Etapa com prazo de ontem: fica atrasada e vai para o topo.
-    const [stage] = await store.list("stages", {
-      filter: { status: "active" },
+    // Marco com prazo de ontem: fica atrasado e vai para o topo (fase 5g:
+    // o prazo é o do marco, sem etapas).
+    const [stage] = await store.list("order_milestones", {
+      filter: { status: "active", key: "new-order" },
     });
     const yesterday = new Date(Date.now() - 86_400_000).toISOString();
-    await store.update("stages", stage.id, { dueAt: yesterday });
+    await store.update("order_milestones", stage.id, { dueAt: yesterday });
     const again = await tasks.pendingTasksFor(admin);
     const first = again[0];
     expect(first.overdue).toBe(true);

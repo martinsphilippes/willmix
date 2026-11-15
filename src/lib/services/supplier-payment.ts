@@ -11,7 +11,6 @@ import {
   type User,
 } from "@/lib/db";
 import { isWellmix } from "@/lib/auth/permissions";
-import { submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
 import type {
   ScheduleInstallment,
@@ -266,20 +265,6 @@ export async function registerSupplierPayment(
     } catch (error) {
       console.warn("[supplier-payment] condição não fixada no pedido", error);
     }
-  }
-  // Conclui "pagamento registrado" da etapa, se estiver ativa.
-  const [stage] = await store.list("stages", {
-    filter: { orderId, key: "SUPPLIER_PAYMENT" },
-  });
-  if (stage && (stage.status === "active" || stage.status === "blocked")) {
-    const [req] = await store.list("requirements", {
-      filter: {
-        stageId: stage.id,
-        key: "payment_registered",
-        status: "pending",
-      },
-    });
-    if (req) await submitRequirement(user, req.id, { value: payment.id });
   }
   await notify(
     { role: "supplier", partyId: order.supplierId },

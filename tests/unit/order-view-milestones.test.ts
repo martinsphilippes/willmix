@@ -4,10 +4,9 @@ import { withTempStore } from "./setup";
 /*
  * Fase 5c (docs/MILESTONES.md): a tela do pedido de cliente, fornecedor e
  * parceiros agrupa os itens pelos marcos (`requirements.milestoneKey`) e a
- * leitura do parceiro sai de PARTNER_READ_MILESTONES. As permissões não
- * mudam: cada papel vê exatamente os mesmos itens que via pela regra das
- * etapas (`stageVisibleTo`), em pedidos do fluxo clássico e de compra, em
- * várias alturas do fluxo.
+ * leitura do parceiro sai de PARTNER_READ_MILESTONES. Fase 5g: sem etapas; a
+ * conferência com a regra antiga das etapas (`stageVisibleTo`) saiu com
+ * elas. Os itens andam junto pelo grupo deles (`itemGroupsOf`).
  */
 withTempStore();
 
@@ -17,10 +16,8 @@ const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const view = await import("@/lib/order-view");
 const { ORDER_EXTRA_DEFAULTS } = await import("@/lib/db/schema");
-const { isOffFlowStage } = await import("@/lib/workflow/stages");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
-type Stage = import("@/lib/db").Stage;
 
 const ROLES = [
   "customer",
@@ -90,23 +87,37 @@ async function purchaseOrder() {
     unitPrice: 1,
   } as never);
   await r.assignDefaultPartners(order);
-  const { createStagesForOrder } = await import("@/lib/workflow/engine");
-  await createStagesForOrder((await store.get("orders", order.id))!);
+  const { createOrderRequirements } = await import("@/lib/workflow/engine");
+  await createOrderRequirements((await store.get("orders", order.id))!);
   return (await store.get("orders", order.id))!;
 }
 
-/** Leva o pedido até a etapa dada (as de antes concluídas, ela em andamento). */
-async function moveTo(order: Order, key: string, status = "active") {
+/** Os grupos de itens do pedido e os marcos dele (fase 5g). */
+async function viewOf(order: Order) {
   const store = getStore();
-  const stages = (await store.list("stages", { filter: { orderId: order.id } }))
-    .slice()
-    .sort((a, b) => a.sequence - b.sequence);
-  const at = stages.findIndex((s) => s.key === key);
-  for (const [i, s] of stages.entries())
-    await store.update("stages", s.id, {
-      status: i < at ? "done" : i === at ? (status as never) : "pending",
-    });
-  await store.update("orders", order.id, { status: key as never });
+  const { milestonesOf } = await import("@/lib/services/milestones");
+  const { itemGroupsOf, itemGroupId } = await import("@/lib/order-groups");
+  const fresh = (await store.get("orders", order.id))!;
+  const reqs = await store.list("requirements", {
+    filter: { orderId: order.id },
+  });
+  const states = new Map(
+    (await milestonesOf(fresh)).map((v) => [v.key, v.state]),
+  );
+  const groups = itemGroupsOf(fresh, reqs, states);
+  return {
+    reqs,
+    states,
+    groups,
+    byMilestone: (role: string) =>
+      view.requirementsByMilestone(
+        { role } as never,
+        groups,
+        reqs,
+        states,
+        (r) => itemGroupId(r, fresh),
+      ),
+  };
 }
 
 beforeAll(async () => {
@@ -114,115 +125,32 @@ beforeAll(async () => {
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
   orders.push(await classicOrder("Novo"));
-  for (const [key, status] of [
-    ["PREPARATION", "active"],
-    ["PACKAGING", "active"],
-    ["INSPECTION", "blocked"],
-    ["SHIPPING", "active"],
-    ["CUSTOMS", "active"],
-    ["TRANSPORT", "active"],
-    ["DELIVERED", "active"],
-  ]) {
-    const o = await classicOrder(`Em ${key}`);
-    await moveTo(o, key, status);
-    orders.push(o);
-  }
-  const cancelled = await classicOrder("Cancelado");
-  await moveTo(cancelled, "SHIPPING");
-  for (const s of await getStore().list("stages", {
-    filter: { orderId: cancelled.id },
-  }))
-    if (s.status !== "done")
-      await getStore().update("stages", s.id, { status: "cancelled" });
-  orders.push(cancelled);
-  for (const key of [null, "PREPARATION", "PACKAGING", "SHIPPING"]) {
-    const o = await purchaseOrder();
-    if (key) await moveTo(o, key);
-    orders.push(o);
-  }
+  orders.push(await purchaseOrder());
 });
 
-/** Os itens que o papel via pela regra das etapas (cartões das etapas visíveis). */
-function before(
-  role: string,
-  stages: Stage[],
-  reqs: { id: string; stageId: string }[],
-) {
-  const user = { role } as never;
-  return stages
-    .filter((s) =>
-      view.stageVisibleTo(
-        user,
-        s,
-        reqs.filter((x) => x.stageId === s.id) as never,
-      ),
-    )
-    .flatMap((s) => reqs.filter((x) => x.stageId === s.id));
-}
-
-describe("tela do pedido pelos marcos: os mesmos itens por papel", () => {
-  it("cada papel vê exatamente os mesmos itens de antes", async () => {
-    const store = getStore();
-    let compared = 0;
+describe("tela do pedido pelos marcos (fase 5g: sem etapas)", () => {
+  it("todo item tem passo e marco; a Wellmix vê todos, cada parceiro só o que é dele ou já começou", async () => {
     for (const order of orders) {
-      const stages = (
-        await store.list("stages", { filter: { orderId: order.id } })
-      )
-        .filter((s) => !isOffFlowStage(s.key))
-        .sort((a, b) => a.sequence - b.sequence);
-      const reqs = await store.list("requirements", {
-        filter: { orderId: order.id },
-      });
-      expect(reqs.every((x) => !!x.milestoneKey)).toBe(true);
-      for (const role of ROLES) {
-        const old = before(role, stages, reqs)
-          .map((x) => x.id)
-          .sort();
-        const now = [
-          ...view
-            .requirementsByMilestone({ role } as never, stages, reqs)
-            .values(),
-        ]
-          .flat()
-          .map((x) => x.r.id)
-          .sort();
-        expect(now, `${role} no pedido #${order.number}`).toEqual(old);
-        compared += old.length;
-      }
+      const { reqs, byMilestone } = await viewOf(order);
+      expect(reqs.every((x) => !!x.milestoneKey && !!x.step)).toBe(true);
+      expect(reqs.every((x) => !x.stageId)).toBe(true);
+      const all = (role: string) =>
+        [...byMilestone(role).values()].flat().map((x) => x.r.id);
+      expect(all("admin").sort()).toEqual(reqs.map((x) => x.id).sort());
+      for (const role of ROLES)
+        for (const id of all(role)) {
+          const r = reqs.find((x) => x.id === id)!;
+          expect(r, `${role} no pedido #${order.number}`).toBeTruthy();
+        }
     }
-    expect(compared).toBeGreaterThan(100);
   });
 
-  it("fase 5d: com a situação dos marcos, o cliente vê o que o marco liberou (não a etapa começada)", async () => {
-    const store = getStore();
-    const { milestonesOf } = await import("@/lib/services/milestones");
-    const order = orders[0];
-    const stages = (
-      await store.list("stages", { filter: { orderId: order.id } })
-    )
-      .filter((s) => !isOffFlowStage(s.key))
-      .sort((a, b) => a.sequence - b.sequence);
-    const reqs = await store.list("requirements", {
-      filter: { orderId: order.id },
-    });
-    const states = new Map(
-      (await milestonesOf(order)).map((v) => [v.key, v.state]),
-    );
+  it("fase 5d: com a situação dos marcos, o cliente vê o que o marco liberou", async () => {
+    const { states, byMilestone } = await viewOf(orders[0]);
     // Pedido clássico novo: a arte libera desde a criação (marco Arte sem
-    // dependência), com a etapa "Arte e embalagem" ainda pendente.
+    // dependência).
     expect(states.get("art")).toBe("active");
-    const packaging = stages.find((s) => s.key === "PACKAGING")!;
-    expect(packaging.status).toBe("pending");
-    const seen = [
-      ...view
-        .requirementsByMilestone(
-          { role: "customer" } as never,
-          stages,
-          reqs,
-          states,
-        )
-        .values(),
-    ]
+    const seen = [...byMilestone("customer").values()]
       .flat()
       .map((x) => x.r.key);
     expect(seen).toContain("art");
@@ -231,34 +159,17 @@ describe("tela do pedido pelos marcos: os mesmos itens por papel", () => {
     expect(seen).not.toContain("order_signed_supplier");
   });
 
-  it("agrupa pelo marco gravado, na ordem dos 16", async () => {
-    const store = getStore();
-    const fresh = await store.list("orders", {
-      filter: { id: orders.map((o) => o.id) },
-    });
-    const order = fresh.find((o) => o.status === "SHIPPING" && !o.flow)!;
-    const stages = await store.list("stages", {
-      filter: { orderId: order.id },
-    });
-    const reqs = await store.list("requirements", {
-      filter: { orderId: order.id },
-    });
-    const broker = view.requirementsByMilestone(
-      { role: "broker" } as never,
-      stages,
-      reqs,
-    );
-    // O despachante lê o embarque (já começou) e tem o desembaraço.
+  it("agrupa pelo marco gravado, na ordem dos 16; o despachante lê o embarque depois que ele começa", async () => {
+    const order = await classicOrder("Embarque");
+    const { completeMilestonesBefore } = await import("./helpers/milestones");
+    const early = await viewOf(order);
+    expect([...early.byMilestone("broker").keys()]).toEqual(["customs"]);
+    await completeMilestonesBefore(order.id, "shipment");
+    const later = await viewOf(order);
+    expect(later.states.get("shipment")).toBe("active");
+    const broker = later.byMilestone("broker");
     expect([...broker.keys()]).toEqual(["shipment", "customs"]);
     for (const [key, list] of broker)
       for (const { r } of list) expect(r.milestoneKey).toBe(key);
-    // Antes de o embarque começar, só o desembaraço dele.
-    const early = orders[0];
-    const earlyBroker = view.requirementsByMilestone(
-      { role: "broker" } as never,
-      await store.list("stages", { filter: { orderId: early.id } }),
-      await store.list("requirements", { filter: { orderId: early.id } }),
-    );
-    expect([...earlyBroker.keys()]).toEqual(["customs"]);
   });
 });

@@ -54,15 +54,18 @@ export async function OrderRoundsSection({
   const productIds = [
     ...new Set(rounds.flatMap((r) => r.items.map((i) => i.productId))),
   ];
-  const [children, products, stages] = await Promise.all([
+  const [children, products, prep] = await Promise.all([
     childIds.length
       ? store.list("orders", { filter: { id: childIds } })
       : Promise.resolve([] as Order[]),
     store.list("products", { filter: { id: productIds } }),
-    store.list("stages", { filter: { orderId: order.id, key: "PREPARATION" } }),
+    // Fase 5g: a Preparação do pai pelos marcos 1 a 4 (sem etapas).
+    import("@/lib/services/milestones").then((m) => m.milestonesOf(order)),
   ]);
   const today = todayIso();
-  const preparationDone = stages[0]?.status === "done";
+  const preparationDone = prep
+    .slice(0, 4)
+    .every((v) => v.state === "done" || v.state === "na");
   const due = rounds.some((r) => !r.orderId && r.expectedAt <= today);
   return (
     <Card title={t("purchaseRounds.order.parentTitle")}>

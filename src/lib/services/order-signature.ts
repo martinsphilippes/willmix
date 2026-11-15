@@ -22,7 +22,7 @@ import {
   ORDER_SIGN_SEND,
   ORDER_SIGNED_SUPPLIER,
   ORDER_SIGNED_WELLMIX,
-} from "@/lib/workflow/stages";
+} from "@/lib/workflow/templates";
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { DOWN_PAYMENT_KEY, SAMPLE_ORDER_KEY } from "@/lib/purchase-lanes";
 import { audit } from "./audit";
@@ -376,12 +376,12 @@ export type SignSendBlocker = "art" | "seal";
  */
 export async function signSendBlockers(
   orderId: string,
-  stageId: string,
 ): Promise<SignSendBlocker[]> {
   const store = getStore();
   const missing: SignSendBlocker[] = [];
+  // Fase 5g: a arte do documento do pedido (a chave `art` é única nele).
   const [art] = await store.list("requirements", {
-    filter: { stageId, key: "art" },
+    filter: { orderId, key: "art" },
     limit: 1,
   });
   if (!art || art.status !== "done") missing.push("art");
@@ -448,7 +448,7 @@ export async function getOrderSignatureView(
   const supplier = parseSignature(reqs.supplier);
   const open = isOrderOpen(order.status);
   // Fase 5d: liberado pelo marco (Contrato), não pela etapa em andamento.
-  const stageActive = async (req: Requirement | null) => {
+  const itemReleased = async (req: Requirement | null) => {
     if (!req || req.status === "done") return false;
     const { requirementIsReleased } = await import("./order-milestones");
     return requirementIsReleased(req);
@@ -464,14 +464,14 @@ export async function getOrderSignatureView(
   let sendBlockers: SignSendBlocker[] = [];
   let canSend = false;
   if (open && awaitingSend && reqs.send) {
-    sendBlockers = await signSendBlockers(order.id, reqs.send.stageId);
+    sendBlockers = await signSendBlockers(order.id);
     canSend =
       sendBlockers.length === 0 &&
-      (await stageActive(reqs.send)) &&
+      (await itemReleased(reqs.send)) &&
       canSubmitRequirement(user, order, reqs.send);
   }
   if (open) {
-    const supplierOpen = !!wellmix && (await stageActive(reqs.supplier));
+    const supplierOpen = !!wellmix && (await itemReleased(reqs.supplier));
     supplierBlocked =
       !!wellmix && !!reqs.supplier && !supplier && !supplierOpen;
     if (isWellmix(user)) {
@@ -479,7 +479,7 @@ export async function getOrderSignatureView(
         !awaitingSend &&
         !samplesPending &&
         can(user, "contract.sign") &&
-        (await stageActive(reqs.wellmix))
+        (await itemReleased(reqs.wellmix))
       )
         canSign = "wellmix";
       canRegisterSupplier = supplierOpen && isAdmin(user);
@@ -562,7 +562,7 @@ export async function releaseOrderBySignature(
     const signature = parseSignature(reqs.wellmix);
     if (!signature || !reqs.wellmix) return false;
     const [confirm] = await store.list("requirements", {
-      filter: { stageId: reqs.wellmix.stageId, key: ORDER_CONFIRMED },
+      filter: { orderId, key: ORDER_CONFIRMED },
       limit: 1,
     });
     if (!confirm || confirm.status === "done") return false;

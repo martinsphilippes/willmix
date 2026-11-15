@@ -9,7 +9,6 @@ import type {
   Product,
   ProductPhoto,
   Request,
-  Stage,
 } from "@/lib/db";
 import { itemLogistics } from "./item-logistics";
 import {
@@ -213,9 +212,13 @@ export async function loadSaleSheet(
     await store.list("orders", { filter: { id: orderIds } })
   ).filter((o) => ownerOf(o) === partyId);
   const requestIds = groupRequests.map((r) => r.id);
-  const [items, stages, documents] = await Promise.all([
+  const [items, milestones, documents] = await Promise.all([
     store.list("order_items", { filter: { orderId: orderIds } }),
-    store.list("stages", { filter: { orderId: orderIds } }),
+    store
+      .list("order_milestones", {
+        filter: { orderId: orderIds, key: ["shipment", "delivery"] },
+      })
+      .catch(() => []),
     store.list("documents", { filter: { orderId: orderIds } }),
   ]);
   const productIds = [
@@ -244,9 +247,13 @@ export async function loadSaleSheet(
       (p.orderId && orderIds.includes(p.orderId)) ||
       (!p.orderId && p.requestId && requestIds.includes(p.requestId)),
   );
-  const stageDate = (key: Stage["key"]) => {
-    const list = stages.filter((s) => s.key === key);
-    const done = list.map((s) => s.completedAt).filter(Boolean) as string[];
+  // Fase 5g: embarque e entrega pelos marcos (conclusão ou prazo).
+  const stageDate = (key: "shipment" | "delivery") => {
+    const list = milestones.filter((s) => s.key === key);
+    const done = list
+      .filter((s) => s.status === "done")
+      .map((s) => s.completedAt)
+      .filter(Boolean) as string[];
     if (done.length) return { at: done.sort().at(-1)!, done: true };
     const due = list.map((s) => s.dueAt).filter(Boolean) as string[];
     return due.length ? { at: due.sort()[0], done: false } : null;
@@ -260,8 +267,8 @@ export async function loadSaleSheet(
     totals: saleTotals(lines),
     rows,
     payments,
-    shipping: stageDate("SHIPPING"),
-    delivery: stageDate("DELIVERED"),
+    shipping: stageDate("shipment"),
+    delivery: stageDate("delivery"),
     documents: documents
       .filter((d: Document) => d.type !== "photo")
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),

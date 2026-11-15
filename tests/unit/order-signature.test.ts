@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { groupItems, groupKeyOf, groupOf } from "./helpers/groups";
 import {
   reachSignature,
   signOrderAs,
@@ -68,8 +69,8 @@ async function newOrder(name: string) {
 
 const reqOf = async (orderId: string, key: string) =>
   (await getStore().list("requirements", { filter: { orderId, key } }))[0];
-const stageOf = async (orderId: string, key: string) =>
-  (await getStore().list("stages", { filter: { orderId, key } }))[0];
+// Fase 5g: o grupo de itens no lugar da etapa (helpers/groups.ts).
+const stageOf = groupOf;
 
 /** Pedido já enviado para assinatura (arte, selo e envio feitos pela Wellmix). */
 async function readyOrder(name: string) {
@@ -95,7 +96,6 @@ async function legacyOrder(name: string) {
     "requirements",
     (await reqOf(order.id, "order_signed_wellmix")).id,
     {
-      stageId: (await stageOf(order.id, "ORDER_CREATED")).id,
       step: "order/orders",
       milestoneKey: "new-order",
     },
@@ -104,7 +104,6 @@ async function legacyOrder(name: string) {
     "requirements",
     (await reqOf(order.id, "order_signed_supplier")).id,
     {
-      stageId: (await stageOf(order.id, "PREPARATION")).id,
       step: "order/orders",
       milestoneKey: "new-order",
     },
@@ -132,31 +131,26 @@ describe("documento do pedido com duas assinaturas", () => {
     ).rejects.toThrow("signature_required");
     // Ordem nova: os dois ficam na etapa "Arte e embalagem", depois do item
     // de envio para assinatura (de quem faz a arte).
-    const packaging = await stageOf(order.id, "PACKAGING");
     const send = await reqOf(order.id, "order_sign_send");
-    expect([wellmix.stageId, supplier.stageId, send.stageId]).toEqual([
-      packaging.id,
-      packaging.id,
-      packaging.id,
-    ]);
+    expect([
+      await groupKeyOf(wellmix),
+      await groupKeyOf(supplier),
+      await groupKeyOf(send),
+    ]).toEqual(["PACKAGING", "PACKAGING", "PACKAGING"]);
     expect([send.status, send.required, send.role]).toEqual([
       "pending",
       true,
       "agency",
     ]);
-    expect(
-      (
-        await getStore().list("requirements", {
-          filter: { stageId: packaging.id },
-        })
-      ).map((x) => x.key),
-    ).toEqual([
-      "art",
-      "art_approval",
-      "order_sign_send",
-      "order_signed_wellmix",
-      "order_signed_supplier",
-    ]);
+    expect((await groupItems(order.id, "PACKAGING")).map((x) => x.key)).toEqual(
+      [
+        "art",
+        "art_approval",
+        "order_sign_send",
+        "order_signed_wellmix",
+        "order_signed_supplier",
+      ],
+    );
   });
 
   it("ordem nova: o documento só vai para assinatura com a arte enviada e o selo aplicado; quem envia é quem fez a arte (ou a Wellmix)", async () => {
@@ -180,10 +174,7 @@ describe("documento do pedido com duas assinaturas", () => {
     const packaging = await stageOf(order.id, "PACKAGING");
     expect(packaging.status).toBe("active");
     // Falta a arte; depois, o selo. O envio é recusado dizendo o que falta.
-    expect(await sig.signSendBlockers(order.id, packaging.id)).toEqual([
-      "art",
-      "seal",
-    ]);
+    expect(await sig.signSendBlockers(order.id)).toEqual(["art", "seal"]);
     await expect(sig.sendOrderForSignature(agency, order.id)).rejects.toThrow(
       "sign_send_art_required",
     );
@@ -197,9 +188,7 @@ describe("documento do pedido com duas assinaturas", () => {
       type: "art",
     });
     await submitRequirement(agency, art.id, { documentId: artDoc.id });
-    expect(await sig.signSendBlockers(order.id, packaging.id)).toEqual([
-      "seal",
-    ]);
+    expect(await sig.signSendBlockers(order.id)).toEqual(["seal"]);
     await expect(sig.sendOrderForSignature(agency, order.id)).rejects.toThrow(
       "sign_send_seal_required",
     );
@@ -238,7 +227,7 @@ describe("documento do pedido com duas assinaturas", () => {
     await flow.submitStep(agency, order.id, "cert_seal_art", {
       documentId: await stepDoc(agency, "arte-com-selo.pdf"),
     });
-    expect(await sig.signSendBlockers(order.id, packaging.id)).toEqual([]);
+    expect(await sig.signSendBlockers(order.id)).toEqual([]);
     // Fase 5d: o Contrato espera os marcos Arte (com a aprovação da arte pelo
     // fornecedor) e Certificação (a arte com o selo conferida pela Wellmix).
     expect(await sendTask(agency)).toBe(false);
@@ -601,14 +590,6 @@ describe("documento do pedido com duas assinaturas", () => {
     await store.update("requirements", confirm.id, {
       status: "pending",
       value: null,
-    });
-    await store.update(
-      "stages",
-      (await stageOf(order.id, "ORDER_CREATED")).id,
-      { status: "active" },
-    );
-    await store.update("stages", (await stageOf(order.id, "PREPARATION")).id, {
-      status: "pending",
     });
     // Fase 5d: o item do fornecedor anda pelo marco dele, não pela etapa
     // que não abriu; ele já não fica travado.

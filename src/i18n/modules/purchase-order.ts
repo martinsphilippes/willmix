@@ -6,11 +6,8 @@
 export const pt = {
   "orders.origin.supplier_request":
     "Pedido de compra (solicitação ao fornecedor)",
-  "purchaseOrder.stage.PREPARATION": "Preparação, arte e certificação",
-  "purchaseOrder.stageRow.PREPARATION": "Die-Cut, Arte e Certificação",
   "purchaseOrder.dieCut.title": "Die-Cut",
   "purchaseOrder.dieCut.done": "Concluído",
-  "purchaseOrder.stage.PACKAGING": "Contrato e assinaturas",
 
   "purchaseOrder.card.title": "Gerar pedido de compra",
   "purchaseOrder.card.hint":
@@ -89,11 +86,8 @@ export const pt = {
 
 export const en: Record<keyof typeof pt, string> = {
   "orders.origin.supplier_request": "Purchase order (supplier request)",
-  "purchaseOrder.stage.PREPARATION": "Preparation, artwork and certification",
-  "purchaseOrder.stageRow.PREPARATION": "Die-Cut, Artwork and Certification",
   "purchaseOrder.dieCut.title": "Die-Cut",
   "purchaseOrder.dieCut.done": "Done",
-  "purchaseOrder.stage.PACKAGING": "Contract and signatures",
 
   "purchaseOrder.card.title": "Create purchase order",
   "purchaseOrder.card.hint":
@@ -174,11 +168,8 @@ export const en: Record<keyof typeof pt, string> = {
 
 export const zh: Record<keyof typeof pt, string> = {
   "orders.origin.supplier_request": "采购订单（供应商询单）",
-  "purchaseOrder.stage.PREPARATION": "准备、设计与认证",
-  "purchaseOrder.stageRow.PREPARATION": "刀模 (Die-Cut)、设计与认证",
   "purchaseOrder.dieCut.title": "刀模 (Die-Cut)",
   "purchaseOrder.dieCut.done": "已完成",
-  "purchaseOrder.stage.PACKAGING": "合同与签署",
 
   "purchaseOrder.card.title": "生成采购订单",
   "purchaseOrder.card.hint":

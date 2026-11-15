@@ -469,7 +469,7 @@ Vídeos para o transportador, a empresa que leva a carga do porto até o cliente
 
 **Conta de gravação:** `transportadora@rodo.com` (senha `wellmix123`), tela em pt. Chrome em pt-BR, para as datas saírem em dd/mm/aaaa. O TRA-02 grava-se no celular (Chrome emulando iPhone, sem o zoom do navegador, guia seção 3).
 
-**Documentos lidos:** GUIA.md, 02-cliente.md (modelo), SCOPE.md, WORKFLOW.md (etapa Transporte, datas em ordem, quem vê o quê), ACCESS.md, `src/lib/services/order-cargo.ts`, `src/lib/workflow/stages.ts` e `engine.ts`, `src/components/requirement-form.tsx`, o módulo de dicionário `orders` e o E2E `tests/e2e/happy-path.spec.ts` (passo 12).
+**Documentos lidos:** GUIA.md, 02-cliente.md (modelo), SCOPE.md, WORKFLOW.md (etapa Transporte, datas em ordem, quem vê o quê), ACCESS.md, `src/lib/services/order-cargo.ts`, `src/lib/workflow/templates.ts` e `engine.ts`, `src/components/requirement-form.tsx`, o módulo de dicionário `orders` e o E2E `tests/e2e/happy-path.spec.ts` (passo 12).
 
 ### TRA-01 · Registrar o transporte e a entrega
 

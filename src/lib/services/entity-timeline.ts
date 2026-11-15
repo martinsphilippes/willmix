@@ -53,12 +53,21 @@ const mean = (xs: number[]) =>
 /** Os blocos de Pedido a Entrega dos pedidos (média de cada bloco e do geral). */
 async function ordersProgress(orderIds: string[], now: Date) {
   const ids = [...new Set(orderIds)];
-  const stages = ids.length
-    ? await getStore().list("stages", { filter: { orderId: ids } })
-    : [];
+  // Fase 5g: pelos 16 marcos (a situação calculada e as datas gravadas).
+  const { ordersRelease } = await import("./order-milestones");
+  const { compactMilestones } = await import("@/lib/milestones");
+  const [views, rows] = await Promise.all([
+    ordersRelease(ids),
+    ids.length
+      ? getStore()
+          .list("order_milestones", { filter: { orderId: ids } })
+          .catch(() => [])
+      : Promise.resolve([]),
+  ]);
   const progress = ids.map((id) =>
     orderProgress(
-      stages.filter((s) => s.orderId === id),
+      compactMilestones(views.get(id)?.views ?? []),
+      rows.filter((r) => r.orderId === id),
       now,
     ),
   );

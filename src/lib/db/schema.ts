@@ -1229,10 +1229,12 @@ export interface Stage extends BaseRow {
 export interface Requirement extends BaseRow {
   orderId: string;
   /**
-   * LEGADO (fase 5e): a etapa do item no registro antigo. O item anda pelo
-   * passo e pelo marco gravados (`step`, `milestoneKey`); sai na fase 5f.
+   * LEGADO: a etapa do item no registro antigo. Desde a fase 5g o item é
+   * identificado pelo passo e pela chave e anda pelo marco gravados (`step`,
+   * `milestoneKey`); os itens novos nascem com ela nula. A coluna sai na
+   * fase 5f (docs/MILESTONES.md).
    */
-  stageId: string;
+  stageId?: string | null;
   key: string;
   label: string;
   type: RequirementType;
@@ -1589,7 +1591,8 @@ export interface InspectionComparison {
 
 export interface InspectionResultRow extends BaseRow {
   orderId: string;
-  stageId: string;
+  /** LEGADO: a etapa antiga; nula desde a fase 5g (sai na 5f). */
+  stageId?: string | null;
   snapshotId: string | null;
   result: InspectionResult;
   comparisons: InspectionComparison[];

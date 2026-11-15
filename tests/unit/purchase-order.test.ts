@@ -1,4 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { groupOf } from "./helpers/groups";
+import { itemGroupKey } from "@/lib/order-groups";
 import { withTempStore } from "./setup";
 import { approveMilestones } from "./helpers/approvals";
 import { completeCertification } from "./helpers/certification";
@@ -1765,11 +1767,12 @@ describe("pedido em nome do responsável pelo booking (trading)", () => {
     // o andamento do pedido seguem com a arte e o certificado em aberto.
     const { supplierLaneView } = await import("@/lib/purchase-lanes");
     const tradingUser = { ...supplierA, partyId: trading.id };
-    const [prep] = await store.list("stages", {
-      filter: { orderId: order.id, key: "PREPARATION" },
-    });
+    // Fase 5g: o grupo da Preparação (itens pelo marco e pela chave).
+    const prep = await groupOf(order.id, "PREPARATION");
     const prepReqs = async () =>
-      (await requirementsOf(order.id)).filter((r) => r.stageId === prep.id);
+      (await requirementsOf(order.id)).filter(
+        (r) => r.orderId === order.id && itemGroupKey(r, order) === prep.key,
+      );
     const items = await store.list("order_items", {
       filter: { orderId: order.id },
     });
@@ -1794,7 +1797,7 @@ describe("pedido em nome do responsável pelo booking (trading)", () => {
         value: "30",
       });
     }
-    const stage = (await store.get("stages", prep.id))!;
+    const stage = await groupOf(order.id, "PREPARATION");
     const view = supplierLaneView(stage, await prepReqs())!;
     expect(view).toMatchObject({
       status: "done",
@@ -1804,8 +1807,8 @@ describe("pedido em nome do responsável pelo booking (trading)", () => {
       complete: true,
     });
     expect(view.completedAt).toBeTruthy();
+    // A Preparação segue em andamento (a arte e o certificado em aberto).
     expect(stage.status).toBe("active");
-    expect(stage.percent).toBeLessThan(100);
     expect((await store.get("orders", order.id))!.status).toBe("PREPARATION");
   });
 
@@ -1939,11 +1942,11 @@ describe("pedido em nome do responsável pelo booking (trading)", () => {
     expect(terms.get(manual.id)?.days).toBeNull();
 
     // O fornecedor vê três tarefas por produto; as oito continuam na etapa.
-    const [prep] = await store.list("stages", {
-      filter: { orderId: order.id, key: "PREPARATION" },
-    });
+    const prep = await groupOf(order.id, "PREPARATION");
     const ofPrep = async () =>
-      (await requirementsOf(order.id)).filter((r) => r.stageId === prep.id);
+      (await requirementsOf(order.id)).filter(
+        (r) => itemGroupKey(r, order) === prep.key,
+      );
     const reqs = await ofPrep();
     // 16 das raias + as aprovações do GP (cadastro) e do Comprador (material).
     expect(reqs).toHaveLength(18);
