@@ -69,7 +69,7 @@ A especificação gravada na solicitação é lida linha por linha (`src/lib/req
 ### Pagamento
 
 - **Compra com o fornecedor:** fornecedor (do pedido, da negociação ou da ficha atual), condição de pagamento em parcelas (a do pedido; senão a do cadastro do fornecedor), forma de pagamento (a observação da condição do fornecedor, ex. "T/T"), sinal (as parcelas na data do pedido, com o valor sobre a compra total quando ela existe), parcelas, prazo da última parcela, condição do pedido no Sankhya e prazo de produção (da negociação).
-- **Venda ao cliente:** sinal do cliente (`requests.downPaymentAmount`, na moeda da venda) e condição de pagamento do cliente, que **ainda não tem campo** na solicitação nem no pedido: sempre "Não informado" (seção 6).
+- **Venda ao cliente:** a **forma de pagamento do cliente** escolhida no pedido (docs/CUSTOMER_PAYMENT.md, `orders.customerPaymentPlan`), com o selo "Pedido nº N" e a situação da alçada (Aprovada, Em aprovação, Recusada); as **parcelas do cliente** por evento ("10% no pedido (R$ 1.000,00)", "90% no embarque…"), com o valor sobre a venda do pedido e os juros depois da entrega, como na tela do pedido; o **sinal do cliente** (o gravado na solicitação, `requests.downPaymentAmount`; sem ele, as parcelas "no pedido" da forma) e o **prazo da última parcela**. Quem vê é a regra do pedido (`customerPaymentView`): o cliente só a forma aprovada; a Wellmix, quem vê valores e margem. Pedido sem forma escolhida (ou solicitação sem pedido): "Não informado".
 
 ## 4. Permissões (no servidor)
 
@@ -103,7 +103,7 @@ Conferido com os registros do Supabase (o montador da ficha rodando sobre as sol
 - **Solicitação nº 3 (BONECA ZOEY), sem preço negociado:** "Dimensões do produto (cm): 20 × 11 × 35.1" → "Comprimento 20 cm · Largura 11 cm · Altura 35,1 cm"; peso líquido 0,3728 kg e 6 peças por caixa master do texto (Solicitação); peso bruto 0,7333 kg (Ficha atual); 1.500 + 1.500 = 3.000 peças → 250 + 250 = 500 caixas (Calculado); custo US$ 3,5567 (Ficha atual); compra, venda e condições "Não informado".
 - **Operador sem "Ver valores e margem"** (o login da foto): as mesmas linhas com peças, caixas e cubagem; Valores e Pagamento fechados com o aviso. **Cliente:** peças, programação, o texto da solicitação e a venda (ainda "Não informado"); nada do cadastro.
 
-O que falta nos dados (para a ficha ficar completa sem digitação): medidas e CBM da caixa master (só 2 de 16.843 produtos têm), condição de pagamento dos fornecedores (a HUADA não tem) e um campo para a condição de venda ao cliente.
+O que falta nos dados (para a ficha ficar completa sem digitação): medidas e CBM da caixa master (só 2 de 16.843 produtos têm), condição de pagamento dos fornecedores (a HUADA não tem) e, para a venda ao cliente, a forma de pagamento escolhida no pedido (só existe depois do pedido; docs/CUSTOMER_PAYMENT.md).
 
 ## 7. Peças
 
