@@ -149,7 +149,12 @@ O servidor só lê e só monta o que o login pode ver; o que fica de fora não s
 - Ficha da solicitação (compra, custo registrado, faixas e condições do fornecedor; a análise do Superplan continua com "Ver valores e margem").
 - Histórico comercial (FOB unitário da última compra), produtos do fornecedor (Cadastros → Fornecedores) e a tabela de preços do marketing (FOB unitário, também no CSV).
 
-**Ainda não aplicada** (próximo PR): solicitação ao fornecedor (tabela, negociação, contraproposta, pedido de compra ao fornecedor), estratégia e cotação de compra, sourcing.
+- Solicitação ao fornecedor (15/11/2026): lista (resposta "Faz", sem o preço), tabela (preço e moeda do booking e das condições iniciais e finais), tela do produto (preço do booking ou negociado, resposta, alternativas, linha do tempo, condições combinadas), card "Pedido de compra" (preço negociado). A contraproposta de quem não vê o preço tem MOQ, prazo e FOB/EXW, sem preço e sem a simulação do Superplan; o servidor ignora preço enviado por ela. O Superplan (negociado, do item escolhido e das alternativas) some junto, porque custo e mínimo saem do preço. O fornecedor vê o dele, como antes.
+- Estratégia de compra: o preço da última compra (fila e decisão). O pedido "fornecedor da última compra" gerado por quem não vê o preço sai com o preço e a moeda gravados na decisão (o formulário fica sem os dois campos).
+- Cotação de compra: o quadro comparativo mostra fornecedores, situação e condições; preços por item, total e a linha "Última compra" só com a permissão, com o aviso de quem vê.
+- Sourcing: preço na lista, na visita e no item; faixas de preço (lista, texto e o botão de salvar, que o servidor recusa). Salvar o item sem a permissão mantém o preço e a moeda gravados.
+
+**Quem abre essas telas sem a permissão (padrão de fábrica):** o Planejamento (solicitação ao fornecedor, estratégia e cotação de compra) e o Cadastro (Sourcing), além de funções criadas pelo administrador. Em 15/11/2026 nenhum login de produção tinha essas funções. **Para decidir com o dono:** o Planejamento decide a solicitação ao fornecedor e gera o pedido de compra por padrão, sem ver o preço (recomendação: dar "Ver preço de compra" ao Planejamento).
 
 **Para decidir com o dono:** documentos com preço que hoje chegam a parceiros: o pedido de compra (tela e PDF) para a certificadora; a invoice comercial para o comex e a logística; as linhas da invoice para a companhia marítima; os arquivos de invoice e packing list para agência, transportador e jurídico. E o Superplan (custo nacionalizado, margem e veredito) no Book, na Seleção e na negociação, hoje para toda a Wellmix com a tela.
 

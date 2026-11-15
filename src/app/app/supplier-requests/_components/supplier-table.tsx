@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { SupplierRequest } from "@/lib/db/schema";
 import { ColorLines } from "@/components/color-lines";
 import { colorTotals } from "@/lib/color-split";
@@ -147,6 +148,7 @@ export function SupplierRequestTable({
   wellmix,
   legacy,
   bookSpecs,
+  showPrice = true,
   t,
 }: {
   rows: SupplierRequest[];
@@ -159,6 +161,12 @@ export function SupplierRequestTable({
   legacy: Map<string, Array<{ at: string }>>;
   /** Ficha do item exato do Book (por solicitação): completa a cópia gravada. */
   bookSpecs?: Map<string, RequestBookSpecs>;
+  /**
+   * Preço e moeda (do booking e das condições): falso para a Wellmix sem
+   * "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md, seção
+   * 7). O fornecedor vê o dele.
+   */
+  showPrice?: boolean;
   t: Translate;
 }) {
   const intl = t.intl;
@@ -195,9 +203,17 @@ export function SupplierRequestTable({
     "bookingIncoterm",
     "needs",
     "canDo",
-  ];
+  ].filter(
+    (c) => showPrice || (c !== "bookingPrice" && c !== "bookingCurrency"),
+  );
   // Condições iniciais (primeira resposta) e finais (as que valem hoje).
-  const conditionCols = ["price", "currency", "moq", "incoterm", "leadTime"];
+  const conditionCols = [
+    "price",
+    "currency",
+    "moq",
+    "incoterm",
+    "leadTime",
+  ].filter((c) => showPrice || (c !== "price" && c !== "currency"));
   // Depois das condições; "Situação / SLA" fecha a tabela, com as ações.
   const after = ["turn", "openedAt", "firstAnswerAt", "lastAnswerAt"];
   const nowrap = "whitespace-nowrap";
@@ -217,32 +233,52 @@ export function SupplierRequestTable({
     id: string,
   ) => {
     const final = group === "final";
-    const cells = [
-      <Td
-        key={`${group}-price`}
-        className={cx(nowrap, "border-l border-zinc-100 tabular-nums")}
-        data-supplier-table-answer-price={final ? id : undefined}
-        data-supplier-table-initial-price={final ? undefined : id}
-      >
-        {c ? num(c.price) : "—"}
-      </Td>,
-      <Td key={`${group}-currency`} className={nowrap}>
-        {c?.currency ?? "—"}
-      </Td>,
-      <Td key={`${group}-moq`} className={cx(nowrap, "tabular-nums")}>
-        {c ? num(c.moq, 0) : "—"}
-      </Td>,
-      <Td
-        key={`${group}-incoterm`}
-        className={nowrap}
-        data-supplier-table-incoterm={final ? id : undefined}
-      >
-        {c?.incoterm ?? "—"}
-      </Td>,
-      <Td key={`${group}-lead`} className={cx(nowrap, "tabular-nums")}>
-        {c ? num(c.leadTimeDays, 0) : "—"}
-      </Td>,
-    ];
+    // A primeira coluna do grupo leva a borda (sem o preço, é o MOQ).
+    const edge = (key: string) =>
+      key === conditionCols[0] ? "border-l border-zinc-100" : undefined;
+    const byKey: Record<string, ReactNode> = {
+      price: (
+        <Td
+          key={`${group}-price`}
+          className={cx(nowrap, edge("price"), "tabular-nums")}
+          data-supplier-table-answer-price={final ? id : undefined}
+          data-supplier-table-initial-price={final ? undefined : id}
+        >
+          {c ? num(c.price) : "—"}
+        </Td>
+      ),
+      currency: (
+        <Td key={`${group}-currency`} className={cx(nowrap, edge("currency"))}>
+          {c?.currency ?? "—"}
+        </Td>
+      ),
+      moq: (
+        <Td
+          key={`${group}-moq`}
+          className={cx(nowrap, edge("moq"), "tabular-nums")}
+        >
+          {c ? num(c.moq, 0) : "—"}
+        </Td>
+      ),
+      incoterm: (
+        <Td
+          key={`${group}-incoterm`}
+          className={cx(nowrap, edge("incoterm"))}
+          data-supplier-table-incoterm={final ? id : undefined}
+        >
+          {c?.incoterm ?? "—"}
+        </Td>
+      ),
+      leadTime: (
+        <Td
+          key={`${group}-lead`}
+          className={cx(nowrap, edge("leadTime"), "tabular-nums")}
+        >
+          {c ? num(c.leadTimeDays, 0) : "—"}
+        </Td>
+      ),
+    };
+    const cells = conditionCols.map((key) => byKey[key]);
     if (final)
       cells.push(
         <Td
@@ -646,8 +682,14 @@ export function SupplierRequestTable({
                 <Td className={cx(nowrap, "tabular-nums")}>
                   {it.moq === null ? "—" : `${num(it.moq, 0)} ${r.unit}`}
                 </Td>
-                <Td className={cx(nowrap, "tabular-nums")}>{num(it.price)}</Td>
-                <Td className={nowrap}>{it.currency ?? "—"}</Td>
+                {showPrice ? (
+                  <>
+                    <Td className={cx(nowrap, "tabular-nums")}>
+                      {num(it.price)}
+                    </Td>
+                    <Td className={nowrap}>{it.currency ?? "—"}</Td>
+                  </>
+                ) : null}
                 <Td className={nowrap}>{it.incoterm ?? "—"}</Td>
                 <Td>
                   <span

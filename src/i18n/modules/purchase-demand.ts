@@ -145,6 +145,8 @@ export const pt = {
   "quote.compare": "Quadro comparativo",
   "quote.lastPurchase": "Última compra (referência)",
   "quote.noLastPurchase": "Sem compra anterior",
+  "quote.priceRestricted":
+    "Os preços, o total e a última compra aparecem para quem tem “Ver preço de compra” (Gestão → Equipe → Funções e acessos).",
   "quote.total": "Total",
   "quote.conditions": "Condição de envio",
   "quote.winner": "Vencedora",
@@ -382,6 +384,8 @@ export const en: Record<keyof typeof pt, string> = {
   "quote.compare": "Comparison",
   "quote.lastPurchase": "Last purchase (reference)",
   "quote.noLastPurchase": "No previous purchase",
+  "quote.priceRestricted":
+    "Prices, the total and the last purchase are shown to whoever has “See purchase price” (Management → Team → Functions and access).",
   "quote.total": "Total",
   "quote.conditions": "Shipping terms",
   "quote.winner": "Winner",
@@ -605,6 +609,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.compare": "比价表",
   "quote.lastPurchase": "上次采购（参考）",
   "quote.noLastPurchase": "无采购记录",
+  "quote.priceRestricted":
+    "价格、合计和上次采购仅对拥有“查看采购价”权限的人显示（管理 → 团队 → 职能与权限）。",
   "quote.total": "合计",
   "quote.conditions": "发货条件",
   "quote.winner": "中标",

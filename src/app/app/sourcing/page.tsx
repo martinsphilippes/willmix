@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import {
   SOURCING_STATUSES,
   VISIT_STATUSES,
@@ -63,6 +64,9 @@ export default async function SourcingPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "sourcing");
+  // Preço achado na feira: só com "Ver preço de compra" (dono, 15/11/2026;
+  // docs/LINHA_DE_VISAO.md, seção 7).
+  const seesPrice = canSeePurchasePrice(user);
   const {
     tab: tabParam,
     status: statusParam,
@@ -268,12 +272,13 @@ export default async function SourcingPage({
                         {supplierName(item.supplierId, item.supplierName)}
                       </p>
                       <p className="text-sm text-zinc-800">
-                        {formatMoney(item.price, item.currency, t)}
+                        {seesPrice
+                          ? formatMoney(item.price, item.currency, t)
+                          : null}
                         {item.moq ? (
                           <span className="text-zinc-500">
-                            {" "}
-                            · {t("sourcing.moq")}{" "}
-                            {formatNumber(item.moq, t.intl)}
+                            {seesPrice ? " · " : null}
+                            {t("sourcing.moq")} {formatNumber(item.moq, t.intl)}
                           </span>
                         ) : null}
                       </p>
@@ -303,7 +308,7 @@ export default async function SourcingPage({
                     <Th className="w-16" />
                     <Th>{t("common.name")}</Th>
                     <Th>{t("common.supplier")}</Th>
-                    <Th>{t("common.price")}</Th>
+                    {seesPrice ? <Th>{t("common.price")}</Th> : null}
                     <Th>{t("sourcing.moq")}</Th>
                     <Th>{t("common.status")}</Th>
                     <Th>{t("sourcing.foundAt")}</Th>
@@ -350,7 +355,9 @@ export default async function SourcingPage({
                       <Td>
                         {supplierName(item.supplierId, item.supplierName)}
                       </Td>
-                      <Td>{formatMoney(item.price, item.currency, t)}</Td>
+                      {seesPrice ? (
+                        <Td>{formatMoney(item.price, item.currency, t)}</Td>
+                      ) : null}
                       <Td>{formatNumber(item.moq, t.intl)}</Td>
                       <Td>
                         <Badge tone={sourcingTone(item.status)}>

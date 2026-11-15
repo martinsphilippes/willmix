@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   bookingSheet,
+  createTeamLogin,
   importAndClose,
   login,
   selectAndOpenSupplierRequest,
@@ -316,6 +317,43 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await login(page, "supplier.b@china.com");
   const other = await page.goto(requestUrl);
   expect(other?.status()).toBe(404);
+
+  // 3a. Sem "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md,
+  // seção 7): um login só de Planejamento abre a solicitação sem o preço do
+  // booking, da resposta e das condições; a contraproposta dele tem MOQ,
+  // prazo e FOB/EXW, sem preço e sem o Superplan.
+  await login(page, "admin@wellmix.com");
+  const plannerEmail = `planejamento.${TAG.toLowerCase()}@wellmix.com`;
+  await createTeamLogin(page, `Planejamento ${TAG}`, plannerEmail, ["planner"]);
+  await login(page, plannerEmail);
+  await page.goto(requestUrl);
+  await expect(page.locator("[data-supplier-table-row]")).toHaveCount(1);
+  await expect(page.locator("[data-supplier-table-answer-price]")).toHaveCount(
+    0,
+  );
+  await expect(page.locator("[data-supplier-table-initial-price]")).toHaveCount(
+    0,
+  );
+  await expect(page.locator("[data-supplier-table-incoterm]")).toHaveCount(1);
+  await page.goto(itemUrl);
+  const plannerAnswer = page.locator("[data-supplier-answer]");
+  await expect(plannerAnswer).toContainText("Faz");
+  await expect(plannerAnswer).not.toContainText("1,40");
+  const plannerAnswerStep = page.locator('[data-timeline-entry="answer"]');
+  await expect(plannerAnswerStep).not.toHaveCount(0);
+  await expect(plannerAnswerStep.first()).not.toContainText("1,40");
+  const plannerPropose = page.locator("[data-negotiation-propose-form]");
+  await expect(plannerPropose).toBeVisible();
+  await expect(plannerPropose.locator("[data-negotiation-price]")).toHaveCount(
+    0,
+  );
+  await expect(
+    plannerPropose.locator("[data-negotiation-lead-time]"),
+  ).toBeVisible();
+  await expect(page.locator("[data-proposal-sim]")).toHaveCount(0);
+  await expect(page.locator("[data-supplier-request-chosen-cost]")).toHaveCount(
+    0,
+  );
 
   // 3b. Negociação (docs/SUPPLIER_REQUESTS.md, "Negociação"): a Wellmix
   // devolve com contraproposta; até o fornecedor responder, não aprova.

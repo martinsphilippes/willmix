@@ -35,11 +35,14 @@ const DECIDED_DOT: Record<string, string> = {
 export function RequestTimeline({
   request: r,
   legacyAnswers = [],
+  showPrice = true,
   t,
 }: {
   request: SupplierRequest;
   /** Respostas antigas (auditoria): hora e se faz. */
   legacyAnswers?: Array<{ at: string; canDo: "yes" | "no" | null }>;
+  /** Preço de cada passo: falso para a Wellmix sem "Ver preço de compra". */
+  showPrice?: boolean;
   t: Translate;
 }) {
   const entries = requestTimeline(r, legacyAnswers);
@@ -53,7 +56,7 @@ export function RequestTimeline({
   /** Os valores de um passo em pedaços curtos ("1,40 USD", "MOQ 1.000"…). */
   const values = (e: SupplierRequestEvent) =>
     [
-      num(e.price) !== null
+      showPrice && num(e.price) !== null
         ? `${num(e.price)} ${e.currency ?? ""}`.trim()
         : null,
       e.incoterm ?? null,

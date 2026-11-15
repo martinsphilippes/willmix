@@ -2,6 +2,7 @@ import { listByIds } from "@/lib/db/lookup";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { Alert, PageHeader, TextLink, formatDate } from "@/components/ui";
@@ -67,7 +68,13 @@ export default async function NewSourcingItemPage({
       ) : null}
       {/* Largura toda: num espaço largo as seções do formulário ficam duas a duas. */}
       <div className="min-w-0">
-        <ItemForm t={t} suppliers={suppliers} lines={lines} preset={preset} />
+        <ItemForm
+          t={t}
+          suppliers={suppliers}
+          lines={lines}
+          preset={preset}
+          showPrice={canSeePurchasePrice(user)}
+        />
       </div>
     </>
   );

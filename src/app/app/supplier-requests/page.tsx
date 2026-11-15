@@ -42,7 +42,7 @@ import {
   linkClass,
   rowClass,
 } from "@/components/ui";
-import { can } from "@/lib/auth/function-access";
+import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
 
 /*
  * Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): a Wellmix vê todas;
@@ -68,6 +68,9 @@ export default async function SupplierRequestsPage({
       .catch((error) => console.error("notifyLateSampling", error));
   });
   const wellmix = isWellmix(user);
+  // Preço de compra: a Wellmix com "Ver preço de compra"; o fornecedor vê o
+  // dele (dono, 15/11/2026; docs/LINHA_DE_VISAO.md, seção 7).
+  const seesPrice = !wellmix || canSeePurchasePrice(user);
   const showPurchase =
     wellmix && canOpen(user, "orders") && can(user, "purchaseOrder.generate");
   // Leituras independentes em paralelo.
@@ -134,6 +137,7 @@ export default async function SupplierRequestsPage({
           <PurchaseOrderCard
             groups={purchase}
             customer={purchaseCustomer}
+            showPrice={seesPrice}
             t={t}
           />
         </div>
@@ -293,7 +297,7 @@ export default async function SupplierRequestsPage({
                             n: answered,
                             total: products.length,
                           })
-                        : answerText(t, r)}
+                        : answerText(t, r, seesPrice)}
                       {orderIds.map((orderId) => (
                         <Link
                           key={orderId}

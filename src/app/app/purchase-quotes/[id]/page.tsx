@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
-import { can } from "@/lib/auth/function-access";
+import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { productNameText } from "@/i18n";
@@ -249,6 +249,10 @@ export default async function PurchaseQuotePage({
   const empty = quoteEmpty(responses, now);
   const canChoose = can(user, "purchaseQuote.choose");
   const canApprove = can(user, "purchaseQuote.approve");
+  // Preços, total e última compra: só com "Ver preço de compra" (dono,
+  // 15/11/2026; docs/LINHA_DE_VISAO.md, seção 7). Sem ela, o quadro mostra
+  // os fornecedores, a situação e as condições.
+  const seesPrice = canSeePurchasePrice(user);
   const total = (r: (typeof responses)[number]) =>
     r.prices
       ? quote.items.reduce(
@@ -282,37 +286,41 @@ export default async function PurchaseQuotePage({
             <tr>
               <Th>{t("quote.supplier")}</Th>
               <Th>{t("quote.state")}</Th>
-              {quote.items.map((i) => (
-                <Th key={i.productId}>
-                  {productNameText(t, i.name)}
-                  <span className="block text-xs font-normal text-zinc-500">
-                    {i.quantity.toLocaleString(t.intl)} {i.unit}
-                  </span>
-                </Th>
-              ))}
-              <Th>{t("quote.total")}</Th>
+              {seesPrice
+                ? quote.items.map((i) => (
+                    <Th key={i.productId}>
+                      {productNameText(t, i.name)}
+                      <span className="block text-xs font-normal text-zinc-500">
+                        {i.quantity.toLocaleString(t.intl)} {i.unit}
+                      </span>
+                    </Th>
+                  ))
+                : null}
+              {seesPrice ? <Th>{t("quote.total")}</Th> : null}
               <Th>{t("quote.conditions")}</Th>
             </tr>
           </thead>
           <tbody>
-            <tr className={rowClass} data-quote-reference>
-              <Td className="font-medium text-zinc-600">
-                {t("quote.lastPurchase")}
-              </Td>
-              <Td>—</Td>
-              {quote.items.map((i) => {
-                const ref = refs.get(i.productId);
-                return (
-                  <Td key={i.productId} className="text-xs text-zinc-600">
-                    {ref
-                      ? `${ref.currency ?? ""} ${ref.unitPrice ?? "—"} · ${ref.supplierName ?? ""}`
-                      : t("quote.noLastPurchase")}
-                  </Td>
-                );
-              })}
-              <Td>—</Td>
-              <Td>—</Td>
-            </tr>
+            {seesPrice ? (
+              <tr className={rowClass} data-quote-reference>
+                <Td className="font-medium text-zinc-600">
+                  {t("quote.lastPurchase")}
+                </Td>
+                <Td>—</Td>
+                {quote.items.map((i) => {
+                  const ref = refs.get(i.productId);
+                  return (
+                    <Td key={i.productId} className="text-xs text-zinc-600">
+                      {ref
+                        ? `${ref.currency ?? ""} ${ref.unitPrice ?? "—"} · ${ref.supplierName ?? ""}`
+                        : t("quote.noLastPurchase")}
+                    </Td>
+                  );
+                })}
+                <Td>—</Td>
+                <Td>—</Td>
+              </tr>
+            ) : null}
             {responses.map((r) => {
               const state = responseState(r, now);
               return (
@@ -336,21 +344,25 @@ export default async function PurchaseQuotePage({
                       <QuoteDeadline t={t} dueAt={r.dueAt} now={now} />
                     ) : null}
                   </Td>
-                  {quote.items.map((i) => {
-                    const p = r.prices?.find(
-                      (x) => x.productId === i.productId,
-                    );
-                    return (
-                      <Td key={i.productId} className="tabular-nums">
-                        {p ? `${r.currency ?? ""} ${p.unitPrice}` : "—"}
-                      </Td>
-                    );
-                  })}
-                  <Td className="tabular-nums">
-                    {total(r) !== null
-                      ? `${r.currency ?? ""} ${total(r)!.toLocaleString(t.intl, { maximumFractionDigits: 2 })}`
-                      : "—"}
-                  </Td>
+                  {seesPrice
+                    ? quote.items.map((i) => {
+                        const p = r.prices?.find(
+                          (x) => x.productId === i.productId,
+                        );
+                        return (
+                          <Td key={i.productId} className="tabular-nums">
+                            {p ? `${r.currency ?? ""} ${p.unitPrice}` : "—"}
+                          </Td>
+                        );
+                      })
+                    : null}
+                  {seesPrice ? (
+                    <Td className="tabular-nums">
+                      {total(r) !== null
+                        ? `${r.currency ?? ""} ${total(r)!.toLocaleString(t.intl, { maximumFractionDigits: 2 })}`
+                        : "—"}
+                    </Td>
+                  ) : null}
                   <Td className="text-xs text-zinc-600">
                     {r.status === "answered"
                       ? [
@@ -371,6 +383,11 @@ export default async function PurchaseQuotePage({
             })}
           </tbody>
         </Table>
+        {seesPrice ? null : (
+          <p className="mt-2 text-xs text-zinc-500" data-quote-price-restricted>
+            {t("quote.priceRestricted")}
+          </p>
+        )}
       </Card>
 
       {quote.status === "open" && closed && !empty && canChoose ? (
