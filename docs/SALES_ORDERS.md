@@ -125,7 +125,12 @@ marca como pago, com o comprovante. Quem faz isso: a tela Contas a pagar
 aberta ou o administrador. Dados: `sales_orders.freightDueDate`,
 `freightPaidAt`, `freightPaidByUserId` e `freightProofDocumentId`.
 
+**Fluxo de caixa** (Painéis → Fluxo de caixa): o frete em aberto entra como
+saída "Frete de venda", em reais, na semana do vencimento. Sem vencimento,
+fica em "sem data". O link do item leva a Contas a pagar. Pago, sai do fluxo
+(`freightOutflows` em `src/lib/services/cashflow.ts`).
+
 ## Fica para depois
 
-- O frete da venda no fluxo de caixa e nos painéis do Financeiro.
+- O frete da venda nos painéis do Financeiro (custo e margem da venda).
 - A NF de devolução e a de venda emitidas pelo próprio portal no Sankhya.

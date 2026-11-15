@@ -400,4 +400,65 @@ describe("venda", () => {
       reason: "Cliente desistiu",
     });
   });
+
+  it("frete a pagar entra no fluxo de caixa como saída no vencimento; pago, sai", async () => {
+    const store = getStore();
+    const { freightOutflows, buildCashflow } =
+      await import("@/lib/services/cashflow");
+    const carrier = await store.create("parties", {
+      type: "carrier",
+      name: "Transportes Caixa",
+      active: true,
+    } as never);
+    const order = await so.openSalesOrder(admin, customerId);
+    await so.updateSalesOrder(admin, order.id, {
+      lines: [{ productId: "prod-panela", quantity: 2, unitPrice: 25 }],
+      paymentConditionId: null,
+      currency: "BRL",
+      deliveryDate: "2099-05-10",
+      deliveryWindow: null,
+      note: null,
+      purchaseOrderId: null,
+    });
+    await so.confirmSalesOrder(admin, order.id);
+    await so.registerSalesInvoice(admin, order.id, {
+      number: "NF-7001",
+      documentId: null,
+    });
+    await so.shipSalesOrder(admin, order.id, {
+      carrierId: carrier.id,
+      customerPickup: false,
+      freightValue: 180,
+      shippedOn: "2099-05-09",
+      freightDays: 10,
+    });
+    const mine = (await freightOutflows()).filter((f) =>
+      f.label.includes("Transportes Caixa"),
+    );
+    expect(mine).toEqual([
+      expect.objectContaining({
+        type: "freight",
+        day: "2099-05-19",
+        amount: 180,
+        currency: "BRL",
+        href: "/app/payables",
+      }),
+    ]);
+    // Entra nas saídas da semana do vencimento.
+    const { buckets } = buildCashflow({
+      today: "2099-05-11",
+      weeks: 4,
+      rate: () => 1,
+      inflows: [],
+      outflows: mine,
+    });
+    const week = buckets.find((b) => b.outflow.get("BRL") === 180)!;
+    expect(week.start).toBe("2099-05-18");
+    await so.payFreight(admin, order.id, { proofDocumentId: "doc-frete-2" });
+    expect(
+      (await freightOutflows()).filter((f) =>
+        f.label.includes("Transportes Caixa"),
+      ),
+    ).toEqual([]);
+  });
 });
