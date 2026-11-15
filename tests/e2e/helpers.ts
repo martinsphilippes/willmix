@@ -58,6 +58,33 @@ export async function createTeamLogin(
 }
 
 /**
+ * Libera uma tela a mais para a pessoa (Equipe → Editar acessos →
+ * Personalizado), sem mexer nas funções nem nas ações dela. Precisa estar
+ * logado como administrador.
+ */
+export async function grantTeamScreen(
+  page: Page,
+  id: string,
+  name: string,
+  screen: string,
+) {
+  await page.goto("/app/team");
+  // Com a busca da tabela à vista (lista longa), filtra pela pessoa.
+  const search = page.locator("[data-table-search]").first();
+  if (await search.count()) await search.fill(name);
+  await page.locator(`[data-team-edit="${id}"]`).click();
+  const drawer = page.locator(`[data-team-drawer-panel="${id}"]`);
+  await expect(drawer).toBeVisible();
+  await drawer.locator('[data-team-screens-mode="custom"]').check();
+  const panel = drawer.locator("[data-team-screens-panel]");
+  const closed = panel.locator('[data-perm-section][aria-expanded="false"]');
+  while ((await closed.count()) > 0) await closed.first().click();
+  await drawer.locator(`[data-team-screen="${screen}"]`).check();
+  await drawer.locator("[data-team-save]").click();
+  await expect(page.locator("[data-team-saved-toast]")).toContainText(name);
+}
+
+/**
  * Câmbio manual em Configurações (Wellmix). As contas do Superplan (custo por
  * peça, simulação da proposta) precisam de câmbio, e o do dia vem de sites
  * públicos que nem todo ambiente de teste alcança (rede restrita). Com a

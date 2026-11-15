@@ -633,28 +633,29 @@ describe("pendências do fornecedor", () => {
 describe("contraproposta sem “Ver preço de compra”", () => {
   /*
    * Dono, 15/11/2026 (docs/LINHA_DE_VISAO.md, seção 7): quem abre a tela sem
-   * a permissão (o Planejamento, por padrão) propõe MOQ, prazo e FOB/EXW; o
-   * preço que chegar no envio é ignorado.
+   * a permissão (aqui, um login de Cadastro com a tela liberada à mão)
+   * propõe MOQ, prazo e FOB/EXW; o preço que chegar no envio é ignorado.
    */
   it("grava MOQ e prazo, ignora o preço; só preço vira proposta vazia", async () => {
     const store = getStore();
-    const planner = await store.create("users", {
-      email: "planejamento@wellmix.com",
-      name: "Paulo Planejamento",
+    const noPrice = await store.create("users", {
+      email: "cadastro.cotacoes@wellmix.com",
+      name: "Célia Cadastro",
       role: "operator",
       partyId: null,
       locale: "pt",
       passwordHash: null,
       active: true,
       importerId: null,
-      functions: ["planner"],
+      functions: ["catalog"],
+      screenExceptions: { added: ["quotes"], removed: [] },
     } as never);
     const { canSeePurchasePrice } = await import("@/lib/auth/function-access");
-    expect(canSeePurchasePrice(planner)).toBe(false);
+    expect(canSeePurchasePrice(noPrice)).toBe(false);
 
     const request = await answeredRequest("NEG-NOPRICE");
     await neg.proposeCounter(
-      planner,
+      noPrice,
       request.id,
       offer({
         price: 0.5,
@@ -676,7 +677,7 @@ describe("contraproposta sem “Ver preço de compra”", () => {
     const other = await answeredRequest("NEG-NOPRICE-2");
     await expect(
       neg.proposeCounter(
-        planner,
+        noPrice,
         other.id,
         offer({ price: 0.5, currency: "USD", text: "Só o preço" }),
       ),
