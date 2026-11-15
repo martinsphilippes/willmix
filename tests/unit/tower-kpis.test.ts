@@ -170,6 +170,13 @@ describe("indicadores prontos da Control Tower", () => {
     await store.update("stages", stage.id, {
       dueAt: new Date(NOW.getTime() + 3_600_000).toISOString(),
     });
+    // Fase 5e: o prazo que vence é o dos marcos em andamento.
+    for (const row of await store.list("order_milestones", {
+      filter: { orderId: b.id, status: ["active", "blocked"] },
+    }))
+      await store.update("order_milestones", row.id, {
+        dueAt: new Date(NOW.getTime() + 3_600_000).toISOString(),
+      });
     const before = (await expectSame(NOW)).kpis;
     expect(Date.parse(before.validUntil!)).toBeLessThanOrEqual(
       NOW.getTime() + 3_600_000 + 1,

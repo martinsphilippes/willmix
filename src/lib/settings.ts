@@ -95,7 +95,11 @@ export const DEFAULT_SETTINGS = {
    * confirma o cancelamento do pedido (dono, 13/11/2026).
    */
   purchaseInspectionMaxAttempts: 3,
-  /** Prazos padrão por etapa, em dias. */
+  /**
+   * Prazos por etapa, em dias (legado das 10 etapas, fase 5e): só o
+   * registro das etapas e o padrão dos marcos sem prazo gravado
+   * (`milestoneDueDaysOf`) leem. Sem editor; sai na fase 5g.
+   */
   stageDueDays: {
     ORDER_CREATED: 1,
     PREPARATION: 15,
@@ -110,8 +114,8 @@ export const DEFAULT_SETTINGS = {
   } as Record<string, number>,
   /**
    * Prazo por marco, em dias (fase 5, docs/MILESTONES.md "Fase 5"). Nulo
-   * (padrão): sai do prazo das etapas (`milestoneDueDaysOf`). Sem editor na
-   * tela ainda; o formulário das Configurações não grava esta chave.
+   * (padrão): sai do prazo das etapas (`milestoneDueDaysOf`). Editor em
+   * Configurações (fase 5e): um campo por marco; vazio volta ao padrão.
    */
   milestoneDueDays: null as Record<string, number> | null,
   /**

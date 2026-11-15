@@ -7,6 +7,7 @@ import {
   getStore,
   type Certification,
   type Order,
+  type OrderMilestone,
   type Penalty,
   type Product,
   type Request,
@@ -21,6 +22,8 @@ import type { BoardOrder } from "./tower-board";
 import type { FinanceSummary, FinanceSummaryRow } from "./finance";
 import type { OrderFacts } from "./order-summary";
 import {
+  milestoneBlockedOf,
+  milestoneDueOf,
   milestoneOfFacts,
   milestoneOfStatus,
   type CompactMilestone,
@@ -120,6 +123,10 @@ export interface ControlTowerInput {
   reviews: ReviewItem[];
   /** Marcos do pedido pelo resumo (`facts.m`); sem eles, pela situação. */
   milestonesOf?: (orderId: string) => CompactMilestone[] | undefined;
+  /** Marcos gravados (sem resumo): prazo e trava (fase 5e). */
+  milestoneRowsOf?: (
+    orderId: string,
+  ) => Pick<OrderMilestone, "status" | "dueAt">[] | undefined;
 }
 
 const OPEN_REQUEST_STATUSES: RequestStatus[] = [
@@ -177,12 +184,18 @@ export async function loadControlTower(
   }
   // Caminho antigo (sem resumo ainda): as tabelas de pedidos, itens e etapas.
   const store = getStore();
-  const [orders, stages, items, side] = await Promise.all([
+  const [orders, stages, items, side, milestoneRows] = await Promise.all([
     store.list("orders", { orderBy: "number", direction: "desc" }),
     store.list("stages", { filter: { status: ["active", "blocked"] } }),
     store.list("order_items"),
     sideP,
+    store
+      .list("order_milestones", { filter: { status: ["active", "blocked"] } })
+      .catch(() => []),
   ]);
+  const rowsByOrder = new Map<string, typeof milestoneRows>();
+  for (const r of milestoneRows)
+    rowsByOrder.set(r.orderId, [...(rowsByOrder.get(r.orderId) ?? []), r]);
   // Só os parceiros que aparecem na tela (antes: a tabela inteira, ~32 mil).
   const parties = await listByIds(store, "parties", [
     ...orders.map((o) => o.customerId),
@@ -198,6 +211,7 @@ export async function loadControlTower(
     partyName: (id) => (id === null ? null : (partyById.get(id)?.name ?? null)),
     productOf: (id) => itemByOrder.get(id)?.name ?? null,
     stageOf: (id) => stageByOrder.get(id),
+    milestoneRowsOf: (id) => rowsByOrder.get(id),
     ...side,
   });
 }
@@ -256,6 +270,11 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
     )
     .map((o) => {
       const stage = stageOf(o);
+      // Fase 5e: prazo e trava pelos marcos; sem eles, a etapa em andamento.
+      const m = input.milestonesOf?.(o.id);
+      const rowsOf = input.milestoneRowsOf?.(o.id);
+      const due = milestoneDueOf(m, rowsOf);
+      const dueAt = due === undefined ? (stage?.dueAt ?? null) : due;
       return {
         id: o.id,
         number: `#${o.number}`,
@@ -265,9 +284,9 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
         milestone: milestoneOfFacts(input.milestonesOf?.(o.id), o.status),
         requestStatus: null,
         responsible: stage?.responsibleRole ?? null,
-        dueAt: stage?.dueAt ?? null,
-        overdue: !!stage?.dueAt && Date.parse(stage.dueAt) < now,
-        blocked: stage?.status === "blocked",
+        dueAt,
+        overdue: !!dueAt && Date.parse(dueAt) < now,
+        blocked: milestoneBlockedOf(m, rowsOf) ?? stage?.status === "blocked",
         link: `/app/orders/${o.id}`,
       };
     });

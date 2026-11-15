@@ -10,6 +10,7 @@ import {
   type ImportStep,
   type Order,
   type OrderItem,
+  type OrderMilestone,
   type Party,
   type Penalty,
   type Product,
@@ -29,6 +30,8 @@ import { stepTemplate } from "./import-flow";
 import { JOURNEY_REQUIREMENT_KEYS, journeyIndex } from "./journey";
 import { isSchemaMissing } from "@/lib/db/errors";
 import {
+  milestoneBlockedOf,
+  milestoneDueOf,
   milestoneOfFacts,
   milestoneOfStatus,
   type CompactMilestone,
@@ -351,6 +354,11 @@ export interface BoardInput {
    * 4a); sem eles (caminho antigo ou resumo antigo), o marco sai da situação.
    */
   milestones?: Map<string, CompactMilestone[] | undefined>;
+  /** Marcos gravados (sem resumo): prazo e trava (fase 5e). */
+  milestoneRows?: Map<
+    string,
+    Pick<OrderMilestone, "key" | "status" | "dueAt">[] | undefined
+  >;
 }
 
 /** Monta os quadrados (função pura; `loadTowerBoard` busca os dados). */
@@ -392,11 +400,29 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   const informed = (s: ImportStep | undefined) =>
     s?.status === "submitted" || s?.status === "validated";
 
+  /*
+   * Prazo e trava pelos marcos (fase 5e): o prazo mais próximo dos marcos em
+   * andamento (`facts.m`; sem resumo, as linhas de `order_milestones`) e o
+   * marco travado (divergência na inspeção). Sem marcos (pedido ainda não
+   * sincronizado), a etapa em andamento.
+   */
+  const milestoneDue = (o: BoardOrder): string | null => {
+    const due = milestoneDueOf(
+      input.milestones?.get(o.id),
+      input.milestoneRows?.get(o.id),
+    );
+    return due === undefined ? (stageOf.get(o.id)?.dueAt ?? null) : due;
+  };
+  const milestoneBlocked = (o: BoardOrder): boolean =>
+    milestoneBlockedOf(
+      input.milestones?.get(o.id),
+      input.milestoneRows?.get(o.id),
+    ) ?? stageOf.get(o.id)?.status === "blocked";
   // Prazo vencido e bloqueio são do fluxo do portal; o pedido importado só dá visibilidade.
   const isOverdue = (o: BoardOrder) => {
     if (!isPortalOrder(o)) return false;
-    const stage = stageOf.get(o.id);
-    return !!stage?.dueAt && Date.parse(stage.dueAt) < now;
+    const due = milestoneDue(o);
+    return !!due && Date.parse(due) < now;
   };
   /**
    * Marco atual do pedido (fase 5c): o do resumo (`facts.m`); sem resumo, o
@@ -435,10 +461,10 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
         : cancelled
           ? (o.cancelledAt ?? null)
           : portal
-            ? (stage?.dueAt ?? null)
+            ? milestoneDue(o)
             : null,
       overdue: !closed && !cancelled && isOverdue(o),
-      blocked: !closed && !cancelled && portal && stage?.status === "blocked",
+      blocked: !closed && !cancelled && portal && milestoneBlocked(o),
       link: `/app/orders/${o.id}`,
       kind: "order",
       cancelled,
@@ -677,8 +703,7 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   const penalties = new Set(input.penalties.map((p) => p.orderId));
   for (const o of live) {
     if (isOverdue(o)) addOrder("probOverdue", o);
-    if (isPortalOrder(o) && stageOf.get(o.id)?.status === "blocked")
-      addOrder("probBlocked", o);
+    if (isPortalOrder(o) && milestoneBlocked(o)) addOrder("probBlocked", o);
     if (
       rejected.has(o.id) ||
       (stepsBy.get(o.id) ?? []).some((s) => s.status === "rejected")
@@ -823,6 +848,7 @@ export async function loadTowerBoard(options: {
     receivings,
     payables,
     finance,
+    milestoneRows,
   ] = await Promise.all([
     ids.length
       ? store.list("stages", { filter: { orderId: ids } })
@@ -860,7 +886,13 @@ export async function loadTowerBoard(options: {
     options.finance
       ? import("./finance").then((m) => m.loadFinance({ estimate: false }))
       : Promise.resolve(null),
+    ids.length
+      ? safe(store.list("order_milestones", { filter: { orderId: ids } }))
+      : none<OrderMilestone>(),
   ]);
+  const rowsByOrder = new Map<string, OrderMilestone[]>();
+  for (const r of milestoneRows)
+    rowsByOrder.set(r.orderId, [...(rowsByOrder.get(r.orderId) ?? []), r]);
   const money = new Map(
     (finance?.rows ?? []).map((r) => [
       r.order.id,
@@ -881,6 +913,7 @@ export async function loadTowerBoard(options: {
     lots,
     supplierRequests,
     supplierRequestSlaMinutes: settings.supplierRequestSlaMinutes,
+    milestoneRows: rowsByOrder,
     steps,
     tracks,
     skus,

@@ -1354,8 +1354,13 @@ describe("pedido de compra: sequência do mapa do processo", () => {
         value: "2026-11-20",
       }),
     ).rejects.toThrow("samples_closed");
-    // SKU aprovado: o pedido está no Embarque.
+    // SKU aprovado: a Inspeção concluiu e o marco Amostras começou (fase
+    // 5e: pelos marcos, não pela situação "Embarque").
     await store.update("orders", order.id, { status: "SHIPPING" });
+    const { completeMilestonesBefore } = await import("./helpers/milestones");
+    await completeMilestonesBefore(order.id, "samples");
+    const { syncMilestones } = await import("@/lib/services/order-milestones");
+    await syncMilestones(order.id, { shadow: true });
     fresh = (await store.get("orders", order.id))!;
     expect(
       (await flow.importFlowView(mkt, fresh, "samples")).map(

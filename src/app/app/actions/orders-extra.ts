@@ -72,20 +72,30 @@ export async function remeasureAction(form: FormData) {
       throw new Error("not_found");
     if (!isInspectionMeasureKey(requirement.key))
       throw new Error("not_measure");
-    const stage = await store.get("stages", requirement.stageId);
-    // Nova medição vale enquanto a inspeção está aberta (bloqueada ou em andamento).
+    // Nova medição vale enquanto o marco Inspeção está aberto (travado ou em
+    // andamento; fase 5e, pela linha do marco e não pela etapa).
+    const { milestoneBlockOf, INSPECTION_BLOCK_MILESTONE } =
+      await import("@/lib/services/order-milestones");
+    const [row] = await store
+      .list("order_milestones", {
+        filter: { orderId, key: INSPECTION_BLOCK_MILESTONE },
+        limit: 1,
+      })
+      .catch(() => []);
     if (
-      !stage ||
-      stage.key !== "INSPECTION" ||
-      (stage.status !== "blocked" && stage.status !== "active")
+      (requirement.milestoneKey ?? INSPECTION_BLOCK_MILESTONE) !==
+        INSPECTION_BLOCK_MILESTONE ||
+      !row ||
+      (row.status !== "blocked" && row.status !== "active")
     )
       throw new Error("stage_not_blocked");
     // Papel e parceiro são checados no motor (canSubmitRequirement).
     await submitRequirement(user, requirement.id, { value: parsed.value });
-    const fresh = await store.get("stages", stage.id);
-    return fresh?.status === "blocked"
-      ? `${back}#stage-${stage.id}`
-      : `/app/orders/${orderId}#stage-${stage.id}`;
+    const anchor = `#milestone-${INSPECTION_BLOCK_MILESTONE}`;
+    return (await milestoneBlockOf(orderId, INSPECTION_BLOCK_MILESTONE)) !==
+      undefined
+      ? `${back}${anchor}`
+      : `/app/orders/${orderId}${anchor}`;
   });
 }
 

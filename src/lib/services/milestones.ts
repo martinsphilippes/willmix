@@ -11,7 +11,10 @@ import type {
 import { getStore } from "@/lib/db";
 import { flowStepOfImportKey, flowStepsOf, stepId } from "@/lib/flow";
 import {
+  MILESTONE_KEYS,
+  MILESTONES,
   orderMilestones,
+  type MilestoneKey,
   type MilestoneView,
   type Subtask,
 } from "@/lib/milestones";
@@ -151,30 +154,40 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
       done: importStepDone(saved.get(tpl.key)),
     });
   }
-  // Produção: dados e ETD depois do sinal; a produção conclui (liberada
-  // para carregar) quando a inspeção conclui.
+  // Fase 5e: a produção e o recebimento pelos marcos, não mais pela etapa
+  // da Inspeção nem pela situação do pedido. Uma primeira conta só com os
+  // itens e os passos diz onde o pedido está.
+  const first = orderMilestones(out, order.status);
+  const finished = finishedMilestones(first);
+  // Produção: dados e ETD depois do sinal; a inspeção começa (como a etapa
+  // começava) quando os marcos do bloco Pedido estão prontos; a produção
+  // conclui (liberada para carregar) quando a Inspeção conclui.
   const paid = input.requirements.some(
     (r) => r.key === "down_payment" && r.status === "done",
   );
-  const inspection = input.stages.find((s) => s.key === "INSPECTION");
-  const inspecting = !!inspection && inspection.status !== "pending";
+  const inspection = first.find((v) => v.key === "inspection");
+  const inspecting =
+    !!inspection &&
+    inspection.state !== "na" &&
+    ORDER_BLOCK_MILESTONES.every((k) => finished.has(k));
   if (paid || input.track || inspecting)
     out.push({
       step: "production/pre-production",
       key: "production_plan",
       done: !!input.track?.etd || inspecting,
     });
-  if (inspection && inspection.status !== "cancelled")
+  if (inspection && inspection.state !== "na")
     out.push({
       step: "production/production",
       key: "production",
-      done: inspection.status === "done",
+      done: inspecting && cleared(inspection),
     });
-  // Recebimento no CD (descarga, contagem, RIC e fechamento).
+  // Recebimento no CD (descarga, contagem, RIC e fechamento): com a nota
+  // fiscal e o transporte prontos (antes, a situação "Entregue").
   if (
     input.receiving ||
-    order.status === "DELIVERED" ||
-    order.status === "CLOSED"
+    order.status === "CLOSED" ||
+    finished.has("invoice-transport")
   )
     out.push({
       step: "delivery/storage",
@@ -182,6 +195,43 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
       done: !!input.receiving?.closedAt || order.status === "CLOSED",
     });
   return out;
+}
+
+/** Marcos do bloco Pedido (antes da produção): os que a etapa da Inspeção esperava. */
+const ORDER_BLOCK_MILESTONES: readonly MilestoneKey[] = [
+  "new-order",
+  "certification",
+  "art-material",
+  "art",
+  "contract",
+  "down-payment",
+];
+
+/** Todas as obrigatórias feitas (o opcional não segura; fase 5d). */
+const cleared = (v: Pick<MilestoneView, "state" | "subtasks">) =>
+  v.state === "done" ||
+  v.state === "na" ||
+  v.subtasks.every((x) => x.done || x.optional);
+
+/**
+ * Marcos prontos para os seguintes: as obrigatórias dele e as dos marcos de
+ * que depende feitas (o que não se aplica é transparente).
+ */
+export function finishedMilestones(
+  views: readonly Pick<MilestoneView, "key" | "state" | "subtasks">[],
+): Set<MilestoneKey> {
+  const byKey = new Map(views.map((v) => [v.key, v]));
+  const memo = new Map<MilestoneKey, boolean>();
+  const ok = (key: MilestoneKey): boolean => {
+    const known = memo.get(key);
+    if (known !== undefined) return known;
+    const v = byKey.get(key);
+    const def = MILESTONES.find((d) => d.key === key)!;
+    const result = (!v || cleared(v)) && def.deps.every(ok);
+    memo.set(key, result);
+    return result;
+  };
+  return new Set(MILESTONE_KEYS.filter(ok));
 }
 
 /**

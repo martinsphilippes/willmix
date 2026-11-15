@@ -65,7 +65,7 @@ import { TaskItems } from "@/components/task-list";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { pendingTasksFor } from "@/lib/services/tasks";
 import { customerOrdersInProgress } from "@/lib/services/customer-home";
-import { orderMilestoneText } from "@/lib/milestones";
+import { milestoneTitle, orderMilestoneText } from "@/lib/milestones";
 import {
   REQUEST_SITUATIONS,
   inSituation,
@@ -513,7 +513,9 @@ export default async function RequestsPage({
                             <Badge
                               tone={stageTone(o.blocked ? "blocked" : "active")}
                             >
-                              {orderMilestoneText(t, o.stageKey)}
+                              {o.milestone
+                                ? milestoneTitle(t, o.milestone)
+                                : orderMilestoneText(t, o.order.status)}
                               {o.blocked
                                 ? ` · ${t("stageStatus.blocked")}`
                                 : ""}

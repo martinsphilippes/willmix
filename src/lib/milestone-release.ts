@@ -53,7 +53,7 @@ const isMilestone = (key: string | null | undefined): key is MilestoneKey =>
 /** Marco do item: o gravado (fase 5b); sem ele, pela etapa e a chave. */
 export function milestoneOfItem(
   r: Pick<Requirement, "key"> & { milestoneKey?: string | null },
-  stage: Pick<Stage, "key">,
+  stage: { key: string },
 ): MilestoneKey | null {
   return isMilestone(r.milestoneKey)
     ? r.milestoneKey

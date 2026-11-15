@@ -27,7 +27,7 @@ export const pt = {
   "milestone.hint":
     'Os 16 marcos do mapa do processo, na ordem. Cada marco junta as subtarefas do pedido e só libera quando os anteriores concluem. Os campos aparecem nos marcos em que há tarefa liberada agora; os outros abrem em "Ver detalhes", só leitura.',
   "milestone.mineHint":
-    'Você vê todos os marcos do pedido. Os campos aparecem só nos marcos em que você tem tarefa liberada agora; as suas que ainda esperam outro item ou a etapa começar ficam em cinza. O resto abre em "Ver detalhes", só leitura.',
+    'Você vê todos os marcos do pedido. Os campos aparecem só nos marcos em que você tem tarefa liberada agora; as suas que ainda esperam outro item ou outro marco ficam em cinza. O resto abre em "Ver detalhes", só leitura.',
   "milestone.details": "Ver detalhes",
   "milestone.mine.now": "Sua tarefa",
   "milestone.mine.later": "Sua tarefa depois",
@@ -37,7 +37,7 @@ export const pt = {
     'Os marcos do pedido em que você atua ou acompanha, na ordem do mapa. Os campos aparecem nos marcos com tarefa liberada agora; os outros abrem em "Ver detalhes", só leitura.',
   "milestone.chatWellmix": "Mensagem para a Wellmix sobre este marco",
   "milestone.chatDraft": "Marco {milestone}: ",
-  "milestone.blocked": "Etapa {stage} bloqueada",
+  "milestone.blocked": "{milestone} bloqueado",
   "milestone.subtask.production_plan": "Dados da produção e ETD",
   "milestone.subtask.production": "Produção liberada para carregar",
   "milestone.subtask.receiving": "Recebimento no CD",
@@ -68,6 +68,12 @@ export const pt = {
   "milestone.bucket.shipping": "Booking e embarque (marcos 11 a 13)",
   "milestone.bucket.customs": "Desembaraço (marco 14)",
   "milestone.bucket.transport": "Transporte e entrega (marcos 15 e 16)",
+  // Fase 5e: prazo por marco (Configurações) no lugar do prazo por etapa.
+  "settings.milestoneDue.title": "Prazo por marco (dias)",
+  "settings.milestoneDue.hint":
+    "Quantos dias cada marco tem depois de começar (lembretes, SLA e Control Tower). Vazio: o padrão mostrado no campo.",
+  "settings.error.milestone_due_invalid":
+    "Prazo por marco: use dias inteiros de 0 a 365.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -95,7 +101,7 @@ export const en: Record<keyof typeof pt, string> = {
   "milestone.hint":
     'The 16 milestones of the process map, in order. Each groups the order\'s subtasks and opens only when the previous ones are done. Fields appear in the milestones with a task released now; the others open in "See details", read-only.',
   "milestone.mineHint":
-    'You see all the order\'s milestones. Fields appear only in the milestones where you have a task released now; yours that still wait for another item or the stage to start are greyed out. The rest opens in "See details", read-only.',
+    'You see all the order\'s milestones. Fields appear only in the milestones where you have a task released now; yours that still wait for another item or milestone are greyed out. The rest opens in "See details", read-only.',
   "milestone.details": "See details",
   "milestone.mine.now": "Your task",
   "milestone.mine.later": "Your task later",
@@ -104,7 +110,7 @@ export const en: Record<keyof typeof pt, string> = {
     'The order milestones you work on or follow, in the process map order. Fields appear in the milestones with a task released now; the others open in "See details", read only.',
   "milestone.chatWellmix": "Message Wellmix about this milestone",
   "milestone.chatDraft": "Milestone {milestone}: ",
-  "milestone.blocked": "Stage {stage} blocked",
+  "milestone.blocked": "{milestone} blocked",
   "milestone.subtask.production_plan": "Production data and ETD",
   "milestone.subtask.production": "Production released for loading",
   "milestone.subtask.receiving": "Receiving at the DC",
@@ -133,6 +139,11 @@ export const en: Record<keyof typeof pt, string> = {
   "milestone.bucket.shipping": "Booking and shipment (milestones 11 to 13)",
   "milestone.bucket.customs": "Customs (milestone 14)",
   "milestone.bucket.transport": "Transport and delivery (milestones 15 and 16)",
+  "settings.milestoneDue.title": "Due time per milestone (days)",
+  "settings.milestoneDue.hint":
+    "How many days each milestone has after it starts (reminders, SLA and Control Tower). Empty: the default shown in the field.",
+  "settings.error.milestone_due_invalid":
+    "Due time per milestone: use whole days from 0 to 365.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -169,7 +180,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "您参与或跟进的订单节点，按流程图顺序排列。当前已开放任务的节点显示填写栏；其他节点在“查看详情”中只读打开。",
   "milestone.chatWellmix": "就此节点给 Wellmix 留言",
   "milestone.chatDraft": "节点 {milestone}：",
-  "milestone.blocked": "阶段 {stage} 已阻塞",
+  "milestone.blocked": "{milestone} 已阻塞",
   "milestone.subtask.production_plan": "生产数据和 ETD",
   "milestone.subtask.production": "生产完成，可装柜",
   "milestone.subtask.receiving": "仓库收货",
@@ -197,4 +208,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "milestone.bucket.shipping": "订舱与出运（里程碑 11 至 13）",
   "milestone.bucket.customs": "清关（里程碑 14）",
   "milestone.bucket.transport": "运输与交付（里程碑 15 和 16）",
+  "settings.milestoneDue.title": "各里程碑期限（天）",
+  "settings.milestoneDue.hint":
+    "每个里程碑开始后的天数（提醒、SLA 和 Control Tower）。留空：使用字段中显示的默认值。",
+  "settings.error.milestone_due_invalid":
+    "各里程碑期限：请填写 0 至 365 的整数天数。",
 };

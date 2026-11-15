@@ -4,7 +4,9 @@ import {
 } from "@/components/order-milestone-timeline";
 import { isOrderOpen } from "@/lib/order-status";
 import { QuickDialog } from "@/components/quick-dialog";
+import { storedMilestone } from "@/lib/services/order-milestones";
 import {
+  currentMilestone,
   milestoneOfImportKey,
   milestoneOfRequirement,
   milestoneTitle,
@@ -12,7 +14,11 @@ import {
   type MilestoneKey,
 } from "@/lib/milestones";
 import { milestonesOf } from "@/lib/services/milestones";
-import { releaseOf, requirementReleased } from "@/lib/milestone-release";
+import {
+  milestoneOfItem,
+  releaseOf,
+  requirementReleased,
+} from "@/lib/milestone-release";
 import type { StepView } from "@/lib/services/import-flow";
 import { OrderProgressCard } from "@/components/order-progress-card";
 import { OrderOriginLinks } from "@/components/entity-links";
@@ -210,7 +216,7 @@ import {
   clearRequirementDocumentAction,
   createPenaltyAction,
   registerCustomerPaymentAction,
-  unblockStageAction,
+  unblockMilestoneAction,
 } from "../../actions";
 import {
   acknowledgeDocumentAction,
@@ -579,10 +585,15 @@ export default async function OrderPage({
   const delivered = order.status === "CLOSED" || order.status === "DELIVERED";
   /* Embarque: a Wellmix vê o frete do comparativo para a rota do pedido e o
      botão de importar; a companhia do pedido, o botão de enviar a tabela dela. */
-  const shippingStage = stages.find((s) => s.key === "SHIPPING");
+  /* Fase 5e: as linhas dos marcos (situação, prazo e trava) no lugar das
+     etapas. O frete vale até o Embarque concluir (antes: a etapa Embarque
+     aberta ou por abrir). */
+  const milestoneRows = await store
+    .list("order_milestones", { filter: { orderId: order.id } })
+    .catch(() => []);
   const shippingOpen =
-    !!shippingStage &&
-    ["pending", "active", "blocked"].includes(shippingStage.status);
+    isOrderOpen(order.status) &&
+    !milestoneRows.some((r) => r.key === "shipment" && r.status === "done");
   const showTariff = wellmix && shippingOpen;
   const showMyTariff =
     shippingOpen &&
@@ -764,9 +775,6 @@ export default async function OrderPage({
   const docById = (did: string | null) =>
     documents.find((d) => d.id === did) ?? null;
   const visibleDocs = documents.filter((d) => canSeeDoc(user, d));
-  const currentStage =
-    stages.find((s) => s.id === order.currentStageId) ?? null;
-  const overdue = isOverdue(currentStage?.dueAt);
   const visiblePayments = payments.filter((p) =>
     wellmix
       ? financeAccess
@@ -1152,6 +1160,33 @@ export default async function OrderPage({
   /* Fase 5d: o item está liberado pelo marco dele (dependências do mapa
      concluídas), não mais pela etapa em andamento. */
   const orderViews = await milestonesOf(order);
+  /* Fase 5e: situação, prazo e trava pelo marco atual e pelas linhas de
+     `order_milestones` (a etapa não aparece mais). */
+  const blockedRows = milestoneRows
+    .filter((r) => r.status === "blocked" && storedMilestone(r.key))
+    .map((r) => ({
+      key: r.key as MilestoneKey,
+      reason: r.blockReason ?? null,
+    }));
+  // Marco Inspeção aberto (em andamento ou travado) e começado, e os itens
+  // dele (o marco gravado no item; sem ele, pela etapa e a chave).
+  const inspectionRow = milestoneRows.find((r) => r.key === "inspection");
+  const inspectionOpen =
+    inspectionRow?.status === "active" || inspectionRow?.status === "blocked";
+  const stageKeyById = new Map(stages.map((s) => [s.id, s.key]));
+  const inInspection = (r: Requirement) =>
+    milestoneOfItem(r, { key: stageKeyById.get(r.stageId) ?? "" }) ===
+    "inspection";
+  const headMilestone = currentMilestone(orderViews, order.status);
+  const headRow = headMilestone
+    ? milestoneRows.find((r) => r.key === headMilestone)
+    : undefined;
+  const headBlocked = blockedRows[0] ?? null;
+  const overdue =
+    isOrderOpen(order.status) &&
+    isOverdue(
+      headRow?.dueAt ?? orderViews.find((v) => v.key === headMilestone)?.dueAt,
+    );
   const release = releaseOf(orderViews, stages);
   const released = (r: Requirement) => requirementReleased(order, r, release);
   const myTimeline = mineOnly
@@ -1459,8 +1494,8 @@ export default async function OrderPage({
         wellmix={wellmix}
         remeasure={
           remeasureMode &&
-          stage.key === "INSPECTION" &&
-          (stage.status === "blocked" || stage.status === "active") &&
+          inspectionOpen &&
+          inInspection(r) &&
           isRemeasurable(r)
         }
         sheetHref={sheetHref}
@@ -1562,18 +1597,11 @@ export default async function OrderPage({
         }
       return { now, later };
     };
-    const inspectionStage = flowStages.find((s) => s.key === "INSPECTION");
     const showRemeasure =
-      !!inspectionStage &&
-      (inspectionStage.status === "blocked" ||
-        inspectionStage.status === "active") &&
+      inspectionOpen &&
       requirements.some(
-        (r) =>
-          r.stageId === inspectionStage.id &&
-          r.status === "done" &&
-          isRemeasurable(r),
+        (r) => inInspection(r) && r.status === "done" && isRemeasurable(r),
       );
-    const shippingStage = flowStages.find((s) => s.key === "SHIPPING");
     const prepStage = flowStages.find((s) => s.key === "PREPARATION");
     const prepReqs = prepStage
       ? requirements.filter((r) => r.stageId === prepStage.id)
@@ -1628,7 +1656,7 @@ export default async function OrderPage({
             </LinkButton>
           </li>,
         );
-      if (view.key === "inspection" && showRemeasure && inspectionStage)
+      if (view.key === "inspection" && showRemeasure)
         rows.push(
           <li
             key="remeasure"
@@ -1640,7 +1668,7 @@ export default async function OrderPage({
                   {t("orders.inspection.remeasureHint")}
                 </span>
                 <TextLink
-                  href={`/app/orders/${order.id}#stage-${inspectionStage.id}`}
+                  href={`/app/orders/${order.id}#milestone-inspection`}
                   className="text-xs"
                 >
                   {t("orders.inspection.remeasureClose")}
@@ -1648,7 +1676,7 @@ export default async function OrderPage({
               </>
             ) : (
               <TextLink
-                href={`/app/orders/${order.id}?remeasure=1#stage-${inspectionStage.id}`}
+                href={`/app/orders/${order.id}?remeasure=1#milestone-inspection`}
               >
                 {t("orders.inspection.remeasure")} →
               </TextLink>
@@ -1664,7 +1692,6 @@ export default async function OrderPage({
       if (
         (view.key === "booking" || (view.key === "shipment" && !bookingOpen)) &&
         expanded &&
-        shippingStage &&
         (showTariff || showMyTariff)
       )
         rows.push(
@@ -1673,7 +1700,7 @@ export default async function OrderPage({
               <FreightTariffBox
                 t={t}
                 orderId={order.id}
-                stageId={shippingStage.id}
+                anchor={`milestone-${view.key}`}
                 shippingLineId={order.shippingLineId}
                 view={tariffView}
                 keepParams={remeasureMode ? { remeasure: "1" } : {}}
@@ -1876,7 +1903,6 @@ export default async function OrderPage({
         ({ r, stage }) =>
           r.role === user.role && r.status !== "done" && !live(stage, r),
       );
-      const inspectionStage = rowStages.find((s) => s.key === "INSPECTION");
       const prepStage = rowStages.find((s) => s.key === "PREPARATION");
       const prepReqs = prepStage
         ? requirements.filter((r) => r.stageId === prepStage.id)
@@ -1916,19 +1942,15 @@ export default async function OrderPage({
               status={myTariff}
             />
           ) : null}
-          {inspectionStage && user.role === "supplier" ? (
+          {view.key === "inspection" && user.role === "supplier" ? (
             <p className="mb-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs leading-relaxed text-brand-800">
               {t("orders.inspection.blindHint")}
             </p>
           ) : null}
-          {inspectionStage &&
-          (inspectionStage.status === "blocked" ||
-            inspectionStage.status === "active") &&
+          {view.key === "inspection" &&
+          inspectionOpen &&
           requirements.some(
-            (r) =>
-              r.stageId === inspectionStage.id &&
-              r.status === "done" &&
-              isRemeasurable(r),
+            (r) => inInspection(r) && r.status === "done" && isRemeasurable(r),
           ) &&
           user.role === "supplier" ? (
             <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
@@ -1938,7 +1960,7 @@ export default async function OrderPage({
                     {t("orders.inspection.remeasureHint")}
                   </span>
                   <TextLink
-                    href={`/app/orders/${order.id}#stage-${inspectionStage.id}`}
+                    href={`/app/orders/${order.id}#milestone-inspection`}
                     className="text-xs"
                   >
                     {t("orders.inspection.remeasureClose")}
@@ -1946,7 +1968,7 @@ export default async function OrderPage({
                 </>
               ) : (
                 <TextLink
-                  href={`/app/orders/${order.id}?remeasure=1#stage-${inspectionStage.id}`}
+                  href={`/app/orders/${order.id}?remeasure=1#milestone-inspection`}
                 >
                   {t("orders.inspection.remeasure")} →
                 </TextLink>
@@ -2063,16 +2085,16 @@ export default async function OrderPage({
                   : stageTone(
                       order.status === "CLOSED"
                         ? "done"
-                        : currentStage?.status === "blocked"
+                        : headBlocked
                           ? "blocked"
                           : "active",
                     )
               }
             >
-              {stageName(order.status)}
-              {currentStage?.status === "blocked"
-                ? ` · ${t("stageStatus.blocked")}`
-                : ""}
+              {headMilestone && !isCancelled
+                ? milestoneTitle(t, headMilestone)
+                : stageName(order.status)}
+              {headBlocked ? ` · ${t("stageStatus.blocked")}` : ""}
             </Badge>
             {overdue ? (
               <Badge tone="danger">{t("common.overdue")}</Badge>
@@ -2348,12 +2370,12 @@ export default async function OrderPage({
       {wellmix ? (
         <CancelRequestAlert t={t} order={order} admin={canCancel} />
       ) : null}
-      {currentStage?.status === "blocked" ? (
+      {headBlocked ? (
         <div className="mb-3">
           <Alert tone="warning">
             <strong>{t("orders.blocked")}:</strong>{" "}
-            {wellmix || currentStage.key !== "INSPECTION"
-              ? currentStage.blockReason
+            {wellmix || headBlocked.key !== "inspection"
+              ? headBlocked.reason
               : t("orders.inspection.genericBlock")}
           </Alert>
         </div>
@@ -2550,14 +2572,6 @@ export default async function OrderPage({
           marcos em que o login tem tarefa liberada agora. */}
       {wellmix ? (
         <OrderSection id="order-stages" title={t("milestone.title")}>
-          {/* Âncoras das etapas (as ações voltam para #stage-…). */}
-          {flowStages.map((s) => (
-            <span
-              key={s.id}
-              id={`stage-${s.id}`}
-              className="block scroll-mt-24"
-            />
-          ))}
           <p
             className="mb-3 text-xs leading-relaxed text-zinc-500"
             data-stage-mine-hint={mineOnly ? "" : undefined}
@@ -2572,32 +2586,29 @@ export default async function OrderPage({
                 : ""}
             </p>
           ) : null}
-          {flowStages
-            .filter((s) => s.status === "blocked")
-            .map((s) => (
-              <form
-                key={s.id}
-                action={unblockStageAction}
-                className="mb-3 flex flex-wrap items-center gap-2"
-                data-stage-unblock={s.key}
-              >
-                <input type="hidden" name="orderId" value={order.id} />
-                <input type="hidden" name="stageId" value={s.id} />
-                <span className="text-sm font-medium text-amber-900">
-                  {t("milestone.blocked", { stage: stageName(s.key) })}
-                </span>
-                <SubmitButton variant="secondary">
-                  {t("orders.unblock")}
-                </SubmitButton>
-              </form>
-            ))}
+          {blockedRows.map((row) => (
+            <form
+              key={row.key}
+              action={unblockMilestoneAction}
+              className="mb-3 flex flex-wrap items-center gap-2"
+              data-milestone-unblock={row.key}
+            >
+              <input type="hidden" name="orderId" value={order.id} />
+              <input type="hidden" name="milestone" value={row.key} />
+              <span className="text-sm font-medium text-amber-900">
+                {t("milestone.blocked", {
+                  milestone: milestoneTitle(t, row.key),
+                })}
+              </span>
+              <SubmitButton variant="secondary">
+                {t("orders.unblock")}
+              </SubmitButton>
+            </form>
+          ))}
           <OrderMilestoneTimeline items={milestoneItems} t={t} />
           {/* Relatório da inspeção: sempre à vista depois que a inspeção
               começa. */}
-          {inspection &&
-          stages.some(
-            (s) => s.key === "INSPECTION" && s.status !== "pending",
-          ) ? (
+          {inspection ? (
             <div className="mt-4 min-w-0">
               <InspectionResultCard
                 t={t}
@@ -2612,14 +2623,6 @@ export default async function OrderPage({
            login atua ou acompanha, no lugar da tabela "Etapas do pedido",
            com os mesmos itens e as mesmas ações. */
         <OrderSection id="order-stages" title={t("milestone.title")}>
-          {/* Âncoras das etapas (as ações voltam para #stage-…). */}
-          {flowStages.map((s) => (
-            <span
-              key={s.id}
-              id={`stage-${s.id}`}
-              className="block scroll-mt-24"
-            />
-          ))}
           <p className="mb-3 text-xs leading-relaxed text-zinc-500">
             {t("milestone.partnerHint")}
           </p>

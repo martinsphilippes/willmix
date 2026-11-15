@@ -18,14 +18,15 @@ const TOP = 4;
 export function FreightTariffBox({
   t,
   orderId,
-  stageId,
+  anchor,
   shippingLineId = null,
   view,
   keepParams = {},
 }: {
   t: Translate;
   orderId: string;
-  stageId: string;
+  /** Âncora do marco na tela do pedido (ex.: "milestone-booking"). */
+  anchor: string;
   /** Companhia marítima do pedido: já vem marcada na importação. */
   shippingLineId?: string | null;
   /** Parâmetros da tela que o "Ver frete" mantém (ex.: remeasure=1). */
@@ -147,7 +148,7 @@ export function FreightTariffBox({
         /* Porto de embarque à mão (ex.: fornecedor em Yiwu embarca por Ningbo). */
         <form
           method="get"
-          action={`/app/orders/${encodeURIComponent(orderId)}#stage-${stageId}`}
+          action={`/app/orders/${encodeURIComponent(orderId)}#${anchor}`}
           className="mt-2 flex flex-wrap items-end gap-2"
           data-tariff-origin-form=""
         >

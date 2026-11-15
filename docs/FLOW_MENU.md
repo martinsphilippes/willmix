@@ -38,9 +38,9 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
 - **Pendências** (padrão): o que espera ação do login no passo, como acima.
 - **Todos no passo** (`?tab=all`, só a Wellmix): todos os pedidos que estão no passo agora, de qualquer responsável, com o fornecedor, a etapa do pedido, o que está aberto no passo e há quantos dias; o link abre o detalhe do pedido. Fonte (`flowAllFor` em `src/lib/services/flow.ts`, leitura sob demanda, fora do menu):
   - itens de etapa não concluídos das etapas em andamento (ou bloqueadas), no passo do item;
-  - passos do embarque, da origem, da certificação e das amostras prontos e não concluídos (`openImportStepKeys` em `src/lib/services/import-flow.ts`): embarque, origem e amostras só do pedido da inspeção em diante; certificação só com ela começada; amostras só com elas pedidas;
+  - passos do embarque, da origem, da certificação e das amostras prontos e não concluídos (`openImportStepKeys` em `src/lib/services/import-flow.ts`): embarque, origem e amostras só do pedido da pré-produção em diante (fase 5e: pelos marcos gravados, `milestoneReached`; antes, a situação "Inspeção" em diante); certificação só com ela começada; amostras só com elas pedidas;
   - recebimentos abertos (Armazenagem e Retorno) e a pré-produção, os mesmos casos do menu;
-  - produção em andamento: pedido na etapa de inspeção com ETD.
+  - produção em andamento: pedido com ETD, da pré-produção até o booking começar (fase 5e: pelos marcos; antes, a etapa de inspeção).
 - O Overview do bloco mostra, em cada passo da linha do tempo, quantos pedidos estão nele ("N no passo"), além das pendências. Passos com tela de antes (Books, Pedidos, Revisão, Estoque) listam na própria tela.
 
 ## Encomendas e Reposição (15/11/2026)

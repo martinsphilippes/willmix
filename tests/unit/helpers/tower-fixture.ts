@@ -148,6 +148,11 @@ export async function towerScenario(now: Date) {
     limit: 1,
   });
   if (stage) await store.update("stages", stage.id, { dueAt: day(-3) });
+  // Fase 5e: o prazo vencido é o dos marcos em andamento.
+  for (const row of await store.list("order_milestones", {
+    filter: { orderId: a.id, status: ["active", "blocked"] },
+  }))
+    await store.update("order_milestones", row.id, { dueAt: day(-3) });
   const closed = await placeOrder("Tigela D");
   await store.update("orders", closed.id, {
     status: "CLOSED",

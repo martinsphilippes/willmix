@@ -1,5 +1,6 @@
 import "server-only";
 import { isOrderOpen } from "@/lib/order-status";
+import { milestoneReached, type MilestoneProgressLike } from "@/lib/milestones";
 import { cache } from "react";
 import { can, holdersOf, type ActionKey } from "@/lib/auth/function-access";
 import { loadFunctionDefs } from "./team-functions";
@@ -2342,19 +2343,10 @@ export async function readyImportTasks(
   );
 }
 
-/** Situações do pedido em que o embarque, a origem e as amostras andam. */
-const OPEN_FLOW_STATUSES: readonly string[] = [
-  "INSPECTION",
-  "SHIPPING",
-  "CUSTOMS",
-  "TRANSPORT",
-  "DELIVERED",
-];
-
 /**
  * Passos abertos do pedido (prontos e ainda não concluídos), quem quer que
  * os faça: a aba "Todos" das telas dos passos do menu (docs/FLOW_MENU.md).
- * Embarque, origem e amostras só do pedido já na inspeção em diante; a
+ * Embarque, origem e amostras só do pedido da pré-produção em diante; a
  * certificação e as amostras só quando o chamador diz que valem para o
  * pedido (certificação começada; amostras pedidas). O BL do pedido de compra
  * vem dos documentos do embarque (não entra).
@@ -2362,10 +2354,18 @@ const OPEN_FLOW_STATUSES: readonly string[] = [
 export function openImportStepKeys(
   order: Order,
   steps: ImportStep[],
-  options: { certification: boolean; samples: boolean; lpco?: boolean },
+  options: {
+    certification: boolean;
+    samples: boolean;
+    lpco?: boolean;
+    /** Marcos do pedido (gravados ou calculados), para saber onde ele está. */
+    milestones?: readonly MilestoneProgressLike[] | null;
+  },
 ): ImportStepKey[] {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return [];
-  const flowing = OPEN_FLOW_STATUSES.includes(order.status);
+  // Fase 5e: embarque, origem e amostras andam da pré-produção em diante
+  // (antes, a situação "Inspeção" em diante).
+  const flowing = milestoneReached(order, options.milestones, "pre-production");
   return IMPORT_STEPS.filter((tpl) => {
     const group = groupOf(tpl);
     if (group === "certification" ? !options.certification : !flowing)

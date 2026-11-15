@@ -328,6 +328,10 @@ export async function compareInspection(
           `${ATTRIBUTE_LABEL[c.attribute] ?? c.attribute} esperado ${expectedText(c)}, encontrado ${c.found}`,
       )
       .join("; ")}. REVISÃO NECESSÁRIA.`;
+    // Fase 5e: a trava é do marco da Inspeção (a etapa só acompanha).
+    const { setMilestoneBlock, INSPECTION_BLOCK_MILESTONE } =
+      await import("./order-milestones");
+    await setMilestoneBlock(order.id, INSPECTION_BLOCK_MILESTONE, reason);
     await store.update("stages", stage.id, {
       status: "blocked",
       blockReason: reason,
@@ -368,8 +372,12 @@ export async function compareInspection(
       link,
     });
   } else {
-    // Tudo dentro da tolerância: se a etapa estava bloqueada só por esta comparação, libera.
-    const fresh = await store.get("stages", stage.id);
+    // Tudo dentro da tolerância: se o marco estava travado só por esta comparação, libera.
+    const { milestoneBlockOf, setMilestoneBlock, INSPECTION_BLOCK_MILESTONE } =
+      await import("./order-milestones");
+    const locked =
+      (await milestoneBlockOf(order.id, INSPECTION_BLOCK_MILESTONE)) !==
+      undefined;
     const [review] = await store.list("requirements", {
       filter: { stageId: stage.id, key: "inspection_review" },
     });
@@ -380,7 +388,7 @@ export async function compareInspection(
     // refeita fica dentro da tolerância.
     if (
       review &&
-      ((fresh?.status === "blocked" && review.status === "pending") ||
+      ((locked && review.status === "pending") ||
         review.status === "rejected") &&
       stillOpen.filter((r) => r.rule.startsWith("inspection.")).length === 0
     ) {
@@ -389,6 +397,7 @@ export async function compareInspection(
         value: "auto",
         note: "Dentro da tolerância após nova medição.",
       });
+      await setMilestoneBlock(order.id, INSPECTION_BLOCK_MILESTONE, null);
       await store.update("stages", stage.id, {
         status: "active",
         blockReason: null,

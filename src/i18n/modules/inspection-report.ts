@@ -34,6 +34,7 @@ export const pt = {
   "inspReport.event.inspection.remeasure_requested": "Nova medição solicitada",
   "inspReport.event.stage.unblock": "Etapa liberada manualmente",
   "inspReport.event.stage.complete": "Inspeção concluída",
+  "inspReport.event.milestone.unblock": "Marco liberado manualmente",
   "inspReport.hint":
     "Comparação do que o fornecedor encontrou com o que foi comprado (ficha de compra e snapshot), usando as tolerâncias das configurações. O fornecedor não vê os valores esperados.",
 };
@@ -70,6 +71,7 @@ export const en: Record<keyof typeof pt, string> = {
     "New measurement requested",
   "inspReport.event.stage.unblock": "Stage released manually",
   "inspReport.event.stage.complete": "Inspection completed",
+  "inspReport.event.milestone.unblock": "Milestone released manually",
   "inspReport.hint":
     "Comparison of what the supplier found with what was purchased (purchase sheet and snapshot), using the tolerances in settings. The supplier does not see the expected values.",
 };
@@ -103,6 +105,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "inspReport.event.inspection.remeasure_requested": "已要求重新测量",
   "inspReport.event.stage.unblock": "阶段已手动放行",
   "inspReport.event.stage.complete": "验货完成",
+  "inspReport.event.milestone.unblock": "里程碑已手动解除",
   "inspReport.hint":
     "将供应商的测量结果与采购内容（采购单和快照）进行比较，使用设置中的容差。供应商看不到预期值。",
 };

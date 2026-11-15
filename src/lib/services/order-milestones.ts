@@ -87,8 +87,94 @@ export const storedMilestone = (
     ? (key as MilestoneKey)
     : null;
 
-/** Marcos com item numa etapa travada (bloqueio da inspeção): o motivo. */
+/**
+ * Marcos travados pela linha gravada (fase 5e): o bloqueio da inspeção mora
+ * em `order_milestones` (status "blocked" e o motivo), gravado por
+ * `setMilestoneBlock`; a etapa não decide mais.
+ */
 export function blockedMilestones(
+  rows: readonly Pick<OrderMilestone, "key" | "status" | "blockReason">[],
+): Map<MilestoneKey, string | null> {
+  const out = new Map<MilestoneKey, string | null>();
+  for (const r of rows) {
+    const key = storedMilestone(r.key);
+    if (key && r.status === "blocked") out.set(key, r.blockReason ?? null);
+  }
+  return out;
+}
+
+/** Marco do bloqueio da inspeção (divergência de peso ou comprado × inspecionado). */
+export const INSPECTION_BLOCK_MILESTONE: MilestoneKey = "inspection";
+
+/**
+ * Trava (com o motivo) ou destrava (`null`) um marco do pedido na linha
+ * dele (fase 5e). Sem linha, a trava cria a linha já em andamento e travada.
+ * Destravar a linha que não está travada não muda nada.
+ */
+export async function setMilestoneBlock(
+  orderId: string,
+  key: MilestoneKey,
+  reason: string | null,
+): Promise<void> {
+  const store = getStore();
+  const [row] = await store.list("order_milestones", {
+    filter: { orderId, key },
+    limit: 1,
+  });
+  if (reason === null) {
+    if (row?.status === "blocked")
+      await store.update("order_milestones", row.id, {
+        status: "active",
+        blockReason: null,
+      });
+    return;
+  }
+  if (row) {
+    if (row.status !== "blocked" || row.blockReason !== reason)
+      await store.update("order_milestones", row.id, {
+        status: "blocked",
+        blockReason: reason,
+        completedAt: null,
+      });
+    return;
+  }
+  const [order, settings] = await Promise.all([
+    store.get("orders", orderId),
+    getSettings(),
+  ]);
+  const now = new Date().toISOString();
+  const days = milestoneDueDaysOf(settings)[key];
+  await store.create("order_milestones", {
+    id: orderMilestoneId(orderId, key),
+    orderId,
+    key,
+    status: "blocked",
+    startedAt: now,
+    dueAt: days == null ? null : addDays(now, days),
+    completedAt: null,
+    reminderSentAt: null,
+    blockReason: reason,
+    held: order?.held === true ? true : null,
+  });
+}
+
+/** O marco está travado? O motivo (ou nulo sem motivo); sem trava, `undefined`. */
+export async function milestoneBlockOf(
+  orderId: string,
+  key: MilestoneKey,
+): Promise<string | null | undefined> {
+  const [row] = await getStore().list("order_milestones", {
+    filter: { orderId, key },
+    limit: 1,
+  });
+  return row?.status === "blocked" ? (row.blockReason ?? null) : undefined;
+}
+
+/**
+ * Migração (fase 5b): marcos com item numa etapa travada (o bloqueio antigo
+ * da inspeção), para gravar a trava na linha do marco.
+ */
+export function blockedMilestonesFromStages(
   stages: readonly Pick<Stage, "id" | "key" | "status" | "blockReason">[],
   requirements: readonly (Pick<Requirement, "stageId" | "key"> & {
     milestoneKey?: string | null;
@@ -478,7 +564,7 @@ export async function syncMilestones(
     order,
     views,
     existing,
-    blocked: blockedMilestones(input.stages, input.requirements),
+    blocked: blockedMilestones(existing),
     dueDays: milestoneDueDaysOf(settings),
     now: (options.now ?? new Date()).toISOString(),
   });
@@ -1047,7 +1133,10 @@ export async function migrateMilestonesSlice(
       order,
       views: viewsByStage({ ...input, requirements }),
       existing,
-      blocked: blockedMilestones(input.stages, requirements),
+      blocked: new Map([
+        ...blockedMilestonesFromStages(input.stages, requirements),
+        ...blockedMilestones(existing),
+      ]),
       dueDays,
       now: at,
     });

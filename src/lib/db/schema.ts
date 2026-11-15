@@ -86,6 +86,12 @@ export const REQUEST_STATUSES = [
 ] as const;
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
+/**
+ * LEGADO (fase 5e, docs/MILESTONES.md): as 10 etapas antigas. O pedido anda
+ * pelos 16 marcos (`src/lib/milestones.ts`, `order_milestones`); as etapas
+ * ficam só como registro gravado pelo motor (e os valores de
+ * `orders.status`) até a fase 5f/5g. Não use para decidir comportamento.
+ */
 export const STAGE_KEYS = [
   "ORDER_CREATED",
   "PREPARATION",
@@ -1181,6 +1187,7 @@ export interface OrderItem extends BaseRow {
   sankhyaRefs?: Record<string, string | number> | null;
 }
 
+/** LEGADO (fase 5e): linha da tabela `stages`; ver `STAGE_KEYS`. */
 export interface Stage extends BaseRow {
   orderId: string;
   key: StageKey;
@@ -1203,6 +1210,10 @@ export interface Stage extends BaseRow {
 
 export interface Requirement extends BaseRow {
   orderId: string;
+  /**
+   * LEGADO (fase 5e): a etapa do item no registro antigo. O item anda pelo
+   * passo e pelo marco gravados (`step`, `milestoneKey`); sai na fase 5f.
+   */
   stageId: string;
   key: string;
   label: string;
@@ -4039,6 +4050,7 @@ export const TABLES: Record<TableName, TableDef> = {
     },
     indexes: [{ key: "by_order", type: "key", columns: ["orderId"] }],
   },
+  // LEGADO (fase 5e): registro das etapas antigas; sai na fase 5f.
   stages: {
     label: "Etapas",
     columns: {

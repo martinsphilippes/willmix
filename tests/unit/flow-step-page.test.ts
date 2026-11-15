@@ -21,6 +21,11 @@ let admin: User;
 
 beforeAll(async () => {
   admin = (await towerScenario(NOW)).admin;
+  // Fase 5e: os passos leem os marcos gravados; a sincronização pedida
+  // pelas gravações do cenário roda antes (na tela, depois da resposta).
+  const { flushMilestoneSync } =
+    await import("@/lib/services/order-milestones");
+  await flushMilestoneSync();
   await summary.rebuildOrderSummaries(NOW);
 });
 
