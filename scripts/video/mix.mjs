@@ -1,7 +1,7 @@
 /*
  * Fecha um vídeo: junta a vinheta de abertura do portal, o filme renderizado
  * (out/tmp/<vídeo>.<idioma>.film.mp4) e o áudio (voz + trilha).
- *   node mix.mjs <vídeo> <idioma> [--audio] [--audio-only] [--crf N]
+ *   node mix.mjs <vídeo> <idioma> [--audio] [--audio-only] [--crf N] [--dir pasta]
  * --audio refaz a mixagem; --audio-only para depois dela (sem juntar a imagem).
  * Áudio: voz com compressão leve; a trilha abaixa sozinha sob a voz (ducking)
  * e o conjunto sai em −16 LUFS (docs/videos/GUIA.md, seção 3). O áudio é o
@@ -9,7 +9,7 @@
  * Saída: out/wellmix-<vídeo>-<idioma>.mp4 (1920 × 1080, 60 fps, H.264 + AAC).
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "./lib.mjs";
 
@@ -133,7 +133,13 @@ const patches = readdirSync(join(out, "tmp"))
   .filter((p) => statSync(p.file).mtimeMs > statSync(film).mtimeMs)
   .map((p) => ({ ...p, to: p.from + frames(p.file) }))
   .sort((x, y) => x.from - y.from);
-const final = join(out, `wellmix-${video}-${lang}.mp4`);
+// --dir <pasta>: grava o vídeo pronto em out/<pasta>/ (para não escrever por
+// cima de um arquivo que ainda está sendo conferido).
+const dir = process.argv.includes("--dir")
+  ? join(out, process.argv[process.argv.indexOf("--dir") + 1])
+  : out;
+mkdirSync(dir, { recursive: true });
+const final = join(dir, `wellmix-${video}-${lang}.mp4`);
 // --chroma-fix: só para filmes renderizados antes da correção de arredondamento
 // de render.mjs (15/11/2026): devolve o nível de croma que faltava nos neutros.
 const chroma = process.argv.includes("--chroma-fix")
