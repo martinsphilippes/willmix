@@ -398,113 +398,196 @@ export const flowProgressFor = cache(
 );
 
 const flowAllData = cache(
-  async (
+  (
     user: User,
   ): Promise<{
     entities: Map<string, FlowEntity[]>;
     progress: Map<string, OrderProgress>;
-  }> => {
-    const out = new Map<string, Map<string, FlowEntity>>();
-    const empty = { entities: new Map(), progress: new Map() };
-    if (!isWellmix(user)) return empty;
-    const store = getStore();
-    // O histórico em espera também: na situação real, só sem avisos.
-    const orders = (await store.list("orders")).filter(
-      (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
-    );
-    if (!orders.length) return empty;
-    const orderById = new Map(orders.map((o) => [o.id, o]));
-    const ids = orders.map((o) => o.id);
-    const add = (
-      stepKey: string,
-      orderId: string,
-      item: FlowEntityItem,
-      since: string | null,
-    ) => {
-      const order = orderById.get(orderId);
-      if (!order) return;
-      const byOrder = out.get(stepKey) ?? new Map<string, FlowEntity>();
-      const entity = byOrder.get(orderId) ?? { order, items: [], since: null };
-      entity.items.push(item);
-      if (since && (!entity.since || since < entity.since))
-        entity.since = since;
-      byOrder.set(orderId, entity);
-      out.set(stepKey, byOrder);
-    };
-    const [
-      stages,
-      importSteps,
-      tracks,
-      openRequirements,
-      receivings,
-      downPayments,
-      sampleOrders,
-    ] = await Promise.all([
-      store.list("stages", { filter: { orderId: ids } }),
-      store.list("import_steps", { filter: { orderId: ids } }).catch(() => []),
-      store
-        .list("production_tracks", { filter: { orderId: ids } })
-        .catch(() => []),
-      store.list("requirements", {
-        filter: { orderId: ids, status: ["pending", "rejected"] },
-      }),
-      store.list("receivings", { filter: { orderId: ids } }).catch(() => []),
-      store.list("requirements", {
-        filter: { orderId: ids, key: "down_payment", status: "done" },
-      }),
-      store.list("requirements", {
-        filter: { orderId: ids, key: SAMPLE_ORDER_KEY },
-      }),
-    ]);
-    // Itens do pedido só de quem está no recebimento (a contagem por SKU).
-    const receivingIds = orders
-      .filter((o) =>
-        (RECEIVING_STATUSES as readonly string[]).includes(o.status),
-      )
-      .map((o) => o.id);
-    const items = receivingIds.length
-      ? await store.list("order_items", { filter: { orderId: receivingIds } })
-      : [];
-    const group = <T extends { orderId: string }>(rows: T[]) => {
-      const m = new Map<string, T[]>();
-      for (const r of rows) m.set(r.orderId, [...(m.get(r.orderId) ?? []), r]);
-      return m;
-    };
-    const byStages = group(stages);
-    const byReqs = group(openRequirements);
-    const bySteps = group(importSteps);
-    const byItems = group(items);
-    const now = new Date();
-    const progress = new Map<string, OrderProgress>();
-    const lpco = await (
-      await import("./import-flow")
-    ).lpcoOrderIds(orders.map((o) => o.id));
-    for (const order of orders) {
-      const input: OrderFlowInput = {
-        order,
-        stages: byStages.get(order.id) ?? [],
-        openRequirements: byReqs.get(order.id) ?? [],
-        importSteps: bySteps.get(order.id) ?? [],
-        track: tracks.find((x) => x.orderId === order.id) ?? null,
-        receiving: receivings.find((x) => x.orderId === order.id) ?? null,
-        items: byItems.get(order.id) ?? [],
-        downPayment: downPayments.find((x) => x.orderId === order.id) ?? null,
-        sampleOrder: sampleOrders.find((x) => x.orderId === order.id) ?? null,
-        lpco: lpco.has(order.id),
-      };
-      progress.set(order.id, orderProgress(input.stages, now));
-      for (const e of orderFlowEntries(input))
-        add(e.step, order.id, e.item, e.since);
-    }
-    const entities = new Map(
-      [...out.entries()].map(([k, byOrder]) => [
-        k,
-        [...byOrder.values()].sort((a, b) => a.order.number - b.order.number),
-      ]),
-    );
-    return { entities, progress };
-  },
+  }> => loadFlowAll(user),
 );
+
+/**
+ * A leitura do "Todos no passo": de todos os pedidos em andamento ou, com
+ * `onlyIds`, só destes (a tela do passo lê só a página que mostra; com o
+ * histórico do Sankhya são milhares de pedidos e a leitura de todos estoura
+ * a memória da função).
+ */
+async function loadFlowAll(
+  user: User,
+  onlyIds?: string[],
+): Promise<{
+  entities: Map<string, FlowEntity[]>;
+  progress: Map<string, OrderProgress>;
+}> {
+  const out = new Map<string, Map<string, FlowEntity>>();
+  const empty = { entities: new Map(), progress: new Map() };
+  if (!isWellmix(user)) return empty;
+  if (onlyIds && !onlyIds.length) return empty;
+  const store = getStore();
+  // O histórico em espera também: na situação real, só sem avisos.
+  const orders = (
+    await store.list("orders", onlyIds ? { filter: { id: onlyIds } } : {})
+  ).filter((o) => o.status !== "CLOSED" && o.status !== "CANCELLED");
+  if (!orders.length) return empty;
+  const orderById = new Map(orders.map((o) => [o.id, o]));
+  const ids = orders.map((o) => o.id);
+  const add = (
+    stepKey: string,
+    orderId: string,
+    item: FlowEntityItem,
+    since: string | null,
+  ) => {
+    const order = orderById.get(orderId);
+    if (!order) return;
+    const byOrder = out.get(stepKey) ?? new Map<string, FlowEntity>();
+    const entity = byOrder.get(orderId) ?? { order, items: [], since: null };
+    entity.items.push(item);
+    if (since && (!entity.since || since < entity.since)) entity.since = since;
+    byOrder.set(orderId, entity);
+    out.set(stepKey, byOrder);
+  };
+  const [
+    stages,
+    importSteps,
+    tracks,
+    openRequirements,
+    receivings,
+    downPayments,
+    sampleOrders,
+  ] = await Promise.all([
+    store.list("stages", { filter: { orderId: ids } }),
+    store.list("import_steps", { filter: { orderId: ids } }).catch(() => []),
+    store
+      .list("production_tracks", { filter: { orderId: ids } })
+      .catch(() => []),
+    store.list("requirements", {
+      filter: { orderId: ids, status: ["pending", "rejected"] },
+    }),
+    store.list("receivings", { filter: { orderId: ids } }).catch(() => []),
+    store.list("requirements", {
+      filter: { orderId: ids, key: "down_payment", status: "done" },
+    }),
+    store.list("requirements", {
+      filter: { orderId: ids, key: SAMPLE_ORDER_KEY },
+    }),
+  ]);
+  // Itens do pedido só de quem está no recebimento (a contagem por SKU).
+  const receivingIds = orders
+    .filter((o) => (RECEIVING_STATUSES as readonly string[]).includes(o.status))
+    .map((o) => o.id);
+  const items = receivingIds.length
+    ? await store.list("order_items", { filter: { orderId: receivingIds } })
+    : [];
+  const group = <T extends { orderId: string }>(rows: T[]) => {
+    const m = new Map<string, T[]>();
+    for (const r of rows) m.set(r.orderId, [...(m.get(r.orderId) ?? []), r]);
+    return m;
+  };
+  const byStages = group(stages);
+  const byReqs = group(openRequirements);
+  const bySteps = group(importSteps);
+  const byItems = group(items);
+  const now = new Date();
+  const progress = new Map<string, OrderProgress>();
+  const lpco = await (
+    await import("./import-flow")
+  ).lpcoOrderIds(orders.map((o) => o.id));
+  for (const order of orders) {
+    const input: OrderFlowInput = {
+      order,
+      stages: byStages.get(order.id) ?? [],
+      openRequirements: byReqs.get(order.id) ?? [],
+      importSteps: bySteps.get(order.id) ?? [],
+      track: tracks.find((x) => x.orderId === order.id) ?? null,
+      receiving: receivings.find((x) => x.orderId === order.id) ?? null,
+      items: byItems.get(order.id) ?? [],
+      downPayment: downPayments.find((x) => x.orderId === order.id) ?? null,
+      sampleOrder: sampleOrders.find((x) => x.orderId === order.id) ?? null,
+      lpco: lpco.has(order.id),
+    };
+    progress.set(order.id, orderProgress(input.stages, now));
+    for (const e of orderFlowEntries(input))
+      add(e.step, order.id, e.item, e.since);
+  }
+  const entities = new Map(
+    [...out.entries()].map(([k, byOrder]) => [
+      k,
+      [...byOrder.values()].sort((a, b) => a.order.number - b.order.number),
+    ]),
+  );
+  return { entities, progress };
+}
+
+/** Pedidos por página na aba "Todos no passo". */
+export const FLOW_STEP_PAGE = 50;
+
+/**
+ * Aba "Todos no passo" da Wellmix, paginada (dono, 15/11/2026: a tela do
+ * passo Pedidos não abria). Os pedidos do passo vêm da contribuição de cada
+ * pedido (`order_summaries.kpi.f`, docs/RESUMOS.md): os em andamento de
+ * verdade primeiro, depois o histórico do Sankhya em espera, cada grupo pelo
+ * número; só os da página são lidos das tabelas. Sem os resumos (ou num
+ * passo fora de Pedido, Produção e Entrega), a leitura das tabelas sem o
+ * histórico em espera, que não tem pendência. `load: false` só conta.
+ */
+export async function flowStepEntities(
+  user: User,
+  step: Pick<FlowStep, "block" | "key">,
+  { page = 1, load = true }: { page?: number; load?: boolean } = {},
+): Promise<{
+  entities: FlowEntity[];
+  total: number;
+  page: number;
+  pages: number;
+}> {
+  const id = stepId(step);
+  const none = { entities: [], total: 0, page: 1, pages: 1 };
+  if (!isWellmix(user)) return none;
+  let ids: string[] | null = null;
+  if (isProgressBlock(step.block)) {
+    const { summariesReady } = await import("./order-summary");
+    if (await summariesReady()) {
+      const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
+      await flushSummaryChanges();
+      const { readLiveOrderFlows } = await import("./flow-kpis");
+      const flows = await readLiveOrderFlows();
+      if (flows)
+        ids = flows
+          .filter(({ f }) => id in f.s)
+          .sort((a, b) => (a.f.h ? 1 : 0) - (b.f.h ? 1 : 0) || a.f.n - b.f.n)
+          .map((x) => x.id);
+    }
+  }
+  if (!ids) {
+    const live = (await getStore().list("orders")).filter(
+      (o) => !o.held && o.status !== "CLOSED" && o.status !== "CANCELLED",
+    );
+    const all =
+      (
+        await loadFlowAll(
+          user,
+          live.map((o) => o.id),
+        )
+      ).entities.get(id) ?? [];
+    const pages = Math.max(1, Math.ceil(all.length / FLOW_STEP_PAGE));
+    const at = Math.min(Math.max(1, page), pages);
+    return {
+      entities: all.slice((at - 1) * FLOW_STEP_PAGE, at * FLOW_STEP_PAGE),
+      total: all.length,
+      page: at,
+      pages,
+    };
+  }
+  const pages = Math.max(1, Math.ceil(ids.length / FLOW_STEP_PAGE));
+  const at = Math.min(Math.max(1, page), pages);
+  if (!load) return { entities: [], total: ids.length, page: at, pages };
+  const slice = ids.slice((at - 1) * FLOW_STEP_PAGE, at * FLOW_STEP_PAGE);
+  const rank = new Map(slice.map((x, i) => [x, i]));
+  const entities = (
+    (await loadFlowAll(user, slice)).entities.get(id) ?? []
+  ).sort((a, b) => (rank.get(a.order.id) ?? 0) - (rank.get(b.order.id) ?? 0));
+  return { entities, total: ids.length, page: at, pages };
+}
 
 /** Pedido que está no bloco: os passos em que está, desde quando e a completude. */
 export interface FlowBlockEntity {
