@@ -60,6 +60,11 @@ export const pt = {
   "priceForecast.profitValue": "{profit}% (meta {goal}%)",
   "priceForecast.source":
     "Valores por peça, da SuperPlan do Sankhya (consulta agora).",
+  "priceForecast.auditTitle": "Memória de cálculo do Sankhya (auditoria)",
+  "priceForecast.auditInputs": "Enviado à função {fn}",
+  "priceForecast.auditDefaults":
+    "Os parâmetros que não aparecem foram como DEFAULT (o padrão do Sankhya).",
+  "priceForecast.auditOutputs": "Devolvido pela função (todas as colunas)",
   "sankhyaHistory.source": "Do Sankhya, consultado agora",
   "sankhyaHistory.empty": "Nenhum pedido deste cliente no Sankhya.",
   "sankhyaHistory.error": "Não deu para consultar o Sankhya.",
@@ -145,6 +150,11 @@ export const en: Record<keyof typeof pt, string> = {
   "priceForecast.profitValue": "{profit}% (goal {goal}%)",
   "priceForecast.source":
     "Per-piece values from Sankhya's SuperPlan (queried now).",
+  "priceForecast.auditTitle": "Sankhya calculation details (audit)",
+  "priceForecast.auditInputs": "Sent to function {fn}",
+  "priceForecast.auditDefaults":
+    "Parameters not listed were sent as DEFAULT (Sankhya's default).",
+  "priceForecast.auditOutputs": "Returned by the function (all columns)",
   "sankhyaHistory.source": "From Sankhya, queried now",
   "sankhyaHistory.empty": "No orders from this customer in Sankhya.",
   "sankhyaHistory.error": "Could not query Sankhya.",
@@ -223,6 +233,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "priceForecast.profitValue": "{profit}%（目标 {goal}%）",
   "priceForecast.resultTarget": "若以每件 {target} 出售，最高采购价为",
   "priceForecast.source": "每件数值，来自 Sankhya 的 SuperPlan（实时查询）。",
+  "priceForecast.auditTitle": "Sankhya 计算明细（审计）",
+  "priceForecast.auditInputs": "发送给函数 {fn}",
+  "priceForecast.auditDefaults":
+    "未列出的参数以 DEFAULT（Sankhya 默认值）发送。",
+  "priceForecast.auditOutputs": "函数返回（全部字段）",
   "sankhyaHistory.source": "来自 Sankhya，实时查询",
   "sankhyaHistory.empty": "Sankhya 中没有该客户的订单。",
   "sankhyaHistory.error": "无法查询 Sankhya。",

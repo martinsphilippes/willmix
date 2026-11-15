@@ -781,6 +781,12 @@ export default async function NewRequestPage({
                           target: "{target}",
                         }),
                         source: t("priceForecast.source"),
+                        auditTitle: t("priceForecast.auditTitle"),
+                        auditInputs: t("priceForecast.auditInputs", {
+                          fn: "{fn}",
+                        }),
+                        auditDefaults: t("priceForecast.auditDefaults"),
+                        auditOutputs: t("priceForecast.auditOutputs"),
                         canSolve: canSeeMoney(user),
                       },
                     }

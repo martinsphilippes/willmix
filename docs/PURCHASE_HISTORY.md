@@ -162,3 +162,25 @@ No card do histórico pelo Sankhya (seção 9), um seletor **"Pedido | Produto"*
 - Testes: `tests/unit/sankhya-history-products.test.ts` e o E2E `tests/e2e/purchase-history-products.spec.ts`.
   - Unitário: SQL, um produto em vários pedidos com dois no mesmo dia, unidades diferentes, leitura em páginas, cliente sem pedidos e permissões.
   - E2E, com o Sankhya simulado na rota do portal: Pedido por padrão, Produto sem abrir pedido, totais e datas, volta para Pedido com a expansão, "Carregar mais pedidos" e troca de cliente.
+
+## Preço da última compra ao fornecedor (15/11/2026)
+
+Pedido do dono: ao escolher o produto na Nova solicitação, o quadro verde "Produto do catálogo Wellmix" mostra, só para a Wellmix, "Última compra: US$ 0,1205 por UN · 120.148 UN · pedido 11556 (Sankhya 1185804) · fornecedor" (`src/lib/services/last-purchase.ts`, campo `lastPurchase` da ficha em `request-product-fill.ts`).
+
+- Origem: o item do pedido de compra mais recente do produto (maior número de pedido, sem os cancelados), com o preço unitário na moeda do pedido (`order_items.unitPrice` e `orders.fobCurrency`; na carga do Sankhya, VLRUNIT ÷ câmbio da nota). As notas de um mesmo pedido em várias TOPs (1101 → 1104) têm o mesmo preço.
+- Sem pedido: "Preço da última compra (cadastro)", com `products.price` e `products.currency`. A carga do Sankhya só preenche esse preço quando ele está vazio, então ele pode ser de uma compra antiga.
+- O cliente não vê (preço de fornecedor).
+
+Consulta para conferir no banco (Supabase), trocando o código:
+
+```sql
+select o.number, o."sankhyaCode" as nunota, o."sankhyaRefs"->>'CODTIPOPER' as top,
+       oi."unitPrice", o."fobCurrency", o."fxRate", oi.quantity, oi.unit, s.name as fornecedor
+from order_items oi
+join orders o on o.id = oi."orderId"
+join products p on p.id = oi."productId"
+left join parties s on s.id = o."supplierId"
+where p.sku = 'WBU2191' and o."cancelledAt" is null
+order by o.number desc
+limit 10;
+```

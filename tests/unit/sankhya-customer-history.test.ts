@@ -442,6 +442,15 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
     expect(sqls[0]).toContain("FN_AD_SUPERPLAN_WELL(");
     const plain = await getPriceForecastAdapter(false, options).forecast(query);
     expect(plain).toMatchObject({ cost: null, profitPercent: null });
+    // Memória de cálculo (auditoria): o enviado e todas as colunas devolvidas,
+    // só para quem vê valores e margem.
+    if (full.mode !== "api" || full.kind !== "forecast") throw new Error();
+    expect(full.audit?.fn).toBe("FN_AD_SUPERPLAN_WELL");
+    expect(full.audit?.outputs.map(([k]) => k)).toContain("CUSTO_BASE_VENDA");
+    expect(full.audit?.outputs.length).toBe(sale.columns.length);
+    expect(full.audit?.inputs.every(([, v]) => v !== null)).toBe(true);
+    if (plain.mode !== "api" || plain.kind !== "forecast") throw new Error();
+    expect(plain.audit).toBeUndefined();
   });
 
   it("volta: o preço máximo de compra para o preço de venda desejado", async () => {
@@ -465,6 +474,16 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
       maxPurchasePrice: 4.6,
       maxPurchaseCurrency: "RMB",
       maxPurchaseUsd: 0.64,
+      audit: {
+        fn: "FN_AD_SUPERPLAN_INVERSA_WELL",
+        inputs: expect.arrayContaining([["PRECO_VENDA_ALVO", 9.2615]]),
+        outputs: [
+          ["PRECO_MAX_COMPRA_ORIGEM", 4.6],
+          ["MOEDA_COMPRA", "RMB"],
+          ["PRECO_MAX_COMPRA_USD", 0.64],
+          ["MENSAGEM_INVERSA", "ok"],
+        ],
+      },
     });
     expect(sqls[0]).toContain("FN_AD_SUPERPLAN_INVERSA_WELL(");
     expect(args(sqls[0])[47]).toBe("9.2615");
@@ -499,6 +518,8 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
       mode: "api",
       kind: "error",
       message: "meta inatingivel com estas despesas de venda",
+      // A memória de cálculo vem também no erro (para a auditoria).
+      audit: expect.objectContaining({ fn: "FN_AD_SUPERPLAN_WELL" }),
     });
     expect(
       await getPriceForecastAdapter(true, { config: null }).forecast(query),
