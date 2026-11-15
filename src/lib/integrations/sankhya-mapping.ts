@@ -859,6 +859,12 @@ export function isInternalGroup(code: unknown): boolean {
 }
 
 /**
+ * Volumes que não contam como caixa (dono, 15/11/2026): o C1 é resto de um
+ * processo antigo de cadastro (no WBU2191, C1 de 196 ao lado da CX de 240).
+ */
+export const IGNORED_VOLUMES = new Set(["C1"]);
+
+/**
  * Volumes alternativos do produto (TGFVOA: CX = 24 UN...): o maior vira a
  * caixa master; com dois ou mais, o menor acima de 1 vira a caixa interna.
  * O M3 do volume é o CBM daquela caixa (dono, 15/11/2026; no WBU2191 a CX de
@@ -867,7 +873,13 @@ export function isInternalGroup(code: unknown): boolean {
  */
 export function boxQuantities(rows: Row[]) {
   const multiplying = rows.filter(
-    (r) => String(r.DIVIDEMULTIPLICA ?? "M").toUpperCase() !== "D",
+    (r) =>
+      String(r.DIVIDEMULTIPLICA ?? "M").toUpperCase() !== "D" &&
+      !IGNORED_VOLUMES.has(
+        String(r.CODVOL ?? "")
+          .trim()
+          .toUpperCase(),
+      ),
   );
   const qty = [
     ...new Set(

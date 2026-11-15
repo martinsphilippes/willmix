@@ -111,7 +111,14 @@ describe("regras puras", () => {
         { CODVOL: "C1", QUANTIDADE: 196, DIVIDEMULTIPLICA: "M", M3: 0.1220625 },
         { CODVOL: "CX", QUANTIDADE: 240, DIVIDEMULTIPLICA: "M", M3: 0.1476375 },
       ]),
-    ).toEqual({ masterBoxQty: 240, innerBoxQty: 196, masterCbm: 0.1476375 });
+    ).toEqual({ masterBoxQty: 240, innerBoxQty: null, masterCbm: 0.1476375 });
+    // C1 é resto de cadastro antigo: não conta nem quando é o maior.
+    expect(
+      m.boxQuantities([
+        { CODVOL: "C1", QUANTIDADE: 500, M3: 0.3 },
+        { CODVOL: "CX", QUANTIDADE: 240, M3: 0.1476375 },
+      ]),
+    ).toEqual({ masterBoxQty: 240, innerBoxQty: null, masterCbm: 0.1476375 });
     // M3 zerado ou absurdo: sem CBM.
     expect(m.boxQuantities([{ QUANTIDADE: 24, M3: 0 }]).masterCbm).toBeNull();
     expect(m.boxQuantities([{ QUANTIDADE: 24, M3: 50 }]).masterCbm).toBeNull();
