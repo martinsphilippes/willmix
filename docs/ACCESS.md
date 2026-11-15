@@ -140,6 +140,8 @@ Registrar e confirmar pagamentos (sinal, pagamento ao fornecedor, marketing) con
 
 ## Equipe e acessos: painel lateral, permissões por módulo e aplicação (pedido do dono, 14/11/2026)
 
+Desde 15/11/2026 a área se chama **Equipe Acessos e Parceiros** e ganhou a seção Parceiros (docs/FLOW_MENU.md); as seções e as permissões abaixo não mudaram.
+
 **Funções e acessos** (`/app/team?tab=functions&fn=CHAVE`):
 
 - O nome da função tem o menu ⋯ ao lado: "Renomear função" (o campo do nome só aparece ao escolher), "Restaurar nome padrão" (de fábrica com nome mudado), "Voltar ao padrão (telas e ações)" (de fábrica) e "Desativar/Reativar função" (criadas). O formulário de renomear saiu do conteúdo principal.

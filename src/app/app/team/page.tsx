@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -33,9 +32,9 @@ import {
   Td,
   TextLink,
   Th,
-  cx,
   rowClass,
 } from "@/components/ui";
+import { TeamAreaNav } from "@/components/team-area-nav";
 import { SubmitButton } from "@/components/submit-button";
 import { wellmixTeam } from "@/lib/services/team";
 import { loadFunctionDefs } from "@/lib/services/team-functions";
@@ -136,39 +135,18 @@ export default async function TeamPage({
   const label = (key: string) =>
     functionLabel(key, defs, (k) => t(k as DictionaryKey));
 
-  const tabLink = (key: Tab, text: string) => (
-    <Link
-      key={key}
-      href={`/app/team?tab=${key}`}
-      aria-current={tab === key ? "page" : undefined}
-      className={cx(
-        "rounded-t-lg border-b-2 px-4 py-2 text-sm font-semibold transition",
-        tab === key
-          ? "border-brand-600 text-brand-700"
-          : "border-transparent text-zinc-500 hover:text-zinc-800",
-      )}
-      data-team-tab={key}
-    >
-      {text}
-    </Link>
-  );
-
   return (
     <>
+      {/* Equipe Acessos e Parceiros (dono, 15/11/2026): o nome da área no
+          título; as seções Equipe, Funções e acessos, Linha de produto e
+          divisão e Parceiros (src/components/team-area-nav.tsx). */}
       <PageHeader
         t={t}
-        title={t("team.title")}
+        title={t("nav.teamAccess")}
         subtitle={t("team.intro")}
         actions={<TextLink href="/app/sla">{t("nav.sla")}</TextLink>}
       />
-      <nav
-        aria-label={t("team.title")}
-        className="mb-4 flex flex-wrap gap-1 border-b border-zinc-200"
-      >
-        {tabLink("team", t("team.tab.team"))}
-        {tabLink("functions", t("team.tab.functions"))}
-        {tabLink("lines", t("team.tab.lines"))}
-      </nav>
+      <TeamAreaNav t={t} user={user} active={tab} />
       {errorText && !(tab === "team" && one("new")) ? (
         <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
