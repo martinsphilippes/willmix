@@ -293,6 +293,9 @@ test("Nova solicitação: o bloco Programação de compra, pedido único, sobra,
     await expect(table).toContainText(v);
   table = await open("Jarra de vidro");
   await expect(table).toHaveCount(0);
-  // Pedido único: a quantidade digitada no bloco, sem programação.
-  await expect(page.locator("main")).toContainText("1000 un");
+  // Pedido único: a quantidade digitada no bloco, sem programação (na linha
+  // do produto da seção Solicitações, em peças; docs/REQUEST_SHEET.md).
+  await expect(
+    page.locator('[data-sheet-row][data-sheet-current] [data-sheet-cell="pieces"]'),
+  ).toContainText("1.000 peças");
 });
