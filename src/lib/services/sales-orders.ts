@@ -304,6 +304,23 @@ export async function confirmSalesOrder(user: User, id: string) {
         }),
       },
     );
+  // NF de venda: o financeiro emite no Sankhya e registra na ordem.
+  const finance = team.filter((u) => (u.functions ?? []).includes("finance"));
+  const billers = finance.length ? finance : team.filter(isAdmin);
+  if (billers.length)
+    await notify(
+      { userIds: billers.map((u) => u.id) },
+      {
+        kind: "info",
+        link: `/app/sales-orders/${order.id}`,
+        text: (t) => ({
+          subject: t("salesOrder.notify.invoice.subject", {
+            n: String(order.number),
+          }),
+          body: t("salesOrder.notify.invoice.body"),
+        }),
+      },
+    );
   return updated;
 }
 
@@ -413,6 +430,9 @@ export async function cancelSalesOrder(user: User, id: string) {
   const order = await store.get("sales_orders", id);
   if (!order || order.status === "cancelled")
     throw new SalesOrderError("sales_order_not_found");
+  // Expedida já baixou o estoque: não cancela mais (devolução fica fora).
+  if (order.status === "shipped" || order.status === "delivered")
+    throw new SalesOrderError("sales_order_shipped");
   const { cancelReservation } = await import("./stock");
   for (const l of order.lines)
     if (l.reservationId)
@@ -448,13 +468,190 @@ export async function listSalesOrders(user: User): Promise<SalesOrderRow[]> {
     .sort((a, b) => b.number - a.number);
 }
 
-/** Agenda das entregas (V8): ordens confirmadas com data de hoje em diante. */
+/** Agenda das entregas (V8): confirmadas ou a caminho, de hoje em diante. */
 export function salesAgenda<T extends SalesOrder>(orders: T[]): T[] {
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
   }).format(new Date());
   return orders
-    .filter((o) => o.status === "confirmed" && !!o.deliveryDate)
+    .filter(
+      (o) =>
+        (o.status === "confirmed" || o.status === "shipped") &&
+        !!o.deliveryDate,
+    )
     .filter((o) => o.deliveryDate! >= today)
     .sort((a, b) => a.deliveryDate!.localeCompare(b.deliveryDate!));
+}
+
+/* ---- NF de venda, expedição e entrega (dono, 15/11/2026) ---------------- */
+
+/** NF de venda: o financeiro (tela Financeiro) ou o administrador. */
+export const canInvoice = (user: User) =>
+  isAdmin(user) || (isWellmix(user) && canOpen(user, "finance"));
+
+/** Dia AAAA-MM-DD (Brasil) → meio-dia em UTC; sem dia, agora. */
+const dayAt = (day: string | null) => {
+  if (!day) return new Date().toISOString();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day))
+    throw new SalesOrderError("date_invalid");
+  return `${day}T15:00:00.000Z`;
+};
+
+/**
+ * O financeiro emite a NF de venda no Sankhya e registra o número (e o
+ * arquivo) na ordem confirmada; sem ela a ordem não expede.
+ */
+export async function registerSalesInvoice(
+  user: User,
+  id: string,
+  input: { number: string; documentId: string | null },
+) {
+  if (!canInvoice(user)) throw new ForbiddenError();
+  const store = getStore();
+  const order = await store.get("sales_orders", id);
+  if (!order) throw new SalesOrderError("sales_order_not_found");
+  if (order.status !== "confirmed")
+    throw new SalesOrderError("sales_order_closed");
+  const number = input.number.trim();
+  if (!number) throw new SalesOrderError("invoice_number_required");
+  await store.update("sales_orders", id, {
+    invoiceNumber: number,
+    invoiceDocumentId: input.documentId ?? order.invoiceDocumentId ?? null,
+    invoicedAt: new Date().toISOString(),
+    invoicedByUserId: user.id,
+  });
+  await audit(
+    user,
+    "sales.order_invoice",
+    "sales_order",
+    id,
+    `Ordem de venda #${order.number}: NF de venda ${number}`,
+  );
+}
+
+/**
+ * Expedição ao cliente: com a NF registrada, a transportadora cadastrada (ou
+ * o cliente retira), a data de saída e o frete. Dá a baixa por venda no
+ * estoque no Brasil: a reserva da ordem vira baixa; a linha sem reserva viva
+ * (na chegada ou vencida) sai do estoque livre, que precisa bastar para
+ * todas antes de gravar qualquer baixa.
+ */
+export async function shipSalesOrder(
+  user: User,
+  id: string,
+  input: {
+    carrierId: string | null;
+    customerPickup: boolean;
+    freightValue: number | null;
+    shippedOn: string | null;
+  },
+) {
+  assertSeller(user);
+  const store = getStore();
+  const order = await store.get("sales_orders", id);
+  if (!order) throw new SalesOrderError("sales_order_not_found");
+  if (order.status !== "confirmed")
+    throw new SalesOrderError("sales_order_closed");
+  if (!order.invoiceNumber) throw new SalesOrderError("invoice_required");
+  const pickup = input.customerPickup;
+  if (!pickup) {
+    const carrier = input.carrierId
+      ? await store.get("parties", input.carrierId)
+      : null;
+    if (!carrier || carrier.type !== "carrier" || !carrier.active)
+      throw new SalesOrderError("carrier_required");
+  }
+  if (input.freightValue != null && !(input.freightValue >= 0))
+    throw new SalesOrderError("freight_invalid");
+  const shippedAt = dayAt(input.shippedOn);
+
+  const { stockInBrazil, consumeReservation, recordSaleOut } =
+    await import("./stock");
+  const { isReservationLive } = await import("./reservation-rules");
+  const { brazilDay } = await import("@/lib/supplier-terms");
+  const today = brazilDay(new Date().toISOString()) as string;
+  // Planeja: reserva viva ou estoque livre (somado por produto).
+  const plan: Array<{ line: SalesOrderLine; reservationId: string | null }> =
+    [];
+  const fromFree = new Map<string, number>();
+  for (const line of order.lines) {
+    const r = line.reservationId
+      ? await store.get("stock_reservations", line.reservationId)
+      : null;
+    const live = !!r && isReservationLive(r, today);
+    plan.push({ line, reservationId: live ? r!.id : null });
+    if (!live)
+      fromFree.set(
+        line.productId,
+        (fromFree.get(line.productId) ?? 0) + line.quantity,
+      );
+  }
+  for (const [productId, qty] of fromFree) {
+    const s = await stockInBrazil(productId);
+    if (Math.max(0, s.quantity - s.reserved) + 1e-6 < qty)
+      throw new SalesOrderError("stock_insufficient");
+  }
+  for (const { line, reservationId } of plan) {
+    if (reservationId)
+      await consumeReservation(user, reservationId, null, order.id);
+    else
+      await recordSaleOut(user, {
+        productId: line.productId,
+        quantity: line.quantity,
+        orderId: null,
+        note: `Ordem de venda #${order.number}`,
+        salesOrderId: order.id,
+      });
+  }
+  const updated = await store.update("sales_orders", id, {
+    status: "shipped",
+    carrierId: pickup ? null : input.carrierId,
+    customerPickup: pickup,
+    freightValue: input.freightValue,
+    shippedAt,
+    shippedByUserId: user.id,
+  });
+  await audit(
+    user,
+    "sales.order_shipped",
+    "sales_order",
+    id,
+    `Ordem de venda #${order.number} expedida (${pickup ? "cliente retira" : "transportadora"}); baixa de ${order.lines.length} produto(s) no estoque`,
+  );
+  return updated;
+}
+
+/** Entrega ao cliente: data, quem recebeu e o comprovante (canhoto). */
+export async function deliverSalesOrder(
+  user: User,
+  id: string,
+  input: {
+    deliveredOn: string | null;
+    receivedBy: string;
+    proofDocumentId: string | null;
+  },
+) {
+  assertSeller(user);
+  const store = getStore();
+  const order = await store.get("sales_orders", id);
+  if (!order) throw new SalesOrderError("sales_order_not_found");
+  if (order.status !== "shipped")
+    throw new SalesOrderError("sales_order_not_shipped");
+  const receivedBy = input.receivedBy.trim();
+  if (!receivedBy) throw new SalesOrderError("received_by_required");
+  if (!input.proofDocumentId) throw new SalesOrderError("proof_required");
+  await store.update("sales_orders", id, {
+    status: "delivered",
+    deliveredAt: dayAt(input.deliveredOn),
+    receivedBy,
+    proofDocumentId: input.proofDocumentId,
+    deliveredByUserId: user.id,
+  });
+  await audit(
+    user,
+    "sales.order_delivered",
+    "sales_order",
+    id,
+    `Ordem de venda #${order.number} entregue (recebido por ${receivedBy})`,
+  );
 }

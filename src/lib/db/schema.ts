@@ -2209,7 +2209,14 @@ export interface SalesOffer extends BaseRow {
  * preço, condição de pagamento) e ela vai ao Sankhya como pedido de venda;
  * a data e a janela da entrega ficam na ordem.
  */
-export const SALES_ORDER_STATUSES = ["draft", "confirmed", "cancelled"] as const;
+export const SALES_ORDER_STATUSES = [
+  "draft",
+  "confirmed",
+  "cancelled",
+  /** Expedida ao cliente (baixa no estoque) e entregue (comprovante). */
+  "shipped",
+  "delivered",
+] as const;
 export type SalesOrderStatus = (typeof SALES_ORDER_STATUSES)[number];
 export const SALES_ORDER_ERP = ["pending", "synced", "error"] as const;
 export type SalesOrderErp = (typeof SALES_ORDER_ERP)[number];
@@ -2245,6 +2252,25 @@ export interface SalesOrder extends BaseRow {
   createdByUserId: string;
   confirmedAt: string | null;
   confirmedByUserId: string | null;
+  /*
+   * Expedição e entrega ao cliente (docs/SALES_ORDERS.md; dono, 15/11/2026):
+   * o financeiro emite a NF de venda no Sankhya e registra aqui; a expedição
+   * (transportadora cadastrada ou o cliente retira, data e frete) dá a baixa
+   * no estoque; a entrega fecha com quem recebeu e o comprovante.
+   */
+  invoiceNumber?: string | null;
+  invoiceDocumentId?: string | null;
+  invoicedAt?: string | null;
+  invoicedByUserId?: string | null;
+  carrierId?: string | null;
+  customerPickup?: boolean | null;
+  freightValue?: number | null;
+  shippedAt?: string | null;
+  shippedByUserId?: string | null;
+  deliveredAt?: string | null;
+  receivedBy?: string | null;
+  proofDocumentId?: string | null;
+  deliveredByUserId?: string | null;
 }
 
 export interface RealMedia extends BaseRow {
@@ -2426,6 +2452,8 @@ export interface StockMovement extends BaseRow {
   processEventId?: string | null;
   /** Local de estoque (stock_locations; CODLOCAL no Sankhya). */
   locationId?: string | null;
+  /** Ordem de venda expedida que gerou a baixa (docs/SALES_ORDERS.md). */
+  salesOrderId?: string | null;
 }
 
 export const STOCK_COUNT_STATUSES = ["open", "closed"] as const;
@@ -4587,6 +4615,19 @@ export const TABLES: Record<TableName, TableDef> = {
       createdByUserId: id(),
       confirmedAt: datetime(),
       confirmedByUserId: id(false),
+      invoiceNumber: str(40),
+      invoiceDocumentId: id(false),
+      invoicedAt: datetime(),
+      invoicedByUserId: id(false),
+      carrierId: id(false),
+      customerPickup: bool(),
+      freightValue: float(),
+      shippedAt: datetime(),
+      shippedByUserId: id(false),
+      deliveredAt: datetime(),
+      receivedBy: str(120),
+      proofDocumentId: id(false),
+      deliveredByUserId: id(false),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
@@ -4729,6 +4770,7 @@ export const TABLES: Record<TableName, TableDef> = {
       createdByUserId: id(),
       processEventId: id(false),
       locationId: id(false),
+      salesOrderId: id(false),
     },
     indexes: [
       { key: "by_product", type: "key", columns: ["productId"] },
