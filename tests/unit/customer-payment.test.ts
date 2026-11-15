@@ -414,3 +414,164 @@ describe("boletos e avisos", () => {
     ).rejects.toThrow("plan_has_charges");
   });
 });
+
+describe("parcela em aberto trava o pedido (dono, 15/11/2026)", () => {
+  it("vencida sem pagamento trava; o administrador destrava e ela não trava de novo", async () => {
+    const plans = await svc.listPaymentPlans();
+    const plan = plans.find((p) => p.name.startsWith("10%"))!;
+    const order = await newOrder();
+    // "10% no pedido" vence no dia em que a forma vale: trava na hora.
+    await svc.chooseOrderPaymentPlan(admin, order.id, {
+      planId: plan.id,
+      sellerUserId: operator.id,
+      saleNunota: null,
+    });
+    let saved = (await getStore().get("orders", order.id))!;
+    expect(saved.pausedAt).toBeTruthy();
+    expect(saved.pauseReason).toBe("payment_open");
+    // Só o administrador destrava.
+    const { resumeOrder } = await import("@/lib/services/delivery");
+    await expect(resumeOrder(operator, order.id, null)).rejects.toThrow();
+    await resumeOrder(admin, order.id, "cliente pagou por fora");
+    saved = (await getStore().get("orders", order.id))!;
+    expect(saved.pausedAt).toBeNull();
+    expect(saved.customerPaymentPlan?.releases?.["1"]?.byUserId).toBe(admin.id);
+    // A parcela liberada não trava de novo (o job roda todo dia).
+    expect(await svc.applyPaymentHold(saved, null)).toBe("none");
+    await svc.notifyChargesToIssue();
+    expect((await getStore().get("orders", order.id))!.pausedAt).toBeNull();
+  });
+
+  it("o pagamento entra: a trava sai sozinha", async () => {
+    const plans = await svc.listPaymentPlans();
+    const plan = plans.find((p) => p.name.startsWith("10%"))!;
+    const order = await newOrder();
+    await svc.chooseOrderPaymentPlan(admin, order.id, {
+      planId: plan.id,
+      sellerUserId: null,
+      saleNunota: null,
+    });
+    expect((await getStore().get("orders", order.id))!.pauseReason).toBe(
+      "payment_open",
+    );
+    await svc.saveManualCharge(admin, order.id, 1, {
+      dueDate: null,
+      amount: 1000,
+      nossoNumero: null,
+      barcode: null,
+      documentId: null,
+      paid: true,
+    });
+    const saved = (await getStore().get("orders", order.id))!;
+    expect(saved.pausedAt).toBeNull();
+    expect(saved.pauseReason).toBeNull();
+  });
+
+  it("pedido pausado por outro motivo (canal) fica como está", async () => {
+    const plans = await svc.listPaymentPlans();
+    const order = await newOrder();
+    await getStore().update("orders", order.id, {
+      pausedAt: "2026-11-01T00:00:00Z",
+      pauseReason: "channel_red",
+    });
+    await svc.chooseOrderPaymentPlan(admin, order.id, {
+      planId: plans.find((p) => p.name.startsWith("10%"))!.id,
+      sellerUserId: null,
+      saleNunota: null,
+    });
+    expect((await getStore().get("orders", order.id))!.pauseReason).toBe(
+      "channel_red",
+    );
+  });
+});
+
+describe("programação do pedido: produto sem quantidade numa data", () => {
+  it("0 ou em branco vale na Nova solicitação; o total precisa ser maior que zero", async () => {
+    const { parseRequestSchedule } =
+      await import("@/lib/workflow/request-schedule");
+    const form = (qty: string[]) => {
+      const f = new FormData();
+      f.set("p0.schedule.count", String(qty.length));
+      f.set("p0.schedule.intervalDays", "45");
+      f.set("p0.schedule.firstDate", "2027-03-15");
+      qty.forEach((q, i) => f.set(`p0.schedule.qty.${i + 1}`, q));
+      return f;
+    };
+    const s = parseRequestSchedule(form(["100", "0", ""]), "p0.", undefined, {
+      allowZero: true,
+    });
+    expect(s?.items.map((i) => i.quantity)).toEqual([100, 0, 0]);
+    expect(() =>
+      parseRequestSchedule(form(["0", ""]), "p0.", undefined, {
+        allowZero: true,
+      }),
+    ).toThrow("invalid_input");
+    // Fora da Nova solicitação (Seleção, solicitação ao fornecedor): como antes.
+    expect(() => parseRequestSchedule(form(["100", "0"]), "p0.")).toThrow(
+      "invalid_input",
+    );
+  });
+});
+
+describe("busca diária dos boletos (dono, 15/11/2026)", () => {
+  const config = {
+    baseUrl: "https://api.sankhya.com.br",
+    clientId: "c",
+    clientSecret: "s",
+    xToken: "x",
+  };
+  const fakeTitles = (paid: boolean) =>
+    (async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/authenticate"))
+        return new Response(
+          JSON.stringify({ access_token: "t", expires_in: 300 }),
+        );
+      return new Response(
+        JSON.stringify({
+          status: "1",
+          responseBody: {
+            fieldsMetadata: ["NUFIN", "DTVENC", "VLRDESDOB", "DHBAIXA"].map(
+              (name) => ({ name }),
+            ),
+            rows: [["901", "15112026", 1000, paid ? "15112026" : null]],
+          },
+        }),
+      );
+    }) as typeof globalThis.fetch;
+
+  it("o título pago no Sankhya destrava o pedido sem ninguém clicar", async () => {
+    const plans = await svc.listPaymentPlans();
+    const order = await newOrder();
+    await svc.chooseOrderPaymentPlan(admin, order.id, {
+      planId: plans.find((p) => p.name.startsWith("10%"))!.id,
+      sellerUserId: null,
+      saleNunota: "1520001",
+    });
+    expect((await getStore().get("orders", order.id))!.pauseReason).toBe(
+      "payment_open",
+    );
+    // Boleto emitido e ainda em aberto: o pedido segue travado.
+    await svc.syncAllSankhyaCharges({ config, fetch: fakeTitles(false) });
+    let saved = (await getStore().get("orders", order.id))!;
+    expect(saved.customerCharges?.[0]).toMatchObject({
+      nufin: "901",
+      status: "open",
+    });
+    expect(saved.pauseReason).toBe("payment_open");
+    // Baixa no Sankhya: a busca diária grava o pagamento e destrava.
+    const result = await svc.syncAllSankhyaCharges({
+      config,
+      fetch: fakeTitles(true),
+    });
+    expect(result.skipped).toBeNull();
+    saved = (await getStore().get("orders", order.id))!;
+    expect(saved.customerCharges?.[0].status).toBe("paid");
+    expect(saved.pausedAt).toBeNull();
+  });
+
+  it("sem o Sankhya configurado, não faz nada", async () => {
+    expect(await svc.syncAllSankhyaCharges({ config: null })).toMatchObject({
+      skipped: "sankhya_not_configured",
+    });
+  });
+});

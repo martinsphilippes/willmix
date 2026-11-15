@@ -10,6 +10,8 @@ import {
 import { canOpen } from "@/lib/auth/screens";
 import { getStore, type Order, type PaymentPlan, type User } from "@/lib/db";
 import {
+  PAYMENT_HOLD_REASON,
+  blockingInstallments,
   chargesFromTitles,
   customerSchedule,
   planProblem,
@@ -23,6 +25,7 @@ import { paymentEventsFor } from "@/lib/supplier-terms";
 import { todayInBrazil } from "./supplier-terms";
 import { sankhyaDate } from "@/lib/integrations/sankhya-mapping";
 import {
+  SankhyaError,
   executeQuery,
   type SankhyaClientOptions,
   type SankhyaRow,
@@ -316,6 +319,7 @@ export async function chooseOrderPaymentPlan(
     entityId: order.id,
     summary: `${next.name} · ${next.status}`,
   });
+  await applyPaymentHold(saved, user);
   if (!samePlan && next.status === "pending" && next.approverUserId)
     await notify(
       { userIds: [next.approverUserId] },
@@ -357,6 +361,7 @@ export async function decideOrderPaymentPlan(
     customerPaymentPlan: next,
     paymentPlanStatus: next.status,
   });
+  if (approve) await applyPaymentHold(saved, user);
   await log(user, {
     action: approve ? "order.paymentPlan.approve" : "order.paymentPlan.reject",
     entity: "orders",
@@ -432,9 +437,28 @@ export async function syncSankhyaCharges(
   const order = await liveOrder(orderId);
   const plan = order.customerPaymentPlan;
   if (!plan || plan.status !== "approved") throw new Error("plan_not_approved");
-  const nunota = Number(plan.saleNunota);
-  if (!plan.saleNunota || !Number.isSafeInteger(nunota) || nunota <= 0)
-    throw new Error("plan_no_nunota");
+  if (!saleNunotaOf(plan)) throw new Error("plan_no_nunota");
+  return syncChargesFor(order, user, options);
+}
+
+/** NUNOTA da venda no Sankhya da forma escolhida (nulo sem um número válido). */
+function saleNunotaOf(plan: OrderPaymentPlan): number | null {
+  const n = Number(plan.saleNunota);
+  return plan.saleNunota && Number.isSafeInteger(n) && n > 0 ? n : null;
+}
+
+/**
+ * Lê os títulos a receber do pedido de venda no Sankhya e grava os boletos
+ * nas parcelas; depois confere a trava (o boleto pago destrava o pedido).
+ * `actor` nulo = o job diário.
+ */
+async function syncChargesFor(
+  order: Order,
+  actor: User | null,
+  options: SankhyaClientOptions = {},
+): Promise<{ titles: number }> {
+  const plan = order.customerPaymentPlan!;
+  const nunota = saleNunotaOf(plan)!;
   const table = await executeQuery(titlesSql(nunota), options);
   const now = new Date().toISOString();
   const fromErp = chargesFromTitles(
@@ -458,14 +482,58 @@ export async function syncSankhyaCharges(
       return old ?? null;
     })
     .filter((c): c is CustomerCharge => !!c);
-  await getStore().update("orders", order.id, { customerCharges: merged });
-  await log(user, {
-    action: "order.charges.sync",
-    entity: "orders",
-    entityId: order.id,
-    summary: `NUNOTA ${nunota}: ${table.rows.length} título(s)`,
-  });
+  const changed = JSON.stringify(merged) !== JSON.stringify(previous);
+  const updated = changed
+    ? await getStore().update("orders", order.id, { customerCharges: merged })
+    : order;
+  await applyPaymentHold(updated, actor);
+  if (changed || actor)
+    await audit(
+      actor,
+      "order.charges.sync",
+      "orders",
+      order.id,
+      `NUNOTA ${nunota}: ${table.rows.length} título(s)${actor ? "" : " (busca diária)"}`,
+    );
   return { titles: table.rows.length };
+}
+
+/**
+ * Busca diária dos boletos (dono, 15/11/2026): para cada pedido com forma
+ * aprovada e o NUNOTA da venda, lê os títulos no Sankhya, como o botão
+ * "Buscar boletos no Sankhya". Pula o pedido com todas as parcelas pagas.
+ * Sem o Sankhya configurado, para na primeira tentativa; o erro de um
+ * pedido não impede os outros. Roda no job de lembretes.
+ */
+export async function syncAllSankhyaCharges(
+  options: SankhyaClientOptions = {},
+): Promise<{ orders: number; failed: number; skipped: string | null }> {
+  const orders = await getStore().list("orders", {
+    filter: { paymentPlanStatus: "approved" },
+  });
+  let synced = 0;
+  let failed = 0;
+  for (const order of orders) {
+    const plan = order.customerPaymentPlan;
+    if (!plan || !saleNunotaOf(plan)) continue;
+    if (order.status === "CANCELLED" || order.parentOrderId || order.held)
+      continue;
+    const payable = plan.installments.filter((i) => i.percent > 0).length;
+    const paid = (order.customerCharges ?? []).filter(
+      (c) => c.status === "paid",
+    ).length;
+    if (payable > 0 && paid >= payable) continue;
+    try {
+      await syncChargesFor(order, null, options);
+      synced++;
+    } catch (e) {
+      if (e instanceof SankhyaError && e.code === "sankhya_not_configured")
+        return { orders: synced, failed, skipped: "sankhya_not_configured" };
+      failed++;
+      console.error("[charges] sync", order.id, e);
+    }
+  }
+  return { orders: synced, failed, skipped: null };
 }
 
 /** O financeiro registra (ou corrige) o boleto de uma parcela à mão. */
@@ -517,6 +585,7 @@ export async function saveManualCharge(
     entityId: order.id,
     summary: `Parcela ${index}${input.paid ? " · paga" : ""}`,
   });
+  await applyPaymentHold(saved, user);
   return saved;
 }
 
@@ -588,6 +657,8 @@ export async function notifyChargesToIssue(): Promise<number> {
       charges: order.customerCharges ?? [],
       today,
     });
+    // Parcela vencida sem pagamento trava o pedido (ou destrava, paga).
+    await applyPaymentHold(order, null, rows);
     const notices = { ...(order.chargeNotices ?? {}) };
     const due = rows.filter(
       (r) => r.state === "to_issue" && !notices[String(r.index)],
@@ -624,4 +695,129 @@ export async function notifyChargesToIssue(): Promise<number> {
     await store.update("orders", order.id, { chargeNotices: notices });
   }
   return sent;
+}
+
+async function staffForHold(order: Order): Promise<string[]> {
+  const users = await getStore().list("users", { filter: { active: true } });
+  return [
+    ...users
+      .filter((u) => isAdmin(u) || (isWellmix(u) && canOpen(u, "finance")))
+      .map((u) => u.id),
+    order.sellerUserId ?? "",
+  ].filter((id, k, all) => !!id && all.indexOf(id) === k);
+}
+
+/**
+ * Parcela em aberto trava o pedido (dono, 15/11/2026): com uma parcela
+ * vencida sem pagamento (e não liberada pelo administrador), o pedido pausa
+ * com o motivo `payment_open` — nada anda até o administrador retomar
+ * (`resumeOrder`, que libera as parcelas que travavam) ou o pagamento entrar
+ * (a trava sai sozinha). Pedido já pausado por outro motivo fica como está.
+ */
+export async function applyPaymentHold(
+  order: Order,
+  actor: User | null,
+  rows?: InstallmentView[],
+): Promise<"held" | "released" | "none"> {
+  const plan = order.customerPaymentPlan;
+  if (!plan || plan.status !== "approved") return "none";
+  if (order.status === "CANCELLED" || order.parentOrderId || order.held)
+    return "none";
+  const today = todayInBrazil();
+  const schedule =
+    rows ??
+    customerSchedule({
+      installments: plan.installments,
+      monthlyInterestPercent: plan.monthlyInterestPercent,
+      sellTotal: order.sellPrice ?? null,
+      events: await paymentEventDates(order, plan),
+      charges: order.customerCharges ?? [],
+      today,
+    });
+  const blocking = blockingInstallments(schedule, plan.releases, today);
+  const store = getStore();
+  if (blocking.length && !order.pausedAt) {
+    await store.update("orders", order.id, {
+      pausedAt: new Date().toISOString(),
+      pauseReason: PAYMENT_HOLD_REASON,
+    });
+    await audit(
+      actor,
+      "order.paused",
+      "order",
+      order.id,
+      `Pedido #${order.number} travado: parcela(s) ${blocking.map((r) => r.index).join(", ")} em aberto`,
+    );
+    await notify(
+      { userIds: await staffForHold(order) },
+      {
+        kind: "alert",
+        actor: "recipient",
+        link: `/app/orders/${order.id}#customer-payment`,
+        text: (t) => ({
+          subject: t("customerPayment.notify.holdSubject", {
+            n: order.number ?? "—",
+          }),
+          body: t("customerPayment.notify.holdBody", {
+            list: blocking.map((r) => r.index).join(", "),
+          }),
+        }),
+      },
+    );
+    return "held";
+  }
+  if (!blocking.length && order.pauseReason === PAYMENT_HOLD_REASON) {
+    await store.update("orders", order.id, {
+      pausedAt: null,
+      pauseReason: null,
+    });
+    await audit(
+      actor,
+      "order.resumed",
+      "order",
+      order.id,
+      `Pedido #${order.number} destravado: parcelas pagas`,
+    );
+    return "released";
+  }
+  return "none";
+}
+
+/**
+ * O administrador retoma o pedido travado por parcela em aberto: as parcelas
+ * que travavam ficam liberadas (não travam de novo). Chamado por
+ * `resumeOrder` antes de tirar a pausa.
+ */
+export async function releasePaymentHold(
+  user: User,
+  order: Order,
+  note: string | null,
+): Promise<void> {
+  if (!isAdmin(user)) throw new ForbiddenError();
+  const plan = order.customerPaymentPlan;
+  if (!plan || plan.status !== "approved") return;
+  const today = todayInBrazil();
+  const rows = customerSchedule({
+    installments: plan.installments,
+    monthlyInterestPercent: plan.monthlyInterestPercent,
+    sellTotal: order.sellPrice ?? null,
+    events: await paymentEventDates(order, plan),
+    charges: order.customerCharges ?? [],
+    today,
+  });
+  const blocking = blockingInstallments(rows, plan.releases, today);
+  if (!blocking.length) return;
+  const at = new Date().toISOString();
+  const releases = { ...(plan.releases ?? {}) };
+  for (const r of blocking)
+    releases[String(r.index)] = { byUserId: user.id, at, note };
+  await getStore().update("orders", order.id, {
+    customerPaymentPlan: { ...plan, releases },
+  });
+  await log(user, {
+    action: "order.paymentHold.release",
+    entity: "orders",
+    entityId: order.id,
+    summary: `Parcela(s) ${blocking.map((r) => r.index).join(", ")} liberada(s)${note ? `: ${note}` : ""}`,
+  });
 }

@@ -1487,6 +1487,7 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Permissões**: custo, compra, negociação e condições do fornecedor só para quem tem "Ver valores e margem"; a venda também (o cliente vê a dele); a ficha técnica (códigos, caixa, medidas, ficha atual) só para a Wellmix; o cliente vê o que a solicitação dele gravou. O resumo de valores da variação que aparecia para toda a Wellmix na linha antiga agora segue essa regra (preço só com "Ver valores e margem"; MOQ, caixa e CBM na ficha).
 - **Não mudou**: o bloco "Programação de compra" abaixo da tabela, anexos, solicitante do cliente, NCM, rotas, ações e o banco (só leitura, sem esquema novo). O componente antigo (`RequestInfoTable`) continua no código.
 - Peças: `src/lib/request-spec-parse.ts`, `src/lib/services/request-sheet.ts`, `src/components/request-sheet-table.tsx`, a página `src/app/app/requests/[id]/page.tsx`, textos em `src/i18n/modules/request-sheet.ts` (pt/en/zh). Testes: `tests/unit/request-sheet.test.ts` e `tests/e2e/request-sheet.spec.ts` (o lote nasce pela programação do pedido, `[data-order-plan-count]`).
+- **Depois (15/11/2026)**: com a forma de pagamento do cliente no pedido (#467, docs/CUSTOMER_PAYMENT.md), a seção "Venda ao cliente" do Pagamento mostra a forma escolhida (com a situação da alçada), as parcelas com o valor, o sinal e o prazo da última parcela, pela regra de quem vê do pedido. Só leitura, sem esquema novo.
 
 ## Histórico de compras do cliente: seletor Pedido | Produto
 

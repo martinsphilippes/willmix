@@ -287,6 +287,16 @@ export async function createPurchaseOrder(
     await store.update("supplier_requests", o.request.id, {
       orderId: order.id,
     });
+  // Solicitações nascidas da cotação de compra (docs/PURCHASE_DEMAND.md): o
+  // pedido guarda as demandas, que viram "pedido", e a encomenda reserva a
+  // mercadoria para o cliente.
+  const demandIds = [
+    ...new Set(ordered.flatMap((o) => o.request.demandIds ?? [])),
+  ];
+  if (demandIds.length) {
+    const { linkDemandsToOrder } = await import("./purchase-strategy");
+    await linkDemandsToOrder(user, order, demandIds);
+  }
   const { snapshotOrderPaymentTerms } = await import("./supplier-terms");
   await snapshotOrderPaymentTerms(order);
   const { assignDefaultPartners } = await import("./requests");

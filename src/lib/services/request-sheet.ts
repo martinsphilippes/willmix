@@ -36,6 +36,11 @@ import { productNameText, translator, type Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { withoutPlaceholder } from "@/lib/placeholder-name";
 import { productPurchaseView } from "./product-sheet";
+import {
+  customerPaymentView,
+  type CustomerPaymentView,
+} from "./customer-payment";
+import type { PaymentPlanEvent } from "@/lib/customer-payment";
 import { isBoxUnit, isPieceUnit } from "./purchase-history";
 
 /*
@@ -178,6 +183,12 @@ export interface SheetInputs {
   /** De onde veio o fornecedor: pedido, negociação ou ficha atual. */
   supplierFrom: "order" | "negotiation" | "current" | null;
   paymentCondition: PaymentCondition | null;
+  /**
+   * Forma de pagamento do cliente no pedido (docs/CUSTOMER_PAYMENT.md), já
+   * pela regra de quem vê do pedido (`customerPaymentView`); nulo: sem
+   * pedido, sem forma ou o perfil não vê.
+   */
+  customerPayment?: CustomerPaymentView | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1149,23 +1160,83 @@ export function buildSheetRow(
       ],
     });
   }
-  if (access.sale)
+  if (access.sale) {
+    /* Forma de pagamento do cliente escolhida no pedido (#467): nome, situação
+       da alçada, parcelas por evento (com o valor sobre a venda do pedido),
+       sinal e prazo da última parcela. Sem forma: "Não informado". */
+    const cp = inputs.customerPayment ?? null;
+    const plan = cp?.plan ?? null;
+    const eventText = (event: PaymentPlanEvent, days: number) => {
+      const name = t(`customerPayment.event.${event}` as DictionaryKey);
+      return days > 0
+        ? t("customerPayment.eventDays", { event: name, days })
+        : name;
+    };
+    const pct = (n: number) =>
+      `${n.toLocaleString(t.intl, { maximumFractionDigits: 2 })}%`;
+    const installments = plan
+      ? (cp?.installments.length
+          ? cp.installments
+          : plan.installments.map((i, k) => ({ ...i, index: k + 1, amount: null }))
+        ).map(
+          (i) =>
+            `${pct(i.percent)} ${eventText(i.event, i.days).toLocaleLowerCase(t.intl)}` +
+            (i.amount !== null && i.amount !== undefined && i.percent > 0
+              ? ` (${moneyText(t, i.amount, cp?.currency)})`
+              : ""),
+        )
+      : [];
+    const planDeposit = plan
+      ? plan.installments
+          .filter((i) => i.event === "order" && i.days === 0 && i.percent > 0)
+          .reduce((sum, i) => sum + i.percent, 0)
+      : 0;
+    const last = plan?.installments[plan.installments.length - 1] ?? null;
     paymentSections.push({
       key: "customerPay",
       title: t("requestSheet.s.customerPay"),
       fields: [
         field(
-          "saleDeposit",
-          L("saleDeposit"),
-          pos(request.downPaymentAmount)
-            ? moneyText(t, request.downPaymentAmount, request.sellCurrency)
+          "saleTerms",
+          L("saleTerms"),
+          plan ? plan.name : null,
+          plan ? "order" : null,
+          plan
+            ? t(`customerPayment.status.${plan.status}` as DictionaryKey)
             : null,
-          "request",
         ),
-        // A solicitação e o pedido ainda não gravam a condição de venda.
-        field("saleTerms", L("saleTerms"), null, null),
+        field(
+          "saleInstallments",
+          L("saleInstallments"),
+          installments.length ? installments.join("\n") : null,
+          installments.length ? "order" : null,
+        ),
+        pos(request.downPaymentAmount)
+          ? field(
+              "saleDeposit",
+              L("saleDeposit"),
+              moneyText(t, request.downPaymentAmount, request.sellCurrency),
+              "request",
+            )
+          : field(
+              "saleDeposit",
+              L("saleDeposit"),
+              plan
+                ? planDeposit > 0
+                  ? t("requestSheet.depositPct", { pct: planDeposit.toLocaleString(t.intl, { maximumFractionDigits: 2 }) })
+                  : t("requestSheet.noDeposit")
+                : null,
+              plan ? "order" : null,
+            ),
+        field(
+          "saleTerm",
+          L("saleTerm"),
+          last ? eventText(last.event, last.days) : null,
+          last ? "order" : null,
+        ),
       ],
     });
+  }
   const paymentGroup: SheetGroup = {
     key: "payment",
     title: t("requestSheet.g.payment"),
@@ -1371,7 +1442,26 @@ export async function loadRequestSheet(
         ? (conditionById.get(order.paymentConditionId) ?? null)
         : null,
     };
-    return buildSheetRow(inputs, access, t, r.id === request.id);
+    return inputs;
   });
-  return { access, rows };
+  // Pagamento do cliente: só com acesso à venda na ficha e pela regra do
+  // pedido (o cliente vê a forma aprovada; a Wellmix, quem vê valores…).
+  const payments = await Promise.all(
+    rows.map((inputs) =>
+      access.sale && inputs.order
+        ? customerPaymentView(user, inputs.order)
+        : Promise.resolve(null),
+    ),
+  );
+  return {
+    access,
+    rows: rows.map((inputs, i) =>
+      buildSheetRow(
+        { ...inputs, customerPayment: payments[i] },
+        access,
+        t,
+        inputs.request.id === request.id,
+      ),
+    ),
+  };
 }

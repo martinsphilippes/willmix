@@ -61,14 +61,24 @@ A seção fica em `/app/orders/<id>#customer-payment`, logo abaixo de "Venda ao 
   - Os títulos vão para as parcelas que têm valor, na ordem.
   - De cada título o portal lê: NUFIN, vencimento (DTVENC), valor (VLRDESDOB), nosso número (NOSSONUM), linha digitável (LINHADIGITAVEL, CODIGOBARRA ou CODBARRA, o que existir) e a baixa (DHBAIXA = pago).
   - Buscar de novo atualiza os títulos e mantém o PDF registrado à mão quando o título é o mesmo.
+- **Busca diária** (dono, 15/11/2026): o job de lembretes (`syncAllSankhyaCharges`) faz a mesma busca todo dia para cada pedido com forma aprovada e o NUNOTA da venda, antes do aviso de "gerar o boleto" e da trava. O boleto pago no Sankhya destrava o pedido no mesmo dia. Pula o pedido com todas as parcelas pagas; sem o Sankhya configurado, não faz nada; o erro de um pedido não impede os outros.
 - **Registrar à mão** (financeiro), para cada parcela: vencimento, valor, linha digitável, nosso número, o PDF do boleto (visível ao cliente) e "Pago".
 - **Cobrar o cliente**: o vendedor, o financeiro ou quem grava a venda envia ao login do cliente que pediu um aviso com o vencimento e a linha digitável. A seção mostra a data da última cobrança.
 - **Cliente**: vê a linha digitável, o nosso número, o valor, o PDF e se está pago.
 
+## 3b. Parcela em aberto trava o pedido (dono, 15/11/2026)
+
+- **Trava**: uma parcela com valor, vencida (o vencimento chegou) e sem pagamento pausa o pedido (`orders.pausedAt`, motivo `payment_open`). É a mesma pausa do canal cinza ou vermelho (docs/DELIVERY.md): nada anda no pedido enquanto ele está pausado. A parcela "no pedido" vence no dia em que a forma passa a valer, então trava na hora até o pagamento.
+- **Quando é conferido**: ao escolher ou aprovar a forma, ao buscar os boletos no Sankhya (no botão ou na busca diária), ao registrar o boleto à mão e todo dia no job de lembretes (que pega os eventos do pedido, como o embarque).
+- **Avisos**: o administrador, o financeiro e o vendedor recebem "Pedido #n travado: parcela em aberto".
+- **Destravar**:
+  - **O pagamento entra** (baixa do título no Sankhya ou "Pago" no registro à mão): a trava sai sozinha.
+  - **Antes do pagamento, só o administrador** destrava, pelo botão de retomar do aviso de pausa no pedido. As parcelas que travavam ficam **liberadas** (`customerPaymentPlan.releases`, com quem e quando) e não travam de novo; a seção mostra "Liberada pelo administrador em …".
+- Pedido já pausado por outro motivo (canal) fica como está; pedido cancelado, rodada da programação e pedido do histórico em espera não travam.
+
 ## 4. O que ainda não existe
 
-- **O portal não gera o boleto nem grava título no Sankhya.** Isso é decisão do dono: o boleto nasce no Sankhya. Para o portal gerar sozinho, falta a documentação do serviço (da Amplio ou do banco).
-- **O pedido não fica travado** por parcela em aberto. A seção mostra a situação e o aviso cobra. Travar uma etapa por boleto não pago é uma regra a decidir.
+- **O portal não gera o boleto nem grava título no Sankhya.** Por ora (dono, 15/11/2026) o financeiro gera o boleto no Sankhya e o portal o recebe: pela busca dos títulos ou pelo registro à mão (PDF e linha digitável). A integração para gerar fica para depois. Para o portal gerar sozinho, falta a documentação do serviço (da Amplio ou do banco).
 - **O NUNOTA da venda é informado no pedido.** O pedido do portal ainda não tem ligação automática com o pedido de venda do Sankhya.
 - **As colunas de TGFFIN** foram escolhidas pelos nomes usuais do Sankhya. Se a linha digitável vier vazia, a coluna dela na base da Wellmix tem outro nome; basta acrescentá-lo em `titleFromRow`.
 

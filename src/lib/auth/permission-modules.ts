@@ -37,6 +37,8 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
       "replenishment.open",
       "purchaseStrategy.choose",
       "purchaseStrategy.approve",
+      "purchaseQuote.choose",
+      "purchaseQuote.approve",
     ],
   },
   {

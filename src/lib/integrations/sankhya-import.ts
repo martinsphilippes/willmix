@@ -18,7 +18,13 @@ import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/stages";
 import { createStagesForOrder } from "@/lib/workflow/engine";
 import { audit } from "@/lib/services/audit";
 import type { SankhyaRow } from "./sankhya-client";
-import { convert, refsOf, sankhyaDate, TOP_STAGES } from "./sankhya-mapping";
+import {
+  convert,
+  isInternalGroup,
+  refsOf,
+  sankhyaDate,
+  TOP_STAGES,
+} from "./sankhya-mapping";
 import type { ImportSet } from "./sankhya-sample";
 import {
   partnerExtras,
@@ -268,7 +274,10 @@ function productFields(row: SankhyaRow) {
     minStock: number(row, "ESTMIN"),
     brand: text(row, "MARCA"),
     sankhyaRefs: refsOf(row),
-    active: convert("sn", row.ATIVO, row) !== false,
+    // Grupo interno (material de consumo, hardware, folha...): sempre inativo.
+    active:
+      convert("sn", row.ATIVO, row) !== false &&
+      !isInternalGroup(row.CODGRUPOPROD),
   };
 }
 

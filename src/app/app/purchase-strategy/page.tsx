@@ -467,7 +467,16 @@ export default async function PurchaseStrategyPage({
                       className="mt-2 text-xs text-zinc-600"
                       data-strategy-quote-pending
                     >
-                      {t("strategy.quotePending")}
+                      {t("strategy.quotePending")}{" "}
+                      {d.quoteId ? (
+                        <Link
+                          href={`/app/purchase-quotes/${d.quoteId}`}
+                          className={linkClass}
+                          data-strategy-quote-link={d.quoteId}
+                        >
+                          {t("strategy.openQuote")}
+                        </Link>
+                      ) : null}
                     </p>
                   ) : null}
                 </section>

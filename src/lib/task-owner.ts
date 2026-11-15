@@ -96,6 +96,11 @@ export function kindGate(
       return { action: "purchaseStrategy.approve" };
     case "purchase_strategy_order":
       return { action: "purchaseOrder.generate" };
+    case "purchase_quote_choose":
+    case "purchase_quote_empty":
+      return { action: "purchaseQuote.choose" };
+    case "purchase_quote_approve":
+      return { action: "purchaseQuote.approve" };
     case "review":
       return { screen: "reviews" };
     case "sourcing_demand":

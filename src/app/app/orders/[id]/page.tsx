@@ -28,6 +28,7 @@ import {
 } from "../../actions/delivery";
 import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
+import { OrderDivergenceLots } from "./_components/divergence-lots";
 import { ImportFlowCard } from "@/components/import-flow-card";
 import { ProductionCard } from "@/components/production-card";
 import {
@@ -2225,7 +2226,8 @@ export default async function OrderPage({
             <p>
               {t(
                 (order.pauseReason === "channel_red" ||
-                order.pauseReason === "channel_grey"
+                order.pauseReason === "channel_grey" ||
+                order.pauseReason === "payment_open"
                   ? `delivery.paused.${order.pauseReason}`
                   : "delivery.paused.other") as DictionaryKey,
                 { date: formatDate(order.pausedAt, t) },
@@ -3474,6 +3476,8 @@ export default async function OrderPage({
             }
           />
         ) : null}
+        {/* Lotes com divergência (mapa E21, E24 a E27; dono, 15/11/2026). */}
+        <OrderDivergenceLots user={user} order={order} t={t} />
         {/* Divergência no recebimento: Comunicar a Compras, Fornecedor,
             Evidência e Financeiro (mapa E24 a E27). */}
         <ImportFlowCard

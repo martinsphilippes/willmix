@@ -241,9 +241,13 @@ export async function saveCounts(
       .join("; "),
   );
   if (fresh.length) {
-    // Caminho da divergência (mapa E24 a E27; docs/RECEIVING.md): os quatro
-    // passos nascem na primeira divergência (idempotente).
-    await (await import("./import-flow")).openDivergenceSteps(user, order);
+    // Lote com divergência (mapa E21, E24 a E27; dono, 15/11/2026;
+    // docs/RECEIVING.md): cada contagem com divergências novas abre um lote
+    // com esses itens; o sistema avisa Compras (E24). Os quatro passos por
+    // pedido (openDivergenceSteps) ficam só nos pedidos que já os tinham.
+    await (
+      await import("./divergence-lots")
+    ).createDivergenceLot(user, order, fresh, items);
     const detail = fresh
       .map(
         (i) =>
