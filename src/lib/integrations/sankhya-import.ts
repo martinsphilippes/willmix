@@ -311,6 +311,7 @@ function productExtraFields(
     currency: price == null ? null : fx ? currency : "BRL",
     masterBoxQty: extra?.masterBoxQty ?? null,
     innerBoxQty: extra?.innerBoxQty ?? null,
+    cbm: extra?.masterCbm ?? null,
     notes: notes || null,
   };
 }
@@ -341,7 +342,12 @@ export async function upsertProducts(
         Object.fromEntries(
           Object.entries(extra).filter(
             ([k]) =>
-              p[k as keyof Product] == null || p[k as keyof Product] === "",
+              (p[k as keyof Product] == null || p[k as keyof Product] === "") &&
+              // O CBM do Sankhya é o da caixa dele: com outra quantidade
+              // por caixa no portal, não vale.
+              (k !== "cbm" ||
+                p.masterBoxQty == null ||
+                p.masterBoxQty === extra.masterBoxQty),
           ),
         ),
       );
