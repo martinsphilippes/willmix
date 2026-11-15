@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
 import { runReminders } from "@/lib/services/reminders";
-import { normalizePackaging } from "@/lib/services/packaging";
-import { normalizeShipping } from "@/lib/services/shipping-stage";
 import {
   notifyPayablesDue,
   notifySuppliersToConfirm,
-  releaseOffFlowStages,
 } from "@/lib/services/supplier-terms";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Job de cobrança: procura etapas atrasadas ou perto do prazo e avisa o responsável.
+ * Job de cobrança: procura marcos atrasados ou perto do prazo e avisa o responsável.
  * Chamado pelo cron da Vercel (vercel.json) ou manualmente. Protegido por CRON_SECRET quando definido.
  */
 export async function GET(request: Request) {
@@ -20,14 +17,8 @@ export async function GET(request: Request) {
   if (secret && auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  // Pedidos parados na etapa de pagamento ao fornecedor seguem o fluxo.
-  const released = await releaseOffFlowStages(undefined, { force: true });
-  // Arte e embalagem dos pedidos antigos passa para o fluxo novo.
-  const packaging = await normalizePackaging(undefined, { force: true });
   const { normalizeLaneRoles } = await import("@/lib/services/purchase-order");
   const laneRoles = await normalizeLaneRoles(undefined, { force: true });
-  // Embarque dos pedidos antigos: dados opcionais, "Embarque confirmado" conclui.
-  const shipping = await normalizeShipping();
   const result = await runReminders();
   // Resumo diário das parcelas a fornecedores vencidas ou vencendo.
   const payablesDue = await notifyPayablesDue();
@@ -111,10 +102,7 @@ export async function GET(request: Request) {
     purchaseGates,
     supplierRequestsLate,
     samplingLate,
-    released,
-    packaging,
     laneRoles,
-    shipping,
     payablesDue,
     toConfirm,
     sankhya,

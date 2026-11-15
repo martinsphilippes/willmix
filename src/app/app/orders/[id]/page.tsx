@@ -8,7 +8,8 @@ import { storedMilestone } from "@/lib/services/order-milestones";
 import {
   currentMilestone,
   milestoneOfImportKey,
-  milestoneOfRequirement,
+  compactMilestones,
+  stepOfItem,
   milestoneTitle,
   MILESTONE_KEYS,
   type MilestoneKey,
@@ -129,16 +130,13 @@ import {
 } from "@/lib/workflow/engine";
 import { formatMoneyValue, isMoneyRequirement } from "@/lib/workflow/money";
 import {
-  isOffFlowStage,
   isOrderSignatureKey,
   ORDER_SIGN_SEND,
   ORDER_SIGNED_SUPPLIER,
   ORDER_SIGNED_WELLMIX,
-} from "@/lib/workflow/stages";
+} from "@/lib/workflow/templates";
 import { signSendBlockers } from "@/lib/services/order-signature";
-import { releaseOffFlowStages } from "@/lib/services/supplier-terms";
-import { normalizePackaging } from "@/lib/services/packaging";
-import { normalizeShipping } from "@/lib/services/shipping-stage";
+import { itemGroupId, itemGroupsOf } from "@/lib/order-groups";
 import { SupplierPaymentCard } from "@/components/supplier-payment-card";
 import { loadOrderFinance } from "@/lib/services/finance";
 import {
@@ -296,30 +294,19 @@ export default async function OrderPage({
     charges: chargesNotice,
     charge: chargeNotice,
   } = await searchParams;
-  // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
+  // Grupo aberto no pedido (?stage=CHAVE ou ?stage=all, links antigos).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
-  // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
-  await normalizePackaging(id);
   // Pedido de compra: papel das tarefas de arte e certificado coerente com
   // quem as recebe (corrige as abertas antes de 14/11/2026, sem duplicar).
   await (await import("@/lib/services/purchase-order")).normalizeLaneRoles(id);
-  await normalizeShipping(id);
   let progress = await loadOrderProgress(id);
   if (!progress || !canViewOrder(user, progress.order)) notFound();
-  /* Pedido parado na etapa de pagamento ao fornecedor (de antes de ela sair do
-     fluxo): segue para a próxima etapa agora. */
-  if (isOffFlowStage(progress.order.status)) {
-    await releaseOffFlowStages(progress.order.id);
-    progress = (await loadOrderProgress(id)) ?? progress;
-  }
   const t = await getT();
   // Pedido de compra (docs/PURCHASE_ORDER.md): a Preparação traz as três
   // raias e "Arte e embalagem" é o contrato com as duas assinaturas.
   const purchaseFlow = progress.order.flow === "supplier_request";
-  const stageName = (key: string) =>
-    purchaseFlow && (key === "PREPARATION" || key === "PACKAGING")
-      ? t(`purchaseOrder.stage.${key}` as DictionaryKey)
-      : t(`stage.${key}` as DictionaryKey);
+  // Sem marco atual (cancelado): o nome da situação gravada.
+  const stageName = (key: string) => t(`stage.${key}` as DictionaryKey);
   const store = getStore();
   const wellmix = isWellmix(user);
   /* Certificadora (OCP) do pedido: vê tudo do pedido para gerar o selo
@@ -352,7 +339,8 @@ export default async function OrderPage({
   const stuckSheetReq =
     sheetState &&
     !sheetState.missing.length &&
-    progress.order.status === "PREPARATION"
+    // Fase 5g: o marco Pedido novo em andamento (no lugar da Preparação).
+    progress.order.milestoneKey === "new-order"
       ? progress.requirements.find(
           (r) => r.key === "purchase_sheet" && r.status === "pending",
         )
@@ -365,7 +353,7 @@ export default async function OrderPage({
     progress = (await loadOrderProgress(id)) ?? progress;
     sheetState = await sheetProgress(progress.order);
   }
-  const { order, stages, requirements } = progress;
+  const { order, requirements } = progress;
   /* Visão do fornecedor na Preparação do pedido de compra (pedido do dono,
      13/11/2026): só a faca, a foto em alta e o prazo de produção de cada
      produto, e o campo do prazo já vem com o prazo registrado na solicitação
@@ -380,7 +368,7 @@ export default async function OrderPage({
   const signSend = requirements.find((r) => r.key === ORDER_SIGN_SEND);
   const sendBlockers =
     signSend && signSend.status !== "done"
-      ? await signSendBlockers(order.id, signSend.stageId)
+      ? await signSendBlockers(order.id)
       : [];
   /* Produção: Wellmix e o fornecedor do pedido (fora das etapas). */
   const productionView =
@@ -548,8 +536,11 @@ export default async function OrderPage({
   const receivingSvc = await import("@/lib/services/receiving");
   const receivingView =
     wellmix &&
-    (receivingSvc.RECEIVING_STATUSES as readonly string[]).includes(
-      order.status,
+    receivingSvc.receivingApplies(
+      order,
+      await store
+        .list("order_milestones", { filter: { orderId: order.id } })
+        .catch(() => []),
     )
       ? await receivingSvc.receivingView(order)
       : null;
@@ -567,8 +558,6 @@ export default async function OrderPage({
       : []
     ).map((u) => [u.id, u.name]),
   );
-  // Etapas do fluxo (o pagamento ao fornecedor tem card próprio, fora dele).
-  const flowStages = stages.filter((s) => !isOffFlowStage(s.key));
   const sheetHint = sheetState
     ? {
         missing: sheetState.missing
@@ -759,7 +748,6 @@ export default async function OrderPage({
     user.role === "carrier"
       ? await cargoViewForOrder(user, order, {
           items,
-          stages,
           requirements,
           parties,
         })
@@ -1162,6 +1150,17 @@ export default async function OrderPage({
   /* Fase 5d: o item está liberado pelo marco dele (dependências do mapa
      concluídas), não mais pela etapa em andamento. */
   const orderViews = await milestonesOf(order);
+  /* Fase 5g: sem etapas. Os grupos de itens que algumas partes da tela
+     ainda usam (linha do tempo do operador, ajuda, ficha) saem dos itens e
+     dos marcos (`itemGroupsOf`); o pagamento ao fornecedor antigo tem card
+     próprio, fora deles. */
+  const stages = itemGroupsOf(
+    order,
+    requirements,
+    new Map(orderViews.map((v) => [v.key, v.state])),
+    milestoneRows,
+  );
+  const flowStages = stages.filter((s) => s.key !== "SUPPLIER_PAYMENT");
   /* Fase 5e: situação, prazo e trava pelo marco atual e pelas linhas de
      `order_milestones` (a etapa não aparece mais). */
   const blockedRows = milestoneRows
@@ -1175,10 +1174,7 @@ export default async function OrderPage({
   const inspectionRow = milestoneRows.find((r) => r.key === "inspection");
   const inspectionOpen =
     inspectionRow?.status === "active" || inspectionRow?.status === "blocked";
-  const stageKeyById = new Map(stages.map((s) => [s.id, s.key]));
-  const inInspection = (r: Requirement) =>
-    milestoneOfItem(r, { key: stageKeyById.get(r.stageId) ?? "" }) ===
-    "inspection";
+  const inInspection = (r: Requirement) => milestoneOfItem(r) === "inspection";
   const headMilestone = currentMilestone(orderViews, order.status);
   const headRow = headMilestone
     ? milestoneRows.find((r) => r.key === headMilestone)
@@ -1189,7 +1185,7 @@ export default async function OrderPage({
     isOverdue(
       headRow?.dueAt ?? orderViews.find((v) => v.key === headMilestone)?.dueAt,
     );
-  const release = releaseOf(orderViews, stages);
+  const release = releaseOf(orderViews);
   const released = (r: Requirement) => requirementReleased(order, r, release);
   const myTimeline = mineOnly
     ? await myOrderTimeline(user, {
@@ -1211,7 +1207,8 @@ export default async function OrderPage({
      ?stage=all, todas. */
   const defaultExpanded = (s: (typeof stages)[number]) =>
     requirements.some(
-      (r) => r.stageId === s.id && r.status !== "done" && released(r),
+      (r) =>
+        itemGroupId(r, order) === s.id && r.status !== "done" && released(r),
     );
   const expandedStageIds = new Set(
     flowStages
@@ -1235,11 +1232,7 @@ export default async function OrderPage({
      login já vê nos cartões de baixo; cada linha leva ao cartão ou à página. */
   const partsByStage = orderPartsByStage([
     wellmix || (user.role === "supplier" && order.supplierId === user.partyId)
-      ? documentPart(
-          requirements,
-          `/app/orders/${order.id}/purchase-order`,
-          stages,
-        )
+      ? documentPart(requirements, `/app/orders/${order.id}/purchase-order`)
       : null,
     sheetState
       ? sheetPart(
@@ -1434,14 +1427,12 @@ export default async function OrderPage({
       supplierView = false,
     }: { open: boolean; muted?: boolean; supplierView?: boolean },
   ) => {
-    const reqs = requirements.filter((x) => x.stageId === stage.id);
-    // Datas já informadas no pedido (limites: chegada ≥ embarque, entrega ≥ chegada).
-    const dateValueOf = (sk: string, key: string) =>
+    const reqs = requirements.filter((x) => itemGroupId(x, order) === stage.id);
+    // Datas já informadas no pedido (limites: chegada ≥ embarque, entrega ≥
+    // chegada), pelo passo e pela chave de cada item (fase 5g).
+    const dateValueOf = (st: string, key: string) =>
       requirements.find(
-        (x) =>
-          x.key === key &&
-          x.status === "done" &&
-          stages.find((st) => st.id === x.stageId)?.key === sk,
+        (x) => x.key === key && x.status === "done" && stepOfItem(x) === st,
       )?.value ?? null;
     return (
       <RequirementRow
@@ -1480,14 +1471,14 @@ export default async function OrderPage({
                     )
                   ? t("orderSign.send.waitWellmix")
                   : ((purchaseFlow ? laneWaiting(t, r, reqs) : null) ??
-                    dateWaiting(t, stage.key, r, reqs))
+                    dateWaiting(t, stepOfItem(r) ?? "", r, reqs))
         }
         gateHref={
           purchaseFlow && wellmix ? gateHrefOf(order.id, r, items) : null
         }
         dateBounds={
           r.type === "date"
-            ? dateBoundsFor(stage.key, r.key, dateValueOf)
+            ? dateBoundsFor(stepOfItem(r) ?? "", r.key, dateValueOf)
             : undefined
         }
         doc={docById(r.documentId)}
@@ -1540,9 +1531,9 @@ export default async function OrderPage({
     for (const stage of flowStages) {
       if (stage.status === "cancelled") continue;
       for (const r of visibleReqs(
-        requirements.filter((x) => x.stageId === stage.id),
+        requirements.filter((x) => itemGroupId(x, order) === stage.id),
       )) {
-        const key = milestoneOfRequirement(stage.key, r.key);
+        const key = milestoneOfItem(r);
         if (!key) continue;
         reqsOf.set(key, [...(reqsOf.get(key) ?? []), { r, stage }]);
       }
@@ -1606,7 +1597,7 @@ export default async function OrderPage({
       );
     const prepStage = flowStages.find((s) => s.key === "PREPARATION");
     const prepReqs = prepStage
-      ? requirements.filter((r) => r.stageId === prepStage.id)
+      ? requirements.filter((r) => itemGroupId(r, order) === prepStage.id)
       : [];
     const showDieCutLink =
       purchaseFlow &&
@@ -1871,6 +1862,7 @@ export default async function OrderPage({
       flowStages,
       requirements,
       release.states,
+      (r) => itemGroupId(r, order),
     );
     const stageById = new Map(flowStages.map((s) => [s.id, s]));
     const live = (_s: (typeof stages)[number], r: Requirement) => released(r);
@@ -1907,7 +1899,7 @@ export default async function OrderPage({
       );
       const prepStage = rowStages.find((s) => s.key === "PREPARATION");
       const prepReqs = prepStage
-        ? requirements.filter((r) => r.stageId === prepStage.id)
+        ? requirements.filter((r) => itemGroupId(r, order) === prepStage.id)
         : [];
       const supplierView = rows.some((x) => x.supplierView);
       const shipping = rowStages.find(
@@ -2302,7 +2294,8 @@ export default async function OrderPage({
       {wellmix ? (
         <OrderProgressCard
           orderId={order.id}
-          stages={stages}
+          milestones={compactMilestones(orderViews)}
+          rows={milestoneRows}
           focus={isProgressBlock(fromBlock) ? fromBlock : null}
           t={t}
           locale={t}
@@ -4593,17 +4586,17 @@ function gateHrefOf(
 }
 
 /**
- * Data que espera outra da mesma etapa (ex.: a previsão de chegada só depois
+ * Data que espera outra do mesmo passo (ex.: a previsão de chegada só depois
  * da data de embarque, para nunca ficar antes dela): o aviso no lugar do campo.
  */
 function dateWaiting(
   t: Translate,
-  stageKey: string,
+  step: string,
   r: Requirement,
   reqs: Requirement[],
 ): string | null {
   if (r.type !== "date") return null;
-  const pre = datePrerequisite(stageKey, r.key);
+  const pre = datePrerequisite(step, r.key);
   if (!pre) return null;
   return reqs.some((x) => x.key === pre.key && x.status !== "done")
     ? t(`orders.waiting.${pre.code}` as DictionaryKey)

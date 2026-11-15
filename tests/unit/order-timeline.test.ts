@@ -30,7 +30,6 @@ const { loadRoutingContext, internalRoute } =
 const { sheetProgress } = await import("@/lib/services/purchase-sheet");
 const { uploadDocument } = await import("@/lib/services/documents");
 const { ORDER_PART_KEYS, ORDER_PART_STAGE } = await import("@/lib/order-parts");
-const { isOffFlowStage } = await import("@/lib/workflow/stages");
 const { baseKeyOf } = await import("@/lib/purchase-lanes");
 type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
@@ -186,12 +185,18 @@ async function submit(
 async function timelineOf(user: User, orderId: string) {
   const store = getStore();
   const order = (await store.get("orders", orderId))!;
-  const stages = (await store.list("stages", { filter: { orderId } }))
-    .filter((s) => !isOffFlowStage(s.key))
-    .sort((a, b) => a.sequence - b.sequence);
   const requirements = await store.list("requirements", {
     filter: { orderId },
   });
+  // Fase 5g: os grupos de itens no lugar das etapas (como a tela do pedido).
+  const { itemGroupsOf } = await import("@/lib/order-groups");
+  const { orderRelease } = await import("@/lib/services/order-milestones");
+  const stages = itemGroupsOf(
+    order,
+    requirements,
+    (await orderRelease(orderId))?.release.states ?? new Map(),
+    await store.list("order_milestones", { filter: { orderId } }),
+  ).filter((s) => s.key !== "SUPPLIER_PAYMENT");
   const sheet = await sheetProgress(order);
   const artwork = art.canFixArt(user, order)
     ? await art.artworkView(user, order)

@@ -28,7 +28,7 @@ import {
   isOrderDocumentKey,
   isPurchaseFlow,
   ROLE_PARTY_FIELD,
-} from "@/lib/workflow/stages";
+} from "@/lib/workflow/templates";
 import { notify, requesterTarget } from "./notifications";
 import {
   currentMilestone,
@@ -36,6 +36,9 @@ import {
   milestoneOfRequirement,
   milestoneOfStep,
   milestoneTitle,
+  legacyGroupOfItem,
+  legacyStatusOf,
+  closesOrder,
   orderMilestones,
   requirementFlowFields,
   type MilestoneKey,
@@ -186,7 +189,7 @@ export function blockedMilestonesFromStages(
   );
   if (!blocked.size) return out;
   for (const r of requirements) {
-    const stage = blocked.get(r.stageId);
+    const stage = r.stageId ? blocked.get(r.stageId) : undefined;
     if (!stage) continue;
     // Fase 5c: o marco gravado no item; sem ele, pela etapa e a chave.
     const key =
@@ -344,6 +347,7 @@ async function writeOrderMilestoneKeys(
 /** O que os marcos de um grupo de pedidos leem (as mesmas fontes da tela). */
 interface SliceSources {
   orders: Order[];
+  /** Etapas antigas: só na migração e na conferência (`legacy`). */
   stages: Map<string, Stage[]>;
   requirements: Map<string, Requirement[]>;
   steps: Map<string, ImportStep[]>;
@@ -370,7 +374,10 @@ const safe = <T>(p: Promise<T[]>) => p.catch(() => [] as T[]);
  * para o grupo (o banco divide as listas longas). Dos itens, só as colunas
  * que os marcos leem; o valor só do pedido de amostras.
  */
-async function loadSlice(ids: string[]): Promise<SliceSources> {
+async function loadSlice(
+  ids: string[],
+  options: { legacy?: boolean } = {},
+): Promise<SliceSources> {
   const store = getStore();
   const orders = ids.length
     ? await store.list("orders", { filter: { id: ids } })
@@ -399,18 +406,23 @@ async function loadSlice(ids: string[]): Promise<SliceSources> {
     lpco,
     milestones,
   ] = await Promise.all([
-    listColumns(
-      store,
-      "stages",
-      ["orderId", "key", "status", "dueAt", "blockReason"],
-      { filter },
-    ),
+    // Fase 5g: as etapas antigas só para a migração e a conferência.
+    options.legacy
+      ? safe(
+          listColumns(
+            store,
+            "stages",
+            ["orderId", "key", "status", "dueAt", "blockReason"],
+            { filter },
+          ),
+        )
+      : Promise.resolve([]),
     listColumns(
       store,
       "requirements",
       [
         "orderId",
-        "stageId",
+        ...(options.legacy ? (["stageId"] as const) : []),
         "key",
         "status",
         "step",
@@ -433,7 +445,7 @@ async function loadSlice(ids: string[]): Promise<SliceSources> {
   const sampleById = new Map(samples.map((r) => [r.id, r]));
   return {
     orders,
-    stages: groupBy(stages as Stage[]),
+    stages: groupBy(stages as unknown as Stage[]),
     requirements: groupBy(
       (requirements as Requirement[]).map((r) => sampleById.get(r.id) ?? r),
     ),
@@ -448,7 +460,7 @@ async function loadSlice(ids: string[]): Promise<SliceSources> {
 function inputOf(order: Order, src: SliceSources): MilestoneInput {
   return {
     order,
-    stages: src.stages.get(order.id) ?? [],
+    legacyStages: src.stages.get(order.id) ?? [],
     requirements: src.requirements.get(order.id) ?? [],
     importSteps: src.steps.get(order.id) ?? [],
     track: src.tracks.get(order.id)?.[0] ?? null,
@@ -555,9 +567,21 @@ export async function syncMilestones(
     loadSlice([orderId]),
     getSettings(),
   ]);
-  const order = src.orders[0];
-  if (!order) return null;
-  const input = inputOf(order, src);
+  const loaded = src.orders[0];
+  if (!loaded) return null;
+  const now = (options.now ?? new Date()).toISOString();
+  const roundsParent = isRoundsParent(loaded);
+  let input = inputOf(loaded, src);
+  // Fase 5g: o pedido encerra pelo último marco (antes, pela última etapa).
+  if (closesOrder(loaded, input.requirements, { roundsParent })) {
+    await getStore().update("orders", loaded.id, {
+      status: "CLOSED",
+      closedAt: now,
+      currentStageId: null,
+    });
+    input = { ...input, order: { ...loaded, status: "CLOSED", closedAt: now } };
+  }
+  const order = input.order;
   const existing = src.milestones.get(order.id) ?? [];
   const views = viewsNow(input);
   const plan = planMilestoneRows({
@@ -566,11 +590,20 @@ export async function syncMilestones(
     existing,
     blocked: blockedMilestones(existing),
     dueDays: milestoneDueDaysOf(settings),
-    now: (options.now ?? new Date()).toISOString(),
+    now,
   });
   await writeMilestoneRows(plan.rows, new Set(existing.map((r) => r.id)));
   if ((order.milestoneKey ?? null) !== plan.milestoneKey)
     await writeOrderMilestoneKeys(new Map([[order.id, plan.milestoneKey]]));
+  // Fase 5g: `orders.status` continua gravado, derivado do marco atual (o
+  // valor antigo equivalente), para relatórios e integrações que o leem.
+  const status = legacyStatusOf(order, plan.milestoneKey, input.requirements, {
+    roundsParent,
+  });
+  if (status !== order.status)
+    await getStore().update("orders", order.id, {
+      status: status as Order["status"],
+    });
   // Fase 5c: o resumo do pedido lê o prazo gravado do marco e o painel de
   // SLA o "no prazo" dos marcos concluídos; a gravação em lote não passa
   // pelo aviso do CachedStore, então o pedido é marcado aqui.
@@ -614,7 +647,7 @@ export async function orderRelease(orderId: string): Promise<{
   if (!order) return null;
   const input = inputOf(order, src);
   const views = viewsNow(input);
-  return { views, release: releaseOf(views, input.stages) };
+  return { views, release: releaseOf(views) };
 }
 
 /** `orderRelease` de vários pedidos numa leitura só (uma consulta por tabela). */
@@ -630,7 +663,7 @@ export async function ordersRelease(
   for (const order of src.orders) {
     const input = inputOf(order, src);
     const views = viewsNow(input);
-    out.set(order.id, { views, release: releaseOf(views, input.stages) });
+    out.set(order.id, { views, release: releaseOf(views) });
   }
   return out;
 }
@@ -641,7 +674,8 @@ export async function ordersRelease(
  * assinatura, Die Cut, itens conferidos pelo sistema).
  */
 export async function requirementIsReleased(
-  requirement: Pick<Requirement, "orderId" | "key" | "required" | "stageId"> & {
+  requirement: Pick<Requirement, "orderId" | "key" | "required"> & {
+    step?: string | null;
     milestoneKey?: string | null;
   },
 ): Promise<boolean> {
@@ -649,11 +683,7 @@ export async function requirementIsReleased(
   const order = src.orders[0];
   if (!order) return false;
   const input = inputOf(order, src);
-  return requirementReleased(
-    order,
-    requirement,
-    releaseOf(viewsNow(input), input.stages),
-  );
+  return requirementReleased(order, requirement, releaseOf(viewsNow(input)));
 }
 
 /** Auditoria do aviso "liberado" (uma vez por marco e pedido). */
@@ -688,7 +718,7 @@ async function afterTransitions(
       console.error(`[milestones] ${what}`, order.id, error);
     }
   };
-  const release = releaseOf(views, input.stages);
+  const release = releaseOf(views);
   const parent = isRoundsParent(order);
   if (moved.started.length)
     await guard("aviso dos itens liberados", () =>
@@ -772,7 +802,6 @@ async function notifyReleased(
   const full = await store.list("requirements", {
     filter: { orderId: order.id, status: ["pending", "rejected"] },
   });
-  const stageById = new Map(input.stages.map((st) => [st.id, st]));
   const { requirementWaiting } = await import("./tasks");
   const { audit } = await import("./audit");
   const purchase = isPurchaseFlow(order);
@@ -782,15 +811,12 @@ async function notifyReleased(
       (x.status === "submitted" || x.status === "validated"),
   );
   for (const key of keys) {
-    const items = full.filter((r) => {
-      const stage = stageById.get(r.stageId);
-      return (
-        !!stage &&
+    const items = full.filter(
+      (r) =>
         r.required &&
-        milestoneOfItem(r, stage) === key &&
-        requirementReleased(order, r, release)
-      );
-    });
+        milestoneOfItem(r) === key &&
+        requirementReleased(order, r, release),
+    );
     await audit(
       null,
       MILESTONE_RELEASED_ACTION,
@@ -802,7 +828,7 @@ async function notifyReleased(
     );
     if (!items.length) continue;
     const lanes = purchase
-      ? items.filter((r) => stageById.get(r.stageId)?.key === "PREPARATION")
+      ? items.filter((r) => legacyGroupOfItem(r, order) === "PREPARATION")
       : [];
     if (lanes.length) {
       const { notifyArtReleased, notifyLanesOpen } =
@@ -812,7 +838,11 @@ async function notifyReleased(
     }
     const rest = items.filter((r) => {
       if (lanes.includes(r) || isOrderDocumentKey(r.key)) return false;
-      const stageOpen = full.filter((x) => x.stageId === r.stageId);
+      // Os itens que nasciam junto com ele (as raias, as assinaturas).
+      const group = legacyGroupOfItem(r, order);
+      const stageOpen = full.filter(
+        (x) => legacyGroupOfItem(x, order) === group,
+      );
       return !requirementWaiting(
         r,
         { open: stageOpen, all: stageOpen },
@@ -1117,7 +1147,10 @@ export async function migrateMilestonesSlice(
   stats: MigrationStats = { requirements: 0, milestones: 0, orders: 0 },
   now: Date = new Date(),
 ): Promise<MigrationStats> {
-  const [src, settings] = await Promise.all([loadSlice(ids), getSettings()]);
+  const [src, settings] = await Promise.all([
+    loadSlice(ids, { legacy: true }),
+    getSettings(),
+  ]);
   const dueDays = milestoneDueDaysOf(settings);
   const at = now.toISOString();
   const groups = new Map<
@@ -1130,11 +1163,11 @@ export async function migrateMilestonesSlice(
   let filled = 0;
   for (const order of src.orders) {
     const input = inputOf(order, src);
-    const stageById = new Map(input.stages.map((s) => [s.id, s]));
+    const stageById = new Map((input.legacyStages ?? []).map((s) => [s.id, s]));
     // Os itens migrados aqui já entram no cálculo dos marcos desta fatia.
     const requirements = input.requirements.map((r) => {
       if (r.step != null || r.milestoneKey != null) return r;
-      const stage = stageById.get(r.stageId);
+      const stage = r.stageId ? stageById.get(r.stageId) : undefined;
       if (!stage) return r;
       const fields = requirementFlowFields(stage.key, r.key);
       if (!fields.step && !fields.milestoneKey) return r;
@@ -1152,7 +1185,7 @@ export async function migrateMilestonesSlice(
       views: viewsByStage({ ...input, requirements }),
       existing,
       blocked: new Map([
-        ...blockedMilestonesFromStages(input.stages, requirements),
+        ...blockedMilestonesFromStages(input.legacyStages ?? [], requirements),
         ...blockedMilestones(existing),
       ]),
       dueDays,
@@ -1211,16 +1244,17 @@ export async function milestoneParitySlice(
   ids: string[],
   stats: ParityStats = emptyParity(),
 ): Promise<ParityStats> {
-  const src = await loadSlice(ids);
+  const src = await loadSlice(ids, { legacy: true });
   const out = { ...stats, sample: [...stats.sample] };
   for (const order of src.orders) {
     const input = inputOf(order, src);
-    const stageById = new Map(input.stages.map((s) => [s.id, s]));
+    const stageById = new Map((input.legacyStages ?? []).map((s) => [s.id, s]));
     const byStage = viewsByStage(input);
     const views = !sameViews(byStage, viewsByStored(input));
     let requirements = 0;
     for (const r of input.requirements) {
-      const stage = stageById.get(r.stageId);
+      // Fase 5g: o item sem etapa (os novos) não tem com o que conferir.
+      const stage = r.stageId ? stageById.get(r.stageId) : undefined;
       if (!stage) continue;
       const want = requirementFlowFields(stage.key, r.key);
       if (

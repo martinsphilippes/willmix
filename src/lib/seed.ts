@@ -11,7 +11,7 @@ import {
   type User,
 } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
-import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/stages";
+import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/templates";
 import { boxCbm } from "@/lib/logistics/cbm";
 
 export { DEMO_PARTIES, DEMO_PASSWORD, DEMO_USERS } from "./demo-data";

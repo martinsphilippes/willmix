@@ -37,5 +37,5 @@ Sem tabela nem coluna nova: o documento (linhas, decisão, quem e quando, versã
 
 - Regras puras: `src/lib/sample-order.ts` (`sampleQuantity`, `sampleLines`, `sampleOrderHash`).
 - Serviço: `src/lib/services/sample-order.ts`; ação: `src/app/app/actions/sample-order.ts`; tela: `src/app/app/orders/[id]/samples/page.tsx`.
-- Ordem: `prerequisitesOf` em `src/lib/purchase-lanes.ts`; itens em `PURCHASE_CONTRACT_REQUIREMENTS` (`src/lib/workflow/stages.ts`).
+- Ordem: `prerequisitesOf` em `src/lib/purchase-lanes.ts`; itens em `PURCHASE_CONTRACT_REQUIREMENTS` (`src/lib/workflow/templates.ts`).
 - Textos: `src/i18n/modules/sample-order.ts`. Testes: `tests/unit/purchase-order.test.ts` e o E2E do caminho principal.

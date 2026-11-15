@@ -2,7 +2,8 @@ import "server-only";
 import { getStore } from "@/lib/db";
 import type { Document, Order, Requirement, User } from "@/lib/db/schema";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
-import { isPurchaseFlow } from "@/lib/workflow/stages";
+import { isPurchaseFlow } from "@/lib/workflow/templates";
+import { legacyGroupOfItem } from "@/lib/milestones";
 import { baseKeyOf, itemIdOf, laneKey, LANE_KEYS } from "@/lib/purchase-lanes";
 import {
   dieCutItemOf,
@@ -91,14 +92,13 @@ export async function getDieCutView(
   const store = getStore();
   const order = await store.get("orders", orderId);
   if (!order || !canViewDieCut(user, order)) return null;
-  const [stages, requirements, terms] = await Promise.all([
-    store.list("stages", { filter: { orderId, key: "PREPARATION" } }),
+  const [requirements, terms] = await Promise.all([
     store.list("requirements", { filter: { orderId } }),
     negotiatedTerms(order),
   ]);
-  const stage = stages[0];
+  // Fase 5g: os itens da Preparação (raias), pelo marco e pela chave.
   const mine = requirements
-    .filter((r) => !stage || r.stageId === stage.id)
+    .filter((r) => legacyGroupOfItem(r, order) === "PREPARATION")
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const products = dieCutProducts(mine).map((p) => ({
     ...p,

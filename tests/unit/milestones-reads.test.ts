@@ -59,7 +59,8 @@ describe("subtarefas pelo passo gravado", () => {
   } as never;
   const base = {
     order,
-    stages: [stage],
+    // Fase 5g: as etapas só na conta antiga (`source: "stages"`).
+    legacyStages: [stage],
     importSteps: [],
     track: null,
     receiving: null,
@@ -78,7 +79,7 @@ describe("subtarefas pelo passo gravado", () => {
   const stepsOf = (list: Array<{ key: string; step: string }>) =>
     list.filter((x) => x.key === "order_confirmed").map((x) => x.step);
 
-  it("o passo gravado manda; vazio, a etapa; 'stages' ignora o gravado", () => {
+  it("o passo gravado manda; vazio, pela chave; 'stages' (a conta antiga) usa a etapa do item", () => {
     const stored = svc.orderSubtasks({
       ...base,
       requirements: [req("production/inspection")],
@@ -97,14 +98,12 @@ describe("subtarefas pelo passo gravado", () => {
     expect(stepsOf(old)).toEqual(["order/orders"]);
   });
 
-  it("prazo do marco em andamento: o gravado; sem linha, o da etapa", () => {
+  it("prazo do marco em andamento: o gravado; sem linha, sem prazo (fase 5g: não há etapa)", () => {
     const views = svc.milestoneViews({
       ...base,
       requirements: [req(null)],
     });
-    expect(views.find((v) => v.key === "new-order")!.dueAt).toBe(
-      "2026-12-01T00:00:00.000Z",
-    );
+    expect(views.find((v) => v.key === "new-order")!.dueAt).toBeNull();
     const stored = svc.milestoneViews({
       ...base,
       requirements: [req(null)],

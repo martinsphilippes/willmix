@@ -18,8 +18,8 @@ import {
   type Receiving,
   type Requirement,
   type ReviewItem,
+  type Role,
   type SkuInspection,
-  type Stage,
   type StageKey,
   type SupplierRequest,
 } from "@/lib/db";
@@ -27,13 +27,20 @@ import type { InstallmentStatus } from "@/lib/supplier-terms";
 import { brazilDay } from "@/lib/supplier-terms";
 import { reviewOrderId, type TowerRow } from "./control-tower";
 import { stepTemplate } from "./import-flow";
-import { JOURNEY_REQUIREMENT_KEYS, journeyIndex } from "./journey";
+import {
+  JOURNEY_REQUIREMENT_KEYS,
+  MILESTONE_CARD_STAGE,
+  cardStageOf,
+  journeyIndex,
+} from "./journey";
 import { isSchemaMissing } from "@/lib/db/errors";
 import {
   milestoneBlockedOf,
   milestoneDueOf,
   milestoneOfFacts,
   milestoneOfStatus,
+  legacyGroupOfItem,
+  responsibleOfItems,
   type CompactMilestone,
   type MilestoneKey,
 } from "@/lib/milestones";
@@ -41,7 +48,6 @@ import { isOrderOpen } from "@/lib/order-status";
 import { storedMilestone } from "./order-milestones";
 import type { Container } from "@/lib/db";
 import {
-  activeStagesFromFacts,
   installmentStatusOn,
   journeyRowsFromFacts,
   isLiveStatus,
@@ -52,7 +58,7 @@ import { getSettings } from "@/lib/settings";
 import {
   ORDER_SIGNED_SUPPLIER,
   ORDER_SIGNED_WELLMIX,
-} from "@/lib/workflow/stages";
+} from "@/lib/workflow/templates";
 import {
   DOWN_PAYMENT_KEY,
   LANE_KEYS,
@@ -211,25 +217,6 @@ export function atRisk(row: TowerRow, now: number): boolean {
  * src/lib/tower-milestones.ts), e o grupo é dividido pelo que já foi feito,
  * pelas mesmas regras de antes (journey.ts). Sem marco, pela etapa.
  */
-const MILESTONE_CARD_STAGE: Record<MilestoneKey, StageKey> = {
-  "new-order": "PREPARATION",
-  certification: "PREPARATION",
-  "art-material": "PREPARATION",
-  art: "PREPARATION",
-  contract: "PACKAGING",
-  "down-payment": "PACKAGING",
-  "pre-production": "INSPECTION",
-  inspection: "INSPECTION",
-  samples: "INSPECTION",
-  production: "INSPECTION",
-  booking: "SHIPPING",
-  loading: "SHIPPING",
-  shipment: "SHIPPING",
-  customs: "CUSTOMS",
-  "invoice-transport": "TRANSPORT",
-  delivery: "DELIVERED",
-};
-
 /** Marcos antes do embarque: a produção ainda conta. */
 const BEFORE_SHIPPING_MILESTONES = new Set<MilestoneKey>([
   "new-order",
@@ -243,15 +230,6 @@ const BEFORE_SHIPPING_MILESTONES = new Set<MilestoneKey>([
   "samples",
   "production",
 ]);
-
-/** Etapas antes do embarque: a produção ainda conta. */
-const BEFORE_SHIPPING: StageKey[] = [
-  "ORDER_CREATED",
-  "PREPARATION",
-  "SUPPLIER_PAYMENT",
-  "PACKAGING",
-  "INSPECTION",
-];
 
 /** Itens das etapas que dividem os quadrados de posição (journey.ts). */
 export const BOARD_REQUIREMENT_KEYS = JOURNEY_REQUIREMENT_KEYS;
@@ -284,12 +262,6 @@ export type BoardOrder = Pick<
   | "cancelRequestStatus"
 >;
 
-/** Etapa em andamento como os quadros a leem. */
-export type BoardStage = Pick<
-  Stage,
-  "id" | "orderId" | "key" | "status" | "dueAt" | "responsibleRole"
->;
-
 /** Pedido de compra (tem o fluxo do portal); o importado do Sankhya não tem. */
 const isPortalOrder = (o: Pick<Order, "flow">) => o.flow === "supplier_request";
 
@@ -300,20 +272,20 @@ export interface BoardInput {
   parties: Pick<Party, "id" | "name">[];
   items: Pick<OrderItem, "orderId" | "name">[];
   products: Pick<Product, "id" | "name">[];
-  /** Etapa em andamento ou bloqueada de cada pedido. */
-  activeStages: BoardStage[];
-  /** Todas as etapas dos pedidos em andamento (para achar o Embarque). */
-  stages: Pick<Stage, "id" | "orderId" | "key">[];
-  /** Itens das etapas com as chaves de BOARD_REQUIREMENT_KEYS. */
-  requirements: Pick<
-    Requirement,
-    "orderId" | "stageId" | "key" | "status" | "value"
-  >[];
+  /**
+   * Quem age agora em cada pedido (fase 5g: o papel do próximo item
+   * obrigatório do marco atual, `responsibleOfItems`).
+   */
+  responsible?: ReadonlyMap<string, Role | null>;
+  /** Itens com as chaves de BOARD_REQUIREMENT_KEYS (passo e chave, fase 5g). */
+  requirements: (Pick<Requirement, "orderId" | "key" | "status" | "value"> & {
+    step?: string | null;
+  })[];
   /** Todos os itens dos pedidos de compra (raias e contrato). */
-  laneRequirements?: Pick<
-    Requirement,
-    "orderId" | "stageId" | "key" | "status"
-  >[];
+  laneRequirements?: (Pick<Requirement, "orderId" | "key" | "status"> & {
+    step?: string | null;
+    milestoneKey?: string | null;
+  })[];
   /** Bookings (planilhas) ainda em andamento: rascunho, fechado ou em andamento. */
   lots?: Pick<
     BookingLot,
@@ -374,7 +346,6 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     if (!firstItem.has(i.orderId))
       // Nome de exemplo ("Produto novo XPTO") vale como ausente.
       firstItem.set(i.orderId, realName(i.name) ?? "—");
-  const stageOf = new Map(input.activeStages.map((s) => [s.orderId, s]));
   const by = <T extends { orderId: string | null }>(rows: T[]) => {
     const map = new Map<string, T[]>();
     for (const row of rows) {
@@ -387,12 +358,14 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   const skusBy = by(input.skus);
   const trackOf = new Map(input.tracks.map((t) => [t.orderId, t]));
   const receivingOf = new Map(input.receivings.map((r) => [r.orderId, r]));
-  const stageKeyById = new Map(input.stages.map((s) => [s.id, s.key]));
   const laneReqsBy = by(input.laneRequirements ?? []);
 
   // Passo do pedido: a mesma regra do Progresso de Pedidos (journey.ts).
   const journey = journeyIndex({
     ...input,
+    blocked: new Set(
+      input.orders.filter((o) => milestoneBlocked(o)).map((o) => o.id),
+    ),
     reviews: input.reviews,
   });
   const step = (o: BoardOrder, key: ImportStep["key"]) =>
@@ -404,20 +377,21 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
    * Prazo e trava pelos marcos (fase 5e): o prazo mais próximo dos marcos em
    * andamento (`facts.m`; sem resumo, as linhas de `order_milestones`) e o
    * marco travado (divergência na inspeção). Sem marcos (pedido ainda não
-   * sincronizado), a etapa em andamento.
+   * sincronizado): sem prazo e sem trava (fase 5g: não há mais etapa).
    */
-  const milestoneDue = (o: BoardOrder): string | null => {
-    const due = milestoneDueOf(
+  const milestoneDue = (o: BoardOrder): string | null =>
+    milestoneDueOf(
       input.milestones?.get(o.id),
       input.milestoneRows?.get(o.id),
+    ) ?? null;
+  function milestoneBlocked(o: BoardOrder): boolean {
+    return (
+      milestoneBlockedOf(
+        input.milestones?.get(o.id),
+        input.milestoneRows?.get(o.id),
+      ) ?? false
     );
-    return due === undefined ? (stageOf.get(o.id)?.dueAt ?? null) : due;
-  };
-  const milestoneBlocked = (o: BoardOrder): boolean =>
-    milestoneBlockedOf(
-      input.milestones?.get(o.id),
-      input.milestoneRows?.get(o.id),
-    ) ?? stageOf.get(o.id)?.status === "blocked";
+  }
   // Prazo vencido e bloqueio são do fluxo do portal; o pedido importado só dá visibilidade.
   const isOverdue = (o: BoardOrder) => {
     if (!isPortalOrder(o)) return false;
@@ -438,7 +412,6 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     );
   };
   const orderRow = (o: BoardOrder): TowerRow => {
-    const stage = stageOf.get(o.id);
     const closed = o.status === "CLOSED";
     const cancelled = o.status === "CANCELLED";
     const portal = isPortalOrder(o);
@@ -455,7 +428,7 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
       responsible:
         closed || cancelled || !portal
           ? null
-          : (stage?.responsibleRole ?? null),
+          : (input.responsible?.get(o.id) ?? null),
       dueAt: closed
         ? o.closedAt
         : cancelled
@@ -559,10 +532,7 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   for (const o of live) {
     // Fase 5c: o grupo de quadrados pelo marco atual; sem marco, a etapa.
     const current = milestoneNow(o);
-    const card = journey.orderCard(
-      o,
-      current ? MILESTONE_CARD_STAGE[current] : (o.status as StageKey),
-    );
+    const card = journey.orderCard(o, cardStageOf(current, o.status));
     const portal = isPortalOrder(o);
     if (card === "ordCreated" || card === "ordPrep")
       addOrder(portal ? "ordPrepPortal" : "ordPrepSankhya", o);
@@ -596,10 +566,16 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
       .map((i) => i.orderId),
   );
   for (const o of live) {
-    // Raias (pedido de compra, etapa Preparação): o que ainda falta e já está liberado.
-    if (isPortalOrder(o) && o.status === "PREPARATION") {
+    // Raias (pedido de compra, marcos da Preparação): o que ainda falta e
+    // já está liberado (fase 5g: pelo marco e pela chave dos itens).
+    const now = milestoneNow(o);
+    if (
+      isPortalOrder(o) &&
+      !!now &&
+      MILESTONE_CARD_STAGE[now] === "PREPARATION"
+    ) {
       const mine = (laneReqsBy.get(o.id) ?? []).filter(
-        (r) => stageKeyById.get(r.stageId) === "PREPARATION",
+        (r) => legacyGroupOfItem(r, o) === "PREPARATION",
       );
       const open = mine.filter(
         (r) => r.status !== "done" && blockedBy(r.key, mine).length === 0,
@@ -617,9 +593,7 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     }
     const track = trackOf.get(o.id) ?? null;
     const current = milestoneNow(o);
-    const preShipping = current
-      ? BEFORE_SHIPPING_MILESTONES.has(current)
-      : BEFORE_SHIPPING.includes(o.status as StageKey);
+    const preShipping = !!current && BEFORE_SHIPPING_MILESTONES.has(current);
     if (preShipping && track?.productionStartAt) {
       addOrder("parProduction", o);
       const last = [...(track.followups ?? [])].sort(
@@ -647,7 +621,7 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     if (informed(step(o, "numerario")) && !informed(step(o, "numerario_paid")))
       addOrder("parNumerario", o);
     if (
-      (current ? current === "customs" : o.status === "CUSTOMS") &&
+      current === "customs" &&
       ALERT_CHANNELS.includes(step(o, "channel")?.value ?? "")
     )
       addOrder("parChannel", o);
@@ -796,7 +770,6 @@ export async function loadTowerBoard(options: {
   const [
     orders,
     items,
-    activeStages,
     [
       penalties,
       rejected,
@@ -810,7 +783,6 @@ export async function loadTowerBoard(options: {
   ] = await Promise.all([
     store.list("orders", { orderBy: "number", direction: "desc" }),
     store.list("order_items"),
-    store.list("stages", { filter: { status: ["active", "blocked"] } }),
     sideP,
   ]);
   // Parceiros e produtos: só os que aparecem nos quadrados (antes: as
@@ -838,7 +810,7 @@ export async function loadTowerBoard(options: {
   const liveIds = new Set(ids);
   const none = <T>() => Promise.resolve([] as T[]);
   const [
-    stages,
+    flowItems,
     requirements,
     laneRequirements,
     steps,
@@ -850,9 +822,24 @@ export async function loadTowerBoard(options: {
     finance,
     milestoneRows,
   ] = await Promise.all([
+    // Quem age agora (fase 5g): os itens de todos os pedidos em andamento,
+    // só as colunas da regra.
     ids.length
-      ? store.list("stages", { filter: { orderId: ids } })
-      : none<Stage>(),
+      ? (await import("@/lib/db/lookup")).listColumns(
+          store,
+          "requirements",
+          [
+            "orderId",
+            "key",
+            "step",
+            "milestoneKey",
+            "required",
+            "status",
+            "role",
+          ],
+          { filter: { orderId: ids } },
+        )
+      : none<Requirement>(),
     ids.length
       ? store.list("requirements", {
           filter: { orderId: ids, key: BOARD_REQUIREMENT_KEYS },
@@ -893,6 +880,18 @@ export async function loadTowerBoard(options: {
   const rowsByOrder = new Map<string, OrderMilestone[]>();
   for (const r of milestoneRows)
     rowsByOrder.set(r.orderId, [...(rowsByOrder.get(r.orderId) ?? []), r]);
+  const itemsByOrder = new Map<string, Requirement[]>();
+  for (const r of flowItems as Requirement[])
+    itemsByOrder.set(r.orderId, [...(itemsByOrder.get(r.orderId) ?? []), r]);
+  const responsible = new Map(
+    live.map((o) => [
+      o.id,
+      responsibleOfItems(
+        storedMilestone(o.milestoneKey) ?? milestoneOfStatus(o.status),
+        itemsByOrder.get(o.id) ?? [],
+      ),
+    ]),
+  );
   const money = new Map(
     (finance?.rows ?? []).map((r) => [
       r.order.id,
@@ -906,8 +905,7 @@ export async function loadTowerBoard(options: {
     parties,
     items,
     products,
-    activeStages,
-    stages,
+    responsible,
     requirements,
     laneRequirements,
     lots,
@@ -1036,8 +1034,7 @@ export async function boardFromSummaries(
       : Promise.resolve([]),
   ]);
   for (const p of others) parties.push({ id: p.id, name: p.name });
-  const { stages, requirements, laneRequirements } =
-    journeyRowsFromFacts(liveFacts);
+  const { requirements, laneRequirements } = journeyRowsFromFacts(liveFacts);
   // Dia do "agora" dado (não o relógio): os indicadores calculam em instantes escolhidos.
   const today = brazilDay(now) as string;
   const moneyRows = facts.map((f) => ({ ...f.money, order: f.order }));
@@ -1051,8 +1048,7 @@ export async function boardFromSummaries(
       .filter((f) => f.product !== null)
       .map((f) => ({ orderId: f.order.id, name: f.product as string })),
     products,
-    activeStages: activeStagesFromFacts(facts),
-    stages,
+    responsible: new Map(facts.map((f) => [f.order.id, f.resp ?? null])),
     requirements,
     laneRequirements,
     lots,

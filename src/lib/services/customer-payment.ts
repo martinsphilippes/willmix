@@ -147,18 +147,20 @@ export async function savePaymentPlan(
   return saved;
 }
 
-/** Datas dos eventos do pedido (embarque e entrega pelas etapas; Presença de Carga pelo passo). */
+/** Datas dos eventos do pedido (embarque e entrega pelos itens e marcos; Presença de Carga pelo passo). */
 export async function paymentEventDates(
   order: Order,
   plan: OrderPaymentPlan | null,
 ): Promise<PaymentEventDates> {
   const store = getStore();
-  const [stages, requirements, steps] = await Promise.all([
-    store.list("stages", { filter: { orderId: order.id } }),
+  const [milestones, requirements, steps] = await Promise.all([
+    store
+      .list("order_milestones", { filter: { orderId: order.id } })
+      .catch(() => []),
     store.list("requirements", { filter: { orderId: order.id } }),
     store.list("import_steps", { filter: { orderId: order.id } }),
   ]);
-  const base = paymentEventsFor(order, stages, requirements);
+  const base = paymentEventsFor(order, requirements, milestones);
   const cargo = steps.find(
     (s) => s.key === "cargo_presence" && s.status !== "rejected",
   );

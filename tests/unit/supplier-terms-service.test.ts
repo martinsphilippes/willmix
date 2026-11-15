@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { groupItems, groupOf } from "./helpers/groups";
 import { withTempStore } from "./setup";
 
 /*
@@ -245,15 +246,11 @@ describe("contas a pagar, pendências e aviso diário", () => {
   });
 
   it("pedido parado na etapa antiga não vira pendência de etapa", async () => {
-    const store = getStore();
     const order = await newOrder(supplierA, "fornecedor-a");
-    const [created] = await store.list("stages", {
-      filter: { orderId: order.id, key: "ORDER_CREATED" },
-    });
-    for (const req of await store.list("requirements", {
-      filter: { stageId: created.id, status: "pending" },
-    }))
-      if ((await store.get("stages", created.id))?.status === "active")
+    for (const req of (await groupItems(order.id, "ORDER_CREATED")).filter(
+      (r) => r.status === "pending",
+    ))
+      if ((await groupOf(order.id, "ORDER_CREATED")).status === "active")
         await submitRequirement(admin, req.id, { value: "1", signature: true });
     const tasks = await pendingTasksFor(admin);
     expect(
@@ -270,13 +267,10 @@ describe("pedidos antigos e correções da revisão", () => {
     const store = getStore();
     const order = await newOrder(supplierA, "fornecedor-a");
     for (const key of ["ORDER_CREATED", "PREPARATION"]) {
-      const [stage] = await store.list("stages", {
-        filter: { orderId: order.id, key: key as never },
-      });
-      for (const req of await store.list("requirements", {
-        filter: { stageId: stage.id, status: "pending" },
-      }))
-        if ((await store.get("stages", stage.id))?.status === "active")
+      for (const req of (await groupItems(order.id, key)).filter(
+        (r) => r.status === "pending",
+      ))
+        if ((await groupOf(order.id, key)).status === "active")
           await submitRequirement(admin, req.id, {
             value: "1",
             signature: true,
@@ -289,13 +283,12 @@ describe("pedidos antigos e correções da revisão", () => {
   async function paidInOldFlow(order: Order) {
     const store = getStore();
     await store.update("orders", order.id, { supplierPaymentTerms: null });
-    const [pay] = await store.list("stages", {
-      filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
-    });
     for (const key of ["payment_registered", "payment_received"])
       await store.create("requirements", {
         orderId: order.id,
-        stageId: pay.id,
+        stageId: null,
+        step: "finance/finance",
+        milestoneKey: "down-payment",
         key,
         label: key,
         type: "confirm",
@@ -389,48 +382,6 @@ describe("pedidos antigos e correções da revisão", () => {
     ).toBe(false);
   });
 
-  it("liberar a etapa: chamadas ao mesmo tempo liberam uma vez; parada concluída ou bloqueada também segue", async () => {
-    const store = getStore();
-    const order = await inPackaging();
-    const stages = await store.list("stages", {
-      filter: { orderId: order.id },
-    });
-    const pay = stages.find((s) => s.key === "SUPPLIER_PAYMENT")!;
-    const pack = stages.find((s) => s.key === "PACKAGING")!;
-    const reset = async (status: "active" | "blocked" | "done") => {
-      await store.update("stages", pack.id, {
-        status: "pending",
-        startedAt: null,
-      });
-      await store.update("stages", pay.id, { status });
-      await store.update("orders", order.id, {
-        status: "SUPPLIER_PAYMENT",
-        currentStageId: pay.id,
-      });
-    };
-
-    await reset("active");
-    const [a, b] = await Promise.all([
-      terms.releaseOffFlowStages(order.id),
-      terms.releaseOffFlowStages(order.id),
-    ]);
-    // A segunda chamada espera a mesma passada (mesmo resultado, uma liberação só).
-    expect([a, b]).toEqual([1, 1]);
-    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
-    const logs = await store.list("audit_log", {
-      filter: { entity: "stage", entityId: pay.id, action: "stage.off_flow" },
-    });
-    expect(logs).toHaveLength(1);
-
-    await reset("done");
-    expect(await terms.releaseOffFlowStages(order.id)).toBe(1);
-    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
-
-    await reset("blocked");
-    expect(await terms.releaseOffFlowStages(order.id)).toBe(1);
-    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
-  });
-
   it("a condição é salva na ordem em que vence", async () => {
     const saved = await terms.saveSupplierPaymentTerms(admin, "fornecedor-b", {
       terms: [
@@ -451,13 +402,10 @@ describe("segunda revisão: pedidos antigos, liberação e lembrete", () => {
     const store = getStore();
     const order = await newOrder(supplierA, "fornecedor-a");
     for (const key of ["ORDER_CREATED", "PREPARATION"]) {
-      const [stage] = await store.list("stages", {
-        filter: { orderId: order.id, key: key as never },
-      });
-      for (const req of await store.list("requirements", {
-        filter: { stageId: stage.id, status: "pending" },
-      }))
-        if ((await store.get("stages", stage.id))?.status === "active")
+      for (const req of (await groupItems(order.id, key)).filter(
+        (r) => r.status === "pending",
+      ))
+        if ((await groupOf(order.id, key)).status === "active")
           await submitRequirement(admin, req.id, {
             value: "1",
             signature: true,
@@ -468,12 +416,11 @@ describe("segunda revisão: pedidos antigos, liberação e lembrete", () => {
 
   async function oldItem(order: Order, key: string) {
     const store = getStore();
-    const [pay] = await store.list("stages", {
-      filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
-    });
     await store.create("requirements", {
       orderId: order.id,
-      stageId: pay.id,
+      stageId: null,
+      step: "finance/finance",
+      milestoneKey: "down-payment",
       key,
       label: key,
       type: "confirm",
@@ -541,55 +488,6 @@ describe("segunda revisão: pedidos antigos, liberação e lembrete", () => {
     ).toBe(true);
   });
 
-  it("passada geral e a do pedido ao mesmo tempo liberam uma vez; a geral acha pedido parado com a etapa concluída", async () => {
-    const store = getStore();
-    const order = await inPackaging();
-    const stages = await store.list("stages", {
-      filter: { orderId: order.id },
-    });
-    const pay = stages.find((s) => s.key === "SUPPLIER_PAYMENT")!;
-    const pack = stages.find((s) => s.key === "PACKAGING")!;
-    const reset = async (status: "active" | "done") => {
-      await store.update("stages", pack.id, {
-        status: "pending",
-        startedAt: null,
-      });
-      await store.update("stages", pay.id, { status });
-      await store.update("orders", order.id, {
-        status: "SUPPLIER_PAYMENT",
-        currentStageId: pay.id,
-      });
-    };
-    const offFlowAudits = async () =>
-      (
-        await store.list("audit_log", {
-          filter: {
-            entity: "stage",
-            entityId: pay.id,
-            action: "stage.off_flow",
-          },
-        })
-      ).length;
-
-    await reset("active");
-    const before = await offFlowAudits();
-    await Promise.all([
-      terms.releaseOffFlowStages(undefined, { force: true }),
-      terms.releaseOffFlowStages(order.id),
-    ]);
-    expect(await offFlowAudits()).toBe(before + 1);
-    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
-
-    await reset("done");
-    // Job diário (force): passa mesmo logo depois de uma passada vazia.
-    expect(
-      await terms.releaseOffFlowStages(undefined, { force: true }),
-    ).toBeGreaterThanOrEqual(1);
-    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
-    // Próxima etapa já começou: nada a refazer.
-    expect(await terms.releaseOffFlowStages(order.id)).toBe(0);
-  });
-
   it("lembra o fornecedor de confirmar pagamento feito há mais de 3 dias", async () => {
     const store = getStore();
     const order = await inPackaging();
@@ -618,13 +516,10 @@ describe("revisão final: condição fixa depois do pagamento, legado por pagame
     const store = getStore();
     const order = await newOrder(user, partyId);
     for (const key of ["ORDER_CREATED", "PREPARATION"]) {
-      const [stage] = await store.list("stages", {
-        filter: { orderId: order.id, key: key as never },
-      });
-      for (const req of await store.list("requirements", {
-        filter: { stageId: stage.id, status: "pending" },
-      }))
-        if ((await store.get("stages", stage.id))?.status === "active")
+      for (const req of (await groupItems(order.id, key)).filter(
+        (r) => r.status === "pending",
+      ))
+        if ((await groupOf(order.id, key)).status === "active")
           await submitRequirement(admin, req.id, {
             value: "1",
             signature: true,
@@ -686,14 +581,13 @@ describe("revisão final: condição fixa depois do pagamento, legado por pagame
     const store = getStore();
     // Fornecedor C: ainda sem lembrete neste arquivo de teste.
     const order = await inPackagingWith(supplierC, "fornecedor-c");
-    const [pay] = await store.list("stages", {
-      filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
-    });
     // Fluxo antigo: sinal confirmado pela etapa há 10 dias.
     const old = new Date(Date.now() - 10 * 86_400_000).toISOString();
     await store.create("requirements", {
       orderId: order.id,
-      stageId: pay.id,
+      stageId: null,
+      step: "finance/finance",
+      milestoneKey: "down-payment",
       key: "payment_received",
       label: "payment_received",
       type: "confirm",

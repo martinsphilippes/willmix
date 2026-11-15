@@ -13,12 +13,7 @@ import {
 } from "@/lib/db";
 import { WELLMIX_ROLES, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { ForbiddenError } from "@/lib/auth/permissions";
-import { isOffFlowStage } from "@/lib/workflow/stages";
-import {
-  MILESTONE_KEYS,
-  MILESTONE_STAGES,
-  type MilestoneKey,
-} from "@/lib/milestones";
+import { MILESTONE_KEYS, type MilestoneKey } from "@/lib/milestones";
 import { isOrderOpen } from "@/lib/order-status";
 import {
   milestonePendingKey,
@@ -570,13 +565,14 @@ type DoneStage = Pick<
 >;
 
 /**
- * Marco fora do fluxo (só etapas fora do fluxo por trás, ex.: o pagamento ao
- * fornecedor, que tem Contas a pagar): não conta prazo, como a etapa antes.
+ * Marco fora do fluxo (o Sinal, que só tinha por trás a etapa antiga do
+ * pagamento ao fornecedor, cobrado em Contas a pagar): não conta prazo, como
+ * a etapa antes (fase 5g: a regra fica no marco).
  */
-export function isOffFlowMilestone(key: string): boolean {
-  const stages = MILESTONE_STAGES[key as MilestoneKey] ?? [];
-  return stages.length > 0 && stages.every((s) => isOffFlowStage(s));
-}
+const OFF_FLOW_MILESTONES: readonly string[] = ["down-payment"];
+
+export const isOffFlowMilestone = (key: string): boolean =>
+  OFF_FLOW_MILESTONES.includes(key);
 
 interface SlaDone {
   version: number;

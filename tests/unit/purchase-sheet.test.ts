@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { groupItems, groupOf } from "./helpers/groups";
 import sharp from "sharp";
 import { withTempStore } from "./setup";
 
@@ -65,19 +66,15 @@ async function orderInPreparation() {
     downPaymentAmount: 300,
   });
   await store.update("orders", order.id, { brokerId: "despachante" });
-  const [created] = await store.list("stages", {
-    filter: { orderId: order.id, key: "ORDER_CREATED" },
-  });
-  for (const req of await store.list("requirements", {
-    filter: { stageId: created.id, status: "pending" },
-  })) {
-    const stage = await store.get("stages", created.id);
-    if (stage?.status !== "active") break;
+  // Fase 5g: os grupos de itens no lugar das etapas (helpers/groups.ts).
+  for (const req of (await groupItems(order.id, "ORDER_CREATED")).filter(
+    (r) => r.status === "pending",
+  )) {
+    const stage = await groupOf(order.id, "ORDER_CREATED");
+    if (stage.status !== "active") break;
     await submitRequirement(admin, req.id, { value: "OK-1" });
   }
-  const [prep] = await store.list("stages", {
-    filter: { orderId: order.id, key: "PREPARATION" },
-  });
+  const prep = await groupOf(order.id, "PREPARATION");
   // As assinaturas do documento do pedido vêm depois (etapa da arte).
   expect(prep.status).toBe("active");
   return { order: (await store.get("orders", order.id))!, prep };
@@ -88,8 +85,12 @@ const validatePrep = async (user: User, stageId: string) => {
   for (const key of ["sheet_validated", "product_registered"])
     await submitRequirement(user, (await req(stageId, key)).id, {});
 };
-const req = async (stageId: string, key: string) =>
-  (await getStore().list("requirements", { filter: { stageId, key } }))[0];
+const req = async (groupId: string, key: string) =>
+  (
+    await getStore().list("requirements", {
+      filter: { orderId: groupId.split("|")[0], key },
+    })
+  )[0];
 
 beforeAll(async () => {
   const { users } = await seedDemo();
@@ -257,9 +258,7 @@ describe("ficha no pedido", () => {
     expect(await scheduleTask(admin)).toBeUndefined();
     // Preparação tem só a ficha de compra.
     expect(
-      (
-        await getStore().list("requirements", { filter: { stageId: prep.id } })
-      ).map((x) => x.key),
+      (await groupItems(order.id, "PREPARATION")).map((x) => x.key),
     ).toEqual([
       // A assinatura do fornecedor saiu daqui: vem depois da arte e do selo.
       "purchase_sheet",
@@ -312,9 +311,9 @@ describe("ficha no pedido", () => {
     expect(sheetReq.status).toBe("done");
     expect(sheetReq.value).toContain("7200 pcs");
     // Ficha completa não basta: a Wellmix valida ficha e cadastro.
-    expect((await getStore().get("stages", prep.id))!.status).toBe("active");
+    expect((await groupOf(order.id, "PREPARATION")).status).toBe("active");
     await validatePrep(admin, prep.id);
-    expect((await getStore().get("stages", prep.id))!.status).toBe("done");
+    expect((await groupOf(order.id, "PREPARATION")).status).toBe("done");
     // Excluir a foto antiga não mexe no que já está concluído.
     await removeSheetPhoto(admin, order.id, legacy.id);
     expect((await getSheetPhotos(order.id)).map((p) => p.kind)).not.toContain(
@@ -449,7 +448,7 @@ describe("ficha completa com a Preparação parada", () => {
       lots: [{ departureIntervalDays: 30, masterCartons: 100 }],
     } as never);
     await validatePrep(admin, prep.id);
-    expect((await getStore().get("stages", prep.id))!.status).toBe("done");
+    expect((await groupOf(order.id, "PREPARATION")).status).toBe("done");
   });
 });
 

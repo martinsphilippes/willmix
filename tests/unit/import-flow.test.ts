@@ -94,6 +94,12 @@ beforeAll(async () => {
     comexId: comex.partyId,
     logisticsId: logistics.partyId,
   });
+  // Fase 5g: as pendências do embarque leem os marcos; sem marcos gravados
+  // (o pedido montado à mão no embarque), a regra cai na situação.
+  for (const row of await getStore().list("order_milestones", {
+    filter: { orderId: order.id },
+  }))
+    await getStore().remove("order_milestones", row.id);
 });
 
 describe("embarque e desembaraço", () => {

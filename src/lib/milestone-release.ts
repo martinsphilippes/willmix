@@ -1,42 +1,39 @@
-import type { Order, Requirement, Stage } from "@/lib/db/schema";
+import type { Order, Requirement } from "@/lib/db/schema";
 import {
   MILESTONE_KEYS,
   MILESTONES,
+  isOffFlowItem,
   milestoneOfRequirement,
+  milestoneOfStoredItem,
   milestoneRank,
   type MilestoneKey,
   type MilestoneState,
   type MilestoneView,
+  type StoredItem,
 } from "@/lib/milestones";
 import { isOrderOpen } from "@/lib/order-status";
 import { isRoundsParent } from "@/lib/purchase-rounds";
-import { canCompleteLater, isOffFlowStage } from "@/lib/workflow/stages";
+import { canCompleteLater } from "@/lib/workflow/templates";
 
 /*
  * Fase 5d (docs/MILESTONES.md): o motor libera os itens pelos marcos. Um
  * item pode ser enviado ou decidido quando o marco dele não está
  * "aguardando" (as dependências do mapa, `MILESTONES[].deps`, concluídas
- * pelas obrigatórias). Não depende mais da etapa estar em andamento: a
- * etapa continua gravada só para compatibilidade (até a fase 5f).
+ * pelas obrigatórias). Fase 5g: sem etapas; o item anda pelo marco gravado.
  *
  * Regra pura: as telas, as Pendências e o servidor usam a mesma.
  */
 
-/** O que a liberação lê: a situação de cada marco e as etapas do pedido. */
+/** O que a liberação lê: a situação de cada marco (fase 5g: sem etapas). */
 export interface MilestoneRelease {
   states: ReadonlyMap<MilestoneKey, MilestoneState>;
-  stages: ReadonlyMap<string, Pick<Stage, "id" | "key" | "status">>;
 }
 
-/** Monta a liberação a partir dos marcos calculados e das etapas. */
+/** Monta a liberação a partir dos marcos calculados. */
 export function releaseOf(
   views: readonly Pick<MilestoneView, "key" | "state">[],
-  stages: readonly Pick<Stage, "id" | "key" | "status">[],
 ): MilestoneRelease {
-  return {
-    states: new Map(views.map((v) => [v.key, v.state])),
-    stages: new Map(stages.map((s) => [s.id, s])),
-  };
+  return { states: new Map(views.map((v) => [v.key, v.state])) };
 }
 
 /**
@@ -47,27 +44,31 @@ export function releaseOf(
 export const ROUNDS_PARENT_MILESTONES: readonly MilestoneKey[] =
   MILESTONE_KEYS.slice(0, 4);
 
-const isMilestone = (key: string | null | undefined): key is MilestoneKey =>
-  !!key && (MILESTONE_KEYS as readonly string[]).includes(key);
-
-/** Marco do item: o gravado (fase 5b); sem ele, pela etapa e a chave. */
+/**
+ * Marco do item: o gravado (fase 5b); sem ele, pelo passo gravado ou pela
+ * chave (fase 5g). A etapa antiga só entra se quem chama a tiver (a
+ * conferência da migração).
+ */
 export function milestoneOfItem(
-  r: Pick<Requirement, "key"> & { milestoneKey?: string | null },
-  stage: { key: string },
+  r: StoredItem,
+  legacyStage?: { key: string } | null,
 ): MilestoneKey | null {
-  return isMilestone(r.milestoneKey)
-    ? r.milestoneKey
-    : milestoneOfRequirement(stage.key, r.key);
+  return (
+    milestoneOfStoredItem(r) ??
+    (legacyStage ? milestoneOfRequirement(legacyStage.key, r.key) : null)
+  );
 }
 
 /**
  * O item está liberado (pode ser enviado, trocado ou decidido agora)?
  *
- * - pedido encerrado ou cancelado, etapa cancelada: não;
- * - dado do Embarque que ainda dá para completar depois (`canCompleteLater`):
- *   sim, como antes;
- * - etapa fora do fluxo (pagamento ao fornecedor): só com a etapa aberta,
- *   como antes (não é tarefa dos marcos);
+ * - pedido encerrado ou cancelado: não (a etapa cancelada era a do pedido
+ *   cancelado);
+ * - item do pagamento antigo ao fornecedor (fora do fluxo,
+ *   `isOffFlowItem`): não (a etapa dele concluía na hora; o pagamento vive
+ *   em Contas a pagar);
+ * - dado do Embarque que ainda dá para completar depois (`canCompleteLater`,
+ *   com o marco Embarque concluído): sim, como antes;
  * - pedido pai da programação de compra: só os marcos 1 a 4;
  * - o resto: o marco do item em andamento ou concluído (não "aguardando");
  *   o obrigatório já feito só enquanto nenhum marco que depende do dele
@@ -75,20 +76,19 @@ export function milestoneOfItem(
  */
 export function requirementReleased(
   order: Pick<Order, "status" | "purchaseRounds">,
-  requirement: Pick<Requirement, "key" | "required" | "stageId"> & {
+  requirement: Pick<Requirement, "key" | "required"> & {
+    step?: string | null;
     milestoneKey?: string | null;
     status?: Requirement["status"];
   },
   release: MilestoneRelease,
 ): boolean {
-  const stage = release.stages.get(requirement.stageId);
-  if (!stage || stage.status === "cancelled") return false;
   if (!isOrderOpen(order.status)) return false;
-  if (canCompleteLater(stage, requirement, order)) return true;
-  if (isOffFlowStage(stage.key))
-    return stage.status === "active" || stage.status === "blocked";
-  const key = milestoneOfItem(requirement, stage);
-  if (!key) return stage.status === "active" || stage.status === "blocked";
+  if (isOffFlowItem(requirement)) return false;
+  if (canCompleteLater(requirement, release.states.get("shipment"), order))
+    return true;
+  const key = milestoneOfItem(requirement);
+  if (!key) return false;
   if (
     isRoundsParent(order) &&
     milestoneRank(key) >= ROUNDS_PARENT_MILESTONES.length

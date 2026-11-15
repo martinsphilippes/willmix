@@ -1,6 +1,5 @@
 import "server-only";
 
-import { isRoundsParent } from "@/lib/purchase-rounds";
 import { can } from "@/lib/auth/function-access";
 
 import {
@@ -8,30 +7,25 @@ import {
   type Order,
   type Requirement,
   type Role,
-  type Stage,
-  type StageKey,
   type User,
 } from "@/lib/db";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { audit } from "@/lib/services/audit";
 import { notify, notifyWellmix } from "@/lib/services/notifications";
-import { STAGE_KEYS } from "@/lib/db/schema";
 import { requirementLabel } from "@/i18n";
 import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
 import {
   ROLE_PARTY_FIELD,
   STAGE_TEMPLATES,
   artRole,
-  isOffFlowStage,
   isOrderSignatureKey,
   ORDER_SIGN_SEND,
   ORDER_SIGNED_WELLMIX,
-  nextStageKey,
   isPurchaseFlow,
   purchaseWithoutArt,
   SHIPPED_KEY,
-} from "./stages";
+} from "./templates";
 import {
   compareInspection,
   isInspectionMeasureKey,
@@ -39,7 +33,7 @@ import {
 import { openReview, resolveReviews } from "@/lib/services/reviews";
 
 import { isMoneyRequirement, parseMoneyValue } from "./money";
-import { requirementFlowFields } from "@/lib/milestones";
+import { requirementFlowFields, stepOfItem } from "@/lib/milestones";
 import {
   INSPECTION_BLOCK_MILESTONE,
   milestoneBlockOf,
@@ -69,26 +63,31 @@ export class WorkflowError extends Error {}
  * Datas que precisam vir em ordem: a previsão de chegada não pode ser antes
  * da data de embarque, nem a previsão de entrega antes da chegada. Vale nos
  * dois sentidos (mudar o embarque para depois da chegada também é recusado).
- * Na mesma etapa, a primeira data vem antes (`first`): a chegada só é aceita
- * com o embarque informado, para sempre ser conferida com ele.
+ * No mesmo passo, a primeira data vem antes (`first`): a chegada só é aceita
+ * com o embarque informado, para sempre ser conferida com ele. Fase 5g: o
+ * item é identificado pelo passo do menu e pela chave (`eta` existe no
+ * Embarque e no Transporte).
  */
+export const SHIPMENT_STEP = "production/shipment";
+export const TRANSPORT_STEP = "delivery/logistics";
+
 const DATE_ORDER: Array<{
-  before: { stage: string; key: string };
-  after: { stage: string; key: string };
+  before: { step: string; key: string };
+  after: { step: string; key: string };
   /** Código do erro quando "after" < "before", e quando "before" > "after". */
   errors: [string, string];
   /** "after" só depois de "before" informado (código do erro e do aviso). */
   first?: string;
 }> = [
   {
-    before: { stage: "SHIPPING", key: "ship_date" },
-    after: { stage: "SHIPPING", key: "eta" },
+    before: { step: SHIPMENT_STEP, key: "ship_date" },
+    after: { step: SHIPMENT_STEP, key: "eta" },
     errors: ["eta_before_ship_date", "ship_date_after_eta"],
     first: "ship_date_first",
   },
   {
-    before: { stage: "SHIPPING", key: "eta" },
-    after: { stage: "TRANSPORT", key: "eta" },
+    before: { step: SHIPMENT_STEP, key: "eta" },
+    after: { step: TRANSPORT_STEP, key: "eta" },
     errors: ["delivery_before_eta", "eta_after_delivery"],
   },
 ];
@@ -103,16 +102,16 @@ export interface DateBounds {
   maxError?: string;
 }
 
-/** Limites (min/max) de um requisito de data a partir dos outros já informados. */
+/** Limites (min/max) de um item de data (passo e chave) pelos outros já informados. */
 export function dateBoundsFor(
-  stageKey: string,
+  step: string,
   requirementKey: string,
-  valueOf: (stageKey: string, key: string) => string | null | undefined,
+  valueOf: (step: string, key: string) => string | null | undefined,
 ): DateBounds {
   const out: DateBounds = {};
   for (const rule of DATE_ORDER) {
-    if (rule.after.stage === stageKey && rule.after.key === requirementKey) {
-      const v = valueOf(rule.before.stage, rule.before.key);
+    if (rule.after.step === step && rule.after.key === requirementKey) {
+      const v = valueOf(rule.before.step, rule.before.key);
       if (v && ISO_DAY.test(v)) {
         out.min = v.slice(0, 10);
         out.minError = rule.errors[0];
@@ -120,13 +119,13 @@ export function dateBoundsFor(
     }
     // Com a regra `first`, a chegada só existe antes do embarque em pedidos de
     // antes da regra: aí o embarque real vale e a chegada volta a ser pedida
-    // (sem limite máximo, para não travar a etapa).
+    // (sem limite máximo, para não travar o passo).
     if (
       !rule.first &&
-      rule.before.stage === stageKey &&
+      rule.before.step === step &&
       rule.before.key === requirementKey
     ) {
-      const v = valueOf(rule.after.stage, rule.after.key);
+      const v = valueOf(rule.after.step, rule.after.key);
       if (v && ISO_DAY.test(v)) {
         out.max = v.slice(0, 10);
         out.maxError = rule.errors[1];
@@ -137,19 +136,19 @@ export function dateBoundsFor(
 }
 
 /**
- * Data da mesma etapa que precisa ser informada antes desta (ex.: a previsão
+ * Data do mesmo passo que precisa ser informada antes desta (ex.: a previsão
  * de chegada espera a data de embarque): a chave dela e o código do aviso.
  */
 export function datePrerequisite(
-  stageKey: string,
+  step: string,
   requirementKey: string,
 ): { key: string; code: string } | null {
   const rule = DATE_ORDER.find(
     (r) =>
       r.first &&
-      r.after.stage === stageKey &&
+      r.after.step === step &&
       r.after.key === requirementKey &&
-      r.before.stage === stageKey,
+      r.before.step === step,
   );
   return rule?.first ? { key: rule.before.key, code: rule.first } : null;
 }
@@ -157,54 +156,39 @@ export function datePrerequisite(
 /**
  * Confere a ordem das datas. Devolve as datas que voltam a ser pedidas: a
  * chegada enviada antes do embarque (pedido de antes da regra) quando o
- * embarque real vem depois dela — em vez de recusar o embarque e travar a etapa.
+ * embarque real vem depois dela — em vez de recusar o embarque e travar o passo.
  */
 async function assertDateOrder(
   orderId: string,
-  stageKey: string,
+  step: string,
   requirementKey: string,
   value: string,
 ): Promise<Requirement[]> {
   if (!ISO_DAY.test(value) || Number.isNaN(Date.parse(value)))
     throw new WorkflowError("date_invalid");
-  const store = getStore();
-  const [stages, reqs] = await Promise.all([
-    store.list("stages", { filter: { orderId } }),
-    store.list("requirements", { filter: { orderId } }),
-  ]);
-  const stageKeyOf = new Map(stages.map((s) => [s.id, s.key as string]));
-  const valueOf = (sk: string, key: string) =>
-    reqs.find(
-      (r) =>
-        r.key === key &&
-        r.status === "done" &&
-        stageKeyOf.get(r.stageId) === sk,
-    )?.value ?? null;
-  const exists = (sk: string, key: string) =>
-    reqs.some((r) => r.key === key && stageKeyOf.get(r.stageId) === sk);
+  const reqs = await getStore().list("requirements", { filter: { orderId } });
+  const at = (st: string, key: string) =>
+    reqs.filter((r) => r.key === key && stepOfItem(r) === st);
+  const valueOf = (st: string, key: string) =>
+    at(st, key).find((r) => r.status === "done")?.value ?? null;
+  const exists = (st: string, key: string) => at(st, key).length > 0;
   const day = value.slice(0, 10);
   const reopen: Requirement[] = [];
   for (const rule of DATE_ORDER) {
-    if (rule.after.stage === stageKey && rule.after.key === requirementKey) {
-      const before = valueOf(rule.before.stage, rule.before.key);
+    if (rule.after.step === step && rule.after.key === requirementKey) {
+      const before = valueOf(rule.before.step, rule.before.key);
       // Sem a primeira data (que existe neste pedido), não há com o que conferir.
-      if (!before && rule.first && exists(rule.before.stage, rule.before.key))
+      if (!before && rule.first && exists(rule.before.step, rule.before.key))
         throw new WorkflowError(rule.first);
       if (before && day < before.slice(0, 10))
         throw new WorkflowError(rule.errors[0]);
     }
-    if (rule.before.stage === stageKey && rule.before.key === requirementKey) {
-      const after = valueOf(rule.after.stage, rule.after.key);
+    if (rule.before.step === step && rule.before.key === requirementKey) {
+      const after = valueOf(rule.after.step, rule.after.key);
       if (after && day > after.slice(0, 10)) {
-        const self = reqs.find(
-          (r) =>
-            r.key === requirementKey && stageKeyOf.get(r.stageId) === stageKey,
-        );
-        const afterReq = reqs.find(
-          (r) =>
-            r.key === rule.after.key &&
-            r.status === "done" &&
-            stageKeyOf.get(r.stageId) === rule.after.stage,
+        const [self] = at(step, requirementKey);
+        const afterReq = at(rule.after.step, rule.after.key).find(
+          (r) => r.status === "done",
         );
         if (rule.first && self && self.status !== "done" && afterReq) {
           reopen.push(afterReq);
@@ -218,20 +202,22 @@ async function assertDateOrder(
 }
 
 /* ------------------------------------------------------------------------ */
-/* Criação das etapas de um pedido                                           */
+/* Criação dos itens de um pedido                                            */
 /* ------------------------------------------------------------------------ */
 
 /**
- * Cria as etapas e os itens do pedido. Pode ser chamada de novo no mesmo
- * pedido: o que já existe (etapa pela chave, item pela chave dentro da etapa)
- * é mantido e só o que falta é criado. Assim uma criação interrompida no
- * meio (tempo esgotado) é retomada sem duplicar nada.
+ * Cria os itens do pedido, cada um com o passo e o marco dele (fase 5g: sem
+ * etapas; `stageId` fica nulo). Pode ser chamada de novo no mesmo pedido: o
+ * item que já existe (mesmo passo e mesma chave) é mantido e só o que falta
+ * é criado. Assim uma criação interrompida no meio (tempo esgotado) é
+ * retomada sem duplicar nada. Os marcos que já nascem liberados avisam quem
+ * faz os itens deles (`syncMilestones`), que grava também `orders.status`.
  */
-export async function createStagesForOrder(
+export async function createOrderRequirements(
   order: Order,
   /**
-   * Roda depois de criar etapas e itens e antes de a 1ª etapa andar (a rodada
-   * de uma programação de compra copia ali os itens já feitos no pai).
+   * Roda depois de criar os itens e antes de os marcos andarem (a rodada de
+   * uma programação de compra copia ali os itens já feitos no pai).
    */
   beforeStart?: () => Promise<void>,
   /**
@@ -242,10 +228,9 @@ export async function createStagesForOrder(
 ) {
   const store = getStore();
   const settings = await getSettings();
-  const [existingStages, existingRequirements] = await Promise.all([
-    store.list("stages", { filter: { orderId: order.id } }),
-    store.list("requirements", { filter: { orderId: order.id } }),
-  ]);
+  const existingRequirements = await store.list("requirements", {
+    filter: { orderId: order.id },
+  });
   const line = order.lineId
     ? await store.get("product_lines", order.lineId)
     : null;
@@ -269,39 +254,26 @@ export async function createStagesForOrder(
     items,
     withoutArt,
   };
-
-  let firstStageId: string | null = null;
-  for (const [index, template] of STAGE_TEMPLATES.entries()) {
-    const isFirst = index === 0;
-    const partyId = template.partyField ? order[template.partyField] : null;
-    const templates = template.requirements(ctx);
-    const stage =
-      existingStages.find((s) => s.key === template.key) ??
-      (await store.create("stages", {
-        orderId: order.id,
-        key: template.key,
-        sequence: index,
-        status: isFirst ? "active" : "pending",
-        responsibleRole: templates[0]?.role ?? template.responsibleRole,
-        responsiblePartyId: partyId ?? null,
-        dueAt: isFirst ? dueDate(settings.stageDueDays[template.key]) : null,
-        startedAt: isFirst ? new Date().toISOString() : null,
-        completedAt: null,
-        percent: 0,
-        reminderSentAt: null,
-        blockReason: null,
-      }));
-    if (isFirst) firstStageId = stage.id;
-    const have = new Set(
-      existingRequirements
-        .filter((r) => r.stageId === stage.id)
-        .map((r) => r.key),
-    );
-    for (const req of templates) {
-      if (have.has(req.key)) continue;
+  const fresh = !existingRequirements.length;
+  // Identidade do item: passo + chave. O checklist de uma linha pode repetir
+  // uma chave de outro passo (ex.: a foto na balança): conta quantos o pedido
+  // já tem de cada um e cria só os que faltam.
+  const have = new Map<string, number>();
+  for (const r of existingRequirements) {
+    const id = `${stepOfItem(r) ?? ""}|${r.key}`;
+    have.set(id, (have.get(id) ?? 0) + 1);
+  }
+  const seen = new Map<string, number>();
+  for (const template of STAGE_TEMPLATES) {
+    for (const req of template.requirements(ctx)) {
+      const fields = requirementFlowFields(template.key, req.key);
+      const id = `${fields.step ?? ""}|${req.key}`;
+      const n = (seen.get(id) ?? 0) + 1;
+      seen.set(id, n);
+      if (n <= (have.get(id) ?? 0)) continue;
       await store.create("requirements", {
         orderId: order.id,
-        stageId: stage.id,
+        stageId: null,
         key: req.key,
         label: req.label,
         type: req.type,
@@ -314,21 +286,18 @@ export async function createStagesForOrder(
         submittedByUserId: null,
         submittedAt: null,
         note: null,
-        // Fase 5b (docs/MILESTONES.md): passo e marco do item, em sombra.
-        ...requirementFlowFields(template.key, req.key),
+        ...fields,
       });
     }
   }
-  await store.update("orders", order.id, {
-    currentStageId: firstStageId,
-    status: "ORDER_CREATED",
-  });
+  if (fresh)
+    await store.update("orders", order.id, {
+      currentStageId: null,
+      status: "ORDER_CREATED",
+    });
   queueMilestoneSync(order.id);
-  if (beforeStart && !existingStages.length) await beforeStart();
-  // Pedido de compra: "Pedido criado" não tem itens e conclui na hora; as
-  // raias abrem em seguida.
-  if (isPurchaseFlow(order) && firstStageId && !existingStages.length) {
-    await evaluateStage(null, firstStageId);
+  if (beforeStart && fresh) await beforeStart();
+  if (isPurchaseFlow(order) && fresh) {
     // O que o sistema já sabe fica feito na hora (NCM validado, ficha
     // completa, certificação válida pelo período); o resto vira aviso.
     const { refreshPurchaseGates } =
@@ -341,7 +310,6 @@ export async function createStagesForOrder(
   // Fase 5d: os marcos que já nascem liberados (pedido novo, certificação,
   // material de arte...) avisam quem faz os itens deles.
   await syncMilestones(order.id, { shadow: options.shadow });
-  return firstStageId;
 }
 
 /**
@@ -489,9 +457,10 @@ export async function submitRequirement(
   const store = getStore();
   const requirement = await store.get("requirements", requirementId);
   if (!requirement) throw new WorkflowError("requirement_not_found");
-  const stage = await store.get("stages", requirement.stageId);
   const order = await store.get("orders", requirement.orderId);
-  if (!stage || !order) throw new WorkflowError("order_not_found");
+  if (!order) throw new WorkflowError("order_not_found");
+  // Fase 5g: o item é identificado pelo passo e pela chave.
+  const step = stepOfItem(requirement) ?? "";
   // Pedido pausado (canal cinza ou vermelho): só depois de o admin retomar.
   if (order.pausedAt) throw new WorkflowError("order_paused");
   if (!canSubmitRequirement(user, order, requirement))
@@ -516,7 +485,7 @@ export async function submitRequirement(
   // arte final só com a arte validada e o certificado).
   if (isPurchaseFlow(order) && prerequisitesOf(requirement.key).length) {
     const siblings = await store.list("requirements", {
-      filter: { stageId: stage.id },
+      filter: { orderId: order.id },
     });
     if (blockedBy(requirement.key, siblings).length)
       throw new WorkflowError("lane_prerequisite");
@@ -532,7 +501,7 @@ export async function submitRequirement(
   // já aplicado nela (decisão do dono). A recusa diz o que falta.
   if (requirement.key === ORDER_SIGN_SEND) {
     const { signSendBlockers } = await import("@/lib/services/order-signature");
-    const [missing] = await signSendBlockers(order.id, stage.id);
+    const [missing] = await signSendBlockers(order.id);
     if (missing) throw new WorkflowError(`sign_send_${missing}_required`);
   }
   // Fase 5d: liberado pelo marco (dependências do mapa concluídas), não
@@ -562,7 +531,7 @@ export async function submitRequirement(
     requirement.type === "date"
       ? await assertDateOrder(
           order.id,
-          stage.key,
+          step,
           requirement.key,
           String(input.value),
         )
@@ -582,7 +551,7 @@ export async function submitRequirement(
     "requirement.submit",
     "requirement",
     requirement.id,
-    `${stage.key}: ${withoutPlaceholder(requirement.label)}`,
+    `${step}: ${withoutPlaceholder(requirement.label)}`,
     before,
     {
       status: "done",
@@ -602,7 +571,7 @@ export async function submitRequirement(
       "requirement.reopen",
       "requirement",
       r.id,
-      `${stage.key}: ${withoutPlaceholder(r.label)} antes de ${withoutPlaceholder(requirement.label)}`,
+      `${step}: ${withoutPlaceholder(r.label)} antes de ${withoutPlaceholder(requirement.label)}`,
       { status: r.status, value: r.value },
       { status: "pending", value: null },
     );
@@ -625,11 +594,7 @@ export async function submitRequirement(
     });
   }
   // Regra específica: número do ERP informado manualmente.
-  if (
-    stage.key === "ORDER_CREATED" &&
-    requirement.key === "erp_number" &&
-    input.value
-  ) {
+  if (requirement.key === "erp_number" && input.value) {
     await store.update("orders", order.id, {
       erpNumber: input.value,
       erpSyncStatus: "manual",
@@ -637,20 +602,19 @@ export async function submitRequirement(
   }
 
   // Regra específica: inspeção compara peso medido com peso declarado na preparação.
-  if (stage.key === "INSPECTION" && requirement.key === "weight_measured") {
-    await checkWeightDivergence(user, order, stage, Number(input.value));
+  if (requirement.key === "weight_measured") {
+    await checkWeightDivergence(user, order, Number(input.value));
   }
   // Inspeção cega: compara o que foi encontrado com o snapshot da compra (quando existe).
-  if (stage.key === "INSPECTION" && isInspectionMeasureKey(requirement.key)) {
-    const fresh = await store.get("stages", stage.id);
-    await compareInspection(user, order, fresh ?? stage);
+  if (isInspectionMeasureKey(requirement.key)) {
+    await compareInspection(user, order);
   }
 
   // Pedido de compra: a arte reenviada volta para a validação da Wellmix.
   if (isPurchaseFlow(order) && baseKeyOf(requirement.key) === "art") {
     const reviewKey = requirement.key.replace(/^art__/, "art_review__");
     const [review] = await store.list("requirements", {
-      filter: { stageId: stage.id, key: reviewKey },
+      filter: { orderId: order.id, key: reviewKey },
       limit: 1,
     });
     if (review && review.status !== "pending")
@@ -662,7 +626,7 @@ export async function submitRequirement(
   // Aprovação de requisito pai (ex.: arte): quando o arquivo é reenviado, a aprovação volta a pendente.
   if (requirement.key === "art") {
     const approvals = await store.list("requirements", {
-      filter: { stageId: stage.id, key: "art_approval" },
+      filter: { orderId: order.id, key: "art_approval" },
     });
     for (const approval of approvals) {
       if (approval.status !== "pending") {
@@ -688,48 +652,14 @@ export async function submitRequirement(
       );
   }
 
-  // Regra específica: o fornecedor confirmar o recebimento é a prova do
-  // pagamento. O registro da Wellmix (comprovante, câmbio) não trava a etapa:
-  // conclui junto, marcado como concluído pela confirmação do fornecedor.
-  if (
-    stage.key === "SUPPLIER_PAYMENT" &&
-    requirement.key === "payment_received"
-  ) {
-    const pending = await store.list("requirements", {
-      filter: {
-        stageId: stage.id,
-        key: "payment_registered",
-        status: "pending",
-      },
-    });
-    for (const sibling of pending) {
-      await store.update("requirements", sibling.id, {
-        status: "done",
-        value: "supplier_confirmed",
-        note: "Concluído pela confirmação de recebimento do fornecedor",
-        submittedByUserId: user.id,
-        submittedAt: new Date().toISOString(),
-      });
-      await audit(
-        user,
-        "requirement.submit",
-        "requirement",
-        sibling.id,
-        `${stage.key}: ${withoutPlaceholder(sibling.label)} (confirmação do fornecedor)`,
-        { status: "pending" },
-        { status: "done", value: "supplier_confirmed" },
-      );
-    }
-  }
-
-  await evaluateStage(user, stage.id);
+  // Fase 5g: os marcos andam (e o pedido encerra pelo último marco).
   await syncMilestones(order.id, { user });
   return updated;
 }
 
 /**
  * Exclui a foto/arquivo enviado num requisito para mandar outro: o requisito
- * volta a pendente (a etapa recalcula o percentual). Só com a etapa aberta e
+ * volta a pendente (os marcos recalculam). Só com o marco do item liberado e
  * por quem pode enviar.
  */
 export async function clearRequirementDocument(
@@ -739,11 +669,8 @@ export async function clearRequirementDocument(
   const store = getStore();
   const requirement = await store.get("requirements", requirementId);
   if (!requirement) throw new WorkflowError("requirement_not_found");
-  const [stage, order] = await Promise.all([
-    store.get("stages", requirement.stageId),
-    store.get("orders", requirement.orderId),
-  ]);
-  if (!stage || !order) throw new WorkflowError("order_not_found");
+  const order = await store.get("orders", requirement.orderId);
+  if (!order) throw new WorkflowError("order_not_found");
   // Pedido pausado (canal cinza ou vermelho): só depois de o admin retomar.
   if (order.pausedAt) throw new WorkflowError("order_paused");
   if (!canSubmitRequirement(user, order, requirement))
@@ -774,7 +701,7 @@ export async function clearRequirementDocument(
   // Arte excluída: a aprovação do fornecedor volta a pendente (como no reenvio).
   if (requirement.key === "art") {
     const approvals = await store.list("requirements", {
-      filter: { stageId: stage.id, key: "art_approval" },
+      filter: { orderId: order.id, key: "art_approval" },
     });
     for (const approval of approvals)
       if (approval.status !== "pending")
@@ -789,9 +716,8 @@ export async function clearRequirementDocument(
     "requirement.clear",
     "requirement",
     requirement.id,
-    `${stage.key}: ${withoutPlaceholder(requirement.label)} (arquivo excluído)`,
+    `${stepOfItem(requirement) ?? ""}: ${withoutPlaceholder(requirement.label)} (arquivo excluído)`,
   );
-  await evaluateStage(user, stage.id);
   await syncMilestones(order.id, { user });
 }
 
@@ -806,9 +732,9 @@ export async function decideRequirement(
   const requirement = await store.get("requirements", requirementId);
   if (!requirement) throw new WorkflowError("requirement_not_found");
   if (requirement.type !== "approval") throw new WorkflowError("not_approval");
-  const stage = await store.get("stages", requirement.stageId);
   const order = await store.get("orders", requirement.orderId);
-  if (!stage || !order) throw new WorkflowError("order_not_found");
+  if (!order) throw new WorkflowError("order_not_found");
+  const step = stepOfItem(requirement) ?? "";
   // Pedido pausado (canal cinza ou vermelho): só depois de o admin retomar.
   if (order.pausedAt) throw new WorkflowError("order_paused");
   if (!canSubmitRequirement(user, order, requirement))
@@ -830,7 +756,7 @@ export async function decideRequirement(
       : approvalSourceOf(requirement.key);
   const [source] = sourceKey
     ? await store.list("requirements", {
-        filter: { stageId: stage.id, key: sourceKey },
+        filter: { orderId: order.id, key: sourceKey },
         limit: 1,
       })
     : [];
@@ -846,16 +772,9 @@ export async function decideRequirement(
       submittedByUserId: user.id,
       submittedAt: now,
     });
-    // A aprovação destrava o marco do item (fase 5e: a trava é do marco;
-    // a etapa só acompanha, como registro).
-    const milestone = storedMilestone(milestoneOfItem(requirement, stage));
+    // A aprovação destrava o marco do item (fase 5e: a trava é do marco).
+    const milestone = storedMilestone(milestoneOfItem(requirement));
     if (milestone) await setMilestoneBlock(order.id, milestone, null);
-    if (stage.status === "blocked") {
-      await store.update("stages", stage.id, {
-        status: "active",
-        blockReason: null,
-      });
-    }
     if (requirement.key === "inspection_review") {
       await resolveReviews(user, "order", order.id, {
         rulePrefix: "inspection.",
@@ -867,7 +786,7 @@ export async function decideRequirement(
       "requirement.approve",
       "requirement",
       requirement.id,
-      `${stage.key}: ${withoutPlaceholder(requirement.label)}`,
+      `${step}: ${withoutPlaceholder(requirement.label)}`,
     );
     if (isPurchaseFlow(order)) {
       const { afterLaneStep } = await import("@/lib/services/purchase-order");
@@ -883,7 +802,7 @@ export async function decideRequirement(
     });
     // Inspeção reprovada: as medidas voltam para o fornecedor medir de novo.
     if (requirement.key === "inspection_review")
-      await reopenInspectionMeasures(user, stage, note ?? null);
+      await reopenInspectionMeasures(user, order.id, note ?? null);
     // O requisito que originou a aprovação volta para quem o refaz: a arte,
     // para quem faz a arte hoje (a agência do pedido ou, sem ela, a Wellmix).
     const redoRoleNow: Role | null =
@@ -903,7 +822,7 @@ export async function decideRequirement(
       "requirement.reject",
       "requirement",
       requirement.id,
-      `${stage.key}: ${withoutPlaceholder(requirement.label)}`,
+      `${step}: ${withoutPlaceholder(requirement.label)}`,
     );
     // Avisa quem refaz (arte: agência ou Wellmix); sem origem, o fornecedor
     // (como antes). Parceiro sem empresa no pedido: avisa a Wellmix, nunca
@@ -928,24 +847,23 @@ export async function decideRequirement(
       },
     );
   }
-  await evaluateStage(user, stage.id);
   await syncMilestones(order.id, { user });
 }
 
 /**
  * Reprovação da revisão da inspeção = pedido de nova medição: as medidas e a
  * foto na balança já enviadas voltam a "reprovado" (com formulário para o
- * fornecedor) e a etapa fica em andamento. Os valores antigos ficam no item e
+ * fornecedor) e o marco da Inspeção destrava. Os valores antigos ficam no item e
  * na auditoria; a comparação usa só o que for reenviado.
  */
 async function reopenInspectionMeasures(
   user: User,
-  stage: Stage,
+  orderId: string,
   note: string | null,
 ) {
   const store = getStore();
   const requirements = await store.list("requirements", {
-    filter: { stageId: stage.id },
+    filter: { orderId },
   });
   const reopenNote = note
     ? `Nova medição solicitada pela Wellmix: ${note}`
@@ -958,17 +876,12 @@ async function reopenInspectionMeasures(
       note: reopenNote,
     });
   }
-  await setMilestoneBlock(stage.orderId, INSPECTION_BLOCK_MILESTONE, null);
-  if (stage.status === "blocked")
-    await store.update("stages", stage.id, {
-      status: "active",
-      blockReason: null,
-    });
+  await setMilestoneBlock(orderId, INSPECTION_BLOCK_MILESTONE, null);
   await audit(
     user,
     "inspection.remeasure_requested",
     "order",
-    stage.orderId,
+    orderId,
     reopenNote,
   );
 }
@@ -989,15 +902,10 @@ async function otherInspectionReviewsOpen(orderId: string) {
 async function checkWeightDivergence(
   user: User,
   order: Order,
-  stage: Stage,
   measured: number,
 ) {
   const store = getStore();
   const settings = await getSettings();
-  const stages = await store.list("stages", {
-    filter: { orderId: order.id, key: "PREPARATION" },
-  });
-  if (!stages[0]) return;
   // Com ficha de compra, o peso entra na comparação comprado × inspecionado
   // (compareInspection). Esta regra fica para pedidos antigos, que usam o item
   // "Peso (kg)" da Preparação.
@@ -1006,29 +914,26 @@ async function checkWeightDivergence(
     limit: 1,
   });
   if (sheet?.netWeightPcKg) return;
+  // O peso declarado na ficha antiga (item "Peso (kg)" do pedido).
   const [declared] = await store.list("requirements", {
-    filter: { stageId: stages[0].id, key: "weight" },
+    filter: { orderId: order.id, key: "weight" },
   });
   const declaredWeight = declared?.value ? Number(declared.value) : null;
   if (!declaredWeight || declaredWeight <= 0) return;
   const divergence = Math.abs(measured - declaredWeight) / declaredWeight;
   const tolerance = settings.weightTolerancePercent / 100;
   const [review] = await store.list("requirements", {
-    filter: { stageId: stage.id, key: "inspection_review" },
+    filter: { orderId: order.id, key: "inspection_review" },
   });
 
   if (divergence > tolerance) {
     const reason = `Peso divergente: declarado ${declaredWeight} kg, medido ${measured} kg (${(divergence * 100).toFixed(1)}% > ${settings.weightTolerancePercent}%). REVISÃO NECESSÁRIA.`;
-    // Fase 5e: a trava é do marco da Inspeção (a etapa só acompanha).
+    // Fase 5e: a trava é do marco da Inspeção.
     await setMilestoneBlock(order.id, INSPECTION_BLOCK_MILESTONE, reason);
-    await store.update("stages", stage.id, {
-      status: "blocked",
-      blockReason: reason,
-    });
     if (!review) {
       await store.create("requirements", {
         orderId: order.id,
-        stageId: stage.id,
+        stageId: null,
         key: "inspection_review",
         label: "Revisão da divergência de peso (Wellmix)",
         type: "approval",
@@ -1040,7 +945,7 @@ async function checkWeightDivergence(
         submittedByUserId: null,
         submittedAt: null,
         note: reason,
-        ...requirementFlowFields(stage.key, "inspection_review"),
+        ...requirementFlowFields("INSPECTION", "inspection_review"),
       });
     } else if (review.status !== "pending") {
       await store.update("requirements", review.id, {
@@ -1085,10 +990,6 @@ async function checkWeightDivergence(
       note: "Dentro da tolerância após nova medição.",
     });
     await setMilestoneBlock(order.id, INSPECTION_BLOCK_MILESTONE, null);
-    await store.update("stages", stage.id, {
-      status: "active",
-      blockReason: null,
-    });
     await resolveReviews(user, "order", order.id, {
       rulePrefix: "inspection.weightDeclared",
       note: "Dentro da tolerância após nova medição.",
@@ -1096,145 +997,9 @@ async function checkWeightDivergence(
   }
 }
 
-/* ------------------------------------------------------------------------ */
-/* Avaliação e avanço                                                        */
-/* ------------------------------------------------------------------------ */
-
-/** Recalcula percentual e responsável; conclui a etapa e ativa a próxima quando tudo obrigatório está feito. */
-export async function evaluateStage(user: User | null, stageId: string) {
-  const store = getStore();
-  const stage = await store.get("stages", stageId);
-  queueMilestoneSync(stage?.orderId);
-  if (
-    !stage ||
-    stage.status === "done" ||
-    stage.status === "pending" ||
-    stage.status === "cancelled"
-  )
-    return;
-  const requirements = await store.list("requirements", {
-    filter: { stageId },
-  });
-  // Etapa fora do fluxo (pagamento ao fornecedor): nada nela segura o pedido,
-  // nem os itens que os pedidos antigos ainda têm.
-  const required = isOffFlowStage(stage.key)
-    ? []
-    : requirements.filter((r) => r.required);
-  const done = required.filter((r) => r.status === "done").length;
-  const percent =
-    required.length === 0 ? 100 : Math.round((done / required.length) * 100);
-  const nextPending = required.find((r) => r.status !== "done");
-  const responsibleRole: Role = nextPending?.role ?? stage.responsibleRole;
-
-  if (stage.status === "blocked") {
-    await store.update("stages", stageId, { percent, responsibleRole });
-    return;
-  }
-  if (nextPending) {
-    await store.update("stages", stageId, { percent, responsibleRole });
-    return;
-  }
-  await completeStage(user, stage);
-}
-
-async function completeStage(user: User | null, stage: Stage) {
-  const store = getStore();
-  queueMilestoneSync(stage.orderId);
-  const now = new Date().toISOString();
-  await store.update("stages", stage.id, {
-    status: "done",
-    percent: 100,
-    completedAt: now,
-    blockReason: null,
-  });
-  await audit(
-    user,
-    "stage.complete",
-    "stage",
-    stage.id,
-    `${stage.key} concluída`,
-  );
-  // Fase 5d: sem evento `stage:*` (as regras andam pelos marcos) e sem
-  // efeitos: o pós-venda (Entrega e recebimento concluída) e as rodadas do
-  // pedido pai (marcos 1 a 4 prontos) saem de `syncMilestones`.
-
-  const order = await store.get("orders", stage.orderId);
-  // Pedido cancelado não avança.
-  if (!order || order.status === "CANCELLED") return;
-  // Pedido pai de uma programação de compra (docs/PURCHASE_SCHEDULE.md): o
-  // registro das etapas para depois da Preparação (contrato e produção são
-  // de cada rodada).
-  if (stage.key === "PREPARATION" && isRoundsParent(order)) return;
-  const next = nextStageKey(stage.key);
-  if (!next) {
-    await store.update("orders", order.id, {
-      status: "CLOSED",
-      closedAt: now,
-      currentStageId: null,
-    });
-    return;
-  }
-  await activateStage(user, order, next);
-}
-
-async function activateStage(user: User | null, order: Order, key: StageKey) {
-  const store = getStore();
-  queueMilestoneSync(order.id);
-  const settings = await getSettings();
-  const [stage] = await store.list("stages", {
-    filter: { orderId: order.id, key },
-  });
-  if (!stage) return;
-  const now = new Date().toISOString();
-  const requirements = await store.list("requirements", {
-    filter: { stageId: stage.id },
-  });
-  const required = isOffFlowStage(key)
-    ? []
-    : requirements.filter((r) => r.required);
-  // Obrigatórios já concluídos antes de a etapa abrir (ex.: arte enviada no
-  // briefing de embalagem da RFQ): o responsável e o aviso são do próximo
-  // pendente, e o percentual já conta o que está feito.
-  const pendingRequired = required.filter((r) => r.status !== "done");
-  const percent =
-    required.length === 0
-      ? 0
-      : Math.round(
-          ((required.length - pendingRequired.length) / required.length) * 100,
-        );
-
-  await store.update("stages", stage.id, {
-    status: "active",
-    startedAt: now,
-    dueAt: dueDate(settings.stageDueDays[key]),
-    responsibleRole:
-      pendingRequired[0]?.role ?? required[0]?.role ?? stage.responsibleRole,
-    ...(percent > 0 ? { percent } : {}),
-  });
-  await store.update("orders", order.id, {
-    status: key,
-    currentStageId: stage.id,
-  });
-  await audit(user, "stage.activate", "stage", stage.id, `${key} iniciada`);
-  // Fase 5d: sem evento `stage:*` e sem aviso aqui. Quem faz os itens é
-  // avisado quando o marco deles libera (`syncMilestones`: raias do pedido
-  // de compra, ficha de compra na Preparação e o aviso de cada papel).
-
-  if (required.length === 0) {
-    // Etapa sem requisitos (CLOSED) ou fora do fluxo conclui na hora.
-    const fresh = await store.get("stages", stage.id);
-    if (fresh) await completeStage(user, fresh);
-    return;
-  }
-  if (pendingRequired.length === 0) {
-    // Tudo já estava feito: conclui e segue (mesma regra de evaluateStage).
-    await evaluateStage(user, stage.id);
-  }
-}
-
 /**
  * Wellmix destrava o marco após uma revisão (ex.: inspeção; fase 5e: a trava
- * é do marco). As etapas travadas do pedido voltam a andar no registro.
+ * é do marco).
  */
 export async function unblockMilestone(
   user: User,
@@ -1261,24 +1026,7 @@ export async function unblockMilestone(
     orderId,
     `Marco ${milestone} desbloqueado`,
   );
-  // Registro das etapas (até a fase 5f): a etapa travada volta a andar.
-  const stages = await store.list("stages", {
-    filter: { orderId, status: "blocked" },
-  });
-  for (const stage of stages) {
-    await store.update("stages", stage.id, {
-      status: "active",
-      blockReason: null,
-    });
-    await evaluateStage(user, stage.id);
-  }
   await syncMilestones(orderId, { user });
-}
-
-function dueDate(days: number | undefined) {
-  const d = new Date();
-  d.setDate(d.getDate() + (days ?? 7));
-  return d.toISOString();
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1287,7 +1035,6 @@ function dueDate(days: number | undefined) {
 
 export interface OrderProgress {
   order: Order;
-  stages: Stage[];
   requirements: Requirement[];
 }
 
@@ -1295,14 +1042,11 @@ export async function loadOrderProgress(
   orderId: string,
 ): Promise<OrderProgress | null> {
   const store = getStore();
-  // As três leituras dependem só do id: saem juntas (uma rodada de rede).
-  const [order, stages, requirements] = await Promise.all([
+  // As leituras dependem só do id: saem juntas (uma rodada de rede).
+  const [order, requirements] = await Promise.all([
     store.get("orders", orderId),
-    store.list("stages", { filter: { orderId }, orderBy: "sequence" }),
     store.list("requirements", { filter: { orderId } }),
   ]);
   if (!order) return null;
-  return { order, stages, requirements };
+  return { order, requirements };
 }
-
-export const STAGE_ORDER = STAGE_KEYS;

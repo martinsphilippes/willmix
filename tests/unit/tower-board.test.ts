@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { milestoneOfStatus } from "@/lib/milestones";
 import {
   BOARD_CARDS,
   buildTowerBoard,
@@ -40,7 +41,55 @@ const order = (status: string, extra: Partial<Order> = {}): Order =>
 const imported = (status: string, extra: Partial<Order> = {}) =>
   order(status, { flow: null, ...extra });
 
-function input(over: Partial<BoardInput> = {}): BoardInput {
+/** Item da etapa antiga como o teste o monta (`stageId` sintético). */
+type LegacyReq = { orderId: string; stageId?: string; key: string } & Record<
+  string,
+  unknown
+>;
+
+/*
+ * Fase 5g: o quadro não lê mais etapas. Os cenários continuam montados
+ * "por etapa" e viram o que o quadro lê agora: o prazo e a trava pela linha
+ * do marco da situação (`milestoneRows`) e cada item com o passo dele.
+ */
+const STEP_OF_STAGE: Record<string, string> = {
+  SHIPPING: "production/shipment",
+  TRANSPORT: "delivery/logistics",
+  INSPECTION: "production/inspection",
+};
+type LegacyInput = Partial<BoardInput> & {
+  activeStages?: Array<{
+    orderId: string;
+    key: string;
+    status: string;
+    dueAt: string | null;
+  }>;
+  stages?: Array<{ id: string; orderId: string; key: string }>;
+};
+
+function input(over: LegacyInput = {}): BoardInput {
+  const { activeStages = [], stages = [], ...rest } = over;
+  const keyOf = new Map(stages.map((x) => [x.id, x.key]));
+  const withStep = <R extends LegacyReq>(list: R[] | undefined) =>
+    (list ?? []).map(({ stageId, ...r }) => ({
+      ...r,
+      step:
+        (r.step as string | undefined) ??
+        STEP_OF_STAGE[keyOf.get(stageId ?? "") ?? ""] ??
+        null,
+    }));
+  const rows = new Map<
+    string,
+    { key: string; status: string; dueAt: string | null }[]
+  >();
+  for (const a of activeStages)
+    rows.set(a.orderId, [
+      {
+        key: milestoneOfStatus(a.key) ?? "new-order",
+        status: a.status,
+        dueAt: a.dueAt,
+      },
+    ]);
   return {
     now: NOW,
     finance: false,
@@ -51,10 +100,6 @@ function input(over: Partial<BoardInput> = {}): BoardInput {
     ],
     items: [],
     products: [],
-    activeStages: [],
-    stages: [],
-    requirements: [],
-    laneRequirements: [],
     lots: [],
     supplierRequests: [],
     steps: [],
@@ -70,7 +115,14 @@ function input(over: Partial<BoardInput> = {}): BoardInput {
     installments: [],
     money: new Map(),
     currency: "BRL",
-    ...over,
+    ...rest,
+    requirements: withStep(
+      rest.requirements as LegacyReq[] | undefined,
+    ) as never,
+    laneRequirements: withStep(
+      rest.laneRequirements as LegacyReq[] | undefined,
+    ) as never,
+    milestoneRows: (rest.milestoneRows ?? rows) as never,
   };
 }
 
@@ -92,8 +144,10 @@ function stage(
       status: opts.status ?? "active",
       dueAt: opts.dueAt ?? null,
       responsibleRole: "operator",
-    } as unknown as BoardInput["activeStages"][number],
-    stage: { id, orderId: o.id, key: o.status } as BoardInput["stages"][number],
+    } as unknown as NonNullable<LegacyInput["activeStages"]>[number],
+    stage: { id, orderId: o.id, key: o.status } as NonNullable<
+      LegacyInput["stages"]
+    >[number],
     reqs: Object.entries(opts.reqs ?? {}).map(([key, status]) => ({
       orderId: o.id,
       stageId: id,
@@ -174,13 +228,13 @@ describe("pedido: onde está agora", () => {
           seaStage,
           pastStage,
           presStage,
-        ] as BoardInput["stages"],
+        ] as LegacyInput["stages"],
         requirements: [
           ...s.flatMap((x) => x.reqs),
           seaEta,
           pastEta,
           presEta,
-        ] as BoardInput["requirements"],
+        ] as never,
         laneRequirements: [
           {
             orderId: o.contractS.id,
@@ -194,7 +248,7 @@ describe("pedido: onde está agora", () => {
             key: "order_signed_wellmix",
             status: "pending",
           },
-        ] as BoardInput["laneRequirements"],
+        ] as never,
         steps: [
           step(o.booked, "booking", "validated"),
           step(o.presence, "cargo_presence"),
@@ -334,7 +388,7 @@ describe("as três raias da Preparação, arte e certificação", () => {
           lane(c, sc, "art_review__i3", true),
           lane(c, sc, "certificate__i3", true),
           lane(c, sc, "art_final__i3"),
-        ] as BoardInput["laneRequirements"],
+        ] as never,
       }),
     );
     // A arte espera a faca e a foto em alta (o pedido A ainda não tem a faca);

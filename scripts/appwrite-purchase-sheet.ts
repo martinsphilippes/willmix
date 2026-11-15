@@ -26,7 +26,7 @@ const tables = new TablesDB(
 );
 const databaseId = "willmix";
 
-/** Mesmo conteúdo de DEFAULT_PREPARATION_REQUIREMENTS (src/lib/workflow/stages.ts). */
+/** Mesmo conteúdo de DEFAULT_PREPARATION_REQUIREMENTS (src/lib/workflow/templates.ts). */
 const NEW_DEFAULT = [
   {
     key: "purchase_sheet",

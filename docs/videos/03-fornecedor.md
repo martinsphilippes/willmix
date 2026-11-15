@@ -22,7 +22,7 @@ Todos os episódios acompanham a **Jarra de vidro 1,5 L (UTL-001)**. Na gravaç�
 
 ## O que foi lido para escrever esta série
 
-`docs/SCOPE.md`, `WORKFLOW.md`, `ACCESS.md`, `SUPPLIER_REQUESTS.md`, `QUOTE_FLOW.md`, `RFQ_STANDBY.md`, `ARQUITETURA.md` (etapa Die Cut e Pendências do fornecedor), `SUPERPLAN.md` (seção 11), `PURCHASE_FLOW.md`, `ORDER_SIGNATURE.md`, `PRODUCTION.md`, `IMPORT_FLOW.md`, `ARTWORK.md`; o código de `src/lib/services/tasks.ts`, `src/components/task-list.tsx`, `src/app/app/{tasks,quotes,supplier-requests,orders,account,notifications}`, `src/components/{die-cut-step-card,quote-flow-cards,import-flow-card,production-card,requirement-form}.tsx`, `src/lib/workflow/stages.ts` e os dicionários (pt, en, zh); e os E2E `happy-path.spec.ts` e `booking-supplier-request.spec.ts`. As telas principais foram abertas num build de produção em modo memória (capturas em zh).
+`docs/SCOPE.md`, `WORKFLOW.md`, `ACCESS.md`, `SUPPLIER_REQUESTS.md`, `QUOTE_FLOW.md`, `RFQ_STANDBY.md`, `ARQUITETURA.md` (etapa Die Cut e Pendências do fornecedor), `SUPERPLAN.md` (seção 11), `PURCHASE_FLOW.md`, `ORDER_SIGNATURE.md`, `PRODUCTION.md`, `IMPORT_FLOW.md`, `ARTWORK.md`; o código de `src/lib/services/tasks.ts`, `src/components/task-list.tsx`, `src/app/app/{tasks,quotes,supplier-requests,orders,account,notifications}`, `src/components/{die-cut-step-card,quote-flow-cards,import-flow-card,production-card,requirement-form}.tsx`, `src/lib/workflow/templates.ts` e os dicionários (pt, en, zh); e os E2E `happy-path.spec.ts` e `booking-supplier-request.spec.ts`. As telas principais foram abertas num build de produção em modo memória (capturas em zh).
 
 ## Estado do negócio que o roteiro respeita
 

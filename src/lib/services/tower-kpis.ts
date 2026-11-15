@@ -39,7 +39,6 @@ import type { MilestoneKey } from "@/lib/milestones";
 import { countByMilestone } from "@/lib/tower-milestones";
 import {
   SUMMARY_VERSION,
-  activeStagesFromFacts,
   installmentStatusOn,
   isLiveStatus,
   journeyRowsFromFacts,
@@ -74,9 +73,11 @@ import {
  * (fase 5c): os quadrados do bloco "Pedido" (e produção e canal) contam o
  * pedido pelo marco atual, não pela etapa. 4 (fase 5e): prazo vencido, em
  * risco e travado pelos marcos (o prazo mais próximo dos marcos em andamento
- * e o marco travado), não pela etapa em andamento.
+ * e o marco travado), não pela etapa em andamento. 5 (fase 5g, sem etapas):
+ * o responsável é o papel do próximo item obrigatório do marco atual, as
+ * raias contam pelos marcos da Preparação e os itens dos quadros pelo passo.
  */
-export const KPI_VERSION = 4;
+export const KPI_VERSION = 5;
 export const TOWER_KPI_KEY = "tower";
 /** Linhas mostradas na lista do quadrado escolhido (o total vem do indicador). */
 export const TOWER_LIST_LIMIT = 200;
@@ -177,11 +178,11 @@ export function nextChange(f: OrderFacts, now: Date): number | null {
     if (Number.isFinite(t) && t > at) candidates.push(t);
   };
   const live = isLiveStatus(f.order.status);
-  // Prazo dos marcos em andamento (fase 5e; sem marcos no resumo, o da
-  // etapa): vence (atrasado) e entra em risco RISK_DAYS antes.
-  const dues = f.m?.length
-    ? f.m.filter((x) => x.s === "active" && x.due).map((x) => x.due!)
-    : f.active.map((s) => s.dueAt).filter((d): d is string => !!d);
+  // Prazo dos marcos em andamento (fase 5e): vence (atrasado) e entra em
+  // risco RISK_DAYS antes.
+  const dues = (f.m ?? [])
+    .filter((x) => x.s === "active" && x.due)
+    .map((x) => x.due!);
   for (const d of dues) {
     const due = Date.parse(d);
     add(due);
@@ -246,8 +247,7 @@ export function buildOrderKpi(
   const o = f.order;
   const live = isLiveStatus(o.status);
   const liveFacts = live ? [f] : [];
-  const { stages, requirements, laneRequirements } =
-    journeyRowsFromFacts(liveFacts);
+  const { requirements, laneRequirements } = journeyRowsFromFacts(liveFacts);
   const today = brazilDay(now.toISOString()) as string;
   const board = buildTowerBoard({
     now,
@@ -257,8 +257,7 @@ export function buildOrderKpi(
       f.customer !== null ? [{ id: o.customerId, name: f.customer }] : [],
     items: f.product !== null ? [{ orderId: o.id, name: f.product }] : [],
     products: [],
-    activeStages: activeStagesFromFacts([f]),
-    stages,
+    responsible: new Map([[o.id, f.resp ?? null]]),
     requirements,
     laneRequirements,
     lots: [],
@@ -311,7 +310,7 @@ export function buildOrderKpi(
             ? f.supplier
             : null,
     productOf: () => f.product,
-    stageOf: () => f.active[0],
+    responsibleOf: () => f.resp ?? null,
     milestonesOf: () => f.m,
     requests: [],
     penalties: side.penalties,
@@ -500,7 +499,7 @@ export async function rebuildTowerKpis(
     orders: [],
     partyName: () => null,
     productOf: () => null,
-    stageOf: () => undefined,
+    responsibleOf: () => null,
     ...towerSide,
     penalties: [],
     reviews: [],

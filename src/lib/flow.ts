@@ -139,7 +139,8 @@ export interface FlowTaskLike {
   kind: string;
   stageKey?: StageKey | string | null;
   stepKey?: string | null;
-  items?: { key: string }[];
+  /** Fase 5g: o passo gravado no item (`requirements.step`) vem primeiro. */
+  items?: { key: string; step?: string | null }[];
 }
 
 type Ref = `${FlowBlock}/${string}`;
@@ -212,6 +213,16 @@ const REQUIREMENT_STEP: Record<string, Ref> = {
  */
 export const REQUIREMENT_STEP_KEYS: readonly string[] =
   Object.keys(REQUIREMENT_STEP);
+
+/**
+ * Passo de um item pela chave (sem o produto), quando a chave tem passo
+ * próprio; nulo nas chaves que dependiam da etapa (ex.: `eta`, medidas da
+ * inspeção). Fase 5g: o item novo já nasce com o passo gravado (`step`).
+ */
+export function requirementStepOfKey(key: string): string | null {
+  const ref = REQUIREMENT_STEP[baseKeyOf(key)];
+  return ref ?? null;
+}
 
 /** Etapa do pedido → passo, quando o item não diz (ex.: medidas da ficha). */
 const STAGE_STEP: Partial<Record<string, Ref>> = {
@@ -340,6 +351,7 @@ export function flowStepsOf(task: FlowTaskLike): FlowStep[] {
     const steps = new Map<string, FlowStep>();
     for (const item of task.items ?? []) {
       const step =
+        toStep(item.step as Ref | null | undefined) ??
         toStep(REQUIREMENT_STEP[baseKeyOf(item.key)]) ??
         toStep(STAGE_STEP[task.stageKey ?? ""]);
       if (step) steps.set(`${step.block}/${step.key}`, step);

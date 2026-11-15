@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { groupItems, groupOf } from "./helpers/groups";
 import { translator } from "@/i18n";
 import { withTempStore } from "./setup";
 
@@ -40,13 +41,10 @@ async function advanceTo(order: Order, until: string) {
   const store = getStore();
   for (const key of ["ORDER_CREATED", "PREPARATION", "PACKAGING"]) {
     if (key === until) break;
-    const [stage] = await store.list("stages", {
-      filter: { orderId: order.id, key: key as never },
-    });
-    for (const req of await store.list("requirements", {
-      filter: { stageId: stage.id, status: "pending" },
-    })) {
-      if ((await store.get("stages", stage.id))?.status !== "active") break;
+    for (const req of (await groupItems(order.id, key)).filter(
+      (r) => r.status === "pending",
+    )) {
+      if ((await groupOf(order.id, key)).status !== "active") break;
       await submitRequirement(admin, req.id, { value: "1", signature: true });
     }
   }
@@ -85,22 +83,17 @@ describe("cancelamento pelo administrador", () => {
     expect(cancelled?.cancelReason).toBe("customer_withdrew");
     expect(cancelled?.cancelledByUserId).toBe(admin.id);
 
-    const stages = await store.list("stages", {
-      filter: { orderId: order.id },
-    });
-    const byKey = Object.fromEntries(stages.map((s) => [s.key, s.status]));
-    expect(byKey.ORDER_CREATED).toBe("done");
-    expect(byKey.PREPARATION).toBe("done");
-    // Pagamento ao fornecedor fora do fluxo: concluiu sozinho antes.
-    expect(byKey.SUPPLIER_PAYMENT).toBe("done");
-    expect(byKey.PACKAGING).toBe("cancelled");
-    expect(byKey.SHIPPING).toBe("cancelled");
+    // Fase 5g: sem etapas; o que estava feito continua feito e os grupos
+    // abertos ficam cancelados (pelos marcos do pedido cancelado).
+    expect((await groupOf(order.id, "ORDER_CREATED")).status).toBe("done");
+    expect((await groupOf(order.id, "PREPARATION")).status).toBe("done");
+    expect((await groupOf(order.id, "PACKAGING")).status).toBe("cancelled");
+    expect((await groupOf(order.id, "SHIPPING")).status).toBe("cancelled");
 
-    // Nada avança: requisito da etapa cancelada é recusado.
-    const [payStage] = stages.filter((s) => s.key === "PACKAGING");
-    const [pending] = await store.list("requirements", {
-      filter: { stageId: payStage.id, status: "pending" },
-    });
+    // Nada avança: o item do pedido cancelado é recusado.
+    const [pending] = (await groupItems(order.id, "PACKAGING")).filter(
+      (r) => r.status === "pending",
+    );
     await expect(
       submitRequirement(admin, pending.id, { value: "1" }),
     ).rejects.toThrow("stage_not_active");

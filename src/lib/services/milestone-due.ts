@@ -2,9 +2,11 @@ import "server-only";
 
 import { getStore, type OrderMilestone, type Requirement } from "@/lib/db";
 import { listColumns } from "@/lib/db/lookup";
-import { milestoneOfRequirement, type MilestoneKey } from "@/lib/milestones";
-import { isOffFlowStage } from "@/lib/workflow/stages";
-import { storedMilestone } from "./order-milestones";
+import {
+  isOffFlowItem,
+  milestoneOfStoredItem,
+  type MilestoneKey,
+} from "@/lib/milestones";
 
 /*
  * Prazos pelos marcos gravados (fase 5c, docs/MILESTONES.md): lembretes e o
@@ -12,10 +14,9 @@ import { storedMilestone } from "./order-milestones";
  * `order_milestones` no lugar das etapas.
  *
  * As pendências de um marco são os itens pendentes (ou recusados) do pedido
- * com aquele marco (`requirements.milestoneKey`; sem ele, pela etapa e a
- * chave) que já podem ser feitos: o motor ainda libera os itens pelas etapas
- * até a fase 5d, então só conta o item de etapa em andamento ou bloqueada. O
- * pagamento ao fornecedor continua fora (Contas a pagar cobra o prazo dele).
+ * com aquele marco (`requirements.milestoneKey`; sem ele, pelo passo) que já
+ * podem ser feitos (o marco em andamento os libera, fase 5d). O pagamento
+ * antigo ao fornecedor continua fora (Contas a pagar cobra o prazo dele).
  */
 
 export type MilestoneRow = Pick<
@@ -48,25 +49,14 @@ export async function pendingByMilestone(
   const out = new Map<string, Requirement[]>();
   const ids = [...new Set(orderIds)];
   if (!ids.length) return out;
-  const store = getStore();
-  const [requirements, stages] = await Promise.all([
-    store.list("requirements", {
-      filter: { orderId: ids, status: ["pending", "rejected"] },
-    }),
-    listColumns(store, "stages", ["key", "status"], {
-      filter: { orderId: ids },
-    }),
-  ]);
-  const stageById = new Map(stages.map((s) => [s.id, s]));
+  const requirements = await getStore().list("requirements", {
+    filter: { orderId: ids, status: ["pending", "rejected"] },
+  });
   for (const r of requirements) {
-    // Fase 5d: o marco em andamento (a linha aberta) libera os itens dele
-    // em qualquer etapa; só a etapa cancelada e a fora do fluxo ficam de fora.
-    const stage = stageById.get(r.stageId);
-    if (!stage || stage.status === "cancelled") continue;
-    if (isOffFlowStage(stage.key)) continue;
-    const key: MilestoneKey | null =
-      storedMilestone(r.milestoneKey) ??
-      milestoneOfRequirement(stage.key, r.key);
+    // Fase 5d: o marco em andamento (a linha aberta) libera os itens dele;
+    // fase 5g: sem etapas, só o pagamento antigo (fora do fluxo) fica fora.
+    if (isOffFlowItem(r)) continue;
+    const key: MilestoneKey | null = milestoneOfStoredItem(r);
     if (!key) continue;
     const k = milestonePendingKey(r.orderId, key);
     const list = out.get(k);

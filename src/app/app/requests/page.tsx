@@ -190,14 +190,11 @@ export default async function RequestsPage({
   const orderById = indexBy(orders, "id");
   const orderNumber = (id: string | null) =>
     id ? (orderById.get(id)?.number ?? null) : null;
-  /* Wellmix: foto do produto e a etapa atual do pedido, numa rodada só. */
+  /* Wellmix: foto do produto e quem age no pedido, numa rodada só. */
   const productIds = [
     ...new Set(requests.map((r) => r.productId).filter(Boolean)),
   ] as string[];
-  const stageIds = orders
-    .map((o) => o.currentStageId)
-    .filter(Boolean) as string[];
-  const [products, photos, stages] = wellmix
+  const [products, photos, nextInfo] = wellmix
     ? await Promise.all([
         productIds.length
           ? store.list("products", { filter: { id: productIds } })
@@ -207,27 +204,25 @@ export default async function RequestsPage({
               filter: { productId: productIds },
             })
           : Promise.resolve([]),
-        stageIds.length
-          ? store.list("stages", { filter: { id: stageIds } })
-          : Promise.resolve([]),
+        // Quem age e o prazo de cada pedido pelos marcos (fase 5g).
+        import("@/lib/services/request-export").then((m) =>
+          m.orderNextInfoOf(orders),
+        ),
       ])
-    : [[], [], []];
-  const stageById = indexBy(stages, "id");
+    : [[], [], new Map()];
   const productById = indexBy(products, "id");
   const teamById = indexBy(team, "id");
   const nextOf = (r: (typeof requests)[number]): NextStep => {
     const order = r.orderId ? orderById.get(r.orderId) : null;
-    const stage = order?.currentStageId
-      ? stageById.get(order.currentStageId)
-      : null;
+    const info = order ? nextInfo.get(order.id) : undefined;
     return requestNextStep({
       status: r.status,
       display: requestDisplayStatus(r, cancelled),
       order: order
         ? {
             status: order.status,
-            responsibleRole: stage?.responsibleRole ?? null,
-            dueAt: stage?.dueAt ?? null,
+            responsibleRole: info?.responsibleRole ?? null,
+            dueAt: info?.dueAt ?? null,
           }
         : null,
       today,

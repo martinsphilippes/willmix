@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { milestoneOfStatus, milestoneTitle } from "@/lib/milestones";
+import { milestoneTitle } from "@/lib/milestones";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import type { Stage } from "@/lib/db/schema";
 import { blockLabelKey, overviewHref } from "@/lib/flow";
 import {
   PROGRESS_BLOCKS,
   orderProgress,
+  type MilestoneProgressRow,
+  type MilestoneProgressView,
   type ProgressBlock,
   type StageProgressState,
 } from "@/lib/flow-progress";
@@ -28,7 +29,7 @@ import {
  * Linha do tempo do pedido entre os blocos (dono, 14/11/2026;
  * docs/FLOW_MENU.md): o pedido aberto pelo Overview de um bloco mostra a
  * viagem inteira (Pedido → Produção → Entrega), com o bloco de onde veio em
- * cor (as etapas, o atraso e a completude) e os outros em cinza, com o
+ * cor (os marcos, o atraso e a completude) e os outros em cinza, com o
  * percentual; em cima, a completude geral do pedido.
  */
 
@@ -44,21 +45,25 @@ const TONE: Record<
 
 export function OrderProgressCard({
   orderId,
-  stages,
+  milestones,
+  rows,
   focus: focusParam,
   t,
   locale,
   now = new Date(),
 }: {
   orderId: string;
-  stages: Stage[];
+  /** Os 16 marcos do pedido (fase 5g: no lugar das etapas). */
+  milestones: readonly MilestoneProgressView[];
+  /** Linhas gravadas dos marcos (prazo, início e conclusão). */
+  rows: readonly MilestoneProgressRow[];
   /** Bloco de onde o pedido foi aberto (?from=…); sem ele, o bloco atual. */
   focus: ProgressBlock | null;
   t: Translate;
   locale?: Parameters<typeof formatDate>[1];
   now?: Date;
 }) {
-  const progress = orderProgress(stages, now);
+  const progress = orderProgress(milestones, rows, now);
   const focus = focusParam ?? progress.current ?? "order";
   const mine = progress.blocks.find((b) => b.block === focus)!;
   return (
@@ -150,7 +155,7 @@ export function OrderProgressCard({
           })}
         </TextLink>
       </div>
-      {mine.stages.length ? (
+      {mine.milestones.length ? (
         <Table tools={false}>
           <thead>
             <tr>
@@ -163,24 +168,15 @@ export function OrderProgressCard({
             </tr>
           </thead>
           <tbody>
-            {mine.stages.map((s) => (
+            {mine.milestones.map((s) => (
               <tr
                 key={s.id}
                 className={rowClass}
                 data-order-progress-stage={s.key}
+                data-order-progress-milestone={s.key}
               >
                 <Td className="whitespace-nowrap font-medium text-zinc-900">
-                  {/* Marco da etapa (fase 4a); a etapa embaixo, porque duas etapas podem cair no mesmo marco. */}
-                  {milestoneOfStatus(s.key) ? (
-                    <>
-                      {milestoneTitle(t, milestoneOfStatus(s.key)!)}
-                      <span className="block text-xs font-normal text-zinc-500">
-                        {t(`stage.${s.key}` as DictionaryKey)}
-                      </span>
-                    </>
-                  ) : (
-                    t(`stage.${s.key}` as DictionaryKey)
-                  )}
+                  {milestoneTitle(t, s.key)}
                 </Td>
                 <Td>
                   <Badge tone={TONE[s.state]}>

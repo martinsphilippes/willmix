@@ -192,9 +192,6 @@ export async function loadOwnerPanel(now = new Date()) {
     (r) => r.status === "WAITING_DOWN_PAYMENT",
   ).length;
   const activeOrders = rows.filter((r) => !DONE_ORDER.includes(r.order.status));
-  const byStage = new Map<string, number>();
-  for (const r of activeOrders)
-    byStage.set(r.order.status, (byStage.get(r.order.status) ?? 0) + 1);
   // Pelo marco atual (docs/MILESTONES.md, fase 4a), na ordem dos 16 marcos.
   const milestoneCounts = new Map<MilestoneKey, number>();
   for (const r of activeOrders) {
@@ -278,7 +275,6 @@ export async function loadOwnerPanel(now = new Date()) {
       openRequests,
       waitingDown,
       activeOrders: activeOrders.length,
-      byStage,
       byMilestone,
     },
     topCustomers,

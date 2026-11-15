@@ -10,12 +10,9 @@ import {
   type Payment,
   type PaymentTermInstallment,
   type Requirement,
-  type Stage,
   type User,
 } from "@/lib/db";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
-import { evaluateStage } from "@/lib/workflow/engine";
-import { OFF_FLOW_STAGES, nextStageKey } from "@/lib/workflow/stages";
 import {
   INSTALLMENT_STATUS_ORDER,
   MAX_TERM_DAYS,
@@ -27,6 +24,7 @@ import {
   paymentEventsFor,
   sortTerms,
   termsTotal,
+  type EventMilestone,
   type ScheduleInstallment,
   type SupplierSchedule,
 } from "@/lib/supplier-terms";
@@ -220,8 +218,21 @@ export function receivedInOldFlow(
   );
 }
 
-/** Requisitos que o cronograma usa: data de embarque e os itens da etapa antiga. */
-export const SCHEDULE_REQUIREMENT_KEYS = ["ship_date", ...LEGACY_PAYMENT_KEYS];
+/**
+ * Requisitos que o cronograma usa: data de embarque, embarque confirmado,
+ * entrega e recebimento (fase 5g, no lugar das datas das etapas) e os itens
+ * do pagamento antigo.
+ */
+export const SCHEDULE_REQUIREMENT_KEYS = [
+  "ship_date",
+  "shipped",
+  "delivered",
+  "receipt_confirmed",
+  ...LEGACY_PAYMENT_KEYS,
+];
+
+/** Marcos gravados que o cronograma usa (sem a data do item). */
+export const SCHEDULE_MILESTONE_KEYS = ["shipment", "delivery"];
 
 /** Hoje (AAAA-MM-DD) em Brasília. */
 export const todayInBrazil = () => brazilDay(new Date()) as string;
@@ -230,7 +241,7 @@ export function payableFor(
   order: Order,
   supplier: Party | null,
   payments: Payment[],
-  stages: Stage[],
+  milestones: EventMilestone[],
   requirements: Requirement[],
   items: OrderItem[],
   today: string,
@@ -240,7 +251,7 @@ export function payableFor(
     total: order.fobTotal,
     currency: order.fobCurrency ?? "USD",
     terms,
-    events: paymentEventsFor(order, stages, requirements),
+    events: paymentEventsFor(order, requirements, milestones),
     payments: payments
       .filter((p) => p.direction === "supplier_out")
       .map((p) => ({
@@ -268,14 +279,16 @@ export function payableFor(
 /** Cronograma de pagamento de um pedido (card do pedido e valor a pagar agora). */
 export async function orderPayable(order: Order): Promise<OrderPayable> {
   const store = getStore();
-  const [supplier, payments, stages, items] = await Promise.all([
+  const [supplier, payments, milestones, items] = await Promise.all([
     store.get("parties", order.supplierId),
     store.list("payments", {
       filter: { orderId: order.id, direction: "supplier_out" },
     }),
-    store.list("stages", {
-      filter: { orderId: order.id, key: ["SHIPPING", "DELIVERED"] },
-    }),
+    store
+      .list("order_milestones", {
+        filter: { orderId: order.id, key: SCHEDULE_MILESTONE_KEYS },
+      })
+      .catch(() => []),
     store.list("order_items", { filter: { orderId: order.id }, limit: 1 }),
   ]);
   const requirements = await store.list("requirements", {
@@ -285,7 +298,7 @@ export async function orderPayable(order: Order): Promise<OrderPayable> {
     order,
     supplier,
     payments,
-    stages,
+    milestones,
     requirements,
     items,
     todayInBrazil(),
@@ -331,7 +344,7 @@ export async function listPayables(
   const ids = orders.map((o) => o.id);
   const supplierIds = [...new Set(orders.map((o) => o.supplierId))];
   // Do resumo por pedido (docs/RESUMOS.md): pagamentos, marcos e itens do
-  // cronograma sem ler as tabelas de pagamentos, etapas e requisitos.
+  // cronograma sem ler as tabelas de pagamentos, marcos e requisitos.
   const { factsForOrders } = await import("./order-summary");
   // Só pagamentos, marcos, itens do cronograma e o 1º produto.
   const facts = await factsForOrders(orders, [
@@ -357,7 +370,7 @@ export async function listPayables(
         ((f?.pays ?? []) as Payment[]).filter(
           (p) => p.direction === "supplier_out",
         ),
-        (f?.ship ?? []) as Stage[],
+        (f?.ship ?? []) as EventMilestone[],
         (f?.sreqs ?? []) as Requirement[],
         (f?.product != null ? [{ name: f.product }] : []) as OrderItem[],
         today,
@@ -365,26 +378,34 @@ export async function listPayables(
     });
   }
 
-  const [payments, stages, requirements, items, suppliers] = await Promise.all([
-    listColumns(store, "payments", columnsExcept("payments", ["sankhyaRefs"]), {
-      filter: { orderId: ids, direction: "supplier_out" },
-    }),
-    store.list("stages", {
-      filter: { orderId: ids, key: ["SHIPPING", "DELIVERED"] },
-    }),
-    store.list("requirements", {
-      filter: { orderId: ids, key: SCHEDULE_REQUIREMENT_KEYS },
-    }),
-    listColumns(
-      store,
-      "order_items",
-      columnsExcept("order_items", ["sankhyaRefs"]),
-      { filter: { orderId: ids } },
-    ),
-    listColumns(store, "parties", columnsExcept("parties", ["sankhyaRefs"]), {
-      filter: { id: supplierIds },
-    }),
-  ]);
+  const [payments, milestones, requirements, items, suppliers] =
+    await Promise.all([
+      listColumns(
+        store,
+        "payments",
+        columnsExcept("payments", ["sankhyaRefs"]),
+        {
+          filter: { orderId: ids, direction: "supplier_out" },
+        },
+      ),
+      store
+        .list("order_milestones", {
+          filter: { orderId: ids, key: SCHEDULE_MILESTONE_KEYS },
+        })
+        .catch(() => []),
+      store.list("requirements", {
+        filter: { orderId: ids, key: SCHEDULE_REQUIREMENT_KEYS },
+      }),
+      listColumns(
+        store,
+        "order_items",
+        columnsExcept("order_items", ["sankhyaRefs"]),
+        { filter: { orderId: ids } },
+      ),
+      listColumns(store, "parties", columnsExcept("parties", ["sankhyaRefs"]), {
+        filter: { id: supplierIds },
+      }),
+    ]);
   const today = todayInBrazil();
   const by = <T extends { orderId: string | null }>(rows: T[]) => {
     const map = new Map<string, T[]>();
@@ -398,7 +419,7 @@ export async function listPayables(
   };
   const supplierById = new Map(suppliers.map((s) => [s.id, s]));
   const paymentsBy = by(payments);
-  const stagesBy = by(stages);
+  const milestonesBy = by(milestones);
   const reqsBy = by(requirements);
   const itemsBy = by(items);
   return orders.map((order) =>
@@ -406,7 +427,7 @@ export async function listPayables(
       order,
       supplierById.get(order.supplierId) ?? null,
       paymentsBy.get(order.id) ?? [],
-      stagesBy.get(order.id) ?? [],
+      milestonesBy.get(order.id) ?? [],
       reqsBy.get(order.id) ?? [],
       itemsBy.get(order.id) ?? [],
       today,
@@ -438,130 +459,6 @@ export function payableRows(payables: OrderPayable[]): PayableRow[] {
       a.payable.order.number - b.payable.order.number ||
       a.installment.index - b.installment.index,
   );
-}
-
-/** Última passada geral sem nada a liberar (nesta instância do servidor). */
-let quietSince = 0;
-/** Telas não repetem a passada geral antes disso; o job diário sempre passa. */
-const QUIET_MS = 10 * 60_000;
-/** Passada em andamento nesta instância: chamadas ao mesmo tempo esperam a mesma. */
-const inflight = new Map<string, Promise<number>>();
-/** Etapa sendo liberada agora: a passada geral e a do pedido não liberam duas vezes. */
-const releasing = new Map<string, Promise<boolean>>();
-
-async function releaseStageOnce(stage: Stage): Promise<boolean> {
-  const store = getStore();
-  // Lê de novo: outra chamada pode ter liberado enquanto esta esperava.
-  const fresh = await store.get("stages", stage.id);
-  if (!fresh) return false;
-  const order = await store.get("orders", fresh.orderId);
-  const open = fresh.status === "active" || fresh.status === "blocked";
-  let stuck = false;
-  if (fresh.status === "done" && order?.status === fresh.key) {
-    // Concluída, mas o pedido ainda está nela: só se a próxima não começou.
-    const next = nextStageKey(fresh.key);
-    const [nextStage] = next
-      ? await store.list("stages", {
-          filter: { orderId: fresh.orderId, key: next },
-          limit: 1,
-        })
-      : [];
-    stuck = !nextStage || nextStage.status === "pending";
-  }
-  if (!open && !stuck) return false;
-  await audit(
-    null,
-    "stage.off_flow",
-    "stage",
-    fresh.id,
-    `${fresh.key}: fora do fluxo (condição de pagamento do fornecedor); o pedido segue`,
-  );
-  if (fresh.status !== "active")
-    await store.update("stages", fresh.id, {
-      status: "active",
-      blockReason: null,
-    });
-  await evaluateStage(null, fresh.id);
-  return true;
-}
-
-function releaseStage(stage: Stage): Promise<boolean> {
-  const running = releasing.get(stage.id);
-  if (running) return running.then(() => false);
-  const job = releaseStageOnce(stage).finally(() => releasing.delete(stage.id));
-  releasing.set(stage.id, job);
-  return job;
-}
-
-async function runRelease(orderId?: string): Promise<number> {
-  const store = getStore();
-  let stages: Stage[];
-  if (orderId) {
-    stages = await store.list("stages", {
-      filter: { orderId, key: [...OFF_FLOW_STAGES] },
-    });
-  } else {
-    // Etapas abertas e pedidos que ainda estão nela (etapa já concluída).
-    const [openStages, stuckOrders] = await Promise.all([
-      store.list("stages", {
-        filter: { key: [...OFF_FLOW_STAGES], status: ["active", "blocked"] },
-      }),
-      store.list("orders", { filter: { status: [...OFF_FLOW_STAGES] } }),
-    ]);
-    const stuckStages = stuckOrders.length
-      ? await store.list("stages", {
-          filter: {
-            orderId: stuckOrders.map((o) => o.id),
-            key: [...OFF_FLOW_STAGES],
-          },
-        })
-      : [];
-    stages = [
-      ...new Map(
-        [...openStages, ...stuckStages].map((st) => [st.id, st]),
-      ).values(),
-    ];
-  }
-  let released = 0;
-  let failed = false;
-  for (const stage of stages) {
-    try {
-      if (await releaseStage(stage)) released++;
-    } catch (error) {
-      failed = true;
-      // Um pedido com problema não segura os outros nem a tela.
-      console.error("[supplier-terms] etapa não liberada", stage.id, error);
-    }
-  }
-  // Nada liberado e nada falhou (inclusive pedido que não há o que refazer):
-  // as telas esperam 10 minutos para olhar de novo.
-  if (!orderId) quietSince = released === 0 && !failed ? Date.now() : 0;
-  return released;
-}
-
-/**
- * Pedidos parados na etapa de pagamento ao fornecedor (de antes da mudança)
- * seguem para a próxima etapa. Idempotente e sem erro para quem chama (falha
- * vai para o log). Telas chamam à vontade: depois de uma passada geral sem
- * nada a liberar, esta instância espera 10 minutos para olhar de novo; o job
- * diário (`force`) sempre olha.
- */
-export async function releaseOffFlowStages(
-  orderId?: string,
-  opts: { force?: boolean } = {},
-): Promise<number> {
-  if (!orderId && !opts.force && Date.now() - quietSince < QUIET_MS) return 0;
-  const key = orderId ?? "*";
-  const running = inflight.get(key);
-  if (running) return running;
-  const job = runRelease(orderId)
-    .catch((error) => {
-      console.error("[supplier-terms] liberação falhou", error);
-      return 0;
-    })
-    .finally(() => inflight.delete(key));
-  inflight.set(key, job);
-  return job;
 }
 
 const PAYABLES_DIGEST_SUBJECT = "Pagamento a fornecedores:";

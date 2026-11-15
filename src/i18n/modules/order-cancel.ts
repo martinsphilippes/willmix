@@ -7,7 +7,6 @@ export const pt = {
   "reqStatusLabel.ORDER_CANCELLED": "Pedido cancelado",
   "reqCancelled.banner": "O pedido #{n} desta solicitação foi cancelado.",
   "reqCancelled.open": "Ver o pedido cancelado",
-  "stageStatus.cancelled": "Cancelada",
   "cancel.title": "Cancelar pedido",
   "cancel.hint":
     "Só o administrador cancela, em qualquer etapa. Nada é apagado: o pedido fica como Cancelado, com o histórico. Etapas abertas são encerradas, o pedido sai dos containers e dos fretes em aberto e todos os envolvidos são avisados.",
@@ -65,7 +64,6 @@ export const en: Record<keyof typeof pt, string> = {
   "reqStatusLabel.ORDER_CANCELLED": "Order cancelled",
   "reqCancelled.banner": "Order #{n} for this request was cancelled.",
   "reqCancelled.open": "View the cancelled order",
-  "stageStatus.cancelled": "Cancelled",
   "cancel.title": "Cancel order",
   "cancel.hint":
     "Only the administrator cancels, at any stage. Nothing is deleted: the order stays as Cancelled, with its history. Open stages are closed, the order leaves containers and open freight requests, and everyone involved is notified.",
@@ -122,7 +120,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqStatusLabel.ORDER_CANCELLED": "订单已取消",
   "reqCancelled.banner": "此申请的订单 #{n} 已取消。",
   "reqCancelled.open": "查看已取消的订单",
-  "stageStatus.cancelled": "已取消",
   "cancel.title": "取消订单",
   "cancel.hint":
     "只有管理员可以取消，任何阶段均可。不会删除任何数据：订单保留历史并标记为已取消。进行中的阶段将关闭，订单将移出货柜和未完成的运费询价，并通知所有相关方。",

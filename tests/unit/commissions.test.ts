@@ -250,29 +250,22 @@ describe("acordos", () => {
     expect((await entries()).every((e) => e.status === "estimated")).toBe(true);
 
     // Entregue: o bônus entra (750) e tudo fica elegível.
-    const stages = await store.list("stages", {
-      filter: { orderId: order.id },
-    });
-    const delivered = stages.find((s) => s.key === "DELIVERED");
-    if (delivered)
-      await store.update("stages", delivered.id, {
-        completedAt: new Date().toISOString(),
-      });
-    else
-      await store.create("stages", {
-        orderId: order.id,
-        key: "DELIVERED",
-        sequence: 9,
-        status: "done",
-        responsibleRole: "carrier",
-        responsiblePartyId: null,
-        dueAt: null,
-        startedAt: null,
-        completedAt: new Date().toISOString(),
-        percent: 100,
-        reminderSentAt: null,
-        blockReason: null,
-      } as never);
+    // Fase 5g: o evento "entregue" vem do marco Entrega e recebimento
+    // concluído (a linha gravada), não mais da etapa.
+    const { orderMilestoneId } =
+      await import("@/lib/services/order-milestones");
+    await store.create("order_milestones", {
+      id: orderMilestoneId(order.id, "delivery"),
+      orderId: order.id,
+      key: "delivery",
+      status: "done",
+      startedAt: null,
+      dueAt: null,
+      completedAt: new Date().toISOString(),
+      reminderSentAt: null,
+      blockReason: null,
+      held: null,
+    } as never);
     await svc.accrueOrder(admin, order.id);
     expect(await totalOf()).toBe(750);
     const now = await entries();

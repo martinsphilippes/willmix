@@ -1,6 +1,6 @@
 import type { Requirement } from "@/lib/db";
 import type { Translate } from "@/i18n";
-import { ORDER_SIGN_SEND } from "@/lib/workflow/stages";
+import { ORDER_SIGN_SEND } from "@/lib/workflow/templates";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   decideRequirementAction,

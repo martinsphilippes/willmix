@@ -20,7 +20,8 @@ import {
 } from "@/lib/flow-progress";
 import { getSettings } from "@/lib/settings";
 import { SAMPLE_ORDER_KEY } from "@/lib/purchase-lanes";
-import { RECEIVING_STATUSES } from "./receiving";
+import { receivingApplies } from "./receiving";
+import { compactMilestones } from "@/lib/milestones";
 import { orderFlowEntries, type OrderFlowInput } from "./flow-contribution";
 import {
   downPaymentStateOf,
@@ -34,7 +35,6 @@ import {
 import {
   casesInStep,
   countByStep,
-  flowStepsOf,
   stepId,
   stepsOf,
   type FlowBlock,
@@ -80,22 +80,50 @@ export const flowReceivingCasesFor = cache(
     if (!isWellmix(user) || !canOpen(user, "containers")) return [];
     const store = getStore();
     const svc = await import("./receiving");
-    const orders = (
-      await store.list("orders", {
-        filter: { status: [...svc.RECEIVING_STATUSES] },
-      })
-    ).filter((o) => !o.held);
+    // Fase 5g: pelos marcos (Entrega e recebimento começada) e pelos
+    // recebimentos abertos, não pela situação antiga.
+    const [delivering, opened] = await Promise.all([
+      store
+        .list("order_milestones", {
+          filter: { key: "delivery", status: ["active", "blocked", "done"] },
+        })
+        .catch(() => []),
+      store.list("receivings", { filter: { closedAt: null } }).catch(() => []),
+    ]);
+    const candidates = [
+      ...new Set([
+        ...delivering.map((r) => r.orderId),
+        ...opened.map((r) => r.orderId),
+      ]),
+    ];
+    if (!candidates.length) return [];
+    const [found, milestoneRows] = await Promise.all([
+      store.list("orders", { filter: { id: candidates } }),
+      store
+        .list("order_milestones", { filter: { orderId: candidates } })
+        .catch(() => []),
+    ]);
+    const orders = found.filter(
+      (o) =>
+        !o.held &&
+        o.status !== "CANCELLED" &&
+        svc.receivingApplies(
+          o,
+          milestoneRows.filter((r) => r.orderId === o.id),
+        ),
+    );
     if (!orders.length) return [];
     const ids = orders.map((o) => o.id);
     const [rows, items] = await Promise.all([
       store.list("receivings", { filter: { orderId: ids } }).catch(() => []),
       store.list("order_items", { filter: { orderId: ids } }),
     ]);
+    const deliveryStarted = new Set(delivering.map((r) => r.orderId));
     const out: FlowCase[] = [];
     for (const order of orders) {
       const row = rows.find((r) => r.orderId === order.id) ?? null;
       if (row?.closedAt) continue;
-      if (!row && order.status !== "DELIVERED") continue;
+      if (!row && !deliveryStarted.has(order.id)) continue;
       const missing = svc.missingForClose(
         row,
         items.filter((i) => i.orderId === order.id),
@@ -453,7 +481,6 @@ async function loadFlowAll(
     out.set(stepKey, byOrder);
   };
   const [
-    stages,
     importSteps,
     tracks,
     openRequirements,
@@ -462,7 +489,6 @@ async function loadFlowAll(
     sampleOrders,
     milestoneRows,
   ] = await Promise.all([
-    store.list("stages", { filter: { orderId: ids } }),
     store.list("import_steps", { filter: { orderId: ids } }).catch(() => []),
     store
       .list("production_tracks", { filter: { orderId: ids } })
@@ -483,7 +509,12 @@ async function loadFlowAll(
   ]);
   // Itens do pedido só de quem está no recebimento (a contagem por SKU).
   const receivingIds = orders
-    .filter((o) => (RECEIVING_STATUSES as readonly string[]).includes(o.status))
+    .filter((o) =>
+      receivingApplies(
+        o,
+        milestoneRows.filter((x) => x.orderId === o.id),
+      ),
+    )
     .map((o) => o.id);
   const items = receivingIds.length
     ? await store.list("order_items", { filter: { orderId: receivingIds } })
@@ -493,7 +524,6 @@ async function loadFlowAll(
     for (const r of rows) m.set(r.orderId, [...(m.get(r.orderId) ?? []), r]);
     return m;
   };
-  const byStages = group(stages);
   const byReqs = group(openRequirements);
   const bySteps = group(importSteps);
   const byItems = group(items);
@@ -502,10 +532,13 @@ async function loadFlowAll(
   const importFlow = await import("./import-flow");
   const lpco = await importFlow.lpcoOrderIds(orders.map((o) => o.id));
   const noSealArt = await importFlow.ordersWithoutSealArt(orders);
+  // Fase 5g: a situação dos marcos (completude por bloco), calculada agora.
+  const { ordersRelease } = await import("./order-milestones");
+  const views = await ordersRelease(orders.map((o) => o.id));
   for (const order of orders) {
     const input: OrderFlowInput = {
       order,
-      stages: byStages.get(order.id) ?? [],
+      views: compactMilestones(views.get(order.id)?.views ?? []),
       openRequirements: byReqs.get(order.id) ?? [],
       importSteps: bySteps.get(order.id) ?? [],
       track: tracks.find((x) => x.orderId === order.id) ?? null,
@@ -517,7 +550,7 @@ async function loadFlowAll(
       milestones: milestoneRows.filter((x) => x.orderId === order.id),
       sealArt: !noSealArt.has(order.id),
     };
-    progress.set(order.id, orderProgress(input.stages, now));
+    progress.set(order.id, orderProgress(input.views, input.milestones, now));
     for (const e of orderFlowEntries(input))
       add(e.step, order.id, e.item, e.since);
   }
@@ -925,46 +958,34 @@ export const flowPartnerAllFor = cache(
       byOrder.set(orderId, entity);
       out.set(key, byOrder);
     };
-    const [stages, importSteps, milestoneRows, downPayments] =
-      await Promise.all([
-        store.list("stages", { filter: { orderId: ids } }),
-        store
-          .list("import_steps", { filter: { orderId: ids } })
-          .catch(() => []),
-        store
-          .list("order_milestones", { filter: { orderId: ids } })
-          .catch(() => []),
-        store.list("requirements", {
-          filter: { orderId: ids, key: "down_payment" },
-        }),
-      ]);
-    const live = stages.filter(
-      (s) => s.status === "active" || s.status === "blocked",
-    );
-    const stageById = new Map(live.map((s) => [s.id, s]));
-    const requirements = live.length
-      ? await store.list("requirements", {
-          filter: { stageId: live.map((s) => s.id) },
-        })
-      : [];
-    for (const r of requirements) {
-      if (r.status === "done") continue;
-      const stage = stageById.get(r.stageId);
-      const order = orderById.get(r.orderId);
-      if (!stage || !order) continue;
-      // Só o que é do papel: o item dele ou o que ele pode fazer.
-      if (r.role !== user.role && !canSubmitRequirement(user, order, r))
-        continue;
-      for (const step of flowStepsOf({
-        kind: "requirement",
-        stageKey: stage.key,
-        items: [{ key: r.key }],
-      }))
+    const [open, importSteps, milestoneRows, downPayments] = await Promise.all([
+      store.list("requirements", {
+        filter: { orderId: ids, status: ["pending", "rejected"] },
+      }),
+      store.list("import_steps", { filter: { orderId: ids } }).catch(() => []),
+      store
+        .list("order_milestones", { filter: { orderId: ids } })
+        .catch(() => []),
+      store.list("requirements", {
+        filter: { orderId: ids, key: "down_payment" },
+      }),
+    ]);
+    // Fase 5g: os itens abertos dos marcos em andamento (sem etapas).
+    const { openMilestoneItems } = await import("./flow-contribution");
+    for (const order of orders) {
+      const rows = milestoneRows.filter((x) => x.orderId === order.id);
+      const mineOpen = open.filter(
+        (r) =>
+          r.orderId === order.id &&
+          // Só o que é do papel: o item dele ou o que ele pode fazer.
+          (r.role === user.role || canSubmitRequirement(user, order, r)),
+      );
+      for (const e of openMilestoneItems(mineOpen, rows))
         add(
-          stepId(step),
-          r.orderId,
-          { kind: "requirement", requirement: r },
-          stage.startedAt ?? null,
+          e.step,
+          order.id,
+          { kind: "requirement", requirement: e.requirement },
+          e.since,
         );
     }
     const flow = await import("./import-flow");

@@ -8,95 +8,116 @@ import {
   requestInNegotiation,
   requestPercent,
 } from "@/lib/flow-progress";
-import type { Stage } from "@/lib/db/schema";
+import type { MilestoneKey } from "@/lib/milestones";
 
 /* Completude e atraso do pedido por bloco (docs/FLOW_MENU.md, "Visão do
-   pedido entre os blocos"). */
-type S = Parameters<typeof orderProgress>[0][number];
-const stage = (
-  key: Stage["key"],
-  sequence: number,
-  status: Stage["status"],
-  extra: Partial<S> = {},
-): S => ({
-  id: key,
-  key,
-  sequence,
-  status,
-  percent: 0,
-  dueAt: null,
-  startedAt: null,
-  completedAt: null,
-  ...extra,
-});
+   pedido entre os blocos"). Fase 5g: pelos 16 marcos (a situação de cada
+   um e as datas gravadas), não pelas etapas. */
+const view = (
+  k: MilestoneKey,
+  s: "done" | "active" | "waiting" | "na",
+  d = 0,
+  t = 1,
+) => ({ k, s, d, t });
+const row = (
+  key: MilestoneKey,
+  status: string,
+  extra: { dueAt?: string; startedAt?: string; completedAt?: string } = {},
+) => ({ key, status, ...extra });
 
 const now = new Date("2026-11-14T12:00:00Z");
 
 describe("completude do pedido por bloco", () => {
-  it("média das etapas no bloco e no geral; pagamento ao fornecedor fora", () => {
+  it("média dos marcos que se aplicam no bloco e no geral", () => {
     const p = orderProgress(
       [
-        stage("ORDER_CREATED", 1, "done"),
-        stage("PREPARATION", 2, "done"),
-        stage("SUPPLIER_PAYMENT", 3, "pending"),
-        stage("PACKAGING", 4, "active", { percent: 40 }),
-        stage("INSPECTION", 5, "pending"),
-        stage("SHIPPING", 6, "pending"),
-        stage("CUSTOMS", 7, "pending"),
-        stage("TRANSPORT", 8, "pending"),
-        stage("DELIVERED", 9, "pending"),
-        stage("CLOSED", 10, "pending"),
+        view("new-order", "done", 2, 2),
+        view("certification", "na", 0, 0),
+        view("art-material", "na", 0, 0),
+        view("art", "done", 2, 2),
+        view("contract", "active", 2, 5),
+        view("down-payment", "waiting"),
+        view("pre-production", "waiting"),
+        view("inspection", "waiting"),
+        view("samples", "na", 0, 0),
+        view("production", "waiting"),
+        view("booking", "waiting"),
+        view("loading", "waiting"),
+        view("shipment", "waiting"),
+        view("customs", "waiting"),
+        view("invoice-transport", "waiting"),
+        view("delivery", "waiting"),
       ],
+      [],
       now,
     );
     const order = p.blocks.find((b) => b.block === "order")!;
-    expect(order.percent).toBe(80); // (100 + 100 + 40) / 3
+    expect(order.percent).toBe(60); // (100 + 100 + 40 + 0) / 4
     expect(order.state).toBe("active");
-    expect(order.stages.map((s) => s.key)).toEqual([
-      "ORDER_CREATED",
-      "PREPARATION",
-      "PACKAGING",
+    expect(order.milestones.map((s) => s.key)).toEqual([
+      "new-order",
+      "art",
+      "contract",
+      "down-payment",
     ]);
     expect(p.blocks.find((b) => b.block === "production")!.percent).toBe(0);
-    expect(p.overall).toBe(27); // 240 / 9
+    expect(p.overall).toBe(18); // 240 / 13
     expect(p.current).toBe("order");
   });
 
-  it("atraso agora e etapa concluída depois do prazo", () => {
+  it("atraso agora e marco concluído depois do prazo (prazos gravados)", () => {
     const p = orderProgress(
       [
-        stage("INSPECTION", 1, "done", {
+        view("inspection", "done"),
+        view("shipment", "active", 1, 2),
+        view("customs", "na", 0, 0),
+      ],
+      [
+        row("inspection", "done", {
           dueAt: "2026-11-01T00:00:00Z",
           completedAt: "2026-11-04T00:00:00Z",
         }),
-        stage("SHIPPING", 2, "active", {
-          percent: 50,
+        row("shipment", "active", {
           dueAt: "2026-11-10T12:00:00Z",
           startedAt: "2026-11-04T00:00:00Z",
         }),
-        stage("CUSTOMS", 3, "cancelled"),
       ],
       now,
     );
     const prod = p.blocks.find((b) => b.block === "production")!;
     expect(prod.lateDays).toBe(4);
     expect(prod.doneLate).toBe(1);
-    expect(prod.stages[0].doneLateDays).toBe(3);
+    expect(prod.milestones[0].doneLateDays).toBe(3);
     expect(prod.percent).toBe(75);
+    expect(prod.startedAt).toBe("2026-11-04T00:00:00Z");
     expect(p.lateDays).toBe(4);
     expect(p.current).toBe("production");
-    // Etapa cancelada não conta.
-    expect(p.blocks.find((b) => b.block === "delivery")!.stages).toEqual([]);
+    // Marco que não se aplica não conta.
+    expect(p.blocks.find((b) => b.block === "delivery")!.milestones).toEqual(
+      [],
+    );
   });
 
   it("pedido concluído: tudo 100%, bloco atual é a Entrega", () => {
     const p = orderProgress(
-      [stage("DELIVERED", 1, "done"), stage("CLOSED", 2, "done")],
+      [view("invoice-transport", "done"), view("delivery", "done")],
+      [],
       now,
     );
     expect(p.overall).toBe(100);
     expect(p.current).toBe("delivery");
     expect(p.blocks.find((b) => b.block === "delivery")!.state).toBe("done");
+  });
+
+  it("sem a situação, as linhas gravadas decidem (sem linha: não começou)", () => {
+    const p = orderProgress(null, [row("new-order", "done")], now);
+    const order = p.blocks.find((b) => b.block === "order")!;
+    expect(order.milestones[0]).toMatchObject({
+      key: "new-order",
+      state: "done",
+      percent: 100,
+    });
+    expect(order.milestones[1]).toMatchObject({ state: "pending", percent: 0 });
   });
 });
 

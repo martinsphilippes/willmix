@@ -84,20 +84,25 @@ describe("prazo por marco", () => {
 describe("itens novos com passo e marco", () => {
   it("o pedido criado pelo fluxo grava step e milestoneKey em cada item", async () => {
     const order = scenario.orders.a;
-    const [requirements, stages] = await Promise.all([
-      store.list("requirements", { filter: { orderId: order.id } }),
-      store.list("stages", { filter: { orderId: order.id } }),
-    ]);
-    const stageKey = new Map(stages.map((s) => [s.id, s.key]));
+    const requirements = await store.list("requirements", {
+      filter: { orderId: order.id },
+    });
+    // Fase 5g: sem etapas; cada item nasce com o passo e o marco do grupo em
+    // que nasceu (o de-para de sempre, `requirementFlowFields`).
+    const { itemGroupKey } = await import("@/lib/order-groups");
     expect(requirements.length).toBeGreaterThan(5);
     for (const r of requirements) {
-      const want = requirementFlowFields(stageKey.get(r.stageId)!, r.key);
+      expect(r.stageId ?? null).toBeNull();
+      const want = requirementFlowFields(itemGroupKey(r, order), r.key);
       expect({
         step: r.step ?? null,
         milestoneKey: r.milestoneKey ?? null,
       }).toEqual(want);
     }
-    expect(requirements.some((r) => r.milestoneKey)).toBe(true);
+    expect(requirements.every((r) => r.milestoneKey && r.step)).toBe(true);
+    expect(
+      await store.list("stages", { filter: { orderId: order.id } }),
+    ).toEqual([]);
   });
 });
 
@@ -198,7 +203,13 @@ describe("migração e conferência", () => {
     });
     for (const r of heldReqs.slice(0, 3))
       await store.update("requirements", r.id, { held: true });
-    // Como em produção: itens antigos sem passo nem marco, sem marcos do pedido.
+    // Como em produção antes da 5b: o registro das etapas, itens antigos sem
+    // passo nem marco, sem marcos do pedido (fase 5g: os pedidos novos não
+    // têm etapas; o teste monta o registro antigo).
+    const { legacyStagesFor } = await import("./helpers/groups");
+    for (const o of await store.list("orders"))
+      if (!(await store.list("stages", { filter: { orderId: o.id } })).length)
+        await legacyStagesFor(o.id);
     const all = await store.list("requirements");
     for (const r of all)
       await store.update("requirements", r.id, {
@@ -252,7 +263,7 @@ describe("migração e conferência", () => {
     const odd = await runAll(om.milestoneParityStep);
     expect(odd.stats.requirements).toBe(1);
     const fields = requirementFlowFields(
-      (await store.get("stages", keep.stageId))!.key,
+      (await store.get("stages", keep.stageId!))!.key,
       keep.key,
     );
     await store.update("requirements", keep.id, { step: fields.step });

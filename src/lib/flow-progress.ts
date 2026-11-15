@@ -1,58 +1,47 @@
 import type {
   BookingLot,
-  Stage,
-  StageKey,
   SupplierRequest,
   SupplierRequestSampling,
 } from "@/lib/db/schema";
 import type { FlowBlock } from "@/lib/flow";
+import {
+  MILESTONES,
+  type MilestoneKey,
+  type MilestoneState,
+} from "@/lib/milestones";
 
 /*
  * Completude e atraso do pedido por bloco do mapa (dono, 14/11/2026;
- * docs/FLOW_MENU.md, "Visão do pedido entre os blocos"). Cada etapa do pedido
- * cai num bloco (Pedido, Produção, Entrega); o percentual do bloco é a média
- * das etapas dele (concluída 100%, em andamento ou bloqueada o percentual da
- * etapa, ainda não começada 0%) e o geral é a média de todas as etapas. O
- * atraso sai do prazo das etapas: aberta com o prazo vencido (atraso agora) e
- * concluída depois do prazo (atraso que já passou). Regra pura: sem banco.
+ * docs/FLOW_MENU.md, "Visão do pedido entre os blocos"). Fase 5g: pelos 16
+ * marcos (não mais pelas etapas). Cada marco cai no bloco dele (Pedido,
+ * Produção, Entrega); o percentual do bloco é a média dos marcos que se
+ * aplicam ao pedido (concluído 100%, em andamento ou travado o andamento das
+ * subtarefas, ainda não começado 0%) e o geral é a média de todos. O atraso
+ * sai do prazo gravado dos marcos (`order_milestones.dueAt`): aberto com o
+ * prazo vencido (atraso agora) e concluído depois do prazo (atraso que já
+ * passou). Regra pura: sem banco.
  */
 
-/** Blocos com etapas do pedido, na ordem do mapa. */
+/** Blocos com marcos do pedido, na ordem do mapa. */
 export const PROGRESS_BLOCKS = ["order", "production", "delivery"] as const;
 export type ProgressBlock = (typeof PROGRESS_BLOCKS)[number];
 
 export const isProgressBlock = (v: unknown): v is ProgressBlock =>
   typeof v === "string" && (PROGRESS_BLOCKS as readonly string[]).includes(v);
 
-/**
- * Etapa → bloco. O pagamento ao fornecedor saiu do fluxo (OFF_FLOW_STAGES) e
- * não conta.
- */
-export const STAGE_BLOCK: Partial<Record<StageKey, ProgressBlock>> = {
-  ORDER_CREATED: "order",
-  PREPARATION: "order",
-  PACKAGING: "order",
-  INSPECTION: "production",
-  SHIPPING: "production",
-  CUSTOMS: "delivery",
-  TRANSPORT: "delivery",
-  DELIVERED: "delivery",
-  CLOSED: "delivery",
-};
-
 export type StageProgressState = "done" | "active" | "blocked" | "pending";
 
-export interface StageProgress {
+export interface MilestoneProgress {
   id: string;
-  key: StageKey;
+  key: MilestoneKey;
   state: StageProgressState;
   percent: number;
   dueAt: string | null;
   startedAt: string | null;
   completedAt: string | null;
-  /** Dias de atraso da etapa aberta com o prazo vencido (0: no prazo). */
+  /** Dias de atraso do marco aberto com o prazo vencido (0: no prazo). */
   lateDays: number;
-  /** Dias que a etapa concluída passou do prazo (0: no prazo). */
+  /** Dias que o marco concluído passou do prazo (0: no prazo). */
   doneLateDays: number;
 }
 
@@ -60,23 +49,41 @@ export interface BlockProgress {
   block: ProgressBlock;
   percent: number;
   state: "done" | "active" | "pending";
-  stages: StageProgress[];
+  milestones: MilestoneProgress[];
   /** O maior atraso aberto do bloco, em dias. */
   lateDays: number;
-  /** Etapas do bloco concluídas com atraso. */
+  /** Marcos do bloco concluídos com atraso. */
   doneLate: number;
-  /** Desde quando o pedido está no bloco (início da primeira etapa dele). */
+  /** Desde quando o pedido está no bloco (início do primeiro marco dele). */
   startedAt: string | null;
 }
 
 export interface OrderProgress {
   blocks: BlockProgress[];
-  /** Percentual geral do pedido (média de todas as etapas). */
+  /** Percentual geral do pedido (média de todos os marcos que se aplicam). */
   overall: number;
-  /** Bloco em que o pedido está agora (o da primeira etapa não concluída). */
+  /** Bloco em que o pedido está agora (o do primeiro marco não concluído). */
   current: ProgressBlock | null;
   /** O maior atraso aberto do pedido, em dias. */
   lateDays: number;
+}
+
+/** Situação de um marco (formato curto do resumo, `facts.m`). */
+export interface MilestoneProgressView {
+  k: MilestoneKey;
+  s: MilestoneState;
+  d: number;
+  t: number;
+  b?: 1;
+}
+
+/** Linha gravada de um marco (`order_milestones`): datas e situação. */
+export interface MilestoneProgressRow {
+  key: string;
+  status?: string | null;
+  dueAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
 }
 
 const DAY = 86_400_000;
@@ -87,68 +94,69 @@ const daysBetween = (from: number, to: number) =>
 const mean = (xs: number[]) =>
   xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0;
 
-type StageLike = Pick<
-  Stage,
-  | "id"
-  | "key"
-  | "sequence"
-  | "status"
-  | "percent"
-  | "dueAt"
-  | "startedAt"
-  | "completedAt"
->;
-
-function stageProgress(s: StageLike, now: number): StageProgress | null {
-  if (s.status === "cancelled") return null;
-  const state: StageProgressState =
-    s.status === "done"
-      ? "done"
-      : s.status === "active" || s.status === "blocked"
-        ? s.status
-        : "pending";
-  const percent =
-    state === "done"
-      ? 100
-      : state === "pending"
-        ? 0
-        : Math.min(99, Math.max(0, Math.round(s.percent ?? 0)));
-  const due = s.dueAt ? Date.parse(s.dueAt) : NaN;
-  const done = s.completedAt ? Date.parse(s.completedAt) : NaN;
-  const open = state === "active" || state === "blocked";
-  return {
-    id: s.id,
-    key: s.key,
-    state,
-    percent,
-    dueAt: s.dueAt ?? null,
-    startedAt: s.startedAt ?? null,
-    completedAt: s.completedAt ?? null,
-    lateDays:
-      open && Number.isFinite(due) && due < now ? daysBetween(due, now) : 0,
-    doneLateDays:
-      state === "done" &&
-      Number.isFinite(due) &&
-      Number.isFinite(done) &&
-      done > due
-        ? daysBetween(due, done)
-        : 0,
-  };
-}
-
-/** Completude e atraso do pedido, bloco a bloco, a partir das etapas dele. */
+/**
+ * Completude e atraso do pedido, bloco a bloco, pelos marcos: a situação de
+ * cada um (`views`, o formato curto do resumo) e as datas gravadas (`rows`).
+ * Sem a situação, a linha gravada decide (sem linha: não começou). O marco
+ * que não se aplica ao pedido fica fora.
+ */
 export function orderProgress(
-  stages: StageLike[],
+  views: readonly MilestoneProgressView[] | null | undefined,
+  rows: readonly MilestoneProgressRow[] | null | undefined,
   now = new Date(),
 ): OrderProgress {
   const at = now.getTime();
-  const sorted = [...stages].sort((a, b) => a.sequence - b.sequence);
-  const all: Array<StageProgress & { block: ProgressBlock }> = [];
-  for (const s of sorted) {
-    const block = STAGE_BLOCK[s.key];
-    if (!block) continue;
-    const p = stageProgress(s, at);
-    if (p) all.push({ ...p, block });
+  const viewOf = new Map((views ?? []).map((v) => [v.k, v]));
+  const rowOf = new Map((rows ?? []).map((r) => [r.key, r]));
+  const all: Array<MilestoneProgress & { block: ProgressBlock }> = [];
+  for (const def of MILESTONES) {
+    const block = def.block as ProgressBlock;
+    if (!(PROGRESS_BLOCKS as readonly string[]).includes(block)) continue;
+    const view = viewOf.get(def.key);
+    const row = rowOf.get(def.key);
+    if (view?.s === "na") continue;
+    if (!view && !row && views?.length) continue;
+    const state: StageProgressState =
+      view?.s === "done" || (!view && row?.status === "done")
+        ? "done"
+        : view?.b === 1 || row?.status === "blocked"
+          ? "blocked"
+          : view?.s === "active" || (!view && row?.status === "active")
+            ? "active"
+            : "pending";
+    const percent =
+      state === "done"
+        ? 100
+        : state === "pending"
+          ? 0
+          : Math.min(
+              99,
+              Math.max(0, view?.t ? Math.round((view.d / view.t) * 100) : 0),
+            );
+    const dueAt = row?.dueAt ?? null;
+    const completedAt = row?.completedAt ?? null;
+    const due = dueAt ? Date.parse(dueAt) : NaN;
+    const done = completedAt ? Date.parse(completedAt) : NaN;
+    const open = state === "active" || state === "blocked";
+    all.push({
+      id: def.key,
+      key: def.key,
+      block,
+      state,
+      percent,
+      dueAt,
+      startedAt: row?.startedAt ?? null,
+      completedAt,
+      lateDays:
+        open && Number.isFinite(due) && due < at ? daysBetween(due, at) : 0,
+      doneLateDays:
+        state === "done" &&
+        Number.isFinite(due) &&
+        Number.isFinite(done) &&
+        done > due
+          ? daysBetween(due, done)
+          : 0,
+    });
   }
   const blocks = PROGRESS_BLOCKS.map((block): BlockProgress => {
     const mine = all.filter((s) => s.block === block);
@@ -166,7 +174,7 @@ export function orderProgress(
           : mine.some((s) => s.state !== "pending")
             ? "active"
             : "pending",
-      stages: mine.map((s) => {
+      milestones: mine.map((s) => {
         const { block: _omit, ...rest } = s;
         void _omit;
         return rest;

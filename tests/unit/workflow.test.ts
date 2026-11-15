@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { groupItems, groupOf } from "./helpers/groups";
 import {
   ORDER_DOCUMENT_KEYS,
   completeOrderDocument,
@@ -41,12 +42,10 @@ async function fillStage(
   values: Record<string, string> = {},
 ) {
   const store = getStore();
-  const [stage] = await store.list("stages", {
-    filter: { orderId, key: stageKey as never },
-  });
-  const reqs = await store.list("requirements", {
-    filter: { stageId: stage.id, status: ["pending", "rejected"] },
-  });
+  // Fase 5g: o grupo de itens no lugar da etapa (helpers/groups.ts).
+  const reqs = (await groupItems(orderId, stageKey)).filter(
+    (r) => r.status === "pending" || r.status === "rejected",
+  );
   for (const req of reqs) {
     if (!req.required || req.type === "approval") continue;
     // Documento do pedido: tem o caminho próprio (envio e assinaturas).
@@ -86,7 +85,7 @@ async function fillStage(
       await submitRequirement(user, req.id, { value, signature: true });
     }
   }
-  return (await store.get("stages", stage.id))!;
+  return groupOf(orderId, stageKey);
 }
 
 describe("fluxo completo: solicitação → entrega", () => {
@@ -121,12 +120,12 @@ describe("fluxo completo: solicitação → entrega", () => {
     expect(canViewOrder(supplierB, order)).toBe(false);
 
     // fornecedor não pode confirmar pedido (etapa da Wellmix)
-    const [created] = await store.list("stages", {
-      filter: { orderId: order.id, key: "ORDER_CREATED" },
-    });
-    const [confirm] = await store.list("requirements", {
-      filter: { stageId: created.id, key: "order_confirmed" },
-    });
+    const created = await groupOf(order.id, "ORDER_CREATED");
+    const [confirm] = await groupItems(created.orderId, created.key).then((l) =>
+      l.filter((r) =>
+        ([] as string[]).concat("order_confirmed").includes(r.key),
+      ),
+    );
     await expect(
       submitRequirement(supplierA, confirm.id, { value: "ok" }),
     ).rejects.toThrow();
@@ -147,26 +146,19 @@ describe("fluxo completo: solicitação → entrega", () => {
     // Pagamento ao fornecedor fora do fluxo: a etapa conclui sozinha, sem
     // itens, e o pedido vai direto para a embalagem.
     expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
-    const [payStage] = await store.list("stages", {
-      filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
-    });
-    expect((await store.get("stages", payStage.id))!.status).toBe("done");
-    expect(
-      await store.list("requirements", { filter: { stageId: payStage.id } }),
-    ).toEqual([]);
+    // Fase 5g: o pedido novo não tem item do pagamento antigo.
+    expect(await groupItems(order.id, "SUPPLIER_PAYMENT")).toEqual([]);
 
     // embalagem: a agência faz e envia a arte; o fornecedor confere e aprova
     const agency = by("agency", "agencia");
-    const [pack] = await store.list("stages", {
-      filter: { orderId: order.id, key: "PACKAGING" },
-    });
-    expect((await store.get("stages", pack.id))!.status).toBe("active");
-    const [approval] = await store.list("requirements", {
-      filter: { stageId: pack.id, key: "art_approval" },
-    });
-    const [art] = await store.list("requirements", {
-      filter: { stageId: pack.id, key: "art" },
-    });
+    const pack = await groupOf(order.id, "PACKAGING");
+    expect((await groupOf(pack.orderId, pack.key)).status).toBe("active");
+    const [approval] = await groupItems(pack.orderId, pack.key).then((l) =>
+      l.filter((r) => ([] as string[]).concat("art_approval").includes(r.key)),
+    );
+    const [art] = await groupItems(pack.orderId, pack.key).then((l) =>
+      l.filter((r) => ([] as string[]).concat("art").includes(r.key)),
+    );
     expect(art.role).toBe("agency");
     expect(approval.role).toBe("supplier");
     // Nada a aprovar antes de a arte chegar; o fornecedor não envia a arte.
@@ -195,27 +187,31 @@ describe("fluxo completo: solicitação → entrega", () => {
     await fillStage(supplierA, order.id, "INSPECTION", {
       weight_measured: "15",
     });
-    const [insp] = await store.list("stages", {
-      filter: { orderId: order.id, key: "INSPECTION" },
-    });
-    expect((await store.get("stages", insp.id))!.status).toBe("blocked");
-    const [review] = await store.list("requirements", {
-      filter: { stageId: insp.id, key: "inspection_review" },
-    });
+    const insp = await groupOf(order.id, "INSPECTION");
+    expect((await groupOf(insp.orderId, insp.key)).status).toBe("blocked");
+    const [review] = await groupItems(insp.orderId, insp.key).then((l) =>
+      l.filter((r) =>
+        ([] as string[]).concat("inspection_review").includes(r.key),
+      ),
+    );
     expect(review.status).toBe("pending");
 
     // reprovação pede nova medição: medida e foto na balança voltam ao fornecedor
     await decideRequirement(operator, review.id, "reject", "Pesar de novo");
-    const reopened = await store.list("requirements", {
-      filter: { stageId: insp.id, key: ["weight_measured", "photo_scale"] },
-    });
+    const reopened = await groupItems(insp.orderId, insp.key).then((l) =>
+      l.filter((r) =>
+        ([] as string[])
+          .concat(["weight_measured", "photo_scale"])
+          .includes(r.key),
+      ),
+    );
     expect(reopened.map((r) => r.status)).toEqual(["rejected", "rejected"]);
-    expect((await store.get("stages", insp.id))!.status).toBe("active");
+    expect((await groupOf(insp.orderId, insp.key)).status).toBe("active");
     // nova medição ainda divergente bloqueia de novo e reabre a revisão
     await fillStage(supplierA, order.id, "INSPECTION", {
       weight_measured: "15",
     });
-    expect((await store.get("stages", insp.id))!.status).toBe("blocked");
+    expect((await groupOf(insp.orderId, insp.key)).status).toBe("blocked");
     expect((await store.get("requirements", review.id))!.status).toBe(
       "pending",
     );
@@ -254,12 +250,8 @@ describe("fluxo completo: solicitação → entrega", () => {
     // Datas em ordem: chegada nunca antes do embarque (nos dois sentidos).
     {
       const armador = by("shipping_line", "armador");
-      const [shipping] = await store.list("stages", {
-        filter: { orderId: order.id, key: "SHIPPING" as never },
-      });
-      const reqs = await store.list("requirements", {
-        filter: { stageId: shipping.id },
-      });
+      const shipping = await groupOf(order.id, "SHIPPING");
+      const reqs = await groupItems(shipping.orderId, shipping.key);
       const shipDate = reqs.find((r) => r.key === "ship_date")!;
       const eta = reqs.find((r) => r.key === "eta")!;
       // A chegada só depois do embarque informado (para ser conferida com ele).
@@ -291,16 +283,17 @@ describe("fluxo completo: solicitação → entrega", () => {
     await fillStage(by("shipping_line", "armador"), order.id, "SHIPPING");
     expect((await store.get("orders", order.id))!.status).toBe("CUSTOMS");
     await fillStage(by("broker", "despachante"), order.id, "CUSTOMS");
-    expect((await store.get("orders", order.id))!.status).toBe("TRANSPORT");
+    // Fase 5g: a situação gravada vem do marco atual; o Desembaraço segue
+    // em andamento até os passos dele (presença de carga, canal, DI...).
+    expect((await store.get("orders", order.id))!.status).toBe("CUSTOMS");
     // Fase 5d: transporte e entrega esperam os passos do desembaraço e a NF.
     await completeMilestonesBefore(order.id, "delivery", { stepsOnly: true });
+    expect((await store.get("orders", order.id))!.status).toBe("TRANSPORT");
     // Entrega antes da chegada do navio: recusada.
     {
-      const [transport] = await store.list("stages", {
-        filter: { orderId: order.id, key: "TRANSPORT" as never },
-      });
+      const transport = await groupOf(order.id, "TRANSPORT");
       const delivery = (
-        await store.list("requirements", { filter: { stageId: transport.id } })
+        await groupItems(transport.orderId, transport.key)
       ).find((r) => r.key === "eta")!;
       await expect(
         submitRequirement(by("carrier", "transportador"), delivery.id, {
@@ -319,8 +312,20 @@ describe("fluxo completo: solicitação → entrega", () => {
     expect(final.status).toBe("CLOSED");
     expect(final.closedAt).not.toBeNull();
 
+    // Fase 5g: encerrado pelo último marco, com os itens obrigatórios feitos
+    // e os 16 marcos concluídos (ou sem aplicação).
     const progress = (await loadOrderProgress(order.id))!;
-    expect(progress.stages.every((s) => s.status === "done")).toBe(true);
+    expect(
+      progress.requirements
+        .filter((r) => r.required)
+        .every((r) => r.status === "done"),
+    ).toBe(true);
+    const { milestonesOf } = await import("@/lib/services/milestones");
+    expect(
+      (await milestonesOf(final)).every(
+        (v) => v.state === "done" || v.state === "na",
+      ),
+    ).toBe(true);
     const audit = await store.list("audit_log");
     expect(audit.length).toBeGreaterThan(20);
   });

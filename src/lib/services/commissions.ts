@@ -461,17 +461,38 @@ export async function setAgreementStatus(
 /* O pedido como a comissão o vê                                             */
 /* ------------------------------------------------------------------------ */
 
-const STAGE_EVENT: Record<string, CommissionEvent> = {
-  INSPECTION: "inspection_done",
-  SHIPPING: "shipped",
-  DELIVERED: "delivered",
+/**
+ * Eventos da comissão pelos marcos (fase 5g, no lugar da conclusão das
+ * etapas): a Inspeção concluída; o embarque confirmado (o item "Embarque
+ * confirmado" ou o marco Embarque concluído); o recebimento confirmado (o
+ * item ou o marco Entrega e recebimento concluído).
+ */
+const MILESTONE_EVENT: Record<string, CommissionEvent> = {
+  inspection: "inspection_done",
+  shipment: "shipped",
+  delivery: "delivered",
+};
+const ITEM_EVENT: Record<string, CommissionEvent> = {
+  shipped: "shipped",
+  receipt_confirmed: "delivered",
 };
 
 export async function buildOperation(order: Order): Promise<Operation> {
   const store = getStore();
-  const [items, stages, payments, manual] = await Promise.all([
+  const [items, milestones, doneItems, payments, manual] = await Promise.all([
     store.list("order_items", { filter: { orderId: order.id } }),
-    store.list("stages", { filter: { orderId: order.id } }),
+    store
+      .list("order_milestones", {
+        filter: { orderId: order.id, status: "done" },
+      })
+      .catch(() => []),
+    store.list("requirements", {
+      filter: {
+        orderId: order.id,
+        key: Object.keys(ITEM_EVENT),
+        status: "done",
+      },
+    }),
     store.list("payments", { filter: { orderId: order.id } }),
     store
       .list("commission_events", { filter: { orderId: order.id } })
@@ -494,8 +515,10 @@ export async function buildOperation(order: Order): Promise<Operation> {
     ? money(receipts.reduce((s, p) => s + cents(p.amount), 0))
     : null;
   const events = new Set<CommissionEvent>(["order_created"]);
-  for (const s of stages)
-    if (s.completedAt && STAGE_EVENT[s.key]) events.add(STAGE_EVENT[s.key]);
+  for (const m of milestones)
+    if (MILESTONE_EVENT[m.key]) events.add(MILESTONE_EVENT[m.key]);
+  for (const r of doneItems)
+    if (ITEM_EVENT[r.key]) events.add(ITEM_EVENT[r.key]);
   if (order.closedAt) events.add("closed");
   if (order.invoicedAt) events.add("invoiced");
   if (received !== null && received > 0) events.add("received_first");

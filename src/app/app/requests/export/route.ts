@@ -23,6 +23,7 @@ import {
 import {
   exportMilestoneCell,
   orderMilestonesOf,
+  orderNextInfoOf,
 } from "@/lib/services/request-export";
 
 export const dynamic = "force-dynamic";
@@ -72,13 +73,9 @@ export async function GET(request: NextRequest) {
   const orders = orderIds.length
     ? await store.list("orders", { filter: { id: orderIds } })
     : [];
-  // Próximo passo e etapa do pedido (as mesmas regras da tela).
-  const stageIds = orders
-    .map((o) => o.currentStageId)
-    .filter(Boolean) as string[];
-  const stages = stageIds.length
-    ? await store.list("stages", { filter: { id: stageIds } })
-    : [];
+  // Próximo passo do pedido (as mesmas regras da tela; fase 5g: quem age e o
+  // prazo pelos marcos).
+  const nextInfo = await orderNextInfoOf(orders);
   // Marco atual de cada pedido pelo resumo (`facts.m`); sem resumo, pela situação.
   const milestones = await orderMilestonesOf(orderIds);
   const cell = (v: string | number | null | undefined) => {
@@ -107,17 +104,15 @@ export async function GET(request: NextRequest) {
           const order = r.orderId
             ? orders.find((o) => o.id === r.orderId)
             : null;
-          const stage = order?.currentStageId
-            ? stages.find((st) => st.id === order.currentStageId)
-            : null;
+          const info = order ? nextInfo.get(order.id) : undefined;
           const next = requestNextStep({
             status: r.status,
             display: requestDisplayStatus(r, cancelled),
             order: order
               ? {
                   status: order.status,
-                  responsibleRole: stage?.responsibleRole ?? null,
-                  dueAt: stage?.dueAt ?? null,
+                  responsibleRole: info?.responsibleRole ?? null,
+                  dueAt: info?.dueAt ?? null,
                 }
               : null,
             today,

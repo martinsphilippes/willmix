@@ -2,7 +2,6 @@ import "server-only";
 
 import { getStore, type AckEvent, type User } from "@/lib/db";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
-import { submitRequirement } from "@/lib/workflow/engine";
 import { audit } from "./audit";
 
 /**
@@ -163,19 +162,6 @@ export async function confirmSupplierPaymentReceipt(
       paymentId,
       "Recebimento confirmado pelo fornecedor",
     );
-    const [stage] = await store.list("stages", {
-      filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
-    });
-    if (stage && stage.status === "active") {
-      const [req] = await store.list("requirements", {
-        filter: {
-          stageId: stage.id,
-          key: "payment_received",
-          status: "pending",
-        },
-      });
-      if (req) await submitRequirement(user, req.id, { value: paymentId });
-    }
     // Pedido de compra: o sinal recebido libera a produção.
     const { refreshPurchaseGates } = await import("./purchase-gates");
     await refreshPurchaseGates(order.id, user);

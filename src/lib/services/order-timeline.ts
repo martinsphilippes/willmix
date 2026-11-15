@@ -1,7 +1,8 @@
 import "server-only";
 import { can } from "@/lib/auth/function-access";
 import { canOpen } from "@/lib/auth/screens";
-import type { ArtIssue, Order, Requirement, Stage, User } from "@/lib/db";
+import type { ArtIssue, Order, Requirement, User } from "@/lib/db";
+import { itemGroupId, type ItemGroup } from "@/lib/order-groups";
 import type { OrderPartKey } from "@/lib/order-parts";
 import {
   DOWN_PAYMENT_KEY,
@@ -15,9 +16,8 @@ import {
   ORDER_SIGN_SEND,
   ORDER_SIGNED_WELLMIX,
   ROLE_PARTY_FIELD,
-  canCompleteLater,
   isPurchaseFlow,
-} from "@/lib/workflow/stages";
+} from "@/lib/workflow/templates";
 import { canSubmitRequirement } from "@/lib/workflow/engine";
 import {
   artMakerRoute,
@@ -95,6 +95,7 @@ export interface MyPartTasks {
 }
 
 export interface MyTimeline {
+  /** Tarefas do login por grupo de itens (`ItemGroup.id`; fase 5g). */
   stages: Map<string, MyStageTasks>;
   parts: Partial<Record<OrderPartKey, MyPartTasks>>;
 }
@@ -168,22 +169,17 @@ export function wellmixRequirementRoute(
 export function myStageTasks(
   user: User,
   order: Order,
-  stage: Pick<Stage, "id" | "key" | "status">,
+  stage: Pick<ItemGroup, "id" | "key" | "status">,
   stageReqs: Requirement[],
   ctx: RoutingContext,
   sealApplied: boolean,
-  /**
-   * Fase 5d: a liberação pelos marcos (`requirementReleased`). Sem ela
-   * (chamadas antigas), pela etapa em andamento.
-   */
-  release?: MilestoneRelease,
+  /** Fase 5d: a liberação pelos marcos (`requirementReleased`). */
+  release: MilestoneRelease,
 ): MyStageTasks {
   const open: Requirement[] = [];
   const later: Requirement[] = [];
   let done = 0;
   const stageOpen = stageReqs.filter((r) => r.status !== "done");
-  // Etapa que ainda não começou: as tarefas dele nela vêm depois.
-  const upcoming = stage.status === "pending";
   for (const r of stageReqs) {
     const route = wellmixRequirementRoute(order, r, stageReqs, ctx);
     const mine = !!route && reaches(user, route);
@@ -197,19 +193,10 @@ export function myStageTasks(
     // item no quadro da etapa). O resto, só quem pode enviar ou aprovar.
     if (!isAutoGateKey(r.key) && !canSubmitRequirement(user, order, r))
       continue;
-    const live = release
-      ? requirementReleased(order, r, release)
-      : stage.status === "active" ||
-        stage.status === "blocked" ||
-        canCompleteLater(stage, r, order);
+    const live = requirementReleased(order, r, release);
     if (!live) {
-      // O que ainda vem (marco aguardando; sem a liberação, etapa por
-      // começar) fica em cinza.
-      if (
-        release
-          ? isOrderOpen(order.status) && stage.status !== "cancelled"
-          : upcoming
-      )
+      // O que ainda vem (marco aguardando) fica em cinza.
+      if (isOrderOpen(order.status) && stage.status !== "cancelled")
         later.push(r);
       continue;
     }
@@ -245,7 +232,8 @@ const doneBy = (user: User, steps: readonly StepView[]) =>
 
 export interface TimelineInput {
   order: Order;
-  stages: Stage[];
+  /** Grupos de itens do pedido (fase 5g, `itemGroupsOf`). */
+  stages: ItemGroup[];
   requirements: Requirement[];
   /** Passos da certificação e do embarque que o login vê (cartões do pedido). */
   certSteps: StepView[];
@@ -285,10 +273,10 @@ export async function myOrderTimeline(
     input.release ??
     (await (await import("./order-milestones")).orderRelease(order.id))
       ?.release ??
-    releaseOf([], stages);
+    releaseOf([]);
   const byStage = new Map<string, MyStageTasks>();
   for (const stage of stages) {
-    const reqs = requirements.filter((r) => r.stageId === stage.id);
+    const reqs = requirements.filter((r) => itemGroupId(r, order) === stage.id);
     byStage.set(
       stage.id,
       myStageTasks(user, order, stage, reqs, ctx, sealApplied, release),
@@ -423,7 +411,7 @@ export interface MyStageRow {
  */
 export function myStageRow(
   mine: MyTimeline,
-  stage: Pick<Stage, "id" | "status">,
+  stage: Pick<ItemGroup, "id" | "status">,
   partKeys: readonly OrderPartKey[],
 ): MyStageRow | null {
   const own = mine.stages.get(stage.id);

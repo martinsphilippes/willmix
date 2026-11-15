@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { itemGroupKey } from "@/lib/order-groups";
 import { sendForSignature, withTempStore } from "./setup";
 
 /*
@@ -81,12 +82,14 @@ async function completeOrder(orderId: string) {
   for (let guard = 0; guard < 80; guard++) {
     const progress = (await loadOrderProgress(orderId))!;
     if (progress.order.status === "CLOSED") return;
-    const stage = progress.stages.find(
-      (s) => s.status === "active" || s.status === "blocked",
-    );
+    // Fase 5g: o grupo pela situação derivada dos marcos.
+    const stage = { key: progress.order.status };
     if (!stage) return;
     const pending = progress.requirements.filter(
-      (r) => r.stageId === stage.id && r.status !== "done" && r.required,
+      (r) =>
+        itemGroupKey(r, progress.order) === stage.key &&
+        r.status !== "done" &&
+        r.required,
     );
     if (pending.length === 0) return;
     // Fase 5d: os passos do embarque, do desembaraço e da NF fazem parte dos

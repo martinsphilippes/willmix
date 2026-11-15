@@ -153,13 +153,13 @@ describe("indicadores prontos do Overview dos blocos", () => {
   it("com o tempo: um prazo que vence muda o atraso sem gravação nenhuma", async () => {
     const store = getStore();
     const { b } = scenario.orders;
-    const [stage] = await store.list("stages", {
+    // Fase 5g: o prazo é o dos marcos em andamento (as linhas gravadas).
+    for (const row of await store.list("order_milestones", {
       filter: { orderId: b.id, status: ["active", "blocked"] },
-      limit: 1,
-    });
-    await store.update("stages", stage.id, {
-      dueAt: new Date(NOW.getTime() + 3_600_000).toISOString(),
-    });
+    }))
+      await store.update("order_milestones", row.id, {
+        dueAt: new Date(NOW.getTime() + 3_600_000).toISOString(),
+      });
     const before = await expectSame(NOW);
     expect(before.validUntil).toBeTruthy();
     // Um dia inteiro depois do prazo: atrasado.
@@ -180,11 +180,11 @@ describe("indicadores prontos do Overview dos blocos", () => {
   it("depois de gravações, o indicador é refeito e continua igual", async () => {
     const store = getStore();
     const { c } = scenario.orders;
-    const [stage] = await store.list("stages", {
+    const [row] = await store.list("order_milestones", {
       filter: { orderId: c.id, status: ["active", "blocked"] },
       limit: 1,
     });
-    await store.update("stages", stage.id, { status: "done", percent: 100 });
+    await store.update("order_milestones", row.id, { status: "done" });
     await scenario.placeOrder("Garrafa Flow");
     const [request] = await store.list("supplier_requests", {
       filter: { number: 902 },

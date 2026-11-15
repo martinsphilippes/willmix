@@ -8,7 +8,7 @@ import {
   type User,
 } from "@/lib/db";
 import { audit } from "./audit";
-import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/stages";
+import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/templates";
 
 export const IMPORT_COLUMNS: Record<string, string[]> = {
   parties: ["type", "name", "country", "email", "phone", "taxId"],

@@ -124,7 +124,7 @@ Os prazos dos lembretes e do SLA continuam os das etapas (`stages.dueAt`); só o
 
 - o motor por etapas (`src/lib/workflow/engine.ts`): ativação e conclusão de etapa, itens obrigatórios, bloqueio, eventos `stage:*` das regras;
 - os campos do banco: `orders.status`, `orders.currentStageId`, `orders.cancelStageKey`, a tabela `stages` (`dueAt`, `reminderSentAt`, `responsibleRole`) e `requirements.stageId`;
-- os modelos de etapa (`src/lib/workflow/stages.ts`, requisitos padrão por etapa) e `settings.stageDueDays` (os prazos dos lembretes e do SLA ainda vêm deles; só o texto e o agrupamento são do marco);
+- os modelos de etapa (`src/lib/workflow/templates.ts`, requisitos padrão por etapa) e `settings.stageDueDays` (os prazos dos lembretes e do SLA ainda vêm deles; só o texto e o agrupamento são do marco);
 - a carga do Sankhya, que grava a etapa da TOP (`advanceStages`);
 - por dentro, as regras dos quadrados da Control Tower (`tower-board.ts`, que leem a etapa e os itens dela para cada quadrado) e a visão do fornecedor, dos parceiros e do cliente na tela do pedido (`src/lib/order-view.ts`, mantida de propósito na fase 3). As telas mostram o marco; a regra por baixo é a do motor.
 
@@ -257,7 +257,7 @@ Cada aprovação é um item obrigatório do pedido de compra, no fim do marco (`
 
 A arte esperar o **Material de arte inteiro** (faca, foto em alta, MOQ e prazo de todos os produtos, mais a aprovação do Comprador; fase 5d) vale só para o pedido de **produto novo, que veio do Book**. Na reposição e na encomenda, a resposta do dono foi "Não tem arte": o pedido repete a arte já aprovada.
 
-- **Quando:** pedido de compra com demanda ligada (`orders.demandIds` não vazio: reposição ou encomenda, docs/PURCHASE_DEMAND.md); a rodada de uma programação segue o pedido pai (`purchaseWithoutArt`, `src/lib/workflow/stages.ts`).
+- **Quando:** pedido de compra com demanda ligada (`orders.demandIds` não vazio: reposição ou encomenda, docs/PURCHASE_DEMAND.md); a rodada de uma programação segue o pedido pai (`purchaseWithoutArt`, `src/lib/workflow/templates.ts`).
 - **Certificado novo** (respostas do dono, 15/11/2026): o produto precisa de certificado novo quando a linha exige certificação e a certificação válida do produto não cobre o período do pedido (`certificationCoversHorizon`, `src/lib/services/purchase-gates.ts`: cada tipo exigido pela linha, válido até hoje + `certificationHorizonDays`). É a mesma conta que conclui sozinho o item do certificado.
 - **Sem certificado novo** (a linha não exige, ou o certificado válido cobre o período): não nasce nenhum item dos marcos Material de arte e Arte (`laneRequirements(..., { art: false })`, `src/lib/purchase-lanes.ts`): faca, foto em alta, MOQ, prazo, aprovação do Comprador (`approval_art_material`), arte, validação e arte final. Os dois marcos ficam "não se aplica" e o **Contrato espera só Pedido novo e Certificação**. A certificação **não pede a arte com o selo** (`cert_seal_art`; `sealArtApplies`/`ordersWithoutSealArt` em `src/lib/services/import-flow.ts`: pedido de compra com certificado e sem arte final). O produto já existe e a arte e o certificado já estão prontos. O item do certificado nasce e conclui sozinho pela certificação válida; a aprovação do GP, o memorial e o selo da certificadora continuam como a certificação pede.
 - **Com certificado novo**: o marco Arte tem **só a arte final com o selo** (sem faca, foto, MOQ, prazo, arte e validação; a arte final espera só o certificado). A arte com o selo segue o que a certificação exige.

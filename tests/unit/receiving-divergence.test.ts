@@ -72,7 +72,10 @@ async function newOrder(joao: User, name: string): Promise<Order> {
     notes: null,
   });
   const o = await orderFromRequest(admin, req);
-  return getStore().update("orders", o.id, { status: "DELIVERED" });
+  // Fase 5g: a situação vem dos marcos; o pedido chega à entrega por eles.
+  const { completeMilestonesBefore } = await import("./helpers/milestones");
+  await completeMilestonesBefore(o.id, "delivery");
+  return (await getStore().get("orders", o.id))!;
 }
 
 const fresh = async () => (await getStore().get("orders", order.id))!;
@@ -174,7 +177,6 @@ describe("divergência no recebimento (E24 a E27)", () => {
       });
     const subtasks = orderSubtasks({
       order: await fresh(),
-      stages: [],
       requirements: [],
       importSteps: await rows(),
       track: null,
@@ -185,7 +187,6 @@ describe("divergência no recebimento (E24 a E27)", () => {
     expect(
       orderSubtasks({
         order: clean,
-        stages: [],
         requirements: [],
         importSteps: [],
         track: null,

@@ -15,7 +15,6 @@ import {
   type Requirement,
   type ReviewItem,
   type Role,
-  type Stage,
   type StageKey,
 } from "@/lib/db";
 import type { BoardOrder } from "./tower-board";
@@ -26,9 +25,11 @@ import {
   milestoneDueOf,
   milestoneOfFacts,
   milestoneOfStatus,
+  responsibleOfItems,
   type CompactMilestone,
   type MilestoneKey,
 } from "@/lib/milestones";
+import { storedMilestone } from "./order-milestones";
 import {
   towerBucketOfMilestone,
   type TowerMilestoneBucket,
@@ -111,10 +112,11 @@ export interface ControlTowerInput {
   partyName: (id: string | null) => string | null;
   /** Primeiro item do pedido (nulo: sem itens). */
   productOf: (orderId: string) => string | null;
-  /** Primeira etapa em andamento ou bloqueada do pedido. */
-  stageOf: (
-    orderId: string,
-  ) => Pick<Stage, "dueAt" | "status" | "responsibleRole"> | undefined;
+  /**
+   * Quem age agora no pedido (fase 5g: o papel do próximo item obrigatório
+   * do marco atual, `responsibleOfItems`).
+   */
+  responsibleOf: (orderId: string) => Role | null;
   requests: Request[];
   penalties: Pick<Penalty, "orderId" | "reason">[];
   rejected: Pick<Requirement, "orderId" | "label">[];
@@ -182,17 +184,39 @@ export async function loadControlTower(
     // Do resumo dos pedidos (docs/RESUMOS.md).
     return controlTowerFromFacts(view.facts, await sideP, now);
   }
-  // Caminho antigo (sem resumo ainda): as tabelas de pedidos, itens e etapas.
+  // Caminho antigo (sem resumo ainda): as tabelas de pedidos, itens e marcos.
   const store = getStore();
-  const [orders, stages, items, side, milestoneRows] = await Promise.all([
+  const [orders, items, side, milestoneRows] = await Promise.all([
     store.list("orders", { orderBy: "number", direction: "desc" }),
-    store.list("stages", { filter: { status: ["active", "blocked"] } }),
     store.list("order_items"),
     sideP,
     store
       .list("order_milestones", { filter: { status: ["active", "blocked"] } })
       .catch(() => []),
   ]);
+  // Quem age agora: o próximo item obrigatório do marco atual (fase 5g).
+  const liveIds = orders.filter((o) => isOrderOpen(o.status)).map((o) => o.id);
+  const { listColumns } = await import("@/lib/db/lookup");
+  const flowItems = liveIds.length
+    ? await listColumns(
+        store,
+        "requirements",
+        [
+          "orderId",
+          "key",
+          "step",
+          "milestoneKey",
+          "required",
+          "status",
+          "role",
+        ],
+        { filter: { orderId: liveIds } },
+      )
+    : [];
+  const itemsOf = new Map<string, typeof flowItems>();
+  for (const r of flowItems)
+    itemsOf.set(r.orderId, [...(itemsOf.get(r.orderId) ?? []), r]);
+  const orderOf = new Map(orders.map((o) => [o.id, o]));
   const rowsByOrder = new Map<string, typeof milestoneRows>();
   for (const r of milestoneRows)
     rowsByOrder.set(r.orderId, [...(rowsByOrder.get(r.orderId) ?? []), r]);
@@ -204,13 +228,20 @@ export async function loadControlTower(
   // Mapas pelo primeiro de cada (como o .find de antes, sem pedidos × itens).
   const partyById = indexBy(parties, "id");
   const itemByOrder = indexBy(items, "orderId");
-  const stageByOrder = indexBy(stages, "orderId");
   return buildControlTower({
     now,
     orders,
     partyName: (id) => (id === null ? null : (partyById.get(id)?.name ?? null)),
     productOf: (id) => itemByOrder.get(id)?.name ?? null,
-    stageOf: (id) => stageByOrder.get(id),
+    responsibleOf: (id) => {
+      const o = orderOf.get(id);
+      return o
+        ? responsibleOfItems(
+            storedMilestone(o.milestoneKey) ?? milestoneOfStatus(o.status),
+            (itemsOf.get(id) ?? []) as Requirement[],
+          )
+        : null;
+    },
     milestoneRowsOf: (id) => rowsByOrder.get(id),
     ...side,
   });
@@ -249,7 +280,7 @@ export async function controlTowerFromFacts(
     orders: facts.map((f) => f.order),
     partyName: (id) => (id === null ? null : (names.get(id) ?? null)),
     productOf: (id) => byId.get(id)?.product ?? null,
-    stageOf: (id) => byId.get(id)?.active[0],
+    responsibleOf: (id) => byId.get(id)?.resp ?? null,
     milestonesOf: (id) => byId.get(id)?.m,
     ...side,
   });
@@ -260,7 +291,6 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
   const { now, orders, requests, penalties } = input;
   const partyName = (id: string | null) => input.partyName(id) ?? "—";
   const productOf = (order: BoardOrder) => input.productOf(order.id) ?? "—";
-  const stageOf = (order: BoardOrder) => input.stageOf(order.id);
   const orderById = new Map<string, BoardOrder>();
   for (const o of orders) if (!orderById.has(o.id)) orderById.set(o.id, o);
 
@@ -269,12 +299,10 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
       isOrderOpen(o.status),
     )
     .map((o) => {
-      const stage = stageOf(o);
-      // Fase 5e: prazo e trava pelos marcos; sem eles, a etapa em andamento.
+      // Fase 5e: prazo e trava pelos marcos (fase 5g: sem etapa de reserva).
       const m = input.milestonesOf?.(o.id);
       const rowsOf = input.milestoneRowsOf?.(o.id);
-      const due = milestoneDueOf(m, rowsOf);
-      const dueAt = due === undefined ? (stage?.dueAt ?? null) : due;
+      const dueAt = milestoneDueOf(m, rowsOf) ?? null;
       return {
         id: o.id,
         number: `#${o.number}`,
@@ -283,10 +311,10 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
         stageKey: o.status,
         milestone: milestoneOfFacts(input.milestonesOf?.(o.id), o.status),
         requestStatus: null,
-        responsible: stage?.responsibleRole ?? null,
+        responsible: input.responsibleOf(o.id),
         dueAt,
         overdue: !!dueAt && Date.parse(dueAt) < now,
-        blocked: milestoneBlockedOf(m, rowsOf) ?? stage?.status === "blocked",
+        blocked: milestoneBlockedOf(m, rowsOf) ?? false,
         link: `/app/orders/${o.id}`,
       };
     });

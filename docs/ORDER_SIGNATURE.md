@@ -92,7 +92,7 @@ Sem coluna nova: a assinatura fica no próprio item da etapa (`requirements.valu
 
 ## 7. Código
 
-`src/lib/services/order-signature.ts`, `src/app/app/actions/order-signature.ts`, `src/app/app/orders/[id]/purchase-order/page.tsx`, o PDF em `src/app/api/orders/[id]/purchase-order/route.ts` e `src/lib/simple-pdf.ts` (gerador sem dependências; caracteres fora do alfabeto latino são omitidos no PDF), a folha no modelo em `src/lib/services/order-sheet.ts` (dados), `src/lib/order-sheet-layout.ts` (colunas e células, comum ao PDF e à tela), `src/lib/services/order-sheet-pdf.ts` (PDF deitado) e `src/components/order-sheet-view.tsx` (tela), chaves em `src/lib/workflow/stages.ts` (`ORDER_SIGNATURE_KEYS`) e a trava em `submitRequirement`. Testes: `tests/unit/order-signature.test.ts`, `tests/unit/order-sheet.test.ts` e o E2E do caminho principal.
+`src/lib/services/order-signature.ts`, `src/app/app/actions/order-signature.ts`, `src/app/app/orders/[id]/purchase-order/page.tsx`, o PDF em `src/app/api/orders/[id]/purchase-order/route.ts` e `src/lib/simple-pdf.ts` (gerador sem dependências; caracteres fora do alfabeto latino são omitidos no PDF), a folha no modelo em `src/lib/services/order-sheet.ts` (dados), `src/lib/order-sheet-layout.ts` (colunas e células, comum ao PDF e à tela), `src/lib/services/order-sheet-pdf.ts` (PDF deitado) e `src/components/order-sheet-view.tsx` (tela), chaves em `src/lib/workflow/templates.ts` (`ORDER_SIGNATURE_KEYS`) e a trava em `submitRequirement`. Testes: `tests/unit/order-signature.test.ts`, `tests/unit/order-sheet.test.ts` e o E2E do caminho principal.
 
 ## 8. Melhorias futuras
 

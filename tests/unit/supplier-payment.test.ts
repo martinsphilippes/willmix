@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { groupItems, groupOf } from "./helpers/groups";
 import { withTempStore } from "./setup";
 
 /*
@@ -17,8 +18,7 @@ const { supplierPaymentView, registerSupplierPayment, setSupplierPaymentFx } =
   await import("@/lib/services/supplier-payment");
 const { confirmSupplierPaymentReceipt } =
   await import("@/lib/services/acknowledgements");
-const { orderPayable, releaseOffFlowStages } =
-  await import("@/lib/services/supplier-terms");
+const { orderPayable } = await import("@/lib/services/supplier-terms");
 const { computeOrderFinance } = await import("@/lib/services/finance");
 type User = import("@/lib/db").User;
 
@@ -46,14 +46,12 @@ async function orderAfterPreparation(supplierId = "fornecedor-a") {
     downPaymentAmount: 300,
   });
   // Avança Pedido criado e Preparação.
+  // Fase 5g: os grupos de itens no lugar das etapas (helpers/groups.ts).
   for (const key of ["ORDER_CREATED", "PREPARATION"]) {
-    const [stage] = await store.list("stages", {
-      filter: { orderId: order.id, key: key as never },
-    });
-    for (const req of await store.list("requirements", {
-      filter: { stageId: stage.id, status: "pending" },
-    })) {
-      if ((await store.get("stages", stage.id))?.status !== "active") break;
+    for (const req of (await groupItems(order.id, key)).filter(
+      (r) => r.status === "pending",
+    )) {
+      if ((await groupOf(order.id, key)).status !== "active") break;
       await submitRequirement(admin, req.id, { value: "1", signature: true });
     }
   }
@@ -78,14 +76,11 @@ beforeAll(async () => {
 });
 
 describe("pagamento ao fornecedor fora do fluxo", () => {
-  it("o pedido não para no pagamento: a etapa conclui sozinha e copia a condição do fornecedor", async () => {
+  it("o pedido não para no pagamento: não há item dele e o pedido copia a condição do fornecedor", async () => {
     const order = await orderAfterPreparation();
     expect(order.status).toBe("PACKAGING");
-    const store = getStore();
-    const [stage] = await store.list("stages", {
-      filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
-    });
-    expect(stage.status).toBe("done");
+    // Fase 5g: sem a etapa; o pedido novo não tem item do pagamento antigo.
+    expect(await groupItems(order.id, "SUPPLIER_PAYMENT")).toEqual([]);
     // Seed: fornecedor A combina 30% no pedido + 70% 90 dias após a entrega.
     expect(order.supplierPaymentTerms).toEqual([
       { percent: 30, base: "order_created", days: 0 },
@@ -250,49 +245,39 @@ describe("pagamento ao fornecedor fora do fluxo", () => {
     ).rejects.toThrow("nothing_due");
   });
 
-  it("pedido antigo parado na etapa (itens obrigatórios) segue para a embalagem", async () => {
+  it("pedido antigo com os itens do pagamento (obrigatórios) não para: eles não seguram marco nem viram tarefa", async () => {
     const store = getStore();
     const order = await orderAfterPreparation();
-    // Simula um pedido de antes: etapa de pagamento ativa com os dois itens.
-    const stages = await store.list("stages", {
-      filter: { orderId: order.id },
-    });
-    const pay = stages.find((s) => s.key === "SUPPLIER_PAYMENT")!;
-    const pack = stages.find((s) => s.key === "PACKAGING")!;
-    await store.update("stages", pack.id, {
-      status: "pending",
-      startedAt: null,
-    });
-    await store.update("stages", pay.id, {
-      status: "active",
-      completedAt: null,
-      percent: 0,
-    });
+    // Simula um pedido de antes: os dois itens da etapa de pagamento antiga
+    // (passo do Financeiro, marco Sinal), obrigatórios e pendentes.
+    const items = [];
     for (const key of ["payment_registered", "payment_received"])
-      await store.create("requirements", {
-        orderId: order.id,
-        stageId: pay.id,
-        key,
-        label: key,
-        type: "confirm",
-        required: true,
-        role: key === "payment_received" ? "supplier" : "operator",
-        status: "pending",
-        value: null,
-        documentId: null,
-        submittedByUserId: null,
-        submittedAt: null,
-        note: null,
-      });
-    await store.update("orders", order.id, {
-      status: "SUPPLIER_PAYMENT",
-      currentStageId: pay.id,
-    });
-
-    expect(await releaseOffFlowStages(order.id)).toBe(1);
-    expect((await store.get("stages", pay.id))!.status).toBe("done");
+      items.push(
+        await store.create("requirements", {
+          orderId: order.id,
+          stageId: null,
+          key,
+          label: key,
+          type: "confirm",
+          required: true,
+          role: key === "payment_received" ? "supplier" : "operator",
+          status: "pending",
+          value: null,
+          documentId: null,
+          submittedByUserId: null,
+          submittedAt: null,
+          note: null,
+          step: "finance/finance",
+          milestoneKey: "down-payment",
+        }),
+      );
+    const { syncMilestones, requirementIsReleased } =
+      await import("@/lib/services/order-milestones");
+    await syncMilestones(order.id);
     expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
-    // Idempotente: nada mais a liberar.
-    expect(await releaseOffFlowStages(order.id)).toBe(0);
+    for (const r of items) expect(await requirementIsReleased(r)).toBe(false);
+    await expect(
+      submitRequirement(admin, items[0].id, { value: "x" }),
+    ).rejects.toThrow("stage_not_active");
   });
 });

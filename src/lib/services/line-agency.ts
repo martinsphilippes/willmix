@@ -39,12 +39,8 @@ export async function lineAgencyOf(
 export async function assignOrderAgency(order: Order, agencyId: string) {
   const store = getStore();
   await store.update("orders", order.id, { agencyId });
-  const stages = await store.list("stages", {
-    filter: { orderId: order.id, key: "PACKAGING" },
-  });
-  const { normalizePackagingStage } = await import("./packaging");
-  for (const stage of stages)
-    await normalizePackagingStage(stage.id, { reassign: true });
+  const { reassignOrderArt } = await import("./packaging");
+  await reassignOrderArt(order.id);
   try {
     const updated = await store.get("orders", order.id);
     const { notifySealPartner } = await import("./import-flow");

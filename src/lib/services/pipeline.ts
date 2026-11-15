@@ -6,7 +6,6 @@ import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 import {
   getStore,
   type OrderItem,
-  type Stage,
   type StageKey,
   type User,
   type VariantSnapshot,
@@ -25,8 +24,11 @@ import {
 } from "./journey";
 import type { OrderFacts } from "./order-summary";
 import {
+  milestoneBlockedOf,
+  milestoneDueOf,
   milestoneOfFacts,
   milestoneOfStatus,
+  type CompactMilestone,
   type MilestoneKey,
 } from "@/lib/milestones";
 
@@ -151,7 +153,6 @@ function pipelineItem(
 /** Partes do resumo que o painel lê (etapa, viagem, 1º produto e quantos itens). */
 const PIPELINE_FACTS = [
   "order",
-  "active",
   "reqs",
   "lane",
   "steps",
@@ -220,17 +221,15 @@ export async function loadPipelineItems(
  * (etapas e itens de etapa, passos do embarque) e da revisão aberta.
  */
 async function journeyInputFromFacts<
-  F extends Pick<OrderFacts, "steps" | "order" | "reqs" | "lane">,
+  F extends Pick<OrderFacts, "steps" | "order" | "reqs" | "lane" | "m">,
 >(
   facts: F[],
-  activeStages: JourneyInput["activeStages"],
   rowsOf: (f: F[]) => {
-    stages: JourneyInput["stages"];
     requirements: JourneyInput["requirements"];
   },
   now = new Date(),
 ): Promise<JourneyInput> {
-  const { stages, requirements } = rowsOf(facts);
+  const { requirements } = rowsOf(facts);
   const reviews = await getStore().list("review_items", {
     filter: { status: "open" },
     orderBy: "createdAt",
@@ -238,8 +237,9 @@ async function journeyInputFromFacts<
   });
   return {
     now,
-    activeStages,
-    stages,
+    blocked: new Set(
+      facts.filter((f) => milestoneBlockedOf(f.m)).map((f) => f.order.id),
+    ),
     requirements,
     steps: facts.flatMap((f) => f.steps),
     reviews,
@@ -308,7 +308,7 @@ export async function pipelineFor(
   ]);
   // Etapas e viagem: do resumo por pedido (docs/RESUMOS.md) quando em uso,
   // só as partes que o painel lê.
-  const { factsForOrders, activeStagesFromFacts, journeyRowsFromFacts } =
+  const { factsForOrders, journeyRowsFromFacts } =
     await import("./order-summary");
   const facts = await factsForOrders(orders, PIPELINE_FACTS);
   // Itens: nulo = ainda não lidos (lazyItems com o resumo em uso).
@@ -317,16 +317,43 @@ export async function pipelineFor(
     : facts
       ? null
       : await loadItems();
-  const stages: Array<Pick<Stage, "orderId" | "status" | "percent" | "dueAt">> =
-    facts
-      ? activeStagesFromFacts([...facts.values()])
-      : await listColumns(
-          store,
-          "stages",
-          ["orderId", "status", "percent", "dueAt"],
-          { filter: { status: ["active", "blocked"] } },
-        );
-  const stageByOrder = indexBy(stages, "orderId");
+  // Fase 5g: andamento, prazo e trava pelos marcos (o resumo, `facts.m`;
+  // sem ele, os marcos calculados agora).
+  const milestonesOf = new Map<string, CompactMilestone[] | undefined>();
+  if (facts) for (const [id, f] of facts) milestonesOf.set(id, f.m);
+  else {
+    const { ordersRelease } = await import("./order-milestones");
+    const { compactMilestones } = await import("@/lib/milestones");
+    const { withStoredDue } = await import("./milestones");
+    const live = orders.filter(
+      (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
+    );
+    const liveIds = live.map((o) => o.id);
+    const [found, rows] = await Promise.all([
+      ordersRelease(liveIds),
+      liveIds.length
+        ? store
+            .list("order_milestones", { filter: { orderId: liveIds } })
+            .catch(() => [])
+        : Promise.resolve([]),
+    ]);
+    // O prazo e a trava pelas linhas gravadas, como o resumo.
+    for (const [id, r] of found) {
+      const mine = rows.filter((x) => x.orderId === id);
+      milestonesOf.set(
+        id,
+        compactMilestones(
+          withStoredDue(r.views, mine),
+          new Set(mine.filter((x) => x.status === "blocked").map((x) => x.key)),
+        ),
+      );
+    }
+  }
+  const currentOf = (id: string, status: string) => {
+    const m = milestonesOf.get(id);
+    const key = milestoneOfFacts(m, status);
+    return { m, key, view: m?.find((x) => x.k === key) };
+  };
   // Só os parceiros que aparecem (antes: a tabela inteira, ~32 mil).
   const parties = indexBy(
     await listByIds(store, "parties", [
@@ -388,7 +415,6 @@ export async function pipelineFor(
     facts
       ? await journeyInputFromFacts(
           journeyOrders.flatMap((o) => facts.get(o.id) ?? []),
-          stages,
           journeyRowsFromFacts,
         )
       : await loadJourneyInput(
@@ -402,7 +428,7 @@ export async function pipelineFor(
 
   for (const o of visibleOrders) {
     const request = o.requestId ? requestById.get(o.requestId) : undefined;
-    const stage = stageByOrder.get(o.id);
+    const now = currentOf(o.id, o.status);
     const cancelled = o.status === "CANCELLED";
     const closed = o.status === "CLOSED";
     rows.push({
@@ -454,12 +480,18 @@ export async function pipelineFor(
         ? "cancelled"
         : closed
           ? "done"
-          : stage?.status === "blocked"
+          : milestoneBlockedOf(now.m)
             ? "blocked"
             : "active",
-      progress: cancelled ? null : closed ? 100 : (stage?.percent ?? 0),
-      journey: journey.orderStep(o),
-      dueAt: cancelled || closed ? null : (stage?.dueAt ?? null),
+      progress: cancelled
+        ? null
+        : closed
+          ? 100
+          : now.view?.t
+            ? Math.min(99, Math.round((now.view.d / now.view.t) * 100))
+            : 0,
+      journey: journey.orderStep(o, now.key),
+      dueAt: cancelled || closed ? null : (milestoneDueOf(now.m) ?? null),
       updatedAt: o.updatedAt,
     });
   }

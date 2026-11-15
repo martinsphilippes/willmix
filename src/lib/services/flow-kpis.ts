@@ -21,10 +21,11 @@ import type { OverviewEntity } from "./flow";
  * - Refeito por evento (gravação de pedido, book, convite ou solicitação;
  *   src/lib/db/summary-dirty.ts), na reconstrução dos resumos e quando passa
  *   `validUntil` (um prazo vence e o atraso muda).
- * - Mudou o formato? Suba FLOW_KPI_VERSION.
+ * - Mudou o formato? Suba FLOW_KPI_VERSION. 4 (fase 5g): a completude, o
+ *   prazo e o início de cada bloco vêm dos 16 marcos, não das etapas.
  */
 
-export const FLOW_KPI_VERSION = 3;
+export const FLOW_KPI_VERSION = 4;
 export const FLOW_KPI_KEY = "flow";
 
 const DAY = 86_400_000;
@@ -64,7 +65,7 @@ export const ENTITY_BLOCKS: readonly FlowBlock[] = [
 const avg = (xs: number[]) =>
   xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0;
 
-/** Dias de atraso pelo prazo mais antigo das etapas abertas (a regra de orderProgress). */
+/** Dias de atraso pelo prazo mais antigo dos marcos abertos (a regra de orderProgress). */
 const lateFrom = (due: string | null, now: Date) => {
   const at = due ? Date.parse(due) : NaN;
   return Number.isFinite(at) && at < now.getTime()

@@ -1,55 +1,30 @@
-import type { Requirement, Role, Stage, StageKey, User } from "@/lib/db";
+import type { Requirement, Role, User } from "@/lib/db";
+import type { ItemGroup } from "@/lib/order-groups";
 import { isPartner, isWellmix } from "@/lib/auth/permissions";
 import {
   MILESTONE_KEYS,
-  milestoneOfRequirement,
+  milestoneOfStoredItem,
   type MilestoneKey,
   type MilestoneState,
 } from "@/lib/milestones";
 import type { OrderPartKey } from "@/lib/order-parts";
 
 /*
- * O que cada papel vê das etapas na tela do pedido. A Wellmix vê tudo; cliente
- * e fornecedor veem o andamento (etapas começadas ou concluídas); um parceiro
- * (agência, despachante, companhia marítima, transportador) vê só as etapas
- * em que tem o que fazer, mais as que precisa ler para trabalhar, nunca os
- * valores das etapas dos outros (custos do despachante, por exemplo).
+ * O que cada papel vê dos itens na tela do pedido. A Wellmix vê tudo; cliente
+ * e fornecedor veem o andamento (marcos começados ou concluídos); um parceiro
+ * (agência, despachante, companhia marítima, transportador) vê só o que tem
+ * a fazer, mais os marcos que precisa ler para trabalhar, nunca os valores
+ * dos itens dos outros (custos do despachante, por exemplo). Fase 5g: sem
+ * etapas; "os itens que andam junto" são os do mesmo grupo (`ItemGroup`).
  */
 
-/** Etapas que o parceiro lê sem agir nelas. */
-export const PARTNER_READ_STAGES: Partial<Record<Role, readonly StageKey[]>> = {
-  // O despachante desembaraça com o BL, o navio e a chegada do embarque.
-  broker: ["SHIPPING"],
-  // Comex e agente de carga acompanham o embarque (BL, navio, chegada).
-  comex: ["SHIPPING"],
-  logistics: ["SHIPPING"],
-};
-
-/** A etapa é do parceiro (algum item é do papel dele, ou ele responde por ela). */
+/** O grupo de itens é do parceiro (algum item é do papel dele, ou ele responde por ele). */
 export function stageOfRole(
-  stage: Pick<Stage, "responsibleRole">,
+  stage: Pick<ItemGroup, "responsibleRole">,
   reqs: readonly Pick<Requirement, "role">[],
   role: Role,
 ): boolean {
   return stage.responsibleRole === role || reqs.some((r) => r.role === role);
-}
-
-/** Cartão da etapa aparece para o usuário? (`reqs`: os itens da etapa.) */
-export function stageVisibleTo(
-  user: Pick<User, "role">,
-  stage: Pick<Stage, "key" | "status" | "responsibleRole">,
-  reqs: readonly Pick<Requirement, "role">[],
-): boolean {
-  if (stage.key === "CLOSED") return false;
-  if (isWellmix(user)) return true;
-  if (stage.status === "cancelled") return false;
-  if (isPartner(user)) {
-    // A própria etapa aparece mesmo antes de começar (o que vai ter de fazer).
-    if (stageOfRole(stage, reqs, user.role)) return true;
-    const reads = PARTNER_READ_STAGES[user.role] ?? [];
-    return reads.includes(stage.key) && stage.status !== "pending";
-  }
-  return stage.status !== "pending";
 }
 
 /*
@@ -76,19 +51,6 @@ export const ORDER_PART_ROLES: Record<OrderPartKey, readonly Role[]> = {
 
 const seesWholeFlow = (user: Pick<User, "role">) =>
   isWellmix(user) || user.role === "customer";
-
-/** A linha da etapa aparece na tabela para este login? */
-export function stageRowFor(
-  user: Pick<User, "role">,
-  stage: Pick<Stage, "key" | "status" | "responsibleRole">,
-  reqs: readonly Pick<Requirement, "role">[],
-): boolean {
-  if (seesWholeFlow(user)) return true;
-  if (stageOfRole(stage, reqs, user.role)) return true;
-  // Etapa que o parceiro só lê (ex.: o despachante e o embarque).
-  const reads = PARTNER_READ_STAGES[user.role] ?? [];
-  return reads.includes(stage.key) && stageVisibleTo(user, stage, reqs);
-}
 
 /** A linha da parte do pedido aparece na tabela para este login? */
 export function partRowFor(
@@ -119,25 +81,22 @@ export const PARTNER_READ_MILESTONES: Partial<
   logistics: ["shipment"],
 };
 
-type ViewStage = Pick<Stage, "id" | "key" | "status" | "responsibleRole">;
-type ViewRequirement = Pick<Requirement, "id" | "stageId" | "key" | "role"> & {
+type ViewStage = Pick<ItemGroup, "id" | "key" | "status" | "responsibleRole">;
+type ViewRequirement = Pick<Requirement, "id" | "key" | "role"> & {
+  step?: string | null;
   milestoneKey?: string | null;
 };
 
-/** Marco do item: o gravado; sem ele, pela etapa e a chave. */
+/** Marco do item: o gravado; sem ele, pelo passo (fase 5g). */
 export function requirementMilestone(
-  r: Pick<ViewRequirement, "key" | "milestoneKey">,
-  stage: Pick<Stage, "key">,
+  r: Pick<ViewRequirement, "key" | "milestoneKey" | "step">,
 ): MilestoneKey | null {
-  const stored = r.milestoneKey;
-  if (stored && (MILESTONE_KEYS as readonly string[]).includes(stored))
-    return stored as MilestoneKey;
-  return milestoneOfRequirement(stage.key, r.key);
+  return milestoneOfStoredItem(r);
 }
 
 /**
  * O item aparece para o login? (`stageReqs`: os itens que andam junto com
- * ele, os da mesma etapa do motor.)
+ * ele, os do mesmo grupo.)
  */
 export function requirementVisibleTo(
   user: Pick<User, "role">,
@@ -146,23 +105,19 @@ export function requirementVisibleTo(
   stageReqs: readonly Pick<Requirement, "role">[],
   /**
    * Fase 5d: a situação dos marcos do pedido. Liberado = o marco do item em
-   * andamento ou concluído (não "aguardando"). Sem ela, pela etapa começada.
+   * andamento ou concluído (não "aguardando").
    */
-  states?: ReadonlyMap<MilestoneKey, MilestoneState>,
+  states: ReadonlyMap<MilestoneKey, MilestoneState>,
 ): boolean {
-  if (stage.key === "CLOSED") return false;
   if (isWellmix(user)) return true;
   if (stage.status === "cancelled") return false;
-  // Liberado: o marco do item começou (fase 5d; sem os marcos, a etapa).
-  const milestoneState = states?.get(requirementMilestone(r, stage) as never);
-  const released = states
-    ? milestoneState === "active" || milestoneState === "done"
-    : stage.status !== "pending";
+  const milestone = requirementMilestone(r);
+  const milestoneState = milestone ? states.get(milestone) : undefined;
+  const released = milestoneState === "active" || milestoneState === "done";
   if (isPartner(user)) {
     // O item dele e os que andam junto com os dele, mesmo antes de começar.
     if (r.role === user.role) return true;
     if (stageOfRole(stage, stageReqs, user.role)) return true;
-    const milestone = requirementMilestone(r, stage);
     const reads = PARTNER_READ_MILESTONES[user.role] ?? [];
     return !!milestone && reads.includes(milestone) && released;
   }
@@ -172,27 +127,30 @@ export function requirementVisibleTo(
 
 /**
  * Os itens que o login vê, por marco (na ordem dos 16; dentro do marco, na
- * ordem das etapas e dos itens). `stages` na ordem do fluxo.
+ * ordem dos grupos e dos itens). `stages`: os grupos do pedido
+ * (`itemGroupsOf`); `groupOf`: o grupo de cada item (`itemGroupId`).
  */
 export function requirementsByMilestone<R extends ViewRequirement>(
   user: Pick<User, "role">,
   stages: readonly ViewStage[],
   requirements: readonly R[],
   /** Fase 5d: a situação dos marcos (o "liberado" de `requirementVisibleTo`). */
-  states?: ReadonlyMap<MilestoneKey, MilestoneState>,
+  states: ReadonlyMap<MilestoneKey, MilestoneState>,
+  groupOf: (r: R) => string,
 ): Map<MilestoneKey, Array<{ r: R; stage: ViewStage }>> {
   const byStage = new Map<string, R[]>();
   for (const r of requirements) {
-    const list = byStage.get(r.stageId);
+    const id = groupOf(r);
+    const list = byStage.get(id);
     if (list) list.push(r);
-    else byStage.set(r.stageId, [r]);
+    else byStage.set(id, [r]);
   }
   const found = new Map<MilestoneKey, Array<{ r: R; stage: ViewStage }>>();
   for (const stage of stages) {
     const reqs = byStage.get(stage.id) ?? [];
     for (const r of reqs) {
       if (!requirementVisibleTo(user, r, stage, reqs, states)) continue;
-      const key = requirementMilestone(r, stage);
+      const key = requirementMilestone(r);
       if (!key) continue;
       const list = found.get(key);
       if (list) list.push({ r, stage });

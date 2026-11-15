@@ -12,7 +12,7 @@ import {
   isSampleOrderKey,
   laneInputKeys,
 } from "@/lib/purchase-lanes";
-import { isOrderDocumentKey } from "@/lib/workflow/stages";
+import { isOrderDocumentKey } from "@/lib/workflow/templates";
 import { dieCutHref } from "@/lib/die-cut-step";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { itemsInStep, stepId, type FlowStep } from "@/lib/flow";
@@ -113,7 +113,7 @@ export async function FlowRequirementWork({
     if (task.kind !== "requirement" || !task.orderId) continue;
     const keys = byOrder.get(task.orderId) ?? new Set<string>();
     for (const item of itemsInStep(step, task)) keys.add(item.key);
-    // Sem itens (pendência só da etapa): a etapa inteira cai neste passo.
+    // Sem itens (pendência só do grupo): o grupo inteiro cai neste passo.
     if (!task.items?.length) keys.add("*");
     if (keys.size) byOrder.set(task.orderId, keys);
   }
@@ -124,12 +124,10 @@ export async function FlowRequirementWork({
     store.list("orders", { filter: { id: orderIds } }),
     store.list("requirements", { filter: { orderId: orderIds } }),
   ]);
-  const stages = await store.list("stages", { filter: { orderId: orderIds } });
-  const openStage = new Set(
-    stages
-      .filter((s) => s.status === "active" || s.status === "blocked")
-      .map((s) => s.id),
-  );
+  // Fase 5d/5g: liberado pelo marco do item (sem etapas).
+  const { ordersRelease } = await import("@/lib/services/order-milestones");
+  const { requirementReleased } = await import("@/lib/milestone-release");
+  const releases = await ordersRelease(orderIds);
   // Arquivos que a validação e a arte final usam (a arte, o certificado).
   const inputIds = new Set<string>();
   for (const r of requirements)
@@ -153,8 +151,9 @@ export async function FlowRequirementWork({
       const siblings = requirements.filter((r) => r.orderId === order.id);
       const rows = siblings.filter(
         (r) =>
-          openStage.has(r.stageId) &&
           r.status !== "done" &&
+          !!releases.get(order.id) &&
+          requirementReleased(order, r, releases.get(order.id)!.release) &&
           (keys.has(r.key) || keys.has("*")) &&
           canSubmitRequirement(user, order, r) &&
           (!routing ||

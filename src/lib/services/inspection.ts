@@ -9,7 +9,6 @@ import {
   type PurchaseSheet,
   type PurchaseSnapshot,
   type Requirement,
-  type Stage,
   type User,
 } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
@@ -253,14 +252,10 @@ const ATTRIBUTE_LABEL: Record<string, string> = {
 
 /**
  * Roda após cada submissão de medida na inspeção. Grava o resultado, abre ou
- * resolve itens de revisão e bloqueia/libera a etapa. Sem snapshot, não faz nada
+ * resolve itens de revisão e trava/destrava o marco da Inspeção. Sem snapshot, não faz nada
  * (pedidos antigos seguem só com a regra de peso declarado × medido).
  */
-export async function compareInspection(
-  user: User,
-  order: Order,
-  stage: Stage,
-) {
+export async function compareInspection(user: User, order: Order) {
   const store = getStore();
   const [snapshot, [sheet], settings] = await Promise.all([
     getSnapshotForOrder(order.id),
@@ -269,8 +264,9 @@ export async function compareInspection(
   ]);
   const reference = inspectionReference(snapshot, sheet ?? null);
   if (!reference) return null;
+  // Fase 5g: as medidas do pedido (as chaves da inspeção são únicas nele).
   const requirements = await store.list("requirements", {
-    filter: { stageId: stage.id },
+    filter: { orderId: order.id },
   });
   const comparisons = compareWithSnapshot(reference, requirements, {
     weight: settings.weightTolerancePercent,
@@ -282,7 +278,7 @@ export async function compareInspection(
   const result = summarizeResult(comparisons);
   const row = await store.create("inspection_results", {
     orderId: order.id,
-    stageId: stage.id,
+    stageId: null,
     snapshotId: snapshot?.id ?? null,
     result,
     comparisons,
@@ -328,21 +324,17 @@ export async function compareInspection(
           `${ATTRIBUTE_LABEL[c.attribute] ?? c.attribute} esperado ${expectedText(c)}, encontrado ${c.found}`,
       )
       .join("; ")}. REVISÃO NECESSÁRIA.`;
-    // Fase 5e: a trava é do marco da Inspeção (a etapa só acompanha).
+    // Fase 5e: a trava é do marco da Inspeção.
     const { setMilestoneBlock, INSPECTION_BLOCK_MILESTONE } =
       await import("./order-milestones");
     await setMilestoneBlock(order.id, INSPECTION_BLOCK_MILESTONE, reason);
-    await store.update("stages", stage.id, {
-      status: "blocked",
-      blockReason: reason,
-    });
     const [review] = await store.list("requirements", {
-      filter: { stageId: stage.id, key: "inspection_review" },
+      filter: { orderId: order.id, key: "inspection_review" },
     });
     if (!review) {
       await store.create("requirements", {
         orderId: order.id,
-        stageId: stage.id,
+        stageId: null,
         key: "inspection_review",
         label: "Revisão da divergência na inspeção (Wellmix)",
         type: "approval",
@@ -354,7 +346,7 @@ export async function compareInspection(
         submittedByUserId: null,
         submittedAt: null,
         note: reason,
-        ...requirementFlowFields(stage.key, "inspection_review"),
+        ...requirementFlowFields("INSPECTION", "inspection_review"),
       });
     } else if (review.status !== "pending") {
       await store.update("requirements", review.id, {
@@ -379,7 +371,7 @@ export async function compareInspection(
       (await milestoneBlockOf(order.id, INSPECTION_BLOCK_MILESTONE)) !==
       undefined;
     const [review] = await store.list("requirements", {
-      filter: { stageId: stage.id, key: "inspection_review" },
+      filter: { orderId: order.id, key: "inspection_review" },
     });
     const stillOpen = await store.list("review_items", {
       filter: { entity: "order", entityId: order.id, status: "open" },
@@ -398,10 +390,6 @@ export async function compareInspection(
         note: "Dentro da tolerância após nova medição.",
       });
       await setMilestoneBlock(order.id, INSPECTION_BLOCK_MILESTONE, null);
-      await store.update("stages", stage.id, {
-        status: "active",
-        blockReason: null,
-      });
     }
   }
   return row;

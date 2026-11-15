@@ -6,7 +6,7 @@ import type {
   StageKey,
 } from "@/lib/db/schema";
 import { isOrderOpen } from "@/lib/order-status";
-import { STAGE_KEYS } from "@/lib/db/schema";
+import { stepOfItem } from "@/lib/milestones";
 import {
   DOWN_PAYMENT_KEY,
   PRODUCTION_VIDEO_KEY,
@@ -31,22 +31,31 @@ export const SHIPPING_LATE_KEYS = ["ship_date", "eta", "vessel", "bl"] as const;
 
 /**
  * Dado opcional do Embarque já confirmado (BL que chegou depois, data real,
- * navio): ainda pode ser enviado ou trocado até o pedido encerrar.
+ * navio): ainda pode ser enviado ou trocado até o pedido encerrar. Fase 5g:
+ * pelo passo do item (Embarque) e pelo marco Embarque concluído, não mais
+ * pela etapa.
  */
 export function canCompleteLater(
-  stage: { key: string; status: string },
-  requirement: { key: string; required: boolean },
+  requirement: { key: string; required: boolean; step?: string | null },
+  shipment: string | null | undefined,
   order: { status: string },
 ): boolean {
   return (
-    stage.key === "SHIPPING" &&
-    stage.status === "done" &&
+    stepOfItem(requirement) === "production/shipment" &&
+    shipment === "done" &&
     !requirement.required &&
     (SHIPPING_LATE_KEYS as readonly string[]).includes(requirement.key) &&
     isOrderOpen(order.status)
   );
 }
 
+/*
+ * Modelos dos itens do pedido (fase 5g): os grupos abaixo são só a origem
+ * dos itens (cada item nasce com o passo e o marco dele, `step` e
+ * `milestoneKey`, `requirementFlowFields(grupo, chave)`). Não há mais
+ * registro de etapas: a chave do grupo é a das etapas antigas só para o
+ * de-para do passo.
+ */
 export interface StageTemplate {
   key: StageKey;
   /** Papel responsável padrão (o real é recalculado pelo próximo requisito pendente). */
@@ -310,15 +319,6 @@ export const PURCHASE_INSPECTION_REQUIREMENTS: RequirementTemplate[] = [
 ];
 
 /**
- * Etapas que não seguram o pedido: concluem na hora em que começam (mesmo nos
- * pedidos antigos, que ainda têm itens nelas) e não aparecem no fluxo.
- */
-export const OFF_FLOW_STAGES: readonly StageKey[] = ["SUPPLIER_PAYMENT"];
-
-export const isOffFlowStage = (key: string) =>
-  (OFF_FLOW_STAGES as readonly string[]).includes(key);
-
-/**
  * Aprovações do mapa no fim da Preparação (dono, 14/11/2026;
  * docs/MILESTONES.md): GP no cadastro e na certificação, Comprador no
  * material de arte.
@@ -388,19 +388,6 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
               : DEFAULT_PREPARATION_REQUIREMENTS),
             ...PREPARATION_VALIDATIONS,
           ],
-  },
-  {
-    /*
-     * Fora do fluxo (OFF_FLOW_STAGES): o pagamento ao fornecedor segue a
-     * condição negociada com cada um (cadastro do fornecedor) e costuma vencer
-     * meses depois da entrega. A etapa fica no esquema (pedidos antigos), mas
-     * conclui sozinha; o pagamento vive em Contas a pagar, no card do pedido e
-     * na conta corrente do fornecedor.
-     */
-    key: "SUPPLIER_PAYMENT",
-    responsibleRole: "operator",
-    partyField: "supplierId",
-    requirements: () => [],
   },
   {
     /*
@@ -641,12 +628,6 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
       },
     ],
   },
-  {
-    key: "CLOSED",
-    responsibleRole: "operator",
-    partyField: null,
-    requirements: () => [],
-  },
 ];
 
 /** Campo do pedido que identifica o parceiro de cada papel externo. */
@@ -677,9 +658,3 @@ export const ROLE_PARTY_FIELD: Record<Role, PartyField | null> = {
   ocp: "ocpId",
   marketing_agency: "marketingAgencyId",
 };
-
-export const stageTemplate = (key: StageKey) =>
-  STAGE_TEMPLATES.find((s) => s.key === key)!;
-export const stageIndex = (key: StageKey) => STAGE_KEYS.indexOf(key);
-export const nextStageKey = (key: StageKey): StageKey | null =>
-  STAGE_KEYS[stageIndex(key) + 1] ?? null;

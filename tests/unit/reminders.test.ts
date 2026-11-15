@@ -50,23 +50,15 @@ async function overdueOrder(name: string) {
     dueAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
     reminderSentAt: null,
   });
-  const stages = (
-    await store.list("stages", { filter: { orderId: order.id } })
-  ).filter((st) => st.status !== "cancelled");
   const reqs = await store.list("requirements", {
     filter: { orderId: order.id },
   });
   return {
     order,
     milestone,
-    // Fase 5d: os itens do marco em andamento já podem ser feitos, em
-    // qualquer etapa (o marco libera, não a etapa).
-    pending: reqs.filter(
-      (x) =>
-        x.required &&
-        x.milestoneKey === milestone.key &&
-        stages.some((st) => st.id === x.stageId),
-    ),
+    // Fase 5d: os itens do marco em andamento já podem ser feitos (o marco
+    // libera; fase 5g: sem etapas).
+    pending: reqs.filter((x) => x.required && x.milestoneKey === milestone.key),
   };
 }
 
@@ -98,11 +90,10 @@ describe("lembretes de prazo", () => {
     expect(subjects).toContain(
       `Atrasado: pedido #${a.order.number}, ${milestoneTitle(translator("pt"), a.milestone.key as never)}`,
     );
-    // O prazo da etapa não conta mais: só o do marco.
-    const [stageA] = await store.list("stages", {
-      filter: { orderId: a.order.id, status: "active" },
-    });
-    expect(stageA.reminderSentAt ?? null).toBeNull();
+    // Fase 5g: o pedido novo não tem etapas; o prazo é só o do marco.
+    expect(
+      await store.list("stages", { filter: { orderId: a.order.id } }),
+    ).toEqual([]);
     const again = await runReminders();
     expect(again.sent).toBe(0);
   });

@@ -4,7 +4,7 @@ import { withTempStore } from "./setup";
 /*
  * Datas do pedido em ordem: a previsão de chegada nunca antes da data de
  * embarque. Limites do calendário (com o aviso de cada lado) e a data que
- * precisa vir antes na mesma etapa.
+ * precisa vir antes no mesmo passo (fase 5g: o item pelo passo e pela chave).
  */
 withTempStore();
 
@@ -15,16 +15,17 @@ const { seedDemo } = await import("@/lib/seed");
 const { createContainer, updateContainer } =
   await import("@/lib/services/containers");
 
+const SHIPPING = "production/shipment";
+const TRANSPORT = "delivery/logistics";
 const values: Record<string, string> = {
-  "SHIPPING.ship_date": "2026-10-21",
-  "SHIPPING.eta": "2026-11-20",
+  [`${SHIPPING}.ship_date`]: "2026-10-21",
+  [`${SHIPPING}.eta`]: "2026-11-20",
 };
-const valueOf = (stage: string, key: string) =>
-  values[`${stage}.${key}`] ?? null;
+const valueOf = (step: string, key: string) => values[`${step}.${key}`] ?? null;
 
 describe("limites das datas", () => {
   it("chegada: a partir do embarque; embarque: até a chegada", () => {
-    expect(dateBoundsFor("SHIPPING", "eta", valueOf)).toEqual({
+    expect(dateBoundsFor(SHIPPING, "eta", valueOf)).toEqual({
       min: "2026-10-21",
       minError: "eta_before_ship_date",
       max: undefined,
@@ -32,34 +33,32 @@ describe("limites das datas", () => {
     } as never);
     // Embarque sem limite: a chegada só existe antes dele em pedido antigo, e
     // aí o embarque real vale (a chegada volta a ser pedida).
-    expect(dateBoundsFor("SHIPPING", "ship_date", valueOf)).toEqual({});
+    expect(dateBoundsFor(SHIPPING, "ship_date", valueOf)).toEqual({});
     // A chegada do navio continua limitada pela entrega já informada.
-    const arrival = dateBoundsFor("SHIPPING", "eta", (stage, key) =>
-      stage === "TRANSPORT" && key === "eta"
-        ? "2026-12-01"
-        : valueOf(stage, key),
+    const arrival = dateBoundsFor(SHIPPING, "eta", (stage, key) =>
+      stage === TRANSPORT && key === "eta" ? "2026-12-01" : valueOf(stage, key),
     );
     expect(arrival.max).toBe("2026-12-01");
     expect(arrival.maxError).toBe("eta_after_delivery");
     // Entrega: a partir da chegada do navio.
-    const delivery = dateBoundsFor("TRANSPORT", "eta", valueOf);
+    const delivery = dateBoundsFor(TRANSPORT, "eta", valueOf);
     expect(delivery.min).toBe("2026-11-20");
     expect(delivery.minError).toBe("delivery_before_eta");
   });
 
   it("sem a outra data ainda, sem limite", () => {
-    expect(dateBoundsFor("SHIPPING", "eta", () => null)).toEqual({});
+    expect(dateBoundsFor(SHIPPING, "eta", () => null)).toEqual({});
   });
 });
 
 describe("data que vem antes", () => {
-  it("a chegada espera o embarque (mesma etapa); a entrega não espera", () => {
-    expect(datePrerequisite("SHIPPING", "eta")).toEqual({
+  it("a chegada espera o embarque (mesmo passo); a entrega não espera", () => {
+    expect(datePrerequisite(SHIPPING, "eta")).toEqual({
       key: "ship_date",
       code: "ship_date_first",
     });
-    expect(datePrerequisite("SHIPPING", "ship_date")).toBeNull();
-    expect(datePrerequisite("TRANSPORT", "eta")).toBeNull();
+    expect(datePrerequisite(SHIPPING, "ship_date")).toBeNull();
+    expect(datePrerequisite(TRANSPORT, "eta")).toBeNull();
   });
 
   it("textos do aviso e do erro nas três línguas", () => {

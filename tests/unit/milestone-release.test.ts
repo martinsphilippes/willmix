@@ -63,15 +63,9 @@ const fresh: Subtask[] = [
   sub("finance/finance", "down_payment"),
 ];
 
-const stage = {
-  id: "s1",
-  key: "PREPARATION" as const,
-  status: "pending" as const,
-};
 const item = (milestoneKey: string, extra: object = {}) => ({
   key: "x",
   required: true,
-  stageId: "s1",
   milestoneKey,
   ...extra,
 });
@@ -90,7 +84,7 @@ describe("liberação pelos marcos (regra pura)", () => {
       "down-payment": "waiting",
     });
     // A etapa "pendente" não segura mais: vale o marco.
-    const release = rel.releaseOf(views, [stage]);
+    const release = rel.releaseOf(views);
     for (const k of ["new-order", "certification", "art-material"])
       expect(rel.requirementReleased(order, item(k), release)).toBe(true);
     for (const k of ["art", "contract", "down-payment"])
@@ -138,7 +132,7 @@ describe("liberação pelos marcos (regra pura)", () => {
       fresh.map((s) => ({ ...s, done: s.key !== "sample_order" })),
       "PREPARATION",
     );
-    const release = rel.releaseOf(views, [stage]);
+    const release = rel.releaseOf(views);
     const parent = { status: "PREPARATION", purchaseRounds: [{}] } as never;
     expect(rel.requirementReleased(order, item("contract"), release)).toBe(
       true,
@@ -164,7 +158,7 @@ describe("liberação pelos marcos (regra pura)", () => {
       ),
       "PREPARATION",
     );
-    const release = rel.releaseOf(views, [stage]);
+    const release = rel.releaseOf(views);
     // O Contrato começou: a arte feita não se refaz (só reprovada).
     expect(
       rel.requirementReleased(order, item("art", { status: "done" }), release),

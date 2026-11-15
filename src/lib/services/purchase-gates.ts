@@ -10,7 +10,7 @@ import {
   blockedBy,
   itemIdOf,
 } from "@/lib/purchase-lanes";
-import { isPurchaseFlow } from "@/lib/workflow/stages";
+import { isPurchaseFlow } from "@/lib/workflow/templates";
 import { audit } from "./audit";
 
 /*
@@ -176,14 +176,14 @@ function openGates(requirements: Requirement[]) {
   ]);
   return requirements.filter((r) => {
     if (r.status === "done" || !auto.has(baseKeyOf(r.key))) return false;
-    const siblings = requirements.filter((x) => x.stageId === r.stageId);
-    return blockedBy(r.key, siblings).length === 0;
+    // Fase 5g: a ordem das raias entre os itens do pedido (chaves únicas).
+    return blockedBy(r.key, requirements).length === 0;
   });
 }
 
 /**
  * Confere os itens automáticos de um pedido de compra e conclui os que já
- * estão feitos; a etapa anda (e avisa a próxima área) quando todos fecham.
+ * estão feitos; os marcos andam (e avisam a próxima área) quando todos fecham.
  * Nunca derruba quem chamou: erro vai para o log.
  */
 export async function refreshPurchaseGates(
@@ -216,7 +216,6 @@ async function refresh(orderId: string, user: User | null): Promise<number> {
       )
     : [];
   if (!gates.length) return 0;
-  const touched = new Set<string>();
   let done = 0;
   for (const r of gates) {
     const base = baseKeyOf(r.key);
@@ -250,7 +249,6 @@ async function refresh(orderId: string, user: User | null): Promise<number> {
       { status: r.status },
       { status: "done", value: verdict.value },
     );
-    touched.add(r.stageId);
     done += 1;
     // O passo seguinte da raia fica sabendo (ex.: certificado → arte final).
     if (base === LANE_KEYS.certificate) {
@@ -265,9 +263,9 @@ async function refresh(orderId: string, user: User | null): Promise<number> {
       await notifyProductionReleased(order, verdict.value);
     }
   }
-  if (touched.size) {
-    const { evaluateStage } = await import("@/lib/workflow/engine");
-    for (const stageId of touched) await evaluateStage(user, stageId);
+  if (done) {
+    const { syncMilestones } = await import("./order-milestones");
+    await syncMilestones(order.id, { user });
   }
   return done;
 }

@@ -1,4 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { completeMilestonesBefore } from "./helpers/milestones";
 import { withTempStore } from "./setup";
 import { DAY_MS, towerScenario } from "./helpers/tower-fixture";
 
@@ -116,7 +117,8 @@ beforeAll(async () => {
   await store.update("orders", c.id, { ocpId: null });
   // b: em embarque, com produção (follows de 5 e 15 dias vencidos, o de 25
   // ainda não), numerário a validar e booking enviado pelo operador.
-  await store.update("orders", b.id, { status: "SHIPPING" });
+  // Fase 5g: a situação vem dos marcos; o pedido chega ao embarque por eles.
+  await completeMilestonesBefore(b.id, "booking");
   await step(b.id, "booking", "submitted", {
     submittedByUserId: operator.id,
   });
@@ -135,7 +137,7 @@ beforeAll(async () => {
     supplierRespondedAt: iso(-1),
   });
   // a (pedido de compra) em embarque: rastreio do container registrado há dois dias.
-  await store.update("orders", a.id, { status: "SHIPPING" });
+  await completeMilestonesBefore(a.id, "booking");
   await step(a.id, "container_at_factory", "submitted");
   await step(a.id, "container_tracking", "submitted", {
     submittedAt: iso(-2),
@@ -166,9 +168,11 @@ beforeAll(async () => {
   });
   // Pedido do histórico em espera, com tudo o que daria pendência: nada.
   held = await scenario.placeOrder("Histórico F");
-  // Como na carga do histórico: etapas e itens também em espera.
-  for (const s of await store.list("stages", { filter: { orderId: held.id } }))
-    await store.update("stages", s.id, { held: true });
+  // Como na carga do histórico: marcos e itens também em espera.
+  for (const s of await store.list("order_milestones", {
+    filter: { orderId: held.id },
+  }))
+    await store.update("order_milestones", s.id, { held: true });
   for (const q of await store.list("requirements", {
     filter: { orderId: held.id },
   }))
@@ -199,7 +203,7 @@ beforeAll(async () => {
   // validada, resposta do fornecedor a registrar, evidência a validar. Do
   // pedido entregue só a divergência vira pendência (o selo não).
   delivered = await scenario.placeOrder("Entregue D");
-  await store.update("orders", delivered.id, { status: "DELIVERED" });
+  await completeMilestonesBefore(delivered.id, "delivery");
   await step(delivered.id, "divergence_purchasing", "validated", {
     validatedAt: iso(-2),
   });

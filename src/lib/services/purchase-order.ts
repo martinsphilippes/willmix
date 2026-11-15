@@ -33,7 +33,7 @@ import {
   laneOf,
   type LaneSla,
 } from "@/lib/purchase-lanes";
-import { ROLE_PARTY_FIELD, isPurchaseFlow } from "@/lib/workflow/stages";
+import { ROLE_PARTY_FIELD, isPurchaseFlow } from "@/lib/workflow/templates";
 import { samplingApproved } from "@/lib/supplier-request-sampling";
 import { audit } from "./audit";
 import type { NotifyTarget } from "./notifications";
@@ -310,9 +310,9 @@ export async function createPurchaseOrder(
     order.id,
     `Pedido de compra #${order.number}: ${ordered.length} produto(s) de ${supplierId}, ${summary}${rounds ? `; pedido pai de ${rounds.length} rodadas (${rounds.map((r) => r.expectedAt).join(", ")})` : ""}`,
   );
-  const { createStagesForOrder } = await import("@/lib/workflow/engine");
+  const { createOrderRequirements } = await import("@/lib/workflow/engine");
   const fresh = (await store.get("orders", order.id)) ?? order;
-  await createStagesForOrder(fresh);
+  await createOrderRequirements(fresh);
   await notifySalesOfPurchase(fresh);
   return (await store.get("orders", order.id)) ?? fresh;
 }
@@ -438,9 +438,9 @@ export async function createDirectPurchaseOrder(
     order.id,
     `Pedido de compra #${order.number} direto de ${supplier.name} (fornecedor da última compra): ${input.summary}`,
   );
-  const { createStagesForOrder } = await import("@/lib/workflow/engine");
+  const { createOrderRequirements } = await import("@/lib/workflow/engine");
   const fresh = (await store.get("orders", order.id)) ?? order;
-  await createStagesForOrder(fresh);
+  await createOrderRequirements(fresh);
   await notifySalesOfPurchase(fresh);
   return (await store.get("orders", order.id)) ?? fresh;
 }

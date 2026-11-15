@@ -6,9 +6,9 @@ import {
   type OrderItem,
   type Party,
   type Requirement,
-  type Stage,
   type User,
 } from "@/lib/db";
+import { stepOfItem } from "@/lib/milestones";
 import { ForbiddenError, canViewOrder } from "@/lib/auth/permissions";
 import { cargoFor, type Cargo } from "./freight";
 
@@ -16,7 +16,7 @@ import { cargoFor, type Cargo } from "./freight";
  * O que o transportador precisa do pedido: a mercadoria e a carga (caixas,
  * volume e peso previstos na ficha de compra), quando o navio chega e a
  * alfândega libera, e onde entregar (o cliente do pedido). Nada de preços,
- * fornecedor ou etapas dos outros.
+ * fornecedor ou itens dos outros.
  */
 
 export interface CargoView extends Cargo {
@@ -34,28 +34,27 @@ export interface CargoView extends Cargo {
   > | null;
 }
 
-/** Valor de um item concluído da etapa (`stageKey`/`key`), ou null. */
+/** Item concluído do pedido pelo passo e pela chave (fase 5g), ou null. */
 function doneValue(
-  stages: readonly Stage[],
   requirements: readonly Requirement[],
-  stageKey: string,
+  step: string,
   key: string,
 ): Requirement | null {
-  const stage = stages.find((s) => s.key === stageKey);
-  if (!stage) return null;
   return (
     requirements.find(
-      (r) => r.stageId === stage.id && r.key === key && r.status === "done",
+      (r) => r.key === key && r.status === "done" && stepOfItem(r) === step,
     ) ?? null
   );
 }
+
+const SHIPMENT = "production/shipment";
+const CUSTOMS = "delivery/cargo-presence";
 
 export async function cargoViewForOrder(
   user: User,
   order: Order,
   loaded: {
     items: readonly OrderItem[];
-    stages: readonly Stage[];
     requirements: readonly Requirement[];
     parties: readonly Party[];
   },
@@ -84,17 +83,11 @@ export async function cargoViewForOrder(
       unit,
     })),
     shipDate:
-      doneValue(loaded.stages, loaded.requirements, "SHIPPING", "ship_date")
-        ?.value ?? null,
-    eta:
-      doneValue(loaded.stages, loaded.requirements, "SHIPPING", "eta")?.value ??
-      null,
-    vessel:
-      doneValue(loaded.stages, loaded.requirements, "SHIPPING", "vessel")
-        ?.value ?? null,
+      doneValue(loaded.requirements, SHIPMENT, "ship_date")?.value ?? null,
+    eta: doneValue(loaded.requirements, SHIPMENT, "eta")?.value ?? null,
+    vessel: doneValue(loaded.requirements, SHIPMENT, "vessel")?.value ?? null,
     releasedAt:
-      doneValue(loaded.stages, loaded.requirements, "CUSTOMS", "release")
-        ?.submittedAt ?? null,
+      doneValue(loaded.requirements, CUSTOMS, "release")?.submittedAt ?? null,
     deliverTo: customer
       ? {
           name: customer.name,

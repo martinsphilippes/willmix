@@ -163,13 +163,6 @@ describe("indicadores prontos da Control Tower", () => {
     // Pedido de compra com prazo daqui a 1 hora: em risco agora, atrasado depois.
     const { b } = scenario.orders;
     await store.update("orders", b.id, { flow: "supplier_request" });
-    const [stage] = await store.list("stages", {
-      filter: { orderId: b.id, status: ["active", "blocked"] },
-      limit: 1,
-    });
-    await store.update("stages", stage.id, {
-      dueAt: new Date(NOW.getTime() + 3_600_000).toISOString(),
-    });
     // Fase 5e: o prazo que vence é o dos marcos em andamento.
     for (const row of await store.list("order_milestones", {
       filter: { orderId: b.id, status: ["active", "blocked"] },
@@ -193,11 +186,12 @@ describe("indicadores prontos da Control Tower", () => {
   it("depois de gravações, o indicador é refeito e continua igual", async () => {
     const store = getStore();
     const { c } = scenario.orders;
-    const [stage] = await store.list("stages", {
+    // Fase 5g: a trava é a do marco (a linha gravada), sem etapas.
+    const [row] = await store.list("order_milestones", {
       filter: { orderId: c.id, status: ["active", "blocked"] },
       limit: 1,
     });
-    await store.update("stages", stage.id, { status: "blocked" });
+    await store.update("order_milestones", row.id, { status: "blocked" });
     await store.create("penalties", {
       orderId: c.id,
       reason: "atraso",

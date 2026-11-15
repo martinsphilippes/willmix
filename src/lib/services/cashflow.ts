@@ -142,23 +142,26 @@ export async function loadCashflow(weeks = 12, now = new Date()) {
     store.list("requests", { filter: { status: "WAITING_DOWN_PAYMENT" } }),
     store.list("payments", { filter: { direction: "customer_in" } }),
   ]);
-  // Etapa "Entregue" de cada pedido: do resumo por pedido (docs/RESUMOS.md)
-  // ou, sem ele, da tabela de etapas. Clientes: só os das solicitações.
+  // Marco Entrega e recebimento de cada pedido (fase 5g): do resumo por
+  // pedido (docs/RESUMOS.md) ou, sem ele, das linhas gravadas dos marcos.
+  // Clientes: só os das solicitações.
   const { factsForOrders } = await import("./order-summary");
-  // Só a etapa de entrega do resumo (auditoria de performance, 14/11/2026).
+  // Só os marcos do cronograma do resumo (auditoria de performance, 14/11/2026).
   const facts = await factsForOrders(
     rows.map((r) => r.order),
     ["ship"],
   );
-  const deliveredStages = facts
+  const deliveryRows = facts
     ? null
-    : await store.list("stages", { filter: { key: "DELIVERED" } });
-  const deliveredByOrder = deliveredStages
-    ? indexBy(deliveredStages, "orderId")
+    : await store
+        .list("order_milestones", { filter: { key: "delivery" } })
+        .catch(() => []);
+  const deliveredByOrder = deliveryRows
+    ? indexBy(deliveryRows, "orderId")
     : null;
   const deliveredOf = (orderId: string) =>
     facts
-      ? facts.get(orderId)?.ship.find((x) => x.key === "DELIVERED")
+      ? facts.get(orderId)?.ship.find((x) => x.key === "delivery")
       : deliveredByOrder!.get(orderId);
   const parties = await listByIds(
     store,
@@ -180,7 +183,10 @@ export async function loadCashflow(weeks = 12, now = new Date()) {
     if (o.status === "CANCELLED" || o.customerId === STOCK_PARTY_ID) continue;
     if (!(r.receivable > 0)) continue;
     const st = deliveredOf(o.id);
-    const delivered = o.status === "DELIVERED" || o.status === "CLOSED";
+    const delivered =
+      o.status === "CLOSED" ||
+      st?.status === "done" ||
+      o.status === "DELIVERED";
     const day = delivered
       ? brazilDay(st?.startedAt ?? st?.completedAt ?? o.updatedAt)
       : brazilDay(st?.dueAt ?? null);
