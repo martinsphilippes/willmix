@@ -92,20 +92,26 @@ const review = args.includes("--review")
 const outDir = review ?? join(ROOT, "film/shots", lang);
 await mkdir(outDir, { recursive: true });
 
-const browser = await launch();
+// O navegador sobe no idioma da tela: os campos de data nativos seguem o
+// idioma do próprio Chromium (dd/mm/aaaa em pt, 年/月/日 em zh), não o da página.
+const LOCALE = { pt: "pt-BR", zh: "zh-CN", en: "en-US" }[lang] ?? "en-US";
+const browser = await launch([`--lang=${LOCALE}`]);
 const sessions = new Map();
 async function session(account, mobile, wide) {
   const key = `${account}:${mobile ? "m" : wide ? "w" : "d"}`;
   if (sessions.has(key)) return sessions.get(key);
+  const locale = LOCALE;
   const ctx = await browser.newContext(
     mobile
       ? {
+          locale,
           viewport: { width: 390, height: 844 },
           deviceScaleFactor: review ? 1 : 3,
           isMobile: true,
           hasTouch: true,
         }
       : {
+          locale,
           viewport: wide
             ? { width: 1520, height: 950 }
             : { width: 1280, height: 800 },
