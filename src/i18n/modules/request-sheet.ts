@@ -154,9 +154,9 @@ export const pt = {
   "requestSheet.warn.scheduleMismatch":
     "A quantidade gravada na solicitação ({qty}) é diferente da soma da programação ({total}). A ficha usa a programação.",
   "requestSheet.restricted.values":
-    "Compra e custo aparecem para quem tem “Ver preço de compra”; venda e margem, para quem tem “Ver valores e margem” (Gestão → Equipe → Funções e acessos).",
+    "Compra e custo aparecem para quem tem “Ver preço de compra”; venda e margem, para quem tem “Ver valores e margem” (Equipe Acessos e Parceiros → Funções e acessos).",
   "requestSheet.restricted.payment":
-    "As condições de pagamento ao fornecedor aparecem para quem tem “Ver preço de compra”; as do cliente, para quem tem “Ver valores e margem” (Gestão → Equipe → Funções e acessos).",
+    "As condições de pagamento ao fornecedor aparecem para quem tem “Ver preço de compra”; as do cliente, para quem tem “Ver valores e margem” (Equipe Acessos e Parceiros → Funções e acessos).",
 };
 
 export const en: Record<keyof typeof pt, string> = {

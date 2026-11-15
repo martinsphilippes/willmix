@@ -65,9 +65,9 @@ export const pt = {
   "function.desc.comex_internal":
     "rastreia o container todo dia, da fábrica ao embarque; acompanha containers e fretes",
   "access.denied":
-    "Você não tem acesso a {screen}. Peça ao administrador em Gestão → Equipe e divisões.",
+    "Você não tem acesso a {screen}. Peça ao administrador em Equipe Acessos e Parceiros.",
   "access.noFunction":
-    "Seu login ainda não tem função nem tela liberada. Por enquanto você vê só o básico: Pendências, Painel de SLA, Notificações e Mensagens. Peça ao administrador para liberar seus acessos em Gestão → Equipe e divisões.",
+    "Seu login ainda não tem função nem tela liberada. Por enquanto você vê só o básico: Pendências, Painel de SLA, Notificações e Mensagens. Peça ao administrador para liberar seus acessos em Equipe Acessos e Parceiros.",
   "access.financeAdmin":
     "Financeiro (valores vendidos, recebidos, pagos e a pagar) é só do administrador.",
   "team.col.screens": "Telas",
@@ -141,9 +141,9 @@ export const en: Record<keyof typeof pt, string> = {
   "function.desc.comex_internal":
     "tracks the container every day, from the factory to shipping; follows containers and freight",
   "access.denied":
-    "You do not have access to {screen}. Ask the admin in Management → Team and divisions.",
+    "You do not have access to {screen}. Ask the admin in Team, Access and Partners.",
   "access.noFunction":
-    "Your login has no function or screen yet. For now you see only the basics: My tasks, SLA panel, Notifications and Messages. Ask the admin to grant your access in Management → Team and divisions.",
+    "Your login has no function or screen yet. For now you see only the basics: My tasks, SLA panel, Notifications and Messages. Ask the admin to grant your access in Team, Access and Partners.",
   "access.financeAdmin":
     "Finance (sold, received, paid and payable amounts) is for the admin only.",
   "team.col.screens": "Screens",
@@ -207,9 +207,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "function.desc.designer": "设计稿、包装、照片和营销",
   "function.desc.comex_internal":
     "每天跟踪集装箱（从工厂到装运），跟进集装箱和运费",
-  "access.denied": "您无权访问{screen}。请联系管理员：管理 → 团队与事业部。",
+  "access.denied": "您无权访问{screen}。请联系管理员：团队、权限与合作伙伴。",
   "access.noFunction":
-    "您的账号尚未分配职能，目前只能看到基础页面：待办、SLA 面板、通知和消息。请管理员在“管理 → 团队与事业部”中设置职能。",
+    "您的账号尚未分配职能，目前只能看到基础页面：待办、SLA 面板、通知和消息。请管理员在“团队、权限与合作伙伴”中设置职能。",
   "access.financeAdmin": "财务（已售、已收、已付、应付金额）仅管理员可见。",
   "team.col.screens": "页面",
   "team.screens.base": "仅基础（待办、SLA、通知、消息）",

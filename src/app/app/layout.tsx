@@ -281,6 +281,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
     href: l.href,
     label: t(l.key),
     ...(l.icon ? { icon: l.icon } : {}),
+    ...(l.match ? { match: l.match } : {}),
     ...badgeOf(l),
   });
   const nav = navFor(user);
@@ -309,7 +310,12 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
   );
   const footerNav = navFooterFor(user);
   const footerLinks = footerNav.map(link);
-  const menuHrefs = [...flattenNav(nav), ...footerNav].map((l) => l.href);
+  // Tela mãe do "Voltar" sem tela anterior: os links do menu e os outros
+  // endereços de cada área (as telas de Parceiros em Equipe Acessos e Parceiros).
+  const menuHrefs = [...flattenNav(nav), ...footerNav].flatMap((l) => [
+    l.href,
+    ...(l.match ?? []),
+  ]);
   const showDemo = demoAccountsEnabled();
   // Embaixo do nome: o papel; nos logins de Trading, Factory, Supplier, GP e
   // tipos criados no painel (que entram como o Fornecedor), o nome do tipo.

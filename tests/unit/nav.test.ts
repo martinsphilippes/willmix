@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   MENU_HIDDEN,
+  PARTNERS_AREA,
   flattenNav,
   isActiveHref,
+  isActiveLink,
   isNavGroup,
   navFooterFor,
   navFor,
   sidebarNav,
 } from "@/lib/nav";
+import { parentFor } from "@/components/back-button";
+import { canOpen } from "@/lib/auth/screens";
+import { teamAreaSections } from "@/components/team-area-nav";
 import { ROLES, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
 
 /* Menu lateral (12/11/2026; blocos do mapa desde 14/11/2026,
@@ -105,9 +110,11 @@ describe("menu lateral", () => {
         group: "nav.group.panels",
         items: ["/app/dashboards/owner", "/app/dashboards", "/app/sla"],
       },
+      // Parceiros saiu de Cadastros: é uma seção de Equipe Acessos e
+      // Parceiros, no rodapé (dono, 15/11/2026).
       {
         group: "nav.group.registry",
-        items: ["/app/parties", "/app/products", "/app/lines"],
+        items: ["/app/products", "/app/lines"],
       },
     ]);
     expect(navFooterFor(ADMIN).map((l) => [l.href, l.key])).toEqual([
@@ -118,10 +125,7 @@ describe("menu lateral", () => {
     // Superplan foi para Configurações (fora do menu lateral).
     expect(hrefsOf(ADMIN)).not.toContain("/app/superplan");
     const links = flattenNav(navFor(ADMIN));
-    expect(links.find((l) => l.href === "/app/parties")?.key).toBe(
-      "nav.parties",
-    );
-    for (const href of ["/app/customers", "/app/suppliers"])
+    for (const href of ["/app/parties", "/app/customers", "/app/suppliers"])
       expect(links.map((l) => l.href)).not.toContain(href);
     // Nenhuma tela se repete; todo grupo e todo link solto têm ícone.
     expect(new Set(hrefsOf(ADMIN)).size).toBe(hrefsOf(ADMIN).length);
@@ -487,5 +491,103 @@ describe("barra lateral sem Mensagens e Notificações", () => {
     ).toEqual([
       { href: "/app/production", key: "nav.production", icon: "box" },
     ]);
+  });
+});
+
+/*
+ * Equipe Acessos e Parceiros (dono, 15/11/2026): Parceiros saiu de Cadastros
+ * e virou uma seção da área de Equipe, com um item só no rodapé do menu. Os
+ * endereços e as permissões não mudaram: quem abre Equipe (o administrador)
+ * entra pela Equipe; quem só abre Parceiros entra direto em Parceiros. O item
+ * acende nas telas das duas; o "Voltar" sem tela anterior continua achando
+ * Parceiros como tela mãe.
+ */
+describe("Equipe Acessos e Parceiros", () => {
+  type Who = Parameters<typeof navFor>[0];
+  const area = (user: Who) =>
+    navFooterFor(user).find((l) => l.key === "nav.teamAccess") ?? null;
+  const BUYER: Who = { role: "operator", functions: ["buyer"] };
+  const CATALOG: Who = { role: "operator", functions: ["catalog"] };
+  const DIRECTOR: Who = {
+    role: "operator",
+    functions: ["purchasing_director"],
+  };
+  const PLANNER: Who = { role: "operator", functions: ["planner"] };
+  const DESIGNER: Who = { role: "operator", functions: ["designer"] };
+
+  it("ninguém vê Parceiros em Cadastros", () => {
+    for (const role of ROLES)
+      for (const functions of [null, [...WELLMIX_FUNCTIONS]]) {
+        const hrefs = hrefsOf({ role, functions });
+        for (const href of PARTNERS_AREA) expect(hrefs).not.toContain(href);
+      }
+  });
+
+  it("administrador: o item abre a Equipe e acende também em Parceiros", () => {
+    const link = area(ADMIN)!;
+    expect(link.href).toBe("/app/team");
+    expect(link.icon).toBe("team");
+    for (const path of [
+      "/app/team",
+      "/app/team/u1",
+      "/app/parties",
+      "/app/parties/types",
+      "/app/parties/access",
+      "/app/parties/new",
+      "/app/parties/cliente-joao",
+      "/app/customers",
+      "/app/suppliers",
+    ])
+      expect(isActiveLink(link, path)).toBe(true);
+    for (const path of ["/app/products", "/app/settings", "/app/partiesx"])
+      expect(isActiveLink(link, path)).toBe(false);
+    expect(teamAreaSections(ADMIN as never)).toEqual([
+      "team",
+      "functions",
+      "lines",
+      "partners",
+    ]);
+  });
+
+  it("quem só abre Parceiros (comprador, catálogo, diretoria): o item leva a Parceiros", () => {
+    for (const who of [BUYER, CATALOG, DIRECTOR]) {
+      expect(canOpen(who, "parties")).toBe(true);
+      expect(canOpen(who, "team")).toBe(false);
+      const link = area(who)!;
+      expect(link.href).toBe("/app/parties");
+      expect(link.key).toBe("nav.teamAccess");
+      expect(isActiveLink(link, "/app/parties/types")).toBe(true);
+      expect(isActiveLink(link, "/app/suppliers")).toBe(true);
+      expect(isActiveLink(link, "/app/team")).toBe(false);
+      // Só a seção Parceiros dentro da área.
+      expect(teamAreaSections(who as never)).toEqual(["partners"]);
+    }
+    // O rodapé da diretoria: a área e a Auditoria (Configurações é do admin).
+    expect(navFooterFor(DIRECTOR).map((l) => l.href)).toEqual([
+      "/app/parties",
+      "/app/audit",
+    ]);
+    expect(navFooterFor(BUYER).map((l) => l.href)).toEqual(["/app/parties"]);
+  });
+
+  it("sem Parceiros nem Equipe: nada no rodapé, nenhuma seção", () => {
+    for (const who of [PLANNER, DESIGNER, { role: "operator" as const }]) {
+      expect(canOpen(who, "parties")).toBe(false);
+      expect(area(who)).toBeNull();
+      expect(teamAreaSections(who as never)).toEqual([]);
+    }
+    for (const role of ROLES.filter((r) => r !== "admin" && r !== "operator"))
+      expect(area({ role })).toBeNull();
+  });
+
+  it("Voltar sem tela anterior: Parceiros continua sendo a tela mãe", () => {
+    const footer = navFooterFor(ADMIN);
+    const menu = [...flattenNav(navFor(ADMIN)), ...footer].flatMap((l) => [
+      l.href,
+      ...(l.match ?? []),
+    ]);
+    expect(parentFor("/app/parties/cliente-joao", menu)).toBe("/app/parties");
+    expect(parentFor("/app/parties/types", menu)).toBe("/app/parties");
+    expect(parentFor("/app/team/u1", menu)).toBe("/app/team");
   });
 });

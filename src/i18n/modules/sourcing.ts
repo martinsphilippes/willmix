@@ -157,7 +157,7 @@ export const pt = {
   "sourcing.negotiation.hint":
     "Informativo: quando este produto virar pedido, preço, MOQ e embalagem são congelados no snapshot da compra.",
   "sourcing.priceRestricted":
-    "O preço e as faixas de preço aparecem para quem tem “Ver preço de compra” (Gestão → Equipe → Funções e acessos).",
+    "O preço e as faixas de preço aparecem para quem tem “Ver preço de compra” (Equipe Acessos e Parceiros → Funções e acessos).",
   /* Erros */
   "sourcing.error.commercial_needs_original":
     "A imagem comercial precisa indicar de qual foto original deriva.",
@@ -332,7 +332,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sourcing.negotiation.hint":
     "Informative: when this product becomes an order, price, MOQ and packaging are frozen in the purchase snapshot.",
   "sourcing.priceRestricted":
-    "Price and price tiers are shown to whoever has “See purchase price” (Management → Team → Functions and access).",
+    "Price and price tiers are shown to whoever has “See purchase price” (Team, Access and Partners → Functions and access).",
   "sourcing.error.commercial_needs_original":
     "A commercial image must state which original photo it derives from.",
   "sourcing.error.no_photos": "Select at least one photo.",
@@ -497,7 +497,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sourcing.negotiation.hint":
     "仅供参考：当该产品成为订单时，价格、MOQ 和包装将冻结在采购快照中。",
   "sourcing.priceRestricted":
-    "价格和价格阶梯仅对拥有“查看采购价”权限的人显示（管理 → 团队 → 职能与权限）。",
+    "价格和价格阶梯仅对拥有“查看采购价”权限的人显示（团队、权限与合作伙伴 → 职能与权限）。",
   "sourcing.error.commercial_needs_original":
     "商业图必须注明源自哪张原始照片。",
   "sourcing.error.no_photos": "请至少选择一张照片。",

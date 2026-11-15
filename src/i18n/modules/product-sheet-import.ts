@@ -124,7 +124,7 @@ export const pt = {
   "sheetImport.error.line_gone":
     "A linha de produto desta importação não existe mais. Importe a planilha de novo e escolha a linha.",
   "sheetImport.error.forbidden":
-    "Seu login não pode fazer isso (o administrador libera em Gestão → Equipe e divisões).",
+    "Seu login não pode fazer isso (o administrador libera em Equipe Acessos e Parceiros).",
 };
 
 export const en = {
@@ -248,7 +248,7 @@ export const en = {
   "sheetImport.error.line_gone":
     "The product line of this import no longer exists. Import the spreadsheet again and choose the line.",
   "sheetImport.error.forbidden":
-    "Your login cannot do this (the administrator grants it under Management → Team and divisions).",
+    "Your login cannot do this (the administrator grants it under Team, Access and Partners).",
 };
 
 export const zh = {
@@ -362,5 +362,5 @@ export const zh = {
   "sheetImport.error.line_gone":
     "本次导入的产品线已不存在。请重新导入表格并选择产品线。",
   "sheetImport.error.forbidden":
-    "您的账号无法执行此操作（由管理员在“管理 → 团队与事业部”中开通）。",
+    "您的账号无法执行此操作（由管理员在“团队、权限与合作伙伴”中开通）。",
 };

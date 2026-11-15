@@ -60,7 +60,7 @@ export const pt = {
   "sampling.review.approve": "Aprovar a amostra",
   "sampling.review.reject": "Reprovar e pedir de novo",
   "sampling.review.noPermission":
-    "Validar a amostragem depende da ação “Validar a amostragem” (Equipe → Funções e acessos).",
+    "Validar a amostragem depende da ação “Validar a amostragem” (Equipe Acessos e Parceiros → Funções e acessos).",
   "sampling.approvedAt": "Aprovada em {date}.",
   "sampling.timeline.submit": "Amostragem enviada (fotos e vídeos)",
   "sampling.timeline.approve": "Amostragem aprovada",
@@ -173,7 +173,7 @@ export const en: typeof pt = {
   "sampling.review.approve": "Approve the sample",
   "sampling.review.reject": "Reject and ask again",
   "sampling.review.noPermission":
-    "Validating the sampling requires the “Validate the sampling” action (Team → Functions and access).",
+    "Validating the sampling requires the “Validate the sampling” action (Team, Access and Partners → Functions and access).",
   "sampling.approvedAt": "Approved on {date}.",
   "sampling.timeline.submit": "Sampling submitted (photos and videos)",
   "sampling.timeline.approve": "Sampling approved",
@@ -282,7 +282,7 @@ export const zh: typeof pt = {
   "sampling.review.approve": "批准样品",
   "sampling.review.reject": "驳回并要求重发",
   "sampling.review.noPermission":
-    "验证样品需要“验证样品”权限（团队 → 职能与权限）。",
+    "验证样品需要“验证样品”权限（团队、权限与合作伙伴 → 职能与权限）。",
   "sampling.approvedAt": "于 {date} 批准。",
   "sampling.timeline.submit": "样品已提交（照片和视频）",
   "sampling.timeline.approve": "样品已批准",
