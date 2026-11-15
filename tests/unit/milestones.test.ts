@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   MILESTONES,
+  activeMilestones,
+  compactMilestones,
+  currentMilestone,
+  milestoneNumber,
+  milestoneOfFacts,
+  milestoneOfStatus,
+  milestoneTitle,
+  orderMilestoneText,
+  type MilestoneKey,
+  type MilestoneState,
   milestoneOfImportKey,
   milestoneOfRequirement,
   milestoneOfStep,
@@ -127,5 +137,85 @@ describe("marco de um item ou passo", () => {
     expect(milestoneOfImportKey("channel")).toBe("customs");
     expect(milestoneOfImportKey("danfe")).toBe("invoice-transport");
     expect(milestoneOfImportKey("unknown_step")).toBeNull();
+  });
+});
+
+/* Fase 4a (docs/MILESTONES.md, "Telas que leem os marcos"): o marco atual
+   das listas e o formato curto do resumo. */
+describe("marco atual do pedido", () => {
+  const view = (key: MilestoneKey, state: MilestoneState) => ({ key, state });
+
+  it("primeiro em andamento na ordem do dono; marcos em paralelo", () => {
+    const views = [
+      view("art-material", "active"),
+      view("certification", "active"),
+      view("new-order", "done"),
+      view("contract", "waiting"),
+    ];
+    expect(currentMilestone(views)).toBe("certification");
+    expect(activeMilestones(views)).toEqual(["certification", "art-material"]);
+  });
+
+  it("sem andamento, o primeiro aguardando; tudo feito, a entrega; cancelado, nulo", () => {
+    expect(
+      currentMilestone([view("shipment", "waiting"), view("art", "waiting")]),
+    ).toBe("art");
+    expect(
+      currentMilestone([view("new-order", "done"), view("samples", "na")]),
+    ).toBe("delivery");
+    expect(currentMilestone([view("new-order", "na")], "CLOSED")).toBe(
+      "delivery",
+    );
+    expect(currentMilestone([view("new-order", "na")])).toBeNull();
+    expect(
+      currentMilestone([view("new-order", "active")], "CANCELLED"),
+    ).toBeNull();
+    // Pelo cálculo de verdade: pedido sem nada feito começa no Pedido novo.
+    const fresh = orderMilestones([
+      s("order/orders", false, "sankhya"),
+      s("order/art", false, "art"),
+    ]);
+    expect(currentMilestone(fresh)).toBe("new-order");
+  });
+
+  it("situação antiga vira marco; número de 1 a 16", () => {
+    expect(milestoneOfStatus("ORDER_CREATED")).toBe("new-order");
+    expect(milestoneOfStatus("PREPARATION")).toBe("new-order");
+    expect(milestoneOfStatus("PACKAGING")).toBe("contract");
+    expect(milestoneOfStatus("SUPPLIER_PAYMENT")).toBe("down-payment");
+    expect(milestoneOfStatus("SHIPPING")).toBe("shipment");
+    expect(milestoneOfStatus("TRANSPORT")).toBe("invoice-transport");
+    expect(milestoneOfStatus("CLOSED")).toBe("delivery");
+    expect(milestoneOfStatus("CANCELLED")).toBeNull();
+    expect(milestoneOfStatus(null)).toBeNull();
+    expect(milestoneNumber("new-order")).toBe(1);
+    expect(milestoneNumber("delivery")).toBe(16);
+    expect(milestoneTitle((k) => k, "art")).toBe("4. milestone.art");
+  });
+
+  it("pelo resumo (facts.m); resumo antigo sem m, pela situação", () => {
+    const views = orderMilestones([
+      s("order/orders", true, "sankhya"),
+      s("order/art-material", false, "die_cut"),
+    ]);
+    const m = compactMilestones(views);
+    expect(m.find((x) => x.k === "art-material")).toEqual({
+      k: "art-material",
+      s: "active",
+      d: 0,
+      t: 1,
+    });
+    expect(milestoneOfFacts(m, "PREPARATION")).toBe("art-material");
+    expect(milestoneOfFacts(undefined, "SHIPPING")).toBe("shipment");
+    expect(milestoneOfFacts(m, "CANCELLED")).toBeNull();
+    expect(orderMilestoneText((k) => k, "CANCELLED")).toBe("stage.CANCELLED");
+    expect(orderMilestoneText((k) => k, "CUSTOMS")).toBe(
+      "14. milestone.customs",
+    );
+  });
+
+  it("textos novos nas três línguas", () => {
+    for (const key of ["milestone.current", "milestone.owner.title"] as const)
+      for (const dict of [pt, en, zh]) expect(dict[key]).toBeTruthy();
   });
 });

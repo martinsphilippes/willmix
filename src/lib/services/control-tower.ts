@@ -19,6 +19,11 @@ import {
 import type { BoardOrder } from "./tower-board";
 import type { FinanceSummary, FinanceSummaryRow } from "./finance";
 import type { OrderFacts } from "./order-summary";
+import {
+  milestoneOfFacts,
+  type CompactMilestone,
+  type MilestoneKey,
+} from "@/lib/milestones";
 
 /** Pedido do item de revisão (itens antigos podem ter só entity "order"). */
 export const reviewOrderId = (r: ReviewItem) =>
@@ -30,6 +35,11 @@ export interface TowerRow {
   customer: string;
   product: string;
   stageKey: StageKey | null;
+  /**
+   * Marco atual do pedido (docs/MILESTONES.md, fase 4a), o que a linha
+   * mostra; os quadros e as contas seguem pela etapa (`stageKey`).
+   */
+  milestone?: MilestoneKey | null;
   requestStatus: RequestStatus | null;
   responsible: Role | null;
   dueAt: string | null;
@@ -101,6 +111,8 @@ export interface ControlTowerInput {
   products: Pick<Product, "id" | "name">[];
   certifications: Certification[];
   reviews: ReviewItem[];
+  /** Marcos do pedido pelo resumo (`facts.m`); sem eles, pela situação. */
+  milestonesOf?: (orderId: string) => CompactMilestone[] | undefined;
 }
 
 const OPEN_REQUEST_STATUSES: RequestStatus[] = [
@@ -217,6 +229,7 @@ export async function controlTowerFromFacts(
     partyName: (id) => (id === null ? null : (names.get(id) ?? null)),
     productOf: (id) => byId.get(id)?.product ?? null,
     stageOf: (id) => byId.get(id)?.active[0],
+    milestonesOf: (id) => byId.get(id)?.m,
     ...side,
   });
 }
@@ -243,6 +256,7 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
         customer: partyName(o.customerId),
         product: productOf(o),
         stageKey: o.status,
+        milestone: milestoneOfFacts(input.milestonesOf?.(o.id), o.status),
         requestStatus: null,
         responsible: stage?.responsibleRole ?? null,
         dueAt: stage?.dueAt ?? null,
@@ -262,6 +276,7 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
       customer: partyName(o.customerId),
       product: productOf(o),
       stageKey: o.status,
+      milestone: "delivery",
       requestStatus: null,
       responsible: null,
       dueAt: o.closedAt,

@@ -1,6 +1,6 @@
 import type { Requirement, User } from "@/lib/db/schema";
+import { orderMilestoneText } from "@/lib/milestones";
 import { requirementLabel, productNameText, type Translate } from "@/i18n";
-import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
 import { canViewOrder, isWellmix } from "@/lib/auth/permissions";
 import { canSubmitRequirement } from "@/lib/workflow/engine";
@@ -315,7 +315,7 @@ export async function FlowOrderInStep({
           <div>
             <dt className="text-xs text-zinc-500">{t("flow.all.stage")}</dt>
             <dd className="font-medium text-zinc-900" data-flow-order-stage>
-              {t(`stage.${order.status}` as DictionaryKey)}
+              {orderMilestoneText(t, order.status)}
             </dd>
           </div>
           <div>

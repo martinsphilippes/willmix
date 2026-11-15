@@ -241,7 +241,8 @@ export function OrdersTable({
     pages: number;
     matched: number;
     total: number;
-    phases: Array<[string, string]>;
+    /** Valor, texto e, nos marcos, o bloco (grupo da lista). */
+    phases: Array<[string, string, string?]>;
     states: RowState[];
   };
 }) {
@@ -348,7 +349,8 @@ export function OrdersTable({
       ),
     [rows],
   );
-  const phases = paging?.phases ?? localPhases;
+  const phases: Array<[string, string, string?]> =
+    paging?.phases ?? localPhases;
   const states = paging?.states ?? localStates;
 
   const shown = useMemo(
@@ -470,7 +472,34 @@ export function OrdersTable({
             {filterCell(text("p", labels.product))}
             {showCustomer ? filterCell(text("c", labels.customer)) : null}
             {showSupplier ? filterCell(text("s", labels.supplier)) : null}
-            {filterCell(select("ph", labels.phase, phases))}
+            {filterCell(
+              <select
+                value={filters.ph}
+                onChange={(e) => setFilter("ph", e.target.value)}
+                aria-label={labels.phase}
+                className={control}
+                data-orders-filter="ph"
+              >
+                <option value="">{labels.all}</option>
+                {phaseGroups(phases).map(({ group, options }, i) =>
+                  group ? (
+                    <optgroup key={`${group}-${i}`} label={group}>
+                      {options.map(([value, text]) => (
+                        <option key={value} value={value}>
+                          {text}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : (
+                    options.map(([value, text]) => (
+                      <option key={value} value={value}>
+                        {text}
+                      </option>
+                    ))
+                  ),
+                )}
+              </select>,
+            )}
             {filterCell(
               select(
                 "st",
@@ -1030,4 +1059,17 @@ function JourneyBar({
       ) : null}
     </div>
   );
+}
+
+/** Opções do filtro de marco em grupos seguidos (os marcos pelo bloco). */
+function phaseGroups(options: Array<[string, string, string?]>) {
+  const out: Array<{ group: string | null; options: Array<[string, string]> }> =
+    [];
+  for (const [value, text, group] of options) {
+    const last = out[out.length - 1];
+    if (last && last.group === (group ?? null))
+      last.options.push([value, text]);
+    else out.push({ group: group ?? null, options: [[value, text]] });
+  }
+  return out;
 }

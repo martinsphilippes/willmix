@@ -3,6 +3,11 @@ import "server-only";
 import { getStore, type Payment } from "@/lib/db";
 import { loadFinance, type OrderFinance } from "./finance";
 import {
+  MILESTONE_KEYS,
+  milestoneOfStatus,
+  type MilestoneKey,
+} from "@/lib/milestones";
+import {
   IDLE_DAYS,
   listStockMovements,
   loadInventory,
@@ -190,6 +195,17 @@ export async function loadOwnerPanel(now = new Date()) {
   const byStage = new Map<string, number>();
   for (const r of activeOrders)
     byStage.set(r.order.status, (byStage.get(r.order.status) ?? 0) + 1);
+  // Pelo marco atual (docs/MILESTONES.md, fase 4a), na ordem dos 16 marcos.
+  const milestoneCounts = new Map<MilestoneKey, number>();
+  for (const r of activeOrders) {
+    const key = r.milestone ?? milestoneOfStatus(r.order.status);
+    if (key) milestoneCounts.set(key, (milestoneCounts.get(key) ?? 0) + 1);
+  }
+  const byMilestone = new Map(
+    MILESTONE_KEYS.filter((k) => milestoneCounts.has(k)).map(
+      (k) => [k, milestoneCounts.get(k)!] as const,
+    ),
+  );
 
   // Maiores clientes e fornecedores em 12 meses.
   const since = lastMonths(now, 12)[0];
@@ -263,6 +279,7 @@ export async function loadOwnerPanel(now = new Date()) {
       waitingDown,
       activeOrders: activeOrders.length,
       byStage,
+      byMilestone,
     },
     topCustomers,
     topSuppliers,

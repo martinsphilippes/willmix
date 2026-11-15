@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
 import { ChatOpenButton } from "./chat-open-button";
+import { milestoneTitle } from "@/lib/milestones";
 import type { TowerRow } from "@/lib/services/control-tower";
 import {
   loadControlTower,
@@ -429,7 +430,7 @@ export async function ControlTower({
                   <Th>#</Th>
                   <Th>{t("tower.col.party")}</Th>
                   <Th>{t("common.product")}</Th>
-                  <Th>{t("orders.stage")}</Th>
+                  <Th>{t("milestone.current")}</Th>
                   <Th>{t("common.responsible")}</Th>
                   <Th>{t("common.due")}</Th>
                   <Th />
@@ -453,9 +454,11 @@ export async function ControlTower({
                       ) : row.cancelled ? (
                         <Badge tone="danger">
                           {t("board.cancelled")}
-                          {row.stageKey
-                            ? ` · ${t(`stage.${row.stageKey}`)}`
-                            : ""}
+                          {row.milestone
+                            ? ` · ${milestoneTitle(t, row.milestone)}`
+                            : row.stageKey
+                              ? ` · ${t(`stage.${row.stageKey}`)}`
+                              : ""}
                         </Badge>
                       ) : (
                         <Badge
@@ -467,9 +470,11 @@ export async function ControlTower({
                                 : "active",
                           )}
                         >
-                          {row.stageKey
-                            ? t(`stage.${row.stageKey}`)
-                            : t(`reqStatusLabel.${row.requestStatus!}`)}
+                          {row.milestone
+                            ? milestoneTitle(t, row.milestone)
+                            : row.stageKey
+                              ? t(`stage.${row.stageKey}`)
+                              : t(`reqStatusLabel.${row.requestStatus!}`)}
                           {row.blocked ? ` · ${t("stageStatus.blocked")}` : ""}
                         </Badge>
                       )}

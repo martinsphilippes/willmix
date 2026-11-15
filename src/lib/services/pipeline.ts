@@ -23,6 +23,11 @@ import {
   type JourneyStep,
 } from "./journey";
 import type { OrderFacts } from "./order-summary";
+import {
+  milestoneOfFacts,
+  milestoneOfStatus,
+  type MilestoneKey,
+} from "@/lib/milestones";
 
 /*
  * Painel de Pedidos: cada pedido com a etapa em que está (cancelado mostra a
@@ -67,6 +72,12 @@ export interface PipelineRow {
   supplier: string | null;
   /** Etapa do pedido (chave de stage.*) ou situação da solicitação (reqStatusLabel.*). */
   phase: { kind: "stage"; key: StageKey } | { kind: "request"; key: string };
+  /**
+   * Marco atual do pedido (docs/MILESTONES.md, fase 4a): pelo resumo
+   * (`facts.m`) ou, sem ele, pela situação. Cancelado: o marco da etapa em
+   * que parou. Nulo na solicitação e no cancelado antigo sem a etapa.
+   */
+  milestone: MilestoneKey | null;
   state: PipelineState;
   /** Quanto da etapa atual foi cumprido (pedidos em andamento). */
   progress: number | null;
@@ -143,6 +154,7 @@ const PIPELINE_FACTS = [
   "steps",
   "product",
   "itemCount",
+  "m",
 ] as const;
 
 /**
@@ -425,6 +437,9 @@ export async function pipelineFor(
           ? { kind: "stage", key: o.cancelStageKey }
           : { kind: "request", key: "CANCELLED" }
         : { kind: "stage", key: o.status as StageKey },
+      milestone: cancelled
+        ? milestoneOfStatus(o.cancelStageKey)
+        : milestoneOfFacts(facts?.get(o.id)?.m, o.status),
       state: cancelled
         ? "cancelled"
         : closed
@@ -469,6 +484,7 @@ export async function pipelineFor(
       customer: name(r.customerId),
       supplier: null,
       phase: { kind: "request", key: r.status },
+      milestone: null,
       state: r.status === "CANCELLED" ? "cancelled" : "active",
       progress: null,
       journey: journey.requestStep(r),

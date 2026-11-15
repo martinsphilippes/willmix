@@ -3,6 +3,7 @@ import {
   ORDERS_PAGE_SIZE,
   filterOrderRows,
   ordersPage,
+  ordersPhaseFilter,
   parseOrdersSort,
   type OrdersFilterRow,
 } from "@/lib/orders-filter";
@@ -68,5 +69,28 @@ describe("filtro e página da tela Pedidos (servidor e navegador)", () => {
     });
     expect(ordersPage("99", 120).page).toBe(3);
     expect(ordersPage("abc", 0)).toEqual({ page: 1, pages: 1, start: 0 });
+  });
+
+  it("filtro de marco (fase 4a): link antigo pela etapa vira o marco dela", () => {
+    expect(ordersPhaseFilter("stage:PREPARATION")).toBe("milestone:new-order");
+    expect(ordersPhaseFilter("SHIPPING")).toBe("milestone:shipment");
+    expect(ordersPhaseFilter("stage:CUSTOMS")).toBe("milestone:customs");
+    expect(ordersPhaseFilter("milestone:art")).toBe("milestone:art");
+    expect(ordersPhaseFilter("request:CANCELLED")).toBe("request:CANCELLED");
+    expect(ordersPhaseFilter("request:RFQ_OPEN")).toBe("request:RFQ_OPEN");
+    expect(ordersPhaseFilter(undefined)).toBe("");
+    // Filtra pela chave do marco que a linha guarda.
+    const rows = [
+      row(1, { phaseKey: "milestone:new-order" }),
+      row(2, { phaseKey: "milestone:shipment" }),
+    ];
+    expect(
+      filterOrderRows(
+        rows,
+        { ph: ordersPhaseFilter("stage:SHIPPING") },
+        null,
+        opts,
+      ).map((r) => r.number),
+    ).toEqual(["#2"]);
   });
 });

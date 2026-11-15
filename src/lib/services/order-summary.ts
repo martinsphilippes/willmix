@@ -20,6 +20,7 @@ import {
   type User,
 } from "@/lib/db";
 import { isSchemaMissing } from "@/lib/db/errors";
+import { listColumns as listColumnsOf } from "@/lib/db/lookup";
 import { isHeld, projectJson } from "@/lib/db/store";
 import {
   DUE_SOON_DAYS,
@@ -36,6 +37,12 @@ import {
 } from "./finance";
 import { SCHEDULE_REQUIREMENT_KEYS, payableFor } from "./supplier-terms";
 import type { BoardOrder, BoardStage } from "./tower-board";
+import {
+  compactMilestones,
+  orderMilestones,
+  type CompactMilestone,
+} from "@/lib/milestones";
+import { orderSubtasks } from "./milestones";
 
 /*
  * Resumo por pedido (docs/RESUMOS.md). A Control Tower lia, a cada abertura,
@@ -68,9 +75,11 @@ import type { BoardOrder, BoardStage } from "./tower-board";
  * histórico em espera também contribui (`f.h`), só pela situação. 12: o
  * passo LPCO (mapa E5) entra no pedido com produto de NCM que exige a
  * licença. 13: o pedido em espera contribui pela situação real, como os
- * outros, marcado (`f.h`; dono, 14/11/2026).
+ * outros, marcado (`f.h`; dono, 14/11/2026). 14: os 16 marcos do pedido
+ * (`m`: chave, situação, feitas, total e prazo), que as listas leem para o
+ * marco atual (docs/MILESTONES.md, fase 4a).
  */
-export const SUMMARY_VERSION = 13;
+export const SUMMARY_VERSION = 14;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -126,6 +135,11 @@ export interface OrderFacts {
   ship: FactStage[];
   /** Itens das etapas do cronograma de pagamento (data de embarque, pagamento antigo). */
   sreqs: FactScheduleRequirement[];
+  /**
+   * Os 16 marcos do pedido (docs/MILESTONES.md, fase 4a). Opcional: resumo
+   * de formato antigo não tem; quem lê cai na situação (`milestoneOfFacts`).
+   */
+  m?: CompactMilestone[];
 }
 
 export type FactPayment = Omit<Payment, "sankhyaRefs">;
@@ -181,6 +195,13 @@ interface Sources {
   payments: Map<string, Payment[]>;
   /** Sinal ao fornecedor e pedido de amostras (passos do Overview, flow-contribution.ts). */
   flowRequirements: Map<string, Requirement[]>;
+  /**
+   * Todos os itens do pedido, só chave, etapa e situação (subtarefas dos
+   * marcos, `orderSubtasks`); o valor só do pedido de amostras.
+   */
+  milestoneRequirements: Map<string, Requirement[]>;
+  /** Pedidos com produto de NCM que exige LPCO (`lpcoOrderIds`). */
+  lpco: Set<string>;
 }
 
 /**
@@ -219,6 +240,8 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
       receivings: new Map(),
       payments: new Map(),
       flowRequirements: new Map(),
+      milestoneRequirements: new Map(),
+      lpco: new Set(),
     };
   const [
     parties,
@@ -234,6 +257,8 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     receivings,
     payments,
     flowRequirements,
+    milestoneRequirements,
+    lpco,
   ] = await Promise.all([
     partyIds.length
       ? store.list("parties", { filter: { id: partyIds } })
@@ -262,6 +287,15 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     store.list("requirements", {
       filter: { ...byOrder, key: ["down_payment", "sample_order"] },
     }),
+    // Marcos: todos os itens, só as colunas que as subtarefas leem (uma
+    // consulta para a fatia de pedidos, sem o valor de cada item).
+    listColumnsOf(
+      store,
+      "requirements",
+      ["orderId", "stageId", "key", "status"],
+      { filter: byOrder },
+    ),
+    import("./import-flow").then((m) => m.lpcoOrderIds(orderIds)),
   ]);
   const partyMap = new Map<string, Party>();
   for (const p of parties) if (!partyMap.has(p.id)) partyMap.set(p.id, p);
@@ -280,7 +314,41 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     receivings: groupBy(receivings, (r) => r.orderId),
     payments: groupBy(payments, (r) => r.orderId),
     flowRequirements: groupBy(flowRequirements, (r) => r.orderId),
+    milestoneRequirements: groupBy(
+      milestoneRequirements as Requirement[],
+      (r) => r.orderId,
+    ),
+    lpco,
   };
+}
+
+/** Os 16 marcos do pedido (docs/MILESTONES.md), das mesmas fontes do resumo. */
+export function factMilestones(
+  order: Order,
+  src: Omit<Sources, "orders">,
+): CompactMilestone[] {
+  const id = order.id;
+  // O pedido de amostras com o valor (a lista dos marcos vem sem ele).
+  const sample = (src.flowRequirements.get(id) ?? []).find(
+    (r) => r.key === "sample_order",
+  );
+  const requirements = (src.milestoneRequirements.get(id) ?? []).map((r) =>
+    sample && r.id === sample.id ? sample : r,
+  );
+  return compactMilestones(
+    orderMilestones(
+      orderSubtasks({
+        order,
+        stages: src.stages.get(id) ?? [],
+        requirements,
+        importSteps: src.steps.get(id) ?? [],
+        track: src.tracks.get(id)?.[0] ?? null,
+        receiving: src.receivings.get(id)?.[0] ?? null,
+        lpco: src.lpco.has(id),
+      }),
+      order.status,
+    ),
+  );
 }
 
 const pickOrder = (o: Order): BoardOrder => ({
@@ -417,6 +485,7 @@ export function buildOrderFacts(
         submittedAt: r.submittedAt ?? null,
         updatedAt: r.updatedAt,
       })),
+    m: factMilestones(order, src),
   };
 }
 
@@ -757,9 +826,8 @@ async function kpisOf(
 /** Contribuição de cada pedido para o Overview dos blocos (docs/FLOW_MENU.md). */
 async function flowsOf(src: Sources) {
   const { buildOrderFlow } = await import("./flow-contribution");
-  const lpco = await (
-    await import("./import-flow")
-  ).lpcoOrderIds(src.orders.map((o) => o.id));
+  // LPCO: lido uma vez com as fontes (loadSources).
+  const lpco = src.lpco;
   const out = new Map<string, unknown>();
   for (const order of src.orders) {
     const reqs = src.flowRequirements.get(order.id) ?? [];

@@ -8,6 +8,7 @@ import {
   TASK_DUE_FILTERS,
   daysUntil,
   filterTasks,
+  milestoneOfGroup,
   pendingTasksFor,
   supplierGroup,
   supplierStepOfGroup,
@@ -15,6 +16,7 @@ import {
   type Task,
 } from "@/lib/services/tasks";
 import { tasksForFunctions } from "@/lib/task-owner";
+import { milestoneTitle } from "@/lib/milestones";
 import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -155,6 +157,9 @@ export async function TaskList({
 }
 
 function groupLabel(group: string, stage: boolean, t: Translate) {
+  // Marco do pedido (fase 4a, docs/MILESTONES.md): "N. Marco".
+  const milestone = milestoneOfGroup(group);
+  if (milestone) return milestoneTitle(t, milestone);
   // Etapa do fornecedor (supplier.<etapa>): nome próprio, não o da etapa do pedido.
   return stage && !supplierStepOfGroup(group)
     ? t(`stage.${group}` as DictionaryKey)
@@ -502,7 +507,9 @@ export function TaskItems({
               : task.stageKey && task.orderNumber
                 ? t("tasks.orderStage", {
                     n: task.orderNumber,
-                    stage: t(`stage.${task.stageKey}` as DictionaryKey),
+                    stage: task.milestone
+                      ? milestoneTitle(t, task.milestone)
+                      : t(`stage.${task.stageKey}` as DictionaryKey),
                   })
                 : task.title;
           // Item de etapa do fornecedor: o que fazer, no idioma dele (os

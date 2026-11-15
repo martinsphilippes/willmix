@@ -36,6 +36,9 @@ export const pt = {
   "milestone.subtask.production_plan": "Dados da produção e ETD",
   "milestone.subtask.production": "Produção liberada para carregar",
   "milestone.subtask.receiving": "Recebimento no CD",
+  // Fase 4a: telas que leem os marcos (docs/MILESTONES.md).
+  "milestone.current": "Marco atual",
+  "milestone.owner.title": "Pedidos em andamento por marco",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -72,6 +75,8 @@ export const en: Record<keyof typeof pt, string> = {
   "milestone.subtask.production_plan": "Production data and ETD",
   "milestone.subtask.production": "Production released for loading",
   "milestone.subtask.receiving": "Receiving at the DC",
+  "milestone.current": "Current milestone",
+  "milestone.owner.title": "Orders in progress by milestone",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -108,4 +113,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "milestone.subtask.production_plan": "生产数据和 ETD",
   "milestone.subtask.production": "生产完成，可装柜",
   "milestone.subtask.receiving": "仓库收货",
+  "milestone.current": "当前里程碑",
+  "milestone.owner.title": "进行中订单（按里程碑）",
 };
