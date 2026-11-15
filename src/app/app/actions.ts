@@ -915,9 +915,21 @@ export async function savePartyAction(form: FormData) {
     };
     // Fornecedor/cliente novo ou alterado vai para o Sankhya (fase 3).
     const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
+    // RCA responsável (só no cadastro de cliente; docs/CUSTOMER_RCA.md): o
+    // código do vendedor do Sankhya, "0" = sem RCA.
+    const rcaCode = form.has("rcaCode")
+      ? z
+          .string()
+          .regex(/^\d{1,10}$/)
+          .parse(str(form, "rcaCode"))
+      : null;
     if (id) {
       await store.update("parties", id, parsed);
       await audit(user, "party.update", "party", id, parsed.name);
+      if (rcaCode !== null && resolved.type === "customer") {
+        const { setCustomerRca } = await import("@/lib/services/rca");
+        await setCustomerRca(user, id, rcaCode);
+      }
       await syncSoon(user, "party", id);
       return `/app/parties/${id}`;
     }

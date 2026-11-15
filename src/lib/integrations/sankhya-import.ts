@@ -449,6 +449,15 @@ export async function upsertParty(
           ? data.sankhyaRefs
           : null,
     }),
+    // RCA do cliente (docs/CUSTOMER_RCA.md): o vendedor do Sankhya. O
+    // Sankhya manda (dono, 15/11/2026): a carga sobrescreve o que foi
+    // escolhido no portal. "0" = sem vendedor.
+    ...(data.type === "customer" &&
+    data.sankhyaRefs &&
+    data.sankhyaRefs.CODVEND !== undefined &&
+    data.sankhyaRefs.CODVEND !== null
+      ? { rcaCode: String(data.sankhyaRefs.CODVEND).trim() || "0" }
+      : {}),
   };
   if (party && ctx.update) {
     party = await store.update("parties", party.id, {

@@ -245,7 +245,29 @@ export async function seedDemo(): Promise<{
       active: true,
       city: "NAVEGANTES - SC",
       sankhyaCode: "3",
+      rcaCode: "102",
     } as never),
+  );
+  // RCA dos clientes (docs/CUSTOMER_RCA.md): uma lista de vendedores de
+  // demonstração, marcada como tal (no portal real ela vem do Sankhya pelo
+  // botão "Trazer a lista do Sankhya"), e o RCA de dois clientes, para ver a
+  // troca na Nova solicitação. Só na demonstração.
+  await at("settings", () =>
+    getStore().create("settings", {
+      key: "sankhyaSellers",
+      value: {
+        syncedAt: null,
+        demo: true,
+        sellers: [
+          { code: "101", name: "Ana Representações", active: true },
+          { code: "102", name: "Bruno Vendas", active: true },
+          { code: "103", name: "Carla Comercial", active: false },
+        ],
+      },
+    }),
+  );
+  await at("parties", () =>
+    getStore().update("parties", "cliente-joao", { rcaCode: "101" }),
   );
 
   // Uma conta que falhe (ex.: login já existia no Appwrite Auth) não

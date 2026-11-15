@@ -150,6 +150,7 @@ import * as productSheetImport from "./product-sheet-import";
 import * as productVariants from "./product-variants";
 import * as messages from "./messages";
 import * as purchaseHistory from "./purchase-history";
+import * as customerRca from "./customer-rca";
 import * as requestSheet from "./request-sheet";
 import * as requestOrderPlan from "./request-order-plan";
 import * as customerPayment from "./customer-payment";
@@ -303,6 +304,7 @@ export const modulesPt = {
   ...sampling.pt,
   ...intro.pt,
   ...purchaseHistory.pt,
+  ...customerRca.pt,
   ...requestSheet.pt,
   ...requestOrderPlan.pt,
   ...customerPayment.pt,
@@ -456,6 +458,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sampling.en,
   ...intro.en,
   ...purchaseHistory.en,
+  ...customerRca.en,
   ...requestSheet.en,
   ...requestOrderPlan.en,
   ...customerPayment.en,
@@ -609,6 +612,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sampling.zh,
   ...intro.zh,
   ...purchaseHistory.zh,
+  ...customerRca.zh,
   ...requestSheet.zh,
   ...requestOrderPlan.zh,
   ...customerPayment.zh,

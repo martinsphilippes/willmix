@@ -1499,3 +1499,12 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Não mudou:** a visão Pedido e a expansão, as permissões, o histórico gravado no portal (login do cliente e sem Sankhya) e o resto da Nova solicitação. Sem mudança no banco.
 - Docs: `docs/PURCHASE_HISTORY.md` seção 11.
 - Testes: `tests/unit/sankhya-history-products.test.ts` e `tests/e2e/purchase-history-products.spec.ts`.
+
+## RCA do cliente no cadastro e na Nova solicitação
+
+- **Pedido do dono** (15/11/2026, com as fotos da Nova solicitação e de Cadastros → Parceiros no iPad): o campo "RCA responsável" no cadastro do cliente; na Nova solicitação, o "RCA do cliente" ao lado do "Solicitante", o solicitante preenchido com quem está criando e o seletor de antes como "Login do cliente com acesso". Decisões: o RCA é o vendedor do Sankhya (TGFVEN, pelo código) e o Sankhya manda (a carga sobrescreve o portal).
+- **Como ficou**: docs/CUSTOMER_RCA.md.
+- **Não mudou**: nenhuma tela, rota, campo ou dado saiu. O seletor `requestedForUserId` é o mesmo (rótulo novo, só com os logins do cliente escolhido; o servidor já recusava os de outro cliente). A gravação de `createdByUserId` e `requestedForUserId` no servidor é a de antes. Os clientes já carregados mostram o vendedor que veio do Sankhya sem migração de dados.
+- **Banco**: coluna nova `parties.rcaCode` (opcional, migração só aditiva) e a lista de vendedores em `settings` (chave `sankhyaSellers`).
+- **Correção junto**: nos campos com busca (cliente, fornecedor, produto), voltar ao campo logo depois de sair dele fechava a lista sozinha (o fechamento da saída, 150 ms depois, ainda valia). Agora voltar ao campo cancela esse fechamento (`src/components/search-picker.tsx`).
+- Testes: `tests/unit/customer-rca.test.ts` e `tests/e2e/customer-rca.spec.ts`.
