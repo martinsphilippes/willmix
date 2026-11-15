@@ -22,6 +22,24 @@ export function sankhyaHistoryLabels(t: Translate): SankhyaHistoryLabels {
     noItems: t("purchaseHistory.noItems"),
     fallbackNotConfigured: t("sankhyaHistory.fallbackNotConfigured"),
     fallbackNoCode: t("sankhyaHistory.fallbackNoCode"),
+    view: {
+      label: t("sankhyaHistory.view.label"),
+      orders: t("sankhyaHistory.view.orders"),
+      products: t("sankhyaHistory.view.products"),
+    },
+    products: {
+      hint: t("sankhyaHistory.products.hint"),
+      period: t("sankhyaHistory.products.period", {
+        from: "{from}",
+        to: "{to}",
+        n: "{n}",
+      }),
+      total: t("sankhyaHistory.products.total", { q: "{q}" }),
+      empty: t("sankhyaHistory.products.empty"),
+      more: t("sankhyaHistory.products.more"),
+      showMore: t("sankhyaHistory.products.showMore", { n: "{n}" }),
+      incomplete: t("sankhyaHistory.products.incomplete"),
+    },
     f: {
       code: t("sankhyaHistory.f.code"),
       reference: t("sankhyaHistory.f.reference"),

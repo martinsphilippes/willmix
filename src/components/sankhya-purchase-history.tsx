@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type {
   SankhyaHistoryItem,
   SankhyaHistoryOrder,
+  SankhyaHistoryProduct,
+  SankhyaQuantity,
 } from "@/lib/services/sankhya-customer-history";
 import { useRequestCustomer } from "./request-customer-context";
 import { Button, Card, cx } from "./ui";
@@ -33,6 +35,21 @@ export interface SankhyaHistoryLabels {
   /** Sem Sankhya configurado / cliente sem código: o histórico do portal. */
   fallbackNotConfigured: string;
   fallbackNoCode: string;
+  /** Seletor no topo do card (dono, 15/11/2026). */
+  view: { label: string; orders: string; products: string };
+  /** Visão Produto. */
+  products: {
+    hint: string;
+    /** "Período consultado: {from} a {to} ({n} pedido(s))". */
+    period: string;
+    /** "Total {q}". */
+    total: string;
+    empty: string;
+    more: string;
+    /** "Mostrar mais produtos ({n} restantes)". */
+    showMore: string;
+    incomplete: string;
+  };
   f: {
     code: string;
     reference: string;
@@ -68,6 +85,33 @@ interface Loaded {
   failed: boolean;
 }
 
+type Products =
+  | {
+      state: "ok";
+      products: SankhyaHistoryProduct[];
+      orders: number;
+      from: string | null;
+      to: string | null;
+      complete: boolean;
+    }
+  | { state: "not_configured" }
+  | { state: "no_code" }
+  | { state: "error"; code: string; message: string };
+
+/** Visão Produto lida para um cliente e um número de pedidos. */
+interface ProductsLoaded {
+  key: string;
+  /** Pedidos da lista quando a visão foi lida (0 = a primeira página). */
+  count: number;
+  attempt: number;
+  result: Products | null;
+  failed: boolean;
+}
+
+type View = "orders" | "products";
+/** Produtos mostrados por vez na visão Produto. */
+const PRODUCTS_STEP = 50;
+
 const DASH = "—";
 
 /**
@@ -99,6 +143,15 @@ export function SankhyaPurchaseHistory({
   useEffect(() => {
     current.current = key;
   }, [key]);
+  // Seletor Pedido | Produto (dono, 15/11/2026): Pedido por padrão; a
+  // escolha fica ao trocar de cliente (o conteúdo é o do cliente novo).
+  const [view, setView] = useState<View>("orders");
+  const [products, setProducts] = useState<ProductsLoaded | null>(null);
+  const [productsAttempt, setProductsAttempt] = useState(0);
+  const productsRef = useRef<ProductsLoaded | null>(null);
+  useEffect(() => {
+    productsRef.current = products;
+  }, [products]);
 
   const url = (customer: string, shown = 0) =>
     `/api/purchase-history/sankhya?${new URLSearchParams({
@@ -123,19 +176,75 @@ export function SankhyaPurchaseHistory({
     return () => controller.abort();
   }, [key, attempt, stock]);
 
-  if (stock) return null;
   const mine =
     key && loaded && loaded.key === key && loaded.attempt === attempt
       ? loaded
       : null;
   const result = mine?.result ?? null;
+  // Pedidos já na lista: a visão Produto soma os mesmos (0 = a 1ª página).
+  const ordersCount = result?.state === "ok" ? result.orders.length : 0;
+
+  // Visão Produto: lida ao abrir pelo seletor, para o cliente e os pedidos
+  // da lista; a mesma leitura é reaproveitada ao voltar para ela.
+  const ordersRead = !!mine;
+  useEffect(() => {
+    // Espera a lista (o número de pedidos) para ler uma vez só.
+    if (!key || stock || view !== "products" || !ordersRead) return;
+    const have = productsRef.current;
+    if (
+      have &&
+      have.key === key &&
+      have.count === ordersCount &&
+      have.attempt === productsAttempt
+    )
+      return;
+    const want = { key, count: ordersCount, attempt: productsAttempt };
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/purchase-history/sankhya?${new URLSearchParams({
+            customer: key,
+            view: "products",
+            ...(ordersCount ? { shown: String(ordersCount) } : {}),
+          }).toString()}`,
+          { signal: controller.signal },
+        );
+        if (!res.ok) throw new Error(String(res.status));
+        const body = (await res.json()) as Products;
+        setProducts({ ...want, result: body, failed: false });
+      } catch {
+        if (controller.signal.aborted) return;
+        setProducts({ ...want, result: null, failed: true });
+      }
+    })();
+    return () => controller.abort();
+  }, [key, ordersCount, ordersRead, view, productsAttempt, stock]);
+
+  if (stock) return null;
+  // A visão Produto do cliente escolhido (a última lida, mesmo se a lista
+  // cresceu depois) e se ela já é a dos pedidos atuais.
+  const productsMine = key && products?.key === key ? products : null;
+  const productsCurrent =
+    productsMine &&
+    productsMine.count === ordersCount &&
+    productsMine.attempt === productsAttempt
+      ? productsMine
+      : null;
+  const fallbackState =
+    result?.state === "not_configured" || result?.state === "no_code"
+      ? result.state
+      : productsCurrent?.result?.state === "not_configured" ||
+          productsCurrent?.result?.state === "no_code"
+        ? productsCurrent.result.state
+        : null;
 
   // Sem Sankhya ou sem código: o histórico do portal, com o aviso.
-  if (result?.state === "not_configured" || result?.state === "no_code")
+  if (fallbackState)
     return (
-      <div className={className} data-sankhya-history-fallback={result.state}>
+      <div className={className} data-sankhya-history-fallback={fallbackState}>
         <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
-          {result.state === "no_code"
+          {fallbackState === "no_code"
             ? labels.fallbackNoCode
             : labels.fallbackNotConfigured}
         </p>
@@ -196,22 +305,49 @@ export function SankhyaPurchaseHistory({
       data-purchase-history
       data-sankhya-history
       data-purchase-history-state={state}
+      data-sankhya-history-view={view}
     >
       <Card title={labels.title}>
         <p className="-mt-1 mb-2 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
           {labels.source}
         </p>
+        {/* Pedido | Produto (dono, 15/11/2026): uma visão por vez, aqui
+            embaixo, no mesmo card. */}
+        <div
+          role="group"
+          aria-label={labels.view.label}
+          className="mb-3 grid grid-cols-2 gap-1 rounded-lg bg-zinc-100 p-1"
+          data-sankhya-history-views
+        >
+          {(["orders", "products"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={view === v}
+              onClick={() => setView(v)}
+              data-sankhya-history-view-button={v}
+              className={cx(
+                "min-h-10 rounded-md px-3 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-600",
+                view === v
+                  ? "bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200"
+                  : "text-zinc-600 hover:text-zinc-900",
+              )}
+            >
+              {v === "orders" ? labels.view.orders : labels.view.products}
+            </button>
+          ))}
+        </div>
         {state === "select" ? (
           <p className="text-sm text-zinc-500" data-purchase-history-select>
             {labels.select}
           </p>
         ) : null}
-        {state === "loading" ? (
+        {view === "orders" && state === "loading" ? (
           <p className="text-sm text-zinc-500" role="status">
             {labels.loading}
           </p>
         ) : null}
-        {state === "error" ? (
+        {view === "orders" && state === "error" ? (
           <p className="text-sm text-red-700" role="alert">
             {labels.error}
             {result?.state === "error" ? (
@@ -228,12 +364,33 @@ export function SankhyaPurchaseHistory({
             </button>
           </p>
         ) : null}
-        {state === "empty" ? (
+        {view === "orders" && state === "empty" ? (
           <p className="text-sm text-zinc-500" data-purchase-history-empty>
             {labels.empty}
           </p>
         ) : null}
-        {state === "ready" && key && result?.state === "ok" ? (
+        {view === "products" && key ? (
+          <ProductsPanel
+            key={key}
+            loaded={productsMine}
+            current={!!productsCurrent}
+            labels={labels}
+            onRetry={() => setProductsAttempt((n) => n + 1)}
+            more={
+              result?.state === "ok" && result.next !== null
+                ? {
+                    loading: moreFor === key,
+                    failed: moreFailed,
+                    onClick: () => void loadMore(),
+                  }
+                : null
+            }
+          />
+        ) : null}
+        {view === "orders" &&
+        state === "ready" &&
+        key &&
+        result?.state === "ok" ? (
           <>
             <p className="mb-1 text-xs leading-relaxed text-zinc-500">
               {labels.hint}
@@ -479,6 +636,178 @@ function ItemBlock({
           </p>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** "60 UN" (ou "60 UN · 2 CX" quando o produto veio em mais de uma unidade). */
+function quantityText(
+  list: SankhyaQuantity[],
+  format: ReturnType<typeof formatter>,
+) {
+  if (!list.length) return DASH;
+  return list
+    .map((q) => `${format.qty(q.quantity)}${q.unit ? ` ${q.unit}` : ""}`)
+    .join(" · ");
+}
+
+/**
+ * Visão Produto (dono, 15/11/2026): os produtos dos pedidos da lista, pelo
+ * código no Sankhya. Nome à esquerda e o total do período à direita; embaixo,
+ * a quantidade de cada data, da mais recente para a mais antiga.
+ */
+function ProductsPanel({
+  loaded,
+  current,
+  labels,
+  onRetry,
+  more,
+}: {
+  /** A última visão lida para este cliente (pode ser de menos pedidos). */
+  loaded: ProductsLoaded | null;
+  /** A leitura já é a dos pedidos atuais da lista. */
+  current: boolean;
+  labels: SankhyaHistoryLabels;
+  onRetry: () => void;
+  /** "Carregar mais pedidos" (amplia o período), quando há mais. */
+  more: { loading: boolean; failed: boolean; onClick: () => void } | null;
+}) {
+  const [limit, setLimit] = useState(PRODUCTS_STEP);
+  const format = formatter(labels.intl);
+  const data = loaded?.result?.state === "ok" ? loaded.result : null;
+  if (!data) {
+    if (!loaded || !current)
+      return (
+        <p className="text-sm text-zinc-500" role="status">
+          {labels.loading}
+        </p>
+      );
+    return (
+      <p className="text-sm text-red-700" role="alert">
+        {labels.error}
+        {loaded.result?.state === "error" ? (
+          <span className="block text-xs text-red-600">
+            {loaded.result.message}
+          </span>
+        ) : null}{" "}
+        <button
+          type="button"
+          className="font-medium underline underline-offset-2"
+          onClick={onRetry}
+        >
+          {labels.retry}
+        </button>
+      </p>
+    );
+  }
+  if (!data.orders)
+    return (
+      <p className="text-sm text-zinc-500" data-purchase-history-empty>
+        {labels.empty}
+      </p>
+    );
+  const shown = data.products.slice(0, limit);
+  const left = data.products.length - shown.length;
+  return (
+    <div data-sankhya-products>
+      <p className="mb-1 text-xs leading-relaxed text-zinc-500">
+        {labels.products.hint}
+      </p>
+      <p
+        className="mb-2 text-xs font-medium text-zinc-700"
+        data-sankhya-products-period
+      >
+        {fill(labels.products.period, {
+          from: format.date(data.from),
+          to: format.date(data.to),
+          n: data.orders,
+        })}
+      </p>
+      {!data.complete ? (
+        <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
+          {labels.products.incomplete}
+        </p>
+      ) : null}
+      {data.products.length ? (
+        <ul className="space-y-2">
+          {shown.map((p) => (
+            <li
+              key={p.key}
+              className="rounded-lg border border-zinc-100 bg-zinc-50/70 px-2.5 py-2"
+              data-sankhya-product={p.key}
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="min-w-0 break-words text-sm font-medium text-zinc-900">
+                  {p.name}
+                </p>
+                <p
+                  className="shrink-0 text-right text-sm font-semibold tabular-nums text-zinc-900"
+                  data-sankhya-product-total
+                >
+                  {fill(labels.products.total, {
+                    q: quantityText(p.total, format),
+                  })}
+                </p>
+              </div>
+              {p.code !== null ? (
+                <p className="text-[11px] text-zinc-500">
+                  {labels.f.code}: {p.code}
+                </p>
+              ) : null}
+              <ul className="mt-1.5 space-y-0.5 border-t border-zinc-100 pt-1.5 text-xs">
+                {p.days.map((d) => (
+                  <li
+                    key={d.date ?? "sem-data"}
+                    className="flex items-baseline justify-between gap-3"
+                    data-sankhya-product-day={d.date ?? ""}
+                  >
+                    <span className="text-zinc-600">{format.date(d.date)}</span>
+                    <span className="tabular-nums text-zinc-900">
+                      {quantityText(d.quantities, format)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-zinc-500" data-sankhya-products-empty>
+          {labels.products.empty}
+        </p>
+      )}
+      {left > 0 ? (
+        <div className="pt-2">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => setLimit((n) => n + PRODUCTS_STEP)}
+            data-sankhya-products-show-more
+          >
+            {fill(labels.products.showMore, { n: left })}
+          </Button>
+        </div>
+      ) : null}
+      {more ? (
+        <div className="pt-2">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={more.onClick}
+            disabled={more.loading || !current}
+            data-sankhya-products-more
+          >
+            {more.loading || !current ? labels.loading : labels.products.more}
+          </Button>
+          {more.failed ? (
+            <p className="mt-1 text-xs text-red-700" role="alert">
+              {labels.error}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
