@@ -552,7 +552,7 @@ export const VIDEOS = {
             // pendências e os arquivos do pedido (docs/PURCHASE_ORDER.md).
             en: "Agency in Brazil, factory abroad: the work flows through the portal's tasks and chat, with no e-mails.",
             pt: "Agência no Brasil, fábrica no exterior:||tudo corre pelas pendências|e pelo chat do portal, sem e-mails.",
-            zh: "代理在巴西，工厂在海外：||工作通过门户的待办和聊天|推进，无需邮件。",
+            zh: "设计公司在巴西，工厂在海外：||工作通过门户的待办和聊天|推进，无需邮件。",
           },
         ],
       },
@@ -997,7 +997,7 @@ export const VIDEOS = {
           {
             en: "Each company has one chat with Wellmix, organised by order and by item.",
             pt: "Cada empresa tem um só chat|com a Wellmix,||organizado por pedido e por item.",
-            zh: "每家公司与 Wellmix|只有一个聊天，||按订单和产品分类。",
+            zh: "每家公司与 Wellmix|只有一个会话，||按订单和产品分类。",
           },
           {
             en: "Photos, videos and files stay attached to the subject they belong to.",

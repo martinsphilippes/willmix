@@ -123,7 +123,7 @@ Limites que a revisão independente encontrou e o roteiro respeita:
 - **Mesa de trabalho** existe para cinco mesas (`docs/DESKS.md`); o vídeo diz que cada função tem as suas telas e pendências.
 - **Lacre:** no carregamento vão a foto do lacre e o número do container; o número do lacre é conferido no recebimento.
 
-No vídeo **curto**, os balões de conversa da cena de comunicação são **ilustrações** desenhadas sobre a tela real do pedido (os botões "Conversar com" são do portal). No **completo** a conversa é de verdade: as mensagens foram enviadas pelo próprio portal de demonstração (`scripts/video/seed-chat.mjs`), e as fotos da inspeção e do chat são desenhos gerados aqui (nenhuma imagem baixada).
+No vídeo **curto**, os balões de conversa da cena de comunicação são **ilustrações** desenhadas sobre a tela real do pedido (os botões "Conversar com" são do portal). No **completo** a conversa é de verdade: as mensagens foram enviadas pelo próprio portal de demonstração (`scripts/video/seed-chat.mjs`, cerca de 5 minutos, porque espera um minuto entre as mensagens), e as fotos da inspeção e do chat são desenhos gerados aqui (nenhuma imagem baixada). A tela de Mensagens é capturada em uma janela mais alta, para a conversa inteira caber na caixa. A cena de pendências usa a lista do despachante, porque as pendências internas ainda têm rótulos sem tradução em inglês.
 
 ## 2. Estrutura dos vídeos
 
@@ -244,6 +244,6 @@ Mudou o texto de uma fala? Só ela é gerada de novo, e a duração das cenas se
 5. **Versão só em inglês** (sem legenda queimada) não foi pedida; as telas do completo já estão em inglês, então sai com mais uma renderização.
 6. **Onde publicar** (YouTube não listado, Vimeo, LinkedIn) e se o portal ganha um link para o vídeo completo.
 7. **Chat direto entre agência e fornecedor.** O dono pediu para o vídeo dizer que a agência de arte no Brasil fala direto com a fábrica pelo chat. Hoje o portal não permite: cada empresa conversa só com a Wellmix. O vídeo diz que o trabalho corre pelas pendências e pelo chat do portal, sem e-mails. Abrir conversa direta entre parceiros é decisão de produto (quem vê o quê, preço, quem responde).
-8. **Curto com tela em inglês, sem "BL" por extenso e sem o nome do ERP?** O curto já não cita BL nem Sankhya na narração; as telas dele continuam em pt ou zh. Se quiser as telas em inglês também no curto, é só pedir.
+8. **Curto com tela em inglês e sem o nome do ERP?** O curto não mudou: a narração dele já não cita BL nem o ERP, mas as telas continuam em pt ou zh e a Control Tower mostra, em letra pequena, o cartão "Sem nº Sankhya". Para deixar igual ao completo basta refazer as capturas (`shots.mjs` já troca o nome por "ERP") e renderizar de novo.
 9. **Pendências internas em inglês.** A lista de pendências dos logins da Wellmix ainda mostra rótulos sem tradução em inglês (`tasks.group.purchase_strategy`, títulos "Estratégia de compra: …"). Por isso a cena de pendências usa a lista do despachante. Vale corrigir no portal.
 10. **Tradução automática do chat.** Se a IA estiver ligada em produção, dá para acrescentar "cada um escreve no seu idioma" na cena do chat.

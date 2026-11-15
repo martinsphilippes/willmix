@@ -71,12 +71,15 @@ const RULES = [
   ["Certificado (Inmetro)", "Certificate (Inmetro)"],
   ["Faz inspeção em Yiwu.", "Inspects in Yiwu."],
   ["10% no pedido; 90% no embarque", "10% on order; 90% on shipment"],
+  // Conversa de teste do E2E (a do vídeo é a de seed-chat.mjs)
+  ["Bom dia! Sobre o ", "Hello! About the "],
   // Trilha de auditoria (frases gravadas)
   [
     "(cargo, chefe, divisão, funções e telas)",
     "(position, manager, division, functions and screens)",
   ],
   ["Equipe: ", "Team: "],
+  ["Configurações atualizadas", "Settings updated"],
   ["Acesso excluído: ", "Access removed: "],
   // Empresas e pessoas com nome de função em português
   ["Agência Criativa", "Creative Agency"],
@@ -111,19 +114,18 @@ const STEP_VALUES = {
 
 const file = join(to, "db.json");
 const db = JSON.parse(readFileSync(file, "utf8"));
-for (const r of db.requirements ?? [])
-  if (r.value === "ok" && STEP_VALUES[r.code]) r.value = STEP_VALUES[r.code];
+for (const r of db.requirements ?? []) {
+  const step = r.code ?? r.key;
+  if (r.value === "ok" && STEP_VALUES[step]) r.value = STEP_VALUES[step];
+}
 for (const o of db.order_summaries ?? [])
   for (const r of o.facts?.reqs ?? [])
     if (r.v === "ok" && STEP_VALUES[r.k]) r.v = STEP_VALUES[r.k];
-// Conversa de teste do E2E (a conversa do vídeo é a de seed-chat.mjs).
-for (const m of db.messages ?? [])
-  if (/^Bom dia! Sobre o pote/.test(m.body)) {
-    m.body = "Good morning! About the glass jar 800 ml";
-    if (m.translation?.texts)
-      for (const k of Object.keys(m.translation.texts))
-        m.translation.texts[k] = m.body;
-  }
+// A base do E2E fica com a IA em "Mock", que grava em cada mensagem do chat
+// uma tradução de exemplo ("[en · exemplo mock] …"). Em "Manual" cada lado lê
+// o que o outro escreveu (o vídeo não fala de tradução automática).
+for (const s of db.settings ?? [])
+  if (s.key === "aiMode" && s.value === "MOCK") s.value = "MANUAL";
 const count = new Map();
 const tr = (s) => {
   for (const [a, b] of RULES)

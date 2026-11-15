@@ -80,7 +80,8 @@ export const SHOTS = {
   audit: ["admin", "/app/audit"],
   team: ["admin", "/app/team"],
   dashboards: ["admin", "/app/dashboards"],
-  messages: ["admin", CHAT, { chat: 16 }],
+  // Janela mais alta: a caixa da conversa (60 % da altura) mostra as cinco mensagens.
+  messages: ["admin", CHAT, { chat: 16, tall: true }],
   "m-messages": ["supplier", CHAT, { chat: 8, mobile: true }],
   // Quem deve a resposta em cada conversa (só a Wellmix abre).
   "messages-control": ["admin", "/app/messages/control"],
@@ -126,8 +127,8 @@ await mkdir(outDir, { recursive: true });
 const LOCALE = { pt: "pt-BR", zh: "zh-CN", en: "en-US" }[lang] ?? "en-US";
 const browser = await launch([`--lang=${LOCALE}`]);
 const sessions = new Map();
-async function session(account, mobile, wide) {
-  const key = `${account}:${mobile ? "m" : wide ? "w" : "d"}`;
+async function session(account, mobile, wide, tall) {
+  const key = `${account}:${mobile ? "m" : wide ? "w" : tall ? "t" : "d"}`;
   if (sessions.has(key)) return sessions.get(key);
   const locale = LOCALE;
   const ctx = await browser.newContext(
@@ -143,7 +144,7 @@ async function session(account, mobile, wide) {
           locale,
           viewport: wide
             ? { width: 1520, height: 950 }
-            : { width: 1280, height: 800 },
+            : { width: 1280, height: tall ? 1000 : 800 },
           deviceScaleFactor: review ? 1 : 2,
         },
   );
@@ -162,7 +163,7 @@ async function session(account, mobile, wide) {
 for (const name of names) {
   const [account, route, o = {}] = SHOTS[name];
   try {
-    const page = await session(account, o.mobile, o.wide);
+    const page = await session(account, o.mobile, o.wide, o.tall);
     const res = await page.goto(
       BASE + (typeof route === "function" ? route() : route),
       {
@@ -201,6 +202,15 @@ for (const name of names) {
           card.getBoundingClientRect().top + window.scrollY - below - top,
         );
         thread.scrollTop = 0; // coluna invertida: 0 = mensagens mais novas
+        // A conversa não cabe inteira na caixa: se a mensagem do topo ficou
+        // com o cabeçalho cortado por pouco, sobe o bastante para mostrá-lo.
+        const box = thread.getBoundingClientRect();
+        for (const li of thread.querySelectorAll("li[data-message]")) {
+          const r = li.getBoundingClientRect();
+          const cut = box.top - r.top;
+          if (cut > 0 && cut < 40 && r.bottom > box.top)
+            thread.scrollTop -= cut + 2;
+        }
       }, o.chat);
     }
     await page.waitForTimeout(250);

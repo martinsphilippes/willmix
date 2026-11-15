@@ -34,11 +34,11 @@ const OUTROS = [
 const CONVERSA = [
   [
     WELLMIX,
-    "Good morning, Li Wei. Could you send the photos of the mass-production sample for this order?",
+    "Hello, Li Wei. Could you send the photos of the mass-production sample for this order?",
   ],
   [
     FORNECEDOR,
-    "Good morning! Photos attached. Production finishes on the 28th.",
+    "Hello! Photos attached. Production finishes on the 28th.",
     true,
   ],
   [WELLMIX, "Received, thank you. Color and logo position approved."],
