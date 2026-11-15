@@ -39,6 +39,7 @@ import { SCHEDULE_REQUIREMENT_KEYS, payableFor } from "./supplier-terms";
 import type { BoardOrder, BoardStage } from "./tower-board";
 import {
   compactMilestones,
+  newlyDoneMilestones,
   orderMilestones,
   type CompactMilestone,
 } from "@/lib/milestones";
@@ -896,9 +897,20 @@ export async function summaryStatus(): Promise<SummaryMarker | null> {
 export async function recomputeOrderSummaries(
   ids: string[],
   now: Date = new Date(),
+  options: {
+    /**
+     * Recálculo por evento: avisa os informados dos marcos que acabaram de
+     * concluir (fase 4c, docs/MILESTONES.md). A reconstrução e os outros
+     * recálculos não avisam.
+     */
+    informMilestones?: boolean;
+  } = {},
 ): Promise<number> {
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return 0;
+  const previous = options.informMilestones
+    ? await storedMilestones(unique)
+    : null;
   const src = await loadSources(unique);
   const today = brazilDay(now.toISOString()) as string;
   const at = now.toISOString();
@@ -914,12 +926,59 @@ export async function recomputeOrderSummaries(
     summaryRow(f, at, kpis.get(f.order.id), tasks.get(f.order.id) ?? null),
   );
   await writeSummaries(rows);
+  if (previous) await informNewlyDone(src.orders, facts, previous);
   const found = new Set(src.orders.map((o) => o.id));
   const store = getStore();
   for (const id of unique)
     if (!found.has(id))
       await store.remove("order_summaries", id).catch(() => undefined);
   return rows.length;
+}
+
+/**
+ * Os marcos guardados no resumo (só `facts.m`), no formato atual. Resumo de
+ * outro formato ou sem `m`: fica de fora (sem comparação, sem aviso).
+ */
+async function storedMilestones(
+  ids: string[],
+): Promise<Map<string, CompactMilestone[]>> {
+  const rows = await listColumnsOf(
+    getStore(),
+    "order_summaries",
+    ["version", "facts"],
+    { filter: { id: ids }, jsonKeys: { facts: ["m"] } },
+  ).catch(() => []);
+  const out = new Map<string, CompactMilestone[]>();
+  for (const row of rows) {
+    const m = (row.facts as Partial<OrderFacts> | null)?.m;
+    if (row.version === SUMMARY_VERSION && m?.length) out.set(row.id, m);
+  }
+  return out;
+}
+
+/** Avisa os informados dos marcos que concluíram neste recálculo. */
+async function informNewlyDone(
+  orders: Order[],
+  facts: OrderFacts[],
+  previous: Map<string, CompactMilestone[]>,
+) {
+  const byId = new Map(facts.map((f) => [f.order.id, f]));
+  for (const order of orders) {
+    // Histórico do Sankhya em espera: sem avisos (fase 1).
+    if (isHeld(order)) continue;
+    const keys = newlyDoneMilestones(
+      previous.get(order.id),
+      byId.get(order.id)?.m,
+    );
+    if (!keys.length) continue;
+    try {
+      const { informMilestones } = await import("./milestone-notify");
+      await informMilestones(order, keys);
+    } catch (error) {
+      // O aviso não derruba o resumo (já gravado).
+      console.error("[milestones] aviso aos informados falhou", error);
+    }
+  }
 }
 
 /** Pedidos de um parceiro (nome ou condição de pagamento mudou). */
@@ -945,7 +1004,9 @@ export async function applySummaryChanges(changes: {
 }): Promise<number> {
   if (!(await summariesReady())) return 0;
   const ids = [...changes.orders, ...(await ordersOfParties(changes.parties))];
-  const done = await recomputeOrderSummaries(ids);
+  const done = await recomputeOrderSummaries(ids, new Date(), {
+    informMilestones: true,
+  });
   // Indicadores prontos: refeitos depois de cada leva de gravações.
   if (ids.length || changes.kpi) {
     const { rebuildTowerKpis } = await import("./tower-kpis");
