@@ -10,10 +10,15 @@ import { moneyText } from "./request-sheet";
  * o histórico do Sankhya grava o preço na moeda do pedido (VLRUNIT ÷ câmbio).
  * Sem pedido, o preço da última compra gravado no cadastro. Só para a Wellmix
  * (quem chama confere o papel): cliente não vê preço de fornecedor.
+ *
+ * Sem "Ver preço de compra" (`withPrice` falso; dono, 15/11/2026, opção C,
+ * docs/LINHA_DE_VISAO.md, seção 8): a mesma linha sem o preço (quantidade,
+ * pedido e fornecedor); sem pedido, nada (o do cadastro é só o preço).
  */
 export async function lastPurchaseTexts(
   t: Translate,
   products: readonly Product[],
+  { withPrice = true }: { withPrice?: boolean } = {},
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (!products.length) return out;
@@ -51,20 +56,25 @@ export async function lastPurchaseTexts(
       .sort((a, b) => (b.order.number ?? 0) - (a.order.number ?? 0))[0];
     if (last) {
       const { item, order } = last;
+      const values = {
+        unit: item.unit || "UN",
+        qty: qty(item.quantity),
+        order: order.sankhyaCode
+          ? `${order.number} (Sankhya ${order.sankhyaCode})`
+          : String(order.number),
+        supplier:
+          (order.supplierId && supplierName.get(order.supplierId)) || "—",
+      };
       out.set(
         p.id,
-        t("reqProduct.lastPurchase", {
-          price: moneyText(t, item.unitPrice!, order.fobCurrency, true),
-          unit: item.unit || "UN",
-          qty: qty(item.quantity),
-          order: order.sankhyaCode
-            ? `${order.number} (Sankhya ${order.sankhyaCode})`
-            : String(order.number),
-          supplier:
-            (order.supplierId && supplierName.get(order.supplierId)) || "—",
-        }),
+        withPrice
+          ? t("reqProduct.lastPurchase", {
+              ...values,
+              price: moneyText(t, item.unitPrice!, order.fobCurrency, true),
+            })
+          : t("reqProduct.lastPurchaseNoPrice", values),
       );
-    } else if (p.price != null && p.price > 0) {
+    } else if (withPrice && p.price != null && p.price > 0) {
       out.set(
         p.id,
         t("reqProduct.lastPurchaseCatalog", {

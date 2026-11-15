@@ -25,6 +25,8 @@ export const pt = {
     "Última compra: {price} por {unit} · {qty} {unit} · pedido {order} · {supplier}",
   "reqProduct.lastPurchaseCatalog":
     "Preço da última compra (cadastro): {price} por {unit}",
+  "reqProduct.lastPurchaseNoPrice":
+    "Última compra: {qty} {unit} · pedido {order} · {supplier}",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -50,6 +52,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Last purchase: {price} per {unit} · {qty} {unit} · order {order} · {supplier}",
   "reqProduct.lastPurchaseCatalog":
     "Last purchase price (product record): {price} per {unit}",
+  "reqProduct.lastPurchaseNoPrice":
+    "Last purchase: {qty} {unit} · order {order} · {supplier}",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -74,4 +78,6 @@ export const zh: Record<keyof typeof pt, string> = {
     "最近一次采购：每{unit} {price} · {qty} {unit} · 订单 {order} · {supplier}",
   "reqProduct.lastPurchaseCatalog":
     "最近一次采购价（产品档案）：每{unit} {price}",
+  "reqProduct.lastPurchaseNoPrice":
+    "最近一次采购：{qty} {unit} · 订单 {order} · {supplier}",
 };
