@@ -1,9 +1,11 @@
 /*
  * Captura as telas reais do portal usadas nos vídeos, no idioma pedido, com o
  * portal em modo demonstração (base do E2E limpa por scrub.mjs):
- *   node shots.mjs <idioma> [nome1,nome2…] [--review pasta]
- * Grava film/shots/<idioma>/<nome>.png (2560 × 1600: janela de 1280 × 800 em
- * dobro, para os zooms continuarem nítidos). Com --review grava miniaturas.
+ *   node shots.mjs <idioma> [nome1,nome2…] [--out pasta] [--review pasta]
+ * Grava film/shots/<idioma ou pasta>/<nome>.png (2560 × 1600: janela de
+ * 1280 × 800 em dobro, para os zooms continuarem nítidos). Com --review grava
+ * miniaturas. PORTAL e DATA_DIR escolhem o servidor e a base (padrão: porta
+ * 3200 e .data-video).
  */
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -24,6 +26,21 @@ const CLEAN = `
   * { caret-color: transparent !important; }
 `;
 
+/* O vídeo não cita o fornecedor do ERP (pedido do dono, 15/11/2026): onde a
+   tela mostra o nome, a captura mostra "ERP". Só o texto visível muda. */
+const REDACT = () => {
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode())
+    if (/sankhya/i.test(n.nodeValue))
+      n.nodeValue = n.nodeValue
+        .replace(/\b(d?o|no|ao|pelo) Sankhya\b/g, "$1 ERP")
+        .replace(/Sankhya/gi, "ERP");
+  for (const el of document.querySelectorAll("[placeholder], [title]"))
+    for (const a of ["placeholder", "title"])
+      if (/sankhya/i.test(el.getAttribute(a) ?? ""))
+        el.setAttribute(a, el.getAttribute(a).replace(/Sankhya/gi, "ERP"));
+};
+
 const A = {
   admin: "admin@wellmix.com",
   buyer: "operador@wellmix.com",
@@ -42,8 +59,14 @@ const A = {
   legal: "juridico@wellmix.com",
 };
 
-/** nome → [conta, rota, opções]. `sel`: rola até esse bloco; `mobile`: celular. */
+/** nome → [conta, rota, opções]. `sel`: rola até esse bloco; `mobile`: celular;
+ *  `chat`: enquadra o cartão da conversa (folga em px abaixo do cabeçalho). */
 const O2 = () => `/app/orders/${order(2)}`;
+/** A conversa mais recente (a de seed-chat.mjs): mesmo endereço para os dois lados. */
+const CHAT = () => {
+  const m = db.messages.at(-1);
+  return `/app/messages?c=${m.conversationId}&t=${m.topicId}`;
+};
 export const SHOTS = {
   // Mais larga: nesta largura os valores do financeiro cabem em uma linha.
   tower: ["admin", "/app", { wide: true }],
@@ -57,7 +80,10 @@ export const SHOTS = {
   audit: ["admin", "/app/audit"],
   team: ["admin", "/app/team"],
   dashboards: ["admin", "/app/dashboards"],
-  messages: ["admin", "/app/messages"],
+  messages: ["admin", CHAT, { chat: 16 }],
+  "m-messages": ["supplier", CHAT, { chat: 8, mobile: true }],
+  // Quem deve a resposta em cada conversa (só a Wellmix abre).
+  "messages-control": ["admin", "/app/messages/control"],
   notifications: ["buyer", "/app/notifications"],
   booking: ["buyer", "/app/booking"],
   "supplier-requests": ["buyer", "/app/supplier-requests"],
@@ -89,7 +115,10 @@ const names =
 const review = args.includes("--review")
   ? args[args.indexOf("--review") + 1]
   : null;
-const outDir = review ?? join(ROOT, "film/shots", lang);
+// --out <pasta>: grava em film/shots/<pasta> (padrão: o idioma). O vídeo
+// completo usa "intl": telas em inglês com a base em inglês (data-en.mjs).
+const set = args.includes("--out") ? args[args.indexOf("--out") + 1] : lang;
+const outDir = review ?? join(ROOT, "film/shots", set);
 await mkdir(outDir, { recursive: true });
 
 // O navegador sobe no idioma da tela: os campos de data nativos seguem o
@@ -151,12 +180,45 @@ for (const name of names) {
           el.getBoundingClientRect().top + window.scrollY - 84,
         );
       }, o.sel);
+    if (o.chat != null) {
+      // Conversa: espera as fotos, põe o cartão logo abaixo do cabeçalho e a
+      // lista de mensagens no fim (as mais novas).
+      await page.locator("[data-thread]").waitFor();
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll("[data-thread] img")].every(
+          (i) => i.complete && i.naturalWidth > 0,
+        ),
+      );
+      await page.evaluate((top) => {
+        const thread = document.querySelector("[data-thread]");
+        let card = thread.parentElement;
+        while (card && !/rounded/.test(card.className))
+          card = card.parentElement;
+        const bar = document.querySelector("header");
+        const below = bar ? bar.getBoundingClientRect().bottom : 0;
+        window.scrollTo(
+          0,
+          card.getBoundingClientRect().top + window.scrollY - below - top,
+        );
+        thread.scrollTop = 0; // coluna invertida: 0 = mensagens mais novas
+      }, o.chat);
+    }
     await page.waitForTimeout(250);
+    const named = await page.evaluate(
+      () => (document.body.innerText.match(/sankhya/gi) ?? []).length,
+    );
+    await page.evaluate(REDACT);
     await page.screenshot({
       path: join(outDir, `${name}.${review ? "jpg" : "png"}`),
       ...(review ? { type: "jpeg", quality: 72 } : {}),
     });
-    console.log(lang, name, res?.status(), new URL(page.url()).pathname);
+    console.log(
+      lang,
+      name,
+      res?.status(),
+      new URL(page.url()).pathname,
+      named ? `(ERP: ${named} trocas)` : "",
+    );
   } catch (e) {
     console.log("FALHOU", lang, name, e.message.split("\n")[0]);
   }

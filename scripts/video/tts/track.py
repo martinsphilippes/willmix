@@ -91,7 +91,8 @@ def main(path):
         desc = f"0 → compasso {to}, final"
     else:
         # Completo: música inteira até o fim de F e blocos repetidos até a assinatura.
-        loops = {0: [], 28: [B2], 46: [B1], 56: [B2, B2], 74: [B1, B2], 92: [B1, B1], 102: [B1, B2, B2], 120: [B1, B1, B2]}
+        # B3 → final repete só a pausa e a parte cheia F (18 compassos): dá os tamanhos intermediários.
+        loops = {0: [], 18: [B3], 28: [B2], 46: [B1], 56: [B2, B2], 64: [B1, B3], 74: [B1, B2], 90: [B1, B2, B3], 92: [B1, B1], 102: [B1, B2, B2], 120: [B1, B1, B2]}
         n = min(loops, key=lambda b: abs(video_time(b) - logo))
         parts = [cut(start, at_bar(OUT))] + [cut(at_bar(b), at_bar(OUT)) for b in loops[n]] + [x[int(at_bar(OUT) * SR) :]]
         outro_at = video_time(n)

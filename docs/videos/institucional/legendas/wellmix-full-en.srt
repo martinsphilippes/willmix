@@ -28,7 +28,7 @@ Each login sees only its own part.
 
 8
 00:00:37,890 --> 00:00:41,868
-The portal follows the import from start to finish, in five blocks.
+The portal follows the import from start to finish, in six blocks.
 
 9
 00:00:41,988 --> 00:00:46,605
@@ -47,209 +47,241 @@ Production: follow-ups, inspection, loading and shipping documents.
 Delivery: customs, transport and receiving.
 
 13
-00:00:58,638 --> 00:01:02,453
-And Sales: offers, sales orders and the delivery schedule.
+00:00:58,638 --> 00:01:02,221
+Sales: offers, sales orders and the delivery schedule.
 
 14
-00:01:02,573 --> 00:01:05,676
-Every step has an owner, a deadline and a status.
+00:01:02,341 --> 00:01:07,470
+And Finance: supplier payables, customer receivables, cash flow and commissions.
 
 15
-00:01:06,846 --> 00:01:11,442
-The customer places an order and follows every stage without picking up the phone.
+00:01:07,590 --> 00:01:10,693
+Every step has an owner, a deadline and a status.
 
 16
-00:01:11,562 --> 00:01:15,504
-The payment plan, instalments and bank slips are on the same screen.
+00:01:11,863 --> 00:01:16,459
+The customer places an order and follows every stage without picking up the phone.
 
 17
-00:01:15,624 --> 00:01:18,870
-On arrival, they confirm receipt and rate the purchase.
+00:01:16,579 --> 00:01:20,521
+The payment plan, instalments and bank slips are on the same screen.
 
 18
-00:01:20,040 --> 00:01:24,060
-The supplier works from a single task list, in Chinese or English.
+00:01:20,640 --> 00:01:23,887
+On arrival, they confirm receipt and rate the purchase.
 
 19
-00:01:24,180 --> 00:01:27,853
-They answer requests with price, minimum order and lead time.
+00:01:25,057 --> 00:01:29,077
+The supplier works from a single task list, in Chinese or English.
 
 20
-00:01:27,973 --> 00:01:32,932
-They upload sample photos and videos, production dates and inspection evidence.
+00:01:29,197 --> 00:01:32,870
+They answer requests with price, minimum order and lead time.
 
 21
-00:01:33,052 --> 00:01:35,637
-And they see the payment forecast for every order.
+00:01:32,990 --> 00:01:37,949
+They upload sample photos and videos, production dates and inspection evidence.
 
 22
-00:01:36,807 --> 00:01:41,659
-The art agency receives the die cut and the product photos in its workdesk.
+00:01:38,069 --> 00:01:40,654
+And they see the payment forecast for every order.
 
 23
-00:01:41,779 --> 00:01:45,371
-It uploads the artwork and gets feedback with a clear reason.
+00:01:41,824 --> 00:01:47,079
+The art agency receives the factory's die cut and product photos in its workdesk.
 
 24
-00:01:45,491 --> 00:01:48,999
-Then it delivers the final art with the certification seal.
+00:01:47,199 --> 00:01:50,791
+It uploads the artwork and gets feedback with a clear reason.
 
 25
-00:01:50,169 --> 00:01:53,869
-The certification body has one queue of certificates to issue.
+00:01:50,911 --> 00:01:54,419
+Then it delivers the final art with the certification seal.
 
 26
-00:01:53,989 --> 00:01:59,353
-It reads the purchase sheet and uploads the technical description, the seal and the certificate.
+00:01:54,539 --> 00:02:01,311
+Agency in Brazil, factory abroad: the work flows through the portal's tasks and chat, with no e-mails.
 
 27
-00:02:00,523 --> 00:02:05,033
-At origin, the marketing agency confirms that the sample has arrived.
+00:02:02,481 --> 00:02:06,181
+The certification body has one queue of certificates to issue.
 
 28
-00:02:05,153 --> 00:02:09,914
-It uploads real photos and videos of each product, and returns the sample.
+00:02:06,301 --> 00:02:11,665
+It reads the purchase sheet and uploads the technical description, the seal and the certificate.
 
 29
-00:02:11,084 --> 00:02:16,256
-The freight forwarder registers the ocean booking and follows the container at origin.
+00:02:12,835 --> 00:02:16,172
+On the factory floor, the inspection is done from a phone.
 
 30
-00:02:16,376 --> 00:02:21,932
-The shipping line answers freight requests, issues the bill of lading and confirms the shipment.
+00:02:16,292 --> 00:02:20,014
+The supplier takes each photo, and the portal saves it at once.
 
 31
-00:02:23,102 --> 00:02:29,810
-In Brazil, the foreign trade advisory and the customs broker handle licences, documents and clearance.
+00:02:20,134 --> 00:02:22,489
+Then types the measured weight and taps send.
 
 32
-00:02:29,930 --> 00:02:32,854
-Every step shows who does it and who validates it.
+00:02:22,609 --> 00:02:25,919
+Wellmix sees every item on the order, ready to approve.
 
 33
-00:02:34,024 --> 00:02:37,803
-The carrier sees the cargo and the delivery address on one card.
+00:02:27,589 --> 00:02:32,099
+At origin, the marketing agency confirms that the sample has arrived.
 
 34
-00:02:37,923 --> 00:02:42,156
-It updates the status on the road and confirms the delivery from a phone.
+00:02:32,219 --> 00:02:36,980
+It uploads real photos and videos of each product, and returns the sample.
 
 35
-00:02:43,326 --> 00:02:47,239
-Inside Wellmix, every function has its own screens and tasks.
+00:02:38,150 --> 00:02:43,322
+The freight forwarder registers the ocean booking and follows the container at origin.
 
 36
-00:02:47,359 --> 00:02:51,245
-Buyers import supplier books, select items and negotiate.
+00:02:43,442 --> 00:02:48,459
+The shipping line answers freight requests, issues the BL and confirms the shipment.
 
 37
-00:02:51,365 --> 00:02:54,838
-Product managers evaluate samples and keep the product sheet.
+00:02:49,629 --> 00:02:56,337
+In Brazil, the foreign trade advisory and the customs broker handle licences, documents and clearance.
 
 38
-00:02:54,958 --> 00:02:58,131
-Planners follow production dates, containers and freight.
+00:02:56,457 --> 00:02:59,381
+Every step shows who does it and who validates it.
 
 39
-00:02:58,251 --> 00:03:01,850
-Registration validates tax codes and master data.
+00:03:00,551 --> 00:03:04,330
+The carrier sees the cargo and the delivery address on one card.
 
 40
-00:03:03,020 --> 00:03:06,846
-Finance validates import costs and registers the invoice.
+00:03:04,450 --> 00:03:08,683
+It updates the status on the road and confirms the delivery from a phone.
 
 41
-00:03:06,966 --> 00:03:11,434
-Quality checks every container on arrival: seal, photos and count.
+00:03:09,853 --> 00:03:13,766
+Inside Wellmix, every function has its own screens and tasks.
 
 42
-00:03:11,554 --> 00:03:15,788
-Sales records offers, opens sales orders and schedules deliveries.
+00:03:13,886 --> 00:03:17,772
+Buyers import supplier books, select items and negotiate.
 
 43
-00:03:15,908 --> 00:03:19,499
-Directors approve the purchase strategy and sign the contract.
+00:03:17,892 --> 00:03:21,366
+Product managers evaluate samples and keep the product sheet.
 
 44
-00:03:19,619 --> 00:03:23,298
-And the administrator controls access, deadlines and settings.
+00:03:21,486 --> 00:03:24,658
+Planners follow production dates, containers and freight.
 
 45
-00:03:24,468 --> 00:03:27,282
-All communication lives inside the portal.
+00:03:24,778 --> 00:03:28,377
+Registration validates tax codes and master data.
 
 46
-00:03:27,402 --> 00:03:32,654
-Each company has one conversation with Wellmix, organised by order and by item.
+00:03:29,547 --> 00:03:33,374
+Finance validates import costs and registers the invoice.
 
 47
-00:03:32,774 --> 00:03:37,047
-Photos, videos and files stay attached to the subject they belong to.
+00:03:33,494 --> 00:03:37,962
+Quality checks every container on arrival: seal, photos and count.
 
 48
-00:03:37,167 --> 00:03:42,190
-A notification bell and a task inbox show each person what is waiting for them.
+00:03:38,082 --> 00:03:42,315
+Sales records offers, opens sales orders and schedules deliveries.
 
 49
-00:03:42,310 --> 00:03:44,538
-And the portal shows who owes a reply.
+00:03:42,435 --> 00:03:46,026
+Directors approve the purchase strategy and sign the contract.
 
 50
-00:03:45,708 --> 00:03:48,939
-The portal speaks Portuguese, English and Chinese.
+00:03:46,146 --> 00:03:49,825
+And the administrator controls access, deadlines and settings.
 
 51
-00:03:50,109 --> 00:03:51,941
-Access is defined by role.
+00:03:50,995 --> 00:03:53,809
+All communication lives inside the portal.
 
 52
-00:03:52,061 --> 00:03:55,185
-Each partner sees its own orders, and nothing else.
+00:03:53,929 --> 00:03:56,067
+The scattered e-mail threads end here.
 
 53
-00:03:55,305 --> 00:03:59,410
-Customers never see the supplier, the purchase price or the margin.
+00:03:56,187 --> 00:04:00,932
+Each company has one chat with Wellmix, organised by order and by item.
 
 54
-00:04:00,580 --> 00:04:03,064
-Quality is documented at every stage.
+00:04:01,052 --> 00:04:05,326
+Photos, videos and files stay attached to the subject they belong to.
 
 55
-00:04:03,184 --> 00:04:05,763
-Inspection with photos, weight and video.
+00:04:05,446 --> 00:04:07,526
+Nothing gets lost. No mess.
 
 56
-00:04:05,883 --> 00:04:09,549
-Container loading with photos, seal and container number.
+00:04:09,096 --> 00:04:14,119
+A notification bell and a task inbox show each person what is waiting for them.
 
 57
-00:04:09,669 --> 00:04:13,432
-Packing list, invoice and bill of lading, checked line by line.
+00:04:14,239 --> 00:04:16,467
+And the portal shows who owes a reply.
 
 58
-00:04:14,252 --> 00:04:18,293
-For management, the Control Tower shows the whole process by stage.
+00:04:17,937 --> 00:04:21,167
+The portal speaks Portuguese, English and Chinese.
 
 59
-00:04:18,413 --> 00:04:23,549
-The SLA panel shows what is overdue, what is due today and who is responsible.
+00:04:22,337 --> 00:04:24,169
+Access is defined by role.
 
 60
-00:04:23,669 --> 00:04:26,715
-Dashboards and a full audit trail complete the picture.
+00:04:24,289 --> 00:04:27,413
+Each partner sees its own orders, and nothing else.
 
 61
-00:04:27,585 --> 00:04:31,115
-It works on any screen, and installs like an app on a phone.
+00:04:27,533 --> 00:04:31,638
+Customers never see the supplier, the purchase price or the margin.
 
 62
-00:04:31,235 --> 00:04:34,843
-And it is built to work with Sankhya, the company's ERP.
+00:04:32,808 --> 00:04:35,292
+Quality is documented at every stage.
 
 63
-00:04:35,113 --> 00:04:38,461
-One portal. Every partner. Every step of the journey.
+00:04:35,412 --> 00:04:37,992
+Inspection with photos, weight and video.
 
 64
-00:04:38,581 --> 00:04:40,980
+00:04:38,112 --> 00:04:41,778
+Container loading with photos, seal and container number.
+
+65
+00:04:41,898 --> 00:04:45,211
+Packing list, invoice and BL, checked line by line.
+
+66
+00:04:46,031 --> 00:04:50,071
+For management, the Control Tower shows the whole process by stage.
+
+67
+00:04:50,191 --> 00:04:55,327
+The SLA panel shows what is overdue, what is due today and who is responsible.
+
+68
+00:04:55,447 --> 00:04:58,494
+Dashboards and a full audit trail complete the picture.
+
+69
+00:04:59,364 --> 00:05:02,893
+It works on any screen, and installs like an app on a phone.
+
+70
+00:05:03,013 --> 00:05:05,938
+And it is built to work with the company's ERP.
+
+71
+00:05:07,108 --> 00:05:10,457
+One portal. Every partner. Every step of the journey.
+
+72
+00:05:10,577 --> 00:05:12,975
 Wellmix. Imports from order to delivery.
