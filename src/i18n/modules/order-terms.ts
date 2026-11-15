@@ -149,6 +149,11 @@ export const pt = {
   "historyPick.filtered":
     "Só os produtos da família escolhida ({n} de outras famílias não aparecem).",
   "composition.goTo": "Ir para o produto no pedido",
+  "orderTerms.switchTitle": "Trocar o país ou a família?",
+  "orderTerms.switchBody":
+    "Este pedido já tem produtos do país e da família escolhidos. Recomendamos terminar este pedido assim e começar outro depois para o outro país ou família. Se preferir trocar agora, todos os produtos do pedido serão removidos.",
+  "orderTerms.switchKeep": "Manter e terminar este pedido",
+  "orderTerms.switchConfirm": "Trocar e remover os produtos",
   "orderTerms.view.title": "Condições do pedido",
   "orderTerms.view.none": "—",
   "reqBatch.error.order_terms_operation":
@@ -340,6 +345,11 @@ export const en: Record<keyof typeof pt, string> = {
   "historyPick.filtered":
     "Only products of the chosen family ({n} from other families are hidden).",
   "composition.goTo": "Go to the product in the order",
+  "orderTerms.switchTitle": "Change the country or family?",
+  "orderTerms.switchBody":
+    "This order already has products of the chosen country and family. We recommend finishing this order as it is and starting another one later for the other country or family. If you prefer to change now, all products in the order will be removed.",
+  "orderTerms.switchKeep": "Keep and finish this order",
+  "orderTerms.switchConfirm": "Change and remove the products",
   "orderTerms.view.title": "Order terms",
   "orderTerms.view.none": "—",
   "reqBatch.error.order_terms_operation":
@@ -515,6 +525,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "historyPick.filtered":
     "只显示所选产品系列的产品（其他系列的 {n} 个已隐藏）。",
   "composition.goTo": "跳转到订单中的该产品",
+  "orderTerms.switchTitle": "要更换国家或产品系列吗？",
+  "orderTerms.switchBody":
+    "此订单已包含所选国家和产品系列的产品。建议先完成此订单，之后再为其他国家或产品系列新建订单。如果现在更换，订单中的所有产品都将被移除。",
+  "orderTerms.switchKeep": "保留并完成此订单",
+  "orderTerms.switchConfirm": "更换并移除产品",
   "orderTerms.view.title": "订单条件",
   "orderTerms.view.none": "—",
   "reqBatch.error.order_terms_operation": "请选择业务类型（TS 或销售）。",

@@ -189,6 +189,13 @@ WHERE P.ATIVO = 'S' AND P.CODPROD > <último> ORDER BY P.CODPROD
 
 - Nas telas grandes, a **Composição de containers fica fixa** no alto da lateral (até 60% da altura, com rolagem própria se passar), e o **Histórico de compras do cliente rola dentro do espaço que sobra** (`data-request-history-scroll`). Ver os produtos ou pedidos mais abaixo no histórico não tira a composição da tela.
 
+### 11.3 Trocar o país ou a família com produtos no pedido
+
+- Com produto do catálogo no pedido, trocar o **país** ou a **família** abre um aviso: "Este pedido já tem produtos do país e da família escolhidos. Recomendamos terminar este pedido assim e começar outro depois…".
+- **Manter e terminar este pedido** (o botão em foco): a troca é desfeita, nada muda.
+- **Trocar e remover os produtos**: a troca vale e todas as linhas de produto saem (fica uma linha vazia; a composição e as marcas do histórico acompanham).
+- Sem produto do catálogo no pedido, a troca é direta, sem aviso.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

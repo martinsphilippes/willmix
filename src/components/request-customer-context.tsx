@@ -47,6 +47,12 @@ interface RequestCustomerState {
   setChosenProductIds: (ids: string[]) => void;
   addRequest: { productId: string; seq: number } | null;
   requestAddProduct: (productId: string) => void;
+  /**
+   * Trocar o país ou a família com produtos no pedido (dono, 15/11/2026):
+   * depois do "sim" no aviso, as linhas de produto são limpas (contador).
+   */
+  clearSeq: number;
+  requestClearProducts: () => void;
 }
 
 export interface RowLoad extends CompositionItem {
@@ -94,6 +100,8 @@ export function RequestCustomerProvider({
     productId: string;
     seq: number;
   } | null>(null);
+  const [clearSeq, setClearSeq] = useState(0);
+  const requestClearProducts = useCallback(() => setClearSeq((n) => n + 1), []);
   const requestAddProduct = useCallback((productId: string) => {
     setAddRequest((prev) => ({ productId, seq: (prev?.seq ?? 0) + 1 }));
   }, []);
@@ -131,8 +139,12 @@ export function RequestCustomerProvider({
       setChosenProductIds,
       addRequest,
       requestAddProduct,
+      clearSeq,
+      requestClearProducts,
     }),
     [
+      clearSeq,
+      requestClearProducts,
       chosenProductIds,
       setChosenProductIds,
       addRequest,

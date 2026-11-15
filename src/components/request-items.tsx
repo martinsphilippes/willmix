@@ -401,6 +401,23 @@ export function RequestItems({
     })();
   }, [addRequest, next, product, outside, historyRows]);
 
+  // Trocou o país ou a família e confirmou no aviso (dono, 15/11/2026): os
+  // produtos saem e fica uma linha vazia.
+  const clearSeq = shared?.clearSeq ?? 0;
+  const handledClear = useRef(clearSeq);
+  useEffect(() => {
+    if (clearSeq === handledClear.current) return;
+    handledClear.current = clearSeq;
+    for (const i of rows) setLoad?.(`row-${i}`, null);
+    const fresh = next;
+    setRows([fresh]);
+    setProduct({});
+    setQty({});
+    setOutside({});
+    setHistoryRows({});
+    setNext(fresh + 1);
+  }, [clearSeq, rows, next, setLoad]);
+
   // Os produtos que já estão nas linhas: o histórico marca com o check.
   const setChosenProductIds = shared?.setChosenProductIds;
   const chosenIds = rows
