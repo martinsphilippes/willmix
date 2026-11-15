@@ -313,7 +313,7 @@ export async function FlowOrderInStep({
             </>
           ) : null}
           <div>
-            <dt className="text-xs text-zinc-500">{t("flow.all.stage")}</dt>
+            <dt className="text-xs text-zinc-500">{t("milestone.current")}</dt>
             <dd className="font-medium text-zinc-900" data-flow-order-stage>
               {orderMilestoneText(t, order.status)}
             </dd>

@@ -9,6 +9,7 @@ import {
 } from "@/app/app/actions/order-cancel";
 import { Alert, Card, Field, Select, Textarea, cx, formatDate } from "./ui";
 import { SubmitButton } from "./submit-button";
+import { milestoneOfStatus, milestoneTitle } from "@/lib/milestones";
 
 /*
  * Cancelamento na tela do pedido:
@@ -38,6 +39,8 @@ export function CancelledBanner({
   const stage = order.cancelStageKey
     ? t(`stage.${order.cancelStageKey}` as DictionaryKey)
     : null;
+  // Fase 4d: o marco em que parou (pela etapa gravada no cancelamento).
+  const milestone = milestoneOfStatus(order.cancelStageKey);
   return (
     <div
       id="cancel"
@@ -54,7 +57,14 @@ export function CancelledBanner({
             user: byName,
           })}
         </strong>
-        {stage ? ` ${t("cancel.bannerStage", { stage })}` : null}
+        {milestone && stage
+          ? ` ${t("cancel.bannerMilestone", {
+              milestone: milestoneTitle(t, milestone),
+              stage,
+            })}`
+          : stage
+            ? ` ${t("cancel.bannerStage", { stage })}`
+            : null}
         {order.cancelReason ? (
           <span className="block">
             {t("cancel.reason")}:{" "}

@@ -21,6 +21,7 @@ import { getSettings } from "@/lib/settings";
 import { SAMPLE_ORDER_KEY } from "@/lib/purchase-lanes";
 import { RECEIVING_STATUSES } from "./receiving";
 import { orderFlowEntries, type OrderFlowInput } from "./flow-contribution";
+import { milestoneOfStatus, type MilestoneKey } from "@/lib/milestones";
 import {
   supplierRequestLate,
   supplierRequestSlaDue,
@@ -645,6 +646,11 @@ export interface OverviewEntity {
   steps: string[];
   /** Situação: chave do dicionário. */
   statusKey: string;
+  /**
+   * Marco atual do pedido (fase 4d, docs/MILESTONES.md): o selo mostra
+   * "N. Marco" no lugar da etapa (`statusKey` fica para books e solicitações).
+   */
+  milestone?: MilestoneKey | null;
   since: string | null;
   lateDays: number;
   /** Completude no bloco. */
@@ -683,6 +689,7 @@ export async function flowOverviewEntities(
       partyId: e.order.supplierId || null,
       steps: e.steps,
       statusKey: `stage.${e.order.status}`,
+      milestone: milestoneOfStatus(e.order.status),
       since: mine?.startedAt ?? e.since,
       lateDays: mine?.lateDays ?? 0,
       percent: mine?.percent ?? 0,

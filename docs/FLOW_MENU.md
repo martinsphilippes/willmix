@@ -103,6 +103,7 @@ Pedido do dono: o Overview de Pedido, Produção e Entrega (só a Wellmix) passa
   - A tela do book (`/app/booking/lots/[id]`) e a da solicitação (`/app/supplier-requests/[id]`) ganham, para a Wellmix, o cartão **Linha do tempo** (`EntityTimelineCard`, `src/lib/services/entity-timeline.ts`): os passos do Produto novo em cor, com a situação e o atraso, e Pedido, Produção e Entrega em cinza com o percentual dos pedidos dela.
   - A linha do tempo geral do Overview passa a ter os quatro blocos.
 - Os logins de fora da Wellmix seguem com o Overview das pendências.
+- **Marco atual na tabela do Overview** (fase 4d, 15/11/2026; docs/MILESTONES.md): nos blocos Pedido, Produção e Entrega, a coluna "Marco atual" mostra "N. Marco" (pelo resumo, `facts.m`, ou pela situação) no lugar do nome da etapa; o Produto novo continua com a situação do book ou da solicitação.
 - **Histórico do Sankhya em espera** (14/11/2026, decisão do dono): os pedidos da carga do histórico (`held`) aparecem na situação real, nos passos em que têm atividade, como os outros, com o selo "Histórico" na tabela; o indicador "Do histórico (sem avisos)" e o "N do histórico" em cada bloco e passo dizem quantos são. Sem avisos; as pendências deles ficam à parte na tela Pendências (docs/SANKHYA.md).
 
 ## Parceiros nos passos (14/11/2026)

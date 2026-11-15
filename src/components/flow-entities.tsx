@@ -2,6 +2,7 @@ import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
 import { stepLabelKey, type FlowBlock } from "@/lib/flow";
+import { milestoneTitle } from "@/lib/milestones";
 import type { OverviewEntity } from "@/lib/services/flow";
 import { Badge, Empty, Table, Td, TextLink, Th, cx, rowClass } from "./ui";
 
@@ -116,7 +117,7 @@ export async function FlowEntities({
             <Th>{orders ? t("flow.all.order") : t("flow.np.entity")}</Th>
             <Th>{t("flow.all.supplier")}</Th>
             {showSteps ? <Th>{t("flow.entities.steps")}</Th> : null}
-            <Th>{orders ? t("flow.all.stage") : t("flow.np.status")}</Th>
+            <Th>{orders ? t("milestone.current") : t("flow.np.status")}</Th>
             <Th>{t("flow.all.since")}</Th>
             <Th>{t("flow.entities.late")}</Th>
             <Th>{t("flow.entities.blockPercent")}</Th>
@@ -152,8 +153,10 @@ export async function FlowEntities({
                       .join(", ")}
                   </Td>
                 ) : null}
-                <Td className="whitespace-nowrap">
-                  {t(e.statusKey as DictionaryKey)}
+                <Td className="whitespace-nowrap" data-flow-entity-status>
+                  {e.milestone
+                    ? milestoneTitle(t, e.milestone)
+                    : t(e.statusKey as DictionaryKey)}
                 </Td>
                 <Td className="whitespace-nowrap">
                   {days === null ? "—" : t("flow.cases.days", { n: days })}

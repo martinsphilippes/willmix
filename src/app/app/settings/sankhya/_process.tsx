@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -19,6 +20,11 @@ import {
   ruleProblem,
   type ProcessEventKey,
 } from "@/lib/process-rules";
+import {
+  eventLabel,
+  groupAtEvent,
+  groupLabel,
+} from "@/lib/process-event-labels";
 import { getProcessRules } from "@/lib/services/process-engine";
 import { getSankhyaErpSettings } from "@/lib/integrations/sankhya-settings";
 import {
@@ -38,17 +44,8 @@ import { one } from "./_shared";
 
 type Params = Record<string, string | string[] | undefined>;
 
-/** Rótulo do evento a partir das traduções que o portal já tem. */
-export function eventLabel(t: Translate, event: ProcessEventKey) {
-  const [kind, key, moment] = event.split(":");
-  if (kind === "request")
-    return `${t("processes.kind.request")}: ${t(`reqStatusLabel.${key}` as DictionaryKey)}`;
-  if (kind === "stage")
-    return `${t(`stage.${key}` as DictionaryKey)}: ${t(`processes.moment.${moment}` as DictionaryKey)}`;
-  if (kind === "sync")
-    return `${t("processes.sync")}: ${t(`processes.sync.entity.${key}` as DictionaryKey)}`;
-  return t(`processes.event.${key}` as DictionaryKey);
-}
+// Rótulos dos eventos e dos grupos: src/lib/process-event-labels.ts.
+export { eventLabel };
 
 const STATUS_TONE = {
   done: "success",
@@ -246,97 +243,120 @@ export async function ProcessTab({ t, q }: { t: Translate; q: Params }) {
             <tbody>
               {rules.map((rule, i) => {
                 const problem = ruleProblem(rule);
+                const group = groupAtEvent(rule.event);
+                const head = group ? groupLabel(t, group) : null;
                 return (
-                  <tr key={rule.event} data-process-event={rule.event}>
-                    <Td className="min-w-52 text-sm font-medium">
-                      <input
-                        type="hidden"
-                        name={`rules.${i}.event`}
-                        value={rule.event}
-                      />
-                      {eventLabel(t, rule.event)}
-                      {problem ? (
-                        <span className="block text-xs text-amber-700">
-                          {t(`processes.problem.${problem}` as DictionaryKey)}
-                        </span>
-                      ) : null}
-                    </Td>
-                    <Td>
-                      <Select
-                        name={`rules.${i}.active`}
-                        defaultValue={rule.active ? "1" : "0"}
-                        dense
+                  <Fragment key={rule.event}>
+                    {head ? (
+                      <tr
+                        data-process-group={group!.block ?? group!.kind}
+                        className="bg-zinc-50"
                       >
-                        <option value="1">{t("sankhyaInt.yes")}</option>
-                        <option value="0">{t("sankhyaInt.no")}</option>
-                      </Select>
-                    </Td>
-                    <Td>
-                      <Select
-                        name={`rules.${i}.stock`}
-                        defaultValue={rule.stock}
-                        dense
-                      >
-                        {STOCK_ACTIONS.map((a) => (
-                          <option key={a} value={a}>
-                            {t(`processes.stock.${a}` as DictionaryKey)}
-                          </option>
-                        ))}
-                      </Select>
-                    </Td>
-                    <Td>
-                      <Select
-                        name={`rules.${i}.location`}
-                        defaultValue={
-                          rule.location == null ? "" : String(rule.location)
-                        }
-                        dense
-                      >
-                        <option value="">—</option>
-                        {locations.map((l) => (
-                          <option key={l.id} value={String(l.code)}>
-                            {l.code} · {l.name}
-                          </option>
-                        ))}
-                        {rule.location != null &&
-                        !locations.some((l) => l.code === rule.location) ? (
-                          <option value={String(rule.location)}>
-                            {rule.location}
-                          </option>
+                        <Td colSpan={7} className="text-xs">
+                          <span className="font-semibold uppercase tracking-wide text-zinc-700">
+                            {head.title}
+                          </span>
+                          {head.hint ? (
+                            <span className="ml-2 text-zinc-500">
+                              {head.hint}
+                            </span>
+                          ) : null}
+                        </Td>
+                      </tr>
+                    ) : null}
+                    <tr data-process-event={rule.event}>
+                      <Td className="min-w-52 text-sm font-medium">
+                        <input
+                          type="hidden"
+                          name={`rules.${i}.event`}
+                          value={rule.event}
+                        />
+                        {eventLabel(t, rule.event)}
+                        {problem ? (
+                          <span className="block text-xs text-amber-700">
+                            {t(`processes.problem.${problem}` as DictionaryKey)}
+                          </span>
                         ) : null}
-                      </Select>
-                    </Td>
-                    <Td>
-                      <Select
-                        name={`rules.${i}.sankhya`}
-                        defaultValue={rule.sankhya}
-                        dense
-                      >
-                        {SANKHYA_ACTIONS.map((a) => (
-                          <option key={a} value={a}>
-                            {t(`processes.sankhya.${a}` as DictionaryKey)}
-                          </option>
-                        ))}
-                      </Select>
-                    </Td>
-                    <Td>
-                      <Input
-                        name={`rules.${i}.top`}
-                        inputMode="numeric"
-                        defaultValue={rule.top == null ? "" : String(rule.top)}
-                        className="w-24"
-                        dense
-                      />
-                    </Td>
-                    <Td>
-                      <Input
-                        name={`rules.${i}.note`}
-                        defaultValue={rule.note ?? ""}
-                        maxLength={200}
-                        dense
-                      />
-                    </Td>
-                  </tr>
+                      </Td>
+                      <Td>
+                        <Select
+                          name={`rules.${i}.active`}
+                          defaultValue={rule.active ? "1" : "0"}
+                          dense
+                        >
+                          <option value="1">{t("sankhyaInt.yes")}</option>
+                          <option value="0">{t("sankhyaInt.no")}</option>
+                        </Select>
+                      </Td>
+                      <Td>
+                        <Select
+                          name={`rules.${i}.stock`}
+                          defaultValue={rule.stock}
+                          dense
+                        >
+                          {STOCK_ACTIONS.map((a) => (
+                            <option key={a} value={a}>
+                              {t(`processes.stock.${a}` as DictionaryKey)}
+                            </option>
+                          ))}
+                        </Select>
+                      </Td>
+                      <Td>
+                        <Select
+                          name={`rules.${i}.location`}
+                          defaultValue={
+                            rule.location == null ? "" : String(rule.location)
+                          }
+                          dense
+                        >
+                          <option value="">—</option>
+                          {locations.map((l) => (
+                            <option key={l.id} value={String(l.code)}>
+                              {l.code} · {l.name}
+                            </option>
+                          ))}
+                          {rule.location != null &&
+                          !locations.some((l) => l.code === rule.location) ? (
+                            <option value={String(rule.location)}>
+                              {rule.location}
+                            </option>
+                          ) : null}
+                        </Select>
+                      </Td>
+                      <Td>
+                        <Select
+                          name={`rules.${i}.sankhya`}
+                          defaultValue={rule.sankhya}
+                          dense
+                        >
+                          {SANKHYA_ACTIONS.map((a) => (
+                            <option key={a} value={a}>
+                              {t(`processes.sankhya.${a}` as DictionaryKey)}
+                            </option>
+                          ))}
+                        </Select>
+                      </Td>
+                      <Td>
+                        <Input
+                          name={`rules.${i}.top`}
+                          inputMode="numeric"
+                          defaultValue={
+                            rule.top == null ? "" : String(rule.top)
+                          }
+                          className="w-24"
+                          dense
+                        />
+                      </Td>
+                      <Td>
+                        <Input
+                          name={`rules.${i}.note`}
+                          defaultValue={rule.note ?? ""}
+                          maxLength={200}
+                          dense
+                        />
+                      </Td>
+                    </tr>
+                  </Fragment>
                 );
               })}
             </tbody>

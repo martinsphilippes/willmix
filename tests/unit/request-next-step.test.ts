@@ -30,7 +30,8 @@ describe("próximo passo da solicitação", () => {
       stage: "PREPARATION",
       late: true,
     });
-    expect(nextStepText(t, n)).toBe("Pedido em Preparação");
+    // Fase 4d: o marco da etapa atual (Preparação → 1. Pedido novo).
+    expect(nextStepText(t, n)).toBe("Pedido em 1. Pedido novo");
     expect(nextStepWho(t, n)).toBe("com: Fornecedor");
     expect(
       requestNextStep({

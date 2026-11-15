@@ -11,6 +11,7 @@
  */
 
 import type { StageKey } from "@/lib/db/schema";
+import { milestoneOfStatus, type MilestoneKey } from "@/lib/milestones";
 
 export type Transform =
   | "text"
@@ -94,6 +95,17 @@ export const TOP_STAGES: Record<
 
 export const IMPORT_TOPS = Object.keys(TOP_STAGES).join(", ");
 
+/**
+ * Marco do pedido que a TOP dá (fase 4d, docs/MILESTONES.md): TOP → etapa
+ * (`TOP_STAGES`, a carga continua gravando a etapa) → marco
+ * (`milestoneOfStatus`). Só para mostrar em Configurações → Sankhya; TOP
+ * fora da tabela: nulo.
+ */
+export function topMilestone(top: number): MilestoneKey | null {
+  const s = TOP_STAGES[top];
+  return s ? milestoneOfStatus(s.stage) : null;
+}
+
 export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
   orders: {
     key: "orders",
@@ -122,7 +134,7 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
         sankhya: "CODTIPOPER",
         portal: "status",
         transform: "int",
-        note: "TOP (IMP) → etapa do pedido (tabela TOP_STAGES)",
+        note: "TOP (IMP) → etapa do pedido (tabela TOP_STAGES) e, por ela, o marco",
       },
       {
         sankhya: "CODPARC",
