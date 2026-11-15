@@ -45,6 +45,11 @@ export interface ProductFill {
   masterCartonQty?: number | null;
   cbmPerCarton?: number | null;
   /**
+   * Preço da última compra ao fornecedor, já em texto (pedido mais recente,
+   * senão o cadastro). Só para a Wellmix; nulo para o cliente e sem compra.
+   */
+  lastPurchase?: string | null;
+  /**
    * Variações do produto (vazio = produto sem variações, como sempre). Com
    * variações, a escolha é obrigatória e preenche especificação, mínimo e foto.
    */
@@ -365,6 +370,11 @@ export function RequestProductFields({
                   : labels.noStock}
               </span>
             )}
+            {selected.lastPurchase ? (
+              <span className="mt-0.5 block text-xs leading-relaxed text-emerald-900">
+                {selected.lastPurchase}
+              </span>
+            ) : null}
             <button
               type="button"
               onClick={() => toggleNotInCatalog(true)}

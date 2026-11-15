@@ -137,6 +137,55 @@ describe("ficha do produto escolhido na nova solicitação", () => {
     expect(await requestProductFills(admin, t, [])).toEqual([]);
   });
 
+  it("preço da última compra: a Wellmix vê o do pedido mais recente; o cliente não", async () => {
+    const store = getStore();
+    const jarra = (await store.get("products", "prod-jarra"))!;
+    const [supplierParty] = await store.list("parties", {
+      filter: { type: "supplier" },
+      limit: 1,
+    });
+    const supplierName = supplierParty.name;
+    const top = Math.max(
+      0,
+      ...(await store.list("orders")).map((o) => o.number ?? 0),
+    );
+    const old = await store.create("orders", {
+      number: top + 1,
+      supplierId: supplierParty.id,
+      fobCurrency: "USD",
+      cancelledAt: null,
+    } as never);
+    await store.create("order_items", {
+      orderId: old.id,
+      productId: "prod-jarra",
+      name: "Jarra",
+      quantity: 106820,
+      unit: "UN",
+      unitPrice: 0.1222,
+    } as never);
+    const last = await store.create("orders", {
+      number: top + 2,
+      supplierId: supplierParty.id,
+      fobCurrency: "USD",
+      cancelledAt: null,
+    } as never);
+    await store.create("order_items", {
+      orderId: last.id,
+      productId: "prod-jarra",
+      name: "Jarra",
+      quantity: 120148,
+      unit: "UN",
+      unitPrice: 0.1205,
+    } as never);
+    const [fill] = await requestProductFills(admin, t, [jarra]);
+    expect(fill.lastPurchase).toContain("0,1205");
+    expect(fill.lastPurchase).toContain("120.148 UN");
+    expect(fill.lastPurchase).toContain(`pedido ${top + 2}`);
+    expect(fill.lastPurchase).toContain(supplierName);
+    const [forCustomer] = await requestProductFills(joao, t, [jarra]);
+    expect(forCustomer.lastPurchase).toBeNull();
+  });
+
   it("nome de exemplo: nada no nome nem na descrição (quem pede preenche)", async () => {
     const velho = (await getStore().get("products", "prod-velho"))!;
     const [fill] = await requestProductFills(admin, t, [velho]);

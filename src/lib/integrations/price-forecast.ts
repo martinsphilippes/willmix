@@ -188,17 +188,31 @@ export interface PriceForecastSale {
   goalPercent: number | null;
 }
 
+/**
+ * Memória de cálculo da SuperPlan (auditoria, dono, 15/11/2026): o que foi
+ * enviado à função (só os parâmetros com valor; os outros vão como DEFAULT,
+ * o padrão do Sankhya) e todas as colunas que ela devolveu, na ordem. Só
+ * para quem vê valores e margem (tem custo).
+ */
+export interface SuperplanAudit {
+  fn: string;
+  inputs: Array<[string, string | number]>;
+  outputs: Array<[string, string | number | null]>;
+}
+
+type Audited = { audit?: SuperplanAudit };
+
 export type PriceForecastAnswer =
-  | ({ mode: "api"; kind: "forecast" } & PriceForecastSale)
-  | {
+  | ({ mode: "api"; kind: "forecast" } & PriceForecastSale & Audited)
+  | ({
       mode: "api";
       kind: "solve";
       /** Preço máximo de compra (moeda de origem) e em US$. */
       maxPurchasePrice: number | null;
       maxPurchaseCurrency: string | null;
       maxPurchaseUsd: number | null;
-    }
-  | { mode: "api"; kind: "error"; message: string }
+    } & Audited)
+  | ({ mode: "api"; kind: "error"; message: string } & Audited)
   | { mode: "manual" };
 
 export interface PriceForecastAdapter {
@@ -320,24 +334,26 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
     fn: typeof SUPERPLAN_FN | typeof SUPERPLAN_INVERSE_FN,
     q: PriceForecastQuery,
     extra: SuperplanInput,
-  ): Promise<SankhyaRow | undefined | "manual" | { error: string }> {
+  ): Promise<
+    | { row: SankhyaRow | undefined; audit: SuperplanAudit | undefined }
+    | "manual"
+    | { error: string }
+  > {
     try {
-      const first = await executeQuery(
-        superplanSql(fn, { ...productInput(q), ...extra }),
-        this.options,
-      );
-      const row = first.rows[0];
+      let input: SuperplanInput = { ...productInput(q), ...extra };
+      let row = (await executeQuery(superplanSql(fn, input), this.options))
+        .rows[0];
       const needsPrice =
         text(row?.OK)?.toUpperCase() === "N" &&
         /PRECO_ORIGEM/i.test(String(row?.MENSAGEM ?? "")) &&
         positive(q.price) !== null &&
         !!q.sankhyaCode;
-      if (!needsPrice) return row;
-      const again = await executeQuery(
-        superplanSql(fn, { ...productInput(q, true), ...extra }),
-        this.options,
-      );
-      return again.rows[0];
+      if (needsPrice) {
+        input = { ...productInput(q, true), ...extra };
+        row = (await executeQuery(superplanSql(fn, input), this.options))
+          .rows[0];
+      }
+      return { row, audit: this.money ? auditOf(fn, input, row) : undefined };
     } catch (e) {
       if (e instanceof SankhyaError && e.code === "sankhya_not_configured")
         return "manual";
@@ -350,34 +366,58 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
   }
 
   async forecast(q: PriceForecastQuery): Promise<PriceForecastAnswer> {
-    const row = await this.run(SUPERPLAN_FN, q, {});
-    if (row === "manual") return { mode: "manual" };
-    if (row && "error" in row)
-      return { mode: "api", kind: "error", message: String(row.error) };
+    const ran = await this.run(SUPERPLAN_FN, q, {});
+    if (ran === "manual") return { mode: "manual" };
+    if ("error" in ran)
+      return { mode: "api", kind: "error", message: String(ran.error) };
+    const { row, audit } = ran;
     const problem = rowProblem(row, "MENSAGEM_VENDA");
-    if (problem) return { mode: "api", kind: "error", message: problem };
-    return { mode: "api", kind: "forecast", ...saleOf(row!, this.money) };
+    if (problem) return { mode: "api", kind: "error", message: problem, audit };
+    return {
+      mode: "api",
+      kind: "forecast",
+      ...saleOf(row!, this.money),
+      audit,
+    };
   }
 
   async solve(
     q: PriceForecastQuery & { targetFinalPriceBrl: number },
   ): Promise<PriceForecastAnswer> {
-    const row = await this.run(SUPERPLAN_INVERSE_FN, q, {
+    const ran = await this.run(SUPERPLAN_INVERSE_FN, q, {
       PRECO_VENDA_ALVO: q.targetFinalPriceBrl,
     });
-    if (row === "manual") return { mode: "manual" };
-    if (row && "error" in row)
-      return { mode: "api", kind: "error", message: String(row.error) };
+    if (ran === "manual") return { mode: "manual" };
+    if ("error" in ran)
+      return { mode: "api", kind: "error", message: String(ran.error) };
+    const { row, audit } = ran;
     const problem = rowProblem(row, "MENSAGEM_INVERSA");
-    if (problem) return { mode: "api", kind: "error", message: problem };
+    if (problem) return { mode: "api", kind: "error", message: problem, audit };
     return {
       mode: "api",
       kind: "solve",
       maxPurchasePrice: num(row!.PRECO_MAX_COMPRA_ORIGEM),
       maxPurchaseCurrency: text(row!.MOEDA_COMPRA),
       maxPurchaseUsd: num(row!.PRECO_MAX_COMPRA_USD),
+      audit,
     };
   }
+}
+
+/** Entrada enviada (só com valor, na ordem dos 69) e a linha devolvida. */
+export function auditOf(
+  fn: string,
+  input: SuperplanInput,
+  row: SankhyaRow | undefined,
+): SuperplanAudit {
+  return {
+    fn,
+    inputs: SUPERPLAN_PARAMS.flatMap((k) => {
+      const v = input[k];
+      return v === undefined || v === null || v === "" ? [] : [[k, v]];
+    }) as Array<[string, string | number]>,
+    outputs: Object.entries(row ?? {}),
+  };
 }
 
 /**
