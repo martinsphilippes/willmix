@@ -99,6 +99,7 @@ import {
   visionError,
 } from "../_components/ai-section";
 import { CycleCard } from "../_components/cycle-card";
+import { entityLinkAccess } from "@/lib/services/entity-links";
 import { SuppliersCard } from "../_components/suppliers-card";
 import { VariantsCard } from "../_components/variants-card";
 import { listProductVariants } from "@/lib/services/product-variants";
@@ -1582,7 +1583,12 @@ export default async function ProductSheetPage({
           fold="cycle"
           className="mt-2"
         >
-          <CycleCard cycle={cycle} productId={product.id} t={t} />
+          <CycleCard
+            cycle={cycle}
+            productId={product.id}
+            t={t}
+            linkAccess={entityLinkAccess(user)}
+          />
         </FoldSection>
       ) : null}
     </>

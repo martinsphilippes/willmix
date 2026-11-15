@@ -94,6 +94,7 @@ export function RequestedGroups({
   rows,
   rmbPerUsd,
   hrefOf,
+  canOpenOrders = false,
 }: {
   t: Translate;
   cards: RequestedGroupCard[];
@@ -103,6 +104,8 @@ export function RequestedGroups({
   rmbPerUsd: number | null;
   /** Endereço de "Rever a escolha" (o grupo aberto para comparar). */
   hrefOf: (ids: string[]) => string;
+  /** Quem abre Pedidos vê o link do pedido de compra da solicitação (fase 4b). */
+  canOpenOrders?: boolean;
 }) {
   const nameOf = (item: BookingItem | null) =>
     item?.description ?? item?.productName ?? item?.factoryItemCode ?? "—";
@@ -118,7 +121,7 @@ export function RequestedGroups({
       data-selection-requested-list={cards.length}
     >
       {cards.map((card) => {
-        const { group: g, request } = card.entry;
+        const { group: g, request, order } = card.entry;
         const chosen = rows.get(g.chosenItemId)?.item ?? card.entry.chosen;
         const chosenName = nameOf(chosen);
         // O bloco como está hoje (a ordem dos cartões) e, depois, o que
@@ -239,6 +242,15 @@ export function RequestedGroups({
                     {t("supplierRequests.selection.requestedNoLink")}
                   </Badge>
                 )}
+                {order && canOpenOrders ? (
+                  <Link
+                    href={`/app/orders/${order.id}`}
+                    className={cx(linkClass, "block whitespace-nowrap text-xs")}
+                    data-selection-order-link
+                  >
+                    {t("orders.number", { number: order.number })}
+                  </Link>
+                ) : null}
               </div>
               {/* Item escolhido: nome, quantidade e programação de compra. */}
               <div

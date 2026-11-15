@@ -109,3 +109,17 @@ Nenhuma. **E24–E27** (decisão do dono, 14/11/2026) entraram como passos do ma
 - Tela: linha do tempo "Marcos do pedido" no detalhe do pedido (Wellmix), `src/components/order-milestone-timeline.tsx`; o detalhe de cada marco é montado em `src/app/app/orders/[id]/page.tsx` (mesmos `RequirementRow` e Server Actions de antes). A janela de parceiros usa `src/components/quick-dialog.tsx`.
 - Textos: `src/i18n/modules/milestones.ts`.
 - Testes: `tests/unit/milestones.test.ts` e `tests/unit/milestones-order.test.ts`.
+
+## Ligações entre book, seleção, produto e pedido (fase 4b)
+
+Pedido do dono: o book, a seleção, o produto e o pedido ficam ligados pelo caminho do mapa do processo (item do book → grupo da seleção → solicitação ao fornecedor → produto → pedido), para chegar de um aos outros. Só links de leitura, sem mudança no banco: valem os ids que já existem (`booking_items.lotId`/`productId`, `selection_groups.chosenItemId`/`supplierRequestId`, `supplier_requests.bookingItemId`/`bookingLotId`/`productId`/`orderId`, que o pedido de compra grava, e `order_items.orderId`/`productId`).
+
+- **Pedido**: bloco "Origem do pedido" logo abaixo do título, com o book, a seleção, as solicitações ao fornecedor e os produtos. Só no pedido que nasceu de um book ou de uma solicitação ao fornecedor, e só para a Wellmix (cliente e parceiros veem o pedido como antes).
+- **Book** (`/app/booking/lots/[id]`, tela da Wellmix): coluna "Ligações" na tabela dos itens, com a seleção, as solicitações, o produto e os pedidos de cada item. O parceiro (Trading) continua com a tela dele, sem as ligações.
+- **Produto**: no "Ciclo do produto", a seção "Book e solicitações ao fornecedor" (um item de book por linha, com o book, a seleção, a solicitação e o pedido).
+- **Seleção de itens** (aba das solicitações abertas): o link do pedido de compra embaixo da solicitação, quando ela já entrou num pedido.
+- **Solicitação ao fornecedor**: o link da seleção no card do book (o book, o produto e o pedido já estavam lá).
+- **Acesso**: só a Wellmix, e cada link só aparece para quem abre a tela dele (Book para book e seleção, Cotações para a solicitação, Produtos, Pedidos; `entityLinkAccess`).
+- **Leitura**: só por filtro com índice (lotId, productId, bookingItemId, orderId, chosenItemId) ou por id, e só as colunas usadas; nenhuma tabela grande é lida inteira.
+- Código: `src/lib/services/entity-links.ts` (`linksForOrder`, `linksForLot`, `linksForProduct`, `linksForSupplierRequest`, `linksOfItem`); links em `src/components/entity-links.tsx`; textos em `src/i18n/modules/entity-links.ts`; testes em `tests/unit/entity-links.test.ts`.
+- Fora por enquanto: as alternativas da solicitação (`alternativeItemIds`) não contam como ligação do item (só o item escolhido); a planilha do pedido e os painéis não mostram as ligações.

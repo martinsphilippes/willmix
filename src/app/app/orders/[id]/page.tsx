@@ -11,6 +11,7 @@ import {
 import { milestonesOf } from "@/lib/services/milestones";
 import type { StepView } from "@/lib/services/import-flow";
 import { OrderProgressCard } from "@/components/order-progress-card";
+import { OrderOriginLinks } from "@/components/entity-links";
 import { isProgressBlock } from "@/lib/flow-progress";
 import { laneWaiting } from "@/lib/requirement-waiting";
 import { listByIds } from "@/lib/db/lookup";
@@ -2040,6 +2041,11 @@ export default async function OrderPage({
           </span>
         }
       />
+      {/* Origem do pedido (fase 4b, docs/MILESTONES.md): book, seleção,
+          solicitações ao fornecedor e produtos; só a Wellmix. */}
+      {wellmix ? (
+        <OrderOriginLinks orderId={order.id} user={user} t={t} />
+      ) : null}
       {/* Pedido pausado pelo canal cinza ou vermelho (docs/DELIVERY.md). */}
       {order.pausedAt ? (
         <div className="mt-3" data-order-paused={order.pauseReason ?? "other"}>

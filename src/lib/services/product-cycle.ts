@@ -7,6 +7,7 @@ import {
   requestDisplayStatus,
   type RequestDisplayStatus,
 } from "./order-status";
+import { linksForProduct, type EntityLinks } from "./entity-links";
 
 /**
  * Ciclo contínuo do produto (princípio de dados: o produto é o objeto central).
@@ -53,6 +54,12 @@ export interface ProductCycle {
     customerName: string | null;
   }>;
   schedules: number;
+  /**
+   * Book e solicitações ao fornecedor de onde o produto veio (fase 4b,
+   * docs/MILESTONES.md): itens de book ligados, grupos da seleção,
+   * solicitações e os pedidos delas.
+   */
+  links: EntityLinks;
   counts: {
     requests: number;
     orders: number;
@@ -68,7 +75,7 @@ export async function loadProductCycle(
   const store = getStore();
   const product = await store.get("products", productId);
   if (!product) return null;
-  const [items, requests, afterSales, kits, schedules, sourcing] =
+  const [items, requests, afterSales, kits, schedules, sourcing, links] =
     await Promise.all([
       store.list("order_items", { filter: { productId } }),
       store.list("requests", { filter: { productId } }),
@@ -78,6 +85,7 @@ export async function loadProductCycle(
       product.sourcingItemId
         ? store.get("sourcing_items", product.sourcingItemId)
         : Promise.resolve(null),
+      linksForProduct(productId),
     ]);
   const visit = sourcing?.visitId
     ? await store.get("supplier_visits", sourcing.visitId)
@@ -155,6 +163,7 @@ export async function loadProductCycle(
       customerName: nameOf(k.customerId),
     })),
     schedules: schedules.length,
+    links,
     counts: {
       requests: requests.length,
       orders: orders.length,

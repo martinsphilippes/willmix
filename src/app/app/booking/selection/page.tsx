@@ -1331,6 +1331,7 @@ export default async function BookingSelectionPage({
                       rows={requestedRows}
                       rmbPerUsd={rmbPerUsd}
                       hrefOf={groupHref}
+                      canOpenOrders={canOpen(user, "orders")}
                     />
                   </section>
                 ) : (

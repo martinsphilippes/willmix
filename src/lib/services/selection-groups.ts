@@ -11,6 +11,7 @@ import {
   type SupplierRequest,
   type User,
 } from "@/lib/db";
+import { listColumns } from "@/lib/db/lookup";
 import { groupRequests, sheetQuantity } from "@/lib/supplier-requests";
 import {
   scheduleTotal,
@@ -200,6 +201,8 @@ export interface SelectionGroupEntry {
   chosen: BookingItem | null;
   /** A solicitação aberta desta escolha. */
   request: SupplierRequest | null;
+  /** O pedido de compra em que a solicitação entrou (fase 4b), se já entrou. */
+  order?: { id: string; number: number } | null;
 }
 
 /** As escolhas gravadas e as que já viraram solicitação (as trocadas ficam fora). */
@@ -228,13 +231,30 @@ export async function listSelectionGroups(
       ? store.list("supplier_requests", { filter: { id: requestIds } })
       : Promise.resolve([] as SupplierRequest[]),
   ]);
+  // Pedido de compra das solicitações (só o número, para o link; fase 4b).
+  const orderIds = [
+    ...new Set(requests.map((r) => r.orderId).filter((v): v is string => !!v)),
+  ];
+  const orders = orderIds.length
+    ? await listColumns(store, "orders", ["number"], {
+        filter: { id: orderIds },
+      })
+    : [];
   return groups
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .map((group) => ({
-      group,
-      chosen: items.find((i) => i.id === group.chosenItemId) ?? null,
-      request: requests.find((r) => r.id === group.supplierRequestId) ?? null,
-    }));
+    .map((group) => {
+      const request =
+        requests.find((r) => r.id === group.supplierRequestId) ?? null;
+      const order = request?.orderId
+        ? orders.find((o) => o.id === request.orderId)
+        : null;
+      return {
+        group,
+        chosen: items.find((i) => i.id === group.chosenItemId) ?? null,
+        request,
+        order: order ? { id: order.id, number: order.number } : null,
+      };
+    });
 }
 
 export interface OpenGroupRequestsResult {

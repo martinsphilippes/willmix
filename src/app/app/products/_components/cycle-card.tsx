@@ -2,6 +2,11 @@ import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { ProductCycle } from "@/lib/services/product-cycle";
 import {
+  linksOfItem,
+  type EntityLinkAccess,
+} from "@/lib/services/entity-links";
+import { EntityLinkList, entityLinkNodes } from "@/components/entity-links";
+import {
   Badge,
   Empty,
   Stat,
@@ -46,12 +51,18 @@ export function CycleCard({
   cycle,
   productId,
   t,
+  linkAccess,
 }: {
   cycle: ProductCycle;
   productId: string;
   t: Translate;
+  /** Telas que o login abre (fase 4b): sem book nem solicitações, a seção some. */
+  linkAccess?: EntityLinkAccess;
 }) {
-  const { counts, sourcing, requests, orders, kits, schedules } = cycle;
+  const { counts, sourcing, requests, orders, kits, schedules, links } = cycle;
+  const showBook =
+    !!linkAccess && (linkAccess.book || linkAccess.supplierRequests);
+  const lotOf = new Map(links.lots.map((l) => [l.id, l]));
   return (
     <div className="space-y-3">
       <div id="cycle" className="scroll-mt-4" />
@@ -111,6 +122,53 @@ export function CycleCard({
             </p>
           )}
         </section>
+
+        {/* Book e solicitações ao fornecedor (fase 4b, docs/MILESTONES.md). */}
+        {showBook && linkAccess ? (
+          <section data-cycle-book={links.items.length}>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              {t("entityLinks.cycle.book")}
+            </h3>
+            {links.items.length ? (
+              <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200/80 text-sm">
+                {links.items.map((item) => {
+                  const lot = lotOf.get(item.lotId);
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2"
+                      data-cycle-book-item={item.id}
+                    >
+                      <EntityLinkList
+                        nodes={entityLinkNodes({
+                          t,
+                          links: {
+                            ...linksOfItem(links, item.id),
+                            lots: lot ? [lot] : [],
+                          },
+                          access: linkAccess,
+                          kinds: [
+                            "book",
+                            "selection",
+                            "supplierRequests",
+                            "orders",
+                          ],
+                        })}
+                      />
+                      <span className="min-w-0 truncate text-xs text-zinc-600">
+                        {t("entityLinks.cycle.item", { name: item.name })}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm text-zinc-500">
+                {t("entityLinks.cycle.empty")}
+              </p>
+            )}
+          </section>
+        ) : null}
 
         {/* Kits de marketing */}
         <section>
