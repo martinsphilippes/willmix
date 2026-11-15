@@ -2,44 +2,44 @@
 
 Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `/app/settings` (admin) ou em `src/lib/settings.ts`.
 
-| Chave                      | Default    | Observação                                                                  |
-| -------------------------- | ---------- | --------------------------------------------------------------------------- |
-| `customerCanCreateRequest` | `true`     | Cliente cria solicitação diretamente                                        |
-| `wellmixCanCreateRequest`  | `true`     | Wellmix cria em nome do cliente (mesmo formulário)                          |
-| `deliveryConfirmationMode` | `BOTH`     | Cliente confirma; Wellmix pode confirmar por ele. `WELLMIX` tira do cliente |
-| `agencyValidationEnabled`  | `true`     | Arte da embalagem feita pela agência designada; desligado, a Wellmix envia  |
-| `packagingBriefAt`         | `rfq`      | Quando o briefing de embalagem (faca e arte) nasce: `rfq` (com a cotação), `selection` (ao escolher o fornecedor) ou `order` (só no pedido) |
-| `packagingBriefRequired`   | faca + arte | Entregáveis que tornam o briefing "pronto" (dieline, art, print_ready, packaging_sample) |
-| `packagingBriefDueDays`    | `7`        | Prazo do briefing quando a solicitação não tem prazo                        |
-| `packagingDefaultAgencyId` | vazio      | Agência padrão dos briefings; vazio = única agência ativa, senão Wellmix     |
-| `agencyShowsCustomer`      | `false`    | A agência vê o nome do cliente no briefing (padrão: não, isolamento)        |
-| `weightTolerancePercent`   | `3`        | Divergência acima disso bloqueia a inspeção                                 |
-| `paymentMode`              | `MANUAL`   | Operador confirma o sinal e anexa comprovante                               |
-| `sankhyaMode`              | `MOCK`     | Pedido nasce com `erpSyncStatus = pending`; operador informa o número       |
-| `whatsappMode`             | `MOCK`     | Notificação registrada com status `mock`                                    |
-| `emailMode`                | `MOCK`     | Idem                                                                        |
-| `quotationExpirationDays`  | `15`       | Validade padrão da RFQ                                                      |
-| `downPaymentPercent`       | `30`       | Sinal sugerido sobre o valor ao cliente (editável na seleção)               |
-| `pixKey`, `pixReceiverName`, `pixReceiverCity` | vazios | Pix do sinal (copia e cola e QR Code). Vazios: o cliente vê só a instrução de pagamento |
-| `stageDueDays`             | ver código | Prazo por etapa, em dias                                                    |
-| `reminderDaysBeforeDue`    | `1`        | Lembrete antes do vencimento                                                |
-| `dimensionTolerancePercent` | `5`      | Divergência de comprimento/largura/altura entre snapshot e inspeção        |
-| `cbmTolerancePercent`      | `5`        | Divergência de CBM da caixa e de peso bruto                                 |
-| `quantityTolerancePercent` | `0`        | Divergência de unidades por caixa (0 = exato)                               |
-| `inspectionExtendedChecks` | `true`     | Inspeção pede medidas, caixa, material e cor (opcionais, cegos)             |
-| `reviewOnZeroPrice`        | `true`     | Pedido sem FOB entra na fila de revisão                                     |
-| `containerTypes`           | 20GP/40GP/40HC | Capacidade útil (m³) e peso máximo por tipo; nada fixo em código        |
-| `containerAllowMultiCustomer` | `false` | Clientes diferentes no mesmo container só manualmente e se ligado           |
-| `containerMaxOccupancyPercent` | `95`   | Acima disso, item na fila de revisão                                        |
-| `afterSalesEnabled`        | `true`     | Abre o pós-venda ao concluir a entrega                                      |
-| `complianceGateEnabled`    | `true`     | Linha com certificação obrigatória sem certificação válida bloqueia a liberação |
-| `certificationExpiryWarningDays` | `30` | Aviso de certificação a vencer                                              |
-| `aiMode`                   | `AUTO`     | AUTO = API se houver `ANTHROPIC_API_KEY`, senão manual; MOCK = exemplo rotulado; MANUAL = desligado |
-| `aiModel`                  | `claude-sonnet-5-5` | Modelo usado no modo API                                            |
-| `marketingEnabled`         | `true`     | Marketing studio e kits                                                     |
-| `marketingKitDefaultPrice` | `200`      | Preço padrão do kit (editável por kit até a compra); moeda em `marketingKitCurrency` |
-| `radarGateEnabled`         | `true`     | Importação própria sem RADAR abre item de revisão                           |
-| `importerName`             | `Wellmix`  | Nome da importadora dona da plataforma (preparação multi-importador)        |
+| Chave                                          | Default             | Observação                                                                                                                                  |
+| ---------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customerCanCreateRequest`                     | `true`              | Cliente cria solicitação diretamente                                                                                                        |
+| `wellmixCanCreateRequest`                      | `true`              | Wellmix cria em nome do cliente (mesmo formulário)                                                                                          |
+| `deliveryConfirmationMode`                     | `BOTH`              | Cliente confirma; Wellmix pode confirmar por ele. `WELLMIX` tira do cliente                                                                 |
+| `agencyValidationEnabled`                      | `true`              | Arte da embalagem feita pela agência designada; desligado, a Wellmix envia                                                                  |
+| `packagingBriefAt`                             | `rfq`               | Quando o briefing de embalagem (faca e arte) nasce: `rfq` (com a cotação), `selection` (ao escolher o fornecedor) ou `order` (só no pedido) |
+| `packagingBriefRequired`                       | faca + arte         | Entregáveis que tornam o briefing "pronto" (dieline, art, print_ready, packaging_sample)                                                    |
+| `packagingBriefDueDays`                        | `7`                 | Prazo do briefing quando a solicitação não tem prazo                                                                                        |
+| `packagingDefaultAgencyId`                     | vazio               | Agência padrão dos briefings; vazio = única agência ativa, senão Wellmix                                                                    |
+| `agencyShowsCustomer`                          | `false`             | A agência vê o nome do cliente no briefing (padrão: não, isolamento)                                                                        |
+| `weightTolerancePercent`                       | `3`                 | Divergência acima disso bloqueia a inspeção                                                                                                 |
+| `paymentMode`                                  | `MANUAL`            | Operador confirma o sinal e anexa comprovante                                                                                               |
+| `sankhyaMode`                                  | `MOCK`              | Pedido nasce com `erpSyncStatus = pending`; operador informa o número                                                                       |
+| `whatsappMode`                                 | `MOCK`              | Notificação registrada com status `mock`                                                                                                    |
+| `emailMode`                                    | `MOCK`              | Idem                                                                                                                                        |
+| `quotationExpirationDays`                      | `15`                | Validade padrão da RFQ                                                                                                                      |
+| `downPaymentPercent`                           | `30`                | Sinal sugerido sobre o valor ao cliente (editável na seleção)                                                                               |
+| `pixKey`, `pixReceiverName`, `pixReceiverCity` | vazios              | Pix do sinal (copia e cola e QR Code). Vazios: o cliente vê só a instrução de pagamento                                                     |
+| `stageDueDays`                                 | ver código          | Prazo por etapa, em dias                                                                                                                    |
+| `reminderDaysBeforeDue`                        | `1`                 | Lembrete antes do vencimento                                                                                                                |
+| `dimensionTolerancePercent`                    | `5`                 | Divergência de comprimento/largura/altura entre snapshot e inspeção                                                                         |
+| `cbmTolerancePercent`                          | `5`                 | Divergência de CBM da caixa e de peso bruto                                                                                                 |
+| `quantityTolerancePercent`                     | `0`                 | Divergência de unidades por caixa (0 = exato)                                                                                               |
+| `inspectionExtendedChecks`                     | `true`              | Inspeção pede medidas, caixa, material e cor (opcionais, cegos)                                                                             |
+| `reviewOnZeroPrice`                            | `true`              | Pedido sem FOB entra na fila de revisão                                                                                                     |
+| `containerTypes`                               | 20GP/40GP/40HC      | Capacidade útil (m³) e peso máximo por tipo; nada fixo em código                                                                            |
+| `containerAllowMultiCustomer`                  | `false`             | Clientes diferentes no mesmo container só manualmente e se ligado                                                                           |
+| `containerMaxOccupancyPercent`                 | `95`                | Acima disso, item na fila de revisão                                                                                                        |
+| `afterSalesEnabled`                            | `true`              | Abre o pós-venda ao concluir a entrega                                                                                                      |
+| `complianceGateEnabled`                        | `true`              | Linha com certificação obrigatória sem certificação válida bloqueia a liberação                                                             |
+| `certificationExpiryWarningDays`               | `30`                | Aviso de certificação a vencer                                                                                                              |
+| `aiMode`                                       | `AUTO`              | AUTO = API se houver `ANTHROPIC_API_KEY`, senão manual; MOCK = exemplo rotulado; MANUAL = desligado                                         |
+| `aiModel`                                      | `claude-sonnet-5-5` | Modelo usado no modo API                                                                                                                    |
+| `marketingEnabled`                             | `true`              | Marketing studio e kits                                                                                                                     |
+| `marketingKitDefaultPrice`                     | `200`               | Preço padrão do kit (editável por kit até a compra); moeda em `marketingKitCurrency`                                                        |
+| `radarGateEnabled`                             | `true`              | Importação própria sem RADAR abre item de revisão                                                                                           |
+| `importerName`                                 | `Wellmix`           | Nome da importadora dona da plataforma (preparação multi-importador)                                                                        |
 
 ## Decisões de modelagem tomadas
 
@@ -63,6 +63,16 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 - Pedido de compra pelo mapa do processo (dono, 13/11/2026; docs/PURCHASE_ORDER.md, seção 1a): certificação só quando a linha exige; o sinal pago (ou a conta corrente, "CC") libera a produção; as dependências bloqueiam (NCM validado e ficha completa antes do contrato); assinatura pela Wellmix só por funções específicas (padrão: diretorias, Equipe → Funções e acessos). Prazos de cada passo e `certificationHorizonDays` (120) em Configurações.
 - Pedido de amostras (dono, 13/11/2026; docs/SAMPLE_ORDER.md): 5 × 3 × variantes de cada produto, documento à parte com aceite do fornecedor, decidido sempre antes da assinatura da Wellmix ("sem amostras" é uma decisão registrada).
 - Inspeção do pedido de compra (dono, 13/11/2026; docs/PRODUCTION.md): o fornecedor (ou a trading) declara a conformidade e a Wellmix aprova; a reprovação segura a produção e o embarque; até 3 tentativas com ETD +1 dia, depois a confirmação de cancelamento com mensagem ao fornecedor.
+
+- Compra por demanda (dono, 15/11/2026; docs/PURCHASE_DEMAND.md e docs/MAPA_PROCESSO.md, passos B10, B14, B10? e B13): reposição e encomenda do cliente seguem o mesmo caminho até a estratégia de compra.
+  - Pedido da vitrine vira encomenda só para o que o estoque livre ou uma compra a caminho não atende; o resto segue para a ordem de venda.
+  - Quem registra e qualifica a encomenda: Vendas, sem aprovador.
+  - Quem escolhe a estratégia de compra e a cotação vencedora: o Comprador, com aprovação da Diretoria de compras. A aprovação fica na própria decisão e na própria cotação, liberada pela ação de permissão (o mecanismo genérico de aprovações saiu em 11/11/2026).
+  - "Fornecedor da última compra" gera o pedido de compra direto, sem nova solicitação ao fornecedor e sem nova amostragem.
+  - A reposição entra direto na fila da estratégia de compra; a aprovação da Diretoria de compras acontece só na estratégia (B10?).
+  - Cotação de compra: 24 h corridas por fornecedor (configurável). Sem resposta em 24 h, o Comprador reabre por mais 24 h, convida outros fornecedores ou volta para "fornecedor da última compra". O vencimento é calculado na leitura; o lembrete antes de vencer usa um agendamento de hora em hora (ou o diário, se o plano da Vercel não permitir).
+  - Reposição automática pelo estoque: desligada. A reposição é aberta à mão pelo Planner ou vem do pós-venda.
+  - As solicitações de cliente em aberto em 15/11/2026 (as 3 da FC Distribuidora) entram na fila da estratégia de compra como encomendas, sem migração.
 
 ## A confirmar com o negócio
 
