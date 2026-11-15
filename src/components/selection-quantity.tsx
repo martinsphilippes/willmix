@@ -19,6 +19,8 @@ import {
   roundsShortage,
   scheduleOnItemChange,
   type RoundLoad,
+  equivalentPercent,
+  scheduleResult,
   type RoundStep,
   type RoundsShortage,
   type TypedQuantity,
@@ -60,11 +62,25 @@ import { splitByColor, spreadCartons } from "@/lib/color-split";
  * gravada com ele (`scheduleOnItemChange`).
  */
 
+/**
+ * Peso líquido do item com a base do dado (dono, 15/11/2026): por caixa
+ * master, por peça ou total, na unidade gravada; `value` nulo sem o peso.
+ */
+export interface SelectionNetWeight {
+  value: number | null;
+  unit: string;
+  basis: "carton" | "piece" | "total";
+}
+
 /** Caixa master do item do grupo (o CBM já resolvido das medidas, quando falta). */
 export interface SelectionCarton {
   id: string;
   masterCartonQty: number | null;
   cbmPerCarton: number | null;
+  /** Peças por caixa inner (nulo sem caixa inner informada). */
+  innerQty?: number | null;
+  /** Peso líquido e a base dele (nulo quando a tela não sabe). */
+  netWeight?: SelectionNetWeight | null;
   /** Quantidade da planilha (total sugerido). */
   sheetQty: number | null;
   /** Cores do item no Book (duas ou mais = variações). */
@@ -148,8 +164,40 @@ export interface GenerateLabels {
   totalField: string;
   totalFieldHint: string;
   submit: string;
-  /** Título do cálculo escrito. */
+  /** Título do cálculo escrito (antes da faixa de resultados). */
   calc: string;
+  /**
+   * "Resultado da programação" (dono, 15/11/2026): o título, os três grupos
+   * da faixa e os rótulos de cada campo.
+   */
+  res: {
+    title: string;
+    carton: string;
+    perRound: string;
+    total: string;
+    piecesPerCarton: string;
+    inner: string;
+    cbmPerCarton: string;
+    /** Peso líquido sem base conhecida e por base. */
+    netWeight: string;
+    netWeightBasis: Record<SelectionNetWeight["basis"], string>;
+    /** "Capacidade {container}" e "{cartons} caixas · {pieces} peças". */
+    capacity: string;
+    capacityValue: string;
+    cartons: string;
+    pieces: string;
+    volume: string;
+    /** "{cbm} m³". */
+    volumeValue: string;
+    /** "Ocupação {container}". */
+    occupancy: string;
+    rounds: string;
+    equivalent: string;
+    /** "{pct}% de 1 × {container}". */
+    equivalentValue: string;
+    /** "{min} a {max}". */
+    range: string;
+  };
   /** "Programações" travado: o número vem da programação do pedido. */
   roundsFixed?: string;
   /** A caixa do item escolhido. */
@@ -219,6 +267,15 @@ const fill = (s: string, vars: Record<string, string | number>) =>
 
 const usable = (i: SelectionCarton) => !!(i.masterCartonQty && i.cbmPerCarton);
 
+/** A carga de um produto para a Composição de containers. */
+export interface SelectionLoad {
+  pieces: number[];
+  masterCartonQty: number | null;
+  cbmPerCarton: number | null;
+  containerCode: string | null;
+  capacityCbm: number | null;
+}
+
 export function SelectionQuantity({
   label,
   hint,
@@ -244,6 +301,7 @@ export function SelectionQuantity({
   moq = null,
   onQuantityBlur,
   fixedPlan = null,
+  onLoadChange,
 }: {
   label: string;
   hint: string;
@@ -300,6 +358,12 @@ export function SelectionQuantity({
    * único, só a quantidade.
    */
   fixedPlan?: FixedSchedulePlan | null;
+  /**
+   * Composição de containers (Nova solicitação; docs/ORDER_TERMS.md seção
+   * 8): as peças de cada programação, a caixa do item e o container
+   * escolhido, a cada mudança. Nulo = sem item.
+   */
+  onLoadChange?: (load: SelectionLoad | null) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const perRoundId = useId();
@@ -357,11 +421,6 @@ export function SelectionQuantity({
     text: string;
     at: number;
   } | null>(null);
-  // O que a última geração arredondou (some quando as rodadas ou o item
-  // mudam).
-  const [note, setNote] = useState<{ pieces: number; extra: number } | null>(
-    null,
-  );
   const [error, setError] = useState<string | null>(null);
   // Caixas que não dão uma por data (dono, 14/11/2026): nada é gerado e o
   // aviso diz quantas faltam, com as saídas. `add`: veio do "+ Programação".
@@ -398,7 +457,6 @@ export function SelectionQuantity({
   const markItem = useEffectEvent((next: string | null) => {
     if (next === chosen) return;
     setChosen(next);
-    setNote(null);
     setError(null);
     setShort(null);
     // Nova solicitação: as caixas digitadas eram da caixa do produto
@@ -570,6 +628,34 @@ export function SelectionQuantity({
     active?.setCustomValidity(belowMoq ? belowText : "");
     other?.setCustomValidity("");
   }, [belowMoq, belowText, piecesLocked]);
+  // Composição de containers: a carga deste produto, depois de cada
+  // renderização (as rodadas da tela estão em `liveRef`, escritas pelo gerador).
+  const lastLoad = useRef<string>("");
+  const emitLoad = useEffectEvent(() => {
+    if (!onLoadChange) return;
+    const single = Number(String(qty).replace(",", ".")) || 0;
+    const live = liveRef.current.length
+      ? liveRef.current
+      : single > 0
+        ? [single]
+        : [];
+    const load: SelectionLoad | null = item
+      ? {
+          pieces: [...live],
+          masterCartonQty: item.masterCartonQty ?? null,
+          cbmPerCarton: item.cbmPerCarton ?? null,
+          containerCode: container || null,
+          capacityCbm: capacity,
+        }
+      : null;
+    const text = JSON.stringify(load);
+    if (text === lastLoad.current) return;
+    lastLoad.current = text;
+    onLoadChange(load);
+  });
+  useEffect(() => {
+    emitLoad();
+  });
   const hasCarton = !!(item && usable(item) && capacity);
   const perContainer =
     hasCarton && item
@@ -616,10 +702,8 @@ export function SelectionQuantity({
         })
       : null;
     if (out && "plan" in out) {
-      setNote({ pieces: out.plan.pieces, extra: out.plan.extraPieces });
       apply(out.plan.rounds.map((r) => r.pieces));
     } else {
-      setNote(null);
       apply(splitEvenly(cartons, count, maxRounds).map((b) => b * perCarton));
     }
     setAmountEdit(null);
@@ -643,7 +727,6 @@ export function SelectionQuantity({
     // Caixas → peças: sem as peças por caixa master do item não há conversão.
     const n = totalPieces();
     if (!perCarton || !(n > 0)) {
-      setNote(null);
       // Diz o dado que falta; faltando também o CBM, os dois.
       setError(!item.cbmPerCarton && gen.noData ? gen.noData : gen.noPieces);
       return;
@@ -654,12 +737,10 @@ export function SelectionQuantity({
       // divididas igualmente. Sem uma caixa por data, o aviso.
       const missing = roundsShortage(boxes, count);
       if (missing) {
-        setNote(null);
         setShort({ ...missing, kind: "generate" });
         return;
       }
       setShort(null);
-      setNote(null);
       apply(splitEvenly(boxes, count, maxRounds).map((b) => b * perCarton));
     } else {
       const out = planPurchaseRounds({
@@ -672,13 +753,11 @@ export function SelectionQuantity({
       });
       if ("short" in out) {
         // Faltam caixas para uma por data: nada é gerado (dono, 14/11/2026).
-        setNote(null);
         setShort({ ...out.short, kind: "generate" });
         return;
       }
       setShort(null);
       if ("error" in out) {
-        setNote(null);
         setError(
           out.error === "too_big"
             ? fill(gen.tooBig, {
@@ -693,7 +772,6 @@ export function SelectionQuantity({
         return;
       }
       const { plan } = out;
-      setNote({ pieces: plan.pieces, extra: plan.extraPieces });
       apply(plan.rounds.map((r) => r.pieces));
     }
     // Gerado: os campos voltam a acompanhar as rodadas da tela.
@@ -776,84 +854,193 @@ export function SelectionQuantity({
           !!l && l.containers !== null && l.needed !== null,
       );
     const complete = loads.length > 0 && loads.length === shown.length;
-    const liveSum = live.reduce((a, q) => a + q, 0);
-    const fresh = live.length && note && liveSum === note.pieces ? note : null;
-    const rounding = live.length
-      ? fresh
-      : preview
-        ? { extra: preview.extraPieces }
-        : null;
-    const first = loads[0];
-    const same =
-      complete &&
-      loads.every(
-        (l) =>
-          l.cartons === first.cartons &&
-          l.needed === first.needed &&
-          l.lastPct === first.lastPct,
-      );
+    // "Resultado da programação" (dono, 15/11/2026): uma faixa só, com os
+    // resultados finais (sem fórmulas): a caixa e a capacidade, cada
+    // programação e o total. Sem programação ainda, os dois últimos grupos
+    // ficam com "—".
+    const summary = complete
+      ? scheduleResult(shown, loads, perContainer)
+      : null;
+    const dash = "—";
+    const res = gen.res;
+    /** "100" ou "100 a 101" (programações diferentes). */
+    const span = ([min, max]: [number, number], f: (n: number) => string) =>
+      min === max ? f(min) : fill(res.range, { min: f(min), max: f(max) });
+    const weight = item.netWeight ?? null;
+    const weightValue =
+      weight && weight.value !== null && weight.value > 0
+        ? `${fmt(weight.value, 3)} ${weight.unit}`
+        : dash;
+    const groups: Array<{
+      key: "carton" | "per-round" | "total";
+      title: string;
+      fields: Array<{ key: string; label: string; value: string }>;
+    }> = [
+      {
+        key: "carton",
+        title: res.carton,
+        fields: [
+          {
+            key: "pieces-per-carton",
+            label: res.piecesPerCarton,
+            value: fmt(item.masterCartonQty!),
+          },
+          {
+            key: "inner",
+            label: res.inner,
+            value:
+              item.innerQty && item.innerQty > 0 ? fmt(item.innerQty) : dash,
+          },
+          {
+            key: "cbm-per-carton",
+            label: res.cbmPerCarton,
+            value: fill(res.volumeValue, { cbm: fmt(item.cbmPerCarton!, 4) }),
+          },
+          {
+            key: "net-weight",
+            // A base do dado no rótulo: por caixa master, por peça ou total.
+            label: weight ? res.netWeightBasis[weight.basis] : res.netWeight,
+            value: weightValue,
+          },
+          {
+            key: "capacity",
+            label: fill(res.capacity, { container }),
+            value: fill(res.capacityValue, {
+              cartons: fmt(perContainer),
+              pieces: fmt(perContainer * item.masterCartonQty!),
+            }),
+          },
+        ],
+      },
+      {
+        key: "per-round",
+        title: res.perRound,
+        fields: summary
+          ? [
+              {
+                key: "cartons",
+                label: res.cartons,
+                value: span(summary.perRound.cartons, (n) => fmt(n)),
+              },
+              {
+                key: "pieces",
+                label: res.pieces,
+                value: span(summary.perRound.pieces, (n) => fmt(n)),
+              },
+              {
+                key: "volume",
+                label: res.volume,
+                value: fill(res.volumeValue, {
+                  cbm: span(summary.perRound.cbm, (n) => fmt(n, 2)),
+                }),
+              },
+              {
+                key: "occupancy",
+                label: fill(res.occupancy, { container }),
+                value: span(summary.perRound.pct, (n) => `${pctText(n)}%`),
+              },
+            ]
+          : [
+              { key: "cartons", label: res.cartons, value: dash },
+              { key: "pieces", label: res.pieces, value: dash },
+              { key: "volume", label: res.volume, value: dash },
+              {
+                key: "occupancy",
+                label: fill(res.occupancy, { container }),
+                value: dash,
+              },
+            ],
+      },
+      {
+        key: "total",
+        title: res.total,
+        fields: [
+          {
+            key: "rounds",
+            label: res.rounds,
+            value: summary ? fmt(summary.rounds) : dash,
+          },
+          {
+            key: "cartons",
+            label: res.cartons,
+            value: summary ? fmt(summary.total.cartons) : dash,
+          },
+          {
+            key: "pieces",
+            label: res.pieces,
+            value: summary ? fmt(summary.total.pieces) : dash,
+          },
+          {
+            key: "volume",
+            label: res.volume,
+            value: summary
+              ? fill(res.volumeValue, { cbm: fmt(summary.total.cbm, 2) })
+              : dash,
+          },
+          {
+            // O total em containers do tipo escolhido, em %: arredondado só
+            // aqui, e acima de 100% quando passa de um container.
+            key: "equivalent",
+            label: res.equivalent,
+            value: summary
+              ? fill(res.equivalentValue, {
+                  pct: equivalentPercent(summary.total.equivalent),
+                  container,
+                })
+              : dash,
+          },
+        ],
+      },
+    ];
     return (
-      <div className="space-y-1 text-zinc-700" data-generate-calc>
-        <p className="font-semibold text-zinc-900">{gen.calc}</p>
-        <p data-generate-item="ok">
-          {fill(gen.item, {
-            pcs: fmt(item.masterCartonQty!),
-            cbm: fmt(item.cbmPerCarton!, 4),
-            cartons: fmt(perContainer),
-            pieces: fmt(perContainer * item.masterCartonQty!),
-            container,
-          })}
-        </p>
-        {complete ? (
-          <>
-            <p className="font-medium text-zinc-900" data-generate-result>
-              {fill(gen.result, {
-                rounds: loads.length,
-                cartons: fmt(loads.reduce((a, l) => a + l.cartons, 0)),
-                // As caixas em peças: o total que vai para a quantidade.
-                pieces: fmt(shown.reduce((a, q) => a + q, 0)),
-                cbm: fmt(
-                  loads.reduce((a, l) => a + l.cbm, 0),
-                  2,
-                ),
-                containers: frac(loads.reduce((a, l) => a + l.containers, 0)),
-                container,
-              })}
-            </p>
-            {rounding && rounding.extra > 0 ? (
-              <p data-generate-extra>
-                {fill(gen.extra, { extra: fmt(rounding.extra) })}
-              </p>
-            ) : null}
-            <p data-generate-each>
-              {same
-                ? fill(first.needed > 1 ? gen.eachMany : gen.each, {
-                    cartons: fmt(first.cartons),
-                    cbm: fmt(first.cbm, 2),
-                    n: fmt(first.needed),
-                    pct: pctText(first.lastPct ?? 0),
-                    container,
-                  })
-                : fill(gen.list, {
-                    list: loads
-                      .map((l, i) =>
-                        fill(l.needed > 1 ? gen.listItemMany : gen.listItem, {
-                          i: i + 1,
-                          n: fmt(l.needed),
-                          pct: pctText(l.lastPct ?? 0),
-                        }),
-                      )
-                      .join(" · "),
-                  })}
-            </p>
-            <p className="font-medium text-zinc-900" data-generate-containers>
-              {fill(gen.totalContainers, {
-                n: fmt(loads.reduce((a, l) => a + l.needed, 0)),
-                container,
-              })}
-            </p>
-          </>
-        ) : null}
+      <div
+        className="min-w-0 space-y-1.5 text-zinc-700"
+        data-generate-calc
+        data-generate-item="ok"
+      >
+        <p className="text-sm font-semibold text-zinc-900">{res.title}</p>
+        {/* Uma faixa só: em largura curta ela rola para o lado (os grupos
+            não empilham e nada é cortado). O fundo cinza e a sombra na
+            borda que ainda tem dados estão em globals.css. Com foco, as
+            setas do teclado também rolam a faixa. */}
+        <div
+          className="overflow-x-auto rounded-lg"
+          role="group"
+          aria-label={res.title}
+          tabIndex={0}
+          data-generate-strip
+        >
+          <div className="flex w-max min-w-full divide-x divide-zinc-300">
+            {groups.map((g) => (
+              <section
+                key={g.key}
+                className="shrink-0 px-2 py-2"
+                data-generate-group={g.key}
+                {...(g.key === "total" ? { "data-generate-result": "" } : {})}
+              >
+                <h4 className="mb-1 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                  {g.title}
+                </h4>
+                <dl className="flex gap-x-2.5">
+                  {g.fields.map((f) => (
+                    <div
+                      key={f.key}
+                      className="shrink-0"
+                      data-generate-field={f.key}
+                    >
+                      <dt className="whitespace-nowrap text-[11px] leading-4 text-zinc-500">
+                        {f.label}
+                      </dt>
+                      <dd className="whitespace-nowrap text-[13px] font-semibold leading-5 tabular-nums text-zinc-900">
+                        {f.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            ))}
+          </div>
+        </div>
       </div>
     );
   };
@@ -895,7 +1082,6 @@ export function SelectionQuantity({
   ) {
     const total = included.reduce((s, c) => s + (map[c] ?? 0), 0);
     setCustom({ itemId, cartons: map });
-    setNote(null);
     setError(null);
     const live = liveRef.current;
     if (scheduled && live.length && applyRef.current)
@@ -1628,7 +1814,6 @@ export function SelectionQuantity({
               setRegenerate(false);
               return;
             }
-            setNote(null);
             // "Sem programação" com o item da escolha gravada: a gravada
             // não volta mais ao remarcar o item.
             if (chosen !== null && chosen === savedItem) setSavedKept(false);

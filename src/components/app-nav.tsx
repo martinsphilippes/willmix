@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { isActiveHref, type NavIcon } from "@/lib/nav";
+import { isActiveHref, isActiveLink, type NavIcon } from "@/lib/nav";
 import { UserMenu } from "@/components/user-menu";
 
 /*
@@ -33,6 +33,8 @@ export interface NavItemView {
   badgeLabel?: string;
   /** Alguma já passou do prazo: o contador fica vermelho. */
   badgeAlert?: boolean;
+  /** Outros endereços em que o item também acende (src/lib/nav.ts, NavLink.match). */
+  match?: string[];
 }
 export interface NavEntryView {
   /** Chave estável do grupo (para lembrar se está aberto). */
@@ -258,7 +260,7 @@ function NavRow({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const current = isActiveHref(item.href, pathname);
+  const current = isActiveLink(item, pathname);
   return (
     <Link
       href={item.href}
@@ -301,7 +303,7 @@ function NavGroupRow({
 }) {
   const pathname = usePathname();
   const id = useId();
-  const active = items.some((i) => isActiveHref(i.href, pathname));
+  const active = items.some((i) => isActiveLink(i, pathname));
   const badge = groupBadge(items);
   const alert = groupAlert(items);
   if (entry.href)
@@ -502,7 +504,7 @@ function NavList({
   const pathname = usePathname();
   const current = entries.find(
     (e) =>
-      e.items?.some((i) => isActiveHref(i.href, pathname)) ||
+      e.items?.some((i) => isActiveLink(i, pathname)) ||
       (!!e.items && !!e.href && isActiveHref(e.href, pathname)),
   )?.id;
   // Já no servidor o grupo da tela atual vem aberto (sem piscar).

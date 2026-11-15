@@ -1520,6 +1520,18 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - `tests/unit/sankhya-history-products.test.ts`: valor por produto, item sem valor, sem permissão e as quatro ordens, com a ordem por unidades diferente da ordem por valor.
   - `tests/e2e/purchase-history-products.spec.ts`: as quatro ordens na tela, os dois totais, a coluna estreita (iPad em pé e deitado e celular) e o login sem valores.
 
+## Gerar programação: "Resultado da programação" numa faixa
+
+- **Pedido do dono** (15/11/2026): embaixo de "Gerar programação", nas duas telas (Nova solicitação e Seleção de itens), trocar o texto corrido do "Cálculo" pelo título "Resultado da programação" e uma faixa horizontal compacta com três grupos: Caixa master e capacidade, Por programação e Total programado. No total, "Ocupação equivalente" no lugar de "Containers previstos".
+- **Como ficou**: docs/PURCHASE_SCHEDULE.md, item "O resultado fica sempre à vista".
+- **Não mudou**: os campos e botões de cima (inclusive "Containers por programação" e "Containers no total"), os cartões de cada programação, a geração, a ocupação por programação, as datas e a gravação. Nenhuma rota, Server Action, permissão ou dado mudou; sem mudança no banco.
+- **Saiu da tela**: as linhas do texto do Cálculo (a caixa, o total, cada programação e os containers no total) e o aviso do arredondamento para caixas inteiras. Os mesmos números estão na faixa e nos campos de cima.
+- **Dados novos na tela, sem mudança no banco**: a caixa inner e o peso líquido por peça. Na Seleção vêm do item do Book; na Nova solicitação, do produto (`innerBoxQty`, `netWeightKg`), com a variação e a ficha mestre.
+- **Como**: `scheduleResult` e `equivalentPercent` (`src/lib/purchase-rounds.ts`), textos `purchaseRounds.res.*` e a faixa em `SelectionQuantity`. A sombra da rolagem fica em `src/app/globals.css`.
+- Testes:
+  - `tests/unit/schedule-result.test.ts`: as contas, acima de 100%, "<1", os grupos e campos na tela, a caixa inner com e sem quantidade e as três bases do peso.
+  - `tests/e2e/schedule-result-strip.spec.ts`: as duas telas, a troca de 20GP, 40GP e 40HC, a caixa inner com e sem quantidade, o peso por peça e a faixa no celular.
+
 ## RCA do cliente no cadastro e na Nova solicitação
 
 - **Pedido do dono** (15/11/2026, com as fotos da Nova solicitação e de Cadastros → Parceiros no iPad): o campo "RCA responsável" no cadastro do cliente; na Nova solicitação, o "RCA do cliente" ao lado do "Solicitante", o solicitante preenchido com quem está criando e o seletor de antes como "Login do cliente com acesso". Decisões: o RCA é o vendedor do Sankhya (TGFVEN, pelo código) e o Sankhya manda (a carga sobrescreve o portal).
@@ -1528,3 +1540,18 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Banco**: coluna nova `parties.rcaCode` (opcional, migração só aditiva) e a lista de vendedores em `settings` (chave `sankhyaSellers`).
 - **Correção junto**: nos campos com busca (cliente, fornecedor, produto), voltar ao campo logo depois de sair dele fechava a lista sozinha (o fechamento da saída, 150 ms depois, ainda valia). Agora voltar ao campo cancela esse fechamento (`src/components/search-picker.tsx`).
 - Testes: `tests/unit/customer-rca.test.ts` e `tests/e2e/customer-rca.spec.ts`.
+
+## Parceiros dentro de Equipe Acessos e Parceiros
+
+- **Pedido do dono** (15/11/2026): levar a área Parceiros (Cadastros → Parceiros, com as abas Cadastros, Tipos de parceiro e Acessos externos) para dentro de Equipe e acessos; renomear o item do menu, o título da área e os pontos de navegação que a citam para "Equipe Acessos e Parceiros"; tirar Parceiros de Cadastros; manter os links antigos e as permissões.
+- **Como ficou** (docs/FLOW_MENU.md, "Equipe Acessos e Parceiros"):
+  - Um item no rodapé do menu: abre a Equipe para quem abre Equipe e Parceiros para quem só abre Parceiros, e acende nas telas das duas.
+  - Seções da área: Equipe, Funções e acessos, Linha de produto e divisão e Parceiros, no padrão de abas da área (`src/components/team-area-nav.tsx`).
+  - Dentro de Parceiros, as três abas de sempre.
+  - Os textos que citavam o caminho da área ("Gestão → Equipe → Funções e acessos", "Equipe e acessos", "Equipe e divisões") passaram a "Equipe Acessos e Parceiros", em pt/en/zh.
+- **Não mudou**:
+  - Nenhuma rota mudou: `/app/parties`, `/app/parties/types`, `/app/parties/access`, `/app/parties/<id>`, `/app/parties/new`, `/app/customers`, `/app/suppliers` e `/app/team` abrem as mesmas telas, com os mesmos filtros e parâmetros; nada a redirecionar.
+  - Telas, ações, dados e permissões continuam os mesmos.
+  - O agrupamento das telas na configuração de acessos (`SCREEN_GROUPS`, que põe Parceiros em Cadastros) ficou como estava.
+- **Banco**: sem mudança.
+- Testes: `tests/unit/nav.test.ts` ("Equipe Acessos e Parceiros") e `tests/e2e/team-partners-area.spec.ts`.

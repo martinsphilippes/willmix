@@ -290,6 +290,12 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   sku_inspection: "production/inspection",
   sku_fix: "production/inspection",
   real_media: "production/sample",
+  // Lote com divergência (mapa E21, E24 a E27): na Armazenagem, marco 16.
+  divergence_lot: "delivery/storage",
+  // Qualidade no CD (mapa E19): na Armazenagem, com o recebimento.
+  quality_check: "delivery/storage",
+  // Amostras chegando ao show room do Brasil: Vendas → Amostras.
+  showroom_receive: "sales/samples",
   freight_quote: "production/logistics",
   confirm_receipt: "delivery/delivery",
   supplier_payment: "finance/finance",

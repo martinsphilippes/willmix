@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { inputClass } from "@/components/ui";
 import { ProductPicker } from "@/components/product-picker";
+import { useRequestCustomer } from "@/components/request-customer-context";
 import type {
   SearchOption,
   SearchPickerLabels,
@@ -45,6 +46,13 @@ export interface ProductFill {
   masterCartonQty?: number | null;
   cbmPerCarton?: number | null;
   /**
+   * "Resultado da programação" (dono, 15/11/2026): peças por caixa inner e
+   * peso líquido por peça em kg (cadastro, senão ficha mestre). Nulos quando
+   * não informados.
+   */
+  innerBoxQty?: number | null;
+  netWeightKg?: number | null;
+  /**
    * Preço da última compra ao fornecedor, já em texto (pedido mais recente,
    * senão o cadastro). Só para a Wellmix; nulo para o cliente e sem compra.
    */
@@ -63,6 +71,9 @@ export interface ProductVariantFill {
   /** Caixa master da variação (senão a do produto). */
   masterCartonQty?: number | null;
   cbmPerCarton?: number | null;
+  /** Caixa inner e peso líquido por peça da variação (senão os do produto). */
+  innerBoxQty?: number | null;
+  netWeightKg?: number | null;
   /** Especificação montada com os dados da variação. */
   specification: string;
   photoDocumentId: string | null;
@@ -137,8 +148,21 @@ export function RequestProductFields({
     fillError: string;
     /** Dica sob a descrição e a especificação travadas (produto do catálogo). */
     lockedHint?: string;
+    /** Escolha o país e o grupo antes do produto (docs/ORDER_TERMS.md). */
+    originFirst?: string;
   };
 }) {
+  // País de origem e grupo do pedido (docs/ORDER_TERMS.md): a busca só
+  // oferece os produtos deles; sem os dois, o campo espera.
+  const shared = useRequestCustomer();
+  const origin = shared?.origin ?? null;
+  const originMissing = !!shared?.originRequired && !origin;
+  const originQuery = origin
+    ? new URLSearchParams({
+        country: origin.country,
+        line: origin.lineId,
+      }).toString()
+    : "";
   const initial = products.find((p) => p.id === presetProductId) ?? null;
   // Fichas conhecidas nesta linha (a pronta e as que vieram da busca).
   const [fills, setFills] = useState<Record<string, ProductFill>>(() =>
@@ -413,9 +437,19 @@ export function RequestProductFields({
           >
             {labels.product}
           </label>
+          {originMissing ? (
+            <p
+              className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-200"
+              data-request-origin-missing
+            >
+              {labels.originFirst ?? ""}
+            </p>
+          ) : null}
           <ProductPicker
-            key={pickerKey}
+            key={`${pickerKey}-${originQuery}`}
             scope="catalog"
+            query={originQuery}
+            disabled={originMissing}
             inputId={`rp-${prefix}productId`}
             name={`${prefix}productId`}
             initial={

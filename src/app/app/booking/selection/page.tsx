@@ -107,6 +107,8 @@ export default async function BookingSelectionPage({
   requireScreen(user, "booking");
   // Preço do Book: só com "Ver preço de compra" (dono, 15/11/2026;
   // docs/LINHA_DE_VISAO.md); sem ela, as colunas de preço não vão à tela.
+  // O Superplan (custo por peça, veredito, mínimo e o "melhor custo") segue
+  // a mesma permissão (dono, 15/11/2026): sai do preço.
   const seesPrice = canSeePurchasePrice(user);
   // Só a Wellmix: o login externo com a tela Booking vê só os bookings dele.
   if (!isWellmix(user)) redirect("/app/booking");
@@ -168,7 +170,7 @@ export default async function BookingSelectionPage({
   // (as abas dos blocos e das solicitações abertas não têm essa tabela).
   const rows =
     tab === "selection" ? groupRows : tab === "items" ? listRows : [];
-  const best = bestCostItem(rows.map((r) => r.item));
+  const best = seesPrice ? bestCostItem(rows.map((r) => r.item)) : null;
   const blocks =
     (tab === "blocks" || tab === "requested") && result
       ? suggestBlocks(
@@ -357,8 +359,7 @@ export default async function BookingSelectionPage({
               "capacity",
               "material",
               "sheetQty",
-              "costPiece",
-              "superplan",
+              ...(seesPrice ? ["costPiece", "superplan"] : []),
               "situation",
             ].map((k) => (
               <th key={k} className={th}>
@@ -568,35 +569,39 @@ export default async function BookingSelectionPage({
                 <td className={cx(td, "tabular-nums")}>
                   {num(sheetQuantity(item), 0)}
                 </td>
-                <td
-                  className={cx(td, "whitespace-nowrap tabular-nums")}
-                  data-sort={cost ?? ""}
-                  data-selection-cost={item.id}
-                >
-                  {cost !== null ? (
-                    <span className="flex flex-col items-start gap-0.5">
-                      <span className="text-sm font-semibold text-zinc-900">
-                        {formatMoney(cost, "BRL", t)}
-                      </span>
-                      {item.id === best ? (
-                        <Badge tone="success">
-                          {t("supplierRequests.selection.best")}
-                        </Badge>
-                      ) : null}
-                    </span>
-                  ) : (
-                    <span className="text-zinc-400">—</span>
-                  )}
-                </td>
-                <td className={td}>
-                  {a ? (
-                    <BookingItemSuperplan analysis={a} t={t} />
-                  ) : (
-                    <span className="text-zinc-500">
-                      {t("booking.signal.none")}
-                    </span>
-                  )}
-                </td>
+                {seesPrice ? (
+                  <>
+                    <td
+                      className={cx(td, "whitespace-nowrap tabular-nums")}
+                      data-sort={cost ?? ""}
+                      data-selection-cost={item.id}
+                    >
+                      {cost !== null ? (
+                        <span className="flex flex-col items-start gap-0.5">
+                          <span className="text-sm font-semibold text-zinc-900">
+                            {formatMoney(cost, "BRL", t)}
+                          </span>
+                          {item.id === best ? (
+                            <Badge tone="success">
+                              {t("supplierRequests.selection.best")}
+                            </Badge>
+                          ) : null}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-400">—</span>
+                      )}
+                    </td>
+                    <td className={td}>
+                      {a ? (
+                        <BookingItemSuperplan analysis={a} t={t} />
+                      ) : (
+                        <span className="text-zinc-500">
+                          {t("booking.signal.none")}
+                        </span>
+                      )}
+                    </td>
+                  </>
+                ) : null}
                 <td className={td}>
                   {activeRequest ? (
                     <Link
@@ -700,6 +705,14 @@ export default async function BookingSelectionPage({
                     ),
                   sheetQty: sheetQuantity(item),
                   colors: colorsOf(item.colorAssortment),
+                  // "Resultado da programação" (dono, 15/11/2026): a caixa
+                  // inner e o peso líquido do Book, que é por peça (kg).
+                  innerQty: item.innerQty,
+                  netWeight: {
+                    value: item.netWeightPcKg,
+                    unit: "kg",
+                    basis: "piece" as const,
+                  },
                 }))}
                 savedColors={current?.colorPlan?.included ?? null}
                 colorLabels={{

@@ -5,13 +5,19 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { User } from "@/lib/db";
 import { isAdmin } from "@/lib/auth/permissions";
 import { cx } from "@/components/ui";
+import { TeamAreaNav } from "@/components/team-area-nav";
 
 /*
- * Cadastros → Parceiros em três abas (dono, 14/11/2026): Cadastros (a lista
- * de sempre), Tipos de parceiro e Acessos externos (a antiga Gestão de
- * telas). Cada aba é o endereço de sempre: /app/parties, /app/parties/types e
+ * Parceiros em três abas (dono, 14/11/2026): Cadastros (a lista de sempre),
+ * Tipos de parceiro e Acessos externos (a antiga Gestão de telas). Cada aba é
+ * o endereço de sempre: /app/parties, /app/parties/types e
  * /app/parties/access. Tipos: quem abre Cadastros lê; Acessos externos: só o
  * administrador (as páginas e as ações conferem de novo).
+ *
+ * Desde 15/11/2026 (dono), Parceiros é uma seção da área Equipe Acessos e
+ * Parceiros (antes, Cadastros → Parceiros): o título é o da área, embaixo as
+ * seções da área (só as que o login abre) e, dentro de Parceiros, as três
+ * abas. Os endereços, as telas e as permissões não mudaram.
  */
 
 export type PartiesTab = "registry" | "types" | "access";
@@ -38,10 +44,11 @@ export function PartiesHeader({
   const admin = isAdmin(user);
   return (
     <>
-      {/* Título com as ações ao lado; embaixo, as abas e a explicação da aba. */}
+      {/* Título da área com as ações ao lado; embaixo, as seções da área, as
+          abas de Parceiros e a explicação da aba. */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h1 className="border-l-4 border-brand-600 pl-3 text-2xl font-bold tracking-tight text-zinc-900">
-          {t("nav.parties")}
+          {t("nav.teamAccess")}
         </h1>
         {actions ? (
           <div className="flex flex-wrap gap-2" data-parties-actions>
@@ -49,6 +56,7 @@ export function PartiesHeader({
           </div>
         ) : null}
       </div>
+      <TeamAreaNav t={t} user={user} active="partners" />
       <nav
         aria-label={t("parties.tabs")}
         className="mb-3 flex flex-wrap gap-2"

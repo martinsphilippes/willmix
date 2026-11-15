@@ -81,7 +81,7 @@ O carregador (`loadRequestSheet`) só lê o que o perfil pode ver, e o montador 
 | Perfil | Vê |
 | --- | --- |
 | Wellmix com "Ver valores e margem" (`values.view`; o administrador sempre) | Tudo. |
-| Wellmix com "Ver preço de compra" (`purchasePrice.view`; padrão: comprador, gerente de produto, diretorias, financeiro), sem "Ver valores e margem" | Produto e Embalagem e cubagem completos; em Valores, a compra com o fornecedor e o custo registrado (o preço da última compra) com as faixas; em Pagamento, a compra com o fornecedor. Sem venda, sem a análise do Superplan (custo nacionalizado, venda sugerida, margem) e sem a forma de pagamento do cliente. |
+| Wellmix com "Ver preço de compra" (`purchasePrice.view`; padrão: comprador, gerente de produto, planejamento, diretorias, financeiro), sem "Ver valores e margem" | Produto e Embalagem e cubagem completos; em Valores, a compra com o fornecedor e o custo registrado (o preço da última compra) com as faixas; em Pagamento, a compra com o fornecedor. Sem venda, sem a análise do Superplan (custo nacionalizado, venda sugerida, margem) e sem a forma de pagamento do cliente. |
 | Wellmix sem nenhuma das duas | Produto e Embalagem e cubagem completos (códigos, caixa, medidas, cubagem e ficha atual, como no Histórico de compras). Valores e Pagamento ficam fora da ficha completa, com o aviso de quem vê embaixo da tabela. Sem custo, compra, venda nem condições na linha. |
 | Login do cliente (só as solicitações dele) | O que a solicitação dele gravou (descrição, variação, especificação, medidas e pesos do texto), total de peças, programação, venda e sinal dele. Nada do cadastro, do Book, da negociação, do fornecedor, nem custo ou compra. |
 

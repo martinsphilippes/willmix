@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { login } from "./helpers";
+import { fillCustomerContacts, fillOrderTerms, login } from "./helpers";
 
 /*
  * Compra por demanda (mapa B10 e B14; dono, 15/11/2026;
@@ -29,6 +29,9 @@ async function orderForJoao(page: Page, name: string) {
     "loja",
     "cliente-joao",
   );
+  // Condições do pedido e contatos do cliente (docs/ORDER_TERMS.md).
+  await fillOrderTerms(page);
+  await fillCustomerContacts(page, "loja-joao");
   await page.check('[data-request-item="0"] input[name="p0.sourcingDemand"]');
   await page.fill('input[name="p0.productName"]', name);
   await page.fill('textarea[name="p0.description"]', `Encomenda ${name}`);

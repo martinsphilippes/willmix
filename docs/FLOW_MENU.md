@@ -13,9 +13,28 @@ Pedido do dono (14/11/2026): o menu lateral segue os blocos do mapa do processo 
 | Vendas              | Estoque, Amostras, Ofertas, Venda                                                                                                                                                                        |
 | Financeiro          | Financeiro, Contas a pagar, Fluxo de caixa (saiu de Painéis), Acordos e comissões, Multas                                                                                                                |
 | Painéis             | Painel do dono, Painéis por área, Painel de SLA (só leitura, sem contador)                                                                                                                               |
-| Cadastros           | Parceiros, Produtos, Linhas                                                                                                                                                                              |
+| Cadastros           | Produtos, Linhas                                                                                                                                                                                         |
+
+Fixos embaixo: Configurações, **Equipe Acessos e Parceiros** e Auditoria. Parceiros saiu de Cadastros (dono, 15/11/2026) e virou uma seção de Equipe Acessos e Parceiros; veja "Equipe Acessos e Parceiros" abaixo.
 
 Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeçalho, com o contador de não lidas. O Superplan saiu de Painéis e virou atalho em Configurações. Nenhuma tela ou rota foi removida.
+
+## Equipe Acessos e Parceiros
+
+Pedido do dono (15/11/2026): a área de Parceiros (antes Cadastros → Parceiros) entrou na área de Equipe, que passou a se chamar **Equipe Acessos e Parceiros** no menu e no título.
+
+- **Seções** (no padrão de abas da área, `src/components/team-area-nav.tsx`): Equipe, Funções e acessos, Linha de produto e divisão (`/app/team?tab=team|functions|lines`) e **Parceiros** (`/app/parties`).
+- **Abas de Parceiros**: dentro da seção Parceiros, as três de sempre: Cadastros (`/app/parties`), Tipos de parceiro (`/app/parties/types`) e Acessos externos (`/app/parties/access`). As telas, os filtros, as ações e os dados não mudaram.
+- **Endereços**: não mudaram. Os links antigos (`/app/parties` com os filtros `?type=…&q=…`, `/types`, `/access` com os painéis, `/app/parties/<id>`, `/app/parties/new`, `/app/customers` e `/app/suppliers`) continuam abrindo a mesma tela, sem redirecionamento.
+- **Permissões**: as mesmas.
+  - Equipe, Funções e acessos e Linha de produto e divisão: quem abre Equipe (o administrador).
+  - Parceiros (Cadastros e Tipos de parceiro): quem abre Parceiros (administrador, Comprador, Catálogo, diretorias e quem recebeu a tela).
+  - Acessos externos: só o administrador.
+  - Cada login vê no menu e na área só as seções que já abria. As páginas e as ações conferem de novo.
+- **Menu**: um item só no rodapé, "Equipe Acessos e Parceiros".
+  - Para quem abre Equipe, ele leva à Equipe; para quem só abre Parceiros, direto a Parceiros.
+  - Acende nas telas de Equipe e de Parceiros (`NavLink.match`), e o "Voltar" sem tela anterior continua levando a Parceiros.
+  - Quem não abre nenhuma das duas não vê o item.
 
 ## Telas
 

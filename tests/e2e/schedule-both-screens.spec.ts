@@ -1,5 +1,11 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { bookingSheet, chooseItem, importAndClose, login } from "./helpers";
+import {
+  bookingSheet,
+  chooseItem,
+  chooseOrderOrigin,
+  importAndClose,
+  login,
+} from "./helpers";
 
 /*
  * Um gerador só no portal (dono, 14/11/2026): o bloco "Programação de
@@ -18,10 +24,11 @@ async function snapshot(scope: Locator) {
   const gen = scope.locator("[data-rounds-generator]");
   const text = (sel: string) => gen.locator(sel).innerText();
   return {
-    item: await text('[data-generate-item="ok"]'),
-    result: await text("[data-generate-result]"),
-    each: await text("[data-generate-each]"),
-    containers: await text("[data-generate-containers]"),
+    // "Resultado da programação" (dono, 15/11/2026): a capacidade, cada
+    // programação e o total (a caixa inner e o peso são de cada cadastro).
+    capacity: await text('[data-generate-field="capacity"]'),
+    perRoundGroup: await text('[data-generate-group="per-round"]'),
+    totalGroup: await text('[data-generate-group="total"]'),
     perRound: await text("[data-generate-per-round]"),
     total: await text("[data-generate-total-containers]"),
     pieces: await scope
@@ -84,7 +91,8 @@ test("Programação de compra: a mesma entrada nas duas telas e 13 datas gravada
     "150 caixas × 48 peças por caixa = 7.200 peças",
     "150 caixas × 48 peças por caixa = 7.200 peças",
   ]);
-  expect(selection.result).toContain("300 caixas (14.400 peças)");
+  expect(selection.totalGroup).toContain("300");
+  expect(selection.totalGroup).toContain("14.400");
   expect(selection.perRound).toBe("1");
   expect(selection.total).toBe("2");
   expect(selection.status).toEqual([
@@ -94,6 +102,9 @@ test("Programação de compra: a mesma entrada nas duas telas e 13 datas gravada
 
   // 2. Nova solicitação: a boneca do cadastro e a mesma entrada dão o mesmo.
   await page.goto("/app/requests/new");
+  // Venda ao cliente pela Wellmix: país e grupo antes do produto
+  // (docs/ORDER_TERMS.md).
+  await chooseOrderOrigin(page);
   const line = page.locator('[data-request-item="0"]');
   const picker = line.locator('[data-product-picker="catalog"]');
   await picker.locator("[data-product-picker-input]").fill("boneca");

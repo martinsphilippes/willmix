@@ -11,6 +11,7 @@
  */
 
 import type { FreightTariffData } from "@/lib/services/freight-tariff-calc";
+import type { CustomerContacts, OrderTerms } from "@/lib/order-terms";
 import type {
   ChargeNotices,
   CustomerCharge,
@@ -809,6 +810,15 @@ export interface Party extends BaseRow {
    * depois, mesmo as que o portal não tem como campo.
    */
   sankhyaRefs?: Record<string, string | number> | null;
+  /**
+   * Cliente: contatos por área (sócio, comprador, financeiro e fiscal,
+   * logística), cada um com telefone e e-mail, atualizados pelo vendedor na
+   * Nova solicitação (docs/ORDER_TERMS.md). Nulo = nunca atualizados pelo
+   * portal (a tela pede às cegas).
+   */
+  customerContacts?: CustomerContacts | null;
+  customerContactsUpdatedAt?: string | null;
+  customerContactsUpdatedByUserId?: string | null;
 }
 
 export interface RequirementTemplate {
@@ -994,6 +1004,12 @@ export interface Request extends BaseRow {
   desiredAt?: string | null;
   /** Estratégia de compra em que a demanda está (docs/PURCHASE_DEMAND.md). */
   purchaseDecisionId?: string | null;
+  /**
+   * Condições do pedido escolhidas na Nova solicitação (docs/ORDER_TERMS.md):
+   * tipo de operação, formato de venda, entrega, país e grupo. As mesmas em
+   * todo o lote. Nulo nas antigas, na compra para estoque e na do cliente.
+   */
+  orderTerms?: OrderTerms | null;
 }
 
 export interface Order extends BaseRow {
@@ -3816,6 +3832,9 @@ export const TABLES: Record<TableName, TableDef> = {
       stateRegistration: str(30),
       personType: str(2),
       sankhyaRefs: json(),
+      customerContacts: json(),
+      customerContactsUpdatedAt: datetime(),
+      customerContactsUpdatedByUserId: id(false),
     },
     indexes: [
       { key: "by_type", type: "key", columns: ["type"] },
@@ -3927,6 +3946,7 @@ export const TABLES: Record<TableName, TableDef> = {
       channel: enumOf(DEMAND_CHANNELS, false),
       desiredAt: datetime(),
       purchaseDecisionId: id(false),
+      orderTerms: json(),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },

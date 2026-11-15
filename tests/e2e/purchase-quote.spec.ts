@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { createTeamLogin, login } from "./helpers";
+import { createTeamLogin, grantTeamScreen, login } from "./helpers";
 
 /*
  * Cotação de compra (mapa B13; dono, 15/11/2026; docs/PURCHASE_DEMAND.md):
@@ -136,14 +136,19 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   const bornRequest = page.url();
 
   // Sem "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md,
-  // seção 7): um login só de Planejamento vê o quadro com os fornecedores,
-  // a situação e as condições, sem preços, total nem a última compra; a
-  // solicitação que nasceu também sem o preço cotado.
+  // seção 7): um login de Cadastro com a tela de cotações liberada à mão
+  // (sem a permissão) vê o quadro com os fornecedores, a situação e as
+  // condições, sem preços, total nem a última compra; a solicitação que
+  // nasceu também sem o preço cotado.
   await login(page, "admin@wellmix.com");
-  const plannerEmail = `planejamento.${quoteId}@wellmix.com`;
-  await createTeamLogin(page, "Planejamento cotação", plannerEmail, [
-    "planner",
-  ]);
+  const plannerEmail = `cadastro.${quoteId}@wellmix.com`;
+  const plannerId = await createTeamLogin(
+    page,
+    "Cadastro cotação",
+    plannerEmail,
+    ["catalog"],
+  );
+  await grantTeamScreen(page, plannerId, "Cadastro cotação", "quotes");
   await login(page, plannerEmail);
   await page.goto(`/app/purchase-quotes/${quoteId}`);
   await expect(page.locator("[data-quote-response]").first()).toBeVisible();

@@ -126,8 +126,10 @@ export function isOrderSupplier(user: User, order: Pick<Order, "supplierId">) {
 }
 
 /**
- * A Wellmix, o fornecedor do pedido e a certificadora do pedido (ela só lê:
- * vê tudo do pedido para gerar o selo). O documento tem o preço de compra.
+ * A Wellmix, o fornecedor do pedido e o despachante do pedido (só lê). O
+ * documento tem o preço de compra: a certificadora (OCP) não abre (dono,
+ * 15/11/2026; docs/LINHA_DE_VISAO.md, seção 7); para o selo ela usa a ficha
+ * de compra e os documentos de certificação, sem o preço.
  */
 export function canViewOrderDocument(
   user: User,
@@ -135,8 +137,8 @@ export function canViewOrderDocument(
 ): boolean {
   if (isWellmix(user)) return true;
   if (isOrderSupplier(user, order)) return true;
-  // Quem certifica: o despachante do pedido ou a certificadora.
-  return isOrderCertifier(user, order);
+  // O despachante do pedido (quem certifica do lado dele); a OCP, não.
+  return user.role === "broker" && isOrderCertifier(user, order);
 }
 
 export async function buildOrderDocument(order: Order): Promise<OrderDocument> {

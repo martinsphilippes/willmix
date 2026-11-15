@@ -4,7 +4,7 @@ Pedido do dono (11/11/2026): administrar, em Cadastros → Outros parceiros, que
 
 ## Onde
 
-`/app/parties/access`: desde 14/11/2026 é a aba **Acessos externos** de Cadastros → Parceiros (ao lado de Cadastros e Tipos de parceiro; antes era o botão **Gestão de telas** em Outros parceiros). "Configurar telas" em cada tipo e no quadro de acesso do parceiro abre a aba já no perfil. Só o administrador (a aba nem aparece para os outros logins).
+`/app/parties/access`: desde 14/11/2026 é a aba **Acessos externos** de Parceiros (ao lado de Cadastros e Tipos de parceiro; desde 15/11/2026 Parceiros é uma seção de Equipe Acessos e Parceiros, no mesmo endereço; antes era o botão **Gestão de telas** em Outros parceiros). "Configurar telas" em cada tipo e no quadro de acesso do parceiro abre a aba já no perfil. Só o administrador (a aba nem aparece para os outros logins).
 
 ### Como a aba está organizada (dono, 14/11/2026)
 

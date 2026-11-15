@@ -89,6 +89,17 @@ export async function requestProductFills(
         (erp?.masterBoxQty === masterCartonQty ? positive(erp?.cbm) : null),
     };
   };
+  /**
+   * Caixa inner e peso líquido por peça (kg) para o "Resultado da
+   * programação": cadastro, senão ficha mestre.
+   */
+  const packOf = (p: Product) => {
+    const sheet = sheetOf.get(p.id);
+    return {
+      innerBoxQty: positive(p.innerBoxQty) ?? positive(sheet?.innerQty),
+      netWeightKg: positive(p.netWeightKg) ?? positive(sheet?.netWeightPcKg),
+    };
+  };
   const specLabels = productSpecLabels(t);
   // Estoque: o cliente vê só "em estoque"; quantidades ficam para a Wellmix.
   const qty = (n: number) => n.toLocaleString(t.intl);
@@ -109,6 +120,7 @@ export async function requestProductFills(
     stock: stockFor(p.id),
     moq: effectiveMoq(null, sheetMoq.get(p.id), p.moq),
     ...cartonOf(p),
+    ...packOf(p),
     lastPurchase: lastPurchase.get(p.id) ?? null,
     // Cada variação com o próprio mínimo (variação > ficha mestre > cadastro),
     // a especificação montada com os dados dela e a foto (sem preço nem fornecedor).
@@ -121,6 +133,8 @@ export async function requestProductFills(
           ? v.masterBoxQty
           : cartonOf(p).masterCartonQty,
       cbmPerCarton: v.cbm && v.cbm > 0 ? v.cbm : cartonOf(p).cbmPerCarton,
+      innerBoxQty: positive(v.innerBoxQty) ?? packOf(p).innerBoxQty,
+      netWeightKg: positive(v.netWeightKg) ?? packOf(p).netWeightKg,
       specification: variantSpecificationText(t, p, v, specLabels),
       photoDocumentId: v.photoDocumentId,
     })),

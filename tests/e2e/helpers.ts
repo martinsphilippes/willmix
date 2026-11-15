@@ -58,6 +58,33 @@ export async function createTeamLogin(
 }
 
 /**
+ * Libera uma tela a mais para a pessoa (Equipe → Editar acessos →
+ * Personalizado), sem mexer nas funções nem nas ações dela. Precisa estar
+ * logado como administrador.
+ */
+export async function grantTeamScreen(
+  page: Page,
+  id: string,
+  name: string,
+  screen: string,
+) {
+  await page.goto("/app/team");
+  // Com a busca da tabela à vista (lista longa), filtra pela pessoa.
+  const search = page.locator("[data-table-search]").first();
+  if (await search.count()) await search.fill(name);
+  await page.locator(`[data-team-edit="${id}"]`).click();
+  const drawer = page.locator(`[data-team-drawer-panel="${id}"]`);
+  await expect(drawer).toBeVisible();
+  await drawer.locator('[data-team-screens-mode="custom"]').check();
+  const panel = drawer.locator("[data-team-screens-panel]");
+  const closed = panel.locator('[data-perm-section][aria-expanded="false"]');
+  while ((await closed.count()) > 0) await closed.first().click();
+  await drawer.locator(`[data-team-screen="${screen}"]`).check();
+  await drawer.locator("[data-team-save]").click();
+  await expect(page.locator("[data-team-saved-toast]")).toContainText(name);
+}
+
+/**
  * Câmbio manual em Configurações (Wellmix). As contas do Superplan (custo por
  * peça, simulação da proposta) precisam de câmbio, e o do dia vem de sites
  * públicos que nem todo ambiente de teste alcança (rede restrita). Com a
@@ -472,5 +499,82 @@ export async function approveMilestoneRows(
     await page.waitForLoadState("networkidle");
     // A última aprovação pode concluir a etapa (a linha some com ela).
     expect(page.url()).not.toContain("error=");
+  }
+}
+
+/**
+ * País de origem e grupo de produto da Nova solicitação (Wellmix vendendo ao
+ * cliente; docs/ORDER_TERMS.md): a busca de produto só abre depois deles.
+ */
+export async function chooseOrderOrigin(
+  page: Page,
+  country = "CHINA",
+  lineId = "linha-brinquedos",
+) {
+  const terms = page.locator("[data-order-terms]");
+  const countrySelect = terms.locator("[data-order-terms-country]");
+  await expect(
+    countrySelect.locator(`option[value="${country}"]`),
+  ).toBeAttached();
+  await countrySelect.selectOption(country);
+  const groupSelect = terms.locator("[data-order-terms-group]");
+  await expect(groupSelect.locator(`option[value="${lineId}"]`)).toBeAttached();
+  await groupSelect.selectOption(lineId);
+}
+
+/** Tipo de operação, formato de venda (e o nível, no Wellmix), país e grupo. */
+export async function fillOrderTerms(
+  page: Page,
+  options: {
+    operation?: "ts" | "sale";
+    format?: "wd" | "wellmix";
+    tier?: string;
+    country?: string;
+    lineId?: string;
+  } = {},
+) {
+  const terms = page.locator("[data-order-terms]");
+  await terms
+    .locator(
+      `[data-order-terms-operation-option="${options.operation ?? "sale"}"]`,
+    )
+    .check();
+  await terms
+    .locator(`[data-order-terms-format-option="${options.format ?? "wd"}"]`)
+    .check();
+  if ((options.format ?? "wd") === "wellmix")
+    await terms
+      .locator("[data-order-terms-tier]")
+      .selectOption(options.tier ?? "pleno");
+  // Ao menos o transportador e o "Li e concordo" do aviso (obrigatórios).
+  await terms
+    .locator("[data-order-terms-carrier]")
+    .selectOption("portal:transportador");
+  await terms.locator("[data-order-terms-accept]").check();
+  await chooseOrderOrigin(page, options.country, options.lineId);
+}
+
+/** Os contatos do cliente (bloco "Cliente"), quando o portal os pede. */
+export async function fillCustomerContacts(page: Page, prefix = "cliente") {
+  const block = page.locator("[data-customer-contacts]");
+  await expect(block).toHaveAttribute(
+    "data-customer-contacts",
+    /^(blind|known|edit)$/,
+  );
+  // Já atualizados pelo portal: "Editar" abre os campos.
+  if ((await block.getAttribute("data-customer-contacts")) === "known")
+    await block.locator("[data-customer-contacts-edit]").click();
+  for (const [i, role] of [
+    "partner",
+    "buyer",
+    "finance",
+    "logistics",
+  ].entries()) {
+    await block
+      .locator(`input[name="contact.${role}.phone"]`)
+      .fill(`(47) 99999-000${i + 1}`);
+    await block
+      .locator(`input[name="contact.${role}.email"]`)
+      .fill(`${role}@${prefix}.com`);
   }
 }

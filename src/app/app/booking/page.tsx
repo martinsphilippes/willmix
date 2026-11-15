@@ -1,4 +1,5 @@
 import { isWellmix } from "@/lib/auth/permissions";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { PartnerBookingList } from "./_components/partner-booking";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -44,6 +45,9 @@ export default async function BookingLotsPage({
       />
     );
   const entries = await listBookingLots(user);
+  // Sinais do Superplan: só com "Ver preço de compra" (dono, 15/11/2026);
+  // sem ela as contagens nem vão ao navegador.
+  const seesPrice = canSeePurchasePrice(user);
   const statusLabel = (s: string) =>
     t(`bookingLots.status.${s}` as DictionaryKey);
   const rows: BookingLotRow[] = (entries ?? []).map((e) => ({
@@ -58,10 +62,10 @@ export default async function BookingLotsPage({
     fileName: e.lot.fileName,
     itemCount: e.lot.itemCount,
     pendingItems: e.pendingItems,
-    viable: e.signals.viable,
-    below: e.signals.below,
-    loss: e.signals.loss,
-    missing: e.signals.missing,
+    viable: seesPrice ? e.signals.viable : 0,
+    below: seesPrice ? e.signals.below : 0,
+    loss: seesPrice ? e.signals.loss : 0,
+    missing: seesPrice ? e.signals.missing : 0,
     owner: e.owner?.name ?? "",
     createdAt: e.lot.createdAt,
     createdText: formatDate(e.lot.createdAt, t),
@@ -105,6 +109,7 @@ export default async function BookingLotsPage({
         {rows.length ? (
           <BookingLotsTable
             rows={rows}
+            showSignals={seesPrice}
             labels={{
               search: t("bookingLots.search"),
               searchPlaceholder: t("bookingLots.searchPlaceholder"),

@@ -161,6 +161,17 @@ describe("entrega", () => {
     expect((await rec.qualityTasks(quality)).map((o) => o.id)).toContain(
       order.id,
     );
+    // Menu: a pendência da qualidade conta na Entrega → Armazenagem.
+    {
+      const { pendingTasksFor } = await import("@/lib/services/tasks");
+      const { flowStepsOf } = await import("@/lib/flow");
+      const task = (await pendingTasksFor(quality)).find(
+        (x) => x.kind === "quality_check" && x.orderNumber === order.number,
+      )!;
+      expect(flowStepsOf(task)).toEqual([
+        expect.objectContaining({ block: "delivery", key: "storage" }),
+      ]);
+    }
     await expect(rec.concludeQuality(quality, order.id, null)).rejects.toThrow(
       "quality_counts_required",
     );

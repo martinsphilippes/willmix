@@ -178,12 +178,15 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
     case "approve.purchasingDirector":
       return ["purchasing_director"];
     // Preço de compra (dono, 15/11/2026; docs/LINHA_DE_VISAO.md): quem
-    // compra e negocia, as diretorias e o Financeiro (paga o fornecedor e
-    // confere a invoice). O administrador muda em Funções e acessos.
+    // compra e negocia, o Planejamento (decide a solicitação ao fornecedor e
+    // gera o pedido de compra; dono, 15/11/2026), as diretorias e o
+    // Financeiro (paga o fornecedor e confere a invoice). O administrador
+    // muda em Funções e acessos.
     case "purchasePrice.view":
       return [
         "buyer",
         "product_manager",
+        "planner",
         "purchasing_director",
         "executive_director",
         "finance",

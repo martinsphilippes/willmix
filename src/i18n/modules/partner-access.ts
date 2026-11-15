@@ -46,7 +46,7 @@ export const pt = {
   "partnerAccess.source.manual": "Liberada à mão",
   "partnerAccess.source.copy": "Cópia de {from}",
   "partnerAccess.internalHint":
-    "Telas internas da Wellmix mostram dados de todos os parceiros e ainda não podem ser liberadas a um login externo. As telas da equipe são configuradas em Gestão → Equipe → Funções e acessos.",
+    "Telas internas da Wellmix mostram dados de todos os parceiros e ainda não podem ser liberadas a um login externo. As telas da equipe são configuradas em Equipe Acessos e Parceiros → Funções e acessos.",
   "partnerAccess.dataHint":
     "Liberar uma tela não muda os dados: cada login continua vendo só os registros da própria empresa.",
   "partnerAccess.filter.search": "Buscar tela",
@@ -64,7 +64,7 @@ export const pt = {
   "partnerAccess.saved.reset": "O perfil voltou ao padrão de fábrica.",
   "partnerAccess.screen.pick": "Tela",
   "partnerAccess.screen.wellmix":
-    "Equipe Wellmix: pelas funções de cada login (Gestão → Equipe → Funções e acessos). O administrador abre todas.",
+    "Equipe Wellmix: pelas funções de cada login (Equipe Acessos e Parceiros → Funções e acessos). O administrador abre todas.",
   "partnerAccess.copy.from": "Origem",
   "partnerAccess.copy.to": "Destino",
   "partnerAccess.copy.screens": "Telas a copiar",
@@ -222,7 +222,7 @@ export const en: typeof pt = {
   "partnerAccess.source.manual": "Granted by hand",
   "partnerAccess.source.copy": "Copied from {from}",
   "partnerAccess.internalHint":
-    "Wellmix internal screens show data of every partner and cannot be granted to an external login yet. Team screens are set in Management → Team → Functions and access.",
+    "Wellmix internal screens show data of every partner and cannot be granted to an external login yet. Team screens are set in Team, Access and Partners → Functions and access.",
   "partnerAccess.dataHint":
     "Granting a screen does not change the data: each login still sees only its own company's records.",
   "partnerAccess.filter.search": "Search screen",
@@ -240,7 +240,7 @@ export const en: typeof pt = {
   "partnerAccess.saved.reset": "The profile is back to the built-in default.",
   "partnerAccess.screen.pick": "Screen",
   "partnerAccess.screen.wellmix":
-    "Wellmix team: by each login's functions (Management → Team → Functions and access). The administrator opens all.",
+    "Wellmix team: by each login's functions (Team, Access and Partners → Functions and access). The administrator opens all.",
   "partnerAccess.copy.from": "Source",
   "partnerAccess.copy.to": "Destination",
   "partnerAccess.copy.screens": "Screens to copy",
@@ -399,7 +399,7 @@ export const zh: typeof pt = {
   "partnerAccess.source.manual": "手动开放",
   "partnerAccess.source.copy": "复制自 {from}",
   "partnerAccess.internalHint":
-    "Wellmix 内部页面会显示所有合作方的数据，暂不能开放给外部登录。团队页面在“管理 → 团队 → 职能与权限”中设置。",
+    "Wellmix 内部页面会显示所有合作方的数据，暂不能开放给外部登录。团队页面在“团队、权限与合作伙伴 → 职能与权限”中设置。",
   "partnerAccess.dataHint":
     "开放页面不会改变数据范围：每个登录仍只能看到本公司的记录。",
   "partnerAccess.filter.search": "搜索页面",
@@ -417,7 +417,7 @@ export const zh: typeof pt = {
   "partnerAccess.saved.reset": "该权限组已恢复系统默认。",
   "partnerAccess.screen.pick": "页面",
   "partnerAccess.screen.wellmix":
-    "Wellmix 团队：按每个登录的职能（管理 → 团队 → 职能与权限）。管理员可打开全部。",
+    "Wellmix 团队：按每个登录的职能（团队、权限与合作伙伴 → 职能与权限）。管理员可打开全部。",
   "partnerAccess.copy.from": "来源",
   "partnerAccess.copy.to": "目标",
   "partnerAccess.copy.screens": "要复制的页面",
