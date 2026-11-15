@@ -61,6 +61,7 @@ A seção fica em `/app/orders/<id>#customer-payment`, logo abaixo de "Venda ao 
   - Os títulos vão para as parcelas que têm valor, na ordem.
   - De cada título o portal lê: NUFIN, vencimento (DTVENC), valor (VLRDESDOB), nosso número (NOSSONUM), linha digitável (LINHADIGITAVEL, CODIGOBARRA ou CODBARRA, o que existir) e a baixa (DHBAIXA = pago).
   - Buscar de novo atualiza os títulos e mantém o PDF registrado à mão quando o título é o mesmo.
+- **Busca diária** (dono, 15/11/2026): o job de lembretes (`syncAllSankhyaCharges`) faz a mesma busca todo dia para cada pedido com forma aprovada e o NUNOTA da venda, antes do aviso de "gerar o boleto" e da trava. O boleto pago no Sankhya destrava o pedido no mesmo dia. Pula o pedido com todas as parcelas pagas; sem o Sankhya configurado, não faz nada; o erro de um pedido não impede os outros.
 - **Registrar à mão** (financeiro), para cada parcela: vencimento, valor, linha digitável, nosso número, o PDF do boleto (visível ao cliente) e "Pago".
 - **Cobrar o cliente**: o vendedor, o financeiro ou quem grava a venda envia ao login do cliente que pediu um aviso com o vencimento e a linha digitável. A seção mostra a data da última cobrança.
 - **Cliente**: vê a linha digitável, o nosso número, o valor, o PDF e se está pago.
@@ -68,7 +69,7 @@ A seção fica em `/app/orders/<id>#customer-payment`, logo abaixo de "Venda ao 
 ## 3b. Parcela em aberto trava o pedido (dono, 15/11/2026)
 
 - **Trava**: uma parcela com valor, vencida (o vencimento chegou) e sem pagamento pausa o pedido (`orders.pausedAt`, motivo `payment_open`). É a mesma pausa do canal cinza ou vermelho (docs/DELIVERY.md): nada anda no pedido enquanto ele está pausado. A parcela "no pedido" vence no dia em que a forma passa a valer, então trava na hora até o pagamento.
-- **Quando é conferido**: ao escolher ou aprovar a forma, ao buscar os boletos no Sankhya, ao registrar o boleto à mão e todo dia no job de lembretes (que pega os eventos do pedido, como o embarque).
+- **Quando é conferido**: ao escolher ou aprovar a forma, ao buscar os boletos no Sankhya (no botão ou na busca diária), ao registrar o boleto à mão e todo dia no job de lembretes (que pega os eventos do pedido, como o embarque).
 - **Avisos**: o administrador, o financeiro e o vendedor recebem "Pedido #n travado: parcela em aberto".
 - **Destravar**:
   - **O pagamento entra** (baixa do título no Sankhya ou "Pago" no registro à mão): a trava sai sozinha.
