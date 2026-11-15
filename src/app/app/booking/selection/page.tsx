@@ -700,6 +700,14 @@ export default async function BookingSelectionPage({
                     ),
                   sheetQty: sheetQuantity(item),
                   colors: colorsOf(item.colorAssortment),
+                  // "Resultado da programação" (dono, 15/11/2026): a caixa
+                  // inner e o peso líquido do Book, que é por peça (kg).
+                  innerQty: item.innerQty,
+                  netWeight: {
+                    value: item.netWeightPcKg,
+                    unit: "kg",
+                    basis: "piece" as const,
+                  },
                 }))}
                 savedColors={current?.colorPlan?.included ?? null}
                 colorLabels={{

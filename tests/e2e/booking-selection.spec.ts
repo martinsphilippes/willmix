@@ -455,11 +455,14 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(page.locator("[data-schedule-item]")).toHaveCount(3);
   await expect(qty(1)).toHaveValue("20016");
   await expect(qty(3)).toHaveValue("19968");
-  // O cálculo escrito: caixas, m³ e containers do total, a ocupação das
-  // rodadas e quantos containers no total.
+  // "Resultado da programação" (dono, 15/11/2026): no total, as caixas e a
+  // ocupação equivalente (1.250 ÷ 566 caixas por 40HC = 2,21 → 221%); os
+  // containers no total ficam no campo de cima.
   await expect(calc.locator("[data-generate-result]")).toContainText("1.250");
-  await expect(calc.locator("[data-generate-result]")).toContainText("2,21");
-  await expect(calc.locator("[data-generate-containers]")).toContainText("3");
+  await expect(calc.locator("[data-generate-result]")).toContainText(
+    "221% de 1 × 40HC",
+  );
+  await expect(gen.locator("[data-generate-total-containers]")).toHaveText("3");
   // Cada rodada diz quantos containers ocupa e traz os DOIS ajustes: sem
   // container cheio abaixo, o de diminuir aparece desligado.
   await expect(card(1).locator("[data-round-fill]")).toHaveAttribute(
