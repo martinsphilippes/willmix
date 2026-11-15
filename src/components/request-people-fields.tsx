@@ -23,6 +23,9 @@ export interface RequestPeopleLabels {
   accessPick: string;
   accessNoLogins: string;
   accessStock: string;
+  /** Venda ao cliente: o login é obrigatório (é ele quem confirma). */
+  accessRequired?: string;
+  accessChoose?: string;
 }
 
 export interface CustomerLogin {
@@ -54,10 +57,19 @@ export function RequestPeopleFields({
   requesterName,
   loginsByCustomer,
   labels,
+  loginRequired = false,
+  initialLogin = "",
 }: {
   requesterName: string;
   loginsByCustomer: Record<string, CustomerLogin[]>;
   labels: RequestPeopleLabels;
+  /**
+   * Venda ao cliente (dono, 15/11/2026; docs/ORDER_TERMS.md): o login do
+   * cliente com acesso é obrigatório (é ele quem confirma o pedido).
+   */
+  loginRequired?: boolean;
+  /** Login já escolhido (rascunho). */
+  initialLogin?: string;
 }) {
   const shared = useRequestCustomer();
   const stock = !!shared?.stock;
@@ -120,7 +132,9 @@ export function RequestPeopleFields({
       ? labels.accessPick
       : !logins.length
         ? labels.accessNoLogins
-        : labels.accessHint;
+        : loginRequired && labels.accessRequired
+          ? labels.accessRequired
+          : labels.accessHint;
 
   return (
     <>
@@ -128,7 +142,10 @@ export function RequestPeopleFields({
         <Select
           key={customerId ?? (stock ? "stock" : "none")}
           name="requestedForUserId"
-          defaultValue=""
+          defaultValue={
+            logins.some((u) => u.id === initialLogin) ? initialLogin : ""
+          }
+          required={loginRequired && !stock}
           disabled={!customerId || !logins.length}
           data-request-access
           data-request-access-state={
@@ -141,7 +158,11 @@ export function RequestPeopleFields({
                   : "none"
           }
         >
-          <option value="">{labels.accessNone}</option>
+          <option value="" disabled={loginRequired}>
+            {loginRequired && labels.accessChoose
+              ? labels.accessChoose
+              : labels.accessNone}
+          </option>
           {logins.map((u) => (
             <option key={u.id} value={u.id}>
               {u.name} ({u.email})

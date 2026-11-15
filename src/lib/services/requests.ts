@@ -467,7 +467,9 @@ export async function createRequest(
     quantity: input.quantity,
     unit: input.unit,
     deadline,
-    status: "REQUESTED",
+    // Venda ao cliente pela Wellmix (docs/ORDER_TERMS.md): espera o cliente
+    // confirmar (aviso "sem devoluções") antes de entrar na fila da Wellmix.
+    status: input.orderTerms ? "AWAITING_CUSTOMER" : "REQUESTED",
     orderId: null,
     sellPrice: null,
     sellCurrency: null,
@@ -519,6 +521,23 @@ export async function createRequest(
           : "Solicitação"
     }: ${request.productName}`,
   );
+  if (request.status === "AWAITING_CUSTOMER") {
+    // O cliente confirma o pedido no portal; a Wellmix só recebe depois.
+    await notifyCustomerToConfirm(request);
+    return request;
+  }
+  await releaseRequest(user, request);
+  return request;
+}
+
+/**
+ * O que acontece quando a solicitação entra na fila da Wellmix: o item de
+ * Sourcing (produto fora do catálogo) e o aviso. Na criação, ou na
+ * confirmação do cliente (venda pela Wellmix; docs/ORDER_TERMS.md).
+ */
+export async function releaseRequest(user: User, request: Request) {
+  const store = getStore();
+  const stock = isStockCustomer(request.customerId);
   // Sourcing sob demanda: produto ainda não catalogado vira item de sourcing para o time na China.
   // Sourcing em espera (decisão do dono): a solicitação nasce igual, mas não
   // abre item de Sourcing nem o aviso "Sourcing sob demanda".
@@ -589,7 +608,21 @@ export async function createRequest(
     body: `${request.quantity.toLocaleString("pt-BR")} ${request.unit}.`,
     link: `/app/requests/${request.id}`,
   });
-  return request;
+}
+
+/** Avisa o login do cliente que há um pedido para ele confirmar. */
+async function notifyCustomerToConfirm(request: Request) {
+  if (!request.requestedForUserId) return;
+  const { notify } = await import("./notifications");
+  await notify(
+    { userIds: [request.requestedForUserId] },
+    {
+      kind: "action",
+      subject: `Confirme o pedido${request.number ? ` nº ${request.number}` : ""}: ${request.productName}`,
+      body: "A Wellmix lançou um pedido para você. Leia o aviso e confirme no portal.",
+      link: `/app/requests/${request.id}`,
+    },
+  ).catch((error) => console.error("[requests] aviso ao cliente", error));
 }
 
 /**

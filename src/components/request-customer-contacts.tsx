@@ -57,16 +57,23 @@ export function RequestCustomerContacts({
   formId,
   labels,
   className,
+  initialValues = {},
 }: {
   formId: string;
   labels: RequestCustomerContactsLabels;
   className?: string;
+  /** Contatos já digitados (rascunho): `contact.<área>.<campo>` → valor. */
+  initialValues?: Record<string, string>;
 }) {
   const shared = useRequestCustomer();
   const stock = !!shared?.stock;
   const customerId = stock ? null : (shared?.customer?.id ?? null);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [editingFor, setEditingFor] = useState<string | null>(null);
+  const fromDraft = Object.values(initialValues).some((v) => v.trim());
+  // Rascunho com contatos digitados: abre já editando (o cliente da época).
+  const [editingFor, setEditingFor] = useState<string | null>(() =>
+    fromDraft ? (shared?.customer?.id ?? null) : null,
+  );
 
   useEffect(() => {
     if (!customerId) return;
@@ -151,7 +158,8 @@ export function RequestCustomerContacts({
                       required
                       maxLength={40}
                       defaultValue={
-                        state === "edit" ? known?.contacts[role].phone : ""
+                        initialValues[`contact.${role}.phone`] ??
+                        (state === "edit" ? known?.contacts[role].phone : "")
                       }
                     />
                   </Field>
@@ -165,7 +173,8 @@ export function RequestCustomerContacts({
                       required
                       maxLength={160}
                       defaultValue={
-                        state === "edit" ? known?.contacts[role].email : ""
+                        initialValues[`contact.${role}.email`] ??
+                        (state === "edit" ? known?.contacts[role].email : "")
                       }
                     />
                   </Field>

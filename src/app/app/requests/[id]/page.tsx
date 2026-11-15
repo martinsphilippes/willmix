@@ -13,6 +13,10 @@ import {
 import { hasFiscalTable } from "@/lib/services/fiscal";
 import { RequestNcmCard } from "@/components/request-ncm-card";
 import { RequestOrderTermsView } from "@/components/request-order-terms-view";
+import { CustomerOrderConfirm } from "@/components/customer-order-confirm";
+import { customerConfirmLabels } from "@/components/order-terms-labels";
+import { canConfirm } from "@/lib/services/customer-confirmation";
+import { confirmCustomerOrderAction } from "../../actions/customer-confirmation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import {
@@ -64,6 +68,7 @@ export default async function RequestDetailPage({
     fromCart,
     sale,
     ficha,
+    confirmed,
   } = await searchParams;
   const request = await getRequestForUser(user, id);
   if (!request) notFound();
@@ -325,6 +330,25 @@ export default async function RequestDetailPage({
       />
       {saved === "requester" ? (
         <Alert tone="success">{t("access.requesterSaved")}</Alert>
+      ) : null}
+      {/* Confirmação do pedido pelo cliente (dono, 15/11/2026;
+          docs/ORDER_TERMS.md seção 4). */}
+      {confirmed === "1" ? (
+        <Alert tone="success">{t("customerConfirm.done")}</Alert>
+      ) : null}
+      {canConfirm(user, request) ? (
+        <div className="mt-4">
+          <CustomerOrderConfirm
+            requestId={request.id}
+            redispatchRequired={!!request.orderTerms?.redispatchRequired}
+            action={confirmCustomerOrderAction}
+            labels={customerConfirmLabels(t)}
+          />
+        </div>
+      ) : request.status === "AWAITING_CUSTOMER" && wellmix ? (
+        <div className="mt-4" data-request-awaiting-customer>
+          <Alert tone="warning">{t("customerConfirm.awaitingWellmix")}</Alert>
+        </div>
       ) : null}
 
       {/* Solicitações: uma linha por produto e a ficha completa de cada um,

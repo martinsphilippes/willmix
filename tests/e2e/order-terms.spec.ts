@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
-  chooseOrderOrigin,
+  chooseCustomerLogin,
+  confirmAsCustomer,
   fillCustomerContacts,
   fillOrderTerms,
   login,
@@ -9,9 +10,11 @@ import {
 /*
  * Nova solicitação da Wellmix para o cliente (dono, 15/11/2026;
  * docs/ORDER_TERMS.md): o bloco do cliente no lugar da busca por foto ou
- * link (contatos às cegas na primeira vez; depois, com "Editar"), as
- * condições do pedido (tipo de operação, formato de venda, entrega, país >
- * grupo) e o aviso de que não há devoluções.
+ * link (contatos às cegas na primeira vez), as condições do pedido (só TS;
+ * re-despacho Sim/Não; país > família), o login do cliente obrigatório, o
+ * rascunho, a composição de containers e a confirmação do pedido pelo
+ * cliente (aviso "sem devoluções" e o CNPJ da transportadora do
+ * re-despacho).
  */
 
 async function chooseCustomer(page: Page, text: string, id: string) {
@@ -36,48 +39,70 @@ async function pickDoll(page: Page) {
 async function send(page: Page) {
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
   await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+$/);
+  return new URL(page.url()).pathname.split("/").pop()!;
 }
 
-test("Nova solicitação (Wellmix): bloco do cliente, condições do pedido e aviso", async ({
+test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmação do cliente", async ({
   page,
 }) => {
   await login(page, "admin@wellmix.com");
-  // Um cliente novo (sem contatos atualizados pelo portal).
+  // Um cliente novo (sem contatos pelo portal e sem login).
   const tag = Date.now().toString(36);
   await page.goto("/app/parties/new?type=customer");
   await page.fill('input[name="name"]', `Mercado ${tag}`);
   await page.getByRole("button", { name: "Salvar" }).first().click();
   await page.waitForURL(/\/app\/parties\/[^/?]+$/);
-  const customerId = new URL(page.url()).pathname.split("/").pop()!;
+  const newCustomer = new URL(page.url()).pathname.split("/").pop()!;
 
   await page.goto("/app/requests/new");
   // O bloco do cliente no lugar da busca por foto ou link.
   await expect(page.locator("input[name=url]")).toHaveCount(0);
   const contacts = page.locator("[data-customer-contacts]");
   await expect(contacts).toHaveAttribute("data-customer-contacts", "pick");
-  // Aviso de que não há devoluções, bem visível.
-  await expect(page.locator("[data-order-terms-disclaimer]")).toContainText(
-    "não há devoluções previstas para esta operação",
-  );
-  // Sem país e grupo, a busca de produto espera.
+  // Só TS; Venda desabilitada. O aviso agora é do cliente.
+  const terms = page.locator("[data-order-terms]");
+  await expect(
+    terms.locator('[data-order-terms-operation-option="ts"]'),
+  ).toBeChecked();
+  await expect(
+    terms.locator('[data-order-terms-operation-option="sale"]'),
+  ).toBeDisabled();
+  await expect(page.locator("[data-order-terms-confirm-note]")).toBeVisible();
+  // Sem país e família, a busca de produto espera.
   await expect(page.locator("[data-request-origin-missing]")).toBeVisible();
 
   // Cliente sem contatos pelo portal: às cegas (campos vazios).
-  await chooseCustomer(page, tag, customerId);
+  await chooseCustomer(page, tag, newCustomer);
   await expect(contacts).toHaveAttribute("data-customer-contacts", "blind");
   await expect(
     contacts.locator('input[name="contact.partner.email"]'),
   ).toHaveValue("");
 
-  // Formato Wellmix pede o nível; o grupo vem pelo país.
-  await fillOrderTerms(page, {
-    operation: "ts",
-    format: "wellmix",
-    tier: "hiper",
-  });
-  await page
-    .locator("[data-order-terms-carrier]")
-    .selectOption("portal:transportador");
+  // Rascunho: salva como está (sem conferir) e volta igual.
+  await terms.locator('[data-order-terms-format-option="wellmix"]').check();
+  await terms.locator("[data-order-terms-tier]").selectOption("hiper");
+  await contacts
+    .locator('input[name="contact.buyer.phone"]')
+    .fill("(47) 98888-0000");
+  await page.locator("[data-request-draft-save]").click();
+  await page.waitForURL(/[?&]draftSaved=1/);
+  const draftId = new URL(page.url()).searchParams.get("draft")!;
+  await expect(page.locator(`[data-request-draft="${draftId}"]`)).toBeVisible();
+  await expect(
+    terms.locator('[data-order-terms-format-option="wellmix"]'),
+  ).toBeChecked();
+  await expect(terms.locator("[data-order-terms-tier]")).toHaveValue("hiper");
+  await expect(
+    page.locator("[data-request-customer] [data-party-picker-input]"),
+  ).toHaveValue(`Mercado ${tag}`);
+  await expect(
+    contacts.locator('input[name="contact.buyer.phone"]'),
+  ).toHaveValue("(47) 98888-0000");
+
+  // Completa para o João (login com acesso obrigatório) e envia.
+  await chooseCustomer(page, "loja", "cliente-joao");
+  await chooseCustomerLogin(page, "joao@lojista.com");
+  await fillOrderTerms(page, { format: "wd", redispatch: "yes" });
   await expect(page.locator("[data-request-origin-missing]")).toHaveCount(0);
   // Composição de containers: vazia sem produto; com a boneca, o container
   // 1 da programação 1 com a ocupação, fechado; abre para ver o produto.
@@ -94,14 +119,10 @@ test("Nova solicitação (Wellmix): bloco do cliente, condições do pedido e av
   await expect(composition.locator('[data-composition-cell="1-1"]')).toHaveText(
     /^\d+%$/,
   );
-  await expect(composition.locator("[data-composition-product]")).toHaveCount(
-    0,
-  );
   await composition.locator('[data-composition-toggle="1"]').click();
   await expect(
     composition.locator("[data-composition-product]").first(),
   ).toContainText("Boneca");
-  // A lateral (composição e histórico) acompanha a rolagem (sticky).
   expect(
     await page
       .locator("[data-request-side-sticky]")
@@ -109,7 +130,7 @@ test("Nova solicitação (Wellmix): bloco do cliente, condições do pedido e av
   ).toBe("sticky");
 
   // Contato igual ao do vendedor (o próprio login): recusado.
-  await fillCustomerContacts(page, "mercado-maria");
+  await fillCustomerContacts(page, "loja-joao");
   await contacts
     .locator('input[name="contact.buyer.email"]')
     .fill("admin@wellmix.com");
@@ -119,43 +140,51 @@ test("Nova solicitação (Wellmix): bloco do cliente, condições do pedido e av
     "não podem ser iguais aos do representante ou vendedor",
   );
 
-  // Tudo certo: grava a solicitação e os contatos.
-  await chooseCustomer(page, tag, customerId);
-  await fillOrderTerms(page, { operation: "sale", format: "wd" });
+  // Pelo rascunho de novo, tudo certo: nasce aguardando o cliente.
+  await page.goto(`/app/requests/new?draft=${draftId}`);
+  await chooseCustomer(page, "loja", "cliente-joao");
+  await chooseCustomerLogin(page, "joao@lojista.com");
+  await fillOrderTerms(page, { format: "wd", redispatch: "yes" });
   await pickDoll(page);
-  await fillCustomerContacts(page, "mercado-maria");
-  await send(page);
-  const terms = page.locator("[data-request-order-terms]");
-  await expect(terms).toContainText("Venda");
-  await expect(terms).toContainText("WD");
-  await expect(terms).toContainText("CHINA");
-  await expect(terms).toContainText("Brinquedos");
-
-  // Próxima venda: os contatos aparecem, com "Editar".
+  await fillCustomerContacts(page, "loja-joao");
+  const requestId = await send(page);
+  await expect(page.locator("[data-request-awaiting-customer]")).toBeVisible();
+  const view = page.locator("[data-request-order-terms]");
+  await expect(view).toContainText("TS (Trading Sales)");
+  await expect(view).toContainText("CHINA");
+  await expect(view).toContainText("Brinquedos");
+  await expect(view.locator("[data-request-confirmation]")).toHaveAttribute(
+    "data-request-confirmation",
+    "pending",
+  );
+  // O rascunho enviado sai da lista.
   await page.goto("/app/requests/new");
-  await chooseCustomer(page, tag, customerId);
-  await expect(contacts).toHaveAttribute("data-customer-contacts", "known");
-  await expect(
-    contacts.locator('[data-customer-contact-view="buyer"]'),
-  ).toContainText("buyer@mercado-maria.com");
-  await contacts.locator("[data-customer-contacts-edit]").click();
-  await expect(contacts).toHaveAttribute("data-customer-contacts", "edit");
-  await expect(
-    contacts.locator('input[name="contact.buyer.email"]'),
-  ).toHaveValue("buyer@mercado-maria.com");
-  await contacts.locator("[data-customer-contacts-cancel]").click();
-  await expect(contacts).toHaveAttribute("data-customer-contacts", "known");
+  await expect(page.locator(`[data-request-draft="${draftId}"]`)).toHaveCount(
+    0,
+  );
 
-  // Sem editar, envia direto (os contatos já estão no cadastro).
-  await chooseOrderOrigin(page);
-  await page.locator('[data-order-terms-operation-option="sale"]').check();
-  await page.locator('[data-order-terms-format-option="wd"]').check();
-  await page
-    .locator("[data-order-terms-carrier]")
-    .selectOption("portal:transportador");
-  await page.locator("[data-order-terms-accept]").check();
-  await pickDoll(page);
-  await send(page);
+  // O cliente confirma: aviso "sem devoluções" e o CNPJ do re-despacho.
+  await login(page, "joao@lojista.com");
+  await page.goto(`/app/requests/${requestId}`);
+  await expect(
+    page.locator("[data-customer-confirm-disclaimer]"),
+  ).toContainText("não há devoluções previstas para esta operação");
+  await confirmAsCustomer(page, requestId, {
+    cnpj: "11.222.333/0001-81",
+    name: "Rodo Sul Transportes",
+  });
+  await expect(page.locator("[data-customer-confirm]")).toHaveCount(0);
+
+  // A Wellmix vê o pedido confirmado, com a transportadora do re-despacho.
+  await login(page, "admin@wellmix.com");
+  await page.goto(`/app/requests/${requestId}`);
+  await expect(page.locator("[data-request-awaiting-customer]")).toHaveCount(0);
+  await expect(
+    page.locator('[data-request-confirmation="confirmed"]'),
+  ).toBeVisible();
+  await expect(page.locator("[data-request-order-terms]")).toContainText(
+    "Rodo Sul Transportes",
+  );
 
   // Compra para estoque: sem bloco do cliente nem condições.
   await page.goto("/app/requests/new");

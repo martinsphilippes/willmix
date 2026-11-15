@@ -1137,6 +1137,22 @@ create index if not exists "manufacturer_cards_by_supplier" on public."manufactu
 create index if not exists "manufacturer_cards_created" on public."manufacturer_cards" ("createdAt");
 create index if not exists "manufacturer_cards_created_id" on public."manufacturer_cards" ("createdAt", "id");
 
+create table if not exists public."request_drafts" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."request_drafts" enable row level security;
+alter table public."request_drafts" add column if not exists "userId" text;
+alter table public."request_drafts" add column if not exists "customerId" text;
+alter table public."request_drafts" add column if not exists "customerName" text;
+alter table public."request_drafts" add column if not exists "title" text;
+alter table public."request_drafts" add column if not exists "itemCount" bigint;
+alter table public."request_drafts" add column if not exists "payload" jsonb;
+create index if not exists "request_drafts_by_user" on public."request_drafts" ("userId");
+create index if not exists "request_drafts_created" on public."request_drafts" ("createdAt");
+create index if not exists "request_drafts_created_id" on public."request_drafts" ("createdAt", "id");
+
 create table if not exists public."cart_items" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

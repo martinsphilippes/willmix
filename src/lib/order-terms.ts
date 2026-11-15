@@ -10,6 +10,22 @@
 export const OPERATION_TYPES = ["ts", "sale"] as const;
 export type OperationType = (typeof OPERATION_TYPES)[number];
 
+/**
+ * Tipos de operação que se escolhem hoje (dono, 15/11/2026): só TS; Venda
+ * aparece desabilitada.
+ */
+export const ENABLED_OPERATION_TYPES: readonly OperationType[] = ["ts"];
+
+/**
+ * Países de origem que não valem no TS (dono, 15/11/2026): TS é importação,
+ * então BRASIL aparece desabilitado.
+ */
+export const TS_BLOCKED_COUNTRIES: readonly string[] = ["BRASIL"];
+
+/** O país pode ser escolhido com este tipo de operação? */
+export const countryAllowed = (operation: OperationType, key: string) =>
+  !!key && !(operation === "ts" && TS_BLOCKED_COUNTRIES.includes(key));
+
 /** Formato de venda: WD ou Wellmix (este com o nível). */
 export const SALE_FORMATS = ["wd", "wellmix"] as const;
 export type SaleFormat = (typeof SALE_FORMATS)[number];
@@ -45,6 +61,25 @@ export function parseCarrierValue(
   return m ? { source: m[1] as CarrierChoice["source"], code: m[2] } : null;
 }
 
+/** Transportadora do re-despacho, informada pelo cliente pelo CNPJ. */
+export interface RedispatchCarrier {
+  cnpj: string;
+  name: string;
+  /** Parceiro (Transportadora) do portal com este CNPJ, criado se não havia. */
+  partyId: string;
+  /** "brasilapi" = dados da Receita pela BrasilAPI; "manual" = digitados. */
+  source: "brasilapi" | "manual";
+}
+
+/** Confirmação do pedido pelo cliente (aviso "sem devoluções" + "Li e concordo"). */
+export interface CustomerConfirmation {
+  at: string;
+  userId: string;
+  userName: string;
+  noReturnsAccepted: true;
+  redispatchCarrier: RedispatchCarrier | null;
+}
+
 /** Condições do pedido gravadas em cada solicitação do lote (`requests.orderTerms`). */
 export interface OrderTerms {
   operationType: OperationType;
@@ -53,19 +88,58 @@ export interface OrderTerms {
   wellmixTier: WellmixTier | null;
   /** Transportador (obrigatório desde 15/11/2026; nulo só nas antigas). */
   carrier: CarrierChoice | null;
-  /** Re-despacho; nulo = sem re-despacho. */
-  redispatch: CarrierChoice | null;
+  /** Antes de 15/11/2026 (2ª rodada): transportadora do re-despacho. */
+  redispatch?: CarrierChoice | null;
+  /** Re-despacho: Sim ou Não (o cliente informa a transportadora na confirmação). */
+  redispatchRequired?: boolean;
   /** País de origem (chave normalizada, ver `countryKey`). Produto sem país não é vendido. */
   originCountry: string;
   /** Nome do país como a tela mostrou. */
   originCountryName: string;
-  /** Grupo de produto = linha de produto (CODGRUPOPROD no Sankhya). */
-  productLineId: string;
-  productLineName: string;
-  /** O aviso "sem devoluções" estava na tela no envio. */
+  /** Família de produto (grupo pai no Sankhya; ver product-origin.ts). */
+  productFamily?: string;
+  productFamilyName?: string;
+  /** Antes de 15/11/2026 (2ª rodada): o grupo era a linha. */
+  productLineId?: string;
+  productLineName?: string;
+  /** O aviso "sem devoluções" fica para o cliente, na confirmação. */
   noReturnsNotice: true;
-  /** Quem lançou marcou "Li e concordo" no aviso (obrigatório). */
+  /** Antes de 15/11/2026 (2ª rodada): o vendedor marcava "Li e concordo". */
   noReturnsAccepted?: boolean;
+  /** Confirmação do cliente; nula = aguardando o cliente. */
+  confirmation?: CustomerConfirmation | null;
+}
+
+/* ------------------------------------------------------------------ */
+/* CNPJ                                                                */
+/* ------------------------------------------------------------------ */
+
+/** Só os dígitos do CNPJ. */
+export const cnpjDigits = (value: string | null | undefined) =>
+  (value ?? "").replace(/\D/g, "");
+
+/** CNPJ válido (14 dígitos e os dois dígitos verificadores). */
+export function validCnpj(value: string | null | undefined): boolean {
+  const d = cnpjDigits(value);
+  if (d.length !== 14 || /^(\d)\1{13}$/.test(d)) return false;
+  const digit = (len: number) => {
+    const weights =
+      len === 12
+        ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+        : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const sum = weights.reduce((acc, w, i) => acc + w * Number(d[i]), 0);
+    const r = sum % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  return digit(12) === Number(d[12]) && digit(13) === Number(d[13]);
+}
+
+/** "12.345.678/0001-90" */
+export function formatCnpj(value: string): string {
+  const d = cnpjDigits(value);
+  return d.length === 14
+    ? `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`
+    : value;
 }
 
 /* ------------------------------------------------------------------ */

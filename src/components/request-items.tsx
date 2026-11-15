@@ -28,6 +28,16 @@ import {
   type GenerateLabels,
 } from "@/components/selection-quantity";
 
+/** Uma linha de produto já preenchida (rascunho). */
+export interface InitialRequestRow {
+  productId: string;
+  variantId: string;
+  notInCatalog: boolean;
+  quantity: string;
+  texts: { productName: string; description: string; specification: string };
+  schedule: RequestSchedule | null;
+}
+
 type ProductFieldsProps = Omit<
   React.ComponentProps<typeof RequestProductFields>,
   | "prefix"
@@ -54,8 +64,15 @@ export function RequestItems({
   containerTypes,
   launchDate,
   initialPlan = null,
+  initialRows = [],
   ...fields
 }: ProductFieldsProps & {
+  /**
+   * Linhas já preenchidas (rascunho; docs/ORDER_TERMS.md seção 9): produto,
+   * variação, textos (fora do catálogo), quantidade e programação de cada
+   * uma. Vazio = a primeira linha pelo `preset*`, como sempre.
+   */
+  initialRows?: InitialRequestRow[];
   /** Containers das Configurações (o card de gerar a programação). */
   containerTypes: Array<{ code: string; capacityCbm: number }>;
   /**
@@ -109,7 +126,10 @@ export function RequestItems({
     forecast?: PriceForecastLabels;
   };
 }) {
-  const [rows, setRows] = useState<number[]>([0]);
+  const draftRows = initialRows.length ? initialRows : null;
+  const [rows, setRows] = useState<number[]>(() =>
+    draftRows ? draftRows.map((_, i) => i) : [0],
+  );
   // Programação do pedido (dono, 15/11/2026): quantas programações e as
   // datas são do pedido; cada produto só reparte a quantidade dele nelas.
   // A 1ª data vale a partir do lançamento + 120 dias; começa nela.
@@ -164,17 +184,30 @@ export function RequestItems({
   useEffect(() => {
     setPlanDates?.(plan.dates ?? []);
   }, [plan.dates, setPlanDates]);
-  const [next, setNext] = useState(1);
+  const [next, setNext] = useState(() => draftRows?.length ?? 1);
   // Produto (e variação) escolhidos por linha, com a ficha: o pedido mínimo
   // deles vale para a quantidade; com variação escolhida, o mínimo é o dela.
   type Chosen = { id: string; variantId: string; fill: ProductFill | null };
-  const [product, setProduct] = useState<Record<number, Chosen>>(() => ({
-    0: {
-      id: presetProductId,
-      variantId: presetVariantId,
-      fill: fields.products.find((x) => x.id === presetProductId) ?? null,
-    },
-  }));
+  const [product, setProduct] = useState<Record<number, Chosen>>(() =>
+    draftRows
+      ? Object.fromEntries(
+          draftRows.map((r, i) => [
+            i,
+            {
+              id: r.productId,
+              variantId: r.variantId,
+              fill: fields.products.find((x) => x.id === r.productId) ?? null,
+            },
+          ]),
+        )
+      : {
+          0: {
+            id: presetProductId,
+            variantId: presetVariantId,
+            fill: fields.products.find((x) => x.id === presetProductId) ?? null,
+          },
+        },
+  );
   const moqOf = (chosen: Chosen | undefined) => {
     if (!chosen?.id) return null;
     const p = chosen.fill;
@@ -203,6 +236,8 @@ export function RequestItems({
   // Quantidade e unidade por linha (a programação de entregas soma na quantidade).
   // Produto com pedido mínimo já começa nele (nunca abaixo).
   const [qty, setQty] = useState<Record<number, string>>(() => {
+    if (draftRows)
+      return Object.fromEntries(draftRows.map((r, i) => [i, r.quantity]));
     const chosen: Chosen = {
       id: presetProductId,
       variantId: presetVariantId,
@@ -222,9 +257,11 @@ export function RequestItems({
   const [unit] = useState<Record<number, string>>({ 0: "un" });
   // Linhas "fora do catálogo": sem produto do cadastro, a programação é feita
   // sem caixa master (dividida em partes iguais), como antes.
-  const [outside, setOutside] = useState<Record<number, boolean>>({
-    0: defaultNotInCatalog,
-  });
+  const [outside, setOutside] = useState<Record<number, boolean>>(() =>
+    draftRows
+      ? Object.fromEntries(draftRows.map((r, i) => [i, r.notInCatalog]))
+      : { 0: defaultNotInCatalog },
+  );
 
   /**
    * O item do card de programação: o produto (e a variação) escolhido no
@@ -389,9 +426,28 @@ export function RequestItems({
                 {...fields}
                 labels={labels}
                 prefix={prefix}
-                presetProductId={first ? presetProductId : ""}
-                presetVariantId={first ? presetVariantId : ""}
-                defaultNotInCatalog={first ? defaultNotInCatalog : false}
+                presetProductId={
+                  draftRows
+                    ? (draftRows[index]?.productId ?? "")
+                    : first
+                      ? presetProductId
+                      : ""
+                }
+                presetVariantId={
+                  draftRows
+                    ? (draftRows[index]?.variantId ?? "")
+                    : first
+                      ? presetVariantId
+                      : ""
+                }
+                presetTexts={draftRows?.[index]?.texts}
+                defaultNotInCatalog={
+                  draftRows
+                    ? !!draftRows[index]?.notInCatalog
+                    : first
+                      ? defaultNotInCatalog
+                      : false
+                }
                 suggestions={first ? suggestions : {}}
                 onProductChange={(id, variantId, fill) =>
                   onProductChange(index, id, variantId, fill)
@@ -426,7 +482,7 @@ export function RequestItems({
                     hint={labels.piecesHint}
                     scheduledHint={labels.piecesScheduledHint}
                     defaultQuantity={null}
-                    schedule={null}
+                    schedule={draftRows?.[index]?.schedule ?? null}
                     labels={labels.schedule}
                     gen={
                       item?.id === "outside"
