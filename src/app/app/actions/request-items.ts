@@ -47,7 +47,9 @@ export function parseRequestItems(form: FormData): RequestItemFields[] {
       const qty = text(`${p}quantity`).replace(",", ".");
       const productId = text(`${p}productId`) || null;
       const variantId = text(`${p}variantId`) || null;
-      const schedule = parseRequestSchedule(form, p);
+      const schedule = parseRequestSchedule(form, p, undefined, {
+        allowZero: true,
+      });
       // Programação gerada para outro produto (trocado depois de gerar): a
       // tela já tira; o servidor recusa se ainda vier (dono, 14/11/2026).
       const scheduleFor = text(`${p}schedule.for`);
