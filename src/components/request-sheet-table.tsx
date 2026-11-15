@@ -170,7 +170,7 @@ function ProductName({ row, t }: { row: SheetRow; t: Translate }) {
       </span>
       {row.code ? (
         <span
-          className="ml-1.5 text-xs tabular-nums text-zinc-500"
+          className="ml-1.5 whitespace-nowrap text-xs tabular-nums text-zinc-500"
           data-sheet-code
         >
           {row.code}
@@ -468,7 +468,7 @@ function FullTable({ view, t }: { view: RequestSheetView; t: Translate }) {
               ))}
             </tr>
             <tr>
-              <th className={cx(HEAD, STICKY, "min-w-44")}>
+              <th className={cx(HEAD, STICKY)}>
                 {t("requestSheet.col.product")}
               </th>
               <th className={HEAD}>{t("requestSheet.col.deadline")}</th>
@@ -495,13 +495,16 @@ function FullTable({ view, t }: { view: RequestSheetView; t: Translate }) {
                   className={cx(
                     CELL,
                     STICKY,
-                    "min-w-44 max-w-64",
                     row.current ? "bg-white" : "bg-zinc-50",
                   )}
                   data-sheet-cell="product"
                 >
-                  <ProductName row={row} t={t} />
-                  <Warnings row={row} />
+                  {/* Estreita no celular (sobra lugar para os dados que
+                      rolam); larga a partir de ~670 px de cartão. */}
+                  <div className="w-28 @2xl:w-auto @2xl:min-w-40 @2xl:max-w-60">
+                    <ProductName row={row} t={t} />
+                    <Warnings row={row} />
+                  </div>
                 </td>
                 <td
                   className={cx(CELL, "whitespace-nowrap tabular-nums")}
