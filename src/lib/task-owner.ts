@@ -89,6 +89,13 @@ export function kindGate(
     case "new_request":
     case "replenishment_request":
       return { screen: "requests" };
+    // Estratégia de compra (docs/PURCHASE_DEMAND.md).
+    case "purchase_strategy":
+      return { action: "purchaseStrategy.choose" };
+    case "purchase_strategy_approve":
+      return { action: "purchaseStrategy.approve" };
+    case "purchase_strategy_order":
+      return { action: "purchaseOrder.generate" };
     case "review":
       return { screen: "reviews" };
     case "sourcing_demand":

@@ -64,7 +64,7 @@ export function canPickRequestProducts(
  * Quem pode buscar produtos em cada escopo: só quem abre uma tela que já
  * mostrava aquela lista inteira.
  * - `all`: filtro do Marketing (Wellmix);
- * - `active`: Superplan;
+ * - `active`: Superplan e Reposição;
  * - `catalog`: nova solicitação (Wellmix e cliente) e novo kit (Wellmix).
  * O cliente só busca no catálogo (nunca vê desativados nem os do Booking).
  */
@@ -79,9 +79,11 @@ export function canSearchProducts(
       (isWellmix(user) && canOpen(user, "marketing"))
     );
   if (!isWellmix(user)) return false;
+  // Ativos: Superplan e a Reposição do Planner (quem abre as encomendas;
+  // docs/PURCHASE_DEMAND.md), que repõe produto ativo fora da vitrine também.
   return scope === "all"
     ? canOpen(user, "marketing")
-    : canOpen(user, "superplan");
+    : canOpen(user, "superplan") || canOpen(user, "requests");
 }
 
 /**
