@@ -1,13 +1,13 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { withTempStore } from "./setup";
 import { approveMilestones } from "./helpers/approvals";
 import { completeCertification } from "./helpers/certification";
 import { xlsxBytes } from "./xlsx-fixture";
 
-// Cenários que percorrem o mapa do container à entrega: com a liberação
-// pelos marcos (fase 5d) levam ~6 s aqui e passavam dos 15 s no CI (como o
-// cenário longo de tests/unit/purchase-rounds.test.ts).
-const LONG_SCENARIO_MS = 60_000;
+// Os cenários do pedido de compra percorrem o mapa em memória: com a
+// liberação pelos marcos (fase 5d) levam até ~6 s aqui e passavam dos 15 s
+// no CI (como o cenário longo de tests/unit/purchase-rounds.test.ts).
+vi.setConfig({ testTimeout: 60_000 });
 
 /*
  * Pedido de compra (docs/PURCHASE_ORDER.md): as solicitações aprovadas do
@@ -1063,7 +1063,7 @@ describe("pedido de compra: sequência do mapa do processo", () => {
       submittedAt: "2026-01-01T12:00:00.000Z",
     });
     expect(await keysOf(ops)).toContain("container_tracking");
-  }, LONG_SCENARIO_MS);
+  });
 
   it("documentos do embarque: check list, packing list, invoice e BL conferidos", async () => {
     const store = getStore();
@@ -1657,7 +1657,7 @@ describe("pedido de compra: sequência do mapa do processo", () => {
       250,
       true,
     ]);
-  }, LONG_SCENARIO_MS);
+  });
 
   it("prazo de cada passo conta da liberação do anterior", async () => {
     const lanes = await import("@/lib/purchase-lanes");
