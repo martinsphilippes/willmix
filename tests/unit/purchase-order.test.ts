@@ -1398,6 +1398,16 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     expect((await sf.showroomTasks(admin)).map((o) => o.id)).toContain(
       order.id,
     );
+    // Menu: a pendência do show room conta em Vendas → Amostras.
+    {
+      const { flowStepsOf } = await import("@/lib/flow");
+      const task = (await pendingTasksFor(admin)).find(
+        (x) => x.kind === "showroom_receive" && x.orderNumber === fresh.number,
+      )!;
+      expect(flowStepsOf(task)).toEqual([
+        expect.objectContaining({ block: "sales", key: "samples" }),
+      ]);
+    }
     await expect(
       flow.submitStep(admin, order.id, "samples_brazil_received", {
         value: "2026-11-25",

@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   bookingSheet,
   createTeamLogin,
+  grantTeamScreen,
   importAndClose,
   login,
   selectAndOpenSupplierRequest,
@@ -319,12 +320,17 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   expect(other?.status()).toBe(404);
 
   // 3a. Sem "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md,
-  // seção 7): um login só de Planejamento abre a solicitação sem o preço do
-  // booking, da resposta e das condições; a contraproposta dele tem MOQ,
-  // prazo e FOB/EXW, sem preço e sem o Superplan.
+  // seção 7): um login de Cadastro com a tela de solicitações liberada à mão
+  // (sem a permissão) abre a solicitação sem o preço do booking, da resposta
+  // e das condições; a contraproposta dele tem MOQ, prazo e FOB/EXW, sem
+  // preço e sem o Superplan.
   await login(page, "admin@wellmix.com");
-  const plannerEmail = `planejamento.${TAG.toLowerCase()}@wellmix.com`;
-  await createTeamLogin(page, `Planejamento ${TAG}`, plannerEmail, ["planner"]);
+  const plannerEmail = `cadastro.${TAG.toLowerCase()}@wellmix.com`;
+  const plannerName = `Cadastro ${TAG}`;
+  const plannerId = await createTeamLogin(page, plannerName, plannerEmail, [
+    "catalog",
+  ]);
+  await grantTeamScreen(page, plannerId, plannerName, "quotes");
   await login(page, plannerEmail);
   await page.goto(requestUrl);
   await expect(page.locator("[data-supplier-table-row]")).toHaveCount(1);
@@ -354,6 +360,26 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-request-chosen-cost]")).toHaveCount(
     0,
   );
+  // O Superplan segue "Ver preço de compra" (dono, 15/11/2026): na Seleção,
+  // sem o custo por peça e a coluna Superplan; no Book, sem a coluna da
+  // análise; na lista dos bookings, sem os sinais.
+  await page.goto(`/app/booking/selection?q=${encodeURIComponent(TAG)}`);
+  await expect(page.locator("[data-selection-item]").first()).toBeVisible();
+  await expect(page.locator("[data-selection-cost]")).toHaveCount(0);
+  await expect(
+    page.locator("table[data-selection-items] thead"),
+  ).not.toContainText("Superplan");
+  await page.goto("/app/booking");
+  await expect(page.locator("[data-booking-lot-row]").first()).toBeVisible();
+  await expect(page.locator('[data-booking-lots-sort="viable"]')).toHaveCount(
+    0,
+  );
+  await page
+    .locator("[data-booking-lot-row] a[href^='/app/booking/lots/']")
+    .first()
+    .click();
+  await page.waitForURL(/\/app\/booking\/lots\/[^/?]+/);
+  await expect(page.locator("[data-booking-item-analysis]")).toHaveCount(0);
 
   // 3b. Negociação (docs/SUPPLIER_REQUESTS.md, "Negociação"): a Wellmix
   // devolve com contraproposta; até o fornecedor responder, não aprova.

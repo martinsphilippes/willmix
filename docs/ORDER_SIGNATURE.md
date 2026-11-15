@@ -76,7 +76,7 @@ Correção do dono: o fornecedor baixava o PDF e não achava onde devolver assin
 
 ## 4. Papéis e permissões
 
-- O documento tem o **preço de compra**: só a **Wellmix**, o **fornecedor do pedido** e a **certificadora do pedido** (só leitura) abrem. Cliente, outro fornecedor e demais parceiros recebem "não encontrado".
+- O documento tem o **preço de compra**: só a **Wellmix**, o **fornecedor do pedido** e o **despachante do pedido** (só leitura) abrem, na tela e no PDF. Desde 15/11/2026 a **certificadora (OCP)** não abre (decisão do dono; docs/LINHA_DE_VISAO.md, seção 7): para o selo e o memorial ela usa a ficha de compra e os documentos de certificação, sem o preço. Cliente, outro fornecedor e demais parceiros recebem "não encontrado".
 - Wellmix: assina quem tem a ação "Assinar o contrato pela Wellmix" (Equipe → Funções e acessos). Padrão desde 13/11/2026 (decisão do dono): Diretoria de compras e Diretoria executiva; o administrador sempre assina.
 - Fornecedor: o login do fornecedor do pedido.
 - **Certificadora do pedido** (10/11/2026): abre o documento só para ler (vê tudo do pedido para gerar o selo); não assina.

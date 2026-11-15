@@ -896,6 +896,14 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expectOrderBlocks(page, orderUrl);
   await expectDocumentAck(page, orderUrl);
   await login(page, "ocp@certifica.com");
+  // O documento do pedido tem o preço de compra: a certificadora não abre
+  // (tela e PDF; dono, 15/11/2026, docs/LINHA_DE_VISAO.md, seção 7).
+  const ocpDocument = await page.goto(`${orderUrl}/purchase-order`);
+  expect(ocpDocument?.status()).toBe(404);
+  const ocpPdf = await page.request.get(
+    `/api/orders/${orderId}/purchase-order`,
+  );
+  expect(ocpPdf.status()).toBe(404);
   // Pedido → Certificação (dono, 14/11/2026): a tela do passo é só a lista,
   // uma linha por produto, com as abas, os filtros e os contadores, sem os
   // cartões dos pedidos embaixo. O "Resolver" da linha abre o produto no

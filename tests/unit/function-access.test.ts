@@ -275,17 +275,17 @@ describe("ação nova numa função já gravada (15/11/2026)", () => {
 });
 
 describe("Ver preço de compra (dono, 15/11/2026; docs/LINHA_DE_VISAO.md)", () => {
-  it("padrão: Comprador, Gerente de produto, diretorias e Financeiro; o administrador sempre", () => {
+  it("padrão: Comprador, Gerente de produto, Planejamento, diretorias e Financeiro; o administrador sempre", () => {
     for (const fn of [
       "buyer",
       "product_manager",
+      "planner",
       "purchasing_director",
       "executive_director",
       "finance",
     ])
       expect(canSeePurchasePrice(op([fn]))).toBe(true);
     for (const fn of [
-      "planner",
       "catalog",
       "designer",
       "comex_internal",
@@ -332,10 +332,13 @@ describe("Ver preço de compra (dono, 15/11/2026; docs/LINHA_DE_VISAO.md)", () =
         // Gravadas sem a lista de ações conhecidas (antes de 15/11/2026).
         { key: "buyer", actions: ["receiving.follow"] },
         { key: "planner", actions: ["approval.planner"] },
+        { key: "catalog", actions: [] },
       ],
     });
     expect(can(op(["buyer"]), "purchasePrice.view", defs)).toBe(true);
-    expect(can(op(["planner"]), "purchasePrice.view", defs)).toBe(false);
+    // O Planejamento também recebe pelo padrão (dono, 15/11/2026).
+    expect(can(op(["planner"]), "purchasePrice.view", defs)).toBe(true);
+    expect(can(op(["catalog"]), "purchasePrice.view", defs)).toBe(false);
   });
 
   it("fora da Wellmix: o fornecedor vê o do pedido dele e o despachante o do pedido; certificadora e cliente nunca", () => {
@@ -374,7 +377,7 @@ describe("Ver preço de compra (dono, 15/11/2026; docs/LINHA_DE_VISAO.md)", () =
     expect(canSeePurchasePrice({ role: "supplier", functions: [] })).toBe(
       false,
     );
-    expect(canSeeOrderPurchasePrice(op(["planner"]), order)).toBe(false);
+    expect(canSeeOrderPurchasePrice(op(["catalog"]), order)).toBe(false);
     expect(canSeeOrderPurchasePrice(op(["buyer"]), order)).toBe(true);
   });
 });

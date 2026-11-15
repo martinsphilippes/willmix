@@ -214,13 +214,15 @@ describe("escolha e aprovação", () => {
 describe("pedido pela estratégia sem “Ver preço de compra”", () => {
   /*
    * Dono, 15/11/2026 (docs/LINHA_DE_VISAO.md, seção 7): quem gera o pedido
-   * sem a permissão (o Planejamento, por padrão) não vê nem digita o preço; o
-   * pedido sai com o preço e a moeda da última compra gravados na decisão.
+   * sem a permissão não vê nem digita o preço; o pedido sai com o preço e a
+   * moeda da última compra gravados na decisão. Pelo padrão, todos os que
+   * geram o pedido veem o preço; aqui, o Planejamento com "Ver preço de
+   * compra" tirado pelo administrador (Funções e acessos).
    */
   it("usa o preço da última compra e ignora o enviado", async () => {
     const store = getStore();
-    const planner = await store.create("users", {
-      email: "planejamento@wellmix.com",
+    const noPrice = await store.create("users", {
+      email: "planejamento.sem-preco@wellmix.com",
       name: "Paulo Planejamento",
       role: "operator",
       partyId: null,
@@ -230,8 +232,22 @@ describe("pedido pela estratégia sem “Ver preço de compra”", () => {
       importerId: null,
       functions: ["planner"],
     } as never);
+    const fa = await import("@/lib/auth/function-access");
+    const { attachAccess } = await import("@/lib/auth/access-cache");
+    const defs = fa.resolveFunctions({
+      functions: [
+        {
+          key: "planner",
+          actions: fa
+            .defaultActionsFor("planner")
+            .filter((a) => a !== "purchasePrice.view"),
+          knownActions: [...fa.ACTION_KEYS],
+        },
+      ],
+    });
+    attachAccess(noPrice, fa.accessFromFunctions(["planner"], defs));
     const { canSeePurchasePrice } = await import("@/lib/auth/function-access");
-    expect(canSeePurchasePrice(planner)).toBe(false);
+    expect(canSeePurchasePrice(noPrice)).toBe(false);
     const d = await demand("prod-panela", 1000);
     const decision = await strategy.chooseStrategy(buyer, {
       demandIds: [d.id],
@@ -242,7 +258,7 @@ describe("pedido pela estratégia sem “Ver preço de compra”", () => {
       approve: true,
       note: null,
     });
-    const order = await strategy.orderFromStrategy(planner, decision.id, {
+    const order = await strategy.orderFromStrategy(noPrice, decision.id, {
       unitPrice: 0.01,
       currency: "BRL",
       quantity: 1000,

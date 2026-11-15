@@ -335,7 +335,9 @@ export default async function BookingLotPage({
   );
 
   // Preço e moeda do Book: só com "Ver preço de compra" (dono, 15/11/2026;
-  // docs/LINHA_DE_VISAO.md); sem ela as colunas não vão à tela.
+  // docs/LINHA_DE_VISAO.md); sem ela as colunas não vão à tela. O Superplan
+  // (veredito, mínimo, lucro e a reanálise) segue a mesma permissão (dono,
+  // 15/11/2026): custo e mínimo saem do preço.
   const seesPrice = canSeePurchasePrice(user);
   const columns = seesPrice
     ? COLUMNS
@@ -780,7 +782,7 @@ export default async function BookingLotPage({
             </Card>
           ) : null}
 
-          {lot.status !== "draft" && lot.status !== "cancelled" ? (
+          {seesPrice && lot.status !== "draft" && lot.status !== "cancelled" ? (
             <Card title={t("bookingLots.item.col.analysis")} dense>
               {lot.analyzedAt ? (
                 <p className="mb-2 text-sm text-zinc-600">
@@ -876,7 +878,7 @@ export default async function BookingLotPage({
                       ) : null}
                     </th>
                   ))}
-                  {["check", "analysis"].map((k) => (
+                  {(seesPrice ? ["check", "analysis"] : ["check"]).map((k) => (
                     <th
                       key={k}
                       className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
@@ -1023,9 +1025,11 @@ export default async function BookingLotPage({
                           </Badge>
                         )}
                       </td>
-                      <td className="border-b border-zinc-100 px-2 py-2 align-top">
-                        {analysisCell(item)}
-                      </td>
+                      {seesPrice ? (
+                        <td className="border-b border-zinc-100 px-2 py-2 align-top">
+                          {analysisCell(item)}
+                        </td>
+                      ) : null}
                       <td
                         className="border-b border-zinc-100 px-2 py-2 align-top text-xs"
                         data-booking-item-links=""

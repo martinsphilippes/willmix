@@ -55,6 +55,8 @@ Onde aparece:
   seus pedidos.
 - Pendências: quem faz o passo e quem decide (a Trading e o Agente de carga
   também).
+- Menu: as pendências dos lotes contam no passo **Armazenagem** (bloco Entrega,
+  marco 16), com o tipo próprio `divergence_lot`.
 
 Código: `src/lib/services/divergence-lots.ts` e
 `src/app/app/actions/divergence-lots.ts`. Teste:
