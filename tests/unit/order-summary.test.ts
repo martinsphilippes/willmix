@@ -255,6 +255,11 @@ beforeAll(async () => {
     cancelledAt: NOW.toISOString(),
     cancelStageKey: "PREPARATION",
   });
+  // Os marcos pedidos pelo motor (fora de uma requisição ficam na fila):
+  // gravados antes das conferências, como depois da resposta em produção.
+  const { flushMilestoneSync } =
+    await import("@/lib/services/order-milestones");
+  await flushMilestoneSync();
 });
 
 describe("resumo por pedido", () => {
@@ -453,6 +458,7 @@ describe("resumo por pedido", () => {
       parties: [],
       kpi: false,
       sla: false,
+      milestones: [],
     });
     const direct = await towerDirect();
     expect(after).toEqual(direct);

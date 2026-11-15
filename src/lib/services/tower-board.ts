@@ -32,7 +32,10 @@ import {
   milestoneOfFacts,
   milestoneOfStatus,
   type CompactMilestone,
+  type MilestoneKey,
 } from "@/lib/milestones";
+import { isOrderOpen } from "@/lib/order-status";
+import { storedMilestone } from "./order-milestones";
 import type { Container } from "@/lib/db";
 import {
   activeStagesFromFacts,
@@ -199,6 +202,45 @@ export function atRisk(row: TowerRow, now: number): boolean {
   return due >= now && due - now <= RISK_DAYS * 86_400_000;
 }
 
+/**
+ * Quadrado do bloco "Pedido" pelo marco atual (fase 5c, docs/MILESTONES.md):
+ * cada marco cai num grupo de quadrados (os mesmos de "Processo por etapa",
+ * src/lib/tower-milestones.ts), e o grupo é dividido pelo que já foi feito,
+ * pelas mesmas regras de antes (journey.ts). Sem marco, pela etapa.
+ */
+const MILESTONE_CARD_STAGE: Record<MilestoneKey, StageKey> = {
+  "new-order": "PREPARATION",
+  certification: "PREPARATION",
+  "art-material": "PREPARATION",
+  art: "PREPARATION",
+  contract: "PACKAGING",
+  "down-payment": "PACKAGING",
+  "pre-production": "INSPECTION",
+  inspection: "INSPECTION",
+  samples: "INSPECTION",
+  production: "INSPECTION",
+  booking: "SHIPPING",
+  loading: "SHIPPING",
+  shipment: "SHIPPING",
+  customs: "CUSTOMS",
+  "invoice-transport": "TRANSPORT",
+  delivery: "DELIVERED",
+};
+
+/** Marcos antes do embarque: a produção ainda conta. */
+const BEFORE_SHIPPING_MILESTONES = new Set<MilestoneKey>([
+  "new-order",
+  "certification",
+  "art-material",
+  "art",
+  "contract",
+  "down-payment",
+  "pre-production",
+  "inspection",
+  "samples",
+  "production",
+]);
+
 /** Etapas antes do embarque: a produção ainda conta. */
 const BEFORE_SHIPPING: StageKey[] = [
   "ORDER_CREATED",
@@ -356,6 +398,19 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     const stage = stageOf.get(o.id);
     return !!stage?.dueAt && Date.parse(stage.dueAt) < now;
   };
+  /**
+   * Marco atual do pedido (fase 5c): o do resumo (`facts.m`); sem resumo, o
+   * gravado no pedido (`orders.milestoneKey`); sem nenhum, pela situação.
+   */
+  const milestoneNow = (o: BoardOrder): MilestoneKey | null => {
+    const m = input.milestones?.get(o.id);
+    if (m?.length) return milestoneOfFacts(m, o.status);
+    if (o.status === "CANCELLED") return null;
+    return (
+      storedMilestone((o as { milestoneKey?: string | null }).milestoneKey) ??
+      milestoneOfStatus(o.status)
+    );
+  };
   const orderRow = (o: BoardOrder): TowerRow => {
     const stage = stageOf.get(o.id);
     const closed = o.status === "CLOSED";
@@ -369,7 +424,7 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
       stageKey: cancelled ? (o.cancelStageKey ?? null) : (o.status as StageKey),
       milestone: cancelled
         ? milestoneOfStatus(o.cancelStageKey)
-        : milestoneOfFacts(input.milestones?.get(o.id), o.status),
+        : milestoneNow(o),
       requestStatus: null,
       responsible:
         closed || cancelled || !portal
@@ -462,9 +517,7 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   }
 
   /* Pedido: cada pedido em andamento num quadrado só. */
-  const live = input.orders.filter(
-    (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
-  );
+  const live = input.orders.filter((o) => isOrderOpen(o.status));
   const signedByWellmix = (o: BoardOrder) =>
     (laneReqsBy.get(o.id) ?? []).some(
       (r) => r.key === ORDER_SIGNED_WELLMIX && r.status === "done",
@@ -478,7 +531,12 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
       (r) => r.key === ORDER_SIGNED_SUPPLIER && r.status === "done",
     );
   for (const o of live) {
-    const card = journey.orderCard(o);
+    // Fase 5c: o grupo de quadrados pelo marco atual; sem marco, a etapa.
+    const current = milestoneNow(o);
+    const card = journey.orderCard(
+      o,
+      current ? MILESTONE_CARD_STAGE[current] : (o.status as StageKey),
+    );
     const portal = isPortalOrder(o);
     if (card === "ordCreated" || card === "ordPrep")
       addOrder(portal ? "ordPrepPortal" : "ordPrepSankhya", o);
@@ -532,7 +590,10 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
         addOrder("lnRegistration", o);
     }
     const track = trackOf.get(o.id) ?? null;
-    const preShipping = BEFORE_SHIPPING.includes(o.status as StageKey);
+    const current = milestoneNow(o);
+    const preShipping = current
+      ? BEFORE_SHIPPING_MILESTONES.has(current)
+      : BEFORE_SHIPPING.includes(o.status as StageKey);
     if (preShipping && track?.productionStartAt) {
       addOrder("parProduction", o);
       const last = [...(track.followups ?? [])].sort(
@@ -560,7 +621,7 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     if (informed(step(o, "numerario")) && !informed(step(o, "numerario_paid")))
       addOrder("parNumerario", o);
     if (
-      o.status === "CUSTOMS" &&
+      (current ? current === "customs" : o.status === "CUSTOMS") &&
       ALERT_CHANNELS.includes(step(o, "channel")?.value ?? "")
     )
       addOrder("parChannel", o);
@@ -746,9 +807,7 @@ export async function loadTowerBoard(options: {
         .map((c) => c.entityId),
     ),
   ]);
-  const live = orders.filter(
-    (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
-  );
+  const live = orders.filter((o) => isOrderOpen(o.status));
   const ids = live.map((o) => o.id);
   const portalIds = live.filter(isPortalOrder).map((o) => o.id);
   const liveIds = new Set(ids);

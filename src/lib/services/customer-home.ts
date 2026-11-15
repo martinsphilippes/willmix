@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 import { realName } from "@/lib/placeholder-name";
 
 import { getStore, type Order, type StageKey, type User } from "@/lib/db";
@@ -35,9 +36,7 @@ export async function customerOrdersInProgress(
     })
   ).filter(
     (o): o is Order & { status: StageKey } =>
-      o.status !== "CLOSED" &&
-      o.status !== "CANCELLED" &&
-      canViewOrder(user, o),
+      isOrderOpen(o.status) && canViewOrder(user, o),
   );
   if (!orders.length) return [];
   const ids = orders.map((o) => o.id);

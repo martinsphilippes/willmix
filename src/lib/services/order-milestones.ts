@@ -60,10 +60,20 @@ type MilestoneRowData = NewRow<OrderMilestone> & { id: string };
 const addDays = (iso: string, days: number) =>
   new Date(Date.parse(iso) + days * 86_400_000).toISOString();
 
+/** Marco gravado válido (um dos 16) ou nulo. */
+export const storedMilestone = (
+  key: string | null | undefined,
+): MilestoneKey | null =>
+  key && (MILESTONE_KEYS as readonly string[]).includes(key)
+    ? (key as MilestoneKey)
+    : null;
+
 /** Marcos com item numa etapa travada (bloqueio da inspeção): o motivo. */
 export function blockedMilestones(
   stages: readonly Pick<Stage, "id" | "key" | "status" | "blockReason">[],
-  requirements: readonly Pick<Requirement, "stageId" | "key">[],
+  requirements: readonly (Pick<Requirement, "stageId" | "key"> & {
+    milestoneKey?: string | null;
+  })[],
 ): Map<MilestoneKey, string | null> {
   const out = new Map<MilestoneKey, string | null>();
   const blocked = new Map(
@@ -73,7 +83,10 @@ export function blockedMilestones(
   for (const r of requirements) {
     const stage = blocked.get(r.stageId);
     if (!stage) continue;
-    const key = milestoneOfRequirement(stage.key, r.key);
+    // Fase 5c: o marco gravado no item; sem ele, pela etapa e a chave.
+    const key =
+      storedMilestone(r.milestoneKey) ??
+      milestoneOfRequirement(stage.key, r.key);
     if (key && !out.has(key)) out.set(key, stage.blockReason ?? null);
   }
   return out;
@@ -331,8 +344,18 @@ function inputOf(order: Order, src: SliceSources): MilestoneInput {
   };
 }
 
-/** Os 16 marcos do pedido pelas etapas (o cálculo de hoje, o da tela). */
+/** Os 16 marcos do pedido pelas etapas (a conta de antes da fase 5c). */
 const viewsByStage = (input: MilestoneInput) =>
+  orderMilestones(
+    orderSubtasks({ ...input, source: "stages" }),
+    input.order.status,
+  );
+
+/**
+ * Os 16 marcos como as telas leem desde a fase 5c: o passo gravado no item
+ * (`requirements.step`) e, só sem ele, o de-para pela etapa.
+ */
+const viewsNow = (input: MilestoneInput) =>
   orderMilestones(orderSubtasks(input), input.order.status);
 
 /**
@@ -378,7 +401,7 @@ export async function syncMilestones(
   const existing = src.milestones.get(order.id) ?? [];
   const plan = planMilestoneRows({
     order,
-    views: viewsByStage(input),
+    views: viewsNow(input),
     existing,
     blocked: blockedMilestones(input.stages, input.requirements),
     dueDays: milestoneDueDaysOf(settings),
@@ -387,6 +410,22 @@ export async function syncMilestones(
   await writeMilestoneRows(plan.rows, new Set(existing.map((r) => r.id)));
   if ((order.milestoneKey ?? null) !== plan.milestoneKey)
     await writeOrderMilestoneKeys(new Map([[order.id, plan.milestoneKey]]));
+  // Fase 5c: o resumo do pedido lê o prazo gravado do marco e o painel de
+  // SLA o "no prazo" dos marcos concluídos; a gravação em lote não passa
+  // pelo aviso do CachedStore, então o pedido é marcado aqui.
+  if (plan.rows.length || (order.milestoneKey ?? null) !== plan.milestoneKey) {
+    const { noteMilestoneWrite } = await import("@/lib/db/summary-dirty");
+    // SLA: só quando um marco com prazo conclui ou reabre.
+    const wasDone = new Set(
+      existing.filter((r) => r.status === "done").map((r) => r.id),
+    );
+    noteMilestoneWrite(
+      order.id,
+      plan.rows.some(
+        (r) => !!r.dueAt && (r.status === "done") !== wasDone.has(r.id),
+      ),
+    );
+  }
   return { rows: plan.rows.length, milestoneKey: plan.milestoneKey };
 }
 
@@ -443,7 +482,7 @@ export async function milestoneNow(order: Order): Promise<MilestoneKey | null> {
   try {
     const src = await loadSlice([order.id]);
     const fresh = src.orders[0] ?? order;
-    return currentMilestone(viewsByStage(inputOf(fresh, src)), fresh.status);
+    return currentMilestone(viewsNow(inputOf(fresh, src)), fresh.status);
   } catch (error) {
     console.error("[milestones] marco do pedido", order.id, error);
     if (

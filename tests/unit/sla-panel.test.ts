@@ -17,6 +17,8 @@ const r = await import("@/lib/services/requests");
 const team = await import("@/lib/services/team");
 const { slaBoardFor, UNASSIGNED, ALL } =
   await import("@/lib/services/sla-panel");
+const { flushMilestoneSync, syncMilestones } =
+  await import("@/lib/services/order-milestones");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -231,13 +233,13 @@ describe("painel de SLA por divisão", () => {
     expect(one.recentStages.length).toBe(one.onTime.total);
   });
 
-  it("'no prazo' vem do indicador pronto, refeito quando uma etapa com prazo é concluída", async () => {
+  it("'no prazo' vem do indicador pronto, refeito quando um marco com prazo é concluído", async () => {
     const store = getStore();
     const before = await slaBoardFor(admin, ALL);
     const request = await r.createRequest(joao, {
       customerId: "cliente-joao",
       productId: null,
-      productName: "Etapa no prazo",
+      productName: "Marco no prazo",
       description: "SLA",
       specification: null,
       quantity: 10,
@@ -246,22 +248,71 @@ describe("painel de SLA por divisão", () => {
       notes: null,
     });
     const order = await orderFromRequest(admin, request);
-    const [stage] = await store.list("stages", {
-      filter: { orderId: order.id, status: ["active", "blocked"] },
-      limit: 1,
+    // Fase 5c: o prazo e a conclusão são os do marco (order_milestones).
+    await flushMilestoneSync();
+    const [row] = await store.list("order_milestones", {
+      filter: { orderId: order.id, key: "new-order" },
     });
-    await store.update("stages", stage.id, {
-      dueAt: new Date(Date.now() + 2 * 86_400_000).toISOString(),
-    });
-    await store.update("stages", stage.id, {
-      status: "done",
-      completedAt: new Date().toISOString(),
-    });
+    expect(row.dueAt).toBeTruthy();
+    // Todos os itens do marco feitos: a sincronização conclui o marco.
+    for (const req of await store.list("requirements", {
+      filter: { orderId: order.id, milestoneKey: "new-order" },
+    }))
+      await store.update("requirements", req.id, { status: "done" });
+    await syncMilestones(order.id, { shadow: true });
+    expect((await store.get("order_milestones", row.id))!.status).toBe("done");
     const after = await slaBoardFor(admin, ALL);
     expect(after.onTime.total).toBe(before.onTime.total + 1);
     expect(after.onTime.done).toBe(before.onTime.done + 1);
-    expect(after.recentStages.some((x) => x.orderId === order.id)).toBe(true);
-    const row = await store.get("kpi_snapshots", "sla.done");
-    expect(row).not.toBeNull();
+    const line = after.recentStages.find((x) => x.orderId === order.id);
+    expect(line?.milestone).toBe("new-order");
+    // Etapa concluída com prazo não conta mais sozinha (só o marco).
+    expect(
+      after.recentStages.filter((x) => x.orderId === order.id),
+    ).toHaveLength(1);
+    const snapshot = await store.get("kpi_snapshots", "sla.done");
+    expect(snapshot).not.toBeNull();
+  });
+
+  it("atraso de parceiro: marco vencido com item do parceiro liberado", async () => {
+    const store = getStore();
+    const request = await r.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId: null,
+      productName: "Marco do fornecedor",
+      description: "SLA",
+      specification: null,
+      quantity: 10,
+      unit: "un",
+      deadline: null,
+      notes: null,
+    });
+    const order = await orderFromRequest(admin, request);
+    await flushMilestoneSync();
+    const [row] = await store.list("order_milestones", {
+      filter: { orderId: order.id, key: "new-order" },
+    });
+    await store.update("order_milestones", row.id, {
+      dueAt: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+    });
+    const item = (s: Awaited<ReturnType<typeof slaBoardFor>>) =>
+      s.items.find(
+        (i) => i.source === "partner" && i.link === `/app/orders/${order.id}`,
+      );
+    // Os itens do fornecedor do marco estão numa etapa que ainda não começou.
+    expect(item(await slaBoardFor(admin, ALL))).toBeUndefined();
+    const [prep] = await store.list("stages", {
+      filter: { orderId: order.id, key: "PREPARATION" },
+    });
+    await store.update("stages", prep.id, { status: "active" });
+    const late = item(await slaBoardFor(admin, ALL));
+    expect(late?.milestone).toBe("new-order");
+    expect(late?.waitingOn).toEqual(["supplier"]);
+    expect(late?.dueAt).toBe(
+      (await store.get("order_milestones", row.id))!.dueAt,
+    );
+    // Pedido cancelado: a linha aberta do marco não cobra ninguém.
+    await store.update("orders", order.id, { status: "CANCELLED" });
+    expect(item(await slaBoardFor(admin, ALL))).toBeUndefined();
   });
 });

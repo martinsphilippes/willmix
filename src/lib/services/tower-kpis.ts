@@ -70,9 +70,11 @@ import {
 
 /**
  * Formato do agregado. 2 (fase 4d): pedidos em andamento por marco atual
- * (`milestones`) e visões gerais de preparação a transporte pelo marco.
+ * (`milestones`) e visões gerais de preparação a transporte pelo marco. 3
+ * (fase 5c): os quadrados do bloco "Pedido" (e produção e canal) contam o
+ * pedido pelo marco atual, não pela etapa.
  */
-export const KPI_VERSION = 2;
+export const KPI_VERSION = 3;
 export const TOWER_KPI_KEY = "tower";
 /** Linhas mostradas na lista do quadrado escolhido (o total vem do indicador). */
 export const TOWER_LIST_LIMIT = 200;
@@ -283,6 +285,8 @@ export function buildOrderKpi(
       ],
     ]),
     currency: f.money.sellCurrency,
+    // Fase 5c: o quadrado do pedido pelo marco atual (o mesmo da tela).
+    milestones: new Map([[o.id, f.m]]),
   });
   const c: OrderKpi["c"] = {};
   for (const card of board.cards) {

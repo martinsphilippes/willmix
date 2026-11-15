@@ -32,6 +32,11 @@ export const pt = {
   "milestone.mine.now": "Sua tarefa",
   "milestone.mine.later": "Sua tarefa depois",
   "milestone.empty": "Nenhuma subtarefa neste pedido.",
+  // Fase 5c: a tela do pedido de cliente, fornecedor e parceiros.
+  "milestone.partnerHint":
+    'Os marcos do pedido em que você atua ou acompanha, na ordem do mapa. Os campos aparecem nos marcos com tarefa liberada agora; os outros abrem em "Ver detalhes", só leitura.',
+  "milestone.chatWellmix": "Mensagem para a Wellmix sobre este marco",
+  "milestone.chatDraft": "Marco {milestone}: ",
   "milestone.blocked": "Etapa {stage} bloqueada",
   "milestone.subtask.production_plan": "Dados da produção e ETD",
   "milestone.subtask.production": "Produção liberada para carregar",
@@ -95,6 +100,10 @@ export const en: Record<keyof typeof pt, string> = {
   "milestone.mine.now": "Your task",
   "milestone.mine.later": "Your task later",
   "milestone.empty": "No subtasks in this order.",
+  "milestone.partnerHint":
+    'The order milestones you work on or follow, in the process map order. Fields appear in the milestones with a task released now; the others open in "See details", read only.',
+  "milestone.chatWellmix": "Message Wellmix about this milestone",
+  "milestone.chatDraft": "Milestone {milestone}: ",
   "milestone.blocked": "Stage {stage} blocked",
   "milestone.subtask.production_plan": "Production data and ETD",
   "milestone.subtask.production": "Production released for loading",
@@ -156,6 +165,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "milestone.mine.now": "您的任务",
   "milestone.mine.later": "您稍后的任务",
   "milestone.empty": "此订单没有子任务。",
+  "milestone.partnerHint":
+    "您参与或跟进的订单节点，按流程图顺序排列。当前已开放任务的节点显示填写栏；其他节点在“查看详情”中只读打开。",
+  "milestone.chatWellmix": "就此节点给 Wellmix 留言",
+  "milestone.chatDraft": "节点 {milestone}：",
   "milestone.blocked": "阶段 {stage} 已阻塞",
   "milestone.subtask.production_plan": "生产数据和 ETD",
   "milestone.subtask.production": "生产完成，可装柜",

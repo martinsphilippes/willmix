@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 
 import {
@@ -381,9 +382,7 @@ export async function listOrderItemChoices(): Promise<OrderItemChoice[]> {
     }),
     listColumns(store, "order_items", ["orderId", "name", "quantity", "unit"]),
   ]);
-  const open = orders.filter(
-    (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
-  );
+  const open = orders.filter((o) => isOrderOpen(o.status));
   // Só os clientes dos pedidos abertos (antes: a tabela inteira, ~32 mil).
   const parties = indexBy(
     await listByIds(

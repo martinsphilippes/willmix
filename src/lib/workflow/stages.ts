@@ -5,6 +5,7 @@ import type {
   Role,
   StageKey,
 } from "@/lib/db/schema";
+import { isOrderOpen } from "@/lib/order-status";
 import { STAGE_KEYS } from "@/lib/db/schema";
 import {
   DOWN_PAYMENT_KEY,
@@ -42,8 +43,7 @@ export function canCompleteLater(
     stage.status === "done" &&
     !requirement.required &&
     (SHIPPING_LATE_KEYS as readonly string[]).includes(requirement.key) &&
-    order.status !== "CANCELLED" &&
-    order.status !== "CLOSED"
+    isOrderOpen(order.status)
   );
 }
 

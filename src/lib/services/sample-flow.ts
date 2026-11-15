@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 
 import { can, holdersOf } from "@/lib/auth/function-access";
 import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
@@ -138,7 +139,7 @@ export async function realMediaView(
     rowsOf(order.id),
     stepsOf(order.id),
   ]);
-  const live = order.status !== "CANCELLED" && order.status !== "CLOSED";
+  const live = isOrderOpen(order.status);
   const open =
     live &&
     SAMPLES_LIVE.includes(order.status) &&
@@ -448,8 +449,7 @@ export async function showroomView(
       .catch(() => [] as ShowroomReceipt[]),
   ]);
   const open =
-    order.status !== "CANCELLED" &&
-    order.status !== "CLOSED" &&
+    isOrderOpen(order.status) &&
     stepDone(steps.find((s) => s.key === "samples_brazil"));
   return {
     order,
@@ -610,10 +610,6 @@ export async function showroomTasks(user: User): Promise<Order[]> {
   ]);
   const done = new Set(receipts.map((r) => r.orderId));
   return orders.filter(
-    (o) =>
-      !done.has(o.id) &&
-      o.status !== "CANCELLED" &&
-      o.status !== "CLOSED" &&
-      !o.held,
+    (o) => !done.has(o.id) && isOrderOpen(o.status) && !o.held,
   );
 }
