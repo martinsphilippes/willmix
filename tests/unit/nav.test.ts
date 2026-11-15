@@ -111,10 +111,11 @@ describe("menu lateral", () => {
         items: ["/app/dashboards/owner", "/app/dashboards", "/app/sla"],
       },
       // Parceiros saiu de Cadastros: é uma seção de Equipe Acessos e
-      // Parceiros, no rodapé (dono, 15/11/2026).
+      // Parceiros, no rodapé; Clientes ganhou o item próprio (dono,
+      // 15/11/2026).
       {
         group: "nav.group.registry",
-        items: ["/app/products", "/app/lines"],
+        items: ["/app/customers", "/app/products", "/app/lines"],
       },
     ]);
     expect(navFooterFor(ADMIN).map((l) => [l.href, l.key])).toEqual([
@@ -125,8 +126,11 @@ describe("menu lateral", () => {
     // Superplan foi para Configurações (fora do menu lateral).
     expect(hrefsOf(ADMIN)).not.toContain("/app/superplan");
     const links = flattenNav(navFor(ADMIN));
-    for (const href of ["/app/parties", "/app/customers", "/app/suppliers"])
+    for (const href of ["/app/parties", "/app/suppliers"])
       expect(links.map((l) => l.href)).not.toContain(href);
+    expect(links.find((l) => l.href === "/app/customers")?.key).toBe(
+      "nav.customers",
+    );
     // Nenhuma tela se repete; todo grupo e todo link solto têm ícone.
     expect(new Set(hrefsOf(ADMIN)).size).toBe(hrefsOf(ADMIN).length);
     for (const e of navFor(ADMIN)) expect(e.icon).toBeTruthy();
@@ -535,11 +539,17 @@ describe("Equipe Acessos e Parceiros", () => {
       "/app/parties/access",
       "/app/parties/new",
       "/app/parties/cliente-joao",
-      "/app/customers",
       "/app/suppliers",
     ])
       expect(isActiveLink(link, path)).toBe(true);
-    for (const path of ["/app/products", "/app/settings", "/app/partiesx"])
+    // Clientes é de Cadastros: o item da área não acende lá.
+    for (const path of [
+      "/app/products",
+      "/app/settings",
+      "/app/partiesx",
+      "/app/customers",
+      "/app/customers/cliente-joao",
+    ])
       expect(isActiveLink(link, path)).toBe(false);
     expect(teamAreaSections(ADMIN as never)).toEqual([
       "team",
@@ -589,5 +599,55 @@ describe("Equipe Acessos e Parceiros", () => {
     expect(parentFor("/app/parties/cliente-joao", menu)).toBe("/app/parties");
     expect(parentFor("/app/parties/types", menu)).toBe("/app/parties");
     expect(parentFor("/app/team/u1", menu)).toBe("/app/team");
+  });
+});
+
+/*
+ * Cadastros → Clientes (dono, 15/11/2026): a página Clientes de sempre
+ * (/app/customers) virou item de Cadastros, para quem abre Parceiros (a
+ * mesma permissão de antes, quando os clientes ficavam no filtro de
+ * Parceiros). Só ela acende nas telas de clientes.
+ */
+describe("Cadastros → Clientes", () => {
+  type Who = Parameters<typeof navFor>[0];
+  const registry = (user: Who) => {
+    const entry = navFor(user).find(
+      (e) => isNavGroup(e) && e.key === "nav.group.registry",
+    );
+    return entry && isNavGroup(entry) ? entry.items.map((l) => l.href) : [];
+  };
+
+  it("quem abre Parceiros vê Clientes primeiro em Cadastros", () => {
+    expect(registry(ADMIN)[0]).toBe("/app/customers");
+    for (const functions of [["buyer"], ["catalog"], ["purchasing_director"]]) {
+      const who = { role: "operator" as const, functions } as Who;
+      expect(canOpen(who, "parties")).toBe(true);
+      expect(hrefsOf(who)).toContain("/app/customers");
+      expect(registry(who)[0]).toBe("/app/customers");
+    }
+  });
+
+  it("quem não abre Parceiros não vê Clientes", () => {
+    for (const functions of [["planner"], ["designer"], ["sales"], null]) {
+      const who = { role: "operator" as const, functions } as Who;
+      expect(canOpen(who, "parties")).toBe(false);
+      expect(hrefsOf(who)).not.toContain("/app/customers");
+    }
+    for (const role of ROLES.filter((r) => r !== "admin" && r !== "operator"))
+      expect(hrefsOf({ role })).not.toContain("/app/customers");
+  });
+
+  it("Clientes acende na lista e na ficha do cliente", () => {
+    const link = flattenNav(navFor(ADMIN)).find(
+      (l) => l.href === "/app/customers",
+    )!;
+    for (const path of [
+      "/app/customers",
+      "/app/customers/cliente-joao",
+      "/app/customers/cliente-joao/orders/o1",
+    ])
+      expect(isActiveLink(link, path)).toBe(true);
+    for (const path of ["/app/parties", "/app/suppliers", "/app/team"])
+      expect(isActiveLink(link, path)).toBe(false);
   });
 });
