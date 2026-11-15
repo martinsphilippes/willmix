@@ -135,6 +135,45 @@ describe("ordem e filtros", () => {
   });
 });
 
+describe("marco das pendências (fase 4a)", () => {
+  it("pelo item: o primeiro marco na ordem dos 16; sem item, pela etapa", () => {
+    expect(
+      tasks.taskMilestone({
+        stageKey: "PREPARATION",
+        items: [
+          { key: "art__item1", role: "operator", label: "Arte" },
+          { key: "ncm_validated", role: "operator", label: "NCM" },
+        ],
+      }),
+    ).toBe("new-order");
+    expect(
+      tasks.taskMilestone({
+        stageKey: "PREPARATION",
+        items: [{ key: "art__item1", role: "operator", label: "Arte" }],
+      }),
+    ).toBe("art");
+    expect(tasks.taskMilestone({ stageKey: "CUSTOMS" })).toBe("customs");
+    expect(tasks.taskMilestone({})).toBeNull();
+  });
+
+  it("grupos dos marcos na ordem do dono, antes dos tipos", () => {
+    const list = [
+      mk({ dueAt: null, kind: "review", group: "review" }),
+      mk({ dueAt: null, stageKey: "SHIPPING", group: "m:shipment" }),
+      mk({ dueAt: null, stageKey: "PREPARATION", group: "m:art" }),
+      mk({ dueAt: null, stageKey: "PREPARATION", group: "m:new-order" }),
+    ];
+    expect(tasks.taskGroups(list)).toEqual([
+      { group: "m:new-order", stage: true, count: 1 },
+      { group: "m:art", stage: true, count: 1 },
+      { group: "m:shipment", stage: true, count: 1 },
+      { group: "review", stage: false, count: 1 },
+    ]);
+    expect(tasks.milestoneOfGroup("m:art")).toBe("art");
+    expect(tasks.milestoneOfGroup("PREPARATION")).toBeNull();
+  });
+});
+
 describe("pendências reais", () => {
   it("saem ordenadas pelo prazo e com etapa/grupo preenchidos", async () => {
     const store = getStore();
@@ -180,7 +219,9 @@ describe("pendências reais", () => {
       expect(["overdue", "today", "week", "later", "none"]).toContain(t.due);
       if (t.kind === "requirement") {
         expect(t.stageKey).toBeTruthy();
-        expect(t.group).toBe(t.stageKey);
+        // Fase 4a: o grupo é o marco do pedido (docs/MILESTONES.md).
+        expect(t.milestone).toBeTruthy();
+        expect(t.group).toBe(tasks.milestoneGroup(t.milestone!));
       } else expect(t.group).toBe(t.kind);
     }
     expect(mine.some((t) => t.kind === "requirement")).toBe(true);
@@ -197,8 +238,17 @@ describe("pendências reais", () => {
     expect(first.due).toBe("overdue");
     expect(first.link).toBe(`/app/orders/${stage.orderId}`);
     expect(tasks.taskGroups(again).map((g) => g.group)).toContain(
-      "ORDER_CREATED",
+      "m:new-order",
     );
+    // Link antigo pela etapa (?type=ORDER_CREATED) continua achando as dela.
+    expect(
+      tasks
+        .filterTasks(again, { group: "ORDER_CREATED" })
+        .every((t) => t.stageKey === "ORDER_CREATED"),
+    ).toBe(true);
+    expect(
+      tasks.filterTasks(again, { group: "ORDER_CREATED" }).length,
+    ).toBeGreaterThan(0);
     // Cliente: só as próprias (nenhuma da Wellmix), mesma regra de ordem.
     const his = await tasks.pendingTasksFor(joao);
     for (const t of his) expect(t.group).toBeTruthy();

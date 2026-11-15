@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
-import type { DictionaryKey } from "@/i18n/dictionaries";
+import { milestoneTitle } from "@/lib/milestones";
 import { loadOwnerPanel } from "@/lib/services/owner-panel";
 import {
   Card,
@@ -259,22 +259,22 @@ export default async function OwnerPanelPage() {
             ))}
           </ul>
         </Card>
-        <Card title={t("owner.stages.title")}>
-          {d.ops.byStage.size === 0 ? (
+        <Card title={t("milestone.owner.title")}>
+          {d.ops.byMilestone.size === 0 ? (
             <Empty>{t("owner.stages.empty")}</Empty>
           ) : (
             <ul className="divide-y divide-zinc-100 text-sm" data-owner-stages>
-              {[...d.ops.byStage]
-                .sort((a, b) => b[1] - a[1])
-                .map(([stage, n]) => (
-                  <li
-                    key={stage}
-                    className="flex items-center justify-between py-1.5"
-                  >
-                    <span>{t(`stage.${stage}` as DictionaryKey)}</span>
-                    <span className="font-semibold tabular-nums">{n}</span>
-                  </li>
-                ))}
+              {/* Pelo marco atual, na ordem dos 16 marcos (fase 4a). */}
+              {[...d.ops.byMilestone].map(([key, n]) => (
+                <li
+                  key={key}
+                  className="flex items-center justify-between py-1.5"
+                  data-owner-milestone={key}
+                >
+                  <span>{milestoneTitle(t, key)}</span>
+                  <span className="font-semibold tabular-nums">{n}</span>
+                </li>
+              ))}
             </ul>
           )}
         </Card>

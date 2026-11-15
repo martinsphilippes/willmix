@@ -9,7 +9,7 @@ Pedido do dono (14/11/2026). As 10 etapas antigas do motor (Pedido criado, Prepa
 | 1    | Histórico do Sankhya na situação real, sem avisos                                                                                                                               | Não                   | Feita: PR #430                                                                                                                              |
 | 2    | Modelo dos 16 marcos, com dependências do mapa e situação calculada das subtarefas                                                                                              | Não                   | Feita: regra (`src/lib/milestones.ts`), subtarefas (`src/lib/services/milestones.ts`); o cartão só leitura virou a linha do tempo da fase 3 |
 | 3    | Tela do pedido nova: linha do tempo dos marcos no lugar de "Etapas do pedido"; formulários só nos marcos em que o login tem tarefa; "Parceiros do pedido" vira botão com janela | Não                   | Feita (15/11/2026): seção "A tela do pedido (fase 3)" abaixo                                                                                |
-| 4    | Pendências, lembretes, SLA, Control Tower, Financeiro e Sankhya leem os marcos; book, seleção, produto e pedido ligados pelo mapa                                               | Não                   | A fazer                                                                                                                                     |
+| 4    | Pendências, lembretes, SLA, Control Tower, Financeiro e Sankhya leem os marcos; book, seleção, produto e pedido ligados pelo mapa                                               | Não                   | Em andamento (4a, 15/11/2026: listas, Control Tower, Pendências, Financeiro e painel do dono mostram o marco atual; seção abaixo)           |
 | 5    | Migração dos dados para os marcos e remoção das etapas antigas (código e banco), com backup e conferência                                                                       | **Sim, irreversível** | Só com o "ok" do dono na hora                                                                                                               |
 
 ## Situação de um marco
@@ -75,6 +75,19 @@ Na página do pedido, a Wellmix (administrador e operador) vê a seção **"Marc
 - **Fornecedor, parceiros e cliente** continuam com a tabela "Etapas do pedido" e as próprias linhas (`src/lib/order-view.ts`), como antes.
 - **Não muda:** o motor por etapas por baixo (até as fases 4 e 5), as regras de quem pode enviar ou aprovar (o servidor confere como antes), os cartões de baixo e o banco.
 
+## Telas que leem os marcos (fase 4a, 15/11/2026)
+
+O **marco atual** do pedido ("Marco atual", com o número de 1 a 16) entra no lugar do nome da etapa antiga nas telas de lista. A regra (`currentMilestone`, `src/lib/milestones.ts`): o primeiro marco em andamento, na ordem do dono (Certificação e Material de arte correm em paralelo com o Pedido novo; `activeMilestones` lista todos); sem nenhum em andamento, o primeiro aguardando; tudo concluído (ou sem aplicação), Entrega e recebimento; cancelado, nenhum (as telas mostram "Cancelado" e, onde já mostravam a etapa em que parou, o marco dela).
+
+- **De onde vem:** o resumo por pedido guarda os 16 marcos (`order_summaries.facts.m`, formato 14, docs/RESUMOS.md), calculados com as mesmas subtarefas da tela do pedido. As listas leem o resumo, sem leitura nova por pedido. Resumo sem `m` (formato antigo, até a reconstrução) ou tela sem o resumo à mão: o marco sai da situação do pedido (`milestoneOfStatus`: Pedido pré-aprovado e Preparação → Pedido novo; Arte e embalagem → Contrato; Pagamento ao fornecedor → Sinal; Inspeção → Inspeção; Embarque → Embarque; Desembaraço → Desembaraço; Transporte → Nota fiscal e transporte; Entrega e Encerramento → Entrega e recebimento).
+- **Pedidos** (`/app/orders`): a coluna e o filtro viraram "Marco atual". O filtro lista os 16 marcos agrupados por bloco (Pedido, Produção, Entrega), além das situações das solicitações; a ordem da coluna segue os 16 marcos. Link antigo pela etapa (`?ph=stage:PREPARATION`) abre no marco dela (`ordersPhaseFilter`).
+- **Control Tower:** as linhas das listas mostram o marco atual ("Cancelado · marco" no cancelado). Os quadrados, os quadros por etapa ("Etapas da operação"), os indicadores e as visões gerais (preparação, inspeção, embarque, desembaraço, transporte) continuam contados pelas etapas.
+- **Pendências** (e os casos dos passos e do Overview): a pendência de item de etapa entra no marco do item (`milestoneOfRequirement`; com itens de mais de um marco, o primeiro na ordem dos 16); sem item, pelo marco da etapa. Os grupos do filtro seguem a ordem dos 16 marcos e o título é "Pedido #N: N. Marco". O grupo é calculado na leitura (`taskMilestone`), então as pendências guardadas no resumo não mudaram de formato. Link antigo `?type=PREPARATION` ainda filtra as pendências daquela etapa. Fornecedor e agência continuam com os caminhos deles.
+- **Financeiro**, **painel do dono** ("Pedidos em andamento por marco", na ordem dos 16), conta do parceiro e do cliente, folha de venda, ciclo do produto, "Todos" e pedido no passo do menu, histórico de compras da Nova solicitação: o marco atual (Financeiro e painel do dono pelo resumo; os outros pela situação). No cartão "Progresso do pedido" (Overview), cada etapa mostra o marco dela, com o nome da etapa embaixo.
+- **Fornecedor, parceiros e cliente no pedido** (`src/lib/order-view.ts`): sem mudança.
+
+**Ainda leem as etapas** (fases 4b a 4d): SLA (`/app/sla`), lembretes e avisos de prazo (`reminders.ts`, `notification-view.ts`), Sankhya (carga e regras por processo em Configurações), as regras de processo, o motor (`engine.ts`), a exportação e a lista de solicitações (`requests`), o selo de situação do Overview dos blocos (`flow.ts`, `flow-kpis.ts`), o cancelamento do pedido e os quadrados e contas da Control Tower.
+
 ## Aprovações do mapa (decisão do dono, 14/11/2026)
 
 Cada aprovação é um item obrigatório do pedido de compra, no fim do marco (`MILESTONE_APPROVALS`, `src/lib/purchase-lanes.ts`):
@@ -108,7 +121,7 @@ Nenhuma. **E24–E27** (decisão do dono, 14/11/2026) entraram como passos do ma
 - Subtarefas de um pedido: `src/lib/services/milestones.ts` (`orderSubtasks`, `milestonesOf`).
 - Tela: linha do tempo "Marcos do pedido" no detalhe do pedido (Wellmix), `src/components/order-milestone-timeline.tsx`; o detalhe de cada marco é montado em `src/app/app/orders/[id]/page.tsx` (mesmos `RequirementRow` e Server Actions de antes). A janela de parceiros usa `src/components/quick-dialog.tsx`.
 - Textos: `src/i18n/modules/milestones.ts`.
-- Testes: `tests/unit/milestones.test.ts` e `tests/unit/milestones-order.test.ts`.
+- Testes: `tests/unit/milestones.test.ts` e `tests/unit/milestones-order.test.ts`; fase 4a também em `tests/unit/order-summary.test.ts` (`facts.m`), `tests/unit/tasks-order.test.ts` (grupos por marco) e `tests/unit/orders-filter.test.ts` (filtro de marco).
 
 ## Ligações entre book, seleção, produto e pedido (fase 4b)
 

@@ -1,4 +1,5 @@
 import type { Translate } from "@/i18n";
+import { orderMilestoneText } from "@/lib/milestones";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { ProductCycle } from "@/lib/services/product-cycle";
 import {
@@ -274,7 +275,7 @@ export function CycleCard({
                             : "brand"
                       }
                     >
-                      {t(`stage.${o.status}` as DictionaryKey)}
+                      {orderMilestoneText(t, o.status)}
                     </Badge>
                     <span className="tabular-nums text-zinc-700">
                       {o.quantity}

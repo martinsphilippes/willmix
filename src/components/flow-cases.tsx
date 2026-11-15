@@ -1,6 +1,7 @@
 import type { FlowCase as Task } from "@/lib/services/flow";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
+import { milestoneTitle } from "@/lib/milestones";
 import {
   caseHref,
   itemsInStep,
@@ -41,7 +42,9 @@ export function caseTitle(task: Task, t: Translate): string {
   if (task.stageKey && task.orderNumber)
     return t("tasks.orderStage", {
       n: task.orderNumber,
-      stage: t(`stage.${task.stageKey}` as DictionaryKey),
+      stage: task.milestone
+        ? milestoneTitle(t, task.milestone)
+        : t(`stage.${task.stageKey}` as DictionaryKey),
     });
   return task.title;
 }

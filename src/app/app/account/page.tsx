@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { orderMilestoneText } from "@/lib/milestones";
 import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -324,7 +325,7 @@ export default async function AccountPage({
                             : "neutral"
                       }
                     >
-                      {t(`stage.${o.status}`)}
+                      {orderMilestoneText(t, o.status)}
                     </Badge>
                   </Td>
                   <Td />
