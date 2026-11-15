@@ -1,11 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { isStockCustomer } from "@/lib/services/stock-party";
 import { ActionError } from "@/components/action-error";
-import {
-  RequestInfoTable,
-  specificationColumns,
-  type InfoColumn,
-} from "@/components/request-info-table";
+import { RequestSheetTable } from "@/components/request-sheet-table";
+import { loadRequestSheet } from "@/lib/services/request-sheet";
 import { fallbackError } from "@/i18n/error-text";
 import {
   hasNcmBroker,
@@ -28,14 +25,12 @@ import {
   getRequestForUser,
   canAddProducts,
 } from "@/lib/services/requests";
-import { variantSnapshotSummary } from "@/lib/services/variant-sales";
 import {
   requestDisplayStatus,
   requestStatusTone,
 } from "@/lib/services/order-status";
 import { getT } from "@/i18n/server";
 import { productNameText } from "@/i18n";
-import { withoutPlaceholder } from "@/lib/placeholder-name";
 import {
   Alert,
   Badge,
@@ -45,7 +40,6 @@ import {
   Select,
   TextLink,
   cx,
-  formatDate,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { setRequesterAction } from "../../actions";
@@ -78,21 +72,7 @@ export default async function RequestDetailPage({
     canViewRequest(user, r),
   );
   const wellmix = isWellmix(user);
-  // Valores da variação pedida (cópia feita na solicitação), só para a Wellmix.
-  const variantSummary =
-    wellmix && request.variant
-      ? variantSnapshotSummary(
-          request.variant,
-          {
-            price: t("productVariants.col.price"),
-            moq: t("productVariants.col.moq"),
-            box: t("productVariants.col.box"),
-            cbm: t("productVariants.col.cbm"),
-          },
-          t.intl,
-        )
-      : null;
-  const [customer, documents, customerLogins] = await Promise.all([
+  const [customer, documents, customerLogins, sheet] = await Promise.all([
     store.get("parties", request.customerId),
     store.list("documents", { filter: { requestId: request.id } }),
     // Logins deste cliente, para a Wellmix indicar o solicitante.
@@ -102,6 +82,10 @@ export default async function RequestDetailPage({
           orderBy: "name",
         })
       : Promise.resolve([]),
+    /* Ficha completa: uma linha por produto (esta e as do lote que o login
+       vê), com a origem de cada dado e as permissões aplicadas no servidor
+       (docs/REQUEST_SHEET.md). */
+    loadRequestSheet(user, request, siblings, t),
   ]);
   /* Pedido cancelado: a solicitação segue ORDERED (histórico), mas o selo, a
      linha do tempo e o aviso mostram o cancelamento. */
@@ -339,50 +323,18 @@ export default async function RequestDetailPage({
         <Alert tone="success">{t("access.requesterSaved")}</Alert>
       ) : null}
 
-      {/* Dados da solicitação em linha (cada coluna uma informação, como nas
-          outras telas), na largura toda; depois os cartões de ação da Wellmix
+      {/* Solicitações: uma linha por produto e a ficha completa de cada um,
+          na largura toda; depois os cartões de ação da Wellmix
           lado a lado; cotações e proposta na largura toda. A linha do tempo
           resumida saiu para todos (decisão do dono): a situação fica no
           selo do alto e a Wellmix acompanha pelas Etapas da solicitação. */}
       <div className="mt-4 flex flex-col gap-4">
         <div className="contents">
           <Card title={t("requests.title")}>
-            <RequestInfoTable
-              rowKey={request.id}
-              columns={[
-                // Variação pedida: o nome para todos; os valores da cópia
-                // (preço, MOQ, caixa, CBM) só para a Wellmix.
-                ...(request.variant
-                  ? [
-                      [
-                        t("productVariants.label"),
-                        <span key="variant" data-request-variant>
-                          {request.variant.name}
-                          {wellmix && variantSummary ? (
-                            <span className="block text-xs text-zinc-500">
-                              {variantSummary}
-                            </span>
-                          ) : null}
-                        </span>,
-                      ] as InfoColumn,
-                    ]
-                  : []),
-                [t("common.quantity"), `${request.quantity} ${request.unit}`],
-                [t("requests.deadline"), formatDate(request.deadline, t)],
-                [
-                  t("requests.description"),
-                  request.description
-                    ? withoutPlaceholder(request.description)
-                    : request.description,
-                ],
-                // Cada item da especificação na sua coluna.
-                ...specificationColumns(
-                  request.specification,
-                  t("requests.specification"),
-                ),
-                [t("common.note"), request.notes],
-              ]}
-            />
+            {/* Uma linha por produto com os dados principais e "Ver ficha
+                completa" (Produto, Embalagem e cubagem, Valores e Pagamento);
+                a programação de compra desta solicitação logo abaixo. */}
+            <RequestSheetTable view={sheet} t={t} />
             <RequestScheduleTable
               schedule={request.schedule}
               unit={request.unit}
