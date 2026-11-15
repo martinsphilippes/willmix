@@ -3,6 +3,9 @@ import { withTempStore } from "./setup";
 
 /*
  * Divergência no recebimento (mapa E24 a E27; dono, 14/11/2026;
+ * substituída pelos lotes em 15/11/2026, que este arquivo não cobre:
+ * tests/unit/divergence-lots.test.ts. A trilha por pedido segue valendo
+ * para os pedidos que já a tinham;
  * docs/RECEIVING.md): sem divergência na contagem os passos não existem; com
  * ela nascem os quatro, uma vez só. Comunicar a Compras (qualidade faz,
  * planner valida) → Fornecedor (comprador ou o fornecedor pelo portal) e
@@ -144,6 +147,10 @@ describe("divergência no recebimento (E24 a E27)", () => {
     await rc.saveCounts(quality, order.id, [
       { orderItemId: item.id, received: 90, damaged: 0, note: "faltam 10" },
     ]);
+    // Desde 15/11/2026 a contagem abre um lote (divergence-lots.test.ts); os
+    // quatro passos por pedido valem para os pedidos que já os tinham.
+    expect(await divergenceRows()).toEqual([]);
+    await f.openDivergenceSteps(admin, await fresh());
     let div = await divergenceRows();
     expect(div.map((s) => s.key).sort()).toEqual(
       [...f.DIVERGENCE_STEPS].sort(),

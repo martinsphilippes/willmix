@@ -20,6 +20,49 @@ Cartão **Recebimento** no pedido, só para a Wellmix, do desembaraço em diante
 
 O cartão não muda as etapas do pedido (a confirmação de entrega continua na etapa Entrega). Fotos e arquivos são documentos internos do pedido (só a Wellmix abre). Tudo vai para a auditoria (`receiving.*`).
 
+## Lote com divergência (mapa E21, E24 a E27; desde 15/11/2026)
+
+Decisões do dono (15/11/2026), pelo mapa. Cada contagem por SKU que acha
+divergências novas abre um **lote** (`divergence_lots`, número próprio) com os
+itens e as quantidades com problema: falta, sobra ou avaria. Um pedido pode ter
+mais de um lote. Os quatro passos ficam dentro do lote:
+
+| Passo | Faz | Aprova | Depende de |
+| --- | --- | --- | --- |
+| E24 Compras avisada | o sistema, sozinho: avisa a Diretoria de compras e os compradores (`approve.purchasingDirector`, `receiving.follow`) | — | — |
+| E25 Fornecedor comunicado | Diretoria de compras: o que foi comunicado | a Trading responde: aceita, contesta ou repõe, com texto | — |
+| E26 Evidências | Compras com a Logística (`receiving.follow`, `receiving.quality` ou a diretoria): texto e fotos, vídeos ou arquivos (obrigatórios) | a Trading aprova ou devolve com o motivo | — |
+| E27 Mitigação financeira | Financeiro (tela Financeiro ou `numerario.manage`) ou o Agente de carga do pedido: desconto, crédito em conta corrente, multa ou sem valor, com o valor e a moeda | a Trading aprova o Acordo de Divergência (fecha o lote) ou devolve | E25 respondido **e** E26 aprovado |
+
+Regras:
+
+- A **Trading** é o fornecedor do pedido, com o login dele. O administrador
+  age por todos, também pela Trading quando ela não tem login.
+- Sem ninguém com a ação na equipe, a Wellmix faz o passo e os avisos vão aos
+  administradores.
+- Quem faz é avisado quando chega a sua vez. A Trading é avisada a cada envio.
+- No passo devolvido, quem faz é avisado e reenvia. Os arquivos anteriores
+  ficam.
+- Uma nova contagem do mesmo item (por exemplo, uma avaria a mais) não abre
+  outro lote. Um item novo com divergência abre outro lote.
+
+Onde aparece:
+
+- Cartão **Lotes com divergência** no pedido, antes do cartão da divergência
+  antiga.
+- Tela do lote `/app/orders/<id>/lots/<lote>`.
+- Lista `/app/lots`: a Wellmix vê todos; a Trading e o Agente de carga, os dos
+  seus pedidos.
+- Pendências: quem faz o passo e quem decide (a Trading e o Agente de carga
+  também).
+
+Código: `src/lib/services/divergence-lots.ts` e
+`src/app/app/actions/divergence-lots.ts`. Teste:
+`tests/unit/divergence-lots.test.ts`.
+
+A trilha abaixo, com os quatro passos por pedido, continua valendo só para os
+pedidos que já a tinham.
+
 ## Divergência no recebimento (mapa E24 a E27)
 
 Decisão do dono (14/11/2026). Quando a conferência por SKU acha a **primeira divergência** (recebido diferente do esperado ou avaria), nascem no pedido quatro passos, em "pendente" (`openDivergenceSteps` em `src/lib/services/import-flow.ts`, chamado por `saveCounts`). Uma nova contagem não recria nada. Sem divergência os passos não existem ("não se aplicam"): não aparecem no pedido, nas pendências, no menu nem nos marcos.
