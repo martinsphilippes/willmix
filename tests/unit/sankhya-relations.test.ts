@@ -356,3 +356,37 @@ describe("caixa master direto do Sankhya", () => {
     expect((await sankhyaCartons([null, "abc"])).size).toBe(0);
   });
 });
+
+describe("carga extra das caixas (TGFVOA)", () => {
+  it("grava CBM e peças vazios e tira a caixa interna que veio do C1", async () => {
+    const c = await import("@/lib/integrations/sankhya-cartons");
+    const wbu = [
+      { CODPROD: 2549, CODVOL: "C1", QUANTIDADE: 196, M3: 0.1220625 },
+      { CODPROD: 2549, CODVOL: "CX", QUANTIDADE: 240, M3: 0.1476375 },
+    ];
+    // WBU2191 no portal: 240 por caixa, interna 196 (do C1), sem CBM.
+    expect(
+      c.cartonPatch({ masterBoxQty: 240, innerBoxQty: 196, cbm: null }, wbu),
+    ).toEqual({ cbm: 0.1476375, innerBoxQty: null });
+    // Já certo: nada muda.
+    expect(
+      c.cartonPatch({ masterBoxQty: 240, innerBoxQty: null, cbm: 0.15 }, wbu),
+    ).toEqual({});
+    // Outra quantidade por caixa no portal: o CBM do Sankhya não entra.
+    expect(
+      c.cartonPatch({ masterBoxQty: 100, innerBoxQty: null, cbm: null }, wbu),
+    ).toEqual({});
+    // Sem caixa no portal: peças e CBM da master.
+    expect(
+      c.cartonPatch({ masterBoxQty: null, innerBoxQty: null, cbm: null }, wbu),
+    ).toEqual({ masterBoxQty: 240, cbm: 0.1476375 });
+    // Interna que não é do C1 fica.
+    expect(
+      c.cartonPatch({ masterBoxQty: 240, innerBoxQty: 12, cbm: 0.15 }, wbu),
+    ).toEqual({});
+    expect(c.cartonProbeSql(10)).toContain("FROM TGFVOA WHERE CODPROD > 10");
+    expect(c.cartonRangeSql(10, 20)).toContain(
+      "CODPROD > 10 AND CODPROD <= 20",
+    );
+  });
+});
