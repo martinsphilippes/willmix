@@ -16,6 +16,7 @@ const { orderFromRequest } = await import("./helpers/order");
 const r = await import("@/lib/services/requests");
 const summary = await import("@/lib/services/order-summary");
 const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
+const { syncMilestones } = await import("@/lib/services/order-milestones");
 const rules = await import("@/lib/process-rules");
 const labels = await import("@/lib/process-event-labels");
 const { saveProcessRules, getProcessRules } =
@@ -143,26 +144,27 @@ describe("eventos de marco nas regras de processo", () => {
     ]);
   });
 
-  it("conclui e começa disparam uma vez por pedido, pelo recálculo por evento", async () => {
+  it("conclui e começa disparam uma vez por pedido, pela sincronização dos marcos (fase 5d)", async () => {
     const order = await placeOrder("Garrafa regra");
-    // Começa: o resumo dizia "aguardando"; uma gravação recalcula.
-    await rewind(order, "waiting");
-    await touch(order);
-    await flushSummaryChanges();
+    // Começa: os marcos que nascem liberados disparam na criação do pedido.
     const started = (await milestoneLog(order)).filter((e) =>
       e.event.endsWith(":start"),
     );
-    expect(started.length).toBeGreaterThan(0);
+    expect(started.map((e) => e.event)).toContain("milestone:new-order:start");
     expect(started.every((e) => e.status === "simulated")).toBe(true);
+    // Nenhum evento de etapa antiga (o motor não dispara mais `stage:*`).
+    const all = await getStore().list("process_events", {
+      filter: { orderId: order.id },
+    });
+    expect(all.some((e) => rules.isStageEvent(e.event))).toBe(false);
 
-    // Conclui: tudo feito.
-    await rewind(order, "active");
+    // Conclui: tudo feito; a sincronização (o motor) dispara.
     await finishRequirements(order);
-    await flushSummaryChanges();
+    await syncMilestones(order.id);
     const done = (await milestoneLog(order)).filter((e) =>
       e.event.endsWith(":done"),
     );
-    expect(done.length).toBeGreaterThan(0);
+    expect(done.map((e) => e.event)).toContain("milestone:new-order:done");
     const log = await milestoneLog(order);
     const events = log.map((e) => e.event);
     expect(new Set(events).size).toBe(events.length);
@@ -171,49 +173,47 @@ describe("eventos de marco nas regras de processo", () => {
       audits.map((a) => (a.after as { event: string }).event).sort(),
     ).toEqual([...events].sort());
 
-    // De novo (o resumo esquece): o que já disparou não repete (só entra o
-    // começo dos marcos que abriram agora, depois de tudo feito).
-    await rewind(order, "waiting");
-    await touch(order);
-    await flushSummaryChanges();
-    await rewind(order, "active");
+    // De novo (as linhas dos marcos somem e voltam): o que já disparou não
+    // repete.
+    for (const row of await getStore().list("order_milestones", {
+      filter: { orderId: order.id },
+    }))
+      await getStore().remove("order_milestones", row.id);
+    await syncMilestones(order.id);
     await touch(order);
     await flushSummaryChanges();
     const again = (await milestoneLog(order)).map((e) => e.event);
     expect(new Set(again).size).toBe(again.length);
-    for (const e of events)
-      expect(again.filter((x) => x === e)).toHaveLength(1);
-    expect(again.filter((e) => e.endsWith(":done")).sort()).toEqual(
-      done.map((e) => e.event).sort(),
-    );
+    expect(again.sort()).toEqual([...events].sort());
     expect(await firedAudits(order)).toHaveLength(again.length);
   });
 
-  it("a reconstrução não dispara", async () => {
+  it("a reconstrução e o recálculo do resumo não disparam", async () => {
     const order = await placeOrder("Caneca regra");
+    const before = (await milestoneLog(order)).length;
     await rewind(order, "waiting");
     await finishRequirements(order);
     await summary.rebuildOrderSummaries();
+    await touch(order);
     await flushSummaryChanges();
-    expect(await milestoneLog(order)).toEqual([]);
-    expect(await firedAudits(order)).toEqual([]);
+    expect(await milestoneLog(order)).toHaveLength(before);
+    expect(await firedAudits(order)).toHaveLength(before);
   });
 
   it("pedido do histórico em espera não dispara", async () => {
     const order = await placeOrder("Prato regra");
+    const before = (await milestoneLog(order)).length;
     await getStore().update("orders", order.id, { held: true } as never);
-    await flushSummaryChanges();
-    await rewind(order, "waiting");
     await finishRequirements(order);
-    await flushSummaryChanges();
-    expect(await milestoneLog(order)).toEqual([]);
+    await syncMilestones(order.id);
+    expect(await milestoneLog(order)).toHaveLength(before);
   });
 
   it("sem regra ativa no evento: nada é disparado nem auditado", async () => {
     await saveProcessRules(admin, []);
     const order = await placeOrder("Copo sem regra");
-    await rewind(order, "waiting");
     await finishRequirements(order);
+    await syncMilestones(order.id);
     await flushSummaryChanges();
     expect(await milestoneLog(order)).toEqual([]);
     expect(await firedAudits(order)).toEqual([]);

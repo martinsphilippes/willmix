@@ -137,6 +137,10 @@ async function finishLanes(orderId: string) {
     await submit(supplierA, orderId, k("lead_time_confirmed", item.id), {
       value: "30",
     });
+  }
+  // Fase 5d: a arte só depois do marco Material de arte (com a aprovação).
+  await approveMilestones(admin, orderId);
+  for (const item of items) {
     await submit(agency, orderId, k("art", item.id), { file: "arte.pdf" });
     const review = (await requirementsOf(orderId)).find(
       (r) => r.key === k("art_review", item.id),

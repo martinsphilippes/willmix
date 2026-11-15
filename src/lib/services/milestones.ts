@@ -17,7 +17,7 @@ import {
 } from "@/lib/milestones";
 import { baseKeyOf, LANE_KEYS, SAMPLE_ORDER_KEY } from "@/lib/purchase-lanes";
 import { parseSampleOrder } from "@/lib/sample-order";
-import { isPurchaseFlow } from "@/lib/workflow/stages";
+import { isOffFlowStage, isPurchaseFlow } from "@/lib/workflow/stages";
 import {
   IMPORT_STEPS,
   groupOf,
@@ -73,6 +73,10 @@ function stepsOfRequirement(
   }).map(stepId);
 }
 
+/** Passo começado (enviado, validado ou recusado; a linha pendente não conta). */
+const startedStep = (step: ImportStep | undefined) =>
+  !!step && step.status !== "pending";
+
 /** As subtarefas do pedido, cada uma no passo do menu dela (função pura). */
 export function orderSubtasks(input: MilestoneInput): Subtask[] {
   const { order } = input;
@@ -82,6 +86,10 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
   for (const r of input.requirements) {
     const stage = stageById.get(r.stageId);
     if (!stage || stage.status === "cancelled") continue;
+    // Fase 5d: o item opcional (e o da etapa fora do fluxo) não segura os
+    // marcos seguintes.
+    const optional =
+      r.required === false || isOffFlowStage(stage.key) ? true : undefined;
     if (input.requirementStep) {
       const step = input.requirementStep(r, stage);
       if (step)
@@ -90,6 +98,7 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
           key: r.key,
           done: r.status === "done",
           dueAt: r.status === "done" ? null : (stage.dueAt ?? null),
+          ...(optional ? { optional } : {}),
         });
       continue;
     }
@@ -99,6 +108,7 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
         key: r.key,
         done: r.status === "done",
         dueAt: r.status === "done" ? null : (stage.dueAt ?? null),
+        ...(optional ? { optional } : {}),
       });
   }
   // Passos do embarque, da origem, da certificação e das amostras.
@@ -113,9 +123,22 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
     isPurchaseFlow(order) &&
     sampleDoc?.status === "ordered" &&
     !!sampleDoc.lines?.length;
+  // Fase 5d: a certificação do cartão do pedido (memorial, selo e arte com
+  // o selo) no pedido de compra cuja linha exige (P6, item do certificado);
+  // laboratório e registro, e nos outros pedidos qualquer passo, só depois
+  // de começados (como o cartão Certificação mostra).
+  const fullCertification =
+    isPurchaseFlow(order) &&
+    input.requirements.some((r) => baseKeyOf(r.key) === LANE_KEYS.certificate);
   for (const tpl of IMPORT_STEPS) {
     const group = groupOf(tpl);
     if (group === "certification" && !certification) continue;
+    if (
+      group === "certification" &&
+      !startedStep(saved.get(tpl.key)) &&
+      !(fullCertification && (tpl.seal || tpl.key === "cert_memorial"))
+    )
+      continue;
     if (group === "samples" && !samples) continue;
     // Divergência no recebimento: só com as linhas dos passos (contagem com divergência).
     if (!stepApplies(order, tpl.key, input.lpco, input.importSteps)) continue;

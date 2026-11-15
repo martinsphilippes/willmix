@@ -131,18 +131,20 @@ async function uploadSignedContract(page: Page, orderUrl: string) {
 async function sendStep(
   page: Page,
   orderUrl: string,
-  anchor: "import-flow" | "container-origin" | "samples-flow",
+  anchor: "import-flow" | "container-origin" | "samples-flow" | "certification",
   key: string,
-  input: { value?: string; file?: boolean },
+  input: { value?: string; file?: boolean; amount?: string },
 ) {
   await page.goto(`${orderUrl}#${anchor}`);
   await page.waitForLoadState("networkidle");
   const row = page.locator(`#${anchor}-step-${key}`);
   if (input.value !== undefined)
     await row.locator("input[name=value]").fill(input.value);
+  if (input.amount !== undefined)
+    await row.locator("input[name=amount]").fill(input.amount);
   if (input.file) await row.locator("input[type=file]").setInputFiles(pdf);
   await Promise.all([
-    page.waitForURL(/importStep=submitted/),
+    page.waitForURL(/(importStep|certStep)=submitted/),
     row.locator(`[data-import-submit="${key}"]`).click(),
   ]);
 }
@@ -150,13 +152,13 @@ async function sendStep(
 async function validateStep(
   page: Page,
   orderUrl: string,
-  anchor: "import-flow" | "container-origin" | "samples-flow",
+  anchor: "import-flow" | "container-origin" | "samples-flow" | "certification",
   key: string,
 ) {
   await page.goto(`${orderUrl}#${anchor}`);
   await page.waitForLoadState("networkidle");
   await Promise.all([
-    page.waitForURL(/importStep=validated/),
+    page.waitForURL(/(importStep|certStep)=validated/),
     page
       .locator(`#${anchor}-step-${key} [data-import-validate="${key}"]`)
       .click(),
@@ -673,7 +675,19 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(leadTimeRow).toContainText("45");
   await expect(leadTimeRow.locator("input[name=value]")).toHaveCount(0);
   await fillMyRequirements(page, orderUrl);
-  // 6b. Agência: com a faca e a foto em alta, envia a arte. A arte final com
+  // Fase 5d (docs/MILESTONES.md): a arte só começa com o marco Material de
+  // arte concluído. Antes da aprovação do Comprador, a agência não tem o
+  // que enviar; o Comprador (aqui o administrador) aprova o material.
+  await login(page, "agencia@design.com");
+  await page.goto(orderUrl);
+  await expect(page.locator("form:has(input[name=requirementId])")).toHaveCount(
+    0,
+  );
+  await login(page, "admin@wellmix.com");
+  await approveMilestoneRows(page, orderUrl, [
+    /Material de arte aprovado pelo Comprador/,
+  ]);
+  // 6b. Agência: com o material de arte, envia a arte. A arte final com
   // o selo ainda não sobe (falta a arte validada e o certificado): a linha
   // diz o que ela aguarda.
   await login(page, "agencia@design.com");
@@ -975,15 +989,21 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(page.locator("#certification-step-cert_seal")).toContainText(
     "SELO-E2E-1",
   );
-  // 6e. Agência: com a arte validada e o certificado, a arte final com o selo.
+  // 6e. Agência: com a arte validada e o certificado, a arte final com o
+  // selo; e aplica o selo na arte, que a Wellmix confere (fase 5d,
+  // docs/MILESTONES.md: o Contrato espera o marco Certificação inteiro).
   await login(page, "agencia@design.com");
   await fillMyRequirements(page, orderUrl);
+  await sendStep(page, orderUrl, "certification", "cert_seal_art", {
+    file: true,
+  });
+  await login(page, "admin@wellmix.com");
+  await validateStep(page, orderUrl, "certification", "cert_seal_art");
   // 6f. Aprovações do mapa no fim dos marcos (docs/MILESTONES.md): o GP
   // aprova o cadastro e a certificação, o Comprador o material de arte.
   await login(page, "admin@wellmix.com");
   await approveMilestoneRows(page, orderUrl, [
     /Cadastro e fiscal aprovados pelo GP/,
-    /Material de arte aprovado pelo Comprador/,
     /Certificação aprovada pelo GP/,
   ]);
 
@@ -1113,6 +1133,11 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   ]);
   await expect(page.locator("[data-production-plan]")).toBeVisible();
   await expect(page.locator("[data-production-etd]")).toBeVisible();
+  // O Planner aprova a pré-produção (docs/MILESTONES.md). Fase 5d: a
+  // Inspeção espera o marco Pré-produção, com a aprovação.
+  await approveMilestoneRows(page, orderUrl, [
+    /Pré-produção \(dados e ETD\) aprovada pelo Planner/,
+  ]);
 
   // De volta ao fornecedor: a inspeção é dele.
   await login(page, "supplier.a@china.com");
@@ -1194,10 +1219,6 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     "data-sku-status",
     "approved",
   );
-  // O Planner aprova a pré-produção (docs/MILESTONES.md).
-  await approveMilestoneRows(page, orderUrl, [
-    /Pré-produção \(dados e ETD\) aprovada pelo Planner/,
-  ]);
   // Operador da Wellmix: "Etapas do pedido" só com as tarefas dele
   // (docs/PURCHASE_ORDER.md, seção 2e). O pedido de compra é de quem o gerou
   // (o administrador, responsável interno) e os itens do Embarque são do
@@ -1213,12 +1234,17 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.goto(orderUrl);
   await expect(page.locator("[data-stage-mine-hint]")).toHaveCount(0);
   await expect(page.getByText(/Revisão necessária/)).toHaveCount(0);
-  // A etapa do Embarque em andamento: o marco Embarque abre sozinho, com os
-  // campos do administrador (fase 3, docs/MILESTONES.md).
+  // Fase 5d: com a produção concluída, o marco Booking e logística abre
+  // sozinho, com os passos do administrador; o Embarque espera o booking e
+  // o carregamento (fase 3 e 5d, docs/MILESTONES.md).
   await expect(
-    page.locator('[data-milestone-details="shipment"]'),
+    page.locator('[data-milestone-details="booking"]'),
   ).toHaveAttribute("open", "");
-  // Embarque (Wellmix): botão de importar a planilha da companhia marítima
+  await expect(page.locator('[data-milestone="shipment"]')).toHaveAttribute(
+    "data-milestone-state",
+    "waiting",
+  );
+  // Booking (Wellmix): botão de importar a planilha da companhia marítima
   // (tarifário de frete), que leva ao tarifário e volta ao pedido.
   const tariffBox = page.locator("[data-tariff-box]");
   await expect(tariffBox).toBeVisible();
@@ -1435,6 +1461,38 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await eta.fill("2026-10-15");
   await expect(page.locator("[data-date-error]")).toHaveCount(0);
   await fillMyRequirements(page, orderUrl);
+  // Fase 5d (docs/MILESTONES.md): o Desembaraço espera o marco Embarque
+  // inteiro (o rastreio do Comex interno também) e a Nota fiscal e
+  // transporte, o Desembaraço inteiro: presença de carga, numerário
+  // (validado e pago), canal, DI, CE Mercante e CI; a entrega, a NF.
+  await login(page, "admin@wellmix.com");
+  await sendStep(page, orderUrl, "container-origin", "container_tracking", {
+    value: "Em trânsito",
+  });
+  await sendStep(page, orderUrl, "import-flow", "cargo_presence", {
+    value: "2026-10-20",
+  });
+  await sendStep(page, orderUrl, "import-flow", "numerario", {
+    amount: "1000",
+    file: true,
+  });
+  await validateStep(page, orderUrl, "import-flow", "numerario");
+  await sendStep(page, orderUrl, "import-flow", "numerario_paid", {
+    file: true,
+  });
+  await sendStep(page, orderUrl, "import-flow", "channel", {});
+  await sendStep(page, orderUrl, "import-flow", "di", {
+    value: "DI-E2E",
+    file: true,
+  });
+  await sendStep(page, orderUrl, "import-flow", "ce_mercante", {
+    value: "CE-E2E",
+  });
+  await sendStep(page, orderUrl, "import-flow", "ci", { file: true });
+  await sendStep(page, orderUrl, "import-flow", "danfe", {
+    value: "NF-E2E",
+    file: true,
+  });
   await login(page, "despachante@comex.com");
   await fillMyRequirements(page, orderUrl);
   await login(page, "transportadora@rodo.com");

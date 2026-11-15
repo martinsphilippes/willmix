@@ -429,6 +429,28 @@ export async function notifyLanesOpen(
 }
 
 /**
+ * Fase 5d: o marco Arte liberou (Material de arte concluído): quem faz a arte
+ * de cada produto é avisado, produto a produto (o mesmo aviso de quando a
+ * faca e a foto em alta chegavam).
+ */
+export async function notifyArtReleased(order: Order): Promise<void> {
+  const all = await getStore().list("requirements", {
+    filter: { orderId: order.id },
+  });
+  for (const art of all) {
+    if (baseKeyOf(art.key) !== LANE_KEYS.art || art.status === "done") continue;
+    if (blockedBy(art.key, all).length) continue;
+    await send(
+      order,
+      (await laneTarget(order, art.key, all)) ?? art.role,
+      "purchaseSequence.notify.artUnlocked.subject",
+      "purchaseSequence.notify.artUnlocked.body",
+      { product: productOf(art) },
+    );
+  }
+}
+
+/**
  * Depois de um passo da raia: arte enviada → a Wellmix valida; arte validada
  * e certificado na mão → quem faz a arte faz a arte final com o selo.
  */
@@ -456,7 +478,18 @@ export async function afterLaneStep(
       });
       const artKey = laneKey(LANE_KEYS.art, item);
       const art = all.find((r) => r.key === artKey);
-      if (art && art.status !== "done" && !blockedBy(artKey, all).length)
+      // Fase 5d: a arte só começa com o marco Material de arte concluído
+      // (o aviso da raia sai quando o marco Arte libera, `syncMilestones`).
+      const { orderRelease } = await import("./order-milestones");
+      const { requirementReleased } = await import("@/lib/milestone-release");
+      const release = art ? (await orderRelease(order.id))?.release : null;
+      if (
+        art &&
+        art.status !== "done" &&
+        !blockedBy(artKey, all).length &&
+        !!release &&
+        requirementReleased(order, art, release)
+      )
         await send(
           order,
           (await laneTarget(order, artKey, all)) ?? art.role,

@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { withTempStore } from "./setup";
+import { approveMilestones } from "./helpers/approvals";
 import { xlsxBytes } from "./xlsx-fixture";
 
 /*
@@ -506,15 +507,24 @@ describe("pedido com dois produtos na Arte", () => {
           documentId: doc.id,
         });
       }
+    // Fase 5d: a arte libera com o marco Material de arte inteiro (pedido
+    // mínimo, prazo e a aprovação do Comprador).
+    for (const item of itemIds)
+      for (const [base, value] of [
+        ["moq_confirmed", "1000"],
+        ["lead_time_confirmed", "30"],
+      ]) {
+        const r = reqs.find((x) => x.key === `${base}__${item}`)!;
+        await engine.submitRequirement(supplierA, r.id, { value });
+      }
+    await approveMilestones(admin, order.id);
   });
 
   it("uma linha por produto, cada Resolver no seu produto", async () => {
     const rows = (await flowSvc.flowCasesOf(admin, ART)).filter(
       (r) => r.orderId === order.id,
     );
-    expect(rows.map((r) => flow.productOfCase(ART, r)).sort()).toEqual(
-      itemIds,
-    );
+    expect(rows.map((r) => flow.productOfCase(ART, r)).sort()).toEqual(itemIds);
     for (const r of rows) {
       const item = flow.productOfCase(ART, r)!;
       expect(flow.itemsInStep(ART, r).map((i) => i.key)).toEqual([

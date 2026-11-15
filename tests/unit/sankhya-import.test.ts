@@ -237,6 +237,49 @@ describe("carga da amostra do Sankhya", () => {
     );
     const request = await store.get("requests", order!.requestId);
     expect(request).toMatchObject({ status: "ORDERED", orderId: order!.id });
+    // Fase 5d (advanceMilestones): TOP → marco (1107 → Desembaraço). Os
+    // itens dos marcos antes dele ficam feitos, os do marco da TOP abertos;
+    // os marcos gravados acompanham a espera do pedido, sem aviso nem evento.
+    const { milestoneRank } = await import("@/lib/milestones");
+    const { topMilestone } = await import("@/lib/integrations/sankhya-mapping");
+    expect(topMilestone(1107)).toBe("customs");
+    const reqs = await store.list("requirements", {
+      filter: { orderId: order!.id },
+    });
+    expect(
+      reqs
+        .filter(
+          (r) =>
+            r.milestoneKey &&
+            milestoneRank(r.milestoneKey as never) < milestoneRank("customs"),
+        )
+        .every((r) => r.status === "done"),
+    ).toBe(true);
+    expect(
+      reqs.some((r) => r.milestoneKey === "customs" && r.status === "pending"),
+    ).toBe(true);
+    const rows = await store.list("order_milestones", {
+      filter: { orderId: order!.id },
+    });
+    expect(rows.find((r) => r.key === "customs")?.status).toBe("active");
+    expect(
+      rows.every((r) => (r.held === true) === (order!.held === true)),
+    ).toBe(true);
+    const { flushMilestoneSync } =
+      await import("@/lib/services/order-milestones");
+    await flushMilestoneSync();
+    expect(
+      (await store.list("notifications")).filter((n) =>
+        n.link?.includes(order!.id),
+      ),
+    ).toEqual([]);
+    expect(
+      (
+        await store.list("audit_log", {
+          filter: { entity: "order", entityId: order!.id },
+        })
+      ).filter((a) => a.action.startsWith("milestone.")),
+    ).toEqual([]);
 
     // TOP 1403 (FINALIZADO) → pedido encerrado, tudo concluído.
     const closed = await store.get("orders", of("orders", "899").id!);

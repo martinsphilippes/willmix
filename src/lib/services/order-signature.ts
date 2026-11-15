@@ -413,6 +413,26 @@ export async function sendOrderForSignature(
   await submitRequirement(user, send.id, { value: "confirmed" });
 }
 
+/**
+ * A assinatura do fornecedor ainda pode ser devolvida (fase 5d, pelos
+ * marcos): o Contrato liberado e nada feito da Inspeção em diante, como
+ * antes enquanto a etapa do contrato estava aberta.
+ */
+async function supplierSignatureReopenable(
+  supplier: Requirement,
+): Promise<boolean> {
+  const { orderRelease } = await import("./order-milestones");
+  const { requirementReleased } = await import("@/lib/milestone-release");
+  const { milestoneRank } = await import("@/lib/milestones");
+  const order = await getStore().get("orders", supplier.orderId);
+  const found = order ? await orderRelease(order.id) : null;
+  if (!order || !found) return false;
+  if (!requirementReleased(order, supplier, found.release)) return false;
+  return found.views.every(
+    (v) => milestoneRank(v.key) < milestoneRank("inspection") || v.done === 0,
+  );
+}
+
 export async function getOrderSignatureView(
   user: User,
   orderId: string,
@@ -425,10 +445,11 @@ export async function getOrderSignatureView(
   const wellmix = parseSignature(reqs.wellmix);
   const supplier = parseSignature(reqs.supplier);
   const open = isOrderOpen(order.status);
+  // Fase 5d: liberado pelo marco (Contrato), não pela etapa em andamento.
   const stageActive = async (req: Requirement | null) => {
     if (!req || req.status === "done") return false;
-    const stage = await store.get("stages", req.stageId);
-    return stage?.status === "active" || stage?.status === "blocked";
+    const { requirementIsReleased } = await import("./order-milestones");
+    return requirementIsReleased(req);
   };
   let canSign: OrderSignatureView["canSign"] = null;
   // Pedido de compra: o pedido de amostras vem antes da assinatura da Wellmix.
@@ -464,9 +485,9 @@ export async function getOrderSignatureView(
       canSign = "supplier";
     }
   }
-  const prepStage = reqs.supplier
-    ? await store.get("stages", reqs.supplier.stageId)
-    : null;
+  const reopenable = reqs.supplier
+    ? await supplierSignatureReopenable(reqs.supplier)
+    : false;
   return {
     status: awaitingSend
       ? "awaiting_send"
@@ -477,11 +498,7 @@ export async function getOrderSignatureView(
           : order.erpNumber
             ? "in_erp"
             : "signed",
-    canReopenSupplier:
-      open &&
-      isAdmin(user) &&
-      !!supplier &&
-      (prepStage?.status === "active" || prepStage?.status === "blocked"),
+    canReopenSupplier: open && isAdmin(user) && !!supplier && reopenable,
     order,
     document,
     hash: orderDocumentHash(document),
@@ -929,8 +946,7 @@ export async function reopenSupplierSignature(
   const before = parseSignature(supplier);
   if (!supplier || !before)
     throw new OrderSignatureError("signature_not_applicable");
-  const stage = await store.get("stages", supplier.stageId);
-  if (stage?.status !== "active" && stage?.status !== "blocked")
+  if (!(await supplierSignatureReopenable(supplier)))
     throw new OrderSignatureError("stage_not_active");
   await store.update("requirements", supplier.id, {
     status: "pending",

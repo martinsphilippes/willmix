@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
+import { approveMilestones } from "./helpers/approvals";
 import { xlsxBytes } from "./xlsx-fixture";
 
 /*
@@ -189,6 +190,22 @@ async function submit(
   return doc;
 }
 
+/**
+ * Fase 5d (docs/MILESTONES.md): a arte só começa com o marco Material de arte
+ * concluído: pedido mínimo e prazo do fornecedor e a aprovação do Comprador
+ * (aqui o administrador), depois da faca e da foto em alta.
+ */
+async function finishArtMaterial(order: Order) {
+  for (const [base, value] of [
+    ["moq_confirmed", "1000"],
+    ["lead_time_confirmed", "30"],
+  ] as const) {
+    const req = await requirementOf(order, base);
+    await engine.submitRequirement(supplierA, req.id, { value });
+  }
+  await approveMilestones(admin, order.id);
+}
+
 /** Tentativa de enviar (sem arquivo): o servidor confere quem é antes. */
 async function trySubmit(user: User, order: Order, base: string) {
   const req = await requirementOf(order, base);
@@ -272,6 +289,8 @@ describe("designer da Wellmix, operador e certificadora: cada tarefa só no logi
   it("faca e foto em alta enviadas: a arte aparece só para o designer, que é avisado", async () => {
     await submit(supplierA, order, "die_cut", "faca.pdf");
     await submit(supplierA, order, "hd_photo", "foto.png");
+    // Fase 5d: a arte só com o marco Material de arte inteiro.
+    await finishArtMaterial(order);
     expect(await laneTasksOf(designer, order)).toEqual(["art"]);
     expect(await laneTasksOf(ocp, order)).toEqual(["certificate"]);
     for (const user of [operator, other, agency, supplierA])
@@ -417,6 +436,8 @@ describe("designer da agência: arte e arte final no login dela, com os arquivos
   it("a agência designada recebe a arte; abre a faca e a foto do fornecedor", async () => {
     const faca = await submit(supplierA, order, "die_cut", "faca.pdf");
     const foto = await submit(supplierA, order, "hd_photo", "foto.png");
+    // Fase 5d: a arte só com o marco Material de arte inteiro.
+    await finishArtMaterial(order);
     expect(await laneTasksOf(agency, order)).toEqual(["art"]);
     for (const user of [designer, operator, supplierA])
       expect(await laneTasksOf(user, order)).toEqual([]);
@@ -488,6 +509,8 @@ describe("responsável do pedido é o administrador (como em produção): a vali
   it("arte enviada pelo designer: os operadores não recebem a validação; o administrador valida", async () => {
     await submit(supplierA, order, "die_cut", "faca.pdf");
     await submit(supplierA, order, "hd_photo", "foto.png");
+    // Fase 5d: a arte só com o marco Material de arte inteiro.
+    await finishArtMaterial(order);
     await submit(designer, order, "art", "arte.pdf");
     for (const user of [designer, operator, otherBuyer, other, supplierA])
       expect(await laneTasksOf(user, order)).toEqual([]);
@@ -515,6 +538,8 @@ describe("responsável do pedido é o administrador (como em produção): a vali
     });
     await submit(supplierA, order2, "die_cut", "faca.pdf");
     await submit(supplierA, order2, "hd_photo", "foto.png");
+    // Fase 5d: a arte só com o marco Material de arte inteiro.
+    await finishArtMaterial(order2);
     await submit(designer, order2, "art", "arte.pdf");
     expect(await laneTasksOf(otherBuyer, order2)).toEqual(["art_review"]);
     for (const user of [operator, designer])

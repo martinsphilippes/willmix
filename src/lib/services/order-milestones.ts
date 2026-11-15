@@ -13,12 +13,29 @@ import {
   type Requirement,
   type Stage,
 } from "@/lib/db";
-import type { NewRow } from "@/lib/db/store";
+import { isHeld, type NewRow } from "@/lib/db/store";
+import type { User } from "@/lib/db";
+import { requirementLabel } from "@/i18n";
+import {
+  milestoneOfItem,
+  releaseOf,
+  requirementReleased,
+  ROUNDS_PARENT_MILESTONES,
+  type MilestoneRelease,
+} from "@/lib/milestone-release";
+import { isRoundsParent } from "@/lib/purchase-rounds";
+import {
+  isOrderDocumentKey,
+  isPurchaseFlow,
+  ROLE_PARTY_FIELD,
+} from "@/lib/workflow/stages";
+import { notify, requesterTarget } from "./notifications";
 import {
   currentMilestone,
   MILESTONE_KEYS,
   milestoneOfRequirement,
   milestoneOfStep,
+  milestoneTitle,
   orderMilestones,
   requirementFlowFields,
   type MilestoneKey,
@@ -32,16 +49,18 @@ import { orderSubtasks, type MilestoneInput } from "./milestones";
  * Fase 5b (docs/MILESTONES.md, "Fase 5: plano e andamento"): os marcos do
  * pedido gravados em sombra, ao lado das etapas antigas.
  *
- * - `syncMilestones(orderId, { shadow: true })`: calcula os 16 marcos do
- *   pedido (as mesmas subtarefas da tela, `orderSubtasks`) e grava
- *   `order_milestones` (a linha nasce quando o marco abre pela primeira vez,
- *   com o prazo de `milestoneDueDays`; conclui com `completedAt`) e
- *   `orders.milestoneKey` (o marco atual). Em sombra: nenhum aviso, nenhum
- *   evento (os avisos e eventos continuam onde estão, fase 4c/4d), e nada lê
- *   esses campos ainda (5c).
- * - `queueMilestoneSync`: o motor pede a sincronização a cada transição; os
- *   pedidos da mesma requisição viram uma chamada por pedido, depois da
- *   resposta. Falha não derruba a ação (registra e segue).
+ * - `syncMilestones(orderId)`: calcula os 16 marcos do pedido (as mesmas
+ *   subtarefas da tela, `orderSubtasks`) e grava `order_milestones` (a linha
+ *   nasce quando o marco abre pela primeira vez, com o prazo de
+ *   `milestoneDueDays`; conclui com `completedAt`) e `orders.milestoneKey`
+ *   (o marco atual). Desde a fase 5d é a autoridade: fora da sombra avisa
+ *   quem faz os itens liberados, dispara os eventos `milestone:*`, avisa os
+ *   informados e roda os casos especiais (`afterTransitions`). Em sombra
+ *   (`{ shadow: true }`: migração, conferência, carga do Sankhya) só grava.
+ * - `queueMilestoneSync`: as outras gravações (passos do embarque, produção,
+ *   recebimento) pedem a sincronização; os pedidos da mesma requisição viram
+ *   uma chamada por pedido, depois da resposta. O motor chama na hora.
+ *   Falha não derruba a ação (registra e segue).
  * - Migração (`migrateMilestonesStep`) e conferência (`milestoneParityStep`):
  *   em fatias de 500 pedidos, com o cursor em `settings`, pela tela
  *   Configurações → Resumos dos pedidos ("Migrar para os marcos").
@@ -303,7 +322,15 @@ async function loadSlice(ids: string[]): Promise<SliceSources> {
     listColumns(
       store,
       "requirements",
-      ["orderId", "stageId", "key", "status", "step", "milestoneKey"],
+      [
+        "orderId",
+        "stageId",
+        "key",
+        "status",
+        "step",
+        "milestoneKey",
+        "required",
+      ],
       { filter },
     ),
     store.list("requirements", {
@@ -379,18 +406,65 @@ const viewsByStored = (input: MilestoneInput) =>
 export interface SyncResult {
   rows: number;
   milestoneKey: MilestoneKey | null;
+  /** Marcos que começaram nesta sincronização (fase 5d). */
+  started: MilestoneKey[];
+  /** Marcos que concluíram nesta sincronização, com todas as subtarefas. */
+  done: MilestoneKey[];
+}
+
+export interface SyncOptions {
+  /**
+   * Em sombra (migração, conferência, carga do histórico do Sankhya): grava
+   * as linhas sem avisos, eventos nem efeitos. Fora dela (o motor, fase 5d),
+   * a sincronização é a autoridade: avisa quem faz os itens liberados,
+   * dispara os eventos `milestone:*`, avisa os informados e roda os casos
+   * especiais (pós-venda, rodadas, ficha de compra).
+   */
+  shadow?: boolean;
+  /** Quem agiu (o motor); nulo no sistema (fila, rotinas). */
+  user?: User | null;
+  now?: Date;
 }
 
 /**
- * Sincroniza os marcos de um pedido (fase 5b). Só em sombra: grava
- * `order_milestones` e `orders.milestoneKey`, sem avisos nem eventos.
- * Pedido que não existe: nada.
+ * Transições entre as linhas gravadas e os marcos de agora (função pura):
+ * começou = em andamento sem linha aberta antes (sem linha, ou concluída e
+ * reaberta); concluiu = concluído com todas as subtarefas feitas e sem linha
+ * concluída antes. O "concluído" só pela situação (encerrado conclui tudo)
+ * não conta, como no aviso aos informados (fase 4c).
+ */
+export function milestoneTransitions(
+  views: readonly Pick<MilestoneView, "key" | "state" | "total" | "subtasks">[],
+  existing: readonly Pick<OrderMilestone, "key" | "status">[],
+): { started: MilestoneKey[]; done: MilestoneKey[]; closed: MilestoneKey[] } {
+  const before = new Map(existing.map((r) => [r.key, r.status]));
+  const started: MilestoneKey[] = [];
+  const done: MilestoneKey[] = [];
+  const closed: MilestoneKey[] = [];
+  for (const v of views) {
+    const was = before.get(v.key);
+    if (v.state === "active" && (was === undefined || was === "done"))
+      started.push(v.key);
+    if (v.state !== "done" || was === "done") continue;
+    // Concluído de qualquer jeito (inclusive pelo encerramento).
+    closed.push(v.key);
+    // Com as obrigatórias feitas (o opcional não segura; fase 5d).
+    if (v.total > 0 && v.subtasks.every((x) => x.done || x.optional))
+      done.push(v.key);
+  }
+  return { started, done, closed };
+}
+
+/**
+ * Sincroniza os marcos de um pedido. Grava `order_milestones` e
+ * `orders.milestoneKey`; fora da sombra (fase 5d), cuida também das
+ * transições (`afterTransitions`). Pedido em espera (histórico do Sankhya)
+ * e cancelado: só as linhas, nunca avisos. Pedido que não existe: nada.
  */
 export async function syncMilestones(
   orderId: string,
-  options: { shadow: true; now?: Date },
+  options: SyncOptions = {},
 ): Promise<SyncResult | null> {
-  if (!options.shadow) throw new Error("milestones_engine_not_ready");
   const [src, settings] = await Promise.all([
     loadSlice([orderId]),
     getSettings(),
@@ -399,9 +473,10 @@ export async function syncMilestones(
   if (!order) return null;
   const input = inputOf(order, src);
   const existing = src.milestones.get(order.id) ?? [];
+  const views = viewsNow(input);
   const plan = planMilestoneRows({
     order,
-    views: viewsNow(input),
+    views,
     existing,
     blocked: blockedMilestones(input.stages, input.requirements),
     dueDays: milestoneDueDaysOf(settings),
@@ -426,7 +501,248 @@ export async function syncMilestones(
       ),
     );
   }
-  return { rows: plan.rows.length, milestoneKey: plan.milestoneKey };
+  const quiet =
+    options.shadow === true || isHeld(order) || order.status === "CANCELLED";
+  const moved = quiet
+    ? { started: [], done: [], closed: [] }
+    : milestoneTransitions(views, existing);
+  // As linhas já estão gravadas: uma sincronização aninhada (um efeito que
+  // envia outro item) não vê a mesma transição de novo.
+  if (moved.started.length || moved.closed.length)
+    await afterTransitions(order, input, views, moved, options.user ?? null);
+  return {
+    rows: plan.rows.length,
+    milestoneKey: plan.milestoneKey,
+    started: moved.started,
+    done: moved.done,
+  };
+}
+
+/** Os marcos e a liberação dos itens de um pedido, calculados agora. */
+export async function orderRelease(orderId: string): Promise<{
+  views: MilestoneView[];
+  release: MilestoneRelease;
+} | null> {
+  const src = await loadSlice([orderId]);
+  const order = src.orders[0];
+  if (!order) return null;
+  const input = inputOf(order, src);
+  const views = viewsNow(input);
+  return { views, release: releaseOf(views, input.stages) };
+}
+
+/**
+ * O item está liberado pelo marco dele agora (fase 5d)? Para as telas e os
+ * serviços que mostram ou aceitam o item fora do motor (pedido de amostras,
+ * assinatura, Die Cut, itens conferidos pelo sistema).
+ */
+export async function requirementIsReleased(
+  requirement: Pick<Requirement, "orderId" | "key" | "required" | "stageId"> & {
+    milestoneKey?: string | null;
+  },
+): Promise<boolean> {
+  const src = await loadSlice([requirement.orderId]);
+  const order = src.orders[0];
+  if (!order) return false;
+  const input = inputOf(order, src);
+  return requirementReleased(
+    order,
+    requirement,
+    releaseOf(viewsNow(input), input.stages),
+  );
+}
+
+/** Auditoria do aviso "liberado" (uma vez por marco e pedido). */
+export const MILESTONE_RELEASED_ACTION = "milestone.released";
+
+/**
+ * O que acontece quando marcos começam ou concluem (fase 5d; antes na
+ * ativação e na conclusão das etapas e no recálculo do resumo):
+ * - aviso a quem faz os itens liberados do marco que começou;
+ * - ficha de compra: o marco 1 que começou preenche a Preparação pela ficha;
+ * - pedido pai de uma programação de compra: com os marcos 1 a 4 prontos,
+ *   nascem as rodadas do dia;
+ * - Entrega e recebimento concluída: abre o pós-venda;
+ * - eventos `milestone:*` das regras de processo e aviso aos informados.
+ * Cada parte registra o erro e segue (a ação original não cai).
+ */
+async function afterTransitions(
+  order: Order,
+  input: MilestoneInput,
+  views: readonly MilestoneView[],
+  moved: {
+    started: MilestoneKey[];
+    done: MilestoneKey[];
+    closed: MilestoneKey[];
+  },
+  user: User | null,
+) {
+  const guard = async (what: string, run: () => Promise<unknown>) => {
+    try {
+      await run();
+    } catch (error) {
+      console.error(`[milestones] ${what}`, order.id, error);
+    }
+  };
+  const release = releaseOf(views, input.stages);
+  const parent = isRoundsParent(order);
+  if (moved.started.length)
+    await guard("aviso dos itens liberados", () =>
+      notifyReleased(order, input, release, moved.started),
+    );
+  if (user && !isPurchaseFlow(order) && moved.started.includes("new-order"))
+    await guard("ficha de compra", async () => {
+      const { syncPreparationFromSheet } = await import("./purchase-sheet");
+      await syncPreparationFromSheet(user, order.id);
+    });
+  // Pai da programação: o contrato (marco 5) deixou de aguardar = marcos 1
+  // a 4 prontos. Contrato e produção são de cada rodada.
+  if (
+    parent &&
+    (moved.started.includes("contract") || moved.closed.includes("contract"))
+  )
+    await guard("rodadas da programação", async () => {
+      const { spawnDueRounds } = await import("./purchase-rounds");
+      await spawnDueRounds(user, { orderId: order.id });
+    });
+  // Pós-venda: com a Entrega e recebimento concluída (inclusive pelo
+  // encerramento do pedido, como na conclusão da etapa Entregue).
+  if (moved.closed.includes("delivery"))
+    await guard("pós-venda", async () => {
+      const { openAfterSales } = await import("./after-sales");
+      await openAfterSales(user, order);
+    });
+  // O pai não passa dos marcos 1 a 4: os seguintes não disparam nada.
+  const own = (keys: MilestoneKey[]) =>
+    parent ? keys.filter((k) => ROUNDS_PARENT_MILESTONES.includes(k)) : keys;
+  const started = own(moved.started);
+  const done = own(moved.done);
+  if (done.length)
+    await guard("aviso aos informados", async () => {
+      const { informMilestones } = await import("./milestone-notify");
+      await informMilestones(order, done);
+    });
+  if (started.length || done.length)
+    await guard("eventos das regras", async () => {
+      const { emitMilestoneEvents, milestoneTransitionEvents } =
+        await import("./milestone-events");
+      const { getProcessRules } = await import("./process-engine");
+      await emitMilestoneEvents(
+        order,
+        milestoneTransitionEvents(started, done),
+        await getProcessRules(),
+      );
+    });
+}
+
+/**
+ * Aviso de "liberado" para quem faz os itens do marco que começou (o texto
+ * e os destinos de antes, da ativação da etapa): no pedido de compra, as
+ * raias da Preparação pelo aviso de cada raia (`notifyLanesOpen`; a arte,
+ * produto a produto, quando o Material de arte conclui); o resto, um aviso por
+ * papel com os itens obrigatórios dele que já dá para fazer (o envio para
+ * assinatura e as assinaturas têm os avisos deles). Uma vez por marco e
+ * pedido (auditoria `milestone.released`).
+ */
+async function notifyReleased(
+  order: Order,
+  input: MilestoneInput,
+  release: MilestoneRelease,
+  started: MilestoneKey[],
+) {
+  const store = getStore();
+  const sent = new Set(
+    (
+      await store.list("audit_log", {
+        filter: {
+          entity: "order",
+          entityId: order.id,
+          action: MILESTONE_RELEASED_ACTION,
+        },
+      })
+    ).map((a) => (a.after as { milestone?: string } | null)?.milestone),
+  );
+  const keys = started.filter((k) => !sent.has(k));
+  if (!keys.length) return;
+  // Os itens com rótulo e papel (a fonte dos marcos lê só algumas colunas).
+  const full = await store.list("requirements", {
+    filter: { orderId: order.id, status: ["pending", "rejected"] },
+  });
+  const stageById = new Map(input.stages.map((st) => [st.id, st]));
+  const { requirementWaiting } = await import("./tasks");
+  const { audit } = await import("./audit");
+  const purchase = isPurchaseFlow(order);
+  const sealApplied = input.importSteps.some(
+    (x) =>
+      x.key === "cert_seal_art" &&
+      (x.status === "submitted" || x.status === "validated"),
+  );
+  for (const key of keys) {
+    const items = full.filter((r) => {
+      const stage = stageById.get(r.stageId);
+      return (
+        !!stage &&
+        r.required &&
+        milestoneOfItem(r, stage) === key &&
+        requirementReleased(order, r, release)
+      );
+    });
+    await audit(
+      null,
+      MILESTONE_RELEASED_ACTION,
+      "order",
+      order.id,
+      `Pedido #${order.number}: marco ${key} liberado`,
+      null,
+      { milestone: key },
+    );
+    if (!items.length) continue;
+    const lanes = purchase
+      ? items.filter((r) => stageById.get(r.stageId)?.key === "PREPARATION")
+      : [];
+    if (lanes.length) {
+      const { notifyArtReleased, notifyLanesOpen } =
+        await import("./purchase-order");
+      if (key === "art") await notifyArtReleased(order);
+      else await notifyLanesOpen(order, lanes);
+    }
+    const rest = items.filter((r) => {
+      if (lanes.includes(r) || isOrderDocumentKey(r.key)) return false;
+      const stageOpen = full.filter((x) => x.stageId === r.stageId);
+      return !requirementWaiting(
+        r,
+        { open: stageOpen, all: stageOpen },
+        { sealApplied, purchase },
+      );
+    });
+    const byRole = new Map<Requirement["role"], Requirement[]>();
+    for (const r of rest)
+      byRole.set(r.role, [...(byRole.get(r.role) ?? []), r]);
+    for (const [role, list] of byRole) {
+      const partyField = ROLE_PARTY_FIELD[role];
+      await notify(
+        role === "customer"
+          ? requesterTarget(order.requestedByUserId)
+          : {
+              role: role === "operator" ? ["admin", "operator"] : role,
+              partyId: partyField ? order[partyField] : null,
+            },
+        {
+          kind: "action",
+          link: `/app/orders/${order.id}`,
+          text: (t) => ({
+            subject: t("notif.stage.subject", {
+              n: order.number,
+              stage: milestoneTitle(t, key),
+            }),
+            body: t("notif.stage.body", {
+              items: list.map((r) => requirementLabel(t, r)).join(", "),
+            }),
+          }),
+        },
+      ).catch((error) => console.error("notify(milestone)", error));
+    }
+  }
 }
 
 /* ------------------------------------------------------------------------ */
@@ -437,7 +753,7 @@ const queued = new Set<string>();
 let scheduled = false;
 
 /**
- * Pede a sincronização em sombra do pedido (motor, cancelamento): uma por
+ * Pede a sincronização do pedido (gravações fora do motor, cancelamento): uma por
  * pedido por requisição, depois da resposta (`after`). Fora de uma
  * requisição (testes, scripts) o pedido fica na fila até
  * `flushMilestoneSync` (ou a migração). Nunca lança.
@@ -462,10 +778,10 @@ export async function flushMilestoneSync(): Promise<number> {
   let done = 0;
   for (const id of ids) {
     try {
-      await syncMilestones(id, { shadow: true });
+      await syncMilestones(id);
       done++;
     } catch (error) {
-      console.error("[milestones] sincronização em sombra falhou", id, error);
+      console.error("[milestones] sincronização falhou", id, error);
     }
   }
   return done;

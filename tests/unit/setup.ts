@@ -55,7 +55,40 @@ export async function sendForSignature(
     );
     await flow.submitStep(who, orderId, key, { documentId: doc.id });
   }
+  await validateSealArt(admin, orderId);
   await s.sendOrderForSignature(admin, orderId);
+}
+
+/**
+ * Fase 5d (docs/MILESTONES.md): o Contrato espera o marco Certificação, e o
+ * passo "selo aplicado na arte" só conclui com a conferência da Wellmix.
+ * Sem quem valide além de quem enviou, o administrador da demonstração.
+ */
+export async function validateSealArt(
+  admin: import("@/lib/db").User,
+  orderId: string,
+) {
+  const { getStore } = await import("@/lib/db");
+  const flow = await import("@/lib/services/import-flow");
+  const [step] = await getStore().list("import_steps", {
+    filter: { orderId, key: "cert_seal_art" },
+  });
+  if (step?.status !== "submitted") return;
+  const others = (
+    await getStore().list("users", { filter: { role: "admin" } })
+  ).filter((u) => u.id !== step.submittedByUserId && u.active);
+  await flow.validateStep(
+    others[0] ?? admin,
+    orderId,
+    "cert_seal_art",
+    "validated",
+    null,
+  );
+  // Fora de uma requisição, a sincronização dos marcos pedida pelo passo
+  // fica na fila: roda aqui (as Pendências leem os marcos gravados).
+  const { flushMilestoneSync } =
+    await import("@/lib/services/order-milestones");
+  await flushMilestoneSync();
 }
 
 /**
@@ -67,8 +100,12 @@ export async function sendForSignature(
 export async function reachSignature(
   admin: import("@/lib/db").User,
   orderId: string,
-  /** "packaging": para na etapa "Arte e embalagem" aberta, sem a arte. */
-  stopAt: "signature" | "packaging" = "signature",
+  /**
+   * "packaging": para na etapa "Arte e embalagem" aberta, sem a arte; "art":
+   * com a arte enviada, antes da aprovação do fornecedor (fase 5d: ela vem
+   * antes do contrato).
+   */
+  stopAt: "signature" | "packaging" | "art" = "signature",
 ) {
   const { getStore } = await import("@/lib/db");
   const { loadOrderProgress, submitRequirement } =
@@ -100,6 +137,13 @@ export async function reachSignature(
         await submitRequirement(admin, art.id, {
           documentId: await fileFor(art.id),
         });
+      if (stopAt === "art") return;
+      // Fase 5d: o Contrato espera o marco Arte, com a aprovação da arte.
+      const approval = pending.find((r) => r.key === "art_approval");
+      if (approval) {
+        const { decideRequirement } = await import("@/lib/workflow/engine");
+        await decideRequirement(admin, approval.id, "approve");
+      }
       await sendForSignature(admin, orderId);
       return;
     }

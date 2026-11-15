@@ -1,5 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { reachSignature, signOrderAs, withTempStore } from "./setup";
+import {
+  reachSignature,
+  signOrderAs,
+  validateSealArt,
+  withTempStore,
+} from "./setup";
 
 /*
  * Documento do pedido com duas assinaturas (docs/ORDER_SIGNATURE.md). Ordem
@@ -84,15 +89,25 @@ async function legacyOrder(name: string) {
     "requirements",
     (await reqOf(order.id, "order_sign_send")).id,
   );
+  // Pedido de antes: as assinaturas nas primeiras etapas, com o passo e o
+  // marco delas (fase 5d: o item anda pelo marco gravado).
   await store.update(
     "requirements",
     (await reqOf(order.id, "order_signed_wellmix")).id,
-    { stageId: (await stageOf(order.id, "ORDER_CREATED")).id },
+    {
+      stageId: (await stageOf(order.id, "ORDER_CREATED")).id,
+      step: "order/orders",
+      milestoneKey: "new-order",
+    },
   );
   await store.update(
     "requirements",
     (await reqOf(order.id, "order_signed_supplier")).id,
-    { stageId: (await stageOf(order.id, "PREPARATION")).id },
+    {
+      stageId: (await stageOf(order.id, "PREPARATION")).id,
+      step: "order/orders",
+      milestoneKey: "new-order",
+    },
   );
   return order;
 }
@@ -224,6 +239,19 @@ describe("documento do pedido com duas assinaturas", () => {
       documentId: await stepDoc(agency, "arte-com-selo.pdf"),
     });
     expect(await sig.signSendBlockers(order.id, packaging.id)).toEqual([]);
+    // Fase 5d: o Contrato espera os marcos Arte (com a aprovação da arte pelo
+    // fornecedor) e Certificação (a arte com o selo conferida pela Wellmix).
+    expect(await sendTask(agency)).toBe(false);
+    await expect(sig.sendOrderForSignature(agency, order.id)).rejects.toThrow(
+      "stage_not_active",
+    );
+    const { decideRequirement } = await import("@/lib/workflow/engine");
+    await decideRequirement(
+      supplierA,
+      (await reqOf(order.id, "art_approval")).id,
+      "approve",
+    );
+    await validateSealArt(admin, order.id);
     expect(await sendTask(agency)).toBe(true);
     view = (await sig.getOrderSignatureView(admin, order.id))!;
     expect([view.awaitingSend, view.canSend, view.canSign]).toEqual([
@@ -267,14 +295,7 @@ describe("documento do pedido com duas assinaturas", () => {
     expect((await sig.getOrderSignatureView(admin, order.id))!.status).toBe(
       "signed",
     );
-    // A etapa só conclui com a arte aprovada pelo fornecedor também.
-    expect((await stageOf(order.id, "PACKAGING")).status).toBe("active");
-    const { decideRequirement } = await import("@/lib/workflow/engine");
-    await decideRequirement(
-      supplierA,
-      (await reqOf(order.id, "art_approval")).id,
-      "approve",
-    );
+    // Arte aprovada antes do contrato (fase 5d): as assinaturas concluem a etapa.
     expect((await stageOf(order.id, "PACKAGING")).status).toBe("done");
   });
 
@@ -395,13 +416,8 @@ describe("documento do pedido com duas assinaturas", () => {
   it("sem a assinatura do fornecedor a etapa da arte não conclui; o administrador registra a que veio por fora", async () => {
     const order = await readyOrder("Quadro por fora");
     await signOrderAs(admin, order.id);
-    // Arte aprovada: da etapa só falta a assinatura do fornecedor.
-    const { decideRequirement } = await import("@/lib/workflow/engine");
-    await decideRequirement(
-      supplierA,
-      (await reqOf(order.id, "art_approval")).id,
-      "approve",
-    );
+    // Arte aprovada antes do contrato (fase 5d): da etapa só falta a
+    // assinatura do fornecedor.
     expect((await stageOf(order.id, "PACKAGING")).status).toBe("active");
     const { hash, canRegisterSupplier } = (await sig.getOrderSignatureView(
       admin,
@@ -594,10 +610,12 @@ describe("documento do pedido com duas assinaturas", () => {
     await store.update("stages", (await stageOf(order.id, "PREPARATION")).id, {
       status: "pending",
     });
+    // Fase 5d: o item do fornecedor anda pelo marco dele, não pela etapa
+    // que não abriu; ele já não fica travado.
     const stuck = (await sig.getOrderSignatureView(supplierA, order.id))!;
     expect([stuck.canSign, stuck.supplierBlocked, stuck.status]).toEqual([
-      null,
-      true,
+      "supplier",
+      false,
       "sent_to_supplier",
     ]);
     // A página do documento chama a liberação: vale a assinatura da Wellmix.

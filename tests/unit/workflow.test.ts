@@ -10,6 +10,7 @@ withTempStore();
 const { getStore, DOCUMENT_EXTRA_DEFAULTS } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const { orderFromRequest } = await import("./helpers/order");
+const { completeMilestonesBefore } = await import("./helpers/milestones");
 const { createRequest } = await import("@/lib/services/requests");
 const { submitRequirement, decideRequirement, loadOrderProgress } =
   await import("@/lib/workflow/engine");
@@ -239,6 +240,12 @@ describe("fluxo completo: solicitação → entrega", () => {
     expect(actions).toContain("inspection.remeasure_requested");
     expect(actions).toContain("stage.complete");
 
+    // Fase 5d: o Embarque libera pelos marcos Booking e Carregamento (os
+    // passos do embarque feitos).
+    await expect(
+      fillStage(by("shipping_line", "armador"), order.id, "SHIPPING"),
+    ).rejects.toThrow("stage_not_active");
+    await completeMilestonesBefore(order.id, "shipment", { stepsOnly: true });
     // Datas em ordem: chegada nunca antes do embarque (nos dois sentidos).
     {
       const armador = by("shipping_line", "armador");
@@ -280,6 +287,8 @@ describe("fluxo completo: solicitação → entrega", () => {
     expect((await store.get("orders", order.id))!.status).toBe("CUSTOMS");
     await fillStage(by("broker", "despachante"), order.id, "CUSTOMS");
     expect((await store.get("orders", order.id))!.status).toBe("TRANSPORT");
+    // Fase 5d: transporte e entrega esperam os passos do desembaraço e a NF.
+    await completeMilestonesBefore(order.id, "delivery", { stepsOnly: true });
     // Entrega antes da chegada do navio: recusada.
     {
       const [transport] = await store.list("stages", {

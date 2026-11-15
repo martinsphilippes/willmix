@@ -193,6 +193,44 @@ describe("tela do pedido pelos marcos: os mesmos itens por papel", () => {
     expect(compared).toBeGreaterThan(100);
   });
 
+  it("fase 5d: com a situação dos marcos, o cliente vê o que o marco liberou (não a etapa começada)", async () => {
+    const store = getStore();
+    const { milestonesOf } = await import("@/lib/services/milestones");
+    const order = orders[0];
+    const stages = (
+      await store.list("stages", { filter: { orderId: order.id } })
+    )
+      .filter((s) => !isOffFlowStage(s.key))
+      .sort((a, b) => a.sequence - b.sequence);
+    const reqs = await store.list("requirements", {
+      filter: { orderId: order.id },
+    });
+    const states = new Map(
+      (await milestonesOf(order)).map((v) => [v.key, v.state]),
+    );
+    // Pedido clássico novo: a arte libera desde a criação (marco Arte sem
+    // dependência), com a etapa "Arte e embalagem" ainda pendente.
+    expect(states.get("art")).toBe("active");
+    const packaging = stages.find((s) => s.key === "PACKAGING")!;
+    expect(packaging.status).toBe("pending");
+    const seen = [
+      ...view
+        .requirementsByMilestone(
+          { role: "customer" } as never,
+          stages,
+          reqs,
+          states,
+        )
+        .values(),
+    ]
+      .flat()
+      .map((x) => x.r.key);
+    expect(seen).toContain("art");
+    // O contrato aguarda: não aparece para o cliente.
+    expect(states.get("contract")).toBe("waiting");
+    expect(seen).not.toContain("order_signed_supplier");
+  });
+
   it("agrupa pelo marco gravado, na ordem dos 16", async () => {
     const store = getStore();
     const fresh = await store.list("orders", {

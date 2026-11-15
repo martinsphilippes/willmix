@@ -15,6 +15,7 @@ import {
   itemIdOf,
   laneDueAt,
 } from "@/lib/purchase-lanes";
+import { requirementReleased } from "@/lib/milestone-release";
 
 /*
  * Mesas de trabalho por papel (mapa do processo, "Mesas de trabalho";
@@ -86,6 +87,8 @@ interface LaneData {
   stageStart: Map<string, string | null>;
   items: Map<string, string | null>;
   sla: Awaited<ReturnType<typeof import("./purchase-order").purchaseLaneSla>>;
+  /** Fase 5d: liberação dos itens pelos marcos em andamento do pedido. */
+  release: Map<string, import("@/lib/milestone-release").MilestoneRelease>;
 }
 
 /** Pedidos de compra na Preparação ou no contrato (do parceiro, quando é ele). */
@@ -103,20 +106,28 @@ async function laneData(
     })
   ).sort((a, b) => a.number - b.number);
   const ids = orders.map((o) => o.id);
-  const [requirements, stages, items] = ids.length
+  const [requirements, stages, items, rows] = ids.length
     ? await Promise.all([
         store.list("requirements", { filter: { orderId: ids } }),
         store.list("stages", { filter: { orderId: ids } }),
         store.list("order_items", { filter: { orderId: ids } }),
+        store
+          .list("order_milestones", { filter: { orderId: ids } })
+          .catch(() => []),
       ])
-    : [[], [], []];
+    : [[], [], [], []];
   const { purchaseLaneSla } = await import("./purchase-order");
+  const { releaseFromRows } = await import("./tasks");
   return {
     orders,
     requirements,
     stageStart: new Map(stages.map((s) => [s.id, s.startedAt])),
     items: new Map(items.map((i) => [i.id, i.productId ?? null])),
     sla: await purchaseLaneSla(),
+    release: releaseFromRows(
+      rows.filter((r) => r.status === "active" || r.status === "blocked"),
+      stages,
+    ),
   };
 }
 
@@ -154,6 +165,8 @@ function openLane(
     for (const r of mine) {
       if (r.status === "done" || !bases.includes(baseKeyOf(r.key))) continue;
       if (!visible(order, r, mine)) continue;
+      const release = data.release.get(order.id);
+      if (!release || !requirementReleased(order, r, release)) continue;
       const stage = mine.filter((x) => x.stageId === r.stageId);
       if (blockedBy(r.key, stage).length) continue;
       const productId = data.items.get(itemIdOf(r.key) ?? "") ?? null;

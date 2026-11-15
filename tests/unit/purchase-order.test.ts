@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
 import { approveMilestones } from "./helpers/approvals";
+import { completeCertification } from "./helpers/certification";
 import { xlsxBytes } from "./xlsx-fixture";
 
 /*
@@ -11,6 +12,9 @@ import { xlsxBytes } from "./xlsx-fixture";
  * contrato só conclui com os dois arquivos assinados.
  */
 withTempStore();
+
+const { orderRelease } = await import("@/lib/services/order-milestones");
+const { requirementReleased } = await import("@/lib/milestone-release");
 const { approveSample } = await import("./helpers/sampling");
 const gates = await import("./helpers/product-gates");
 
@@ -261,21 +265,38 @@ describe("pedido de compra", () => {
     await expect(
       engine.submitRequirement(admin, ncmReq.id, { value: "ok" }),
     ).rejects.toThrow();
-    // A arte espera a faca e a foto em alta do fornecedor (P4 → P5).
+    // Fase 5d: a arte espera o marco Material de arte inteiro (faca, foto em
+    // alta, pedido mínimo e prazo de todos os produtos, mais a aprovação do
+    // Comprador), não só a faca e a foto do produto.
     await expect(
       submit(agency, order.id, k("art", itemA.id), { file: "arte.pdf" }),
     ).rejects.toThrow("lane_prerequisite");
-    await submit(supplierA, order.id, k("die_cut", itemA.id), {
-      file: "faca.pdf",
-    });
+    for (const item of [itemA, itemB]) {
+      await submit(supplierA, order.id, k("die_cut", item.id), {
+        file: "faca.pdf",
+      });
+      await submit(supplierA, order.id, k("hd_photo", item.id), {
+        file: "foto.pdf",
+      });
+      // Faca e foto do produto na mão: a arte ainda espera o marco.
+      if (item === itemA)
+        await expect(
+          submit(agency, order.id, k("art", itemA.id), { file: "arte.pdf" }),
+        ).rejects.toThrow("stage_not_active");
+      await submit(supplierA, order.id, k("moq_confirmed", item.id), {
+        value: "1000",
+      });
+      await submit(supplierA, order.id, k("lead_time_confirmed", item.id), {
+        value: "30",
+      });
+    }
     expect(await linked(agency)).toHaveLength(0);
-    await submit(supplierA, order.id, k("hd_photo", itemA.id), {
-      file: "foto.pdf",
-    });
-    // Faca e foto em alta na mão: a agência é avisada para criar a arte.
+    // O Comprador aprova o material de arte: o marco Arte libera e a agência
+    // é avisada, produto a produto, para criar a arte.
+    await approveMilestones(admin, order.id);
     expect(
-      (await linked(agency)).some((n) => /faca e foto/.test(n.subject)),
-    ).toBe(true);
+      (await linked(agency)).filter((n) => /faca e foto/.test(n.subject)),
+    ).toHaveLength(2);
 
     // Ordem dentro da raia: sem arte não valida; sem certificado não há arte final.
     const review = reqs.find((r) => r.key === k("art_review", itemA.id))!;
@@ -308,23 +329,7 @@ describe("pedido de compra", () => {
       file: "final.pdf",
     });
 
-    // Resto das raias: o fornecedor e o item B.
-    for (const item of [itemA, itemB]) {
-      if (item === itemB) {
-        await submit(supplierA, order.id, k("die_cut", item.id), {
-          file: "faca.pdf",
-        });
-        await submit(supplierA, order.id, k("hd_photo", item.id), {
-          file: "foto.pdf",
-        });
-      }
-      await submit(supplierA, order.id, k("moq_confirmed", item.id), {
-        value: "1000",
-      });
-      await submit(supplierA, order.id, k("lead_time_confirmed", item.id), {
-        value: "30",
-      });
-    }
+    // Resto das raias: o item B.
     await submit(agency, order.id, k("art", itemB.id), { file: "b.pdf" });
     await engine.decideRequirement(
       admin,
@@ -346,6 +351,17 @@ describe("pedido de compra", () => {
     await gates.readyOrderProducts(admin, order.id);
     // Aprovações do mapa no fim dos marcos (docs/MILESTONES.md).
     await approveMilestones(admin, order.id);
+    // Fase 5d: o contrato espera também os passos da certificação.
+    const sampleReq = (await requirementsOf(order.id)).find(
+      (r) => r.key === "sample_order",
+    )!;
+    await expect(
+      engine.submitRequirement(admin, sampleReq.id, {
+        value: "x",
+        sampleOrder: true,
+      }),
+    ).rejects.toThrow("stage_not_active");
+    await completeCertification(admin, order.id);
 
     // Raias concluídas: o contrato (com a arte final) espera as duas assinaturas.
     const afterLanes = (await store.get("orders", order.id))!;
@@ -492,6 +508,10 @@ async function signedPurchaseOrder(
     await submit(supplierA, order.id, k("lead_time_confirmed", item.id), {
       value: "30",
     });
+  }
+  // Fase 5d: a arte só depois do marco Material de arte (com a aprovação).
+  await approveMilestones(admin, order.id);
+  for (const item of items) {
     await submit(agency, order.id, k("art", item.id), { file: "a.pdf" });
     const review = (await requirementsOf(order.id)).find(
       (r) => r.key === k("art_review", item.id),
@@ -536,6 +556,51 @@ async function signedPurchaseOrder(
   await approveMilestones(admin, order.id);
   return { order, items };
 }
+
+describe("pedido de compra: o que libera na criação (fase 5d)", () => {
+  it("certificado e material de arte liberados; arte e contrato aguardando", async () => {
+    const store = getStore();
+    // Pedido de compra de verdade do cenário das raias.
+    const [r1] = await approvedProducts(
+      null,
+      ["MR-1", "MR-2"],
+      "linha-brinquedos",
+    );
+    const created = await po.createPurchaseOrder(admin, [
+      { requestId: r1.id, quantity: null },
+    ]);
+    const found = (await orderRelease(created.id))!;
+    const reqs = await store.list("requirements", {
+      filter: { orderId: created.id },
+    });
+    const released = (base: string) => {
+      const r = reqs.find((x) => x.key.startsWith(`${base}__`))!;
+      return requirementReleased(created, r, found.release);
+    };
+    expect(released("certificate")).toBe(true);
+    expect(released("die_cut")).toBe(true);
+    expect(released("art")).toBe(false);
+    expect(released("art_final")).toBe(false);
+    const contract = reqs.find((r) => r.key === "sample_order")!;
+    expect(requirementReleased(created, contract, found.release)).toBe(false);
+    // Avisos de "liberado" uma vez por marco (auditoria).
+    const audits = await store.list("audit_log", {
+      filter: {
+        entity: "order",
+        entityId: created.id,
+        action: "milestone.released",
+      },
+    });
+    const keys = audits.map(
+      (a) => (a.after as { milestone: string }).milestone,
+    );
+    expect(keys).toEqual(
+      expect.arrayContaining(["new-order", "certification", "art-material"]),
+    );
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys).not.toContain("art");
+  });
+});
 
 describe("pedido de compra: sequência do mapa do processo", () => {
   it("linha sem certificação: sem certificado nem arte final; o contrato vem da arte validada", async () => {
@@ -719,11 +784,18 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     expect(cadastro.sheet).toHaveLength(1);
     // Certificadora: o certificado do pedido dela.
     expect((await rowsOf(ocp, "ocp")).certificates).toHaveLength(1);
-    // Agência: a arte só entra na fila com a faca e a foto em alta.
+    // Agência: a arte só entra na fila com o marco Material de arte feito
+    // (fase 5d: faca, foto em alta, pedido mínimo, prazo e a aprovação).
     expect((await rowsOf(agency, "agency")).art).toHaveLength(0);
     const k = (base: string) => `${base}__${item.id}`;
     await submit(supplierA, order.id, k("die_cut"), { file: "f.pdf" });
     await submit(supplierA, order.id, k("hd_photo"), { file: "h.pdf" });
+    expect((await rowsOf(agency, "agency")).art).toHaveLength(0);
+    await submit(supplierA, order.id, k("moq_confirmed"), { value: "1000" });
+    await submit(supplierA, order.id, k("lead_time_confirmed"), {
+      value: "30",
+    });
+    await approveMilestones(admin, order.id);
     const art = (await rowsOf(agency, "agency")).art;
     expect(art).toHaveLength(1);
     expect(art[0].dueAt).toBeTruthy();
@@ -1950,7 +2022,14 @@ describe("pedido de compra: aprovações do mapa no fim dos marcos", () => {
       functions: ["buyer"],
     } as never);
     expect(engine.canSubmitRequirement(buyer, order, material)).toBe(true);
-    // Arte validada e cadastro pronto: sem as aprovações, segue na Preparação.
+    // Fase 5d: sem a aprovação do Comprador, a arte ainda espera o marco
+    // Material de arte.
+    await expect(
+      submit(agency, order.id, k("art"), { file: "a.pdf" }),
+    ).rejects.toThrow("stage_not_active");
+    await engine.submitRequirement(buyer, material.id, {});
+    // Arte validada e cadastro pronto: sem as outras aprovações, segue na
+    // Preparação.
     await submit(agency, order.id, k("art"), { file: "a.pdf" });
     await engine.decideRequirement(
       admin,

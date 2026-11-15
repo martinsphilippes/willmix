@@ -31,6 +31,12 @@ import {
 } from "./cert-art-routing";
 import type { StepView } from "./import-flow";
 import { requirementWaiting } from "./tasks";
+import {
+  releaseOf,
+  requirementReleased,
+  type MilestoneRelease,
+} from "@/lib/milestone-release";
+import { isOrderOpen } from "@/lib/order-status";
 
 /*
  * Linha do tempo "Etapas do pedido" do operador da Wellmix (pedido do dono,
@@ -166,6 +172,11 @@ export function myStageTasks(
   stageReqs: Requirement[],
   ctx: RoutingContext,
   sealApplied: boolean,
+  /**
+   * Fase 5d: a liberação pelos marcos (`requirementReleased`). Sem ela
+   * (chamadas antigas), pela etapa em andamento.
+   */
+  release?: MilestoneRelease,
 ): MyStageTasks {
   const open: Requirement[] = [];
   const later: Requirement[] = [];
@@ -186,12 +197,20 @@ export function myStageTasks(
     // item no quadro da etapa). O resto, só quem pode enviar ou aprovar.
     if (!isAutoGateKey(r.key) && !canSubmitRequirement(user, order, r))
       continue;
-    const live =
-      stage.status === "active" ||
-      stage.status === "blocked" ||
-      canCompleteLater(stage, r, order);
+    const live = release
+      ? requirementReleased(order, r, release)
+      : stage.status === "active" ||
+        stage.status === "blocked" ||
+        canCompleteLater(stage, r, order);
     if (!live) {
-      if (upcoming) later.push(r);
+      // O que ainda vem (marco aguardando; sem a liberação, etapa por
+      // começar) fica em cinza.
+      if (
+        release
+          ? isOrderOpen(order.status) && stage.status !== "cancelled"
+          : upcoming
+      )
+        later.push(r);
       continue;
     }
     if (
@@ -241,6 +260,11 @@ export interface TimelineInput {
   supplierPaymentOpen: boolean;
   /** Recebimento aberto (começado e não fechado). */
   receivingOpen: boolean;
+  /**
+   * Liberação dos itens pelos marcos (fase 5d). Sem ela, é calculada aqui
+   * (`orderRelease`).
+   */
+  release?: MilestoneRelease;
 }
 
 /** As tarefas do login no pedido, por etapa e por parte do pedido. */
@@ -257,12 +281,17 @@ export async function myOrderTimeline(
       v.template.key === "cert_seal_art" &&
       (v.step?.status === "submitted" || v.step?.status === "validated"),
   );
+  const release =
+    input.release ??
+    (await (await import("./order-milestones")).orderRelease(order.id))
+      ?.release ??
+    releaseOf([], stages);
   const byStage = new Map<string, MyStageTasks>();
   for (const stage of stages) {
     const reqs = requirements.filter((r) => r.stageId === stage.id);
     byStage.set(
       stage.id,
-      myStageTasks(user, order, stage, reqs, ctx, sealApplied),
+      myStageTasks(user, order, stage, reqs, ctx, sealApplied, release),
     );
   }
   const analyst = internalRoute(order, ctx);
