@@ -839,6 +839,20 @@ export function addressLine(
 }
 
 /**
+ * Grupos internos do Sankhya (dono, 15/11/2026): material de consumo,
+ * construção, hardware, software, EPI, folha, serviços de terceiros, imóveis...
+ * São os códigos de 9 dígitos que começam com 900 ou 910. Não são mercadoria:
+ * a carga traz o produto inativo (o histórico de pedidos continua ligado a
+ * ele), e ele não aparece no catálogo, na busca nem na Nova solicitação.
+ */
+export const INTERNAL_GROUP_PREFIXES = ["900", "910"] as const;
+
+export function isInternalGroup(code: unknown): boolean {
+  const c = String(code ?? "").trim();
+  return c.length === 9 && INTERNAL_GROUP_PREFIXES.some((p) => c.startsWith(p));
+}
+
+/**
  * Volumes alternativos do produto (TGFVOA: CX = 24 UN...): o maior vira a
  * caixa master; com dois ou mais, o menor acima de 1 vira a caixa interna.
  */
