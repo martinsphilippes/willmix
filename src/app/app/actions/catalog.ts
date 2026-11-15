@@ -3,7 +3,8 @@
 import { z } from "zod";
 import { parsePantoneRefs } from "@/lib/pantone";
 import { cutAtSeparator } from "@/lib/pantone/color-text";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { assertWellmix, ForbiddenError } from "@/lib/auth/permissions";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { assertScreen } from "@/lib/auth/screens";
 import {
   getStore,
@@ -138,6 +139,13 @@ export async function updateProductSheetAction(form: FormData) {
         ? form.getAll("notesToEcommerce").includes("on")
         : (product.notesToEcommerce ?? null),
     });
+    // Preço de compra: quem não vê não edita (dono, 15/11/2026;
+    // docs/LINHA_DE_VISAO.md). Os campos não vêm no formulário dele; sem isto
+    // o envio apagaria o preço e a moeda gravados.
+    if (!canSeePurchasePrice(user)) {
+      parsed.price = product.price;
+      parsed.currency = product.currency;
+    }
     if (!(await store.get("product_lines", parsed.lineId)))
       throw new Error("line_not_found");
     if (parsed.supplierId) {
@@ -559,6 +567,8 @@ export async function saveProductPriceTiersAction(form: FormData) {
   await run(`/app/products/${productId}`, async () => {
     assertWellmix(user);
     assertScreen(user, "products");
+    // Faixas são preço de compra (dono, 15/11/2026; docs/LINHA_DE_VISAO.md).
+    if (!canSeePurchasePrice(user)) throw new ForbiddenError();
     const store = getStore();
     const product = await store.get("products", productId);
     if (!product) throw new Error("product_not_found");

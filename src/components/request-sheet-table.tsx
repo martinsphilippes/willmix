@@ -229,7 +229,10 @@ function Row({
               </span>
             ) : null}
             {row.variant ? (
-              <span className="block text-xs text-zinc-500" data-request-variant>
+              <span
+                className="block text-xs text-zinc-500"
+                data-request-variant
+              >
                 {row.variant}
               </span>
             ) : null}
@@ -263,7 +266,9 @@ function Row({
               className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-800 shadow-xs group-open:border-brand-300 group-open:text-brand-700"
               data-sheet-toggle
             >
-              <span className="group-open:hidden">{t("requestSheet.open")}</span>
+              <span className="group-open:hidden">
+                {t("requestSheet.open")}
+              </span>
               <span className="hidden group-open:inline">
                 {t("requestSheet.close")}
               </span>
@@ -348,7 +353,7 @@ export function RequestSheetTable({
       label: t("requestSheet.col.deadline"),
       width: "minmax(0,1fr)",
     },
-    ...(access.cost
+    ...(access.purchase
       ? [
           {
             key: "cost",

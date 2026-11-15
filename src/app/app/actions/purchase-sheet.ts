@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { assertScreen } from "@/lib/auth/screens";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import {
   addSheetPhotos,
   removeSheetPhoto,
@@ -83,6 +84,12 @@ export async function saveProductSheetAction(form: FormData) {
       withProductColumns,
     } = await import("@/lib/services/product-sheet");
     const { input, invalid } = parseSheet(form);
+    // Preço de compra: editar exige ver (dono, 15/11/2026;
+    // docs/LINHA_DE_VISAO.md). Sem a permissão, fica o gravado.
+    if (!canSeePurchasePrice(user)) {
+      delete input.price;
+      delete input.currency;
+    }
     // Fornecedor escolhido entre os cadastrados: vira o principal do produto
     // e o nome vem do cadastro (o texto digitado não vale).
     const supplierId = z.string().max(64).parse(str(form, "supplierId"));

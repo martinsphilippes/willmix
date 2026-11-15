@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
 import { isWellmix } from "@/lib/auth/permissions";
+import { canSeeOrderPurchasePrice } from "@/lib/auth/function-access";
 import { SheetBoardReader } from "@/components/sheet-board-reader";
 import { sheetReadingView } from "@/lib/services/sheet-reading";
 import { getStore } from "@/lib/db";
@@ -245,6 +246,7 @@ export default async function PurchaseSheetPage({
       <div className="grid gap-4 lg:grid-cols-2" data-sheet-sections-root>
         {view.access.editSupplier ? (
           <SheetBoardReader
+            showPrice={canSeeOrderPurchasePrice(user, view.order)}
             t={t}
             scope="order"
             sheetKey={id}
@@ -272,6 +274,7 @@ export default async function PurchaseSheetPage({
             productionStart={view.productionStart}
             editSupplier={access.editSupplier}
             editCustoms={access.editCustoms}
+            showPrice={canSeeOrderPurchasePrice(user, view.order)}
             requestSchedule={request?.schedule ?? null}
             requestUnit={request?.unit ?? "un"}
             targetQuantity={

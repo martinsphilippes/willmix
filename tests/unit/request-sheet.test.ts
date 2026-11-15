@@ -26,6 +26,7 @@ const t = translator("pt");
 const CUSTOMER = "cliente-joao";
 let admin: User;
 let operator: User;
+let sales: User;
 let joao: User;
 
 /** Texto gravado na Solicitação nº 1 de produção (bastão lança-bolhas). */
@@ -108,6 +109,7 @@ beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   operator = users.find((u) => u.email === "operador@wellmix.com")!;
+  sales = users.find((u) => u.email === "vendas@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
 });
 
@@ -294,8 +296,23 @@ describe("Solicitação nº 1: bastão lança-bolhas, sem preço negociado", () 
       expect(fieldOf(row, "payment", key).value).toBeNull();
   });
 
-  it("operador sem “Ver valores e margem”: ficha técnica sim; valores e pagamento fechados", async () => {
+  it("Comprador (Ver preço de compra, sem Ver valores e margem): compra e custo registrado sim; venda não", async () => {
+    // Dono, 15/11/2026 (docs/LINHA_DE_VISAO.md): o preço de compra é de quem
+    // compra; venda e margem continuam com "Ver valores e margem".
     const [op] = (await sheetOf(operator, r)).rows;
+    expect(op.code).toBe("WB12112");
+    expect(op.main.boxes?.value).toBe("12 caixas");
+    expect(op.main.cost?.value).toContain("0,0809");
+    expect(op.main.purchase).not.toBeNull();
+    expect(op.main.sale).toBeNull();
+    const values = op.groups.find((g) => g.key === "values")!;
+    const payment = op.groups.find((g) => g.key === "payment")!;
+    expect(values.sections.map((x) => x.key)).toEqual(["purchase", "cost"]);
+    expect(payment.sections.map((x) => x.key)).toEqual(["supplierPay"]);
+  });
+
+  it("login sem Ver preço de compra (Vendas): ficha técnica sim; valores e pagamento fechados", async () => {
+    const [op] = (await sheetOf(sales, r)).rows;
     expect(op.code).toBe("WB12112");
     expect(op.main.boxes?.value).toBe("12 caixas");
     expect([op.main.cost, op.main.purchase, op.main.sale]).toEqual([
@@ -306,7 +323,7 @@ describe("Solicitação nº 1: bastão lança-bolhas, sem preço negociado", () 
     const values = op.groups.find((g) => g.key === "values")!;
     const payment = op.groups.find((g) => g.key === "payment")!;
     expect(values.sections).toEqual([]);
-    expect(values.restricted).toContain("Ver valores e margem");
+    expect(values.restricted).toContain("Ver preço de compra");
     expect(payment.sections).toEqual([]);
     // O custo e o fornecedor não saem do servidor.
     const json = JSON.stringify(op);
@@ -591,8 +608,14 @@ describe("forma de pagamento do cliente no pedido (docs/CUSTOMER_PAYMENT.md)", (
     const [wellmix] = (await sheetOf(admin, fresh)).rows;
     expect(fieldOf(wellmix, "payment", "saleTerms").note).toBe("Em aprovação");
 
-    // Operador sem "Ver valores e margem": o pagamento continua fechado.
+    // Comprador sem "Ver valores e margem": só o pagamento ao fornecedor;
+    // a forma do cliente continua fechada.
     const [op] = (await sheetOf(operator, fresh)).rows;
-    expect(op.groups.find((g) => g.key === "payment")!.sections).toEqual([]);
+    expect(
+      op.groups.find((g) => g.key === "payment")!.sections.map((x) => x.key),
+    ).toEqual(["supplierPay"]);
+    // Sem "Ver preço de compra" (Vendas): o pagamento todo fechado.
+    const [noPrice] = (await sheetOf(sales, fresh)).rows;
+    expect(noPrice.groups.find((g) => g.key === "payment")!.sections).toEqual([]);
   });
 });

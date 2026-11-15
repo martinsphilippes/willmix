@@ -30,8 +30,11 @@ export function SuppliersCard({
   rows,
   suppliers,
   done,
+  showPrice = true,
 }: {
   t: Translate;
+  /** Preço de compra de cada fornecedor: só com "Ver preço de compra" (docs/LINHA_DE_VISAO.md). */
+  showPrice?: boolean;
   productId: string;
   rows: ProductSupplierRow[];
   /** Todos os fornecedores cadastrados (para incluir um que ainda não está). */
@@ -118,9 +121,13 @@ export function SuppliersCard({
                     <div className="min-w-0 text-xs leading-5 text-zinc-600">
                       {quoted ? (
                         <p>
-                          <span className="font-medium text-zinc-900 tabular-nums">
-                            {formatMoney(link.price, link.currency, t)}
-                          </span>
+                          {showPrice ? (
+                            <span className="font-medium text-zinc-900 tabular-nums">
+                              {formatMoney(link.price, link.currency, t)}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
                           {link.leadTimeDays != null
                             ? ` · ${t("productSuppliers.leadTime", { days: link.leadTimeDays })}`
                             : ""}

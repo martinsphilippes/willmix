@@ -78,6 +78,7 @@ export function PurchaseSheetFields({
   ncmRates = null,
   ncmHelpLink = null,
   omitRegistration = false,
+  showPrice = true,
   registrationSupplierName = null,
 }: {
   t: Translate;
@@ -137,6 +138,12 @@ export function PurchaseSheetFields({
    * servidor trata campo ausente como "não mexe".
    */
   omitRegistration?: boolean;
+  /**
+   * Preço de compra (moeda e preço por peça): só para quem vê
+   * (`canSeeOrderPurchasePrice`; dono, 15/11/2026, docs/LINHA_DE_VISAO.md).
+   * Sem ele, os dois campos não vão à tela nem ao envio.
+   */
+  showPrice?: boolean;
   /** Fornecedor principal escolhido no cadastro (só para dizer de quem é o bloco). */
   registrationSupplierName?: string | null;
   /**
@@ -672,32 +679,36 @@ export function PurchaseSheetFields({
               </F>
               {own("price") ? (
                 <>
-                  <F t={t} m={missing} k="currency" size="sm" req>
-                    <select
-                      name="currency"
-                      defaultValue={sheet.currency ?? ""}
-                      disabled={sup}
-                      className={inputDenseClass}
-                    >
-                      <option value="">—</option>
-                      {SHEET_CURRENCIES.map((v) => (
-                        <option key={v} value={v}>
-                          {t(`currency.name.${v}` as DictionaryKey)}
-                        </option>
-                      ))}
-                    </select>
-                  </F>
-                  <F t={t} m={missing} k="price" size="sm" req>
-                    <MoneyInput
-                      locale={t.intl}
-                      name="price"
-                      watchField="currency"
-                      defaultAmount={numValue(sheet.price) || null}
-                      disabled={sup}
-                      decimals={4}
-                      size="sm"
-                    />
-                  </F>
+                  {showPrice ? (
+                    <>
+                      <F t={t} m={missing} k="currency" size="sm" req>
+                        <select
+                          name="currency"
+                          defaultValue={sheet.currency ?? ""}
+                          disabled={sup}
+                          className={inputDenseClass}
+                        >
+                          <option value="">—</option>
+                          {SHEET_CURRENCIES.map((v) => (
+                            <option key={v} value={v}>
+                              {t(`currency.name.${v}` as DictionaryKey)}
+                            </option>
+                          ))}
+                        </select>
+                      </F>
+                      <F t={t} m={missing} k="price" size="sm" req>
+                        <MoneyInput
+                          locale={t.intl}
+                          name="price"
+                          watchField="currency"
+                          defaultAmount={numValue(sheet.price) || null}
+                          disabled={sup}
+                          decimals={4}
+                          size="sm"
+                        />
+                      </F>
+                    </>
+                  ) : null}
                   <F t={t} m={missing} k="moq" size="xs" req>
                     <Num
                       name="moq"

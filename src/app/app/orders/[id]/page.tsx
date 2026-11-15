@@ -63,13 +63,13 @@ import {
 import { ASSIGN_HREF, type MissingAssignment } from "@/lib/assign-href";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { sheetSummaryWithoutPrice } from "@/lib/services/purchase-sheet-calc";
 import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
 import { OrderRoundsSection } from "./_components/rounds";
 import { OrderSaleContent } from "./_components/order-sale";
 import { CustomerPaymentGate } from "./_components/customer-payment";
 import {
-  canSeeInternalCosts,
   canSeeSellPrice,
   canSeeSupplier,
   canViewOrder,
@@ -238,7 +238,12 @@ import {
 } from "@/components/freight-tariff-box";
 import { myTariffStatus, orderTariffView } from "@/lib/services/freight-tariff";
 import { FreightOrderCard } from "@/components/freight-order-card";
-import { can, canSeeMoney } from "@/lib/auth/function-access";
+import {
+  can,
+  canSeeMoney,
+  canSeeOrderPurchasePrice,
+  canSeePurchasePrice,
+} from "@/lib/auth/function-access";
 
 export default async function OrderPage({
   params,
@@ -312,12 +317,18 @@ export default async function OrderPage({
   const store = getStore();
   const wellmix = isWellmix(user);
   /* Certificadora (OCP) do pedido: vê tudo do pedido para gerar o selo
-     (decisão do dono, 10/11/2026): cliente, fornecedor, itens com foto e
-     preço de compra, a ficha inteira, o documento do pedido, as
-     certificações já registradas e os arquivos. Só lê. O financeiro da
-     Wellmix (preço de venda, margem, pagamentos) não é do pedido dela. */
+     (decisão do dono, 10/11/2026): cliente, fornecedor, itens com foto, a
+     ficha inteira, o documento do pedido, as certificações já registradas e
+     os arquivos. Só lê. O preço de compra deixou de ser dela em 15/11/2026
+     (docs/LINHA_DE_VISAO.md, seção 7). O financeiro da Wellmix (preço de
+     venda, margem, pagamentos) não é do pedido dela. */
   // O despachante do pedido certifica (dono, 13/11/2026): vê o mesmo.
   const certifier = isOrderCertifier(user, progress.order);
+  // Preço de compra (FOB, preço por item, cópia da compra): dono, 15/11/2026
+  // (docs/LINHA_DE_VISAO.md). Na Wellmix, quem tem "Ver preço de compra" ou
+  // "Ver valores e margem"; o fornecedor do pedido e o despachante do pedido.
+  // A certificadora deixa de ver o preço (o resto do pedido continua).
+  const purchasePrice = canSeeOrderPurchasePrice(user, progress.order);
   // Financeiro é só do administrador: pagamentos, valores e margem do pedido.
   const financeAccess = canOpen(user, "finance");
   /* Nova medição (inspeção bloqueada): só com ?remeasure=1; sem o parâmetro a tela é a de sempre. */
@@ -923,7 +934,8 @@ export default async function OrderPage({
     if (!i.variant) return "—";
     const summary = wellmix
       ? variantSnapshotSummary(
-          i.variant,
+          // Preço da cópia: só com "Ver preço de compra" (docs/LINHA_DE_VISAO.md).
+          canSeePurchasePrice(user) ? i.variant : { ...i.variant, price: null },
           {
             price: t("productVariants.col.price"),
             moq: t("productVariants.col.moq"),
@@ -991,7 +1003,7 @@ export default async function OrderPage({
           ],
         ]
       : []),
-    ...(canSeeInternalCosts(user) || certifier
+    ...(purchasePrice
       ? [
           [
             t("orders.fob"),
@@ -2405,7 +2417,7 @@ export default async function OrderPage({
                 <Th>{t("orderView.col.product")}</Th>
                 <Th>{t("orderView.col.variant")}</Th>
                 <Th className="text-right">{t("orderView.col.qty")}</Th>
-                {canSeeInternalCosts(user) || certifier ? (
+                {purchasePrice ? (
                   <>
                     <Th className="text-right">
                       {t("orderView.col.unitPrice")}
@@ -2461,7 +2473,7 @@ export default async function OrderPage({
                     <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
                       {i.quantity.toLocaleString(t.intl)} {i.unit}
                     </Td>
-                    {canSeeInternalCosts(user) || certifier ? (
+                    {purchasePrice ? (
                       <>
                         <Td className="whitespace-nowrap text-right tabular-nums">
                           {i.unitPrice !== null
@@ -3466,6 +3478,8 @@ export default async function OrderPage({
             order={order}
             view={receivingView}
             canQuality={await receivingSvc.canDoQuality(user)}
+            showCustomerValues={canSeeMoney(user) || can(user, "sale.record")}
+            showSupplierValues={canSeePurchasePrice(user)}
             notice={
               typeof receivingNotice === "string" &&
               [
@@ -4036,6 +4050,7 @@ export default async function OrderPage({
           <SnapshotCard
             t={t}
             snapshot={snapshot}
+            showPrice={canSeePurchasePrice(user)}
             orderId={order.id}
             supplierName={partyName(snapshot?.supplierId ?? null)}
             createdBy={userName(snapshot?.createdByUserId ?? null)}
@@ -4383,7 +4398,15 @@ function RequirementRow({
             r.type !== "approval" &&
             r.value ? (
               <span className="mr-2 text-zinc-800">
-                {formatMoneyValue(r.value, t.intl)}
+                {formatMoneyValue(
+                  // Resumo antigo da ficha de compra guardava o preço: quem
+                  // não vê o preço de compra lê sem ele (docs/LINHA_DE_VISAO.md).
+                  r.key === "purchase_sheet" &&
+                    !canSeeOrderPurchasePrice(user, order)
+                    ? sheetSummaryWithoutPrice(r.value)
+                    : r.value,
+                  t.intl,
+                )}
               </span>
             ) : null}
             {doc ? (
@@ -4642,12 +4665,15 @@ const numOrDash = (v: number | null | undefined, intl = "pt-BR") =>
 function SnapshotCard({
   t,
   snapshot,
+  showPrice,
   orderId,
   supplierName,
   createdBy,
 }: {
   t: Translate;
   snapshot: PurchaseSnapshot | null;
+  /** Preço de compra: só com "Ver preço de compra" (docs/LINHA_DE_VISAO.md). */
+  showPrice: boolean;
   orderId: string;
   supplierName: string;
   createdBy: string;
@@ -4685,12 +4711,16 @@ function SnapshotCard({
         items={[
           [t("common.name"), snapshot.name],
           [t("common.supplier"), supplierName],
-          [
-            t("orders.snapshot.unitPrice"),
-            snapshot.unitPrice !== null
-              ? `${formatMoney(snapshot.unitPrice, snapshot.currency ?? "USD", t)} / ${snapshot.unit}`
-              : "—",
-          ],
+          ...(showPrice
+            ? [
+                [
+                  t("orders.snapshot.unitPrice"),
+                  snapshot.unitPrice !== null
+                    ? `${formatMoney(snapshot.unitPrice, snapshot.currency ?? "USD", t)} / ${snapshot.unit}`
+                    : "—",
+                ] as [string, string],
+              ]
+            : []),
           [t("common.quantity"), `${snapshot.quantity} ${snapshot.unit}`],
           [t("orders.snapshot.moq"), numOrDash(snapshot.moq, t.intl)],
           [t("orders.snapshot.supplierSku"), snapshot.supplierSku ?? "—"],

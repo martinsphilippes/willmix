@@ -5,6 +5,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import {
   bestCostItem,
   priceInUsd,
@@ -104,6 +105,9 @@ export default async function BookingSelectionPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/booking/selection");
   requireScreen(user, "booking");
+  // Preço do Book: só com "Ver preço de compra" (dono, 15/11/2026;
+  // docs/LINHA_DE_VISAO.md); sem ela, as colunas de preço não vão à tela.
+  const seesPrice = canSeePurchasePrice(user);
   // Só a Wellmix: o login externo com a tela Booking vê só os bookings dele.
   if (!isWellmix(user)) redirect("/app/booking");
   const query = await searchParams;
@@ -345,8 +349,7 @@ export default async function BookingSelectionPage({
               "item",
               "supplier",
               "booking",
-              "price",
-              "priceUsd",
+              ...(seesPrice ? ["price", "priceUsd"] : []),
               "moq",
               "box",
               "cbm",
@@ -517,17 +520,21 @@ export default async function BookingSelectionPage({
                     {formatDate(lot.bookingDate, t)}
                   </span>
                 </td>
-                <td className={cx(td, "whitespace-nowrap tabular-nums")}>
-                  {num(item.price)} {item.currency ?? ""}
-                  {item.incoterm ? (
-                    <span className="block text-xs text-zinc-500">
-                      {item.incoterm}
-                    </span>
-                  ) : null}
-                </td>
-                <td className={cx(td, "whitespace-nowrap tabular-nums")}>
-                  {priceUsd === null ? "—" : `US$ ${num(priceUsd, 3)}`}
-                </td>
+                {seesPrice ? (
+                  <>
+                    <td className={cx(td, "whitespace-nowrap tabular-nums")}>
+                      {num(item.price)} {item.currency ?? ""}
+                      {item.incoterm ? (
+                        <span className="block text-xs text-zinc-500">
+                          {item.incoterm}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className={cx(td, "whitespace-nowrap tabular-nums")}>
+                      {priceUsd === null ? "—" : `US$ ${num(priceUsd, 3)}`}
+                    </td>
+                  </>
+                ) : null}
                 <td className={cx(td, "tabular-nums")}>{num(item.moq, 0)}</td>
                 <td className={cx(td, "tabular-nums")}>
                   {num(item.masterCartonQty, 0)}
@@ -1234,7 +1241,7 @@ export default async function BookingSelectionPage({
                                                   ?.name ?? "—"}
                                               </span>
                                               <span className="min-w-20 shrink-0 text-right whitespace-nowrap tabular-nums">
-                                                {usdPrice === null
+                                                {usdPrice === null || !seesPrice
                                                   ? "—"
                                                   : `US$ ${num(usdPrice, 3)}`}
                                               </span>
@@ -1348,6 +1355,7 @@ export default async function BookingSelectionPage({
                       rmbPerUsd={rmbPerUsd}
                       hrefOf={groupHref}
                       canOpenOrders={canOpen(user, "orders")}
+                      showPrice={seesPrice}
                     />
                   </section>
                 ) : (

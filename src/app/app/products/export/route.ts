@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
@@ -23,6 +24,9 @@ export async function GET(request: NextRequest) {
   if (!user || !isWellmix(user) || !canOpen(user, "products"))
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   const t = await getT();
+  // Preço de compra: só com "Ver preço de compra" (docs/LINHA_DE_VISAO.md);
+  // sem ela, as colunas Preço e Moeda saem vazias.
+  const seesPrice = canSeePurchasePrice(user);
   const sp = request.nextUrl.searchParams;
   const filter = readProductFilter({
     q: sp.get("q") ?? undefined,
@@ -63,8 +67,11 @@ export async function GET(request: NextRequest) {
         p.supplierSku,
         lines.find((l) => l.id === p.lineId)?.name ?? "",
         supplierName(p.supplierId),
-        p.price !== null ? p.price.toFixed(2) : "",
-        p.currency,
+        // Até 4 casas (5,1392 não vira 5,14); pelo menos 2, como antes.
+        seesPrice && p.price !== null
+          ? p.price.toFixed(4).replace(/0{1,2}$/, "")
+          : "",
+        seesPrice ? p.currency : "",
         p.moq,
         p.masterBoxQty,
         p.cbm,

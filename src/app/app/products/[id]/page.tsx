@@ -6,6 +6,7 @@ import { realName } from "@/lib/placeholder-name";
 import type { ComponentProps } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { SheetBoardReader } from "@/components/sheet-board-reader";
 import { ProductManufacturerCards } from "@/components/manufacturer-cards";
 import { productCards } from "@/lib/services/manufacturer-cards";
@@ -159,6 +160,10 @@ export default async function ProductSheetPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "products");
+  // Preço de compra (preço, moeda, faixas, preço de cada fornecedor e das
+  // variações): só com "Ver preço de compra" (dono, 15/11/2026;
+  // docs/LINHA_DE_VISAO.md). O servidor também recusa a gravação.
+  const seesPrice = canSeePurchasePrice(user);
   const { id } = await params;
   const {
     error,
@@ -679,33 +684,37 @@ export default async function ProductSheetPage({
                   defaultValue={product.moq ?? ""}
                 />
               </FieldRow>
-              <FieldRow
-                label={t("common.price")}
-                size="md"
-                {...sheetRequired("price")}
-              >
-                <MoneyInput
-                  locale={t.intl}
-                  name="price"
-                  watchField="currency"
-                  defaultAmount={product.price ?? null}
-                  decimals={4}
-                  size="sm"
-                />
-              </FieldRow>
-              <FieldRow
-                label={t("common.currency")}
-                size="sm"
-                {...sheetRequired("currency")}
-              >
-                <CurrencySelect
-                  name="currency"
-                  value={product.currency}
-                  t={t}
-                  allowEmpty
-                  dense
-                />
-              </FieldRow>
+              {seesPrice ? (
+                <>
+                  <FieldRow
+                    label={t("common.price")}
+                    size="md"
+                    {...sheetRequired("price")}
+                  >
+                    <MoneyInput
+                      locale={t.intl}
+                      name="price"
+                      watchField="currency"
+                      defaultAmount={product.price ?? null}
+                      decimals={4}
+                      size="sm"
+                    />
+                  </FieldRow>
+                  <FieldRow
+                    label={t("common.currency")}
+                    size="sm"
+                    {...sheetRequired("currency")}
+                  >
+                    <CurrencySelect
+                      name="currency"
+                      value={product.currency}
+                      t={t}
+                      allowEmpty
+                      dense
+                    />
+                  </FieldRow>
+                </>
+              ) : null}
               <FieldRow label={t("catalog.negotiatedAt")} size="sm">
                 <Input
                   name="negotiatedAt"
@@ -914,6 +923,7 @@ export default async function ProductSheetPage({
           rows={supplierRows}
           suppliers={suppliers}
           done={typeof suppliersDone === "string" ? suppliersDone : null}
+          showPrice={seesPrice}
         />
       </FoldSection>
 
@@ -930,6 +940,7 @@ export default async function ProductSheetPage({
           variants={variants}
           done={typeof variantsDone === "string" ? variantsDone : null}
           errorText={errorFrom === "variants" ? errorText : null}
+          showPrice={seesPrice}
         />
       </FoldSection>
 
@@ -957,6 +968,7 @@ export default async function ProductSheetPage({
           </p>
           {/* Foto do quadro: preenche a ficha mestre e aponta divergências. */}
           <SheetBoardReader
+            showPrice={seesPrice}
             t={t}
             scope="product"
             sheetKey={product.id}
@@ -1248,201 +1260,209 @@ export default async function ProductSheetPage({
           operação de um produto já comprado, não do cadastro. As programações
           gravadas continuam no banco. */}
       {/* ---- Oportunidade de compra (faixas + container); preço FOB é interno ---- */}
-      <FoldSection
-        title={t("catalog.opp.title")}
-        fold="opportunity"
-        className="mt-2"
-      >
-        <div id="opportunity" className="scroll-mt-4" />
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="min-w-0 space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              {t("catalog.opp.tiers")}
-            </h3>
-            {tiers.length === 0 ? (
-              <Empty>{t("catalog.opp.tiers.empty")}</Empty>
-            ) : (
-              <ul className="divide-y divide-zinc-100 rounded-lg border border-zinc-200/80 text-[13px]">
-                {tiers.map((tier) => (
-                  <li
-                    key={tier.minQty}
-                    className="flex items-center justify-between gap-3 px-3 py-1.5"
-                  >
-                    <span className="text-zinc-700">
-                      {t("catalog.opp.from")}{" "}
-                      <span className="font-semibold tabular-nums text-zinc-900">
-                        {tier.minQty}
+      {seesPrice ? (
+        <FoldSection
+          title={t("catalog.opp.title")}
+          fold="opportunity"
+          className="mt-2"
+        >
+          <div id="opportunity" className="scroll-mt-4" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="min-w-0 space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                {t("catalog.opp.tiers")}
+              </h3>
+              {tiers.length === 0 ? (
+                <Empty>{t("catalog.opp.tiers.empty")}</Empty>
+              ) : (
+                <ul className="divide-y divide-zinc-100 rounded-lg border border-zinc-200/80 text-[13px]">
+                  {tiers.map((tier) => (
+                    <li
+                      key={tier.minQty}
+                      className="flex items-center justify-between gap-3 px-3 py-1.5"
+                    >
+                      <span className="text-zinc-700">
+                        {t("catalog.opp.from")}{" "}
+                        <span className="font-semibold tabular-nums text-zinc-900">
+                          {tier.minQty}
+                        </span>
                       </span>
+                      <span className="font-semibold tabular-nums text-zinc-900">
+                        {money(tier.price)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <form
+                action={saveProductPriceTiersAction}
+                className="space-y-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3"
+              >
+                <input type="hidden" name="productId" value={product.id} />
+                {analysis?.source === "param" ? (
+                  <input type="hidden" name="qty" value={analysis.quantity} />
+                ) : null}
+                <Field
+                  label={t("catalog.opp.tiers")}
+                  hint={t("catalog.opp.tiersHint")}
+                >
+                  <Textarea
+                    name="tiers"
+                    rows={3}
+                    placeholder={"500;9.50\n1000;8.90"}
+                    defaultValue={formatPriceTiers(tiers)}
+                    dense
+                    className={"min-h-0 max-w-56 font-mono"}
+                  />
+                </Field>
+                <SubmitButton
+                  variant="secondary"
+                  className="w-full sm:w-auto"
+                  pendingText="…"
+                >
+                  {t("catalog.opp.saveTiers")}
+                </SubmitButton>
+              </form>
+            </div>
+
+            <div className="min-w-0 space-y-2">
+              {/* Quantidade (campo curto) com o botão ao lado. */}
+              <form
+                method="get"
+                action={`/app/products/${product.id}#opportunity`}
+                className="flex flex-wrap items-start gap-2"
+              >
+                <div className="w-44">
+                  <Field
+                    label={t("catalog.opp.quantity")}
+                    hint={
+                      analysis
+                        ? t(
+                            `catalog.opp.quantitySource.${analysis.source}` as DictionaryKey,
+                          )
+                        : undefined
+                    }
+                  >
+                    <Input
+                      name="qty"
+                      type="number"
+                      min={1}
+                      step={1}
+                      inputMode="numeric"
+                      defaultValue={analysis?.quantity ?? ""}
+                      dense
+                    />
+                  </Field>
+                </div>
+                <SubmitButton
+                  type="submit"
+                  variant="secondary"
+                  className="mt-6"
+                >
+                  {t("catalog.opp.analyze")}
+                </SubmitButton>
+              </form>
+              {tiers.length === 0 ? (
+                <p className="text-sm text-zinc-600">
+                  {t("catalog.opp.tiers.empty")}
+                </p>
+              ) : !analysis ? (
+                <p className="text-sm text-zinc-600">
+                  {t("catalog.opp.noQuantity")}
+                </p>
+              ) : opportunity ? (
+                <div className="space-y-2 rounded-lg border border-brand-200 bg-brand-50/60 p-3">
+                  <DescriptionList
+                    items={[
+                      [
+                        t("catalog.opp.today"),
+                        `${opportunity.quantity} × ${money(opportunity.currentUnitPrice)} = ${money(opportunity.currentTotal)}`,
+                      ],
+                      [
+                        t("catalog.opp.nextTier"),
+                        `${opportunity.nextTier.minQty} × ${money(opportunity.nextTier.price)} = ${money(opportunity.nextTotal)}`,
+                      ],
+                      [
+                        t("catalog.opp.extraUnits"),
+                        `${opportunity.extraQuantity}${
+                          boxesForQuantity(product, opportunity.extraQuantity)
+                            ? ` (${boxesForQuantity(product, opportunity.extraQuantity)} ${t("catalog.opp.boxes")})`
+                            : ""
+                        }`,
+                      ],
+                      [
+                        t("catalog.opp.unitSaving"),
+                        `${money(opportunity.unitSaving)} (${opportunity.unitSavingPercent.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`,
+                      ],
+                      [
+                        t("catalog.opp.totalDifference"),
+                        `${opportunity.totalDifference > 0 ? "+" : ""}${money(opportunity.totalDifference)}`,
+                      ],
+                      [
+                        t("catalog.opp.marginal"),
+                        money(opportunity.marginalUnitCost),
+                      ],
+                    ]}
+                  />
+                  <p className="break-words border-t border-brand-200/70 pt-2 font-mono text-xs text-zinc-700">
+                    {t("catalog.opp.formula")}: {opportunity.formula}
+                  </p>
+                  <p className="text-xs text-brand-800/80">
+                    {t("catalog.opp.deterministic")}
+                  </p>
+                </div>
+              ) : (
+                <Alert tone="neutral">{t("catalog.opp.none")}</Alert>
+              )}
+              <p className="text-xs text-zinc-500">
+                {t("catalog.opp.internal")}
+              </p>
+            </div>
+          </div>
+
+          {containerFits.length > 0 ? (
+            <div className="mt-3 border-t border-zinc-100 pt-3">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                {t("catalog.opp.container.title")}
+              </h3>
+              <ul className="space-y-1.5 text-sm">
+                {containerFits.map((c) => (
+                  <li
+                    key={c.containerId}
+                    className="flex flex-wrap items-center gap-x-2 gap-y-1"
+                  >
+                    <span className="font-mono font-semibold text-zinc-900">
+                      {c.containerCode}
                     </span>
-                    <span className="font-semibold tabular-nums text-zinc-900">
-                      {money(tier.price)}
+                    {c.customer ? (
+                      <span className="text-zinc-500">· {c.customer}</span>
+                    ) : null}
+                    <span className="text-zinc-800">
+                      {t("catalog.opp.container.line", {
+                        boxes: c.fit.boxes,
+                        units: c.fit.units ?? "—",
+                        cbm: c.remainingCbm.toLocaleString(t.intl, {
+                          maximumFractionDigits: 2,
+                        }),
+                      })}
                     </span>
+                    <TextLink
+                      href={`/app/containers/${c.containerId}`}
+                      className="text-xs"
+                    >
+                      {t("catalog.opp.container.open")}
+                    </TextLink>
                   </li>
                 ))}
               </ul>
-            )}
-            <form
-              action={saveProductPriceTiersAction}
-              className="space-y-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3"
-            >
-              <input type="hidden" name="productId" value={product.id} />
-              {analysis?.source === "param" ? (
-                <input type="hidden" name="qty" value={analysis.quantity} />
-              ) : null}
-              <Field
-                label={t("catalog.opp.tiers")}
-                hint={t("catalog.opp.tiersHint")}
-              >
-                <Textarea
-                  name="tiers"
-                  rows={3}
-                  placeholder={"500;9.50\n1000;8.90"}
-                  defaultValue={formatPriceTiers(tiers)}
-                  dense
-                  className={"min-h-0 max-w-56 font-mono"}
-                />
-              </Field>
-              <SubmitButton
-                variant="secondary"
-                className="w-full sm:w-auto"
-                pendingText="…"
-              >
-                {t("catalog.opp.saveTiers")}
-              </SubmitButton>
-            </form>
-          </div>
-
-          <div className="min-w-0 space-y-2">
-            {/* Quantidade (campo curto) com o botão ao lado. */}
-            <form
-              method="get"
-              action={`/app/products/${product.id}#opportunity`}
-              className="flex flex-wrap items-start gap-2"
-            >
-              <div className="w-44">
-                <Field
-                  label={t("catalog.opp.quantity")}
-                  hint={
-                    analysis
-                      ? t(
-                          `catalog.opp.quantitySource.${analysis.source}` as DictionaryKey,
-                        )
-                      : undefined
-                  }
-                >
-                  <Input
-                    name="qty"
-                    type="number"
-                    min={1}
-                    step={1}
-                    inputMode="numeric"
-                    defaultValue={analysis?.quantity ?? ""}
-                    dense
-                  />
-                </Field>
-              </div>
-              <SubmitButton type="submit" variant="secondary" className="mt-6">
-                {t("catalog.opp.analyze")}
-              </SubmitButton>
-            </form>
-            {tiers.length === 0 ? (
-              <p className="text-sm text-zinc-600">
-                {t("catalog.opp.tiers.empty")}
+              <p className="mt-2 text-xs text-zinc-500">
+                {t("catalog.opp.container.formula")} ·{" "}
+                {t("catalog.opp.deterministic")}
               </p>
-            ) : !analysis ? (
-              <p className="text-sm text-zinc-600">
-                {t("catalog.opp.noQuantity")}
-              </p>
-            ) : opportunity ? (
-              <div className="space-y-2 rounded-lg border border-brand-200 bg-brand-50/60 p-3">
-                <DescriptionList
-                  items={[
-                    [
-                      t("catalog.opp.today"),
-                      `${opportunity.quantity} × ${money(opportunity.currentUnitPrice)} = ${money(opportunity.currentTotal)}`,
-                    ],
-                    [
-                      t("catalog.opp.nextTier"),
-                      `${opportunity.nextTier.minQty} × ${money(opportunity.nextTier.price)} = ${money(opportunity.nextTotal)}`,
-                    ],
-                    [
-                      t("catalog.opp.extraUnits"),
-                      `${opportunity.extraQuantity}${
-                        boxesForQuantity(product, opportunity.extraQuantity)
-                          ? ` (${boxesForQuantity(product, opportunity.extraQuantity)} ${t("catalog.opp.boxes")})`
-                          : ""
-                      }`,
-                    ],
-                    [
-                      t("catalog.opp.unitSaving"),
-                      `${money(opportunity.unitSaving)} (${opportunity.unitSavingPercent.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`,
-                    ],
-                    [
-                      t("catalog.opp.totalDifference"),
-                      `${opportunity.totalDifference > 0 ? "+" : ""}${money(opportunity.totalDifference)}`,
-                    ],
-                    [
-                      t("catalog.opp.marginal"),
-                      money(opportunity.marginalUnitCost),
-                    ],
-                  ]}
-                />
-                <p className="break-words border-t border-brand-200/70 pt-2 font-mono text-xs text-zinc-700">
-                  {t("catalog.opp.formula")}: {opportunity.formula}
-                </p>
-                <p className="text-xs text-brand-800/80">
-                  {t("catalog.opp.deterministic")}
-                </p>
-              </div>
-            ) : (
-              <Alert tone="neutral">{t("catalog.opp.none")}</Alert>
-            )}
-            <p className="text-xs text-zinc-500">{t("catalog.opp.internal")}</p>
-          </div>
-        </div>
-
-        {containerFits.length > 0 ? (
-          <div className="mt-3 border-t border-zinc-100 pt-3">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              {t("catalog.opp.container.title")}
-            </h3>
-            <ul className="space-y-1.5 text-sm">
-              {containerFits.map((c) => (
-                <li
-                  key={c.containerId}
-                  className="flex flex-wrap items-center gap-x-2 gap-y-1"
-                >
-                  <span className="font-mono font-semibold text-zinc-900">
-                    {c.containerCode}
-                  </span>
-                  {c.customer ? (
-                    <span className="text-zinc-500">· {c.customer}</span>
-                  ) : null}
-                  <span className="text-zinc-800">
-                    {t("catalog.opp.container.line", {
-                      boxes: c.fit.boxes,
-                      units: c.fit.units ?? "—",
-                      cbm: c.remainingCbm.toLocaleString(t.intl, {
-                        maximumFractionDigits: 2,
-                      }),
-                    })}
-                  </span>
-                  <TextLink
-                    href={`/app/containers/${c.containerId}`}
-                    className="text-xs"
-                  >
-                    {t("catalog.opp.container.open")}
-                  </TextLink>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-xs text-zinc-500">
-              {t("catalog.opp.container.formula")} ·{" "}
-              {t("catalog.opp.deterministic")}
-            </p>
-          </div>
-        ) : null}
-      </FoldSection>
+            </div>
+          ) : null}
+        </FoldSection>
+      ) : null}
 
       {/* ---- NCM e certificações lado a lado (o que a linha exige para importar) ---- */}
       <div className="mt-2 grid gap-2 lg:grid-cols-2 lg:items-start">

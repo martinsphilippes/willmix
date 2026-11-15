@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
-import { canSeeInternalCosts, isWellmix } from "@/lib/auth/permissions";
+import { isWellmix } from "@/lib/auth/permissions";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { getStore } from "@/lib/db";
 import { loadCommercialHistory, type HistoryRow } from "@/lib/services/history";
 import { getT } from "@/i18n/server";
@@ -104,7 +105,8 @@ export default async function HistoryPage({
       ? customerParam
       : undefined;
   const t = await getT();
-  const showCosts = canSeeInternalCosts(user);
+  // Preço FOB da última compra: só com "Ver preço de compra" (docs/LINHA_DE_VISAO.md).
+  const showCosts = canSeePurchasePrice(user);
   // Filtro de cliente pela busca (como no Marketing): antes, um seletor com
   // todos os clientes (26 mil em produção) em toda abertura da tela.
   const [rows, chosen] = await Promise.all([

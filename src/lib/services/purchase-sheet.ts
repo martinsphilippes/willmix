@@ -18,6 +18,7 @@ import {
   isOrderCertifier,
   isWellmix,
 } from "@/lib/auth/permissions";
+import { canSeeOrderPurchasePrice } from "@/lib/auth/function-access";
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
@@ -569,6 +570,11 @@ export async function saveSheet(
   }
   // Programação de compra (lotes, container, início): só a Wellmix grava.
   if (!isWellmix(user)) for (const key of SCHEDULE_FIELDS) delete patch[key];
+  // Preço de compra: editar exige ver (dono, 15/11/2026; docs/LINHA_DE_VISAO.md).
+  if (!canSeeOrderPurchasePrice(user, order)) {
+    delete patch.price;
+    delete patch.currency;
+  }
   // Início da produção automático (contrato assinado): não se digita.
   if ("productionStartAt" in patch) {
     const { productionStartFor } = await import("./order-signature");
@@ -1058,8 +1064,10 @@ async function syncRequirements(
   ) {
     const container = await containerCapacity(sheet.containerType);
     const plan = planSheet(sheet, container.capacity);
+    // Sem o preço (dono, 15/11/2026): o resumo aparece para quem acompanha a
+    // Preparação, inclusive quem não vê o preço de compra.
     const summary = [
-      `${sheet.incoterm ?? ""} ${sheet.currency ?? ""} ${sheet.price ?? ""}`.trim(),
+      sheet.incoterm ?? null,
       plan.totalPieces !== null ? `${plan.totalPieces} pcs` : null,
       plan.totalCbm !== null ? `${plan.totalCbm} m³` : null,
     ]

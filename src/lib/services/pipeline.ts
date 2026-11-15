@@ -1,5 +1,6 @@
 import "server-only";
 import { realName } from "@/lib/placeholder-name";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 
 import {
@@ -130,6 +131,8 @@ function pipelineItem(
   i: ItemColumns,
   wellmix: boolean,
   row: { fobCurrency?: string | null; specification?: string | null },
+  /** Preço de compra: só com "Ver preço de compra" (docs/LINHA_DE_VISAO.md). */
+  price = wellmix,
 ): PipelineItem {
   return {
     id: i.id,
@@ -137,8 +140,8 @@ function pipelineItem(
     variant: i.variant?.name ?? null,
     quantity: i.quantity,
     unit: i.unit,
-    unitPrice: wellmix ? i.unitPrice : null,
-    currency: wellmix ? (row.fobCurrency ?? null) : null,
+    unitPrice: price ? i.unitPrice : null,
+    currency: price ? (row.fobCurrency ?? null) : null,
     productId: wellmix ? i.productId : null,
     variantData: wellmix ? (i.variant ?? null) : null,
     specification: wellmix ? (row.specification ?? null) : null,
@@ -206,7 +209,7 @@ export async function loadPipelineItems(
   const wellmix = isWellmix(user);
   for (const r of pending) {
     r.items = (byOrder.get(orderIdOf(r)) ?? []).map((i) =>
-      pipelineItem(i, wellmix, r),
+      pipelineItem(i, wellmix, r, wellmix && canSeePurchasePrice(user)),
     );
     if (mode === "full") r.itemsPending = false;
   }
@@ -263,6 +266,8 @@ export async function pipelineFor(
 ): Promise<PipelineRow[]> {
   const store = getStore();
   const wellmix = isWellmix(user);
+  // Preço de compra dos itens: só com "Ver preço de compra" (docs/LINHA_DE_VISAO.md).
+  const seesPrice = wellmix && canSeePurchasePrice(user);
   // Só as colunas usadas: a cópia do registro do ERP (sankhyaRefs) era mais
   // da metade dos pedidos e itens (com ~100 mil itens, a tela passava dos
   // 300 s da Vercel).
@@ -416,10 +421,15 @@ export async function pipelineFor(
           ? realName(itemsByOrder.get(o.id)?.[0]?.name)
           : facts?.get(o.id)?.product) ?? "—",
       items: (itemsByOrder.get(o.id) ?? []).map((i) =>
-        pipelineItem(i, wellmix, {
-          fobCurrency: o.fobCurrency,
-          specification: request?.specification ?? null,
-        }),
+        pipelineItem(
+          i,
+          wellmix,
+          {
+            fobCurrency: o.fobCurrency,
+            specification: request?.specification ?? null,
+          },
+          seesPrice,
+        ),
       ),
       itemCount: items
         ? (itemsByOrder.get(o.id)?.length ?? 0)

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { assertScreen } from "@/lib/auth/screens";
 import { num, requireUser, run, str } from "./helpers";
 
@@ -84,14 +85,27 @@ export async function saveProductVariantAction(form: FormData) {
     assertScreen(user, "products");
     const variantId = str(form, "variantId") || null;
     const input = variantFrom(form);
+    // Preço de compra: editar exige ver (dono, 15/11/2026;
+    // docs/LINHA_DE_VISAO.md). Sem a permissão, fica o gravado.
+    const seesPrice = canSeePurchasePrice(user);
     const svc = await import("@/lib/services/product-variants");
     if (variantId) {
       const current = await svc.getProductVariant(ID.parse(variantId));
       if (!current || current.productId !== productId)
         throw new Error("variant_not_found");
-      await svc.updateProductVariant(user, current.id, input);
+      await svc.updateProductVariant(
+        user,
+        current.id,
+        seesPrice
+          ? input
+          : { ...input, price: current.price, currency: current.currency },
+      );
     } else {
-      await svc.upsertProductVariant(user, productId, input);
+      await svc.upsertProductVariant(
+        user,
+        productId,
+        seesPrice ? input : { ...input, price: null, currency: null },
+      );
     }
     await svc.syncProductFromVariants(productId, user);
     return `${back(productId)}?variants=${variantId ? "saved" : "added"}#variants`;

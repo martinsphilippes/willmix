@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { canOpen } from "@/lib/auth/screens";
 import { isAdmin } from "@/lib/auth/permissions";
 import {
@@ -110,6 +111,9 @@ export default async function PartyPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "parties");
+  // Preço de compra dos produtos do fornecedor: só com "Ver preço de compra"
+  // (docs/LINHA_DE_VISAO.md).
+  const seesPrice = canSeePurchasePrice(user);
   const { id } = await params;
   const {
     error,
@@ -962,7 +966,9 @@ export default async function PartyPage({
                   <tr>
                     <Th>{t("common.product")}</Th>
                     <Th>{t("catalog.supplierSku")}</Th>
-                    <Th className="text-right">{t("common.price")}</Th>
+                    {seesPrice ? (
+                      <Th className="text-right">{t("common.price")}</Th>
+                    ) : null}
                     <Th className="text-right">{t("catalog.moq")}</Th>
                   </tr>
                 </thead>
@@ -995,11 +1001,13 @@ export default async function PartyPage({
                             {code ?? "—"}
                           </span>
                         </Td>
-                        <Td className="whitespace-nowrap text-right tabular-nums">
-                          {price !== null
-                            ? formatMoney(price, currency, t)
-                            : "—"}
-                        </Td>
+                        {seesPrice ? (
+                          <Td className="whitespace-nowrap text-right tabular-nums">
+                            {price !== null
+                              ? formatMoney(price, currency, t)
+                              : "—"}
+                          </Td>
+                        ) : null}
                         <Td className="text-right tabular-nums">
                           {moq !== null ? moq.toLocaleString(t.intl) : "—"}
                         </Td>

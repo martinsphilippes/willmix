@@ -95,6 +95,7 @@ export function RequestedGroups({
   rmbPerUsd,
   hrefOf,
   canOpenOrders = false,
+  showPrice = true,
 }: {
   t: Translate;
   cards: RequestedGroupCard[];
@@ -106,11 +107,16 @@ export function RequestedGroups({
   hrefOf: (ids: string[]) => string;
   /** Quem abre Pedidos vê o link do pedido de compra da solicitação (fase 4b). */
   canOpenOrders?: boolean;
+  /** Preço do Book: só com "Ver preço de compra" (docs/LINHA_DE_VISAO.md). */
+  showPrice?: boolean;
 }) {
   const nameOf = (item: BookingItem | null) =>
     item?.description ?? item?.productName ?? item?.factoryItemCode ?? "—";
   const usdOf = (item: BookingItem | null) => {
-    const usd = item ? priceInUsd(item.price, item.currency, rmbPerUsd) : null;
+    const usd =
+      item && showPrice
+        ? priceInUsd(item.price, item.currency, rmbPerUsd)
+        : null;
     return usd === null
       ? "—"
       : `US$ ${usd.toLocaleString(t.intl, { maximumFractionDigits: 3 })}`;
