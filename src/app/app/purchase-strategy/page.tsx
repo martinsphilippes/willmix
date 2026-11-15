@@ -218,6 +218,10 @@ export default async function PurchaseStrategyPage({
                 ? productById.get(productsHere[0])
                 : null;
               const noProduct = key === "none";
+              // "Fornecedor da última compra" vale para um produto só, com
+              // compra anterior: a opção fica liberada se algum produto do
+              // grupo tem compra (o servidor confere o que foi marcado).
+              const anyLast = productsHere.some((id) => references.has(id));
               const lastOk =
                 productsHere.length === 1 && !!references.get(productsHere[0]);
               return (
@@ -268,7 +272,7 @@ export default async function PurchaseStrategyPage({
                             type="radio"
                             name="choice"
                             value="last_supplier"
-                            disabled={!lastOk}
+                            disabled={!anyLast}
                             defaultChecked={lastOk}
                             data-strategy-choice="last_supplier"
                           />
@@ -277,10 +281,10 @@ export default async function PurchaseStrategyPage({
                         {!lastOk ? (
                           <p
                             className="pl-6 text-xs text-zinc-500"
-                            data-strategy-last-disabled
+                            data-strategy-last-disabled={!anyLast || undefined}
                           >
                             {t(
-                              productsHere.length > 1
+                              anyLast
                                 ? "strategy.lastOneProduct"
                                 : "strategy.noLastPurchase",
                             )}

@@ -77,7 +77,7 @@ export const pt = {
   "strategy.noLastPurchase":
     "Sem compra anterior deste produto: só dá para cotar entre fornecedores.",
   "strategy.lastOneProduct":
-    "Vários produtos juntos: só dá para cotar entre fornecedores (a última compra é de um produto).",
+    "Fornecedor da última compra: marque as demandas de um produto só, com compra anterior.",
   "strategy.submit": "Enviar para aprovação",
   "strategy.chosen":
     "Estratégia nº {n} enviada para a aprovação da Diretoria de compras.",
@@ -208,7 +208,7 @@ export const en: Record<keyof typeof pt, string> = {
   "strategy.noLastPurchase":
     "No previous purchase of this product: only quoting among suppliers is possible.",
   "strategy.lastOneProduct":
-    "Several products together: only quoting among suppliers is possible (the last purchase is per product).",
+    "Last purchase's supplier: select the demands of a single product with a previous purchase.",
   "strategy.submit": "Send for approval",
   "strategy.chosen":
     "Strategy no. {n} sent to the Purchasing board for approval.",
@@ -332,7 +332,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.choice.quote": "在供应商之间询价",
   "strategy.noLastPurchase": "该产品没有采购记录：只能在供应商之间询价。",
   "strategy.lastOneProduct":
-    "多个产品合并：只能在供应商之间询价（上次采购按产品计算）。",
+    "上次采购的供应商：只勾选同一个有采购记录的产品的需求。",
   "strategy.submit": "提交审批",
   "strategy.chosen": "第 {n} 号策略已提交采购总监审批。",
   "strategy.decided": "第 {n} 号策略已决定。",
