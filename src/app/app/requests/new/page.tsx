@@ -7,6 +7,7 @@ import { STOCK_OPTION, isStockCustomer } from "@/lib/services/stock-party";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
+import { canSeeMoney } from "@/lib/auth/function-access";
 import { getStore } from "@/lib/db";
 import { listByIds } from "@/lib/db/lookup";
 import { getT } from "@/i18n/server";
@@ -691,11 +692,22 @@ export default async function NewRequestPage({
                         noProduct: t("priceForecast.noProduct"),
                         manual: t("priceForecast.manual"),
                         error: t("priceForecast.error"),
-                        result: t("priceForecast.result", { price: "{price}" }),
+                        sale: t("priceForecast.sale"),
+                        table: t("priceForecast.table"),
+                        wholesale: t("priceForecast.wholesale"),
+                        retail: t("priceForecast.retail"),
+                        goal: t("priceForecast.goal"),
+                        cost: t("priceForecast.cost"),
+                        profit: t("priceForecast.profit"),
+                        profitValue: t("priceForecast.profitValue", {
+                          profit: "{profit}",
+                          goal: "{goal}",
+                        }),
                         resultTarget: t("priceForecast.resultTarget", {
                           target: "{target}",
-                          price: "{price}",
                         }),
+                        source: t("priceForecast.source"),
+                        canSolve: canSeeMoney(user),
                       },
                     }
                   : {}),

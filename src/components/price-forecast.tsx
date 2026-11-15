@@ -17,10 +17,23 @@ export interface PriceForecastLabels {
   noProduct: string;
   manual: string;
   error: string;
-  /** "Preço previsto ao cliente final: {price} por peça". */
-  result: string;
-  /** "Para vender a {target} ao cliente final: {price} por peça". */
+  /** Linhas da previsão (SuperPlan do Sankhya). */
+  sale: string;
+  table: string;
+  wholesale: string;
+  retail: string;
+  goal: string;
+  cost: string;
+  profit: string;
+  /** "{profit}% (meta {goal}%)". */
+  profitValue: string;
+  /** "Para vender a {target} por peça: preço máximo de compra". */
   resultTarget: string;
+  /** Sem "Ver valores e margem": o preço máximo de compra não aparece. */
+  targetLocked?: string;
+  source: string;
+  /** Vê o preço máximo de compra (custo): só com "Ver valores e margem". */
+  canSolve?: boolean;
 }
 
 type Mode = "view" | "target";
@@ -44,6 +57,7 @@ export function PriceForecast({
   labels: PriceForecastLabels;
   className?: string;
 }) {
+  const canSolve = labels.canSolve ?? true;
   const shared = useRequestCustomer();
   const [mode, setMode] = useState<Mode>("view");
   const [target, setTarget] = useState("");
@@ -54,8 +68,12 @@ export function PriceForecast({
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const shown = answer && answer.for === `${productId}:${mode}` ? answer : null;
-  const money = (n: number) =>
-    n.toLocaleString(labels.intl, { style: "currency", currency: "BRL" });
+  const money = (n: number | null) =>
+    n === null
+      ? "—"
+      : n.toLocaleString(labels.intl, { style: "currency", currency: "BRL" });
+  const num = (n: number, digits = 2) =>
+    n.toLocaleString(labels.intl, { maximumFractionDigits: digits });
   const targetNumber = Number(target.replace(",", "."));
   const targetOk = Number.isFinite(targetNumber) && targetNumber > 0;
 
@@ -122,6 +140,7 @@ export function PriceForecast({
             </button>
             <button
               type="button"
+              hidden={!canSolve}
               aria-pressed={mode === "target"}
               onClick={() => setMode("target")}
               data-price-forecast-mode="target"
@@ -175,21 +194,81 @@ export function PriceForecast({
               >
                 {labels.manual}
               </p>
-            ) : (
+            ) : shown.value.kind === "error" ? (
+              <p
+                className="rounded-md bg-red-50 px-2.5 py-1.5 font-medium text-red-800"
+                role="alert"
+                data-price-forecast-result="error"
+              >
+                {labels.error} {shown.value.message}
+              </p>
+            ) : shown.value.kind === "solve" ? (
               <p
                 className="rounded-md bg-emerald-50 px-2.5 py-1.5 font-medium text-emerald-900"
                 role="status"
-                data-price-forecast-result="api"
+                data-price-forecast-result="solve"
               >
-                {shown.target !== null && shown.value.priceBrl !== null
-                  ? labels.resultTarget
-                      .replace("{target}", money(shown.target))
-                      .replace("{price}", money(shown.value.priceBrl))
-                  : labels.result.replace(
-                      "{price}",
-                      money(shown.value.finalPriceBrl),
-                    )}
+                {labels.resultTarget.replace("{target}", money(shown.target))}{" "}
+                {shown.value.maxPurchasePrice === null
+                  ? "—"
+                  : `${num(shown.value.maxPurchasePrice, 4)} ${shown.value.maxPurchaseCurrency ?? ""}`}
+                {shown.value.maxPurchaseUsd !== null
+                  ? ` (US$ ${num(shown.value.maxPurchaseUsd, 4)})`
+                  : ""}
               </p>
+            ) : (
+              <dl
+                className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 rounded-md bg-emerald-50 px-2.5 py-1.5 text-emerald-950"
+                role="status"
+                data-price-forecast-result="forecast"
+              >
+                {(
+                  [
+                    ["retail", labels.retail, money(shown.value.retailPrice)],
+                    ["sale", labels.sale, money(shown.value.salePrice)],
+                    ["table", labels.table, money(shown.value.tablePrice)],
+                    [
+                      "wholesale",
+                      labels.wholesale,
+                      money(shown.value.wholesalePrice),
+                    ],
+                    ["goal", labels.goal, money(shown.value.targetPrice)],
+                    ...(shown.value.cost !== null
+                      ? [["cost", labels.cost, money(shown.value.cost)]]
+                      : []),
+                    ...(shown.value.profitPercent !== null
+                      ? [
+                          [
+                            "profit",
+                            labels.profit,
+                            labels.profitValue
+                              .replace(
+                                "{profit}",
+                                num(shown.value.profitPercent),
+                              )
+                              .replace(
+                                "{goal}",
+                                num(shown.value.goalPercent ?? 0),
+                              ),
+                          ],
+                        ]
+                      : []),
+                  ] as Array<[string, string, string]>
+                ).map(([key, label, value]) => (
+                  <div key={key} className="contents">
+                    <dt className="text-emerald-800">{label}</dt>
+                    <dd
+                      className="font-semibold tabular-nums"
+                      data-price-forecast-line={key}
+                    >
+                      {value}
+                    </dd>
+                  </div>
+                ))}
+                <p className="col-span-2 pt-0.5 text-[11px] text-emerald-800">
+                  {labels.source}
+                </p>
+              </dl>
             )
           ) : null}
         </>
