@@ -5,7 +5,10 @@
  * --tts só grava a lista de falas para o tts.py (out/<vídeo>.tts.json).
  * Sem áudio ainda, estima a duração pelo número de palavras (para ensaiar).
  * Saídas: film/build/<vídeo>.<idioma>.json (palco), out/<vídeo>.audio.json
- * (onde cada fala entra na mixagem) e out/<vídeo>.<idioma>.srt (legendas).
+ * (onde cada fala entra na mixagem) e as legendas .srt (em out/ e, publicadas,
+ * em docs/videos/institucional/legendas). Depois de rodar, refaça a voz e a
+ * trilha (tts/audio.py voice e tts/track.py): mix.mjs recusa faixas mais
+ * antigas que o plano.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -21,6 +24,7 @@ const GAP = 0.3;
 const POST = 0.75;
 const LIMIT = { pt: 42, zh: 16, en: 42 };
 const LANGS = ["pt", "zh"];
+const SPEED = { pt: 17, zh: 9 };
 
 const [video = "short"] = process.argv.slice(2);
 const def = VIDEOS[video];
@@ -161,6 +165,14 @@ const srt = (subs) =>
     )
     .join("\n");
 
+/** Legenda em texto: em out/ e, publicada, em docs/videos/institucional/legendas. */
+const PUBLISHED = join(ROOT, "../../docs/videos/institucional/legendas");
+function writeSrt(lang, subs) {
+  writeFileSync(join(out, `${video}.${lang}.srt`), srt(subs));
+  if (existsSync(PUBLISHED))
+    writeFileSync(join(PUBLISHED, `wellmix-${video}-${lang}.srt`), srt(subs));
+}
+
 /* Todo texto de tela, para o palco carregar as fontes antes do 1º quadro. */
 const glyphs = [
   ...new Set(JSON.stringify(def.scenes.map((s) => s.props))),
@@ -175,6 +187,7 @@ for (const lang of LANGS) {
       lang,
       fps: FPS,
       intro: INTRO,
+      overlap: OVERLAP,
       duration,
       scenes,
       subs,
@@ -182,14 +195,22 @@ for (const lang of LANGS) {
       glyphs,
     }),
   );
-  writeFileSync(join(out, `${video}.${lang}.srt`), srt(subs));
+  writeSrt(lang, subs);
+  // Velocidade de leitura do guia (pt 17, zh 9 caracteres por segundo): só avisa.
+  const fast = subs
+    .map((c) => c.lines.join("").length / (c.t1 - c.t0))
+    .filter((cps) => cps > SPEED[lang]);
+  if (fast.length)
+    console.log(
+      `  ${lang}: ${fast.length} de ${subs.length} legendas acima de ${SPEED[lang]} caracteres por segundo (máx. ${Math.max(...fast).toFixed(1)})`,
+    );
 }
 const enSubs = cues.map((c, k) => ({
   t0: c.t0,
   t1: Math.min(c.t1 + 0.18, (cues[k + 1]?.t0 ?? Infinity) - 0.04),
   lines: [c.en],
 }));
-writeFileSync(join(out, `${video}.en.srt`), srt(enSubs));
+writeSrt("en", enSubs);
 writeFileSync(
   join(out, `${video}.audio.json`),
   JSON.stringify(

@@ -9,7 +9,7 @@
  * Saída: out/wellmix-<vídeo>-<idioma>.mp4 (1920 × 1080, 60 fps, H.264 + AAC).
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "./lib.mjs";
 
@@ -21,16 +21,33 @@ const ff = (args) =>
 
 /* 1. Mixagem (uma vez por vídeo; refaz com --audio se a voz ou a trilha mudarem). */
 const mix = a("mix");
+// A voz e a trilha são montadas a partir de out/<vídeo>.audio.json (build.mjs).
+// Faixa mais antiga que esse plano = falas fora do lugar no vídeo: para aqui.
+const plan = join(out, `${video}.audio.json`);
+for (const track of ["voice", "music"]) {
+  if (
+    !existsSync(a(track)) ||
+    statSync(a(track)).mtimeMs < statSync(plan).mtimeMs
+  )
+    throw new Error(
+      `${a(track)} é mais antiga que ${plan}: rode tts/audio.py voice e tts/track.py de novo antes de mixar.`,
+    );
+}
+const stale =
+  existsSync(mix) &&
+  [a("voice"), a("music")].some(
+    (f) => statSync(f).mtimeMs > statSync(mix).mtimeMs,
+  );
 const VOICE =
   // Voz: sem ronco grave, compressão leve, presença.
   "highpass=f=75,acompressor=threshold=-21dB:ratio=2.6:attack=6:release=140:makeup=3dB," +
   "equalizer=f=3200:t=q:w=1.2:g=1.5,aformat=channel_layouts=stereo";
 // Trilha: abre espaço na faixa da fala e abaixa quando a voz entra (cerca de
-// 13 dB abaixo da fala; nos intervalos e no encerramento ela volta a subir).
+// 12 dB abaixo da fala; nos intervalos e no encerramento ela volta a subir).
 const MUSIC = "volume=-6dB,equalizer=f=2200:t=q:w=1.0:g=-3";
 const DUCK =
   "sidechaincompress=threshold=0.008:ratio=4:attack=40:release=650:makeup=1";
-if (!existsSync(mix) || process.argv.includes("--audio")) {
+if (!existsSync(mix) || stale || process.argv.includes("--audio")) {
   const pre = a("premix");
   ff([
     "-i",
@@ -89,7 +106,10 @@ const intro = join(ROOT, "../../public/intro/wellmix-intro.mp4");
 const film = join(out, "tmp", `${video}.${lang}.film.mp4`);
 // Começo refeito (render.mjs --to N --name head): entra no lugar dos primeiros quadros do filme.
 const head = join(out, "tmp", `${video}.${lang}.head.mp4`);
-const patched = existsSync(head);
+// Só vale se for mais novo que o filme: um filme renderizado depois dele já
+// traz o começo certo.
+const patched =
+  existsSync(head) && statSync(head).mtimeMs > statSync(film).mtimeMs;
 const headFrames = patched
   ? Number(
       spawnSync(

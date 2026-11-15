@@ -2,7 +2,7 @@
  * Ícones dos vídeos: copia do pacote lucide-static só os que as cenas usam
  * para film/assets/icons.json (nome → miolo do SVG). Rodar: node icons.mjs
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 export const ICONS = [
   "lock",
@@ -90,6 +90,8 @@ for (const name of ICONS) {
     .replace(/\s+/g, " ")
     .trim();
 }
+// film/assets não é versionada (só tem arquivos gerados): cria na primeira vez.
+mkdirSync(new URL("./film/assets/", import.meta.url), { recursive: true });
 writeFileSync(
   new URL("./film/assets/icons.json", import.meta.url),
   JSON.stringify(out),

@@ -4,7 +4,7 @@
  * quadro de 1920 × 1080, e os pontos das rotas (várias origens no exterior →
  * Brasil, como a abertura do portal mostra). Rodar: node map.mjs
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { feature } from "topojson-client";
 import { geoNaturalEarth1, geoPath } from "d3-geo";
 
@@ -57,6 +57,8 @@ const out = {
     midAtlantic: pt(-15, -30),
   },
 };
+// film/assets não é versionada (só tem arquivos gerados): cria na primeira vez.
+mkdirSync(new URL("./film/assets/", import.meta.url), { recursive: true });
 writeFileSync(
   new URL("./film/assets/world.json", import.meta.url),
   JSON.stringify(out),

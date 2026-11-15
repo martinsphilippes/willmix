@@ -15,4 +15,4 @@ Gera os vídeos de `docs/videos/institucional/` (curto e completo, narração em
 | `mix.mjs`                      | Mixagem e fechamento: vinheta do portal + filme + áudio                                         |
 | `music/track.mp3`              | A música enviada pelo dono em 15/11/2026                                                        |
 
-As dependências daqui (`package.json` desta pasta e os pacotes Python do cabeçalho de `tts/tts.py`) são só da produção dos vídeos: o portal não usa nenhuma. `out/`, as telas capturadas e os modelos da voz não são versionados.
+As dependências daqui (`package.json` desta pasta e os pacotes Python `kokoro-onnx`, `soundfile`, `scipy` e `faster-whisper`, do passo 2 de docs/videos/institucional/README.md) são só da produção dos vídeos: o portal não usa nenhuma. No sentido contrário, os scripts usam o `playwright` instalado na raiz do portal (`npm ci` na raiz) e o `ffmpeg` da máquina. `out/`, as telas capturadas, o mapa e os ícones gerados e os modelos da voz não são versionados.

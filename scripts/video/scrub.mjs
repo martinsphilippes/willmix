@@ -13,8 +13,14 @@ import { join } from "node:path";
 const file = join(process.argv[2] ?? ".data-video", "db.json");
 let s = readFileSync(file, "utf8");
 
-const U = "MW[A-Z0-9]{6}"; // sufixo do E2E em maiúsculas (Date.now() em base 36)
-const L = "mw[a-z0-9]{6}";
+// Sufixo do E2E: Date.now() em base 36 (8 caracteres). Os dois primeiros
+// mudam a cada 25 dias ("mw" só valeu de 03 a 28/11/2026), então saem da
+// própria base (do produto "Copo de vidro E2E<sufixo>" do caminho principal).
+const P =
+  /E2E([A-Z0-9]{2})[A-Z0-9]{6}/.exec(s)?.[1] ??
+  Date.now().toString(36).slice(0, 2).toUpperCase();
+const U = `${P}[A-Z0-9]{6}`; // sufixo em maiúsculas
+const L = `${P.toLowerCase()}[a-z0-9]{6}`;
 const KITCHEN = [
   "Jogo de facas inox 6 pçs",
   "Tábua de bambu 35 cm",
@@ -96,6 +102,8 @@ const rules = [
   ["INV-E2E", "INV-2026-0458"],
   ["SELO-E2E-1", "OCP 0045/2026"],
   [" Exemplo E2E", " Exemplo"],
+  // Prefixo de teste novo, que as regras acima ainda não conhecem.
+  [`([A-Z]{2,5})${U}`, "$1-100"],
   // Sufixo solto em minúsculas (e-mails, chaves, nomes de tipo).
   [`[ ._-]?(?:e2e|src)?${L}`, ""],
   // Tradução de exemplo do modo sem IA: tira o rótulo técnico.

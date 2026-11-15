@@ -12,6 +12,7 @@ acorde final na assinatura. A mixagem (voz + trilha com a trilha abaixando sob
 a voz) é feita por mix.mjs com o ffmpeg.
 """
 import json
+import os
 import sys
 
 import numpy as np
@@ -288,7 +289,8 @@ def voice(plan):
 if __name__ == "__main__":
     kind, path = sys.argv[1], sys.argv[2]
     plan = json.load(open(path, encoding="utf-8"))
-    name = path.replace(".audio.json", "").replace("out/", "out/audio/")
+    # out/<vídeo>.audio.json → out/audio/<vídeo>.*.wav (ao lado do plano, qualquer que seja o caminho)
+    name = os.path.join(os.path.dirname(os.path.abspath(path)), "audio", os.path.basename(path).replace(".audio.json", ""))
     if kind == "voice":
         v = voice(plan)
         sf.write(f"{name}.voice.wav", v, SR, subtype="PCM_16")

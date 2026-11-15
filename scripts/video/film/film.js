@@ -100,6 +100,8 @@ function subtitles(t) {
 }
 
 const clamp01 = (n) => Math.max(0, Math.min(1, n));
+/** Tempo em que duas cenas seguidas ficam juntas na tela (vem da linha do tempo). */
+const OVERLAP = tl.overlap ?? 0.55;
 const bg = document.getElementById("bg");
 
 window.seek = (t) => {
@@ -119,20 +121,25 @@ window.seek = (t) => {
     a.pause();
     a.currentTime = t * 1000;
   }
-  // Marca no canto: some nas cenas que já mostram a marca grande.
-  const cur = scenes.filter((s) => s.on).at(-1);
-  const hide = !cur || cur.noBrand;
-  const edge = cur ? Math.min(t - cur.start, cur.start + cur.dur - t) : 0;
+  // Marca no canto: fica firme de uma cena para a outra e só some, em fusão,
+  // nas cenas que já mostram a marca grande. A cena nova entra OVERLAP
+  // segundos antes de a anterior sair (build.mjs); a marca acompanha essa
+  // fusão (antes ela piscava: caía a zero no primeiro quadro de cada cena).
+  const live = scenes.filter((s) => s.on);
+  const cur = live.at(-1);
+  const prev = live.length > 1 ? live.at(-2) : null;
+  const wants = (s) => (s && !s.noBrand ? 1 : 0);
+  const k = cur ? clamp01((t - cur.start) / OVERLAP) : 0;
+  let visible = prev ? wants(prev) * (1 - k) + wants(cur) * k : wants(cur);
   // Na primeira cena a marca espera o papel da vinheta abrir.
-  const wait = cur?.cls?.includes("first")
-    ? clamp01((t - cur.start - 1.1) / 0.5)
-    : 1;
-  brand.style.opacity = hide ? 0 : 0.92 * clamp01(edge / 0.5) * wait;
+  if (cur?.cls?.includes("first"))
+    visible *= clamp01((t - cur.start - 1.1) / 0.5);
+  brand.style.opacity = 0.92 * visible;
   if (chapterEl) {
     const ch = tl.chapters.findLast((c) => t >= c.t0) ?? null;
-    const show = ch && !hide && t < ch.t1;
+    const show = ch && t < ch.t1;
     chapterEl.style.opacity = show
-      ? clamp01(Math.min(t - ch.t0, ch.t1 - t) / 0.5)
+      ? visible * clamp01(Math.min(t - ch.t0, ch.t1 - t) / 0.5)
       : 0;
     if (show) {
       chapterEl.querySelector("b").textContent = ch.label;

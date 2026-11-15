@@ -105,7 +105,7 @@ def main(path):
     y = np.concatenate([y, np.zeros((max(0, n_total - len(y)), 2))])[:n_total]
     k = int(0.9 * SR)
     y[-k:] *= np.linspace(1, 0, k)[:, None] ** 1.5
-    out = path.replace(".audio.json", ".music.wav").replace("out/", "out/audio/", 1)
+    out = os.path.join(os.path.dirname(os.path.abspath(path)), "audio", os.path.basename(path).replace(".audio.json", ".music.wav"))
     sf.write(out, y, SR, subtype="PCM_16")
     end_of_music = outro_at + (len(x) / SR - at_bar(OUT))
     print(f"{out}: {desc}")
