@@ -1879,7 +1879,7 @@ export interface FreightQuote extends BaseRow {
 /**
  * Cartão do fabricante (foto ou PDF) de um produto: diz quem fabrica. Um
  * produto pode ter vários (por fornecedor e ao longo do tempo); a cada
- * negociação o fornecedor confirma qual vale (quotes.manufacturerCardId).
+ * negociação o fornecedor confirma qual vale (o cartão escolhido na solicitação ao fornecedor).
  * Só a Wellmix e o próprio fornecedor veem; o cliente nunca (não pode ir
  * direto à fábrica) e outro fornecedor também não.
  */

@@ -424,7 +424,7 @@ export default async function SettingsPage({
                 </Field>
               </div>
 
-              {/* SLA de resposta da cotação: prazo de toda nova solicitação. */}
+              {/* SLA de resposta da encomenda: prazo de toda nova solicitação. */}
               <div className={section}>
                 <h3 className={h3}>{t("sla.settings.title")}</h3>
                 <p className={hintP}>{t("sla.settings.hint")}</p>

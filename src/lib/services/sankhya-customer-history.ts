@@ -131,7 +131,8 @@ export function customerItemsSql(
   }
   return [
     `SELECT TOP ${PRODUCT_ROWS_PAGE} NUNOTA, SEQUENCIA, DATA_PEDIDO, CODPROD,`,
-    "DESCRICAO_PRODUTO, UNIDADE_NEGOCIADA, QTD_NEGOCIADA",
+    "DESCRICAO_PRODUTO, UNIDADE_NEGOCIADA, QTD_NEGOCIADA,",
+    "VALOR_ITEM_APOS_DESCONTO_BRL",
     `FROM ${VIEW} WHERE ${where.join(" AND ")}`,
     "ORDER BY NUNOTA, SEQUENCIA",
   ].join(" ");
@@ -151,6 +152,12 @@ export interface SankhyaHistoryProduct {
   name: string;
   /** Soma das quantidades pedidas no período, por unidade. */
   total: SankhyaQuantity[];
+  /**
+   * Valor total do produto no período, em R$: a soma dos valores líquidos
+   * dos itens (após descontos). Nulo se algum item veio sem valor ou para
+   * quem não vê valores.
+   */
+  value: number | null;
   /** Da data mais recente para a mais antiga; pedidos do mesmo dia somados. */
   days: Array<{ date: string | null; quantities: SankhyaQuantity[] }>;
 }
@@ -162,6 +169,8 @@ export interface SankhyaProductRow {
   name: string;
   unit: string | null;
   quantity: number | null;
+  /** VALOR_ITEM_APOS_DESCONTO_BRL (nulo sem valor ou sem permissão). */
+  value: number | null;
 }
 
 /** Soma sem o resto do ponto flutuante (0,1 + 0,2). */
@@ -180,8 +189,10 @@ const byDateDesc = (a: string | null, b: string | null) =>
 /**
  * Visão Produto: agrupa pelo código do produto no Sankhya; em cada produto,
  * soma a quantidade pedida de cada data (vários pedidos no mesmo dia viram
- * uma linha) e o total do período, sempre por unidade (UN e CX não se somam).
- * O nome é o do pedido mais recente. Produtos do comprado mais recentemente
+ * uma linha) e o total do período, sempre por unidade (UN e CX não se somam),
+ * e o valor total (dono, 15/11/2026: os valores líquidos dos itens, após
+ * descontos; "—" se algum item vier sem valor). O nome é o do pedido mais
+ * recente. Produtos do comprado mais recentemente
  * para o mais antigo.
  */
 export function productHistory(
@@ -194,6 +205,8 @@ export function productHistory(
       name: string;
       nameDate: string | null;
       total: Map<string | null, number>;
+      /** Soma dos valores; nula assim que um item vier sem valor. */
+      value: number | null;
       days: Map<string | null, Map<string | null, number>>;
     }
   >();
@@ -207,6 +220,7 @@ export function productHistory(
         name: row.name,
         nameDate: row.date,
         total: new Map(),
+        value: 0,
         days: new Map(),
       };
       products.set(key, p);
@@ -216,6 +230,8 @@ export function productHistory(
     }
     const unit = row.unit;
     p.total.set(unit, add(p.total.get(unit) ?? 0, row.quantity));
+    p.value =
+      p.value === null || row.value === null ? null : add(p.value, row.value);
     const day = p.days.get(row.date) ?? new Map<string | null, number>();
     day.set(unit, add(day.get(unit) ?? 0, row.quantity));
     p.days.set(row.date, day);
@@ -226,6 +242,7 @@ export function productHistory(
       code: p.code,
       name: p.name,
       total: sumByUnit(p.total),
+      value: p.value === null ? null : Math.round(p.value * 100) / 100,
       days: [...p.days.entries()]
         .sort(([a], [b]) => byDateDesc(a, b))
         .map(([date, units]) => ({ date, quantities: sumByUnit(units) })),
@@ -445,10 +462,14 @@ export async function sankhyaCustomerProducts(
     from: string | null;
     to: string | null;
     complete: boolean;
+    /** Quem lê vê valores ("Ver valores e margem"). */
+    money: boolean;
   }>
 > {
   const who = await customerCode(user, partyId);
   if (who.state !== "ok") return who;
+  // Valores só com "Ver valores e margem" (a mesma regra da lista).
+  const money = canSeeMoney(user);
   const count = Math.max(
     1,
     Math.min(Math.floor(shown) || SANKHYA_HISTORY_PAGE, SANKHYA_HISTORY_MAX),
@@ -472,7 +493,7 @@ export async function sankhyaCustomerProducts(
       to: dates.at(-1) ?? null,
     };
     if (!orders.length)
-      return { state: "ok", products: [], complete: true, ...period };
+      return { state: "ok", products: [], complete: true, money, ...period };
     const dateOf = new Map(orders.map((o) => [o.nunota, o.date]));
     const nunotas = orders.map((o) => o.nunota);
     const rows: SankhyaProductRow[] = [];
@@ -492,6 +513,7 @@ export async function sankhyaCustomerProducts(
           name: text(r.DESCRICAO_PRODUTO) ?? "—",
           unit: text(r.UNIDADE_NEGOCIADA),
           quantity: num(r.QTD_NEGOCIADA),
+          value: money ? num(r.VALOR_ITEM_APOS_DESCONTO_BRL) : null,
         });
       }
       const last = table.rows.at(-1);
@@ -512,7 +534,13 @@ export async function sankhyaCustomerProducts(
       }
       after = next;
     }
-    return { state: "ok", products: productHistory(rows), complete, ...period };
+    return {
+      state: "ok",
+      products: productHistory(rows),
+      complete,
+      money,
+      ...period,
+    };
   } catch (e) {
     return failure(e);
   }

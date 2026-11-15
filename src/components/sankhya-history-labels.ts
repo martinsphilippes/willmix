@@ -39,6 +39,14 @@ export function sankhyaHistoryLabels(t: Translate): SankhyaHistoryLabels {
       more: t("sankhyaHistory.products.more"),
       showMore: t("sankhyaHistory.products.showMore", { n: "{n}" }),
       incomplete: t("sankhyaHistory.products.incomplete"),
+      sort: {
+        label: t("sankhyaHistory.products.sort"),
+        units_desc: t("sankhyaHistory.products.sort.units_desc"),
+        units_asc: t("sankhyaHistory.products.sort.units_asc"),
+        value_desc: t("sankhyaHistory.products.sort.value_desc"),
+        value_asc: t("sankhyaHistory.products.sort.value_asc"),
+      },
+      totals: t("sankhyaHistory.products.totals"),
     },
     f: {
       code: t("sankhyaHistory.f.code"),

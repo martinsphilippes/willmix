@@ -1501,6 +1501,25 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - Docs: `docs/PURCHASE_HISTORY.md` seção 11.
 - Testes: `tests/unit/sankhya-history-products.test.ts` e `tests/e2e/purchase-history-products.spec.ts`.
 
+## Histórico de compras do cliente, aba Produto: Ordenar e valor total
+
+- **Pedido do dono** (15/11/2026, com a foto da aba Produto): um seletor "Ordenar" no canto superior direito, ao lado do "Período consultado". As opções são "Mais un.", "Menos un.", "Maior valor" e "Menor valor". Cada produto mostra as unidades e o valor total, um embaixo do outro, à direita.
+- **Como ficou:**
+  - Por unidades: a quantidade total pedida no período.
+  - Por valor: a soma dos valores líquidos dos itens, após descontos. Sem valor: "—" e o produto no fim das ordens por valor.
+  - As datas de cada produto não mudam. A ordem fica ao voltar de Pedido e ao trocar de cliente.
+  - Valores só com "Ver valores e margem". Sem ela, só as ordens por unidades.
+- **Como:**
+  - O valor vem de `VALOR_ITEM_APOS_DESCONTO_BRL` em `customerItemsSql` e é somado em `productHistory`.
+  - `sankhyaCustomerProducts` devolve `money`.
+  - `sortProducts` fica em `src/lib/sankhya-product-sort.ts`.
+  - O seletor e os totais ficam no `ProductsPanel`.
+- **Não mudou:** a visão Pedido, o agrupamento pelo código do produto e a soma do mesmo dia. Sem mudança no banco.
+- Docs: `docs/PURCHASE_HISTORY.md` seção 11.
+- Testes:
+  - `tests/unit/sankhya-history-products.test.ts`: valor por produto, item sem valor, sem permissão e as quatro ordens, com a ordem por unidades diferente da ordem por valor.
+  - `tests/e2e/purchase-history-products.spec.ts`: as quatro ordens na tela, os dois totais, a coluna estreita (iPad em pé e deitado e celular) e o login sem valores.
+
 ## RCA do cliente no cadastro e na Nova solicitação
 
 - **Pedido do dono** (15/11/2026, com as fotos da Nova solicitação e de Cadastros → Parceiros no iPad): o campo "RCA responsável" no cadastro do cliente; na Nova solicitação, o "RCA do cliente" ao lado do "Solicitante", o solicitante preenchido com quem está criando e o seletor de antes como "Login do cliente com acesso". Decisões: o RCA é o vendedor do Sankhya (TGFVEN, pelo código) e o Sankhya manda (a carga sobrescreve o portal).

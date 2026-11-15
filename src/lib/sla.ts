@@ -1,5 +1,5 @@
 /**
- * SLA de resposta da cotação: a Wellmix define em Configurações quantos dias
+ * SLA de resposta da encomenda (antes "da cotação"): a Wellmix define em Configurações quantos dias
  * úteis tem para responder uma solicitação; o prazo vira o `deadline` da
  * solicitação (tarefa da Wellmix, Control Tower). Dias úteis = segunda a sexta,
  * contados a partir de hoje no horário de Brasília (sem calendário de feriados).
