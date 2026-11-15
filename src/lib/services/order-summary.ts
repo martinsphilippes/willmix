@@ -40,6 +40,7 @@ import type { BoardOrder, BoardStage } from "./tower-board";
 import {
   compactMilestones,
   newlyDoneMilestones,
+  newlyStartedMilestones,
   orderMilestones,
   type CompactMilestone,
 } from "@/lib/milestones";
@@ -78,9 +79,12 @@ import { orderSubtasks } from "./milestones";
  * licença. 13: o pedido em espera contribui pela situação real, como os
  * outros, marcado (`f.h`; dono, 14/11/2026). 14: os 16 marcos do pedido
  * (`m`: chave, situação, feitas, total e prazo), que as listas leem para o
- * marco atual (docs/MILESTONES.md, fase 4a).
+ * marco atual (docs/MILESTONES.md, fase 4a). 15: a contribuição para a
+ * Control Tower (`kpi`) conta as visões gerais de preparação, inspeção,
+ * embarque, desembaraço e transporte pelo marco atual e guarda o marco
+ * (`kpi.ms`; fase 4d).
  */
-export const SUMMARY_VERSION = 14;
+export const SUMMARY_VERSION = 15;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -956,28 +960,47 @@ async function storedMilestones(
   return out;
 }
 
-/** Avisa os informados dos marcos que concluíram neste recálculo. */
+/**
+ * Avisa os informados dos marcos que concluíram neste recálculo e dispara
+ * os eventos de marco das regras de processo (`milestone:<marco>:start` e
+ * `:done`, fase 4d). Os dois só aqui: nunca na reconstrução.
+ */
 async function informNewlyDone(
   orders: Order[],
   facts: OrderFacts[],
   previous: Map<string, CompactMilestone[]>,
 ) {
   const byId = new Map(facts.map((f) => [f.order.id, f]));
+  let rules: Promise<import("@/lib/process-rules").ProcessRule[]> | null = null;
   for (const order of orders) {
-    // Histórico do Sankhya em espera: sem avisos (fase 1).
+    // Histórico do Sankhya em espera: sem avisos nem eventos (fase 1).
     if (isHeld(order)) continue;
-    const keys = newlyDoneMilestones(
-      previous.get(order.id),
-      byId.get(order.id)?.m,
-    );
-    if (!keys.length) continue;
-    try {
-      const { informMilestones } = await import("./milestone-notify");
-      await informMilestones(order, keys);
-    } catch (error) {
-      // O aviso não derruba o resumo (já gravado).
-      console.error("[milestones] aviso aos informados falhou", error);
-    }
+    const before = previous.get(order.id);
+    const after = byId.get(order.id)?.m;
+    const keys = newlyDoneMilestones(before, after);
+    const started = newlyStartedMilestones(before, after);
+    if (keys.length)
+      try {
+        const { informMilestones } = await import("./milestone-notify");
+        await informMilestones(order, keys);
+      } catch (error) {
+        // O aviso não derruba o resumo (já gravado).
+        console.error("[milestones] aviso aos informados falhou", error);
+      }
+    if (keys.length || started.length)
+      try {
+        const { emitMilestoneEvents, milestoneTransitionEvents } =
+          await import("./milestone-events");
+        const { getProcessRules } = await import("./process-engine");
+        rules ??= getProcessRules();
+        await emitMilestoneEvents(
+          order,
+          milestoneTransitionEvents(started, keys),
+          await rules,
+        );
+      } catch (error) {
+        console.error("[milestones] eventos das regras falharam", error);
+      }
   }
 }
 

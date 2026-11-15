@@ -21,9 +21,14 @@ import type { FinanceSummary, FinanceSummaryRow } from "./finance";
 import type { OrderFacts } from "./order-summary";
 import {
   milestoneOfFacts,
+  milestoneOfStatus,
   type CompactMilestone,
   type MilestoneKey,
 } from "@/lib/milestones";
+import {
+  towerBucketOfMilestone,
+  type TowerMilestoneBucket,
+} from "@/lib/tower-milestones";
 
 /** Pedido do item de revisão (itens antigos podem ter só entity "order"). */
 export const reviewOrderId = (r: ReviewItem) =>
@@ -37,7 +42,8 @@ export interface TowerRow {
   stageKey: StageKey | null;
   /**
    * Marco atual do pedido (docs/MILESTONES.md, fase 4a), o que a linha
-   * mostra; os quadros e as contas seguem pela etapa (`stageKey`).
+   * mostra; as visões gerais de preparação a transporte contam por ele (fase
+   * 4d). Os quadrados "Processo por etapa" seguem pelas regras deles.
    */
   milestone?: MilestoneKey | null;
   requestStatus: RequestStatus | null;
@@ -393,8 +399,10 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
     });
   }
 
-  const byStage = (keys: StageKey[]) =>
-    rows.filter((r) => r.stageKey && keys.includes(r.stageKey));
+  // Visões gerais pelo marco atual (fase 4d, src/lib/tower-milestones.ts):
+  // cada pedido em andamento cai em uma só, a soma é a mesma de antes.
+  const byMilestone = (bucket: TowerMilestoneBucket) =>
+    rows.filter((r) => towerBucketOfMilestone(r.milestone) === bucket);
   return {
     buckets: {
       active: rows,
@@ -408,16 +416,11 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
         .concat(
           requestRows.filter((r) => r.requestStatus === "WAITING_DOWN_PAYMENT"),
         ),
-      preparation: byStage([
-        "ORDER_CREATED",
-        "PREPARATION",
-        "SUPPLIER_PAYMENT",
-        "PACKAGING",
-      ]),
-      inspection: byStage(["INSPECTION"]),
-      shipping: byStage(["SHIPPING"]),
-      customs: byStage(["CUSTOMS"]),
-      transport: byStage(["TRANSPORT", "DELIVERED"]),
+      preparation: byMilestone("preparation"),
+      inspection: byMilestone("inspection"),
+      shipping: byMilestone("shipping"),
+      customs: byMilestone("customs"),
+      transport: byMilestone("transport"),
       overdue: rows.filter((r) => r.overdue),
       problems: rows.filter(
         (r) =>
@@ -475,19 +478,34 @@ export interface TowerTotals {
   }>;
 }
 
+/**
+ * Fases da faixa da operação pelos marcos (fase 4d): o marco vem da situação
+ * do pedido (`milestoneOfStatus`; a linha do financeiro não tem os marcos),
+ * então os números são os mesmos das etapas de antes.
+ */
 const PIPELINE: Array<{
   key: TowerTotals["pipeline"][number]["key"];
-  stages: StageKey[];
+  milestones: MilestoneKey[];
 }> = [
   {
     key: "production",
-    stages: ["ORDER_CREATED", "PREPARATION", "SUPPLIER_PAYMENT", "PACKAGING"],
+    milestones: [
+      "new-order",
+      "certification",
+      "art-material",
+      "art",
+      "contract",
+      "down-payment",
+    ],
   },
-  { key: "ready", stages: ["INSPECTION"] },
-  { key: "shipped", stages: ["SHIPPING"] },
-  { key: "customs", stages: ["CUSTOMS"] },
-  { key: "transport", stages: ["TRANSPORT"] },
-  { key: "delivered", stages: ["DELIVERED", "CLOSED"] },
+  {
+    key: "ready",
+    milestones: ["pre-production", "inspection", "samples", "production"],
+  },
+  { key: "shipped", milestones: ["booking", "loading", "shipment"] },
+  { key: "customs", milestones: ["customs"] },
+  { key: "transport", milestones: ["invoice-transport"] },
+  { key: "delivered", milestones: ["delivery"] },
 ];
 
 /** Linha do financeiro que os totais leem (de `loadFinance` ou do resumo do pedido). */
@@ -585,9 +603,10 @@ export function buildTowerTotals(
       (purchasedByCurrency[r.fobCurrency] ?? 0) + r.fob;
   }
   const pipeline = PIPELINE.map((p) => {
-    const mine = rows.filter((r) =>
-      (p.stages as readonly string[]).includes(r.order.status),
-    );
+    const mine = rows.filter((r) => {
+      const key = milestoneOfStatus(r.order.status);
+      return !!key && p.milestones.includes(key);
+    });
     return {
       key: p.key,
       count: mine.length,

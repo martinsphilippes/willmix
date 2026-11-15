@@ -8,11 +8,12 @@ Uma regra por evento (`src/lib/process-rules.ts`, `PROCESS_EVENTS`):
 
 - **Solicitação**: RFQ aberta, cotações recebidas, fornecedor selecionado, aguardando sinal, pedido criado, excluída.
 - **Pedido assinado pelos dois** (documento do pedido, docs/ORDER_SIGNATURE.md).
-- **Etapas do pedido**: início e conclusão de cada etapa (Pedido criado … Encerramento).
+- **Marcos do pedido** (fase 4d, 15/11/2026; docs/MILESTONES.md "Sankhya, regras e painéis"): `milestone:<marco>:start` (o marco passa a em andamento) e `milestone:<marco>:done` (o marco conclui com todas as subtarefas feitas), para os 16 marcos. No editor vêm agrupados por bloco (Pedido, Produção, Entrega), "N. Marco — começa/conclui", antes das etapas antigas.
+- **Etapas do pedido (etapa antiga)**: início e conclusão de cada etapa (Pedido criado … Encerramento). Continuam valendo e disparando como antes, para as regras gravadas seguirem funcionando; o editor mostra "(etapa antiga)". Saem só na fase 5.
 - **Pedido faturado**: botão "Registrar faturamento" no pedido (Wellmix), linha Faturamento; grava `orders.invoicedAt` (`src/lib/services/order-invoicing.ts`).
 - **Pedido cancelado**.
 
-Onde são disparados: `src/lib/services/requests.ts` (status da solicitação), `superplan-rfq.ts`, `order-signature.ts`, `order-cancel.ts`, `order-invoicing.ts` e `src/lib/workflow/engine.ts` (início e conclusão de etapa). A carga do histórico do Sankhya não dispara nada.
+Onde são disparados: `src/lib/services/requests.ts` (status da solicitação), `superplan-rfq.ts`, `order-signature.ts`, `order-cancel.ts`, `order-invoicing.ts` e `src/lib/workflow/engine.ts` (início e conclusão de etapa). A carga do histórico do Sankhya não dispara nada. Os eventos de marco saem do recálculo do resumo do pedido por evento (`applySummaryChanges` → `emitMilestoneEvents`, `src/lib/services/milestone-events.ts`), o mesmo ponto do aviso aos informados: nunca na reconstrução, nem em pedido do histórico em espera ou cancelado, e uma vez por evento e pedido (auditoria `milestone.event`).
 
 ## Ações
 

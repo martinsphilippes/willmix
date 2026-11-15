@@ -1,4 +1,10 @@
 import { REQUEST_STATUSES, STAGE_KEYS } from "@/lib/db/schema";
+import type { FlowBlock } from "@/lib/flow";
+import {
+  MILESTONE_BLOCKS,
+  milestonesOfBlock,
+  type MilestoneKey,
+} from "@/lib/milestones";
 
 /*
  * Regras de processo (Configurações → Processos; docs/PROCESSES.md): para cada
@@ -29,27 +35,73 @@ export const SANKHYA_ACTIONS = [
 ] as const;
 export type SankhyaAction = (typeof SANKHYA_ACTIONS)[number];
 
+export type MilestoneEventKey =
+  `milestone:${MilestoneKey}:start` | `milestone:${MilestoneKey}:done`;
+
 export type ProcessEventKey =
   | `request:${(typeof REQUEST_STATUSES)[number]}`
   | `stage:${(typeof STAGE_KEYS)[number]}:start`
   | `stage:${(typeof STAGE_KEYS)[number]}:done`
+  | MilestoneEventKey
   | "order:signed"
   | "order:cancelled"
   | "order:invoiced";
 
-/** Todos os eventos, na ordem do processo. */
-export const PROCESS_EVENTS: ProcessEventKey[] = [
-  ...REQUEST_STATUSES.filter((s) => s !== "REQUESTED").map(
-    (s) => `request:${s}` as ProcessEventKey,
-  ),
-  "order:signed",
-  ...STAGE_KEYS.flatMap((k) => [
-    `stage:${k}:start` as ProcessEventKey,
-    `stage:${k}:done` as ProcessEventKey,
-  ]),
-  "order:invoiced",
-  "order:cancelled",
+/**
+ * Grupos do editor de regras (fase 4d, docs/MILESTONES.md "Sankhya, regras e
+ * painéis"): as solicitações, o pedido assinado, os 16 marcos por bloco
+ * (começa/conclui), as etapas antigas (continuam valendo e disparando, para
+ * as regras gravadas seguirem funcionando) e o faturamento e o cancelamento.
+ */
+export interface ProcessEventGroup {
+  kind: "request" | "order" | "milestone" | "stage";
+  /** Bloco do mapa (só nos marcos). */
+  block?: FlowBlock;
+  events: ProcessEventKey[];
+}
+
+export const milestoneEvent = (
+  key: MilestoneKey,
+  moment: "start" | "done",
+): MilestoneEventKey => `milestone:${key}:${moment}`;
+
+export const PROCESS_EVENT_GROUPS: ProcessEventGroup[] = [
+  {
+    kind: "request",
+    events: REQUEST_STATUSES.filter((s) => s !== "REQUESTED").map(
+      (s) => `request:${s}` as ProcessEventKey,
+    ),
+  },
+  { kind: "order", events: ["order:signed"] },
+  ...MILESTONE_BLOCKS.map((block): ProcessEventGroup => ({
+    kind: "milestone",
+    block,
+    events: milestonesOfBlock(block).flatMap((k) => [
+      milestoneEvent(k, "start"),
+      milestoneEvent(k, "done"),
+    ]),
+  })),
+  {
+    kind: "stage",
+    events: STAGE_KEYS.flatMap((k) => [
+      `stage:${k}:start` as ProcessEventKey,
+      `stage:${k}:done` as ProcessEventKey,
+    ]),
+  },
+  { kind: "order", events: ["order:invoiced", "order:cancelled"] },
 ];
+
+/** Todos os eventos, na ordem do processo (a do editor). */
+export const PROCESS_EVENTS: ProcessEventKey[] = PROCESS_EVENT_GROUPS.flatMap(
+  (g) => g.events,
+);
+
+/** Evento de marco (fase 4d)? */
+export const isMilestoneEvent = (event: string): event is MilestoneEventKey =>
+  event.startsWith("milestone:");
+
+/** Evento da etapa antiga (continua disparando até a fase 5)? */
+export const isStageEvent = (event: string) => event.startsWith("stage:");
 
 export interface ProcessRule {
   event: ProcessEventKey;

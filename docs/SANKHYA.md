@@ -71,6 +71,10 @@ Entidades comuns: `Produto` (TGFPRO), `Parceiro` (TGFPAR, clientes e fornecedore
 | Estoque (TGFEST)       | saldo inicial (calculado) | —                             |
 | Financeiro (TGFFIN)    | `payments`                | —                             |
 
+**TOP → etapa → marco** (fase 4d, 15/11/2026; docs/MILESTONES.md "Sankhya, regras e painéis"): a carga continua gravando a etapa da TOP (`TOP_STAGES`, `advanceStages`), sem mudança no que é gravado. A tabela "TOP → etapa" da tela ganhou a coluna **Marco**, o marco que a etapa dá (`topMilestone`, pela `milestoneOfStatus`): 33 e 1101 → 1. Pedido novo; 1102 → 5. Contrato; 1104 → 6. Sinal; 1105 → 8. Inspeção; 1103 e 1106 → 13. Embarque; 1107 e 1109 → 14. Desembaraço; 1201 → 15. Nota fiscal e transporte; 1401, 1402 e 1403 → 16. Entrega e recebimento.
+
+**Eventos de marco nas regras** (Configurações → Processos; docs/PROCESSES.md): além dos eventos das etapas antigas, que continuam valendo, as regras podem usar `milestone:<marco>:start` e `:done` (o marco começa ou conclui). Assim a TOP do Sankhya (cotação → pre-order → pedido) ou a movimentação de estoque pode seguir os marcos. Uma vez por pedido, só no recálculo por evento; a carga do histórico e o pedido em espera não disparam.
+
 A amostra (1 a 5 por entidade) é coerente: as últimas notas das TOPs de importação (descrição com "IMP") e, delas, os parceiros, itens e financeiro; dos itens, os produtos; dos produtos, os grupos e o estoque. Tudo por SQL somente leitura com listas de inteiros. Se uma coluna do mapeamento não existir no ERP, a tela refaz a consulta com `*`, mostra as colunas que faltam e as que a tabela tem. Para cada registro, a tela mostra o valor convertido (e o original quando muda) e se já existe um cadastro equivalente no portal.
 
 ### Todas as colunas e ligações (10/11/2026)

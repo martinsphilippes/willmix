@@ -51,6 +51,18 @@ export const pt = {
   "milestone.sla.open": "Pendências",
   "milestone.sla.late": "Atrasadas",
   "milestone.sla.partner": "Com parceiros",
+  // Fase 4d: Control Tower e painéis pelos marcos (docs/MILESTONES.md).
+  "milestone.tower.title": "Pedidos por marco",
+  "milestone.tower.hint":
+    "Pedidos em andamento pelo marco atual; a soma é o total em andamento. Tocar abre Pedidos filtrado no marco.",
+  "milestone.tower.total": "{n} em andamento",
+  "milestone.tower.range": "Marcos {range}",
+  "milestone.tower.rangeOne": "Marco {range}",
+  "milestone.bucket.preparation": "Pedido (marcos 1 a 6)",
+  "milestone.bucket.inspection": "Produção e inspeção (marcos 7 a 10)",
+  "milestone.bucket.shipping": "Booking e embarque (marcos 11 a 13)",
+  "milestone.bucket.customs": "Desembaraço (marco 14)",
+  "milestone.bucket.transport": "Transporte e entrega (marcos 15 e 16)",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -100,6 +112,18 @@ export const en: Record<keyof typeof pt, string> = {
   "milestone.sla.open": "Open items",
   "milestone.sla.late": "Overdue",
   "milestone.sla.partner": "With partners",
+  "milestone.tower.title": "Orders by milestone",
+  "milestone.tower.hint":
+    "Orders in progress by current milestone; the sum is the total in progress. Tap to open Orders filtered by the milestone.",
+  "milestone.tower.total": "{n} in progress",
+  "milestone.tower.range": "Milestones {range}",
+  "milestone.tower.rangeOne": "Milestone {range}",
+  "milestone.bucket.preparation": "Order (milestones 1 to 6)",
+  "milestone.bucket.inspection":
+    "Production and inspection (milestones 7 to 10)",
+  "milestone.bucket.shipping": "Booking and shipment (milestones 11 to 13)",
+  "milestone.bucket.customs": "Customs (milestone 14)",
+  "milestone.bucket.transport": "Transport and delivery (milestones 15 and 16)",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -149,4 +173,15 @@ export const zh: Record<keyof typeof pt, string> = {
   "milestone.sla.open": "待办",
   "milestone.sla.late": "已逾期",
   "milestone.sla.partner": "合作方",
+  "milestone.tower.title": "按里程碑查看订单",
+  "milestone.tower.hint":
+    "按当前里程碑统计进行中的订单；合计即进行中总数。点击打开按该里程碑筛选的订单。",
+  "milestone.tower.total": "进行中 {n} 个",
+  "milestone.tower.range": "里程碑 {range}",
+  "milestone.tower.rangeOne": "里程碑 {range}",
+  "milestone.bucket.preparation": "订单（里程碑 1 至 6）",
+  "milestone.bucket.inspection": "生产与验货（里程碑 7 至 10）",
+  "milestone.bucket.shipping": "订舱与出运（里程碑 11 至 13）",
+  "milestone.bucket.customs": "清关（里程碑 14）",
+  "milestone.bucket.transport": "运输与交付（里程碑 15 和 16）",
 };
