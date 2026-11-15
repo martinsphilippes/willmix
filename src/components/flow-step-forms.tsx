@@ -1,4 +1,5 @@
 import type { Requirement, User } from "@/lib/db/schema";
+import { isOrderOpen } from "@/lib/order-status";
 import type { FlowCase as Task } from "@/lib/services/flow";
 import { requirementLabel, type Translate } from "@/i18n";
 import { getStore } from "@/lib/db";
@@ -444,9 +445,7 @@ export async function FlowFreightWork({
   const orders = await getStore().list("orders", {
     filter: { id: orderIds },
   });
-  const live = orders.filter(
-    (o) => o.status !== "CANCELLED" && o.status !== "CLOSED",
-  );
+  const live = orders.filter((o) => isOrderOpen(o.status));
   if (!live.length) return null;
   return (
     <section className="mt-6 space-y-4" data-flow-freight>

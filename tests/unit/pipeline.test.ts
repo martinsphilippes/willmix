@@ -215,6 +215,11 @@ describe("painel de pedidos sem ler todos os itens", () => {
       unit: "un",
       unitPrice: 1.5,
     } as never);
+    // Os marcos pedidos pelo motor (na fila fora de uma requisição) gravados
+    // antes, como depois da resposta em produção.
+    const { flushMilestoneSync } =
+      await import("@/lib/services/order-milestones");
+    await flushMilestoneSync();
     await rebuildOrderSummaries();
     for (const user of [admin, joao, supplierA]) {
       const full = await pipelineFor(user);

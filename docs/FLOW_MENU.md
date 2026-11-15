@@ -6,7 +6,7 @@ Pedido do dono (14/11/2026): o menu lateral segue os blocos do mapa do processo 
 
 | Bloco (mapa)        | Itens                                                                                                                                                           |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Produto novo (Book) | Overview, Books, Seleção de itens, Cotações (convites de book), Negociações (solicitações ao fornecedor, com a amostragem)                                      |
+| Produto novo (Book) | Overview, Books, Seleção de itens, Convites de book, Encomendas (B14), Reposição (B10), Negociações (solicitações ao fornecedor, com a amostragem)              |
 | Pedido              | Overview, Pedidos, Certificação, Material de arte, Arte, Revisão, Contrato                                                                                      |
 | Produção            | Overview (`/app/production`), Pré-produção, Inspeção, Amostra, Produção, Booking (marítima), Logística, Carregamento, Documentos de carga, Embarque             |
 | Entrega             | Overview, LPCO, Presença de carga, Canal cinza ou vermelho, Logística, Nota fiscal, Entrega, Retorno, Armazenagem; Containers, Fretes e Tarifário seguem no fim |
@@ -30,7 +30,7 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
   - **Pré-produção** ganha casos: pedido em andamento com o sinal ao fornecedor pago (item `down_payment` concluído) e a produção sem ETD. A tela mostra a parte "dados e ETD" do cartão de produção; salvar o ETD tira o caso. Contam no menu, fora das Pendências (`flowPreProductionCasesFor`, Wellmix com a tela Produção).
   - **Produção → Logística** traz o frete marítimo do pedido (pedir às companhias e as respostas), para os pedidos com caso no passo. O pedido de frete aceita `returnTo` e volta para a tela do passo.
 - **Quinta parte** (14/11/2026): o **relatório da inspeção** (medidas × comprado, fotos, decisão da revisão, divergências) saiu do detalhe do pedido para um componente próprio (`src/components/inspection-result-card.tsx`) e aparece também em Produção → Inspeção, ao lado da agenda e da decisão por SKU, para todo pedido com caso no passo (inclusive o item "inspeção aprovada pela Wellmix" da etapa). O caminho principal aprova o SKU nessa tela.
-- Passos que já tinham tela (Books, Seleção, Cotações, Negociações, Pedidos, Revisão, Estoque) abrem a tela de sempre, com o contador.
+- Passos que já tinham tela (Books, Seleção, Convites de book, Encomendas, Negociações, Pedidos, Revisão, Estoque) abrem a tela de sempre, com o contador.
 - Todos os passos do menu têm fonte de pendência (LPCO, Amostras e Ofertas desde 14/11/2026).
 
 ## Abas da tela do passo (14/11/2026)
@@ -42,6 +42,15 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
   - recebimentos abertos (Armazenagem e Retorno) e a pré-produção, os mesmos casos do menu;
   - produção em andamento: pedido na etapa de inspeção com ETD.
 - O Overview do bloco mostra, em cada passo da linha do tempo, quantos pedidos estão nele ("N no passo"), além das pendências. Passos com tela de antes (Books, Pedidos, Revisão, Estoque) listam na própria tela.
+
+## Encomendas e Reposição (15/11/2026)
+
+Compra por demanda (docs/PURCHASE_DEMAND.md): dois passos novos no bloco Produto novo, antes de Negociações.
+
+- **Encomendas** (`new-product/demands`, tela `/app/requests`, a de solicitações, que saiu de MENU_HIDDEN): a encomenda do cliente (B14) pelas quatro portas, com etiqueta e filtro de tipo (encomenda ou reposição) e a porta de entrada (vitrine, cliente, vendedor, operador). Contador: a pendência `new_request` ("Encomenda nova"). O cliente vê a mesma tela, só com as dele, como "Encomendas" no menu "Meus pedidos".
+- **Reposição** (`new-product/replenishment`, tela `/app/replenishment`): a fila do Planner, com "Abrir reposição" (produto, quantidade, data desejada; ação `replenishment.open`) e a recompra do pós-venda. Contador: a pendência `replenishment_request`.
+- "Cotações" (os convites de book) passou a se chamar **Convites de book**: a tela, a rota e o atalho continuam; a cotação de preço é a Cotação de compra (B13, PR 4).
+- O link "Solicitações" que ficava no bloco Vendas (fora do menu) saiu: as encomendas estão no Produto novo.
 
 ## "Todos no passo" paginado (15/11/2026)
 
@@ -97,7 +106,7 @@ Pedido do dono: o Overview de Pedido, Produção e Entrega (só a Wellmix) passa
 - **Regra** (`src/lib/flow-progress.ts`, pura): cada etapa do pedido cai num bloco (Pedido: criação, preparação, embalagem; Produção: inspeção, embarque; Entrega: desembaraço, transporte, entrega e encerramento; o pagamento ao fornecedor, fora do fluxo, não conta). Etapa concluída vale 100%, em andamento ou bloqueada o percentual dela, não começada 0%; cancelada não entra. O bloco é a média das etapas dele; o geral, a média de todas. Atraso: etapa aberta com o prazo vencido (dias desde o prazo) e etapa concluída depois do prazo.
 - **Leitura** (indicadores prontos, 14/11/2026): os números do topo, da linha do tempo geral e de cada passo vêm de uma linha só (`kpi_snapshots`, chave "flow"); a lista do bloco sai da contribuição de cada pedido guardada no resumo (`order_summaries.kpi.f`). Sem os resumos em uso, tudo é somado das tabelas pela mesma regra. Ver docs/RESUMOS.md, "Indicadores prontos do Overview dos blocos".
 - **Produto novo** (segunda parte, 14/11/2026, pedido do dono): as entidades são os **books** e as **solicitações ao fornecedor** (`newProductEntities` em `src/lib/services/flow.ts`).
-  - Book em preenchimento ou rascunho: passo Books; fechado ou em andamento: Seleção de itens; com convite de book concorrente aberto: também Cotações (o atraso é o do convite vencido). Completude pela situação: em preenchimento 10%, rascunho 25%, fechado 50%, em andamento 75%, concluído 100%.
+  - Book em preenchimento ou rascunho: passo Books; fechado ou em andamento: Seleção de itens; com convite de book concorrente aberto: também Convites de book (o atraso é o do convite vencido). Completude pela situação: em preenchimento 10%, rascunho 25%, fechado 50%, em andamento 75%, concluído 100%.
   - Solicitação aberta ou respondida, ou aprovada com a amostra ainda não aprovada e sem pedido: Negociações. Completude: aberta 25%, respondida 50%, aprovada 70%, amostra enviada 85%, amostra aprovada 100%. Atraso: o SLA da negociação (Configurações) vencido, em dias (o que passou já conta 1). A solicitação com vários produtos (mesmo `batchId`) é uma linha só, com a média.
   - % geral: sem pedido, a mesma do bloco; com pedidos que nasceram das solicitações, o Produto novo vale como um bloco ao lado dos três do pedido (`overallOf`).
   - A tela do book (`/app/booking/lots/[id]`) e a da solicitação (`/app/supplier-requests/[id]`) ganham, para a Wellmix, o cartão **Linha do tempo** (`EntityTimelineCard`, `src/lib/services/entity-timeline.ts`): os passos do Produto novo em cor, com a situação e o atraso, e Pedido, Produção e Entrega em cinza com o percentual dos pedidos dela.

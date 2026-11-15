@@ -31,7 +31,11 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
     key: "newProduct",
     label: "nav.group.newProduct",
     screens: ["booking", "quotes", "sourcing"],
-    actions: ["supplierRequest.decide", "sampling.validate"],
+    actions: [
+      "supplierRequest.decide",
+      "sampling.validate",
+      "replenishment.open",
+    ],
   },
   {
     key: "order",
@@ -64,7 +68,7 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
     key: "sales",
     label: "nav.group.sales",
     screens: ["requests", "afterSales"],
-    actions: ["purchaseOrder.salesNotice"],
+    actions: ["purchaseOrder.salesNotice", "demand.createForCustomer"],
   },
   {
     key: "finance",

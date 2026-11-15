@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 import { withoutPlaceholder } from "@/lib/placeholder-name";
 import { indexBy, listByIds } from "@/lib/db/lookup";
 
@@ -250,9 +251,8 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
   for (const o of orders) if (!orderById.has(o.id)) orderById.set(o.id, o);
 
   const rows: TowerRow[] = orders
-    .filter(
-      (o): o is BoardOrder & { status: StageKey } =>
-        o.status !== "CLOSED" && o.status !== "CANCELLED",
+    .filter((o): o is BoardOrder & { status: StageKey } =>
+      isOrderOpen(o.status),
     )
     .map((o) => {
       const stage = stageOf(o);
@@ -329,7 +329,7 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
   }
   for (const req of input.rejected) {
     const order = orderById.get(req.orderId);
-    if (order && order.status !== "CLOSED" && order.status !== "CANCELLED") {
+    if (order && isOrderOpen(order.status)) {
       exceptions.push({
         kind: "document",
         severity: "medium",
@@ -349,11 +349,7 @@ export function buildControlTower(input: ControlTowerInput): TowerData {
     }
   }
   for (const o of orders) {
-    if (
-      o.status !== "CLOSED" &&
-      o.status !== "CANCELLED" &&
-      o.erpSyncStatus === "pending"
-    ) {
+    if (isOrderOpen(o.status) && o.erpSyncStatus === "pending") {
       exceptions.push({
         kind: "erp",
         severity: "medium",

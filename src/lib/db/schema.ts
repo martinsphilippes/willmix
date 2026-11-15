@@ -424,8 +424,24 @@ export const REQUEST_ORIGINS = [
   "superplan",
   /** Pedido de compra gerado das solicitações ao fornecedor aprovadas (docs/PURCHASE_ORDER.md). */
   "supplier_request",
+  /** Encomenda pela vitrine: o item do carrinho que o estoque não atende (docs/PURCHASE_DEMAND.md). */
+  "cart",
 ] as const;
 export type RequestOrigin = (typeof REQUEST_ORIGINS)[number];
+
+/**
+ * Porta de entrada da encomenda do cliente (mapa B14, dono 15/11/2026;
+ * docs/PURCHASE_DEMAND.md): pela vitrine (carrinho), pela tela do próprio
+ * cliente, lançada pelo vendedor (função Vendas) ou por um operador da
+ * Wellmix em nome do cliente. Nula na reposição e nas solicitações antigas.
+ */
+export const DEMAND_CHANNELS = [
+  "vitrine",
+  "cliente",
+  "vendedor",
+  "operador",
+] as const;
+export type DemandChannel = (typeof DEMAND_CHANNELS)[number];
 
 /** Classificação fiscal: sugestão nunca é definitiva; só "validated" vale. */
 export const TAX_STATUSES = ["suggested", "validated", "rejected"] as const;
@@ -551,6 +567,9 @@ export const WELLMIX_FUNCTIONS = [
   "comex_internal",
   // Qualidade do CD (mapa E19): confere a carga recebida contra o pedido.
   "quality",
+  // Vendas (mapa B14, V1-V8; dono, 15/11/2026): encomendas, ofertas,
+  // amostras, venda, ordens de venda, reservas e pós-venda.
+  "sales",
 ] as const;
 export type WellmixFunction = (typeof WELLMIX_FUNCTIONS)[number];
 
@@ -962,6 +981,10 @@ export interface Request extends BaseRow {
   ownerUserId?: string | null;
   /** NUNOTA da nota no Sankhya enquanto ainda não há pedido (cotação, pre-order). */
   sankhyaCode?: string | null;
+  /** Porta de entrada da encomenda (docs/PURCHASE_DEMAND.md); nula na reposição. */
+  channel?: DemandChannel | null;
+  /** Data desejada pelo cliente ou pelo Planner (encomenda e reposição). */
+  desiredAt?: string | null;
 }
 
 export interface Order extends BaseRow {
@@ -3665,10 +3688,14 @@ export const TABLES: Record<TableName, TableDef> = {
       ownerUserId: id(false),
       // Etapa "Proposta ao cliente" (opcionais; só gravados na aprovação).
       sankhyaCode: str(40),
+      // Compra por demanda (docs/PURCHASE_DEMAND.md): porta e data desejada.
+      channel: enumOf(DEMAND_CHANNELS, false),
+      desiredAt: datetime(),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
       { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_origin", type: "key", columns: ["origin"] },
       { key: "by_group", type: "key", columns: ["groupId"] },
       { key: "by_number", type: "key", columns: ["number"] },
       { key: "by_owner", type: "key", columns: ["ownerUserId"] },

@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 import { realName } from "@/lib/placeholder-name";
 import { can, holdersOf } from "@/lib/auth/function-access";
 import { loadFunctionDefs } from "./team-functions";
@@ -453,7 +454,7 @@ export async function artIssueTasks(
 
 /** A não conformidade do pedido vira pendência (fora de espera, encerrado e cancelado)? */
 export const artIssueCounts = (order: Pick<Order, "held" | "status">) =>
-  !order.held && order.status !== "CANCELLED" && order.status !== "CLOSED";
+  !order.held && isOrderOpen(order.status);
 
 /** O que a pendência de uma não conformidade guarda dela (resumo do pedido). */
 export type ArtIssueFields = Pick<

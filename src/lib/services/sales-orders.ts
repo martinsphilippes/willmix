@@ -172,6 +172,73 @@ async function createSalesOrder(
   return order;
 }
 
+/**
+ * Pronta entrega da vitrine (mapa V6 → V7; dono, 15/11/2026): os itens do
+ * carrinho que o estoque livre ou uma compra a caminho atende viram uma
+ * ordem de venda em rascunho para Vendas pôr o preço e confirmar (a reserva
+ * nasce na confirmação, como sempre). Quem cria é o próprio cliente, pelo
+ * carrinho; Vendas é avisada.
+ */
+export async function openSalesOrderFromCart(
+  user: User,
+  customerId: string,
+  lines: SalesOrderLine[],
+  note: string | null,
+): Promise<SalesOrder> {
+  if (user.role !== "customer" || user.partyId !== customerId)
+    throw new ForbiddenError();
+  if (!lines.length) throw new SalesOrderError("sales_order_lines");
+  const store = getStore();
+  const order = await store.create("sales_orders", {
+    number: await store.nextNumber("sales_order_number"),
+    customerId,
+    offerId: null,
+    purchaseOrderId: null,
+    lines,
+    currency: "BRL",
+    paymentConditionId: null,
+    status: "draft",
+    deliveryDate: null,
+    deliveryWindow: null,
+    note,
+    erpStatus: "pending",
+    erpNumber: null,
+    erpError: null,
+    createdByUserId: user.id,
+    confirmedAt: null,
+    confirmedByUserId: null,
+  });
+  await audit(
+    user,
+    "sales.order_from_cart",
+    "sales_order",
+    order.id,
+    `Ordem de venda #${order.number} pela vitrine (${lines.length} produto(s) de pronta entrega)`,
+  );
+  const { holdersOf } = await import("@/lib/auth/function-access");
+  const { loadFunctionDefs } = await import("./team-functions");
+  const users = (await store.list("users", { filter: { active: true } })).filter(
+    (u) => isWellmix(u),
+  );
+  const sellers = holdersOf(
+    users,
+    "demand.createForCustomer",
+    await loadFunctionDefs(),
+  );
+  const to = sellers.length ? sellers : users.filter((u) => isAdmin(u));
+  if (to.length)
+    await notify(
+      { userIds: to.map((u) => u.id) },
+      {
+        kind: "action",
+        link: `/app/sales-orders/${order.id}`,
+        subject: `Pedido da vitrine: ordem de venda #${order.number}`,
+        body: `${lines.length} produto(s) de pronta entrega para pôr o preço e confirmar.`,
+      },
+    );
+  return order;
+}
+
 /** Ordem de venda nova sem oferta (a partir da tela de ordens). */
 export async function openSalesOrder(user: User, customerId: string) {
   assertSeller(user);

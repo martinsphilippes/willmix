@@ -67,6 +67,7 @@ export default async function RequestDetailPage({
     fields: invalidFields,
     at: errorToken,
     fromCart,
+    sale,
   } = await searchParams;
   const request = await getRequestForUser(user, id);
   if (!request) notFound();
@@ -171,7 +172,12 @@ export default async function RequestDetailPage({
       {fromCart === "1" ? (
         // Veio do carrinho da vitrine: confirma o envio do pedido de orçamento.
         <div className="mb-3" role="status" data-cart-sent>
-          <Alert tone="success">{t("explore.sent")}</Alert>
+          <Alert tone="success">
+            {t("explore.sent")}
+            {typeof sale === "string" && /^\d{1,9}$/.test(sale)
+              ? ` ${t("demand.cart.saleSent", { n: sale })}`
+              : ""}
+          </Alert>
         </div>
       ) : null}
       <PageHeader

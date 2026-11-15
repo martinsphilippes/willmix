@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 import { cache } from "react";
 import { can, holdersOf, type ActionKey } from "@/lib/auth/function-access";
 import { loadFunctionDefs } from "./team-functions";
@@ -1544,7 +1545,7 @@ export async function importFlowView(
   // Divergência no recebimento: só no pedido em que a contagem a achou.
   if (group === "divergence" && !hasDivergence(steps)) return [];
   // Pedido encerrado: só leitura.
-  const open = order.status !== "CLOSED" && order.status !== "CANCELLED";
+  const open = isOrderOpen(order.status);
   const lpco = group === "import" && (await lpcoApplies(order));
   const shown = IMPORT_STEPS.filter(
     (tpl) =>
@@ -1734,9 +1735,7 @@ export async function importTasks(
   orders: Order[],
   options: ImportTasksOptions = {},
 ): Promise<ImportTaskDraft[]> {
-  const open = orders.filter(
-    (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
-  );
+  const open = orders.filter((o) => isOrderOpen(o.status));
   if (!open.length) return [];
   let rows: ImportStep[] = [];
   try {

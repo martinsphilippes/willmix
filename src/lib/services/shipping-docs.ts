@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import {
@@ -156,7 +157,7 @@ export async function shippingDocsView(
     docs.load?.entries,
   );
   const loadDone = loadComplete(load);
-  const live = order.status !== "CANCELLED" && order.status !== "CLOSED";
+  const live = isOrderOpen(order.status);
   const open: Record<ShippingDocKind, boolean> = {
     load: live && emptyDone && !loadDone,
     packing_list: live && loadDone && !accepted(docs.invoice),

@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 
 import {
   getStore,
@@ -737,9 +738,7 @@ export async function productionTasks(
   user: User,
   orders: Order[],
 ): Promise<ProductionTaskDraft[]> {
-  const live = orders.filter(
-    (o) => o.status !== "CANCELLED" && o.status !== "CLOSED",
-  );
+  const live = orders.filter((o) => isOrderOpen(o.status));
   if (!live.length) return [];
   const store = getStore();
   let tracks: ProductionTrack[] = [];

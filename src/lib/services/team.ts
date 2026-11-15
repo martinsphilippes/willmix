@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 import { indexBy, listByIds } from "@/lib/db/lookup";
 import { loadFunctionDefs } from "./team-functions";
 
@@ -377,8 +378,7 @@ async function openLoad(team: User[]): Promise<Map<string, number>> {
     if (id) load.set(id, (load.get(id) ?? 0) + 1);
   };
   for (const r of requests) add(r.ownerUserId);
-  for (const o of orders)
-    if (o.status !== "CLOSED" && o.status !== "CANCELLED") add(o.ownerUserId);
+  for (const o of orders) if (isOrderOpen(o.status)) add(o.ownerUserId);
   return load;
 }
 
@@ -446,10 +446,7 @@ export async function distributeUnassigned(
   const open = openAll.filter((r) => inScope(r.ownerUserId));
   const orders = liveOrders.filter(
     (o) =>
-      o.status !== "CLOSED" &&
-      o.status !== "CANCELLED" &&
-      !valid(o.ownerUserId) &&
-      inScope(o.ownerUserId),
+      isOrderOpen(o.status) && !valid(o.ownerUserId) && inScope(o.ownerUserId),
   );
   // Lidos de uma vez (antes: solicitação, item, produto e linha por pedido).
   const [orderRequests, items] = await Promise.all([

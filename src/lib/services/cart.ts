@@ -32,6 +32,9 @@ import {
   variantsByProduct,
 } from "./product-variants";
 import { createRequestBatch, type RequestBatchItem } from "./requests";
+import { splitCart } from "@/lib/purchase-demand";
+import { availableForSale } from "./purchase-demand";
+import type { SalesOrder } from "@/lib/db";
 
 /*
  * Carrinho da vitrine: um item por produto (e por variação, no produto com
@@ -415,17 +418,19 @@ function checkoutNotes(
 }
 
 /**
- * Envia o carrinho: cada item (produto + variação) vira uma solicitação de
- * orçamento (lote com 2 ou mais), com a quantidade e a personalização do
- * item. Produtos que saíram do catálogo (ou que o Booking voltou a esconder)
- * e itens cuja variação sumiu ficam de fora (e continuam no carrinho,
+ * Envia o carrinho (mapa V6; dono, 15/11/2026; docs/PURCHASE_DEMAND.md): o
+ * item que o estoque livre ou uma compra a caminho atende por inteiro vira
+ * uma ordem de venda em rascunho (pronta entrega, V7); o resto vira
+ * encomenda (B14, origem `cart`, porta "vitrine"), um lote com 2 ou mais.
+ * Produtos que saíram do catálogo (ou que o Booking voltou a esconder) e
+ * itens cuja variação sumiu ficam de fora (e continuam no carrinho,
  * avisados).
  */
 export async function checkoutCart(
   user: User,
   input: { deadline: string | null; notes: string | null },
   t: Translate,
-): Promise<Request[]> {
+): Promise<{ requests: Request[]; salesOrder: SalesOrder | null }> {
   const customerId = await assertBuyer(user);
   const store = getStore();
   const items = await ownLines(user);
@@ -443,37 +448,85 @@ export async function checkoutCart(
       lineVariant(i, variants).ok,
   );
   if (!sendable.length) throw new Error("cart_product_unavailable");
-  const created = await createRequestBatch(
-    user,
-    {
-      customerId,
-      // O prazo da proposta é o das Configurações; a data do cliente vai nas observações.
-      deadline: null,
-      notes: checkoutNotes(input, t),
-      requestedForUserId: null,
-    },
-    sendable.map((item) =>
-      requestItemFor(
-        products.find((p) => p.id === item.productId)!,
-        lineVariant(item, variants).variant,
-        item.quantity,
-        item.notes,
-        t,
-      ),
-    ),
+  const { ready, order } = splitCart(
+    sendable,
+    await availableForSale(sendable.map((i) => i.productId)),
   );
+  const notes = checkoutNotes(input, t);
+  const created = order.length
+    ? await createRequestBatch(
+        user,
+        {
+          customerId,
+          // O prazo da proposta é o das Configurações; a data do cliente vai
+          // nas observações e na data desejada.
+          deadline: null,
+          notes,
+          requestedForUserId: null,
+          desiredAt: input.deadline ? `${input.deadline}T12:00:00.000Z` : null,
+        },
+        order.map((item) =>
+          requestItemFor(
+            products.find((p) => p.id === item.productId)!,
+            lineVariant(item, variants).variant,
+            item.quantity,
+            item.notes,
+            t,
+          ),
+        ),
+        { cart: true },
+      )
+    : [];
+  const salesOrder = ready.length
+    ? await (
+        await import("./sales-orders")
+      ).openSalesOrderFromCart(
+        user,
+        customerId,
+        ready.map((item) => {
+          const product = products.find((p) => p.id === item.productId)!;
+          const variant = lineVariant(item, variants).variant;
+          return {
+            productId: product.id,
+            name: variant ? `${product.name} · ${variant.name}` : product.name,
+            quantity: item.quantity,
+            unit: "un",
+            unitPrice: null,
+          };
+        }),
+        notes,
+      )
+    : null;
   // Só depois de tudo criado: o que foi enviado sai do carrinho.
   for (const item of sendable) await store.remove("cart_items", item.id);
   await audit(
     user,
     "cart.checkout",
-    "request",
-    created[0].id,
-    `Carrinho enviado: ${created.length} produto(s) para orçamento`,
+    created[0] ? "request" : "sales_order",
+    created[0]?.id ?? salesOrder!.id,
+    `Carrinho enviado: ${ready.length} produto(s) de pronta entrega, ${created.length} encomenda(s)`,
     null,
-    { requests: created.map((r) => r.id) },
+    {
+      requests: created.map((r) => r.id),
+      salesOrder: salesOrder?.id ?? null,
+    },
   );
-  return created;
+  return { requests: created, salesOrder };
+}
+
+/**
+ * O que cada item do carrinho vira ao enviar (prévia para o cliente antes de
+ * confirmar): "ready" (pronta entrega, ordem de venda) ou "order" (encomenda).
+ */
+export async function cartFulfilment(
+  lines: ReadonlyArray<{ id: string; productId: string; quantity: number }>,
+): Promise<Map<string, "ready" | "order">> {
+  const { ready } = splitCart(
+    lines,
+    await availableForSale(lines.map((l) => l.productId)),
+  );
+  const readyIds = new Set(ready.map((l) => l.id));
+  return new Map(lines.map((l) => [l.id, readyIds.has(l.id) ? "ready" : "order"]));
 }
 
 /**
@@ -488,35 +541,55 @@ export async function requestProductNow(
   notes: string | null,
   t: Translate,
   variantId?: string | null,
-): Promise<Request> {
+): Promise<{ request: Request | null; salesOrder: SalesOrder | null }> {
   const customerId = await assertBuyer(user);
   const product = await getStore().get("products", productId);
   // Inativo, inexistente ou ainda escondido pelo Booking: a mesma recusa.
   if (!product?.active || (await isHiddenByBooking(product.id)))
     throw new Error("cart_product_unavailable");
   const variant = await resolveVariant(productId, variantId);
-  await assertMoq(product, validQuantity(quantity), variant);
+  const qty = validQuantity(quantity);
+  await assertMoq(product, qty, variant);
+  const text = cleanText(notes, CART_NOTES_MAX);
+  // A mesma divisão do carrinho (docs/PURCHASE_DEMAND.md): com saldo, pronta
+  // entrega (ordem de venda); sem, encomenda.
+  const { ready } = splitCart(
+    [{ id: "now", productId: product.id, quantity: qty }],
+    await availableForSale([product.id]),
+  );
+  if (ready.length) {
+    const salesOrder = await (
+      await import("./sales-orders")
+    ).openSalesOrderFromCart(
+      user,
+      customerId,
+      [
+        {
+          productId: product.id,
+          name: variant ? `${product.name} · ${variant.name}` : product.name,
+          quantity: qty,
+          unit: "un",
+          unitPrice: null,
+        },
+      ],
+      text,
+    );
+    return { request: null, salesOrder };
+  }
   const [created] = await createRequestBatch(
     user,
     { customerId, deadline: null, notes: null, requestedForUserId: null },
-    [
-      requestItemFor(
-        product,
-        variant,
-        validQuantity(quantity),
-        cleanText(notes, CART_NOTES_MAX),
-        t,
-      ),
-    ],
+    [requestItemFor(product, variant, qty, text, t)],
+    { cart: true },
   );
   await audit(
     user,
     "cart.request_now",
     "request",
     created.id,
-    `Orçamento pedido direto da vitrine: ${product.name}${
+    `Encomenda direto da vitrine: ${product.name}${
       variant ? ` · ${variant.name}` : ""
     }`,
   );
-  return created;
+  return { request: created, salesOrder: null };
 }

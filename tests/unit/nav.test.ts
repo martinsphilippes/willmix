@@ -34,6 +34,8 @@ const NEW_PRODUCT = [
   "/app/booking",
   "/app/booking/selection",
   "/app/supplier-requests/invites",
+  "/app/requests",
+  "/app/replenishment",
   "/app/supplier-requests",
 ];
 const ORDER = [
@@ -179,7 +181,6 @@ describe("menu lateral", () => {
 
   it("telas fora do fluxo de hoje não aparecem no menu de ninguém", () => {
     expect(MENU_HIDDEN).toEqual([
-      "/app/requests",
       "/app/explore",
       "/app/sourcing",
       "/app/marketing",
@@ -244,12 +245,12 @@ describe("menu lateral", () => {
     ]);
   });
 
-  it("cliente: Pendências, Criar pedido e os pedidos (a vitrine ainda não abriu)", () => {
+  it("cliente: Pendências, Encomendas, Criar pedido e os pedidos (a vitrine ainda não abriu)", () => {
     expect(view({ role: "customer" })).toEqual([
       { link: "/app/tasks" },
       {
         group: "nav.group.myOrders",
-        items: ["/app/requests/new", "/app/orders"],
+        items: ["/app/requests", "/app/requests/new", "/app/orders"],
       },
     ]);
   });

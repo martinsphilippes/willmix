@@ -52,7 +52,12 @@ export const FLOW_STEPS: FlowStep[] = [
   // Produto novo (Book do mapa).
   s("new-product", "books", "booking", "/app/booking"),
   s("new-product", "selection", "booking", "/app/booking/selection"),
+  // Convites de book (até 15/11/2026 o menu os chamava de "Cotações").
   s("new-product", "quotes", "quotes", "/app/supplier-requests/invites"),
+  // Compra por demanda (mapa B14 e B10; dono, 15/11/2026;
+  // docs/PURCHASE_DEMAND.md): encomendas do cliente e reposição do Planner.
+  s("new-product", "demands", "requests", "/app/requests"),
+  s("new-product", "replenishment", "requests", "/app/replenishment"),
   s("new-product", "negotiations", "quotes", "/app/supplier-requests"),
   // Pedido.
   // Pedidos: o passo em que o pedido é criado (dono, 14/11/2026), com tela
@@ -285,7 +290,9 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   supplier_payment: "finance/finance",
   invoice_due: "finance/finance",
   ncm_classify: "registry/products",
-  new_request: "sales/sale",
+  // Encomenda do cliente e reposição (docs/PURCHASE_DEMAND.md).
+  new_request: "new-product/demands",
+  replenishment_request: "new-product/replenishment",
   after_sales: "sales/sale",
   // Recebimento no CD (casos do menu, fora das Pendências; docs/FLOW_MENU.md).
   receiving_storage: "delivery/storage",

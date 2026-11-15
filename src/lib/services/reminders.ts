@@ -1,78 +1,66 @@
 import "server-only";
 
-import { getStore } from "@/lib/db";
+import { getStore, type Requirement } from "@/lib/db";
 import { indexBy, listByIds } from "@/lib/db/lookup";
 import { getSettings } from "@/lib/settings";
-import { ROLE_PARTY_FIELD, isOffFlowStage } from "@/lib/workflow/stages";
+import { ROLE_PARTY_FIELD } from "@/lib/workflow/stages";
 import { requirementLabel } from "@/i18n";
-import { milestoneOfItems, milestoneTitle } from "@/lib/milestones";
+import { milestoneTitle, type MilestoneKey } from "@/lib/milestones";
+import { isOrderOpen } from "@/lib/order-status";
+import {
+  milestonePendingKey,
+  openMilestoneRows,
+  pendingByMilestone,
+} from "./milestone-due";
 import { requesterTarget, notify } from "./notifications";
 
 /**
- * Pendência + prazo + lembrete. Um lembrete por etapa a cada 24h enquanto
- * estiver vencida ou a `reminderDaysBeforeDue` dias do vencimento. O prazo é
- * o da etapa; o texto nomeia o marco dos itens pendentes (fase 4c).
+ * Pendência + prazo + lembrete. Um lembrete por marco do pedido a cada 24h
+ * enquanto estiver vencido ou a `reminderDaysBeforeDue` dias do vencimento.
+ * Desde a fase 5c (docs/MILESTONES.md) o prazo, o marco e o último envio
+ * saem de `order_milestones` (`dueAt`, `reminderSentAt`); as pendências são
+ * os itens obrigatórios do marco que já podem ser feitos (milestone-due.ts).
  */
 export async function runReminders() {
   const store = getStore();
   const settings = await getSettings();
   const now = Date.now();
   const soon = now + settings.reminderDaysBeforeDue * 86_400_000;
-  const stages = await store.list("stages", {
-    filter: { status: ["active", "blocked"] },
-  });
+  const rows = await openMilestoneRows();
   let sent = 0;
 
-  // As etapas que podem receber lembrete agora; pedidos e itens pendentes
-  // delas lidos de uma vez (antes: duas leituras por etapa).
-  const due = stages.filter(
-    (stage) =>
-      // Pagamento ao fornecedor não cobra prazo de etapa (tem Contas a pagar).
-      !isOffFlowStage(stage.key) &&
-      !!stage.dueAt &&
-      Date.parse(stage.dueAt) <= soon &&
+  // Os marcos que podem receber lembrete agora; pedidos e itens pendentes
+  // deles lidos de uma vez.
+  const due = rows.filter(
+    (row) =>
+      !!row.dueAt &&
+      Date.parse(row.dueAt) <= soon &&
       !(
-        stage.reminderSentAt &&
-        now - Date.parse(stage.reminderSentAt) < 86_400_000
+        row.reminderSentAt && now - Date.parse(row.reminderSentAt) < 86_400_000
       ),
   );
-  const [orders, pendingAll] = due.length
+  const orderIds = due.map((r) => r.orderId);
+  const [orders, pending] = due.length
     ? await Promise.all([
-        listByIds(
-          store,
-          "orders",
-          due.map((s) => s.orderId),
-        ),
-        store.list("requirements", {
-          filter: {
-            stageId: due.map((s) => s.id),
-            status: ["pending", "rejected"],
-          },
-        }),
+        listByIds(store, "orders", orderIds),
+        pendingByMilestone(orderIds),
       ])
-    : [[], []];
+    : [[], new Map<string, Requirement[]>()];
   const orderById = indexBy(orders, "id");
-  const pendingByStage = new Map<string, typeof pendingAll>();
-  for (const r of pendingAll) {
-    const list = pendingByStage.get(r.stageId);
-    if (list) list.push(r);
-    else pendingByStage.set(r.stageId, [r]);
-  }
 
-  for (const stage of due) {
-    if (!stage.dueAt) continue;
-    const order = orderById.get(stage.orderId);
-    if (!order) continue;
-    const pending = pendingByStage.get(stage.id) ?? [];
-    const required = pending.filter((r) => r.required);
+  for (const row of due) {
+    if (!row.dueAt) continue;
+    const order = orderById.get(row.orderId);
+    // Pedido encerrado ou cancelado: a linha do marco pode ter ficado aberta.
+    if (!order || !isOrderOpen(order.status)) continue;
+    const required = (
+      pending.get(milestonePendingKey(row.orderId, row.key)) ?? []
+    ).filter((r) => r.required);
     if (required.length === 0) continue;
     const role = required[0].role;
     const partyField = ROLE_PARTY_FIELD[role];
-    const overdue = Date.parse(stage.dueAt) < now;
-    const milestone = milestoneOfItems(
-      stage.key,
-      required.map((r) => r.key),
-    );
+    const overdue = Date.parse(row.dueAt) < now;
+    const milestone = row.key as MilestoneKey;
     await notify(
       role === "customer"
         ? requesterTarget(order.requestedByUserId)
@@ -87,9 +75,7 @@ export async function runReminders() {
         text: (t) => ({
           subject: t(overdue ? "notif.overdue.subject" : "notif.due.subject", {
             n: order.number,
-            stage: milestone
-              ? milestoneTitle(t, milestone)
-              : t(`stage.${stage.key}`),
+            stage: milestoneTitle(t, milestone),
           }),
           body: t("notif.stage.body", {
             items: required.map((r) => requirementLabel(t, r)).join(", "),
@@ -97,10 +83,10 @@ export async function runReminders() {
         }),
       },
     );
-    await store.update("stages", stage.id, {
+    await store.update("order_milestones", row.id, {
       reminderSentAt: new Date(now).toISOString(),
     });
     sent++;
   }
-  return { checked: stages.length, sent };
+  return { checked: rows.length, sent };
 }

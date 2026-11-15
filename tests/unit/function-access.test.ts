@@ -62,7 +62,13 @@ describe("configuração do administrador", () => {
   it("muda telas e ações de uma função de fábrica e cria uma nova", () => {
     const defs = resolveFunctions({
       functions: [
-        { key: "buyer", screens: ["orders"], actions: ["order.cancel"] },
+        {
+          key: "buyer",
+          screens: ["orders"],
+          actions: ["order.cancel"],
+          // Gravada depois de 15/11/2026: conhece todas as ações de hoje.
+          knownActions: [...ACTION_KEYS],
+        },
         {
           key: "fn_logistica",
           name: "Logística",
@@ -224,5 +230,44 @@ describe("configuração do administrador", () => {
     expect(customFunctionKey("Logística", ["fn_logistica"])).toBe(
       "fn_logistica_2",
     );
+  });
+});
+
+describe("ação nova numa função já gravada (15/11/2026)", () => {
+  it("vale pelo padrão até o administrador salvar a função de novo", () => {
+    // Gravada antes da lista knownActions: as ações de hoje que não estavam
+    // em LEGACY_ACTIONS entram pelo padrão do código.
+    const legacy = resolveFunctions({
+      functions: [
+        { key: "planner", screens: ["requests"], actions: ["approve.planner"] },
+        { key: "buyer", screens: ["requests"], actions: [] },
+      ],
+    });
+    const planner = legacy.find((d) => d.key === "planner")!;
+    expect(planner.actions).toContain("replenishment.open");
+    expect(planner.actions).toContain("approve.planner");
+    // Ação antiga tirada pelo administrador continua fora.
+    expect(planner.actions).not.toContain("supplierRequest.decide");
+    // Gravada já conhecendo a ação nova e sem ela: o administrador tirou.
+    const saved = resolveFunctions({
+      functions: [
+        {
+          key: "planner",
+          screens: ["requests"],
+          actions: ["approve.planner"],
+          knownActions: [...ACTION_KEYS],
+        },
+      ],
+    });
+    expect(saved.find((d) => d.key === "planner")!.actions).toEqual([
+      "approve.planner",
+    ]);
+  });
+
+  it("Vendas lança encomenda em nome do cliente e abre Encomendas por padrão", () => {
+    const defs = resolveFunctions(null);
+    expect(can(op(["sales"]), "demand.createForCustomer", defs)).toBe(true);
+    expect(can(op(["sales"]), "replenishment.open", defs)).toBe(false);
+    expect(can(op(["planner"]), "replenishment.open", defs)).toBe(true);
   });
 });
