@@ -7,6 +7,12 @@ import type {
   SankhyaHistoryProduct,
   SankhyaQuantity,
 } from "@/lib/services/sankhya-customer-history";
+import {
+  PRODUCT_SORTS,
+  VALUE_SORTS,
+  sortProducts,
+  type ProductSort,
+} from "@/lib/sankhya-product-sort";
 import { useRequestCustomer } from "./request-customer-context";
 import { Button, Card, cx } from "./ui";
 
@@ -49,6 +55,10 @@ export interface SankhyaHistoryLabels {
     /** "Mostrar mais produtos ({n} restantes)". */
     showMore: string;
     incomplete: string;
+    /** "Ordenar" e os rótulos curtos das quatro ordens. */
+    sort: { label: string } & Record<ProductSort, string>;
+    /** Rótulo dos totais do produto (leitor de tela). */
+    totals: string;
   };
   f: {
     code: string;
@@ -93,6 +103,8 @@ type Products =
       from: string | null;
       to: string | null;
       complete: boolean;
+      /** Quem lê vê valores ("Ver valores e margem"). */
+      money: boolean;
     }
   | { state: "not_configured" }
   | { state: "no_code" }
@@ -146,6 +158,9 @@ export function SankhyaPurchaseHistory({
   // Seletor Pedido | Produto (dono, 15/11/2026): Pedido por padrão; a
   // escolha fica ao trocar de cliente (o conteúdo é o do cliente novo).
   const [view, setView] = useState<View>("orders");
+  // Ordem da visão Produto (dono, 15/11/2026): Mais un. por padrão; fica ao
+  // trocar de cliente.
+  const [sort, setSort] = useState<ProductSort>("units_desc");
   const [products, setProducts] = useState<ProductsLoaded | null>(null);
   const [productsAttempt, setProductsAttempt] = useState(0);
   const productsRef = useRef<ProductsLoaded | null>(null);
@@ -375,6 +390,8 @@ export function SankhyaPurchaseHistory({
             loaded={productsMine}
             current={!!productsCurrent}
             labels={labels}
+            sort={sort}
+            onSort={setSort}
             onRetry={() => setProductsAttempt((n) => n + 1)}
             more={
               result?.state === "ok" && result.next !== null
@@ -660,6 +677,8 @@ function ProductsPanel({
   loaded,
   current,
   labels,
+  sort,
+  onSort,
   onRetry,
   more,
 }: {
@@ -668,6 +687,9 @@ function ProductsPanel({
   /** A leitura já é a dos pedidos atuais da lista. */
   current: boolean;
   labels: SankhyaHistoryLabels;
+  /** Ordem escolhida (fica no card ao trocar de cliente). */
+  sort: ProductSort;
+  onSort: (sort: ProductSort) => void;
   onRetry: () => void;
   /** "Carregar mais pedidos" (amplia o período), quando há mais. */
   more: { loading: boolean; failed: boolean; onClick: () => void } | null;
@@ -706,23 +728,55 @@ function ProductsPanel({
         {labels.empty}
       </p>
     );
-  const shown = data.products.slice(0, limit);
-  const left = data.products.length - shown.length;
+  // Sem "Ver valores e margem": só as ordens por unidades.
+  const sorts = PRODUCT_SORTS.filter(
+    (o) => data.money || !VALUE_SORTS.includes(o),
+  );
+  const active = sorts.includes(sort) ? sort : "units_desc";
+  const sorted = sortProducts(data.products, active);
+  const shown = sorted.slice(0, limit);
+  const left = sorted.length - shown.length;
   return (
     <div data-sankhya-products>
       <p className="mb-1 text-xs leading-relaxed text-zinc-500">
         {labels.products.hint}
       </p>
-      <p
-        className="mb-2 text-xs font-medium text-zinc-700"
-        data-sankhya-products-period
-      >
-        {fill(labels.products.period, {
-          from: format.date(data.from),
-          to: format.date(data.to),
-          n: data.orders,
-        })}
-      </p>
+      {/* Período e "Ordenar" na mesma linha, o seletor no canto superior
+          direito (dono, 15/11/2026). Na coluna estreita, o período quebra
+          na própria coluna e o seletor continua ao lado, compacto (o rótulo
+          pequeno em cima). */}
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <p
+          className="min-w-0 flex-1 text-xs font-medium leading-relaxed text-zinc-700"
+          data-sankhya-products-period
+        >
+          {fill(labels.products.period, {
+            from: format.date(data.from),
+            to: format.date(data.to),
+            n: data.orders,
+          })}
+        </p>
+        <label
+          className="flex shrink-0 flex-col items-end gap-0.5"
+          data-sankhya-products-sort-label
+        >
+          <span className="text-[11px] font-medium leading-4 text-zinc-500">
+            {labels.products.sort.label}
+          </span>
+          <select
+            value={active}
+            onChange={(e) => onSort(e.target.value as ProductSort)}
+            className="h-8 rounded-md border border-zinc-300 bg-white py-0 pl-2 pr-7 text-xs text-zinc-900 focus-visible:outline-2 focus-visible:outline-brand-600"
+            data-sankhya-products-sort
+          >
+            {sorts.map((o) => (
+              <option key={o} value={o}>
+                {labels.products.sort[o]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       {!data.complete ? (
         <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
           {labels.products.incomplete}
@@ -736,18 +790,27 @@ function ProductsPanel({
               className="rounded-lg border border-zinc-100 bg-zinc-50/70 px-2.5 py-2"
               data-sankhya-product={p.key}
             >
-              <div className="flex items-baseline justify-between gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <p className="min-w-0 break-words text-sm font-medium text-zinc-900">
                   {p.name}
                 </p>
-                <p
-                  className="shrink-0 text-right text-sm font-semibold tabular-nums text-zinc-900"
-                  data-sankhya-product-total
-                >
-                  {fill(labels.products.total, {
-                    q: quantityText(p.total, format),
-                  })}
-                </p>
+                {/* Totais do período, um embaixo do outro: unidades e valor
+                    (após descontos; "—" sem valor). */}
+                <div className="shrink-0 text-right tabular-nums">
+                  <span className="sr-only">{labels.products.totals}: </span>
+                  <p
+                    className="whitespace-nowrap text-sm font-semibold text-zinc-900"
+                    data-sankhya-product-total
+                  >
+                    {quantityText(p.total, format)}
+                  </p>
+                  <p
+                    className="whitespace-nowrap text-xs font-medium text-zinc-700"
+                    data-sankhya-product-value
+                  >
+                    {format.money(p.value)}
+                  </p>
+                </div>
               </div>
               {p.code !== null ? (
                 <p className="text-[11px] text-zinc-500">
