@@ -225,6 +225,26 @@ test("vencedor, variações de cor e composição por data até a solicitação"
   await expect(resolved.locator("[data-selection-winner]")).toContainText(
     "Por cor: BEGE 1.488, MARROM 1.440",
   );
+  // Nada da linha do escolhido passa da borda do card (dono, 15/11/2026: o
+  // preço vazava), no computador, no iPad e no celular.
+  for (const width of [1280, 820, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const box = (await resolved.boundingBox())!;
+    const parts = await resolved
+      .locator("[data-selection-winner], [data-selection-winner] *")
+      .evaluateAll((els) =>
+        els.map((el) => {
+          const r = el.getBoundingClientRect();
+          return { left: r.left, right: r.right };
+        }),
+      );
+    expect(parts.length).toBeGreaterThan(1);
+    for (const part of parts) {
+      expect(part.left).toBeGreaterThanOrEqual(box.x - 0.5);
+      expect(part.right).toBeLessThanOrEqual(box.x + box.width + 0.5);
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   // 10. Rever a escolha: volta com as cores e a composição gravadas.
   await resolved.locator("[data-selection-block-open]").click();

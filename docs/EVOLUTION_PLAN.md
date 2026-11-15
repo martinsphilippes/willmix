@@ -1462,3 +1462,12 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Quem é de fora** (telas liberadas na Gestão de telas): continua só pelo nome e não vê o documento (o CPF é dado pessoal).
 - **Não mudou**: o campo, o valor gravado (o id da empresa), as ações e o banco. O documento continua como foi gravado (só números na carga do Sankhya; como digitado no cadastro pelo portal): a busca acha os dois.
 - Peças: `src/lib/services/party-search.ts` (`searchParties` com `identifiers`, `formatTaxId`), `src/app/api/parties/search/route.ts` (o texto ao lado do nome), `partyPickerLabels(t, true)` e os textos em `src/i18n/modules/party-picker.ts` (pt/en/zh). Testes: `tests/unit/search-routes.test.ts` e o E2E das buscas.
+
+## Seleção de itens: a linha do escolhido não passa do card
+
+- **Pedido do dono** (15/11/2026, com a foto da aba Blocos Sugeridos no iPad): no card "Resolvidos, esperando a solicitação", o preço do item escolhido ("Escolhido · 102.000 peças · 2 programações a cada 45 dias · US$ 0,839") vazava da faixa verde e da borda do card.
+- **Causa**: o resumo do escolhido e o preço não encolhiam; com o resumo longo, a linha ficava mais larga que o card (e o nome do item escolhido sumia, espremido).
+- **Como ficou** (`src/app/app/booking/selection/page.tsx`): cada item do card numa linha com o nome, o fornecedor e o preço; nome e fornecedor encolhem com reticências e o preço fica sempre inteiro à direita. No escolhido, o resumo (peças, programações, cores) fica embaixo, na faixa verde, e quebra a linha. O escolhido passa a mostrar também o fornecedor, como os outros itens.
+- **Não mudou**: os dados do card, os botões, a aba "Com Solicitação Aberta" (que já quebrava a linha) e o banco.
+- Docs: `docs/SUPPLIER_REQUESTS.md` (Blocos sugeridos).
+- Testes: o E2E `tests/e2e/selection-colors.spec.ts` confere, no computador, no iPad e no celular, que nenhuma parte da linha do escolhido passa da borda do card (com o código antigo, passava 100 px).
