@@ -151,9 +151,9 @@ test("Solicitações: uma linha por produto, ficha completa nos quatro grupos, p
   await expect(other.locator("[data-sheet-detail]")).toContainText(
     "Abrir a solicitação",
   );
-  await expect(
-    other.locator('[data-sheet-field="pieces"]'),
-  ).toContainText("300 peças");
+  await expect(other.locator('[data-sheet-field="pieces"]')).toContainText(
+    "300 peças",
+  );
 
   // 5. iPad: nada cortado com a ficha aberta.
   await page.setViewportSize({ width: 820, height: 1180 });
@@ -182,7 +182,9 @@ test("Solicitações: uma linha por produto, ficha completa nos quatro grupos, p
     await expect(cell(page, key)).toHaveCount(0);
   await current(page).locator("[data-sheet-toggle]").click();
   await expect(
-    current(page).locator('[data-sheet-group="values"] [data-sheet-restricted]'),
+    current(page).locator(
+      '[data-sheet-group="values"] [data-sheet-restricted]',
+    ),
   ).toContainText("Ver preço de compra");
   await expect(current(page).locator("[data-sheet-detail]")).not.toContainText(
     "3,20",

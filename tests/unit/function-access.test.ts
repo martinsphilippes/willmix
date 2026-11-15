@@ -374,9 +374,7 @@ describe("Ver preço de compra (dono, 15/11/2026; docs/LINHA_DE_VISAO.md)", () =
     expect(canSeePurchasePrice({ role: "supplier", functions: [] })).toBe(
       false,
     );
-    expect(
-      canSeeOrderPurchasePrice(op(["planner"]), order),
-    ).toBe(false);
+    expect(canSeeOrderPurchasePrice(op(["planner"]), order)).toBe(false);
     expect(canSeeOrderPurchasePrice(op(["buyer"]), order)).toBe(true);
   });
 });

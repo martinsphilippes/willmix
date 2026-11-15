@@ -232,7 +232,8 @@ export default async function OrdersPage({
     variant: i.variant,
     quantity: `${i.quantity.toLocaleString(t.intl)} ${i.unit}`,
     // Preço de compra: só com "Ver preço de compra" (o serviço já não manda o valor).
-    price: wellmix && i.unitPrice !== null ? money(i.unitPrice, i.currency) : null,
+    price:
+      wellmix && i.unitPrice !== null ? money(i.unitPrice, i.currency) : null,
     supplier: r.supplier ?? "",
     ref: refLabel(r),
     href: r.href,

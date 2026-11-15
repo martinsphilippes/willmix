@@ -145,10 +145,7 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
     // Encomenda em nome do cliente (mapa B14): Vendas e quem já abria a tela
     // de solicitações (o padrão não tira nada de ninguém).
     case "demand.createForCustomer":
-      return [
-        "sales",
-        ...withScreen("requests").filter((f) => f !== "sales"),
-      ];
+      return ["sales", ...withScreen("requests").filter((f) => f !== "sales")];
     // Reposição aberta à mão (mapa B10): o Planner.
     case "replenishment.open":
       return ["planner"];
