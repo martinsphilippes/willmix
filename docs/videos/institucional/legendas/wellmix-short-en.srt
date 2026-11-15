@@ -1,0 +1,39 @@
+1
+00:00:07,833 --> 00:00:13,117
+From a factory in China to a customer in Brazil, an import takes dozens of handoffs.
+
+2
+00:00:14,287 --> 00:00:17,475
+Suppliers, agencies, freight, customs, carriers.
+
+3
+00:00:17,635 --> 00:00:20,728
+Each one in a different inbox, spreadsheet and chat.
+
+4
+00:00:21,898 --> 00:00:25,039
+The Wellmix Portal brings them all into one workflow.
+
+5
+00:00:26,209 --> 00:00:29,311
+Every step has an owner, a deadline and a status.
+
+6
+00:00:30,481 --> 00:00:33,947
+Every message, photo and document stays with the order.
+
+7
+00:00:35,117 --> 00:00:39,905
+Each partner sees only its own part, in Portuguese, English or Chinese.
+
+8
+00:00:41,075 --> 00:00:45,628
+Inspections, samples and shipping documents are checked before the cargo moves.
+
+9
+00:00:46,798 --> 00:00:51,074
+And management sees what is late, what is next and who is responsible.
+
+10
+00:00:52,244 --> 00:00:55,510
+Wellmix. Imports from order to delivery, in one place.

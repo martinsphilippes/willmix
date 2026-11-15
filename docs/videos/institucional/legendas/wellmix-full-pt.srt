@@ -1,0 +1,328 @@
+1
+00:00:07,833 --> 00:00:11,508
+Trazer um produto da fábrica na China
+até o cliente no Brasil
+
+2
+00:00:11,508 --> 00:00:13,097
+é um longo revezamento.
+
+3
+00:00:13,257 --> 00:00:17,277
+Fornecedores, agências, certificadoras,
+frete, alfândega, transportadoras.
+
+4
+00:00:18,447 --> 00:00:21,977
+Cada um com seus e-mails,
+planilhas e grupos de conversa.
+
+5
+00:00:22,137 --> 00:00:24,137
+E ninguém enxerga o todo.
+
+6
+00:00:25,307 --> 00:00:29,049
+O Portal Wellmix coloca
+toda a operação em um só lugar.
+
+7
+00:00:29,209 --> 00:00:34,637
+Um só fluxo, compartilhado pela Wellmix,
+fornecedores, parceiros e clientes.
+
+8
+00:00:34,797 --> 00:00:37,024
+Cada login vê apenas a sua parte.
+
+9
+00:00:38,194 --> 00:00:42,171
+O portal acompanha a importação
+do início ao fim, em cinco blocos.
+
+10
+00:00:42,331 --> 00:00:46,949
+Book: planilhas dos fornecedores,
+seleção de itens, negociação e amostras.
+
+11
+00:00:47,109 --> 00:00:51,577
+Pedido: pedido de compra, arte,
+certificação e contrato assinado.
+
+12
+00:00:51,737 --> 00:00:55,842
+Produção: acompanhamento, inspeção,
+carregamento e documentos de embarque.
+
+13
+00:00:56,002 --> 00:00:58,982
+Entrega: desembaraço,
+transporte e recebimento.
+
+14
+00:00:59,142 --> 00:01:02,957
+E Vendas: ofertas, ordens de venda
+e agenda de entregas.
+
+15
+00:01:03,117 --> 00:01:06,220
+Cada etapa tem um responsável,
+um prazo e uma situação.
+
+16
+00:01:07,390 --> 00:01:11,986
+O cliente faz o pedido e acompanha
+cada etapa sem pegar o telefone.
+
+17
+00:01:12,146 --> 00:01:16,087
+Forma de pagamento, parcelas
+e boletos ficam na mesma tela.
+
+18
+00:01:16,247 --> 00:01:19,493
+Na chegada, confirma o recebimento
+e avalia a compra.
+
+19
+00:01:20,663 --> 00:01:24,683
+O fornecedor trabalha com uma única
+lista de tarefas, em chinês ou inglês.
+
+20
+00:01:24,843 --> 00:01:28,517
+Responde às solicitações com preço,
+pedido mínimo e prazo.
+
+21
+00:01:28,677 --> 00:01:33,636
+Envia fotos e vídeos das amostras,
+datas de produção e dados da inspeção.
+
+22
+00:01:33,796 --> 00:01:36,381
+E consulta a previsão de pagamento
+de cada pedido.
+
+23
+00:01:37,551 --> 00:01:42,403
+A agência de arte recebe a faca e as fotos
+do produto na sua mesa de trabalho.
+
+24
+00:01:42,563 --> 00:01:46,155
+Envia a arte e recebe
+o retorno com o motivo.
+
+25
+00:01:46,314 --> 00:01:49,823
+Depois entrega a arte final
+com o selo de certificação.
+
+26
+00:01:50,992 --> 00:01:54,692
+A certificadora tem uma fila única
+de certificados a emitir.
+
+27
+00:01:54,852 --> 00:02:00,216
+Consulta a ficha de compra e envia
+o memorial, o selo e o certificado.
+
+28
+00:02:01,386 --> 00:02:05,705
+Na China, a agência de marketing
+confirma a chegada da amostra.
+
+29
+00:02:05,865 --> 00:02:10,626
+Envia fotos e vídeos reais
+de cada produto e devolve a amostra.
+
+30
+00:02:11,796 --> 00:02:16,518
+O agente de carga registra a reserva
+no navio e envia o BL.
+
+31
+00:02:16,678 --> 00:02:19,499
+A companhia marítima responde
+às cotações de frete
+
+32
+00:02:19,499 --> 00:02:22,212
+e confirma o embarque:
+data, navio e chegada.
+
+33
+00:02:23,382 --> 00:02:26,754
+No Brasil, a assessoria de comex
+e o despachante
+
+34
+00:02:26,754 --> 00:02:30,090
+cuidam de licenças,
+documentos e desembaraço.
+
+35
+00:02:30,250 --> 00:02:33,174
+Cada passo mostra quem faz
+e quem valida.
+
+36
+00:02:34,344 --> 00:02:38,122
+O transportador vê a carga e o endereço
+de entrega em um só cartão.
+
+37
+00:02:38,282 --> 00:02:42,516
+Atualiza a situação na estrada
+e confirma a entrega pelo celular.
+
+38
+00:02:43,686 --> 00:02:46,831
+Dentro da Wellmix, cada função
+tem a sua mesa de trabalho.
+
+39
+00:02:46,991 --> 00:02:50,877
+Compradores importam os books,
+selecionam itens e negociam.
+
+40
+00:02:51,037 --> 00:02:54,510
+Gerentes de produto avaliam amostras
+e cuidam da ficha do produto.
+
+41
+00:02:54,670 --> 00:02:57,842
+Planners acompanham datas de produção,
+containers e fretes.
+
+42
+00:02:58,002 --> 00:03:01,602
+O cadastro valida a classificação fiscal
+e os dados mestres.
+
+43
+00:03:02,772 --> 00:03:06,598
+O financeiro valida os custos
+de importação e registra a nota fiscal.
+
+44
+00:03:06,758 --> 00:03:11,226
+A qualidade confere cada container
+na chegada: lacre, fotos e contagem.
+
+45
+00:03:11,386 --> 00:03:15,619
+Vendas registra ofertas, abre ordens
+de venda e agenda as entregas.
+
+46
+00:03:15,779 --> 00:03:19,371
+A diretoria aprova a estratégia
+de compra e assina o contrato.
+
+47
+00:03:19,531 --> 00:03:23,209
+E o administrador controla acessos,
+prazos e configurações.
+
+48
+00:03:24,379 --> 00:03:27,194
+Toda a comunicação acontece
+dentro do portal.
+
+49
+00:03:27,354 --> 00:03:32,605
+Cada empresa tem uma só conversa
+com a Wellmix, por pedido e por item.
+
+50
+00:03:32,765 --> 00:03:37,039
+Fotos, vídeos e arquivos ficam
+junto do assunto a que pertencem.
+
+51
+00:03:37,199 --> 00:03:42,222
+O sino de notificações e as pendências
+mostram a cada pessoa o que a espera.
+
+52
+00:03:42,382 --> 00:03:44,610
+E o portal mostra
+quem deve a resposta.
+
+53
+00:03:45,780 --> 00:03:49,010
+O portal fala português,
+inglês e chinês.
+
+54
+00:03:50,180 --> 00:03:52,013
+O acesso é definido pelo papel.
+
+55
+00:03:52,173 --> 00:03:55,297
+Cada parceiro vê os seus pedidos,
+e nada além disso.
+
+56
+00:03:55,457 --> 00:03:59,561
+O cliente nunca vê o fornecedor,
+o preço de compra nem a margem.
+
+57
+00:04:00,731 --> 00:04:03,215
+A qualidade fica documentada
+em cada etapa.
+
+58
+00:04:03,375 --> 00:04:05,955
+Inspeção com fotos, peso e vídeo.
+
+59
+00:04:06,115 --> 00:04:08,712
+Carregamento do container
+com fotos e número do lacre.
+
+60
+00:04:08,872 --> 00:04:12,635
+Packing list, invoice e BL
+conferidos linha a linha.
+
+61
+00:04:13,805 --> 00:04:17,846
+Para a gestão, a Control Tower
+mostra todo o processo por etapa.
+
+62
+00:04:18,006 --> 00:04:23,142
+O painel de SLA mostra o que atrasou,
+o que vence hoje e quem é o responsável.
+
+63
+00:04:23,302 --> 00:04:26,348
+Painéis e uma trilha de auditoria
+completam o quadro.
+
+64
+00:04:27,518 --> 00:04:31,048
+Funciona em qualquer tela e instala
+como um aplicativo no celular.
+
+65
+00:04:31,208 --> 00:04:34,816
+E foi feito para trabalhar com o Sankhya,
+o ERP da empresa.
+
+66
+00:04:35,286 --> 00:04:38,634
+Um portal. Todos os parceiros.
+Cada etapa da jornada.
+
+67
+00:04:38,794 --> 00:04:41,193
+Wellmix. Importação do pedido à entrega.

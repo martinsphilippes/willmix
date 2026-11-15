@@ -6,6 +6,8 @@ Roteiros completos, cena a cena, para produzir os vídeos que ensinam **cada pap
 - **O modelo de episódio** está na seção 5 do guia; o episódio `CLI-02` em [02-cliente.md](02-cliente.md) mostra o padrão de detalhe.
 - Cada episódio traz: promessa, ficha técnica, cenas com imagem, narração, texto na tela e edição, erros comuns com as mensagens reais do sistema, **passo a passo em texto**, notas de gravação e pontos a confirmar.
 
+> **Vídeos institucionais (para compartilhar o portal):** o vídeo curto de benefícios e o vídeo completo "o que cada papel faz", com narração em inglês e legenda em português ou mandarim, estão prontos e documentados em [institucional/README.md](institucional/README.md). Eles seguem o fluxo atual do portal; os roteiros abaixo são os tutoriais passo a passo, ainda por gravar.
+
 ## Arquivos
 
 Além dos roteiros, [ACHADOS.md](ACHADOS.md) lista o que os redatores encontraram de estranho na interface enquanto conferiam cada tela (possíveis bugs, textos crus, traduções). Vale ler **antes de gravar**, porque alguns itens mudam o que o vídeo mostra.

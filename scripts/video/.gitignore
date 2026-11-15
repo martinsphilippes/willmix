@@ -1,0 +1,10 @@
+node_modules
+film/build
+film/shots
+out
+tts/models
+__pycache__
+music/*.wav
+film/assets/world.json
+film/assets/icons.json
+.venv
